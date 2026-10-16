@@ -220,3 +220,9 @@ section, and check open branches/PRs (`gh pr list`). Extend; don't fork.
 - Run the contract tests (`tests/contract/`, once they exist) before merging.
 - Integration checkpoints are listed in [docs/25_INTEGRATION_STRATEGY.md](docs/25_INTEGRATION_STRATEGY.md);
   do not break a passed checkpoint.
+
+
+<!-- HACKATL_SIX_AGENT_BUILD_PROTOCOL -->
+## Six-agent concurrent implementation protocol (current active phase)
+
+Read `MASTER_BUILD_SPEC.md` before work, then `coordination/MESSAGES.md`, `coordination/CONTRACTS.md`, `coordination/OWNERSHIP.md`, `coordination/MILESTONES.md`, applicable `team-prompts/<PERSON>_*.md`, and new messages in `coordination/messages/`. The previous "Phase 0 only" directive is superseded by the user's explicit authorization to implement; other security, Git, test and architecture constraints remain in force. Every agent checks GitHub at session start, milestones, shared interface changes and handoff. Never overwrite another owner's work or claim unexecuted tests pass.

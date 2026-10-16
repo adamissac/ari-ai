@@ -1,60 +1,51 @@
-HACKATL BOOTSTRAP + SIX START MESSAGES
+# Copy/paste starting messages for six Claude Code instances
 
+First bootstrap the ZIP once using `BOOTSTRAP_CLAUDE_CODE_MESSAGE.txt` (or extract/commit yourself). All 6 agents must start from the SAME committed main baseline. The team must have authorized repository access and any needed local dev credentials, and users must supervise cost/production-scope decisions.
 
-FIRST: RUN THIS IN CLAUDE CODE TO INSTALL PACK
+## Adam
 
-I am the repo owner. The archive `hackatl_agent_implementation_pack.zip` is available in this repository's working tree (or I have given you its local path). Extract its contents INTO THE REPO ROOT while preserving all subdirectories and hidden directories (`.claude/`, `.agents/`). Do not replace our existing root `AGENTS.md`, `CLAUDE.md` or architectural docs. If the archive already appears extracted, do not duplicate it. Run `python scripts/install_pack_instructions.py` to append coordination pointers to the existing instruction files. Validate extracted contents, README links and `git status`, and confirm that no secrets or historical rebuild references were introduced. Commit this documentation overlay as a single bootstrap change and push it to `main` ONLY IF main is clean, no teammate feature implementation is ongoing and branch protections allow it; otherwise open a bootstrap PR and ask me to approve integration. After that, do not implement product features in this bootstrap session. Give me the exact base commit SHA for the six developers, and report what needs acknowledgement. Do not invent success if you cannot access the ZIP or GitHub.
-
-
-
-=================================================================
-ADAM - COPY INTO CLAUDE CODE
-=================================================================
+```text
 You are working in my private GitHub repo `adamissac/hackatl-agentic-security` as Adam's implementation agent. REAL FEATURE IMPLEMENTATION IS NOW AUTHORIZED. Read `MASTER_BUILD_SPEC.md` IN FULL, root `AGENTS.md`, `CLAUDE.md`, `coordination/MESSAGES.md`, `coordination/OWNERSHIP.md`, `coordination/CONTRACTS.md`, `coordination/MILESTONES.md`, and **`team-prompts/ADAM_IMPLEMENTATION.md`**. Check the current code, Git remote, PRs/issues and new team messages FIRST. Do not treat old foundation-only documentation as a new prohibition; this explicit task changes the phase while all safety/contract rules remain. You have permission for normal reversible implementation, testing, dependency installation, branch commits, pushes and PRs in our owned repo. No permission for unrelated systems, third-party penetration testing, secrets exposure, force pushes, paid infrastructure or disruptive production actions. Work on your own `feat/adam/...` branch, never push product code directly to main. Actually write working code, run tests and integrate real subsystem interfaces; do not stop at descriptions, mock results, stubs, or empty UI. Use real Claude model/tool loops as required, and distinguish opt-in live provider smoke from FakeLLM CI. Publish PRs, immutable `coordination/messages/` files and updates to `coordination/status/ADAM.md`, check GitHub again at every milestone, and coordinate with other owners. If an upstream API isn't ready, build against agreed typed fixtures with a clear unverified status, then integrate when it arrives. Keep working through your milestones until real tests pass or a genuine external blocker prevents further work. Report commits, PR links, exact executed tests/results and next action. Begin with the implementation tasks in your personalized prompt.
 
 Your priority is the TRAINED Double DQN and held-out evaluation, not graphs of imaginary results.
+```
 
+## Alan
 
-
-=================================================================
-ALAN - COPY INTO CLAUDE CODE
-=================================================================
+```text
 You are working in my private GitHub repo `adamissac/hackatl-agentic-security` as Alan's implementation agent. REAL FEATURE IMPLEMENTATION IS NOW AUTHORIZED. Read `MASTER_BUILD_SPEC.md` IN FULL, root `AGENTS.md`, `CLAUDE.md`, `coordination/MESSAGES.md`, `coordination/OWNERSHIP.md`, `coordination/CONTRACTS.md`, `coordination/MILESTONES.md`, and **`team-prompts/ALAN_IMPLEMENTATION.md`**. Check the current code, Git remote, PRs/issues and new team messages FIRST. Do not treat old foundation-only documentation as a new prohibition; this explicit task changes the phase while all safety/contract rules remain. You have permission for normal reversible implementation, testing, dependency installation, branch commits, pushes and PRs in our owned repo. No permission for unrelated systems, third-party penetration testing, secrets exposure, force pushes, paid infrastructure or disruptive production actions. Work on your own `feat/alan/...` branch, never push product code directly to main. Actually write working code, run tests and integrate real subsystem interfaces; do not stop at descriptions, mock results, stubs, or empty UI. Use real Claude model/tool loops as required, and distinguish opt-in live provider smoke from FakeLLM CI. Publish PRs, immutable `coordination/messages/` files and updates to `coordination/status/ALAN.md`, check GitHub again at every milestone, and coordinate with other owners. If an upstream API isn't ready, build against agreed typed fixtures with a clear unverified status, then integrate when it arrives. Keep working through your milestones until real tests pass or a genuine external blocker prevents further work. Report commits, PR links, exact executed tests/results and next action. Begin with the implementation tasks in your personalized prompt.
 
 Your priority is SEVEN separate executing Claude security agent roles plus genuine allowed tool loops and test-based independent Verify, not persona labels.
+```
 
+## Sarosh
 
-
-=================================================================
-SAROSH - COPY INTO CLAUDE CODE
-=================================================================
+```text
 You are working in my private GitHub repo `adamissac/hackatl-agentic-security` as Sarosh's implementation agent. REAL FEATURE IMPLEMENTATION IS NOW AUTHORIZED. Read `MASTER_BUILD_SPEC.md` IN FULL, root `AGENTS.md`, `CLAUDE.md`, `coordination/MESSAGES.md`, `coordination/OWNERSHIP.md`, `coordination/CONTRACTS.md`, `coordination/MILESTONES.md`, and **`team-prompts/SAROSH_IMPLEMENTATION.md`**. Check the current code, Git remote, PRs/issues and new team messages FIRST. Do not treat old foundation-only documentation as a new prohibition; this explicit task changes the phase while all safety/contract rules remain. You have permission for normal reversible implementation, testing, dependency installation, branch commits, pushes and PRs in our owned repo. No permission for unrelated systems, third-party penetration testing, secrets exposure, force pushes, paid infrastructure or disruptive production actions. Work on your own `feat/sarosh/...` branch, never push product code directly to main. Actually write working code, run tests and integrate real subsystem interfaces; do not stop at descriptions, mock results, stubs, or empty UI. Use real Claude model/tool loops as required, and distinguish opt-in live provider smoke from FakeLLM CI. Publish PRs, immutable `coordination/messages/` files and updates to `coordination/status/SAROSH.md`, check GitHub again at every milestone, and coordinate with other owners. If an upstream API isn't ready, build against agreed typed fixtures with a clear unverified status, then integrate when it arrives. Keep working through your milestones until real tests pass or a genuine external blocker prevents further work. Report commits, PR links, exact executed tests/results and next action. Begin with the implementation tasks in your personalized prompt.
 
 Your priority is real persistent version-aware codebase and intended behavior intelligence, so every consumer sees accurate context packs.
+```
 
+## Sai
 
-
-=================================================================
-SAI - COPY INTO CLAUDE CODE
-=================================================================
+```text
 You are working in my private GitHub repo `adamissac/hackatl-agentic-security` as Sai's implementation agent. REAL FEATURE IMPLEMENTATION IS NOW AUTHORIZED. Read `MASTER_BUILD_SPEC.md` IN FULL, root `AGENTS.md`, `CLAUDE.md`, `coordination/MESSAGES.md`, `coordination/OWNERSHIP.md`, `coordination/CONTRACTS.md`, `coordination/MILESTONES.md`, and **`team-prompts/SAI_IMPLEMENTATION.md`**. Check the current code, Git remote, PRs/issues and new team messages FIRST. Do not treat old foundation-only documentation as a new prohibition; this explicit task changes the phase while all safety/contract rules remain. You have permission for normal reversible implementation, testing, dependency installation, branch commits, pushes and PRs in our owned repo. No permission for unrelated systems, third-party penetration testing, secrets exposure, force pushes, paid infrastructure or disruptive production actions. Work on your own `feat/sai/...` branch, never push product code directly to main. Actually write working code, run tests and integrate real subsystem interfaces; do not stop at descriptions, mock results, stubs, or empty UI. Use real Claude model/tool loops as required, and distinguish opt-in live provider smoke from FakeLLM CI. Publish PRs, immutable `coordination/messages/` files and updates to `coordination/status/SAI.md`, check GitHub again at every milestone, and coordinate with other owners. If an upstream API isn't ready, build against agreed typed fixtures with a clear unverified status, then integrate when it arrives. Keep working through your milestones until real tests pass or a genuine external blocker prevents further work. Report commits, PR links, exact executed tests/results and next action. Begin with the implementation tasks in your personalized prompt.
 
 Your priority is the REAL Claude reviewer/repair agent: derive commit intent from code/spec/test evidence, call tools, generate test, patch and independently verify.
+```
 
+## Vihaan
 
-
-=================================================================
-VIHAAN - COPY INTO CLAUDE CODE
-=================================================================
+```text
 You are working in my private GitHub repo `adamissac/hackatl-agentic-security` as Vihaan's implementation agent. REAL FEATURE IMPLEMENTATION IS NOW AUTHORIZED. Read `MASTER_BUILD_SPEC.md` IN FULL, root `AGENTS.md`, `CLAUDE.md`, `coordination/MESSAGES.md`, `coordination/OWNERSHIP.md`, `coordination/CONTRACTS.md`, `coordination/MILESTONES.md`, and **`team-prompts/VIHAAN_IMPLEMENTATION.md`**. Check the current code, Git remote, PRs/issues and new team messages FIRST. Do not treat old foundation-only documentation as a new prohibition; this explicit task changes the phase while all safety/contract rules remain. You have permission for normal reversible implementation, testing, dependency installation, branch commits, pushes and PRs in our owned repo. No permission for unrelated systems, third-party penetration testing, secrets exposure, force pushes, paid infrastructure or disruptive production actions. Work on your own `feat/vihaan/...` branch, never push product code directly to main. Actually write working code, run tests and integrate real subsystem interfaces; do not stop at descriptions, mock results, stubs, or empty UI. Use real Claude model/tool loops as required, and distinguish opt-in live provider smoke from FakeLLM CI. Publish PRs, immutable `coordination/messages/` files and updates to `coordination/status/VIHAAN.md`, check GitHub again at every milestone, and coordinate with other owners. If an upstream API isn't ready, build against agreed typed fixtures with a clear unverified status, then integrate when it arrives. Keep working through your milestones until real tests pass or a genuine external blocker prevents further work. Report commits, PR links, exact executed tests/results and next action. Begin with the implementation tasks in your personalized prompt.
 
 Your priority is production-like Next.js UX connected to the actual backed API and real evidence, not only mocked screenshots.
+```
 
+## Srihith
 
-
-=================================================================
-SRIHITH - COPY INTO CLAUDE CODE
-=================================================================
+```text
 You are working in my private GitHub repo `adamissac/hackatl-agentic-security` as Srihith's implementation agent. REAL FEATURE IMPLEMENTATION IS NOW AUTHORIZED. Read `MASTER_BUILD_SPEC.md` IN FULL, root `AGENTS.md`, `CLAUDE.md`, `coordination/MESSAGES.md`, `coordination/OWNERSHIP.md`, `coordination/CONTRACTS.md`, `coordination/MILESTONES.md`, and **`team-prompts/SRIHITH_IMPLEMENTATION.md`**. Check the current code, Git remote, PRs/issues and new team messages FIRST. Do not treat old foundation-only documentation as a new prohibition; this explicit task changes the phase while all safety/contract rules remain. You have permission for normal reversible implementation, testing, dependency installation, branch commits, pushes and PRs in our owned repo. No permission for unrelated systems, third-party penetration testing, secrets exposure, force pushes, paid infrastructure or disruptive production actions. Work on your own `feat/srihith/...` branch, never push product code directly to main. Actually write working code, run tests and integrate real subsystem interfaces; do not stop at descriptions, mock results, stubs, or empty UI. Use real Claude model/tool loops as required, and distinguish opt-in live provider smoke from FakeLLM CI. Publish PRs, immutable `coordination/messages/` files and updates to `coordination/status/SRIHITH.md`, check GitHub again at every milestone, and coordinate with other owners. If an upstream API isn't ready, build against agreed typed fixtures with a clear unverified status, then integrate when it arrives. Keep working through your milestones until real tests pass or a genuine external blocker prevents further work. Report commits, PR links, exact executed tests/results and next action. Begin with the implementation tasks in your personalized prompt.
 
 Your priority is canonical shared contracts and dependable FastAPI/Postgres/GitHub webhooks/queue/gateway/monitoring that actually integrate with five owners.
+```

@@ -77,3 +77,9 @@ gains tooling, add its commands **here** and in that subsystem's README.
 Prefer, in order: (1) the spec, (2) an existing ADR, (3) asking the human,
 (4) a documented assumption in the handoff with the smallest reversible choice.
 Never silently invent product requirements.
+
+
+<!-- HACKATL_SIX_AGENT_BUILD_PROTOCOL -->
+## Six-agent concurrent implementation protocol (current active phase)
+
+Read `MASTER_BUILD_SPEC.md` before work, then `coordination/MESSAGES.md`, `coordination/CONTRACTS.md`, `coordination/OWNERSHIP.md`, `coordination/MILESTONES.md`, applicable `team-prompts/<PERSON>_*.md`, and new messages in `coordination/messages/`. The previous "Phase 0 only" directive is superseded by the user's explicit authorization to implement; other security, Git, test and architecture constraints remain in force. Every agent checks GitHub at session start, milestones, shared interface changes and handoff. Never overwrite another owner's work or claim unexecuted tests pass.
