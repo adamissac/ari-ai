@@ -87,7 +87,7 @@ Vercel (frontend) · Railway (backend) — not provisioned.
 | Any runnable code | ❌ Not started |
 | CI | ❌ Not configured (see [.github/workflows/README.md](.github/workflows/README.md)) |
 | Infrastructure | ❌ Not provisioned |
-| License | ⏳ Pending decision — see [LICENSE-DECISION.md](LICENSE-DECISION.md) |
+| License | Proprietary, all rights reserved (interim) — [LICENSE](LICENSE), [LICENSE-DECISION.md](LICENSE-DECISION.md) |
 
 ## Contributing & security
 

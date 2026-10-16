@@ -1,10 +1,13 @@
-# License decision — PENDING
+# License decision — PROPRIETARY (interim)
 
-**No license has been chosen.** Until one is, the code is "all rights reserved" by
-default: others may view it if the repo is ever made public, but have no right to
-use, modify, or redistribute it. The repository is private.
+**Decided 2026-10-16: proprietary, all rights reserved** ([LICENSE](LICENSE)).
+This is an interim choice made to keep every future option open: moving from
+proprietary to any open or source-available license later is easy, while code
+released under an open license cannot be taken back. The repository stays private.
+The choice of a long-term license is still open and is revisited before the repo is
+made public or outside contributions are accepted.
 
-## Why it is deferred
+## Why the long-term choice is deferred
 
 The project may become a commercial startup. The license choice affects
 fundraising, contributor rights, competitor reuse, and open-source community
@@ -15,7 +18,7 @@ legal input — not defaulted by a setup script.
 
 | Option | Pros | Cons | Fits if… |
 |---|---|---|---|
-| **Proprietary / no license** (current) | Maximum control | No outside contributions; weaker build-in-public story | We stay closed-source |
+| **Proprietary** (current, interim) | Maximum control | No outside contributions; weaker build-in-public story | We stay closed-source |
 | **Apache-2.0** | Permissive, patent grant, enterprise-friendly | Competitors can take and commercialize | We want max adoption, monetize hosting/services |
 | **MIT** | Simplest permissive | No patent grant | Same as Apache, smaller concerns |
 | **AGPL-3.0** | Network-copyleft discourages closed SaaS forks | Some enterprises ban AGPL | We want open source but protect against SaaS clones |
@@ -33,7 +36,9 @@ legal input — not defaulted by a setup script.
 
 | Field | Value |
 |---|---|
-| Status | Pending |
+| Status | Decided (interim): proprietary, all rights reserved |
+| Decided on | 2026-10-16 |
+| Long-term license | Open — revisit before going public |
 | Owner | UNASSIGNED |
-| Decide by | Before the repo is made public or outside contributions are accepted |
+| Revisit by | Before the repo is made public or outside contributions are accepted |
 | Tracking task | `DOCS-003` |

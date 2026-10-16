@@ -13,6 +13,7 @@ All notable changes are documented here. Format follows
   boundaries, testing strategy, planning (roadmap, MVP scope, task board, backlog,
   dependencies, definition of done, handoffs), development-agent prompts, ADR
   template and proposed ADRs, research plan, GitHub templates.
+- Interim proprietary `LICENSE` (all rights reserved); see `LICENSE-DECISION.md`.
 
 ### Not yet implemented
 - All product functionality. No runnable application code exists.

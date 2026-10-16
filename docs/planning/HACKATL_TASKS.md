@@ -21,7 +21,7 @@ acceptance criteria are the minimum for `DONE` in addition to
 | ID | Title | Dir | Reqs | Depends on | Owner | Status | Acceptance criteria |
 |---|---|---|---|---|---|---|---|
 | DOCS-002 | Ratify or amend proposed ADRs 0001–0010 | docs/decisions | — | — | UNASSIGNED | READY | Each ADR Accepted/Rejected/Superseded with date and deciders |
-| DOCS-003 | License decision | LICENSE-DECISION.md | — | — | UNASSIGNED | READY | Decision recorded; LICENSE file added or "proprietary" confirmed |
+| DOCS-003 | License decision | LICENSE, LICENSE-DECISION.md | — | — | UNASSIGNED | DONE | Interim proprietary LICENSE added; long-term choice revisited before going public |
 | DOCS-004 | Set Code of Conduct maintainer contact | CODE_OF_CONDUCT.md | — | — | UNASSIGNED | READY | Contact channel listed |
 | INFRA-002 | Enable private vulnerability reporting + branch protection on `main` | GitHub settings | — | INFRA-001 | UNASSIGNED | READY | Settings enabled; SECURITY.md note updated |
 | INFRA-003 | `docs.yml` (link + Mermaid check) and `secrets.yml` (gitleaks) workflows | .github/workflows | NFR-08 | INFRA-001 | UNASSIGNED | READY | Workflows green on `main`; actions pinned by SHA; least-privilege permissions |

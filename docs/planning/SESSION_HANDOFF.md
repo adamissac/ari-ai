@@ -18,11 +18,19 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-16 — Claude Code (development agent) — DOCS-003
+- **Did:** Added interim proprietary `LICENSE` (all rights reserved) at the owner's
+  request; updated LICENSE-DECISION.md, README status, task board, CHANGELOG. Set the
+  GitHub repo description and topics. Corrected the INFRA-001 note below.
+- **State of the code:** Still no application code.
+- **Next steps:** Revisit the long-term license before the repo is made public.
+
 ### 2026-10-16 — Claude Code (development agent) — DOCS-001, INFRA-001
 - **Did:** Completed Phase 0. Wrote docs 00–26, `architecture/`, `agents/`,
   `prompts/`, `planning/`, `decisions/` (template + ADRs 0001–0010, all
   *Proposed*), `research/`; READMEs for all eleven top-level code directories.
-  Created private GitHub repo `adamissac/hackatl-agentic-security` and pushed `main`.
+  Pushed to the private GitHub repo `adamissac/hackatl-agentic-security`, which
+  had already been created with the base commit (`a59f0a8`) by the repository owner.
 - **State of the code:** No application code exists. Only Markdown, repository
   config files and GitHub templates. Verified with a file listing of non-Markdown
   files.
