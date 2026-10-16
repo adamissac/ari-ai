@@ -1,7 +1,9 @@
 # Master roadmap
 
-**Current phase: Phase 0 — complete (2026-10-16). Phase 1 is not authorized.**
-A human must explicitly start each phase. HackATL event date is unconfirmed
+**Current phase: implementation authorized (2026-10-16).** Phase 0 is complete; Phases
+1–5 proceed as six parallel owner tracks per [MASTER_BUILD_SPEC](../../MASTER_BUILD_SPEC.md)
+and milestones M0–M8 in [coordination/MILESTONES](../../coordination/MILESTONES.md).
+Deployment, paid infrastructure and production actions still need explicit human approval. HackATL event date is unconfirmed
 (RQ-011); durations below are relative and must be fitted once it is known.
 
 | Phase | Name | Goal | Exit criteria | Key tasks |
@@ -29,4 +31,4 @@ updated, SESSION_HANDOFF entry, and a human "go" recorded in this file.
 | Phase | Started | Completed | Authorized by |
 |---|---|---|---|
 | 0 | 2026-10-16 | 2026-10-16 | Repository owner |
-| 1 | — | — | — |
+| 1–5 | 2026-10-16 | — | Repository owner (implementation pack) |
