@@ -185,9 +185,12 @@ A change is not complete until:
 
 ## Current project phase
 
-**Current phase: Phase 0 — Repository and Architecture (complete as of 2026-10-16).
-Phase 1 has not been authorized.** Do not implement product features until a human
-explicitly starts Phase 1. Phases: [docs/planning/MASTER_ROADMAP.md](docs/planning/MASTER_ROADMAP.md).
+**Current phase: Implementation — authorized by the repository owner on 2026-10-16.**
+Phase 0 (repository and architecture) is complete. Six developers build in parallel,
+each on their own `feat/<owner>/<scope>` branch, following [MASTER_BUILD_SPEC.md](MASTER_BUILD_SPEC.md)
+and the ownership lanes in [coordination/OWNERSHIP.md](coordination/OWNERSHIP.md). Product
+code never goes directly to `main`. All security, Git, testing and contract rules in this
+file still apply. Phases: [docs/planning/MASTER_ROADMAP.md](docs/planning/MASTER_ROADMAP.md).
 
 ## 15. Where to find assigned work
 

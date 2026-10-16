@@ -1,7 +1,6 @@
 # hackatl-agentic-security
 
 > **Status: Phase 0 — repository foundation and architecture only.**
-> **The `docs/` library is still being written; some links below do not resolve yet.**
 > No product functionality is implemented yet. Every capability described in this
 > repository is a *specification*, not a working feature. See
 > [Current implementation status](#current-implementation-status).
