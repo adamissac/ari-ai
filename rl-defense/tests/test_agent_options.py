@@ -135,7 +135,7 @@ def test_checkpoint_selection_saves_the_best_scored_weights(tmp_path, monkeypatc
     import rl_defense.train as train_mod
 
     scores = iter([-50.0, -10.0, -30.0])  # best is the 2nd evaluation (step 400)
-    monkeypatch.setattr(train_mod, "selection_score", lambda agent, configs: next(scores))
+    monkeypatch.setattr(train_mod, "selection_score", lambda agent, configs, *_: next(scores))
     small = DDQNConfig(learning_starts=50, buffer_size=1000, eps_decay_steps=300)
     m = train(
         load_configs(default_config_paths("train")),

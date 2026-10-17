@@ -47,6 +47,19 @@ class DDQNConfig(BaseModel):
     double: bool = True
     dueling: bool = False
     n_step: int = Field(1, ge=1, le=20)
+    disruption_margin: float = Field(
+        0.0,
+        ge=0.0,
+        description="Greedy abstention: take a disruptive action (rate_limit/isolate) only if its "
+        "Q exceeds the best valid non-disruptive action's Q by at least this margin. 0 = off.",
+    )
+    eps_disruptive_weight: float | None = Field(
+        None,
+        gt=0.0,
+        le=1.0,
+        description="Exploration: relative probability weight of disruptive actions when "
+        "acting randomly (None = uniform over valid actions, the v0/v1 behaviour).",
+    )
 
 
 class QNetwork(nn.Module):
@@ -197,9 +210,19 @@ def dqn_targets(target: nn.Module, batch: Batch, gamma: float) -> torch.Tensor:
         return batch.rewards + disc * (1.0 - batch.dones) * next_q
 
 
+def disruptive_action_mask(n_actions: int) -> np.ndarray:
+    """Boolean mask of disruptive actions (rate_limit / isolate) for DefenseSimEnv's layout."""
+    from rl_defense.envs.defense_sim import DISRUPTIVE, N_ACTIONS, decode_action
+
+    if n_actions != N_ACTIONS:
+        return np.zeros(n_actions, dtype=bool)
+    return np.array([decode_action(a)[0] in DISRUPTIVE for a in range(n_actions)])
+
+
 class DDQNAgent:
     def __init__(self, obs_dim: int, n_actions: int, config: DDQNConfig, seed: int) -> None:
         self.obs_dim, self.n_actions, self.config = obs_dim, n_actions, config
+        self.disruptive = disruptive_action_mask(n_actions)
         torch.manual_seed(seed)
         self.online = build_q_network(obs_dim, n_actions, config)
         self.target = build_q_network(obs_dim, n_actions, config)
@@ -218,14 +241,30 @@ class DDQNAgent:
         with torch.no_grad():
             return self.online(torch.as_tensor(obs, dtype=torch.float32).unsqueeze(0))[0].numpy()
 
+    def greedy_action(self, obs: np.ndarray, mask: np.ndarray) -> int:
+        """Masked argmax, with the optional disruption margin (abstain unless clearly better)."""
+        q = self.q_values(obs)
+        qm = np.where(mask, q, NEG_INF)
+        best = int(np.argmax(qm))
+        margin = self.config.disruption_margin
+        if margin > 0.0 and self.disruptive[best]:
+            safe = mask & ~self.disruptive
+            if safe.any():
+                alt = int(np.argmax(np.where(safe, q, NEG_INF)))
+                if q[best] - q[alt] < margin:
+                    return alt
+        return best
+
     def act(self, obs: np.ndarray, mask: np.ndarray, epsilon: float = 0.0) -> int:
         """Epsilon-greedy over VALID actions only."""
         valid = np.flatnonzero(mask)
         if self._rng.random() < epsilon:
-            return int(self._rng.choice(valid))
-        q = self.q_values(obs)
-        q[~mask] = NEG_INF
-        return int(np.argmax(q))
+            w = self.config.eps_disruptive_weight
+            if w is None:
+                return int(self._rng.choice(valid))
+            weights = np.where(self.disruptive[valid], w, 1.0)
+            return int(self._rng.choice(valid, p=weights / weights.sum()))
+        return self.greedy_action(obs, mask)
 
     def update(self, batch: Batch) -> dict[str, float]:
         c = self.config

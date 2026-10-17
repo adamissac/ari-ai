@@ -1,108 +1,123 @@
-"""Adam's integration gap (20261017T063710Z-adam-to-all-integration-gaps): persisted
-expectations from Sarosh's real index of payments-lite feed RL criticality through
-backend.pipeline.platform_facts, and a human "rejected" decision removes their influence."""
+"""RL facts use code-intelligence expectations: data sensitivity raises node criticality.
+
+This is the P1→P3 link (docs/11): an expectation that a route handles financial data
+makes the simulator node behind that route more critical in the policy's input.
+"""
 
 from __future__ import annotations
 
-import shutil
-import subprocess
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
+import sqlalchemy as sa
 
-ci_api = pytest.importorskip("code_intelligence.api")
-ci_persistence = pytest.importorskip("code_intelligence.persistence")
-pm = pytest.importorskip("rl_defense.platform_mapping")
+pytest.importorskip("rl_defense.platform_mapping")
 
-from helpers import REPO, setup_project  # noqa: E402
+from helpers import setup_project  # noqa: E402
 
-from backend.db import transaction  # noqa: E402
-from backend.intel_store import PostgresPayloadStore  # noqa: E402
-from backend.pipeline import platform_facts, route_expectations  # noqa: E402
+from backend import intelligence as intel  # noqa: E402
+from backend import pipeline  # noqa: E402
+from backend.db import snapshots, transaction  # noqa: E402
+from shared.base import utcnow  # noqa: E402
+from shared.ids import IdPrefix, new_id  # noqa: E402
 
-ROOT = Path(__file__).resolve().parents[2]
-TARGET = ROOT / "examples" / "payments-lite" / "target"
-TOPOLOGY = ROOT / "rl-defense" / "configs" / "topology" / "payments_lite.yaml"
+TOPOLOGY = Path(__file__).resolve().parents[2] / "rl-defense/configs/topology/payments_lite.yaml"
 
 
-@pytest.fixture
-def indexed(client_factory, tmp_path: Path):
-    if not TARGET.exists():
-        pytest.skip("examples/payments-lite/target not present")
-    root = tmp_path / "payments-lite"
-    shutil.copytree(TARGET, root, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
-    git = ["git", "-C", str(root), "-c", "user.name=t", "-c", "user.email=t@example.invalid"]
-    subprocess.check_call([*git, "init", "-q"])
-    subprocess.check_call([*git, "add", "."])
-    subprocess.check_call([*git, "-c", "commit.gpgsign=false", "commit", "-qm", "base"])
-    sha = subprocess.check_output([*git, "rev-parse", "HEAD"], text=True).strip()
-    alice, bob = client_factory("alice"), client_factory("bob")
-    ids = setup_project(alice, bob)
-    binding = ci_api.RepositoryBinding(
-        project_id=ids["project"], repo_id=ids["repo"], full_name=REPO, local_path=root
+class _FakeIntel:
+    """Duck-typed stand-in for IntelligenceService (only the two read calls RL uses)."""
+
+    def __init__(self, entry_points, expectations, fail=False):
+        self._eps, self._exps, self._fail = entry_points, expectations, fail
+
+    def _page(self, items, offset, limit):
+        if self._fail:
+            raise RuntimeError("store offline")
+        return items[offset : offset + limit]
+
+    def entry_points(self, ref, *, offset=0, limit=100):
+        return self._page(self._eps, offset, limit)
+
+    def expectations(self, ref, subject=None, *, offset=0, limit=100):
+        return self._page(self._exps, offset, limit)
+
+
+def _ns_enum(value):
+    return SimpleNamespace(value=value)
+
+
+def _exp(id_, subject, sensitivity, status="confirmed"):
+    return SimpleNamespace(
+        id=id_,
+        subject_ref=subject,
+        data_sensitivity=None if sensitivity is None else _ns_enum(sensitivity),
+        status=_ns_enum(status),
     )
-    svc = ci_api.IntelligenceService(
-        ci_persistence.PayloadIndexStore(PostgresPayloadStore()), [binding]
-    )
-    ref = svc.index_repository(ids["project"], ids["repo"], sha)
-    return alice, ids, ref
+
+
+def _ready_snapshot(repo_id: str) -> str:
+    sid = new_id(IdPrefix.snp)
+    with transaction() as conn:
+        conn.execute(
+            sa.insert(snapshots).values(
+                id=sid,
+                repo_id=repo_id,
+                commit_sha="c" * 40,
+                index_version="test",
+                status="ready",
+                doc={},
+                created_at=utcnow(),
+            )
+        )
+    return sid
+
+
+def _facts(project_id):
+    with transaction() as conn:
+        return pipeline.platform_facts(conn, project_id)
 
 
 def _node(facts, name):
     return next(n for n in facts.nodes if n.node == name)
 
 
-def test_expectations_raise_rl_criticality_from_real_index(indexed, settings_override) -> None:
-    alice, ids, ref = indexed
+@pytest.fixture
+def project(client_factory, settings_override):
     settings_override(rl_topology_path=str(TOPOLOGY))
-    with transaction() as conn:
-        exps = route_expectations(conn, ids["project"])
-        facts, provenance = platform_facts(conn, ids["project"])
-    by_route = {}
-    for e in exps:
-        by_route.setdefault(e["route"], []).append(e)
-    assert len({e["id"] for e in exps}) == len(exps)
-    # the planted IDOR route carries financial expectations from the real index
-    assert {e["data_sensitivity"] for e in by_route["GET /payments/{payment_id}"]} == {"financial"}
-    payments = {
-        e["id"]
-        for r, es in by_route.items()
-        if r.split()[1].startswith(("/payments", "/refunds"))
-        for e in es
-    }
-    assert payments and payments <= set(provenance["payments"])
-    # /health has an "internal" expectation: gateway criticality rises above its 0.3 floor
-    health = [e["id"] for e in by_route["GET /health"]]
-    assert _node(facts, "gateway").criticality == pytest.approx(0.4)
-    assert set(health) <= set(provenance["gateway"])
-
-    # A human "rejected" decision (authenticated API) removes that expectation's influence.
-    for exp_id in health:
-        r = alice.patch(
-            f"/api/v1/snapshots/{ref.snapshot_id}/expectations/{exp_id}",
-            json={
-                "status": "rejected",
-                "reason": "Health probe holds no data",
-                "expected_revision": 0,
-            },
-        )
-        assert r.status_code == 200, r.text
-    with transaction() as conn:
-        assert all(
-            e["status"] == "rejected"
-            for e in route_expectations(conn, ids["project"])
-            if e["id"] in health
-        )
-        facts, provenance = platform_facts(conn, ids["project"])
-    assert _node(facts, "gateway").criticality == pytest.approx(0.3)
-    assert not set(health) & set(provenance["gateway"])
-
-
-def test_no_index_means_topology_floors(client_factory, settings_override) -> None:
     alice, bob = client_factory("alice"), client_factory("bob")
-    ids = setup_project(alice, bob)
-    settings_override(rl_topology_path=str(TOPOLOGY))
-    with transaction() as conn:
-        assert route_expectations(conn, ids["project"]) == []
-        facts, _ = platform_facts(conn, ids["project"])
-    assert _node(facts, "gateway").criticality == pytest.approx(0.3)
+    return setup_project(alice, bob)
+
+
+def test_financial_expectation_raises_criticality_with_provenance(project, monkeypatch):
+    _ready_snapshot(project["repo"])
+    eps = [
+        SimpleNamespace(id="ent_me", handler_symbol_id="sym_me", method="GET", path_template="/me"),
+    ]
+    exps = [
+        _exp("exp_fin", "sym_me", "financial"),  # subject is the handler symbol
+        _exp("exp_rej", "ent_me", "financial", status="rejected"),
+        _exp("exp_none", "ent_me", None),
+    ]
+    monkeypatch.setattr(intel, "build_service", lambda: _FakeIntel(eps, exps))
+    monkeypatch.setattr(intel, "snapshot_ref", lambda sid: SimpleNamespace(snapshot_id=sid))
+    facts, provenance = _facts(project["project"])
+    assert _node(facts, "api").criticality == 0.9  # floor 0.5 -> financial 0.9
+    assert "exp_fin" in provenance["api"]
+    assert "exp_rej" not in provenance["api"] and "exp_none" not in provenance["api"]
+    assert provenance["expectations_source"].startswith("1 expectation-route inputs")
+
+
+def test_intelligence_outage_falls_back_to_topology_floor(project, monkeypatch):
+    _ready_snapshot(project["repo"])
+    monkeypatch.setattr(intel, "build_service", lambda: _FakeIntel([], [], fail=True))
+    monkeypatch.setattr(intel, "snapshot_ref", lambda sid: SimpleNamespace(snapshot_id=sid))
+    facts, provenance = _facts(project["project"])
+    assert _node(facts, "api").criticality == 0.5
+    assert provenance["expectations_source"] == "intelligence unavailable: RuntimeError"
+
+
+def test_no_ready_snapshot_is_reported(project):
+    facts, provenance = _facts(project["project"])
+    assert _node(facts, "api").criticality == 0.5
+    assert provenance["expectations_source"] == "no ready snapshot"
