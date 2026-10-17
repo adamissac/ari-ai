@@ -25,6 +25,8 @@ pythonpath = [".", "../shared", "../code-intelligence", "../examples/payments-li
 markers = [
   "live: requires RUN_LIVE_LLM_EVAL=1 and an authorized Anthropic key",
   "boundary: security-boundary suite (release blocking)",
+  "standards: standards alignment suite (offline, pinned data)",
+  "negative: tests that must fail loudly on invalid standards input",
 ]
 filterwarnings = ["ignore::DeprecationWarning"]
 
