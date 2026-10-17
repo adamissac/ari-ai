@@ -55,7 +55,8 @@ Repositories must be registered by the operator:
   with PostgreSQL, Verify independence, and policy units.
 * **Not executed:** the live Tier-3 run (`test_live_reviewer.py`). The development
   environment had no authorized API key. No live-model claim is made.
-* **Unverified integrations:** `code_intelligence` (Sarosh) is used through
-  `IntelligencePort` when importable; until then the tools report `UNAVAILABLE`. Alan's
-  Docker sandbox and Verify agent are not wired in yet; the Verify used in the tests is a
-  labeled test double.
+* **Integrations:** the real `code_intelligence` index is consumed and tested
+  (`test_intel_integration.py`). Index expectations are `ambiguous` by design and cannot
+  confirm a claim alone. Alan's shared sandbox driver is adopted (`test_shared_sandbox.py`;
+  its Docker path is unverified because no engine is available). The backend runs the reviewer inside the hosted
+  assessment (Srihith). The Verify in `test_host_integration.py` is still a labeled test double.
