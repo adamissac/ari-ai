@@ -1,8 +1,8 @@
 # Adam — implementation status
 
 Owner: Adam
-Branch: `feat/adam/rl-defense`
-Current task: RL improvements (training worker on `feat/adam/rl-training-v1`) + platform integration adapters
+Branch: all work merged to `main` (last: PR #13 shared contracts, PR #18 recipe check)
+Current task: RL training improvements (worker branch `feat/adam/rl-training-v1`, merging to main every round)
 Last remote sync: 2026-10-17 — origin/main at `945afc9`; no other branches, PRs or issues yet
 API/contract dependencies: `DefenseRecommendation`, `PlatformFacts`, `RLCheckpointRef`, `RLEvaluation` proposed to Srihith in `coordination/messages/20261017T001311Z-adam-to-srihith-rl-recommendation-contract.md`; local adapter in `rl-defense/rl_defense/contracts.py` until `shared/` V0 merges
 Verified tests: `cd rl-defense && .venv/bin/python -m pytest -q` → 52 passed (CPU, macOS arm64, Python 3.12, torch 2.14.1, gymnasium 1.4.0); ruff check + format clean
@@ -11,6 +11,20 @@ Blockers: none for RL; backend endpoint and Defense Lab UI need `shared/` V0 and
 Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablations (vanilla DQN vs DDQN, feature and reward sensitivity)
 
 ## Session entries
+
+### 2026-10-17 — HANDOFF (owner usage ending): exact state for the next session
+- **On main:** RL env/DDQN/baselines/eval/analysis/stress/explain/lab export (PR #1), payments-lite
+  (#5), link+secret CI (#7), shared V0 + backend (#8, verified with the backend + RL suites), RL
+  contracts re-exported from `shared.rl` (#13), training improvements round 1–2 (#15), build-recipe
+  consistency check (#18). RL suite on main: 80 passed. Backend: 40 passed, 1 skipped (live opt-in).
+- **In progress:** `feat/adam/rl-training-v1` validation round 3 (seed stability: checkpoint
+  selection, lr decay). Final held-out run (seeds 0–4) NOT done yet → `experiments/final.py`.
+- **Next steps:** (1) run the final candidate once on held-out eval + stress and commit
+  `results/<name>/COMPARISON.md`; (2) refresh `results/protocol-*/defense_lab.json` from the new
+  checkpoint for Vihaan; (3) decide checkpoint storage with Srihith (`RL_CHECKPOINT_PATH`).
+- **Open asks:** Alan — real path templates in `build_recipe.json` (#17); Sarosh — attach the
+  ownership expectation to `GET /payments/{payment_id}` (review on #6); Srihith — pass expectations
+  into `facts_from_platform` for criticality (review on #8).
 
 ### 2026-10-17 (integration) — contracts verified, cross-pillar checks
 - shared V0 RL contract verified field-for-field against #8 (`tests/test_shared_contract.py`, 6/6);
