@@ -10,6 +10,7 @@ import { useParam, useProject } from '@/components/project';
 import { useSession } from '@/components/session';
 import { Badge, Button, Empty, ErrorState, Loading, Mono, PageTitle, Panel, Stat, Tag, Time } from '@/components/ui';
 import { api } from '@/lib/api';
+import { CANCEL_ASSESSMENT_NOTE, cancelAssessmentResult } from '@/lib/cancel-assessment';
 import { shortSha, usd } from '@/lib/format';
 import { assessmentPhases, JOURNEY_STATUS } from '@/lib/journey';
 import { currentPhaseSentence } from '@/lib/phase';
@@ -296,13 +297,21 @@ function ApprovalGate({ projectId, events, onDecided }: { projectId: string; eve
 function CancelButton({ id, onDone }: { id: string; onDone: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const [result, setResult] = useState<string | null>(null);
   return (
-    <div className="flex flex-col items-end gap-1">
+    <div className="flex max-w-sm flex-col items-end gap-1">
       <Button variant="danger" disabled={busy} onClick={async () => {
         setBusy(true);
         setError(null);
-        try { await api().cancelAssessment(id); onDone(); } catch (err) { setError(err); } finally { setBusy(false); }
+        setResult(null);
+        try {
+          const response = await api().cancelAssessment(id);
+          setResult(cancelAssessmentResult(response.cancelled));
+          onDone();
+        } catch (err) { setError(err); } finally { setBusy(false); }
       }}>Cancel assessment</Button>
+      <p className="text-right text-xs text-muted" data-testid="cancel-assessment-note">{CANCEL_ASSESSMENT_NOTE}</p>
+      {result !== null && <p className="text-right text-xs text-ink" data-testid="cancel-assessment-result" role="status">{result}</p>}
       {error !== null && <ErrorState error={error} context="Cancel" />}
     </div>
   );
