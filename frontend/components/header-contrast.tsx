@@ -40,14 +40,24 @@ export function HeaderContrast() {
     const schedule = () => { if (!frame) frame = requestAnimationFrame(paint); };
     window.addEventListener('scroll', schedule, { passive: true });
     window.addEventListener('resize', schedule);
+    // The surface under the header also changes without a scroll: the intro loader exits,
+    // the hero animates in, fonts swap. Re-read when those settle, or the first tone sticks.
+    document.addEventListener('animationend', schedule, true);
+    document.addEventListener('transitionend', schedule, true);
+    void document.fonts?.ready.then(schedule);
     const observer = new MutationObserver(schedule);
     observer.observe(header, { childList: true, subtree: true });
+    const page = new MutationObserver(schedule);
+    page.observe(document.body, { childList: true });
     schedule();
     return () => {
       cancelAnimationFrame(frame);
       window.removeEventListener('scroll', schedule);
       window.removeEventListener('resize', schedule);
+      document.removeEventListener('animationend', schedule, true);
+      document.removeEventListener('transitionend', schedule, true);
       observer.disconnect();
+      page.disconnect();
     };
   }, [pathname]);
   return null;
