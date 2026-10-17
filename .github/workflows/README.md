@@ -6,8 +6,8 @@ workflow below is added by the task that first creates something for it to check
 
 | Workflow file (planned) | Triggers | Jobs | Added by |
 |---|---|---|---|
-| `docs.yml` | PR touching `**/*.md` | Markdown link check, Mermaid syntax check | `INFRA-003` |
-| `secrets.yml` | every PR + push to `main` | gitleaks scan of the diff | `INFRA-003` |
+| `docs.yml` ✅ | PR touching `**/*.md` | Markdown link + anchor check, Mermaid block-type check | `INFRA-003` |
+| `secrets.yml` ✅ | every PR + push to `main` | gitleaks scan of full history with `.gitleaks.toml` (adds a rule for every `sk-ant-*` key form) | `INFRA-003` |
 | `backend.yml` | PR touching `backend/`, `shared/`, `security-agents/`, `code-*`, `monitoring/` | ruff, mypy, pytest (unit), contract tests | `CORE-002` |
 | `frontend.yml` | PR touching `frontend/`, `shared/generated/` | eslint, tsc, unit tests, build | `UI-001` |
 | `contracts.yml` | PR touching `shared/` | regenerate JSON Schema + TS, fail if diff is dirty | `CORE-003` |
