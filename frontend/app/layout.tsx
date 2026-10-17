@@ -40,7 +40,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable} ${plexMono.variable} ${chakraPetch.variable}`}>
       <body className="min-h-screen antialiased">
         <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:rounded focus:bg-accent focus:px-2 focus:py-1 focus:text-bg">Skip to content</a>
-        <header className="site-header sticky top-0 z-40">
+        <header className="site-header relative z-40">
           <div className="site-header-inner mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
             <Link href="/" aria-label={`${BRAND_NAME} home`} className="hdr-logo">
               <Wordmark priority />
