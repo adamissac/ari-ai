@@ -2008,6 +2008,13 @@
           "title": "Created At",
           "type": "string"
         },
+        "d3fend": {
+          "items": {
+            "$ref": "#/$defs/DefensiveMapping"
+          },
+          "title": "D3Fend",
+          "type": "array"
+        },
         "id": {
           "pattern": "^rec_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
@@ -2081,6 +2088,7 @@
         }
       },
       "required": [
+        "d3fend",
         "schema_version",
         "id",
         "project_id",
@@ -3027,6 +3035,13 @@
           "title": "Category",
           "type": "string"
         },
+        "d3fend": {
+          "items": {
+            "$ref": "#/$defs/DefensiveMapping"
+          },
+          "title": "D3Fend",
+          "type": "array"
+        },
         "effort": {
           "maxLength": 500,
           "title": "Effort",
@@ -3062,6 +3077,7 @@
         }
       },
       "required": [
+        "d3fend",
         "id",
         "finding_id",
         "category",
@@ -3940,6 +3956,25 @@
       "title": "IncidentCreate",
       "type": "object"
     },
+    "IncidentDetail": {
+      "additionalProperties": false,
+      "properties": {
+        "incident": {
+          "$ref": "#/$defs/Incident"
+        },
+        "standards": {
+          "additionalProperties": true,
+          "title": "Standards",
+          "type": "object"
+        }
+      },
+      "required": [
+        "incident",
+        "standards"
+      ],
+      "title": "IncidentDetail",
+      "type": "object"
+    },
     "IncidentState": {
       "enum": [
         "reported",
@@ -4725,6 +4760,13 @@
     "PathStep": {
       "additionalProperties": false,
       "properties": {
+        "attack": {
+          "items": {
+            "$ref": "#/$defs/StandardMapping"
+          },
+          "title": "Attack",
+          "type": "array"
+        },
         "description": {
           "maxLength": 500,
           "title": "Description",
@@ -4761,6 +4803,7 @@
         }
       },
       "required": [
+        "attack",
         "order",
         "description",
         "symbol_ref",
@@ -5924,6 +5967,17 @@
     "SeverityAssessment": {
       "additionalProperties": false,
       "properties": {
+        "cvss": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CVSSAssessment"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "factors": {
           "$ref": "#/$defs/SeverityFactors"
         },
@@ -5937,6 +5991,7 @@
         }
       },
       "required": [
+        "cvss",
         "level",
         "factors",
         "rationale"

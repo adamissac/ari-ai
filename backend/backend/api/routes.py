@@ -899,6 +899,25 @@ def assessment_report(assessment_id: str, request: Request) -> dict[str, Any]:
             "findings": out,
             "generated_at": utcnow().isoformat(),
             "source": "persisted records",
+            "standards": {
+                "classification_only": True,
+                "findings": [
+                    {
+                        "finding_id": f.id,
+                        "standards": f.standards.model_dump(mode="json") if f.standards else None,
+                    }
+                    for f in fnds
+                ],
+                "hardening": list(
+                    conn.execute(
+                        sa.select(finding_records.c.doc).where(
+                            finding_records.c.finding_id.in_([f.id for f in fnds] or [""]),
+                            finding_records.c.record_type == "hardening",
+                        )
+                    ).scalars()
+                ),
+                "unscored_reason": "CVSS requires a complete explicit metric assessment; absent scores are not zero.",
+            },
         }
 
 

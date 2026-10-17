@@ -75,7 +75,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 # version is accepted when the models this package maps are unchanged — see
 # `MAPPED_FIELDS` and `assert_mappings_current()`, which is the check that
 # actually matters.
-VERIFIED_SCHEMA_VERSIONS = ("0.2.0", "0.4.0")
+VERIFIED_SCHEMA_VERSIONS = ("0.2.0", "0.4.0", "0.7.0")
 
 # Field sets this adapter depends on, per canonical model: (module, class) ->
 # {field: required}. A change here means a mapping must be revisited, whether or
@@ -342,6 +342,7 @@ def attack_path(path: InternalAttackPath) -> Any:
                 symbol_ref=step.symbol_ref,
                 verified=step.verified,
                 evidence=[evidence_ref(e, producer="agent:trace") for e in step.evidence],
+                attack=step.attack,
             )
             for step in path.steps
         ],
@@ -354,6 +355,7 @@ def severity(assessment: Any) -> Any:
     f = shared_module("findings")
     return f.SeverityAssessment(
         level=assessment.level.value,
+        cvss=assessment.cvss,
         factors=f.SeverityFactors(
             reachability=assessment.factors.reachability,
             privileges_required=assessment.factors.privileges_required,
@@ -519,3 +521,25 @@ def _is_catalog_code(code: Any) -> bool:
     except ContractUnavailable:  # pragma: no cover
         return False
     return code in {member.value for member in errors.ErrorCode}
+
+
+def weakness_ref(weakness_class: str, *, evidence: list[Any], confidence: float) -> Any:
+    from shared.standards import MappedVia, Observation
+    from standards.mapping import classify_cwe
+
+    return classify_cwe(
+        weakness_class,
+        evidence=evidence,
+        confidence=confidence,
+        observation=Observation.hypothesis,
+        mapped_via=MappedVia.validated_proposal,
+        rationale="Catalog-validated weakness proposal; requires review",
+    )
+
+
+def attack_refs(weakness_class: str, *, evidence: list[Any], confidence: float) -> list[Any]:
+    """Coarse catalog chains are review candidates, never automatic mappings."""
+    from standards.mapping import attack_candidates_via_capec
+
+    attack_candidates_via_capec(weakness_class)
+    return []

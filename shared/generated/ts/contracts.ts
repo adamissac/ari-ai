@@ -339,6 +339,7 @@ export type ControlStatus = "proposed" | "implemented" | "tested";
 export type DataSensitivity = "none" | "internal" | "personal" | "financial";
 
 export interface DefenseRecommendation {
+  d3fend: Array<DefensiveMapping>;
   schema_version: string;
   id: string;
   project_id: string | null;
@@ -507,6 +508,7 @@ export interface GeneratedTest {
 }
 
 export interface HardeningRecommendation {
+  d3fend: Array<DefensiveMapping>;
   id: string;
   finding_id: string;
   category: string;
@@ -623,6 +625,11 @@ export interface IncidentCreate {
   finding_ids: Array<string>;
   recommendation_ids: Array<string>;
   note: string;
+}
+
+export interface IncidentDetail {
+  incident: Incident;
+  standards: Record<string, unknown>;
 }
 
 export type IncidentState = "reported" | "triaged" | "analysis" | "containment" | "eradication" | "recovery" | "closed" | "rejected";
@@ -763,6 +770,7 @@ export interface PatchView {
 }
 
 export interface PathStep {
+  attack: Array<StandardMapping>;
   order: number;
   description: string;
   symbol_ref: string | null;
@@ -984,6 +992,7 @@ export interface ScopeTarget {
 }
 
 export interface SeverityAssessment {
+  cvss: CVSSAssessment | null;
   level: SeverityLevel;
   factors: SeverityFactors;
   rationale: string;

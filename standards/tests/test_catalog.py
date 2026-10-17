@@ -81,6 +81,7 @@ def test_pinned_versions() -> None:
         "cwe": "4.20",
         "capec": "3.9",
         "owasp_llm": "2025",
+        "owasp_llm2026": "2026",
         "cvss": "4.0",
         "nist_800_61": "Rev. 3",
         "nist_csf": "2.0",
@@ -134,3 +135,9 @@ def test_unknown_and_malformed_identifiers_raise(framework: str, identifier: str
 def test_capec_chain_is_catalog_data_only() -> None:
     assert catalog.capec_for_cwe("CWE-639") == []
     assert catalog.capec_for_cwe("CWE-284")
+
+
+def test_owasp_editions_retain_meaning_after_renumbering() -> None:
+    assert catalog.owasp_llm("LLM03:2025").name == "Supply Chain"
+    assert catalog.owasp_llm("LLM03:2026").name == "Excessive Agency"
+    assert len(catalog.owasp_llm_ids("2026")) == 10

@@ -67,9 +67,19 @@ def test_observed_in_sandbox_requires_executed_evidence() -> None:
 
 
 def test_deprecated_ids_only_on_legacy_imports() -> None:
+    from standards.catalog import attack_technique, load_json
+
+    ids = load_json("attack-enterprise.json")["techniques"]
+    entry = next(attack_technique(i) for i in ids if attack_technique(i).status != "active")
+    value = mapping(
+        id=entry.id,
+        name=entry.name,
+        catalog_version=entry.catalog_version,
+        catalog_status=entry.status,
+    )
     with pytest.raises(ValidationError, match="legacy"):
-        StandardMapping.model_validate(mapping(catalog_status="revoked"))
-    StandardMapping.model_validate(mapping(catalog_status="revoked", legacy=True))
+        StandardMapping.model_validate(value)
+    StandardMapping.model_validate({**value, "legacy": True})
 
 
 def test_accepted_mapping_names_reviewer() -> None:
@@ -78,7 +88,12 @@ def test_accepted_mapping_names_reviewer() -> None:
 
 
 def test_tested_control_needs_test_evidence_and_simulation_stays_proposed() -> None:
-    d3 = mapping(framework="d3fend", id="D3-AMED", name="Access Mediation")
+    from standards.catalog import d3fend_technique
+
+    entry = d3fend_technique("D3-AMED")
+    d3 = mapping(
+        framework="d3fend", id=entry.id, name=entry.name, catalog_version=entry.catalog_version
+    )
     with pytest.raises(ValidationError, match="tested"):
         DefensiveMapping.model_validate({**d3, "control_status": "tested"})
     DefensiveMapping.model_validate({**d3, "control_status": "tested", "evidence": [RUN]})

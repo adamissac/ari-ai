@@ -4,10 +4,10 @@ name: backend
 # suite against a real PostgreSQL service. The live Claude smoke never runs here.
 on:
   pull_request:
-    paths: ["shared/**", "standards/**", "backend/**", "monitoring/**", "pyproject.toml", "uv.lock", ".github/workflows/backend.yml"]
+    paths: ["standards/**", "tests/security/**", "shared/**", "backend/**", "monitoring/**", "pyproject.toml", "uv.lock", ".github/workflows/backend.yml"]
   push:
     branches: [main]
-    paths: ["shared/**", "standards/**", "backend/**", "monitoring/**", "pyproject.toml", "uv.lock", ".github/workflows/backend.yml"]
+    paths: ["standards/**", "tests/security/**", "shared/**", "backend/**", "monitoring/**", "pyproject.toml", "uv.lock", ".github/workflows/backend.yml"]
 
 permissions:
   contents: read
@@ -37,8 +37,8 @@ jobs:
         run: ~/.local/bin/uv sync --frozen
       - name: Lint and format
         run: |
-          ~/.local/bin/uv run ruff check shared monitoring backend
-          ~/.local/bin/uv run ruff format --check shared monitoring backend
+          ~/.local/bin/uv run ruff check shared monitoring backend standards
+          ~/.local/bin/uv run ruff format --check shared monitoring backend standards
           ~/.local/bin/uv run mypy
       - name: Generated contracts are current (CORE-003)
         run: |
