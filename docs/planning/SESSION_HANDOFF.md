@@ -629,3 +629,24 @@ No backend/API changes in the publication diff. Earlier local-only notes describ
 the state before this authorization. Publishing via a normal fast-forward push;
 next action is to confirm GitHub main matches the release commit and inspect CI.
 The Git-connected Vercel deployment is triggered by that push; no project settings changed.
+
+## 2026-10-17T19:50:00+00:00 — Adam: GitHub onboarding (org → repo) and labelled simulated attacks
+
+Branch `feat/adam/github-onboarding` (PR #235 already merged to main with all checks green).
+- Backend: GitHub sign-in now lands on `/connect`; returning from installing the App
+  (`setup_action=install|update`, no OAuth state) restarts sign-in instead of a 403, which
+  refreshes the repository list. `GITHUB_APP_PRIVATE_KEY_PATH` also accepts pasted PEM
+  contents (now SecretStr), because Railway has the key under that name.
+- Frontend: `/connect` lists organizations (owners of App-visible repositories);
+  `/connect/[org]` lists repositories, and Connect finds-or-creates a project named after
+  the organization, connects with the installation id and opens the project. Projects
+  page links to it. Demo-only builds redirect `/connect*` to `/demo`.
+- Simulated attack: `/projects/[id]/simulate?repo=` replays the demo's seven-agent run and
+  Defense Lab for a real connected repository, with a visible "Simulated demo" marker and a
+  note that nothing in the repository was read or attacked (ADR 0013). Live attacks remain
+  Python-ASGI-only. `CommitAnalysis` moved to `components/demo/commit-analysis.tsx`.
+- Railway: all seven secrets are present but **staged, not deployed**; `GITHUB_APP_SLUG`
+  is not set (install link hidden). Vercel still has `NEXT_PUBLIC_DEMO_ONLY=1`; unset it
+  once GitHub sign-in works against Railway.
+Executed: backend key/access tests (9 passed), frontend lint, typecheck, 224 unit tests,
+production build. E2E result recorded in the PR.

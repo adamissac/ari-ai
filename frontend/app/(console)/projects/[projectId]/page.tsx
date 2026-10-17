@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
 import { PillarLoop } from '@/components/pillar-loop';
+import { RepoCommits } from '@/components/repo-commits';
 import { RepoPicker } from '@/components/repo-picker';
 import { useProject } from '@/components/project';
 import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, Panel, Stat, Time } from '@/components/ui';
@@ -426,8 +427,12 @@ function RepoRow({ repo }: { repo: Repository }) {
     <li className="rounded-md border border-line bg-panel-2 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="font-medium">{repo.full_name}</span>
-        <span className="text-xs text-muted">{repo.default_branch} · {repo.installation_id ? 'GitHub App installed' : 'no GitHub App installation'}</span>
+        <span className="flex flex-wrap items-center gap-3 text-xs text-muted">
+          {repo.default_branch} · {repo.installation_id ? 'GitHub App installed' : 'no GitHub App installation'}
+          <Link className="text-brand hover:underline" href={`/projects/${repo.project_id}/simulate?repo=${encodeURIComponent(repo.full_name)}`} data-testid={`simulate-${repo.full_name}`}>Simulate attack →</Link>
+        </span>
       </div>
+      <div className="mt-3"><RepoCommits repo={repo} onPick={setSha} /></div>
       <form onSubmit={index} className="mt-2 flex flex-wrap items-center gap-2">
         <input aria-label={`Commit to index for ${repo.full_name}`} className={`${inputClass} flex-1 font-mono`} value={sha} onChange={e => setSha(e.target.value.toLowerCase())} pattern="[0-9a-f]{7,40}" placeholder="commit sha to index" required />
         <Button type="submit" disabled={busy || !SHA.test(sha)}>Index commit</Button>

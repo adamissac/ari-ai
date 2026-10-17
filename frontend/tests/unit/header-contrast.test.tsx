@@ -35,3 +35,29 @@ it('ignores header hit targets, adapts on scroll and preserves the Pricing CTA',
   unmount();
   expect(cancelAnimationFrame).toHaveBeenCalled();
 });
+
+it('keeps white ink over the pinned home hero even when hit-testing reports a light surface', () => {
+  let frame: FrameRequestCallback | undefined;
+  vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => { frame = callback; return 1; }));
+  vi.stubGlobal('cancelAnimationFrame', vi.fn());
+  document.documentElement.dataset.homeHero = '';
+  const { container, unmount } = render(
+    <>
+      <header className="site-header"><a className="hdr-logo" href="#home">ARI</a></header>
+      <section style={{ backgroundColor: '#fff' }}>Mis-sampled light</section>
+      <HeaderContrast />
+    </>,
+  );
+  const logo = container.querySelector('a')!;
+  const section = container.querySelector('section')!;
+  Object.defineProperty(document, 'elementsFromPoint', { configurable: true, value: vi.fn(() => [logo, section]) });
+  frame!(0);
+  expect(logo.dataset.navTone).toBe('dark');
+  document.documentElement.dataset.heroPast = '';
+  fireEvent.scroll(window);
+  frame!(16);
+  expect(logo.dataset.navTone).toBe('light');
+  unmount();
+  delete document.documentElement.dataset.homeHero;
+  delete document.documentElement.dataset.heroPast;
+});
