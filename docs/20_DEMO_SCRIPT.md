@@ -1,5 +1,7 @@
 # 20 — HackATL demo script
 
+> The current, executable demo runbook is [demo/RUNBOOK.md](demo/RUNBOOK.md). It separates simulated, recorded-live and real-stack screens.
+
 Status: **specified (draft)**. Depends on [planning/MVP_SCOPE](planning/MVP_SCOPE.md).
 Target length: **5 minutes** live + 2 minutes Q&A buffer (event format
 unconfirmed — RQ-011).

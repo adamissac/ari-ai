@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { BRAND_NAME, LogoMark } from '@/components/brand';
+import { RecordedLiveRun } from '@/components/demo/recorded-live-run';
 import { Avatar, DemoBar, DemoMarker, GitHubMark } from '@/components/demo/ui';
 import { DEMO_ORGS, reposFor } from '@/lib/demo/data';
 import { useDemoSession } from '@/lib/demo/session';
@@ -23,6 +24,7 @@ export default function DemoSignInPage() {
 
   if (!user) {
     return (
+      <>
       <div className="mx-auto mt-6 grid max-w-5xl overflow-hidden rounded-3xl md:grid-cols-[1.1fr_1fr]" data-testid="demo-signin">
         <section className="demo-ink flex flex-col justify-between gap-10 p-8 md:p-10">
           <div className="flex items-center justify-between gap-3"><LogoMark size={26} className="text-white" /><DemoMarker /></div>
@@ -32,7 +34,7 @@ export default function DemoSignInPage() {
             <ul className="mt-6 flex flex-col gap-2.5 text-sm text-white/75">
               <li className="flex gap-2"><span aria-hidden="true" className="text-brand">→</span>Intent-aware code review on every push</li>
               <li className="flex gap-2"><span aria-hidden="true" className="text-brand">→</span>Seven security agents in an approved sandbox</li>
-              <li className="flex gap-2"><span aria-hidden="true" className="text-brand">→</span>A defense policy watching your services 24/7</li>
+              <li className="flex gap-2"><span aria-hidden="true" className="text-brand">→</span>A simulated defense policy that recommends responses</li>
             </ul>
           </div>
           <p className="text-xs text-white/50">This walkthrough uses illustrative accounts and repositories. No GitHub data is read.</p>
@@ -59,6 +61,8 @@ export default function DemoSignInPage() {
           </div>
         </section>
       </div>
+      <div className="mx-auto max-w-5xl"><RecordedLiveRun /></div>
+      </>
     );
   }
 
@@ -94,6 +98,7 @@ export default function DemoSignInPage() {
           );
         })}
       </ul>
+      <RecordedLiveRun />
     </div>
   );
 }
