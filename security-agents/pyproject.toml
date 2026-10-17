@@ -23,10 +23,12 @@ include = ["security_agents*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = [".", "../shared", "../code-intelligence", "../examples/payments-lite/target"]
+pythonpath = [".", "../shared", "../standards", "../code-intelligence", "../examples/payments-lite/target"]
 markers = [
   "live: requires RUN_LIVE_LLM_EVAL=1 and an authorized Anthropic key",
   "boundary: security-boundary suite (release blocking)",
+  "standards: standards alignment suite (offline, pinned data)",
+  "negative: tests that must fail loudly on invalid standards input",
 ]
 filterwarnings = ["ignore::DeprecationWarning"]
 

@@ -25,6 +25,7 @@ from ..contracts import (
 from ..contracts import export as contract_export
 from ..intel import CodeIntel
 from ..runtime import AgentSpec, data_block
+from ..standards.fields import d3fend_entry, optional_d3fend_field
 
 SYSTEM = """You are Fortify, the hardening agent of an automated security review platform.
 
@@ -68,6 +69,15 @@ class RecommendationOut(StrictModel):
     reference_end_line: int | None = None
     effort: Literal["small", "medium", "large"]
     owner_review_note: ShortText = ""
+    d3fend_technique: str | None = Field(
+        default=None,
+        description="MITRE D3FEND countermeasure id such as D3-AMED, or null when none applies.",
+    )
+
+    @field_validator("d3fend_technique")
+    @classmethod
+    def _known_countermeasure(cls, value: str | None) -> str | None:
+        return optional_d3fend_field(value)
 
 
 class FutureHypothesisOut(StrictModel):
@@ -171,6 +181,7 @@ def to_records(
                     provenance="code",
                 )
             )
+        countermeasure = d3fend_entry(item.d3fend_technique) if item.d3fend_technique else None
         recommendations.append(
             HardeningRecommendation(
                 finding_id=data.finding_id,
@@ -186,6 +197,9 @@ def to_records(
                 if refs
                 else [],
                 owner_review_note=item.owner_review_note,
+                d3fend_technique=countermeasure.id if countermeasure else None,
+                d3fend_label=countermeasure.name if countermeasure else "",
+                d3fend_version=countermeasure.catalog_version if countermeasure else "",
             )
         )
     drafts: list[HypothesisDraft] = []
