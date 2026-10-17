@@ -41,8 +41,17 @@ SENSITIVITY_CRITICALITY: dict[str, float] = {
 }
 # Finding statuses (docs/12) that still represent an open, *evidence-backed* risk.
 # Hypotheses are excluded: unvalidated suspicions must not move the policy.
+# ``accepted_risk`` counts: a human accepted the risk, but the weakness is still there.
 OPEN_VALIDATED_STATUSES = frozenset(
-    {"validated", "diagnosed", "patch_proposed", "patch_rejected", "unresolved", "needs_recheck"}
+    {
+        "validated",
+        "diagnosed",
+        "patch_proposed",
+        "patch_rejected",
+        "unresolved",
+        "needs_recheck",
+        "accepted_risk",
+    }
 )
 
 

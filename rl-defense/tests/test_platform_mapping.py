@@ -48,6 +48,41 @@ def test_unvalidated_or_fixed_findings_do_not_count(status):
     assert node(facts, "payments").finding_severity == 0.0
 
 
+def test_accepted_risk_still_counts_as_open_exposure():
+    f = AUTHZ.model_copy(update={"status": "accepted_risk"})
+    facts, _ = facts_from_platform(TOPOLOGY, [f], [])
+    assert node(facts, "payments").finding_severity == 0.75
+
+
+def test_status_vocabulary_matches_docs12():
+    from rl_defense.platform_mapping import OPEN_VALIDATED_STATUSES
+
+    docs12 = {
+        "hypothesis",
+        "validated",
+        "refuted",
+        "inconclusive",
+        "diagnosed",
+        "patch_proposed",
+        "verified",
+        "patch_rejected",
+        "unresolved",
+        "hardened",
+        "accepted_risk",
+        "closed",
+        "needs_recheck",
+    }
+    assert OPEN_VALIDATED_STATUSES <= docs12
+    assert not OPEN_VALIDATED_STATUSES & {
+        "hypothesis",
+        "refuted",
+        "inconclusive",
+        "verified",
+        "hardened",
+        "closed",
+    }
+
+
 def test_max_severity_wins_per_node():
     low = FindingInput(id="fnd_low", status="diagnosed", severity="low", routes=("POST /refunds",))
     facts, _ = facts_from_platform(TOPOLOGY, [low, AUTHZ], [])
