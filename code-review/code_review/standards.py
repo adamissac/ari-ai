@@ -2,11 +2,10 @@
 
 from datetime import UTC, datetime
 
-from standards.catalog import catalog_versions
-from standards.mapping import classify_cwe
-
 from shared.evidence import EvidenceRef
 from shared.standards import FindingStandards, MappedVia, Observation
+from standards.catalog import catalog_versions
+from standards.mapping import classify_cwe
 
 
 def classify_weakness(

@@ -6,7 +6,6 @@ from typing import NoReturn
 
 import sqlalchemy as sa
 from sqlalchemy.engine import Connection
-from standards.incident import IncidentRuleError, apply_action, open_incident
 
 from backend import audit
 from backend.api.deps import ApiError, not_found
@@ -39,6 +38,7 @@ from shared.incident import (
 from shared.incident import IncidentActionKind as K
 from shared.incident import IncidentState as S
 from shared.incident import IncidentTimelineAction as T
+from standards.incident import IncidentRuleError, apply_action, open_incident
 
 
 def fail(message: str, *, permission: bool = False) -> NoReturn:

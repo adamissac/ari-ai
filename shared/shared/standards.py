@@ -219,7 +219,7 @@ class CVSSAssessment(StrictModel):
                 raise ValueError("CVSS score and severity must match deterministic scoring")
             if self.nomenclature != result.nomenclature:
                 raise ValueError("CVSS nomenclature must match the scored vector")
-            values = {m.metric: m.value for m in self.metrics}
+            values: dict[str, str] = {m.metric: m.value for m in self.metrics}
             if len(values) != len(self.metrics) or set(values) != set(BASE_METRICS):
                 raise ValueError("complete CVSS requires each base metric exactly once")
             if build_vector(values) != self.vector:
