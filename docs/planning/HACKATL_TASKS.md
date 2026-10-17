@@ -210,7 +210,21 @@ API-RETRY-001 validation: targeted16 passed; root420 passed/9 optional skips;
 backend79 passed/5 optional skips. Real PostgreSQL, scripted model transports;
 Ruff/format/mypy, 112-file contract freshness, links passed. PR remains for review.
 
+### DEMO-FONTS-001 — eliminate external font-service builds
+Alan/Codex, IN_REVIEW on fix/alan/offline-font-build (own worktree).
+Original build fails with unavailable proxies; local licensed font assets let the
+same default build succeed. Same families/weights; no landing-page redesign.
+
+### DEMO-RECOVERY-001 — explicit409 new-action recovery
+Alan/Codex, DONE (merged #187). Preserve same-action network retries, namespace keys by
+project, require explicit preparation for a separate action after conflict; no request
+on preparation.
+
 API-JOB-001 evidence: Chrome14 passed, real HTTP/client6 passed, root422 passed/8
 skips, backend80 passed/5 skips, frontend67 and transport27 unit tests passed.
 Webpack production build, TypeScript, ESLint, Ruff/format, mypy and contracts pass.
 Scripted providers/local-dev checks; no new live-provider or Docker run.
+
+### Intelligence context metadata privacy — #190
+
+Sarosh, feat/sarosh/intelligence-maintenance: IN_REVIEW. Reproduced raw human-reason citation leakage using a fake bearer canary. Output-only redaction protects context and expectation views; stored facts/history and canonical contracts unchanged. Focused10 and broader107 passed/1 opt-in skip; hosted consumer11 passed.
