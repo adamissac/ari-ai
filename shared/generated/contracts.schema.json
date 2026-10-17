@@ -824,6 +824,53 @@
       "title": "AssessmentDetail",
       "type": "object"
     },
+    "AssessmentReport": {
+      "additionalProperties": false,
+      "description": "``GET /assessments/{id}/report``: assembled only from persisted records.",
+      "properties": {
+        "agent_runs": {
+          "items": {
+            "$ref": "#/$defs/AgentRun"
+          },
+          "title": "Agent Runs",
+          "type": "array"
+        },
+        "assessment": {
+          "$ref": "#/$defs/Assessment"
+        },
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/ReportFinding"
+          },
+          "title": "Findings",
+          "type": "array"
+        },
+        "generated_at": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        },
+        "source": {
+          "const": "persisted records",
+          "default": "persisted records",
+          "title": "Source",
+          "type": "string"
+        },
+        "standards": {
+          "$ref": "#/$defs/ReportStandards"
+        }
+      },
+      "required": [
+        "assessment",
+        "agent_runs",
+        "findings",
+        "generated_at",
+        "source",
+        "standards"
+      ],
+      "title": "AssessmentReport",
+      "type": "object"
+    },
     "AssessmentState": {
       "enum": [
         "CREATED",
@@ -897,6 +944,25 @@
         "impact_summary"
       ],
       "title": "AttackPath",
+      "type": "object"
+    },
+    "AttackPathEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "record": {
+          "$ref": "#/$defs/AttackPath"
+        },
+        "type": {
+          "const": "attack_path",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "record"
+      ],
+      "title": "AttackPathEntry",
       "type": "object"
     },
     "AuditEvent": {
@@ -2949,6 +3015,58 @@
       "title": "Finding",
       "type": "object"
     },
+    "FindingDetail": {
+      "additionalProperties": false,
+      "description": "``GET /findings/{id}``: the finding plus its typed evidence records, oldest first.",
+      "properties": {
+        "finding": {
+          "$ref": "#/$defs/Finding"
+        },
+        "records": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "attack_path": "#/$defs/AttackPathEntry",
+                "hardening": "#/$defs/HardeningEntry",
+                "hypothesis": "#/$defs/HypothesisEntry",
+                "remediation_plan": "#/$defs/RemediationPlanEntry",
+                "root_cause": "#/$defs/RootCauseEntry",
+                "validation_result": "#/$defs/ValidationResultEntry"
+              },
+              "propertyName": "type"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/HypothesisEntry"
+              },
+              {
+                "$ref": "#/$defs/ValidationResultEntry"
+              },
+              {
+                "$ref": "#/$defs/AttackPathEntry"
+              },
+              {
+                "$ref": "#/$defs/RootCauseEntry"
+              },
+              {
+                "$ref": "#/$defs/RemediationPlanEntry"
+              },
+              {
+                "$ref": "#/$defs/HardeningEntry"
+              }
+            ]
+          },
+          "title": "Records",
+          "type": "array"
+        }
+      },
+      "required": [
+        "finding",
+        "records"
+      ],
+      "title": "FindingDetail",
+      "type": "object"
+    },
     "FindingKind": {
       "enum": [
         "functional",
@@ -3119,6 +3237,25 @@
       "title": "GeneratedTest",
       "type": "object"
     },
+    "HardeningEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "record": {
+          "$ref": "#/$defs/HardeningRecommendation"
+        },
+        "type": {
+          "const": "hardening",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "record"
+      ],
+      "title": "HardeningEntry",
+      "type": "object"
+    },
     "HardeningRecommendation": {
       "additionalProperties": false,
       "properties": {
@@ -3263,6 +3400,25 @@
         "suggested_check_category"
       ],
       "title": "Hypothesis",
+      "type": "object"
+    },
+    "HypothesisEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "record": {
+          "$ref": "#/$defs/Hypothesis"
+        },
+        "type": {
+          "const": "hypothesis",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "record"
+      ],
+      "title": "HypothesisEntry",
       "type": "object"
     },
     "ImpactResolution": {
@@ -5481,12 +5637,117 @@
       "title": "RemediationPlan",
       "type": "object"
     },
+    "RemediationPlanEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "record": {
+          "$ref": "#/$defs/RemediationPlan"
+        },
+        "type": {
+          "const": "remediation_plan",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "record"
+      ],
+      "title": "RemediationPlanEntry",
+      "type": "object"
+    },
     "RepoProvider": {
       "enum": [
         "github"
       ],
       "title": "RepoProvider",
       "type": "string"
+    },
+    "ReportFinding": {
+      "additionalProperties": false,
+      "properties": {
+        "finding": {
+          "$ref": "#/$defs/Finding"
+        },
+        "patches": {
+          "items": {
+            "$ref": "#/$defs/PatchView"
+          },
+          "title": "Patches",
+          "type": "array"
+        }
+      },
+      "required": [
+        "finding",
+        "patches"
+      ],
+      "title": "ReportFinding",
+      "type": "object"
+    },
+    "ReportFindingStandards": {
+      "additionalProperties": false,
+      "properties": {
+        "finding_id": {
+          "pattern": "^fnd_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Finding Id",
+          "type": "string"
+        },
+        "standards": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FindingStandards"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "finding_id",
+        "standards"
+      ],
+      "title": "ReportFindingStandards",
+      "type": "object"
+    },
+    "ReportStandards": {
+      "additionalProperties": false,
+      "properties": {
+        "classification_only": {
+          "const": true,
+          "default": true,
+          "title": "Classification Only",
+          "type": "boolean"
+        },
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/ReportFindingStandards"
+          },
+          "title": "Findings",
+          "type": "array"
+        },
+        "hardening": {
+          "items": {
+            "$ref": "#/$defs/HardeningRecommendation"
+          },
+          "title": "Hardening",
+          "type": "array"
+        },
+        "unscored_reason": {
+          "maxLength": 500,
+          "title": "Unscored Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "classification_only",
+        "findings",
+        "hardening",
+        "unscored_reason"
+      ],
+      "title": "ReportStandards",
+      "type": "object"
     },
     "Repository": {
       "additionalProperties": false,
@@ -5726,6 +5987,25 @@
         "cause_class"
       ],
       "title": "RootCause",
+      "type": "object"
+    },
+    "RootCauseEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "record": {
+          "$ref": "#/$defs/RootCause"
+        },
+        "type": {
+          "const": "root_cause",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "record"
+      ],
+      "title": "RootCauseEntry",
       "type": "object"
     },
     "RouteScore": {
@@ -7110,6 +7390,25 @@
       "title": "ValidationResult",
       "type": "object"
     },
+    "ValidationResultEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "record": {
+          "$ref": "#/$defs/ValidationResult"
+        },
+        "type": {
+          "const": "validation_result",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "record"
+      ],
+      "title": "ValidationResultEntry",
+      "type": "object"
+    },
     "VerificationCheck": {
       "additionalProperties": false,
       "properties": {
@@ -7366,5 +7665,5 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "HackATL platform contracts",
-  "x-schema-version": "0.7.0"
+  "x-schema-version": "0.8.0"
 }
