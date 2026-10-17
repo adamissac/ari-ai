@@ -290,3 +290,42 @@ def test_http_target_serves_the_assessed_snapshot_not_a_fixture_image(payments_i
     assert fixed["matches_expectation"] is True, fixed
     statuses = sorted(r["status"] for r in fixed["target_requests"] if r["path"].startswith("/payments/"))
     assert statuses[0] == 200 and statuses[1] in (403, 404), fixed["target_requests"]
+
+
+def test_verify_reruns_the_http_check_against_the_patched_workspace(intel, library, tmp_path):
+    from security_agents.contracts import ValidationOutcome, VerificationCheckName
+    from security_agents.sandbox.workspace import tree_digest
+    from security_agents.workflow import AssessmentState
+
+    from .test_e2e_replay import EXPECTED_AGENT_ORDER, build
+
+    original_tree = tree_digest(intel.snapshot.root)
+    orch, _ = build(intel, DockerSandboxDriver(), library, tmp_path)
+    orch.config.probe_check_transport = "http"
+    orch.config.verify_check_transport = "http"
+    res = orch.run()
+
+    assert res.state is AssessmentState.COMPLETED, res.error_detail
+    assert [r.agent.value for r in res.runs] == EXPECTED_AGENT_ORDER
+    assert {"probe.transport", "verify.transport"} <= set(res.report()["audit_actions"])
+    finding = next(f for f in res.findings if f.validation is not None)
+
+    probe = finding.validation.observations
+    assert finding.validation.outcome is ValidationOutcome.CONFIRMED
+    assert probe["transport"] == "http"
+    vulnerable = [r["status"] for r in probe["target_requests"] if r["path"].startswith("/payments/")]
+    assert vulnerable == [200, 200], probe["target_requests"]
+
+    verification = finding.verifications[-1]
+    assert verification.verdict == "accepted", [(c.name, c.passed, c.detail) for c in verification.checks]
+    recheck = next(c for c in verification.checks if c.name is VerificationCheckName.ORIGINAL_CHECK_NOW_FAILS)
+    assert recheck.passed, recheck.detail
+
+    record = finding.verify_http_evidence
+    assert record is not None and record["transport"] == "http" and record["verdict"] == "accepted"
+    assert record["matches_expectation"] is True and record["target_contacted"] is True
+    assert record["original_tree_sha256"] == original_tree
+    assert record["served_tree_sha256"] == record["patched_tree_sha256"] != original_tree
+    patched = sorted(r["status"] for r in record["target_requests"] if r["path"].startswith("/payments/"))
+    assert patched[0] == 200 and patched[1] in (403, 404), record["target_requests"]
+    assert len(record["target_log_sha256"]) == 64
