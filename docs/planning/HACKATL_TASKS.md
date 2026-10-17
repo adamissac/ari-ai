@@ -37,9 +37,9 @@ acceptance criteria are the minimum for `DONE` in addition to
 | CORE-008 | Hash-chained append-only audit log | backend/ | FR-P-04 | CORE-004 | UNASSIGNED | BLOCKED | Chain verification test; DB role cannot update/delete |
 | CORE-009 | Artifact store abstraction (local FS, SHA-256 addressing) | backend/ | — | CORE-001 | UNASSIGNED | BLOCKED | Put/get with hash verification; path traversal tests |
 | CORE-010 | LLM gateway: Claude client, budgets, redaction, schema validation, record/replay | backend/ | FR-P-05, NFR-04, NFR-07 | CORE-001, CORE-009 | UNASSIGNED | BLOCKED | Budget pre-check + reconciliation; invalid output → `SCHEMA_INVALID`; replay mode; SB-11 passes |
-| SEC-001 | AgentSpec runtime: agent loop, tool calls, output validation, step budgets, recording | security-agents/ | NFR-04 | CORE-010 | UNASSIGNED | BLOCKED | FakeLLM-driven tests for success, invalid output retry, budget stop |
-| SEC-002 | Tool registry + `scope_guard` (pure) | security-agents/ | NFR-02 | CORE-001 | UNASSIGNED | BLOCKED | Allowlist enforcement (SB-06); scope_guard exhaustive tests ≥ 95% branch |
-| SEC-003 | Sandbox driver: profiles, network `none`, limits, reaper | security-agents/ | NFR-01, NFR-02 | INFRA-005 | UNASSIGNED | BLOCKED | SB-03, SB-05 pass; orphan reaping tested |
+| SEC-001 | AgentSpec runtime: agent loop, tool calls, output validation, step budgets, recording | security-agents/ | NFR-04 | CORE-010 | Alan | IN_REVIEW | FakeLLM-driven tests for success, invalid output retry, budget stop |
+| SEC-002 | Tool registry + `scope_guard` (pure) | security-agents/ | NFR-02 | CORE-001 | Alan | IN_REVIEW | Allowlist enforcement (SB-06); scope_guard exhaustive tests ≥ 95% branch |
+| SEC-003 | Sandbox driver: profiles, network `none`, limits, reaper | security-agents/ | NFR-01, NFR-02 | INFRA-005 | Alan | IN_REVIEW | SB-03, SB-05 pass; orphan reaping tested |
 | UI-001 | Next.js scaffold, Tailwind, ESLint/tsc, generated API client, `frontend.yml` | frontend/ | — | CORE-003 | UNASSIGNED | BLOCKED | Builds; typed client generated; CI green |
 | DEMO-001 | `examples/payments-lite` vulnerable demo target with fixtures + build recipe | examples/ | — | — | Adam | IN_REVIEW | Documented planted functional bug + authorization weakness; passing (incomplete) test suite; builds in sandbox |
 | TEST-001 | Test harness: FakeLLM, recorded-response replay, fixture layout | tests/ | — | CORE-010 | UNASSIGNED | BLOCKED | Replay of a recorded fixture through gateway in tests |
@@ -65,16 +65,16 @@ acceptance criteria are the minimum for `DONE` in addition to
 
 | ID | Title | Dir | Reqs | Depends on | Owner | Status | Acceptance criteria |
 |---|---|---|---|---|---|---|---|
-| SEC-004 | Probe sandbox runner: target builder, check-runner, target-only network | security-agents/ | FR-2-02, NFR-02 | SEC-002, SEC-003, DEMO-001 | UNASSIGNED | BLOCKED | SB-01, SB-04 pass; payments-lite target reachable only from check-runner |
-| SEC-005 | Check template library v0 (`access_control.ownership`, `input_validation.bounds`), read-only | security-agents/ | FR-2-02 | SEC-004 | UNASSIGNED | BLOCKED | Templates reviewed by security owner; deterministic `matches_expectation` |
-| SEC-006 | Scout agent | security-agents/ | FR-2-01 | SEC-001, INTEL-007 | UNASSIGNED | BLOCKED | Raises planted authz hypothesis on payments-lite with valid citations |
-| SEC-007 | Probe agent | security-agents/ | FR-2-02 | SEC-001, SEC-005 | UNASSIGNED | BLOCKED | Confirms planted, refutes non-planted fixture hypothesis |
-| SEC-008 | Trace agent + deterministic severity function | security-agents/ | FR-2-03 | SEC-001 | UNASSIGNED | BLOCKED | All steps labeled; severity factors cited |
-| SEC-009 | Diagnose agent | security-agents/ | FR-2-04 | SEC-001 | UNASSIGNED | BLOCKED | Root cause span matches fixture label |
-| SEC-010 | Verify agent + deterministic verdict rules | security-agents/ | FR-2-06 | SEC-001, SEC-003, SEC-004 | UNASSIGNED | BLOCKED | SB-08, SB-09 pass; detects planted bad patches |
-| SEC-011 | Patch agent (worktree) | security-agents/ | FR-2-05 | SEC-001, SEC-003 | UNASSIGNED | BLOCKED | Produces diff within plan scope; local tests run |
-| SEC-012 | Orchestrator state machine + gates (IC-2 with fake agents) | security-agents/, backend/ | FR-P-05 | CORE-006, CORE-007, SEC-001 | UNASSIGNED | BLOCKED | All transitions tested incl. cancel/fail/budget; SB-07 passes |
-| SEC-013 | Fortify agent + regression test promotion | security-agents/ | FR-2-07 | SEC-001 | UNASSIGNED | BLOCKED | Every verified finding gets ≥ 1 RegressionTest |
+| SEC-004 | Probe sandbox runner: target builder, check-runner, target-only network | security-agents/ | FR-2-02, NFR-02 | SEC-002, SEC-003, DEMO-001 | Alan | IN_REVIEW | SB-01, SB-04 pass; payments-lite target reachable only from check-runner |
+| SEC-005 | Check template library v0 (`access_control.ownership`, `input_validation.bounds`), read-only | security-agents/ | FR-2-02 | SEC-004 | Alan | IN_REVIEW | Templates reviewed by security owner; deterministic `matches_expectation` |
+| SEC-006 | Scout agent | security-agents/ | FR-2-01 | SEC-001, INTEL-007 | Alan | IN_REVIEW | Raises planted authz hypothesis on payments-lite with valid citations |
+| SEC-007 | Probe agent | security-agents/ | FR-2-02 | SEC-001, SEC-005 | Alan | IN_REVIEW | Confirms planted, refutes non-planted fixture hypothesis |
+| SEC-008 | Trace agent + deterministic severity function | security-agents/ | FR-2-03 | SEC-001 | Alan | IN_REVIEW | All steps labeled; severity factors cited |
+| SEC-009 | Diagnose agent | security-agents/ | FR-2-04 | SEC-001 | Alan | IN_REVIEW | Root cause span matches fixture label |
+| SEC-010 | Verify agent + deterministic verdict rules | security-agents/ | FR-2-06 | SEC-001, SEC-003, SEC-004 | Alan | IN_REVIEW | SB-08, SB-09 pass; detects planted bad patches |
+| SEC-011 | Patch agent (worktree) | security-agents/ | FR-2-05 | SEC-001, SEC-003 | Alan | IN_REVIEW | Produces diff within plan scope; local tests run |
+| SEC-012 | Orchestrator state machine + gates (IC-2 with fake agents) | security-agents/, backend/ | FR-P-05 | CORE-006, CORE-007, SEC-001 | Alan | IN_REVIEW | All transitions tested incl. cancel/fail/budget; SB-07 passes |
+| SEC-013 | Fortify agent + regression test promotion | security-agents/ | FR-2-07 | SEC-001 | Alan | IN_REVIEW | Every verified finding gets ≥ 1 RegressionTest |
 | TEST-003 | Security-boundary suite SB-01…SB-12 | tests/security | NFR-01, NFR-02 | SEC-003, SEC-004, CORE-007 | UNASSIGNED | BLOCKED | All SB tests implemented and green (IC-4) |
 | TEST-004 | Agent golden tests with recorded responses | tests/ | — | TEST-001, SEC-006 | UNASSIGNED | BLOCKED | One recorded scenario per agent; schema-validated |
 
@@ -161,3 +161,5 @@ REG-001 validation: focused54/root325/security396/frontend32/browser12 passed; r
 
 ### QA-001 — execute Devin’s unfinished QA proposal
 Owner: Srihith; IN_REVIEW on `fix/srihith/qa-reliability`. Existing suite wrappers now use valid imports/commands, preserve the Python interpreter and live-call opt-out, report incomplete prerequisites separately, validate readiness JSON, and have CI-tested failure semantics. See docs/devin_qa/README.md and SESSION_HANDOFF for executed evidence.
+
+SEC-001 to SEC-013 (Alan): implemented; acceptance shown on replay with scripted model turns and real tools, sandboxes and tests (`cd security-agents && .venv/bin/python -m pytest tests -q`). Not yet shown: a live seven-role run (M3, issue #10), Docker sandbox execution (INFRA-005), human review of check templates (SEC-005). See `coordination/status/ALAN.md`.
