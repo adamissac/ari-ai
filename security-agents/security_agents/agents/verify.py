@@ -286,14 +286,16 @@ def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], l
         add(VerificationCheckName.FUNCTIONAL_SUITE_PASSES, False, "the project test suite was not run")
     else:
         last = suite_runs[-1]
-        failing = set(last.get("failing_tests") or [])
+        # A later green run must not mask a failure or collection error recorded earlier.
+        failing = {f for r in suite_runs for f in (r.get("failing_tests") or [])}
         new_failures = sorted(failing - set(ev.baseline_failing))
         artifact = str(last.get("sandbox_run_id") or "")
-        if last.get("errors"):
+        suite_errors = [r.get("errors") for r in suite_runs if r.get("errors")]
+        if suite_errors:
             add(
                 VerificationCheckName.FUNCTIONAL_SUITE_PASSES,
                 False,
-                f"collection errors in the suite run ({last.get('errors')})",
+                f"collection errors in the suite run ({suite_errors[-1]})",
                 artifact,
             )
         elif new_failures:
@@ -340,7 +342,8 @@ def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], l
             add(VerificationCheckName.GENERATED_TESTS_PASS, False, "the added tests were not run")
         else:
             last = added_runs[-1]
-            failing = set(last.get("failing_tests") or [])
+            # Union across runs: a later run must not mask an added-test failure.
+            failing = {f for r in added_runs for f in (r.get("failing_tests") or [])}
             offending = sorted(f for f in failing if any(f.startswith(t) for t in ev.tests_added))
             artifact = str(last.get("sandbox_run_id") or "")
             if offending:
