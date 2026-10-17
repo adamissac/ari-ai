@@ -116,3 +116,26 @@ adds an entry before ending.
 - Sai's real-index consumer integration merged PR #31. Sarosh attempted its test
   but collection failed because local environment lacks installed `code_review`;
   no independent consumer-pass claim. Producer suite was rechecked separately.
+
+### 2026-10-17T04:35Z — Sarosh recovered intelligence-memory continuation (PR #39)
+
+- Recovered the Codex worktree `/tmp/hackatl-sarosh-memory` on
+  `feat/sarosh/intelligence-memory`; no work was discarded. Fixed the CI failure
+  in `PostgresMemoryStore.decisions` (partitioned `expectation_id` was not in the
+  subquery select) and the new test's use of string agent names.
+- Merged `origin/main` through `dd9f8a9`, preserving Sai's functional-remediation
+  changes. Kept the reviewer only on Sai's paths (`_runner` shared-intelligence
+  hook plus one test-double check) and added Alan's host adapter wiring as a small
+  isolated hook.
+- Implemented durable accepted-Verify -> verified-regression outbox, exact-snapshot
+  host snapshot attachment, shared hosted intelligence service use, context/API
+  surfacing, and all-five-check enforcement at the trusted host boundary.
+- Executed on the merged tree: backend/shared/monitoring/reviewer **154 passed,
+  5 skipped**; code-intelligence/shared **62 passed, 2 skipped**; code-review
+  **48 passed, 1 skipped**; security-agents **344 passed, 11 skipped**; focused
+  memory/host tests **7 passed**. Ruff/format changed paths, strict mypy for
+  root/code-intelligence/code-review, contract freshness (92 files, 0 changed),
+  and 223-document link check passed.
+- Remaining gate: Srihith's contract-owner ACK of additive schema 0.6.0 on #38/PR
+  #39. Live provider, RL package, browser/app e2e and full hardened deployment
+  remain separate prerequisites; no such claim is made here.

@@ -18,9 +18,7 @@ def shared_host_intel(
     if not callable(factory):
         return None  # explicit fake/standalone hosts have no backend store
     if snapshot.pinned_by != "git":
-        raise PlatformError(
-            ErrorCode.SNAPSHOT_NOT_READY, "Hosted intelligence requires a git-pinned checkout"
-        )
+        return None  # explicit dev/directory fixtures keep the labeled local fallback
     binding = next((b for b in bindings if b.get("repo_id") == host.repo_id), None)
     prefix = str((binding or {}).get("subdir") or "").strip("/")
     if prefix == ".":

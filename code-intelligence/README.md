@@ -96,6 +96,25 @@ scoped queries (list pagination: offset and limit 1..500). `graph_neighbors` lim
 `read_span` is a low-level redacted text accessor; tools should expose `read_chunk`.
 Finding IDs are not seeds yet; consumers must resolve them to symbol/expectation/route IDs.
 
+Exact-version memory is append-only and never rewrites the indexed source payload:
+
+- `decide_expectation(ref, id, request, actor_id=...)` records an authenticated
+  `confirmed`/`conflicting`/`rejected` human decision with optimistic revision
+  control. `decision_history` returns the audit chain. `expectations(ref)` and
+  `build_context_pack` surface the latest decided status with a `human_input`
+  evidence citation; `rejected` expectations are omitted by the security adapter.
+- `register_verified_regression(ref, patch, verification)` accepts only an
+  accepted independent Verify with all five unique checks and a separate producing
+  run. `verified_regressions(ref)` returns the candidate proof; context packs label
+  it as evidence about a candidate at an exact base SHA, never a merge/current-code
+  claim.
+- Backend PostgreSQL/auth routes are `PATCH /api/v1/snapshots/{id}/expectations/{id}`,
+  `GET .../decisions` and `GET /api/v1/snapshots/{id}/regressions`. The backend also
+  owns a durable deduplicated outbox job so an accepted Verify join survives worker
+  restarts. The security host adapter uses the same service for indexed routes,
+  expectations and regressions; explicit directory fixtures keep the labeled local
+  fallback.
+
 Backend adapter: `index_snapshot(Snapshot, repo_full_name) -> Snapshot`. Monitoring uses
 `affected_by_diff(repo_id, base_sha | None, head_sha)`; missing versions raise so monitoring
 can record an honest `path_only` fallback. Do not substitute current working-tree content.
@@ -116,11 +135,13 @@ uv run python -m code_intelligence.evaluate --repository . --sha <full-known-sha
 Python is implemented; JS/TS is MVP stretch. Routes are declarations, not runtime reachability;
 router mounts/prefix composition, inherited auth conventions and dynamic targets are not
 resolved. No repository content can confirm its own rules. Authenticated human confirmation
-and conflict adjudication require the backend intent-decision API. Findings/regression artifact
-joins remain backend-owned; `regression_tests` currently names statically linked existing test
-paths, not promoted verified-repair test records. Large indexes load as one typed payload;
-partitioned persistence and incremental parser caching remain performance follow-ups.
+and conflict adjudication are implemented through the backend decision API; the reviewer,
+security host adapter and context packets consume the same decided status. Candidate
+regression records require all five independent Verify checks and remain exact-base-SHA
+evidence, not a statement that the patch was merged or currently passes. Large indexes load
+as one typed payload; partitioned persistence and incremental parser caching remain
+performance follow-ups.
 
-Sai and Alan still need to replace temporary consumer adapters with this service; their
-complete runtime integration is not claimed by producer contract tests. No target security
-probe, target test execution, production deployment or live-model proof is implied here.
+Sai's reviewer and Alan's security host adapter consume this service; their complete runtime
+integration is not claimed by producer contract tests. No target security probe, target test
+execution, production deployment or live-model proof is implied here.
