@@ -1,13 +1,13 @@
 # Alan — implementation status
 
 Owner: Alan (`security-agents/`, SEC-001 … SEC-013)
-Branch: `feat/alan/host-resume-hardening`
-Current task: Codex P1/P2 host-resume hardening after #73 merged
-Last remote sync: 2026-10-17T08:52Z — `origin/main` @ `236838e` (#73 merged)
-API/contract dependencies: `shared` V0, `backend.host` (`save_checkpoint` / `load_checkpoint` / `claim_checkpoint` / `set_finding_status`), `code_review.api` functional helpers (#68)
-Recent PR/commit: follow-up on `feat/alan/host-resume-hardening` (do not push `feat/alan/host-finding-persistence`)
-Blockers: live seven-agent run (issue #10, no key); Docker images (INFRA-005); PR #35 should be **closed**, not merged
-Next action: land host-resume-hardening; close #35; Vihaan re-check finding status in the UI
+Branch: `feat/alan/verify-honesty-check-category`
+Current task: honest functional Verify label + canonical CheckCategory
+Last remote sync: 2026-10-17T09:22Z — `origin/main` @ `139ab2f` (#83 merged)
+API/contract dependencies: `shared` 0.9.0 `CheckCategory`; `backend.host` checkpoints; `code_review.api` functional helpers
+Recent PR/commit: `feat/alan/verify-honesty-check-category` (do not push merged `host-finding-persistence` / `host-resume-hardening`)
+Blockers: live seven-agent run (issue #10, no key); Docker images (INFRA-005)
+Next action: land CheckCategory + honesty PR; Srihith ACK; leave #85 to Srihith
 
 ## What runs today
 
@@ -86,6 +86,12 @@ Executed check results on the fixture (the precision evidence):
   refused at runtime.
 
 ## Session entries
+
+### 2026-10-17 (verify honesty + CheckCategory)
+
+- Kept #84 `provider_mode="none"` for functional Verify. Canonical `CheckCategory`
+  with Probe ids + fixture aliases. `SCHEMA_INVALID` regression for recipe
+  `target_dir`. Message: `20261017T092222Z-alan-to-srihith-check-category-canonical.md`.
 
 ### 2026-10-17 (Codex P1/P2 after #73 merged)
 
