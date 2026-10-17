@@ -15,10 +15,17 @@
           "name": "backend.llm.LLMGateway.run_tool_loop",
           "location": "backend/backend/llm.py::run_tool_loop",
           "owner": "srihith"
+        },
+        {
+          "name": "code_review.intent.scan_injection + untrusted delimiting",
+          "location": "code-review/code_review/intent.py::scan_injection",
+          "owner": "sai"
         }
       ],
       "tests": [
-        "tests/security/test_owasp_llm_controls.py::test_injected_request_cannot_grant_tool_permission"
+        "tests/security/test_owasp_llm_controls.py::test_injected_request_cannot_grant_tool_permission",
+        "code-review/tests/test_policies.py::test_injection_scan",
+        "code-review/tests/test_reviewer_agent.py::test_discount_rounding_defect_validated_with_multi_turn_trace"
       ],
       "limitations": "Tool denial does not prove the model cannot be manipulated within its allowed capabilities.",
       "customer_assessment": {
@@ -37,10 +44,17 @@
           "name": "backend.redaction.redact; backend.llm.LLMGateway.create_message",
           "location": "backend/backend/llm.py::create_message",
           "owner": "srihith"
+        },
+        {
+          "name": "generated tests cannot add credentials; sandbox env scrubbed",
+          "location": "code-review/code_review/tools.py::ReviewerToolbox",
+          "owner": "sai"
         }
       ],
       "tests": [
-        "tests/security/test_owasp_llm_controls.py::test_credentials_redacted_before_provider_call"
+        "tests/security/test_owasp_llm_controls.py::test_credentials_redacted_before_provider_call",
+        "code-review/tests/test_policies.py::test_generated_tests_cannot_introduce_new_credentials",
+        "code-review/tests/test_policies.py::test_sandbox_classifies_behavior_vs_tooling_and_scrubs_env"
       ],
       "limitations": "Pattern redaction cannot detect every secret or prevent every cross-tenant disclosure.",
       "customer_assessment": {
@@ -95,10 +109,17 @@
           "name": "backend.llm.LLMGateway.run_tool_loop",
           "location": "backend/backend/llm.py::run_tool_loop",
           "owner": "srihith"
+        },
+        {
+          "name": "strict ReviewerReport; statuses decided from executed tests",
+          "location": "code-review/code_review/agent.py::_adjudicate",
+          "owner": "sai"
         }
       ],
       "tests": [
-        "tests/security/test_owasp_llm_controls.py::test_invalid_structured_output_is_rejected"
+        "tests/security/test_owasp_llm_controls.py::test_invalid_structured_output_is_rejected",
+        "code-review/tests/test_reviewer_agent.py::test_failing_test_against_unconfirmed_rule_stays_hypothesis",
+        "code-review/tests/test_policies.py::test_intent_adjudication_rules"
       ],
       "limitations": "Schema validation does not prove output semantics, safe rendering, or safe tool effects.",
       "customer_assessment": {
@@ -117,10 +138,20 @@
           "name": "backend.llm.LLMGateway.run_tool_loop",
           "location": "backend/backend/llm.py::run_tool_loop",
           "owner": "srihith"
+        },
+        {
+          "name": "write-scoped reviewer tools, generated-test AST policy, approval-gated repair",
+          "location": "code-review/code_review/tools.py::ReviewerToolbox",
+          "owner": "sai"
         }
       ],
       "tests": [
-        "tests/security/test_owasp_llm_controls.py::test_injected_request_cannot_grant_tool_permission"
+        "tests/security/test_owasp_llm_controls.py::test_injected_request_cannot_grant_tool_permission",
+        "code-review/tests/test_policies.py::test_write_protection_and_budgets",
+        "code-review/tests/test_policies.py::test_generated_test_policy",
+        "code-review/tests/test_policies.py::test_sandbox_refuses_option_injection",
+        "code-review/tests/test_reviewer_agent.py::test_repair_requires_approved_remediation_for_that_finding",
+        "code-review/tests/test_reviewer_agent.py::test_repair_that_only_tampers_produces_no_patch"
       ],
       "limitations": "Allowed tools require separate scope and least-privilege enforcement; no comprehensive assessment claimed.",
       "customer_assessment": {
@@ -175,10 +206,17 @@
           "name": "shared.standards.StandardMapping._consistent",
           "location": "shared/shared/standards.py::_consistent",
           "owner": "srihith"
+        },
+        {
+          "name": "claims need verified citations; confirmed needs corroboration",
+          "location": "code-review/code_review/intent.py::adjudicate_claims",
+          "owner": "sai"
         }
       ],
       "tests": [
-        "tests/security/test_owasp_llm_controls.py::test_fabricated_standard_cannot_be_used_as_fact"
+        "tests/security/test_owasp_llm_controls.py::test_fabricated_standard_cannot_be_used_as_fact",
+        "code-review/tests/test_policies.py::test_intent_adjudication_rules",
+        "code-review/tests/test_reviewer_agent.py::test_off_by_two_anchor_is_reanchored_and_far_or_fake_quotes_still_rejected"
       ],
       "limitations": "Catalog validation prevents fabricated IDs, not false interpretations or unsupported findings.",
       "customer_assessment": {

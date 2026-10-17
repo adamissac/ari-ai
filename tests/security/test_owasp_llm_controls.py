@@ -162,7 +162,8 @@ def test_coverage_matrix_has_all_risks_and_real_marked_tests(request):
     marked = {}
     for item in request.session.items:
         for marker in item.iter_markers("owasp_llm"):
-            marked.setdefault(marker.args[0], set()).add(item.name)
+            # originalname: a parametrized test's items are "name[param]", the matrix cites "name"
+            marked.setdefault(marker.args[0], set()).add(getattr(item, "originalname", item.name))
     for version, name in [
         ("2025", "owasp-llm-coverage.json"),
         ("2026", "owasp-llm-coverage-2026.json"),
