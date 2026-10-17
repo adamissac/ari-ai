@@ -18,6 +18,33 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-17 — Adam — start assessment note
+- Did: The start-assessment form states that it enqueues work for the selected repo, approved scope, and commit. It does not merge, deploy, or prove the app is secure. Stacked on event-log + cancel notes.
+- State of the code: branch `feat/adam/start-assessment-note`.
+- Commands run and results: `npm test -- --run tests/unit/start-assessment.test.ts` 1 passed; `npm run typecheck` clean; `npm run lint` clean. Browser was not run.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): none.
+- Next steps: open the PR.
+- Warnings for the next session: if start begins merging or deploying, change the note.
+
+### 2026-10-17 — Adam — event log page note
+- Did: Journey/assessment phases treat a full first `events/log` page (500) as truncated. Skipped-phase copy and a visible note say a later page may still hold the missing state. Merged cancel-assessment note (#191) under this branch so the assessment page carries both.
+- State of the code: branch `feat/adam/event-log-page-note`.
+- Commands run and results: `npm test -- --run tests/unit/lib.test.ts tests/unit/assessment-phases.test.ts` 41 passed; `npm run typecheck` clean; `npm run lint` clean. Browser was not run.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): backend still returns `next_cursor: null` even when truncated.
+- Next steps: open the PR.
+- Warnings for the next session: if events/log gains a real cursor, wire pagination instead of the full-page heuristic.
+
+### 2026-10-17 — Adam — cancel assessment note
+- Did: Assessment cancel copy matches POST /assessments/{id}/cancel: queued stops now; running gets a stop request; findings and recorded work stay. The UI shows the API's immediate vs requested outcome.
+- State of the code: branch `feat/adam/cancel-assessment-note`.
+- Commands run and results: `npm test -- --run tests/unit/cancel-assessment.test.ts` 2 passed; `npm run typecheck` clean; `npm run lint` clean. Browser was not run.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): none.
+- Next steps: open the PR.
+- Warnings for the next session: if cancel starts deleting findings, change the note.
+
 ### 2026-10-17 - Alan (Claude) - status accuracy, template review packet
 - **Did:** merged #142 (Codex: Docker evidence reconciliation) and #143 (accurate verified and unverified list in `coordination/status/ALAN.md`). Opened #146: `python -m security_agents.checks.review_packet` and `docs/security/CHECK_TEMPLATE_REVIEW.md` so a human can sign off the two Probe templates against exact code and a renderer sha256 (SEC-005).
 - **State of the code:** main @ `39186cb` had root 415 passed, 9 skipped and security-agents 451 passed, 18 skipped. #146 brings security-agents to 455 passed.
@@ -414,6 +441,17 @@ Sai responded in #165 and merged message #176. PR #169 now follows it: shared he
 - Root test includes the existing API/worker M7 scripted chain. Not run here: browser, frontend build, Docker or live provider. Optional RL deps and tsc absent; live/Docker opt-ins skipped. Prior cached retry keys use the old hash and return409 after upgrade; new actions need fresh keys.
 - Next: reviewer inspect retry PR; do not auto-merge under this sprint instruction. Claude owns Probe/Docker/RoE/SEC-005/INFRA-005. Existing issue155 (stored patch hash mismatch) and the latest inconclusive live Probe/M3 run remain demo blockers for those owners.
 
+### 2026-10-17 — Codex DEMO-FONTS-001
+- Isolated /private/tmp/omen-offline-fonts from d1d324d. Original webpack build fails fetching all three fonts with HTTP_PROXY/HTTPS_PROXY/ALL_PROXY=http://127.0.0.1:9; font tests2 failed before change.
+- Vendored115,760 bytes of unmodified WOFF2 from integrity-checked Fontsource5.3.0 tarballs, included all three OFL licenses and asset hashes; next/font/local preserves family/weight variables. No extra runtime dependency.
+- Same unavailable proxies: default npm run build passes. Frontend69 unit tests (including2 local-font checks), typecheck/lint pass. No UI redesign; other layout/branding hunks preserved. PR for review only.
+- 2026-10-17 Adam: merged origin/main after #187 (conflict recovery); kept both handoff/task/status entries.
+
+### 2026-10-17 — Codex DEMO-RECOVERY-001
+- Isolated /private/tmp/omen-final-recovery, branch fix/alan/explicit-conflict-recovery from d1d324d. Two component tests failed before change;3 pass afterward (same network retry, explicit conflict recovery, project isolation). Frontend70 tests, typecheck/lint/build pass.
+- Full Chrome13 passed, including actual server409 seeded with a conflicting key, unchanged retry retaining key, preparation sending no request, and a fresh submission creating one additional assessment/job. Other journey tests use scripted agents and real API/DB/worker. The recovery test uses an unbound owned fixture so it cannot consume scripted agent turns.
+- Preserved active #156 layout/class hunks and #184 primitives; no API/shared/security changes. PR for review; no own merges. Separate font PR removes external build downloads.
+
 ### 2026-10-17 — Codex API-JOB-001 real demo verification
 - Separate worktree /private/tmp/omen-demo-smoke, branch test/alan/demo-recovery-smoke, initial base30e1234b508c82a37f335da341daeda8f207e6bc; synchronized056f65b. PR166 was merged by Srihith; no own PR automatically merged.
 - Before fix: real JS client receives job_id, then owner GET/jobs returns404. Fix resolves project from the actual assessment. New backend/member/outsider tests and real HTTP retry smoke pass.
@@ -428,3 +466,7 @@ Sai responded in #165 and merged message #176. PR #169 now follows it: shared he
 ### 2026-10-17T14:52Z — Ari logo merged, #165 closed
 
 PR #169 merged as `b38b6ff` after all executable checks passed on `4b48388` (unit71, browser14, build/types/lint/docs/gitleaks). Actual Sai sign-off #165/#176 applied exactly; source PNG copies remain byte-identical. Initial CI browser job failed in Next font resolution before tests; unchanged-head retry passed. Local full browser14 and final screenshot2 passed. Final immutable receipt: `coordination/messages/20261017T145240Z-sarosh-to-sai-ari-logo-merged.md`. Sai can resume reserved UI files. Existing mobile story overflow remains with #156; no deployment/live-provider proof claimed.
+
+### 2026-10-17T15:23Z — Maintenance cycle1 context citation privacy
+
+Issue #190 reproduced with a fake bearer-shaped canary: chunk text redacted but raw human reason remained in citation metadata and public expectation source notes. Redact free-form note/provenance in copied output references; exact identities, stored history/index remain untouched. Code-intelligence only product edits; no shared DTO or index-version change. Focused10, broader producer/shared/PostgreSQL107 passed/1 opt-in skip, hosted consumer11 passed67.49s; Ruff/format/mypy12 modules passed. Worktree /tmp/hackatl-sarosh-maintenance, feat/sarosh/intelligence-maintenance. Ten-minute message loop remains active; next scheduled read15:24:40Z.
