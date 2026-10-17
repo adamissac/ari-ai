@@ -634,3 +634,20 @@ def test_failed_scout_does_not_report_a_clean_assessment(intel, driver, library,
     assert result.error_code is ErrorCode.LLM_UNAVAILABLE
     assert "provider rejected tool schema" in result.error_detail
     assert "completed" not in result.state_log.states()
+
+
+def test_finding_standards_are_evidence_backed(result):
+    """One planted IDOR finding, classified from executed evidence (not an LLM score)."""
+    res, _ = result
+    finding = res.findings[0]
+    std = finding.standards
+    assert std is not None
+    assert std.cwe and std.cwe.id == "CWE-639"
+    assert "T1190" in [m.id for m in std.attack]
+    assert std.cvss and std.cvss.complete and std.cvss.score is not None
+    assert "provisional" not in std.cvss.assessor
+    assert std.exploit_status.value == "reproduced_in_sandbox"
+    summary = finding.public()["standards"]
+    assert summary["cwe"] == "CWE-639"
+    assert summary["cvss_complete"] is True
+    assert "D3-AMED" in [m.id for m in std.d3fend]

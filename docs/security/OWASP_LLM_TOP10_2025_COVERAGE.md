@@ -25,7 +25,7 @@ Status: `implemented_tested` = control present and the listed tests exercise it;
 | LLM04:2025 Data and Model Poisoning | `gap` | `unsupported` |
 | LLM05:2025 Improper Output Handling | `partial` | `unsupported` |
 | LLM06:2025 Excessive Agency | `partial` | `unsupported` |
-| LLM07:2025 System Prompt Leakage | `gap` | `unsupported` |
+| LLM07:2025 System Prompt Leakage | `partial` | `unsupported` |
 | LLM08:2025 Vector and Embedding Weaknesses | `gap` | `unsupported` |
 | LLM09:2025 Misinformation | `partial` | `unsupported` |
 | LLM10:2025 Unbounded Consumption | `partial` | `unsupported` |
@@ -132,11 +132,19 @@ Status: `implemented_tested` = control present and the listed tests exercise it;
 
 ## LLM07:2025 System Prompt Leakage
 
-**Status:** `gap`
+**Status:** `partial`
 
 **Attack surfaces:** System Prompt Leakage.
 
-**Limitations:** System prompts must never contain secrets; extraction resistance is unproven.
+**Controls (owner):**
+
+- security_agents.runtime.spec.AgentSpec.system_prompt: `security-agents/security_agents/runtime/spec.py::AgentSpec` (alan)
+
+**Executable tests:**
+
+- `tests/security/test_owasp_llm_controls.py::test_system_prompts_hold_no_secret_shaped_values`
+
+**Limitations:** Absence of secret-shaped literals in system prompts is not extraction resistance; a model can still be induced to reveal prompt text.
 
 **Customer-application assessment:** `unsupported`. No customer-application LLM risk scanning is claimed.
 
