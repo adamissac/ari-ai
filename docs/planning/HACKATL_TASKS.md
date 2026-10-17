@@ -149,6 +149,8 @@ abort. No provider or target execution occurred in transport tests.
 |---|---|---|---|---|---|
 | STD-001 | Connect canonical PR #49 standards to persisted findings, incidents, reports and transport; cover OWASP editions | Srihith | IN_REVIEW on `feat/srihith/standards-alignment` | PR #49 canonical catalogs/contracts | Offline catalogs; reference scoring; host persistence; real PostgreSQL incident lifecycle/tenant/approval tests; generated types; truthful partial coverage. Rendered frontend integration remains separate. |
 
+Alan recovered-catalog continuation (2026-10-17): isolated canonical CVSS3.1/OWASP API/NIST800-115 additions from PR #35; narrow offline catalog PR follows. Host/functional-Verify continuation is reviewed separately in PR #73.
+
 SEC-010/SEC-012 continuation (2026-10-17, PR #73 merged): hardened functional evidence gates and current-scope resume. Codex P1/P2 follow-up is `feat/alan/host-resume-hardening` (resume repo filter, `claim_checkpoint`, finish-before-verdict, truncated pytest lists, approved functional as outstanding work, full `target_dir` strip, `patch_rejected`). Duplicate legacy PR #35 is superseded and should be closed, not merged. Canonical recovered catalogs remain isolated in PR #74.
 
 ### REG-001 — Finish Devin’s incident closure evidence connection
