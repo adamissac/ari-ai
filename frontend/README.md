@@ -77,3 +77,24 @@ installed Chrome instead of Playwright's Chromium, `E2E_SKIP_BUILD=1` to reuse `
 - GitHub links stay off when an assessment scope names more than one repository. Findings still do not carry a repo id.
 - Live-provider (`provider_mode=live`) runs have not been exercised through the UI.
 - The project journey cannot see a phase the latest assessment's event log did not record. A log longer than the 500-event page can leave a later phase unmarked.
+
+## Ari identity
+
+The owner-supplied ant PNG is preserved unchanged at `public/brand/ari-ant.png`
+and `app/icon.png`. `LogoMark` and `Wordmark` in `components/brand.tsx` reuse it
+in the shared header and sign-in panel (24px), and the intro (96px). A layout crop
+trims the wide margins; the black ant and off-white rounded tile remain intact
+on light and dark surfaces. The App Router serves `app/icon.png` as the favicon.
+The header preloads its image with explicit dimensions. Wordmark text retains
+its existing font stack and the name Ari AI.
+
+Sai approved these locations and treatment in issue #165 and the immutable
+`20261017T143403Z-sai-to-sarosh-logo-placement.md` message (#176). The landing
+eyebrow, story, graph and footer do not receive additional logos. The intro uses
+a 700ms fade/scale reveal; its progress/counter, reduced-motion, automated-browser
+and once-per-sign-in behavior remain in place.
+
+Brand/intro unit tests cover accessibility, source integrity and skip behavior.
+`tests/e2e/brand.spec.ts` checks real image loads, sign-in, desktop/mobile logo
+bounds, header navigation, the served favicon and intro/reduced-motion behavior.
+Set `ARI_LOGO_SCREENSHOTS` to an external directory for optional screenshot proof.

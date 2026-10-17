@@ -98,6 +98,27 @@ def test_host_mode_full_flow_against_real_backend(
     )
     patches = alice.get(f"/api/v1/findings/{detail['findings'][0]['id']}/patches").json()["items"]
     assert patches and patches[-1]["verification"]["verdict"] == "accepted"
+    # #155: the record's diff_sha256 names the STORED (possibly redacted) diff artifact.
+    diff = alice.get(f"/api/v1/artifacts/{patches[-1]['patch']['diff_artifact_id']}")
+    assert diff.status_code == 200
+    assert diff.headers["X-Artifact-SHA256"] == patches[-1]["patch"]["diff_sha256"]
+    # Precondition: the fixture really exercises redaction; otherwise the equality above
+    # would pass with the old raw-hash behaviour too (Codex review on #179).
+    assert b"[REDACTED" in diff.content
+    # The accepted verdict is bound to the exact bytes Verify executed (pre-redaction).
+    import hashlib
+    import json as _json
+
+    ver = patches[-1]["verification"]
+    scope = next(c for c in ver["checks"] if c["name"] == "diff_scope_ok")
+    binding_ref = next(
+        e for e in scope["evidence"] if "verified-bytes binding" in (e["note"] or "")
+    )
+    binding = _json.loads(alice.get(f"/api/v1/artifacts/{binding_ref['artifact_id']}").content)
+    assert binding["stored_diff_sha256"] == patches[-1]["patch"]["diff_sha256"]
+    assert binding["redacted"] is True
+    raw = sorted((tmp_path / "w").rglob("patch-*.diff"))[-1].read_bytes()
+    assert binding["verified_diff_sha256"] == hashlib.sha256(raw).hexdigest()
 
     # Vihaan's M6 observations: lifecycle persisted with history; usage ledger complete.
     finding = alice.get(f"/api/v1/findings/{detail['findings'][0]['id']}").json()["finding"]
