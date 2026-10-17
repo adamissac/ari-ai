@@ -108,3 +108,37 @@ def test_policy_table() -> None:
     assert mixed.scope is ReassessmentScope.targeted and mixed.regression_finding_ids == ("fnd_1",)
     assert _decide(["app/x.py"], paths_complete=False).scope is ReassessmentScope.full
     assert _decide(["app/x.py"], policy=TriggerPolicy(enabled=False)).action is Action.record_only
+
+
+def test_correlate_uses_provider_and_rejects_wrong_sha() -> None:
+    from monitoring.api import correlate
+    from shared.intelligence import ImpactResolution, ImpactSet
+
+    rep = "rep_01JFIXTURE0000000000000REP"
+    change = normalize_github("push", push(["app/invoices.py"]))
+    assert not isinstance(change, Ignored)
+
+    class Good:
+        def affected_by_diff(self, repo_id, base_sha, head_sha):
+            return ImpactSet(
+                repo_id=repo_id,
+                base_sha=base_sha,
+                head_sha=head_sha,
+                resolution=ImpactResolution.symbol,
+                changed_paths=["app/invoices.py"],
+                symbols=["sym_01JFIXTURE0000000000000SYM"],
+            )
+
+    class WrongSha(Good):
+        def affected_by_diff(self, repo_id, base_sha, head_sha):
+            return super().affected_by_diff(repo_id, base_sha, "f" * 40)
+
+    class Broken:
+        def affected_by_diff(self, repo_id, base_sha, head_sha):
+            raise RuntimeError("index missing")
+
+    impact, note = correlate(rep, change, Good())
+    assert impact.resolution is ImpactResolution.symbol and note is None
+    for provider in (WrongSha(), Broken(), None):
+        impact, note = correlate(rep, change, provider)
+        assert impact.resolution is ImpactResolution.path_only and note

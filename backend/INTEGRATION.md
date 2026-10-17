@@ -77,8 +77,7 @@ service with:
 
 ```python
 def index_snapshot(self, snapshot: shared.intelligence.Snapshot, repo_full_name: str) -> Snapshot
-def affected_by_diff(self, repo_id: str, base_sha: str | None, head_sha: str,
-                     changed_paths: list[str]) -> shared.intelligence.ImpactSet
+def affected_by_diff(self, repo_id: str, base_sha: str | None, head_sha: str) -> shared.intelligence.ImpactSet
 ```
 
 `POST /api/v1/repositories/{id}/snapshots` enqueues `index_snapshot`. Monitoring calls

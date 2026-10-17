@@ -11,11 +11,10 @@ from shared.intelligence import ImpactResolution, ImpactSet
 
 
 class ImpactProvider(Protocol):
-    """Implemented by code_intelligence (Sarosh). Must be pinned to the exact SHAs."""
+    """Implemented by code_intelligence (Sarosh, ``IntelligenceService.affected_by_diff``).
+    Computes changed paths/symbols from Git objects at the exact SHAs."""
 
-    def affected_by_diff(
-        self, repo_id: str, base_sha: str | None, head_sha: str, changed_paths: list[str]
-    ) -> ImpactSet: ...
+    def affected_by_diff(self, repo_id: str, base_sha: str | None, head_sha: str) -> ImpactSet: ...
 
 
 def path_only_impact(repo_id: str, change: GitHubChange) -> ImpactSet:
@@ -35,9 +34,7 @@ def correlate(
     if provider is None:
         return path_only_impact(repo_id, change), "code_intelligence unavailable: path-only impact"
     try:
-        impact = provider.affected_by_diff(
-            repo_id, change.base_sha, change.head_sha, list(change.changed_paths)
-        )
+        impact = provider.affected_by_diff(repo_id, change.base_sha, change.head_sha)
     except Exception as exc:  # degrade, never fabricate symbol impact
         return path_only_impact(
             repo_id, change
