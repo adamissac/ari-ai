@@ -6,7 +6,7 @@ import { Button } from '@/components/ui';
 
 afterEach(cleanup);
 
-describe('Ari AI brand and interactive UI', () => {
+describe('ARI brand and interactive UI', () => {
   it('keeps one accessible name when the button label is duplicated for the hover roll', () => {
     render(<Button>Development sign-in</Button>);
     const btn = screen.getByRole('button', { name: 'Development sign-in' });
@@ -20,13 +20,13 @@ describe('Ari AI brand and interactive UI', () => {
 
   it('shows the product name once beside a decorative bare ant', () => {
     render(<Wordmark />);
-    expect(BRAND_NAME).toBe('Ari AI');
+    expect(BRAND_NAME).toBe('ARI');
     expect(screen.queryByRole('img')).toBeNull();
     const mark = screen.getByTestId('ari-logo');
     expect(mark.getAttribute('aria-hidden')).toBe('true');
     expect(mark.style.height).toBe('22px');
     expect(mark.className).toContain('ari-mark');
-    expect(screen.getByText('Ari AI')).toBeTruthy();
+    expect(screen.getByText('ARI')).toBeTruthy();
   });
 
   it('draws just the ant (no tile) at the requested height and natural width', () => {

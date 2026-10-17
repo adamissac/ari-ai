@@ -13,6 +13,7 @@ import './globals.css';
 // Packaged OFL fonts: no external font service is needed at build or runtime.
 const inter = localFont({ src: './fonts/inter-latin-wght-normal.woff2', weight: '400 600', display: 'swap', variable: '--font-inter' });
 const spaceGrotesk = localFont({ src: './fonts/space-grotesk-latin-wght-normal.woff2', weight: '500 700', display: 'swap', variable: '--font-space-grotesk' });
+const chakraPetch = localFont({ src: './fonts/chakra-petch-latin-700-normal.woff2', weight: '700', display: 'swap', variable: '--font-chakra-petch' });
 const plexMono = localFont({ src: [
   { path: './fonts/ibm-plex-mono-latin-400-normal.woff2', weight: '400', style: 'normal' },
   { path: './fonts/ibm-plex-mono-latin-500-normal.woff2', weight: '500', style: 'normal' },
@@ -22,22 +23,32 @@ const plexMono = localFont({ src: [
 export const metadata: Metadata = {
   title: `${BRAND_NAME} Console`,
   description: 'Code intelligence, functional review, seven-agent security investigation and monitoring — backed by persisted evidence.',
+  openGraph: {
+    title: `${BRAND_NAME} — Find the flaw. Prove the fix.`,
+    siteName: BRAND_NAME,
+    description: 'Code intelligence, review, repair and independent verification.',
+  },
+  twitter: {
+    card: 'summary',
+    title: `${BRAND_NAME} — Find the flaw. Prove the fix.`,
+    description: 'Code intelligence, review, repair and independent verification.',
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable} ${plexMono.variable}`}>
+    <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable} ${plexMono.variable} ${chakraPetch.variable}`}>
       <body className="min-h-screen antialiased">
         <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:rounded focus:bg-accent focus:px-2 focus:py-1 focus:text-bg">Skip to content</a>
-        <header className="site-header sticky top-0 z-40 border-b border-line/80 bg-white/80 backdrop-blur-md">
-          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-            <Link href="/" aria-label={`${BRAND_NAME} home`} className="hdr-reveal">
+        <header className="site-header sticky top-0 z-40">
+          <div className="site-header-inner mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
+            <Link href="/" aria-label={`${BRAND_NAME} home`} className="hdr-logo">
               <Wordmark priority />
             </Link>
             <nav aria-label="Primary" className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
-              <NavLink href="/projects" className="hdr-reveal">Projects</NavLink>
-              <NavLink href="/lab" className="hdr-reveal">Defense Lab</NavLink>
-              <NavLink href="/demo" className="hdr-reveal">Demo</NavLink>
+              <NavLink href="/projects">Projects</NavLink>
+              <NavLink href="/lab">Defense Lab</NavLink>
+              <NavLink href="/demo">Demo</NavLink>
               <NavLink href="/pricing" className="hdr-cta">Pricing</NavLink>
               <AccountLink />
             </nav>

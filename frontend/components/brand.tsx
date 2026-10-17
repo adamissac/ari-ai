@@ -1,7 +1,7 @@
 /** Product identity. The mark is the owner-supplied ant, cut out of its paper square. */
-export const BRAND_NAME = 'Ari AI';
-export const BRAND_HEADLINE = 'Every change understood.';
-export const BRAND_HEADLINE_REST = 'A fix counts only when independent tests agree.';
+export const BRAND_NAME = 'ARI';
+export const BRAND_HEADLINE = 'FIND THE FLAW.';
+export const BRAND_HEADLINE_REST = 'PROVE THE FIX.';
 export const BRAND_TAGLINE = 'A repair counts only when independent, executed tests agree.';
 
 /** Original owner-supplied PNG (kept byte-for-byte; also the favicon). */
@@ -33,7 +33,7 @@ export function Wordmark({ className = '', priority = false }: { className?: str
   return (
     <span className={`ari-wordmark flex items-center gap-2 ${className}`}>
       <LogoMark size={22} decorative priority={priority} />
-      <span className="font-semibold uppercase tracking-[0.08em]">{BRAND_NAME}</span>
+      <span className="ari-wordmark-text">{BRAND_NAME}</span>
     </span>
   );
 }

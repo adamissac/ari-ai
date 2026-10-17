@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 /* Preview pricing: the layout follows kairo.security's pricing page; plan contents describe
-   what Ari AI does. Price points are a placeholder for the owner to confirm. */
+   what ARI does. Price points are a placeholder for the owner to confirm. */
 const TEAM = {
   name: 'Team',
   tagline: 'Assurance on every pull request',
@@ -50,10 +50,10 @@ const ENTERPRISE = {
 };
 
 const FAQ = [
-  { q: 'What would count as a seat?', a: 'In this proposal, a developer whose pull requests Ari AI reviews in a month. Reviewers, approvers and read-only viewers would be free.' },
+  { q: 'What would count as a seat?', a: 'In this proposal, a developer whose pull requests ARI reviews in a month. Reviewers, approvers and read-only viewers would be free.' },
   { q: 'What is an assessment?', a: 'One run on one commit: intent review, the seven security agents inside your approved scope, and independent verification of any fix.' },
-  { q: 'Does Ari AI ever change our code on its own?', a: 'No. Patches are proposed only after a person approves remediation, and a fix only counts when independent, executed tests agree.' },
-  { q: 'What will Ari AI test?', a: 'Only the scope you approve, such as sandbox builds of your own repositories. It never targets third-party systems.' },
+  { q: 'Does ARI ever change our code on its own?', a: 'No. Patches are proposed only after a person approves remediation, and a fix only counts when independent, executed tests agree.' },
+  { q: 'What will ARI test?', a: 'Only the scope you approve, such as sandbox builds of your own repositories. It never targets third-party systems.' },
   { q: 'Is the Defense Lab live network defense?', a: 'No. It is a policy trained and evaluated in simulation, shown as decision support. Nothing it recommends is applied automatically.' },
   { q: 'Can I buy a plan today?', a: 'Not yet. This is a hackathon preview: the plans above are proposals and nothing can be purchased. You can open the console and try the product.' },
 ];
