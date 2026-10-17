@@ -12,6 +12,12 @@ Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablat
 
 ## Session entries
 
+### 2026-10-17 — visualization direction for Vihaan
+- Recorded the product owner's preferred structure for the 24/7 defense map and the seven-agent view. Structure only; the reference screens are not copied. Ari AI palette stays.
+- Message: `coordination/messages/20261017T053014Z-adam-to-vihaan-visualization-structure.md`
+- Spec: `docs/14_FRONTEND_UX_DESIGN.md` section "Preferred visualization structure"
+- Branch: `docs/adam/visualization-structure` (onto `origin/main` `2ab5584`). No tests run; docs only.
+
 ### 2026-10-17 — HANDOFF (owner usage ending): exact state for the next session
 - **On main:** RL env/DDQN/baselines/eval/analysis/stress/explain/lab export (PR #1), payments-lite
   (#5), link+secret CI (#7), shared V0 + backend (#8, verified with the backend + RL suites), RL
