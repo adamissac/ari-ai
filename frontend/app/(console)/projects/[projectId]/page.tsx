@@ -4,6 +4,7 @@ import type { Assessment, AssessmentState, Repository, Snapshot } from '@hackatl
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
+import { PillarLoop } from '@/components/pillar-loop';
 import { useProject } from '@/components/project';
 import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, Panel, Stat, Time } from '@/components/ui';
 import { api, idempotencyKey } from '@/lib/api';
@@ -12,6 +13,7 @@ import { INDEX_COMMIT_NOTE } from '@/lib/index-commit';
 import { shortSha, usd } from '@/lib/format';
 import { JOURNEY_STATUS, latestAssessmentEvent, projectJourney, statesFromLog } from '@/lib/journey';
 import { projectOverview } from '@/lib/overview';
+import { pillarLoop } from '@/lib/pillars';
 import { ASSESSMENT_STATE, FINDING_STATUS, SNAPSHOT_STATUS } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
 
@@ -42,7 +44,7 @@ export default function ProjectOverview() {
           <>
             <h2 className="text-xl font-semibold tracking-tight">{summary.headline}</h2>
             <p className="mt-2 max-w-3xl text-sm text-muted">{summary.detail}</p>
-            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
               <Stat label="Code health" value={summary.codeOpen} hint="open functional findings" />
               <Stat label="Security" value={summary.securityOpen} hint="confirmed, not hypotheses" />
               <Stat label="Continuous defense" value={summary.monitoring} hint={`${summary.verifiedFixes} verified fixes`} />
@@ -53,6 +55,14 @@ export default function ProjectOverview() {
           </>
         ) : <p className="text-sm text-muted">Loading the current project records…</p>}
       </section>
+      <PillarLoopSection
+        projectId={project.id}
+        repoCount={repos.length}
+        activeScopeCount={activeScopeCount}
+        monitoringEnabled={project.settings.monitoring_policy.enabled}
+        assessmentCount={assessments.status === 'ready' ? assessmentItems.length : null}
+        findings={findings.status === 'ready' ? findingItems : null}
+      />
       {ready && (
         <ProjectJourney
           projectId={project.id}
@@ -63,7 +73,7 @@ export default function ProjectOverview() {
           findingStatuses={findingItems.map(f => f.status)}
         />
       )}
-    <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[3fr_2fr]">
       <div className="flex flex-col gap-4">
         <Panel title="Assessments" actions={<span className="text-xs text-muted">refreshes every 5 s</span>}>
           <Async resource={assessments} label="assessments">
@@ -103,6 +113,21 @@ export default function ProjectOverview() {
       </div>
     </div>
     </div>
+  );
+}
+
+function PillarLoopSection(props: {
+  projectId: string; repoCount: number; activeScopeCount: number; monitoringEnabled: boolean;
+  assessmentCount: number | null; findings: readonly { kind: string; status: string }[] | null;
+}) {
+  const monitoring = useResource(`loop-mon:${props.projectId}`, signal => api().monitoringEvents(props.projectId, { signal }), 15000);
+  const reassess = useResource(`loop-re:${props.projectId}`, signal => api().reassessments(props.projectId, { signal }), 15000);
+  return (
+    <PillarLoop nodes={pillarLoop({
+      ...props,
+      monitoringEventCount: monitoring.status === 'ready' ? monitoring.data.items.length : null,
+      reassessmentCount: reassess.status === 'ready' ? reassess.data.items.length : null,
+    })} />
   );
 }
 
@@ -149,7 +174,7 @@ function ProjectJourney({
     <section aria-label="Check progress" className="rounded-xl border border-line bg-panel p-5" data-testid="project-journey">
       <h2 className="text-sm font-semibold tracking-tight">Where this check is</h2>
       {!logReady ? <p className="mt-2 text-sm text-muted">Loading the recorded phases…</p> : (
-        <ol className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <ol className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {stages.map(item => {
             const href = item.id === 'monitor' ? `/projects/${projectId}/monitoring` : assessmentHref;
             return (
@@ -229,7 +254,7 @@ function StartAssessment({ onStarted }: { onStarted: () => void }) {
   return (
     <Panel title="Start an assessment" id="start-assessment">
       {repos.length === 0 ? <Empty>Connect a repository first.</Empty> : (
-        <form onSubmit={submit} className="grid gap-3 sm:grid-cols-3">
+        <form onSubmit={submit} className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Field label="Repository">
             <select className={inputClass} value={repoId} onChange={e => setRepoId(e.target.value)} required name="repo">
               <option value="">Select…</option>

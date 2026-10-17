@@ -7,9 +7,11 @@ import { duration, usd } from '@/lib/format';
 import { AGENTS, AGENT_RUN_STATUS, agentRole, agentRunSummary, handoffNote, providerLabel } from '@/lib/status';
 
 /** Selectable team view. Every row, outcome, and tool line comes from persisted runs. */
-export function AgentTeam({ runs }: { runs: AgentRun[] }) {
+export function AgentTeam({ runs, selected: controlled, onSelect, hideList = false }: { runs: AgentRun[]; selected?: AgentName; onSelect?: (agent: AgentName) => void; hideList?: boolean }) {
   const withRuns = AGENTS.filter(role => runs.some(run => run.agent === role.name));
-  const [selected, setSelected] = useState<AgentName>(withRuns[0]?.name ?? 'scout');
+  const [own, setOwn] = useState<AgentName>(withRuns[0]?.name ?? 'scout');
+  const selected = controlled ?? own;
+  const setSelected = onSelect ?? setOwn;
   const role = agentRole(selected);
   const index = AGENTS.findIndex(item => item.name === selected);
   const next = index >= 0 && index < AGENTS.length - 1 ? AGENTS[index + 1] : null;
@@ -17,8 +19,8 @@ export function AgentTeam({ runs }: { runs: AgentRun[] }) {
   const nextRuns = next ? runs.filter(run => run.agent === next.name) : null;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[16rem_1fr_16rem]" data-testid="agent-team">
-      <ol aria-label="Agents" className="flex flex-col gap-1">
+    <div className={`grid gap-4 ${hideList ? 'lg:grid-cols-[1fr_16rem]' : 'lg:grid-cols-[16rem_1fr_16rem]'}`} data-testid="agent-team">
+      {!hideList && <ol aria-label="Agents" className="flex flex-col gap-1">
         {AGENTS.map(item => {
           const mine = runs.filter(run => run.agent === item.name);
           const latest = mine[mine.length - 1];
@@ -41,7 +43,7 @@ export function AgentTeam({ runs }: { runs: AgentRun[] }) {
             </li>
           );
         })}
-      </ol>
+      </ol>}
       <Panel title={role.label} actions={<span className="text-xs text-muted">{role.team}</span>}>
         <p className="text-sm">{role.job}</p>
         <p className="mt-2 text-sm text-muted" data-testid="agent-outcome">{agentRunSummary(mine)}</p>
