@@ -432,7 +432,7 @@ def _owasp_llm_edition_notes(page_edition: str) -> list[str]:
     notes = ["titles taken from the anchor text of each risk on the project page"]
     try:
         listing = json.loads(fetch(GENAI_TOP10_REPO).body)
-    except Exception as error:  # noqa: BLE001
+    except Exception as error:
         notes.append(f"UNVERIFIED: could not list the GenAI-LLM-Top10 repository: {type(error).__name__}")
         return notes
     years = sorted(entry["name"] for entry in listing if entry.get("type") == "dir" and entry["name"].isdigit())
@@ -615,7 +615,7 @@ def build_cvss31_vectors() -> Built:
         severity = url.rsplit("=", 1)[-1]
         try:
             fetched = fetch(url)
-        except Exception as error:  # noqa: BLE001
+        except Exception as error:
             notes.append(f"UNVERIFIED: NVD page {severity} failed: {type(error).__name__}")
             continue
         sources.append(fetched)
@@ -695,7 +695,7 @@ def build_nist_sp_800_115() -> Built:
         body = document[start:end]
         for match in re.finditer(r"^\s*(\d+(?:\.\d+)*)\.\s+([A-Z][A-Za-z /,&()-]{2,60})\s*$", body, re.M):
             roe_template.append({"section": match.group(1), "title": match.group(2).strip()})
-    except Exception as error:  # noqa: BLE001
+    except Exception as error:
         notes.append(f"UNVERIFIED: could not extract headings from the SP 800-115 PDF: {type(error).__name__}")
     if not planning:
         notes.append("UNVERIFIED: no section 6 planning headings extracted")

@@ -101,7 +101,8 @@ def test_invented_attack_technique_fails_the_trace_step_loudly(intel):
     outcome, _ = run(trace_agent.SPEC, AgentName.TRACE, [FakeTurn(tool_calls=[(submit, bad)])] * 3, intel)
     assert not outcome.ok
     assert outcome.run.error_code is ErrorCode.SCHEMA_INVALID
-    assert "not in the pinned Enterprise ATT&CK v20.0" in outcome.run.error_detail
+    assert "T9999" in outcome.run.error_detail
+    assert "ATT&CK" in outcome.run.error_detail
 
 
 @pytest.mark.parametrize(

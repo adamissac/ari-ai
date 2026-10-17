@@ -23,7 +23,7 @@ from ..contracts import (
 )
 from ..intel import CodeIntel
 from ..runtime import AgentSpec, data_block
-from ..standards.validators import optional_d3fend_field, validate_d3fend
+from ..standards.fields import d3fend_entry, optional_d3fend_field
 
 SYSTEM = """You are Diagnose, the root-cause analyst of an automated security review platform.
 
@@ -184,7 +184,7 @@ def to_plan(
     files = [p for p in out.files_expected if intel.snapshot.exists(p) or p.startswith("tests/")]
     if not files:
         files = [spans[0].path or data.affected_paths[0]]
-    countermeasure = validate_d3fend(out.d3fend_technique) if out.d3fend_technique else None
+    countermeasure = d3fend_entry(out.d3fend_technique) if out.d3fend_technique else None
     plan = RemediationPlan(
         finding_id=data.finding_id,
         strategy=out.strategy,
@@ -194,9 +194,9 @@ def to_plan(
             must_fail_before=list(out.tests_must_fail_before),
             must_pass_after=list(out.tests_must_pass_after),
         ),
-        d3fend_technique=countermeasure.identifier if countermeasure else None,
-        d3fend_label=countermeasure.label if countermeasure else "",
-        d3fend_version=countermeasure.version if countermeasure else "",
+        d3fend_technique=countermeasure.id if countermeasure else None,
+        d3fend_label=countermeasure.name if countermeasure else "",
+        d3fend_version=countermeasure.catalog_version if countermeasure else "",
     )
     related = [EvidenceRef(symbol=site[:200], provenance="agent_output") for site in out.related_sites]
     return root_cause, plan, related

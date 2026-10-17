@@ -152,3 +152,5 @@ SEC-001 / SEC-012 host integration continuation: real backend approval flow pass
 | ID | Objective | Owner | Status | Dependencies | Acceptance / integration / tests |
 |---|---|---|---|---|---|
 | STD-001 | Connect canonical PR #49 standards to persisted findings, incidents, reports and transport; cover OWASP editions | Srihith | IN_REVIEW on `feat/srihith/standards-alignment` | PR #49 canonical catalogs/contracts | Offline catalogs; reference scoring; host persistence; real PostgreSQL incident lifecycle/tenant/approval tests; generated types; truthful partial coverage. Rendered frontend integration remains separate. |
+
+Alan standards continuation (2026-10-17): PR #69 merged; canonical CVSS3.1/OWASP API/NIST800-115 consolidation verified by 300 offline tests. Runtime/browser integration remains under PR #35.

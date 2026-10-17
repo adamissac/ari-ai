@@ -33,6 +33,137 @@
       ],
       "version": "3.9"
     },
+    "cvss-v3.1-nvd-vectors.json": {
+      "curated": "vector and score pairs retrieved from the NVD CVE API; NVD data is mutable, so the recorded response hashes are provenance, not a reproducible pin",
+      "license": "UNVERIFIED: NVD terms page returned a Cloudflare challenge; CVE ids, vectors and scores only",
+      "sha256": "1ebd46221f1842e90233bf1c70226bc931f8f674e83d15da39e85b597e4aca9b",
+      "upstream": [
+        {
+          "sha256": "c570ea2ebd1122c44030957b000d4eff4b6e44cc1a3d05a1293d290698483069",
+          "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cvssV3Severity=CRITICAL&resultsPerPage=20&startIndex=0"
+        },
+        {
+          "sha256": "25f918f4316723b588fa84e02748440471a36a83dce0f0d5a93022889c6ffcde",
+          "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cvssV3Severity=HIGH&resultsPerPage=20&startIndex=0"
+        },
+        {
+          "sha256": "04abd04b83029c895edd7a91ef6bb94b7b41dc3a6b9de72f9d40ab08248ebf27",
+          "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cvssV3Severity=MEDIUM&resultsPerPage=20&startIndex=0"
+        },
+        {
+          "sha256": "21e8a705f5e38ccfb42a3abc9702d80fc38da4cf37467db61c23d1a7392e8b9c",
+          "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cvssV3Severity=LOW&resultsPerPage=20&startIndex=0"
+        },
+        {
+          "sha256": "ef561381efd29f2df3caf37420226533a7c85cd992a3995d8b6d6ad95a39526f",
+          "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cvssV3Metrics=AV:P&resultsPerPage=5&startIndex=0"
+        },
+        {
+          "sha256": "1142a51f3c6251bff7a18e992e1428582eff41df764e002a1880d7533ae10175",
+          "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cvssV3Metrics=AV:A&resultsPerPage=5&startIndex=0"
+        },
+        {
+          "sha256": "c2ec89d97abeed263ad4331f9d4978e7a0dbbf4a40a02ab6014ea2d2c4635739",
+          "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cvssV3Metrics=PR:H/UI:N/S:C&resultsPerPage=5&startIndex=0"
+        },
+        {
+          "sha256": "ce3dee3bf2652c6f7dd22f6db0ecb6adfb24a7d930798ac1f9a35a84de519be3",
+          "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cvssV3Metrics=PR:L/UI:N/S:C&resultsPerPage=5&startIndex=0"
+        },
+        {
+          "sha256": "dd809b2d0a3ac2a33183ed0d7691c53f840f1d90e08a9f66d3282d49bbf06b05",
+          "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cvssV3Metrics=AV:N/AC:L/PR:N/UI:R/S:C&resultsPerPage=5&startIndex=0"
+        },
+        {
+          "sha256": "d3b1b86d6499e19290c84f39aefd0f39988843784d52a47375b07fa833cc4200",
+          "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cvssV3Metrics=C:N/I:N/A:L&resultsPerPage=5&startIndex=0"
+        },
+        {
+          "sha256": "42036478e4e2c26579d4cd2991e96c5a3274aca20d85e033c31bc2e51a18636a",
+          "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2021-44228"
+        },
+        {
+          "sha256": "4c571c9fda427a87d89042e6b6d395b71524e241c4e2399c1910068cf15562c9",
+          "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2019-0708"
+        },
+        {
+          "sha256": "6c334935d0cee567788fd0d44acedf01b3f588b476480122aaa498ad5bf510d8",
+          "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2021-34527"
+        },
+        {
+          "sha256": "1fe869bd6599cc35615a64de6c91b0442ba6a06aeddf5462bb87f49d8178a7ee",
+          "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2022-22965"
+        },
+        {
+          "sha256": "1e084f7d9a60eb8cefeec4aa4689fae9bd99655a1b950bd54e733b13e0c244f0",
+          "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2014-0160"
+        },
+        {
+          "sha256": "8ef5135da4b58b7536174159bd805906932107058160fa90f770af2e67b2aa4c",
+          "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2017-5638"
+        },
+        {
+          "sha256": "fb1a8e1bbfbcca7be2284dcb3ee2bbf613c71bbc10c04821fecba16833914401",
+          "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2021-26855"
+        },
+        {
+          "sha256": "765dd4d7a424c5fca57c8435f9eb746a7cff24b4bb787f1134a3b73123f8d73d",
+          "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2020-1472"
+        },
+        {
+          "sha256": "03ac94082165e410e3fd7a15536f0b114b298c158e2818c93e0b6ecd9aa9c1d7",
+          "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2018-13379"
+        },
+        {
+          "sha256": "67d461fef884b729816ae9a18f7f3c45f26fa5ca92d99271edb62bf4c7feffaa",
+          "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2022-0847"
+        },
+        {
+          "sha256": "66768376d382c80def6dc4b5dc9e3536507c64cf9697029a9f305be2e00c1828",
+          "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2021-3156"
+        },
+        {
+          "sha256": "197bd9cbc1e532d6d22fe9178b2a88d89204479386a3b6c78947021c35f5b712",
+          "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2019-11510"
+        },
+        {
+          "sha256": "6313f1fc77869dba4286686184e2c1b635e52678dd706daca6a69b10691a3265",
+          "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2021-21972"
+        },
+        {
+          "sha256": "494b0aa0c5e59814c0dd449e8d7910d5108e262f9105072994e26e0306868cf0",
+          "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2019-19781"
+        },
+        {
+          "sha256": "ecac8f29e41995a17c7e052e987a9ea2540f095e4d682a77af55c53af41cbdfe",
+          "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2023-4863"
+        },
+        {
+          "sha256": "bcc010777ba1b7c6698f00397483d7ee46c24b30abe1f05ba5b8e39ab7c6fc18",
+          "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2022-26134"
+        },
+        {
+          "sha256": "7bfc111b80c60fbb893649b2d9237c2b7c331b23c084f559aef051d2ecd9c662",
+          "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2020-0601"
+        },
+        {
+          "sha256": "9e9abc85d8debb0946fde1e2007df9d7fea5c410193d76e7433c9d89068cbec0",
+          "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2021-40444"
+        }
+      ],
+      "version": "3.1"
+    },
+    "cvss-v3.1.json": {
+      "license": "FIRST CVSS terms: owned by FIRST and used by permission; publish the vector with every score",
+      "sha256": "571f4d840fe7bd0c6d06f8ef36cec5c565ecd2efedcc9703b3b8f6e32d04511e",
+      "upstream": [
+        {
+          "sha256": "4155ee499564a21a406d11d67e8e44c2066bb4d7a4abe7771b46afe474412f37",
+          "url": "https://www.first.org/cvss/v3.1/specification-document"
+        }
+      ],
+      "version": "3.1"
+    },
     "cvss-v4.0-first-examples.json": {
       "license": "BSD-2-Clause (FIRST calculator); FIRST CVSS attribution terms (standard/examples)",
       "sha256": "f2c5cfa312c690033cca93bdf0ca33738387418b1a1d745b02949ebb97e7f802",
@@ -132,6 +263,21 @@
       ],
       "version": "1"
     },
+    "nist-sp800-115.json": {
+      "license": "NIST public information (https://www.nist.gov/copyrights-disclaimers); credit requested",
+      "sha256": "55abddb553ed7489ea148eb12502a9fa462e005165f542dd06f8f61c9bc3fe3e",
+      "upstream": [
+        {
+          "sha256": "58e5ed41e5c8ca34ce14fd80b70f118f2c6d613d1647bc307edca30bcc45f063",
+          "url": "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-115.pdf"
+        },
+        {
+          "sha256": "862d6141aa6407f4ad6f203fe7ea66d3f7cbcf9472c1962f5da6f4ecae743060",
+          "url": "https://csrc.nist.gov/pubs/sp/800/115/final"
+        }
+      ],
+      "version": "September 2008"
+    },
     "nist-sp800-61r3.json": {
       "curated": "quoted from the pinned PDF; reviewed by hand",
       "license": "US government publication; NIST attribution",
@@ -143,6 +289,17 @@
         }
       ],
       "version": "Rev. 3 (CSF 2.0)"
+    },
+    "owasp-api-2023.json": {
+      "license": "CC BY-SA 4.0 (OWASP API Security Project); identifiers and verbatim titles only",
+      "sha256": "ec457104e829d159d323bcb9eac84118cbf8d6de4d6795082be0891a375ea515",
+      "upstream": [
+        {
+          "sha256": "c396a9fc70a64ea6bccba608b482a99750f00f0ad6c283d6fbdd5c4d936040a3",
+          "url": "https://raw.githubusercontent.com/OWASP/API-Security/ea77cba533150900a7d0c3822d75c460f52edef1/editions/2023/en/0x11-t10.md"
+        }
+      ],
+      "version": "2023"
     },
     "owasp-llm-2026.json": {
       "license": "CC-BY-SA-4.0; OWASP project contributors; IDs/titles-only extraction",
@@ -260,6 +417,12 @@
     "rules/cvss_derivation.json": {
       "curated": "Repository-maintained policy or self-assessment data, not an upstream standard.",
       "sha256": "4d107a016796bdc12db8f9ac57a88fbe59e5aa4ef6f93530e458319c7643d9d4",
+      "version": "1"
+    },
+    "rules/cwe_owasp_api.json": {
+      "curated": "project mapping: CWE to OWASP API Security Top 10 2023, CWEs limited to MITRE usage Allowed or Allowed-with-Review",
+      "license": "project mapping authored in this repository",
+      "sha256": "1b67ef243dddf68d449314eb4fccad5f1b5e5190a1a666a217a4bff40800e293",
       "version": "1"
     },
     "rules/fortify_d3fend.json": {

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pydantic import Field, field_validator
 from standards.mapping import check_cwe
+from standards.owasp_api import owasp_api_tag
 
 from ..contracts import (
     AgentName,
@@ -20,9 +21,8 @@ from ..contracts import (
     new_id,
 )
 from ..intel import CodeIntel, hypothesis_key
-from ..standards.mapping import owasp_api_tag
-from ..standards.validators import validate_cwe
 from ..runtime import AgentSpec, data_block
+from ..standards.fields import cwe_entry
 
 SYSTEM = """You are Scout, the reconnaissance agent of an automated security review platform.
 
@@ -254,7 +254,7 @@ def to_hypotheses(
         key = hypothesis_key(item.weakness_class, spans[0].path or "", item.entry_point_id)
         if key in refuted:
             continue
-        cwe = validate_cwe(item.weakness_class)
+        cwe = cwe_entry(item.weakness_class)
         owasp = owasp_api_tag(item.weakness_class)
         results.append(
             Hypothesis(
@@ -268,7 +268,7 @@ def to_hypotheses(
                 confidence=item.confidence,
                 suggested_check_category=item.suggested_check_category,
                 cwe_name=cwe.name,
-                cwe_mapping_usage=cwe.mapping_usage,
+                cwe_mapping_usage=str(cwe.detail.get("mapping_usage", "")),
                 cwe_catalog_version=cwe.catalog_version,
                 owasp_api_category=owasp.category,
                 owasp_api_title=owasp.title,

@@ -73,7 +73,7 @@ def git_sha() -> str:
         return subprocess.run(
             ["git", "rev-parse", "HEAD"], cwd=PACKAGE_ROOT, capture_output=True, text=True, check=True
         ).stdout.strip()
-    except Exception:  # noqa: BLE001
+    except Exception:
         return "unknown"
 
 

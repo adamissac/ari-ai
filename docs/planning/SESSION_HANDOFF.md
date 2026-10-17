@@ -163,3 +163,9 @@ adds an entry before ending.
 Continued from PR37 prompt on branch `feat/srihith/standards-alignment`. Read GitHub and adopted Alan PR49 canonical0.7 contracts/catalogs/scoring/lifecycle rather than a competing schema. Added real backend incident persistence/API/approval/evidence/audit gates, report standards, host atomic classification updates, producer integration, dual OWASP2025/2026 coverage and transport helpers. New migration0005. Contract generation fresh. Root193 passed/2 live skips; security/reviewer400 passed/11 optional skips; RL82 passed; transport16 unit+4 real-stack tests. No paid calls, deployment or infrastructure response. Review stacked PR before merge; coordinate frontend page mounting with Vihaan and other standards additions with Alan.
 
 Final review follow-up: added strict regression artifact/hash proof, succeeded-Verify requirement, and demo incident labels; model CVSS interpretations are provisional assumptions rather than claimed verified metrics. Adopted Alan’s additional canonical tests/CI at80fb0e7. Expanded root suite304 passed/2 live skips; separate migration coexistence and incident suite5 passed after allocating revision0005_incidents (avoids PR39’s0005). Final standalone tests include standards126, security/reviewer400, RL82 and transport16+4.
+
+### 2026-10-17 — Codex — Claude standards continuation
+- Recovered uncommitted CVSS3.1, OWASP API2023, NIST800-115 catalog consolidation. Added canonical catalog/vector tests and corrected API framework identity. Legacy CVSS module forwards to canonical implementation.
+- Merged PR #69 after reviewing its deterministic standards bridge and observing all CI green.
+- Executed 300 offline standards/runtime-standards tests; no model calls or target execution.
+- Remaining: final remote sync, broad integration/CI, PR #35 frontend e2e failure.

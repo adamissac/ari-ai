@@ -25,7 +25,7 @@ from ..contracts import (
 from ..contracts import export as contract_export
 from ..intel import CodeIntel
 from ..runtime import AgentSpec, data_block
-from ..standards.validators import optional_d3fend_field, validate_d3fend
+from ..standards.fields import d3fend_entry, optional_d3fend_field
 
 SYSTEM = """You are Fortify, the hardening agent of an automated security review platform.
 
@@ -181,7 +181,7 @@ def to_records(
                     provenance="code",
                 )
             )
-        countermeasure = validate_d3fend(item.d3fend_technique) if item.d3fend_technique else None
+        countermeasure = d3fend_entry(item.d3fend_technique) if item.d3fend_technique else None
         recommendations.append(
             HardeningRecommendation(
                 finding_id=data.finding_id,
@@ -197,9 +197,9 @@ def to_records(
                 if refs
                 else [],
                 owner_review_note=item.owner_review_note,
-                d3fend_technique=countermeasure.identifier if countermeasure else None,
-                d3fend_label=countermeasure.label if countermeasure else "",
-                d3fend_version=countermeasure.version if countermeasure else "",
+                d3fend_technique=countermeasure.id if countermeasure else None,
+                d3fend_label=countermeasure.name if countermeasure else "",
+                d3fend_version=countermeasure.catalog_version if countermeasure else "",
             )
         )
     drafts: list[HypothesisDraft] = []
