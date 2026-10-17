@@ -34,6 +34,7 @@ by FastAPI is the source for frontend client generation.
 | GET/PATCH | `/projects/{project_id}` | Read / update settings |
 | GET/POST | `/projects/{project_id}/repositories` | List / connect (GitHub App installation) |
 | POST | `/repositories/{repo_id}/snapshots` | Request indexing at `commit_sha` |
+| GET | `/repositories/{repo_id}/snapshots?status=&limit=&cursor=` | List, newest first (`status=ready` for usable indexes) |
 | GET | `/snapshots/{snapshot_id}` | Status and stats |
 
 ### Intelligence (read)
