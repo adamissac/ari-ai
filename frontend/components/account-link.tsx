@@ -28,14 +28,25 @@ export function AccountLink() {
 
   if (login) {
     return (
-      <Link href="/projects" className="group hdr-account label-mono inline-flex h-8 items-center gap-2 rounded-md px-3" title={`Signed in as ${login}`} data-testid="header-account">
+      <Link
+        href="/projects"
+        className="group hdr-account label-mono inline-flex h-8 items-center gap-2 rounded-md px-2 sm:px-3"
+        title={`Signed in as ${login}`}
+        aria-label={`Signed in as ${login}`}
+        data-testid="header-account"
+      >
         <span aria-hidden="true" className="hdr-avatar">{login.slice(0, 1).toUpperCase()}</span>
-        <span className="max-w-[8rem] truncate normal-case">{login}</span>
+        {/* Phone widths cannot fit Projects + Lab + Demo + Pricing + a full login chip. */}
+        <span className="hidden max-w-[8rem] truncate normal-case sm:inline">{login}</span>
       </Link>
     );
   }
   return (
-    <Link href={DEMO_ONLY ? '/demo' : '/projects'} className="group hdr-signin label-mono inline-flex h-8 items-center rounded-md px-3" data-testid="header-signin">
+    <Link
+      href={DEMO_ONLY ? '/demo' : '/projects'}
+      className="group hdr-signin label-mono inline-flex h-8 items-center rounded-md px-2 sm:px-3"
+      data-testid="header-signin"
+    >
       <RollText>Sign in</RollText>
     </Link>
   );
