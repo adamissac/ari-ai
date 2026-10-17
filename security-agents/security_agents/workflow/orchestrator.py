@@ -55,6 +55,7 @@ from ..intel import CodeIntel, FindingsHistory, hypothesis_key
 from ..llm import LLMGateway
 from ..runtime import AgentSpec, StepOutcome, StepRecord, run_agent
 from ..sandbox.driver import SandboxDriver
+from ..sandbox.workspace import tree_digest
 from ..scope_guard import ActionRequest
 from ..scope_guard import check as scope_check
 from ..tools import (
@@ -133,6 +134,7 @@ class FindingRecord:
     verifications: list[VerificationResult] = field(default_factory=list)
     regression_tests: list[RegressionTest] = field(default_factory=list)
     verified_regression_bundle: dict[str, Any] | None = None
+    verify_http_evidence: dict[str, Any] | None = None
     recommendations: list[HardeningRecommendation] = field(default_factory=list)
     future_hypotheses: list[HypothesisDraft] = field(default_factory=list)
     monitoring_hints: list[str] = field(default_factory=list)
@@ -177,6 +179,27 @@ class AssessmentResult:
     def agents_executed(self) -> set[str]:
         return {r.agent.value for r in self.runs}
 
+    def _tool_trace(self, run_id: str) -> list[dict[str, Any]]:
+        """Per-call trace of one run (name, ok/error, args, result summary), re-redacted and
+        bounded, so a failed paid run can be diagnosed from the report alone."""
+        from ..redact import redact
+
+        record = next((r for r in self.records if r.run_id == run_id), None)
+        if record is None:
+            return []
+        trace = []
+        for call in record.tool_invocations[:40]:
+            trace.append(
+                {
+                    "name": call.name,
+                    "ok": call.ok,
+                    "error_code": call.error_code,
+                    "args": json.dumps(redact(call.args), default=str, sort_keys=True)[:800],
+                    "summary": json.dumps(redact(call.summary), default=str, sort_keys=True)[:1200],
+                }
+            )
+        return trace
+
     def report(self) -> dict[str, Any]:
         return {
             "assessment_id": self.assessment_id,
@@ -197,6 +220,7 @@ class AssessmentResult:
                     "tokens": r.usage.total_tokens,
                     "usd": round(r.usage.usd, 6),
                     "error_code": r.error_code.value if r.error_code else None,
+                    "tool_trace": self._tool_trace(r.id),
                 }
                 for r in self.runs
             ],
@@ -223,6 +247,7 @@ class OrchestratorConfig:
     protected_tests: list[str] = field(default_factory=list)
     test_command_args: tuple[str, ...] = ("-q", "tests")
     probe_check_transport: str = "inprocess"
+    verify_check_transport: str = "inprocess"
 
 
 class Orchestrator:
@@ -348,25 +373,30 @@ class Orchestrator:
     def _probe_transport_problem(self) -> str | None:
         from ..checks.library import TRANSPORTS
 
-        transport = self.config.probe_check_transport
-        if transport not in TRANSPORTS:
-            return f"unknown probe check transport {transport!r}"
-        if transport == "inprocess":
-            return None
-        if getattr(self.driver, "name", "") != "docker":
-            return "the http probe transport requires the Docker sandbox driver"
-        if not recipe_from_snapshot(self.intel)(None, self.config.target_id).get("app_factory"):
-            return "the http probe transport requires an app_factory in the build recipe"
-        if self.roe is None:
-            return "the http probe transport requires issued rules of engagement"
-        self._audit(
-            "probe.transport",
-            "assessment",
-            self.config.assessment_id,
-            transport=transport,
-            target="assessed snapshot served in the check image",
-            target_id=self.config.target_id,
-        )
+        for role, transport in (
+            ("probe", self.config.probe_check_transport),
+            ("verify", self.config.verify_check_transport),
+        ):
+            if transport not in TRANSPORTS:
+                return f"unknown {role} check transport {transport!r}"
+            if transport == "inprocess":
+                continue
+            if getattr(self.driver, "name", "") != "docker":
+                return f"the http {role} transport requires the Docker sandbox driver"
+            if not recipe_from_snapshot(self.intel)(None, self.config.target_id).get("app_factory"):
+                return f"the http {role} transport requires an app_factory in the build recipe"
+            if self.roe is None:
+                return f"the http {role} transport requires issued rules of engagement"
+            self._audit(
+                f"{role}.transport",
+                "assessment",
+                self.config.assessment_id,
+                transport=transport,
+                target="assessed snapshot served in the check image"
+                if role == "probe"
+                else "patched fresh checkout served in the check image",
+                target_id=self.config.target_id,
+            )
         return None
 
     def _issue_roe(self) -> Any:
@@ -1014,6 +1044,7 @@ class Orchestrator:
                 library=self.library,
                 workspace_provider=verify_workspace,
                 recipe_provider=recipe_from_snapshot(self.intel),
+                transport=self.config.verify_check_transport,
             ),
         }
         ctx = self._context(AgentName.VERIFY, f"remediation:{finding.finding_id}:verify", services=services)
@@ -1038,6 +1069,11 @@ class Orchestrator:
             protected_tests=self._protected_tests(),
             original_check_ref=data.original_check_template_ref,
             original_check_params=dict(data.original_check_parameters),
+            required_transport=self.config.verify_check_transport,
+            original_tree_sha256=tree_digest(self.intel.snapshot.root),
+            patched_tree_sha256=tree_digest(ctx.artifacts["verify_workspace"])
+            if ctx.artifacts.get("verify_workspace")
+            else None,
         )
         out = outcome.output if isinstance(outcome.output, verify_agent.VerifyOutput) else None
         sandbox_ids = [
@@ -1048,6 +1084,7 @@ class Orchestrator:
         )
         from ..regressions import RegressionEvidenceUnavailable, verified_bundle
 
+        finding.verify_http_evidence = verify_agent.http_recheck_evidence(evidence, result.verdict)
         finding.verified_regression_bundle = None
         if result.verdict == "accepted" and outcome.ok:
             try:
