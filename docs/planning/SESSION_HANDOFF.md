@@ -18,6 +18,11 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-17 — Adam (cloud session) — scroll performance, demo-only hosted build
+- Did: branch `feat/adam/hosted-demo-scroll` (stacked on #226). Fixed landing scroll jank: the mean frame went from 82 ms to 21 ms (headless Chromium, software rendering). Added a `NEXT_PUBLIC_DEMO_ONLY` build flag (Vercel only): `/projects*` redirects to `/demo` and `/` renders without a backend. Fixed the blank white-button label in dark bands. Redeployed production from this branch: https://ari-ai-lake.vercel.app.
+- Commands: `npm run lint`, `tsc`, `npm test` (202 passed); demo-only build with an unreachable backend: `/projects` returns 307 to `/demo`.
+- Open: the user asked for pages that look "just like kairo.security". The site cannot be reached from the cloud sandbox (DNS/egress blocked), so an exact visual match needs screenshots from the user.
+
 ### 2026-10-17 — Adam (cloud session) — Vercel deployment of the frontend
 - Did: created Vercel project `ari-ai` (team "Adam's projects"), linked to this repo, root `frontend/`, install `npm ci --prefix transport && npm run build --prefix transport && npm ci`, Node 24.x. Deployed `feat/adam/simulated-demo` @ `06f8af2` to production: https://ari-ai-lake.vercel.app (`/demo`, `/lab`).
 - State: READY. Checked `/demo/lumen-pay/payments-api` (200, demo footer) and `/lab/bundles` (200, protocol-v1 and v0). Vercel Authentication is on (`all_except_custom_domains`), so `.vercel.app` URLs need a Vercel login on the team. No `BACKEND_ORIGIN` is set, so console pages (`/`, `/projects`) cannot reach a backend there.
