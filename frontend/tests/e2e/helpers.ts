@@ -20,3 +20,8 @@ export async function newUser(browser: Browser, login: string): Promise<Page> {
   await signIn(page, login);
   return page;
 }
+
+/** Full-page screenshot of real executed test data (never fixtures), kept with the test results. */
+export async function evidenceShot(page: Page, name: string): Promise<void> {
+  await page.screenshot({ path: `test-results/evidence/${name}.png`, fullPage: true });
+}

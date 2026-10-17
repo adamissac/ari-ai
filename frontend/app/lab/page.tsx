@@ -113,7 +113,7 @@ function Metrics({ bundle }: { bundle: DefenseLabBundle }) {
       </p>
       <figure aria-label={`${METRIC_LABEL[metric] ?? metric} by policy`} className="flex flex-col gap-2" data-testid="metric-chart">
         {rows.map(r => (
-          <div key={r.policy} className="grid grid-cols-[8rem_1fr_9rem] items-center gap-2 text-xs">
+          <div key={r.policy} className="grid grid-cols-[8rem_1fr_13rem] items-center gap-2 text-xs">
             <span className={r.policy === 'ddqn' ? 'font-semibold text-accent' : 'text-muted'}>{r.policy}</span>
             <svg viewBox="0 0 100 10" preserveAspectRatio="none" className="h-5 w-full" role="img" aria-label={`${r.policy}: ${r.mean === null ? 'no value' : num(r.mean, 3)}`}>
               <line x1={x(0)} x2={x(0)} y1={0} y2={10} stroke="var(--color-line)" strokeWidth={0.4} />
@@ -126,7 +126,7 @@ function Metrics({ bundle }: { bundle: DefenseLabBundle }) {
                 </g>
               )}
             </svg>
-            <span className="font-mono text-muted">{r.mean === null ? 'n/a' : num(r.mean, 3)} <span className="text-faint">[{r.lo === null ? '—' : num(r.lo, 2)}, {r.hi === null ? '—' : num(r.hi, 2)}]</span></span>
+            <span className="whitespace-nowrap font-mono text-muted">{r.mean === null ? 'n/a' : num(r.mean, 3)} <span className="text-faint">[{r.lo === null ? '—' : num(r.lo, 2)}, {r.hi === null ? '—' : num(r.hi, 2)}]</span></span>
           </div>
         ))}
         <figcaption className="text-xs text-faint">Axis {num(min, 2)} … {num(max, 2)}. Values are copied from the bundle; nothing is recomputed in the browser.</figcaption>
