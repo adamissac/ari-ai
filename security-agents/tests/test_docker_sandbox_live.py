@@ -236,3 +236,33 @@ def test_http_ownership_check_clears_the_lookalike_route_over_the_network(paymen
     assert result["matches_expectation"] is True, result
     statuses = sorted(r["status"] for r in result["target_requests"] if r["path"].startswith("/customers/"))
     assert len(statuses) == 2 and statuses[0] == 200 and statuses[1] in (403, 404), result["target_requests"]
+
+
+@needs_target_image
+def test_seven_agent_run_probes_the_docker_target_over_http_and_persists_the_evidence(
+    intel, library, tmp_path
+):
+    from security_agents.contracts import ValidationOutcome
+    from security_agents.workflow import AssessmentState
+
+    from .test_e2e_replay import EXPECTED_AGENT_ORDER, build
+
+    orch, _ = build(intel, DockerSandboxDriver(), library, tmp_path)
+    orch.config.probe_check_transport = "http"
+    res = orch.run()
+
+    assert res.state is AssessmentState.COMPLETED, res.error_detail
+    assert [r.agent.value for r in res.runs] == EXPECTED_AGENT_ORDER
+    assert "probe.transport" in res.report()["audit_actions"]
+    finding = next(f for f in res.findings if f.validation is not None)
+    validation = finding.validation
+    assert validation.outcome is ValidationOutcome.CONFIRMED
+    obs = validation.observations
+    assert obs["transport"] == "http", "Probe silently fell back to in-process execution"
+    assert obs["driver"] == "docker" and obs["network"] == "target-only"
+    assert obs["target_contacted"] is True
+    payment_reads = [r for r in obs["target_requests"] if r["path"].startswith("/payments/")]
+    assert len(payment_reads) == 2 and all(r["status"] == 200 for r in payment_reads), obs["target_requests"]
+    assert len(obs["target_log_sha256"]) == 64
+    assert validation.sandbox_run_id and validation.evidence
+    assert finding.verifications and finding.verifications[-1].verdict == "accepted"
