@@ -4,6 +4,7 @@ import type { Assessment, AssessmentState, Repository, Snapshot } from '@hackatl
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
+import { PillarLoop } from '@/components/pillar-loop';
 import { useProject } from '@/components/project';
 import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, Panel, Stat, Time } from '@/components/ui';
 import { api, idempotencyKey } from '@/lib/api';
@@ -12,6 +13,7 @@ import { INDEX_COMMIT_NOTE } from '@/lib/index-commit';
 import { shortSha, usd } from '@/lib/format';
 import { JOURNEY_STATUS, latestAssessmentEvent, projectJourney, statesFromLog } from '@/lib/journey';
 import { projectOverview } from '@/lib/overview';
+import { pillarLoop } from '@/lib/pillars';
 import { ASSESSMENT_STATE, FINDING_STATUS, SNAPSHOT_STATUS } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
 
@@ -53,6 +55,14 @@ export default function ProjectOverview() {
           </>
         ) : <p className="text-sm text-muted">Loading the current project records…</p>}
       </section>
+      <PillarLoopSection
+        projectId={project.id}
+        repoCount={repos.length}
+        activeScopeCount={activeScopeCount}
+        monitoringEnabled={project.settings.monitoring_policy.enabled}
+        assessmentCount={assessments.status === 'ready' ? assessmentItems.length : null}
+        findings={findings.status === 'ready' ? findingItems : null}
+      />
       {ready && (
         <ProjectJourney
           projectId={project.id}
@@ -103,6 +113,21 @@ export default function ProjectOverview() {
       </div>
     </div>
     </div>
+  );
+}
+
+function PillarLoopSection(props: {
+  projectId: string; repoCount: number; activeScopeCount: number; monitoringEnabled: boolean;
+  assessmentCount: number | null; findings: readonly { kind: string; status: string }[] | null;
+}) {
+  const monitoring = useResource(`loop-mon:${props.projectId}`, signal => api().monitoringEvents(props.projectId, { signal }), 15000);
+  const reassess = useResource(`loop-re:${props.projectId}`, signal => api().reassessments(props.projectId, { signal }), 15000);
+  return (
+    <PillarLoop nodes={pillarLoop({
+      ...props,
+      monitoringEventCount: monitoring.status === 'ready' ? monitoring.data.items.length : null,
+      reassessmentCount: reassess.status === 'ready' ? reassess.data.items.length : null,
+    })} />
   );
 }
 
