@@ -7,6 +7,7 @@ import { Term } from '@/components/term';
 import { useSession } from '@/components/session';
 import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, Panel, Time } from '@/components/ui';
 import { api } from '@/lib/api';
+import { useActionKeys } from '@/lib/action-key';
 import { REQUEST_SCOPE_NOTE, SCOPE_CHECK_CATEGORIES } from '@/lib/scope';
 import { SCOPE_STATUS } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
@@ -84,18 +85,23 @@ function RequestScope({ onCreated }: { onCreated: () => void }) {
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const keys = useActionKeys('create-scope');
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
     setError(null);
+    const sig = JSON.stringify([name.trim(), repoId, recipe.trim(), categories, days, notes.trim()]);
     try {
-      await api().createScope(project.id, {
+      // Built once per action: a retry resends the same expiry under the same key.
+      const body = keys.payloadFor(sig, () => ({
         name: name.trim(),
-        targets: [{ kind: 'sandbox_build', repo_id: repoId, build_recipe_ref: recipe.trim(), exposed_ports: [] }],
+        targets: [{ kind: 'sandbox_build' as const, repo_id: repoId, build_recipe_ref: recipe.trim(), exposed_ports: [] }],
         allowed_check_categories: categories,
         expires_at: new Date(Date.now() + days * 86_400_000).toISOString(),
         notes: notes.trim() || null,
-      });
+      }));
+      await api().createScope(project.id, body, { idempotencyKey: keys.keyFor(sig) });
+      keys.done();
       setName('');
       onCreated();
     } catch (err) { setError(err); } finally { setBusy(false); }
