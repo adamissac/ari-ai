@@ -183,6 +183,8 @@ test('create a project and connect a repository through the UI', async ({ browse
   await page.getByRole('button', { name: 'Connect' }).click();
   await expect(page.getByRole('region', { name: 'Repositories' }).getByText('acme/another-repo')).toBeVisible();
   await expect(page.getByText('No assessments yet.')).toBeVisible();
+  // Connected by name (no App installation): commits are explicitly unavailable, never invented.
+  await expect(page.getByTestId('repo-commits-unavailable')).toBeVisible();
 
   // A repository that cannot be attacked live gets a labelled simulated attack and defense.
   await page.getByTestId('simulate-acme/another-repo').click();
