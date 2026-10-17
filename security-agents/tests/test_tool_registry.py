@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from security_agents.agents import ALL_SPECS
@@ -311,7 +313,11 @@ def test_tool_schemas_are_provider_valid(registry):
         for schema in registry.schemas_for(agent, ALL_SPECS[agent].tools):
             assert re.fullmatch(r"[a-zA-Z0-9_-]{1,64}", schema["name"]), schema["name"]
             assert schema["input_schema"]["additionalProperties"] is False
-            assert schema["strict"] is True
+            # strict whenever the API can express it; free-form maps (dict args) cannot be
+            # strict without forbidding every key, so those tools are sent non-strict
+            # (validated against the live API: see test_strict_schema.py).
+            free_form = '"additionalProperties": {' in json.dumps(schema["input_schema"])
+            assert schema["strict"] is (not free_form), schema["name"]
             assert len(schema["description"]) < 1024
 
 

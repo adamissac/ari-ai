@@ -41,8 +41,13 @@ def run_assessment(
     **kwargs,
 ) -> AssessmentResult:
     return Orchestrator(
-        config, intel=intel, gateway=gateway, driver=driver, library=library,
-        workdir=workdir, **kwargs,
+        config,
+        intel=intel,
+        gateway=gateway,
+        driver=driver,
+        library=library,
+        workdir=workdir,
+        **kwargs,
     ).run()
 
 

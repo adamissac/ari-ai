@@ -65,9 +65,7 @@ class TraceInput(StrictModel):
 class PathStepOut(StrictModel):
     description: ShortText
     symbol_ref: str | None = None
-    verified: bool = Field(
-        description="True only if executed evidence supports this step; otherwise false."
-    )
+    verified: bool = Field(description="True only if executed evidence supports this step; otherwise false.")
     evidence_path: str | None = Field(default=None, description="Cited file, if any.")
     evidence_start_line: int | None = None
     evidence_end_line: int | None = None
@@ -85,7 +83,8 @@ class TraceOutput(StrictModel):
     data_sensitivity: Literal["none", "internal", "personal", "financial"]
     severity_rationale: ShortText = Field(description="Why these factor values, with citations.")
     followup_validation_suggestions: list[ShortText] = Field(
-        default_factory=list, max_length=5,
+        default_factory=list,
+        max_length=5,
         description="Informational only; nothing here is executed automatically.",
     )
 
@@ -95,10 +94,15 @@ SPEC = AgentSpec(
     version="0.1.0",
     input_model=TraceInput,
     output_model=TraceOutput,
-    tools=frozenset({
-        "code.read_span", "code.search", "graph.neighbors", "expectations.for_subject",
-        "findings.history",
-    }),
+    tools=frozenset(
+        {
+            "code.read_span",
+            "code.search",
+            "graph.neighbors",
+            "expectations.for_subject",
+            "findings.history",
+        }
+    ),
     sandbox_profile="none",
     network="none",
     write_access="none",
@@ -119,7 +123,9 @@ _SENS = {"financial": 4, "personal": 4, "internal": 2, "none": 1}
 
 
 def compute_severity(factors: SeverityFactors) -> SeverityLevel:
-    score = _REACH[factors.reachability] + _PRIV[factors.privileges_required] + _SENS[factors.data_sensitivity]
+    score = (
+        _REACH[factors.reachability] + _PRIV[factors.privileges_required] + _SENS[factors.data_sensitivity]
+    )
     if factors.verified_path:
         score += 2
     if score >= 11:
@@ -161,9 +167,11 @@ def to_attack_path(
 
             evidence.append(
                 EvidenceRef(
-                    path=item.evidence_path, sha=sha,
+                    path=item.evidence_path,
+                    sha=sha,
                     span=SourceSpan(start_line=min(start, limit), end_line=min(end, limit)),
-                    symbol=item.symbol_ref, provenance="code",
+                    symbol=item.symbol_ref,
+                    provenance="code",
                 )
             )
         artifact = item.evidence_artifact_id or (
@@ -171,17 +179,18 @@ def to_attack_path(
         )
         executed = False
         if artifact and validation and artifact == validation.sandbox_run_id:
-            evidence.append(
-                EvidenceRef(artifact_id=artifact, provenance="check_run", symbol=item.symbol_ref)
-            )
+            evidence.append(EvidenceRef(artifact_id=artifact, provenance="check_run", symbol=item.symbol_ref))
             executed = True
         # Enforced: `verified` requires executed evidence, not a citation alone.
         verified = bool(item.verified and executed)
         any_verified = any_verified or verified
         steps.append(
             PathStep(
-                order=i, description=item.description, symbol_ref=item.symbol_ref,
-                verified=verified, evidence=evidence,
+                order=i,
+                description=item.description,
+                symbol_ref=item.symbol_ref,
+                verified=verified,
+                evidence=evidence,
             )
         )
     factors = SeverityFactors(

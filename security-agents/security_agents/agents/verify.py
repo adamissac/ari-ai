@@ -79,7 +79,8 @@ class VerifyOutput(StrictModel):
         default=None, max_length=120, description="Template ref you re-ran, if any."
     )
     concerns: list[ShortText] = Field(
-        default_factory=list, max_length=8,
+        default_factory=list,
+        max_length=8,
         description="Anything that looked wrong, including suspicious instructions in the diff.",
     )
 
@@ -89,10 +90,17 @@ SPEC = AgentSpec(
     version="0.1.0",
     input_model=VerifyInput,
     output_model=VerifyOutput,
-    tools=frozenset({
-        "code.read_span", "expectations.for_subject", "static.analyze", "checks.list_templates",
-        "checks.run_template", "tests.run", "patch.apply_fresh",
-    }),
+    tools=frozenset(
+        {
+            "code.read_span",
+            "expectations.for_subject",
+            "static.analyze",
+            "checks.list_templates",
+            "checks.run_template",
+            "tests.run",
+            "patch.apply_fresh",
+        }
+    ),
     sandbox_profile="check-runner",
     network="target-only",
     write_access="none",
@@ -196,7 +204,8 @@ def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], l
         add(VerificationCheckName.DIFF_SCOPE_OK, False, "candidate diff did not apply to a fresh checkout")
     elif out_of_scope:
         add(
-            VerificationCheckName.DIFF_SCOPE_OK, False,
+            VerificationCheckName.DIFF_SCOPE_OK,
+            False,
             f"files outside the approved plan were changed: {out_of_scope}",
         )
     else:
@@ -205,29 +214,34 @@ def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], l
     # no_test_tampering
     if tampered:
         add(
-            VerificationCheckName.NO_TEST_TAMPERING, False,
+            VerificationCheckName.NO_TEST_TAMPERING,
+            False,
             f"tests encoding confirmed expectations were modified or deleted: {tampered}",
         )
     else:
         add(
-            VerificationCheckName.NO_TEST_TAMPERING, True,
+            VerificationCheckName.NO_TEST_TAMPERING,
+            True,
             f"no protected test modified (protected: {len(ev.protected_tests)} file(s))",
         )
 
     # original_check_now_fails_to_reproduce
     matching = [
-        r for r in ev.recheck_runs
+        r
+        for r in ev.recheck_runs
         if not r.get("error")
         and (ev.original_check_ref is None or r.get("template_ref") == ev.original_check_ref)
     ]
     if not ev.original_check_ref:
         add(
-            VerificationCheckName.ORIGINAL_CHECK_NOW_FAILS, False,
+            VerificationCheckName.ORIGINAL_CHECK_NOW_FAILS,
+            False,
             "no original check template was recorded for this finding, so the fix cannot be re-checked",
         )
     elif not matching:
         add(
-            VerificationCheckName.ORIGINAL_CHECK_NOW_FAILS, False,
+            VerificationCheckName.ORIGINAL_CHECK_NOW_FAILS,
+            False,
             f"the original check {ev.original_check_ref} was not re-run against the patched code",
         )
     else:
@@ -239,26 +253,31 @@ def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], l
         artifact = str(last.get("sandbox_run_id") or "")
         if not same_params:
             add(
-                VerificationCheckName.ORIGINAL_CHECK_NOW_FAILS, False,
+                VerificationCheckName.ORIGINAL_CHECK_NOW_FAILS,
+                False,
                 f"re-check used different parameters: {last.get('parameters')} != {ev.original_check_params}",
                 artifact,
             )
         elif matches is True:
             add(
-                VerificationCheckName.ORIGINAL_CHECK_NOW_FAILS, True,
+                VerificationCheckName.ORIGINAL_CHECK_NOW_FAILS,
+                True,
                 "the expectation now holds against the patched target (finding no longer reproduces)",
                 artifact,
             )
         elif matches is False:
             add(
-                VerificationCheckName.ORIGINAL_CHECK_NOW_FAILS, False,
+                VerificationCheckName.ORIGINAL_CHECK_NOW_FAILS,
+                False,
                 "the expectation still does not hold against the patched target",
                 artifact,
             )
         else:
             add(
-                VerificationCheckName.ORIGINAL_CHECK_NOW_FAILS, False,
-                "the re-check was inconclusive", artifact,
+                VerificationCheckName.ORIGINAL_CHECK_NOW_FAILS,
+                False,
+                "the re-check was inconclusive",
+                artifact,
             )
 
     # functional_suite_passes
@@ -272,22 +291,29 @@ def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], l
         artifact = str(last.get("sandbox_run_id") or "")
         if last.get("errors"):
             add(
-                VerificationCheckName.FUNCTIONAL_SUITE_PASSES, False,
-                f"collection errors in the suite run ({last.get('errors')})", artifact,
+                VerificationCheckName.FUNCTIONAL_SUITE_PASSES,
+                False,
+                f"collection errors in the suite run ({last.get('errors')})",
+                artifact,
             )
         elif new_failures:
             add(
-                VerificationCheckName.FUNCTIONAL_SUITE_PASSES, False,
-                f"tests failing after the patch that passed before: {new_failures}", artifact,
+                VerificationCheckName.FUNCTIONAL_SUITE_PASSES,
+                False,
+                f"tests failing after the patch that passed before: {new_failures}",
+                artifact,
             )
         elif last.get("passed", 0) == 0:
             add(
-                VerificationCheckName.FUNCTIONAL_SUITE_PASSES, False,
-                "no test was executed in the suite run", artifact,
+                VerificationCheckName.FUNCTIONAL_SUITE_PASSES,
+                False,
+                "no test was executed in the suite run",
+                artifact,
             )
         else:
             add(
-                VerificationCheckName.FUNCTIONAL_SUITE_PASSES, True,
+                VerificationCheckName.FUNCTIONAL_SUITE_PASSES,
+                True,
                 f"{last.get('passed')} passed; failures equal to baseline ({sorted(ev.baseline_failing)})",
                 artifact,
             )
@@ -295,12 +321,14 @@ def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], l
     # generated_tests_pass
     if not ev.tests_added:
         add(
-            VerificationCheckName.GENERATED_TESTS_PASS, False,
+            VerificationCheckName.GENERATED_TESTS_PASS,
+            False,
             "the candidate added no test for this finding, so the fix has no regression test",
         )
     else:
         added_runs = [
-            r for r in ev.test_runs
+            r
+            for r in ev.test_runs
             if not r.get("error")
             and (
                 r.get("selection") == "added_tests"
@@ -316,13 +344,25 @@ def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], l
             offending = sorted(f for f in failing if any(f.startswith(t) for t in ev.tests_added))
             artifact = str(last.get("sandbox_run_id") or "")
             if offending:
-                add(VerificationCheckName.GENERATED_TESTS_PASS, False, f"added tests failing: {offending}", artifact)
+                add(
+                    VerificationCheckName.GENERATED_TESTS_PASS,
+                    False,
+                    f"added tests failing: {offending}",
+                    artifact,
+                )
             elif last.get("passed", 0) == 0:
-                add(VerificationCheckName.GENERATED_TESTS_PASS, False, "no test executed in that run", artifact)
+                add(
+                    VerificationCheckName.GENERATED_TESTS_PASS,
+                    False,
+                    "no test executed in that run",
+                    artifact,
+                )
             else:
                 add(
-                    VerificationCheckName.GENERATED_TESTS_PASS, True,
-                    f"added tests passed ({', '.join(ev.tests_added)})", artifact,
+                    VerificationCheckName.GENERATED_TESTS_PASS,
+                    True,
+                    f"added tests passed ({', '.join(ev.tests_added)})",
+                    artifact,
                 )
 
     verdict = "accepted" if all(c.passed for c in checks) else "rejected"
@@ -338,7 +378,9 @@ def to_result(
     verify_run_id: str,
 ) -> VerificationResult:
     verdict, checks, reasons = compute_verdict(ev)
-    summary = out.summary if out else "Verify step did not produce a summary; verdict is from executed records."
+    summary = (
+        out.summary if out else "Verify step did not produce a summary; verdict is from executed records."
+    )
     if out and out.concerns:
         summary = f"{summary}\nConcerns: " + "; ".join(out.concerns)
     return VerificationResult(

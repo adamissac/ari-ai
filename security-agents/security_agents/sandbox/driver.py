@@ -106,7 +106,14 @@ class SandboxDriver(Protocol):
     def run(self, spec: SandboxSpec) -> SandboxResult: ...
 
 
-FORBIDDEN_WORKSPACE_ROOTS = (Path("/"), Path("/Users"), Path("/home"), Path("/etc"), Path("/var"), Path.home())
+FORBIDDEN_WORKSPACE_ROOTS = (
+    Path("/"),
+    Path("/Users"),
+    Path("/home"),
+    Path("/etc"),
+    Path("/var"),
+    Path.home(),
+)
 
 
 def validate_spec(spec: SandboxSpec) -> None:
@@ -127,7 +134,9 @@ def validate_spec(spec: SandboxSpec) -> None:
     if spec.network == "target-only":
         d = spec.scope_decision
         if d is None or not d.allowed or spec.target_id is None:
-            raise PlatformError(ErrorCode.SCOPE_DENIED, "target-only network requires an allowed scope decision")
+            raise PlatformError(
+                ErrorCode.SCOPE_DENIED, "target-only network requires an allowed scope decision"
+            )
     for name in spec.extra_files:
         if "/" in name or name.startswith(".") or name in ("entry.py", "harness.py"):
             raise PlatformError(ErrorCode.SANDBOX_POLICY_VIOLATION, f"bad extra file name {name!r}")
@@ -270,7 +279,9 @@ class LocalProcessDriver:
 CommandRunner = Callable[[list[str], bytes | None, float], subprocess.CompletedProcess[bytes]]
 
 
-def _default_runner(argv: list[str], stdin: bytes | None, timeout: float) -> subprocess.CompletedProcess[bytes]:
+def _default_runner(
+    argv: list[str], stdin: bytes | None, timeout: float
+) -> subprocess.CompletedProcess[bytes]:
     return subprocess.run(argv, input=stdin, capture_output=True, timeout=timeout, check=False)
 
 
@@ -312,21 +323,35 @@ class DockerSandboxDriver:
     def hardening_args(self, spec: SandboxSpec, run_id: str) -> list[str]:
         lim = spec.limits
         args = [
-            "--user", "65534:65534",
-            "--cap-drop", "ALL",
-            "--security-opt", "no-new-privileges:true",
+            "--user",
+            "65534:65534",
+            "--cap-drop",
+            "ALL",
+            "--security-opt",
+            "no-new-privileges:true",
             "--read-only",
-            "--tmpfs", "/tmp:rw,noexec,nosuid,size=64m",
-            "--tmpfs", "/work:rw,nosuid,size=512m,uid=65534",
-            "--tmpfs", "/out:rw,noexec,nosuid,size=64m,uid=65534",
-            "--cpus", str(lim.cpus),
-            "--memory", f"{lim.memory_mb}m",
-            "--memory-swap", f"{lim.memory_mb}m",
-            "--pids-limit", str(lim.pids),
-            "--label", f"{LABEL_ROOT}=1",
-            "--label", f"{LABEL_ROOT}.run_id={run_id}",
-            "--label", f"{LABEL_ROOT}.created={int(time.time())}",
-            "--label", f"{LABEL_ROOT}.timeout={int(lim.timeout_s)}",
+            "--tmpfs",
+            "/tmp:rw,noexec,nosuid,size=64m",
+            "--tmpfs",
+            "/work:rw,nosuid,size=512m,uid=65534",
+            "--tmpfs",
+            "/out:rw,noexec,nosuid,size=64m,uid=65534",
+            "--cpus",
+            str(lim.cpus),
+            "--memory",
+            f"{lim.memory_mb}m",
+            "--memory-swap",
+            f"{lim.memory_mb}m",
+            "--pids-limit",
+            str(lim.pids),
+            "--label",
+            f"{LABEL_ROOT}=1",
+            "--label",
+            f"{LABEL_ROOT}.run_id={run_id}",
+            "--label",
+            f"{LABEL_ROOT}.created={int(time.time())}",
+            "--label",
+            f"{LABEL_ROOT}.timeout={int(lim.timeout_s)}",
         ]
         for k, v in sorted(spec.labels.items()):
             args += ["--label", f"{LABEL_ROOT}.{k}={v}"]
@@ -337,23 +362,39 @@ class DockerSandboxDriver:
         if net is None:
             raise PlatformError(ErrorCode.SCOPE_DENIED, "no authorised network")
         env = [
-            "-e", "SANDBOX_OUT=/out",
-            "-e", f"SANDBOX_NETWORK={'none' if spec.network == 'none' else 'target-only'}",
-            "-e", "SANDBOX_EMIT_OUT=1",
-            "-e", "PYTHONDONTWRITEBYTECODE=1",
+            "-e",
+            "SANDBOX_OUT=/out",
+            "-e",
+            f"SANDBOX_NETWORK={'none' if spec.network == 'none' else 'target-only'}",
+            "-e",
+            "SANDBOX_EMIT_OUT=1",
+            "-e",
+            "PYTHONDONTWRITEBYTECODE=1",
         ]
         if spec.network == "target-only":
             env += ["-e", f"SANDBOX_TARGET_URL=http://tgt-{run_id}:8000"]
         script = 'tar -x -C /work -f - && cd /work && exec python -I -B .sandbox/entry.py "$@"'
         return [
-            self.docker, "run", "--rm", "-i", "--name", f"sbx-{run_id}",
-            "--network", net,
+            self.docker,
+            "run",
+            "--rm",
+            "-i",
+            "--name",
+            f"sbx-{run_id}",
+            "--network",
+            net,
             *self.hardening_args(spec, run_id),
             *env,
-            "--workdir", "/work",
-            "--entrypoint", "sh",
+            "--workdir",
+            "/work",
+            "--entrypoint",
+            "sh",
             self.image,
-            "-c", script, "entry", spec.mode, *spec.args,
+            "-c",
+            script,
+            "entry",
+            spec.mode,
+            *spec.args,
         ]
 
     def run(self, spec: SandboxSpec) -> SandboxResult:
@@ -369,15 +410,45 @@ class DockerSandboxDriver:
             ).stdout
             if spec.network == "target-only":
                 network_name = f"net-{run_id}"
-                self._ok(self.runner(
-                    [self.docker, "network", "create", "--internal", "--label", f"{LABEL_ROOT}=1",
-                     "--label", f"{LABEL_ROOT}.run_id={run_id}", network_name], None, 30))
-                self._ok(self.runner(
-                    [self.docker, "run", "-d", "--name", f"tgt-{run_id}", "--network", network_name,
-                     *self.hardening_args(spec, run_id), self.target_image], None, 60))
+                self._ok(
+                    self.runner(
+                        [
+                            self.docker,
+                            "network",
+                            "create",
+                            "--internal",
+                            "--label",
+                            f"{LABEL_ROOT}=1",
+                            "--label",
+                            f"{LABEL_ROOT}.run_id={run_id}",
+                            network_name,
+                        ],
+                        None,
+                        30,
+                    )
+                )
+                self._ok(
+                    self.runner(
+                        [
+                            self.docker,
+                            "run",
+                            "-d",
+                            "--name",
+                            f"tgt-{run_id}",
+                            "--network",
+                            network_name,
+                            *self.hardening_args(spec, run_id),
+                            self.target_image,
+                        ],
+                        None,
+                        60,
+                    )
+                )
             t0 = time.monotonic()
             try:
-                cp = self.runner(self.build_run_argv(spec, run_id, network_name), tar_bytes, spec.limits.timeout_s)
+                cp = self.runner(
+                    self.build_run_argv(spec, run_id, network_name), tar_bytes, spec.limits.timeout_s
+                )
                 timed_out = False
             except subprocess.TimeoutExpired:
                 self.runner([self.docker, "rm", "-f", f"sbx-{run_id}"], None, 30)
@@ -393,12 +464,19 @@ class DockerSandboxDriver:
                 except (ValueError, json.JSONDecodeError):
                     out_files = {}
             return SandboxResult(
-                run_id=run_id, driver=self.name, isolation_level=self.isolation_level,
-                profile=spec.profile.value, network=spec.network,
+                run_id=run_id,
+                driver=self.name,
+                isolation_level=self.isolation_level,
+                profile=spec.profile.value,
+                network=spec.network,
                 exit_code=None if timed_out else cp.returncode,
-                stdout=_cap(stdout), stderr=_cap(cp.stderr.decode("utf-8", "replace")),
-                out_files=out_files, duration_s=time.monotonic() - t0, timed_out=timed_out,
-                started_at=started, labels=dict(spec.labels),
+                stdout=_cap(stdout),
+                stderr=_cap(cp.stderr.decode("utf-8", "replace")),
+                out_files=out_files,
+                duration_s=time.monotonic() - t0,
+                timed_out=timed_out,
+                started_at=started,
+                labels=dict(spec.labels),
             )
         finally:
             if network_name:
@@ -410,9 +488,21 @@ class DockerSandboxDriver:
         """Remove sandbox containers older than 2x their timeout. Returns removed names."""
         now = now or time.time()
         cp = self.runner(
-            [self.docker, "ps", "-a", "--filter", f"label={LABEL_ROOT}=1", "--format",
-             '{{.Names}}\t{{.Label "' + LABEL_ROOT + '.created"}}\t{{.Label "' + LABEL_ROOT + '.timeout"}}'],
-            None, 30,
+            [
+                self.docker,
+                "ps",
+                "-a",
+                "--filter",
+                f"label={LABEL_ROOT}=1",
+                "--format",
+                '{{.Names}}\t{{.Label "'
+                + LABEL_ROOT
+                + '.created"}}\t{{.Label "'
+                + LABEL_ROOT
+                + '.timeout"}}',
+            ],
+            None,
+            30,
         )
         removed: list[str] = []
         for line in cp.stdout.decode().splitlines():
