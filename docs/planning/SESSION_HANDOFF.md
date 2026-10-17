@@ -18,6 +18,14 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-17 — Adam — create incident note
+- Did: The open-incident form states it records a title and report. It does not contain systems, notify outsiders, or attach findings/events until linked. Default simulated drill stays labelled.
+- State of the code: branch `feat/adam/create-incident-note`.
+- Commands run and results: `npm test -- --run tests/unit/create-incident.test.ts` 1 passed; `npm run typecheck` clean; `npm run lint` clean. Browser was not run..
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): none.
+- Next steps: open the PR.
+- Warnings for the next session: if createIncident starts linking evidence or notifying, change the note.
 ### 2026-10-17 — Adam — request scope note
 - Did: The request-scope form states it records a pending authorization. Activation needs a different member's approval; it does not start a check or open access outside the listed targets.
 - State of the code: branch `feat/adam/request-scope-note`.
