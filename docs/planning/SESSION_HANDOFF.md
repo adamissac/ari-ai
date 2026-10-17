@@ -177,3 +177,5 @@ Final review follow-up: added strict regression artifact/hash proof, succeeded-V
 - Merged PR #69 after reviewing its deterministic standards bridge and observing all CI green.
 - Executed 300 offline standards/runtime-standards tests; no model calls or target execution.
 - Remaining: final remote sync, broad integration/CI, PR #35 frontend e2e failure.
+
+- Browser gate resolved: bound host path now reuses shared_host_intel and attaches the canonical snapshot. Host acceptance runs reviewer plus all seven roles on the same gateway and persists the full lifecycle. 12 index tests + 7 PostgreSQL integration tests + all 8 real-stack browser e2e tests passed.

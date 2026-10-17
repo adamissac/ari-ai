@@ -138,3 +138,6 @@ Executed check results on the fixture (the precision evidence):
 - Completed canonical CVSS3.1/OWASP API/NIST800-115 consolidation, fixed OWASP API framework identity, and delegated the legacy calculator to the canonical package.
 - Executed standards + runtime standards suites: 300 passed (offline). No live model or sandbox claim.
 - Next: sync remote runtime branch/main, verify broad integration, and resolve remaining PR #35 browser e2e gate before merge.
+
+- Fixed PR #35 browser regression: bound host intake now prefers the backend's shared intelligence service and attaches the exact snapshot instead of requiring independent service configuration.
+- Executed 12 indexed-host tests, 7 PostgreSQL host/unified/memory tests, and the real Next/FastAPI/PostgreSQL/worker browser stack: 8 passed (10.4s). Scripted models and explicitly scoped local fixture execution; no live/Docker claim.

@@ -261,3 +261,33 @@ def test_host_refuses_an_unregistered_repository(indexed, tmp_path, monkeypatch)
     with pytest.raises(PlatformError) as exc:
         bound_intelligence(SimpleNamespace(repo_id=REPO_ID), tmp_path, indexed[0])
     assert exc.value.code is ErrorCode.SNAPSHOT_NOT_READY
+
+
+def test_bound_host_prefers_shared_index_and_attaches_snapshot(indexed, tmp_path, monkeypatch):
+    import json
+    from types import SimpleNamespace
+
+    from security_agents.intel.host import bound_intelligence
+
+    service, ref, workspace, sha = indexed
+    path = tmp_path / "bindings.json"
+    path.write_text(json.dumps([{"repo_id": REPO_ID, "local_path": str(workspace.parent), "subdir": "target"}]))
+    monkeypatch.setenv("REPOSITORY_BINDINGS_FILE", str(path))
+    monkeypatch.delenv("INTELLIGENCE_REPOSITORIES_FILE", raising=False)
+    monkeypatch.delenv("INTELLIGENCE_DB_PATH", raising=False)
+    calls, attached = [], []
+
+    def shared_factory(*, include_prefix):
+        calls.append(include_prefix)
+        return service
+
+    host = SimpleNamespace(
+        project_id=PROJECT_ID, repo_id=REPO_ID,
+        assessment=SimpleNamespace(commit_sha=sha, snapshot_id=ref.snapshot_id),
+        intelligence_service=shared_factory, attach_snapshot=attached.append,
+    )
+    result = bound_intelligence(host, tmp_path / "worker")
+    assert result.service is service
+    assert calls == ["target"]
+    assert attached == [ref]
+    assert result.ref == ref

@@ -64,6 +64,16 @@ def bound_intelligence(host: Any, workdir: Path, service: Any = None) -> CodeInt
         shutil.copy2(recipe, workspace / "build_recipe.json")
         prefix_parts.append(target_dir)
     if service is None:
+        from .host_service import shared_host_intel
+
+        pinned = SnapshotHandle(
+            snapshot_id=raw.snapshot_id, repo_id=raw.repo_id,
+            commit_sha=raw.commit_sha, root=workspace, pinned_by="git",
+        )
+        shared = shared_host_intel(host, pinned, bindings)
+        if shared is not None:
+            return shared
+    if service is None:
         from code_intelligence.api import build_service
 
         service = build_service()
