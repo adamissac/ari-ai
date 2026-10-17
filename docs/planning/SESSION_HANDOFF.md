@@ -18,6 +18,17 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-17 — Adam — monitoring summary
+- Did: The monitoring page leads with recorded-event and simulation-recommendation counts. Unloaded lists are not counted. The sentence says this page is not the Defense Lab.
+- State of the code: branch `feat/adam/monitoring-summary`.
+- Commands run and results: recorded after the unit test run.
+- Decisions made (ADR links): none. A full page of 50 events is described as the newest page because the API does not return a cursor.
+- Assumptions / open questions (RQ links): none.
+- Next steps: open the PR.
+- Warnings for the next session: do not describe monitoring events as a live network defense.
+
+---
+
 ### 2026-10-17 — Adam — assessment phase list
 - Did: The assessment page lists Understand, Review, Security test, Repair, and Verify from that check's event log. A missing log stays unmarked. Verify still needs a finding verdict. Monitor is not shown here.
 - State of the code: branch `feat/adam/assessment-phases`.
