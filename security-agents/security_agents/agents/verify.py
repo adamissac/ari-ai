@@ -9,8 +9,8 @@ records; the LLM only writes the human summary.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any
+from dataclasses import dataclass, field
+from typing import Any, Literal
 
 from pydantic import Field
 
@@ -71,6 +71,11 @@ class VerifyInput(StrictModel):
     baseline_failing_tests: list[str] = Field(default_factory=list)
     diff_summary: ShortText = ""
     tests_added: list[str] = Field(default_factory=list)
+    mode: Literal["security", "functional"] = Field(
+        default="security",
+        description="functional: a reviewer patch for a functional defect; the reproduction is "
+        "its generated tests (they must fail unpatched and pass patched), not a check template.",
+    )
 
 
 class VerifyOutput(StrictModel):
@@ -146,6 +151,18 @@ def input_from_candidate(
 
 
 def build_prompt(data: VerifyInput, intel: CodeIntel) -> str:
+    if data.mode == "functional":
+        return (
+            "Independently verify this candidate patch for a FUNCTIONAL defect using executed "
+            "evidence only.\n\n"
+            f"{data_block('verification_task', data.model_dump(mode='json'), provenance='platform')}\n\n"
+            "There is no security check template for this finding. The platform already ran the "
+            "reviewer's generated tests on an unpatched fresh checkout. Your job: start with "
+            f"patch.apply_fresh for patch id {data.patch_id} (the diff carries the generated "
+            "tests as new files), then tests.run with selection added_tests, then tests.run with "
+            "selection project_suite.\n"
+            f"Baseline failing tests on the unpatched snapshot: {data.baseline_failing_tests or 'none'}."
+        )
     return (
         "Independently verify this candidate patch using executed evidence only.\n\n"
         f"{data_block('verification_task', data.model_dump(mode='json'), provenance='platform')}\n\n"
@@ -173,6 +190,9 @@ class VerifyEvidence:
     protected_tests: list[str]
     original_check_ref: str | None
     original_check_params: dict[str, Any]
+    functional: bool = False
+    # functional mode: generated tests executed on an UNPATCHED fresh checkout (by the platform)
+    reproduction_runs: list[dict[str, Any]] = field(default_factory=list)
 
 
 def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], list[str]]:
@@ -232,7 +252,9 @@ def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], l
         if not r.get("error")
         and (ev.original_check_ref is None or r.get("template_ref") == ev.original_check_ref)
     ]
-    if not ev.original_check_ref:
+    if ev.functional:
+        _functional_reproduction(ev, add)
+    elif not ev.original_check_ref:
         add(
             VerificationCheckName.ORIGINAL_CHECK_NOW_FAILS,
             False,
@@ -340,7 +362,9 @@ def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], l
             add(VerificationCheckName.GENERATED_TESTS_PASS, False, "the added tests were not run")
         else:
             last = added_runs[-1]
-            failing = set(last.get("failing_tests") or [])
+            # Verify never changes code between runs, so an added test failing in ANY run
+            # after the patch was applied is a real failure; a later run cannot mask it.
+            failing = {f for r in added_runs for f in (r.get("failing_tests") or [])}
             offending = sorted(f for f in failing if any(f.startswith(t) for t in ev.tests_added))
             artifact = str(last.get("sandbox_run_id") or "")
             if offending:
@@ -367,6 +391,36 @@ def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], l
 
     verdict = "accepted" if all(c.passed for c in checks) else "rejected"
     return verdict, checks, reasons
+
+
+def _functional_reproduction(ev: VerifyEvidence, add: Any) -> None:
+    """Functional analogue of the original check: every generated test file must have FAILED
+    on the unpatched checkout (the defect reproduced). That it now passes is
+    GENERATED_TESTS_PASS; both are required for acceptance."""
+    name = VerificationCheckName.ORIGINAL_CHECK_NOW_FAILS
+    runs = [r for r in ev.reproduction_runs if not r.get("error")]
+    if not ev.tests_added:
+        add(name, False, "no generated test to reproduce the functional defect")
+        return
+    if not runs:
+        add(name, False, "the generated tests were not run on the unpatched checkout")
+        return
+    last = runs[-1]
+    artifact = str(last.get("sandbox_run_id") or "")
+    failing = list(last.get("failing_tests") or [])
+    unreproduced = [t for t in ev.tests_added if not any(f.startswith(t) for f in failing)]
+    if last.get("errors"):
+        add(name, False, f"collection errors on the unpatched run ({last.get('errors')})", artifact)
+    elif unreproduced:
+        add(name, False, f"generated tests did not fail unpatched: {unreproduced}", artifact)
+    else:
+        add(
+            name,
+            True,
+            f"defect reproduced unpatched ({len(failing)} failing generated test(s)); "
+            "the patched run is checked by generated_tests_pass",
+            artifact,
+        )
 
 
 def to_result(

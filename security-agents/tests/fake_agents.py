@@ -538,6 +538,11 @@ def verify_script() -> list:
         )
 
     def turn1(request) -> FakeTurn:
+        if _functional_mode(request):
+            return FakeTurn(
+                text="Running the generated tests against the patched checkout.",
+                tool_calls=[("tests__run", {"selection": "added_tests", "node_ids": []})],
+            )
         target = _verify_target_from_prompt(request)
         return FakeTurn(
             text="Re-running the original check against the patched code.",
@@ -572,7 +577,7 @@ def verify_script() -> list:
                             f"the project suite ({payload.get('passed')} passed, {payload.get('failed')} "
                             f"failed)."
                         ),
-                        "observed_original_check_ref": OWNERSHIP_REF,
+                        "observed_original_check_ref": None if _functional_mode(request) else OWNERSHIP_REF,
                         "concerns": [],
                     },
                 )
@@ -580,6 +585,13 @@ def verify_script() -> list:
         )
 
     return [turn0, turn1, turn2, turn3]
+
+
+def _functional_mode(request) -> bool:
+    return any(
+        isinstance(m.get("content"), str) and '"mode": "functional"' in m["content"]
+        for m in request.messages
+    )
 
 
 def _patch_id_from_prompt(request) -> str:

@@ -402,6 +402,7 @@ class HostSink(AssessmentSink):
         self.host.transition(_host_state(dst), note)
         if dst is AssessmentState.FUNCTIONAL_REVIEW:
             _functional_review(self.host)
+            _request_functional_approvals(self.host)
 
     def set_status(self, finding_id: str, status: str, reason: str | None = None) -> None:
         """Persist a lifecycle change through the host, which checks the edge and the evidence.
@@ -640,6 +641,7 @@ class HostOrchestrator:
             step_runner=HostStepRunner(host=host, tool_factory=build_tools, run_ids=sink.run_ids),
             approve_remediation=_approver(host),
             cancelled=lambda: _cancelled(host),
+            external_pending=lambda: _functional_approvals(host)[0],
         )
         # The host already performed the scope gate and the first transition.
         orchestrator.state = AssessmentState.CREATED
@@ -650,7 +652,12 @@ class HostOrchestrator:
             host.progress("awaiting human remediation approval")
 
     def _resume(self, orchestrator: Orchestrator, host: AssessmentHostLike) -> None:
-        """Continue after a human decided, using the approvals the host holds."""
+        """Continue after a human decided, using the approvals the host holds. Stays paused
+        while any remediation approval (security or functional) is still undecided."""
+        if _any_remediation_pending(host):
+            self._resumable[host.assessment_id] = orchestrator
+            host.progress("awaiting the remaining remediation approval decisions")
+            return
         orchestrator.approve_remediation = _approver(host)
         diagnosed = [f for f in orchestrator.result.findings if f.plan is not None]
         approved: list[FindingRecord] = []
@@ -659,7 +666,8 @@ class HostOrchestrator:
             if decision is not None and decision.decision == "approved":
                 finding.approval = decision
                 approved.append(finding)
-        if not approved:
+        functional_approved = _functional_approvals(host)[1]
+        if not approved and not functional_approved:
             orchestrator._goto(AssessmentState.REPORTING, "remediation declined")
             orchestrator._finish()
             self._settle(orchestrator)
@@ -667,6 +675,8 @@ class HostOrchestrator:
         orchestrator._goto(AssessmentState.REMEDIATION)
         for finding in approved:
             orchestrator._run_remediation(finding)
+        if functional_approved:
+            _remediate_functional(orchestrator, host)
         orchestrator._goto(AssessmentState.HARDENING)
         for finding in approved:
             if finding.status == "verified":
@@ -781,7 +791,7 @@ def _pinned_snapshot(host: Any, workdir: Path) -> SnapshotHandle | None:
         return raw
     if str(target_dir).startswith("/") or ".." in Path(str(target_dir)).parts:
         raise PlatformError(
-            ErrorCode.VALIDATION_FAILED, "build_recipe.json target_dir must stay inside the checkout"
+            ErrorCode.SCHEMA_INVALID, "build_recipe.json target_dir must stay inside the checkout"
         )
     root = workdir / "snapshot"
     copy_tree(raw.root / str(target_dir), root)
@@ -823,6 +833,74 @@ def _functional_review(host: Any) -> None:
         if code in _PROPAGATE:
             raise
         host.progress(f"functional review failed ({code}): {exc}"[:500])
+
+
+def _request_functional_approvals(host: Any) -> None:
+    """One remediation approval per validated functional finding (Sai's helper)."""
+    try:
+        from code_review import api as review_api
+    except ImportError:
+        return
+    if not callable(getattr(host, "findings", None)):
+        return  # only a host with the canonical findings API carries reviewer findings
+    ids = review_api.request_functional_approvals(host)
+    if ids:
+        host.progress(f"requested {len(ids)} functional remediation approval(s)")
+
+
+def _functional_approvals(host: Any) -> tuple[bool, bool]:
+    """(any functional remediation approval pending, any approved)."""
+    if not callable(getattr(host, "findings", None)):
+        return False, False
+    functional = {
+        f.id for f in host.findings() if str(getattr(f.kind, "value", f.kind)) == "functional"
+    }
+    statuses = [
+        str(getattr(a.status, "value", a.status))
+        for a in host.approvals()
+        if str(getattr(a.subject_type, "value", a.subject_type)) == "remediation"
+        and a.subject_id in functional
+    ]
+    return "pending" in statuses, "approved" in statuses
+
+
+def _any_remediation_pending(host: Any) -> bool:
+    def kind(a: Any) -> str:  # minimal hosts only issue remediation approvals
+        value = getattr(a, "subject_type", "remediation")
+        return str(getattr(value, "value", value))
+
+    def status(a: Any) -> str:
+        value = getattr(a, "status", getattr(a, "decision", ""))
+        return str(getattr(value, "value", value)).lower()
+
+    return any(kind(a) == "remediation" and status(a) == "pending" for a in host.approvals())
+
+
+def _remediate_functional(orchestrator: Orchestrator, host: Any) -> None:
+    """Approved functional findings: the reviewer proposes a repair, then THIS package's
+    Verify agent independently verifies it; the verdict goes through the host gate."""
+    from code_review import api as review_api
+
+    sink = orchestrator.sink
+    for out in review_api.repair_approved_functional_findings(host, repo_id=host.repo_id):
+        if out.patch is None:
+            if isinstance(sink, HostSink):
+                sink.set_status(out.finding.id, "unresolved", reason="; ".join(out.reasons)[:300])
+            continue
+        inputs = review_api.functional_verification_inputs(host, out.patch)
+        result = orchestrator.verify_functional(inputs)
+        if result is None:
+            continue
+        host.record_verification(
+            contract_export.verification_result(result, produced_by_run_id=result.verify_run_id)
+        )
+        if isinstance(sink, HostSink):
+            accepted = str(getattr(result.verdict, "value", result.verdict)) == "accepted"
+            sink.set_status(
+                out.finding.id,
+                "verified" if accepted else "patch_rejected",
+                reason="independent functional Verify " + ("accepted" if accepted else "rejected"),
+            )
 
 
 def _review_without_snapshot(host: Any, intent: Any, review_api: Any) -> Any:

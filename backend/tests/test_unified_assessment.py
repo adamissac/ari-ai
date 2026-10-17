@@ -67,7 +67,7 @@ def unified(tmp_path, settings_override, monkeypatch, client_factory):
         sys.path.insert(0, str(SAI_TESTS))
     from cr_fakes import fake
     from sa_bridge import AlanScriptTransport
-    from test_reviewer_agent import pl_review_script
+    from test_reviewer_agent import pl_repair_script, pl_review_script
 
     from security_agents.checks.library import BOUNDS, OWNERSHIP
 
@@ -99,7 +99,9 @@ def unified(tmp_path, settings_override, monkeypatch, client_factory):
         orchestrator_factory="security_agents.api:build_orchestrator",
     )
     review_script = pl_review_script(SimpleNamespace(repo=repo))
-    bridge = AlanScriptTransport(repo / "target", fallback=fake(list(review_script)))
+    # Reviewer turns, then (only when the functional repair is approved) its repair turns.
+    repair_script = pl_repair_script("target/tests/generated/test_cr_refund_bound.py")
+    bridge = AlanScriptTransport(repo / "target", fallback=fake([*review_script, *repair_script]))
     llm.TRANSPORT_OVERRIDE = lambda: bridge
     sid = alice.post(
         f"/api/v1/projects/{pid}/scopes",
@@ -136,8 +138,9 @@ def _decide(h, decision: str) -> None:
         .json()["items"]
     )
     assert pending, "expected a pending remediation approval"
-    r = h["bob"].post(f"/api/v1/approvals/{pending[0]['id']}/decision", json={"decision": decision})
-    assert r.status_code == 200, r.text
+    for ap in pending:  # the security remediation and the functional repair approval
+        r = h["bob"].post(f"/api/v1/approvals/{ap['id']}/decision", json={"decision": decision})
+        assert r.status_code == 200, r.text
 
 
 def test_review_then_seven_agents_in_one_assessment(unified) -> None:
@@ -154,7 +157,15 @@ def test_review_then_seven_agents_in_one_assessment(unified) -> None:
     assert a["state"] == "COMPLETED", a
     assert a["commit_sha"] == h["sha"]
     runs = detail["agent_runs"]
-    assert [r["agent"] for r in runs] == ["reviewer", *EXPECTED]
+    # review; the seven security agents; within REMEDIATION the reviewer's functional repair
+    # and an independent functional Verify; then Fortify.
+    assert [r["agent"] for r in runs] == [
+        "reviewer",
+        *EXPECTED[:-1],
+        "reviewer",
+        "verify",
+        "fortify",
+    ]
     assert all(r["status"] == "succeeded" and r["provider_mode"] == "fake" for r in runs)
     assert all(r["usage"]["llm_calls"] > 0 for r in runs), "every run's model usage is recorded"
     assert a["usage"]["llm_calls"] == sum(r["usage"]["llm_calls"] for r in runs), (
@@ -167,6 +178,20 @@ def test_review_then_seven_agents_in_one_assessment(unified) -> None:
     assert patches and patches[-1]["verification"]["verdict"] == "accepted"
     by_id = {r["id"]: r["agent"] for r in runs}
     assert by_id[patches[-1]["verification"]["produced_by_run_id"]] == "verify"
+    # Functional remediation (Sai's reviewer repair -> this platform's independent Verify).
+    functional = next(f for f in detail["findings"] if f["kind"] == "functional")
+    fpatches = h["alice"].get(f"/api/v1/findings/{functional['id']}/patches").json()["items"]
+    assert fpatches, "approved functional finding got a reviewer repair"
+    fver = fpatches[-1]["verification"]
+    assert fver and fver["verdict"] == "accepted", fver
+    assert by_id[fver["produced_by_run_id"]] == "verify"
+    assert fver["produced_by_run_id"] != fpatches[-1]["patch"]["produced_by_run_id"]
+    checks = {c["name"]: c for c in fver["checks"]}
+    assert all(c["passed"] for c in checks.values()) and len(checks) == 5
+    assert (
+        h["alice"].get(f"/api/v1/findings/{functional['id']}").json()["finding"]["status"]
+        == "verified"
+    )
     log = h["alice"].get(f"/api/v1/assessments/{asm_id}/events/log").json()["items"]
     assert any(
         "functional review" in e["message"] for e in log if e["type"] == "assessment.progress"

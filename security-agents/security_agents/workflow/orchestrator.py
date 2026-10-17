@@ -242,6 +242,7 @@ class Orchestrator:
         kill_switch: Callable[[], bool] = lambda: False,
         cancelled: Callable[[], bool] = lambda: False,
         now: Callable[[], datetime] = utcnow,
+        external_pending: Callable[[], bool] = lambda: False,
     ) -> None:
         self.config = config
         self.intel = intel
@@ -259,6 +260,9 @@ class Orchestrator:
         self.kill_switch = kill_switch
         self.cancelled = cancelled
         self.now = now
+        # Remediation approvals this orchestrator does not own (e.g. the functional
+        # reviewer's) that a human has not decided yet: the run pauses for them too.
+        self.external_pending = external_pending
 
         self.state = AssessmentState.CREATED
         self.state_log = StateLog()
@@ -462,6 +466,10 @@ class Orchestrator:
             self._run_diagnose(finding)
         diagnosed = [f for f in traced if f.plan is not None]
         if not diagnosed:
+            if self.external_pending():
+                self._goto(AssessmentState.AWAITING_APPROVAL, "awaiting functional remediation approval")
+                self.result.error_code = None
+                return self.result
             self._goto(AssessmentState.REPORTING, "no remediation plan produced")
             return self._finish()
 
@@ -508,7 +516,7 @@ class Orchestrator:
                 actor_id=approval.decided_by,
                 approval_id=approval.id,
             )
-        if pending and not approved:
+        if (pending or self.external_pending()) and not approved:
             # Stop here, without a terminal transition: a host persists the
             # request and re-enters this orchestrator once a human decides.
             self.result.error_code = None
@@ -959,6 +967,119 @@ class Orchestrator:
         out = outcome.output if isinstance(outcome.output, verify_agent.VerifyOutput) else None
         sandbox_ids = [
             str(r.get("sandbox_run_id")) for r in check_runs + test_runs if r.get("sandbox_run_id")
+        ]
+        return verify_agent.to_result(
+            out, data, evidence, sandbox_run_ids=sandbox_ids, verify_run_id=outcome.run.id
+        )
+
+    def verify_functional(self, inputs: Any, attempt: int = 1) -> VerificationResult | None:
+        """Independent Verify of a reviewer patch for a FUNCTIONAL defect (code_review's
+        ``functional_verification_inputs``). The platform first runs the generated tests on an
+        unpatched fresh checkout (they must fail: the defect reproduces); the Verify agent then
+        applies diff + tests to a fresh checkout and runs them and the suite. The verdict is
+        computed from executed records only (verify.compute_verdict, functional mode)."""
+        from ..sandbox.workspace import apply_diff, diff_paths, fresh_checkout
+        from . import functional
+
+        patch = inputs.patch
+        if inputs.protected_paths:
+            raise PlatformError(
+                ErrorCode.SCHEMA_INVALID,
+                f"functional patch touches protected test/config paths: {inputs.protected_paths}",
+            )
+        prefix = functional.detect_prefix(inputs.diff_text, self.intel.snapshot)
+        code_diff = functional.rebase_diff(inputs.diff_text, prefix)
+        tests = [(functional.rebase_path(t.path, prefix), t.content) for t in inputs.generated_tests]
+        test_paths = [p for p, _ in tests]
+        tests_diff = functional.new_file_diff(tests)
+
+        # 1. Reproduction (platform-executed): generated tests on the UNPATCHED checkout.
+        repro_root = fresh_checkout(self.intel.snapshot, self.workdir / f"repro-{patch.id}-{attempt}")
+        ok, err = apply_diff(repro_root, tests_diff) if tests else (False, "no generated tests")
+        repro_ctx = self._context(AgentName.VERIFY, f"functional:{patch.id}:reproduce", services={})
+        if ok:
+            repro = TestRunner(
+                driver=self.driver,
+                workspace_provider=lambda _ctx: repro_root,
+                test_command_args=self.config.test_command_args,
+            ).run(repro_ctx, "added_tests", test_paths)
+        else:
+            repro = {"error": "TESTS_NOT_APPLIED", "detail": err}
+        self.result.usage.sandbox_seconds += float(repro.get("duration_s") or 0)
+        self._audit(
+            "functional.reproduction",
+            "patch",
+            patch.id,
+            failing=repro.get("failing_tests"),
+            passed=repro.get("passed"),
+            sandbox_run_id=repro.get("sandbox_run_id"),
+        )
+
+        # 2. Independent Verify agent run over diff + generated tests on a fresh checkout.
+        plan_files = [p for p in diff_paths(code_diff) if p not in test_paths]
+        self._patch_artifacts[patch.id] = {
+            "diff": code_diff + tests_diff,
+            "plan_files": plan_files,
+            "protected_tests": self._protected_tests(),
+        }
+        baseline = sorted(set(self._baseline_failing) | {
+            functional.rebase_path(t, prefix) if t.startswith(prefix) else t
+            for t in inputs.baseline_failing
+        })
+        data = verify_agent.VerifyInput(
+            assessment_id=self.config.assessment_id,
+            patch_id=patch.id,
+            finding_id=patch.finding_id,
+            remediation_plan_id=f"review:{patch.finding_id}",
+            scope_id=self.config.scope.id,
+            target_id=self.config.target_id,
+            plan_files=plan_files,
+            baseline_failing_tests=baseline,
+            diff_summary=f"{len(plan_files)} file(s): {', '.join(plan_files[:6])}",
+            tests_added=test_paths,
+            mode="functional",
+        )
+        applier = PatchApplier(intel=self.intel, artifacts=self._patch_artifacts, workdir=self.workdir)
+
+        def verify_workspace(ctx: ToolContext) -> Any:
+            return ctx.artifacts.get("verify_workspace") or self.intel.snapshot.root
+
+        services = {
+            **self._read_services(),
+            "patch_applier": applier,
+            "test_runner": TestRunner(
+                driver=self.driver,
+                workspace_provider=verify_workspace,
+                test_command_args=self.config.test_command_args,
+            ),
+        }
+        ctx = self._context(AgentName.VERIFY, f"functional:{patch.finding_id}:verify", services=services)
+        ctx.artifacts["tests_added"] = list(test_paths)
+        outcome = self._run_step(
+            verify_agent.SPEC,
+            ctx,
+            verify_agent.build_prompt(data, self.intel),
+            input_ref=f"verify:{patch.id}",
+            attempt=attempt,
+        )
+        test_runs = list(ctx.artifacts.get("test_runs") or [])
+        for run in test_runs:
+            self.result.usage.sandbox_seconds += float(run.get("duration_s") or 0)
+        evidence = verify_agent.VerifyEvidence(
+            apply_facts=dict(ctx.artifacts.get("verify_facts") or {}),
+            recheck_runs=[],
+            test_runs=test_runs,
+            baseline_failing=baseline,
+            tests_added=list(test_paths),
+            protected_tests=self._protected_tests(),
+            original_check_ref=None,
+            original_check_params={},
+            functional=True,
+            reproduction_runs=[repro],
+        )
+        out = outcome.output if isinstance(outcome.output, verify_agent.VerifyOutput) else None
+        sandbox_ids = [
+            str(r.get("sandbox_run_id")) for r in [repro, *test_runs] if r.get("sandbox_run_id")
         ]
         return verify_agent.to_result(
             out, data, evidence, sandbox_run_ids=sandbox_ids, verify_run_id=outcome.run.id
