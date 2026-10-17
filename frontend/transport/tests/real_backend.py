@@ -75,9 +75,34 @@ def main() -> None:
                 if not thread.is_alive() or time.monotonic() > deadline:
                     raise RuntimeError("Transport test API failed to start")
                 time.sleep(0.02)
+            # Owned fixture: verify stored/redacted bytes through the real HTTP API.
+            # This is not a PatchCandidate and does not resolve issue #155.
+            import httpx
+
+            from backend.artifacts import ArtifactStore
+            from shared.evidence import ArtifactKind
+
+            base = f"http://127.0.0.1:{port}/api/v1"
+            with httpx.Client(base_url=base) as setup:
+                me = setup.post("/auth/dev/login", json={"github_login": "transport-alice"})
+                me.raise_for_status()
+                setup.headers["X-CSRF-Token"] = me.json()["csrf_token"]
+                project = setup.post("/projects", json={"name": "artifact byte proof"})
+                project.raise_for_status()
+                with transaction() as conn:
+                    artifact = ArtifactStore().put_text(
+                        conn,
+                        "Authorization: Bearer " + "x" * 40 + "\nΔ regression\n",
+                        kind=ArtifactKind.log,
+                        project_id=project.json()["id"],
+                    )
             result = subprocess.run(
                 ["node", "--test", str(Path(__file__).with_name("real-backend.integration.mjs"))],
-                env={**os.environ, "TRANSPORT_TEST_API": f"http://127.0.0.1:{port}/api/v1"},
+                env={
+                    **os.environ,
+                    "TRANSPORT_TEST_API": base,
+                    "TRANSPORT_TEST_ARTIFACT": artifact.id,
+                },
                 timeout=45,
                 check=False,
             )
