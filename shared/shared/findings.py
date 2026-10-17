@@ -25,6 +25,7 @@ from shared.ids import (
     ValidationId,
     VerificationId,
 )
+from shared.standards import FindingStandards
 
 
 class FindingKind(StrEnum):
@@ -92,6 +93,9 @@ class Finding(StrictModel):
     confidence: Confidence
     produced_by_run_id: AgentRunId | None = None
     history: list[StatusChange] = Field(default_factory=list)
+    standards: FindingStandards | None = Field(
+        default=None, description="0.7.0: CWE/ATT&CK/D3FEND/CVSS classification with evidence"
+    )
     created_at: UtcDatetime
     updated_at: UtcDatetime
 

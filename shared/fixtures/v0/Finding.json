@@ -58,6 +58,7 @@
     "rationale": "Probe reproduced cross-tenant read in sandbox."
   },
   "snapshot_id": "snp_01JFIXTURE0000000000000SNP",
+  "standards": null,
   "status": "validated",
   "subject_refs": [
     "app.invoices.get_invoice"
