@@ -285,6 +285,7 @@ def test_live_seven_roles_end_to_end(tmp_path):
                         "tool_calls",
                         "tokens",
                         "usd",
+                        "tool_trace",
                     )
                 }
                 for run in runs
