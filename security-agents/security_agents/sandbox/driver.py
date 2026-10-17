@@ -11,6 +11,7 @@ import base64
 import contextlib
 import json
 import os
+import re
 import resource
 import shutil
 import signal
@@ -70,6 +71,8 @@ class SandboxSpec:
     extra_files: dict[str, str] = field(default_factory=dict)  # name -> content, placed in .sandbox/
     target_id: str | None = None
     scope_decision: Decision | None = None  # must be an allowed attach_network decision for target-only
+    target_workspace: Path | None = None
+    target_app: str | None = None
 
 
 @dataclass
@@ -117,6 +120,13 @@ FORBIDDEN_WORKSPACE_ROOTS = (
 )
 
 
+TARGET_APP_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.]*:[A-Za-z_][A-Za-z0-9_]*$")
+SERVE_TARGET_SCRIPT = (
+    "while [ ! -f /work/.ready ]; do sleep 0.2; done; cd /work && "
+    'exec python -m uvicorn --factory "$TARGET_APP" --host 0.0.0.0 --port 8000'
+)
+
+
 def validate_spec(spec: SandboxSpec) -> None:
     """Policy checks shared by every driver. Fails closed."""
     workspace = spec.workspace.resolve()
@@ -138,6 +148,20 @@ def validate_spec(spec: SandboxSpec) -> None:
             raise PlatformError(
                 ErrorCode.SCOPE_DENIED, "target-only network requires an allowed scope decision"
             )
+    if spec.target_workspace is not None or spec.target_app is not None:
+        if spec.network != "target-only":
+            raise PlatformError(
+                ErrorCode.SANDBOX_POLICY_VIOLATION, "a served target needs the target-only network"
+            )
+        if spec.target_app is None or not TARGET_APP_RE.match(spec.target_app):
+            raise PlatformError(ErrorCode.SANDBOX_POLICY_VIOLATION, f"invalid target app {spec.target_app!r}")
+        served = (spec.target_workspace or Path("/")).resolve()
+        if (
+            served in (p.resolve() for p in FORBIDDEN_WORKSPACE_ROOTS)
+            or len(served.parts) <= 2
+            or not served.is_dir()
+        ):
+            raise PlatformError(ErrorCode.SANDBOX_POLICY_VIOLATION, f"refusing to serve {served} as a target")
     for name in spec.extra_files:
         if "/" in name or name.startswith(".") or name in ("entry.py", "harness.py"):
             raise PlatformError(ErrorCode.SANDBOX_POLICY_VIOLATION, f"bad extra file name {name!r}")
@@ -431,23 +455,26 @@ class DockerSandboxDriver:
                         30,
                     )
                 )
-                self._ok(
-                    self.runner(
-                        [
-                            self.docker,
-                            "run",
-                            "-d",
-                            "--name",
-                            f"tgt-{run_id}",
-                            "--network",
-                            network_name,
-                            *self.hardening_args(spec, run_id),
-                            self.target_image,
-                        ],
-                        None,
-                        60,
+                if spec.target_workspace is not None:
+                    self._serve_snapshot_target(spec, run_id, network_name)
+                else:
+                    self._ok(
+                        self.runner(
+                            [
+                                self.docker,
+                                "run",
+                                "-d",
+                                "--name",
+                                f"tgt-{run_id}",
+                                "--network",
+                                network_name,
+                                *self.hardening_args(spec, run_id),
+                                self.target_image,
+                            ],
+                            None,
+                            60,
+                        )
                     )
-                )
             t0 = time.monotonic()
             try:
                 cp = self.runner(
@@ -494,6 +521,51 @@ class DockerSandboxDriver:
                 self.runner([self.docker, "rm", "-f", f"tgt-{run_id}"], None, 30)
                 self.runner([self.docker, "network", "rm", network_name], None, 30)
             shutil.rmtree(root, ignore_errors=True)
+
+    def _serve_snapshot_target(self, spec: SandboxSpec, run_id: str, network_name: str) -> None:
+        assert spec.target_workspace is not None and spec.target_app is not None
+        name = f"tgt-{run_id}"
+        self._ok(
+            self.runner(
+                [
+                    self.docker,
+                    "run",
+                    "-d",
+                    "--name",
+                    name,
+                    "--network",
+                    network_name,
+                    *self.hardening_args(spec, run_id),
+                    "-e",
+                    "PYTHONDONTWRITEBYTECODE=1",
+                    "-e",
+                    "PYTHONUNBUFFERED=1",
+                    "-e",
+                    f"TARGET_APP={spec.target_app}",
+                    "--workdir",
+                    "/work",
+                    "--entrypoint",
+                    "sh",
+                    self.image,
+                    "-c",
+                    SERVE_TARGET_SCRIPT,
+                ],
+                None,
+                60,
+            )
+        )
+        target_tar = subprocess.run(
+            ["tar", "-c", "-C", str(spec.target_workspace), "--exclude", ".sandbox", "."],
+            capture_output=True,
+            check=True,
+        ).stdout
+        self._ok(
+            self.runner(
+                [self.docker, "exec", "-i", name, "sh", "-c", "tar -x -C /work -f - && touch /work/.ready"],
+                target_tar,
+                60,
+            )
+        )
 
     def reap(self, now: float | None = None) -> list[str]:
         """Remove sandbox containers older than 2x their timeout. Returns removed names."""

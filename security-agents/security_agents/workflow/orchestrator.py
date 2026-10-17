@@ -353,12 +353,10 @@ class Orchestrator:
             return f"unknown probe check transport {transport!r}"
         if transport == "inprocess":
             return None
-        image = getattr(self.driver, "image", "")
-        target_image = getattr(self.driver, "target_image", "")
         if getattr(self.driver, "name", "") != "docker":
             return "the http probe transport requires the Docker sandbox driver"
-        if not target_image or target_image == image:
-            return "the http probe transport requires a dedicated target image (SANDBOX_TARGET_IMAGE)"
+        if not recipe_from_snapshot(self.intel)(None, self.config.target_id).get("app_factory"):
+            return "the http probe transport requires an app_factory in the build recipe"
         if self.roe is None:
             return "the http probe transport requires issued rules of engagement"
         self._audit(
@@ -366,7 +364,7 @@ class Orchestrator:
             "assessment",
             self.config.assessment_id,
             transport=transport,
-            target_image=target_image,
+            target="assessed snapshot served in the check image",
             target_id=self.config.target_id,
         )
         return None

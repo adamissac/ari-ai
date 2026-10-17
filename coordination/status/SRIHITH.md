@@ -223,3 +223,16 @@ Executed: focused host/unified/verification/closure54 passed; root325 passed/7 s
 - Not resolved, by design: #156 (Vihaan) conflicts with Sai's new landing page (`/` → landing, projects → `/projects`). That's a design call between two active authors, so I commented with the likely shape and will merge on green once he resolves.
 - #169 is a draft awaiting Sai.
 - M3 live attempt (owner-approved, $0.38): Scout and Probe live, Probe inconclusive, so M3 stays unchecked. Recorded in #159; asked Alan for a Probe tool trace in the CLI report.
+
+### 2026-10-17T16:05Z (30-minute sweep)
+
+- Main verified locally:
+  - root **421 passed / 10 skipped**;
+  - ruff, format, contract freshness (112 files), mypy and the standards hash pins are all clean;
+  - main CI is green across workflows.
+- Fixed Adam's ask: **#205**. `/assessments/{id}/events/log` now returns a real `next_cursor` (the last `seq`; pass it back as `after`). It had always been `null`, which hid events past the first 500. There's a new bounded `limit`, and the test pages through every event exactly once. The UI follow-up is Adam's (call sites in #193's pages).
+- Merged green PRs:
+  - #201 (Sarosh, closes bug #199);
+  - #204 (Vihaan, 34 UI fixes, e2e green);
+  - #195 and #197 (Adam): I resolved CHANGELOG/handoff/README conflicts and combined the README table rows by hand rather than duplicating them. Frontend unit tests passed (103).
+- #190 is owned by Sarosh; #207 (Alan) was opened during the sweep, so the next pass checks it.
