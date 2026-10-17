@@ -65,7 +65,7 @@ class Settings(BaseSettings):
         default=None,
         description="JSON list of {repo_id, local_path, subdir}: trusted local checkouts of owned repos",
     )
-    security_sandbox: Literal["docker", "local-dev"] = "docker"
+    security_sandbox: Literal["docker", "vercel", "local-dev"] = "docker"
     security_workdir: Path | None = None
 
     # RL

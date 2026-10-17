@@ -1658,6 +1658,10 @@ def _driver() -> SandboxDriver:
                 ErrorCode.SANDBOX_POLICY_VIOLATION, "local-dev sandbox outside development/test"
             )
         return LocalProcessDriver(allow=True)
+    if mode == "vercel":
+        from .sandbox.vercel_driver import VercelSandboxDriver
+
+        return VercelSandboxDriver()
     return DockerSandboxDriver()
 
 
