@@ -60,3 +60,23 @@ Repositories must be registered by the operator:
   confirm a claim alone. Alan's shared sandbox driver is adopted (`test_shared_sandbox.py`;
   its Docker path is unverified because no engine is available). The backend runs the reviewer inside the hosted
   assessment (Srihith). The Verify in `test_host_integration.py` is still a labeled test double.
+
+### Standards classifications
+
+Producer standards fields resolve through the pinned offline `standards` catalog.
+CWE proposals must identify real, nondeprecated weaknesses (categories such as
+CWE-840 are not accepted as weakness classifications). CWE/CAPEC/ATT&CK catalog relationships are review candidates; they are not
+automatically attached as ATT&CK mappings. These are
+classifications, not evidence of production adversary activity.
+
+Canonical `standards.mapping` validates classifications and reviewed rules.
+CVSS is separate from the existing qualitative severity rubric. Trace can accept
+a complete set of explicit CVSS v4 base metrics with executed validation artifact
+references, then computes and validates the vector and score deterministically.
+Missing metrics or unrelated artifacts leave the finding unscored. Evidence
+provenance does not by itself prove an analyst's metric interpretation.
+
+D3FEND mappings use the owner-reviewed rules keyed by Fortify category and
+confirmed check category. Unsupported combinations remain unmapped. Reviewed RL actions have simulation-derived D3FEND
+classifications, while unsupported actions stay unmapped. No rule
+executes a defensive action against real systems.

@@ -50,3 +50,7 @@ Set `TSC=/path/to/tsc` to run the generated-TypeScript compile test.
 * Every state change is authorized in code and appended to the audit chain.
 * A missing subsystem, key, checkpoint or GitHub App is reported as an explicit error
   code, never replaced with fabricated output.
+
+## Standards and incidents
+
+Migration 0005 adds persisted incidents. Owner-authenticated incident create/actions use the shared contracts and canonical `standards.incident` rules, with database checks for project links, approval, independent Verify, and regression artifacts. Runtime anomalies correlated with validated findings create reports for human triage, not confirmed incidents. See [incident handling](../docs/security/NIST_INCIDENT_HANDLING.md). Reports include persisted classifications and hardening records. `AssessmentHost.record_standards` updates classifications without reverting finding status/history. Incident SSE provides finite durable replay, not a continuously held connection.
