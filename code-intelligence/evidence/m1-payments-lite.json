@@ -1,7 +1,7 @@
 {
-  "index_version": "python-ast-ts/0.1.0",
-  "target_sha": "41fb569c791d1775a02bf1d385ea6903f4210d27",
-  "tree_sha": "d9ece1616d9ce9a182a05f9cc52046cfa23ca33f",
+  "index_version": "python-ast-ts/0.2.0",
+  "target_sha": "53edbeab6ea08947ebc729d5eae9fc72e5ceb9b2",
+  "tree_sha": "e65216a181880f90b359b4eccf05a0888564a81d",
   "include_prefix": "examples/payments-lite/target",
   "python": "3.12.13",
   "stats": {
@@ -9,7 +9,7 @@
     "symbols": 45,
     "call_edges": 114,
     "entry_points": 8,
-    "expectations": 44
+    "expectations": 49
   },
   "source_paths": [
     "examples/payments-lite/target/README.md",
@@ -27,23 +27,23 @@
     "likely": 17
   },
   "extracted_expectation_statuses": {
-    "ambiguous": 44
+    "ambiguous": 49
   },
   "declared_routes": [
     {
-      "id": "ent_cb19d22f5d4a66b42f174c4517c8524e",
-      "snapshot_id": "snp_a62a6a3b2fdd15783e7f71b1a86071e5",
+      "id": "ent_cc3d7117e93dfdd517dc4860d1b317e2",
+      "snapshot_id": "snp_1b4c7e8f302e11c075083db34897e3ef",
       "kind": "http_route",
-      "handler_symbol_id": "sym_d915ee25655309d63c44d31a8b9f4283",
+      "handler_symbol_id": "sym_db76a78d305ddf674cef6632a0941c37",
       "method": "GET",
       "path_template": "/health",
       "auth_dependencies": []
     },
     {
-      "id": "ent_946eda04e8ddf5494057e3166aa26bd6",
-      "snapshot_id": "snp_a62a6a3b2fdd15783e7f71b1a86071e5",
+      "id": "ent_c4b33801fee5ff48d35617e9839e5002",
+      "snapshot_id": "snp_1b4c7e8f302e11c075083db34897e3ef",
       "kind": "http_route",
-      "handler_symbol_id": "sym_1ae4e69e870d0cf81e6d54d8fcffefbf",
+      "handler_symbol_id": "sym_063aa77b8b81419c6ee2056468351bd6",
       "method": "GET",
       "path_template": "/me",
       "auth_dependencies": [
@@ -51,75 +51,72 @@
       ]
     },
     {
-      "id": "ent_102e9e5deffd234779d8c1cf28884c1d",
-      "snapshot_id": "snp_a62a6a3b2fdd15783e7f71b1a86071e5",
+      "id": "ent_386ea72f8c63df133af6f0e70cb3a37a",
+      "snapshot_id": "snp_1b4c7e8f302e11c075083db34897e3ef",
       "kind": "http_route",
-      "handler_symbol_id": "sym_d32396b11d51d6f3e0655373c509247f",
+      "handler_symbol_id": "sym_1972e277191d9e80cee5d2a198794c49",
       "method": "GET",
       "path_template": "/customers/{customer_id}",
       "auth_dependencies": [
         "current_customer",
-        "get_store"
+        "require_owner"
       ]
     },
     {
-      "id": "ent_9dcadb3c583073a78b93c3435f062fe7",
-      "snapshot_id": "snp_a62a6a3b2fdd15783e7f71b1a86071e5",
+      "id": "ent_2f2a199a9cff019e1e26e532291b8aac",
+      "snapshot_id": "snp_1b4c7e8f302e11c075083db34897e3ef",
       "kind": "http_route",
-      "handler_symbol_id": "sym_7279c9f68ca83041a2384748632b9f0d",
+      "handler_symbol_id": "sym_dd13cc2ad657f922da22208085f9eb8d",
       "method": "GET",
       "path_template": "/payments",
       "auth_dependencies": [
-        "current_customer",
-        "get_store"
+        "current_customer"
       ]
     },
     {
-      "id": "ent_98fd23752220d925d1f634af9246cbcf",
-      "snapshot_id": "snp_a62a6a3b2fdd15783e7f71b1a86071e5",
+      "id": "ent_25c859c13a28f18860978af76ef842e9",
+      "snapshot_id": "snp_1b4c7e8f302e11c075083db34897e3ef",
       "kind": "http_route",
-      "handler_symbol_id": "sym_6c835ecafecbda075534fb10ebbb9bc6",
+      "handler_symbol_id": "sym_a87646307e35a6606729980a5c8a2f19",
       "method": "POST",
       "path_template": "/payments",
       "auth_dependencies": [
-        "current_customer",
-        "get_store"
+        "current_customer"
       ]
     },
     {
-      "id": "ent_bff6c239043c7abc9640210859ec89cc",
-      "snapshot_id": "snp_a62a6a3b2fdd15783e7f71b1a86071e5",
+      "id": "ent_82d05543fc0df485939427ec088a5d01",
+      "snapshot_id": "snp_1b4c7e8f302e11c075083db34897e3ef",
       "kind": "http_route",
-      "handler_symbol_id": "sym_226c61fb8bc2ff6709fbe277d25f879a",
+      "handler_symbol_id": "sym_309482fe2c98bd51617e19faa1d67740",
       "method": "GET",
       "path_template": "/payments/{payment_id}",
       "auth_dependencies": [
-        "current_customer",
-        "get_store"
+        "current_customer"
       ]
     },
     {
-      "id": "ent_4785d327ca8eaa773736daa2993b86dd",
-      "snapshot_id": "snp_a62a6a3b2fdd15783e7f71b1a86071e5",
+      "id": "ent_ee89a5ede3354e435cd0cba96cebc551",
+      "snapshot_id": "snp_1b4c7e8f302e11c075083db34897e3ef",
       "kind": "http_route",
-      "handler_symbol_id": "sym_1f23af0c9a2d33684ee789b2e5041eaa",
+      "handler_symbol_id": "sym_7089ef130aa5736bb078cd46532c6c95",
       "method": "POST",
       "path_template": "/refunds",
       "auth_dependencies": [
         "current_customer",
-        "get_store"
+        "require_owner"
       ]
     },
     {
-      "id": "ent_0014d766285a97ce9d7ddc2559e3e7ef",
-      "snapshot_id": "snp_a62a6a3b2fdd15783e7f71b1a86071e5",
+      "id": "ent_5e8215195f00e121edf236a0208369af",
+      "snapshot_id": "snp_1b4c7e8f302e11c075083db34897e3ef",
       "kind": "http_route",
-      "handler_symbol_id": "sym_009ec588b911767a8903f7fe81787b58",
+      "handler_symbol_id": "sym_24c384cc65df3802fe95c2c5606c88f5",
       "method": "GET",
       "path_template": "/refunds/{refund_id}",
       "auth_dependencies": [
         "current_customer",
-        "get_store"
+        "require_owner"
       ]
     }
   ],
@@ -129,12 +126,12 @@
       "reason": "unsupported format"
     }
   ],
-  "facts_sha256": "d129025f55a7b59db89f50263684d4be20c5af2748363bde989349241c88cb6c",
-  "index_seconds": 0.3658764589927159,
+  "facts_sha256": "50cb8226c46155965143ee1d68a17a8e846da3926267458ed0bcd46f1d53c40e",
+  "index_seconds": 0.34904166699561756,
   "context": {
-    "id": "ctx_7668ce480a5991abb2ba1f3bed850a66",
+    "id": "ctx_84114f5209c399cdd18cb822b77de672",
     "chunks": 12,
-    "token_count": 23154,
+    "token_count": 23267,
     "budget": 24000,
     "focus": "/payments/{payment_id}",
     "paths": [
