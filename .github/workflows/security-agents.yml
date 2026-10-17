@@ -54,3 +54,10 @@ jobs:
           SANDBOX_TARGET_IMAGE: hackatl-target:ci
           SANDBOX_ALLOW_UNPINNED_IMAGE: "1"
         run: ~/.local/bin/uv run pytest -q -rA tests/test_docker_sandbox_live.py
+      - name: Hosted run on PostgreSQL with Docker and the http probe transport
+        env:
+          RUN_DOCKER_SANDBOX: "1"
+          SANDBOX_IMAGE: hackatl-sandbox:ci
+          SANDBOX_TARGET_IMAGE: hackatl-target:ci
+          SANDBOX_ALLOW_UNPINNED_IMAGE: "1"
+        run: ~/.local/bin/uv run pytest -q -rA backend/tests/test_host_http_probe_docker.py
