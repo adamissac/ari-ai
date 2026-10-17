@@ -1,6 +1,6 @@
 'use client';
 
-import type { Assessment, AssessmentState, Repository, Snapshot, StreamEvent } from '@hackatl/frontend-transport';
+import { ApiError, type Assessment, type AssessmentState, type Repository, type Snapshot, type StreamEvent } from '@hackatl/frontend-transport';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
@@ -11,9 +11,13 @@ import { api, idempotencyKey } from '@/lib/api';
 import { CONNECT_REPOSITORY_NOTE } from '@/lib/connect';
 import { INDEX_COMMIT_NOTE } from '@/lib/index-commit';
 import { shortSha, usd } from '@/lib/format';
-import { JOURNEY_STATUS, latestAssessmentEvent, projectJourney, statesFromLog } from '@/lib/journey';
+import {
+  EVENT_LOG_PAGE_NOTE, JOURNEY_STATUS, eventLogPageTruncated, latestAssessmentEvent,
+  projectJourney, statesFromLog,
+} from '@/lib/journey';
 import { projectOverview } from '@/lib/overview';
 import { pillarLoop } from '@/lib/pillars';
+import { START_ASSESSMENT_NOTE } from '@/lib/start-assessment';
 import { ASSESSMENT_STATE, FINDING_STATUS, SNAPSHOT_STATUS, TERMINAL_STATES } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
 
@@ -171,6 +175,7 @@ function ProjectJourney({
   );
   const logReady = latest === null || events.status !== 'loading' || logItems !== null;
   const visited = logItems ? statesFromLog(logItems) : null;
+  const logTruncated = logItems !== null && eventLogPageTruncated(logItems.length);
   const monitoringItems = monitoring.status === 'ready' ? monitoring.data.items : [];
   const stages = projectJourney({
     repoCount,
@@ -184,6 +189,7 @@ function ProjectJourney({
     monitoringTruncated: monitoringItems.length >= 50,
     monitoringFailed: monitoringItems.some(event => event.status === 'failed'),
     newestMonitoringSimulated: monitoringItems[0]?.simulated === true,
+    eventLogTruncated: logTruncated,
   });
   const latestEvent = logItems ? latestAssessmentEvent(logItems) : null;
   const assessmentHref = latest ? `/projects/${projectId}/assessments/${latest.id}` : null;
@@ -192,19 +198,24 @@ function ProjectJourney({
     <section aria-label="Check progress" className="rounded-xl border border-line bg-panel p-5" data-testid="project-journey">
       <h2 className="text-sm font-semibold tracking-tight">Where this check is</h2>
       {!logReady ? <p className="mt-2 text-sm text-muted">Loading the recorded phases…</p> : (
-        <ol className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {stages.map(item => {
-            const href = item.id === 'monitor' ? `/projects/${projectId}/monitoring` : assessmentHref;
-            return (
-              <li key={item.id} className="rounded-lg border border-line p-3" data-testid={`journey-${item.id}`}>
-                <p className="text-sm font-medium">{item.label}</p>
-                <p className="text-xs text-muted">{JOURNEY_STATUS[item.status]}</p>
-                <p className="mt-1 text-xs text-muted">{item.detail}</p>
-                {href && <Link className="mt-2 inline-block text-xs text-accent hover:underline" href={href}>Open</Link>}
-              </li>
-            );
-          })}
-        </ol>
+        <>
+          {logTruncated && (
+            <p className="mt-2 text-sm text-muted" data-testid="event-log-page-note">{EVENT_LOG_PAGE_NOTE}</p>
+          )}
+          <ol className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {stages.map(item => {
+              const href = item.id === 'monitor' ? `/projects/${projectId}/monitoring` : assessmentHref;
+              return (
+                <li key={item.id} className="rounded-lg border border-line p-3" data-testid={`journey-${item.id}`}>
+                  <p className="text-sm font-medium">{item.label}</p>
+                  <p className="text-xs text-muted">{JOURNEY_STATUS[item.status]}</p>
+                  <p className="mt-1 text-xs text-muted">{item.detail}</p>
+                  {href && <Link className="mt-2 inline-block text-xs text-accent hover:underline" href={href}>Open</Link>}
+                </li>
+              );
+            })}
+          </ol>
+        </>
       )}
       {latestEvent && (
         <p className="mt-3 text-sm text-muted" data-testid="project-latest-event">
@@ -255,10 +266,11 @@ function StartAssessment({ onStarted }: { onStarted: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const active = scopes.status === 'ready' ? scopes.data.items.filter(s => s.status === 'active') : [];
+  const conflict = error instanceof ApiError && error.status === 409 && error.error.code === 'IDEMPOTENCY_CONFLICT';
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    const sig = `${repoId}|${scopeId}|${sha.trim()}`;
+    const sig = `${project.id}|${repoId}|${scopeId}|${sha.trim()}`;
     const actionKey = key?.sig === sig ? key.value : idempotencyKey('assessment');
     setKey({ sig, value: actionKey });
     setBusy(true);
@@ -272,6 +284,7 @@ function StartAssessment({ onStarted }: { onStarted: () => void }) {
 
   return (
     <Panel title="Start an assessment" id="start-assessment">
+      <p className="mb-3 text-sm text-muted" data-testid="start-assessment-note">{START_ASSESSMENT_NOTE}</p>
       {repos.length === 0 ? <Empty>Connect a repository first.</Empty> : (
         <form onSubmit={submit} className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Field label="Repository">
@@ -289,11 +302,19 @@ function StartAssessment({ onStarted }: { onStarted: () => void }) {
           <Field label="Commit SHA" hint="Blank = backend default for the repository.">
             <input className={`${inputClass} font-mono`} value={sha} onChange={e => setSha(e.target.value.toLowerCase())} pattern="[0-9a-f]{7,40}" name="commit_sha" placeholder="optional" />
           </Field>
-          <div className="sm:col-span-3 flex flex-wrap items-center gap-3">
+          <div className="sm:col-span-3">
             <Button type="submit" variant="primary" disabled={busy || !repoId || !scopeId || (sha !== '' && !SHA.test(sha))}>Start assessment</Button>
-            <span className="text-xs text-muted">Runs only against the targets in the selected, human-approved scope.</span>
           </div>
-          {error !== null && <div className="sm:col-span-3"><ErrorState error={error} context="Assessment not started" /></div>}
+          {error !== null && <div className="sm:col-span-3">
+            <ErrorState error={error} context="Assessment not started" />
+            {conflict && <div className="mt-2 text-sm">
+              <p>Check the assessment list before starting a separate action. The previous key belongs to another request; retrying unchanged will keep returning this conflict.</p>
+              <Button type="button" className="mt-2" disabled={busy} onClick={() => { setKey(null); setError(null); }}>
+                Prepare a new assessment action
+              </Button>
+              <p className="mt-1 text-xs text-muted">This only resets the action key. Press Start assessment to submit a new action; it may create another assessment.</p>
+            </div>}
+          </div>}
         </form>
       )}
     </Panel>

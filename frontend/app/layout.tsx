@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { IBM_Plex_Mono, Inter, Space_Grotesk } from 'next/font/google';
+import localFont from 'next/font/local';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { BRAND_NAME, Wordmark } from '@/components/brand';
@@ -8,11 +8,14 @@ import { SiteFooter } from '@/components/site-footer';
 import { RollText } from '@/components/ui';
 import './globals.css';
 
-// Typography: Space Grotesk (headings), Inter (body, nav, buttons, metrics), IBM Plex Mono (code
-// and technical data). Self-hosted by next/font at build time; exposed as CSS variables.
-const inter = Inter({ subsets: ['latin'], weight: ['400', '500', '600'], display: 'swap', variable: '--font-inter' });
-const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], weight: ['500', '600', '700'], display: 'swap', variable: '--font-space-grotesk' });
-const plexMono = IBM_Plex_Mono({ subsets: ['latin'], weight: ['400', '500', '600'], display: 'swap', variable: '--font-ibm-plex-mono' });
+// Packaged OFL fonts: no external font service is needed at build or runtime.
+const inter = localFont({ src: './fonts/inter-latin-wght-normal.woff2', weight: '400 600', display: 'swap', variable: '--font-inter' });
+const spaceGrotesk = localFont({ src: './fonts/space-grotesk-latin-wght-normal.woff2', weight: '500 700', display: 'swap', variable: '--font-space-grotesk' });
+const plexMono = localFont({ src: [
+  { path: './fonts/ibm-plex-mono-latin-400-normal.woff2', weight: '400', style: 'normal' },
+  { path: './fonts/ibm-plex-mono-latin-500-normal.woff2', weight: '500', style: 'normal' },
+  { path: './fonts/ibm-plex-mono-latin-600-normal.woff2', weight: '600', style: 'normal' },
+], display: 'swap', variable: '--font-ibm-plex-mono' });
 
 export const metadata: Metadata = {
   title: `${BRAND_NAME} Console`,
