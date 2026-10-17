@@ -1,14 +1,14 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { NodeGraph } from '@/components/node-graph';
+import { useEffect, useState } from 'react';
+import { ReplayStage } from '@/components/lab-replay';
 import { Term } from '@/components/term';
-import { Badge, Button, Empty, ErrorState, Field, inputClass, Loading, Mono, Panel, Tag } from '@/components/ui';
+import { Empty, ErrorState, Field, inputClass, Loading, Mono, Panel } from '@/components/ui';
 import { defenderCountPhrase, machineCountPhrase } from '@/components/lab-copy';
 import { num } from '@/lib/format';
-import { cumulativeReturn, domain, episodeLabel, episodeStory, HIGHER_IS_BETTER, METRIC_LABEL, metricNames, metricRows, rewardTotals, sampleSize, stepObservation } from '@/lib/lab';
-import { actionInWords, episodeOutcome, episodeTimeline, keyTakeaway, POLICY_NAME, policyName, rewardWord, SCENARIO_WORDS, scenarioName, SCORE_METRICS, scoreboard, STAGE_WORDS, tradeoffNote } from '@/lib/lab-plain';
-import type { BundleResponse, DefenseLabBundle, LabEpisode, LabNodeState, LabScenario } from '@/lib/lab-types';
+import { domain, HIGHER_IS_BETTER, METRIC_LABEL, metricNames, metricRows, sampleSize } from '@/lib/lab';
+import { keyTakeaway, POLICY_NAME, policyName, scenarioName, SCORE_METRICS, scoreboard, tradeoffNote } from '@/lib/lab-plain';
+import type { BundleResponse, DefenseLabBundle, LabEpisode } from '@/lib/lab-types';
 
 type Load<T> = { status: 'loading' } | { status: 'ready'; data: T } | { status: 'error'; error: unknown };
 
@@ -107,8 +107,8 @@ function Lab({ data }: { data: BundleResponse }) {
           <span><strong>Simulation only{bundle.simulation_only ? '' : ' (flag missing!)'}.</strong> {bundle.caveat} This is not real network detection and no action is ever applied automatically.</span>
         </p>
       </section>
-      <Scoreboard bundle={bundle} />
       <Replay bundle={bundle} />
+      <Scoreboard bundle={bundle} />
       <details className="group rounded-2xl border border-line bg-panel" data-testid="lab-details">
         <summary className="flex cursor-pointer list-none items-center gap-2 px-5 py-4 text-sm font-semibold">
           <span aria-hidden="true" className="inline-block transition-transform group-open:rotate-90">▸</span>
@@ -249,7 +249,7 @@ function Replay({ bundle }: { bundle: DefenseLabBundle }) {
   const scenario = bundle.scenarios.find(s => s.name === episode?.scenario);
   return (
     <section aria-labelledby="replay-title">
-      <p className="label-mono text-brand">Watch a game</p>
+      <p className="label-mono text-brand">Watch a recorded game</p>
       <h2 id="replay-title" className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Replay a recorded game</h2>
       <p className="mt-2 max-w-3xl text-sm text-muted">Pick a defender and an attacker, press play, and follow what the defender saw and did at each step.</p>
       {!episode || !scenario ? <div className="mt-4"><Empty>This bundle has no recorded episodes.</Empty></div> : (
@@ -267,141 +267,9 @@ function Replay({ bundle }: { bundle: DefenseLabBundle }) {
               </select>
             </label>
           </div>
-          <div className="p-5"><Player key={index} episode={episode} scenario={scenario} /></div>
+          <div className="p-5"><ReplayStage key={index} episode={episode} scenario={scenario} /></div>
         </div>
       )}
     </section>
   );
-}
-
-const SPEEDS = [{ label: '1×', ms: 160 }, { label: '4×', ms: 40 }] as const;
-
-function Player({ episode, scenario }: { episode: LabEpisode; scenario: LabScenario }) {
-  const [t, setT] = useState(0);
-  const [playing, setPlaying] = useState(false);
-  const [speed, setSpeed] = useState(0);
-  const steps = episode.steps.length;
-  useEffect(() => {
-    if (!playing) return;
-    const id = setInterval(() => setT(v => { if (v >= steps - 1) { setPlaying(false); return v; } return v + 1; }), SPEEDS[speed]?.ms ?? 160);
-    return () => clearInterval(id);
-  }, [playing, steps, speed]);
-
-  const step = episode.steps[Math.min(t, steps - 1)];
-  const totals = rewardTotals(episode, t + 1);
-  const scale = Math.max(0.001, ...Object.values(totals).map(v => Math.abs(v)));
-  const seek = (v: number) => { setPlaying(false); setT(v); };
-  return (
-    <>
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-base font-semibold" data-testid="lab-episode-outcome">{episodeOutcome(episode)}</p>
-          <p className="mt-0.5 text-xs text-muted" data-testid="lab-episode-story">{SCENARIO_WORDS[episode.scenario]?.note ?? ''} {episodeStory(episode)} {episodeLabel(episode)}.</p>
-        </div>
-        <span className={`lab-outcome ${episode.compromised ? 'lab-outcome-bad' : 'lab-outcome-ok'}`}>{episode.compromised ? 'Attacker won' : 'Attack contained'}</span>
-      </div>
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.6fr_1fr]">
-        <div className="min-w-0">
-          <Topology scenario={scenario} states={step?.nodes ?? []} />
-          <div className="lab-controls mt-3">
-            <Button variant="primary" onClick={() => { if (!playing && t >= steps - 1) setT(0); setPlaying(p => !p); }}>{playing ? 'Pause' : t >= steps - 1 ? 'Replay' : 'Play'}</Button>
-            <div role="group" aria-label="Speed" className="lab-segment lab-segment-sm">
-              {SPEEDS.map((sp, i) => <button key={sp.label} type="button" aria-pressed={speed === i} onClick={() => setSpeed(i)} className="lab-segment-btn">{sp.label}</button>)}
-            </div>
-            <input aria-label="Step" aria-valuetext={`Step ${step?.t ?? t} of ${scenario.horizon}`} type="range" min={0} max={Math.max(0, steps - 1)} value={t} onChange={e => seek(Number(e.target.value))} className="order-last min-w-0 basis-full accent-[var(--color-brand)] sm:order-none sm:basis-0 sm:flex-1" />
-            <span className="font-mono text-xs text-muted">t = {step?.t ?? 0} / {scenario.horizon}</span>
-          </div>
-          <div className="mt-3"><Timeline episode={episode} t={t} onSeek={seek} /></div>
-          <div className="mt-3"><GroundTruth states={step?.nodes ?? []} /></div>
-        </div>
-        <aside className="flex min-w-0 flex-col gap-3">
-          <div className="lab-now">
-            <p className="label-mono text-white/60">Step {step?.t ?? 0}</p>
-            <p className="mt-2 text-sm text-white/70" data-testid="lab-step-action"><span>At step {step?.t ?? 0} the defender: </span><strong className="block text-lg text-white">{step ? actionInWords(step.action) : '—'}</strong></p>
-            <p className="mt-3 text-sm text-white/75" data-testid="lab-step-story">{stepObservation(step)}</p>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-xl border border-line px-3 py-2.5"><p className="label-mono text-faint">This step</p><p className={`mt-1 font-display text-xl font-semibold ${(step?.reward ?? 0) < 0 ? 'text-bad' : 'text-ink'}`}>{num(step?.reward ?? 0, 3)}</p></div>
-            <div className="rounded-xl border border-line px-3 py-2.5"><p className="label-mono text-faint">Score so far</p><p className="mt-1 font-display text-xl font-semibold">{num(cumulativeReturn(episode, t + 1), 2)}</p><p className="text-xs text-faint">final {num(episode.total_return, 2)}</p></div>
-          </div>
-          <div className="rounded-xl border border-line p-3">
-            <p className="mb-2 text-xs font-semibold text-muted">Where the score comes from <span className="font-normal text-faint">(red = cost to the defender)</span></p>
-            <ul className="flex flex-col gap-1.5 text-xs">
-              {Object.entries(totals).map(([k, v]) => (
-                <li key={k} className="grid grid-cols-[minmax(0,1fr)_4.5rem_3.5rem] items-center gap-2" title={k}>
-                  <span className="truncate">{rewardWord(k)}</span>
-                  <span className="lab-diverge" aria-hidden="true"><span className={v < 0 ? 'lab-diverge-neg' : 'lab-diverge-pos'} style={{ width: `${(Math.abs(v) / scale) * 50}%` }} /></span>
-                  <span className={`text-right font-mono ${v < 0 ? 'text-bad' : v > 0 ? 'text-ok' : 'text-faint'}`}>{num(v, 2)}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </aside>
-      </div>
-    </>
-  );
-}
-
-const STAGE_TONE = { none: 'neutral', foothold: 'warn', escalated: 'bad', impact: 'bad' } as const;
-
-function GroundTruth({ states }: { states: LabNodeState[] }) {
-  return (
-    <div className="rounded-xl border border-line px-3 py-2 text-xs">
-        <p className="mb-1.5 font-semibold text-muted">Ground truth (simulation) — hidden attacker stage, never observed by the policy</p>
-        <div className="flex flex-wrap gap-1.5">
-          {states.map(s => <span key={s.node} className="flex items-center gap-1"><Mono>{s.node}</Mono><Badge view={{ label: s.hidden_stage_ground_truth, tone: STAGE_TONE[s.hidden_stage_ground_truth], glyph: s.hidden_stage_ground_truth === 'none' ? '·' : '!' }} /></span>)}
-        </div>
-        <p className="mt-1.5 text-faint">The defender only sees alert rate, anomaly score, monitoring level and its own actions. <Tag>simulator replay</Tag></p>
-      </div>
-  );
-}
-
-function Topology({ scenario, states }: { scenario: LabScenario; states: LabNodeState[] }) {
-  return (
-    <figure>
-      <NodeGraph scenario={scenario} states={states} />
-      <details className="lab-legend mt-2 text-xs text-muted">
-        <summary className="cursor-pointer select-none">How to read the map</summary>
-        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-          <span className="flex items-center gap-1.5"><span className="graph-key bg-brand" />Glow and colour = anomaly score (observed)</span>
-          <span className="flex items-center gap-1.5"><span className="graph-key border border-brand" />Ring = internet-exposed</span>
-          <span className="flex items-center gap-1.5"><span className="graph-key border-2 border-warn" />Amber ring = isolated</span>
-          <span className="flex items-center gap-1.5"><span className="graph-key-line" />Dashed link = rate-limited or hot</span>
-          <span>Size = criticality · hover to inspect · drag to rearrange</span>
-        </div>
-      </details>
-    </figure>
-  );
-}
-
-const STAGE_FILL = { none: 'transparent', foothold: 'var(--color-warn)', escalated: 'color-mix(in srgb, var(--color-bad) 65%, white)', impact: 'var(--color-bad)' } as const;
-
-/** Whole game at a glance: hidden attacker progress (ground truth) above, defender actions below. */
-function Timeline({ episode, t, onSeek }: { episode: LabEpisode; t: number; onSeek: (t: number) => void }) {
-  const rows = useMemo(() => episodeTimeline(episode), [episode]);
-  const w = Math.max(1, rows.length);
-  return (
-    <figure data-testid="lab-timeline">
-      <svg viewBox={`0 0 ${w} 22`} preserveAspectRatio="none" className="h-14 w-full cursor-pointer rounded border border-line bg-bg" role="img"
-        aria-label={`Game timeline over ${rows.length} steps: attacker progress and defender actions`}
-        onClick={e => { const r = (e.currentTarget as SVGSVGElement).getBoundingClientRect(); onSeek(Math.min(rows.length - 1, Math.max(0, Math.floor(((e.clientX - r.left) / r.width) * rows.length)))); }}>
-        {rows.map((r, i) => (
-          <g key={i}>
-            <rect x={i} y={1} width={1.02} height={9} fill={STAGE_FILL[r.stage]} />
-            {r.acted && <rect x={i} y={13} width={1.02} height={8} fill={r.disruptive ? 'var(--color-brand)' : 'color-mix(in srgb, var(--color-brand) 35%, white)'} />}
-          </g>
-        ))}
-        <line x1={t + 0.5} x2={t + 0.5} y1={0} y2={22} stroke="var(--color-ink)" strokeWidth={Math.max(0.6, w / 300)} vectorEffect="non-scaling-stroke" />
-      </svg>
-      <figcaption className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
-        <span><strong>Top:</strong> how far the hidden attacker got (simulation ground truth, never shown to the defender):
-          {' '}<Swatch c={STAGE_FILL.foothold} /> {STAGE_WORDS.foothold} <Swatch c={STAGE_FILL.escalated} /> {STAGE_WORDS.escalated} <Swatch c={STAGE_FILL.impact} /> {STAGE_WORDS.impact}</span>
-        <span><strong>Bottom:</strong> <Swatch c="var(--color-brand)" /> disruptive action (cut off / slow down) <Swatch c="color-mix(in srgb, var(--color-brand) 35%, white)" /> other action. Click to jump, or use the Step slider.</span>
-      </figcaption>
-    </figure>
-  );
-}
-
-function Swatch({ c }: { c: string }) {
-  return <span aria-hidden="true" className="inline-block h-2.5 w-2.5 rounded-sm align-middle" style={{ background: c }} />;
 }

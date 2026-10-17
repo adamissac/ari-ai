@@ -1,258 +1,309 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useCallback, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { num } from '@/lib/format';
 import type { LabNodeState, LabScenario } from '@/lib/lab-types';
+import { INTERNET, nodeStatusLine, nodeViews, parseAction, type NodeView, type ServiceKind } from '@/lib/lab-story';
 
 /**
- * Obsidian-style graph view of a simulated topology: a small force simulation (repulsion,
- * edge springs, centring) keeps the nodes gently floating; hover highlights a node and its
- * neighbours; nodes can be dragged. Visual encodings are observed values only, unless the
- * viewer turns on the clearly labelled ground-truth overlay.
+ * Network map of a simulated scenario (Defense Lab). The layout is stable (columns from the
+ * internet inwards along the recorded topology), so nodes never drift during replay. Every
+ * visual state comes from observed values in the bundle; the hidden attacker stage is drawn
+ * only when the viewer turns on the clearly labelled ground-truth overlay. A visually hidden
+ * table repeats every node value for assistive technology.
  */
 
-const W = 640;
-const H = 340;
-const INTERNET = '__internet__';
-/** Below this speed (px/frame) every body counts as at rest and the loop stops scheduling frames. */
-export const SETTLE_SPEED = 0.02;
-/** The ambient drift fades out over this many frames so the layout can come to rest. */
-const DRIFT_FRAMES = 300;
+const W = 760;
+const H = 400;
+export const INTERNET_ID = '__internet__';
 
-/** True once every free body is moving slower than the settle threshold. */
-export function isSettled(bodies: { vx: number; vy: number; pinned: boolean }[], threshold = SETTLE_SPEED): boolean {
-  return bodies.every(b => b.pinned || Math.hypot(b.vx, b.vy) < threshold);
+type Point = { x: number; y: number };
+
+/** Columns: internet, then breadth-first depth from internet-exposed services. */
+export function layoutNetwork(scenario: LabScenario): Map<string, Point> {
+  const depth = new Map<string, number>();
+  const queue = scenario.nodes.filter(n => n.exposed).map(n => n.name);
+  queue.forEach(n => depth.set(n, 0));
+  while (queue.length) {
+    const cur = queue.shift() as string;
+    for (const [a, b] of scenario.edges) {
+      const next = a === cur ? b : b === cur ? a : null;
+      if (next && !depth.has(next)) { depth.set(next, (depth.get(cur) ?? 0) + 1); queue.push(next); }
+    }
+  }
+  scenario.nodes.forEach(n => { if (!depth.has(n.name)) depth.set(n.name, 0); });
+  const cols = new Map<number, string[]>();
+  for (const n of scenario.nodes) { const d = depth.get(n.name) ?? 0; cols.set(d, [...(cols.get(d) ?? []), n.name]); }
+  const maxD = Math.max(0, ...cols.keys());
+  const x0 = 80; const x1 = W - 80;
+  const step = (x1 - x0) / (maxD + 1);
+  const pos = new Map<string, Point>();
+  pos.set(INTERNET_ID, { x: x0, y: H / 2 });
+  for (const [d, names] of cols) names.forEach((name, i) => pos.set(name, { x: x0 + step * (d + 1), y: ((i + 1) * H) / (names.length + 1) }));
+  return pos;
 }
 
-function nodeSummary(name: string, criticality: number | undefined, s: LabNodeState | undefined): string {
-  return `${name}: criticality ${criticality ?? 0}, anomaly score ${num(s?.anomaly_score ?? 0, 2)}, alert rate ${num(s?.alert_rate ?? 0, 2)}, monitoring level ${s?.monitoring_level ?? 0}`;
+function Icon({ kind }: { kind: ServiceKind }) {
+  const p = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  switch (kind) {
+    case 'internet': return <g {...p}><circle cx="0" cy="0" r="8" /><path d="M-8 0h16M0-8c3 3 3 13 0 16M0-8c-3 3-3 13 0 16" /></g>;
+    case 'gateway': return <g {...p}><path d="M-7 8V-3l7-5 7 5V8" /><path d="M-3 8V2h6v6" /></g>;
+    case 'api': return <g {...p}><path d="M-3-7c-3 0-3 2-3 4s-2 3-2 3 2 1 2 3 0 4 3 4M3-7c3 0 3 2 3 4s2 3 2 3-2 1-2 3 0 4-3 4" /></g>;
+    case 'auth': return <g {...p}><rect x="-6" y="-1" width="12" height="9" rx="2" /><path d="M-3.5-1v-3a3.5 3.5 0 0 1 7 0v3" /></g>;
+    case 'payments': return <g {...p}><rect x="-8" y="-6" width="16" height="12" rx="2" /><path d="M-8-2h16M-5 3h4" /></g>;
+    case 'database': return <g {...p}><ellipse cx="0" cy="-5" rx="7" ry="2.6" /><path d="M-7-5v10c0 1.4 3.1 2.6 7 2.6S7 6.4 7 5V-5M-7 0c0 1.4 3.1 2.6 7 2.6S7 1.4 7 0" /></g>;
+    case 'web': return <g {...p}><rect x="-8" y="-6" width="16" height="12" rx="2" /><path d="M-8-2h16" /></g>;
+    case 'monitoring': return <g {...p}><path d="M-8 1h4l2-5 3 9 2-4h5" /></g>;
+    default: return <g {...p}><rect x="-6" y="-6" width="12" height="12" rx="2" /></g>;
+  }
 }
 
-interface Body { id: string; x: number; y: number; vx: number; vy: number; pinned: boolean }
+type BadgeKind = 'watch' | 'slow' | 'cut' | 'recheck';
+const BADGE_TITLE: Record<BadgeKind, string> = { watch: 'Watched closely', slow: 'Traffic slowed', cut: 'Cut off from the network', recheck: 'Re-check requested' };
 
-function seedBodies(ids: string[]): Body[] {
-  return ids.map((id, i) => {
-    const a = (i / Math.max(1, ids.length)) * Math.PI * 2;
-    return { id, x: W / 2 + Math.cos(a) * 200, y: H / 2 + Math.sin(a) * 110, vx: 0, vy: 0, pinned: false };
-  });
+/** Small state badge drawn beside a node. Exported so the legend uses identical marks. */
+export function StateBadge({ kind, x = 0, y = 0 }: { kind: BadgeKind; x?: number; y?: number }) {
+  const p = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  return (
+    <g transform={`translate(${x},${y})`} className={`map-badge map-badge-${kind}`}>
+      <title>{BADGE_TITLE[kind]}</title>
+      <circle r="9" />
+      {kind === 'watch' && <g {...p}><path d="M-5 0c2-3.2 8-3.2 10 0-2 3.2-8 3.2-10 0z" /><circle r="1.4" /></g>}
+      {kind === 'slow' && <g {...p}><path d="M-4.5 3a5 5 0 1 1 9 0" /><path d="M0 2.5l2.5-3.5" /></g>}
+      {kind === 'cut' && <g {...p}><path d="M-4-4l8 8M4-4l-8 8" /></g>}
+      {kind === 'recheck' && <g {...p}><path d="M4 -2.5A4.6 4.6 0 1 0 4.4 2" /><path d="M4.5-5v3h-3" /></g>}
+    </g>
+  );
 }
 
-export function NodeGraph({ scenario, states }: { scenario: LabScenario; states: LabNodeState[] }) {
-  const exposed = scenario.nodes.filter(n => n.exposed).map(n => n.name);
-  const ids = useMemo(() => [INTERNET, ...scenario.nodes.map(n => n.name)], [scenario]);
-  const edges = useMemo<[string, string][]>(() => [...exposed.map(e => [INTERNET, e] as [string, string]), ...scenario.edges], [scenario]); // eslint-disable-line react-hooks/exhaustive-deps
-  const bodies = useRef<Body[]>(seedBodies(ids));
-  const [snap, setSnap] = useState<Body[]>(() => seedBodies(ids));
+function badgesFor(v: NodeView): BadgeKind[] {
+  const out: BadgeKind[] = [];
+  if (v.isolated) out.push('cut'); else if (v.rateLimited) out.push('slow');
+  if (v.watching) out.push('watch');
+  if (v.recheck) out.push('recheck');
+  return out;
+}
+
+export interface NetworkMapProps {
+  scenario: LabScenario;
+  states: LabNodeState[];
+  /** Recorded action at the current step, e.g. "isolate:api". */
+  action?: string;
+  /** Current step; restarts the one-shot action highlight. */
+  t?: number;
+  selected?: string | null;
+  onSelect?: (node: string | null) => void;
+  showTruth?: boolean;
+}
+
+export function NodeGraph({ scenario, states, action = 'noop', t = 0, selected = null, onSelect = () => {}, showTruth = false }: NetworkMapProps) {
+  const base = useMemo(() => layoutNetwork(scenario), [scenario]);
+  const [moved, setMoved] = useState<Map<string, Point>>(new Map());
+  const [view, setView] = useState({ k: 1, x: 0, y: 0 });
   const [hover, setHover] = useState<string | null>(null);
-  const [truth, setTruth] = useState(false);
-  const [dragging, setDragging] = useState(false);
-  const drag = useRef<{ id: string; dx: number; dy: number } | null>(null);
-  const wake = useRef<() => void>(() => {});
   const svg = useRef<SVGSVGElement>(null);
+  const drag = useRef<{ id: string | null; sx: number; sy: number; ox: number; oy: number; moved: boolean } | null>(null);
 
-  useEffect(() => { bodies.current = seedBodies(ids); }, [ids]);
+  const pos = (id: string): Point => moved.get(id) ?? base.get(id) ?? { x: W / 2, y: H / 2 };
+  const views = nodeViews(scenario, states);
+  const byName = new Map(views.map(v => [v.name, v]));
+  const stateBy = new Map(states.map(s => [s.node, s]));
+  const exposed = scenario.nodes.filter(n => n.exposed).map(n => n.name);
+  const edges: [string, string][] = [...exposed.map(e => [INTERNET_ID, e] as [string, string]), ...scenario.edges];
+  const target = action.startsWith('noop') ? null : parseAction(action).node;
+  const focus = selected ?? hover;
+  const neighbours = new Set<string>();
+  if (focus) { neighbours.add(focus); for (const [a, b] of edges) { if (a === focus) neighbours.add(b); if (b === focus) neighbours.add(a); } }
+  const crit = new Map(scenario.nodes.map(n => [n.name, n.criticality]));
+  const maxCrit = Math.max(1e-9, ...scenario.nodes.map(n => n.criticality));
+  const radius = (name: string) => 22 + ((crit.get(name) ?? 0) / maxCrit) * 12;
 
-  useEffect(() => {
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    let frame = 0;
-    let t = 0;
-    let calm = 0;
-    const tick = () => {
-      frame = 0;
-      t += 1;
-      const bs = bodies.current;
-      const byId = new Map(bs.map(b => [b.id, b]));
-      for (const a of bs) {
-        let fx = (W / 2 - a.x) * 0.0025;
-        let fy = (H / 2 - a.y) * 0.004;
-        for (const b of bs) {
-          if (a === b) continue;
-          const dx = a.x - b.x; const dy = a.y - b.y;
-          const d2 = Math.max(dx * dx + dy * dy, 400);
-          const f = 5200 / d2;
-          const d = Math.sqrt(d2);
-          fx += (dx / d) * f; fy += (dy / d) * f;
-        }
-        for (const [u, v] of edges) {
-          const other = u === a.id ? byId.get(v) : v === a.id ? byId.get(u) : undefined;
-          if (!other) continue;
-          const dx = other.x - a.x; const dy = other.y - a.y;
-          const d = Math.max(1, Math.hypot(dx, dy));
-          const k = (d - 175) * 0.01;
-          fx += (dx / d) * k; fy += (dy / d) * k;
-        }
-        if (!reduced && t < DRIFT_FRAMES) {
-          const fade = 1 - t / DRIFT_FRAMES;
-          fx += Math.sin(t * 0.013 + a.x * 0.05) * 0.03 * fade; fy += Math.cos(t * 0.011 + a.y * 0.05) * 0.03 * fade;
-        }
-        if (!a.pinned) {
-          a.vx = (a.vx + fx) * 0.82; a.vy = (a.vy + fy) * 0.82;
-          a.x = Math.min(W - 40, Math.max(40, a.x + a.vx));
-          a.y = Math.min(H - 40, Math.max(36, a.y + a.vy));
-        }
-      }
-      setSnap(bs.map(b => ({ ...b })));
-      calm = isSettled(bs) ? calm + 1 : 0;
-      if (calm < 10 && (!reduced || t < 240)) frame = requestAnimationFrame(tick);
-    };
-    wake.current = () => { calm = 0; if (!frame) frame = requestAnimationFrame(tick); };
-    wake.current();
-    return () => { cancelAnimationFrame(frame); frame = 0; wake.current = () => {}; };
-  }, [edges]);
-
-  const toSvg = (e: ReactPointerEvent) => {
-    const m = svg.current?.getScreenCTM();
-    if (!m) return { x: 0, y: 0 };
+  const toSvg = useCallback((e: { clientX: number; clientY: number }) => {
+    const m = svg.current?.getScreenCTM?.();
+    if (!m || typeof DOMPoint === 'undefined') return { x: e.clientX, y: e.clientY };
     const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
     return { x: p.x, y: p.y };
-  };
-  const onDown = (id: string) => (e: ReactPointerEvent<SVGGElement>) => {
-    const b = bodies.current.find(x => x.id === id);
-    if (!b) return;
+  }, []);
+
+  const onPointerDown = (e: ReactPointerEvent) => {
+    if (e.button !== 0) return;
+    const id = (e.currentTarget as Element).getAttribute('data-node');
     const p = toSvg(e);
-    drag.current = { id, dx: b.x - p.x, dy: b.y - p.y };
-    b.pinned = true;
-    setDragging(true);
-    wake.current();
-    (e.target as Element).setPointerCapture?.(e.pointerId);
+    const start = id ? pos(id) : { x: view.x, y: view.y };
+    drag.current = { id, sx: p.x, sy: p.y, ox: start.x, oy: start.y, moved: false };
+    // Touch keeps the page scrollable (touch-action: pan-y): nodes are tap-to-select only.
+    if (e.pointerType !== 'touch') (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
+    e.stopPropagation();
   };
-  const onMove = (e: ReactPointerEvent<SVGSVGElement>) => {
-    if (!drag.current) return;
-    const b = bodies.current.find(x => x.id === drag.current!.id);
-    if (!b) return;
+  const onPointerMove = (e: ReactPointerEvent) => {
+    const d = drag.current;
+    if (!d || e.pointerType === 'touch') return;
     const p = toSvg(e);
-    b.x = Math.min(W - 30, Math.max(30, p.x + drag.current.dx));
-    b.y = Math.min(H - 30, Math.max(30, p.y + drag.current.dy));
-    b.vx = 0; b.vy = 0;
-    wake.current();
+    const dx = p.x - d.sx; const dy = p.y - d.sy;
+    if (!d.moved && Math.hypot(dx, dy) < 4) return;
+    d.moved = true;
+    if (d.id) {
+      const id = d.id;
+      setMoved(m => new Map(m).set(id, { x: Math.min(W - 30, Math.max(30, d.ox + dx / view.k)), y: Math.min(H - 30, Math.max(30, d.oy + dy / view.k)) }));
+    } else setView(v => ({ ...v, x: d.ox + dx, y: d.oy + dy }));
   };
-  const onUp = () => {
-    const b = drag.current && bodies.current.find(x => x.id === drag.current!.id);
-    if (b) b.pinned = false;
+  const onPointerUp = () => {
+    const d = drag.current;
     drag.current = null;
-    setDragging(false);
-    wake.current();
+    if (!d || d.moved) return;
+    if (d.id === null) onSelect(null);
+    else if (d.id !== INTERNET_ID) onSelect(selected === d.id ? null : d.id);
+  };
+  const zoom = (f: number) => setView(v => {
+    const k = Math.min(2.5, Math.max(0.6, v.k * f));
+    return { k, x: W / 2 - ((W / 2 - v.x) * k) / v.k, y: H / 2 - ((H / 2 - v.y) * k) / v.k };
+  });
+  const reset = () => { setView({ k: 1, x: 0, y: 0 }); setMoved(new Map()); };
+
+  const order = views.map(v => v.name);
+  const focusNode = (name: string) => requestAnimationFrame(() => svg.current?.querySelector<SVGGElement>(`[data-node="${CSS.escape(name)}"]`)?.focus());
+  const onKey = (name: string) => (e: KeyboardEvent) => {
+    const i = order.indexOf(name);
+    const go = (n: string | undefined) => { if (n) { onSelect(n); focusNode(n); } };
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(selected === name ? null : name); }
+    else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); go(order[(i + 1) % order.length]); }
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); go(order[(i - 1 + order.length) % order.length]); }
+    else if (e.key === 'Escape') onSelect(null);
   };
 
-  const pos = new Map(snap.map(b => [b.id, b]));
-  const state = new Map(states.map(s => [s.node, s]));
-  const meta = new Map(scenario.nodes.map(n => [n.name, n]));
-  const neighbours = new Set<string>();
-  if (hover) { neighbours.add(hover); for (const [u, v] of edges) { if (u === hover) neighbours.add(v); if (v === hover) neighbours.add(u); } }
-  const dim = (id: string) => hover !== null && !neighbours.has(id);
-  const hovered = hover && hover !== INTERNET ? { node: meta.get(hover), s: state.get(hover) } : null;
+  const hovered = hover && hover !== INTERNET_ID ? byName.get(hover) : null;
+  const tip = hovered ? pos(hovered.name) : null;
 
   return (
-    <div className="graph-view relative overflow-hidden rounded-xl">
+    <div className="net-map" data-truth={showTruth || undefined}>
       <svg
         ref={svg}
         viewBox={`0 0 ${W} ${H}`}
-        className="block h-auto w-full select-none"
-        style={{ touchAction: dragging ? 'none' : 'pan-y' }}
+        className="net-svg"
+        style={{ touchAction: 'pan-y' }}
         role="group"
-        aria-label={`Simulated topology for ${scenario.name}`}
+        aria-label={`Simulated network for ${scenario.name}: ${views.length} services. Tab to a service and use the arrow keys to move between them.`}
         data-testid="topology"
-        onPointerMove={onMove}
-        onPointerUp={onUp}
-        onPointerCancel={onUp}
-        onPointerLeave={() => { onUp(); setHover(null); }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerLeave={() => { drag.current = null; setHover(null); }}
+        onWheel={e => { if (e.ctrlKey || e.metaKey) { e.preventDefault(); zoom(e.deltaY < 0 ? 1.1 : 0.9); } }}
       >
         <defs>
-          <pattern id="graph-dots" width="18" height="18" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="0.8" fill="rgba(255,255,255,0.08)" /></pattern>
-          <radialGradient id="graph-glow"><stop offset="0%" stopColor="#c2452d" stopOpacity="0.55" /><stop offset="100%" stopColor="#c2452d" stopOpacity="0" /></radialGradient>
+          <pattern id="net-dots" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="0.9" fill="rgba(255,255,255,0.07)" /></pattern>
+          <radialGradient id="net-hot"><stop offset="0%" stopColor="#c2452d" stopOpacity="0.42" /><stop offset="100%" stopColor="#c2452d" stopOpacity="0" /></radialGradient>
         </defs>
-        <rect width={W} height={H} fill="url(#graph-dots)" />
-
-        {edges.map(([u, v]) => {
-          const a = pos.get(u); const b = pos.get(v);
-          if (!a || !b) return null;
-          const hot = hover !== null && neighbours.has(u) && neighbours.has(v) && (u === hover || v === hover);
-          const limited = state.get(v)?.rate_limited || state.get(u)?.rate_limited;
-          const heat = Math.max(state.get(u)?.anomaly_score ?? 0, state.get(v)?.anomaly_score ?? 0);
-          return (
-            <line
-              key={u + '>' + v}
-              x1={a.x} y1={a.y} x2={b.x} y2={b.y}
-              className="graph-edge"
-              data-hot={hot || undefined}
-              data-dim={(hover !== null && !hot) || undefined}
-              data-flow={heat > 0.5 || undefined}
-              strokeDasharray={limited ? '3 5' : heat > 0.5 ? '2 6' : undefined}
-            />
-          );
-        })}
-
-        {ids.map(id => {
-          const b = pos.get(id);
-          if (!b) return null;
-          if (id === INTERNET) {
+        <rect width={W} height={H} fill="url(#net-dots)" />
+        <g transform={`translate(${view.x} ${view.y}) scale(${view.k})`}>
+          {edges.map(([a, b]) => {
+            const p = pos(a); const q = pos(b);
+            const va = byName.get(a); const vb = byName.get(b);
+            const cut = va?.isolated || vb?.isolated;
+            const slow = !cut && (va?.rateLimited || vb?.rateLimited);
+            const lit = focus !== null && (a === focus || b === focus);
+            const acted = target !== null && (a === target || b === target);
+            const mx = (p.x + q.x) / 2; const my = (p.y + q.y) / 2;
+            const bend = Math.abs(p.x - q.x) < 1 ? 46 : 0; // same-column links bow out so they stay visible
+            const d = `M${p.x},${p.y} Q${mx + bend},${my} ${q.x},${q.y}`;
+            const iso = va?.isolated ? p : q; const other = va?.isolated ? q : p;
             return (
-              <g key={id} transform={`translate(${b.x},${b.y})`} className="graph-node" data-dim={dim(id) || undefined}
-                tabIndex={0} role="img" aria-label="internet, outside the network" style={{ touchAction: 'none' }}
-                onFocus={() => setHover(id)} onBlur={() => setHover(null)}
-                onPointerEnter={() => setHover(id)} onPointerLeave={() => setHover(null)} onPointerDown={onDown(id)}>
-                <circle r={10} className="graph-internet" />
-                <text y={24} textAnchor="middle" className="graph-label">internet</text>
+              <g key={`${a}>${b}`}>
+                <path d={d} className="net-edge" data-cut={cut || undefined} data-slow={slow || undefined} data-lit={lit || undefined} data-dim={(focus !== null && !lit) || undefined} />
+                {acted && <path key={`flash-${t}`} d={d} className="net-edge-flash" pathLength={1} />}
+                {cut && <g transform={`translate(${iso.x + (other.x - iso.x) * 0.3},${iso.y + (other.y - iso.y) * 0.3})`} className="net-cut"><circle r="6" /><path d="M-3-3l6 6M3-3l-6 6" /></g>}
               </g>
             );
-          }
-          const n = meta.get(id);
-          const s = state.get(id);
-          const heat = Math.min(1, s?.anomaly_score ?? 0);
-          const r = 10 + (n?.criticality ?? 1) * 3;
-          const stage = s?.hidden_stage_ground_truth ?? 'none';
-          return (
-            <g key={id} transform={`translate(${b.x},${b.y})`} className="graph-node" data-dim={dim(id) || undefined} data-hover={hover === id || undefined}
-              tabIndex={0} role="img" aria-label={nodeSummary(n?.name ?? id, n?.criticality, s)} style={{ touchAction: 'none' }}
-              onFocus={() => setHover(id)} onBlur={() => setHover(null)}
-              onPointerEnter={() => setHover(id)} onPointerLeave={() => setHover(null)} onPointerDown={onDown(id)}>
-              {heat > 0.05 && <circle r={r * (1.8 + heat * 1.6)} fill="url(#graph-glow)" opacity={0.35 + heat * 0.65} />}
-              {truth && stage !== 'none' && <circle r={r + 9} className="graph-truth" />}
-              <circle r={r} className="graph-dot" style={{ fill: `color-mix(in srgb, #c2452d ${Math.round(15 + heat * 85)}%, #8a7a75)` }} />
-              {s?.isolated && <circle r={r + 4} className="graph-isolated" />}
-              {n?.exposed && <circle r={r + (s?.isolated ? 8 : 4)} className="graph-exposed" />}
-              <text y={r + 15} textAnchor="middle" className="graph-label">{id}</text>
-              {truth && stage !== 'none' && <text y={-r - 8} textAnchor="middle" className="graph-truth-label">{stage}</text>}
-            </g>
-          );
-        })}
+          })}
+
+          {(() => {
+            const p = pos(INTERNET_ID);
+            return (
+              <g transform={`translate(${p.x},${p.y})`} className="net-node net-internet" data-dim={(focus !== null && !neighbours.has(INTERNET_ID)) || undefined}
+                onPointerEnter={() => setHover(INTERNET_ID)} onPointerLeave={() => setHover(null)}>
+                <title>{INTERNET.role}</title>
+                <circle r="20" className="net-body" />
+                <g className="net-icon"><Icon kind="internet" /></g>
+                <text y="38" textAnchor="middle" className="net-label">Internet</text>
+                <text y="51" textAnchor="middle" className="net-sub">outside traffic</text>
+              </g>
+            );
+          })()}
+
+          {views.map(v => {
+            const p = pos(v.name);
+            const r = radius(v.name);
+            const stage = stateBy.get(v.name)?.hidden_stage_ground_truth ?? 'none';
+            const isTarget = target === v.name;
+            return (
+              <g
+                key={v.name}
+                data-node={v.name}
+                transform={`translate(${p.x},${p.y})`}
+                className="net-node"
+                data-signal={v.signal}
+                data-isolated={v.isolated || undefined}
+                data-selected={selected === v.name || undefined}
+                data-dim={(focus !== null && !neighbours.has(v.name)) || undefined}
+                role="button"
+                tabIndex={0}
+                aria-pressed={selected === v.name}
+                aria-label={`${v.info.label} (${v.name})${v.critical ? ', critical' : ''}${v.exposed ? ', internet-exposed' : ''}: ${nodeStatusLine(v)}`}
+                onPointerDown={onPointerDown}
+                onPointerEnter={() => setHover(v.name)}
+                onPointerLeave={() => setHover(h => (h === v.name ? null : h))}
+                onFocus={() => setHover(v.name)}
+                onBlur={() => setHover(h => (h === v.name ? null : h))}
+                onKeyDown={onKey(v.name)}
+              >
+                {v.signal === 'high' && <circle r={r * 2.1} fill="url(#net-hot)" className="net-glow" />}
+                {showTruth && stage !== 'none' && <circle r={r + 12} className="net-truth" />}
+                {isTarget && <circle key={`act-${t}`} r={r + 6} className="net-act" />}
+                <circle r={r + 4} className="net-ring" />
+                <circle r={r} className="net-body" />
+                <g className="net-icon" transform={`scale(${(r / 24).toFixed(3)})`}><Icon kind={v.info.kind} /></g>
+                {badgesFor(v).map((b, i) => <StateBadge key={b} kind={b} x={r * 0.8} y={-r * 0.8 + i * 20} />)}
+                <text y={r + 18} textAnchor="middle" className="net-label">{v.info.label}</text>
+                <text y={r + 31} textAnchor="middle" className="net-sub">{v.name}{v.critical ? ' · critical' : ''}</text>
+                {showTruth && stage !== 'none' && <text y={-r - 16} textAnchor="middle" className="net-truth-label">attacker: {stage}</text>}
+              </g>
+            );
+          })}
+        </g>
       </svg>
 
+      {hovered && tip && (
+        <div className="net-tip" style={{ left: `${((tip.x * view.k + view.x) / W) * 100}%`, top: `${((tip.y * view.k + view.y) / H) * 100}%` }} aria-hidden="true">
+          <p className="font-medium text-white">{hovered.info.label}</p>
+          <p className="text-white/70">{nodeStatusLine(hovered)}</p>
+        </div>
+      )}
+
+      <div className="net-tools" role="toolbar" aria-label="Map view">
+        <button type="button" onClick={() => zoom(1.2)} aria-label="Zoom in">+</button>
+        <button type="button" onClick={() => zoom(1 / 1.2)} aria-label="Zoom out">−</button>
+        <button type="button" onClick={reset} aria-label="Reset view">Fit</button>
+      </div>
+      {showTruth && <p className="net-truth-chip" role="note">Showing hidden simulation truth — the defender cannot see this</p>}
+
       <table className="sr-only">
-        <caption>Current values for each node in {scenario.name}</caption>
-        <thead><tr><th scope="col">Node</th><th scope="col">Criticality</th><th scope="col">Anomaly score</th><th scope="col">Alert rate</th><th scope="col">Monitoring level</th><th scope="col">Status</th></tr></thead>
+        <caption>Observed values per service at this step</caption>
+        <thead><tr><th scope="col">Service</th><th scope="col">Anomaly score</th><th scope="col">Alert rate</th><th scope="col">Monitoring level</th><th scope="col">State</th></tr></thead>
         <tbody>
-          {scenario.nodes.map(n => {
-            const s = state.get(n.name);
-            const status = [n.exposed && 'internet-exposed', s?.isolated && 'isolated', s?.rate_limited && 'rate-limited', s?.reassessment_pending && 'reassessment pending'].filter(Boolean).join(', ') || 'no defensive action';
+          {views.map(v => {
+            const s = stateBy.get(v.name);
             return (
-              <tr key={n.name}>
-                <th scope="row">{n.name}</th><td>{n.criticality}</td><td>{num(s?.anomaly_score ?? 0, 2)}</td><td>{num(s?.alert_rate ?? 0, 2)}</td><td>{s?.monitoring_level ?? 0}</td><td>{status}</td>
+              <tr key={v.name}>
+                <th scope="row">{v.name}</th>
+                <td>{num(s?.anomaly_score ?? 0, 2)}</td>
+                <td>{num(s?.alert_rate ?? 0, 2)}</td>
+                <td>{s?.monitoring_level ?? 0}</td>
+                <td>{nodeStatusLine(v).toLowerCase()}{v.isolated ? ' (isolated)' : ''}</td>
               </tr>
             );
           })}
         </tbody>
       </table>
-
-      {hovered?.node && (
-        <div className="graph-card pointer-events-none absolute bottom-3 left-3 w-52 rounded-lg p-3 text-xs" aria-hidden="true">
-          <p className="font-mono text-sm text-white">{hovered.node.name}</p>
-          <dl className="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 text-white/70">
-            <dt>criticality</dt><dd className="font-mono text-white">{hovered.node.criticality}</dd>
-            <dt>anomaly score</dt><dd className="font-mono text-white">{num(hovered.s?.anomaly_score ?? 0, 2)}</dd>
-            <dt>alert rate</dt><dd className="font-mono text-white">{num(hovered.s?.alert_rate ?? 0, 2)}</dd>
-            <dt>monitoring</dt><dd className="font-mono text-white">{hovered.s?.monitoring_level ?? 0}</dd>
-          </dl>
-          <p className="mt-2 text-white/60">
-            {[hovered.node.exposed && 'internet-exposed', hovered.s?.isolated && 'isolated', hovered.s?.rate_limited && 'rate-limited', hovered.s?.reassessment_pending && 'reassessment pending'].filter(Boolean).join(' · ') || 'no defensive action'}
-          </p>
-        </div>
-      )}
-
-      <label className="graph-toggle absolute right-3 top-3 flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-xs text-white/80">
-        <input type="checkbox" checked={truth} onChange={e => setTruth(e.target.checked)} className="accent-[var(--color-brand)]" />
-        Show attacker (ground truth)
-      </label>
     </div>
   );
 }
