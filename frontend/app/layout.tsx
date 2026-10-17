@@ -35,8 +35,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             </Link>
             <nav aria-label="Primary" className="flex items-center gap-1.5">
               <NavLink href="/projects" className="hdr-reveal">Projects</NavLink>
-              <NavLink href="/pricing" className="hdr-reveal">Pricing</NavLink>
-              <NavLink href="/lab" className="hdr-cta">Defense Lab</NavLink>
+              <NavLink href="/lab" className="hdr-reveal">Defense Lab</NavLink>
+              <NavLink href="/pricing" className="hdr-cta">Pricing</NavLink>
             </nav>
           </div>
         </header>
