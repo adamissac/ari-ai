@@ -190,6 +190,9 @@ Runner semantics covered by `tests/qa/test_m7_runner.py`.
 
 Issue #148 status: DONE via PR #150, merged `1129434`; all executable CI checks passed on combined head `91cea8c`. Historical references remain immutable.
 
+### Ari logo integration — #165 / #169
+
+Sarosh, `feat/sarosh/ari-logo`: IN_REVIEW. Actual Sai sign-off #165/#176 applied: shared header/sign-in24px, intro96px and app/icon.png; original source preserved, no landing/story/graph/footer mark. Unit71, tsc/lint, production build and full real-stack browser14 passed; focused desktop/mobile/intro browser2 re-run passed. PR #169 awaits CI merge gate.
 ### API-RETRY-001 — assessment creation retries
 Owner: Alan (Codex), explicitly assigned application integration sprint. Status:
 IN_REVIEW on `fix/alan/demo-api-reliability`, base `37b0920`.
