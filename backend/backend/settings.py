@@ -94,8 +94,12 @@ class Settings(BaseSettings):
     @classmethod
     def _unset_placeholders(cls, value: object) -> object:
         """Empty values and .env.example placeholders ("replace-me…") mean "not configured"."""
-        if isinstance(value, str) and (not value.strip() or value.strip().startswith("replace-me")):
-            return None
+        if isinstance(value, str):
+            stripped = value.strip()
+            # .env.example puts comments on the same line as empty assignments. Compose's
+            # env parser keeps that comment as the value, which must still mean "unset".
+            if not stripped or stripped.startswith(("replace-me", "#")):
+                return None
         return value
 
     @property
