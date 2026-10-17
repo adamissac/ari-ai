@@ -87,6 +87,7 @@ class SandboxResult:
     timed_out: bool
     started_at: datetime
     labels: dict[str, str]
+    target_log: str = ""
 
     def out_json(self, name: str) -> dict[str, object] | None:
         data = self.out_files.get(name)
@@ -458,6 +459,12 @@ class DockerSandboxDriver:
                 cp = subprocess.CompletedProcess([], -1, b"", b"timeout")
                 timed_out = True
             stdout = cp.stdout.decode("utf-8", "replace")
+            target_log = ""
+            if network_name:
+                logs = self.runner([self.docker, "logs", f"tgt-{run_id}"], None, 30)
+                target_log = _cap(
+                    logs.stdout.decode("utf-8", "replace") + logs.stderr.decode("utf-8", "replace")
+                )
             out_files: dict[str, bytes] = {}
             marker = "\n@@SANDBOX_OUT@@"
             if marker in stdout:
@@ -480,6 +487,7 @@ class DockerSandboxDriver:
                 timed_out=timed_out,
                 started_at=started,
                 labels=dict(spec.labels),
+                target_log=target_log,
             )
         finally:
             if network_name:

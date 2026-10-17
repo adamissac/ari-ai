@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Concurrent retries of an assessment start now return the same assessment/job instead of launching duplicate work. Retry keys cannot replay results from a different project URL.
+
 - Indexing a commit says it records symbols, calls, entry points, and expectations. It does not run a security check or change the repository.
 - Creating a project says it records a name. It does not connect a repository, approve a test environment, or start a check. Monitoring is on by default.
 - The sign-in line and the projects headline no longer say every fix is already proven or that the product ships it. A fix counts only when independent tests agree.
@@ -29,6 +31,7 @@ All notable changes are documented here. Format follows
 - QA scripts execute the existing suites and preserve failed versus incomplete results; preflight no longer declares demo readiness from warnings.
 
 ### Fixed
+- Intelligence caches now distinguish normalized repository coverage and ingestion limits; invalid prefixes cannot bypass validation through a cache hit. Historical snapshot evidence remains pinned to its original version.
 - Hosted assessments with a still-pending functional approval now pause at
   `AWAITING_APPROVAL` even when security work ended early or was already
   approved. Early security exits walk skipped phases to the only legal pause

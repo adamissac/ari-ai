@@ -46,7 +46,7 @@ export function ProjectShell({ children }: { children: ReactNode }) {
   const base = `/projects/${project.data.id}`;
   return (
     <ProjectContext.Provider value={{ project: project.data, repos: repos.data.items, reloadRepos: repos.reload }}>
-      <Crumbs items={[{ href: '/', label: 'Projects' }, { href: base, label: project.data.name }]} />
+      <Crumbs items={[{ href: '/projects', label: 'Projects' }, { href: base, label: project.data.name }]} />
       <nav aria-label="Project" className="mb-6 flex flex-wrap gap-1 rounded-xl border border-line bg-panel-2 p-1">
         {TABS.map(t => {
           const href = base + t.href;

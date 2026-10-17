@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { NodeGraph } from '@/components/node-graph';
 import { Term } from '@/components/term';
 import { Badge, Button, Empty, ErrorState, Field, inputClass, Loading, Mono, PageTitle, Panel, Stat, Tag } from '@/components/ui';
 import { num } from '@/lib/format';
@@ -270,53 +271,16 @@ function Player({ episode, scenario }: { episode: LabEpisode; scenario: LabScena
 
 const STAGE_TONE = { none: 'neutral', foothold: 'warn', escalated: 'bad', impact: 'bad' } as const;
 
-/** Layered layout: exposed nodes first, then breadth-first along edges. */
-function layout(s: LabScenario): Map<string, { x: number; y: number }> {
-  const depth = new Map<string, number>();
-  const queue = s.nodes.filter(n => n.exposed).map(n => n.name);
-  queue.forEach(q => depth.set(q, 0));
-  while (queue.length) {
-    const cur = queue.shift() as string;
-    for (const [a, b] of s.edges) {
-      const next = a === cur ? b : null;
-      if (next && !depth.has(next)) { depth.set(next, (depth.get(cur) ?? 0) + 1); queue.push(next); }
-    }
-  }
-  s.nodes.forEach(n => { if (!depth.has(n.name)) depth.set(n.name, 0); });
-  const layers = new Map<number, string[]>();
-  for (const [name, d] of depth) layers.set(d, [...(layers.get(d) ?? []), name]);
-  const maxD = Math.max(...layers.keys());
-  const pos = new Map<string, { x: number; y: number }>();
-  for (const [d, names] of layers) names.forEach((name, i) => pos.set(name, { x: 60 + (d * 480) / Math.max(1, maxD), y: ((i + 1) * 220) / (names.length + 1) }));
-  return pos;
-}
-
 function Topology({ scenario, states }: { scenario: LabScenario; states: LabNodeState[] }) {
-  const pos = useMemo(() => layout(scenario), [scenario]);
-  const state = new Map(states.map(s => [s.node, s]));
   return (
     <figure>
-      <svg viewBox="0 0 600 220" className="w-full rounded border border-line bg-bg" role="img" aria-label={`Simulated topology for ${scenario.name}`} data-testid="topology">
-        {scenario.edges.map(([a, b]) => {
-          const p = pos.get(a); const q = pos.get(b);
-          return p && q ? <line key={a + b} x1={p.x} y1={p.y} x2={q.x} y2={q.y} stroke="var(--color-line)" strokeWidth={2} /> : null;
-        })}
-        {scenario.nodes.map(n => {
-          const p = pos.get(n.name);
-          const s = state.get(n.name);
-          if (!p) return null;
-          const heat = Math.min(1, s?.anomaly_score ?? 0);
-          return (
-            <g key={n.name} transform={`translate(${p.x},${p.y})`}>
-              <circle r={22} fill={`color-mix(in srgb, var(--color-bad) ${Math.round(heat * 70)}%, var(--color-panel-2))`} stroke={s?.isolated ? 'var(--color-warn)' : n.exposed ? 'var(--color-accent)' : 'var(--color-line)'} strokeWidth={s?.isolated ? 3 : 1.5} strokeDasharray={s?.rate_limited ? '4 3' : undefined} />
-              <text textAnchor="middle" y={4} fontSize={11} fill="var(--color-ink)">{n.name}</text>
-              <text textAnchor="middle" y={38} fontSize={9} fill="var(--color-muted)">crit {n.criticality} · anomaly {num(s?.anomaly_score ?? 0, 2)}</text>
-            </g>
-          );
-        })}
-      </svg>
-      <figcaption className="mt-2 flex flex-wrap gap-2 text-xs text-muted">
-        <span>Fill = anomaly score (observed).</span><span>Brand-red ring = internet-exposed.</span><span>Thick amber ring = isolated.</span><span>Dashed = rate-limited.</span>
+      <NodeGraph scenario={scenario} states={states} />
+      <figcaption className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
+        <span className="flex items-center gap-1.5"><span className="graph-key bg-brand" />Glow and colour = anomaly score (observed)</span>
+        <span className="flex items-center gap-1.5"><span className="graph-key border border-brand" />Ring = internet-exposed</span>
+        <span className="flex items-center gap-1.5"><span className="graph-key border-2 border-warn" />Amber ring = isolated</span>
+        <span className="flex items-center gap-1.5"><span className="graph-key-line" />Dashed link = rate-limited or hot</span>
+        <span>Size = criticality · hover to inspect · drag to rearrange</span>
       </figcaption>
       <div className="mt-2 rounded border border-line p-2 text-xs">
         <p className="mb-1 font-semibold text-muted">Ground truth (simulation) — hidden attacker stage, never observed by the policy</p>
