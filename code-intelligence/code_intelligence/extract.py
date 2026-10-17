@@ -27,7 +27,6 @@ from shared.intelligence import (
 from tree_sitter import Language, Parser
 
 from code_intelligence.models import (
-    INDEX_VERSION,
     DependencyRecord,
     ImportRecord,
     IndexIssue,
@@ -61,7 +60,7 @@ def citation(
         commit_sha=ref.commit_sha,
         span=SourceSpan(start_line=start or symbol.start_line, end_line=end or symbol.end_line),
         symbol=symbol.qualified_name,
-        provenance=f"code_intelligence@{INDEX_VERSION}",
+        provenance=f"code_intelligence@{ref.index_version}",
         note=note,
     )
 
@@ -607,7 +606,7 @@ class PythonExtractor:
                         path=file.path,
                         commit_sha=self.ref.commit_sha,
                         span=SourceSpan(start_line=number, end_line=number),
-                        provenance=f"code_intelligence@{INDEX_VERSION}",
+                        provenance=f"code_intelligence@{self.ref.index_version}",
                         note="Declared documentation intent; lexical subject link is uncertain",
                     )
                     self.expectations.append(

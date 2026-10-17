@@ -71,6 +71,24 @@ not repository instructions. No implicit remote clone or in-memory success fallb
 `include_prefix` keeps answer keys/labels outside the indexed target. Citations retain
 original repository-relative paths and the original commit SHA.
 
+## Ingestion profiles and existing snapshots
+
+The parser base version is `python-ast-ts/0.3.0`. Non-default ingestion prefixes
+or limits add an opaque `+profile.<digest>` suffix to `SnapshotRef.index_version`.
+Treat that field as an opaque version, not a fixed parser label. Equivalent
+prefixes such as `app`, `app/`, and `./app/` share a profile; invalid prefixes are
+rejected before a cached index can be returned. Prefix and all `Limits` settings
+participate in cache identity, including backend indexing and diff lookups.
+
+This prevents a narrower/different registration or budget from receiving a
+previous configuration's cached coverage. `index_repository(...)` creates or
+reuses the exact active profile. Existing `0.2.0` snapshot references remain
+readable as immutable historical records; do not rewrite their IDs, payloads,
+decisions or regression evidence to the new version. Re-index the active commit
+through the producer/host to obtain its current reference. Confirmation and
+candidate-regression evidence do not silently carry into another profile.
+The checked-in M1 evidence/packet remain historical evidence of their pinned run.
+
 ## Consumer API
 
 ```python

@@ -354,3 +354,22 @@ Replaced invalid imports/nonexistent npm commands and skip-as-success summaries 
 - Continued from Claude's current main-based worktree; #73/#74 are merged and #35 is closed. Left the separate Devin M7 branch and untracked reports intact.
 - Inspected successful security CI 39033028814 (`5b3ef50`): 6 real Docker tests passed; ordinary suite 451 passed/18 skipped. Corrected stale execution-unverified and integration-pending README claims.
 - INFRA-005 still needs published image digests; CI's temporary image tag is not a published release. Live seven-role provider proof remains separate.
+
+### 2026-10-17 — Sarosh / Codex — recovered context and ingestion scope cache
+
+- Read recovered handoff PR #145 (`e5fee45`, later merged #145); confirmed #39
+  merged and #38 closed. Synced current main and installed frozen workspace.
+  Recovery memory smoke: **8 passed**. No recovered implementation was redone.
+- Found/reproduced #148: same project/repo/SHA/parser-version cache ignored the
+  operator's include prefix and limits; an invalid prefix could hit the cache
+  before validation. A new regression test failed on the inspected main.
+- Fixed in `fix/sarosh/intelligence-scope-cache`: normalized/validated prefix,
+  profile-aware immutable versions for cache/snapshot/diff paths, provenance from
+  the exact ref. Parser base 0.3.0; non-default profile digest fits existing DB
+  column. Existing refs and exact-snapshot decisions stay unchanged.
+- Executed: new producer cases **6 passed**; broad intelligence/shared/PostgreSQL
+  checks **97 passed, 1 live opt-in skipped**; new real PostgreSQL profile case
+  **1 passed**; backend M7/host/unified and reviewer consumer checks **11 passed**
+  with scripted test transports. Ruff/format and strict producer mypy passed.
+- No new live-provider, local Docker, browser or deployment proof claimed.
+  Active security/frontend owner branches were left untouched.
