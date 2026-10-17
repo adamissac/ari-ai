@@ -1,6 +1,6 @@
 'use client';
 
-import type { AuthorizedScope } from '@hackatl/frontend-transport';
+import type { AuthorizedScope, CheckCategory } from '@hackatl/frontend-transport';
 import { useState, type FormEvent } from 'react';
 import { useProject } from '@/components/project';
 import { useSession } from '@/components/session';
@@ -10,7 +10,7 @@ import { SCOPE_STATUS } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
 
 // Check categories implemented by the security-agents check library (Probe's reviewed templates).
-const CATEGORIES = ['access_control.ownership', 'input_validation.bounds'];
+const CATEGORIES = ['access_control.ownership', 'input_validation.bounds'] satisfies CheckCategory[];
 
 export default function ScopesPage() {
   const { project } = useProject();
@@ -80,7 +80,7 @@ function RequestScope({ onCreated }: { onCreated: () => void }) {
   const [name, setName] = useState('');
   const [repoId, setRepoId] = useState('');
   const [recipe, setRecipe] = useState('build_recipe.json');
-  const [categories, setCategories] = useState<string[]>(CATEGORIES);
+  const [categories, setCategories] = useState<CheckCategory[]>(CATEGORIES);
   const [days, setDays] = useState(7);
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);

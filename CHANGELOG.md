@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Scope form uses the canonical generated check-category type, fixing builds with the stricter authorization contract.
+
 ### Fixed
 - Hosted assessments with a still-pending functional approval now pause at
   `AWAITING_APPROVAL` even when security work ended early or was already

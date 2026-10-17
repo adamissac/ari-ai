@@ -200,3 +200,6 @@ Branch `devin/1792226026-frontend-gaps` (merged `origin/main` at efc0e55). Front
 ## 2026-10-17 — incident closure UI (Devin for Adam)
 
 Branch `devin/*-incident-closure` from main after #80. Added `components/incident-closure.tsx` (link finding / accepted verification, add + satisfy closure criteria with hash-pinned patch-diff or Fortify regression artifacts, lessons learned, communications, closure readiness) and pure helpers in `lib/incidents.ts`. Executed: tsc, ESLint, Vitest 32 passed, real-stack Playwright incl. new closure spec. Found (not fixed, other lanes): no producer sets `HardeningRecommendation.proposed_test_artifact_id`, so lessons learned → closure is unreachable for hosted assessments; see coordination/messages/20261017T093000Z-adam-to-alan-srihith-fortify-regression-artifact.md.
+
+### 2026-10-17 — canonical scope category frontend consumer
+PR91 introduced typed CheckCategory and failed frontend tsc/build because the request form held string[]. Continuation branch `fix/srihith/check-category-ui` uses the generated type for both reviewed choices and state, without casts or duplicate contracts. Transport build, strict tsc, ESLint, frontend32 unit tests, production build and real-stack Chrome12 tests passed. Scripted model transports only. This PR targets PR91’s branch so Alan’s contract change remains intact.

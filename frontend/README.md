@@ -76,3 +76,5 @@ installed Chrome instead of Playwright's Chromium, `E2E_SKIP_BUILD=1` to reuse `
 - Lessons learned need a Fortify regression-test artifact, which hosted assessments do not yet record (coordination note 20261017T093000Z); the UI says so and closure stays blocked.
 - GitHub links need exactly one repository in the project (findings carry no repo id).
 - Live-provider (`provider_mode=live`) runs have not been exercised through the UI.
+
+Scope requests keep the reviewed Probe category choices typed against generated `CheckCategory`; unsupported categories cannot be added to this UI list without a TypeScript error. Historical scope aliases remain readable through the shared contract.
