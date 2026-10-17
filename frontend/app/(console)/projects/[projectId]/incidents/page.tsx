@@ -2,6 +2,7 @@
 
 import type { Incident, IncidentAction, IncidentCreate, IncidentState, TriageDecisionKind } from '@hackatl/frontend-transport';
 import { useState, type FormEvent } from 'react';
+import { ClosurePanel } from '@/components/incident-closure';
 import { useProject } from '@/components/project';
 import { useSession } from '@/components/session';
 import { Async, Button, Empty, ErrorState, Field, inputClass, Mono, Panel, Tag, Time } from '@/components/ui';
@@ -88,10 +89,10 @@ function IncidentDetailView({ id, onChange }: { id: string; onChange: () => void
   const detail = useResource(`incident:${id}`, s => api().incident(id, { signal: s }));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
-  const act = async (body: IncidentAction) => {
+  const act = async (body: IncidentAction): Promise<boolean> => {
     setBusy(true);
     setError(null);
-    try { await api().actOnIncident(id, body); detail.reload(); onChange(); } catch (err) { setError(err); } finally { setBusy(false); }
+    try { await api().actOnIncident(id, body); detail.reload(); onChange(); return true; } catch (err) { setError(err); return false; } finally { setBusy(false); }
   };
   return (
     <Async resource={detail} label="incident">
@@ -110,6 +111,7 @@ function IncidentDetailView({ id, onChange }: { id: string; onChange: () => void
           </Panel>
           <Actions incident={incident} busy={busy} act={act} />
           {error !== null && <ErrorState error={error} context="Action refused" />}
+          <ClosurePanel incident={incident} busy={busy} act={act} />
           <Panel title="Timeline">
             <ol className="flex flex-col gap-2 text-sm">
               {[...incident.timeline].reverse().map((t, i) => (
@@ -139,7 +141,7 @@ function Lifecycle({ state }: { state: IncidentState }) {
   );
 }
 
-function Actions({ incident, busy, act }: { incident: Incident; busy: boolean; act: (a: IncidentAction) => Promise<void> }) {
+function Actions({ incident, busy, act }: { incident: Incident; busy: boolean; act: (a: IncidentAction) => Promise<boolean> }) {
   const { me } = useSession();
   const [note, setNote] = useState('');
   const [category, setCategory] = useState('');
