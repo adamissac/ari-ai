@@ -28,6 +28,7 @@ export function IntroLoader({ onReveal }: { onReveal: () => void }) {
 
   useEffect(() => {
     if (!shouldPlay()) { onReveal(); return; }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- browser-only decision (storage, media query) must happen after hydration
     setPhase('count');
     const root = document.documentElement;
     root.dataset.intro = 'playing';
