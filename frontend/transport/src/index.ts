@@ -1,5 +1,5 @@
 export { ApiClient, ApiError } from './client.js';
-export type { ClientOptions, RequestOptions, Page, Fetch, CancelResult, LabeledPage, ArtifactText, FindingRecord, FindingDetail, SnapshotQuery } from './client.js';
+export type { ClientOptions, RequestOptions, Page, Fetch, CancelResult, LabeledPage, ArtifactText, FindingRecord, FindingDetail, SnapshotQuery, ExpectationQuery } from './client.js';
 export { ProtocolError } from './contracts.js';
 export type * from './contracts.js';
 export { watchAssessment } from './sse.js';
