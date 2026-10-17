@@ -92,6 +92,8 @@ MODELS: tuple[type[BaseModel], ...] = (
     rl.DefenseRecommendation,
     rl.RLCheckpointRef,
     rl.RLEvaluation,
+    rl.FeatureContribution,
+    rl.RLExplanation,
     # audit / events
     audit.AuditEvent,
     events.StreamEvent,

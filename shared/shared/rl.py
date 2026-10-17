@@ -92,3 +92,27 @@ class RLEvaluation(StrictModel):
     summary_sha256: Sha256Hex
     simulation_derived: Literal[True] = True
     created_at: UtcDatetime
+
+
+class FeatureContribution(StrictModel):
+    node: NodeName | None = Field(description="None for global features")
+    feature: ShortText
+    value: float
+    delta_margin: float = Field(
+        description="margin(original) - margin(feature occluded); > 0 supports the chosen action"
+    )
+    kind: Literal["signal", "context", "defense_state", "global"]
+
+
+class RLExplanation(StrictModel):
+    """Occlusion explanation of one recommendation (V0.1, proposed by Adam). Explains the
+    simulation-trained policy's decision, not real-world causality."""
+
+    recommendation_id: RecommendationId
+    action: ShortText
+    runner_up: ShortText | None
+    margin: float
+    method: ShortText
+    top_contributions: list[FeatureContribution]
+    caveat: ShortText
+    simulation_derived: Literal[True] = True
