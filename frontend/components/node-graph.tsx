@@ -177,6 +177,10 @@ export function NodeGraph({ scenario, states, action = 'noop', t = 0, selected =
   return (
     <div className="net-map" data-truth={showTruth || undefined}>
       <div className="network-heading"><span className="network-eyebrow">NETWORK / RECORDED STEP {t}</span><span>Follow the connections. Select a service to look inside.</span></div>
+      <div className="network-actors">
+        <div><span className="actor-dot actor-threat" /><span><b>Attacker location</b><small>{showTruth ? states.filter(s => s.hidden_stage_ground_truth !== 'none').map(s => byName.get(s.node)?.info.label ?? s.node).join(', ') || 'Not inside the network at this step' : 'Hidden — turn on replay ground truth to see it'}</small></span></div>
+        <div><span className="actor-dot actor-guard" /><span><b>Defender location</b><small>{target ? `${byName.get(target)?.info.label ?? target} · ${parseAction(action).verb.replaceAll('_', ' ')}` : action === 'escalate_to_human' ? 'Calling a person for help' : 'Watching the network; no move this step'}</small></span></div>
+      </div>
       <div className="net-scroll">
       <div className="net-canvas">
       <svg
