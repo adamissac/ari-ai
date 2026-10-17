@@ -189,6 +189,9 @@ export class ApiClient {
     }
     return { items: record.items.map(i => decode<C.DefenseRecommendation>('DefenseRecommendation', i)), next_cursor: null, label: record.label };
   }
+  recommendationExplanation(id: string, options?: RequestOptions): Promise<C.RLExplanation> {
+    return this.request(`/defense-recommendations/${segment(id)}/explanation`, 'RLExplanation', options) as Promise<C.RLExplanation>;
+  }
   rlEvaluations(projectId: string, options?: RequestOptions): Promise<Page<C.RLEvaluation>> {
     return this.list(`/projects/${segment(projectId)}/rl-evaluations`, 'RLEvaluation', options);
   }
