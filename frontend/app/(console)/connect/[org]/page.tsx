@@ -49,7 +49,7 @@ export default function ConnectReposPage() {
         <Avatar login={login} size={48} />
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">{login}</h1>
-          <p className="mt-1 text-sm text-muted">Choose a repository. Ari AI reads it through the GitHub App with read-only access and checks every push.</p>
+          <p className="mt-1 text-sm text-muted">Choose a repository. Ari AI reads it through the GitHub App with read-only access; push events are checked once the App webhook is delivering.</p>
         </div>
       </header>
       {list.status === 'loading' && <Loading label="Loading repositories" />}

@@ -32,7 +32,7 @@ function Simulation() {
       <div className="mb-4 flex flex-wrap items-start gap-3 rounded-xl border border-line bg-panel-2 px-4 py-3 text-sm" data-testid="simulated-attack-note">
         <DemoMarker />
         <p className="min-w-0 flex-1 text-muted">
-          Ari AI had its Probe agent perform <span className="text-ink">{sim.attack}</span> in a simulated run for <span className="font-mono text-ink">{repo.full_name}</span>{real && <> at <span className="font-mono text-ink">{real.sha.slice(0, 7)}</span></>}.
+          In this simulated run, Ari AI&apos;s Probe agent performs <span className="text-ink">{sim.attack}</span> against an illustrative copy of <span className="font-mono text-ink">{repo.full_name}</span>{real && <> at <span className="font-mono text-ink">{real.sha.slice(0, 7)}</span></>}.
           Live attacks run only against Python ASGI services in the sandbox, so this replay uses illustrative code, findings and defense events. The commit header is real; nothing in the repository was attacked.
         </p>
       </div>
