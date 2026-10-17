@@ -541,3 +541,22 @@ Local intelligence suite: 53 passed, 1 live skip before the additional version
 registration test; strict producer mypy passed (12 modules), Ruff/format passed.
 Real PostgreSQL tests cannot initialize locally: sandbox denies SysV shared memory
 and pgserver process enumeration. CI must verify the new backend regressions.
+
+## 2026-10-17T18:45:19+00:00 — Sarosh: ARI frontend polish (local)
+
+Branch: `feat/sarosh/ari-frontend-polish` in `/tmp/ari-website-polish`, based on
+`e715ac7` from `adamissac/ari-ai` (owner corrected the original slide-deck URL).
+Updated header/hero/brand/pricing copy/metadata, one local font plus license/hash,
+and related unit/browser checks. Kept ant assets and existing body/display/mono fonts.
+
+Executed: `npm run lint --prefix frontend`; `npm run typecheck --prefix frontend`;
+`NEXT_PUBLIC_DEMO_ONLY=1 npm run build --prefix frontend` (all passed);
+`npm test --prefix frontend -- --maxWorkers=2` (49 files, 211 tests passed);
+`E2E_BASE_URL=http://127.0.0.1:3015 E2E_DEMO_ONLY=1 E2E_BROWSER_CHANNEL=chrome ARI_LANDING_SCREENSHOTS=/tmp/ari-polish-screens npm run e2e --prefix frontend -- tests/e2e/landing.spec.ts --reporter=list` (5 passed).
+Default parallel unit rerun hit one existing logo-file test's 5s timeout under concurrent
+build load; rerun with 2 workers passed without changing any timeouts.
+Rendered Chrome inspection covered desktop/mobile hero and scrolled light/dark content;
+no browser warnings/errors observed. Screenshots/logs are outside Git under `/tmp/ari-polish-*`.
+The full authenticated backend e2e suite was not run. No provider calls, API changes,
+push, merge or deployment. Next action: review local diff; publish via reviewed branch
+only when authorized (Git-connected pushes create Vercel previews).
