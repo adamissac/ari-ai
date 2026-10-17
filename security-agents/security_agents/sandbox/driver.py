@@ -298,9 +298,11 @@ class DockerSandboxDriver:
     only after the scope decision is re-validated.
 
     STATUS: argument construction and reaping are unit-tested with a fake
-    command runner. The `none` network path runs in real containers in the CI
-    docker-sandbox job (tests/test_docker_sandbox_live.py). The `target-only`
-    path and the check harness are not yet executed in Docker (INFRA-005).
+    command runner. The CI docker-sandbox job (tests/test_docker_sandbox_live.py)
+    runs real containers for the `none` path and for reviewed checks on the
+    `target-only` path. v0 check templates exercise the app in process, so the
+    target container and internal network are created but not yet used by a
+    check; the check harness is not installed (INFRA-005).
     """
 
     name = "docker"
