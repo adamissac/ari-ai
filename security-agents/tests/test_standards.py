@@ -107,3 +107,106 @@ def test_reviewed_check_rule_attaches_proposed_sandbox_mapping():
         and ref.observation == "observed_in_sandbox"
         for ref in refs
     )
+
+
+def test_scout_rejects_mapping_prohibited_cwe():
+    with pytest.raises(ValidationError, match="SCHEMA_INVALID"):
+        HypothesisOut(
+            title="Finding",
+            weakness_class="CWE-840",
+            rationale="Evidence",
+            expected_invariant="Owner only",
+            cited_paths=["app.py"],
+            cited_start_lines=[1],
+            cited_end_lines=[2],
+            confidence="high",
+            suggested_check_category="access_control.ownership",
+        )
+
+
+def test_finding_standards_derive_cvss_from_recorded_facts_not_llm_metrics():
+    from datetime import UTC, datetime
+
+    from security_agents.agents.scout import Hypothesis
+    from security_agents.contracts import (
+        AttackPath,
+        PathStep,
+        SeverityAssessment,
+        SeverityFactors,
+        SeverityLevel,
+        SourceSpan,
+        ValidationOutcome,
+        ValidationResult,
+    )
+    from security_agents.standards_bridge import CLASSIFIER, finding_standards
+    from security_agents.workflow import FindingRecord
+
+    span = EvidenceRef(
+        path="payments_lite/app.py",
+        sha="a" * 40,
+        span=SourceSpan(start_line=10, end_line=14),
+        provenance="code",
+    )
+    run = EvidenceRef(artifact_id="sbx_probe1", provenance="check_run")
+    finding = FindingRecord(
+        finding_id="fnd_test01",
+        hypothesis=Hypothesis(
+            weakness_class="CWE-639",
+            title="payment detail ownership",
+            rationale="missing owner check",
+            cited_spans=[span],
+            confidence="high",
+            suggested_check_category="access_control.ownership",
+        ),
+        validation=ValidationResult(
+            hypothesis_id="hyp_test",
+            outcome=ValidationOutcome.CONFIRMED,
+            check_template_id="access_control.ownership",
+            check_template_version="1",
+            sandbox_run_id="sbx_probe1",
+            evidence=[run],
+        ),
+        attack_path=AttackPath(
+            finding_id="fnd_test01",
+            steps=[PathStep(order=1, description="GET payment", verified=True, evidence=[run])],
+            impact_summary="cross-owner read",
+        ),
+        severity=SeverityAssessment(
+            level=SeverityLevel.HIGH,
+            factors=SeverityFactors(
+                reachability="authenticated",
+                privileges_required="low",
+                data_sensitivity="financial",
+                verified_path=True,
+            ),
+            rationale="executed ownership check",
+        ),
+    )
+    std = finding_standards(finding, now=datetime(2026, 10, 17, tzinfo=UTC))
+    assert std.cwe and std.cwe.id == "CWE-639"
+    assert [m.id for m in std.attack] == ["T1190"]
+    assert std.cvss and std.cvss.complete and std.cvss.score is not None
+    assert std.classified_by == CLASSIFIER
+    assert "provisional" not in std.cvss.assessor
+    assert "FIRST cvss-v4-calculator" in std.cvss.scoring_engine
+    finding.severity = None
+    incomplete = finding_standards(finding, now=datetime(2026, 10, 17, tzinfo=UTC))
+    assert incomplete.cvss and not incomplete.cvss.complete and incomplete.cvss.score is None
+
+
+def test_system_prompts_hold_no_secret_shaped_values():
+    import re
+
+    from security_agents.agents import ALL_SPECS
+
+    shapes = [
+        re.compile(r"sk-ant-[A-Za-z0-9_\-]{8,}"),
+        re.compile(r"github_pat_[A-Za-z0-9_]{20,}"),
+        re.compile(r"gh[pousr]_[A-Za-z0-9]{20,}"),
+        re.compile(r"AKIA[0-9A-Z]{16}"),
+        re.compile(r"xox[abpr]-[A-Za-z0-9\-]{10,}"),
+        re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
+    ]
+    for name, spec in ALL_SPECS.items():
+        for pat in shapes:
+            assert not pat.search(spec.system_prompt), (name.value, pat.pattern)
