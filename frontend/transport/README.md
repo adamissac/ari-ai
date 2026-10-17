@@ -30,3 +30,35 @@ Error validation never includes the response payload in exception messages.
 
 Current scope is transport only. App integration, browser auth UX, rendered
 loading/error states, and M6 acceptance are not complete.
+
+## Durable SSE
+
+```ts
+import { watchAssessment } from '@hackatl/frontend-transport';
+const controller = new AbortController();
+for await (const event of watchAssessment(api, assessment.assessment.id, {
+  after: lastRenderedSequence,
+  signal: controller.signal,
+  onConnection: state => updateConnectionLabel(state),
+})) {
+  renderPersistedEvent(event); // text, never innerHTML; idempotent by seq
+  lastRenderedSequence = event.seq;
+}
+// On unmount: controller.abort(); handle rejected AbortError in the caller.
+```
+
+Fetch streaming is used instead of EventSource so resume headers and abort are
+explicit. Reconnect sends both `Last-Event-ID` and `after`, accepts only matching
+assessment/type/sequence envelopes, and ignores validated duplicate sequences.
+Schema errors and 4xx permissions fail immediately; transport failures, 429 and
+5xx have at most five retries with capped exponential delay (configurable).
+`onConnection` exposes connecting/connected/reconnecting/completed/aborted/failed.
+A closed socket is not completion: a terminal event or fetched persisted terminal
+assessment is required. Terminal means the run ended, including failed/cancelled;
+render the actual assessment state, not a generic success badge.
+
+Cursor ownership stays with the consumer: save the last successfully rendered
+sequence across remounts. Throwing from the consumer does not auto-replay its UI
+side effects. Aborting cancels fetch/body/reconnect delays. Framing supports
+chunked UTF-8, CR/LF/CRLF, multiline data, comments, retry controls and discards
+incomplete EOF frames. JSON bodies default to 8 MiB and SSE frames to 1 MiB.
