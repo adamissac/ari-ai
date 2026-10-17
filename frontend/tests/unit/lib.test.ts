@@ -215,7 +215,7 @@ describe('project journey', () => {
       eventLogTruncated: true,
     }));
     expect(view.repair?.status).toBe('skipped');
-    expect(view.repair?.detail).toMatch(/first 500 events/);
+    expect(view.repair?.detail).toMatch(/first 10,000 events/);
     expect(view.repair?.detail).toMatch(/later page may/);
   });
 
