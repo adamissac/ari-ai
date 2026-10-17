@@ -152,6 +152,8 @@ class FindingRecord:
             "severity": self.severity.level.value if self.severity else None,
             "validation_outcome": self.validation.outcome.value if self.validation else None,
             "verdicts": [v.verdict for v in self.verifications],
+            "patch_candidates": len(self.candidates),
+            "patch_tests_added": list(self.candidates[-1].tests_added) if self.candidates else [],
             "regression_tests": [t.test_path for t in self.regression_tests],
             "notes": self.notes,
             "standards": standards_bridge.summary(self.standards),
@@ -222,6 +224,7 @@ class AssessmentResult:
                     "tokens": r.usage.total_tokens,
                     "usd": round(r.usage.usd, 6),
                     "error_code": r.error_code.value if r.error_code else None,
+                    "error_detail": r.error_detail,
                     "tool_trace": self._tool_trace(r.id),
                 }
                 for r in self.runs
@@ -1120,6 +1123,7 @@ class Orchestrator:
             related_sites=[r.symbol or "" for r in finding.related_sites][:10],
             tests_added=list(candidate.tests_added),
             affected_symbol=self._handler_symbol(finding),
+            weakness_class=finding.hypothesis.weakness_class,
         )
         ctx = self._context(
             AgentName.FORTIFY, f"hardening:{finding.finding_id}", services=self._read_services()
