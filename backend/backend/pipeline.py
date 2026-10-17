@@ -317,8 +317,9 @@ def platform_facts(
     """Build PlatformFacts with rl_defense.platform_mapping (Adam) from persisted findings.
 
     Only route-shaped ``Finding.subject_refs`` ("METHOD /path") map onto simulator nodes;
-    the route->node topology is the per-project config at RL_TOPOLOGY_PATH. No runtime
-    telemetry exists in MVP, so no signals are passed (alert/anomaly stay 0).
+    the route->node topology is the per-project config at RL_TOPOLOGY_PATH. Runtime
+    signals are the latest scored windows from /ingest/runtime (labeled runtime_demo /
+    replay / simulated; there is no production telemetry in MVP).
     """
     from rl_defense import platform_mapping as pm
     from shared.findings import Finding
@@ -346,7 +347,10 @@ def platform_facts(
                     routes=routes,
                 )
             )
-    facts, provenance = pm.facts_from_platform(topology, inputs, [], project_id=project_id)
+    from backend.api.runtime import latest_route_signals
+
+    signals = [pm.RouteSignal(**sig) for sig in latest_route_signals(conn, project_id)]
+    facts, provenance = pm.facts_from_platform(topology, inputs, [], signals, project_id=project_id)
     return PlatformFacts.model_validate(facts.model_dump(mode="json")), provenance
 
 
