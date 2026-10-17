@@ -59,6 +59,15 @@ test('real FastAPI/PostgreSQL browser transport', async t => {
     assert.equal((await alice.api.repositories(project.id)).items[0].id, repo.id);
     assert.equal((await alice.api.scopes(project.id)).items[0].id, scope.id);
     assert.deepEqual((await alice.api.agentRuns(assessment.id)).items, []);
+    // Report and snapshot list decode as the shared contracts against the real API.
+    const report = await alice.api.report(assessment.id);
+    assert.equal(report.source, 'persisted records');
+    assert.equal(report.assessment.id, assessment.id);
+    const snap = await alice.api.createSnapshot(repo.id, { commit_sha: 'b'.repeat(40) }, 'transport-snapshot-1');
+    const snaps = await alice.api.snapshots(repo.id, { limit: 5 });
+    assert.equal(snaps.items[0].id, snap.id);
+    assert.deepEqual((await alice.api.snapshots(repo.id, { status: 'ready' })).items, []);
+    await assert.rejects(eve.api.snapshots(repo.id), e => e instanceof ApiError && e.status === 404);
     assert.deepEqual((await alice.api.findings(project.id)).items, []);
     assert.ok((await alice.api.approvals(project.id)).items.length >= 1);
   });
