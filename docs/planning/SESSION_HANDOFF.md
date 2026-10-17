@@ -349,3 +349,14 @@ Synced PR74 with current main after PR83/85/87, preserving both task histories a
 
 ### 2026-10-17 — QA-001: finish unexecuted Devin QA tools
 Replaced invalid imports/nonexistent npm commands and skip-as-success summaries in PR94’s proposal. Scripts use the current interpreter, do not install dependencies, force live model evals off, resolve paths independently of cwd, and execute existing suites. Added runner semantics CI. Executed on the proposal base: helper10 passed; security wrapper backend/monitoring/reviewer/intelligence162 passed/7 optional skips and security-agent394 passed/11 optional skips; frontend wrapper transport/tsc/lint/build/Vitest32 and actual-stack Chrome12 passed. Preflight from /tmp and optional RL runner intentionally return2 (incomplete: no Docker, RL package, or persistent API on this machine). No paid calls or deployment. Readiness report now records evidence and points to current milestones rather than stale blockers.
+
+### 2026-10-17T13:22Z — Codex resume handoff (PR #39 already merged)
+
+PR #39 landed on `main` as `2ab5584` at 05:30 UTC; issue #38 is closed. The
+recovered worktree was fast-forwarded to `origin/main` at `39186cb` and is clean.
+No commits from the intelligence-memory lane remain unmerged. The full resume
+brief for the next Codex session — original failure, fixes, implemented files,
+commits, verification, next actions and warnings — is
+`coordination/messages/20261017T132209Z-sarosh-to-codex-recovered-memory-handoff.md`.
+Post-merge smoke checks: memory/contract suite **8 passed**; regression/host/
+reviewer integration suite **11 passed** after `uv sync --frozen`.
