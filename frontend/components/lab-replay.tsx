@@ -7,7 +7,7 @@ import { num } from '@/lib/format';
 import { cumulativeReturn, rewardTotals, stepObservation } from '@/lib/lab';
 import { episodeOutcome, rewardWord, SCENARIO_WORDS, STAGE_WORDS } from '@/lib/lab-plain';
 import {
-  ACTION_SHORT, actionMeaning, isDisruptive, keyMoments, latestAction, nodeStatusLine, nodeViews, overallStatus, parseAction,
+  ACTION_SHORT, actionMeaning, keyMoments, latestAction, nodeStatusLine, nodeViews, overallStatus, parseAction,
   serviceInfo, signalValue, SIGNAL_BANDS, SIGNAL_WORDS, stepStory, storyMoments, type Moment,
 } from '@/lib/lab-story';
 import type { HiddenStage, LabEpisode, LabScenario } from '@/lib/lab-types';
@@ -35,6 +35,7 @@ export function ReplayStage({ episode, scenario }: { episode: LabEpisode; scenar
   const seek = (v: number) => { setPlaying(false); setT(Math.max(0, Math.min(steps - 1, v))); };
   const nextMoment = moments.find(m => m.t > t);
   const prevMoment = [...moments].reverse().find(m => m.t < t);
+  const currentMoment = [...story].reverse().find(m => m.t <= t) ?? null;
   const status = overallStatus(scenario, step);
   const last = latestAction(episode, t);
   const s = stepStory(episode, scenario, t);
@@ -85,36 +86,32 @@ export function ReplayStage({ episode, scenario }: { episode: LabEpisode; scenar
         </aside>
       </div>
 
-      {/* Playback */}
+      {/* Playback: one slim control bar; the scrubber is the timeline (YouTube-style chapter dots). */}
       <div className="lab-player">
-        <div className="lab-controls">
-          <button type="button" className="lab-ctl" onClick={() => prevMoment && seek(prevMoment.t)} disabled={!prevMoment} aria-label="Previous key moment">⏮</button>
-          <button type="button" className="lab-ctl lab-ctl-main" onClick={() => { if (!playing && t >= steps - 1) setT(0); setPlaying(p => !p); }}>{playing ? 'Pause' : t >= steps - 1 ? 'Replay' : 'Play'}</button>
-          <button type="button" className="lab-ctl" onClick={() => nextMoment && seek(nextMoment.t)} disabled={!nextMoment} aria-label="Next key moment">⏭</button>
-          <div role="group" aria-label="Speed" className="lab-segment lab-segment-sm">
-            {SPEEDS.map((sp, i) => <button key={sp.label} type="button" aria-pressed={speed === i} onClick={() => setSpeed(i)} className="lab-segment-btn">{sp.label}</button>)}
-          </div>
-          <input aria-label="Step" aria-valuetext={`Step ${step?.t ?? t} of ${scenario.horizon}`} type="range" min={0} max={Math.max(0, steps - 1)} value={t} onChange={e => seek(Number(e.target.value))} className="order-last min-w-0 basis-full accent-[var(--color-brand)] sm:order-none sm:basis-0 sm:flex-1" />
-          <span className="font-mono text-xs text-muted">t = {step?.t ?? 0} / {scenario.horizon}</span>
-        </div>
-        <Timeline episode={episode} moments={moments} t={t} onSeek={seek} truth={truth} />
-        <ol className="lab-moments" aria-label="Key moments">
-          {story.map(m => (
-            <li key={`${m.t}-${m.kind}-${m.text}`}>
-              <button type="button" onClick={() => seek(m.t)} className="lab-moment" data-kind={m.kind} aria-current={m.t === t ? 'step' : undefined}>
-                <span className="font-mono text-faint">{m.t}</span>{m.text}
-              </button>
-            </li>
-          ))}
-        </ol>
+        <button type="button" className="lab-play" onClick={() => { if (!playing && t >= steps - 1) setT(0); setPlaying(p => !p); }} aria-label={playing ? 'Pause' : t >= steps - 1 ? 'Replay' : 'Play'}>
+          {playing
+            ? <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="3" width="3" height="10" rx="1" /><rect x="9" y="3" width="3" height="10" rx="1" /></svg>
+            : <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6a.6.6 0 0 0 .9.5l7.6-4.8a.6.6 0 0 0 0-1L5.9 2.7a.6.6 0 0 0-.9.5z" /></svg>}
+        </button>
+        <button type="button" className="lab-skip" onClick={() => prevMoment && seek(prevMoment.t)} disabled={!prevMoment} aria-label="Previous key moment">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 3v10M12.5 3.6v8.8L6.5 8z" /></svg>
+        </button>
+        <button type="button" className="lab-skip" onClick={() => nextMoment && seek(nextMoment.t)} disabled={!nextMoment} aria-label="Next key moment">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12 3v10M3.5 3.6v8.8L9.5 8z" /></svg>
+        </button>
+        <Scrubber episode={episode} moments={story} t={t} steps={steps} horizon={scenario.horizon} onSeek={seek} truth={truth} />
+        <span className="lab-time">t = {step?.t ?? 0} / {scenario.horizon}</span>
+        <button type="button" className="lab-speed" onClick={() => setSpeed(v => (v + 1) % SPEEDS.length)} aria-label={`Playback speed ${SPEEDS[speed]?.label ?? ''}, click to change`}>
+          {SPEEDS[speed]?.label}
+        </button>
       </div>
+      <p className="lab-now-moment" aria-live="polite">
+        {currentMoment ? <><span className="font-mono text-faint">{currentMoment.t}</span> {currentMoment.text}</> : <span className="text-faint">Press play or use the arrows to jump between key moments.</span>}
+      </p>
 
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-base font-semibold" data-testid="lab-episode-outcome">{episodeOutcome(episode)}</p>
-          <p className="mt-0.5 max-w-3xl text-sm text-muted" data-testid="lab-episode-story">{SCENARIO_WORDS[episode.scenario]?.note ?? ''}</p>
-        </div>
+      <div className="lab-outcome-row">
         <span className={`lab-outcome ${episode.compromised ? 'lab-outcome-bad' : 'lab-outcome-ok'}`}>{episode.compromised ? 'Attacker won' : 'Attack contained'}</span>
+        <p className="min-w-0 text-sm text-ink" data-testid="lab-episode-outcome">{episodeOutcome(episode)} <span className="text-muted" data-testid="lab-episode-story">{SCENARIO_WORDS[episode.scenario]?.note ?? ''}</span></p>
       </div>
 
       <GroundTruth episode={episode} t={t} truth={truth} onToggle={setTruth} label={label} />
@@ -207,63 +204,63 @@ function ScoreParts({ episode, t }: { episode: LabEpisode; t: number }) {
 const STAGE_FILL: Record<HiddenStage, string> = { none: 'transparent', foothold: '#f0a868', escalated: '#e0735c', impact: '#b42318' };
 const STAGE_RANK: Record<HiddenStage, number> = { none: 0, foothold: 1, escalated: 2, impact: 3 };
 
-/** Whole recording at a glance: observed signal strip, AI actions, key moments; truth row only on request. */
-function Timeline({ episode, moments, t, onSeek, truth }: { episode: LabEpisode; moments: Moment[]; t: number; onSeek: (t: number) => void; truth: boolean }) {
-  const n = Math.max(1, episode.steps.length);
-  const rows = useMemo(() => episode.steps.map(s => {
-    const peak = Math.max(0, ...s.nodes.map(x => signalValue(x) ?? 0));
+/**
+ * The scrubber is the timeline: the track is shaded by the strongest observed signal at each
+ * step, key moments are small dots on it, and a native range input (label "Step") drives it so
+ * keyboard and assistive tech work. The hidden-truth strip appears only when that overlay is on.
+ */
+function Scrubber({ episode, moments, t, steps, horizon, onSeek, truth }: { episode: LabEpisode; moments: Moment[]; t: number; steps: number; horizon: number; onSeek: (t: number) => void; truth: boolean }) {
+  const n = Math.max(1, steps);
+  const peaks = useMemo(() => episode.steps.map(s => Math.max(0, ...s.nodes.map(x => signalValue(x) ?? 0))), [episode]);
+  const stages = useMemo(() => episode.steps.map(s => {
     let stage: HiddenStage = 'none';
     for (const x of s.nodes) if (STAGE_RANK[x.hidden_stage_ground_truth] > STAGE_RANK[stage]) stage = x.hidden_stage_ground_truth;
-    const a = parseAction(s.action);
-    return { peak, stage, acted: a.verb !== 'noop', disruptive: isDisruptive(a.verb) };
+    return stage;
   }), [episode]);
-  const H = truth ? 34 : 26;
+  const pct = (i: number) => `${(Math.min(i, n - 1) / Math.max(1, n - 1)) * 100}%`;
   return (
-    <figure data-testid="lab-timeline">
-      <svg viewBox={`0 0 ${n} ${H}`} preserveAspectRatio="none" className="h-16 w-full cursor-pointer rounded-lg bg-panel-2" role="img"
-        aria-label={`Timeline of ${n} steps: observed signal, AI actions and key moments`}
-        onClick={e => { const r = (e.currentTarget as SVGSVGElement).getBoundingClientRect(); onSeek(Math.floor(((e.clientX - r.left) / r.width) * n)); }}>
-        {rows.map((r, i) => (
-          <g key={i}>
-            <rect x={i} y={2} width={1.02} height={9} fill="#c2452d" opacity={0.08 + r.peak * 0.8} />
-            {r.acted && <rect x={i} y={13} width={1.02} height={7} fill={r.disruptive ? '#1c1210' : '#9a857f'} />}
-            {truth && <rect x={i} y={26} width={1.02} height={6} fill={STAGE_FILL[r.stage]} />}
-          </g>
-        ))}
-        {moments.filter(m => m.kind === 'signal').map(m => <rect key={`m${m.t}${m.node}`} x={m.t} y={0} width={Math.max(0.6, n / 300)} height={H} fill="#c2452d" opacity={0.5} />)}
-        <line x1={t + 0.5} x2={t + 0.5} y1={0} y2={H} stroke="var(--color-ink)" strokeWidth={2} vectorEffect="non-scaling-stroke" />
-      </svg>
-      <figcaption className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
-        <span><Swatch c="#c2452d" o={0.7} /> Top: strongest observed signal at each step</span>
-        <span><Swatch c="#1c1210" /> disruptive AI action (slow / cut off) <Swatch c="#9a857f" /> other AI action</span>
-        <span><Swatch c="#c2452d" o={0.5} w /> moment a service turned suspicious</span>
-        {truth && <span><Swatch c={STAGE_FILL.foothold} /> <Swatch c={STAGE_FILL.escalated} /> <Swatch c={STAGE_FILL.impact} /> hidden attacker progress (truth, not seen by the defender)</span>}
-        <span>Click to jump, or use the Step slider.</span>
-      </figcaption>
-    </figure>
+    <div className="lab-scrub" data-testid="lab-timeline">
+      <div className="lab-scrub-track" aria-hidden="true">
+        <svg viewBox={`0 0 ${n} 1`} preserveAspectRatio="none" className="lab-scrub-heat">
+          {peaks.map((p, i) => <rect key={i} x={i} y={0} width={1.02} height={1} fill="#c2452d" opacity={0.06 + p * 0.55} />)}
+        </svg>
+        <span className="lab-scrub-played" style={{ width: pct(t) }} />
+        {truth && (
+          <svg viewBox={`0 0 ${n} 1`} preserveAspectRatio="none" className="lab-scrub-truth">
+            {stages.map((st, i) => st !== 'none' && <rect key={i} x={i} y={0} width={1.02} height={1} fill={STAGE_FILL[st]} />)}
+          </svg>
+        )}
+      </div>
+      {moments.filter(m => m.kind !== 'end').map(m => (
+        <button key={`${m.t}-${m.text}`} type="button" className="lab-scrub-dot" data-kind={m.kind} style={{ left: pct(m.t) }} onClick={() => onSeek(m.t)} aria-label={`Jump to step ${m.t}: ${m.text}`} title={`${m.t} · ${m.text}`} />
+      ))}
+      <input
+        aria-label="Step"
+        aria-valuetext={`Step ${episode.steps[t]?.t ?? t} of ${horizon}`}
+        type="range" min={0} max={Math.max(0, n - 1)} value={t}
+        onChange={e => onSeek(Number(e.target.value))}
+        className="lab-scrub-input"
+      />
+      <span className="lab-scrub-thumb" style={{ left: pct(t) }} aria-hidden="true" />
+    </div>
   );
-}
-
-function Swatch({ c, o = 1, w = false }: { c: string; o?: number; w?: boolean }) {
-  return <span aria-hidden="true" className={`inline-block h-2.5 rounded-sm align-middle ${w ? 'w-1' : 'w-2.5'}`} style={{ background: c, opacity: o }} />;
 }
 
 function GroundTruth({ episode, t, truth, onToggle, label }: { episode: LabEpisode; t: number; truth: boolean; onToggle: (v: boolean) => void; label: (n: string) => string }) {
   const states = episode.steps[t]?.nodes ?? [];
   return (
-    <div className="rounded-xl border border-line px-4 py-3 text-xs">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="label-mono text-muted">Ground truth (simulation) — hidden attacker stage, never observed by the policy</p>
-        <label className="label-mono flex cursor-pointer items-center gap-2 text-muted">
-          <input type="checkbox" checked={truth} onChange={e => onToggle(e.target.checked)} className="accent-[var(--color-brand)]" />
-          Show on the map (for learning)
-        </label>
-      </div>
-      {truth ? (
-        <ul className="mt-2 flex flex-wrap gap-1.5">
-          {states.map(s => <li key={s.node} className="rounded-full border border-line px-2 py-0.5"><Mono>{label(s.node)}</Mono> · attacker {STAGE_WORDS[s.hidden_stage_ground_truth]}</li>)}
+    <div className="lab-truth">
+      <label className="lab-switch">
+        <input type="checkbox" role="switch" checked={truth} onChange={e => onToggle(e.target.checked)} />
+        <span aria-hidden="true" className="lab-switch-track"><span /></span>
+        <span className="text-sm text-ink">Show on the map (for learning)</span>
+      </label>
+      <p className="text-xs text-faint">Ground truth (simulation) — hidden attacker stage, never observed by the policy</p>
+      {truth && (
+        <ul className="mt-1 flex w-full flex-wrap gap-1.5 text-xs">
+          {states.map(s => <li key={s.node} className="rounded-full bg-panel-2 px-2 py-0.5">{label(s.node)} · attacker {STAGE_WORDS[s.hidden_stage_ground_truth]}</li>)}
         </ul>
-      ) : <p className="mt-1 font-mono text-[0.72rem] text-faint">Attacker markers are hidden. The trained defender only sees alert rates, anomaly scores, monitoring levels and its own actions.</p>}
+      )}
     </div>
   );
 }
