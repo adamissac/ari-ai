@@ -58,6 +58,7 @@ class Settings(BaseSettings):
 
     # RL
     rl_checkpoint_path: Path | None = None
+    rl_topology_path: Path | None = None
 
     # Rate limits (in-process, docs/13)
     rate_limit_per_minute: int = 60
