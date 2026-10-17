@@ -92,7 +92,7 @@ The problem left is **seed instability**: for the winner, seeds 11 and 12 reach 
 −37.6 while seed 10 gets −95.5 (54% compromise at ×1). With 3 seeds that also makes the
 selection itself noisy. So before using the final seeds, round 3 targets variance.
 
-### Round 3 — seed stability (table: `results/r3.md`, written when the round finishes)
+### Round 3 — seed stability ([table](results/r3.md))
 
 Candidates, all at lr 3e-4, 1M steps, DR ×0.5–2.5: the round-2 winner (reference);
 in-training checkpoint selection (`select_every: 50000` from 300k steps, scored on training
@@ -102,3 +102,80 @@ linear lr decay to 3e-5; both together; and n-step 3 with checkpoint selection.
 **Selection rule (written before seeing round-3 results):** same as round 2, on **5**
 validation seeds (10–14): highest robust return; within one std of the leader prefer lower
 robust db loss; must beat `r2_v0_ref` at ×1. The winner goes to the final held-out run.
+
+Round-3 results (5 validation seeds; robust = mean over ×0.5…×2.5):
+
+| Candidate | Robust return | Robust per seed | ×1 | ×2.5 | db loss ×1 / robust % | Compromise ×1 % | False disruption ×1 % | Uptime ×1 % |
+|---|---|---|---|---|---|---|---|---|
+| **r3_1m_dr_nstep3_sel** | **−32.8 ± 5.2** | −32.6, −27.3, −41.4, −31.1, −31.6 | −22.5 | −51.9 | 0.0 / 1.8 | 4.5 | 75.8 | 96.0 |
+| r3_1m_dr_lrdecay_sel | −33.6 ± 2.4 | −31.1, −32.0, −32.6, −35.5, −36.8 | −22.4 | −57.2 | 0.4 / 3.1 | 4.2 | 74.9 | 97.0 |
+| r3_1m_dr_sel | −38.1 ± 2.8 | −40.8, −37.6, −41.1, −36.3, −34.5 | −23.1 | −68.5 | 1.0 / 5.3 | 3.9 | 72.2 | 96.3 |
+| r3_1m_dr (round-2 winner) | −55.1 ± 23.8 | −95.5, −37.6, −37.6, −55.6, −49.3 | −29.4 | −107.1 | 1.0 / 7.4 | 15.1 | 62.8 | 94.8 |
+| r3_1m_dr_lrdecay | −55.4 ± 14.2 | −53.3, −38.9, −56.7, −77.9, −50.1 | −29.3 | −106.7 | 3.1 / 11.9 | 13.8 | 55.7 | 95.5 |
+
+Findings:
+- **In-training checkpoint selection is the third lever.** It fixes the seed instability:
+  std drops from 23.8 to 2.4–5.2 and the worst seed improves from −95.5 to −41.4. The
+  selected steps range from 350k to 1M, which confirms the final checkpoint is often not
+  the best one. lr decay alone does not fix it (−55.4 ± 14.2).
+- **Regression to report:** false disruption at ×1 rises to about 75% (round-2 winner 63%,
+  v0 defaults 60% on validation). With compromise down to about 4%, most disruptive
+  actions are precautionary. Uptime still improves (96% vs 90% for v0 defaults), so the
+  cost is acceptable in this reward, but the stated goal of *lower* false disruption was
+  not met.
+
+Applying the rule: `r3_1m_dr_nstep3_sel` leads; only `r3_1m_dr_lrdecay_sel` is within one
+std (−33.6 ≥ −38.0), and nstep3_sel has the lower robust db loss (1.8% vs 3.1%); its ×1
+return (−22.5) beats v0 defaults (−91.8). **Final candidate: `r3_1m_dr_nstep3_sel`.**
+
+## Final held-out result: protocol-v1
+
+`python -m experiments.final --candidate configs/ddqn/r3_1m_dr_nstep3_sel.yaml --name protocol-v1`
+trained the single selected candidate on seeds 0–4 (1M steps each, 999,000 gradient
+updates, ~400 s per seed; checkpoint selection picked steps 500k, 700k, 950k, 650k and
+950k), then ran the official held-out evaluation once and the held-out stress test. Full
+comparison: [results/protocol-v1/COMPARISON.md](../results/protocol-v1/COMPARISON.md).
+
+| Held-out, pooled (mean [95% CI over 5 seeds]) | v0 DDQN | **v1 DDQN** | threshold rules |
+|---|---|---|---|
+| Return | −65.6 [−72.1, −59.7] | **−29.1 [−32.1, −26.1]** | −96.0 |
+| Compromise % | 47.5 [35.3, 58.9] | **7.1 [4.1, 11.2]** | 83.0 |
+| db lost % | 9.8 [7.1, 11.9] | **1.1 [0.3, 2.1]** | 0.3 |
+| Time to containment (steps) | 84.5 | **25.6** | 158.3 |
+| Uptime % | 93.8 | 94.4 | 93.3 |
+| Escalations / episode | 2.0 | 0.7 | 3.0 |
+| False disruption % | **53.9** [45.8, 63.1] | 75.0 [69.6, 79.8] | 28.7 |
+
+Stress test (held-out configs, every adversary probability × factor, seeds 3000–3049):
+
+| Factor | v0 return | v1 return | rules return | v0 db lost % | v1 db lost % | rules db lost % |
+|---|---|---|---|---|---|---|
+| ×0.5 | −25.1 | −21.0 | −46.8 | 0.4 | 0.0 | 0.0 |
+| ×1 | −66.9 | −30.6 | −97.1 | 9.5 | 1.7 | 0.7 |
+| ×1.5 | −128.8 | −45.4 | −155.0 | 26.7 | 3.3 | 2.7 |
+| ×2 | −198.2 | −60.5 | −204.1 | 44.8 | 6.5 | 4.7 |
+| ×2.5 | −257.8 | −85.4 | −246.7 | 61.3 | 11.6 | 10.0 |
+
+What this shows:
+- v1 more than halves v0's held-out loss, cuts compromise from 47.5% to 7.1% and db loss
+  from 9.8% to 1.1%, and contains attacks about 3× faster. The validation estimate
+  (×1 −22.5 on training configs) and the held-out result (−29.1) agree in direction; the
+  held-out configs are harder, as expected.
+- v1 no longer collapses as attackers speed up: it beats the threshold rules on return at
+  every factor, and its db loss now tracks the rules' instead of reaching 61%.
+- **Where v1 is worse:** false disruption rises from 54% to 75% (rules: 29%). v1 acts early
+  and often on nodes that are not yet compromised; uptime is still slightly higher than
+  v0's because isolations are shorter and better targeted. The goal of *lower* false
+  disruption was **not** met. The rules still lose the db slightly less often (0.3% vs 1.1%).
+- Against held-out baselines (Holm-corrected): v1 is significantly better than the rules on
+  return, compromise, containment, escalations and action cost, worse on false disruption,
+  and not significantly different on uptime.
+
+*Results are from a simulated environment and do not establish real-world effectiveness.*
+
+### Possible next steps (not done)
+
+- Target false disruption directly: e.g. a validation-selected `c_disrupt` sweep would change
+  the reward, which requires a new env version (`-v1`) per docs/17, so it is out of scope here.
+- Reward-preserving options: penalize disruptive actions in checkpoint-selection scoring, or
+  add false disruption as a tie-breaker in the selection rule.

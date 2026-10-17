@@ -22,7 +22,7 @@
         "artifact_id": {
           "anyOf": [
             {
-              "pattern": "^art_[0-9A-Za-z]{8,64}$",
+              "pattern": "^art_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -321,7 +321,7 @@
   "additionalProperties": false,
   "properties": {
     "assessment_id": {
-      "pattern": "^asm_[0-9A-Za-z]{8,64}$",
+      "pattern": "^asm_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Assessment Id",
       "type": "string"
     },
@@ -351,7 +351,7 @@
     },
     "expectation_ids": {
       "items": {
-        "pattern": "^exp_[0-9A-Za-z]{8,64}$",
+        "pattern": "^exp_[0-9A-Za-z_\\-]{8,64}$",
         "type": "string"
       },
       "title": "Expectation Ids",
@@ -365,7 +365,7 @@
       "type": "array"
     },
     "id": {
-      "pattern": "^fnd_[0-9A-Za-z]{8,64}$",
+      "pattern": "^fnd_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Id",
       "type": "string"
     },
@@ -375,7 +375,7 @@
     "produced_by_run_id": {
       "anyOf": [
         {
-          "pattern": "^run_[0-9A-Za-z]{8,64}$",
+          "pattern": "^run_[0-9A-Za-z_\\-]{8,64}$",
           "type": "string"
         },
         {
@@ -399,7 +399,7 @@
     "snapshot_id": {
       "anyOf": [
         {
-          "pattern": "^snp_[0-9A-Za-z]{8,64}$",
+          "pattern": "^snp_[0-9A-Za-z_\\-]{8,64}$",
           "type": "string"
         },
         {

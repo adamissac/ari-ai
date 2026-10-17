@@ -115,7 +115,7 @@
         "artifact_id": {
           "anyOf": [
             {
-              "pattern": "^art_[0-9A-Za-z]{8,64}$",
+              "pattern": "^art_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -323,7 +323,7 @@
       "$ref": "#/$defs/AgentName"
     },
     "agent_run_id": {
-      "pattern": "^run_[0-9A-Za-z]{8,64}$",
+      "pattern": "^run_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Agent Run Id",
       "type": "string"
     },

@@ -10,15 +10,19 @@ from pathlib import Path
 from typing import Any
 
 from rl_defense import ENV_ID, SIMULATION_CAVEAT
-from rl_defense.contracts import DefenseRecommendation, PlatformFacts, RLCheckpointRef
-from rl_defense.explain import Explanation
+from rl_defense.contracts import (
+    DefenseRecommendation,
+    PlatformFacts,
+    RLCheckpointRef,
+    RLExplanation,
+)
 from rl_defense.inference import PolicyRunner
 
 __all__ = [
     "ENV_ID",
     "SIMULATION_CAVEAT",
     "DefenseRecommendation",
-    "Explanation",
+    "RLExplanation",
     "PlatformFacts",
     "PolicyRunner",
     "RLCheckpointRef",

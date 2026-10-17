@@ -44,12 +44,12 @@
       "type": "string"
     },
     "id": {
-      "pattern": "^aud_[0-9A-Za-z]{8,64}$",
+      "pattern": "^aud_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Id",
       "type": "string"
     },
     "org_id": {
-      "pattern": "^org_[0-9A-Za-z]{8,64}$",
+      "pattern": "^org_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Org Id",
       "type": "string"
     },
@@ -61,7 +61,7 @@
     "project_id": {
       "anyOf": [
         {
-          "pattern": "^prj_[0-9A-Za-z]{8,64}$",
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
           "type": "string"
         },
         {
