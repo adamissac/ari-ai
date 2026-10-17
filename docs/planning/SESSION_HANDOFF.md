@@ -82,3 +82,10 @@ adds an entry before ending.
   **23 passed, 1 opt-in skip**; invalid commit/path ingestion returns terminal failed
   Snapshot for the backend to persist. Ruff/format/strict mypy pass. PR #6 carries final
   commits and CI status; live inference remains blocked on an authorized key.
+
+- Sarosh ownership review fix (2026-10-17T02:03Z): route-specific ownership rules and
+  sibling-call-site evidence now reach the vulnerable payment read; get_store is not auth.
+  A two-commit actual-target test proves the possible-inconsistency warning disappears when
+  require_owner is restored. Broader suite: **115 passed, 4 skipped**. Index version 0.2.0
+  requires re-indexing old 0.1.0 payloads; all fact/source keys remain immutable. Updated
+  producer evidence/context fixture have 49 expectations and a 23,267 / 24,000 pack.

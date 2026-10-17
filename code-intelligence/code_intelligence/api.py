@@ -236,7 +236,16 @@ class IntelligenceService:
         self, ref: SnapshotRef, subject: str | None = None, *, offset: int = 0, limit: int = 100
     ) -> list[BehavioralExpectation]:
         index = self.store.get(ref)
-        result = [e for e in index.expectations if subject is None or e.subject_ref == subject]
+        aliases = {subject} if subject is not None else set()
+        aliases.update(s.id for s in index.symbols if subject in {s.id, s.qualified_name})
+        for entry in index.entry_points:
+            if (
+                entry.handler_symbol_id in aliases
+                or entry.id == subject
+                or entry.path_template == subject
+            ):
+                aliases.update({entry.id, entry.handler_symbol_id})
+        result = [e for e in index.expectations if subject is None or e.subject_ref in aliases]
         self._page(result, offset, limit)
         return result[offset : offset + limit]
 
@@ -370,8 +379,11 @@ class IntelligenceService:
         for index in indexes:
             impacted = {s.id for s in index.symbols if key(s) in logical_impact}
             affected.update(impacted)
+            subjects = impacted | {
+                e.id for e in index.entry_points if e.handler_symbol_id in impacted
+            }
             for exp in index.expectations:
-                if exp.subject_ref in impacted or any(e.path in paths for e in exp.sources):
+                if exp.subject_ref in subjects or any(e.path in paths for e in exp.sources):
                     expectations.add(exp.id)
             test_paths = {f.path for f in index.files if f.is_test}
             tests.update(s.path for s in index.symbols if s.id in impacted and s.path in test_paths)

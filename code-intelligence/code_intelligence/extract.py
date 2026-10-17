@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import tomllib
 from collections import defaultdict
+from collections.abc import Iterator
 from pathlib import PurePosixPath
 
 import tree_sitter_python
@@ -126,6 +127,7 @@ class PythonExtractor:
                 self._derive(file, self.trees[file.path])
         self._link_http_tests()
         self._document_expectations()
+        self._route_ownership_expectations()
         self.calls = list(
             {
                 (e.caller_id, e.callee_id, e.callee_name, e.resolution): e for e in self.calls
@@ -325,7 +327,10 @@ class PythonExtractor:
                 }
                 and candidate.args
             ):
-                auth.append(ast.unparse(candidate.args[0])[:500])
+                name = ast.unparse(candidate.args[0])[:500]
+                target, _ = self.resolve(name, symbol)
+                if self._auth_signal(name, target):
+                    auth.append(name)
         # Include decorators as evidence, but don't claim they enforce authorization.
         auth.extend(
             ast.unparse(d)[:500]
@@ -366,7 +371,18 @@ class PythonExtractor:
                         if isinstance(v, ast.Constant) and isinstance(v.value, str)
                     ]
                 if kw.arg == "dependencies":
-                    dependencies.append(ast.unparse(kw.value)[:500])
+                    for dep in ast.walk(kw.value):
+                        if isinstance(dep, ast.Call) and dep.args:
+                            name = ast.unparse(dep.args[0])[:500]
+                            target, _ = self.resolve(name, symbol)
+                            if self._auth_signal(name, target):
+                                dependencies.append(name)
+            for call in ast.walk(node):
+                if isinstance(call, ast.Call):
+                    name = ast.unparse(call.func)[:500]
+                    target, _ = self.resolve(name, symbol)
+                    if target and self._ownership_helper(target):
+                        dependencies.append(name)
             for method in methods:
                 self.entries.append(
                     EntryPoint(
@@ -609,6 +625,201 @@ class PythonExtractor:
                             status=ExpectationStatus.ambiguous,
                         )
                     )
+
+    def _auth_signal(self, name: str, target: Symbol | None) -> bool:
+        import re
+
+        if target:
+            node = self.nodes[target.id]
+            if any(
+                isinstance(n, ast.Raise)
+                and n.exc is not None
+                and any(
+                    status in ast.unparse(n.exc)
+                    for status in ("HTTP_401", "HTTP_403", "401", "403")
+                )
+                for n in self._local_nodes(node)
+            ):
+                return True
+            if self._ownership_helper(target):
+                return True
+        # Naming convention, not evidence that the callable enforces authentication.
+        return bool(
+            re.search(
+                r"(?:^|\.)(?:current_user|current_customer|authenticate|"
+                r"require_auth|require_user|login_required)$",
+                name,
+            )
+        )
+
+    def _ownership_helper(self, symbol: Symbol) -> bool:
+        if symbol.kind not in {SymbolKind.function, SymbolKind.method}:
+            return False
+        node = self.nodes[symbol.id]
+        comparisons = [n for n in self._local_nodes(node) if isinstance(n, ast.Compare)]
+
+        def identity(value: ast.AST) -> bool:
+            text = ast.unparse(value).lower()
+            return any(word in text for word in ("owner", "tenant", "customer"))
+
+        identity_comparison = any(
+            any(isinstance(op, (ast.Eq, ast.NotEq)) for op in n.ops)
+            and identity(n.left)
+            and any(identity(other) for other in n.comparators)
+            and (".id" in ast.unparse(n) or "_id" in ast.unparse(n))
+            for n in comparisons
+        )
+        rejects = any(
+            isinstance(n, ast.Raise)
+            and n.exc is not None
+            and any(
+                status in ast.unparse(n.exc)
+                for status in (
+                    "HTTP_401",
+                    "HTTP_403",
+                    "HTTP_404",
+                    "401",
+                    "403",
+                    "404",
+                )
+            )
+            for n in self._local_nodes(node)
+        )
+        return identity_comparison and rejects
+
+    @staticmethod
+    def _local_nodes(node: ast.AST) -> Iterator[ast.AST]:
+        pending = [node]
+        while pending:
+            current = pending.pop()
+            yield current
+            pending.extend(
+                child
+                for child in ast.iter_child_nodes(current)
+                if not isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+            )
+
+    def _route_ownership_expectations(self) -> None:
+        """Attach declared module intent and flag conservative sibling-check inconsistencies.
+
+        These are ambiguous expectations, never vulnerability verdicts or runtime proof.
+        Only resource-by-id GET siblings in the same lexical app/router participate.
+        """
+        import re
+
+        by_id = {s.id: s for s in self.symbols}
+        helpers = {s.id for s in self.symbols if self._ownership_helper(s)}
+        checks: dict[str, list[tuple[Symbol, ast.Call]]] = defaultdict(list)
+        groups: dict[tuple[str, str], list[EntryPoint]] = defaultdict(list)
+        for entry in self.entries:
+            handler = by_id[entry.handler_symbol_id]
+            node = self.nodes[handler.id]
+            for call in ast.walk(node):
+                if isinstance(call, ast.Call):
+                    target, _ = self.resolve(ast.unparse(call.func)[:500], handler)
+                    if target and target.id in helpers:
+                        checks[entry.id].append((target, call))
+            if entry.method == "GET" and "{" in (entry.path_template or ""):
+                receiver = ""
+                for decorator in getattr(node, "decorator_list", []):
+                    if isinstance(decorator, ast.Call) and isinstance(
+                        decorator.func, ast.Attribute
+                    ):
+                        receiver = ast.unparse(decorator.func.value)
+                        break
+                groups[(handler.qualified_name.rsplit(".", 1)[0], receiver)].append(entry)
+
+            module = self.owners[id(self.trees[handler.path])]
+            module_node = self.trees[handler.path]
+            if module.docstring and module_node.body and entry.method == "GET":
+                doc_node = module_node.body[0]
+                for statement in module.docstring.splitlines():
+                    text = statement.lower()
+                    resource_words = set(re.findall(r"[a-z]+", entry.path_template or ""))
+                    matches_resource = any(
+                        word.rstrip("s") in text for word in resource_words if len(word) >= 4
+                    )
+                    if (
+                        matches_resource
+                        and re.search(r"\bown\b|owner|tenant", text)
+                        and any(word in text for word in ("only", "must", "never"))
+                    ):
+                        self.expectations.append(
+                            BehavioralExpectation(
+                                id=stable_id(
+                                    "exp", self.ref.snapshot_id, entry.id, "module", statement
+                                ),
+                                snapshot_id=self.ref.snapshot_id,
+                                subject_ref=entry.id,
+                                statement=statement.strip()[:500],
+                                kind=ExpectationKind.ownership,
+                                sources=[
+                                    citation(
+                                        self.ref,
+                                        module,
+                                        start=doc_node.lineno,
+                                        end=doc_node.end_lineno,
+                                        note="Module rule linked by route resource; unverified",
+                                    )
+                                ],
+                                confidence=0.55,
+                                origin=ExpectationOrigin.extracted,
+                                status=ExpectationStatus.ambiguous,
+                                data_sensitivity=DataSensitivity.financial
+                                if any(
+                                    word in (entry.path_template or "")
+                                    for word in ("payment", "refund")
+                                )
+                                else DataSensitivity.internal,
+                            )
+                        )
+        for entries in groups.values():
+            covered = [e for e in entries if checks[e.id]]
+            if len(covered) < 2 or len(covered) * 2 <= len(entries):
+                continue
+            common = set.intersection(*[{s.id for s, _ in checks[e.id]} for e in covered])
+            if not common:
+                continue
+            for outlier in [e for e in entries if not checks[e.id]]:
+                sources = []
+                for sibling in covered:
+                    handler = by_id[sibling.handler_symbol_id]
+                    for helper, call in checks[sibling.id]:
+                        if helper.id in common:
+                            sources.append(
+                                citation(
+                                    self.ref,
+                                    handler,
+                                    start=call.lineno,
+                                    end=call.end_lineno,
+                                    note=(
+                                        f"Sibling {sibling.method} "
+                                        f"{sibling.path_template} ownership call"
+                                    ),
+                                )
+                            )
+                helper_names = ", ".join(sorted(by_id[i].qualified_name for i in common))
+                self.expectations.append(
+                    BehavioralExpectation(
+                        id=stable_id("exp", self.ref.snapshot_id, outlier.id, "sibling-ownership"),
+                        snapshot_id=self.ref.snapshot_id,
+                        subject_ref=outlier.id,
+                        statement=(
+                            "A customer should only read their own resource here; sibling "
+                            f"routes enforce {helper_names}. Possible ownership inconsistency."
+                        )[:500],
+                        kind=ExpectationKind.ownership,
+                        sources=sources,
+                        confidence=0.6,
+                        origin=ExpectationOrigin.extracted,
+                        status=ExpectationStatus.ambiguous,
+                        data_sensitivity=DataSensitivity.financial
+                        if any(
+                            word in (outlier.path_template or "") for word in ("payment", "refund")
+                        )
+                        else DataSensitivity.internal,
+                    )
+                )
 
 
 def dependencies(files: list[SourceFile]) -> list[DependencyRecord]:

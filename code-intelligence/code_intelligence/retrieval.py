@@ -63,6 +63,7 @@ def build_pack(index: StoredIndex, request: ContextPackRequest) -> ContextPack:
         raise IntelligenceError("Stale or mismatched context request")
     files = {f.path: f for f in index.files}
     focus = set(request.focus)
+    entry_subjects = {e.id: e.handler_symbol_id for e in index.entry_points}
     seeds = {
         s.id for s in index.symbols if s.id in focus or s.qualified_name in focus or s.path in focus
     }
@@ -71,7 +72,7 @@ def build_pack(index: StoredIndex, request: ContextPackRequest) -> ContextPack:
             seeds.add(entry.handler_symbol_id)
     for expectation in index.expectations:
         if expectation.id in focus:
-            seeds.add(expectation.subject_ref)
+            seeds.add(entry_subjects.get(expectation.subject_ref, expectation.subject_ref))
     distances = neighbors(index, seeds)
     query = tokens(" ".join(request.focus))
     docs = {s.id: tokens(s.qualified_name + " " + (s.docstring or "")) for s in index.symbols}
@@ -142,7 +143,7 @@ def build_pack(index: StoredIndex, request: ContextPackRequest) -> ContextPack:
         source = files[symbol.path].content.splitlines()
         metadata = [f"Symbol {symbol.id}: {symbol.qualified_name}"]
         for exp in index.expectations:
-            if exp.subject_ref == symbol.id:
+            if entry_subjects.get(exp.subject_ref, exp.subject_ref) == symbol.id:
                 metadata.append(
                     f"Expectation {exp.id} [{exp.status.value}; {exp.origin.value}; "
                     f"confidence={exp.confidence}]: {exp.statement}"
@@ -152,7 +153,7 @@ def build_pack(index: StoredIndex, request: ContextPackRequest) -> ContextPack:
             citation(index.ref, symbol),
         )
         for expectation in index.expectations:
-            if expectation.subject_ref != symbol.id:
+            if entry_subjects.get(expectation.subject_ref, expectation.subject_ref) != symbol.id:
                 continue
             for evidence in expectation.sources:
                 if evidence.path not in files or evidence.span is None:

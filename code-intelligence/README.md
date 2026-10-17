@@ -15,6 +15,11 @@ Public API: `code_intelligence.api.IntelligenceService`. Public DTOs come direct
   dynamic dispatch stays `unresolved`.
 - Test assertions, imperative docstrings/docs and Field constraints become source-cited
   **ambiguous intent**, with confidence and origin. They are not test execution results.
+- Ownership intent links to matching routes. A majority of resource-by-id GET siblings
+  using the same identity-checking helper can produce a medium-confidence possible
+  inconsistency on an outlier, with sibling call-site citations. Ordinary store accessors
+  remain graph dependencies and are excluded from authentication signals. Index version
+  `python-ast-ts/0.2.0` requires re-indexing older 0.1.0 stores for these improved facts.
 - Optional `ClaudeExpectationProvider` uses an injected, budgeted backend gateway with
   at most three turns and no execution tools. Citations/subjects must occur in the supplied
   pack. Inference stays `origin=inferred`, `status=inferred`, confidence 0.3; model, mode,
