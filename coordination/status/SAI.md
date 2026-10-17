@@ -60,3 +60,9 @@ Add dated factual entries; do not overwrite history. Never claim unexecuted test
 - #59: tolerant span-quote verification (line numbers, skipped lines, re-indent, ±3 re-anchor; far or fake quotes still rejected). Fixes Adam's live-run report that every security concern was dropped. Regression tests use the exact live spans.
 - Adam's live run of the reviewer (owner's key): PASS, refund-bound TP, repair accepted, $0.36 total.
 - ACKed Srihith's #57 (lands #49 with my review fixes); verified merged with main: 55 passed.
+
+### 2026-10-17T07:18:50Z (autonomous cycles 5–6)
+
+- #63: reviewer CWE classification proven end to end (valid tag recorded, category dropped, finding survives).
+- Live gate met (Adam, owner's key): run 2 after #59 → refund-bound TP, IDOR handed to Scout (`security_handoffs_matched: [fnd_planted_authz]`), repair accepted, $0.49. README evidence updated.
+- code-review on main: 57 passed, 1 skipped; strict mypy clean; CI green.
