@@ -36,6 +36,7 @@ from rl_defense.envs.defense_sim import (
     ESCALATE_ACTION,
     NODE_FEATURES,
     NOOP_ACTION,
+    REWARD_COMPONENTS,
     decode_action,
 )
 
@@ -89,12 +90,15 @@ def run_episode(
     unavailable = 0.0
     crit = np.array([n.criticality for n in cfg.nodes])
     trajectory: list[dict[str, Any]] = []
+    component_totals = dict.fromkeys(REWARD_COMPONENTS, 0.0)
     while not done:
         mask = info["action_mask"]
         action = policy.act(obs, mask)
         name, _ = decode_action(action)
         next_obs, reward, term, trunc, next_info = env.step(action)
         ev = next_info["events"]
+        for key, value in ev["reward_components"].items():
+            component_totals[key] += value
         invalid += int(ev["invalid_action"])
         non_noop += int(action != NOOP_ACTION and not ev["invalid_action"])
         escalations += int(action == ESCALATE_ACTION and not ev["invalid_action"])
@@ -109,6 +113,9 @@ def run_episode(
                     "t": info["t"],
                     "action": next_info["action"],
                     "reward": round(reward, 4),
+                    "reward_components": {
+                        k: round(v, 4) for k, v in ev["reward_components"].items()
+                    },
                     "observation": [round(float(x), 4) for x in obs],
                     "hidden_stages_for_replay_only": next_info["metrics"]["stages"],
                 }
@@ -134,6 +141,7 @@ def run_episode(
         "service_uptime": 1.0 - unavailable / max(1, steps),
         "invalid_actions": float(invalid),
         "length": float(steps),
+        "reward_components": component_totals,
     }, trajectory
 
 

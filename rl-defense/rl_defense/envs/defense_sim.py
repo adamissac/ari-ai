@@ -49,6 +49,17 @@ NODE_FEATURES: tuple[str, ...] = (
 )
 GLOBAL_FEATURES: tuple[str, ...] = ("time_fraction", "escalations_remaining", "escalation_pending")
 OBS_DIM = N_NODES * len(NODE_FEATURES) + len(GLOBAL_FEATURES)
+# Reward is the sum of these components, in this order (docs/09 §Reward).
+REWARD_COMPONENTS: tuple[str, ...] = (
+    "invalid_action",
+    "action_cost",
+    "escalation_cost",
+    "disruption",
+    "adversary_progress",
+    "containment",
+    "impact",
+    "terminal",
+)
 ALERT_WINDOW = 5
 ALERT_NORM = 10.0  # alerts/step that maps to 1.0
 NEG_INF_MASK = -1e18  # score for masked-out actions
@@ -154,15 +165,16 @@ class DefenseSimEnv(gym.Env[np.ndarray, np.int64]):
         name, node = decode_action(applied)
         events: dict[str, Any] = {"invalid_action": invalid}
 
-        reward = 0.0
         rp = cfg.reward
+        # Named reward components (summed in this order; see REWARD_COMPONENTS).
+        comp = dict.fromkeys(REWARD_COMPONENTS, 0.0)
         if invalid:
-            reward -= rp.c_invalid
+            comp["invalid_action"] = -rp.c_invalid
         if applied != NOOP_ACTION:
-            reward -= rp.c_action
+            comp["action_cost"] = -rp.c_action
         self._apply_action(name, node, events)
         if name == "escalate_to_human":
-            reward -= rp.c_escalate
+            comp["escalation_cost"] = -rp.c_escalate
 
         # Disruption from active rate-limits/isolations: costlier on benign nodes.
         disruption = 0.0
@@ -172,15 +184,15 @@ class DefenseSimEnv(gym.Env[np.ndarray, np.int64]):
                 disruption += self._criticality[i] * (1.0 if benign else 0.3)
             elif o.rate_limit_timer[i] > 0:
                 disruption += 0.3 * self._criticality[i] * (1.0 if benign else 0.3)
-        reward -= rp.c_disrupt * disruption
+        comp["disruption"] = -(rp.c_disrupt * disruption)
 
         contained = self._resolve_delayed_effects(events)
         progressed = self._advance_adversary(events)
-        reward -= rp.c_progress * float(np.dot(progressed, self._criticality))
-        reward += rp.c_contain * float(np.dot(contained, self._criticality))
+        comp["adversary_progress"] = -(rp.c_progress * float(np.dot(progressed, self._criticality)))
+        comp["containment"] = rp.c_contain * float(np.dot(contained, self._criticality))
 
         impact_mask = h.stage == STAGE_IMPACT
-        reward -= rp.c_impact * float(np.dot(impact_mask, self._criticality))
+        comp["impact"] = -(rp.c_impact * float(np.dot(impact_mask, self._criticality)))
         if impact_mask.any():
             h.ever_impact = True
             h.impact_nodes |= set(np.flatnonzero(impact_mask).tolist())
@@ -195,12 +207,17 @@ class DefenseSimEnv(gym.Env[np.ndarray, np.int64]):
             # Ending early must not be cheaper than surviving: charge the per-step impact
             # cost for the remaining horizon as if the damage continued, plus a fixed penalty.
             remaining = cfg.horizon - o.t
-            reward -= rp.c_terminal + remaining * rp.c_impact * float(
-                np.dot(impact_mask, self._criticality)
+            comp["terminal"] = -(
+                rp.c_terminal
+                + remaining * rp.c_impact * float(np.dot(impact_mask, self._criticality))
             )
         truncated = bool(o.t >= cfg.horizon and not terminated)
+        reward = 0.0
+        for key in REWARD_COMPONENTS:  # fixed order keeps rewards bit-identical across versions
+            reward += comp[key]
         events.update(
             {
+                "reward_components": comp,
                 "disruption": disruption,
                 "progressed": int(progressed.sum()),
                 "contained": int(contained.sum()),
