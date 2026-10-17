@@ -58,6 +58,8 @@ from shared.api import (
     ApprovalDecision,
     AssessmentCreate,
     AssessmentDetail,
+    AssessmentReport,
+    FindingDetail,
     PatchView,
     ProjectCreate,
     ProjectUpdate,
@@ -852,7 +854,7 @@ def cancel_assessment(assessment_id: str, request: Request) -> dict[str, Any]:
         return {"assessment_id": assessment_id, "cancelled": immediate, "cancel_requested": True}
 
 
-@router.get("/assessments/{assessment_id}/report")
+@router.get("/assessments/{assessment_id}/report", response_model=AssessmentReport)
 def assessment_report(assessment_id: str, request: Request) -> dict[str, Any]:
     """Report assembled only from persisted records (no generated prose)."""
     with transaction() as conn:
@@ -893,7 +895,7 @@ def assessment_report(assessment_id: str, request: Request) -> dict[str, Any]:
                 sa.select(agent_runs.c.doc).where(agent_runs.c.assessment_id == assessment_id)
             ).scalars()
         )
-        return {
+        report = {
             "assessment": row["doc"],
             "agent_runs": runs,
             "findings": out,
@@ -919,6 +921,7 @@ def assessment_report(assessment_id: str, request: Request) -> dict[str, Any]:
                 "unscored_reason": "CVSS requires a complete explicit metric assessment; absent scores are not zero.",
             },
         }
+        return AssessmentReport.model_validate(report).model_dump(mode="json")
 
 
 # ----------------------------------------------------------- findings & patches
@@ -951,7 +954,7 @@ def _finding_access(
     return {**row, "org_id": org_id}
 
 
-@router.get("/findings/{finding_id}")
+@router.get("/findings/{finding_id}", response_model=FindingDetail)
 def get_finding(finding_id: str, request: Request) -> dict[str, Any]:
     with transaction() as conn:
         row = _finding_access(conn, _user(conn, request), finding_id)
@@ -960,7 +963,9 @@ def get_finding(finding_id: str, request: Request) -> dict[str, Any]:
             .where(finding_records.c.finding_id == finding_id)
             .order_by(finding_records.c.created_at)
         ).all()
-        return {"finding": row["doc"], "records": [{"type": t, "record": d} for t, d in recs]}
+        return FindingDetail.model_validate(
+            {"finding": row["doc"], "records": [{"type": t, "record": d} for t, d in recs]}
+        ).model_dump(mode="json")
 
 
 @router.get("/findings/{finding_id}/patches")
