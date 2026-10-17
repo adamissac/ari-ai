@@ -12,7 +12,7 @@ import {
 } from '@/lib/lab-story';
 import type { HiddenStage, LabEpisode, LabScenario } from '@/lib/lab-types';
 
-const SPEEDS = [{ label: '1×', ms: 180 }, { label: '4×', ms: 45 }, { label: '8×', ms: 22 }] as const;
+const SPEEDS = [{ label: '1×', ms: 1200 }, { label: '4×', ms: 300 }, { label: '8×', ms: 150 }] as const;
 
 /** Recorded-episode player: status, network map, story panel, and playback timeline. */
 export function ReplayStage({ episode, scenario }: { episode: LabEpisode; scenario: LabScenario }) {
@@ -21,7 +21,7 @@ export function ReplayStage({ episode, scenario }: { episode: LabEpisode; scenar
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
-  const [truth, setTruth] = useState(false);
+  const [truth, setTruth] = useState(true);
   const moments = useMemo(() => keyMoments(episode, scenario), [episode, scenario]);
   const story = useMemo(() => storyMoments(moments), [moments]);
 
@@ -42,6 +42,7 @@ export function ReplayStage({ episode, scenario }: { episode: LabEpisode; scenar
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="replay-brief"><div><span className="network-eyebrow">THE DEFENSE STORY</span><h3>Someone tries to get in.<br />Watch the defender respond.</h3><p>A recorded practice network. The red marker shows the simulated attacker; the blue marker shows where the AI acts.</p></div><div className="replay-keys"><span><i className="key-attacker" />Attacker · trying to reach your data</span><span><i className="key-defender" />Defender · watching, slowing or isolating</span><small>Attacker positions are replay-only ground truth. The AI sees alerts, not these markers.</small></div></div>
       {/* Status overview */}
       <div className="lab-status" data-testid="lab-status">
         <span className="lab-mode label-mono" data-testid="lab-mode">Simulation · recorded evaluation</span>
@@ -51,14 +52,14 @@ export function ReplayStage({ episode, scenario }: { episode: LabEpisode; scenar
         <span className="lab-status-item min-w-0"><span className="text-faint">Latest AI action</span> <span className="truncate">{last ? `${ACTION_SHORT[parseAction(last.action).verb] ?? last.action}${parseAction(last.action).node ? ` ${label(parseAction(last.action).node!)}` : ''} (step ${last.t})` : 'none yet'}</span></span>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.75fr)_minmax(19rem,1fr)]">
-        <div className="min-w-0 xl:sticky xl:top-6 xl:self-start">
+      <div className="replay-stage-grid">
+        <div className="min-w-0">
           <NodeGraph scenario={scenario} states={step?.nodes ?? []} action={step?.action} t={t} selected={selected} onSelect={setSelected} showTruth={truth} />
           <p className="lab-swipe">Swipe the map sideways to see every service →</p>
           <Legend />
         </div>
 
-        <aside className="flex min-w-0 flex-col gap-3" aria-label="What's happening">
+        <aside className="replay-explanation" aria-label="What's happening">
           <div className="lab-now">
             <p className="label-mono flex justify-between text-white/60"><span>Step {step?.t ?? 0} of {scenario.horizon}</span><span>Recorded</span></p>
             <dl className="mt-3 flex flex-col gap-3 text-sm">
@@ -262,7 +263,7 @@ function GroundTruth({ episode, t, truth, onToggle, label }: { episode: LabEpiso
         <ul className="mt-2 flex flex-wrap gap-1.5">
           {states.map(s => <li key={s.node} className="rounded-full border border-line px-2 py-0.5"><Mono>{label(s.node)}</Mono> · attacker {STAGE_WORDS[s.hidden_stage_ground_truth]}</li>)}
         </ul>
-      ) : <p className="mt-1 font-mono text-[0.72rem] text-faint">Hidden by default. The trained defender only sees alert rates, anomaly scores, monitoring levels and its own actions.</p>}
+      ) : <p className="mt-1 font-mono text-[0.72rem] text-faint">Attacker markers are hidden. The trained defender only sees alert rates, anomaly scores, monitoring levels and its own actions.</p>}
     </div>
   );
 }

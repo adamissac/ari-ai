@@ -118,7 +118,7 @@ describe('replay stage', () => {
     expect(screen.getByRole('button', { name: /^API server \(api\)/ }).getAttribute('data-signal')).toBe('high');
   });
 
-  it('selecting a service shows its real recorded values; truth stays hidden until asked', () => {
+  it('replay shows labeled attacker truth and lets viewers hide it', () => {
     render(<ReplayStage episode={episode} scenario={scenario} />);
     fireEvent.change(screen.getByLabelText('Step', { selector: 'input' }), { target: { value: '4' } });
     fireEvent.keyDown(screen.getByRole('button', { name: /^API server/ }), { key: 'Enter' });
@@ -126,8 +126,8 @@ describe('replay stage', () => {
     expect(panel.textContent).toContain('API server');
     expect(panel.textContent).toContain('cut off');
     expect(panel.textContent).toContain('AI actions here so far: 2');
-    expect(panel.textContent).not.toContain('Hidden truth');
+    expect(panel.textContent).toContain('Hidden truth (not seen by the defender)');
     fireEvent.click(screen.getByLabelText('Show on the map (for learning)'));
-    expect(screen.getByTestId('lab-service-panel').textContent).toContain('Hidden truth (not seen by the defender)');
+    expect(screen.getByTestId('lab-service-panel').textContent).not.toContain('Hidden truth');
   });
 });

@@ -21,13 +21,13 @@ export function RepoCommits({ repo, onPick }: { repo: Repository; onPick: (sha: 
         {items.slice(0, 10).map(c => (
           <li key={c.sha} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
             <span className="flex min-w-0 flex-1 flex-col">
-              <span className="truncate text-ink">{c.message}</span>
+              <button type="button" className="truncate text-left text-ink hover:text-brand" onClick={() => onPick(c.sha)}>{c.message}</button>
               <span className="text-xs text-muted">
                 {c.author}{c.committed_at && <> · <Time iso={c.committed_at} /></>} · {c.html_url ? <a className="hover:text-brand" href={c.html_url} target="_blank" rel="noreferrer"><Mono>{c.sha.slice(0, 7)}</Mono></a> : <Mono>{c.sha.slice(0, 7)}</Mono>}
               </span>
             </span>
             <span className="flex items-center gap-3 text-xs">
-              <button type="button" className="text-muted hover:text-ink" onClick={() => onPick(c.sha)}>Use commit</button>
+              <button type="button" className="text-muted hover:text-ink" onClick={() => onPick(c.sha)}>Explore commit</button>
               <Link className="text-brand hover:underline" href={`/projects/${repo.project_id}/simulate?repo=${encodeURIComponent(repo.full_name)}&sha=${c.sha}`}>Analyze →</Link>
             </span>
           </li>

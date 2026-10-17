@@ -13,6 +13,7 @@ simulated in the browser. Spec: [docs/14](../docs/14_FRONTEND_UX_DESIGN.md).
 | `/projects` projects, create project | `GET/POST /projects` |
 | `/pricing` plans in the kairo.security layout, clearly marked **hackathon preview: proposals, nothing can be purchased** | Nothing (static) |
 | `/projects/[id]` one next step from the loaded records (connect a repo, approve a scope, run a review, open the run, or view results), then assessments (start note: enqueue only), findings, repositories | `/projects/{id}/assessments`, `/findings`, `/scopes`, `/repositories` |
+| `/projects/[id]/commits` select a GitHub commit, see matching recorded assessments, open the code-review and seven-agent journey | GitHub commits, repository snapshots and project assessments (bounded recent pages, stated in UI) |
 | `/projects/[id]/scopes` request (pending-only note), approve (backend enforces a different member), revoke | `/projects/{id}/scopes`, `/scopes/{id}/approve`, `/scopes/{id}/revoke` |
 | `/projects/[id]/assessments/[asm]` live timeline: state rail from states actually entered, selectable eight-agent view (job, recorded outcome, real tool calls, handoff), budget meter, remediation approval gate, cancel (queued vs stop-requested, findings kept), durable event log, provider-mode banner | `watchAssessment` SSE (`Last-Event-ID` resume) + `GET /assessments/{id}` + `POST .../cancel` + 5 s polling fallback while running |
 | `/projects/[id]/findings` validated / hypotheses / closed tabs | `/projects/{id}/findings` |
