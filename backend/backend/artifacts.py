@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import tempfile
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -53,9 +54,18 @@ class ArtifactStore:
         path = self._path(sha)
         if not path.exists():
             path.parent.mkdir(parents=True, exist_ok=True)
-            tmp = path.with_suffix(f".tmp{os.getpid()}")
-            tmp.write_bytes(data)
-            os.replace(tmp, path)
+            # Concurrent writes of identical bytes share the final content address,
+            # but each publisher must own its temporary file (including within a PID).
+            with tempfile.NamedTemporaryFile(
+                dir=path.parent, prefix=f"{sha}.", suffix=".tmp", delete=False
+            ) as stream:
+                tmp = Path(stream.name)
+                try:
+                    stream.write(data)
+                    stream.close()
+                    os.replace(tmp, path)
+                finally:
+                    tmp.unlink(missing_ok=True)
         art_id = new_id(IdPrefix.art)
         conn.execute(
             sa.insert(artifacts).values(
