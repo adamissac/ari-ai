@@ -79,3 +79,11 @@ Add dated factual entries; do not overwrite history. Never claim unexecuted test
 - #79: ACKed Srihith's #71. Alan landed the same flow in #73: validated functional findings → approval → reviewer repair → independent functional Verify → `verified` (unified assessment test, 4 passed on main).
 - Locked the repo-relative generated-test path contract Alan's Verify relies on (new test).
 - code-review on main: 60 passed, 1 skipped; strict mypy clean.
+
+### 2026-10-17T11:50:29Z (autonomous cycles 14–27)
+
+- #87: proved on the real (redacting) host that reviewer `diff_sha256` matches the stored artifact; the Patch-agent hashing issue is routed to Alan.
+- #98: M2 (reviewer) marked met in MILESTONES.md with live + CI evidence. #113: REVIEW-001..003 → Sai / DONE in HACKATL_TASKS.md.
+- #119 / #134: OWASP LLM coverage. Five marked tests in `tests/security/test_owasp_llm_reviewer.py`; 2026 matrix rows (LLM01/02/03/07/10). Srihith mirrored them into the 2025 matrix (#135).
+- #127 / #128: reviewer tests now run inside the real Docker sandbox in CI (`docker-reviewer` job, run 39028078294, 2 passed). README and M2 limitation updated.
+- code-review on main: 60 passed, 3 skipped (live + 2 opt-in Docker, which run in the `docker-reviewer` job); strict mypy clean.
