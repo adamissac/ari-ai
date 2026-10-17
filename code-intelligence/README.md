@@ -73,7 +73,7 @@ original repository-relative paths and the original commit SHA.
 
 ## Ingestion profiles and existing snapshots
 
-The parser base version is `python-ast-ts/0.3.0`. Non-default ingestion prefixes
+The parser base version is `python-ast-ts/0.3.1`. Non-default ingestion prefixes
 or limits add an opaque `+profile.<digest>` suffix to `SnapshotRef.index_version`.
 Treat that field as an opaque version, not a fixed parser label. Equivalent
 prefixes such as `app`, `app/`, and `./app/` share a profile; invalid prefixes are
@@ -173,3 +173,12 @@ Source identities (commit, path/span/symbol and artifact/hash pointers) stay
 exact. This is a display/output projection: authenticated append-only decision
 history and immutable indexes retain their original bytes. Existing snapshots
 need no reindexing, and canonical DTOs are unchanged.
+
+### Relative-import grounding revision
+
+Parser0.3.1 preserves unresolved relative imports that exceed the known package
+depth and records a diagnostic. Such imports cannot acquire an exact edge to an
+unrelated top-level module. Valid nested and aliased imports remain grounded.
+Use normal indexing for active commits to obtain corrected graph facts under the
+new parser version. Historical0.3.0 refs and their decisions remain unchanged and
+readable; never relabel them or carry human confirmation into the new version.

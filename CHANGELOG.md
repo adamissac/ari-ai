@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Keep out-of-package relative imports unresolved instead of assigning unrelated top-level call targets; parser0.3.1 reindexes corrected facts without relabeling historical snapshots.
+
 - Redact credential-shaped free-form citation metadata in context packs and public expectation views while preserving original authenticated history and source identities.
 - Assessment conflicts now offer explicit preparation of a separate action; ordinary network retries retain their key, and project changes get distinct keys.
 
