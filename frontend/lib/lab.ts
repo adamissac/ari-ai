@@ -1,4 +1,4 @@
-import type { DefenseLabBundle, LabEpisode, MetricCI } from './lab-types';
+import type { DefenseLabBundle, LabEpisode, LabStep, MetricCI } from './lab-types';
 
 /** Metrics where a larger value is better; everything else is a cost. */
 export const HIGHER_IS_BETTER = new Set(['return', 'service_uptime']);
@@ -27,6 +27,42 @@ export function metricNames(bundle: DefenseLabBundle): string[] {
   const names = new Set<string>();
   for (const m of bundle.metrics) for (const k of Object.keys(m.pooled)) names.add(k);
   return [...names];
+}
+
+const ACTION_PHRASE: Record<string, (node: string | null) => string> = {
+  noop: () => 'do nothing',
+  escalate_to_human: () => 'escalate to a person',
+  isolate: node => `isolate ${node} in this simulation`,
+  rate_limit: node => `rate-limit ${node} in this simulation`,
+  raise_monitoring: node => `raise monitoring on ${node} in this simulation`,
+  request_reassessment: node => `request a reassessment of ${node} in this simulation`,
+};
+
+/** What this recorded step shows the defender, without the hidden attacker stage. */
+export function stepObservation(step: LabStep | undefined): string {
+  if (!step) return 'This step was not recorded.';
+  const action = describeAction(step.action);
+  if (step.nodes.length === 0) {
+    return `This step has no recorded node signals. The recorded action is to ${action}. The hidden attacker stage is not shown.`;
+  }
+  const max = Math.max(...step.nodes.map(node => node.alert_rate));
+  const names = step.nodes.filter(node => node.alert_rate === max).map(node => node.node);
+  const where = names.length === 1 ? names[0]! : names.join(', ');
+  return `The highest recorded alert rate at this step is ${formatRate(max)} on ${where}. The recorded action is to ${action}. This uses recorded signals, not the hidden attacker stage.`;
+}
+
+function describeAction(action: string): string {
+  const [verb, node] = action.split(':', 2);
+  const phrase = verb ? ACTION_PHRASE[verb] : undefined;
+  if (!phrase || (verb !== 'noop' && verb !== 'escalate_to_human' && !node)) {
+    return `follow the recorded action ${action}`;
+  }
+  return phrase(node ?? null);
+}
+
+function formatRate(value: number): string {
+  if (!Number.isFinite(value)) return 'unrecorded';
+  return value.toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
 }
 
 /** One sentence from a recorded episode. It does not describe a live network. */
