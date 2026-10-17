@@ -57,7 +57,7 @@ This is *not* blanket authorization to: compromise unowned systems; scan public 
 
 ## 7. Cross-team working process
 
-Every agent uses its own `feat/<owner>/<scope>` branch (branch from newest `origin/main`, don't push to main). At session start, after each milestone, before interface changes, before PR, and before handoff:
+Every agent uses its own `feat/<owner>/<scope>` branch (branch from newest `origin/main`, don't push to main). **Commit very frequently (after every passing test or finished sub-step, at least every 30 minutes) and push after every commit; always fetch and read what changed on `origin/main`, other branches, PRs and `coordination/messages/` before you act** — see "Git cadence" in `AGENTS.md`. At session start, after each milestone, before interface changes, before PR, and before handoff:
 
 1. `git status --short; git fetch origin; git log --oneline --decorate -8 origin/main`; compare owned branch with origin/main. **Do not merge/rebase with uncommitted work; stash or commit first.**
 2. Read `coordination/MESSAGES.md`, all new `coordination/messages/*.md`, `coordination/STATUS.md`, `coordination/CONTRACTS.md`, and relevant GitHub issues/PR comments. Use `gh pr list`, `gh issue list` if available, or connector API. If not connected, record inability; do not invent updates.

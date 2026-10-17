@@ -229,3 +229,29 @@ section, and check open branches/PRs (`gh pr list`). Extend; don't fork.
 ## Six-agent concurrent implementation protocol (current active phase)
 
 Read `MASTER_BUILD_SPEC.md` before work, then `coordination/MESSAGES.md`, `coordination/CONTRACTS.md`, `coordination/OWNERSHIP.md`, `coordination/MILESTONES.md`, applicable `team-prompts/<PERSON>_*.md`, and new messages in `coordination/messages/`. The previous "Phase 0 only" directive is superseded by the user's explicit authorization to implement; other security, Git, test and architecture constraints remain in force. Every agent checks GitHub at session start, milestones, shared interface changes and handoff. Never overwrite another owner's work or claim unexecuted tests pass.
+
+<!-- HACKATL_GIT_CADENCE -->
+## Git cadence — commit very often, always read what changed (mandatory for all six developers and their agents)
+
+1. **Commit very frequently.** Commit after every passing test, every finished sub-step,
+   and at least every 30 minutes of work. Small commits, Conventional Commit messages.
+   Never hold more than ~30 minutes of uncommitted work.
+2. **Push after every commit** to your own `feat/<owner>/<scope>` branch, so teammates
+   and their agents can see your work. An unpushed commit is invisible to everyone else.
+3. **Always read what changed before you act.** At session start, before every commit and
+   push, before changing any shared interface, and before opening or updating a PR, run:
+   ```
+   git fetch origin --prune
+   git log --oneline --decorate -15 origin/main          # what landed on main
+   git log --oneline HEAD..origin/main                   # what you are missing
+   git diff --stat HEAD...origin/main                    # which files changed
+   git for-each-ref --sort=-committerdate refs/remotes --format='%(refname:short) %(committerdate:relative) %(subject)'
+   gh pr list --state open; gh issue list --state open
+   ls -t coordination/messages/ | head                   # newest team messages
+   ```
+   Read the diffs and messages that touch your area (`git log -p origin/<branch> -- <path>`).
+4. **Integrate often.** Merge or rebase `origin/main` into your branch at least daily and
+   whenever main changes something you depend on (commit or stash first; never force-push
+   shared branches).
+5. **Respond in the same session.** If a teammate's change affects you, reply with an
+   immutable `coordination/messages/` file and a PR/issue comment before you stop.
