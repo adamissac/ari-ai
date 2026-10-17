@@ -26,4 +26,46 @@ also report db loss and per-node impact.
 
 ## Rounds
 
-_Filled in as rounds complete._
+### Round 1 — algorithm and training-length sweep ([table](results/r1.md))
+
+10 candidates × 3 validation seeds, nominal training configs only.
+
+| Candidate | Steps | Validation return (mean ± std) | Worst seed | db loss % | False disruption % |
+|---|---|---|---|---|---|
+| **lr3e4_500k** (lr 3e-4) | 500k | **−42.5 ± 15.4** | −59.8 | 4.8 | 53.9 |
+| ablation_vanilla_dqn_200k | 200k | −73.1 ± 10.3 | −79.5 | 12.7 | 50.7 |
+| v0_baseline (v0 defaults) | 200k | −91.8 ± 49.8 | −149.1 | 8.6 | 59.6 |
+| nstep3_500k | 500k | −92.5 ± 52.5 | −151.5 | 8.8 | 40.3 |
+| dueling_500k | 500k | −130.3 ± 41.7 | −159.3 | 25.4 | 46.5 |
+| batch128 / long500k / long1m / wide256 / soft (all lr 1e-3) | 500k–1M | −168 to −192 | −197 to −247 | 25–44 | 42–57 |
+
+Findings:
+- **Learning rate is the main lever.** At the v0 learning rate (1e-3), training longer makes
+  things *worse*: the training logs show these runs reach about −38 mid-training, then
+  oscillate as Q-value estimates drift (q_mean swinging between −44 and +12, loss rising to
+  2–4). The final checkpoint is a lottery. At lr 3e-4, Q-values stay stable around −13 and
+  the loss falls to 0.1–0.3.
+- v0 itself has large seed variance on validation (one seed at −149), matching the held-out
+  seed spread the coordinator reported.
+- The vanilla-DQN ablation was *not* worse than Double DQN at 200k steps on validation
+  (−73 vs −92, within noise given v0's ±50). We report it as found; Double DQN stays the
+  default because the round-2 winner uses it and the ablation is a single setting.
+- n-step returns lowered false disruption (40%) but did not help return at lr 1e-3.
+
+Decision: carry lr 3e-4 forward and test robustness (round 2).
+
+### Round 2 — robustness to attacker speed ([table](results/r2.md))
+
+Motivation: the coordinator's held-out stress test of v0 (evaluation-only, seeds 3000–3049,
+not used for selection) showed DDQN's lead over the threshold rules vanishing as attackers
+speed up, with db loss climbing to 61% at ×2.5 (rules: 10%). Round 2 adds training-time
+domain randomization (`adversary_scale: [0.5, 2.5]`) and validates every candidate on the
+training configs at factors ×0.5, ×1, ×1.5, ×2, ×2.5.
+
+**Selection rule (written before seeing round-2 results):**
+1. Rank by robust validation return (mean over the five factors, mean over seeds 10–12).
+2. Among candidates within one standard deviation of the leader, prefer the lower robust
+   db-loss rate.
+3. The pick must not be worse than `r2_v0_ref` at ×1.0 (no nominal regression).
+4. That single candidate is then trained on seeds 0–4 and evaluated once on the held-out
+   configs, plus the held-out stress test.
