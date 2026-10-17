@@ -1,13 +1,13 @@
 # Alan — implementation status
 
 Owner: Alan (`security-agents/`, SEC-001 … SEC-013)
-Branch: `feat/alan/host-finding-persistence`
-Current task: finding lifecycle + durable approval resume + functional Verify on the host path
-Last remote sync: 2026-10-17T08:05Z — merged `origin/main` @ `03323cd` (#69 standards follow-up, #70 Sai status)
-API/contract dependencies: `shared` V0, `backend.host` (`save_checkpoint` / `load_checkpoint` / `set_finding_status`), `code_review.api` functional helpers (#68)
-Recent PR/commit: https://github.com/adamissac/hackatl-agentic-security/pull/73 (`feat/alan/host-finding-persistence`)
+Branch: `feat/alan/host-resume-hardening`
+Current task: Codex P1/P2 host-resume hardening after #73 merged
+Last remote sync: 2026-10-17T08:52Z — `origin/main` @ `236838e` (#73 merged)
+API/contract dependencies: `shared` V0, `backend.host` (`save_checkpoint` / `load_checkpoint` / `claim_checkpoint` / `set_finding_status`), `code_review.api` functional helpers (#68)
+Recent PR/commit: follow-up on `feat/alan/host-resume-hardening` (do not push `feat/alan/host-finding-persistence`)
 Blockers: live seven-agent run (issue #10, no key); Docker images (INFRA-005); PR #35 should be **closed**, not merged
-Next action: land this PR; comment on #35; Vihaan re-check finding status in the UI
+Next action: land host-resume-hardening; close #35; Vihaan re-check finding status in the UI
 
 ## What runs today
 
@@ -86,6 +86,12 @@ Executed check results on the fixture (the precision evidence):
   refused at runtime.
 
 ## Session entries
+
+### 2026-10-17 (Codex P1/P2 after #73 merged)
+
+- #73 is on main. Did not push the merged branch. All seven Codex items were
+  missing from `origin/main`; implemented on `feat/alan/host-resume-hardening`.
+- Message: `20261017T085211Z-alan-to-srihith-host-resume-hardening.md`.
 
 ### 2026-10-17 (Srihith follow-up c75a56e on #73)
 
