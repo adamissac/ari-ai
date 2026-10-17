@@ -259,3 +259,12 @@ Pricing; warm off-white, crisp headline core with em-scaled ember shadows. Exist
 hero content/layout and all other sections preserved. Lint/typecheck/demo-only build
 passed; 215 unit tests and 5 responsive/reduced-motion browser checks passed. No push
 or deployment. See the session handoff for exact commands and screenshot locations.
+
+### UI-NAV-REVEAL — Sarosh (2026-10-17T19:10:13+00:00)
+
+Implemented and verified locally on `feat/sarosh/ari-frontend-polish`: homepage-only
+100px visibility threshold, reserved layout, inert hidden links, 250ms fade/slide,
+reduced-motion fallback and phone Menu access. Other pages retain full navigation.
+Lint/typecheck/demo-only production build passed; 219 unit tests and 5 responsive
+browser tests passed, including top/reveal/return, account position and focus checks.
+No hero or other product sections changed. No push/deployment.

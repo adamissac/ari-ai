@@ -108,3 +108,30 @@ Rendered desktop/mobile and scrolled light views inspected; no browser warnings/
 observed. Full authenticated backend e2e not rerun. No push, merge to main or deployment.
 Screenshots and logs remain external to Git at `/tmp/ari-nav-glow-*` and `/tmp/ari-nav-*`.
 Next action: review local commit and authorize publishing if desired.
+
+## 2026-10-17T19:10:13+00:00 — Sarosh: homepage navigation scroll reveal (local)
+
+Branch `feat/sarosh/ari-frontend-polish`, `/tmp/ari-website-polish`. Integrated
+main through `0f645c2`, preserving Sai's refreshed README and the newer local ARI
+branding/font details during its sole merge conflict.
+
+`SiteNavigation` reveals Projects/Defense Lab/Demo/Pricing at `scrollY >= 100`,
+independent of direction, and hides them below it. Group geometry remains reserved;
+logo/account remain visible and Sign In's x/y stay unchanged. Hidden group uses
+`inert`, `aria-hidden`, visibility and pointer blocking. Transition: 250ms fade +8px
+horizontal offset, removed for reduced motion. Other routes always show all links.
+The checkout had no separate mobile menu, so added a compact phone Menu disclosure
+with Escape/focus restoration; crossing the threshold closes it. No hero/content,
+headline, font, background, workflow, CTA, backend or API changes.
+
+Executed: `npm run lint --prefix frontend`; `npm run typecheck --prefix frontend`;
+`npm test --prefix frontend -- --maxWorkers=2` (51 files, 219 passed);
+`NEXT_PUBLIC_DEMO_ONLY=1 npm run build --prefix frontend` (passed);
+`E2E_BASE_URL=http://127.0.0.1:3015 E2E_DEMO_ONLY=1 E2E_BROWSER_CHANNEL=chrome ARI_LANDING_SCREENSHOTS=/tmp/ari-reveal-screens npm run e2e --prefix frontend -- tests/e2e/landing.spec.ts --reporter=list`
+(5 passed, 36.6s, 1440/1024/390/320px and reduced motion). Browser assertions prove
+0/99 hidden, 100 shown, decreasing above threshold shown, returning to zero hidden,
+hidden-focus rejection, phone menu/Escape, unchanged account coordinates, no overflow
+and full navigation on pricing. Desktop/mobile top and revealed screenshots inspected.
+Existing brand e2e scroll checkpoint updated from 80px to 120px; its full backend
+suite was not rerun. Screenshots external to Git: `/tmp/ari-reveal-screens`.
+No push or deployment. Next action: review local commit; publishing remains pending.

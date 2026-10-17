@@ -60,7 +60,7 @@ test('supplied logo loads on sign-in, scrolled header and projects on desktop/mo
   await settledHero(page);
   await expect(page.locator('.hero-stage [data-testid="ari-logo"]')).toHaveCount(0);
   await screenshot(page, 'desktop-hero');
-  await page.evaluate(() => window.scrollTo(0, 80));
+  await page.evaluate(() => window.scrollTo(0, 120));
   await settledHeader(page);
   await screenshot(page, 'desktop-scrolled-header');
   await page.getByRole('link', { name: 'Projects', exact: true }).click();
@@ -74,7 +74,7 @@ test('supplied logo loads on sign-in, scrolled header and projects on desktop/mo
   await settledHero(page);
   await expect(page.locator('.hero-stage [data-testid="ari-logo"]')).toHaveCount(0);
   await screenshot(page, 'mobile-hero');
-  await page.evaluate(() => window.scrollTo(0, 80));
+  await page.evaluate(() => window.scrollTo(0, 120));
   await settledHeader(page);
   const headerMark = await page.locator('header [data-testid="ari-logo"]').boundingBox();
   expect(headerMark!.x).toBeGreaterThanOrEqual(0);
