@@ -139,7 +139,7 @@ export function HowItWorks() {
   return (
     <div ref={ref} className="story-track story-track-4 bleed bleed-ink text-white" id="how">
       <section aria-labelledby="how-title" className="story-stage story-rain flex flex-col justify-center py-16">
-        <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr] lg:items-end">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_1fr] lg:items-end">
           <div>
             <p className="label-mono text-white/60">How it works</p>
             <h2 id="how-title" className="display mt-3 text-3xl font-semibold md:text-5xl">Assurance that runs<br /><span className="text-white/60">on every change.</span></h2>
@@ -273,14 +273,14 @@ const STATS: Array<{ n: number; suffix?: string; tag: string; body: string }> = 
 export function ProofStats(): ReactNode {
   return (
     <section aria-labelledby="proof-title" className="bleed bleed-ink story-rain py-16 text-white">
-      <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr] lg:items-end">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_1fr] lg:items-end">
         <div>
           <p className="label-mono text-white/60">Proof, not promises</p>
           <h2 id="proof-title" className="display mt-3 text-3xl font-semibold md:text-5xl">The record is checkable.</h2>
         </div>
         <p className="max-w-md text-sm text-white/70">No model output counts as proof, including ours. Every status on these pages comes from executed tests and persisted evidence.</p>
       </div>
-      <div className="mt-10 grid gap-3 md:grid-cols-3">
+      <div className="mt-10 grid grid-cols-1 gap-3 md:grid-cols-3">
         {STATS.map((s, n) => (
           <div key={s.tag} className="story-stat">
             <p className="label-mono flex justify-between text-white/50"><span>{String(n + 1).padStart(2, '0')}</span><span>{s.tag}</span></p>

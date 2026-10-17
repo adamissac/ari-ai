@@ -115,7 +115,7 @@ button.label-mono, a.label-mono, nav.label-mono, nav .label-mono {
    gentle scroll parallax. JS writes --mx/--my/--tx/--ty/--scroll; everything else is CSS. */
 .hero-stage { --mx: 70%; --my: 30%; --scroll: 0; }
 .hero-content { position: relative; z-index: 1; transform: translateY(calc(var(--scroll) * -28px)); opacity: calc(1 - var(--scroll) * 0.5); }
-.hero-orbs { position: absolute; inset: 0; z-index: 0; pointer-events: none; transform: translateY(calc(var(--scroll) * 60px)); }
+.hero-orbs { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; transform: translateY(calc(var(--scroll) * 60px)); }
 .hero-orb { position: absolute; border-radius: 9999px; filter: blur(60px); opacity: 0.55; will-change: transform; }
 .hero-orb-a { width: 46%; aspect-ratio: 1; left: -8%; top: -30%; background: color-mix(in srgb, var(--color-brand) 55%, transparent); animation: hero-drift-a 18s ease-in-out infinite alternate; }
 .hero-orb-b { width: 38%; aspect-ratio: 1; right: -6%; top: 10%; background: color-mix(in srgb, var(--color-brand-deep) 70%, transparent); animation: hero-drift-b 22s ease-in-out infinite alternate; }
@@ -222,8 +222,9 @@ html[data-home-hero][data-hero-past] .site-header nav a.hdr-cta { background: va
   background-image: repeating-linear-gradient(90deg, transparent 0 22px, rgba(255, 255, 255, 0.05) 22px 23px), linear-gradient(180deg, transparent, rgba(194, 69, 45, 0.12) 50%, transparent);
   background-size: auto, 100% 300%; animation: story-rain 9s linear infinite; }
 @keyframes story-rain { to { background-position: 0 0, 0 300%; } }
-.story-cards { display: grid; gap: 12px; }
-.story-card { position: relative; display: flex; flex-direction: column; border-radius: 16px; padding: 20px; background: rgba(255, 255, 255, 0.06); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); }
+/* minmax(0,1fr): a card may shrink below its nowrap/truncated rows instead of widening the page. */
+.story-cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.story-card { position: relative; display: flex; flex-direction: column; min-width: 0; border-radius: 16px; padding: 20px; background: rgba(255, 255, 255, 0.06); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); }
 .story-card-num { font-family: var(--font-mono); font-size: 2.5rem; font-weight: 600; line-height: 1; color: rgba(255, 255, 255, 0.18); }
 .story-card-label { margin-top: 12px; color: rgba(255, 255, 255, 0.6); }
 .story-card-body { margin-top: 16px; }
