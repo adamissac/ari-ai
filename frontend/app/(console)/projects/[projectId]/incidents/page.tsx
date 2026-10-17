@@ -16,7 +16,7 @@ export default function IncidentsPage() {
   const list = useResource(`incidents:${project.id}`, s => api().incidents(project.id, { signal: s }), 15000);
   const [selected, setSelected] = useState<string | null>(null);
   return (
-    <div className="grid gap-4 lg:grid-cols-[2fr_3fr]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_3fr]">
       <div className="flex flex-col gap-4">
         <Panel title="Incidents">
           <Async resource={list} label="incidents">
