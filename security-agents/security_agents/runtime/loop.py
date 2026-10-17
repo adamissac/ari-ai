@@ -67,6 +67,9 @@ class ToolInvocation:
 _SUMMARY_FIRST = (
     "error",
     "detail",
+    "parameter_index",
+    "parameter_values_withheld",
+    "route",
     "matches_expectation",
     "outcome",
     "applied",
@@ -96,7 +99,8 @@ def result_summary(payload: dict[str, Any], *, max_keys: int = 20, max_len: int 
         elif isinstance(value, str):
             out[key] = value[:max_len]
         else:
-            out[key] = json.dumps(value, default=str, sort_keys=True)[:max_len]
+            limit = 1000 if key == "parameter_index" else max_len
+            out[key] = json.dumps(value, default=str, sort_keys=True)[:limit]
     return out
 
 
