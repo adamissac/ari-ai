@@ -128,3 +128,15 @@ Read `MASTER_BUILD_SPEC.md` before work, then `coordination/MESSAGES.md`, `coord
    shared branches).
 5. **Respond in the same session.** If a teammate's change affects you, reply with an
    immutable `coordination/messages/` file and a PR/issue comment before you stop.
+
+### Frontend transport (implemented helper; page scaffold pending)
+
+```sh
+npm ci --prefix frontend/transport
+npm test --prefix frontend/transport
+npm run test:integration --prefix frontend/transport
+```
+
+The last command requires the root Python dev workspace; it starts real FastAPI
+with an isolated PostgreSQL database, never an assessment worker or model call.
+See [frontend transport](frontend/transport/README.md) for app consumption and limits.

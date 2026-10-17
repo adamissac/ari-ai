@@ -559,3 +559,98 @@ def test_evaluator_scores_scripted_run_against_answer_key(tmp_path: Path) -> Non
     assert rep["label"].startswith("harness check only")
     assert rep["tp"] == ["fnd_planted_refund_bound"] and rep["fp"] == [] and rep["fn"] == []
     assert rep["generated_tests_failing_on_head"] == 1
+
+
+IDOR_TEST = """from fastapi.testclient import TestClient
+
+from payments_lite.app import create_app
+
+ALICE = {"Authorization": "Bearer fixture-token-alice"}
+
+
+def test_customer_cannot_read_another_customers_payment():
+    client = TestClient(create_app())
+    assert client.get("/payments/pay_b1", headers=ALICE).status_code == 404
+"""
+
+
+def test_authorization_finding_is_handed_to_scout_with_test_evidence(tmp_path: Path) -> None:
+    sc = payments_lite(tmp_path)
+    app = (sc.repo / "target/payments_lite/app.py").read_text()
+    doc = line_of(app, "A customer can only read their own profile, payments and refunds.")
+    handler = line_of(app, "def get_payment(")
+    script = [
+        call(
+            "write_test",
+            name="payment_owner_only",
+            content=IDOR_TEST,
+            claim_key="c_own",
+            rationale="ownership",
+        ),
+        lambda req: call("run_tests", target="generated", test_id=written_ids(req)[-1]),
+        lambda req: _submit(
+            summary="GET /payments/{id} does not check ownership.",
+            claims=[
+                {
+                    "key": "c_own",
+                    "statement": "A customer can only read their own payments.",
+                    "proposed_status": "confirmed",
+                    "citations": [
+                        {
+                            "source_kind": "docstring",
+                            "path": "target/payments_lite/app.py",
+                            "start_line": doc,
+                            "end_line": doc,
+                        }
+                    ],
+                }
+            ],
+            findings=[
+                {
+                    "title": "GET /payments/{payment_id} returns other customers' payments",
+                    "claim_key": "c_own",
+                    "test_id": written_ids(req)[-1],
+                    "suspected_spans": [
+                        {
+                            "source_kind": "code",
+                            "path": "target/payments_lite/app.py",
+                            "start_line": handler,
+                            "end_line": handler + 10,
+                        }
+                    ],
+                    "severity": "high",
+                    "rationale": "no require_owner call unlike sibling routes",
+                }
+            ],
+        ),
+    ]
+    host = InMemoryHost(fake(script))
+    outcome = ReviewerAgentRunner(host, RepoSource(sc.repo, subdir="target")).review(
+        make_request(host, sc)
+    )
+    assert [f for f in outcome.result.findings if f.kind is FindingKind.functional] == []
+    [sec] = outcome.security_handoffs
+    assert sec.kind is FindingKind.security and sec.status is FindingStatus.hypothesis
+    assert sec.title.startswith("[authorization]") and sec.confidence == 0.7
+    assert "handoff to scout" in sec.history[0].reason
+    assert "fails reproducibly" in sec.history[0].reason
+    run_ev = next(e for e in sec.evidence if e.kind is EvidenceKind.test_run)
+    assert host.artifact_json(run_ev.artifact_id)["classification"] == ["failed", "failed"]
+    assert host.findings() == [sec]
+
+
+@pytest.mark.parametrize(
+    "text,authz",
+    [
+        ("A customer can only read their own payments.", True),
+        ("Tenant isolation must hold for refunds", True),
+        ("Only admins with permission may delete", True),
+        ("Discounted totals are rounded half-up to cents", False),
+        ("Total refunds never exceed the payment amount", False),
+        ("Payroll rounding uses cents", False),
+    ],
+)
+def test_authorization_rule_routing(text: str, authz: bool) -> None:
+    from code_review.agent import is_authorization_rule
+
+    assert is_authorization_rule(text) is authz
