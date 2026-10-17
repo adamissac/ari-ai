@@ -178,3 +178,13 @@ deps installed as `rl.yml` does: `-e ../standards -e ../shared -e ".[dev]"`):
 - Report: `security-agents/tests/artifacts/live/20261017T205333Z-seven_roles_end_to_end.json` (gitignored, kept by Alan). It contains no API key. The tool traces include the payments-lite fixture's synthetic tokens from `code.search` results over the target's own test code; these are not real secrets.
 - Earlier attempts that day: Srihith's run stopped at Probe ($0.38, inconclusive, fixed by #219 and #233). Three runs with an invalid key failed at Scout's first request with 401 ($0.00).
 - Limitations: one run, one owned fixture, the local-process sandbox (not Docker), CLI auto-approval in place of a human, and Patch noted it did not run its new test on the unpatched code (Verify's checks ran independently).
+
+### M3 live evidence — Adam (2026-10-17)
+
+Command: `cd security-agents && python -m security_agents.cli --target ../examples/payments-lite --mode live --i-have-authorization --auto-approve --max-hypotheses 2 --validate 1 --max-usd 3` (direct to Anthropic; `ANTHROPIC_BASE_URL` unset, because the local headroom proxy at 127.0.0.1:6767 returned 400 on multi-turn tool requests). Artifact: `security-agents/tests/artifacts/live/20261017-adam-seven-roles-live.json`.
+- **All 12 orchestrator states reached**, from scope_check to completed. Total **$1.41**.
+- **Live model+tool trace observed for all 7 roles** (claude-opus-5-5): scout (4 turns, 6 tools), probe (3/4), trace (4/5), diagnose (4/6), patch (5/8), verify (3/4), fortify (5/10).
+- The planted ownership weakness on `GET /payments/{payment_id}` went hypothesis → **Probe confirmed by an executed `access_control.ownership` check** → patched → **Verify `accepted`** → status `verified`.
+- **Gap:** Fortify's final output failed schema validation (`SCHEMA_INVALID`), so its step is recorded as failed although its live trace exists. Owner: Alan. Superseded by the later live run recorded above, in which Fortify also succeeded.
+- Variance: an earlier live run of the same command had Probe return `inconclusive` and stop after recon/validation. Outcomes vary run to run.
+
