@@ -131,3 +131,16 @@ Executed check results on the fixture (the precision evidence):
 - Host now pins execution to assessment SHA through trusted bindings and consumes upstream intelligence (34 host/index tests passed). Full real PostgreSQL host flow with actual Git SHA, indexed context and fresh-factory approval resume: 1 passed. Full pre-binding security suite: 350 passed, 4 skipped.
 
 - Integrated main's single-host reviewer/security path (c0b5136 / #36) without losing checkpoints or fail-closed authorization. Preserved the upstream canonical test rename. PostgreSQL reviewer + security + restart/gates subset: 10 passed. Pre-merge full workspace: 149 passed, 5 skipped; security runtime: 355 passed, 4 skipped. Re-running both after merge.
+
+### 2026-10-17 — recovered Claude standards continuation
+- Inspected Claude's dirty worktree and remote PRs; preserved all changes, leaving unrelated .codex files untouched.
+- Reviewed and merged PR #69 after all CI checks passed.
+- Completed canonical CVSS3.1/OWASP API/NIST800-115 consolidation, fixed OWASP API framework identity, and delegated the legacy calculator to the canonical package.
+- Executed standards + runtime standards suites: 300 passed (offline). No live model or sandbox claim.
+- Next: sync remote runtime branch/main, verify broad integration, and resolve remaining PR #35 browser e2e gate before merge.
+
+- Fixed PR #35 browser regression: bound host intake now prefers the backend's shared intelligence service and attaches the exact snapshot instead of requiring independent service configuration.
+- Executed 12 indexed-host tests, 7 PostgreSQL host/unified/memory tests, and the real Next/FastAPI/PostgreSQL/worker browser stack: 8 passed (10.4s). Scripted models and explicitly scoped local fixture execution; no live/Docker claim.
+
+- Final-integration follow-ups: replay Scout now links the bounded IDs actually retrieved from the snapshot (rather than fixture-only IDs); real-host fact-derived CVSS tests pass in both provisional-model modes (3 targeted tests passed).
+- Secret scan false positive identified as public OWASP source commit in build_additional.py. Added one exact historical fingerprint to .gitleaksignore; checksum-verified gitleaks scanned 214 commits with zero leaks, and synthetic credential-shaped stdin still fails detection.

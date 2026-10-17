@@ -701,9 +701,7 @@ def build_nist_sp_800_115() -> Built:
         for match in re.finditer(r"^\s*(\d+(?:\.\d+)*)\.\s+([A-Z][A-Za-z /,&()-]{2,60})\s*$", body, re.M):
             roe_template.append({"section": match.group(1), "title": match.group(2).strip()})
     except Exception as error:
-        notes.append(
-            f"UNVERIFIED: could not extract headings from the SP 800-115 PDF: {type(error).__name__}"
-        )
+        notes.append(f"UNVERIFIED: could not extract headings from the SP 800-115 PDF: {type(error).__name__}")
     if not planning:
         notes.append("UNVERIFIED: no section 6 planning headings extracted")
     if not roe_template:

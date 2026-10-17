@@ -4,6 +4,7 @@ from typing import Literal
 
 from pydantic import Field, field_validator, model_validator
 from shared.standards import CVSSAssessment, CVSSMetricValue
+from standards import cvss31 as cvss
 from standards.cvss import vector as cvss4_vector
 
 from ..contracts import (
@@ -23,8 +24,7 @@ from ..contracts import (
 from ..contracts import export as contract_export
 from ..intel import CodeIntel
 from ..runtime import AgentSpec, data_block
-from ..standards import cvss
-from ..standards.validators import optional_attack_field, validate_attack_technique
+from ..standards.fields import attack_entry, optional_attack_field
 
 SYSTEM = """You are Trace, the impact analyst of an automated security review platform.
 
@@ -259,7 +259,7 @@ def to_attack_path(
         verified = bool(item.verified and executed)
         any_verified = any_verified or verified
         reviewed_attack = _reviewed_attack(data, metrics_reachability, evidence) if verified else []
-        technique = validate_attack_technique(item.attack_technique) if item.attack_technique else None
+        technique = attack_entry(item.attack_technique) if item.attack_technique else None
         steps.append(
             PathStep(
                 order=index,
@@ -268,9 +268,9 @@ def to_attack_path(
                 verified=verified,
                 evidence=evidence,
                 attack=reviewed_attack,
-                attack_technique=technique.identifier if technique else None,
+                attack_technique=technique.id if technique else None,
                 attack_technique_name=technique.name if technique else "",
-                attack_version=technique.version if technique else "",
+                attack_version=technique.catalog_version if technique else "",
                 attack_label=(
                     "Enterprise ATT&CK technique (model proposal, validated against the pinned index)"
                     if technique

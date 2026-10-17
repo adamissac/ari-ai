@@ -60,7 +60,17 @@ def test_host_mode_full_flow_against_real_backend(
         check=True,
     )
     sha = subprocess.check_output(["git", "-C", str(repo), "rev-parse", "HEAD"], text=True).strip()
-    bridge = AlanScriptTransport(repo / "target")
+    from types import SimpleNamespace
+
+    import code_review
+
+    monkeypatch.syspath_prepend(str(Path(code_review.__file__).resolve().parents[1] / "tests"))
+    from cr_fakes import fake
+    from test_reviewer_agent import pl_review_script
+
+    bridge = AlanScriptTransport(
+        repo / "target", fallback=fake(list(pl_review_script(SimpleNamespace(repo=repo))))
+    )
     llm.TRANSPORT_OVERRIDE = lambda: bridge
     alice, bob = client_factory("alice"), client_factory("bob")
     add_member(alice.me["memberships"][0]["organization"]["id"], bob.me["user"]["id"])
@@ -85,6 +95,7 @@ def test_host_mode_full_flow_against_real_backend(
         )
     )
     monkeypatch.setenv("REPOSITORY_BINDINGS_FILE", str(bindings))
+    settings_override(repository_bindings_file=str(bindings))
     monkeypatch.setenv("INTELLIGENCE_REPOSITORIES_FILE", str(registrations))
     monkeypatch.setenv("INTELLIGENCE_DB_PATH", str(tmp_path / "index.sqlite"))
     monkeypatch.delenv("INTELLIGENCE_PAYLOAD_STORE_FACTORY", raising=False)
@@ -127,6 +138,7 @@ def test_host_mode_full_flow_against_real_backend(
     assert detail["assessment"]["state"] == "COMPLETED", detail["assessment"]
     runs = detail["agent_runs"]
     assert [r["agent"] for r in runs] == [
+        "reviewer",
         "scout",
         "probe",
         "trace",
@@ -138,11 +150,12 @@ def test_host_mode_full_flow_against_real_backend(
     assert all(r["usage"]["llm_calls"] > 0 and r["tool_calls"] for r in runs), (
         "per-run usage/tool calls recorded"
     )
-    patches = alice.get(f"/api/v1/findings/{detail['findings'][0]['id']}/patches").json()["items"]
+    security_finding = next(f for f in detail["findings"] if f["kind"] == "security")
+    patches = alice.get(f"/api/v1/findings/{security_finding['id']}/patches").json()["items"]
     assert patches and patches[-1]["verification"]["verdict"] == "accepted"
 
     # Vihaan's M6 observations: lifecycle persisted with history; usage ledger complete.
-    finding = alice.get(f"/api/v1/findings/{detail['findings'][0]['id']}").json()["finding"]
+    finding = alice.get(f"/api/v1/findings/{security_finding['id']}").json()["finding"]
     assert finding["status"] == "hardened", finding["status"]
     path = [(h["from_status"], h["to_status"]) for h in finding["history"]]
     assert path == [

@@ -6,6 +6,10 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Hosted assessment intake now reuses the backend intelligence service, fixing the browser approval-to-verified-patch flow.
+
+- Consolidated CVSS v3.1, OWASP API 2023 and NIST SP 800-115 runtime references into the canonical offline standards package.
+
 - Security assessments can resume their approval pause on a fresh worker using an integrity-checked persisted checkpoint.
 
 - Hosted security runs now persist gateway usage and real patch/Verify run IDs; host scope adaptation fails closed and Docker is the default sandbox.

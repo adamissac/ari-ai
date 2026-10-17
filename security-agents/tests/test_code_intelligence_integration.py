@@ -216,6 +216,8 @@ def test_scout_runs_end_to_end_against_the_real_index(adapter):
     assert hypotheses, "citations should validate against the real snapshot"
     assert hypotheses[0].cited_spans[0].sha == adapter.snapshot.commit_sha
     assert hypotheses[0].weakness_class == "CWE-639"
+    assert hypotheses[0].expectation_ids
+    assert set(hypotheses[0].expectation_ids) <= {item.id for item in adapter.expectations()}
 
 
 def test_host_uses_bound_commit_and_upstream_index_despite_dirty_checkout(indexed, tmp_path, monkeypatch):
@@ -268,9 +270,10 @@ def test_bound_intelligence_uses_the_host_service_without_a_second_registry(inde
     ):
         monkeypatch.delenv(name, raising=False)
     calls: list[str] = []
+    attached: list[object] = []
 
-    def intelligence_service() -> object:
-        calls.append("host")
+    def intelligence_service(*, include_prefix: str = "") -> object:
+        calls.append(include_prefix)
         return service
 
     host = SimpleNamespace(
@@ -278,9 +281,11 @@ def test_bound_intelligence_uses_the_host_service_without_a_second_registry(inde
         repo_id=REPO_ID,
         assessment=SimpleNamespace(commit_sha=sha, snapshot_id=ref.snapshot_id),
         intelligence_service=intelligence_service,
+        attach_snapshot=attached.append,
     )
     adapter = bound_intelligence(host, tmp_path / "worker")
-    assert calls == ["host"]
+    assert calls, "the host service was not used"
+    assert attached == [ref]
     assert adapter.ref == ref
 
 
@@ -297,3 +302,37 @@ def test_host_refuses_an_unregistered_repository(indexed, tmp_path, monkeypatch)
     with pytest.raises(PlatformError) as exc:
         bound_intelligence(SimpleNamespace(repo_id=REPO_ID), tmp_path, indexed[0])
     assert exc.value.code is ErrorCode.SNAPSHOT_NOT_READY
+
+
+def test_bound_host_prefers_shared_index_and_attaches_snapshot(indexed, tmp_path, monkeypatch):
+    import json
+    from types import SimpleNamespace
+
+    from security_agents.intel.host import bound_intelligence
+
+    service, ref, workspace, sha = indexed
+    path = tmp_path / "bindings.json"
+    path.write_text(
+        json.dumps([{"repo_id": REPO_ID, "local_path": str(workspace.parent), "subdir": "target"}])
+    )
+    monkeypatch.setenv("REPOSITORY_BINDINGS_FILE", str(path))
+    monkeypatch.delenv("INTELLIGENCE_REPOSITORIES_FILE", raising=False)
+    monkeypatch.delenv("INTELLIGENCE_DB_PATH", raising=False)
+    calls, attached = [], []
+
+    def shared_factory(*, include_prefix):
+        calls.append(include_prefix)
+        return service
+
+    host = SimpleNamespace(
+        project_id=PROJECT_ID,
+        repo_id=REPO_ID,
+        assessment=SimpleNamespace(commit_sha=sha, snapshot_id=ref.snapshot_id),
+        intelligence_service=shared_factory,
+        attach_snapshot=attached.append,
+    )
+    result = bound_intelligence(host, tmp_path / "worker")
+    assert result.service is service
+    assert calls == ["target"]
+    assert attached == [ref]
+    assert result.ref == ref

@@ -64,16 +64,21 @@ def bound_intelligence(host: Any, workdir: Path, service: Any = None) -> CodeInt
         shutil.copy2(recipe, workspace / "build_recipe.json")
         prefix_parts.append(target_dir)
     if service is None:
-        # The backend host already builds the service from REPOSITORY_BINDINGS_FILE.
-        # code_intelligence.api.build_service() is the standalone fallback; it needs
-        # a second registration file and is not what the e2e worker configures.
-        provider = getattr(host, "intelligence_service", None)
-        if callable(provider):
-            service = provider()
-        else:
-            from code_intelligence.api import build_service
+        from .host_service import shared_host_intel
 
-            service = build_service()
+        pinned = SnapshotHandle(
+            snapshot_id=raw.snapshot_id,
+            repo_id=raw.repo_id,
+            commit_sha=raw.commit_sha,
+            root=workspace,
+            pinned_by="git",
+        )
+        shared = shared_host_intel(host, pinned, bindings)
+        if shared is not None:
+            return shared
+        from code_intelligence.api import build_service
+
+        service = build_service()
     ref = service.index_repository(host.project_id, host.repo_id, assessment.commit_sha)
     if ref.commit_sha != raw.commit_sha or ref.repo_id != host.repo_id or ref.project_id != host.project_id:
         raise PlatformError(ErrorCode.SNAPSHOT_NOT_READY, "intelligence snapshot identity mismatch")

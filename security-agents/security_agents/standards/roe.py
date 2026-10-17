@@ -6,9 +6,9 @@ from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import Field
+from standards.catalog import load_json
 
 from ..contracts import AgentName, AuthorizedScope, ScopeStatus, StrictModel
-from .registry import load
 
 ALIGNMENT = "aligned with NIST SP 800-115 Appendix B (project mapping)"
 
@@ -154,7 +154,7 @@ def build_roe(
         and template.get("category") in scope.allowed_check_categories
         and template.get("side_effect_class") in ("read_only", "ephemeral_target_only")
     )
-    reference = load("nist_sp_800_115")
+    reference = load_json("nist-sp800-115.json")
     roe = RulesOfEngagement(
         id=f"roe_{scope_digest(scope)[:24]}",
         scope_id=scope.id,
@@ -272,7 +272,7 @@ PLANNING_COVERAGE: dict[str, tuple[Coverage, str]] = {
 
 
 def coverage_table() -> list[dict[str, str]]:
-    reference = load("nist_sp_800_115")
+    reference = load_json("nist-sp800-115.json")
     rows: list[dict[str, str]] = []
     for group, entries, coverage in (
         ("Section 6 planning", reference.get("planning_sections", []), PLANNING_COVERAGE),
