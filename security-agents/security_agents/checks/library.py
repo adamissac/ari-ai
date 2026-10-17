@@ -116,7 +116,7 @@ from decimal import Decimal
 
 from fastapi.testclient import TestClient
 
-from payments_lite.app import create_app
+{app_import}
 
 RESULT = {{}}
 
@@ -124,6 +124,29 @@ RESULT = {{}}
 def _client():
     return TestClient(create_app())
 '''
+
+
+_APP_FACTORY = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*):([A-Za-z_][A-Za-z0-9_]*)$")
+DEFAULT_APP_FACTORY = "payments_lite.app:create_app"
+
+
+def app_factory(recipe: dict[str, Any]) -> tuple[str, str]:
+    """(module, callable) of the recipe's ``app_factory``. The recipe comes from the
+    customer's repository, so only a dotted module path and an identifier are accepted:
+    nothing else from it ever reaches the rendered check's source."""
+    raw = str(recipe.get("app_factory") or DEFAULT_APP_FACTORY)
+    m = _APP_FACTORY.match(raw)
+    if m is None:
+        raise PlatformError(
+            ErrorCode.SCHEMA_INVALID, f"app_factory {raw!r} must be 'package.module:callable'"
+        )
+    return m.group(1), m.group(2)
+
+
+def _inprocess_preamble(ref: str, recipe: dict[str, Any]) -> str:
+    module, factory = app_factory(recipe)
+    line = f"from {module} import {factory}" + ("" if factory == "create_app" else " as create_app")
+    return _PREAMBLE.format(ref=ref, app_import=line)
 
 
 _PREAMBLE_HTTP = '''"""Generated check: {ref}
@@ -184,7 +207,7 @@ def _render_ownership(recipe: dict[str, Any], params: dict[str, Any]) -> str:
         raise PlatformError(ErrorCode.SCHEMA_INVALID, "ownership template covers read routes only")
     denied = [int(c) for c in params.get("expected_denied_status", [403, 404])]
     return (
-        _PREAMBLE.format(ref=params["_ref"])
+        _inprocess_preamble(str(params["_ref"]), recipe)
         + f"""
 
 PATH = {path!r}
@@ -251,7 +274,7 @@ def _render_bounds(recipe: dict[str, Any], params: dict[str, Any]) -> str:
     full = str(Decimal(bound))
     extra = str(step)
     return (
-        _PREAMBLE.format(ref=params["_ref"])
+        _inprocess_preamble(str(params["_ref"]), recipe)
         + f'''
 
 CREATE_PATH = {str(create["path_template"])!r}
@@ -374,7 +397,7 @@ class CheckLibrary:
         enriched["_ref"] = ref
         rendered = _RENDERERS[ref](recipe, enriched)
         if transport == "http":
-            inprocess = _PREAMBLE.format(ref=ref)
+            inprocess = _inprocess_preamble(ref, recipe)
             if not rendered.startswith(inprocess):
                 raise PlatformError(ErrorCode.SANDBOX_POLICY_VIOLATION, f"{ref} cannot be rendered for http")
             rendered = _PREAMBLE_HTTP.format(ref=ref) + rendered[len(inprocess) :]
