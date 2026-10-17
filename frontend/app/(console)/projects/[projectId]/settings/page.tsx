@@ -8,7 +8,7 @@ import { api } from '@/lib/api';
 import { draftOf, parseSettings, type Draft } from '@/lib/settings';
 
 export default function SettingsPage() {
-  const { project } = useProject();
+  const { project, reloadProject } = useProject();
   const [saved, setSaved] = useState<Project>(project);
   const [draft, setDraft] = useState<Draft>(() => draftOf(project));
   const [busy, setBusy] = useState(false);
@@ -27,6 +27,7 @@ export default function SettingsPage() {
     try {
       const next = await api().updateProject(saved.id, { name: draft.name.trim(), settings: parsed.settings });
       setSaved(next);
+      reloadProject();
       setDraft(draftOf(next));
       setMessage('Saved. New assessments and monitoring decisions use these settings; running assessments keep the budget they started with.');
     } catch (err) { setError(err); } finally { setBusy(false); }

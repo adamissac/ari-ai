@@ -35,8 +35,9 @@ export default function FindingPage() {
   return (
     <Async resource={detail} label="finding">
       {d => {
-        const patchItems = patches.status === 'ready' ? patches.data.items : [];
-        const last = patchItems[patchItems.length - 1];
+        const patchItems = patches.status === 'ready' ? patches.data.items : null;
+        const last = patchItems?.[patchItems.length - 1];
+        const patchNote = patches.status === 'error' ? 'Could not load the patch record' : patches.status === 'loading' ? 'Loading the patch record' : null;
         const validation = of(d.records, 'validation_result')[0]?.outcome ?? null;
         const story = findingStory({
           title: d.finding.title,
@@ -45,7 +46,7 @@ export default function FindingPage() {
           validationOutcome: validation,
           patchRationale: last?.patch.rationale ?? null,
           verification: last?.verification?.verdict ?? null,
-        });
+        }).map(line => patchNote && (line.label === 'What we changed' || line.label === 'Did it work?') ? { ...line, text: patchNote } : line);
         return (
         <>
           <PageTitle
@@ -68,7 +69,7 @@ export default function FindingPage() {
             </dl>
           </Panel>
           <div className="mt-4">
-            <BeforeAfter kind={d.finding.kind} status={d.finding.status} validation={validation} patches={patches.status === 'ready' ? patches.data.items : patches.status === 'error' ? [] : null} />
+            <BeforeAfter kind={d.finding.kind} status={d.finding.status} validation={validation} patches={patchItems} patchesError={patches.status === 'error' ? { error: patches.error, onRetry: patches.reload } : null} />
           </div>
           <RepoScope assessmentId={d.finding.assessment_id} projectId={project.id} repos={repos}>
           {(repo, note) => (

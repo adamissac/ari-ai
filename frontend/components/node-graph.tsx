@@ -14,6 +14,19 @@ import type { LabNodeState, LabScenario } from '@/lib/lab-types';
 const W = 640;
 const H = 340;
 const INTERNET = '__internet__';
+/** Below this speed (px/frame) every body counts as at rest and the loop stops scheduling frames. */
+export const SETTLE_SPEED = 0.02;
+/** The ambient drift fades out over this many frames so the layout can come to rest. */
+const DRIFT_FRAMES = 300;
+
+/** True once every free body is moving slower than the settle threshold. */
+export function isSettled(bodies: { vx: number; vy: number; pinned: boolean }[], threshold = SETTLE_SPEED): boolean {
+  return bodies.every(b => b.pinned || Math.hypot(b.vx, b.vy) < threshold);
+}
+
+function nodeSummary(name: string, criticality: number | undefined, s: LabNodeState | undefined): string {
+  return `${name}: criticality ${criticality ?? 0}, anomaly score ${num(s?.anomaly_score ?? 0, 2)}, alert rate ${num(s?.alert_rate ?? 0, 2)}, monitoring level ${s?.monitoring_level ?? 0}`;
+}
 
 interface Body { id: string; x: number; y: number; vx: number; vy: number; pinned: boolean }
 
@@ -32,7 +45,9 @@ export function NodeGraph({ scenario, states }: { scenario: LabScenario; states:
   const [snap, setSnap] = useState<Body[]>(() => seedBodies(ids));
   const [hover, setHover] = useState<string | null>(null);
   const [truth, setTruth] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const drag = useRef<{ id: string; dx: number; dy: number } | null>(null);
+  const wake = useRef<() => void>(() => {});
   const svg = useRef<SVGSVGElement>(null);
 
   useEffect(() => { bodies.current = seedBodies(ids); }, [ids]);
@@ -41,7 +56,9 @@ export function NodeGraph({ scenario, states }: { scenario: LabScenario; states:
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let frame = 0;
     let t = 0;
+    let calm = 0;
     const tick = () => {
+      frame = 0;
       t += 1;
       const bs = bodies.current;
       const byId = new Map(bs.map(b => [b.id, b]));
@@ -64,7 +81,10 @@ export function NodeGraph({ scenario, states }: { scenario: LabScenario; states:
           const k = (d - 175) * 0.01;
           fx += (dx / d) * k; fy += (dy / d) * k;
         }
-        if (!reduced) { fx += Math.sin(t * 0.013 + a.x * 0.05) * 0.03; fy += Math.cos(t * 0.011 + a.y * 0.05) * 0.03; }
+        if (!reduced && t < DRIFT_FRAMES) {
+          const fade = 1 - t / DRIFT_FRAMES;
+          fx += Math.sin(t * 0.013 + a.x * 0.05) * 0.03 * fade; fy += Math.cos(t * 0.011 + a.y * 0.05) * 0.03 * fade;
+        }
         if (!a.pinned) {
           a.vx = (a.vx + fx) * 0.82; a.vy = (a.vy + fy) * 0.82;
           a.x = Math.min(W - 40, Math.max(40, a.x + a.vx));
@@ -72,10 +92,12 @@ export function NodeGraph({ scenario, states }: { scenario: LabScenario; states:
         }
       }
       setSnap(bs.map(b => ({ ...b })));
-      if (!reduced || t < 240) frame = requestAnimationFrame(tick);
+      calm = isSettled(bs) ? calm + 1 : 0;
+      if (calm < 10 && (!reduced || t < 240)) frame = requestAnimationFrame(tick);
     };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
+    wake.current = () => { calm = 0; if (!frame) frame = requestAnimationFrame(tick); };
+    wake.current();
+    return () => { cancelAnimationFrame(frame); frame = 0; wake.current = () => {}; };
   }, [edges]);
 
   const toSvg = (e: ReactPointerEvent) => {
@@ -90,6 +112,8 @@ export function NodeGraph({ scenario, states }: { scenario: LabScenario; states:
     const p = toSvg(e);
     drag.current = { id, dx: b.x - p.x, dy: b.y - p.y };
     b.pinned = true;
+    setDragging(true);
+    wake.current();
     (e.target as Element).setPointerCapture?.(e.pointerId);
   };
   const onMove = (e: ReactPointerEvent<SVGSVGElement>) => {
@@ -100,11 +124,14 @@ export function NodeGraph({ scenario, states }: { scenario: LabScenario; states:
     b.x = Math.min(W - 30, Math.max(30, p.x + drag.current.dx));
     b.y = Math.min(H - 30, Math.max(30, p.y + drag.current.dy));
     b.vx = 0; b.vy = 0;
+    wake.current();
   };
   const onUp = () => {
     const b = drag.current && bodies.current.find(x => x.id === drag.current!.id);
     if (b) b.pinned = false;
     drag.current = null;
+    setDragging(false);
+    wake.current();
   };
 
   const pos = new Map(snap.map(b => [b.id, b]));
@@ -120,12 +147,14 @@ export function NodeGraph({ scenario, states }: { scenario: LabScenario; states:
       <svg
         ref={svg}
         viewBox={`0 0 ${W} ${H}`}
-        className="block h-auto w-full touch-none select-none"
-        role="img"
+        className="block h-auto w-full select-none"
+        style={{ touchAction: dragging ? 'none' : 'pan-y' }}
+        role="group"
         aria-label={`Simulated topology for ${scenario.name}`}
         data-testid="topology"
         onPointerMove={onMove}
         onPointerUp={onUp}
+        onPointerCancel={onUp}
         onPointerLeave={() => { onUp(); setHover(null); }}
       >
         <defs>
@@ -159,6 +188,8 @@ export function NodeGraph({ scenario, states }: { scenario: LabScenario; states:
           if (id === INTERNET) {
             return (
               <g key={id} transform={`translate(${b.x},${b.y})`} className="graph-node" data-dim={dim(id) || undefined}
+                tabIndex={0} role="img" aria-label="internet, outside the network" style={{ touchAction: 'none' }}
+                onFocus={() => setHover(id)} onBlur={() => setHover(null)}
                 onPointerEnter={() => setHover(id)} onPointerLeave={() => setHover(null)} onPointerDown={onDown(id)}>
                 <circle r={10} className="graph-internet" />
                 <text y={24} textAnchor="middle" className="graph-label">internet</text>
@@ -172,6 +203,8 @@ export function NodeGraph({ scenario, states }: { scenario: LabScenario; states:
           const stage = s?.hidden_stage_ground_truth ?? 'none';
           return (
             <g key={id} transform={`translate(${b.x},${b.y})`} className="graph-node" data-dim={dim(id) || undefined} data-hover={hover === id || undefined}
+              tabIndex={0} role="img" aria-label={nodeSummary(n?.name ?? id, n?.criticality, s)} style={{ touchAction: 'none' }}
+              onFocus={() => setHover(id)} onBlur={() => setHover(null)}
               onPointerEnter={() => setHover(id)} onPointerLeave={() => setHover(null)} onPointerDown={onDown(id)}>
               {heat > 0.05 && <circle r={r * (1.8 + heat * 1.6)} fill="url(#graph-glow)" opacity={0.35 + heat * 0.65} />}
               {truth && stage !== 'none' && <circle r={r + 9} className="graph-truth" />}
@@ -184,6 +217,22 @@ export function NodeGraph({ scenario, states }: { scenario: LabScenario; states:
           );
         })}
       </svg>
+
+      <table className="sr-only">
+        <caption>Current values for each node in {scenario.name}</caption>
+        <thead><tr><th scope="col">Node</th><th scope="col">Criticality</th><th scope="col">Anomaly score</th><th scope="col">Alert rate</th><th scope="col">Monitoring level</th><th scope="col">Status</th></tr></thead>
+        <tbody>
+          {scenario.nodes.map(n => {
+            const s = state.get(n.name);
+            const status = [n.exposed && 'internet-exposed', s?.isolated && 'isolated', s?.rate_limited && 'rate-limited', s?.reassessment_pending && 'reassessment pending'].filter(Boolean).join(', ') || 'no defensive action';
+            return (
+              <tr key={n.name}>
+                <th scope="row">{n.name}</th><td>{n.criticality}</td><td>{num(s?.anomaly_score ?? 0, 2)}</td><td>{num(s?.alert_rate ?? 0, 2)}</td><td>{s?.monitoring_level ?? 0}</td><td>{status}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
 
       {hovered?.node && (
         <div className="graph-card pointer-events-none absolute bottom-3 left-3 w-52 rounded-lg p-3 text-xs" aria-hidden="true">

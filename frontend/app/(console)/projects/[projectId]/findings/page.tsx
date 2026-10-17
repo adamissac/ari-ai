@@ -14,6 +14,7 @@ import { useResource } from '@/lib/use-resource';
 const TABS = [
   ['open', 'Open'],
   ['hypothesis', 'Hypotheses (unvalidated)'],
+  ['fixed', 'Fixed (independently verified)'],
   ['closed', 'Refuted / closed'],
 ] as const;
 
@@ -34,7 +35,7 @@ export default function FindingsPage() {
       <Async resource={findings} label="findings">
         {page => {
           const items = page.items.filter(f => findingGroup(f.status) === tab);
-          if (items.length === 0) return <Empty>{tab === 'hypothesis' ? 'No open hypotheses.' : tab === 'closed' ? 'Nothing refuted or closed.' : 'No open findings in this list.'}</Empty>;
+          if (items.length === 0) return <Empty>{tab === 'hypothesis' ? 'No open hypotheses.' : tab === 'closed' ? 'Nothing refuted or closed.' : tab === 'fixed' ? 'No fix has been accepted by independent tests yet.' : 'No open findings in this list.'}</Empty>;
           return (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">

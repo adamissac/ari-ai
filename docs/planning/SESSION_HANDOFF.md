@@ -26,6 +26,14 @@ adds an entry before ending.
 - Assumptions / open questions (RQ links): none.
 - Next steps: open the PR.
 - Warnings for the next session: if createIncident starts linking evidence or notifying, change the note.
+### 2026-10-17 — Adam — request scope note
+- Did: The request-scope form states it records a pending authorization. Activation needs a different member's approval; it does not start a check or open access outside the listed targets.
+- State of the code: branch `feat/adam/request-scope-note`.
+- Commands run and results: `npm test -- --run tests/unit/scope-note.test.ts` 1 passed; `npm run typecheck` clean; `npm run lint` clean. Browser was not run.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): none.
+- Next steps: open the PR.
+- Warnings for the next session: if createScope activates immediately, change the note.
 ### 2026-10-17 — Adam — start assessment note
 - Did: The start-assessment form states that it enqueues work for the selected repo, approved scope, and commit. It does not merge, deploy, or prove the app is secure. Stacked on event-log + cancel notes.
 - State of the code: branch `feat/adam/start-assessment-note`.
@@ -478,3 +486,19 @@ PR #169 merged as `b38b6ff` after all executable checks passed on `4b48388` (uni
 ### 2026-10-17T15:23Z — Maintenance cycle1 context citation privacy
 
 Issue #190 reproduced with a fake bearer-shaped canary: chunk text redacted but raw human reason remained in citation metadata and public expectation source notes. Redact free-form note/provenance in copied output references; exact identities, stored history/index remain untouched. Code-intelligence only product edits; no shared DTO or index-version change. Focused10, broader producer/shared/PostgreSQL107 passed/1 opt-in skip, hosted consumer11 passed67.49s; Ruff/format/mypy12 modules passed. Worktree /tmp/hackatl-sarosh-maintenance, feat/sarosh/intelligence-maintenance. Ten-minute message loop remains active; next scheduled read15:24:40Z.
+
+### 2026-10-17T15:35Z — Maintenance cycle2/3 relative-import grounding
+
+Privacy #196 merged4119eff; #190 closed. Issue199 synthetic Git/AST repro showed an impossible relative import grounded as exact to unrelated outside.helper. Fix preserves unresolved spelling and diagnostic; parser0.3.1 ensures cached0.3.0 facts are not silently reused. Active SHAs need normal reindex; old facts/decisions remain immutable. Focused15, broad123/1 opt-in skip, hosted consumer11 passed67.42s; strict mypy12/Ruff/format passed. Worktree /tmp/hackatl-sarosh-import-grounding; branch fix/sarosh/relative-import-grounding. No target code executed by index tests, live provider or UI-owner edit. Loop check15:34:42 read Sai Lab redesign and preserved ownership; next15:44:40.
+
+### 2026-10-17T15:53Z — Takeover: relative-import grounding (PR #201)
+
+Took over the prior Codex session's active worktree `/private/tmp/hackatl-sarosh-import-grounding`
+on `fix/sarosh/relative-import-grounding`. Merged current `main` (`a696361`) cleanly.
+Re-executed focused relative-import/privacy **25 passed**, broader producer/shared/PostgreSQL
+**122 passed, 2 skipped**, hosted reviewer/security/M7 consumer **11 passed**; Ruff/format,
+strict producer mypy 12 modules, 345-document link check and `git diff --check` passed.
+Polished changelog/README/task wording. Parser 0.3.1 keeps beyond-package relative imports
+unresolved with a diagnostic; active SHAs need normal reindex, historical refs/decisions
+remain immutable. PR #201 is the delivery vehicle; no target code executed and no live
+provider/UI-owner edit.
