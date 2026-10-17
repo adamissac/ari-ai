@@ -187,3 +187,5 @@ Status: IN_REVIEW on `fix/alan/m7-runner-isolation`. Remove PATH-only uv
 dependency and shared development database lifecycle operations; preserve command
 failures, force live calls off, and keep generated reports out of tracked evidence.
 Runner semantics covered by `tests/qa/test_m7_runner.py`.
+
+Issue #148 status: DONE via PR #150, merged `1129434`; all executable CI checks passed on combined head `91cea8c`. Historical references remain immutable.
