@@ -8,9 +8,12 @@ tmp="$(mktemp)"
 grep -viE \
   -e '^[[:space:]]*co-authored-by:[[:space:]]*cursor([[:space:]]|<)' \
   -e '^[[:space:]]*co-authored-by:[[:space:]]*cursor agent[[:space:]]*<' \
-  -e '^[[:space:]]*co-authored-by:[[:space:]]*claude[[:space:]]*<' \
-  -e '^[[:space:]]*co-authored-by:[[:space:]]*codex[[:space:]]*<' \
-  -e '^[[:space:]]*co-authored-by:[[:space:]]*noreply@anthropic\.com' \
+  -e '^[[:space:]]*co-authored-by:[[:space:]]*claude' \
+  -e '^[[:space:]]*co-authored-by:[[:space:]]*codex' \
+  -e '^[[:space:]]*co-authored-by:[[:space:]]*devin' \
+  -e '^[[:space:]]*co-authored-by:.*noreply@anthropic\.com' \
+  -e '^[[:space:]]*co-authored-by:.*cursoragent@cursor\.com' \
+  -e '^[[:space:]]*co-authored-by:.*devin-ai-integration' \
   -e '^[[:space:]]*made-with:[[:space:]]*cursor' \
   -e '^[[:space:]]*made with cursor' \
   -e '^[[:space:]]*🤖[[:space:]]*generated with' \
