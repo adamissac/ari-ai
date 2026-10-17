@@ -82,10 +82,14 @@ Vercel (frontend) · Railway (backend) — not provisioned.
 
 | Area | Status |
 |---|---|
-| Repository skeleton, docs, contracts (as docs), planning | ✅ Phase 0 — done |
-| Any runnable code | ❌ Not started |
-| CI | ❌ Not configured (see [.github/workflows/README.md](.github/workflows/README.md)) |
-| Infrastructure | ❌ Not provisioned |
+| Repository skeleton, docs, shared contracts (Pydantic + generated JSON Schema/TS) | ✅ |
+| Backend (FastAPI + PostgreSQL), worker, monitoring ingestion, incidents API | ✅ implemented, tested locally and in CI |
+| Code intelligence, functional reviewer, seven runtime security agents | ✅ implemented; live-model runs are opt-in |
+| RL defense (simulation-only DDQN, evaluation bundles) | ✅ implemented; recommendations are never applied automatically |
+| Frontend console (assessments, findings, approvals, scopes, expectations, monitoring, incidents, settings, Defense Lab) | ✅ implemented; browser e2e against the real local stack with scripted (non-live) model transports |
+| Functional remediation pause/resume, hardened Docker sandbox proof, unified M7 demo | 🚧 in progress (see [coordination/MILESTONES.md](coordination/MILESTONES.md)) |
+| CI | ✅ GitHub Actions workflows in [.github/workflows](.github/workflows) |
+| Infrastructure / deployment | ❌ Not provisioned |
 | License | Proprietary, all rights reserved (interim) — [LICENSE](LICENSE), [LICENSE-DECISION.md](LICENSE-DECISION.md) |
 
 ## Contributing & security
@@ -97,4 +101,4 @@ and [SECURITY.md](SECURITY.md). This project builds offensive-security tooling;
 
 ## Standards alignment
 
-Versioned ATT&CK/D3FEND/CWE catalogs, deterministic CVSS 4.0, persisted incident handling aligned to NIST SP 800-61r3, and OWASP LLM Top 10 2025/2026 platform self-assessments are implemented on this branch. See [standards](standards/README.md), [incident handling](docs/security/NIST_INCIDENT_HANDLING.md), and [OWASP coverage](docs/security/OWASP_LLM_TOP10_COVERAGE.md). Controls have explicit gaps; these are not certification or comprehensive detection claims. Frontend transport supports incident actions and standards labels; rendered dashboard integration remains with the frontend owner. No production containment is executed.
+Versioned ATT&CK/D3FEND/CWE catalogs, deterministic CVSS 4.0, persisted incident handling aligned to NIST SP 800-61r3, and OWASP LLM Top 10 2025/2026 platform self-assessments are implemented on this branch. See [standards](standards/README.md), [incident handling](docs/security/NIST_INCIDENT_HANDLING.md), and [OWASP coverage](docs/security/OWASP_LLM_TOP10_COVERAGE.md). Controls have explicit gaps; these are not certification or comprehensive detection claims. The frontend renders the incident lifecycle, approval gates and simulated-drill labels. No production containment is executed.

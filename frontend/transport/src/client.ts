@@ -27,7 +27,7 @@ export class ApiClient {
     this.fetch = options.fetch ?? globalThis.fetch.bind(globalThis);
   }
   clearSession(): void { this.csrf = undefined; }
-  private async request(path: string, schema: Parameters<typeof decode>[0] | null | typeof RAW, options: RequestOptions = {}, body?: unknown, key?: string, envelope?: 'assessment', page = false): Promise<unknown> {
+  private async request(path: string, schema: Parameters<typeof decode>[0] | null | typeof RAW, options: RequestOptions = {}, body?: unknown, key?: string, envelope?: 'assessment', page = false, method: 'POST' | 'PATCH' = 'POST'): Promise<unknown> {
     const headers = new Headers({ Accept: 'application/json' });
     if (body !== undefined) {
       if (!this.csrf && path !== '/auth/dev/login') throw new ProtocolError('Load the authenticated session before a mutation');
@@ -39,7 +39,7 @@ export class ApiClient {
       headers.set('Idempotency-Key', key);
     }
     const response = await this.fetch(this.baseUrl + path, {
-      method: body === undefined ? 'GET' : 'POST', credentials: 'include', headers,
+      method: body === undefined ? 'GET' : method, credentials: 'include', headers,
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       ...(options.signal ? { signal: options.signal } : {}),
     });
@@ -118,6 +118,15 @@ export class ApiClient {
   createSnapshot(repoId: string, body: C.SnapshotCreate, key: string, options?: RequestOptions): Promise<C.Snapshot> {
     return this.request(`/repositories/${segment(repoId)}/snapshots`, 'Snapshot', options, body, key) as Promise<C.Snapshot>;
   }
+  /** Newest first. `status: 'ready'` lists the snapshots intelligence reads can use. */
+  snapshots(repoId: string, query: SnapshotQuery = {}, options?: RequestOptions): Promise<Page<C.Snapshot>> {
+    const params = new URLSearchParams();
+    if (query.status) params.set('status', query.status);
+    if (query.limit !== undefined) params.set('limit', String(query.limit));
+    if (query.cursor) params.set('cursor', query.cursor);
+    const qs = params.toString();
+    return this.list(`/repositories/${segment(repoId)}/snapshots${qs ? `?${qs}` : ''}`, 'Snapshot', options);
+  }
   snapshot(id: string, options?: RequestOptions): Promise<C.Snapshot> {
     return this.request(`/snapshots/${segment(id)}`, 'Snapshot', options) as Promise<C.Snapshot>;
   }
@@ -179,6 +188,10 @@ export class ApiClient {
     });
     return { finding, records };
   }
+  /** Report assembled by the backend only from persisted records (shared AssessmentReport). */
+  report(assessmentId: string, options?: RequestOptions): Promise<C.AssessmentReport> {
+    return this.request(`/assessments/${segment(assessmentId)}/report`, 'AssessmentReport', options) as Promise<C.AssessmentReport>;
+  }
   patches(findingId: string, options?: RequestOptions): Promise<Page<C.PatchView>> {
     return this.list(`/findings/${segment(findingId)}/patches`, 'PatchView', options);
   }
@@ -207,6 +220,31 @@ export class ApiClient {
   rlEvaluations(projectId: string, options?: RequestOptions): Promise<Page<C.RLEvaluation>> {
     return this.list(`/projects/${segment(projectId)}/rl-evaluations`, 'RLEvaluation', options);
   }
+  expectations(snapshotId: string, query: ExpectationQuery = {}, options?: RequestOptions): Promise<Page<C.BehavioralExpectation>> {
+    const params = new URLSearchParams();
+    if (query.subject !== undefined) params.set('subject', query.subject);
+    if (query.limit !== undefined) {
+      if (!Number.isSafeInteger(query.limit) || query.limit < 1 || query.limit > 500) throw new ProtocolError('Invalid page size');
+      params.set('limit', String(query.limit));
+    }
+    if (query.cursor !== undefined) {
+      if (!/^\d+$/.test(query.cursor)) throw new ProtocolError('Invalid expectation cursor');
+      params.set('offset', query.cursor);
+    }
+    const qs = params.toString();
+    return this.list(`/snapshots/${segment(snapshotId)}/expectations${qs ? `?${qs}` : ''}`, 'BehavioralExpectation', options);
+  }
+  /** Authenticated human intent decision; `expected_revision` gives optimistic concurrency (409 on a stale view). */
+  decideExpectation(snapshotId: string, expectationId: string, body: C.ExpectationDecisionRequest, options?: RequestOptions): Promise<C.ExpectationDecision> {
+    return this.request(`/snapshots/${segment(snapshotId)}/expectations/${segment(expectationId)}`, 'ExpectationDecision', options, body, undefined, undefined, false, 'PATCH') as Promise<C.ExpectationDecision>;
+  }
+  expectationDecisions(snapshotId: string, expectationId: string, options?: RequestOptions): Promise<Page<C.ExpectationDecision>> {
+    return this.list(`/snapshots/${segment(snapshotId)}/expectations/${segment(expectationId)}/decisions`, 'ExpectationDecision', options);
+  }
+  /** Owner-only. Settings are replaced as a whole object, never merged field-by-field. */
+  updateProject(id: string, body: C.ProjectUpdate, options?: RequestOptions): Promise<C.Project> {
+    return this.request(`/projects/${segment(id)}`, 'Project', options, body, undefined, undefined, false, 'PATCH') as Promise<C.Project>;
+  }
   /** Bounded text artifact (diffs, logs). The SHA-256 header is verified against the bytes. */
   async artifactText(id: string, options: RequestOptions & { maxBytes?: number } = {}): Promise<ArtifactText> {
     const response = await this.fetch(`${this.baseUrl}/artifacts/${segment(id)}`, {
@@ -226,6 +264,8 @@ export class ApiClient {
   }
 }
 
+export interface ExpectationQuery { subject?: string; limit?: number; cursor?: string }
+export interface SnapshotQuery { status?: C.SnapshotStatus; limit?: number; cursor?: string }
 export interface CancelResult { assessment_id: string; cancelled: boolean; cancel_requested: true }
 export interface LabeledPage<T> extends Page<T> { label: string }
 export interface ArtifactText { id: string; text: string; sha256: string; hashVerified: boolean; mediaType: string }
