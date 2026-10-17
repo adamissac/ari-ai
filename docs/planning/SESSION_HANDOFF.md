@@ -474,3 +474,15 @@ Issue #190 reproduced with a fake bearer-shaped canary: chunk text redacted but 
 ### 2026-10-17T15:35Z — Maintenance cycle2/3 relative-import grounding
 
 Privacy #196 merged4119eff; #190 closed. Issue199 synthetic Git/AST repro showed an impossible relative import grounded as exact to unrelated outside.helper. Fix preserves unresolved spelling and diagnostic; parser0.3.1 ensures cached0.3.0 facts are not silently reused. Active SHAs need normal reindex; old facts/decisions remain immutable. Focused15, broad123/1 opt-in skip, hosted consumer11 passed67.42s; strict mypy12/Ruff/format passed. Worktree /tmp/hackatl-sarosh-import-grounding; branch fix/sarosh/relative-import-grounding. No target code executed by index tests, live provider or UI-owner edit. Loop check15:34:42 read Sai Lab redesign and preserved ownership; next15:44:40.
+
+### 2026-10-17T15:53Z — Takeover: relative-import grounding (PR #201)
+
+Took over the prior Codex session's active worktree `/private/tmp/hackatl-sarosh-import-grounding`
+on `fix/sarosh/relative-import-grounding`. Merged current `main` (`a696361`) cleanly.
+Re-executed focused relative-import/privacy **25 passed**, broader producer/shared/PostgreSQL
+**122 passed, 2 skipped**, hosted reviewer/security/M7 consumer **11 passed**; Ruff/format,
+strict producer mypy 12 modules, 345-document link check and `git diff --check` passed.
+Polished changelog/README/task wording. Parser 0.3.1 keeps beyond-package relative imports
+unresolved with a diagnostic; active SHAs need normal reindex, historical refs/decisions
+remain immutable. PR #201 is the delivery vehicle; no target code executed and no live
+provider/UI-owner edit.

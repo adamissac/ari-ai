@@ -176,9 +176,9 @@ need no reindexing, and canonical DTOs are unchanged.
 
 ### Relative-import grounding revision
 
-Parser0.3.1 preserves unresolved relative imports that exceed the known package
+Parser 0.3.1 preserves unresolved relative imports that exceed the known package
 depth and records a diagnostic. Such imports cannot acquire an exact edge to an
 unrelated top-level module. Valid nested and aliased imports remain grounded.
 Use normal indexing for active commits to obtain corrected graph facts under the
-new parser version. Historical0.3.0 refs and their decisions remain unchanged and
+new parser version. Historical 0.3.0 refs and their decisions remain unchanged and
 readable; never relabel them or carry human confirmation into the new version.
