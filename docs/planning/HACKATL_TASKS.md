@@ -49,14 +49,14 @@ acceptance criteria are the minimum for `DONE` in addition to
 
 | ID | Title | Dir | Reqs | Depends on | Owner | Status | Acceptance criteria |
 |---|---|---|---|---|---|---|---|
-| INTEL-001 | Repo ingestion at SHA into worker workspace | code-intelligence/ | FR-1-01 | CORE-001 | Sarosh | IN_REVIEW | Clone at SHA (GitHub App or local path); tree hash recorded; no execution |
-| INTEL-002 | Tree-sitter parsing infra + file classification | code-intelligence/ | FR-1-01 | INTEL-001 | Sarosh | IN_REVIEW | Parses Python fixtures; classifies test/vendored/generated |
-| INTEL-003 | Python symbol extractor | code-intelligence/ | FR-1-02 | INTEL-002 | Sarosh | IN_REVIEW | Golden tests for modules/classes/functions/methods, spans, decorators, docstrings |
-| INTEL-004 | Python import + call graph with resolution confidence | code-intelligence/ | FR-1-02 | INTEL-003 | Sarosh | IN_REVIEW | Golden edges on fixtures; `exact/likely/unresolved` labeled |
-| INTEL-005 | FastAPI/Flask entry-point adapters incl. auth dependencies | code-intelligence/ | FR-1-02 | INTEL-003 | Sarosh | IN_REVIEW | All payments-lite routes detected with auth deps |
-| INTEL-006 | Behavioral expectation extractors + LLM inference with citation validation | code-intelligence/ | FR-1-03 | INTEL-004, INTEL-005, CORE-010 | Sarosh | IN_REVIEW | payments-lite yields ownership + refund-bound expectations with provenance (IC-3) |
-| INTEL-007 | Context pack retrieval (graph + BM25, budgeted, delimited) | code-intelligence/ | — | INTEL-004, INTEL-006 | Sarosh | IN_REVIEW | Packs within budget; provenance per chunk; untrusted delimiters |
-| INTEL-008 | Incremental indexing + `affected_by_diff` | code-intelligence/ | FR-1-09, FR-3-02 | INTEL-004 | Sarosh | IN_REVIEW | ImpactSet correct on fixture diffs |
+| INTEL-001 | Repo ingestion at SHA into worker workspace | code-intelligence/ | FR-1-01 | CORE-001 | Sarosh | DONE | Clone at SHA (GitHub App or local path); tree hash recorded; no execution |
+| INTEL-002 | Tree-sitter parsing infra + file classification | code-intelligence/ | FR-1-01 | INTEL-001 | Sarosh | DONE | Parses Python fixtures; classifies test/vendored/generated |
+| INTEL-003 | Python symbol extractor | code-intelligence/ | FR-1-02 | INTEL-002 | Sarosh | DONE | Golden tests for modules/classes/functions/methods, spans, decorators, docstrings |
+| INTEL-004 | Python import + call graph with resolution confidence | code-intelligence/ | FR-1-02 | INTEL-003 | Sarosh | DONE | Golden edges on fixtures; `exact/likely/unresolved` labeled |
+| INTEL-005 | FastAPI/Flask entry-point adapters incl. auth dependencies | code-intelligence/ | FR-1-02 | INTEL-003 | Sarosh | DONE | All payments-lite routes detected with auth deps |
+| INTEL-006 | Behavioral expectation extractors + LLM inference with citation validation | code-intelligence/ | FR-1-03 | INTEL-004, INTEL-005, CORE-010 | Sarosh | DONE | payments-lite yields ownership + refund-bound expectations with provenance (IC-3) |
+| INTEL-007 | Context pack retrieval (graph + BM25, budgeted, delimited) | code-intelligence/ | — | INTEL-004, INTEL-006 | Sarosh | DONE | Packs within budget; provenance per chunk; untrusted delimiters |
+| INTEL-008 | Incremental indexing + `affected_by_diff` | code-intelligence/ | FR-1-09, FR-3-02 | INTEL-004 | Sarosh | DONE | ImpactSet correct on fixture diffs |
 | REVIEW-001 | Expectation-vs-implementation review with structured verdicts | code-review/ | FR-1-05 | INTEL-007, CORE-010 | UNASSIGNED | BLOCKED | Verdicts schema-valid with cited spans; recorded-response tests |
 | REVIEW-002 | Behavioral test generation + sandboxed execution | code-review/ | FR-1-06 | REVIEW-001, SEC-003 | UNASSIGNED | BLOCKED | Refund-bound bug validated by failing generated test |
 | REVIEW-003 | Candidate repair in isolated worktree | code-review/ | FR-1-07 | REVIEW-002 | UNASSIGNED | BLOCKED | Repair produces PatchCandidate accepted by Verify (IC-5, needs SEC-010) |
@@ -108,11 +108,13 @@ acceptance criteria are the minimum for `DONE` in addition to
 
 ### Sarosh intelligence evidence (PR #6)
 
-INTEL-001..008 implemented on `feat/sarosh/code-intelligence`; IN_REVIEW is not a merged
-Definition-of-Done claim. See [implementation](../../code-intelligence/README.md),
+INTEL-001..008 were implemented on `feat/sarosh/code-intelligence` and merged through
+PR #6. DONE covers the Python producer acceptance; complete runtime integration has separate gates. See [implementation](../../code-intelligence/README.md),
 [producer evidence](../../code-intelligence/evidence/m1-payments-lite.json), and
 [typed consumer fixture](../../code-intelligence/fixtures/payments-context-pack.json).
 Local ingestion/graph/intent/context/diff tests and backend PostgreSQL/webhook integration
 execute real code. FakeTransport covers inference; the opt-in live attempt skipped for
 missing authorized key. Head facts are fully re-derived; parse caching, authenticated human
 intent decisions, and full Sai/Alan runtime adapters remain explicit follow-ups.
+
+Producer acceptance and CI passed; PR #6 merged as `bcc2e23`. INTEL rows refer to the implemented Python producer, not complete cross-pillar runtime integration. Final counts: 24 passed/1 skipped focused; 115 passed/4 skipped broader.

@@ -26,13 +26,17 @@ stateDiagram-v2
   INDEXING --> FUNCTIONAL_REVIEW
   FUNCTIONAL_REVIEW --> RECON
   RECON --> VALIDATION
+  RECON --> REPORTING: no hypotheses
   VALIDATION --> ANALYSIS
+  VALIDATION --> REPORTING: nothing confirmed
   ANALYSIS --> DIAGNOSIS
+  ANALYSIS --> REPORTING: no impact path
   DIAGNOSIS --> AWAITING_APPROVAL: findings need patches
   DIAGNOSIS --> REPORTING: nothing to patch
   AWAITING_APPROVAL --> REMEDIATION: approved (per finding)
   AWAITING_APPROVAL --> REPORTING: declined / timeout
   REMEDIATION --> HARDENING
+  REMEDIATION --> REPORTING: nothing verified
   HARDENING --> REPORTING
   REPORTING --> COMPLETED
   COMPLETED --> [*]
