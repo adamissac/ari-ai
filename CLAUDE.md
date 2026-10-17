@@ -91,6 +91,19 @@ uv run pytest -q code-review/tests                                   # FakeTrans
 RUN_LIVE_LLM_EVAL=1 uv run pytest -q -m live_llm code-review/tests -s  # live reviewer; costs money, $1 cap/phase
 ```
 
+Security agents (`security-agents/`, details in [security-agents/README.md](security-agents/README.md)):
+
+```
+cd security-agents && .venv/bin/python -m pytest tests -q                 # scripted model turns + real tools, sandboxes, tests
+.venv/bin/python -m security_agents.cli --target ../examples/payments-lite --auto-approve   # replay run, seven agents
+.venv/bin/python -m security_agents.standards.report                      # offline standards table (pinned data)
+.venv/bin/python -m security_agents.standards.smoke                       # tagged finding, RoE, SP 800-115 coverage, SARIF
+RUN_LIVE_LLM_EVAL=1 LIVE_SEVEN_MAX_USD=8 .venv/bin/python -m pytest -q -m live tests/test_live_provider.py -s  # live; costs money
+```
+
+If imports fail on macOS (hidden `.pth` files in the venv), set
+`PYTHONPATH=.:../shared:../standards:../code-intelligence:../examples/payments-lite/target`.
+
 ## When you are uncertain
 
 Prefer, in order: (1) the spec, (2) an existing ADR, (3) asking the human,
