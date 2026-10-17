@@ -1,6 +1,6 @@
 import { createHmac, randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
-import { env, evidenceShot, newUser } from './helpers';
+import { env, evidenceShot, expectNoSideScroll, newUser } from './helpers';
 
 const project = () => env('E2E_PROJECT_ID');
 
@@ -136,7 +136,7 @@ test('one real assessment from scope approval to verified patch', async ({ brows
   for (const url of [asmUrl, `/projects/${project()}`]) {
     await alice.goto(url);
     await expect(alice.getByTestId(url === asmUrl ? 'agent-relay' : 'pillar-loop')).toBeVisible();
-  expect(await alice.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(376);
+    await expectNoSideScroll(alice);
   }
 });
 

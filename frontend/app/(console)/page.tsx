@@ -52,7 +52,7 @@ export default function ProjectsPage() {
           ))}
         </ol>
       </section>
-      <div className="mb-8 grid gap-3 md:grid-cols-3">
+      <div className="mb-8 grid grid-cols-1 gap-3 md:grid-cols-3">
         {PILLARS.map((p, i) => (
           <Reveal key={p.n} delay={i * 90}>
             <div className="group h-full rounded-xl border border-line bg-panel p-5 transition-[border-color,box-shadow,transform] duration-300 hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-[0_12px_28px_-16px_rgba(194,69,45,0.45)]">
@@ -64,7 +64,7 @@ export default function ProjectsPage() {
         ))}
       </div>
       <PageTitle title="Projects" subtitle="Each project links repositories, authorized test scopes, assessments and monitoring history." />
-      <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
         <Panel title="Your projects">
           <Async resource={projects} label="projects">
             {page => page.items.length === 0 ? <Empty>No projects yet. Create one to connect a repository.</Empty> : (
