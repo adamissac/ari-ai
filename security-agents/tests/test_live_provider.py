@@ -174,8 +174,7 @@ def test_live_probe_executes_a_real_check_and_reports_the_executed_outcome(
     assert validation is not None
     assert validation.observations["outcome_source"] == "executed_check"
     assert validation.outcome.value == "confirmed", (
-        "the planted weakness should be confirmed by the executed check; "
-        f"got {validation.outcome.value}"
+        f"the planted weakness should be confirmed by the executed check; got {validation.outcome.value}"
     )
     print(f"\nlive Probe artifact: {artifact}")
 
@@ -198,24 +197,35 @@ def test_live_roles_issue_separate_requests_with_distinct_prompts(live_gateway, 
     live_gateway.provider = Watcher()
     try:
         scout_data = scout_agent.ScoutInput(
-            assessment_id="asm_live2", snapshot_id=intel.snapshot.snapshot_id,
-            commit_sha=intel.snapshot.commit_sha, max_hypotheses=1,
+            assessment_id="asm_live2",
+            snapshot_id=intel.snapshot.snapshot_id,
+            commit_sha=intel.snapshot.commit_sha,
+            max_hypotheses=1,
             available_check_categories=["access_control.ownership"],
         )
         run_agent(
-            scout_agent.SPEC, gateway=live_gateway, registry=default_registry(),
+            scout_agent.SPEC,
+            gateway=live_gateway,
+            registry=default_registry(),
             ctx=make_ctx(scout_agent.SPEC.name, intel=intel, scope=make_scope()),
             task_prompt=scout_agent.build_prompt(scout_data, intel),
             budget=Budget(max_tokens=60_000, max_usd=1.0, max_wall_clock_s=180.0),
         )
         trace_data = trace_agent.TraceInput(
-            assessment_id="asm_live2", finding_id="fnd_live", validation_result_id="val_live",
-            hypothesis_title="payment detail ownership", weakness_class="CWE-639",
-            confirmed_outcome="confirmed", affected_paths=["payments_lite/app.py"],
-            affected_symbol="get_payment", expectation_ids=["exp_tenant_isolation_payments"],
+            assessment_id="asm_live2",
+            finding_id="fnd_live",
+            validation_result_id="val_live",
+            hypothesis_title="payment detail ownership",
+            weakness_class="CWE-639",
+            confirmed_outcome="confirmed",
+            affected_paths=["payments_lite/app.py"],
+            affected_symbol="get_payment",
+            expectation_ids=["exp_tenant_isolation_payments"],
         )
         run_agent(
-            trace_agent.SPEC, gateway=live_gateway, registry=default_registry(),
+            trace_agent.SPEC,
+            gateway=live_gateway,
+            registry=default_registry(),
             ctx=make_ctx(trace_agent.SPEC.name, intel=intel, scope=make_scope()),
             task_prompt=trace_agent.build_prompt(trace_data, intel),
             budget=Budget(max_tokens=60_000, max_usd=1.0, max_wall_clock_s=180.0),
@@ -228,3 +238,65 @@ def test_live_roles_issue_separate_requests_with_distinct_prompts(live_gateway, 
     assert roles == {"scout", "trace"}, roles
     assert len(systems) == 2, "each role must send its own system instruction"
     _write_artifact("role_separation", {"requests": seen})
+
+
+SEVEN_ROLES = ("scout", "probe", "trace", "diagnose", "patch", "verify", "fortify")
+
+
+def test_live_seven_roles_end_to_end(tmp_path):
+    from security_agents import cli
+
+    cap = os.environ.get("LIVE_SEVEN_MAX_USD", "8")
+    report_path = tmp_path / "live_report.json"
+    code = cli.main(
+        [
+            "--target",
+            str(Path(__file__).resolve().parents[2] / "examples" / "payments-lite"),
+            "--mode",
+            "live",
+            "--i-have-authorization",
+            "--auto-approve",
+            "--max-hypotheses",
+            "2",
+            "--validate",
+            "1",
+            "--max-usd",
+            cap,
+            "--report",
+            str(report_path),
+        ]
+    )
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    per_role = {role: [run for run in report["runs"] if run["agent"] == role] for role in SEVEN_ROLES}
+    summary = {
+        "exit_code": code,
+        "state": report["state"],
+        "states": report["states"],
+        "usage": report["usage"],
+        "per_role": {
+            role: [
+                {
+                    key: run[key]
+                    for key in (
+                        "status",
+                        "provider_mode",
+                        "model_id",
+                        "llm_turns",
+                        "tool_calls",
+                        "tokens",
+                        "usd",
+                    )
+                }
+                for run in runs
+            ]
+            for role, runs in per_role.items()
+        },
+        "findings": report["findings"],
+    }
+    path = _write_artifact("seven_roles_end_to_end", summary)
+    missing = [role for role, runs in per_role.items() if not runs]
+    assert not missing, f"roles with no run: {missing}; trace written to {path}"
+    for role, runs in per_role.items():
+        live = [run for run in runs if run["provider_mode"] == "live" and run["llm_turns"] >= 1]
+        assert live, f"{role} made no live model turn; trace written to {path}"
+    assert report["state"] == "completed", f"state={report['state']}; trace written to {path}"
