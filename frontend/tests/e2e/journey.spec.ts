@@ -132,11 +132,15 @@ test('one real assessment from scope approval to verified patch', async ({ brows
   await expect(alice.getByTestId('relay-verify')).toHaveAttribute('data-status', 'done');
 
   // Phone width: the clarity views fit without sideways scrolling.
-  await alice.setViewportSize({ width: 375, height: 800 });
-  for (const url of [asmUrl, `/projects/${project()}`]) {
-    await alice.goto(url);
-    await expect(alice.getByTestId(url === asmUrl ? 'agent-relay' : 'pillar-loop')).toBeVisible();
-    await expectNoSideScroll(alice);
+  for (const width of [375, 390]) {
+    await alice.setViewportSize({ width, height: 800 });
+    for (const url of [asmUrl, `/projects/${project()}`, '/projects', '/']) {
+      await alice.goto(url);
+      if (url === asmUrl) await expect(alice.getByTestId('agent-relay')).toBeVisible();
+      else if (url.startsWith('/projects/')) await expect(alice.getByTestId('pillar-loop')).toBeVisible();
+      else await alice.waitForLoadState('networkidle');
+      await expectNoSideScroll(alice);
+    }
   }
 });
 
