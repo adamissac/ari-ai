@@ -112,3 +112,11 @@ Add dated factual entries; do not overwrite history. Never claim unexecuted test
 - Result: COMPLETED in 53 s. Cost **$0.3696**: 6 LLM calls, 63,854 input and 5,709 output tokens.
 - Reviewer (Sai, live): 2 validated functional findings (refund bound, payment IDOR). Both are planted defects.
 - Scout (Alan, live): failed with Anthropic 400 `For 'integer' type, property 'minimum' is not supported` (req_011Cg731RCPhRHAuYot4htpd). No other security agents ran. Reported to Alan; I'll re-run after his fix.
+
+### 2026-10-17: fixing blockers in teammates' code (user-authorized while Alan is away), PR #36 merged
+- Root cause: security-agents tool schemas were invalid for the Anthropic API, so all 7 agents failed live. Fixed (`strict_schema.py`), verified 7/7 via `count_tokens`.
+- Failed Scout now FAILS the assessment.
+- Host mode fixed (5 issues) and made the single hosting path: git-pinned checkout via the bindings registry, no implicit labels.yaml, reviewer at FUNCTIONAL_REVIEW, Docker by default. My backend adapter was removed.
+- security-agents joined the workspace and CI.
+- Results: root suite 148 passed; security-agents 344 passed; CI green across 6 workflows.
+- Not yet re-verified live end to end after the fixes (needs one more paid run).
