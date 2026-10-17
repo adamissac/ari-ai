@@ -122,3 +122,21 @@ function gate(input: { runs: readonly RunFacts[]; state: AssessmentState; approv
   if (done) return { kind: 'gate', status: 'not_used', text: 'No approval record: no fix was approved or built.' };
   return { kind: 'gate', status: 'not_reached', text: 'A person must approve before any fix is built.' };
 }
+
+/**
+ * One sentence on what the non-live model turns were, built per provider mode.
+ * Only fake/replay turns are "scripted"; deterministic runs made no model call;
+ * live turns are counted as live. Empty when every turn was live.
+ */
+export function providerNote(counts: Iterable<readonly [string, number]>): string {
+  const entries = [...counts];
+  if (entries.length === 0 || entries.every(([mode]) => mode === 'live')) return '';
+  const part = (mode: string, n: number): string => {
+    if (mode === 'live') return `${n} from a live model`;
+    if (mode === 'fake') return `${n} scripted`;
+    if (mode === 'replay') return `${n} replayed from a recording`;
+    if (mode === 'none') return `${n} with no model call`;
+    return `${n} from an unrecognised provider mode (${mode})`;
+  };
+  return `Tool execution, sandbox checks, tests and persistence are still real. Model replies: ${entries.map(([m, n]) => part(m, n)).join(', ')}.`;
+}
