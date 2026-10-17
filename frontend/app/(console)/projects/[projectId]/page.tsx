@@ -8,6 +8,7 @@ import { useProject } from '@/components/project';
 import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, Panel, Stat, Time } from '@/components/ui';
 import { api, idempotencyKey } from '@/lib/api';
 import { CONNECT_REPOSITORY_NOTE } from '@/lib/connect';
+import { INDEX_COMMIT_NOTE } from '@/lib/index-commit';
 import { shortSha, usd } from '@/lib/format';
 import { JOURNEY_STATUS, latestAssessmentEvent, projectJourney, statesFromLog } from '@/lib/journey';
 import { projectOverview } from '@/lib/overview';
@@ -275,9 +276,12 @@ function Repositories({ repos }: { repos: Repository[] }) {
     <Panel title="Repositories" id="connect-repo">
       <p className="mb-3 text-sm text-muted" data-testid="connect-repository-note">{CONNECT_REPOSITORY_NOTE}</p>
       {repos.length === 0 ? <Empty>No repository connected.</Empty> : (
+        <>
+        <p className="mb-3 text-sm text-muted" data-testid="index-commit-note">{INDEX_COMMIT_NOTE}</p>
         <ul className="flex flex-col gap-3">
           {repos.map(r => <RepoRow key={r.id} repo={r} />)}
         </ul>
+        </>
       )}
       <form onSubmit={connect} className="mt-4 grid gap-2 border-t border-line pt-3 sm:grid-cols-[2fr_1fr_auto] sm:items-end">
         <Field label="owner/name"><input className={inputClass} value={fullName} onChange={e => setFullName(e.target.value)} required pattern="[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+" name="full_name" /></Field>
