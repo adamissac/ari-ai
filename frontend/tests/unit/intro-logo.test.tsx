@@ -8,9 +8,9 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
-it('uses the supplied ant in the intro without drawing a different logo', () => {
+it('uses the supplied ant (bare mark) in the intro without drawing a different logo', () => {
   const { container } = render(<IntroLoader onReveal={vi.fn()} />);
-  expect(screen.getByTestId('ari-logo').style.width).toBe('96px');
+  expect(screen.getByTestId('ari-logo').style.height).toBe('96px');
   expect(container.querySelector('svg')).toBeNull();
   expect(container.querySelector('.intro')?.getAttribute('aria-hidden')).toBe('true');
 });
