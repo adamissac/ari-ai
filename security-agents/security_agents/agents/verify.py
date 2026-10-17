@@ -286,15 +286,18 @@ def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], l
         add(VerificationCheckName.FUNCTIONAL_SUITE_PASSES, False, "the project test suite was not run")
     else:
         last = suite_runs[-1]
-        failing = set(last.get("failing_tests") or [])
+        # Same rule as generated_tests_pass: no code changes between runs, so a failure or
+        # collection error in ANY suite run counts; a later clean run cannot mask it.
+        failing = {f for r in suite_runs for f in (r.get("failing_tests") or [])}
         new_failures = sorted(failing - set(ev.baseline_failing))
+        errored = next((r for r in suite_runs if r.get("errors")), None)
         artifact = str(last.get("sandbox_run_id") or "")
-        if last.get("errors"):
+        if errored is not None:
             add(
                 VerificationCheckName.FUNCTIONAL_SUITE_PASSES,
                 False,
-                f"collection errors in the suite run ({last.get('errors')})",
-                artifact,
+                f"collection errors in the suite run ({errored.get('errors')})",
+                str(errored.get("sandbox_run_id") or ""),
             )
         elif new_failures:
             add(
@@ -340,7 +343,9 @@ def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], l
             add(VerificationCheckName.GENERATED_TESTS_PASS, False, "the added tests were not run")
         else:
             last = added_runs[-1]
-            failing = set(last.get("failing_tests") or [])
+            # Verify never changes code between runs, so an added test failing in ANY run
+            # after the patch was applied is a real failure; a later run cannot mask it.
+            failing = {f for r in added_runs for f in (r.get("failing_tests") or [])}
             offending = sorted(f for f in failing if any(f.startswith(t) for t in ev.tests_added))
             artifact = str(last.get("sandbox_run_id") or "")
             if offending:
