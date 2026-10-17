@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Starting an assessment says it enqueues a scoped check. It does not merge, deploy, or prove the application is secure when it finishes.
+
 - Assessment job IDs returned by the API now resolve through their persisted assessment, allowing authorized status reads while preserving tenant denial.
 
 - Fix the development-login HTML pattern for current browser Unicode regex rules.
