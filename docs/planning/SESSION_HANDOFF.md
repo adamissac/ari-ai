@@ -31,6 +31,14 @@ adds an entry before ending.
 - Assumptions / open questions: kairo.security could not be fetched from the cloud sandbox (egress denied), so the design follows the existing Ari system and the hero's prior Kairo pattern study. Sai's #214 Lab replay landed on main during this session; the command center sits above it as the overview, so the same recorded game is drawn twice — Sai may want to merge or trim.
 - Next steps: open PRs for both branches; get Vihaan/Sai review of `/demo` and the Lab command center; ratify ADR-0013.
 - Warnings for the next session: if agent roles, contracts or payments-lite change, update `frontend/lib/demo/scenarios.ts` (unit tests in `tests/unit/demo.test.ts` check order and consistency).
+### 2026-10-17 — Adam (cloud session) — RL-005 no-action-path test; RL-001..005 marked DONE
+- Did: added `backend/tests/test_rl_no_action_path.py`. The API schema exposes no route that applies a recommendation or acts on a defended system; the only write on recommendations is the enqueue POST; `DefenseRecommendation` always carries the simulation caveat and cannot set `simulation_derived=False`. Marked RL-001..005 DONE (code merged; acceptance criteria covered by the suites below).
+- State of the code: branch `feat/adam/rl005-no-action-path`.
+- Commands run and results: `uv run pytest -q backend/tests/test_rl_no_action_path.py backend/tests/test_rl_integration.py backend/tests/test_rl_expectations.py` 10 passed (rl_defense + torch installed, so the integration test ran, not skipped); `cd rl-defense && ../.venv/bin/python -m pytest -q` 92 passed (CPU, Linux, Python 3.12, torch 2.14.1).
+- Decisions made (ADR links): none.
+- Assumptions / open questions: one route is hidden from the OpenAPI schema (`/incidents/{incident_id}/transition`); the test reads the schema, so a future hidden route that acts on systems would not be caught. UI-007 (monitoring RL panel with caveat) appears implemented on main (`data-testid="rl-caveat"`) but is still marked BLOCKED/UNASSIGNED; left for its owner to update.
+- Next steps: review and merge #225, #226 and this PR.
+- Warnings for the next session: none.
 
 ### 2026-10-17 — Adam — create incident note
 - Did: The open-incident form states it records a title and report. It does not contain systems, notify outsiders, or attach findings/events until linked. Default simulated drill stays labelled.

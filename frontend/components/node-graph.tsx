@@ -176,6 +176,8 @@ export function NodeGraph({ scenario, states, action = 'noop', t = 0, selected =
 
   return (
     <div className="net-map" data-truth={showTruth || undefined}>
+      <div className="net-scroll">
+      <div className="net-canvas">
       <svg
         ref={svg}
         viewBox={`0 0 ${W} ${H}`}
@@ -278,6 +280,8 @@ export function NodeGraph({ scenario, states, action = 'noop', t = 0, selected =
           <p className="text-white/70">{nodeStatusLine(hovered)}</p>
         </div>
       )}
+      </div>
+      </div>
 
       <div className="net-tools" role="toolbar" aria-label="Map view">
         <button type="button" onClick={() => zoom(1.2)} aria-label="Zoom in">+</button>
