@@ -29,6 +29,18 @@ export function metricNames(bundle: DefenseLabBundle): string[] {
   return [...names];
 }
 
+/** One sentence from a recorded episode. It does not describe a live network. */
+export function episodeStory(episode: LabEpisode): string {
+  const first = episode.steps[0];
+  const last = episode.steps[episode.steps.length - 1];
+  if (!first || !last) return 'This recording has no steps.';
+  const outcome = episode.compromised ? 'The recording is marked compromised.' : 'The recording is marked contained.';
+  const impact = episode.impact_nodes.length === 0
+    ? 'No node is recorded as reaching impact.'
+    : `Impact is recorded on ${episode.impact_nodes.join(', ')}.`;
+  return `First recorded action: ${first.action}. Last recorded action: ${last.action}. ${outcome} ${impact} This is one simulated episode, not a live network.`;
+}
+
 /** Evaluation episodes behind each pooled number: seeds × episodes × held-out scenarios. */
 export function sampleSize(bundle: DefenseLabBundle, scenario: string | null): number {
   const perScenario = bundle.training_seeds.length * bundle.episodes_per_config_per_seed;
