@@ -27,11 +27,17 @@ export function HeaderContrast() {
     let frame = 0;
     const paint = () => {
       frame = 0;
+      // While the pinned home hero is still under the header, keep white ink even if
+      // hit-testing briefly misses the dark band during intro/hero settle.
+      const overHomeHero =
+        document.documentElement.hasAttribute('data-home-hero')
+        && !document.documentElement.hasAttribute('data-hero-past');
       const tones = [...header.querySelectorAll<HTMLElement>('a:not(.hdr-cta), .nav-menu-toggle')].map(link => {
         const box = link.getBoundingClientRect();
         const underneath = document.elementsFromPoint(box.x + box.width / 2, box.y + box.height / 2)
           .find(element => !header.contains(element)) ?? null;
-        return { link, tone: isDarkSurface(underneath) ? 'dark' : 'light' };
+        const tone = overHomeHero || isDarkSurface(underneath) ? 'dark' : 'light';
+        return { link, tone };
       });
       for (const { link, tone } of tones) {
         if (link.dataset.navTone !== tone) link.dataset.navTone = tone;
@@ -47,6 +53,7 @@ export function HeaderContrast() {
     void document.fonts?.ready.then(schedule);
     const observer = new MutationObserver(schedule);
     observer.observe(header, { childList: true, subtree: true });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-home-hero', 'data-hero-past'] });
     const page = new MutationObserver(schedule);
     page.observe(document.body, { childList: true });
     schedule();
