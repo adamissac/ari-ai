@@ -1,7 +1,8 @@
 """Prefixed, sortable identifiers (docs/12 "Conventions").
 
 IDs look like ``prj_01JABCDEF...`` — a type prefix plus a 26-char Crockford ULID.
-Validation accepts any ``<prefix>_[0-9A-Za-z]{8,64}`` body so producers that
+Validation accepts any ``<prefix>_[0-9A-Za-z_-]{8,64}`` body (0.4.0: ``_``/``-`` allowed for
+readable producer ids such as ``exp_tenant_isolation_payments``) so producers that
 derive IDs from content hashes (e.g. RL checkpoints ``ckp_<sha256 prefix>``) or
 UUID hex (``rec_<uuid4 hex>``) stay valid; new IDs should use :func:`new_id`.
 """
@@ -71,7 +72,7 @@ def new_id(prefix: IdPrefix | str) -> str:
 
 
 def _pattern(prefix: str) -> StringConstraints:
-    return StringConstraints(pattern=rf"^{prefix}_[0-9A-Za-z]{{8,64}}$")
+    return StringConstraints(pattern=rf"^{prefix}_[0-9A-Za-z_\-]{{8,64}}$")
 
 
 OrgId = Annotated[str, _pattern("org")]
