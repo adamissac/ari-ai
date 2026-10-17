@@ -2,6 +2,8 @@
 
 import re
 
+from shared.evidence import EvidenceRef
+
 _PEM = re.compile(r"-----BEGIN [^-\n]*PRIVATE KEY-----[\s\S]*?-----END [^-\n]*PRIVATE KEY-----")
 _KNOWN = re.compile(
     r"sk-ant-[A-Za-z0-9_-]{8,}|sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,}"
@@ -21,3 +23,19 @@ def redact(text: str) -> str:
     text = _ASSIGN.sub(r"\1[REDACTED]", text)
     text = _BEARER.sub("Bearer [REDACTED]", text)
     return _URL_CREDENTIAL.sub(r"\1[REDACTED]@", text)
+
+
+def redact_evidence(evidence: EvidenceRef) -> EvidenceRef:
+    """Copy free-form citation metadata for context output, preserving stored evidence.
+
+    Identity fields (SHA, artifact, path, span and symbol) remain exact. Redaction can
+    expand a short token, so bound the display metadata to canonical ShortText's
+    500-character limit before validating the new reference.
+    """
+    return EvidenceRef.model_validate(
+        {
+            **evidence.model_dump(),
+            "provenance": redact(evidence.provenance)[:500],
+            "note": redact(evidence.note)[:500] if evidence.note is not None else None,
+        }
+    )
