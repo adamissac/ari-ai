@@ -112,7 +112,7 @@
           "title": "Prompt Version"
         },
         "provider_mode": {
-          "description": "'live' (real provider), 'replay' (recorded) or 'fake' (test transport)",
+          "description": "'live' (real provider), 'replay' (recorded), 'fake' (test transport), or 'none' (deterministic / no model call)",
           "maxLength": 500,
           "title": "Provider Mode",
           "type": "string"
@@ -369,6 +369,123 @@
       ],
       "title": "BusinessPriority",
       "type": "string"
+    },
+    "CVSS31Assessment": {
+      "additionalProperties": false,
+      "description": "A CVSS v3.1 base assessment. Vector, score and rating are computed, never model-supplied.",
+      "properties": {
+        "assessor": {
+          "description": "'system:standards.cvss31' or 'user:<usr_id>'",
+          "maxLength": 500,
+          "title": "Assessor",
+          "type": "string"
+        },
+        "base_score": {
+          "maximum": 10,
+          "minimum": 0,
+          "title": "Base Score",
+          "type": "number"
+        },
+        "metric_evidence": {
+          "items": {
+            "$ref": "#/$defs/CVSS31MetricEvidence"
+          },
+          "maxItems": 8,
+          "minItems": 8,
+          "title": "Metric Evidence",
+          "type": "array"
+        },
+        "rating": {
+          "enum": [
+            "none",
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ],
+          "title": "Rating",
+          "type": "string"
+        },
+        "score_kind": {
+          "description": "Always labels the value as a base score only",
+          "maxLength": 500,
+          "title": "Score Kind",
+          "type": "string"
+        },
+        "vector": {
+          "maxLength": 500,
+          "title": "Vector",
+          "type": "string"
+        },
+        "version": {
+          "const": "3.1",
+          "default": "3.1",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "vector",
+        "base_score",
+        "rating",
+        "score_kind",
+        "metric_evidence",
+        "assessor"
+      ],
+      "title": "CVSS31Assessment",
+      "type": "object"
+    },
+    "CVSS31MetricEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "metric": {
+          "enum": [
+            "AV",
+            "AC",
+            "PR",
+            "UI",
+            "S",
+            "C",
+            "I",
+            "A"
+          ],
+          "title": "Metric",
+          "type": "string"
+        },
+        "rationale": {
+          "default": "",
+          "maxLength": 500,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "cited",
+            "unverified"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "value": {
+          "maxLength": 500,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "metric",
+        "value",
+        "status"
+      ],
+      "title": "CVSS31MetricEvidence",
+      "type": "object"
     },
     "CVSSAssessment": {
       "additionalProperties": false,
@@ -916,7 +1033,8 @@
         "SUBSYSTEM_UNAVAILABLE",
         "CANCELLED",
         "JOB_LEASE_EXPIRED",
-        "INTERNAL"
+        "INTERNAL",
+        "KILL_SWITCH"
       ],
       "title": "ErrorCode",
       "type": "string"
@@ -1412,6 +1530,18 @@
             }
           ],
           "default": null
+        },
+        "cvss_v31": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CVSS31Assessment"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "CVSS v3.1 base score only; sets the platform level (ADR-0012)"
         },
         "factors": {
           "$ref": "#/$defs/SeverityFactors"

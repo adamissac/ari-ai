@@ -184,7 +184,7 @@
           "title": "Prompt Version"
         },
         "provider_mode": {
-          "description": "'live' (real provider), 'replay' (recorded) or 'fake' (test transport)",
+          "description": "'live' (real provider), 'replay' (recorded), 'fake' (test transport), or 'none' (deterministic / no model call)",
           "maxLength": 500,
           "title": "Provider Mode",
           "type": "string"
@@ -824,6 +824,53 @@
       "title": "AssessmentDetail",
       "type": "object"
     },
+    "AssessmentReport": {
+      "additionalProperties": false,
+      "description": "``GET /assessments/{id}/report``: assembled only from persisted records.",
+      "properties": {
+        "agent_runs": {
+          "items": {
+            "$ref": "#/$defs/AgentRun"
+          },
+          "title": "Agent Runs",
+          "type": "array"
+        },
+        "assessment": {
+          "$ref": "#/$defs/Assessment"
+        },
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/ReportFinding"
+          },
+          "title": "Findings",
+          "type": "array"
+        },
+        "generated_at": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        },
+        "source": {
+          "const": "persisted records",
+          "default": "persisted records",
+          "title": "Source",
+          "type": "string"
+        },
+        "standards": {
+          "$ref": "#/$defs/ReportStandards"
+        }
+      },
+      "required": [
+        "assessment",
+        "agent_runs",
+        "findings",
+        "generated_at",
+        "source",
+        "standards"
+      ],
+      "title": "AssessmentReport",
+      "type": "object"
+    },
     "AssessmentState": {
       "enum": [
         "CREATED",
@@ -897,6 +944,25 @@
         "impact_summary"
       ],
       "title": "AttackPath",
+      "type": "object"
+    },
+    "AttackPathEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "record": {
+          "$ref": "#/$defs/AttackPath"
+        },
+        "type": {
+          "const": "attack_path",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "record"
+      ],
+      "title": "AttackPathEntry",
       "type": "object"
     },
     "AuditEvent": {
@@ -1000,8 +1066,7 @@
       "properties": {
         "allowed_check_categories": {
           "items": {
-            "maxLength": 500,
-            "type": "string"
+            "$ref": "#/$defs/CheckCategory"
           },
           "title": "Allowed Check Categories",
           "type": "array"
@@ -1213,6 +1278,126 @@
       ],
       "title": "BusinessPriority",
       "type": "string"
+    },
+    "CVSS31Assessment": {
+      "additionalProperties": false,
+      "description": "A CVSS v3.1 base assessment. Vector, score and rating are computed, never model-supplied.",
+      "properties": {
+        "assessor": {
+          "description": "'system:standards.cvss31' or 'user:<usr_id>'",
+          "maxLength": 500,
+          "title": "Assessor",
+          "type": "string"
+        },
+        "base_score": {
+          "maximum": 10,
+          "minimum": 0,
+          "title": "Base Score",
+          "type": "number"
+        },
+        "metric_evidence": {
+          "items": {
+            "$ref": "#/$defs/CVSS31MetricEvidence"
+          },
+          "maxItems": 8,
+          "minItems": 8,
+          "title": "Metric Evidence",
+          "type": "array"
+        },
+        "rating": {
+          "enum": [
+            "none",
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ],
+          "title": "Rating",
+          "type": "string"
+        },
+        "score_kind": {
+          "description": "Always labels the value as a base score only",
+          "maxLength": 500,
+          "title": "Score Kind",
+          "type": "string"
+        },
+        "vector": {
+          "maxLength": 500,
+          "title": "Vector",
+          "type": "string"
+        },
+        "version": {
+          "const": "3.1",
+          "default": "3.1",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "version",
+        "vector",
+        "base_score",
+        "rating",
+        "score_kind",
+        "metric_evidence",
+        "assessor"
+      ],
+      "title": "CVSS31Assessment",
+      "type": "object"
+    },
+    "CVSS31MetricEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "metric": {
+          "enum": [
+            "AV",
+            "AC",
+            "PR",
+            "UI",
+            "S",
+            "C",
+            "I",
+            "A"
+          ],
+          "title": "Metric",
+          "type": "string"
+        },
+        "rationale": {
+          "default": "",
+          "maxLength": 500,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "cited",
+            "unverified"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "value": {
+          "maxLength": 500,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "metric",
+        "value",
+        "status",
+        "evidence",
+        "rationale"
+      ],
+      "title": "CVSS31MetricEvidence",
+      "type": "object"
     },
     "CVSSAssessment": {
       "additionalProperties": false,
@@ -1684,6 +1869,17 @@
         "manual"
       ],
       "title": "ChangeIntentSource",
+      "type": "string"
+    },
+    "CheckCategory": {
+      "description": "Probe template-library categories (SEC-005) plus published V0 fixture aliases.\n\nCanonical ids are the Probe library values. The two fixture strings are the\nsame categories and canonicalize onto them; they remain valid stored values\nso published ``AuthorizedScope`` fixtures round-trip unchanged.",
+      "enum": [
+        "access_control.ownership",
+        "input_validation.bounds",
+        "authorization.ownership",
+        "input.bounds"
+      ],
+      "title": "CheckCategory",
       "type": "string"
     },
     "ClosureCriterion": {
@@ -2425,7 +2621,8 @@
         "SUBSYSTEM_UNAVAILABLE",
         "CANCELLED",
         "JOB_LEASE_EXPIRED",
-        "INTERNAL"
+        "INTERNAL",
+        "KILL_SWITCH"
       ],
       "title": "ErrorCode",
       "type": "string"
@@ -2949,6 +3146,58 @@
       "title": "Finding",
       "type": "object"
     },
+    "FindingDetail": {
+      "additionalProperties": false,
+      "description": "``GET /findings/{id}``: the finding plus its typed evidence records, oldest first.",
+      "properties": {
+        "finding": {
+          "$ref": "#/$defs/Finding"
+        },
+        "records": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "attack_path": "#/$defs/AttackPathEntry",
+                "hardening": "#/$defs/HardeningEntry",
+                "hypothesis": "#/$defs/HypothesisEntry",
+                "remediation_plan": "#/$defs/RemediationPlanEntry",
+                "root_cause": "#/$defs/RootCauseEntry",
+                "validation_result": "#/$defs/ValidationResultEntry"
+              },
+              "propertyName": "type"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/HypothesisEntry"
+              },
+              {
+                "$ref": "#/$defs/ValidationResultEntry"
+              },
+              {
+                "$ref": "#/$defs/AttackPathEntry"
+              },
+              {
+                "$ref": "#/$defs/RootCauseEntry"
+              },
+              {
+                "$ref": "#/$defs/RemediationPlanEntry"
+              },
+              {
+                "$ref": "#/$defs/HardeningEntry"
+              }
+            ]
+          },
+          "title": "Records",
+          "type": "array"
+        }
+      },
+      "required": [
+        "finding",
+        "records"
+      ],
+      "title": "FindingDetail",
+      "type": "object"
+    },
     "FindingKind": {
       "enum": [
         "functional",
@@ -3119,6 +3368,25 @@
       "title": "GeneratedTest",
       "type": "object"
     },
+    "HardeningEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "record": {
+          "$ref": "#/$defs/HardeningRecommendation"
+        },
+        "type": {
+          "const": "hardening",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "record"
+      ],
+      "title": "HardeningEntry",
+      "type": "object"
+    },
     "HardeningRecommendation": {
       "additionalProperties": false,
       "properties": {
@@ -3263,6 +3531,25 @@
         "suggested_check_category"
       ],
       "title": "Hypothesis",
+      "type": "object"
+    },
+    "HypothesisEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "record": {
+          "$ref": "#/$defs/Hypothesis"
+        },
+        "type": {
+          "const": "hypothesis",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "record"
+      ],
+      "title": "HypothesisEntry",
       "type": "object"
     },
     "ImpactResolution": {
@@ -5481,12 +5768,117 @@
       "title": "RemediationPlan",
       "type": "object"
     },
+    "RemediationPlanEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "record": {
+          "$ref": "#/$defs/RemediationPlan"
+        },
+        "type": {
+          "const": "remediation_plan",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "record"
+      ],
+      "title": "RemediationPlanEntry",
+      "type": "object"
+    },
     "RepoProvider": {
       "enum": [
         "github"
       ],
       "title": "RepoProvider",
       "type": "string"
+    },
+    "ReportFinding": {
+      "additionalProperties": false,
+      "properties": {
+        "finding": {
+          "$ref": "#/$defs/Finding"
+        },
+        "patches": {
+          "items": {
+            "$ref": "#/$defs/PatchView"
+          },
+          "title": "Patches",
+          "type": "array"
+        }
+      },
+      "required": [
+        "finding",
+        "patches"
+      ],
+      "title": "ReportFinding",
+      "type": "object"
+    },
+    "ReportFindingStandards": {
+      "additionalProperties": false,
+      "properties": {
+        "finding_id": {
+          "pattern": "^fnd_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Finding Id",
+          "type": "string"
+        },
+        "standards": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FindingStandards"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "finding_id",
+        "standards"
+      ],
+      "title": "ReportFindingStandards",
+      "type": "object"
+    },
+    "ReportStandards": {
+      "additionalProperties": false,
+      "properties": {
+        "classification_only": {
+          "const": true,
+          "default": true,
+          "title": "Classification Only",
+          "type": "boolean"
+        },
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/ReportFindingStandards"
+          },
+          "title": "Findings",
+          "type": "array"
+        },
+        "hardening": {
+          "items": {
+            "$ref": "#/$defs/HardeningRecommendation"
+          },
+          "title": "Hardening",
+          "type": "array"
+        },
+        "unscored_reason": {
+          "maxLength": 500,
+          "title": "Unscored Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "classification_only",
+        "findings",
+        "hardening",
+        "unscored_reason"
+      ],
+      "title": "ReportStandards",
+      "type": "object"
     },
     "Repository": {
       "additionalProperties": false,
@@ -5728,6 +6120,25 @@
       "title": "RootCause",
       "type": "object"
     },
+    "RootCauseEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "record": {
+          "$ref": "#/$defs/RootCause"
+        },
+        "type": {
+          "const": "root_cause",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "record"
+      ],
+      "title": "RootCauseEntry",
+      "type": "object"
+    },
     "RouteScore": {
       "additionalProperties": false,
       "description": "Explainable per-route score against that route's own recent history.",
@@ -5958,8 +6369,7 @@
       "properties": {
         "allowed_check_categories": {
           "items": {
-            "maxLength": 500,
-            "type": "string"
+            "$ref": "#/$defs/CheckCategory"
           },
           "title": "Allowed Check Categories",
           "type": "array"
@@ -6070,6 +6480,18 @@
           ],
           "default": null
         },
+        "cvss_v31": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CVSS31Assessment"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "CVSS v3.1 base score only; sets the platform level (ADR-0012)"
+        },
         "factors": {
           "$ref": "#/$defs/SeverityFactors"
         },
@@ -6084,6 +6506,7 @@
       },
       "required": [
         "cvss",
+        "cvss_v31",
         "level",
         "factors",
         "rationale"
@@ -6938,7 +7361,8 @@
           "type": "integer"
         },
         "monitoring_budget": {
-          "$ref": "#/$defs/Budget"
+          "$ref": "#/$defs/Budget",
+          "description": "Budget for one push-triggered monitoring run (smaller than default_budget by design)"
         }
       },
       "required": [
@@ -7108,6 +7532,25 @@
         "evidence"
       ],
       "title": "ValidationResult",
+      "type": "object"
+    },
+    "ValidationResultEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "record": {
+          "$ref": "#/$defs/ValidationResult"
+        },
+        "type": {
+          "const": "validation_result",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "record"
+      ],
+      "title": "ValidationResultEntry",
       "type": "object"
     },
     "VerificationCheck": {
@@ -7366,5 +7809,5 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "HackATL platform contracts",
-  "x-schema-version": "0.7.0"
+  "x-schema-version": "0.10.0"
 }

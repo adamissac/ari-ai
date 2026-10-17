@@ -22,13 +22,36 @@
   --color-warn: #a35a00;
   --color-bad: #b42318;
   --color-info: #1d5fa8;
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "DM Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: var(--font-inter), "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: var(--font-space-grotesk), "Space Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   --ease-quad: cubic-bezier(0.455, 0.03, 0.515, 0.955);
 }
 
 html { color-scheme: light; }
 body { background: var(--color-bg); color: var(--color-ink); font-family: var(--font-sans); }
+
+/* Typography roles. In the base layer so explicit utility classes (font-semibold, …) still win. */
+@layer base {
+  body { font-weight: 400; }
+  h1, h2, h3, h4, h5, h6 { font-family: var(--font-display); }
+  h1 { font-weight: 600; }
+  h2, h3, h4, h5, h6 { font-weight: 500; }
+  button { font-weight: 500; }
+  strong, b { font-weight: 600; }
+  code, kbd, samp, pre { font-family: var(--font-mono); }
+}
+
+/* The logo keeps its original rendering: "Inter" only if installed on the device (local()),
+   never the loaded web font, then the same system fallbacks as before. */
+@font-face {
+  font-family: "Ari Logo Inter";
+  src: local("Inter");
+}
+[data-testid="logo-placeholder"],
+[data-testid="logo-placeholder"] + span {
+  font-family: "Ari Logo Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
 :focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
 ::selection { background: color-mix(in srgb, var(--color-brand) 22%, transparent); }
 
@@ -40,8 +63,19 @@ body { background: var(--color-bg); color: var(--color-ink); font-family: var(--
   text-transform: uppercase;
 }
 
+/* Navigation and buttons: Inter Medium. Headings styled as labels: Space Grotesk Medium. */
+button.label-mono, a.label-mono, nav.label-mono, nav .label-mono {
+  font-family: var(--font-sans);
+  font-weight: 500;
+}
+:is(h1, h2, h3, h4, h5, h6).label-mono {
+  font-family: var(--font-display);
+  font-weight: 500;
+}
+
 /* Tight, uppercase display heading. */
 .display {
+  font-family: var(--font-display);
   text-transform: uppercase;
   letter-spacing: -0.04em;
   line-height: 0.95;
@@ -75,6 +109,47 @@ body { background: var(--color-bg); color: var(--color-ink); font-family: var(--
   opacity: 0.18;
   pointer-events: none;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.6'/></svg>");
+}
+
+/* Interactive hero (components/hero.tsx). Pattern study of kairo.security, own implementation:
+   drifting light orbs, a pointer-following glow and text spotlight, staggered blur-in, and a
+   gentle scroll parallax. JS writes --mx/--my/--tx/--ty/--scroll; everything else is CSS. */
+.hero-stage { --mx: 70%; --my: 30%; --scroll: 0; }
+.hero-content { position: relative; z-index: 1; transform: translateY(calc(var(--scroll) * -28px)); opacity: calc(1 - var(--scroll) * 0.5); }
+.hero-orbs { position: absolute; inset: 0; z-index: 0; pointer-events: none; transform: translateY(calc(var(--scroll) * 60px)); }
+.hero-orb { position: absolute; border-radius: 9999px; filter: blur(60px); opacity: 0.55; will-change: transform; }
+.hero-orb-a { width: 46%; aspect-ratio: 1; left: -8%; top: -30%; background: color-mix(in srgb, var(--color-brand) 55%, transparent); animation: hero-drift-a 18s ease-in-out infinite alternate; }
+.hero-orb-b { width: 38%; aspect-ratio: 1; right: -6%; top: 10%; background: color-mix(in srgb, var(--color-brand-deep) 70%, transparent); animation: hero-drift-b 22s ease-in-out infinite alternate; }
+.hero-orb-c { width: 30%; aspect-ratio: 1; left: 35%; bottom: -35%; background: color-mix(in srgb, #ffffff 14%, transparent); animation: hero-drift-c 26s ease-in-out infinite alternate; }
+.hero-glow { position: absolute; inset: 0; opacity: 0; transition: opacity 400ms var(--ease-quad);
+  background: radial-gradient(420px circle at var(--mx) var(--my), color-mix(in srgb, var(--color-brand) 38%, transparent), transparent 70%); }
+.hero-stage[data-pointer="on"] .hero-glow { opacity: 1; }
+@keyframes hero-drift-a { to { transform: translate(18%, 22%) scale(1.15); } }
+@keyframes hero-drift-b { to { transform: translate(-22%, 16%) scale(0.9); } }
+@keyframes hero-drift-c { to { transform: translate(-16%, -24%) scale(1.2); } }
+
+/* Headline spotlight: brighter white where the pointer is, softer away from it. */
+.hero-stage[data-fx="on"] .hero-line {
+  --tx: 50%; --ty: 50%; --dim: rgba(255, 255, 255, 0.82);
+  background: radial-gradient(260px circle at var(--tx) var(--ty), #fff 0%, #fff 30%, var(--dim) 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.hero-stage[data-fx="on"] .hero-line-dim { --dim: rgba(255, 255, 255, 0.62); }
+
+/* Staggered entrance: blur + rise, ordered by --i. */
+.hero-stage[data-fx="on"] .hero-in { animation: hero-in 900ms var(--ease-quad) both; animation-delay: calc(var(--i, 0) * 110ms); }
+.hero-line { display: inline-block; }
+@keyframes hero-in { from { opacity: 0; filter: blur(10px); transform: translateY(14px); } }
+
+/* Live dot + running-pipeline highlight on the loop chips. */
+.hero-ping { position: relative; width: 6px; height: 6px; border-radius: 9999px; background: var(--color-brand); }
+.hero-ping::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: var(--color-brand); animation: hero-ping 2.4s cubic-bezier(0, 0, 0.2, 1) infinite; }
+@keyframes hero-ping { 75%, 100% { transform: scale(3); opacity: 0; } }
+.hero-step[data-active] { background: color-mix(in srgb, var(--color-brand) 55%, transparent); color: #fff; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-orb, .hero-ping::after, .hero-stage .hero-in { animation: none; }
+  .hero-content, .hero-orbs { transform: none; opacity: 1; }
 }
 
 /* Scroll reveal (see components/reveal.tsx). Content is visible without JS. */

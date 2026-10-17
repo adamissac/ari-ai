@@ -90,6 +90,8 @@ class ErrorCode(StrEnum):
     CONFLICT_STATE = "CONFLICT_STATE"
     CANCELLED = "CANCELLED"
     KILL_SWITCH = "KILL_SWITCH"
+    VALIDATION_FAILED = "VALIDATION_FAILED"
+    INTERNAL = "INTERNAL"
 
 
 class PlatformError(Exception):

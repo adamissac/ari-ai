@@ -16,6 +16,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from .. import standards_bridge
 from ..agents import diagnose as diagnose_agent
 from ..agents import fortify as fortify_agent
 from ..agents import patch as patch_agent
@@ -111,6 +112,8 @@ class AssessmentSink:
 
     def on_status(self, finding: FindingRecord, status: str) -> None: ...
 
+    def on_standards(self, finding: FindingRecord) -> None: ...
+
 
 @dataclass
 class FindingRecord:
@@ -129,10 +132,12 @@ class FindingRecord:
     candidates: list[PatchCandidate] = field(default_factory=list)
     verifications: list[VerificationResult] = field(default_factory=list)
     regression_tests: list[RegressionTest] = field(default_factory=list)
+    verified_regression_bundle: dict[str, Any] | None = None
     recommendations: list[HardeningRecommendation] = field(default_factory=list)
     future_hypotheses: list[HypothesisDraft] = field(default_factory=list)
     monitoring_hints: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    standards: Any = None  # shared.standards.FindingStandards
 
     def public(self) -> dict[str, Any]:
         return {
@@ -145,6 +150,7 @@ class FindingRecord:
             "verdicts": [v.verdict for v in self.verifications],
             "regression_tests": [t.test_path for t in self.regression_tests],
             "notes": self.notes,
+            "standards": standards_bridge.summary(self.standards),
         }
 
 
@@ -160,6 +166,7 @@ class AssessmentResult:
     usage: Usage = field(default_factory=Usage)
     error_code: ErrorCode | None = None
     error_detail: str | None = None
+    roe: Any = None
 
     def runs_by_agent(self) -> dict[str, list[AgentRun]]:
         out: dict[str, list[AgentRun]] = {}
@@ -237,6 +244,7 @@ class Orchestrator:
         kill_switch: Callable[[], bool] = lambda: False,
         cancelled: Callable[[], bool] = lambda: False,
         now: Callable[[], datetime] = utcnow,
+        external_pending: Callable[[], bool] | None = None,
     ) -> None:
         self.config = config
         self.intel = intel
@@ -254,6 +262,7 @@ class Orchestrator:
         self.kill_switch = kill_switch
         self.cancelled = cancelled
         self.now = now
+        self.external_pending = external_pending
 
         self.state = AssessmentState.CREATED
         self.state_log = StateLog()
@@ -265,6 +274,7 @@ class Orchestrator:
         self._completed_steps: dict[str, StepOutcome] = {}
         self._audit_prev_hash = "0" * 64
         self._baseline_failing: list[str] = []
+        self.roe: Any = None
         self.workdir.mkdir(parents=True, exist_ok=True)
 
     # ------------------------------------------------------------------ plumbing
@@ -331,7 +341,33 @@ class Orchestrator:
             audit=self.audit,
             kill_switch=self.kill_switch,
             now=self.now,
+            roe=self.roe,
         )
+
+    def _issue_roe(self) -> Any:
+        from ..standards.roe import RoeError, build_roe
+
+        scope_event = self.result.audit[-1].id if self.result.audit else None
+        try:
+            roe = build_roe(
+                self.config.scope,
+                self.library.list_public(),
+                audit_event_ids=[scope_event] if scope_event else [],
+            )
+        except RoeError as error:
+            self._audit("roe.refused", "scope", self.config.scope.id, detail=str(error)[:300])
+            return None
+        self._audit(
+            "roe.issued",
+            "rules_of_engagement",
+            roe.id,
+            scope_id=roe.scope_id,
+            digest=roe.digest,
+            permitted_templates=roe.permitted_check_templates,
+            valid_until=roe.valid_until.isoformat(),
+        )
+        self.result.roe = roe
+        return roe
 
     def _read_services(self) -> dict[str, Any]:
         return {"intel": self.intel, "history": self.history, "checks": self.library}
@@ -418,6 +454,7 @@ class Orchestrator:
         )
         if not decision.allowed:
             return self._fail(ErrorCode.SCOPE_DENIED, f"{decision.reason_code} {decision.detail}".strip())
+        self.roe = self._issue_roe()
 
         # ---- INDEXING (code intelligence is an upstream subsystem)
         self._goto(AssessmentState.INDEXING, self.intel.provenance().get("status", ""))
@@ -432,15 +469,13 @@ class Orchestrator:
         self._goto(AssessmentState.RECON)
         hypotheses = self._run_scout()
         if not hypotheses:
-            self._goto(AssessmentState.REPORTING, "no hypotheses")
-            return self._finish()
+            return self._report_or_wait("no hypotheses")
 
         # ---- VALIDATION (Probe, one step per hypothesis, capped)
         self._goto(AssessmentState.VALIDATION)
         confirmed = self._run_validation(hypotheses)
         if not confirmed:
-            self._goto(AssessmentState.REPORTING, "no confirmed findings")
-            return self._finish()
+            return self._report_or_wait("no confirmed findings")
 
         # ---- ANALYSIS (Trace)
         self._goto(AssessmentState.ANALYSIS)
@@ -448,8 +483,7 @@ class Orchestrator:
             self._run_trace(finding)
         traced = [f for f in confirmed if f.attack_path is not None]
         if not traced:
-            self._goto(AssessmentState.REPORTING, "impact analysis failed for all findings")
-            return self._finish()
+            return self._report_or_wait("impact analysis failed for all findings")
 
         # ---- DIAGNOSIS (Diagnose)
         self._goto(AssessmentState.DIAGNOSIS)
@@ -457,8 +491,7 @@ class Orchestrator:
             self._run_diagnose(finding)
         diagnosed = [f for f in traced if f.plan is not None]
         if not diagnosed:
-            self._goto(AssessmentState.REPORTING, "no remediation plan produced")
-            return self._finish()
+            return self._report_or_wait("no remediation plan produced")
 
         # ---- AWAITING_APPROVAL gate (human only)
         self._goto(AssessmentState.AWAITING_APPROVAL)
@@ -503,7 +536,9 @@ class Orchestrator:
                 actor_id=approval.decided_by,
                 approval_id=approval.id,
             )
-        if pending and not approved:
+        # An undecided external (functional) approval pauses unconditionally, even when
+        # some security remediation is already approved: the resume handles both together.
+        if (pending and not approved) or self._wait_external():
             # Stop here, without a terminal transition: a host persists the
             # request and re-enters this orchestrator once a human decides.
             self.result.error_code = None
@@ -525,6 +560,29 @@ class Orchestrator:
 
         self._goto(AssessmentState.REPORTING)
         return self._finish()
+
+    def _wait_external(self) -> bool:
+        return bool(self.external_pending and self.external_pending())
+
+    def _report_or_wait(self, note: str) -> AssessmentResult:
+        """Security work ended early. If a functional remediation approval is still owed,
+        walk the skipped phases (each labelled) to AWAITING_APPROVAL and pause;
+        otherwise report and finish. Only DIAGNOSIS→AWAITING_APPROVAL is a legal pause edge.
+        """
+        if not self._wait_external():
+            self._goto(AssessmentState.REPORTING, note)
+            return self._finish()
+        chain = (
+            AssessmentState.RECON,
+            AssessmentState.VALIDATION,
+            AssessmentState.ANALYSIS,
+            AssessmentState.DIAGNOSIS,
+            AssessmentState.AWAITING_APPROVAL,
+        )
+        for state in chain[chain.index(self.state) + 1 :]:
+            self._goto(state, f"skipped ({note}); awaiting functional remediation approval")
+        self.result.error_code = None
+        return self.result
 
     def _finish(self) -> AssessmentResult:
         self._goto(AssessmentState.COMPLETED)
@@ -676,6 +734,7 @@ class Orchestrator:
                     "title": hypothesis.title,
                 }
             )
+            self._classify(finding)
             if validation.outcome is ValidationOutcome.CONFIRMED:
                 confirmed.append(finding)
         return confirmed
@@ -722,6 +781,7 @@ class Orchestrator:
             factors=severity.factors.model_dump(mode="json"),
             verified_steps=sum(1 for s in path.steps if s.verified),
         )
+        self._classify(finding)
 
     def _run_diagnose(self, finding: FindingRecord) -> None:
         assert finding.severity is not None and finding.attack_path is not None
@@ -874,6 +934,7 @@ class Orchestrator:
         (self.workdir / f"patch-{finding.finding_id}-{attempt}.diff").write_text(diff_text, encoding="utf-8")
         self._patch_artifacts[candidate.id] = {
             "diff": diff_text,
+            "tests_added": list(candidate.tests_added),
             "plan_files": list(finding.plan.files_expected),
             "protected_tests": self._protected_tests(),
         }
@@ -953,9 +1014,22 @@ class Orchestrator:
         sandbox_ids = [
             str(r.get("sandbox_run_id")) for r in check_runs + test_runs if r.get("sandbox_run_id")
         ]
-        return verify_agent.to_result(
+        result = verify_agent.to_result(
             out, data, evidence, sandbox_run_ids=sandbox_ids, verify_run_id=outcome.run.id
         )
+        from ..regressions import RegressionEvidenceUnavailable, verified_bundle
+
+        finding.verified_regression_bundle = None
+        if result.verdict == "accepted" and outcome.ok:
+            try:
+                initial = ctx.artifacts.get("regression_sources_before_tests")
+                root = ctx.artifacts.get("verify_workspace")
+                if initial is None or root is None:
+                    raise RegressionEvidenceUnavailable("no captured Verify regression sources")
+                finding.verified_regression_bundle = verified_bundle(candidate, result, root, initial)
+            except (RegressionEvidenceUnavailable, PlatformError) as exc:
+                finding.notes.append(f"regression artifact unavailable: {exc}")
+        return result
 
     def _run_fortify(self, finding: FindingRecord) -> None:
         candidate = finding.candidates[-1] if finding.candidates else None
@@ -996,6 +1070,7 @@ class Orchestrator:
         finding.status = "hardened"
         for recommendation in recommendations:
             self.sink.on_record(finding, recommendation, "hardening_recommendation")
+        self._classify(finding)
         self.sink.on_status(finding, finding.status)
         self._audit(
             "finding.hardened",
@@ -1007,6 +1082,25 @@ class Orchestrator:
         )
 
     # ------------------------------------------------------------------ helpers
+
+    def _classify(self, finding: FindingRecord) -> None:
+        try:
+            finding.standards = standards_bridge.finding_standards(finding, now=self.now())
+        except ValueError as exc:
+            finding.notes.append(f"standards classification failed: {exc}"[:500])
+            return
+        self.sink.on_standards(finding)
+        cvss = finding.standards.cvss
+        self._audit(
+            "finding.classified",
+            "finding",
+            finding.finding_id,
+            cwe=finding.standards.cwe.id if finding.standards.cwe else None,
+            attack=[m.id for m in finding.standards.attack],
+            d3fend=[m.id for m in finding.standards.d3fend],
+            cvss_vector=cvss.vector if cvss else None,
+            cvss_complete=bool(cvss and cvss.complete),
+        )
 
     def _handler_symbol(self, finding: FindingRecord) -> str | None:
         if finding.hypothesis.entry_point_id:

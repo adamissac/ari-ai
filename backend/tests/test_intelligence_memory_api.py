@@ -169,7 +169,7 @@ def test_verified_candidate_outbox_is_durable_idempotent_and_retrieved(
     from backend import worker
     from backend.host import AssessmentHost, HostError
     from backend.intelligence_jobs import persist_verified_regression
-    from shared.assessment import AgentName
+    from shared.assessment import AgentName, AgentRunStatus
     from shared.evidence import EvidenceRef
     from shared.findings import (
         Finding,
@@ -243,6 +243,7 @@ def test_verified_candidate_outbox_is_durable_idempotent_and_retrieved(
         created_at=utcnow(),
     )
     host.record_patch(patch)
+    host.finish_agent_run(verify_run, AgentRunStatus.succeeded)
     verification = VerificationResult(
         id="ver_memory000",
         patch_id=patch.id,

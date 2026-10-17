@@ -23,6 +23,7 @@ installable on its own and testable with a fake host.
 
 from __future__ import annotations
 
+import contextlib
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -77,6 +78,9 @@ HOST_STATE_NAMES: dict[AssessmentState, str] = {
     AssessmentState.BUDGET_EXHAUSTED: "BUDGET_EXHAUSTED",
 }
 
+CHECKPOINT_NS = "security_agents.approval.v1"
+_CHECKPOINT_CLAIMED_ELSEWHERE = object()
+
 
 @runtime_checkable
 class AssessmentHostLike(Protocol):
@@ -87,7 +91,11 @@ class AssessmentHostLike(Protocol):
 
     def assessment(self) -> Any: ...
     def scope(self) -> Any: ...
+    def save_checkpoint(self, namespace: str, payload: dict[str, Any]) -> None: ...
+    def load_checkpoint(self, namespace: str) -> dict[str, Any] | None: ...
+    def claim_checkpoint(self, namespace: str) -> dict[str, Any] | None: ...
     def approvals(self) -> list[Any]: ...
+    def findings(self) -> list[Any]: ...
     def transition(self, target: Any, message: str = "") -> Any: ...
     def progress(self, message: str, *, agent: Any = None, **data: Any) -> None: ...
     def llm(self) -> Any: ...
@@ -286,7 +294,11 @@ def _host_error(code: ErrorCode, detail: str) -> Any:
         errors = importlib.import_module("shared.errors")
     except ModuleNotFoundError:
         return {"code": code.value, "message": detail}
-    return errors.ErrorBody(code=errors.ErrorCode(code.value), message=detail[:2000])
+    try:
+        return errors.ErrorBody(code=errors.ErrorCode(code.value), message=detail[:2000])
+    except ValueError:
+        # Agent-local codes the shared catalog does not know yet must still reach the host.
+        return {"code": code.value, "message": detail}
 
 
 def _host_state(state: AssessmentState) -> Any:
@@ -396,11 +408,41 @@ class HostSink(AssessmentSink):
     commit_sha: str
     run_ids: dict[str, str] = field(default_factory=dict)
     recorded: list[str] = field(default_factory=list)
+    sandbox_charged: float = 0.0
+    regression_artifact_ids: dict[str, str] = field(default_factory=dict)
+    result: Any = None
 
     def on_transition(self, src: AssessmentState, dst: AssessmentState, note: str) -> None:
+        if self.result is not None and dst in (AssessmentState.COMPLETED, AssessmentState.AWAITING_APPROVAL):
+            _store_standards_artifacts(self, self.result)
         self.host.transition(_host_state(dst), note)
         if dst is AssessmentState.FUNCTIONAL_REVIEW:
             _functional_review(self.host)
+
+    def set_status(self, finding_id: str, status: str, reason: str | None = None) -> None:
+        """Persist a lifecycle change through the host, which checks the edge and the evidence.
+        A refusal is surfaced as progress (never silently dropped) without failing the run."""
+        setter = getattr(self.host, "set_finding_status", None)
+        if setter is None:  # standalone / fake hosts without the lifecycle API
+            return
+        try:
+            setter(finding_id, status, actor="agent:orchestrator", reason=reason)
+        except Exception as exc:  # reported as progress, not hidden
+            self.host.progress(
+                f"finding status {status} not applied: {str(exc)[:200]}", finding_id=finding_id
+            )
+
+    def settle(self, findings: list[FindingRecord], sandbox_seconds: float) -> None:
+        """End of a run segment: final statuses, and sandbox time into the usage ledger."""
+        for finding in findings:
+            self.set_status(finding.finding_id, finding.status)
+        delta = round(float(sandbox_seconds) - self.sandbox_charged, 3)
+        charge = getattr(self.host, "charge", None)
+        if delta > 0 and charge is not None:
+            from shared.tenancy import Usage as SharedUsage
+
+            charge(SharedUsage(sandbox_seconds=delta))
+            self.sandbox_charged += delta
 
     def on_finding(self, finding: FindingRecord) -> None:
         import importlib
@@ -459,8 +501,31 @@ class HostSink(AssessmentSink):
         elif kind == "remediation_plan":
             mapped = contract_export.remediation_plan(record)
         elif kind == "hardening_recommendation":
+            if hasattr(self.host, "record_standards"):
+                self.host.record_standards(
+                    finding.finding_id,
+                    _finding_standards(finding),
+                    severity=contract_export.severity(finding.severity) if finding.severity else None,
+                )
+            artifact_id = None
+            bundle = finding.verified_regression_bundle
+            if bundle and finding.verifications and finding.candidates:
+                verification = finding.verifications[-1]
+                if (
+                    verification.verdict == "accepted"
+                    and bundle.get("verification_id") == verification.id
+                    and bundle.get("patch_id") == finding.candidates[-1].id
+                ):
+                    artifact_id = self.regression_artifact_ids.get(verification.id)
+                    if artifact_id is None:
+                        from shared.evidence import ArtifactKind
+
+                        artifact = self.host.store_json(bundle, kind=ArtifactKind.test_report)
+                        artifact_id = artifact.id
+                        self.regression_artifact_ids[verification.id] = artifact_id
             mapped = _hardening(
                 record,
+                proposed_test_artifact_id=artifact_id,
                 attack=[ref for step in finding.attack_path.steps for ref in step.attack]
                 if finding.attack_path
                 else [],
@@ -468,6 +533,13 @@ class HostSink(AssessmentSink):
         if mapped is not None:
             self.host.record(finding.finding_id, mapped)
             self.recorded.append(kind)
+            if kind == "validation_result":
+                outcome = str(getattr(mapped.outcome, "value", mapped.outcome))
+                self.set_status(
+                    finding.finding_id,
+                    {"confirmed": "validated"}.get(outcome, outcome),
+                    reason=f"probe {outcome} via {mapped.check_template_id}",
+                )
 
     def on_patch(self, finding: FindingRecord, candidate: Any, diff: str) -> None:
         artifact = self.host.store_text(diff)
@@ -485,6 +557,7 @@ class HostSink(AssessmentSink):
             )
         )
         self.recorded.append("patch")
+        self.set_status(finding.finding_id, "patch_proposed", reason="patch candidate recorded")
 
     def on_verification(self, finding: FindingRecord, result: Any) -> None:
         self.host.record_verification(
@@ -493,12 +566,26 @@ class HostSink(AssessmentSink):
             )
         )
         self.recorded.append("verification")
+        if str(getattr(result.verdict, "value", result.verdict)) == "accepted":
+            self.set_status(finding.finding_id, "verified", reason="independent Verify accepted")
+
+    def on_standards(self, finding: FindingRecord) -> None:
+        if hasattr(self.host, "record_standards"):
+            self.host.record_standards(
+                finding.finding_id,
+                _finding_standards(finding),
+                severity=contract_export.severity(finding.severity) if finding.severity else None,
+            )
+            self.recorded.append("standards")
 
     def on_status(self, finding: FindingRecord, status: str) -> None:
         self.host.progress(f"finding {status}", finding_id=finding.finding_id, status=status)
+        self.set_status(finding.finding_id, status)
 
 
-def _hardening(record: Any, *, attack: list[Any] | None = None) -> Any:
+def _hardening(
+    record: Any, *, attack: list[Any] | None = None, proposed_test_artifact_id: str | None = None
+) -> Any:
     import importlib
 
     try:
@@ -511,6 +598,7 @@ def _hardening(record: Any, *, attack: list[Any] | None = None) -> Any:
         id=record.id,
         finding_id=record.finding_id,
         category=record.category,
+        proposed_test_artifact_id=proposed_test_artifact_id,
         recommendation=record.recommendation[:500],
         effort=record.effort,
         d3fend=list(refs.values()),
@@ -518,6 +606,35 @@ def _hardening(record: Any, *, attack: list[Any] | None = None) -> Any:
 
 
 # --------------------------------------------------------------------------- orchestrator
+
+
+def _store_standards_artifacts(sink: HostSink, result: Any) -> None:
+    import json
+
+    from shared.evidence import ArtifactKind
+
+    from .standards.sarif import to_sarif
+
+    stored: dict[str, str] = {}
+    try:
+        if result.findings:
+            log = to_sarif(result, commit_sha=sink.commit_sha, run_mode="hosted")
+            ref = sink.host.store_text(
+                json.dumps(log, indent=2), kind=ArtifactKind.report, media_type="application/sarif+json"
+            )
+            stored["sarif_artifact_id"] = str(getattr(ref, "id", ref))
+        if result.roe is not None:
+            ref = sink.host.store_text(
+                json.dumps(result.roe.model_dump(mode="json"), indent=2),
+                kind=ArtifactKind.report,
+                media_type="application/json",
+            )
+            stored["roe_artifact_id"] = str(getattr(ref, "id", ref))
+    except Exception as exc:  # reported, never hidden, and never fails the assessment
+        sink.host.progress(f"standards artifacts not stored: {str(exc)[:200]}")
+        return
+    if stored:
+        sink.host.progress("standards artifacts stored (SARIF 2.1.0, rules of engagement)", **stored)
 
 
 @dataclass
@@ -544,25 +661,81 @@ class HostOrchestrator:
     def run(self, host: AssessmentHostLike) -> None:
         target = self.target_dir or _env_path("SECURITY_AGENTS_TARGET_DIR")
         existing = self._resumable.pop(host.assessment_id, None)
-        if existing is not None:
-            self._resume(existing, host)
+        state = _state_name(getattr(_val(host, "assessment"), "state", None))
+        start_states = ("", "CREATED", "SCOPE_CHECK")
+        if existing is not None or state == "AWAITING_APPROVAL":
+            claimed = _claim_checkpoint(host)
+            if claimed is _CHECKPOINT_CLAIMED_ELSEWHERE:
+                host.progress("approval resume already claimed by another worker")
+                return
+            if existing is not None:
+                self._resume(existing, host)
+                return
+            if not isinstance(claimed, dict):
+                raise PlatformError(
+                    ErrorCode.CONFLICT_STATE,
+                    f"cannot resume from {state}: paused orchestrator state was lost "
+                    "(worker restarted or another worker); start a new assessment",
+                )
+            self._resume_from_checkpoint(host, claimed, target)
             return
-        state = str(getattr(getattr(_val(host, "assessment"), "state", None), "value", "") or "").upper()
-        if state not in ("", "CREATED", "SCOPE_CHECK"):
-            # Paused state lives in this process; a different worker or a restart lost it.
+        checkpoint = _load_checkpoint(host)
+        if checkpoint is not None and state not in start_states:
+            claimed = _claim_checkpoint(host)
+            if not isinstance(claimed, dict):
+                raise PlatformError(
+                    ErrorCode.CONFLICT_STATE,
+                    f"cannot resume from {state}: paused orchestrator state was lost "
+                    "(worker restarted or another worker); start a new assessment",
+                )
+            self._resume_from_checkpoint(host, claimed, target)
+            return
+        if state not in start_states:
             raise PlatformError(
                 ErrorCode.CONFLICT_STATE,
                 f"cannot resume from {state}: paused orchestrator state was lost "
                 "(worker restarted or another worker); start a new assessment",
             )
 
-        workdir = self.workdir or Path(os.environ.get("SECURITY_AGENTS_WORKDIR", "")) or None
-        if workdir is None:
-            import tempfile
-
-            workdir = Path(tempfile.mkdtemp(prefix=f"{host.assessment_id}-"))
+        workdir = self._workdir(host)
         intel = self._build_intel(target, workdir, host)
-        scope = _adapt_scope(_val(host, "scope"), intel)
+        orchestrator = self._make_orchestrator(host, intel, workdir)
+        # The host already performed the scope gate and the first transition.
+        orchestrator.state = AssessmentState.CREATED
+        result = orchestrator.run()
+        self._settle(orchestrator)
+        if result.state is AssessmentState.AWAITING_APPROVAL:
+            self._resumable[host.assessment_id] = orchestrator
+            _save_checkpoint(host, orchestrator, intel)
+            host.progress("awaiting human remediation approval")
+
+    def _resume_from_checkpoint(
+        self, host: AssessmentHostLike, checkpoint: dict[str, Any], target: Path | None
+    ) -> None:
+        """Rebuild an Orchestrator from the durable checkpoint after a worker restart."""
+        from pydantic import TypeAdapter
+
+        if checkpoint.get("version") != 1 or checkpoint.get("assessment_id") != host.assessment_id:
+            raise PlatformError(ErrorCode.CONFLICT_STATE, "invalid approval checkpoint identity/version")
+        workdir = self._workdir(host)
+        intel = self._build_intel(target, workdir, host)
+        if checkpoint.get("commit_sha") and checkpoint["commit_sha"] != intel.snapshot.commit_sha:
+            raise PlatformError(ErrorCode.SNAPSHOT_NOT_READY, "approval snapshot changed")
+        orchestrator = self._make_orchestrator(host, intel, workdir)
+        orchestrator.state = AssessmentState.AWAITING_APPROVAL
+        orchestrator.result.state = AssessmentState.AWAITING_APPROVAL
+        orchestrator.result.findings = TypeAdapter(list[FindingRecord]).validate_python(
+            checkpoint["findings"]
+        )
+        orchestrator.result.usage = Usage.model_validate(checkpoint["usage"])
+        orchestrator._baseline_failing = list(checkpoint.get("baseline_failing") or [])
+        sink = orchestrator.sink
+        if isinstance(sink, HostSink):
+            sink.sandbox_charged = float(checkpoint.get("sandbox_charged") or 0)
+        self._resume(orchestrator, host)
+
+    def _make_orchestrator(self, host: AssessmentHostLike, intel: CodeIntel, workdir: Path) -> Orchestrator:
+        scope = _scope_for_host(host, intel)
         config = OrchestratorConfig(
             assessment_id=host.assessment_id,
             project_id=getattr(host, "project_id", "prj_unknown"),
@@ -588,37 +761,84 @@ class HostOrchestrator:
             step_runner=HostStepRunner(host=host, tool_factory=build_tools, run_ids=sink.run_ids),
             approve_remediation=_approver(host),
             cancelled=lambda: _cancelled(host),
+            external_pending=lambda: _pending_remediation(host) or _has_approved_functional(host),
         )
-        # The host already performed the scope gate and the first transition.
-        orchestrator.state = AssessmentState.CREATED
-        result = orchestrator.run()
-        if result.state is AssessmentState.AWAITING_APPROVAL:
-            self._resumable[host.assessment_id] = orchestrator
-            host.progress("awaiting human remediation approval")
+        sink.result = orchestrator.result
+        return orchestrator
+
+    def _workdir(self, host: AssessmentHostLike) -> Path:
+        import tempfile
+
+        base = self.workdir or _env_path("SECURITY_AGENTS_WORKDIR")
+        if base is None:
+            return Path(tempfile.mkdtemp(prefix=f"{host.assessment_id}-"))
+        base.mkdir(parents=True, exist_ok=True)
+        return Path(tempfile.mkdtemp(prefix=f"{host.assessment_id}-", dir=base))
 
     def _resume(self, orchestrator: Orchestrator, host: AssessmentHostLike) -> None:
-        """Continue after a human decided, using the approvals the host holds."""
+        """Continue after a human decided, using the approvals the host holds.
+
+        Stay paused while any remediation approval (security or functional) is still
+        pending so a partial decision does not skip the rest.
+        """
+        from .scope_guard import ActionRequest, check
+
+        scope = _scope_for_host(host, orchestrator.intel)
+        decision = check(scope, ActionRequest(action="assessment_start"), utcnow())
+        if not decision.allowed:
+            raise PlatformError(ErrorCode.SCOPE_DENIED, decision.reason_code)
+        orchestrator.config.scope = scope
+        orchestrator.roe = orchestrator._issue_roe()
+        if isinstance(orchestrator.sink, HostSink):
+            orchestrator.sink.host = host
+        if isinstance(orchestrator.step_runner, HostStepRunner):
+            orchestrator.step_runner.host = host
+        orchestrator.cancelled = lambda: _cancelled(host)
+        if _pending_remediation(host):
+            host.progress("awaiting the remaining remediation approval decisions")
+            _save_checkpoint(host, orchestrator, orchestrator.intel)
+            self._resumable[host.assessment_id] = orchestrator
+            return
         orchestrator.approve_remediation = _approver(host)
         diagnosed = [f for f in orchestrator.result.findings if f.plan is not None]
         approved: list[FindingRecord] = []
         for finding in diagnosed:
-            decision = _approver(host)(finding)
+            try:
+                decision = _approver(host)(finding)
+            except ApprovalPending:
+                host.progress("awaiting human remediation approval")
+                _save_checkpoint(host, orchestrator, orchestrator.intel)
+                return
             if decision is not None and decision.decision == "approved":
                 finding.approval = decision
                 approved.append(finding)
-        if not approved:
+        functional_approved = _has_approved_functional(host)
+        if not approved and not functional_approved:
             orchestrator._goto(AssessmentState.REPORTING, "remediation declined")
             orchestrator._finish()
+            self._settle(orchestrator)
             return
         orchestrator._goto(AssessmentState.REMEDIATION)
         for finding in approved:
             orchestrator._run_remediation(finding)
+        _repair_functional(host, orchestrator)
         orchestrator._goto(AssessmentState.HARDENING)
         for finding in approved:
             if finding.status == "verified":
                 orchestrator._run_fortify(finding)
         orchestrator._goto(AssessmentState.REPORTING)
         orchestrator._finish()
+        self._settle(orchestrator)
+
+    @staticmethod
+    def _settle(orchestrator: Orchestrator) -> None:
+        sink = orchestrator.sink
+        if isinstance(sink, HostSink):
+            sink.settle(orchestrator.result.findings, orchestrator.result.usage.sandbox_seconds)
+            record_roe = getattr(sink.host, "record_roe", None)
+            roe = orchestrator.result.roe
+            if roe is not None and callable(record_roe):
+                record_roe(roe.model_dump(mode="json"))
 
     def _build_intel(self, target: Path | None, workdir: Path, host: Any = None) -> CodeIntel:
         """Snapshot for this assessment.
@@ -720,7 +940,7 @@ def _pinned_snapshot(host: Any, workdir: Path) -> SnapshotHandle | None:
         return raw
     if str(target_dir).startswith("/") or ".." in Path(str(target_dir)).parts:
         raise PlatformError(
-            ErrorCode.VALIDATION_FAILED, "build_recipe.json target_dir must stay inside the checkout"
+            ErrorCode.SCHEMA_INVALID, "build_recipe.json target_dir must stay inside the checkout"
         )
     root = workdir / "snapshot"
     copy_tree(raw.root / str(target_dir), root)
@@ -734,6 +954,68 @@ def _pinned_snapshot(host: Any, workdir: Path) -> SnapshotHandle | None:
 
 
 _PROPAGATE = {"CANCELLED", "BUDGET_EXHAUSTED", "SCOPE_DENIED"}
+
+
+def _state_name(raw: Any) -> str:
+    if raw is None:
+        return ""
+    value = getattr(raw, "value", raw)
+    return str(value or "").upper()
+
+
+def _load_checkpoint(host: AssessmentHostLike) -> dict[str, Any] | None:
+    loader = getattr(host, "load_checkpoint", None)
+    if not callable(loader):
+        return None
+    payload = loader(CHECKPOINT_NS)
+    return payload if isinstance(payload, dict) else None
+
+
+def _claim_checkpoint(host: AssessmentHostLike) -> dict[str, Any] | object | None:
+    """Consume the durable pause payload, or signal that another worker already did.
+
+    Returns the checkpoint dict, ``_CHECKPOINT_CLAIMED_ELSEWHERE`` if a previous
+    caller already consumed it, or ``None`` if nothing was ever saved. Hosts
+    without ``claim_checkpoint`` fall back to a non-atomic load.
+    """
+    claimer = getattr(host, "claim_checkpoint", None)
+    if callable(claimer):
+        try:
+            payload = claimer(CHECKPOINT_NS)
+        except Exception as exc:
+            code = str(getattr(getattr(exc, "code", None), "value", getattr(exc, "code", "")) or "")
+            if code == "CONFLICT_STATE":
+                return None
+            raise
+        if payload is None:
+            return _CHECKPOINT_CLAIMED_ELSEWHERE
+        return payload if isinstance(payload, dict) else None
+    return _load_checkpoint(host)
+
+
+def _save_checkpoint(host: AssessmentHostLike, orchestrator: Orchestrator, intel: CodeIntel) -> None:
+    saver = getattr(host, "save_checkpoint", None)
+    if not callable(saver):
+        return
+    from pydantic import TypeAdapter
+
+    sink = orchestrator.sink
+    charged = sink.sandbox_charged if isinstance(sink, HostSink) else 0.0
+    saver(
+        CHECKPOINT_NS,
+        {
+            "version": 1,
+            "assessment_id": host.assessment_id,
+            "commit_sha": intel.snapshot.commit_sha,
+            "snapshot_id": intel.snapshot.snapshot_id,
+            "findings": TypeAdapter(list[FindingRecord]).dump_python(
+                orchestrator.result.findings, mode="json"
+            ),
+            "usage": orchestrator.result.usage.model_dump(mode="json"),
+            "baseline_failing": list(orchestrator._baseline_failing),
+            "sandbox_charged": charged,
+        },
+    )
 
 
 def _functional_review(host: Any) -> None:
@@ -757,11 +1039,425 @@ def _functional_review(host: Any) -> None:
         host.progress(
             f"functional review {result.status.value}: {len(result.findings)} functional finding(s)"
         )
+        requested = review_api.request_functional_approvals(host)
+        if requested:
+            host.progress(f"requested {len(requested)} functional remediation approval(s)")
     except Exception as exc:
         code = str(getattr(getattr(exc, "code", None), "value", type(exc).__name__))
         if code in _PROPAGATE:
             raise
         host.progress(f"functional review failed ({code}): {exc}"[:500])
+
+
+def _enum_value(value: Any) -> str:
+    return str(getattr(value, "value", value) or "").lower()
+
+
+def _pending_remediation(host: AssessmentHostLike) -> bool:
+    """True when a human still owes a remediation decision (security or functional)."""
+    return any(
+        "remediation" in _enum_value(getattr(a, "subject_type", ""))
+        and "pending" in _enum_value(getattr(a, "status", ""))
+        for a in host.approvals()
+    )
+
+
+def _has_approved_functional(host: AssessmentHostLike) -> bool:
+    approved = {
+        str(getattr(a, "subject_id", ""))
+        for a in host.approvals()
+        if "remediation" in _enum_value(getattr(a, "subject_type", ""))
+        and "approved" in _enum_value(getattr(a, "status", ""))
+    }
+    finder = getattr(host, "findings", None)
+    findings = finder() if callable(finder) else []
+    return any(
+        _enum_value(getattr(f, "kind", "")) == "functional"
+        and _enum_value(getattr(f, "status", "")) == "validated"
+        and str(getattr(f, "id", "")) in approved
+        for f in findings
+    )
+
+
+def _repair_functional(host: AssessmentHostLike, orchestrator: Orchestrator) -> None:
+    """Run Sai's approval-gated repair for validated functional findings, then Verify."""
+    try:
+        from code_review import api as review_api
+    except ImportError:
+        return
+    try:
+        source = review_api.resolve_repo(
+            str(getattr(host, "repo_id", "")),
+            commit_sha=str(getattr(_val(host, "assessment"), "commit_sha", "") or ""),
+        )
+    except Exception as exc:
+        host.progress(f"functional repair skipped: {exc}"[:500])
+        return
+    try:
+        outcomes = review_api.repair_approved_functional_findings(
+            host, repo_id=str(getattr(host, "repo_id", "")), source=source
+        )
+    except Exception as exc:
+        code = str(getattr(getattr(exc, "code", None), "value", type(exc).__name__))
+        if code in _PROPAGATE:
+            raise
+        host.progress(f"functional repair failed ({code}): {exc}"[:500])
+        return
+    for out in outcomes:
+        title = getattr(getattr(out, "finding", None), "id", "")
+        if getattr(out, "patch", None) is None:
+            host.progress(f"functional repair produced no patch for {title}")
+            continue
+        host.progress(f"functional patch recorded for {title}")
+        _verify_functional_patch(host, orchestrator, out)
+
+
+def _tests_passed(result: dict[str, Any] | None) -> bool:
+    if not result:
+        return False
+    return (
+        not result.get("error")
+        and result.get("exit_code") == 0
+        and not result.get("timed_out")
+        and bool(result.get("sandbox_run_id"))
+        and not result.get("skipped")
+        and not result.get("errors")
+        and not result.get("failed")
+        and not result.get("failing_tests")
+        and bool(result.get("passed"))
+    )
+
+
+def _functional_reproduced(result: dict[str, Any] | None, tests: list[str]) -> bool:
+    """Only a complete pytest-failed run counts as reproduction.
+
+    Partial output from a hang, timeout, or interrupted/collection-error run
+    (exit 2+, ``timed_out``, tool ``error``) is not proof the defect reproduced.
+    """
+    if (
+        not tests
+        or not result
+        or result.get("error")
+        or result.get("errors")
+        or result.get("timed_out")
+        or result.get("exit_code") != 1
+        or not result.get("sandbox_run_id")
+        or not result.get("failed")
+        or _pytest_list_truncated(result)
+    ):
+        return False
+    failed_paths = {node.split("::", 1)[0] for node in result.get("failing_tests", [])}
+    return set(tests) <= failed_paths
+
+
+def _pytest_list_truncated(result: dict[str, Any] | None) -> bool:
+    """True when pytest reported more failures than the retained node-id list."""
+    if not result:
+        return False
+    if result.get("failing_truncated"):
+        return True
+    failing = result.get("failing_tests") or []
+    try:
+        failed = int(result.get("failed") or 0)
+    except (TypeError, ValueError):
+        return False
+    return failed > len(failing)
+
+
+def _recipe_strip_prefix(root: Path, paths: list[str]) -> str:
+    """Reviewer diffs are repository-relative (`target/...`); the intel snapshot is already
+    the recipe ``target_dir``. Strip that complete directory, not only the first component."""
+    import json
+
+    from .sandbox.workspace import safe_rel_path
+
+    recipe_dir = ""
+    recipe = root / "build_recipe.json"
+    if recipe.is_file():
+        try:
+            raw = str(json.loads(recipe.read_text(encoding="utf-8")).get("target_dir") or "").strip("/")
+        except (OSError, TypeError, ValueError, json.JSONDecodeError):
+            raw = ""
+        if raw and not raw.startswith("/") and ".." not in Path(raw).parts:
+            recipe_dir = raw
+
+    for raw in paths:
+        try:
+            rel = safe_rel_path(str(raw))
+        except Exception:
+            continue
+        if (
+            recipe_dir
+            and (rel == recipe_dir or rel.startswith(recipe_dir + "/"))
+            and not (root / recipe_dir).exists()
+        ):
+            return recipe_dir
+        first, _, rest = rel.partition("/")
+        if rest and not (root / first).exists():
+            return first
+    return ""
+
+
+def _snapshot_rel(rel: str, prefix: str) -> str:
+    from .sandbox.workspace import safe_rel_path
+
+    path = safe_rel_path(rel)
+    if prefix and (path == prefix or path.startswith(prefix + "/")):
+        path = path[len(prefix) :].lstrip("/")
+    return path
+
+
+def _diff_for_snapshot(diff_text: str, prefix: str) -> str:
+    if not prefix:
+        return diff_text
+    token = prefix.strip("/") + "/"
+    rewritten: list[str] = []
+    for line in diff_text.splitlines(keepends=True):
+        if line.startswith(("diff --git ", "--- ", "+++ ")):
+            line = line.replace(f"a/{token}", "a/").replace(f"b/{token}", "b/")
+        rewritten.append(line)
+    return "".join(rewritten)
+
+
+def _write_generated_tests(root: Path, tests: list[Any], prefix: str) -> list[str]:
+    from .sandbox.workspace import resolve_under
+
+    paths: list[str] = []
+    for test in tests:
+        path = str(getattr(test, "path", "") or "")
+        content = str(getattr(test, "content", "") or "")
+        if not path or not content:
+            continue
+        rel = _snapshot_rel(path, prefix)
+        dest = resolve_under(root, rel)
+        if dest.exists() or not ("tests" in Path(rel).parts or Path(rel).name.startswith("test_")):
+            raise PlatformError(ErrorCode.SCHEMA_INVALID, "generated tests must be new test files")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(content, encoding="utf-8")
+        paths.append(rel)
+    return paths
+
+
+def _verify_functional_patch(host: AssessmentHostLike, orchestrator: Orchestrator, outcome: Any) -> None:
+    """Independent Verify of a reviewer PatchCandidate (fresh checkout; not Patch's worktree).
+
+    Uses Sai's `functional_verification_inputs` so the recorded artifact diff, generated
+    tests, protected paths, and baseline failures are integrity-checked before any
+    verdict. Functional findings have no Probe template; the original-check analogue is
+    that the generated tests fail on the unpatched commit and pass after the diff.
+    """
+    from shared.base import utcnow
+    from shared.evidence import ArtifactKind, EvidenceKind, EvidenceRef
+    from shared.findings import (
+        VerificationCheck,
+        VerificationCheckName,
+        VerificationResult,
+        VerificationVerdict,
+    )
+    from shared.ids import IdPrefix, new_id
+
+    from .agents import verify as verify_agent
+    from .sandbox.workspace import apply_diff, diff_paths, fresh_checkout
+    from .tools.services import TestRunner
+
+    try:
+        from code_review import api as review_api
+    except ImportError:
+        host.progress("functional Verify skipped: code_review is not installed")
+        return
+
+    patch = outcome.patch
+    try:
+        inputs = review_api.functional_verification_inputs(host, patch)
+    except Exception as exc:
+        host.progress(f"functional Verify skipped: {exc}"[:500])
+        return
+    diff_text = inputs.diff_text
+    if not diff_text:
+        host.progress(f"functional Verify skipped: empty diff for {patch.finding_id}")
+        return
+    # This run makes NO model call: the verdict is computed from executed tests. Label it
+    # truthfully so a live assessment never shows it as a live-provider agent turn.
+    run_id = host.start_agent_run(
+        _host_agent(AgentName.VERIFY),
+        f"functional-verify:{patch.finding_id}",
+        attempt=1,
+        provider_mode="none",
+        model_id="deterministic:functional-verify",
+        prompt_version=verify_agent.SPEC.version,
+        input_payload={"patch_id": patch.id, "finding_id": patch.finding_id, "kind": "functional"},
+    )
+    try:
+        dest = orchestrator.workdir / f"verify-functional-{patch.id}"
+        root = fresh_checkout(orchestrator.intel.snapshot, dest)
+        prefix = _recipe_strip_prefix(
+            root,
+            [str(p) for p in (patch.files_changed or [])]
+            + [str(getattr(t, "path", "") or "") for t in inputs.generated_tests],
+        )
+        tests_added = _write_generated_tests(root, list(inputs.generated_tests), prefix)
+        snapshot_diff = _diff_for_snapshot(diff_text, prefix)
+        ctx = orchestrator._context(
+            AgentName.VERIFY,
+            f"functional-verify:{patch.finding_id}",
+            services=orchestrator._read_services(),
+            read_root=root,
+        )
+        ctx.run_id = run_id
+        ctx.artifacts["tests_added"] = tests_added
+        runner = TestRunner(
+            driver=orchestrator.driver,
+            workspace_provider=lambda _ctx: root,
+            test_command_args=orchestrator.config.test_command_args,
+        )
+        unpatched = runner.run(ctx, "added_tests", tests_added) if tests_added else None
+        ok, err = apply_diff(root, snapshot_diff)
+        touched = [_snapshot_rel(p, prefix) for p in diff_paths(diff_text)]
+        plan_files = [_snapshot_rel(str(p), prefix) for p in (patch.files_changed or [])]
+        out_of_scope = [p for p in touched if p not in plan_files and not p.startswith("tests/")]
+        from .regressions import RegressionEvidenceUnavailable, read_sources, verified_bundle
+
+        try:
+            regression_sources = read_sources(root, tests_added) if ok else None
+        except (RegressionEvidenceUnavailable, PlatformError):
+            regression_sources = None
+        patched = runner.run(ctx, "added_tests", tests_added) if tests_added and ok else None
+        suite = runner.run(ctx, "project_suite", []) if ok else {}
+        failing = set(suite.get("failing_tests") or [])
+        new_failures = sorted(failing - set(inputs.baseline_failing or []))
+        unpatched_failed = _functional_reproduced(unpatched, tests_added)
+        patched_passed = bool(tests_added) and _tests_passed(patched)
+        suite_ok = (
+            bool(ok)
+            and suite.get("exit_code") in (0, 1)
+            and not suite.get("timed_out")
+            and bool(suite.get("sandbox_run_id"))
+            and not suite.get("error")
+            and not suite.get("errors")
+            and not new_failures
+            and bool(suite.get("passed"))
+            and not _pytest_list_truncated(suite)
+        )
+        scope_ok = bool(ok) and not out_of_scope
+        tamper_ok = not list(inputs.protected_paths)
+        sandbox_ids = [
+            str(r.get("sandbox_run_id")) for r in (unpatched, patched, suite) if r and r.get("sandbox_run_id")
+        ]
+        if not sandbox_ids:
+            raise PlatformError(
+                ErrorCode.SANDBOX_START_FAILED, "functional Verify has no executed sandbox records"
+            )
+        report = host.store_json(
+            {
+                "sandbox_run_ids": sandbox_ids,
+                "unpatched": unpatched,
+                "patched": patched,
+                "suite": suite,
+                "protected_paths": list(inputs.protected_paths),
+                "baseline_failing": list(inputs.baseline_failing),
+                "out_of_scope": out_of_scope,
+            },
+            kind=ArtifactKind.test_report,
+        )
+        evidence = [
+            EvidenceRef(
+                kind=EvidenceKind.sandbox_run,
+                artifact_id=report.id,
+                sha256=getattr(report, "sha256", None),
+                provenance="agent:verify",
+            )
+        ]
+        checks = [
+            VerificationCheck(name=VerificationCheckName.diff_scope_ok, passed=scope_ok, evidence=evidence),
+            VerificationCheck(
+                name=VerificationCheckName.no_test_tampering, passed=tamper_ok, evidence=evidence
+            ),
+            VerificationCheck(
+                name=VerificationCheckName.original_check_now_fails_to_reproduce,
+                passed=unpatched_failed,
+                evidence=evidence,
+            ),
+            VerificationCheck(
+                name=VerificationCheckName.functional_suite_passes,
+                passed=suite_ok,
+                evidence=evidence,
+            ),
+            VerificationCheck(
+                name=VerificationCheckName.generated_tests_pass, passed=patched_passed, evidence=evidence
+            ),
+        ]
+        accepted = all(c.passed for c in checks)
+        duration = sum(float((r or {}).get("duration_s") or 0) for r in (unpatched, patched, suite))
+        orchestrator.result.usage.sandbox_seconds += duration
+        host.finish_agent_run(run_id, _host_run_status("succeeded"))
+        verification = VerificationResult(
+            id=new_id(IdPrefix.ver),
+            patch_id=patch.id,
+            verdict=VerificationVerdict.accepted if accepted else VerificationVerdict.rejected,
+            checks=checks,
+            sandbox_run_ids=sandbox_ids,
+            reasons=[]
+            if accepted
+            else [
+                f"apply={ok} err={err}; out_of_scope={out_of_scope}; protected={list(inputs.protected_paths)}; "
+                f"unpatched_failed={unpatched_failed}; patched={patched_passed}; "
+                f"suite={suite_ok} new_failures={new_failures}"
+            ],
+            produced_by_run_id=run_id,
+            created_at=utcnow(),
+        )
+        host.record_verification(verification)
+        setter = getattr(host, "set_finding_status", None)
+        if callable(setter):
+            try:
+                setter(
+                    patch.finding_id,
+                    "verified" if accepted else "patch_rejected",
+                    actor="agent:verify",
+                    reason=(
+                        "independent functional Verify accepted"
+                        if accepted
+                        else "independent functional Verify rejected"
+                    ),
+                )
+            except Exception as exc:
+                host.progress(f"finding status not applied: {str(exc)[:200]}")
+        if accepted and regression_sources is not None:
+            from types import SimpleNamespace
+
+            from shared.findings import HardeningRecommendation
+
+            try:
+                archive = verified_bundle(
+                    SimpleNamespace(id=patch.id, finding_id=patch.finding_id, tests_added=tests_added),
+                    verification,
+                    root,
+                    regression_sources,
+                )
+                archive["producer"] = "deterministic:functional-verify"
+                artifact = host.store_json(archive, kind=ArtifactKind.test_report)
+                host.record(
+                    patch.finding_id,
+                    HardeningRecommendation(
+                        id=new_id(IdPrefix.hdn),
+                        finding_id=patch.finding_id,
+                        category="policy_test",
+                        effort="small",
+                        recommendation="Retain regression sources associated with the accepted independent functional verification.",
+                        proposed_test_artifact_id=artifact.id,
+                    ),
+                )
+            except (RegressionEvidenceUnavailable, PlatformError) as exc:
+                host.progress(f"functional regression artifact unavailable: {exc}"[:500])
+        host.progress(f"functional Verify {'accepted' if accepted else 'rejected'} for {patch.finding_id}")
+    except Exception as exc:
+        with contextlib.suppress(Exception):
+            host.finish_agent_run(
+                run_id,
+                _host_run_status("failed"),
+                error=_host_error(ErrorCode.INTERNAL, str(exc)[:500]),
+            )
+        host.progress(f"functional Verify failed: {exc}"[:500])
 
 
 def _review_without_snapshot(host: Any, intent: Any, review_api: Any) -> Any:
@@ -776,8 +1472,10 @@ def _review_without_snapshot(host: Any, intent: Any, review_api: Any) -> Any:
             project_id=a.project_id,
             repo_id=host.repo_id,
             commit_sha=a.commit_sha,
-            snapshot_id=a.snapshot_id or new_id("snp"),
-            index_version="checkout",
+            # Never invent a random id: with no indexed snapshot, use a documented synthetic id
+            # derived from the commit, labelled by index_version so nothing mistakes it for an index.
+            snapshot_id=a.snapshot_id or f"snp_unindexed-{a.commit_sha[:40]}",
+            index_version="unindexed-checkout",
         ),
         change_intent=intent or _default_intent(a),
         budget=a.budget,
@@ -891,23 +1589,31 @@ def _approver(host: AssessmentHostLike):
             if str(getattr(approval, "subject_id", "")) != subject_id:
                 continue
             status = str(getattr(approval, "status", getattr(approval, "decision", ""))).lower()
-            if "approved" in status:
+            subject_type = str(getattr(approval, "subject_type", ""))
+            if subject_type != "remediation":
+                continue
+            if status == "approved":
+                actor = getattr(approval, "decided_by", None)
+                if not actor or not str(actor).startswith("usr_"):
+                    raise PlatformError(
+                        ErrorCode.APPROVAL_REQUIRED, "remediation requires an identified human approver"
+                    )
                 return Approval(
                     id=str(getattr(approval, "id", new_id("apv"))),
                     project_id=str(getattr(host, "project_id", "prj_unknown")),
                     subject_type="remediation",
                     subject_id=subject_id,
                     decision="approved",
-                    decided_by=str(getattr(approval, "decided_by", None) or "usr_host_approver"),
+                    decided_by=str(approval.decided_by),
                 )
-            if "declined" in status or "rejected" in status:
+            if status in {"declined", "rejected"}:
                 return Approval(
                     id=str(getattr(approval, "id", new_id("apv"))),
                     project_id=str(getattr(host, "project_id", "prj_unknown")),
                     subject_type="remediation",
                     subject_id=subject_id,
                     decision="declined",
-                    decided_by=str(getattr(approval, "decided_by", None) or "usr_host_approver"),
+                    decided_by=str(approval.decided_by),
                 )
             raise ApprovalPending(finding.finding_id, str(getattr(approval, "id", "")))
         requested = host.request_approval(
@@ -932,6 +1638,19 @@ def _approval_subject() -> Any:
     return "remediation"
 
 
+def _scope_for_host(host: AssessmentHostLike, intel: CodeIntel) -> Any:
+    """Adapt the current host scope and keep only targets for ``host.repo_id``."""
+    scope = _adapt_scope(_val(host, "scope"), intel)
+    repo_id = getattr(host, "repo_id", None)
+    if repo_id:
+        scope.targets = [target for target in scope.targets if target.repo_id == repo_id]
+    if not scope.targets:
+        raise PlatformError(
+            ErrorCode.SCOPE_DENIED, "host scope has no authorized targets for this repository"
+        )
+    return scope
+
+
 def _adapt_scope(host_scope: Any, intel: CodeIntel) -> Any:
     """Map the host's AuthorizedScope onto this package's scope model."""
     from .contracts import AuthorizedScope, ScopeStatus, ScopeTarget
@@ -948,39 +1667,35 @@ def _adapt_scope(host_scope: Any, intel: CodeIntel) -> Any:
                 exposed_ports=list(getattr(target, "exposed_ports", []) or []),
             )
         )
-    if not targets:
-        targets = [
-            ScopeTarget(
-                target_id="tgt_host_target",
-                repo_id=intel.snapshot.repo_id,
-                build_recipe_ref="build_recipe.json",
-            )
-        ]
-    status_raw = str(getattr(host_scope, "status", "active")).lower()
-    status = ScopeStatus.ACTIVE if "active" in status_raw else ScopeStatus.PENDING
-    approved_at = getattr(host_scope, "approved_at", None) or utcnow()
+    raw_status = getattr(host_scope, "status", None)
+    status_raw = str(getattr(raw_status, "value", raw_status)).lower()
+    try:
+        status = ScopeStatus(status_raw)
+    except ValueError:
+        status = ScopeStatus.PENDING
+    approved_at = getattr(host_scope, "approved_at", None)
     return AuthorizedScope(
         id=str(getattr(host_scope, "id", new_id("scp"))),
         project_id=str(getattr(host_scope, "project_id", "prj_unknown")),
         name=str(getattr(host_scope, "name", "host scope")),
         targets=targets,
-        allowed_check_categories=list(
-            getattr(host_scope, "allowed_check_categories", None) or sorted(default_library().categories())
-        ),
+        allowed_check_categories=list(getattr(host_scope, "allowed_check_categories", None) or []),
         status=status,
         requested_by=str(getattr(host_scope, "requested_by", None) or "usr_host"),
-        approved_by=str(getattr(host_scope, "approved_by", None) or "usr_host_approver"),
+        approved_by=getattr(host_scope, "approved_by", None),
         approved_at=approved_at,
-        expires_at=getattr(host_scope, "expires_at", None) or (utcnow().replace(year=utcnow().year + 1)),
+        expires_at=getattr(host_scope, "expires_at", None) or utcnow(),
         notes="adapted from the host scope",
     )
 
 
 def _adapt_budget(assessment: Any) -> Budget:
     budget = getattr(assessment, "budget", None)
+    if getattr(budget, "max_tokens", 1) <= 0 or getattr(budget, "max_usd", 1) <= 0:
+        raise PlatformError(ErrorCode.BUDGET_EXHAUSTED, "host budget does not permit model calls")
     return Budget(
-        max_tokens=int(getattr(budget, "max_tokens", 0) or 1_000_000),
-        max_usd=float(getattr(budget, "max_usd", 0) or 10.0),
+        max_tokens=int(getattr(budget, "max_tokens", 1_000_000)),
+        max_usd=float(getattr(budget, "max_usd", 10.0)),
         max_wall_clock_s=float(getattr(budget, "max_wall_clock_s", 0) or 3600.0),
     )
 
@@ -994,24 +1709,6 @@ SPEC_TABLE = {name.value: spec.version for name, spec in ALL_SPECS.items()}
 
 
 def _finding_standards(finding: FindingRecord) -> Any:
-    from shared.standards import FindingStandards
-    from standards.catalog import catalog_versions
+    from . import standards_bridge
 
-    evidence = [
-        contract_export.evidence_ref(ref, producer="agent:scout") for ref in finding.hypothesis.cited_spans
-    ]
-    confidence = contract_export.CONFIDENCE_SCORE[finding.hypothesis.confidence]
-    return FindingStandards(
-        cwe=contract_export.weakness_ref(
-            finding.hypothesis.weakness_class, evidence=evidence, confidence=confidence
-        ),
-        attack=list({ref.id: ref for step in finding.attack_path.steps for ref in step.attack}.values()) if finding.attack_path else [],
-        cvss=finding.severity.cvss if finding.severity else None,
-        unmapped=[] if finding.attack_path and any(step.attack for step in finding.attack_path.steps) else ["ATT&CK: no reviewed check rule matched; coarse catalog chains require human review"],
-        catalog_versions=catalog_versions(),
-        classified_by="agent:security",
-        classified_at=utcnow(),
-        exploit_status="reproduced_in_sandbox"
-        if finding.validation and finding.validation.outcome.value == "confirmed"
-        else "not_tested",
-    )
+    return standards_bridge.finding_standards(finding, now=utcnow())

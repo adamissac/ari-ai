@@ -88,7 +88,8 @@
         "SUBSYSTEM_UNAVAILABLE",
         "CANCELLED",
         "JOB_LEASE_EXPIRED",
-        "INTERNAL"
+        "INTERNAL",
+        "KILL_SWITCH"
       ],
       "title": "ErrorCode",
       "type": "string"
@@ -311,7 +312,7 @@
       "title": "Prompt Version"
     },
     "provider_mode": {
-      "description": "'live' (real provider), 'replay' (recorded) or 'fake' (test transport)",
+      "description": "'live' (real provider), 'replay' (recorded), 'fake' (test transport), or 'none' (deterministic / no model call)",
       "maxLength": 500,
       "title": "Provider Mode",
       "type": "string"

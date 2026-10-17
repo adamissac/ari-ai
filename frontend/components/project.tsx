@@ -27,9 +27,12 @@ export function useParam(name: string): string {
 const TABS = [
   { href: '', label: 'Overview' },
   { href: '/scopes', label: 'Scopes' },
+  { href: '/expectations', label: 'Expectations' },
   { href: '/findings', label: 'Findings' },
   { href: '/approvals', label: 'Approvals' },
   { href: '/monitoring', label: 'Monitoring' },
+  { href: '/incidents', label: 'Incidents' },
+  { href: '/settings', label: 'Settings' },
 ];
 
 export function ProjectShell({ children }: { children: ReactNode }) {

@@ -72,6 +72,12 @@ def test_full_loop_with_approval_gate(client_factory, reference) -> None:
     assert diff.headers["X-Artifact-SHA256"] == patches[0]["patch"]["diff_sha256"]
     report = alice.get(f"/api/v1/assessments/{asm_id}/report").json()
     assert report["source"] == "persisted records" and len(report["agent_runs"]) == 8
+    # 0.8.0 DTOs: the wire bodies are exactly the shared models (Vihaan's M6 ask c).
+    from shared.api import AssessmentReport, FindingDetail
+
+    assert AssessmentReport.model_validate(report).findings
+    detail = FindingDetail.model_validate(alice.get(f"/api/v1/findings/{fid}").json())
+    assert detail.finding.id == fid
 
     # SSE: full replay from the durable log, closes after the terminal event.
     with alice.stream("GET", f"/api/v1/assessments/{asm_id}/events") as resp:
@@ -190,3 +196,47 @@ def test_host_refuses_illegal_transitions_and_unapproved_remediation(
     with pytest.raises(HostError) as e:
         host.transition(AssessmentState.INDEXING)
     assert e.value.code.value in ("SCOPE_DENIED", "CANCELLED")
+
+
+def test_host_checkpoints_are_scoped_durable_and_integrity_checked(client_factory):
+    """Salvaged from PR #35: fresh AssessmentHost instances must see the latest payload."""
+    import sqlalchemy as sa
+
+    from backend.db import artifacts, transaction
+    from backend.host import AssessmentHost, HostError
+
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+
+    def create() -> str:
+        return alice.post(
+            f"/api/v1/projects/{ids['project']}/assessments",
+            json={"scope_id": ids["scope"], "repo_id": ids["repo"], "commit_sha": "f" * 40},
+        ).json()["assessment"]["id"]
+
+    first, other = create(), create()
+    host = AssessmentHost(first)
+    assert host.load_checkpoint("test.v1") is None
+    host.save_checkpoint("test.v1", {"step": 1})
+    host.save_checkpoint("test.v1", {"step": 2})
+    assert AssessmentHost(first).load_checkpoint("test.v1") == {"step": 2}
+    assert AssessmentHost(other).load_checkpoint("test.v1") is None
+    assert host.load_checkpoint("different.v1") is None
+    with transaction() as conn:
+        rows = (
+            conn.execute(sa.select(artifacts).where(artifacts.c.project_id == ids["project"]))
+            .mappings()
+            .all()
+        )
+    for artifact in rows:
+        (host.store.root / artifact["storage_key"]).write_bytes(b"corrupted")
+    with pytest.raises(OSError, match="integrity"):
+        host.load_checkpoint("test.v1")
+    host.save_checkpoint("claim.v1", {"step": 3})
+    claimed = AssessmentHost(first).claim_checkpoint("claim.v1")
+    assert claimed == {"step": 3}
+    assert AssessmentHost(first).claim_checkpoint("claim.v1") is None
+    assert AssessmentHost(first).load_checkpoint("claim.v1") is None
+    with pytest.raises(HostError) as missing:
+        AssessmentHost(first).claim_checkpoint("never-saved.v1")
+    assert missing.value.code.value == "CONFLICT_STATE"

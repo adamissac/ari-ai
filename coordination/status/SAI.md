@@ -53,3 +53,37 @@ Add dated factual entries; do not overwrite history. Never claim unexecuted test
 - #53 merged: consumer proof that human decisions in the real intelligence memory drive reviewer claims (confirms Sarosh's #39 satisfies my asks). code-review on main: 49 passed, 1 skipped; strict mypy clean.
 - Reviewed Alan's #49 (`code-review/` part): tests pass on the branch. Blocker: an optional CWE field validator can fail the whole review. Posted the review and offered the follow-up fix.
 - Frontend with the Ari AI pass is now on main (#50, Vihaan).
+
+### 2026-10-17T06:52:00Z (autonomous cycles 2–4)
+
+- #55: CI triage posted on #35. #56: the answer-key evaluator credits the planted IDOR as a Scout handoff.
+- #59: tolerant span-quote verification (line numbers, skipped lines, re-indent, ±3 re-anchor; far or fake quotes still rejected). Fixes Adam's live-run report that every security concern was dropped. Regression tests use the exact live spans.
+- Adam's live run of the reviewer (owner's key): PASS, refund-bound TP, repair accepted, $0.36 total.
+- ACKed Srihith's #57 (lands #49 with my review fixes); verified merged with main: 55 passed.
+
+### 2026-10-17T07:18:50Z (autonomous cycles 5–6)
+
+- #63: reviewer CWE classification proven end to end (valid tag recorded, category dropped, finding survives).
+- Live gate met (Adam, owner's key): run 2 after #59 → refund-bound TP, IDOR handed to Scout (`security_handoffs_matched: [fnd_planted_authz]`), repair accepted, $0.49. README evidence updated.
+- code-review on main: 57 passed, 1 skipped; strict mypy clean; CI green.
+
+### 2026-10-17T07:57:20Z (autonomous cycles 7–9)
+
+- #68: `functional_verification_inputs(host, patch)` gives an independent functional Verify integrity-checked inputs (diff hash, generated-test bundle = `tests_added`, protected-path touches, baseline failures). This confirms Srihith's functional-remediation design (a)–(c); the orchestrator part is waiting on Alan.
+- Open items outside my path: #35 (Alan, Scout schema + standards), #69 (Srihith, fact-derived CVSS); neither touches code-review.
+- code-review on main: 58 passed, 1 skipped; strict mypy clean; CI green.
+
+### 2026-10-17T08:52:34Z (autonomous cycles 10–13)
+
+- #72: the authorization hand-off carries a catalog-validated CWE. #76: fixed the repo-wide gitleaks false positive (pinned commit SHA), green since. Merges now wait for green checks.
+- #79: ACKed Srihith's #71. Alan landed the same flow in #73: validated functional findings → approval → reviewer repair → independent functional Verify → `verified` (unified assessment test, 4 passed on main).
+- Locked the repo-relative generated-test path contract Alan's Verify relies on (new test).
+- code-review on main: 60 passed, 1 skipped; strict mypy clean.
+
+### 2026-10-17T11:50:29Z (autonomous cycles 14–27)
+
+- #87: proved on the real (redacting) host that reviewer `diff_sha256` matches the stored artifact; the Patch-agent hashing issue is routed to Alan.
+- #98: M2 (reviewer) marked met in MILESTONES.md with live + CI evidence. #113: REVIEW-001..003 → Sai / DONE in HACKATL_TASKS.md.
+- #119 / #134: OWASP LLM coverage. Five marked tests in `tests/security/test_owasp_llm_reviewer.py`; 2026 matrix rows (LLM01/02/03/07/10). Srihith mirrored them into the 2025 matrix (#135).
+- #127 / #128: reviewer tests now run inside the real Docker sandbox in CI (`docker-reviewer` job, run 39028078294, 2 passed). README and M2 limitation updated.
+- code-review on main: 60 passed, 3 skipped (live + 2 opt-in Docker, which run in the `docker-reviewer` job); strict mypy clean.

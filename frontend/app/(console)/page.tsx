@@ -1,11 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, type FormEvent } from 'react';
+import { useState, type CSSProperties, type FormEvent } from 'react';
 import { api } from '@/lib/api';
 import { useResource } from '@/lib/use-resource';
-import { BRAND_NAME } from '@/components/brand';
+import { BRAND_HEADLINE, BRAND_HEADLINE_REST, BRAND_NAME } from '@/components/brand';
+import { CREATE_PROJECT_NOTE } from '@/lib/create-project';
 import { Reveal } from '@/components/reveal';
+import { HeroStage, useLoopCursor } from '@/components/hero';
 import { Async, Button, Empty, ErrorState, Field, inputClass, PageTitle, Panel, Time } from '@/components/ui';
 
 const PILLARS = [
@@ -20,6 +22,7 @@ export default function ProjectsPage() {
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const active = useLoopCursor(LOOP.length);
 
   const create = async (e: FormEvent) => {
     e.preventDefault();
@@ -34,23 +37,26 @@ export default function ProjectsPage() {
 
   return (
     <>
-      <section className="hero-ink -mx-4 mb-8 rounded-none px-6 py-14 sm:mx-0 sm:rounded-2xl md:px-12 md:py-20" aria-labelledby="hero-title">
-        <p className="label-mono text-white/70">{BRAND_NAME} · software assurance</p>
-        <h1 id="hero-title" className="display mt-4 max-w-4xl text-4xl font-medium md:text-6xl">
-          Every change understood.<br /><span className="text-white/70">Every fix proven.</span>
+      <HeroStage className="-mx-4 mb-8 rounded-none px-6 py-14 sm:mx-0 sm:rounded-2xl md:px-12 md:py-20" labelledBy="hero-title">
+        <p className="hero-in label-mono flex items-center gap-2 text-white/70" style={{ '--i': 0 } as CSSProperties}>
+          <span aria-hidden="true" className="hero-ping" />{BRAND_NAME} · software assurance
+        </p>
+        <h1 id="hero-title" className="display mt-4 max-w-4xl text-4xl font-semibold md:text-6xl">
+          <span data-spotlight className="hero-line hero-in" style={{ '--i': 1 } as CSSProperties}>{BRAND_HEADLINE}</span><br />
+          <span data-spotlight className="hero-line hero-line-dim hero-in text-white/70" style={{ '--i': 2 } as CSSProperties}>{BRAND_HEADLINE_REST}</span>
         </h1>
-        <p className="mt-5 max-w-2xl text-sm text-white/75 md:text-base">
+        <p className="hero-in mt-5 max-w-2xl text-sm text-white/75 md:text-base" style={{ '--i': 3 } as CSSProperties}>
           {BRAND_NAME} learns what your software is supposed to do, tests it like an attacker inside an approved sandbox,
           and only calls a repair done when independent, executed tests agree.
         </p>
-        <ol aria-label="Assessment loop" className="mt-8 flex flex-wrap gap-1.5">
+        <ol aria-label="Assessment loop" className="hero-in mt-8 flex flex-wrap gap-1.5" style={{ '--i': 4 } as CSSProperties}>
           {LOOP.map((step, i) => (
-            <li key={step} className="label-mono flex items-center gap-1.5 rounded-md bg-white/10 px-2.5 py-1 text-white/85 backdrop-blur transition-colors duration-[250ms] hover:bg-white/20">
+            <li key={step} data-active={active === i || undefined} className="hero-step label-mono flex items-center gap-1.5 rounded-md bg-white/10 px-2.5 py-1 text-white/85 backdrop-blur transition-colors duration-[250ms] hover:bg-white/20">
               <span className="text-white/50">{String(i + 1).padStart(2, '0')}</span>{step}
             </li>
           ))}
         </ol>
-      </section>
+      </HeroStage>
       <div className="mb-8 grid gap-3 md:grid-cols-3">
         {PILLARS.map((p, i) => (
           <Reveal key={p.n} delay={i * 90}>
@@ -79,6 +85,7 @@ export default function ProjectsPage() {
           </Async>
         </Panel>
         <Panel title="New project">
+          <p className="mb-3 text-sm text-muted" data-testid="create-project-note">{CREATE_PROJECT_NOTE}</p>
           <form onSubmit={create} className="flex flex-col gap-3">
             <Field label="Name"><input className={inputClass} value={name} onChange={e => setName(e.target.value)} required maxLength={200} name="project_name" /></Field>
             <Button type="submit" variant="primary" disabled={busy || !name.trim()}>Create project</Button>

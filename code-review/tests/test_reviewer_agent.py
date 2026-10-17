@@ -108,6 +108,7 @@ def _discount_script() -> list:
     ]
 
 
+@pytest.mark.owasp_llm("LLM01:2025")
 def test_discount_rounding_defect_validated_with_multi_turn_trace(tmp_path: Path) -> None:
     sc = discount_rounding(tmp_path)
     source = RepoSource(sc.repo)
@@ -170,6 +171,7 @@ def test_discount_rounding_defect_validated_with_multi_turn_trace(tmp_path: Path
     assert tree_digest(source) == before  # no writes to the original repository
 
 
+@pytest.mark.owasp_llm("LLM05:2025")
 def test_failing_test_against_unconfirmed_rule_stays_hypothesis(tmp_path: Path) -> None:
     sc = discount_rounding(tmp_path)
     cap_test = (
@@ -511,6 +513,7 @@ def test_payments_lite_refund_bound_reproduced_then_repaired(tmp_path: Path) -> 
     assert tree_digest(source) == before
 
 
+@pytest.mark.owasp_llm("LLM06:2025")
 def test_repair_that_only_tampers_produces_no_patch(tmp_path: Path) -> None:
     sc, host, source, outcome = _pl_review(tmp_path)
     [finding] = outcome.result.findings
@@ -535,6 +538,7 @@ def test_repair_that_only_tampers_produces_no_patch(tmp_path: Path) -> None:
     assert host.findings()[0].status is FindingStatus.validated
 
 
+@pytest.mark.owasp_llm("LLM06:2025")
 def test_repair_requires_approved_remediation_for_that_finding(tmp_path: Path) -> None:
     sc, host, source, outcome = _pl_review(tmp_path)
     [finding] = outcome.result.findings
@@ -721,6 +725,7 @@ def test_live_run_quotes_are_accepted_at_their_spans(
         ws.close()
 
 
+@pytest.mark.owasp_llm("LLM09:2025")
 def test_off_by_two_anchor_is_reanchored_and_far_or_fake_quotes_still_rejected(
     tmp_path: Path,
 ) -> None:
@@ -801,3 +806,152 @@ def test_live_style_security_concern_reaches_scout_and_matches_answer_key(tmp_pa
     assert sec.title.startswith("[CWE-639]")
     rep = score(outcome, PAYMENTS_LITE.parent / "labels.yaml").to_json()
     assert rep["security_handoffs_matched"] == ["fnd_planted_authz"]
+
+
+def _with_cwe(script: list, cwe: str) -> list:
+    """Same scripted review, but the submitted finding proposes ``weakness_class``."""
+    submit = script[-1]
+
+    def patched(req):
+        resp = submit(req)
+        for block in resp["content"]:
+            if block.get("type") == "tool_use":
+                block["input"]["findings"][0]["weakness_class"] = cwe
+        return resp
+
+    return [*script[:-1], patched]
+
+
+@pytest.mark.parametrize("cwe,recorded", [("CWE-841", True), ("CWE-840", False)])
+def test_reviewer_cwe_is_catalog_validated_end_to_end(
+    tmp_path: Path, cwe: str, recorded: bool
+) -> None:
+    sc = payments_lite(tmp_path)
+    host = InMemoryHost(fake(_with_cwe(pl_review_script(sc), cwe)))
+    outcome = ReviewerAgentRunner(host, RepoSource(sc.repo, subdir="target")).review(
+        make_request(host, sc)
+    )
+    [finding] = outcome.result.findings
+    assert (
+        finding.status is FindingStatus.validated
+    )  # a classification never decides or voids the finding
+    if recorded:
+        assert finding.standards is not None and finding.standards.cwe is not None
+        assert finding.standards.cwe.id == "CWE-841"
+        assert finding.standards.classified_by == "agent:reviewer"
+        assert any(e.kind is EvidenceKind.test_run for e in finding.standards.cwe.evidence)
+        assert not any("CWE not recorded" in r for r in outcome.rejected)
+    else:
+        assert finding.standards is None
+        assert any("CWE not recorded" in r and "CWE-840" in r for r in outcome.rejected)
+
+
+def test_functional_verification_inputs_from_persisted_records(tmp_path: Path) -> None:
+    """Srihith's functional-Verify design (c): the inputs Verify needs come straight from
+    what propose_repair recorded, integrity-checked; tampering is refused."""
+    from code_review.api import functional_verification_inputs
+
+    sc, host, source, outcome = _pl_review(tmp_path)
+    [finding] = outcome.result.findings
+    tests = load_test_sources(host, finding)
+    host.transport = fake(pl_repair_script(tests[0].path))
+    rep = ReviewerAgentRunner(host, source).repair(finding, host.approve(finding.id), tests)
+    assert rep.patch is not None
+
+    inp = functional_verification_inputs(host, rep.patch)
+    assert inp.unpatched_commit == sc.head_sha == inp.finding.commit_sha
+    assert "already + body.amount > p.amount" in inp.diff_text
+    assert [t.path for t in inp.generated_tests] == rep.patch.tests_added
+    assert inp.protected_paths == [] and inp.baseline_failing == []
+
+    with pytest.raises(ReviewError, match="diff_sha256"):
+        functional_verification_inputs(host, rep.patch.model_copy(update={"diff_sha256": "0" * 64}))
+    with pytest.raises(ReviewError, match="tests_added"):
+        functional_verification_inputs(
+            host, rep.patch.model_copy(update={"tests_added": ["target/tests/other.py"]})
+        )
+
+
+def test_authorization_handoff_carries_catalog_validated_cwe(tmp_path: Path) -> None:
+    """The IDOR handed to Scout keeps the reviewer's CWE-639 proposal, catalog-validated."""
+    sc = payments_lite(tmp_path)
+    app = (sc.repo / "target/payments_lite/app.py").read_text()
+    doc = line_of(app, "A customer can only read their own profile, payments and refunds.")
+    handler = line_of(app, "def get_payment(")
+    script = [
+        call(
+            "write_test",
+            name="payment_owner_only",
+            content=IDOR_TEST,
+            claim_key="c_own",
+            rationale="ownership",
+        ),
+        lambda req: call("run_tests", target="generated", test_id=written_ids(req)[-1]),
+        lambda req: _submit(
+            summary="GET /payments/{id} does not check ownership.",
+            claims=[
+                {
+                    "key": "c_own",
+                    "statement": "A customer can only read their own payments.",
+                    "proposed_status": "confirmed",
+                    "citations": [
+                        {
+                            "source_kind": "docstring",
+                            "path": "target/payments_lite/app.py",
+                            "start_line": doc,
+                            "end_line": doc,
+                        }
+                    ],
+                }
+            ],
+            findings=[
+                {
+                    "title": "GET /payments/{payment_id} returns other customers' payments",
+                    "claim_key": "c_own",
+                    "test_id": written_ids(req)[-1],
+                    "weakness_class": "CWE-639",
+                    "suspected_spans": [
+                        {
+                            "source_kind": "code",
+                            "path": "target/payments_lite/app.py",
+                            "start_line": handler,
+                            "end_line": handler + 10,
+                        }
+                    ],
+                    "severity": "high",
+                    "rationale": "no require_owner call",
+                }
+            ],
+        ),
+    ]
+    host = InMemoryHost(fake(script))
+    outcome = ReviewerAgentRunner(host, RepoSource(sc.repo, subdir="target")).review(
+        make_request(host, sc)
+    )
+    [sec] = outcome.security_handoffs
+    assert sec.status is FindingStatus.hypothesis and sec.standards is not None
+    assert sec.standards.cwe is not None and sec.standards.cwe.id == "CWE-639"
+    assert any(e.kind is EvidenceKind.test_run for e in sec.standards.cwe.evidence)
+    assert not any("CWE not recorded" in r for r in outcome.rejected)
+
+
+def test_generated_test_paths_are_repo_relative_contract(tmp_path: Path) -> None:
+    """Contract relied on by security_agents' functional Verify (Alan, 20261017T080558Z):
+    generated test paths are repository-relative INCLUDING the project subdir (``target/``),
+    in GeneratedTest, the cited bundle, PatchCandidate.tests_added and FunctionalVerifyInputs."""
+    from code_review.api import functional_verification_inputs
+
+    sc, host, source, outcome = _pl_review(tmp_path)
+    assert source.subdir == "target"
+    [gt] = outcome.result.generated_tests
+    assert gt.path.startswith("target/tests/generated/") and not gt.path.startswith("/")
+    [finding] = outcome.result.findings
+    tests = load_test_sources(host, finding)
+    assert [t.path for t in tests] == [gt.path]
+    host.transport = fake(pl_repair_script(tests[0].path))
+    rep = ReviewerAgentRunner(host, source).repair(finding, host.approve(finding.id), tests)
+    assert rep.patch is not None and rep.patch.tests_added == [gt.path]
+    assert all(p.startswith("target/") for p in rep.patch.files_changed)
+    inp = functional_verification_inputs(host, rep.patch)
+    assert [t.path for t in inp.generated_tests] == [gt.path]
+    assert "a/target/payments_lite/app.py" in inp.diff_text

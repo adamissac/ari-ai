@@ -25,7 +25,7 @@ Status: `implemented_tested` = control present and the listed tests exercise it;
 | LLM04:2025 Data and Model Poisoning | `gap` | `unsupported` |
 | LLM05:2025 Improper Output Handling | `partial` | `unsupported` |
 | LLM06:2025 Excessive Agency | `partial` | `unsupported` |
-| LLM07:2025 System Prompt Leakage | `gap` | `unsupported` |
+| LLM07:2025 System Prompt Leakage | `partial` | `unsupported` |
 | LLM08:2025 Vector and Embedding Weaknesses | `gap` | `unsupported` |
 | LLM09:2025 Misinformation | `partial` | `unsupported` |
 | LLM10:2025 Unbounded Consumption | `partial` | `unsupported` |
@@ -39,10 +39,12 @@ Status: `implemented_tested` = control present and the listed tests exercise it;
 **Controls (owner):**
 
 - backend.llm.LLMGateway.run_tool_loop: `backend/backend/llm.py::run_tool_loop` (srihith)
+- code_review.intent.scan_injection + untrusted delimiting: `code-review/code_review/intent.py::scan_injection` (sai)
 
 **Executable tests:**
 
 - `tests/security/test_owasp_llm_controls.py::test_injected_request_cannot_grant_tool_permission`
+- `tests/security/test_owasp_llm_reviewer.py::test_reviewer_change_text_is_data_and_cannot_confirm_intent`
 
 **Limitations:** Tool denial does not prove the model cannot be manipulated within its allowed capabilities.
 
@@ -57,10 +59,12 @@ Status: `implemented_tested` = control present and the listed tests exercise it;
 **Controls (owner):**
 
 - backend.redaction.redact; backend.llm.LLMGateway.create_message: `backend/backend/llm.py::create_message` (srihith)
+- generated tests cannot add credentials; sandbox env scrubbed: `code-review/code_review/tools.py::ReviewerToolbox` (sai)
 
 **Executable tests:**
 
 - `tests/security/test_owasp_llm_controls.py::test_credentials_redacted_before_provider_call`
+- `tests/security/test_owasp_llm_reviewer.py::test_reviewer_generated_tests_cannot_introduce_credentials`
 
 **Limitations:** Pattern redaction cannot detect every secret or prevent every cross-tenant disclosure.
 
@@ -103,10 +107,12 @@ Status: `implemented_tested` = control present and the listed tests exercise it;
 **Controls (owner):**
 
 - backend.llm.LLMGateway.run_tool_loop: `backend/backend/llm.py::run_tool_loop` (srihith)
+- strict ReviewerReport; statuses decided from executed tests: `code-review/code_review/agent.py::_adjudicate` (sai)
 
 **Executable tests:**
 
 - `tests/security/test_owasp_llm_controls.py::test_invalid_structured_output_is_rejected`
+- `tests/security/test_owasp_llm_reviewer.py::test_reviewer_output_is_schema_strict`
 
 **Limitations:** Schema validation does not prove output semantics, safe rendering, or safe tool effects.
 
@@ -121,10 +127,12 @@ Status: `implemented_tested` = control present and the listed tests exercise it;
 **Controls (owner):**
 
 - backend.llm.LLMGateway.run_tool_loop: `backend/backend/llm.py::run_tool_loop` (srihith)
+- write-scoped reviewer tools, generated-test AST policy, approval-gated repair: `code-review/code_review/tools.py::ReviewerToolbox` (sai)
 
 **Executable tests:**
 
 - `tests/security/test_owasp_llm_controls.py::test_injected_request_cannot_grant_tool_permission`
+- `tests/security/test_owasp_llm_reviewer.py::test_reviewer_tools_cannot_edit_tests_config_or_run_arbitrary_code`
 
 **Limitations:** Allowed tools require separate scope and least-privilege enforcement; no comprehensive assessment claimed.
 
@@ -132,11 +140,19 @@ Status: `implemented_tested` = control present and the listed tests exercise it;
 
 ## LLM07:2025 System Prompt Leakage
 
-**Status:** `gap`
+**Status:** `partial`
 
 **Attack surfaces:** System Prompt Leakage.
 
-**Limitations:** System prompts must never contain secrets; extraction resistance is unproven.
+**Controls (owner):**
+
+- security_agents.runtime.spec.AgentSpec.system_prompt: `security-agents/security_agents/runtime/spec.py::AgentSpec` (alan)
+
+**Executable tests:**
+
+- `tests/security/test_owasp_llm_controls.py::test_system_prompts_hold_no_secret_shaped_values`
+
+**Limitations:** Absence of secret-shaped literals in system prompts is not extraction resistance; a model can still be induced to reveal prompt text.
 
 **Customer-application assessment:** `unsupported`. No customer-application LLM risk scanning is claimed.
 
@@ -159,10 +175,12 @@ Status: `implemented_tested` = control present and the listed tests exercise it;
 **Controls (owner):**
 
 - shared.standards.StandardMapping._consistent: `shared/shared/standards.py::_consistent` (srihith)
+- claims need verified citations; confirmed needs corroboration: `code-review/code_review/intent.py::adjudicate_claims` (sai)
 
 **Executable tests:**
 
 - `tests/security/test_owasp_llm_controls.py::test_fabricated_standard_cannot_be_used_as_fact`
+- `tests/security/test_owasp_llm_reviewer.py::test_reviewer_rejects_fabricated_citations_and_unbacked_confirmation`
 
 **Limitations:** Catalog validation prevents fabricated IDs, not false interpretations or unsupported findings.
 

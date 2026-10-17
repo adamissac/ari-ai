@@ -25,7 +25,13 @@ from shared.ids import (
     ValidationId,
     VerificationId,
 )
-from shared.standards import CVSSAssessment, DefensiveMapping, FindingStandards, StandardMapping
+from shared.standards import (
+    CVSS31Assessment,
+    CVSSAssessment,
+    DefensiveMapping,
+    FindingStandards,
+    StandardMapping,
+)
 
 
 class FindingKind(StrEnum):
@@ -66,6 +72,9 @@ class SeverityFactors(StrictModel):
 
 class SeverityAssessment(StrictModel):
     cvss: CVSSAssessment | None = None
+    cvss_v31: CVSS31Assessment | None = Field(
+        default=None, description="CVSS v3.1 base score only; sets the platform level (ADR-0012)"
+    )
     level: SeverityLevel
     factors: SeverityFactors
     rationale: ShortText
