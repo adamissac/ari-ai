@@ -4,31 +4,13 @@ import Link from 'next/link';
 import { useState, type CSSProperties } from 'react';
 import { BRAND_HEADLINE, BRAND_HEADLINE_REST, BRAND_NAME } from '@/components/brand';
 import { Reveal } from '@/components/reveal';
+import { HowItWorks, ProblemScene, ProofStats, Walkthrough } from '@/components/story';
 import { HeroStage, useLoopCursor } from '@/components/hero';
 import { IntroLoader } from '@/components/intro-loader';
 import { UserBar } from '@/components/user-bar';
 import { RollText } from '@/components/ui';
 
-const PILLARS = [
-  { n: '01', title: 'Does it work as intended?', body: 'The Reviewer agent builds intent evidence from specs, tests and the change, then reproduces functional defects with executed tests.' },
-  { n: '02', title: 'Can an attacker exploit it?', body: 'Seven separate security agents — Scout, Probe, Trace, Diagnose, Patch, Verify, Fortify — investigate inside an approved sandbox scope.' },
-  { n: '03', title: 'Does it stay secure?', body: 'Signed GitHub events trigger durable re-assessment. A Double DQN policy trained in simulation offers labelled decision support.' },
-];
 const LOOP = ['Understand', 'Review', 'Attack safely', 'Diagnose', 'Repair', 'Verify', 'Monitor'];
-const STEPS: Record<string, string> = {
-  Understand: 'Code intelligence indexes the repository and extracts what the software is supposed to do from specs, docs, tests and history.',
-  Review: 'The Reviewer checks each change against that intent and writes tests that reproduce functional defects on the real code.',
-  'Attack safely': 'Scout maps the attack surface and Probe tests it, only inside an approved scope and an isolated sandbox.',
-  Diagnose: 'Trace follows the evidence to the vulnerable path and Diagnose explains the root cause, with source spans.',
-  Repair: 'After a human approves remediation, Patch proposes the smallest fix in an isolated copy of the code.',
-  Verify: 'Verify replays independent tests on a fresh checkout. A finding closes only when executed tests agree.',
-  Monitor: 'Signed GitHub events re-run the assessment as code changes. Fortify hardens what was learned.',
-};
-const PRINCIPLES = [
-  { title: 'Executed tests decide', body: 'No model output counts as proof, including ours. Statuses change only when real tests run and agree.' },
-  { title: 'Safety boundaries are code', body: 'Authorized scopes, sandbox limits and human approval gates are enforced deterministically, not by prompts.' },
-  { title: 'Every claim has evidence', body: 'Findings cite source spans, test reports and transcripts that are persisted and shown as they were recorded.' },
-];
 
 const i = (n: number) => ({ '--i': n }) as CSSProperties;
 
@@ -73,55 +55,10 @@ export default function HomePage() {
       <div className="hero-cover pt-6">
         <UserBar />
 
-        <section aria-labelledby="what-title" className="py-10">
-          <p className="label-mono text-brand">What {BRAND_NAME} answers</p>
-          <h2 id="what-title" className="display mt-3 max-w-3xl text-3xl font-semibold md:text-4xl">Three questions about every change.</h2>
-          <div className="mt-8 grid gap-3 md:grid-cols-3">
-            {PILLARS.map((p, n) => (
-              <Reveal key={p.n} delay={n * 90}>
-                <div className="group h-full rounded-xl border border-line bg-panel p-5 transition-[border-color,box-shadow,transform] duration-300 hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-[0_12px_28px_-16px_rgba(194,69,45,0.45)]">
-                  <p className="label-mono text-brand">{p.n}</p>
-                  <p className="mt-3 text-lg font-semibold tracking-tight">{p.title}</p>
-                  <p className="mt-2 text-sm text-muted">{p.body}</p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </section>
-
-        <section id="how" aria-labelledby="how-title" className="scroll-mt-20 py-10">
-          <p className="label-mono text-brand">How it works</p>
-          <h2 id="how-title" className="display mt-3 max-w-3xl text-3xl font-semibold md:text-4xl">From a change to a verified fix, in seven steps.</h2>
-          <ol className="mt-8 grid gap-px overflow-hidden rounded-xl border border-line bg-line md:grid-cols-2 lg:grid-cols-4">
-            {LOOP.map((step, n) => (
-              <li key={step} className="bg-panel">
-                <Reveal delay={(n % 4) * 80} className="h-full p-5">
-                  <p className="label-mono text-faint">{String(n + 1).padStart(2, '0')}</p>
-                  <p className="mt-2 text-base font-semibold tracking-tight">{step}</p>
-                  <p className="mt-1.5 text-sm text-muted">{STEPS[step]}</p>
-                </Reveal>
-              </li>
-            ))}
-            <li className="hidden bg-panel-2 p-5 lg:flex lg:items-end">
-              <p className="label-mono text-brand">Then the loop starts again on the next change.</p>
-            </li>
-          </ol>
-        </section>
-
-        <section aria-labelledby="proof-title" className="py-10">
-          <p className="label-mono text-brand">Proof, not promises</p>
-          <h2 id="proof-title" className="display mt-3 max-w-3xl text-3xl font-semibold md:text-4xl">Built so you can check every answer.</h2>
-          <div className="mt-8 grid gap-3 md:grid-cols-3">
-            {PRINCIPLES.map((p, n) => (
-              <Reveal key={p.title} delay={n * 90}>
-                <div className="h-full border-l-2 border-brand pl-4">
-                  <p className="text-lg font-semibold tracking-tight">{p.title}</p>
-                  <p className="mt-2 text-sm text-muted">{p.body}</p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </section>
+        <ProblemScene />
+        <HowItWorks />
+        <Walkthrough />
+        <ProofStats />
 
         <Reveal className="my-10">
           <section aria-labelledby="start-title" className="hero-ink rounded-2xl px-6 py-12 md:px-12">
