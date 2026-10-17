@@ -1,125 +1,33 @@
-# Devin QA Integration Tests
+# QA entry points
 
-This directory contains isolated QA integration tests and demo reliability tools for the hackatl-agentic-security project.
+These scripts run the repository’s existing checks in the currently selected Python environment. Set up that environment using the root README first. They do not install packages, load `.env`, call a live model, merge code, or deploy. Test subprocesses force `RUN_LIVE_LLM_EVAL=0`.
 
-## Purpose
-
-These tests are designed to:
-- Verify the security assessment workflow end-to-end
-- Verify the simulated RL defense environment
-- Verify frontend/backend integration
-- Provide a demo preflight checker
-- Report on overall readiness for HackATL demonstration
-
-## Test Scripts
-
-### 1. `preflight_check.py`
-Checks whether the demonstration environment is ready. Performs read-only checks against the system.
-
-**Usage:**
-```bash
-python scripts/devin_qa/preflight_check.py
-```
-
-**Checks:**
-- Environment (Python, UV, Node.js, Docker)
-- Dependencies (required files, uv.lock)
-- Backend (import, API health)
-- Frontend (build, server)
-- Database (.env configuration)
-- Configuration (API keys, secrets)
-
-### 2. `test_security_workflow.py`
-Tests the security assessment workflow against the authorized payments-lite lab target.
-
-**Usage:**
-```bash
-python scripts/devin_qa/test_security_workflow.py
-```
-
-**Tests:**
-- Backend startup
-- Shared contracts validity
-- Backend test suite
-- Security agents test suite
-- payments-lite target structure
-- Code intelligence tests
-- Code review tests
-- Standards catalog validity
-
-### 3. `test_rl_workflow.py`
-Tests the simulated Double DQN cybersecurity defense environment.
-
-**Usage:**
-```bash
-python scripts/devin_qa/test_rl_workflow.py
-```
-
-**Tests:**
-- RL environment structure
-- RL imports
-- RL test suite
-- RL contract types
-- RL backend integration
-- RL honesty labeling
-
-### 4. `test_frontend_integration.py`
-Tests the integration between the frontend and backend API.
-
-**Usage:**
-```bash
-python scripts/devin_qa/test_frontend_integration.py
-```
-
-**Tests:**
-- Frontend structure
-- Frontend dependencies
-- TypeScript compilation
-- Frontend linting
-- Frontend unit tests
-- Transport type generation
-
-### 5. `run_all_qa_tests.py`
-Master runner that executes all QA test suites in sequence.
-
-**Usage:**
-```bash
-python scripts/devin_qa/run_all_qa_tests.py
-```
-
-## Running the Preflight Checker
-
-Before a demonstration, run the preflight checker to verify the environment:
+From the repository root:
 
 ```bash
-python scripts/devin_qa/preflight_check.py
+.venv/bin/python scripts/devin_qa/preflight_check.py --json
+.venv/bin/python scripts/devin_qa/test_security_workflow.py
+.venv/bin/python scripts/devin_qa/test_rl_workflow.py
+.venv/bin/python scripts/devin_qa/test_frontend_integration.py --browser
+.venv/bin/python scripts/devin_qa/run_all_qa_tests.py --browser
 ```
 
-This will report:
-- **PASS**: Check succeeded
-- **FAIL**: Check failed (must fix before demo)
-- **WARN**: Check succeeded with limitations (review before demo)
+The scripts resolve their working directories relative to their own files. Invoking an absolute script path works from another directory. The master runner preserves the selected Python interpreter.
 
-## Scope and Boundaries
+| Exit | Meaning |
+|---|---|
+| 0 | Every selected check passed |
+| 1 | At least one selected check failed, including command errors and timeouts |
+| 2 | Checks are incomplete because prerequisites or selected integration checks were unavailable |
 
-These tests:
-- Are **non-invasive** and do not modify application functionality
-- Run in isolated directories (`scripts/devin_qa/`)
-- Use only repository-approved targets (payments-lite)
-- Do not modify `frontend/src/**`, `backend/app/**`, `rl/**`, `lab/**`, `shared/**`, or existing test files
-- Do not change authentication, security logic, or RL models
-- Respect the ownership boundaries defined in `coordination/OWNERSHIP.md`
+Failure takes precedence over incompleteness. Skips never become passes. Underlying pytest suites print their own optional skips; a passing suite does not prove those skipped cases ran.
 
-## Ownership
+The preflight is read-only: it checks Python/package/executable availability, repository files, and a GET to `/readyz` at `--api-url` (default `http://127.0.0.1:8000`). A discovered package or executable does not prove imports, Docker daemon health, sandbox isolation, provider credentials, or external GitHub deliveries. Missing local services report incomplete. A malformed readiness response or a service reporting false is a failure. This check never declares the whole demo ready.
 
-These QA tests are owned by the Devin QA engineer and are separate from the six developer implementation lanes:
-- Adam (RL)
-- Alan (Security agents)
-- Sarosh (Code intelligence)
-- Sai (Code review)
-- Vihaan (Frontend)
-- Srihith (Backend and monitoring)
+The security entry point executes backend, monitoring, reviewer and intelligence tests, checks generated contracts/catalog integrity, and runs the security-agent suite in a separate process to avoid test-package name collisions. The suites use owned lab fixtures, scripted providers and the configured test database.
 
-## Reporting
+The RL entry point runs `rl-defense/tests` only when the optional RL environment is installed. Simulation evidence does not demonstrate live defense. Missing RL dependencies return 2.
 
-Test results and readiness reports are documented in `docs/devin_qa/READINESS_REPORT.md`.
+The frontend entry point requires installed dependencies in both `frontend` and `frontend/transport`; it builds transport, checks TypeScript and ESLint, and runs Vitest. `--browser` also builds Next and starts the actual API/PostgreSQL/worker/browser test stack. Without `--browser`, browser integration is explicitly incomplete. Set `E2E_BROWSER_CHANNEL=chrome` to use an installed Chrome with a temporary test profile. Builds write their usual generated outputs; test suites create temporary repositories/databases. Only the preflight claims read-only behavior.
+
+Runner error/skip/readiness semantics are exercised by `python -m unittest discover -s tests/qa -v` and `.github/workflows/qa-tools.yml`. Product integration remains covered by the existing backend, security-agents, frontend and container workflows.
