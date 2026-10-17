@@ -460,6 +460,34 @@ def platform_facts(
     return PlatformFacts.model_validate(facts.model_dump(mode="json")), provenance
 
 
+def verify_rl_checkpoint(settings: Any) -> str:
+    """Hash the checkpoint and compare it with the operator's pin before it is loaded.
+
+    A checkpoint is a pickle, so the pin is the integrity root, not the manifest beside the
+    file. Outside development/test a pin is required.
+    """
+    import hashlib
+
+    path = settings.rl_checkpoint_path
+    digest = hashlib.sha256()
+    with path.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            digest.update(chunk)
+    actual = digest.hexdigest()
+    pinned = settings.rl_checkpoint_sha256
+    if pinned is None and not settings.is_dev:
+        raise PermanentJobError(
+            ErrorCode.SUBSYSTEM_UNAVAILABLE,
+            "RL_CHECKPOINT_SHA256 must pin the checkpoint outside development/test",
+        )
+    if pinned is not None and actual != pinned:
+        raise PermanentJobError(
+            ErrorCode.VALIDATION_FAILED,
+            f"RL checkpoint hash mismatch: file {actual[:12]}… != pinned {pinned[:12]}…",
+        )
+    return actual
+
+
 @handler("rl_recommend")
 def rl_recommend(ctx: JobContext) -> dict[str, Any]:
     settings = get_settings()
@@ -468,6 +496,7 @@ def rl_recommend(ctx: JobContext) -> dict[str, Any]:
         raise PermanentJobError(
             ErrorCode.SUBSYSTEM_UNAVAILABLE, "RL_CHECKPOINT_PATH not set or missing"
         )
+    checkpoint_sha256 = verify_rl_checkpoint(settings)
     try:
         from rl_defense import api as rl_api
     except ModuleNotFoundError as exc:
@@ -480,6 +509,7 @@ def rl_recommend(ctx: JobContext) -> dict[str, Any]:
             facts = PlatformFacts.model_validate(ctx.job.payload["facts"])
         else:
             facts, provenance = platform_facts(conn, project_id)
+    provenance = {**provenance, "checkpoint_sha256": checkpoint_sha256}
     local_facts = rl_api.PlatformFacts.model_validate(facts.model_dump(mode="json"))
     runner = rl_api.load_policy(settings.rl_checkpoint_path)
     rec = DefenseRecommendation.model_validate(
