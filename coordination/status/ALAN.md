@@ -173,3 +173,9 @@ UNVERIFIED: NVD terms page (Cloudflare challenge). All runs above are replay or 
 ### 2026-10-17 — QA-002 M7 runner continuation
 - Fixed the remaining Devin M7 runner's uv dependency/shared-db lifecycle operations and moved generated output into ignored .dev/qa (overridable). Exact current interpreter is retained; live calls forced off.
 - QA runner13 tests passed; actual M7 backend workflow passed against PostgreSQL. Wrapper correctly exits2 for unexecuted browser stage. Full current security451 passed/18 skipped and standards190 passed earlier this session.
+
+### 2026-10-17 — Codex application integration sprint
+- Isolated checkout /private/tmp/omen-codex-integration, exact base37b0920c37d0460ecf988126693e79761478a888. Claude security-agent lane left untouched.
+- API-RETRY-001 checkpoint d3320be: PostgreSQL transaction serialization and project-bound request digest prevent duplicate assessment starts and wrong-project cached acceptance. Before-fix reproduction2 failed; after-fix focused16 passed.
+- Required suites: root420 passed/9 optional skips; backend79 passed/5 optional skips. Lint/format/mypy/contracts/links clean. Actual PostgreSQL/handlers/jobs; scripted providers. No new browser/live/Docker proof.
+- PR for review only, no automatic merge. Compatibility note: old cached keys conflict after upgrade (fresh keys for new actions). Existing raw/stored patch hash issue155 remains in Claude's lane.
