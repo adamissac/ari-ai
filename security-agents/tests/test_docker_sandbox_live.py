@@ -125,3 +125,80 @@ def test_payments_lite_suite_runs_inside_the_hardened_container(tmp_path):
     result = DockerSandboxDriver().run(spec)
     assert result.exit_code == 0, result.stdout[-2000:] + result.stderr[-2000:]
     assert " passed" in result.stdout and " failed" not in result.stdout
+
+
+@pytest.fixture(scope="module")
+def payments_intel(tmp_path_factory):
+    from security_agents.contracts import new_id
+    from security_agents.intel import LocalIntel
+    from security_agents.sandbox.workspace import SnapshotHandle, copy_tree
+
+    fixture = Path(__file__).resolve().parents[2] / "examples" / "payments-lite"
+    root = tmp_path_factory.mktemp("docker_checks")
+    staging = root / "staging"
+    copy_tree(fixture / "target", staging)
+    shutil.copy2(fixture / "build_recipe.json", staging / "build_recipe.json")
+    snapshot = SnapshotHandle.from_directory(
+        staging, root / "snapshot", snapshot_id=new_id("snp"), repo_id="rep_payments_lite"
+    )
+    return LocalIntel(snapshot)
+
+
+def _docker_check(intel, template_ref: str, params: dict) -> dict:
+    from datetime import UTC, datetime
+
+    from security_agents.checks.library import default_library
+    from security_agents.contracts import AgentName
+    from security_agents.scope_guard import Decision
+    from security_agents.tools import CheckRunner, ToolContext, recipe_from_snapshot
+
+    runner = CheckRunner(
+        driver=DockerSandboxDriver(),
+        library=default_library(),
+        workspace_provider=lambda _ctx: intel.snapshot.root,
+        recipe_provider=recipe_from_snapshot(intel),
+    )
+    ctx = ToolContext(
+        assessment_id="asm_docker",
+        agent=AgentName.PROBE,
+        run_id="run_docker",
+        step_key="step",
+        read_root=intel.snapshot.root,
+    )
+    ctx.artifacts["last_scope_decision"] = Decision(
+        allowed=True, reason_code="OK", scope_id="scp_docker", evaluated_at=datetime.now(UTC)
+    )
+    return runner.run(ctx, template_ref, "tgt_payments_lite", params)
+
+
+def test_ownership_check_in_docker_flags_the_planted_route(payments_intel):
+    result = _docker_check(
+        payments_intel,
+        "access_control.ownership@1",
+        {"route_id": "payment_detail", "owner_identity": "alice", "other_identity": "bob"},
+    )
+    assert result["matches_expectation"] is False, result
+    assert result["network"] == "target-only"
+
+
+def test_ownership_check_in_docker_clears_the_lookalike_route(payments_intel):
+    result = _docker_check(
+        payments_intel,
+        "access_control.ownership@1",
+        {"route_id": "customer_detail", "owner_identity": "alice", "other_identity": "bob"},
+    )
+    assert result["matches_expectation"] is True, result
+
+
+def test_bounds_check_in_docker_flags_the_planted_defect(payments_intel):
+    result = _docker_check(
+        payments_intel,
+        "input_validation.bounds@1",
+        {
+            "route_id": "create_refund",
+            "read_route_id": "payment_detail",
+            "owner_identity": "alice",
+            "over_by": "1.00",
+        },
+    )
+    assert result["matches_expectation"] is False, result
