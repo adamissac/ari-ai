@@ -642,3 +642,45 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 
 /* Current section stays bare; underline is visible without a card or border. */
 .site-header nav a[aria-current="page"] { text-decoration: underline; text-underline-offset: 4px; }
+
+/* Quiet technical surfaces: clear roles and recorded evidence before decoration. */
+.replay-brief { display:flex; justify-content:space-between; gap:2rem; padding:28px; border:1px solid #b9d1d3; border-radius:16px; background:#dbecee; color:#102a2e; }
+.network-eyebrow { font-family:var(--font-mono); font-size:10px; letter-spacing:.12em; color:#42656a; }
+.replay-brief h3 { font-size:clamp(23px,3vw,36px); line-height:1.12; letter-spacing:-.04em; margin:12px 0; font-weight:500; }
+.replay-brief p { max-width:34rem; font-size:13px; line-height:1.7; color:#42656a; }
+.replay-keys { display:flex; flex-direction:column; justify-content:center; gap:14px; max-width:290px; font-size:12px; }
+.replay-keys span { display:flex; align-items:center; gap:9px; }.replay-keys small { line-height:1.6; color:#42656a; }
+.replay-keys i { width:9px; height:9px; border-radius:2px; flex-shrink:0; }.key-attacker { background:#b94d42; }.key-defender { background:#387c9b; }
+.net-map { background:#0a2025; border:1px solid #29454a; border-radius:14px; }
+.network-heading { padding:16px 20px; border-bottom:1px solid #29454a; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; color:#a8c6ca; font-size:11px; }
+.network-heading .network-eyebrow { color:#a8c6ca; }
+.network-zone { fill:#7c9fa5; font:9px var(--font-mono); letter-spacing:2px; }
+.network-boundary { stroke:#42636a; stroke-dasharray:3 7; opacity:.6; }
+.network-card { fill:#122f35; stroke:#3b5960; stroke-width:1; }
+.net-node[data-selected] .network-card,.net-node:focus-visible .network-card { stroke:#c7e9ed; stroke-width:2; }
+.net-node[data-signal="high"] .network-card { stroke:#d78272; fill:#302a29; }
+.net-body { fill:#183c43; stroke:#5c8188; }.net-internet .net-body { fill:#183c43; }
+.net-node[data-isolated] .net-body { fill:#27393b; }.net-node[data-signal="high"] .net-body { fill:#553731; }
+.net-node[data-selected] .net-ring { stroke:#c7e9ed; }
+.net-edge { stroke:#729ba3; }.net-edge-flash { stroke:#a9dce6; }.net-label { fill:#ecf5f5; font-weight:500; }
+.net-sub { fill:#89afb5; font-size:8px; letter-spacing:.6px; }
+.network-defender rect { fill:#184e64; stroke:#76bfd8; }.network-defender text { fill:#d9f4fc; font:9px var(--font-mono); }
+.network-intruder rect { fill:#5c302d; stroke:#dd8c7b; }.network-intruder text { fill:#ffe5df; font:9px var(--font-mono); }
+.net-truth { stroke:#dd8c7b; }.net-truth-label { fill:#dd8c7b; font-size:8px; }
+.agent-journey { padding:24px; border-radius:16px; border:1px solid var(--color-line); background:linear-gradient(135deg,#dfedef66,transparent); }
+.commit-workspace { display:grid; gap:28px; }.commit-intro { padding:34px; background:#dbecee; border:1px solid #b9d1d3; border-radius:16px; color:#102a2e; }
+.commit-intro h1 { margin:14px 0; font-size:clamp(28px,4vw,46px); line-height:1.1; font-weight:500; letter-spacing:-.045em; }.commit-intro p:last-child { max-width:43rem; color:#42656a; line-height:1.7; font-size:14px; }
+.commit-repository { border:1px solid var(--color-line); border-radius:16px; overflow:hidden; }.commit-repository>header { padding:20px 24px; border-bottom:1px solid var(--color-line); }.commit-repository h2 { margin-top:6px; font-weight:600; }
+.commit-columns { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); }.commit-columns>div { padding:24px; }.commit-story { border-left:1px solid var(--color-line); background:var(--color-panel); }.commit-story h3 { margin:12px 0; font-size:22px; letter-spacing:-.03em; }
+.commit-chapters { display:grid; gap:22px; margin:26px 0; }.commit-chapters li { display:flex; gap:16px; }.commit-chapters b { font:11px var(--font-mono); color:#527a81; padding-top:3px; }.commit-chapters strong,.commit-chapters small { display:block; }.commit-chapters strong { font-size:13px; }.commit-chapters small { font-size:12px; color:var(--color-muted); line-height:1.65; margin-top:4px; }
+.commit-run { display:flex; align-items:center; gap:10px; padding:16px 0; border-top:1px solid var(--color-line); font-size:13px; }.commit-run>span:first-child { flex:1; }.commit-run small { display:block; font-size:10px; color:var(--color-muted); margin-top:5px; }.commit-analyze { display:flex; justify-content:space-between; margin-top:20px; background:#102f35; color:#e6f3f4; border-radius:8px; padding:14px 18px; font-size:13px; }
+@media(max-width:760px) { .replay-brief { flex-direction:column; padding:20px; gap:16px; }.replay-keys { max-width:none; }.commit-columns { grid-template-columns:1fr; }.commit-story { border-left:0; border-top:1px solid var(--color-line); }.commit-intro { padding:24px; } }
+.replay-stage-grid { display:grid; gap:20px; }.replay-explanation { display:grid; grid-template-columns:minmax(0,1.6fr) minmax(0,1fr); align-items:start; gap:14px; min-width:0; }.replay-explanation .lab-now { grid-row:span 2; background:#102b31; }.replay-explanation .lab-now dl { display:grid; grid-template-columns:1fr 1fr; gap:20px; }.replay-explanation .lab-now dl>div:first-child { grid-column:1 / -1; }
+.net-truth-chip { position:static; margin:0; padding:10px 20px; border:0; border-top:1px solid #29454a; border-radius:0; color:#a8c6ca; font-size:9px; background:transparent; }
+.net-canvas { min-width:900px; }.net-tools { bottom:48px; }.net-map .net-label { font-size:14px; }.net-map .net-sub { font-size:9px; }
+@media(min-width:1000px) { .net-canvas { min-width:0; } }
+@media(max-width:760px) { .replay-explanation { grid-template-columns:1fr; }.replay-explanation .lab-now dl { grid-template-columns:1fr; }.replay-explanation .lab-now dl>div:first-child { grid-column:auto; } }
+.journey-lanes { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:22px; }.journey-lanes span { border-top:1px solid #b9d1d3; padding-top:10px; color:var(--color-muted); font-size:12px; }.journey-lanes b { display:block; color:#42656a; font:9px var(--font-mono); letter-spacing:1px; margin-bottom:6px; }
+.agent-journey button[data-team] { border-width:1px; border-top-width:3px; }.agent-journey button[data-team="review"] { border-top-color:#638691; }.agent-journey button[data-team="challenge"] { border-top-color:#b96a59; }.agent-journey button[data-team="defend"] { border-top-color:#568a80; }.agent-journey button[data-team="proof"] { border-top-color:#5086a0; }
+.defense-map { background:#0a2025; border:1px solid #29454a; border-radius:14px; }.dm-card { fill:#122f35; stroke:#3b5960; }.dm-link { stroke:#4c7078; }.dm-flow { stroke:#8cbcc5; }.dm-flow-hot { stroke:#c6e8ee; }
+@media(min-width:700px) and (max-width:999px) { .lab-swipe { display:block; } }

@@ -98,3 +98,10 @@ it('highlights the acted-on service only when the step has a real action', () =>
   rerender(<NodeGraph scenario={scenario} states={states} action="isolate:db" t={3} />);
   expect(document.querySelector('[data-node="db"] .net-act')).not.toBeNull();
 });
+
+it('places distinct attacker and defender markers at their recorded services', () => {
+  render(<NodeGraph scenario={scenario} states={states} action="isolate:db" showTruth />);
+  expect(document.querySelector('[data-node="api"] .network-intruder')?.textContent).toContain('ATTACKER HERE');
+  expect(document.querySelector('[data-node="db"] .network-defender')?.textContent).toContain('DEFENDER HERE');
+  expect(document.querySelector('[data-node="gateway"] .network-intruder')).toBeNull();
+});
