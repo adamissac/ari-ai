@@ -182,7 +182,12 @@ class HostedSecurityOrchestrator:
     def __init__(self, settings: Settings | None = None) -> None:
         import security_agents  # noqa: F401  (fail fast: reported as unavailable by load_factory)
 
-        self.settings = settings or get_settings()
+        self._settings = settings
+
+    @property
+    def settings(self) -> Settings:
+        # Read at use time: the worker keeps this object for the life of the process.
+        return self._settings or get_settings()
 
     # ------------------------------------------------------------- wiring
     def _gateway(self, snapshot_root: Path) -> Any:
@@ -261,7 +266,6 @@ class HostedSecurityOrchestrator:
         from security_agents.checks.library import default_library
         from security_agents.contracts import Budget as SABudget
         from security_agents.intel import LocalIntel
-        from security_agents.sandbox.workspace import SnapshotHandle
         from security_agents.workflow import Orchestrator, OrchestratorConfig
 
         a = host.assessment
@@ -278,11 +282,10 @@ class HostedSecurityOrchestrator:
             / a.id
         )
         try:
-            snapshot = SnapshotHandle.from_git(
-                binding.local_path,
+            snapshot = _pinned_snapshot(
+                binding,
                 a.commit_sha,
-                binding.subdir,
-                work / "snapshot",
+                work,
                 snapshot_id=a.snapshot_id or new_id(IdPrefix.snp),
                 repo_id=host.repo_id,
             )
@@ -754,6 +757,48 @@ def _valid(prefix: str, value: str) -> bool:
     import re
 
     return bool(re.match(rf"^{prefix}_[0-9A-Za-z_\-]{{8,64}}$", value))
+
+
+def _pinned_snapshot(
+    binding: RepoBinding, sha: str, work: Path, *, snapshot_id: str, repo_id: str
+) -> Any:
+    """Read-only checkout of ``binding.subdir`` at exactly ``sha`` (git archive).
+
+    If the directory holds a ``build_recipe.json`` with ``target_dir`` (payments-lite
+    layout on main), the snapshot is rooted at that directory with the recipe copied in,
+    as security_agents expects; provenance stays ``pinned_by="git"`` at the real SHA.
+    """
+    import shutil
+
+    from security_agents.sandbox.workspace import SnapshotHandle, copy_tree
+
+    raw = SnapshotHandle.from_git(
+        binding.local_path,
+        sha,
+        binding.subdir,
+        work / "checkout",
+        snapshot_id=snapshot_id,
+        repo_id=repo_id,
+    )
+    recipe = raw.root / "build_recipe.json"
+    target_dir = json.loads(recipe.read_text()).get("target_dir") if recipe.is_file() else None
+    if not target_dir:
+        return raw
+    if target_dir.startswith("/") or ".." in Path(target_dir).parts:
+        raise ValueError("build_recipe.json target_dir must be a relative path inside the checkout")
+    root = work / "snapshot"
+    copy_tree(raw.root / target_dir, root)
+    shutil.copy2(recipe, root / "build_recipe.json")
+    for path in root.rglob("*"):  # same policy as security_agents: files read-only
+        if path.is_file():
+            path.chmod(0o444)
+    return SnapshotHandle(
+        snapshot_id=snapshot_id,
+        repo_id=repo_id,
+        commit_sha=raw.commit_sha,
+        root=root,
+        pinned_by="git",
+    )
 
 
 def build_orchestrator() -> HostedSecurityOrchestrator:

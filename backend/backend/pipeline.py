@@ -254,6 +254,26 @@ def process_github_delivery(ctx: JobContext) -> dict[str, Any]:
 # ------------------------------------------------------------------ assessments
 
 
+_ORCHESTRATORS: dict[str, Any] = {}
+
+
+def _orchestrator() -> Any:
+    """One orchestrator object per worker process and factory spec (successful loads only).
+
+    The orchestrator is a long-lived service; keeping it lets an implementation that
+    pauses in AWAITING_APPROVAL resume in the same process. Durable resume across
+    workers/restarts must come from the orchestrator rebuilding from host records.
+    """
+    spec = get_settings().orchestrator_factory
+    cached = _ORCHESTRATORS.get(spec)
+    if cached is not None:
+        return cached
+    loaded = load_factory(spec)
+    if loaded.obj is not None:
+        _ORCHESTRATORS[spec] = loaded
+    return loaded
+
+
 def _other_live_run(assessment_id: str, current_job_id: str) -> bool:
     from backend.db import jobs as jobs_t
 
@@ -285,7 +305,7 @@ def run_assessment(ctx: JobContext) -> dict[str, Any]:
         if not resuming:
             host.transition(AssessmentState.SCOPE_CHECK, "checking authorized scope")
             host.require_active_scope()
-        loaded = load_factory(get_settings().orchestrator_factory)
+        loaded = _orchestrator()
         if loaded.obj is None:
             host.terminate(
                 AssessmentState.FAILED,
