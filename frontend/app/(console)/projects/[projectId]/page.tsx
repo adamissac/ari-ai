@@ -1,6 +1,6 @@
 'use client';
 
-import type { Assessment, AssessmentState, Repository, Snapshot } from '@hackatl/frontend-transport';
+import { ApiError, type Assessment, type AssessmentState, type Repository, type Snapshot } from '@hackatl/frontend-transport';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
@@ -211,10 +211,11 @@ function StartAssessment({ onStarted }: { onStarted: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const active = scopes.status === 'ready' ? scopes.data.items.filter(s => s.status === 'active') : [];
+  const conflict = error instanceof ApiError && error.status === 409 && error.error.code === 'IDEMPOTENCY_CONFLICT';
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    const sig = `${repoId}|${scopeId}|${sha.trim()}`;
+    const sig = `${project.id}|${repoId}|${scopeId}|${sha.trim()}`;
     const actionKey = key?.sig === sig ? key.value : idempotencyKey('assessment');
     setKey({ sig, value: actionKey });
     setBusy(true);
@@ -249,7 +250,16 @@ function StartAssessment({ onStarted }: { onStarted: () => void }) {
             <Button type="submit" variant="primary" disabled={busy || !repoId || !scopeId || (sha !== '' && !SHA.test(sha))}>Start assessment</Button>
             <span className="text-xs text-muted">Runs only against the targets in the selected, human-approved scope.</span>
           </div>
-          {error !== null && <div className="sm:col-span-3"><ErrorState error={error} context="Assessment not started" /></div>}
+          {error !== null && <div className="sm:col-span-3">
+            <ErrorState error={error} context="Assessment not started" />
+            {conflict && <div className="mt-2 text-sm">
+              <p>Check the assessment list before starting a separate action. The previous key belongs to another request; retrying unchanged will keep returning this conflict.</p>
+              <Button type="button" className="mt-2" disabled={busy} onClick={() => { setKey(null); setError(null); }}>
+                Prepare a new assessment action
+              </Button>
+              <p className="mt-1 text-xs text-muted">This only resets the action key. Press Start assessment to submit a new action; it may create another assessment.</p>
+            </div>}
+          </div>}
         </form>
       )}
     </Panel>

@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Assessment conflicts now offer explicit preparation of a separate action; ordinary network retries retain their key, and project changes get distinct keys.
+
 - Concurrent retries of an assessment start now return the same assessment/job instead of launching duplicate work. Retry keys cannot replay results from a different project URL.
 
 - Indexing a commit says it records symbols, calls, entry points, and expectations. It does not run a security check or change the repository.

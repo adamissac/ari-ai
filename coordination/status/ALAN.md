@@ -179,3 +179,7 @@ UNVERIFIED: NVD terms page (Cloudflare challenge). All runs above are replay or 
 - API-RETRY-001 checkpoint d3320be: PostgreSQL transaction serialization and project-bound request digest prevent duplicate assessment starts and wrong-project cached acceptance. Before-fix reproduction2 failed; after-fix focused16 passed.
 - Required suites: root420 passed/9 optional skips; backend79 passed/5 optional skips. Lint/format/mypy/contracts/links clean. Actual PostgreSQL/handlers/jobs; scripted providers. No new browser/live/Docker proof.
 - PR for review only, no automatic merge. Compatibility note: old cached keys conflict after upgrade (fresh keys for new actions). Existing raw/stored patch hash issue155 remains in Claude's lane.
+
+### 2026-10-17 — Codex explicit assessment conflict recovery
+- fix/alan/explicit-conflict-recovery, own worktree from d1d324d. Reproduced absent reset and cross-project key retention (2 failed tests);3 targeted and70 frontend unit tests now pass. TS/lint/production build pass.
+- Actual Chrome13 passed, including real409, retained-key retry, explicit preparation with zero requests, then exactly one new accepted assessment/job. Normal network-error retries keep the key; project identity is in the key signature. No product API or security changes.
