@@ -6,6 +6,7 @@ import hashlib
 import hmac
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -38,7 +39,10 @@ class _Token:
 
 def _private_key(settings: Settings) -> str | None:
     if settings.github_app_private_key_path:
-        return settings.github_app_private_key_path.read_text()
+        value = settings.github_app_private_key_path.get_secret_value()
+        if "-----BEGIN" in value:
+            return value.replace("\\n", "\n")
+        return Path(value).read_text()
     if settings.github_app_private_key:
         return settings.github_app_private_key.get_secret_value().replace("\\n", "\n")
     return None
