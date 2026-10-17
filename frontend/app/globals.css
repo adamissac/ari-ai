@@ -149,6 +149,8 @@ button.label-mono, a.label-mono, nav.label-mono, nav .label-mono {
 /* Hero copy sits on the brand glow: white at >= 0.95 opacity is 4.7:1 on #c2452d (0.62 was 2.85:1).
    Overrides the text-white/NN utilities in page files (unlayered CSS beats Tailwind's layers). */
 .hero-ink p, .hero-ink li, .hero-ink span { color: rgba(255, 255, 255, 0.95); }
+/* ...except the label of a white button, which keeps the button's own (dark, or on-brand on hover) text. */
+.hero-ink :is(a, button).bg-white span { color: inherit; }
 
 /* Staggered entrance: blur + rise, ordered by --i. */
 .hero-stage[data-fx="on"] .hero-in { animation: hero-in 900ms var(--ease-quad) both; animation-delay: calc(var(--i, 0) * 110ms); }
