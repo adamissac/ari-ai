@@ -153,4 +153,6 @@ SEC-010/SEC-012 continuation (2026-10-17, PR #73 merged): hardened functional ev
 
 ### REG-001 — Finish Devin’s incident closure evidence connection
 
-Owner: Srihith. Status: IN_PROGRESS on `fix/srihith/fortify-closure-artifacts`. Dependencies: merged UI PRs80/81 and host verification. Acceptance: real hosted assessment persists regression source artifact; lessons learned and complete approved incident lifecycle work via API and rendered UI; rejected/unsafe/mutated source guards remain enforced; no fabricated verification claims.
+Owner: Srihith. Status: IN_REVIEW on `fix/srihith/fortify-closure-artifacts`. Dependencies: merged UI PRs80/81 and host verification. Acceptance: real hosted assessment persists regression source artifact; lessons learned and complete approved incident lifecycle work via API and rendered UI; rejected/unsafe/mutated source guards remain enforced; no fabricated verification claims.
+
+REG-001 validation: focused54/root325/security396/frontend32/browser12 passed; real source archive → lessons → two-person approved Closed persists on reload. See SESSION_HANDOFF for skips and limits.
