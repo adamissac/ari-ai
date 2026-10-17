@@ -6,7 +6,7 @@ Canonical cross-subsystem contracts: the single source of truth (ADR-0004). Owne
 ## What exists
 
 * `shared/` Python package (Pydantic v2, `extra="forbid"`, UTC-only timestamps, prefixed
-  IDs, 40-hex commit SHAs, repo-relative paths) — schema version **0.1.0 (V0)**:
+  IDs, 40-hex commit SHAs, repo-relative paths) — schema version **0.7.0**:
   `tenancy`, `scope`, `intelligence`, `assessment` (+ state machine), `findings`,
   `review`, `monitoring`, `rl`, `audit`, `events` (SSE), `errors`, `evidence`, `api` (DTOs).
 * `shared.registry.MODELS` lists every exported model.
@@ -28,3 +28,5 @@ TSC=$(which tsc) uv run pytest shared/tests
 
 No subsystem logic, I/O or imports of other repo packages. Additive changes preferred;
 breaking changes bump `SCHEMA_VERSION` and need acknowledgement from affected owners.
+
+Standards and incident contracts in `shared.standards` and `shared.incident` are additive. `Finding.standards` is the canonical finding classification; IDs/names/versions and complete CVSS scores are deterministically validated against the pinned standards package. The 0.6 series is reserved for intelligence-memory work. `IncidentDetail` is the typed API envelope.

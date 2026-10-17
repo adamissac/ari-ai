@@ -19,4 +19,4 @@ def migrate() -> None:
     from backend.migrate import upgrade
 
     upgrade()
-    print("database migrated to head")
+    print("database migrated to all current heads")

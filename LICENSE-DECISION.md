@@ -42,3 +42,10 @@ legal input — not defaulted by a setup script.
 | Owner | UNASSIGNED |
 | Revisit by | Before the repo is made public or outside contributions are accepted |
 | Tracking task | `DOCS-003` |
+
+## Vendored standards data
+
+Third-party framework data and CVSS scoring dependencies retain their upstream
+licenses, separately from proprietary project code. See
+[THIRD_PARTY_DATA.md](docs/THIRD_PARTY_DATA.md) and the pinned data manifest for
+attribution, preserved notices, versions, hashes and distribution constraints.
