@@ -44,6 +44,9 @@ const STATUS_TEXT: Record<RelayStatus, string> = {
   cancelled: 'Cancelled',
 };
 
+/** Statuses that only exist after a test confirmed the weakness. Closed, accepted-risk, stale and inconclusive are not on this list. */
+const CONFIRMED_STATUSES: ReadonlySet<string> = new Set(['validated', 'diagnosed', 'patch_proposed', 'verified', 'patch_rejected', 'unresolved', 'hardened']);
+
 const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`;
 
 function statusOf(runs: readonly RunFacts[]): RelayStatus {
@@ -70,8 +73,14 @@ function handoff(agent: AgentName, status: RelayStatus, findings: readonly Findi
     case 'probe': {
       const refuted = sec.filter(f => f.status === 'refuted').length;
       const open = sec.filter(f => f.status === 'hypothesis').length;
-      const confirmed = sec.length - refuted - open;
-      const parts = [confirmed ? `${confirmed} confirmed` : null, refuted ? `${refuted} ruled out` : null, open ? `${open} still marked unconfirmed` : null].filter(Boolean);
+      const inconclusive = sec.filter(f => f.status === 'inconclusive').length;
+      const confirmed = sec.filter(f => CONFIRMED_STATUSES.has(f.status)).length;
+      const parts = [
+        confirmed ? `${confirmed} confirmed` : null,
+        refuted ? `${refuted} ruled out` : null,
+        inconclusive ? `${inconclusive} inconclusive` : null,
+        open ? `${open} still marked unconfirmed` : null,
+      ].filter(Boolean);
       return parts.length ? `Test results: ${parts.join(', ')}. Each finding shows its recorded test.` : 'Finished. Each finding shows its recorded test.';
     }
     case 'verify': {
