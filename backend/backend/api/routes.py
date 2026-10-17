@@ -334,6 +334,35 @@ def request_snapshot(repo_id: str, body: SnapshotCreate, request: Request) -> Sn
         return snap
 
 
+@router.get("/repositories/{repo_id}/snapshots")
+def list_snapshots(
+    repo_id: str,
+    request: Request,
+    status: SnapshotStatus | None = None,
+    limit: int = Query(50, ge=1, le=200),
+    cursor: str | None = None,
+) -> dict[str, Any]:
+    """Newest first. ``status=ready`` lists the snapshots intelligence reads can use."""
+    with transaction() as conn:
+        _repo_access(conn, _user(conn, request), repo_id)
+        q = sa.select(snapshots.c.id, snapshots.c.doc).where(snapshots.c.repo_id == repo_id)
+        if status is not None:
+            q = q.where(snapshots.c.status == status.value)
+        if cursor:
+            q = q.where(snapshots.c.id < cursor)
+        rows = [
+            {"id": r.id, "doc": r.doc}
+            for r in conn.execute(q.order_by(snapshots.c.id.desc()).limit(limit + 1))
+        ]
+        page = _page(rows, limit)
+        return {
+            "items": [
+                Snapshot.model_validate(r["doc"]).model_dump(mode="json") for r in page["items"]
+            ],
+            "next_cursor": page["next_cursor"],
+        }
+
+
 @router.get("/snapshots/{snapshot_id}", response_model=Snapshot)
 def get_snapshot(snapshot_id: str, request: Request) -> Snapshot:
     with transaction() as conn:
