@@ -134,6 +134,18 @@ export class ApiClient {
   assessment(id: string, options?: RequestOptions): Promise<C.AssessmentDetail> {
     return this.request(`/assessments/${segment(id)}`, 'AssessmentDetail', options) as Promise<C.AssessmentDetail>;
   }
+  incidents(projectId: string, options?: RequestOptions): Promise<Page<C.Incident>> {
+    return this.list(`/projects/${segment(projectId)}/incidents`, 'Incident', options);
+  }
+  createIncident(projectId: string, body: C.IncidentCreate, options?: RequestOptions): Promise<C.Incident> {
+    return this.request(`/projects/${segment(projectId)}/incidents`, 'Incident', options, body) as Promise<C.Incident>;
+  }
+  incident(id: string, options?: RequestOptions): Promise<C.IncidentDetail> {
+    return this.request(`/incidents/${segment(id)}`, 'IncidentDetail', options) as Promise<C.IncidentDetail>;
+  }
+  actOnIncident(id: string, body: C.IncidentAction, options?: RequestOptions): Promise<C.Incident> {
+    return this.request(`/incidents/${segment(id)}/actions`, 'Incident', options, body) as Promise<C.Incident>;
+  }
   decideApproval(id: string, body: C.ApprovalDecision, options?: RequestOptions): Promise<C.Approval> {
     return this.request(`/approvals/${segment(id)}/decision`, 'Approval', options, body) as Promise<C.Approval>;
   }

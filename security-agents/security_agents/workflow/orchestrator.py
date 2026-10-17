@@ -685,9 +685,11 @@ class Orchestrator:
         paths = [s.path for s in finding.hypothesis.cited_spans if s.path]
         symbol = self._handler_symbol(finding)
         data = trace_agent.TraceInput(
+            check_category=finding.hypothesis.suggested_check_category,
             assessment_id=self.config.assessment_id,
             finding_id=finding.finding_id,
             validation_result_id=finding.validation.id,
+            sandbox_run_id=finding.validation.sandbox_run_id,
             hypothesis_title=finding.hypothesis.title,
             weakness_class=finding.hypothesis.weakness_class,
             confirmed_outcome=finding.validation.outcome.value,
@@ -961,6 +963,7 @@ class Orchestrator:
         if candidate is None or verification is None:
             return
         data = fortify_agent.FortifyInput(
+            check_category=finding.hypothesis.suggested_check_category,
             assessment_id=self.config.assessment_id,
             finding_id=finding.finding_id,
             verification_result_id=verification.id,

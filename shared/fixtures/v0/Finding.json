@@ -48,6 +48,7 @@
   "kind": "security",
   "produced_by_run_id": "run_01JFIXTURE0000000000000RUN",
   "severity": {
+    "cvss": null,
     "factors": {
       "data_sensitivity": "financial",
       "privileges_required": "any customer",
@@ -58,6 +59,7 @@
     "rationale": "Probe reproduced cross-tenant read in sandbox."
   },
   "snapshot_id": "snp_01JFIXTURE0000000000000SNP",
+  "standards": null,
   "status": "validated",
   "subject_refs": [
     "app.invoices.get_invoice"
