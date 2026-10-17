@@ -56,12 +56,14 @@ def parse_pytest(stdout: str) -> dict[str, Any]:
     failing = sorted(set(re.findall(r"^FAILED (\S+)", stdout, flags=re.MULTILINE))) or sorted(
         set(re.findall(r"^(\S+::\S+) FAILED", stdout, flags=re.MULTILINE))
     )
+    listed = failing[:20]
     return {
         "passed": passed,
         "failed": failed,
         "errors": errors,
         "skipped": skipped,
-        "failing_tests": failing[:20],
+        "failing_tests": listed,
+        "failing_truncated": failed > len(listed) or len(failing) > 20,
     }
 
 
