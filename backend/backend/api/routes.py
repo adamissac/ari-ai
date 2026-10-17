@@ -1288,6 +1288,15 @@ def get_job(job_id: str, request: Request) -> dict[str, Any]:
         user = _user(conn, request)
         row = conn.execute(sa.select(jobs_t).where(jobs_t.c.id == job_id)).mappings().first()
         pid = (row["payload"] or {}).get("project_id") if row else None
+        # Assessment jobs (including approval resumes) retain only assessment_id
+        # in their payload. Resolve their project through the persisted assessment,
+        # rather than trusting an optional redundant project_id field.
+        if row and row["kind"] == "run_assessment":
+            pid = conn.execute(
+                sa.select(assessments.c.project_id).where(
+                    assessments.c.id == (row["payload"] or {}).get("assessment_id")
+                )
+            ).scalar_one_or_none()
         if row is None or not pid:
             raise not_found("job")
         require_project(conn, user, pid)
