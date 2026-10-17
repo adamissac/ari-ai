@@ -664,8 +664,11 @@ class HostOrchestrator:
 
     def _make_orchestrator(self, host: AssessmentHostLike, intel: CodeIntel, workdir: Path) -> Orchestrator:
         scope = _adapt_scope(_val(host, "scope"), intel)
+        repo_id = getattr(host, "repo_id", None)
+        if repo_id:
+            scope.targets = [target for target in scope.targets if target.repo_id == repo_id]
         if not scope.targets:
-            raise PlatformError(ErrorCode.SCOPE_DENIED, "host scope has no authorized targets")
+            raise PlatformError(ErrorCode.SCOPE_DENIED, "host scope has no authorized targets for this repository")
         config = OrchestratorConfig(
             assessment_id=host.assessment_id,
             project_id=getattr(host, "project_id", "prj_unknown"),
@@ -709,6 +712,18 @@ class HostOrchestrator:
         Stay paused while any remediation approval (security or functional) is still
         pending so a partial decision does not skip the rest.
         """
+        from .scope_guard import ActionRequest, check
+
+        scope = _adapt_scope(_val(host, "scope"), orchestrator.intel)
+        decision = check(scope, ActionRequest(action="assessment_start"), utcnow())
+        if not decision.allowed:
+            raise PlatformError(ErrorCode.SCOPE_DENIED, decision.reason_code)
+        orchestrator.config.scope = scope
+        if isinstance(orchestrator.sink, HostSink):
+            orchestrator.sink.host = host
+        if isinstance(orchestrator.step_runner, HostStepRunner):
+            orchestrator.step_runner.host = host
+        orchestrator.cancelled = lambda: _cancelled(host)
         if _pending_remediation(host):
             host.progress("awaiting the remaining remediation approval decisions")
             _save_checkpoint(host, orchestrator, orchestrator.intel)
@@ -1006,11 +1021,27 @@ def _tests_passed(result: dict[str, Any] | None) -> bool:
         return False
     return (
         not result.get("error")
+        and result.get("exit_code") == 0
+        and not result.get("timed_out")
+        and bool(result.get("sandbox_run_id"))
+        and not result.get("skipped")
         and not result.get("errors")
         and not result.get("failed")
         and not result.get("failing_tests")
         and bool(result.get("passed"))
     )
+
+
+def _functional_reproduced(result: dict[str, Any] | None, tests: list[str]) -> bool:
+    """Only executed assertion failures in every generated file reproduce the defect."""
+    if (
+        not tests or not result or result.get("error") or result.get("errors")
+        or result.get("timed_out") or result.get("exit_code") != 1
+        or not result.get("sandbox_run_id") or not result.get("failed")
+    ):
+        return False
+    failed_paths = {node.split("::", 1)[0] for node in result.get("failing_tests", [])}
+    return set(tests) <= failed_paths
 
 
 def _recipe_strip_prefix(root: Path, paths: list[str]) -> str:
@@ -1061,6 +1092,8 @@ def _write_generated_tests(root: Path, tests: list[Any], prefix: str) -> list[st
             continue
         rel = _snapshot_rel(path, prefix)
         dest = resolve_under(root, rel)
+        if dest.exists() or not ("tests" in Path(rel).parts or Path(rel).name.startswith("test_")):
+            raise PlatformError(ErrorCode.SCHEMA_INVALID, "generated tests must be new test files")
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(content, encoding="utf-8")
         paths.append(rel)
@@ -1149,10 +1182,13 @@ def _verify_functional_patch(host: AssessmentHostLike, orchestrator: Orchestrato
         suite = runner.run(ctx, "project_suite", []) if ok else {}
         failing = set(suite.get("failing_tests") or [])
         new_failures = sorted(failing - set(inputs.baseline_failing or []))
-        unpatched_failed = (not tests_added) or (unpatched is not None and not _tests_passed(unpatched))
-        patched_passed = (not tests_added) or _tests_passed(patched)
+        unpatched_failed = _functional_reproduced(unpatched, tests_added)
+        patched_passed = bool(tests_added) and _tests_passed(patched)
         suite_ok = (
             bool(ok)
+            and suite.get("exit_code") in (0, 1)
+            and not suite.get("timed_out")
+            and bool(suite.get("sandbox_run_id"))
             and not suite.get("error")
             and not suite.get("errors")
             and not new_failures
@@ -1162,7 +1198,9 @@ def _verify_functional_patch(host: AssessmentHostLike, orchestrator: Orchestrato
         tamper_ok = not list(inputs.protected_paths)
         sandbox_ids = [
             str(r.get("sandbox_run_id")) for r in (unpatched, patched, suite) if r and r.get("sandbox_run_id")
-        ] or [f"sbx_functional_{patch.id}"]
+        ]
+        if not sandbox_ids:
+            raise PlatformError(ErrorCode.SANDBOX_START_FAILED, "functional Verify has no executed sandbox records")
         report = host.store_json(
             {
                 "sandbox_run_ids": sandbox_ids,
@@ -1374,23 +1412,31 @@ def _approver(host: AssessmentHostLike):
             if str(getattr(approval, "subject_id", "")) != subject_id:
                 continue
             status = str(getattr(approval, "status", getattr(approval, "decision", ""))).lower()
-            if "approved" in status:
+            subject_type = str(getattr(approval, "subject_type", ""))
+            if subject_type != "remediation":
+                continue
+            if status == "approved":
+                actor = getattr(approval, "decided_by", None)
+                if not actor or not str(actor).startswith("usr_"):
+                    raise PlatformError(
+                        ErrorCode.APPROVAL_REQUIRED, "remediation requires an identified human approver"
+                    )
                 return Approval(
                     id=str(getattr(approval, "id", new_id("apv"))),
                     project_id=str(getattr(host, "project_id", "prj_unknown")),
                     subject_type="remediation",
                     subject_id=subject_id,
                     decision="approved",
-                    decided_by=str(getattr(approval, "decided_by", None) or "usr_host_approver"),
+                    decided_by=str(approval.decided_by),
                 )
-            if "declined" in status or "rejected" in status:
+            if status in {"declined", "rejected"}:
                 return Approval(
                     id=str(getattr(approval, "id", new_id("apv"))),
                     project_id=str(getattr(host, "project_id", "prj_unknown")),
                     subject_type="remediation",
                     subject_id=subject_id,
                     decision="declined",
-                    decided_by=str(getattr(approval, "decided_by", None) or "usr_host_approver"),
+                    decided_by=str(approval.decided_by),
                 )
             raise ApprovalPending(finding.finding_id, str(getattr(approval, "id", "")))
         requested = host.request_approval(
@@ -1431,39 +1477,35 @@ def _adapt_scope(host_scope: Any, intel: CodeIntel) -> Any:
                 exposed_ports=list(getattr(target, "exposed_ports", []) or []),
             )
         )
-    if not targets:
-        targets = [
-            ScopeTarget(
-                target_id="tgt_host_target",
-                repo_id=intel.snapshot.repo_id,
-                build_recipe_ref="build_recipe.json",
-            )
-        ]
-    status_raw = str(getattr(host_scope, "status", "active")).lower()
-    status = ScopeStatus.ACTIVE if "active" in status_raw else ScopeStatus.PENDING
-    approved_at = getattr(host_scope, "approved_at", None) or utcnow()
+    raw_status = getattr(host_scope, "status", None)
+    status_raw = str(getattr(raw_status, "value", raw_status)).lower()
+    try:
+        status = ScopeStatus(status_raw)
+    except ValueError:
+        status = ScopeStatus.PENDING
+    approved_at = getattr(host_scope, "approved_at", None)
     return AuthorizedScope(
         id=str(getattr(host_scope, "id", new_id("scp"))),
         project_id=str(getattr(host_scope, "project_id", "prj_unknown")),
         name=str(getattr(host_scope, "name", "host scope")),
         targets=targets,
-        allowed_check_categories=list(
-            getattr(host_scope, "allowed_check_categories", None) or sorted(default_library().categories())
-        ),
+        allowed_check_categories=list(getattr(host_scope, "allowed_check_categories", None) or []),
         status=status,
         requested_by=str(getattr(host_scope, "requested_by", None) or "usr_host"),
-        approved_by=str(getattr(host_scope, "approved_by", None) or "usr_host_approver"),
+        approved_by=getattr(host_scope, "approved_by", None),
         approved_at=approved_at,
-        expires_at=getattr(host_scope, "expires_at", None) or (utcnow().replace(year=utcnow().year + 1)),
+        expires_at=getattr(host_scope, "expires_at", None) or utcnow(),
         notes="adapted from the host scope",
     )
 
 
 def _adapt_budget(assessment: Any) -> Budget:
     budget = getattr(assessment, "budget", None)
+    if getattr(budget, "max_tokens", 1) <= 0 or getattr(budget, "max_usd", 1) <= 0:
+        raise PlatformError(ErrorCode.BUDGET_EXHAUSTED, "host budget does not permit model calls")
     return Budget(
-        max_tokens=int(getattr(budget, "max_tokens", 0) or 1_000_000),
-        max_usd=float(getattr(budget, "max_usd", 0) or 10.0),
+        max_tokens=int(getattr(budget, "max_tokens", 1_000_000)),
+        max_usd=float(getattr(budget, "max_usd", 10.0)),
         max_wall_clock_s=float(getattr(budget, "max_wall_clock_s", 0) or 3600.0),
     )
 
