@@ -14,7 +14,7 @@ from typing import Any, Literal
 from pydantic import Field
 
 from ..checks.library import CheckLibrary
-from ..contracts import StrictModel
+from ..contracts import PlatformError, StrictModel
 from ..intel import CodeIntel, FindingsHistory
 from ..sandbox.workspace import safe_rel_path
 from .registry import ToolContext, ToolDef, ToolRegistry
@@ -234,12 +234,33 @@ def h_list_templates(ctx: ToolContext, args: ListTemplatesArgs) -> dict[str, Any
     if args.category:
         items = [t for t in items if t["category"] == args.category]
     allowed = sorted(ctx.scope.allowed_check_categories) if ctx.scope else []
+    recipe = _scope_recipe(ctx)
+    if recipe is not None:
+        items = [{**t, "parameter_values": library.parameter_values(t["ref"], recipe)} for t in items]
     return {
         "count": len(items),
         "templates": items,
         "scope_allowed_categories": allowed,
-        "note": "Only templates whose category is scope-allowed and runnable can be executed.",
+        "note": (
+            "Only templates whose category is scope-allowed and runnable can be executed. "
+            "parameter_values lists the only values the authorized target's build recipe accepts; "
+            "route_id takes a route id, never an HTTP path."
+        ),
     }
+
+
+def _scope_recipe(ctx: ToolContext) -> dict[str, Any] | None:
+    if ctx.scope is None or not ctx.scope.targets:
+        return None
+    runner = ctx.services.get("check_runner")
+    provider = getattr(runner, "recipe_provider", None)
+    if provider is None:
+        return None
+    try:
+        recipe = provider(ctx, ctx.scope.targets[0].target_id)
+    except PlatformError:
+        return None
+    return recipe if isinstance(recipe, dict) else None
 
 
 def h_run_template(ctx: ToolContext, args: RunTemplateArgs) -> dict[str, Any]:
