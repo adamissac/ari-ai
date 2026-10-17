@@ -30,6 +30,7 @@ test('real FastAPI/PostgreSQL browser transport', async t => {
     assert.equal((await alice.api.session()).user.id, me.user.id);
     project = await alice.api.createProject({ name: 'Transport integration', org_id: null, settings: null });
     assert.equal((await bob.api.project(project.id)).id, project.id);
+    assert.equal((await alice.api.projects()).items[0].id, project.id);
     await assert.rejects(eve.api.project(project.id), e => e instanceof ApiError && e.status === 404);
     const missingCsrf = await alice.fetch(`${baseUrl}/projects`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Rejected' }) });
     assert.equal(missingCsrf.status, 403);
@@ -45,10 +46,21 @@ test('real FastAPI/PostgreSQL browser transport', async t => {
     assessment = await alice.api.startAssessment(project.id, body, 'transport-action-1');
     assert.equal((await alice.api.startAssessment(project.id, body, 'transport-action-1')).id, assessment.id);
     await assert.rejects(alice.api.startAssessment(project.id, { ...body, commit_sha: 'c'.repeat(40) }, 'transport-action-1'), e => e instanceof ApiError && e.status === 409);
+    const controller = new AbortController();
+    const live = watchAssessment(alice.api, assessment.id, { signal: controller.signal });
+    assert.equal((await live.next()).value.seq, 1);
+    controller.abort();
+    await assert.rejects(live.next(), e => e.name === 'AbortError');
     const cancelled = await alice.fetch(`${baseUrl}/assessments/${assessment.id}/cancel`, { method: 'POST', headers: { 'X-CSRF-Token': me.csrf_token } });
     assert.equal(cancelled.status, 200);
     assert.equal((await cancelled.json()).cancelled, true);
     assert.equal((await alice.api.assessment(assessment.id)).assessment.state, 'CANCELLED');
+    assert.equal((await alice.api.assessments(project.id)).items[0].id, assessment.id);
+    assert.equal((await alice.api.repositories(project.id)).items[0].id, repo.id);
+    assert.equal((await alice.api.scopes(project.id)).items[0].id, scope.id);
+    assert.deepEqual((await alice.api.agentRuns(assessment.id)).items, []);
+    assert.deepEqual((await alice.api.findings(project.id)).items, []);
+    assert.ok((await alice.api.approvals(project.id)).items.length >= 1);
   });
   await t.test('persisted SSE, Last-Event-ID resume, terminal confirmation and scoped denial', async () => {
     const events = await collect(watchAssessment(alice.api, assessment.id, { maxReconnects: 0 }));
@@ -65,6 +77,8 @@ test('real FastAPI/PostgreSQL browser transport', async t => {
     const request = alice.requests.find(r => r.url.includes(`/events?after=${last}`));
     assert.equal(request.headers.get('Last-Event-ID'), String(last));
     await assert.rejects(collect(watchAssessment(eve.api, assessment.id, { maxReconnects: 0 })), e => e instanceof ApiError && e.status === 404);
+    await eve.api.logout();
+    await assert.rejects(eve.api.session(), e => e instanceof ApiError && e.status === 401);
     console.log(JSON.stringify({ backend: 'real FastAPI + PostgreSQL', provider_calls: 0, assessment_state: 'CANCELLED', persisted_events: events.length, resumed_sequences: resumed.map(e => e.seq) }));
   });
 });
