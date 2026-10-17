@@ -11,7 +11,10 @@ import { api, idempotencyKey } from '@/lib/api';
 import { CONNECT_REPOSITORY_NOTE } from '@/lib/connect';
 import { INDEX_COMMIT_NOTE } from '@/lib/index-commit';
 import { shortSha, usd } from '@/lib/format';
-import { JOURNEY_STATUS, latestAssessmentEvent, projectJourney, statesFromLog } from '@/lib/journey';
+import {
+  EVENT_LOG_PAGE_NOTE, JOURNEY_STATUS, eventLogPageTruncated, latestAssessmentEvent,
+  projectJourney, statesFromLog,
+} from '@/lib/journey';
 import { projectOverview } from '@/lib/overview';
 import { pillarLoop } from '@/lib/pillars';
 import { ASSESSMENT_STATE, FINDING_STATUS, SNAPSHOT_STATUS } from '@/lib/status';
@@ -153,6 +156,7 @@ function ProjectJourney({
   );
   const logReady = latest === null || events.status !== 'loading';
   const visited = events.status === 'ready' ? statesFromLog(events.data.items) : null;
+  const logTruncated = events.status === 'ready' && eventLogPageTruncated(events.data.items.length);
   const monitoringItems = monitoring.status === 'ready' ? monitoring.data.items : [];
   const stages = projectJourney({
     repoCount,
@@ -166,6 +170,7 @@ function ProjectJourney({
     monitoringTruncated: monitoringItems.length >= 50,
     monitoringFailed: monitoringItems.some(event => event.status === 'failed'),
     newestMonitoringSimulated: monitoringItems[0]?.simulated === true,
+    eventLogTruncated: logTruncated,
   });
   const latestEvent = events.status === 'ready' ? latestAssessmentEvent(events.data.items) : null;
   const assessmentHref = latest ? `/projects/${projectId}/assessments/${latest.id}` : null;
@@ -174,19 +179,24 @@ function ProjectJourney({
     <section aria-label="Check progress" className="rounded-xl border border-line bg-panel p-5" data-testid="project-journey">
       <h2 className="text-sm font-semibold tracking-tight">Where this check is</h2>
       {!logReady ? <p className="mt-2 text-sm text-muted">Loading the recorded phases…</p> : (
-        <ol className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {stages.map(item => {
-            const href = item.id === 'monitor' ? `/projects/${projectId}/monitoring` : assessmentHref;
-            return (
-              <li key={item.id} className="rounded-lg border border-line p-3" data-testid={`journey-${item.id}`}>
-                <p className="text-sm font-medium">{item.label}</p>
-                <p className="text-xs text-muted">{JOURNEY_STATUS[item.status]}</p>
-                <p className="mt-1 text-xs text-muted">{item.detail}</p>
-                {href && <Link className="mt-2 inline-block text-xs text-accent hover:underline" href={href}>Open</Link>}
-              </li>
-            );
-          })}
-        </ol>
+        <>
+          {logTruncated && (
+            <p className="mt-2 text-sm text-muted" data-testid="event-log-page-note">{EVENT_LOG_PAGE_NOTE}</p>
+          )}
+          <ol className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {stages.map(item => {
+              const href = item.id === 'monitor' ? `/projects/${projectId}/monitoring` : assessmentHref;
+              return (
+                <li key={item.id} className="rounded-lg border border-line p-3" data-testid={`journey-${item.id}`}>
+                  <p className="text-sm font-medium">{item.label}</p>
+                  <p className="text-xs text-muted">{JOURNEY_STATUS[item.status]}</p>
+                  <p className="mt-1 text-xs text-muted">{item.detail}</p>
+                  {href && <Link className="mt-2 inline-block text-xs text-accent hover:underline" href={href}>Open</Link>}
+                </li>
+              );
+            })}
+          </ol>
+        </>
       )}
       {latestEvent && (
         <p className="mt-3 text-sm text-muted" data-testid="project-latest-event">
