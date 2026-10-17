@@ -23,13 +23,17 @@ const ICON: Record<Side['tone'], string> = { bad: '✗', ok: '✓', warn: '!', n
  * patch's diff artifact (size-bounded, SHA-256 checked against the server header and
  * the patch record). Missing records are said plainly; nothing is inferred.
  */
-export function BeforeAfter({ kind, status, validation, patches }: {
+export function BeforeAfter({ kind, status, validation, patches, patchesError }: {
   kind: string;
   status: string;
   validation: 'confirmed' | 'refuted' | 'inconclusive' | null;
+  /** null while loading; [] only when the request succeeded with zero patches. */
   patches: PatchView[] | null;
+  /** Set when the patch request failed; patches is ignored then. */
+  patchesError?: { error: unknown; onRetry: () => void } | null;
 }) {
-  const latest = patches?.[patches.length - 1] ?? null;
+  const failed = patchesError != null;
+  const latest = failed ? null : patches?.[patches.length - 1] ?? null;
   const before = beforeSide({ kind, status, validation });
   const after = afterSide(latest?.verification ?? null, latest !== null);
   return (
@@ -40,7 +44,11 @@ export function BeforeAfter({ kind, status, validation, patches }: {
       </p>
       <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
         <SideCard label="Before" side={before} testId="ba-before" />
-        <SideCard label="After" side={after.side} testId="ba-after">
+        {failed ? (
+          <div data-testid="ba-after"><ErrorState error={patchesError.error} onRetry={patchesError.onRetry} context="Patch record" /></div>
+        ) : patches === null ? (
+          <div data-testid="ba-after" className="rounded-lg border-2 border-line bg-panel-2 p-4"><Loading label="Loading the proposed fix" /></div>
+        ) : <SideCard label="After" side={after.side} testId="ba-after">
           {after.checks.length > 0 && (
             <ul className="mt-2 flex flex-col gap-1 text-sm text-ink" aria-label="Re-test checks">
               {after.checks.map(c => (
@@ -51,9 +59,9 @@ export function BeforeAfter({ kind, status, validation, patches }: {
               ))}
             </ul>
           )}
-        </SideCard>
+        </SideCard>}
       </div>
-      {patches === null ? <Loading label="Loading the proposed fix" /> : latest && <CodeChange view={latest} />}
+      {!failed && patches === null ? null : latest && <CodeChange view={latest} />}
     </section>
   );
 }
@@ -74,7 +82,6 @@ function CodeChange({ view }: { view: PatchView }) {
   if (diff.status === 'loading') return <Loading label="Loading the code change" />;
   if (diff.status === 'error') return <div className="mt-3"><ErrorState error={diff.error} onRetry={diff.reload} context="Code change" /></div>;
   const recordMatches = diff.data.sha256 === view.patch.diff_sha256;
-  const redacted = !recordMatches && diff.data.text.includes('[REDACTED');
   const files = parseUnifiedDiff(diff.data.text);
   return (
     <div className="mt-4" data-testid="ba-code">
@@ -82,9 +89,7 @@ function CodeChange({ view }: { view: PatchView }) {
         The code change, side by side. Red lines were removed, green lines were added. Proposed in an isolated copy (<Mono>{view.patch.worktree_ref.split('/').pop()}</Mono>); not merged or deployed.
         {' '}<span data-testid="ba-hash">{recordMatches
           ? 'The diff matches the hash recorded with the patch.'
-          : redacted
-            ? `The stored diff ${diff.data.hashVerified ? 'matches its server hash' : 'has no server hash'}. It differs from the hash recorded with the patch because the store hid secret-looking text (shown as [REDACTED]).`
-            : 'Warning: the diff does not match the hash recorded with the patch.'}</span>
+          : 'Warning: the diff does not match the hash recorded with the patch.'}</span>
       </p>
       {files.length === 0 ? <p className="mt-2 text-sm text-muted">The diff could not be read as a code change.</p> : files.map((f, i) => (
         <figure key={i} className="mt-2 overflow-hidden rounded-lg border border-line">
