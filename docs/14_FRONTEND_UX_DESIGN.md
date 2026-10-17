@@ -114,3 +114,9 @@ min width 360px for read-only views (approvals usable on mobile).
 A `?demo=1` flag may slow the SSE replay of a *recorded real run* for
 presentation. It must display a "Replay of recorded run <id>" banner. Fabricated
 runs are not allowed ([20](20_DEMO_SCRIPT.md)).
+
+The one exception is the self-contained simulated walkthrough at `/demo`
+([ADR-0013](decisions/0013-labelled-simulated-demo.md)): GitHub-style sign-in,
+organization, repository, recent commits, and per commit the review, the seven agents
+and the defense map. It never calls the backend, shows a "Simulated demo" marker on
+every page, and its values never appear in the console.
