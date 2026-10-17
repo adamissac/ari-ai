@@ -13,11 +13,11 @@ import re
 from collections.abc import Callable
 from typing import Any
 
-from backend.llm import FakeTransport, LLMGateway, LLMTransport, build_gateway
+from backend.llm import FakeTransport, LLMError, LLMGateway, LLMTransport, build_gateway
 from backend.settings import Settings
 from shared.assessment import AgentName, AgentRun, AgentRunStatus, ToolCallRecord
 from shared.base import utcnow
-from shared.errors import ErrorBody
+from shared.errors import ErrorBody, ErrorCode
 from shared.evidence import ArtifactKind, ArtifactRef
 from shared.findings import Finding, PatchCandidate
 from shared.ids import IdPrefix, new_id
@@ -28,7 +28,8 @@ from shared.tenancy import Budget, Usage
 
 
 class InMemoryHost:
-    def __init__(self, transport: LLMTransport) -> None:
+    def __init__(self, transport: LLMTransport, *, max_usd: float | None = None) -> None:
+        self.max_usd = max_usd
         self.assessment_id = new_id(IdPrefix.asm)
         self.project_id = new_id(IdPrefix.prj)
         self.transport = transport
@@ -44,7 +45,16 @@ class InMemoryHost:
 
     def llm(self) -> LLMGateway:
         settings = Settings(_env_file=None, anthropic_api_key=None)  # type: ignore[call-arg]
-        return build_gateway(settings=settings, transport=self.transport, charge=self._charge)
+        return build_gateway(
+            settings=settings,
+            transport=self.transport,
+            charge=self._charge,
+            ensure_budget=self._ensure_budget,
+        )
+
+    def _ensure_budget(self) -> None:
+        if self.max_usd is not None and self.usage.usd > self.max_usd:
+            raise LLMError(ErrorCode.BUDGET_EXHAUSTED, f"USD cap {self.max_usd} exceeded")
 
     def _charge(self, u: Usage) -> None:
         self.usage = Usage(

@@ -547,3 +547,15 @@ def test_repair_requires_approved_remediation_for_that_finding(tmp_path: Path) -
         runner.repair(finding, host.approve("fnd_someotherfinding"), tests)
     assert e.value.code.value == "APPROVAL_REQUIRED"
     assert host.patches == [] and len(host.runs) == 1  # no repair run was even started
+
+
+def test_evaluator_scores_scripted_run_against_answer_key(tmp_path: Path) -> None:
+    from cr_scenarios import PAYMENTS_LITE
+
+    from code_review.evaluation import score
+
+    _, _, _, outcome = _pl_review(tmp_path)
+    rep = score(outcome, PAYMENTS_LITE.parent / "labels.yaml").to_json()
+    assert rep["label"].startswith("harness check only")
+    assert rep["tp"] == ["fnd_planted_refund_bound"] and rep["fp"] == [] and rep["fn"] == []
+    assert rep["generated_tests_failing_on_head"] == 1

@@ -10,6 +10,7 @@ requires-python = ">=3.12"
 dependencies = [
   "hackatl-shared",
   "hackatl-backend",
+  "pyyaml>=6",
 ]
 
 [tool.uv.sources]
