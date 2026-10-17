@@ -1,5 +1,6 @@
 import path from 'node:path';
 import type { NextConfig } from 'next';
+import { demoOnlyRedirects } from './lib/deployment';
 
 // The browser talks only to this origin; app/api/v1/[...path] proxies to the FastAPI
 // control plane at BACKEND_ORIGIN, read at request time (one build, any backend).
@@ -12,6 +13,9 @@ const config: NextConfig = {
   // The transport package is a symlinked local workspace dependency.
   turbopack: { root: path.resolve(import.meta.dirname, '..') },
   outputFileTracingRoot: path.resolve(import.meta.dirname, '..'),
+  async redirects() {
+    return demoOnlyRedirects(process.env.NEXT_PUBLIC_DEMO_ONLY === '1');
+  },
   async headers() {
     return [{
       source: '/:path*',

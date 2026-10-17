@@ -19,6 +19,8 @@ function useTrack<T extends HTMLElement>(): [React.RefObject<T | null>, number, 
     if (!el) return;
     const mq = window.matchMedia('(min-width: 1024px) and (prefers-reduced-motion: no-preference)');
     let frame = 0;
+    // Only a chapter on screen measures itself and re-renders; the others sit still.
+    let visible = true;
     const update = () => {
       frame = 0;
       setSticky(mq.matches);
@@ -29,13 +31,20 @@ function useTrack<T extends HTMLElement>(): [React.RefObject<T | null>, number, 
       el.style.setProperty('--p', v.toFixed(4));
       setP(Math.round(v * 200) / 200);
     };
-    const schedule = () => { if (!frame) frame = requestAnimationFrame(update); };
+    const schedule = () => { if (visible && !frame) frame = requestAnimationFrame(update); };
+    const io = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver(([entry]) => {
+      visible = entry?.isIntersecting ?? true;
+      // One last measurement on the way out, so the scene settles at its start or end state.
+      if (!frame) frame = requestAnimationFrame(update);
+    });
+    io?.observe(el);
     window.addEventListener('scroll', schedule, { passive: true });
     window.addEventListener('resize', schedule);
     mq.addEventListener('change', schedule);
     schedule();
     return () => {
       cancelAnimationFrame(frame);
+      io?.disconnect();
       window.removeEventListener('scroll', schedule);
       window.removeEventListener('resize', schedule);
       mq.removeEventListener('change', schedule);
