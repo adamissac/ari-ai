@@ -12,11 +12,17 @@ export const CHECK_PLAIN: Record<string, string> = {
   diff_scope_ok: 'The fix changed only the files that were planned',
 };
 
+/** Statuses reached only after a test confirmed the problem. Inconclusive, closed, accepted-risk and stale are not proof of a failing test. */
+const CONFIRMED_STATUSES: ReadonlySet<string> = new Set(['validated', 'diagnosed', 'patch_proposed', 'verified', 'patch_rejected', 'unresolved', 'hardened']);
+
 export function beforeSide(input: { kind: string; status: string; validation: 'confirmed' | 'refuted' | 'inconclusive' | null }): Side {
   if (input.validation === 'confirmed') return { headline: 'The problem was reproduced', tone: 'bad', detail: 'An approved test in a sealed-off copy made the problem happen.' };
   if (input.validation === 'refuted') return { headline: 'The problem did not reproduce', tone: 'ok', detail: 'An approved test could not make the suspected problem happen.' };
   if (input.validation === 'inconclusive') return { headline: 'The test was inconclusive', tone: 'warn', detail: 'An approved test ran but could not decide either way.' };
-  if (input.kind === 'functional' && input.status !== 'hypothesis') {
+  if (input.kind === 'functional' && input.status === 'refuted') {
+    return { headline: 'The problem did not reproduce', tone: 'ok', detail: 'The reviewer could not reproduce this suspected behaviour problem.' };
+  }
+  if (input.kind === 'functional' && CONFIRMED_STATUSES.has(input.status)) {
     return { headline: 'A test showed the wrong behaviour', tone: 'bad', detail: 'The reviewer recorded executed-test evidence for this behaviour problem (listed under the finding evidence).' };
   }
   return { headline: 'No reproduction recorded', tone: 'neutral', detail: 'No test result before the fix is recorded for this finding.' };
