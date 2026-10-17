@@ -194,14 +194,14 @@ class FakeHost:
         for _subject_type, subject_id in self.approval_requests:
             self._approvals.append(
                 type("Ap", (), {"id": "apv_01HOSTADAPTER", "subject_id": subject_id,
-                                "status": "approved", "decided_by": "usr_human"})()
+                                "status": "approved", "decided_by": "usr_human", "subject_type": "remediation"})()
             )
 
     def decline_all(self) -> None:
         for _subject_type, subject_id in self.approval_requests:
             self._approvals.append(
                 type("Ap", (), {"id": "apv_01DECLINED", "subject_id": subject_id,
-                                "status": "declined", "decided_by": "usr_human"})()
+                                "status": "declined", "decided_by": "usr_human", "subject_type": "remediation"})()
             )
 
     def transition(self, target: Any, message: str = "") -> Any:
@@ -268,6 +268,8 @@ class FakeHost:
 def host_and_orchestrator(tmp_path, monkeypatch):
     from security_agents.sandbox.driver import LocalProcessDriver
 
+    monkeypatch.setenv("APP_ENV", "test")
+    monkeypatch.delenv("REPOSITORY_BINDINGS_FILE", raising=False)
     target_root = tmp_path / "snapshot_source"
     # the scripted Patch agent needs the real source to build its fix from
     from security_agents.sandbox.workspace import copy_tree
@@ -402,7 +404,8 @@ def test_diff_is_stored_as_an_artifact_not_inline(host_and_orchestrator):
     assert "require_owner(p.customer_id, customer)" in diffs[0]
 
 
-def test_tool_denial_still_enforced_in_host_mode(tmp_path):
+def test_tool_denial_still_enforced_in_host_mode(tmp_path, monkeypatch):
+    monkeypatch.setenv("APP_ENV", "test")
     """A model asking for an ungranted tool is refused here, not by the host."""
     from security_agents.llm import FakeTurn
     from security_agents.sandbox.driver import LocalProcessDriver
@@ -527,4 +530,16 @@ def test_resume_refuses_changed_snapshot(host_and_orchestrator, tmp_path):
     with pytest.raises(PlatformError) as exc:
         replacement.run(host)
     assert exc.value.code is ErrorCode.SNAPSHOT_NOT_READY
+    assert not host.patches
+
+
+@pytest.mark.parametrize("actor", [None, "agent:patch", "system"])
+def test_resume_does_not_invent_a_human_approver(host_and_orchestrator, actor):
+    host, orchestrator, _ = host_and_orchestrator
+    orchestrator.run(host)
+    host.approve_all()
+    host._approvals[0].decided_by = actor
+    with pytest.raises(PlatformError) as exc:
+        orchestrator.run(host)
+    assert exc.value.code is ErrorCode.APPROVAL_REQUIRED
     assert not host.patches

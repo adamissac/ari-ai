@@ -152,3 +152,9 @@ The host adapter persists a versioned approval checkpoint through
 finding records, verifies snapshot identity, and reloads scope and human approvals.
 The checkpoint excludes conversation history. Checkpoints cover the approval pause;
 recovery from interruption during Patch/Verify remains a separate requirement.
+
+Production host mode requires `REPOSITORY_BINDINGS_FILE` (the backend's trusted
+`repo_id`/`local_path`/`subdir` registry) and configured upstream intelligence.
+It exports exactly the assessment SHA, respects the pinned recipe's target
+subdirectory, and uses `CodeIntelligenceAdapter` over the upstream service.
+Uncommitted checkout changes never enter the execution workspace.

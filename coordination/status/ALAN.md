@@ -127,3 +127,5 @@ Executed check results on the fixture (the precision evidence):
 - Hardened host defaults and scope adaptation: 21 host tests passed, Ruff clean; real PostgreSQL host acceptance now 1 passed (removed obsolete xfail). Docker execution remains unverified.
 
 - Durable approval resume implemented via additive host checkpoint API (hashed artifact + assessment-scoped event pointer). Host suite: 23 passed, Ruff clean; real backend fresh-factory resume: 1 passed. Checkpoint isolation/integrity suite in progress.
+
+- Host now pins execution to assessment SHA through trusted bindings and consumes upstream intelligence (34 host/index tests passed). Full real PostgreSQL host flow with actual Git SHA, indexed context and fresh-factory approval resume: 1 passed. Full pre-binding security suite: 350 passed, 4 skipped.

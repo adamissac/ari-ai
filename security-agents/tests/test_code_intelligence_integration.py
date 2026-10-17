@@ -216,3 +216,45 @@ def test_scout_runs_end_to_end_against_the_real_index(adapter):
     assert hypotheses, "citations should validate against the real snapshot"
     assert hypotheses[0].cited_spans[0].sha == adapter.snapshot.commit_sha
     assert hypotheses[0].weakness_class == "CWE-639"
+
+
+def test_host_uses_bound_commit_and_upstream_index_despite_dirty_checkout(indexed, tmp_path, monkeypatch):
+    import json
+    from types import SimpleNamespace
+
+    from security_agents.intel.host import bound_intelligence
+
+    service, ref, workspace, sha = indexed
+    bindings = tmp_path / "bindings.json"
+    bindings.write_text(json.dumps([{"repo_id": REPO_ID, "local_path": str(workspace.parent), "subdir": "target"}]))
+    monkeypatch.setenv("REPOSITORY_BINDINGS_FILE", str(bindings))
+    source = workspace / "payments_lite" / "app.py"
+    original = source.read_bytes()
+    try:
+        source.write_text("raise RuntimeError('dirty checkout must never execute')")
+        host = SimpleNamespace(
+            project_id=PROJECT_ID, repo_id=REPO_ID,
+            assessment=SimpleNamespace(commit_sha=sha, snapshot_id=ref.snapshot_id),
+        )
+        adapter = bound_intelligence(host, tmp_path / "worker", service)
+        assert adapter.snapshot.commit_sha == sha
+        assert (adapter.snapshot.root / "payments_lite" / "app.py").read_bytes() == original
+        assert adapter.ref == ref
+        assert adapter.find_symbol("get_payment") is not None
+    finally:
+        source.write_bytes(original)
+
+
+def test_host_refuses_an_unregistered_repository(indexed, tmp_path, monkeypatch):
+    import json
+    from types import SimpleNamespace
+
+    from security_agents.contracts import ErrorCode, PlatformError
+    from security_agents.intel.host import bound_intelligence
+
+    path = tmp_path / "bindings.json"
+    path.write_text(json.dumps([]))
+    monkeypatch.setenv("REPOSITORY_BINDINGS_FILE", str(path))
+    with pytest.raises(PlatformError) as exc:
+        bound_intelligence(SimpleNamespace(repo_id=REPO_ID), tmp_path, indexed[0])
+    assert exc.value.code is ErrorCode.SNAPSHOT_NOT_READY

@@ -480,12 +480,10 @@ def _hardening(record: Any) -> Any:
 class HostOrchestrator:
     """`security_agents.api:build_orchestrator()` result: `run(host)`.
 
-    Snapshot source: the host contract does not yet hand the orchestrator a
-    checked-out workspace, so the target directory comes from
-    `SECURITY_AGENTS_TARGET_DIR` (and expectations, until code intelligence
-    lands, from `SECURITY_AGENTS_LABELS`). Both are recorded in the run's
-    provenance. Replacing this with a host-provided snapshot is the open item in
-    the coordination message to the contract owner.
+    Production uses trusted repository bindings, the assessment's Git SHA, and
+    the upstream intelligence service. Explicit development/test mode may use
+    the labelled directory fixture adapter. Approval checkpoints persist typed
+    finding records and baseline failures without sharing model conversations.
     """
 
     target_dir: Path | None = None
@@ -495,10 +493,12 @@ class HostOrchestrator:
     registry: ToolRegistry | None = None
     max_hypotheses: int = 3
     validate_count: int = 2
+    intelligence_service: Any = None
 
     def run(self, host: AssessmentHostLike) -> None:
         target = self.target_dir or _env_path("SECURITY_AGENTS_TARGET_DIR")
-        if target is None:
+        bound = bool(os.environ.get("REPOSITORY_BINDINGS_FILE"))
+        if not bound and target is None:
             raise PlatformError(
                 ErrorCode.CONFLICT_STATE,
                 "no target directory: set SECURITY_AGENTS_TARGET_DIR or pass target_dir",
@@ -518,9 +518,15 @@ class HostOrchestrator:
         if base_workdir is not None:
             base_workdir.mkdir(parents=True, exist_ok=True)
         workdir = Path(tempfile.mkdtemp(prefix=f"{host.assessment_id}-", dir=base_workdir))
-        intel = self._build_intel(
-            target, workdir, snapshot_id=checkpoint.get("snapshot_id") if resuming else None
-        )
+        if bound:
+            from .intel.host import bound_intelligence
+            intel = bound_intelligence(host, workdir, self.intelligence_service)
+        else:
+            if os.environ.get("APP_ENV") not in {"development", "test"}:
+                raise PlatformError(ErrorCode.SNAPSHOT_NOT_READY, "production host requires REPOSITORY_BINDINGS_FILE")
+            intel = self._build_intel(
+                target, workdir, snapshot_id=checkpoint.get("snapshot_id") if resuming else None
+            )
         if resuming and checkpoint["commit_sha"] != intel.snapshot.commit_sha:
             raise PlatformError(ErrorCode.SNAPSHOT_NOT_READY, "approval snapshot changed")
         scope = _adapt_scope(host.scope, intel)
@@ -690,23 +696,29 @@ def _approver(host: AssessmentHostLike):
             if str(getattr(approval, "subject_id", "")) != subject_id:
                 continue
             status = str(getattr(approval, "status", getattr(approval, "decision", ""))).lower()
-            if "approved" in status:
+            subject_type = str(getattr(approval, "subject_type", ""))
+            if subject_type != "remediation":
+                continue
+            if status == "approved":
+                actor = getattr(approval, "decided_by", None)
+                if not actor or not str(actor).startswith("usr_"):
+                    raise PlatformError(ErrorCode.APPROVAL_REQUIRED, "remediation requires an identified human approver")
                 return Approval(
                     id=str(getattr(approval, "id", new_id("apv"))),
                     project_id=str(getattr(host, "project_id", "prj_unknown")),
                     subject_type="remediation",
                     subject_id=subject_id,
                     decision="approved",
-                    decided_by=str(getattr(approval, "decided_by", None) or "usr_host_approver"),
+                    decided_by=str(approval.decided_by),
                 )
-            if "declined" in status or "rejected" in status:
+            if status in {"declined", "rejected"}:
                 return Approval(
                     id=str(getattr(approval, "id", new_id("apv"))),
                     project_id=str(getattr(host, "project_id", "prj_unknown")),
                     subject_type="remediation",
                     subject_id=subject_id,
                     decision="declined",
-                    decided_by=str(getattr(approval, "decided_by", None) or "usr_host_approver"),
+                    decided_by=str(approval.decided_by),
                 )
             raise ApprovalPending(finding.finding_id, str(getattr(approval, "id", "")))
         requested = host.request_approval(

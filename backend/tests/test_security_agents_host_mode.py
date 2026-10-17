@@ -9,6 +9,8 @@ and same-worker approval resume. Fresh-worker durable resume is a separate gate.
 
 from __future__ import annotations
 
+import json
+import subprocess
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -36,7 +38,29 @@ def test_host_mode_full_flow_against_real_backend(
     monkeypatch.setenv("SANDBOX_ALLOW_LOCAL_PROCESS", "1")
     monkeypatch.setenv("SECURITY_AGENTS_WORKDIR", str(tmp_path / "w"))
     settings_override(orchestrator_factory="security_agents.api:build_orchestrator")
-    bridge = AlanScriptTransport(TARGET / "target")
+    from security_agents.sandbox.workspace import copy_tree
+
+    repo = tmp_path / "repo"
+    copy_tree(TARGET, repo)
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    subprocess.run(["git", "-C", str(repo), "add", "."], check=True)
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(repo),
+            "-c",
+            "user.name=Fixture",
+            "-c",
+            "user.email=fixture@example.test",
+            "commit",
+            "-qm",
+            "owned fixture",
+        ],
+        check=True,
+    )
+    sha = subprocess.check_output(["git", "-C", str(repo), "rev-parse", "HEAD"], text=True).strip()
+    bridge = AlanScriptTransport(repo / "target")
     llm.TRANSPORT_OVERRIDE = lambda: bridge
     alice, bob = client_factory("alice"), client_factory("bob")
     add_member(alice.me["memberships"][0]["organization"]["id"], bob.me["user"]["id"])
@@ -44,6 +68,26 @@ def test_host_mode_full_flow_against_real_backend(
     rid = alice.post(
         f"/api/v1/projects/{pid}/repositories", json={"full_name": "acme/payments-lite"}
     ).json()["id"]
+    bindings = tmp_path / "bindings.json"
+    bindings.write_text(json.dumps([{"repo_id": rid, "local_path": str(repo), "subdir": "."}]))
+    registrations = tmp_path / "intelligence.json"
+    registrations.write_text(
+        json.dumps(
+            [
+                {
+                    "project_id": pid,
+                    "repo_id": rid,
+                    "full_name": "acme/payments-lite",
+                    "local_path": str(repo),
+                    "include_prefix": "target",
+                }
+            ]
+        )
+    )
+    monkeypatch.setenv("REPOSITORY_BINDINGS_FILE", str(bindings))
+    monkeypatch.setenv("INTELLIGENCE_REPOSITORIES_FILE", str(registrations))
+    monkeypatch.setenv("INTELLIGENCE_DB_PATH", str(tmp_path / "index.sqlite"))
+    monkeypatch.delenv("INTELLIGENCE_PAYLOAD_STORE_FACTORY", raising=False)
     sid = alice.post(
         f"/api/v1/projects/{pid}/scopes",
         json={
@@ -58,7 +102,7 @@ def test_host_mode_full_flow_against_real_backend(
     assert bob.post(f"/api/v1/scopes/{sid}/approve").status_code == 200
     asm = alice.post(
         f"/api/v1/projects/{pid}/assessments",
-        json={"scope_id": sid, "repo_id": rid, "commit_sha": "b" * 40},
+        json={"scope_id": sid, "repo_id": rid, "commit_sha": sha},
     ).json()["assessment"]["id"]
 
     worker.drain(kinds=["run_assessment"])
