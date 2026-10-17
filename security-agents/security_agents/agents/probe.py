@@ -129,19 +129,29 @@ SPEC = AgentSpec(
 
 
 def subject_routes(hypothesis: Hypothesis, intel: CodeIntel) -> list[str]:
-    found: set[str] = set()
-    for entry in intel.entry_points():
-        if entry.kind != "http_route" or not entry.method or not entry.path_template:
-            continue
-        cited = hypothesis.entry_point_id == entry.id or any(
-            ref.path == entry.path
+    """HTTP routes the hypothesis is about.
+
+    When ``entry_point_id`` resolves to an HTTP route, that route alone is the subject: a
+    hypothesis may cite a correct sibling handler for comparison, and a passing check on the
+    sibling must never refute the designated entry point (issue #236). Cited-span overlap is
+    used only when there is no resolvable entry point.
+    """
+    routes = [e for e in intel.entry_points() if e.kind == "http_route" and e.method and e.path_template]
+    label = lambda e: f"{(e.method or '').upper()} {e.path_template}"  # noqa: E731
+    designated = [e for e in routes if hypothesis.entry_point_id and e.id == hypothesis.entry_point_id]
+    if designated:
+        return sorted({label(e) for e in designated})
+    found = {
+        label(e)
+        for e in routes
+        if any(
+            ref.path == e.path
             and ref.span is not None
-            and ref.span.start_line <= entry.span.end_line
-            and entry.span.start_line <= ref.span.end_line
+            and ref.span.start_line <= e.span.end_line
+            and e.span.start_line <= ref.span.end_line
             for ref in hypothesis.cited_spans
         )
-        if cited:
-            found.add(f"{entry.method.upper()} {entry.path_template}")
+    }
     return sorted(found)
 
 

@@ -292,3 +292,56 @@ def test_hosted_probe_transcript_evidence(host_and_orchestrator):  # noqa: F811
     probe_transcript = next(t for t in transcripts if "checks.run_template" in t)
     assert "matches_expectation" in probe_transcript and "route" in probe_transcript
     assert not any(s in t for t in transcripts for s in SECRET_SHAPES)
+
+
+# Issue #236: a designated entry point wins over a cited comparison sibling.
+def _entry(eid: str, start: int, end: int, template: str):
+    from security_agents.contracts.models import EntryPoint, SourceSpan
+
+    return EntryPoint(
+        id=eid,
+        snapshot_id="snap_1",
+        kind="http_route",
+        handler_symbol=eid,
+        path="app/main.py",
+        span=SourceSpan(start_line=start, end_line=end),
+        method="get",
+        path_template=template,
+    )
+
+
+def _hyp(entry_point_id, cited=((30, 40),)):
+    from types import SimpleNamespace
+
+    from security_agents.contracts.models import Hypothesis
+
+    spans = [
+        SimpleNamespace(path="app/main.py", span=SimpleNamespace(start_line=a, end_line=b)) for a, b in cited
+    ]
+    return Hypothesis.model_construct(entry_point_id=entry_point_id, cited_spans=spans)
+
+
+def _intel():
+    from types import SimpleNamespace
+
+    entries = [
+        _entry("ep_pay", 10, 20, "/payments/{payment_id}"),
+        _entry("ep_cust", 30, 40, "/customers/{customer_id}"),
+    ]
+    return SimpleNamespace(entry_points=lambda: entries)
+
+
+def test_designated_entry_point_is_the_only_subject_even_when_a_sibling_is_cited():
+    # Scout names the vulnerable payment handler and cites the correct customer handler for comparison.
+    assert probe_agent.subject_routes(_hyp("ep_pay"), _intel()) == [PAYMENT]
+
+
+def test_cited_span_overlap_is_used_only_without_a_resolvable_entry_point():
+    assert probe_agent.subject_routes(_hyp(None), _intel()) == ["GET /customers/{customer_id}"]
+    assert probe_agent.subject_routes(_hyp("ep_unknown"), _intel()) == ["GET /customers/{customer_id}"]
+
+
+def test_passing_check_on_the_cited_sibling_never_refutes_the_entry_point():
+    subject = probe_agent.subject_routes(_hyp("ep_pay"), _intel())
+    result = reconcile([run("customer_detail", True)], subject=subject, claimed="refuted")
+    assert result.outcome is ValidationOutcome.INCONCLUSIVE
