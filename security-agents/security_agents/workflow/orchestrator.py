@@ -237,6 +237,7 @@ class Orchestrator:
         kill_switch: Callable[[], bool] = lambda: False,
         cancelled: Callable[[], bool] = lambda: False,
         now: Callable[[], datetime] = utcnow,
+        external_pending: Callable[[], bool] | None = None,
     ) -> None:
         self.config = config
         self.intel = intel
@@ -254,6 +255,7 @@ class Orchestrator:
         self.kill_switch = kill_switch
         self.cancelled = cancelled
         self.now = now
+        self.external_pending = external_pending
 
         self.state = AssessmentState.CREATED
         self.state_log = StateLog()
@@ -432,6 +434,8 @@ class Orchestrator:
         self._goto(AssessmentState.RECON)
         hypotheses = self._run_scout()
         if not hypotheses:
+            if self._wait_external():
+                return self._pause_for_external("no security hypotheses")
             self._goto(AssessmentState.REPORTING, "no hypotheses")
             return self._finish()
 
@@ -439,6 +443,8 @@ class Orchestrator:
         self._goto(AssessmentState.VALIDATION)
         confirmed = self._run_validation(hypotheses)
         if not confirmed:
+            if self._wait_external():
+                return self._pause_for_external("no confirmed security findings")
             self._goto(AssessmentState.REPORTING, "no confirmed findings")
             return self._finish()
 
@@ -448,6 +454,8 @@ class Orchestrator:
             self._run_trace(finding)
         traced = [f for f in confirmed if f.attack_path is not None]
         if not traced:
+            if self._wait_external():
+                return self._pause_for_external("impact analysis failed for all findings")
             self._goto(AssessmentState.REPORTING, "impact analysis failed for all findings")
             return self._finish()
 
@@ -457,6 +465,8 @@ class Orchestrator:
             self._run_diagnose(finding)
         diagnosed = [f for f in traced if f.plan is not None]
         if not diagnosed:
+            if self._wait_external():
+                return self._pause_for_external("no remediation plan produced")
             self._goto(AssessmentState.REPORTING, "no remediation plan produced")
             return self._finish()
 
@@ -503,7 +513,7 @@ class Orchestrator:
                 actor_id=approval.decided_by,
                 approval_id=approval.id,
             )
-        if pending and not approved:
+        if (pending and not approved) or (self._wait_external() and not approved):
             # Stop here, without a terminal transition: a host persists the
             # request and re-enters this orchestrator once a human decides.
             self.result.error_code = None
@@ -525,6 +535,22 @@ class Orchestrator:
 
         self._goto(AssessmentState.REPORTING)
         return self._finish()
+
+    def _wait_external(self) -> bool:
+        return bool(self.external_pending and self.external_pending())
+
+    def _pause_for_external(self, note: str) -> AssessmentResult:
+        """Reach AWAITING_APPROVAL from an early phase so functional approvals can resume."""
+        if self.state is AssessmentState.RECON:
+            self._goto(AssessmentState.VALIDATION, note)
+        if self.state is AssessmentState.VALIDATION:
+            self._goto(AssessmentState.ANALYSIS, note)
+        if self.state is AssessmentState.ANALYSIS:
+            self._goto(AssessmentState.DIAGNOSIS, note)
+        if self.state is AssessmentState.DIAGNOSIS:
+            self._goto(AssessmentState.AWAITING_APPROVAL, "awaiting functional remediation approval")
+        self.result.error_code = None
+        return self.result
 
     def _finish(self) -> AssessmentResult:
         self._goto(AssessmentState.COMPLETED)
