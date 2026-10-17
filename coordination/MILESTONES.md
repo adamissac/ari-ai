@@ -2,7 +2,7 @@
 
 - [x] **M0** shared schemas, importable packages, reproducible local run commands, PR/branch conventions agreed. Gate: 6 owners acknowledge types; CI contract tests pass.
 - [x] **M1** intelligence indexes the owned Python example by SHA, structured graphs, expectations and citeable context packs. Gate: tests and provenance inspection.
-- [ ] **M2** reviewer with real Claude agent loop can interpret commit intention, call retrieval/tests, generate candidate in safe worktree, inspect results. Gate: live optional smoke and deterministic fixture tests; functional defect reproduced.
+- [x] **M2** reviewer with real Claude agent loop can interpret commit intention, call retrieval/tests, generate candidate in safe worktree, inspect results. Gate: live optional smoke and deterministic fixture tests; functional defect reproduced.
 - [ ] **M3** 7 *different* agent runners with actual bounded tool-use and distinct permissions and typed handoffs. Gate: observed real model/tool trace per required role (opt-in), fake-provider integration tests; separated Verify actual tests.
 - [x] **M4** FastAPI, DB migrations, durable queue, signed idempotent GitHub webhook, scope/approval, persisted audit and SSE. Gate: signed event -> durable queued analysis -> event stream in test.
 - [ ] **M5** Double DQN trains from scratch; replay, target/online networks, masks, held-out evaluation and baselines run. Gate: checked env, deterministic seed, checkpoint reload, nonzero learning updates, honest metrics.
@@ -77,3 +77,35 @@ Limitations:
 - The contracts evolved additively to `SCHEMA_VERSION` 0.8.0.
 - Every PR runs `uv run python -m shared.export --check` and `uv run python -m shared.examples --check` (the backend workflow), and the transport validates every wire DTO against `shared/generated/contracts.schema.json`.
 - Run commands are in CLAUDE.md "Commands". Branch and merge conventions: issue #12.
+
+
+### M2 evidence — Sai
+
+Gate: live optional smoke + deterministic fixture tests; functional defect reproduced.
+
+- **Real Claude agent loop, live (Tier 3).** Adam ran it with the owner's key on payments-lite;
+  this agent spends nothing. Command: `RUN_LIVE_LLM_EVAL=1 uv run pytest -q -m live_llm code-review/tests/test_live_reviewer.py -s`.
+  - Run 1 (main @ `0612cc5`): PASS. Review found the refund bound (TP, FP 0, FN 0) with a generated test
+    failing on the unpatched target; repair `accepted_locally` ($0.276 + $0.082). It exposed a span-verifier
+    bug (security hand-offs dropped), fixed in #59.
+  - Run 2 (main @ `cdfc679`, after #59): PASS. Refund-bound TP, `generated_tests_failing_on_head: 2`,
+    `security_handoffs_matched: [fnd_planted_authz]` (IDOR handed to Scout), 0 rejected spans, repair accepted
+    ($0.374 + $0.115). Source: `coordination/messages/20261017T070325Z-adam-to-all-live-p1-p2-handoff-works.md`.
+  - Srihith's live unified run: the reviewer produced 2 validated findings ($0.37)
+    (`coordination/messages/20261017T024043Z-srihith-to-alan-sai-first-live-unified-run.md`).
+- **Deterministic fixture tests (CI).** `.github/workflows/code-review.yml` runs strict mypy, ruff and
+  `pytest code-review/tests` on Postgres 16: **60 passed, 1 skipped** (the opt-in live test). Coverage:
+  intent adjudication (confirmed/inferred/ambiguous/conflicting, human decisions from the real intelligence
+  memory), retrieval through the real code-intelligence index, sandboxed generated tests (assertion vs
+  tooling errors, reproducibility, base-commit control), approval-gated repair in an isolated export with a
+  fresh replay, protected-test tampering refusal, authorization → Scout hand-off, CWE adjudication, and the
+  real `AssessmentHost` flow with independent Verify.
+- **Functional defect reproduced and repaired.** payments-lite `fnd_planted_refund_bound`: the generated test
+  fails twice with AssertionError on head; the approved repair (`already + body.amount > p.amount`) passes it
+  and the existing suite in a fresh replay. Since #73 the hosted flow takes that patch through an independent
+  functional Verify to `verified` (`backend/tests/test_unified_assessment.py`).
+
+Limitations: live runs are opt-in and were run by a key holder, not in CI. Docker sandbox execution for
+reviewer tests is unverified (no engine); CI uses the local-process sandbox plus the shared driver in
+local mode.
+
