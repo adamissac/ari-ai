@@ -6,6 +6,9 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Finding detail leads with a before-and-after story taken from the recorded title, severity, validation, patch, and verification. It does not claim a fix worked without a verdict.
+- Source links use the assessment scope's repository when that scope names exactly one, so a project can hold more than one repo.
+
 - Finding detail shows the indexed expectation statement for each linked id, and keeps the id when that snapshot has no matching statement.
 
 - Hosted security and functional verification retain actual regression sources as hash-pinned artifacts; incident lessons learned can cite them. Plan-bound security approvals are resolved through persisted finding/assessment records for incident eradication.
