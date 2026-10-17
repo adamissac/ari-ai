@@ -169,3 +169,20 @@ def test_viewer_cannot_change_state(client_factory) -> None:
     assert vic.get(f"/api/v1/projects/{pid}").status_code == 200
     r = vic.patch(f"/api/v1/projects/{pid}", json={"name": "pwned"})
     assert r.status_code == 403 and r.json()["error"]["code"] == "FORBIDDEN"
+
+
+def test_placeholder_settings_mean_unconfigured() -> None:
+    from backend.settings import Settings
+
+    s = Settings(
+        _env_file=None,
+        rl_checkpoint_path="",
+        rl_topology_path="  ",
+        github_app_id="replace-me",
+        github_webhook_secret="replace-me",
+        anthropic_api_key="",
+        anthropic_model_fast="replace-me",
+    )
+    assert s.rl_checkpoint_path is None and s.rl_topology_path is None
+    assert s.github_app_id is None and s.github_webhook_secret is None
+    assert s.anthropic_api_key is None and s.anthropic_model_fast is None
