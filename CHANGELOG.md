@@ -8,6 +8,7 @@ All notable changes are documented here. Format follows
 
 - Opening an incident says it records a title and report. It does not contain systems, notify outsiders, or attach evidence until linked, and new cases default to a labelled simulated drill.
 - Frontend fonts are bundled locally with their licenses, removing Google Fonts downloads from production builds and preserving the existing typography.
+- Redact credential-shaped free-form citation metadata in context packs and public expectation views while preserving original authenticated history and source identities.
 - Assessment conflicts now offer explicit preparation of a separate action; ordinary network retries retain their key, and project changes get distinct keys.
 
 - Assessment job IDs returned by the API now resolve through their persisted assessment, allowing authorized status reads while preserving tenant denial.
