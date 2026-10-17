@@ -250,3 +250,12 @@ and wordmark-only local Chakra Petch 700. Lint, type-check and demo-only product
 build passed; unit suite 211/211 with two workers; focused Chromium landing suite 5/5
 at 1440/1024/390/320px plus reduced motion. Desktop/mobile and scrolled views inspected.
 No backend or demo logic changed. Not pushed or deployed under this task's instruction.
+
+### ARI navigation / headline refinement — Sarosh (2026-10-17T19:01:17+00:00)
+
+Implemented locally on `feat/sarosh/ari-frontend-polish`: bare logo and transparent
+ordinary navigation, per-control contrast adaptation, restrained hover and orange
+Pricing; warm off-white, crisp headline core with em-scaled ember shadows. Existing
+hero content/layout and all other sections preserved. Lint/typecheck/demo-only build
+passed; 215 unit tests and 5 responsive/reduced-motion browser checks passed. No push
+or deployment. See the session handoff for exact commands and screenshot locations.

@@ -560,3 +560,31 @@ no browser warnings/errors observed. Screenshots/logs are outside Git under `/tm
 The full authenticated backend e2e suite was not run. No provider calls, API changes,
 push, merge or deployment. Next action: review local diff; publish via reviewed branch
 only when authorized (Git-connected pushes create Vercel previews).
+
+## 2026-10-17T19:01:17+00:00 — Sarosh: transparent navigation and warm headline refinement
+
+Local branch `feat/sarosh/ari-frontend-polish` in `/tmp/ari-website-polish`; integrated
+current main (`f81ab5a`) before changes. Removed logo/link cards, borders and shadows;
+ordinary links have subtle translucent hover fills. Pricing alone retains a solid accent.
+`HeaderContrast` samples the painted surface beneath each control, adapting white/ink
+text and the ant over hero, light chapters, later dark chapters and light cards.
+Uses passive scroll/resize listeners and coalesced animation frames; attributes change
+only when the tone changes. No dependencies or geometry/link changes.
+
+Headline content, structure, CTAs, workflow pills, spacing and background are untouched.
+Only its text styling gains a warm off-white core and three diffuse ember shadows.
+The dimmest core exceeds 4.7:1 against the solid brand color (unit assertion);
+no added filter or animation.
+
+Executed: transport build; `npm run lint --prefix frontend`; `npm run typecheck --prefix frontend`;
+`npm test --prefix frontend -- --maxWorkers=2` (50 files, 215 passed);
+`NEXT_PUBLIC_DEMO_ONLY=1 npm run build --prefix frontend` (passed);
+`E2E_BASE_URL=http://127.0.0.1:3015 E2E_DEMO_ONLY=1 E2E_BROWSER_CHANNEL=chrome ARI_LANDING_SCREENSHOTS=/tmp/ari-nav-glow-screens npm run e2e --prefix frontend -- tests/e2e/landing.spec.ts --reporter=list`
+(5 passed, 25.4s; 1440/1024/390/320px plus reduced motion). Verified transparent
+controls, dark/light/later-dark contrast, hover, 44px targets, routes, no overflow, warm
+headline styling and retained content. Corrected a browser-test race that interrupted
+the smooth anchor animation before checking the next scroll position.
+Rendered desktop/mobile and scrolled light views inspected; no browser warnings/errors
+observed. Full authenticated backend e2e not rerun. No push, merge to main or deployment.
+Screenshots and logs remain external to Git at `/tmp/ari-nav-glow-*` and `/tmp/ari-nav-*`.
+Next action: review local commit and authorize publishing if desired.
