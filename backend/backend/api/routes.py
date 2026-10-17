@@ -801,11 +801,23 @@ def _is_terminal(assessment_id: str) -> bool:
 
 
 @router.get("/assessments/{assessment_id}/events/log")
-def events_log(assessment_id: str, request: Request, after: int = Query(0, ge=0)) -> dict[str, Any]:
-    """Durable JSON event log (same records as the SSE stream)."""
+def events_log(
+    assessment_id: str,
+    request: Request,
+    after: int = Query(0, ge=0),
+    limit: int = Query(500, ge=1, le=500),
+) -> dict[str, Any]:
+    """Durable JSON event log (same records as the SSE stream), oldest first.
+
+    ``next_cursor`` is the ``seq`` of the last event returned when more events exist; pass
+    it back as ``after`` for the next page. ``null`` means the log was read to its end.
+    """
     with transaction() as conn:
         _assessment_access(conn, _user(conn, request), assessment_id)
-    return {"items": _events_after(assessment_id, after), "next_cursor": None}
+    rows = _events_after(assessment_id, after, limit + 1)
+    items = rows[:limit]
+    more = len(rows) > limit and items
+    return {"items": items, "next_cursor": str(items[-1]["seq"]) if more else None}
 
 
 @router.get("/assessments/{assessment_id}/events")
