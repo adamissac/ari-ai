@@ -284,6 +284,31 @@ html[data-home-hero][data-hero-past] .site-header nav a.hdr-cta { background: va
   .story-rain::before, .story-panel .story-svg-node { animation: none; }
 }
 
+/* Obsidian-style graph view (components/node-graph.tsx). */
+.graph-view { background: radial-gradient(120% 90% at 50% 0%, #2b1d19 0%, var(--color-ink) 70%); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06); }
+.graph-edge { stroke: rgba(255, 255, 255, 0.22); stroke-width: 1.2; transition: stroke 200ms, opacity 200ms; }
+.graph-edge[data-flow] { stroke: color-mix(in srgb, #c2452d 70%, transparent); animation: graph-flow 1.2s linear infinite; }
+.graph-edge[data-hot] { stroke: #e0735c; stroke-width: 2; }
+.graph-edge[data-dim] { opacity: 0.25; }
+@keyframes graph-flow { to { stroke-dashoffset: -16; } }
+.graph-node { cursor: grab; transition: opacity 200ms; }
+.graph-node:active { cursor: grabbing; }
+.graph-node[data-dim] { opacity: 0.25; }
+.graph-dot { stroke: rgba(255, 255, 255, 0.35); stroke-width: 1; transition: fill 300ms, r 300ms; }
+.graph-node[data-hover] .graph-dot { stroke: #fff; stroke-width: 2; }
+.graph-internet { fill: #fff; opacity: 0.9; filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.6)); }
+.graph-exposed { fill: none; stroke: #e0735c; stroke-width: 1.2; opacity: 0.8; }
+.graph-isolated { fill: none; stroke: var(--color-warn); stroke-width: 2.5; }
+.graph-truth { fill: none; stroke: #ff8a75; stroke-width: 1.5; stroke-dasharray: 2 3; animation: graph-pulse 1.6s ease-in-out infinite; transform-origin: center; }
+@keyframes graph-pulse { 50% { opacity: 0.35; } }
+.graph-label { fill: rgba(255, 255, 255, 0.72); font-family: var(--font-mono); font-size: 10px; pointer-events: none; }
+.graph-node[data-hover] .graph-label { fill: #fff; }
+.graph-truth-label { fill: #ff8a75; font-family: var(--font-mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; pointer-events: none; }
+.graph-card, .graph-toggle { background: rgba(28, 18, 16, 0.78); backdrop-filter: blur(8px); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1); }
+.graph-key { display: inline-block; width: 10px; height: 10px; border-radius: 9999px; }
+.graph-key-line { display: inline-block; width: 16px; border-top: 2px dashed var(--color-brand); }
+@media (prefers-reduced-motion: reduce) { .graph-edge[data-flow], .graph-truth { animation: none; } }
+
 /* Scroll reveal (see components/reveal.tsx). Content is visible without JS. */
 .reveal { transition: opacity 500ms var(--ease-quad), transform 500ms var(--ease-quad); }
 .reveal[data-shown="false"] { opacity: 0; transform: translateY(14px); }
