@@ -201,8 +201,17 @@ export class ApiClient {
   pendingApprovals(projectId: string, options?: RequestOptions): Promise<Page<C.Approval>> {
     return this.list(`/projects/${segment(projectId)}/approvals?status=pending`, 'Approval', options);
   }
-  monitoringEvents(projectId: string, options?: RequestOptions): Promise<Page<C.MonitoringEvent>> {
-    return this.list(`/projects/${segment(projectId)}/events`, 'MonitoringEvent', options);
+  /** Newest first. Pass the returned `next_cursor` as `cursor` for older events. */
+  monitoringEvents(projectId: string, options: RequestOptions & MonitoringQuery = {}): Promise<Page<C.MonitoringEvent>> {
+    const query = options;
+    const params = new URLSearchParams();
+    if (query.limit !== undefined) {
+      if (!Number.isSafeInteger(query.limit) || query.limit < 1 || query.limit > 200) throw new ProtocolError('Invalid page size');
+      params.set('limit', String(query.limit));
+    }
+    if (query.cursor) params.set('cursor', query.cursor);
+    const qs = params.toString();
+    return this.list(`/projects/${segment(projectId)}/events${qs ? `?${qs}` : ''}`, 'MonitoringEvent', options);
   }
   reassessments(projectId: string, options?: RequestOptions): Promise<Page<C.ReassessmentRequest>> {
     return this.list(`/projects/${segment(projectId)}/reassessments`, 'ReassessmentRequest', options);
@@ -268,6 +277,7 @@ export class ApiClient {
 }
 
 export interface ExpectationQuery { subject?: string; limit?: number; cursor?: string }
+export interface MonitoringQuery { limit?: number; cursor?: string }
 export interface SnapshotQuery { status?: C.SnapshotStatus; limit?: number; cursor?: string }
 export interface CancelResult { assessment_id: string; cancelled: boolean; cancel_requested: true }
 export interface LabeledPage<T> extends Page<T> { label: string }

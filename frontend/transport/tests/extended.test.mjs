@@ -93,3 +93,15 @@ test('assessment report is decoded as the shared AssessmentReport', async () => 
   await assert.rejects(client(() => json(bad)).report('asm_12345678'), ProtocolError);
   await assert.rejects(client(() => json({ ...bad, source: 'generated prose' })).report('asm_12345678'), ProtocolError);
 });
+
+
+test('monitoring feed forwards limit and cursor (the feed used to truncate silently)', async () => {
+  let seen = '';
+  const api = client((url) => { seen = url; return json({ items: [], next_cursor: '2026-10-17T03:00:00+00:00|evt_1' }); });
+  const page = await api.monitoringEvents('prj_12345678', { limit: 20, cursor: '2026-10-17T04:00:00+00:00|evt_9' });
+  assert.equal(page.next_cursor, '2026-10-17T03:00:00+00:00|evt_1');
+  assert.ok(seen.endsWith('/projects/prj_12345678/events?limit=20&cursor=2026-10-17T04%3A00%3A00%2B00%3A00%7Cevt_9'), seen);
+  await api.monitoringEvents('prj_12345678');
+  assert.ok(seen.endsWith('/projects/prj_12345678/events'), seen);
+  assert.throws(() => api.monitoringEvents('prj_12345678', { limit: 500 }), ProtocolError);
+});
