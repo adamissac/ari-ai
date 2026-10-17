@@ -29,6 +29,17 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-17 — Adam — lab step observation
+- Did: Defense Lab replay adds a sentence for the current recorded step: highest alert rate and the recorded action. Hidden attacker stage is not rendered.
+- State of the code: branch `feat/adam/lab-step-story`.
+- Commands run and results: `npm test -- --run tests/unit/lib.test.ts` 26 passed; `npm run typecheck` clean; `npm run lint` clean. Browser replay was not run.
+- Decisions made (ADR links): none. Alert rate is the observable used because the episode step records it and does not record an action mask.
+- Assumptions / open questions (RQ links): a tie lists every node at that rate, in recorded order.
+- Next steps: open the PR.
+- Warnings for the next session: do not describe hidden_stage_ground_truth as something the defender saw.
+
+---
+
 ### 2026-10-17 - Alan (Claude) - P1 SARIF and OWASP LLM agent evidence
 - **Did:** #108 (shared 0.10.0 `cvss_v31`, worker `host.record_roe`) was merged by Adam at an older head. #112 reverted the Trace data-sensitivity fallback (main had been fixed by #107 instead). #109 updated the SEC task board. #114: SARIF 2.1.0 export validated against the pinned OASIS schema. #116: OWASP LLM 2026 matrix rows gain security-agents controls and root tests.
 - **State of the code:** all offline or replay. M3 is still not met (no live seven-role run). NIST SP 800-61 alignment was already on main.

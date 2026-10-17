@@ -15,10 +15,17 @@
           "name": "backend.llm.LLMGateway.run_tool_loop",
           "location": "backend/backend/llm.py::run_tool_loop",
           "owner": "srihith"
+        },
+        {
+          "name": "security_agents.tools.registry.AGENT_TOOL_ALLOWLIST and scope guard",
+          "location": "security-agents/security_agents/tools/registry.py::AGENT_TOOL_ALLOWLIST",
+          "owner": "alan"
         }
       ],
       "tests": [
-        "tests/security/test_owasp_llm_controls.py::test_injected_request_cannot_grant_tool_permission"
+        "tests/security/test_owasp_llm_controls.py::test_injected_request_cannot_grant_tool_permission",
+        "tests/security/test_owasp_llm_agent_runtime.py::test_security_agent_cannot_call_a_tool_outside_its_role",
+        "tests/security/test_owasp_llm_agent_runtime.py::test_probe_check_against_an_unlisted_target_is_denied_even_with_rules_of_engagement"
       ],
       "limitations": "Tool denial does not prove the model cannot be manipulated within its allowed capabilities.",
       "customer_assessment": {
@@ -37,10 +44,16 @@
           "name": "backend.redaction.redact; backend.llm.LLMGateway.create_message",
           "location": "backend/backend/llm.py::create_message",
           "owner": "srihith"
+        },
+        {
+          "name": "security_agents.redact.redact (transcripts, audit, stored output)",
+          "location": "security-agents/security_agents/redact.py::redact",
+          "owner": "alan"
         }
       ],
       "tests": [
-        "tests/security/test_owasp_llm_controls.py::test_credentials_redacted_before_provider_call"
+        "tests/security/test_owasp_llm_controls.py::test_credentials_redacted_before_provider_call",
+        "tests/security/test_owasp_llm_agent_runtime.py::test_security_agent_records_are_redacted"
       ],
       "limitations": "Pattern redaction cannot detect every secret or prevent every cross-tenant disclosure.",
       "customer_assessment": {
@@ -59,10 +72,23 @@
           "name": "backend.llm.LLMGateway.run_tool_loop",
           "location": "backend/backend/llm.py::run_tool_loop",
           "owner": "srihith"
+        },
+        {
+          "name": "security_agents.tools.registry.AGENT_TOOL_ALLOWLIST",
+          "location": "security-agents/security_agents/tools/registry.py::AGENT_TOOL_ALLOWLIST",
+          "owner": "alan"
+        },
+        {
+          "name": "security_agents.standards.roe.check_roe (rules of engagement gate)",
+          "location": "security-agents/security_agents/standards/roe.py::check_roe",
+          "owner": "alan"
         }
       ],
       "tests": [
-        "tests/security/test_owasp_llm_controls.py::test_injected_request_cannot_grant_tool_permission"
+        "tests/security/test_owasp_llm_controls.py::test_injected_request_cannot_grant_tool_permission",
+        "tests/security/test_owasp_llm_agent_runtime.py::test_security_agent_cannot_call_a_tool_outside_its_role",
+        "tests/security/test_owasp_llm_agent_runtime.py::test_probe_check_without_rules_of_engagement_fails_closed",
+        "tests/security/test_owasp_llm_agent_runtime.py::test_probe_check_against_an_unlisted_target_is_denied_even_with_rules_of_engagement"
       ],
       "limitations": "Allowed tools require separate scope and least-privilege enforcement; no comprehensive assessment claimed.",
       "customer_assessment": {
@@ -139,10 +165,22 @@
           "name": "shared.standards.StandardMapping._consistent",
           "location": "shared/shared/standards.py::_consistent",
           "owner": "srihith"
+        },
+        {
+          "name": "security_agents.agents.trace.TraceOutput (no score or level fields)",
+          "location": "security-agents/security_agents/agents/trace.py::TraceOutput",
+          "owner": "alan"
+        },
+        {
+          "name": "security_agents.agents.probe.ProbeInput (catalog-validated CWE)",
+          "location": "security-agents/security_agents/agents/probe.py::ProbeInput",
+          "owner": "alan"
         }
       ],
       "tests": [
-        "tests/security/test_owasp_llm_controls.py::test_fabricated_standard_cannot_be_used_as_fact"
+        "tests/security/test_owasp_llm_controls.py::test_fabricated_standard_cannot_be_used_as_fact",
+        "tests/security/test_owasp_llm_agent_runtime.py::test_security_agent_output_cannot_carry_a_score_or_level",
+        "tests/security/test_owasp_llm_agent_runtime.py::test_invented_weakness_identifier_is_rejected_before_validation"
       ],
       "limitations": "Catalog validation prevents fabricated IDs, not false interpretations or unsupported findings.",
       "customer_assessment": {
@@ -189,10 +227,16 @@
           "name": "backend.llm.LLMGateway.run_tool_loop",
           "location": "backend/backend/llm.py::run_tool_loop",
           "owner": "srihith"
+        },
+        {
+          "name": "security_agents.agents.trace.TraceOutput (strict schema)",
+          "location": "security-agents/security_agents/agents/trace.py::TraceOutput",
+          "owner": "alan"
         }
       ],
       "tests": [
-        "tests/security/test_owasp_llm_controls.py::test_invalid_structured_output_is_rejected"
+        "tests/security/test_owasp_llm_controls.py::test_invalid_structured_output_is_rejected",
+        "tests/security/test_owasp_llm_agent_runtime.py::test_security_agent_output_cannot_carry_a_score_or_level"
       ],
       "limitations": "Schema validation does not prove output semantics, safe rendering, or safe tool effects.",
       "customer_assessment": {
