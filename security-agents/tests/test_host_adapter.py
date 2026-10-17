@@ -760,14 +760,21 @@ def test_host_state_names_cover_every_state():
         assert member.name == HOST_STATE_NAMES[state]
 
 
-@pytest.mark.parametrize("field,value", [
-    ("approved_by", None), ("approved_at", None), ("expires_at", None), ("status", "inactive"),
-])
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("approved_by", None),
+        ("approved_at", None),
+        ("expires_at", None),
+        ("status", "inactive"),
+    ],
+)
 def test_host_scope_adapter_cannot_invent_approval(host_and_orchestrator, field, value):
     from types import SimpleNamespace
 
     from security_agents.host_adapter import _adapt_scope
     from security_agents.scope_guard import ActionRequest, check
+
     host, _, _ = host_and_orchestrator
     scope = host.scope()
     setattr(scope, field, value)
