@@ -154,3 +154,35 @@ def test_missing_checkpoint_is_reported_not_faked(client_factory, settings_overr
         alice.get(f"/api/v1/projects/{ids['project']}/defense-recommendations").json()["items"]
         == []
     )
+
+
+def test_checkpoint_pin_is_verified_before_loading(
+    client_factory, settings_override, checkpoint, tmp_path, monkeypatch
+) -> None:
+    """A checkpoint is a pickle: the operator's pinned SHA-256 is checked before any load,
+    and outside development/test an unpinned checkpoint is refused."""
+    import hashlib
+    import shutil
+
+    import pytest as _pytest
+
+    from backend.pipeline import verify_rl_checkpoint
+    from backend.settings import get_settings
+    from backend.worker import PermanentJobError
+
+    good = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+    settings_override(rl_checkpoint_path=str(checkpoint), rl_checkpoint_sha256=good)
+    assert verify_rl_checkpoint(get_settings()) == good
+
+    swapped = tmp_path / "ddqn_seed0.pt"
+    shutil.copy2(checkpoint, swapped)
+    shutil.copy2(checkpoint.with_suffix(".manifest.json"), swapped.with_suffix(".manifest.json"))
+    swapped.write_bytes(swapped.read_bytes() + b"tampered")  # sidecar manifest can't save it
+    settings_override(rl_checkpoint_path=str(swapped), rl_checkpoint_sha256=good)
+    with _pytest.raises(PermanentJobError, match="hash mismatch"):
+        verify_rl_checkpoint(get_settings())
+
+    monkeypatch.delenv("RL_CHECKPOINT_SHA256")
+    settings_override(rl_checkpoint_path=str(checkpoint), app_env="production")
+    with _pytest.raises(PermanentJobError, match="must pin"):
+        verify_rl_checkpoint(get_settings())

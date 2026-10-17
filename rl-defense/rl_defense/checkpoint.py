@@ -70,7 +70,9 @@ def load_checkpoint(path: Path, verify: bool = True) -> tuple[DDQNAgent, dict[st
         actual = sha256_file(path)
         if actual != expected:
             raise ValueError(f"checkpoint hash mismatch for {path}: {actual} != {expected}")
-    blob = torch.load(path, map_location="cpu", weights_only=False)
+    # weights_only: tensors + plain containers only. A checkpoint is a pickle; unrestricted
+    # unpickling would execute whatever code a swapped file carries.
+    blob = torch.load(path, map_location="cpu", weights_only=True)
     manifest = blob["manifest"]
     if manifest["env_id"] != ENV_ID or manifest["obs_dim"] != OBS_DIM:
         raise ValueError(
