@@ -1,16 +1,14 @@
 'use client';
 
-import type { AuthorizedScope } from '@hackatl/frontend-transport';
+import type { AuthorizedScope, CheckCategory } from '@hackatl/frontend-transport';
 import { useState, type FormEvent } from 'react';
 import { useProject } from '@/components/project';
 import { useSession } from '@/components/session';
 import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, Panel, Time } from '@/components/ui';
 import { api } from '@/lib/api';
+import { SCOPE_CHECK_CATEGORIES } from '@/lib/scope';
 import { SCOPE_STATUS } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
-
-// Check categories implemented by the security-agents check library (Probe's reviewed templates).
-const CATEGORIES = ['access_control.ownership', 'input_validation.bounds'];
 
 export default function ScopesPage() {
   const { project } = useProject();
@@ -80,7 +78,7 @@ function RequestScope({ onCreated }: { onCreated: () => void }) {
   const [name, setName] = useState('');
   const [repoId, setRepoId] = useState('');
   const [recipe, setRecipe] = useState('build_recipe.json');
-  const [categories, setCategories] = useState<string[]>(CATEGORIES);
+  const [categories, setCategories] = useState<CheckCategory[]>([...SCOPE_CHECK_CATEGORIES]);
   const [days, setDays] = useState(7);
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
@@ -115,7 +113,7 @@ function RequestScope({ onCreated }: { onCreated: () => void }) {
           <Field label="Build recipe path" hint="Relative to the repository root."><input className={`${inputClass} font-mono`} value={recipe} onChange={e => setRecipe(e.target.value)} required name="recipe" /></Field>
           <fieldset className="text-sm">
             <legend className="mb-1 text-muted">Allowed check categories</legend>
-            {CATEGORIES.map(c => (
+            {SCOPE_CHECK_CATEGORIES.map(c => (
               <label key={c} className="flex items-center gap-2 py-0.5">
                 <input type="checkbox" checked={categories.includes(c)} onChange={e => setCategories(cs => e.target.checked ? [...cs, c] : cs.filter(x => x !== c))} />
                 <Mono>{c}</Mono>
