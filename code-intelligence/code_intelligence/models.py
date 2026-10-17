@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 
 from pydantic import Field
+from shared.assessment import ToolCallRecord
 from shared.base import RepoRelPath, StrictModel
 from shared.intelligence import (
     BehavioralExpectation,
@@ -14,6 +15,7 @@ from shared.intelligence import (
     SnapshotRef,
     Symbol,
 )
+from shared.tenancy import Usage
 
 INDEX_VERSION = "python-ast-ts/0.1.0"
 
@@ -52,6 +54,14 @@ class IndexIssue(StrictModel):
     reason: str
 
 
+class InferenceTrace(StrictModel):
+    model: str
+    provider_mode: str
+    turns: int
+    usage: Usage
+    tool_calls: list[ToolCallRecord]
+
+
 class StoredIndex(StrictModel):
     """One immutable revision; cross-subsystem fields retain shared model identity."""
 
@@ -69,6 +79,7 @@ class StoredIndex(StrictModel):
     issues: list[IndexIssue] = Field(default_factory=list)
     base_snapshot_id: str | None = None
     carried_from: dict[str, str] = Field(default_factory=dict)
+    inference_trace: InferenceTrace | None = None
 
 
 class IntelligenceError(ValueError):

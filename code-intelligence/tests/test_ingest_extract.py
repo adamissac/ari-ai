@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import pytest
-from conftest import commit
+from intel_test_helpers import commit
 from shared.intelligence import SnapshotRef
 
 from code_intelligence.extract import PythonExtractor, dependencies
