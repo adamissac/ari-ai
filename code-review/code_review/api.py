@@ -17,6 +17,7 @@ import base64
 import hashlib
 import json
 import os
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -30,20 +31,74 @@ from shared.findings import Finding
 from shared.review import GeneratedTest, ReviewRequest, ReviewResult
 
 
-def resolve_repo(repo_id: str, registry: str | None = None) -> RepoSource:
+def _bindings_file_entries() -> list[dict[str, Any]]:
+    """The backend's shared registry (``REPOSITORY_BINDINGS_FILE``), if configured."""
+    try:
+        from backend.settings import get_settings
+
+        path = get_settings().repository_bindings_file
+    except Exception:
+        return []
+    if not path or not Path(path).exists():
+        return []
+    return list(json.loads(Path(path).read_text()))
+
+
+def _recipe_target_dir(local: Path, subdir: str, commit_sha: str) -> str | None:
+    """``build_recipe.json`` ``target_dir`` read from git at exactly ``commit_sha``."""
+    spec = f"{commit_sha}:{subdir + '/' if subdir else ''}build_recipe.json"
+    proc = subprocess.run(
+        ["git", "-C", str(local), "show", spec], capture_output=True, timeout=30, check=False
+    )
+    if proc.returncode != 0:
+        return None
+    target = json.loads(proc.stdout or b"{}").get("target_dir")
+    if not target:
+        return None
+    if target.startswith("/") or ".." in Path(target).parts:
+        raise ReviewError(
+            ErrorCode.VALIDATION_FAILED, "build_recipe.json target_dir must be relative"
+        )
+    return str(target).strip("/")
+
+
+def resolve_repo(
+    repo_id: str, registry: str | None = None, *, commit_sha: str | None = None
+) -> RepoSource:
+    """Find the operator-registered checkout for ``repo_id``.
+
+    Sources, in order: ``CODE_REVIEW_REPOSITORIES`` (``rep_x=/abs/path#subdir;...``), then the
+    backend's ``REPOSITORY_BINDINGS_FILE`` (JSON ``[{repo_id, local_path, subdir}]``), so the
+    reviewer and the security runtime use one registry. A ``build_recipe.json`` with
+    ``target_dir`` at the reviewed commit narrows the project root, as the security adapter does.
+    """
     raw = registry if registry is not None else os.environ.get("CODE_REVIEW_REPOSITORIES", "")
+    found: tuple[Path, str] | None = None
     for item in filter(None, (p.strip() for p in raw.split(";"))):
         rid, _, rest = item.partition("=")
-        if rid.strip() != repo_id:
-            continue
-        path, _, subdir = rest.partition("#")
-        local = Path(path.strip())
-        if not local.is_absolute() or not (local / ".git").exists():
-            raise ReviewError(ErrorCode.SUBSYSTEM_UNAVAILABLE, f"{repo_id} is not a local git repo")
-        return RepoSource(local_path=local, subdir=subdir.strip().strip("/"))
-    raise ReviewError(
-        ErrorCode.SUBSYSTEM_UNAVAILABLE, f"repository {repo_id} is not registered for review"
-    )
+        if rid.strip() == repo_id:
+            path, _, subdir = rest.partition("#")
+            found = (Path(path.strip()), subdir)
+            break
+    if found is None and registry is None:
+        for entry in _bindings_file_entries():
+            if entry.get("repo_id") == repo_id:
+                found = (Path(entry["local_path"]).expanduser().resolve(), entry.get("subdir", ""))
+                break
+    if found is None:
+        raise ReviewError(
+            ErrorCode.SUBSYSTEM_UNAVAILABLE, f"repository {repo_id} is not registered for review"
+        )
+    local, subdir = found
+    subdir = subdir.strip().strip("/")
+    subdir = "" if subdir in ("", ".") else subdir
+    if not local.is_absolute() or not (local / ".git").exists():
+        raise ReviewError(ErrorCode.SUBSYSTEM_UNAVAILABLE, f"{repo_id} is not a local git repo")
+    if commit_sha:
+        target = _recipe_target_dir(local, subdir, commit_sha)
+        if target:
+            subdir = f"{subdir}/{target}" if subdir else target
+    return RepoSource(local_path=local, subdir=subdir)
 
 
 def build_intelligence() -> IntelligencePort | None:
@@ -61,6 +116,7 @@ def _runner(
     host: ReviewHost,
     repo_id: str,
     *,
+    commit_sha: str | None = None,
     source: RepoSource | None,
     sandbox: SandboxPort | None,
     intelligence: IntelligencePort | None | bool,
@@ -68,7 +124,7 @@ def _runner(
 ) -> ReviewerAgentRunner:
     kw: dict[str, Any] = {
         "host": host,
-        "source": source or resolve_repo(repo_id),
+        "source": source or resolve_repo(repo_id, commit_sha=commit_sha),
         "intelligence": build_intelligence() if intelligence is True else (intelligence or None),
         "budget": budget or ReviewBudget(),
     }
@@ -90,6 +146,7 @@ def review_full(
     runner = _runner(
         host,
         request.snapshot_ref.repo_id,
+        commit_sha=request.change_intent.head_sha,
         source=source,
         sandbox=sandbox,
         intelligence=intelligence,
@@ -160,6 +217,12 @@ def propose_repair(
     if finding is None or approval is None:
         raise ReviewError(ErrorCode.NOT_FOUND, "finding or approval not found in this assessment")
     runner = _runner(
-        host, repo_id, source=source, sandbox=sandbox, intelligence=False, budget=budget
+        host,
+        repo_id,
+        commit_sha=finding.commit_sha,
+        source=source,
+        sandbox=sandbox,
+        intelligence=False,
+        budget=budget,
     )
     return runner.repair(finding, approval, load_test_sources(host, finding), attempt=attempt)
