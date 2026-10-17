@@ -56,8 +56,10 @@ class AnthropicProvider:
 
         self._anthropic = anthropic
         self.client = client if client is not None else anthropic.Anthropic(max_retries=max_retries)
-        fb = server_fallbacks if server_fallbacks is not None else os.environ.get(
-            "ANTHROPIC_SERVER_FALLBACKS", "default"
+        fb = (
+            server_fallbacks
+            if server_fallbacks is not None
+            else os.environ.get("ANTHROPIC_SERVER_FALLBACKS", "default")
         )
         self.server_fallbacks = None if fb in ("", "off", "none") else fb
 

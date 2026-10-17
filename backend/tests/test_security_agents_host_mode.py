@@ -3,14 +3,9 @@
 the real LLMGateway (scripted transport labeled fake, see sa_bridge.py), the worker,
 API approval and resume.
 
-Expected to fail until the issues below are fixed on feat/alan/seven-agent-runtime
-(reported in coordination/messages/*-srihith-to-alan-host-mode-findings.md, issue #17):
-  1. calls host.scope() / host.assessment() — they are properties;
-  2. calls llm.provider_mode() — it is a property (str);
-  3. on_patch cites a fabricated run id (run_ids["patch"] is never populated);
-  4. finish_agent_run is called without usage/tool_calls;
-  5. resume state lives only in memory (lost across workers/restarts).
-xfail is non-strict: this flips to XPASS when host mode works end to end.
+Initially failed on five conformance issues (property/method shapes, provider_mode,
+fabricated patch run id, missing per-run usage/tool calls, in-memory resume); fixed in
+security_agents/host_adapter.py by Srihith while Alan was unavailable.
 """
 
 from __future__ import annotations

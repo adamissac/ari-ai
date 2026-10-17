@@ -130,9 +130,7 @@ class PatchWorktree:
         )
 
     def is_new_test_file(self, rel: str) -> bool:
-        return any(rel.startswith(tr) for tr in self.test_roots) and not (
-            self.snapshot_root / rel
-        ).is_file()
+        return any(rel.startswith(tr) for tr in self.test_roots) and not (self.snapshot_root / rel).is_file()
 
     def may_write(self, rel: str) -> bool:
         return rel in self.allowed_paths or self.is_new_test_file(rel)
@@ -200,9 +198,7 @@ class TestRunner:
                 args.append(raw)
         elif selection == "added_tests":
             added = [p for p in getattr(workspace, "writes", []) if p.startswith("tests/")]
-            added = added or [
-                p for p in ctx.artifacts.get("tests_added", []) if isinstance(p, str)
-            ]
+            added = added or [p for p in ctx.artifacts.get("tests_added", []) if isinstance(p, str)]
             if not added:
                 return {"error": "NO_ADDED_TESTS", "detail": "no new test files were written in this step"}
             args.extend(sorted(set(added)))
@@ -221,8 +217,12 @@ class TestRunner:
         res = self.driver.run(spec)
         summary = parse_pytest(res.stdout)
         ctx.audit.emit(
-            "sandbox.tests_run", agent=ctx.agent.value, run_id=ctx.run_id,
-            sandbox_run_id=res.run_id, selection=selection, **summary,
+            "sandbox.tests_run",
+            agent=ctx.agent.value,
+            run_id=ctx.run_id,
+            sandbox_run_id=res.run_id,
+            selection=selection,
+            **summary,
         )
         return {
             **_result_summary(res),
@@ -306,10 +306,15 @@ class CheckRunner:
         else:
             matches = None
         ctx.audit.emit(
-            "sandbox.check_run", agent=ctx.agent.value, run_id=ctx.run_id,
-            sandbox_run_id=res.run_id, template=template_ref, target_id=target_id,
+            "sandbox.check_run",
+            agent=ctx.agent.value,
+            run_id=ctx.run_id,
+            sandbox_run_id=res.run_id,
+            template=template_ref,
+            target_id=target_id,
             params_hash=self.library.params_hash(template_ref, parameters),
-            scope_id=decision.scope_id, matches_expectation=matches,
+            scope_id=decision.scope_id,
+            matches_expectation=matches,
         )
         return {
             **_result_summary(res),
@@ -372,8 +377,13 @@ class PatchApplier:
             "diff_sha256": sha256_text(diff_text),
         }
         ctx.audit.emit(
-            "patch.apply_fresh", agent=ctx.agent.value, run_id=ctx.run_id, patch_id=patch_id,
-            applied=ok, out_of_scope=out_of_scope, tampered=tampered,
+            "patch.apply_fresh",
+            agent=ctx.agent.value,
+            run_id=ctx.run_id,
+            patch_id=patch_id,
+            applied=ok,
+            out_of_scope=out_of_scope,
+            tampered=tampered,
         )
         return {
             "patch_id": patch_id,
@@ -400,9 +410,7 @@ class PatchApplier:
                 current = safe_rel_path(parts[3][2:]) if len(parts) > 3 else None
             elif line.startswith("new file mode") and current in protected_set:
                 current = None  # a newly added file cannot tamper with an existing one
-            elif current in protected_set and (
-                line.startswith("-") and not line.startswith("---")
-            ):
+            elif current in protected_set and (line.startswith("-") and not line.startswith("---")):
                 touched.append(current)
                 current = None
         return sorted(set(touched))

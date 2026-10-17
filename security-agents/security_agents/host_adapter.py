@@ -117,6 +117,7 @@ class HostStepRunner:
 
     host: AssessmentHostLike
     tool_factory: Any  # callable(spec, ctx, registry) -> list[backend Tool]
+    run_ids: dict[str, str] = field(default_factory=dict)  # agent -> latest HOST run id
 
     def __call__(
         self,
@@ -134,7 +135,7 @@ class HostStepRunner:
         ctx.step_allowlist = spec.tools
         ctx.max_calls_per_tool = dict(spec.max_calls_per_tool)
         llm = self.host.llm()
-        provider_mode = str(getattr(llm, "provider_mode", lambda: "unknown")())
+        provider_mode = str(_val(llm, "provider_mode") or "unknown")
         model_id = str(getattr(llm, "model_for", lambda _a: "unknown")(spec.name.value))
         run_id = self.host.start_agent_run(
             _host_agent(spec.name),
@@ -146,13 +147,22 @@ class HostStepRunner:
             input_payload={"prompt_ref": spec.prompt_ref, "input_ref": input_ref},
         )
         ctx.run_id = run_id
+        self.run_ids[spec.name.value] = run_id
         record = StepRecord(
-            run_id=run_id, agent=spec.name, spec_version=spec.version, model=model_id,
+            run_id=run_id,
+            agent=spec.name,
+            spec_version=spec.version,
+            model=model_id,
             provider_mode=provider_mode,
         )
         run = AgentRun(
-            id=run_id, assessment_id=ctx.assessment_id, agent=spec.name, step_key=ctx.step_key,
-            status="running", input_ref=input_ref or ctx.step_key, model_id=model_id,
+            id=run_id,
+            assessment_id=ctx.assessment_id,
+            agent=spec.name,
+            step_key=ctx.step_key,
+            status="running",
+            input_ref=input_ref or ctx.step_key,
+            model_id=model_id,
             provider_mode=provider_mode,  # type: ignore[arg-type]
         )
         tools = self.tool_factory(spec, ctx, registry, record)
@@ -180,9 +190,7 @@ class HostStepRunner:
             run.ended_at = utcnow()
             record.error_code = code
             record.error_detail = detail
-            self.host.finish_agent_run(
-                run_id, _host_run_status("failed"), error=_host_error(code, detail)
-            )
+            self.host.finish_agent_run(run_id, _host_run_status("failed"), error=_host_error(code, detail))
             return StepOutcome(run=run, output=None, record=record)
 
         usage = getattr(result, "usage", None)
@@ -206,8 +214,34 @@ class HostStepRunner:
             _host_run_status("succeeded"),
             output=result.final.model_dump(mode="json"),
             transcript=record.to_json(),
+            **_run_accounting(result),
         )
         return StepOutcome(run=run, output=result.final, record=record)
+
+
+def _run_accounting(result: Any) -> dict[str, Any]:
+    """Per-run usage and tool-call records from the backend gateway's loop result
+    (shared models), so the UI shows each agent's cost and tool history."""
+    out: dict[str, Any] = {}
+    try:
+        from shared.assessment import ToolCallRecord
+        from shared.tenancy import Usage as SharedUsage
+    except ImportError:  # standalone install without the shared package
+        return out
+    usage = getattr(result, "usage", None)
+    if isinstance(usage, SharedUsage):
+        out["usage"] = usage
+    calls = getattr(result, "tool_calls", None)
+    if calls and all(isinstance(c, ToolCallRecord) for c in calls):
+        out["tool_calls"] = list(calls)
+    return out
+
+
+def _val(obj: Any, name: str) -> Any:
+    """The backend host exposes some members as properties (assessment, scope,
+    provider_mode); fakes may use methods. Accept both."""
+    attr = getattr(obj, name, None)
+    return attr() if callable(attr) else attr
 
 
 def _classify(exc: Exception) -> tuple[ErrorCode, str]:
@@ -266,9 +300,7 @@ def _host_state(state: AssessmentState) -> Any:
     for member in enum:
         if member.name.upper() == name or str(member.value).upper() == name:
             return member
-    raise PlatformError(
-        ErrorCode.CONFLICT_STATE, f"host has no assessment state matching {name}"
-    )
+    raise PlatformError(ErrorCode.CONFLICT_STATE, f"host has no assessment state matching {name}")
 
 
 @dataclass
@@ -340,7 +372,10 @@ def _handler(ctx: ToolContext, registry: ToolRegistry, record: StepRecord, name:
             }
         record.tool_invocations.append(
             ToolInvocation(
-                name=tool_name(name), args={}, ok=ok, error_code=error_code,
+                name=tool_name(name),
+                args={},
+                ok=ok,
+                error_code=error_code,
                 summary={k: v for k, v in payload.items() if k in ("error", "detail")},
             )
         )
@@ -373,8 +408,7 @@ class HostSink(AssessmentSink):
             return
         hypothesis = finding.hypothesis
         evidence = [
-            contract_export.evidence_ref(ref, producer="agent:scout")
-            for ref in hypothesis.cited_spans
+            contract_export.evidence_ref(ref, producer="agent:scout") for ref in hypothesis.cited_spans
         ]
         record = findings_module.Finding(
             id=finding.finding_id,
@@ -384,16 +418,16 @@ class HostSink(AssessmentSink):
             title=hypothesis.title[:500],
             status=findings_module.FindingStatus.hypothesis,
             subject_refs=[hypothesis.entry_point_id or ""] if hypothesis.entry_point_id else [],
-            expectation_ids=[
-                contract_export.canonical_expectation_id(e) for e in hypothesis.expectation_ids
-            ],
+            expectation_ids=[contract_export.canonical_expectation_id(e) for e in hypothesis.expectation_ids],
             evidence=evidence,
             confidence=contract_export.CONFIDENCE_SCORE[hypothesis.confidence],
             created_at=utcnow(),
             updated_at=utcnow(),
         )
         self.host.record_finding(record, actor="agent:scout")
-        self.host.record(finding.finding_id, contract_export.hypothesis(hypothesis, finding_id=finding.finding_id))
+        self.host.record(
+            finding.finding_id, contract_export.hypothesis(hypothesis, finding_id=finding.finding_id)
+        )
         self.recorded.append("finding")
 
     def on_record(self, finding: FindingRecord, record: Any, kind: str) -> None:
@@ -423,7 +457,9 @@ class HostSink(AssessmentSink):
     def on_patch(self, finding: FindingRecord, candidate: Any, diff: str) -> None:
         artifact = self.host.store_text(diff)
         artifact_id = getattr(artifact, "id", None) or str(artifact)
-        run_id = self.run_ids.get("patch", new_id("run"))
+        run_id = self.run_ids.get("patch")
+        if run_id is None:  # never cite a run the host did not create
+            raise PlatformError(ErrorCode.CONFLICT_STATE, "patch recorded without a host patch run")
         self.host.record_patch(
             contract_export.patch_candidate(
                 candidate,
@@ -438,7 +474,7 @@ class HostSink(AssessmentSink):
     def on_verification(self, finding: FindingRecord, result: Any) -> None:
         self.host.record_verification(
             contract_export.verification_result(
-                result, produced_by_run_id=result.verify_run_id or self.run_ids.get("verify", new_id("run"))
+                result, produced_by_run_id=result.verify_run_id or self.run_ids["verify"]
             )
         )
         self.recorded.append("verification")
@@ -498,6 +534,14 @@ class HostOrchestrator:
         if existing is not None:
             self._resume(existing, host)
             return
+        state = str(getattr(getattr(_val(host, "assessment"), "state", None), "value", "") or "").upper()
+        if state not in ("", "CREATED", "SCOPE_CHECK"):
+            # Paused state lives in this process; a different worker or a restart lost it.
+            raise PlatformError(
+                ErrorCode.CONFLICT_STATE,
+                f"cannot resume from {state}: paused orchestrator state was lost "
+                "(worker restarted or another worker); start a new assessment",
+            )
 
         workdir = self.workdir or Path(os.environ.get("SECURITY_AGENTS_WORKDIR", "")) or None
         if workdir is None:
@@ -505,7 +549,7 @@ class HostOrchestrator:
 
             workdir = Path(tempfile.mkdtemp(prefix=f"{host.assessment_id}-"))
         intel = self._build_intel(target, workdir)
-        scope = _adapt_scope(host.scope(), intel)
+        scope = _adapt_scope(_val(host, "scope"), intel)
         config = OrchestratorConfig(
             assessment_id=host.assessment_id,
             project_id=getattr(host, "project_id", "prj_unknown"),
@@ -513,7 +557,7 @@ class HostOrchestrator:
             scope=scope,
             target_id=scope.targets[0].target_id,
             requested_by=scope.requested_by,
-            budget=_adapt_budget(host.assessment()),
+            budget=_adapt_budget(_val(host, "assessment")),
             max_hypotheses=self.max_hypotheses,
             max_hypotheses_to_validate=self.validate_count,
         )
@@ -528,7 +572,7 @@ class HostOrchestrator:
             workdir=workdir / "work",
             registry=registry,
             sink=sink,
-            step_runner=HostStepRunner(host=host, tool_factory=build_tools),
+            step_runner=HostStepRunner(host=host, tool_factory=build_tools, run_ids=sink.run_ids),
             approve_remediation=_approver(host),
             cancelled=lambda: _cancelled(host),
         )
@@ -582,13 +626,17 @@ class HostOrchestrator:
         snapshot = SnapshotHandle.from_directory(
             staging, workdir / "snapshot", snapshot_id=new_id("snp"), repo_id="rep_host"
         )
-        labels = self.labels_path or _env_path("SECURITY_AGENTS_LABELS") or (
-            target / "labels.yaml" if (target / "labels.yaml").is_file() else None
+        labels = (
+            self.labels_path
+            or _env_path("SECURITY_AGENTS_LABELS")
+            or (target / "labels.yaml" if (target / "labels.yaml").is_file() else None)
         )
         expectations = None
         if labels is not None:
             expectations = load_expectations(
-                labels, snapshot_id=snapshot.snapshot_id, commit_sha=snapshot.commit_sha,
+                labels,
+                snapshot_id=snapshot.snapshot_id,
+                commit_sha=snapshot.commit_sha,
                 strip_prefix=strip_prefix,
             )
         return LocalIntel(snapshot, expectations=expectations)
@@ -603,9 +651,7 @@ class _NullGateway:
         return "host"
 
     def complete(self, request: Any) -> Any:  # pragma: no cover - never called
-        raise PlatformError(
-            ErrorCode.CONFLICT_STATE, "host mode must route model calls through host.llm()"
-        )
+        raise PlatformError(ErrorCode.CONFLICT_STATE, "host mode must route model calls through host.llm()")
 
     def cost_usd(self, model: str, usage: Any) -> float:  # pragma: no cover
         return 0.0

@@ -70,9 +70,7 @@ def load_expectations(
                 continue
             line = source.get("start_line")
             span = (
-                SourceSpan(start_line=int(line), end_line=int(source.get("end_line", line)))
-                if line
-                else None
+                SourceSpan(start_line=int(line), end_line=int(source.get("end_line", line))) if line else None
             )
             sources.append(
                 EvidenceRef(
