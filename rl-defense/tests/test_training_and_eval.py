@@ -116,7 +116,7 @@ def _facts(**over):
         NodeSignals(node=n, criticality=c, exposed=e, finding_severity=s, **over.get(n, {}))
         for n, c, e, s in rows
     )
-    return PlatformFacts(project_id="prj_test", nodes=nodes)
+    return PlatformFacts(project_id="prj_01TESTPROJECT", nodes=nodes)
 
 
 def test_observation_mapping_matches_env_layout():

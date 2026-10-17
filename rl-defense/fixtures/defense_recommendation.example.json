@@ -1,7 +1,7 @@
 {
   "_note": "Real output of rl_defense.api.load_policy('runs/protocol-v0-1182773/ddqn_seed0.pt').recommend(input_facts) at commit 1182773. Simulation-derived; not applied automatically.",
   "input_facts": {
-    "project_id": "prj_demo_payments_lite",
+    "project_id": "prj_01DEMOPAYMENTSLITE",
     "nodes": [
       {
         "node": "gateway",
@@ -70,8 +70,8 @@
   },
   "recommendation": {
     "schema_version": "0.1.0",
-    "id": "rec_8c05dcbfdeb04645b9bdf00103b21093",
-    "project_id": "prj_demo_payments_lite",
+    "id": "rec_983826c9ca1949da9a9f712891d4e734",
+    "project_id": "prj_01DEMOPAYMENTSLITE",
     "policy_version": "DefenseSimEnv-v0@48289e79c567",
     "checkpoint_sha256": "48289e79c567c21ace95ce5d54702f6ece5c302d2bf4b2424ccb8435b539e38a",
     "action": "rate_limit",
@@ -146,7 +146,7 @@
     ],
     "simulation_derived": true,
     "caveat": "Recommendation from a policy trained in simulation. Not applied automatically.",
-    "created_at": "2026-10-17T00:21:03.605847Z"
+    "created_at": "2026-10-17T01:07:32.530396Z"
   },
   "checkpoint": {
     "id": "ckp_48289e79c567c21ace95ce5d",
@@ -161,5 +161,49 @@
       "train_balanced": "535d99ff8777c11e",
       "train_stealthy": "c9e32096ebd76da4"
     }
+  },
+  "explanation": {
+    "action": "rate_limit:auth",
+    "runner_up": "rate_limit:payments",
+    "margin": 0.02557,
+    "method": "occlusion: feature set to 0, change in Q(chosen) - Q(runner-up)",
+    "top_contributions": [
+      {
+        "node": "payments",
+        "feature": "finding_severity",
+        "value": 0.6,
+        "delta_margin": 0.57131,
+        "kind": "signal"
+      },
+      {
+        "node": null,
+        "feature": "time_fraction",
+        "value": 0.3,
+        "delta_margin": -0.55087,
+        "kind": "global"
+      },
+      {
+        "node": "auth",
+        "feature": "finding_severity",
+        "value": 0.2,
+        "delta_margin": 0.2736,
+        "kind": "signal"
+      },
+      {
+        "node": "api",
+        "feature": "alert_rate",
+        "value": 0.45,
+        "delta_margin": 0.24734,
+        "kind": "signal"
+      },
+      {
+        "node": "api",
+        "feature": "anomaly_score",
+        "value": 0.35,
+        "delta_margin": 0.17445,
+        "kind": "signal"
+      }
+    ],
+    "caveat": "Explains the simulation-trained policy's decision, not real-world causality."
   }
 }

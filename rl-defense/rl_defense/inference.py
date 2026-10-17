@@ -17,6 +17,7 @@ from rl_defense.checkpoint import load_checkpoint
 from rl_defense.contracts import ActionScore, DefenseRecommendation, PlatformFacts
 from rl_defense.envs.config import NODE_NAMES
 from rl_defense.envs.defense_sim import NEG_INF_MASK, decode_action
+from rl_defense.explain import Explanation, explain
 from rl_defense.observations import from_platform_facts, mask_from_facts
 
 
@@ -56,6 +57,10 @@ class PolicyRunner:
             observation=tuple(float(x) for x in obs),
             created_at=datetime.now(UTC),
         )
+
+    def explain(self, facts: PlatformFacts, top_k: int = 5) -> Explanation:
+        """Which observed inputs drove the recommended action (occlusion analysis)."""
+        return explain(self.agent.online, from_platform_facts(facts), mask_from_facts(facts), top_k)
 
     def recommend(self, facts: PlatformFacts) -> DefenseRecommendation:
         return self.recommend_from_observation(
