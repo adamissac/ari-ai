@@ -23,8 +23,8 @@ from rl_defense.standards import defensive_refs
 
 
 class PolicyRunner:
-    def __init__(self, checkpoint: Path) -> None:
-        self.agent, self.manifest = load_checkpoint(checkpoint)
+    def __init__(self, checkpoint: Path, *, blob: bytes | None = None) -> None:
+        self.agent, self.manifest = load_checkpoint(checkpoint, blob=blob)
         self.checkpoint_sha256 = self.manifest["checkpoint_sha256"]
         self.policy_version = f"{ENV_ID}@{self.checkpoint_sha256[:12]}"
 
