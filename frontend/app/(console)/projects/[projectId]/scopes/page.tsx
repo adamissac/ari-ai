@@ -15,7 +15,7 @@ export default function ScopesPage() {
   const { project } = useProject();
   const scopes = useResource(`scopes:${project.id}`, s => api().scopes(project.id, { signal: s }));
   return (
-    <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[3fr_2fr]">
       <Panel title="Authorized test scopes">
         <p className="mb-3 text-sm text-muted">
           A <Term t="scope">scope</Term> lists the only <Term t="sandbox">sandbox</Term> targets agents may build and test, and the only check categories Probe may run. It becomes

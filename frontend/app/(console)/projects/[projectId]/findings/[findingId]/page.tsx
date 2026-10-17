@@ -58,7 +58,7 @@ export default function FindingPage() {
             </>}
           />
           <Panel title="What happened">
-            <dl className="grid gap-3 sm:grid-cols-2" data-testid="finding-story">
+            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2" data-testid="finding-story">
               {story.map(line => (
                 <div key={line.label}>
                   <dt className="text-xs font-semibold text-faint">{line.label}</dt>
@@ -72,7 +72,7 @@ export default function FindingPage() {
           </div>
           <RepoScope assessmentId={d.finding.assessment_id} projectId={project.id} repos={repos}>
           {(repo, note) => (
-          <div className="mt-4 grid gap-4 xl:grid-cols-[3fr_2fr]">
+          <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[3fr_2fr]">
             <div className="flex flex-col gap-4">
               {note && <p className="text-xs text-muted">{note}</p>}
               <EvidenceChain detail={d} patches={patchItems} repo={repo} projectId={project.id} />
