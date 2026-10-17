@@ -195,6 +195,9 @@ executes a defensive action against real systems.
 
 Model-proposed CVSS metrics are explicit provisional assumptions, even when they cite an executed run. A run identifier supplies provenance but does not prove an impact. Such scores list every assumption and require human review; missing metrics remain unscored. Incident closure requires actual regression artifact IDs/hashes; eradication requires a succeeded independent Verify run. All currently supported runtime sources are demo/replay/simulation, so correlated incidents retain simulated labeling even for executed demo logs.
 
+Security Verify requires the same of Patch's added tests: the platform runs them on a
+fresh unpatched checkout and they must fail there in a clean run, then pass after the
+patch (`verify.clean_reproduction`, shared with the functional path; #248, #264).
 Functional Verify requires nonempty generated regression tests that demonstrably
 fail on the unpatched commit and pass after the candidate diff. Runner errors,
 collection failures, timeouts, missing sandbox records and skipped generated tests
