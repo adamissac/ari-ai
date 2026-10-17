@@ -5,7 +5,7 @@ export function RecordedLiveRun() {
   return (
     <section className="mt-10 rounded-2xl border border-line bg-white p-6" data-testid="recorded-live-run">
       <p className="label-mono text-ok">Recorded live run · not simulated</p>
-      <h2 className="mt-2 text-xl font-semibold tracking-tight">Replay of recorded run {RUN.assessmentId}</h2>
+      <h2 className="mt-2 break-words text-xl font-semibold tracking-tight">Replay of recorded run {RUN.assessmentId}</h2>
       <p className="mt-1.5 text-sm text-muted">
         All seven agents ran on {RUN.model} against {RUN.target} on {RUN.recordedAt}, at commit {RUN.commit}. This is a
         recording of that run, not a run happening now. Cost ${RUN.usd.toFixed(2)} (cap ${RUN.capUsd}), {Math.round(RUN.durationSeconds / 60)} minutes.

@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useMemo } from 'react';
 import { CommitAnalysis } from '@/components/demo/commit-analysis';
-import { DemoMarker } from '@/components/demo/ui';
 import { Empty, ErrorState, Loading } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useAccessibleRepo } from '@/lib/real-repo';
@@ -36,7 +35,7 @@ export default function RealCommitPage() {
           <span className="font-semibold">{params.sha.slice(0, 7)}</span>
         </nav>
         <details className="amap-more text-right" data-testid="real-commit-note">
-          <summary><DemoMarker /> What is real here?</summary>
+          <summary><span className="demo-marker" data-testid="real-commit-provenance" title="Commit metadata comes from GitHub. The analysis below is an illustrative replay, not a live assessment.">Illustrative analysis · real commit</span> What is real here?</summary>
           <p className="mt-2 max-w-sm text-left text-xs text-white/60">The commit, author and time come from GitHub. The review and agent replay are an illustrative run on this commit; nothing in your repository was attacked.</p>
         </details>
       </div>
