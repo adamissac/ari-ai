@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -106,3 +107,21 @@ def test_real_container_is_killed_and_removed_at_the_timeout(tmp_path):
         check=True,
     ).stdout.strip()
     assert left == ""
+
+
+def test_payments_lite_suite_runs_inside_the_hardened_container(tmp_path):
+    source = Path(__file__).resolve().parents[2] / "examples" / "payments-lite" / "target"
+    ws = tmp_path / "workspaces" / "payments_lite"
+    shutil.copytree(source, ws, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
+    spec = SandboxSpec(
+        profile=SandboxProfile.TEST_RUNNER,
+        network="none",
+        workspace=ws,
+        mode="pytest",
+        args=["-q", "tests"],
+        labels={"purpose": "live_docker_check"},
+        limits=SandboxLimits(timeout_s=180),
+    )
+    result = DockerSandboxDriver().run(spec)
+    assert result.exit_code == 0, result.stdout[-2000:] + result.stderr[-2000:]
+    assert " passed" in result.stdout and " failed" not in result.stdout
