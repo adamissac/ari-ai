@@ -7,7 +7,7 @@ import { Reveal } from '@/components/reveal';
 import { HowItWorks, ProblemScene, ProofStats, Walkthrough } from '@/components/story';
 import { HeroStage, useLoopCursor } from '@/components/hero';
 import { IntroLoader } from '@/components/intro-loader';
-import { UserBar } from '@/components/user-bar';
+import { OptionalUserBar } from '@/components/user-bar';
 import { DEMO_ONLY } from '@/lib/deployment';
 import { RollText } from '@/components/ui';
 
@@ -50,7 +50,7 @@ export default function HomePage() {
       </HeroStage>
 
       <div className="hero-cover -mb-6 pb-30 pt-6 md:pb-38">
-        {!DEMO_ONLY && <UserBar />}
+        {!DEMO_ONLY && <OptionalUserBar />}
 
         <ProblemScene />
         <HowItWorks />

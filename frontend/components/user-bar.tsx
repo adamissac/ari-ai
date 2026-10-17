@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useSession } from '@/components/session';
+import { useOptionalSession, useSession } from '@/components/session';
 import { Button, ErrorState } from '@/components/ui';
 
 export function UserBar() {
@@ -27,4 +27,9 @@ export function UserBar() {
       {error !== null && <ErrorState error={error} onRetry={() => void onSignOut()} context="Sign out failed; you are still signed in" />}
     </div>
   );
+}
+
+/** The user bar only when someone is signed in; nothing for visitors. */
+export function OptionalUserBar() {
+  return useOptionalSession() ? <UserBar /> : null;
 }

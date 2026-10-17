@@ -34,7 +34,6 @@ export function PillarLoop({ nodes }: { nodes: LoopNode[] }) {
                 <span className="mt-1 font-semibold">{n.title}</span>
                 <span className="mt-0.5 text-xs italic text-muted">{n.question}</span>
                 <span className="mt-2 flex items-start gap-1.5 text-sm">
-                  <span aria-hidden="true" className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${tone.dot}`} />
                   <span><span className="sr-only">{tone.word}: </span>{n.status}</span>
                 </span>
               </Link>
