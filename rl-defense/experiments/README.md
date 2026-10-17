@@ -69,3 +69,36 @@ training configs at factors ×0.5, ×1, ×1.5, ×2, ×2.5.
 3. The pick must not be worse than `r2_v0_ref` at ×1.0 (no nominal regression).
 4. That single candidate is then trained on seeds 0–4 and evaluated once on the held-out
    configs, plus the held-out stress test.
+
+Round-2 results (robust return = mean over ×0.5…×2.5; db loss at ×1 / averaged over factors):
+
+| Candidate | Robust return | Worst seed | ×1 | ×2.5 | db loss ×1 / robust % | Compromise ×1 % | False disruption ×1 % |
+|---|---|---|---|---|---|---|---|
+| **r2_lr3e4_1m_dr** | **−56.9 ± 33.4** | −95.5 | −31.3 | −106.8 | 1.0 / 7.3 | 20.0 ± 29.5 | 57.5 |
+| r2_lr3e4_500k_dr_nstep3 | −60.9 ± 29.1 | −93.7 | −36.5 | −107.5 | 3.0 / 8.5 | 25.6 | 53.4 |
+| r2_lr3e4_500k_dr | −62.1 ± 19.4 | −78.6 | −30.0 | −122.9 | 2.8 / 11.9 | 18.1 | 64.3 |
+| r2_lr1e4_500k_dr | −67.2 ± 46.8 | −121.1 | −34.5 | −131.6 | 5.3 / 14.9 | 12.3 | 69.4 |
+| r2_lr3e4_500k_dr_wide256 | −89.9 ± 12.5 | −104.3 | −42.4 | −181.5 | 2.7 / 13.8 | 27.9 | 55.4 |
+| r2_lr3e4_500k (no DR) | −94.6 ± 41.9 | −140.3 | −42.5 | −188.2 | 4.8 / 20.5 | 33.1 | 53.9 |
+| r2_lr3e4_500k_dr_dueling | −103.0 ± 51.7 | −159.4 | −56.9 | −192.4 | 7.0 / 19.0 | 36.8 | 51.2 |
+| r2_v0_ref (v0 defaults) | −158.5 ± 48.3 | −211.0 | −91.8 | −285.4 | 8.6 / 25.3 | 56.3 | 59.6 |
+
+Applying the rule: `r2_lr3e4_1m_dr` leads; four candidates are within one std, and it has the
+lowest robust db loss among them; its ×1 return beats v0's. **Domain randomization is the
+second big lever**: at the same lr and length, DR raises the ×2.5 return from −188 to −123
+and cuts robust db loss from 20.5% to 11.9%.
+
+The problem left is **seed instability**: for the winner, seeds 11 and 12 reach a robust
+−37.6 while seed 10 gets −95.5 (54% compromise at ×1). With 3 seeds that also makes the
+selection itself noisy. So before using the final seeds, round 3 targets variance.
+
+### Round 3 — seed stability ([table](results/r3.md))
+
+Candidates, all at lr 3e-4, 1M steps, DR ×0.5–2.5: the round-2 winner (reference);
+in-training checkpoint selection (`select_every: 50000` from 300k steps, scored on training
+configs at ×1 and ×2 with episode seeds 5000–5029, disjoint from every other seed range);
+linear lr decay to 3e-5; both together; and n-step 3 with checkpoint selection.
+
+**Selection rule (written before seeing round-3 results):** same as round 2, on **5**
+validation seeds (10–14): highest robust return; within one std of the leader prefer lower
+robust db loss; must beat `r2_v0_ref` at ×1. The winner goes to the final held-out run.
