@@ -11,7 +11,7 @@ simulated in the browser. Spec: [docs/14](../docs/14_FRONTEND_UX_DESIGN.md).
 |---|---|
 | `/` projects, create project | `GET/POST /projects` |
 | `/projects/[id]` one next step from the loaded records (connect a repo, approve a scope, run a review, open the run, or view results), then assessments, findings, repositories | `/projects/{id}/assessments`, `/findings`, `/scopes`, `/repositories` |
-| `/projects/[id]/scopes` request, approve (backend enforces a different member), revoke | `/projects/{id}/scopes`, `/scopes/{id}/approve`, `/scopes/{id}/revoke` |
+| `/projects/[id]/scopes` request (pending-only note), approve (backend enforces a different member), revoke | `/projects/{id}/scopes`, `/scopes/{id}/approve`, `/scopes/{id}/revoke` |
 | `/projects/[id]/assessments/[asm]` live timeline: state rail from states actually entered, selectable eight-agent view (job, recorded outcome, real tool calls, handoff), budget meter, remediation approval gate, cancel, durable event log, provider-mode banner | `watchAssessment` SSE (`Last-Event-ID` resume) + `GET /assessments/{id}` + 5 s polling fallback while running |
 | `/projects/[id]/findings` validated / hypotheses / closed tabs | `/projects/{id}/findings` |
 | `/projects/[id]/findings/[fnd]` evidence chain (expectation → Scout → Probe → Trace → Diagnose → Patch → Verify → Fortify), standards labels (CWE, CVSS, ATT&CK, D3FEND) from the persisted record, GitHub links at the exact SHA, line-numbered diff, Verify checks, status history, accept risk | `/findings/{id}`, `/findings/{id}/patches`, `/artifacts/{id}` (size-bounded, SHA-256 checked) |
