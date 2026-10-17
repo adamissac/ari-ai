@@ -18,6 +18,17 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-17 — Adam — assessment phase sentence
+- Did: The assessment page states its recorded state in one sentence. Completed does not mean the application is secure. Approval does not mean a merge.
+- State of the code: branch `feat/adam/assessment-phase`.
+- Commands run and results: `npm test -- --run tests/unit/phase.test.ts` 2 passed; `npm run typecheck` clean; `npm run lint` clean. Browser was not run.
+- Decisions made (ADR links): none. The sentence uses only `assessment.state`.
+- Assumptions / open questions (RQ links): none.
+- Next steps: open the PR.
+- Warnings for the next session: do not add phases the event log did not enter to this sentence.
+
+---
+
 ### 2026-10-17 — Adam — lab step observation
 - Did: Defense Lab replay adds a sentence for the current recorded step: highest alert rate and the recorded action. Hidden attacker stage is not rendered.
 - State of the code: branch `feat/adam/lab-step-story`.
