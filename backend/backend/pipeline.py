@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from typing import Any
 
 import sqlalchemy as sa
@@ -38,7 +39,7 @@ from shared.assessment import TERMINAL_STATES, AssessmentState, AssessmentTrigge
 from shared.audit import ActorType
 from shared.base import utcnow
 from shared.errors import ErrorCode
-from shared.findings import FindingKind, FindingStatus, SeverityLevel
+from shared.findings import FindingKind
 from shared.ids import IdPrefix, new_id
 from shared.monitoring import (
     CommitRange,
@@ -50,7 +51,7 @@ from shared.monitoring import (
     ReassessmentScope,
     ReassessmentStatus,
 )
-from shared.rl import DefenseRecommendation, NodeSignals, PlatformFacts
+from shared.rl import DefenseRecommendation, PlatformFacts
 
 log = logging.getLogger("backend.pipeline")
 
@@ -307,56 +308,46 @@ def run_assessment(ctx: JobContext) -> dict[str, Any]:
 
 # --------------------------------------------------------------------------- RL
 
-DEMO_TOPOLOGY = {
-    # Demo mapping of payments-lite onto the simulator's 5 nodes (labeled config, not inference).
-    "gateway": (0.3, True, ("gateway", "middleware")),
-    "api": (0.5, True, ("routes", "api", "views", "handlers")),
-    "auth": (0.7, False, ("auth", "session", "login", "token")),
-    "payments": (0.9, False, ("payment", "invoice", "billing", "charge")),
-    "db": (1.0, False, ("db", "models", "repository", "migrations")),
-}
-_SEVERITY = {
-    SeverityLevel.info: 0.1,
-    SeverityLevel.low: 0.25,
-    SeverityLevel.medium: 0.5,
-    SeverityLevel.high: 0.8,
-    SeverityLevel.critical: 1.0,
-}
+_ROUTE = re.compile(r"^(GET|POST|PUT|PATCH|DELETE) /\S*$")
 
 
-def derive_platform_facts(conn: sa.engine.Connection, project_id: str) -> PlatformFacts:
-    """Observable facts only: open validated security findings by node. No runtime telemetry
-    exists in MVP, so alert_rate/anomaly_score stay 0 rather than being invented."""
+def platform_facts(
+    conn: sa.engine.Connection, project_id: str
+) -> tuple[PlatformFacts, dict[str, Any]]:
+    """Build PlatformFacts with rl_defense.platform_mapping (Adam) from persisted findings.
+
+    Only route-shaped ``Finding.subject_refs`` ("METHOD /path") map onto simulator nodes;
+    the route->node topology is the per-project config at RL_TOPOLOGY_PATH. No runtime
+    telemetry exists in MVP, so no signals are passed (alert/anomaly stay 0).
+    """
+    from rl_defense import platform_mapping as pm
     from shared.findings import Finding
 
-    sev = dict.fromkeys(DEMO_TOPOLOGY, 0.0)
-    rows = conn.execute(
-        sa.select(findings.c.doc, findings.c.paths).where(
-            findings.c.project_id == project_id,
-            findings.c.kind == FindingKind.security.value,
-            findings.c.status.in_(
-                [
-                    FindingStatus.validated.value,
-                    FindingStatus.diagnosed.value,
-                    FindingStatus.patch_proposed.value,
-                    FindingStatus.patch_rejected.value,
-                    FindingStatus.unresolved.value,
-                ]
-            ),
+    topo_path = get_settings().rl_topology_path
+    if not topo_path or not topo_path.exists():
+        raise PermanentJobError(
+            ErrorCode.SUBSYSTEM_UNAVAILABLE, "RL_TOPOLOGY_PATH not set or missing"
         )
-    ).all()
-    for doc, paths in rows:
+    topology = pm.load_topology(topo_path)
+    inputs = []
+    for doc in conn.execute(
+        sa.select(findings.c.doc).where(
+            findings.c.project_id == project_id, findings.c.kind == FindingKind.security.value
+        )
+    ).scalars():
         f = Finding.model_validate(doc)
-        level = _SEVERITY.get(f.severity.level, 0.5) if f.severity else 0.5
-        text = " ".join(list(paths or []) + f.subject_refs).lower()
-        for node, (_, _, keys) in DEMO_TOPOLOGY.items():
-            if any(k in text for k in keys):
-                sev[node] = max(sev[node], level)
-    nodes = [
-        NodeSignals(node=n, criticality=c, exposed=e, finding_severity=sev[n])  # type: ignore[arg-type]
-        for n, (c, e, _) in DEMO_TOPOLOGY.items()
-    ]
-    return PlatformFacts(project_id=project_id, nodes=nodes)
+        routes = tuple(r for r in f.subject_refs if _ROUTE.match(r))
+        if routes:
+            inputs.append(
+                pm.FindingInput(
+                    id=f.id,
+                    status=f.status.value,
+                    severity=f.severity.level.value if f.severity else None,
+                    routes=routes,
+                )
+            )
+    facts, provenance = pm.facts_from_platform(topology, inputs, [], project_id=project_id)
+    return PlatformFacts.model_validate(facts.model_dump(mode="json")), provenance
 
 
 @handler("rl_recommend")
@@ -373,12 +364,12 @@ def rl_recommend(ctx: JobContext) -> dict[str, Any]:
         raise PermanentJobError(
             ErrorCode.SUBSYSTEM_UNAVAILABLE, "rl_defense not installed in this worker"
         ) from exc
+    provenance: dict[str, Any] = {"source": "request"}
     with transaction() as conn:
-        facts = (
-            PlatformFacts.model_validate(ctx.job.payload["facts"])
-            if ctx.job.payload.get("facts")
-            else derive_platform_facts(conn, project_id)
-        )
+        if ctx.job.payload.get("facts"):
+            facts = PlatformFacts.model_validate(ctx.job.payload["facts"])
+        else:
+            facts, provenance = platform_facts(conn, project_id)
     local_facts = rl_api.PlatformFacts.model_validate(facts.model_dump(mode="json"))
     rec_local = rl_api.load_policy(settings.rl_checkpoint_path).recommend(local_facts)
     rec = DefenseRecommendation.model_validate(rec_local.model_dump(mode="json"))
@@ -397,9 +388,14 @@ def rl_recommend(ctx: JobContext) -> dict[str, Any]:
             action="rl.recommendation_created",
             subject_type="defense_recommendation",
             subject_id=rec.id,
-            details={"policy_version": rec.policy_version, "action": rec.action, "node": rec.node},
+            details={
+                "policy_version": rec.policy_version,
+                "action": rec.action,
+                "node": rec.node,
+                "facts_provenance": provenance,
+            },
         )
-    return {"recommendation_id": rec.id}
+    return {"recommendation_id": rec.id, "facts_provenance": provenance}
 
 
 # ------------------------------------------------------------------- snapshots

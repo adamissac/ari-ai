@@ -267,7 +267,7 @@ def build() -> dict[str, BaseModel]:
             rl.ActionScore(action="raise_monitoring", node="payments", q_value=1.3),
             rl.ActionScore(action="noop", node=None, q_value=0.88),
         ],
-        observation=[0.0] * 47,
+        observation=[0.0] * 48,
         created_at=T0,
     )
     audit_body = dict(
