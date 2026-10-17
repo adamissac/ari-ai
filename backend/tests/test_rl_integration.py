@@ -182,7 +182,10 @@ def test_checkpoint_pin_is_verified_before_loading(
     with _pytest.raises(PermanentJobError, match="hash mismatch"):
         verify_rl_checkpoint(get_settings())
 
-    monkeypatch.delenv("RL_CHECKPOINT_SHA256")
-    settings_override(rl_checkpoint_path=str(checkpoint), app_env="production")
+    # .env.example ships the key empty: that must read as "not pinned", not crash settings.
+    settings_override(
+        rl_checkpoint_path=str(checkpoint), rl_checkpoint_sha256="", app_env="production"
+    )
+    assert get_settings().rl_checkpoint_sha256 is None
     with _pytest.raises(PermanentJobError, match="must pin"):
         verify_rl_checkpoint(get_settings())
