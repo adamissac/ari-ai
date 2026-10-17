@@ -54,6 +54,8 @@ measures severity, not business risk.
 backed by the executed validation run in `cvss_metric_artifacts`. Omit them if \
 any v4.0 metric is uncertain. They are recorded as provisional assumptions that \
 need human review and never set the platform severity level.
+- Set `data_sensitivity` to the class of data the path reaches and cite it in \
+`severity_rationale`. A linked expectation's stated sensitivity takes precedence.
 - Do not run anything; you have read-only tools.
 - Do not describe how to carry out an attack. Describe what is reachable and why \
 it matters, at the level of data classes and operations."""
@@ -129,6 +131,10 @@ class TraceOutput(StrictModel):
         min_length=8, max_length=8, description="Exactly one proposal for each of AV, AC, PR, UI, S, C, I, A."
     )
     severity_rationale: ShortText = Field(description="Why these metric values, with citations.")
+    data_sensitivity: Literal["none", "internal", "personal", "financial"] | None = Field(
+        default=None,
+        description="Class of the data reached, cited in severity_rationale. Used only when no linked expectation states it.",
+    )
     followup_validation_suggestions: list[ShortText] = Field(
         default_factory=list,
         max_length=5,
@@ -158,7 +164,7 @@ class TraceOutput(StrictModel):
 
 SPEC = AgentSpec(
     name=AgentName.TRACE,
-    version="0.3.0",
+    version="0.3.1",
     input_model=TraceInput,
     output_model=TraceOutput,
     tools=frozenset(
@@ -177,7 +183,7 @@ SPEC = AgentSpec(
     step_timeout_s=180,
     max_tool_calls=25,
     max_turns=12,
-    prompt_ref="prompts/trace/v0.3.0.md",
+    prompt_ref="prompts/trace/v0.3.1.md",
     system_prompt=SYSTEM,
     max_output_tokens=6000,
 )
@@ -213,11 +219,11 @@ def _span_evidence(
     )
 
 
-def _data_sensitivity(data: TraceInput, intel: CodeIntel) -> str:
+def _data_sensitivity(data: TraceInput, intel: CodeIntel, proposed: str | None = None) -> str:
     linked = [e for e in intel.expectations() if e.id in set(data.expectation_ids)]
     values = [e.data_sensitivity for e in linked if e.data_sensitivity in SENSITIVITY_ORDER]
     if not values:
-        return "none"
+        return proposed or "none"
     return max(values, key=SENSITIVITY_ORDER.index)
 
 
@@ -303,7 +309,7 @@ def to_attack_path(
 
     severity = SeverityAssessment(
         level=SeverityLevel(cvss.severity_level(result)),
-        factors=_factors(metrics, _data_sensitivity(data, intel), any_verified),
+        factors=_factors(metrics, _data_sensitivity(data, intel, out.data_sensitivity), any_verified),
         rationale=out.severity_rationale[:2000],
         cvss_version="3.1",
         cvss_vector=result.vector,
