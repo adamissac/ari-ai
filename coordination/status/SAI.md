@@ -93,3 +93,5 @@ Add dated factual entries; do not overwrite history. Never claim unexecuted test
 - #149 typography (Space Grotesk / Inter / IBM Plex Mono, fonts only; logo rendering preserved).
 - #153 interactive hero motion (orbs, pointer spotlight, staggered entrance, loop highlight).
 - #157 Kairo-style intro loader, floating header revealed on scroll, full-screen pinned hero. All CI green; coordination messages sent for each.
+- #161 / #163: `/` is a landing page with scroll-told chapters; projects moved to `/projects`. #167: CTA spacing. #174: Obsidian-style graph view for the Defense Lab episode replay. #174 merged before its checks registered; all passed afterwards, and the merge gate now waits for reported checks.
+- 2026-10-17T14:34:03Z: posted the Ari ant logo placement sign-off for Sarosh's #169 on #165. Holding off brand, intro, layout and icon files until it merges.
