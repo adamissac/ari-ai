@@ -265,6 +265,7 @@ def test_http_target_serves_the_assessed_snapshot_not_a_fixture_image(payments_i
     patched = tmp_path / "patched_snapshot"
     shutil.copytree(payments_intel.snapshot.root, patched)
     app = patched / "payments_lite" / "app.py"
+    app.chmod(0o644)
     planted = (
         '            raise HTTPException(status.HTTP_404_NOT_FOUND, "not found")\n'
         "        return payment_out(store, p)\n"
