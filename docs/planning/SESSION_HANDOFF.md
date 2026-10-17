@@ -366,13 +366,30 @@ commits, verification, next actions and warnings — is
 `coordination/messages/20261017T132209Z-sarosh-to-codex-recovered-memory-handoff.md`.
 Post-merge smoke checks: memory/contract suite **8 passed**; regression/host/
 reviewer integration suite **11 passed** after `uv sync --frozen`.
-||||||| 39186cb
 
 ### 2026-10-17 — Alan security Docker evidence reconciliation
 - Continued from Claude's current main-based worktree; #73/#74 are merged and #35 is closed. Left the separate Devin M7 branch and untracked reports intact.
 - Inspected successful security CI 39033028814 (`5b3ef50`): 6 real Docker tests passed; ordinary suite 451 passed/18 skipped. Corrected stale execution-unverified and integration-pending README claims.
 - INFRA-005 still needs published image digests; CI's temporary image tag is not a published release. Live seven-role provider proof remains separate.
 
+### 2026-10-17 — Sarosh / Codex — recovered context and ingestion scope cache
+
+- Read recovered handoff PR #145 (`e5fee45`, later merged #145); confirmed #39
+  merged and #38 closed. Synced current main and installed frozen workspace.
+  Recovery memory smoke: **8 passed**. No recovered implementation was redone.
+- Found/reproduced #148: same project/repo/SHA/parser-version cache ignored the
+  operator's include prefix and limits; an invalid prefix could hit the cache
+  before validation. A new regression test failed on the inspected main.
+- Fixed in `fix/sarosh/intelligence-scope-cache`: normalized/validated prefix,
+  profile-aware immutable versions for cache/snapshot/diff paths, provenance from
+  the exact ref. Parser base 0.3.0; non-default profile digest fits existing DB
+  column. Existing refs and exact-snapshot decisions stay unchanged.
+- Executed: new producer cases **6 passed**; broad intelligence/shared/PostgreSQL
+  checks **97 passed, 1 live opt-in skipped**; new real PostgreSQL profile case
+  **1 passed**; backend M7/host/unified and reviewer consumer checks **11 passed**
+  with scripted test transports. Ruff/format and strict producer mypy passed.
+- No new live-provider, local Docker, browser or deployment proof claimed.
+  Active security/frontend owner branches were left untouched.
 ### 2026-10-17 — QA-002 M7 runner isolation
 - Continued unfinished Devin runner: uses selected Python, no uv PATH requirement, no shared devdb start/stop, forced live-provider opt-out, ignored report output with --output override. Removed hardcoded branch metadata.
 - Executed M7 through isolated PostgreSQL fixture successfully; wrapper exits2 truthfully because browser is unexecuted. QA unit suite13 passed; Ruff/format and link checks passed.
