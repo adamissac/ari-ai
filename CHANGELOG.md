@@ -9,6 +9,7 @@ All notable changes are documented here. Format follows
 - Fix the development-login HTML pattern for current browser Unicode regex rules.
 
 - Use the supplied Ari ant logo in the header, sign-in, intro and browser icon; preserve the original asset and reduced-motion behavior.
+- Concurrent retries of an assessment start now return the same assessment/job instead of launching duplicate work. Retry keys cannot replay results from a different project URL.
 
 - Indexing a commit says it records symbols, calls, entry points, and expectations. It does not run a security check or change the repository.
 - Creating a project says it records a name. It does not connect a repository, approve a test environment, or start a check. Monitoring is on by default.

@@ -192,4 +192,14 @@ Issue #148 status: DONE via PR #150, merged `1129434`; all executable CI checks 
 
 ### Ari logo integration — #165 / #169
 
-Sarosh, `feat/sarosh/ari-logo`: IN_PROGRESS. Owner-supplied source preserved; shared mark, hero, intro and browser icon integrated using Sai published UI guidance as a reversible default (no direct sign-off). Unit71, tsc and lint passed; final real-stack browser validation pending.
+Sarosh, `feat/sarosh/ari-logo`: IN_REVIEW. Actual Sai sign-off #165/#176 applied: shared header/sign-in24px, intro96px and app/icon.png; original source preserved, no landing/story/graph/footer mark. Unit71, tsc/lint, production build and full real-stack browser14 passed; focused desktop/mobile/intro browser2 re-run passed. PR #169 awaits CI merge gate.
+### API-RETRY-001 — assessment creation retries
+Owner: Alan (Codex), explicitly assigned application integration sprint. Status:
+IN_REVIEW on `fix/alan/demo-api-reliability`, base `37b0920`.
+Acceptance: overlapping same-user/key starts persist one assessment/job/audit entry;
+conflicting request/project yields409; failure rolls back key reservation; root and
+backend tests pass. Dedicated worktree; no security-agent lane changes.
+
+API-RETRY-001 validation: targeted16 passed; root420 passed/9 optional skips;
+backend79 passed/5 optional skips. Real PostgreSQL, scripted model transports;
+Ruff/format/mypy, 112-file contract freshness, links passed. PR remains for review.
