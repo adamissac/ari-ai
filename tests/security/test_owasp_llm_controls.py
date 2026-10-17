@@ -136,6 +136,25 @@ def test_unbounded_agent_loop_stops():
     assert len(transport.requests) == 2
 
 
+@pytest.mark.owasp_llm("LLM07:2025")
+def test_system_prompts_hold_no_secret_shaped_values():
+    import re
+
+    from security_agents.agents import ALL_SPECS
+
+    shapes = [
+        re.compile(r"sk-ant-[A-Za-z0-9_\-]{8,}"),
+        re.compile(r"github_pat_[A-Za-z0-9_]{20,}"),
+        re.compile(r"gh[pousr]_[A-Za-z0-9]{20,}"),
+        re.compile(r"AKIA[0-9A-Z]{16}"),
+        re.compile(r"xox[abpr]-[A-Za-z0-9\-]{10,}"),
+        re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
+    ]
+    for name, spec in ALL_SPECS.items():
+        for pat in shapes:
+            assert not pat.search(spec.system_prompt), (name.value, pat.pattern)
+
+
 def test_coverage_matrix_has_all_risks_and_real_marked_tests(request):
     from standards.catalog import load_json, owasp_llm_ids
     from standards.owasp_llm import validate
