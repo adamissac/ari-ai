@@ -18,7 +18,7 @@ from .agents import ALL_SPECS
 from .checks.library import CheckLibrary, default_library
 from .contracts import SCHEMA_VERSION, AgentName
 from .host_adapter import HostOrchestrator, build_orchestrator
-from .intel import CodeIntel, LocalIntel
+from .intel import CodeIntel, CodeIntelligenceAdapter, LocalIntel
 from .llm import LLMGateway, ProviderGateway
 from .runtime import AgentSpec, StepOutcome
 from .runtime import run_agent as run_agent_step
@@ -55,6 +55,7 @@ __all__ = [
     "AssessmentResult",
     "CheckLibrary",
     "CodeIntel",
+    "CodeIntelligenceAdapter",
     "Decision",
     "DockerSandboxDriver",
     "HostOrchestrator",

@@ -22,10 +22,43 @@ from . import fake_agents  # noqa: E402
 from .conftest import TARGET_ID, live_scope  # noqa: E402
 
 
-def test_adapter_targets_the_installed_schema_version():
-    """A schema bump must be reviewed against the mappings, not absorbed silently."""
+def test_mapped_models_have_not_drifted():
+    """A change to a model this adapter maps must fail here, not at the API edge.
+
+    This is deliberately structural rather than a version pin: `shared` bumps
+    its SCHEMA_VERSION for changes all over the contract surface, and only the
+    models listed in `export.MAPPED_FIELDS` affect the security pillar.
+    """
     assert export.schema_version() == shared.SCHEMA_VERSION
+    drift = export.mapping_drift()
+    assert drift == [], (
+        "canonical contracts moved under the adapter; review the mappings in "
+        f"security_agents/contracts/export.py: {drift}"
+    )
     export.assert_supported_schema()
+
+
+def test_version_is_one_we_verified_against():
+    """Informational: a new version passes only while the mapped models match."""
+    if shared.SCHEMA_VERSION not in export.VERIFIED_SCHEMA_VERSIONS:
+        pytest.skip(
+            f"shared {shared.SCHEMA_VERSION} is newer than the versions this adapter was "
+            f"verified against {export.VERIFIED_SCHEMA_VERSIONS}; the structural check above "
+            "is what gates correctness"
+        )
+    assert export.mapping_drift() == []
+
+
+def test_drift_is_detected_when_a_mapped_field_changes(monkeypatch):
+    """The drift check must actually catch a change (guard against a no-op test)."""
+    monkeypatch.setitem(
+        export.MAPPED_FIELDS, ("findings", "Hypothesis"),
+        {**export.MAPPED_FIELDS[("findings", "Hypothesis")], "title": True},
+    )
+    drift = export.mapping_drift()
+    assert any("title" in problem for problem in drift)
+    with pytest.raises(export.ContractUnavailable):
+        export.assert_mappings_current()
 
 
 @pytest.fixture(scope="module")
