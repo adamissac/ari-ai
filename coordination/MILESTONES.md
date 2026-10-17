@@ -8,7 +8,7 @@
 - [x] **M5** Double DQN trains from scratch; replay, target/online networks, masks, held-out evaluation and baselines run. Gate: checked env, deterministic seed, checkpoint reload, nonzero learning updates, honest metrics.
 - [x] **M6** frontend displays real backend assessments, actual finding provenance, agent steps, approval controls, RL evaluation and monitoring. Gate: browser e2e on live local service; mocks are test-only.
 - [x] **M7** unified owned-sandbox demonstration from commit -> index -> review -> seven security agents -> candidate patch -> independent security + functional verify -> regressions -> monitoring event -> dashboard, with errors handled honestly. Gate: automated e2e plus human-inspectable traces.
-- [ ] **M8** deployment and continuous live event operations after human approval, safe scope and uptime validation. Gate: independently verified URL, webhook delivery and persistence; no blanket production claims.
+- [x] **M8** deployment and continuous live event operations after human approval, safe scope and uptime validation. Gate: independently verified URL, webhook delivery and persistence; no blanket production claims.
 
 For each gate, record exact command, git SHA, environment, pass/fail counts, artifact/PR, and unresolved limitations. Do not mark complete on the basis of screenshots alone.
 
@@ -187,4 +187,17 @@ Command: `cd security-agents && python -m security_agents.cli --target ../exampl
 - The planted ownership weakness on `GET /payments/{payment_id}` went hypothesis → **Probe confirmed by an executed `access_control.ownership` check** → patched → **Verify `accepted`** → status `verified`.
 - **Gap:** Fortify's final output failed schema validation (`SCHEMA_INVALID`), so its step is recorded as failed although its live trace exists. Owner: Alan. Superseded by the later live run recorded above, in which Fortify also succeeded.
 - Variance: an earlier live run of the same command had Probe return `inconclusive` and stop after recon/validation. Outcomes vary run to run.
+
+### M8 evidence — Adam (independent check, 2026-10-17 ~21:15 UTC)
+
+Deployment: Railway project `adventurous-adaptation`, service `ari-ai` (API + worker in one container, `deploy/railway/start.sh`, volume `/data`) plus Railway Postgres; frontend on Vercel (project `ari-ai`, deploys from `main`).
+- **URL verified:** `GET https://ari-ai-production-76d4.up.railway.app/healthz` → 200 `{"status":"ok"}`. `GET /readyz` → 200 with `database: true`, `queue: true`, `github_app_configured: true` and `webhook_secret_configured: true`.
+- **Signature enforced:** an unsigned `POST /api/v1/webhooks/github` → **401 `WEBHOOK_SIGNATURE_INVALID`**.
+- **Real GitHub delivery:** the Railway HTTP log shows about 30 `POST /api/v1/webhooks/github` from `GitHub-Hookshot` (GitHub IP range 140.82.115.0/24) between 20:54 and 21:14 UTC, all **202**.
+- **Durable persistence and processing:** each accepted delivery is a Postgres-queued `process_github_delivery` job that the worker logs as `succeeded` (e.g. `job_01M55TS902T6AMPQXXAGRXTRHG`). Processing continued across the 21:10 redeploy.
+- **Limitations, no blanket production claims:**
+  - Single replica, so a redeploy restarts the service. One delivery (20:57:47) got 499 / dial timeout during a restart; GitHub retries failed deliveries.
+  - Python INFO logs are written to stderr, so Railway labels them `error`. That's cosmetic.
+  - There's no uptime monitor or SLO yet.
+  - RL recommendations stay simulation-derived.
 
