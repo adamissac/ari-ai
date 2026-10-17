@@ -26,7 +26,7 @@ export default function ProjectsPage() {
 
   return (
     <>
-      <PageTitle title="Projects" subtitle="Each project links repositories, authorized test scopes, assessments and monitoring history." />
+      <PageTitle eyebrow="Workspace" title="Projects" subtitle="Each project links repositories, authorized test scopes, assessments and monitoring history." />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
         <Panel title="Your projects">
           <Async resource={projects} label="projects">
