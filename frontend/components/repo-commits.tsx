@@ -28,7 +28,7 @@ export function RepoCommits({ repo, onPick }: { repo: Repository; onPick: (sha: 
             </span>
             <span className="flex items-center gap-3 text-xs">
               <button type="button" className="text-muted hover:text-ink" onClick={() => onPick(c.sha)}>Explore commit</button>
-              <Link className="text-brand hover:underline" href={`/projects/${repo.project_id}/simulate?repo=${encodeURIComponent(repo.full_name)}&sha=${c.sha}`}>Analyze →</Link>
+              <Link className="text-brand hover:underline" href={`/connect/${repo.full_name.split('/').map(encodeURIComponent).join('/')}/commit/${c.sha}`}>Analyze →</Link>
             </span>
           </li>
         ))}

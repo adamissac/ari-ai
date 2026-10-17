@@ -15,5 +15,5 @@ it('opens only the selected commit’s recorded assessment journey', () => {
   const link = screen.getByText('Open reviewer & agent journey').closest('a');
   expect(link?.getAttribute('href')).toBe('/projects/p1/assessments/a1');
   expect(screen.queryByText('a2')).toBeNull();
-  expect(screen.getByText('Analyze this commit').getAttribute('href')).toContain('sha=abc123');
+  expect(screen.getByText('Analyze this commit').getAttribute('href')).toBe('/connect/team/app/commit/abc123');
 });

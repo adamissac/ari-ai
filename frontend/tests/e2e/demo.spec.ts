@@ -32,10 +32,16 @@ test('simulated demo: GitHub sign-in, org, repo, commit, seven agents, review, d
   await expect(page.getByTestId('demo-review')).toContainText('A customer can only read payments they own.');
   await expect(page.getByTestId('demo-review')).toContainText('require_owner(p.customer_id, customer)');
 
-  await page.getByTestId('demo-tab-defense').click();
-  await expect(page.getByTestId('defense-map')).toContainText('CRITICAL');
-  await expect(page.getByTestId('demo-defense')).toContainText('Raise monitoring');
-  await evidenceShot(page, 'demo-defense');
+  // A commit's analysis is review + seven agents; continuous defense is not part of it.
+  await expect(page.getByTestId('demo-tab-defense')).toHaveCount(0);
+
+  // The agent map: the run replays, the changed service ends fixed, untouched parts stay out.
+  await page.getByTestId('demo-tab-agents').click();
+  await expect(page.getByTestId('demo-node-api')).toHaveAttribute('data-state', 'fixed');
+  await expect(page.getByTestId('demo-node-refunds')).toHaveAttribute('data-state', 'outside');
+  await page.getByTestId('demo-play').click();
+  await expect(page.getByTestId('demo-agent-now')).not.toHaveText('All seven agents finished');
+  await evidenceShot(page, 'demo-agent-map');
 
   await page.setViewportSize({ width: 375, height: 800 });
   await page.getByTestId('demo-tab-agents').click();

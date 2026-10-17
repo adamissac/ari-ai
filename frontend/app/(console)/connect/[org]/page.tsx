@@ -6,16 +6,10 @@ import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Avatar } from '@/components/demo/ui';
 import { Button, ErrorState, Loading, Tag } from '@/components/ui';
-import { api, idempotencyKey } from '@/lib/api';
+import { api } from '@/lib/api';
+import { connectRepo } from '@/lib/github-connect';
 import { groupByOrg, repoName } from '@/lib/github-orgs';
 import { useResource } from '@/lib/use-resource';
-
-/** One project per organization: found by name, created on the first connect. */
-async function projectFor(org: string): Promise<string> {
-  const existing = (await api().projects()).items.find(p => p.name === org);
-  if (existing) return existing.id;
-  return (await api().createProject({ name: org, org_id: null, settings: null }, { idempotencyKey: idempotencyKey('project') })).id;
-}
 
 /** Second step: choose a repository in the organization and connect it. */
 export default function ConnectReposPage() {
@@ -30,13 +24,11 @@ export default function ConnectReposPage() {
     setBusy(repo.full_name);
     setError(null);
     try {
-      const pid = await projectFor(login);
-      if (!repo.connected_repo_id) {
-        await api().connectRepository(pid, { full_name: repo.full_name, default_branch: repo.default_branch, installation_id: repo.installation_id });
-      }
-      router.push(`/projects/${pid}`);
+      await connectRepo(login, repo);
+      router.push(`/connect/${encodeURIComponent(login)}/${encodeURIComponent(repoName(repo.full_name))}`);
     } catch (err) { setError(err); setBusy(null); }
   };
+
 
   const org = list.status === 'ready' ? groupByOrg(list.data.items).find(o => o.login === login) : undefined;
 
