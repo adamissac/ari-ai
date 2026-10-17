@@ -38,6 +38,8 @@ class ErrorCode(StrEnum):
     CANCELLED = "CANCELLED"
     JOB_LEASE_EXPIRED = "JOB_LEASE_EXPIRED"
     INTERNAL = "INTERNAL"
+    # Agent-domain halt raised when the kill switch pauses assessments.
+    KILL_SWITCH = "KILL_SWITCH"
 
 
 class ErrorBody(StrictModel):

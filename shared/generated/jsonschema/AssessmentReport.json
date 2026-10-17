@@ -916,7 +916,8 @@
         "SUBSYSTEM_UNAVAILABLE",
         "CANCELLED",
         "JOB_LEASE_EXPIRED",
-        "INTERNAL"
+        "INTERNAL",
+        "KILL_SWITCH"
       ],
       "title": "ErrorCode",
       "type": "string"
