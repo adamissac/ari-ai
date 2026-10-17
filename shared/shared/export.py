@@ -64,23 +64,23 @@ def _ts_type(s: dict[str, Any]) -> str:
             return " | ".join(parts)
     if "allOf" in s and len(s["allOf"]) == 1:
         return _ts_type(s["allOf"][0])
-    t = s.get("type")
-    if isinstance(t, list):
-        return " | ".join(_ts_type({**s, "type": x}) for x in t)
-    if t == "string":
+    kind = s.get("type")
+    if isinstance(kind, list):
+        return " | ".join(_ts_type({**s, "type": x}) for x in kind)
+    if kind == "string":
         return "string"
-    if t in ("integer", "number"):
+    if kind in ("integer", "number"):
         return "number"
-    if t == "boolean":
+    if kind == "boolean":
         return "boolean"
-    if t == "null":
+    if kind == "null":
         return "null"
-    if t == "array":
+    if kind == "array":
         if "prefixItems" in s:
             return "[" + ", ".join(_ts_type(x) for x in s["prefixItems"]) + "]"
         inner = _ts_type(s.get("items", {}))
         return f"Array<{inner}>"
-    if t == "object":
+    if kind == "object":
         if s.get("properties"):
             return _ts_object(s, indent="  ")
         ap = s.get("additionalProperties")

@@ -33,16 +33,28 @@ def main(argv: list[str] | None = None) -> int:
     if not s.github_webhook_secret:
         raise SystemExit("GITHUB_WEBHOOK_SECRET is not set")
     payload = {
-        "ref": a.ref, "before": a.base or "0" * 40, "after": a.head, "forced": False, "deleted": False,
-        "repository": {"full_name": a.repo}, "sender": {"login": "local-replay"},
+        "ref": a.ref,
+        "before": a.base or "0" * 40,
+        "after": a.head,
+        "forced": False,
+        "deleted": False,
+        "repository": {"full_name": a.repo},
+        "sender": {"login": "local-replay"},
         "head_commit": {"timestamp": datetime.now(UTC).isoformat()},
         "commits": [{"added": [], "modified": a.path, "removed": []}],
     }
     raw = json.dumps(payload).encode()
-    r = httpx.post(f"{a.api or s.api_base_url}/api/v1/webhooks/github", content=raw, timeout=10, headers={
-        "Content-Type": "application/json", "X-GitHub-Event": "push", "X-GitHub-Delivery": str(uuid.uuid4()),
-        "X-Hub-Signature-256": sign(s.github_webhook_secret.get_secret_value().encode(), raw),
-    })
+    r = httpx.post(
+        f"{a.api or s.api_base_url}/api/v1/webhooks/github",
+        content=raw,
+        timeout=10,
+        headers={
+            "Content-Type": "application/json",
+            "X-GitHub-Event": "push",
+            "X-GitHub-Delivery": str(uuid.uuid4()),
+            "X-Hub-Signature-256": sign(s.github_webhook_secret.get_secret_value().encode(), raw),
+        },
+    )
     print(r.status_code, r.text)
     return 0 if r.status_code in (200, 202) else 1
 

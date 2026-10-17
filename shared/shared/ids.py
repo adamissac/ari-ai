@@ -68,41 +68,39 @@ def new_id(prefix: IdPrefix | str) -> str:
     return f"{IdPrefix(prefix).value}_{ulid()}"
 
 
-def _id_type(prefix: str) -> type[str]:
-    return Annotated[  # type: ignore[return-value]
-        str, StringConstraints(pattern=rf"^{prefix}_[0-9A-Za-z]{{8,64}}$")
-    ]
+def _pattern(prefix: str) -> StringConstraints:
+    return StringConstraints(pattern=rf"^{prefix}_[0-9A-Za-z]{{8,64}}$")
 
 
-OrgId = _id_type("org")
-UserId = _id_type("usr")
-ProjectId = _id_type("prj")
-RepositoryId = _id_type("rep")
-SnapshotId = _id_type("snp")
-SymbolId = _id_type("sym")
-EntryPointId = _id_type("ent")
-ExpectationId = _id_type("exp")
-ScopeId = _id_type("scp")
-ApprovalId = _id_type("apv")
-AssessmentId = _id_type("asm")
-AgentRunId = _id_type("run")
-TestRunId = _id_type("tst")
-ContextPackId = _id_type("ctx")
-FindingId = _id_type("fnd")
-HypothesisId = _id_type("hyp")
-ValidationId = _id_type("val")
-AttackPathId = _id_type("atp")
-RootCauseId = _id_type("rc")
-RemediationPlanId = _id_type("rmp")
-PatchId = _id_type("pat")
-VerificationId = _id_type("ver")
-HardeningId = _id_type("hdn")
-AuditEventId = _id_type("aud")
-MonitoringEventId = _id_type("evt")
-ReassessmentRequestId = _id_type("rrq")
-RecommendationId = _id_type("rec")
-CheckpointId = _id_type("ckp")
-RLEvaluationId = _id_type("rle")
-ArtifactId = _id_type("art")
-JobId = _id_type("job")
-RequestId = _id_type("req")
+OrgId = Annotated[str, _pattern("org")]
+UserId = Annotated[str, _pattern("usr")]
+ProjectId = Annotated[str, _pattern("prj")]
+RepositoryId = Annotated[str, _pattern("rep")]
+SnapshotId = Annotated[str, _pattern("snp")]
+SymbolId = Annotated[str, _pattern("sym")]
+EntryPointId = Annotated[str, _pattern("ent")]
+ExpectationId = Annotated[str, _pattern("exp")]
+ScopeId = Annotated[str, _pattern("scp")]
+ApprovalId = Annotated[str, _pattern("apv")]
+AssessmentId = Annotated[str, _pattern("asm")]
+AgentRunId = Annotated[str, _pattern("run")]
+TestRunId = Annotated[str, _pattern("tst")]
+ContextPackId = Annotated[str, _pattern("ctx")]
+FindingId = Annotated[str, _pattern("fnd")]
+HypothesisId = Annotated[str, _pattern("hyp")]
+ValidationId = Annotated[str, _pattern("val")]
+AttackPathId = Annotated[str, _pattern("atp")]
+RootCauseId = Annotated[str, _pattern("rc")]
+RemediationPlanId = Annotated[str, _pattern("rmp")]
+PatchId = Annotated[str, _pattern("pat")]
+VerificationId = Annotated[str, _pattern("ver")]
+HardeningId = Annotated[str, _pattern("hdn")]
+AuditEventId = Annotated[str, _pattern("aud")]
+MonitoringEventId = Annotated[str, _pattern("evt")]
+ReassessmentRequestId = Annotated[str, _pattern("rrq")]
+RecommendationId = Annotated[str, _pattern("rec")]
+CheckpointId = Annotated[str, _pattern("ckp")]
+RLEvaluationId = Annotated[str, _pattern("rle")]
+ArtifactId = Annotated[str, _pattern("art")]
+JobId = Annotated[str, _pattern("job")]
+RequestId = Annotated[str, _pattern("req")]

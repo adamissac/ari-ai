@@ -39,6 +39,7 @@ jobs:
         run: |
           ~/.local/bin/uv run ruff check shared monitoring backend
           ~/.local/bin/uv run ruff format --check shared monitoring backend
+          ~/.local/bin/uv run mypy
       - name: Generated contracts are current (CORE-003)
         run: |
           ~/.local/bin/uv run python -m shared.export --check
