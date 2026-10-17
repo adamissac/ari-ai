@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { BRAND_NAME, Wordmark } from '@/components/brand';
 import { DemoBanner } from '@/components/demo-banner';
+import { SiteFooter } from '@/components/site-footer';
 import { RollText } from '@/components/ui';
 import './globals.css';
 
@@ -40,9 +41,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         </header>
         <DemoBanner />
         <main id="main" className="mx-auto max-w-7xl px-4 py-6">{children}</main>
-        <footer className="mx-auto max-w-7xl border-t border-line px-4 py-6 text-xs text-faint">
-          Everything on these pages is read from the control-plane API or committed evaluation artifacts. Nothing is generated in the browser.
-        </footer>
+        <SiteFooter />
       </body>
     </html>
   );

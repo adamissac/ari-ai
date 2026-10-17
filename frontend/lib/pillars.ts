@@ -1,3 +1,5 @@
+import { bucketCounts } from '@/lib/findings';
+
 /**
  * The product loop as five connected steps, each carrying this project's recorded
  * counts. Words are explanation; numbers come only from loaded records, and a count
@@ -18,7 +20,8 @@ export interface LoopNode {
 export interface LoopInput {
   projectId: string;
   repoCount: number;
-  activeScopeCount: number;
+  /** Null while scopes are loading or failed to load; never treated as zero. */
+  activeScopeCount: number | null;
   assessmentCount: number | null;
   findings: readonly { kind: string; status: string }[] | null;
   monitoringEnabled: boolean;
@@ -26,19 +29,18 @@ export interface LoopInput {
   reassessmentCount: number | null;
 }
 
-const UNTESTED = new Set(['hypothesis']);
-const DISMISSED = new Set(['refuted', 'closed', 'accepted_risk', 'inconclusive']);
-const FIXED = new Set(['verified', 'hardened']);
-
 const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`;
 
 export function pillarLoop(input: LoopInput): LoopNode[] {
   const base = `/projects/${input.projectId}`;
   const f = input.findings;
-  const functional = f?.filter(x => x.kind === 'functional' && !DISMISSED.has(x.status) && !FIXED.has(x.status)).length ?? null;
-  const confirmed = f?.filter(x => x.kind === 'security' && !UNTESTED.has(x.status) && !DISMISSED.has(x.status) && !FIXED.has(x.status)).length ?? null;
-  const suspicions = f?.filter(x => x.kind === 'security' && UNTESTED.has(x.status)).length ?? null;
-  const fixed = f?.filter(x => FIXED.has(x.status)).length ?? null;
+  const fn = f ? bucketCounts(f, 'functional') : null;
+  const sec = f ? bucketCounts(f, 'security') : null;
+  const functional = fn ? fn.confirmed : null;
+  const confirmed = sec ? sec.confirmed : null;
+  const suspicions = sec ? sec.untested : null;
+  const inconclusive = sec ? sec.inconclusive : null;
+  const fixed = f ? bucketCounts(f).fixed : null;
   const checked = input.assessmentCount !== null && input.assessmentCount > 0;
 
   const understand: LoopNode = {
@@ -50,19 +52,32 @@ export function pillarLoop(input: LoopInput): LoopNode[] {
   const review: LoopNode = {
     id: 'review', pillar: 'Pillar 1', title: 'Review the change',
     question: 'Does the change do what it was meant to?',
-    status: functional === null ? 'Findings did not load.' : !checked ? 'Not checked yet.' : functional === 0 ? 'No open problems in how the code behaves.' : `${plural(functional, 'behaviour problem')} still open.`,
-    tone: functional === null ? 'unknown' : !checked ? 'empty' : functional === 0 ? 'good' : 'attention', href: `${base}/findings`,
+    status: fn === null || functional === null ? 'Findings did not load.' : !checked ? 'Not checked yet.'
+      : functional === 0 && fn.untested === 0 && fn.inconclusive === 0 ? 'No open problems in how the code behaves.'
+      : [
+        functional > 0 ? `${plural(functional, 'behaviour problem')} still open` : null,
+        fn.untested > 0 ? plural(fn.untested, 'untested suspicion') : null,
+        fn.inconclusive > 0 ? plural(fn.inconclusive, 'inconclusive test result') : null,
+      ].filter(Boolean).join(', ') + '.',
+    tone: fn === null || functional === null ? 'unknown' : !checked ? 'empty' : functional > 0 ? 'attention' : fn.untested > 0 || fn.inconclusive > 0 ? 'active' : 'good',
+    href: `${base}/findings`,
   };
   const attack: LoopNode = {
     id: 'attack', pillar: 'Pillar 2', title: 'Test it like an attacker',
     question: 'Could someone break in or misuse it?',
-    status: input.activeScopeCount === 0 ? 'Blocked until a person approves a safe test environment.'
-      : confirmed === null || suspicions === null ? 'Findings did not load.'
+    status: input.activeScopeCount === null ? 'Scopes did not load.'
+      : input.activeScopeCount === 0 ? 'Blocked until a person approves a safe test environment.'
+      : confirmed === null || suspicions === null || inconclusive === null ? 'Findings did not load.'
       : !checked ? 'Not tested yet.'
-      : confirmed === 0 && suspicions === 0 ? 'No open security problems in this list.'
-      : [confirmed > 0 ? `${plural(confirmed, 'confirmed weakness', 'confirmed weaknesses')}` : null, suspicions > 0 ? `${plural(suspicions, 'untested suspicion')}` : null].filter(Boolean).join(', ') + '.',
-    tone: input.activeScopeCount === 0 ? 'attention' : confirmed === null ? 'unknown' : !checked ? 'empty' : confirmed > 0 ? 'attention' : suspicions && suspicions > 0 ? 'active' : 'good',
-    href: input.activeScopeCount === 0 ? `${base}/scopes` : `${base}/findings`,
+      : confirmed === 0 && suspicions === 0 && inconclusive === 0 ? 'No open security problems in this list.'
+      : [
+        confirmed > 0 ? plural(confirmed, 'confirmed weakness', 'confirmed weaknesses') : null,
+        suspicions > 0 ? plural(suspicions, 'untested suspicion') : null,
+        inconclusive > 0 ? plural(inconclusive, 'inconclusive test result') : null,
+      ].filter(Boolean).join(', ') + '.',
+    tone: input.activeScopeCount === null ? 'unknown' : input.activeScopeCount === 0 ? 'attention' : confirmed === null ? 'unknown' : !checked ? 'empty'
+      : confirmed > 0 ? 'attention' : (suspicions ?? 0) > 0 || (inconclusive ?? 0) > 0 ? 'active' : 'good',
+    href: input.activeScopeCount === null || input.activeScopeCount === 0 ? `${base}/scopes` : `${base}/findings`,
   };
   const prove: LoopNode = {
     id: 'prove', pillar: 'Pillar 2', title: 'Fix it and prove it',
