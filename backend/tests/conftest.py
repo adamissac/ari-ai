@@ -36,6 +36,21 @@ def _database_url() -> str:
     return url.render_as_string(hide_password=False)
 
 
+def _live_key() -> str:
+    """The real key for the opt-in live smoke, read BEFORE tests blank ANTHROPIC_API_KEY.
+    Source: the shell environment, else the repo-root .env (git-ignored)."""
+    key = os.environ.get("ANTHROPIC_API_KEY", "")
+    env_file = Path(__file__).resolve().parents[2] / ".env"
+    if not key and env_file.exists():
+        for line in env_file.read_text().splitlines():
+            name, sep, value = line.partition("=")
+            if sep and name.strip() == "ANTHROPIC_API_KEY":
+                key = value.split("#", 1)[0].strip().strip("\"'")
+    return "" if key in ("", "replace-me") else key
+
+
+os.environ["HACKATL_LIVE_ANTHROPIC_API_KEY"] = _live_key()
+
 os.environ.update(
     {
         "APP_ENV": "test",

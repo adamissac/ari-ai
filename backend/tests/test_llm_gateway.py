@@ -178,13 +178,16 @@ def test_turn_limit_is_enforced() -> None:
 
 @pytest.mark.live_llm
 @pytest.mark.skipif(
-    os.environ.get("RUN_LIVE_LLM_EVAL") != "1" or not os.environ.get("ANTHROPIC_API_KEY"),
-    reason="live provider smoke is opt-in: RUN_LIVE_LLM_EVAL=1 and ANTHROPIC_API_KEY",
+    os.environ.get("RUN_LIVE_LLM_EVAL") != "1"
+    or not os.environ.get("HACKATL_LIVE_ANTHROPIC_API_KEY"),
+    reason="live provider smoke is opt-in: RUN_LIVE_LLM_EVAL=1 and ANTHROPIC_API_KEY (shell or .env)",
 )
 def test_live_provider_tool_loop_smoke() -> None:
     """Real Claude call with a real tool round-trip on a tiny owned snippet. Never runs in CI."""
     settings = Settings(
-        _env_file=None, anthropic_api_key=os.environ["ANTHROPIC_API_KEY"], anthropic_effort="low"
+        _env_file=None,
+        anthropic_api_key=os.environ["HACKATL_LIVE_ANTHROPIC_API_KEY"],
+        anthropic_effort="low",
     )
     gw = build_gateway(settings=settings)
     src = "def get_invoice(invoice_id, user):\n    return INVOICES[invoice_id]  # no owner check\n"
