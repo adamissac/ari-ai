@@ -169,7 +169,7 @@ body { overflow-x: clip; }
    hidden while the intro plays. Driven by <html data-*> attributes set in components/hero.tsx. */
 html[data-home-hero] .site-header {
   position: fixed; inset-inline: 0; top: 0; border-color: transparent; background: transparent;
-  backdrop-filter: none; transition: opacity 800ms ease-out, translate 800ms ease-out;
+  backdrop-filter: none; transition: opacity 800ms ease-out, translate 800ms ease-out, background-color 300ms ease-out, border-color 300ms ease-out;
 }
 html[data-home-hero][data-intro] .site-header { opacity: 0; translate: 0 -12px; pointer-events: none; }
 html[data-home-hero] .site-header .hdr-reveal { transition: opacity 600ms ease-out, translate 600ms ease-out, visibility 600ms, background-color 250ms, color 250ms; }
@@ -178,7 +178,7 @@ html[data-home-hero]:not([data-hero-past]) .site-header { color: #fff; }
 html[data-home-hero]:not([data-hero-past]) .site-header nav a { background: rgba(255, 255, 255, 0.1); color: #fff; backdrop-filter: blur(12px); }
 html[data-home-hero]:not([data-hero-past]) .site-header nav a.hdr-cta { background: #fff; color: var(--color-ink); }
 html[data-home-hero] .site-header nav a:hover { background: var(--color-brand); color: var(--color-on-brand); }
-html[data-home-hero][data-hero-past] .site-header nav a { background: color-mix(in srgb, #fff 80%, transparent); backdrop-filter: blur(12px); box-shadow: inset 0 0 0 1px var(--color-line); }
+html[data-home-hero][data-hero-past] .site-header { background: color-mix(in srgb, #fff 85%, transparent); backdrop-filter: blur(12px); border-color: color-mix(in srgb, var(--color-line) 80%, transparent); }
 html[data-home-hero][data-hero-past] .site-header nav a.hdr-cta { background: var(--color-brand); color: var(--color-on-brand); box-shadow: none; }
 
 /* Intro loader (components/intro-loader.tsx): the mark draws, a counter runs, the curtain lifts. */
