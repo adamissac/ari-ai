@@ -160,18 +160,25 @@ export function keyMoments(episode: LabEpisode, scenario: LabScenario): Moment[]
   return out;
 }
 
-/** The most important moments, for a short story list (first occurrences, in order). */
+/**
+ * The story beats worth jumping to, in time order: every service first turning suspicious, the
+ * first time each kind of action is taken, the first cut-off of each service, then the end.
+ * A defender that acts every few steps would otherwise fill the list with routine moves.
+ */
 export function storyMoments(moments: Moment[], limit = 8): Moment[] {
-  const seen = new Set<string>();
+  const end = moments.filter(m => m.kind === 'end');
+  const body = moments.filter(m => m.kind !== 'end');
+  const verbOf = (m: Moment) => m.text.replace(/^AI: /, '').replace(m.node ? ` ${serviceInfo(m.node).label}` : '', '');
   const picked: Moment[] = [];
-  for (const m of moments) {
-    const key = m.kind === 'end' ? 'end' : `${m.kind}:${m.node}:${m.text}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    picked.push(m);
-  }
-  const end = picked.filter(m => m.kind === 'end');
-  return [...picked.filter(m => m.kind !== 'end').slice(0, limit - end.length), ...end];
+  const take = (m: Moment) => { if (!picked.includes(m)) picked.push(m); };
+  const firstSignal = new Set<string>();
+  for (const m of body) if (m.kind === 'signal' && m.node && !firstSignal.has(m.node)) { firstSignal.add(m.node); take(m); }
+  const firstVerb = new Set<string>();
+  for (const m of body) if (m.kind !== 'signal' && !firstVerb.has(verbOf(m))) { firstVerb.add(verbOf(m)); take(m); }
+  const firstCut = new Set<string>();
+  for (const m of body) if (m.kind === 'disruptive' && verbOf(m) === ACTION_SHORT.isolate && m.node && !firstCut.has(m.node)) { firstCut.add(m.node); take(m); }
+  const room = Math.max(0, limit - end.length);
+  return [...picked.sort((x, y) => x.t - y.t).slice(0, room), ...end];
 }
 
 /* ---------- narrative for one step ---------- */
