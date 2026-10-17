@@ -88,6 +88,18 @@ test('snapshot list builds its query and validates each Snapshot', async () => {
   await assert.rejects(client(() => json({ items: [{ ...snap, status: 'bogus' }], next_cursor: null })).snapshots('rep_12345678'), ProtocolError);
 });
 
+test('assessments list sends a validated cursor and keeps the unpaged path', async () => {
+  let seen = '';
+  const api = client((url) => { seen = url; return json({ items: [], next_cursor: null }); });
+  await api.assessments('prj_12345678');
+  assert.equal(seen, 'http://localhost/api/v1/projects/prj_12345678/assessments');
+  await api.assessments('prj_12345678', { cursor: 'asm_99999999' });
+  assert.equal(seen, 'http://localhost/api/v1/projects/prj_12345678/assessments?cursor=asm_99999999');
+  seen = '';
+  assert.throws(() => api.assessments('prj_12345678', { cursor: 'a&b=../x' }), ProtocolError);
+  assert.equal(seen, '');
+});
+
 test('assessment report is decoded as the shared AssessmentReport', async () => {
   const bad = { assessment: {}, agent_runs: [], findings: [], generated_at: '2026-10-17T03:00:00Z', source: 'persisted records', standards: { classification_only: true, findings: [], hardening: [], unscored_reason: 'x' } };
   await assert.rejects(client(() => json(bad)).report('asm_12345678'), ProtocolError);
