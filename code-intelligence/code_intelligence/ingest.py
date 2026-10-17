@@ -123,6 +123,7 @@ class GitReader:
             raise IntelligenceError("SHA must identify a commit")
         tree = self.run("rev-parse", f"{sha}^{{tree}}").decode().strip()
         entries: list[tuple[str, str, str, int]] = []
+        ancestor_ignores: list[tuple[str, str, str, int]] = []
         issues: list[IndexIssue] = []
         for row in self.run("ls-tree", "-r", "-z", "-l", sha).split(b"\0"):
             if not row:
@@ -143,6 +144,15 @@ class GitReader:
                 issues.append(IndexIssue(path="<unsupported>", reason="unsafe or long path"))
                 continue
             if self.prefix and not path.startswith(self.prefix):
+                pure = PurePosixPath(path)
+                parent = str(pure.parent)
+                if (
+                    pure.name in {".gitignore", ".intelignore"}
+                    and kind == "blob"
+                    and mode in {"100644", "100755"}
+                    and (parent == "." or self.prefix.startswith(parent + "/"))
+                ):
+                    ancestor_ignores.append((path, oid, mode, int(size_text)))
                 continue
             self.manifest[path] = oid
             if kind != "blob" or mode not in {"100644", "100755"}:
@@ -153,7 +163,7 @@ class GitReader:
             raise IntelligenceError("Repository exceeds max_files")
 
         rules: list[tuple[str, GitIgnoreSpec]] = []
-        for path, oid, _, size in entries:
+        for path, oid, _, size in [*ancestor_ignores, *entries]:
             if PurePosixPath(path).name in {".gitignore", ".intelignore"}:
                 if size > self.limits.max_file_bytes:
                     raise IntelligenceError("Ignore file exceeds max_file_bytes")

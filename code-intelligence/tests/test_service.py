@@ -199,6 +199,20 @@ def test_factory_requires_explicit_durable_config(
     monkeypatch.setenv("INTELLIGENCE_REPOSITORIES_FILE", str(config))
     monkeypatch.setenv("INTELLIGENCE_DB_PATH", str(tmp_path / "index.sqlite"))
     assert build_service().index_repository("prj_fixture00", "rep_fixture00", sha).commit_sha == sha
+    monkeypatch.delenv("INTELLIGENCE_DB_PATH")
+    monkeypatch.setenv(
+        "INTELLIGENCE_PAYLOAD_STORE_FACTORY", "backend.intel_store:build_payload_store"
+    )
+    from backend.intel_store import PostgresPayloadStore
+
+    from code_intelligence.persistence import PayloadIndexStore
+
+    postgres_service = build_service()
+    assert isinstance(postgres_service.store, PayloadIndexStore)
+    assert isinstance(postgres_service.store.payloads, PostgresPayloadStore)
+    monkeypatch.setenv("INTELLIGENCE_DB_PATH", str(tmp_path / "index.sqlite"))
+    with pytest.raises(IntelligenceError, match="exactly one"):
+        build_service()
 
 
 def test_diff_preserves_unchanged_callers_and_excludes_unrelated_sibling(
