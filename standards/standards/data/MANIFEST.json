@@ -434,6 +434,21 @@
       "curated": "Repository-maintained policy or self-assessment data, not an upstream standard.",
       "sha256": "7aaa52aa5edd5a20f434dc0c6b53973756761975c7c8ced2bb4ca47ca80e5a6a",
       "version": "1"
+    },
+    "sarif-2.1.0.json": {
+      "license": "OASIS copyright and IPR notice copied from the pinned specification into the file's notice field; schema stored for validation only",
+      "sha256": "6b1a211f6abc22c7f6f9d6df7ea06ee348ff26b265401af30c4ea7a9e0a5aafb",
+      "upstream": [
+        {
+          "sha256": "c3b4bb2d6093897483348925aaa73af03b3e3f4bd4ca38cef26dcb4212a2682e",
+          "url": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/schemas/sarif-schema-2.1.0.json"
+        },
+        {
+          "sha256": "1b08d024b25cfb26948fca9ede7606ca0c543c6deb279954646f50e3f26ebf97",
+          "url": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/sarif-v2.1.0-errata01-os-complete.html"
+        }
+      ],
+      "version": "2.1.0"
     }
   },
   "notices": {

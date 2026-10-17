@@ -165,6 +165,14 @@ model. Trace steps may carry an ATT&CK Enterprise id and Diagnose and Fortify a
 D3FEND id; each is validated against the pinned index, and "no applicable technique"
 is an accepted answer.
 
+### SARIF 2.1.0 export
+
+`security_agents.standards.sarif.to_sarif` writes findings as a SARIF 2.1.0 log (one rule per CWE,
+CVSS v3.1 base score in `security-severity`, OWASP API tag as a project mapping, ATT&CK and D3FEND in
+result properties). The log is validated against the OASIS schema pinned in
+`standards/standards/data/sarif-2.1.0.json` (OASIS Standard incorporating Approved Errata, 28 August
+2023, notice included). The severity to SARIF level mapping is a project mapping.
+
 ### Rules of engagement
 
 At SCOPE_CHECK the orchestrator issues a rules-of-engagement document aligned with
@@ -177,7 +185,7 @@ re-issues it from the reloaded scope.
 ```
 cd security-agents
 .venv/bin/python -m security_agents.standards.report   # offline table: standard, ids pinned, version, pass/fail, UNVERIFIED
-.venv/bin/python -m security_agents.standards.smoke    # replay run; writes tagged finding JSON, RoE and SP 800-115 coverage
+.venv/bin/python -m security_agents.standards.smoke    # replay run; writes tagged finding JSON, RoE, SP 800-115 coverage and SARIF 2.1.0
 ```
 
 D3FEND mappings use the owner-reviewed rules keyed by Fortify category and
