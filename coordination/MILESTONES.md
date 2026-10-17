@@ -155,3 +155,13 @@ deps installed as `rl.yml` does: `-e ../standards -e ../shared -e ".[dev]"`):
 - **Limitations:** simulation only; no claim of real-world detection or response (RQ-005).
   Round 4 (false-disruption reduction) found no candidate that meets the pre-registered rule;
   v1 stays current.
+
+### M3 live evidence — Adam (2026-10-17)
+
+Command: `cd security-agents && python -m security_agents.cli --target ../examples/payments-lite --mode live --i-have-authorization --auto-approve --max-hypotheses 2 --validate 1 --max-usd 3` (direct to Anthropic; `ANTHROPIC_BASE_URL` unset, because the local headroom proxy at 127.0.0.1:6767 returned 400 on multi-turn tool requests). Artifact: `security-agents/tests/artifacts/live/20261017-adam-seven-roles-live.json`.
+- **All 12 orchestrator states reached**, from scope_check to completed. Total **$1.41**.
+- **Live model+tool trace observed for all 7 roles** (claude-opus-5-5): scout (4 turns, 6 tools), probe (3/4), trace (4/5), diagnose (4/6), patch (5/8), verify (3/4), fortify (5/10).
+- The planted ownership weakness on `GET /payments/{payment_id}` went hypothesis → **Probe confirmed by an executed `access_control.ownership` check** → patched → **Verify `accepted`** → status `verified`.
+- **Gap:** Fortify's final output failed schema validation (`SCHEMA_INVALID`), so its step is recorded as failed although its live trace exists. Owner: Alan. M3 stays unchecked until Fortify passes live.
+- Variance: an earlier live run of the same command had Probe return `inconclusive` and stop after recon/validation. Outcomes vary run to run.
+
