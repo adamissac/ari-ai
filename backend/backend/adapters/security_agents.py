@@ -325,6 +325,8 @@ class HostedSecurityOrchestrator:
                 if target not in TERMINAL_STATES or target is AssessmentState.COMPLETED:
                     hosted._sync_findings(host, tr, self.result.findings, orch=self)
                     host.transition(target, f"{dst.value}{': ' + note if note else ''}"[:500])
+                    if target is AssessmentState.FUNCTIONAL_REVIEW:
+                        hosted._functional_review(host, binding)
 
             def _run_step(
                 self, spec: Any, ctx: Any, prompt: str, *, input_ref: str, attempt: int = 1
@@ -384,6 +386,101 @@ class HostedSecurityOrchestrator:
             }.get(code, AssessmentState.FAILED)
             if host.assessment.state not in TERMINAL_STATES:
                 host.terminate(state, code, _short(result.error_detail or result.state.value))
+
+    # ------------------------------------------------- functional review
+    def _functional_review(self, host: AssessmentHost, binding: RepoBinding) -> None:
+        """Pillar 1 inside the same assessment: Sai's reviewer (code_review) on the same
+        commit-pinned checkout, persisting its own AgentRun/findings through the host.
+
+        Unavailable or failing review is recorded and the security run continues;
+        cancellation, budget and scope errors propagate.
+        """
+        try:
+            from code_review import api as review_api
+            from code_review.ports import RepoSource
+        except ModuleNotFoundError:
+            host.progress(
+                "functional review unavailable: code_review is not installed in this worker"
+            )
+            return
+        from shared.intelligence import SnapshotRef
+        from shared.review import ChangeIntent, ReviewRequest
+
+        a = host.assessment
+        base_sha, source = self._change_range(a)
+        recipe = binding.local_path / binding.subdir / "build_recipe.json"
+        target_dir = ""
+        if recipe.is_file():
+            target_dir = json.loads(recipe.read_text()).get("target_dir") or ""
+        sub = "/".join(p for p in (binding.subdir.strip("./"), target_dir) if p)
+        request = ReviewRequest(
+            assessment_id=a.id,
+            snapshot_ref=SnapshotRef(
+                project_id=a.project_id,
+                repo_id=host.repo_id,
+                commit_sha=a.commit_sha,
+                snapshot_id=a.snapshot_id or new_id(IdPrefix.snp),
+                index_version="checkout",
+            ),
+            change_intent=ChangeIntent(
+                source=source,
+                title=f"{a.trigger.value} assessment of {a.commit_sha[:12]}",
+                base_sha=base_sha,
+                head_sha=a.commit_sha,
+            ),
+            budget=a.budget,
+        )
+        try:
+            outcome = review_api.review_full(
+                host, request, source=RepoSource(binding.local_path, subdir=sub), intelligence=True
+            )
+            host.progress(
+                f"functional review {outcome.result.status.value}: "
+                f"{len(outcome.result.findings)} functional finding(s)",
+                agent=AgentName.reviewer,
+            )
+        except HostError as exc:
+            if exc.code in (
+                ErrorCode.CANCELLED,
+                ErrorCode.BUDGET_EXHAUSTED,
+                ErrorCode.SCOPE_DENIED,
+            ):
+                raise
+            host.progress(
+                f"functional review failed ({exc.code.value}): {exc}"[:500],
+                agent=AgentName.reviewer,
+            )
+        except Exception as exc:  # reviewer failure must not sink the security assessment
+            code = getattr(getattr(exc, "code", None), "value", type(exc).__name__)
+            host.progress(
+                f"functional review failed ({code}): {exc}"[:500], agent=AgentName.reviewer
+            )
+
+    @staticmethod
+    def _change_range(a: Any) -> tuple[str | None, Any]:
+        from backend.db import monitoring_events, reassessment_requests
+        from shared.review import ChangeIntentSource
+
+        if not a.reassessment_request_id:
+            return None, ChangeIntentSource.manual
+        with transaction() as conn:
+            rrq = conn.execute(
+                sa.select(reassessment_requests.c.doc).where(
+                    reassessment_requests.c.id == a.reassessment_request_id
+                )
+            ).scalar()
+            ev = conn.execute(
+                sa.select(monitoring_events.c.doc).where(
+                    monitoring_events.c.id == (rrq or {}).get("event_ids", [""])[0]
+                )
+            ).scalar()
+        rng = (ev or {}).get("commit_range") or {}
+        kind = (
+            ChangeIntentSource.pull_request
+            if (ev or {}).get("type") == "pull_request"
+            else ChangeIntentSource.push
+        )
+        return rng.get("base_sha"), kind
 
     # ------------------------------------------------------------ helpers
     @staticmethod
