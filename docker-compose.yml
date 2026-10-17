@@ -23,6 +23,8 @@ services:
     env_file: [.env]
     environment: &dbenv
       DATABASE_URL: postgresql+psycopg://app:app-local-only@db:5432/hackatl
+      # Overrides .env's host-relative default; the image user can only write the volume.
+      ARTIFACT_STORE_URI: file:///data/artifacts
     depends_on: { db: { condition: service_healthy } }
 
   api:
