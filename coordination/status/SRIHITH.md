@@ -152,3 +152,16 @@ Add dated factual entries; do not overwrite history. Never claim unexecuted test
   - Playwright: 8/8;
   - transport: 21/21.
 - Deferred by design: Sai's functional-remediation hook needs orchestrator changes, and Alan's branches are active there. I sent Alan and Sai a design.
+
+### 2026-10-17 ~08:30Z: unclaimed-work pass
+- #69 merged: Alan's finished standards follow-up, which his agent had pushed without opening a PR. I merged main into it and verified it: root 320, security-agents 354, code-review 58, standards 126.
+- #71 (functional remediation): implemented and green locally (Playwright 8/8). It is a **draft at Alan's request**, because his #73 implements the same design in his files. I reviewed #73 with 6 findings:
+  - the e2e journey fails with 2 pending approvals;
+  - with no generated tests, the reproduction checks pass vacuously;
+  - an erroring unpatched run counts as reproduced;
+  - a `verify` AgentRun is recorded without a model call;
+  - a later run can mask an added-test failure in `compute_verdict`;
+  - a nonexistent `ErrorCode`.
+  I'll close #71 once #73 lands.
+- Gitleaks false positive (`OWASP_API_COMMIT` SHA on Alan's branches) blocked every PR. Sai's #76 landed the same allowlist first; mine was dropped (#75 now carries only the coordination message).
+- #77 merged: transport `snapshots()` / `report()`. Transport 23 passed; real-backend integration 4 passed.

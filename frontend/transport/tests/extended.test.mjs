@@ -68,3 +68,21 @@ test('event log cursor is validated before any request', async () => {
   assert.equal(called, false);
   assert.deepEqual(await api.eventsLog('asm_12345678', 3), { items: [], next_cursor: null });
 });
+
+test('snapshot list builds its query and validates each Snapshot', async () => {
+  const snap = { id: 'snp_12345678', repo_id: 'rep_12345678', commit_sha: 'a'.repeat(40), status: 'ready', index_version: 'python-ast-ts/0.2.0', base_snapshot_id: null, stats: { files: 3, symbols: 9, call_edges: 4, entry_points: 2, expectations: 5 }, error_message: null, created_at: '2026-10-17T03:00:00Z', completed_at: '2026-10-17T03:00:05Z' };
+  let seen = '';
+  const api = client((url) => { seen = url; return json({ items: [snap], next_cursor: null }); });
+  const page = await api.snapshots('rep_12345678', { status: 'ready', limit: 5, cursor: 'snp_99999999' });
+  assert.equal(page.items[0].status, 'ready');
+  assert.equal(seen, 'http://localhost/api/v1/repositories/rep_12345678/snapshots?status=ready&limit=5&cursor=snp_99999999');
+  await api.snapshots('rep_12345678');
+  assert.equal(seen, 'http://localhost/api/v1/repositories/rep_12345678/snapshots');
+  await assert.rejects(client(() => json({ items: [{ ...snap, status: 'bogus' }], next_cursor: null })).snapshots('rep_12345678'), ProtocolError);
+});
+
+test('assessment report is decoded as the shared AssessmentReport', async () => {
+  const bad = { assessment: {}, agent_runs: [], findings: [], generated_at: '2026-10-17T03:00:00Z', source: 'persisted records', standards: { classification_only: true, findings: [], hardening: [], unscored_reason: 'x' } };
+  await assert.rejects(client(() => json(bad)).report('asm_12345678'), ProtocolError);
+  await assert.rejects(client(() => json({ ...bad, source: 'generated prose' })).report('asm_12345678'), ProtocolError);
+});
