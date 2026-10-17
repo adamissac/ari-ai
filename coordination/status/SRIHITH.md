@@ -6,7 +6,7 @@ Current task: CORE-001..010, MON-001..003 (contracts V0, backend, monitoring); n
 Last remote sync: 2026-10-17T01:03Z (`origin/main` a7f7c98 merged into branch; open PRs #1 #5 #6 inspected)
 API/contract dependencies: Alan `security_agents.api:build_orchestrator`; Sarosh `code_intelligence.api:build_service` (+ persistence port); Sai `code_review.api.review`; Adam `rl_defense` (integrated)
 Verified tests: see session log (exact command + counts)
-Recent PR/commit: see session log
+Recent PR/commit: PR #8 https://github.com/adamissac/hackatl-agentic-security/pull/8 ; contract ack issue #9
 Blockers: none hard. Live Claude smoke is unexecuted because there is no ANTHROPIC_API_KEY in this environment. The GitHub App flow is unexercised because no App credentials are configured. Docker is not installed, so the Compose file is unverified.
 Next action: ack/counter from owners on V0 contracts; Postgres persistence port for Sarosh; wire Alan's orchestrator when `security_agents.api` exists; live LLM smoke once a key is authorized.
 
@@ -49,3 +49,8 @@ Add dated factual entries; do not overwrite history. Never claim unexecuted test
   - `20261017T010331Z-srihith-to-all-contracts-v0`
   - `20261017T010332Z-srihith-to-adam-rl-contract-accepted`
   - `20261017T010333Z-srihith-to-sarosh-persistence-port`
+- Later in session 1:
+  - `e6af6e9`: mypy is now clean on shared and monitoring and runs in CI. Malformed nested webhook fields no longer crash the worker.
+  - Added `.github/workflows/backend.yml`: ruff, mypy, contract freshness, and pytest against a Postgres service plus tsc.
+  - First CI run on PR #8 failed on `ruff format --check` for `backend/replay_webhook.py`. That is fixed in `e6af6e9`.
+  - Local result: `84 passed, 1 skipped`.
