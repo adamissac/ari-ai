@@ -12,6 +12,7 @@ workflow below is added by the task that first creates something for it to check
 | `frontend.yml` | PR touching `frontend/`, `shared/generated/` | eslint, tsc, unit tests, build | `UI-001` |
 | `contracts.yml` | PR touching `shared/` | regenerate JSON Schema + TS, fail if diff is dirty | `CORE-003` |
 | `rl.yml` | PR touching `rl-defense/` | env API checks (`gymnasium.utils.env_checker`), determinism test, short smoke train (CPU, < 5 min) | `RL-001` |
+| `examples.yml` ✅ | PR touching `examples/` | payments-lite lint, its own tests, label checks, Docker build (non-root) | `DEMO-001` |
 | `e2e.yml` | nightly + manual | docker compose up; demo-scenario e2e against `examples/` target | `TEST-005` |
 
 ## Rules for future workflows
