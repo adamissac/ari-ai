@@ -3,11 +3,13 @@
 Uses the shared local pgtest server with an exclusively owned temporary database.
 Drops only that database; never stops another developer's server.
 """
+
 from __future__ import annotations
 
 import os
 import socket
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -34,7 +36,9 @@ def main() -> None:
         with tempfile.TemporaryDirectory(prefix="transport-artifacts-") as artifacts:
             os.environ.update(
                 APP_ENV="test",
-                DATABASE_URL=sa.engine.make_url(admin_url).set(database=name).render_as_string(hide_password=False),
+                DATABASE_URL=sa.engine.make_url(admin_url)
+                .set(database=name)
+                .render_as_string(hide_password=False),
                 ARTIFACT_STORE_URI=Path(artifacts).as_uri(),
                 AUTH_DEV_LOGIN_ENABLED="true",
                 ANTHROPIC_API_KEY="",
@@ -52,9 +56,12 @@ def main() -> None:
             with transaction() as conn:
                 alice = upsert_user(conn, "transport-alice", None, None)
                 bob = upsert_user(conn, "transport-bob", None, None)
-                org = conn.execute(sa.select(users.c.personal_org_id).where(users.c.id == alice)).scalar_one()
+                org = conn.execute(
+                    sa.select(users.c.personal_org_id).where(users.c.id == alice)
+                ).scalar_one()
                 conn.execute(sa.insert(memberships).values(org_id=org, user_id=bob, role="owner"))
             import uvicorn
+
             from backend.main import create_app
 
             sock = socket.socket()
@@ -83,7 +90,7 @@ def main() -> None:
             thread.join(timeout=10)
         if sock:
             sock.close()
-        if "backend.db" in __import__("sys").modules:
+        if "backend.db" in sys.modules:
             from backend.db import get_engine
 
             get_engine().dispose()

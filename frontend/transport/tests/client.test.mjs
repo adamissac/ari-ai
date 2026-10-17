@@ -37,7 +37,8 @@ test('idempotency key required and forwarded exactly once; abort forwarded', asy
     return json({ error: { code: 'CONFLICT_STATE', message: 'Not ready', details: {}, request_id: 'req1' } }, 409);
   }});
   await client.session();
-  await assert.rejects(client.startAssessment('prj_12345678', {}, ''), ProtocolError);
+  assert.throws(() => client.startAssessment('prj_12345678', {}, ''), ProtocolError);
+  assert.throws(() => client.startAssessment('prj_12345678', {}), ProtocolError);
   const signal = new AbortController().signal;
   await assert.rejects(client.startAssessment('prj_12345678', {}, 'unique-action-1', { signal }), ApiError);
   assert.equal(last.headers.get('Idempotency-Key'), 'unique-action-1');
@@ -56,4 +57,19 @@ test('401 clears CSRF, login is opt-in, invalid content and large responses fail
   for (const baseUrl of ['file:///tmp/api', 'http://secret:password@localhost', 'http://localhost?token=x']) {
     assert.throws(() => new ApiClient({ baseUrl }), ProtocolError);
   }
+});
+
+test('list envelopes validate canonical elements and reject malformed pagination', async () => {
+  for (const body of [{ items: [], next_cursor: null }, { items: [{}], next_cursor: null }, { items: [], next_cursor: 1 }, { items: [], next_cursor: null, extra: true }]) {
+    const api = new ApiClient({ baseUrl: 'http://localhost', fetch: async () => json(body) });
+    if (body.items.length === 0 && body.next_cursor === null && !body.extra) assert.deepEqual(await api.projects(), body);
+    else await assert.rejects(api.projects(), ProtocolError);
+  }
+});
+
+test('logout accepts 204 and clears mutation credentials', async () => {
+  const api = new ApiClient({ baseUrl: 'http://localhost', fetch: async url => url.endsWith('/me') ? json(me) : new Response(null, { status: 204 }) });
+  await api.session();
+  await api.logout();
+  await assert.rejects(api.approveScope('scp_12345678'), ProtocolError);
 });
