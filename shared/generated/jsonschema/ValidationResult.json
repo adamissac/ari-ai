@@ -22,7 +22,7 @@
         "artifact_id": {
           "anyOf": [
             {
-              "pattern": "^art_[0-9A-Za-z]{8,64}$",
+              "pattern": "^art_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -205,12 +205,12 @@
       "type": "array"
     },
     "hypothesis_id": {
-      "pattern": "^hyp_[0-9A-Za-z]{8,64}$",
+      "pattern": "^hyp_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Hypothesis Id",
       "type": "string"
     },
     "id": {
-      "pattern": "^val_[0-9A-Za-z]{8,64}$",
+      "pattern": "^val_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Id",
       "type": "string"
     },

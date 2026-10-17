@@ -22,7 +22,7 @@
         "artifact_id": {
           "anyOf": [
             {
-              "pattern": "^art_[0-9A-Za-z]{8,64}$",
+              "pattern": "^art_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -191,12 +191,12 @@
       "type": "array"
     },
     "finding_id": {
-      "pattern": "^fnd_[0-9A-Za-z]{8,64}$",
+      "pattern": "^fnd_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Finding Id",
       "type": "string"
     },
     "id": {
-      "pattern": "^rc_[0-9A-Za-z]{8,64}$",
+      "pattern": "^rc_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Id",
       "type": "string"
     },
@@ -207,7 +207,7 @@
     },
     "violated_expectation_ids": {
       "items": {
-        "pattern": "^exp_[0-9A-Za-z]{8,64}$",
+        "pattern": "^exp_[0-9A-Za-z_\\-]{8,64}$",
         "type": "string"
       },
       "title": "Violated Expectation Ids",
