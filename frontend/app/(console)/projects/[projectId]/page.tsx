@@ -17,6 +17,7 @@ import {
 } from '@/lib/journey';
 import { projectOverview } from '@/lib/overview';
 import { pillarLoop } from '@/lib/pillars';
+import { START_ASSESSMENT_NOTE } from '@/lib/start-assessment';
 import { ASSESSMENT_STATE, FINDING_STATUS, SNAPSHOT_STATUS } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
 
@@ -264,6 +265,7 @@ function StartAssessment({ onStarted }: { onStarted: () => void }) {
 
   return (
     <Panel title="Start an assessment" id="start-assessment">
+      <p className="mb-3 text-sm text-muted" data-testid="start-assessment-note">{START_ASSESSMENT_NOTE}</p>
       {repos.length === 0 ? <Empty>Connect a repository first.</Empty> : (
         <form onSubmit={submit} className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Field label="Repository">
@@ -281,9 +283,8 @@ function StartAssessment({ onStarted }: { onStarted: () => void }) {
           <Field label="Commit SHA" hint="Blank = backend default for the repository.">
             <input className={`${inputClass} font-mono`} value={sha} onChange={e => setSha(e.target.value.toLowerCase())} pattern="[0-9a-f]{7,40}" name="commit_sha" placeholder="optional" />
           </Field>
-          <div className="sm:col-span-3 flex flex-wrap items-center gap-3">
+          <div className="sm:col-span-3">
             <Button type="submit" variant="primary" disabled={busy || !repoId || !scopeId || (sha !== '' && !SHA.test(sha))}>Start assessment</Button>
-            <span className="text-xs text-muted">Runs only against the targets in the selected, human-approved scope.</span>
           </div>
           {error !== null && <div className="sm:col-span-3">
             <ErrorState error={error} context="Assessment not started" />
