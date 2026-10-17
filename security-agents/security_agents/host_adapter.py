@@ -459,6 +459,12 @@ class HostSink(AssessmentSink):
         elif kind == "remediation_plan":
             mapped = contract_export.remediation_plan(record)
         elif kind == "hardening_recommendation":
+            if hasattr(self.host, "record_standards"):
+                self.host.record_standards(
+                    finding.finding_id,
+                    _finding_standards(finding),
+                    severity=contract_export.severity(finding.severity) if finding.severity else None,
+                )
             mapped = _hardening(
                 record,
                 attack=[ref for step in finding.attack_path.steps for ref in step.attack]
@@ -493,6 +499,15 @@ class HostSink(AssessmentSink):
             )
         )
         self.recorded.append("verification")
+
+    def on_standards(self, finding: FindingRecord) -> None:
+        if hasattr(self.host, "record_standards"):
+            self.host.record_standards(
+                finding.finding_id,
+                _finding_standards(finding),
+                severity=contract_export.severity(finding.severity) if finding.severity else None,
+            )
+            self.recorded.append("standards")
 
     def on_status(self, finding: FindingRecord, status: str) -> None:
         self.host.progress(f"finding {status}", finding_id=finding.finding_id, status=status)
@@ -994,24 +1009,6 @@ SPEC_TABLE = {name.value: spec.version for name, spec in ALL_SPECS.items()}
 
 
 def _finding_standards(finding: FindingRecord) -> Any:
-    from shared.standards import FindingStandards
-    from standards.catalog import catalog_versions
+    from . import standards_bridge
 
-    evidence = [
-        contract_export.evidence_ref(ref, producer="agent:scout") for ref in finding.hypothesis.cited_spans
-    ]
-    confidence = contract_export.CONFIDENCE_SCORE[finding.hypothesis.confidence]
-    return FindingStandards(
-        cwe=contract_export.weakness_ref(
-            finding.hypothesis.weakness_class, evidence=evidence, confidence=confidence
-        ),
-        attack=list({ref.id: ref for step in finding.attack_path.steps for ref in step.attack}.values()) if finding.attack_path else [],
-        cvss=finding.severity.cvss if finding.severity else None,
-        unmapped=[] if finding.attack_path and any(step.attack for step in finding.attack_path.steps) else ["ATT&CK: no reviewed check rule matched; coarse catalog chains require human review"],
-        catalog_versions=catalog_versions(),
-        classified_by="agent:security",
-        classified_at=utcnow(),
-        exploit_status="reproduced_in_sandbox"
-        if finding.validation and finding.validation.outcome.value == "confirmed"
-        else "not_tested",
-    )
+    return standards_bridge.finding_standards(finding, now=utcnow())
