@@ -240,7 +240,7 @@ def test_live_roles_issue_separate_requests_with_distinct_prompts(live_gateway, 
     _write_artifact("role_separation", {"requests": seen})
 
 
-SEVEN_ROLES = ("scout", "probe", "trace", "diagnose", "patch", "verify", "fortify")
+from .live_m3 import SEVEN_ROLES, m3_failures  # noqa: E402
 
 
 def test_live_seven_roles_end_to_end(tmp_path):
@@ -285,6 +285,8 @@ def test_live_seven_roles_end_to_end(tmp_path):
                         "tool_calls",
                         "tokens",
                         "usd",
+                        "error_code",
+                        "error_detail",
                         "tool_trace",
                     )
                 }
@@ -294,10 +296,11 @@ def test_live_seven_roles_end_to_end(tmp_path):
         },
         "findings": report["findings"],
     }
+    # Every M3 condition is checked separately; a failed Fortify (or any failed role) fails the
+    # test even when the assessment still reached "completed". The report is written first so a
+    # failing paid run stays diagnosable.
+    failures = m3_failures(report, require_live=True)
+    summary["m3_failures"] = failures
     path = _write_artifact("seven_roles_end_to_end", summary)
-    missing = [role for role, runs in per_role.items() if not runs]
-    assert not missing, f"roles with no run: {missing}; trace written to {path}"
-    for role, runs in per_role.items():
-        live = [run for run in runs if run["provider_mode"] == "live" and run["llm_turns"] >= 1]
-        assert live, f"{role} made no live model turn; trace written to {path}"
-    assert report["state"] == "completed", f"state={report['state']}; trace written to {path}"
+    full = _write_artifact("seven_roles_end_to_end_report", report)
+    assert not failures, "M3 not met:\n- " + "\n- ".join(failures) + f"\nsummary: {path}\nfull report: {full}"

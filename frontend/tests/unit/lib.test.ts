@@ -80,6 +80,10 @@ describe('finding story', () => {
     const repos = [{ id: 'rep_a', full_name: 'acme/a' }, { id: 'rep_b', full_name: 'acme/b' }];
     expect(repoFullNameForEvidence(repos, [{ repo_id: 'rep_b' }])).toBe('acme/b');
     expect(repoFullNameForEvidence(repos, [{ repo_id: 'rep_a' }, { repo_id: 'rep_b' }])).toBeUndefined();
+    // A multi-repository scope resolves through the assessment's own repository (0.11).
+    expect(repoFullNameForEvidence(repos, [{ repo_id: 'rep_a' }, { repo_id: 'rep_b' }], 'rep_b')).toBe('acme/b');
+    // An unknown assessment repo never falls through to a guess among several targets.
+    expect(repoFullNameForEvidence(repos, [{ repo_id: 'rep_a' }, { repo_id: 'rep_b' }], 'rep_zzz')).toBeUndefined();
     expect(repoFullNameForEvidence([{ id: 'rep_a', full_name: 'acme/a' }], null)).toBe('acme/a');
   });
 });

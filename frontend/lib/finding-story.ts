@@ -46,11 +46,17 @@ export function findingStory(input: StoryInput): { label: string; text: string }
   ];
 }
 
-/** GitHub repo for source links. One project repo, or the assessment scope's only target. Never a guess among several. */
+/** GitHub repo for source links: the assessment's own repository (contracts 0.11), else one
+ * project repo, else the assessment scope's only target. Never a guess among several. */
 export function repoFullNameForEvidence(
   repos: readonly { id: string; full_name: string }[],
   scopeTargets: readonly { repo_id: string }[] | null,
+  assessmentRepoId: string | null = null,
 ): string | undefined {
+  if (assessmentRepoId) {
+    const own = repos.find(repo => repo.id === assessmentRepoId);
+    if (own) return own.full_name;
+  }
   if (repos.length === 1) return repos[0]?.full_name;
   if (!scopeTargets) return undefined;
   const ids = [...new Set(scopeTargets.map(target => target.repo_id).filter(id => id.length > 0))];
