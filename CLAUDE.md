@@ -89,6 +89,7 @@ Reviewer (`code-review/`, details in [code-review/README.md](code-review/README.
 ```
 uv run pytest -q code-review/tests                                   # FakeTransport + real tool execution
 RUN_LIVE_LLM_EVAL=1 uv run pytest -q -m live_llm code-review/tests -s  # live reviewer; costs money, $1 cap/phase
+uv run python -m code_review.eval_corpus                              # prove the reviewer corpus labels (free)
 ```
 
 Security agents (`security-agents/`, details in [security-agents/README.md](security-agents/README.md)):
