@@ -9,7 +9,7 @@ const evidence = { kind: 'source_span', path: 'app.py', commit_sha: 'a'.repeat(4
 const finding = {
   id: 'fnd_12345678', assessment_id: 'asm_12345678', snapshot_id: null, commit_sha: 'a'.repeat(40), kind: 'security',
   title: 'Cross-tenant invoice read', status: 'hypothesis', severity: null, subject_refs: [], expectation_ids: [],
-  evidence: [evidence], confidence: 0.6, produced_by_run_id: null, history: [], created_at: '2026-10-17T03:00:00Z', updated_at: '2026-10-17T03:00:00Z',
+  evidence: [evidence], confidence: 0.6, produced_by_run_id: null, history: [], standards: null, created_at: '2026-10-17T03:00:00Z', updated_at: '2026-10-17T03:00:00Z',
 };
 const hypothesis = { id: 'hyp_12345678', finding_id: 'fnd_12345678', weakness_class: 'CWE-639', rationale: 'Tenant check removed', cited_spans: [evidence], expectation_ids: [], confidence: 0.6, suggested_check_category: 'ownership' };
 const client = (handler) => new ApiClient({ baseUrl: 'http://localhost/api/v1', fetch: async (url, init) => handler(String(url), init) });
