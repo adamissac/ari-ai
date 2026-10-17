@@ -146,10 +146,15 @@ function Lifecycle({ state }: { state: IncidentState }) {
 function Actions({ incident, busy, act: submitAction }: { incident: Incident; busy: boolean; act: (a: IncidentAction) => Promise<boolean> }) {
   const { me } = useSession();
   const [note, setNote] = useState('');
-  /** The note is the rationale for one action; clear it once that action succeeded so it is not reused as the next summary. */
+  /**
+   * The note is the rationale for one action; clear it once that action succeeded so it is
+   * not reused as the next summary. Only clear it if it is still the text that was submitted:
+   * anything typed while the request was in flight belongs to the next action.
+   */
   const act = async (a: IncidentAction): Promise<boolean> => {
+    const submitted = note;
     const ok = await submitAction(a);
-    if (ok) setNote('');
+    if (ok) setNote(current => (current === submitted ? '' : current));
     return ok;
   };
   const [category, setCategory] = useState('');
