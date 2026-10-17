@@ -201,7 +201,7 @@
     },
     "owasp-llm-coverage.json": {
       "curated": "Repository-maintained policy or self-assessment data, not an upstream standard.",
-      "sha256": "ef1c3f7b2355cb6857e041772d0a10c473890ddfc04986b8a1c36a14eb752a3c",
+      "sha256": "75c135cf97d3706db231c42a6182f97c54dddd7d0f9f78f328fdfb341ff987cc",
       "upstream": [],
       "version": "2"
     },
@@ -259,7 +259,7 @@
     },
     "rules/cvss_derivation.json": {
       "curated": "Repository-maintained policy or self-assessment data, not an upstream standard.",
-      "sha256": "4d107a016796bdc12db8f9ac57a88fbe59e5aa4ef6f93530e458319c7643d9d4",
+      "sha256": "d4c828a58b357f8ae3eaef2e52717bee41c9e3f53bcb448069b3904c2b5b975d",
       "version": "1"
     },
     "rules/fortify_d3fend.json": {
