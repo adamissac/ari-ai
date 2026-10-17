@@ -109,3 +109,14 @@ Limitations: live runs are opt-in and were run by a key holder, not in CI. Docke
 reviewer tests is unverified (no engine); CI uses the local-process sandbox plus the shared driver in
 local mode.
 
+
+### M3 evidence (partial, gate NOT met) - Alan
+
+Gate: observed real model/tool trace per required role (opt-in), fake-provider integration tests, separated Verify actual tests.
+
+- **Fake-provider integration (CI-equivalent, executed).** `cd security-agents && .venv/bin/python -m pytest tests -q`: 442 passed, 10 skipped (opt-in live) on `feat/alan/standards-roe-wiring` merged with `origin/main` @ `64995dc`. Seven `AgentSpec`s with distinct prompts, tool sets, budgets and schemas (`tests/test_agent_logic.py`, `tests/test_runtime_loop.py`); tool permission matrix and scope plus rules-of-engagement gate before every scope-required call (`tests/test_tool_registry.py`, `tests/standards/test_rules_of_engagement.py`, `tests/standards/test_negative.py`); typed handoffs exported to `shared` (`tests/test_contracts.py`); full replay chain with real sandboxes, diff and tests (`tests/test_e2e_replay.py`).
+- **Separated Verify (executed).** Verify runs in its own sandbox and fresh checkout without the Patch transcript; the verdict is computed from executed checks (`tests/test_agent_logic.py::test_verify_*`, `tests/test_e2e_replay.py`).
+- **Live trace per role: NOT observed.** The only live attempt (2026-10-17T02:40Z, Srihith) stopped at Scout with an API 400 on integer `minimum` in tool schemas; fixed in `3fea691` (`tests/test_provider_schema.py`), never re-run. The opt-in test `tests/test_live_provider.py::test_live_seven_roles_end_to_end` now runs the full orchestrator live on payments-lite with a spend cap and asserts a live model turn for each of the seven roles, writing `tests/artifacts/live/*-seven_roles_end_to_end.json`.
+  Command for a key holder: `cd security-agents && RUN_LIVE_LLM_EVAL=1 LIVE_SEVEN_MAX_USD=8 .venv/bin/python -m pytest -q -m live tests/test_live_provider.py -s`
+
+Limitations: no authorized key in Alan's environment (issue #10). Docker sandbox unexecuted (INFRA-005); local-process driver is not a security boundary.
