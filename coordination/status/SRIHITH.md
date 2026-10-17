@@ -137,3 +137,4 @@ Add dated factual entries; do not overwrite history. Never claim unexecuted test
   - The recipe uses real route templates, and the check library binds named path params.
   - Tests: real-index RL test 2 passed (locally, with `rl_defense`); security-agents 351 passed; root 308 passed.
 - Open: CI never runs the RL tests because `rl_defense` is not a workspace member (torch). Sai's span-verifier tolerance is still his.
+- Correction (07:15Z): Adam's #61 landed the same RL-expectations wiring first. In #62 I kept his implementation and dropped mine. #62 now carries the real-index RL test and the recipe/route-template fix.
