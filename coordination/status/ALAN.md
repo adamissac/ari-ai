@@ -113,3 +113,11 @@ Executed check results on the fixture (the precision evidence):
   the pillar, with the approval round-trip, and sent the two open questions.
 - Messages sent: contracts ack + deltas (srihith), shared repair sandbox (sai),
   code-intelligence port (sarosh), agent UI fields (vihaan).
+
+### 2026-10-16 — Codex continuation
+- Resumed Claude worktree, fast-forwarded Alan branch to origin/main d8ad0cb.
+- Fixed live-run numeric schema rejection (3fea691) and false clean assessment after Scout failure.
+- Executed runtime/schema/intelligence tests: 28 passed; Scout failure regression: 1 passed; ruff clean. Broader replay suite running at checkpoint. No live API call made.
+- Next: backend host-mode compatibility findings remain; live rerun requires credentials/authorized budget.
+
+- Completed replay/schema verification: 31 passed in 45.60s. Both fixes pushed as 3fea691 and efbc848.
