@@ -52,7 +52,7 @@ export default function HomePage() {
         </div>
       </HeroStage>
 
-      <div className="hero-cover pt-6">
+      <div className="hero-cover -mb-6 pb-30 pt-6 md:pb-38">
         <UserBar />
 
         <ProblemScene />
@@ -60,7 +60,7 @@ export default function HomePage() {
         <Walkthrough />
         <ProofStats />
 
-        <Reveal className="my-10">
+        <Reveal className="mt-10">
           <section aria-labelledby="start-title" className="hero-ink rounded-2xl px-6 py-12 md:px-12">
             <h2 id="start-title" className="display max-w-2xl text-3xl font-semibold md:text-4xl">See it on a real change.</h2>
             <p className="mt-3 max-w-xl text-sm text-white/75">Open a project to connect a repository and start an assessment, or explore how the defense policy was trained.</p>
