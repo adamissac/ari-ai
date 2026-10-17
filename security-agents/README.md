@@ -150,11 +150,35 @@ automatically attached as ATT&CK mappings. These are
 classifications, not evidence of production adversary activity.
 
 Canonical `standards.mapping` validates classifications and reviewed rules.
-CVSS is separate from the existing qualitative severity rubric. Trace can accept
-a complete set of explicit CVSS v4 base metrics with executed validation artifact
-references, then computes and validates the vector and score deterministically.
-Missing metrics or unrelated artifacts leave the finding unscored. Evidence
-provenance does not by itself prove an analyst's metric interpretation.
+Trace proposes the eight CVSS v3.1 base metrics, each citing a file span or the
+executed validation run; uncited metrics are recorded as `unverified`. Code computes
+the v3.1 vector, base score (FIRST specification with Roundup) and rating, and the
+platform severity level comes from that rating (ADR-0012). This is a base score
+only: it measures severity, not risk. Trace can also supply a complete set of CVSS
+v4.0 base metrics backed by the executed run; that assessment is shown alongside as
+provisional and never sets the level. Missing v4.0 metrics leave it unscored.
+
+Scout's CWE must exist in the pinned MITRE catalog with mapping usage Allowed or
+Allowed-with-Review; the OWASP API Security Top 10 2023 tag is derived in code from
+a project mapping (`standards/standards/data/rules/cwe_owasp_api.json`), never by the
+model. Trace steps may carry an ATT&CK Enterprise id and Diagnose and Fortify a
+D3FEND id; each is validated against the pinned index, and "no applicable technique"
+is an accepted answer.
+
+### Rules of engagement
+
+At SCOPE_CHECK the orchestrator issues a rules-of-engagement document aligned with
+NIST SP 800-115 Appendix B (project mapping) from the approved scope. Every
+scope-required tool call (Probe checks and Verify's re-check) is checked against it
+after the scope guard: a missing, altered, stale, expired or non-matching RoE fails
+closed with `SCOPE_DENIED` and a `tool.roe_denied` audit event. The host resume path
+re-issues it from the reloaded scope.
+
+```
+cd security-agents
+.venv/bin/python -m security_agents.standards.report   # offline table: standard, ids pinned, version, pass/fail, UNVERIFIED
+.venv/bin/python -m security_agents.standards.smoke    # replay run; writes tagged finding JSON, RoE and SP 800-115 coverage
+```
 
 D3FEND mappings use the owner-reviewed rules keyed by Fortify category and
 confirmed check category. Unsupported combinations remain unmapped. Reviewed RL actions have simulation-derived D3FEND
