@@ -5,7 +5,7 @@
 - [x] **M2** reviewer with real Claude agent loop can interpret commit intention, call retrieval/tests, generate candidate in safe worktree, inspect results. Gate: live optional smoke and deterministic fixture tests; functional defect reproduced.
 - [ ] **M3** 7 *different* agent runners with actual bounded tool-use and distinct permissions and typed handoffs. Gate: observed real model/tool trace per required role (opt-in), fake-provider integration tests; separated Verify actual tests.
 - [x] **M4** FastAPI, DB migrations, durable queue, signed idempotent GitHub webhook, scope/approval, persisted audit and SSE. Gate: signed event -> durable queued analysis -> event stream in test.
-- [ ] **M5** Double DQN trains from scratch; replay, target/online networks, masks, held-out evaluation and baselines run. Gate: checked env, deterministic seed, checkpoint reload, nonzero learning updates, honest metrics.
+- [x] **M5** Double DQN trains from scratch; replay, target/online networks, masks, held-out evaluation and baselines run. Gate: checked env, deterministic seed, checkpoint reload, nonzero learning updates, honest metrics.
 - [x] **M6** frontend displays real backend assessments, actual finding provenance, agent steps, approval controls, RL evaluation and monitoring. Gate: browser e2e on live local service; mocks are test-only.
 - [x] **M7** unified owned-sandbox demonstration from commit -> index -> review -> seven security agents -> candidate patch -> independent security + functional verify -> regressions -> monitoring event -> dashboard, with errors handled honestly. Gate: automated e2e plus human-inspectable traces.
 - [ ] **M8** deployment and continuous live event operations after human approval, safe scope and uptime validation. Gate: independently verified URL, webhook delivery and persistence; no blanket production claims.
@@ -121,3 +121,37 @@ Gate: observed real model/tool trace per required role (opt-in), fake-provider i
   Command for a key holder: `cd security-agents && RUN_LIVE_LLM_EVAL=1 LIVE_SEVEN_MAX_USD=8 .venv/bin/python -m pytest -q -m live tests/test_live_provider.py -s`
 
 Limitations: no authorized key in Alan's environment (issue #10). Docker execution is now CI-verified: [run 39033028814](https://github.com/adamissac/hackatl-agentic-security/actions/runs/39033028814) at `5b3ef50` built the pinned-base image and passed all six real-container isolation/timeout/fixture/check tests. The ordinary security suite passed 451 tests with 18 skips. No published sandbox image digest or local Docker execution is claimed; local-process execution is not a security boundary. The live seven-role trace remains unobserved.
+
+
+### M3 live attempt — Srihith (not met)
+
+- 2026-10-17, main @ live run: `RUN_LIVE_LLM_EVAL=1 LIVE_SEVEN_MAX_USD=8 ../.venv/bin/python -m pytest -q -m live tests/test_live_provider.py -k seven_roles -s` (in `security-agents/`) → **1 failed**.
+- Scout and Probe made live `claude-opus-5-5` turns with tool calls: Scout 4 turns / 11 tools, Probe 5 turns / 6 tools.
+- Probe's ownership check was **inconclusive**, so the run reported before Trace through Fortify ran. Cost $0.38.
+- M3 stays unchecked until all seven roles show live turns. Details: `coordination/messages/*-srihith-to-alan-live-seven-role-result.md`.
+
+### M5 evidence — Adam
+
+Re-verified on `main` @ `1c054f6` (macOS arm64, Python 3.12.14, torch 2.14.1, gymnasium 1.4.0;
+deps installed as `rl.yml` does: `-e ../standards -e ../shared -e ".[dev]"`):
+- **Checked env:** `gymnasium.utils.env_checker.check_env` on all 6 configs, warnings treated as
+  errors (`tests/test_env.py::test_gymnasium_check_env`). **Hidden-state leakage test:**
+  changing only the hidden adversary stage leaves the observation identical.
+- **Deterministic seed:** same seed + actions → identical trajectories (`test_seeded_determinism`);
+  same-seed training → identical weights (`test_training_is_seed_deterministic`). A fresh
+  20k-step run today reproduced the same parameter change as the original run (3101).
+- **Double DQN math:** online-argmax / target-evaluation target, next-action masking, no
+  bootstrap on termination, hard and soft target sync (`tests/test_ddqn.py`).
+- **Nonzero learning updates + checkpoint reload:** `python -m rl_defense.train --seed 0
+  --steps 20000` → 19,000 gradient updates; the checkpoint reloads via `rl_defense.api.load_policy`
+  with sha256 verified against its manifest.
+- **Held-out evaluation + baselines, honest metrics:** protocol-v1, 5 training seeds × 100
+  episodes × 3 held-out configs, against random, noop and threshold_rules, with bootstrap CIs
+  and Holm-corrected tests, including the regression (false disruption 75%).
+  [`rl-defense/results/protocol-v1/COMPARISON.md`](../rl-defense/results/protocol-v1/COMPARISON.md);
+  independently recomputed from the raw episodes.
+- **Counts:** `cd rl-defense && .venv/bin/python -m pytest -q` → **91 passed**; gate subset 31 passed.
+  CI `rl.yml` green on main.
+- **Limitations:** simulation only; no claim of real-world detection or response (RQ-005).
+  Round 4 (false-disruption reduction) found no candidate that meets the pre-registered rule;
+  v1 stays current.

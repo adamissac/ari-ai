@@ -366,14 +366,43 @@ commits, verification, next actions and warnings — is
 `coordination/messages/20261017T132209Z-sarosh-to-codex-recovered-memory-handoff.md`.
 Post-merge smoke checks: memory/contract suite **8 passed**; regression/host/
 reviewer integration suite **11 passed** after `uv sync --frozen`.
-||||||| 39186cb
 
 ### 2026-10-17 — Alan security Docker evidence reconciliation
 - Continued from Claude's current main-based worktree; #73/#74 are merged and #35 is closed. Left the separate Devin M7 branch and untracked reports intact.
 - Inspected successful security CI 39033028814 (`5b3ef50`): 6 real Docker tests passed; ordinary suite 451 passed/18 skipped. Corrected stale execution-unverified and integration-pending README claims.
 - INFRA-005 still needs published image digests; CI's temporary image tag is not a published release. Live seven-role provider proof remains separate.
 
+### 2026-10-17 — Sarosh / Codex — recovered context and ingestion scope cache
+
+- Read recovered handoff PR #145 (`e5fee45`, later merged #145); confirmed #39
+  merged and #38 closed. Synced current main and installed frozen workspace.
+  Recovery memory smoke: **8 passed**. No recovered implementation was redone.
+- Found/reproduced #148: same project/repo/SHA/parser-version cache ignored the
+  operator's include prefix and limits; an invalid prefix could hit the cache
+  before validation. A new regression test failed on the inspected main.
+- Fixed in `fix/sarosh/intelligence-scope-cache`: normalized/validated prefix,
+  profile-aware immutable versions for cache/snapshot/diff paths, provenance from
+  the exact ref. Parser base 0.3.0; non-default profile digest fits existing DB
+  column. Existing refs and exact-snapshot decisions stay unchanged.
+- Executed: new producer cases **6 passed**; broad intelligence/shared/PostgreSQL
+  checks **97 passed, 1 live opt-in skipped**; new real PostgreSQL profile case
+  **1 passed**; backend M7/host/unified and reviewer consumer checks **11 passed**
+  with scripted test transports. Ruff/format and strict producer mypy passed.
+- No new live-provider, local Docker, browser or deployment proof claimed.
+  Active security/frontend owner branches were left untouched.
 ### 2026-10-17 — QA-002 M7 runner isolation
 - Continued unfinished Devin runner: uses selected Python, no uv PATH requirement, no shared devdb start/stop, forced live-provider opt-out, ignored report output with --output override. Removed hardcoded branch metadata.
 - Executed M7 through isolated PostgreSQL fixture successfully; wrapper exits2 truthfully because browser is unexecuted. QA unit suite13 passed; Ruff/format and link checks passed.
 - Primary Devin checkout and its existing untracked reports remain untouched. No live model or deployment.
+
+### 2026-10-17T13:45Z — Sarosh ingestion profile fix merged
+
+PR #150 merged as `1129434`; issue #148 closed. Product fix `5015d67` was tested on combined head `91cea8c`, including Sai typography main. All executable CI checks passed (backend417, producer33, reviewer60, security455, Docker security6/reviewer2, Vitest67/browser12; skips and exact commands recorded in the PR). Final consumer migration, remaining human/account gates and M5 owner reconciliation request: `coordination/messages/20261017T134500Z-sarosh-to-all-profile-fix-merged.md`. Existing primary checkout untracked paths and other owners worktrees were preserved.
+
+### 2026-10-17 — Codex primary application sprint — API-RETRY-001
+- Base37b0920c37d0460ecf988126693e79761478a888; dedicated worktree /private/tmp/omen-codex-integration, branch fix/alan/demo-api-reliability. Existing Claude/Devin checkouts untouched. Reviewed125/133/142/143/146/147 (all merged); active156/161 frontend changes avoided. No attributable active Grok branch found.
+- Confirmed before fix: two same-key concurrent API requests created distinct assessment/job IDs; same body/key on another project URL returned the first project's acceptance.
+- Added transaction advisory lock per user/key; project-bound request hash; four PostgreSQL/API regressions cover replay, conflicting concurrent body, cross-project key reuse, rollback after scope denial. No shared schema change.
+- Executed with existing Python3.12 interpreter and local checkout packages on PYTHONPATH: pytest backend/tests/test_assessment_retries.py backend/tests/test_api_core.py -q (16 passed); pytest -q (420 passed/9 skips); pytest backend/tests -q (79 passed/5 skips). Logs /tmp/omen-{retry-before,retry-after,root-tests,backend-tests}.log. Ruff/format clean, mypy38 sources, shared.export112 files current, shared.examples current, links320 files clean.
+- Root test includes the existing API/worker M7 scripted chain. Not run here: browser, frontend build, Docker or live provider. Optional RL deps and tsc absent; live/Docker opt-ins skipped. Prior cached retry keys use the old hash and return409 after upgrade; new actions need fresh keys.
+- Next: reviewer inspect retry PR; do not auto-merge under this sprint instruction. Claude owns Probe/Docker/RoE/SEC-005/INFRA-005. Existing issue155 (stored patch hash mismatch) and the latest inconclusive live Probe/M3 run remain demo blockers for those owners.

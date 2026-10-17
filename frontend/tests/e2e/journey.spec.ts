@@ -167,6 +167,7 @@ test('signed GitHub push appears in the monitoring feed', async ({ browser, requ
 
 test('create a project and connect a repository through the UI', async ({ browser }) => {
   const page = await newUser(browser, 'e2e-alice');
+  await page.goto('/projects');
   const name = `ui-project-${Date.now()}`;
   await page.getByLabel('Name').fill(name);
   await page.getByRole('button', { name: 'Create project' }).click();

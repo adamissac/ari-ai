@@ -87,3 +87,11 @@ Add dated factual entries; do not overwrite history. Never claim unexecuted test
 - #119 / #134: OWASP LLM coverage. Five marked tests in `tests/security/test_owasp_llm_reviewer.py`; 2026 matrix rows (LLM01/02/03/07/10). Srihith mirrored them into the 2025 matrix (#135).
 - #127 / #128: reviewer tests now run inside the real Docker sandbox in CI (`docker-reviewer` job, run 39028078294, 2 passed). README and M2 limitation updated.
 - code-review on main: 60 passed, 3 skipped (live + 2 opt-in Docker, which run in the `docker-reviewer` job); strict mypy clean.
+
+### 2026-10-17T13:59:13Z (autonomous cycle — frontend polish)
+
+- #149 typography (Space Grotesk / Inter / IBM Plex Mono, fonts only; logo rendering preserved).
+- #153 interactive hero motion (orbs, pointer spotlight, staggered entrance, loop highlight).
+- #157 Kairo-style intro loader, floating header revealed on scroll, full-screen pinned hero. All CI green; coordination messages sent for each.
+- #161 / #163: `/` is a landing page with scroll-told chapters; projects moved to `/projects`. #167: CTA spacing. #174: Obsidian-style graph view for the Defense Lab episode replay. #174 merged before its checks registered; all passed afterwards, and the merge gate now waits for reported checks.
+- 2026-10-17T14:34:03Z: posted the Ari ant logo placement sign-off for Sarosh's #169 on #165. Holding off brand, intro, layout and icon files until it merges.

@@ -430,14 +430,17 @@ def patch_candidate(
     produced_by_run_id: str,
     rationale: str,
     diff_artifact_id: str | None = None,
+    diff_sha256: str | None = None,
 ) -> Any:
+    """``diff_sha256`` names the STORED diff artifact (the host's artifact store may redact
+    credential-shaped text before hashing), so the canonical record verifies end to end."""
     f = shared_module("findings")
     return f.PatchCandidate(
         id=candidate.id,
         finding_id=candidate.finding_id,
         attempt=candidate.attempt,
         diff_artifact_id=diff_artifact_id or _artifact_id(candidate.diff_sha256),
-        diff_sha256=candidate.diff_sha256,
+        diff_sha256=diff_sha256 or candidate.diff_sha256,
         base_commit_sha=base_commit_sha,
         worktree_ref=_short(candidate.worktree_ref),
         files_changed=list(candidate.files_changed),

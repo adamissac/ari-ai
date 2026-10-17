@@ -3,17 +3,18 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import re
 import selectors
 import subprocess
 import time
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path, PurePosixPath
 
 from pathspec import GitIgnoreSpec
 
-from code_intelligence.models import IndexIssue, IntelligenceError, SourceFile
+from code_intelligence.models import INDEX_VERSION, IndexIssue, IntelligenceError, SourceFile
 from code_intelligence.privacy import redact
 
 _SHA = re.compile(r"^[0-9a-f]{40}$")
@@ -44,6 +45,29 @@ class Limits:
     git_timeout_seconds: int = 30
 
 
+def normalise_prefix(include_prefix: str) -> str:
+    """Canonical directory coverage; validate even when an index is cached."""
+    if not isinstance(include_prefix, str) or (
+        include_prefix.startswith("/")
+        or "\\" in include_prefix
+        or ".." in PurePosixPath(include_prefix).parts
+        or "\x00" in include_prefix
+    ):
+        raise IntelligenceError("Index prefix must be a repository-relative directory")
+    prefix = str(PurePosixPath(include_prefix))
+    return "" if prefix == "." else prefix
+
+
+def ingestion_version(include_prefix: str, limits: Limits) -> str:
+    """Opaque cache version includes every coverage and ingestion-budget setting."""
+    prefix = normalise_prefix(include_prefix)
+    if not prefix and limits == Limits():
+        return INDEX_VERSION
+    profile = json.dumps({"prefix": prefix, "limits": asdict(limits)}, sort_keys=True)
+    digest = hashlib.sha256(profile.encode()).hexdigest()[:32]
+    return f"{INDEX_VERSION}+profile.{digest}"
+
+
 class GitReader:
     def __init__(
         self, local_path: Path, limits: Limits | None = None, include_prefix: str = ""
@@ -51,13 +75,8 @@ class GitReader:
         self.path = local_path.resolve(strict=True)
         self.limits = limits or Limits()
         self.manifest: dict[str, str] = {}
-        if include_prefix and (
-            include_prefix.startswith("/")
-            or "\\" in include_prefix
-            or ".." in PurePosixPath(include_prefix).parts
-        ):
-            raise IntelligenceError("Index prefix must be a repository-relative directory")
-        self.prefix = include_prefix.strip("/") + "/" if include_prefix else ""
+        prefix = normalise_prefix(include_prefix)
+        self.prefix = prefix + "/" if prefix else ""
 
     def run(self, *args: str, limit: int | None = None) -> bytes:
         # Never inherit Git tracing, object replacement, alternate worktrees or caller config.

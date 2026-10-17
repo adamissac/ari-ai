@@ -220,3 +220,33 @@ If several win: the highest robust return; within one std of it, the lowest ×1 
 disruption. The single winner goes to `experiments/final.py` (seeds 0–4, held-out once). If
 none wins, v1 stays current, the best candidate's numbers are reported here, and no
 held-out evaluation is run.
+
+#### Round 4 result — no winner; v1 stays current ([table](results/r4.md))
+
+Applying the pre-registered rule (`python -m experiments.apply_r4_rule`):
+
+| Candidate | ×1 false disruption ≤ 65.83% | robust return ≥ −39.29 | ×1 return ≥ −24.59 | robust db loss ≤ 2.48% | ×1 compromise ≤ 13.50% | Wins |
+|---|---|---|---|---|---|---|
+| r4_sel_fd02 | 71.5% ❌ | -33.4 ✅ | -22.4 ✅ | 2.0% ✅ | 5.9% ✅ | no |
+| r4_margin005 | 68.1% ❌ | -36.2 ✅ | -23.6 ✅ | 2.7% ❌ | 7.9% ✅ | no |
+| r4_explore_w025 | 64.0% ✅ | -36.4 ✅ | -21.7 ✅ | 3.3% ❌ | 6.2% ✅ | no |
+| r4_sel_fd02_explore | 57.4% ✅ | -38.5 ✅ | -21.7 ✅ | 3.8% ❌ | 6.9% ✅ | no |
+| r4_margin010 | 58.5% ✅ | -41.5 ❌ | -24.5 ✅ | 4.0% ❌ | 10.4% ✅ | no |
+| r4_margin015 | 45.9% ✅ | -47.5 ❌ | -26.1 ❌ | 4.9% ❌ | 12.9% ✅ | no |
+| r4_margin025 | 24.3% ✅ | -57.9 ❌ | -30.2 ❌ | 6.5% ❌ | 20.5% ❌ | no |
+
+**Decision: no candidate meets every condition, so v1 stays the current policy. No held-out
+evaluation was run on any round-4 candidate.**
+
+What we learned (validation only):
+- **There is a real trade-off.** Every setting that cuts ×1 false disruption below the
+  65.83% bar loses the db more often under faster attackers: robust db loss 3.3–6.5% vs the
+  2.48% limit. Examples: less disruptive exploration gives 64.0% FD at 3.3% db loss; with
+  false-disruption-penalized checkpoint selection, 57.4% FD at 3.8% db loss.
+- `select_fd_penalty 0.2` alone gives the best robust return (−33.4, about v1's −32.8), but FD
+  only drops to 71.5%.
+- A deployment-time margin τ trades FD for return roughly linearly: τ = 0.25 reaches 24% FD
+  but costs 25 points of robust return and quadruples compromise.
+- Next lever, if revisited: adding a false-disruption term to the reward. That changes the
+  environment, so it needs `DefenseSimEnv-v1` and fresh baselines (protocol 17); it is out of
+  scope for a reward-preserving round.
