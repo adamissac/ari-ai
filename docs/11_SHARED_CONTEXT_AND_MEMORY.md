@@ -1,8 +1,9 @@
 # 11 — Shared context and memory (Unified Intelligence Layer)
 
-Status: **Python structure and extracted intent implemented** via `code_intelligence.api`
-and the backend PostgreSQL PayloadStore. Full assurance/remediation joins and authenticated
-human intent decisions remain integration work. Facts require the complete SnapshotRef.
+Status: **Python structure, extracted intent, authenticated human decisions and candidate
+regression evidence implemented** via `code_intelligence.api` and the backend PostgreSQL
+PayloadStore. Full assurance/remediation integration remains ongoing work. Facts require
+the complete SnapshotRef.
 See [implementation and limits](../code-intelligence/README.md). This is the core of the product hypothesis
 ([01](01_MASTER_PRODUCT_SPEC.md) §3).
 
@@ -59,12 +60,18 @@ EvidenceRef {
 
 ## Memory across assessments
 
-- **Regression tests** from verified fixes are stored as `RegressionTest`
-  facts and run in every later assessment of affected code.
+- **Regression tests** from verified fixes are stored as exact-base-SHA
+  `VerifiedRegression` candidate evidence and run in every later assessment of
+  affected code. They require an accepted independent Verify with all five unique
+  checks and never claim the candidate was merged or passes on another commit.
 - **Refuted hypotheses** are remembered per `(snapshot, subject, hypothesis_class)`
   so Scout does not re-raise them unless the code changed.
-- **User decisions** (accepted risk, rejected expectation) are facts with
-  `evidence.kind = human_input` and an author.
+- **User decisions** (`confirmed`, `conflicting`, `rejected` expectation) are
+  append-only facts with `evidence.kind = human_input`, the authenticated author,
+  an optimistic revision and a reason. They are scoped to the exact SnapshotRef;
+  a new commit reverts to the re-derived status until a human decides again.
+  Decisions and verified candidate regressions are stored beside, not inside, the
+  immutable source index payloads.
 
 ## How agents get context
 

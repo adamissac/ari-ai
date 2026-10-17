@@ -215,6 +215,11 @@ def _verify_double(
             name=VerificationCheckName.no_test_tampering, passed=scope_ok, evidence=ev
         ),
         VerificationCheck(
+            name=VerificationCheckName.original_check_now_fails_to_reproduce,
+            passed=applied and classify(gen) == "passed",
+            evidence=ev,
+        ),
+        VerificationCheck(
             name=VerificationCheckName.generated_tests_pass,
             passed=applied and classify(gen) == "passed",
             evidence=ev,

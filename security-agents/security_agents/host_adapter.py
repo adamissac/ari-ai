@@ -643,6 +643,12 @@ class HostOrchestrator:
                 staging, workdir / "snapshot", snapshot_id=new_id("snp"), repo_id="rep_host"
             )
         labels = self.labels_path or _env_path("SECURITY_AGENTS_LABELS")
+        if labels is None and host is not None:
+            from .intel.host_service import shared_host_intel
+
+            shared = shared_host_intel(host, snapshot, _bindings())
+            if shared is not None:
+                return shared
         expectations = None
         if labels is not None:
             expectations = load_expectations(

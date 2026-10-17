@@ -314,7 +314,11 @@ class CodeIntelligenceAdapter:
             records = []
         if not records and subject_ref is not None:
             records = self.service.expectations(self.ref, None, offset=0, limit=100)
-        return [self._expectation(record) for record in records]
+        return [
+            self._expectation(record)
+            for record in records
+            if _value(getattr(record, "status", "")) != "rejected"
+        ]
 
     def _expectation(self, record: Any) -> BehavioralExpectation:
         sensitivity = _value(getattr(record, "data_sensitivity", None), "none") or "none"

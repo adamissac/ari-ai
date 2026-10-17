@@ -49,7 +49,7 @@ def bundle(mode: str) -> dict[str, Any]:
 
 def _ts_type(s: dict[str, Any]) -> str:
     if "$ref" in s:
-        return s["$ref"].rsplit("/", 1)[-1]
+        return str(s["$ref"]).rsplit("/", 1)[-1]
     if "const" in s:
         return json.dumps(s["const"])
     if "enum" in s:
