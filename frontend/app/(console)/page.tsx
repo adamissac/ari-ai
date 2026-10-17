@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { api } from '@/lib/api';
 import { useResource } from '@/lib/use-resource';
-import { BRAND_NAME } from '@/components/brand';
+import { BRAND_HEADLINE, BRAND_HEADLINE_REST, BRAND_NAME } from '@/components/brand';
 import { Reveal } from '@/components/reveal';
 import { Async, Button, Empty, ErrorState, Field, inputClass, PageTitle, Panel, Time } from '@/components/ui';
 
@@ -37,7 +37,7 @@ export default function ProjectsPage() {
       <section className="hero-ink -mx-4 mb-8 rounded-none px-6 py-14 sm:mx-0 sm:rounded-2xl md:px-12 md:py-20" aria-labelledby="hero-title">
         <p className="label-mono text-white/70">{BRAND_NAME} · software assurance</p>
         <h1 id="hero-title" className="display mt-4 max-w-4xl text-4xl font-medium md:text-6xl">
-          Every change understood.<br /><span className="text-white/70">Every fix proven.</span>
+          {BRAND_HEADLINE}<br /><span className="text-white/70">{BRAND_HEADLINE_REST}</span>
         </h1>
         <p className="mt-5 max-w-2xl text-sm text-white/75 md:text-base">
           {BRAND_NAME} learns what your software is supposed to do, tests it like an attacker inside an approved sandbox,

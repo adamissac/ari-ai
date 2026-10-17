@@ -18,6 +18,17 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-17 — Adam — honest headline
+- Did: Replaced "Every fix proven" and "Ship fast. Prove every change." A fix counts only when independent, executed tests agree.
+- State of the code: branch `feat/adam/honest-headline`.
+- Commands run and results: `npm test -- --run tests/unit/brand.test.ts` 1 passed; `npm run typecheck` clean; `npm run lint` clean. Browser was not run.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): none.
+- Next steps: open the PR.
+- Warnings for the next session: do not put a ship or deploy claim back into the tagline.
+
+---
+
 ### 2026-10-17 — Adam — connect repository note
 - Did: The repository form states that it records a name and default branch. The form sends `installation_id: null`.
 - State of the code: branch `feat/adam/connect-note`.

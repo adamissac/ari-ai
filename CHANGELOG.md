@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- The sign-in line and the projects headline no longer say every fix is already proven or that the product ships it. A fix counts only when independent tests agree.
 - Connecting a repository says it records the name and default branch. It does not attach a GitHub App, approve a test environment, or start a check.
 - The monitoring page leads with a count of recorded events, how many are labelled simulated, and how many simulation recommendations are stored. It says this page is not the Defense Lab.
 - An assessment page lists Understand, Review, Security test, Repair, and Verify from that check's event log. Monitoring stays on the project page.
