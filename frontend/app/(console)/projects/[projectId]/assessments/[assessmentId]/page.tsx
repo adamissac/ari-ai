@@ -14,7 +14,7 @@ import { CANCEL_ASSESSMENT_NOTE, cancelAssessmentResult } from '@/lib/cancel-ass
 import { shortSha, usd } from '@/lib/format';
 import { assessmentPhases, EVENT_LOG_PAGE_NOTE, eventLogPageTruncated, JOURNEY_STATUS } from '@/lib/journey';
 import { currentPhaseSentence } from '@/lib/phase';
-import { agentRelay } from '@/lib/relay';
+import { agentRelay, providerNote } from '@/lib/relay';
 import { useResource } from '@/lib/use-resource';
 import {
   agentRole, APPROVAL_STATUS, ASSESSMENT_STATE, FINDING_STATUS, providerLabel,
@@ -41,14 +41,29 @@ export default function AssessmentPage() {
   const [streamNonce, setStreamNonce] = useState(0);
   const [selectedAgent, setSelectedAgent] = useState<AgentName | null>(null);
   const [technicalOpen, setTechnicalOpen] = useState(false);
+  const [approvals, setApprovals] = useState<Approval[] | null>(null);
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const approvalsReq = useRef(0);
+  const detailReq = useRef(0);
+  const projectId = project.id;
+
+  // The persisted approval records are the only evidence of who approved a fix.
+  const loadApprovals = useCallback(() => {
+    const rid = ++approvalsReq.current;
+    api().approvals(projectId).then(
+      page => { if (rid === approvalsReq.current) setApprovals(page.items); },
+      () => { if (rid === approvalsReq.current) setApprovals(null); },
+    );
+  }, [projectId]);
 
   const loadDetail = useCallback((signal?: AbortSignal) => {
+    // Only the newest request may write state: an older, slower response is dropped.
+    const rid = ++detailReq.current;
     api().assessment(id, signal ? { signal } : {}).then(
-      d => { setDetail(d); setDetailError(null); },
-      (err: unknown) => { if (!signal?.aborted) setDetailError(err); },
+      d => { if (rid !== detailReq.current) return; setDetail(d); setDetailError(null); loadApprovals(); },
+      (err: unknown) => { if (!signal?.aborted && rid === detailReq.current) setDetailError(err); },
     );
-  }, [id]);
+  }, [id, loadApprovals]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -89,6 +104,10 @@ export default function AssessmentPage() {
     return () => clearInterval(t);
   }, [running, loadDetail]);
 
+  const eventApprovalIds = new Set<string>();
+  for (const e of [...events, ...(phaseLog.status === 'ready' ? phaseLog.data.items : [])]) if (e.approval_id) eventApprovalIds.add(e.approval_id);
+  const relayApprovals = approvals === null ? null : approvals.filter(ap => eventApprovalIds.has(ap.id));
+
   if (detailError && !detail) return <ErrorState error={detailError} onRetry={() => loadDetail()} context="Could not load assessment" />;
   if (!detail) return <Loading label="Loading assessment" />;
   const a = detail.assessment;
@@ -101,6 +120,7 @@ export default function AssessmentPage() {
         subtitle={<>Commit <Mono>{shortSha(a.commit_sha)}</Mono> · {a.trigger} trigger · scope <Mono>{a.scope_id}</Mono> · started <Time iso={a.created_at} />{a.completed_at && <> · ended <Time iso={a.completed_at} /></>}</>}
         actions={!terminal && <CancelButton id={a.id} onDone={() => loadDetail()} />}
       />
+      {detailError !== null && <p role="status" className="mb-2 text-xs text-warn" data-testid="detail-stale">Could not refresh this assessment. Showing the last successfully loaded records, which may be out of date.</p>}
       <p className="mb-4 text-base text-ink" data-testid="assessment-phase">{currentPhaseSentence(a.state)}</p>
       {a.error && (
         <div role="alert" className="mb-4 rounded-md border border-bad/40 bg-bad/5 p-3 text-sm">
@@ -112,7 +132,7 @@ export default function AssessmentPage() {
       {a.state === 'AWAITING_APPROVAL' && <ApprovalGate projectId={project.id} events={events} onDecided={() => loadDetail()} />}
       <div className="mt-4 rounded-xl border border-line bg-panel p-5">
         <AgentRelay
-          items={agentRelay({ runs: detail.agent_runs, findings: detail.findings, state: a.state })}
+          items={agentRelay({ runs: detail.agent_runs, findings: detail.findings, state: a.state, approvals: relayApprovals })}
           selected={selectedAgent ?? detail.agent_runs[0]?.agent ?? 'reviewer'}
           onSelect={setSelectedAgent}
         />
@@ -225,7 +245,7 @@ function ProviderSummary({ runs }: { runs: AgentRun[] }) {
     <div className={`mb-4 rounded-md border px-3 py-2 text-sm ${notLive ? 'border-warn/50 bg-warn/10' : 'border-ok/40 bg-ok/5'}`} data-testid="provider-summary">
       <span className="font-semibold">{notLive ? 'Not a live-provider run. ' : 'Live provider run. '}</span>
       <Term t="provider">Model turns</Term> came from: {[...modes].map(([m, n]) => `${providerLabel(m).label} × ${n}`).join(', ')}.
-      {notLive && <span className="text-muted"> Tool execution, sandbox checks, tests and persistence are still real; the model replies were scripted.</span>}
+      {notLive && <span className="text-muted"> {providerNote(modes)}</span>}
     </div>
   );
 }

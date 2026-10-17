@@ -67,7 +67,7 @@ describe('agent relay', () => {
     expect(text('verify')).toBe('2 fixes accepted.');
   });
   it('a failed agent hands nothing on; a declined approval is shown as no fix built', () => {
-    const items = agentRelay({ runs: [run('reviewer'), run('scout', 'failed'), run('diagnose')], findings: [], state: 'COMPLETED' });
+    const items = agentRelay({ runs: [run('reviewer'), run('scout', 'failed'), run('diagnose')], findings: [], state: 'COMPLETED', approvals: [] });
     const scout = items.find(i => i.kind === 'agent' && i.agent === 'scout');
     expect(scout?.kind === 'agent' && scout.handoff).toBe('Stopped with an error, so nothing was handed on.');
     const gate = items.find(i => i.kind === 'gate');
