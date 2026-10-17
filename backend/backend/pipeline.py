@@ -460,20 +460,18 @@ def platform_facts(
     return PlatformFacts.model_validate(facts.model_dump(mode="json")), provenance
 
 
-def verify_rl_checkpoint(settings: Any) -> str:
-    """Hash the checkpoint and compare it with the operator's pin before it is loaded.
+def verify_rl_checkpoint(settings: Any) -> tuple[bytes, str]:
+    """Read the checkpoint once, hash it and compare it with the operator's pin.
 
-    A checkpoint is a pickle, so the pin is the integrity root, not the manifest beside the
-    file. Outside development/test a pin is required.
+    The returned bytes are what inference loads: hashing and loading the same bytes closes
+    the replace-between-check-and-load window. A checkpoint is a pickle, so the pin is the
+    integrity root, not the manifest beside the file. Outside development/test a pin is
+    required.
     """
     import hashlib
 
-    path = settings.rl_checkpoint_path
-    digest = hashlib.sha256()
-    with path.open("rb") as fh:
-        for chunk in iter(lambda: fh.read(1 << 20), b""):
-            digest.update(chunk)
-    actual = digest.hexdigest()
+    data = settings.rl_checkpoint_path.read_bytes()
+    actual = hashlib.sha256(data).hexdigest()
     pinned = settings.rl_checkpoint_sha256
     if pinned is None and not settings.is_dev:
         raise PermanentJobError(
@@ -485,7 +483,7 @@ def verify_rl_checkpoint(settings: Any) -> str:
             ErrorCode.VALIDATION_FAILED,
             f"RL checkpoint hash mismatch: file {actual[:12]}… != pinned {pinned[:12]}…",
         )
-    return actual
+    return data, actual
 
 
 @handler("rl_recommend")
@@ -496,7 +494,7 @@ def rl_recommend(ctx: JobContext) -> dict[str, Any]:
         raise PermanentJobError(
             ErrorCode.SUBSYSTEM_UNAVAILABLE, "RL_CHECKPOINT_PATH not set or missing"
         )
-    checkpoint_sha256 = verify_rl_checkpoint(settings)
+    checkpoint_bytes, checkpoint_sha256 = verify_rl_checkpoint(settings)
     try:
         from rl_defense import api as rl_api
     except ModuleNotFoundError as exc:
@@ -511,7 +509,7 @@ def rl_recommend(ctx: JobContext) -> dict[str, Any]:
             facts, provenance = platform_facts(conn, project_id)
     provenance = {**provenance, "checkpoint_sha256": checkpoint_sha256}
     local_facts = rl_api.PlatformFacts.model_validate(facts.model_dump(mode="json"))
-    runner = rl_api.load_policy(settings.rl_checkpoint_path)
+    runner = rl_api.load_policy(settings.rl_checkpoint_path, blob=checkpoint_bytes)
     rec = DefenseRecommendation.model_validate(
         runner.recommend(local_facts).model_dump(mode="json")
     )
