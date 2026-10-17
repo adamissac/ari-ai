@@ -3,6 +3,7 @@
 import { findingStandards, type FindingDetail, type FindingRecord, type PatchView } from '@hackatl/frontend-transport';
 import Link from 'next/link';
 import { useState, type FormEvent, type ReactNode } from 'react';
+import { ExpectationLinks } from '@/components/expectation-links';
 import { ArtifactPeek, EvidenceList } from '@/components/evidence';
 import { useParam, useProject } from '@/components/project';
 import { useSession } from '@/components/session';
@@ -45,7 +46,7 @@ export default function FindingPage() {
           />
           <div className="grid gap-4 xl:grid-cols-[3fr_2fr]">
             <div className="flex flex-col gap-4">
-              <EvidenceChain detail={d} patches={patches.status === 'ready' ? patches.data.items : null} repo={repo} />
+              <EvidenceChain detail={d} patches={patches.status === 'ready' ? patches.data.items : null} repo={repo} projectId={project.id} />
               <Panel title="Patches and independent verification">
                 <Async resource={patches} label="patches">
                   {page => page.items.length === 0 ? <Empty>No patch candidate recorded for this finding.</Empty> : (
@@ -122,7 +123,7 @@ function Step({ n, title, who, children, empty }: { n: number; title: string; wh
   );
 }
 
-function EvidenceChain({ detail, patches, repo }: { detail: FindingDetail; patches: PatchView[] | null; repo: string | undefined }) {
+function EvidenceChain({ detail, patches, repo, projectId }: { detail: FindingDetail; patches: PatchView[] | null; repo: string | undefined; projectId: string }) {
   const r = detail.records;
   const hyps = of(r, 'hypothesis');
   const vals = of(r, 'validation_result');
@@ -135,8 +136,12 @@ function EvidenceChain({ detail, patches, repo }: { detail: FindingDetail; patch
     <Panel title="Evidence chain">
       <ol>
         <Step n={1} title="Expected behaviour" who="code intelligence + reviewer">
-          {detail.finding.expectation_ids.length === 0 ? <p className="text-xs text-faint">No expectation linked to this finding.</p> :
-            <p className="flex flex-wrap gap-1 text-xs">{detail.finding.expectation_ids.map(e => <Mono key={e}>{e}</Mono>)}</p>}
+          <ExpectationLinks
+            projectId={projectId}
+            snapshotId={detail.finding.snapshot_id}
+            assessmentId={detail.finding.assessment_id}
+            ids={detail.finding.expectation_ids}
+          />
         </Step>
         <Step n={2} title="Hypothesis" who="Scout" empty={detail.finding.kind === 'functional' ? 'Functional finding — raised by the Reviewer, not Scout.' : undefined}>
           {hyps.length > 0 && hyps.map(h => (
