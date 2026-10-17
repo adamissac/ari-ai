@@ -6,7 +6,7 @@ Current task: RL-005 integration (backend endpoint + UI panel depend on Srihith 
 Last remote sync: 2026-10-17 — origin/main at `945afc9`; no other branches, PRs or issues yet
 API/contract dependencies: `DefenseRecommendation`, `PlatformFacts`, `RLCheckpointRef`, `RLEvaluation` proposed to Srihith in `coordination/messages/20261017T001311Z-adam-to-srihith-rl-recommendation-contract.md`; local adapter in `rl-defense/rl_defense/contracts.py` until `shared/` V0 merges
 Verified tests: `cd rl-defense && .venv/bin/python -m pytest -q` → 36 passed (CPU, macOS arm64, Python 3.12, torch 2.14.1, gymnasium 1.4.0); ruff check + format clean
-Recent PR/commit: see PR on `feat/adam/rl-defense` (code commit `1182773`)
+Recent PR/commit: PR #1 https://github.com/adamissac/hackatl-agentic-security/pull/1 (code `1182773`); contract issue #2
 Blockers: none for RL; backend endpoint and Defense Lab UI need `shared/` V0 and backend persistence
 Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablations (vanilla DQN vs DDQN, feature and reward sensitivity)
 
