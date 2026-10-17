@@ -35,7 +35,9 @@ def test_host_mode_full_flow_against_real_backend(
 
     monkeypatch.setenv("SECURITY_AGENTS_TARGET_DIR", str(TARGET))
     monkeypatch.setenv("SECURITY_AGENTS_WORKDIR", str(tmp_path / "w"))
-    settings_override(orchestrator_factory="security_agents.api:build_orchestrator")
+    settings_override(
+        orchestrator_factory="security_agents.api:build_orchestrator", security_sandbox="local-dev"
+    )
     bridge = AlanScriptTransport(TARGET / "target")
     llm.TRANSPORT_OVERRIDE = lambda: bridge
     alice, bob = client_factory("alice"), client_factory("bob")

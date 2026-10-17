@@ -1,0 +1,32 @@
+name: security-agents
+
+# Pillar 2 runtime: the seven-agent suite (scripted FakeLLM, real tool registry,
+# scope_guard and local sandbox against the owned payments-lite target). Live
+# provider tests never run here.
+on:
+  pull_request:
+    paths: ["security-agents/**", "shared/**", "code-intelligence/**", "examples/payments-lite/**", "pyproject.toml", "uv.lock", ".github/workflows/security-agents.yml"]
+  push:
+    branches: [main]
+    paths: ["security-agents/**", "shared/**", "code-intelligence/**", "examples/payments-lite/**", "pyproject.toml", "uv.lock", ".github/workflows/security-agents.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      UV_PYTHON: "3.12"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install uv (pinned)
+        run: python3 -m pip install --user "uv==0.11.28"
+      - name: Install workspace
+        run: ~/.local/bin/uv sync --frozen
+      - name: Lint
+        run: ~/.local/bin/uv run ruff check security-agents/security_agents security-agents/tests
+      - name: Tests
+        working-directory: security-agents
+        run: ~/.local/bin/uv run pytest -q
