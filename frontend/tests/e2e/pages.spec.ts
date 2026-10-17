@@ -59,6 +59,8 @@ test('incident closure: link verified finding, criteria with evidence, communica
   // Runs after journey.spec (workers: 1, file order), which leaves a finding with an accepted Verify.
   const alice = await newUser(browser, 'e2e-alice');
   const bob = await newUser(browser, 'e2e-bob');
+  alice.setDefaultTimeout(20_000);
+  bob.setDefaultTimeout(20_000);
   const title = `closure-${Date.now()}`;
   await alice.goto(`/projects/${project()}/incidents`);
   await alice.getByLabel('Title').fill(title);
@@ -87,7 +89,8 @@ test('incident closure: link verified finding, criteria with evidence, communica
   await closure.getByRole('button', { name: 'Record communication' }).click();
   await expect(closure.getByText('Engineering notified of containment plan')).toBeVisible();
   await expect(closure.getByLabel('Regression evidence')).toBeVisible();
-  await closure.getByLabel('Lessons learned').fill('Retain cross-customer authorization regression sources');
+  await closure.getByRole('textbox', { name: 'Lessons learned', exact: true }).fill('Retain cross-customer authorization regression sources');
+  await expect(closure.getByRole('button', { name: 'Record lessons', exact: true })).toBeEnabled();
   await closure.getByRole('button', { name: 'Record lessons', exact: true }).click();
   await expect(closure.getByText('Retain cross-customer authorization regression sources').first()).toBeVisible();
   await alice.getByLabel('Category').fill('sandbox authorization');
@@ -96,6 +99,7 @@ test('incident closure: link verified finding, criteria with evidence, communica
   await alice.getByRole('button', { name: 'Assign to me' }).click();
   await alice.getByRole('button', { name: 'Move to Analysis' }).click();
   for (const [gate, target] of [['containment', 'Containment'], ['eradication', 'Eradication'], ['recovery', 'Recovery'], ['closure', 'Closed']] as const) {
+    await alice.getByLabel('Note / rationale').fill('Verified sandbox regression retained');
     await alice.getByRole('button', { name: `Request ${gate} approval` }).click();
     await bob.goto(`/projects/${project()}/incidents`);
     await bob.locator('[data-testid^="incident-"]').filter({ hasText: title }).click();

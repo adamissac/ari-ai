@@ -171,11 +171,11 @@ function AddCriterion({ busy, act }: { busy: boolean; act: Act }) {
 function SatisfyCriterion({ criterionKey, options, busy, act }: { criterionKey: string; options: EvidenceOption[]; busy: boolean; act: Act }) {
   const [pick, setPick] = useState(options[0]?.key ?? '');
   if (options.length === 0) return <p className="mt-1 text-xs text-muted">Link a finding with a persisted patch or regression artifact to satisfy this with evidence.</p>;
-  const chosen = options.find(o => o.key === pick);
+  const chosen = options.find(o => o.key === pick) ?? options[0];
   return (
     <div className="mt-2 flex flex-wrap items-end gap-2">
       <Field label={`Evidence for ${criterionKey}`}>
-        <select className={inputClass} value={pick} onChange={e => setPick(e.target.value)}>
+        <select className={inputClass} value={chosen?.key ?? ''} onChange={e => setPick(e.target.value)}>
           {options.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
         </select>
       </Field>
@@ -190,12 +190,12 @@ function RecordLessons({ options, busy, act }: { options: EvidenceOption[]; busy
   if (options.length === 0) {
     return <p className="text-xs text-muted">No Fortify regression-test artifact is recorded on the linked findings. Lessons learned must cite one, so the backend will refuse closure until it exists.</p>;
   }
-  const chosen = options.find(o => o.key === pick);
+  const chosen = options.find(o => o.key === pick) ?? options[0];
   return (
     <div className="flex flex-wrap items-end gap-2">
       <Field label="Lessons learned"><input className={inputClass} value={text} onChange={e => setText(e.target.value)} maxLength={500} /></Field>
       <Field label="Regression evidence">
-        <select className={inputClass} value={pick} onChange={e => setPick(e.target.value)}>
+        <select className={inputClass} value={chosen?.key ?? ''} onChange={e => setPick(e.target.value)}>
           {options.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
         </select>
       </Field>
