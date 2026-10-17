@@ -18,6 +18,17 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-17 — Adam — connect repository note
+- Did: The repository form states that it records a name and default branch. The form sends `installation_id: null`.
+- State of the code: branch `feat/adam/connect-note`.
+- Commands run and results: `npm test -- --run tests/unit/connect.test.ts` 1 passed; `npm run typecheck` clean; `npm run lint` clean. Browser was not run.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): none.
+- Next steps: open the PR.
+- Warnings for the next session: if the form starts sending a real installation id, change the note.
+
+---
+
 ### 2026-10-17 — Adam — monitoring summary
 - Did: The monitoring page leads with recorded-event and simulation-recommendation counts. Unloaded lists are not counted. The sentence says this page is not the Defense Lab.
 - State of the code: branch `feat/adam/monitoring-summary`.
