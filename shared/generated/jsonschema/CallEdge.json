@@ -15,7 +15,7 @@
     "callee_id": {
       "anyOf": [
         {
-          "pattern": "^sym_[0-9A-Za-z]{8,64}$",
+          "pattern": "^sym_[0-9A-Za-z_\\-]{8,64}$",
           "type": "string"
         },
         {
@@ -31,7 +31,7 @@
       "type": "string"
     },
     "caller_id": {
-      "pattern": "^sym_[0-9A-Za-z]{8,64}$",
+      "pattern": "^sym_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Caller Id",
       "type": "string"
     },
@@ -39,7 +39,7 @@
       "$ref": "#/$defs/CallResolution"
     },
     "snapshot_id": {
-      "pattern": "^snp_[0-9A-Za-z]{8,64}$",
+      "pattern": "^snp_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Snapshot Id",
       "type": "string"
     }

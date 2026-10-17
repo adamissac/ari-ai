@@ -107,3 +107,15 @@ strings such as `"POST /payments/{id}/refunds"`. Imported evaluations:
   The same records are available as JSON from `GET /api/v1/assessments/{id}/events/log?after=N`.
 * Monitoring events carry `simulated: true` for locally signed or replayed deliveries.
   Label those in the UI. Defense recommendations always carry `simulation_derived: true`.
+
+## Runtime signals (monitoring, contracts 0.3.0)
+
+* Owner mints a token: `POST /api/v1/projects/{id}/ingest-tokens` → `IngestTokenCreated`
+  (token shown once). Revoke: `POST /api/v1/ingest-tokens/{token_id}/revoke`.
+* Senders (the sandboxed demo target's collector, or replay tooling) call
+  `POST /api/v1/ingest/runtime/{project_id}` with `Authorization: Bearer <token>` and a
+  `RuntimeSignalBatch` of per-route counters. The response is a `RuntimeIngestAck`
+  with an explainable `RouteScore` per route.
+* Anomalies (score ≥ 0.5) appear in `GET /projects/{id}/events` as `type=log_anomaly`,
+  `source=runtime`, with `simulated=true` unless `source=runtime_demo`. The UI must show
+  the source label. They never start assessments. RL facts consume the latest scores.

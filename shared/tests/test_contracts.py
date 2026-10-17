@@ -173,3 +173,15 @@ def test_generated_typescript_compiles(tmp_path: Path) -> None:
         text=True,
     )
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_readable_producer_ids_accepted_but_prefix_still_enforced() -> None:
+    from pydantic import TypeAdapter
+
+    from shared.ids import ExpectationId
+
+    ta = TypeAdapter(ExpectationId)
+    assert ta.validate_python("exp_tenant_isolation_payments")
+    for bad in ("fnd_tenant_isolation", "exp_short", "exp_has space here", "exp_../../etc"):
+        with pytest.raises(ValidationError):
+            ta.validate_python(bad)

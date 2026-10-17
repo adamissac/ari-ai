@@ -22,7 +22,7 @@
         "artifact_id": {
           "anyOf": [
             {
-              "pattern": "^art_[0-9A-Za-z]{8,64}$",
+              "pattern": "^art_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -204,7 +204,7 @@
     "expectation_id": {
       "anyOf": [
         {
-          "pattern": "^exp_[0-9A-Za-z]{8,64}$",
+          "pattern": "^exp_[0-9A-Za-z_\\-]{8,64}$",
           "type": "string"
         },
         {

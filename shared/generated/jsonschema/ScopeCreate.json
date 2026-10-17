@@ -25,7 +25,7 @@
           "type": "string"
         },
         "repo_id": {
-          "pattern": "^rep_[0-9A-Za-z]{8,64}$",
+          "pattern": "^rep_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Repo Id",
           "type": "string"
         }
