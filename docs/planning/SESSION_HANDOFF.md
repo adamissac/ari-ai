@@ -21,7 +21,7 @@ adds an entry before ending.
 ### 2026-10-17 — Adam — monitoring summary
 - Did: The monitoring page leads with recorded-event and simulation-recommendation counts. Unloaded lists are not counted. The sentence says this page is not the Defense Lab.
 - State of the code: branch `feat/adam/monitoring-summary`.
-- Commands run and results: recorded after the unit test run.
+- Commands run and results: `npm test -- --run tests/unit/monitoring.test.ts` 3 passed; `npm run typecheck` clean; `npm run lint` clean. Browser was not run.
 - Decisions made (ADR links): none. A full page of 50 events is described as the newest page because the API does not return a cursor.
 - Assumptions / open questions (RQ links): none.
 - Next steps: open the PR.
