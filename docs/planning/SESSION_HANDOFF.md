@@ -615,3 +615,17 @@ and full navigation on pricing. Desktop/mobile top and revealed screenshots insp
 Existing brand e2e scroll checkpoint updated from 80px to 120px; its full backend
 suite was not rerun. Screenshots external to Git: `/tmp/ari-reveal-screens`.
 No push or deployment. Next action: review local commit; publishing remains pending.
+
+## 2026-10-17T19:14:09+00:00 — Owner-authorized publication to main
+
+The owner explicitly requested pushing the accumulated frontend changes to main.
+Product commits: `391831a`, `ed37e30`, `b2961f9`; current main base: `0f645c2`.
+Scope: ARI branding, local wordmark font, centered warm headline, transparent
+contrast-aware navigation and homepage 100px reveal with phone Menu access.
+Final unchanged product tree passed lint, type-check, demo-only production build,
+219 unit tests (51 files, two workers) and 5 Chromium browser tests (36.6s), covering
+1440/1024/390/320px, reduced motion, top/reveal/return, inert focus and anchored account.
+No backend/API changes in the publication diff. Earlier local-only notes describe
+the state before this authorization. Publishing via a normal fast-forward push;
+next action is to confirm GitHub main matches the release commit and inspect CI.
+The Git-connected Vercel deployment is triggered by that push; no project settings changed.
