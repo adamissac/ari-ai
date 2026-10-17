@@ -481,16 +481,12 @@ def recipe_from_snapshot(intel: CodeIntel) -> Any:
     """Recipe provider that reads the target's scope-approved build recipe."""
 
     def provider(ctx: ToolContext | None, target_id: str) -> dict[str, Any]:
-        recipe_ref = "build_recipe.json"
         scope = getattr(ctx, "scope", None)
-        if scope is not None:
-            target = next((t for t in scope.targets if t.target_id == target_id), None)
-            if target is None:
-                raise PlatformError(
-                    ErrorCode.SCOPE_DENIED, f"target {target_id[:80]!r} is not in the authorized scope"
-                )
-            recipe_ref = safe_rel_path(target.build_recipe_ref)
-        path = intel.snapshot.root / recipe_ref
+        if scope is not None and all(t.target_id != target_id for t in scope.targets):
+            raise PlatformError(
+                ErrorCode.SCOPE_DENIED, f"target {target_id[:80]!r} is not in the authorized scope"
+            )
+        path = intel.snapshot.root / "build_recipe.json"
         if not path.is_file():
             raise PlatformError(ErrorCode.SCHEMA_INVALID, "target has no build_recipe.json")
         return json.loads(path.read_text(encoding="utf-8"))
