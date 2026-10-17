@@ -33,7 +33,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <form onSubmit={submit} className="grid gap-4 lg:grid-cols-2" aria-label="Project settings">
+    <form onSubmit={submit} className="grid grid-cols-1 gap-4 lg:grid-cols-2" aria-label="Project settings">
       <Panel title="Project">
         <Field label="Name"><input className={inputClass} value={draft.name} onChange={e => set('name')(e.target.value)} maxLength={200} /></Field>
         <div className="mt-3">
@@ -44,7 +44,7 @@ export default function SettingsPage() {
       </Panel>
       <Panel title="Default assessment budget">
         <p className="mb-3 text-sm text-muted">Hard ceilings enforced by the orchestrator. An assessment that reaches any limit stops and is marked budget-exhausted, never silently extended.</p>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Field label="Max tokens"><input className={inputClass} inputMode="numeric" value={draft.maxTokens} onChange={e => set('maxTokens')(e.target.value)} /></Field>
           <Field label="Max USD"><input className={inputClass} inputMode="decimal" value={draft.maxUsd} onChange={e => set('maxUsd')(e.target.value)} /></Field>
           <Field label="Wall clock (s)"><input className={inputClass} inputMode="numeric" value={draft.maxWall} onChange={e => set('maxWall')(e.target.value)} /></Field>
@@ -59,7 +59,7 @@ export default function SettingsPage() {
           <input type="checkbox" checked={draft.enabled} onChange={e => set('enabled')(e.target.checked)} />
           Start reassessments automatically on relevant changes
         </label>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Minimum interval between reassessments (s)" hint="Changes inside this window are coalesced.">
             <input className={inputClass} inputMode="numeric" value={draft.interval} onChange={e => set('interval')(e.target.value)} />
           </Field>
@@ -68,7 +68,7 @@ export default function SettingsPage() {
           </Field>
         </div>
         <p className="mb-2 mt-4 text-sm text-muted">Budget for each monitoring-triggered reassessment (separate from manual assessments).</p>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Field label="Max tokens"><input className={inputClass} inputMode="numeric" value={draft.monTokens} onChange={e => set('monTokens')(e.target.value)} /></Field>
           <Field label="Max USD"><input className={inputClass} inputMode="decimal" value={draft.monUsd} onChange={e => set('monUsd')(e.target.value)} /></Field>
           <Field label="Wall clock (s)"><input className={inputClass} inputMode="numeric" value={draft.monWall} onChange={e => set('monWall')(e.target.value)} /></Field>

@@ -215,6 +215,11 @@ Alan/Codex, IN_REVIEW on fix/alan/offline-font-build (own worktree).
 Original build fails with unavailable proxies; local licensed font assets let the
 same default build succeed. Same families/weights; no landing-page redesign.
 
+### DEMO-RECOVERY-001 — explicit409 new-action recovery
+Alan/Codex, DONE (merged #187). Preserve same-action network retries, namespace keys by
+project, require explicit preparation for a separate action after conflict; no request
+on preparation.
+
 API-JOB-001 evidence: Chrome14 passed, real HTTP/client6 passed, root422 passed/8
 skips, backend80 passed/5 skips, frontend67 and transport27 unit tests passed.
 Webpack production build, TypeScript, ESLint, Ruff/format, mypy and contracts pass.

@@ -8,7 +8,10 @@ const sourceHash = '0d4d68e2e5917248016e2368773ac9a40417188737da6623485ecd82da47
 async function loadedMark(page: Page, selector: string) {
   const mark = page.locator(selector).first();
   await expect(mark).toBeVisible();
-  await expect.poll(() => mark.locator('img').evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
+  // The bare ant is a CSS mask of the transparent mark; confirm the mask resolved to that asset.
+  await expect.poll(() => mark.evaluate(element => getComputedStyle(element).maskImage || getComputedStyle(element).webkitMaskImage)).toContain('ari-ant-mark.png');
+  const ok = await page.evaluate(async () => (await fetch('/brand/ari-ant-mark.png')).ok);
+  expect(ok).toBe(true);
 }
 
 async function screenshot(page: Page, name: string) {

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useProject } from '@/components/project';
+import { Term } from '@/components/term';
 import { Async, Badge, Empty, Mono, Panel, Tag, Time } from '@/components/ui';
 import { api } from '@/lib/api';
 import { FINDING_GROUP_NOTE, findingGroup, type FindingGroup } from '@/lib/findings';
@@ -22,6 +23,7 @@ export default function FindingsPage() {
   const [tab, setTab] = useState<FindingGroup>('open');
   return (
     <Panel title="Findings">
+      <p className="mb-1 text-sm text-muted">What these words mean: <Term t="finding">finding</Term>, <Term t="hypothesis">hypothesis</Term>, <Term t="validated">validated</Term>, <Term t="verification">verified</Term>.</p>
       <p className="mb-3 text-sm text-muted" data-testid="finding-group-note">{FINDING_GROUP_NOTE}</p>
       <div role="tablist" aria-label="Finding groups" className="mb-3 flex gap-1">
         {TABS.map(([t, label]) => (
