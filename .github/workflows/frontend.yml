@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: "22.12"
+          node-version: "24"
       - name: Transport (build + node tests against generated contracts)
         run: npm ci --prefix transport && npm test --prefix transport
       - name: Install app
@@ -58,7 +58,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: "22.12"
+          node-version: "24"
       - name: Install uv
         run: python3 -m pip install --user "uv==0.11.28"
       - name: Install locked Python workspace
