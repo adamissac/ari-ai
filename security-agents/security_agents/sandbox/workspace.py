@@ -108,12 +108,18 @@ class SnapshotHandle:
 
     @classmethod
     def from_directory(cls, src: Path, dest: Path, *, snapshot_id: str, repo_id: str) -> SnapshotHandle:
+        """Pin a directory (dev/demo only; no git history).
+
+        `commit_sha` is the first 40 hex characters of the tree digest so the
+        value satisfies the canonical 40-hex `commit_sha` contract; the real
+        provenance is `pinned_by="directory-digest"`, never a git commit.
+        """
         copy_tree(src, dest)
         _make_read_only(dest)
         return cls(
             snapshot_id=snapshot_id,
             repo_id=repo_id,
-            commit_sha=f"dirsha256:{tree_digest(dest)[:40]}",
+            commit_sha=tree_digest(dest)[:40],
             root=dest,
             pinned_by="directory-digest",
         )

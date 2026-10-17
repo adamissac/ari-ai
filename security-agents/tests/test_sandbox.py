@@ -84,7 +84,9 @@ def test_snapshot_is_pinned_and_read_only(snapshot):
     with pytest.raises(PermissionError):
         target.write_text("tampered")
     assert tree_digest(snapshot.root) == digest_before
-    assert snapshot.commit_sha.startswith("dirsha256:")
+    # 40 hex chars so the value satisfies the canonical commit_sha contract,
+    # with the real provenance recorded separately
+    assert len(snapshot.commit_sha) == 40 and all(c in "0123456789abcdef" for c in snapshot.commit_sha)
     assert snapshot.pinned_by == "directory-digest"
 
 
