@@ -20,7 +20,7 @@ breaking intended behavior. Verify is the only path to `verified`.
 |---|---|
 | `original_check_now_fails_to_reproduce` | Re-run the same check template@version + params (security) or failing behavioral test (functional) against the patched target |
 | `functional_suite_passes` | Run the project test suite; failures must be ⊆ baseline failures on unpatched snapshot |
-| `generated_tests_pass` | Run tests added by Patch/review |
+| `generated_tests_pass` | Run tests added by Patch/review on the patched workspace (all pass), **and** on a fresh unpatched checkout run by the platform (not the model): a clean pytest-failed run (exit 1, no collection errors, no timeout, untruncated list) with every added test file failing. Tests that already pass on unpatched code, or an unclean run, reject the fix (`verify.clean_reproduction`, #248, #264) |
 | `no_test_tampering` | Diff does not modify/delete tests encoding confirmed expectations |
 | `diff_scope_ok` | Changed files ⊆ plan files ∪ new test files |
 
