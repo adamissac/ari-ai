@@ -27,7 +27,7 @@ test('signed-out users see sign-in, not data', async ({ page }) => {
 test('Defense Lab plots only the committed, schema-validated evaluation bundle', async ({ page }) => {
   await page.goto('/lab');
   await expect(page.getByTestId('lab-caveat')).toContainText('Simulation only');
-  await expect(page.getByTestId('lab-intro')).toContainText('A practice game.');
+  await expect(page.getByTestId('lab-intro')).toContainText('A practice game (a simulation).');
   // Plain scoreboard: named defenders, values with their 95% interval, best marked.
   const board = page.getByTestId('lab-scoreboard');
   await expect(board.getByTestId('score-compromise_rate')).toContainText('Trained AI defender');
