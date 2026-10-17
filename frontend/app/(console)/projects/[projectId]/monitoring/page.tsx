@@ -30,6 +30,19 @@ export default function MonitoringPage() {
   });
   return (
     <div className="flex flex-col gap-4">
+      <header className="monitor-head" data-testid="monitor-head">
+        <div>
+          <p className="label-mono text-white/60">Continuous defense monitor</p>
+          <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">What we have recorded for this project</h2>
+          <p className="mt-1 max-w-2xl text-sm text-white/70">Real events from your connected repository and runtime, plus re-checks they triggered. This is a record of what arrived, not a promise of round-the-clock protection.</p>
+        </div>
+        <ul className="monitor-chips" aria-label="Monitoring status">
+          <li><span className="text-white/50">Monitoring</span> {project.settings.monitoring_policy.enabled ? 'on' : 'off'}</li>
+          <li><span className="text-white/50">Events</span> {events.status === 'ready' ? `${events.data.items.length}${events.data.items.length >= 50 ? '+' : ''}` : '…'}</li>
+          <li><span className="text-white/50">Simulated events</span> {events.status === 'ready' ? events.data.items.filter(e => e.simulated).length : '…'}</li>
+          <li><span className="text-white/50">Re-checks</span> {reassess.status === 'ready' ? reassess.data.items.length : '…'}</li>
+        </ul>
+      </header>
       <p className="rounded-xl border border-line bg-panel p-5 text-sm text-ink" data-testid="monitoring-summary">{summary}</p>
     <div className="grid grid-cols-1 gap-4 xl:grid-cols-[3fr_2fr]">
       <div className="flex flex-col gap-4">
@@ -127,6 +140,10 @@ function EventFeed({ items }: { items: MonitoringEvent[] }) {
 
 function Recommendation({ rec }: { rec: DefenseRecommendation }) {
   const [exp, setExp] = useState<{ status: 'idle' } | { status: 'loading' } | { status: 'ready'; data: RLExplanation } | { status: 'error'; error: unknown }>({ status: 'idle' });
+  const explain = async () => {
+    setExp({ status: 'loading' });
+    try { setExp({ status: 'ready', data: await api().recommendationExplanation(rec.id) }); } catch (error) { setExp({ status: 'error', error }); }
+  };
   return (
     <li className="rounded-md border border-line bg-panel-2 p-2.5 text-xs">
       <p className="flex flex-wrap items-center gap-2 text-sm">
@@ -136,13 +153,10 @@ function Recommendation({ rec }: { rec: DefenseRecommendation }) {
       <p className="mt-1 text-muted">policy <Mono>{rec.policy_version}</Mono> · checkpoint <Mono>{rec.checkpoint_sha256.slice(0, 12)}</Mono> · <Time iso={rec.created_at} /></p>
       <p className="mt-1 text-warn">{rec.caveat}</p>
       {exp.status === 'idle' && (
-        <Button className="mt-1 !px-2 !py-0.5 text-xs" onClick={async () => {
-          setExp({ status: 'loading' });
-          try { setExp({ status: 'ready', data: await api().recommendationExplanation(rec.id) }); } catch (error) { setExp({ status: 'error', error }); }
-        }}>Why this action?</Button>
+        <Button className="mt-1 !px-2 !py-0.5 text-xs" onClick={() => void explain()}>Why this action?</Button>
       )}
       {exp.status === 'loading' && <Loading label="Loading explanation" />}
-      {exp.status === 'error' && <ErrorState error={exp.error} context="Explanation" />}
+      {exp.status === 'error' && <ErrorState error={exp.error} onRetry={() => void explain()} context="Explanation" />}
       {exp.status === 'ready' && (
         <div className="mt-1">
           <p className="text-muted">Method {exp.data.method} · runner-up {exp.data.runner_up ?? '—'} · margin {num(exp.data.margin, 3)}</p>
