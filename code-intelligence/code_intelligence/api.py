@@ -45,9 +45,9 @@ from shared.intelligence_memory import (
 
 from code_intelligence.extract import PythonExtractor, dependencies
 from code_intelligence.inference import ExpectationProvider, validate_proposals
-from code_intelligence.ingest import GitReader, Limits
+from code_intelligence.ingest import GitReader, Limits, ingestion_version
 from code_intelligence.memory import MemoryStore, SQLiteMemoryStore, apply_decisions
-from code_intelligence.models import INDEX_VERSION, IntelligenceError, StoredIndex, stable_id
+from code_intelligence.models import IntelligenceError, StoredIndex, stable_id
 from code_intelligence.persistence import PayloadIndexStore, PayloadStore
 from code_intelligence.retrieval import build_pack, delimited, estimate, neighbors
 from code_intelligence.store import IndexStore, SQLiteIndexStore
@@ -104,19 +104,20 @@ class IntelligenceService:
         binding = self._binding(repo_id)
         if binding.project_id != project_id:
             raise IntelligenceError("Repository does not belong to requested project")
+        version = ingestion_version(binding.include_prefix, self.limits)
         if base_snapshot:
             self._validate_base(base_snapshot, project_id, repo_id)
         try:
-            return self.store.find(project_id, repo_id, commit_sha, INDEX_VERSION).ref
+            return self.store.find(project_id, repo_id, commit_sha, version).ref
         except IntelligenceError as exc:
             if "SNAPSHOT_NOT_READY" not in str(exc):
                 raise
         snapshot = Snapshot(
-            id=stable_id("snp", project_id, repo_id, commit_sha, INDEX_VERSION),
+            id=stable_id("snp", project_id, repo_id, commit_sha, version),
             repo_id=repo_id,
             commit_sha=commit_sha,
             status=SnapshotStatus.pending,
-            index_version=INDEX_VERSION,
+            index_version=version,
             base_snapshot_id=base_snapshot.snapshot_id if base_snapshot else None,
             created_at=utcnow(),
         )
@@ -135,7 +136,7 @@ class IntelligenceService:
             repo_id=binding.repo_id,
             snapshot_id=snapshot.id,
             commit_sha=snapshot.commit_sha,
-            index_version=INDEX_VERSION,
+            index_version=ingestion_version(binding.include_prefix, self.limits),
         )
         reader = GitReader(binding.local_path, self.limits, binding.include_prefix)
         tree, files, issues = reader.read(ref.commit_sha)
@@ -147,7 +148,7 @@ class IntelligenceService:
             repo_id=snapshot.repo_id,
             commit_sha=snapshot.commit_sha,
             status=SnapshotStatus.ready,
-            index_version=INDEX_VERSION,
+            index_version=ref.index_version,
             created_at=snapshot.created_at,
             completed_at=utcnow(),
             base_snapshot_id=base.snapshot_id if base else None,
@@ -193,9 +194,10 @@ class IntelligenceService:
         binding = self._binding(snapshot.repo_id)
         if binding.full_name != repo_full_name:
             raise IntelligenceError("Backend repository name does not match registration")
+        version = ingestion_version(binding.include_prefix, self.limits)
         try:
             existing = self.store.find(
-                binding.project_id, snapshot.repo_id, snapshot.commit_sha, INDEX_VERSION
+                binding.project_id, snapshot.repo_id, snapshot.commit_sha, version
             )
         except IntelligenceError as exc:
             if "SNAPSHOT_NOT_READY" not in str(exc):
@@ -216,7 +218,7 @@ class IntelligenceService:
                 repo_id=snapshot.repo_id,
                 commit_sha=snapshot.commit_sha,
                 status=SnapshotStatus.failed,
-                index_version=INDEX_VERSION,
+                index_version=version,
                 created_at=snapshot.created_at,
                 completed_at=utcnow(),
                 error_message=f"INDEX_FAILED: {type(exc).__name__}: {exc}"[:500],
@@ -444,7 +446,7 @@ class IntelligenceService:
             path=path,
             commit_sha=ref.commit_sha,
             span=SourceSpan(start_line=start_line, end_line=end_line),
-            provenance=f"code_intelligence@{INDEX_VERSION}",
+            provenance=f"code_intelligence@{ref.index_version}",
         )
         wrapped = delimited(content, evidence)
         if len(wrapped) > 20_000:
@@ -487,12 +489,9 @@ class IntelligenceService:
     ) -> ImpactSet:
         """Monitoring signature. Verified indexes take precedence over webhook path hints."""
         binding = self._binding(repo_id)
-        head = self.store.find(binding.project_id, repo_id, head_sha, INDEX_VERSION)
-        base = (
-            self.store.find(binding.project_id, repo_id, base_sha, INDEX_VERSION)
-            if base_sha
-            else None
-        )
+        version = ingestion_version(binding.include_prefix, self.limits)
+        head = self.store.find(binding.project_id, repo_id, head_sha, version)
+        base = self.store.find(binding.project_id, repo_id, base_sha, version) if base_sha else None
         old_files = base.tree_files if base else {}
         new_files = head.tree_files
         paths = sorted(
