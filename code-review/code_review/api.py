@@ -113,11 +113,11 @@ def resolve_repo(
 
 def build_intelligence() -> IntelligencePort | None:
     try:
-        from code_intelligence.api import build_service  # type: ignore[import-not-found]
+        from code_intelligence.api import build_service
     except ImportError:
         return None
     try:
-        return build_service()  # type: ignore[no-any-return]
+        return build_service()
     except Exception:
         return None
 
@@ -182,12 +182,12 @@ def generate_tests(
 def read_artifact(host: ReviewHost, artifact_id: str) -> bytes:
     reader = getattr(host, "read_artifact", None)
     if callable(reader):
-        return reader(artifact_id)  # type: ignore[no-any-return]
+        return bytes(reader(artifact_id))
     from backend.db import transaction
 
     with transaction() as conn:
         _, data = host.store.get(conn, artifact_id)  # type: ignore[attr-defined]
-    return data
+    return bytes(data)
 
 
 def load_test_sources(host: ReviewHost, finding: Finding) -> list[GeneratedTestSource]:

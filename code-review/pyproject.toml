@@ -22,3 +22,17 @@ packages = ["code_review"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "code_review/prompts" = "code_review/prompts"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+follow_untyped_imports = true
+
+[[tool.mypy.overrides]]
+module = ["shared.*", "backend.*", "code_intelligence.*", "security_agents.*"]
+follow_imports = "silent"
+
+[[tool.mypy.overrides]]
+module = ["code_review._pytest_report"]
+ignore_errors = true  # copied into the sandbox; stdlib-only hook module with pytest's untyped hooks

@@ -29,3 +29,11 @@ check. **Implemented:** `docs.yml`, `secrets.yml` (INFRA-003), `backend.yml` (CO
 `code-intelligence.yml` adds locked-workspace Ruff/format/strict mypy, intelligence tests
 and real PostgreSQL payload/webhook integration. FakeTransport runs in CI; provider
 inference is opt-in and skipped without a key.
+
+## Code review (REVIEW-001..006)
+
+`code-review.yml` runs on PRs touching `code-review/` or its dependencies (shared, backend,
+code-intelligence, the security-agents sandbox, payments-lite). It runs Ruff, format and
+strict mypy on `code_review`, the reviewer suite against a Postgres service (FakeTransport;
+real git exports and pytest executions), and the reviewer through the shared
+`security_agents` sandbox driver. The live reviewer eval (`-m live_llm`) never runs here.

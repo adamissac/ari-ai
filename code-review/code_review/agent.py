@@ -545,8 +545,7 @@ class ReviewerAgentRunner:
                 tid, wt.path, wt.content, wt.claim_key, sha256_text(wt.content), wt.artifact.id
             )
 
-        seen: set[str] = set()
-        questions = [q for q in questions if not (q in seen or seen.add(q))]
+        questions = list(dict.fromkeys(questions))
         result = ReviewResult(
             assessment_id=request.assessment_id,
             agent_run_id=run_id,
@@ -714,10 +713,10 @@ class ReviewerAgentRunner:
         if not reasons:
             ok, replay_reasons, replay_report = self._fresh_replay(finding, tests, pristine, diff)
             reasons.extend(replay_reasons)
-        accepted = not reasons
+        accepted = not reasons and replay_report is not None
         patch: PatchCandidate | None = None
         updated = finding
-        if accepted:
+        if accepted and replay_report is not None:  # narrowing for the type checker
             art = self.host.store_text(diff, ArtifactKind.diff, media_type="text/x-diff")
             patch = PatchCandidate(
                 id=new_id(IdPrefix.pat),
@@ -746,7 +745,7 @@ class ReviewerAgentRunner:
                             replay_report,
                             "fresh replay of candidate: generated + existing tests pass",
                             self.sandbox.name,
-                        ),  # type: ignore[arg-type]
+                        ),
                     ],
                     "history": [
                         *finding.history,

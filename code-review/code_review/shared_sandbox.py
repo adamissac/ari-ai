@@ -38,7 +38,7 @@ class SharedSandboxAdapter:
     def run_pytest(
         self, project_dir: Path, targets: Sequence[str], *, timeout_s: float
     ) -> ExecResult:
-        from security_agents.sandbox.driver import SandboxLimits, SandboxProfile, SandboxSpec
+        from security_agents.sandbox.driver import SandboxLimits, SandboxProfile, SandboxSpec  # type: ignore[import-not-found,unused-ignore]
 
         args = ["-q", "-p", "cr_pytest_report", *validate_targets(targets)]
         spec = SandboxSpec(
@@ -73,7 +73,7 @@ def build_sandbox(kind: str | None = None) -> SandboxPort:
     kind = kind or os.environ.get("CODE_REVIEW_SANDBOX", "local")
     if kind == "local":
         return LocalProcessSandbox()
-    from security_agents.sandbox import driver as d
+    from security_agents.sandbox import driver as d  # type: ignore[import-not-found,unused-ignore]
 
     if kind == "docker":
         return SharedSandboxAdapter(d.DockerSandboxDriver())
