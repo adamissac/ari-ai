@@ -9,7 +9,7 @@ import { useEffect } from 'react';
  * it each frame. Native scrolling is kept for touch, keyboard, the scrollbar, pinch-zoom,
  * horizontal gestures, nested scroll areas, and anyone who prefers reduced motion.
  */
-const EASE = 0.085; // share of the remaining distance covered per 60 Hz frame (lower = longer glide)
+const EASE = 0.11; // share of the remaining distance covered per 60 Hz frame (lower = longer glide)
 const FRAME = 1000 / 60;
 const LINE = 16;
 
