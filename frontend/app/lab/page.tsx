@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Badge, Button, Empty, ErrorState, Field, inputClass, Loading, Mono, PageTitle, Panel, Stat, Tag } from '@/components/ui';
 import { num } from '@/lib/format';
-import { cumulativeReturn, domain, episodeLabel, episodeStory, HIGHER_IS_BETTER, METRIC_LABEL, metricNames, metricRows, rewardTotals, sampleSize } from '@/lib/lab';
+import { cumulativeReturn, domain, episodeLabel, episodeStory, HIGHER_IS_BETTER, METRIC_LABEL, metricNames, metricRows, rewardTotals, sampleSize, stepObservation } from '@/lib/lab';
 import type { BundleResponse, DefenseLabBundle, LabEpisode, LabNodeState, LabScenario } from '@/lib/lab-types';
 
 type Load<T> = { status: 'loading' } | { status: 'ready'; data: T } | { status: 'error'; error: unknown };
@@ -166,6 +166,7 @@ function Player({ episode, scenario }: { episode: LabEpisode; scenario: LabScena
   return (
     <>
       <p className="mb-3 text-sm text-ink" data-testid="lab-episode-story">{episodeStory(episode)}</p>
+      <p className="mb-3 text-sm text-ink" data-testid="lab-step-story">{stepObservation(step)}</p>
       <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
         <div>
           <Topology scenario={scenario} states={step?.nodes ?? []} />
