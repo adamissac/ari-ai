@@ -141,6 +141,8 @@ MODELS: tuple[type[BaseModel], ...] = (
     api.AcceptRisk,
     api.AssessmentDetail,
     api.PatchView,
+    api.FindingDetail,
+    api.AssessmentReport,
     api.WebhookAck,
 )
 
