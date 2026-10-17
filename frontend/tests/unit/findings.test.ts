@@ -7,7 +7,8 @@ describe('finding groups', () => {
     expect(findingGroup('inconclusive')).toBe('open');
     expect(findingGroup('patch_rejected')).toBe('open');
     expect(findingGroup('validated')).toBe('open');
-    expect(findingGroup('verified')).toBe('open');
+    expect(findingGroup('verified')).toBe('fixed');
+    expect(findingGroup('hardened')).toBe('fixed');
     expect(findingGroup('refuted')).toBe('closed');
     expect(findingGroup('accepted_risk')).toBe('closed');
     expect(findingGroup('closed')).toBe('closed');
