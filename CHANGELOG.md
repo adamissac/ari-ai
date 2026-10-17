@@ -6,6 +6,9 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Simulated demo at `/demo` (ADR-0013): GitHub-style sign-in, organization and repository pickers, recent commit history, and per commit an animated code review, seven-agent run and continuous-defense map. Every page is marked "Simulated demo"; nothing calls the backend.
+- Defense Lab opens with a command center: the trained defender's recorded game on a continuous-defense map with the held-out headline scores, all from the validated bundle.
+
 - Fix concurrent identical artifact publication and refresh ready snapshots after parser or ingestion-profile changes; preserve historical snapshots.
 
 - Opening an incident says it records a title and report. It does not contain systems, notify outsiders, or attach evidence until linked, and new cases default to a labelled simulated drill.

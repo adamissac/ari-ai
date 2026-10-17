@@ -22,6 +22,7 @@ before Phase 1 implementation relies on them.
 | [0010](0010-no-vector-db-for-mvp.md) | No vector database for MVP | Proposed |
 | [0011](0011-standards-integration.md) | Versioned standards integration | Proposed |
 | [0012](0012-cvss-v31-primary-v40-alongside.md) | CVSS v3.1 sets the level now; v4.0 alongside | Proposed |
+| [0013](0013-labelled-simulated-demo.md) | A labelled, self-contained simulated demo at /demo | Proposed |
 
 ## Process
 
