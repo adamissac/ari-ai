@@ -118,3 +118,13 @@ missing authorized key. Head facts are fully re-derived; parse caching, authenti
 intent decisions, and full Sai/Alan runtime adapters remain explicit follow-ups.
 
 Producer acceptance and CI passed; PR #6 merged as `bcc2e23`. INTEL rows refer to the implemented Python producer, not complete cross-pillar runtime integration. Final counts: 24 passed/1 skipped focused; 115 passed/4 skipped broader.
+
+### Sarosh frontend transport assistance (issue #29)
+
+UI-001 generated-contract client and UI-003 SSE transport substeps are implemented
+in `frontend/transport/` (`d4a0fce`, `3bc4e28`, `05ce162`, `a48a202`). Vihaan retains
+frontend ownership; the Next scaffold, rendered screens, browser auth and complete
+UI-001/UI-003/M6 acceptance remain pending. No claim that the full task rows are
+DONE. Evidence: 13 unit tests plus strict TypeScript; real HTTP/PostgreSQL parent
+and three subtests passed, including durable SSE replay, CSRF, tenant denial and
+abort. No provider or target execution occurred in transport tests.
