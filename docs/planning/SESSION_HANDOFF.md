@@ -18,6 +18,39 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-17 — Adam — assessment phase list
+- Did: The assessment page lists Understand, Review, Security test, Repair, and Verify from that check's event log. A missing log stays unmarked. Verify still needs a finding verdict. Monitor is not shown here.
+- State of the code: branch `feat/adam/assessment-phases`.
+- Commands run and results: `npm test -- --run tests/unit/assessment-phases.test.ts` 3 passed; `npm run typecheck` clean; `npm run lint` clean. Browser was not run.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): while the check is running, the phase list polls the event log every 5 seconds. It is not painted from the partial stream buffer.
+- Next steps: open the PR.
+- Warnings for the next session: do not add Monitor to this list unless the project monitoring feed was actually loaded.
+
+---
+
+### 2026-10-17 — Adam — finding list groups
+- Did: The findings list open tab is no longer labelled "Validated and beyond." Open means not a hypothesis and not refuted, accepted, or closed.
+- State of the code: branch `feat/adam/finding-groups`.
+- Commands run and results: `npm test -- --run tests/unit/findings.test.ts` 1 passed; `npm run typecheck` clean; `npm run lint` clean. Browser was not run.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): verified and hardened stay on the open tab so a finished fix remains visible.
+- Next steps: open the PR.
+- Warnings for the next session: do not describe the open tab as confirmed exploits.
+
+---
+
+### 2026-10-17 — Adam — assessment phase sentence
+- Did: The assessment page states its recorded state in one sentence. Completed does not mean the application is secure. Approval does not mean a merge.
+- State of the code: branch `feat/adam/assessment-phase`.
+- Commands run and results: `npm test -- --run tests/unit/phase.test.ts` 2 passed; `npm run typecheck` clean; `npm run lint` clean. Browser was not run.
+- Decisions made (ADR links): none. The sentence uses only `assessment.state`.
+- Assumptions / open questions (RQ links): none.
+- Next steps: open the PR.
+- Warnings for the next session: do not add phases the event log did not enter to this sentence.
+
+---
+
 ### 2026-10-17 — Adam — lab step observation
 - Did: Defense Lab replay adds a sentence for the current recorded step: highest alert rate and the recorded action. Hidden attacker stage is not rendered.
 - State of the code: branch `feat/adam/lab-step-story`.
