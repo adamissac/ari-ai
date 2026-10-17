@@ -25,3 +25,16 @@ export async function newUser(browser: Browser, login: string): Promise<Page> {
 export async function evidenceShot(page: Page, name: string): Promise<void> {
   await page.screenshot({ path: `test-results/evidence/${name}.png`, fullPage: true });
 }
+
+/** No sideways scrolling at the current viewport; on failure, name the widest leaf elements. */
+export async function expectNoSideScroll(page: Page): Promise<void> {
+  const report = await page.evaluate(() => {
+    const limit = window.innerWidth + 1;
+    const wide = [...document.querySelectorAll('body *')]
+      .filter(e => e.getBoundingClientRect().right > limit && ![...e.children].some(c => c.getBoundingClientRect().right > limit))
+      .slice(0, 8)
+      .map(e => `${e.tagName.toLowerCase()}.${String(e.className).split(' ').slice(0, 4).join('.')} right=${Math.round(e.getBoundingClientRect().right)}`);
+    return { width: document.documentElement.scrollWidth, limit, wide };
+  });
+  expect(report.width, `page is ${report.width}px wide at ${report.limit - 1}px: ${report.wide.join(' | ')}`).toBeLessThanOrEqual(report.limit);
+}

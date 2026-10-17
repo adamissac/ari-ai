@@ -184,6 +184,10 @@ UNVERIFIED: NVD terms page (Cloudflare challenge). All runs above are replay or 
 - Branch fix/alan/offline-font-build, isolated from main d1d324d; local next/font loader, five WOFF2 assets115,760 bytes, all licenses/hashes/provenance included.
 - Original font-service build fails under unavailable proxies; local-font default production build passes under the same proxies.69 frontend tests, typecheck/lint pass. No landing/branding redesign or runtime dependency addition.
 
+### 2026-10-17 — Codex explicit assessment conflict recovery
+- fix/alan/explicit-conflict-recovery, own worktree from d1d324d. Reproduced absent reset and cross-project key retention (2 failed tests);3 targeted and70 frontend unit tests now pass. TS/lint/production build pass.
+- Actual Chrome13 passed, including real409, retained-key retry, explicit preparation with zero requests, then exactly one new accepted assessment/job. Normal network-error retries keep the key; project identity is in the key signature. No product API or security changes.
+
 ### 2026-10-17 — Codex real application verification and job-status recovery
 - Existing PR166 all CI green, no review findings; merged by Srihith. New work isolated on test/alan/demo-recovery-smoke at /private/tmp/omen-demo-smoke, initial base30e1234, synced main056f65b.
 - Confirmed GET/jobs404 for a returned assessment job ID; resolved project through persisted assessment. Tenant404 and signed-out401 remain tested. Commit00d5f54, sync c185b67.

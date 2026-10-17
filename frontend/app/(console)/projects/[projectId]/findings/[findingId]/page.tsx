@@ -3,6 +3,7 @@
 import { findingStandards, type FindingDetail, type FindingRecord, type PatchView } from '@hackatl/frontend-transport';
 import Link from 'next/link';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { BeforeAfter } from '@/components/before-after';
 import { ExpectationLinks } from '@/components/expectation-links';
 import { ArtifactPeek, EvidenceList } from '@/components/evidence';
 import { useParam, useProject } from '@/components/project';
@@ -57,7 +58,7 @@ export default function FindingPage() {
             </>}
           />
           <Panel title="What happened">
-            <dl className="grid gap-3 sm:grid-cols-2" data-testid="finding-story">
+            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2" data-testid="finding-story">
               {story.map(line => (
                 <div key={line.label}>
                   <dt className="text-xs font-semibold text-faint">{line.label}</dt>
@@ -66,9 +67,12 @@ export default function FindingPage() {
               ))}
             </dl>
           </Panel>
+          <div className="mt-4">
+            <BeforeAfter kind={d.finding.kind} status={d.finding.status} validation={validation} patches={patches.status === 'ready' ? patches.data.items : patches.status === 'error' ? [] : null} />
+          </div>
           <RepoScope assessmentId={d.finding.assessment_id} projectId={project.id} repos={repos}>
           {(repo, note) => (
-          <div className="mt-4 grid gap-4 xl:grid-cols-[3fr_2fr]">
+          <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[3fr_2fr]">
             <div className="flex flex-col gap-4">
               {note && <p className="text-xs text-muted">{note}</p>}
               <EvidenceChain detail={d} patches={patchItems} repo={repo} projectId={project.id} />

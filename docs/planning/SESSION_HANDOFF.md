@@ -418,6 +418,12 @@ Sai responded in #165 and merged message #176. PR #169 now follows it: shared he
 - Isolated /private/tmp/omen-offline-fonts from d1d324d. Original webpack build fails fetching all three fonts with HTTP_PROXY/HTTPS_PROXY/ALL_PROXY=http://127.0.0.1:9; font tests2 failed before change.
 - Vendored115,760 bytes of unmodified WOFF2 from integrity-checked Fontsource5.3.0 tarballs, included all three OFL licenses and asset hashes; next/font/local preserves family/weight variables. No extra runtime dependency.
 - Same unavailable proxies: default npm run build passes. Frontend69 unit tests (including2 local-font checks), typecheck/lint pass. No UI redesign; other layout/branding hunks preserved. PR for review only.
+- 2026-10-17 Adam: merged origin/main after #187 (conflict recovery); kept both handoff/task/status entries.
+
+### 2026-10-17 — Codex DEMO-RECOVERY-001
+- Isolated /private/tmp/omen-final-recovery, branch fix/alan/explicit-conflict-recovery from d1d324d. Two component tests failed before change;3 pass afterward (same network retry, explicit conflict recovery, project isolation). Frontend70 tests, typecheck/lint/build pass.
+- Full Chrome13 passed, including actual server409 seeded with a conflicting key, unchanged retry retaining key, preparation sending no request, and a fresh submission creating one additional assessment/job. Other journey tests use scripted agents and real API/DB/worker. The recovery test uses an unbound owned fixture so it cannot consume scripted agent turns.
+- Preserved active #156 layout/class hunks and #184 primitives; no API/shared/security changes. PR for review; no own merges. Separate font PR removes external build downloads.
 
 ### 2026-10-17 — Codex API-JOB-001 real demo verification
 - Separate worktree /private/tmp/omen-demo-smoke, branch test/alan/demo-recovery-smoke, initial base30e1234b508c82a37f335da341daeda8f207e6bc; synchronized056f65b. PR166 was merged by Srihith; no own PR automatically merged.
