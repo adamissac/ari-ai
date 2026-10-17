@@ -42,5 +42,5 @@ cd .. && target/.venv/bin/python -m pytest -q label_checks   # planted defects e
 docker build -t payments-lite:dev target      # sandbox build recipe (non-root, port 8080)
 ```
 
-**Not verified yet:** the Docker build (Docker was not available on the machine that
-built this; please run it once and report).
+The Docker build and the non-root check (UID 10001) are verified in CI
+(`.github/workflows/examples.yml`); they were not run on the authoring laptop (no Docker).
