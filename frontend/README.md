@@ -18,7 +18,7 @@ simulated in the browser. Spec: [docs/14](../docs/14_FRONTEND_UX_DESIGN.md).
 | `/projects/[id]/approvals` inbox with will / will-not summaries | `/projects/{id}/approvals`, `/approvals/{id}/decision` |
 | `/projects/[id]/monitoring` webhook/runtime event feed (simulated events labelled), impact sets, re-assessments, simulation-derived RL recommendations + explanations, imported RL evaluations | `/projects/{id}/events`, `/reassessments`, `/defense-recommendations`, `/rl-evaluations` |
 | `/projects/[id]/expectations` snapshot picker (ready snapshots only), behavioral expectations with status filters, sources at file:line, confirm / conflicting / reject with a reason and `expected_revision` (409 on stale view), decision history | `/repositories/{id}/snapshots`, `/snapshots/{id}/expectations`, `PATCH /snapshots/{id}/expectations/{exp}`, `/decisions` |
-| `/projects/[id]/incidents` open (simulated by default, labelled), NIST lifecycle rail, triage, assign owner, transitions, two-person approval gates (requester cannot decide), timeline with CSF refs | `/projects/{id}/incidents`, `/incidents/{id}`, `/incidents/{id}/actions` |
+| `/projects/[id]/incidents` open (simulated by default, labelled), NIST lifecycle rail, triage, assign owner, transitions, two-person approval gates (requester cannot decide), timeline with CSF refs; closure panel: link findings and accepted verifications, closure criteria satisfied with hash-pinned patch/regression artifacts, lessons learned (Fortify regression evidence), communications (RS.CO-02/03, RC.CO-03), closure readiness list | `/projects/{id}/incidents`, `/incidents/{id}`, `/incidents/{id}/actions` |
 | `/projects/[id]/settings` project name, languages, default + monitoring budgets, trigger policy (enabled, coalescing interval, record-only globs); validated client-side, owner-only on the backend | `PATCH /projects/{id}` |
 | `/lab` Defense Lab: provenance (path, SHA-256, checkpoints, seeds), held-out metrics with 95% CI and n, topology, episode replay with reward components; hidden attacker stage only as labelled simulation ground truth | `rl-defense/results/protocol-*/defense_lab.json`, validated server-side against `rl-defense/fixtures/defense_lab.schema.json` |
 
@@ -73,6 +73,6 @@ installed Chrome instead of Playwright's Chromium, `E2E_SKIP_BUILD=1` to reuse `
 
 - No backend endpoint serves the Defense Lab bundle; the Lab reads the committed artifact.
 - Finding detail still shows linked expectations as IDs (the Expectations page renders them in full).
-- Incident closure criteria, lessons learned and evidence linking are API-only (shown read-only in the UI).
+- Lessons learned need a Fortify regression-test artifact, which hosted assessments do not yet record (coordination note 20261017T093000Z); the UI says so and closure stays blocked.
 - GitHub links need exactly one repository in the project (findings carry no repo id).
 - Live-provider (`provider_mode=live`) runs have not been exercised through the UI.
