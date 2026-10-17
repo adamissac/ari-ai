@@ -8,7 +8,7 @@ export const env = (name: string): string => {
 
 /** Sign in through the real backend dev-login endpoint via the rendered form. */
 export async function signIn(page: Page, login: string): Promise<void> {
-  await page.goto('/');
+  await page.goto('/projects'); // the home page is public; console pages show sign-in
   await page.getByLabel('GitHub login').fill(login);
   await page.getByRole('button', { name: 'Development sign-in' }).click();
   await expect(page.getByTestId('signed-in-user')).toHaveText(login);
