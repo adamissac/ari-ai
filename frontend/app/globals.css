@@ -309,6 +309,18 @@ html[data-home-hero][data-hero-past] .site-header nav a.hdr-cta { background: va
 .graph-key-line { display: inline-block; width: 16px; border-top: 2px dashed var(--color-brand); }
 @media (prefers-reduced-motion: reduce) { .graph-edge[data-flow], .graph-truth { animation: none; } }
 
+/* App pages: project header + underline tabs (components/project.tsx), calmer panels. */
+.project-head { min-height: 0; }
+.project-tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--color-line); scrollbar-width: none; }
+.project-tabs::-webkit-scrollbar { display: none; }
+.project-tab { position: relative; flex: none; padding: 14px 12px 12px; color: var(--color-muted); transition: color 200ms; }
+.project-tab:hover { color: var(--color-ink); }
+.project-tab::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: -1px; height: 2px; border-radius: 2px; background: var(--color-brand); transform: scaleX(0); transition: transform 250ms var(--ease-quad); }
+.project-tab[aria-current="page"] { color: var(--color-ink); }
+.project-tab[aria-current="page"]::after, .project-tab:hover::after { transform: scaleX(1); }
+.project-tab:hover:not([aria-current="page"])::after { background: var(--color-line); }
+.panel > header { background: color-mix(in srgb, var(--color-panel-2) 55%, transparent); border-top-left-radius: inherit; border-top-right-radius: inherit; }
+
 /* Scroll reveal (see components/reveal.tsx). Content is visible without JS. */
 .reveal { transition: opacity 500ms var(--ease-quad), transform 500ms var(--ease-quad); }
 .reveal[data-shown="false"] { opacity: 0; transform: translateY(14px); }
