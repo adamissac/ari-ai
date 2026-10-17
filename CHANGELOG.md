@@ -8,6 +8,7 @@ All notable changes are documented here. Format follows
 
 - Requesting a scope says it records a pending authorization. It does not activate until another member approves it, and it does not start a check or open access outside the listed targets.
 - Frontend fonts are bundled locally with their licenses, removing Google Fonts downloads from production builds and preserving the existing typography.
+- Redact credential-shaped free-form citation metadata in context packs and public expectation views while preserving original authenticated history and source identities.
 - Assessment conflicts now offer explicit preparation of a separate action; ordinary network retries retain their key, and project changes get distinct keys.
 
 - Assessment job IDs returned by the API now resolve through their persisted assessment, allowing authorized status reads while preserving tenant denial.
