@@ -12,6 +12,11 @@ Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablat
 
 ## Session entries
 
+### 2026-10-17 (cloud) — simulated demo + Lab command center + events-log cursor
+- `feat/adam/event-log-cursor-follow`: phase views follow `next_cursor` (cap 10,000 events).
+- `feat/adam/simulated-demo`: `/demo` labelled simulated walkthrough (ADR-0013), `DefenseMap`, Lab command center from the real bundle.
+- Verified: frontend lint/typecheck clean, 178 unit tests, e2e stack 20/20.
+
 ### 2026-10-17 (fix-everything pass)
 - **Live evidence:** the live reviewer on payments-lite finds `fnd_planted_refund_bound` (2 failing
   generated tests, no FP/FN), repairs it, and now **hands `fnd_planted_authz` to security**
