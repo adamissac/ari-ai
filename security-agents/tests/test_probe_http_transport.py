@@ -57,11 +57,14 @@ def test_unknown_probe_transport_fails_closed(intel, driver, library, tmp_path):
     assert res.runs == []
 
 
-def test_http_transport_needs_a_dedicated_target_image(intel, library, tmp_path):
-    docker = DockerSandboxDriver(image=IMAGE, target_image=IMAGE, runner=_fake_docker)
+def test_http_transport_needs_an_app_factory_in_the_recipe(intel, library, tmp_path, monkeypatch):
+    from security_agents.workflow import orchestrator as orch_module
+
+    monkeypatch.setattr(orch_module, "recipe_from_snapshot", lambda _intel: lambda _ctx, _target: {})
+    docker = DockerSandboxDriver(image=IMAGE, runner=_fake_docker)
     res = _run(intel, docker, library, tmp_path, "http")
     assert res.state is AssessmentState.FAILED
-    assert "target image" in (res.error_detail or "")
+    assert "app_factory" in (res.error_detail or "")
     assert res.runs == []
 
 

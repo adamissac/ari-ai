@@ -325,6 +325,10 @@ class CheckRunner:
             extra_files={check_file: rendered},
             target_id=target_id,
             scope_decision=decision,
+            target_workspace=workspace_path(self.workspace_provider(ctx))
+            if self.transport == "http"
+            else None,
+            target_app=str(recipe.get("app_factory") or "") or None if self.transport == "http" else None,
         )
         res = self.driver.run(spec)
         summary = parse_pytest(res.stdout)
