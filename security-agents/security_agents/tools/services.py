@@ -365,6 +365,7 @@ class CheckRunner:
             "category": meta.category,
             "target_id": target_id,
             "parameters": parameters,
+            "route": _route_of(recipe, parameters.get("route_id")),
             "params_hash": self.library.params_hash(template_ref, parameters),
             "matches_expectation": matches,
             **summary,
@@ -465,11 +466,31 @@ class PatchApplier:
         return sorted(set(touched))
 
 
+def _route_of(recipe: dict[str, Any], route_id: Any) -> dict[str, Any] | None:
+    for route in recipe.get("routes", []):
+        if isinstance(route, dict) and route.get("id") == route_id:
+            return {
+                "id": route_id,
+                "method": str(route.get("method", "GET")).upper(),
+                "path_template": route.get("path_template"),
+            }
+    return None
+
+
 def recipe_from_snapshot(intel: CodeIntel) -> Any:
     """Recipe provider that reads the target's scope-approved build recipe."""
 
-    def provider(ctx: ToolContext, target_id: str) -> dict[str, Any]:
-        path = intel.snapshot.root / "build_recipe.json"
+    def provider(ctx: ToolContext | None, target_id: str) -> dict[str, Any]:
+        recipe_ref = "build_recipe.json"
+        scope = getattr(ctx, "scope", None)
+        if scope is not None:
+            target = next((t for t in scope.targets if t.target_id == target_id), None)
+            if target is None:
+                raise PlatformError(
+                    ErrorCode.SCOPE_DENIED, f"target {target_id[:80]!r} is not in the authorized scope"
+                )
+            recipe_ref = safe_rel_path(target.build_recipe_ref)
+        path = intel.snapshot.root / recipe_ref
         if not path.is_file():
             raise PlatformError(ErrorCode.SCHEMA_INVALID, "target has no build_recipe.json")
         return json.loads(path.read_text(encoding="utf-8"))
