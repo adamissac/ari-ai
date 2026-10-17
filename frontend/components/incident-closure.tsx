@@ -140,16 +140,22 @@ function LinkFinding({ candidates, busy, act }: { candidates: Array<{ id: string
   );
 }
 
+/** The selected candidate, falling back to the first when the selection left the list. */
+export function chooseCandidate<T extends { id: string }>(candidates: readonly T[], id: string): T | undefined {
+  return candidates.find(c => c.id === id) ?? candidates[0];
+}
+
 function LinkVerification({ candidates, busy, act }: { candidates: Array<{ id: string; findingId: string }>; busy: boolean; act: Act }) {
   const [id, setId] = useState(candidates[0]?.id ?? '');
+  const chosen = chooseCandidate(candidates, id);
   return (
     <div className="flex flex-wrap items-end gap-2">
       <Field label="Accepted verification to link">
-        <select className={inputClass} value={id} onChange={e => setId(e.target.value)}>
+        <select className={inputClass} value={chosen?.id ?? ''} onChange={e => setId(e.target.value)}>
           {candidates.map(c => <option key={c.id} value={c.id}>{c.id} · {c.findingId}</option>)}
         </select>
       </Field>
-      <Button disabled={busy || !id} onClick={() => act(action('link', { verification_ids: [id], note: `linked independent verification ${id}` }))}>Link verification</Button>
+      <Button disabled={busy || !chosen} onClick={() => chosen && act(action('link', { verification_ids: [chosen.id], note: `linked independent verification ${chosen.id}` }))}>Link verification</Button>
     </div>
   );
 }

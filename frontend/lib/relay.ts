@@ -18,10 +18,12 @@ export interface RelayTile {
   statusText: string;
   handoff: string;
 }
-export interface RelayGate { kind: 'gate'; status: 'waiting' | 'passed' | 'not_reached' | 'not_used'; text: string }
+export interface RelayGate { kind: 'gate'; status: 'waiting' | 'passed' | 'declined' | 'not_reached' | 'not_used'; text: string }
 export type RelayItem = RelayTile | RelayGate;
 
 interface RunFacts { agent: AgentName; status: string; tool_calls: readonly unknown[] }
+/** A persisted approval record for this assessment. */
+export interface ApprovalFacts { subject_type: string; status: string }
 interface FindingFacts { kind: string; status: string }
 
 const ORDER: readonly { agent: AgentName; stage: string; job: string }[] = [
@@ -43,6 +45,9 @@ const STATUS_TEXT: Record<RelayStatus, string> = {
   failed: 'Failed',
   cancelled: 'Cancelled',
 };
+
+/** Statuses that only exist after a test confirmed the weakness. Closed, accepted-risk, stale and inconclusive are not on this list. */
+const CONFIRMED_STATUSES: ReadonlySet<string> = new Set(['validated', 'diagnosed', 'patch_proposed', 'verified', 'patch_rejected', 'unresolved', 'hardened']);
 
 const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`;
 
@@ -70,8 +75,14 @@ function handoff(agent: AgentName, status: RelayStatus, findings: readonly Findi
     case 'probe': {
       const refuted = sec.filter(f => f.status === 'refuted').length;
       const open = sec.filter(f => f.status === 'hypothesis').length;
-      const confirmed = sec.length - refuted - open;
-      const parts = [confirmed ? `${confirmed} confirmed` : null, refuted ? `${refuted} ruled out` : null, open ? `${open} still marked unconfirmed` : null].filter(Boolean);
+      const inconclusive = sec.filter(f => f.status === 'inconclusive').length;
+      const confirmed = sec.filter(f => CONFIRMED_STATUSES.has(f.status)).length;
+      const parts = [
+        confirmed ? `${confirmed} confirmed` : null,
+        refuted ? `${refuted} ruled out` : null,
+        inconclusive ? `${inconclusive} inconclusive` : null,
+        open ? `${open} still marked unconfirmed` : null,
+      ].filter(Boolean);
       return parts.length ? `Test results: ${parts.join(', ')}. Each finding shows its recorded test.` : 'Finished. Each finding shows its recorded test.';
     }
     case 'verify': {
@@ -85,7 +96,7 @@ function handoff(agent: AgentName, status: RelayStatus, findings: readonly Findi
   }
 }
 
-export function agentRelay(input: { runs: readonly RunFacts[]; findings: readonly FindingFacts[]; state: AssessmentState }): RelayItem[] {
+export function agentRelay(input: { runs: readonly RunFacts[]; findings: readonly FindingFacts[]; state: AssessmentState; approvals?: readonly ApprovalFacts[] | null }): RelayItem[] {
   const items: RelayItem[] = [];
   for (const step of ORDER) {
     if (step.agent === 'patch') items.push(gate(input));
@@ -99,10 +110,33 @@ export function agentRelay(input: { runs: readonly RunFacts[]; findings: readonl
   return items;
 }
 
-function gate(input: { runs: readonly RunFacts[]; state: AssessmentState }): RelayGate {
+function gate(input: { runs: readonly RunFacts[]; state: AssessmentState; approvals?: readonly ApprovalFacts[] | null }): RelayGate {
   if (input.state === 'AWAITING_APPROVAL') return { kind: 'gate', status: 'waiting', text: 'Waiting for a person to approve a fix. No code is changed until then.' };
-  if (input.runs.some(r => r.agent === 'patch')) return { kind: 'gate', status: 'passed', text: 'A person approved building a fix.' };
+  // The approval record is the only evidence of a decision; a patch run proves nothing about who approved.
+  if (!input.approvals) return { kind: 'gate', status: 'not_reached', text: 'The approval record could not be read, so whether a person approved is unknown.' };
+  const remediation = input.approvals.filter(a => a.subject_type === 'remediation');
+  if (remediation.some(a => a.status === 'approved')) return { kind: 'gate', status: 'passed', text: 'A person approved building a fix.' };
+  if (remediation.some(a => a.status === 'declined')) return { kind: 'gate', status: 'declined', text: 'A person declined the fix. No fix was built.' };
+  if (remediation.some(a => a.status === 'pending')) return { kind: 'gate', status: 'waiting', text: 'Waiting for a person to approve a fix. No code is changed until then.' };
   const done = input.state === 'COMPLETED' || input.state === 'FAILED' || input.state === 'CANCELLED' || input.state === 'BUDGET_EXHAUSTED';
-  if (done && input.runs.some(r => r.agent === 'diagnose')) return { kind: 'gate', status: 'not_used', text: 'No fix was built: the approval was declined or not requested.' };
+  if (done) return { kind: 'gate', status: 'not_used', text: 'No approval record: no fix was approved or built.' };
   return { kind: 'gate', status: 'not_reached', text: 'A person must approve before any fix is built.' };
+}
+
+/**
+ * One sentence on what the non-live model turns were, built per provider mode.
+ * Only fake/replay turns are "scripted"; deterministic runs made no model call;
+ * live turns are counted as live. Empty when every turn was live.
+ */
+export function providerNote(counts: Iterable<readonly [string, number]>): string {
+  const entries = [...counts];
+  if (entries.length === 0 || entries.every(([mode]) => mode === 'live')) return '';
+  const part = (mode: string, n: number): string => {
+    if (mode === 'live') return `${n} from a live model`;
+    if (mode === 'fake') return `${n} scripted`;
+    if (mode === 'replay') return `${n} replayed from a recording`;
+    if (mode === 'none') return `${n} with no model call`;
+    return `${n} from an unrecognised provider mode (${mode})`;
+  };
+  return `Tool execution, sandbox checks, tests and persistence are still real. Model replies: ${entries.map(([m, n]) => part(m, n)).join(', ')}.`;
 }

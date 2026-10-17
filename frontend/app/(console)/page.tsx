@@ -63,7 +63,7 @@ export default function HomePage() {
         <Reveal className="mt-10">
           <section aria-labelledby="start-title" className="hero-ink rounded-2xl px-6 py-12 md:px-12">
             <h2 id="start-title" className="display max-w-2xl text-3xl font-semibold md:text-4xl">See it on a real change.</h2>
-            <p className="mt-3 max-w-xl text-sm text-white/75">Open a project to connect a repository and start an assessment, or explore how the defense policy was trained.</p>
+            <p className="mt-3 max-w-xl text-sm text-white/75">Open a project to connect a repository and start an assessment, or explore how the defense policy was evaluated.</p>
             <div className="mt-6 flex flex-wrap gap-2">
               <Link href="/projects" className="group label-mono inline-flex h-10 items-center rounded-md bg-white px-4 text-ink transition-colors duration-[250ms] hover:bg-brand hover:text-on-brand">
                 <RollText>Open projects</RollText>

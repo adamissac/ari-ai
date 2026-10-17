@@ -1,15 +1,16 @@
+import { bucketCounts } from '@/lib/findings';
+
 const RUNNING = new Set([
   'CREATED', 'SCOPE_CHECK', 'INDEXING', 'FUNCTIONAL_REVIEW', 'RECON', 'VALIDATION',
   'ANALYSIS', 'DIAGNOSIS', 'REMEDIATION', 'HARDENING', 'REPORTING',
 ]);
 
-const CLOSED = new Set(['verified', 'hardened', 'closed', 'refuted', 'accepted_risk']);
-const CONFIRMED = new Set(['validated', 'diagnosed', 'patch_proposed', 'unresolved', 'patch_rejected', 'needs_recheck']);
 
 export interface OverviewInput {
   projectId: string;
   repoCount: number;
-  activeScopeCount: number;
+  /** Null while scopes are loading or failed to load; never treated as zero. */
+  activeScopeCount: number | null;
   monitoringEnabled: boolean;
   assessments: readonly { id: string; state: string; created_at: string }[];
   findings: readonly { status: string; kind: string }[];
@@ -20,6 +21,10 @@ export interface Overview {
   detail: string;
   codeOpen: number;
   securityOpen: number;
+  /** Suspicions no test has confirmed or ruled out (functional and security). */
+  untested: number;
+  /** Tests that ran but could not decide (functional and security). */
+  inconclusive: number;
   verifiedFixes: number;
   monitoring: 'enabled' | 'disabled';
   action: { label: string; href: string };
@@ -28,10 +33,11 @@ export interface Overview {
 /** One next step and three counts, taken only from records the page already loaded. */
 export function projectOverview(input: OverviewInput): Overview {
   const latest = [...input.assessments].sort((a, b) => (a.created_at < b.created_at ? 1 : -1))[0];
-  const codeOpen = input.findings.filter(f => f.kind === 'functional' && !CLOSED.has(f.status)).length;
-  const securityOpen = input.findings.filter(f => f.kind === 'security' && CONFIRMED.has(f.status)).length;
-  const verifiedFixes = input.findings.filter(f => f.status === 'verified' || f.status === 'hardened').length;
-  const base = { codeOpen, securityOpen, verifiedFixes, monitoring: input.monitoringEnabled ? 'enabled' as const : 'disabled' as const };
+  const all = bucketCounts(input.findings);
+  const codeOpen = bucketCounts(input.findings, 'functional').confirmed;
+  const securityOpen = bucketCounts(input.findings, 'security').confirmed;
+  const verifiedFixes = all.fixed;
+  const base = { codeOpen, securityOpen, untested: all.untested, inconclusive: all.inconclusive, verifiedFixes, monitoring: input.monitoringEnabled ? 'enabled' as const : 'disabled' as const };
 
   if (input.repoCount === 0) {
     return {
@@ -39,6 +45,14 @@ export function projectOverview(input: OverviewInput): Overview {
       headline: 'No repository is connected yet.',
       detail: 'Connect a repository before any check can run.',
       action: { label: 'Connect a repository', href: '#connect-repo' },
+    };
+  }
+  if (input.activeScopeCount === null) {
+    return {
+      ...base,
+      headline: 'A repository is connected. Scopes did not load.',
+      detail: 'Whether a safe test environment is approved is unknown until scopes load.',
+      action: { label: 'Open scopes', href: `/projects/${input.projectId}/scopes` },
     };
   }
   if (input.activeScopeCount === 0) {
@@ -82,9 +96,16 @@ export function projectOverview(input: OverviewInput): Overview {
     };
   }
   const open = codeOpen + securityOpen;
+  const unsure = [
+    base.untested > 0 ? `${base.untested} untested suspicion${base.untested === 1 ? '' : 's'}` : null,
+    base.inconclusive > 0 ? `${base.inconclusive} inconclusive test result${base.inconclusive === 1 ? '' : 's'}` : null,
+  ].filter(Boolean).join(' and ');
   return {
     ...base,
-    headline: open === 0 ? 'The latest check finished. No open findings are in this list.' : `The latest check finished. ${open} open finding${open === 1 ? '' : 's'} still need a look.`,
+    headline: open > 0
+      ? `The latest check finished. ${open} confirmed open finding${open === 1 ? '' : 's'} still need a look${unsure ? `, plus ${unsure}` : ''}.`
+      : unsure ? `The latest check finished. No confirmed open findings, but ${unsure} remain.`
+      : 'The latest check finished. No open findings are in this list.',
     detail: 'Verified means independent tests accepted a candidate fix. It does not mean the whole application is secure.',
     action: { label: 'View results', href: `/projects/${input.projectId}/findings` },
   };
