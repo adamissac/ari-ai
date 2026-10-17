@@ -1,36 +1,38 @@
 'use client';
 
-import type { Finding } from '@hackatl/frontend-transport';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useProject } from '@/components/project';
 import { Async, Badge, Empty, Mono, Panel, Tag, Time } from '@/components/ui';
 import { api } from '@/lib/api';
+import { FINDING_GROUP_NOTE, findingGroup, type FindingGroup } from '@/lib/findings';
 import { shortSha } from '@/lib/format';
 import { FINDING_STATUS, SEVERITY } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
 
-type Tab = 'findings' | 'hypotheses' | 'closed';
-const CLOSED = new Set(['refuted', 'accepted_risk', 'closed']);
+const TABS = [
+  ['open', 'Open'],
+  ['hypothesis', 'Hypotheses (unvalidated)'],
+  ['closed', 'Refuted / closed'],
+] as const;
 
 export default function FindingsPage() {
   const { project } = useProject();
   const findings = useResource(`findings:${project.id}`, s => api().findings(project.id, { signal: s }));
-  const [tab, setTab] = useState<Tab>('findings');
-  const pick = (items: Finding[]) => items.filter(f =>
-    tab === 'hypotheses' ? f.status === 'hypothesis' : tab === 'closed' ? CLOSED.has(f.status) : f.status !== 'hypothesis' && !CLOSED.has(f.status));
+  const [tab, setTab] = useState<FindingGroup>('open');
   return (
     <Panel title="Findings">
+      <p className="mb-3 text-sm text-muted" data-testid="finding-group-note">{FINDING_GROUP_NOTE}</p>
       <div role="tablist" aria-label="Finding groups" className="mb-3 flex gap-1">
-        {([['findings', 'Validated and beyond'], ['hypotheses', 'Hypotheses (unvalidated)'], ['closed', 'Refuted / closed']] as const).map(([t, label]) => (
+        {TABS.map(([t, label]) => (
           <button key={t} role="tab" type="button" aria-selected={tab === t} onClick={() => setTab(t)}
             className={`rounded-md px-3 py-1.5 text-sm ${tab === t ? 'bg-panel-2 text-ink ring-1 ring-accent/50' : 'text-muted hover:text-ink'}`}>{label}</button>
         ))}
       </div>
       <Async resource={findings} label="findings">
         {page => {
-          const items = pick(page.items);
-          if (items.length === 0) return <Empty>{tab === 'hypotheses' ? 'No open hypotheses.' : tab === 'closed' ? 'Nothing refuted or closed.' : 'No validated findings.'}</Empty>;
+          const items = page.items.filter(f => findingGroup(f.status) === tab);
+          if (items.length === 0) return <Empty>{tab === 'hypothesis' ? 'No open hypotheses.' : tab === 'closed' ? 'Nothing refuted or closed.' : 'No open findings in this list.'}</Empty>;
           return (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
