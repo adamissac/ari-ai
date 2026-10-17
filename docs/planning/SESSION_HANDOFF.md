@@ -77,3 +77,8 @@ adds an entry before ending.
   **22 passed, 1 skipped**; subsequent actual factory/exclusivity check passed. PR CI for
   pushed `87e898d`: both test jobs, links and gitleaks passed. Check latest PR #6 revision
   and consumer adapter messages before further integration.
+
+- Sarosh final failure-path check (2026-10-17T01:59Z): producer/PostgreSQL/webhook suite
+  **23 passed, 1 opt-in skip**; invalid commit/path ingestion returns terminal failed
+  Snapshot for the backend to persist. Ruff/format/strict mypy pass. PR #6 carries final
+  commits and CI status; live inference remains blocked on an authorized key.

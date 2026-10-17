@@ -187,7 +187,20 @@ class IntelligenceService:
         base = None
         if snapshot.base_snapshot_id:
             raise IntelligenceError("Backend base snapshot requires an exact SnapshotRef")
-        return self._index(binding, snapshot, base).snapshot
+        try:
+            return self._index(binding, snapshot, base).snapshot
+        except (IntelligenceError, OSError) as exc:
+            # The worker persists this terminal result; do not leave an invalid SHA/path pending.
+            return Snapshot(
+                id=snapshot.id,
+                repo_id=snapshot.repo_id,
+                commit_sha=snapshot.commit_sha,
+                status=SnapshotStatus.failed,
+                index_version=INDEX_VERSION,
+                created_at=snapshot.created_at,
+                completed_at=utcnow(),
+                error_message=f"INDEX_FAILED: {type(exc).__name__}: {exc}"[:500],
+            )
 
     @staticmethod
     def _page(
