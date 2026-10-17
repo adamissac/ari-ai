@@ -141,3 +141,8 @@ security-agents/
 SEC-001 … SEC-013. Status and evidence: [coordination/status/ALAN.md](../coordination/status/ALAN.md).
 
 Provider tool schemas omit unsupported numeric bounds; Pydantic still enforces those bounds locally. A failed Scout step fails the assessment rather than reporting a clean result.
+
+Host mode defaults to the Docker driver. The local process driver requires both
+`APP_ENV=development|test` and `SANDBOX_ALLOW_LOCAL_PROCESS=1`, or explicit driver
+injection for owned fixture tests. Scope adaptation preserves missing approvals,
+expired authorization and empty category lists; it never supplies approval facts.

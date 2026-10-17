@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Hosted security runs now persist gateway usage and real patch/Verify run IDs; host scope adaptation fails closed and Docker is the default sandbox.
+
 - Security agents now project numeric tool schemas for provider compatibility and fail assessments when Scout fails.
 
 ### Added

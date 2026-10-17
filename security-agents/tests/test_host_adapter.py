@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -170,7 +171,7 @@ class FakeHost:
             {
                 "id": "scp_01HOSTADAPTER", "project_id": self.project_id, "name": "host scope",
                 "status": "active", "requested_by": "usr_requester", "approved_by": "usr_approver",
-                "approved_at": None, "expires_at": None,
+                "approved_at": datetime.now(UTC), "expires_at": datetime.now(UTC) + timedelta(days=1),
                 "allowed_check_categories": ["access_control.ownership", "input_validation.bounds"],
                 "targets": [
                     type("T", (), {"target_id": "tgt_payments_lite", "repo_id": "rep_payments_lite",
@@ -447,3 +448,50 @@ def test_host_runs_keep_gateway_usage_and_real_patch_run_ids(host_and_orchestrat
         assert finished["usage"].input_tokens > 0
         assert finished["usage"].llm_calls > 0
         assert "tool_calls" in finished
+
+
+@pytest.mark.parametrize("field,value", [
+    ("approved_by", None), ("approved_at", None), ("expires_at", None), ("status", "inactive"),
+])
+def test_scope_adapter_does_not_invent_authorization(host_and_orchestrator, field, value):
+    from security_agents.host_adapter import _adapt_scope
+    from security_agents.scope_guard import ActionRequest, check
+    host, orchestrator, _ = host_and_orchestrator
+    intel = orchestrator._build_intel(orchestrator.target_dir, orchestrator.workdir)
+    scope = host.scope
+    setattr(scope, field, value)
+    mapped = _adapt_scope(scope, intel)
+    assert not check(mapped, ActionRequest(action="assessment_start"), datetime.now(UTC)).allowed
+
+
+def test_empty_host_categories_remain_empty(host_and_orchestrator):
+    from security_agents.host_adapter import _adapt_scope
+    host, orchestrator, _ = host_and_orchestrator
+    intel = orchestrator._build_intel(orchestrator.target_dir, orchestrator.workdir)
+    scope = host.scope
+    scope.allowed_check_categories = []
+    scope.targets = []
+    mapped = _adapt_scope(scope, intel)
+    assert mapped.allowed_check_categories == []
+    assert mapped.targets == []
+
+
+def test_zero_host_budget_is_not_replaced_with_a_default():
+    from types import SimpleNamespace
+
+    from security_agents.host_adapter import _adapt_budget
+    with pytest.raises(PlatformError) as exc:
+        _adapt_budget(SimpleNamespace(budget=SimpleNamespace(max_tokens=0, max_usd=0)))
+    assert exc.value.code is ErrorCode.BUDGET_EXHAUSTED
+
+
+@pytest.mark.parametrize("app_env,opt_in,local", [
+    ("production", "1", False), ("test", "0", False), ("development", "1", True),
+])
+def test_host_default_driver_requires_explicit_dev_opt_in(monkeypatch, app_env, opt_in, local):
+    from security_agents.host_adapter import _default_driver
+    from security_agents.sandbox.driver import LocalProcessDriver
+    monkeypatch.setenv("APP_ENV", app_env)
+    monkeypatch.setenv("SANDBOX_ALLOW_LOCAL_PROCESS", opt_in)
+    monkeypatch.setenv("SANDBOX_IMAGE", "test@sha256:" + "a" * 64)
+    assert isinstance(_default_driver(), LocalProcessDriver) is local

@@ -45,7 +45,7 @@ from .contracts import export as contract_export
 from .intel import CodeIntel, LocalIntel, load_expectations
 from .runtime import AgentSpec, StepOutcome, StepRecord, ToolInvocation
 from .runtime.loop import DATA_BLOCK_NOTE
-from .sandbox.driver import LocalProcessDriver, SandboxDriver
+from .sandbox.driver import DockerSandboxDriver, LocalProcessDriver, SandboxDriver
 from .sandbox.workspace import SnapshotHandle, copy_tree
 from .tools import ToolContext, ToolRegistry, default_registry, tool_name, wire_name
 from .workflow import (
@@ -505,13 +505,15 @@ class HostOrchestrator:
             self._resume(existing, host)
             return
 
-        workdir = self.workdir or Path(os.environ.get("SECURITY_AGENTS_WORKDIR", "")) or None
+        workdir = self.workdir or _env_path("SECURITY_AGENTS_WORKDIR")
         if workdir is None:
             import tempfile
 
             workdir = Path(tempfile.mkdtemp(prefix=f"{host.assessment_id}-"))
         intel = self._build_intel(target, workdir)
         scope = _adapt_scope(host.scope, intel)
+        if not scope.targets:
+            raise PlatformError(ErrorCode.SCOPE_DENIED, "host scope has no authorized targets")
         config = OrchestratorConfig(
             assessment_id=host.assessment_id,
             project_id=getattr(host, "project_id", "prj_unknown"),
@@ -529,7 +531,7 @@ class HostOrchestrator:
             config,
             intel=intel,
             gateway=_NullGateway(),  # host.llm() is the only provider path here
-            driver=self.driver or LocalProcessDriver(allow=True),
+            driver=self.driver or _default_driver(),
             library=default_library(),
             workdir=workdir / "work",
             registry=registry,
@@ -617,6 +619,15 @@ class _NullGateway:
         return 0.0
 
 
+def _default_driver() -> SandboxDriver:
+    if (
+        os.environ.get("APP_ENV") in {"development", "test"}
+        and os.environ.get("SANDBOX_ALLOW_LOCAL_PROCESS") == "1"
+    ):
+        return LocalProcessDriver(allow=True)
+    return DockerSandboxDriver()
+
+
 def _env_path(name: str) -> Path | None:
     raw = os.environ.get(name)
     return Path(raw).expanduser().resolve() if raw else None
@@ -700,39 +711,37 @@ def _adapt_scope(host_scope: Any, intel: CodeIntel) -> Any:
                 exposed_ports=list(getattr(target, "exposed_ports", []) or []),
             )
         )
-    if not targets:
-        targets = [
-            ScopeTarget(
-                target_id="tgt_host_target",
-                repo_id=intel.snapshot.repo_id,
-                build_recipe_ref="build_recipe.json",
-            )
-        ]
-    status_raw = str(getattr(host_scope, "status", "active")).lower()
-    status = ScopeStatus.ACTIVE if "active" in status_raw else ScopeStatus.PENDING
-    approved_at = getattr(host_scope, "approved_at", None) or utcnow()
+    raw_status = getattr(host_scope, "status", None)
+    status_raw = str(getattr(raw_status, "value", raw_status)).lower()
+    try:
+        status = ScopeStatus(status_raw)
+    except ValueError:
+        status = ScopeStatus.PENDING
+    approved_at = getattr(host_scope, "approved_at", None)
     return AuthorizedScope(
         id=str(getattr(host_scope, "id", new_id("scp"))),
         project_id=str(getattr(host_scope, "project_id", "prj_unknown")),
         name=str(getattr(host_scope, "name", "host scope")),
         targets=targets,
         allowed_check_categories=list(
-            getattr(host_scope, "allowed_check_categories", None) or sorted(default_library().categories())
+            getattr(host_scope, "allowed_check_categories", None) or []
         ),
         status=status,
         requested_by=str(getattr(host_scope, "requested_by", None) or "usr_host"),
-        approved_by=str(getattr(host_scope, "approved_by", None) or "usr_host_approver"),
+        approved_by=getattr(host_scope, "approved_by", None),
         approved_at=approved_at,
-        expires_at=getattr(host_scope, "expires_at", None) or (utcnow().replace(year=utcnow().year + 1)),
+        expires_at=getattr(host_scope, "expires_at", None) or utcnow(),
         notes="adapted from the host scope",
     )
 
 
 def _adapt_budget(assessment: Any) -> Budget:
     budget = getattr(assessment, "budget", None)
+    if getattr(budget, "max_tokens", 1) <= 0 or getattr(budget, "max_usd", 1) <= 0:
+        raise PlatformError(ErrorCode.BUDGET_EXHAUSTED, "host budget does not permit model calls")
     return Budget(
-        max_tokens=int(getattr(budget, "max_tokens", 0) or 1_000_000),
-        max_usd=float(getattr(budget, "max_usd", 0) or 10.0),
+        max_tokens=int(getattr(budget, "max_tokens", 1_000_000)),
+        max_usd=float(getattr(budget, "max_usd", 10.0)),
         max_wall_clock_s=float(getattr(budget, "max_wall_clock_s", 0) or 3600.0),
     )
 

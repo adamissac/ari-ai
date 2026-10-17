@@ -3,14 +3,8 @@
 the real LLMGateway (scripted transport labeled fake, see sa_bridge.py), the worker,
 API approval and resume.
 
-Expected to fail until the issues below are fixed on feat/alan/seven-agent-runtime
-(reported in coordination/messages/*-srihith-to-alan-host-mode-findings.md, issue #17):
-  1. calls host.scope() / host.assessment() — they are properties;
-  2. calls llm.provider_mode() — it is a property (str);
-  3. on_patch cites a fabricated run id (run_ids["patch"] is never populated);
-  4. finish_agent_run is called without usage/tool_calls;
-  5. resume state lives only in memory (lost across workers/restarts).
-xfail is non-strict: this flips to XPASS when host mode works end to end.
+Regression coverage: property access, persisted run IDs, per-run usage/tool records,
+and same-worker approval resume. Fresh-worker durable resume is a separate gate.
 """
 
 from __future__ import annotations
@@ -33,16 +27,13 @@ from helpers import add_member  # noqa: E402
 from backend import llm, worker  # noqa: E402
 
 
-@pytest.mark.xfail(
-    reason="security_agents host mode not yet conformant with backend.host (see module docstring)",
-    strict=False,
-)
 def test_host_mode_full_flow_against_real_backend(
     client_factory, settings_override, monkeypatch, tmp_path
 ):
     from sa_bridge import AlanScriptTransport
 
     monkeypatch.setenv("SECURITY_AGENTS_TARGET_DIR", str(TARGET))
+    monkeypatch.setenv("SANDBOX_ALLOW_LOCAL_PROCESS", "1")
     monkeypatch.setenv("SECURITY_AGENTS_WORKDIR", str(tmp_path / "w"))
     settings_override(orchestrator_factory="security_agents.api:build_orchestrator")
     bridge = AlanScriptTransport(TARGET / "target")
