@@ -23,7 +23,7 @@
 | Recommendation explanations (occlusion) | `rl_defense/explain.py` | ✅ exact-value tests |
 | Platform records → policy inputs (findings, expectations, signals) | `rl_defense/platform_mapping.py` | ✅ |
 | Failure analysis, stress test, Defense Lab export | `analysis.py`, `stress.py`, `lab_export.py` | ✅ |
-| Reference evaluation results | [`results/protocol-v0/`](results/protocol-v0/eval_table.md) | ✅ real output, see below |
+| Reference evaluation results | [`results/protocol-v1/`](results/protocol-v1/COMPARISON.md) (current), [`results/protocol-v0/`](results/protocol-v0/eval_table.md) | ✅ real output, see below |
 | Backend endpoint / UI panel | backend (Srihith), frontend (Vihaan) | ❌ not integrated yet |
 
 ## The environment in one paragraph
@@ -45,7 +45,30 @@ is the steps from the first foothold until all nodes are back to `none` for 10
 consecutive steps (censored at the horizon); episodes where the adversary never got
 in are excluded.
 
-## Results (protocol v0, commit `1182773`)
+## Current policy: protocol-v1
+
+**Use `runs/protocol-v1/ddqn_seed0.pt`** (reproduce with `python -m experiments.final`; manifests,
+eval summary and comparison in [`results/protocol-v1/`](results/protocol-v1/COMPARISON.md)).
+It was selected on a validation protocol (training configs, validation seeds 10–14 and 2000–2099)
+and evaluated **once** on the held-out configs, seeds 0–4 × 1000–1099. Settings: lr 3e-4,
+1M steps, 3-step returns, attacker-speed randomization ×0.5–2.5, in-training checkpoint
+selection. Details: [`experiments/README.md`](experiments/README.md). An independent audit
+recomputed return, compromise and db loss from the raw episodes and got the same numbers.
+
+| Policy | Return | Compromise % | db lost % | False disruption % | Uptime % |
+|---|---|---|---|---|---|
+| **DDQN protocol-v1** | **−29.1** [−32.1, −26.1] | **7.1** [4.1, 11.2] | 1.1 | 75.0 [69.6, 79.8] | 94.4 |
+| DDQN protocol-v0 | −65.6 [−72.1, −59.7] | 47.5 | 9.8 | 53.9 | 93.8 |
+| threshold_rules | −96.0 | 83.0 | 0.3 | 28.7 | 93.3 |
+
+- v1 beats v0 and every baseline on return. In the stress test it also beats the rules at
+  every attacker speed up to ×2.5 (v0 lost at ×2.5); db loss at ×2.5 is 11.6% (rules 10%).
+- **Regression:** false disruption rose to 75%, meaning most of its rate-limits and
+  isolations hit nodes that weren't compromised yet. It's preventive, and cheap in uptime
+  terms (94.4%), but a human should know.
+- *Results are from a simulated environment and do not establish real-world effectiveness.*
+
+## Earlier results (protocol v0, commit `1182773`)
 
 Full table: [`results/protocol-v0/eval_table.md`](results/protocol-v0/eval_table.md);
 machine-readable: [`eval_summary.json`](results/protocol-v0/eval_summary.json). Held-out
@@ -119,7 +142,7 @@ facts, provenance = facts_from_platform(
     signals=[RouteSignal(route="GET /payments/{payment_id}", alert_rate=4.0,
                          anomaly_score=0.4, source="runtime_demo")],
 )
-runner = load_policy("runs/protocol-v0/ddqn_seed0.pt")  # verifies sha256 against the manifest
+runner = load_policy("runs/protocol-v1/ddqn_seed0.pt")  # verifies sha256 against the manifest
 rec = runner.recommend(facts)                           # -> DefenseRecommendation
 ```
 
