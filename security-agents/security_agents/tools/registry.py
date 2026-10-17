@@ -129,14 +129,17 @@ class ToolDef:
 
     def schema(self) -> dict[str, Any]:
         """Anthropic tool definition. `strict` keeps model arguments schema-valid."""
-        schema = self.args_model.model_json_schema()
-        schema["additionalProperties"] = False
-        schema.setdefault("required", [])
+        from .strict_schema import tool_input_schema
+
+        raw = self.args_model.model_json_schema()
+        raw["additionalProperties"] = False
+        raw.setdefault("required", [])
+        schema, strict = tool_input_schema(raw)
         return {
             "name": wire_name(self.name),
             "description": f"{self.description} (v{self.version}; side effects: {self.side_effects})",
             "input_schema": schema,
-            "strict": True,
+            "strict": strict,
         }
 
 

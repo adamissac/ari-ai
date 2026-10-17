@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.15'",
@@ -14,6 +14,7 @@ members = [
     "hackatl-monitoring",
     "hackatl-shared",
     "hackatl-workspace",
+    "security-agents",
 ]
 
 [[package]]
@@ -479,6 +480,7 @@ dependencies = [
     { name = "hackatl-code-review" },
     { name = "hackatl-monitoring" },
     { name = "hackatl-shared" },
+    { name = "security-agents" },
 ]
 
 [package.dev-dependencies]
@@ -497,6 +499,7 @@ requires-dist = [
     { name = "hackatl-code-review", editable = "code-review" },
     { name = "hackatl-monitoring", editable = "monitoring" },
     { name = "hackatl-shared", editable = "shared" },
+    { name = "security-agents", editable = "security-agents" },
 ]
 
 [package.metadata.requires-dev]
@@ -1499,6 +1502,36 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/6a/2e/da3d9589bae8e8b58f3a48bd5bc0b980232fb14a83bf02c3be7660f87c1b/ruff-0.17.1-py3-none-win_amd64.whl", hash = "sha256:5df76f16580fab58d0f6c98a3ac254a4abceb7b2489b8b678335869cff77b3d7", size = 10097955, upload-time = "2026-10-15T15:23:13.309Z" },
     { url = "https://files.pythonhosted.org/packages/df/c9/0f2a4dea06a5e12c1191ee3d96b1e1233797d0d5e18f97a2b909a95a9836/ruff-0.17.1-py3-none-win_arm64.whl", hash = "sha256:42400b9a6ff8515ff27796f07f92e0195be011c86e81e381606f58ea5502fef4", size = 9853542, upload-time = "2026-10-15T15:23:16.05Z" },
 ]
+
+[[package]]
+name = "security-agents"
+version = "0.1.0"
+source = { editable = "security-agents" }
+dependencies = [
+    { name = "anthropic" },
+    { name = "httpx" },
+    { name = "pydantic" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "fastapi" },
+    { name = "mypy" },
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "anthropic", specifier = ">=1.15" },
+    { name = "fastapi", marker = "extra == 'dev'", specifier = ">=0.115" },
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.11" },
+    { name = "pydantic", specifier = ">=2.8" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6" },
+]
+provides-extras = ["dev"]
 
 [[package]]
 name = "sniffio"
