@@ -7,10 +7,7 @@ name = "hackatl-standards"
 version = "0.1.0"
 description = "Pinned framework catalogs (ATT&CK, D3FEND, CWE, CAPEC, OWASP LLM, NIST SP 800-61r3), CVSS v4.0 scoring, mapping validation and incident lifecycle rules"
 requires-python = ">=3.12"
-dependencies = ["hackatl-shared", "pydantic>=2.7"]
-
-[tool.uv.sources]
-hackatl-shared = { workspace = true }
+dependencies = []
 
 [tool.hatch.build.targets.wheel]
 packages = ["standards"]

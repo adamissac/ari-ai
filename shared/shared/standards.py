@@ -91,6 +91,18 @@ class StandardMapping(StrictModel):
 
     @model_validator(mode="after")
     def _consistent(self) -> StandardMapping:
+        from standards.catalog import lookup
+
+        try:
+            entry = lookup(self.framework.value, self.id)
+        except KeyError as exc:
+            raise ValueError(f"unknown {self.framework.value} identifier: {self.id}") from exc
+        if (
+            self.name != entry.name
+            or self.catalog_version != entry.catalog_version
+            or self.catalog_status.value != entry.status
+        ):
+            raise ValueError("standard name, version and status must match the pinned catalog")
         if self.catalog_status is not CatalogStatus.active and not self.legacy:
             raise ValueError("deprecated or revoked identifiers are only allowed on legacy imports")
         if self.review_status is not ReviewStatus.proposed and not self.reviewed_by:
@@ -135,6 +147,18 @@ class CWEClassification(StandardMapping):
     def _is_cwe(self) -> CWEClassification:
         if self.framework is not StandardFramework.cwe:
             raise ValueError("CWE classification must use the cwe framework")
+        from standards.catalog import cwe
+
+        entry = cwe(self.id)
+        usage = entry.detail.get("mapping_usage")
+        if entry.detail.get("kind") != "weakness" or usage == "Prohibited":
+            raise ValueError(
+                "CWE categories, views and prohibited entries cannot classify findings"
+            )
+        if self.mapping_usage != usage:
+            raise ValueError("CWE mapping guidance must match the catalog")
+        if usage == "Discouraged" and self.mapped_via is not MappedVia.human:
+            raise ValueError("discouraged CWE classifications require human mapping")
         return self
 
 
@@ -187,6 +211,19 @@ class CVSSAssessment(StrictModel):
             )
         if not self.complete and (self.score is not None or not self.missing_metrics):
             raise ValueError("an incomplete assessment lists missing metrics and has no score")
+        if self.complete:
+            from standards.cvss4 import BASE_METRICS, build_vector, score
+
+            result = score(self.vector or "")
+            if self.score != result.score or self.severity != result.severity:
+                raise ValueError("CVSS score and severity must match deterministic scoring")
+            if self.nomenclature != result.nomenclature:
+                raise ValueError("CVSS nomenclature must match the scored vector")
+            values: dict[str, str] = {m.metric: m.value for m in self.metrics}
+            if len(values) != len(self.metrics) or set(values) != set(BASE_METRICS):
+                raise ValueError("complete CVSS requires each base metric exactly once")
+            if build_vector(values) != self.vector:
+                raise ValueError("CVSS metric values must match the vector")
         return self
 
 

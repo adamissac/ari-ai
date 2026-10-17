@@ -254,3 +254,8 @@ class IncidentAction(StrictModel):
     csf_ref: Literal["RS.CO-02", "RS.CO-03", "RC.CO-03"] | None = None
     criterion_key: ShortText | None = None
     evidence: list[EvidenceRef] = Field(default_factory=list)
+
+
+class IncidentDetail(StrictModel):
+    incident: Incident
+    standards: dict[str, object] = Field(default_factory=dict)

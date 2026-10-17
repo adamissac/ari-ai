@@ -13,6 +13,7 @@ from pydantic import Field
 
 from shared.base import Sha256Hex, ShortText, StrictModel, UtcDatetime
 from shared.ids import ArtifactId, CheckpointId, ProjectId, RecommendationId, RLEvaluationId
+from shared.standards import DefensiveMapping
 
 RL_SCHEMA_VERSION = "0.1.0"
 SIMULATION_CAVEAT_DEFAULT = (
@@ -56,6 +57,7 @@ class ActionScore(StrictModel):
 
 
 class DefenseRecommendation(StrictModel):
+    d3fend: list[DefensiveMapping] = Field(default_factory=list)
     schema_version: str = RL_SCHEMA_VERSION
     id: RecommendationId
     project_id: ProjectId | None

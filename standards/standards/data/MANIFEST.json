@@ -1,188 +1,293 @@
 {
- "files": {
-  "attack-enterprise.json": {
-   "sha256": "1246111478c65cde444eeb67a6dccc6e1a620de3e31608aa0cfe393873572049",
-   "upstream": [
-    {
-     "sha256": "81113ba98afa2928f3dcff62022539f7ce30c315c32e14422f11ff95ce534352",
-     "url": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack-20.0.json"
+  "files": {
+    "attack-d3fend.json": {
+      "license": "MITRE ATT&CK/D3FEND Terms of Use",
+      "sha256": "7cf58dbf33a1af1d718b84c0a91b741435b8aac53e61ea2cfa9b9d6746361d53",
+      "upstream": [
+        {
+          "sha256": "9f2ace1728505a2c978e4d7a0e9328c32467e1d2971def1ba9ad0e49ce9ba667",
+          "url": "https://d3fend.mitre.org/ontologies/d3fend/1.6.0/d3fend-full-mappings.json"
+        }
+      ],
+      "version": "1.6.0"
+    },
+    "attack-enterprise.json": {
+      "license": "MITRE ATT&CK/D3FEND Terms of Use",
+      "sha256": "1246111478c65cde444eeb67a6dccc6e1a620de3e31608aa0cfe393873572049",
+      "upstream": [
+        {
+          "sha256": "81113ba98afa2928f3dcff62022539f7ce30c315c32e14422f11ff95ce534352",
+          "url": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack-20.0.json"
+        }
+      ],
+      "version": "20.0"
+    },
+    "capec.json": {
+      "license": "MITRE CAPEC Terms of Use",
+      "sha256": "e743f498f1628d0684dd5e2bc11781b513363564ce5a0c8b2b7fa5136346ad9a",
+      "upstream": [
+        {
+          "sha256": "70279a2dff0cb0ad79e546adb07828335a704ad5210e047e09e986172fc9e34d",
+          "url": "https://capec.mitre.org/data/xml/capec_latest.xml"
+        }
+      ],
+      "version": "3.9"
+    },
+    "cvss-v4.0-first-examples.json": {
+      "license": "BSD-2-Clause (FIRST calculator); FIRST CVSS attribution terms (standard/examples)",
+      "sha256": "f2c5cfa312c690033cca93bdf0ca33738387418b1a1d745b02949ebb97e7f802",
+      "upstream": [
+        {
+          "sha256": "e359060047b372609e7d782f82d594d13225b63f9d0c15b5b4358cf1b53b2f2a",
+          "url": "https://www.first.org/cvss/v4.0/examples"
+        }
+      ],
+      "version": ""
+    },
+    "cvss-v4.0-first-js-golden.json": {
+      "license": "BSD-2-Clause (FIRST calculator); FIRST CVSS attribution terms (standard/examples)",
+      "sha256": "0cf2efecdb292bcd4dce4dae5d40e01ce86b4c3cd35b57c390095f13c7f3b587",
+      "upstream": [
+        {
+          "sha256": "d533fe625d95e15b7b488a4bf93dab5f7df16b7e38b0c8ee01281d7b31a8165e",
+          "url": "https://raw.githubusercontent.com/FIRSTdotorg/cvss-v4-calculator/c5b0d409ae9f57c44264c6ce5f27d89298e1d32a/cvss_lookup.js"
+        },
+        {
+          "sha256": "be707cc82c17993a04a84e47b1a8aaa1d0d212b56852254659ce77fd7d959f63",
+          "url": "https://raw.githubusercontent.com/FIRSTdotorg/cvss-v4-calculator/c5b0d409ae9f57c44264c6ce5f27d89298e1d32a/max_composed.js"
+        },
+        {
+          "sha256": "f838ecb41bfd5114456e7fa7df8a8449ca2735c176867886fa34bd011dee0b24",
+          "url": "https://raw.githubusercontent.com/FIRSTdotorg/cvss-v4-calculator/c5b0d409ae9f57c44264c6ce5f27d89298e1d32a/max_severity.js"
+        },
+        {
+          "sha256": "99ee2643587071bf744cd090c4bb2db58d523ed0276efd809871b00a12985a4c",
+          "url": "https://raw.githubusercontent.com/FIRSTdotorg/cvss-v4-calculator/c5b0d409ae9f57c44264c6ce5f27d89298e1d32a/metrics.js"
+        },
+        {
+          "sha256": "453ce6767b5c3939b51d1f21315f2649e47b5abeca674be287e94b524472a1bc",
+          "url": "https://raw.githubusercontent.com/FIRSTdotorg/cvss-v4-calculator/c5b0d409ae9f57c44264c6ce5f27d89298e1d32a/cvss_score.js"
+        }
+      ],
+      "version": ""
+    },
+    "cvss-v4.0.json": {
+      "license": "BSD-2-Clause (FIRST calculator); FIRST CVSS attribution terms (standard/examples)",
+      "sha256": "faaa3b58b0f8d6a882b29df963287b0dcb67c4d3c1b273e60ec5006450b03393",
+      "upstream": [
+        {
+          "sha256": "d533fe625d95e15b7b488a4bf93dab5f7df16b7e38b0c8ee01281d7b31a8165e",
+          "url": "https://raw.githubusercontent.com/FIRSTdotorg/cvss-v4-calculator/c5b0d409ae9f57c44264c6ce5f27d89298e1d32a/cvss_lookup.js"
+        },
+        {
+          "sha256": "be707cc82c17993a04a84e47b1a8aaa1d0d212b56852254659ce77fd7d959f63",
+          "url": "https://raw.githubusercontent.com/FIRSTdotorg/cvss-v4-calculator/c5b0d409ae9f57c44264c6ce5f27d89298e1d32a/max_composed.js"
+        },
+        {
+          "sha256": "f838ecb41bfd5114456e7fa7df8a8449ca2735c176867886fa34bd011dee0b24",
+          "url": "https://raw.githubusercontent.com/FIRSTdotorg/cvss-v4-calculator/c5b0d409ae9f57c44264c6ce5f27d89298e1d32a/max_severity.js"
+        },
+        {
+          "sha256": "99ee2643587071bf744cd090c4bb2db58d523ed0276efd809871b00a12985a4c",
+          "url": "https://raw.githubusercontent.com/FIRSTdotorg/cvss-v4-calculator/c5b0d409ae9f57c44264c6ce5f27d89298e1d32a/metrics.js"
+        },
+        {
+          "sha256": "453ce6767b5c3939b51d1f21315f2649e47b5abeca674be287e94b524472a1bc",
+          "url": "https://raw.githubusercontent.com/FIRSTdotorg/cvss-v4-calculator/c5b0d409ae9f57c44264c6ce5f27d89298e1d32a/cvss_score.js"
+        }
+      ],
+      "version": "4.0"
+    },
+    "cwe.json": {
+      "license": "MITRE CWE Terms of Use",
+      "sha256": "dfbf07a3fd7d3b825a3d44b9638ce58afd770cefb5b31b2298c9bd5fd33e062b",
+      "upstream": [
+        {
+          "sha256": "3976f599e5e5200219a3108bb896d06e2a88fbb293369e1883cb423a5e9d7d50",
+          "url": "https://cwe.mitre.org/data/xml/cwec_latest.xml.zip"
+        }
+      ],
+      "version": "4.20"
+    },
+    "d3fend.json": {
+      "license": "MITRE ATT&CK/D3FEND Terms of Use",
+      "sha256": "c7cb81f1a7854c09474ee4a0e803de0e6dd6b6bbfbb239d10d6b5b5352dd1e46",
+      "upstream": [
+        {
+          "sha256": "e1546d432c6aa64d45b62dd9e9484b0774ae84de7ff3605ff9dd4e20278957bf",
+          "url": "https://d3fend.mitre.org/ontologies/d3fend.json"
+        }
+      ],
+      "version": "1.6.0"
+    },
+    "defense-rules.json": {
+      "curated": "Repository-maintained policy or self-assessment data, not an upstream standard.",
+      "license": "project proprietary reviewed rules; D3FEND identifiers subject to MITRE terms",
+      "sha256": "f5a395cbf92064980e3f13fa1c7fe9b4f05db6eccef72660dbd4ea9a623a055a",
+      "upstream": [
+        {
+          "sha256": "9f2ace1728505a2c978e4d7a0e9328c32467e1d2971def1ba9ad0e49ce9ba667",
+          "url": "repository-reviewed conservative rules"
+        }
+      ],
+      "version": "1"
+    },
+    "nist-sp800-61r3.json": {
+      "curated": "quoted from the pinned PDF; reviewed by hand",
+      "license": "US government publication; NIST attribution",
+      "sha256": "23ed736c8a47789bf0ba61a388f4e607cbca53b5600558cc9651ca3593cc5aef",
+      "upstream": [
+        {
+          "sha256": "e5593d6bb85daecec7e8d9549400c7b3473bcc3f06e469c82218073afa7fba2d",
+          "url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-61r3.pdf"
+        }
+      ],
+      "version": "Rev. 3 (CSF 2.0)"
+    },
+    "owasp-llm-2026.json": {
+      "license": "CC-BY-SA-4.0; OWASP project contributors; IDs/titles-only extraction",
+      "license_url": "https://github.com/GenAI-Security-Project/GenAI-LLM-Top10/blob/9253e38ade58e959b531c0c5c9a4842272c9cd0e/README.md#license",
+      "sha256": "01faaea74aa82c0308691b182d828bafd5c61a46d56d3abeed056c2a263446c9",
+      "source_commit": "9253e38ade58e959b531c0c5c9a4842272c9cd0e",
+      "upstream": [
+        {
+          "sha256": "ff036047755c505e6d7837a0114f6056f8f751a3628061b6711b6eac19e1f8b0",
+          "url": "https://raw.githubusercontent.com/GenAI-Security-Project/GenAI-LLM-Top10/9253e38ade58e959b531c0c5c9a4842272c9cd0e/2026/final/LLM01_PromptInjection.md"
+        },
+        {
+          "sha256": "009153f4880fdabd79585cf1b74e60e2dfe79668c5581853890aa2bec36ab05e",
+          "url": "https://raw.githubusercontent.com/GenAI-Security-Project/GenAI-LLM-Top10/9253e38ade58e959b531c0c5c9a4842272c9cd0e/2026/final/LLM02_SensitiveInformationDisclosure.md"
+        },
+        {
+          "sha256": "e961d0d9fe8382be4086aaddd65c1fad0d5d53220174493fe8c287f864c0529e",
+          "url": "https://raw.githubusercontent.com/GenAI-Security-Project/GenAI-LLM-Top10/9253e38ade58e959b531c0c5c9a4842272c9cd0e/2026/final/LLM03_ExcessiveAgency.md"
+        },
+        {
+          "sha256": "b5cb83fe937ecf38b8017918ac90b378da6d9c8ec9e2b485f422c08e4d66ac9e",
+          "url": "https://raw.githubusercontent.com/GenAI-Security-Project/GenAI-LLM-Top10/9253e38ade58e959b531c0c5c9a4842272c9cd0e/2026/final/LLM04_SupplyChain.md"
+        },
+        {
+          "sha256": "28ba5d86c102c82916066aae4bde2c10605cdb98cca51f572093ba002d2a198d",
+          "url": "https://raw.githubusercontent.com/GenAI-Security-Project/GenAI-LLM-Top10/9253e38ade58e959b531c0c5c9a4842272c9cd0e/2026/final/LLM05_DataModelPoisoning.md"
+        },
+        {
+          "sha256": "e121147737d4750f89466fe191b5581fe71a822d8e1cfb621ea91d0d6a1dc6d5",
+          "url": "https://raw.githubusercontent.com/GenAI-Security-Project/GenAI-LLM-Top10/9253e38ade58e959b531c0c5c9a4842272c9cd0e/2026/final/LLM06_UnboundedConsumption.md"
+        },
+        {
+          "sha256": "5686479c061cd2057b9905775ce70fc92b1b26e9daf296928521d56837ad4732",
+          "url": "https://raw.githubusercontent.com/GenAI-Security-Project/GenAI-LLM-Top10/9253e38ade58e959b531c0c5c9a4842272c9cd0e/2026/final/LLM07_Misinformation.md"
+        },
+        {
+          "sha256": "e00d214f81757f626510df57e92116bec026b6c31ef7c3fb2bb52b71318c5ffe",
+          "url": "https://raw.githubusercontent.com/GenAI-Security-Project/GenAI-LLM-Top10/9253e38ade58e959b531c0c5c9a4842272c9cd0e/2026/final/LLM08_HiddenContextExposure.md"
+        },
+        {
+          "sha256": "e1a3aff504a708d46c5dbf1c4bbc9ae05f3206cc6ea8e6e9d544b3f0d0ff7c23",
+          "url": "https://raw.githubusercontent.com/GenAI-Security-Project/GenAI-LLM-Top10/9253e38ade58e959b531c0c5c9a4842272c9cd0e/2026/final/LLM09_VectorAndEmbeddingWeaknesses.md"
+        },
+        {
+          "sha256": "d61a5ca0eddb38cdd0f485d642ed263c259638e2f1cf82eb1563c064491d67f0",
+          "url": "https://raw.githubusercontent.com/GenAI-Security-Project/GenAI-LLM-Top10/9253e38ade58e959b531c0c5c9a4842272c9cd0e/2026/final/LLM10_ImproperOutputHandling.md"
+        }
+      ],
+      "version": "2026"
+    },
+    "owasp-llm-coverage-2026.json": {
+      "curated": "Repository-maintained policy or self-assessment data, not an upstream standard.",
+      "sha256": "8b44ebe50f231bef61384490a5cb2d68bbe7d937f6ccd3e0c6908adee54eb676",
+      "upstream": [],
+      "version": "2"
+    },
+    "owasp-llm-coverage.json": {
+      "curated": "Repository-maintained policy or self-assessment data, not an upstream standard.",
+      "sha256": "ef1c3f7b2355cb6857e041772d0a10c473890ddfc04986b8a1c36a14eb752a3c",
+      "upstream": [],
+      "version": "2"
+    },
+    "owasp-llm.json": {
+      "license": "CC-BY-SA-4.0",
+      "sha256": "965f3d19a2692a1265d97a11e0a3b7bf3c193c37f20718bbc90916727fcf91e6",
+      "upstream": [
+        {
+          "sha256": "0b6c84e994ed7e2813ae4d758259adcd6344c20f48b14a65fb1c59e61871a1b9",
+          "url": "https://raw.githubusercontent.com/OWASP/www-project-top-10-for-large-language-model-applications/99f4395589bdbd120ae961f9cd179e79d7f9b27f/2_0_vulns/LLM01_PromptInjection.md"
+        },
+        {
+          "sha256": "bdfa1bcba7575ff7c1804c141cc7944c580cff5cae2e8d9a1bff2b39c40a60f6",
+          "url": "https://raw.githubusercontent.com/OWASP/www-project-top-10-for-large-language-model-applications/99f4395589bdbd120ae961f9cd179e79d7f9b27f/2_0_vulns/LLM02_SensitiveInformationDisclosure.md"
+        },
+        {
+          "sha256": "c6290f02114ad9bbf8bd9651840c91fcb06cfaa6be1b5dfc3b14b9e13e76e697",
+          "url": "https://raw.githubusercontent.com/OWASP/www-project-top-10-for-large-language-model-applications/99f4395589bdbd120ae961f9cd179e79d7f9b27f/2_0_vulns/LLM03_SupplyChain.md"
+        },
+        {
+          "sha256": "3ac96988fe816e866172d4d09d7c6ec34c46e983a5d06e8813979788551c502e",
+          "url": "https://raw.githubusercontent.com/OWASP/www-project-top-10-for-large-language-model-applications/99f4395589bdbd120ae961f9cd179e79d7f9b27f/2_0_vulns/LLM04_DataModelPoisoning.md"
+        },
+        {
+          "sha256": "fd0c4c63ede6584813884baaa571b3e22ea4111a7612e0507505ea7b43b2c519",
+          "url": "https://raw.githubusercontent.com/OWASP/www-project-top-10-for-large-language-model-applications/99f4395589bdbd120ae961f9cd179e79d7f9b27f/2_0_vulns/LLM05_ImproperOutputHandling.md"
+        },
+        {
+          "sha256": "e96b52b5f47b4d3443f0226498f6764d8701be9ed9984625bf63b6c43b7b96a5",
+          "url": "https://raw.githubusercontent.com/OWASP/www-project-top-10-for-large-language-model-applications/99f4395589bdbd120ae961f9cd179e79d7f9b27f/2_0_vulns/LLM06_ExcessiveAgency.md"
+        },
+        {
+          "sha256": "ea4005836b04fa40b3bb552a789a7afe35a155375f819a5796d9cce8b78ceeb7",
+          "url": "https://raw.githubusercontent.com/OWASP/www-project-top-10-for-large-language-model-applications/99f4395589bdbd120ae961f9cd179e79d7f9b27f/2_0_vulns/LLM07_SystemPromptLeakage.md"
+        },
+        {
+          "sha256": "be1bf57ee64f56e731e6ec2ca37c8cd21978da1f22378992712bf9e9f847e016",
+          "url": "https://raw.githubusercontent.com/OWASP/www-project-top-10-for-large-language-model-applications/99f4395589bdbd120ae961f9cd179e79d7f9b27f/2_0_vulns/LLM08_VectorAndEmbeddingWeaknesses.md"
+        },
+        {
+          "sha256": "546fdec266aa18ed9d269af4a059ebf32408b9500a98f1cc1b072b2805339a87",
+          "url": "https://raw.githubusercontent.com/OWASP/www-project-top-10-for-large-language-model-applications/99f4395589bdbd120ae961f9cd179e79d7f9b27f/2_0_vulns/LLM09_Misinformation.md"
+        },
+        {
+          "sha256": "25f5e3b9c5308c57294c7a1dbea0167065845b32487a811eb87012422a103361",
+          "url": "https://raw.githubusercontent.com/OWASP/www-project-top-10-for-large-language-model-applications/99f4395589bdbd120ae961f9cd179e79d7f9b27f/2_0_vulns/LLM10_UnboundedConsumption.md"
+        }
+      ],
+      "version": "2025"
+    },
+    "rules/check_attack.json": {
+      "curated": "Repository-maintained policy or self-assessment data, not an upstream standard.",
+      "sha256": "20a3357641df3275c2bb81da20802fcbe770ed505f2aadb4bb870cc54f65c2fd",
+      "version": "1"
+    },
+    "rules/cvss_derivation.json": {
+      "curated": "Repository-maintained policy or self-assessment data, not an upstream standard.",
+      "sha256": "4d107a016796bdc12db8f9ac57a88fbe59e5aa4ef6f93530e458319c7643d9d4",
+      "version": "1"
+    },
+    "rules/fortify_d3fend.json": {
+      "curated": "Repository-maintained policy or self-assessment data, not an upstream standard.",
+      "sha256": "00032f1aaf23363b902afd732a07d56a464a13f9aac44577a6d2078ba6f60acd",
+      "version": "1"
+    },
+    "rules/rl_d3fend.json": {
+      "curated": "Repository-maintained policy or self-assessment data, not an upstream standard.",
+      "sha256": "7aaa52aa5edd5a20f434dc0c6b53973756761975c7c8ced2bb4ca47ca80e5a6a",
+      "version": "1"
     }
-   ],
-   "version": "20.0"
   },
-  "capec.json": {
-   "sha256": "e743f498f1628d0684dd5e2bc11781b513363564ce5a0c8b2b7fa5136346ad9a",
-   "upstream": [
-    {
-     "sha256": "70279a2dff0cb0ad79e546adb07828335a704ad5210e047e09e986172fc9e34d",
-     "url": "https://capec.mitre.org/data/xml/capec_latest.xml"
+  "notices": {
+    "LICENSE-attack.txt": {
+      "sha256": "738144f7fb054722a4ef9d3367c51710341dc12fc574c6ac3a41daaaecd8bf5e"
+    },
+    "LICENSE-capec.txt": {
+      "sha256": "65b24593f5c23dba55638c854a50167dd1318ec4379c7b0148d158f179d4ec1c"
+    },
+    "LICENSE-cwe.txt": {
+      "sha256": "2e36202fa0be27e522779b3519684d388e2ab6167018d57ff147fe98ac0fc79a"
+    },
+    "LICENSE-d3fend.txt": {
+      "sha256": "cbf9aaf6f4a8fcd3df82e8f8c5e5a2c958330f69dbe456589215900f4dfb65d2"
+    },
+    "LICENSE-first-cvss.txt": {
+      "sha256": "5d672639189da9bda914dd8c847069cc6959135000b17c45262bb742e5d3b392"
     }
-   ],
-   "version": "3.9"
-  },
-  "cvss-v4.0-first-examples.json": {
-   "sha256": "f2c5cfa312c690033cca93bdf0ca33738387418b1a1d745b02949ebb97e7f802",
-   "upstream": [
-    {
-     "sha256": "e359060047b372609e7d782f82d594d13225b63f9d0c15b5b4358cf1b53b2f2a",
-     "url": "https://www.first.org/cvss/v4.0/examples"
-    }
-   ],
-   "version": ""
-  },
-  "cvss-v4.0-first-js-golden.json": {
-   "sha256": "0cf2efecdb292bcd4dce4dae5d40e01ce86b4c3cd35b57c390095f13c7f3b587",
-   "upstream": [
-    {
-     "sha256": "d533fe625d95e15b7b488a4bf93dab5f7df16b7e38b0c8ee01281d7b31a8165e",
-     "url": "https://raw.githubusercontent.com/FIRSTdotorg/cvss-v4-calculator/c5b0d409ae9f57c44264c6ce5f27d89298e1d32a/cvss_lookup.js"
-    },
-    {
-     "sha256": "be707cc82c17993a04a84e47b1a8aaa1d0d212b56852254659ce77fd7d959f63",
-     "url": "https://raw.githubusercontent.com/FIRSTdotorg/cvss-v4-calculator/c5b0d409ae9f57c44264c6ce5f27d89298e1d32a/max_composed.js"
-    },
-    {
-     "sha256": "f838ecb41bfd5114456e7fa7df8a8449ca2735c176867886fa34bd011dee0b24",
-     "url": "https://raw.githubusercontent.com/FIRSTdotorg/cvss-v4-calculator/c5b0d409ae9f57c44264c6ce5f27d89298e1d32a/max_severity.js"
-    },
-    {
-     "sha256": "99ee2643587071bf744cd090c4bb2db58d523ed0276efd809871b00a12985a4c",
-     "url": "https://raw.githubusercontent.com/FIRSTdotorg/cvss-v4-calculator/c5b0d409ae9f57c44264c6ce5f27d89298e1d32a/metrics.js"
-    },
-    {
-     "sha256": "453ce6767b5c3939b51d1f21315f2649e47b5abeca674be287e94b524472a1bc",
-     "url": "https://raw.githubusercontent.com/FIRSTdotorg/cvss-v4-calculator/c5b0d409ae9f57c44264c6ce5f27d89298e1d32a/cvss_score.js"
-    }
-   ],
-   "version": ""
-  },
-  "cvss-v4.0.json": {
-   "sha256": "faaa3b58b0f8d6a882b29df963287b0dcb67c4d3c1b273e60ec5006450b03393",
-   "upstream": [
-    {
-     "sha256": "d533fe625d95e15b7b488a4bf93dab5f7df16b7e38b0c8ee01281d7b31a8165e",
-     "url": "https://raw.githubusercontent.com/FIRSTdotorg/cvss-v4-calculator/c5b0d409ae9f57c44264c6ce5f27d89298e1d32a/cvss_lookup.js"
-    },
-    {
-     "sha256": "be707cc82c17993a04a84e47b1a8aaa1d0d212b56852254659ce77fd7d959f63",
-     "url": "https://raw.githubusercontent.com/FIRSTdotorg/cvss-v4-calculator/c5b0d409ae9f57c44264c6ce5f27d89298e1d32a/max_composed.js"
-    },
-    {
-     "sha256": "f838ecb41bfd5114456e7fa7df8a8449ca2735c176867886fa34bd011dee0b24",
-     "url": "https://raw.githubusercontent.com/FIRSTdotorg/cvss-v4-calculator/c5b0d409ae9f57c44264c6ce5f27d89298e1d32a/max_severity.js"
-    },
-    {
-     "sha256": "99ee2643587071bf744cd090c4bb2db58d523ed0276efd809871b00a12985a4c",
-     "url": "https://raw.githubusercontent.com/FIRSTdotorg/cvss-v4-calculator/c5b0d409ae9f57c44264c6ce5f27d89298e1d32a/metrics.js"
-    },
-    {
-     "sha256": "453ce6767b5c3939b51d1f21315f2649e47b5abeca674be287e94b524472a1bc",
-     "url": "https://raw.githubusercontent.com/FIRSTdotorg/cvss-v4-calculator/c5b0d409ae9f57c44264c6ce5f27d89298e1d32a/cvss_score.js"
-    }
-   ],
-   "version": "4.0"
-  },
-  "cwe.json": {
-   "sha256": "dfbf07a3fd7d3b825a3d44b9638ce58afd770cefb5b31b2298c9bd5fd33e062b",
-   "upstream": [
-    {
-     "sha256": "3976f599e5e5200219a3108bb896d06e2a88fbb293369e1883cb423a5e9d7d50",
-     "url": "https://cwe.mitre.org/data/xml/cwec_latest.xml.zip"
-    }
-   ],
-   "version": "4.20"
-  },
-  "d3fend.json": {
-   "sha256": "c7cb81f1a7854c09474ee4a0e803de0e6dd6b6bbfbb239d10d6b5b5352dd1e46",
-   "upstream": [
-    {
-     "sha256": "e1546d432c6aa64d45b62dd9e9484b0774ae84de7ff3605ff9dd4e20278957bf",
-     "url": "https://d3fend.mitre.org/ontologies/d3fend.json"
-    }
-   ],
-   "version": "1.6.0"
-  },
-  "nist-sp800-61r3.json": {
-   "curated": "quoted from the pinned PDF; reviewed by hand",
-   "sha256": "23ed736c8a47789bf0ba61a388f4e607cbca53b5600558cc9651ca3593cc5aef",
-   "upstream": [
-    {
-     "sha256": "e5593d6bb85daecec7e8d9549400c7b3473bcc3f06e469c82218073afa7fba2d",
-     "url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-61r3.pdf"
-    }
-   ],
-   "version": "Rev. 3 (CSF 2.0)"
-  },
-  "owasp-llm-coverage.json": {
-   "curated": "platform self-assessment matrix",
-   "sha256": "ab1183d28250d7ca30747661d054dcb15e2fb7661a9c7ba959ada418303513d3",
-   "version": "1"
-  },
-  "owasp-llm.json": {
-   "sha256": "965f3d19a2692a1265d97a11e0a3b7bf3c193c37f20718bbc90916727fcf91e6",
-   "upstream": [
-    {
-     "sha256": "0b6c84e994ed7e2813ae4d758259adcd6344c20f48b14a65fb1c59e61871a1b9",
-     "url": "https://raw.githubusercontent.com/OWASP/www-project-top-10-for-large-language-model-applications/99f4395589bdbd120ae961f9cd179e79d7f9b27f/2_0_vulns/LLM01_PromptInjection.md"
-    },
-    {
-     "sha256": "bdfa1bcba7575ff7c1804c141cc7944c580cff5cae2e8d9a1bff2b39c40a60f6",
-     "url": "https://raw.githubusercontent.com/OWASP/www-project-top-10-for-large-language-model-applications/99f4395589bdbd120ae961f9cd179e79d7f9b27f/2_0_vulns/LLM02_SensitiveInformationDisclosure.md"
-    },
-    {
-     "sha256": "c6290f02114ad9bbf8bd9651840c91fcb06cfaa6be1b5dfc3b14b9e13e76e697",
-     "url": "https://raw.githubusercontent.com/OWASP/www-project-top-10-for-large-language-model-applications/99f4395589bdbd120ae961f9cd179e79d7f9b27f/2_0_vulns/LLM03_SupplyChain.md"
-    },
-    {
-     "sha256": "3ac96988fe816e866172d4d09d7c6ec34c46e983a5d06e8813979788551c502e",
-     "url": "https://raw.githubusercontent.com/OWASP/www-project-top-10-for-large-language-model-applications/99f4395589bdbd120ae961f9cd179e79d7f9b27f/2_0_vulns/LLM04_DataModelPoisoning.md"
-    },
-    {
-     "sha256": "fd0c4c63ede6584813884baaa571b3e22ea4111a7612e0507505ea7b43b2c519",
-     "url": "https://raw.githubusercontent.com/OWASP/www-project-top-10-for-large-language-model-applications/99f4395589bdbd120ae961f9cd179e79d7f9b27f/2_0_vulns/LLM05_ImproperOutputHandling.md"
-    },
-    {
-     "sha256": "e96b52b5f47b4d3443f0226498f6764d8701be9ed9984625bf63b6c43b7b96a5",
-     "url": "https://raw.githubusercontent.com/OWASP/www-project-top-10-for-large-language-model-applications/99f4395589bdbd120ae961f9cd179e79d7f9b27f/2_0_vulns/LLM06_ExcessiveAgency.md"
-    },
-    {
-     "sha256": "ea4005836b04fa40b3bb552a789a7afe35a155375f819a5796d9cce8b78ceeb7",
-     "url": "https://raw.githubusercontent.com/OWASP/www-project-top-10-for-large-language-model-applications/99f4395589bdbd120ae961f9cd179e79d7f9b27f/2_0_vulns/LLM07_SystemPromptLeakage.md"
-    },
-    {
-     "sha256": "be1bf57ee64f56e731e6ec2ca37c8cd21978da1f22378992712bf9e9f847e016",
-     "url": "https://raw.githubusercontent.com/OWASP/www-project-top-10-for-large-language-model-applications/99f4395589bdbd120ae961f9cd179e79d7f9b27f/2_0_vulns/LLM08_VectorAndEmbeddingWeaknesses.md"
-    },
-    {
-     "sha256": "546fdec266aa18ed9d269af4a059ebf32408b9500a98f1cc1b072b2805339a87",
-     "url": "https://raw.githubusercontent.com/OWASP/www-project-top-10-for-large-language-model-applications/99f4395589bdbd120ae961f9cd179e79d7f9b27f/2_0_vulns/LLM09_Misinformation.md"
-    },
-    {
-     "sha256": "25f5e3b9c5308c57294c7a1dbea0167065845b32487a811eb87012422a103361",
-     "url": "https://raw.githubusercontent.com/OWASP/www-project-top-10-for-large-language-model-applications/99f4395589bdbd120ae961f9cd179e79d7f9b27f/2_0_vulns/LLM10_UnboundedConsumption.md"
-    }
-   ],
-   "version": "2025"
-  },
-  "rules/check_attack.json": {
-   "curated": "reviewed rule table",
-   "sha256": "20a3357641df3275c2bb81da20802fcbe770ed505f2aadb4bb870cc54f65c2fd",
-   "version": "1"
-  },
-  "rules/cvss_derivation.json": {
-   "curated": "reviewed rule table",
-   "sha256": "4d107a016796bdc12db8f9ac57a88fbe59e5aa4ef6f93530e458319c7643d9d4",
-   "version": "1"
-  },
-  "rules/fortify_d3fend.json": {
-   "curated": "reviewed rule table",
-   "sha256": "00032f1aaf23363b902afd732a07d56a464a13f9aac44577a6d2078ba6f60acd",
-   "version": "1"
-  },
-  "rules/rl_d3fend.json": {
-   "curated": "reviewed rule table",
-   "sha256": "7aaa52aa5edd5a20f434dc0c6b53973756761975c7c8ced2bb4ca47ca80e5a6a",
-   "version": "1"
   }
- }
 }
