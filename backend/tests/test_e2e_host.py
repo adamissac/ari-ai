@@ -72,6 +72,12 @@ def test_full_loop_with_approval_gate(client_factory, reference) -> None:
     assert diff.headers["X-Artifact-SHA256"] == patches[0]["patch"]["diff_sha256"]
     report = alice.get(f"/api/v1/assessments/{asm_id}/report").json()
     assert report["source"] == "persisted records" and len(report["agent_runs"]) == 8
+    # 0.8.0 DTOs: the wire bodies are exactly the shared models (Vihaan's M6 ask c).
+    from shared.api import AssessmentReport, FindingDetail
+
+    assert AssessmentReport.model_validate(report).findings
+    detail = FindingDetail.model_validate(alice.get(f"/api/v1/findings/{fid}").json())
+    assert detail.finding.id == fid
 
     # SSE: full replay from the durable log, closes after the terminal event.
     with alice.stream("GET", f"/api/v1/assessments/{asm_id}/events") as resp:
