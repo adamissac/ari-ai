@@ -55,6 +55,40 @@ test('simulated incident: triage, owner, two-person containment approval', async
   await evidenceShot(bob, 'incident');
 });
 
+test('incident closure: link verified finding, criteria with evidence, communication', async ({ browser }) => {
+  // Runs after journey.spec (workers: 1, file order), which leaves a finding with an accepted Verify.
+  const alice = await newUser(browser, 'e2e-alice');
+  const title = `closure-${Date.now()}`;
+  await alice.goto(`/projects/${project()}/incidents`);
+  await alice.getByLabel('Title').fill(title);
+  await alice.getByRole('button', { name: 'Open incident' }).click();
+  const closure = alice.locator('#closure');
+  await expect(closure.getByText('Before closure')).toBeVisible();
+
+  const finding = closure.getByLabel('Finding to link');
+  await finding.selectOption({ index: 1 });
+  await closure.getByRole('button', { name: 'Link finding' }).click();
+  await expect(alice.getByText(/1 findings · 0 events · 0 verifications/)).toBeVisible();
+  await closure.getByRole('button', { name: 'Link verification' }).click();
+  await expect(alice.getByText(/1 findings · 0 events · 1 verifications/)).toBeVisible();
+
+  await closure.getByLabel('Criterion key').fill('patch-verified');
+  await closure.getByLabel('Criterion description').fill('Independent Verify accepted the patch');
+  await closure.getByRole('button', { name: 'Add criterion' }).click();
+  const criterion = closure.getByTestId('criterion-patch-verified');
+  await expect(criterion.getByText('Open', { exact: true })).toBeVisible();
+  await criterion.getByRole('button', { name: 'Mark satisfied' }).click();
+  await expect(criterion.getByText('Satisfied', { exact: true })).toBeVisible();
+
+  await closure.getByLabel('Channel').fill('#sec-incidents');
+  await closure.getByLabel('Summary').fill('Engineering notified of containment plan');
+  await closure.getByRole('button', { name: 'Record communication' }).click();
+  await expect(closure.getByText('Engineering notified of containment plan')).toBeVisible();
+  await expect(closure.getByText(/No Fortify regression-test artifact/)).toBeVisible();
+  await expect(closure.getByRole('list').filter({ hasText: 'Satisfy with evidence' })).toHaveCount(0);
+  await evidenceShot(alice, 'incident-closure');
+});
+
 test('expectations page shows the version-pinned snapshot view', async ({ browser }) => {
   const page = await newUser(browser, 'e2e-alice');
   await page.goto(`/projects/${project()}/expectations`);
