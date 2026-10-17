@@ -1,7 +1,8 @@
 # frontend/
 
-> **What exists: nothing yet (Phase 0).** This README defines future
-> responsibilities. Spec: [docs/14](../docs/14_FRONTEND_UX_DESIGN.md).
+> **What exists:** a standalone, validated REST/SSE transport package in
+> [`transport/`](transport/README.md). The Next.js page scaffold and rendered UI
+> are still pending with Vihaan. Spec: [docs/14](../docs/14_FRONTEND_UX_DESIGN.md).
 
 ## Purpose
 The web dashboard: connect repos, register and approve scopes, watch
@@ -45,5 +46,13 @@ frontend/
 UI-001 (scaffold), then UI-002…UI-007 ([HACKATL_TASKS](../docs/planning/HACKATL_TASKS.md)).
 
 ## Commands
-None yet. Add install/dev/lint/test/build commands here and in
-[CLAUDE.md](../CLAUDE.md) when UI-001 lands.
+
+Transport commands are implemented; app dev/browser commands follow with the scaffold.
+
+```sh
+npm ci --prefix frontend/transport
+npm test --prefix frontend/transport
+npm run test:integration --prefix frontend/transport
+```
+
+See [transport integration notes](transport/README.md) for Python/PostgreSQL setup.
