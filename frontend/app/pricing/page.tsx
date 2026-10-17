@@ -79,7 +79,7 @@ export default function PricingPage() {
     <div className="pricing">
       <header className="hero-ink bleed-hero -mt-6 px-6 pb-20 pt-16 md:px-12 md:pb-28 md:pt-24" aria-labelledby="pricing-title">
         <div className="mx-auto max-w-7xl">
-          <p className="pricing-pill label-mono"><span aria-hidden="true" className="hero-ping" />Pricing</p>
+          <p className="pricing-pill label-mono">Pricing</p>
           <h1 id="pricing-title" className="display mt-5 text-5xl font-semibold md:text-7xl">{BRAND_NAME} pricing</h1>
           <p className="mt-4 max-w-xl text-sm text-white/70 md:text-base">Know what every change does, prove every fix, and keep checking as your code moves.</p>
           <p className="mt-3 text-xs text-white/60" data-testid="pricing-proposal">Hackathon preview: plans are proposals, nothing can be purchased.</p>
@@ -122,7 +122,7 @@ export default function PricingPage() {
 
       <section aria-labelledby="faq-title" className="bleed bleed-paper mt-24 grid gap-6 py-16 md:grid-cols-12 md:py-24">
         <div className="md:col-span-3">
-          <h2 id="faq-title" className="faq-pill label-mono"><span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-brand" />FAQ</h2>
+          <h2 id="faq-title" className="faq-pill label-mono">FAQ</h2>
         </div>
         <div className="md:col-span-9"><Faq items={FAQ} /></div>
       </section>

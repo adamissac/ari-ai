@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { NodeGraph, StateBadge } from '@/components/node-graph';
 import { Mono } from '@/components/ui';
 import { num } from '@/lib/format';
-import { cumulativeReturn, episodeLabel, episodeStory, rewardTotals, stepObservation } from '@/lib/lab';
+import { cumulativeReturn, rewardTotals, stepObservation } from '@/lib/lab';
 import { episodeOutcome, rewardWord, SCENARIO_WORDS, STAGE_WORDS } from '@/lib/lab-plain';
 import {
   ACTION_SHORT, actionMeaning, isDisruptive, keyMoments, latestAction, nodeStatusLine, nodeViews, overallStatus, parseAction,
@@ -112,7 +112,7 @@ export function ReplayStage({ episode, scenario }: { episode: LabEpisode; scenar
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-base font-semibold" data-testid="lab-episode-outcome">{episodeOutcome(episode)}</p>
-          <p className="mt-0.5 max-w-3xl text-xs text-muted" data-testid="lab-episode-story">{SCENARIO_WORDS[episode.scenario]?.note ?? ''} {episodeStory(episode)} {episodeLabel(episode)}.</p>
+          <p className="mt-0.5 max-w-3xl text-sm text-muted" data-testid="lab-episode-story">{SCENARIO_WORDS[episode.scenario]?.note ?? ''}</p>
         </div>
         <span className={`lab-outcome ${episode.compromised ? 'lab-outcome-bad' : 'lab-outcome-ok'}`}>{episode.compromised ? 'Attacker won' : 'Attack contained'}</span>
       </div>
