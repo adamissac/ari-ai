@@ -4,6 +4,7 @@
     review_full(host, ReviewRequest) -> ReviewOutcome                 (+ test sources, handoffs)
     generate_tests(host, ReviewRequest, statements) -> list[GeneratedTest]
     propose_repair(host, finding_id, approval_id) -> RepairOutcome    (approval-gated)
+    review_assessment(host) -> ReviewOutcome                          (FUNCTIONAL_REVIEW entry)
 
 Repositories are registered explicitly by the operator (never cloned from model input):
 ``CODE_REVIEW_REPOSITORIES="rep_<id>=/abs/path/to/repo#optional/subdir;..."``.
@@ -25,10 +26,18 @@ from code_review.agent import BUNDLE_KIND, ReviewerAgentRunner, ReviewError
 from code_review.models import GeneratedTestSource, RepairOutcome, ReviewOutcome
 from code_review.ports import IntelligencePort, RepoSource, ReviewHost, SandboxPort
 from code_review.tools import ReviewBudget
+from shared.assessment import AssessmentTrigger
 from shared.errors import ErrorCode
 from shared.evidence import EvidenceKind
 from shared.findings import Finding
-from shared.review import GeneratedTest, ReviewRequest, ReviewResult
+from shared.intelligence import SnapshotRef
+from shared.review import (
+    ChangeIntent,
+    ChangeIntentSource,
+    GeneratedTest,
+    ReviewRequest,
+    ReviewResult,
+)
 
 
 def _bindings_file_entries() -> list[dict[str, Any]]:
@@ -226,3 +235,68 @@ def propose_repair(
         budget=budget,
     )
     return runner.repair(finding, approval, load_test_sources(host, finding), attempt=attempt)
+
+
+def _snapshot_for(repo_id: str, commit_sha: str, snapshot_id: str | None) -> tuple[str, str]:
+    """(snapshot_id, index_version) of the backend snapshot row for this exact commit."""
+    import sqlalchemy as sa
+
+    from backend.db import snapshots, transaction
+
+    q = sa.select(snapshots.c.id, snapshots.c.index_version, snapshots.c.status).where(
+        snapshots.c.repo_id == repo_id, snapshots.c.commit_sha == commit_sha
+    )
+    if snapshot_id:
+        q = q.where(snapshots.c.id == snapshot_id)
+    with transaction() as conn:
+        rows = conn.execute(q.order_by(snapshots.c.created_at.desc())).mappings().all()
+    ready = [r for r in rows if r["status"] == "ready"] or rows
+    if not ready:
+        raise ReviewError(
+            ErrorCode.SNAPSHOT_NOT_READY, f"no snapshot recorded for {repo_id}@{commit_sha[:12]}"
+        )
+    return ready[0]["id"], ready[0]["index_version"]
+
+
+def review_assessment(
+    host: ReviewHost,
+    *,
+    change_intent: ChangeIntent | None = None,
+    focus_paths: list[str] | None = None,
+    **kw: Any,
+) -> ReviewOutcome:
+    """One-call entry for the orchestrator's FUNCTIONAL_REVIEW step.
+
+    Builds the ``ReviewRequest`` from the assessment (exact commit, its recorded snapshot,
+    budget). Without an explicit ``change_intent`` (e.g. a manual assessment) it is a
+    full-snapshot review of ``assessment.commit_sha``; monitoring callers should pass the
+    push/PR intent (title, body, base_sha) so the diff is reviewed against its intent.
+    """
+    a = host.assessment  # type: ignore[attr-defined]
+    repo_id: str = host.repo_id  # type: ignore[attr-defined]
+    snapshot_id, index_version = _snapshot_for(repo_id, a.commit_sha, a.snapshot_id)
+    intent = change_intent or ChangeIntent(
+        source=ChangeIntentSource.push
+        if a.trigger is AssessmentTrigger.monitoring
+        else ChangeIntentSource.manual,
+        title=f"{a.trigger.value} assessment of {a.commit_sha[:12]}",
+        head_sha=a.commit_sha,
+    )
+    if intent.head_sha != a.commit_sha:
+        raise ReviewError(
+            ErrorCode.VALIDATION_FAILED, "change intent head_sha != assessment commit"
+        )
+    request = ReviewRequest(
+        assessment_id=a.id,
+        snapshot_ref=SnapshotRef(
+            project_id=a.project_id,
+            repo_id=repo_id,
+            commit_sha=a.commit_sha,
+            snapshot_id=snapshot_id,
+            index_version=index_version,
+        ),
+        change_intent=intent,
+        focus_paths=focus_paths or [],
+        budget=a.budget,
+    )
+    return review_full(host, request, **kw)

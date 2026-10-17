@@ -10,6 +10,7 @@ LLM provider: scripted FakeTransport via backend.llm.TRANSPORT_OVERRIDE (not liv
 
 from __future__ import annotations
 
+import json
 import os
 import tempfile
 import uuid
@@ -309,3 +310,48 @@ def test_reviewer_through_real_assessment_host(tmp_path: Path, clients) -> None:
     host.record_patch(bad)
     assert _verify_double(host, source, bad, finding).verdict is VerificationVerdict.rejected
     assert tree_digest(source) == before
+
+
+def test_review_assessment_entry_uses_recorded_snapshot(tmp_path: Path, clients) -> None:
+    from backend.db import snapshots
+    from shared.intelligence import Snapshot, SnapshotStatus
+
+    alice, bob = clients
+    sc = payments_lite(tmp_path)
+    source = RepoSource(sc.repo, subdir="target")
+    ids = _assessment(alice, bob, sc.head_sha)
+    host = AssessmentHost(ids["assessment"])
+    for state in (S.SCOPE_CHECK, S.INDEXING, S.FUNCTIONAL_REVIEW):
+        host.transition(state)
+    with pytest.raises(api.ReviewError) as e:  # nothing indexed yet: refuse, don't invent a ref
+        api.review_assessment(host, source=source, intelligence=False)
+    assert e.value.code.value == "SNAPSHOT_NOT_READY"
+
+    snap = Snapshot(
+        id=new_id(IdPrefix.snp),
+        repo_id=host.repo_id,
+        commit_sha=sc.head_sha,
+        status=SnapshotStatus.ready,
+        index_version="intel-test",
+        created_at=utcnow(),
+    )
+    with transaction() as conn:
+        conn.execute(
+            sa.insert(snapshots).values(
+                id=snap.id,
+                repo_id=snap.repo_id,
+                commit_sha=snap.commit_sha,
+                index_version=snap.index_version,
+                status=snap.status.value,
+                doc=snap.model_dump(mode="json"),
+            )
+        )
+    transport = fake(pl_review_script(sc))
+    llm.TRANSPORT_OVERRIDE = lambda: transport
+    outcome = api.review_assessment(host, source=source, intelligence=False)
+    assert outcome.result.findings[0].status is FindingStatus.validated
+    inp = host.agent_run(outcome.result.agent_run_id).input_artifact_id
+    payload = json.loads(api.read_artifact(host, inp))
+    ref = payload["request"]["snapshot_ref"]
+    assert ref["snapshot_id"] == snap.id and ref["index_version"] == "intel-test"
+    assert payload["request"]["change_intent"]["source"] == "manual"
