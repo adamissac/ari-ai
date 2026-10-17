@@ -29,6 +29,17 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-17 — Adam — finding list groups
+- Did: The findings list open tab is no longer labelled "Validated and beyond." Open means not a hypothesis and not refuted, accepted, or closed.
+- State of the code: branch `feat/adam/finding-groups`.
+- Commands run and results: `npm test -- --run tests/unit/findings.test.ts` 1 passed; `npm run typecheck` clean; `npm run lint` clean. Browser was not run.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): verified and hardened stay on the open tab so a finished fix remains visible.
+- Next steps: open the PR.
+- Warnings for the next session: do not describe the open tab as confirmed exploits.
+
+---
+
 ### 2026-10-17 — Adam — assessment phase sentence
 - Did: The assessment page states its recorded state in one sentence. Completed does not mean the application is secure. Approval does not mean a merge.
 - State of the code: branch `feat/adam/assessment-phase`.

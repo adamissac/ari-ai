@@ -7,6 +7,7 @@ All notable changes are documented here. Format follows
 ## [Unreleased]
 
 - An assessment page lists Understand, Review, Security test, Repair, and Verify from that check's event log. Monitoring stays on the project page.
+- The findings list no longer calls its open tab "Validated and beyond." Open includes inconclusive results and rejected fixes.
 - An assessment page leads with one sentence for its recorded state. A finished check is not described as a secure application.
 - Defense Lab replay names the highest recorded alert rate at the current step and the recorded action. It does not show the hidden attacker stage.
 - A project page shows six phases of the latest check. A phase is completed only when that check's event log shows it was entered, and a verification verdict comes from the finding list.
