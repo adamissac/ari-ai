@@ -6,6 +6,13 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Frontend fonts are bundled locally with their licenses, removing Google Fonts downloads from production builds and preserving the existing typography.
+
+- Assessment job IDs returned by the API now resolve through their persisted assessment, allowing authorized status reads while preserving tenant denial.
+
+- Fix the development-login HTML pattern for current browser Unicode regex rules.
+
+- Use the supplied Ari ant logo in the header, sign-in, intro and browser icon; preserve the original asset and reduced-motion behavior.
 - Concurrent retries of an assessment start now return the same assessment/job instead of launching duplicate work. Retry keys cannot replay results from a different project URL.
 
 - Indexing a commit says it records symbols, calls, entry points, and expectations. It does not run a security check or change the repository.
@@ -95,4 +102,3 @@ All notable changes are documented here. Format follows
 ### Not yet implemented
 - Full cross-pillar runtime completion and production operation are not established here.
 
-- Frontend fonts are bundled locally with their licenses, removing Google Fonts downloads from production builds and preserving the existing typography.
