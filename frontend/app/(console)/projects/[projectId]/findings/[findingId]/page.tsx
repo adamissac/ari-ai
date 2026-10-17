@@ -3,6 +3,7 @@
 import { findingStandards, type FindingDetail, type FindingRecord, type PatchView } from '@hackatl/frontend-transport';
 import Link from 'next/link';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { BeforeAfter } from '@/components/before-after';
 import { ExpectationLinks } from '@/components/expectation-links';
 import { ArtifactPeek, EvidenceList } from '@/components/evidence';
 import { useParam, useProject } from '@/components/project';
@@ -66,6 +67,9 @@ export default function FindingPage() {
               ))}
             </dl>
           </Panel>
+          <div className="mt-4">
+            <BeforeAfter kind={d.finding.kind} status={d.finding.status} validation={validation} patches={patches.status === 'ready' ? patches.data.items : patches.status === 'error' ? [] : null} />
+          </div>
           <RepoScope assessmentId={d.finding.assessment_id} projectId={project.id} repos={repos}>
           {(repo, note) => (
           <div className="mt-4 grid gap-4 xl:grid-cols-[3fr_2fr]">

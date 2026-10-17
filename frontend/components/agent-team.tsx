@@ -7,9 +7,11 @@ import { duration, usd } from '@/lib/format';
 import { AGENTS, AGENT_RUN_STATUS, agentRole, agentRunSummary, handoffNote, providerLabel } from '@/lib/status';
 
 /** Selectable team view. Every row, outcome, and tool line comes from persisted runs. */
-export function AgentTeam({ runs }: { runs: AgentRun[] }) {
+export function AgentTeam({ runs, selected: controlled, onSelect }: { runs: AgentRun[]; selected?: AgentName; onSelect?: (agent: AgentName) => void }) {
   const withRuns = AGENTS.filter(role => runs.some(run => run.agent === role.name));
-  const [selected, setSelected] = useState<AgentName>(withRuns[0]?.name ?? 'scout');
+  const [own, setOwn] = useState<AgentName>(withRuns[0]?.name ?? 'scout');
+  const selected = controlled ?? own;
+  const setSelected = onSelect ?? setOwn;
   const role = agentRole(selected);
   const index = AGENTS.findIndex(item => item.name === selected);
   const next = index >= 0 && index < AGENTS.length - 1 ? AGENTS[index + 1] : null;

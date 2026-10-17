@@ -1,8 +1,9 @@
 'use client';
 
-import { watchAssessment, type AgentRun, type Approval, type AssessmentDetail, type AssessmentState, type ConnectionState, type StreamEvent } from '@hackatl/frontend-transport';
+import { watchAssessment, type AgentName, type AgentRun, type Approval, type AssessmentDetail, type AssessmentState, type ConnectionState, type StreamEvent } from '@hackatl/frontend-transport';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AgentRelay } from '@/components/agent-relay';
 import { AgentTeam } from '@/components/agent-team';
 import { useParam, useProject } from '@/components/project';
 import { useSession } from '@/components/session';
@@ -11,6 +12,7 @@ import { api } from '@/lib/api';
 import { shortSha, usd } from '@/lib/format';
 import { assessmentPhases, JOURNEY_STATUS } from '@/lib/journey';
 import { currentPhaseSentence } from '@/lib/phase';
+import { agentRelay } from '@/lib/relay';
 import { useResource } from '@/lib/use-resource';
 import {
   agentRole, APPROVAL_STATUS, ASSESSMENT_STATE, FINDING_STATUS, providerLabel,
@@ -35,6 +37,8 @@ export default function AssessmentPage() {
   const [connection, setConnection] = useState<ConnectionState>('connecting');
   const [streamError, setStreamError] = useState<unknown>(null);
   const [streamNonce, setStreamNonce] = useState(0);
+  const [selectedAgent, setSelectedAgent] = useState<AgentName | null>(null);
+  const [technicalOpen, setTechnicalOpen] = useState(false);
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const loadDetail = useCallback((signal?: AbortSignal) => {
@@ -95,13 +99,7 @@ export default function AssessmentPage() {
         subtitle={<>Commit <Mono>{shortSha(a.commit_sha)}</Mono> · {a.trigger} trigger · scope <Mono>{a.scope_id}</Mono> · started <Time iso={a.created_at} />{a.completed_at && <> · ended <Time iso={a.completed_at} /></>}</>}
         actions={!terminal && <CancelButton id={a.id} onDone={() => loadDetail()} />}
       />
-      <p className="mb-4 text-sm text-ink" data-testid="assessment-phase">{currentPhaseSentence(a.state)}</p>
-      <AssessmentPhases
-        state={a.state}
-        findingStatuses={detail.findings.map(finding => finding.status)}
-        log={phaseLog}
-      />
-      <ConnectionBar state={connection} error={streamError} onReconnect={() => { setStreamError(null); setStreamNonce(n => n + 1); }} />
+      <p className="mb-4 text-base text-ink" data-testid="assessment-phase">{currentPhaseSentence(a.state)}</p>
       {a.error && (
         <div role="alert" className="mb-4 rounded-md border border-bad/40 bg-bad/5 p-3 text-sm">
           <p className="font-semibold text-bad">Assessment error · {a.error.code}</p>
@@ -109,45 +107,69 @@ export default function AssessmentPage() {
         </div>
       )}
       <ProviderSummary runs={detail.agent_runs} />
-      <StateRail state={a.state} events={events} />
-      <div className="mt-4 grid gap-3 sm:grid-cols-4">
-        <Stat label="Tokens" value={`${(a.usage.input_tokens + a.usage.output_tokens).toLocaleString()}`} hint={`cap ${a.budget.max_tokens.toLocaleString()}`} />
-        <Stat label="Model cost" value={usd(a.usage.usd)} hint={`cap ${usd(a.budget.max_usd)}`} />
-        <Stat label="Model / tool calls" value={`${a.usage.llm_calls} / ${a.usage.tool_calls}`} />
-        <Stat label="Sandbox time" value={`${a.usage.sandbox_seconds.toFixed(1)} s`} hint={`wall cap ${a.budget.max_wall_clock_s}s`} />
-      </div>
-      <BudgetMeter used={a.usage.usd} cap={a.budget.max_usd} />
       {a.state === 'AWAITING_APPROVAL' && <ApprovalGate projectId={project.id} events={events} onDecided={() => loadDetail()} />}
+      <div className="mt-4 rounded-xl border border-line bg-panel p-5">
+        <AgentRelay
+          items={agentRelay({ runs: detail.agent_runs, findings: detail.findings, state: a.state })}
+          selected={selectedAgent ?? detail.agent_runs[0]?.agent ?? 'reviewer'}
+          onSelect={setSelectedAgent}
+        />
+      </div>
+      <div className="mt-4 grid gap-4 xl:grid-cols-[2fr_3fr]">
+        <Panel title={`What this check found (${detail.findings.length})`}>
+          {detail.findings.length === 0 ? <Empty>{terminal ? 'No findings were recorded by this run.' : 'No findings recorded yet.'}</Empty> : (
+            <ul className="divide-y divide-line">
+              {detail.findings.map(f => (
+                <li key={f.id} className="py-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Link href={`/projects/${project.id}/findings/${f.id}`} className="text-sm font-medium hover:text-accent">{f.title}</Link>
+                    <Badge view={FINDING_STATUS[f.status]} />
+                  </div>
+                  <p className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted">
+                    <Tag tone={f.kind === 'security' ? 'bad' : 'info'}>{f.kind === 'security' ? 'security' : 'behaviour'}</Tag>
+                    {f.severity && <Badge view={SEVERITY[f.severity.level]} />}
+                    confidence {(f.confidence * 100).toFixed(0)}% · {f.evidence.length} evidence refs
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+        <section aria-label="Phases of this check">
+          <h2 className="mb-2 text-sm font-semibold">Progress through the six phases</h2>
+          <AssessmentPhases
+            state={a.state}
+            findingStatuses={detail.findings.map(finding => finding.status)}
+            log={phaseLog}
+          />
+        </section>
+      </div>
       <div className="mt-4">
-        <h2 className="mb-2 text-sm font-semibold">What each agent did</h2>
-        <AgentTeam runs={detail.agent_runs} />
+        <h2 className="mb-2 text-sm font-semibold">What the selected agent did, step by step</h2>
+        <AgentTeam runs={detail.agent_runs} selected={selectedAgent ?? detail.agent_runs[0]?.agent ?? 'reviewer'} onSelect={setSelectedAgent} />
       </div>
-      <div className="mt-4 grid gap-4 xl:grid-cols-2">
-        <div className="flex flex-col gap-4">
-          <Panel title={`Findings (${detail.findings.length})`}>
-            {detail.findings.length === 0 ? <Empty>{terminal ? 'No findings were recorded by this run.' : 'No findings recorded yet.'}</Empty> : (
-              <ul className="divide-y divide-line">
-                {detail.findings.map(f => (
-                  <li key={f.id} className="py-2">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <Link href={`/projects/${project.id}/findings/${f.id}`} className="text-sm font-medium hover:text-accent">{f.title}</Link>
-                      <Badge view={FINDING_STATUS[f.status]} />
-                    </div>
-                    <p className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted">
-                      <Tag tone={f.kind === 'security' ? 'bad' : 'info'}>{f.kind}</Tag>
-                      {f.severity && <Badge view={SEVERITY[f.severity.level]} />}
-                      confidence {(f.confidence * 100).toFixed(0)}% · {f.evidence.length} evidence refs
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Panel>
-          <Panel title={`Event log (${events.length})`} actions={<a className="text-xs text-accent hover:underline" href={`/api/v1/assessments/${a.id}/report`} target="_blank" rel="noreferrer">JSON report</a>}>
-            <EventLog events={events} />
-          </Panel>
+      <details className="group mt-4 rounded-xl border border-line bg-panel" data-testid="technical-details" open={technicalOpen} onToggle={e => setTechnicalOpen((e.currentTarget as HTMLDetailsElement).open)}>
+        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold marker:hidden">
+          <span aria-hidden="true" className="mr-1 inline-block transition-transform group-open:rotate-90">▸</span>
+          Technical details: live connection, orchestrator states, usage and the full event log
+        </summary>
+        <div className="border-t border-line p-4">
+          <ConnectionBar state={connection} error={streamError} onReconnect={() => { setStreamError(null); setStreamNonce(n => n + 1); }} />
+          <StateRail state={a.state} events={events} />
+          <div className="mt-4 grid gap-3 sm:grid-cols-4">
+            <Stat label="Tokens" value={`${(a.usage.input_tokens + a.usage.output_tokens).toLocaleString()}`} hint={`cap ${a.budget.max_tokens.toLocaleString()}`} />
+            <Stat label="Model cost" value={usd(a.usage.usd)} hint={`cap ${usd(a.budget.max_usd)}`} />
+            <Stat label="Model / tool calls" value={`${a.usage.llm_calls} / ${a.usage.tool_calls}`} />
+            <Stat label="Sandbox time" value={`${a.usage.sandbox_seconds.toFixed(1)} s`} hint={`wall cap ${a.budget.max_wall_clock_s}s`} />
+          </div>
+          <BudgetMeter used={a.usage.usd} cap={a.budget.max_usd} />
+          <div className="mt-4">
+            <Panel title={`Event log (${events.length})`} actions={<a className="text-xs text-accent hover:underline" href={`/api/v1/assessments/${a.id}/report`} target="_blank" rel="noreferrer">JSON report</a>}>
+              <EventLog events={events} />
+            </Panel>
+          </div>
         </div>
-      </div>
+      </details>
     </>
   );
 }
