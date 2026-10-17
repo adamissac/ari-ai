@@ -18,6 +18,15 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-17 — Adam (cloud session) — simulated demo, Defense Lab command center, events-log cursor
+- Did: (1) `feat/adam/event-log-cursor-follow`: phase views walk `/events/log` through `next_cursor` (cap 20 pages / 10,000 events); the honesty note only shows at the cap (Srihith's ask). (2) `feat/adam/simulated-demo`: new `/demo` route (ADR-0013) with GitHub-style sign-in → org → repo → recent commits → per-commit animated Overview / Code review / Seven agents / Defense Lab; new `components/defense-map.tsx` (docs/14 continuous-defense structure); `/lab` opens with `LabCommandCenter` replaying a recorded DDQN game from the validated bundle with headline scores.
+- State of the code: both branches pushed; neither merged. The demo is hand-written illustrative data in `frontend/lib/demo/` and calls no backend.
+- Commands run and results: frontend `lint`, `typecheck` clean; `npm test` 178 passed; `next build` ok; `tests/e2e/stack.py` 20 passed (Linux, Python 3.12, Chromium headless shell 1194 mapped to the path Playwright 1.64 expects).
+- Decisions made (ADR links): [ADR-0013](../decisions/0013-labelled-simulated-demo.md) (Proposed).
+- Assumptions / open questions: kairo.security could not be fetched from the cloud sandbox (egress denied), so the design follows the existing Ari system and the hero's prior Kairo pattern study. Sai's #214 Lab replay landed on main during this session; the command center sits above it as the overview, so the same recorded game is drawn twice — Sai may want to merge or trim.
+- Next steps: open PRs for both branches; get Vihaan/Sai review of `/demo` and the Lab command center; ratify ADR-0013.
+- Warnings for the next session: if agent roles, contracts or payments-lite change, update `frontend/lib/demo/scenarios.ts` (unit tests in `tests/unit/demo.test.ts` check order and consistency).
+
 ### 2026-10-17 — Adam — create incident note
 - Did: The open-incident form states it records a title and report. It does not contain systems, notify outsiders, or attach findings/events until linked. Default simulated drill stays labelled.
 - State of the code: branch `feat/adam/create-incident-note`.
