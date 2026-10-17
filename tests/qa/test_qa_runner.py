@@ -12,6 +12,7 @@ QA = Path(__file__).resolve().parents[2] / "scripts/devin_qa"
 sys.path.insert(0, str(QA))
 import common  # noqa: E402
 import preflight_check as preflight  # noqa: E402
+import run_all_qa_tests as master  # noqa: E402
 
 
 class RunnerTests(unittest.TestCase):
@@ -21,6 +22,20 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(
             common.exit_code([common.Result("a", "SKIP"), common.Result("b", "FAIL")]), 1
         )
+
+    @patch("run_all_qa_tests.run")
+    def test_master_keeps_incomplete_results_and_selected_interpreter(self, run):
+        run.side_effect = [
+            common.Result("a", "PASS"),
+            common.Result("b", "SKIP"),
+            common.Result("c", "PASS"),
+            common.Result("d", "PASS"),
+        ]
+        self.assertEqual(master.main(["--browser"]), 2)
+        for call in run.call_args_list:
+            self.assertEqual(call.args[1][0], sys.executable)
+            self.assertTrue(call.kwargs["incomplete_exit"])
+        self.assertIn("--browser", run.call_args_list[-1].args[1])
 
     def test_unknown_result_is_rejected(self):
         with self.assertRaises(ValueError):

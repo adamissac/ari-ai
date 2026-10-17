@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- QA scripts execute the existing suites and preserve failed versus incomplete results; preflight no longer declares demo readiness from warnings.
+
 ### Fixed
 - Hosted assessments with a still-pending functional approval now pause at
   `AWAITING_APPROVAL` even when security work ended early or was already
