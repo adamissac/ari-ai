@@ -11,6 +11,7 @@ Blockers: none. Live evidence exists from Srihith's unified run (reviewer: 2 val
 Next action: Verify adjudicating reviewer PatchCandidates (with Alan); pass monitoring ChangeIntent through review_assessment
 
 ## Session entries
+- 2026-10-17: Defense Lab scoreboard redesign (feat/sai/lab-scoreboard-polish).
 
 Add dated factual entries; do not overwrite history. Never claim unexecuted tests passed.
 
