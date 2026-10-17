@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import logging
 import secrets
+from typing import Any
 from urllib.parse import urlencode
 
 import httpx
@@ -19,13 +21,17 @@ from backend.api.deps import (
     require_user,
     session_user,
 )
+from backend.api.github_repos import store_repo_access
 from backend.db import memberships, organizations, sessions, transaction, users
+from backend.github import user_repositories
 from backend.settings import get_settings
 from shared.api import DevLoginRequest, MembershipView, MeResponse
 from shared.audit import ActorType
 from shared.errors import ErrorCode
 from shared.ids import IdPrefix, new_id
 from shared.tenancy import MemberRole, Organization, User
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(tags=["auth"])
 STATE_COOKIE = "hackatl_oauth_state"
@@ -140,8 +146,17 @@ def github_callback(request: Request, code: str = "", state: str = "") -> Respon
     login, gid = gh.get("login"), gh.get("id")
     if not isinstance(login, str):
         raise ApiError(ErrorCode.UNAUTHENTICATED, "GitHub user lookup failed", 401)
+    # Which repositories this user can connect. A GitHub outage here must not block sign-in;
+    # the previous list is kept and the picker says to sign in again.
+    try:
+        repos: list[dict[str, Any]] | None = user_repositories(access, settings=s)
+    except httpx.HTTPError:
+        log.warning("could not list GitHub App repositories for %s", login)
+        repos = None
     with transaction() as conn:
         user_id = upsert_user(conn, login, gh.get("name"), gid if isinstance(gid, int) else None)
+        if repos is not None:
+            store_repo_access(conn, user_id, repos)
         token, _ = create_session(conn, user_id)
     resp = RedirectResponse(s.frontend_origin, status_code=302)
     _set_session_cookie(resp, token)
