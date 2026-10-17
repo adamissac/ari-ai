@@ -154,3 +154,51 @@ def test_missing_checkpoint_is_reported_not_faked(client_factory, settings_overr
         alice.get(f"/api/v1/projects/{ids['project']}/defense-recommendations").json()["items"]
         == []
     )
+
+
+def test_checkpoint_pin_is_verified_before_loading(
+    client_factory, settings_override, checkpoint, tmp_path, monkeypatch
+) -> None:
+    """A checkpoint is a pickle: the operator's pinned SHA-256 is checked before any load,
+    and outside development/test an unpinned checkpoint is refused."""
+    import hashlib
+    import shutil
+
+    import pytest as _pytest
+
+    from backend.pipeline import verify_rl_checkpoint
+    from backend.settings import get_settings
+    from backend.worker import PermanentJobError
+
+    good = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+    settings_override(rl_checkpoint_path=str(checkpoint), rl_checkpoint_sha256=good)
+    data, digest = verify_rl_checkpoint(get_settings())
+    assert digest == good
+    assert hashlib.sha256(data).hexdigest() == digest
+
+    # The verified bytes are what inference loads: swapping the file afterward
+    # cannot bypass the pin.
+    from rl_defense.api import load_policy
+
+    checkpoint.write_bytes(b"replaced")
+    runner = load_policy(checkpoint, blob=data)
+    assert runner.checkpoint_sha256[:12] == good[:12]
+    checkpoint.write_bytes(data)
+
+    swapped = tmp_path / "ddqn_seed0.pt"
+    shutil.copy2(checkpoint, swapped)
+    shutil.copy2(checkpoint.with_suffix(".manifest.json"), swapped.with_suffix(".manifest.json"))
+    swapped.write_bytes(swapped.read_bytes() + b"tampered")  # sidecar manifest can't save it
+    settings_override(rl_checkpoint_path=str(swapped), rl_checkpoint_sha256=good)
+    with _pytest.raises(PermanentJobError, match="hash mismatch"):
+        verify_rl_checkpoint(get_settings())
+
+    # .env.example ships the key empty, and Compose keeps an inline "# comment" as the value.
+    # Both must read as "not pinned", not crash settings.
+    for raw in ("", "                    # pin; required outside dev/test"):
+        settings_override(
+            rl_checkpoint_path=str(checkpoint), rl_checkpoint_sha256=raw, app_env="production"
+        )
+        assert get_settings().rl_checkpoint_sha256 is None
+    with _pytest.raises(PermanentJobError, match="must pin"):
+        verify_rl_checkpoint(get_settings())

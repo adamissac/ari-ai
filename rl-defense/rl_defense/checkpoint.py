@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import subprocess
 from datetime import UTC, datetime
@@ -62,16 +63,23 @@ def save_checkpoint(
     return manifest
 
 
-def load_checkpoint(path: Path, verify: bool = True) -> tuple[DDQNAgent, dict[str, Any]]:
+def load_checkpoint(
+    path: Path, verify: bool = True, *, blob: bytes | None = None
+) -> tuple[DDQNAgent, dict[str, Any]]:
+    """Load a checkpoint. ``blob`` lets the caller hash and load the SAME bytes — passing a
+    re-opened path lets a swapped file bypass the pin."""
     path = Path(path)
     manifest_path = path.with_suffix(".manifest.json")
     if verify and manifest_path.exists():
         expected = json.loads(manifest_path.read_text())["checkpoint_sha256"]
-        actual = sha256_file(path)
+        actual = hashlib.sha256(blob).hexdigest() if blob is not None else sha256_file(path)
         if actual != expected:
             raise ValueError(f"checkpoint hash mismatch for {path}: {actual} != {expected}")
-    blob = torch.load(path, map_location="cpu", weights_only=False)
-    manifest = blob["manifest"]
+    # weights_only: tensors + plain containers only. A checkpoint is a pickle; unrestricted
+    # unpickling would execute whatever code a swapped file carries.
+    source = io.BytesIO(blob) if blob is not None else path
+    loaded = torch.load(source, map_location="cpu", weights_only=True)
+    manifest = loaded["manifest"]
     if manifest["env_id"] != ENV_ID or manifest["obs_dim"] != OBS_DIM:
         raise ValueError(
             f"checkpoint was trained for {manifest['env_id']} obs_dim={manifest['obs_dim']}"
@@ -79,8 +87,15 @@ def load_checkpoint(path: Path, verify: bool = True) -> tuple[DDQNAgent, dict[st
     agent = DDQNAgent(
         OBS_DIM, N_ACTIONS, DDQNConfig(**manifest["ddqn_config"]), seed=manifest["seed"]
     )
-    agent.load_state_dict(blob["agent"])
+    agent.load_state_dict(loaded["agent"])
     agent.online.eval()
-    if manifest_path.exists():
+    # Provenance is the manifest embedded in the verified bytes; the re-read sidecar
+    # is only a fallback when the caller loaded from the path.
+    if blob is None and manifest_path.exists():
         manifest = json.loads(manifest_path.read_text())
+    # The digest lives only in the sidecar; provenance must come from the loaded bytes.
+    manifest.setdefault(
+        "checkpoint_sha256",
+        hashlib.sha256(blob).hexdigest() if blob is not None else sha256_file(path),
+    )
     return agent, manifest
