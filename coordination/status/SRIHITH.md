@@ -106,3 +106,9 @@ Add dated factual entries; do not overwrite history. Never claim unexecuted test
   - Vihaan's frontend: no branch yet.
   - Docker Compose and the GitHub App are still unverified (no Docker or App credentials here).
   - A live (paid) end-to-end run of the hosted pipeline hasn't been done; only the gateway smoke test was live.
+
+### 2026-10-17: first LIVE unified assessment (one run, budget $5)
+- Run: `asm_01M53VKYE48N4EWWW83P2HNJ5P`, payments-lite @ `4cdea2f`.
+- Result: COMPLETED in 53 s. Cost **$0.3696**: 6 LLM calls, 63,854 input and 5,709 output tokens.
+- Reviewer (Sai, live): 2 validated functional findings (refund bound, payment IDOR). Both are planted defects.
+- Scout (Alan, live): failed with Anthropic 400 `For 'integer' type, property 'minimum' is not supported` (req_011Cg731RCPhRHAuYot4htpd). No other security agents ran. Reported to Alan; I'll re-run after his fix.
