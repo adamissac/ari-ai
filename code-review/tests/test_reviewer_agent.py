@@ -108,6 +108,7 @@ def _discount_script() -> list:
     ]
 
 
+@pytest.mark.owasp_llm("LLM01:2025")
 def test_discount_rounding_defect_validated_with_multi_turn_trace(tmp_path: Path) -> None:
     sc = discount_rounding(tmp_path)
     source = RepoSource(sc.repo)
@@ -170,6 +171,7 @@ def test_discount_rounding_defect_validated_with_multi_turn_trace(tmp_path: Path
     assert tree_digest(source) == before  # no writes to the original repository
 
 
+@pytest.mark.owasp_llm("LLM05:2025")
 def test_failing_test_against_unconfirmed_rule_stays_hypothesis(tmp_path: Path) -> None:
     sc = discount_rounding(tmp_path)
     cap_test = (
@@ -511,6 +513,7 @@ def test_payments_lite_refund_bound_reproduced_then_repaired(tmp_path: Path) -> 
     assert tree_digest(source) == before
 
 
+@pytest.mark.owasp_llm("LLM06:2025")
 def test_repair_that_only_tampers_produces_no_patch(tmp_path: Path) -> None:
     sc, host, source, outcome = _pl_review(tmp_path)
     [finding] = outcome.result.findings
@@ -535,6 +538,7 @@ def test_repair_that_only_tampers_produces_no_patch(tmp_path: Path) -> None:
     assert host.findings()[0].status is FindingStatus.validated
 
 
+@pytest.mark.owasp_llm("LLM06:2025")
 def test_repair_requires_approved_remediation_for_that_finding(tmp_path: Path) -> None:
     sc, host, source, outcome = _pl_review(tmp_path)
     [finding] = outcome.result.findings
@@ -721,6 +725,7 @@ def test_live_run_quotes_are_accepted_at_their_spans(
         ws.close()
 
 
+@pytest.mark.owasp_llm("LLM09:2025")
 def test_off_by_two_anchor_is_reanchored_and_far_or_fake_quotes_still_rejected(
     tmp_path: Path,
 ) -> None:
