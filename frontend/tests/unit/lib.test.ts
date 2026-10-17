@@ -125,6 +125,7 @@ describe('project journey', () => {
     monitoringTruncated: false,
     monitoringFailed: false,
     newestMonitoringSimulated: false,
+    eventLogTruncated: false,
   };
   const byId = (view: ReturnType<typeof projectJourney>) => Object.fromEntries(view.map(stage => [stage.id, stage]));
 
@@ -204,6 +205,18 @@ describe('project journey', () => {
     const view = byId(projectJourney({ ...idle, current: 'COMPLETED', visited: null }));
     expect(view.understand?.status).toBe('not_started');
     expect(view.understand?.detail).toMatch(/event log did not load/);
+  });
+
+  it('names the 500-event page when a skipped phase may be beyond it', () => {
+    const view = byId(projectJourney({
+      ...idle,
+      current: 'COMPLETED',
+      visited: ['INDEXING', 'FUNCTIONAL_REVIEW', 'RECON', 'REPORTING', 'COMPLETED'],
+      eventLogTruncated: true,
+    }));
+    expect(view.repair?.status).toBe('skipped');
+    expect(view.repair?.detail).toMatch(/first 500 events/);
+    expect(view.repair?.detail).toMatch(/later page may/);
   });
 
   it('keeps the newest recorded event message and drops an empty one', () => {
