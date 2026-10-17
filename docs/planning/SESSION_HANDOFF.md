@@ -18,6 +18,11 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-17 — Adam (cloud session) — Vercel deployment of the frontend
+- Did: created Vercel project `ari-ai` (team "Adam's projects"), linked to this repo, root `frontend/`, install `npm ci --prefix transport && npm run build --prefix transport && npm ci`, Node 24.x. Deployed `feat/adam/simulated-demo` @ `06f8af2` to production: https://ari-ai-lake.vercel.app (`/demo`, `/lab`).
+- State: READY. Checked `/demo/lumen-pay/payments-api` (200, demo footer) and `/lab/bundles` (200, protocol-v1 and v0). Vercel Authentication is on (`all_except_custom_domains`), so `.vercel.app` URLs need a Vercel login on the team. No `BACKEND_ORIGIN` is set, so console pages (`/`, `/projects`) cannot reach a backend there.
+- Warnings: the project is Git-connected, so pushes to `main` deploy to production and branches get previews. Until #226 merges, the next `main` push replaces production with a build without `/demo`.
+
 ### 2026-10-17 — Adam (cloud session) — simulated demo, Defense Lab command center, events-log cursor
 - Did: (1) `feat/adam/event-log-cursor-follow`: phase views walk `/events/log` through `next_cursor` (cap 20 pages / 10,000 events); the honesty note only shows at the cap (Srihith's ask). (2) `feat/adam/simulated-demo`: new `/demo` route (ADR-0013) with GitHub-style sign-in → org → repo → recent commits → per-commit animated Overview / Code review / Seven agents / Defense Lab; new `components/defense-map.tsx` (docs/14 continuous-defense structure); `/lab` opens with `LabCommandCenter` replaying a recorded DDQN game from the validated bundle with headline scores.
 - State of the code: both branches pushed; neither merged. The demo is hand-written illustrative data in `frontend/lib/demo/` and calls no backend.
