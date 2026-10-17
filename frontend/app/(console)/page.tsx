@@ -8,6 +8,8 @@ import { BRAND_HEADLINE, BRAND_HEADLINE_REST, BRAND_NAME } from '@/components/br
 import { CREATE_PROJECT_NOTE } from '@/lib/create-project';
 import { Reveal } from '@/components/reveal';
 import { HeroStage, useLoopCursor } from '@/components/hero';
+import { IntroLoader } from '@/components/intro-loader';
+import { UserBar } from '@/components/user-bar';
 import { Async, Button, Empty, ErrorState, Field, inputClass, PageTitle, Panel, Time } from '@/components/ui';
 
 const PILLARS = [
@@ -23,6 +25,7 @@ export default function ProjectsPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const active = useLoopCursor(LOOP.length);
+  const [revealed, setRevealed] = useState(false);
 
   const create = async (e: FormEvent) => {
     e.preventDefault();
@@ -37,7 +40,9 @@ export default function ProjectsPage() {
 
   return (
     <>
-      <HeroStage className="-mx-4 mb-8 rounded-none px-6 py-14 sm:mx-0 sm:rounded-2xl md:px-12 md:py-20" labelledBy="hero-title">
+      <IntroLoader onReveal={() => setRevealed(true)} />
+      <HeroStage className="hero-full px-6 pb-14 pt-24 md:px-12" labelledBy="hero-title" play={revealed}>
+        <div className="mx-auto w-full max-w-7xl">
         <p className="hero-in label-mono flex items-center gap-2 text-white/70" style={{ '--i': 0 } as CSSProperties}>
           <span aria-hidden="true" className="hero-ping" />{BRAND_NAME} · software assurance
         </p>
@@ -56,7 +61,10 @@ export default function ProjectsPage() {
             </li>
           ))}
         </ol>
+        </div>
       </HeroStage>
+      <div className="hero-cover pt-6">
+      <UserBar />
       <div className="mb-8 grid gap-3 md:grid-cols-3">
         {PILLARS.map((p, i) => (
           <Reveal key={p.n} delay={i * 90}>
@@ -92,6 +100,7 @@ export default function ProjectsPage() {
             {error !== null && <ErrorState error={error} context="Create failed" />}
           </form>
         </Panel>
+      </div>
       </div>
     </>
   );
