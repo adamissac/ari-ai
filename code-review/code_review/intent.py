@@ -57,6 +57,57 @@ def _norm(s: str) -> str:
     return re.sub(r"\s+", " ", s).strip().lower()
 
 
+QUOTE_SLACK = 3
+_LINE_NO = re.compile(r"^\s*\d+(?:\s{2,}|\s*[:|]\s*)")
+_ELLIPSIS = re.compile(r"\.\.\.|\u2026")
+
+
+def clean_quote(quote: str) -> str:
+    """Drop line-number prefixes a model copies from ``read_file`` output (``  131  def …``)."""
+    return "\n".join(_LINE_NO.sub("", line) for line in quote.splitlines()).strip()
+
+
+def locate_quote(quote: str, lines: list[str], start: int, end: int) -> tuple[int, int] | None:
+    """Find ``quote`` at the cited span, tolerating copied line numbers, indentation and
+    whitespace differences, skipped lines or ``...`` elisions (every quoted line must appear,
+    in order) and an anchor
+    off by up to ``QUOTE_SLACK`` lines. Returns the (start, end) lines to cite, or ``None``
+    when the quote is not near the citation (fabricated or wrong citation stays rejected)."""
+    # Each quoted line (and each piece around "...") must appear, in order, near the citation;
+    # models often skip lines without marking the elision.
+    fragments = [
+        _norm(f) for line in clean_quote(quote).splitlines() for f in _ELLIPSIS.split(line)
+    ]
+    fragments = [f for f in fragments if f]
+    if not fragments:
+        return (start, end)
+    lo = max(1, start - QUOTE_SLACK)
+    hi = min(len(lines), end + QUOTE_SLACK)
+    text, owner = "", []  # normalized window text and the source line of every character
+    for n in range(lo, hi + 1):
+        piece = _norm(lines[n - 1])
+        if not piece:
+            continue
+        if text:
+            text += " "
+            owner.append(n)
+        text += piece
+        owner.extend([n] * len(piece))
+    pos, first, last = 0, None, None
+    for frag in fragments:
+        at = text.find(frag, pos)
+        if at < 0:
+            return None
+        if first is None:
+            first = owner[at]
+        last = owner[at + len(frag) - 1]
+        pos = at + len(frag)
+    assert first is not None and last is not None
+    if start <= first and last <= end:
+        return (start, end)
+    return (first, last)
+
+
 @dataclass
 class ClaimDecision:
     claim: IntentClaim
@@ -125,18 +176,35 @@ class CitationChecker:
         end = c.end_line or c.start_line
         if c.start_line > len(lines) or end > len(lines) or end < c.start_line:
             return None, c.source_kind, f"lines {c.start_line}-{end} outside {c.path}"
-        if quote and _norm(quote) not in _norm("\n".join(lines[c.start_line - 1 : end])):
-            return None, c.source_kind, f"quote not present at {c.path}:{c.start_line}-{end}"
-        kind = self._effective_kind(c.source_kind, c.path, text, c.start_line, end)
+        start = c.start_line
+        anchor_note = ""
+        if quote:
+            located = locate_quote(quote, lines, start, end)
+            if located is None:
+                return (
+                    None,
+                    c.source_kind,
+                    f"quote not present at {c.path}:{start}-{end} (±{QUOTE_SLACK})",
+                )
+            if located != (start, end):
+                anchor_note = f"re-anchored {start}-{end} -> {located[0]}-{located[1]}"
+                start, end = located
+            quote = clean_quote(quote)
+        kind = self._effective_kind(c.source_kind, c.path, text, start, end)
         ev = EvidenceRef(
             kind=EvidenceKind.source_span,
             path=c.path,
             commit_sha=self.ws.commit_sha,
-            span=SourceSpan(start_line=c.start_line, end_line=end),
+            span=SourceSpan(start_line=start, end_line=end),
             provenance=PROVENANCE,
             note=(f"{kind.value}: {quote}" if quote else kind.value)[:500],
         )
-        return ev, kind, "" if kind is c.source_kind else f"reclassified as {kind.value}"
+        notes = [
+            n
+            for n in (anchor_note, "" if kind is c.source_kind else f"reclassified as {kind.value}")
+            if n
+        ]
+        return ev, kind, "; ".join(notes)
 
     @staticmethod
     def _effective_kind(kind: SourceKind, path: str, text: str, start: int, end: int) -> SourceKind:
