@@ -1,13 +1,13 @@
 # Alan — implementation status
 
 Owner: Alan (`security-agents/`, SEC-001 … SEC-013)
-Branch: `feat/alan/sarif-export` (#114), `feat/alan/owasp-llm-agent-runtime` (#116), `docs/alan/p1-notes` (#117)
-Current task: P1: SARIF 2.1.0 export and OWASP LLM 2026 agent-runtime evidence; M3 live run pending a key holder
-Last remote sync: 2026-10-17T11:10Z, `origin/main` after #108, #109, #112 merged
+Branch: `fix/alan/main-health`
+Current task: keep security-agents claims accurate; M3 live run pending a key holder
+Last remote sync: 2026-10-17, `origin/main` @ `39186cb`
 API/contract dependencies: `shared` 0.9.0 `CheckCategory`; `backend.host` checkpoints; `code_review.api` functional helpers
 Recent PR/commit: `feat/alan/verify-honesty-check-category` (do not push merged `host-finding-persistence` / `host-resume-hardening`)
 Blockers: live seven-agent run (issue #10, no key); Docker images (INFRA-005)
-Next action: merge #114, #116, #117 when every job on the head is green; live seven-role run by a key holder (M3)
+Next action: live seven-role run by a key holder (M3); human sign-off on the two check templates
 
 ## What runs today
 
@@ -27,63 +27,51 @@ Next action: merge #114, #116, #117 when every job on the head is green; live se
 
 ## Verified tests
 
+Executed on `origin/main` @ `39186cb`, 2026-10-17:
+
 ```
 cd security-agents && .venv/bin/python -m pytest tests -q
-325 passed, 3 skipped in 88.51s
-cd security-agents && .venv/bin/python -m ruff check security_agents tests
-All checks passed!
+451 passed, 18 skipped in 82.57s
+uv run pytest -q          # repo root testpaths (shared, monitoring, backend, code-review, standards, tests/security)
+415 passed, 9 skipped in 75.46s
 ```
 
-The 3 skips are the opt-in live-provider tests; they run only with
-`RUN_LIVE_LLM_EVAL=1` and credentials.
-
-End-to-end on the canonical owned target (`examples/payments-lite/target`),
-scripted model turns and **real** tool authorization, sandboxes, diff and tests:
-
-```
-cd security-agents && .venv/bin/python -m security_agents.cli --target ../examples/payments-lite --auto-approve
-scope_check -> indexing -> functional_review -> recon -> validation -> analysis
-  -> diagnosis -> awaiting_approval -> remediation -> hardening -> reporting -> completed
-scout/probe/trace/diagnose/patch/verify/fortify: all succeeded
-[hardened] Payment detail route may not enforce payment ownership
-  class=CWE-639 severity=high validation=confirmed verdicts=['accepted']
-  regression test: tests/test_authz_regression.py
-provider_modes=['fake']
-```
-
-Executed check results on the fixture (the precision evidence):
-`access_control.ownership@1` returns `matches_expectation=False` on the planted
-`GET /payments/{payment_id}` and `True` on the negative
-`GET /customers/{customer_id}`; `input_validation.bounds@1` returns `False` on
-`POST /refunds`.
+Skips: opt-in live-provider tests, and Docker tests that run only in the CI
+`docker-sandbox` / `docker-reviewer` jobs (6 passed there on `719ce98`).
 
 ## Honest status of what is NOT verified
 
-- **No live-provider run has been executed.** Every number above comes from the
-  scripted (`fake`) provider. The live path is implemented
-  (`AnthropicProvider`, `claude-opus-5-5` default, per-role overrides, refusal
-  fallback, typed error mapping) and the opt-in tests exist, but they have not
-  run — no authorized key in this environment (issue #10). Until they do, the
-  live mode is **UNVERIFIED**.
-- **The Docker sandbox driver now runs real containers in CI (`none` network only).** The `docker-sandbox` job builds `security-agents/sandbox/Dockerfile` (digest-pinned python:3.12-slim) and passes 3 live tests: uid 65534, read-only root, raw socket blocked by the kernel, no host env, timeout kill and removal, and the payments-lite suite inside the container. The reviewed ownership and bounds checks also run through the Docker driver on the `target-only` path and give the same verdicts as the local driver (planted routes flagged, lookalike cleared). v0 checks call the app in process, so the target container and internal network are created but not used by a check yet. Earlier note: Its
-  argument construction, policy checks and reaper are unit-tested with a fake
-  command runner; there is no Docker engine on this machine and no pinned image
-  yet (INFRA-005). The development driver that the tests use is a subprocess
-  with scrubbed env, rlimits, a copied workspace and a Python-level network
-  guard — it reports `isolation_level="process-dev:not-a-security-boundary"` and
-  refuses to start without an explicit opt-in. It is adequate only for the
-  fixtures we own.
-- **The host adapter has not run against the real `backend.host`** (needs
-  Postgres and the artifact store). It is tested against a fake host built from
-  `backend/INTEGRATION.md` and `backend/backend/{host,llm}.py`.
-- **Expectations are a labelled fixture, not derived.** They come from
-  `examples/payments-lite/labels.yaml` (`expectations:` only, `origin="fixture"`)
-  until `code_intelligence.api` lands. The answer-key sections are never read by
-  an agent.
-- **Probe's template library has two templates.** Both are reviewed by me and
-  marked `reviewed_by="security-owner:pending-human-signoff"` — a human security
-  owner has not signed them off, and a template with `reviewed_by=None` is
-  refused at runtime.
+Updated 2026-10-17 after #100 to #125.
+
+- **No live-provider run of the seven agents has been executed (M3 open).** Every
+  security-agents number comes from scripted model turns with real tools, sandboxes
+  and tests. The only live attempt stopped at Scout on a tool-schema 400 (fixed since).
+  `tests/test_live_provider.py::test_live_seven_roles_end_to_end` is ready for a key
+  holder (issue #10). Live mode stays **UNVERIFIED** until it runs.
+- **Docker sandbox: verified in CI for the paths we use.** The `docker-sandbox` job
+  builds `security-agents/sandbox/Dockerfile` (digest-pinned python:3.12-slim) and passes
+  6 real-container tests: uid 65534, read-only root, a raw socket blocked by the kernel,
+  no host env, timeout kill and removal, the payments-lite suite, and the reviewed
+  ownership and bounds checks with the same verdicts as the local driver. Sai's
+  `docker-reviewer` job reuses the image. Not verified: v0 checks call the app in process
+  (`TestClient`), so the target container and `--internal` network are created but no
+  check sends traffic over them. The CI image tag is local, so the job sets
+  `SANDBOX_ALLOW_UNPINNED_IMAGE=1` (the base is pinned).
+- **Host adapter: runs against the real `BackendHost` on PostgreSQL in backend tests**
+  (`backend/tests/test_security_agents_host_mode.py`, `test_m7_push_to_regression.py`,
+  `test_standards_host_integration.py`, `test_roe_persistence.py`), with scripted model
+  turns. Not verified: a deployed worker against a live repository.
+- **Expectations.** Hosted runs use the shared code-intelligence index when the
+  repository is bound (`intel.host_service.shared_host_intel`). Directory fixtures fall
+  back to `SECURITY_AGENTS_LABELS` (dev/test only; the backend host-mode test sets it).
+  The answer-key sections of labels.yaml are never read by an agent.
+- **Probe's template library has two templates.** Both are marked
+  `reviewed_by="security-owner:pending-human-signoff"`; no human security owner has
+  signed them off. A template with `reviewed_by=None` is refused at runtime.
+- **Standards.** The NVD terms of use for the 34 pinned CVSS v3.1 vectors are
+  UNVERIFIED (Cloudflare challenge). OWASP API and LLM data are CC BY-SA 4.0; we store
+  only ids and titles. Everything is "mapped to" or "aligned with"; no certification is
+  claimed.
 
 ## Session entries
 
@@ -176,3 +164,12 @@ cd security-agents && .venv/bin/python -m pytest tests -q        # 441 passed, 1
 ```
 
 UNVERIFIED: NVD terms page (Cloudflare challenge). All runs above are replay or offline; no live Claude call.
+
+### 2026-10-17 — Docker evidence reconciliation
+- Confirmed #73/#74 merged, #35 closed, and no open PRs at session start. Preserved the primary Devin checkout and its untracked reports.
+- Verified security CI 39033028814 on main `5b3ef50`: 6 real-container tests passed and ordinary security suite 451 passed/18 skipped. Reviewer Docker CI 39028078294 also passed.
+- Corrected stale README integration dependencies and Docker-unverified claims in README/milestone/task evidence. No new live provider or local Docker run; published sandbox image digests and live seven-role proof remain open.
+
+### 2026-10-17 — QA-002 M7 runner continuation
+- Fixed the remaining Devin M7 runner's uv dependency/shared-db lifecycle operations and moved generated output into ignored .dev/qa (overridable). Exact current interpreter is retained; live calls forced off.
+- QA runner13 tests passed; actual M7 backend workflow passed against PostgreSQL. Wrapper correctly exits2 for unexecuted browser stage. Full current security451 passed/18 skipped and standards190 passed earlier this session.

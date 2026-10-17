@@ -76,7 +76,7 @@ function SignIn({ onSignedIn }: { onSignedIn: (me: MeResponse) => void }) {
         <Wordmark className="text-white" />
         <div>
           <p className="label-mono text-white/60">Software assurance</p>
-          <p className="display mt-3 text-3xl font-medium">Every fix,<br />proven.</p>
+          <p className="display mt-3 text-3xl font-semibold">Every fix,<br />proven.</p>
           <p className="mt-3 text-sm text-white/70">{BRAND_TAGLINE}</p>
         </div>
       </div>

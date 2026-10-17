@@ -18,6 +18,12 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-17 - Alan (Claude) - status accuracy, template review packet
+- **Did:** merged #142 (Codex: Docker evidence reconciliation) and #143 (accurate verified and unverified list in `coordination/status/ALAN.md`). Opened #146: `python -m security_agents.checks.review_packet` and `docs/security/CHECK_TEMPLATE_REVIEW.md` so a human can sign off the two Probe templates against exact code and a renderer sha256 (SEC-005).
+- **State of the code:** main @ `39186cb` had root 415 passed, 9 skipped and security-agents 451 passed, 18 skipped. #146 brings security-agents to 455 passed.
+- **Open:** M3 live seven-role run (key holder); human template sign-off (SEC-005); published sandbox image digests (INFRA-005 needs a registry, which may cost money, so ask first).
+- **Warnings:** Codex and Claude both work in the `hungry-einstein-178b03` worktree. Codex switched the checkout to its own branch mid-session, and a Claude commit landed on Codex's branch (it was moved before anything was pushed). Each agent should use its own `git worktree add` checkout.
+
 ### 2026-10-17 — Adam — index commit note
 - Did: The repository list says indexing records symbols, calls, entry points, and expectations. The button enqueues `index_snapshot` only.
 - State of the code: branch `feat/adam/index-note`.
@@ -349,3 +355,25 @@ Synced PR74 with current main after PR83/85/87, preserving both task histories a
 
 ### 2026-10-17 — QA-001: finish unexecuted Devin QA tools
 Replaced invalid imports/nonexistent npm commands and skip-as-success summaries in PR94’s proposal. Scripts use the current interpreter, do not install dependencies, force live model evals off, resolve paths independently of cwd, and execute existing suites. Added runner semantics CI. Executed on the proposal base: helper10 passed; security wrapper backend/monitoring/reviewer/intelligence162 passed/7 optional skips and security-agent394 passed/11 optional skips; frontend wrapper transport/tsc/lint/build/Vitest32 and actual-stack Chrome12 passed. Preflight from /tmp and optional RL runner intentionally return2 (incomplete: no Docker, RL package, or persistent API on this machine). No paid calls or deployment. Readiness report now records evidence and points to current milestones rather than stale blockers.
+
+### 2026-10-17T13:22Z — Codex resume handoff (PR #39 already merged)
+
+PR #39 landed on `main` as `2ab5584` at 05:30 UTC; issue #38 is closed. The
+recovered worktree was fast-forwarded to `origin/main` at `39186cb` and is clean.
+No commits from the intelligence-memory lane remain unmerged. The full resume
+brief for the next Codex session — original failure, fixes, implemented files,
+commits, verification, next actions and warnings — is
+`coordination/messages/20261017T132209Z-sarosh-to-codex-recovered-memory-handoff.md`.
+Post-merge smoke checks: memory/contract suite **8 passed**; regression/host/
+reviewer integration suite **11 passed** after `uv sync --frozen`.
+||||||| 39186cb
+
+### 2026-10-17 — Alan security Docker evidence reconciliation
+- Continued from Claude's current main-based worktree; #73/#74 are merged and #35 is closed. Left the separate Devin M7 branch and untracked reports intact.
+- Inspected successful security CI 39033028814 (`5b3ef50`): 6 real Docker tests passed; ordinary suite 451 passed/18 skipped. Corrected stale execution-unverified and integration-pending README claims.
+- INFRA-005 still needs published image digests; CI's temporary image tag is not a published release. Live seven-role provider proof remains separate.
+
+### 2026-10-17 — QA-002 M7 runner isolation
+- Continued unfinished Devin runner: uses selected Python, no uv PATH requirement, no shared devdb start/stop, forced live-provider opt-out, ignored report output with --output override. Removed hardcoded branch metadata.
+- Executed M7 through isolated PostgreSQL fixture successfully; wrapper exits2 truthfully because browser is unexecuted. QA unit suite13 passed; Ruff/format and link checks passed.
+- Primary Devin checkout and its existing untracked reports remain untouched. No live model or deployment.
