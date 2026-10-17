@@ -24,7 +24,9 @@ agents use. Owner: **Srihith**. Spec: [docs/13](../docs/13_BACKEND_API_DESIGN.md
 | RL recommendations via `rl_defense` | `pipeline.py` | integrated against `feat/adam/rl-defense` |
 | GitHub App installation tokens / compare API | `github.py` | implemented; **not exercised against a real App** |
 | Seven-agent orchestrator | — | **not here**: Alan's `security_agents`. Until it lands, assessments end `FAILED / SUBSYSTEM_UNAVAILABLE` |
-| `POST /patches/{id}/pull-request`, `/ingest/runtime/{project_id}`, `PATCH /expectations/{id}` | — | **not implemented** (MVP cut order / owned by intelligence) |
+| Runtime signal ingestion: per-project ingest tokens, `/ingest/runtime/{project_id}`, explainable per-route scoring, labeled `log_anomaly` events, RL signal feed | `api/runtime.py` + `monitoring/runtime.py` | implemented; inputs are demo/replay/simulated only (no production telemetry) |
+| Code-intelligence PayloadStore (Postgres) | `intel_store.py` | implemented; integration-tested with Sarosh's IntelligenceService |
+| `POST /patches/{id}/pull-request`, `PATCH /expectations/{id}` | — | **not implemented** (MVP cut order / owned by intelligence) |
 
 ## Commands
 
