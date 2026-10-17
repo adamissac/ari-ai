@@ -50,6 +50,7 @@ class FakeUsage:
     input_tokens: int = 100
     output_tokens: int = 50
     usd: float = 0.001
+    llm_calls: int = 1
 
 
 @dataclass
@@ -75,6 +76,7 @@ class FakeGateway:
     calls: list[dict[str, Any]] = field(default_factory=list)
     denied: list[str] = field(default_factory=list)
 
+    @property
     def provider_mode(self) -> str:
         return "fake"
 
@@ -157,9 +159,11 @@ class FakeHost:
     cancelled: bool = False
 
     # -- state / events
+    @property
     def assessment(self) -> Any:
         return type("A", (), {"budget": type("B", (), {"max_tokens": 2_000_000, "max_usd": 50.0, "max_wall_clock_s": 900.0})()})()
 
+    @property
     def scope(self) -> Any:
         return type(
             "S", (),
@@ -194,7 +198,7 @@ class FakeHost:
 
     def transition(self, target: Any, message: str = "") -> Any:
         self.states.append(getattr(target, "value", str(target)))
-        return self.assessment()
+        return self.assessment
 
     def progress(self, message: str, *, agent: Any = None, **data: Any) -> None:
         self.progress_messages.append(message)
@@ -429,3 +433,17 @@ def test_host_state_names_cover_every_state():
         assert state in HOST_STATE_NAMES, state
         member = shared_assessment.AssessmentState(HOST_STATE_NAMES[state])
         assert member.name == HOST_STATE_NAMES[state]
+
+
+def test_host_runs_keep_gateway_usage_and_real_patch_run_ids(host_and_orchestrator):
+    host, orchestrator, _ = host_and_orchestrator
+    orchestrator.run(host)
+    host.approve_all()
+    orchestrator.run(host)
+    by_role = {run["agent"]: run["id"] for run in host.runs}
+    assert host.patches[0].produced_by_run_id == by_role["patch"]
+    assert host.verifications[0].produced_by_run_id == by_role["verify"]
+    for finished in host.finished:
+        assert finished["usage"].input_tokens > 0
+        assert finished["usage"].llm_calls > 0
+        assert "tool_calls" in finished

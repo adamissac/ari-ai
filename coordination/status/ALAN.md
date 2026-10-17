@@ -121,3 +121,5 @@ Executed check results on the fixture (the precision evidence):
 - Next: backend host-mode compatibility findings remain; live rerun requires credentials/authorized budget.
 
 - Completed replay/schema verification: 31 passed in 45.60s. Both fixes pushed as 3fea691 and efbc848.
+
+- Host adapter continuation: aligned property access, populated actual role run IDs, and passed gateway usage/tool records to finish_agent_run. Host unit suite: 12 passed; Ruff clean. PostgreSQL acceptance in progress.

@@ -85,7 +85,9 @@ class AssessmentHostLike(Protocol):
     assessment_id: str
     project_id: str
 
+    @property
     def assessment(self) -> Any: ...
+    @property
     def scope(self) -> Any: ...
     def approvals(self) -> list[Any]: ...
     def transition(self, target: Any, message: str = "") -> Any: ...
@@ -117,6 +119,7 @@ class HostStepRunner:
 
     host: AssessmentHostLike
     tool_factory: Any  # callable(spec, ctx, registry) -> list[backend Tool]
+    run_ids: dict[str, str] = field(default_factory=dict)
 
     def __call__(
         self,
@@ -134,7 +137,7 @@ class HostStepRunner:
         ctx.step_allowlist = spec.tools
         ctx.max_calls_per_tool = dict(spec.max_calls_per_tool)
         llm = self.host.llm()
-        provider_mode = str(getattr(llm, "provider_mode", lambda: "unknown")())
+        provider_mode = str(llm.provider_mode)
         model_id = str(getattr(llm, "model_for", lambda _a: "unknown")(spec.name.value))
         run_id = self.host.start_agent_run(
             _host_agent(spec.name),
@@ -145,6 +148,7 @@ class HostStepRunner:
             prompt_version=spec.version,
             input_payload={"prompt_ref": spec.prompt_ref, "input_ref": input_ref},
         )
+        self.run_ids[spec.name.value] = run_id
         ctx.run_id = run_id
         record = StepRecord(
             run_id=run_id, agent=spec.name, spec_version=spec.version, model=model_id,
@@ -204,6 +208,8 @@ class HostStepRunner:
         self.host.finish_agent_run(
             run_id,
             _host_run_status("succeeded"),
+            usage=result.usage,
+            tool_calls=result.tool_calls,
             output=result.final.model_dump(mode="json"),
             transcript=record.to_json(),
         )
@@ -423,7 +429,7 @@ class HostSink(AssessmentSink):
     def on_patch(self, finding: FindingRecord, candidate: Any, diff: str) -> None:
         artifact = self.host.store_text(diff)
         artifact_id = getattr(artifact, "id", None) or str(artifact)
-        run_id = self.run_ids.get("patch", new_id("run"))
+        run_id = self.run_ids["patch"]
         self.host.record_patch(
             contract_export.patch_candidate(
                 candidate,
@@ -438,7 +444,7 @@ class HostSink(AssessmentSink):
     def on_verification(self, finding: FindingRecord, result: Any) -> None:
         self.host.record_verification(
             contract_export.verification_result(
-                result, produced_by_run_id=result.verify_run_id or self.run_ids.get("verify", new_id("run"))
+                result, produced_by_run_id=result.verify_run_id or self.run_ids["verify"]
             )
         )
         self.recorded.append("verification")
@@ -505,7 +511,7 @@ class HostOrchestrator:
 
             workdir = Path(tempfile.mkdtemp(prefix=f"{host.assessment_id}-"))
         intel = self._build_intel(target, workdir)
-        scope = _adapt_scope(host.scope(), intel)
+        scope = _adapt_scope(host.scope, intel)
         config = OrchestratorConfig(
             assessment_id=host.assessment_id,
             project_id=getattr(host, "project_id", "prj_unknown"),
@@ -513,7 +519,7 @@ class HostOrchestrator:
             scope=scope,
             target_id=scope.targets[0].target_id,
             requested_by=scope.requested_by,
-            budget=_adapt_budget(host.assessment()),
+            budget=_adapt_budget(host.assessment),
             max_hypotheses=self.max_hypotheses,
             max_hypotheses_to_validate=self.validate_count,
         )
@@ -528,7 +534,7 @@ class HostOrchestrator:
             workdir=workdir / "work",
             registry=registry,
             sink=sink,
-            step_runner=HostStepRunner(host=host, tool_factory=build_tools),
+            step_runner=HostStepRunner(host=host, tool_factory=build_tools, run_ids=sink.run_ids),
             approve_remediation=_approver(host),
             cancelled=lambda: _cancelled(host),
         )
