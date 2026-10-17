@@ -19,8 +19,14 @@ All notable changes are documented here. Format follows
   already-approved functional findings as outstanding work, strips the complete
   recipe `target_dir`, and persists `patch_rejected` when functional Verify is
   not accepted.
+- Functional Verify stays labelled `provider_mode="none"` (no model call). An
+  escaping `build_recipe.json` `target_dir` raises `SCHEMA_INVALID`.
 
 ### Added
+- Canonical `CheckCategory` in `shared` (schema 0.9.0): Probe library ids
+  `access_control.ownership` / `input_validation.bounds`, with published V0
+  fixture aliases `authorization.ownership` / `input.bounds`. Scope matching
+  treats each pair as the same category.
 - Frontend: incident closure panel (link findings/verifications, closure criteria with artifact evidence, lessons learned, communications, readiness list).
 - Hosted assessments persist security finding lifecycle (`hypothesis → … → hardened`),
   durable approval checkpoints (`save_checkpoint` / `load_checkpoint` so a worker
