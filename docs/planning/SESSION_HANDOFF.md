@@ -18,6 +18,14 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-17 — Alan — verify honesty + CheckCategory
+- **Did:** New branch `feat/alan/verify-honesty-check-category` off current main after #83 merged. Did not push `feat/alan/host-resume-hardening`. Honesty: kept #84's `provider_mode="none"` for functional Verify (did not merge #71/`mode=functional` while #85 is open). `_pinned_snapshot` already uses `SCHEMA_INVALID`; added a regression test. Canonical `CheckCategory` in `shared` 0.9.0 with Probe ids + V0 fixture aliases; scope_guard treats aliases as equal. Message to Srihith posted.
+- **State of the code:** Fixture `AuthorizedScope.json` values unchanged. Probe templates unchanged.
+- **Commands run:** recorded after pytest in this session.
+- **Decisions:** Honest option = label `none` (Srihith #84), not a fake/live Verify agent turn. Do not take #71's verify.py rewrite.
+- **Next steps:** Land this PR; Srihith ACK of CheckCategory; #85 can land independently.
+- **Warnings:** Do not push merged branches. Skip live Anthropic / Docker. Do not edit Adam's CWE-840 labels.
+
 ### 2026-10-17 — Alan — Codex P1/P2 host-resume hardening after #73
 - **Did:** #73 merged to main. Did **not** push to `feat/alan/host-finding-persistence`. Diffed Codex P1/P2 against `origin/main` (`236838e`): all seven items were missing. New branch `feat/alan/host-resume-hardening` off current main. Implemented: resume `host.repo_id` filter; `claim_checkpoint` (assessment row lock, consume); finish Verify before `record_verification`; truncated pytest lists rejected; `external_pending` includes already-approved functional work; full recipe `target_dir` strip; persist `patch_rejected`. Asked to close #35 (do not merge).
 - **State of the code:** Hosted resume is single-winner per checkpoint; functional Verify publishes only after the run finishes.
