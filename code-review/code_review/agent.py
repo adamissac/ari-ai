@@ -39,7 +39,7 @@ from code_review.models import (
 )
 from code_review.ports import ExecResult, IntelligencePort, RepoSource, ReviewHost, SandboxPort
 from code_review.sandbox import LocalProcessSandbox, classify
-from code_review.standards import classify_weakness
+from code_review.standards import classify_weakness_safely
 from code_review.tools import (
     ReviewBudget,
     ReviewerToolbox,
@@ -419,6 +419,13 @@ class ReviewerAgentRunner:
                         reason += "; passes on base, so the change introduced it"
             evidence.extend(decision.claim.citations[:3])
             if is_authorization_rule(decision.claim.statement, f.title, f.rationale):
+                authz_std, cwe_reason = classify_weakness_safely(
+                    f.weakness_class, evidence, 0.7 if status is FindingStatus.validated else 0.4
+                )
+                if cwe_reason:
+                    rejected.append(
+                        f"handoff '{f.title[:80]}': CWE not recorded ({cwe_reason})"[:500]
+                    )
                 # Authorization/tenant rules belong to the security team: hand to Scout as a
                 # hypothesis carrying the executed test, never self-declare it validated.
                 handoffs.append(
@@ -429,6 +436,7 @@ class ReviewerAgentRunner:
                         commit_sha=ci.head_sha,
                         kind=FindingKind.security,
                         title=f"[authorization] {f.title}"[:500],
+                        standards=authz_std,
                         status=FindingStatus.hypothesis,
                         subject_refs=sorted({e.path for e in evidence if e.path})[:10],
                         expectation_ids=[decision.claim.expectation_id]
@@ -451,6 +459,11 @@ class ReviewerAgentRunner:
                     )
                 )
                 continue
+            functional_std, cwe_reason = classify_weakness_safely(
+                f.weakness_class, evidence, _CONF[status]
+            )
+            if cwe_reason:
+                rejected.append(f"finding '{f.title[:80]}': CWE not recorded ({cwe_reason})"[:500])
             level = SeverityLevel(f.severity.value)
             findings.append(
                 Finding(
@@ -459,7 +472,7 @@ class ReviewerAgentRunner:
                     snapshot_id=request.snapshot_ref.snapshot_id,
                     commit_sha=ci.head_sha,
                     kind=FindingKind.functional,
-                    standards=classify_weakness(f.weakness_class, evidence, _CONF[status]),
+                    standards=functional_std,
                     title=f.title,
                     status=status,
                     severity=SeverityAssessment(
@@ -500,6 +513,11 @@ class ReviewerAgentRunner:
             if not evidence:
                 rejected.append(f"security concern '{s.title[:80]}': no verifiable span")
                 continue
+            concern_std, cwe_reason = classify_weakness_safely(s.weakness_class, evidence, 0.5)
+            if cwe_reason:
+                rejected.append(
+                    f"security concern '{s.title[:80]}': CWE not recorded ({cwe_reason})"[:500]
+                )
             handoffs.append(
                 Finding(
                     id=new_id(IdPrefix.fnd),
@@ -507,8 +525,10 @@ class ReviewerAgentRunner:
                     snapshot_id=request.snapshot_ref.snapshot_id,
                     commit_sha=ci.head_sha,
                     kind=FindingKind.security,
-                    title=f"[{s.weakness_class}] {s.title}"[:500],
-                    standards=classify_weakness(s.weakness_class, evidence, 0.5),
+                    title=f"[{s.weakness_class if concern_std else 'unclassified'}] {s.title}"[
+                        :500
+                    ],
+                    standards=concern_std,
                     status=FindingStatus.hypothesis,
                     subject_refs=sorted({e.path for e in evidence if e.path})[:10],
                     evidence=evidence,
