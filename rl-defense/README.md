@@ -29,7 +29,7 @@ Five nodes (gateway, api, auth, payments, db) with criticality, exposure and ope
 finding severity. A hidden adversary moves each node through abstract stages
 `none → foothold → escalated → impact`, entering via exposed nodes and spreading
 along edges; open findings speed it up. The defender sees only noisy alert rates
-and anomaly scores plus asset context (47 features) and picks one of 22 actions:
+and anomaly scores plus asset context (48 features: 9 per node + 3 global) and picks one of 22 actions:
 `noop`; per node `raise_monitoring`, `rate_limit`, `isolate`,
 `request_reassessment`; or `escalate_to_human` (budget of 3). Invalid actions are
 masked. Reward penalizes impact, adversary progress, disruption (more on benign
@@ -94,12 +94,29 @@ summary, table and a few trajectories are committed under `results/`.
 ## Using it from the backend
 
 ```python
-from rl_defense.api import load_policy, checkpoint_ref, load_eval_summary
-from rl_defense.contracts import PlatformFacts
+from rl_defense.api import load_policy
+from rl_defense.platform_mapping import (
+    FindingInput, ExpectationInput, RouteSignal, facts_from_platform, load_topology,
+)
 
-runner = load_policy("runs/protocol-v0/ddqn_seed0.pt")  # produced by the commands above   # verifies sha256 against the manifest
-rec = runner.recommend(PlatformFacts(...))                # -> DefenseRecommendation
+topology = load_topology("configs/topology/payments_lite.yaml")   # route -> node mapping
+facts, provenance = facts_from_platform(
+    topology,
+    findings=[FindingInput(id="fnd_…", status="validated", severity="high",
+                           routes=("GET /payments/{payment_id}",))],
+    expectations=[ExpectationInput(id="exp_…", route="GET /payments/{payment_id}",
+                                   data_sensitivity="financial", status="confirmed")],
+    signals=[RouteSignal(route="GET /payments/{payment_id}", alert_rate=4.0,
+                         anomaly_score=0.4, source="runtime_demo")],
+)
+runner = load_policy("runs/protocol-v0/ddqn_seed0.pt")  # verifies sha256 against the manifest
+rec = runner.recommend(facts)                           # -> DefenseRecommendation
 ```
+
+Only validated, still-open findings raise a node's risk input. Hypotheses, refuted
+findings and verified fixes don't, so a fix verified by the Verify agent changes the
+next recommendation. `provenance` records which finding, expectation and signal ids
+drove each node's inputs, so the UI can link a recommendation back to evidence.
 
 Example payload: [`fixtures/defense_recommendation.example.json`](fixtures/defense_recommendation.example.json).
 
