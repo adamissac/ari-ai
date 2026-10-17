@@ -10,13 +10,16 @@ simulated in the browser. Spec: [docs/14](../docs/14_FRONTEND_UX_DESIGN.md).
 | Route | Backed by |
 |---|---|
 | `/` projects, create project | `GET/POST /projects` |
-| `/projects/[id]` assessments (5 s refresh), start assessment (idempotency key per action), findings summary, repositories, connect repo, index commit (snapshot polling) | `/projects/{id}/assessments`, `/findings`, `/repositories`, `/repositories/{id}/snapshots`, `/snapshots/{id}` |
+| `/projects/[id]` one next step from the loaded records (connect a repo, approve a scope, run a review, open the run, or view results), then assessments, findings, repositories | `/projects/{id}/assessments`, `/findings`, `/scopes`, `/repositories` |
 | `/projects/[id]/scopes` request, approve (backend enforces a different member), revoke | `/projects/{id}/scopes`, `/scopes/{id}/approve`, `/scopes/{id}/revoke` |
-| `/projects/[id]/assessments/[asm]` live timeline: state rail from states actually entered, per-agent lanes (provider mode, model, prompt version, usage, tool trace), budget meter, remediation approval gate, cancel, durable event log, provider-mode banner | `watchAssessment` SSE (`Last-Event-ID` resume) + `GET /assessments/{id}` + 5 s polling fallback while running |
+| `/projects/[id]/assessments/[asm]` live timeline: state rail from states actually entered, selectable eight-agent view (job, recorded outcome, real tool calls, handoff), budget meter, remediation approval gate, cancel, durable event log, provider-mode banner | `watchAssessment` SSE (`Last-Event-ID` resume) + `GET /assessments/{id}` + 5 s polling fallback while running |
 | `/projects/[id]/findings` validated / hypotheses / closed tabs | `/projects/{id}/findings` |
-| `/projects/[id]/findings/[fnd]` evidence chain (expectation → Scout → Probe → Trace → Diagnose → Patch → Verify → Fortify), GitHub links at the exact SHA, line-numbered diff, Verify checks, status history, accept risk | `/findings/{id}`, `/findings/{id}/patches`, `/artifacts/{id}` (size-bounded, SHA-256 checked) |
+| `/projects/[id]/findings/[fnd]` evidence chain (expectation → Scout → Probe → Trace → Diagnose → Patch → Verify → Fortify), standards labels (CWE, CVSS, ATT&CK, D3FEND) from the persisted record, GitHub links at the exact SHA, line-numbered diff, Verify checks, status history, accept risk | `/findings/{id}`, `/findings/{id}/patches`, `/artifacts/{id}` (size-bounded, SHA-256 checked) |
 | `/projects/[id]/approvals` inbox with will / will-not summaries | `/projects/{id}/approvals`, `/approvals/{id}/decision` |
 | `/projects/[id]/monitoring` webhook/runtime event feed (simulated events labelled), impact sets, re-assessments, simulation-derived RL recommendations + explanations, imported RL evaluations | `/projects/{id}/events`, `/reassessments`, `/defense-recommendations`, `/rl-evaluations` |
+| `/projects/[id]/expectations` snapshot picker (ready snapshots only), behavioral expectations with status filters, sources at file:line, confirm / conflicting / reject with a reason and `expected_revision` (409 on stale view), decision history | `/repositories/{id}/snapshots`, `/snapshots/{id}/expectations`, `PATCH /snapshots/{id}/expectations/{exp}`, `/decisions` |
+| `/projects/[id]/incidents` open (simulated by default, labelled), NIST lifecycle rail, triage, assign owner, transitions, two-person approval gates (requester cannot decide), timeline with CSF refs; closure panel: link findings and accepted verifications, closure criteria satisfied with hash-pinned patch/regression artifacts, lessons learned (Fortify regression evidence), communications (RS.CO-02/03, RC.CO-03), closure readiness list | `/projects/{id}/incidents`, `/incidents/{id}`, `/incidents/{id}/actions` |
+| `/projects/[id]/settings` project name, languages, default + monitoring budgets, trigger policy (enabled, coalescing interval, record-only globs); validated client-side, owner-only on the backend | `PATCH /projects/{id}` |
 | `/lab` Defense Lab: provenance (path, SHA-256, checkpoints, seeds), held-out metrics with 95% CI and n, topology, episode replay with reward components; hidden attacker stage only as labelled simulation ground truth | `rl-defense/results/protocol-*/defense_lab.json`, validated server-side against `rl-defense/fixtures/defense_lab.schema.json` |
 
 Same-origin API: `app/api/v1/[...path]` proxies to `BACKEND_ORIGIN` at request time
@@ -68,8 +71,9 @@ installed Chrome instead of Playwright's Chromium, `E2E_SKIP_BUILD=1` to reuse `
 
 ## Known gaps (not hidden in the UI)
 
-- No backend endpoint serves the Defense Lab bundle or lists snapshots; the Lab reads the
-  committed artifact, and snapshot status is tracked only for snapshots requested in-page.
-- Expectation details are shown as IDs (no expectation read endpoint yet; Sarosh's #38).
-- GitHub links need exactly one repository in the project (findings carry no repo id).
+- No backend endpoint serves the Defense Lab bundle; the Lab reads the committed artifact.
+- A finding whose assessment has no indexed snapshot can only show expectation ids.
+- Lessons learned stay blocked, and the closure panel says so, when Fortify did not record a regression-test artifact.
+- GitHub links stay off when an assessment scope names more than one repository. Findings still do not carry a repo id.
 - Live-provider (`provider_mode=live`) runs have not been exercised through the UI.
+- The project journey cannot see a phase the latest assessment's event log did not record. A log longer than the 500-event page can leave a later phase unmarked.

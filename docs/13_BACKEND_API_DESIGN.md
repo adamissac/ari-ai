@@ -34,6 +34,7 @@ by FastAPI is the source for frontend client generation.
 | GET/PATCH | `/projects/{project_id}` | Read / update settings |
 | GET/POST | `/projects/{project_id}/repositories` | List / connect (GitHub App installation) |
 | POST | `/repositories/{repo_id}/snapshots` | Request indexing at `commit_sha` |
+| GET | `/repositories/{repo_id}/snapshots?status=&limit=&cursor=` | List, newest first (`status=ready` for usable indexes) |
 | GET | `/snapshots/{snapshot_id}` | Status and stats |
 
 ### Intelligence (read)
@@ -62,6 +63,7 @@ by FastAPI is the source for frontend client generation.
 | POST | `/assessments/{asm_id}/cancel` | Cancel |
 | GET | `/assessments/{asm_id}/runs` | AgentRuns (no raw prompts by default) |
 | GET | `/assessments/{asm_id}/report` | Final report JSON (Markdown export later) |
+| GET | `/assessments/{asm_id}/rules-of-engagement` | RoE issued at SCOPE_CHECK (NIST SP 800-115 App. B alignment); digest re-checked; 404 when none |
 
 ### Findings & remediation
 | Method | Path | Purpose |

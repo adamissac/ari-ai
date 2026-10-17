@@ -38,12 +38,24 @@ class Orchestrator(Protocol):
   `host.project_id`, `host.repo_id`, `host.org_id` are **properties/attributes**, not methods.
   `host.approvals()`, `host.findings()`, `host.llm()` are methods. On the gateway,
   `provider_mode` is a **property** (`"live" | "fake"`), `model_for(agent)` is a method.
+  Agent runs that make no model call (functional Verify from executed tests) are
+  persisted as `provider_mode="none"`, never as live/fake.
   Every record you persist must cite a **host** run id (`start_agent_run` return value);
   an unknown id is rejected with `NOT_FOUND`. Pass `usage=` and `tool_calls=` to
   `finish_agent_run` so per-run cost and tool history show in the UI.
 * The worker keeps one orchestrator object per process and factory, so an in-memory
   pause survives a resume handled by the same worker. Durable resume (other worker,
-  restart) must rebuild from host records (`host.findings()`, `host.approvals()`).
+  restart) uses `host.save_checkpoint(namespace, payload)` /
+  `host.load_checkpoint(namespace)` / `host.claim_checkpoint(namespace)` (hashed
+  JSON artifact + assessment-scoped pointer). `claim_checkpoint` locks the
+  assessment row and consumes the latest payload so two workers cannot both
+  Patch/Verify. Rebuild from that payload plus `host.findings()` / `host.approvals()`.
+  A missing checkpoint in `AWAITING_APPROVAL` is `CONFLICT_STATE`; an already
+  consumed checkpoint is a no-op.
+* Finding lifecycle: `host.set_finding_status(finding_id, status, actor=, reason=)`
+  appends a `StatusChange` along the docs/12 edges and refuses unbacked claims
+  (validated needs a confirmed ValidationResult, patch_proposed a PatchCandidate,
+  verified an accepted VerificationResult). Idempotent for the same status.
 * `run` is called with the assessment in `SCOPE_CHECK` after the backend scope gate passes.
   It is called again in `AWAITING_APPROVAL` after a human approves or declines a remediation
   approval. Return either in a terminal state or in `AWAITING_APPROVAL`. Anything else is
@@ -69,6 +81,14 @@ class Orchestrator(Protocol):
   Verification is rejected unless it was produced by a `verify` AgentRun that is not the
   patch-producing run.
 * Approvals: `host.request_approval(ApprovalSubject.remediation, finding_id, reason)`.
+  Functional defects use the same subject type: after `FUNCTIONAL_REVIEW` the adapter
+  calls `code_review.api.request_functional_approvals`. `Orchestrator(external_pending=...)`
+  pauses in `AWAITING_APPROVAL` when those approvals are pending even if Scout produced
+  no hypotheses. On resume, `repair_approved_functional_findings` plus an independent
+  functional Verify (`code_review.api.functional_verification_inputs`) run next to
+  security Patch/Verify. The functional Verify verdict is computed from executed tests
+  (generated tests fail unpatched and pass patched; suite has no new failures;
+  `protected_paths` empty; diff applies), not from a model opinion.
 * `host.store_text / store_json` return an `ArtifactRef` for `EvidenceRef(artifact_id, sha256)`.
 * Errors: raise or let propagate `HostError` / `LLMError`. The worker maps them to
   `FAILED` / `CANCELLED` / `BUDGET_EXHAUSTED`, keeping the error code.
@@ -138,3 +158,5 @@ strings such as `"POST /payments/{id}/refunds"`. Imported evaluations:
 `host.record_standards(finding_id, FindingStandards, severity=optional_SeverityAssessment)` performs a validated row-locked update without replacing the finding history or status. Finding classifications use `Finding.standards`; hardening/defense recommendations carry proposed D3FEND mappings. Complete CVSS requires each metric and reference calculation; unknown metrics remain unscored. `GET /incidents/{id}` returns `IncidentDetail {incident, standards}`; mutations use `POST /incidents/{id}/actions` with `IncidentAction`. The host, persistence, and frontend transport changes build on Alan’s canonical PR #49 contracts.
 
 Model-proposed CVSS metrics are explicit provisional assumptions, even when they cite an executed run. A run identifier supplies provenance but does not prove an impact. Such scores list every assumption and require human review; missing metrics remain unscored. Incident closure requires actual regression artifact IDs/hashes; eradication requires a succeeded independent Verify run. All currently supported runtime sources are demo/replay/simulation, so correlated incidents retain simulated labeling even for executed demo logs.
+
+`host.record_roe(doc: dict) -> ArtifactRef` persists the rules-of-engagement document the orchestrator issued at SCOPE_CHECK (`security_agents.standards.roe.RulesOfEngagement.model_dump(mode="json")`). The host refuses a document that names another project or scope, or whose `digest` isn't the sha256 of its body; scope must still be active. It is stored as a content-addressed artifact, and the hash-chained audit event `roe.recorded` on the assessment points to it. `GET /assessments/{id}/rules-of-engagement` serves it after re-checking the digest, and returns 404 when none was issued.

@@ -1,11 +1,231 @@
-import { ApiError, ProtocolError } from '@hackatl/frontend-transport';
+import { ApiError, ProtocolError, type CheckCategory, type ScopeCreate } from '@hackatl/frontend-transport';
 import { describe, expect, it } from 'vitest';
 import { describeError } from '@/lib/api';
 import { parseUnifiedDiff } from '@/lib/diff';
 import { duration, githubLink, relativeTime, shortSha } from '@/lib/format';
-import { domain, metricRows, rewardTotals, sampleSize } from '@/lib/lab';
+import { domain, episodeStory, metricRows, rewardTotals, sampleSize, stepObservation } from '@/lib/lab';
 import type { DefenseLabBundle, LabEpisode } from '@/lib/lab-types';
-import { ASSESSMENT_STATE, FINDING_STATUS, providerLabel, railSteps } from '@/lib/status';
+import { matchExpectationStatements } from '@/lib/expectations';
+import { findingStory, repoFullNameForEvidence } from '@/lib/finding-story';
+import { latestAssessmentEvent, projectJourney, statesFromLog } from '@/lib/journey';
+import { projectOverview } from '@/lib/overview';
+import { SCOPE_CHECK_CATEGORIES } from '@/lib/scope';
+import { AGENTS, ASSESSMENT_STATE, FINDING_STATUS, agentRunSummary, handoffNote, providerLabel, railSteps } from '@/lib/status';
+
+describe('lab episode story', () => {
+  it('uses only the recorded actions and outcome', () => {
+    const episode = {
+      policy: 'ddqn', scenario: 's1', episode_seed: 1, training_seed: 0, total_return: -1,
+      compromised: true, impact_nodes: ['db'],
+      steps: [
+        { t: 0, action: 'isolate:db', reward: -0.2, reward_components: {}, nodes: [] },
+        { t: 1, action: 'noop', reward: -0.1, reward_components: {}, nodes: [] },
+      ],
+    } satisfies LabEpisode;
+    const text = episodeStory(episode);
+    expect(text).toContain('isolate:db');
+    expect(text).toContain('compromised');
+    expect(text).toContain('db');
+    expect(text).toContain('not a live network');
+  });
+});
+
+describe('lab step observation', () => {
+  const node = (name: string, alert: number, hidden: 'none' | 'impact') => ({
+    node: name, alert_rate: alert, anomaly_score: 0, monitoring_level: 0,
+    rate_limited: false, isolated: false, reassessment_pending: false, hidden_stage_ground_truth: hidden,
+  });
+  it('names the highest alert and the recorded action, not the hidden stage', () => {
+    const text = stepObservation({
+      t: 3, action: 'rate_limit:api', reward: 0, reward_components: {},
+      nodes: [node('db', 0.01, 'impact'), node('api', 0.14, 'none'), node('auth', 0.14, 'none')],
+    });
+    expect(text).toContain('0.14 on api, auth');
+    expect(text).toContain('rate-limit api in this simulation');
+    expect(text).not.toContain('impact');
+    expect(text).not.toContain('db');
+  });
+  it('keeps an unknown action as the recorded string', () => {
+    expect(stepObservation({ t: 0, action: 'teleport:db', reward: 0, reward_components: {}, nodes: [] }))
+      .toContain('teleport:db');
+  });
+});
+
+describe('finding expectations', () => {
+  it('keeps an id visible when the snapshot has no matching statement', () => {
+    const rows = matchExpectationStatements(
+      ['exp_known', 'exp_missing'],
+      [{ id: 'exp_known', statement: 'A customer can only read their own payment.', status: 'confirmed' }],
+    );
+    expect(rows[0]).toEqual({ id: 'exp_known', statement: 'A customer can only read their own payment.', status: 'confirmed' });
+    expect(rows[1]).toEqual({ id: 'exp_missing', statement: null, status: null });
+  });
+});
+
+describe('finding story', () => {
+  it('does not claim a fix worked without a verification verdict', () => {
+    const lines = Object.fromEntries(findingStory({
+      title: 'Another user could read a payment',
+      status: 'patch_proposed',
+      severityRationale: null,
+      validationOutcome: 'confirmed',
+      patchRationale: 'Check the payment owner.',
+      verification: null,
+    }).map(line => [line.label, line.text]));
+    expect(lines['Did it work?']).toMatch(/has not recorded a verdict/);
+    expect(lines['Why it matters']).toMatch(/No impact statement/);
+    expect(lines['What happens next?']).toMatch(/has not been independently accepted/);
+  });
+  it('uses the scope target only when that scope covers one repository', () => {
+    const repos = [{ id: 'rep_a', full_name: 'acme/a' }, { id: 'rep_b', full_name: 'acme/b' }];
+    expect(repoFullNameForEvidence(repos, [{ repo_id: 'rep_b' }])).toBe('acme/b');
+    expect(repoFullNameForEvidence(repos, [{ repo_id: 'rep_a' }, { repo_id: 'rep_b' }])).toBeUndefined();
+    expect(repoFullNameForEvidence([{ id: 'rep_a', full_name: 'acme/a' }], null)).toBe('acme/a');
+  });
+});
+
+describe('project overview', () => {
+  const base = { projectId: 'prj_1', repoCount: 1, activeScopeCount: 1, monitoringEnabled: true, assessments: [], findings: [] };
+  it('asks to connect a repository before anything else', () => {
+    const view = projectOverview({ ...base, repoCount: 0 });
+    expect(view.action.label).toBe('Connect a repository');
+    expect(view.headline).toMatch(/No repository/);
+  });
+  it('uses the newest assessment and does not treat hypotheses as confirmed exploits', () => {
+    const view = projectOverview({
+      ...base,
+      assessments: [
+        { id: 'asm_old', state: 'COMPLETED', created_at: '2026-10-01T00:00:00Z' },
+        { id: 'asm_new', state: 'AWAITING_APPROVAL', created_at: '2026-10-17T00:00:00Z' },
+      ],
+      findings: [
+        { kind: 'security', status: 'hypothesis' },
+        { kind: 'security', status: 'validated' },
+        { kind: 'functional', status: 'diagnosed' },
+        { kind: 'security', status: 'verified' },
+      ],
+    });
+    expect(view.action.href).toContain('/approvals');
+    expect(view.securityOpen).toBe(1);
+    expect(view.codeOpen).toBe(1);
+    expect(view.verifiedFixes).toBe(1);
+  });
+});
+
+describe('project journey', () => {
+  const idle = {
+    repoCount: 1,
+    activeScopeCount: 1,
+    current: null,
+    visited: [] as const,
+    findingStatuses: [] as const,
+    monitoringEnabled: false,
+    monitoringKnown: true,
+    monitoringEventCount: 0,
+    monitoringTruncated: false,
+    monitoringFailed: false,
+    newestMonitoringSimulated: false,
+  };
+  const byId = (view: ReturnType<typeof projectJourney>) => Object.fromEntries(view.map(stage => [stage.id, stage]));
+
+  it('blocks understanding until a repository is connected', () => {
+    const view = byId(projectJourney({ ...idle, repoCount: 0 }));
+    expect(view.understand?.status).toBe('blocked');
+    expect(view.security?.status).toBe('not_started');
+    expect(view.monitor?.status).toBe('not_applicable');
+  });
+
+  it('marks only phases the event log entered, and does not treat a hypothesis as verified', () => {
+    const view = byId(projectJourney({
+      ...idle,
+      current: 'VALIDATION',
+      visited: ['CREATED', 'SCOPE_CHECK', 'FUNCTIONAL_REVIEW', 'RECON', 'VALIDATION'],
+      findingStatuses: ['hypothesis'],
+    }));
+    expect(view.understand?.status).toBe('skipped');
+    expect(view.review?.status).toBe('completed');
+    expect(view.security?.status).toBe('running');
+    expect(view.repair?.status).toBe('not_started');
+    expect(view.verify?.status).toBe('not_started');
+    expect(view.verify?.detail).not.toMatch(/secure/);
+  });
+
+  it('a skipped transition is not painted as entered', () => {
+    const visited = statesFromLog([
+      { type: 'assessment.state_changed', state: 'INDEXING', message: 'state -> INDEXING' },
+      { type: 'assessment.state_changed', state: 'RECON', message: 'skipped (no hypotheses); awaiting functional remediation approval' },
+    ]);
+    expect(visited).toEqual(['INDEXING']);
+  });
+
+  it('pauses repair for a human and does not call that a finished fix', () => {
+    const view = byId(projectJourney({
+      ...idle,
+      current: 'AWAITING_APPROVAL',
+      visited: ['INDEXING', 'FUNCTIONAL_REVIEW', 'RECON', 'VALIDATION', 'ANALYSIS', 'DIAGNOSIS', 'AWAITING_APPROVAL'],
+    }));
+    expect(view.repair?.status).toBe('needs_attention');
+    expect(view.repair?.detail).toMatch(/Nothing is merged/);
+    expect(view.verify?.status).toBe('not_started');
+  });
+
+  it('attributes a failure to the last phase the log entered', () => {
+    const view = byId(projectJourney({
+      ...idle,
+      current: 'FAILED',
+      visited: ['CREATED', 'SCOPE_CHECK', 'INDEXING'],
+    }));
+    expect(view.understand?.status).toBe('failed');
+    expect(view.review?.status).toBe('not_started');
+  });
+
+  it('does not verify a run that never entered repair', () => {
+    const view = byId(projectJourney({
+      ...idle,
+      current: 'COMPLETED',
+      visited: ['INDEXING', 'FUNCTIONAL_REVIEW', 'RECON', 'REPORTING', 'COMPLETED'],
+    }));
+    expect(view.repair?.status).toBe('skipped');
+    expect(view.verify?.status).toBe('skipped');
+  });
+
+  it('verification comes from a finding verdict, not from the run merely finishing', () => {
+    const view = byId(projectJourney({
+      ...idle,
+      current: 'COMPLETED',
+      visited: ['INDEXING', 'FUNCTIONAL_REVIEW', 'RECON', 'VALIDATION', 'ANALYSIS', 'DIAGNOSIS', 'AWAITING_APPROVAL', 'REMEDIATION', 'HARDENING', 'REPORTING', 'COMPLETED'],
+      findingStatuses: ['verified'],
+    }));
+    expect(view.verify?.status).toBe('completed');
+    expect(view.verify?.detail).toMatch(/not a claim about the whole application/);
+  });
+
+  it('leaves phases unmarked when the event log did not load', () => {
+    const view = byId(projectJourney({ ...idle, current: 'COMPLETED', visited: null }));
+    expect(view.understand?.status).toBe('not_started');
+    expect(view.understand?.detail).toMatch(/event log did not load/);
+  });
+
+  it('keeps the newest recorded event message and drops an empty one', () => {
+    expect(latestAssessmentEvent([
+      { seq: 1, message: 'state -> INDEXING', at: '2026-10-17T00:00:00Z' },
+      { seq: 3, message: '  ', at: '2026-10-17T00:02:00Z' },
+      { seq: 2, message: 'state -> RECON', at: '2026-10-17T00:01:00Z' },
+    ])).toEqual({ message: 'state -> RECON', at: '2026-10-17T00:01:00Z' });
+  });
+
+  it('labels a simulated monitoring event and a failed one', () => {
+    const failed = byId(projectJourney({ ...idle, monitoringEnabled: true, monitoringFailed: true }));
+    expect(failed.monitor?.status).toBe('failed');
+    const simulated = byId(projectJourney({
+      ...idle,
+      monitoringEnabled: true,
+      monitoringEventCount: 1,
+      newestMonitoringSimulated: true,
+    }));
+    expect(simulated.monitor?.detail).toMatch(/simulated/);
+  });
+});
 
 describe('state rail', () => {
   it('marks only states the run actually entered as done; jumped-over states are skipped', () => {
@@ -27,6 +247,22 @@ describe('state rail', () => {
   });
 });
 
+describe('agent team summary', () => {
+  it('does not invent work for an agent that has not run', () => {
+    expect(agentRunSummary([])).toBe('Has not run.');
+    expect(handoffNote([], [])).toBe('Nothing to hand off: this agent has not run.');
+  });
+  it('counts only recorded runs and tool calls', () => {
+    expect(agentRunSummary([{ status: 'succeeded', tool_calls: [{}, {}] }])).toBe('1 recorded run, 2 tool calls.');
+    expect(handoffNote([{ status: 'succeeded', tool_calls: [] }], [])).toMatch(/has not run yet/);
+    expect(handoffNote([{ status: 'failed', tool_calls: [], error: { code: 'LLM_UNAVAILABLE', message: 'no' } }], [])).toMatch(/no successful handoff/);
+  });
+  it('lists the eight runtime agents in orchestrator order', () => {
+    expect(AGENTS.map(a => a.name)).toEqual(['reviewer', 'scout', 'probe', 'trace', 'diagnose', 'patch', 'verify', 'fortify']);
+    expect(AGENTS.every(a => a.job.length > 0 && a.handsTo.length > 0)).toBe(true);
+  });
+});
+
 describe('status vocabulary', () => {
   it('every status has a text label and glyph, so colour is never the only signal', () => {
     for (const view of [...Object.values(FINDING_STATUS), ...Object.values(ASSESSMENT_STATE)]) {
@@ -37,8 +273,31 @@ describe('status vocabulary', () => {
   it('only provider_mode=live is labelled live', () => {
     expect(providerLabel('live').label).toBe('Live provider');
     expect(providerLabel('fake').label).toMatch(/scripted/);
+    expect(providerLabel('none').label).toBe('Deterministic (no model call)');
     expect(providerLabel('replay').label).toMatch(/Replay/);
     expect(providerLabel('mystery').label).not.toMatch(/Live/);
+  });
+});
+
+describe('scope check categories', () => {
+  it('offers Probe library ids that satisfy ScopeCreate.allowed_check_categories', () => {
+    expect([...SCOPE_CHECK_CATEGORIES]).toEqual(['access_control.ownership', 'input_validation.bounds']);
+    const aliases: CheckCategory[] = ['authorization.ownership', 'input.bounds'];
+    const body: ScopeCreate = {
+      name: 'sandbox',
+      targets: [
+        {
+          kind: 'sandbox_build',
+          repo_id: 'rep_01JFIXTURE0000000000000REP',
+          build_recipe_ref: 'build_recipe.json',
+          exposed_ports: [],
+        },
+      ],
+      allowed_check_categories: [...SCOPE_CHECK_CATEGORIES, ...aliases],
+      expires_at: '2026-11-17T00:00:00Z',
+      notes: null,
+    };
+    expect(body.allowed_check_categories).toHaveLength(4);
   });
 });
 

@@ -44,12 +44,17 @@ test('one real assessment from scope approval to verified patch', async ({ brows
   await expect(alice.getByTestId('agent-reviewer').getByText('Succeeded')).toBeVisible();
   await evidenceShot(alice, 'assessment-awaiting-approval');
 
-  // Bob approves remediation from his inbox (with the will / will-not summary).
+  // Bob approves remediation from his inbox (with the will / will-not summary): one for the
+  // security fix and one for the reviewer's functional repair. The run resumes when both are decided.
   await bob.goto(`/projects/${project()}/approvals`);
   const pending = bob.locator('[data-testid^="approval-"]').filter({ hasText: 'remediation approval' }).filter({ hasText: 'Pending' });
-  await expect(pending.getByText('Merge, push, deploy, or change the repository.')).toBeVisible();
-  await pending.getByRole('button', { name: 'Approve remediation' }).click();
-  await expect(bob.locator('[data-testid^="approval-"]').filter({ hasText: 'remediation approval' }).getByText('Approved')).toBeVisible();
+  await expect(pending).toHaveCount(2);
+  await expect(pending.first().getByText('Merge, push, deploy, or change the repository.')).toBeVisible();
+  for (let i = 0; i < 2; i++) {
+    await pending.first().getByRole('button', { name: 'Approve remediation' }).click();
+    await expect(pending).toHaveCount(1 - i);
+  }
+  await expect(bob.locator('[data-testid^="approval-"]').filter({ hasText: 'remediation approval' }).getByText('Approved')).toHaveCount(2);
 
   // Alice's open page receives the rest of the run live.
   await expect(alice.getByRole('heading', { name: /Assessment/ }).getByText('Completed')).toBeVisible({ timeout: 180_000 });
@@ -59,7 +64,8 @@ test('one real assessment from scope approval to verified patch', async ({ brows
   }
   // Honest provider labelling: scripted model turns are never presented as live.
   await expect(alice.getByTestId('provider-summary')).toContainText('Not a live-provider run');
-  await expect(alice.getByTestId('provider-summary')).toContainText('Test provider (scripted) × 8');
+  // review + seven agents + the reviewer's functional repair + its independent Verify
+  await expect(alice.getByTestId('provider-summary')).toContainText('Test provider (scripted) × 9, Deterministic (no model call) × 1');
   await evidenceShot(alice, 'assessment-completed');
 
   // Security finding evidence chain, patch diff and Verify verdict from persisted records.
@@ -81,7 +87,7 @@ test('one real assessment from scope approval to verified patch', async ({ brows
   await expect(alice.getByRole('heading', { name: /Assessment/ }).getByText('Completed')).toBeVisible();
   await expect(alice.getByTestId('event-log').locator('li')).not.toHaveCount(0);
   await alice.reload();
-  await expect(alice.getByTestId('agent-verify').getByText('Succeeded')).toBeVisible();
+  await expect(alice.getByTestId('agent-verify').getByText('Succeeded').first()).toBeVisible();
 });
 
 test('signed GitHub push appears in the monitoring feed', async ({ browser, request }) => {
