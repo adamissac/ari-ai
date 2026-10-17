@@ -13,10 +13,13 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from shared.base import utcnow
+from shared.evidence import EvidenceKind, EvidenceRef, SourceSpan
 from shared.intelligence import (
     BehavioralExpectation,
+    ContextChunk,
     ContextPack,
     ContextPackRequest,
+    ContextPurpose,
     EntryPoint,
     ImpactResolution,
     ImpactSet,
@@ -28,9 +31,10 @@ from shared.intelligence import (
 )
 
 from code_intelligence.extract import PythonExtractor, dependencies
+from code_intelligence.inference import ExpectationProvider, validate_proposals
 from code_intelligence.ingest import GitReader, Limits
 from code_intelligence.models import INDEX_VERSION, IntelligenceError, StoredIndex, stable_id
-from code_intelligence.retrieval import build_pack, neighbors
+from code_intelligence.retrieval import build_pack, delimited, estimate, neighbors
 from code_intelligence.store import IndexStore, SQLiteIndexStore
 
 
@@ -40,6 +44,7 @@ class RepositoryBinding:
     repo_id: str
     full_name: str
     local_path: Path
+    include_prefix: str = ""
 
 
 class IntelligenceService:
@@ -48,9 +53,11 @@ class IntelligenceService:
         store: IndexStore,
         repositories: Sequence[RepositoryBinding] = (),
         limits: Limits | None = None,
+        expectation_provider: ExpectationProvider | None = None,
     ) -> None:
         self.store = store
         self.limits = limits or Limits()
+        self.expectation_provider = expectation_provider
         self.repositories = {r.repo_id: r for r in repositories}
         if len(self.repositories) != len(repositories):
             raise IntelligenceError("Duplicate repository registration")
@@ -107,7 +114,7 @@ class IntelligenceService:
             commit_sha=snapshot.commit_sha,
             index_version=INDEX_VERSION,
         )
-        reader = GitReader(binding.local_path, self.limits)
+        reader = GitReader(binding.local_path, self.limits, binding.include_prefix)
         tree, files, issues = reader.read(ref.commit_sha)
         parser = PythonExtractor(ref, files)
         parser.extract()
@@ -146,6 +153,15 @@ class IntelligenceService:
         )
         # Full re-derivation is the safe MVP incremental strategy. No artifact is carried
         # without proving its neighborhood and citations unchanged (so carried_from is empty).
+        if self.expectation_provider is not None and index.entry_points:
+            request = ContextPackRequest(
+                snapshot_ref=ref, purpose=ContextPurpose.review, token_budget=24_000
+            )
+            pack = build_pack(index, request)
+            index.expectations.extend(
+                validate_proposals(index, pack, self.expectation_provider.propose(pack))
+            )
+            index.snapshot.stats.expectations = len(index.expectations)
         self.store.put(index)
         return index
 
@@ -239,6 +255,49 @@ class IntelligenceService:
             raise IntelligenceError("Source span exceeds budget")
         return content
 
+    def read_chunk(
+        self, ref: SnapshotRef, path: str, start_line: int, end_line: int
+    ) -> ContextChunk:
+        content = self.read_span(ref, path, start_line, end_line, max_bytes=15_000)
+        evidence = EvidenceRef(
+            kind=EvidenceKind.source_span,
+            path=path,
+            commit_sha=ref.commit_sha,
+            span=SourceSpan(start_line=start_line, end_line=end_line),
+            provenance=f"code_intelligence@{INDEX_VERSION}",
+        )
+        wrapped = delimited(content, evidence)
+        if len(wrapped) > 20_000:
+            raise IntelligenceError("Delimited source span exceeds budget")
+        return ContextChunk(provenance=evidence, content=wrapped, token_estimate=estimate(wrapped))
+
+    def search(
+        self, ref: SnapshotRef, query: str, *, limit: int = 20, max_bytes: int = 20_000
+    ) -> list[ContextChunk]:
+        if (
+            not query.strip()
+            or len(query) > 500
+            or not 1 <= limit <= 50
+            or not 1 <= max_bytes <= 100_000
+        ):
+            raise IntelligenceError("Search requires bounded nonempty query and limit 1..50")
+        index = self.store.get(ref)
+        chunks: list[ContextChunk] = []
+        used = 0
+        for file in index.files:
+            for number, line in enumerate(file.content.splitlines(), 1):
+                if query.casefold() not in line.casefold():
+                    continue
+                chunk = self.read_chunk(ref, file.path, number, number)
+                cost = len(chunk.model_dump_json().encode())
+                if used + cost > max_bytes:
+                    return chunks
+                chunks.append(chunk)
+                used += cost
+                if len(chunks) == limit:
+                    return chunks
+        return chunks
+
     def affected_by_diff(
         self,
         repo_id: str,
@@ -304,6 +363,7 @@ def build_service() -> IntelligenceService:
             repo_id=item["repo_id"],
             full_name=item["full_name"],
             local_path=Path(item["local_path"]),
+            include_prefix=item.get("include_prefix", ""),
         )
         for item in raw
     ]

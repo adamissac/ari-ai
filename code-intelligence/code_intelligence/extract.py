@@ -81,6 +81,25 @@ class PythonExtractor:
         self.by_name: dict[str, list[Symbol]] = defaultdict(list)
         self.shadowed: dict[str, set[str]] = defaultdict(set)
         self.parser = Parser(Language(tree_sitter_python.language()))
+        package_dirs = {
+            str(PurePosixPath(f.path).parent)
+            for f in files
+            if PurePosixPath(f.path).name == "__init__.py"
+        }
+        self.modules: dict[str, str] = {}
+        for file in files:
+            pure = PurePosixPath(file.path)
+            parts = [] if pure.stem == "__init__" else [pure.stem]
+            parent = pure.parent
+            while str(parent) in package_dirs:
+                parts.insert(0, parent.name)
+                parent = parent.parent
+            self.modules[file.path] = (
+                ".".join(parts) if str(pure.parent) in package_dirs else module_name(file.path)
+            )
+
+    def _module(self, path: str) -> str:
+        return self.modules[path]
 
     def extract(self) -> None:
         for file in self.files:
@@ -96,7 +115,7 @@ class PythonExtractor:
                 self.issues.append(IndexIssue(path=file.path, reason="Python AST parse error"))
                 continue
             self.trees[file.path] = tree
-            module = self._symbol(file, tree, module_name(file.path), "module")
+            module = self._symbol(file, tree, self._module(file.path), "module")
             self._walk_definitions(file, tree, module)
         for file in self.files:
             if file.path in self.trees:
@@ -104,6 +123,8 @@ class PythonExtractor:
         for file in self.files:
             if file.path in self.trees:
                 self._derive(file, self.trees[file.path])
+        self._link_http_tests()
+        self._document_expectations()
         self.calls = list(
             {
                 (e.caller_id, e.callee_id, e.callee_name, e.resolution): e for e in self.calls
@@ -176,7 +197,7 @@ class PythonExtractor:
                 if isinstance(node, ast.ImportFrom):
                     module = node.module or ""
                     if node.level:
-                        package = module_name(file.path).split(".")
+                        package = self._module(file.path).split(".")
                         if PurePosixPath(file.path).name != "__init__.py":
                             package.pop()
                         prefix = package[: len(package) - node.level + 1]
@@ -357,6 +378,39 @@ class PythonExtractor:
                         "ambiguous",
                         "Declared docstring rule; not a verified test result",
                     )
+        if isinstance(node, ast.ClassDef):
+            for member in node.body:
+                if not isinstance(member, ast.AnnAssign) or not isinstance(member.value, ast.Call):
+                    continue
+                if ast.unparse(member.value.func).split(".")[-1] != "Field":
+                    continue
+                constraints = [
+                    f"{kw.arg}={ast.unparse(kw.value)}"
+                    for kw in member.value.keywords
+                    if kw.arg
+                    in {
+                        "gt",
+                        "ge",
+                        "lt",
+                        "le",
+                        "min_length",
+                        "max_length",
+                        "pattern",
+                        "max_digits",
+                        "decimal_places",
+                    }
+                ]
+                if constraints:
+                    self._expectation(
+                        symbol,
+                        symbol,
+                        f"{ast.unparse(member.target)} requires {', '.join(constraints)}",
+                        0.7,
+                        "ambiguous",
+                        "Declared Field constraints, not executed",
+                        start=member.lineno,
+                        end=member.end_lineno,
+                    )
         if not file.is_test or not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
         assertions = [n for n in ast.walk(node) if isinstance(n, ast.Assert)]
@@ -427,6 +481,112 @@ class PythonExtractor:
                 else DataSensitivity.internal,
             )
         )
+
+    def _link_http_tests(self) -> None:
+        """Heuristic links between test HTTP literals and declared routes, never coverage proof."""
+        import re
+
+        symbols = {s.id: s for s in self.symbols}
+        files = {f.path: f for f in self.files}
+        for test in self.symbols:
+            node = self.nodes[test.id]
+            if not files[test.path].is_test or not isinstance(
+                node, (ast.FunctionDef, ast.AsyncFunctionDef)
+            ):
+                continue
+            assertions = [a for a in ast.walk(node) if isinstance(a, ast.Assert)]
+            if not assertions:
+                continue
+            for call in ast.walk(node):
+                if not isinstance(call, ast.Call) or not isinstance(call.func, ast.Attribute):
+                    continue
+                method = call.func.attr.upper()
+                if method not in {"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}:
+                    continue
+                if not call.args or not isinstance(call.args[0], ast.Constant):
+                    continue
+                request_path = call.args[0].value
+                if not isinstance(request_path, str):
+                    continue
+                for entry in self.entries:
+                    pattern = re.sub(
+                        r"\\\{[^}]+\\\}", r"[^/]+", re.escape(entry.path_template or "")
+                    )
+                    if method != entry.method or not re.fullmatch(
+                        pattern, request_path.split("?", 1)[0]
+                    ):
+                        continue
+                    subject = symbols[entry.handler_symbol_id]
+                    self.calls.append(
+                        CallEdge(
+                            snapshot_id=self.ref.snapshot_id,
+                            caller_id=test.id,
+                            callee_id=subject.id,
+                            callee_name=f"HTTP {method} {request_path}"[:500],
+                            resolution=CallResolution.likely,
+                        )
+                    )
+                    self._expectation(
+                        subject,
+                        test,
+                        f"HTTP test {node.name}: {ast.unparse(assertions[0].test)}"[:500],
+                        0.75,
+                        "ambiguous",
+                        "Heuristic HTTP test link, not executed",
+                        start=assertions[0].lineno,
+                        end=assertions[0].end_lineno,
+                    )
+
+    def _document_expectations(self) -> None:
+        """Declared intent from docs remains unverified and source-cited."""
+        import re
+
+        for file in self.files:
+            if PurePosixPath(file.path).suffix not in {".md", ".rst"}:
+                continue
+            for number, line in enumerate(file.content.splitlines(), 1):
+                if not re.search(r"\b(must|only|never|shall|required)\b", line, re.I):
+                    continue
+                words = set(re.findall(r"[a-z]{4,}", line.lower())) - {
+                    "must",
+                    "only",
+                    "never",
+                    "shall",
+                    "required",
+                    "their",
+                    "that",
+                    "this",
+                }
+                candidates = [
+                    s
+                    for s in self.symbols
+                    if s.kind.value in {"module", "function", "method"}
+                    and any(w.rstrip("s") in s.qualified_name.lower() for w in words)
+                ]
+                for subject in candidates[:3]:
+                    evidence = EvidenceRef(
+                        kind=EvidenceKind.source_span,
+                        path=file.path,
+                        commit_sha=self.ref.commit_sha,
+                        span=SourceSpan(start_line=number, end_line=number),
+                        provenance=f"code_intelligence@{INDEX_VERSION}",
+                        note="Declared documentation intent; lexical subject link is uncertain",
+                    )
+                    self.expectations.append(
+                        BehavioralExpectation(
+                            id=stable_id(
+                                "exp", self.ref.snapshot_id, subject.id, file.path, str(number)
+                            ),
+                            snapshot_id=self.ref.snapshot_id,
+                            subject_ref=subject.id,
+                            statement=line.strip()[:500],
+                            kind=ExpectationKind.functional,
+                            sources=[evidence],
+                            confidence=0.55,
+                            origin=ExpectationOrigin.extracted,
+                            status=ExpectationStatus.ambiguous,
+                        )
+                    )
 
 
 def dependencies(files: list[SourceFile]) -> list[DependencyRecord]:
