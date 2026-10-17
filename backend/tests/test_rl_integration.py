@@ -89,7 +89,7 @@ def test_recommendation_from_persisted_findings(
                     verified_path=True,
                 ),
             ),
-            subject_refs=["POST /payments/{payment_id}/refunds"],
+            subject_refs=["POST /refunds"],
             confidence=0.9,
             created_at=now,
             updated_at=now,
@@ -119,6 +119,17 @@ def test_recommendation_from_persisted_findings(
     assert rec["simulation_derived"] is True and "simulation" in recs["label"]
     assert rec["checkpoint_sha256"] == manifest["checkpoint_sha256"]
     assert len(rec["observation"]) == 48 and rec["project_id"] == ids["project"]
+    exp = alice.get(f"/api/v1/defense-recommendations/{rec['id']}/explanation")
+    assert exp.status_code == 200, exp.text
+    exp = exp.json()
+    assert exp["recommendation_id"] == rec["id"] and exp["simulation_derived"] is True
+    assert exp["top_contributions"] and "occlusion" in exp["method"]
+    assert (
+        client_factory("eve")
+        .get(f"/api/v1/defense-recommendations/{rec['id']}/explanation")
+        .status_code
+        == 404
+    )
     assert rec["action"] in {
         "noop",
         "raise_monitoring",

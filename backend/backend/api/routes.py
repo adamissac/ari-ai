@@ -81,7 +81,7 @@ from shared.findings import Finding, FindingStatus, PatchCandidate, StatusChange
 from shared.ids import IdPrefix, new_id
 from shared.intelligence import Snapshot, SnapshotStatus
 from shared.monitoring import MonitoringEvent, ReassessmentRequest
-from shared.rl import DefenseRecommendation, PlatformFacts, RLEvaluation
+from shared.rl import DefenseRecommendation, PlatformFacts, RLEvaluation, RLExplanation
 from shared.scope import (
     Approval,
     ApprovalStatus,
@@ -1088,6 +1088,25 @@ def list_recommendations(project_id: str, request: Request) -> dict[str, Any]:
             "next_cursor": None,
             "label": "simulation-derived decision support; never executed automatically",
         }
+
+
+@router.get("/defense-recommendations/{rec_id}/explanation", response_model=RLExplanation)
+def recommendation_explanation(rec_id: str, request: Request) -> RLExplanation:
+    with transaction() as conn:
+        user = _user(conn, request)
+        row = (
+            conn.execute(
+                sa.select(defense_recommendations).where(defense_recommendations.c.id == rec_id)
+            )
+            .mappings()
+            .first()
+        )
+        if row is None or row["project_id"] is None:
+            raise not_found("recommendation")
+        require_project(conn, user, row["project_id"])
+        if row["explanation"] is None:
+            raise not_found("explanation")
+        return RLExplanation.model_validate(row["explanation"])
 
 
 class RecommendRequest(StrictModel):
