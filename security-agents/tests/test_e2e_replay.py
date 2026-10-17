@@ -258,41 +258,187 @@ def test_usage_is_accounted_across_the_assessment(result):
 
 
 @pytest.mark.boundary
-def test_verify_rejects_a_patch_that_weakens_an_existing_test(intel, driver, library, tmp_path):
-    """SB-09: a diff that edits a test encoding a confirmed expectation is rejected."""
+def test_worktree_refuses_a_patch_attempt_that_weakens_an_existing_test(intel, driver, library, tmp_path):
+    """First line of defence: the write is refused, so no weakened test reaches the diff."""
     orch, _ = build(intel, driver, library, tmp_path, weaken_tests=True)
     res = orch.run()
     finding = res.findings[0]
-    assert finding.verifications, finding.notes
-    first = finding.verifications[0]
-    assert first.verdict == "rejected"
-    tampering = next(c for c in first.checks if c.name.value == "no_test_tampering")
-    assert not tampering.passed
-    assert any("test_payments.py" in r for r in first.reasons)
-    assert finding.status in ("patch_rejected", "unresolved")
+    patch_record = next(r for r in res.records if r.agent is AgentName.PATCH)
+    refused = [
+        inv for inv in patch_record.tool_invocations
+        if inv.name == "worktree.write_file" and inv.error_code == "PATH_NOT_ALLOWED"
+    ]
+    assert refused, [(i.name, i.error_code) for i in patch_record.tool_invocations]
+    candidate = finding.candidates[-1]
+    assert "tests/test_payments.py" not in candidate.files_changed
+    diff = (tmp_path / "work" / f"patch-{finding.finding_id}-1.diff").read_text()
+    assert "tests/test_payments.py" not in diff
 
 
 @pytest.mark.boundary
-def test_verify_rejects_a_patch_that_changes_files_outside_the_plan(intel, driver, library, tmp_path):
+def test_worktree_refuses_a_patch_attempt_outside_the_plan(intel, driver, library, tmp_path):
     orch, _ = build(intel, driver, library, tmp_path, out_of_scope=True)
     res = orch.run()
     finding = res.findings[0]
-    assert finding.verifications
-    scope_check = next(c for c in finding.verifications[0].checks if c.name.value == "diff_scope_ok")
-    assert not scope_check.passed
-    assert "payments_lite/store.py" in scope_check.detail
+    patch_record = next(r for r in res.records if r.agent is AgentName.PATCH)
+    refused = [
+        inv for inv in patch_record.tool_invocations
+        if inv.name == "worktree.write_file" and inv.error_code == "PATH_NOT_ALLOWED"
+    ]
+    assert refused
+    assert "payments_lite/store.py" not in finding.candidates[-1].files_changed
 
 
 @pytest.mark.boundary
-def test_rejected_patch_is_retried_at_most_twice(intel, driver, library, tmp_path):
-    orch, _ = build(intel, driver, library, tmp_path, weaken_tests=True)
+def test_ineffective_in_scope_patch_is_rejected_and_retried_then_unresolved(
+    intel, driver, library, tmp_path
+):
+    """Verify rejects a patch that does not fix the finding; the loop retries once."""
+    orch, _ = build(intel, driver, library, tmp_path, ineffective=True)
     res = orch.run()
     patch_runs = [r for r in res.runs if r.agent is AgentName.PATCH]
     verify_runs = [r for r in res.runs if r.agent is AgentName.VERIFY]
-    assert len(patch_runs) == 2, [r.attempt for r in patch_runs]
+    assert [r.attempt for r in patch_runs] == [1, 2], [r.attempt for r in patch_runs]
     assert len(verify_runs) == 2
-    assert [r.attempt for r in patch_runs] == [1, 2]
-    assert res.findings[0].status == "patch_rejected"
+    finding = res.findings[0]
+    assert finding.status == "patch_rejected"
+    assert [v.verdict for v in finding.verifications] == ["rejected", "rejected"]
+    first = finding.verifications[0]
+    recheck = next(c for c in first.checks if c.name.value == "original_check_now_fails_to_reproduce")
+    assert not recheck.passed
+    assert "remediation.exhausted" in [e.action for e in res.audit]
+    # Fortify never runs for an unresolved finding.
+    assert not any(r.agent is AgentName.FORTIFY for r in res.runs)
+
+
+@pytest.mark.boundary
+def test_patch_retry_receives_rejection_reasons_but_no_verify_transcript(
+    intel, driver, library, tmp_path
+):
+    orch, gateway = build(intel, driver, library, tmp_path, ineffective=True)
+    orch.run()
+    patch_calls = [c for c in gateway.provider.calls if c.agent is AgentName.PATCH]
+    second_attempt = [c for c in patch_calls if "This is attempt 2" in str(c.messages[0]["content"])]
+    assert second_attempt, "the retry prompt should state the attempt number"
+    prompt = str(second_attempt[0].messages[0]["content"])
+    assert "rejection_reasons" in prompt
+    assert "original_check_now_fails_to_reproduce" in prompt
+    # machine reasons only: Verify's own summary text must not be handed over
+    assert "Applied the diff to a fresh checkout" not in prompt
+
+
+@pytest.mark.boundary
+def test_verify_rejects_a_planted_bad_patch_that_edits_a_protected_test(
+    intel, driver, library, tmp_path
+):
+    """A diff authored outside the worktree guard is still rejected by Verify (SB-09).
+
+    This is the `examples/fixtures/bad-patches` case: a patch that makes the
+    failing expectation pass by weakening the test that encodes it.
+    """
+    from security_agents.agents import verify as verify_agent
+    from security_agents.sandbox.workspace import fresh_checkout, unified_diff
+    from security_agents.tools import PatchApplier, ToolContext
+    from security_agents.tools import AuditSink
+
+    work = tmp_path / "bad"
+    wt = fresh_checkout(intel.snapshot, work / "wt")
+    protected = wt / "tests" / "test_payments.py"
+    protected.write_text(
+        protected.read_text().replace(
+            'assert client.get("/payments/pay_bob_1/refunds", headers=ALICE).status_code == 404',
+            'assert client.get("/payments/pay_bob_1/refunds", headers=ALICE).status_code in (200, 404)',
+        )
+    )
+    diff = unified_diff(intel.snapshot.root, wt, ["tests/test_payments.py"])
+    assert "tests/test_payments.py" in diff
+
+    applier = PatchApplier(
+        intel=intel,
+        artifacts={
+            "pat_bad": {
+                "diff": diff,
+                "plan_files": ["payments_lite/app.py"],
+                "protected_tests": ["tests/test_payments.py"],
+            }
+        },
+        workdir=work,
+    )
+    ctx = ToolContext(
+        assessment_id="asm_bad", agent=AgentName.VERIFY, run_id="run_bad", step_key="verify",
+        read_root=intel.snapshot.root, audit=AuditSink(),
+    )
+    facts = applier.apply_fresh(ctx, "pat_bad")
+    assert facts["applied"] is True
+    assert facts["tampered_protected_tests"] == ["tests/test_payments.py"]
+    # editing an existing test is both tampering and outside the plan's file set
+    assert facts["out_of_scope_files"] == ["tests/test_payments.py"]
+    assert facts["new_test_files"] == []
+
+    evidence = verify_agent.VerifyEvidence(
+        apply_facts=dict(ctx.artifacts["verify_facts"]),
+        recheck_runs=[],
+        test_runs=[],
+        baseline_failing=[],
+        tests_added=[],
+        protected_tests=["tests/test_payments.py"],
+        original_check_ref="access_control.ownership@1",
+        original_check_params={},
+    )
+    verdict, checks, reasons = verify_agent.compute_verdict(evidence)
+    assert verdict == "rejected"
+    assert not next(c for c in checks if c.name.value == "no_test_tampering").passed
+    assert not next(c for c in checks if c.name.value == "diff_scope_ok").passed
+    assert any("tests/test_payments.py" in r for r in reasons)
+
+
+@pytest.mark.boundary
+def test_verify_rejects_a_planted_bad_patch_outside_the_plan(intel, driver, library, tmp_path):
+    from security_agents.agents import verify as verify_agent
+    from security_agents.sandbox.workspace import fresh_checkout, unified_diff
+    from security_agents.tools import AuditSink, PatchApplier, ToolContext
+
+    work = tmp_path / "bad2"
+    wt = fresh_checkout(intel.snapshot, work / "wt")
+    store = wt / "payments_lite" / "store.py"
+    store.write_text(store.read_text() + "\n# unrelated change\n")
+    diff = unified_diff(intel.snapshot.root, wt, ["payments_lite/store.py"])
+
+    applier = PatchApplier(
+        intel=intel,
+        artifacts={"pat_scope": {"diff": diff, "plan_files": ["payments_lite/app.py"],
+                                 "protected_tests": ["tests/test_payments.py"]}},
+        workdir=work,
+    )
+    ctx = ToolContext(
+        assessment_id="asm_bad2", agent=AgentName.VERIFY, run_id="run_bad2", step_key="verify",
+        read_root=intel.snapshot.root, audit=AuditSink(),
+    )
+    facts = applier.apply_fresh(ctx, "pat_scope")
+    assert facts["out_of_scope_files"] == ["payments_lite/store.py"]
+    verdict, checks, _ = verify_agent.compute_verdict(
+        verify_agent.VerifyEvidence(
+            apply_facts=dict(ctx.artifacts["verify_facts"]), recheck_runs=[], test_runs=[],
+            baseline_failing=[], tests_added=[], protected_tests=["tests/test_payments.py"],
+            original_check_ref="access_control.ownership@1", original_check_params={},
+        )
+    )
+    assert verdict == "rejected"
+    assert not next(c for c in checks if c.name.value == "diff_scope_ok").passed
+
+
+@pytest.mark.boundary
+def test_patch_without_a_regression_test_is_rejected(intel, driver, library, tmp_path):
+    """A fix with no test is not verifiable, so it cannot be accepted."""
+    orch, _ = build(intel, driver, library, tmp_path, skip_tests=True)
+    res = orch.run()
+    finding = res.findings[0]
+    assert finding.verifications
+    generated = next(
+        c for c in finding.verifications[0].checks if c.name.value == "generated_tests_pass"
+    )
+    assert not generated.passed
+    assert finding.verifications[0].verdict == "rejected"
 
 
 def test_patch_cannot_write_outside_the_plan(intel, driver, library, tmp_path):

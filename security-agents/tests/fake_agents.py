@@ -375,12 +375,29 @@ def diagnose_script() -> list:
 # --------------------------------------------------------------------------- patch
 
 
-def patch_script(snapshot_root: Path, *, weaken_tests: bool = False, out_of_scope: bool = False) -> list:
-    """Patch trajectory. The flags produce the bad patches Verify must reject."""
+def patch_script(
+    snapshot_root: Path,
+    *,
+    weaken_tests: bool = False,
+    out_of_scope: bool = False,
+    ineffective: bool = False,
+    skip_tests: bool = False,
+) -> list:
+    """Patch trajectory.
+
+    `weaken_tests` / `out_of_scope` make the agent attempt writes the worktree
+    must refuse. `ineffective` produces an in-scope change that does not fix the
+    finding, so Verify rejects it and the remediation sub-flow retries.
+    """
     submit = patch_agent.SPEC.submit_tool_name()
     app_text = (snapshot_root / WEAK_HANDLER_PATH).read_text(encoding="utf-8")
     fixed_text = app_text.replace(WEAK_LINE, FIXED_LINE)
     assert fixed_text != app_text, "fixture no longer contains the expected weak line"
+    if ineffective:
+        # In-scope, syntactically fine, but the ownership condition is still missing.
+        fixed_text = app_text.replace(
+            WEAK_LINE, WEAK_LINE + "  # TODO: scope this lookup to the customer"
+        )
 
     def turn0(_request) -> FakeTurn:
         return FakeTurn(
@@ -406,6 +423,8 @@ def patch_script(snapshot_root: Path, *, weaken_tests: bool = False, out_of_scop
         return FakeTurn(text="Applying the scoped lookup.", tool_calls=calls)
 
     def turn2(_request) -> FakeTurn:
+        if skip_tests:
+            return FakeTurn(tool_calls=[("worktree__diff", {})])
         return FakeTurn(
             tool_calls=[("worktree__write_file", {"path": REGRESSION_TEST_PATH, "content": REGRESSION_TEST})]
         )
@@ -439,7 +458,7 @@ def patch_script(snapshot_root: Path, *, weaken_tests: bool = False, out_of_scop
                             "non-owner denial and the owner's continued access."
                         ),
                         "files_changed": files,
-                        "tests_added": [REGRESSION_TEST_PATH],
+                        "tests_added": [] if skip_tests else [REGRESSION_TEST_PATH],
                         "local_tests_passed": bool(passed),
                         "local_test_run_id": run_id,
                         "deviations_from_plan": (
