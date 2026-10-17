@@ -108,7 +108,7 @@ What this shows, and does not show:
 
 ```bash
 cd rl-defense
-uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -e ../shared -e ".[dev]"
+uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -e ../standards -e ../shared -e ".[dev]"  # same as .github/workflows/rl.yml
 
 .venv/bin/python -m pytest -q                       # all tests (~1 min)
 .venv/bin/ruff check rl_defense tests && .venv/bin/ruff format --check rl_defense tests
