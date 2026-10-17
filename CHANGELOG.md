@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Added canonical offline CVSS v3.1, OWASP API 2023 and NIST SP 800-115 reference catalogs with integrity checks and pinned-source refresh tooling.
+
 ### Fixed
 - Hosted assessments with a still-pending functional approval now pause at
   `AWAITING_APPROVAL` even when security work ended early or was already
