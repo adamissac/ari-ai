@@ -84,6 +84,13 @@ make dev                        # migrate + API (:8000) + worker on embedded Pos
 make smoke-live                 # opt-in real Claude call (RUN_LIVE_LLM_EVAL=1 + key; costs money)
 ```
 
+Reviewer (`code-review/`, details in [code-review/README.md](code-review/README.md)):
+
+```
+uv run pytest -q code-review/tests                                   # FakeTransport + real tool execution
+RUN_LIVE_LLM_EVAL=1 uv run pytest -q -m live_llm code-review/tests -s  # live reviewer; costs money, $1 cap/phase
+```
+
 ## When you are uncertain
 
 Prefer, in order: (1) the spec, (2) an existing ADR, (3) asking the human,
