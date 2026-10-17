@@ -1,13 +1,13 @@
 # Alan — implementation status
 
 Owner: Alan (`security-agents/`, SEC-001 … SEC-013)
-Branch: `feat/alan/shared-cvss31` (#108), `docs/alan/sec-task-status` (#109)
-Current task: shared 0.10.0 `cvss_v31` and worker RoE hand-off (#108); SEC task board
-Last remote sync: 2026-10-17T10:50Z, `origin/main` @ `173f137` (#100, #103 merged)
+Branch: `feat/alan/sarif-export` (#114), `feat/alan/owasp-llm-agent-runtime` (#116), `docs/alan/p1-notes` (#117)
+Current task: P1: SARIF 2.1.0 export and OWASP LLM 2026 agent-runtime evidence; M3 live run pending a key holder
+Last remote sync: 2026-10-17T11:10Z, `origin/main` after #108, #109, #112 merged
 API/contract dependencies: `shared` 0.9.0 `CheckCategory`; `backend.host` checkpoints; `code_review.api` functional helpers
 Recent PR/commit: `feat/alan/verify-honesty-check-category` (do not push merged `host-finding-persistence` / `host-resume-hardening`)
 Blockers: live seven-agent run (issue #10, no key); Docker images (INFRA-005)
-Next action: merge #108 and #109 when every job on the head is green; live seven-role run by a key holder for M3; then P1 (SARIF, SP 800-61, OWASP LLM self-assessment)
+Next action: merge #114, #116, #117 when every job on the head is green; live seven-role run by a key holder (M3)
 
 ## What runs today
 
