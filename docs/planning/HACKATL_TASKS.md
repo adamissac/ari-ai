@@ -192,7 +192,7 @@ Issue #148 status: DONE via PR #150, merged `1129434`; all executable CI checks 
 
 ### Ari logo integration — #165 / #169
 
-Sarosh, `feat/sarosh/ari-logo`: IN_REVIEW. Actual Sai sign-off #165/#176 applied: shared header/sign-in24px, intro96px and app/icon.png; original source preserved, no landing/story/graph/footer mark. Unit71, tsc/lint, production build and full real-stack browser14 passed; focused desktop/mobile/intro browser2 re-run passed. PR #169 awaits CI merge gate.
+Sarosh, `feat/sarosh/ari-logo`: DONE via PR #169, merged `b38b6ff`. Actual Sai sign-off #165/#176 applied: shared header/sign-in24px, intro96px and app/icon.png; original source preserved, no landing/story/graph/footer mark. Unit71, tsc/lint, production build and full real-stack browser14 passed; focused desktop/mobile/intro browser2 re-run passed. All executable PR checks passed on `4b48388`; issue #165 is closed.
 ### API-RETRY-001 — assessment creation retries
 Owner: Alan (Codex), explicitly assigned application integration sprint. Status:
 IN_REVIEW on `fix/alan/demo-api-reliability`, base `37b0920`.
