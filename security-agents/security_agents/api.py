@@ -1,7 +1,10 @@
 """`security_agents` public API (consumed by backend workers and code_review).
 
 Published interfaces:
-  * `run_assessment(...)` / `Orchestrator` — the seven-agent assessment.
+  * `build_orchestrator()` -> `.run(host)` — the backend worker entry point
+    (`backend/INTEGRATION.md` §Alan); every model call goes through
+    `host.llm()` and every record through the host.
+  * `run_assessment(...)` / `Orchestrator` — the standalone assessment.
   * `run_agent_step(...)` — one agent step, for a worker that owns its own state.
   * `scope_guard.check(...)` — pure authorization decision.
   * `PatchWorktree` + `TestRunner` — the shared repair sandbox surface for
@@ -14,6 +17,7 @@ from __future__ import annotations
 from .agents import ALL_SPECS
 from .checks.library import CheckLibrary, default_library
 from .contracts import SCHEMA_VERSION, AgentName
+from .host_adapter import HostOrchestrator, build_orchestrator
 from .intel import CodeIntel, LocalIntel
 from .llm import LLMGateway, ProviderGateway
 from .runtime import AgentSpec, StepOutcome
@@ -53,6 +57,7 @@ __all__ = [
     "CodeIntel",
     "Decision",
     "DockerSandboxDriver",
+    "HostOrchestrator",
     "LLMGateway",
     "LocalIntel",
     "LocalProcessDriver",
@@ -66,6 +71,7 @@ __all__ = [
     "TestRunner",
     "ToolContext",
     "ToolRegistry",
+    "build_orchestrator",
     "default_library",
     "default_registry",
     "run_agent_step",

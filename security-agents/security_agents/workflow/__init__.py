@@ -2,7 +2,9 @@
 
 from .orchestrator import (
     DEFAULT_BUDGET,
+    ApprovalPending,
     AssessmentResult,
+    AssessmentSink,
     FindingRecord,
     Orchestrator,
     OrchestratorConfig,
@@ -21,7 +23,9 @@ from .states import (
 __all__ = [
     "DEFAULT_BUDGET",
     "MAX_PATCH_ATTEMPTS",
+    "ApprovalPending",
     "AssessmentResult",
+    "AssessmentSink",
     "AssessmentState",
     "FindingRecord",
     "IllegalTransition",
