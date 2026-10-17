@@ -293,6 +293,17 @@ def connect_repository(project_id: str, body: RepositoryConnect, request: Reques
     with transaction() as conn:
         user = _user(conn, request)
         org_id, _ = require_project(conn, user, project_id, MemberRole.owner)
+        # The worker fetches App-connected repositories with an installation token, so the
+        # caller must have reached this exact repository through that installation at sign-in.
+        if body.installation_id is not None:
+            from backend.api.github_repos import can_connect
+
+            if not can_connect(conn, user.id, body.full_name, body.installation_id):
+                raise ApiError(
+                    ErrorCode.FORBIDDEN,
+                    "this GitHub App installation does not give you access to that repository",
+                    403,
+                )
         if conn.execute(
             sa.select(repositories.c.id).where(repositories.c.full_name == body.full_name)
         ).scalar():

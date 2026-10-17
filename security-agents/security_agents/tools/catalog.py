@@ -12,9 +12,10 @@ import re
 from typing import Any, Literal
 
 from pydantic import Field
+from shared.scope import check_category_allowed
 
 from ..checks.library import CheckLibrary
-from ..contracts import PlatformError, StrictModel
+from ..contracts import PlatformError, ScopeStatus, StrictModel
 from ..intel import CodeIntel, FindingsHistory
 from ..sandbox.workspace import safe_rel_path
 from .registry import ToolContext, ToolDef, ToolRegistry
@@ -232,12 +233,25 @@ def h_list_templates(ctx: ToolContext, args: ListTemplatesArgs) -> dict[str, Any
     library: CheckLibrary = ctx.service("checks")
     items = library.list_public()
     if args.category:
-        items = [t for t in items if t["category"] == args.category]
+        items = [t for t in items if check_category_allowed(str(t["category"]), [args.category])]
     allowed = sorted(ctx.scope.allowed_check_categories) if ctx.scope else []
-    recipe = _scope_recipe(ctx)
+    withheld = _discovery_withheld(ctx)
+    recipe = None if withheld else _scope_recipe(ctx)
+    index: dict[str, Any] = {}
     if recipe is not None:
-        items = [{**t, "parameter_values": library.parameter_values(t["ref"], recipe)} for t in items]
+        permitted = set(getattr(ctx.roe, "permitted_check_templates", []) or [])
+        items = [
+            {**t, "parameter_values": library.parameter_values(t["ref"], recipe)}
+            if t["ref"] in permitted
+            else t
+            for t in items
+        ]
+        index = {t["ref"]: _compact(t["parameter_values"]) for t in items if "parameter_values" in t}
+    extra: dict[str, Any] = {"parameter_index": index} if index else {}
+    if withheld:
+        extra["parameter_values_withheld"] = withheld
     return {
+        **extra,
         "count": len(items),
         "templates": items,
         "scope_allowed_categories": allowed,
@@ -247,6 +261,31 @@ def h_list_templates(ctx: ToolContext, args: ListTemplatesArgs) -> dict[str, Any
             "route_id takes a route id, never an HTTP path."
         ),
     }
+
+
+def _compact(values: dict[str, Any]) -> dict[str, Any]:
+    return {
+        name: [v["id"] if isinstance(v, dict) else v for v in value] if isinstance(value, list) else value
+        for name, value in values.items()
+    }
+
+
+def _discovery_withheld(ctx: ToolContext) -> str | None:
+    from ..standards.roe import check_roe
+
+    if ctx.scope is None or not ctx.scope.targets:
+        return "no authorized scope"
+    if ctx.scope.status is not ScopeStatus.ACTIVE:
+        return f"scope is {ctx.scope.status.value}"
+    decision = check_roe(
+        ctx.roe,
+        ctx.scope,
+        ctx.now(),
+        agent=ctx.agent,
+        target_id=ctx.scope.targets[0].target_id,
+        template_ref=None,
+    )
+    return None if decision.allowed else f"rules of engagement: {decision.reason}"
 
 
 def _scope_recipe(ctx: ToolContext) -> dict[str, Any] | None:

@@ -76,6 +76,20 @@ sessions = sa.Table(
     _created(),
 )
 
+# Repositories a user can reach through the GitHub App, refreshed at each GitHub sign-in.
+# Connecting a repository with an installation_id requires a matching row (no token stored).
+github_repo_access = sa.Table(
+    "github_repo_access",
+    metadata,
+    sa.Column("user_id", sa.String(80), sa.ForeignKey("users.id"), nullable=False),
+    sa.Column("full_name", sa.String(200), nullable=False),
+    sa.Column("installation_id", sa.BigInteger, nullable=False),
+    sa.Column("default_branch", sa.String(200), nullable=False),
+    sa.Column("private", sa.Boolean, nullable=False),
+    sa.Column("refreshed_at", TS, nullable=False, server_default=sa.func.now()),
+    sa.PrimaryKeyConstraint("user_id", "full_name"),
+)
+
 projects = sa.Table(
     "projects",
     metadata,
