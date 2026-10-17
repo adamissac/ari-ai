@@ -1,10 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { BRAND_NAME } from '@/components/brand';
 import { RecordedLiveRun } from '@/components/demo/recorded-live-run';
 import { Avatar, DemoBar } from '@/components/demo/ui';
-import { DEMO_ORGS, reposFor } from '@/lib/demo/data';
+import { ACCOUNT_ORGS, CONNECTED_DAYS_AGO, reposFor } from '@/lib/demo/data';
 import { useDemoSession } from '@/lib/demo/session';
 
 export default function DemoOrgsPage() {
@@ -17,11 +16,11 @@ export default function DemoOrgsPage() {
       <DemoBar crumbs={[{ label: 'Choose an organization' }]} user={user} onSignOut={signOut} />
       <header className="mb-6">
         <p className="label-mono text-brand">Signed in as {user.login}</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">Where should {BRAND_NAME} look?</h1>
-        <p className="mt-1.5 text-sm text-muted">Pick an organization. You can connect more later from settings.</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight">Your organizations</h1>
+        <p className="mt-1.5 text-sm text-muted">Connected {CONNECTED_DAYS_AGO} days ago. Every push since then has been reviewed and checked by the agents.</p>
       </header>
       <ul className="grid gap-3 md:grid-cols-3">
-        {DEMO_ORGS.map((org, i) => {
+        {ACCOUNT_ORGS.map((org, i) => {
           const repos = reposFor(org.login);
           return (
             <li key={org.login} className="demo-rise" style={{ ['--i' as string]: i }}>
