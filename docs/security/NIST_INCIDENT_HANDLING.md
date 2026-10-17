@@ -94,3 +94,5 @@ relationships, accepted Verify provenance and the corresponding remediation appr
 Only those verified identifiers are passed as accepted verification evidence to the
 canonical lifecycle rules. The API currently requires owner membership for all writes,
 a stricter policy than the pure rules' member allowance for some actions.
+
+Migration revision `0005_incidents` deliberately differs from intelligence-memory PR #39’s `0005`. The runner upgrades all current Alembic heads, allowing independent additive branches to coexist. A real PostgreSQL scratch-database test upgrades both heads, downgrades to base, and upgrades again. Disposable databases from earlier unpublished iterations should be recreated; no production upgrade from an earlier incident prototype is claimed.

@@ -1,6 +1,6 @@
 """Evidence-linked incident lifecycle.
 
-Revision ID: 0005
+Revision ID: 0005_incidents
 Revises: 0004
 """
 
@@ -8,7 +8,7 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import JSONB
 
-revision = "0005"
+revision = "0005_incidents"
 down_revision = "0004"
 branch_labels = None
 depends_on = None
