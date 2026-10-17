@@ -128,6 +128,10 @@ SPEC = AgentSpec(
 )
 
 
+def _route_label(entry: Any) -> str:
+    return f"{(entry.method or '').upper()} {entry.path_template}"
+
+
 def subject_routes(hypothesis: Hypothesis, intel: CodeIntel) -> list[str]:
     """HTTP routes the hypothesis is about.
 
@@ -137,12 +141,11 @@ def subject_routes(hypothesis: Hypothesis, intel: CodeIntel) -> list[str]:
     used only when there is no resolvable entry point.
     """
     routes = [e for e in intel.entry_points() if e.kind == "http_route" and e.method and e.path_template]
-    label = lambda e: f"{(e.method or '').upper()} {e.path_template}"  # noqa: E731
     designated = [e for e in routes if hypothesis.entry_point_id and e.id == hypothesis.entry_point_id]
     if designated:
-        return sorted({label(e) for e in designated})
+        return sorted({_route_label(e) for e in designated})
     found = {
-        label(e)
+        _route_label(e)
         for e in routes
         if any(
             ref.path == e.path
