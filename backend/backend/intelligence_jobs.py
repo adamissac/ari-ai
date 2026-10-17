@@ -33,8 +33,8 @@ def persist_verified_regression(ctx: JobContext) -> dict[str, str]:
         ).scalar_one()
     assessment = Assessment.model_validate(assessment_doc)
     if not assessment.snapshot_id:
-        raise PermanentJobError(
-            ErrorCode.SNAPSHOT_NOT_READY, "Regression waits for a canonical assessment snapshot"
+        raise RuntimeError(
+            "SNAPSHOT_NOT_READY: Regression waits for a canonical assessment snapshot"
         )
     ref = snapshot_ref(assessment.snapshot_id)
     if ref.project_id != assessment.project_id or ref.commit_sha != assessment.commit_sha:
