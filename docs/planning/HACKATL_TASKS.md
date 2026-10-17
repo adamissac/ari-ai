@@ -170,3 +170,14 @@ at `5b3ef50` (6 container tests passed; ordinary suite 451 passed/18 skipped).
 INFRA-005 remains open for published test/check image digests; the Dockerfile pins
 its base but the verified CI image uses a temporary tag. M3's live-provider gate
 and SEC-005's human template review remain separate.
+
+### Intelligence ingestion profile correctness — issue #148
+
+Sarosh, `fix/sarosh/intelligence-scope-cache`: reproduced same-SHA cache reuse
+across different include prefixes. Index version 0.3.0 includes a configuration
+digest for non-default coverage/limits; all ingestion and diff paths select the
+same profile. Six new producer cases and one real PostgreSQL case verify scope,
+limits, invalid-prefix cache bypass, normalized prefixes, restart, provenance,
+backend snapshot completion and diff lookup. Old refs and their human decisions
+stay immutable; another profile does not inherit a confirmation. No shared DTO
+or runtime/frontend source changes.
