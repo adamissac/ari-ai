@@ -42,7 +42,7 @@ test('idempotency key required and forwarded exactly once; abort forwarded', asy
   await assert.rejects(client.startAssessment('prj_12345678', {}, 'unique-action-1', { signal }), ApiError);
   assert.equal(last.headers.get('Idempotency-Key'), 'unique-action-1');
   assert.equal(last.signal, signal);
-  await assert.rejects(client.project('../escape'), ProtocolError);
+  assert.throws(() => client.project('../escape'), ProtocolError);
 });
 
 test('401 clears CSRF, login is opt-in, invalid content and large responses fail', async () => {
