@@ -52,7 +52,7 @@ export function ReplayStage({ episode, scenario }: { episode: LabEpisode; scenar
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.75fr)_minmax(19rem,1fr)]">
-        <div className="min-w-0 xl:sticky xl:top-20 xl:self-start">
+        <div className="min-w-0 xl:sticky xl:top-6 xl:self-start">
           <NodeGraph scenario={scenario} states={step?.nodes ?? []} action={step?.action} t={t} selected={selected} onSelect={setSelected} showTruth={truth} />
           <p className="lab-swipe">Swipe the map sideways to see every service →</p>
           <Legend />
