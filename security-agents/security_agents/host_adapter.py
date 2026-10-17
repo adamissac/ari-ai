@@ -801,6 +801,10 @@ class HostOrchestrator:
         sink = orchestrator.sink
         if isinstance(sink, HostSink):
             sink.settle(orchestrator.result.findings, orchestrator.result.usage.sandbox_seconds)
+            record_roe = getattr(sink.host, "record_roe", None)
+            roe = orchestrator.result.roe
+            if roe is not None and callable(record_roe):
+                record_roe(roe.model_dump(mode="json"))
 
     def _build_intel(self, target: Path | None, workdir: Path, host: Any = None) -> CodeIntel:
         """Snapshot for this assessment.
