@@ -5,9 +5,21 @@ import { parseUnifiedDiff } from '@/lib/diff';
 import { duration, githubLink, relativeTime, shortSha } from '@/lib/format';
 import { domain, metricRows, rewardTotals, sampleSize } from '@/lib/lab';
 import type { DefenseLabBundle, LabEpisode } from '@/lib/lab-types';
+import { matchExpectationStatements } from '@/lib/expectations';
 import { projectOverview } from '@/lib/overview';
 import { SCOPE_CHECK_CATEGORIES } from '@/lib/scope';
-import { ASSESSMENT_STATE, FINDING_STATUS, providerLabel, railSteps } from '@/lib/status';
+import { AGENTS, ASSESSMENT_STATE, FINDING_STATUS, agentRunSummary, handoffNote, providerLabel, railSteps } from '@/lib/status';
+
+describe('finding expectations', () => {
+  it('keeps an id visible when the snapshot has no matching statement', () => {
+    const rows = matchExpectationStatements(
+      ['exp_known', 'exp_missing'],
+      [{ id: 'exp_known', statement: 'A customer can only read their own payment.', status: 'confirmed' }],
+    );
+    expect(rows[0]).toEqual({ id: 'exp_known', statement: 'A customer can only read their own payment.', status: 'confirmed' });
+    expect(rows[1]).toEqual({ id: 'exp_missing', statement: null, status: null });
+  });
+});
 
 describe('project overview', () => {
   const base = { projectId: 'prj_1', repoCount: 1, activeScopeCount: 1, monitoringEnabled: true, assessments: [], findings: [] };
@@ -54,6 +66,22 @@ describe('state rail', () => {
   });
   it('completed is done', () => {
     expect(railSteps('COMPLETED', new Set(['COMPLETED'])).find(s => s.state === 'COMPLETED')?.phase).toBe('done');
+  });
+});
+
+describe('agent team summary', () => {
+  it('does not invent work for an agent that has not run', () => {
+    expect(agentRunSummary([])).toBe('Has not run.');
+    expect(handoffNote([], [])).toBe('Nothing to hand off: this agent has not run.');
+  });
+  it('counts only recorded runs and tool calls', () => {
+    expect(agentRunSummary([{ status: 'succeeded', tool_calls: [{}, {}] }])).toBe('1 recorded run, 2 tool calls.');
+    expect(handoffNote([{ status: 'succeeded', tool_calls: [] }], [])).toMatch(/has not run yet/);
+    expect(handoffNote([{ status: 'failed', tool_calls: [], error: { code: 'LLM_UNAVAILABLE', message: 'no' } }], [])).toMatch(/no successful handoff/);
+  });
+  it('lists the eight runtime agents in orchestrator order', () => {
+    expect(AGENTS.map(a => a.name)).toEqual(['reviewer', 'scout', 'probe', 'trace', 'diagnose', 'patch', 'verify', 'fortify']);
+    expect(AGENTS.every(a => a.job.length > 0 && a.handsTo.length > 0)).toBe(true);
   });
 });
 

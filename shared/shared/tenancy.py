@@ -42,7 +42,12 @@ class TriggerPolicy(StrictModel):
         description="If every changed path matches these globs, record without assessment",
     )
     monitoring_budget: Budget = Field(
-        default_factory=lambda: Budget(max_tokens=150_000, max_usd=3.0, max_wall_clock_s=900)
+        default_factory=lambda: Budget(max_tokens=150_000, max_usd=3.0, max_wall_clock_s=900),
+        # Smaller than an assessment's default_budget on purpose: a push-triggered run is
+        # expected to stop at BUDGET_EXHAUSTED around the remediation phase. Owners that
+        # want the whole seven-agent + remediation chain on every push must size this to
+        # the full-run budget; remediation has no separate budget.
+        description="Budget for one push-triggered monitoring run (smaller than default_budget by design)",
     )
 
 

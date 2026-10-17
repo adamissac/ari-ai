@@ -1,13 +1,13 @@
 # Alan — implementation status
 
 Owner: Alan (`security-agents/`, SEC-001 … SEC-013)
-Branch: `feat/alan/verify-honesty-check-category`
-Current task: honest functional Verify label + canonical CheckCategory
-Last remote sync: 2026-10-17T09:22Z — `origin/main` @ `139ab2f` (#83 merged)
+Branch: `feat/alan/standards-roe-wiring`
+Current task: standards addendum P0: RoE gate, CVSS v3.1 level, CWE/OWASP/ATT&CK/D3FEND wiring on canonical `standards/`
+Last remote sync: 2026-10-17T10:05Z, `origin/main` @ `de4967f` (#98 merged)
 API/contract dependencies: `shared` 0.9.0 `CheckCategory`; `backend.host` checkpoints; `code_review.api` functional helpers
 Recent PR/commit: `feat/alan/verify-honesty-check-category` (do not push merged `host-finding-persistence` / `host-resume-hardening`)
 Blockers: live seven-agent run (issue #10, no key); Docker images (INFRA-005)
-Next action: land CheckCategory + honesty PR; Srihith ACK; leave #85 to Srihith
+Next action: land standards-roe-wiring PR; Srihith decision on v3.1 shared field and RoE endpoint; Adam decision on CWE-840 fixture
 
 ## What runs today
 
@@ -159,3 +159,20 @@ Executed check results on the fixture (the precision evidence):
 - Adopted PR #71's two-approval browser harness without merging its competing host implementation. Browser e2e: 8 passed (23.1s).
 - Full root suite: 324 passed, 6 optional skips. Security suite: 379 passed, 11 opt-in/optional skips. Ruff/format/mypy pass. No new live-provider or Docker proof.
 - PR #35 remains recoverable and will be superseded by #73/#74; no work discarded. Merge these only after current-head CI passes.
+
+## Standards addendum (P0) on `feat/alan/standards-roe-wiring`
+
+| Item | What exists | Evidence (offline) |
+|---|---|---|
+| Pinned indexes | CWE 4.20, ATT&CK Enterprise 20.0, D3FEND 1.6.0, OWASP API 2023, OWASP LLM 2026, CVSS v3.1 and v4.0, NIST SP 800-115; sha256 in `standards/standards/data/MANIFEST.json` | `standards/tests` 189 passed |
+| CVSS v3.1 | `standards/standards/cvss31.py`, 34 NVD vectors plus property tests; level derives from the computed rating (ADR-0012) | `standards/tests/test_cvss31.py` |
+| Rules of engagement | `security_agents/standards/roe.py`; registry gate fails closed with SCOPE_DENIED and `tool.roe_denied` | `tests/standards/test_rules_of_engagement.py`, `tests/standards/test_negative.py` |
+| Agent wiring | Scout CWE plus OWASP API tag from code; Trace v3.1 metrics with evidence or unverified, optional ATT&CK; Diagnose and Fortify optional D3FEND | `tests/test_agent_logic.py`, `tests/test_e2e_replay.py` |
+
+```
+cd security-agents && .venv/bin/python -m pytest tests -q        # 441 passed, 10 skipped
+.venv/bin/python -m security_agents.standards.report            # 217 standards tests, 0 failed, UNVERIFIED: NVD licence terms
+.venv/bin/python -m security_agents.standards.smoke             # writes standards-smoke-output/{finding.tagged.json,rules_of_engagement.json,sp800115_coverage.json}
+```
+
+UNVERIFIED: NVD terms page (Cloudflare challenge). All runs above are replay or offline; no live Claude call.

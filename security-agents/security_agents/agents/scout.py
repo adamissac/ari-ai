@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pydantic import Field, field_validator
 from standards.mapping import check_cwe
+from standards.owasp_api import owasp_api_tag
 
 from ..contracts import (
     AgentName,
@@ -21,6 +22,7 @@ from ..contracts import (
 )
 from ..intel import CodeIntel, hypothesis_key
 from ..runtime import AgentSpec, data_block
+from ..standards.fields import cwe_entry
 
 SYSTEM = """You are Scout, the reconnaissance agent of an automated security review platform.
 
@@ -50,7 +52,15 @@ link the expectation id.
 independent validation; say "may", not "does".
 - Do not repeat a hypothesis whose key appears in the refuted list you are given.
 - `suggested_check_category` must be one of the categories you are told are \
-available, or the hypothesis cannot be validated."""
+available, or the hypothesis cannot be validated.
+- `weakness_class` must be a CWE identifier from the current MITRE CWE catalog \
+whose MITRE mapping usage is Allowed or Allowed-with-Review. Categories and \
+identifiers MITRE marks Discouraged or Prohibited (for example broad classes \
+such as CWE-284 or CWE-20, or categories such as CWE-840) are rejected; choose \
+the most specific weakness the evidence supports, such as CWE-639 for an \
+authorization bypass through a user-controlled key.
+- Do not assign any OWASP category, severity or score. The platform derives \
+the OWASP tag from the CWE and computes severity later from executed evidence."""
 
 
 class ScoutInput(StrictModel):
@@ -245,6 +255,8 @@ def to_hypotheses(
         key = hypothesis_key(item.weakness_class, spans[0].path or "", item.entry_point_id)
         if key in refuted:
             continue
+        cwe = cwe_entry(item.weakness_class)
+        owasp = owasp_api_tag(item.weakness_class)
         results.append(
             Hypothesis(
                 id=new_id("hyp"),
@@ -256,6 +268,13 @@ def to_hypotheses(
                 entry_point_id=item.entry_point_id,
                 confidence=item.confidence,
                 suggested_check_category=item.suggested_check_category,
+                cwe_name=cwe.name,
+                cwe_mapping_usage=str(cwe.detail.get("mapping_usage", "")),
+                cwe_catalog_version=cwe.catalog_version,
+                owasp_api_category=owasp.category,
+                owasp_api_title=owasp.title,
+                owasp_api_edition=owasp.edition,
+                owasp_mapping_kind=owasp.kind,
             )
         )
     if max_items is not None:

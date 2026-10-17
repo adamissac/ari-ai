@@ -145,6 +145,7 @@ class ToolContext:
     max_calls_per_tool: dict[str, int] = field(default_factory=dict)
     counters: dict[str, int] = field(default_factory=dict)
     artifacts: dict[str, Any] = field(default_factory=dict)
+    roe: Any = None
 
     def service(self, name: str) -> Any:
         svc = self.services.get(name)
@@ -282,6 +283,22 @@ class ToolRegistry:
                 raise PlatformError(
                     ErrorCode.SCOPE_DENIED, f"{name}: {decision.reason_code} {decision.detail}".strip()
                 )
+            roe_decision = self._roe_decision(ctx, tool, args)
+            if not roe_decision.allowed:
+                ctx.audit.emit(
+                    "tool.roe_denied",
+                    agent=ctx.agent.value,
+                    tool=name,
+                    run_id=ctx.run_id,
+                    reason_code=roe_decision.reason,
+                    roe_id=roe_decision.roe_id,
+                    detail=roe_decision.detail,
+                )
+                raise PlatformError(
+                    ErrorCode.SCOPE_DENIED,
+                    f"{name}: {roe_decision.reason} {roe_decision.detail}".strip(),
+                )
+            ctx.artifacts["last_roe_decision"] = roe_decision
             ctx.artifacts["last_scope_decision"] = decision
 
         used = ctx.counters.get(name, 0)
@@ -323,6 +340,21 @@ class ToolRegistry:
             args=redact(args.model_dump(mode="json")),
         )
         return ToolResult(name=name, ok=ok, payload=payload)
+
+    def _roe_decision(self, ctx: ToolContext, tool: ToolDef, args: StrictModel) -> Any:
+        from ..standards.roe import check_roe
+
+        data = args.model_dump()
+        target_id = str(data.get(tool.target_from)) if tool.target_from else None
+        template = data.get(tool.category_from) if tool.category_from else None
+        return check_roe(
+            ctx.roe,
+            ctx.scope,
+            ctx.now(),
+            agent=ctx.agent,
+            target_id=target_id,
+            template_ref=str(template) if template else None,
+        )
 
     def _scope_decision(self, ctx: ToolContext, tool: ToolDef, args: StrictModel) -> Decision:
         data = args.model_dump()
