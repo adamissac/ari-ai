@@ -184,25 +184,38 @@ body { overflow-x: clip; }
   background: var(--bleed-bg, var(--color-bg)); pointer-events: none;
 }
 
-/* Independent floating controls. Opaque local surfaces retain contrast over any section;
-   the full-width header itself is always transparent, including before hydration. */
-.site-header { background: transparent; border: 0; pointer-events: none; }
+/* Bare floating controls. HeaderContrast adapts each item to the surface beneath it. */
+.site-header { --nav-ink: var(--color-ink); --nav-hover: rgb(28 18 16 / 6%); background: transparent; border: 0; pointer-events: none; }
+body:has(.hero-full) .site-header { --nav-ink: #fff; --nav-hover: rgb(255 255 255 / 9%); }
+.site-header [data-nav-tone="light"] { --nav-ink: var(--color-ink); --nav-hover: rgb(28 18 16 / 6%); }
+.site-header [data-nav-tone="dark"] { --nav-ink: #fff; --nav-hover: rgb(255 255 255 / 9%); }
 .site-header :is(a, button) { pointer-events: auto; }
 .site-header .hdr-logo, .site-header nav a {
   min-height: 44px;
-  color: var(--color-ink);
-  background: #fff;
+  color: var(--nav-ink);
+  background: transparent;
+  border: 0;
   border-radius: 10px;
-  box-shadow: 0 2px 12px #1c121012, inset 0 0 0 1px #1c121014;
+  box-shadow: none;
 }
 .site-header .hdr-logo { display: inline-flex; align-items: center; padding: 0 12px; }
 .site-header nav a { transition: background-color 250ms, color 250ms; }
-.site-header nav a:hover { background: var(--color-panel-2); }
+.site-header nav a:hover { background: var(--nav-hover); }
 .site-header nav a.hdr-cta { background: var(--color-brand); color: var(--color-on-brand); }
 .site-header nav a.hdr-cta:hover { background: var(--color-brand-deep); }
 html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 .hero-headline { font-size: clamp(2rem, 10vw, 9rem); letter-spacing: -0.055em; }
-.hero-headline .hero-line { white-space: nowrap; }
+.hero-headline .hero-line {
+  white-space: nowrap;
+  color: #fff7f2;
+  text-shadow: 0 0 0.12em rgb(255 205 184 / 20%), 0 0 0.35em rgb(229 113 78 / 15%), 0 0 0.7em rgb(194 69 45 / 12%);
+}
+/* Keep the pointer spotlight's crisp text core, with a warm tint and diffuse ember bloom.
+   Em-based shadow radii scale with the existing responsive headline. No extra blur layer. */
+.hero-stage[data-fx="on"] .hero-headline .hero-line {
+  --dim: #fff7f2;
+  background-image: radial-gradient(260px circle at var(--tx) var(--ty), #fffbf8 0%, #fff9f5 30%, var(--dim) 100%);
+}
 #how { scroll-margin-top: 5rem; }
 @media (max-width: 639px) {
   .site-header-inner { gap: 8px; }
@@ -612,5 +625,5 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
   .demo-card { transition: none; }
 }
 
-/* Mark the current section with an inset brand border; Pricing keeps the solid accent. */
-.site-header nav a[aria-current="page"] { box-shadow: 0 2px 12px #1c121012, inset 0 0 0 2px var(--color-brand); }
+/* Current section stays bare; underline is visible without a card or border. */
+.site-header nav a[aria-current="page"] { text-decoration: underline; text-underline-offset: 4px; }
