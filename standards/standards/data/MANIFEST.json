@@ -358,7 +358,7 @@
   },
   "owasp-llm-coverage.json": {
    "curated": "Repository-maintained policy or self-assessment data, not an upstream standard.",
-   "sha256": "115035c3c370379f3b94f0cb2f1b800104f4473776767eb3597586fda1022188",
+   "sha256": "f000f3439280f73e11e428e22a50a82f2c2c83f816b70da9adb7d1420e2712e5",
    "upstream": [],
    "version": "2"
   },
