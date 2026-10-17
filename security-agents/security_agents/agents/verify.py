@@ -173,6 +173,53 @@ class VerifyEvidence:
     protected_tests: list[str]
     original_check_ref: str | None
     original_check_params: dict[str, Any]
+    required_transport: str = "inprocess"
+    original_tree_sha256: str | None = None
+    patched_tree_sha256: str | None = None
+
+
+def _transport_problem(ev: VerifyEvidence, run: dict[str, Any]) -> str | None:
+    if ev.required_transport != "http":
+        return None
+    if run.get("transport") != "http":
+        return f"an http re-check was required; the re-check ran {run.get('transport') or 'inprocess'}"
+    if not run.get("target_contacted"):
+        return "the http re-check left no request in the target container log"
+    served = run.get("target_tree_sha256")
+    if not served or served != ev.patched_tree_sha256:
+        return "the http re-check did not serve the patched workspace"
+    if served == ev.original_tree_sha256:
+        return "the http re-check served the unpatched snapshot"
+    return None
+
+
+def http_recheck_evidence(ev: VerifyEvidence, verdict: str) -> dict[str, Any] | None:
+    if ev.required_transport != "http":
+        return None
+    runs = [
+        r
+        for r in ev.recheck_runs
+        if not r.get("error")
+        and r.get("transport") == "http"
+        and r.get("template_ref") == ev.original_check_ref
+    ]
+    if not runs:
+        return None
+    last = runs[-1]
+    return {
+        "transport": last.get("transport"),
+        "template_ref": last.get("template_ref"),
+        "parameters": last.get("parameters"),
+        "sandbox_run_id": last.get("sandbox_run_id"),
+        "matches_expectation": last.get("matches_expectation"),
+        "target_contacted": last.get("target_contacted"),
+        "target_requests": last.get("target_requests"),
+        "target_log_sha256": last.get("target_log_sha256"),
+        "served_tree_sha256": last.get("target_tree_sha256"),
+        "patched_tree_sha256": ev.patched_tree_sha256,
+        "original_tree_sha256": ev.original_tree_sha256,
+        "verdict": str(verdict),
+    }
 
 
 def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], list[str]]:
@@ -251,7 +298,15 @@ def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], l
         )
         matches = last.get("matches_expectation")
         artifact = str(last.get("sandbox_run_id") or "")
-        if not same_params:
+        transport_problem = _transport_problem(ev, last)
+        if transport_problem:
+            add(
+                VerificationCheckName.ORIGINAL_CHECK_NOW_FAILS,
+                False,
+                transport_problem,
+                artifact,
+            )
+        elif not same_params:
             add(
                 VerificationCheckName.ORIGINAL_CHECK_NOW_FAILS,
                 False,
