@@ -27,7 +27,8 @@ export default function ProjectOverview() {
   const assessmentItems = assessments.status === 'ready' ? assessments.data.items : [];
   const findingItems = findings.status === 'ready' ? findings.data.items : [];
   const scopeItems = scopes.status === 'ready' ? scopes.data.items : [];
-  const activeScopeCount = scopeItems.filter(s => s.status === 'active').length;
+  // Null (unknown) until scopes have loaded; never zero by default.
+  const activeScopeCount = scopes.status === 'ready' ? scopeItems.filter(s => s.status === 'active').length : null;
   const summary = projectOverview({
     projectId: project.id,
     repoCount: repos.length,
@@ -37,18 +38,27 @@ export default function ProjectOverview() {
     findings: findingItems,
   });
   const ready = assessments.status === 'ready' && findings.status === 'ready' && scopes.status === 'ready';
+  const failed = [assessments, findings, scopes].filter(r => r.status === 'error');
+  const refreshFailed = [assessments, findings, scopes].some(r => r.refreshError !== undefined);
   return (
     <div className="flex flex-col gap-4">
       <section aria-label="Project summary" className="rounded-xl border border-line bg-panel p-5" data-testid="project-summary">
-        {ready ? (
+        {failed.length > 0 ? (
+          <ErrorState
+            error={failed[0]?.error}
+            onRetry={() => failed.forEach(r => r.reload())}
+            context={`Could not load ${[assessments, findings, scopes].map((r, i) => (r.status === 'error' ? ['assessments', 'findings', 'scopes'][i] : null)).filter(Boolean).join(', ')}`}
+          />
+        ) : ready ? (
           <>
             <h2 className="text-xl font-semibold tracking-tight">{summary.headline}</h2>
             <p className="mt-2 max-w-3xl text-sm text-muted">{summary.detail}</p>
             <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
               <Stat label="Code health" value={summary.codeOpen} hint="open functional findings" />
-              <Stat label="Security" value={summary.securityOpen} hint="confirmed, not hypotheses" />
+              <Stat label="Security" value={summary.securityOpen} hint={`confirmed weaknesses${summary.untested ? ` · ${summary.untested} untested suspicion${summary.untested === 1 ? '' : 's'}` : ''}${summary.inconclusive ? ` · ${summary.inconclusive} inconclusive` : ''}`} />
               <Stat label="Continuous defense" value={summary.monitoring} hint={`${summary.verifiedFixes} verified fixes`} />
             </div>
+            {refreshFailed && <p role="status" className="mt-3 text-xs text-warn" data-testid="summary-stale">Could not refresh the latest records. The numbers above are from the last successful load and may be out of date.</p>}
             <div className="mt-4">
               <a href={summary.action.href} className="inline-flex items-center rounded-full bg-brand px-4 py-2 text-sm font-medium text-on-brand hover:bg-brand-deep">{summary.action.label}</a>
             </div>
@@ -63,7 +73,7 @@ export default function ProjectOverview() {
         assessmentCount={assessments.status === 'ready' ? assessmentItems.length : null}
         findings={findings.status === 'ready' ? findingItems : null}
       />
-      {ready && (
+      {ready && activeScopeCount !== null && (
         <ProjectJourney
           projectId={project.id}
           repoCount={repos.length}
@@ -117,7 +127,7 @@ export default function ProjectOverview() {
 }
 
 function PillarLoopSection(props: {
-  projectId: string; repoCount: number; activeScopeCount: number; monitoringEnabled: boolean;
+  projectId: string; repoCount: number; activeScopeCount: number | null; monitoringEnabled: boolean;
   assessmentCount: number | null; findings: readonly { kind: string; status: string }[] | null;
 }) {
   const monitoring = useResource(`loop-mon:${props.projectId}`, signal => api().monitoringEvents(props.projectId, { signal }), 15000);
