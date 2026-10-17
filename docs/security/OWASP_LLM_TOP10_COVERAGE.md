@@ -40,12 +40,14 @@ Status: `implemented_tested` = control present and the listed tests exercise it;
 
 - backend.llm.LLMGateway.run_tool_loop: `backend/backend/llm.py::run_tool_loop` (srihith)
 - security_agents.tools.registry.AGENT_TOOL_ALLOWLIST and scope guard: `security-agents/security_agents/tools/registry.py::AGENT_TOOL_ALLOWLIST` (alan)
+- code_review.intent.scan_injection (+ untrusted delimiting; PR text cannot confirm intent): `code-review/code_review/intent.py::scan_injection` (sai)
 
 **Executable tests:**
 
 - `tests/security/test_owasp_llm_controls.py::test_injected_request_cannot_grant_tool_permission`
 - `tests/security/test_owasp_llm_agent_runtime.py::test_security_agent_cannot_call_a_tool_outside_its_role`
 - `tests/security/test_owasp_llm_agent_runtime.py::test_probe_check_against_an_unlisted_target_is_denied_even_with_rules_of_engagement`
+- `tests/security/test_owasp_llm_reviewer.py::test_reviewer_change_text_is_data_and_cannot_confirm_intent`
 
 **Limitations:** Tool denial does not prove the model cannot be manipulated within its allowed capabilities.
 
@@ -61,11 +63,13 @@ Status: `implemented_tested` = control present and the listed tests exercise it;
 
 - backend.redaction.redact; backend.llm.LLMGateway.create_message: `backend/backend/llm.py::create_message` (srihith)
 - security_agents.redact.redact (transcripts, audit, stored output): `security-agents/security_agents/redact.py::redact` (alan)
+- code_review.tools.credential_values (generated tests may not introduce credentials); scrubbed sandbox env: `code-review/code_review/tools.py::credential_values` (sai)
 
 **Executable tests:**
 
 - `tests/security/test_owasp_llm_controls.py::test_credentials_redacted_before_provider_call`
 - `tests/security/test_owasp_llm_agent_runtime.py::test_security_agent_records_are_redacted`
+- `tests/security/test_owasp_llm_reviewer.py::test_reviewer_generated_tests_cannot_introduce_credentials`
 
 **Limitations:** Pattern redaction cannot detect every secret or prevent every cross-tenant disclosure.
 
@@ -82,6 +86,7 @@ Status: `implemented_tested` = control present and the listed tests exercise it;
 - backend.llm.LLMGateway.run_tool_loop: `backend/backend/llm.py::run_tool_loop` (srihith)
 - security_agents.tools.registry.AGENT_TOOL_ALLOWLIST: `security-agents/security_agents/tools/registry.py::AGENT_TOOL_ALLOWLIST` (alan)
 - security_agents.standards.roe.check_roe (rules of engagement gate): `security-agents/security_agents/standards/roe.py::check_roe` (alan)
+- code_review.tools.ReviewerToolbox (write-scoped tools; tests/config/lockfiles protected; AST test policy): `code-review/code_review/tools.py::ReviewerToolbox` (sai)
 
 **Executable tests:**
 
@@ -89,6 +94,7 @@ Status: `implemented_tested` = control present and the listed tests exercise it;
 - `tests/security/test_owasp_llm_agent_runtime.py::test_security_agent_cannot_call_a_tool_outside_its_role`
 - `tests/security/test_owasp_llm_agent_runtime.py::test_probe_check_without_rules_of_engagement_fails_closed`
 - `tests/security/test_owasp_llm_agent_runtime.py::test_probe_check_against_an_unlisted_target_is_denied_even_with_rules_of_engagement`
+- `tests/security/test_owasp_llm_reviewer.py::test_reviewer_tools_cannot_edit_tests_config_or_run_arbitrary_code`
 
 **Limitations:** Allowed tools require separate scope and least-privilege enforcement; no comprehensive assessment claimed.
 
@@ -151,12 +157,14 @@ Status: `implemented_tested` = control present and the listed tests exercise it;
 - shared.standards.StandardMapping._consistent: `shared/shared/standards.py::_consistent` (srihith)
 - security_agents.agents.trace.TraceOutput (no score or level fields): `security-agents/security_agents/agents/trace.py::TraceOutput` (alan)
 - security_agents.agents.probe.ProbeInput (catalog-validated CWE): `security-agents/security_agents/agents/probe.py::ProbeInput` (alan)
+- code_review.intent.CitationChecker / adjudicate_claims (verified citations; confirmed needs corroboration): `code-review/code_review/intent.py::adjudicate_claims` (sai)
 
 **Executable tests:**
 
 - `tests/security/test_owasp_llm_controls.py::test_fabricated_standard_cannot_be_used_as_fact`
 - `tests/security/test_owasp_llm_agent_runtime.py::test_security_agent_output_cannot_carry_a_score_or_level`
 - `tests/security/test_owasp_llm_agent_runtime.py::test_invented_weakness_identifier_is_rejected_before_validation`
+- `tests/security/test_owasp_llm_reviewer.py::test_reviewer_rejects_fabricated_citations_and_unbacked_confirmation`
 
 **Limitations:** Catalog validation prevents fabricated IDs, not false interpretations or unsupported findings.
 
@@ -192,11 +200,13 @@ Status: `implemented_tested` = control present and the listed tests exercise it;
 
 - backend.llm.LLMGateway.run_tool_loop: `backend/backend/llm.py::run_tool_loop` (srihith)
 - security_agents.agents.trace.TraceOutput (strict schema): `security-agents/security_agents/agents/trace.py::TraceOutput` (alan)
+- code_review.models.ReviewerReport (strict schema; statuses decided from executed tests): `code-review/code_review/models.py::ReviewerReport` (sai)
 
 **Executable tests:**
 
 - `tests/security/test_owasp_llm_controls.py::test_invalid_structured_output_is_rejected`
 - `tests/security/test_owasp_llm_agent_runtime.py::test_security_agent_output_cannot_carry_a_score_or_level`
+- `tests/security/test_owasp_llm_reviewer.py::test_reviewer_output_is_schema_strict`
 
 **Limitations:** Schema validation does not prove output semantics, safe rendering, or safe tool effects.
 
