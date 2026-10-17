@@ -29,7 +29,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <Wordmark />
             </Link>
             <nav aria-label="Primary" className="flex items-center gap-1.5">
-              <NavLink href="/" className="hdr-reveal">Projects</NavLink>
+              <NavLink href="/projects" className="hdr-reveal">Projects</NavLink>
               <NavLink href="/lab" className="hdr-cta">Defense Lab</NavLink>
             </nav>
           </div>
