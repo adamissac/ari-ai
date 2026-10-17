@@ -11,6 +11,7 @@ COPY backend/ backend/
 COPY code-intelligence/ code-intelligence/
 COPY code-review/ code-review/
 COPY security-agents/ security-agents/
+COPY standards/ standards/
 RUN uv sync --frozen --no-dev
 RUN useradd --create-home --uid 10001 app && mkdir -p /data/artifacts && chown -R app /data
 USER app

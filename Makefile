@@ -26,8 +26,8 @@ contracts:
 	uv run python -m shared.examples
 
 check:
-	uv run ruff check shared monitoring backend
-	uv run ruff format --check shared monitoring backend
+	uv run ruff check shared monitoring backend standards
+	uv run ruff format --check shared monitoring backend standards
 	uv run python -m shared.export --check
 	uv run python -m shared.examples --check
 
