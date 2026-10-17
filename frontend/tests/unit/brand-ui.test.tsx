@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { BRAND_NAME, LogoPlaceholder, Wordmark } from '@/components/brand';
+import { BRAND_NAME, LOGO_SRC, LogoMark, Wordmark } from '@/components/brand';
 import { Reveal } from '@/components/reveal';
 import { Button } from '@/components/ui';
 
@@ -18,16 +18,23 @@ describe('Ari AI brand and interactive UI', () => {
     expect(screen.getByTestId('icon')).toBeTruthy();
   });
 
-  it('labels the placeholder logo honestly and shows the product name', () => {
+  it('shows the product name once with a decorative supplied mark', () => {
     render(<Wordmark />);
     expect(BRAND_NAME).toBe('Ari AI');
-    expect(screen.getByRole('img', { name: 'Ari AI logo (placeholder)' })).toBeTruthy();
+    expect(screen.queryByRole('img')).toBeNull();
+    expect(screen.getByTestId('ari-logo').getAttribute('aria-hidden')).toBe('true');
+    expect(screen.getByTestId('ari-logo').style.width).toBe('24px');
     expect(screen.getByText('Ari AI')).toBeTruthy();
   });
 
-  it('sizes the placeholder logo', () => {
-    render(<LogoPlaceholder size={40} />);
-    expect(screen.getByTestId('logo-placeholder').style.width).toBe('40px');
+  it('sizes and names a standalone supplied logo without changing its source', () => {
+    render(<LogoMark size={40} />);
+    expect(screen.getByRole('img', { name: `${BRAND_NAME} logo` })).toBeTruthy();
+    const logo = screen.getByTestId('ari-logo');
+    expect(logo.style.width).toBe('40px');
+    expect(logo.style.height).toBe('40px');
+    expect(logo.querySelector('img')?.getAttribute('src')).toContain(encodeURIComponent(LOGO_SRC));
+    expect(logo.querySelector('img')?.getAttribute('alt')).toBe(`${BRAND_NAME} logo`);
   });
 
   it('reveal content is visible by default (no JS / no IntersectionObserver)', () => {
