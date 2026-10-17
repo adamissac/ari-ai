@@ -98,6 +98,11 @@ def test_host_mode_full_flow_against_real_backend(
     )
     patches = alice.get(f"/api/v1/findings/{detail['findings'][0]['id']}/patches").json()["items"]
     assert patches and patches[-1]["verification"]["verdict"] == "accepted"
+    # #155: the record's diff_sha256 names the STORED (possibly redacted) diff artifact.
+    diff = alice.get(f"/api/v1/artifacts/{patches[-1]['patch']['diff_artifact_id']}")
+    assert diff.status_code == 200
+    assert diff.headers["X-Artifact-SHA256"] == patches[-1]["patch"]["diff_sha256"]
+    print("redacted:", b"[REDACTED" in diff.content)
 
     # Vihaan's M6 observations: lifecycle persisted with history; usage ledger complete.
     finding = alice.get(f"/api/v1/findings/{detail['findings'][0]['id']}").json()["finding"]
