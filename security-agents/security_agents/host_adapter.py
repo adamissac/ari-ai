@@ -398,6 +398,8 @@ class HostSink(AssessmentSink):
 
     def on_transition(self, src: AssessmentState, dst: AssessmentState, note: str) -> None:
         self.host.transition(_host_state(dst), note)
+        if dst is AssessmentState.FUNCTIONAL_REVIEW:
+            _functional_review(self.host)
 
     def on_finding(self, finding: FindingRecord) -> None:
         import importlib
@@ -525,11 +527,6 @@ class HostOrchestrator:
 
     def run(self, host: AssessmentHostLike) -> None:
         target = self.target_dir or _env_path("SECURITY_AGENTS_TARGET_DIR")
-        if target is None:
-            raise PlatformError(
-                ErrorCode.CONFLICT_STATE,
-                "no target directory: set SECURITY_AGENTS_TARGET_DIR or pass target_dir",
-            )
         existing = self._resumable.pop(host.assessment_id, None)
         if existing is not None:
             self._resume(existing, host)
@@ -548,7 +545,7 @@ class HostOrchestrator:
             import tempfile
 
             workdir = Path(tempfile.mkdtemp(prefix=f"{host.assessment_id}-"))
-        intel = self._build_intel(target, workdir)
+        intel = self._build_intel(target, workdir, host)
         scope = _adapt_scope(_val(host, "scope"), intel)
         config = OrchestratorConfig(
             assessment_id=host.assessment_id,
@@ -567,7 +564,7 @@ class HostOrchestrator:
             config,
             intel=intel,
             gateway=_NullGateway(),  # host.llm() is the only provider path here
-            driver=self.driver or LocalProcessDriver(allow=True),
+            driver=self.driver or _driver(),
             library=default_library(),
             workdir=workdir / "work",
             registry=registry,
@@ -607,30 +604,45 @@ class HostOrchestrator:
         orchestrator._goto(AssessmentState.REPORTING)
         orchestrator._finish()
 
-    def _build_intel(self, target: Path, workdir: Path) -> CodeIntel:
+    def _build_intel(self, target: Path | None, workdir: Path, host: Any = None) -> CodeIntel:
+        """Snapshot for this assessment.
+
+        Preferred: the operator's trusted checkout from the backend's shared registry
+        (``REPOSITORY_BINDINGS_FILE``) archived at exactly ``assessment.commit_sha``
+        (``pinned_by="git"``), honoring ``build_recipe.json`` ``target_dir``.
+        Fallback (dev/test only): ``SECURITY_AGENTS_TARGET_DIR`` copied as a directory
+        snapshot (``pinned_by="directory-digest"``).
+
+        ``labels.yaml`` is the evaluation answer key and is never read implicitly; an
+        explicit ``labels_path`` / ``SECURITY_AGENTS_LABELS`` is a dev/test override.
+        """
         import json
         import shutil
 
-        recipe_path = target / "build_recipe.json"
-        source = target
+        snapshot = _pinned_snapshot(host, workdir) if host is not None else None
         strip_prefix = None
-        if recipe_path.is_file():
-            recipe = json.loads(recipe_path.read_text(encoding="utf-8"))
-            if recipe.get("target_dir"):
-                source = target / str(recipe["target_dir"])
-                strip_prefix = f"{recipe['target_dir']}/"
-        staging = workdir / "staging"
-        copy_tree(source, staging)
-        if recipe_path.is_file():
-            shutil.copy2(recipe_path, staging / "build_recipe.json")
-        snapshot = SnapshotHandle.from_directory(
-            staging, workdir / "snapshot", snapshot_id=new_id("snp"), repo_id="rep_host"
-        )
-        labels = (
-            self.labels_path
-            or _env_path("SECURITY_AGENTS_LABELS")
-            or (target / "labels.yaml" if (target / "labels.yaml").is_file() else None)
-        )
+        if snapshot is None:
+            if target is None:
+                raise PlatformError(
+                    ErrorCode.SNAPSHOT_NOT_READY,
+                    "no trusted checkout bound for this repository (REPOSITORY_BINDINGS_FILE) "
+                    "and no SECURITY_AGENTS_TARGET_DIR",
+                )
+            recipe_path = target / "build_recipe.json"
+            source = target
+            if recipe_path.is_file():
+                recipe = json.loads(recipe_path.read_text(encoding="utf-8"))
+                if recipe.get("target_dir"):
+                    source = target / str(recipe["target_dir"])
+                    strip_prefix = f"{recipe['target_dir']}/"
+            staging = workdir / "staging"
+            copy_tree(source, staging)
+            if recipe_path.is_file():
+                shutil.copy2(recipe_path, staging / "build_recipe.json")
+            snapshot = SnapshotHandle.from_directory(
+                staging, workdir / "snapshot", snapshot_id=new_id("snp"), repo_id="rep_host"
+            )
+        labels = self.labels_path or _env_path("SECURITY_AGENTS_LABELS")
         expectations = None
         if labels is not None:
             expectations = load_expectations(
@@ -640,6 +652,180 @@ class HostOrchestrator:
                 strip_prefix=strip_prefix,
             )
         return LocalIntel(snapshot, expectations=expectations)
+
+
+def _bindings() -> list[dict[str, Any]]:
+    """The backend's shared repository registry (also used by code_review)."""
+    import json
+
+    path: Path | None = None
+    try:
+        from backend.settings import get_settings  # optional: present inside the worker
+
+        path = get_settings().repository_bindings_file
+    except Exception:
+        path = _env_path("REPOSITORY_BINDINGS_FILE")
+    if not path or not Path(path).is_file():
+        return []
+    return list(json.loads(Path(path).read_text(encoding="utf-8")))
+
+
+def _pinned_snapshot(host: Any, workdir: Path) -> SnapshotHandle | None:
+    import json
+    import shutil
+
+    repo_id = getattr(host, "repo_id", None)
+    binding = next((b for b in _bindings() if b.get("repo_id") == repo_id), None)
+    if binding is None:
+        return None
+    assessment = _val(host, "assessment")
+    sha = str(assessment.commit_sha)
+    subdir = str(binding.get("subdir") or ".")
+    snapshot_id = str(getattr(assessment, "snapshot_id", None) or new_id("snp"))
+    raw = SnapshotHandle.from_git(
+        Path(binding["local_path"]).expanduser().resolve(),
+        sha,
+        subdir,
+        workdir / "checkout",
+        snapshot_id=snapshot_id,
+        repo_id=str(repo_id),
+    )
+    recipe = raw.root / "build_recipe.json"
+    target_dir = (
+        json.loads(recipe.read_text(encoding="utf-8")).get("target_dir") if recipe.is_file() else None
+    )
+    if not target_dir:
+        return raw
+    if str(target_dir).startswith("/") or ".." in Path(str(target_dir)).parts:
+        raise PlatformError(
+            ErrorCode.VALIDATION_FAILED, "build_recipe.json target_dir must stay inside the checkout"
+        )
+    root = workdir / "snapshot"
+    copy_tree(raw.root / str(target_dir), root)
+    shutil.copy2(recipe, root / "build_recipe.json")
+    for path in root.rglob("*"):
+        if path.is_file():
+            path.chmod(0o444)
+    return SnapshotHandle(
+        snapshot_id=snapshot_id, repo_id=str(repo_id), commit_sha=raw.commit_sha, root=root, pinned_by="git"
+    )
+
+
+_PROPAGATE = {"CANCELLED", "BUDGET_EXHAUSTED", "SCOPE_DENIED"}
+
+
+def _functional_review(host: Any) -> None:
+    """Pillar 1 inside the assessment: Sai's reviewer on the same commit, persisting its own
+    run and findings through the host. Unavailable/failing review is recorded and the
+    security run continues; cancel/budget/scope errors propagate."""
+    try:
+        from code_review import api as review_api
+    except ImportError:
+        host.progress("functional review unavailable: code_review is not installed in this worker")
+        return
+    intent = _change_intent(host)
+    try:
+        try:
+            outcome = review_api.review_assessment(host, change_intent=intent)
+        except Exception as exc:
+            if str(getattr(getattr(exc, "code", None), "value", "")) != "SNAPSHOT_NOT_READY":
+                raise
+            outcome = _review_without_snapshot(host, intent, review_api)
+        result = outcome.result
+        host.progress(
+            f"functional review {result.status.value}: {len(result.findings)} functional finding(s)"
+        )
+    except Exception as exc:
+        code = str(getattr(getattr(exc, "code", None), "value", type(exc).__name__))
+        if code in _PROPAGATE:
+            raise
+        host.progress(f"functional review failed ({code}): {exc}"[:500])
+
+
+def _review_without_snapshot(host: Any, intent: Any, review_api: Any) -> Any:
+    """No indexed snapshot row for this commit: review the pinned checkout directly."""
+    from shared.intelligence import SnapshotRef
+    from shared.review import ReviewRequest
+
+    a = _val(host, "assessment")
+    request = ReviewRequest(
+        assessment_id=a.id,
+        snapshot_ref=SnapshotRef(
+            project_id=a.project_id,
+            repo_id=host.repo_id,
+            commit_sha=a.commit_sha,
+            snapshot_id=a.snapshot_id or new_id("snp"),
+            index_version="checkout",
+        ),
+        change_intent=intent or _default_intent(a),
+        budget=a.budget,
+    )
+    source = review_api.resolve_repo(host.repo_id, commit_sha=a.commit_sha)
+    return review_api.review_full(host, request, source=source)
+
+
+def _default_intent(a: Any) -> Any:
+    from shared.review import ChangeIntent, ChangeIntentSource
+
+    return ChangeIntent(
+        source=ChangeIntentSource.manual, title=f"assessment of {a.commit_sha[:12]}", head_sha=a.commit_sha
+    )
+
+
+def _change_intent(host: Any) -> Any:
+    """Push/PR intent (commit range, PR title/body as untrusted text) of the monitoring event
+    that triggered this assessment; None for manual assessments."""
+    a = _val(host, "assessment")
+    if not getattr(a, "reassessment_request_id", None):
+        return None
+    try:
+        import sqlalchemy as sa
+        from backend.db import monitoring_events, reassessment_requests, transaction
+        from shared.review import ChangeIntent, ChangeIntentSource
+    except ImportError:
+        return None
+    with transaction() as conn:
+        rrq = conn.execute(
+            sa.select(reassessment_requests.c.doc).where(
+                reassessment_requests.c.id == a.reassessment_request_id
+            )
+        ).scalar()
+        ev = conn.execute(
+            sa.select(monitoring_events.c.doc).where(
+                monitoring_events.c.id == ((rrq or {}).get("event_ids") or [""])[0]
+            )
+        ).scalar()
+    if not ev or not ev.get("commit_range"):
+        return None
+    kind = ChangeIntentSource.pull_request if ev.get("type") == "pull_request" else ChangeIntentSource.push
+    return ChangeIntent(
+        source=kind,
+        title=f"{kind.value} {(ev.get('ref') or '')}"[:500],
+        base_sha=ev["commit_range"].get("base_sha"),
+        head_sha=a.commit_sha,
+    )
+
+
+def _driver() -> SandboxDriver:
+    """Docker by default. The local-process driver only in development/test, for the
+    owned demo target (no Docker on the host)."""
+    from .sandbox.driver import DockerSandboxDriver
+
+    mode, env = "docker", ""
+    try:
+        from backend.settings import get_settings
+
+        settings = get_settings()
+        mode, env = settings.security_sandbox, settings.app_env
+    except Exception:
+        mode, env = os.environ.get("SECURITY_SANDBOX", "docker"), os.environ.get("APP_ENV", "")
+    if mode == "local-dev":
+        if env not in ("development", "test"):
+            raise PlatformError(
+                ErrorCode.SANDBOX_POLICY_VIOLATION, "local-dev sandbox outside development/test"
+            )
+        return LocalProcessDriver(allow=True)
+    return DockerSandboxDriver()
 
 
 class _NullGateway:

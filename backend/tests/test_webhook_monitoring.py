@@ -120,7 +120,10 @@ def test_assessment_run_fails_honestly_without_orchestrator(client_factory) -> N
     ]
     detail = alice.get(f"/api/v1/assessments/{asm_id}").json()
     a = detail["assessment"]
-    assert a["state"] == "FAILED" and a["error"]["code"] == "SUBSYSTEM_UNAVAILABLE"
+    # no orchestrator installed -> SUBSYSTEM_UNAVAILABLE; installed but no trusted checkout
+    # bound for this repo -> SNAPSHOT_NOT_READY. Either way nothing runs or is invented.
+    assert a["state"] == "FAILED"
+    assert a["error"]["code"] in ("SUBSYSTEM_UNAVAILABLE", "SNAPSHOT_NOT_READY")
     assert (
         "security_agents" in a["error"]["message"]
         or "REPOSITORY_BINDINGS_FILE" in a["error"]["message"]

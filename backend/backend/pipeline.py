@@ -274,23 +274,13 @@ def _orchestrator() -> Any:
     return loaded
 
 
-def _other_live_run(assessment_id: str, current_job_id: str) -> bool:
-    from backend.db import jobs as jobs_t
-
-    with transaction() as conn:
-        return bool(
-            conn.execute(
-                sa.select(sa.func.count())
-                .select_from(jobs_t)
-                .where(
-                    jobs_t.c.kind == "run_assessment",
-                    jobs_t.c.payload["assessment_id"].astext == assessment_id,
-                    jobs_t.c.id != current_job_id,
-                    jobs_t.c.status == "running",
-                    jobs_t.c.lease_expires_at > sa.func.now(),
-                )
-            ).scalar()
-        )
+def _catalog_code(exc: BaseException) -> ErrorCode:
+    """The shared ErrorCode carried by an exception (``exc.code``), else INTERNAL."""
+    raw = getattr(exc, "code", None)
+    try:
+        return ErrorCode(getattr(raw, "value", raw))
+    except ValueError:
+        return ErrorCode.INTERNAL
 
 
 @handler("run_assessment")
@@ -313,16 +303,6 @@ def run_assessment(ctx: JobContext) -> dict[str, Any]:
                 f"security-agents orchestrator unavailable: {loaded.reason}",
             )
             return {"state": "FAILED", "reason": loaded.reason}
-        if resuming and getattr(loaded.obj, "synchronous_approval", False):
-            # The original job waits for the approval itself; never run a second copy.
-            if _other_live_run(asm_id, ctx.job.id):
-                return {"noop": "synchronous orchestrator run still in progress"}
-            host.terminate(
-                AssessmentState.FAILED,
-                ErrorCode.JOB_LEASE_EXPIRED,
-                "orchestrator run was lost (worker stopped mid-run); start a new assessment",
-            )
-            return {"state": "FAILED", "reason": "lost synchronous run"}
         loaded.obj.run(host)
     except (HostError, LLMError) as exc:
         state = {
@@ -338,14 +318,22 @@ def run_assessment(ctx: JobContext) -> dict[str, Any]:
         raise
     except Exception as exc:
         # Agent work is not blindly re-run (side effects already recorded); fail visibly.
-        log.exception("orchestrator crashed for %s", asm_id)
+        # Keep a subsystem's own catalog error code (e.g. security_agents PlatformError).
+        code = _catalog_code(exc)
+        if code is ErrorCode.INTERNAL:
+            log.exception("orchestrator crashed for %s", asm_id)
+        state = {
+            ErrorCode.CANCELLED: AssessmentState.CANCELLED,
+            ErrorCode.BUDGET_EXHAUSTED: AssessmentState.BUDGET_EXHAUSTED,
+        }.get(code, AssessmentState.FAILED)
         if host.assessment.state not in TERMINAL_STATES:
-            host.terminate(
-                AssessmentState.FAILED,
-                ErrorCode.INTERNAL,
-                f"orchestrator error: {type(exc).__name__}: {exc}",
+            message = (
+                str(exc)
+                if code is not ErrorCode.INTERNAL
+                else f"orchestrator error: {type(exc).__name__}: {exc}"
             )
-        raise PermanentJobError(ErrorCode.INTERNAL, str(exc)) from exc
+            host.terminate(state, code, message)
+        raise PermanentJobError(code, str(exc)) from exc
     final = host.assessment.state
     if final not in TERMINAL_STATES and final is not AssessmentState.AWAITING_APPROVAL:
         host.terminate(
