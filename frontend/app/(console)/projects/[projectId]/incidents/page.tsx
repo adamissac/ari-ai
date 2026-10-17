@@ -7,6 +7,7 @@ import { useProject } from '@/components/project';
 import { useSession } from '@/components/session';
 import { Async, Button, Empty, ErrorState, Field, inputClass, Mono, Panel, Tag, Time } from '@/components/ui';
 import { api } from '@/lib/api';
+import { CREATE_INCIDENT_NOTE } from '@/lib/create-incident';
 import { action, approvalFor, GATE_FOR, LIFECYCLE, NEXT_STATES, STATE_LABEL } from '@/lib/incidents';
 import { useResource } from '@/lib/use-resource';
 
@@ -65,6 +66,7 @@ function OpenIncident({ onCreated }: { onCreated: (id: string) => void }) {
   };
   return (
     <Panel title="Open incident">
+      <p className="mb-3 text-sm text-muted" data-testid="create-incident-note">{CREATE_INCIDENT_NOTE}</p>
       <form onSubmit={submit} className="flex flex-col gap-3">
         <Field label="Title"><input className={inputClass} value={title} onChange={e => setTitle(e.target.value)} maxLength={200} /></Field>
         <Field label="Initial report"><textarea className={`${inputClass} min-h-16`} value={note} onChange={e => setNote(e.target.value)} maxLength={500} /></Field>

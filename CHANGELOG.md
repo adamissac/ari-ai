@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Opening an incident says it records a title and report. It does not contain systems, notify outsiders, or attach evidence until linked, and new cases default to a labelled simulated drill.
+
 - Assessment conflicts now offer explicit preparation of a separate action; ordinary network retries retain their key, and project changes get distinct keys.
 
 
