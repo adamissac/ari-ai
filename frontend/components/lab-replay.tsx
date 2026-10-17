@@ -5,7 +5,7 @@ import { NodeGraph, StateBadge } from '@/components/node-graph';
 import { Mono } from '@/components/ui';
 import { num } from '@/lib/format';
 import { cumulativeReturn, episodeLabel, episodeStory, rewardTotals, stepObservation } from '@/lib/lab';
-import { actionInWords, episodeOutcome, rewardWord, SCENARIO_WORDS, STAGE_WORDS } from '@/lib/lab-plain';
+import { episodeOutcome, rewardWord, SCENARIO_WORDS, STAGE_WORDS } from '@/lib/lab-plain';
 import {
   ACTION_SHORT, actionMeaning, isDisruptive, keyMoments, latestAction, nodeStatusLine, nodeViews, overallStatus, parseAction,
   serviceInfo, signalValue, SIGNAL_BANDS, SIGNAL_WORDS, stepStory, storyMoments, type Moment,
@@ -48,12 +48,13 @@ export function ReplayStage({ episode, scenario }: { episode: LabEpisode; scenar
         <span className="lab-status-item"><span className="text-faint">Attacker</span> {SCENARIO_WORDS[episode.scenario]?.name ?? episode.scenario}</span>
         <span className="lab-status-item"><span className="text-faint">Watching</span> {scenario.nodes.length} services</span>
         <span className={`lab-status-item lab-tone-${status.tone}`}><span aria-hidden="true" className="lab-dot" />{status.text}</span>
-        <span className="lab-status-item min-w-0"><span className="text-faint">Latest AI action</span> <span className="truncate">{last ? `${actionInWords(last.action)} (step ${last.t})` : 'none yet'}</span></span>
+        <span className="lab-status-item min-w-0"><span className="text-faint">Latest AI action</span> <span className="truncate">{last ? `${ACTION_SHORT[parseAction(last.action).verb] ?? last.action}${parseAction(last.action).node ? ` ${label(parseAction(last.action).node!)}` : ''} (step ${last.t})` : 'none yet'}</span></span>
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.75fr)_minmax(19rem,1fr)]">
-        <div className="min-w-0">
+        <div className="min-w-0 xl:sticky xl:top-20 xl:self-start">
           <NodeGraph scenario={scenario} states={step?.nodes ?? []} action={step?.action} t={t} selected={selected} onSelect={setSelected} showTruth={truth} />
+          <p className="lab-swipe">Swipe the map sideways to see every service →</p>
           <Legend />
         </div>
 
@@ -145,7 +146,8 @@ function ServicePanel({ episode, scenario, name, t, truth, onClose }: { episode:
   const lastAct = actions.at(-1);
   if (!view) return null;
   const w = 240; const h = 40;
-  const pts = history.map((v, i) => `${(i / Math.max(1, episode.steps.length - 1)) * w},${h - v * h}`).join(' ');
+  const span = Math.max(20, history.length - 1); // scale to what has been played so far
+  const pts = history.map((v, i) => `${(i / span) * w},${h - v * h}`).join(' ');
   return (
     <section className="rounded-xl border border-line bg-panel p-4" aria-labelledby="svc-title" data-testid="lab-service-panel">
       <div className="flex items-start justify-between gap-2">
