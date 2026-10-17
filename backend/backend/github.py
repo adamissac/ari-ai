@@ -36,6 +36,14 @@ class _Token:
     expires_at: float
 
 
+def _private_key(settings: Settings) -> str | None:
+    if settings.github_app_private_key_path:
+        return settings.github_app_private_key_path.read_text()
+    if settings.github_app_private_key:
+        return settings.github_app_private_key.get_secret_value().replace("\\n", "\n")
+    return None
+
+
 class GitHubApp:
     """Short-lived installation tokens (ADR-0009). Never uses PATs."""
 
@@ -43,9 +51,12 @@ class GitHubApp:
         self, settings: Settings | None = None, client: httpx.Client | None = None
     ) -> None:
         self.settings = settings or get_settings()
-        if not (self.settings.github_app_id and self.settings.github_app_private_key_path):
-            raise GitHubNotConfigured("GITHUB_APP_ID / GITHUB_APP_PRIVATE_KEY_PATH not configured")
-        self._key = self.settings.github_app_private_key_path.read_text()
+        key = _private_key(self.settings)
+        if not (self.settings.github_app_id and key):
+            raise GitHubNotConfigured(
+                "GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY_PATH or GITHUB_APP_PRIVATE_KEY not configured"
+            )
+        self._key = key
         self._client = client or httpx.Client(base_url=self.settings.github_api_url, timeout=20.0)
         self._tokens: dict[int, _Token] = {}
 
@@ -102,3 +113,50 @@ class GitHubApp:
 
     def commit(self, installation_id: int, full_name: str, sha: str) -> dict[str, Any]:
         return self._get(installation_id, f"/repos/{full_name}/commits/{sha}")
+
+
+def user_repositories(
+    access_token: str, settings: Settings | None = None, client: httpx.Client | None = None
+) -> list[dict[str, Any]]:
+    """Repositories the user can reach through this App's installations.
+
+    Uses the user-to-server token from the App's own sign-in (`/user/installations`), so
+    the list is exactly the intersection of what the user can see and what the App was
+    installed on. Capped at 1000 repositories.
+    """
+    s = settings or get_settings()
+    http = client or httpx.Client(base_url=s.github_api_url, timeout=20.0)
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+
+    def pages(path: str, key: str) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        for page in range(1, 11):
+            r = http.get(path, params={"per_page": 100, "page": page}, headers=headers)
+            r.raise_for_status()
+            batch = r.json().get(key) or []
+            out.extend(batch)
+            if len(batch) < 100:
+                break
+        return out
+
+    repos: list[dict[str, Any]] = []
+    for inst in pages("/user/installations", "installations"):
+        inst_id = inst.get("id")
+        if not isinstance(inst_id, int):
+            continue
+        for repo in pages(f"/user/installations/{inst_id}/repositories", "repositories"):
+            name = repo.get("full_name")
+            if isinstance(name, str):
+                repos.append(
+                    {
+                        "full_name": name,
+                        "installation_id": inst_id,
+                        "default_branch": repo.get("default_branch") or "main",
+                        "private": bool(repo.get("private")),
+                    }
+                )
+    return repos[:1000]
