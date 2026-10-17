@@ -125,3 +125,10 @@ Executed check results on the fixture (the precision evidence):
   the pillar, with the approval round-trip, and sent the two open questions.
 - Messages sent: contracts ack + deltas (srihith), shared repair sandbox (sai),
   code-intelligence port (sarosh), agent UI fields (vihaan).
+
+### 2026-10-17 — Codex host-recovery hardening
+- Continued PR #73 after isolating unique catalog recovery in PR #74. Preserved fail-closed scope/budget/human-approver mapping from #35; resume reloads authorization and rebinds the current worker host.
+- Functional Verify requires actual failed assertions on every generated test file and recorded sandbox runs; errors, timeout, empty tests, skipped generated tests, source overwrite and test overwrite are rejected. Added 19 negative/authorization regressions (36 focused tests passed).
+- Adopted PR #71's two-approval browser harness without merging its competing host implementation. Browser e2e: 8 passed (23.1s).
+- Full root suite: 324 passed, 6 optional skips. Security suite: 379 passed, 11 opt-in/optional skips. Ruff/format/mypy pass. No new live-provider or Docker proof.
+- PR #35 remains recoverable and will be superseded by #73/#74; no work discarded. Merge these only after current-head CI passes.
