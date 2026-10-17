@@ -37,6 +37,7 @@ from ..contracts import (
     utcnow,
 )
 from ..llm import LLMGateway, LLMRequest, LLMUnavailable
+from ..llm.schema import provider_schema
 from ..redact import redact
 from ..tools import ToolContext, ToolRegistry
 from .spec import AgentSpec
@@ -196,7 +197,7 @@ def run_agent(
     tracker = BudgetTracker(budget=budget, share=spec.budget_share, assessment_usage=assessment_usage)
 
     tool_schemas = registry.schemas_for(spec.name, spec.tools)
-    tools = [*tool_schemas, submit_schema(spec)]
+    tools = provider_schema([*tool_schemas, submit_schema(spec)])
     allowed_display = registry.allowed_names(spec.name, spec.tools)
     system = (
         f"{spec.system_prompt}\n\n"
