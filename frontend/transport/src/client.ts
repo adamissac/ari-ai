@@ -235,6 +235,41 @@ export class ApiClient {
   recommendationExplanation(id: string, options?: RequestOptions): Promise<C.RLExplanation> {
     return this.request(`/defense-recommendations/${segment(id)}/explanation`, 'RLExplanation', options) as Promise<C.RLExplanation>;
   }
+  /** Repositories the user can connect through the GitHub App, and the App's install link. */
+  async githubRepositories(options?: RequestOptions): Promise<AccessibleRepositories> {
+    const record = object(await this.request('/github/repositories', RAW, options), 'repository list');
+    const install = record.install_url;
+    if (!Array.isArray(record.items) || !(install === null || (typeof install === 'string' && /^https:\/\//.test(install))) || record.next_cursor !== null) {
+      throw new ProtocolError('Invalid repository list');
+    }
+    const items = record.items.map(raw => {
+      const r = object(raw, 'repository');
+      if (typeof r.full_name !== 'string' || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(r.full_name)
+        || !Number.isSafeInteger(r.installation_id) || typeof r.default_branch !== 'string'
+        || typeof r.private !== 'boolean' || !(r.connected_repo_id === null || typeof r.connected_repo_id === 'string')) {
+        throw new ProtocolError('Invalid repository list');
+      }
+      return { full_name: r.full_name, installation_id: r.installation_id as number, default_branch: r.default_branch, private: r.private, connected_repo_id: r.connected_repo_id as string | null };
+    });
+    return { items, install_url: install as string | null };
+  }
+  /** Recent commits on a connected repository's default branch, read live from GitHub. */
+  async repositoryCommits(repoId: string, options?: RequestOptions): Promise<RepositoryCommits> {
+    const record = object(await this.request(`/repositories/${segment(repoId)}/commits`, RAW, options), 'commit list');
+    if (!Array.isArray(record.items) || typeof record.available !== 'boolean' || !(record.reason === null || typeof record.reason === 'string') || record.next_cursor !== null) {
+      throw new ProtocolError('Invalid commit list');
+    }
+    const items = record.items.map(raw => {
+      const c = object(raw, 'commit');
+      if (typeof c.sha !== 'string' || !/^[0-9a-f]{40}$/.test(c.sha) || typeof c.message !== 'string' || typeof c.author !== 'string'
+        || !(c.committed_at === null || typeof c.committed_at === 'string')
+        || !(c.html_url === null || (typeof c.html_url === 'string' && /^https:\/\//.test(c.html_url)))) {
+        throw new ProtocolError('Invalid commit list');
+      }
+      return { sha: c.sha, message: c.message, author: c.author, committed_at: c.committed_at as string | null, html_url: c.html_url as string | null };
+    });
+    return { items, available: record.available, reason: record.reason as string | null };
+  }
   rlEvaluations(projectId: string, options?: RequestOptions): Promise<Page<C.RLEvaluation>> {
     return this.list(`/projects/${segment(projectId)}/rl-evaluations`, 'RLEvaluation', options);
   }
@@ -287,6 +322,17 @@ export interface MonitoringQuery { limit?: number; cursor?: string }
 export interface SnapshotQuery { status?: C.SnapshotStatus; limit?: number; cursor?: string }
 export interface CancelResult { assessment_id: string; cancelled: boolean; cancel_requested: true }
 export interface LabeledPage<T> extends Page<T> { label: string }
+/** A repository the signed-in user can connect through the GitHub App (captured at sign-in). */
+export interface AccessibleRepository {
+  full_name: string;
+  installation_id: number;
+  default_branch: string;
+  private: boolean;
+  connected_repo_id: string | null;
+}
+export interface AccessibleRepositories { items: AccessibleRepository[]; install_url: string | null }
+export interface RepositoryCommit { sha: string; message: string; author: string; committed_at: string | null; html_url: string | null }
+export interface RepositoryCommits { items: RepositoryCommit[]; available: boolean; reason: string | null }
 export interface ArtifactText { id: string; text: string; sha256: string; hashVerified: boolean; mediaType: string }
 export type FindingRecord =
   | { type: 'hypothesis'; record: C.Hypothesis }

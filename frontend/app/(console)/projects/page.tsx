@@ -30,6 +30,10 @@ export default function ProjectsPage() {
   return (
     <>
       <PageTitle eyebrow="Workspace" title="Projects" subtitle="Each project links repositories, authorized test scopes, assessments and monitoring history." />
+      <Link href="/connect" className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-line bg-panel px-4 py-3 text-sm hover:border-brand" data-testid="connect-github-link">
+        <span><span className="font-medium text-ink">Connect from GitHub</span><span className="ml-2 text-muted">Choose an organization, then a repository.</span></span>
+        <span aria-hidden="true" className="text-brand">→</span>
+      </Link>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
         <Panel title="Your projects">
           <Async resource={projects} label="projects">

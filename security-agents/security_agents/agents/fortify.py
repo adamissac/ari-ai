@@ -45,7 +45,20 @@ Rules:
 - Recommendations are proposals for humans. You apply nothing and you have \
 read-only tools.
 - Reference real symbols and spans you looked at.
-- Prefer one or two strong structural recommendations over a long weak list."""
+- Prefer one or two strong structural recommendations over a long weak list.
+
+Output values are validated strictly; a rejected value fails your submission:
+- `future_hypotheses[].weakness_class` must be an active CWE *weakness* from the current \
+MITRE catalog. Identifiers MITRE marks Discouraged or Prohibited are rejected — broad \
+classes such as CWE-284, CWE-285, CWE-20 or CWE-200, and categories. Reuse the verified \
+finding's own `weakness_class` when the sibling has the same flaw (for example CWE-639 \
+for a missing ownership check), or pick a specific weakness such as CWE-862 or CWE-863.
+- `recommendations[].d3fend_technique` must be a D3FEND 1.6.0 countermeasure id, or null. \
+Useful ones here: D3-AMED (Access Mediation), D3-UAP (User Account Permissions), \
+D3-ACH (Application Configuration Hardening), D3-AH (Application Hardening), \
+D3-AZET (Authorization Event Thresholding), D3-UBA (User Behavior Analysis). If none \
+clearly applies, use null rather than inventing an id.
+- If a submission is rejected, fix only the fields named in the error and submit again."""
 
 
 class FortifyInput(StrictModel):
@@ -59,6 +72,7 @@ class FortifyInput(StrictModel):
     related_sites: list[ShortText] = Field(default_factory=list)
     tests_added: list[str] = Field(default_factory=list)
     affected_symbol: str | None = None
+    weakness_class: str = ""  # the verified finding's CWE, reusable for sibling hypotheses
 
 
 class RecommendationOut(StrictModel):
@@ -71,7 +85,10 @@ class RecommendationOut(StrictModel):
     owner_review_note: ShortText = ""
     d3fend_technique: str | None = Field(
         default=None,
-        description="MITRE D3FEND countermeasure id such as D3-AMED, or null when none applies.",
+        description=(
+            "MITRE D3FEND 1.6.0 countermeasure id (e.g. D3-AMED, D3-UAP, D3-ACH, D3-AH), "
+            "or null when none clearly applies. Unknown ids are rejected."
+        ),
     )
 
     @field_validator("d3fend_technique")
@@ -81,7 +98,13 @@ class RecommendationOut(StrictModel):
 
 
 class FutureHypothesisOut(StrictModel):
-    weakness_class: str = Field(pattern=r"^CWE-\d{1,5}$")
+    weakness_class: str = Field(
+        pattern=r"^CWE-\d{1,5}$",
+        description=(
+            "Specific active CWE weakness, e.g. the verified finding's own CWE. "
+            "Discouraged broad classes (CWE-284, CWE-285, CWE-20, CWE-200) are rejected."
+        ),
+    )
 
     @field_validator("weakness_class")
     @classmethod
@@ -114,7 +137,7 @@ class FortifyOutput(StrictModel):
 
 SPEC = AgentSpec(
     name=AgentName.FORTIFY,
-    version="0.1.0",
+    version="0.1.1",
     input_model=FortifyInput,
     output_model=FortifyOutput,
     tools=frozenset(
@@ -134,9 +157,10 @@ SPEC = AgentSpec(
     step_timeout_s=180,
     max_tool_calls=20,
     max_turns=10,
-    prompt_ref="prompts/fortify/v0.1.0.md",
+    prompt_ref="prompts/fortify/v0.1.1.md",
     system_prompt=SYSTEM,
-    max_output_tokens=6000,
+    max_output_tokens=8000,
+    max_schema_repairs=2,
 )
 
 

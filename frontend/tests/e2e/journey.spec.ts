@@ -177,8 +177,24 @@ test('create a project and connect a repository through the UI', async ({ browse
   await page.getByRole('button', { name: 'Create project' }).click();
   await page.getByRole('link', { name }).click();
   await expect(page.getByText('No repository connected.')).toBeVisible();
+  // Dev login has no GitHub App access, so the picker explains how to add repositories.
+  await expect(page.getByTestId('repo-picker-empty')).toBeVisible();
   await page.getByLabel('owner/name').fill('acme/another-repo');
   await page.getByRole('button', { name: 'Connect' }).click();
   await expect(page.getByRole('region', { name: 'Repositories' }).getByText('acme/another-repo')).toBeVisible();
   await expect(page.getByText('No assessments yet.')).toBeVisible();
+  // Connected by name (no App installation): commits are explicitly unavailable, never invented.
+  await expect(page.getByTestId('repo-commits-unavailable')).toBeVisible();
+
+  // A repository that cannot be attacked live gets a labelled simulated attack and defense.
+  await page.getByTestId('simulate-acme/another-repo').click();
+  await expect(page.getByTestId('simulated-attack-note')).toContainText('acme/another-repo');
+  await expect(page.getByTestId('simulated-attack-note').getByTestId('demo-marker')).toBeVisible();
+  await page.getByTestId('demo-skip').click();
+  await page.getByTestId('demo-tab-defense').click();
+  await expect(page.getByTestId('demo-commit-message')).toHaveText('Simulated attack on acme/another-repo');
+
+  // GitHub onboarding: without App access the org chooser says how to add repositories.
+  await page.goto('/connect');
+  await expect(page.getByTestId('connect-empty')).toBeVisible();
 });

@@ -43,14 +43,12 @@ body { background: var(--color-bg); color: var(--color-ink); font-family: var(--
   code, kbd, samp, pre { font-family: var(--font-mono); }
 }
 
-/* The logo keeps its original rendering: "Inter" only if installed on the device (local()),
-   never the loaded web font, then the same system fallbacks as before. */
-@font-face {
-  font-family: "Ari Logo Inter";
-  src: local("Inter");
-}
-.ari-wordmark {
-  font-family: "Ari Logo Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+/* Only the actual wordmark uses Chakra Petch; all other typography roles stay unchanged. */
+.ari-wordmark-text {
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1;
 }
 :focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
 ::selection { background: color-mix(in srgb, var(--color-brand) 22%, transparent); }
@@ -183,22 +181,60 @@ body { overflow-x: clip; }
   background: var(--bleed-bg, var(--color-bg)); pointer-events: none;
 }
 
-/* Floating site header on the home hero (Kairo pattern): no bar, only the CTA at the very top;
-   the logo and tabs fade in once the visitor scrolls; dark tone over the hero, light after it;
-   hidden while the intro plays. Driven by <html data-*> attributes set in components/hero.tsx. */
-html[data-home-hero] .site-header {
-  position: fixed; inset-inline: 0; top: 0; border-color: transparent; background: transparent;
-  backdrop-filter: none; transition: opacity 800ms ease-out, translate 800ms ease-out, background-color 300ms ease-out, border-color 300ms ease-out;
+/* Bare floating controls. HeaderContrast adapts each item to the surface beneath it. */
+.site-header { --nav-ink: var(--color-ink); --nav-hover: rgb(28 18 16 / 6%); background: transparent; border: 0; pointer-events: none; }
+body:has(.hero-full) .site-header { --nav-ink: #fff; --nav-hover: rgb(255 255 255 / 9%); }
+.site-header [data-nav-tone="light"] { --nav-ink: var(--color-ink); --nav-hover: rgb(28 18 16 / 6%); }
+.site-header [data-nav-tone="dark"] { --nav-ink: #fff; --nav-hover: rgb(255 255 255 / 9%); }
+.site-header :is(a, button) { pointer-events: auto; }
+.site-header .hdr-logo, .site-header nav a, .site-header .nav-menu-toggle {
+  min-height: 44px;
+  color: var(--nav-ink);
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  box-shadow: none;
 }
-html[data-home-hero][data-intro] .site-header { opacity: 0; translate: 0 -12px; pointer-events: none; }
-html[data-home-hero] .site-header .hdr-reveal { transition: opacity 600ms ease-out, translate 600ms ease-out, visibility 600ms, background-color 250ms, color 250ms; }
-html[data-home-hero]:not([data-hero-scrolled]) .site-header .hdr-reveal { opacity: 0; translate: 0 -6px; visibility: hidden; }
-html[data-home-hero]:not([data-hero-past]) .site-header { color: #fff; }
-html[data-home-hero]:not([data-hero-past]) .site-header nav a { background: rgba(255, 255, 255, 0.1); color: #fff; backdrop-filter: blur(12px); }
-html[data-home-hero]:not([data-hero-past]) .site-header nav a.hdr-cta { background: #fff; color: var(--color-ink); }
-html[data-home-hero] .site-header nav a:hover { background: var(--color-brand); color: var(--color-on-brand); }
-html[data-home-hero][data-hero-past] .site-header { background: color-mix(in srgb, #fff 85%, transparent); backdrop-filter: blur(12px); border-color: color-mix(in srgb, var(--color-line) 80%, transparent); }
-html[data-home-hero][data-hero-past] .site-header nav a.hdr-cta { background: var(--color-brand); color: var(--color-on-brand); box-shadow: none; }
+.site-header .hdr-logo { display: inline-flex; align-items: center; padding: 0 12px; }
+.site-header nav a { transition: background-color 250ms, color 250ms; }
+.site-header nav a:hover, .site-header .nav-menu-toggle:hover { background: var(--nav-hover); }
+.site-header nav a.hdr-cta { background: var(--color-brand); color: var(--color-on-brand); }
+.site-header nav a.hdr-cta:hover { background: var(--color-brand-deep); }
+.site-nav { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px; min-width: 0; }
+.site-nav > a { grid-column: 2; grid-row: 1; }
+.nav-menu-toggle { display: none; }
+.nav-menu-toggle[data-needed="false"] { visibility: hidden; pointer-events: none; }
+.nav-secondary { grid-column: 1; grid-row: 1; display: flex; flex-wrap: wrap; gap: 6px; opacity: 1; visibility: visible; translate: 0; transition: opacity 250ms ease-out, translate 250ms ease-out, visibility 250ms; }
+.nav-secondary[data-visible="false"] { opacity: 0; visibility: hidden; translate: 8px 0; }
+.site-header .nav-secondary[data-visible="false"] a { pointer-events: none; }
+@media (prefers-reduced-motion: reduce) {
+  .nav-secondary { transition: none; translate: none; }
+  .nav-secondary[data-visible="false"] { translate: none; }
+}
+html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
+.hero-headline { font-size: clamp(2rem, 10vw, 9rem); letter-spacing: -0.055em; }
+.hero-headline .hero-line {
+  white-space: nowrap;
+  color: #fff7f2;
+  text-shadow: 0 0 0.12em rgb(255 205 184 / 20%), 0 0 0.35em rgb(229 113 78 / 15%), 0 0 0.7em rgb(194 69 45 / 12%);
+}
+/* Keep the pointer spotlight's crisp text core, with a warm tint and diffuse ember bloom.
+   Em-based shadow radii scale with the existing responsive headline. No extra blur layer. */
+.hero-stage[data-fx="on"] .hero-headline .hero-line {
+  --dim: #fff7f2;
+  background-image: radial-gradient(260px circle at var(--tx) var(--ty), #fffbf8 0%, #fff9f5 30%, var(--dim) 100%);
+}
+#how { scroll-margin-top: 5rem; }
+@media (max-width: 639px) {
+  .site-header-inner { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 8px; }
+  .site-header .hdr-logo { grid-column: 1; grid-row: 1; }
+  .site-header .site-nav { display: contents; }
+  .site-header .site-nav > a { grid-column: 4; grid-row: 1; }
+  .nav-menu-toggle { display: inline-flex; align-items: center; grid-column: 3; grid-row: 1; }
+  .nav-secondary { grid-column: 1 / -1; grid-row: 2; justify-content: flex-end; }
+  .site-header nav a { padding-inline: 10px; }
+  #how { scroll-margin-top: 11rem; }
+}
 
 /* Intro loader: the supplied mark fades in, a counter runs, the curtain lifts. */
 .intro { position: fixed; inset: 0; z-index: 60; background: var(--color-ink); pointer-events: none; transition: translate 800ms cubic-bezier(0.76, 0, 0.24, 1); }
@@ -490,6 +526,9 @@ html[data-home-hero][data-hero-past] .site-header nav a.hdr-cta { background: va
 .monitor-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .monitor-chips li { display: inline-flex; gap: 6px; border-radius: 9999px; padding: 5px 11px; font-size: 0.8rem; color: #fff; background: rgba(255, 255, 255, 0.08); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12); }
 
+/* Header account entry: retain the compact phone avatar and full accessible name. */
+.hdr-avatar { display: grid; width: 18px; height: 18px; place-items: center; border-radius: 9999px; font-size: 0.65rem; color: var(--color-on-brand); background: var(--color-brand); }
+
 /* Scroll reveal (see components/reveal.tsx). Content is visible without JS. */
 .reveal { transition: opacity 500ms var(--ease-quad), transform 500ms var(--ease-quad); }
 .reveal[data-shown="false"] { opacity: 0; transform: translateY(14px); }
@@ -598,5 +637,5 @@ html[data-home-hero][data-hero-past] .site-header nav a.hdr-cta { background: va
   .demo-card { transition: none; }
 }
 
-/* The header tab for the section you are on: solid brand, same as hover. */
-.site-header nav a[aria-current="page"] { background: var(--color-brand); color: var(--color-on-brand); }
+/* Current section stays bare; underline is visible without a card or border. */
+.site-header nav a[aria-current="page"] { text-decoration: underline; text-underline-offset: 4px; }

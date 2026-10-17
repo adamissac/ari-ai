@@ -11,6 +11,7 @@ from sqlalchemy.engine import Connection
 from backend import audit, jobs
 from backend.db import assessments, authorized_scopes, findings, projects, repositories
 from backend.host import emit_event, scope_problem
+from backend.settings import get_settings
 from shared.assessment import TERMINAL_STATES, Assessment, AssessmentState, AssessmentTrigger
 from shared.audit import ActorType
 from shared.base import utcnow
@@ -75,6 +76,33 @@ def active_scope_for_repo(
     return None
 
 
+def budget_over_cap(budget: Budget) -> str | None:
+    """Why `budget` exceeds the operator's per-assessment caps (NFR-07), or None."""
+    s = get_settings()
+    if budget.max_usd > s.llm_max_usd_per_assessment:
+        return (
+            f"max_usd {budget.max_usd} exceeds the operator cap "
+            f"LLM_MAX_USD_PER_ASSESSMENT={s.llm_max_usd_per_assessment}"
+        )
+    if budget.max_tokens > s.llm_max_tokens_per_assessment:
+        return (
+            f"max_tokens {budget.max_tokens} exceeds the operator cap "
+            f"LLM_MAX_TOKENS_PER_ASSESSMENT={s.llm_max_tokens_per_assessment}"
+        )
+    return None
+
+
+def capped_budget(budget: Budget) -> Budget:
+    """`budget` lowered to the operator's per-assessment caps."""
+    s = get_settings()
+    return budget.model_copy(
+        update={
+            "max_usd": min(budget.max_usd, s.llm_max_usd_per_assessment),
+            "max_tokens": min(budget.max_tokens, s.llm_max_tokens_per_assessment),
+        }
+    )
+
+
 def create_assessment(
     conn: Connection,
     *,
@@ -100,8 +128,14 @@ def create_assessment(
     problem = scope_problem(scope, repo_id)
     if problem:
         raise DomainError(ErrorCode.SCOPE_DENIED, problem, 403)
+    if budget is not None:
+        over = budget_over_cap(budget)
+        if over:
+            raise DomainError(ErrorCode.VALIDATION_FAILED, over, 422)
     settings = project_settings(conn, project_id)
-    budget = budget or (
+    # Project budgets are checked when saved; one saved before the operator lowered the
+    # cap is clamped rather than failing every push-triggered run.
+    budget = budget or capped_budget(
         settings.monitoring_policy.monitoring_budget
         if trigger is AssessmentTrigger.monitoring
         else settings.default_budget
@@ -112,6 +146,7 @@ def create_assessment(
         project_id=project_id,
         snapshot_id=snapshot_id,
         commit_sha=commit_sha,
+        repo_id=repo_id,
         scope_id=scope_id,
         trigger=trigger,
         reassessment_request_id=reassessment_request_id,

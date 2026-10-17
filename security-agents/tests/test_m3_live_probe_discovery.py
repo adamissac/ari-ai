@@ -103,13 +103,16 @@ def _probe_ctx(intel, scope):
 def test_listing_exposes_recipe_values_but_never_credentials(intel):
     import json
 
+    from security_agents.checks.library import default_library
+    from security_agents.standards.roe import build_roe
     from security_agents.tools import default_registry, wire_name
 
     from .conftest import make_scope
 
-    result = default_registry().invoke(
-        _probe_ctx(intel, make_scope()), wire_name("checks.list_templates"), {}
-    )
+    scope = make_scope()
+    ctx = _probe_ctx(intel, scope)
+    ctx.roe = build_roe(scope, default_library().list_public())
+    result = default_registry().invoke(ctx, wire_name("checks.list_templates"), {})
     listing = result.payload
     ownership = next(t for t in listing["templates"] if t["category"] == OWNERSHIP)
     routes = {r["id"] for r in ownership["parameter_values"]["route_id"]}

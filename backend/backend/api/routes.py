@@ -51,8 +51,10 @@ from backend.db import (
 from backend.integrations import load_factory
 from backend.services import (
     DomainError,
+    budget_over_cap,
     cancel_queued_assessment,
     create_assessment,
+    project_settings,
     request_assessment_cancel,
 )
 from backend.settings import get_settings
@@ -219,6 +221,7 @@ def create_project(
             return replay
         pid = new_id(IdPrefix.prj)
         settings = body.settings or ProjectSettings()
+        _check_budgets(settings, ProjectSettings())
         conn.execute(
             sa.insert(projects).values(
                 id=pid, org_id=org_id, name=body.name, settings=settings.model_dump(mode="json")
@@ -240,6 +243,18 @@ def get_project(project_id: str, request: Request) -> Project:
         )
 
 
+def _check_budgets(settings: ProjectSettings, before: ProjectSettings) -> None:
+    """A budget the caller changes may not exceed the operator's per-assessment caps
+    (NFR-07). Unchanged ones (e.g. the defaults under a lowered cap) are clamped on use."""
+    pairs = (
+        (settings.default_budget, before.default_budget),
+        (settings.monitoring_policy.monitoring_budget, before.monitoring_policy.monitoring_budget),
+    )
+    for b, old in pairs:
+        if b != old and (over := budget_over_cap(b)):
+            raise ApiError(ErrorCode.VALIDATION_FAILED, over, 422)
+
+
 @router.patch("/projects/{project_id}", response_model=Project)
 def update_project(project_id: str, body: ProjectUpdate, request: Request) -> Project:
     with transaction() as conn:
@@ -249,6 +264,7 @@ def update_project(project_id: str, body: ProjectUpdate, request: Request) -> Pr
         if body.name is not None:
             values["name"] = body.name
         if body.settings is not None:
+            _check_budgets(body.settings, project_settings(conn, project_id))
             values["settings"] = body.settings.model_dump(mode="json")
         if values:
             conn.execute(sa.update(projects).where(projects.c.id == project_id).values(**values))
@@ -293,6 +309,17 @@ def connect_repository(project_id: str, body: RepositoryConnect, request: Reques
     with transaction() as conn:
         user = _user(conn, request)
         org_id, _ = require_project(conn, user, project_id, MemberRole.owner)
+        # The worker fetches App-connected repositories with an installation token, so the
+        # caller must have reached this exact repository through that installation at sign-in.
+        if body.installation_id is not None:
+            from backend.api.github_repos import can_connect
+
+            if not can_connect(conn, user.id, body.full_name, body.installation_id):
+                raise ApiError(
+                    ErrorCode.FORBIDDEN,
+                    "this GitHub App installation does not give you access to that repository",
+                    403,
+                )
         if conn.execute(
             sa.select(repositories.c.id).where(repositories.c.full_name == body.full_name)
         ).scalar():
