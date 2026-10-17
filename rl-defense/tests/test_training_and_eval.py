@@ -214,3 +214,18 @@ def test_defense_lab_bundle_exports_valid_typed_replays(trained_run):
     step = again.episodes[0].steps[0]
     assert len(step.nodes) == 5
     assert abs(sum(step.reward_components.values()) - step.reward) < 1e-2
+
+
+def test_explain_keeps_backend_call_pattern(trained_run):
+    """backend/pipeline.py calls runner.explain(facts) and then sets recommendation_id itself."""
+    from rl_defense.contracts import RLExplanation
+
+    run, _ = trained_run
+    runner = load_policy(run / "ddqn_seed0.pt")
+    facts = _facts()
+    rec = runner.recommend(facts)
+    raw = runner.explain(facts).model_dump(mode="json")  # exact backend usage
+    expl = RLExplanation.model_validate({**raw, "recommendation_id": rec.id})
+    assert expl.action == f"{rec.action}:{rec.node}" if rec.node else expl.action == rec.action
+    bound = runner.explain(facts, rec)
+    assert bound.recommendation_id == rec.id and bound.top_contributions == expl.top_contributions

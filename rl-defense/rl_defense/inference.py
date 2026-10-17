@@ -59,14 +59,24 @@ class PolicyRunner:
         )
 
     def explain(
-        self, facts: PlatformFacts, recommendation: DefenseRecommendation, top_k: int = 5
+        self,
+        facts: PlatformFacts,
+        recommendation: DefenseRecommendation | None = None,
+        top_k: int = 5,
     ) -> RLExplanation:
-        """Which observed inputs drove ``recommendation`` (occlusion on the same Q-network)."""
+        """Which observed inputs drove the decision for ``facts`` (occlusion on the same Q-network).
+
+        ``recommendation`` is optional for backward compatibility with ``explain(facts)``
+        (used by the backend, which then sets ``recommendation_id`` itself). Without it, the
+        explanation carries the id of an equivalent fresh recommendation; inference is
+        deterministic, so the explained decision is the same.
+        """
+        rec_id = (recommendation or self.recommend(facts)).id
         return explain(
             self.agent.online,
             from_platform_facts(facts),
             mask_from_facts(facts),
-            recommendation.id,
+            rec_id,
             top_k,
         )
 
