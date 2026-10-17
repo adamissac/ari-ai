@@ -340,6 +340,7 @@ defense_recommendations = sa.Table(
     _id(),
     sa.Column("project_id", sa.String(80), sa.ForeignKey("projects.id"), index=True),
     sa.Column("doc", JSONB, nullable=False),
+    sa.Column("explanation", JSONB),
     _created(),
 )
 
