@@ -18,7 +18,7 @@ import numpy as np
 import torch
 import yaml
 
-from rl_defense.agents.ddqn import DDQNAgent, DDQNConfig, ReplayBuffer
+from rl_defense.agents.ddqn import DDQNAgent, DDQNConfig, NStepAccumulator, ReplayBuffer
 from rl_defense.checkpoint import save_checkpoint
 from rl_defense.envs import DefenseSimEnv, default_config_paths, load_configs
 from rl_defense.envs.config import ScenarioConfig
@@ -50,6 +50,7 @@ def train(
     rng = np.random.default_rng(seed)
     agent = DDQNAgent(OBS_DIM, N_ACTIONS, cfg, seed=seed)
     buffer = ReplayBuffer(cfg.buffer_size, OBS_DIM, N_ACTIONS, seed=seed)
+    nstep = NStepAccumulator(cfg.n_step, cfg.gamma) if cfg.n_step > 1 else None
     initial_params = [p.detach().clone() for p in agent.online.parameters()]
 
     log_path = run_dir / f"train_seed{seed}.jsonl"
@@ -66,7 +67,13 @@ def train(
         action = agent.act(obs, info["action_mask"], eps)
         next_obs, reward, terminated, truncated, info = env.step(action)
         # Bootstrap through truncation (time limit); only true termination stops the target.
-        buffer.add(obs, action, reward, next_obs, terminated, info["action_mask"])
+        if nstep is None:
+            buffer.add(obs, action, reward, next_obs, terminated, info["action_mask"])
+        else:
+            for tr in nstep.push(
+                obs, action, reward, next_obs, terminated, truncated, info["action_mask"]
+            ):
+                buffer.add(*tr)
         obs = next_obs
         ep_return += reward
         ep_len += 1
