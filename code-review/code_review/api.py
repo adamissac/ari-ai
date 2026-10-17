@@ -20,6 +20,7 @@ import hashlib
 import json
 import os
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -28,10 +29,11 @@ from code_review.models import GeneratedTestSource, RepairOutcome, ReviewOutcome
 from code_review.ports import IntelligencePort, RepoSource, ReviewHost, SandboxPort
 from code_review.shared_sandbox import build_sandbox
 from code_review.tools import ReviewBudget
+from code_review.workspace import diff_target_paths, is_protected_path
 from shared.assessment import AssessmentTrigger
 from shared.errors import ErrorCode
 from shared.evidence import EvidenceKind
-from shared.findings import Finding, FindingKind, FindingStatus
+from shared.findings import Finding, FindingKind, FindingStatus, PatchCandidate
 from shared.intelligence import SnapshotRef
 from shared.review import (
     ChangeIntent,
@@ -347,3 +349,70 @@ def repair_approved_functional_findings(
         ):
             outcomes.append(propose_repair(host, f.id, approved[f.id], repo_id=repo_id, **kw))
     return outcomes
+
+
+@dataclass(frozen=True)
+class FunctionalVerifyInputs:
+    """Everything an INDEPENDENT functional Verify needs for one reviewer patch, read from
+    persisted records and integrity-checked. The reviewer never adjudicates its own patch;
+    this only hands over the evidence (Srihith's design 20261017T072519Z, step (c))."""
+
+    patch: PatchCandidate
+    finding: Finding
+    unpatched_commit: str  # = patch.base_commit_sha = finding.commit_sha
+    diff_text: str  # sha256 == patch.diff_sha256
+    generated_tests: list[GeneratedTestSource]  # must FAIL unpatched, PASS patched
+    protected_paths: list[str]  # every test/config path the diff touched (must be empty)
+    baseline_failing: list[str]  # existing tests already failing unpatched (not the patch's fault)
+
+
+def functional_verification_inputs(
+    host: ReviewHost, patch: PatchCandidate
+) -> FunctionalVerifyInputs:
+    finding = next((f for f in host.findings() if f.id == patch.finding_id), None)  # type: ignore[attr-defined]
+    if finding is None or finding.kind is not FindingKind.functional:
+        raise ReviewError(
+            ErrorCode.NOT_FOUND, f"no functional finding {patch.finding_id} for {patch.id}"
+        )
+    if patch.base_commit_sha != finding.commit_sha:
+        raise ReviewError(
+            ErrorCode.VALIDATION_FAILED, "patch base commit differs from the finding's commit"
+        )
+    diff = read_artifact(host, patch.diff_artifact_id)
+    if hashlib.sha256(diff).hexdigest() != patch.diff_sha256:
+        raise ReviewError(
+            ErrorCode.VALIDATION_FAILED, "diff artifact does not match patch.diff_sha256"
+        )
+    tests = load_test_sources(host, finding)
+    if sorted(t.path for t in tests) != sorted(patch.tests_added):
+        raise ReviewError(
+            ErrorCode.VALIDATION_FAILED, "patch.tests_added differs from the cited test bundle"
+        )
+    diff_text = diff.decode()
+    baseline: list[str] = []
+    replay = next(
+        (
+            e
+            for e in reversed(finding.evidence)
+            if e.kind is EvidenceKind.test_run and (e.note or "").startswith("fresh replay")
+        ),
+        None,
+    )
+    if replay is not None and replay.artifact_id:
+        data = json.loads(read_artifact(host, replay.artifact_id))
+        for run in data.get("runs", []):
+            if run.get("label") == "existing@pristine":
+                baseline = sorted(
+                    c["nodeid"]
+                    for c in run.get("cases", [])
+                    if c.get("outcome") in ("failed", "error")
+                )
+    return FunctionalVerifyInputs(
+        patch=patch,
+        finding=finding,
+        unpatched_commit=patch.base_commit_sha,
+        diff_text=diff_text,
+        generated_tests=tests,
+        protected_paths=[p for p in diff_target_paths(diff_text) if is_protected_path(p)],
+        baseline_failing=baseline,
+    )
