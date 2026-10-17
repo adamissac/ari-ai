@@ -117,6 +117,7 @@ class HostStepRunner:
 
     host: AssessmentHostLike
     tool_factory: Any  # callable(spec, ctx, registry) -> list[backend Tool]
+    run_ids: dict[str, str] = field(default_factory=dict)  # agent -> latest HOST run id
 
     def __call__(
         self,
@@ -134,7 +135,7 @@ class HostStepRunner:
         ctx.step_allowlist = spec.tools
         ctx.max_calls_per_tool = dict(spec.max_calls_per_tool)
         llm = self.host.llm()
-        provider_mode = str(getattr(llm, "provider_mode", lambda: "unknown")())
+        provider_mode = str(_val(llm, "provider_mode") or "unknown")
         model_id = str(getattr(llm, "model_for", lambda _a: "unknown")(spec.name.value))
         run_id = self.host.start_agent_run(
             _host_agent(spec.name),
@@ -146,13 +147,22 @@ class HostStepRunner:
             input_payload={"prompt_ref": spec.prompt_ref, "input_ref": input_ref},
         )
         ctx.run_id = run_id
+        self.run_ids[spec.name.value] = run_id
         record = StepRecord(
-            run_id=run_id, agent=spec.name, spec_version=spec.version, model=model_id,
+            run_id=run_id,
+            agent=spec.name,
+            spec_version=spec.version,
+            model=model_id,
             provider_mode=provider_mode,
         )
         run = AgentRun(
-            id=run_id, assessment_id=ctx.assessment_id, agent=spec.name, step_key=ctx.step_key,
-            status="running", input_ref=input_ref or ctx.step_key, model_id=model_id,
+            id=run_id,
+            assessment_id=ctx.assessment_id,
+            agent=spec.name,
+            step_key=ctx.step_key,
+            status="running",
+            input_ref=input_ref or ctx.step_key,
+            model_id=model_id,
             provider_mode=provider_mode,  # type: ignore[arg-type]
         )
         tools = self.tool_factory(spec, ctx, registry, record)
@@ -180,9 +190,7 @@ class HostStepRunner:
             run.ended_at = utcnow()
             record.error_code = code
             record.error_detail = detail
-            self.host.finish_agent_run(
-                run_id, _host_run_status("failed"), error=_host_error(code, detail)
-            )
+            self.host.finish_agent_run(run_id, _host_run_status("failed"), error=_host_error(code, detail))
             return StepOutcome(run=run, output=None, record=record)
 
         usage = getattr(result, "usage", None)
@@ -206,8 +214,34 @@ class HostStepRunner:
             _host_run_status("succeeded"),
             output=result.final.model_dump(mode="json"),
             transcript=record.to_json(),
+            **_run_accounting(result),
         )
         return StepOutcome(run=run, output=result.final, record=record)
+
+
+def _run_accounting(result: Any) -> dict[str, Any]:
+    """Per-run usage and tool-call records from the backend gateway's loop result
+    (shared models), so the UI shows each agent's cost and tool history."""
+    out: dict[str, Any] = {}
+    try:
+        from shared.assessment import ToolCallRecord
+        from shared.tenancy import Usage as SharedUsage
+    except ImportError:  # standalone install without the shared package
+        return out
+    usage = getattr(result, "usage", None)
+    if isinstance(usage, SharedUsage):
+        out["usage"] = usage
+    calls = getattr(result, "tool_calls", None)
+    if calls and all(isinstance(c, ToolCallRecord) for c in calls):
+        out["tool_calls"] = list(calls)
+    return out
+
+
+def _val(obj: Any, name: str) -> Any:
+    """The backend host exposes some members as properties (assessment, scope,
+    provider_mode); fakes may use methods. Accept both."""
+    attr = getattr(obj, name, None)
+    return attr() if callable(attr) else attr
 
 
 def _classify(exc: Exception) -> tuple[ErrorCode, str]:
@@ -266,9 +300,7 @@ def _host_state(state: AssessmentState) -> Any:
     for member in enum:
         if member.name.upper() == name or str(member.value).upper() == name:
             return member
-    raise PlatformError(
-        ErrorCode.CONFLICT_STATE, f"host has no assessment state matching {name}"
-    )
+    raise PlatformError(ErrorCode.CONFLICT_STATE, f"host has no assessment state matching {name}")
 
 
 @dataclass
@@ -340,7 +372,10 @@ def _handler(ctx: ToolContext, registry: ToolRegistry, record: StepRecord, name:
             }
         record.tool_invocations.append(
             ToolInvocation(
-                name=tool_name(name), args={}, ok=ok, error_code=error_code,
+                name=tool_name(name),
+                args={},
+                ok=ok,
+                error_code=error_code,
                 summary={k: v for k, v in payload.items() if k in ("error", "detail")},
             )
         )
@@ -363,6 +398,8 @@ class HostSink(AssessmentSink):
 
     def on_transition(self, src: AssessmentState, dst: AssessmentState, note: str) -> None:
         self.host.transition(_host_state(dst), note)
+        if dst is AssessmentState.FUNCTIONAL_REVIEW:
+            _functional_review(self.host)
 
     def on_finding(self, finding: FindingRecord) -> None:
         import importlib
@@ -373,8 +410,7 @@ class HostSink(AssessmentSink):
             return
         hypothesis = finding.hypothesis
         evidence = [
-            contract_export.evidence_ref(ref, producer="agent:scout")
-            for ref in hypothesis.cited_spans
+            contract_export.evidence_ref(ref, producer="agent:scout") for ref in hypothesis.cited_spans
         ]
         record = findings_module.Finding(
             id=finding.finding_id,
@@ -384,16 +420,16 @@ class HostSink(AssessmentSink):
             title=hypothesis.title[:500],
             status=findings_module.FindingStatus.hypothesis,
             subject_refs=[hypothesis.entry_point_id or ""] if hypothesis.entry_point_id else [],
-            expectation_ids=[
-                contract_export.canonical_expectation_id(e) for e in hypothesis.expectation_ids
-            ],
+            expectation_ids=[contract_export.canonical_expectation_id(e) for e in hypothesis.expectation_ids],
             evidence=evidence,
             confidence=contract_export.CONFIDENCE_SCORE[hypothesis.confidence],
             created_at=utcnow(),
             updated_at=utcnow(),
         )
         self.host.record_finding(record, actor="agent:scout")
-        self.host.record(finding.finding_id, contract_export.hypothesis(hypothesis, finding_id=finding.finding_id))
+        self.host.record(
+            finding.finding_id, contract_export.hypothesis(hypothesis, finding_id=finding.finding_id)
+        )
         self.recorded.append("finding")
 
     def on_record(self, finding: FindingRecord, record: Any, kind: str) -> None:
@@ -423,7 +459,9 @@ class HostSink(AssessmentSink):
     def on_patch(self, finding: FindingRecord, candidate: Any, diff: str) -> None:
         artifact = self.host.store_text(diff)
         artifact_id = getattr(artifact, "id", None) or str(artifact)
-        run_id = self.run_ids.get("patch", new_id("run"))
+        run_id = self.run_ids.get("patch")
+        if run_id is None:  # never cite a run the host did not create
+            raise PlatformError(ErrorCode.CONFLICT_STATE, "patch recorded without a host patch run")
         self.host.record_patch(
             contract_export.patch_candidate(
                 candidate,
@@ -438,7 +476,7 @@ class HostSink(AssessmentSink):
     def on_verification(self, finding: FindingRecord, result: Any) -> None:
         self.host.record_verification(
             contract_export.verification_result(
-                result, produced_by_run_id=result.verify_run_id or self.run_ids.get("verify", new_id("run"))
+                result, produced_by_run_id=result.verify_run_id or self.run_ids["verify"]
             )
         )
         self.recorded.append("verification")
@@ -489,23 +527,26 @@ class HostOrchestrator:
 
     def run(self, host: AssessmentHostLike) -> None:
         target = self.target_dir or _env_path("SECURITY_AGENTS_TARGET_DIR")
-        if target is None:
-            raise PlatformError(
-                ErrorCode.CONFLICT_STATE,
-                "no target directory: set SECURITY_AGENTS_TARGET_DIR or pass target_dir",
-            )
         existing = self._resumable.pop(host.assessment_id, None)
         if existing is not None:
             self._resume(existing, host)
             return
+        state = str(getattr(getattr(_val(host, "assessment"), "state", None), "value", "") or "").upper()
+        if state not in ("", "CREATED", "SCOPE_CHECK"):
+            # Paused state lives in this process; a different worker or a restart lost it.
+            raise PlatformError(
+                ErrorCode.CONFLICT_STATE,
+                f"cannot resume from {state}: paused orchestrator state was lost "
+                "(worker restarted or another worker); start a new assessment",
+            )
 
         workdir = self.workdir or Path(os.environ.get("SECURITY_AGENTS_WORKDIR", "")) or None
         if workdir is None:
             import tempfile
 
             workdir = Path(tempfile.mkdtemp(prefix=f"{host.assessment_id}-"))
-        intel = self._build_intel(target, workdir)
-        scope = _adapt_scope(host.scope(), intel)
+        intel = self._build_intel(target, workdir, host)
+        scope = _adapt_scope(_val(host, "scope"), intel)
         config = OrchestratorConfig(
             assessment_id=host.assessment_id,
             project_id=getattr(host, "project_id", "prj_unknown"),
@@ -513,7 +554,7 @@ class HostOrchestrator:
             scope=scope,
             target_id=scope.targets[0].target_id,
             requested_by=scope.requested_by,
-            budget=_adapt_budget(host.assessment()),
+            budget=_adapt_budget(_val(host, "assessment")),
             max_hypotheses=self.max_hypotheses,
             max_hypotheses_to_validate=self.validate_count,
         )
@@ -523,12 +564,12 @@ class HostOrchestrator:
             config,
             intel=intel,
             gateway=_NullGateway(),  # host.llm() is the only provider path here
-            driver=self.driver or LocalProcessDriver(allow=True),
+            driver=self.driver or _driver(),
             library=default_library(),
             workdir=workdir / "work",
             registry=registry,
             sink=sink,
-            step_runner=HostStepRunner(host=host, tool_factory=build_tools),
+            step_runner=HostStepRunner(host=host, tool_factory=build_tools, run_ids=sink.run_ids),
             approve_remediation=_approver(host),
             cancelled=lambda: _cancelled(host),
         )
@@ -563,35 +604,228 @@ class HostOrchestrator:
         orchestrator._goto(AssessmentState.REPORTING)
         orchestrator._finish()
 
-    def _build_intel(self, target: Path, workdir: Path) -> CodeIntel:
+    def _build_intel(self, target: Path | None, workdir: Path, host: Any = None) -> CodeIntel:
+        """Snapshot for this assessment.
+
+        Preferred: the operator's trusted checkout from the backend's shared registry
+        (``REPOSITORY_BINDINGS_FILE``) archived at exactly ``assessment.commit_sha``
+        (``pinned_by="git"``), honoring ``build_recipe.json`` ``target_dir``.
+        Fallback (dev/test only): ``SECURITY_AGENTS_TARGET_DIR`` copied as a directory
+        snapshot (``pinned_by="directory-digest"``).
+
+        ``labels.yaml`` is the evaluation answer key and is never read implicitly; an
+        explicit ``labels_path`` / ``SECURITY_AGENTS_LABELS`` is a dev/test override.
+        """
         import json
         import shutil
 
-        recipe_path = target / "build_recipe.json"
-        source = target
+        snapshot = _pinned_snapshot(host, workdir) if host is not None else None
         strip_prefix = None
-        if recipe_path.is_file():
-            recipe = json.loads(recipe_path.read_text(encoding="utf-8"))
-            if recipe.get("target_dir"):
-                source = target / str(recipe["target_dir"])
-                strip_prefix = f"{recipe['target_dir']}/"
-        staging = workdir / "staging"
-        copy_tree(source, staging)
-        if recipe_path.is_file():
-            shutil.copy2(recipe_path, staging / "build_recipe.json")
-        snapshot = SnapshotHandle.from_directory(
-            staging, workdir / "snapshot", snapshot_id=new_id("snp"), repo_id="rep_host"
-        )
-        labels = self.labels_path or _env_path("SECURITY_AGENTS_LABELS") or (
-            target / "labels.yaml" if (target / "labels.yaml").is_file() else None
-        )
+        if snapshot is None:
+            if target is None:
+                raise PlatformError(
+                    ErrorCode.SNAPSHOT_NOT_READY,
+                    "no trusted checkout bound for this repository (REPOSITORY_BINDINGS_FILE) "
+                    "and no SECURITY_AGENTS_TARGET_DIR",
+                )
+            recipe_path = target / "build_recipe.json"
+            source = target
+            if recipe_path.is_file():
+                recipe = json.loads(recipe_path.read_text(encoding="utf-8"))
+                if recipe.get("target_dir"):
+                    source = target / str(recipe["target_dir"])
+                    strip_prefix = f"{recipe['target_dir']}/"
+            staging = workdir / "staging"
+            copy_tree(source, staging)
+            if recipe_path.is_file():
+                shutil.copy2(recipe_path, staging / "build_recipe.json")
+            snapshot = SnapshotHandle.from_directory(
+                staging, workdir / "snapshot", snapshot_id=new_id("snp"), repo_id="rep_host"
+            )
+        labels = self.labels_path or _env_path("SECURITY_AGENTS_LABELS")
         expectations = None
         if labels is not None:
             expectations = load_expectations(
-                labels, snapshot_id=snapshot.snapshot_id, commit_sha=snapshot.commit_sha,
+                labels,
+                snapshot_id=snapshot.snapshot_id,
+                commit_sha=snapshot.commit_sha,
                 strip_prefix=strip_prefix,
             )
         return LocalIntel(snapshot, expectations=expectations)
+
+
+def _bindings() -> list[dict[str, Any]]:
+    """The backend's shared repository registry (also used by code_review)."""
+    import json
+
+    path: Path | None = None
+    try:
+        from backend.settings import get_settings  # optional: present inside the worker
+
+        path = get_settings().repository_bindings_file
+    except Exception:
+        path = _env_path("REPOSITORY_BINDINGS_FILE")
+    if not path or not Path(path).is_file():
+        return []
+    return list(json.loads(Path(path).read_text(encoding="utf-8")))
+
+
+def _pinned_snapshot(host: Any, workdir: Path) -> SnapshotHandle | None:
+    import json
+    import shutil
+
+    repo_id = getattr(host, "repo_id", None)
+    binding = next((b for b in _bindings() if b.get("repo_id") == repo_id), None)
+    if binding is None:
+        return None
+    assessment = _val(host, "assessment")
+    sha = str(assessment.commit_sha)
+    subdir = str(binding.get("subdir") or ".")
+    snapshot_id = str(getattr(assessment, "snapshot_id", None) or new_id("snp"))
+    raw = SnapshotHandle.from_git(
+        Path(binding["local_path"]).expanduser().resolve(),
+        sha,
+        subdir,
+        workdir / "checkout",
+        snapshot_id=snapshot_id,
+        repo_id=str(repo_id),
+    )
+    recipe = raw.root / "build_recipe.json"
+    target_dir = (
+        json.loads(recipe.read_text(encoding="utf-8")).get("target_dir") if recipe.is_file() else None
+    )
+    if not target_dir:
+        return raw
+    if str(target_dir).startswith("/") or ".." in Path(str(target_dir)).parts:
+        raise PlatformError(
+            ErrorCode.VALIDATION_FAILED, "build_recipe.json target_dir must stay inside the checkout"
+        )
+    root = workdir / "snapshot"
+    copy_tree(raw.root / str(target_dir), root)
+    shutil.copy2(recipe, root / "build_recipe.json")
+    for path in root.rglob("*"):
+        if path.is_file():
+            path.chmod(0o444)
+    return SnapshotHandle(
+        snapshot_id=snapshot_id, repo_id=str(repo_id), commit_sha=raw.commit_sha, root=root, pinned_by="git"
+    )
+
+
+_PROPAGATE = {"CANCELLED", "BUDGET_EXHAUSTED", "SCOPE_DENIED"}
+
+
+def _functional_review(host: Any) -> None:
+    """Pillar 1 inside the assessment: Sai's reviewer on the same commit, persisting its own
+    run and findings through the host. Unavailable/failing review is recorded and the
+    security run continues; cancel/budget/scope errors propagate."""
+    try:
+        from code_review import api as review_api
+    except ImportError:
+        host.progress("functional review unavailable: code_review is not installed in this worker")
+        return
+    intent = _change_intent(host)
+    try:
+        try:
+            outcome = review_api.review_assessment(host, change_intent=intent)
+        except Exception as exc:
+            if str(getattr(getattr(exc, "code", None), "value", "")) != "SNAPSHOT_NOT_READY":
+                raise
+            outcome = _review_without_snapshot(host, intent, review_api)
+        result = outcome.result
+        host.progress(
+            f"functional review {result.status.value}: {len(result.findings)} functional finding(s)"
+        )
+    except Exception as exc:
+        code = str(getattr(getattr(exc, "code", None), "value", type(exc).__name__))
+        if code in _PROPAGATE:
+            raise
+        host.progress(f"functional review failed ({code}): {exc}"[:500])
+
+
+def _review_without_snapshot(host: Any, intent: Any, review_api: Any) -> Any:
+    """No indexed snapshot row for this commit: review the pinned checkout directly."""
+    from shared.intelligence import SnapshotRef
+    from shared.review import ReviewRequest
+
+    a = _val(host, "assessment")
+    request = ReviewRequest(
+        assessment_id=a.id,
+        snapshot_ref=SnapshotRef(
+            project_id=a.project_id,
+            repo_id=host.repo_id,
+            commit_sha=a.commit_sha,
+            snapshot_id=a.snapshot_id or new_id("snp"),
+            index_version="checkout",
+        ),
+        change_intent=intent or _default_intent(a),
+        budget=a.budget,
+    )
+    source = review_api.resolve_repo(host.repo_id, commit_sha=a.commit_sha)
+    return review_api.review_full(host, request, source=source)
+
+
+def _default_intent(a: Any) -> Any:
+    from shared.review import ChangeIntent, ChangeIntentSource
+
+    return ChangeIntent(
+        source=ChangeIntentSource.manual, title=f"assessment of {a.commit_sha[:12]}", head_sha=a.commit_sha
+    )
+
+
+def _change_intent(host: Any) -> Any:
+    """Push/PR intent (commit range, PR title/body as untrusted text) of the monitoring event
+    that triggered this assessment; None for manual assessments."""
+    a = _val(host, "assessment")
+    if not getattr(a, "reassessment_request_id", None):
+        return None
+    try:
+        import sqlalchemy as sa
+        from backend.db import monitoring_events, reassessment_requests, transaction
+        from shared.review import ChangeIntent, ChangeIntentSource
+    except ImportError:
+        return None
+    with transaction() as conn:
+        rrq = conn.execute(
+            sa.select(reassessment_requests.c.doc).where(
+                reassessment_requests.c.id == a.reassessment_request_id
+            )
+        ).scalar()
+        ev = conn.execute(
+            sa.select(monitoring_events.c.doc).where(
+                monitoring_events.c.id == ((rrq or {}).get("event_ids") or [""])[0]
+            )
+        ).scalar()
+    if not ev or not ev.get("commit_range"):
+        return None
+    kind = ChangeIntentSource.pull_request if ev.get("type") == "pull_request" else ChangeIntentSource.push
+    return ChangeIntent(
+        source=kind,
+        title=f"{kind.value} {(ev.get('ref') or '')}"[:500],
+        base_sha=ev["commit_range"].get("base_sha"),
+        head_sha=a.commit_sha,
+    )
+
+
+def _driver() -> SandboxDriver:
+    """Docker by default. The local-process driver only in development/test, for the
+    owned demo target (no Docker on the host)."""
+    from .sandbox.driver import DockerSandboxDriver
+
+    mode, env = "docker", ""
+    try:
+        from backend.settings import get_settings
+
+        settings = get_settings()
+        mode, env = settings.security_sandbox, settings.app_env
+    except Exception:
+        mode, env = os.environ.get("SECURITY_SANDBOX", "docker"), os.environ.get("APP_ENV", "")
+    if mode == "local-dev":
+        if env not in ("development", "test"):
+            raise PlatformError(
+                ErrorCode.SANDBOX_POLICY_VIOLATION, "local-dev sandbox outside development/test"
+            )
+        return LocalProcessDriver(allow=True)
+    return DockerSandboxDriver()
 
 
 class _NullGateway:
@@ -603,9 +837,7 @@ class _NullGateway:
         return "host"
 
     def complete(self, request: Any) -> Any:  # pragma: no cover - never called
-        raise PlatformError(
-            ErrorCode.CONFLICT_STATE, "host mode must route model calls through host.llm()"
-        )
+        raise PlatformError(ErrorCode.CONFLICT_STATE, "host mode must route model calls through host.llm()")
 
     def cost_usd(self, model: str, usage: Any) -> float:  # pragma: no cover
         return 0.0

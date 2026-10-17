@@ -57,7 +57,8 @@ class ListTemplatesArgs(StrictModel):
 
 class RunTemplateArgs(StrictModel):
     template_ref: str = Field(
-        max_length=120, description="Template reference as `category.name@version` from checks.list_templates."
+        max_length=120,
+        description="Template reference as `category.name@version` from checks.list_templates.",
     )
     target_id: str = Field(max_length=120, description="Target id from the authorized scope.")
     parameters: dict[str, str | int] = Field(
@@ -79,7 +80,8 @@ class TestsRunArgs(StrictModel):
         default="project_suite", description="Which tests to run in the sandbox."
     )
     node_ids: list[str] = Field(
-        default_factory=list, max_length=10,
+        default_factory=list,
+        max_length=10,
         description="Optional pytest node ids (repository-relative) to narrow the run.",
     )
 
@@ -274,70 +276,120 @@ def h_apply_fresh(ctx: ToolContext, args: ApplyFreshArgs) -> dict[str, Any]:
 
 CATALOG: dict[str, ToolDef] = {
     "code.read_span": ToolDef(
-        name="code.read_span", version="1",
+        name="code.read_span",
+        version="1",
         description="Read an exact line span from a file in the pinned snapshot, with line numbers.",
-        args_model=ReadSpanArgs, side_effects="none", requires_scope=False, handler=h_read_span,
+        args_model=ReadSpanArgs,
+        side_effects="none",
+        requires_scope=False,
+        handler=h_read_span,
     ),
     "code.search": ToolDef(
-        name="code.search", version="1",
+        name="code.search",
+        version="1",
         description="Lexical regular-expression search across the snapshot; returns path, line and text.",
-        args_model=SearchArgs, side_effects="none", requires_scope=False, handler=h_search,
+        args_model=SearchArgs,
+        side_effects="none",
+        requires_scope=False,
+        handler=h_search,
     ),
     "graph.neighbors": ToolDef(
-        name="graph.neighbors", version="1",
+        name="graph.neighbors",
+        version="1",
         description="Structural neighbours of a symbol: location, decorators, parameters, callees and callers.",
-        args_model=NeighborsArgs, side_effects="none", requires_scope=False, handler=h_neighbors,
+        args_model=NeighborsArgs,
+        side_effects="none",
+        requires_scope=False,
+        handler=h_neighbors,
     ),
     "expectations.for_subject": ToolDef(
-        name="expectations.for_subject", version="1",
+        name="expectations.for_subject",
+        version="1",
         description="Behavioural expectations (intended behaviour) for a file or symbol, with their sources.",
-        args_model=ExpectationsArgs, side_effects="none", requires_scope=False, handler=h_expectations,
+        args_model=ExpectationsArgs,
+        side_effects="none",
+        requires_scope=False,
+        handler=h_expectations,
     ),
     "findings.history": ToolDef(
-        name="findings.history", version="1",
+        name="findings.history",
+        version="1",
         description="Previously recorded hypotheses and findings, including ones already refuted.",
-        args_model=HistoryArgs, side_effects="none", requires_scope=False, handler=h_history,
+        args_model=HistoryArgs,
+        side_effects="none",
+        requires_scope=False,
+        handler=h_history,
     ),
     "static.analyze": ToolDef(
-        name="static.analyze", version="1",
+        name="static.analyze",
+        version="1",
         description="Read-only structural analysis of one Python file: handlers, dependencies, pattern signals.",
-        args_model=StaticAnalyzeArgs, side_effects="none", requires_scope=False, handler=h_static_analyze,
+        args_model=StaticAnalyzeArgs,
+        side_effects="none",
+        requires_scope=False,
+        handler=h_static_analyze,
     ),
     "checks.list_templates": ToolDef(
-        name="checks.list_templates", version="1",
+        name="checks.list_templates",
+        version="1",
         description="List reviewed check templates with their categories and required parameters.",
-        args_model=ListTemplatesArgs, side_effects="none", requires_scope=False, handler=h_list_templates,
+        args_model=ListTemplatesArgs,
+        side_effects="none",
+        requires_scope=False,
+        handler=h_list_templates,
     ),
     "checks.run_template": ToolDef(
-        name="checks.run_template", version="1",
+        name="checks.run_template",
+        version="1",
         description=(
             "Run one reviewed check template against the authorized sandbox target and return its "
             "structured result, including a deterministic matches_expectation field."
         ),
-        args_model=RunTemplateArgs, side_effects="network_target_only", requires_scope=True,
-        handler=h_run_template, scope_action="run_check",
-        category_from="template_ref", target_from="target_id", timeout_s=240.0,
+        args_model=RunTemplateArgs,
+        side_effects="network_target_only",
+        requires_scope=True,
+        handler=h_run_template,
+        scope_action="run_check",
+        category_from="template_ref",
+        target_from="target_id",
+        timeout_s=240.0,
     ),
     "worktree.write_file": ToolDef(
-        name="worktree.write_file", version="1",
+        name="worktree.write_file",
+        version="1",
         description="Write a file inside the isolated patch worktree. Paths outside it are rejected.",
-        args_model=WriteFileArgs, side_effects="worktree_write", requires_scope=False, handler=h_write_file,
+        args_model=WriteFileArgs,
+        side_effects="worktree_write",
+        requires_scope=False,
+        handler=h_write_file,
     ),
     "worktree.diff": ToolDef(
-        name="worktree.diff", version="1",
+        name="worktree.diff",
+        version="1",
         description="Unified diff of the worktree against the pinned snapshot.",
-        args_model=DiffArgs, side_effects="none", requires_scope=False, handler=h_diff,
+        args_model=DiffArgs,
+        side_effects="none",
+        requires_scope=False,
+        handler=h_diff,
     ),
     "tests.run": ToolDef(
-        name="tests.run", version="1",
+        name="tests.run",
+        version="1",
         description="Run the project's test suite (or just the added tests) in a no-network sandbox.",
-        args_model=TestsRunArgs, side_effects="sandbox_exec", requires_scope=False, handler=h_tests_run,
+        args_model=TestsRunArgs,
+        side_effects="sandbox_exec",
+        requires_scope=False,
+        handler=h_tests_run,
         timeout_s=480.0,
     ),
     "patch.apply_fresh": ToolDef(
-        name="patch.apply_fresh", version="1",
+        name="patch.apply_fresh",
+        version="1",
         description="Apply the candidate diff to a fresh checkout of the snapshot in a new sandbox workspace.",
-        args_model=ApplyFreshArgs, side_effects="sandbox_exec", requires_scope=False, handler=h_apply_fresh,
+        args_model=ApplyFreshArgs,
+        side_effects="sandbox_exec",
+        requires_scope=False,
+        handler=h_apply_fresh,
     ),
 }
 

@@ -169,9 +169,7 @@ class LocalIntel:
                 decorators = tuple(_decorator_text(d) for d in node.decorator_list)
                 kind = "class" if isinstance(node, ast.ClassDef) else ("method" if stack else "function")
                 calls = tuple(sorted(set(_called_names(node))))
-                params = (
-                    tuple(a.arg for a in node.args.args) if not isinstance(node, ast.ClassDef) else ()
-                )
+                params = tuple(a.arg for a in node.args.args) if not isinstance(node, ast.ClassDef) else ()
                 end = int(getattr(node, "end_lineno", node.lineno) or node.lineno)
                 symbols.append(
                     SymbolInfo(
@@ -214,7 +212,9 @@ class LocalIntel:
         for s in syms:
             if s.qualified_name == name:
                 return s
-        return next((s for s in syms if s.qualified_name.endswith("." + name) or s.qualified_name == name), None)
+        return next(
+            (s for s in syms if s.qualified_name.endswith("." + name) or s.qualified_name == name), None
+        )
 
     def neighbors(self, qualified_name: str) -> dict[str, list[str]]:
         syms = self._index[0]
@@ -227,11 +227,16 @@ class LocalIntel:
             matches = [
                 s.qualified_name
                 for s in syms
-                if s.qualified_name.rsplit(".", 1)[-1] == name
-                and s.qualified_name != target.qualified_name
+                if s.qualified_name.rsplit(".", 1)[-1] == name and s.qualified_name != target.qualified_name
             ]
-            callees.append(matches[0] if len(matches) == 1 else (f"{name} (ambiguous: {len(matches)} candidates)" if matches else f"{name} (unresolved)"))
-        callers = [s.qualified_name for s in syms if short in s.calls and s.qualified_name != target.qualified_name]
+            callees.append(
+                matches[0]
+                if len(matches) == 1
+                else (f"{name} (ambiguous: {len(matches)} candidates)" if matches else f"{name} (unresolved)")
+            )
+        callers = [
+            s.qualified_name for s in syms if short in s.calls and s.qualified_name != target.qualified_name
+        ]
         return {
             "symbol": [target.qualified_name],
             "location": [f"{target.path}:{target.start_line}-{target.end_line}"],
@@ -285,9 +290,7 @@ class LocalIntel:
             return list(items)
         needle = subject_ref.strip()
         return [
-            e
-            for e in items
-            if needle in e.subject_ref or e.subject_ref in needle or needle in e.statement
+            e for e in items if needle in e.subject_ref or e.subject_ref in needle or needle in e.statement
         ] or list(items)
 
 

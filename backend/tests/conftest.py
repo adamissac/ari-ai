@@ -81,7 +81,7 @@ os.environ.update(
         "AUTH_DEV_LOGIN_ENABLED": "true",
         "GITHUB_WEBHOOK_SECRET": WEBHOOK_SECRET,
         "ANTHROPIC_API_KEY": "",
-        "ORCHESTRATOR_FACTORY": "backend.adapters.security_agents:build_orchestrator",
+        "ORCHESTRATOR_FACTORY": "security_agents.api:build_orchestrator",
         "CODE_INTELLIGENCE_FACTORY": "code_intelligence.api:build_service",
         "WORKER_LEASE_S": "30",
     }
