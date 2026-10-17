@@ -72,3 +72,8 @@ and failed transactions release the key so an authorized retry can proceed.
 The request digest now includes the project URL. Keys cached by earlier versions
 use a different digest and return 409 after upgrade; start a new action with a fresh
 key. No table, shared model, or response schema migration is required.
+
+Assessment queue jobs and approval resumes can carry only `assessment_id`.
+`GET /jobs/{job_id}` resolves their project through the persisted assessment,
+then checks membership; the accepted job identifier is readable by members and
+remains 404 to other tenants. No redundant payload project field is required.

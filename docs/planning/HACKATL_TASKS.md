@@ -191,7 +191,7 @@ Runner semantics covered by `tests/qa/test_m7_runner.py`.
 Issue #148 status: DONE via PR #150, merged `1129434`; all executable CI checks passed on combined head `91cea8c`. Historical references remain immutable.
 
 ### API-JOB-001 — real job lookup and repeatable demo recovery smoke
-Owner: Alan (Codex). IN_PROGRESS on test/alan/demo-recovery-smoke in its own
+Owner: Alan (Codex). IN_REVIEW on test/alan/demo-recovery-smoke in its own
 worktree. Acceptance: returned assessment job IDs resolve for members only;
 real HTTP client proves lost-response retry/conflicts and stored-byte hashes;
 Chrome proves workflow and outage recovery; existing suites stay green.
@@ -206,3 +206,8 @@ backend tests pass. Dedicated worktree; no security-agent lane changes.
 API-RETRY-001 validation: targeted16 passed; root420 passed/9 optional skips;
 backend79 passed/5 optional skips. Real PostgreSQL, scripted model transports;
 Ruff/format/mypy, 112-file contract freshness, links passed. PR remains for review.
+
+API-JOB-001 evidence: Chrome14 passed, real HTTP/client6 passed, root422 passed/8
+skips, backend80 passed/5 skips, frontend67 and transport27 unit tests passed.
+Webpack production build, TypeScript, ESLint, Ruff/format, mypy and contracts pass.
+Scripted providers/local-dev checks; no new live-provider or Docker run.
