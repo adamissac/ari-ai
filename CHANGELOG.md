@@ -7,6 +7,7 @@ All notable changes are documented here. Format follows
 ## [Unreleased]
 
 - Defense Lab replay names the highest recorded alert rate at the current step and the recorded action. It does not show the hidden attacker stage.
+- A project page shows six phases of the latest check. A phase is completed only when that check's event log shows it was entered, and a verification verdict comes from the finding list.
 - Defense Lab replay leads with one sentence from the recorded episode: first and last action, whether it was marked compromised, and which nodes reached impact. The metrics charts follow that replay.
 - Finding detail leads with a before-and-after story taken from the recorded title, severity, validation, patch, and verification. It does not claim a fix worked without a verdict.
 - Source links use the assessment scope's repository when that scope names exactly one, so a project can hold more than one repo.
