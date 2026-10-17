@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { BRAND_NAME, Wordmark } from '@/components/brand';
 import { DemoBanner } from '@/components/demo-banner';
 import { SiteFooter } from '@/components/site-footer';
+import { SmoothScroll } from '@/components/smooth-scroll';
 import { RollText } from '@/components/ui';
 import './globals.css';
 
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             </nav>
           </div>
         </header>
+        <SmoothScroll />
         <DemoBanner />
         <main id="main" className="mx-auto max-w-7xl px-4 py-6">{children}</main>
         <SiteFooter />
