@@ -29,7 +29,7 @@ Five nodes (gateway, api, auth, payments, db) with criticality, exposure and ope
 finding severity. A hidden adversary moves each node through abstract stages
 `none → foothold → escalated → impact`, entering via exposed nodes and spreading
 along edges; open findings speed it up. The defender sees only noisy alert rates
-and anomaly scores plus asset context (47 features) and picks one of 22 actions:
+and anomaly scores plus asset context (48 features: 9 per node + 3 global) and picks one of 22 actions:
 `noop`; per node `raise_monitoring`, `rate_limit`, `isolate`,
 `request_reassessment`; or `escalate_to_human` (budget of 3). Invalid actions are
 masked. Reward penalizes impact, adversary progress, disruption (more on benign
@@ -63,6 +63,18 @@ What this shows, and does not show:
   **but it disrupts benign nodes more often** (54% vs 29% false disruption).
 - `random` is compromised far less (8.9%) only because it constantly isolates nodes:
   uptime drops to 41%. DDQN is **worse than random on compromise rate**.
+- **DDQN loses the db node in 9.8% of episodes; the threshold rules in 0.3%.** The rules
+  sacrifice gateway/api (~65% impact) to protect critical nodes; DDQN spreads protection
+  more evenly. DDQN's worst episodes are all fast attacks in the aggressive scenario
+  (foothold at step 0–1, impact by step 6). See
+  [`results/protocol-v0/ANALYSIS.md`](results/protocol-v0/ANALYSIS.md) for reward
+  breakdowns, per-node impact, action mix, per-seed variation (compromise 25–63%) and
+  deterministic replays of the worst episodes.
+- **It does not generalize to faster attackers.** In the stress sweep
+  ([`stress_table.md`](results/protocol-v0/stress_table.md)), every adversary probability
+  is scaled ×0.5–×2.5. DDQN leads on return up to ×1.5, ties the rules at ×2 and is worse
+  at ×2.5, and its db-loss rate rises to 61% (rules: 10%). Training with
+  aggressiveness randomization is the next experiment.
 - CIs are across 5 seeds; deterministic baselines have zero seed variance.
 - *Results are from a simulated environment and do not establish real-world effectiveness.*
 
@@ -78,6 +90,9 @@ uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -e ".[de
 # Full protocol (≈75 s per seed on CPU; seeds run in parallel)
 for s in 0 1 2 3 4; do .venv/bin/python -m rl_defense.train --seed $s --steps 200000 --run-dir runs/protocol-v0 & done; wait
 .venv/bin/python -m rl_defense.evaluate --run-dir runs/protocol-v0
+.venv/bin/python -m rl_defense.analysis --run-dir runs/protocol-v0   # failure cases + breakdowns
+.venv/bin/python -m rl_defense.stress --run-dir runs/protocol-v0     # aggressiveness sweep (~4 min)
+.venv/bin/python -m rl_defense.lab_export --run-dir runs/protocol-v0 --out lab.json --schema lab.schema.json
 ```
 
 `runs/` (checkpoints, logs, raw episodes) is git-ignored. Reference copies of the
@@ -86,12 +101,29 @@ summary, table and a few trajectories are committed under `results/`.
 ## Using it from the backend
 
 ```python
-from rl_defense.api import load_policy, checkpoint_ref, load_eval_summary
-from rl_defense.contracts import PlatformFacts
+from rl_defense.api import load_policy
+from rl_defense.platform_mapping import (
+    FindingInput, ExpectationInput, RouteSignal, facts_from_platform, load_topology,
+)
 
-runner = load_policy("runs/protocol-v0/ddqn_seed0.pt")  # produced by the commands above   # verifies sha256 against the manifest
-rec = runner.recommend(PlatformFacts(...))                # -> DefenseRecommendation
+topology = load_topology("configs/topology/payments_lite.yaml")   # route -> node mapping
+facts, provenance = facts_from_platform(
+    topology,
+    findings=[FindingInput(id="fnd_…", status="validated", severity="high",
+                           routes=("GET /payments/{payment_id}",))],
+    expectations=[ExpectationInput(id="exp_…", route="GET /payments/{payment_id}",
+                                   data_sensitivity="financial", status="confirmed")],
+    signals=[RouteSignal(route="GET /payments/{payment_id}", alert_rate=4.0,
+                         anomaly_score=0.4, source="runtime_demo")],
+)
+runner = load_policy("runs/protocol-v0/ddqn_seed0.pt")  # verifies sha256 against the manifest
+rec = runner.recommend(facts)                           # -> DefenseRecommendation
 ```
+
+Only validated, still-open findings raise a node's risk input. Hypotheses, refuted
+findings and verified fixes don't, so a fix verified by the Verify agent changes the
+next recommendation. `provenance` records which finding, expectation and signal ids
+drove each node's inputs, so the UI can link a recommendation back to evidence.
 
 Example payload: [`fixtures/defense_recommendation.example.json`](fixtures/defense_recommendation.example.json).
 
