@@ -47,7 +47,7 @@ export default function ProjectOverview() {
           <ErrorState
             error={failed[0]?.error}
             onRetry={() => failed.forEach(r => r.reload())}
-            context={`Could not load ${[assessments, findings, scopes].map((r, i) => (r.status === 'error' ? ['assessments', 'findings', 'scopes'][i] : null)).filter(Boolean).join(', ')}`}
+            context={`Summary unavailable: ${[assessments, findings, scopes].map((r, i) => (r.status === 'error' ? ['assessments', 'findings', 'scopes'][i] : null)).filter(Boolean).join(', ')} did not load`}
           />
         ) : ready ? (
           <>
