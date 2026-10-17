@@ -13,6 +13,13 @@ All notable changes are documented here. Format follows
   `AWAITING_APPROVAL` even when security work ended early or was already
   approved. Early security exits walk skipped phases to the only legal pause
   edge (`DIAGNOSIS` → `AWAITING_APPROVAL`) instead of completing.
+- Approval resume re-applies the `host.repo_id` target filter, atomically claims
+  the checkpoint so two workers cannot both Patch/Verify, finishes the Verify run
+  before publishing a verdict, rejects truncated pytest failure lists, treats
+  already-approved functional findings as outstanding work, strips the complete
+  recipe `target_dir`, and persists `patch_rejected` when functional Verify is
+  not accepted.
+
 ### Added
 - Frontend: incident closure panel (link findings/verifications, closure criteria with artifact evidence, lessons learned, communications, readiness list).
 - Hosted assessments persist security finding lifecycle (`hypothesis → … → hardened`),
