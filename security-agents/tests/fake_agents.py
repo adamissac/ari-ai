@@ -327,6 +327,7 @@ def trace_script() -> list:
                         ],
                         "impact_summary": "financial payment records of other customers are readable",
                         "cvss_base_metrics": trace_cvss_metrics(sandbox_run_id),
+                        "data_sensitivity": "financial",
                         "severity_rationale": (
                             "Reachable over the network by any authenticated customer with no user "
                             "interaction; the executed check showed another customer's payment record "

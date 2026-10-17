@@ -351,11 +351,38 @@ def attack_path(path: InternalAttackPath) -> Any:
     )
 
 
+def cvss_v31(assessment: Any) -> Any:
+    if not assessment.cvss_vector or assessment.cvss_base_score is None:
+        return None
+    st = shared_module("standards")
+    metrics = []
+    for item in assessment.metric_evidence:
+        evidence = [evidence_ref(ref, producer="agent:trace") for ref in item.evidence]
+        metrics.append(
+            st.CVSS31MetricEvidence(
+                metric=item.metric,
+                value=item.value,
+                status="cited" if evidence else "unverified",
+                evidence=evidence,
+                rationale=_short(item.rationale),
+            )
+        )
+    return st.CVSS31Assessment(
+        vector=assessment.cvss_vector,
+        base_score=assessment.cvss_base_score,
+        rating=assessment.cvss_rating,
+        score_kind=assessment.score_kind,
+        metric_evidence=metrics,
+        assessor="system:standards.cvss31",
+    )
+
+
 def severity(assessment: Any) -> Any:
     f = shared_module("findings")
     return f.SeverityAssessment(
         level=assessment.level.value,
         cvss=assessment.cvss,
+        cvss_v31=cvss_v31(assessment),
         factors=f.SeverityFactors(
             reachability=assessment.factors.reachability,
             privileges_required=assessment.factors.privileges_required,
