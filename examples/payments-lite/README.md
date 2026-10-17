@@ -1,36 +1,46 @@
-# payments-lite (owned, deliberately flawed demo target)
+# payments-lite — demo target and answer key
 
-Small FastAPI payments service used for HackATL integration tests and the demo.
-**Never deploy it.** It runs only inside the platform sandbox with synthetic
-fixture customers (`alice`, `bob`) and in-memory data.
+> **Deliberately vulnerable, owned by this project.** Synthetic data only. Never deploy
+> anywhere public; run it only inside the platform's sandbox ([SECURITY.md](../../SECURITY.md),
+> [docs/15](../../docs/15_SECURITY_BOUNDARIES.md)).
 
-## Intended behaviour (specification)
+| Path | What it is | Who reads it |
+|---|---|---|
+| [`target/`](target/README.md) | The app the platform indexes, reviews, builds and tests. No hints inside. | The platform (point ingestion at `target/` only) |
+| [`labels.yaml`](labels.yaml) | Answer key: expectations, planted findings, negatives, fixture identities | Evaluation scripts, tests, humans |
+| [`label_checks/`](label_checks/test_planted_defects.py) | Tests proving the planted defects exist and the lookalikes are safe | CI, anyone changing `target/` |
 
-- Customers authenticate with a bearer token; every `/payments` route requires it.
-- Tenant isolation: a customer can read only payments (and refunds) they own;
-  any other customer's payment is reported as not found (404).
-- Refunds: the total refunded for a payment must never exceed the original
-  payment amount; an over-refund request must be rejected with a 4xx error.
+## Planted defects (class-level)
 
-## Planted defects (class level only)
+| Id | Kind | Where | Broken invariant |
+|---|---|---|---|
+| `fnd_planted_authz` | security (CWE-639) | `GET /payments/{payment_id}` | "A customer can only read payments they own": unlike its sibling routes, the handler never checks ownership |
+| `fnd_planted_refund_bound` | functional (CWE-840) | `POST /refunds` | "Total refunds must never exceed the original amount": only the new refund is compared with the payment amount |
 
-See `labels.yaml`. One authorization weakness (a route that does not apply the
-ownership condition its sibling routes apply) and one functional defect (a
-business-rule bound that is not enforced). Sibling routes that *do* enforce
-ownership are intentional look-alikes for precision measurement.
+Three **negatives** (lookalike routes that are correct) measure precision; see `labels.yaml`.
+The target's own test suite passes on the buggy code: neither defect is tested.
 
-## Layout
+## How each pillar uses it
 
-| Path | Purpose |
-|---|---|
-| `payments_lite/` | app factory `create_app()` and in-memory store |
-| `tests/` | existing suite: passes, but incomplete |
-| `build_recipe.json` | sandbox build recipe consumed by `security_agents` (identities, resources, routes) |
-| `expectations.json` | hand-labelled behavioural expectations (fixture until INTEL-007) |
-| `labels.yaml` | ground-truth labels for evaluation |
+- **Code intelligence (Sarosh):** index `target/` at a commit; expected to derive
+  `exp_owner_only` (from docstring, README and the `require_owner` convention) and `exp_refund_bound`.
+- **Review & repair (Sai):** a generated behavioral test for `exp_refund_bound` should fail
+  before the fix and pass after.
+- **Security agents (Alan):** Scout should raise the ownership hypothesis on
+  `GET /payments/{payment_id}`; Probe validates it with an `access_control.ownership` check
+  using the two fixture identities; the negatives should be refuted.
+- **RL (Adam):** [`rl-defense/configs/topology/payments_lite.yaml`](../../rl-defense/configs/topology/payments_lite.yaml)
+  maps these routes onto the simulator's nodes.
 
 ## Commands
 
 ```bash
-cd examples/payments-lite && python -m pytest -q tests
+cd examples/payments-lite/target
+uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -e ".[dev]" pyyaml
+.venv/bin/python -m pytest -q                 # target's own tests (pass; defects untested)
+cd .. && target/.venv/bin/python -m pytest -q label_checks   # planted defects exist
+docker build -t payments-lite:dev target      # sandbox build recipe (non-root, port 8080)
 ```
+
+The Docker build and the non-root check (UID 10001) are verified in CI
+(`.github/workflows/examples.yml`); they were not run on the authoring laptop (no Docker).

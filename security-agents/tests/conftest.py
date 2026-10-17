@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -15,13 +16,16 @@ from security_agents.contracts import (
     ScopeStatus,
     ScopeTarget,
 )
-from security_agents.intel import FindingsHistory, LocalIntel
+from security_agents.intel import FindingsHistory, LocalIntel, load_expectations
 from security_agents.sandbox.driver import LocalProcessDriver
-from security_agents.sandbox.workspace import SnapshotHandle
+from security_agents.sandbox.workspace import SnapshotHandle, copy_tree
 from security_agents.tools import AuditSink, ToolContext, default_registry
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-PAYMENTS_LITE = REPO_ROOT / "examples" / "payments-lite"
+PAYMENTS_LITE_DIR = REPO_ROOT / "examples" / "payments-lite"
+PAYMENTS_LITE = PAYMENTS_LITE_DIR / "target"  # the platform indexes target/ only
+LABELS = PAYMENTS_LITE_DIR / "labels.yaml"
+BUILD_RECIPE = PAYMENTS_LITE_DIR / "build_recipe.json"
 TARGET_ID = "tgt_payments_lite"
 NOW = datetime(2026, 10, 16, 12, 0, tzinfo=UTC)
 
@@ -34,19 +38,36 @@ def payments_lite_src() -> Path:
 
 @pytest.fixture
 def snapshot(tmp_path: Path, payments_lite_src: Path) -> SnapshotHandle:
+    """Pinned copy of target/ plus the scope-approved build recipe.
+
+    The recipe lives beside the target (not inside it) in the repository; the
+    platform stages it with the snapshot because a check template needs it.
+    """
+    staging = tmp_path / "staging"
+    copy_tree(payments_lite_src, staging)
+    shutil.copy2(BUILD_RECIPE, staging / "build_recipe.json")
     return SnapshotHandle.from_directory(
-        payments_lite_src, tmp_path / "snapshot", snapshot_id="snp_test", repo_id="rep_payments_lite"
+        staging, tmp_path / "snapshot", snapshot_id="snp_test", repo_id="rep_payments_lite"
     )
 
 
 @pytest.fixture
 def intel(snapshot: SnapshotHandle) -> LocalIntel:
-    return LocalIntel(snapshot)
+    """Index of target/, with the labelled expectations injected (pending INTEL-007)."""
+    return LocalIntel(
+        snapshot,
+        expectations=load_expectations(
+            LABELS,
+            snapshot_id=snapshot.snapshot_id,
+            commit_sha=snapshot.commit_sha,
+            strip_prefix="target/",
+        ),
+    )
 
 
 @pytest.fixture
-def recipe(payments_lite_src: Path) -> dict:
-    return json.loads((payments_lite_src / "build_recipe.json").read_text())
+def recipe() -> dict:
+    return json.loads(BUILD_RECIPE.read_text())
 
 
 @pytest.fixture

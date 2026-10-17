@@ -206,23 +206,29 @@ def test_path_escape_is_refused(bad, registry, intel):
 
 def test_read_span_returns_cited_content(registry, intel):
     ctx = make_ctx(AgentName.SCOUT, intel=intel)
+    handler = intel.find_symbol("get_payment")
+    assert handler is not None
     result = registry.invoke(
         ctx, wire_name("code.read_span"),
-        {"path": "payments_lite/app.py", "start_line": 52, "end_line": 60},
+        {"path": handler.path, "start_line": handler.start_line, "end_line": handler.end_line},
     )
     assert result.ok
     assert result.payload["sha"] == intel.snapshot.commit_sha
-    assert "get_payment" in result.payload["content"]
+    assert "def get_payment" in result.payload["content"]
+    assert str(handler.start_line) in result.payload["content"], "lines are numbered for citation"
 
 
 def test_graph_neighbors_exposes_sibling_difference(registry, intel):
+    """The structural signal Scout relies on: the planted route omits the
+    ownership helper its siblings call."""
     ctx = make_ctx(AgentName.SCOUT, intel=intel)
     weak = registry.invoke(ctx, wire_name("graph.neighbors"), {"symbol": "get_payment"}).payload
-    sibling = registry.invoke(ctx, wire_name("graph.neighbors"), {"symbol": "list_refunds"}).payload
-    weak_calls = " ".join(weak["callees"])
-    sibling_calls = " ".join(sibling["callees"])
-    assert "get_payment_for_customer" in sibling_calls
-    assert "get_payment_for_customer" not in weak_calls
+    for sibling_name in ("get_customer", "get_refund", "create_refund"):
+        sibling = registry.invoke(
+            ctx, wire_name("graph.neighbors"), {"symbol": sibling_name}
+        ).payload
+        assert any("require_owner" in c for c in sibling["callees"]), sibling_name
+    assert not any("require_owner" in c for c in weak["callees"])
 
 
 def test_tool_call_cap_enforced(registry, intel):

@@ -3,6 +3,12 @@
     python -m security_agents.cli --target ../examples/payments-lite
     python -m security_agents.cli --target ../examples/payments-lite --mode live
 
+`--target` is the prepared target directory: it holds `build_recipe.json` (the
+scope-approved recipe), the app source under `target_dir`, and optionally
+`labels.yaml` whose `expectations:` section stands in for the derived index
+until code intelligence lands. The answer-key sections of the labels file are
+never read.
+
 `--mode replay` (default) uses the scripted trajectories from the test suite, so
 it is reproducible and free; `--mode live` makes real Claude requests and needs
 credentials plus `--i-have-authorization`. The printed report always states which
@@ -13,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import sys
 import tempfile
 from datetime import UTC, datetime, timedelta
@@ -28,10 +35,10 @@ from .contracts import (
     ScopeTarget,
     new_id,
 )
-from .intel import LocalIntel
+from .intel import LocalIntel, load_expectations
 from .llm import FakeLLM, ProviderGateway, live_gateway_from_env
 from .sandbox.driver import LocalProcessDriver
-from .sandbox.workspace import SnapshotHandle
+from .sandbox.workspace import SnapshotHandle, copy_tree
 from .workflow import FindingRecord, Orchestrator, OrchestratorConfig
 
 TARGET_ID = "tgt_demo_target"
@@ -63,7 +70,14 @@ def build_scope(*, hours: int = 2, categories: list[str]) -> AuthorizedScope:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="security_agents.cli", description=__doc__)
-    parser.add_argument("--target", required=True, help="path to the owned target repository")
+    parser.add_argument(
+        "--target", required=True,
+        help="path to the prepared target directory (holding build_recipe.json, labels.yaml and target/)",
+    )
+    parser.add_argument(
+        "--expectations", type=Path,
+        help="labels file to read expectations from (default: <target>/labels.yaml if present)",
+    )
     parser.add_argument("--mode", choices=("replay", "live"), default="replay")
     parser.add_argument("--max-hypotheses", type=int, default=3)
     parser.add_argument("--validate", type=int, default=2, help="hypotheses to validate")
@@ -75,19 +89,42 @@ def main(argv: list[str] | None = None) -> int:
                         help="required with --mode live: confirms the target is yours and isolated")
     args = parser.parse_args(argv)
 
-    target = Path(args.target).resolve()
-    if not (target / "build_recipe.json").is_file():
-        print(f"error: {target} has no build_recipe.json (is it a prepared target?)", file=sys.stderr)
+    prepared = Path(args.target).resolve()
+    recipe_path = prepared / "build_recipe.json"
+    if not recipe_path.is_file():
+        print(
+            f"error: {prepared} has no build_recipe.json. Point --target at the prepared target "
+            "directory (the one holding build_recipe.json beside the app's source tree).",
+            file=sys.stderr,
+        )
         return 2
+    recipe = json.loads(recipe_path.read_text(encoding="utf-8"))
+    source = (prepared / str(recipe.get("target_dir") or ".")).resolve()
+    if not source.is_dir():
+        print(f"error: target_dir {source} does not exist", file=sys.stderr)
+        return 2
+    labels = args.expectations or (prepared / "labels.yaml" if (prepared / "labels.yaml").is_file() else None)
     if args.mode == "live" and not args.i_have_authorization:
         print("error: --mode live requires --i-have-authorization", file=sys.stderr)
         return 2
 
     workdir = Path(tempfile.mkdtemp(prefix="assessment-"))
+    # Stage the app source plus the scope-approved recipe; the answer key stays out.
+    staging = workdir / "staging"
+    copy_tree(source, staging)
+    shutil.copy2(recipe_path, staging / "build_recipe.json")
     snapshot = SnapshotHandle.from_directory(
-        target, workdir / "snapshot", snapshot_id=new_id("snp"), repo_id="rep_demo"
+        staging, workdir / "snapshot", snapshot_id=new_id("snp"), repo_id="rep_demo"
     )
-    intel = LocalIntel(snapshot)
+    expectations = None
+    if labels is not None:
+        expectations = load_expectations(
+            labels,
+            snapshot_id=snapshot.snapshot_id,
+            commit_sha=snapshot.commit_sha,
+            strip_prefix=f"{recipe.get('target_dir')}/" if recipe.get("target_dir") else None,
+        )
+    intel = LocalIntel(snapshot, expectations=expectations)
     library = default_library()
     scope = build_scope(categories=sorted(library.categories()))
 
@@ -137,8 +174,12 @@ def main(argv: list[str] | None = None) -> int:
         approve_remediation=approver,
     )
 
-    print(f"assessment {config.assessment_id} on {target}")
-    print(f"provider mode: {gateway.mode}   agents: {len(ALL_SPECS)}   workdir: {workdir}")
+    print(f"assessment {config.assessment_id} on {source}")
+    print(
+        f"provider mode: {gateway.mode}   agents: {len(ALL_SPECS)}   "
+        f"expectations: {len(intel.expectations())} "
+        f"({'labels fixture' if expectations else 'derived/none'})   workdir: {workdir}"
+    )
     result = orchestrator.run()
     report = result.report()
 

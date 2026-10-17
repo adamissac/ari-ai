@@ -84,7 +84,7 @@ def test_rendered_check_contains_no_free_form_values(library, recipe):
                          {"route_id": "payment_detail", "owner_identity": "alice", "other_identity": "bob"})
     # Only fixture identities and recipe-declared ids ever appear.
     assert "fixture-token-alice" in src and "fixture-token-bob" in src
-    assert "pay_alice_1" in src
+    assert "pay_a1" in src
     # the generated module imports nothing that could reach outside the target
     import ast
 
@@ -95,7 +95,7 @@ def test_rendered_check_contains_no_free_form_values(library, recipe):
             imported.update(a.name.split(".")[0] for a in node.names)
         elif isinstance(node, ast.ImportFrom) and node.module:
             imported.add(node.module.split(".")[0])
-    assert imported <= {"json", "fastapi", "payments_lite"}, imported
+    assert imported <= {"json", "decimal", "fastapi", "payments_lite"}, imported
     # compare executable code only: drop the module docstring and comments
     body = tree.body[1:] if ast.get_docstring(tree) else tree.body
     code = "\n".join(ast.unparse(node) for node in body)
@@ -127,10 +127,11 @@ def test_ownership_check_detects_the_planted_weakness(driver, intel):
 
 
 def test_ownership_check_clears_the_sibling_lookalike_route(driver, intel):
-    """A sibling route that does enforce ownership must not be flagged (precision)."""
+    """A negative from labels.yaml: GET /customers/{id} calls require_owner, so the
+    expectation holds and a hypothesis about it must be refuted (precision)."""
     result = runner_for(driver, intel).run(
         probe_ctx(intel), OWNERSHIP.ref, TARGET_ID,
-        {"route_id": "payment_refunds", "owner_identity": "alice", "other_identity": "bob"},
+        {"route_id": "customer_detail", "owner_identity": "alice", "other_identity": "bob"},
     )
     assert result["matches_expectation"] is True, result.get("stdout_tail")
     assert result["failed"] == 0
@@ -139,8 +140,8 @@ def test_ownership_check_clears_the_sibling_lookalike_route(driver, intel):
 def test_bounds_check_detects_the_planted_functional_defect(driver, intel):
     result = runner_for(driver, intel).run(
         probe_ctx(intel), BOUNDS.ref, TARGET_ID,
-        {"route_id": "create_refund", "read_route_id": "payment_refunds",
-         "owner_identity": "alice", "over_by_cents": 1},
+        {"route_id": "create_refund", "read_route_id": "payment_detail",
+         "owner_identity": "alice", "over_by": "1.00"},
     )
     assert result["matches_expectation"] is False, result.get("stdout_tail")
     assert result["category"] == "input_validation.bounds"
@@ -162,7 +163,7 @@ def test_check_does_not_mutate_the_snapshot(driver, intel):
     before = tree_digest(intel.snapshot.root)
     runner_for(driver, intel).run(
         probe_ctx(intel), BOUNDS.ref, TARGET_ID,
-        {"route_id": "create_refund", "read_route_id": "payment_refunds", "owner_identity": "alice"},
+        {"route_id": "create_refund", "read_route_id": "payment_detail", "owner_identity": "alice"},
     )
     assert tree_digest(intel.snapshot.root) == before
 

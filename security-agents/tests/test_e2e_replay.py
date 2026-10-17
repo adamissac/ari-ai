@@ -115,7 +115,7 @@ def test_scout_hypothesis_cites_the_real_handler(result):
     span = finding.hypothesis.cited_spans[0]
     assert span.path == "payments_lite/app.py"
     assert finding.hypothesis.weakness_class == "CWE-639"
-    assert "exp_tenant_isolation_payments" in finding.hypothesis.expectation_ids
+    assert "exp_owner_only" in finding.hypothesis.expectation_ids
 
 
 def test_probe_confirmed_the_planted_weakness_with_executed_evidence(result):
@@ -157,7 +157,7 @@ def test_patch_produced_a_real_minimal_diff_with_a_new_test(result, tmp_path):
     assert set(candidate.files_changed) == {"payments_lite/app.py", "tests/test_authz_regression.py"}
     assert candidate.tests_added == ["tests/test_authz_regression.py"]
     diff = (tmp_path / "work" / f"patch-{finding.finding_id}-1.diff").read_text()
-    assert "get_payment_for_customer(payment_id, customer.id)" in diff
+    assert "require_owner(p.customer_id, customer)" in diff
     assert diff.count("diff --git") == 2
     assert candidate.diff_sha256
 
@@ -342,15 +342,10 @@ def test_verify_rejects_a_planted_bad_patch_that_edits_a_protected_test(
 
     work = tmp_path / "bad"
     wt = fresh_checkout(intel.snapshot, work / "wt")
-    protected = wt / "tests" / "test_payments.py"
-    protected.write_text(
-        protected.read_text().replace(
-            'assert client.get("/payments/pay_bob_1/refunds", headers=ALICE).status_code == 404',
-            'assert client.get("/payments/pay_bob_1/refunds", headers=ALICE).status_code in (200, 404)',
-        )
-    )
-    diff = unified_diff(intel.snapshot.root, wt, ["tests/test_payments.py"])
-    assert "tests/test_payments.py" in diff
+    protected = wt / "tests" / "test_api.py"
+    protected.write_text(protected.read_text().replace("== 404", "in (200, 404)"))
+    diff = unified_diff(intel.snapshot.root, wt, ["tests/test_api.py"])
+    assert "tests/test_api.py" in diff
 
     applier = PatchApplier(
         intel=intel,
@@ -358,7 +353,7 @@ def test_verify_rejects_a_planted_bad_patch_that_edits_a_protected_test(
             "pat_bad": {
                 "diff": diff,
                 "plan_files": ["payments_lite/app.py"],
-                "protected_tests": ["tests/test_payments.py"],
+                "protected_tests": ["tests/test_api.py"],
             }
         },
         workdir=work,
@@ -369,9 +364,9 @@ def test_verify_rejects_a_planted_bad_patch_that_edits_a_protected_test(
     )
     facts = applier.apply_fresh(ctx, "pat_bad")
     assert facts["applied"] is True
-    assert facts["tampered_protected_tests"] == ["tests/test_payments.py"]
+    assert facts["tampered_protected_tests"] == ["tests/test_api.py"]
     # editing an existing test is both tampering and outside the plan's file set
-    assert facts["out_of_scope_files"] == ["tests/test_payments.py"]
+    assert facts["out_of_scope_files"] == ["tests/test_api.py"]
     assert facts["new_test_files"] == []
 
     evidence = verify_agent.VerifyEvidence(
@@ -380,7 +375,7 @@ def test_verify_rejects_a_planted_bad_patch_that_edits_a_protected_test(
         test_runs=[],
         baseline_failing=[],
         tests_added=[],
-        protected_tests=["tests/test_payments.py"],
+        protected_tests=["tests/test_api.py"],
         original_check_ref="access_control.ownership@1",
         original_check_params={},
     )
@@ -388,7 +383,7 @@ def test_verify_rejects_a_planted_bad_patch_that_edits_a_protected_test(
     assert verdict == "rejected"
     assert not next(c for c in checks if c.name.value == "no_test_tampering").passed
     assert not next(c for c in checks if c.name.value == "diff_scope_ok").passed
-    assert any("tests/test_payments.py" in r for r in reasons)
+    assert any("tests/test_api.py" in r for r in reasons)
 
 
 @pytest.mark.boundary
@@ -406,7 +401,7 @@ def test_verify_rejects_a_planted_bad_patch_outside_the_plan(intel, driver, libr
     applier = PatchApplier(
         intel=intel,
         artifacts={"pat_scope": {"diff": diff, "plan_files": ["payments_lite/app.py"],
-                                 "protected_tests": ["tests/test_payments.py"]}},
+                                 "protected_tests": ["tests/test_api.py"]}},
         workdir=work,
     )
     ctx = ToolContext(
@@ -418,7 +413,7 @@ def test_verify_rejects_a_planted_bad_patch_outside_the_plan(intel, driver, libr
     verdict, checks, _ = verify_agent.compute_verdict(
         verify_agent.VerifyEvidence(
             apply_facts=dict(ctx.artifacts["verify_facts"]), recheck_runs=[], test_runs=[],
-            baseline_failing=[], tests_added=[], protected_tests=["tests/test_payments.py"],
+            baseline_failing=[], tests_added=[], protected_tests=["tests/test_api.py"],
             original_check_ref="access_control.ownership@1", original_check_params={},
         )
     )

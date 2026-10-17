@@ -89,8 +89,11 @@ _HTTP_DECORATORS = ("get", "post", "put", "patch", "delete")
 class LocalIntel:
     """Python-only structural index over a pinned snapshot directory."""
 
-    def __init__(self, snapshot: SnapshotHandle) -> None:
+    def __init__(
+        self, snapshot: SnapshotHandle, expectations: list[BehavioralExpectation] | None = None
+    ) -> None:
         self._snapshot = snapshot
+        self._injected = expectations
 
     @property
     def snapshot(self) -> SnapshotHandle:
@@ -100,6 +103,9 @@ class LocalIntel:
         return {
             "adapter": "security_agents.intel.LocalIntel",
             "status": "LOCAL ADAPTER pending code_intelligence.api (INTEL-007)",
+            "expectations_origin": (
+                "injected (labels fixture)" if self._injected is not None else "expectations.json or none"
+            ),
             "parser": "python-ast",
             "languages": "python",
             "call_resolution": "name-based, confidence=likely",
@@ -239,6 +245,8 @@ class LocalIntel:
 
     @cached_property
     def _expectations(self) -> list[BehavioralExpectation]:
+        if self._injected is not None:
+            return list(self._injected)
         path = self._snapshot.root / "expectations.json"
         if not path.is_file():
             return []

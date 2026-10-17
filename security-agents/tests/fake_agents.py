@@ -42,13 +42,24 @@ from security_agents.llm import FakeTurn, last_tool_results
 OWNERSHIP_REF = "access_control.ownership@1"
 WEAK_HANDLER_PATH = "payments_lite/app.py"
 
-# The fix the scripted Patch agent applies: use the ownership-scoped lookup that
-# the sibling routes already use.
-WEAK_LINE = "    payment = store.get_payment(payment_id)"
-FIXED_LINE = "    payment = store.get_payment_for_customer(payment_id, customer.id)"
+# The fix the scripted Patch agent applies: call the `require_owner` helper that
+# every sibling resource route already calls.
+WEAK_BLOCK = """
+        p = store.payments.get(payment_id)
+        if p is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "not found")
+        return payment_out(store, p)
+"""
+FIXED_BLOCK = """
+        p = store.payments.get(payment_id)
+        if p is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "not found")
+        require_owner(p.customer_id, customer)
+        return payment_out(store, p)
+"""
 
 REGRESSION_TEST_PATH = "tests/test_authz_regression.py"
-REGRESSION_TEST = '''"""Regression test added for the ownership finding."""
+REGRESSION_TEST = '''"""Regression test for the payment-detail ownership finding."""
 
 from fastapi.testclient import TestClient
 
@@ -60,14 +71,14 @@ BOB = {"Authorization": "Bearer fixture-token-bob"}
 
 def test_non_owner_cannot_read_payment_detail():
     client = TestClient(create_app())
-    assert client.get("/payments/pay_alice_1", headers=BOB).status_code == 404
+    assert client.get("/payments/pay_a1", headers=BOB).status_code == 404
 
 
 def test_owner_can_still_read_payment_detail():
     client = TestClient(create_app())
-    resp = client.get("/payments/pay_alice_1", headers=ALICE)
+    resp = client.get("/payments/pay_a1", headers=ALICE)
     assert resp.status_code == 200
-    assert resp.json()["id"] == "pay_alice_1"
+    assert resp.json()["id"] == "pay_a1"
 '''
 
 
@@ -131,11 +142,11 @@ def scout_script() -> list:
                                 "title": "Payment detail route may not enforce payment ownership",
                                 "weakness_class": "CWE-639",
                                 "rationale": (
-                                    "get_payment calls PaymentStore.get_payment, which looks a payment up by "
-                                    "id alone, while the sibling routes list_refunds and create_refund call "
-                                    "get_payment_for_customer and scope the lookup to the authenticated "
-                                    "customer. The handler has the same authentication dependency as its "
-                                    "siblings, so the difference is the ownership condition, not authentication."
+                                    "get_payment resolves the payment by id and returns it without calling "
+                                    "require_owner, while every sibling resource route (get_customer, "
+                                    "get_refund, create_refund) calls require_owner before returning. The "
+                                    "handler has the same authentication dependency as its siblings, so the "
+                                    "difference is the ownership condition, not authentication."
                                 ),
                                 "expected_invariant": (
                                     "A customer can read only payments they own; another customer's payment "
@@ -144,7 +155,7 @@ def scout_script() -> list:
                                 "cited_paths": [WEAK_HANDLER_PATH],
                                 "cited_start_lines": [start],
                                 "cited_end_lines": [end],
-                                "expectation_ids": ["exp_tenant_isolation_payments"],
+                                "expectation_ids": ["exp_owner_only"],
                                 "entry_point_id": None,
                                 "confidence": "high",
                                 "suggested_check_category": "access_control.ownership",
@@ -153,11 +164,12 @@ def scout_script() -> list:
                         "coverage": {
                             "entry_points_reviewed": [
                                 "ent_get_payments", "ent_get_payments_payment_id",
-                                "ent_get_payments_payment_id_refunds",
+                                "ent_get_customers_customer_id", "ent_get_refunds_refund_id",
                             ],
                             "looks_correct": [
-                                "GET /payments/{payment_id}/refunds scopes the lookup by customer",
-                                "POST /payments/{payment_id}/refunds scopes the lookup by customer",
+                                "GET /customers/{customer_id} calls require_owner",
+                                "GET /refunds/{refund_id} calls require_owner",
+                                "POST /refunds calls require_owner before creating the refund",
                             ],
                             "skipped_with_reason": ["GET /health: no protected resource"],
                         },
@@ -274,8 +286,8 @@ def trace_script() -> list:
                                 "symbol_ref": "payments_lite.app.create_app.get_payment",
                                 "verified": True,
                                 "evidence_path": WEAK_HANDLER_PATH,
-                                "evidence_start_line": 52,
-                                "evidence_end_line": 60,
+                                "evidence_start_line": 137,
+                                "evidence_end_line": 150,
                                 "evidence_artifact_id": sandbox_run_id,
                             },
                             {
@@ -283,11 +295,11 @@ def trace_script() -> list:
                                     "The record exposes the amount, currency and description of another "
                                     "customer's payment."
                                 ),
-                                "symbol_ref": "payments_lite.store.Payment.public",
+                                "symbol_ref": "payments_lite.app.create_app.payment_out",
                                 "verified": False,
                                 "evidence_path": "payments_lite/store.py",
-                                "evidence_start_line": 20,
-                                "evidence_end_line": 30,
+                                "evidence_start_line": 17,
+                                "evidence_end_line": 23,
                                 "evidence_artifact_id": None,
                             },
                         ],
@@ -331,11 +343,11 @@ def diagnose_script() -> list:
     submit = diagnose_agent.SPEC.submit_tool_name()
 
     def turn0(_request) -> FakeTurn:
-        return FakeTurn(tool_calls=[("code__search", {"pattern": "get_payment_for_customer"})])
+        return FakeTurn(tool_calls=[("code__search", {"pattern": "require_owner"})])
 
     def turn1(_request) -> FakeTurn:
         return FakeTurn(
-            tool_calls=[("code__read_span", {"path": WEAK_HANDLER_PATH, "start_line": 45, "end_line": 75})]
+            tool_calls=[("code__read_span", {"path": WEAK_HANDLER_PATH, "start_line": 120, "end_line": 160})]
         )
 
     def turn2(_request) -> FakeTurn:
@@ -345,20 +357,20 @@ def diagnose_script() -> list:
                     submit,
                     {
                         "root_cause_summary": (
-                            "The payment-detail handler resolves the payment with the unscoped store lookup "
-                            "instead of the ownership-scoped lookup used by its sibling routes."
+                            "The payment-detail handler returns the payment without calling require_owner, "
+                            "the ownership check every sibling resource route applies."
                         ),
                         "cause_class": "missing_check",
                         "cause_paths": [WEAK_HANDLER_PATH],
-                        "cause_start_lines": [52],
-                        "cause_end_lines": [60],
+                        "cause_start_lines": [137],
+                        "cause_end_lines": [150],
                         "cause_symbol": "payments_lite.app.create_app.get_payment",
                         "violated_expectation_ids": ["exp_tenant_isolation_payments"],
                         "strategy": (
-                            "Resolve the payment through PaymentStore.get_payment_for_customer, passing the "
-                            "authenticated customer id, so a payment owned by another customer is reported as "
-                            "not found. This reuses the mechanism the sibling routes already rely on, so no "
-                            "new abstraction is introduced."
+                            "Call require_owner(p.customer_id, customer) in get_payment before returning the "
+                            "payment, exactly as the sibling resource routes do, so a payment owned by "
+                            "another customer is reported as not found. This reuses the existing helper, so "
+                            "no new abstraction is introduced."
                         ),
                         "constraints": [
                             "the owner must keep read access to their own payment",
@@ -373,7 +385,7 @@ def diagnose_script() -> list:
                             "the owner still receives 200 for their own payment",
                         ],
                         "related_sites": [
-                            "payments_lite.store.PaymentStore.get_payment is the unscoped lookup used here"
+                            "payments_lite.app.create_app.require_owner is the shared ownership helper"
                         ],
                     },
                 )
@@ -402,18 +414,23 @@ def patch_script(
     """
     submit = patch_agent.SPEC.submit_tool_name()
     app_text = (snapshot_root / WEAK_HANDLER_PATH).read_text(encoding="utf-8")
-    fixed_text = app_text.replace(WEAK_LINE, FIXED_LINE)
-    assert fixed_text != app_text, "fixture no longer contains the expected weak line"
+    assert WEAK_BLOCK in app_text, "fixture no longer contains the expected handler body"
+    fixed_text = app_text.replace(WEAK_BLOCK, FIXED_BLOCK)
     if ineffective:
-        # In-scope, syntactically fine, but the ownership condition is still missing.
+        # In-scope, syntactically fine, but the ownership check is still missing.
         fixed_text = app_text.replace(
-            WEAK_LINE, WEAK_LINE + "  # TODO: scope this lookup to the customer"
+            WEAK_BLOCK,
+            WEAK_BLOCK.replace(
+                "        return payment_out(store, p)",
+                "        # TODO: this route should check ownership like its siblings\n"
+                "        return payment_out(store, p)",
+            ),
         )
 
     def turn0(_request) -> FakeTurn:
         return FakeTurn(
             text="Reading the handler and its sibling before editing.",
-            tool_calls=[("code__read_span", {"path": WEAK_HANDLER_PATH, "start_line": 45, "end_line": 75})],
+            tool_calls=[("code__read_span", {"path": WEAK_HANDLER_PATH, "start_line": 120, "end_line": 160})],
         )
 
     def turn1(_request) -> FakeTurn:
@@ -426,11 +443,9 @@ def patch_script(
                 ("worktree__write_file", {"path": "payments_lite/store.py", "content": store + "\n# touched\n"})
             )
         if weaken_tests:
-            weakened = (snapshot_root / "tests/test_payments.py").read_text(encoding="utf-8").replace(
-                "assert client.get(\"/payments/pay_bob_1/refunds\", headers=ALICE).status_code == 404",
-                "assert client.get(\"/payments/pay_bob_1/refunds\", headers=ALICE).status_code in (200, 404)",
-            )
-            calls.append(("worktree__write_file", {"path": "tests/test_payments.py", "content": weakened}))
+            existing = (snapshot_root / "tests/test_api.py").read_text(encoding="utf-8")
+            weakened = existing.replace("== 404", "in (200, 404)")
+            calls.append(("worktree__write_file", {"path": "tests/test_api.py", "content": weakened}))
         return FakeTurn(text="Applying the scoped lookup.", tool_calls=calls)
 
     def turn2(_request) -> FakeTurn:
@@ -464,9 +479,9 @@ def patch_script(
                     submit,
                     {
                         "explanation": (
-                            "Replaced the unscoped payment lookup with the ownership-scoped lookup already "
-                            "used by the sibling routes, and added a regression test covering both the "
-                            "non-owner denial and the owner's continued access."
+                            "Added the require_owner call that every sibling resource route already makes, "
+                            "and a regression test covering both the non-owner denial and the owner's "
+                            "continued access."
                         ),
                         "files_changed": files,
                         "tests_added": [] if skip_tests else [REGRESSION_TEST_PATH],
@@ -610,23 +625,24 @@ def fortify_script() -> list:
                             {
                                 "category": "centralize_check",
                                 "recommendation": (
-                                    "Remove PaymentStore.get_payment, or make it private, so every route must "
-                                    "resolve payments through get_payment_for_customer and the ownership "
-                                    "condition cannot be omitted by accident."
+                                    "Make require_owner a FastAPI dependency (or wrap the store lookups in a "
+                                    "helper that takes the current customer), so a resource route cannot be "
+                                    "written without the ownership check."
                                 ),
-                                "reference_path": "payments_lite/store.py",
-                                "reference_start_line": 55,
-                                "reference_end_line": 70,
+                                "reference_path": "payments_lite/app.py",
+                                "reference_start_line": 74,
+                                "reference_end_line": 80,
                                 "effort": "small",
                                 "owner_review_note": "changes the store API; review call sites",
                             },
                             {
                                 "category": "policy_test",
                                 "recommendation": (
-                                    "Add a test that iterates every /payments route and asserts a non-owner "
-                                    "identity is refused, so a new route cannot ship without the check."
+                                    "Add a test that walks every resource route in the OpenAPI schema and "
+                                    "asserts a non-owner identity is refused, so a new route cannot ship "
+                                    "without the check."
                                 ),
-                                "reference_path": "tests/test_payments.py",
+                                "reference_path": "tests/test_api.py",
                                 "reference_start_line": 1,
                                 "reference_end_line": 10,
                                 "effort": "medium",
@@ -636,14 +652,14 @@ def fortify_script() -> list:
                         "future_hypotheses": [
                             {
                                 "weakness_class": "CWE-639",
-                                "title": "Refund listing may expose other customers' refunds",
-                                "rationale": "Same resource family; worth a check once the store API changes.",
+                                "title": "Payment list may need a policy test as routes are added",
+                                "rationale": "Same resource family; worth a check once require_owner moves.",
                                 "path": WEAK_HANDLER_PATH,
-                                "start_line": 62,
-                                "end_line": 75,
+                                "start_line": 115,
+                                "end_line": 125,
                             }
                         ],
-                        "monitoring_hints": ["GET /payments/{payment_id}", "POST /payments/{payment_id}/refunds"],
+                        "monitoring_hints": ["GET /payments/{payment_id}", "POST /refunds"],
                         "regression_test_names": [f"{REGRESSION_TEST_PATH}::test_non_owner_cannot_read_payment_detail"],
                     },
                 )

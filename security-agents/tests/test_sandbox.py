@@ -119,15 +119,20 @@ def test_fresh_checkout_is_writable_and_independent(snapshot, tmp_path):
 def test_diff_round_trip_through_git_apply(snapshot, tmp_path):
     wt = fresh_checkout(snapshot, tmp_path / "wt")
     app = wt / "payments_lite" / "app.py"
-    app.write_text(app.read_text().replace("store.get_payment(payment_id)",
-                                           "store.get_payment_for_customer(payment_id, customer.id)"))
+    app.write_text(
+        app.read_text().replace(
+            "        return payment_out(store, p)",
+            "        require_owner(p.customer_id, customer)\n        return payment_out(store, p)",
+            1,
+        )
+    )
     (wt / "tests" / "test_authz.py").write_text("def test_x():\n    assert True\n")
     diff = unified_diff(snapshot.root, wt, changed_paths(snapshot.root, wt))
     assert set(diff_paths(diff)) == {"payments_lite/app.py", "tests/test_authz.py"}
     fresh = fresh_checkout(snapshot, tmp_path / "fresh")
     ok, err = apply_diff(fresh, diff)
     assert ok, err
-    assert "get_payment_for_customer(payment_id, customer.id)" in (fresh / "payments_lite/app.py").read_text()
+    assert "require_owner(p.customer_id, customer)" in (fresh / "payments_lite/app.py").read_text()
     assert (fresh / "tests" / "test_authz.py").is_file()
     assert sha256_text(diff) == sha256_text(diff)
 
