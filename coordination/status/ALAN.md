@@ -113,3 +113,10 @@ Executed check results on the fixture (the precision evidence):
   the pillar, with the approval round-trip, and sent the two open questions.
 - Messages sent: contracts ack + deltas (srihith), shared repair sandbox (sai),
   code-intelligence port (sarosh), agent UI fields (vihaan).
+
+### 2026-10-17 — Codex recovered catalog consolidation
+- Preserved Claude's uncommitted catalog work as 93c0225 on PR #35, with subsequent integration fixes committed/pushed.
+- Reviewed/merged PR #69 with all CI green. PR #73 is a newer focused host/functional-Verify implementation; PR #35 will be superseded once unique fixes are preserved.
+- Isolated canonical CVSS3.1, OWASP API2023 and NIST800-115 package additions onto feat/alan/recovered-catalogs, excluding the duplicate legacy security-agents standards tree and schema projection.
+- Standards/runtime standards source tests passed 300 offline; narrow canonical tests will be rerun here. Earlier recovered runtime passed 524 tests (11 optional skips), root 358 (6 optional skips), browser 8. These counts belong to PR #35 and are not claims about this new branch.
+- Exact .gitleaksignore fingerprint is a public OWASP source commit, not a credential; full-history scan clean and synthetic credential detection remains enforced.

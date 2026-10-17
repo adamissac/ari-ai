@@ -148,3 +148,5 @@ abort. No provider or target execution occurred in transport tests.
 | ID | Objective | Owner | Status | Dependencies | Acceptance / integration / tests |
 |---|---|---|---|---|---|
 | STD-001 | Connect canonical PR #49 standards to persisted findings, incidents, reports and transport; cover OWASP editions | Srihith | IN_REVIEW on `feat/srihith/standards-alignment` | PR #49 canonical catalogs/contracts | Offline catalogs; reference scoring; host persistence; real PostgreSQL incident lifecycle/tenant/approval tests; generated types; truthful partial coverage. Rendered frontend integration remains separate. |
+
+Alan recovered-catalog continuation (2026-10-17): isolated canonical CVSS3.1/OWASP API/NIST800-115 additions from PR #35; narrow offline catalog PR follows. Host/functional-Verify continuation is reviewed separately in PR #73.
