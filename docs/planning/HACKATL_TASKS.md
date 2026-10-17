@@ -189,3 +189,9 @@ failures, force live calls off, and keep generated reports out of tracked eviden
 Runner semantics covered by `tests/qa/test_m7_runner.py`.
 
 Issue #148 status: DONE via PR #150, merged `1129434`; all executable CI checks passed on combined head `91cea8c`. Historical references remain immutable.
+
+### API-JOB-001 — real job lookup and repeatable demo recovery smoke
+Owner: Alan (Codex). IN_PROGRESS on test/alan/demo-recovery-smoke in its own
+worktree. Acceptance: returned assessment job IDs resolve for members only;
+real HTTP client proves lost-response retry/conflicts and stored-byte hashes;
+Chrome proves workflow and outage recovery; existing suites stay green.
