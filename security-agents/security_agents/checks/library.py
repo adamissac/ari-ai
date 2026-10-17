@@ -63,13 +63,21 @@ def _route(recipe: dict[str, Any], route_id: str) -> dict[str, Any]:
     for route in recipe.get("routes", []):
         if route.get("id") == route_id:
             return route
-    raise PlatformError(ErrorCode.SCHEMA_INVALID, f"route_id {route_id!r} is not in the build recipe")
+    valid = sorted(str(r.get("id")) for r in recipe.get("routes", []))
+    raise PlatformError(
+        ErrorCode.SCHEMA_INVALID,
+        f"route_id {route_id!r} is not in the build recipe; valid route ids: {', '.join(valid)}",
+    )
 
 
 def _identity(recipe: dict[str, Any], name: str) -> str:
     ident = recipe.get("identities", {}).get(name)
     if not ident or "auth_header" not in ident:
-        raise PlatformError(ErrorCode.SCHEMA_INVALID, f"identity {name!r} is not in the build recipe")
+        valid = sorted(recipe.get("identities", {}))
+        raise PlatformError(
+            ErrorCode.SCHEMA_INVALID,
+            f"identity {name!r} is not in the build recipe; valid identities: {', '.join(valid)}",
+        )
     return str(ident["auth_header"])
 
 
@@ -368,6 +376,44 @@ class CheckLibrary:
                 raise PlatformError(ErrorCode.SANDBOX_POLICY_VIOLATION, f"{ref} cannot be rendered for http")
             rendered = _PREAMBLE_HTTP.format(ref=ref) + rendered[len(inprocess) :]
         return rendered
+
+    def parameter_values(self, ref: str, recipe: dict[str, Any]) -> dict[str, Any]:
+        meta = self.get(ref)
+        if meta is None:
+            return {}
+        routes = [r for r in recipe.get("routes", []) if isinstance(r, dict) and r.get("id")]
+
+        def describe(route: dict[str, Any]) -> dict[str, Any]:
+            return {
+                "id": route["id"],
+                "method": str(route.get("method", "GET")).upper(),
+                "path_template": route.get("path_template"),
+                "resource": route.get("resource"),
+            }
+
+        def single_param_get(route: dict[str, Any]) -> bool:
+            return str(route.get("method", "GET")).upper() == "GET" and (
+                len(_PATH_PARAM.findall(str(route.get("path_template", "")))) == 1
+            )
+
+        identities = sorted(recipe.get("identities", {}))
+        values: dict[str, Any] = {}
+        for name in meta.parameters:
+            if name in ("owner_identity", "other_identity"):
+                values[name] = identities
+            elif name == "read_route_id" or (
+                name == "route_id" and meta.template_id == OWNERSHIP.template_id
+            ):
+                values[name] = [describe(r) for r in routes if single_param_get(r)]
+            elif name == "route_id":
+                values[name] = [
+                    describe(r)
+                    for r in routes
+                    if str(r.get("method", "")).upper() == "POST" and isinstance(r.get("body_template"), dict)
+                ]
+            elif name == "over_by":
+                values[name] = "optional positive decimal string, default 1.00"
+        return values
 
     def params_hash(self, ref: str, params: dict[str, Any]) -> str:
         import hashlib

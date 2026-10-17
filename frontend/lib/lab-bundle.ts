@@ -15,8 +15,11 @@ const MAX_BYTES = 16 * 1024 * 1024;
 let validator: ((value: unknown) => boolean) | undefined;
 async function validate(value: unknown): Promise<boolean> {
   if (!validator) {
-    const ajv = new Ajv2020({ strict: false, allErrors: false });
-    validator = ajv.compile(JSON.parse(await readFile(SCHEMA, 'utf8')) as object);
+    // A missing or unreadable schema is a deployment problem; say so as JSON instead of a raw 500.
+    let schema: object;
+    try { schema = JSON.parse(await readFile(SCHEMA, 'utf8')) as object; }
+    catch { throw new BundleError(500, 'Evaluation schema not available'); }
+    validator = new Ajv2020({ strict: false, allErrors: false }).compile(schema);
   }
   return validator(value);
 }

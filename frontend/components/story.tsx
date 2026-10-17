@@ -10,9 +10,10 @@ import { BRAND_NAME } from '@/components/brand';
  * collapse to normal flow and scenes render their final, fully readable state.
  */
 
-function useTrack<T extends HTMLElement>(): [React.RefObject<T | null>, number] {
+function useTrack<T extends HTMLElement>(): [React.RefObject<T | null>, number, boolean] {
   const ref = useRef<T>(null);
   const [p, setP] = useState(1);
+  const [sticky, setSticky] = useState(false);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -20,6 +21,7 @@ function useTrack<T extends HTMLElement>(): [React.RefObject<T | null>, number] 
     let frame = 0;
     const update = () => {
       frame = 0;
+      setSticky(mq.matches);
       if (!mq.matches) { setP(1); return; }
       const r = el.getBoundingClientRect();
       const total = r.height - window.innerHeight;
@@ -39,7 +41,7 @@ function useTrack<T extends HTMLElement>(): [React.RefObject<T | null>, number] 
       mq.removeEventListener('change', schedule);
     };
   }, []);
-  return [ref, p];
+  return [ref, p, sticky];
 }
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
@@ -56,7 +58,7 @@ const PROBLEM_LINES = [
 ];
 
 export function ProblemScene() {
-  const [ref, p] = useTrack<HTMLDivElement>();
+  const [ref, p, sticky] = useTrack<HTMLDivElement>();
   const phase = p < 0.34 ? 0 : p < 0.67 ? 1 : 2;
   const shown = Math.max(1, Math.ceil(clamp01(p / 0.3) * TICKS));
   const lens = clamp01((p - 0.7) / 0.25);
@@ -70,7 +72,7 @@ export function ProblemScene() {
         <h2 id="problem-title" className="sr-only">Why every change needs checking</h2>
         <div className="story-swap mt-4 min-h-[9.5rem] max-w-3xl md:min-h-[8.5rem]">
           {PROBLEM_LINES.map((line, n) => (
-            <div key={line.title} className="story-swap-item" data-on={phase === n || undefined} aria-hidden={phase !== n}>
+            <div key={line.title} className="story-swap-item" data-on={phase === n || undefined} aria-hidden={sticky ? phase !== n : undefined}>
               <p className="display text-3xl font-semibold md:text-5xl">{line.title}</p>
               <p className="mt-3 max-w-xl text-sm text-muted md:text-base">{line.body}</p>
             </div>
@@ -236,6 +238,10 @@ export function Walkthrough() {
             <text x="300" y="186" textAnchor="middle" className="story-svg-ok">verified · replay 2 / 2</text>
           </svg>
         </div>
+        <p className="label-mono mt-2 text-xs text-muted lg:hidden" data-testid="walk-labels">
+          {step >= 2 && <span className="block">root cause · create_refund</span>}
+          {step === 3 && <span className="block">verified · replay 2 / 2</span>}
+        </p>
         </div>
       </section>
     </div>
@@ -287,9 +293,9 @@ export function ProofStats(): ReactNode {
       </div>
       <div className="mt-10 grid grid-cols-1 gap-3 md:grid-cols-3">
         {STATS.map((s, n) => (
-          <div key={s.tag} className="story-stat">
+          <div key={s.body} className="story-stat">
             <p className="label-mono flex justify-between text-white/50"><span>{String(n + 1).padStart(2, '0')}</span><span>{s.tag}</span></p>
-            <p className="mt-8 font-mono text-6xl font-semibold tracking-tight md:text-7xl"><CountUp to={s.n} suffix={s.suffix} /></p>
+            <p className="mt-8 font-mono text-6xl font-semibold tracking-tight md:text-7xl">{s.n === 0 ? 'Never' : <CountUp to={s.n} suffix={s.suffix} />}</p>
             <p className="mt-3 text-sm text-white/70">{s.body}</p>
           </div>
         ))}
