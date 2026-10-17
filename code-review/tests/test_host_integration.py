@@ -20,22 +20,32 @@ from pathlib import Path
 import pytest
 import sqlalchemy as sa
 
-if os.environ.get("APP_ENV") != "test":  # running this package alone: bootstrap like backend/tests
-    _tmp = Path(tempfile.mkdtemp(prefix="cr-db-"))
-    from backend.devdb import start
+# Running this package alone: bootstrap like backend/tests/conftest.py. Reuse ONE embedded
+# server at .dev/pgtest (never one per run: leaked postmasters exhaust SysV shared memory on
+# macOS), create a fresh database for this module and drop it when the module finishes.
+_OWN_DB: tuple[str, str] | None = None
+if os.environ.get("APP_ENV") != "test":
+    _tmp = Path(tempfile.mkdtemp(prefix="cr-artifacts-"))
+    _admin_url = os.environ.get("TEST_DATABASE_URL")
+    if not _admin_url:
+        from backend.devdb import start
 
-    _base = start(_tmp / "pgdata", database="postgres")
+        _admin_url = start(
+            Path(__file__).resolve().parents[2] / ".dev" / "pgtest", database="postgres"
+        )
     _name = f"cr_test_{uuid.uuid4().hex[:8]}"
     _admin = sa.create_engine(
-        _base.replace("postgresql://", "postgresql+psycopg://", 1), isolation_level="AUTOCOMMIT"
+        _admin_url.replace("postgresql://", "postgresql+psycopg://", 1),
+        isolation_level="AUTOCOMMIT",
     )
     with _admin.connect() as _c:
         _c.execute(sa.text(f'CREATE DATABASE "{_name}"'))
     _admin.dispose()
+    _OWN_DB = (_admin_url, _name)
     os.environ.update(
         {
             "APP_ENV": "test",
-            "DATABASE_URL": sa.engine.make_url(_base)
+            "DATABASE_URL": sa.engine.make_url(_admin_url)
             .set(database=_name)
             .render_as_string(hide_password=False),
             "ARTIFACT_STORE_URI": f"file://{_tmp / 'artifacts'}",
@@ -49,6 +59,24 @@ if os.environ.get("APP_ENV") != "test":  # running this package alone: bootstrap
     from backend.migrate import upgrade
 
     upgrade()
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _drop_own_database():
+    yield
+    if _OWN_DB is None:
+        return
+    from backend.db import get_engine
+
+    get_engine().dispose()
+    admin_url, name = _OWN_DB
+    admin = sa.create_engine(
+        admin_url.replace("postgresql://", "postgresql+psycopg://", 1), isolation_level="AUTOCOMMIT"
+    )
+    with admin.connect() as c:
+        c.execute(sa.text(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)'))
+    admin.dispose()
+
 
 from cr_fakes import fake, make_request  # noqa: E402
 from cr_scenarios import payments_lite  # noqa: E402
