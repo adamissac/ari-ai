@@ -9,10 +9,11 @@ import { matchExpectationStatements } from '@/lib/expectations';
 import { EXPECTATION_STATUS } from '@/lib/status';
 
 type Load =
-  | { status: 'loading' }
   | { status: 'none' }
-  | { status: 'ready'; rows: ReturnType<typeof matchExpectationStatements> }
+  | { status: 'ready'; rows: ReturnType<typeof matchExpectationStatements>; truncated: boolean }
   | { status: 'error'; error: unknown };
+/** Result tagged with the request key it belongs to; a result for another key is treated as loading. */
+type Keyed = { key: string; load: Load } | null;
 
 const PAGE_LIMIT = 5;
 
@@ -23,9 +24,10 @@ export function ExpectationLinks({ projectId, snapshotId, assessmentId, ids }: {
   assessmentId: string;
   ids: readonly string[];
 }) {
-  const [state, setState] = useState<Load>({ status: 'loading' });
+  const [result, setResult] = useState<Keyed>(null);
   const [nonce, setNonce] = useState(0);
   const idKey = ids.join('\n');
+  const requestKey = `${assessmentId}|${snapshotId ?? ''}|${idKey}|${nonce}`;
 
   useEffect(() => {
     const wanted = idKey === '' ? [] : idKey.split('\n');
@@ -39,26 +41,31 @@ export function ExpectationLinks({ projectId, snapshotId, assessmentId, ids }: {
         snapshot = detail.assessment.snapshot_id;
       }
       if (!snapshot) {
-        setState({ status: 'none' });
+        setResult({ key: requestKey, load: { status: 'none' } });
         return;
       }
       const items: BehavioralExpectation[] = [];
       let cursor: string | undefined;
+      let truncated = false;
       for (let page = 0; page < PAGE_LIMIT; page += 1) {
-        const result = await api().expectations(snapshot, { limit: 500, cursor }, { signal });
-        items.push(...result.items);
-        if (!result.next_cursor) break;
-        cursor = result.next_cursor;
+        const res = await api().expectations(snapshot, { limit: 500, cursor }, { signal });
+        items.push(...res.items);
+        cursor = res.next_cursor ?? undefined;
+        if (!cursor) break;
+        if (page === PAGE_LIMIT - 1) truncated = true;
       }
-      setState({ status: 'ready', rows: matchExpectationStatements(wanted, items) });
+      if (signal.aborted) return;
+      setResult({ key: requestKey, load: { status: 'ready', rows: matchExpectationStatements(wanted, items), truncated } });
     })().catch((error: unknown) => {
-      if (!signal.aborted) setState({ status: 'error', error });
+      if (!signal.aborted) setResult({ key: requestKey, load: { status: 'error', error } });
     });
     return () => controller.abort();
-  }, [assessmentId, idKey, nonce, snapshotId]);
+  }, [assessmentId, idKey, requestKey, snapshotId]);
+
+  const state: Load | null = result && result.key === requestKey ? result.load : null;
 
   if (ids.length === 0) return <p className="text-xs text-faint">No expectation linked to this finding.</p>;
-  if (state.status === 'loading') return <Loading label="Loading expectations" />;
+  if (state === null) return <Loading label="Loading expectations" />;
   if (state.status === 'error') return <ErrorState error={state.error} onRetry={() => setNonce(n => n + 1)} context="Expectations" />;
   if (state.status === 'none') {
     return (
@@ -82,7 +89,9 @@ export function ExpectationLinks({ projectId, snapshotId, assessmentId, ids }: {
               </p>
             </>
           ) : (
-            <p className="text-xs text-muted">No statement in the indexed snapshot for <Mono>{row.id}</Mono>.</p>
+            state.truncated
+              ? <p className="text-xs text-warn">Not loaded (list truncated) for <Mono>{row.id}</Mono>.</p>
+              : <p className="text-xs text-muted">No statement in the indexed snapshot for <Mono>{row.id}</Mono>.</p>
           )}
         </li>
       ))}
