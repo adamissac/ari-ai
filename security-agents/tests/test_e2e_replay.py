@@ -505,3 +505,18 @@ def test_approval_for_a_different_plan_is_ignored(intel, driver, library, tmp_pa
     ).run()
     assert not any(r.agent is AgentName.PATCH for r in res.runs)
     assert "approval.mismatch" in [e.action for e in res.audit]
+
+
+def test_failed_scout_does_not_report_a_clean_assessment(intel, driver, library, tmp_path):
+    from security_agents.contracts import ErrorCode
+    from security_agents.llm.types import LLMUnavailable
+
+    def unavailable(_request):
+        raise LLMUnavailable("provider rejected tool schema")
+
+    orch, _ = build(intel, driver, library, tmp_path, scripts={AgentName.SCOUT: [unavailable]})
+    result = orch.run()
+    assert result.state is AssessmentState.FAILED
+    assert result.error_code is ErrorCode.LLM_UNAVAILABLE
+    assert "provider rejected tool schema" in result.error_detail
+    assert "completed" not in result.state_log.states()

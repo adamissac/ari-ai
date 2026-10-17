@@ -139,3 +139,5 @@ security-agents/
 ## Tasks
 
 SEC-001 … SEC-013. Status and evidence: [coordination/status/ALAN.md](../coordination/status/ALAN.md).
+
+Provider tool schemas omit unsupported numeric bounds; Pydantic still enforces those bounds locally. A failed Scout step fails the assessment rather than reporting a clean result.

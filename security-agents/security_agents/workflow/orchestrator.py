@@ -540,7 +540,10 @@ class Orchestrator:
         if not outcome.ok or not isinstance(outcome.output, scout_agent.ScoutOutput):
             self._audit("recon.failed", "assessment", self.config.assessment_id,
                         error=outcome.run.error_code)
-            return []
+            raise PlatformError(
+                outcome.run.error_code or ErrorCode.SCHEMA_INVALID,
+                outcome.run.error_detail or "Scout failed to produce a valid result",
+            )
         hypotheses = scout_agent.to_hypotheses(
             outcome.output, data, self.intel, max_items=self.config.max_hypotheses
         )

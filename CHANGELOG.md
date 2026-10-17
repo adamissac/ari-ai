@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Security agents now project numeric tool schemas for provider compatibility and fail assessments when Scout fails.
+
 ### Added
 - Standalone frontend REST/SSE transport with canonical schema validation, cookie/CSRF auth, idempotency, durable event resume and real FastAPI/PostgreSQL integration tests. Page integration remains pending.
 - Phase 0 repository foundation: product specification, system architecture,

@@ -116,3 +116,9 @@ adds an entry before ending.
 - Sai's real-index consumer integration merged PR #31. Sarosh attempted its test
   but collection failed because local environment lacks installed `code_review`;
   no independent consumer-pass claim. Producer suite was rechecked separately.
+
+### 2026-10-16 — Codex — SEC-001 / SEC-012 continuation
+- Resumed clean Claude worktree on feat/alan/seven-agent-runtime; synced origin/main d8ad0cb.
+- Fixed strict-provider numeric tool schema rejection while retaining Pydantic validation; Scout errors now fail the assessment with original error code/detail.
+- Executed 28 runtime/schema/intelligence tests plus 1 Scout failure regression; all passed. Ruff clean. No live-provider execution.
+- Next: finish backend host-mode integration; request separately authorized live rerun after deterministic verification.

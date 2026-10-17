@@ -128,3 +128,5 @@ UI-001/UI-003/M6 acceptance remain pending. No claim that the full task rows are
 DONE. Evidence: 13 unit tests plus strict TypeScript; real HTTP/PostgreSQL parent
 and three subtests passed, including durable SSE replay, CSRF, tenant denial and
 abort. No provider or target execution occurred in transport tests.
+
+SEC-001 / SEC-012 continuation (2026-10-16, Alan branch): provider schema projection and failed-Scout terminal state fixed; 28 focused tests plus Scout failure regression pass. Live rerun remains unverified.
