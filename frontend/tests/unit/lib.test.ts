@@ -3,13 +3,31 @@ import { describe, expect, it } from 'vitest';
 import { describeError } from '@/lib/api';
 import { parseUnifiedDiff } from '@/lib/diff';
 import { duration, githubLink, relativeTime, shortSha } from '@/lib/format';
-import { domain, metricRows, rewardTotals, sampleSize } from '@/lib/lab';
+import { domain, episodeStory, metricRows, rewardTotals, sampleSize } from '@/lib/lab';
 import type { DefenseLabBundle, LabEpisode } from '@/lib/lab-types';
 import { matchExpectationStatements } from '@/lib/expectations';
 import { findingStory, repoFullNameForEvidence } from '@/lib/finding-story';
 import { projectOverview } from '@/lib/overview';
 import { SCOPE_CHECK_CATEGORIES } from '@/lib/scope';
 import { AGENTS, ASSESSMENT_STATE, FINDING_STATUS, agentRunSummary, handoffNote, providerLabel, railSteps } from '@/lib/status';
+
+describe('lab episode story', () => {
+  it('uses only the recorded actions and outcome', () => {
+    const episode = {
+      policy: 'ddqn', scenario: 's1', episode_seed: 1, training_seed: 0, total_return: -1,
+      compromised: true, impact_nodes: ['db'],
+      steps: [
+        { t: 0, action: 'isolate:db', reward: -0.2, reward_components: {}, nodes: [] },
+        { t: 1, action: 'noop', reward: -0.1, reward_components: {}, nodes: [] },
+      ],
+    } satisfies LabEpisode;
+    const text = episodeStory(episode);
+    expect(text).toContain('isolate:db');
+    expect(text).toContain('compromised');
+    expect(text).toContain('db');
+    expect(text).toContain('not a live network');
+  });
+});
 
 describe('finding expectations', () => {
   it('keeps an id visible when the snapshot has no matching statement', () => {
