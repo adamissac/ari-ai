@@ -82,3 +82,17 @@ export function episodeOutcome(episode: LabEpisode): string {
     ? `${who}: the simulated attacker reached its goal (${episode.impact_nodes.join(', ') || 'a critical machine'}). The defender acted ${acts} in ${episode.steps.length} steps.`
     : `${who}: the simulated attacker never reached its goal. The defender acted ${acts} in ${episode.steps.length} steps.`;
 }
+
+/**
+ * Warns when one measure's winner loses badly on another, using only bundle values:
+ * the best-uptime policy and its compromise rate.
+ */
+export function tradeoffNote(bundle: DefenseLabBundle): string | null {
+  const uptime = SCORE_METRICS.find(m => m.key === 'service_uptime');
+  const compromise = SCORE_METRICS.find(m => m.key === 'compromise_rate');
+  if (!uptime || !compromise) return null;
+  const best = scoreboard(bundle, uptime).find(c => c.best);
+  const lost = best ? scoreboard(bundle, compromise).find(c => c.policy === best.policy)?.value ?? null : null;
+  if (!best || lost === null || lost < 50) return null;
+  return `No single measure tells the whole story: "${policyName(best.policy)}" has the best uptime, but the attacker reached its goal in ${lost.toFixed(1)}% of its games.`;
+}

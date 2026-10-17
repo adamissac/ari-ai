@@ -34,6 +34,7 @@ test('Defense Lab plots only the committed, schema-validated evaluation bundle',
   await expect(board.getByTestId('score-compromise_rate')).toContainText('Does nothing');
   await expect(board.getByTestId('score-compromise_rate')).toContainText(/\d+\.\d% \[\d+\.\d%–\d+\.\d%\]/);
   await expect(board.getByLabel('best').first()).toBeVisible();
+  await expect(page.getByTestId('lab-tradeoff')).toContainText('No single measure tells the whole story');
   await expect(page.getByTestId('lab-timeline')).toBeVisible();
   await expect(page.getByTestId('lab-episode-outcome')).toContainText('simulated attacker');
   await expect(page.getByTestId('lab-step-action')).toContainText('At step 0 the defender:');
@@ -51,6 +52,10 @@ test('Defense Lab plots only the committed, schema-validated evaluation bundle',
   await slider.fill('50');
   await expect(page.getByText('t = 50 /', { exact: false })).toBeVisible();
   await evidenceShot(page, 'defense-lab');
+  await page.setViewportSize({ width: 375, height: 800 });
+  await page.reload();
+  await expect(page.getByTestId('lab-scoreboard')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(376);
 });
 
 test('a malformed bundle name is refused by the server', async ({ request }) => {

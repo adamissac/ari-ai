@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Badge, Button, Empty, ErrorState, Field, inputClass, Loading, Mono, PageTitle, Panel, Stat, Tag } from '@/components/ui';
 import { num } from '@/lib/format';
 import { cumulativeReturn, domain, episodeLabel, episodeStory, HIGHER_IS_BETTER, METRIC_LABEL, metricNames, metricRows, rewardTotals, sampleSize, stepObservation } from '@/lib/lab';
-import { actionInWords, episodeOutcome, episodeTimeline, POLICY_NAME, policyName, SCORE_METRICS, scoreboard, STAGE_WORDS } from '@/lib/lab-plain';
+import { actionInWords, episodeOutcome, episodeTimeline, POLICY_NAME, policyName, SCORE_METRICS, scoreboard, STAGE_WORDS, tradeoffNote } from '@/lib/lab-plain';
 import type { BundleResponse, DefenseLabBundle, LabEpisode, LabNodeState, LabScenario } from '@/lib/lab-types';
 
 type Load<T> = { status: 'loading' } | { status: 'ready'; data: T } | { status: 'error'; error: unknown };
@@ -120,7 +120,7 @@ function Scoreboard({ bundle }: { bundle: DefenseLabBundle }) {
           if (cells.every(c => c.value === null)) return null;
           const fmt = (x: number | null) => (x === null ? '—' : metric.percent ? `${x.toFixed(1)}%` : x.toFixed(1));
           return (
-            <figure key={metric.key} className="rounded-lg border border-line p-3" data-testid={`score-${metric.key}`}>
+            <figure key={metric.key} className="min-w-0 rounded-lg border border-line p-3" data-testid={`score-${metric.key}`}>
               <figcaption>
                 <span className="font-semibold">{metric.title}</span>
                 <span className="ml-2 text-xs text-faint">{metric.higherIsBetter ? 'higher is better' : 'lower is better'}</span>
@@ -130,9 +130,9 @@ function Scoreboard({ bundle }: { bundle: DefenseLabBundle }) {
                 {cells.map(c => {
                   const width = c.value === null ? 0 : metric.percent ? Math.min(100, Math.max(0, c.value)) : Math.min(100, (c.value / Math.max(...cells.map(x => x.value ?? 0), 1)) * 100);
                   return (
-                    <li key={c.policy} className="grid grid-cols-[9.5rem_1fr_auto] items-center gap-2 text-sm">
+                    <li key={c.policy} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 text-sm sm:grid-cols-[9.5rem_minmax(0,1fr)_auto]">
                       <span className={c.policy === 'ddqn' ? 'font-semibold' : ''} title={POLICY_NAME[c.policy]?.note}>{policyName(c.policy)}</span>
-                      <span className="h-2.5 overflow-hidden rounded-full bg-panel-2" aria-hidden="true">
+                      <span className="order-last col-span-2 h-2.5 overflow-hidden rounded-full bg-panel-2 sm:order-none sm:col-span-1" aria-hidden="true">
                         <span className={`block h-full rounded-full ${c.policy === 'ddqn' ? 'bg-brand' : 'bg-faint/60'}`} style={{ width: `${width}%` }} />
                       </span>
                       <span className="whitespace-nowrap font-mono text-xs">
@@ -146,6 +146,7 @@ function Scoreboard({ bundle }: { bundle: DefenseLabBundle }) {
           );
         })}
       </div>
+      {tradeoffNote(bundle) && <p className="mt-3 rounded-md border border-warn/40 bg-warn/10 px-3 py-2 text-sm" data-testid="lab-tradeoff">{tradeoffNote(bundle)}</p>}
       <ul className="mt-3 grid gap-1 text-xs text-muted sm:grid-cols-2">
         {bundle.metrics.map(m => <li key={m.policy}><span className="font-semibold text-ink">{policyName(m.policy)}</span> — {POLICY_NAME[m.policy]?.note ?? 'Policy id from the bundle.'}</li>)}
       </ul>
@@ -179,7 +180,7 @@ function Metrics({ bundle }: { bundle: DefenseLabBundle }) {
       </p>
       <figure aria-label={`${METRIC_LABEL[metric] ?? metric} by policy`} className="flex flex-col gap-2" data-testid="metric-chart">
         {rows.map(r => (
-          <div key={r.policy} className="grid grid-cols-[8rem_1fr_13rem] items-center gap-2 text-xs">
+          <div key={r.policy} className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-2 text-xs sm:grid-cols-[8rem_minmax(0,1fr)_13rem]">
             <span className={r.policy === 'ddqn' ? 'font-semibold text-accent' : 'text-muted'}>{r.policy}</span>
             <svg viewBox="0 0 100 10" preserveAspectRatio="none" className="h-5 w-full" role="img" aria-label={`${r.policy}: ${r.mean === null ? 'no value' : num(r.mean, 3)}`}>
               <line x1={x(0)} x2={x(0)} y1={0} y2={10} stroke="var(--color-line)" strokeWidth={0.4} />
@@ -192,7 +193,7 @@ function Metrics({ bundle }: { bundle: DefenseLabBundle }) {
                 </g>
               )}
             </svg>
-            <span className="whitespace-nowrap font-mono text-muted">{r.mean === null ? 'n/a' : num(r.mean, 3)} <span className="text-faint">[{r.lo === null ? '—' : num(r.lo, 2)}, {r.hi === null ? '—' : num(r.hi, 2)}]</span></span>
+            <span className="font-mono text-muted sm:whitespace-nowrap">{r.mean === null ? 'n/a' : num(r.mean, 3)} <span className="text-faint">[{r.lo === null ? '—' : num(r.lo, 2)}, {r.hi === null ? '—' : num(r.hi, 2)}]</span></span>
           </div>
         ))}
         <figcaption className="text-xs text-faint">Axis {num(min, 2)} … {num(max, 2)}. Values are copied from the bundle; nothing is recomputed in the browser.</figcaption>
