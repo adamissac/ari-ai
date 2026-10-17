@@ -21,12 +21,13 @@ const LOOK: Record<RelayStatus, { box: string; icon: string }> = {
 export function AgentRelay({ items, selected, onSelect }: { items: RelayItem[]; selected: AgentName; onSelect: (a: AgentName) => void }) {
   const numbers = new Map(items.filter(i => i.kind === 'agent').map((item, i) => [item.kind === 'agent' ? item.agent : '', i + 1]));
   return (
-    <section aria-labelledby="relay-title" data-testid="agent-relay">
-      <h2 id="relay-title" className="text-lg font-semibold tracking-tight">The eight AI agents, in order</h2>
+    <section className="agent-journey" aria-labelledby="relay-title" data-testid="agent-relay">
+      <h2 id="relay-title" className="text-lg font-semibold tracking-tight">One code reviewer. Seven security agents.</h2>
       <p className="mt-1 max-w-3xl text-sm text-muted">
         Each <Term t="agent">agent</Term> is a separate AI worker with one job. It passes its result to the next one.
         A person must give <Term t="approval">approval</Term> before any fix is built. Select an agent to see exactly what it did.
       </p>
+      <div className="journey-lanes" aria-hidden="true"><span><b>01 / REVIEW</b> Does the change work?</span><span><b>02 / SECURITY</b> Can someone break it?</span><span><b>03 / PROOF</b> Did the fix hold up?</span></div>
       <ol className="mt-3 flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-stretch">
         {items.map((item, i) => {
           if (item.kind === 'gate') {
@@ -51,6 +52,7 @@ export function AgentRelay({ items, selected, onSelect }: { items: RelayItem[]; 
                 onClick={() => onSelect(item.agent)}
                 data-testid={`relay-${item.agent}`}
                 data-status={item.status}
+                data-team={item.agent === 'reviewer' ? 'review' : ['scout', 'probe', 'trace'].includes(item.agent) ? 'challenge' : item.agent === 'verify' ? 'proof' : 'defend'}
                 className={`flex w-full flex-col rounded-lg border-2 p-3 text-left transition-shadow ${look.box} ${pressed ? 'ring-2 ring-brand ring-offset-1' : 'hover:shadow-md'}`}
               >
                 <span className="label-mono text-faint">{newStage ? item.stage : ' '}</span>
