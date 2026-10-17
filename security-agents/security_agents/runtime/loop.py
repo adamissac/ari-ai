@@ -128,7 +128,15 @@ class StepRecord:
                 "provider_mode": self.provider_mode,
                 "turns": self.turns,
                 "tool_invocations": [
-                    {"name": t.name, "args": t.args, "ok": t.ok, "error_code": t.error_code}
+                    {
+                        "name": t.name,
+                        "args": t.args,
+                        "ok": t.ok,
+                        "error_code": t.error_code,
+                        # bounded, redacted result (result_summary) so persisted hosted
+                        # transcripts can diagnose a successful-but-inconclusive check
+                        "summary": t.summary,
+                    }
                     for t in self.tool_invocations
                 ],
                 "usage": self.usage.model_dump(mode="json"),
