@@ -49,12 +49,21 @@ Repositories must be registered by the operator:
 
 ## Evidence status
 
-* Executed: 33 tests pass (`uv run pytest -q code-review/tests`). They cover labeled
-  scenarios (discount rounding, a fix that weakens tenant auth, the payments-lite refund
-  bound), the review → approval → repair → fresh replay flow on the real `AssessmentHost`
-  with PostgreSQL, Verify independence, and policy units.
-* **Not executed:** the live Tier-3 run (`test_live_reviewer.py`). The development
-  environment had no authorized API key. No live-model claim is made.
+* Executed (FakeTransport, real tools): `uv run pytest -q code-review/tests` → 57 passed,
+  1 skipped (the live test). Coverage: labeled scenarios (discount rounding, a fix that
+  weakens tenant auth, the payments-lite refund bound and IDOR), the review → approval →
+  repair → fresh replay flow on the real `AssessmentHost` with PostgreSQL, Verify
+  independence, human expectation decisions from the real intelligence memory, tolerant
+  span verification (with the exact spans from the first live run), CWE adjudication end
+  to end, and policy units. CI: `.github/workflows/code-review.yml` (strict mypy + Postgres).
+* **Live Tier 3, executed by Adam with the owner's key** (this agent spends nothing):
+  * run 1 (main @ `0612cc5`): PASS, refund-bound TP, repair accepted ($0.276 + $0.082).
+    It exposed a span-verifier bug that dropped all security hand-offs; fixed in #59.
+  * run 2 (main @ `cdfc679`, after #59): PASS, refund-bound TP, FP 0, FN 0,
+    `generated_tests_failing_on_head: 2`, **`security_handoffs_matched: [fnd_planted_authz]`**,
+    0 rejected spans, repair accepted. Cost: review $0.374 + repair $0.115.
+    (`coordination/messages/20261017T070325Z-adam-to-all-live-p1-p2-handoff-works.md`)
+  * Srihith's live unified run reported the reviewer producing 2 validated findings ($0.37).
 * **Integrations:** the real `code_intelligence` index is consumed and tested
   (`test_intel_integration.py`). Index expectations are `ambiguous` by design and cannot
   confirm a claim alone. Alan's shared sandbox driver is adopted (`test_shared_sandbox.py`;
