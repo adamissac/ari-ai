@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- The demo is no longer public. `/demo` opens only after signing in on `/access` with an access code (`DEMO_ACCESS_CODE`, checked on the server; a signed httpOnly cookie, enforced by `proxy.ts`), and shows the Lumen Pay sample account with a small "Demo account · sample data" tag. Public "Demo" links were removed from the navigation, home page and pricing.
+
 - Published a dated product-readiness audit and shared follow-up checklist (issue #244), distinguishing executed prototype capabilities, reported live evidence, hosted integration gaps and proposed work.
 
 - Homepage navigation reveals the four secondary links at 100px with a subtle 250ms fade/slide; logo and account entry stay anchored. Hidden links are inert, phones retain Menu access, and reduced motion removes the animation. Other pages keep full navigation.

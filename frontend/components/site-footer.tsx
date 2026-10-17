@@ -10,14 +10,14 @@ export function showsRecordsFooter(pathname: string): boolean {
 /**
  * The records-only promise holds for the console and the Defense Lab only. Marketing
  * pages (landing illustrations, pricing) do not get it, because it would be false there.
- * The simulated demo (/demo, ADR 0013) says the opposite, plainly.
+ * The demo account (/demo, ADR 0013) says its data is sample data.
  */
 export function SiteFooter() {
   const pathname = usePathname();
   if (pathname === '/demo' || pathname.startsWith('/demo/')) {
     return (
       <footer className="label-mono mx-auto max-w-7xl border-t border-line px-4 py-6 text-faint" data-testid="site-footer">
-        Simulated demo. Accounts, repositories, commits and agent runs on these pages are illustrative.
+        Demo account. The organization, repositories, commits and results shown are sample data.
       </footer>
     );
   }

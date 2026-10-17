@@ -13,8 +13,8 @@ import { RollText } from '@/components/ui';
 
 const LOOP = ['Understand', 'Review', 'Attack Safely', 'Diagnose', 'Repair', 'Verify', 'Monitor'];
 
-// A demo-only build has no backend, so the calls to action open the simulated demo instead.
-const START = DEMO_ONLY ? { href: '/demo', hero: 'Try the demo', end: 'Try the demo' } : { href: '/projects', hero: 'Go to projects', end: 'Open projects' };
+// A demo-only build has no backend, so the calls to action open the access-code sign-in.
+const START = DEMO_ONLY ? { href: '/access', hero: 'Sign in', end: 'Sign in' } : { href: '/projects', hero: 'Go to projects', end: 'Open projects' };
 
 const i = (n: number) => ({ '--i': n }) as CSSProperties;
 
@@ -32,8 +32,8 @@ export default function HomePage() {
             <span data-spotlight className="hero-line hero-line-dim hero-in text-white/70" style={i(2)}>{BRAND_HEADLINE_REST}</span>
           </h1>
           <div className="hero-in mt-10 flex flex-wrap justify-center gap-3" style={i(3)}>
-            <Link href="/demo" className="group label-mono inline-flex h-11 items-center rounded-md bg-white px-4 text-ink transition-colors duration-[250ms] hover:bg-brand hover:text-on-brand">
-              <RollText>Try the Demo</RollText>
+            <Link href={START.href} className="group label-mono inline-flex h-11 items-center rounded-md bg-white px-4 text-ink transition-colors duration-[250ms] hover:bg-brand hover:text-on-brand">
+              <RollText>{START.hero}</RollText>
             </Link>
             <a href="#how" className="group label-mono inline-flex h-11 items-center rounded-md bg-white/10 px-4 text-white backdrop-blur transition-colors duration-[250ms] hover:bg-white/20">
               <RollText>How It Works</RollText>
