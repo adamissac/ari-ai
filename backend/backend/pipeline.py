@@ -278,8 +278,11 @@ def _orchestrator() -> Any:
 def _catalog_code(exc: BaseException) -> ErrorCode:
     """The shared ErrorCode carried by an exception (``exc.code``), else INTERNAL."""
     raw = getattr(exc, "code", None)
+    value = getattr(raw, "value", raw)
+    if not isinstance(value, str):
+        return ErrorCode.INTERNAL
     try:
-        return ErrorCode(getattr(raw, "value", raw))
+        return ErrorCode(value)
     except ValueError:
         return ErrorCode.INTERNAL
 
