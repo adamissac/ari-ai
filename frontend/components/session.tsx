@@ -22,6 +22,33 @@ export function useSession(): SessionValue {
   return value;
 }
 
+/** The session if one is known here, else null. For public pages that only decorate a signed-in view. */
+export function useOptionalSession(): SessionValue | null {
+  return useContext(SessionContext);
+}
+
+/**
+ * Public pages: render children immediately for everyone. In the background, look
+ * for an existing session and, only if there is one, provide it (so a "signed in as"
+ * bar can appear). Signed-out visitors, or a backend that is down, see the page as is.
+ */
+export function OptionalSession({ children }: { children: ReactNode }) {
+  const [me, setMe] = useState<MeResponse | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    api().session({ signal: controller.signal }).then(setMe, () => { /* public page: no session is fine */ });
+    return () => controller.abort();
+  }, []);
+  const refresh = useCallback(() => { api().session().then(setMe, () => setMe(null)); }, []);
+  const signOut = useCallback(async () => {
+    await api().logout();
+    try { window.sessionStorage.removeItem(INTRO_KEY); } catch { /* storage unavailable */ }
+    setMe(null);
+  }, []);
+  if (!me) return <>{children}</>;
+  return <SessionContext.Provider value={{ me, refresh, signOut }}>{children}</SessionContext.Provider>;
+}
+
 const devLoginVisible = process.env.NEXT_PUBLIC_DEV_LOGIN === '1';
 
 /** Children render only for a backend-confirmed session; offline is an explicit error. */

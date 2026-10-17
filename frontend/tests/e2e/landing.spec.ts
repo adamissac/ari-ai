@@ -1,6 +1,5 @@
 import { expect, test } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
-import { signIn } from './helpers';
 
 const steps = ['Understand', 'Review', 'Attack Safely', 'Diagnose', 'Repair', 'Verify', 'Monitor'];
 
@@ -9,8 +8,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 76
     const errors: string[] = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.setViewportSize(viewport);
-    if (process.env.E2E_DEMO_ONLY === '1') await page.goto('/');
-    else await signIn(page, 'e2e-alice');
+    await page.goto('/'); // public: no sign-in needed
     await expect(page).toHaveTitle('ARI Console');
     await expect(page.locator('meta[property="og:site_name"]')).toHaveAttribute('content', 'ARI');
     await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute('content', 'ARI — Find the flaw. Prove the fix.');
@@ -103,8 +101,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 76
 
 test('reduced motion keeps the hero, logo and menu visible', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  if (process.env.E2E_DEMO_ONLY === '1') await page.goto('/');
-  else await signIn(page, 'e2e-alice');
+  await page.goto('/'); // public: no sign-in needed
   await expect(page.locator('.intro')).toHaveCount(0);
   await expect(page.locator('.hero-content')).toHaveCSS('opacity', '1');
   await expect(page.locator('.hero-orb').first()).toHaveCSS('animation-name', 'none');
