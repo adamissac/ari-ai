@@ -238,6 +238,10 @@ export function Walkthrough() {
         </div>
         </div>
       </section>
+        <p className="label-mono mt-2 text-xs text-muted lg:hidden" data-testid="walk-labels">
+          {step >= 2 && <span className="block">root cause · create_refund</span>}
+          {step === 3 && <span className="block">verified · replay 2 / 2</span>}
+        </p>
     </div>
   );
 }
