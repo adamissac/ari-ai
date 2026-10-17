@@ -24,7 +24,7 @@ acceptance criteria are the minimum for `DONE` in addition to
 | DOCS-003 | License decision | LICENSE, LICENSE-DECISION.md | — | — | UNASSIGNED | DONE | Interim proprietary LICENSE added; long-term choice revisited before going public |
 | DOCS-004 | Set Code of Conduct maintainer contact | CODE_OF_CONDUCT.md | — | — | UNASSIGNED | READY | Contact channel listed |
 | INFRA-002 | Enable private vulnerability reporting + branch protection on `main` | GitHub settings | — | INFRA-001 | UNASSIGNED | READY | Settings enabled; SECURITY.md note updated |
-| INFRA-003 | `docs.yml` (link + Mermaid check) and `secrets.yml` (gitleaks) workflows | .github/workflows | NFR-08 | INFRA-001 | UNASSIGNED | READY | Workflows green on `main`; actions pinned by SHA; least-privilege permissions |
+| INFRA-003 | `docs.yml` (link + Mermaid check) and `secrets.yml` (gitleaks) workflows | .github/workflows | NFR-08 | INFRA-001 | Adam | IN_REVIEW | Workflows green on `main`; actions pinned by SHA; least-privilege permissions |
 | INFRA-004 | Docker Compose dev stack (postgres, api, worker, frontend) | repo root, scripts/ | NFR-09 | CORE-002, UI-001 | UNASSIGNED | BLOCKED | `docker compose up` gives healthy api + frontend; documented in CLAUDE.md Commands |
 | INFRA-005 | Pinned sandbox base images (`test-runner`, `check-runner`) | scripts/, security-agents/ | NFR-01 | — | UNASSIGNED | READY | Images build reproducibly; pinned digests; non-root user |
 | CORE-001 | `shared/` package with core Pydantic models from doc 12 | shared/ | all | — | UNASSIGNED | READY | Models for tenancy, scope, snapshot, finding, evidence, assessment; `extra="forbid"`; round-trip tests |
@@ -41,7 +41,7 @@ acceptance criteria are the minimum for `DONE` in addition to
 | SEC-002 | Tool registry + `scope_guard` (pure) | security-agents/ | NFR-02 | CORE-001 | UNASSIGNED | BLOCKED | Allowlist enforcement (SB-06); scope_guard exhaustive tests ≥ 95% branch |
 | SEC-003 | Sandbox driver: profiles, network `none`, limits, reaper | security-agents/ | NFR-01, NFR-02 | INFRA-005 | UNASSIGNED | BLOCKED | SB-03, SB-05 pass; orphan reaping tested |
 | UI-001 | Next.js scaffold, Tailwind, ESLint/tsc, generated API client, `frontend.yml` | frontend/ | — | CORE-003 | UNASSIGNED | BLOCKED | Builds; typed client generated; CI green |
-| DEMO-001 | `examples/payments-lite` vulnerable demo target with fixtures + build recipe | examples/ | — | — | UNASSIGNED | READY | Documented planted functional bug + authorization weakness; passing (incomplete) test suite; builds in sandbox |
+| DEMO-001 | `examples/payments-lite` vulnerable demo target with fixtures + build recipe | examples/ | — | — | Adam | IN_REVIEW | Documented planted functional bug + authorization weakness; passing (incomplete) test suite; builds in sandbox |
 | TEST-001 | Test harness: FakeLLM, recorded-response replay, fixture layout | tests/ | — | CORE-010 | UNASSIGNED | BLOCKED | Replay of a recorded fixture through gateway in tests |
 | TEST-002 | Contract test suite (IC-1) | tests/contract | — | CORE-003 | UNASSIGNED | BLOCKED | Round-trip + schema drift + OpenAPI checks green |
 
