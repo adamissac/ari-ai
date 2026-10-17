@@ -5,6 +5,7 @@
     generate_tests(host, ReviewRequest, statements) -> list[GeneratedTest]
     propose_repair(host, finding_id, approval_id) -> RepairOutcome    (approval-gated)
     review_assessment(host) -> ReviewOutcome                          (FUNCTIONAL_REVIEW entry)
+    request_functional_approvals(host) / repair_approved_functional_findings(host, repo_id=)
 
 Repositories are registered explicitly by the operator (never cloned from model input):
 ``CODE_REVIEW_REPOSITORIES="rep_<id>=/abs/path/to/repo#optional/subdir;..."``.
@@ -30,7 +31,7 @@ from code_review.tools import ReviewBudget
 from shared.assessment import AssessmentTrigger
 from shared.errors import ErrorCode
 from shared.evidence import EvidenceKind
-from shared.findings import Finding
+from shared.findings import Finding, FindingKind, FindingStatus
 from shared.intelligence import SnapshotRef
 from shared.review import (
     ChangeIntent,
@@ -39,6 +40,7 @@ from shared.review import (
     ReviewRequest,
     ReviewResult,
 )
+from shared.scope import ApprovalStatus, ApprovalSubject
 
 
 def _bindings_file_entries() -> list[dict[str, Any]]:
@@ -303,3 +305,45 @@ def review_assessment(
         budget=a.budget,
     )
     return review_full(host, request, **kw)
+
+
+def request_functional_approvals(host: ReviewHost) -> list[str]:
+    """Ask a human to approve repair of each ``validated`` functional finding that has no
+    remediation approval yet. Returns the new approval ids. Call before AWAITING_APPROVAL."""
+    have = {a.subject_id for a in host.approvals() if a.subject_type is ApprovalSubject.remediation}
+    out = []
+    for f in host.findings():  # type: ignore[attr-defined]
+        if (
+            f.kind is FindingKind.functional
+            and f.status is FindingStatus.validated
+            and f.id not in have
+        ):
+            ap = host.request_approval(  # type: ignore[attr-defined]
+                ApprovalSubject.remediation,
+                f.id,
+                f"repair functional defect: {f.title}"[:500],
+            )
+            out.append(ap.id)
+    return out
+
+
+def repair_approved_functional_findings(
+    host: ReviewHost, *, repo_id: str, **kw: Any
+) -> list[RepairOutcome]:
+    """Run ``propose_repair`` for every validated functional finding whose remediation
+    approval is ``approved``. Declined or pending approvals are skipped, never repaired.
+    Each accepted candidate is a ``PatchCandidate`` for the independent Verify step."""
+    approved = {
+        a.subject_id: a.id
+        for a in host.approvals()
+        if a.subject_type is ApprovalSubject.remediation and a.status is ApprovalStatus.approved
+    }
+    outcomes = []
+    for f in host.findings():  # type: ignore[attr-defined]
+        if (
+            f.kind is FindingKind.functional
+            and f.status is FindingStatus.validated
+            and f.id in approved
+        ):
+            outcomes.append(propose_repair(host, f.id, approved[f.id], repo_id=repo_id, **kw))
+    return outcomes
