@@ -152,3 +152,12 @@ abort. No provider or target execution occurred in transport tests.
 Alan recovered-catalog continuation (2026-10-17): isolated canonical CVSS3.1/OWASP API/NIST800-115 additions landed as PR #74.
 
 SEC-010/SEC-012 continuation (2026-10-17): #73 and #83 merged (host persistence, resume hardening). Follow-up `feat/alan/verify-honesty-check-category`: keep `provider_mode=none` for functional Verify; canonical `CheckCategory` (Probe ids + V0 aliases). #35 closed.
+
+### REG-001 — Finish Devin’s incident closure evidence connection
+
+Owner: Srihith. Status: IN_REVIEW on `fix/srihith/fortify-closure-artifacts`. Dependencies: merged UI PRs80/81 and host verification. Acceptance: real hosted assessment persists regression source artifact; lessons learned and complete approved incident lifecycle work via API and rendered UI; rejected/unsafe/mutated source guards remain enforced; no fabricated verification claims.
+
+REG-001 validation: focused54/root325/security396/frontend32/browser12 passed; real source archive → lessons → two-person approved Closed persists on reload. See SESSION_HANDOFF for skips and limits.
+
+### QA-001 — execute Devin’s unfinished QA proposal
+Owner: Srihith; IN_REVIEW on `fix/srihith/qa-reliability`. Existing suite wrappers now use valid imports/commands, preserve the Python interpreter and live-call opt-out, report incomplete prerequisites separately, validate readiness JSON, and have CI-tested failure semantics. See docs/devin_qa/README.md and SESSION_HANDOFF for executed evidence.
