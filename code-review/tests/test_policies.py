@@ -301,3 +301,49 @@ def test_generated_tests_cannot_introduce_new_credentials(billing) -> None:
             rationale="r",
         )
     )
+
+
+def test_resolve_repo_registries_and_build_recipe(tmp_path: Path, monkeypatch) -> None:
+    import json as _json
+    import subprocess as _sp
+
+    from backend.settings import get_settings
+    from code_review.agent import ReviewError
+    from code_review.api import resolve_repo
+
+    sc = discount_rounding(tmp_path)
+    assert resolve_repo("rep_x00000001", f"rep_x00000001={sc.repo}#billing").subdir == "billing"
+    with pytest.raises(ReviewError):
+        resolve_repo("rep_missing001", f"rep_x00000001={sc.repo}")
+    with pytest.raises(ReviewError):
+        resolve_repo("rep_x00000001", "rep_x00000001=relative/path")
+
+    # shared backend registry + build_recipe.json target_dir pinned at the commit
+    (sc.repo / "build_recipe.json").write_text(_json.dumps({"target_dir": "billing"}))
+    env = {
+        "GIT_CONFIG_GLOBAL": "/dev/null",
+        "PATH": "/usr/bin:/bin:/opt/homebrew/bin",
+        "GIT_AUTHOR_NAME": "f",
+        "GIT_AUTHOR_EMAIL": "f@x.test",
+        "GIT_COMMITTER_NAME": "f",
+        "GIT_COMMITTER_EMAIL": "f@x.test",
+    }
+    _sp.run(["git", "-C", str(sc.repo), "add", "-A"], check=True, env=env)
+    _sp.run(["git", "-C", str(sc.repo), "commit", "-qm", "recipe"], check=True, env=env)
+    sha = _sp.run(
+        ["git", "-C", str(sc.repo), "rev-parse", "HEAD"], capture_output=True, text=True, check=True
+    ).stdout.strip()
+    bindings = tmp_path / "bindings.json"
+    bindings.write_text(
+        _json.dumps([{"repo_id": "rep_bound00001", "local_path": str(sc.repo), "subdir": "."}])
+    )
+    monkeypatch.delenv("CODE_REVIEW_REPOSITORIES", raising=False)
+    monkeypatch.setenv("REPOSITORY_BINDINGS_FILE", str(bindings))
+    get_settings.cache_clear()
+    try:
+        assert resolve_repo("rep_bound00001").subdir == ""
+        assert resolve_repo("rep_bound00001", commit_sha=sha).subdir == "billing"
+        assert resolve_repo("rep_bound00001", commit_sha=sc.head_sha).subdir == ""  # no recipe then
+    finally:
+        monkeypatch.delenv("REPOSITORY_BINDINGS_FILE")
+        get_settings.cache_clear()
