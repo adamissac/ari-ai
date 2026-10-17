@@ -3,7 +3,7 @@
 - [x] **M0** shared schemas, importable packages, reproducible local run commands, PR/branch conventions agreed. Gate: 6 owners acknowledge types; CI contract tests pass.
 - [x] **M1** intelligence indexes the owned Python example by SHA, structured graphs, expectations and citeable context packs. Gate: tests and provenance inspection.
 - [x] **M2** reviewer with real Claude agent loop can interpret commit intention, call retrieval/tests, generate candidate in safe worktree, inspect results. Gate: live optional smoke and deterministic fixture tests; functional defect reproduced.
-- [ ] **M3** 7 *different* agent runners with actual bounded tool-use and distinct permissions and typed handoffs. Gate: observed real model/tool trace per required role (opt-in), fake-provider integration tests; separated Verify actual tests.
+- [x] **M3** 7 *different* agent runners with actual bounded tool-use and distinct permissions and typed handoffs. Gate: observed real model/tool trace per required role (opt-in), fake-provider integration tests; separated Verify actual tests.
 - [x] **M4** FastAPI, DB migrations, durable queue, signed idempotent GitHub webhook, scope/approval, persisted audit and SSE. Gate: signed event -> durable queued analysis -> event stream in test.
 - [x] **M5** Double DQN trains from scratch; replay, target/online networks, masks, held-out evaluation and baselines run. Gate: checked env, deterministic seed, checkpoint reload, nonzero learning updates, honest metrics.
 - [x] **M6** frontend displays real backend assessments, actual finding provenance, agent steps, approval controls, RL evaluation and monitoring. Gate: browser e2e on live local service; mocks are test-only.
@@ -155,3 +155,26 @@ deps installed as `rl.yml` does: `-e ../standards -e ../shared -e ".[dev]"`):
 - **Limitations:** simulation only; no claim of real-world detection or response (RQ-005).
   Round 4 (false-disruption reduction) found no candidate that meets the pre-registered rule;
   v1 stays current.
+
+### M3 live run - Alan (gate met)
+
+- 2026-10-17T20:53Z, main @ `b44d372` (includes #219, #233, #238). One authorized run, no retries, owner's own key in a local shell only:
+  `cd security-agents && env -u AGENT_MODEL_OVERRIDES RUN_LIVE_LLM_EVAL=1 LIVE_SEVEN_MAX_USD=6 python -m pytest -q -m live tests/test_live_provider.py -k seven_roles -s` gave **1 passed in 224.78 s**.
+- All seven roles made live `claude-opus-5-5` turns with tool calls and succeeded:
+
+  | Role | Turns | Tool calls | USD |
+  |---|---|---|---|
+  | Scout | 4 | 8 | 0.1880 |
+  | Probe | 3 | 4 | 0.0832 |
+  | Trace | 4 | 6 | 0.2275 |
+  | Diagnose | 3 | 4 | 0.1472 |
+  | Patch | 5 | 9 | 0.3117 |
+  | Verify | 5 | 6 | 0.1370 |
+  | Fortify | 4 | 7 | 0.2916 |
+
+- States: scope_check, indexing, functional_review, recon, validation, analysis, diagnosis, awaiting_approval (CLI auto-approve), remediation, hardening, reporting, completed.
+- Probe ran `access_control.ownership@1` on `payment_detail` (`matches_expectation=False`) and the validation was **confirmed** (CWE-639, `GET /payments/{payment_id}`). Patch added `tests/test_payment_ownership.py`. Independent Verify **accepted**. Fortify ran and the finding ended **hardened**. Scout's second hypothesis (refund running total, CWE-841) was not validated, because the run validates one hypothesis.
+- Usage: 236,815 input and 21,952 output tokens, **$1.3863** (cap $6), 2.49 s of sandbox time.
+- Report: `security-agents/tests/artifacts/live/20261017T205333Z-seven_roles_end_to_end.json` (gitignored, kept by Alan). It contains no API key. The tool traces include the payments-lite fixture's synthetic tokens from `code.search` results over the target's own test code; these are not real secrets.
+- Earlier attempts that day: Srihith's run stopped at Probe ($0.38, inconclusive, fixed by #219 and #233). Three runs with an invalid key failed at Scout's first request with 401 ($0.00).
+- Limitations: one run, one owned fixture, the local-process sandbox (not Docker), CLI auto-approval in place of a human, and Patch noted it did not run its new test on the unpatched code (Verify's checks ran independently).
