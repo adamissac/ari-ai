@@ -13,8 +13,8 @@ import { INTERNET, nodeStatusLine, nodeViews, parseAction, type NodeView, type S
  * table repeats every node value for assistive technology.
  */
 
-const W = 760;
-const H = 400;
+const W = 1080;
+const H = 480;
 export const INTERNET_ID = '__internet__';
 
 type Point = { x: number; y: number };
@@ -35,7 +35,7 @@ export function layoutNetwork(scenario: LabScenario): Map<string, Point> {
   const cols = new Map<number, string[]>();
   for (const n of scenario.nodes) { const d = depth.get(n.name) ?? 0; cols.set(d, [...(cols.get(d) ?? []), n.name]); }
   const maxD = Math.max(0, ...cols.keys());
-  const x0 = 80; const x1 = W - 80;
+  const x0 = 100; const x1 = W - 110;
   const step = (x1 - x0) / (maxD + 1);
   const pos = new Map<string, Point>();
   pos.set(INTERNET_ID, { x: x0, y: H / 2 });
@@ -176,6 +176,11 @@ export function NodeGraph({ scenario, states, action = 'noop', t = 0, selected =
 
   return (
     <div className="net-map" data-truth={showTruth || undefined}>
+      <div className="network-heading"><span className="network-eyebrow">NETWORK / RECORDED STEP {t}</span><span>Follow the connections. Select a service to look inside.</span></div>
+      <div className="network-actors">
+        <div><span className="actor-dot actor-threat" /><span><b>Attacker location</b><small>{showTruth ? states.filter(s => s.hidden_stage_ground_truth !== 'none').map(s => byName.get(s.node)?.info.label ?? s.node).join(', ') || 'Not inside the network at this step' : 'Hidden — turn on replay ground truth to see it'}</small></span></div>
+        <div><span className="actor-dot actor-guard" /><span><b>Defender location</b><small>{target ? `${byName.get(target)?.info.label ?? target} · ${parseAction(action).verb.replaceAll('_', ' ')}` : action === 'escalate_to_human' ? 'Calling a person for help' : 'Watching the network; no move this step'}</small></span></div>
+      </div>
       <div className="net-scroll">
       <div className="net-canvas">
       <svg
@@ -197,6 +202,8 @@ export function NodeGraph({ scenario, states, action = 'noop', t = 0, selected =
           <radialGradient id="net-hot"><stop offset="0%" stopColor="#c2452d" stopOpacity="0.42" /><stop offset="100%" stopColor="#c2452d" stopOpacity="0" /></radialGradient>
         </defs>
         <rect width={W} height={H} fill="url(#net-dots)" />
+        <text x="28" y="30" className="network-zone">OUTSIDE</text><text x="260" y="30" className="network-zone">YOUR APPLICATION</text>
+        <line x1="205" x2="205" y1="48" y2={H - 20} className="network-boundary" />
         <g transform={`translate(${view.x} ${view.y}) scale(${view.k})`}>
           {edges.map(([a, b]) => {
             const p = pos(a); const q = pos(b);
@@ -224,7 +231,7 @@ export function NodeGraph({ scenario, states, action = 'noop', t = 0, selected =
               <g transform={`translate(${p.x},${p.y})`} className="net-node net-internet" data-dim={(focus !== null && !neighbours.has(INTERNET_ID)) || undefined}
                 onPointerEnter={() => setHover(INTERNET_ID)} onPointerLeave={() => setHover(null)}>
                 <title>{INTERNET.role}</title>
-                <circle r="20" className="net-body" />
+                <rect x="-68" y="-42" width="136" height="104" rx="12" className="network-card" /><circle r="20" className="net-body" />
                 <g className="net-icon"><Icon kind="internet" /></g>
                 <text y="38" textAnchor="middle" className="net-label">Internet</text>
                 <text y="51" textAnchor="middle" className="net-sub">outside traffic</text>
@@ -258,6 +265,7 @@ export function NodeGraph({ scenario, states, action = 'noop', t = 0, selected =
                 onBlur={() => setHover(h => (h === v.name ? null : h))}
                 onKeyDown={onKey(v.name)}
               >
+                <rect x={-82} y={-49} width={164} height={128} rx={13} className="network-card" />
                 {v.signal === 'high' && <circle r={r * 2.1} fill="url(#net-hot)" className="net-glow" />}
                 {showTruth && stage !== 'none' && <circle r={r + 12} className="net-truth" />}
                 {isTarget && <circle key={`act-${t}`} r={r + 6} className="net-act" />}
@@ -266,8 +274,10 @@ export function NodeGraph({ scenario, states, action = 'noop', t = 0, selected =
                 <g className="net-icon" transform={`scale(${(r / 24).toFixed(3)})`}><Icon kind={v.info.kind} /></g>
                 {badgesFor(v).map((b, i) => <StateBadge key={b} kind={b} x={r * 0.8} y={-r * 0.8 + i * 20} />)}
                 <text y={r + 18} textAnchor="middle" className="net-label">{v.info.label}</text>
-                <text y={r + 31} textAnchor="middle" className="net-sub">{v.name}{v.critical ? ' · critical' : ''}</text>
-                {showTruth && stage !== 'none' && <text y={-r - 16} textAnchor="middle" className="net-truth-label">attacker: {stage}</text>}
+                <text y={r + 31} textAnchor="middle" className="net-sub">{v.critical ? 'IMPORTANT SERVICE' : 'APPLICATION SERVICE'}</text>
+                {isTarget && <g transform="translate(-64,88)" className="network-defender"><rect width="128" height="24" rx="5" /><text x="64" y="16" textAnchor="middle">◇ DEFENDER HERE</text></g>}
+                {showTruth && stage !== 'none' && <g transform="translate(-64,-83)" className="network-intruder"><rect width="128" height="24" rx="5" /><text x="64" y="16" textAnchor="middle">{v.isolated ? '× ATTACKER CUT OFF' : '▲ ATTACKER HERE'}</text></g>}
+                {showTruth && stage !== 'none' && <text y={-r - 7} textAnchor="middle" className="net-truth-label">attacker: {stage}</text>}
               </g>
             );
           })}
