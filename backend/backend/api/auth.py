@@ -119,8 +119,14 @@ def github_login() -> Response:
 
 
 @router.get("/auth/github/callback")
-def github_callback(request: Request, code: str = "", state: str = "") -> Response:
+def github_callback(
+    request: Request, code: str = "", state: str = "", setup_action: str = ""
+) -> Response:
     s = get_settings()
+    if setup_action in ("install", "update") and not state:
+        # Returning from installing the App: GitHub sends a code without our state. Never
+        # trust it; start a normal sign-in instead, which refreshes the repository list.
+        return RedirectResponse(f"{s.api_base_url}/api/v1/auth/github/login", status_code=302)
     expected = request.cookies.get(STATE_COOKIE, "")
     if not code or not state or not secrets.compare_digest(state.encode(), expected.encode()):
         raise ApiError(ErrorCode.FORBIDDEN, "invalid OAuth state", 403)
@@ -158,7 +164,8 @@ def github_callback(request: Request, code: str = "", state: str = "") -> Respon
         if repos is not None:
             store_repo_access(conn, user_id, repos)
         token, _ = create_session(conn, user_id)
-    resp = RedirectResponse(s.frontend_origin, status_code=302)
+    # Straight to choosing an organization and repository.
+    resp = RedirectResponse(f"{s.frontend_origin}/connect", status_code=302)
     _set_session_cookie(resp, token)
     resp.delete_cookie(STATE_COOKIE)
     return resp
