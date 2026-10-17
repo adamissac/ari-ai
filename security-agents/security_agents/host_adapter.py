@@ -45,8 +45,9 @@ from .contracts import (
 )
 from .contracts import export as contract_export
 from .intel import CodeIntel, LocalIntel, load_expectations
+from .redact import redact
 from .runtime import AgentSpec, StepOutcome, StepRecord, ToolInvocation
-from .runtime.loop import DATA_BLOCK_NOTE
+from .runtime.loop import DATA_BLOCK_NOTE, result_summary
 from .sandbox.driver import LocalProcessDriver, SandboxDriver
 from .sandbox.workspace import SnapshotHandle, copy_tree
 from .tools import ToolContext, ToolRegistry, default_registry, tool_name, wire_name
@@ -387,10 +388,10 @@ def _handler(ctx: ToolContext, registry: ToolRegistry, record: StepRecord, name:
         record.tool_invocations.append(
             ToolInvocation(
                 name=tool_name(name),
-                args={},
+                args=redact(args.model_dump(mode="json")),
                 ok=ok,
                 error_code=error_code,
-                summary={k: v for k, v in payload.items() if k in ("error", "detail")},
+                summary=result_summary(payload),
             )
         )
         return payload
