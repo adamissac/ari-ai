@@ -227,6 +227,56 @@ class CVSSAssessment(StrictModel):
         return self
 
 
+class CVSS31MetricEvidence(StrictModel):
+    metric: Literal["AV", "AC", "PR", "UI", "S", "C", "I", "A"]
+    value: ShortText
+    status: Literal["cited", "unverified"]
+    evidence: list[EvidenceRef] = Field(default_factory=list)
+    rationale: ShortText = ""
+
+    @model_validator(mode="after")
+    def _cited_has_evidence(self) -> CVSS31MetricEvidence:
+        if self.status == "cited" and not self.evidence:
+            raise ValueError("a cited CVSS v3.1 metric must carry evidence")
+        if self.status == "unverified" and self.evidence:
+            raise ValueError("an unverified CVSS v3.1 metric carries no evidence")
+        return self
+
+
+class CVSS31Assessment(StrictModel):
+    """A CVSS v3.1 base assessment. Vector, score and rating are computed, never model-supplied."""
+
+    version: Literal["3.1"] = "3.1"
+    vector: ShortText
+    base_score: float = Field(ge=0, le=10)
+    rating: Literal["none", "low", "medium", "high", "critical"]
+    score_kind: ShortText = Field(description="Always labels the value as a base score only")
+    metric_evidence: list[CVSS31MetricEvidence] = Field(min_length=8, max_length=8)
+    assessor: ShortText = Field(description="'system:standards.cvss31' or 'user:<usr_id>'")
+
+    @model_validator(mode="after")
+    def _matches_deterministic_scoring(self) -> CVSS31Assessment:
+        from standards.cvss31 import BASE_ORDER, SCORE_KIND, CvssError, parse_vector, score_vector
+
+        try:
+            result = score_vector(self.vector)
+        except CvssError as error:
+            raise ValueError(str(error)) from error
+        if result.vector != self.vector:
+            raise ValueError("CVSS v3.1 vector must be in canonical metric order")
+        if self.base_score != result.score or self.rating != result.rating:
+            raise ValueError("CVSS v3.1 score and rating must match deterministic scoring")
+        if self.score_kind != SCORE_KIND:
+            raise ValueError(f"score_kind must be {SCORE_KIND!r}")
+        parsed = parse_vector(self.vector)
+        values: dict[str, str] = {m.metric: m.value for m in self.metric_evidence}
+        if len(values) != len(self.metric_evidence) or set(values) != set(BASE_ORDER):
+            raise ValueError("CVSS v3.1 needs each base metric exactly once")
+        if any(getattr(parsed, name) != values[name] for name in BASE_ORDER):
+            raise ValueError("CVSS v3.1 metric values must match the vector")
+        return self
+
+
 class LegacyScore(StrictModel):
     """A score imported from elsewhere, kept verbatim with its scoring system and version."""
 
