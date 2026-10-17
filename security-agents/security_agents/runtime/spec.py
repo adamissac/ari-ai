@@ -39,6 +39,9 @@ class AgentSpec:
     max_calls_per_tool: dict[str, int] = field(default_factory=dict)
     effort: str = "medium"
     max_output_tokens: int = 8000
+    # Schema-invalid submissions (or a reply cut off before submitting) the model may repair
+    # before the step fails SCHEMA_INVALID. Validation itself is never relaxed.
+    max_schema_repairs: int = 1
 
     def submit_tool_name(self) -> str:
         return f"submit_{self.name.value}_output"
