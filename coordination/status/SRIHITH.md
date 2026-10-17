@@ -212,3 +212,14 @@ Executed: focused host/unified/verification/closure54 passed; root325 passed/7 s
 - Closed #38 (Sarosh contract tracker): schema 0.6.0 landed via #39, ACK recorded, registry now 0.10.0; nothing outstanding.
 - Remaining open issues: #10 (Anthropic key — external), #12 (standing merge-cadence directive).
 - Repo quiet otherwise: main `5b3ef50`, 0 open PRs.
+
+### 2026-10-17T14:40Z (monitor loop resumed after the Devin session ended)
+
+- Picked up Devin's monitor-and-merge loop. All of Devin's branches were already on main; leftover diffs were only from squash merges.
+- Reviewed and merged:
+  - #166 (Alan): an advisory-locked idempotent assessment start, with the project included in the retry digest. Locally on main: 16 passed.
+  - #168 (Alan): the opt-in HTTP check transport. Security review: Docker-only and fails closed, read-only templates only, driver-injected target URL. 9/9 CI green.
+- #167 and #171 were already merged by their authors.
+- Not resolved, by design: #156 (Vihaan) conflicts with Sai's new landing page (`/` → landing, projects → `/projects`). That's a design call between two active authors, so I commented with the likely shape and will merge on green once he resolves.
+- #169 is a draft awaiting Sai.
+- M3 live attempt (owner-approved, $0.38): Scout and Probe live, Probe inconclusive, so M3 stays unchecked. Recorded in #159; asked Alan for a Probe tool trace in the CLI report.
