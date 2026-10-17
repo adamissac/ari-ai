@@ -76,10 +76,10 @@ export default function DefenseLabPage() {
   );
 }
 
-const GAME_STEPS = [
-  { n: '01', title: 'A pretend network', body: 'Five fake machines, some reachable from the internet, some holding critical data.' },
-  { n: '02', title: 'A simulated attacker', body: 'It sneaks in and tries to reach a critical machine without being stopped.' },
-  { n: '03', title: 'A defender choosing moves', body: 'Each step it can watch, slow traffic, cut a machine off, ask for a re-check or call a person.' },
+const GAME_STEPS: { n: string; title: string; body: (machines: string) => string }[] = [
+  { n: '01', title: 'A pretend network', body: machines => `${machines.charAt(0).toUpperCase()}${machines.slice(1).replace(/machines?$/, m => `fake ${m}`)}, some reachable from the internet, some holding critical data.` },
+  { n: '02', title: 'A simulated attacker', body: () => 'It sneaks in and tries to reach a critical machine without being stopped.' },
+  { n: '03', title: 'A defender choosing moves', body: () => 'Each step it chooses from a fixed set of moves, such as watching, slowing traffic or cutting a machine off.' },
 ];
 
 function Lab({ data }: { data: BundleResponse }) {
@@ -98,7 +98,7 @@ function Lab({ data }: { data: BundleResponse }) {
             <li key={step.n} className="rounded-2xl border border-line bg-panel p-5">
               <p className="label-mono text-brand">{step.n}</p>
               <p className="mt-2 font-semibold tracking-tight">{step.title}</p>
-              <p className="mt-1 text-sm text-muted">{step.n === '01' ? step.body.replace('Five fake machines', `${machineCountPhrase(bundle.scenarios).replace(/^./, c => c.toUpperCase()).replace(/machines?$/, m => `fake ${m}`)}`) : step.body}</p>
+              <p className="mt-1 text-sm text-muted">{step.body(machineCountPhrase(bundle.scenarios))}</p>
             </li>
           ))}
         </ol>
@@ -168,7 +168,7 @@ function Scoreboard({ bundle }: { bundle: DefenseLabBundle }) {
                     <li key={c.policy} className="text-sm">
                       <p className="flex items-baseline justify-between gap-2">
                         <span className={ai ? 'font-semibold text-ink' : 'text-muted'} title={POLICY_NAME[c.policy]?.note}>
-                          {policyName(c.policy)}{c.best && <span aria-label="best" className="lab-best">★ best</span>}
+                          {policyName(c.policy)}{c.best && <span className="lab-best">★ best</span>}
                         </span>
                         <span className="whitespace-nowrap font-mono text-xs">{fmt(c.value)} <span className="text-faint">[{fmt(c.lo)}–{fmt(c.hi)}]</span></span>
                       </p>
@@ -304,11 +304,11 @@ function Player({ episode, scenario }: { episode: LabEpisode; scenario: LabScena
         <div className="min-w-0">
           <Topology scenario={scenario} states={step?.nodes ?? []} />
           <div className="lab-controls mt-3">
-            <Button variant="primary" onClick={() => { if (!playing && t >= steps - 1) setT(0); setPlaying(p => !p); }} aria-pressed={playing}>{playing ? 'Pause' : t >= steps - 1 ? 'Replay' : 'Play'}</Button>
+            <Button variant="primary" onClick={() => { if (!playing && t >= steps - 1) setT(0); setPlaying(p => !p); }}>{playing ? 'Pause' : t >= steps - 1 ? 'Replay' : 'Play'}</Button>
             <div role="group" aria-label="Speed" className="lab-segment lab-segment-sm">
               {SPEEDS.map((sp, i) => <button key={sp.label} type="button" aria-pressed={speed === i} onClick={() => setSpeed(i)} className="lab-segment-btn">{sp.label}</button>)}
             </div>
-            <input aria-label="Step" type="range" min={0} max={Math.max(0, steps - 1)} value={t} onChange={e => seek(Number(e.target.value))} className="order-last min-w-0 basis-full accent-[var(--color-brand)] sm:order-none sm:basis-0 sm:flex-1" />
+            <input aria-label="Step" aria-valuetext={`Step ${step?.t ?? t} of ${scenario.horizon}`} type="range" min={0} max={Math.max(0, steps - 1)} value={t} onChange={e => seek(Number(e.target.value))} className="order-last min-w-0 basis-full accent-[var(--color-brand)] sm:order-none sm:basis-0 sm:flex-1" />
             <span className="font-mono text-xs text-muted">t = {step?.t ?? 0} / {scenario.horizon}</span>
           </div>
           <div className="mt-3"><Timeline episode={episode} t={t} onSeek={seek} /></div>
@@ -396,7 +396,7 @@ function Timeline({ episode, t, onSeek }: { episode: LabEpisode; t: number; onSe
       <figcaption className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
         <span><strong>Top:</strong> how far the hidden attacker got (simulation ground truth, never shown to the defender):
           {' '}<Swatch c={STAGE_FILL.foothold} /> {STAGE_WORDS.foothold} <Swatch c={STAGE_FILL.escalated} /> {STAGE_WORDS.escalated} <Swatch c={STAGE_FILL.impact} /> {STAGE_WORDS.impact}</span>
-        <span><strong>Bottom:</strong> <Swatch c="var(--color-brand)" /> disruptive action (cut off / slow down) <Swatch c="color-mix(in srgb, var(--color-brand) 35%, white)" /> other action. Click to jump.</span>
+        <span><strong>Bottom:</strong> <Swatch c="var(--color-brand)" /> disruptive action (cut off / slow down) <Swatch c="color-mix(in srgb, var(--color-brand) 35%, white)" /> other action. Click to jump, or use the Step slider.</span>
       </figcaption>
     </figure>
   );
