@@ -33,7 +33,7 @@
         "artifact_id": {
           "anyOf": [
             {
-              "pattern": "^art_[0-9A-Za-z]{8,64}$",
+              "pattern": "^art_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -142,7 +142,7 @@
       "additionalProperties": false,
       "properties": {
         "assessment_id": {
-          "pattern": "^asm_[0-9A-Za-z]{8,64}$",
+          "pattern": "^asm_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Assessment Id",
           "type": "string"
         },
@@ -172,7 +172,7 @@
         },
         "expectation_ids": {
           "items": {
-            "pattern": "^exp_[0-9A-Za-z]{8,64}$",
+            "pattern": "^exp_[0-9A-Za-z_\\-]{8,64}$",
             "type": "string"
           },
           "title": "Expectation Ids",
@@ -186,7 +186,7 @@
           "type": "array"
         },
         "id": {
-          "pattern": "^fnd_[0-9A-Za-z]{8,64}$",
+          "pattern": "^fnd_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
@@ -196,7 +196,7 @@
         "produced_by_run_id": {
           "anyOf": [
             {
-              "pattern": "^run_[0-9A-Za-z]{8,64}$",
+              "pattern": "^run_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -220,7 +220,7 @@
         "snapshot_id": {
           "anyOf": [
             {
-              "pattern": "^snp_[0-9A-Za-z]{8,64}$",
+              "pattern": "^snp_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -298,20 +298,20 @@
       "additionalProperties": false,
       "properties": {
         "artifact_id": {
-          "pattern": "^art_[0-9A-Za-z]{8,64}$",
+          "pattern": "^art_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Artifact Id",
           "type": "string"
         },
         "expectation_ids": {
           "items": {
-            "pattern": "^exp_[0-9A-Za-z]{8,64}$",
+            "pattern": "^exp_[0-9A-Za-z_\\-]{8,64}$",
             "type": "string"
           },
           "title": "Expectation Ids",
           "type": "array"
         },
         "id": {
-          "pattern": "^tst_[0-9A-Za-z]{8,64}$",
+          "pattern": "^tst_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
@@ -357,7 +357,7 @@
         "expectation_id": {
           "anyOf": [
             {
-              "pattern": "^exp_[0-9A-Za-z]{8,64}$",
+              "pattern": "^exp_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -437,7 +437,7 @@
           "type": "string"
         },
         "diff_artifact_id": {
-          "pattern": "^art_[0-9A-Za-z]{8,64}$",
+          "pattern": "^art_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Diff Artifact Id",
           "type": "string"
         },
@@ -457,19 +457,19 @@
           "type": "array"
         },
         "finding_id": {
-          "pattern": "^fnd_[0-9A-Za-z]{8,64}$",
+          "pattern": "^fnd_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Finding Id",
           "type": "string"
         },
         "id": {
-          "pattern": "^pat_[0-9A-Za-z]{8,64}$",
+          "pattern": "^pat_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
         "local_test_run_id": {
           "anyOf": [
             {
-              "pattern": "^tst_[0-9A-Za-z]{8,64}$",
+              "pattern": "^tst_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -480,7 +480,7 @@
           "title": "Local Test Run Id"
         },
         "produced_by_run_id": {
-          "pattern": "^run_[0-9A-Za-z]{8,64}$",
+          "pattern": "^run_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Produced By Run Id",
           "type": "string"
         },
@@ -695,12 +695,12 @@
   "additionalProperties": false,
   "properties": {
     "agent_run_id": {
-      "pattern": "^run_[0-9A-Za-z]{8,64}$",
+      "pattern": "^run_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Agent Run Id",
       "type": "string"
     },
     "assessment_id": {
-      "pattern": "^asm_[0-9A-Za-z]{8,64}$",
+      "pattern": "^asm_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Assessment Id",
       "type": "string"
     },

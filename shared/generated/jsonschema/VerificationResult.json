@@ -22,7 +22,7 @@
         "artifact_id": {
           "anyOf": [
             {
-              "pattern": "^art_[0-9A-Za-z]{8,64}$",
+              "pattern": "^art_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -238,17 +238,17 @@
       "type": "string"
     },
     "id": {
-      "pattern": "^ver_[0-9A-Za-z]{8,64}$",
+      "pattern": "^ver_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Id",
       "type": "string"
     },
     "patch_id": {
-      "pattern": "^pat_[0-9A-Za-z]{8,64}$",
+      "pattern": "^pat_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Patch Id",
       "type": "string"
     },
     "produced_by_run_id": {
-      "pattern": "^run_[0-9A-Za-z]{8,64}$",
+      "pattern": "^run_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Produced By Run Id",
       "type": "string"
     },

@@ -6,6 +6,8 @@ from torch import nn
 from rl_defense.envs.defense_sim import N_ACTIONS, NODE_FEATURES, OBS_DIM, encode_action
 from rl_defense.explain import explain
 
+REC = "rec_01EXPLAINTEST"
+
 
 class LinearQ(nn.Module):
     """Q(a) = w_a · obs, so occlusion effects are exactly computable."""
@@ -32,7 +34,7 @@ def _setup():
 
 def test_explanation_identifies_the_driving_feature_exactly():
     net, obs, _ = _setup()
-    e = explain(net, obs, np.ones(N_ACTIONS, dtype=bool))
+    e = explain(net, obs, np.ones(N_ACTIONS, dtype=bool), REC)
     assert e.action == "isolate:payments" and e.runner_up == "noop"
     top = e.top_contributions[0]
     assert (top.node, top.feature, top.kind) == ("payments", "anomaly_score", "signal")
@@ -44,7 +46,7 @@ def test_explanation_respects_mask_and_skips_zero_features():
     net, obs, iso = _setup()
     mask = np.ones(N_ACTIONS, dtype=bool)
     mask[iso] = False
-    e = explain(net, obs, mask)
+    e = explain(net, obs, mask, REC)
     assert e.action != "isolate:payments"
     assert all(c.value != 0.0 for c in e.top_contributions)
 
@@ -52,8 +54,18 @@ def test_explanation_respects_mask_and_skips_zero_features():
 def test_explanation_is_deterministic_and_validates_input():
     net, obs, _ = _setup()
     mask = np.ones(N_ACTIONS, dtype=bool)
-    assert explain(net, obs, mask) == explain(net, obs, mask)
+    assert explain(net, obs, mask, REC) == explain(net, obs, mask, REC)
     with pytest.raises(ValueError):
-        explain(net, obs[:-1], mask)
+        explain(net, obs[:-1], mask, REC)
     with pytest.raises(ValueError):
-        explain(net, obs, np.zeros(N_ACTIONS, dtype=bool))
+        explain(net, obs, np.zeros(N_ACTIONS, dtype=bool), REC)
+
+
+def test_explanation_is_the_shared_contract_model():
+    from shared.rl import RLExplanation
+
+    net, obs, _ = _setup()
+    e = explain(net, obs, np.ones(N_ACTIONS, dtype=bool), REC)
+    assert isinstance(e, RLExplanation)
+    assert e.recommendation_id == REC and e.simulation_derived is True
+    assert RLExplanation.model_validate_json(e.model_dump_json()) == e

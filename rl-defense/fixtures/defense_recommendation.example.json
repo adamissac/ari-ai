@@ -1,5 +1,5 @@
 {
-  "_note": "Real output of rl_defense.api.load_policy('runs/protocol-v0-1182773/ddqn_seed0.pt').recommend(input_facts) at commit 1182773. Simulation-derived; not applied automatically.",
+  "_note": "Real output of rl_defense.api.load_policy('runs/protocol-v1/ddqn_seed0.pt').recommend_with_explanation(input_facts) \u2014 protocol-v1 policy (results/protocol-v1). Simulation-derived; never applied automatically.",
   "input_facts": {
     "project_id": "prj_01DEMOPAYMENTSLITE",
     "nodes": [
@@ -70,28 +70,28 @@
   },
   "recommendation": {
     "schema_version": "0.1.0",
-    "id": "rec_983826c9ca1949da9a9f712891d4e734",
+    "id": "rec_87a28bd119134197b19e3d2b24d79f9d",
     "project_id": "prj_01DEMOPAYMENTSLITE",
-    "policy_version": "DefenseSimEnv-v0@48289e79c567",
-    "checkpoint_sha256": "48289e79c567c21ace95ce5d54702f6ece5c302d2bf4b2424ccb8435b539e38a",
-    "action": "rate_limit",
-    "node": "auth",
-    "q_margin": 0.025567054748535156,
+    "policy_version": "DefenseSimEnv-v0@c5fb4d0909fa",
+    "checkpoint_sha256": "c5fb4d0909fa28f0fa28b51e271c68448ead3624288165e7846d082776041619",
+    "action": "request_reassessment",
+    "node": "api",
+    "q_margin": 0.2129383087158203,
     "top_actions": [
       {
-        "action": "rate_limit",
-        "node": "auth",
-        "q_value": -9.844295501708984
+        "action": "request_reassessment",
+        "node": "api",
+        "q_value": -26.37142562866211
       },
       {
-        "action": "rate_limit",
-        "node": "payments",
-        "q_value": -9.86986255645752
+        "action": "isolate",
+        "node": "api",
+        "q_value": -26.58436393737793
       },
       {
         "action": "rate_limit",
         "node": "gateway",
-        "q_value": -9.908014297485352
+        "q_value": -26.824254989624023
       }
     ],
     "observation": [
@@ -145,17 +145,17 @@
       0.0
     ],
     "simulation_derived": true,
-    "caveat": "Recommendation from a policy trained in simulation. Not applied automatically.",
-    "created_at": "2026-10-17T01:07:32.530396Z"
+    "caveat": "Simulation-derived recommendation from a policy trained only in DefenseSimEnv; not a detection of a real attack and never executed automatically.",
+    "created_at": "2026-10-17T02:03:28.279286Z"
   },
   "checkpoint": {
-    "id": "ckp_48289e79c567c21ace95ce5d",
+    "id": "ckp_c5fb4d0909fa28f0fa28b51e",
     "env_id": "DefenseSimEnv-v0",
     "seed": 0,
-    "steps": 200000,
-    "git_sha": "118277336a2c5b22595ac57c6122a4531e917302",
+    "steps": 1000000,
+    "git_sha": "6c8beac7ebd6140c9e19dbb73d76cbcfec943926",
     "checkpoint_file": "ddqn_seed0.pt",
-    "checkpoint_sha256": "48289e79c567c21ace95ce5d54702f6ece5c302d2bf4b2424ccb8435b539e38a",
+    "checkpoint_sha256": "c5fb4d0909fa28f0fa28b51e271c68448ead3624288165e7846d082776041619",
     "train_configs": {
       "train_aggressive": "127321eafd88be15",
       "train_balanced": "535d99ff8777c11e",
@@ -163,47 +163,49 @@
     }
   },
   "explanation": {
-    "action": "rate_limit:auth",
-    "runner_up": "rate_limit:payments",
-    "margin": 0.02557,
+    "recommendation_id": "rec_87a28bd119134197b19e3d2b24d79f9d",
+    "action": "request_reassessment:api",
+    "runner_up": "isolate:api",
+    "margin": 0.21294,
     "method": "occlusion: feature set to 0, change in Q(chosen) - Q(runner-up)",
     "top_contributions": [
       {
         "node": "payments",
         "feature": "finding_severity",
         "value": 0.6,
-        "delta_margin": 0.57131,
+        "delta_margin": -2.20146,
         "kind": "signal"
+      },
+      {
+        "node": "gateway",
+        "feature": "exposed",
+        "value": 1.0,
+        "delta_margin": -1.258,
+        "kind": "context"
       },
       {
         "node": null,
-        "feature": "time_fraction",
-        "value": 0.3,
-        "delta_margin": -0.55087,
+        "feature": "escalations_remaining",
+        "value": 1.0,
+        "delta_margin": -1.02711,
         "kind": "global"
       },
       {
-        "node": "auth",
-        "feature": "finding_severity",
-        "value": 0.2,
-        "delta_margin": 0.2736,
-        "kind": "signal"
+        "node": "payments",
+        "feature": "criticality",
+        "value": 0.9,
+        "delta_margin": -1.01032,
+        "kind": "context"
       },
       {
-        "node": "api",
-        "feature": "alert_rate",
-        "value": 0.45,
-        "delta_margin": 0.24734,
-        "kind": "signal"
-      },
-      {
-        "node": "api",
-        "feature": "anomaly_score",
-        "value": 0.35,
-        "delta_margin": 0.17445,
-        "kind": "signal"
+        "node": "db",
+        "feature": "criticality",
+        "value": 1.0,
+        "delta_margin": -0.78744,
+        "kind": "context"
       }
     ],
-    "caveat": "Explains the simulation-trained policy's decision, not real-world causality."
+    "caveat": "Explains the simulation-trained policy's decision, not real-world causality.",
+    "simulation_derived": true
   }
 }
