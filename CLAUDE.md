@@ -69,8 +69,20 @@ Numbers refer to `docs/NN_*.md`.
 
 ## Commands
 
-There are no build, lint, or test commands yet — no code exists. When a subsystem
-gains tooling, add its commands **here** and in that subsystem's README.
+When a subsystem gains tooling, add its commands **here** and in that subsystem's README.
+
+Control plane (`shared/`, `backend/`, `monitoring/` — uv workspace at the repo root, Python 3.12;
+details in [backend/README.md](backend/README.md)):
+
+```
+uv sync                         # install the workspace
+make check                      # ruff, ruff format --check, generated-contract freshness
+uv run mypy                     # type-check shared + monitoring
+make test                       # pytest; real PostgreSQL (embedded pgserver unless TEST_DATABASE_URL)
+make contracts                  # regenerate shared/generated (JSON Schema + TS) and fixtures
+make dev                        # migrate + API (:8000) + worker on embedded PostgreSQL
+make smoke-live                 # opt-in real Claude call (RUN_LIVE_LLM_EVAL=1 + key; costs money)
+```
 
 ## When you are uncertain
 
