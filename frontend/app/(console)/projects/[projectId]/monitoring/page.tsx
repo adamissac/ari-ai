@@ -31,7 +31,7 @@ export default function MonitoringPage() {
   return (
     <div className="flex flex-col gap-4">
       <p className="rounded-xl border border-line bg-panel p-5 text-sm text-ink" data-testid="monitoring-summary">{summary}</p>
-    <div className="grid gap-4 xl:grid-cols-[3fr_2fr]">
+    <div className="grid grid-cols-1 gap-4 xl:grid-cols-[3fr_2fr]">
       <div className="flex flex-col gap-4">
         <Panel title="Event feed" actions={<span className="text-xs text-muted">persisted webhook and runtime events · polled every 10 s</span>}>
           <Async resource={events} label="monitoring events">
