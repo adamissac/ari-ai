@@ -70,6 +70,11 @@ What this shows, and does not show:
   [`results/protocol-v0/ANALYSIS.md`](results/protocol-v0/ANALYSIS.md) for reward
   breakdowns, per-node impact, action mix, per-seed variation (compromise 25–63%) and
   deterministic replays of the worst episodes.
+- **It does not generalize to faster attackers.** In the stress sweep
+  ([`stress_table.md`](results/protocol-v0/stress_table.md)), every adversary probability
+  is scaled ×0.5–×2.5. DDQN leads on return up to ×1.5, ties the rules at ×2 and is worse
+  at ×2.5, and its db-loss rate rises to 61% (rules: 10%). Training with
+  aggressiveness randomization is the next experiment.
 - CIs are across 5 seeds; deterministic baselines have zero seed variance.
 - *Results are from a simulated environment and do not establish real-world effectiveness.*
 
@@ -86,6 +91,8 @@ uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -e ".[de
 for s in 0 1 2 3 4; do .venv/bin/python -m rl_defense.train --seed $s --steps 200000 --run-dir runs/protocol-v0 & done; wait
 .venv/bin/python -m rl_defense.evaluate --run-dir runs/protocol-v0
 .venv/bin/python -m rl_defense.analysis --run-dir runs/protocol-v0   # failure cases + breakdowns
+.venv/bin/python -m rl_defense.stress --run-dir runs/protocol-v0     # aggressiveness sweep (~4 min)
+.venv/bin/python -m rl_defense.lab_export --run-dir runs/protocol-v0 --out lab.json --schema lab.schema.json
 ```
 
 `runs/` (checkpoints, logs, raw episodes) is git-ignored. Reference copies of the
