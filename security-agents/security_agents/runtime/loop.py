@@ -9,8 +9,9 @@ results back, and finishes when the agent submits output validating against its
 Properties the tests rely on:
   * a denied tool is reported to the model as an error result and the loop
     continues (the model cannot escalate, but can adapt);
-  * schema-invalid submitted output is retried exactly once with the validation
-    error, then the step fails `SCHEMA_INVALID`;
+  * schema-invalid submitted output is retried with the validation error up to
+    `spec.max_schema_repairs` times (default once), then the step fails `SCHEMA_INVALID`;
+    a reply cut off at max_tokens before submitting draws on the same repair budget;
   * token, tool-call, turn and wall-clock budgets each end the step;
   * every turn, tool call and result is recorded (redacted) for replay/audit.
 """
@@ -265,7 +266,7 @@ def run_agent(
     )
     messages: list[dict[str, Any]] = [{"role": "user", "content": task_prompt}]
     output: StrictModel | None = None
-    repair_used = False
+    repairs_left = spec.max_schema_repairs
 
     def finish(status: str, code: ErrorCode | None = None, detail: str | None = None) -> StepOutcome:
         run.status = status  # type: ignore[assignment]
@@ -338,7 +339,20 @@ def run_agent(
         tool_uses = response.tool_uses()
         if not tool_uses:
             if response.stop_reason == "max_tokens":
-                return finish("failed", ErrorCode.SCHEMA_INVALID, "response hit max_tokens with no submit")
+                if repairs_left <= 0:
+                    return finish("failed", ErrorCode.SCHEMA_INVALID, "response hit max_tokens with no submit")
+                repairs_left -= 1
+                messages.append({"role": "assistant", "content": response.content})
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            f"Your reply hit the output limit before you submitted. Call "
+                            f"{spec.submit_tool_name()} now with a concise final result."
+                        ),
+                    }
+                )
+                continue
             messages.append({"role": "assistant", "content": response.content})
             messages.append(
                 {
@@ -409,12 +423,12 @@ def run_agent(
                         summary={"detail": detail},
                     )
                 )
-                if repair_used:
+                if repairs_left <= 0:
                     ctx.audit.emit(
                         "agent.schema_invalid_final", agent=spec.name.value, run_id=run_id, detail=detail
                     )
                     return finish("failed", ErrorCode.SCHEMA_INVALID, detail)
-                repair_used = True
+                repairs_left -= 1
                 results.append(
                     {
                         "type": "tool_result",
