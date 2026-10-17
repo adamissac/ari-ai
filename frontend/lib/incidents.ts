@@ -48,14 +48,22 @@ function artifactRef(artifactId: string, sha256: string, provenance: string, not
   return { kind: 'artifact', path: null, commit_sha: null, span: null, symbol: null, artifact_id: artifactId, sha256, provenance, note };
 }
 
-/** Patch diffs (hash-pinned by the backend) for a linked finding. */
-export function patchEvidence(findingId: string, views: PatchView[]): EvidenceOption[] {
-  return views.map(({ patch, verification }) => ({
-    key: patch.diff_artifact_id,
-    label: `Patch #${patch.attempt} diff · ${findingId}${verification ? ` · Verify ${verification.verdict}` : ''}`,
-    ref: artifactRef(patch.diff_artifact_id, patch.diff_sha256, 'agent:patch', `patch ${patch.id} for ${findingId}`),
-    regression: false,
-  }));
+/**
+ * Patch diffs for a linked finding. The backend checks evidence against the *stored* artifact hash,
+ * which differs from `diff_sha256` when the artifact store redacted the diff, so cite the stored hash.
+ */
+export function patchEvidence(findingId: string, views: PatchView[], storedSha: Record<string, string>): EvidenceOption[] {
+  return views.flatMap(({ patch, verification }) => {
+    const sha = storedSha[patch.diff_artifact_id];
+    if (!sha) return [];
+    const redacted = sha !== patch.diff_sha256 ? ' · stored copy redacted' : '';
+    return [{
+      key: patch.diff_artifact_id,
+      label: `Patch #${patch.attempt} diff · ${findingId}${verification ? ` · Verify ${verification.verdict}` : ''}${redacted}`,
+      ref: artifactRef(patch.diff_artifact_id, sha, 'agent:patch', `patch ${patch.id} for ${findingId}`),
+      regression: false,
+    }];
+  });
 }
 
 /** A Fortify-proposed regression test artifact; the only evidence accepted for lessons learned. */

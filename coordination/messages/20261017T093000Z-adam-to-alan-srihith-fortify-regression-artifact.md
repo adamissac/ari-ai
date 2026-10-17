@@ -16,3 +16,9 @@ Result: `record_lessons_learned` → 422 for every hosted assessment, so `recove
 test file from the verified worktree and set `proposed_test_artifact_id`; or (b) Srihith: also accept the
 artifact/hash evidence of a `VerifiedRegression` for a linked finding. Not touching `host_adapter.py` while #73
 is open. The new incident closure UI explains the refusal instead of hiding it.
+
+**Second finding (executed, e2e):** `BackendHost.store_text` runs `redact_text` before hashing, so the stored
+patch diff artifact's SHA-256 can differ from `PatchCandidate.diff_sha256` (observed in the real-stack e2e run).
+Evidence citing `diff_sha256` was refused with 409. The closure UI now cites the stored artifact hash and labels
+the option "stored copy redacted". Anything comparing a stored diff to `diff_sha256`
+(e.g. `code_review/api.py` line ~382) should expect this.

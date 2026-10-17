@@ -76,9 +76,9 @@ test('incident closure: link verified finding, criteria with evidence, communica
   await closure.getByLabel('Criterion description').fill('Independent Verify accepted the patch');
   await closure.getByRole('button', { name: 'Add criterion' }).click();
   const criterion = closure.getByTestId('criterion-patch-verified');
-  await expect(criterion.getByText('Open')).toBeVisible();
+  await expect(criterion.getByText('Open', { exact: true })).toBeVisible();
   await criterion.getByRole('button', { name: 'Mark satisfied' }).click();
-  await expect(criterion.getByText('Satisfied')).toBeVisible();
+  await expect(criterion.getByText('Satisfied', { exact: true })).toBeVisible();
 
   await closure.getByLabel('Channel').fill('#sec-incidents');
   await closure.getByLabel('Summary').fill('Engineering notified of containment plan');
