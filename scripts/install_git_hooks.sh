@@ -11,7 +11,11 @@ if ! command -v gitleaks >/dev/null 2>&1; then
   echo "pre-commit: gitleaks not installed; skipping secret scan (CI still scans)." >&2
   exit 0
 fi
-exec gitleaks git --pre-commit --staged --no-banner --redact --config "$(git rev-parse --show-toplevel)/.gitleaks.toml"
+cfg="$(git rev-parse --show-toplevel)/.gitleaks.toml"
+if [ -f "$cfg" ]; then
+  exec gitleaks git --pre-commit --staged --no-banner --redact --config "$cfg"
+fi
+exec gitleaks git --pre-commit --staged --no-banner --redact  # branches without the config
 HOOK
 chmod +x "$hook"
 echo "installed $hook"
