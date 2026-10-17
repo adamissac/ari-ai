@@ -270,6 +270,19 @@ export class ApiClient {
     });
     return { items, available: record.available, reason: record.reason as string | null };
   }
+  /** Start a labelled simulated attack drill; returns the job to poll. */
+  async startAttackDrill(projectId: string, options?: RequestOptions): Promise<{ job_id: string }> {
+    const r = object(await this.request(`/projects/${segment(projectId)}/attack-drills`, RAW, options, {}), 'drill');
+    if (typeof r.job_id !== 'string' || r.simulated !== true) throw new ProtocolError('Invalid drill response');
+    return { job_id: r.job_id };
+  }
+  /** A background job's state; `result` is returned as-is for the caller to validate. */
+  async job(id: string, options?: RequestOptions): Promise<JobState> {
+    const r = object(await this.request(`/jobs/${segment(id)}`, RAW, options), 'job');
+    if (typeof r.id !== 'string' || typeof r.kind !== 'string' || typeof r.status !== 'string') throw new ProtocolError('Invalid job');
+    const err = r.last_error === null || r.last_error === undefined ? null : object(r.last_error, 'job error');
+    return { id: r.id, kind: r.kind, status: r.status, result: r.result ?? null, error: err && typeof err.message === 'string' ? err.message : null };
+  }
   rlEvaluations(projectId: string, options?: RequestOptions): Promise<Page<C.RLEvaluation>> {
     return this.list(`/projects/${segment(projectId)}/rl-evaluations`, 'RLEvaluation', options);
   }
@@ -330,6 +343,7 @@ export interface AccessibleRepository {
   private: boolean;
   connected_repo_id: string | null;
 }
+export interface JobState { id: string; kind: string; status: string; result: unknown; error: string | null }
 export interface AccessibleRepositories { items: AccessibleRepository[]; install_url: string | null }
 export interface RepositoryCommit { sha: string; message: string; author: string; committed_at: string | null; html_url: string | null }
 export interface RepositoryCommits { items: RepositoryCommit[]; available: boolean; reason: string | null }
