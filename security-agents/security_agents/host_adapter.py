@@ -23,6 +23,8 @@ installable on its own and testable with a fake host.
 
 from __future__ import annotations
 
+import importlib
+
 import contextlib
 import os
 from dataclasses import dataclass, field
@@ -409,6 +411,8 @@ class HostSink(AssessmentSink):
     run_ids: dict[str, str] = field(default_factory=dict)
     recorded: list[str] = field(default_factory=list)
     sandbox_charged: float = 0.0
+    # patch id -> (stored artifact id, stored sha256, sha256 of the bytes Verify executes)
+    stored_diffs: dict[str, tuple[str, str | None, str]] = field(default_factory=dict)
     regression_artifact_ids: dict[str, str] = field(default_factory=dict)
     result: Any = None
 
@@ -544,6 +548,12 @@ class HostSink(AssessmentSink):
     def on_patch(self, finding: FindingRecord, candidate: Any, diff: str) -> None:
         artifact = self.host.store_text(diff)
         artifact_id = getattr(artifact, "id", None) or str(artifact)
+        # Verify executes the in-memory diff; the store may hold a redacted copy (#155).
+        self.stored_diffs[candidate.id] = (
+            artifact_id,
+            getattr(artifact, "sha256", None),
+            candidate.diff_sha256,
+        )
         run_id = self.run_ids.get("patch")
         if run_id is None:  # never cite a run the host did not create
             raise PlatformError(ErrorCode.CONFLICT_STATE, "patch recorded without a host patch run")
@@ -563,14 +573,47 @@ class HostSink(AssessmentSink):
         self.set_status(finding.finding_id, "patch_proposed", reason="patch candidate recorded")
 
     def on_verification(self, finding: FindingRecord, result: Any) -> None:
-        self.host.record_verification(
-            contract_export.verification_result(
-                result, produced_by_run_id=result.verify_run_id or self.run_ids["verify"]
-            )
+        canonical = contract_export.verification_result(
+            result, produced_by_run_id=result.verify_run_id or self.run_ids["verify"]
         )
+        self.host.record_verification(self._bind_verified_bytes(canonical))
         self.recorded.append("verification")
         if str(getattr(result.verdict, "value", result.verdict)) == "accepted":
             self.set_status(finding.finding_id, "verified", reason="independent Verify accepted")
+
+    def _bind_verified_bytes(self, canonical: Any) -> Any:
+        """Bind the verdict to the exact diff bytes Verify executed. The PatchCandidate names
+        the stored artifact, which the store may have redacted, so the verdict carries a
+        binding artifact with both hashes as evidence on ``diff_scope_ok``. The pre-redaction
+        bytes themselves are never stored."""
+        stored = self.stored_diffs.get(canonical.patch_id)
+        if stored is None or not hasattr(self.host, "store_json"):
+            return canonical
+        stored_id, stored_sha, verified_sha = stored
+        binding = self.host.store_json(
+            {
+                "patch_id": canonical.patch_id,
+                "verified_diff_sha256": verified_sha,
+                "stored_diff_artifact_id": stored_id,
+                "stored_diff_sha256": stored_sha,
+                "redacted": verified_sha != stored_sha,
+            }
+        )
+        ev = importlib.import_module("shared.evidence")
+        ref = ev.EvidenceRef(
+            kind=ev.EvidenceKind.artifact,
+            artifact_id=binding.id,
+            sha256=binding.sha256,
+            provenance="agent:verify",
+            note="verified-bytes binding: the diff Verify executed vs the stored diff artifact",
+        )
+        checks = [
+            c.model_copy(update={"evidence": [*c.evidence, ref]})
+            if str(getattr(c.name, "value", c.name)) == "diff_scope_ok"
+            else c
+            for c in canonical.checks
+        ]
+        return canonical.model_copy(update={"checks": checks})
 
     def on_standards(self, finding: FindingRecord) -> None:
         if hasattr(self.host, "record_standards"):
