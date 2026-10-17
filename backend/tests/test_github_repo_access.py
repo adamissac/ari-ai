@@ -91,8 +91,24 @@ def test_returning_from_app_install_restarts_sign_in(client_factory) -> None:
     )
     assert r.status_code == 302
     assert r.headers["location"].endswith("/api/v1/auth/github/login")
-    # Without the install marker, a missing state is still rejected.
-    assert c.get("/api/v1/auth/github/callback?code=x", follow_redirects=False).status_code == 403
+    # Without the install marker, a missing state is still rejected on the public host.
+    public = {"x-forwarded-host": "localhost:8000"}
+    r = c.get("/api/v1/auth/github/callback?code=x", headers=public, follow_redirects=False)
+    assert r.status_code == 403
+
+
+def test_callback_on_the_backend_domain_bounces_to_the_public_origin(client_factory) -> None:
+    c = client_factory()
+    q = "code=abc&state=s1"
+    # GitHub sent the browser to the backend's own domain: no state cookie there.
+    r = c.get(f"/api/v1/auth/github/callback?{q}", follow_redirects=False)
+    assert r.status_code == 302
+    assert r.headers["location"] == f"http://localhost:8000/api/v1/auth/github/callback?{q}"
+    # Through the public origin with a wrong state it is still refused, never bounced again.
+    c.cookies.set("hackatl_oauth_state", "other")
+    public = {"x-forwarded-host": "localhost:8000"}
+    r = c.get(f"/api/v1/auth/github/callback?{q}", headers=public, follow_redirects=False)
+    assert r.status_code == 403
 
 
 def test_recent_commits_reads_github_through_the_installation(client_factory, monkeypatch) -> None:
