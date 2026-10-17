@@ -1,7 +1,7 @@
 'use client';
 
 import type { BehavioralExpectation, EvidenceRef, ExpectationDecision, ExpectationDecisionRequest, ExpectationStatus, Repository, Snapshot } from '@hackatl/frontend-transport';
-import { useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useState } from 'react';
 import { useProject } from '@/components/project';
 import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, Panel, Tag, Time } from '@/components/ui';
 import { api } from '@/lib/api';
@@ -173,8 +173,7 @@ function DecisionPanel({ exp, onDecided }: { exp: BehavioralExpectation; onDecid
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const revision = (items: ExpectationDecision[]) => items.reduce((m, d) => Math.max(m, d.revision), 0);
-  const submit = async (status: ExpectationDecisionRequest['status'], current: number, e?: FormEvent) => {
-    e?.preventDefault();
+  const submit = async (status: ExpectationDecisionRequest['status'], current: number) => {
     setBusy(true);
     setError(null);
     try {
@@ -198,7 +197,7 @@ function DecisionPanel({ exp, onDecided }: { exp: BehavioralExpectation; onDecid
                   ))}
                 </ol>
               )}
-              <form onSubmit={e => submit('confirmed', current, e)} className="flex flex-col gap-2">
+              <form onSubmit={e => e.preventDefault()} className="flex flex-col gap-2">
                 <Field label="Reason" hint="Recorded in the audit trail with your identity (min 3 characters).">
                   <input className={inputClass} value={reason} onChange={e => setReason(e.target.value)} maxLength={500} />
                 </Field>
