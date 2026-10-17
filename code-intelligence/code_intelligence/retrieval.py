@@ -13,7 +13,7 @@ from shared.intelligence import ContextChunk, ContextPack, ContextPackRequest, S
 
 from code_intelligence.extract import citation
 from code_intelligence.models import IntelligenceError, StoredIndex, stable_id
-from code_intelligence.privacy import redact
+from code_intelligence.privacy import redact, redact_evidence
 
 
 def tokens(text: str) -> list[str]:
@@ -30,7 +30,7 @@ def delimited(content: str, evidence: EvidenceRef) -> str:
     # XML escaping prevents repository text from terminating the data delimiter.
     return (
         '<untrusted_repository_data trust="untrusted">\n'
-        + html.escape(evidence.model_dump_json(), quote=True)
+        + html.escape(redact_evidence(evidence).model_dump_json(), quote=True)
         + "\n"
         + html.escape(redact(content), quote=True)
         + "\n</untrusted_repository_data>"
@@ -130,6 +130,7 @@ def build_pack(
     spans: set[tuple[str, ...]] = set()
 
     def append(content: str, evidence: EvidenceRef) -> bool:
+        evidence = redact_evidence(evidence)
         key: tuple[str, ...]
         if evidence.span is not None and evidence.path is not None:
             key = (evidence.path, str(evidence.span.start_line), str(evidence.span.end_line))
