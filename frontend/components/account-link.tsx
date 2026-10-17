@@ -36,8 +36,9 @@ export function AccountLink() {
         data-testid="header-account"
       >
         <span aria-hidden="true" className="hdr-avatar">{login.slice(0, 1).toUpperCase()}</span>
-        {/* Phone widths cannot fit Projects + Lab + Demo + Pricing + a full login chip. */}
+        {/* Phone: avatar only — full login chip overflows 375px with the rest of the nav. */}
         <span className="hidden max-w-[8rem] truncate normal-case sm:inline">{login}</span>
+        <span className="sr-only sm:hidden">{login}</span>
       </Link>
     );
   }
