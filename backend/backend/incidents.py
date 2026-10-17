@@ -197,11 +197,22 @@ def _verified(conn: Connection, incident: Incident) -> frozenset[str]:
         assessment = conn.execute(
             sa.select(findings.c.assessment_id).where(findings.c.id == row.finding_id)
         ).scalar()
+        # Security approvals name the persisted remediation plan; reviewer approvals
+        # name the finding directly. Both must belong to this finding/assessment.
+        plan_ids = list(
+            conn.execute(
+                sa.select(finding_records.c.id).where(
+                    finding_records.c.finding_id == row.finding_id,
+                    finding_records.c.record_type == "remediation_plan",
+                )
+            ).scalars()
+        )
         remediation = conn.execute(
             sa.select(approvals.c.id).where(
                 approvals.c.project_id == incident.project_id,
                 approvals.c.subject_type == "remediation",
-                approvals.c.subject_id == row.finding_id,
+                approvals.c.subject_id.in_([row.finding_id, *plan_ids]),
+                approvals.c.assessment_id == assessment,
                 approvals.c.status == "approved",
             )
         ).scalar()
