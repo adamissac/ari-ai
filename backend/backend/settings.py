@@ -6,7 +6,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -64,6 +64,25 @@ class Settings(BaseSettings):
     rate_limit_per_minute: int = 60
     assessment_starts_per_hour: int = 5
     webhooks_per_minute: int = 100
+
+    @field_validator(
+        "anthropic_api_key",
+        "anthropic_model_fast",
+        "github_app_id",
+        "github_app_private_key_path",
+        "github_webhook_secret",
+        "github_oauth_client_id",
+        "github_oauth_client_secret",
+        "rl_checkpoint_path",
+        "rl_topology_path",
+        mode="before",
+    )
+    @classmethod
+    def _unset_placeholders(cls, value: object) -> object:
+        """Empty values and .env.example placeholders ("replace-me…") mean "not configured"."""
+        if isinstance(value, str) and (not value.strip() or value.strip().startswith("replace-me")):
+            return None
+        return value
 
     @property
     def is_dev(self) -> bool:
