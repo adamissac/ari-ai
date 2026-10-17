@@ -1,13 +1,13 @@
 # Alan — implementation status
 
 Owner: Alan (`security-agents/`, SEC-001 … SEC-013)
-Branch: `feat/alan/standards-roe-wiring`
-Current task: standards addendum P0: RoE gate, CVSS v3.1 level, CWE/OWASP/ATT&CK/D3FEND wiring on canonical `standards/`
-Last remote sync: 2026-10-17T10:05Z, `origin/main` @ `de4967f` (#98 merged)
+Branch: `feat/alan/shared-cvss31` (#108), `docs/alan/sec-task-status` (#109)
+Current task: shared 0.10.0 `cvss_v31` and worker RoE hand-off (#108); SEC task board
+Last remote sync: 2026-10-17T10:50Z, `origin/main` @ `173f137` (#100, #103 merged)
 API/contract dependencies: `shared` 0.9.0 `CheckCategory`; `backend.host` checkpoints; `code_review.api` functional helpers
 Recent PR/commit: `feat/alan/verify-honesty-check-category` (do not push merged `host-finding-persistence` / `host-resume-hardening`)
 Blockers: live seven-agent run (issue #10, no key); Docker images (INFRA-005)
-Next action: land standards-roe-wiring PR; Srihith decision on v3.1 shared field and RoE endpoint; Adam decision on CWE-840 fixture
+Next action: merge #108 and #109 when every job on the head is green; live seven-role run by a key holder for M3; then P1 (SARIF, SP 800-61, OWASP LLM self-assessment)
 
 ## What runs today
 
