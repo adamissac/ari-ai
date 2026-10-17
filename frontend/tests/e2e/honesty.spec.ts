@@ -55,6 +55,9 @@ test('Defense Lab plots only the committed, schema-validated evaluation bundle',
   await expect(page.getByTestId('lab-mode')).toHaveText('Simulation · recorded evaluation');
   await page.getByRole('button', { name: /^Gateway \(gateway\)/ }).click();
   await expect(page.getByTestId('lab-service-panel')).toContainText('Reachable from the internet: yes');
+  const truthToggle = page.getByLabel('Show on the map (for learning)');
+  await expect(truthToggle).toBeChecked();
+  await truthToggle.uncheck();
   await expect(page.getByText('attacker: ', { exact: false })).toHaveCount(0);
   await page.getByRole('button', { name: 'Next key moment' }).click();
   await expect(page.getByTestId('lab-step-action')).toContainText('the defender:');
