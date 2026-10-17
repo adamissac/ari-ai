@@ -115,6 +115,38 @@ def _client():
 '''
 
 
+_PREAMBLE_HTTP = '''"""Generated check: {ref}
+Rendered by security_agents.checks.library from reviewed template parameters.
+Target is reached over HTTP at SANDBOX_TARGET_URL on the per-run internal network.
+"""
+
+import json
+import os
+import time
+from decimal import Decimal
+
+import httpx
+
+RESULT = {{}}
+
+
+def _client():
+    base = os.environ["SANDBOX_TARGET_URL"]
+    deadline = time.monotonic() + 30
+    while True:
+        try:
+            httpx.get(base + "/", timeout=2)
+            break
+        except httpx.TransportError:
+            if time.monotonic() > deadline:
+                raise
+            time.sleep(0.5)
+    return httpx.Client(base_url=base, timeout=10)
+'''
+
+TRANSPORTS = ("inprocess", "http")
+
+
 # --------------------------------------------------------------------------- templates
 
 
@@ -302,7 +334,11 @@ class CheckLibrary:
         meta = self.get(ref)
         return meta is not None and meta.reviewed_by is not None and ref in _RENDERERS
 
-    def render(self, ref: str, recipe: dict[str, Any], params: dict[str, Any]) -> str:
+    def render(
+        self, ref: str, recipe: dict[str, Any], params: dict[str, Any], transport: str = "inprocess"
+    ) -> str:
+        if transport not in TRANSPORTS:
+            raise PlatformError(ErrorCode.SCHEMA_INVALID, f"unknown check transport {transport!r}")
         meta = self.get(ref)
         if meta is None:
             raise PlatformError(ErrorCode.SCHEMA_INVALID, f"unknown check template {ref!r}")
@@ -318,9 +354,20 @@ class CheckLibrary:
         missing = [p for p in meta.parameters if p not in params and p not in optional]
         if missing:
             raise PlatformError(ErrorCode.SCHEMA_INVALID, f"missing parameters {missing}")
+        if transport == "http" and meta.side_effect_class != "read_only":
+            raise PlatformError(
+                ErrorCode.SANDBOX_POLICY_VIOLATION,
+                f"{ref} changes target state; the http transport supports read_only templates only",
+            )
         enriched = dict(params)
         enriched["_ref"] = ref
-        return _RENDERERS[ref](recipe, enriched)
+        rendered = _RENDERERS[ref](recipe, enriched)
+        if transport == "http":
+            inprocess = _PREAMBLE.format(ref=ref)
+            if not rendered.startswith(inprocess):
+                raise PlatformError(ErrorCode.SANDBOX_POLICY_VIOLATION, f"{ref} cannot be rendered for http")
+            rendered = _PREAMBLE_HTTP.format(ref=ref) + rendered[len(inprocess) :]
+        return rendered
 
     def params_hash(self, ref: str, params: dict[str, Any]) -> str:
         import hashlib

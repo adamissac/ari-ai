@@ -80,6 +80,22 @@ def _result_summary(res: SandboxResult) -> dict[str, Any]:
     }
 
 
+TARGET_REQUEST = re.compile(r'"(GET|POST|PUT|PATCH|DELETE|HEAD) (\S+) HTTP/1\.[01]" (\d{3})')
+
+
+def target_contact(target_log: str, transport: str) -> dict[str, Any]:
+    requests = [
+        {"method": m.group(1), "path": m.group(2), "status": int(m.group(3))}
+        for m in TARGET_REQUEST.finditer(target_log or "")
+    ]
+    return {
+        "transport": transport,
+        "target_contacted": bool(requests),
+        "target_requests": requests[:50],
+        "target_log_sha256": sha256_text(target_log) if target_log else None,
+    }
+
+
 def workspace_path(workspace: Any) -> Path:
     """Resolve a provider's workspace to a directory path.
 
@@ -260,6 +276,7 @@ class CheckRunner:
     workspace_provider: Any  # callable(ctx) -> Path (the target workspace)
     recipe_provider: Any  # callable(ctx, target_id) -> dict
     limits: SandboxLimits = field(default_factory=lambda: SandboxLimits(timeout_s=180.0))
+    transport: str = "inprocess"
 
     def run(
         self, ctx: ToolContext, template_ref: str, target_id: str, parameters: dict[str, Any]
@@ -279,9 +296,15 @@ class CheckRunner:
                 "detail": f"{template_ref} has no reviewed implementation installed",
                 "matches_expectation": None,
             }
+        if self.transport == "http" and getattr(self.driver, "name", "") != "docker":
+            return {
+                "error": "HTTP_TRANSPORT_REQUIRES_DOCKER",
+                "detail": "the http check transport needs the Docker driver's internal target network",
+                "matches_expectation": None,
+            }
         recipe = self.recipe_provider(ctx, target_id)
         try:
-            rendered = self.library.render(template_ref, recipe, parameters)
+            rendered = self.library.render(template_ref, recipe, parameters, transport=self.transport)
         except PlatformError as exc:
             return {"error": exc.code.value, "detail": exc.message, "matches_expectation": None}
 
@@ -325,9 +348,11 @@ class CheckRunner:
             params_hash=self.library.params_hash(template_ref, parameters),
             scope_id=decision.scope_id,
             matches_expectation=matches,
+            transport=self.transport,
         )
         return {
             **_result_summary(res),
+            **target_contact(res.target_log, self.transport),
             "template_ref": template_ref,
             "template_id": meta.template_id,
             "template_version": meta.version,

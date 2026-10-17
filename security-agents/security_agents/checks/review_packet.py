@@ -75,7 +75,7 @@ def packet(recipe_path: Path = RECIPE) -> list[dict[str, Any]]:
                 "side_effect_class": meta.side_effect_class,
                 "reviewed_by": meta.reviewed_by,
                 "parameters": list(meta.parameters),
-                "renderer_sha256": _sha(lib._PREAMBLE + renderer_source),
+                "renderer_sha256": _sha(lib._PREAMBLE + lib._PREAMBLE_HTTP + renderer_source),
                 "sample_parameters": SAMPLES[meta.ref],
                 "rendered_sha256": _sha(rendered),
                 "imports": imports,
