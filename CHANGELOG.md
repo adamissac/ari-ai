@@ -7,7 +7,7 @@ All notable changes are documented here. Format follows
 ## [Unreleased]
 
 - Defense Lab replay leads with one sentence from the recorded episode: first and last action, whether it was marked compromised, and which nodes reached impact. The metrics charts follow that replay.
-
+- A project page leads with one next step and three counts taken from the assessments, findings, scopes and monitoring flag already loaded. It does not invent a security score.
 - Finding detail shows the indexed expectation statement for each linked id, and keeps the id when that snapshot has no matching statement.
 
 - Hosted security and functional verification retain actual regression sources as hash-pinned artifacts; incident lessons learned can cite them. Plan-bound security approvals are resolved through persisted finding/assessment records for incident eradication.
