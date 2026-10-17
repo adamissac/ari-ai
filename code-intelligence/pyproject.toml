@@ -25,6 +25,11 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
+follow_untyped_imports = true
+
+[[tool.mypy.overrides]]
+module = ["shared.*"]
+follow_imports = "silent"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
