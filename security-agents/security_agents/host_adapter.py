@@ -396,11 +396,37 @@ class HostSink(AssessmentSink):
     commit_sha: str
     run_ids: dict[str, str] = field(default_factory=dict)
     recorded: list[str] = field(default_factory=list)
+    sandbox_charged: float = 0.0
 
     def on_transition(self, src: AssessmentState, dst: AssessmentState, note: str) -> None:
         self.host.transition(_host_state(dst), note)
         if dst is AssessmentState.FUNCTIONAL_REVIEW:
             _functional_review(self.host)
+
+    def set_status(self, finding_id: str, status: str, reason: str | None = None) -> None:
+        """Persist a lifecycle change through the host, which checks the edge and the evidence.
+        A refusal is surfaced as progress (never silently dropped) without failing the run."""
+        setter = getattr(self.host, "set_finding_status", None)
+        if setter is None:  # standalone / fake hosts without the lifecycle API
+            return
+        try:
+            setter(finding_id, status, actor="agent:orchestrator", reason=reason)
+        except Exception as exc:  # reported as progress, not hidden
+            self.host.progress(
+                f"finding status {status} not applied: {str(exc)[:200]}", finding_id=finding_id
+            )
+
+    def settle(self, findings: list[FindingRecord], sandbox_seconds: float) -> None:
+        """End of a run segment: final statuses, and sandbox time into the usage ledger."""
+        for finding in findings:
+            self.set_status(finding.finding_id, finding.status)
+        delta = round(float(sandbox_seconds) - self.sandbox_charged, 3)
+        charge = getattr(self.host, "charge", None)
+        if delta > 0 and charge is not None:
+            from shared.tenancy import Usage as SharedUsage
+
+            charge(SharedUsage(sandbox_seconds=delta))
+            self.sandbox_charged += delta
 
     def on_finding(self, finding: FindingRecord) -> None:
         import importlib
@@ -468,6 +494,13 @@ class HostSink(AssessmentSink):
         if mapped is not None:
             self.host.record(finding.finding_id, mapped)
             self.recorded.append(kind)
+            if kind == "validation_result":
+                outcome = str(getattr(mapped.outcome, "value", mapped.outcome))
+                self.set_status(
+                    finding.finding_id,
+                    {"confirmed": "validated"}.get(outcome, outcome),
+                    reason=f"probe {outcome} via {mapped.check_template_id}",
+                )
 
     def on_patch(self, finding: FindingRecord, candidate: Any, diff: str) -> None:
         artifact = self.host.store_text(diff)
@@ -485,6 +518,7 @@ class HostSink(AssessmentSink):
             )
         )
         self.recorded.append("patch")
+        self.set_status(finding.finding_id, "patch_proposed", reason="patch candidate recorded")
 
     def on_verification(self, finding: FindingRecord, result: Any) -> None:
         self.host.record_verification(
@@ -493,9 +527,12 @@ class HostSink(AssessmentSink):
             )
         )
         self.recorded.append("verification")
+        if str(getattr(result.verdict, "value", result.verdict)) == "accepted":
+            self.set_status(finding.finding_id, "verified", reason="independent Verify accepted")
 
     def on_status(self, finding: FindingRecord, status: str) -> None:
         self.host.progress(f"finding {status}", finding_id=finding.finding_id, status=status)
+        self.set_status(finding.finding_id, status)
 
 
 def _hardening(record: Any, *, attack: list[Any] | None = None) -> Any:
@@ -592,6 +629,7 @@ class HostOrchestrator:
         # The host already performed the scope gate and the first transition.
         orchestrator.state = AssessmentState.CREATED
         result = orchestrator.run()
+        sink.settle(result.findings, result.usage.sandbox_seconds)
         if result.state is AssessmentState.AWAITING_APPROVAL:
             self._resumable[host.assessment_id] = orchestrator
             host.progress("awaiting human remediation approval")
@@ -609,6 +647,7 @@ class HostOrchestrator:
         if not approved:
             orchestrator._goto(AssessmentState.REPORTING, "remediation declined")
             orchestrator._finish()
+            self._settle(orchestrator)
             return
         orchestrator._goto(AssessmentState.REMEDIATION)
         for finding in approved:
@@ -619,6 +658,13 @@ class HostOrchestrator:
                 orchestrator._run_fortify(finding)
         orchestrator._goto(AssessmentState.REPORTING)
         orchestrator._finish()
+        self._settle(orchestrator)
+
+    @staticmethod
+    def _settle(orchestrator: Orchestrator) -> None:
+        sink = orchestrator.sink
+        if isinstance(sink, HostSink):
+            sink.settle(orchestrator.result.findings, orchestrator.result.usage.sandbox_seconds)
 
     def _build_intel(self, target: Path | None, workdir: Path, host: Any = None) -> CodeIntel:
         """Snapshot for this assessment.
