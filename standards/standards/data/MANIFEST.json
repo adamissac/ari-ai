@@ -113,6 +113,11 @@
    ],
    "version": "Rev. 3 (CSF 2.0)"
   },
+  "owasp-llm-coverage.json": {
+   "curated": "platform self-assessment matrix",
+   "sha256": "ab1183d28250d7ca30747661d054dcb15e2fb7661a9c7ba959ada418303513d3",
+   "version": "1"
+  },
   "owasp-llm.json": {
    "sha256": "965f3d19a2692a1265d97a11e0a3b7bf3c193c37f20718bbc90916727fcf91e6",
    "upstream": [
@@ -158,6 +163,26 @@
     }
    ],
    "version": "2025"
+  },
+  "rules/check_attack.json": {
+   "curated": "reviewed rule table",
+   "sha256": "20a3357641df3275c2bb81da20802fcbe770ed505f2aadb4bb870cc54f65c2fd",
+   "version": "1"
+  },
+  "rules/cvss_derivation.json": {
+   "curated": "reviewed rule table",
+   "sha256": "4d107a016796bdc12db8f9ac57a88fbe59e5aa4ef6f93530e458319c7643d9d4",
+   "version": "1"
+  },
+  "rules/fortify_d3fend.json": {
+   "curated": "reviewed rule table",
+   "sha256": "00032f1aaf23363b902afd732a07d56a464a13f9aac44577a6d2078ba6f60acd",
+   "version": "1"
+  },
+  "rules/rl_d3fend.json": {
+   "curated": "reviewed rule table",
+   "sha256": "7aaa52aa5edd5a20f434dc0c6b53973756761975c7c8ced2bb4ca47ca80e5a6a",
+   "version": "1"
   }
  }
 }

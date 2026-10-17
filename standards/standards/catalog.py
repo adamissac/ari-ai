@@ -61,13 +61,17 @@ def load_json(name: str) -> Any:
     raw = (_data_root() / name).read_bytes()
     digest = hashlib.sha256(raw).hexdigest()
     if digest != entry["sha256"]:
-        raise CatalogIntegrityError(f"{name}: sha256 {digest} does not match MANIFEST {entry['sha256']}")
+        raise CatalogIntegrityError(
+            f"{name}: sha256 {digest} does not match MANIFEST {entry['sha256']}"
+        )
     return json.loads(raw.decode("utf-8"))
 
 
 def verify_all() -> dict[str, str]:
     """Load every manifest file, raising on any checksum mismatch. Returns name -> sha256."""
-    return {name: (load_json(name), meta["sha256"])[1] for name, meta in manifest()["files"].items()}
+    return {
+        name: (load_json(name), meta["sha256"])[1] for name, meta in manifest()["files"].items()
+    }
 
 
 def catalog_versions() -> dict[str, str]:
@@ -108,7 +112,9 @@ def attack_technique(technique_id: str) -> CatalogEntry:
     raw = data["techniques"].get(technique_id)
     if raw is None:
         raise UnknownIdentifier(f"{technique_id} is not in ATT&CK Enterprise v{data['version']}")
-    status: EntryStatus = "revoked" if raw["revoked"] else "deprecated" if raw["deprecated"] else "active"
+    status: EntryStatus = (
+        "revoked" if raw["revoked"] else "deprecated" if raw["deprecated"] else "active"
+    )
     return CatalogEntry(
         framework="attack",
         id=technique_id,
@@ -169,9 +175,7 @@ def cwe(cwe_id: str) -> CatalogEntry:
     raw = data["entries"].get(cwe_id)
     if raw is None:
         raise UnknownIdentifier(f"{cwe_id} is not in CWE {data['version']}")
-    status: EntryStatus = (
-        "deprecated" if raw["status"] in ("Deprecated", "Obsolete") else "active"
-    )
+    status: EntryStatus = "deprecated" if raw["status"] in ("Deprecated", "Obsolete") else "active"
     return CatalogEntry(
         framework="cwe",
         id=cwe_id,
