@@ -915,8 +915,10 @@ def _review_without_snapshot(host: Any, intent: Any, review_api: Any) -> Any:
             project_id=a.project_id,
             repo_id=host.repo_id,
             commit_sha=a.commit_sha,
-            snapshot_id=a.snapshot_id or new_id("snp"),
-            index_version="checkout",
+            # Never invent a random id: with no indexed snapshot, use a documented synthetic id
+            # derived from the commit, labelled by index_version so nothing mistakes it for an index.
+            snapshot_id=a.snapshot_id or f"snp_unindexed-{a.commit_sha[:40]}",
+            index_version="unindexed-checkout",
         ),
         change_intent=intent or _default_intent(a),
         budget=a.budget,

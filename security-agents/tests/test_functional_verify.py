@@ -103,3 +103,37 @@ def test_reviewer_paths_rebase_onto_the_snapshot_and_apply(snapshot, tmp_path) -
         functional.rebase_path("elsewhere/x.py", prefix)
     with pytest.raises(PlatformError):
         functional.detect_prefix(diff.replace("pkg/app.py", "pkg/missing.py"), snapshot)
+
+
+def test_review_without_snapshot_uses_a_documented_synthetic_ref() -> None:
+    """Sai's note on #71: with no indexed snapshot the fallback must not invent a random id."""
+    from types import SimpleNamespace
+
+    from shared.tenancy import Budget as SharedBudget
+
+    from security_agents.host_adapter import _review_without_snapshot
+
+    sha = "c" * 40
+    a = SimpleNamespace(
+        id="asm_12345678",
+        project_id="prj_12345678",
+        commit_sha=sha,
+        snapshot_id=None,
+        budget=SharedBudget(),
+    )
+    seen: list = []
+
+    class Api:
+        def resolve_repo(self, repo_id, commit_sha):
+            return "src"
+
+        def review_full(self, host, request, source):
+            seen.append(request.snapshot_ref)
+            return "ok"
+
+    host = SimpleNamespace(assessment=a, repo_id="rep_12345678")
+    _review_without_snapshot(host, None, Api())
+    _review_without_snapshot(host, None, Api())
+    assert seen[0].snapshot_id == f"snp_unindexed-{sha}"
+    assert seen[0].index_version == "unindexed-checkout"
+    assert seen[1].snapshot_id == seen[0].snapshot_id  # deterministic, not random
