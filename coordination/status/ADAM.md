@@ -12,6 +12,19 @@ Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablat
 
 ## Session entries
 
+### 2026-10-17 (fix-everything pass)
+- **Live evidence:** the live reviewer on payments-lite finds `fnd_planted_refund_bound` (2 failing
+  generated tests, no FP/FN), repairs it, and now **hands `fnd_planted_authz` to security**
+  (0 rejected spans after Sai's #59). Cost about $0.49.
+- **Fixed:** expectations → RL criticality in the backend (#61; Srihith's #62 kept my version and
+  added a real-index test, merged). Pre-existing mypy error in `_catalog_code`.
+- **Verified closed:** Sarosh's ownership expectation on `GET /payments/{payment_id}`; Alan's real
+  route templates in the recipe; Sai's span verifier. Issues #2 and #4 closed.
+- **Preserved:** unclaimed local `security-agents/` edits on `wip/unclaimed-security-agents-0307`
+  (unmerged; Alan notified on #17).
+- **In progress:** RL round 4 (false disruption), code merged (#58), experiments running; result
+  will be v2 or a documented "v1 stays".
+
 ### 2026-10-17 — visualization direction for Vihaan
 - Recorded the product owner's preferred structure for the 24/7 defense map and the seven-agent view. Structure only; the reference screens are not copied. Ari AI palette stays.
 - Message: `coordination/messages/20261017T053014Z-adam-to-vihaan-visualization-structure.md`

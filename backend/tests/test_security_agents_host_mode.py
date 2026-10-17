@@ -94,3 +94,19 @@ def test_host_mode_full_flow_against_real_backend(
     )
     patches = alice.get(f"/api/v1/findings/{detail['findings'][0]['id']}/patches").json()["items"]
     assert patches and patches[-1]["verification"]["verdict"] == "accepted"
+
+    # Vihaan's M6 observations: lifecycle persisted with history; usage ledger complete.
+    finding = alice.get(f"/api/v1/findings/{detail['findings'][0]['id']}").json()["finding"]
+    assert finding["status"] == "hardened", finding["status"]
+    path = [(h["from_status"], h["to_status"]) for h in finding["history"]]
+    assert path == [
+        ("hypothesis", "validated"),
+        ("validated", "diagnosed"),
+        ("diagnosed", "patch_proposed"),
+        ("patch_proposed", "verified"),
+        ("verified", "hardened"),
+    ], path
+    usage = detail["assessment"]["usage"]
+    assert usage["tool_calls"] == sum(len(r["tool_calls"]) for r in runs) > 0
+    assert usage["llm_calls"] == sum(r["usage"]["llm_calls"] for r in runs)
+    assert usage["sandbox_seconds"] > 0, "Probe/Verify sandbox time reaches the ledger"

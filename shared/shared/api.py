@@ -2,13 +2,26 @@
 
 from __future__ import annotations
 
+from typing import Annotated, Literal
+
 from pydantic import Field, model_validator
 
 from shared.assessment import AgentRun, Assessment
 from shared.base import CommitSha, ShortText, StrictModel, UtcDatetime
-from shared.findings import Finding, PatchCandidate, VerificationResult
-from shared.ids import RepositoryId, ScopeId, SnapshotId
+from shared.findings import (
+    AttackPath,
+    Finding,
+    HardeningRecommendation,
+    Hypothesis,
+    PatchCandidate,
+    RemediationPlan,
+    RootCause,
+    ValidationResult,
+    VerificationResult,
+)
+from shared.ids import FindingId, RepositoryId, ScopeId, SnapshotId
 from shared.scope import ApprovalStatus, ScopeTarget
+from shared.standards import FindingStandards
 from shared.tenancy import Budget, MemberRole, Organization, ProjectSettings, User
 
 
@@ -117,3 +130,82 @@ class WebhookAck(StrictModel):
     accepted: bool
     job_id: str | None = None
     reason: ShortText | None = None
+
+
+# ----------------------------------------------------- finding detail / report (0.8.0)
+
+
+class HypothesisEntry(StrictModel):
+    type: Literal["hypothesis"]
+    record: Hypothesis
+
+
+class ValidationResultEntry(StrictModel):
+    type: Literal["validation_result"]
+    record: ValidationResult
+
+
+class AttackPathEntry(StrictModel):
+    type: Literal["attack_path"]
+    record: AttackPath
+
+
+class RootCauseEntry(StrictModel):
+    type: Literal["root_cause"]
+    record: RootCause
+
+
+class RemediationPlanEntry(StrictModel):
+    type: Literal["remediation_plan"]
+    record: RemediationPlan
+
+
+class HardeningEntry(StrictModel):
+    type: Literal["hardening"]
+    record: HardeningRecommendation
+
+
+FindingRecordEntry = Annotated[
+    HypothesisEntry
+    | ValidationResultEntry
+    | AttackPathEntry
+    | RootCauseEntry
+    | RemediationPlanEntry
+    | HardeningEntry,
+    Field(discriminator="type"),
+]
+
+
+class FindingDetail(StrictModel):
+    """``GET /findings/{id}``: the finding plus its typed evidence records, oldest first."""
+
+    finding: Finding
+    records: list[FindingRecordEntry]
+
+
+class ReportFinding(StrictModel):
+    finding: Finding
+    patches: list[PatchView]
+
+
+class ReportFindingStandards(StrictModel):
+    finding_id: FindingId
+    standards: FindingStandards | None = None
+
+
+class ReportStandards(StrictModel):
+    classification_only: Literal[True] = True
+    findings: list[ReportFindingStandards]
+    hardening: list[HardeningRecommendation]
+    unscored_reason: ShortText
+
+
+class AssessmentReport(StrictModel):
+    """``GET /assessments/{id}/report``: assembled only from persisted records."""
+
+    assessment: Assessment
+    agent_runs: list[AgentRun]
+    findings: list[ReportFinding]
+    generated_at: UtcDatetime
+    source: Literal["persisted records"] = "persisted records"
+    standards: ReportStandards
