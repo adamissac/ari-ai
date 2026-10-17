@@ -78,3 +78,51 @@ def test_build_sandbox_selection(monkeypatch) -> None:
     assert build_sandbox("shared-local").name == "security_agents:local-process"
     with pytest.raises(ValueError):
         build_sandbox("bogus")
+
+
+def test_outside_dev_the_reviewer_never_runs_customer_tests_on_the_host(monkeypatch) -> None:
+    """#244 P0: one isolation policy with the security agents; no host-process fallback."""
+    from code_review import shared_sandbox
+    from code_review.agent import ReviewError
+
+    monkeypatch.delenv("CODE_REVIEW_SANDBOX", raising=False)
+    monkeypatch.setenv("SANDBOX_IMAGE", "python@sha256:" + "0" * 64)  # drivers need a pin
+    monkeypatch.setattr(shared_sandbox, "_environment", lambda: ("production", "docker"))
+    assert build_sandbox().name == "security_agents:docker"  # default follows the agents
+    for kind in ("local", "shared-local"):
+        with pytest.raises(ReviewError) as refused:
+            build_sandbox(kind)
+        assert refused.value.code.value == "SANDBOX_POLICY_VIOLATION"
+    monkeypatch.setenv("CODE_REVIEW_SANDBOX", "local")  # an env override cannot reopen it
+    with pytest.raises(ReviewError):
+        build_sandbox()
+    monkeypatch.delenv("CODE_REVIEW_SANDBOX")
+    monkeypatch.setattr(shared_sandbox, "_environment", lambda: ("production", "vercel"))
+    assert build_sandbox().name == "security_agents:vercel-sandbox"
+    # A local-dev security setting never downgrades the reviewer outside dev/test.
+    monkeypatch.setattr(shared_sandbox, "_environment", lambda: ("staging", "local-dev"))
+    assert build_sandbox().name == "security_agents:docker"
+    # Development/test keep the previous local default.
+    monkeypatch.setattr(shared_sandbox, "_environment", lambda: ("test", "docker"))
+    assert build_sandbox().name == "local-process"
+
+
+def test_invalid_hosted_settings_fail_closed_instead_of_falling_back(monkeypatch) -> None:
+    """A broken backend configuration must not be masked by the env fallback (which could
+    re-open host-process execution); only a missing backend package uses the env."""
+    import sys
+    import types
+
+    from code_review import shared_sandbox
+
+    fake = types.ModuleType("backend.settings")
+
+    def broken() -> object:
+        raise ValueError("APP_ENV: invalid value")
+
+    fake.get_settings = broken  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "backend.settings", fake)
+    monkeypatch.delenv("CODE_REVIEW_SANDBOX", raising=False)
+    monkeypatch.setenv("APP_ENV", "development")  # the old fallback would have allowed local
+    with pytest.raises(ValueError):
+        shared_sandbox.build_sandbox()

@@ -39,10 +39,16 @@ class Settings(BaseSettings):
 
     # GitHub
     github_app_id: str | None = None
-    github_app_private_key_path: Path | None = None
+    # A file path, or (forgiving a common dashboard mistake) the PEM contents themselves.
+    # Secret-typed either way so a pasted key never appears in a repr or log.
+    github_app_private_key_path: SecretStr | None = None
+    # PEM contents, for hosts that pass secrets as environment variables (Railway).
+    # Literal "\n" sequences are accepted for single-line dashboards. The path wins if both are set.
+    github_app_private_key: SecretStr | None = None
     github_webhook_secret: SecretStr | None = None
     github_oauth_client_id: str | None = None
     github_oauth_client_secret: SecretStr | None = None
+    github_app_slug: str | None = None  # github.com/apps/<slug>: link for installing the App
     github_api_url: str = "https://api.github.com"
     github_web_url: str = "https://github.com"
     webhook_max_bytes: int = 1_048_576
@@ -61,7 +67,7 @@ class Settings(BaseSettings):
         default=None,
         description="JSON list of {repo_id, local_path, subdir}: trusted local checkouts of owned repos",
     )
-    security_sandbox: Literal["docker", "local-dev"] = "docker"
+    security_sandbox: Literal["docker", "vercel", "local-dev"] = "docker"
     security_workdir: Path | None = None
 
     # RL
@@ -81,6 +87,8 @@ class Settings(BaseSettings):
         "anthropic_model_fast",
         "github_app_id",
         "github_app_private_key_path",
+        "github_app_private_key",
+        "github_app_slug",
         "github_webhook_secret",
         "github_oauth_client_id",
         "github_oauth_client_secret",

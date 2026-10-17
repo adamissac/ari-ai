@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
 import { PillarLoop } from '@/components/pillar-loop';
+import { RepoCommits } from '@/components/repo-commits';
+import { RepoPicker } from '@/components/repo-picker';
 import { useProject } from '@/components/project';
 import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, Panel, Stat, Time } from '@/components/ui';
 import { api, idempotencyKey } from '@/lib/api';
@@ -376,7 +378,6 @@ function Repositories({ repos }: { repos: Repository[] }) {
   };
   return (
     <Panel title="Repositories" id="connect-repo">
-      <p className="mb-3 text-sm text-muted" data-testid="connect-repository-note">{CONNECT_REPOSITORY_NOTE}</p>
       {repos.length === 0 ? <Empty>No repository connected.</Empty> : (
         <>
         <p className="mb-3 text-sm text-muted" data-testid="index-commit-note">{INDEX_COMMIT_NOTE}</p>
@@ -385,7 +386,10 @@ function Repositories({ repos }: { repos: Repository[] }) {
         </ul>
         </>
       )}
-      <form onSubmit={connect} className="mt-4 grid gap-2 border-t border-line pt-3 sm:grid-cols-[2fr_1fr_auto] sm:items-end">
+      <div className="mt-4 border-t border-line pt-3"><RepoPicker projectId={project.id} onConnected={reloadRepos} /></div>
+      <p className="label-mono mt-4 text-faint">Or by name (an operator provides the checkout)</p>
+      <p className="mt-1 text-sm text-muted" data-testid="connect-repository-note">{CONNECT_REPOSITORY_NOTE}</p>
+      <form onSubmit={connect} className="mt-2 grid gap-2 sm:grid-cols-[2fr_1fr_auto] sm:items-end">
         <Field label="owner/name"><input className={inputClass} value={fullName} onChange={e => setFullName(e.target.value)} required pattern="[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+" name="full_name" /></Field>
         <Field label="Default branch"><input className={inputClass} value={branch} onChange={e => setBranch(e.target.value)} name="default_branch" /></Field>
         <Button type="submit" disabled={busy || !fullName.trim()}>Connect</Button>
@@ -423,8 +427,12 @@ function RepoRow({ repo }: { repo: Repository }) {
     <li className="rounded-md border border-line bg-panel-2 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="font-medium">{repo.full_name}</span>
-        <span className="text-xs text-muted">{repo.default_branch} · {repo.installation_id ? 'GitHub App installed' : 'no GitHub App installation'}</span>
+        <span className="flex flex-wrap items-center gap-3 text-xs text-muted">
+          {repo.default_branch} · {repo.installation_id ? 'GitHub App installed' : 'no GitHub App installation'}
+          <Link className="text-brand hover:underline" href={`/projects/${repo.project_id}/simulate?repo=${encodeURIComponent(repo.full_name)}`} data-testid={`simulate-${repo.full_name}`}>Simulate attack →</Link>
+        </span>
       </div>
+      <div className="mt-3"><RepoCommits repo={repo} onPick={setSha} /></div>
       <form onSubmit={index} className="mt-2 flex flex-wrap items-center gap-2">
         <input aria-label={`Commit to index for ${repo.full_name}`} className={`${inputClass} flex-1 font-mono`} value={sha} onChange={e => setSha(e.target.value.toLowerCase())} pattern="[0-9a-f]{7,40}" placeholder="commit sha to index" required />
         <Button type="submit" disabled={busy || !SHA.test(sha)}>Index commit</Button>

@@ -43,6 +43,18 @@
           "sha256": "0d1f0b8d0722224e32e9f28261bdc86c79115be73444ae5eceb73976a1bcdf83"
         }
       ]
+    },
+    {
+      "package": "@fontsource/chakra-petch",
+      "version": "5.3.0",
+      "tarball_integrity": "sha512-QZvbM/q2R6n1pg2x+TJPftZmBNS+ADU37L4Z4L/6UJIz+JZ/SRaEf8usPFRiP7Ht28sIideMu/Bm1SnGlSrwNw==",
+      "license": "chakra-petch.LICENSE",
+      "files": [
+        {
+          "path": "chakra-petch-latin-700-normal.woff2",
+          "sha256": "ce5095dc1cb200aaa939e38067a0677018d10e9f26ec38cdcf1557ac524fc775"
+        }
+      ]
     }
   ]
 }

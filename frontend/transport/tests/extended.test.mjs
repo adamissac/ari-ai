@@ -117,3 +117,32 @@ test('monitoring feed forwards limit and cursor (the feed used to truncate silen
   assert.ok(seen.endsWith('/projects/prj_12345678/events'), seen);
   assert.throws(() => api.monitoringEvents('prj_12345678', { limit: 500 }), ProtocolError);
 });
+
+test('GitHub repository picker validates every row and the install link', async () => {
+  const repo = { full_name: 'acme/shop', installation_id: 42, default_branch: 'main', private: true, connected_repo_id: null };
+  const ok = await client(() => json({ items: [repo], install_url: 'https://github.com/apps/ari-ai/installations/new', next_cursor: null })).githubRepositories();
+  assert.equal(ok.items[0].installation_id, 42);
+  assert.equal(ok.install_url, 'https://github.com/apps/ari-ai/installations/new');
+  for (const body of [
+    { items: [{ ...repo, full_name: 'acme/shop;rm' }], install_url: null, next_cursor: null },
+    { items: [{ ...repo, installation_id: '42' }], install_url: null, next_cursor: null },
+    { items: [repo], install_url: 'javascript:alert(1)', next_cursor: null },
+    { items: [repo], install_url: null, next_cursor: 'more' },
+  ]) {
+    await assert.rejects(client(() => json(body)).githubRepositories(), ProtocolError);
+  }
+});
+
+test('repository commits are validated: full SHAs and https links only', async () => {
+  const commit = { sha: 'a'.repeat(40), message: 'feat: x', author: 'alice', committed_at: '2026-10-17T00:00:00Z', html_url: 'https://github.com/acme/shop/commit/aaa' };
+  const ok = await client(() => json({ items: [commit], next_cursor: null, available: true, reason: null })).repositoryCommits('rep_12345678');
+  assert.equal(ok.items[0].sha, 'a'.repeat(40));
+  assert.equal(ok.available, true);
+  for (const body of [
+    { items: [{ ...commit, sha: 'abc' }], next_cursor: null, available: true, reason: null },
+    { items: [{ ...commit, html_url: 'javascript:alert(1)' }], next_cursor: null, available: true, reason: null },
+    { items: [commit], next_cursor: null, available: 'yes', reason: null },
+  ]) {
+    await assert.rejects(client(() => json(body)).repositoryCommits('rep_12345678'), ProtocolError);
+  }
+});
