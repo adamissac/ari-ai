@@ -27,7 +27,7 @@ export class ApiClient {
     this.fetch = options.fetch ?? globalThis.fetch.bind(globalThis);
   }
   clearSession(): void { this.csrf = undefined; }
-  private async request(path: string, schema: Parameters<typeof decode>[0] | null, options: RequestOptions = {}, body?: unknown, key?: string, envelope?: 'assessment', page = false): Promise<unknown> {
+  private async request(path: string, schema: Parameters<typeof decode>[0] | null | typeof RAW, options: RequestOptions = {}, body?: unknown, key?: string, envelope?: 'assessment', page = false): Promise<unknown> {
     const headers = new Headers({ Accept: 'application/json' });
     if (body !== undefined) {
       if (!this.csrf && path !== '/auth/dev/login') throw new ProtocolError('Load the authenticated session before a mutation');
@@ -52,17 +52,18 @@ export class ApiClient {
     const value = await readJson(response);
     if (!response.ok) throw new ApiError(response.status, decode<C.ErrorResponse>('ErrorResponse', value).error);
     if (schema === null) throw new ProtocolError('Expected an empty response');
+    if (schema === RAW) return value;
     if (page) {
       if (!value || typeof value !== 'object' || Array.isArray(value)) throw new ProtocolError('Invalid list response');
       const record = value as Record<string, unknown>;
       if (!Array.isArray(record.items) || !(record.next_cursor === null || typeof record.next_cursor === 'string') || Object.keys(record).some(k => k !== 'items' && k !== 'next_cursor')) throw new ProtocolError('Invalid list response');
-      return { items: record.items.map(item => decode(schema, item)), next_cursor: record.next_cursor };
+      return { items: record.items.map(item => decode(schema as Parameters<typeof decode>[0], item)), next_cursor: record.next_cursor };
     }
     if (envelope) {
       if (!value || typeof value !== 'object' || !(envelope in value)) throw new ProtocolError('Invalid assessment acceptance envelope');
-      return decode(schema, (value as Record<string, unknown>)[envelope]);
+      return decode(schema as Parameters<typeof decode>[0], (value as Record<string, unknown>)[envelope]);
     }
-    return decode(schema, value);
+    return decode(schema as Parameters<typeof decode>[0], value);
   }
   async session(options?: RequestOptions): Promise<C.MeResponse> {
     this.clearSession();
@@ -136,6 +137,129 @@ export class ApiClient {
   decideApproval(id: string, body: C.ApprovalDecision, options?: RequestOptions): Promise<C.Approval> {
     return this.request(`/approvals/${segment(id)}/decision`, 'Approval', options, body) as Promise<C.Approval>;
   }
+  revokeScope(id: string, options?: RequestOptions): Promise<C.AuthorizedScope> {
+    return this.request(`/scopes/${segment(id)}/revoke`, 'AuthorizedScope', options, {}) as Promise<C.AuthorizedScope>;
+  }
+  eventsLog(assessmentId: string, after = 0, options?: RequestOptions): Promise<Page<C.StreamEvent>> {
+    if (!Number.isSafeInteger(after) || after < 0) throw new ProtocolError('Invalid event cursor');
+    return this.list(`/assessments/${segment(assessmentId)}/events/log?after=${after}`, 'StreamEvent', options);
+  }
+  async cancelAssessment(id: string, options?: RequestOptions): Promise<CancelResult> {
+    const value = await this.request(`/assessments/${segment(id)}/cancel`, RAW, options, {});
+    const record = object(value, 'cancel response');
+    if (record.assessment_id !== id || typeof record.cancelled !== 'boolean' || record.cancel_requested !== true) {
+      throw new ProtocolError('Invalid cancel response');
+    }
+    return { assessment_id: id, cancelled: record.cancelled, cancel_requested: true };
+  }
+  async finding(id: string, options?: RequestOptions): Promise<FindingDetail> {
+    const record = object(await this.request(`/findings/${segment(id)}`, RAW, options), 'finding response');
+    if (!Array.isArray(record.records) || Object.keys(record).some(k => k !== 'finding' && k !== 'records')) {
+      throw new ProtocolError('Invalid finding response');
+    }
+    const finding = decode<C.Finding>('Finding', record.finding);
+    const records = record.records.map(item => {
+      const entry = object(item, 'finding record');
+      const type = entry.type;
+      if (typeof type !== 'string' || !(type in RECORD_SCHEMAS)) throw new ProtocolError('Unknown finding record type');
+      const name = RECORD_SCHEMAS[type as FindingRecord['type']];
+      return { type, record: decode(name, entry.record) } as FindingRecord;
+    });
+    return { finding, records };
+  }
+  patches(findingId: string, options?: RequestOptions): Promise<Page<C.PatchView>> {
+    return this.list(`/findings/${segment(findingId)}/patches`, 'PatchView', options);
+  }
+  acceptRisk(findingId: string, body: C.AcceptRisk, options?: RequestOptions): Promise<C.Finding> {
+    return this.request(`/findings/${segment(findingId)}/accept-risk`, 'Finding', options, body) as Promise<C.Finding>;
+  }
+  pendingApprovals(projectId: string, options?: RequestOptions): Promise<Page<C.Approval>> {
+    return this.list(`/projects/${segment(projectId)}/approvals?status=pending`, 'Approval', options);
+  }
+  monitoringEvents(projectId: string, options?: RequestOptions): Promise<Page<C.MonitoringEvent>> {
+    return this.list(`/projects/${segment(projectId)}/events`, 'MonitoringEvent', options);
+  }
+  reassessments(projectId: string, options?: RequestOptions): Promise<Page<C.ReassessmentRequest>> {
+    return this.list(`/projects/${segment(projectId)}/reassessments`, 'ReassessmentRequest', options);
+  }
+  async defenseRecommendations(projectId: string, options?: RequestOptions): Promise<LabeledPage<C.DefenseRecommendation>> {
+    const record = object(await this.request(`/projects/${segment(projectId)}/defense-recommendations`, RAW, options), 'recommendation list');
+    if (!Array.isArray(record.items) || record.next_cursor !== null || typeof record.label !== 'string' || Object.keys(record).length !== 3) {
+      throw new ProtocolError('Invalid recommendation list');
+    }
+    return { items: record.items.map(i => decode<C.DefenseRecommendation>('DefenseRecommendation', i)), next_cursor: null, label: record.label };
+  }
+  rlEvaluations(projectId: string, options?: RequestOptions): Promise<Page<C.RLEvaluation>> {
+    return this.list(`/projects/${segment(projectId)}/rl-evaluations`, 'RLEvaluation', options);
+  }
+  /** Bounded text artifact (diffs, logs). The SHA-256 header is verified against the bytes. */
+  async artifactText(id: string, options: RequestOptions & { maxBytes?: number } = {}): Promise<ArtifactText> {
+    const response = await this.fetch(`${this.baseUrl}/artifacts/${segment(id)}`, {
+      method: 'GET', credentials: 'include', headers: { Accept: '*/*' },
+      ...(options.signal ? { signal: options.signal } : {}),
+    });
+    if (response.status === 401) this.clearSession();
+    if (!response.ok) throw new ApiError(response.status, decode<C.ErrorResponse>('ErrorResponse', await readJson(response)).error);
+    const bytes = await readBytes(response, options.maxBytes ?? 2 * 1024 * 1024);
+    const declared = response.headers.get('x-artifact-sha256')?.toLowerCase() ?? null;
+    const actual = await sha256Hex(bytes);
+    if (declared !== null && declared !== actual) throw new ProtocolError('Artifact hash mismatch');
+    let text: string;
+    try { text = new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
+    catch { throw new ProtocolError('Artifact is not UTF-8 text'); }
+    return { id, text, sha256: actual, hashVerified: declared !== null, mediaType: response.headers.get('content-type') ?? 'application/octet-stream' };
+  }
+}
+
+export interface CancelResult { assessment_id: string; cancelled: boolean; cancel_requested: true }
+export interface LabeledPage<T> extends Page<T> { label: string }
+export interface ArtifactText { id: string; text: string; sha256: string; hashVerified: boolean; mediaType: string }
+export type FindingRecord =
+  | { type: 'hypothesis'; record: C.Hypothesis }
+  | { type: 'validation_result'; record: C.ValidationResult }
+  | { type: 'attack_path'; record: C.AttackPath }
+  | { type: 'root_cause'; record: C.RootCause }
+  | { type: 'remediation_plan'; record: C.RemediationPlan }
+  | { type: 'hardening'; record: C.HardeningRecommendation };
+export interface FindingDetail { finding: C.Finding; records: FindingRecord[] }
+// Mirrors backend host._RECORD_TYPES; an unknown type is rejected rather than rendered unvalidated.
+const RECORD_SCHEMAS = {
+  hypothesis: 'Hypothesis', validation_result: 'ValidationResult', attack_path: 'AttackPath',
+  root_cause: 'RootCause', remediation_plan: 'RemediationPlan', hardening: 'HardeningRecommendation',
+} as const satisfies Record<FindingRecord['type'], Parameters<typeof decode>[0]>;
+// Sentinel: return the bounded JSON body for an endpoint whose envelope is not a shared DTO.
+const RAW = '__raw__' as const;
+function object(value: unknown, what: string): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new ProtocolError(`Invalid ${what}`);
+  return value as Record<string, unknown>;
+}
+
+async function readBytes(response: Response, maxBytes: number): Promise<Uint8Array> {
+  const reader = response.body?.getReader();
+  if (!reader) return new Uint8Array();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > maxBytes) throw new ProtocolError('Artifact exceeds size limit');
+      chunks.push(value);
+    }
+  } catch (error) {
+    await reader.cancel().catch(() => undefined);
+    throw error;
+  } finally { reader.releaseLock(); }
+  const out = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) { out.set(chunk, offset); offset += chunk.byteLength; }
+  return out;
+}
+
+async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes as BufferSource);
+  return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
 }
 
 // Bounded reads prevent an error page or malicious stream from exhausting memory.
