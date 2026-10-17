@@ -177,6 +177,8 @@ test('create a project and connect a repository through the UI', async ({ browse
   await page.getByRole('button', { name: 'Create project' }).click();
   await page.getByRole('link', { name }).click();
   await expect(page.getByText('No repository connected.')).toBeVisible();
+  // Dev login has no GitHub App access, so the picker explains how to add repositories.
+  await expect(page.getByTestId('repo-picker-empty')).toBeVisible();
   await page.getByLabel('owner/name').fill('acme/another-repo');
   await page.getByRole('button', { name: 'Connect' }).click();
   await expect(page.getByRole('region', { name: 'Repositories' }).getByText('acme/another-repo')).toBeVisible();
