@@ -60,6 +60,43 @@ React, TypeScript (strict), Tailwind. Types generated from `shared/`.
 - RL panel: recommended action, margin, policy version, and the fixed caveat text
   "Recommendation from a policy trained in simulation. Not applied automatically."
 
+### Preferred visualization structure
+
+Recorded 2026-10-17. Two reference screens (a live network map, and a seven-stage
+agent pipeline) are a **structure we want**, not a design to copy. Do not take
+their pixels, palette, type, wording, or assets. Ari AI stays white and `#C2452D`.
+The layout can change; the point is that a person can see what is being watched,
+and what each agent actually did, without reading a log.
+
+**Always-on defense (24/7).** A graph of the system under watch:
+
+- Nodes are that project's components (edge, site, API, identity, app, data,
+  logging, endpoints). Names come from the project.
+- Edges are dependencies between those components.
+- Each node shows a state and how recently it was checked. Show at least
+  "healthy" and "being checked". Mark critical components in words, not color alone.
+- A legend names the states.
+- "Being checked" only while a real check is in progress. "Healthy" only from a
+  recorded result. A simulated view stays labeled simulation.
+
+This is the continuous-defense picture. Held-out RL charts and episode replay stay
+as the evidence behind a recommendation. They do not replace the map.
+
+**Seven agents.** One view of the whole team, in orchestrator order — Scout,
+Probe, Trace, Diagnose, Patch, Fortify, Verify:
+
+- A rail lists all seven at once. Each row is the agent name plus a one-line job
+  in our words: map the attack surface, prove or disprove, follow the path, find
+  the cause, propose a fix, prevent recurrence, accept on evidence.
+- The selected agent fills the center: a plain-language outcome, the evidence it
+  produced, and a timeline of the steps it actually ran.
+- A handoff panel says what this agent passes to the next one, and what is still open.
+- Selecting an agent shows that agent's real run. An agent that has not run stays
+  empty. No invented tool calls.
+
+The orchestrator state rail above can stay. This view is how someone understands
+the agents.
+
 ## Component conventions
 
 - Shared UI primitives in `frontend/components/ui/`; feature components by route.
