@@ -16,6 +16,7 @@ from pathlib import Path
 GREEN = "\033[92m"
 RED = "\033[91m"
 YELLOW = "\033[93m"
+BLUE = "\033[94m"
 RESET = "\033[0m"
 BOLD = "\033[1m"
 
@@ -35,7 +36,7 @@ def run_test_suite(script_name: str, suite_name: str) -> int:
         return 1
 
     print_header(f"Running: {suite_name}")
-    result = subprocess.run(["python", str(script_path)], cwd=Path(__file__).parent.parent.parent)
+    result = subprocess.run(["python3", str(script_path)], cwd=Path(__file__).parent.parent.parent)
     return result.returncode
 
 

@@ -151,13 +151,13 @@ def run_preflight_checks() -> Dict[str, List[Tuple[str, str, str]]]:
     # Check if backend can be imported
     try:
         subprocess.run(
-            ["uv", "run", "python", "-c", "import backend.backend; print('OK')"],
+            ["uv", "run", "python", "-c", "import sys; sys.path.insert(0, 'backend'); import backend; print('OK')"],
             check=True,
             capture_output=True,
             text=True,
             timeout=30,
         )
-        results["backend"].append(("PASS", "Backend import", "backend.backend imports successfully"))
+        results["backend"].append(("PASS", "Backend import", "backend imports successfully"))
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
         results["backend"].append(("FAIL", "Backend import", f"Import failed: {e.stderr if e.stderr else str(e)}"))
 
@@ -170,15 +170,19 @@ def run_preflight_checks() -> Dict[str, List[Tuple[str, str, str]]]:
     # === Frontend Checks ===
     # Check if frontend can build
     try:
-        subprocess.run(
-            ["npm", "run", "build"],
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=120,
-            cwd="frontend",
-        )
-        results["frontend"].append(("PASS", "Frontend build", "Frontend builds successfully"))
+        # First check if node_modules exists
+        if not Path("frontend/node_modules").exists():
+            results["frontend"].append(("WARN", "Frontend build", "node_modules not found (run 'npm install' in frontend/)"))
+        else:
+            subprocess.run(
+                ["npm", "run", "build"],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=120,
+                cwd="frontend",
+            )
+            results["frontend"].append(("PASS", "Frontend build", "Frontend builds successfully"))
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
         results["frontend"].append(("FAIL", "Frontend build", f"Build failed: {e.stderr[:200] if e.stderr else str(e)}"))
 
