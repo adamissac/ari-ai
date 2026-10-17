@@ -142,3 +142,17 @@ def test_correlate_uses_provider_and_rejects_wrong_sha() -> None:
     for provider in (WrongSha(), Broken(), None):
         impact, note = correlate(rep, change, provider)
         assert impact.resolution is ImpactResolution.path_only and note
+
+
+def test_malformed_nested_fields_do_not_crash() -> None:
+    bad_pr = {
+        "action": "opened",
+        "repository": {"full_name": "acme/x"},
+        "pull_request": {"head": "not-an-object", "base": 5},
+    }
+    assert isinstance(normalize_github("pull_request", bad_pr), Ignored)
+    weird = {**push(["a.py"]), "commits": "nope", "head_commit": [1], "sender": "x"}
+    change = normalize_github("push", weird)
+    assert (
+        not isinstance(change, Ignored) and change.changed_paths == () and not change.paths_complete
+    )

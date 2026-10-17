@@ -49,6 +49,14 @@ def _s(value: Any, cap: int = 500) -> str:
     return value[:cap] if isinstance(value, str) else ""
 
 
+def _obj(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _arr(value: Any) -> list[Any]:
+    return value if isinstance(value, list) else []
+
+
 def _sha(value: Any) -> str | None:
     return value if isinstance(value, str) and _SHA.match(value) and value != ZERO_SHA else None
 
@@ -108,13 +116,13 @@ def _push(payload: dict[str, Any], name: str, sender: str | None) -> GitHubChang
     ref = _s(payload.get("ref"), 255) or None
     if ref and not ref.startswith("refs/heads/"):
         return Ignored(f"non-branch ref {ref}", name)
-    commits = payload.get("commits") if isinstance(payload.get("commits"), list) else []
+    commits = _arr(payload.get("commits"))
     paths: set[str] = set()
     for c in commits[:PUSH_COMMIT_CAP]:
         if not isinstance(c, dict):
             continue
         for key in ("added", "modified", "removed"):
-            for p in c.get(key) or []:
+            for p in _arr(c.get(key)):
                 cp = _clean_path(p)
                 if cp:
                     paths.add(cp)
@@ -124,7 +132,7 @@ def _push(payload: dict[str, Any], name: str, sender: str | None) -> GitHubChang
         notes.append("push payload lists no commits (e.g. force-push or new branch)")
     if len(commits) >= PUSH_COMMIT_CAP:
         notes.append("push payload truncated at 20 commits; path list partial")
-    head_commit = payload.get("head_commit") if isinstance(payload.get("head_commit"), dict) else {}
+    head_commit = _obj(payload.get("head_commit"))
     return GitHubChange(
         event="push",
         repo_full_name=name,
@@ -144,16 +152,17 @@ def _pull_request(payload: dict[str, Any], name: str, sender: str | None) -> Git
     action = _s(payload.get("action"), 40)
     if action not in PR_ACTIONS:
         return Ignored(f"pull_request action {action!r} does not change code", name)
-    pr = payload.get("pull_request") if isinstance(payload.get("pull_request"), dict) else {}
-    head = _sha((pr.get("head") or {}).get("sha"))
+    pr = _obj(payload.get("pull_request"))
+    pr_head, pr_base = _obj(pr.get("head")), _obj(pr.get("base"))
+    head = _sha(pr_head.get("sha"))
     if head is None:
         return Ignored("pull_request without a valid head SHA", name)
     number = payload.get("number") if isinstance(payload.get("number"), int) else pr.get("number")
     return GitHubChange(
         event="pull_request",
         repo_full_name=name,
-        ref=_s((pr.get("head") or {}).get("ref"), 255) or None,
-        base_sha=_sha((pr.get("base") or {}).get("sha")),
+        ref=_s(pr_head.get("ref"), 255) or None,
+        base_sha=_sha(pr_base.get("sha")),
         head_sha=head,
         changed_paths=(),
         paths_complete=False,
@@ -163,6 +172,6 @@ def _pull_request(payload: dict[str, Any], name: str, sender: str | None) -> Git
         pr_action=action,
         pr_title=_s(pr.get("title"), 500),
         pr_body=_s(pr.get("body"), 20_000),
-        pr_base_ref=_s((pr.get("base") or {}).get("ref"), 255) or None,
+        pr_base_ref=_s(pr_base.get("ref"), 255) or None,
         notes=("pull_request payload carries no file list; fetch compare(base, head)",),
     )

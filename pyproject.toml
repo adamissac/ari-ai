@@ -52,7 +52,9 @@ ignore = ["E501", "B008"]
 python_version = "3.12"
 plugins = ["pydantic.mypy"]
 ignore_missing_imports = true
-packages = ["shared", "monitoring"]
+mypy_path = "shared:monitoring:backend"
+explicit_package_bases = true
+files = ["shared/shared", "monitoring/monitoring"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["shared", "backend", "monitoring", "rl_defense", "security_agents", "code_intelligence", "code_review"]
