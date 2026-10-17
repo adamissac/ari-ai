@@ -40,6 +40,22 @@ describe('backend proxy', () => {
     expect(res.headers.getSetCookie()).toEqual(['a=1', 'b=2']);
     expect(res.headers.get('x-internal')).toBeNull();
   });
+  it('a 5xx that is not an API error (gateway page during a deploy) becomes a 503 envelope', async () => {
+    vi.stubEnv('BACKEND_ORIGIN', 'http://api:8000');
+    const railway = { status: 'error', code: 502, message: 'Application failed to respond', request_id: 'x' };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json(railway, { status: 502 })));
+    const res = await proxy(new Request('http://web/api/v1/me'));
+    expect(res.status).toBe(503);
+    expect((await res.json()).error.code).toBe('SUBSYSTEM_UNAVAILABLE');
+  });
+  it('an API 5xx error passes through unchanged', async () => {
+    vi.stubEnv('BACKEND_ORIGIN', 'http://api:8000');
+    const api = { error: { code: 'INTERNAL', message: 'boom', details: {}, request_id: 'req_1' } };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json(api, { status: 500 })));
+    const res = await proxy(new Request('http://web/api/v1/me'));
+    expect(res.status).toBe(500);
+    expect((await res.json()).error.request_id).toBe('req_1');
+  });
   it('refuses paths outside /api/v1/', async () => {
     const res = await proxy(new Request('http://web/api/v2/me'));
     expect(res.status).toBe(404);
