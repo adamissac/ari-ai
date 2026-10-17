@@ -21,3 +21,10 @@ Add dated factual entries; do not overwrite history. Never claim unexecuted test
 - Tests (FakeTransport = replay/fake mode, tools execute for real): discount-rounding defect validated (fails twice on head with AssertionError, wrong value 0.22 observed); PR-only rule stays `hypothesis` + `needs_clarification`; invented citations dropped; fix-that-drops-`require_owner` handed to Scout as security hypothesis while the cumulative-bound test passes on head and fails on base; payments-lite refund bound reproduced → approved repair → fresh replay passes → `patch_proposed`; tamper-only repair yields no patch; real `AssessmentHost`/PostgreSQL flow incl. API approval decision, reviewer self-verification refused (`FORBIDDEN`), Verify test double accepts real patch and rejects tampering patch; original repo digest unchanged in every scenario.
 - Found and handled: backend artifact redaction rewrites fixture bearer tokens; generated tests may now only contain credential-shaped values already present in the pinned repo, and such test bundles are stored base64 to replay byte-for-byte.
 - Live Tier-3 test written (`code-review/tests/test_live_reviewer.py`, USD cap) but NOT executed.
+
+### 2026-10-17T02:27:48Z (session 1, cont.)
+
+- Merged origin/main (contracts 0.5.0, code-intelligence member) into the branch. Full repo `uv run pytest -q` → 132 passed, 7 skipped.
+- `resolve_repo` now uses the backend `REPOSITORY_BINDINGS_FILE` and the SHA-pinned `build_recipe.json` `target_dir`. Added `review_assessment(host)` as the FUNCTIONAL_REVIEW entry, tested on PostgreSQL.
+- Merging PR #22 into main was attempted after green tests. It was blocked by this environment's permission policy ("merge without review"). The PR is MERGEABLE/CLEAN with CI green; it needs a reviewer or a human merge.
+- Sent `20261017T022748Z-sai-to-srihith-functional-review-hook`.
