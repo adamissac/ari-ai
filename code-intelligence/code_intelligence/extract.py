@@ -80,6 +80,7 @@ class PythonExtractor:
         self.owners: dict[int, Symbol] = {}
         self.by_name: dict[str, list[Symbol]] = defaultdict(list)
         self.shadowed: dict[str, set[str]] = defaultdict(set)
+        self.parameter_types: dict[str, dict[str, str]] = defaultdict(dict)
         self.parser = Parser(Language(tree_sitter_python.language()))
         package_dirs = {
             str(PurePosixPath(f.path).parent)
@@ -182,6 +183,13 @@ class PythonExtractor:
                             *([args.kwarg] if args.kwarg else []),
                         ]
                     )
+                    self.parameter_types[symbol.id].update(
+                        {
+                            a.arg: ast.unparse(a.annotation).strip("\"'")
+                            for a in [*args.posonlyargs, *args.args, *args.kwonlyargs]
+                            if a.annotation is not None
+                        }
+                    )
                 self._walk_definitions(file, child, symbol)
             else:
                 self._walk_definitions(file, child, owner)
@@ -225,6 +233,17 @@ class PythonExtractor:
             targets = self.by_name.get(f"{cls}.{parts[1]}", [])
             if len(targets) == 1:
                 return targets[0], "likely"
+        if len(parts) == 2 and parts[0] in self.parameter_types[owner.id]:
+            class_name = self.parameter_types[owner.id][parts[0]]
+            if class_name != parts[0]:
+                type_symbol, _ = self.resolve(class_name, owner)
+                targets = (
+                    self.by_name.get(f"{type_symbol.qualified_name}.{parts[1]}", [])
+                    if type_symbol
+                    else []
+                )
+                if len(targets) == 1:
+                    return targets[0], "likely"
         if parts[0] in self.shadowed[owner.id]:
             return None, "unresolved"
         # Lexical resolution walks enclosing functions/classes then the module.
@@ -449,10 +468,13 @@ class PythonExtractor:
         start: int | None = None,
         end: int | None = None,
     ) -> None:
+        import re
+
         text = statement.lower()
         kind = (
             "ownership"
             if any(k in text for k in ("owner", "tenant", "other_customer"))
+            or re.search(r"\bown\b", text)
             else (
                 "authorization"
                 if any(k in text for k in ("auth", "permission", "403"))

@@ -1,6 +1,10 @@
 # Code intelligence — internals
 
-Status: **specified**. Product-level spec: [05](../05_CODE_INTELLIGENCE_ENGINE.md).
+Status: **Python MVP implemented**. Actual compact modules: `ingest.py`, `extract.py`,
+`store.py`, `persistence.py`, `retrieval.py`, `inference.py`, `api.py`. The expanded layout
+below remains a proposed future decomposition. SQLite local and backend PostgreSQL
+persistence are tested; head facts are fully re-derived.
+See [implementation and limits](../../code-intelligence/README.md). Product-level spec: [05](../05_CODE_INTELLIGENCE_ENGINE.md).
 
 ## Module layout (planned, `code-intelligence/code_intelligence/`)
 

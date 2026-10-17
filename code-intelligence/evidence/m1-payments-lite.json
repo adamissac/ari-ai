@@ -1,0 +1,151 @@
+{
+  "index_version": "python-ast-ts/0.1.0",
+  "target_sha": "41fb569c791d1775a02bf1d385ea6903f4210d27",
+  "tree_sha": "d9ece1616d9ce9a182a05f9cc52046cfa23ca33f",
+  "include_prefix": "examples/payments-lite/target",
+  "python": "3.12.13",
+  "stats": {
+    "files": 8,
+    "symbols": 45,
+    "call_edges": 114,
+    "entry_points": 8,
+    "expectations": 44
+  },
+  "source_paths": [
+    "examples/payments-lite/target/README.md",
+    "examples/payments-lite/target/payments_lite/__init__.py",
+    "examples/payments-lite/target/payments_lite/app.py",
+    "examples/payments-lite/target/payments_lite/store.py",
+    "examples/payments-lite/target/pyproject.toml",
+    "examples/payments-lite/target/tests/__init__.py",
+    "examples/payments-lite/target/tests/conftest.py",
+    "examples/payments-lite/target/tests/test_api.py"
+  ],
+  "call_resolution_counts": {
+    "unresolved": 64,
+    "exact": 33,
+    "likely": 17
+  },
+  "extracted_expectation_statuses": {
+    "ambiguous": 44
+  },
+  "declared_routes": [
+    {
+      "id": "ent_cb19d22f5d4a66b42f174c4517c8524e",
+      "snapshot_id": "snp_a62a6a3b2fdd15783e7f71b1a86071e5",
+      "kind": "http_route",
+      "handler_symbol_id": "sym_d915ee25655309d63c44d31a8b9f4283",
+      "method": "GET",
+      "path_template": "/health",
+      "auth_dependencies": []
+    },
+    {
+      "id": "ent_946eda04e8ddf5494057e3166aa26bd6",
+      "snapshot_id": "snp_a62a6a3b2fdd15783e7f71b1a86071e5",
+      "kind": "http_route",
+      "handler_symbol_id": "sym_1ae4e69e870d0cf81e6d54d8fcffefbf",
+      "method": "GET",
+      "path_template": "/me",
+      "auth_dependencies": [
+        "current_customer"
+      ]
+    },
+    {
+      "id": "ent_102e9e5deffd234779d8c1cf28884c1d",
+      "snapshot_id": "snp_a62a6a3b2fdd15783e7f71b1a86071e5",
+      "kind": "http_route",
+      "handler_symbol_id": "sym_d32396b11d51d6f3e0655373c509247f",
+      "method": "GET",
+      "path_template": "/customers/{customer_id}",
+      "auth_dependencies": [
+        "current_customer",
+        "get_store"
+      ]
+    },
+    {
+      "id": "ent_9dcadb3c583073a78b93c3435f062fe7",
+      "snapshot_id": "snp_a62a6a3b2fdd15783e7f71b1a86071e5",
+      "kind": "http_route",
+      "handler_symbol_id": "sym_7279c9f68ca83041a2384748632b9f0d",
+      "method": "GET",
+      "path_template": "/payments",
+      "auth_dependencies": [
+        "current_customer",
+        "get_store"
+      ]
+    },
+    {
+      "id": "ent_98fd23752220d925d1f634af9246cbcf",
+      "snapshot_id": "snp_a62a6a3b2fdd15783e7f71b1a86071e5",
+      "kind": "http_route",
+      "handler_symbol_id": "sym_6c835ecafecbda075534fb10ebbb9bc6",
+      "method": "POST",
+      "path_template": "/payments",
+      "auth_dependencies": [
+        "current_customer",
+        "get_store"
+      ]
+    },
+    {
+      "id": "ent_bff6c239043c7abc9640210859ec89cc",
+      "snapshot_id": "snp_a62a6a3b2fdd15783e7f71b1a86071e5",
+      "kind": "http_route",
+      "handler_symbol_id": "sym_226c61fb8bc2ff6709fbe277d25f879a",
+      "method": "GET",
+      "path_template": "/payments/{payment_id}",
+      "auth_dependencies": [
+        "current_customer",
+        "get_store"
+      ]
+    },
+    {
+      "id": "ent_4785d327ca8eaa773736daa2993b86dd",
+      "snapshot_id": "snp_a62a6a3b2fdd15783e7f71b1a86071e5",
+      "kind": "http_route",
+      "handler_symbol_id": "sym_1f23af0c9a2d33684ee789b2e5041eaa",
+      "method": "POST",
+      "path_template": "/refunds",
+      "auth_dependencies": [
+        "current_customer",
+        "get_store"
+      ]
+    },
+    {
+      "id": "ent_0014d766285a97ce9d7ddc2559e3e7ef",
+      "snapshot_id": "snp_a62a6a3b2fdd15783e7f71b1a86071e5",
+      "kind": "http_route",
+      "handler_symbol_id": "sym_009ec588b911767a8903f7fe81787b58",
+      "method": "GET",
+      "path_template": "/refunds/{refund_id}",
+      "auth_dependencies": [
+        "current_customer",
+        "get_store"
+      ]
+    }
+  ],
+  "issues": [
+    {
+      "path": "examples/payments-lite/target/Dockerfile",
+      "reason": "unsupported format"
+    }
+  ],
+  "facts_sha256": "d129025f55a7b59db89f50263684d4be20c5af2748363bde989349241c88cb6c",
+  "index_seconds": 0.3658764589927159,
+  "context": {
+    "id": "ctx_7668ce480a5991abb2ba1f3bed850a66",
+    "chunks": 12,
+    "token_count": 23154,
+    "budget": 24000,
+    "focus": "/payments/{payment_id}",
+    "paths": [
+      "examples/payments-lite/target/payments_lite/app.py",
+      "examples/payments-lite/target/tests/test_api.py"
+    ]
+  },
+  "caveats": [
+    "No target code or target tests executed.",
+    "Static route declarations are not proof of runtime reachability.",
+    "Extracted expectations are unverified intent, not security verdicts.",
+    "Single local timing is not a throughput benchmark."
+  ]
+}

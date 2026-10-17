@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 from intel_test_helpers import commit
+from intel_test_helpers import repository as repository
 from shared.intelligence import ContextPackRequest
 from test_service import service
 

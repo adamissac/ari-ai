@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 from intel_test_helpers import commit
+from intel_test_helpers import repository as repository
 from shared.base import utcnow
 from shared.intelligence import ContextPack, ContextPackRequest, Snapshot, SnapshotStatus
 
@@ -198,3 +199,24 @@ def test_factory_requires_explicit_durable_config(
     monkeypatch.setenv("INTELLIGENCE_REPOSITORIES_FILE", str(config))
     monkeypatch.setenv("INTELLIGENCE_DB_PATH", str(tmp_path / "index.sqlite"))
     assert build_service().index_repository("prj_fixture00", "rep_fixture00", sha).commit_sha == sha
+
+
+def test_diff_preserves_unchanged_callers_and_excludes_unrelated_sibling(
+    repository: tuple[Path, str],
+    tmp_path: Path,
+) -> None:
+    root, _ = repository
+    file = root / "app/payments.py"
+    file.write_text(file.read_text() + "\ndef unrelated():\n    return 99\n")
+    base_sha = commit(root)
+    engine = service(root, tmp_path / "index.sqlite")
+    base = engine.index_repository("prj_fixture00", "rep_fixture00", base_sha)
+    file.write_text(
+        file.read_text().replace("return min(amount, paid)", "return max(amount, paid)")
+    )
+    head_sha = commit(root)
+    head = engine.index_repository("prj_fixture00", "rep_fixture00", head_sha, base_snapshot=base)
+    impact = engine.affected_by_diff("rep_fixture00", base_sha, head_sha)
+    assert engine.get_symbol(head, "app.payments.read_payment").id in impact.symbols
+    assert engine.get_symbol(base, "app.payments.read_payment").id in impact.symbols
+    assert engine.get_symbol(head, "app.payments.unrelated").id not in impact.symbols
