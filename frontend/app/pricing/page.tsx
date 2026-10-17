@@ -5,7 +5,7 @@ import { Faq } from '@/components/faq';
 import { RollText } from '@/components/ui';
 import { DEMO_ONLY } from '@/lib/deployment';
 
-const START = DEMO_ONLY ? '/demo' : '/projects';
+const START = DEMO_ONLY ? '/access' : '/projects';
 
 export const metadata: Metadata = {
   title: `Pricing · ${BRAND_NAME}`,

@@ -183,6 +183,7 @@ def main(argv: list[str]) -> int:
         alice.close()
 
         web_port = _port()
+        os.environ.setdefault("DEMO_ACCESS_CODE", "e2e-demo-access-code")  # demo account gate (proxy.ts)
         env = {**os.environ, "BACKEND_ORIGIN": f"http://127.0.0.1:{api_port}", "NEXT_PUBLIC_DEV_LOGIN": "1"}
         env.pop("NODE_OPTIONS", None)
         if os.environ.get("E2E_SKIP_BUILD") != "1":

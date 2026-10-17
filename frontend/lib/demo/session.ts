@@ -1,35 +1,30 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { DEMO_USER, type DemoUser } from '@/lib/demo/data';
 
-/** Simulated GitHub sign-in for the demo. No OAuth happens and no token exists. */
-const KEY = 'ari-demo-session';
-
-function read(): DemoUser | null {
-  try {
-    return window.sessionStorage.getItem(KEY) ? DEMO_USER : null;
-  } catch {
-    return null;
-  }
-}
-
-export function useDemoSession(): { user: DemoUser | null; ready: boolean; signIn: () => void; signOut: () => void } {
+/**
+ * The demo account's session. Signing in happens on /access with an access code checked on
+ * the server, which sets an httpOnly cookie; proxy.ts keeps /demo closed without it. This
+ * hook only asks the server whether that cookie is valid. No GitHub OAuth happens here.
+ */
+export function useDemoSession(): { user: DemoUser | null; ready: boolean; signOut: () => void } {
+  const router = useRouter();
   const [user, setUser] = useState<DemoUser | null>(null);
   const [ready, setReady] = useState(false);
   useEffect(() => {
-    // Storage is only readable after mount; the first render is the signed-out shell.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setUser(read());
-    setReady(true);
-  }, []);
-  const signIn = useCallback(() => {
-    try { window.sessionStorage.setItem(KEY, '1'); } catch { /* storage unavailable: session lasts for this page */ }
-    setUser(DEMO_USER);
+    const controller = new AbortController();
+    fetch('/api/demo-session', { signal: controller.signal, cache: 'no-store' })
+      .then(r => r.json() as Promise<{ signedIn?: boolean }>)
+      .then(body => { setUser(body.signedIn ? DEMO_USER : null); setReady(true); })
+      .catch(() => { if (!controller.signal.aborted) { setUser(null); setReady(true); } });
+    return () => controller.abort();
   }, []);
   const signOut = useCallback(() => {
-    try { window.sessionStorage.removeItem(KEY); } catch { /* storage unavailable */ }
-    setUser(null);
-  }, []);
-  return { user, ready, signIn, signOut };
+    fetch('/api/demo-session', { method: 'DELETE' })
+      .catch(() => { /* the cookie expires on its own */ })
+      .finally(() => { setUser(null); router.push('/'); });
+  }, [router]);
+  return { user, ready, signOut };
 }

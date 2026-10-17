@@ -1,19 +1,30 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { evidenceShot, expectNoSideScroll } from './helpers';
 
-// The simulated demo (ADR 0013) needs no backend. These tests prove the flow works end to
-// end and that every page keeps the "Simulated demo" marker visible.
+// The demo account (ADR 0013) needs no backend: an access code checked on the server opens
+// the Lumen Pay sample account. These tests prove the gate, the flow, and that every page
+// keeps the small "Demo account · sample data" tag and footer.
+const CODE = process.env.DEMO_ACCESS_CODE ?? 'e2e-demo-access-code';
 
-test('simulated demo: GitHub sign-in, org, repo, commit, seven agents, review, defense', async ({ page }) => {
+async function signInWithCode(page: Page, code = CODE): Promise<void> {
+  await page.getByTestId('access-code').fill(code);
+  await page.getByTestId('access-submit').click();
+}
+
+test('demo account: access code, Lumen Pay, repo, commit, seven agents, review, defense', async ({ page }) => {
   await page.goto('/demo');
-  await expect(page.getByTestId('demo-marker').first()).toContainText('Simulated demo');
-  await page.getByTestId('demo-github-signin').click();
+  await expect(page).toHaveURL(/\/access\?next=%2Fdemo$/);
+  await signInWithCode(page, 'wrong-code');
+  await expect(page.getByTestId('access-error')).toContainText('not valid');
+  await signInWithCode(page);
   await expect(page.getByTestId('demo-orgs')).toBeVisible();
+  await expect(page.getByTestId('demo-account-tag').first()).toContainText('Demo account');
+  await expect(page.getByTestId('header-account')).toContainText('alex-rivera');
   await page.getByTestId('demo-org-lumen-pay').click();
   await expect(page.getByTestId('demo-repos')).toContainText('payments-api');
   await page.getByTestId('demo-repo-payments-api').click();
   await expect(page.getByTestId('demo-commit-row').first()).toContainText('GET /payments/{payment_id}');
-  await expect(page.getByTestId('site-footer')).toContainText('Simulated demo');
+  await expect(page.getByTestId('site-footer')).toContainText('sample data');
   await page.getByTestId('demo-commit-row').first().click();
 
   await expect(page.getByTestId('demo-analyzing')).toBeVisible();
@@ -48,9 +59,20 @@ test('simulated demo: GitHub sign-in, org, repo, commit, seven agents, review, d
   await expectNoSideScroll(page);
 });
 
-test('simulated demo pages send a signed-out visitor to the sign-in', async ({ page }) => {
+test('demo pages need the access code, then return the visitor where they were going', async ({ page }) => {
   await page.goto('/demo/lumen-pay/payments-api');
-  await expect(page.getByTestId('demo-signin')).toBeVisible();
+  await expect(page.getByTestId('access-signin')).toBeVisible();
+  await signInWithCode(page);
+  await expect(page).toHaveURL(/\/demo\/lumen-pay\/payments-api$/);
+  await expect(page.getByTestId('demo-repos').or(page.getByTestId('demo-commit-row').first())).toBeVisible();
+});
+
+test('the access cookie cannot be forged', async ({ page, context, baseURL }) => {
+  await context.addCookies([{ name: 'ari_demo_access', value: '1', url: baseURL ?? 'http://127.0.0.1' }]);
+  await page.goto('/demo/lumen-pay');
+  await expect(page.getByTestId('access-signin')).toBeVisible();
+  const session = await page.request.get('/api/demo-session');
+  expect(await session.json()).toEqual({ signedIn: false });
 });
 
 test('Defense Lab replays a recorded game from the bundle, labelled as simulation, with held-out scores', async ({ page }) => {
