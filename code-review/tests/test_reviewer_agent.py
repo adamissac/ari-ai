@@ -380,8 +380,7 @@ def test_total_refunds_never_exceed_payment_amount():
 """
 
 
-def _pl_review(tmp_path: Path):
-    sc = payments_lite(tmp_path)
+def pl_review_script(sc) -> list:
     app = (sc.repo / "target/payments_lite/app.py").read_text()
     doc = line_of(
         app, "Total refunds for a payment must never exceed the payment's original amount."
@@ -436,7 +435,35 @@ def _pl_review(tmp_path: Path):
             ],
         ),
     ]
-    host = InMemoryHost(fake(script))
+    return script
+
+
+def pl_repair_script(test_path: str) -> list:
+    return [
+        call("read_file", path="target/payments_lite/app.py", start_line=140, end_line=165),
+        call("edit_file", path=test_path, old_text="422", new_text="201"),  # tamper: denied
+        call(
+            "edit_file",
+            path="target/payments_lite/app.py",
+            old_text="        if body.amount > p.amount:\n",
+            new_text=(
+                '        already = sum((r.amount for r in store.refunds_for(p.id)), Decimal("0"))\n'
+                "        if already + body.amount > p.amount:\n"
+            ),
+        ),
+        call("run_tests", target="all"),
+        call(
+            "submit_result",
+            summary="Sum prior refunds before comparing with the payment amount.",
+            rationale="one-line condition change in create_refund",
+            root_cause="bound compared only the new refund",
+        ),
+    ]
+
+
+def _pl_review(tmp_path: Path):
+    sc = payments_lite(tmp_path)
+    host = InMemoryHost(fake(pl_review_script(sc)))
     source = RepoSource(sc.repo, subdir="target")
     outcome = ReviewerAgentRunner(host, source).review(make_request(host, sc))
     return sc, host, source, outcome
@@ -452,28 +479,7 @@ def test_payments_lite_refund_bound_reproduced_then_repaired(tmp_path: Path) -> 
     approval = host.approve(finding.id)
     tests = load_test_sources(host, finding)
     assert [t.path for t in tests] == ["target/tests/generated/test_cr_refund_bound.py"]
-    host.transport = fake(
-        [
-            call("read_file", path="target/payments_lite/app.py", start_line=140, end_line=165),
-            call("edit_file", path=tests[0].path, old_text="422", new_text="201"),  # tamper: denied
-            call(
-                "edit_file",
-                path="target/payments_lite/app.py",
-                old_text="        if body.amount > p.amount:\n",
-                new_text=(
-                    '        already = sum((r.amount for r in store.refunds_for(p.id)), Decimal("0"))\n'
-                    "        if already + body.amount > p.amount:\n"
-                ),
-            ),
-            call("run_tests", target="all"),
-            call(
-                "submit_result",
-                summary="Sum prior refunds before comparing with the payment amount.",
-                rationale="one-line condition change in create_refund",
-                root_cause="bound compared only the new refund",
-            ),
-        ]
-    )
+    host.transport = fake(pl_repair_script(tests[0].path))
     rep = ReviewerAgentRunner(host, source).repair(finding, approval, tests)
     assert rep.accepted_locally, rep.reasons
     run = host.runs[rep.agent_run_id]

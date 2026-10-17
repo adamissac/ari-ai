@@ -15,6 +15,7 @@ its own patch verified; that is the independent Verify agent's job.
 
 from __future__ import annotations
 
+import base64
 import json
 from dataclasses import dataclass, field
 from importlib import resources
@@ -42,6 +43,7 @@ from code_review.tools import (
     ReviewerToolbox,
     TestExecution,
     WrittenTest,
+    credential_values,
     sha256_text,
 )
 from code_review.workspace import (
@@ -361,7 +363,14 @@ class ReviewerAgentRunner:
                             {
                                 "test_id": wt.test_id,
                                 "path": wt.path,
-                                "content": wt.content,
+                                # Fixture credential values (verified present in the pinned repo
+                                # by write_test) are base64-encoded so redaction cannot alter the
+                                # test that must replay byte-for-byte.
+                                **(
+                                    {"content_b64": base64.b64encode(wt.content.encode()).decode()}
+                                    if credential_values(wt.content)
+                                    else {"content": wt.content}
+                                ),
                                 "claim_key": wt.claim_key,
                                 "artifact_id": wt.artifact.id,
                                 "sha256": sha256_text(wt.content),
