@@ -72,7 +72,7 @@ installed Chrome instead of Playwright's Chromium, `E2E_SKIP_BUILD=1` to reuse `
 ## Known gaps (not hidden in the UI)
 
 - No backend endpoint serves the Defense Lab bundle; the Lab reads the committed artifact.
-- Finding detail still shows linked expectations as IDs (the Expectations page renders them in full).
-- Lessons learned need a Fortify regression-test artifact, which hosted assessments do not yet record (coordination note 20261017T093000Z); the UI says so and closure stays blocked.
+- A finding whose assessment has no indexed snapshot can only show expectation ids.
+- Lessons learned stay blocked, and the closure panel says so, when Fortify did not record a regression-test artifact.
 - GitHub links need exactly one repository in the project (findings carry no repo id).
 - Live-provider (`provider_mode=live`) runs have not been exercised through the UI.

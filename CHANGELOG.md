@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Finding detail shows the indexed expectation statement for each linked id, and keeps the id when that snapshot has no matching statement.
+
 - Hosted security and functional verification retain actual regression sources as hash-pinned artifacts; incident lessons learned can cite them. Plan-bound security approvals are resolved through persisted finding/assessment records for incident eradication.
 
 - Added canonical offline CVSS v3.1, OWASP API 2023 and NIST SP 800-115 reference catalogs with integrity checks and pinned-source refresh tooling.
