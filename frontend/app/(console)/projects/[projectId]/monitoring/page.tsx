@@ -7,6 +7,7 @@ import { useProject } from '@/components/project';
 import { Async, Badge, Button, Empty, ErrorState, Loading, Mono, Panel, Tag, Time } from '@/components/ui';
 import { api } from '@/lib/api';
 import { num, shortSha } from '@/lib/format';
+import { monitoringSummary } from '@/lib/monitoring';
 import { EVENT_STATUS } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
 
@@ -18,7 +19,18 @@ export default function MonitoringPage() {
   const reassess = useResource(`reassess:${project.id}`, s => api().reassessments(project.id, { signal: s }), 10000);
   const recs = useResource(`recs:${project.id}`, s => api().defenseRecommendations(project.id, { signal: s }));
   const evals = useResource(`rle:${project.id}`, s => api().rlEvaluations(project.id, { signal: s }));
+  const summary = monitoringSummary({
+    monitoringEnabled: project.settings.monitoring_policy.enabled,
+    eventsKnown: events.status === 'ready',
+    eventCount: events.status === 'ready' ? events.data.items.length : 0,
+    simulatedCount: events.status === 'ready' ? events.data.items.filter(event => event.simulated).length : 0,
+    eventsTruncated: events.status === 'ready' && events.data.items.length >= 50,
+    recommendationsKnown: recs.status === 'ready',
+    recommendationCount: recs.status === 'ready' ? recs.data.items.length : 0,
+  });
   return (
+    <div className="flex flex-col gap-4">
+      <p className="rounded-xl border border-line bg-panel p-5 text-sm text-ink" data-testid="monitoring-summary">{summary}</p>
     <div className="grid gap-4 xl:grid-cols-[3fr_2fr]">
       <div className="flex flex-col gap-4">
         <Panel title="Event feed" actions={<span className="text-xs text-muted">persisted webhook and runtime events · polled every 10 s</span>}>
@@ -74,6 +86,7 @@ export default function MonitoringPage() {
           </Async>
         </Panel>
       </div>
+    </div>
     </div>
   );
 }
