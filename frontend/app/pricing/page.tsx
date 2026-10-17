@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BRAND_NAME } from '@/components/brand';
+import { Faq } from '@/components/faq';
 import { RollText } from '@/components/ui';
 
 export const metadata: Metadata = {
@@ -118,22 +119,14 @@ export default function PricingPage() {
       </section>
       <p className="mt-4 text-center text-xs text-faint" data-testid="pricing-preview">Preview pricing, subject to change. Prices are in USD and exclude tax.</p>
 
-      <section aria-labelledby="faq-title" className="mt-24 grid gap-8 md:grid-cols-[1fr_3fr]">
-        <h2 id="faq-title" className="label-mono flex items-start gap-2 text-faint"><span aria-hidden="true" className="mt-1 inline-block h-1.5 w-1.5 rounded-full bg-brand" />FAQ</h2>
-        <div className="pricing-faq">
-          {FAQ.map(item => (
-            <details key={item.q} className="pricing-faq-item group">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-base font-medium md:text-lg">
-                {item.q}
-                <span aria-hidden="true" className="pricing-faq-icon">+</span>
-              </summary>
-              <p className="max-w-2xl pb-5 text-sm text-muted">{item.a}</p>
-            </details>
-          ))}
+      <section aria-labelledby="faq-title" className="bleed bleed-paper mt-24 grid gap-6 py-16 md:grid-cols-12 md:py-24">
+        <div className="md:col-span-3">
+          <h2 id="faq-title" className="faq-pill label-mono"><span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-brand" />FAQ</h2>
         </div>
+        <div className="md:col-span-9"><Faq items={FAQ} /></div>
       </section>
 
-      <section aria-labelledby="pricing-cta" className="hero-ink mb-16 mt-24 rounded-2xl px-6 py-14 text-center md:px-12 md:py-20">
+      <section aria-labelledby="pricing-cta" className="hero-ink mb-16 mt-16 rounded-2xl px-6 py-14 text-center md:px-12 md:py-20">
         <h2 id="pricing-cta" className="display mx-auto max-w-3xl text-3xl font-semibold md:text-5xl">See what your code really does before an attacker does.</h2>
         <div className="mt-8 flex flex-wrap justify-center gap-2">
           <Cta href="/projects" tone="light">Get started</Cta>
