@@ -6,6 +6,7 @@ From the repository root:
 
 ```bash
 .venv/bin/python scripts/devin_qa/preflight_check.py --json
+.venv/bin/python scripts/devin_qa/verify_m7_demo.py
 .venv/bin/python scripts/devin_qa/test_security_workflow.py
 .venv/bin/python scripts/devin_qa/test_rl_workflow.py
 .venv/bin/python scripts/devin_qa/test_frontend_integration.py --browser
@@ -31,3 +32,11 @@ The RL entry point runs `rl-defense/tests` only when the optional RL environment
 The frontend entry point requires installed dependencies in both `frontend` and `frontend/transport`; it builds transport, checks TypeScript and ESLint, and runs Vitest. `--browser` also builds Next and starts the actual API/PostgreSQL/worker/browser test stack. Without `--browser`, browser integration is explicitly incomplete. Set `E2E_BROWSER_CHANNEL=chrome` to use an installed Chrome with a temporary test profile. Builds write their usual generated outputs; test suites create temporary repositories/databases. Only the preflight claims read-only behavior.
 
 Runner error/skip/readiness semantics are exercised by `python -m unittest discover -s tests/qa -v` and `.github/workflows/qa-tools.yml`. Product integration remains covered by the existing backend, security-agents, frontend and container workflows.
+
+The M7 entry point executes the backend push-to-regression test with the selected
+Python interpreter and forced live-call opt-out. The backend fixture owns a fresh
+session database; the runner never starts or stops the shared development server.
+It records bounded test output in ignored `.dev/qa/m7-evidence.json` (override with
+`--output PATH`), preserving checked-in rehearsal evidence. Backend success still
+returns 2 because this entry point does not execute browser tests. Test command or
+collection failures return 1. Use the frontend browser runner for browser evidence.
