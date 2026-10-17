@@ -32,32 +32,75 @@ SideEffects = Literal["none", "sandbox_exec", "worktree_write", "network_target_
 # Canonical capability matrix (docs/agents/TOOL_REGISTRY.md). Safety-critical:
 # changes need security-owner review per docs/15.
 AGENT_TOOL_ALLOWLIST: dict[AgentName, frozenset[str]] = {
-    AgentName.SCOUT: frozenset({
-        "code.read_span", "code.search", "graph.neighbors", "expectations.for_subject",
-        "findings.history", "static.analyze",
-    }),
-    AgentName.PROBE: frozenset({
-        "code.read_span", "expectations.for_subject", "checks.list_templates", "checks.run_template",
-    }),
-    AgentName.TRACE: frozenset({
-        "code.read_span", "code.search", "graph.neighbors", "expectations.for_subject", "findings.history",
-    }),
-    AgentName.DIAGNOSE: frozenset({
-        "code.read_span", "code.search", "graph.neighbors", "expectations.for_subject",
-        "findings.history", "static.analyze",
-    }),
-    AgentName.PATCH: frozenset({
-        "code.read_span", "code.search", "graph.neighbors", "expectations.for_subject",
-        "worktree.write_file", "worktree.diff", "tests.run",
-    }),
-    AgentName.FORTIFY: frozenset({
-        "code.read_span", "code.search", "graph.neighbors", "expectations.for_subject",
-        "findings.history", "static.analyze",
-    }),
-    AgentName.VERIFY: frozenset({
-        "code.read_span", "expectations.for_subject", "static.analyze", "checks.list_templates",
-        "checks.run_template", "tests.run", "patch.apply_fresh",
-    }),
+    AgentName.SCOUT: frozenset(
+        {
+            "code.read_span",
+            "code.search",
+            "graph.neighbors",
+            "expectations.for_subject",
+            "findings.history",
+            "static.analyze",
+        }
+    ),
+    AgentName.PROBE: frozenset(
+        {
+            "code.read_span",
+            "expectations.for_subject",
+            "checks.list_templates",
+            "checks.run_template",
+        }
+    ),
+    AgentName.TRACE: frozenset(
+        {
+            "code.read_span",
+            "code.search",
+            "graph.neighbors",
+            "expectations.for_subject",
+            "findings.history",
+        }
+    ),
+    AgentName.DIAGNOSE: frozenset(
+        {
+            "code.read_span",
+            "code.search",
+            "graph.neighbors",
+            "expectations.for_subject",
+            "findings.history",
+            "static.analyze",
+        }
+    ),
+    AgentName.PATCH: frozenset(
+        {
+            "code.read_span",
+            "code.search",
+            "graph.neighbors",
+            "expectations.for_subject",
+            "worktree.write_file",
+            "worktree.diff",
+            "tests.run",
+        }
+    ),
+    AgentName.FORTIFY: frozenset(
+        {
+            "code.read_span",
+            "code.search",
+            "graph.neighbors",
+            "expectations.for_subject",
+            "findings.history",
+            "static.analyze",
+        }
+    ),
+    AgentName.VERIFY: frozenset(
+        {
+            "code.read_span",
+            "expectations.for_subject",
+            "static.analyze",
+            "checks.list_templates",
+            "checks.run_template",
+            "tests.run",
+            "patch.apply_fresh",
+        }
+    ),
 }
 
 
@@ -77,9 +120,7 @@ class AuditSink:
     records: list[dict[str, Any]] = field(default_factory=list)
 
     def emit(self, action: str, **details: Any) -> None:
-        self.records.append(
-            {"action": action, "at": datetime.now(UTC).isoformat(), **redact(details)}
-        )
+        self.records.append({"action": action, "at": datetime.now(UTC).isoformat(), **redact(details)})
 
     def actions(self) -> list[str]:
         return [r["action"] for r in self.records]
@@ -169,7 +210,9 @@ class ToolRegistry:
             allowed = allowed & step_allowlist
         return sorted(n for n in allowed if n in self._tools)
 
-    def schemas_for(self, agent: AgentName, step_allowlist: frozenset[str] | None = None) -> list[dict[str, Any]]:
+    def schemas_for(
+        self, agent: AgentName, step_allowlist: frozenset[str] | None = None
+    ) -> list[dict[str, Any]]:
         return [self._tools[n].schema() for n in self.allowed_names(agent, step_allowlist)]
 
     # ------------------------------------------------------------------ invoke
@@ -185,15 +228,19 @@ class ToolRegistry:
         allowed = AGENT_TOOL_ALLOWLIST.get(ctx.agent, frozenset())
         if name not in allowed:
             ctx.audit.emit(
-                "tool.denied", agent=ctx.agent.value, tool=name, reason="not_in_agent_allowlist",
+                "tool.denied",
+                agent=ctx.agent.value,
+                tool=name,
+                reason="not_in_agent_allowlist",
                 run_id=ctx.run_id,
             )
-            raise PlatformError(
-                ErrorCode.TOOL_NOT_ALLOWED, f"{ctx.agent.value} may not call {name}"
-            )
+            raise PlatformError(ErrorCode.TOOL_NOT_ALLOWED, f"{ctx.agent.value} may not call {name}")
         if ctx.step_allowlist is not None and name not in ctx.step_allowlist:
             ctx.audit.emit(
-                "tool.denied", agent=ctx.agent.value, tool=name, reason="not_in_step_allowlist",
+                "tool.denied",
+                agent=ctx.agent.value,
+                tool=name,
+                reason="not_in_step_allowlist",
                 run_id=ctx.run_id,
             )
             raise PlatformError(ErrorCode.TOOL_NOT_ALLOWED, f"{name} is not allowed in this step")
@@ -208,7 +255,10 @@ class ToolRegistry:
             args = tool.args_model.model_validate(raw_args)
         except ValidationError as exc:
             ctx.audit.emit(
-                "tool.schema_invalid", agent=ctx.agent.value, tool=name, run_id=ctx.run_id,
+                "tool.schema_invalid",
+                agent=ctx.agent.value,
+                tool=name,
+                run_id=ctx.run_id,
                 errors=exc.error_count(),
             )
             return ToolResult(
@@ -221,8 +271,13 @@ class ToolRegistry:
             decision = self._scope_decision(ctx, tool, args)
             if not decision.allowed:
                 ctx.audit.emit(
-                    "tool.scope_denied", agent=ctx.agent.value, tool=name, run_id=ctx.run_id,
-                    reason_code=decision.reason_code, scope_id=decision.scope_id, detail=decision.detail,
+                    "tool.scope_denied",
+                    agent=ctx.agent.value,
+                    tool=name,
+                    run_id=ctx.run_id,
+                    reason_code=decision.reason_code,
+                    scope_id=decision.scope_id,
+                    detail=decision.detail,
                 )
                 raise PlatformError(
                     ErrorCode.SCOPE_DENIED, f"{name}: {decision.reason_code} {decision.detail}".strip()
@@ -246,17 +301,25 @@ class ToolRegistry:
             raise
         except Exception as exc:
             ctx.audit.emit(
-                "tool.error", agent=ctx.agent.value, tool=name, run_id=ctx.run_id,
+                "tool.error",
+                agent=ctx.agent.value,
+                tool=name,
+                run_id=ctx.run_id,
                 error=f"{type(exc).__name__}: {exc}"[:300],
             )
             return ToolResult(
-                name=name, ok=False,
+                name=name,
+                ok=False,
                 payload={"error": "TOOL_ERROR", "detail": f"{type(exc).__name__}: {exc}"[:500]},
             )
 
         ctx.audit.emit(
-            "tool.called", agent=ctx.agent.value, tool=name, run_id=ctx.run_id,
-            side_effects=tool.side_effects, ok=ok,
+            "tool.called",
+            agent=ctx.agent.value,
+            tool=name,
+            run_id=ctx.run_id,
+            side_effects=tool.side_effects,
+            ok=ok,
             args=redact(args.model_dump(mode="json")),
         )
         return ToolResult(name=name, ok=ok, payload=payload)
@@ -284,7 +347,5 @@ class ToolRegistry:
 
 
 def _compact_errors(exc: ValidationError) -> str:
-    parts = [
-        f"{'.'.join(str(p) for p in e['loc'])}: {e['msg']}" for e in exc.errors()[:6]
-    ]
+    parts = [f"{'.'.join(str(p) for p in e['loc'])}: {e['msg']}" for e in exc.errors()[:6]]
     return "; ".join(parts)[:500]

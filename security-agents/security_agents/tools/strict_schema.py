@@ -18,10 +18,22 @@ from __future__ import annotations
 import copy
 from typing import Any
 
-UNSUPPORTED_IN_STRICT = frozenset({
-    "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf",
-    "minLength", "maxLength", "minItems", "maxItems", "uniqueItems", "minProperties", "maxProperties",
-})
+UNSUPPORTED_IN_STRICT = frozenset(
+    {
+        "minimum",
+        "maximum",
+        "exclusiveMinimum",
+        "exclusiveMaximum",
+        "multipleOf",
+        "minLength",
+        "maxLength",
+        "minItems",
+        "maxItems",
+        "uniqueItems",
+        "minProperties",
+        "maxProperties",
+    }
+)
 
 
 def _has_free_form_map(node: Any) -> bool:

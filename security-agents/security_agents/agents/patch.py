@@ -80,10 +80,17 @@ SPEC = AgentSpec(
     version="0.1.0",
     input_model=PatchInput,
     output_model=PatchOutput,
-    tools=frozenset({
-        "code.read_span", "code.search", "graph.neighbors", "expectations.for_subject",
-        "worktree.write_file", "worktree.diff", "tests.run",
-    }),
+    tools=frozenset(
+        {
+            "code.read_span",
+            "code.search",
+            "graph.neighbors",
+            "expectations.for_subject",
+            "worktree.write_file",
+            "worktree.diff",
+            "tests.run",
+        }
+    ),
     sandbox_profile="test-runner",
     network="none",
     write_access="worktree",

@@ -71,11 +71,13 @@ def build_scope(*, hours: int = 2, categories: list[str]) -> AuthorizedScope:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="security_agents.cli", description=__doc__)
     parser.add_argument(
-        "--target", required=True,
+        "--target",
+        required=True,
         help="path to the prepared target directory (holding build_recipe.json, labels.yaml and target/)",
     )
     parser.add_argument(
-        "--expectations", type=Path,
+        "--expectations",
+        type=Path,
         help="labels file to read expectations from (default: <target>/labels.yaml if present)",
     )
     parser.add_argument("--mode", choices=("replay", "live"), default="replay")
@@ -83,10 +85,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--validate", type=int, default=2, help="hypotheses to validate")
     parser.add_argument("--max-usd", type=float, default=5.0)
     parser.add_argument("--report", type=Path, help="write the JSON report here")
-    parser.add_argument("--auto-approve", action="store_true",
-                        help="approve remediation automatically (local demo only)")
-    parser.add_argument("--i-have-authorization", action="store_true",
-                        help="required with --mode live: confirms the target is yours and isolated")
+    parser.add_argument(
+        "--auto-approve", action="store_true", help="approve remediation automatically (local demo only)"
+    )
+    parser.add_argument(
+        "--i-have-authorization",
+        action="store_true",
+        help="required with --mode live: confirms the target is yours and isolated",
+    )
     args = parser.parse_args(argv)
 
     prepared = Path(args.target).resolve()
@@ -149,8 +155,12 @@ def main(argv: list[str] | None = None) -> int:
             if answer not in ("y", "yes"):
                 return None
         return Approval(
-            project_id="prj_demo", subject_type="remediation", subject_id=finding.plan.id,
-            decision="approved", decided_by="usr_operator", reason="approved from the CLI",
+            project_id="prj_demo",
+            subject_type="remediation",
+            subject_id=finding.plan.id,
+            decision="approved",
+            decided_by="usr_operator",
+            reason="approved from the CLI",
         )
 
     config = OrchestratorConfig(
