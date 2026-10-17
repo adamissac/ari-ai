@@ -34,7 +34,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <Link href="/" aria-label={`${BRAND_NAME} home`} className="hdr-reveal">
               <Wordmark priority />
             </Link>
-            <nav aria-label="Primary" className="flex items-center gap-1.5">
+            <nav aria-label="Primary" className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
               <NavLink href="/projects" className="hdr-reveal">Projects</NavLink>
               <NavLink href="/lab" className="hdr-reveal">Defense Lab</NavLink>
               <NavLink href="/demo" className="hdr-reveal">Demo</NavLink>

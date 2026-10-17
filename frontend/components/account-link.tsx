@@ -30,7 +30,7 @@ export function AccountLink() {
     return (
       <Link href="/projects" className="group hdr-account label-mono inline-flex h-8 items-center gap-2 rounded-md px-3" title={`Signed in as ${login}`} data-testid="header-account">
         <span aria-hidden="true" className="hdr-avatar">{login.slice(0, 1).toUpperCase()}</span>
-        <span className="max-w-[8rem] truncate normal-case">{login}</span>
+        <span className="hidden max-w-[8rem] truncate normal-case sm:inline">{login}</span><span className="sr-only sm:hidden">{login}</span>
       </Link>
     );
   }
