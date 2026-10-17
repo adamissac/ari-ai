@@ -3,10 +3,10 @@
 Owner: Srihith
 Branch: `feat/srihith/backend-monitoring`
 Current task: integration host for all pillars. PayloadStore (Sarosh), runtime ingest and the seven-agent hosting adapter (Alan) are done. Next: single intelligence layer (Sarosh intel behind Alan's CodeIntel port), and reviewer/frontend when their branches land.
-Last remote sync: 2026-10-17 ~02:05Z (main d194132 merged into branch)
+Last remote sync: 2026-10-17 ~02:30Z (main 369a9a0)
 API/contract dependencies: Alan `security_agents.api:build_orchestrator`; Sarosh `code_intelligence.api:build_service` (+ persistence port); Sai `code_review.api.review`; Adam `rl_defense` (integrated)
 Verified tests: see session log (exact command + counts)
-Recent PR/commit: merged #8, #14, #16, #20; issues #9 (contract ack), #17 (security-agents integration)
+Recent PR/commit: merged #8, #14, #16, #20, #24, #25; issues #9, #17
 Blockers: none hard. The GitHub App flow is unexercised because no App credentials are configured. Docker is not installed, so the Compose file is unverified.
 Next action: ack/counter from owners on V0 contracts; Postgres persistence port for Sarosh; wire Alan's orchestrator when `security_agents.api` exists; live LLM smoke once a key is authorized.
 
@@ -86,3 +86,23 @@ Add dated factual entries; do not overwrite history. Never claim unexecuted test
 - Open asks:
   - Alan (#17): rebase, resolve the payments-lite layout, adopt `shared`, add hooks.
   - Sarosh: a `build_service()` factory option for the Postgres store, and relaxing the `pathspec` pin.
+
+### 2026-10-17 (session 1, latest)
+- #24 (merged):
+  - Contracts 0.5.0 add the early REPORTING edges (Alan's state table); docs/08 updated.
+  - The worker keeps one orchestrator per process.
+  - Unknown run id now gives `NOT_FOUND`.
+  - Adapter snapshots honor `target_dir`, pinned to git.
+  - `test_security_agents_host_mode.py` is an xfail acceptance test for Alan's host mode against the real backend; 5 issues were reported to him.
+- #25 (merged): the hosted assessment now runs Sai's reviewer at FUNCTIONAL_REVIEW.
+  - `test_unified_assessment.py`: one assessment gives reviewer + 7 security agents, functional and security findings, approval, COMPLETED. Model turns are scripted and labeled fake.
+- Verified Sai's code-review suite against the real main backend: 33 passed, 1 skipped. I corrected an earlier message whose run had used his branch's backend copy.
+- Evidence:
+  - local `pytest -q` → 105 passed, 1 skipped, 1 xfailed (all optional packages installed);
+  - CI backend → 98 passed, 5 skipped (code-intelligence is now in the workspace, so its integration tests run in CI).
+- Open:
+  - Alan's host-mode fixes (#17).
+  - A canonical CheckCategory list (awaiting Alan's ack).
+  - Vihaan's frontend: no branch yet.
+  - Docker Compose and the GitHub App are still unverified (no Docker or App credentials here).
+  - A live (paid) end-to-end run of the hosted pipeline hasn't been done; only the gateway smoke test was live.
