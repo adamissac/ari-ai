@@ -291,6 +291,7 @@ html[data-home-hero][data-hero-past] .site-header nav a.hdr-cta { background: va
 
 @media (prefers-reduced-motion: reduce) {
   .story-rain::before, .story-panel .story-svg-node { animation: none; }
+  .story-card, .story-tick, .story-swap-item, .story-svg-path { transition: none; }
 }
 
 /* Obsidian-style graph view (components/node-graph.tsx). */
