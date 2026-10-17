@@ -215,6 +215,11 @@ def _verify_double(
             name=VerificationCheckName.no_test_tampering, passed=scope_ok, evidence=ev
         ),
         VerificationCheck(
+            name=VerificationCheckName.original_check_now_fails_to_reproduce,
+            passed=applied and classify(gen) == "passed",
+            evidence=ev,
+        ),
+        VerificationCheck(
             name=VerificationCheckName.generated_tests_pass,
             passed=applied and classify(gen) == "passed",
             evidence=ev,
@@ -383,3 +388,51 @@ def test_review_assessment_entry_uses_recorded_snapshot(tmp_path: Path, clients)
     ref = payload["request"]["snapshot_ref"]
     assert ref["snapshot_id"] == snap.id and ref["index_version"] == "intel-test"
     assert payload["request"]["change_intent"]["source"] == "manual"
+
+
+def test_functional_remediation_helpers_respect_human_decisions(tmp_path: Path, clients) -> None:
+    alice, bob = clients
+    sc = payments_lite(tmp_path)
+    source = RepoSource(sc.repo, subdir="target")
+    ids = _assessment(alice, bob, sc.head_sha)
+    host = AssessmentHost(ids["assessment"])
+    for state in (S.SCOPE_CHECK, S.INDEXING, S.FUNCTIONAL_REVIEW):
+        host.transition(state)
+    transport = fake(pl_review_script(sc))
+    llm.TRANSPORT_OVERRIDE = lambda: transport
+    req = make_request(host, sc)
+    req = req.model_copy(
+        update={
+            "snapshot_ref": req.snapshot_ref.model_copy(
+                update={"project_id": host.project_id, "repo_id": host.repo_id}
+            )
+        }
+    )
+    api.review(host, req, source=source, intelligence=False)
+    [finding] = host.findings()
+
+    [ap_id] = api.request_functional_approvals(host)
+    assert api.request_functional_approvals(host) == []  # idempotent: one approval per finding
+    assert (
+        api.repair_approved_functional_findings(host, repo_id=host.repo_id, source=source) == []
+    )  # pending
+
+    r = bob.post(
+        f"/api/v1/approvals/{ap_id}/decision", json={"decision": "declined", "reason": "no"}
+    )
+    assert r.status_code == 200, r.text
+    assert api.repair_approved_functional_findings(host, repo_id=host.repo_id, source=source) == []
+    assert host.findings()[0].status is FindingStatus.validated  # declined: never repaired
+
+    # a later, separate approval for the same finding is honored
+    ap2 = host.request_approval(ApprovalSubject.remediation, finding.id, "retry")
+    assert (
+        bob.post(f"/api/v1/approvals/{ap2.id}/decision", json={"decision": "approved"}).status_code
+        == 200
+    )
+    tests = api.load_test_sources(host, finding)
+    repair_transport = fake(pl_repair_script(tests[0].path))
+    llm.TRANSPORT_OVERRIDE = lambda: repair_transport
+    [rep] = api.repair_approved_functional_findings(host, repo_id=host.repo_id, source=source)
+    assert rep.accepted_locally and rep.patch is not None
+    assert host.findings()[0].status is FindingStatus.patch_proposed

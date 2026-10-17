@@ -6,7 +6,7 @@
 - [ ] **M3** 7 *different* agent runners with actual bounded tool-use and distinct permissions and typed handoffs. Gate: observed real model/tool trace per required role (opt-in), fake-provider integration tests; separated Verify actual tests.
 - [ ] **M4** FastAPI, DB migrations, durable queue, signed idempotent GitHub webhook, scope/approval, persisted audit and SSE. Gate: signed event -> durable queued analysis -> event stream in test.
 - [ ] **M5** Double DQN trains from scratch; replay, target/online networks, masks, held-out evaluation and baselines run. Gate: checked env, deterministic seed, checkpoint reload, nonzero learning updates, honest metrics.
-- [ ] **M6** frontend displays real backend assessments, actual finding provenance, agent steps, approval controls, RL evaluation and monitoring. Gate: browser e2e on live local service; mocks are test-only.
+- [x] **M6** frontend displays real backend assessments, actual finding provenance, agent steps, approval controls, RL evaluation and monitoring. Gate: browser e2e on live local service; mocks are test-only.
 - [ ] **M7** unified owned-sandbox demonstration from commit -> index -> review -> seven security agents -> candidate patch -> independent security + functional verify -> regressions -> monitoring event -> dashboard, with errors handled honestly. Gate: automated e2e plus human-inspectable traces.
 - [ ] **M8** deployment and continuous live event operations after human approval, safe scope and uptime validation. Gate: independently verified URL, webhook delivery and persistence; no blanket production claims.
 
@@ -21,3 +21,16 @@ suite: 115 passed, 4 skips. Actual target/index evidence and canonical ContextPa
 are in code-intelligence/evidence/ and code-intelligence/fixtures/. Index version 0.2.0
 includes route-attached ownership intent and two-commit convention invalidation proof.
 No full reviewer/seven-agent runtime or live-provider claim is made by this M1 check.
+
+
+### M6 evidence — Vihaan
+
+Branch `feat/vihaan/frontend` (PR in coordination/status/VIHAAN.md). `cd frontend &&
+../.venv/bin/python tests/e2e/stack.py` → Playwright **8 passed** against real FastAPI +
+PostgreSQL + worker + `next start`: rendered-UI journey from scope request and
+second-member approval through a live SSE timeline, remediation approval, reviewer + seven
+agent runs, evidence chain, hash-checked diff and Verify `accepted`, persisting across
+reload; monitoring shows a signed GitHub push; offline and contract-violation states are
+explicit; Defense Lab plots only the schema-validated bundle. Vitest 23 passed, transport 18
+passed, lint/tsc/build clean. Limitation: model replies are TEST-ONLY scripted transports
+(`provider_mode=fake`, labelled in the UI); no live-provider run has been rendered yet.

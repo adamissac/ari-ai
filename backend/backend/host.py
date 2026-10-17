@@ -79,6 +79,7 @@ from shared.findings import (
     VerificationResult,
 )
 from shared.ids import IdPrefix, new_id
+from shared.intelligence import SnapshotRef
 from shared.scope import Approval, ApprovalStatus, ApprovalSubject, AuthorizedScope, ScopeStatus
 from shared.tenancy import Usage
 
@@ -162,6 +163,34 @@ class AssessmentHost:
             ).scalar_one()
 
     # ------------------------------------------------------------------ reads
+    def intelligence_service(self, *, include_prefix: str = "") -> Any:
+        from backend.intelligence import repository_service
+
+        return repository_service(self.project_id, self.repo_id, include_prefix=include_prefix)
+
+    def attach_snapshot(self, ref: SnapshotRef) -> None:
+        from backend.intelligence import snapshot_ref
+
+        ref = SnapshotRef.model_validate(ref.model_dump())
+        if (
+            ref.project_id != self.project_id
+            or ref.repo_id != self.repo_id
+            or ref.commit_sha != self.assessment.commit_sha
+            or snapshot_ref(ref.snapshot_id) != ref
+        ):
+            raise HostError(ErrorCode.SCHEMA_INVALID, "Snapshot does not match assessment")
+        with transaction() as conn:
+            current = Assessment.model_validate(self._row(conn, lock=True)["doc"])
+            if current.snapshot_id and current.snapshot_id != ref.snapshot_id:
+                raise HostError(ErrorCode.CONFLICT_STATE, "Assessment already has another snapshot")
+            current.snapshot_id = ref.snapshot_id
+            current.updated_at = utcnow()
+            conn.execute(
+                sa.update(assessments)
+                .where(assessments.c.id == self.assessment_id)
+                .values(doc=current.model_dump(mode="json"))
+            )
+
     def _row(self, conn: Connection, *, lock: bool = False) -> dict[str, Any]:
         q = sa.select(assessments).where(assessments.c.id == self.assessment_id)
         if lock:
@@ -643,6 +672,14 @@ class AssessmentHost:
             raise HostError(
                 ErrorCode.FORBIDDEN, "Verify must run independently of the patch-producing run"
             )
+        if result.verdict.value == "accepted":
+            from shared.findings import VerificationCheckName
+
+            names = [check.name for check in result.checks]
+            if len(names) != len(VerificationCheckName) or set(names) != set(VerificationCheckName):
+                raise HostError(
+                    ErrorCode.SCHEMA_INVALID, "Accepted Verify requires all five unique checks"
+                )
         if not any(c.evidence for c in result.checks):
             raise HostError(
                 ErrorCode.VALIDATION_FAILED, "verification checks need executed evidence"
@@ -656,6 +693,18 @@ class AssessmentHost:
                     doc=result.model_dump(mode="json"),
                 )
             )
+            if result.verdict.value == "accepted":
+                from backend import jobs
+
+                jobs.enqueue(
+                    conn,
+                    "register_verified_regression",
+                    {
+                        "assessment_id": self.assessment_id,
+                        "verification_id": result.id,
+                    },
+                    dedupe_key=f"regression:{result.id}",
+                )
         return result
 
     # --------------------------------------------------------------- approvals

@@ -58,11 +58,19 @@ def neighbors(index: StoredIndex, seeds: set[str], depth: int = 2) -> dict[str, 
     return distances
 
 
-def build_pack(index: StoredIndex, request: ContextPackRequest) -> ContextPack:
+def build_pack(
+    index: StoredIndex,
+    request: ContextPackRequest,
+    *,
+    supplements: list[tuple[set[str], str, EvidenceRef]] | None = None,
+) -> ContextPack:
     if request.snapshot_ref != index.ref:
         raise IntelligenceError("Stale or mismatched context request")
     files = {f.path: f for f in index.files}
     focus = set(request.focus)
+    for keys, _, _ in supplements or []:
+        if focus & keys:
+            focus.update(keys)
     entry_subjects = {e.id: e.handler_symbol_id for e in index.entry_points}
     seeds = {
         s.id for s in index.symbols if s.id in focus or s.qualified_name in focus or s.path in focus
@@ -100,7 +108,14 @@ def build_pack(index: StoredIndex, request: ContextPackRequest) -> ContextPack:
         entry_ids = {e.handler_symbol_id for e in index.entry_points}
         relevant = [s for s in ranked if s.id in entry_ids]
     pack = ContextPack(
-        id=stable_id("ctx", index.ref.snapshot_id, request.model_dump_json()),
+        id=stable_id(
+            "ctx",
+            index.ref.snapshot_id,
+            request.model_dump_json(),
+            "\n".join(
+                content + evidence.model_dump_json() for _, content, evidence in supplements or []
+            ),
+        ),
         snapshot_ref=index.ref,
         request=request,
         chunks=[],
@@ -112,12 +127,19 @@ def build_pack(index: StoredIndex, request: ContextPackRequest) -> ContextPack:
     # Tiny budgets can fail even with no chunks because the full typed envelope has a cost.
     if estimate(pack.model_dump_json()) > request.token_budget:
         raise IntelligenceError("BUDGET_EXHAUSTED: context envelope exceeds token budget")
-    spans: set[tuple[str, int, int]] = set()
+    spans: set[tuple[str, ...]] = set()
 
     def append(content: str, evidence: EvidenceRef) -> bool:
-        if evidence.span is None or evidence.path is None:
-            raise IntelligenceError("Source chunk requires a complete citation")
-        key = (evidence.path, evidence.span.start_line, evidence.span.end_line)
+        key: tuple[str, ...]
+        if evidence.span is not None and evidence.path is not None:
+            key = (evidence.path, str(evidence.span.start_line), str(evidence.span.end_line))
+        else:
+            key = (
+                evidence.kind.value,
+                evidence.provenance,
+                evidence.artifact_id or "",
+                evidence.sha256 or "",
+            )
         if key in spans:
             return True
         wrapped = delimited(content, evidence)
@@ -135,6 +157,16 @@ def build_pack(index: StoredIndex, request: ContextPackRequest) -> ContextPack:
         spans.add(key)
         pack.token_count = cost
         return True
+
+    relevant_keys = {
+        key for symbol in relevant for key in (symbol.id, symbol.qualified_name, symbol.path)
+    }
+    relevant_keys.update(
+        entry.id for entry in index.entry_points if entry.handler_symbol_id in relevant_keys
+    )
+    for keys, content, evidence in supplements or []:
+        if not request.focus or keys & relevant_keys or keys & set(request.focus):
+            append(content, evidence)
 
     for symbol in relevant:
         # Modules can span an entire repository file. Include them only as explicit focus.
@@ -175,7 +207,7 @@ def build_pack(index: StoredIndex, request: ContextPackRequest) -> ContextPack:
                 append(content, evidence)
         # Ensure statically linked tests are candidates even if their names differ from query.
         # They appear in distances via call edges and retain their whole symbol spans.
-    if not pack.chunks and relevant:
+    if relevant and not any(c.provenance.path and c.provenance.span for c in pack.chunks):
         raise IntelligenceError("BUDGET_EXHAUSTED: no complete relevant span fits")
     pack.token_count = estimate(pack.model_dump_json()) + 12
     if pack.token_count > request.token_budget:

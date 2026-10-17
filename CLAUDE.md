@@ -129,14 +129,15 @@ Read `MASTER_BUILD_SPEC.md` before work, then `coordination/MESSAGES.md`, `coord
 5. **Respond in the same session.** If a teammate's change affects you, reply with an
    immutable `coordination/messages/` file and a PR/issue comment before you stop.
 
-### Frontend transport (implemented helper; page scaffold pending)
+### Frontend (Next.js app + transport; details in [frontend/README.md](frontend/README.md))
 
 ```sh
-npm ci --prefix frontend/transport
-npm test --prefix frontend/transport
-npm run test:integration --prefix frontend/transport
+npm ci --prefix frontend/transport && npm test --prefix frontend/transport   # transport build + node tests
+npm ci --prefix frontend
+npm run lint --prefix frontend && npm run typecheck --prefix frontend && npm test --prefix frontend && npm run build --prefix frontend
+cd frontend && ../.venv/bin/python tests/e2e/stack.py   # real API + Postgres + worker + next start + Playwright
 ```
 
-The last command requires the root Python dev workspace; it starts real FastAPI
-with an isolated PostgreSQL database, never an assessment worker or model call.
-See [frontend transport](frontend/transport/README.md) for app consumption and limits.
+The e2e harness uses the backend's TEST-ONLY scripted model transports (`provider_mode=fake`,
+labelled in the UI); everything else is real. `npm run test:integration --prefix frontend/transport`
+remains the transport-only real-backend proof.

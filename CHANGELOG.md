@@ -13,6 +13,12 @@ All notable changes are documented here. Format follows
 - Security agents now project numeric tool schemas for provider compatibility and fail assessments when Scout fails.
 
 ### Added
+- Exact-snapshot human intent decisions (`confirmed`/`conflicting`/`rejected`) with
+  authenticated backend routes, append-only revisions and `human_input` provenance.
+- Independently verified candidate-regression memory: accepted Verify results with all
+  five unique checks enqueue a durable, idempotent regression join and surface through
+  context packs and the shared hosted intelligence adapter. Candidate evidence only;
+  never a merge/current-SHA claim.
 - Standalone frontend REST/SSE transport with canonical schema validation, cookie/CSRF auth, idempotency, durable event resume and real FastAPI/PostgreSQL integration tests. Page integration remains pending.
 - Phase 0 repository foundation: product specification, system architecture,
   seven runtime agent contracts, RL defense design and evaluation protocol,
