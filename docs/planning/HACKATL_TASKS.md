@@ -158,3 +158,6 @@ SEC-010/SEC-012 continuation (2026-10-17, PR #73 merged): hardened functional ev
 Owner: Srihith. Status: IN_REVIEW on `fix/srihith/fortify-closure-artifacts`. Dependencies: merged UI PRs80/81 and host verification. Acceptance: real hosted assessment persists regression source artifact; lessons learned and complete approved incident lifecycle work via API and rendered UI; rejected/unsafe/mutated source guards remain enforced; no fabricated verification claims.
 
 REG-001 validation: focused54/root325/security396/frontend32/browser12 passed; real source archive → lessons → two-person approved Closed persists on reload. See SESSION_HANDOFF for skips and limits.
+
+### QA-001 — execute Devin’s unfinished QA proposal
+Owner: Srihith; IN_REVIEW on `fix/srihith/qa-reliability`. Existing suite wrappers now use valid imports/commands, preserve the Python interpreter and live-call opt-out, report incomplete prerequisites separately, validate readiness JSON, and have CI-tested failure semantics. See docs/devin_qa/README.md and SESSION_HANDOFF for executed evidence.
