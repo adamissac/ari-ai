@@ -1,6 +1,6 @@
 'use client';
 
-import type { Assessment, Repository, Snapshot } from '@hackatl/frontend-transport';
+import type { Assessment, AssessmentState, Repository, Snapshot } from '@hackatl/frontend-transport';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
@@ -8,6 +8,7 @@ import { useProject } from '@/components/project';
 import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, Panel, Stat, Time } from '@/components/ui';
 import { api, idempotencyKey } from '@/lib/api';
 import { shortSha, usd } from '@/lib/format';
+import { JOURNEY_STATUS, latestAssessmentEvent, projectJourney, statesFromLog } from '@/lib/journey';
 import { projectOverview } from '@/lib/overview';
 import { ASSESSMENT_STATE, FINDING_STATUS, SNAPSHOT_STATUS } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
@@ -19,13 +20,17 @@ export default function ProjectOverview() {
   const assessments = useResource(`asm:${project.id}`, s => api().assessments(project.id, { signal: s }), 5000);
   const findings = useResource(`fnd:${project.id}`, s => api().findings(project.id, { signal: s }), 10000);
   const scopes = useResource(`scopes:${project.id}`, s => api().scopes(project.id, { signal: s }));
+  const assessmentItems = assessments.status === 'ready' ? assessments.data.items : [];
+  const findingItems = findings.status === 'ready' ? findings.data.items : [];
+  const scopeItems = scopes.status === 'ready' ? scopes.data.items : [];
+  const activeScopeCount = scopeItems.filter(s => s.status === 'active').length;
   const summary = projectOverview({
     projectId: project.id,
     repoCount: repos.length,
-    activeScopeCount: scopes.status === 'ready' ? scopes.data.items.filter(s => s.status === 'active').length : 0,
+    activeScopeCount,
     monitoringEnabled: project.settings.monitoring_policy.enabled,
-    assessments: assessments.status === 'ready' ? assessments.data.items : [],
-    findings: findings.status === 'ready' ? findings.data.items : [],
+    assessments: assessmentItems,
+    findings: findingItems,
   });
   const ready = assessments.status === 'ready' && findings.status === 'ready' && scopes.status === 'ready';
   return (
@@ -46,6 +51,16 @@ export default function ProjectOverview() {
           </>
         ) : <p className="text-sm text-muted">Loading the current project records…</p>}
       </section>
+      {ready && (
+        <ProjectJourney
+          projectId={project.id}
+          repoCount={repos.length}
+          activeScopeCount={activeScopeCount}
+          monitoringEnabled={project.settings.monitoring_policy.enabled}
+          assessments={assessmentItems}
+          findingStatuses={findingItems.map(f => f.status)}
+        />
+      )}
     <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
       <div className="flex flex-col gap-4">
         <Panel title="Assessments" actions={<span className="text-xs text-muted">refreshes every 5 s</span>}>
@@ -86,6 +101,74 @@ export default function ProjectOverview() {
       </div>
     </div>
     </div>
+  );
+}
+
+function ProjectJourney({
+  projectId, repoCount, activeScopeCount, monitoringEnabled, assessments, findingStatuses,
+}: {
+  projectId: string;
+  repoCount: number;
+  activeScopeCount: number;
+  monitoringEnabled: boolean;
+  assessments: readonly Assessment[];
+  findingStatuses: readonly string[];
+}) {
+  const latest = [...assessments].sort((a, b) => (a.created_at < b.created_at ? 1 : -1))[0] ?? null;
+  const events = useResource(
+    `journey-events:${latest?.id ?? 'none'}`,
+    signal => latest ? api().eventsLog(latest.id, 0, { signal }) : Promise.resolve({ items: [], next_cursor: null }),
+  );
+  const monitoring = useResource(
+    `journey-mon:${projectId}`,
+    signal => api().monitoringEvents(projectId, { signal }),
+    15000,
+  );
+  const logReady = latest === null || events.status !== 'loading';
+  const visited = events.status === 'ready' ? statesFromLog(events.data.items) : null;
+  const monitoringItems = monitoring.status === 'ready' ? monitoring.data.items : [];
+  const stages = projectJourney({
+    repoCount,
+    activeScopeCount,
+    current: (latest?.state ?? null) as AssessmentState | null,
+    visited: logReady ? visited : null,
+    findingStatuses,
+    monitoringEnabled,
+    monitoringKnown: monitoring.status === 'ready',
+    monitoringEventCount: monitoringItems.length,
+    monitoringTruncated: monitoringItems.length >= 50,
+    monitoringFailed: monitoringItems.some(event => event.status === 'failed'),
+    newestMonitoringSimulated: monitoringItems[0]?.simulated === true,
+  });
+  const latestEvent = events.status === 'ready' ? latestAssessmentEvent(events.data.items) : null;
+  const assessmentHref = latest ? `/projects/${projectId}/assessments/${latest.id}` : null;
+
+  return (
+    <section aria-label="Check progress" className="rounded-xl border border-line bg-panel p-5" data-testid="project-journey">
+      <h2 className="text-sm font-semibold tracking-tight">Where this check is</h2>
+      {!logReady ? <p className="mt-2 text-sm text-muted">Loading the recorded phases…</p> : (
+        <ol className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {stages.map(item => {
+            const href = item.id === 'monitor' ? `/projects/${projectId}/monitoring` : assessmentHref;
+            return (
+              <li key={item.id} className="rounded-lg border border-line p-3" data-testid={`journey-${item.id}`}>
+                <p className="text-sm font-medium">{item.label}</p>
+                <p className="text-xs text-muted">{JOURNEY_STATUS[item.status]}</p>
+                <p className="mt-1 text-xs text-muted">{item.detail}</p>
+                {href && <Link className="mt-2 inline-block text-xs text-accent hover:underline" href={href}>Open</Link>}
+              </li>
+            );
+          })}
+        </ol>
+      )}
+      {latestEvent && (
+        <p className="mt-3 text-sm text-muted" data-testid="project-latest-event">
+          Latest recorded event: {latestEvent.message} <Time iso={latestEvent.at} />
+        </p>
+      )}
+      {events.status === 'error' && <div className="mt-3"><ErrorState error={events.error} onRetry={events.reload} context="Event log" /></div>}
+      {monitoring.status === 'error' && <div className="mt-3"><ErrorState error={monitoring.error} onRetry={monitoring.reload} context="Monitoring events" /></div>}
+    </section>
   );
 }
 
