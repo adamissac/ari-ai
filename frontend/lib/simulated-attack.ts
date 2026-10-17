@@ -16,18 +16,21 @@ const ATTACK_NAME: Record<(typeof ATTACKS)[number], string> = {
   refund: 'a business-logic race on refunds',
 };
 
-export function simulatedAttack(fullName: string, defaultBranch: string): SimulatedAttack {
+/** A real commit to frame the replay around (its SHA, message and author are shown as-is). */
+export interface RealCommit { sha: string; message: string; author: string }
+
+export function simulatedAttack(fullName: string, defaultBranch: string, real?: RealCommit): SimulatedAttack {
   const [owner = fullName, name = fullName] = fullName.split('/');
-  const seed = demoSha(fullName);
+  const seed = demoSha(real ? `${fullName}@${real.sha}` : fullName);
   const scenario = ATTACKS[parseInt(seed.slice(0, 2), 16) % ATTACKS.length]!;
   const template = DEMO_REPOS.find(r => r.commits.some(c => c.scenario === scenario))!;
   const base = template.commits.find(c => c.scenario === scenario)!;
   const commit: DemoCommit = {
     ...base,
-    sha: seed,
-    message: `Simulated attack on ${fullName}`,
+    sha: real?.sha ?? seed,
+    message: real?.message ?? `Simulated attack on ${fullName}`,
     body: `Probe attempted ${ATTACK_NAME[scenario]} against an illustrative service; Patch, Fortify and Verify closed it.`,
-    author: 'ari-red-team',
+    author: real?.author ?? 'ari-red-team',
     minutesAgo: 0,
     branch: defaultBranch,
   };

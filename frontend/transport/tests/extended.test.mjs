@@ -132,3 +132,17 @@ test('GitHub repository picker validates every row and the install link', async 
     await assert.rejects(client(() => json(body)).githubRepositories(), ProtocolError);
   }
 });
+
+test('repository commits are validated: full SHAs and https links only', async () => {
+  const commit = { sha: 'a'.repeat(40), message: 'feat: x', author: 'alice', committed_at: '2026-10-17T00:00:00Z', html_url: 'https://github.com/acme/shop/commit/aaa' };
+  const ok = await client(() => json({ items: [commit], next_cursor: null, available: true, reason: null })).repositoryCommits('rep_12345678');
+  assert.equal(ok.items[0].sha, 'a'.repeat(40));
+  assert.equal(ok.available, true);
+  for (const body of [
+    { items: [{ ...commit, sha: 'abc' }], next_cursor: null, available: true, reason: null },
+    { items: [{ ...commit, html_url: 'javascript:alert(1)' }], next_cursor: null, available: true, reason: null },
+    { items: [commit], next_cursor: null, available: 'yes', reason: null },
+  ]) {
+    await assert.rejects(client(() => json(body)).repositoryCommits('rep_12345678'), ProtocolError);
+  }
+});
