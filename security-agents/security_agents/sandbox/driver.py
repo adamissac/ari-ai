@@ -105,8 +105,19 @@ class SandboxDriver(Protocol):
     def run(self, spec: SandboxSpec) -> SandboxResult: ...
 
 
+FORBIDDEN_WORKSPACE_ROOTS = (Path("/"), Path("/Users"), Path("/home"), Path("/etc"), Path("/var"), Path.home())
+
+
 def validate_spec(spec: SandboxSpec) -> None:
     """Policy checks shared by every driver. Fails closed."""
+    workspace = spec.workspace.resolve()
+    if workspace in (p.resolve() for p in FORBIDDEN_WORKSPACE_ROOTS) or len(workspace.parts) <= 2:
+        raise PlatformError(
+            ErrorCode.SANDBOX_POLICY_VIOLATION,
+            f"refusing to stage {workspace} as a sandbox workspace",
+        )
+    if not workspace.is_dir():
+        raise PlatformError(ErrorCode.SANDBOX_START_FAILED, f"workspace {workspace} is not a directory")
     if spec.network not in PROFILE_NETWORK[spec.profile]:
         raise PlatformError(
             ErrorCode.SANDBOX_POLICY_VIOLATION,

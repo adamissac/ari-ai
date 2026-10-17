@@ -70,6 +70,25 @@ def _result_summary(res: SandboxResult) -> dict[str, Any]:
     }
 
 
+def workspace_path(workspace: Any) -> Path:
+    """Resolve a provider's workspace to a directory path.
+
+    Accepts a `Path` or a `PatchWorktree`. NOTE: `Path` itself has a `.root`
+    attribute ("/"), so this must never duck-type on `.root` alone — doing so
+    resolves a plain path to the filesystem root.
+    """
+    if isinstance(workspace, Path):
+        return workspace
+    root = getattr(workspace, "root", None)
+    if isinstance(root, Path):
+        return root
+    if isinstance(workspace, str):
+        return Path(workspace)
+    raise PlatformError(
+        ErrorCode.CONFLICT_STATE, f"cannot resolve a sandbox workspace from {type(workspace).__name__}"
+    )
+
+
 def _tail(text: str, lines: int = 40) -> str:
     rows = text.strip().splitlines()
     return "\n".join(rows[-lines:])
@@ -189,7 +208,7 @@ class TestRunner:
             args.extend(sorted(set(added)))
         else:
             args = list(self.test_command_args)
-        ws_path = workspace.root if hasattr(workspace, "root") else Path(workspace)
+        ws_path = workspace_path(workspace)
         spec = SandboxSpec(
             profile=SandboxProfile.TEST_RUNNER,
             network="none",
