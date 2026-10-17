@@ -176,3 +176,8 @@ cd security-agents && .venv/bin/python -m pytest tests -q        # 441 passed, 1
 ```
 
 UNVERIFIED: NVD terms page (Cloudflare challenge). All runs above are replay or offline; no live Claude call.
+
+### 2026-10-17 — Docker evidence reconciliation
+- Confirmed #73/#74 merged, #35 closed, and no open PRs at session start. Preserved the primary Devin checkout and its untracked reports.
+- Verified security CI 39033028814 on main `5b3ef50`: 6 real-container tests passed and ordinary security suite 451 passed/18 skipped. Reviewer Docker CI 39028078294 also passed.
+- Corrected stale README integration dependencies and Docker-unverified claims in README/milestone/task evidence. No new live provider or local Docker run; published sandbox image digests and live seven-role proof remain open.
