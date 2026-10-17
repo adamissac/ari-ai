@@ -1,10 +1,11 @@
-import { ApiError, ProtocolError } from '@hackatl/frontend-transport';
+import { ApiError, ProtocolError, type CheckCategory, type ScopeCreate } from '@hackatl/frontend-transport';
 import { describe, expect, it } from 'vitest';
 import { describeError } from '@/lib/api';
 import { parseUnifiedDiff } from '@/lib/diff';
 import { duration, githubLink, relativeTime, shortSha } from '@/lib/format';
 import { domain, metricRows, rewardTotals, sampleSize } from '@/lib/lab';
 import type { DefenseLabBundle, LabEpisode } from '@/lib/lab-types';
+import { SCOPE_CHECK_CATEGORIES } from '@/lib/scope';
 import { ASSESSMENT_STATE, FINDING_STATUS, providerLabel, railSteps } from '@/lib/status';
 
 describe('state rail', () => {
@@ -40,6 +41,28 @@ describe('status vocabulary', () => {
     expect(providerLabel('none').label).toBe('Deterministic (no model call)');
     expect(providerLabel('replay').label).toMatch(/Replay/);
     expect(providerLabel('mystery').label).not.toMatch(/Live/);
+  });
+});
+
+describe('scope check categories', () => {
+  it('offers Probe library ids that satisfy ScopeCreate.allowed_check_categories', () => {
+    expect([...SCOPE_CHECK_CATEGORIES]).toEqual(['access_control.ownership', 'input_validation.bounds']);
+    const aliases: CheckCategory[] = ['authorization.ownership', 'input.bounds'];
+    const body: ScopeCreate = {
+      name: 'sandbox',
+      targets: [
+        {
+          kind: 'sandbox_build',
+          repo_id: 'rep_01JFIXTURE0000000000000REP',
+          build_recipe_ref: 'build_recipe.json',
+          exposed_ports: [],
+        },
+      ],
+      allowed_check_categories: [...SCOPE_CHECK_CATEGORIES, ...aliases],
+      expires_at: '2026-11-17T00:00:00Z',
+      notes: null,
+    };
+    expect(body.allowed_check_categories).toHaveLength(4);
   });
 });
 
