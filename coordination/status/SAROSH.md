@@ -149,3 +149,26 @@ No backend/API changes in the publication diff. Earlier local-only notes describ
 the state before this authorization. Publishing via a normal fast-forward push;
 next action is to confirm GitHub main matches the release commit and inspect CI.
 The Git-connected Vercel deployment is triggered by that push; no project settings changed.
+
+
+## 2026-10-17T23:35Z — demo provenance follow-ups (#262, #273, #278)
+
+Branch: `feat/sarosh/demo-provenance-labels`; PR: [#282](https://github.com/adamissac/ari-ai/pull/282).
+
+Implemented frontend-only corrections: real commit metadata vs illustrative replay, neutral drill pending text and synthetic/optional-provider provenance, recorded-evidence carve-out from sample-account labels, explicit historical missing red-to-green proof, current access-code/runbook commands, and wrapping the recorded assessment ID on phones.
+
+Executed before integrating newest main: lint, typecheck, production build, 246 unit tests, four demo browser tests; Markdown link checker passed with zero problems. Desktop/mobile browser inspection identified long assessment-ID overflow; added wrapping and a phone assertion, with final checks pending. No paid provider calls or backend changes. #273 remains open for backend baseline isolation, usage accounting and durable rate limiting. Raw historical report is retained by Alan; this pass used the curated recorded summary and existing milestone disclosure, not a new live run.
+
+
+### Final integrated verification (2026-10-17T23:39Z)
+
+Integrated `origin/main` at `b2bb5ec` in merge `2c9288a`. Executed successfully:
+
+- `npm run lint --prefix frontend`
+- `npm run typecheck --prefix frontend`
+- `npm test --prefix frontend -- --maxWorkers=2` — 61 files, 248 tests passed.
+- `npm run build --prefix frontend` — normal production build passed.
+- `python3 scripts/check_links.py` — zero problems.
+- `E2E_BASE_URL=http://127.0.0.1:3015 E2E_BROWSER_CHANNEL=chrome DEMO_ACCESS_CODE=e2e-demo-access-code npm run e2e --prefix frontend -- tests/e2e/demo.spec.ts --reporter=list` — four passed, including saved-evidence labels, access gating and phone overflow assertion.
+
+The access code above is a public test fixture used only by the local test server. Backend origin was deliberately unavailable; no provider or GitHub backend call was exercised. Actual Chrome desktop and 375px phone inspection confirmed visible evidence caveats and fixed overflow (`scrollWidth = innerWidth = 375`). Real commit and drill provenance behavior is covered by component tests with explicit mocks, not a live backend claim. No raw historical report audit or fresh live assessment. Final GitHub checks/merge are next.

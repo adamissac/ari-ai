@@ -44,13 +44,13 @@ export function VerdictChip({ verdict }: { verdict: Verdict }) {
   return <span className={`demo-chip demo-chip-${view.tone}`} data-testid="demo-verdict">{view.label}</span>;
 }
 
-/** Small, always-visible note that the demo account shows sample data. */
+/** Account data is illustrative; a separately labelled saved run has its own provenance. */
 export function DemoAccountTag({ className = '' }: { className?: string }) {
   return (
     <span
       className={`label-mono rounded-full border border-line px-2 py-0.5 text-[10px] text-faint ${className}`}
       data-testid="demo-account-tag"
-      title="Demo account: the organization, repositories, commits and results shown are sample data."
+      title="Demo account: organization, repositories, commits and illustrative results are sample data. A separately labelled recorded live run is saved evidence from an owned test fixture, not account activity or a run happening now."
     >
       Demo account · sample data
     </span>
