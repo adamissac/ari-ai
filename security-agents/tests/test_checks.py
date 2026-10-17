@@ -209,3 +209,50 @@ def test_bad_parameters_are_reported_with_a_code(driver, intel):
     )
     assert result["error"] == ErrorCode.SCHEMA_INVALID.value
     assert result["matches_expectation"] is None
+
+
+# --------------------------------------------------------------------------- any customer app
+
+
+def test_app_factory_comes_from_the_recipe_and_is_strictly_validated(library, recipe):
+    params = {"route_id": "payment_detail", "owner_identity": "alice", "other_identity": "bob"}
+    src = library.render(OWNERSHIP.ref, {**recipe, "app_factory": "acme_billing.api.main:build"}, params)
+    assert "from acme_billing.api.main import build as create_app" in src
+    assert "payments_lite" not in src
+    assert "from payments_lite.app import create_app" in library.render(OWNERSHIP.ref, recipe, params)
+    # The recipe is repository content: anything but package.module:callable is refused.
+    for bad in ("os:system; import os", "acme.app:create_app()", "acme app:create_app",
+                "acme.app", "acme.app:create_app\nimport os", "../x:y", ""):
+        if bad == "":
+            continue  # empty falls back to the default factory
+        with pytest.raises(PlatformError) as e:
+            library.render(OWNERSHIP.ref, {**recipe, "app_factory": bad}, params)
+        assert e.value.code is ErrorCode.SCHEMA_INVALID
+
+
+def test_checks_run_against_a_differently_named_customer_package(driver, intel, recipe, tmp_path):
+    """A real customer repository is not called payments_lite: the same planted IDOR is
+    found when the package and factory have other names."""
+    import shutil
+
+    ws = tmp_path / "ws"
+    shutil.copytree(intel.snapshot.root, ws)
+    for p in (ws, *ws.rglob("*")):
+        p.chmod(0o755 if p.is_dir() else 0o644)  # snapshots are read-only
+    shutil.move(ws / "payments_lite", ws / "acme_billing")
+    for f in (ws / "acme_billing").glob("*.py"):
+        f.write_text(f.read_text().replace("payments_lite", "acme_billing"))
+    with (ws / "acme_billing" / "app.py").open("a") as fh:
+        fh.write("\n\nbuild = create_app\n")
+    custom = {**recipe, "app_factory": "acme_billing.app:build"}
+    runner = CheckRunner(
+        driver=driver,
+        library=default_library(),
+        workspace_provider=lambda _ctx: ws,
+        recipe_provider=lambda _ctx, _target: custom,
+    )
+    params = {"route_id": "payment_detail", "owner_identity": "alice", "other_identity": "bob"}
+    planted = runner.run(probe_ctx(intel), OWNERSHIP.ref, TARGET_ID, params)
+    assert planted["matches_expectation"] is False, planted.get("stdout_tail")
+    sibling = runner.run(probe_ctx(intel), OWNERSHIP.ref, TARGET_ID, {**params, "route_id": "customer_detail"})
+    assert sibling["matches_expectation"] is True, sibling.get("stdout_tail")
