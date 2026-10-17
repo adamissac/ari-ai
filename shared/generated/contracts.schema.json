@@ -93,7 +93,7 @@
           "$ref": "#/$defs/AgentName"
         },
         "assessment_id": {
-          "pattern": "^asm_[0-9A-Za-z]{8,64}$",
+          "pattern": "^asm_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Assessment Id",
           "type": "string"
         },
@@ -127,14 +127,14 @@
           "default": null
         },
         "id": {
-          "pattern": "^run_[0-9A-Za-z]{8,64}$",
+          "pattern": "^run_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
         "input_artifact_id": {
           "anyOf": [
             {
-              "pattern": "^art_[0-9A-Za-z]{8,64}$",
+              "pattern": "^art_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -160,7 +160,7 @@
         "output_artifact_id": {
           "anyOf": [
             {
-              "pattern": "^art_[0-9A-Za-z]{8,64}$",
+              "pattern": "^art_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -213,7 +213,7 @@
         "transcript_artifact_id": {
           "anyOf": [
             {
-              "pattern": "^art_[0-9A-Za-z]{8,64}$",
+              "pattern": "^art_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -268,7 +268,7 @@
           "$ref": "#/$defs/AgentName"
         },
         "assessment_id": {
-          "pattern": "^asm_[0-9A-Za-z]{8,64}$",
+          "pattern": "^asm_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Assessment Id",
           "type": "string"
         },
@@ -283,7 +283,7 @@
         "context_pack_id": {
           "anyOf": [
             {
-              "pattern": "^ctx_[0-9A-Za-z]{8,64}$",
+              "pattern": "^ctx_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -300,7 +300,7 @@
           "type": "object"
         },
         "scope_id": {
-          "pattern": "^scp_[0-9A-Za-z]{8,64}$",
+          "pattern": "^scp_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Scope Id",
           "type": "string"
         },
@@ -334,7 +334,7 @@
           "$ref": "#/$defs/AgentName"
         },
         "agent_run_id": {
-          "pattern": "^run_[0-9A-Za-z]{8,64}$",
+          "pattern": "^run_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Agent Run Id",
           "type": "string"
         },
@@ -408,7 +408,7 @@
         "decided_by": {
           "anyOf": [
             {
-              "pattern": "^usr_[0-9A-Za-z]{8,64}$",
+              "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -419,12 +419,12 @@
           "title": "Decided By"
         },
         "id": {
-          "pattern": "^apv_[0-9A-Za-z]{8,64}$",
+          "pattern": "^apv_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
         "project_id": {
-          "pattern": "^prj_[0-9A-Za-z]{8,64}$",
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Project Id",
           "type": "string"
         },
@@ -449,7 +449,7 @@
         "requested_by": {
           "anyOf": [
             {
-              "pattern": "^usr_[0-9A-Za-z]{8,64}$",
+              "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -552,7 +552,7 @@
       "additionalProperties": false,
       "properties": {
         "id": {
-          "pattern": "^art_[0-9A-Za-z]{8,64}$",
+          "pattern": "^art_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
@@ -625,7 +625,7 @@
         "created_by": {
           "anyOf": [
             {
-              "pattern": "^usr_[0-9A-Za-z]{8,64}$",
+              "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -648,19 +648,19 @@
           "default": null
         },
         "id": {
-          "pattern": "^asm_[0-9A-Za-z]{8,64}$",
+          "pattern": "^asm_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
         "project_id": {
-          "pattern": "^prj_[0-9A-Za-z]{8,64}$",
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Project Id",
           "type": "string"
         },
         "reassessment_request_id": {
           "anyOf": [
             {
-              "pattern": "^rrq_[0-9A-Za-z]{8,64}$",
+              "pattern": "^rrq_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -671,14 +671,14 @@
           "title": "Reassessment Request Id"
         },
         "scope_id": {
-          "pattern": "^scp_[0-9A-Za-z]{8,64}$",
+          "pattern": "^scp_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Scope Id",
           "type": "string"
         },
         "snapshot_id": {
           "anyOf": [
             {
-              "pattern": "^snp_[0-9A-Za-z]{8,64}$",
+              "pattern": "^snp_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -752,19 +752,19 @@
           "title": "Commit Sha"
         },
         "repo_id": {
-          "pattern": "^rep_[0-9A-Za-z]{8,64}$",
+          "pattern": "^rep_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Repo Id",
           "type": "string"
         },
         "scope_id": {
-          "pattern": "^scp_[0-9A-Za-z]{8,64}$",
+          "pattern": "^scp_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Scope Id",
           "type": "string"
         },
         "snapshot_id": {
           "anyOf": [
             {
-              "pattern": "^snp_[0-9A-Za-z]{8,64}$",
+              "pattern": "^snp_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -848,12 +848,12 @@
       "additionalProperties": false,
       "properties": {
         "finding_id": {
-          "pattern": "^fnd_[0-9A-Za-z]{8,64}$",
+          "pattern": "^fnd_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Finding Id",
           "type": "string"
         },
         "id": {
-          "pattern": "^atp_[0-9A-Za-z]{8,64}$",
+          "pattern": "^atp_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
@@ -923,12 +923,12 @@
           "type": "string"
         },
         "id": {
-          "pattern": "^aud_[0-9A-Za-z]{8,64}$",
+          "pattern": "^aud_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
         "org_id": {
-          "pattern": "^org_[0-9A-Za-z]{8,64}$",
+          "pattern": "^org_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Org Id",
           "type": "string"
         },
@@ -940,7 +940,7 @@
         "project_id": {
           "anyOf": [
             {
-              "pattern": "^prj_[0-9A-Za-z]{8,64}$",
+              "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -1012,7 +1012,7 @@
         "approved_by": {
           "anyOf": [
             {
-              "pattern": "^usr_[0-9A-Za-z]{8,64}$",
+              "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -1028,7 +1028,7 @@
           "type": "string"
         },
         "id": {
-          "pattern": "^scp_[0-9A-Za-z]{8,64}$",
+          "pattern": "^scp_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
@@ -1051,12 +1051,12 @@
           "title": "Notes"
         },
         "project_id": {
-          "pattern": "^prj_[0-9A-Za-z]{8,64}$",
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Project Id",
           "type": "string"
         },
         "requested_by": {
-          "pattern": "^usr_[0-9A-Za-z]{8,64}$",
+          "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Requested By",
           "type": "string"
         },
@@ -1110,7 +1110,7 @@
           "default": null
         },
         "id": {
-          "pattern": "^exp_[0-9A-Za-z]{8,64}$",
+          "pattern": "^exp_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
@@ -1121,7 +1121,7 @@
           "$ref": "#/$defs/ExpectationOrigin"
         },
         "snapshot_id": {
-          "pattern": "^snp_[0-9A-Za-z]{8,64}$",
+          "pattern": "^snp_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Snapshot Id",
           "type": "string"
         },
@@ -1199,7 +1199,7 @@
         "callee_id": {
           "anyOf": [
             {
-              "pattern": "^sym_[0-9A-Za-z]{8,64}$",
+              "pattern": "^sym_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -1215,7 +1215,7 @@
           "type": "string"
         },
         "caller_id": {
-          "pattern": "^sym_[0-9A-Za-z]{8,64}$",
+          "pattern": "^sym_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Caller Id",
           "type": "string"
         },
@@ -1223,7 +1223,7 @@
           "$ref": "#/$defs/CallResolution"
         },
         "snapshot_id": {
-          "pattern": "^snp_[0-9A-Za-z]{8,64}$",
+          "pattern": "^snp_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Snapshot Id",
           "type": "string"
         }
@@ -1391,7 +1391,7 @@
           "type": "string"
         },
         "id": {
-          "pattern": "^ctx_[0-9A-Za-z]{8,64}$",
+          "pattern": "^ctx_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
@@ -1524,7 +1524,7 @@
           "type": "string"
         },
         "id": {
-          "pattern": "^rec_[0-9A-Za-z]{8,64}$",
+          "pattern": "^rec_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
@@ -1562,7 +1562,7 @@
         "project_id": {
           "anyOf": [
             {
-              "pattern": "^prj_[0-9A-Za-z]{8,64}$",
+              "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -1654,12 +1654,12 @@
           "type": "array"
         },
         "handler_symbol_id": {
-          "pattern": "^sym_[0-9A-Za-z]{8,64}$",
+          "pattern": "^sym_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Handler Symbol Id",
           "type": "string"
         },
         "id": {
-          "pattern": "^ent_[0-9A-Za-z]{8,64}$",
+          "pattern": "^ent_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
@@ -1693,7 +1693,7 @@
           "title": "Path Template"
         },
         "snapshot_id": {
-          "pattern": "^snp_[0-9A-Za-z]{8,64}$",
+          "pattern": "^snp_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Snapshot Id",
           "type": "string"
         }
@@ -1856,7 +1856,7 @@
         "artifact_id": {
           "anyOf": [
             {
-              "pattern": "^art_[0-9A-Za-z]{8,64}$",
+              "pattern": "^art_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -2063,7 +2063,7 @@
       "additionalProperties": false,
       "properties": {
         "assessment_id": {
-          "pattern": "^asm_[0-9A-Za-z]{8,64}$",
+          "pattern": "^asm_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Assessment Id",
           "type": "string"
         },
@@ -2093,7 +2093,7 @@
         },
         "expectation_ids": {
           "items": {
-            "pattern": "^exp_[0-9A-Za-z]{8,64}$",
+            "pattern": "^exp_[0-9A-Za-z_\\-]{8,64}$",
             "type": "string"
           },
           "title": "Expectation Ids",
@@ -2107,7 +2107,7 @@
           "type": "array"
         },
         "id": {
-          "pattern": "^fnd_[0-9A-Za-z]{8,64}$",
+          "pattern": "^fnd_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
@@ -2117,7 +2117,7 @@
         "produced_by_run_id": {
           "anyOf": [
             {
-              "pattern": "^run_[0-9A-Za-z]{8,64}$",
+              "pattern": "^run_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -2141,7 +2141,7 @@
         "snapshot_id": {
           "anyOf": [
             {
-              "pattern": "^snp_[0-9A-Za-z]{8,64}$",
+              "pattern": "^snp_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -2225,20 +2225,20 @@
       "additionalProperties": false,
       "properties": {
         "artifact_id": {
-          "pattern": "^art_[0-9A-Za-z]{8,64}$",
+          "pattern": "^art_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Artifact Id",
           "type": "string"
         },
         "expectation_ids": {
           "items": {
-            "pattern": "^exp_[0-9A-Za-z]{8,64}$",
+            "pattern": "^exp_[0-9A-Za-z_\\-]{8,64}$",
             "type": "string"
           },
           "title": "Expectation Ids",
           "type": "array"
         },
         "id": {
-          "pattern": "^tst_[0-9A-Za-z]{8,64}$",
+          "pattern": "^tst_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
@@ -2279,19 +2279,19 @@
           "type": "string"
         },
         "finding_id": {
-          "pattern": "^fnd_[0-9A-Za-z]{8,64}$",
+          "pattern": "^fnd_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Finding Id",
           "type": "string"
         },
         "id": {
-          "pattern": "^hdn_[0-9A-Za-z]{8,64}$",
+          "pattern": "^hdn_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
         "proposed_test_artifact_id": {
           "anyOf": [
             {
-              "pattern": "^art_[0-9A-Za-z]{8,64}$",
+              "pattern": "^art_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -2358,19 +2358,19 @@
         },
         "expectation_ids": {
           "items": {
-            "pattern": "^exp_[0-9A-Za-z]{8,64}$",
+            "pattern": "^exp_[0-9A-Za-z_\\-]{8,64}$",
             "type": "string"
           },
           "title": "Expectation Ids",
           "type": "array"
         },
         "finding_id": {
-          "pattern": "^fnd_[0-9A-Za-z]{8,64}$",
+          "pattern": "^fnd_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Finding Id",
           "type": "string"
         },
         "id": {
-          "pattern": "^hyp_[0-9A-Za-z]{8,64}$",
+          "pattern": "^hyp_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
@@ -2431,7 +2431,7 @@
         "base_snapshot_id": {
           "anyOf": [
             {
-              "pattern": "^snp_[0-9A-Za-z]{8,64}$",
+              "pattern": "^snp_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -2452,7 +2452,7 @@
         },
         "expectations": {
           "items": {
-            "pattern": "^exp_[0-9A-Za-z]{8,64}$",
+            "pattern": "^exp_[0-9A-Za-z_\\-]{8,64}$",
             "type": "string"
           },
           "title": "Expectations",
@@ -2460,7 +2460,7 @@
         },
         "findings": {
           "items": {
-            "pattern": "^fnd_[0-9A-Za-z]{8,64}$",
+            "pattern": "^fnd_[0-9A-Za-z_\\-]{8,64}$",
             "type": "string"
           },
           "title": "Findings",
@@ -2474,7 +2474,7 @@
         "head_snapshot_id": {
           "anyOf": [
             {
-              "pattern": "^snp_[0-9A-Za-z]{8,64}$",
+              "pattern": "^snp_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -2493,7 +2493,7 @@
           "type": "array"
         },
         "repo_id": {
-          "pattern": "^rep_[0-9A-Za-z]{8,64}$",
+          "pattern": "^rep_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Repo Id",
           "type": "string"
         },
@@ -2502,7 +2502,7 @@
         },
         "symbols": {
           "items": {
-            "pattern": "^sym_[0-9A-Za-z]{8,64}$",
+            "pattern": "^sym_[0-9A-Za-z_\\-]{8,64}$",
             "type": "string"
           },
           "title": "Symbols",
@@ -2534,12 +2534,12 @@
           "type": "string"
         },
         "id": {
-          "pattern": "^itk_[0-9A-Za-z]{8,64}$",
+          "pattern": "^itk_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
         "project_id": {
-          "pattern": "^prj_[0-9A-Za-z]{8,64}$",
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Project Id",
           "type": "string"
         },
@@ -2578,7 +2578,7 @@
         "expectation_id": {
           "anyOf": [
             {
-              "pattern": "^exp_[0-9A-Za-z]{8,64}$",
+              "pattern": "^exp_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -2683,7 +2683,7 @@
       "additionalProperties": false,
       "properties": {
         "org_id": {
-          "pattern": "^org_[0-9A-Za-z]{8,64}$",
+          "pattern": "^org_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Org Id",
           "type": "string"
         },
@@ -2691,7 +2691,7 @@
           "$ref": "#/$defs/MemberRole"
         },
         "user_id": {
-          "pattern": "^usr_[0-9A-Za-z]{8,64}$",
+          "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
           "title": "User Id",
           "type": "string"
         }
@@ -2741,7 +2741,7 @@
           "type": "string"
         },
         "id": {
-          "pattern": "^evt_[0-9A-Za-z]{8,64}$",
+          "pattern": "^evt_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
@@ -2764,7 +2764,7 @@
         "payload_artifact_id": {
           "anyOf": [
             {
-              "pattern": "^art_[0-9A-Za-z]{8,64}$",
+              "pattern": "^art_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -2788,7 +2788,7 @@
           "title": "Pr Number"
         },
         "project_id": {
-          "pattern": "^prj_[0-9A-Za-z]{8,64}$",
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Project Id",
           "type": "string"
         },
@@ -2814,7 +2814,7 @@
         "repo_id": {
           "anyOf": [
             {
-              "pattern": "^rep_[0-9A-Za-z]{8,64}$",
+              "pattern": "^rep_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -2965,7 +2965,7 @@
           "type": "string"
         },
         "id": {
-          "pattern": "^org_[0-9A-Za-z]{8,64}$",
+          "pattern": "^org_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
@@ -3003,7 +3003,7 @@
           "type": "string"
         },
         "diff_artifact_id": {
-          "pattern": "^art_[0-9A-Za-z]{8,64}$",
+          "pattern": "^art_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Diff Artifact Id",
           "type": "string"
         },
@@ -3023,19 +3023,19 @@
           "type": "array"
         },
         "finding_id": {
-          "pattern": "^fnd_[0-9A-Za-z]{8,64}$",
+          "pattern": "^fnd_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Finding Id",
           "type": "string"
         },
         "id": {
-          "pattern": "^pat_[0-9A-Za-z]{8,64}$",
+          "pattern": "^pat_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
         "local_test_run_id": {
           "anyOf": [
             {
-              "pattern": "^tst_[0-9A-Za-z]{8,64}$",
+              "pattern": "^tst_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -3046,7 +3046,7 @@
           "title": "Local Test Run Id"
         },
         "produced_by_run_id": {
-          "pattern": "^run_[0-9A-Za-z]{8,64}$",
+          "pattern": "^run_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Produced By Run Id",
           "type": "string"
         },
@@ -3187,7 +3187,7 @@
         "project_id": {
           "anyOf": [
             {
-              "pattern": "^prj_[0-9A-Za-z]{8,64}$",
+              "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -3224,7 +3224,7 @@
           "type": "string"
         },
         "id": {
-          "pattern": "^prj_[0-9A-Za-z]{8,64}$",
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
@@ -3234,7 +3234,7 @@
           "type": "string"
         },
         "org_id": {
-          "pattern": "^org_[0-9A-Za-z]{8,64}$",
+          "pattern": "^org_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Org Id",
           "type": "string"
         },
@@ -3379,7 +3379,7 @@
           "type": "string"
         },
         "id": {
-          "pattern": "^ckp_[0-9A-Za-z]{8,64}$",
+          "pattern": "^ckp_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
@@ -3419,7 +3419,7 @@
       "properties": {
         "checkpoint_ids": {
           "items": {
-            "pattern": "^ckp_[0-9A-Za-z]{8,64}$",
+            "pattern": "^ckp_[0-9A-Za-z_\\-]{8,64}$",
             "type": "string"
           },
           "title": "Checkpoint Ids",
@@ -3431,7 +3431,7 @@
           "type": "string"
         },
         "id": {
-          "pattern": "^rle_[0-9A-Za-z]{8,64}$",
+          "pattern": "^rle_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
@@ -3447,7 +3447,7 @@
           "type": "boolean"
         },
         "summary_artifact_id": {
-          "pattern": "^art_[0-9A-Za-z]{8,64}$",
+          "pattern": "^art_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Summary Artifact Id",
           "type": "string"
         },
@@ -3493,7 +3493,7 @@
           "type": "string"
         },
         "recommendation_id": {
-          "pattern": "^rec_[0-9A-Za-z]{8,64}$",
+          "pattern": "^rec_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Recommendation Id",
           "type": "string"
         },
@@ -3584,7 +3584,7 @@
         "assessment_id": {
           "anyOf": [
             {
-              "pattern": "^asm_[0-9A-Za-z]{8,64}$",
+              "pattern": "^asm_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -3601,7 +3601,7 @@
         },
         "event_ids": {
           "items": {
-            "pattern": "^evt_[0-9A-Za-z]{8,64}$",
+            "pattern": "^evt_[0-9A-Za-z_\\-]{8,64}$",
             "type": "string"
           },
           "minItems": 1,
@@ -3614,12 +3614,12 @@
           "type": "string"
         },
         "id": {
-          "pattern": "^rrq_[0-9A-Za-z]{8,64}$",
+          "pattern": "^rrq_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
         "project_id": {
-          "pattern": "^prj_[0-9A-Za-z]{8,64}$",
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Project Id",
           "type": "string"
         },
@@ -3629,7 +3629,7 @@
           "type": "string"
         },
         "repo_id": {
-          "pattern": "^rep_[0-9A-Za-z]{8,64}$",
+          "pattern": "^rep_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Repo Id",
           "type": "string"
         },
@@ -3705,12 +3705,12 @@
           "type": "array"
         },
         "finding_id": {
-          "pattern": "^fnd_[0-9A-Za-z]{8,64}$",
+          "pattern": "^fnd_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Finding Id",
           "type": "string"
         },
         "id": {
-          "pattern": "^rmp_[0-9A-Za-z]{8,64}$",
+          "pattern": "^rmp_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
@@ -3763,7 +3763,7 @@
           "type": "string"
         },
         "id": {
-          "pattern": "^rep_[0-9A-Za-z]{8,64}$",
+          "pattern": "^rep_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
@@ -3781,7 +3781,7 @@
           "title": "Installation Id"
         },
         "project_id": {
-          "pattern": "^prj_[0-9A-Za-z]{8,64}$",
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Project Id",
           "type": "string"
         },
@@ -3842,7 +3842,7 @@
       "additionalProperties": false,
       "properties": {
         "assessment_id": {
-          "pattern": "^asm_[0-9A-Za-z]{8,64}$",
+          "pattern": "^asm_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Assessment Id",
           "type": "string"
         },
@@ -3879,12 +3879,12 @@
       "additionalProperties": false,
       "properties": {
         "agent_run_id": {
-          "pattern": "^run_[0-9A-Za-z]{8,64}$",
+          "pattern": "^run_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Agent Run Id",
           "type": "string"
         },
         "assessment_id": {
-          "pattern": "^asm_[0-9A-Za-z]{8,64}$",
+          "pattern": "^asm_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Assessment Id",
           "type": "string"
         },
@@ -3958,12 +3958,12 @@
           "type": "array"
         },
         "finding_id": {
-          "pattern": "^fnd_[0-9A-Za-z]{8,64}$",
+          "pattern": "^fnd_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Finding Id",
           "type": "string"
         },
         "id": {
-          "pattern": "^rc_[0-9A-Za-z]{8,64}$",
+          "pattern": "^rc_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
@@ -3974,7 +3974,7 @@
         },
         "violated_expectation_ids": {
           "items": {
-            "pattern": "^exp_[0-9A-Za-z]{8,64}$",
+            "pattern": "^exp_[0-9A-Za-z_\\-]{8,64}$",
             "type": "string"
           },
           "title": "Violated Expectation Ids",
@@ -4139,7 +4139,7 @@
         },
         "monitoring_event_ids": {
           "items": {
-            "pattern": "^evt_[0-9A-Za-z]{8,64}$",
+            "pattern": "^evt_[0-9A-Za-z_\\-]{8,64}$",
             "type": "string"
           },
           "title": "Monitoring Event Ids",
@@ -4168,7 +4168,7 @@
         "repo_id": {
           "anyOf": [
             {
-              "pattern": "^rep_[0-9A-Za-z]{8,64}$",
+              "pattern": "^rep_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -4306,7 +4306,7 @@
           "type": "string"
         },
         "repo_id": {
-          "pattern": "^rep_[0-9A-Za-z]{8,64}$",
+          "pattern": "^rep_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Repo Id",
           "type": "string"
         }
@@ -4392,7 +4392,7 @@
         "base_snapshot_id": {
           "anyOf": [
             {
-              "pattern": "^snp_[0-9A-Za-z]{8,64}$",
+              "pattern": "^snp_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -4439,7 +4439,7 @@
           "title": "Error Message"
         },
         "id": {
-          "pattern": "^snp_[0-9A-Za-z]{8,64}$",
+          "pattern": "^snp_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
@@ -4449,7 +4449,7 @@
           "type": "string"
         },
         "repo_id": {
-          "pattern": "^rep_[0-9A-Za-z]{8,64}$",
+          "pattern": "^rep_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Repo Id",
           "type": "string"
         },
@@ -4504,17 +4504,17 @@
           "type": "string"
         },
         "project_id": {
-          "pattern": "^prj_[0-9A-Za-z]{8,64}$",
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Project Id",
           "type": "string"
         },
         "repo_id": {
-          "pattern": "^rep_[0-9A-Za-z]{8,64}$",
+          "pattern": "^rep_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Repo Id",
           "type": "string"
         },
         "snapshot_id": {
-          "pattern": "^snp_[0-9A-Za-z]{8,64}$",
+          "pattern": "^snp_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Snapshot Id",
           "type": "string"
         }
@@ -4700,7 +4700,7 @@
         "agent_run_id": {
           "anyOf": [
             {
-              "pattern": "^run_[0-9A-Za-z]{8,64}$",
+              "pattern": "^run_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -4713,7 +4713,7 @@
         "approval_id": {
           "anyOf": [
             {
-              "pattern": "^apv_[0-9A-Za-z]{8,64}$",
+              "pattern": "^apv_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -4724,7 +4724,7 @@
           "title": "Approval Id"
         },
         "assessment_id": {
-          "pattern": "^asm_[0-9A-Za-z]{8,64}$",
+          "pattern": "^asm_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Assessment Id",
           "type": "string"
         },
@@ -4741,7 +4741,7 @@
         "finding_id": {
           "anyOf": [
             {
-              "pattern": "^fnd_[0-9A-Za-z]{8,64}$",
+              "pattern": "^fnd_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -4836,7 +4836,7 @@
           "type": "integer"
         },
         "id": {
-          "pattern": "^sym_[0-9A-Za-z]{8,64}$",
+          "pattern": "^sym_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
@@ -4868,7 +4868,7 @@
           "title": "Signature"
         },
         "snapshot_id": {
-          "pattern": "^snp_[0-9A-Za-z]{8,64}$",
+          "pattern": "^snp_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Snapshot Id",
           "type": "string"
         },
@@ -4943,7 +4943,7 @@
         "output_artifact_id": {
           "anyOf": [
             {
-              "pattern": "^art_[0-9A-Za-z]{8,64}$",
+              "pattern": "^art_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -5099,7 +5099,7 @@
           "type": "string"
         },
         "id": {
-          "pattern": "^usr_[0-9A-Za-z]{8,64}$",
+          "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         }
@@ -5144,12 +5144,12 @@
           "type": "array"
         },
         "hypothesis_id": {
-          "pattern": "^hyp_[0-9A-Za-z]{8,64}$",
+          "pattern": "^hyp_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Hypothesis Id",
           "type": "string"
         },
         "id": {
-          "pattern": "^val_[0-9A-Za-z]{8,64}$",
+          "pattern": "^val_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
@@ -5230,17 +5230,17 @@
           "type": "string"
         },
         "id": {
-          "pattern": "^ver_[0-9A-Za-z]{8,64}$",
+          "pattern": "^ver_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Id",
           "type": "string"
         },
         "patch_id": {
-          "pattern": "^pat_[0-9A-Za-z]{8,64}$",
+          "pattern": "^pat_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Patch Id",
           "type": "string"
         },
         "produced_by_run_id": {
-          "pattern": "^run_[0-9A-Za-z]{8,64}$",
+          "pattern": "^run_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Produced By Run Id",
           "type": "string"
         },
@@ -5341,5 +5341,5 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "HackATL platform contracts",
-  "x-schema-version": "0.3.0"
+  "x-schema-version": "0.4.0"
 }

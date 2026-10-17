@@ -32,7 +32,7 @@
         "artifact_id": {
           "anyOf": [
             {
-              "pattern": "^art_[0-9A-Za-z]{8,64}$",
+              "pattern": "^art_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -239,7 +239,7 @@
       "default": null
     },
     "id": {
-      "pattern": "^exp_[0-9A-Za-z]{8,64}$",
+      "pattern": "^exp_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Id",
       "type": "string"
     },
@@ -250,7 +250,7 @@
       "$ref": "#/$defs/ExpectationOrigin"
     },
     "snapshot_id": {
-      "pattern": "^snp_[0-9A-Za-z]{8,64}$",
+      "pattern": "^snp_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Snapshot Id",
       "type": "string"
     },

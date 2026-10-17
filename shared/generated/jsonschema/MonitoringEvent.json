@@ -88,7 +88,7 @@
         "base_snapshot_id": {
           "anyOf": [
             {
-              "pattern": "^snp_[0-9A-Za-z]{8,64}$",
+              "pattern": "^snp_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -109,7 +109,7 @@
         },
         "expectations": {
           "items": {
-            "pattern": "^exp_[0-9A-Za-z]{8,64}$",
+            "pattern": "^exp_[0-9A-Za-z_\\-]{8,64}$",
             "type": "string"
           },
           "title": "Expectations",
@@ -117,7 +117,7 @@
         },
         "findings": {
           "items": {
-            "pattern": "^fnd_[0-9A-Za-z]{8,64}$",
+            "pattern": "^fnd_[0-9A-Za-z_\\-]{8,64}$",
             "type": "string"
           },
           "title": "Findings",
@@ -131,7 +131,7 @@
         "head_snapshot_id": {
           "anyOf": [
             {
-              "pattern": "^snp_[0-9A-Za-z]{8,64}$",
+              "pattern": "^snp_[0-9A-Za-z_\\-]{8,64}$",
               "type": "string"
             },
             {
@@ -150,7 +150,7 @@
           "type": "array"
         },
         "repo_id": {
-          "pattern": "^rep_[0-9A-Za-z]{8,64}$",
+          "pattern": "^rep_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Repo Id",
           "type": "string"
         },
@@ -159,7 +159,7 @@
         },
         "symbols": {
           "items": {
-            "pattern": "^sym_[0-9A-Za-z]{8,64}$",
+            "pattern": "^sym_[0-9A-Za-z_\\-]{8,64}$",
             "type": "string"
           },
           "title": "Symbols",
@@ -194,7 +194,7 @@
       "type": "string"
     },
     "id": {
-      "pattern": "^evt_[0-9A-Za-z]{8,64}$",
+      "pattern": "^evt_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Id",
       "type": "string"
     },
@@ -217,7 +217,7 @@
     "payload_artifact_id": {
       "anyOf": [
         {
-          "pattern": "^art_[0-9A-Za-z]{8,64}$",
+          "pattern": "^art_[0-9A-Za-z_\\-]{8,64}$",
           "type": "string"
         },
         {
@@ -241,7 +241,7 @@
       "title": "Pr Number"
     },
     "project_id": {
-      "pattern": "^prj_[0-9A-Za-z]{8,64}$",
+      "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Project Id",
       "type": "string"
     },
@@ -267,7 +267,7 @@
     "repo_id": {
       "anyOf": [
         {
-          "pattern": "^rep_[0-9A-Za-z]{8,64}$",
+          "pattern": "^rep_[0-9A-Za-z_\\-]{8,64}$",
           "type": "string"
         },
         {
