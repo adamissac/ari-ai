@@ -65,7 +65,7 @@ def _hits(f: Finding, path: str, lines: tuple[int, int]) -> bool:
 def score(outcome: ReviewOutcome, labels_path: Path, repo_prefix: str = "") -> EvalReport:
     import yaml
 
-    labels = yaml.safe_load(labels_path.read_text())
+    labels: dict[str, Any] = yaml.safe_load(labels_path.read_text())  # type: ignore[no-untyped-call]
     root = labels_path.parent
     rep = EvalReport(provider_mode=outcome.provider_mode)
     rep.generated_tests_failing_on_head = sum(

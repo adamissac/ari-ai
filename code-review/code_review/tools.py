@@ -434,7 +434,7 @@ class ReviewerToolbox:
     def show_diff(self, _: EmptyIn) -> str:
         if self.pristine is None:
             raise ToolDenied("show_diff is only available in repair mode")
-        diff, _ = unified_diff(self.pristine, self.head)
+        diff, _changed = unified_diff(self.pristine, self.head)
         return (diff or "(no changes)")[:TOOL_OUTPUT_CAP]
 
     def revert_file(self, a: RevertIn) -> str:

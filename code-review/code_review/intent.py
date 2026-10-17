@@ -204,8 +204,7 @@ def adjudicate_claims(
             "Change text contains instruction-like content that was treated as data: "
             + "; ".join(injection_flags)[:400]
         )
-    seen: set[str] = set()
-    deduped = [q for q in questions if not (q in seen or seen.add(q))]
+    deduped = list(dict.fromkeys(questions))
     return IntentAdjudication(
         evidence=IntentEvidence(claims=out, open_questions=deduped[:20]),
         by_key=by_key,
