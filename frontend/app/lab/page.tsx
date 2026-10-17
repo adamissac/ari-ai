@@ -85,23 +85,24 @@ const GAME_STEPS: { n: string; title: string; body: (machines: string) => string
 function Lab({ data }: { data: BundleResponse }) {
   const { bundle, provenance } = data;
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-16">
       <section aria-labelledby="lab-what" data-testid="lab-intro">
         <h2 id="lab-what" className="sr-only">What is this?</h2>
-        <p className="mt-2 max-w-3xl text-base text-ink">
+        <p className="lab-lede">
           A practice game (a <Term t="simulation">simulation</Term>). An AI defender learned by trial and error a <Term t="policy">policy</Term>:
           which moves keep the intruder out without shutting the business down.
         </p>
         <ol className="mt-5 grid gap-3 md:grid-cols-3">
           {GAME_STEPS.map(step => (
-            <li key={step.n} className="rounded-2xl border border-line bg-panel p-5">
-              <p className="font-semibold tracking-tight">{step.title}</p>
+            <li key={step.n} className="lab-step">
+              <span className="lab-step-n" aria-hidden="true">{step.n}</span>
+              <p className="mt-4 font-semibold tracking-tight">{step.title}</p>
               <p className="mt-1 text-sm text-muted">{step.body(machineCountPhrase(bundle.scenarios))}</p>
             </li>
           ))}
         </ol>
-        <p role="note" className="mt-4 flex items-start gap-2 rounded-xl border border-warn/40 bg-warn/10 px-4 py-3 text-sm text-warn" data-testid="lab-caveat">
-          <span aria-hidden="true">⚠</span>
+        <p role="note" className="lab-caveat mt-4" data-testid="lab-caveat">
+          <svg viewBox="0 0 16 16" className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round"><path d="M8 1.8 14.6 13.5H1.4z" strokeLinejoin="round" /><path d="M8 6.3v3.4M8 11.7v.01" /></svg>
           <span><strong>Simulation only{bundle.simulation_only ? '' : ' (flag missing!)'}.</strong> {bundle.caveat} This is not real network detection and no action is ever applied automatically.</span>
         </p>
       </section>
@@ -186,7 +187,8 @@ function Scoreboard({ bundle }: { bundle: DefenseLabBundle }) {
   const tradeoff = tradeoffNote(bundle);
   return (
     <section aria-labelledby="score-title" data-testid="lab-scoreboard">
-      <h2 id="score-title" className="text-2xl font-semibold tracking-tight md:text-3xl">Who defends best?</h2>
+      <p className="lab-eyebrow">02 · Compare</p>
+      <h2 id="score-title" className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Who defends best?</h2>
       <p className="mt-2 max-w-3xl text-sm text-muted">
         {defenderCountPhrase(bundle.metrics.length, true)}, each tested on {n.toLocaleString()} games they never trained on. The shaded band on each bar is the 95% range the true average very likely falls in.
       </p>
@@ -237,7 +239,7 @@ function Scoreboard({ bundle }: { bundle: DefenseLabBundle }) {
           <span>{tradeoff}</span>
         </p>
       )}
-      <dl className="lab-legend mt-6">
+      <dl className="lab-defenders mt-6">
         {bundle.metrics.map(m => (
           <div key={m.policy}>
             <dt>{policyName(m.policy)}</dt>
@@ -307,10 +309,11 @@ function Replay({ bundle }: { bundle: DefenseLabBundle }) {
   const scenario = bundle.scenarios.find(s => s.name === episode?.scenario);
   return (
     <section aria-labelledby="replay-title">
-      <h2 id="replay-title" className="text-2xl font-semibold tracking-tight md:text-3xl">Replay a recorded game</h2>
+      <p className="lab-eyebrow">01 · Watch</p>
+      <h2 id="replay-title" className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Replay a recorded game</h2>
       <p className="mt-2 max-w-3xl text-sm text-muted">Pick a defender and an attacker, press play, and follow what the defender saw and did at each step.</p>
       {!episode || !scenario ? <div className="mt-4"><Empty>This bundle has no recorded episodes.</Empty></div> : (
-        <div className="mt-5 rounded-2xl border border-line bg-panel">
+        <div className="lab-replay-card mt-6">
           <div className="flex flex-wrap items-end justify-between gap-4 border-b border-line px-5 py-4">
             <div role="group" aria-label="Defender" className="lab-segment">
               {policies.map(p => (
