@@ -7,6 +7,7 @@ import { domain, metricRows, rewardTotals, sampleSize } from '@/lib/lab';
 import type { DefenseLabBundle, LabEpisode } from '@/lib/lab-types';
 import { matchExpectationStatements } from '@/lib/expectations';
 import { findingStory, repoFullNameForEvidence } from '@/lib/finding-story';
+import { projectOverview } from '@/lib/overview';
 import { SCOPE_CHECK_CATEGORIES } from '@/lib/scope';
 import { AGENTS, ASSESSMENT_STATE, FINDING_STATUS, agentRunSummary, handoffNote, providerLabel, railSteps } from '@/lib/status';
 
@@ -40,6 +41,34 @@ describe('finding story', () => {
     expect(repoFullNameForEvidence(repos, [{ repo_id: 'rep_b' }])).toBe('acme/b');
     expect(repoFullNameForEvidence(repos, [{ repo_id: 'rep_a' }, { repo_id: 'rep_b' }])).toBeUndefined();
     expect(repoFullNameForEvidence([{ id: 'rep_a', full_name: 'acme/a' }], null)).toBe('acme/a');
+  });
+});
+
+describe('project overview', () => {
+  const base = { projectId: 'prj_1', repoCount: 1, activeScopeCount: 1, monitoringEnabled: true, assessments: [], findings: [] };
+  it('asks to connect a repository before anything else', () => {
+    const view = projectOverview({ ...base, repoCount: 0 });
+    expect(view.action.label).toBe('Connect a repository');
+    expect(view.headline).toMatch(/No repository/);
+  });
+  it('uses the newest assessment and does not treat hypotheses as confirmed exploits', () => {
+    const view = projectOverview({
+      ...base,
+      assessments: [
+        { id: 'asm_old', state: 'COMPLETED', created_at: '2026-10-01T00:00:00Z' },
+        { id: 'asm_new', state: 'AWAITING_APPROVAL', created_at: '2026-10-17T00:00:00Z' },
+      ],
+      findings: [
+        { kind: 'security', status: 'hypothesis' },
+        { kind: 'security', status: 'validated' },
+        { kind: 'functional', status: 'diagnosed' },
+        { kind: 'security', status: 'verified' },
+      ],
+    });
+    expect(view.action.href).toContain('/approvals');
+    expect(view.securityOpen).toBe(1);
+    expect(view.codeOpen).toBe(1);
+    expect(view.verifiedFixes).toBe(1);
   });
 });
 
