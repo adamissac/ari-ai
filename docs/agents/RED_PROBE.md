@@ -43,6 +43,11 @@ fixture identity catalog for the target.
 The outcome rule is deterministic where possible: templates return a
 `matches_expectation: bool | null`; Probe's LLM may only explain, not override it.
 
+Subject routes (implemented): when the hypothesis' `entry_point_id` resolves to an
+HTTP route, that route alone is the subject; cited-span overlap selects routes only
+when there is no resolvable entry point. A passing check on a cited comparison
+sibling therefore yields `inconclusive`, never `refuted` (issue #236).
+
 ## Tools & permissions
 `code.read_span`, `expectations.for_subject`, `checks.list_templates`,
 `checks.run_template`. Sandbox profile: `check-runner`. Network: `target-only`.
