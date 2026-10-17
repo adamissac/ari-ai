@@ -76,8 +76,9 @@ export function episodeTimeline(episode: LabEpisode): { stage: HiddenStage; acte
 /** One plain sentence about how a recorded episode ended. */
 export function episodeOutcome(episode: LabEpisode): string {
   const who = policyName(episode.policy);
-  const acts = episode.steps.filter(s => !s.action.startsWith('noop')).length;
+  const n = episode.steps.filter(s => !s.action.startsWith('noop')).length;
+  const acts = `${n} time${n === 1 ? '' : 's'}`;
   return episode.compromised
-    ? `${who}: the simulated attacker reached its goal (${episode.impact_nodes.join(', ') || 'a critical machine'}). The defender acted ${acts} times in ${episode.steps.length} steps.`
-    : `${who}: the simulated attacker never reached its goal. The defender acted ${acts} times in ${episode.steps.length} steps.`;
+    ? `${who}: the simulated attacker reached its goal (${episode.impact_nodes.join(', ') || 'a critical machine'}). The defender acted ${acts} in ${episode.steps.length} steps.`
+    : `${who}: the simulated attacker never reached its goal. The defender acted ${acts} in ${episode.steps.length} steps.`;
 }

@@ -38,10 +38,16 @@ test('one real assessment from scope approval to verified patch', async ({ brows
   await alice.waitForURL(/\/assessments\/asm_/);
   const asmUrl = alice.url();
 
-  // The timeline is fed by the persisted SSE stream and pauses for a human.
+  // The page leads with the eight-agent relay; technical detail (SSE log) is one click away.
+  await expect(alice.getByTestId('agent-relay')).toBeVisible();
+  await alice.getByTestId('technical-details').locator('summary').click();
   await expect(alice.getByTestId('event-log')).toBeVisible();
   await expect(alice.getByRole('heading', { name: 'Human approval required' })).toBeVisible({ timeout: 180_000 });
   await expect(alice.getByTestId('agent-reviewer').getByText('Succeeded')).toBeVisible();
+  // The relay draws the human gate as waiting, and nothing after it as done yet.
+  await expect(alice.getByTestId('relay-gate')).toHaveAttribute('data-status', 'waiting');
+  await expect(alice.getByTestId('relay-patch')).toHaveAttribute('data-status', 'not_run');
+  await expect(alice.getByTestId('relay-diagnose')).toHaveAttribute('data-status', 'done');
   await evidenceShot(alice, 'assessment-awaiting-approval');
 
   // Bob approves remediation from his inbox (with the will / will-not summary): one for the
@@ -66,6 +72,14 @@ test('one real assessment from scope approval to verified patch', async ({ brows
   await expect(alice.getByTestId('provider-summary')).toContainText('Not a live-provider run');
   // review + seven agents + the reviewer's functional repair + its independent Verify
   await expect(alice.getByTestId('provider-summary')).toContainText('Test provider (scripted) × 9, Deterministic (no model call) × 1');
+  for (const agent of ['reviewer', 'scout', 'probe', 'trace', 'diagnose', 'patch', 'verify', 'fortify']) {
+    await expect(alice.getByTestId(`relay-${agent}`)).toHaveAttribute('data-status', 'done');
+  }
+  await expect(alice.getByTestId('relay-gate')).toHaveAttribute('data-status', 'passed');
+  await expect(alice.getByTestId('relay-scout')).toContainText('Passed 1 suspicion to Probe.');
+  // Selecting a relay tile opens that agent's recorded runs.
+  await alice.getByTestId('relay-verify').click();
+  await expect(alice.getByTestId('agent-team').getByRole('heading', { name: 'Verify' })).toBeVisible();
   await evidenceShot(alice, 'assessment-completed');
 
   // Security finding evidence chain, patch diff and Verify verdict from persisted records.
@@ -77,6 +91,15 @@ test('one real assessment from scope approval to verified patch', async ({ brows
   await expect(alice.getByRole('heading', { name: 'Evidence chain' })).toBeVisible();
   await expect(alice.getByText('Confirmed by Probe')).toBeVisible();
   await expect(alice.getByText('Verify: accepted').first()).toBeVisible();
+  // Before / after: recorded reproduction vs independent re-test, and the code on both sides.
+  await expect(alice.getByTestId('ba-before')).toContainText('The problem was reproduced');
+  await expect(alice.getByTestId('ba-after')).toContainText('Independent re-test accepted the fix');
+  await expect(alice.getByTestId('ba-after')).toContainText('The original problem no longer happens');
+  await expect(alice.getByTestId('ba-code')).toContainText('Before');
+  // The stored diff is redacted before hashing (a bearer token in the test), so it is checked
+  // against its server hash and the difference from the patch's raw-diff hash is explained.
+  await expect(alice.getByTestId('ba-hash')).toHaveText(/^(The diff matches the hash recorded with the patch\.|The stored diff matches its server hash\. It differs from the hash recorded with the patch because the store hid secret-looking text)/);
+  await evidenceShot(alice, 'finding-before-after');
   await alice.getByRole('button', { name: /View diff/ }).first().click();
   await expect(alice.getByTestId('diff-view').first()).toBeVisible();
   await expect(alice.getByText('matches server hash')).toBeVisible();
@@ -85,7 +108,20 @@ test('one real assessment from scope approval to verified patch', async ({ brows
   // Everything survives a full reload: it is persisted state, not client memory.
   await alice.goto(asmUrl);
   await expect(alice.getByRole('heading', { name: /Assessment/ }).getByText('Completed')).toBeVisible();
+  await alice.getByTestId('technical-details').locator('summary').click();
   await expect(alice.getByTestId('event-log').locator('li')).not.toHaveCount(0);
+
+  // The overview connects the three pillars with this project's real records.
+  await alice.goto(`/projects/${project()}`);
+  const loop = alice.getByTestId('pillar-loop');
+  await expect(loop.getByTestId('loop-review')).toContainText('No open problems in how the code behaves.');
+  await expect(loop.getByTestId('loop-prove')).toContainText('2 fixes accepted by independent tests.');
+  await expect(loop.getByTestId('loop-prove')).toContainText('nothing was merged or deployed');
+  await expect(loop.getByTestId('loop-lab')).toContainText('simulation only');
+  await alice.getByTestId('term-monitoring').click();
+  await expect(loop.getByRole('note')).toContainText('Watching the code repository');
+  await evidenceShot(alice, 'overview-pillar-loop');
+  await alice.goto(asmUrl);
   await alice.reload();
   await expect(alice.getByTestId('agent-verify').getByText('Succeeded').first()).toBeVisible();
 });

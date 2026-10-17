@@ -27,6 +27,18 @@ test('signed-out users see sign-in, not data', async ({ page }) => {
 test('Defense Lab plots only the committed, schema-validated evaluation bundle', async ({ page }) => {
   await page.goto('/lab');
   await expect(page.getByTestId('lab-caveat')).toContainText('Simulation only');
+  await expect(page.getByTestId('lab-intro')).toContainText('A practice game.');
+  // Plain scoreboard: named defenders, values with their 95% interval, best marked.
+  const board = page.getByTestId('lab-scoreboard');
+  await expect(board.getByTestId('score-compromise_rate')).toContainText('Trained AI defender');
+  await expect(board.getByTestId('score-compromise_rate')).toContainText('Does nothing');
+  await expect(board.getByTestId('score-compromise_rate')).toContainText(/\d+\.\d% \[\d+\.\d%–\d+\.\d%\]/);
+  await expect(board.getByLabel('best').first()).toBeVisible();
+  await expect(page.getByTestId('lab-timeline')).toBeVisible();
+  await expect(page.getByTestId('lab-episode-outcome')).toContainText('simulated attacker');
+  await expect(page.getByTestId('lab-step-action')).toContainText('At step 0 the defender:');
+  // Every metric and the provenance remain one click away for reviewers.
+  await page.getByTestId('lab-details').locator('summary').click();
   await expect(page.getByText(/rl-defense\/results\/protocol-v\d+\/defense_lab\.json/)).toBeVisible();
   const chart = page.getByTestId('metric-chart');
   await expect(chart).toContainText('ddqn');
@@ -35,7 +47,7 @@ test('Defense Lab plots only the committed, schema-validated evaluation bundle',
   await expect(page.getByText(/Mean with 95% confidence interval over n = [\d,]+ evaluation episodes/)).toBeVisible();
   await expect(page.getByTestId('topology')).toBeVisible();
   await expect(page.getByText('Ground truth (simulation) — hidden attacker stage, never observed by the policy')).toBeVisible();
-  const slider = page.getByLabel('Step');
+  const slider = page.getByLabel('Step', { exact: true });
   await slider.fill('50');
   await expect(page.getByText('t = 50 /', { exact: false })).toBeVisible();
   await evidenceShot(page, 'defense-lab');

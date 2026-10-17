@@ -74,12 +74,17 @@ function CodeChange({ view }: { view: PatchView }) {
   if (diff.status === 'loading') return <Loading label="Loading the code change" />;
   if (diff.status === 'error') return <div className="mt-3"><ErrorState error={diff.error} onRetry={diff.reload} context="Code change" /></div>;
   const recordMatches = diff.data.sha256 === view.patch.diff_sha256;
+  const redacted = !recordMatches && diff.data.text.includes('[REDACTED');
   const files = parseUnifiedDiff(diff.data.text);
   return (
     <div className="mt-4" data-testid="ba-code">
       <p className="text-xs text-muted">
         The code change, side by side. Red lines were removed, green lines were added. Proposed in an isolated copy (<Mono>{view.patch.worktree_ref.split('/').pop()}</Mono>); not merged or deployed.
-        {' '}<span data-testid="ba-hash">{recordMatches ? 'The diff matches the hash recorded with the patch.' : 'Warning: the diff does not match the hash recorded with the patch.'}</span>
+        {' '}<span data-testid="ba-hash">{recordMatches
+          ? 'The diff matches the hash recorded with the patch.'
+          : redacted
+            ? `The stored diff ${diff.data.hashVerified ? 'matches its server hash' : 'has no server hash'}. It differs from the hash recorded with the patch because the store hid secret-looking text (shown as [REDACTED]).`
+            : 'Warning: the diff does not match the hash recorded with the patch.'}</span>
       </p>
       {files.length === 0 ? <p className="mt-2 text-sm text-muted">The diff could not be read as a code change.</p> : files.map((f, i) => (
         <figure key={i} className="mt-2 overflow-hidden rounded-lg border border-line">
