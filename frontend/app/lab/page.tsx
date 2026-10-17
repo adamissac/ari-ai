@@ -7,7 +7,7 @@ import { Empty, ErrorState, Field, inputClass, Loading, Mono, Panel } from '@/co
 import { defenderCountPhrase, machineCountPhrase } from '@/components/lab-copy';
 import { num } from '@/lib/format';
 import { domain, HIGHER_IS_BETTER, METRIC_LABEL, metricNames, metricRows, sampleSize } from '@/lib/lab';
-import { keyTakeaway, POLICY_NAME, policyName, scenarioName, SCORE_METRICS, scoreboard, tradeoffNote } from '@/lib/lab-plain';
+import { keyTakeaway, POLICY_NAME, policyName, scenarioName, SCORE_METRICS, scoreboard, type ScoreMetric, tradeoffNote } from '@/lib/lab-plain';
 import type { BundleResponse, DefenseLabBundle, LabEpisode } from '@/lib/lab-types';
 
 type Load<T> = { status: 'loading' } | { status: 'ready'; data: T } | { status: 'error'; error: unknown };
@@ -131,46 +131,97 @@ function Lab({ data }: { data: BundleResponse }) {
   );
 }
 
+const HEADLINE: readonly { key: string; label: string; vs: string }[] = [
+  { key: 'compromise_rate', label: 'of attacks reached their goal', vs: 'noop' },
+  { key: 'service_uptime', label: 'of the time services stayed up', vs: 'threshold_rules' },
+  { key: 'time_to_containment', label: 'steps on average to contain', vs: 'threshold_rules' },
+];
+
+const fmtScore = (metric: ScoreMetric, x: number | null) => (x === null ? '—' : metric.percent ? `${x.toFixed(1)}%` : x.toFixed(1));
+const fmtRange = (metric: ScoreMetric, lo: number | null, hi: number | null) =>
+  lo === null || hi === null ? '—' : `${lo.toFixed(1)}–${hi.toFixed(1)}${metric.percent ? '%' : ''}`;
+
+function Headline({ bundle }: { bundle: DefenseLabBundle }) {
+  const tiles = HEADLINE.flatMap(h => {
+    const metric = SCORE_METRICS.find(m => m.key === h.key);
+    if (!metric) return [];
+    const cells = scoreboard(bundle, metric);
+    const ai = cells.find(c => c.policy === 'ddqn');
+    if (!ai || ai.value === null) return [];
+    const vs = cells.find(c => c.policy === h.vs);
+    return [{ metric, label: h.label, ai, vs }];
+  });
+  if (tiles.length === 0) return null;
+  return (
+    <dl className="lab-headline mt-6" data-testid="lab-takeaway" aria-label={keyTakeaway(bundle) ?? undefined}>
+      {tiles.map(({ metric, label, ai, vs }) => (
+        <div key={metric.key} className="lab-headline-tile">
+          <dt className="sr-only">Trained AI defender: {metric.title}</dt>
+          <dd>
+            <span className="lab-headline-num">{fmtScore(metric, ai.value)}</span>
+            <span className="mt-1 block text-sm text-ink">{label}</span>
+            {vs && vs.value !== null && (
+              <span className="mt-2 block text-xs text-muted">vs {fmtScore(metric, vs.value)} for {policyName(vs.policy).toLowerCase()}</span>
+            )}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function Direction({ higher }: { higher: boolean }) {
+  return (
+    <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs text-faint">
+      <svg viewBox="0 0 12 12" className="h-3 w-3" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+        {higher ? <path d="M6 10V2M2.5 5.5 6 2l3.5 3.5" /> : <path d="M6 2v8M2.5 6.5 6 10l3.5-3.5" />}
+      </svg>
+      {higher ? 'Higher is better' : 'Lower is better'}
+    </span>
+  );
+}
+
 function Scoreboard({ bundle }: { bundle: DefenseLabBundle }) {
   const n = sampleSize(bundle, null);
-  const takeaway = keyTakeaway(bundle);
   const tradeoff = tradeoffNote(bundle);
   return (
     <section aria-labelledby="score-title" data-testid="lab-scoreboard">
       <h2 id="score-title" className="text-2xl font-semibold tracking-tight md:text-3xl">Who defends best?</h2>
       <p className="mt-2 max-w-3xl text-sm text-muted">
-        {defenderCountPhrase(bundle.metrics.length, true)}, each tested on {n.toLocaleString()} games they never trained on. Brackets show the 95% range the true average very likely falls in. ★ marks the best on each measure.
+        {defenderCountPhrase(bundle.metrics.length, true)}, each tested on {n.toLocaleString()} games they never trained on. The shaded band on each bar is the 95% range the true average very likely falls in.
       </p>
-      {takeaway && <p className="lab-takeaway mt-5" data-testid="lab-takeaway">{takeaway}</p>}
-      <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
+      <Headline bundle={bundle} />
+      <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
         {SCORE_METRICS.map(metric => {
           const cells = scoreboard(bundle, metric);
           if (cells.every(c => c.value === null)) return null;
-          const fmt = (x: number | null) => (x === null ? '—' : metric.percent ? `${x.toFixed(1)}%` : x.toFixed(1));
-          const top = Math.max(...cells.map(x => x.value ?? 0), 1);
+          const top = Math.max(...cells.map(x => x.hi ?? x.value ?? 0), 1);
+          const pct = (x: number | null) => (x === null ? 0 : Math.min(100, Math.max(0, metric.percent ? x : (x / top) * 100)));
           return (
-            <figure key={metric.key} className="min-w-0 rounded-2xl border border-line bg-panel p-5" data-testid={`score-${metric.key}`}>
+            <figure key={metric.key} className="lab-score-card" data-testid={`score-${metric.key}`}>
               <figcaption>
-                <p className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className="font-semibold tracking-tight">{metric.title}</span>
-                  <span className="label-mono text-faint">{metric.higherIsBetter ? 'higher is better' : 'lower is better'}</span>
-                </p>
-                <span className="mt-1 block text-xs text-muted">{metric.explain}</span>
+                <span className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                  <span className="font-semibold tracking-tight text-ink">{metric.title}</span>
+                  <Direction higher={metric.higherIsBetter} />
+                </span>
+                <span className="mt-1 block text-xs leading-relaxed text-muted">{metric.explain}</span>
               </figcaption>
-              <ul className="mt-4 flex flex-col gap-3">
+              <ul className="mt-5 flex flex-col gap-4">
                 {cells.map(c => {
-                  const width = c.value === null ? 0 : metric.percent ? Math.min(100, Math.max(0, c.value)) : Math.min(100, (c.value / top) * 100);
                   const ai = c.policy === 'ddqn';
                   return (
-                    <li key={c.policy} className="text-sm">
-                      <p className="flex items-baseline justify-between gap-2">
-                        <span className={ai ? 'font-semibold text-ink' : 'text-muted'} title={POLICY_NAME[c.policy]?.note}>
-                          {policyName(c.policy)}{c.best && <span className="lab-best">★ best</span>}
-                        </span>
-                        <span className="whitespace-nowrap font-mono text-xs">{fmt(c.value)} <span className="text-faint">[{fmt(c.lo)}–{fmt(c.hi)}]</span></span>
-                      </p>
-                      <span className="mt-1.5 block h-2 overflow-hidden rounded-full bg-panel-2" aria-hidden="true">
-                        <span className={`block h-full rounded-full transition-[width] duration-700 ${ai ? 'bg-brand' : 'bg-faint/50'}`} style={{ width: `${width}%` }} />
+                    <li key={c.policy} className="lab-score-row" data-ai={ai || undefined}>
+                      <span className="lab-score-name" title={POLICY_NAME[c.policy]?.note}>
+                        {policyName(c.policy)}
+                        {c.best && <span className="lab-best">Best</span>}
+                      </span>
+                      <span className="lab-score-track" aria-hidden="true">
+                        {c.lo !== null && c.hi !== null && <span className="lab-score-band" style={{ left: `${pct(c.lo)}%`, width: `${Math.max(0.6, pct(c.hi) - pct(c.lo))}%` }} />}
+                        <span className="lab-score-bar" style={{ width: `${pct(c.value)}%` }} />
+                      </span>
+                      <span className="lab-score-value">
+                        {fmtScore(metric, c.value)}
+                        <span className="lab-score-range"><span className="sr-only">95% range </span>{fmtRange(metric, c.lo, c.hi)}</span>
                       </span>
                     </li>
                   );
@@ -180,10 +231,20 @@ function Scoreboard({ bundle }: { bundle: DefenseLabBundle }) {
           );
         })}
       </div>
-      {tradeoff && <p className="mt-4 flex items-start gap-2 rounded-xl border border-line bg-panel-2 px-4 py-3 text-sm" data-testid="lab-tradeoff"><span aria-hidden="true">⚖</span><span>{tradeoff}</span></p>}
-      <ul className="mt-4 grid gap-1.5 text-xs text-muted sm:grid-cols-2">
-        {bundle.metrics.map(m => <li key={m.policy}><span className="font-semibold text-ink">{policyName(m.policy)}</span> — {POLICY_NAME[m.policy]?.note ?? 'Policy id from the bundle.'}</li>)}
-      </ul>
+      {tradeoff && (
+        <p className="mt-5 flex items-start gap-2.5 text-sm text-muted" data-testid="lab-tradeoff">
+          <svg viewBox="0 0 16 16" className="mt-0.5 h-4 w-4 shrink-0 text-brand" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth={1.5}><circle cx="8" cy="8" r="6.5" /><path d="M8 7.2v4M8 4.8v.01" strokeLinecap="round" /></svg>
+          <span>{tradeoff}</span>
+        </p>
+      )}
+      <dl className="lab-legend mt-6">
+        {bundle.metrics.map(m => (
+          <div key={m.policy}>
+            <dt>{policyName(m.policy)}</dt>
+            <dd>{POLICY_NAME[m.policy]?.note ?? 'Policy id from the bundle.'}</dd>
+          </div>
+        ))}
+      </dl>
     </section>
   );
 }
