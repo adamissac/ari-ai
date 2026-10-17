@@ -294,7 +294,11 @@ def _host_error(code: ErrorCode, detail: str) -> Any:
         errors = importlib.import_module("shared.errors")
     except ModuleNotFoundError:
         return {"code": code.value, "message": detail}
-    return errors.ErrorBody(code=errors.ErrorCode(code.value), message=detail[:2000])
+    try:
+        return errors.ErrorBody(code=errors.ErrorCode(code.value), message=detail[:2000])
+    except ValueError:
+        # Agent-local codes the shared catalog does not know yet must still reach the host.
+        return {"code": code.value, "message": detail}
 
 
 def _host_state(state: AssessmentState) -> Any:
