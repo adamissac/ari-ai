@@ -89,7 +89,6 @@ function Lab({ data }: { data: BundleResponse }) {
     <div className="flex flex-col gap-10">
       <LabCommandCenter bundle={bundle} />
       <section aria-labelledby="lab-what" data-testid="lab-intro">
-        <p className="label-mono text-brand">How the game works</p>
         <h2 id="lab-what" className="sr-only">What is this?</h2>
         <p className="mt-2 max-w-3xl text-base text-ink">
           A practice game (a <Term t="simulation">simulation</Term>). An AI defender learned by trial and error a <Term t="policy">policy</Term>:
@@ -98,8 +97,7 @@ function Lab({ data }: { data: BundleResponse }) {
         <ol className="mt-5 grid gap-3 md:grid-cols-3">
           {GAME_STEPS.map(step => (
             <li key={step.n} className="rounded-2xl border border-line bg-panel p-5">
-              <p className="label-mono text-brand">{step.n}</p>
-              <p className="mt-2 font-semibold tracking-tight">{step.title}</p>
+              <p className="font-semibold tracking-tight">{step.title}</p>
               <p className="mt-1 text-sm text-muted">{step.body(machineCountPhrase(bundle.scenarios))}</p>
             </li>
           ))}
@@ -141,8 +139,7 @@ function Scoreboard({ bundle }: { bundle: DefenseLabBundle }) {
   const tradeoff = tradeoffNote(bundle);
   return (
     <section aria-labelledby="score-title" data-testid="lab-scoreboard">
-      <p className="label-mono text-brand">The scores</p>
-      <h2 id="score-title" className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Who defends best?</h2>
+      <h2 id="score-title" className="text-2xl font-semibold tracking-tight md:text-3xl">Who defends best?</h2>
       <p className="mt-2 max-w-3xl text-sm text-muted">
         {defenderCountPhrase(bundle.metrics.length, true)}, each tested on {n.toLocaleString()} games they never trained on. Brackets show the 95% range the true average very likely falls in. ★ marks the best on each measure.
       </p>
@@ -251,8 +248,7 @@ function Replay({ bundle }: { bundle: DefenseLabBundle }) {
   const scenario = bundle.scenarios.find(s => s.name === episode?.scenario);
   return (
     <section aria-labelledby="replay-title">
-      <p className="label-mono text-brand">Watch a recorded game</p>
-      <h2 id="replay-title" className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Replay a recorded game</h2>
+      <h2 id="replay-title" className="text-2xl font-semibold tracking-tight md:text-3xl">Replay a recorded game</h2>
       <p className="mt-2 max-w-3xl text-sm text-muted">Pick a defender and an attacker, press play, and follow what the defender saw and did at each step.</p>
       {!episode || !scenario ? <div className="mt-4"><Empty>This bundle has no recorded episodes.</Empty></div> : (
         <div className="mt-5 rounded-2xl border border-line bg-panel">
