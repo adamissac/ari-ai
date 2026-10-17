@@ -543,6 +543,31 @@ def test_resume_refuses_changed_snapshot(host_and_orchestrator, tmp_path):
     assert not host.patches
 
 
+def test_resume_waits_when_another_remediation_is_still_pending(host_and_orchestrator):
+    """A security approval must not skip a still-pending functional remediation."""
+    from shared.scope import ApprovalStatus, ApprovalSubject
+
+    host, orchestrator, _ = host_and_orchestrator
+    orchestrator.run(host)
+    host.approve_all()
+    host._approvals.append(
+        type(
+            "Ap",
+            (),
+            {
+                "id": "apv_func_pending",
+                "subject_id": "fnd_functional",
+                "subject_type": ApprovalSubject.remediation,
+                "status": ApprovalStatus.pending,
+                "decided_by": None,
+            },
+        )()
+    )
+    orchestrator.run(host)
+    assert host.states[-1] == "AWAITING_APPROVAL"
+    assert not host.patches
+
+
 def test_declined_approval_reports_without_patching(host_and_orchestrator):
     host, orchestrator, gateway = host_and_orchestrator
     orchestrator.run(host)

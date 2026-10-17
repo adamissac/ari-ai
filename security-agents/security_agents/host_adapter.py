@@ -704,7 +704,16 @@ class HostOrchestrator:
         return Path(tempfile.mkdtemp(prefix=f"{host.assessment_id}-", dir=base))
 
     def _resume(self, orchestrator: Orchestrator, host: AssessmentHostLike) -> None:
-        """Continue after a human decided, using the approvals the host holds."""
+        """Continue after a human decided, using the approvals the host holds.
+
+        Stay paused while any remediation approval (security or functional) is still
+        pending so a partial decision does not skip the rest.
+        """
+        if _pending_remediation(host):
+            host.progress("awaiting the remaining remediation approval decisions")
+            _save_checkpoint(host, orchestrator, orchestrator.intel)
+            self._resumable[host.assessment_id] = orchestrator
+            return
         orchestrator.approve_remediation = _approver(host)
         diagnosed = [f for f in orchestrator.result.findings if f.plan is not None]
         approved: list[FindingRecord] = []
