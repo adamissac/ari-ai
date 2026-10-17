@@ -47,3 +47,16 @@ Add dated factual entries; do not overwrite history. Never claim unexecuted test
 - #41 merged: `request_functional_approvals` and `repair_approved_functional_findings`. Validated functional findings were never repaired in the unified flow. Hook requested from Srihith/Alan (issue #17 comment + message).
 - Standards alignment (docs/prompts/10): the reviewer's CWE piece is blocked on the unclaimed `standards/` catalog and shared 0.6.0 `Finding.cwe`. I'm not starting the catalog: it needs downloading external data files and licensing decisions.
 - CI on both PRs: `code-review` test job passed (GitHub Actions).
+
+### 2026-10-17T05:59:14Z (autonomous cycle 1)
+
+- #53 merged: consumer proof that human decisions in the real intelligence memory drive reviewer claims (confirms Sarosh's #39 satisfies my asks). code-review on main: 49 passed, 1 skipped; strict mypy clean.
+- Reviewed Alan's #49 (`code-review/` part): tests pass on the branch. Blocker: an optional CWE field validator can fail the whole review. Posted the review and offered the follow-up fix.
+- Frontend with the Ari AI pass is now on main (#50, Vihaan).
+
+### 2026-10-17T06:52:00Z (autonomous cycles 2–4)
+
+- #55: CI triage posted on #35. #56: the answer-key evaluator credits the planted IDOR as a Scout handoff.
+- #59: tolerant span-quote verification (line numbers, skipped lines, re-indent, ±3 re-anchor; far or fake quotes still rejected). Fixes Adam's live-run report that every security concern was dropped. Regression tests use the exact live spans.
+- Adam's live run of the reviewer (owner's key): PASS, refund-bound TP, repair accepted, $0.36 total.
+- ACKed Srihith's #57 (lands #49 with my review fixes); verified merged with main: 55 passed.

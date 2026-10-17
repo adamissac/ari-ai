@@ -65,7 +65,8 @@ def _tagged(result: Any, intel: LocalIntel) -> dict[str, Any]:
             "snapshot_pinned_by": intel.snapshot.pinned_by,
             "assessment_state": result.state.value,
             "standards_versions": {
-                name: registry.version(name) for name in ("cwe", "attack_enterprise", "d3fend", "owasp_api", "cvss31")
+                name: registry.version(name)
+                for name in ("cwe", "attack_enterprise", "d3fend", "owasp_api", "cvss31")
             },
         },
         "finding": {
@@ -185,7 +186,9 @@ def run(out_dir: Path) -> dict[str, Path]:
         ),
     ).run()
     if not result.findings or result.roe is None:
-        raise SystemExit(f"smoke run did not produce a finding and rules of engagement (state {result.state.value})")
+        raise SystemExit(
+            f"smoke run did not produce a finding and rules of engagement (state {result.state.value})"
+        )
     out_dir.mkdir(parents=True, exist_ok=True)
     paths = {
         "tagged_finding": out_dir / "finding.tagged.json",
@@ -209,13 +212,19 @@ def main(argv: list[str] | None = None) -> int:
     finding = json.loads(paths["tagged_finding"].read_text(encoding="utf-8"))
     print("STANDARDS SMOKE RUN (replay fixture, no live model)")
     print(f"finding: {finding['finding']['title']} [{finding['finding']['status']}]")
-    print(f"CWE: {finding['cwe']['id']} {finding['cwe']['name']} (MITRE usage {finding['cwe']['mitre_mapping_usage']})")
+    print(
+        f"CWE: {finding['cwe']['id']} {finding['cwe']['name']} (MITRE usage {finding['cwe']['mitre_mapping_usage']})"
+    )
     owasp = finding["owasp_api_security_top_10"]
     print(f"OWASP API {owasp['edition']}: {owasp['category']} {owasp['title']} ({owasp['mapping_kind']})")
     cvss = finding["cvss"]
-    print(f"CVSS: {cvss['vector']} base score {cvss['base_score']} rating {cvss['rating']} ({cvss['score_kind']})")
+    print(
+        f"CVSS: {cvss['vector']} base score {cvss['base_score']} rating {cvss['rating']} ({cvss['score_kind']})"
+    )
     print("ATT&CK: " + "; ".join(s["attack_technique"] or s["attack_label"] for s in finding["attack_path"]))
-    print(f"D3FEND plan: {finding['d3fend']['remediation_plan']['technique']} {finding['d3fend']['remediation_plan']['label']}")
+    print(
+        f"D3FEND plan: {finding['d3fend']['remediation_plan']['technique']} {finding['d3fend']['remediation_plan']['label']}"
+    )
     print(f"verification: {finding['verification']['verdict']}")
     print("written:")
     for label, path in paths.items():

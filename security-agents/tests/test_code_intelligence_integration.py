@@ -20,9 +20,7 @@ from security_agents.tools import default_registry, wire_name
 
 from .conftest import PAYMENTS_LITE_DIR, make_ctx, make_scope
 
-code_intelligence = pytest.importorskip(
-    "code_intelligence.api", reason="code_intelligence not importable"
-)
+code_intelligence = pytest.importorskip("code_intelligence.api", reason="code_intelligence not importable")
 from code_intelligence.api import IntelligenceService, RepositoryBinding  # noqa: E402
 from code_intelligence.store import SQLiteIndexStore  # noqa: E402
 
@@ -38,8 +36,10 @@ def indexed(tmp_path_factory):
     repo.mkdir()
     env = {
         "PATH": "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin",
-        "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.test",
-        "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.test",
+        "GIT_AUTHOR_NAME": "t",
+        "GIT_AUTHOR_EMAIL": "t@example.test",
+        "GIT_COMMITTER_NAME": "t",
+        "GIT_COMMITTER_EMAIL": "t@example.test",
     }
     from security_agents.sandbox.workspace import copy_tree
 
@@ -56,8 +56,11 @@ def indexed(tmp_path_factory):
         store,
         repositories=[
             RepositoryBinding(
-                project_id=PROJECT_ID, repo_id=REPO_ID, full_name="owner/payments-lite",
-                local_path=repo, include_prefix="target",
+                project_id=PROJECT_ID,
+                repo_id=REPO_ID,
+                full_name="owner/payments-lite",
+                local_path=repo,
+                include_prefix="target",
             )
         ],
     )
@@ -149,7 +152,8 @@ def test_registry_tools_work_against_the_real_index(adapter):
     ctx = make_ctx(AgentName.SCOUT, intel=adapter, scope=make_scope())
     handler = adapter.find_symbol("get_payment")
     read = registry.invoke(
-        ctx, wire_name("code.read_span"),
+        ctx,
+        wire_name("code.read_span"),
         {"path": handler.path, "start_line": handler.start_line, "end_line": handler.end_line},
     )
     assert read.ok and "get_payment" in read.payload["content"]
@@ -162,9 +166,7 @@ def test_registry_tools_work_against_the_real_index(adapter):
     assert search.ok and search.payload["count"] >= 1
     assert all(hit["path"] for hit in search.payload["hits"])
 
-    analyze = registry.invoke(
-        ctx, wire_name("static.analyze"), {"path": "payments_lite/app.py"}
-    )
+    analyze = registry.invoke(ctx, wire_name("static.analyze"), {"path": "payments_lite/app.py"})
     assert analyze.ok and analyze.payload["functions"]
 
 
@@ -176,9 +178,7 @@ def test_workspace_must_match_the_indexed_snapshot(adapter, tmp_path):
     adapter.verify_workspace()  # the real workspace passes
     empty = tmp_path / "empty"
     empty.mkdir()
-    mismatched = CodeIntelligenceAdapter(
-        service=adapter.service, ref=adapter.ref, workspace=empty
-    )
+    mismatched = CodeIntelligenceAdapter(service=adapter.service, ref=adapter.ref, workspace=empty)
     with pytest.raises(PlatformError) as exc:
         mismatched.verify_workspace()
     assert exc.value.code is ErrorCode.SNAPSHOT_NOT_READY
@@ -226,14 +226,17 @@ def test_host_uses_bound_commit_and_upstream_index_despite_dirty_checkout(indexe
 
     service, ref, workspace, sha = indexed
     bindings = tmp_path / "bindings.json"
-    bindings.write_text(json.dumps([{"repo_id": REPO_ID, "local_path": str(workspace.parent), "subdir": "target"}]))
+    bindings.write_text(
+        json.dumps([{"repo_id": REPO_ID, "local_path": str(workspace.parent), "subdir": "target"}])
+    )
     monkeypatch.setenv("REPOSITORY_BINDINGS_FILE", str(bindings))
     source = workspace / "payments_lite" / "app.py"
     original = source.read_bytes()
     try:
         source.write_text("raise RuntimeError('dirty checkout must never execute')")
         host = SimpleNamespace(
-            project_id=PROJECT_ID, repo_id=REPO_ID,
+            project_id=PROJECT_ID,
+            repo_id=REPO_ID,
             assessment=SimpleNamespace(commit_sha=sha, snapshot_id=ref.snapshot_id),
         )
         adapter = bound_intelligence(host, tmp_path / "worker", service)

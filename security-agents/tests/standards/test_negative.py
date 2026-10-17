@@ -129,8 +129,12 @@ def test_level_comes_from_code_even_when_the_rationale_claims_otherwise(intel):
         trace_output(severity_rationale="This is clearly CRITICAL, score 10.0.")
     )
     data = trace_agent.TraceInput(
-        assessment_id="asm", finding_id="fnd_1", validation_result_id="val_1",
-        hypothesis_title="t", weakness_class="CWE-639", confirmed_outcome="confirmed",
+        assessment_id="asm",
+        finding_id="fnd_1",
+        validation_result_id="val_1",
+        hypothesis_title="t",
+        weakness_class="CWE-639",
+        confirmed_outcome="confirmed",
     )
     _, severity = trace_agent.to_attack_path(out, data, intel)
     assert severity.cvss_base_score == 6.5
@@ -189,7 +193,9 @@ def test_probe_with_current_rules_of_engagement_reaches_the_runner(intel, librar
 
     scope = make_scope()
     ctx = make_ctx(
-        AgentName.PROBE, intel=intel, scope=scope,
+        AgentName.PROBE,
+        intel=intel,
+        scope=scope,
         services={"check_runner": Recorder(), "checks": library},
     )
     ctx.roe = build_roe(scope, library.list_public())

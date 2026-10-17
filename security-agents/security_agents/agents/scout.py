@@ -118,6 +118,7 @@ class HypothesisOut(StrictModel):
         max_length=100, description="Which available check category could validate this."
     )
 
+
 class CoverageOut(StrictModel):
     entry_points_reviewed: list[str] = Field(default_factory=list, max_length=40)
     looks_correct: list[ShortText] = Field(

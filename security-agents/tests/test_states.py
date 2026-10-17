@@ -21,8 +21,18 @@ from security_agents.workflow import (
 from security_agents.workflow.states import HAPPY_PATH, TERMINAL
 
 HAPPY_SEQUENCE = [
-    S.CREATED, S.SCOPE_CHECK, S.INDEXING, S.FUNCTIONAL_REVIEW, S.RECON, S.VALIDATION,
-    S.ANALYSIS, S.DIAGNOSIS, S.AWAITING_APPROVAL, S.REMEDIATION, S.HARDENING, S.REPORTING,
+    S.CREATED,
+    S.SCOPE_CHECK,
+    S.INDEXING,
+    S.FUNCTIONAL_REVIEW,
+    S.RECON,
+    S.VALIDATION,
+    S.ANALYSIS,
+    S.DIAGNOSIS,
+    S.AWAITING_APPROVAL,
+    S.REMEDIATION,
+    S.HARDENING,
+    S.REPORTING,
     S.COMPLETED,
 ]
 
@@ -54,7 +64,7 @@ def test_terminal_states_accept_nothing(state):
         (S.SCOPE_CHECK, S.VALIDATION),
         (S.RECON, S.DIAGNOSIS),
         (S.VALIDATION, S.REMEDIATION),
-        (S.DIAGNOSIS, S.REMEDIATION),       # approval gate cannot be skipped
+        (S.DIAGNOSIS, S.REMEDIATION),  # approval gate cannot be skipped
         (S.AWAITING_APPROVAL, S.HARDENING),
         (S.REPORTING, S.RECON),
         (S.COMPLETED, S.REPORTING),

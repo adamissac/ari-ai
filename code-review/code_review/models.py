@@ -11,8 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from pydantic import Field, field_validator
-from standards.mapping import check_cwe
+from pydantic import Field
 
 from shared.base import ShortText, StrictModel
 from shared.findings import Finding, PatchCandidate
@@ -63,19 +62,15 @@ class SeverityIn(StrEnum):
 
 
 class FindingIn(StrictModel):
-    weakness_class: str | None = Field(default=None, pattern=r"^CWE-\d{1,5}$")
-
-    @field_validator("weakness_class")
-    @classmethod
-    def _catalog_cwe(cls, value: str | None) -> str | None:
-        if value is not None:
-            try:
-                entry = check_cwe(value)
-                if entry.status != "active" or entry.detail.get("kind", "").lower() != "weakness":
-                    raise ValueError("SCHEMA_INVALID: CWE must be an active weakness")
-            except (KeyError, ValueError) as exc:
-                raise ValueError(f"SCHEMA_INVALID: rejected CWE identifier {value}: {exc}") from exc
-        return value
+    weakness_class: str | None = Field(
+        default=None,
+        pattern=r"^CWE-\d{1,5}$",
+        description=(
+            "Optional CWE weakness id (e.g. CWE-840 is a category and will be rejected; prefer a "
+            "specific weakness such as CWE-841). Validated against the pinned CWE catalog during "
+            "adjudication; an invalid id is dropped with a recorded reason, never the finding."
+        ),
+    )
 
     title: ShortText
     claim_key: str = Field(description="The intent claim this finding says is violated")
@@ -92,17 +87,6 @@ class FindingIn(StrictModel):
 class SecurityConcernIn(StrictModel):
     title: ShortText
     weakness_class: str = Field(pattern=r"^CWE-\d{1,5}$")
-
-    @field_validator("weakness_class")
-    @classmethod
-    def _catalog_cwe(cls, value: str) -> str:
-        try:
-            entry = check_cwe(value)
-            if entry.status != "active" or entry.detail.get("kind", "").lower() != "weakness":
-                raise ValueError("SCHEMA_INVALID: CWE must be an active weakness")
-        except (KeyError, ValueError) as exc:
-            raise ValueError(f"SCHEMA_INVALID: rejected CWE identifier {value}: {exc}") from exc
-        return value
 
     spans: list[CitationIn] = Field(min_length=1)
     rationale: ShortText

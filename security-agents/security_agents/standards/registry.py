@@ -43,9 +43,7 @@ def load(name: str) -> dict[str, Any]:
     body = path.read_bytes()
     digest = hashlib.sha256(body).hexdigest()
     if digest != entry["file_sha256"]:
-        raise IntegrityError(
-            f"{path.name} sha256 {digest} does not match the pinned {entry['file_sha256']}"
-        )
+        raise IntegrityError(f"{path.name} sha256 {digest} does not match the pinned {entry['file_sha256']}")
     return json.loads(body)
 
 

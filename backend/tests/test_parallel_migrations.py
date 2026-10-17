@@ -6,6 +6,7 @@ import uuid
 import sqlalchemy as sa
 from alembic import command
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 from conftest import _admin_engine
 
 from backend.migrate import MIGRATIONS
@@ -38,9 +39,12 @@ def downgrade():
             cfg.attributes["connection"] = conn
             command.upgrade(cfg, "heads")
             assert {"incidents", "parallel_proof"} <= set(sa.inspect(conn).get_table_names())
-            assert set(
-                conn.execute(sa.text("SELECT version_num FROM alembic_version")).scalars()
-            ) == {"0005_incidents", "parallel_test"}
+            expected_heads = set(ScriptDirectory.from_config(cfg).get_heads())
+            assert "parallel_test" in expected_heads and len(expected_heads) >= 2
+            assert (
+                set(conn.execute(sa.text("SELECT version_num FROM alembic_version")).scalars())
+                == expected_heads
+            )
             command.downgrade(cfg, "base")
             assert "incidents" not in sa.inspect(conn).get_table_names()
             command.upgrade(cfg, "heads")
@@ -50,3 +54,10 @@ def downgrade():
         with admin.connect() as conn:
             conn.execute(sa.text(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)'))
         admin.dispose()
+
+
+def test_repository_has_a_single_migration_head():
+    """Merged branches must leave one head (add a merge revision when two land)."""
+    cfg = Config()
+    cfg.set_main_option("script_location", str(MIGRATIONS))
+    assert ScriptDirectory.from_config(cfg).get_heads() == ["0006"]

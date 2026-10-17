@@ -50,28 +50,44 @@ def test_unreviewed_library_is_not_runnable():
 
 def test_render_rejects_unknown_route(library, recipe):
     with pytest.raises(PlatformError) as exc:
-        library.render(OWNERSHIP.ref, recipe,
-                       {"route_id": "no_such_route", "owner_identity": "alice", "other_identity": "bob"})
+        library.render(
+            OWNERSHIP.ref,
+            recipe,
+            {"route_id": "no_such_route", "owner_identity": "alice", "other_identity": "bob"},
+        )
     assert exc.value.code is ErrorCode.SCHEMA_INVALID
 
 
 def test_render_rejects_unknown_identity(library, recipe):
     with pytest.raises(PlatformError):
-        library.render(OWNERSHIP.ref, recipe,
-                       {"route_id": "payment_detail", "owner_identity": "alice", "other_identity": "mallory"})
+        library.render(
+            OWNERSHIP.ref,
+            recipe,
+            {"route_id": "payment_detail", "owner_identity": "alice", "other_identity": "mallory"},
+        )
 
 
 def test_render_rejects_same_identity_twice(library, recipe):
     with pytest.raises(PlatformError):
-        library.render(OWNERSHIP.ref, recipe,
-                       {"route_id": "payment_detail", "owner_identity": "alice", "other_identity": "alice"})
+        library.render(
+            OWNERSHIP.ref,
+            recipe,
+            {"route_id": "payment_detail", "owner_identity": "alice", "other_identity": "alice"},
+        )
 
 
 def test_render_rejects_unknown_parameter(library, recipe):
     with pytest.raises(PlatformError):
-        library.render(OWNERSHIP.ref, recipe,
-                       {"route_id": "payment_detail", "owner_identity": "alice",
-                        "other_identity": "bob", "shell_command": "whoami"})
+        library.render(
+            OWNERSHIP.ref,
+            recipe,
+            {
+                "route_id": "payment_detail",
+                "owner_identity": "alice",
+                "other_identity": "bob",
+                "shell_command": "whoami",
+            },
+        )
 
 
 def test_render_rejects_missing_parameter(library, recipe):
@@ -80,8 +96,11 @@ def test_render_rejects_missing_parameter(library, recipe):
 
 
 def test_rendered_check_contains_no_free_form_values(library, recipe):
-    src = library.render(OWNERSHIP.ref, recipe,
-                         {"route_id": "payment_detail", "owner_identity": "alice", "other_identity": "bob"})
+    src = library.render(
+        OWNERSHIP.ref,
+        recipe,
+        {"route_id": "payment_detail", "owner_identity": "alice", "other_identity": "bob"},
+    )
     # Only fixture identities and recipe-declared ids ever appear.
     assert "fixture-token-alice" in src and "fixture-token-bob" in src
     assert "pay_a1" in src
@@ -105,7 +124,9 @@ def test_rendered_check_contains_no_free_form_values(library, recipe):
 
 def test_params_hash_is_stable(library):
     params = {"route_id": "payment_detail", "owner_identity": "alice", "other_identity": "bob"}
-    assert library.params_hash(OWNERSHIP.ref, params) == library.params_hash(OWNERSHIP.ref, dict(reversed(list(params.items()))))
+    assert library.params_hash(OWNERSHIP.ref, params) == library.params_hash(
+        OWNERSHIP.ref, dict(reversed(list(params.items())))
+    )
     assert library.params_hash(OWNERSHIP.ref, params) != library.params_hash(BOUNDS.ref, params)
 
 
@@ -116,7 +137,9 @@ def test_ownership_check_detects_the_planted_weakness(driver, intel):
     """The planted route does not enforce ownership: matches_expectation is False."""
     ctx = probe_ctx(intel)
     result = runner_for(driver, intel).run(
-        ctx, OWNERSHIP.ref, TARGET_ID,
+        ctx,
+        OWNERSHIP.ref,
+        TARGET_ID,
         {"route_id": "payment_detail", "owner_identity": "alice", "other_identity": "bob"},
     )
     assert result["matches_expectation"] is False, result.get("stdout_tail")
@@ -130,7 +153,9 @@ def test_ownership_check_clears_the_sibling_lookalike_route(driver, intel):
     """A negative from labels.yaml: GET /customers/{id} calls require_owner, so the
     expectation holds and a hypothesis about it must be refuted (precision)."""
     result = runner_for(driver, intel).run(
-        probe_ctx(intel), OWNERSHIP.ref, TARGET_ID,
+        probe_ctx(intel),
+        OWNERSHIP.ref,
+        TARGET_ID,
         {"route_id": "customer_detail", "owner_identity": "alice", "other_identity": "bob"},
     )
     assert result["matches_expectation"] is True, result.get("stdout_tail")
@@ -139,9 +164,15 @@ def test_ownership_check_clears_the_sibling_lookalike_route(driver, intel):
 
 def test_bounds_check_detects_the_planted_functional_defect(driver, intel):
     result = runner_for(driver, intel).run(
-        probe_ctx(intel), BOUNDS.ref, TARGET_ID,
-        {"route_id": "create_refund", "read_route_id": "payment_detail",
-         "owner_identity": "alice", "over_by": "1.00"},
+        probe_ctx(intel),
+        BOUNDS.ref,
+        TARGET_ID,
+        {
+            "route_id": "create_refund",
+            "read_route_id": "payment_detail",
+            "owner_identity": "alice",
+            "over_by": "1.00",
+        },
     )
     assert result["matches_expectation"] is False, result.get("stdout_tail")
     assert result["category"] == "input_validation.bounds"
@@ -162,7 +193,9 @@ def test_check_does_not_mutate_the_snapshot(driver, intel):
 
     before = tree_digest(intel.snapshot.root)
     runner_for(driver, intel).run(
-        probe_ctx(intel), BOUNDS.ref, TARGET_ID,
+        probe_ctx(intel),
+        BOUNDS.ref,
+        TARGET_ID,
         {"route_id": "create_refund", "read_route_id": "payment_detail", "owner_identity": "alice"},
     )
     assert tree_digest(intel.snapshot.root) == before
@@ -173,7 +206,9 @@ def test_check_runner_refuses_without_a_scope_decision(driver, intel):
     ctx = make_ctx(AgentName.PROBE, intel=intel, scope=make_scope())  # no decision recorded
     with pytest.raises(PlatformError) as exc:
         runner_for(driver, intel).run(
-            ctx, OWNERSHIP.ref, TARGET_ID,
+            ctx,
+            OWNERSHIP.ref,
+            TARGET_ID,
             {"route_id": "payment_detail", "owner_identity": "alice", "other_identity": "bob"},
         )
     assert exc.value.code is ErrorCode.SCOPE_DENIED
@@ -205,7 +240,10 @@ def test_unreviewed_template_fails_closed(driver, intel):
 
 def test_bad_parameters_are_reported_with_a_code(driver, intel):
     result = runner_for(driver, intel).run(
-        probe_ctx(intel), OWNERSHIP.ref, TARGET_ID, {"route_id": "ghost", "owner_identity": "alice", "other_identity": "bob"}
+        probe_ctx(intel),
+        OWNERSHIP.ref,
+        TARGET_ID,
+        {"route_id": "ghost", "owner_identity": "alice", "other_identity": "bob"},
     )
     assert result["error"] == ErrorCode.SCHEMA_INVALID.value
     assert result["matches_expectation"] is None

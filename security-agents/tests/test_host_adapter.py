@@ -96,8 +96,12 @@ class FakeGateway:
         transcript: list[dict[str, Any]] = []
         for turn in range(max_turns):
             request = LLMRequest(
-                agent=AgentName(agent), model="fake", system=system, messages=messages,
-                tools=[{"name": n} for n in registry], max_tokens=max_tokens,
+                agent=AgentName(agent),
+                model="fake",
+                system=system,
+                messages=messages,
+                tools=[{"name": n} for n in registry],
+                max_tokens=max_tokens,
             )
             step = script[min(turn, len(script) - 1)]
             fake_turn = step(request) if callable(step) else step
@@ -128,8 +132,11 @@ class FakeGateway:
                 else:
                     payload = tool.handler(tool.input_model.model_validate(args))
                 results.append(
-                    {"type": "tool_result", "tool_use_id": block_id,
-                     "content": json.dumps(payload, default=str)}
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": block_id,
+                        "content": json.dumps(payload, default=str),
+                    }
                 )
             messages.append({"role": "assistant", "content": assistant})
             transcript.extend(assistant)
@@ -169,20 +176,43 @@ class FakeHost:
     # -- state / events
     @property
     def assessment(self) -> Any:
-        return type("A", (), {"state": self.states[-1] if self.states else "SCOPE_CHECK", "budget": type("B", (), {"max_tokens": 2_000_000, "max_usd": 50.0, "max_wall_clock_s": 900.0})()})()
+        return type(
+            "A",
+            (),
+            {
+                "state": self.states[-1] if self.states else "SCOPE_CHECK",
+                "budget": type(
+                    "B", (), {"max_tokens": 2_000_000, "max_usd": 50.0, "max_wall_clock_s": 900.0}
+                )(),
+            },
+        )()
 
     @property
     def scope(self) -> Any:
         return type(
-            "S", (),
+            "S",
+            (),
             {
-                "id": "scp_01HOSTADAPTER", "project_id": self.project_id, "name": "host scope",
-                "status": "active", "requested_by": "usr_requester", "approved_by": "usr_approver",
-                "approved_at": datetime.now(UTC), "expires_at": datetime.now(UTC) + timedelta(days=1),
+                "id": "scp_01HOSTADAPTER",
+                "project_id": self.project_id,
+                "name": "host scope",
+                "status": "active",
+                "requested_by": "usr_requester",
+                "approved_by": "usr_approver",
+                "approved_at": datetime.now(UTC),
+                "expires_at": datetime.now(UTC) + timedelta(days=1),
                 "allowed_check_categories": ["access_control.ownership", "input_validation.bounds"],
                 "targets": [
-                    type("T", (), {"target_id": "tgt_payments_lite", "repo_id": "rep_payments_lite",
-                                   "build_recipe_ref": "build_recipe.json", "exposed_ports": [8000]})()
+                    type(
+                        "T",
+                        (),
+                        {
+                            "target_id": "tgt_payments_lite",
+                            "repo_id": "rep_payments_lite",
+                            "build_recipe_ref": "build_recipe.json",
+                            "exposed_ports": [8000],
+                        },
+                    )()
                 ],
             },
         )()
@@ -193,15 +223,33 @@ class FakeHost:
     def approve_all(self) -> None:
         for _subject_type, subject_id in self.approval_requests:
             self._approvals.append(
-                type("Ap", (), {"id": "apv_01HOSTADAPTER", "subject_id": subject_id,
-                                "status": "approved", "decided_by": "usr_human", "subject_type": "remediation"})()
+                type(
+                    "Ap",
+                    (),
+                    {
+                        "id": "apv_01HOSTADAPTER",
+                        "subject_id": subject_id,
+                        "status": "approved",
+                        "decided_by": "usr_human",
+                        "subject_type": "remediation",
+                    },
+                )()
             )
 
     def decline_all(self) -> None:
         for _subject_type, subject_id in self.approval_requests:
             self._approvals.append(
-                type("Ap", (), {"id": "apv_01DECLINED", "subject_id": subject_id,
-                                "status": "declined", "decided_by": "usr_human", "subject_type": "remediation"})()
+                type(
+                    "Ap",
+                    (),
+                    {
+                        "id": "apv_01DECLINED",
+                        "subject_id": subject_id,
+                        "status": "declined",
+                        "decided_by": "usr_human",
+                        "subject_type": "remediation",
+                    },
+                )()
             )
 
     def transition(self, target: Any, message: str = "") -> Any:
@@ -232,8 +280,9 @@ class FakeHost:
     # -- runs
     def start_agent_run(self, agent: Any, step_key: str, **kwargs: Any) -> str:
         run_id = f"run_{len(self.runs):08d}HOST"
-        self.runs.append({"id": run_id, "agent": getattr(agent, "value", str(agent)),
-                          "step_key": step_key, **kwargs})
+        self.runs.append(
+            {"id": run_id, "agent": getattr(agent, "value", str(agent)), "step_key": step_key, **kwargs}
+        )
         return run_id
 
     def finish_agent_run(self, run_id: str, status: Any, **kwargs: Any) -> Any:
@@ -309,7 +358,12 @@ def test_runs_the_pre_approval_phases_and_requests_approval(host_and_orchestrato
     orchestrator.run(host)
 
     assert host.states[:7] == [
-        "SCOPE_CHECK", "INDEXING", "FUNCTIONAL_REVIEW", "RECON", "VALIDATION", "ANALYSIS",
+        "SCOPE_CHECK",
+        "INDEXING",
+        "FUNCTIONAL_REVIEW",
+        "RECON",
+        "VALIDATION",
+        "ANALYSIS",
         "DIAGNOSIS",
     ]
     assert host.states[7] == "AWAITING_APPROVAL"
@@ -329,8 +383,13 @@ def test_every_agent_turn_goes_through_the_host_gateway(host_and_orchestrator):
     # each role sends its own system instruction
     assert len({c["system"] for c in gateway.calls}) == 4
     # and its own tool list, built from the registry allowlist
-    assert "checks__run_template" in dict(zip(agents, [c["tools"] for c in gateway.calls], strict=True))["probe"]
-    assert "checks__run_template" not in dict(zip(agents, [c["tools"] for c in gateway.calls], strict=True))["scout"]
+    assert (
+        "checks__run_template" in dict(zip(agents, [c["tools"] for c in gateway.calls], strict=True))["probe"]
+    )
+    assert (
+        "checks__run_template"
+        not in dict(zip(agents, [c["tools"] for c in gateway.calls], strict=True))["scout"]
+    )
     assert gateway.denied == [], "no scripted call should hit an ungranted tool here"
 
 
@@ -371,7 +430,13 @@ def test_resume_after_approval_completes_remediation_and_hardening(host_and_orch
 
     assert host.states[-4:] == ["REMEDIATION", "HARDENING", "REPORTING", "COMPLETED"]
     assert [r["agent"] for r in host.runs] == [
-        "scout", "probe", "trace", "diagnose", "patch", "verify", "fortify",
+        "scout",
+        "probe",
+        "trace",
+        "diagnose",
+        "patch",
+        "verify",
+        "fortify",
     ]
     assert len(host.patches) == 1
     patch = host.patches[0]
@@ -462,12 +527,19 @@ def test_host_runs_keep_gateway_usage_and_real_patch_run_ids(host_and_orchestrat
         assert "tool_calls" in finished
 
 
-@pytest.mark.parametrize("field,value", [
-    ("approved_by", None), ("approved_at", None), ("expires_at", None), ("status", "inactive"),
-])
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("approved_by", None),
+        ("approved_at", None),
+        ("expires_at", None),
+        ("status", "inactive"),
+    ],
+)
 def test_scope_adapter_does_not_invent_authorization(host_and_orchestrator, field, value):
     from security_agents.host_adapter import _adapt_scope
     from security_agents.scope_guard import ActionRequest, check
+
     host, orchestrator, _ = host_and_orchestrator
     intel = orchestrator._build_intel(orchestrator.target_dir, orchestrator.workdir)
     scope = host.scope
@@ -478,6 +550,7 @@ def test_scope_adapter_does_not_invent_authorization(host_and_orchestrator, fiel
 
 def test_empty_host_categories_remain_empty(host_and_orchestrator):
     from security_agents.host_adapter import _adapt_scope
+
     host, orchestrator, _ = host_and_orchestrator
     intel = orchestrator._build_intel(orchestrator.target_dir, orchestrator.workdir)
     scope = host.scope
@@ -492,17 +565,24 @@ def test_zero_host_budget_is_not_replaced_with_a_default():
     from types import SimpleNamespace
 
     from security_agents.host_adapter import _adapt_budget
+
     with pytest.raises(PlatformError) as exc:
         _adapt_budget(SimpleNamespace(budget=SimpleNamespace(max_tokens=0, max_usd=0)))
     assert exc.value.code is ErrorCode.BUDGET_EXHAUSTED
 
 
-@pytest.mark.parametrize("app_env,opt_in,local", [
-    ("production", "1", False), ("test", "0", False), ("development", "1", True),
-])
+@pytest.mark.parametrize(
+    "app_env,opt_in,local",
+    [
+        ("production", "1", False),
+        ("test", "0", False),
+        ("development", "1", True),
+    ],
+)
 def test_host_default_driver_requires_explicit_dev_opt_in(monkeypatch, app_env, opt_in, local):
     from security_agents.host_adapter import _default_driver
     from security_agents.sandbox.driver import LocalProcessDriver
+
     monkeypatch.setenv("APP_ENV", app_env)
     monkeypatch.setenv("SANDBOX_ALLOW_LOCAL_PROCESS", opt_in)
     monkeypatch.setenv("SANDBOX_IMAGE", "test@sha256:" + "a" * 64)
@@ -514,8 +594,10 @@ def test_new_factory_resumes_after_approval_without_repeating_scout(host_and_orc
     first.run(host)
     host.approve_all()
     replacement = build_orchestrator(
-        target_dir=first.target_dir, labels_path=first.labels_path,
-        workdir=tmp_path / "fresh-worker", driver=first.driver,
+        target_dir=first.target_dir,
+        labels_path=first.labels_path,
+        workdir=tmp_path / "fresh-worker",
+        driver=first.driver,
     )
     replacement.run(host)
     assert host.states[-1] == "COMPLETED"
@@ -528,7 +610,9 @@ def test_resume_refuses_changed_snapshot(host_and_orchestrator, tmp_path):
     first.run(host)
     host.approve_all()
     host.checkpoints["security_agents.approval.v1"]["commit_sha"] = "0" * 40
-    replacement = build_orchestrator(target_dir=first.target_dir, workdir=tmp_path / "other", driver=first.driver)
+    replacement = build_orchestrator(
+        target_dir=first.target_dir, workdir=tmp_path / "other", driver=first.driver
+    )
     with pytest.raises(PlatformError) as exc:
         replacement.run(host)
     assert exc.value.code is ErrorCode.SNAPSHOT_NOT_READY

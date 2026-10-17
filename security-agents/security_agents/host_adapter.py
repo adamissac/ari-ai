@@ -156,12 +156,20 @@ class HostStepRunner:
         self.run_ids[spec.name.value] = run_id
         ctx.run_id = run_id
         record = StepRecord(
-            run_id=run_id, agent=spec.name, spec_version=spec.version, model=model_id,
+            run_id=run_id,
+            agent=spec.name,
+            spec_version=spec.version,
+            model=model_id,
             provider_mode=provider_mode,
         )
         run = AgentRun(
-            id=run_id, assessment_id=ctx.assessment_id, agent=spec.name, step_key=ctx.step_key,
-            status="running", input_ref=input_ref or ctx.step_key, model_id=model_id,
+            id=run_id,
+            assessment_id=ctx.assessment_id,
+            agent=spec.name,
+            step_key=ctx.step_key,
+            status="running",
+            input_ref=input_ref or ctx.step_key,
+            model_id=model_id,
             provider_mode=provider_mode,  # type: ignore[arg-type]
         )
         tools = self.tool_factory(spec, ctx, registry, record)
@@ -189,9 +197,7 @@ class HostStepRunner:
             run.ended_at = utcnow()
             record.error_code = code
             record.error_detail = detail
-            self.host.finish_agent_run(
-                run_id, _host_run_status("failed"), error=_host_error(code, detail)
-            )
+            self.host.finish_agent_run(run_id, _host_run_status("failed"), error=_host_error(code, detail))
             return StepOutcome(run=run, output=None, record=record)
 
         usage = getattr(result, "usage", None)
@@ -277,9 +283,7 @@ def _host_state(state: AssessmentState) -> Any:
     for member in enum:
         if member.name.upper() == name or str(member.value).upper() == name:
             return member
-    raise PlatformError(
-        ErrorCode.CONFLICT_STATE, f"host has no assessment state matching {name}"
-    )
+    raise PlatformError(ErrorCode.CONFLICT_STATE, f"host has no assessment state matching {name}")
 
 
 @dataclass
@@ -351,7 +355,10 @@ def _handler(ctx: ToolContext, registry: ToolRegistry, record: StepRecord, name:
             }
         record.tool_invocations.append(
             ToolInvocation(
-                name=tool_name(name), args={}, ok=ok, error_code=error_code,
+                name=tool_name(name),
+                args={},
+                ok=ok,
+                error_code=error_code,
                 summary={k: v for k, v in payload.items() if k in ("error", "detail")},
             )
         )
@@ -386,8 +393,7 @@ class HostSink(AssessmentSink):
             return
         hypothesis = finding.hypothesis
         evidence = [
-            contract_export.evidence_ref(ref, producer="agent:scout")
-            for ref in hypothesis.cited_spans
+            contract_export.evidence_ref(ref, producer="agent:scout") for ref in hypothesis.cited_spans
         ]
         record = findings_module.Finding(
             id=finding.finding_id,
@@ -398,16 +404,16 @@ class HostSink(AssessmentSink):
             title=hypothesis.title[:500],
             status=findings_module.FindingStatus.hypothesis,
             subject_refs=[hypothesis.entry_point_id or ""] if hypothesis.entry_point_id else [],
-            expectation_ids=[
-                contract_export.canonical_expectation_id(e) for e in hypothesis.expectation_ids
-            ],
+            expectation_ids=[contract_export.canonical_expectation_id(e) for e in hypothesis.expectation_ids],
             evidence=evidence,
             confidence=contract_export.CONFIDENCE_SCORE[hypothesis.confidence],
             created_at=utcnow(),
             updated_at=utcnow(),
         )
         self.host.record_finding(record, actor="agent:scout")
-        self.host.record(finding.finding_id, contract_export.hypothesis(hypothesis, finding_id=finding.finding_id))
+        self.host.record(
+            finding.finding_id, contract_export.hypothesis(hypothesis, finding_id=finding.finding_id)
+        )
         self.recorded.append("finding")
 
     def on_record(self, finding: FindingRecord, record: Any, kind: str) -> None:
@@ -516,6 +522,7 @@ class HostOrchestrator:
     def run(self, host: AssessmentHostLike) -> None:
         target = self.target_dir or _env_path("SECURITY_AGENTS_TARGET_DIR")
         from .intel.host import bindings_path
+
         bound = bindings_path() is not None
         if not bound and target is None:
             raise PlatformError(
@@ -539,10 +546,13 @@ class HostOrchestrator:
         workdir = Path(tempfile.mkdtemp(prefix=f"{host.assessment_id}-", dir=base_workdir))
         if bound:
             from .intel.host import bound_intelligence
+
             intel = bound_intelligence(host, workdir, self.intelligence_service)
         else:
             if os.environ.get("APP_ENV") not in {"development", "test"}:
-                raise PlatformError(ErrorCode.SNAPSHOT_NOT_READY, "production host requires REPOSITORY_BINDINGS_FILE")
+                raise PlatformError(
+                    ErrorCode.SNAPSHOT_NOT_READY, "production host requires REPOSITORY_BINDINGS_FILE"
+                )
             intel = self._build_intel(
                 target, workdir, snapshot_id=checkpoint.get("snapshot_id") if resuming else None, host=host
             )
@@ -580,11 +590,14 @@ class HostOrchestrator:
         if resuming:
             orchestrator.state = AssessmentState.AWAITING_APPROVAL
             orchestrator.result.state = AssessmentState.AWAITING_APPROVAL
-            orchestrator.result.findings = TypeAdapter(list[FindingRecord]).validate_python(checkpoint["findings"])
+            orchestrator.result.findings = TypeAdapter(list[FindingRecord]).validate_python(
+                checkpoint["findings"]
+            )
             orchestrator.result.usage = Usage.model_validate(checkpoint["usage"])
             orchestrator._baseline_failing = list(checkpoint["baseline_failing"])
             # Approval applies only while current scope remains valid.
             from .scope_guard import ActionRequest, check
+
             decision = check(scope, ActionRequest(action="assessment_start"), utcnow())
             if not decision.allowed:
                 raise PlatformError(ErrorCode.SCOPE_DENIED, decision.reason_code)
@@ -594,15 +607,18 @@ class HostOrchestrator:
         # The host already performed the scope gate and the first transition.
         result = orchestrator.run()
         if result.state is AssessmentState.AWAITING_APPROVAL:
-            host.save_checkpoint("security_agents.approval.v1", {
-                "version": 1,
-                "assessment_id": host.assessment_id,
-                "commit_sha": intel.snapshot.commit_sha,
-                "snapshot_id": intel.snapshot.snapshot_id,
-                "findings": TypeAdapter(list[FindingRecord]).dump_python(result.findings, mode="json"),
-                "usage": result.usage.model_dump(mode="json"),
-                "baseline_failing": orchestrator._baseline_failing,
-            })
+            host.save_checkpoint(
+                "security_agents.approval.v1",
+                {
+                    "version": 1,
+                    "assessment_id": host.assessment_id,
+                    "commit_sha": intel.snapshot.commit_sha,
+                    "snapshot_id": intel.snapshot.snapshot_id,
+                    "findings": TypeAdapter(list[FindingRecord]).dump_python(result.findings, mode="json"),
+                    "usage": result.usage.model_dump(mode="json"),
+                    "baseline_failing": orchestrator._baseline_failing,
+                },
+            )
             host.progress("awaiting human remediation approval")
 
     def _resume(self, orchestrator: Orchestrator, host: AssessmentHostLike) -> None:
@@ -664,7 +680,9 @@ class HostOrchestrator:
         expectations = None
         if labels is not None:
             expectations = load_expectations(
-                labels, snapshot_id=snapshot.snapshot_id, commit_sha=snapshot.commit_sha,
+                labels,
+                snapshot_id=snapshot.snapshot_id,
+                commit_sha=snapshot.commit_sha,
                 strip_prefix=strip_prefix,
             )
         return LocalIntel(snapshot, expectations=expectations)
@@ -790,9 +808,7 @@ class _NullGateway:
         return "host"
 
     def complete(self, request: Any) -> Any:  # pragma: no cover - never called
-        raise PlatformError(
-            ErrorCode.CONFLICT_STATE, "host mode must route model calls through host.llm()"
-        )
+        raise PlatformError(ErrorCode.CONFLICT_STATE, "host mode must route model calls through host.llm()")
 
     def cost_usd(self, model: str, usage: Any) -> float:  # pragma: no cover
         return 0.0
@@ -806,12 +822,15 @@ def _default_driver() -> SandboxDriver:
         return LocalProcessDriver(allow=True)
     try:
         from backend.settings import get_settings
+
         settings = get_settings()
     except ImportError:
         settings = None
     if settings is not None and settings.security_sandbox == "local-dev":
         if settings.app_env not in {"development", "test"}:
-            raise PlatformError(ErrorCode.SANDBOX_POLICY_VIOLATION, "local-dev sandbox outside development/test")
+            raise PlatformError(
+                ErrorCode.SANDBOX_POLICY_VIOLATION, "local-dev sandbox outside development/test"
+            )
         return LocalProcessDriver(allow=True)
     return DockerSandboxDriver()
 
@@ -848,7 +867,9 @@ def _approver(host: AssessmentHostLike):
             if status == "approved":
                 actor = getattr(approval, "decided_by", None)
                 if not actor or not str(actor).startswith("usr_"):
-                    raise PlatformError(ErrorCode.APPROVAL_REQUIRED, "remediation requires an identified human approver")
+                    raise PlatformError(
+                        ErrorCode.APPROVAL_REQUIRED, "remediation requires an identified human approver"
+                    )
                 return Approval(
                     id=str(getattr(approval, "id", new_id("apv"))),
                     project_id=str(getattr(host, "project_id", "prj_unknown")),
@@ -917,9 +938,7 @@ def _adapt_scope(host_scope: Any, intel: CodeIntel) -> Any:
         project_id=str(getattr(host_scope, "project_id", "prj_unknown")),
         name=str(getattr(host_scope, "name", "host scope")),
         targets=targets,
-        allowed_check_categories=list(
-            getattr(host_scope, "allowed_check_categories", None) or []
-        ),
+        allowed_check_categories=list(getattr(host_scope, "allowed_check_categories", None) or []),
         status=status,
         requested_by=str(getattr(host_scope, "requested_by", None) or "usr_host"),
         approved_by=getattr(host_scope, "approved_by", None),
@@ -960,9 +979,13 @@ def _finding_standards(finding: FindingRecord) -> Any:
         cwe=contract_export.weakness_ref(
             finding.hypothesis.weakness_class, evidence=evidence, confidence=confidence
         ),
-        attack=list({ref.id: ref for step in finding.attack_path.steps for ref in step.attack}.values()) if finding.attack_path else [],
+        attack=list({ref.id: ref for step in finding.attack_path.steps for ref in step.attack}.values())
+        if finding.attack_path
+        else [],
         cvss=finding.severity.cvss if finding.severity else None,
-        unmapped=[] if finding.attack_path and any(step.attack for step in finding.attack_path.steps) else ["ATT&CK: no reviewed check rule matched; coarse catalog chains require human review"],
+        unmapped=[]
+        if finding.attack_path and any(step.attack for step in finding.attack_path.steps)
+        else ["ATT&CK: no reviewed check rule matched; coarse catalog chains require human review"],
         catalog_versions=catalog_versions(),
         classified_by="agent:security",
         classified_at=utcnow(),

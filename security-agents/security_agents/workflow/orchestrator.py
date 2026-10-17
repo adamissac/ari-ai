@@ -604,8 +604,7 @@ class Orchestrator:
             scout_agent.SPEC, ctx, scout_agent.build_prompt(data, self.intel), input_ref="scout:input"
         )
         if not outcome.ok or not isinstance(outcome.output, scout_agent.ScoutOutput):
-            self._audit("recon.failed", "assessment", self.config.assessment_id,
-                        error=outcome.run.error_code)
+            self._audit("recon.failed", "assessment", self.config.assessment_id, error=outcome.run.error_code)
             raise PlatformError(
                 outcome.run.error_code or ErrorCode.SCHEMA_INVALID,
                 outcome.run.error_detail or "Scout failed to produce a valid result",

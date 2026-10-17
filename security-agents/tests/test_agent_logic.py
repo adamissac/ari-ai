@@ -14,7 +14,6 @@ from security_agents.agents import verify as verify_agent
 from security_agents.contracts import (
     AgentName,
     Confidence,
-    SeverityFactors,
     SeverityLevel,
     ValidationOutcome,
     VerificationCheckName,
@@ -26,8 +25,11 @@ from security_agents.runtime import StepRecord
 
 def scout_input(**kw):
     base = dict(
-        assessment_id="asm", snapshot_id="snp_test", commit_sha="sha",
-        available_check_categories=["access_control.ownership"], max_hypotheses=5,
+        assessment_id="asm",
+        snapshot_id="snp_test",
+        commit_sha="sha",
+        available_check_categories=["access_control.ownership"],
+        max_hypotheses=5,
     )
     base.update(kw)
     return scout_agent.ScoutInput(**base)
@@ -119,8 +121,13 @@ def test_scout_ranking_prefers_high_confidence_and_critical_expectation(intel):
 
 def probe_input():
     return probe_agent.ProbeInput(
-        assessment_id="asm", hypothesis_id="hyp_1", scope_id="scp_test", target_id="tgt_payments_lite",
-        hypothesis_title="t", weakness_class="CWE-639", expected_invariant="inv",
+        assessment_id="asm",
+        hypothesis_id="hyp_1",
+        scope_id="scp_test",
+        target_id="tgt_payments_lite",
+        hypothesis_title="t",
+        weakness_class="CWE-639",
+        expected_invariant="inv",
         suggested_check_category="access_control.ownership",
     )
 
@@ -131,17 +138,23 @@ def probe_out(outcome: str, **kw):
 
 def check_run(matches, **kw):
     base = {
-        "sandbox_run_id": "sbx_1", "template_ref": "access_control.ownership@1",
-        "template_id": "access_control.ownership", "template_version": "1",
-        "matches_expectation": matches, "parameters": {"route_id": "payment_detail"},
-        "passed": 1, "failed": 1,
+        "sandbox_run_id": "sbx_1",
+        "template_ref": "access_control.ownership@1",
+        "template_id": "access_control.ownership",
+        "template_version": "1",
+        "matches_expectation": matches,
+        "parameters": {"route_id": "payment_detail"},
+        "passed": 1,
+        "failed": 1,
     }
     base.update(kw)
     return base
 
 
 def record():
-    return StepRecord(run_id="run_1", agent=AgentName.PROBE, spec_version="0.1.0", model="m", provider_mode="fake")
+    return StepRecord(
+        run_id="run_1", agent=AgentName.PROBE, spec_version="0.1.0", model="m", provider_mode="fake"
+    )
 
 
 def test_probe_confirms_when_expectation_did_not_hold():
@@ -171,7 +184,9 @@ def test_executed_evidence_overrides_a_disagreeing_agent_claim():
 
 def test_probe_without_any_successful_run_is_inconclusive():
     r = probe_agent.to_validation_result(
-        probe_out("confirmed", missing_capability="no template"), probe_input(), record(),
+        probe_out("confirmed", missing_capability="no template"),
+        probe_input(),
+        record(),
         [{"error": "TEMPLATE_NOT_RUNNABLE", "detail": "x"}],
     )
     assert r.outcome is ValidationOutcome.INCONCLUSIVE
@@ -243,11 +258,15 @@ def trace_output(**kw):
 
 
 def confirmed_validation():
-    return probe_agent.to_validation_result(probe_out("confirmed"), probe_input(), record(), [check_run(False)])
+    return probe_agent.to_validation_result(
+        probe_out("confirmed"), probe_input(), record(), [check_run(False)]
+    )
 
 
 def test_trace_computes_cvss_vector_score_and_level(intel):
-    path, severity = trace_agent.to_attack_path(trace_output(), trace_input(), intel, validation=confirmed_validation())
+    path, severity = trace_agent.to_attack_path(
+        trace_output(), trace_input(), intel, validation=confirmed_validation()
+    )
     assert severity.cvss_vector == "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N"
     assert severity.cvss_base_score == 6.5
     assert severity.cvss_rating == "medium"
@@ -267,7 +286,10 @@ def test_trace_computes_cvss_vector_score_and_level(intel):
 )
 def test_trace_level_follows_the_computed_rating(intel, vector, score, level):
     _, severity = trace_agent.to_attack_path(
-        trace_output(cvss_base_metrics=metrics(vector)), trace_input(), intel, validation=confirmed_validation()
+        trace_output(cvss_base_metrics=metrics(vector)),
+        trace_input(),
+        intel,
+        validation=confirmed_validation(),
     )
     assert severity.cvss_base_score == score
     assert severity.level is level
@@ -286,7 +308,7 @@ def test_trace_rejects_missing_or_duplicated_metrics():
 
     incomplete = metrics()[:7]
     with pytest.raises(pydantic.ValidationError, match="exactly once"):
-        trace_output(cvss_base_metrics=incomplete + [incomplete[0]])
+        trace_output(cvss_base_metrics=[*incomplete, incomplete[0]])
 
 
 def test_trace_rejects_an_invalid_metric_value():
@@ -315,7 +337,9 @@ def test_metric_citing_a_foreign_run_is_unverified(intel):
 
 
 def test_factors_are_derived_from_metrics_and_expectations(intel):
-    _, severity = trace_agent.to_attack_path(trace_output(), trace_input(), intel, validation=confirmed_validation())
+    _, severity = trace_agent.to_attack_path(
+        trace_output(), trace_input(), intel, validation=confirmed_validation()
+    )
     assert severity.factors.reachability == "authenticated"
     assert severity.factors.privileges_required == "low"
     assert severity.factors.data_sensitivity == "financial"
@@ -323,14 +347,20 @@ def test_factors_are_derived_from_metrics_and_expectations(intel):
 
 
 def test_trace_marks_step_verified_only_with_executed_evidence(intel):
-    path, severity = trace_agent.to_attack_path(trace_output(), trace_input(), intel, validation=confirmed_validation())
+    path, severity = trace_agent.to_attack_path(
+        trace_output(), trace_input(), intel, validation=confirmed_validation()
+    )
     assert path.steps[0].verified is True
     assert severity.factors.verified_path is True
 
 
 def test_trace_downgrades_unsupported_verified_claim(intel):
     out = trace_output(
-        steps=[trace_agent.PathStepOut(description="reaches the ledger", verified=True, evidence_artifact_id=None)]
+        steps=[
+            trace_agent.PathStepOut(
+                description="reaches the ledger", verified=True, evidence_artifact_id=None
+            )
+        ]
     )
     path, severity = trace_agent.to_attack_path(out, trace_input(), intel, validation=None)
     assert path.steps[0].verified is False
@@ -339,7 +369,9 @@ def test_trace_downgrades_unsupported_verified_claim(intel):
 
 def test_trace_ignores_foreign_artifact_id(intel):
     out = trace_output(
-        steps=[trace_agent.PathStepOut(description="x", verified=True, evidence_artifact_id="sbx_someone_else")]
+        steps=[
+            trace_agent.PathStepOut(description="x", verified=True, evidence_artifact_id="sbx_someone_else")
+        ]
     )
     path, _ = trace_agent.to_attack_path(out, trace_input(), intel, validation=confirmed_validation())
     assert path.steps[0].verified is False
@@ -378,9 +410,15 @@ def test_invented_attack_technique_is_rejected():
 
 def diagnose_input():
     return diagnose_agent.DiagnoseInput(
-        assessment_id="asm", finding_id="fnd_1", weakness_class="CWE-639", hypothesis_title="t",
-        severity_level="high", impact_summary="x", affected_paths=["payments_lite/app.py"],
-        affected_symbol="get_payment", violated_expectation_ids=["exp_owner_only"],
+        assessment_id="asm",
+        finding_id="fnd_1",
+        weakness_class="CWE-639",
+        hypothesis_title="t",
+        severity_level="high",
+        impact_summary="x",
+        affected_paths=["payments_lite/app.py"],
+        affected_symbol="get_payment",
+        violated_expectation_ids=["exp_owner_only"],
     )
 
 
@@ -412,7 +450,8 @@ def test_diagnose_builds_plan_with_real_paths(intel):
 def test_diagnose_filters_invented_plan_files(intel):
     _, plan, _ = diagnose_agent.to_plan(
         diagnose_output(files_expected=["payments_lite/app.py", "does/not/exist.py"]),
-        diagnose_input(), intel,
+        diagnose_input(),
+        intel,
     )
     assert plan.files_expected == ["payments_lite/app.py"]
 
@@ -420,7 +459,8 @@ def test_diagnose_filters_invented_plan_files(intel):
 def test_diagnose_allows_new_test_files_in_plan(intel):
     _, plan, _ = diagnose_agent.to_plan(
         diagnose_output(files_expected=["payments_lite/app.py", "tests/test_new_authz.py"]),
-        diagnose_input(), intel,
+        diagnose_input(),
+        intel,
     )
     assert "tests/test_new_authz.py" in plan.files_expected
 
@@ -433,9 +473,7 @@ def test_diagnose_filters_unknown_expectation_ids(intel):
 
 
 def test_diagnose_falls_back_to_affected_path_when_spans_invalid(intel):
-    rc, _, _ = diagnose_agent.to_plan(
-        diagnose_output(cause_paths=["nope.py"]), diagnose_input(), intel
-    )
+    rc, _, _ = diagnose_agent.to_plan(diagnose_output(cause_paths=["nope.py"]), diagnose_input(), intel)
     assert rc.cause_spans[0].path == "payments_lite/app.py"
 
 
@@ -445,14 +483,22 @@ def test_diagnose_falls_back_to_affected_path_when_spans_invalid(intel):
 def evidence(**kw):
     base = dict(
         apply_facts={
-            "applied": True, "files_touched": ["payments_lite/app.py", "tests/test_authz.py"],
-            "out_of_scope": [], "new_tests": ["tests/test_authz.py"],
+            "applied": True,
+            "files_touched": ["payments_lite/app.py", "tests/test_authz.py"],
+            "out_of_scope": [],
+            "new_tests": ["tests/test_authz.py"],
             "tampered_protected_tests": [],
         },
         recheck_runs=[check_run(True)],
         test_runs=[
-            {"selection": "project_suite", "passed": 9, "failed": 0, "errors": 0,
-             "failing_tests": [], "sandbox_run_id": "sbx_t"},
+            {
+                "selection": "project_suite",
+                "passed": 9,
+                "failed": 0,
+                "errors": 0,
+                "failing_tests": [],
+                "sandbox_run_id": "sbx_t",
+            },
         ],
         baseline_failing=[],
         tests_added=["tests/test_authz.py"],
@@ -494,8 +540,11 @@ def test_verify_rejects_recheck_with_changed_parameters():
 
 def test_verify_rejects_test_tampering():
     facts = {
-        "applied": True, "files_touched": ["payments_lite/app.py", "tests/test_payments.py"],
-        "out_of_scope": [], "new_tests": [], "tampered_protected_tests": ["tests/test_payments.py"],
+        "applied": True,
+        "files_touched": ["payments_lite/app.py", "tests/test_payments.py"],
+        "out_of_scope": [],
+        "new_tests": [],
+        "tampered_protected_tests": ["tests/test_payments.py"],
     }
     verdict, checks, reasons = verify_agent.compute_verdict(evidence(apply_facts=facts))
     assert verdict == "rejected"
@@ -505,8 +554,11 @@ def test_verify_rejects_test_tampering():
 
 def test_verify_rejects_out_of_scope_changes():
     facts = {
-        "applied": True, "files_touched": ["payments_lite/store.py"], "out_of_scope": ["payments_lite/store.py"],
-        "new_tests": [], "tampered_protected_tests": [],
+        "applied": True,
+        "files_touched": ["payments_lite/store.py"],
+        "out_of_scope": ["payments_lite/store.py"],
+        "new_tests": [],
+        "tampered_protected_tests": [],
     }
     verdict, checks, _ = verify_agent.compute_verdict(evidence(apply_facts=facts))
     assert verdict == "rejected"
@@ -514,14 +566,28 @@ def test_verify_rejects_out_of_scope_changes():
 
 
 def test_verify_rejects_diff_that_does_not_apply():
-    facts = {"applied": False, "files_touched": [], "out_of_scope": [], "new_tests": [], "tampered_protected_tests": []}
+    facts = {
+        "applied": False,
+        "files_touched": [],
+        "out_of_scope": [],
+        "new_tests": [],
+        "tampered_protected_tests": [],
+    }
     verdict, _, reasons = verify_agent.compute_verdict(evidence(apply_facts=facts))
     assert verdict == "rejected" and any("did not apply" in r for r in reasons)
 
 
 def test_verify_rejects_new_test_failures_but_tolerates_baseline():
-    runs = [{"selection": "project_suite", "passed": 7, "failed": 1,
-             "failing_tests": ["tests/test_payments.py::test_x"], "errors": 0, "sandbox_run_id": "s"}]
+    runs = [
+        {
+            "selection": "project_suite",
+            "passed": 7,
+            "failed": 1,
+            "failing_tests": ["tests/test_payments.py::test_x"],
+            "errors": 0,
+            "sandbox_run_id": "s",
+        }
+    ]
     rejected, _, _ = verify_agent.compute_verdict(evidence(test_runs=runs))
     assert rejected == "rejected"
     accepted, _, _ = verify_agent.compute_verdict(
@@ -544,8 +610,16 @@ def test_verify_rejects_patch_without_a_regression_test():
 
 
 def test_verify_rejects_when_added_test_fails():
-    runs = [{"selection": "project_suite", "passed": 5, "failed": 1,
-             "failing_tests": ["tests/test_authz.py::test_denied"], "errors": 0, "sandbox_run_id": "s"}]
+    runs = [
+        {
+            "selection": "project_suite",
+            "passed": 5,
+            "failed": 1,
+            "failing_tests": ["tests/test_authz.py::test_denied"],
+            "errors": 0,
+            "sandbox_run_id": "s",
+        }
+    ]
     verdict, _, reasons = verify_agent.compute_verdict(evidence(test_runs=runs))
     assert verdict == "rejected"
     assert any("tests/test_authz.py" in r for r in reasons)
@@ -557,13 +631,21 @@ def test_verify_verdict_is_independent_of_agent_summary():
         None,
         verify_agent.input_from_candidate(
             __import__("security_agents.contracts", fromlist=["PatchCandidate"]).PatchCandidate(
-                finding_id="fnd_1", attempt=1, diff_uri="u", diff_sha256="s", worktree_ref="w",
-                files_changed=["payments_lite/app.py"], tests_added=["tests/test_authz.py"],
+                finding_id="fnd_1",
+                attempt=1,
+                diff_uri="u",
+                diff_sha256="s",
+                worktree_ref="w",
+                files_changed=["payments_lite/app.py"],
+                tests_added=["tests/test_authz.py"],
                 local_test_run_id=None,
             ),
             diagnose_agent.to_plan(diagnose_output(), diagnose_input(), None or _IntelStub())[1],
             None,
-            assessment_id="asm", scope_id="scp", target_id="tgt", baseline_failing=[],
+            assessment_id="asm",
+            scope_id="scp",
+            target_id="tgt",
+            baseline_failing=[],
         ),
         evidence(original_check_ref=None),
         sandbox_run_ids=["sbx_t"],
@@ -597,8 +679,13 @@ class _IntelStub:
 
         return [
             BehavioralExpectation(
-                id="exp_owner_only", snapshot_id="snp", subject_ref="payments_lite/app.py",
-                statement="s", kind="access_control", confidence=Confidence.HIGH, origin="fixture",
+                id="exp_owner_only",
+                snapshot_id="snp",
+                subject_ref="payments_lite/app.py",
+                statement="s",
+                kind="access_control",
+                confidence=Confidence.HIGH,
+                origin="fixture",
                 status="confirmed",
             )
         ]
@@ -611,14 +698,21 @@ def test_patch_candidate_reflects_the_worktree_not_the_claim(intel, tmp_path):
     from security_agents.tools import PatchWorktree
 
     wt = PatchWorktree.create(intel, tmp_path / "wt", ["payments_lite/app.py"])
-    wt.write_file("payments_lite/app.py", (intel.snapshot.root / "payments_lite/app.py").read_text() + "\n# fix\n")
+    wt.write_file(
+        "payments_lite/app.py", (intel.snapshot.root / "payments_lite/app.py").read_text() + "\n# fix\n"
+    )
     out = patch_agent.PatchOutput(
-        explanation="x", files_changed=["payments_lite/app.py", "payments_lite/store.py"],
-        tests_added=["tests/test_imaginary.py"], local_tests_passed=True,
+        explanation="x",
+        files_changed=["payments_lite/app.py", "payments_lite/store.py"],
+        tests_added=["tests/test_imaginary.py"],
+        local_tests_passed=True,
     )
     data = patch_agent.input_from_plan(
         diagnose_agent.to_plan(diagnose_output(), diagnose_input(), intel)[1],
-        assessment_id="asm", approval_id="apv", attempt=1, cause_paths=[],
+        assessment_id="asm",
+        approval_id="apv",
+        attempt=1,
+        cause_paths=[],
     )
     candidate, diff, notes = patch_agent.to_candidate(out, data, wt, diff_uri="u")
     assert candidate is not None
@@ -632,11 +726,19 @@ def test_patch_with_no_changes_yields_no_candidate(intel, tmp_path):
     from security_agents.tools import PatchWorktree
 
     wt = PatchWorktree.create(intel, tmp_path / "wt2", ["payments_lite/app.py"])
-    out = patch_agent.PatchOutput(explanation="could not fix", files_changed=[], tests_added=[],
-                                  local_tests_passed=False, blocked_reason="needs a dependency change")
+    out = patch_agent.PatchOutput(
+        explanation="could not fix",
+        files_changed=[],
+        tests_added=[],
+        local_tests_passed=False,
+        blocked_reason="needs a dependency change",
+    )
     data = patch_agent.input_from_plan(
         diagnose_agent.to_plan(diagnose_output(), diagnose_input(), intel)[1],
-        assessment_id="asm", approval_id="apv", attempt=1, cause_paths=[],
+        assessment_id="asm",
+        approval_id="apv",
+        attempt=1,
+        cause_paths=[],
     )
     candidate, diff, notes = patch_agent.to_candidate(out, data, wt, diff_uri="u")
     assert candidate is None and diff == ""
@@ -645,26 +747,41 @@ def test_patch_with_no_changes_yields_no_candidate(intel, tmp_path):
 
 def test_fortify_promotes_only_real_added_tests(intel):
     data = fortify_agent.FortifyInput(
-        assessment_id="asm", finding_id="fnd_1", verification_result_id="ver_1",
-        root_cause_summary="x", cause_class="missing_check", tests_added=["tests/test_authz.py"],
+        assessment_id="asm",
+        finding_id="fnd_1",
+        verification_result_id="ver_1",
+        root_cause_summary="x",
+        cause_class="missing_check",
+        tests_added=["tests/test_authz.py"],
         affected_symbol="get_payment",
     )
     out = fortify_agent.FortifyOutput(
         recommendations=[
             fortify_agent.RecommendationOut(
-                category="centralize_check", recommendation="route every read through the scoped lookup",
-                reference_path="payments_lite/store.py", reference_start_line=60, reference_end_line=70,
+                category="centralize_check",
+                recommendation="route every read through the scoped lookup",
+                reference_path="payments_lite/store.py",
+                reference_start_line=60,
+                reference_end_line=70,
                 effort="small",
             )
         ],
         future_hypotheses=[
             fortify_agent.FutureHypothesisOut(
-                weakness_class="CWE-639", title="sibling route", rationale="same shape",
-                path="payments_lite/app.py", start_line=40, end_line=50,
+                weakness_class="CWE-639",
+                title="sibling route",
+                rationale="same shape",
+                path="payments_lite/app.py",
+                start_line=40,
+                end_line=50,
             ),
             fortify_agent.FutureHypothesisOut(
-                weakness_class="CWE-639", title="phantom", rationale="x",
-                path="payments_lite/ghost.py", start_line=1, end_line=2,
+                weakness_class="CWE-639",
+                title="phantom",
+                rationale="x",
+                path="payments_lite/ghost.py",
+                start_line=1,
+                end_line=2,
             ),
         ],
         monitoring_hints=["/payments/{payment_id}"],
@@ -680,8 +797,12 @@ def test_fortify_promotes_only_real_added_tests(intel):
 
 def test_fortify_without_added_tests_promotes_nothing(intel):
     data = fortify_agent.FortifyInput(
-        assessment_id="asm", finding_id="f", verification_result_id="v", root_cause_summary="x",
-        cause_class="missing_check", tests_added=[],
+        assessment_id="asm",
+        finding_id="f",
+        verification_result_id="v",
+        root_cause_summary="x",
+        cause_class="missing_check",
+        tests_added=[],
     )
     out = fortify_agent.FortifyOutput(
         recommendations=[
