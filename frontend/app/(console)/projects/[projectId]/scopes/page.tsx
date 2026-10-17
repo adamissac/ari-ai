@@ -7,7 +7,7 @@ import { Term } from '@/components/term';
 import { useSession } from '@/components/session';
 import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, Panel, Time } from '@/components/ui';
 import { api } from '@/lib/api';
-import { SCOPE_CHECK_CATEGORIES } from '@/lib/scope';
+import { REQUEST_SCOPE_NOTE, SCOPE_CHECK_CATEGORIES } from '@/lib/scope';
 import { SCOPE_STATUS } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
 
@@ -102,6 +102,7 @@ function RequestScope({ onCreated }: { onCreated: () => void }) {
   };
   return (
     <Panel title="Request a scope">
+      <p className="mb-3 text-sm text-muted" data-testid="request-scope-note">{REQUEST_SCOPE_NOTE}</p>
       {repos.length === 0 ? <Empty>Connect a repository first.</Empty> : (
         <form onSubmit={submit} className="flex flex-col gap-3">
           <Field label="Name"><input className={inputClass} value={name} onChange={e => setName(e.target.value)} required name="scope_name" /></Field>
