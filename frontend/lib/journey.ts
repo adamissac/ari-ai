@@ -228,3 +228,24 @@ function stage(
 ): JourneyStage {
   return { id: group.id, label: group.label, status, detail };
 }
+
+/** Phases of one assessment. Monitor is omitted because this log is not the project event feed. */
+export function assessmentPhases(input: {
+  state: AssessmentState;
+  events: readonly { type: string; state: string | null; message: string }[] | null;
+  findingStatuses: readonly string[];
+}): JourneyStage[] {
+  return projectJourney({
+    repoCount: 1,
+    activeScopeCount: 1,
+    current: input.state,
+    visited: input.events === null ? null : statesFromLog(input.events),
+    findingStatuses: input.findingStatuses,
+    monitoringEnabled: false,
+    monitoringKnown: true,
+    monitoringEventCount: 0,
+    monitoringTruncated: false,
+    monitoringFailed: false,
+    newestMonitoringSimulated: false,
+  }).filter(item => item.id !== 'monitor');
+}
