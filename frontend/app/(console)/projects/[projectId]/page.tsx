@@ -1,13 +1,17 @@
 'use client';
 
-import type { Assessment, Repository, Snapshot } from '@hackatl/frontend-transport';
+import type { Assessment, AssessmentState, Repository, Snapshot } from '@hackatl/frontend-transport';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useProject } from '@/components/project';
 import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, Panel, Stat, Time } from '@/components/ui';
 import { api, idempotencyKey } from '@/lib/api';
+import { CONNECT_REPOSITORY_NOTE } from '@/lib/connect';
+import { INDEX_COMMIT_NOTE } from '@/lib/index-commit';
 import { shortSha, usd } from '@/lib/format';
+import { JOURNEY_STATUS, latestAssessmentEvent, projectJourney, statesFromLog } from '@/lib/journey';
+import { projectOverview } from '@/lib/overview';
 import { ASSESSMENT_STATE, FINDING_STATUS, SNAPSHOT_STATUS } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
 
@@ -17,7 +21,48 @@ export default function ProjectOverview() {
   const { project, repos } = useProject();
   const assessments = useResource(`asm:${project.id}`, s => api().assessments(project.id, { signal: s }), 5000);
   const findings = useResource(`fnd:${project.id}`, s => api().findings(project.id, { signal: s }), 10000);
+  const scopes = useResource(`scopes:${project.id}`, s => api().scopes(project.id, { signal: s }));
+  const assessmentItems = assessments.status === 'ready' ? assessments.data.items : [];
+  const findingItems = findings.status === 'ready' ? findings.data.items : [];
+  const scopeItems = scopes.status === 'ready' ? scopes.data.items : [];
+  const activeScopeCount = scopeItems.filter(s => s.status === 'active').length;
+  const summary = projectOverview({
+    projectId: project.id,
+    repoCount: repos.length,
+    activeScopeCount,
+    monitoringEnabled: project.settings.monitoring_policy.enabled,
+    assessments: assessmentItems,
+    findings: findingItems,
+  });
+  const ready = assessments.status === 'ready' && findings.status === 'ready' && scopes.status === 'ready';
   return (
+    <div className="flex flex-col gap-4">
+      <section aria-label="Project summary" className="rounded-xl border border-line bg-panel p-5" data-testid="project-summary">
+        {ready ? (
+          <>
+            <h2 className="text-xl font-semibold tracking-tight">{summary.headline}</h2>
+            <p className="mt-2 max-w-3xl text-sm text-muted">{summary.detail}</p>
+            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+              <Stat label="Code health" value={summary.codeOpen} hint="open functional findings" />
+              <Stat label="Security" value={summary.securityOpen} hint="confirmed, not hypotheses" />
+              <Stat label="Continuous defense" value={summary.monitoring} hint={`${summary.verifiedFixes} verified fixes`} />
+            </div>
+            <div className="mt-4">
+              <a href={summary.action.href} className="inline-flex items-center rounded-full bg-brand px-4 py-2 text-sm font-medium text-on-brand hover:bg-brand-deep">{summary.action.label}</a>
+            </div>
+          </>
+        ) : <p className="text-sm text-muted">Loading the current project records…</p>}
+      </section>
+      {ready && (
+        <ProjectJourney
+          projectId={project.id}
+          repoCount={repos.length}
+          activeScopeCount={activeScopeCount}
+          monitoringEnabled={project.settings.monitoring_policy.enabled}
+          assessments={assessmentItems}
+          findingStatuses={findingItems.map(f => f.status)}
+        />
+      )}
     <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
       <div className="flex flex-col gap-4">
         <Panel title="Assessments" actions={<span className="text-xs text-muted">refreshes every 5 s</span>}>
@@ -57,6 +102,75 @@ export default function ProjectOverview() {
         <Repositories repos={repos} />
       </div>
     </div>
+    </div>
+  );
+}
+
+function ProjectJourney({
+  projectId, repoCount, activeScopeCount, monitoringEnabled, assessments, findingStatuses,
+}: {
+  projectId: string;
+  repoCount: number;
+  activeScopeCount: number;
+  monitoringEnabled: boolean;
+  assessments: readonly Assessment[];
+  findingStatuses: readonly string[];
+}) {
+  const latest = [...assessments].sort((a, b) => (a.created_at < b.created_at ? 1 : -1))[0] ?? null;
+  const events = useResource(
+    `journey-events:${latest?.id ?? 'none'}`,
+    signal => latest ? api().eventsLog(latest.id, 0, { signal }) : Promise.resolve({ items: [], next_cursor: null }),
+  );
+  const monitoring = useResource(
+    `journey-mon:${projectId}`,
+    signal => api().monitoringEvents(projectId, { signal }),
+    15000,
+  );
+  const logReady = latest === null || events.status !== 'loading';
+  const visited = events.status === 'ready' ? statesFromLog(events.data.items) : null;
+  const monitoringItems = monitoring.status === 'ready' ? monitoring.data.items : [];
+  const stages = projectJourney({
+    repoCount,
+    activeScopeCount,
+    current: (latest?.state ?? null) as AssessmentState | null,
+    visited: logReady ? visited : null,
+    findingStatuses,
+    monitoringEnabled,
+    monitoringKnown: monitoring.status === 'ready',
+    monitoringEventCount: monitoringItems.length,
+    monitoringTruncated: monitoringItems.length >= 50,
+    monitoringFailed: monitoringItems.some(event => event.status === 'failed'),
+    newestMonitoringSimulated: monitoringItems[0]?.simulated === true,
+  });
+  const latestEvent = events.status === 'ready' ? latestAssessmentEvent(events.data.items) : null;
+  const assessmentHref = latest ? `/projects/${projectId}/assessments/${latest.id}` : null;
+
+  return (
+    <section aria-label="Check progress" className="rounded-xl border border-line bg-panel p-5" data-testid="project-journey">
+      <h2 className="text-sm font-semibold tracking-tight">Where this check is</h2>
+      {!logReady ? <p className="mt-2 text-sm text-muted">Loading the recorded phases…</p> : (
+        <ol className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {stages.map(item => {
+            const href = item.id === 'monitor' ? `/projects/${projectId}/monitoring` : assessmentHref;
+            return (
+              <li key={item.id} className="rounded-lg border border-line p-3" data-testid={`journey-${item.id}`}>
+                <p className="text-sm font-medium">{item.label}</p>
+                <p className="text-xs text-muted">{JOURNEY_STATUS[item.status]}</p>
+                <p className="mt-1 text-xs text-muted">{item.detail}</p>
+                {href && <Link className="mt-2 inline-block text-xs text-accent hover:underline" href={href}>Open</Link>}
+              </li>
+            );
+          })}
+        </ol>
+      )}
+      {latestEvent && (
+        <p className="mt-3 text-sm text-muted" data-testid="project-latest-event">
+          Latest recorded event: {latestEvent.message} <Time iso={latestEvent.at} />
+        </p>
+      )}
+      {events.status === 'error' && <div className="mt-3"><ErrorState error={events.error} onRetry={events.reload} context="Event log" /></div>}
+      {monitoring.status === 'error' && <div className="mt-3"><ErrorState error={monitoring.error} onRetry={monitoring.reload} context="Monitoring events" /></div>}
+    </section>
   );
 }
 
@@ -113,7 +227,7 @@ function StartAssessment({ onStarted }: { onStarted: () => void }) {
   };
 
   return (
-    <Panel title="Start an assessment">
+    <Panel title="Start an assessment" id="start-assessment">
       {repos.length === 0 ? <Empty>Connect a repository first.</Empty> : (
         <form onSubmit={submit} className="grid gap-3 sm:grid-cols-3">
           <Field label="Repository">
@@ -159,11 +273,15 @@ function Repositories({ repos }: { repos: Repository[] }) {
     } catch (err) { setError(err); } finally { setBusy(false); }
   };
   return (
-    <Panel title="Repositories">
+    <Panel title="Repositories" id="connect-repo">
+      <p className="mb-3 text-sm text-muted" data-testid="connect-repository-note">{CONNECT_REPOSITORY_NOTE}</p>
       {repos.length === 0 ? <Empty>No repository connected.</Empty> : (
+        <>
+        <p className="mb-3 text-sm text-muted" data-testid="index-commit-note">{INDEX_COMMIT_NOTE}</p>
         <ul className="flex flex-col gap-3">
           {repos.map(r => <RepoRow key={r.id} repo={r} />)}
         </ul>
+        </>
       )}
       <form onSubmit={connect} className="mt-4 grid gap-2 border-t border-line pt-3 sm:grid-cols-[2fr_1fr_auto] sm:items-end">
         <Field label="owner/name"><input className={inputClass} value={fullName} onChange={e => setFullName(e.target.value)} required pattern="[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+" name="full_name" /></Field>

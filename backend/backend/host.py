@@ -13,6 +13,8 @@ independent of any prompt:
 * a VerificationResult must come from a ``verify`` AgentRun that is not the run
   that produced the patch (Verify independence);
 * REMEDIATION is only reachable through an approved ``remediation`` approval.
+* approval-pause checkpoints are hashed artifacts, keyed per assessment + namespace;
+  ``claim_checkpoint`` consumes the latest payload under an assessment row lock.
 
 Integration contract (published V0, see coordination message):
 
@@ -70,12 +72,14 @@ from shared.evidence import ArtifactKind, ArtifactRef, EvidenceKind
 from shared.findings import (
     AttackPath,
     Finding,
+    FindingStatus,
     HardeningRecommendation,
     Hypothesis,
     PatchCandidate,
     RemediationPlan,
     RootCause,
     SeverityAssessment,
+    StatusChange,
     ValidationResult,
     VerificationResult,
 )
@@ -104,6 +108,21 @@ _RECORD_TYPES: dict[type[BaseModel], str] = {
     RemediationPlan: "remediation_plan",
     HardeningRecommendation: "hardening",
 }
+
+# Finding lifecycle (docs/12). Agents report a status; the host applies it only along these
+# edges and only when the persisted evidence supports it (see _STATUS_EVIDENCE).
+_S = FindingStatus
+_STATUS_EDGES: dict[FindingStatus, frozenset[FindingStatus]] = {
+    _S.hypothesis: frozenset({_S.validated, _S.refuted, _S.inconclusive}),
+    _S.inconclusive: frozenset({_S.validated, _S.refuted}),
+    _S.validated: frozenset({_S.diagnosed, _S.inconclusive}),
+    _S.diagnosed: frozenset({_S.patch_proposed, _S.unresolved}),
+    _S.patch_proposed: frozenset({_S.verified, _S.patch_rejected, _S.unresolved}),
+    _S.patch_rejected: frozenset({_S.patch_proposed, _S.unresolved}),
+    _S.verified: frozenset({_S.hardened, _S.closed}),
+    _S.hardened: frozenset({_S.closed}),
+}
+_ANYTIME = frozenset({_S.needs_recheck, _S.accepted_risk, _S.closed})
 
 
 def _emit(
@@ -269,18 +288,21 @@ class AssessmentHost:
     def charge(self, usage: Usage) -> None:
         """Add usage to the assessment total; enforces the budget afterwards."""
         with transaction() as conn:
-            row = self._row(conn, lock=True)
-            a = Assessment.model_validate(row["doc"])
-            total = a.usage.model_copy(
-                update={k: getattr(a.usage, k) + getattr(usage, k) for k in Usage.model_fields}
-            )
-            a = a.model_copy(update={"usage": total, "updated_at": utcnow()})
-            conn.execute(
-                sa.update(assessments)
-                .where(assessments.c.id == self.assessment_id)
-                .values(doc=a.model_dump(mode="json"), updated_at=sa.func.now())
-            )
+            self._add_usage(conn, usage)
         self.ensure_budget()
+
+    def _add_usage(self, conn: Connection, usage: Usage) -> None:
+        row = self._row(conn, lock=True)
+        a = Assessment.model_validate(row["doc"])
+        total = a.usage.model_copy(
+            update={k: getattr(a.usage, k) + getattr(usage, k) for k in Usage.model_fields}
+        )
+        a = a.model_copy(update={"usage": total, "updated_at": utcnow()})
+        conn.execute(
+            sa.update(assessments)
+            .where(assessments.c.id == self.assessment_id)
+            .values(doc=a.model_dump(mode="json"), updated_at=sa.func.now())
+        )
 
     # ------------------------------------------------------------- transitions
     def transition(self, target: AssessmentState, message: str = "") -> Assessment:
@@ -380,6 +402,93 @@ class AssessmentHost:
                 agent=agent,
                 data=data,
             )
+
+    def save_checkpoint(self, namespace: str, payload: dict[str, Any]) -> None:
+        """Publish an assessment-scoped pointer to a hashed JSON artifact.
+
+        Salvaged from PR #35 (``feat/alan/seven-agent-runtime``) so a worker
+        restart can rebuild the orchestrator. Latest write for a namespace wins.
+        """
+        self.check_cancelled()
+        if not namespace or len(namespace) > 100:
+            raise HostError(ErrorCode.VALIDATION_FAILED, "invalid checkpoint namespace")
+        with transaction() as conn:
+            self._row(conn)
+            ref = self.store.put_json(
+                conn, payload, kind=ArtifactKind.other, project_id=self.project_id
+            )
+            _emit(
+                conn,
+                self.assessment_id,
+                StreamEventType.progress,
+                "checkpoint saved",
+                data={"checkpoint_namespace": namespace, "checkpoint_artifact_id": ref.id},
+            )
+
+    def load_checkpoint(self, namespace: str) -> dict[str, Any] | None:
+        """Load only this assessment's latest checkpoint, checking artifact integrity."""
+        with transaction() as conn:
+            self._row(conn)
+            event = self._latest_checkpoint_event(conn, namespace)
+            if event is None or event.get("data", {}).get("checkpoint_consumed"):
+                return None
+            row, content = self.store.get(conn, event["data"]["checkpoint_artifact_id"])
+            if row["project_id"] != self.project_id:
+                raise HostError(ErrorCode.VALIDATION_FAILED, "checkpoint project mismatch")
+        payload = json.loads(content)
+        if not isinstance(payload, dict):
+            raise HostError(ErrorCode.VALIDATION_FAILED, "checkpoint must be an object")
+        return payload
+
+    def claim_checkpoint(self, namespace: str) -> dict[str, Any] | None:
+        """Atomically consume this assessment's latest checkpoint for ``namespace``.
+
+        Serialized with ``FOR UPDATE`` on the assessment row so two workers cannot
+        both resume Patch/Verify from the same payload. Returns the payload when
+        this caller uniquely claimed it, or ``None`` when a previous caller already
+        consumed it. Raises ``CONFLICT_STATE`` when no checkpoint was ever saved.
+        """
+        self.check_cancelled()
+        if not namespace or len(namespace) > 100:
+            raise HostError(ErrorCode.VALIDATION_FAILED, "invalid checkpoint namespace")
+        with transaction() as conn:
+            self._row(conn, lock=True)
+            event = self._latest_checkpoint_event(conn, namespace)
+            if event is None:
+                raise HostError(ErrorCode.CONFLICT_STATE, "no checkpoint to claim")
+            if event.get("data", {}).get("checkpoint_consumed"):
+                return None
+            artifact_id = event["data"]["checkpoint_artifact_id"]
+            row, content = self.store.get(conn, artifact_id)
+            if row["project_id"] != self.project_id:
+                raise HostError(ErrorCode.VALIDATION_FAILED, "checkpoint project mismatch")
+            payload = json.loads(content)
+            if not isinstance(payload, dict):
+                raise HostError(ErrorCode.VALIDATION_FAILED, "checkpoint must be an object")
+            _emit(
+                conn,
+                self.assessment_id,
+                StreamEventType.progress,
+                "checkpoint consumed",
+                data={
+                    "checkpoint_namespace": namespace,
+                    "checkpoint_artifact_id": artifact_id,
+                    "checkpoint_consumed": True,
+                },
+            )
+            return payload
+
+    def _latest_checkpoint_event(self, conn: Connection, namespace: str) -> dict[str, Any] | None:
+        event = conn.execute(
+            sa.select(assessment_events.c.doc)
+            .where(
+                assessment_events.c.assessment_id == self.assessment_id,
+                assessment_events.c.doc["data"]["checkpoint_namespace"].astext == namespace,
+            )
+            .order_by(assessment_events.c.seq.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+        return dict(event) if isinstance(event, dict) else None
 
     # --------------------------------------------------------------------- llm
     def llm(self) -> Any:
@@ -502,6 +611,10 @@ class AssessmentHost:
                 .where(agent_runs.c.id == run_id)
                 .values(status=status.value, doc=run.model_dump(mode="json"))
             )
+            if run.tool_calls:
+                # The gateway charges tokens/LLM calls per request; tool calls are counted here,
+                # once, when the run's tool history is final.
+                self._add_usage(conn, Usage(tool_calls=len(run.tool_calls)))
             _emit(
                 conn,
                 self.assessment_id,
@@ -614,6 +727,104 @@ class AssessmentHost:
                 data={"actor": "system:standards", "classification_only": True},
             )
 
+    def set_finding_status(
+        self, finding_id: str, status: FindingStatus | str, *, actor: str, reason: str | None = None
+    ) -> Finding:
+        """Apply a lifecycle transition with a StatusChange entry (idempotent for same status).
+
+        Deterministic gates: the edge must be in the docs/12 lifecycle, and validated /
+        refuted / patch_proposed / verified require the matching persisted evidence (a
+        ValidationResult with that outcome, a PatchCandidate, an accepted Verify).
+        """
+        target = FindingStatus(status)
+        with transaction() as conn:
+            doc = conn.execute(
+                sa.select(findings.c.doc)
+                .where(
+                    findings.c.id == finding_id,
+                    findings.c.assessment_id == self.assessment_id,
+                )
+                .with_for_update()
+            ).scalar()
+            if doc is None:
+                raise HostError(ErrorCode.NOT_FOUND, f"finding {finding_id} not in this assessment")
+            finding = Finding.model_validate(doc)
+            if finding.status is target:
+                return finding
+            if target not in _ANYTIME and target not in _STATUS_EDGES.get(
+                finding.status, frozenset()
+            ):
+                raise HostError(
+                    ErrorCode.CONFLICT_STATE,
+                    f"finding {finding_id}: {finding.status.value} -> {target.value} not allowed",
+                )
+            missing = self._status_evidence_missing(conn, finding_id, target)
+            if missing:
+                raise HostError(ErrorCode.VALIDATION_FAILED, f"{target.value} requires {missing}")
+            now = utcnow()
+            change = StatusChange(
+                from_status=finding.status, to_status=target, at=now, actor=actor, reason=reason
+            )
+            updated = Finding.model_validate(
+                finding.model_copy(
+                    update={
+                        "status": target,
+                        "history": [*finding.history, change],
+                        "updated_at": now,
+                    }
+                ).model_dump(mode="json")
+            )
+            conn.execute(
+                sa.update(findings)
+                .where(findings.c.id == finding_id)
+                .values(status=target.value, doc=updated.model_dump(mode="json"))
+            )
+            _emit(
+                conn,
+                self.assessment_id,
+                StreamEventType.finding_updated,
+                f"{finding.kind.value} finding {finding.status.value} -> {target.value}: "
+                f"{finding.title}",
+                finding_id=finding_id,
+                data={"status": target.value, "from_status": finding.status.value, "actor": actor},
+            )
+        return updated
+
+    @staticmethod
+    def _status_evidence_missing(conn: Connection, finding_id: str, target: FindingStatus) -> str:
+        if target in (FindingStatus.validated, FindingStatus.refuted):
+            outcome = "confirmed" if target is FindingStatus.validated else "refuted"
+            docs = conn.execute(
+                sa.select(finding_records.c.doc).where(
+                    finding_records.c.finding_id == finding_id,
+                    finding_records.c.record_type == "validation_result",
+                )
+            ).scalars()
+            if not any(d.get("outcome") == outcome for d in docs):
+                return f"a persisted {outcome} ValidationResult"
+        if target is FindingStatus.patch_proposed:
+            if (
+                conn.execute(
+                    sa.select(patch_candidates.c.id).where(
+                        patch_candidates.c.finding_id == finding_id
+                    )
+                ).first()
+                is None
+            ):
+                return "a persisted PatchCandidate"
+        if target is FindingStatus.verified:
+            accepted = conn.execute(
+                sa.select(verification_results.c.id)
+                .join(patch_candidates, patch_candidates.c.id == verification_results.c.patch_id)
+                .where(
+                    patch_candidates.c.finding_id == finding_id,
+                    verification_results.c.verdict == "accepted",
+                )
+            ).first()
+            if accepted is None:
+                return "an accepted VerificationResult for this finding's patch"
+        return ""
+
     def record(self, finding_id: str, record: BaseModel) -> None:
         """Persist Hypothesis/ValidationResult/AttackPath/RootCause/RemediationPlan/Hardening."""
         rtype = _RECORD_TYPES.get(type(record))
@@ -676,6 +887,11 @@ class AssessmentHost:
             raise HostError(
                 ErrorCode.FORBIDDEN, "Verify must run independently of the patch-producing run"
             )
+        if vrun.status is not AgentRunStatus.succeeded:
+            raise HostError(
+                ErrorCode.CONFLICT_STATE,
+                "VerificationResult must cite a finished successful verify run",
+            )
         if result.verdict.value == "accepted":
             from shared.findings import VerificationCheckName
 
@@ -712,6 +928,44 @@ class AssessmentHost:
         return result
 
     # --------------------------------------------------------------- approvals
+    def record_roe(self, doc: dict[str, Any]) -> ArtifactRef:
+        """Persist the rules-of-engagement document the orchestrator issued at SCOPE_CHECK
+        (security_agents.standards.roe, NIST SP 800-115 App. B alignment).
+
+        Checked here, not trusted: it must name this assessment's project and scope, carry the
+        scope's current status, and its ``digest`` must equal the sha256 of the document body.
+        Stored as a content-addressed artifact; the hash-chained audit event ``roe.recorded``
+        on the assessment is the durable pointer the API serves it from.
+        """
+        if not isinstance(doc, dict):
+            raise HostError(ErrorCode.VALIDATION_FAILED, "rules of engagement must be an object")
+        scope = self.scope
+        if doc.get("project_id") != self.project_id or doc.get("scope_id") != scope.id:
+            raise HostError(
+                ErrorCode.VALIDATION_FAILED, "rules of engagement name another project or scope"
+            )
+        body = {k: v for k, v in doc.items() if k != "digest"}
+        digest = hashlib.sha256(json.dumps(body, sort_keys=True, default=str).encode()).hexdigest()
+        if not doc.get("digest") or doc["digest"] != digest:
+            raise HostError(ErrorCode.VALIDATION_FAILED, "rules of engagement digest mismatch")
+        self.require_active_scope()
+        ref = self.store_json(doc, ArtifactKind.report)
+        with transaction() as conn:
+            audit.record(
+                conn,
+                org_id=self.org_id,
+                project_id=self.project_id,
+                actor_type=ActorType.system,
+                actor_id="orchestrator",
+                action="roe.recorded",
+                subject_type="assessment",
+                subject_id=self.assessment_id,
+                details={"artifact_id": ref.id, "roe_id": str(doc.get("id")), "digest": digest},
+            )
+        # No stream event: the adapter hands the RoE over while settling, which can be after
+        # the terminal event, and nothing may follow that in the SSE stream (clients close).
+        return ref
+
     def request_approval(
         self, subject_type: ApprovalSubject, subject_id: str, reason: str
     ) -> Approval:

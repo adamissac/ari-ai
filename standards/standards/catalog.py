@@ -20,7 +20,9 @@ from functools import cache
 from importlib import resources
 from typing import Any, Literal
 
-Framework = Literal["attack", "attack_tactic", "d3fend", "cwe", "capec", "owasp_llm", "nist_csf"]
+Framework = Literal[
+    "attack", "attack_tactic", "d3fend", "cwe", "capec", "owasp_llm", "owasp_api", "nist_csf"
+]
 EntryStatus = Literal["active", "deprecated", "revoked"]
 
 

@@ -1,13 +1,15 @@
 'use client';
 
-import type { FindingDetail, FindingRecord, PatchView } from '@hackatl/frontend-transport';
+import { findingStandards, type FindingDetail, type FindingRecord, type PatchView } from '@hackatl/frontend-transport';
 import Link from 'next/link';
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { ExpectationLinks } from '@/components/expectation-links';
 import { ArtifactPeek, EvidenceList } from '@/components/evidence';
 import { useParam, useProject } from '@/components/project';
 import { useSession } from '@/components/session';
 import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, PageTitle, Panel, Tag, Time } from '@/components/ui';
 import { api } from '@/lib/api';
+import { findingStory, repoFullNameForEvidence } from '@/lib/finding-story';
 import { shortSha } from '@/lib/format';
 import { FINDING_STATUS, SEVERITY, VALIDATION_OUTCOME, VERDICT } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
@@ -29,10 +31,21 @@ export default function FindingPage() {
   const { project, repos } = useProject();
   const detail = useResource(`finding:${id}`, s => api().finding(id, { signal: s }));
   const patches = useResource(`patches:${id}`, s => api().patches(id, { signal: s }));
-  const repo = repos.length === 1 ? repos[0]?.full_name : undefined;
   return (
     <Async resource={detail} label="finding">
-      {d => (
+      {d => {
+        const patchItems = patches.status === 'ready' ? patches.data.items : [];
+        const last = patchItems[patchItems.length - 1];
+        const validation = of(d.records, 'validation_result')[0]?.outcome ?? null;
+        const story = findingStory({
+          title: d.finding.title,
+          status: d.finding.status,
+          severityRationale: d.finding.severity?.rationale ?? null,
+          validationOutcome: validation,
+          patchRationale: last?.patch.rationale ?? null,
+          verification: last?.verification?.verdict ?? null,
+        });
+        return (
         <>
           <PageTitle
             title={<span className="flex flex-wrap items-center gap-2">{d.finding.title} <Badge view={FINDING_STATUS[d.finding.status]} /></span>}
@@ -43,9 +56,22 @@ export default function FindingPage() {
               {' '}· confidence {(d.finding.confidence * 100).toFixed(0)}%
             </>}
           />
-          <div className="grid gap-4 xl:grid-cols-[3fr_2fr]">
+          <Panel title="What happened">
+            <dl className="grid gap-3 sm:grid-cols-2" data-testid="finding-story">
+              {story.map(line => (
+                <div key={line.label}>
+                  <dt className="text-xs font-semibold text-faint">{line.label}</dt>
+                  <dd className="mt-0.5 text-sm text-ink">{line.text}</dd>
+                </div>
+              ))}
+            </dl>
+          </Panel>
+          <RepoScope assessmentId={d.finding.assessment_id} projectId={project.id} repos={repos}>
+          {(repo, note) => (
+          <div className="mt-4 grid gap-4 xl:grid-cols-[3fr_2fr]">
             <div className="flex flex-col gap-4">
-              <EvidenceChain detail={d} patches={patches.status === 'ready' ? patches.data.items : null} repo={repo} />
+              {note && <p className="text-xs text-muted">{note}</p>}
+              <EvidenceChain detail={d} patches={patchItems} repo={repo} projectId={project.id} />
               <Panel title="Patches and independent verification">
                 <Async resource={patches} label="patches">
                   {page => page.items.length === 0 ? <Empty>No patch candidate recorded for this finding.</Empty> : (
@@ -55,6 +81,7 @@ export default function FindingPage() {
               </Panel>
             </div>
             <div className="flex flex-col gap-4">
+              <StandardsPanel finding={d.finding} />
               {d.finding.severity && (
                 <Panel title="Severity">
                   <Badge view={SEVERITY[d.finding.severity.level]} />
@@ -84,10 +111,71 @@ export default function FindingPage() {
               <AcceptRisk detail={d} onDone={detail.reload} />
             </div>
           </div>
+          )}
+          </RepoScope>
         </>
-      )}
+        );
+      }}
     </Async>
   );
+}
+
+function StandardsPanel({ finding }: { finding: FindingDetail['finding'] }) {
+  const view = findingStandards(finding);
+  return (
+    <Panel title="Standards">
+      <div data-testid="finding-standards">
+      <p className="text-sm">{view.cvss}</p>
+      {view.labels.length === 0 ? <p className="mt-2 text-xs text-faint">No CWE, ATT&CK, or D3FEND mapping was recorded.</p> : (
+        <ul className="mt-2 flex flex-col gap-1 text-xs text-muted">
+          {view.labels.map(label => <li key={label}>{label}</li>)}
+        </ul>
+      )}
+      {view.limitations.length > 0 && (
+        <ul className="mt-2 list-disc pl-4 text-xs text-muted">
+          {view.limitations.map(item => <li key={item}>{item}</li>)}
+        </ul>
+      )}
+      </div>
+    </Panel>
+  );
+}
+
+function RepoScope({ assessmentId, projectId, repos, children }: {
+  assessmentId: string;
+  projectId: string;
+  repos: { id: string; full_name: string }[];
+  children: (repo: string | undefined, note: string | null) => ReactNode;
+}) {
+  const repoKey = repos.map(repo => `${repo.id}:${repo.full_name}`).join('\n');
+  const listed = repoKey === '' ? [] : repoKey.split('\n').map(row => {
+    const split = row.indexOf(':');
+    return { id: row.slice(0, split), full_name: row.slice(split + 1) };
+  });
+  const [resolved, setResolved] = useState<{ name: string | undefined; note: string | null } | null>(null);
+  useEffect(() => {
+    const rows = repoKey === '' ? [] : repoKey.split('\n').map(row => {
+      const split = row.indexOf(':');
+      return { id: row.slice(0, split), full_name: row.slice(split + 1) };
+    });
+    if (rows.length <= 1) return;
+    const controller = new AbortController();
+    const signal = controller.signal;
+    (async () => {
+      const [assessment, scopes] = await Promise.all([
+        api().assessment(assessmentId, { signal }),
+        api().scopes(projectId, { signal }),
+      ]);
+      const scope = scopes.items.find(item => item.id === assessment.assessment.scope_id);
+      const name = repoFullNameForEvidence(rows, scope?.targets ?? null);
+      if (!signal.aborted) setResolved({ name, note: name ? null : 'Source lines stay unlinked: this scope does not name exactly one repository.' });
+    })().catch((error: unknown) => {
+      if (!signal.aborted) setResolved({ name: undefined, note: error instanceof Error ? error.message : 'Could not resolve the repository for source links.' });
+    });
+    return () => controller.abort();
+  }, [assessmentId, projectId, repoKey]);
+  if (listed.length <= 1) return children(listed[0]?.full_name, null);
+  return children(resolved?.name, resolved?.note ?? null);
 }
 
 function Step({ n, title, who, children, empty }: { n: number; title: string; who: string; children?: ReactNode; empty?: string }) {
@@ -100,7 +188,7 @@ function Step({ n, title, who, children, empty }: { n: number; title: string; wh
   );
 }
 
-function EvidenceChain({ detail, patches, repo }: { detail: FindingDetail; patches: PatchView[] | null; repo: string | undefined }) {
+function EvidenceChain({ detail, patches, repo, projectId }: { detail: FindingDetail; patches: PatchView[] | null; repo: string | undefined; projectId: string }) {
   const r = detail.records;
   const hyps = of(r, 'hypothesis');
   const vals = of(r, 'validation_result');
@@ -113,8 +201,12 @@ function EvidenceChain({ detail, patches, repo }: { detail: FindingDetail; patch
     <Panel title="Evidence chain">
       <ol>
         <Step n={1} title="Expected behaviour" who="code intelligence + reviewer">
-          {detail.finding.expectation_ids.length === 0 ? <p className="text-xs text-faint">No expectation linked to this finding.</p> :
-            <p className="flex flex-wrap gap-1 text-xs">{detail.finding.expectation_ids.map(e => <Mono key={e}>{e}</Mono>)}</p>}
+          <ExpectationLinks
+            projectId={projectId}
+            snapshotId={detail.finding.snapshot_id}
+            assessmentId={detail.finding.assessment_id}
+            ids={detail.finding.expectation_ids}
+          />
         </Step>
         <Step n={2} title="Hypothesis" who="Scout" empty={detail.finding.kind === 'functional' ? 'Functional finding — raised by the Reviewer, not Scout.' : undefined}>
           {hyps.length > 0 && hyps.map(h => (

@@ -37,9 +37,9 @@ acceptance criteria are the minimum for `DONE` in addition to
 | CORE-008 | Hash-chained append-only audit log | backend/ | FR-P-04 | CORE-004 | UNASSIGNED | BLOCKED | Chain verification test; DB role cannot update/delete |
 | CORE-009 | Artifact store abstraction (local FS, SHA-256 addressing) | backend/ | — | CORE-001 | UNASSIGNED | BLOCKED | Put/get with hash verification; path traversal tests |
 | CORE-010 | LLM gateway: Claude client, budgets, redaction, schema validation, record/replay | backend/ | FR-P-05, NFR-04, NFR-07 | CORE-001, CORE-009 | UNASSIGNED | BLOCKED | Budget pre-check + reconciliation; invalid output → `SCHEMA_INVALID`; replay mode; SB-11 passes |
-| SEC-001 | AgentSpec runtime: agent loop, tool calls, output validation, step budgets, recording | security-agents/ | NFR-04 | CORE-010 | UNASSIGNED | BLOCKED | FakeLLM-driven tests for success, invalid output retry, budget stop |
-| SEC-002 | Tool registry + `scope_guard` (pure) | security-agents/ | NFR-02 | CORE-001 | UNASSIGNED | BLOCKED | Allowlist enforcement (SB-06); scope_guard exhaustive tests ≥ 95% branch |
-| SEC-003 | Sandbox driver: profiles, network `none`, limits, reaper | security-agents/ | NFR-01, NFR-02 | INFRA-005 | UNASSIGNED | BLOCKED | SB-03, SB-05 pass; orphan reaping tested |
+| SEC-001 | AgentSpec runtime: agent loop, tool calls, output validation, step budgets, recording | security-agents/ | NFR-04 | CORE-010 | Alan | IN_REVIEW | FakeLLM-driven tests for success, invalid output retry, budget stop |
+| SEC-002 | Tool registry + `scope_guard` (pure) | security-agents/ | NFR-02 | CORE-001 | Alan | IN_REVIEW | Allowlist enforcement (SB-06); scope_guard exhaustive tests ≥ 95% branch |
+| SEC-003 | Sandbox driver: profiles, network `none`, limits, reaper | security-agents/ | NFR-01, NFR-02 | INFRA-005 | Alan | IN_REVIEW | SB-03, SB-05 pass; orphan reaping tested |
 | UI-001 | Next.js scaffold, Tailwind, ESLint/tsc, generated API client, `frontend.yml` | frontend/ | — | CORE-003 | UNASSIGNED | BLOCKED | Builds; typed client generated; CI green |
 | DEMO-001 | `examples/payments-lite` vulnerable demo target with fixtures + build recipe | examples/ | — | — | Adam | IN_REVIEW | Documented planted functional bug + authorization weakness; passing (incomplete) test suite; builds in sandbox |
 | TEST-001 | Test harness: FakeLLM, recorded-response replay, fixture layout | tests/ | — | CORE-010 | UNASSIGNED | BLOCKED | Replay of a recorded fixture through gateway in tests |
@@ -57,24 +57,24 @@ acceptance criteria are the minimum for `DONE` in addition to
 | INTEL-006 | Behavioral expectation extractors + LLM inference with citation validation | code-intelligence/ | FR-1-03 | INTEL-004, INTEL-005, CORE-010 | Sarosh | DONE | payments-lite yields ownership + refund-bound expectations with provenance (IC-3) |
 | INTEL-007 | Context pack retrieval (graph + BM25, budgeted, delimited) | code-intelligence/ | — | INTEL-004, INTEL-006 | Sarosh | DONE | Packs within budget; provenance per chunk; untrusted delimiters |
 | INTEL-008 | Incremental indexing + `affected_by_diff` | code-intelligence/ | FR-1-09, FR-3-02 | INTEL-004 | Sarosh | DONE | ImpactSet correct on fixture diffs |
-| REVIEW-001 | Expectation-vs-implementation review with structured verdicts | code-review/ | FR-1-05 | INTEL-007, CORE-010 | UNASSIGNED | BLOCKED | Verdicts schema-valid with cited spans; recorded-response tests |
-| REVIEW-002 | Behavioral test generation + sandboxed execution | code-review/ | FR-1-06 | REVIEW-001, SEC-003 | UNASSIGNED | BLOCKED | Refund-bound bug validated by failing generated test |
-| REVIEW-003 | Candidate repair in isolated worktree | code-review/ | FR-1-07 | REVIEW-002 | UNASSIGNED | BLOCKED | Repair produces PatchCandidate accepted by Verify (IC-5, needs SEC-010) |
+| REVIEW-001 | Expectation-vs-implementation review with structured verdicts | code-review/ | FR-1-05 | INTEL-007, CORE-010 | Sai | DONE | Verdicts schema-valid with cited spans; recorded-response tests — evidence: #22, #59 (span verification), `code-review/tests` in CI |
+| REVIEW-002 | Behavioral test generation + sandboxed execution | code-review/ | FR-1-06 | REVIEW-001, SEC-003 | Sai | DONE | Refund-bound bug validated by failing generated test — evidence: #22; live runs (MILESTONES M2) |
+| REVIEW-003 | Candidate repair in isolated worktree | code-review/ | FR-1-07 | REVIEW-002 | Sai | DONE | Repair produces PatchCandidate accepted by Verify (IC-5, needs SEC-010) — evidence: #22, #41, #68; independent functional Verify → `verified` via #73 (`backend/tests/test_unified_assessment.py`) |
 
 ## Phase 3 — Security team (P2)
 
 | ID | Title | Dir | Reqs | Depends on | Owner | Status | Acceptance criteria |
 |---|---|---|---|---|---|---|---|
-| SEC-004 | Probe sandbox runner: target builder, check-runner, target-only network | security-agents/ | FR-2-02, NFR-02 | SEC-002, SEC-003, DEMO-001 | UNASSIGNED | BLOCKED | SB-01, SB-04 pass; payments-lite target reachable only from check-runner |
-| SEC-005 | Check template library v0 (`access_control.ownership`, `input_validation.bounds`), read-only | security-agents/ | FR-2-02 | SEC-004 | UNASSIGNED | BLOCKED | Templates reviewed by security owner; deterministic `matches_expectation` |
-| SEC-006 | Scout agent | security-agents/ | FR-2-01 | SEC-001, INTEL-007 | UNASSIGNED | BLOCKED | Raises planted authz hypothesis on payments-lite with valid citations |
-| SEC-007 | Probe agent | security-agents/ | FR-2-02 | SEC-001, SEC-005 | UNASSIGNED | BLOCKED | Confirms planted, refutes non-planted fixture hypothesis |
-| SEC-008 | Trace agent + deterministic severity function | security-agents/ | FR-2-03 | SEC-001 | UNASSIGNED | BLOCKED | All steps labeled; severity factors cited |
-| SEC-009 | Diagnose agent | security-agents/ | FR-2-04 | SEC-001 | UNASSIGNED | BLOCKED | Root cause span matches fixture label |
-| SEC-010 | Verify agent + deterministic verdict rules | security-agents/ | FR-2-06 | SEC-001, SEC-003, SEC-004 | UNASSIGNED | BLOCKED | SB-08, SB-09 pass; detects planted bad patches |
-| SEC-011 | Patch agent (worktree) | security-agents/ | FR-2-05 | SEC-001, SEC-003 | UNASSIGNED | BLOCKED | Produces diff within plan scope; local tests run |
-| SEC-012 | Orchestrator state machine + gates (IC-2 with fake agents) | security-agents/, backend/ | FR-P-05 | CORE-006, CORE-007, SEC-001 | UNASSIGNED | BLOCKED | All transitions tested incl. cancel/fail/budget; SB-07 passes |
-| SEC-013 | Fortify agent + regression test promotion | security-agents/ | FR-2-07 | SEC-001 | UNASSIGNED | BLOCKED | Every verified finding gets ≥ 1 RegressionTest |
+| SEC-004 | Probe sandbox runner: target builder, check-runner, target-only network | security-agents/ | FR-2-02, NFR-02 | SEC-002, SEC-003, DEMO-001 | Alan | IN_REVIEW | SB-01, SB-04 pass; payments-lite target reachable only from check-runner |
+| SEC-005 | Check template library v0 (`access_control.ownership`, `input_validation.bounds`), read-only | security-agents/ | FR-2-02 | SEC-004 | Alan | IN_REVIEW | Templates reviewed by security owner; deterministic `matches_expectation` |
+| SEC-006 | Scout agent | security-agents/ | FR-2-01 | SEC-001, INTEL-007 | Alan | IN_REVIEW | Raises planted authz hypothesis on payments-lite with valid citations |
+| SEC-007 | Probe agent | security-agents/ | FR-2-02 | SEC-001, SEC-005 | Alan | IN_REVIEW | Confirms planted, refutes non-planted fixture hypothesis |
+| SEC-008 | Trace agent + deterministic severity function | security-agents/ | FR-2-03 | SEC-001 | Alan | IN_REVIEW | All steps labeled; severity factors cited |
+| SEC-009 | Diagnose agent | security-agents/ | FR-2-04 | SEC-001 | Alan | IN_REVIEW | Root cause span matches fixture label |
+| SEC-010 | Verify agent + deterministic verdict rules | security-agents/ | FR-2-06 | SEC-001, SEC-003, SEC-004 | Alan | IN_REVIEW | SB-08, SB-09 pass; detects planted bad patches |
+| SEC-011 | Patch agent (worktree) | security-agents/ | FR-2-05 | SEC-001, SEC-003 | Alan | IN_REVIEW | Produces diff within plan scope; local tests run |
+| SEC-012 | Orchestrator state machine + gates (IC-2 with fake agents) | security-agents/, backend/ | FR-P-05 | CORE-006, CORE-007, SEC-001 | Alan | IN_REVIEW | All transitions tested incl. cancel/fail/budget; SB-07 passes |
+| SEC-013 | Fortify agent + regression test promotion | security-agents/ | FR-2-07 | SEC-001 | Alan | IN_REVIEW | Every verified finding gets ≥ 1 RegressionTest |
 | TEST-003 | Security-boundary suite SB-01…SB-12 | tests/security | NFR-01, NFR-02 | SEC-003, SEC-004, CORE-007 | UNASSIGNED | BLOCKED | All SB tests implemented and green (IC-4) |
 | TEST-004 | Agent golden tests with recorded responses | tests/ | — | TEST-001, SEC-006 | UNASSIGNED | BLOCKED | One recorded scenario per agent; schema-validated |
 
@@ -148,3 +148,44 @@ abort. No provider or target execution occurred in transport tests.
 | ID | Objective | Owner | Status | Dependencies | Acceptance / integration / tests |
 |---|---|---|---|---|---|
 | STD-001 | Connect canonical PR #49 standards to persisted findings, incidents, reports and transport; cover OWASP editions | Srihith | IN_REVIEW on `feat/srihith/standards-alignment` | PR #49 canonical catalogs/contracts | Offline catalogs; reference scoring; host persistence; real PostgreSQL incident lifecycle/tenant/approval tests; generated types; truthful partial coverage. Rendered frontend integration remains separate. |
+
+Alan recovered-catalog continuation (2026-10-17): isolated canonical CVSS3.1/OWASP API/NIST800-115 additions landed as PR #74.
+
+SEC-010/SEC-012 continuation (2026-10-17): #73 and #83 merged (host persistence, resume hardening). Follow-up `feat/alan/verify-honesty-check-category`: keep `provider_mode=none` for functional Verify; canonical `CheckCategory` (Probe ids + V0 aliases). #35 closed.
+
+### REG-001 — Finish Devin’s incident closure evidence connection
+
+Owner: Srihith. Status: IN_REVIEW on `fix/srihith/fortify-closure-artifacts`. Dependencies: merged UI PRs80/81 and host verification. Acceptance: real hosted assessment persists regression source artifact; lessons learned and complete approved incident lifecycle work via API and rendered UI; rejected/unsafe/mutated source guards remain enforced; no fabricated verification claims.
+
+REG-001 validation: focused54/root325/security396/frontend32/browser12 passed; real source archive → lessons → two-person approved Closed persists on reload. See SESSION_HANDOFF for skips and limits.
+
+### QA-001 — execute Devin’s unfinished QA proposal
+Owner: Srihith; IN_REVIEW on `fix/srihith/qa-reliability`. Existing suite wrappers now use valid imports/commands, preserve the Python interpreter and live-call opt-out, report incomplete prerequisites separately, validate readiness JSON, and have CI-tested failure semantics. See docs/devin_qa/README.md and SESSION_HANDOFF for executed evidence.
+
+SEC-001 to SEC-013 (Alan): implemented; acceptance shown on replay with scripted model turns and real tools, sandboxes and tests (`cd security-agents && .venv/bin/python -m pytest tests -q`). Not yet shown: a live seven-role run (M3, issue #10), published sandbox image digests (INFRA-005), human review of check templates (SEC-005). See `coordination/status/ALAN.md`.
+
+SEC-003/SEC-004 evidence refresh (2026-10-17): real Docker execution is verified in
+[security CI 39033028814](https://github.com/adamissac/hackatl-agentic-security/actions/runs/39033028814)
+at `5b3ef50` (6 container tests passed; ordinary suite 451 passed/18 skipped).
+INFRA-005 remains open for published test/check image digests; the Dockerfile pins
+its base but the verified CI image uses a temporary tag. M3's live-provider gate
+and SEC-005's human template review remain separate.
+
+### Intelligence ingestion profile correctness — issue #148
+
+Sarosh, `fix/sarosh/intelligence-scope-cache`: reproduced same-SHA cache reuse
+across different include prefixes. Index version 0.3.0 includes a configuration
+digest for non-default coverage/limits; all ingestion and diff paths select the
+same profile. Six new producer cases and one real PostgreSQL case verify scope,
+limits, invalid-prefix cache bypass, normalized prefixes, restart, provenance,
+backend snapshot completion and diff lookup. Old refs and their human decisions
+stay immutable; another profile does not inherit a confirmation. No shared DTO
+or runtime/frontend source changes.
+### QA-002 — isolate the M7 demo runner
+Owner: Alan (continuing unfinished QA with repository-owner authorization).
+Status: IN_REVIEW on `fix/alan/m7-runner-isolation`. Remove PATH-only uv
+dependency and shared development database lifecycle operations; preserve command
+failures, force live calls off, and keep generated reports out of tracked evidence.
+Runner semantics covered by `tests/qa/test_m7_runner.py`.
+
+Issue #148 status: DONE via PR #150, merged `1129434`; all executable CI checks passed on combined head `91cea8c`. Historical references remain immutable.

@@ -52,7 +52,8 @@ def test_version_is_one_we_verified_against():
 def test_drift_is_detected_when_a_mapped_field_changes(monkeypatch):
     """The drift check must actually catch a change (guard against a no-op test)."""
     monkeypatch.setitem(
-        export.MAPPED_FIELDS, ("findings", "Hypothesis"),
+        export.MAPPED_FIELDS,
+        ("findings", "Hypothesis"),
         {**export.MAPPED_FIELDS[("findings", "Hypothesis")], "title": True},
     )
     drift = export.mapping_drift()
@@ -88,22 +89,35 @@ def completed(request):
     intel = LocalIntel(
         snapshot,
         expectations=load_expectations(
-            LABELS, snapshot_id=snapshot.snapshot_id, commit_sha=snapshot.commit_sha,
+            LABELS,
+            snapshot_id=snapshot.snapshot_id,
+            commit_sha=snapshot.commit_sha,
             strip_prefix="target/",
         ),
     )
     gateway = ProviderGateway(FakeLLM(fake_agents.all_scripts(snapshot.root)))
     config = OrchestratorConfig(
-        assessment_id="asm_contract", project_id="prj_contract", org_id="org_contract",
-        scope=live_scope(), target_id=TARGET_ID, requested_by="usr_requester",
+        assessment_id="asm_contract",
+        project_id="prj_contract",
+        org_id="org_contract",
+        scope=live_scope(),
+        target_id=TARGET_ID,
+        requested_by="usr_requester",
         budget=Budget(max_tokens=2_000_000, max_usd=50.0, max_wall_clock_s=900.0),
     )
     result = Orchestrator(
-        config, intel=intel, gateway=gateway, driver=LocalProcessDriver(allow=True),
-        library=default_library(), workdir=tmp / "work",
+        config,
+        intel=intel,
+        gateway=gateway,
+        driver=LocalProcessDriver(allow=True),
+        library=default_library(),
+        workdir=tmp / "work",
         approve_remediation=lambda f: Approval(
-            project_id="prj_contract", subject_type="remediation", subject_id=f.plan.id,
-            decision="approved", decided_by="usr_human",
+            project_id="prj_contract",
+            subject_type="remediation",
+            subject_id=f.plan.id,
+            decision="approved",
+            decided_by="usr_human",
         ),
     ).run()
     assert result.findings and result.findings[0].verifications, "fixture assessment did not complete"
@@ -182,8 +196,11 @@ def test_inconclusive_validation_cannot_be_expressed(completed):
     from security_agents.contracts import ValidationOutcome, ValidationResult
 
     unexecuted = ValidationResult(
-        hypothesis_id="hyp_01ABCDEFGH", outcome=ValidationOutcome.INCONCLUSIVE,
-        check_template_id=None, check_template_version=None, sandbox_run_id=None,
+        hypothesis_id="hyp_01ABCDEFGH",
+        outcome=ValidationOutcome.INCONCLUSIVE,
+        check_template_id=None,
+        check_template_version=None,
+        sandbox_run_id=None,
     )
     with pytest.raises(ValueError, match="requires an executed check"):
         export.validation_result(unexecuted)
@@ -197,7 +214,13 @@ def test_attack_path_and_severity_export(completed):
     assert isinstance(path, shared_findings.AttackPath)
     assert [s.order for s in path.steps] == list(range(1, len(path.steps) + 1))
     assert isinstance(severity, shared_findings.SeverityAssessment)
-    assert severity.level is shared_findings.SeverityLevel.high
+    assert severity.level is shared_findings.SeverityLevel.medium
+    assert severity.cvss_v31 is not None
+    assert severity.cvss_v31.vector == "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N"
+    assert severity.cvss_v31.base_score == 6.5 and severity.cvss_v31.rating == "medium"
+    assert severity.cvss_v31.score_kind.startswith("CVSS v3.1 base score only")
+    statuses = {m.metric: m.status for m in severity.cvss_v31.metric_evidence}
+    assert statuses["S"] == "unverified" and statuses["C"] == "cited"
     assert severity.factors.verified_path is True
     verified = [s for s in path.steps if s.verified]
     assert verified and all(s.evidence for s in verified)
@@ -238,9 +261,7 @@ def test_verification_result_exports_and_enforces_the_accept_rule(completed):
     result, _ = completed
     finding = result.findings[0]
     verify_run = next(r for r in result.runs if r.agent.value == "verify")
-    exported = export.verification_result(
-        finding.verifications[-1], produced_by_run_id=verify_run.id
-    )
+    exported = export.verification_result(finding.verifications[-1], produced_by_run_id=verify_run.id)
     assert isinstance(exported, shared_findings.VerificationResult)
     assert exported.verdict is shared_findings.VerificationVerdict.accepted
     assert len(exported.checks) == 5
@@ -263,14 +284,28 @@ def test_rejected_verification_exports(intel, tmp_path):
     from security_agents.agents import verify as verify_agent
 
     evidence = verify_agent.VerifyEvidence(
-        apply_facts={"applied": False, "files_touched": [], "out_of_scope": [], "new_tests": [],
-                     "tampered_protected_tests": []},
-        recheck_runs=[], test_runs=[], baseline_failing=[], tests_added=[], protected_tests=[],
-        original_check_ref="access_control.ownership@1", original_check_params={},
+        apply_facts={
+            "applied": False,
+            "files_touched": [],
+            "out_of_scope": [],
+            "new_tests": [],
+            "tampered_protected_tests": [],
+        },
+        recheck_runs=[],
+        test_runs=[],
+        baseline_failing=[],
+        tests_added=[],
+        protected_tests=[],
+        original_check_ref="access_control.ownership@1",
+        original_check_params={},
     )
     data = verify_agent.VerifyInput(
-        assessment_id="asm_x", patch_id="pat_01ABCDEFGH", finding_id="fnd_01ABCDEFGH",
-        remediation_plan_id="rmp_01ABCDEFGH", scope_id="scp_01ABCDEFGH", target_id=TARGET_ID,
+        assessment_id="asm_x",
+        patch_id="pat_01ABCDEFGH",
+        finding_id="fnd_01ABCDEFGH",
+        remediation_plan_id="rmp_01ABCDEFGH",
+        scope_id="scp_01ABCDEFGH",
+        target_id=TARGET_ID,
     )
     internal = verify_agent.to_result(
         None, data, evidence, sandbox_run_ids=[], verify_run_id="run_01ABCDEFGH"
@@ -302,14 +337,24 @@ def test_denied_tool_calls_are_reported_as_denied(intel):
     from security_agents.contracts import AgentName, AgentRun, ErrorCode
 
     run = AgentRun(
-        assessment_id="asm_01ABCDEFGH", agent=AgentName.SCOUT, step_key="recon", status="succeeded",
-        input_ref="x", model_id="claude-opus-5-5", provider_mode="fake",
+        assessment_id="asm_01ABCDEFGH",
+        agent=AgentName.SCOUT,
+        step_key="recon",
+        status="succeeded",
+        input_ref="x",
+        model_id="claude-opus-5-5",
+        provider_mode="fake",
     )
     exported = export.agent_run(
         run,
         tool_calls=[
-            {"name": "checks.run_template", "args": {}, "ok": False,
-             "error_code": ErrorCode.TOOL_NOT_ALLOWED.value, "turn": 0},
+            {
+                "name": "checks.run_template",
+                "args": {},
+                "ok": False,
+                "error_code": ErrorCode.TOOL_NOT_ALLOWED.value,
+                "turn": 0,
+            },
             {"name": "code.search", "args": {"pattern": "x"}, "ok": True, "error_code": None, "turn": 1},
         ],
     )
@@ -330,8 +375,10 @@ def test_every_exported_model_round_trips_through_json(completed):
         export.root_cause(finding.root_cause),
         export.remediation_plan(finding.plan),
         export.patch_candidate(
-            finding.candidates[-1], base_commit_sha=intel.snapshot.commit_sha,
-            produced_by_run_id=patch_run.id, rationale="fix",
+            finding.candidates[-1],
+            base_commit_sha=intel.snapshot.commit_sha,
+            produced_by_run_id=patch_run.id,
+            rationale="fix",
         ),
         export.verification_result(finding.verifications[-1], produced_by_run_id=verify_run.id),
     ]

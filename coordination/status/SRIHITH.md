@@ -7,7 +7,7 @@ Last remote sync: 2026-10-17 ~02:30Z (main 369a9a0)
 API/contract dependencies: Alan `security_agents.api:build_orchestrator`; Sarosh `code_intelligence.api:build_service` (+ persistence port); Sai `code_review.api.review`; Adam `rl_defense` (integrated)
 Verified tests: see session log (exact command + counts)
 Recent PR/commit: merged #8, #14, #16, #20, #24, #25; issues #9, #17
-Blockers: none hard. The GitHub App flow is unexercised because no App credentials are configured. Docker is not installed, so the Compose file is unverified.
+Blockers: none hard. The GitHub App flow is unexercised because no App credentials are configured. Compose was verified on 2026-10-17 (session 7). The documented `.env` template caused webhooks to return 500; the fix is in #86.
 Next action: ack/counter from owners on V0 contracts; Postgres persistence port for Sarosh; wire Alan's orchestrator when `security_agents.api` exists; live LLM smoke once a key is authorized.
 
 ## Session entries
@@ -125,3 +125,90 @@ Add dated factual entries; do not overwrite history. Never claim unexecuted test
 - Branch `feat/srihith/standards-alignment` builds on Alan PR #49 canonical work; shared0.7, persisted incident API, reports and producers, OWASP2025/2026 self-assessment, typed transport.
 - Evidence: root193 passed/2 live skips, security/reviewer400 passed/11 optional skips, RL82 passed, transport16 unit+4 real API tests, generated freshness and link check233/0.
 - Not claimed: production standards compliance, customer LLM-risk scanning, mounted frontend pages, paid live rerun, deployed containment.
+
+### 2026-10-17: #49 landed via #57; RL expectations; recipe templates
+- PR #57 is merged (`22c8c36`): Alan's standards work is on main.
+  - Migration 0006 is the single head.
+  - Reviewer CWE adjudication is non-fatal (Sai blocker 1).
+  - Transport fixture includes `Finding.standards`.
+  - CI: 11/11 green.
+- `feat/srihith/rl-expectations`:
+  - `platform_facts` now feeds persisted expectations to RL (closing Adam's gap).
+  - The recipe uses real route templates, and the check library binds named path params.
+  - Tests: real-index RL test 2 passed (locally, with `rl_defense`); security-agents 351 passed; root 308 passed.
+- Open: CI never runs the RL tests because `rl_defense` is not a workspace member (torch). Sai's span-verifier tolerance is still his.
+- Correction (07:15Z): Adam's #61 landed the same RL-expectations wiring first. In #62 I kept his implementation and dropped mine. #62 now carries the real-index RL test and the recipe/route-template fix.
+
+### 2026-10-17: M6 asks from Vihaan
+- #65 merged:
+  - persisted finding lifecycle with docs/12 edges and evidence gates;
+  - usage ledger now counts tool calls and sandbox seconds.
+- #66 merged: snapshot list endpoint.
+- #67: contracts 0.8.0 with `FindingDetail` / `AssessmentReport` DTOs.
+- Evidence:
+  - root: 317 passed;
+  - security-agents: 351 passed;
+  - code-review: 57 passed;
+  - Playwright: 8/8;
+  - transport: 21/21.
+- Deferred by design: Sai's functional-remediation hook needs orchestrator changes, and Alan's branches are active there. I sent Alan and Sai a design.
+
+### 2026-10-17 ~08:30Z: unclaimed-work pass
+- #69 merged: Alan's finished standards follow-up, which his agent had pushed without opening a PR. I merged main into it and verified it: root 320, security-agents 354, code-review 58, standards 126.
+- #71 (functional remediation): implemented and green locally (Playwright 8/8). It is a **draft at Alan's request**, because his #73 implements the same design in his files. I reviewed #73 with 6 findings:
+  - the e2e journey fails with 2 pending approvals;
+  - with no generated tests, the reproduction checks pass vacuously;
+  - an erroring unpatched run counts as reproduced;
+  - a `verify` AgentRun is recorded without a model call;
+  - a later run can mask an added-test failure in `compute_verdict`;
+  - a nonexistent `ErrorCode`.
+  I'll close #71 once #73 lands.
+- Gitleaks false positive (`OWASP_API_COMMIT` SHA on Alan's branches) blocked every PR. Sai's #76 landed the same allowlist first; mine was dropped (#75 now carries only the coordination message).
+- #77 merged: transport `snapshots()` / `report()`. Transport 23 passed; real-backend integration 4 passed.
+
+### 2026-10-17 (session 7, Devin on behalf of Srihith, pushing with Adam's session token)
+- Baseline on main `236838e`, all executed:
+  - root `uv run pytest -q`: 323 passed, 7 skipped;
+  - `security-agents/tests`: 382 passed, 11 skipped;
+  - frontend typecheck, lint, vitest (29) and build: green;
+  - `docker compose up --build`: db, migrate, api and worker healthy; `/readyz` ok.
+- PR #85 `feat/srihith/functional-verify-honesty` addresses the #73 review items still open (files are Alan's; message sent):
+  - added the missing `ErrorCode.INTERNAL` and `ErrorCode.VALIDATION_FAILED`, whose absence left a failed functional-verify AgentRun `running`;
+  - functional Verify is recorded as `provider_mode="deterministic"` with no model;
+  - `compute_verdict` no longer lets a later green run mask an earlier failure.
+  - Focused tests: 71 passed.
+- PR #86 `feat/srihith/compose-artifact-store`:
+  - the `.env.example` `ARTIFACT_STORE_URI` overrode the image default, so every signed webhook returned 500 with `PermissionError` on `/app/artifacts`. Compose now pins the volume URI.
+  - Locally, after the fix: 202, worker job succeeded, artifact persisted.
+  - Added a CI `compose-stack` job that sends a simulated signed delivery.
+- Not verified: live LLM (no key authorized); real GitHub App deliveries (no App credentials).
+- Later in session 7:
+  - #85 merged into main (`e940c44`) after #84 closed the overlapping items; it added suite-run masking fix, `ErrorCode.INTERNAL`, and the static ErrorCode-reference guard.
+  - New PR #89 `feat/srihith/killswitch-error-code`: added `KILL_SWITCH` to `shared.errors` and made `_host_error` fall back to a dict for agent-local codes. An Adam-side session merged #83 into the branch mid-flight; all CI green.
+  - #86 still open, clean; its `compose-stack` CI job passed.
+
+
+## 2026-10-17 — REG-001 complete: Devin closure evidence continuation
+
+Branch `fix/srihith/fortify-closure-artifacts`, based on merged Devin PRs80/81 and Alan PR83. Real security and functional Verify now retain bounded, unchanged regression sources as redacted ArtifactStore archives and publish their actual canonical hardening artifact IDs. Incident eradication resolves remediation-plan approval to the same finding/project/assessment. Evidence selectors now accept options that arrive after linking a finding.
+
+Executed: focused host/unified/verification/closure54 passed; root325 passed/7 skips (optional RL dependency, global tsc unavailable, opt-in live providers); security-agent396 passed/11 optional skips; frontend32 unit tests; real PostgreSQL/API/worker/Chrome browser12 passed, including complete two-person incident lifecycle through Closed and reload. ESLint, TypeScript, production build, Ruff/format, mypy and generated contracts110-file freshness passed. Browser runs use scripted transports; no paid provider calls, deployment or individual test-node execution claim.
+
+
+## 2026-10-17 — session-8: monitor + fix across lanes
+
+- Bisected and fixed a real main regression from #100: host-mode e2e had no `SECURITY_AGENTS_LABELS`, so the reworked scripted agents saw zero expectations → `data_sensitivity="none"` → fact-derived CVSS incomplete (VC missing). PR **#107** (merged) wires `examples/payments-lite/labels.yaml`; verified 3 passed.
+- Merged green PRs per #12: #88, #99, #102, #106, #107 (plus earlier #89, #97).
+- Resolved merge conflicts on #104/#105 (CHANGELOG + lib.test.ts unions, tests green locally) and pushed to their branches.
+- Contract replies to Alan: ACK'd canonical CheckCategory (#91) and chose Option B for CVSS v3.1 (`SeverityAssessment.cvss_v31`); required backend persistence for the RoE endpoint proposal.
+- Verified M5 artifacts (`rl-defense/results/protocol-v0`) are complete and sent Adam the gate data to record.
+- Documented the `monitoring_budget` default as intentional in `shared/tenancy.py` (#101, merged) — the message asked owners to pick a fix; picked the documentation option.
+- Executed: backend+shared+monitoring 65 passed; frontend unit 23/22 passed on the merge branches.
+
+### 2026-10-17T13:05Z (monitor + standards)
+
+- Merged #139 (own): mirrored Sai's five `test_owasp_llm_reviewer.py` node ids onto 2025 rows LLM01/02/05/06/09:2025; MANIFEST refreshed; `owasp_llm --check` 0 problems; full multi-package run 814 passed, 22 opt-in skips.
+- Merged #141 (Sai): 2025 matrix cites tests/security only, so `pytest tests/security` passes standalone — verified the diff kept the mirror entries.
+- Closed #38 (Sarosh contract tracker): schema 0.6.0 landed via #39, ACK recorded, registry now 0.10.0; nothing outstanding.
+- Remaining open issues: #10 (Anthropic key — external), #12 (standing merge-cadence directive).
+- Repo quiet otherwise: main `5b3ef50`, 0 open PRs.

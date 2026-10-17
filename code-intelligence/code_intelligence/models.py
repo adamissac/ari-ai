@@ -17,7 +17,7 @@ from shared.intelligence import (
 )
 from shared.tenancy import Usage
 
-INDEX_VERSION = "python-ast-ts/0.2.0"
+INDEX_VERSION = "python-ast-ts/0.3.0"
 
 
 def stable_id(prefix: str, *parts: str) -> str:

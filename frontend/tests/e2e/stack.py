@@ -125,11 +125,19 @@ def main(argv: list[str]) -> int:
         sys.path[:0] = [str(Path(code_review.__file__).resolve().parents[1] / "tests"), str(ROOT / "backend" / "tests")]
         from cr_fakes import fake  # type: ignore[import-not-found]
         from sa_bridge import AlanScriptTransport  # type: ignore[import-not-found]
-        from test_reviewer_agent import pl_review_script  # type: ignore[import-not-found]
+        from test_reviewer_agent import (  # type: ignore[import-not-found]
+            pl_repair_script,
+            pl_review_script,
+        )
 
         from backend import llm, worker
 
-        bridge = AlanScriptTransport(repo / "target", fallback=fake(list(pl_review_script(SimpleNamespace(repo=repo)))))
+        # Reviewer turns, then its repair turns once the functional repair is approved.
+        reviewer = [
+            *pl_review_script(SimpleNamespace(repo=repo)),
+            *pl_repair_script("target/tests/generated/test_cr_refund_bound.py"),
+        ]
+        bridge = AlanScriptTransport(repo / "target", fallback=fake(reviewer))
         llm.TRANSPORT_OVERRIDE = lambda: bridge
 
         import uvicorn

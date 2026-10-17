@@ -133,22 +133,59 @@ export function railSteps(current: AssessmentState, visited: ReadonlySet<Assessm
   });
 }
 
-export interface AgentRole { name: AgentName; label: string; team: 'Functional' | 'Red' | 'Blue' | 'Independent'; role: string }
+export interface AgentRole {
+  name: AgentName;
+  label: string;
+  team: 'Functional' | 'Red' | 'Blue' | 'Independent';
+  role: string;
+  /** One line a newcomer can read. Not a claim that this run succeeded. */
+  job: string;
+  /** What a completed run of this agent is supposed to pass on. */
+  handsTo: string;
+}
 
-/** The eight product runtime agents, in orchestrated order. */
+/** The eight product runtime agents, in the order the orchestrator runs them. */
 export const AGENTS: readonly AgentRole[] = [
-  { name: 'reviewer', label: 'Reviewer', team: 'Functional', role: 'Intent-aware functional review and repair' },
-  { name: 'scout', label: 'Scout', team: 'Red', role: 'Evidence-backed vulnerability hypotheses' },
-  { name: 'probe', label: 'Probe', team: 'Red', role: 'Non-destructive validation in the authorized sandbox' },
-  { name: 'trace', label: 'Trace', team: 'Red', role: 'Attack path and impact' },
-  { name: 'diagnose', label: 'Diagnose', team: 'Blue', role: 'Root cause and remediation plan' },
-  { name: 'patch', label: 'Patch', team: 'Blue', role: 'Candidate fix in an isolated worktree' },
-  { name: 'verify', label: 'Verify', team: 'Independent', role: 'Re-runs exploit and functional tests' },
-  { name: 'fortify', label: 'Fortify', team: 'Blue', role: 'Hardening and regression tests' },
+  { name: 'reviewer', label: 'Reviewer', team: 'Functional', role: 'Intent-aware functional review and repair', job: 'Checks whether the change does what was intended.', handsTo: 'Functional findings and the intended behaviour, for the security team.' },
+  { name: 'scout', label: 'Scout', team: 'Red', role: 'Evidence-backed vulnerability hypotheses', job: 'Maps where the code could be vulnerable.', handsTo: 'Hypotheses for Probe to test. Not yet confirmed weaknesses.' },
+  { name: 'probe', label: 'Probe', team: 'Red', role: 'Non-destructive validation in the authorized sandbox', job: 'Proves or disproves those hypotheses in an approved sandbox.', handsTo: 'Confirmed, refuted, or inconclusive check results.' },
+  { name: 'trace', label: 'Trace', team: 'Red', role: 'Attack path and impact', job: 'Follows what a confirmed weakness could affect.', handsTo: 'An attack path, with unverified steps still labelled as hypotheses.' },
+  { name: 'diagnose', label: 'Diagnose', team: 'Blue', role: 'Root cause and remediation plan', job: 'Finds the cause and what would need to change.', handsTo: 'A remediation plan. Patch does not start until a person approves.' },
+  { name: 'patch', label: 'Patch', team: 'Blue', role: 'Candidate fix in an isolated worktree', job: 'Proposes a fix without changing production.', handsTo: 'A candidate diff for independent verification. Nothing is merged.' },
+  { name: 'verify', label: 'Verify', team: 'Independent', role: 'Re-runs exploit and functional tests', job: 'Accepts or rejects the fix on executed tests.', handsTo: 'A pass or fail. A rejected patch is not a fix.' },
+  { name: 'fortify', label: 'Fortify', team: 'Blue', role: 'Hardening and regression tests', job: 'Suggests how to keep this kind of issue from coming back.', handsTo: 'Hardening notes and, when recorded, a regression test.' },
 ];
 
 export function agentRole(name: AgentName): AgentRole {
-  return AGENTS.find(a => a.name === name) ?? { name, label: name, team: 'Independent', role: '' };
+  return AGENTS.find(a => a.name === name) ?? { name, label: name, team: 'Independent', role: '', job: '', handsTo: '' };
+}
+
+export interface RunFacts {
+  status: string;
+  tool_calls: readonly unknown[];
+  error?: { code: string; message: string } | null;
+}
+
+/** Summary uses only persisted runs. An agent with no run stays empty. */
+export function agentRunSummary(runs: readonly RunFacts[]): string {
+  if (runs.length === 0) return 'Has not run.';
+  const latest = runs[runs.length - 1];
+  const tools = runs.reduce((n, run) => n + run.tool_calls.length, 0);
+  const runsLabel = `${runs.length} recorded run${runs.length === 1 ? '' : 's'}, ${tools} tool call${tools === 1 ? '' : 's'}.`;
+  if (latest?.status === 'failed' && latest.error) return `${latest.error.code}: ${latest.error.message}. ${runsLabel}`;
+  if (latest?.status === 'running' || latest?.status === 'queued') return `${latest.status === 'running' ? 'Running now.' : 'Queued.'} ${runsLabel}`;
+  return runsLabel;
+}
+
+/** What is still open between this agent and the next, from the runs that exist. */
+export function handoffNote(own: readonly RunFacts[], next: readonly RunFacts[] | null): string {
+  if (own.length === 0) return 'Nothing to hand off: this agent has not run.';
+  const latest = own[own.length - 1];
+  if (latest?.status === 'failed') return 'This run failed, so there is no successful handoff.';
+  if (latest?.status === 'running' || latest?.status === 'queued') return 'Still working. The next agent has not received a finished result.';
+  if (next === null) return 'This is the last agent in the sequence.';
+  if (next.length === 0) return 'Finished. The next agent has not run yet.';
+  return 'Finished, and the next agent has a recorded run.';
 }
 
 /** provider_mode is persisted per run; 'live' is the only value that means a real model call. */
@@ -156,5 +193,6 @@ export function providerLabel(mode: string): StatusView {
   if (mode === 'live') return v('Live provider', 'ok', '●');
   if (mode === 'replay') return v('Replay of recorded run', 'warn', '↺');
   if (mode === 'fake') return v('Test provider (scripted)', 'warn', '⚙');
+  if (mode === 'none') return v('Deterministic (no model call)', 'neutral', '=');
   return v(`Provider: ${mode}`, 'neutral', '?');
 }

@@ -30,8 +30,12 @@ def build(intel, driver, library, tmp_path: Path, *, scripts=None, approve=True,
         if not approve or finding.plan is None:
             return None
         return Approval(
-            project_id="prj_test", subject_type="remediation", subject_id=finding.plan.id,
-            decision="approved", decided_by="usr_human_reviewer", reason="plan reviewed in test",
+            project_id="prj_test",
+            subject_type="remediation",
+            subject_id=finding.plan.id,
+            decision="approved",
+            decided_by="usr_human_reviewer",
+            reason="plan reviewed in test",
         )
 
     config = OrchestratorConfig(
@@ -45,8 +49,13 @@ def build(intel, driver, library, tmp_path: Path, *, scripts=None, approve=True,
         max_hypotheses_to_validate=2,
     )
     return Orchestrator(
-        config, intel=intel, gateway=gateway, driver=driver, library=library,
-        workdir=tmp_path / "work", approve_remediation=approver,
+        config,
+        intel=intel,
+        gateway=gateway,
+        driver=driver,
+        library=library,
+        workdir=tmp_path / "work",
+        approve_remediation=approver,
     ), gateway
 
 
@@ -66,8 +75,18 @@ def test_assessment_completes_through_every_state(result):
     res, _ = result
     assert res.state is AssessmentState.COMPLETED, res.error_detail
     assert res.state_log.states() == [
-        "scope_check", "indexing", "functional_review", "recon", "validation", "analysis",
-        "diagnosis", "awaiting_approval", "remediation", "hardening", "reporting", "completed",
+        "scope_check",
+        "indexing",
+        "functional_review",
+        "recon",
+        "validation",
+        "analysis",
+        "diagnosis",
+        "awaiting_approval",
+        "remediation",
+        "hardening",
+        "reporting",
+        "completed",
     ]
 
 
@@ -129,15 +148,36 @@ def test_probe_confirmed_the_planted_weakness_with_executed_evidence(result):
     assert finding.validation.evidence[0].provenance == "check_run"
 
 
-def test_trace_severity_is_computed_from_cited_factors(result):
+def test_trace_severity_is_computed_by_the_platform_from_cvss_metrics(result):
     res, _ = result
     finding = res.findings[0]
-    assert finding.severity is not None
-    assert finding.severity.level.value == "high"
-    assert finding.severity.factors.data_sensitivity == "financial"
-    assert finding.severity.factors.verified_path is True
+    severity = finding.severity
+    assert severity is not None
+    assert severity.cvss_vector == "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N"
+    assert severity.cvss_base_score == 6.5
+    assert severity.cvss_rating == "medium"
+    assert severity.level.value == "medium"
+    assert severity.score_kind.startswith("CVSS v3.1 base score only")
+    assert severity.level_source.startswith("derived from the CVSS v3.1 qualitative rating")
+    assert severity.factors.data_sensitivity == "financial"
+    assert severity.factors.verified_path is True
+    statuses = {e.metric: e.status for e in severity.metric_evidence}
+    assert statuses["S"] == "unverified" and statuses["A"] == "unverified"
+    assert statuses["C"] == "cited" and statuses["AV"] == "cited"
     verified = [s for s in finding.attack_path.steps if s.verified]
     assert verified and all(s.evidence for s in verified)
+
+
+def test_base_score_differs_from_the_labelled_business_severity(result):
+    res, _ = result
+    assert res.findings[0].severity.cvss_rating == "medium"
+
+
+def test_attack_path_records_no_applicable_technique_honestly(result):
+    res, _ = result
+    steps = res.findings[0].attack_path.steps
+    assert all(step.attack_technique is None for step in steps)
+    assert all(step.attack_label == "no applicable technique" for step in steps)
 
 
 def test_diagnose_plan_bounds_the_patch(result):
@@ -225,9 +265,17 @@ def test_audit_chain_is_hash_linked_and_covers_the_gates(result):
     res, _ = result
     actions = [e.action for e in res.audit]
     for expected in (
-        "scope.checked", "agent.step", "finding.hypothesis", "finding.validation",
-        "finding.severity", "finding.diagnosed", "approval.granted", "patch.candidate",
-        "finding.verification", "finding.hardened", "assessment.completed",
+        "scope.checked",
+        "agent.step",
+        "finding.hypothesis",
+        "finding.validation",
+        "finding.severity",
+        "finding.diagnosed",
+        "approval.granted",
+        "patch.candidate",
+        "finding.verification",
+        "finding.hardened",
+        "assessment.completed",
     ):
         assert expected in actions, expected
     prev = "0" * 64
@@ -265,7 +313,8 @@ def test_worktree_refuses_a_patch_attempt_that_weakens_an_existing_test(intel, d
     finding = res.findings[0]
     patch_record = next(r for r in res.records if r.agent is AgentName.PATCH)
     refused = [
-        inv for inv in patch_record.tool_invocations
+        inv
+        for inv in patch_record.tool_invocations
         if inv.name == "worktree.write_file" and inv.error_code == "PATH_NOT_ALLOWED"
     ]
     assert refused, [(i.name, i.error_code) for i in patch_record.tool_invocations]
@@ -282,7 +331,8 @@ def test_worktree_refuses_a_patch_attempt_outside_the_plan(intel, driver, librar
     finding = res.findings[0]
     patch_record = next(r for r in res.records if r.agent is AgentName.PATCH)
     refused = [
-        inv for inv in patch_record.tool_invocations
+        inv
+        for inv in patch_record.tool_invocations
         if inv.name == "worktree.write_file" and inv.error_code == "PATH_NOT_ALLOWED"
     ]
     assert refused
@@ -290,9 +340,7 @@ def test_worktree_refuses_a_patch_attempt_outside_the_plan(intel, driver, librar
 
 
 @pytest.mark.boundary
-def test_ineffective_in_scope_patch_is_rejected_and_retried_then_unresolved(
-    intel, driver, library, tmp_path
-):
+def test_ineffective_in_scope_patch_is_rejected_and_retried_then_unresolved(intel, driver, library, tmp_path):
     """Verify rejects a patch that does not fix the finding; the loop retries once."""
     orch, _ = build(intel, driver, library, tmp_path, ineffective=True)
     res = orch.run()
@@ -312,9 +360,7 @@ def test_ineffective_in_scope_patch_is_rejected_and_retried_then_unresolved(
 
 
 @pytest.mark.boundary
-def test_patch_retry_receives_rejection_reasons_but_no_verify_transcript(
-    intel, driver, library, tmp_path
-):
+def test_patch_retry_receives_rejection_reasons_but_no_verify_transcript(intel, driver, library, tmp_path):
     orch, gateway = build(intel, driver, library, tmp_path, ineffective=True)
     orch.run()
     patch_calls = [c for c in gateway.provider.calls if c.agent is AgentName.PATCH]
@@ -328,9 +374,7 @@ def test_patch_retry_receives_rejection_reasons_but_no_verify_transcript(
 
 
 @pytest.mark.boundary
-def test_verify_rejects_a_planted_bad_patch_that_edits_a_protected_test(
-    intel, driver, library, tmp_path
-):
+def test_verify_rejects_a_planted_bad_patch_that_edits_a_protected_test(intel, driver, library, tmp_path):
     """A diff authored outside the worktree guard is still rejected by Verify (SB-09).
 
     This is the `examples/fixtures/bad-patches` case: a patch that makes the
@@ -359,8 +403,12 @@ def test_verify_rejects_a_planted_bad_patch_that_edits_a_protected_test(
         workdir=work,
     )
     ctx = ToolContext(
-        assessment_id="asm_bad", agent=AgentName.VERIFY, run_id="run_bad", step_key="verify",
-        read_root=intel.snapshot.root, audit=AuditSink(),
+        assessment_id="asm_bad",
+        agent=AgentName.VERIFY,
+        run_id="run_bad",
+        step_key="verify",
+        read_root=intel.snapshot.root,
+        audit=AuditSink(),
     )
     facts = applier.apply_fresh(ctx, "pat_bad")
     assert facts["applied"] is True
@@ -400,21 +448,35 @@ def test_verify_rejects_a_planted_bad_patch_outside_the_plan(intel, driver, libr
 
     applier = PatchApplier(
         intel=intel,
-        artifacts={"pat_scope": {"diff": diff, "plan_files": ["payments_lite/app.py"],
-                                 "protected_tests": ["tests/test_api.py"]}},
+        artifacts={
+            "pat_scope": {
+                "diff": diff,
+                "plan_files": ["payments_lite/app.py"],
+                "protected_tests": ["tests/test_api.py"],
+            }
+        },
         workdir=work,
     )
     ctx = ToolContext(
-        assessment_id="asm_bad2", agent=AgentName.VERIFY, run_id="run_bad2", step_key="verify",
-        read_root=intel.snapshot.root, audit=AuditSink(),
+        assessment_id="asm_bad2",
+        agent=AgentName.VERIFY,
+        run_id="run_bad2",
+        step_key="verify",
+        read_root=intel.snapshot.root,
+        audit=AuditSink(),
     )
     facts = applier.apply_fresh(ctx, "pat_scope")
     assert facts["out_of_scope_files"] == ["payments_lite/store.py"]
     verdict, checks, _ = verify_agent.compute_verdict(
         verify_agent.VerifyEvidence(
-            apply_facts=dict(ctx.artifacts["verify_facts"]), recheck_runs=[], test_runs=[],
-            baseline_failing=[], tests_added=[], protected_tests=["tests/test_api.py"],
-            original_check_ref="access_control.ownership@1", original_check_params={},
+            apply_facts=dict(ctx.artifacts["verify_facts"]),
+            recheck_runs=[],
+            test_runs=[],
+            baseline_failing=[],
+            tests_added=[],
+            protected_tests=["tests/test_api.py"],
+            original_check_ref="access_control.ownership@1",
+            original_check_params={},
         )
     )
     assert verdict == "rejected"
@@ -428,9 +490,7 @@ def test_patch_without_a_regression_test_is_rejected(intel, driver, library, tmp
     res = orch.run()
     finding = res.findings[0]
     assert finding.verifications
-    generated = next(
-        c for c in finding.verifications[0].checks if c.name.value == "generated_tests_pass"
-    )
+    generated = next(c for c in finding.verifications[0].checks if c.name.value == "generated_tests_pass")
     assert not generated.passed
     assert finding.verifications[0].verdict == "rejected"
 
@@ -468,18 +528,29 @@ def test_agent_approval_is_not_accepted(intel, driver, library, tmp_path):
 
     def agent_approver(finding: FindingRecord) -> Approval | None:
         return Approval(
-            project_id="prj_test", subject_type="remediation",
+            project_id="prj_test",
+            subject_type="remediation",
             subject_id=finding.plan.id if finding.plan else "x",
-            decision="approved", decided_by="agent:patch",
+            decision="approved",
+            decided_by="agent:patch",
         )
 
     config = OrchestratorConfig(
-        assessment_id="asm_gate", project_id="prj_test", org_id="org_test", scope=live_scope(),
-        target_id=TARGET_ID, requested_by="usr_requester",
+        assessment_id="asm_gate",
+        project_id="prj_test",
+        org_id="org_test",
+        scope=live_scope(),
+        target_id=TARGET_ID,
+        requested_by="usr_requester",
     )
     res = Orchestrator(
-        config, intel=intel, gateway=gateway, driver=driver, library=library,
-        workdir=tmp_path / "w", approve_remediation=agent_approver,
+        config,
+        intel=intel,
+        gateway=gateway,
+        driver=driver,
+        library=library,
+        workdir=tmp_path / "w",
+        approve_remediation=agent_approver,
     ).run()
     assert not any(r.agent is AgentName.PATCH for r in res.runs)
     assert "approval.invalid_actor" in [e.action for e in res.audit]
@@ -491,17 +562,82 @@ def test_approval_for_a_different_plan_is_ignored(intel, driver, library, tmp_pa
 
     def wrong_approver(finding: FindingRecord) -> Approval | None:
         return Approval(
-            project_id="prj_test", subject_type="remediation", subject_id="rmp_someone_else",
-            decision="approved", decided_by="usr_human",
+            project_id="prj_test",
+            subject_type="remediation",
+            subject_id="rmp_someone_else",
+            decision="approved",
+            decided_by="usr_human",
         )
 
     config = OrchestratorConfig(
-        assessment_id="asm_gate2", project_id="prj_test", org_id="org_test", scope=live_scope(),
-        target_id=TARGET_ID, requested_by="usr_requester",
+        assessment_id="asm_gate2",
+        project_id="prj_test",
+        org_id="org_test",
+        scope=live_scope(),
+        target_id=TARGET_ID,
+        requested_by="usr_requester",
     )
     res = Orchestrator(
-        config, intel=intel, gateway=gateway, driver=driver, library=library,
-        workdir=tmp_path / "w", approve_remediation=wrong_approver,
+        config,
+        intel=intel,
+        gateway=gateway,
+        driver=driver,
+        library=library,
+        workdir=tmp_path / "w",
+        approve_remediation=wrong_approver,
     ).run()
     assert not any(r.agent is AgentName.PATCH for r in res.runs)
     assert "approval.mismatch" in [e.action for e in res.audit]
+
+
+def test_finding_standards_are_evidence_backed(result):
+    """One planted IDOR finding, classified from executed evidence (not an LLM score)."""
+    res, _ = result
+    finding = res.findings[0]
+    std = finding.standards
+    assert std is not None
+    assert std.cwe and std.cwe.id == "CWE-639"
+    assert "T1190" in [m.id for m in std.attack]
+    assert std.cvss and std.cvss.complete and std.cvss.score is not None
+    assert "provisional" not in std.cvss.assessor
+    assert std.exploit_status.value == "reproduced_in_sandbox"
+    summary = finding.public()["standards"]
+    assert summary["cwe"] == "CWE-639"
+    assert summary["cvss_complete"] is True
+    assert "D3-AMED" in [m.id for m in std.d3fend]
+
+
+# --- functional remediation approvals owed by the host (Srihith follow-up on #73) ---
+
+
+def test_pending_functional_approval_pauses_even_with_approved_security_work(
+    intel, driver, library, tmp_path
+):
+    orch, _ = build(intel, driver, library, tmp_path)  # security remediation approved
+    orch.external_pending = lambda: True
+    res = orch.run()
+    assert res.state is AssessmentState.AWAITING_APPROVAL
+    assert "patch" not in [r.agent.value for r in res.runs], "nothing remediated before all decide"
+
+
+def test_early_security_exit_still_waits_for_a_functional_approval(intel, driver, library, tmp_path):
+    from security_agents.agents import scout as scout_agent
+    from security_agents.llm import FakeTurn
+
+    submit = scout_agent.SPEC.submit_tool_name()
+    empty = {
+        "hypotheses": [],
+        "coverage": {"entry_points_reviewed": [], "looks_correct": [], "skipped_with_reason": []},
+        "suspicious_instructions": [],
+    }
+    scripts = fake_agents.all_scripts(intel.snapshot.root)
+    scripts[AgentName.SCOUT] = [FakeTurn(tool_calls=[(submit, empty)])]
+    orch, _ = build(intel, driver, library, tmp_path, scripts=scripts)
+    orch.external_pending = lambda: True
+    res = orch.run()
+    assert res.state is AssessmentState.AWAITING_APPROVAL
+    skipped = [e for e in res.state_log.entries if "skipped (no hypotheses)" in e[2]]
+    assert len(skipped) == 4, res.state_log  # VALIDATION, ANALYSIS, DIAGNOSIS, AWAITING_APPROVAL
+
+    orch2, _ = build(intel, driver, library, tmp_path / "b", scripts=scripts)
+    assert orch2.run().state is AssessmentState.COMPLETED  # nothing owed: report as before

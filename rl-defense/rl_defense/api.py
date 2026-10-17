@@ -33,9 +33,12 @@ __all__ = [
 ]
 
 
-def load_policy(checkpoint: str | Path) -> PolicyRunner:
-    """Load and hash-verify a checkpoint for inference."""
-    return PolicyRunner(Path(checkpoint))
+def load_policy(checkpoint: str | Path, *, blob: bytes | None = None) -> PolicyRunner:
+    """Load and hash-verify a checkpoint for inference.
+
+    ``blob`` supplies already-verified checkpoint bytes so the digest check and the
+    ``torch.load`` read the same bytes (the path could be swapped between them)."""
+    return PolicyRunner(Path(checkpoint), blob=blob)
 
 
 def recommend(checkpoint: str | Path, facts: PlatformFacts) -> DefenseRecommendation:
