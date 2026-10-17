@@ -15,7 +15,9 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 76
     const heading = page.getByRole('heading', { level: 1 });
     await expect(heading).toHaveText('FIND THE FLAW.PROVE THE FIX.');
     await expect(page.locator('.hero-content p')).toHaveCount(0);
-    await expect(page.getByRole('link', { name: 'Try the Demo', exact: true }).first()).toHaveAttribute('href', '/demo');
+    // The demo account is not linked publicly; the call to action opens the console.
+    await expect(page.getByRole('link', { name: 'Go to projects', exact: true }).first()).toHaveAttribute('href', '/projects');
+    await expect(page.getByRole('link', { name: /demo/i })).toHaveCount(0);
     await expect(page.getByRole('link', { name: 'How It Works', exact: true })).toHaveAttribute('href', '#how');
     await expect(page.locator('[aria-label="Assessment loop"] li')).toHaveText(steps.map((step, i) => `${String(i + 1).padStart(2, '0')}${step}`));
     const nav = page.getByRole('navigation', { name: 'Primary', exact: true });
@@ -29,7 +31,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 76
     expect(await page.evaluate(() => document.activeElement?.closest('.nav-secondary') !== null)).toBe(false);
     if (viewport.width < 640) {
       await nav.getByRole('button', { name: 'Menu', exact: true }).click();
-      for (const name of ['Projects', 'Defense Lab', 'Demo', 'Pricing']) await expect(nav.getByRole('link', { name, exact: true })).toBeVisible();
+      for (const name of ['Projects', 'Defense Lab', 'Pricing']) await expect(nav.getByRole('link', { name, exact: true })).toBeVisible();
       await nav.getByRole('link', { name: 'Projects', exact: true }).focus();
       await page.keyboard.press('Escape');
       await expect(nav.getByRole('button', { name: 'Menu', exact: true })).toBeFocused();
@@ -83,8 +85,8 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 76
     // Move the dark chapter under every row of controls, not only below the anchor offset.
     await page.locator('#how').evaluate(el => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY + 200));
     await expect(page.locator('header .hdr-logo')).toHaveCSS('color', 'rgb(255, 255, 255)');
-    await nav.getByRole('link', { name: 'Demo', exact: true }).hover();
-    await expect(nav.getByRole('link', { name: 'Demo', exact: true })).toHaveCSS('background-color', 'rgba(255, 255, 255, 0.09)');
+    await nav.getByRole('link', { name: 'Defense Lab', exact: true }).hover();
+    await expect(nav.getByRole('link', { name: 'Defense Lab', exact: true })).toHaveCSS('background-color', 'rgba(255, 255, 255, 0.09)');
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.getByRole('link', { name: 'How It Works', exact: true }).click();
     await expect(page).toHaveURL(/#how$/);
@@ -92,7 +94,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 76
     await nav.getByRole('link', { name: 'Pricing', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'ARI pricing' })).toBeVisible();
     await page.evaluate(() => window.scrollTo(0, 0));
-    for (const name of ['Projects', 'Defense Lab', 'Demo', 'Pricing']) await expect(nav.getByRole('link', { name, exact: true })).toBeVisible();
+    for (const name of ['Projects', 'Defense Lab', 'Pricing']) await expect(nav.getByRole('link', { name, exact: true })).toBeVisible();
     await expect(page.locator('body')).not.toContainText('Ari AI');
     await expect(page.locator('nextjs-portal')).toHaveCount(0);
     expect(errors).toEqual([]);
@@ -113,6 +115,6 @@ test('reduced motion keeps the hero, logo and menu visible', async ({ page }) =>
   await page.evaluate(() => window.scrollTo(0, 0));
   await expect(page.locator('.nav-secondary')).toHaveCSS('opacity', '0');
   await expect(page.getByRole('link', { name: 'ARI home', exact: true })).toBeVisible();
-  await page.getByRole('link', { name: 'Try the Demo', exact: true }).first().click();
-  await expect(page).toHaveURL(/\/demo$/);
+  await page.getByRole('link', { name: 'Go to projects', exact: true }).first().click();
+  await expect(page).toHaveURL(/\/projects$/);
 });
