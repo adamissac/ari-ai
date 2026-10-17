@@ -6,6 +6,7 @@ description: Synchronize repo and coordinate changes across six concurrent GitHu
 # git-sync-and-message
 
 
+0. Cadence: commit after every passing test or finished sub-step (at least every 30 minutes) and push after every commit. Run the full read-what-changed sequence from "Git cadence" in `AGENTS.md` before every commit, push, interface change and PR.
 1. `git status --short`; identify owner branch and uncommitted changes. Do not overwrite, reset or discard someone else's work.
 2. `git fetch origin`; inspect `origin/main` recent commits, own branch divergence, `gh pr list`, `gh issue list` and relevant comments if GitHub CLI available.
 3. Read `coordination/MESSAGES.md`, new message files in `coordination/messages/`, `coordination/STATUS.md`, `coordination/CONTRACTS.md`, and six per-owner statuses. A PR branch file is not visible to peers until pushed and linked; issue/comment for urgent blockers.
