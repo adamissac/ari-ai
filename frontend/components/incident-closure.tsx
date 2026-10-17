@@ -25,7 +25,12 @@ async function loadSources(findingIds: string[], signal: AbortSignal): Promise<C
   const verifications: ClosureSources['verifications'] = [];
   for (const fid of findingIds) {
     const [patches, detail] = await Promise.all([api().patches(fid, { signal }), api().finding(fid, { signal })]);
-    options.push(...patchEvidence(fid, patches.items));
+    const storedSha: Record<string, string> = {};
+    for (const { patch } of patches.items) {
+      const art = await api().artifactText(patch.diff_artifact_id, { signal, maxBytes: 2 * 1024 * 1024 });
+      storedSha[patch.diff_artifact_id] = art.sha256;
+    }
+    options.push(...patchEvidence(fid, patches.items, storedSha));
     verifications.push(...acceptedVerifications(patches.items).map(id => ({ id, findingId: fid })));
     for (const r of detail.records) {
       if (r.type !== 'hardening' || !r.record.proposed_test_artifact_id) continue;
