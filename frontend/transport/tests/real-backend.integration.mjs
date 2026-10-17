@@ -103,6 +103,9 @@ test('real FastAPI/PostgreSQL browser transport', async t => {
     assert.equal(persisted.status, 'queued');
     assert.equal((await eve.fetch(`${baseUrl}/jobs/${persisted.id}`)).status, 404);
     await assert.rejects(alice.api.startAssessment(project.id, { ...body, commit_sha: 'e'.repeat(40) }, 'lost-response-action'), e => e instanceof ApiError && e.status === 409 && e.error.code === 'IDEMPOTENCY_CONFLICT');
+    const other = await alice.api.createProject({ name: 'Retry URL isolation', org_id: null, settings: null });
+    await assert.rejects(alice.api.startAssessment(other.id, body, 'lost-response-action'), e => e instanceof ApiError && e.status === 409 && e.error.code === 'IDEMPOTENCY_CONFLICT');
+    assert.deepEqual((await alice.api.assessments(other.id)).items, []);
     const fresh = await alice.api.startAssessment(project.id, { ...body, commit_sha: 'e'.repeat(40) }, 'fresh-action');
     assert.notEqual(fresh.id, retried.id);
     assert.equal((await alice.api.assessments(project.id)).items.length, count + 2);
