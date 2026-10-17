@@ -200,3 +200,8 @@ backend tests pass. Dedicated worktree; no security-agent lane changes.
 API-RETRY-001 validation: targeted16 passed; root420 passed/9 optional skips;
 backend79 passed/5 optional skips. Real PostgreSQL, scripted model transports;
 Ruff/format/mypy, 112-file contract freshness, links passed. PR remains for review.
+
+### DEMO-RECOVERY-001 — explicit409 new-action recovery
+Alan/Codex, IN_REVIEW on fix/alan/explicit-conflict-recovery (own worktree).
+Preserve same-action network retries, namespace keys by project, require explicit
+preparation for a separate action after conflict; no request on preparation.
