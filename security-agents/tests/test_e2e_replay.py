@@ -641,3 +641,18 @@ def test_early_security_exit_still_waits_for_a_functional_approval(intel, driver
 
     orch2, _ = build(intel, driver, library, tmp_path / "b", scripts=scripts)
     assert orch2.run().state is AssessmentState.COMPLETED  # nothing owed: report as before
+
+
+def test_report_carries_a_bounded_redacted_tool_trace_per_run(result):
+    """A failed paid live run must be diagnosable from the report (M3 attempt: Probe was
+    inconclusive and the report had only counts)."""
+    report = result[0].report()
+    for run in report["runs"]:
+        trace = run["tool_trace"]
+        assert len(trace) == run["tool_calls"] or len(trace) == 40, run["agent"]
+        assert trace, f"{run['agent']} has no tool trace"
+        for call in trace:
+            assert set(call) == {"name", "ok", "error_code", "args", "summary"}
+            assert len(call["args"]) <= 800 and len(call["summary"]) <= 1200
+    probe = next(r for r in report["runs"] if r["agent"] == "probe")
+    assert any(c["name"].startswith("checks") for c in probe["tool_trace"]), probe["tool_trace"]

@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Fix concurrent identical artifact publication and refresh ready snapshots after parser or ingestion-profile changes; preserve historical snapshots.
+
 - Opening an incident says it records a title and report. It does not contain systems, notify outsiders, or attach evidence until linked, and new cases default to a labelled simulated drill.
 - Requesting a scope says it records a pending authorization. It does not activate until another member approves it, and it does not start a check or open access outside the listed targets.
 - Starting an assessment says it enqueues a scoped check. It does not merge, deploy, or prove the application is secure when it finishes.

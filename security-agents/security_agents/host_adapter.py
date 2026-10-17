@@ -611,10 +611,39 @@ class HostSink(AssessmentSink):
         canonical = contract_export.verification_result(
             result, produced_by_run_id=result.verify_run_id or self.run_ids["verify"]
         )
+        canonical = self._with_http_recheck_evidence(finding, canonical)
         self.host.record_verification(self._bind_verified_bytes(canonical))
         self.recorded.append("verification")
         if str(getattr(result.verdict, "value", result.verdict)) == "accepted":
             self.set_status(finding.finding_id, "verified", reason="independent Verify accepted")
+
+    def _with_http_recheck_evidence(self, finding: FindingRecord, canonical: Any) -> Any:
+        evidence = finding.verify_http_evidence
+        if not evidence:
+            return canonical
+        import json
+
+        from shared.evidence import ArtifactKind, EvidenceKind, EvidenceRef
+
+        artifact = self.host.store_text(
+            json.dumps(evidence, indent=2, sort_keys=True),
+            kind=ArtifactKind.tool_output,
+            media_type="application/json",
+        )
+        ref = EvidenceRef(
+            kind=EvidenceKind.tool_output,
+            artifact_id=artifact.id,
+            sha256=artifact.sha256,
+            provenance="agent:verify",
+            note="http re-check against the patched workspace served in a hardened target",
+        )
+        checks = [
+            c.model_copy(update={"evidence": [*c.evidence, ref]})
+            if str(getattr(c.name, "value", c.name)) == "original_check_now_fails_to_reproduce"
+            else c
+            for c in canonical.checks
+        ]
+        return canonical.model_copy(update={"checks": checks})
 
     def _bind_verified_bytes(self, canonical: Any) -> Any:
         """Bind the verdict to the exact diff bytes Verify executed. The PatchCandidate names
@@ -828,6 +857,7 @@ class HostOrchestrator:
             max_hypotheses=self.max_hypotheses,
             max_hypotheses_to_validate=self.validate_count,
             probe_check_transport=os.environ.get("SECURITY_AGENTS_PROBE_TRANSPORT", "inprocess"),
+            verify_check_transport=os.environ.get("SECURITY_AGENTS_VERIFY_TRANSPORT", "inprocess"),
         )
         registry = self.registry or default_registry()
         sink = HostSink(host=host, commit_sha=intel.snapshot.commit_sha)

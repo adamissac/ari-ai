@@ -51,6 +51,13 @@ test('Defense Lab plots only the committed, schema-validated evaluation bundle',
   const slider = page.getByLabel('Step', { exact: true });
   await slider.fill('50');
   await expect(page.getByText('t = 50 /', { exact: false })).toBeVisible();
+  // The replay is always labelled as a recorded simulation, and a service can be inspected.
+  await expect(page.getByTestId('lab-mode')).toHaveText('Simulation · recorded evaluation');
+  await page.getByRole('button', { name: /^Gateway \(gateway\)/ }).click();
+  await expect(page.getByTestId('lab-service-panel')).toContainText('Reachable from the internet: yes');
+  await expect(page.getByText('attacker: ', { exact: false })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Next key moment' }).click();
+  await expect(page.getByTestId('lab-step-action')).toContainText('the defender:');
   await evidenceShot(page, 'defense-lab');
   await page.setViewportSize({ width: 375, height: 800 });
   await page.reload();

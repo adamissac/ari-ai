@@ -211,12 +211,15 @@ export class ApiClient {
   reassessments(projectId: string, options?: RequestOptions): Promise<Page<C.ReassessmentRequest>> {
     return this.list(`/projects/${segment(projectId)}/reassessments`, 'ReassessmentRequest', options);
   }
-  async defenseRecommendations(projectId: string, options?: RequestOptions): Promise<LabeledPage<C.DefenseRecommendation>> {
-    const record = object(await this.request(`/projects/${segment(projectId)}/defense-recommendations`, RAW, options), 'recommendation list');
-    if (!Array.isArray(record.items) || record.next_cursor !== null || typeof record.label !== 'string' || Object.keys(record).length !== 3) {
+  /** Newest first. Pass the returned `next_cursor` as `cursor` for older recommendations. */
+  async defenseRecommendations(projectId: string, options?: RequestOptions & { cursor?: string }): Promise<LabeledPage<C.DefenseRecommendation>> {
+    const qs = options?.cursor ? `?cursor=${encodeURIComponent(options.cursor)}` : '';
+    const record = object(await this.request(`/projects/${segment(projectId)}/defense-recommendations${qs}`, RAW, options), 'recommendation list');
+    const cursor = record.next_cursor;
+    if (!Array.isArray(record.items) || (cursor !== null && (typeof cursor !== 'string' || cursor.length === 0 || cursor.length > 200)) || typeof record.label !== 'string' || Object.keys(record).length !== 3) {
       throw new ProtocolError('Invalid recommendation list');
     }
-    return { items: record.items.map(i => decode<C.DefenseRecommendation>('DefenseRecommendation', i)), next_cursor: null, label: record.label };
+    return { items: record.items.map(i => decode<C.DefenseRecommendation>('DefenseRecommendation', i)), next_cursor: cursor, label: record.label };
   }
   recommendationExplanation(id: string, options?: RequestOptions): Promise<C.RLExplanation> {
     return this.request(`/defense-recommendations/${segment(id)}/explanation`, 'RLExplanation', options) as Promise<C.RLExplanation>;
