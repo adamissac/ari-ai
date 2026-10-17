@@ -56,7 +56,6 @@ export function ProjectShell({ children }: { children: ReactNode }) {
             ? <span>No repository connected</span>
             : repos.data.items.map(r => <span key={r.id} className="font-mono text-xs text-white/85">{r.full_name}<span className="text-white/50"> · {r.default_branch}</span></span>)}
           <span className="flex items-center gap-1.5">
-            <span aria-hidden="true" className={project.data.settings.monitoring_policy.enabled ? 'hero-ping' : 'inline-block h-1.5 w-1.5 rounded-full bg-white/40'} />
             Monitoring {project.data.settings.monitoring_policy.enabled ? 'on' : 'off'}
           </span>
         </p>
