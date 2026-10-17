@@ -22,6 +22,8 @@ def test_target_prefix_excludes_answer_key_and_resolves_packages(
     target = root / prefix
     target.mkdir(parents=True)
     shutil.copytree(root / "app", target / "app")
+    (target / "app/ignored.py").write_text("def should_be_ignored(): pass\n")
+    (root / ".intelignore").write_text(prefix + "/app/ignored.py\n")
     (root / "examples/payments-lite/labels.yaml").write_text("ANSWER_KEY_DO_NOT_INDEX: true\n")
     sha = commit(root)
     engine = IntelligenceService(
@@ -33,6 +35,7 @@ def test_target_prefix_excludes_answer_key_and_resolves_packages(
     assert all(f.path.startswith(prefix + "/") for f in engine.store.get(ref).files)
     assert all("labels" not in path for path in engine.store.get(ref).tree_files)
     assert engine.get_symbol(ref, "app.auth.current_user")
+    assert not any(f.path.endswith("ignored.py") for f in engine.store.get(ref).files)
 
 
 def test_http_tests_fields_and_documentation_are_unverified_intent(

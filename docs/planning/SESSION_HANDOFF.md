@@ -70,3 +70,10 @@ adds an entry before ending.
   service. Human decisions, promoted regression/finding joins, router composition and parse
   caching remain follow-ups. No full runtime or production claim. Unrelated untracked
   `.serena/` and nested checkout were left untouched.
+
+- Sarosh final verification (2026-10-17T01:56Z): on main sync `4a8d692`, broader suite
+  **113 passed, 4 skipped** with isolated TypeScript 5.6.3 compiler. Skips: RL-dependent
+  collection/test and two live suites. Intelligence/store/webhook acceptance previously
+  **22 passed, 1 skipped**; subsequent actual factory/exclusivity check passed. PR CI for
+  pushed `87e898d`: both test jobs, links and gitleaks passed. Check latest PR #6 revision
+  and consumer adapter messages before further integration.
