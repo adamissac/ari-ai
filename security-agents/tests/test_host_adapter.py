@@ -955,3 +955,19 @@ def test_hosts_without_record_roe_still_run(host_and_orchestrator):
     assert not hasattr(host, "record_roe")
     orchestrator.run(host)
     assert [r["agent"] for r in host.runs] == ["scout", "probe", "trace", "diagnose"]
+
+
+def test_hosted_run_stores_a_valid_sarif_log_and_the_rules_of_engagement(host_and_orchestrator):
+    import jsonschema
+
+    from security_agents.standards.sarif import schema
+
+    host, orchestrator, gateway = host_and_orchestrator
+    orchestrator.run(host)
+    texts = [json.loads(t) for t in host.stored if isinstance(t, str) and t.lstrip().startswith("{")]
+    sarif_logs = [t for t in texts if t.get("version") == "2.1.0" and "runs" in t]
+    roes = [t for t in texts if str(t.get("id", "")).startswith("roe_")]
+    assert sarif_logs and roes
+    jsonschema.Draft4Validator(schema()).validate(sarif_logs[-1])
+    assert sarif_logs[-1]["runs"][0]["properties"]["run_mode"] == "hosted"
+    assert any(m.startswith("standards artifacts stored") for m in host.progress_messages)
