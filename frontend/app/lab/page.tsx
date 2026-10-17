@@ -115,7 +115,7 @@ function Scoreboard({ bundle }: { bundle: DefenseLabBundle }) {
         Four defenders, each tested on {n.toLocaleString()} games they never trained on. The range in brackets is the 95% confidence interval:
         the true average very likely lies inside it. ★ marks the best of the four on that measure.
       </p>
-      <div className="mt-3 grid gap-3 md:grid-cols-2">
+      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
         {SCORE_METRICS.map(metric => {
           const cells = scoreboard(bundle, metric);
           if (cells.every(c => c.value === null)) return null;
@@ -238,7 +238,7 @@ function Player({ episode, scenario }: { episode: LabEpisode; scenario: LabScena
       <Timeline episode={episode} t={t} onSeek={v => { setPlaying(false); setT(v); }} />
       <p className="mb-1 mt-3 text-sm" data-testid="lab-step-action"><span className="text-faint">At step {step?.t ?? 0} the defender: </span><strong>{step ? actionInWords(step.action) : '—'}</strong></p>
       <p className="mb-3 text-sm text-ink" data-testid="lab-step-story">{stepObservation(step)}</p>
-      <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[3fr_2fr]">
         <div>
           <Topology scenario={scenario} states={step?.nodes ?? []} />
           <div className="mt-3 flex flex-wrap items-center gap-2">

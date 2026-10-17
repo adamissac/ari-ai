@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { evidenceShot } from './helpers';
+import { evidenceShot, expectNoSideScroll } from './helpers';
 
 // These tests intercept the network on purpose: they prove the UI shows honest
 // failure states instead of substituting data when the backend misbehaves.
@@ -55,7 +55,7 @@ test('Defense Lab plots only the committed, schema-validated evaluation bundle',
   await page.setViewportSize({ width: 375, height: 800 });
   await page.reload();
   await expect(page.getByTestId('lab-scoreboard')).toBeVisible();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(376);
+  await expectNoSideScroll(page);
 });
 
 test('a malformed bundle name is refused by the server', async ({ request }) => {

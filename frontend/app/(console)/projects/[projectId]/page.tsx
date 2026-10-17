@@ -44,7 +44,7 @@ export default function ProjectOverview() {
           <>
             <h2 className="text-xl font-semibold tracking-tight">{summary.headline}</h2>
             <p className="mt-2 max-w-3xl text-sm text-muted">{summary.detail}</p>
-            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
               <Stat label="Code health" value={summary.codeOpen} hint="open functional findings" />
               <Stat label="Security" value={summary.securityOpen} hint="confirmed, not hypotheses" />
               <Stat label="Continuous defense" value={summary.monitoring} hint={`${summary.verifiedFixes} verified fixes`} />
@@ -73,7 +73,7 @@ export default function ProjectOverview() {
           findingStatuses={findingItems.map(f => f.status)}
         />
       )}
-    <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[3fr_2fr]">
       <div className="flex flex-col gap-4">
         <Panel title="Assessments" actions={<span className="text-xs text-muted">refreshes every 5 s</span>}>
           <Async resource={assessments} label="assessments">
@@ -174,7 +174,7 @@ function ProjectJourney({
     <section aria-label="Check progress" className="rounded-xl border border-line bg-panel p-5" data-testid="project-journey">
       <h2 className="text-sm font-semibold tracking-tight">Where this check is</h2>
       {!logReady ? <p className="mt-2 text-sm text-muted">Loading the recorded phases…</p> : (
-        <ol className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <ol className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {stages.map(item => {
             const href = item.id === 'monitor' ? `/projects/${projectId}/monitoring` : assessmentHref;
             return (
@@ -254,7 +254,7 @@ function StartAssessment({ onStarted }: { onStarted: () => void }) {
   return (
     <Panel title="Start an assessment" id="start-assessment">
       {repos.length === 0 ? <Empty>Connect a repository first.</Empty> : (
-        <form onSubmit={submit} className="grid gap-3 sm:grid-cols-3">
+        <form onSubmit={submit} className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Field label="Repository">
             <select className={inputClass} value={repoId} onChange={e => setRepoId(e.target.value)} required name="repo">
               <option value="">Select…</option>

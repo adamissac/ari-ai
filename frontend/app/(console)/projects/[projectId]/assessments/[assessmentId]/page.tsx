@@ -116,7 +116,7 @@ export default function AssessmentPage() {
           onSelect={setSelectedAgent}
         />
       </div>
-      <div className="mt-4 grid gap-4 xl:grid-cols-[2fr_3fr]">
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[2fr_3fr]">
         <Panel title={`What this check found (${detail.findings.length})`}>
           {detail.findings.length === 0 ? <Empty>{terminal ? 'No findings were recorded by this run.' : 'No findings recorded yet.'}</Empty> : (
             <ul className="divide-y divide-line">
@@ -157,7 +157,7 @@ export default function AssessmentPage() {
         <div className="border-t border-line p-4">
           <ConnectionBar state={connection} error={streamError} onReconnect={() => { setStreamError(null); setStreamNonce(n => n + 1); }} />
           <StateRail state={a.state} events={events} />
-          <div className="mt-4 grid gap-3 sm:grid-cols-4">
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-4">
             <Stat label="Tokens" value={`${(a.usage.input_tokens + a.usage.output_tokens).toLocaleString()}`} hint={`cap ${a.budget.max_tokens.toLocaleString()}`} />
             <Stat label="Model cost" value={usd(a.usage.usd)} hint={`cap ${usd(a.budget.max_usd)}`} />
             <Stat label="Model / tool calls" value={`${a.usage.llm_calls} / ${a.usage.tool_calls}`} />
@@ -186,7 +186,7 @@ function AssessmentPhases({
   if (log.status === 'error') return <div className="mb-4"><ErrorState error={log.error} onRetry={log.reload} context="Event log" /></div>;
   const phases = assessmentPhases({ state, events: log.data?.items ?? [], findingStatuses });
   return (
-    <ol aria-label="Phases of this check" className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3" data-testid="assessment-phases">
+    <ol aria-label="Phases of this check" className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3" data-testid="assessment-phases">
       {phases.map(item => (
         <li key={item.id} className="rounded-lg border border-line p-3" data-testid={`assessment-phase-${item.id}`}>
           <p className="text-sm font-medium">{item.label}</p>

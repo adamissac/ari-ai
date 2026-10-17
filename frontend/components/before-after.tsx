@@ -38,7 +38,7 @@ export function BeforeAfter({ kind, status, validation, patches }: {
       <p className="mt-1 text-sm text-muted">
         Left: what the tests showed before. Right: what an independent <Term t="verification">re-test</Term> showed after the proposed <Term t="patch">fix</Term>.
       </p>
-      <div className="mt-3 grid gap-3 md:grid-cols-2">
+      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
         <SideCard label="Before" side={before} testId="ba-before" />
         <SideCard label="After" side={after.side} testId="ba-after">
           {after.checks.length > 0 && (

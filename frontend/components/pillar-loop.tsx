@@ -24,7 +24,7 @@ export function PillarLoop({ nodes }: { nodes: LoopNode[] }) {
         Each step hands its results to the next. When the code changes, <Term t="monitoring">monitoring</Term> starts the loop again.
         The status in each box is read from this project&apos;s records.
       </p>
-      <ol className="mt-4 grid gap-2 md:grid-cols-5" aria-label="Product loop">
+      <ol className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-5" aria-label="Product loop">
         {nodes.map((n, i) => {
           const tone = TONE[n.tone];
           return (
