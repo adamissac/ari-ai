@@ -49,6 +49,7 @@ pytestmark = pytest.mark.boundary
 
 # --------------------------------------------------------------------------- SB-11 redaction
 
+
 # Synthetic secret-shaped strings. They are assembled at runtime so no literal
 # in this repository looks like a credential to a scanner; none of these values
 # are real or valid anywhere.
@@ -131,7 +132,11 @@ def test_transcripts_are_redacted(intel):
                     submit,
                     {
                         "hypotheses": [],
-                        "coverage": {"entry_points_reviewed": [], "looks_correct": [], "skipped_with_reason": []},
+                        "coverage": {
+                            "entry_points_reviewed": [],
+                            "looks_correct": [],
+                            "skipped_with_reason": [],
+                        },
                         "suspicious_instructions": [],
                     },
                 )
@@ -140,9 +145,12 @@ def test_transcripts_are_redacted(intel):
     ]
     gw = ProviderGateway(FakeLLM({AgentName.SCOUT: script}))
     outcome = run_agent(
-        scout_agent.SPEC, gateway=gw, registry=default_registry(),
+        scout_agent.SPEC,
+        gateway=gw,
+        registry=default_registry(),
         ctx=make_ctx(AgentName.SCOUT, intel=intel, scope=make_scope()),
-        task_prompt="survey", budget=Budget(max_tokens=100_000, max_usd=1.0, max_wall_clock_s=60.0),
+        task_prompt="survey",
+        budget=Budget(max_tokens=100_000, max_usd=1.0, max_wall_clock_s=60.0),
         assessment_usage=Usage(),
     )
     stored = json.dumps(outcome.record.to_json(), default=str)
@@ -198,9 +206,7 @@ def injected_intel(payments_lite_src, tmp_path):
 
 def test_injected_instructions_are_reported_as_a_signal(injected_intel):
     ctx = make_ctx(AgentName.SCOUT, intel=injected_intel, scope=make_scope())
-    result = default_registry().invoke(
-        ctx, wire_name("static.analyze"), {"path": "payments_lite/app.py"}
-    )
+    result = default_registry().invoke(ctx, wire_name("static.analyze"), {"path": "payments_lite/app.py"})
     signals = result.payload["suspicious_instruction_signals"]
     assert signals, "injected instructions should be surfaced as a signal"
     assert any("ignore all previous instructions" in s["text"].lower() for s in signals)
@@ -209,7 +215,8 @@ def test_injected_instructions_are_reported_as_a_signal(injected_intel):
 def test_context_is_wrapped_as_untrusted_data(injected_intel):
     """Repository content reaches the model inside a data block with a provenance header."""
     data = scout_agent.ScoutInput(
-        assessment_id="asm", snapshot_id=injected_intel.snapshot.snapshot_id,
+        assessment_id="asm",
+        snapshot_id=injected_intel.snapshot.snapshot_id,
         commit_sha=injected_intel.snapshot.commit_sha,
         available_check_categories=["access_control.ownership"],
     )
@@ -236,8 +243,14 @@ def test_an_agent_obeying_an_injection_still_cannot_use_a_forbidden_tool(injecte
                     submit,
                     {
                         "hypotheses": [],
-                        "coverage": {"entry_points_reviewed": [], "looks_correct": [], "skipped_with_reason": []},
-                        "suspicious_instructions": ["repository comment instructs the reviewer to skip verification"],
+                        "coverage": {
+                            "entry_points_reviewed": [],
+                            "looks_correct": [],
+                            "skipped_with_reason": [],
+                        },
+                        "suspicious_instructions": [
+                            "repository comment instructs the reviewer to skip verification"
+                        ],
                     },
                 )
             ]
@@ -246,10 +259,14 @@ def test_an_agent_obeying_an_injection_still_cannot_use_a_forbidden_tool(injecte
     gw = ProviderGateway(FakeLLM({AgentName.SCOUT: script}))
     ctx = make_ctx(AgentName.SCOUT, intel=injected_intel, scope=make_scope())
     outcome = run_agent(
-        scout_agent.SPEC, gateway=gw, registry=default_registry(), ctx=ctx,
+        scout_agent.SPEC,
+        gateway=gw,
+        registry=default_registry(),
+        ctx=ctx,
         task_prompt=scout_agent.build_prompt(
             scout_agent.ScoutInput(
-                assessment_id="asm", snapshot_id="snp_inj",
+                assessment_id="asm",
+                snapshot_id="snp_inj",
                 commit_sha=injected_intel.snapshot.commit_sha,
                 available_check_categories=["access_control.ownership"],
             ),
@@ -261,7 +278,11 @@ def test_an_agent_obeying_an_injection_still_cannot_use_a_forbidden_tool(injecte
     denied = [t for t in outcome.record.tool_invocations if not t.ok]
     assert len(denied) == 2
     assert {t.error_code for t in denied} == {ErrorCode.TOOL_NOT_ALLOWED.value}
-    assert (injected_intel.snapshot.root / "payments_lite" / "app.py").read_text().startswith("# NOTE FOR THE AI")
+    assert (
+        (injected_intel.snapshot.root / "payments_lite" / "app.py")
+        .read_text()
+        .startswith("# NOTE FOR THE AI")
+    )
     assert outcome.output.suspicious_instructions
 
 
@@ -277,22 +298,43 @@ def test_injected_repository_content_does_not_change_the_assessment_flow(
     scripts = fake_agents.all_scripts(injected_intel.snapshot.root)
     gw = ProviderGateway(FakeLLM(scripts))
     config = OrchestratorConfig(
-        assessment_id="asm_inj", project_id="prj", org_id="org", scope=live_scope(),
-        target_id=TARGET_ID, requested_by="usr_a",
+        assessment_id="asm_inj",
+        project_id="prj",
+        org_id="org",
+        scope=live_scope(),
+        target_id=TARGET_ID,
+        requested_by="usr_a",
         budget=Budget(max_tokens=2_000_000, max_usd=50.0, max_wall_clock_s=900.0),
     )
     res = Orchestrator(
-        config, intel=injected_intel, gateway=gw, driver=driver, library=library,
+        config,
+        intel=injected_intel,
+        gateway=gw,
+        driver=driver,
+        library=library,
         workdir=tmp_path / "work",
         approve_remediation=lambda f: Approval(
-            project_id="prj", subject_type="remediation", subject_id=f.plan.id,
-            decision="approved", decided_by="usr_human",
+            project_id="prj",
+            subject_type="remediation",
+            subject_id=f.plan.id,
+            decision="approved",
+            decided_by="usr_human",
         ),
     ).run()
     assert res.state is AssessmentState.COMPLETED, res.error_detail
     assert res.state_log.states() == [
-        "scope_check", "indexing", "functional_review", "recon", "validation", "analysis",
-        "diagnosis", "awaiting_approval", "remediation", "hardening", "reporting", "completed",
+        "scope_check",
+        "indexing",
+        "functional_review",
+        "recon",
+        "validation",
+        "analysis",
+        "diagnosis",
+        "awaiting_approval",
+        "remediation",
+        "hardening",
+        "reporting",
+        "completed",
     ]
     # verification still rests on executed checks, not on the injected claim
     finding = res.findings[0]
@@ -309,15 +351,24 @@ def test_a_patch_cannot_be_verified_without_an_independent_verify_run():
     from security_agents.workflow import FindingRecord
 
     hypothesis = scout_agent.Hypothesis(
-        weakness_class="CWE-639", title="t", rationale="r",
+        weakness_class="CWE-639",
+        title="t",
+        rationale="r",
         cited_spans=[scout_agent.EvidenceRef(path="payments_lite/app.py", provenance="code")],
-        confidence="high", suggested_check_category="access_control.ownership",
+        confidence="high",
+        suggested_check_category="access_control.ownership",
     )
     finding = FindingRecord(finding_id="fnd_x", hypothesis=hypothesis)
     finding.candidates.append(
         PatchCandidate(
-            finding_id="fnd_x", attempt=1, diff_uri="u", diff_sha256="s", worktree_ref="w",
-            files_changed=["payments_lite/app.py"], tests_added=["tests/t.py"], local_test_run_id="r",
+            finding_id="fnd_x",
+            attempt=1,
+            diff_uri="u",
+            diff_sha256="s",
+            worktree_ref="w",
+            files_changed=["payments_lite/app.py"],
+            tests_added=["tests/t.py"],
+            local_test_run_id="r",
             local_tests_passed=True,
         )
     )
@@ -345,16 +396,28 @@ def test_verify_glowing_summary_cannot_override_failed_checks():
         observed_original_check_ref="access_control.ownership@1",
     )
     evidence = verify_agent.VerifyEvidence(
-        apply_facts={"applied": True, "files_touched": ["payments_lite/app.py"], "out_of_scope": [],
-                     "new_tests": [], "tampered_protected_tests": []},
+        apply_facts={
+            "applied": True,
+            "files_touched": ["payments_lite/app.py"],
+            "out_of_scope": [],
+            "new_tests": [],
+            "tampered_protected_tests": [],
+        },
         recheck_runs=[],  # nothing was actually re-run
         test_runs=[],
-        baseline_failing=[], tests_added=[], protected_tests=[],
-        original_check_ref="access_control.ownership@1", original_check_params={},
+        baseline_failing=[],
+        tests_added=[],
+        protected_tests=[],
+        original_check_ref="access_control.ownership@1",
+        original_check_params={},
     )
     data = verify_agent.VerifyInput(
-        assessment_id="asm", patch_id="pat_1", finding_id="fnd_1", remediation_plan_id="rmp_1",
-        scope_id="scp", target_id=TARGET_ID,
+        assessment_id="asm",
+        patch_id="pat_1",
+        finding_id="fnd_1",
+        remediation_plan_id="rmp_1",
+        scope_id="scp",
+        target_id=TARGET_ID,
     )
     result = verify_agent.to_result(out, data, evidence, sandbox_run_ids=[], verify_run_id="run_v")
     assert result.verdict == "rejected"
@@ -363,8 +426,13 @@ def test_verify_glowing_summary_cannot_override_failed_checks():
 
 def test_probe_cannot_confirm_without_execution():
     data = probe_agent.ProbeInput(
-        assessment_id="asm", hypothesis_id="hyp_1", scope_id="scp", target_id=TARGET_ID,
-        hypothesis_title="t", weakness_class="CWE-639", expected_invariant="i",
+        assessment_id="asm",
+        hypothesis_id="hyp_1",
+        scope_id="scp",
+        target_id=TARGET_ID,
+        hypothesis_title="t",
+        weakness_class="CWE-639",
+        expected_invariant="i",
         suggested_check_category="access_control.ownership",
     )
     from security_agents.runtime import StepRecord
@@ -382,15 +450,24 @@ def test_probe_cannot_confirm_without_execution():
 def test_kill_switch_stops_new_tool_execution(intel, library, driver):
     from security_agents.tools import CheckRunner, recipe_from_snapshot
 
-    ctx = make_ctx(AgentName.PROBE, intel=intel, scope=make_scope(), kill_switch=lambda: True,
-                   services={"check_runner": CheckRunner(
-                       driver=driver, library=library,
-                       workspace_provider=lambda _c: intel.snapshot.root,
-                       recipe_provider=recipe_from_snapshot(intel),
-                   )})
+    ctx = make_ctx(
+        AgentName.PROBE,
+        intel=intel,
+        scope=make_scope(),
+        kill_switch=lambda: True,
+        services={
+            "check_runner": CheckRunner(
+                driver=driver,
+                library=library,
+                workspace_provider=lambda _c: intel.snapshot.root,
+                recipe_provider=recipe_from_snapshot(intel),
+            )
+        },
+    )
     with pytest.raises(PlatformError) as exc:
         default_registry().invoke(
-            ctx, wire_name("checks.run_template"),
+            ctx,
+            wire_name("checks.run_template"),
             {"template_ref": "access_control.ownership@1", "target_id": TARGET_ID, "parameters": {}},
         )
     assert exc.value.code is ErrorCode.KILL_SWITCH
@@ -400,18 +477,30 @@ def test_revoked_scope_denies_further_checks(intel, library, driver):
     """Scope revocation takes effect on the next scope-checked call."""
     from security_agents.tools import CheckRunner, recipe_from_snapshot
 
-    services = {"check_runner": CheckRunner(
-        driver=driver, library=library,
-        workspace_provider=lambda _c: intel.snapshot.root,
-        recipe_provider=recipe_from_snapshot(intel),
-    )}
-    ctx = make_ctx(AgentName.PROBE, intel=intel, scope=make_scope(status=ScopeStatus.REVOKED),
-                   services=services)
+    services = {
+        "check_runner": CheckRunner(
+            driver=driver,
+            library=library,
+            workspace_provider=lambda _c: intel.snapshot.root,
+            recipe_provider=recipe_from_snapshot(intel),
+        )
+    }
+    ctx = make_ctx(
+        AgentName.PROBE, intel=intel, scope=make_scope(status=ScopeStatus.REVOKED), services=services
+    )
     with pytest.raises(PlatformError) as exc:
         default_registry().invoke(
-            ctx, wire_name("checks.run_template"),
-            {"template_ref": "access_control.ownership@1", "target_id": TARGET_ID,
-             "parameters": {"route_id": "payment_detail", "owner_identity": "alice", "other_identity": "bob"}},
+            ctx,
+            wire_name("checks.run_template"),
+            {
+                "template_ref": "access_control.ownership@1",
+                "target_id": TARGET_ID,
+                "parameters": {
+                    "route_id": "payment_detail",
+                    "owner_identity": "alice",
+                    "other_identity": "bob",
+                },
+            },
         )
     assert exc.value.code is ErrorCode.SCOPE_DENIED
 
@@ -423,8 +512,12 @@ def test_assessment_fails_closed_on_inactive_scope(intel, driver, library, tmp_p
 
     gw = ProviderGateway(FakeLLM(fake_agents.all_scripts(intel.snapshot.root)))
     config = OrchestratorConfig(
-        assessment_id="asm_denied", project_id="prj", org_id="org",
-        scope=live_scope(status=ScopeStatus.PENDING), target_id=TARGET_ID, requested_by="usr_a",
+        assessment_id="asm_denied",
+        project_id="prj",
+        org_id="org",
+        scope=live_scope(status=ScopeStatus.PENDING),
+        target_id=TARGET_ID,
+        requested_by="usr_a",
     )
     res = Orchestrator(
         config, intel=intel, gateway=gw, driver=driver, library=library, workdir=tmp_path / "w"

@@ -30,8 +30,12 @@ def build(intel, driver, library, tmp_path: Path, *, scripts=None, approve=True,
         if not approve or finding.plan is None:
             return None
         return Approval(
-            project_id="prj_test", subject_type="remediation", subject_id=finding.plan.id,
-            decision="approved", decided_by="usr_human_reviewer", reason="plan reviewed in test",
+            project_id="prj_test",
+            subject_type="remediation",
+            subject_id=finding.plan.id,
+            decision="approved",
+            decided_by="usr_human_reviewer",
+            reason="plan reviewed in test",
         )
 
     config = OrchestratorConfig(
@@ -45,8 +49,13 @@ def build(intel, driver, library, tmp_path: Path, *, scripts=None, approve=True,
         max_hypotheses_to_validate=2,
     )
     return Orchestrator(
-        config, intel=intel, gateway=gateway, driver=driver, library=library,
-        workdir=tmp_path / "work", approve_remediation=approver,
+        config,
+        intel=intel,
+        gateway=gateway,
+        driver=driver,
+        library=library,
+        workdir=tmp_path / "work",
+        approve_remediation=approver,
     ), gateway
 
 
@@ -66,8 +75,18 @@ def test_assessment_completes_through_every_state(result):
     res, _ = result
     assert res.state is AssessmentState.COMPLETED, res.error_detail
     assert res.state_log.states() == [
-        "scope_check", "indexing", "functional_review", "recon", "validation", "analysis",
-        "diagnosis", "awaiting_approval", "remediation", "hardening", "reporting", "completed",
+        "scope_check",
+        "indexing",
+        "functional_review",
+        "recon",
+        "validation",
+        "analysis",
+        "diagnosis",
+        "awaiting_approval",
+        "remediation",
+        "hardening",
+        "reporting",
+        "completed",
     ]
 
 
@@ -225,9 +244,17 @@ def test_audit_chain_is_hash_linked_and_covers_the_gates(result):
     res, _ = result
     actions = [e.action for e in res.audit]
     for expected in (
-        "scope.checked", "agent.step", "finding.hypothesis", "finding.validation",
-        "finding.severity", "finding.diagnosed", "approval.granted", "patch.candidate",
-        "finding.verification", "finding.hardened", "assessment.completed",
+        "scope.checked",
+        "agent.step",
+        "finding.hypothesis",
+        "finding.validation",
+        "finding.severity",
+        "finding.diagnosed",
+        "approval.granted",
+        "patch.candidate",
+        "finding.verification",
+        "finding.hardened",
+        "assessment.completed",
     ):
         assert expected in actions, expected
     prev = "0" * 64
@@ -265,7 +292,8 @@ def test_worktree_refuses_a_patch_attempt_that_weakens_an_existing_test(intel, d
     finding = res.findings[0]
     patch_record = next(r for r in res.records if r.agent is AgentName.PATCH)
     refused = [
-        inv for inv in patch_record.tool_invocations
+        inv
+        for inv in patch_record.tool_invocations
         if inv.name == "worktree.write_file" and inv.error_code == "PATH_NOT_ALLOWED"
     ]
     assert refused, [(i.name, i.error_code) for i in patch_record.tool_invocations]
@@ -282,7 +310,8 @@ def test_worktree_refuses_a_patch_attempt_outside_the_plan(intel, driver, librar
     finding = res.findings[0]
     patch_record = next(r for r in res.records if r.agent is AgentName.PATCH)
     refused = [
-        inv for inv in patch_record.tool_invocations
+        inv
+        for inv in patch_record.tool_invocations
         if inv.name == "worktree.write_file" and inv.error_code == "PATH_NOT_ALLOWED"
     ]
     assert refused
@@ -290,9 +319,7 @@ def test_worktree_refuses_a_patch_attempt_outside_the_plan(intel, driver, librar
 
 
 @pytest.mark.boundary
-def test_ineffective_in_scope_patch_is_rejected_and_retried_then_unresolved(
-    intel, driver, library, tmp_path
-):
+def test_ineffective_in_scope_patch_is_rejected_and_retried_then_unresolved(intel, driver, library, tmp_path):
     """Verify rejects a patch that does not fix the finding; the loop retries once."""
     orch, _ = build(intel, driver, library, tmp_path, ineffective=True)
     res = orch.run()
@@ -312,9 +339,7 @@ def test_ineffective_in_scope_patch_is_rejected_and_retried_then_unresolved(
 
 
 @pytest.mark.boundary
-def test_patch_retry_receives_rejection_reasons_but_no_verify_transcript(
-    intel, driver, library, tmp_path
-):
+def test_patch_retry_receives_rejection_reasons_but_no_verify_transcript(intel, driver, library, tmp_path):
     orch, gateway = build(intel, driver, library, tmp_path, ineffective=True)
     orch.run()
     patch_calls = [c for c in gateway.provider.calls if c.agent is AgentName.PATCH]
@@ -328,9 +353,7 @@ def test_patch_retry_receives_rejection_reasons_but_no_verify_transcript(
 
 
 @pytest.mark.boundary
-def test_verify_rejects_a_planted_bad_patch_that_edits_a_protected_test(
-    intel, driver, library, tmp_path
-):
+def test_verify_rejects_a_planted_bad_patch_that_edits_a_protected_test(intel, driver, library, tmp_path):
     """A diff authored outside the worktree guard is still rejected by Verify (SB-09).
 
     This is the `examples/fixtures/bad-patches` case: a patch that makes the
@@ -359,8 +382,12 @@ def test_verify_rejects_a_planted_bad_patch_that_edits_a_protected_test(
         workdir=work,
     )
     ctx = ToolContext(
-        assessment_id="asm_bad", agent=AgentName.VERIFY, run_id="run_bad", step_key="verify",
-        read_root=intel.snapshot.root, audit=AuditSink(),
+        assessment_id="asm_bad",
+        agent=AgentName.VERIFY,
+        run_id="run_bad",
+        step_key="verify",
+        read_root=intel.snapshot.root,
+        audit=AuditSink(),
     )
     facts = applier.apply_fresh(ctx, "pat_bad")
     assert facts["applied"] is True
@@ -400,21 +427,35 @@ def test_verify_rejects_a_planted_bad_patch_outside_the_plan(intel, driver, libr
 
     applier = PatchApplier(
         intel=intel,
-        artifacts={"pat_scope": {"diff": diff, "plan_files": ["payments_lite/app.py"],
-                                 "protected_tests": ["tests/test_api.py"]}},
+        artifacts={
+            "pat_scope": {
+                "diff": diff,
+                "plan_files": ["payments_lite/app.py"],
+                "protected_tests": ["tests/test_api.py"],
+            }
+        },
         workdir=work,
     )
     ctx = ToolContext(
-        assessment_id="asm_bad2", agent=AgentName.VERIFY, run_id="run_bad2", step_key="verify",
-        read_root=intel.snapshot.root, audit=AuditSink(),
+        assessment_id="asm_bad2",
+        agent=AgentName.VERIFY,
+        run_id="run_bad2",
+        step_key="verify",
+        read_root=intel.snapshot.root,
+        audit=AuditSink(),
     )
     facts = applier.apply_fresh(ctx, "pat_scope")
     assert facts["out_of_scope_files"] == ["payments_lite/store.py"]
     verdict, checks, _ = verify_agent.compute_verdict(
         verify_agent.VerifyEvidence(
-            apply_facts=dict(ctx.artifacts["verify_facts"]), recheck_runs=[], test_runs=[],
-            baseline_failing=[], tests_added=[], protected_tests=["tests/test_api.py"],
-            original_check_ref="access_control.ownership@1", original_check_params={},
+            apply_facts=dict(ctx.artifacts["verify_facts"]),
+            recheck_runs=[],
+            test_runs=[],
+            baseline_failing=[],
+            tests_added=[],
+            protected_tests=["tests/test_api.py"],
+            original_check_ref="access_control.ownership@1",
+            original_check_params={},
         )
     )
     assert verdict == "rejected"
@@ -428,9 +469,7 @@ def test_patch_without_a_regression_test_is_rejected(intel, driver, library, tmp
     res = orch.run()
     finding = res.findings[0]
     assert finding.verifications
-    generated = next(
-        c for c in finding.verifications[0].checks if c.name.value == "generated_tests_pass"
-    )
+    generated = next(c for c in finding.verifications[0].checks if c.name.value == "generated_tests_pass")
     assert not generated.passed
     assert finding.verifications[0].verdict == "rejected"
 
@@ -468,18 +507,29 @@ def test_agent_approval_is_not_accepted(intel, driver, library, tmp_path):
 
     def agent_approver(finding: FindingRecord) -> Approval | None:
         return Approval(
-            project_id="prj_test", subject_type="remediation",
+            project_id="prj_test",
+            subject_type="remediation",
             subject_id=finding.plan.id if finding.plan else "x",
-            decision="approved", decided_by="agent:patch",
+            decision="approved",
+            decided_by="agent:patch",
         )
 
     config = OrchestratorConfig(
-        assessment_id="asm_gate", project_id="prj_test", org_id="org_test", scope=live_scope(),
-        target_id=TARGET_ID, requested_by="usr_requester",
+        assessment_id="asm_gate",
+        project_id="prj_test",
+        org_id="org_test",
+        scope=live_scope(),
+        target_id=TARGET_ID,
+        requested_by="usr_requester",
     )
     res = Orchestrator(
-        config, intel=intel, gateway=gateway, driver=driver, library=library,
-        workdir=tmp_path / "w", approve_remediation=agent_approver,
+        config,
+        intel=intel,
+        gateway=gateway,
+        driver=driver,
+        library=library,
+        workdir=tmp_path / "w",
+        approve_remediation=agent_approver,
     ).run()
     assert not any(r.agent is AgentName.PATCH for r in res.runs)
     assert "approval.invalid_actor" in [e.action for e in res.audit]
@@ -491,17 +541,29 @@ def test_approval_for_a_different_plan_is_ignored(intel, driver, library, tmp_pa
 
     def wrong_approver(finding: FindingRecord) -> Approval | None:
         return Approval(
-            project_id="prj_test", subject_type="remediation", subject_id="rmp_someone_else",
-            decision="approved", decided_by="usr_human",
+            project_id="prj_test",
+            subject_type="remediation",
+            subject_id="rmp_someone_else",
+            decision="approved",
+            decided_by="usr_human",
         )
 
     config = OrchestratorConfig(
-        assessment_id="asm_gate2", project_id="prj_test", org_id="org_test", scope=live_scope(),
-        target_id=TARGET_ID, requested_by="usr_requester",
+        assessment_id="asm_gate2",
+        project_id="prj_test",
+        org_id="org_test",
+        scope=live_scope(),
+        target_id=TARGET_ID,
+        requested_by="usr_requester",
     )
     res = Orchestrator(
-        config, intel=intel, gateway=gateway, driver=driver, library=library,
-        workdir=tmp_path / "w", approve_remediation=wrong_approver,
+        config,
+        intel=intel,
+        gateway=gateway,
+        driver=driver,
+        library=library,
+        workdir=tmp_path / "w",
+        approve_remediation=wrong_approver,
     ).run()
     assert not any(r.agent is AgentName.PATCH for r in res.runs)
     assert "approval.mismatch" in [e.action for e in res.audit]

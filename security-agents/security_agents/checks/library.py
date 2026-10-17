@@ -17,6 +17,7 @@ fails closed.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 from typing import Any, Literal
@@ -117,6 +118,22 @@ def _client():
 # --------------------------------------------------------------------------- templates
 
 
+_PLACEHOLDER = re.compile(r"\{[A-Za-z_][A-Za-z0-9_]*\}")
+
+
+def _fill_path(template: str, resource_id: str) -> str:
+    """Fill the route's single ``{placeholder}`` (any name, e.g. ``{payment_id}``) with a
+    recipe resource id. Exactly one placeholder is required, so a check can never be
+    pointed at an unintended path."""
+    found = _PLACEHOLDER.findall(template)
+    if len(found) != 1:
+        raise PlatformError(
+            ErrorCode.SCHEMA_INVALID,
+            f"route template must have exactly one placeholder, got {len(found)}: {template}",
+        )
+    return template.replace(found[0], resource_id)
+
+
 def _render_ownership(recipe: dict[str, Any], params: dict[str, Any]) -> str:
     """Owner keeps access; a different fixture identity is denied the same resource."""
     route = _route(recipe, str(params["route_id"]))
@@ -124,7 +141,7 @@ def _render_ownership(recipe: dict[str, Any], params: dict[str, Any]) -> str:
     owner, other = str(params["owner_identity"]), str(params["other_identity"])
     if owner == other:
         raise PlatformError(ErrorCode.SCHEMA_INVALID, "owner_identity and other_identity must differ")
-    path = str(route["path_template"]).replace("{id}", _resource_id(recipe, kind, owner))
+    path = _fill_path(str(route["path_template"]), _resource_id(recipe, kind, owner))
     method = str(route.get("method", "GET")).lower()
     if method != "get":
         raise PlatformError(ErrorCode.SCHEMA_INVALID, "ownership template covers read routes only")
@@ -174,7 +191,7 @@ def _render_bounds(recipe: dict[str, Any], params: dict[str, Any]) -> str:
     accumulated_field = str(create.get("accumulated_field") or "")
     if not accumulated_field:
         raise PlatformError(ErrorCode.SCHEMA_INVALID, "create route has no accumulated_field")
-    read_path = str(read["path_template"]).replace("{id}", resource_id)
+    read_path = _fill_path(str(read["path_template"]), resource_id)
     over_by = str(params.get("over_by", "1.00"))
     try:
         step = Decimal(over_by)

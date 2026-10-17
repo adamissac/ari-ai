@@ -1005,9 +1005,13 @@ def _finding_standards(finding: FindingRecord) -> Any:
         cwe=contract_export.weakness_ref(
             finding.hypothesis.weakness_class, evidence=evidence, confidence=confidence
         ),
-        attack=list({ref.id: ref for step in finding.attack_path.steps for ref in step.attack}.values()) if finding.attack_path else [],
+        attack=list({ref.id: ref for step in finding.attack_path.steps for ref in step.attack}.values())
+        if finding.attack_path
+        else [],
         cvss=finding.severity.cvss if finding.severity else None,
-        unmapped=[] if finding.attack_path and any(step.attack for step in finding.attack_path.steps) else ["ATT&CK: no reviewed check rule matched; coarse catalog chains require human review"],
+        unmapped=[]
+        if finding.attack_path and any(step.attack for step in finding.attack_path.steps)
+        else ["ATT&CK: no reviewed check rule matched; coarse catalog chains require human review"],
         catalog_versions=catalog_versions(),
         classified_by="agent:security",
         classified_at=utcnow(),

@@ -93,8 +93,12 @@ class FakeGateway:
         transcript: list[dict[str, Any]] = []
         for turn in range(max_turns):
             request = LLMRequest(
-                agent=AgentName(agent), model="fake", system=system, messages=messages,
-                tools=[{"name": n} for n in registry], max_tokens=max_tokens,
+                agent=AgentName(agent),
+                model="fake",
+                system=system,
+                messages=messages,
+                tools=[{"name": n} for n in registry],
+                max_tokens=max_tokens,
             )
             step = script[min(turn, len(script) - 1)]
             fake_turn = step(request) if callable(step) else step
@@ -125,8 +129,11 @@ class FakeGateway:
                 else:
                     payload = tool.handler(tool.input_model.model_validate(args))
                 results.append(
-                    {"type": "tool_result", "tool_use_id": block_id,
-                     "content": json.dumps(payload, default=str)}
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": block_id,
+                        "content": json.dumps(payload, default=str),
+                    }
                 )
             messages.append({"role": "assistant", "content": assistant})
             transcript.extend(assistant)
@@ -158,19 +165,41 @@ class FakeHost:
 
     # -- state / events
     def assessment(self) -> Any:
-        return type("A", (), {"budget": type("B", (), {"max_tokens": 2_000_000, "max_usd": 50.0, "max_wall_clock_s": 900.0})()})()
+        return type(
+            "A",
+            (),
+            {
+                "budget": type(
+                    "B", (), {"max_tokens": 2_000_000, "max_usd": 50.0, "max_wall_clock_s": 900.0}
+                )()
+            },
+        )()
 
     def scope(self) -> Any:
         return type(
-            "S", (),
+            "S",
+            (),
             {
-                "id": "scp_01HOSTADAPTER", "project_id": self.project_id, "name": "host scope",
-                "status": "active", "requested_by": "usr_requester", "approved_by": "usr_approver",
-                "approved_at": None, "expires_at": None,
+                "id": "scp_01HOSTADAPTER",
+                "project_id": self.project_id,
+                "name": "host scope",
+                "status": "active",
+                "requested_by": "usr_requester",
+                "approved_by": "usr_approver",
+                "approved_at": None,
+                "expires_at": None,
                 "allowed_check_categories": ["access_control.ownership", "input_validation.bounds"],
                 "targets": [
-                    type("T", (), {"target_id": "tgt_payments_lite", "repo_id": "rep_payments_lite",
-                                   "build_recipe_ref": "build_recipe.json", "exposed_ports": [8000]})()
+                    type(
+                        "T",
+                        (),
+                        {
+                            "target_id": "tgt_payments_lite",
+                            "repo_id": "rep_payments_lite",
+                            "build_recipe_ref": "build_recipe.json",
+                            "exposed_ports": [8000],
+                        },
+                    )()
                 ],
             },
         )()
@@ -181,15 +210,31 @@ class FakeHost:
     def approve_all(self) -> None:
         for _subject_type, subject_id in self.approval_requests:
             self._approvals.append(
-                type("Ap", (), {"id": "apv_01HOSTADAPTER", "subject_id": subject_id,
-                                "status": "approved", "decided_by": "usr_human"})()
+                type(
+                    "Ap",
+                    (),
+                    {
+                        "id": "apv_01HOSTADAPTER",
+                        "subject_id": subject_id,
+                        "status": "approved",
+                        "decided_by": "usr_human",
+                    },
+                )()
             )
 
     def decline_all(self) -> None:
         for _subject_type, subject_id in self.approval_requests:
             self._approvals.append(
-                type("Ap", (), {"id": "apv_01DECLINED", "subject_id": subject_id,
-                                "status": "declined", "decided_by": "usr_human"})()
+                type(
+                    "Ap",
+                    (),
+                    {
+                        "id": "apv_01DECLINED",
+                        "subject_id": subject_id,
+                        "status": "declined",
+                        "decided_by": "usr_human",
+                    },
+                )()
             )
 
     def transition(self, target: Any, message: str = "") -> Any:
@@ -220,8 +265,9 @@ class FakeHost:
     # -- runs
     def start_agent_run(self, agent: Any, step_key: str, **kwargs: Any) -> str:
         run_id = f"run_{len(self.runs):08d}HOST"
-        self.runs.append({"id": run_id, "agent": getattr(agent, "value", str(agent)),
-                          "step_key": step_key, **kwargs})
+        self.runs.append(
+            {"id": run_id, "agent": getattr(agent, "value", str(agent)), "step_key": step_key, **kwargs}
+        )
         return run_id
 
     def finish_agent_run(self, run_id: str, status: Any, **kwargs: Any) -> Any:
@@ -295,7 +341,12 @@ def test_runs_the_pre_approval_phases_and_requests_approval(host_and_orchestrato
     orchestrator.run(host)
 
     assert host.states[:7] == [
-        "SCOPE_CHECK", "INDEXING", "FUNCTIONAL_REVIEW", "RECON", "VALIDATION", "ANALYSIS",
+        "SCOPE_CHECK",
+        "INDEXING",
+        "FUNCTIONAL_REVIEW",
+        "RECON",
+        "VALIDATION",
+        "ANALYSIS",
         "DIAGNOSIS",
     ]
     assert host.states[7] == "AWAITING_APPROVAL"
@@ -315,8 +366,13 @@ def test_every_agent_turn_goes_through_the_host_gateway(host_and_orchestrator):
     # each role sends its own system instruction
     assert len({c["system"] for c in gateway.calls}) == 4
     # and its own tool list, built from the registry allowlist
-    assert "checks__run_template" in dict(zip(agents, [c["tools"] for c in gateway.calls], strict=True))["probe"]
-    assert "checks__run_template" not in dict(zip(agents, [c["tools"] for c in gateway.calls], strict=True))["scout"]
+    assert (
+        "checks__run_template" in dict(zip(agents, [c["tools"] for c in gateway.calls], strict=True))["probe"]
+    )
+    assert (
+        "checks__run_template"
+        not in dict(zip(agents, [c["tools"] for c in gateway.calls], strict=True))["scout"]
+    )
     assert gateway.denied == [], "no scripted call should hit an ungranted tool here"
 
 
@@ -355,7 +411,13 @@ def test_resume_after_approval_completes_remediation_and_hardening(host_and_orch
 
     assert host.states[-4:] == ["REMEDIATION", "HARDENING", "REPORTING", "COMPLETED"]
     assert [r["agent"] for r in host.runs] == [
-        "scout", "probe", "trace", "diagnose", "patch", "verify", "fortify",
+        "scout",
+        "probe",
+        "trace",
+        "diagnose",
+        "patch",
+        "verify",
+        "fortify",
     ]
     assert len(host.patches) == 1
     patch = host.patches[0]

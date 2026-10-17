@@ -124,7 +124,9 @@ def scout_script() -> list:
             span = location.rsplit(":", 1)[-1]
             start, end = (int(x) for x in span.split("-"))
         return FakeTurn(
-            tool_calls=[("code__read_span", {"path": WEAK_HANDLER_PATH, "start_line": start, "end_line": end})]
+            tool_calls=[
+                ("code__read_span", {"path": WEAK_HANDLER_PATH, "start_line": start, "end_line": end})
+            ]
         )
 
     def turn3(request) -> FakeTurn:
@@ -163,8 +165,10 @@ def scout_script() -> list:
                         ],
                         "coverage": {
                             "entry_points_reviewed": [
-                                "ent_get_payments", "ent_get_payments_payment_id",
-                                "ent_get_customers_customer_id", "ent_get_refunds_refund_id",
+                                "ent_get_payments",
+                                "ent_get_payments_payment_id",
+                                "ent_get_customers_customer_id",
+                                "ent_get_refunds_refund_id",
                             ],
                             "looks_correct": [
                                 "GET /customers/{customer_id} calls require_owner",
@@ -303,7 +307,10 @@ def trace_script() -> list:
                                 "evidence_artifact_id": None,
                             },
                         ],
-                        "preconditions": ["a valid customer token", "knowledge of another customer's payment id"],
+                        "preconditions": [
+                            "a valid customer token",
+                            "knowledge of another customer's payment id",
+                        ],
                         "impact_summary": "financial payment records of other customers are readable",
                         "reachability": "authenticated",
                         "privileges_required": "low",
@@ -440,7 +447,10 @@ def patch_script(
         if out_of_scope:
             store = (snapshot_root / "payments_lite/store.py").read_text(encoding="utf-8")
             calls.append(
-                ("worktree__write_file", {"path": "payments_lite/store.py", "content": store + "\n# touched\n"})
+                (
+                    "worktree__write_file",
+                    {"path": "payments_lite/store.py", "content": store + "\n# touched\n"},
+                )
             )
         if weaken_tests:
             existing = (snapshot_root / "tests/test_api.py").read_text(encoding="utf-8")
@@ -468,9 +478,7 @@ def patch_script(
     def turn5(request) -> FakeTurn:
         diff_payload = _last_json(request)
         files = diff_payload.get("files_changed") or []
-        tests_run = [
-            p for p in _collect_test_payloads(request)
-        ]
+        tests_run = [p for p in _collect_test_payloads(request)]
         passed = tests_run[-1].get("failed", 0) == 0 if tests_run else False
         run_id = tests_run[-1].get("sandbox_run_id") if tests_run else None
         return FakeTurn(
@@ -660,7 +668,9 @@ def fortify_script() -> list:
                             }
                         ],
                         "monitoring_hints": ["GET /payments/{payment_id}", "POST /refunds"],
-                        "regression_test_names": [f"{REGRESSION_TEST_PATH}::test_non_owner_cannot_read_payment_detail"],
+                        "regression_test_names": [
+                            f"{REGRESSION_TEST_PATH}::test_non_owner_cannot_read_payment_detail"
+                        ],
                     },
                 )
             ]
