@@ -13,6 +13,8 @@ COPY code-intelligence/ code-intelligence/
 COPY code-review/ code-review/
 COPY security-agents/ security-agents/
 RUN uv sync --frozen --no-dev
+# Railway runs API + worker in one service (deploy/railway/start.sh).
+COPY --chmod=755 deploy/railway/start.sh /usr/local/bin/railway-start
 RUN useradd --create-home --uid 10001 app && mkdir -p /data/artifacts && chown -R app /data
 USER app
 ENV PATH="/app/.venv/bin:$PATH" ARTIFACT_STORE_URI=file:///data/artifacts

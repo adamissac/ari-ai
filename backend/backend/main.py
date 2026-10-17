@@ -121,7 +121,9 @@ def create_app() -> FastAPI:
             database=db_ok,
             queue=queue_ok,
             llm_mode=llm_mode(),
-            github_app_configured=bool(s.github_app_id and s.github_app_private_key_path),
+            github_app_configured=bool(
+                s.github_app_id and (s.github_app_private_key_path or s.github_app_private_key)
+            ),
             webhook_secret_configured=bool(
                 s.github_webhook_secret
                 and s.github_webhook_secret.get_secret_value() not in ("", "replace-me")
