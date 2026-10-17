@@ -20,6 +20,6 @@ Owners UNASSIGNED. Add new questions at the bottom with the next ID.
 | RQ-013 | Data retention policy for audit events and transcripts (legal/compliance input) | [architecture/data-flow-and-storage](../architecture/data-flow-and-storage.md) | OPEN | UNASSIGNED |
 | RQ-014 | Team size, members and role assignments | TEAM_ASSIGNMENTS, CODEOWNERS | OPEN | UNASSIGNED |
 | RQ-015 | Replace the custom Code of Conduct with Contributor Covenant v2.1 verbatim? | [CODE_OF_CONDUCT](../../CODE_OF_CONDUCT.md) | OPEN | UNASSIGNED |
-| RQ-016 | Which severity rubric do we adopt (CVSS v4 base metrics subset vs. custom factors) and how do we explain it in the UI? | SEC-008; UX trust | OPEN | UNASSIGNED |
+| RQ-016 | Which severity rubric do we adopt (CVSS v4 base metrics subset vs. custom factors) and how do we explain it in the UI? | SEC-008; UX trust | ANSWERED (proposed): CVSS v3.1 base score computed by code from Trace metrics sets the level; v4.0 shown alongside as provisional; labelled "base score only". See [ADR-0012](../decisions/0012-cvss-v31-primary-v40-alongside.md). UI wording still open. | Alan |
 | RQ-017 | How do we generate realistic synthetic fixture identities/data for target sandboxes across different apps (beyond payments-lite)? | SEC-005 generalization | OPEN | UNASSIGNED |
 | RQ-018 | Which model (default vs fast) per agent gives acceptable quality at our budget caps? | Cost control; AGENT_MODEL_OVERRIDES defaults | OPEN | UNASSIGNED |
