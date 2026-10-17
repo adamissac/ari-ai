@@ -16,6 +16,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from .. import standards_bridge
 from ..agents import diagnose as diagnose_agent
 from ..agents import fortify as fortify_agent
 from ..agents import patch as patch_agent
@@ -111,6 +112,8 @@ class AssessmentSink:
 
     def on_status(self, finding: FindingRecord, status: str) -> None: ...
 
+    def on_standards(self, finding: FindingRecord) -> None: ...
+
 
 @dataclass
 class FindingRecord:
@@ -133,6 +136,7 @@ class FindingRecord:
     future_hypotheses: list[HypothesisDraft] = field(default_factory=list)
     monitoring_hints: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    standards: Any = None  # shared.standards.FindingStandards
 
     def public(self) -> dict[str, Any]:
         return {
@@ -145,6 +149,7 @@ class FindingRecord:
             "verdicts": [v.verdict for v in self.verifications],
             "regression_tests": [t.test_path for t in self.regression_tests],
             "notes": self.notes,
+            "standards": standards_bridge.summary(self.standards),
         }
 
 
@@ -676,6 +681,7 @@ class Orchestrator:
                     "title": hypothesis.title,
                 }
             )
+            self._classify(finding)
             if validation.outcome is ValidationOutcome.CONFIRMED:
                 confirmed.append(finding)
         return confirmed
@@ -722,6 +728,7 @@ class Orchestrator:
             factors=severity.factors.model_dump(mode="json"),
             verified_steps=sum(1 for s in path.steps if s.verified),
         )
+        self._classify(finding)
 
     def _run_diagnose(self, finding: FindingRecord) -> None:
         assert finding.severity is not None and finding.attack_path is not None
@@ -996,6 +1003,7 @@ class Orchestrator:
         finding.status = "hardened"
         for recommendation in recommendations:
             self.sink.on_record(finding, recommendation, "hardening_recommendation")
+        self._classify(finding)
         self.sink.on_status(finding, finding.status)
         self._audit(
             "finding.hardened",
@@ -1007,6 +1015,25 @@ class Orchestrator:
         )
 
     # ------------------------------------------------------------------ helpers
+
+    def _classify(self, finding: FindingRecord) -> None:
+        try:
+            finding.standards = standards_bridge.finding_standards(finding, now=self.now())
+        except ValueError as exc:
+            finding.notes.append(f"standards classification failed: {exc}"[:500])
+            return
+        self.sink.on_standards(finding)
+        cvss = finding.standards.cvss
+        self._audit(
+            "finding.classified",
+            "finding",
+            finding.finding_id,
+            cwe=finding.standards.cwe.id if finding.standards.cwe else None,
+            attack=[m.id for m in finding.standards.attack],
+            d3fend=[m.id for m in finding.standards.d3fend],
+            cvss_vector=cvss.vector if cvss else None,
+            cvss_complete=bool(cvss and cvss.complete),
+        )
 
     def _handler_symbol(self, finding: FindingRecord) -> str | None:
         if finding.hypothesis.entry_point_id:
