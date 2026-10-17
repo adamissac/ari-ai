@@ -17,7 +17,9 @@ from backend import audit, jobs
 from backend.api.deps import (
     ApiError,
     CurrentUser,
+    idempotent_finish,
     idempotent_lookup,
+    idempotent_replay,
     idempotent_store,
     limiter,
     not_found,
@@ -191,7 +193,11 @@ def _project(r: Any) -> Project:
 
 
 @router.post("/projects", status_code=201, response_model=Project)
-def create_project(body: ProjectCreate, request: Request) -> Project:
+def create_project(
+    body: ProjectCreate,
+    request: Request,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+) -> Any:
     from backend.api.deps import org_role
     from backend.db import users
 
@@ -208,6 +214,9 @@ def create_project(body: ProjectCreate, request: Request) -> Project:
             raise not_found("organization")
         if role is MemberRole.viewer:
             raise ApiError(ErrorCode.FORBIDDEN, "viewers cannot create projects", 403)
+        retry = {"route": "create_project", "org_id": org_id, "body": body.model_dump(mode="json")}
+        if replay := idempotent_replay(conn, user.id, idempotency_key, retry):
+            return replay
         pid = new_id(IdPrefix.prj)
         settings = body.settings or ProjectSettings()
         conn.execute(
@@ -216,9 +225,10 @@ def create_project(body: ProjectCreate, request: Request) -> Project:
             )
         )
         _audit(conn, org_id, pid, user, "project.created", "project", pid, name=body.name)
-        return _project(
+        created = _project(
             conn.execute(sa.select(projects).where(projects.c.id == pid)).mappings().one()
         )
+        return idempotent_finish(conn, user.id, idempotency_key, retry, 201, created)
 
 
 @router.get("/projects/{project_id}", response_model=Project)
@@ -455,10 +465,22 @@ def list_scopes(project_id: str, request: Request) -> dict[str, Any]:
 
 
 @router.post("/projects/{project_id}/scopes", status_code=201, response_model=AuthorizedScope)
-def request_scope(project_id: str, body: ScopeCreate, request: Request) -> AuthorizedScope:
+def request_scope(
+    project_id: str,
+    body: ScopeCreate,
+    request: Request,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+) -> Any:
     with transaction() as conn:
         user = _user(conn, request)
         org_id, _ = require_project(conn, user, project_id, MemberRole.member)
+        retry = {
+            "route": "request_scope",
+            "project_id": project_id,
+            "body": body.model_dump(mode="json"),
+        }
+        if replay := idempotent_replay(conn, user.id, idempotency_key, retry):
+            return replay
         if body.expires_at <= utcnow() or body.expires_at > utcnow() + timedelta(days=90):
             raise ApiError(
                 ErrorCode.VALIDATION_FAILED,
@@ -524,7 +546,7 @@ def request_scope(project_id: str, body: ScopeCreate, request: Request) -> Autho
             scope.id,
             targets=[t.model_dump(mode="json") for t in body.targets],
         )
-        return scope
+        return idempotent_finish(conn, user.id, idempotency_key, retry, 201, scope)
 
 
 def _scope_row(conn: Any, scope_id: str) -> AuthorizedScope:
@@ -666,7 +688,12 @@ def list_approvals(
 
 
 @router.post("/approvals/{approval_id}/decision", response_model=Approval)
-def decide_approval(approval_id: str, body: ApprovalDecision, request: Request) -> Approval:
+def decide_approval(
+    approval_id: str,
+    body: ApprovalDecision,
+    request: Request,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+) -> Any:
     with transaction() as conn:
         user = _user(conn, request)
         row = (
@@ -679,6 +706,13 @@ def decide_approval(approval_id: str, body: ApprovalDecision, request: Request) 
         if row is None:
             raise not_found("approval")
         org_id, _ = require_project(conn, user, row["project_id"], MemberRole.owner)
+        retry = {
+            "route": "decide_approval",
+            "approval_id": approval_id,
+            "body": body.model_dump(mode="json"),
+        }
+        if replay := idempotent_replay(conn, user.id, idempotency_key, retry):
+            return replay
         ap = Approval.model_validate(row["doc"])
         if ap.subject_type is ApprovalSubject.scope:
             raise ApiError(
@@ -721,7 +755,7 @@ def decide_approval(approval_id: str, body: ApprovalDecision, request: Request) 
                 {"assessment_id": row["assessment_id"]},
                 dedupe_key=f"asm:{row['assessment_id']}:resume:{ap.id}",
             )
-        return ap
+        return idempotent_finish(conn, user.id, idempotency_key, retry, 200, ap)
 
 
 # ------------------------------------------------------------------ assessments
