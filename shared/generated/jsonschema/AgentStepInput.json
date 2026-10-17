@@ -53,17 +53,17 @@
           "type": "string"
         },
         "project_id": {
-          "pattern": "^prj_[0-9A-Za-z]{8,64}$",
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Project Id",
           "type": "string"
         },
         "repo_id": {
-          "pattern": "^rep_[0-9A-Za-z]{8,64}$",
+          "pattern": "^rep_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Repo Id",
           "type": "string"
         },
         "snapshot_id": {
-          "pattern": "^snp_[0-9A-Za-z]{8,64}$",
+          "pattern": "^snp_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Snapshot Id",
           "type": "string"
         }
@@ -86,7 +86,7 @@
       "$ref": "#/$defs/AgentName"
     },
     "assessment_id": {
-      "pattern": "^asm_[0-9A-Za-z]{8,64}$",
+      "pattern": "^asm_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Assessment Id",
       "type": "string"
     },
@@ -101,7 +101,7 @@
     "context_pack_id": {
       "anyOf": [
         {
-          "pattern": "^ctx_[0-9A-Za-z]{8,64}$",
+          "pattern": "^ctx_[0-9A-Za-z_\\-]{8,64}$",
           "type": "string"
         },
         {
@@ -118,7 +118,7 @@
       "type": "object"
     },
     "scope_id": {
-      "pattern": "^scp_[0-9A-Za-z]{8,64}$",
+      "pattern": "^scp_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Scope Id",
       "type": "string"
     },

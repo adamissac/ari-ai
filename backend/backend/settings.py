@@ -51,10 +51,20 @@ class Settings(BaseSettings):
     worker_lease_s: int = 60
     worker_poll_interval_s: float = 1.0
     orchestrator_factory: str = Field(
-        default="security_agents.api:build_orchestrator",
+        default="backend.adapters.security_agents:build_orchestrator",
         description="module:callable returning an Orchestrator; see backend/host.py",
     )
     code_intelligence_factory: str = "code_intelligence.api:build_service"
+
+    # Hosting the security-agents runtime (backend/adapters/security_agents.py)
+    repository_bindings_file: Path | None = Field(
+        default=None,
+        description="JSON list of {repo_id, local_path, subdir}: trusted local checkouts of owned repos",
+    )
+    security_sandbox: Literal["docker", "local-dev"] = "docker"
+    security_workdir: Path | None = None
+    approval_timeout_s: int = 1800
+    approval_poll_s: float = 2.0
 
     # RL
     rl_checkpoint_path: Path | None = None
@@ -75,6 +85,8 @@ class Settings(BaseSettings):
         "github_oauth_client_secret",
         "rl_checkpoint_path",
         "rl_topology_path",
+        "repository_bindings_file",
+        "security_workdir",
         mode="before",
     )
     @classmethod

@@ -85,6 +85,11 @@ MODELS: tuple[type[BaseModel], ...] = (
     monitoring.CommitRange,
     monitoring.MonitoringEvent,
     monitoring.ReassessmentRequest,
+    monitoring.RouteWindow,
+    monitoring.RuntimeSignalBatch,
+    monitoring.RouteScore,
+    monitoring.RuntimeIngestAck,
+    monitoring.IngestTokenCreated,
     # rl
     rl.NodeSignals,
     rl.PlatformFacts,

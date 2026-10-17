@@ -16,24 +16,46 @@ _TMP = Path(tempfile.mkdtemp(prefix="hackatl-test-"))
 WEBHOOK_SECRET = "test-webhook-secret-not-real"
 
 
+# One reusable embedded server for all local test sessions (never one per run: leaked
+# postmasters exhaust SysV shared memory on macOS). Each session gets a fresh database,
+# dropped again at session end.
+_PGTEST_DIR = Path(__file__).resolve().parents[2] / ".dev" / "pgtest"
+_ADMIN_URL: str | None = None
+_DB_NAME = f"hackatl_test_{uuid.uuid4().hex[:8]}"
+
+
+def _admin_engine() -> sa.Engine:
+    assert _ADMIN_URL
+    url = _ADMIN_URL
+    if url.startswith("postgresql://"):
+        url = "postgresql+psycopg://" + url[len("postgresql://") :]
+    return sa.create_engine(url, isolation_level="AUTOCOMMIT")
+
+
 def _database_url() -> str:
-    base = os.environ.get("TEST_DATABASE_URL")
-    if not base:
+    global _ADMIN_URL
+    _ADMIN_URL = os.environ.get("TEST_DATABASE_URL")
+    if not _ADMIN_URL:
         from backend.devdb import start
 
-        base = start(_TMP / "pgdata", database="postgres")
-    name = f"hackatl_test_{uuid.uuid4().hex[:8]}"
-    admin = sa.create_engine(
-        base.replace("postgresql://", "postgresql+psycopg://", 1)
-        if base.startswith("postgresql://")
-        else base,
-        isolation_level="AUTOCOMMIT",
-    )
+        _ADMIN_URL = start(_PGTEST_DIR, database="postgres")
+    admin = _admin_engine()
     with admin.connect() as c:
-        c.execute(sa.text(f'CREATE DATABASE "{name}"'))
+        c.execute(sa.text(f'CREATE DATABASE "{_DB_NAME}"'))
     admin.dispose()
-    url = sa.engine.make_url(base).set(database=name)
-    return url.render_as_string(hide_password=False)
+    return (
+        sa.engine.make_url(_ADMIN_URL).set(database=_DB_NAME).render_as_string(hide_password=False)
+    )
+
+
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    from backend.db import get_engine
+
+    get_engine().dispose()
+    admin = _admin_engine()
+    with admin.connect() as c:
+        c.execute(sa.text(f'DROP DATABASE IF EXISTS "{_DB_NAME}" WITH (FORCE)'))
+    admin.dispose()
 
 
 def _live_key() -> str:
@@ -74,6 +96,10 @@ from backend.migrate import upgrade  # noqa: E402
 upgrade()
 
 _TABLES = [
+    "runtime_windows",
+    "ingest_tokens",
+    "index_payloads",
+    "index_snapshots",
     "idempotency_keys",
     "rl_evaluations",
     "defense_recommendations",

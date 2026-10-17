@@ -254,6 +254,25 @@ def process_github_delivery(ctx: JobContext) -> dict[str, Any]:
 # ------------------------------------------------------------------ assessments
 
 
+def _other_live_run(assessment_id: str, current_job_id: str) -> bool:
+    from backend.db import jobs as jobs_t
+
+    with transaction() as conn:
+        return bool(
+            conn.execute(
+                sa.select(sa.func.count())
+                .select_from(jobs_t)
+                .where(
+                    jobs_t.c.kind == "run_assessment",
+                    jobs_t.c.payload["assessment_id"].astext == assessment_id,
+                    jobs_t.c.id != current_job_id,
+                    jobs_t.c.status == "running",
+                    jobs_t.c.lease_expires_at > sa.func.now(),
+                )
+            ).scalar()
+        )
+
+
 @handler("run_assessment")
 def run_assessment(ctx: JobContext) -> dict[str, Any]:
     asm_id = ctx.job.payload["assessment_id"]
@@ -262,7 +281,8 @@ def run_assessment(ctx: JobContext) -> dict[str, Any]:
     if a.state in TERMINAL_STATES:
         return {"state": a.state.value, "noop": True}
     try:
-        if a.state is AssessmentState.CREATED:
+        resuming = a.state is not AssessmentState.CREATED
+        if not resuming:
             host.transition(AssessmentState.SCOPE_CHECK, "checking authorized scope")
             host.require_active_scope()
         loaded = load_factory(get_settings().orchestrator_factory)
@@ -273,6 +293,16 @@ def run_assessment(ctx: JobContext) -> dict[str, Any]:
                 f"security-agents orchestrator unavailable: {loaded.reason}",
             )
             return {"state": "FAILED", "reason": loaded.reason}
+        if resuming and getattr(loaded.obj, "synchronous_approval", False):
+            # The original job waits for the approval itself; never run a second copy.
+            if _other_live_run(asm_id, ctx.job.id):
+                return {"noop": "synchronous orchestrator run still in progress"}
+            host.terminate(
+                AssessmentState.FAILED,
+                ErrorCode.JOB_LEASE_EXPIRED,
+                "orchestrator run was lost (worker stopped mid-run); start a new assessment",
+            )
+            return {"state": "FAILED", "reason": "lost synchronous run"}
         loaded.obj.run(host)
     except (HostError, LLMError) as exc:
         state = {
@@ -317,8 +347,9 @@ def platform_facts(
     """Build PlatformFacts with rl_defense.platform_mapping (Adam) from persisted findings.
 
     Only route-shaped ``Finding.subject_refs`` ("METHOD /path") map onto simulator nodes;
-    the route->node topology is the per-project config at RL_TOPOLOGY_PATH. No runtime
-    telemetry exists in MVP, so no signals are passed (alert/anomaly stay 0).
+    the route->node topology is the per-project config at RL_TOPOLOGY_PATH. Runtime
+    signals are the latest scored windows from /ingest/runtime (labeled runtime_demo /
+    replay / simulated; there is no production telemetry in MVP).
     """
     from rl_defense import platform_mapping as pm
     from shared.findings import Finding
@@ -346,7 +377,10 @@ def platform_facts(
                     routes=routes,
                 )
             )
-    facts, provenance = pm.facts_from_platform(topology, inputs, [], project_id=project_id)
+    from backend.api.runtime import latest_route_signals
+
+    signals = [pm.RouteSignal(**sig) for sig in latest_route_signals(conn, project_id)]
+    facts, provenance = pm.facts_from_platform(topology, inputs, [], signals, project_id=project_id)
     return PlatformFacts.model_validate(facts.model_dump(mode="json")), provenance
 
 
