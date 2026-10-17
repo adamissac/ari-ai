@@ -184,7 +184,7 @@ function Metrics({ bundle }: { bundle: DefenseLabBundle }) {
       <figure aria-label={`${METRIC_LABEL[metric] ?? metric} by policy`} className="flex flex-col gap-2" data-testid="metric-chart">
         {rows.map(r => (
           <div key={r.policy} className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-2 text-xs sm:grid-cols-[8rem_minmax(0,1fr)_13rem]">
-            <span className={r.policy === 'ddqn' ? 'font-semibold text-accent' : 'text-muted'}>{r.policy}</span>
+            <span className={`min-w-0 [overflow-wrap:anywhere] ${r.policy === 'ddqn' ? 'font-semibold text-accent' : 'text-muted'}`}>{r.policy}</span>
             <svg viewBox="0 0 100 10" preserveAspectRatio="none" className="h-5 w-full" role="img" aria-label={`${r.policy}: ${r.mean === null ? 'no value' : num(r.mean, 3)}`}>
               <line x1={x(0)} x2={x(0)} y1={0} y2={10} stroke="var(--color-line)" strokeWidth={0.4} />
               {r.mean !== null && <rect x={Math.min(x(0), x(r.mean))} width={Math.abs(x(r.mean) - x(0))} y={2.5} height={5} fill={r.policy === 'ddqn' ? 'var(--color-brand)' : 'var(--color-faint)'} opacity={r.policy === 'ddqn' ? 0.9 : 0.55} />}
