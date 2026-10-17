@@ -12,7 +12,11 @@ by FastAPI is the source for frontend client generation.
 - Pagination: cursor-based `?limit=50&cursor=…` → `{items, next_cursor}`.
 - Errors: `{"error": {"code": "SCOPE_DENIED", "message": "…", "details": {…}, "request_id": "…"}}`
   with HTTP status 400/401/403/404/409/422/429/500.
-- Idempotency: `Idempotency-Key` header on POSTs that start work.
+- Idempotency: `Idempotency-Key` header on POSTs that start work. Assessment
+  creation binds the cached request to the project URL and payload, serializes
+  overlapping same-user/key starts in PostgreSQL, and returns the same assessment
+  and job IDs. Reusing a key for a different project/payload returns 409. Failed
+  transactions do not reserve a key.
 - Every state-changing endpoint writes an `AuditEvent`.
 - Authorization: every resource is resolved through `org_id` membership; no
   endpoint takes `org_id` from the client without checking membership.

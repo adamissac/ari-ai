@@ -195,3 +195,14 @@ Owner: Alan (Codex). IN_PROGRESS on test/alan/demo-recovery-smoke in its own
 worktree. Acceptance: returned assessment job IDs resolve for members only;
 real HTTP client proves lost-response retry/conflicts and stored-byte hashes;
 Chrome proves workflow and outage recovery; existing suites stay green.
+
+### API-RETRY-001 — assessment creation retries
+Owner: Alan (Codex), explicitly assigned application integration sprint. Status:
+IN_REVIEW on `fix/alan/demo-api-reliability`, base `37b0920`.
+Acceptance: overlapping same-user/key starts persist one assessment/job/audit entry;
+conflicting request/project yields409; failure rolls back key reservation; root and
+backend tests pass. Dedicated worktree; no security-agent lane changes.
+
+API-RETRY-001 validation: targeted16 passed; root420 passed/9 optional skips;
+backend79 passed/5 optional skips. Real PostgreSQL, scripted model transports;
+Ruff/format/mypy, 112-file contract freshness, links passed. PR remains for review.
