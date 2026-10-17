@@ -181,3 +181,9 @@ limits, invalid-prefix cache bypass, normalized prefixes, restart, provenance,
 backend snapshot completion and diff lookup. Old refs and their human decisions
 stay immutable; another profile does not inherit a confirmation. No shared DTO
 or runtime/frontend source changes.
+### QA-002 — isolate the M7 demo runner
+Owner: Alan (continuing unfinished QA with repository-owner authorization).
+Status: IN_REVIEW on `fix/alan/m7-runner-isolation`. Remove PATH-only uv
+dependency and shared development database lifecycle operations; preserve command
+failures, force live calls off, and keep generated reports out of tracked evidence.
+Runner semantics covered by `tests/qa/test_m7_runner.py`.
