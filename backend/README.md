@@ -60,3 +60,15 @@ Model-proposed CVSS metrics are explicit provisional assumptions, even when they
 Migration revision `0005_incidents` deliberately differs from intelligence-memory PR #39’s `0005`. The runner upgrades all current Alembic heads, allowing independent additive branches to coexist. A real PostgreSQL scratch-database test upgrades both heads, downgrades to base, and upgrades again. Disposable databases from earlier unpublished iterations should be recreated; no production upgrade from an earlier incident prototype is claimed.
 
 Incident eradication recognizes approved security remediation plans only when the plan is persisted on the linked finding and the approval belongs to that assessment/project. Finding-bound reviewer approvals remain supported. Hosted regression source archives now supply the Fortify artifact needed for lessons learned; no hand-made artifact insertion is required.
+
+## Assessment request retries
+
+`POST /projects/{project_id}/assessments` serializes concurrent requests sharing a
+user and `Idempotency-Key` within PostgreSQL. An accepted retry returns the same
+assessment and job IDs; a changed project or payload returns 409
+`IDEMPOTENCY_CONFLICT`. Authorization is checked before a cached response is read,
+and failed transactions release the key so an authorized retry can proceed.
+
+The request digest now includes the project URL. Keys cached by earlier versions
+use a different digest and return 409 after upgrade; start a new action with a fresh
+key. No table, shared model, or response schema migration is required.

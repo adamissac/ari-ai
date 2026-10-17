@@ -171,9 +171,32 @@ INFRA-005 remains open for published test/check image digests; the Dockerfile pi
 its base but the verified CI image uses a temporary tag. M3's live-provider gate
 and SEC-005's human template review remain separate.
 
+### Intelligence ingestion profile correctness — issue #148
+
+Sarosh, `fix/sarosh/intelligence-scope-cache`: reproduced same-SHA cache reuse
+across different include prefixes. Index version 0.3.0 includes a configuration
+digest for non-default coverage/limits; all ingestion and diff paths select the
+same profile. Six new producer cases and one real PostgreSQL case verify scope,
+limits, invalid-prefix cache bypass, normalized prefixes, restart, provenance,
+backend snapshot completion and diff lookup. Old refs and their human decisions
+stay immutable; another profile does not inherit a confirmation. No shared DTO
+or runtime/frontend source changes.
 ### QA-002 — isolate the M7 demo runner
 Owner: Alan (continuing unfinished QA with repository-owner authorization).
 Status: IN_REVIEW on `fix/alan/m7-runner-isolation`. Remove PATH-only uv
 dependency and shared development database lifecycle operations; preserve command
 failures, force live calls off, and keep generated reports out of tracked evidence.
 Runner semantics covered by `tests/qa/test_m7_runner.py`.
+
+Issue #148 status: DONE via PR #150, merged `1129434`; all executable CI checks passed on combined head `91cea8c`. Historical references remain immutable.
+
+### API-RETRY-001 — assessment creation retries
+Owner: Alan (Codex), explicitly assigned application integration sprint. Status:
+IN_REVIEW on `fix/alan/demo-api-reliability`, base `37b0920`.
+Acceptance: overlapping same-user/key starts persist one assessment/job/audit entry;
+conflicting request/project yields409; failure rolls back key reservation; root and
+backend tests pass. Dedicated worktree; no security-agent lane changes.
+
+API-RETRY-001 validation: targeted16 passed; root420 passed/9 optional skips;
+backend79 passed/5 optional skips. Real PostgreSQL, scripted model transports;
+Ruff/format/mypy, 112-file contract freshness, links passed. PR remains for review.
