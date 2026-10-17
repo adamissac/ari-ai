@@ -544,8 +544,9 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 .lab-now-moment { min-height: 1.25rem; padding-left: 4px; font-size: 0.85rem; color: var(--color-ink); }
 .lab-outcome-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
 .lab-truth { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 2px 4px; }
-.lab-switch { display: inline-flex; cursor: pointer; align-items: center; gap: 8px; }
-.lab-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.lab-switch { position: relative; display: inline-flex; cursor: pointer; align-items: center; gap: 8px; }
+/* The real checkbox sits on top of the drawn switch so pointer clicks (and tests) hit it. */
+.lab-switch input { position: absolute; left: 0; top: 50%; z-index: 1; width: 30px; height: 18px; margin: 0; translate: 0 -50%; opacity: 0; cursor: pointer; }
 .lab-switch-track { position: relative; width: 30px; height: 18px; border-radius: 9999px; background: var(--color-line); transition: background-color 200ms; }
 .lab-switch-track span { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 9999px; background: #fff; box-shadow: 0 1px 2px rgba(28, 18, 16, 0.25); transition: translate 200ms var(--ease-quad); }
 .lab-switch input:checked + .lab-switch-track { background: var(--color-brand); }
