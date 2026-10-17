@@ -16,7 +16,7 @@ export default function DemoCommitPage() {
   if (!repo || !commit) return <Empty>Commit not found.</Empty>;
   const orgName = DEMO_ORGS.find(o => o.login === org)?.name ?? org;
   return (
-    <div data-testid="demo-commit">
+    <div data-testid="demo-commit" className="commit-stage">
       <DemoBar
         crumbs={[{ href: '/demo', label: 'Organizations' }, { href: `/demo/${org}`, label: orgName }, { href: `/demo/${org}/${repo.name}`, label: repo.name }, { label: commit.sha.slice(0, 7) }]}
         user={session.user}

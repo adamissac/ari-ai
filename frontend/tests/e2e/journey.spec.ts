@@ -191,7 +191,6 @@ test('create a project and connect a repository through the UI', async ({ browse
   await expect(page.getByTestId('simulated-attack-note')).toContainText('acme/another-repo');
   await expect(page.getByTestId('simulated-attack-note').getByTestId('demo-marker')).toBeVisible();
   await page.getByTestId('demo-skip').click();
-  await page.getByTestId('demo-tab-defense').click();
   await expect(page.getByTestId('demo-commit-message')).toHaveText('Simulated attack on acme/another-repo');
 
   // Continuous defense: an attack drill goes through the real detection pipeline, labelled simulated.

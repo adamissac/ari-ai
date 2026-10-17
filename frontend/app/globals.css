@@ -685,3 +685,109 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 @media(max-width:600px) { .network-actors { grid-template-columns:1fr; } }
 .commit-recorded-team { margin-top:24px; border-top:1px solid var(--color-line); padding-top:22px; }.commit-recorded-team h4 { font-size:20px; margin:10px 0; letter-spacing:-.03em; }.commit-recorded-team>[data-testid="agent-team"] { display:flex; flex-direction:column; margin-top:16px; }.commit-recorded-team ol[aria-label="Agents"] { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 @media(max-width:420px) { .commit-recorded-team ol[aria-label="Agents"] { grid-template-columns:1fr; } }
+
+/* Commit analysis stage: the dark, glowing look of the landing hero (pattern study of
+   kairo.security), used for the demo commit view and for real repositories alike. */
+body:has(.commit-stage) { background: #0f0b0a; }
+body:has(.commit-stage) .site-header { --nav-ink: #fff; --nav-hover: rgb(255 255 255 / 9%); }
+body:has(.commit-stage) main { color: #fff; }
+.commit-stage {
+  position: relative; isolation: isolate; color: #fff;
+  margin-inline: calc(50% - 50vw); padding: 28px max(16px, calc(50vw - 640px)) 64px;
+  background:
+    radial-gradient(55% 45% at 85% -5%, color-mix(in srgb, var(--color-brand) 34%, transparent), transparent 70%),
+    radial-gradient(45% 40% at 0% 35%, color-mix(in srgb, var(--color-brand-deep) 30%, transparent), transparent 70%),
+    radial-gradient(70% 50% at 50% 110%, color-mix(in srgb, var(--color-brand) 22%, transparent), transparent 70%),
+    #0f0b0a;
+}
+.commit-stage::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: 0.7;
+  background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 44px 44px; mask-image: radial-gradient(90% 70% at 50% 20%, #000 35%, transparent 100%);
+}
+.commit-stage :is(.text-muted, .text-faint) { color: rgba(255, 255, 255, 0.55); }
+.commit-stage nav a { color: rgba(255, 255, 255, 0.6); }
+.commit-stage nav a:hover { color: #fff; }
+.glass { border-radius: 20px; background: linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02)); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08), 0 30px 80px -50px rgba(0,0,0,0.9); backdrop-filter: blur(6px); }
+.big-verdict { font-family: var(--font-display, inherit); font-size: clamp(1.6rem, 3.4vw, 2.6rem); line-height: 1.05; letter-spacing: -0.03em; font-weight: 600; }
+
+/* Plain-language dropdowns. */
+.amap-more > summary, .more > summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; color: rgba(255,255,255,0.7); }
+.amap-more > summary::before, .more > summary::before { content: "▸"; transition: transform 200ms; }
+.amap-more[open] > summary::before, .more[open] > summary::before { transform: rotate(90deg); }
+.amap-more > summary::-webkit-details-marker, .more > summary::-webkit-details-marker { display: none; }
+.amap-more > summary:hover, .more > summary:hover { color: #fff; }
+.more { border-radius: 14px; padding: 12px 14px; background: rgba(255,255,255,0.035); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.07); }
+
+/* Seven-agent map (components/demo/agent-map.tsx). */
+.amap { display: flex; flex-direction: column; gap: 14px; }
+.amap-bar { display: grid; gap: 12px; align-items: center; border-radius: 16px; padding: 12px 14px; background: rgba(255,255,255,0.04); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08); }
+@media (min-width: 1100px) { .amap-bar { grid-template-columns: minmax(0, 1.2fr) auto auto; } }
+.amap-rec { display: inline-flex; align-items: center; gap: 7px; border-radius: 9999px; padding: 3px 10px; font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.75); background: rgba(255,255,255,0.07); }
+.amap-rec::before { content: ""; width: 7px; height: 7px; border-radius: 9999px; background: rgba(255,255,255,0.4); }
+.amap-rec[data-on]::before { background: #ff5a3c; box-shadow: 0 0 0 4px rgba(255, 90, 60, 0.22); animation: demo-blink 1s ease-in-out infinite; }
+.amap-phases { display: flex; flex-wrap: wrap; gap: 4px; font-size: 0.72rem; }
+.amap-phases li { border-radius: 9999px; padding: 3px 10px; color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.03); }
+.amap-phases li[data-state="active"] { color: #fff; background: color-mix(in srgb, var(--color-brand) 55%, transparent); }
+.amap-phases li[data-state="done"] { color: #9ff0c6; background: rgba(95, 212, 154, 0.1); }
+.amap-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.amap-btn { display: inline-flex; width: 34px; height: 34px; align-items: center; justify-content: center; border-radius: 9999px; background: #fff; color: var(--color-ink); font-size: 0.8rem; transition: transform 200ms; }
+.amap-btn:hover { transform: scale(1.06); }
+.amap-scrub { width: 160px; accent-color: var(--color-brand); }
+.amap-speeds { display: inline-flex; border-radius: 9999px; padding: 2px; background: rgba(255,255,255,0.06); }
+.amap-speeds button { border-radius: 9999px; padding: 3px 9px; font-family: var(--font-mono); font-size: 0.68rem; color: rgba(255,255,255,0.6); }
+.amap-speeds button[aria-pressed="true"] { background: rgba(255,255,255,0.9); color: var(--color-ink); }
+.amap-grid { display: grid; gap: 14px; }
+@media (min-width: 1100px) { .amap-grid { grid-template-columns: 15.5rem minmax(0, 1fr) 19rem; } }
+.amap-rail { display: flex; flex-direction: column; gap: 6px; }
+.amap-agent { display: flex; width: 100%; gap: 10px; align-items: flex-start; border-radius: 14px; padding: 10px 12px; text-align: left; background: rgba(255,255,255,0.025); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06); transition: background-color 200ms, box-shadow 200ms, opacity 200ms; }
+.amap-agent:hover { background: rgba(255,255,255,0.05); }
+.amap-agent[data-status="queued"] { opacity: 0.55; }
+.amap-agent[data-status="running"] { background: color-mix(in srgb, var(--team) 14%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--team) 60%, transparent), 0 0 24px -8px var(--team); }
+.amap-agent[aria-pressed="true"] { box-shadow: inset 0 0 0 1.5px #fff; }
+.amap-agent-dot { margin-top: 6px; width: 8px; height: 8px; flex-shrink: 0; border-radius: 9999px; background: var(--team); opacity: 0.45; }
+.amap-agent[data-status="running"] .amap-agent-dot { opacity: 1; box-shadow: 0 0 0 4px color-mix(in srgb, var(--team) 30%, transparent); animation: demo-blink 1s ease-in-out infinite; }
+.amap-agent[data-status="done"] .amap-agent-dot { opacity: 1; }
+.amap-agent[data-status="skipped"] .amap-agent-dot { background: transparent; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.4); }
+.amap-map { position: relative; display: grid; min-height: 440px; grid-template-columns: minmax(0, 1fr) minmax(150px, 0.8fr) minmax(0, 1fr); border-radius: 20px; padding: 14px; background: radial-gradient(90% 70% at 50% 50%, rgba(194, 69, 45, 0.12), transparent 70%), rgba(255,255,255,0.02); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.07); }
+.amap-col { display: grid; grid-auto-rows: 1fr; gap: 10px; }
+.amap-col > li { display: flex; align-items: center; }
+.amap-node { position: relative; width: 100%; border-radius: 14px; padding: 10px 12px; text-align: left; background: rgba(23, 17, 16, 0.92); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12); transition: box-shadow 250ms, opacity 250ms, transform 250ms; }
+.amap-node:hover { transform: translateY(-1px); }
+.amap-node[aria-pressed="true"] { box-shadow: inset 0 0 0 1.5px rgba(255,255,255,0.8); }
+.amap-node[data-state="outside"] { opacity: 0.35; }
+.amap-node[data-state="checking"] { box-shadow: inset 0 0 0 1.5px var(--beam), 0 0 0 6px color-mix(in srgb, var(--beam) 16%, transparent), 0 0 40px -6px var(--beam); }
+.amap-node[data-state="issue"] { box-shadow: inset 0 0 0 1.5px #ff7a5c, 0 0 30px -10px #ff7a5c; }
+.amap-node[data-state="fixed"] { box-shadow: inset 0 0 0 1.5px #5fd49a, 0 0 30px -12px #5fd49a; }
+.amap-node-state { margin-top: 4px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.72rem; color: rgba(255,255,255,0.55); }
+.amap-node[data-state="checking"] .amap-node-state { color: var(--beam); }
+.amap-node[data-state="issue"] .amap-node-state { color: #ff9b88; }
+.amap-node[data-state="fixed"] .amap-node-state, .amap-node[data-state="clear"] .amap-node-state { color: #9ff0c6; }
+.amap-icon { display: inline-flex; width: 22px; height: 22px; align-items: center; justify-content: center; border-radius: 7px; font-size: 0.75rem; background: rgba(255,255,255,0.07); }
+.amap-crit { margin-left: auto; border-radius: 9999px; padding: 1px 6px; font-family: var(--font-mono); font-size: 0.55rem; letter-spacing: 0.08em; text-transform: uppercase; color: #ffd2c8; background: rgba(194, 69, 45, 0.3); }
+.amap-hub-wrap { position: relative; }
+.amap-wire { stroke: rgba(255,255,255,0.12); stroke-width: 1; fill: none; }
+.amap-wire line[data-touched] { stroke: rgba(255,255,255,0.24); }
+.amap-beam { fill: none; stroke-width: 2.5; stroke-dasharray: 5 7; filter: drop-shadow(0 0 4px currentColor); animation: amap-flow 0.9s linear infinite; }
+@keyframes amap-flow { to { stroke-dashoffset: -24; } }
+.amap-hub { position: absolute; left: 20%; right: 20%; top: 50%; transform: translateY(-50%); border-radius: 16px; padding: 14px 10px; text-align: center; background: rgba(15, 11, 10, 0.95); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.14), 0 0 50px -10px var(--beam, rgba(194, 69, 45, 0.6)); transition: box-shadow 300ms; }
+.amap-inspect { border-radius: 20px; padding: 16px; background: rgba(255,255,255,0.03); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.07); }
+.amap-pill { display: inline-flex; border-radius: 9999px; padding: 2px 10px; font-size: 0.72rem; color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.07); }
+.amap-pill[data-state="issue"] { color: #ff9b88; background: rgba(255, 122, 92, 0.14); }
+.amap-pill[data-state="fixed"], .amap-pill[data-state="clear"] { color: #9ff0c6; background: rgba(95, 212, 154, 0.12); }
+.amap-pill[data-state="checking"] { color: #fff; background: color-mix(in srgb, var(--color-brand) 45%, transparent); }
+.amap-tick { position: relative; padding-left: 16px; }
+.amap-tick::before { content: ""; position: absolute; left: 0; top: 7px; width: 7px; height: 7px; border-radius: 9999px; background: var(--team); }
+.amap-tick[data-live]::before { animation: demo-blink 1s ease-in-out infinite; box-shadow: 0 0 0 4px color-mix(in srgb, var(--team) 30%, transparent); }
+@media (max-width: 699px) {
+  .amap-map { grid-template-columns: 1fr; min-height: 0; }
+  .amap-hub-wrap { order: -1; min-height: 96px; }
+  .amap-hub-wrap svg { display: none; }
+  .amap-hub { left: 0; right: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .amap-beam, .amap-rec::before, .amap-agent-dot, .amap-tick::before { animation: none !important; } }
+.commit-stage .demo-marker { color: #ffd2c8; background: rgba(194, 69, 45, 0.22); box-shadow: inset 0 0 0 1px rgba(255, 180, 163, 0.25); }
+.commit-stage .demo-pipe-item { background: rgba(255, 255, 255, 0.035); }
+.amap-grid { align-items: start; }
+@media (min-width: 700px) { .amap-map { height: 460px; min-height: 0; } }
+.amap-inspect { max-height: 560px; overflow-y: auto; }
