@@ -1,0 +1,22 @@
+# Ground truth for evaluation. Class-level descriptions only; no attack steps.
+target: payments-lite
+planted:
+  - id: authz-payment-detail
+    kind: security
+    weakness_class: CWE-639
+    invariant: exp_tenant_isolation_payments
+    location: {path: payments_lite/app.py, symbol: get_payment}
+    root_cause: {path: payments_lite/app.py, symbol: get_payment, cause_class: missing_check}
+    check_category: access_control.ownership
+    route_id: payment_detail
+  - id: refund-total-unbounded
+    kind: functional
+    weakness_class: CWE-840
+    invariant: exp_refund_total_bounded
+    location: {path: payments_lite/app.py, symbol: create_refund}
+    root_cause: {path: payments_lite/app.py, symbol: create_refund, cause_class: missing_check}
+    check_category: input_validation.bounds
+    route_id: create_refund
+lookalikes:
+  - {route_id: payment_refunds, note: ownership enforced via get_payment_for_customer}
+  - {route_id: create_refund, note: ownership enforced (only the amount bound is missing)}

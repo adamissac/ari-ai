@@ -1,0 +1,21 @@
+{
+  "recipe_version": 1,
+  "kind": "python_asgi",
+  "app_factory": "payments_lite.app:create_app",
+  "test_command": ["-q", "tests"],
+  "identities": {
+    "alice": {"auth_header": "Bearer fixture-token-alice"},
+    "bob": {"auth_header": "Bearer fixture-token-bob"}
+  },
+  "resources": {
+    "payment": {
+      "alice": {"id": "pay_alice_1", "amount_cents": 5000},
+      "bob": {"id": "pay_bob_1", "amount_cents": 9900}
+    }
+  },
+  "routes": [
+    {"id": "payment_detail", "method": "GET", "path_template": "/payments/{id}", "resource": "payment"},
+    {"id": "payment_refunds", "method": "GET", "path_template": "/payments/{id}/refunds", "resource": "payment"},
+    {"id": "create_refund", "method": "POST", "path_template": "/payments/{id}/refunds", "resource": "payment", "amount_field": "amount_cents"}
+  ]
+}

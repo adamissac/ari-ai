@@ -1,0 +1,78 @@
+{
+  "_status": "FIXTURE: hand-labelled expectations used until code-intelligence (Sarosh, INTEL-007) extracts them. origin=fixture on every record.",
+  "expectations": [
+    {
+      "id": "exp_tenant_isolation_payments",
+      "subject_ref": "payments_lite/app.py",
+      "statement": "A customer can read only payments (and their refunds) that they own; requests for another customer's payment are denied with 404.",
+      "kind": "access_control",
+      "status": "confirmed",
+      "confidence": "high",
+      "data_sensitivity": "financial",
+      "criticality": "high",
+      "sources": [
+        {
+          "path": "README.md",
+          "start_line": 10,
+          "end_line": 11
+        },
+        {
+          "path": "tests/test_payments.py",
+          "start_line": 30,
+          "end_line": 32
+        }
+      ]
+    },
+    {
+      "id": "exp_owner_reads_own_payment",
+      "subject_ref": "payments_lite/app.py",
+      "statement": "An authenticated customer can read the details of a payment they own.",
+      "kind": "functional",
+      "status": "confirmed",
+      "confidence": "high",
+      "data_sensitivity": "financial",
+      "criticality": "high",
+      "sources": [
+        {
+          "path": "tests/test_payments.py",
+          "start_line": 20,
+          "end_line": 23
+        }
+      ]
+    },
+    {
+      "id": "exp_auth_required",
+      "subject_ref": "payments_lite/app.py",
+      "statement": "Every /payments route requires a valid bearer token; missing or invalid tokens get 401.",
+      "kind": "authentication",
+      "status": "confirmed",
+      "confidence": "high",
+      "data_sensitivity": "financial",
+      "criticality": "high",
+      "sources": [
+        {
+          "path": "tests/test_payments.py",
+          "start_line": 10,
+          "end_line": 12
+        }
+      ]
+    },
+    {
+      "id": "exp_refund_total_bounded",
+      "subject_ref": "payments_lite/store.py",
+      "statement": "The total refunded for a payment never exceeds the original payment amount; an over-refund request is rejected with a 4xx error.",
+      "kind": "business_rule",
+      "status": "confirmed",
+      "confidence": "high",
+      "data_sensitivity": "financial",
+      "criticality": "high",
+      "sources": [
+        {
+          "path": "README.md",
+          "start_line": 12,
+          "end_line": 13
+        }
+      ]
+    }
+  ]
+}
