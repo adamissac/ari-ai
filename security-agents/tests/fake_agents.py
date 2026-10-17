@@ -305,12 +305,12 @@ def trace_script() -> list:
                         ],
                         "preconditions": ["a valid customer token", "knowledge of another customer's payment id"],
                         "impact_summary": "financial payment records of other customers are readable",
-                        "reachability": "authenticated",
-                        "privileges_required": "low",
-                        "data_sensitivity": "financial",
+                        "cvss_base_metrics": trace_cvss_metrics(sandbox_run_id),
                         "severity_rationale": (
-                            "The expectation tagged financial data sensitivity is violated on an "
-                            "authenticated route, and the first step is backed by an executed check."
+                            "Reachable over the network by any authenticated customer with no user "
+                            "interaction; the executed check showed another customer's payment record "
+                            "is returned in full, so confidentiality impact is high, with no integrity "
+                            "or availability impact."
                         ),
                         "followup_validation_suggestions": [
                             "check the same route for refund records of other customers"
@@ -323,6 +323,21 @@ def trace_script() -> list:
     return [turn0, turn1]
 
 
+def trace_cvss_metrics(sandbox_run_id: str | None) -> list[dict[str, Any]]:
+    handler = {"evidence_path": WEAK_HANDLER_PATH, "evidence_start_line": 137, "evidence_end_line": 150}
+    executed = {"evidence_artifact_id": sandbox_run_id}
+    return [
+        {"metric": "AV", "value": "N", "rationale": "The route is an HTTP API endpoint.", **handler},
+        {"metric": "AC", "value": "L", "rationale": "No special conditions; a payment id is enough.", **executed},
+        {"metric": "PR", "value": "L", "rationale": "Any valid customer token is required, nothing more.", **handler},
+        {"metric": "UI", "value": "N", "rationale": "No other user is involved.", **executed},
+        {"metric": "S", "value": "U", "rationale": "The impact stays within the payments-lite API."},
+        {"metric": "C", "value": "H", "rationale": "Another customer's full payment record is returned.", **executed},
+        {"metric": "I", "value": "N", "rationale": "The route only reads data.", **handler},
+        {"metric": "A", "value": "N", "rationale": "Availability is not affected."},
+    ]
+
+
 def _sandbox_run_id_from_prompt(request) -> str | None:
     import re
 
@@ -330,7 +345,7 @@ def _sandbox_run_id_from_prompt(request) -> str | None:
         content = message.get("content")
         if not isinstance(content, str):
             continue
-        match = re.search(r'"sandbox_run_id":\s*"([^"]+)"', content)
+        match = re.search(r'"(?:validation_)?sandbox_run_id":\s*"([^"]+)"', content)
         if match:
             return match.group(1)
     return None
@@ -387,6 +402,7 @@ def diagnose_script() -> list:
                         "related_sites": [
                             "payments_lite.app.create_app.require_owner is the shared ownership helper"
                         ],
+                        "d3fend_technique": "D3-AMED",
                     },
                 )
             ]
@@ -634,6 +650,7 @@ def fortify_script() -> list:
                                 "reference_end_line": 80,
                                 "effort": "small",
                                 "owner_review_note": "changes the store API; review call sites",
+                                "d3fend_technique": "D3-SCH",
                             },
                             {
                                 "category": "policy_test",
@@ -647,6 +664,7 @@ def fortify_script() -> list:
                                 "reference_end_line": 10,
                                 "effort": "medium",
                                 "owner_review_note": "",
+                                "d3fend_technique": None,
                             },
                         ],
                         "future_hypotheses": [

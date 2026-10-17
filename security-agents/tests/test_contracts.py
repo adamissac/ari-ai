@@ -197,7 +197,7 @@ def test_attack_path_and_severity_export(completed):
     assert isinstance(path, shared_findings.AttackPath)
     assert [s.order for s in path.steps] == list(range(1, len(path.steps) + 1))
     assert isinstance(severity, shared_findings.SeverityAssessment)
-    assert severity.level is shared_findings.SeverityLevel.high
+    assert severity.level is shared_findings.SeverityLevel.medium
     assert severity.factors.verified_path is True
     verified = [s for s in path.steps if s.verified]
     assert verified and all(s.evidence for s in verified)

@@ -719,6 +719,7 @@ class Orchestrator:
             assessment_id=self.config.assessment_id,
             finding_id=finding.finding_id,
             validation_result_id=finding.validation.id,
+            validation_sandbox_run_id=finding.validation.sandbox_run_id,
             hypothesis_title=finding.hypothesis.title,
             weakness_class=finding.hypothesis.weakness_class,
             confirmed_outcome=finding.validation.outcome.value,

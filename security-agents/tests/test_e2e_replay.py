@@ -129,15 +129,67 @@ def test_probe_confirmed_the_planted_weakness_with_executed_evidence(result):
     assert finding.validation.evidence[0].provenance == "check_run"
 
 
-def test_trace_severity_is_computed_from_cited_factors(result):
+def test_trace_severity_is_computed_by_the_platform_from_cvss_metrics(result):
     res, _ = result
     finding = res.findings[0]
-    assert finding.severity is not None
-    assert finding.severity.level.value == "high"
-    assert finding.severity.factors.data_sensitivity == "financial"
-    assert finding.severity.factors.verified_path is True
+    severity = finding.severity
+    assert severity is not None
+    assert severity.cvss_vector == "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N"
+    assert severity.cvss_base_score == 6.5
+    assert severity.cvss_rating == "medium"
+    assert severity.level.value == "medium"
+    assert severity.score_kind.startswith("CVSS v3.1 base score only")
+    assert severity.level_source.startswith("derived from the CVSS v3.1 qualitative rating")
+    assert severity.factors.data_sensitivity == "financial"
+    assert severity.factors.verified_path is True
+    statuses = {e.metric: e.status for e in severity.metric_evidence}
+    assert statuses["S"] == "unverified" and statuses["A"] == "unverified"
+    assert statuses["C"] == "cited" and statuses["AV"] == "cited"
     verified = [s for s in finding.attack_path.steps if s.verified]
     assert verified and all(s.evidence for s in verified)
+
+
+def test_base_score_differs_from_the_labelled_business_severity(result):
+    """labels.yaml expects high; the CVSS base score is medium. Base scores measure severity, not risk."""
+    res, _ = result
+    assert res.findings[0].severity.cvss_rating == "medium"
+
+
+def test_attack_path_records_no_applicable_technique_honestly(result):
+    res, _ = result
+    steps = res.findings[0].attack_path.steps
+    assert all(step.attack_technique is None for step in steps)
+    assert all(step.attack_label == "no applicable technique" for step in steps)
+
+
+def test_scout_hypothesis_carries_cwe_and_owasp_tags_from_code(result):
+    res, _ = result
+    hypothesis = res.findings[0].hypothesis
+    assert hypothesis.weakness_class == "CWE-639"
+    assert hypothesis.cwe_mapping_usage == "Allowed"
+    assert hypothesis.cwe_catalog_version == "4.20"
+    assert hypothesis.owasp_api_category == "API1:2023"
+    assert hypothesis.owasp_api_title == "Broken Object Level Authorization"
+    assert hypothesis.owasp_mapping_kind == "project mapping"
+
+
+def test_diagnose_and_fortify_carry_validated_d3fend(result):
+    res, _ = result
+    finding = res.findings[0]
+    assert finding.plan.d3fend_technique == "D3-AMED"
+    assert finding.plan.d3fend_label == "Access Mediation"
+    assert finding.plan.d3fend_version == "1.6.0"
+    tagged = [r for r in finding.recommendations if r.d3fend_technique]
+    assert [r.d3fend_technique for r in tagged] == ["D3-SCH"]
+
+
+def test_rules_of_engagement_issued_and_cited_in_audit(result):
+    res, _ = result
+    assert res.roe is not None
+    actions = [e.action for e in res.audit]
+    assert "roe.issued" in actions
+    assert actions.index("scope.checked") < actions.index("roe.issued")
+    assert res.roe.permitted_check_templates == ["access_control.ownership@1", "input_validation.bounds@1"]
 
 
 def test_diagnose_plan_bounds_the_patch(result):

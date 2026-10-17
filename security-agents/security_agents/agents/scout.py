@@ -6,7 +6,7 @@ the orchestrator decides which hypotheses reach Probe.
 
 from __future__ import annotations
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from ..contracts import (
     AgentName,
@@ -19,6 +19,8 @@ from ..contracts import (
     new_id,
 )
 from ..intel import CodeIntel, hypothesis_key
+from ..standards.mapping import owasp_api_tag
+from ..standards.validators import cwe_field, validate_cwe
 from ..runtime import AgentSpec, data_block
 
 SYSTEM = """You are Scout, the reconnaissance agent of an automated security review platform.
@@ -49,7 +51,15 @@ link the expectation id.
 independent validation; say "may", not "does".
 - Do not repeat a hypothesis whose key appears in the refuted list you are given.
 - `suggested_check_category` must be one of the categories you are told are \
-available, or the hypothesis cannot be validated."""
+available, or the hypothesis cannot be validated.
+- `weakness_class` must be a CWE identifier from the current MITRE CWE catalog \
+whose MITRE mapping usage is Allowed or Allowed-with-Review. Categories and \
+identifiers MITRE marks Discouraged or Prohibited (for example broad classes \
+such as CWE-284 or CWE-20, or categories such as CWE-840) are rejected; choose \
+the most specific weakness the evidence supports, such as CWE-639 for an \
+authorization bypass through a user-controlled key.
+- Do not assign any OWASP category, severity or score. The platform derives \
+the OWASP tag from the CWE and computes severity later from executed evidence."""
 
 
 class ScoutInput(StrictModel):
@@ -94,6 +104,11 @@ class HypothesisOut(StrictModel):
     suggested_check_category: str = Field(
         max_length=100, description="Which available check category could validate this."
     )
+
+    @field_validator("weakness_class")
+    @classmethod
+    def _known_cwe(cls, value: str) -> str:
+        return cwe_field(value)
 
 
 class CoverageOut(StrictModel):
@@ -232,6 +247,8 @@ def to_hypotheses(
         key = hypothesis_key(item.weakness_class, spans[0].path or "", item.entry_point_id)
         if key in refuted:
             continue
+        cwe = validate_cwe(item.weakness_class)
+        owasp = owasp_api_tag(item.weakness_class)
         results.append(
             Hypothesis(
                 id=new_id("hyp"),
@@ -243,6 +260,13 @@ def to_hypotheses(
                 entry_point_id=item.entry_point_id,
                 confidence=item.confidence,
                 suggested_check_category=item.suggested_check_category,
+                cwe_name=cwe.name,
+                cwe_mapping_usage=cwe.mapping_usage,
+                cwe_catalog_version=cwe.catalog_version,
+                owasp_api_category=owasp.category,
+                owasp_api_title=owasp.title,
+                owasp_api_edition=owasp.edition,
+                owasp_mapping_kind=owasp.kind,
             )
         )
     if max_items is not None:

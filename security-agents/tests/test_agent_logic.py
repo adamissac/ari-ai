@@ -194,71 +194,34 @@ def test_probe_interpretation_is_length_capped_by_the_schema():
 # --------------------------------------------------------------------------- trace
 
 
-@pytest.mark.parametrize(
-    "reach,priv,sens,verified,expected",
-    [
-        ("unauthenticated", "none", "financial", True, SeverityLevel.CRITICAL),
-        ("authenticated", "low", "financial", True, SeverityLevel.HIGH),
-        ("authenticated", "low", "financial", False, SeverityLevel.MEDIUM),
-        ("internal", "high", "none", False, SeverityLevel.INFO),
-        ("internal", "high", "internal", False, SeverityLevel.LOW),
-        ("unauthenticated", "none", "personal", False, SeverityLevel.HIGH),
-    ],
-)
-def test_severity_is_a_pure_function_of_factors(reach, priv, sens, verified, expected):
-    factors = SeverityFactors(
-        reachability=reach, privileges_required=priv, data_sensitivity=sens, verified_path=verified
-    )
-    assert trace_agent.compute_severity(factors) is expected
-    assert trace_agent.compute_severity(factors) is trace_agent.compute_severity(factors)
-
-
-ORDER = [SeverityLevel.INFO, SeverityLevel.LOW, SeverityLevel.MEDIUM, SeverityLevel.HIGH, SeverityLevel.CRITICAL]
-
-
-def test_severity_is_monotonic_in_every_factor():
-    """Raising any single factor never lowers the level (rubric property)."""
-    reach = ["internal", "authenticated", "unauthenticated"]
-    priv = ["high", "low", "none"]
-    sens = ["none", "internal", "personal"]
-    def level(r, p, s, v):
-        return ORDER.index(
-            trace_agent.compute_severity(
-                SeverityFactors(reachability=r, privileges_required=p, data_sensitivity=s, verified_path=v)
-            )
-        )
-
-    for ri, r in enumerate(reach):
-        for pi, p in enumerate(priv):
-            for si, s in enumerate(sens):
-                for v in (False, True):
-                    base = level(r, p, s, v)
-                    if ri + 1 < len(reach):
-                        assert level(reach[ri + 1], p, s, v) >= base
-                    if pi + 1 < len(priv):
-                        assert level(r, priv[pi + 1], s, v) >= base
-                    if si + 1 < len(sens):
-                        assert level(r, p, sens[si + 1], v) >= base
-                    if not v:
-                        assert level(r, p, s, True) >= base
-
-
-def test_verified_path_raises_severity():
-    def lvl(v):
-        return trace_agent.compute_severity(
-            SeverityFactors(reachability="authenticated", privileges_required="low",
-                            data_sensitivity="financial", verified_path=v)
-        )
-
-    assert ORDER.index(lvl(True)) > ORDER.index(lvl(False))
-
-
 def trace_input():
     return trace_agent.TraceInput(
-        assessment_id="asm", finding_id="fnd_1", validation_result_id="val_1",
-        hypothesis_title="t", weakness_class="CWE-639", confirmed_outcome="confirmed",
-        affected_paths=["payments_lite/app.py"], affected_symbol="get_payment",
+        assessment_id="asm",
+        finding_id="fnd_1",
+        validation_result_id="val_1",
+        validation_sandbox_run_id="sbx_1",
+        hypothesis_title="t",
+        weakness_class="CWE-639",
+        confirmed_outcome="confirmed",
+        affected_paths=["payments_lite/app.py"],
+        affected_symbol="get_payment",
+        expectation_ids=["exp_owner_only"],
     )
+
+
+def metrics(vector="AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N", artifact="sbx_1"):
+    out = []
+    for part in vector.split("/"):
+        name, value = part.split(":")
+        out.append(
+            {
+                "metric": name,
+                "value": value,
+                "rationale": f"{name} rationale",
+                "evidence_artifact_id": artifact,
+            }
+        )
+    return out
 
 
 def trace_output(**kw):
@@ -266,48 +229,119 @@ def trace_output(**kw):
         steps=[
             trace_agent.PathStepOut(
                 description="authenticated customer requests another customer's payment",
-                symbol_ref="get_payment", verified=True, evidence_artifact_id="sbx_1",
+                symbol_ref="get_payment",
+                verified=True,
+                evidence_artifact_id="sbx_1",
             )
         ],
         impact_summary="another customer's payment record is readable",
-        reachability="authenticated", privileges_required="low", data_sensitivity="financial",
-        severity_rationale="financial data, authenticated reach",
+        cvss_base_metrics=metrics(),
+        severity_rationale="network reachable, low privileges, confidentiality high",
     )
     base.update(kw)
     return trace_agent.TraceOutput(**base)
 
 
-def test_trace_marks_step_verified_only_with_executed_evidence(intel):
-    validation = probe_agent.to_validation_result(
-        probe_out("confirmed"), probe_input(), record(), [check_run(False)]
+def confirmed_validation():
+    return probe_agent.to_validation_result(probe_out("confirmed"), probe_input(), record(), [check_run(False)])
+
+
+def test_trace_computes_cvss_vector_score_and_level(intel):
+    path, severity = trace_agent.to_attack_path(trace_output(), trace_input(), intel, validation=confirmed_validation())
+    assert severity.cvss_vector == "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N"
+    assert severity.cvss_base_score == 6.5
+    assert severity.cvss_rating == "medium"
+    assert severity.level is SeverityLevel.MEDIUM
+    assert severity.score_kind.startswith("CVSS v3.1 base score only")
+
+
+@pytest.mark.parametrize(
+    "vector,score,level",
+    [
+        ("AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H", 9.8, SeverityLevel.CRITICAL),
+        ("AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H", 10.0, SeverityLevel.CRITICAL),
+        ("AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H", 8.8, SeverityLevel.HIGH),
+        ("AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N", 5.5, SeverityLevel.MEDIUM),
+        ("AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:N", 0.0, SeverityLevel.INFO),
+    ],
+)
+def test_trace_level_follows_the_computed_rating(intel, vector, score, level):
+    _, severity = trace_agent.to_attack_path(
+        trace_output(cvss_base_metrics=metrics(vector)), trace_input(), intel, validation=confirmed_validation()
     )
-    path, severity = trace_agent.to_attack_path(trace_output(), trace_input(), intel, validation=validation)
+    assert severity.cvss_base_score == score
+    assert severity.level is level
+
+
+def test_trace_output_has_no_field_for_a_score_or_level():
+    fields = set(trace_agent.TraceOutput.model_fields)
+    for forbidden in ("score", "base_score", "level", "severity", "rating", "cvss_vector"):
+        assert forbidden not in fields, forbidden
+    proposal_fields = set(trace_agent.CvssMetricProposal.model_fields)
+    assert not any(token in f for f in proposal_fields for token in ("score", "level", "rating"))
+
+
+def test_trace_rejects_missing_or_duplicated_metrics():
+    import pydantic
+
+    incomplete = metrics()[:7]
+    with pytest.raises(pydantic.ValidationError, match="exactly once"):
+        trace_output(cvss_base_metrics=incomplete + [incomplete[0]])
+
+
+def test_trace_rejects_an_invalid_metric_value():
+    import pydantic
+
+    bad = metrics()
+    bad[0] = {**bad[0], "value": "X"}
+    with pytest.raises(pydantic.ValidationError, match="AV must be one of"):
+        trace_output(cvss_base_metrics=bad)
+
+
+def test_metric_without_evidence_is_labelled_unverified(intel):
+    plain = [{**m, "evidence_artifact_id": None} for m in metrics()]
+    _, severity = trace_agent.to_attack_path(
+        trace_output(cvss_base_metrics=plain), trace_input(), intel, validation=confirmed_validation()
+    )
+    assert {e.status for e in severity.metric_evidence} == {"unverified"}
+
+
+def test_metric_citing_a_foreign_run_is_unverified(intel):
+    foreign = metrics(artifact="sbx_someone_else")
+    _, severity = trace_agent.to_attack_path(
+        trace_output(cvss_base_metrics=foreign), trace_input(), intel, validation=confirmed_validation()
+    )
+    assert {e.status for e in severity.metric_evidence} == {"unverified"}
+
+
+def test_factors_are_derived_from_metrics_and_expectations(intel):
+    _, severity = trace_agent.to_attack_path(trace_output(), trace_input(), intel, validation=confirmed_validation())
+    assert severity.factors.reachability == "authenticated"
+    assert severity.factors.privileges_required == "low"
+    assert severity.factors.data_sensitivity == "financial"
+    assert severity.factors.verified_path is True
+
+
+def test_trace_marks_step_verified_only_with_executed_evidence(intel):
+    path, severity = trace_agent.to_attack_path(trace_output(), trace_input(), intel, validation=confirmed_validation())
     assert path.steps[0].verified is True
     assert severity.factors.verified_path is True
-    assert severity.level is SeverityLevel.HIGH
 
 
 def test_trace_downgrades_unsupported_verified_claim(intel):
-    """A step claiming `verified` with no matching sandbox evidence is recorded as hypothesis."""
     out = trace_output(
-        steps=[
-            trace_agent.PathStepOut(description="reaches the ledger", verified=True, evidence_artifact_id=None)
-        ]
+        steps=[trace_agent.PathStepOut(description="reaches the ledger", verified=True, evidence_artifact_id=None)]
     )
     path, severity = trace_agent.to_attack_path(out, trace_input(), intel, validation=None)
     assert path.steps[0].verified is False
     assert severity.factors.verified_path is False
-    assert severity.level is SeverityLevel.MEDIUM
 
 
 def test_trace_ignores_foreign_artifact_id(intel):
-    validation = probe_agent.to_validation_result(
-        probe_out("confirmed"), probe_input(), record(), [check_run(False)]
-    )
     out = trace_output(
         steps=[trace_agent.PathStepOut(description="x", verified=True, evidence_artifact_id="sbx_someone_else")]
     )
-    path, _ = trace_agent.to_attack_path(out, trace_input(), intel, validation=validation)
+    path, _ = trace_agent.to_attack_path(out, trace_input(), intel, validation=confirmed_validation())
     assert path.steps[0].verified is False
 
 
@@ -320,6 +354,23 @@ def test_trace_steps_are_ordered(intel):
     )
     path, _ = trace_agent.to_attack_path(out, trace_input(), intel)
     assert [s.order for s in path.steps] == [1, 2]
+
+
+def test_attack_technique_is_validated_and_enriched(intel):
+    out = trace_output(
+        steps=[trace_agent.PathStepOut(description="x", verified=False, attack_technique="T1190")]
+    )
+    path, _ = trace_agent.to_attack_path(out, trace_input(), intel)
+    assert path.steps[0].attack_technique == "T1190"
+    assert path.steps[0].attack_technique_name == "Exploit Public-Facing Application"
+    assert path.steps[0].attack_version == "20.0"
+
+
+def test_invented_attack_technique_is_rejected():
+    import pydantic
+
+    with pytest.raises(pydantic.ValidationError, match="not in the pinned Enterprise ATT&CK"):
+        trace_agent.PathStepOut(description="x", verified=False, attack_technique="T9999")
 
 
 # --------------------------------------------------------------------------- diagnose

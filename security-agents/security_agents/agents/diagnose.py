@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from ..contracts import (
     AgentName,
@@ -23,6 +23,7 @@ from ..contracts import (
 )
 from ..intel import CodeIntel
 from ..runtime import AgentSpec, data_block
+from ..standards.validators import optional_d3fend_field, validate_d3fend
 
 SYSTEM = """You are Diagnose, the root-cause analyst of an automated security review platform.
 
@@ -83,6 +84,15 @@ class DiagnoseOutput(StrictModel):
     related_sites: list[ShortText] = Field(
         default_factory=list, max_length=10, description="Other call sites sharing this cause."
     )
+    d3fend_technique: str | None = Field(
+        default=None,
+        description="MITRE D3FEND countermeasure id such as D3-AMED, or null when none applies.",
+    )
+
+    @field_validator("d3fend_technique")
+    @classmethod
+    def _known_countermeasure(cls, value: str | None) -> str | None:
+        return optional_d3fend_field(value)
 
 
 SPEC = AgentSpec(
@@ -174,6 +184,7 @@ def to_plan(
     files = [p for p in out.files_expected if intel.snapshot.exists(p) or p.startswith("tests/")]
     if not files:
         files = [spans[0].path or data.affected_paths[0]]
+    countermeasure = validate_d3fend(out.d3fend_technique) if out.d3fend_technique else None
     plan = RemediationPlan(
         finding_id=data.finding_id,
         strategy=out.strategy,
@@ -183,6 +194,9 @@ def to_plan(
             must_fail_before=list(out.tests_must_fail_before),
             must_pass_after=list(out.tests_must_pass_after),
         ),
+        d3fend_technique=countermeasure.identifier if countermeasure else None,
+        d3fend_label=countermeasure.label if countermeasure else "",
+        d3fend_version=countermeasure.version if countermeasure else "",
     )
     related = [EvidenceRef(symbol=site[:200], provenance="agent_output") for site in out.related_sites]
     return root_cause, plan, related

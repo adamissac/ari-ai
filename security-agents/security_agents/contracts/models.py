@@ -149,6 +149,13 @@ class Hypothesis(StrictModel):
     confidence: Confidence
     suggested_check_category: str
     status_label: Literal["hypothesis"] = "hypothesis"
+    cwe_name: str = ""
+    cwe_mapping_usage: str = ""
+    cwe_catalog_version: str = ""
+    owasp_api_category: str | None = None
+    owasp_api_title: str | None = None
+    owasp_api_edition: str = ""
+    owasp_mapping_kind: str = ""
 
 
 class ValidationOutcome(StrEnum):
@@ -176,6 +183,10 @@ class PathStep(StrictModel):
     symbol_ref: str | None = None
     verified: bool
     evidence: list[EvidenceRef] = Field(default_factory=list)
+    attack_technique: str | None = None
+    attack_technique_name: str = ""
+    attack_version: str = ""
+    attack_label: str = "no applicable technique"
 
 
 class SeverityFactors(StrictModel):
@@ -193,10 +204,25 @@ class SeverityLevel(StrEnum):
     CRITICAL = "critical"
 
 
+class CvssMetricEvidence(StrictModel):
+    metric: str
+    value: str
+    status: Literal["cited", "unverified"]
+    evidence: list[EvidenceRef] = Field(default_factory=list)
+    rationale: str = ""
+
+
 class SeverityAssessment(StrictModel):
     level: SeverityLevel
     factors: SeverityFactors
     rationale: ShortText
+    cvss_version: str = ""
+    cvss_vector: str = ""
+    cvss_base_score: float | None = None
+    cvss_rating: str = ""
+    score_kind: str = ""
+    level_source: str = ""
+    metric_evidence: list[CvssMetricEvidence] = Field(default_factory=list)
 
 
 class AttackPath(StrictModel):
@@ -237,6 +263,9 @@ class RemediationPlan(StrictModel):
     constraints: list[ShortText] = Field(default_factory=list)
     files_expected: list[RelPath] = Field(min_length=1)
     test_plan: RemediationTestPlan
+    d3fend_technique: str | None = None
+    d3fend_label: str = ""
+    d3fend_version: str = ""
 
 
 class PatchCandidate(StrictModel):
@@ -296,6 +325,9 @@ class HardeningRecommendation(StrictModel):
     proposed_test_uri: str | None = None
     effort: Literal["small", "medium", "large"]
     owner_review_note: ShortText = ""
+    d3fend_technique: str | None = None
+    d3fend_label: str = ""
+    d3fend_version: str = ""
 
 
 class HypothesisDraft(StrictModel):
