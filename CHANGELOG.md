@@ -27,6 +27,8 @@ All notable changes are documented here. Format follows
   escaping `build_recipe.json` `target_dir` raises `SCHEMA_INVALID`.
 
 ### Added
+- Assessment page shows each runtime agent with the job it does, only the runs and tool calls that were recorded, and what is still open for the next agent.
+- Finding detail shows the persisted standards view (CWE, CVSS, ATT&CK, D3FEND) as text, including when nothing was assessed.
 - Canonical `CheckCategory` in `shared` (schema 0.9.0): Probe library ids
   `access_control.ownership` / `input_validation.bounds`, with published V0
   fixture aliases `authorization.ownership` / `input.bounds`. Scope matching
