@@ -56,13 +56,13 @@
     {
       "id": "payment_detail",
       "method": "GET",
-      "path_template": "/payments/{id}",
+      "path_template": "/payments/{payment_id}",
       "resource": "payment"
     },
     {
       "id": "customer_detail",
       "method": "GET",
-      "path_template": "/customers/{id}",
+      "path_template": "/customers/{customer_id}",
       "resource": "customer"
     },
     {
