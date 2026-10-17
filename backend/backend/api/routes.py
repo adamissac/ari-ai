@@ -305,7 +305,11 @@ def request_snapshot(repo_id: str, body: SnapshotCreate, request: Request) -> Sn
         repo = _repo_access(conn, user, repo_id, MemberRole.member)
         existing = conn.execute(
             sa.select(snapshots.c.doc)
-            .where(snapshots.c.repo_id == repo_id, snapshots.c.commit_sha == body.commit_sha)
+            .where(
+                snapshots.c.repo_id == repo_id,
+                snapshots.c.commit_sha == body.commit_sha,
+                snapshots.c.status != SnapshotStatus.failed.value,
+            )
             .order_by(snapshots.c.created_at.desc())
         ).scalar()
         if existing and existing["status"] in (
