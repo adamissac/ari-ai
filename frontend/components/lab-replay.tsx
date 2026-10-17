@@ -42,8 +42,7 @@ export function ReplayStage({ episode, scenario }: { episode: LabEpisode; scenar
   const label = (n: string) => serviceInfo(n).label;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="replay-brief"><div><span className="network-eyebrow">THE DEFENSE STORY</span><h3>Someone tries to get in.<br />Watch the defender respond.</h3><p>A recorded practice network. The red marker shows the simulated attacker; the blue marker shows where the AI acts.</p></div><div className="replay-keys"><span><i className="key-attacker" />Attacker · trying to reach your data</span><span><i className="key-defender" />Defender · watching, slowing or isolating</span><small>Attacker positions are replay-only ground truth. The AI sees alerts, not these markers.</small></div></div>
+    <div className="flex flex-col gap-5">
       {/* Status overview */}
       <div className="lab-status" data-testid="lab-status">
         <span className="lab-mode label-mono" data-testid="lab-mode">Simulation · recorded evaluation</span>
@@ -57,6 +56,28 @@ export function ReplayStage({ episode, scenario }: { episode: LabEpisode; scenar
         <div className="min-w-0">
           <NodeGraph scenario={scenario} states={step?.nodes ?? []} action={step?.action} t={t} selected={selected} onSelect={setSelected} showTruth={truth} />
           <p className="lab-swipe">Swipe the map sideways to see every service →</p>
+          {/* Playback: one slim control bar; the scrubber is the timeline (YouTube-style chapter dots). */}
+          <div className="lab-player">
+            <button type="button" className="lab-play" onClick={() => { if (!playing && t >= steps - 1) setT(0); setPlaying(p => !p); }} aria-label={playing ? 'Pause' : t >= steps - 1 ? 'Replay' : 'Play'}>
+              {playing
+                ? <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="3" width="3" height="10" rx="1" /><rect x="9" y="3" width="3" height="10" rx="1" /></svg>
+                : <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6a.6.6 0 0 0 .9.5l7.6-4.8a.6.6 0 0 0 0-1L5.9 2.7a.6.6 0 0 0-.9.5z" /></svg>}
+            </button>
+            <button type="button" className="lab-skip" onClick={() => prevMoment && seek(prevMoment.t)} disabled={!prevMoment} aria-label="Previous key moment">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 3v10M12.5 3.6v8.8L6.5 8z" /></svg>
+            </button>
+            <button type="button" className="lab-skip" onClick={() => nextMoment && seek(nextMoment.t)} disabled={!nextMoment} aria-label="Next key moment">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12 3v10M3.5 3.6v8.8L9.5 8z" /></svg>
+            </button>
+            <Scrubber episode={episode} moments={story} t={t} steps={steps} horizon={scenario.horizon} onSeek={seek} truth={truth} />
+            <span className="lab-time">t = {step?.t ?? 0} / {scenario.horizon}</span>
+            <button type="button" className="lab-speed" onClick={() => setSpeed(v => (v + 1) % SPEEDS.length)} aria-label={`Playback speed ${SPEEDS[speed]?.label ?? ''}, click to change`}>
+              {SPEEDS[speed]?.label}
+            </button>
+          </div>
+          <p className="lab-now-moment" aria-live="polite">
+            {currentMoment ? <><span className="font-mono text-faint">{currentMoment.t}</span> {currentMoment.text}</> : <span className="text-faint">Press play or use the arrows to jump between key moments.</span>}
+          </p>
           <Legend />
         </div>
 
@@ -86,35 +107,13 @@ export function ReplayStage({ episode, scenario }: { episode: LabEpisode; scenar
         </aside>
       </div>
 
-      {/* Playback: one slim control bar; the scrubber is the timeline (YouTube-style chapter dots). */}
-      <div className="lab-player">
-        <button type="button" className="lab-play" onClick={() => { if (!playing && t >= steps - 1) setT(0); setPlaying(p => !p); }} aria-label={playing ? 'Pause' : t >= steps - 1 ? 'Replay' : 'Play'}>
-          {playing
-            ? <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="3" width="3" height="10" rx="1" /><rect x="9" y="3" width="3" height="10" rx="1" /></svg>
-            : <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6a.6.6 0 0 0 .9.5l7.6-4.8a.6.6 0 0 0 0-1L5.9 2.7a.6.6 0 0 0-.9.5z" /></svg>}
-        </button>
-        <button type="button" className="lab-skip" onClick={() => prevMoment && seek(prevMoment.t)} disabled={!prevMoment} aria-label="Previous key moment">
-          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 3v10M12.5 3.6v8.8L6.5 8z" /></svg>
-        </button>
-        <button type="button" className="lab-skip" onClick={() => nextMoment && seek(nextMoment.t)} disabled={!nextMoment} aria-label="Next key moment">
-          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12 3v10M3.5 3.6v8.8L9.5 8z" /></svg>
-        </button>
-        <Scrubber episode={episode} moments={story} t={t} steps={steps} horizon={scenario.horizon} onSeek={seek} truth={truth} />
-        <span className="lab-time">t = {step?.t ?? 0} / {scenario.horizon}</span>
-        <button type="button" className="lab-speed" onClick={() => setSpeed(v => (v + 1) % SPEEDS.length)} aria-label={`Playback speed ${SPEEDS[speed]?.label ?? ''}, click to change`}>
-          {SPEEDS[speed]?.label}
-        </button>
+      <div className="lab-replay-foot">
+        <div className="lab-outcome-row">
+          <span className={`lab-outcome ${episode.compromised ? 'lab-outcome-bad' : 'lab-outcome-ok'}`}>{episode.compromised ? 'Attacker won' : 'Attack contained'}</span>
+          <p className="min-w-0 text-sm text-ink" data-testid="lab-episode-outcome">{episodeOutcome(episode)} <span className="text-muted" data-testid="lab-episode-story">{SCENARIO_WORDS[episode.scenario]?.note ?? ''}</span></p>
+        </div>
+        <GroundTruth episode={episode} t={t} truth={truth} onToggle={setTruth} label={label} />
       </div>
-      <p className="lab-now-moment" aria-live="polite">
-        {currentMoment ? <><span className="font-mono text-faint">{currentMoment.t}</span> {currentMoment.text}</> : <span className="text-faint">Press play or use the arrows to jump between key moments.</span>}
-      </p>
-
-      <div className="lab-outcome-row">
-        <span className={`lab-outcome ${episode.compromised ? 'lab-outcome-bad' : 'lab-outcome-ok'}`}>{episode.compromised ? 'Attacker won' : 'Attack contained'}</span>
-        <p className="min-w-0 text-sm text-ink" data-testid="lab-episode-outcome">{episodeOutcome(episode)} <span className="text-muted" data-testid="lab-episode-story">{SCENARIO_WORDS[episode.scenario]?.note ?? ''}</span></p>
-      </div>
-
-      <GroundTruth episode={episode} t={t} truth={truth} onToggle={setTruth} label={label} />
     </div>
   );
 }
