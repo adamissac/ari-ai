@@ -117,7 +117,11 @@ def _links(
             ).scalar()
             if doc is None:
                 raise not_found("incident linked record")
-            simulated = simulated or bool(doc.get("simulated") or doc.get("simulation_derived"))
+            simulated = simulated or bool(
+                doc.get("simulated")
+                or doc.get("simulation_derived")
+                or (table is monitoring_events and doc.get("source") == "runtime")
+            )
     for ident in verifications:
         row = conn.execute(
             sa.select(findings.c.id)
@@ -203,6 +207,7 @@ def _verified(conn: Connection, incident: Incident) -> frozenset[str]:
         ).scalar()
         if (
             run
+            and run["status"] == "succeeded"
             and run["assessment_id"] == assessment
             and remediation
             and row.doc["produced_by_run_id"] != row.patch_doc["produced_by_run_id"]
@@ -221,7 +226,10 @@ def _evidence(conn: Connection, incident: Incident, refs, *, regression: bool = 
             )
         ).scalars()
     }
+    fortify.discard(None)
     for ref in refs:
+        if regression and not (ref.artifact_id and ref.sha256):
+            fail("regression evidence requires a persisted artifact and matching hash")
         if ref.artifact_id:
             stored = conn.execute(
                 sa.select(artifacts.c.id).where(
@@ -342,7 +350,7 @@ def correlate_anomaly(
                     "monitoring_event_ids": list(
                         dict.fromkeys([*existing.monitoring_event_ids, event.id])
                     ),
-                    "simulated": existing.simulated or event.simulated,
+                    "simulated": True,  # current runtime sources are demo/replay/simulation only
                 }
             )
             updated = _entry(
@@ -361,7 +369,7 @@ def correlate_anomaly(
         event.project_id,
         IncidentCreate(
             title=f"Reported runtime anomaly: {route}"[:500],
-            simulated=event.simulated,
+            simulated=True,  # no production runtime source exists in the MVP
             monitoring_event_ids=[event.id],
             finding_ids=linked,
             note="Threshold crossed with validated finding context; human triage required",

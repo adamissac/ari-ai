@@ -180,6 +180,26 @@ def test_complete_lifecycle_persisted_verify_regression_and_closure(
             effort="small",
         ),
     )
+    host.record(
+        fid,
+        HardeningRecommendation(
+            id=new_id(IdPrefix.hdn),
+            finding_id=fid,
+            category="advice-only",
+            recommendation="No test artifact supplied",
+            effort="small",
+        ),
+    )
+    assert (
+        _action(
+            alice,
+            url,
+            "record_lessons_learned",
+            note="Forged regression proof",
+            evidence=[{"kind": "human_input", "provenance": "user:claim"}],
+        ).status_code
+        == 409
+    )
     evidence = [
         {
             "kind": "test_run",
@@ -194,6 +214,23 @@ def test_complete_lifecycle_persisted_verify_regression_and_closure(
         ("recovery", "recovery"),
     ):
         _approve(alice, bob, url, gate)
+        if target == "eradication":
+            from backend.db import agent_runs, verification_results
+
+            with transaction() as conn:
+                run_id = conn.execute(
+                    sa.select(verification_results.c.doc).where(verification_results.c.id == vid)
+                ).scalar_one()["produced_by_run_id"]
+                conn.execute(
+                    sa.update(agent_runs).where(agent_runs.c.id == run_id).values(status="failed")
+                )
+            assert _action(alice, url, "transition", target_state=target).status_code == 409
+            with transaction() as conn:
+                conn.execute(
+                    sa.update(agent_runs)
+                    .where(agent_runs.c.id == run_id)
+                    .values(status="succeeded")
+                )
         r = _action(alice, url, "transition", target_state=target)
         assert r.status_code == 200, r.text
     _approve(alice, bob, url, "closure")

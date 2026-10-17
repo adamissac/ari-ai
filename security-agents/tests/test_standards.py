@@ -74,6 +74,8 @@ def test_explicit_evidenced_cvss_is_scored_and_exported():
     )
     assessment = _cvss(output, validation)
     assert assessment is not None
+    assert len(assessment.assumptions) == 11
+    assert all(metric.basis == "assumption" for metric in assessment.metrics)
     assert assessment.vector.startswith("CVSS:4.0/")
     assert {m.metric for m in assessment.metrics} == set(METRICS)
     payload = assessment.model_dump()
@@ -86,7 +88,22 @@ def test_explicit_evidenced_cvss_is_scored_and_exported():
 
 def test_reviewed_check_rule_attaches_proposed_sandbox_mapping():
     from security_agents.agents.trace import TraceInput, _reviewed_attack
-    data = TraceInput(check_category="access_control.ownership",assessment_id="a",finding_id="f",
-        validation_result_id="v",hypothesis_title="Owner-boundary failure",weakness_class="CWE-639",confirmed_outcome="confirmed")
-    refs = _reviewed_attack(data, trace_output(), [EvidenceRef(artifact_id="sbx_executed",provenance="check_run")])
-    assert refs and all(ref.review_status == "proposed" and ref.mapped_via == "check_template_rule" and ref.observation == "observed_in_sandbox" for ref in refs)
+
+    data = TraceInput(
+        check_category="access_control.ownership",
+        assessment_id="a",
+        finding_id="f",
+        validation_result_id="v",
+        hypothesis_title="Owner-boundary failure",
+        weakness_class="CWE-639",
+        confirmed_outcome="confirmed",
+    )
+    refs = _reviewed_attack(
+        data, trace_output(), [EvidenceRef(artifact_id="sbx_executed", provenance="check_run")]
+    )
+    assert refs and all(
+        ref.review_status == "proposed"
+        and ref.mapped_via == "check_template_rule"
+        and ref.observation == "observed_in_sandbox"
+        for ref in refs
+    )
