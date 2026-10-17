@@ -638,6 +638,16 @@ def test_authorization_finding_is_handed_to_scout_with_test_evidence(tmp_path: P
     assert host.artifact_json(run_ev.artifact_id)["classification"] == ["failed", "failed"]
     assert host.findings() == [sec]
 
+    # The answer key scores it as the planted security defect handed to Scout, not as a
+    # functional true/false positive (labels read only by the evaluator, after the run).
+    from cr_scenarios import PAYMENTS_LITE
+
+    from code_review.evaluation import score
+
+    rep = score(outcome, PAYMENTS_LITE.parent / "labels.yaml").to_json()
+    assert rep["security_handoffs_matched"] == ["fnd_planted_authz"]
+    assert rep["tp"] == [] and rep["fp"] == [] and rep["fn"] == ["fnd_planted_refund_bound"]
+
 
 @pytest.mark.parametrize(
     "text,authz",
