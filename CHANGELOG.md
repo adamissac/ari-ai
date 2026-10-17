@@ -6,8 +6,19 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+### Fixed
+- Hosted assessments with a still-pending functional approval now pause at
+  `AWAITING_APPROVAL` even when security work ended early or was already
+  approved. Early security exits walk skipped phases to the only legal pause
+  edge (`DIAGNOSIS` → `AWAITING_APPROVAL`) instead of completing.
+
 ### Added
 - Frontend: incident closure panel (link findings/verifications, closure criteria with artifact evidence, lessons learned, communications, readiness list).
+- Hosted assessments persist security finding lifecycle (`hypothesis → … → hardened`),
+  durable approval checkpoints (`save_checkpoint` / `load_checkpoint` so a worker
+  restart can resume), and approval-gated functional repair plus independent Verify.
+  Assessment usage now includes `tool_calls` and `sandbox_seconds` from host runs.
+  Fake-provider only; live seven-agent path still unverified (no Anthropic key).
 - Frontend console pages on existing backend APIs: **Expectations** (snapshot-pinned behavioral
   expectations with confirm/conflicting/reject decisions, optimistic `expected_revision` and
   decision history), **Incidents** (NIST SP 800-61r3 lifecycle, triage, owner, two-person

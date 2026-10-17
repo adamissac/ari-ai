@@ -23,6 +23,7 @@ installable on its own and testable with a fake host.
 
 from __future__ import annotations
 
+import contextlib
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -77,6 +78,8 @@ HOST_STATE_NAMES: dict[AssessmentState, str] = {
     AssessmentState.BUDGET_EXHAUSTED: "BUDGET_EXHAUSTED",
 }
 
+CHECKPOINT_NS = "security_agents.approval.v1"
+
 
 @runtime_checkable
 class AssessmentHostLike(Protocol):
@@ -87,7 +90,10 @@ class AssessmentHostLike(Protocol):
 
     def assessment(self) -> Any: ...
     def scope(self) -> Any: ...
+    def save_checkpoint(self, namespace: str, payload: dict[str, Any]) -> None: ...
+    def load_checkpoint(self, namespace: str) -> dict[str, Any] | None: ...
     def approvals(self) -> list[Any]: ...
+    def findings(self) -> list[Any]: ...
     def transition(self, target: Any, message: str = "") -> Any: ...
     def progress(self, message: str, *, agent: Any = None, **data: Any) -> None: ...
     def llm(self) -> Any: ...
@@ -599,22 +605,70 @@ class HostOrchestrator:
         if existing is not None:
             self._resume(existing, host)
             return
-        state = str(getattr(getattr(_val(host, "assessment"), "state", None), "value", "") or "").upper()
+        state = _state_name(getattr(_val(host, "assessment"), "state", None))
+        checkpoint = _load_checkpoint(host)
+        if state == "AWAITING_APPROVAL" or (
+            checkpoint is not None and state not in ("", "CREATED", "SCOPE_CHECK")
+        ):
+            if checkpoint is None:
+                raise PlatformError(
+                    ErrorCode.CONFLICT_STATE,
+                    f"cannot resume from {state}: paused orchestrator state was lost "
+                    "(worker restarted or another worker); start a new assessment",
+                )
+            self._resume_from_checkpoint(host, checkpoint, target)
+            return
         if state not in ("", "CREATED", "SCOPE_CHECK"):
-            # Paused state lives in this process; a different worker or a restart lost it.
             raise PlatformError(
                 ErrorCode.CONFLICT_STATE,
                 f"cannot resume from {state}: paused orchestrator state was lost "
                 "(worker restarted or another worker); start a new assessment",
             )
 
-        workdir = self.workdir or Path(os.environ.get("SECURITY_AGENTS_WORKDIR", "")) or None
-        if workdir is None:
-            import tempfile
-
-            workdir = Path(tempfile.mkdtemp(prefix=f"{host.assessment_id}-"))
+        workdir = self._workdir(host)
         intel = self._build_intel(target, workdir, host)
+        orchestrator = self._make_orchestrator(host, intel, workdir)
+        # The host already performed the scope gate and the first transition.
+        orchestrator.state = AssessmentState.CREATED
+        result = orchestrator.run()
+        self._settle(orchestrator)
+        if result.state is AssessmentState.AWAITING_APPROVAL:
+            self._resumable[host.assessment_id] = orchestrator
+            _save_checkpoint(host, orchestrator, intel)
+            host.progress("awaiting human remediation approval")
+
+    def _resume_from_checkpoint(
+        self, host: AssessmentHostLike, checkpoint: dict[str, Any], target: Path | None
+    ) -> None:
+        """Rebuild an Orchestrator from the durable checkpoint after a worker restart."""
+        from pydantic import TypeAdapter
+
+        if checkpoint.get("version") != 1 or checkpoint.get("assessment_id") != host.assessment_id:
+            raise PlatformError(ErrorCode.CONFLICT_STATE, "invalid approval checkpoint identity/version")
+        workdir = self._workdir(host)
+        intel = self._build_intel(target, workdir, host)
+        if checkpoint.get("commit_sha") and checkpoint["commit_sha"] != intel.snapshot.commit_sha:
+            raise PlatformError(ErrorCode.SNAPSHOT_NOT_READY, "approval snapshot changed")
+        orchestrator = self._make_orchestrator(host, intel, workdir)
+        orchestrator.state = AssessmentState.AWAITING_APPROVAL
+        orchestrator.result.state = AssessmentState.AWAITING_APPROVAL
+        orchestrator.result.findings = TypeAdapter(list[FindingRecord]).validate_python(
+            checkpoint["findings"]
+        )
+        orchestrator.result.usage = Usage.model_validate(checkpoint["usage"])
+        orchestrator._baseline_failing = list(checkpoint.get("baseline_failing") or [])
+        sink = orchestrator.sink
+        if isinstance(sink, HostSink):
+            sink.sandbox_charged = float(checkpoint.get("sandbox_charged") or 0)
+        self._resume(orchestrator, host)
+
+    def _make_orchestrator(self, host: AssessmentHostLike, intel: CodeIntel, workdir: Path) -> Orchestrator:
         scope = _adapt_scope(_val(host, "scope"), intel)
+        repo_id = getattr(host, "repo_id", None)
+        if repo_id:
+            scope.targets = [target for target in scope.targets if target.repo_id == repo_id]
+        if not scope.targets:
+            raise PlatformError(ErrorCode.SCOPE_DENIED, "host scope has no authorized targets for this repository")
         config = OrchestratorConfig(
             assessment_id=host.assessment_id,
             project_id=getattr(host, "project_id", "prj_unknown"),
@@ -628,7 +682,7 @@ class HostOrchestrator:
         )
         registry = self.registry or default_registry()
         sink = HostSink(host=host, commit_sha=intel.snapshot.commit_sha)
-        orchestrator = Orchestrator(
+        return Orchestrator(
             config,
             intel=intel,
             gateway=_NullGateway(),  # host.llm() is the only provider path here
@@ -640,26 +694,56 @@ class HostOrchestrator:
             step_runner=HostStepRunner(host=host, tool_factory=build_tools, run_ids=sink.run_ids),
             approve_remediation=_approver(host),
             cancelled=lambda: _cancelled(host),
+            external_pending=lambda: _pending_remediation(host),
         )
-        # The host already performed the scope gate and the first transition.
-        orchestrator.state = AssessmentState.CREATED
-        result = orchestrator.run()
-        sink.settle(result.findings, result.usage.sandbox_seconds)
-        if result.state is AssessmentState.AWAITING_APPROVAL:
-            self._resumable[host.assessment_id] = orchestrator
-            host.progress("awaiting human remediation approval")
+
+    def _workdir(self, host: AssessmentHostLike) -> Path:
+        import tempfile
+
+        base = self.workdir or _env_path("SECURITY_AGENTS_WORKDIR")
+        if base is None:
+            return Path(tempfile.mkdtemp(prefix=f"{host.assessment_id}-"))
+        base.mkdir(parents=True, exist_ok=True)
+        return Path(tempfile.mkdtemp(prefix=f"{host.assessment_id}-", dir=base))
 
     def _resume(self, orchestrator: Orchestrator, host: AssessmentHostLike) -> None:
-        """Continue after a human decided, using the approvals the host holds."""
+        """Continue after a human decided, using the approvals the host holds.
+
+        Stay paused while any remediation approval (security or functional) is still
+        pending so a partial decision does not skip the rest.
+        """
+        from .scope_guard import ActionRequest, check
+
+        scope = _adapt_scope(_val(host, "scope"), orchestrator.intel)
+        decision = check(scope, ActionRequest(action="assessment_start"), utcnow())
+        if not decision.allowed:
+            raise PlatformError(ErrorCode.SCOPE_DENIED, decision.reason_code)
+        orchestrator.config.scope = scope
+        if isinstance(orchestrator.sink, HostSink):
+            orchestrator.sink.host = host
+        if isinstance(orchestrator.step_runner, HostStepRunner):
+            orchestrator.step_runner.host = host
+        orchestrator.cancelled = lambda: _cancelled(host)
+        if _pending_remediation(host):
+            host.progress("awaiting the remaining remediation approval decisions")
+            _save_checkpoint(host, orchestrator, orchestrator.intel)
+            self._resumable[host.assessment_id] = orchestrator
+            return
         orchestrator.approve_remediation = _approver(host)
         diagnosed = [f for f in orchestrator.result.findings if f.plan is not None]
         approved: list[FindingRecord] = []
         for finding in diagnosed:
-            decision = _approver(host)(finding)
+            try:
+                decision = _approver(host)(finding)
+            except ApprovalPending:
+                host.progress("awaiting human remediation approval")
+                _save_checkpoint(host, orchestrator, orchestrator.intel)
+                return
             if decision is not None and decision.decision == "approved":
                 finding.approval = decision
                 approved.append(finding)
-        if not approved:
+        functional_approved = _has_approved_functional(host)
+        if not approved and not functional_approved:
             orchestrator._goto(AssessmentState.REPORTING, "remediation declined")
             orchestrator._finish()
             self._settle(orchestrator)
@@ -667,6 +751,7 @@ class HostOrchestrator:
         orchestrator._goto(AssessmentState.REMEDIATION)
         for finding in approved:
             orchestrator._run_remediation(finding)
+        _repair_functional(host, orchestrator)
         orchestrator._goto(AssessmentState.HARDENING)
         for finding in approved:
             if finding.status == "verified":
@@ -797,6 +882,46 @@ def _pinned_snapshot(host: Any, workdir: Path) -> SnapshotHandle | None:
 _PROPAGATE = {"CANCELLED", "BUDGET_EXHAUSTED", "SCOPE_DENIED"}
 
 
+def _state_name(raw: Any) -> str:
+    if raw is None:
+        return ""
+    value = getattr(raw, "value", raw)
+    return str(value or "").upper()
+
+
+def _load_checkpoint(host: AssessmentHostLike) -> dict[str, Any] | None:
+    loader = getattr(host, "load_checkpoint", None)
+    if not callable(loader):
+        return None
+    payload = loader(CHECKPOINT_NS)
+    return payload if isinstance(payload, dict) else None
+
+
+def _save_checkpoint(host: AssessmentHostLike, orchestrator: Orchestrator, intel: CodeIntel) -> None:
+    saver = getattr(host, "save_checkpoint", None)
+    if not callable(saver):
+        return
+    from pydantic import TypeAdapter
+
+    sink = orchestrator.sink
+    charged = sink.sandbox_charged if isinstance(sink, HostSink) else 0.0
+    saver(
+        CHECKPOINT_NS,
+        {
+            "version": 1,
+            "assessment_id": host.assessment_id,
+            "commit_sha": intel.snapshot.commit_sha,
+            "snapshot_id": intel.snapshot.snapshot_id,
+            "findings": TypeAdapter(list[FindingRecord]).dump_python(
+                orchestrator.result.findings, mode="json"
+            ),
+            "usage": orchestrator.result.usage.model_dump(mode="json"),
+            "baseline_failing": list(orchestrator._baseline_failing),
+            "sandbox_charged": charged,
+        },
+    )
+
+
 def _functional_review(host: Any) -> None:
     """Pillar 1 inside the assessment: Sai's reviewer on the same commit, persisting its own
     run and findings through the host. Unavailable/failing review is recorded and the
@@ -818,11 +943,355 @@ def _functional_review(host: Any) -> None:
         host.progress(
             f"functional review {result.status.value}: {len(result.findings)} functional finding(s)"
         )
+        requested = review_api.request_functional_approvals(host)
+        if requested:
+            host.progress(f"requested {len(requested)} functional remediation approval(s)")
     except Exception as exc:
         code = str(getattr(getattr(exc, "code", None), "value", type(exc).__name__))
         if code in _PROPAGATE:
             raise
         host.progress(f"functional review failed ({code}): {exc}"[:500])
+
+
+def _enum_value(value: Any) -> str:
+    return str(getattr(value, "value", value) or "").lower()
+
+
+def _pending_remediation(host: AssessmentHostLike) -> bool:
+    """True when a human still owes a remediation decision (security or functional)."""
+    return any(
+        "remediation" in _enum_value(getattr(a, "subject_type", ""))
+        and "pending" in _enum_value(getattr(a, "status", ""))
+        for a in host.approvals()
+    )
+
+
+def _has_approved_functional(host: AssessmentHostLike) -> bool:
+    approved = {
+        str(getattr(a, "subject_id", ""))
+        for a in host.approvals()
+        if "remediation" in _enum_value(getattr(a, "subject_type", ""))
+        and "approved" in _enum_value(getattr(a, "status", ""))
+    }
+    finder = getattr(host, "findings", None)
+    findings = finder() if callable(finder) else []
+    return any(
+        _enum_value(getattr(f, "kind", "")) == "functional"
+        and _enum_value(getattr(f, "status", "")) == "validated"
+        and str(getattr(f, "id", "")) in approved
+        for f in findings
+    )
+
+
+def _repair_functional(host: AssessmentHostLike, orchestrator: Orchestrator) -> None:
+    """Run Sai's approval-gated repair for validated functional findings, then Verify."""
+    try:
+        from code_review import api as review_api
+    except ImportError:
+        return
+    try:
+        source = review_api.resolve_repo(
+            str(getattr(host, "repo_id", "")),
+            commit_sha=str(getattr(_val(host, "assessment"), "commit_sha", "") or ""),
+        )
+    except Exception as exc:
+        host.progress(f"functional repair skipped: {exc}"[:500])
+        return
+    try:
+        outcomes = review_api.repair_approved_functional_findings(
+            host, repo_id=str(getattr(host, "repo_id", "")), source=source
+        )
+    except Exception as exc:
+        code = str(getattr(getattr(exc, "code", None), "value", type(exc).__name__))
+        if code in _PROPAGATE:
+            raise
+        host.progress(f"functional repair failed ({code}): {exc}"[:500])
+        return
+    for out in outcomes:
+        title = getattr(getattr(out, "finding", None), "id", "")
+        if getattr(out, "patch", None) is None:
+            host.progress(f"functional repair produced no patch for {title}")
+            continue
+        host.progress(f"functional patch recorded for {title}")
+        _verify_functional_patch(host, orchestrator, out)
+
+
+def _tests_passed(result: dict[str, Any] | None) -> bool:
+    if not result:
+        return False
+    return (
+        not result.get("error")
+        and result.get("exit_code") == 0
+        and not result.get("timed_out")
+        and bool(result.get("sandbox_run_id"))
+        and not result.get("skipped")
+        and not result.get("errors")
+        and not result.get("failed")
+        and not result.get("failing_tests")
+        and bool(result.get("passed"))
+    )
+
+
+def _functional_reproduced(result: dict[str, Any] | None, tests: list[str]) -> bool:
+    """Only a complete pytest-failed run counts as reproduction.
+
+    Partial output from a hang, timeout, or interrupted/collection-error run
+    (exit 2+, ``timed_out``, tool ``error``) is not proof the defect reproduced.
+    """
+    if (
+        not tests
+        or not result
+        or result.get("error")
+        or result.get("errors")
+        or result.get("timed_out")
+        or result.get("exit_code") != 1
+        or not result.get("sandbox_run_id")
+        or not result.get("failed")
+    ):
+        return False
+    failed_paths = {node.split("::", 1)[0] for node in result.get("failing_tests", [])}
+    return set(tests) <= failed_paths
+
+
+def _recipe_strip_prefix(root: Path, paths: list[str]) -> str:
+    """Reviewer diffs are repository-relative (`target/...`); the intel snapshot is already
+    the recipe `target_dir`. Strip that leading directory when it is not in the snapshot."""
+    from .sandbox.workspace import safe_rel_path
+
+    for raw in paths:
+        try:
+            rel = safe_rel_path(str(raw))
+        except Exception:
+            continue
+        first, _, rest = rel.partition("/")
+        if rest and not (root / first).exists():
+            return first
+    return ""
+
+
+def _snapshot_rel(rel: str, prefix: str) -> str:
+    from .sandbox.workspace import safe_rel_path
+
+    path = safe_rel_path(rel)
+    if prefix and (path == prefix or path.startswith(prefix + "/")):
+        path = path[len(prefix) :].lstrip("/")
+    return path
+
+
+def _diff_for_snapshot(diff_text: str, prefix: str) -> str:
+    if not prefix:
+        return diff_text
+    token = prefix.strip("/") + "/"
+    rewritten: list[str] = []
+    for line in diff_text.splitlines(keepends=True):
+        if line.startswith(("diff --git ", "--- ", "+++ ")):
+            line = line.replace(f"a/{token}", "a/").replace(f"b/{token}", "b/")
+        rewritten.append(line)
+    return "".join(rewritten)
+
+
+def _write_generated_tests(root: Path, tests: list[Any], prefix: str) -> list[str]:
+    from .sandbox.workspace import resolve_under
+
+    paths: list[str] = []
+    for test in tests:
+        path = str(getattr(test, "path", "") or "")
+        content = str(getattr(test, "content", "") or "")
+        if not path or not content:
+            continue
+        rel = _snapshot_rel(path, prefix)
+        dest = resolve_under(root, rel)
+        if dest.exists() or not ("tests" in Path(rel).parts or Path(rel).name.startswith("test_")):
+            raise PlatformError(ErrorCode.SCHEMA_INVALID, "generated tests must be new test files")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(content, encoding="utf-8")
+        paths.append(rel)
+    return paths
+
+
+def _verify_functional_patch(host: AssessmentHostLike, orchestrator: Orchestrator, outcome: Any) -> None:
+    """Independent Verify of a reviewer PatchCandidate (fresh checkout; not Patch's worktree).
+
+    Uses Sai's `functional_verification_inputs` so the recorded artifact diff, generated
+    tests, protected paths, and baseline failures are integrity-checked before any
+    verdict. Functional findings have no Probe template; the original-check analogue is
+    that the generated tests fail on the unpatched commit and pass after the diff.
+    """
+    from shared.base import utcnow
+    from shared.evidence import ArtifactKind, EvidenceKind, EvidenceRef
+    from shared.findings import (
+        VerificationCheck,
+        VerificationCheckName,
+        VerificationResult,
+        VerificationVerdict,
+    )
+    from shared.ids import IdPrefix, new_id
+
+    from .agents import verify as verify_agent
+    from .sandbox.workspace import apply_diff, diff_paths, fresh_checkout
+    from .tools.services import TestRunner
+
+    try:
+        from code_review import api as review_api
+    except ImportError:
+        host.progress("functional Verify skipped: code_review is not installed")
+        return
+
+    patch = outcome.patch
+    try:
+        inputs = review_api.functional_verification_inputs(host, patch)
+    except Exception as exc:
+        host.progress(f"functional Verify skipped: {exc}"[:500])
+        return
+    diff_text = inputs.diff_text
+    if not diff_text:
+        host.progress(f"functional Verify skipped: empty diff for {patch.finding_id}")
+        return
+    llm = host.llm()
+    provider_mode = str(_val(llm, "provider_mode") or "unknown")
+    model_id = str(getattr(llm, "model_for", lambda _a: "unknown")("verify"))
+    run_id = host.start_agent_run(
+        _host_agent(AgentName.VERIFY),
+        f"functional-verify:{patch.finding_id}",
+        attempt=1,
+        provider_mode=provider_mode,
+        model_id=model_id,
+        prompt_version=verify_agent.SPEC.version,
+        input_payload={"patch_id": patch.id, "finding_id": patch.finding_id, "kind": "functional"},
+    )
+    try:
+        dest = orchestrator.workdir / f"verify-functional-{patch.id}"
+        root = fresh_checkout(orchestrator.intel.snapshot, dest)
+        prefix = _recipe_strip_prefix(
+            root,
+            [str(p) for p in (patch.files_changed or [])]
+            + [str(getattr(t, "path", "") or "") for t in inputs.generated_tests],
+        )
+        tests_added = _write_generated_tests(root, list(inputs.generated_tests), prefix)
+        snapshot_diff = _diff_for_snapshot(diff_text, prefix)
+        ctx = orchestrator._context(
+            AgentName.VERIFY,
+            f"functional-verify:{patch.finding_id}",
+            services=orchestrator._read_services(),
+            read_root=root,
+        )
+        ctx.run_id = run_id
+        ctx.artifacts["tests_added"] = tests_added
+        runner = TestRunner(
+            driver=orchestrator.driver,
+            workspace_provider=lambda _ctx: root,
+            test_command_args=orchestrator.config.test_command_args,
+        )
+        unpatched = runner.run(ctx, "added_tests", tests_added) if tests_added else None
+        ok, err = apply_diff(root, snapshot_diff)
+        touched = [_snapshot_rel(p, prefix) for p in diff_paths(diff_text)]
+        plan_files = [_snapshot_rel(str(p), prefix) for p in (patch.files_changed or [])]
+        out_of_scope = [p for p in touched if p not in plan_files and not p.startswith("tests/")]
+        patched = runner.run(ctx, "added_tests", tests_added) if tests_added and ok else None
+        suite = runner.run(ctx, "project_suite", []) if ok else {}
+        failing = set(suite.get("failing_tests") or [])
+        new_failures = sorted(failing - set(inputs.baseline_failing or []))
+        unpatched_failed = _functional_reproduced(unpatched, tests_added)
+        patched_passed = bool(tests_added) and _tests_passed(patched)
+        suite_ok = (
+            bool(ok)
+            and suite.get("exit_code") in (0, 1)
+            and not suite.get("timed_out")
+            and bool(suite.get("sandbox_run_id"))
+            and not suite.get("error")
+            and not suite.get("errors")
+            and not new_failures
+            and bool(suite.get("passed"))
+        )
+        scope_ok = bool(ok) and not out_of_scope
+        tamper_ok = not list(inputs.protected_paths)
+        sandbox_ids = [
+            str(r.get("sandbox_run_id")) for r in (unpatched, patched, suite) if r and r.get("sandbox_run_id")
+        ]
+        if not sandbox_ids:
+            raise PlatformError(ErrorCode.SANDBOX_START_FAILED, "functional Verify has no executed sandbox records")
+        report = host.store_json(
+            {
+                "sandbox_run_ids": sandbox_ids,
+                "unpatched": unpatched,
+                "patched": patched,
+                "suite": suite,
+                "protected_paths": list(inputs.protected_paths),
+                "baseline_failing": list(inputs.baseline_failing),
+                "out_of_scope": out_of_scope,
+            },
+            kind=ArtifactKind.test_report,
+        )
+        evidence = [
+            EvidenceRef(
+                kind=EvidenceKind.sandbox_run,
+                artifact_id=report.id,
+                sha256=getattr(report, "sha256", None),
+                provenance="agent:verify",
+            )
+        ]
+        checks = [
+            VerificationCheck(name=VerificationCheckName.diff_scope_ok, passed=scope_ok, evidence=evidence),
+            VerificationCheck(
+                name=VerificationCheckName.no_test_tampering, passed=tamper_ok, evidence=evidence
+            ),
+            VerificationCheck(
+                name=VerificationCheckName.original_check_now_fails_to_reproduce,
+                passed=unpatched_failed,
+                evidence=evidence,
+            ),
+            VerificationCheck(
+                name=VerificationCheckName.functional_suite_passes,
+                passed=suite_ok,
+                evidence=evidence,
+            ),
+            VerificationCheck(
+                name=VerificationCheckName.generated_tests_pass, passed=patched_passed, evidence=evidence
+            ),
+        ]
+        accepted = all(c.passed for c in checks)
+        duration = sum(float((r or {}).get("duration_s") or 0) for r in (unpatched, patched, suite))
+        orchestrator.result.usage.sandbox_seconds += duration
+        host.record_verification(
+            VerificationResult(
+                id=new_id(IdPrefix.ver),
+                patch_id=patch.id,
+                verdict=VerificationVerdict.accepted if accepted else VerificationVerdict.rejected,
+                checks=checks,
+                sandbox_run_ids=sandbox_ids,
+                reasons=[]
+                if accepted
+                else [
+                    f"apply={ok} err={err}; out_of_scope={out_of_scope}; protected={list(inputs.protected_paths)}; "
+                    f"unpatched_failed={unpatched_failed}; patched={patched_passed}; "
+                    f"suite={suite_ok} new_failures={new_failures}"
+                ],
+                produced_by_run_id=run_id,
+                created_at=utcnow(),
+            )
+        )
+        if accepted:
+            setter = getattr(host, "set_finding_status", None)
+            if callable(setter):
+                try:
+                    setter(
+                        patch.finding_id,
+                        "verified",
+                        actor="agent:verify",
+                        reason="independent functional Verify accepted",
+                    )
+                except Exception as exc:
+                    host.progress(f"finding status verified not applied: {str(exc)[:200]}")
+        host.finish_agent_run(run_id, _host_run_status("succeeded"))
+        host.progress(f"functional Verify {'accepted' if accepted else 'rejected'} for {patch.finding_id}")
+    except Exception as exc:
+        with contextlib.suppress(Exception):
+            host.finish_agent_run(
+                run_id,
+                _host_run_status("failed"),
+                error=_host_error(ErrorCode.INTERNAL, str(exc)[:500]),
+            )
+        host.progress(f"functional Verify failed: {exc}"[:500])
 
 
 def _review_without_snapshot(host: Any, intent: Any, review_api: Any) -> Any:
@@ -952,23 +1421,31 @@ def _approver(host: AssessmentHostLike):
             if str(getattr(approval, "subject_id", "")) != subject_id:
                 continue
             status = str(getattr(approval, "status", getattr(approval, "decision", ""))).lower()
-            if "approved" in status:
+            subject_type = str(getattr(approval, "subject_type", ""))
+            if subject_type != "remediation":
+                continue
+            if status == "approved":
+                actor = getattr(approval, "decided_by", None)
+                if not actor or not str(actor).startswith("usr_"):
+                    raise PlatformError(
+                        ErrorCode.APPROVAL_REQUIRED, "remediation requires an identified human approver"
+                    )
                 return Approval(
                     id=str(getattr(approval, "id", new_id("apv"))),
                     project_id=str(getattr(host, "project_id", "prj_unknown")),
                     subject_type="remediation",
                     subject_id=subject_id,
                     decision="approved",
-                    decided_by=str(getattr(approval, "decided_by", None) or "usr_host_approver"),
+                    decided_by=str(approval.decided_by),
                 )
-            if "declined" in status or "rejected" in status:
+            if status in {"declined", "rejected"}:
                 return Approval(
                     id=str(getattr(approval, "id", new_id("apv"))),
                     project_id=str(getattr(host, "project_id", "prj_unknown")),
                     subject_type="remediation",
                     subject_id=subject_id,
                     decision="declined",
-                    decided_by=str(getattr(approval, "decided_by", None) or "usr_host_approver"),
+                    decided_by=str(approval.decided_by),
                 )
             raise ApprovalPending(finding.finding_id, str(getattr(approval, "id", "")))
         requested = host.request_approval(
@@ -1009,39 +1486,35 @@ def _adapt_scope(host_scope: Any, intel: CodeIntel) -> Any:
                 exposed_ports=list(getattr(target, "exposed_ports", []) or []),
             )
         )
-    if not targets:
-        targets = [
-            ScopeTarget(
-                target_id="tgt_host_target",
-                repo_id=intel.snapshot.repo_id,
-                build_recipe_ref="build_recipe.json",
-            )
-        ]
-    status_raw = str(getattr(host_scope, "status", "active")).lower()
-    status = ScopeStatus.ACTIVE if "active" in status_raw else ScopeStatus.PENDING
-    approved_at = getattr(host_scope, "approved_at", None) or utcnow()
+    raw_status = getattr(host_scope, "status", None)
+    status_raw = str(getattr(raw_status, "value", raw_status)).lower()
+    try:
+        status = ScopeStatus(status_raw)
+    except ValueError:
+        status = ScopeStatus.PENDING
+    approved_at = getattr(host_scope, "approved_at", None)
     return AuthorizedScope(
         id=str(getattr(host_scope, "id", new_id("scp"))),
         project_id=str(getattr(host_scope, "project_id", "prj_unknown")),
         name=str(getattr(host_scope, "name", "host scope")),
         targets=targets,
-        allowed_check_categories=list(
-            getattr(host_scope, "allowed_check_categories", None) or sorted(default_library().categories())
-        ),
+        allowed_check_categories=list(getattr(host_scope, "allowed_check_categories", None) or []),
         status=status,
         requested_by=str(getattr(host_scope, "requested_by", None) or "usr_host"),
-        approved_by=str(getattr(host_scope, "approved_by", None) or "usr_host_approver"),
+        approved_by=getattr(host_scope, "approved_by", None),
         approved_at=approved_at,
-        expires_at=getattr(host_scope, "expires_at", None) or (utcnow().replace(year=utcnow().year + 1)),
+        expires_at=getattr(host_scope, "expires_at", None) or utcnow(),
         notes="adapted from the host scope",
     )
 
 
 def _adapt_budget(assessment: Any) -> Budget:
     budget = getattr(assessment, "budget", None)
+    if getattr(budget, "max_tokens", 1) <= 0 or getattr(budget, "max_usd", 1) <= 0:
+        raise PlatformError(ErrorCode.BUDGET_EXHAUSTED, "host budget does not permit model calls")
     return Budget(
-        max_tokens=int(getattr(budget, "max_tokens", 0) or 1_000_000),
-        max_usd=float(getattr(budget, "max_usd", 0) or 10.0),
+        max_tokens=int(getattr(budget, "max_tokens", 1_000_000)),
+        max_usd=float(getattr(budget, "max_usd", 10.0)),
         max_wall_clock_s=float(getattr(budget, "max_wall_clock_s", 0) or 3600.0),
     )
 
