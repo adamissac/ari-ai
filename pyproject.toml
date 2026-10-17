@@ -10,19 +10,20 @@
 name = "hackatl-workspace"
 version = "0.1.0"
 requires-python = ">=3.12"
-dependencies = ["hackatl-shared", "hackatl-monitoring", "hackatl-backend", "hackatl-code-intelligence"]
+dependencies = ["hackatl-shared", "hackatl-monitoring", "hackatl-backend", "hackatl-code-intelligence", "hackatl-code-review"]
 
 [tool.uv]
 package = false
 
 [tool.uv.workspace]
-members = ["shared", "monitoring", "backend", "code-intelligence"]
+members = ["shared", "monitoring", "backend", "code-intelligence", "code-review"]
 
 [tool.uv.sources]
 hackatl-shared = { workspace = true }
 hackatl-monitoring = { workspace = true }
 hackatl-backend = { workspace = true }
 hackatl-code-intelligence = { workspace = true }
+hackatl-code-review = { workspace = true }
 
 [dependency-groups]
 dev = [
@@ -34,7 +35,7 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["shared/tests", "monitoring/tests", "backend/tests"]
+testpaths = ["shared/tests", "monitoring/tests", "backend/tests", "code-review/tests"]
 addopts = "-ra"
 markers = [
   "live_llm: real Anthropic provider call; requires RUN_LIVE_LLM_EVAL=1 and a key",

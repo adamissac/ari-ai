@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.15'",
@@ -10,6 +10,7 @@ resolution-markers = [
 members = [
     "hackatl-backend",
     "hackatl-code-intelligence",
+    "hackatl-code-review",
     "hackatl-monitoring",
     "hackatl-shared",
     "hackatl-workspace",
@@ -430,6 +431,23 @@ requires-dist = [
 provides-extras = ["dev", "integration"]
 
 [[package]]
+name = "hackatl-code-review"
+version = "0.1.0"
+source = { editable = "code-review" }
+dependencies = [
+    { name = "hackatl-backend" },
+    { name = "hackatl-shared" },
+    { name = "pyyaml" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "hackatl-backend", editable = "backend" },
+    { name = "hackatl-shared", editable = "shared" },
+    { name = "pyyaml", specifier = ">=6" },
+]
+
+[[package]]
 name = "hackatl-monitoring"
 version = "0.1.0"
 source = { editable = "monitoring" }
@@ -458,6 +476,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "hackatl-backend" },
     { name = "hackatl-code-intelligence" },
+    { name = "hackatl-code-review" },
     { name = "hackatl-monitoring" },
     { name = "hackatl-shared" },
 ]
@@ -475,6 +494,7 @@ dev = [
 requires-dist = [
     { name = "hackatl-backend", editable = "backend" },
     { name = "hackatl-code-intelligence", editable = "code-intelligence" },
+    { name = "hackatl-code-review", editable = "code-review" },
     { name = "hackatl-monitoring", editable = "monitoring" },
     { name = "hackatl-shared", editable = "shared" },
 ]
