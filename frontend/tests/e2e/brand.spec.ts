@@ -27,7 +27,7 @@ async function settledHero(page: Page) {
 
 async function settledHeader(page: Page) {
   await loadedMark(page, 'header [data-testid="ari-logo"]');
-  await expect.poll(() => page.locator('header .hdr-reveal').evaluateAll(elements => elements.every(element => Number(getComputedStyle(element).opacity) >= 0.99))).toBe(true);
+  await expect.poll(() => page.locator('header .hdr-logo').evaluateAll(elements => elements.every(element => Number(getComputedStyle(element).opacity) >= 0.99))).toBe(true);
 }
 
 test('supplied logo loads on sign-in, scrolled header and projects on desktop/mobile', async ({ page }) => {
@@ -39,7 +39,7 @@ test('supplied logo loads on sign-in, scrolled header and projects on desktop/mo
     if (message.type() === 'error' && !signedOut) errors.push(message.text());
   });
   await page.goto('/');
-  await expect(page).toHaveTitle('Ari AI Console');
+  await expect(page).toHaveTitle('ARI Console');
   await expect(page.getByRole('heading', { name: 'Sign in', exact: true })).toBeVisible();
   await settledHeader(page);
   await loadedMark(page, '.hero-ink [data-testid="ari-logo"]');
@@ -69,7 +69,7 @@ test('supplied logo loads on sign-in, scrolled header and projects on desktop/mo
   await expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await screenshot(page, 'mobile-projects');
-  await page.getByRole('link', { name: 'Ari AI home', exact: true }).click();
+  await page.getByRole('link', { name: 'ARI home', exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
   await settledHero(page);
   await expect(page.locator('.hero-stage [data-testid="ari-logo"]')).toHaveCount(0);

@@ -241,3 +241,12 @@ concurrent identical writes, failed publication cleanup, parser/prefix/limit
 changes, rollback reuse, historical immutability, unavailable providers and failed
 retries. No canonical DTO changes. Local PostgreSQL initialization is sandbox
 blocked; database-backed checks require CI before completion.
+
+### Owner-requested ARI frontend polish — Sarosh
+
+Implemented locally on `feat/sarosh/ari-frontend-polish`: transparent floating
+navigation with all phone links, ARI branding/metadata, minimal centered hero,
+and wordmark-only local Chakra Petch 700. Lint, type-check and demo-only production
+build passed; unit suite 211/211 with two workers; focused Chromium landing suite 5/5
+at 1440/1024/390/320px plus reduced motion. Desktop/mobile and scrolled views inspected.
+No backend or demo logic changed. Not pushed or deployed under this task's instruction.

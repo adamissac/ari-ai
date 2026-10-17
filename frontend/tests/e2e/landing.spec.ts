@@ -1,0 +1,74 @@
+import { expect, test } from '@playwright/test';
+import { mkdir } from 'node:fs/promises';
+import { signIn } from './helpers';
+
+const steps = ['Understand', 'Review', 'Attack Safely', 'Diagnose', 'Repair', 'Verify', 'Monitor'];
+
+for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 768 }, { width: 390, height: 844 }, { width: 320, height: 740 }]) {
+  test(`floating navigation and minimal hero at ${viewport.width}px`, async ({ page }) => {
+    const errors: string[] = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize(viewport);
+    if (process.env.E2E_DEMO_ONLY === '1') await page.goto('/');
+    else await signIn(page, 'e2e-alice');
+    await expect(page).toHaveTitle('ARI Console');
+    await expect(page.locator('meta[property="og:site_name"]')).toHaveAttribute('content', 'ARI');
+    await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute('content', 'ARI — Find the flaw. Prove the fix.');
+    const heading = page.getByRole('heading', { level: 1 });
+    await expect(heading).toHaveText('FIND THE FLAW.PROVE THE FIX.');
+    await expect(page.locator('.hero-content p')).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Try the Demo', exact: true }).first()).toHaveAttribute('href', '/demo');
+    await expect(page.getByRole('link', { name: 'How It Works', exact: true })).toHaveAttribute('href', '#how');
+    await expect(page.locator('[aria-label="Assessment loop"] li')).toHaveText(steps.map((step, i) => `${String(i + 1).padStart(2, '0')}${step}`));
+    const nav = page.getByRole('navigation', { name: 'Primary', exact: true });
+    for (const name of ['Projects', 'Defense Lab', 'Demo', 'Pricing']) await expect(nav.getByRole('link', { name, exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'ARI home', exact: true })).toBeVisible();
+    await expect.poll(() => page.locator('.hero-in').evaluateAll(els => els.every(el => Number(getComputedStyle(el).opacity) >= 0.99))).toBe(true);
+    await expect.poll(() => page.evaluate(() => document.fonts.status)).toBe('loaded');
+    const fonts = await page.evaluate(() => ({
+      logo: getComputedStyle(document.querySelector('.ari-wordmark-text')!).fontFamily,
+      weight: getComputedStyle(document.querySelector('.ari-wordmark-text')!).fontWeight,
+      headline: getComputedStyle(document.querySelector('h1')!).fontFamily,
+      button: getComputedStyle(document.querySelector('.site-header nav a')!).fontFamily,
+    }));
+    expect(fonts.logo).toMatch(/chakra/i);
+    expect(fonts.weight).toBe('700');
+    expect(fonts.headline).not.toMatch(/chakra/i);
+    expect(fonts.button).not.toMatch(/chakra/i);
+    for (const scrollY of [0, 90, viewport.height + 200, 3000]) {
+      await page.evaluate(y => window.scrollTo(0, y), scrollY);
+      await expect.poll(() => page.locator('header').evaluate(el => Math.round(el.getBoundingClientRect().top))).toBe(0);
+      const styles = await page.locator('header').evaluate(el => ({ bg: getComputedStyle(el).backgroundColor, border: getComputedStyle(el).borderBottomWidth }));
+      expect(styles).toEqual({ bg: 'rgba(0, 0, 0, 0)', border: '0px' });
+      await expect(nav.getByRole('link', { name: 'Pricing', exact: true })).toHaveCSS('background-color', 'rgb(194, 69, 45)');
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
+      const boxes = await page.locator('header a').evaluateAll(els => els.map(el => { const r = el.getBoundingClientRect(); return { x: r.x, right: r.right, height: r.height }; }));
+      expect(boxes.every(r => r.x >= 0 && r.right <= viewport.width && r.height >= 44)).toBe(true);
+      if (process.env.ARI_LANDING_SCREENSHOTS && (scrollY === 0 || scrollY === viewport.height + 200)) {
+        await mkdir(process.env.ARI_LANDING_SCREENSHOTS, { recursive: true });
+        await page.screenshot({ path: `${process.env.ARI_LANDING_SCREENSHOTS}/${viewport.width}-${scrollY === 0 ? 'hero' : 'scrolled'}.png` });
+      }
+    }
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.getByRole('link', { name: 'How It Works', exact: true }).click();
+    await expect(page).toHaveURL(/#how$/);
+    await expect.poll(() => page.locator('#how').evaluate(el => Math.round(el.getBoundingClientRect().top) - document.querySelector('header')!.getBoundingClientRect().bottom)).toBeGreaterThanOrEqual(0);
+    await nav.getByRole('link', { name: 'Pricing', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'ARI pricing' })).toBeVisible();
+    await expect(page.locator('body')).not.toContainText('Ari AI');
+    await expect(page.locator('nextjs-portal')).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+}
+
+test('reduced motion keeps the hero, logo and menu visible', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  if (process.env.E2E_DEMO_ONLY === '1') await page.goto('/');
+  else await signIn(page, 'e2e-alice');
+  await expect(page.locator('.intro')).toHaveCount(0);
+  await expect(page.locator('.hero-content')).toHaveCSS('opacity', '1');
+  await expect(page.locator('.hero-orb').first()).toHaveCSS('animation-name', 'none');
+  await expect(page.getByRole('link', { name: 'ARI home', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Try the Demo', exact: true }).first().click();
+  await expect(page).toHaveURL(/\/demo$/);
+});

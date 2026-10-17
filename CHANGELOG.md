@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- ARI branding, a centered oversized two-line hero, transparent floating navigation with persistent phone links, and locally bundled Chakra Petch bold for the wordmark only.
+
 - Simulated demo at `/demo` (ADR-0013): GitHub-style sign-in, organization and repository pickers, recent commit history, and per commit an animated code review, seven-agent run and continuous-defense map. Every page is marked "Simulated demo"; nothing calls the backend.
 - Defense Lab opens with a command center: the trained defender's recorded game on a continuous-defense map with the held-out headline scores, all from the validated bundle.
 
