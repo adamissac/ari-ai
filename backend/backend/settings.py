@@ -66,6 +66,9 @@ class Settings(BaseSettings):
 
     # RL
     rl_checkpoint_path: Path | None = None
+    # Pinned SHA-256 of the checkpoint file. Verified BEFORE anything unpickles it; required
+    # outside development/test (a sidecar manifest next to the file is not an integrity root).
+    rl_checkpoint_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     rl_topology_path: Path | None = None
 
     # Rate limits (in-process, docs/13)
@@ -83,6 +86,7 @@ class Settings(BaseSettings):
         "github_oauth_client_secret",
         "rl_checkpoint_path",
         "rl_topology_path",
+        "rl_checkpoint_sha256",
         "repository_bindings_file",
         "security_workdir",
         mode="before",
@@ -90,8 +94,12 @@ class Settings(BaseSettings):
     @classmethod
     def _unset_placeholders(cls, value: object) -> object:
         """Empty values and .env.example placeholders ("replace-me…") mean "not configured"."""
-        if isinstance(value, str) and (not value.strip() or value.strip().startswith("replace-me")):
-            return None
+        if isinstance(value, str):
+            stripped = value.strip()
+            # .env.example puts comments on the same line as empty assignments. Compose's
+            # env parser keeps that comment as the value, which must still mean "unset".
+            if not stripped or stripped.startswith(("replace-me", "#")):
+                return None
         return value
 
     @property
