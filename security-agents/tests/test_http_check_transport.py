@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import dataclasses
 import subprocess
 
 import pytest
@@ -113,3 +114,79 @@ def test_no_target_log_means_no_contact_claim():
         "target_requests": [],
         "target_log_sha256": None,
     }
+
+
+def test_docker_driver_serves_the_snapshot_through_exec_and_never_uses_a_target_image(snapshot):
+    calls: list[tuple[list[str], bytes | None]] = []
+
+    def fake(argv, stdin, timeout):
+        calls.append((argv, stdin))
+        return subprocess.CompletedProcess(argv, 0, b"", b"")
+
+    driver = DockerSandboxDriver(
+        image=IMAGE, target_image="ghcr.io/other/target@sha256:" + "b" * 64, runner=fake
+    )
+    spec = spec_for(
+        snapshot,
+        profile=SandboxProfile.CHECK_RUNNER,
+        network="target-only",
+        target_id="tgt",
+        scope_decision=ALLOWED,
+        mode="pytest",
+        args=["-q"],
+    )
+    spec = dataclasses.replace(
+        spec, target_workspace=snapshot.root, target_app="payments_lite.app:create_app"
+    )
+    driver.run(spec)
+    target_run = next(argv for argv, _ in calls if argv[1:3] == ["run", "-d"])
+    flat = " ".join(target_run)
+    assert IMAGE in target_run and "ghcr.io/other/target" not in flat
+    assert "--read-only" in flat and "--user 65534:65534" in flat and "--cap-drop ALL" in flat
+    assert "TARGET_APP=payments_lite.app:create_app" in target_run
+    exec_call = next((argv, data) for argv, data in calls if argv[1:3] == ["exec", "-i"])
+    assert exec_call[1], "the snapshot tar is streamed into the running target"
+    verbs = [argv[1] for argv, _ in calls]
+    assert verbs.index("exec") < verbs.index("logs") < verbs.index("rm")
+
+
+@pytest.mark.parametrize("app", ["payments_lite.app:create_app; rm -rf /", "$(id):x", "", "a.b"])
+def test_served_target_app_must_be_a_plain_factory_reference(snapshot, app):
+    from security_agents.sandbox.driver import validate_spec
+
+    spec = spec_for(
+        snapshot,
+        profile=SandboxProfile.CHECK_RUNNER,
+        network="target-only",
+        target_id="tgt",
+        scope_decision=ALLOWED,
+    )
+    spec = dataclasses.replace(spec, target_workspace=snapshot.root, target_app=app)
+    with pytest.raises(PlatformError) as error:
+        validate_spec(spec)
+    assert error.value.code is ErrorCode.SANDBOX_POLICY_VIOLATION
+
+
+def test_http_runner_serves_the_assessment_workspace(intel):
+    seen = []
+
+    class Recorder:
+        name = "docker"
+
+        def run(self, spec):
+            seen.append(spec)
+            raise PlatformError(ErrorCode.SANDBOX_START_FAILED, "recorded")
+
+    runner = CheckRunner(
+        driver=Recorder(),
+        library=default_library(),
+        workspace_provider=lambda _ctx: intel.snapshot.root,
+        recipe_provider=recipe_from_snapshot(intel),
+        transport="http",
+    )
+    ctx = make_ctx(AgentName.PROBE, intel=intel, scope=make_scope(), now=lambda: NOW)
+    ctx.artifacts["last_scope_decision"] = ALLOWED
+    with pytest.raises(PlatformError):
+        runner.run(ctx, OWNERSHIP.ref, TARGET_ID, OWNER_PARAMS)
+    assert seen[0].target_workspace == intel.snapshot.root
+    assert seen[0].target_app == "payments_lite.app:create_app"

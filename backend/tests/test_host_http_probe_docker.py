@@ -7,8 +7,8 @@ import pytest
 from sqlalchemy import select
 
 pytestmark = pytest.mark.skipif(
-    os.environ.get("RUN_DOCKER_SANDBOX") != "1" or not os.environ.get("SANDBOX_TARGET_IMAGE"),
-    reason="needs RUN_DOCKER_SANDBOX=1, SANDBOX_IMAGE and SANDBOX_TARGET_IMAGE",
+    os.environ.get("RUN_DOCKER_SANDBOX") != "1",
+    reason="needs RUN_DOCKER_SANDBOX=1 and SANDBOX_IMAGE",
 )
 
 pytest.importorskip("security_agents")
