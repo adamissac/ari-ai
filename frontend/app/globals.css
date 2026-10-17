@@ -313,6 +313,10 @@ html[data-home-hero][data-hero-past] .site-header nav a.hdr-cta { background: va
 .project-tab:hover:not([aria-current="page"])::after { background: var(--color-line); }
 .panel > header { background: color-mix(in srgb, var(--color-panel-2) 55%, transparent); border-top-left-radius: inherit; border-top-right-radius: inherit; }
 
+/* Ari mark: the bare ant (components/brand.tsx), filled with the current text colour. */
+.ari-mark { background-color: currentColor; -webkit-mask: url("/brand/ari-ant-mark.png") center / contain no-repeat; mask: url("/brand/ari-ant-mark.png") center / contain no-repeat; transition: background-color 250ms; }
+.intro .ari-mark { color: #fff; }
+
 /* Scroll reveal (see components/reveal.tsx). Content is visible without JS. */
 .reveal { transition: opacity 500ms var(--ease-quad), transform 500ms var(--ease-quad); }
 .reveal[data-shown="false"] { opacity: 0; transform: translateY(14px); }
