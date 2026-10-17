@@ -150,3 +150,7 @@ abort. No provider or target execution occurred in transport tests.
 | STD-001 | Connect canonical PR #49 standards to persisted findings, incidents, reports and transport; cover OWASP editions | Srihith | IN_REVIEW on `feat/srihith/standards-alignment` | PR #49 canonical catalogs/contracts | Offline catalogs; reference scoring; host persistence; real PostgreSQL incident lifecycle/tenant/approval tests; generated types; truthful partial coverage. Rendered frontend integration remains separate. |
 
 SEC-010/SEC-012 continuation (2026-10-17, PR #73): hardened functional evidence gates and current-scope resume; root324/security379/browser8 passed. Canonical recovered catalogs are isolated in PR #74; duplicate legacy PR #35 is superseded after these land.
+
+### REG-001 — Finish Devin’s incident closure evidence connection
+
+Owner: Srihith. Status: IN_PROGRESS on `fix/srihith/fortify-closure-artifacts`. Dependencies: merged UI PRs80/81 and host verification. Acceptance: real hosted assessment persists regression source artifact; lessons learned and complete approved incident lifecycle work via API and rendered UI; rejected/unsafe/mutated source guards remain enforced; no fabricated verification claims.
