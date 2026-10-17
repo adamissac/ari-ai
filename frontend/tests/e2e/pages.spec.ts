@@ -58,6 +58,7 @@ test('simulated incident: triage, owner, two-person containment approval', async
 test('incident closure: link verified finding, criteria with evidence, communication', async ({ browser }) => {
   // Runs after journey.spec (workers: 1, file order), which leaves a finding with an accepted Verify.
   const alice = await newUser(browser, 'e2e-alice');
+  const bob = await newUser(browser, 'e2e-bob');
   const title = `closure-${Date.now()}`;
   await alice.goto(`/projects/${project()}/incidents`);
   await alice.getByLabel('Title').fill(title);
@@ -66,7 +67,8 @@ test('incident closure: link verified finding, criteria with evidence, communica
   await expect(closure.getByText('Before closure')).toBeVisible();
 
   const finding = closure.getByLabel('Finding to link');
-  await finding.selectOption({ index: 1 });
+  const retained = finding.locator('option').filter({ hasText: /hardened/ }).first();
+  await finding.selectOption((await retained.getAttribute('value'))!);
   await closure.getByRole('button', { name: 'Link finding' }).click();
   await expect(alice.getByText(/1 findings · 0 events · 0 verifications/)).toBeVisible();
   await closure.getByRole('button', { name: 'Link verification' }).click();
@@ -84,8 +86,28 @@ test('incident closure: link verified finding, criteria with evidence, communica
   await closure.getByLabel('Summary').fill('Engineering notified of containment plan');
   await closure.getByRole('button', { name: 'Record communication' }).click();
   await expect(closure.getByText('Engineering notified of containment plan')).toBeVisible();
-  await expect(closure.getByText(/No Fortify regression-test artifact/)).toBeVisible();
-  await expect(closure.getByRole('list').filter({ hasText: 'Satisfy with evidence' })).toHaveCount(0);
+  await expect(closure.getByLabel('Regression evidence')).toBeVisible();
+  await closure.getByLabel('Lessons learned').fill('Retain cross-customer authorization regression sources');
+  await closure.getByRole('button', { name: 'Record lessons', exact: true }).click();
+  await expect(closure.getByText('Retain cross-customer authorization regression sources').first()).toBeVisible();
+  await alice.getByLabel('Category').fill('sandbox authorization');
+  await alice.getByLabel('Note / rationale').fill('Verified sandbox regression retained');
+  await alice.getByRole('button', { name: 'Record triage' }).click();
+  await alice.getByRole('button', { name: 'Assign to me' }).click();
+  await alice.getByRole('button', { name: 'Move to Analysis' }).click();
+  for (const [gate, target] of [['containment', 'Containment'], ['eradication', 'Eradication'], ['recovery', 'Recovery'], ['closure', 'Closed']] as const) {
+    await alice.getByRole('button', { name: `Request ${gate} approval` }).click();
+    await bob.goto(`/projects/${project()}/incidents`);
+    await bob.locator('[data-testid^="incident-"]').filter({ hasText: title }).click();
+    await bob.getByRole('button', { name: 'Approve', exact: true }).click();
+    await bob.getByRole('button', { name: `Move to ${target}` }).click();
+    await expect(bob.getByRole('list', { name: 'Lifecycle' }).locator('[aria-current="step"]')).toHaveText(target);
+    await alice.reload();
+    await alice.locator('[data-testid^="incident-"]').filter({ hasText: title }).click();
+  }
+  await alice.reload();
+  await alice.locator('[data-testid^="incident-"]').filter({ hasText: title }).click();
+  await expect(alice.getByRole('list', { name: 'Lifecycle' }).locator('[aria-current="step"]')).toHaveText('Closed');
   await evidenceShot(alice, 'incident-closure');
 });
 

@@ -403,6 +403,7 @@ class HostSink(AssessmentSink):
     run_ids: dict[str, str] = field(default_factory=dict)
     recorded: list[str] = field(default_factory=list)
     sandbox_charged: float = 0.0
+    regression_artifact_ids: dict[str, str] = field(default_factory=dict)
 
     def on_transition(self, src: AssessmentState, dst: AssessmentState, note: str) -> None:
         self.host.transition(_host_state(dst), note)
@@ -497,8 +498,25 @@ class HostSink(AssessmentSink):
                     _finding_standards(finding),
                     severity=contract_export.severity(finding.severity) if finding.severity else None,
                 )
+            artifact_id = None
+            bundle = finding.verified_regression_bundle
+            if bundle and finding.verifications and finding.candidates:
+                verification = finding.verifications[-1]
+                if (
+                    verification.verdict == "accepted"
+                    and bundle.get("verification_id") == verification.id
+                    and bundle.get("patch_id") == finding.candidates[-1].id
+                ):
+                    artifact_id = self.regression_artifact_ids.get(verification.id)
+                    if artifact_id is None:
+                        from shared.evidence import ArtifactKind
+
+                        artifact = self.host.store_json(bundle, kind=ArtifactKind.test_report)
+                        artifact_id = artifact.id
+                        self.regression_artifact_ids[verification.id] = artifact_id
             mapped = _hardening(
                 record,
+                proposed_test_artifact_id=artifact_id,
                 attack=[ref for step in finding.attack_path.steps for ref in step.attack]
                 if finding.attack_path
                 else [],
@@ -556,7 +574,9 @@ class HostSink(AssessmentSink):
         self.set_status(finding.finding_id, status)
 
 
-def _hardening(record: Any, *, attack: list[Any] | None = None) -> Any:
+def _hardening(
+    record: Any, *, attack: list[Any] | None = None, proposed_test_artifact_id: str | None = None
+) -> Any:
     import importlib
 
     try:
@@ -569,6 +589,7 @@ def _hardening(record: Any, *, attack: list[Any] | None = None) -> Any:
         id=record.id,
         finding_id=record.finding_id,
         category=record.category,
+        proposed_test_artifact_id=proposed_test_artifact_id,
         recommendation=record.recommendation[:500],
         effort=record.effort,
         d3fend=list(refs.values()),
@@ -668,7 +689,9 @@ class HostOrchestrator:
         if repo_id:
             scope.targets = [target for target in scope.targets if target.repo_id == repo_id]
         if not scope.targets:
-            raise PlatformError(ErrorCode.SCOPE_DENIED, "host scope has no authorized targets for this repository")
+            raise PlatformError(
+                ErrorCode.SCOPE_DENIED, "host scope has no authorized targets for this repository"
+            )
         config = OrchestratorConfig(
             assessment_id=host.assessment_id,
             project_id=getattr(host, "project_id", "prj_unknown"),
@@ -1186,6 +1209,12 @@ def _verify_functional_patch(host: AssessmentHostLike, orchestrator: Orchestrato
         touched = [_snapshot_rel(p, prefix) for p in diff_paths(diff_text)]
         plan_files = [_snapshot_rel(str(p), prefix) for p in (patch.files_changed or [])]
         out_of_scope = [p for p in touched if p not in plan_files and not p.startswith("tests/")]
+        from .regressions import RegressionEvidenceUnavailable, read_sources, verified_bundle
+
+        try:
+            regression_sources = read_sources(root, tests_added) if ok else None
+        except (RegressionEvidenceUnavailable, PlatformError):
+            regression_sources = None
         patched = runner.run(ctx, "added_tests", tests_added) if tests_added and ok else None
         suite = runner.run(ctx, "project_suite", []) if ok else {}
         failing = set(suite.get("failing_tests") or [])
@@ -1208,7 +1237,9 @@ def _verify_functional_patch(host: AssessmentHostLike, orchestrator: Orchestrato
             str(r.get("sandbox_run_id")) for r in (unpatched, patched, suite) if r and r.get("sandbox_run_id")
         ]
         if not sandbox_ids:
-            raise PlatformError(ErrorCode.SANDBOX_START_FAILED, "functional Verify has no executed sandbox records")
+            raise PlatformError(
+                ErrorCode.SANDBOX_START_FAILED, "functional Verify has no executed sandbox records"
+            )
         report = host.store_json(
             {
                 "sandbox_run_ids": sandbox_ids,
@@ -1251,24 +1282,23 @@ def _verify_functional_patch(host: AssessmentHostLike, orchestrator: Orchestrato
         accepted = all(c.passed for c in checks)
         duration = sum(float((r or {}).get("duration_s") or 0) for r in (unpatched, patched, suite))
         orchestrator.result.usage.sandbox_seconds += duration
-        host.record_verification(
-            VerificationResult(
-                id=new_id(IdPrefix.ver),
-                patch_id=patch.id,
-                verdict=VerificationVerdict.accepted if accepted else VerificationVerdict.rejected,
-                checks=checks,
-                sandbox_run_ids=sandbox_ids,
-                reasons=[]
-                if accepted
-                else [
-                    f"apply={ok} err={err}; out_of_scope={out_of_scope}; protected={list(inputs.protected_paths)}; "
-                    f"unpatched_failed={unpatched_failed}; patched={patched_passed}; "
-                    f"suite={suite_ok} new_failures={new_failures}"
-                ],
-                produced_by_run_id=run_id,
-                created_at=utcnow(),
-            )
+        verification = VerificationResult(
+            id=new_id(IdPrefix.ver),
+            patch_id=patch.id,
+            verdict=VerificationVerdict.accepted if accepted else VerificationVerdict.rejected,
+            checks=checks,
+            sandbox_run_ids=sandbox_ids,
+            reasons=[]
+            if accepted
+            else [
+                f"apply={ok} err={err}; out_of_scope={out_of_scope}; protected={list(inputs.protected_paths)}; "
+                f"unpatched_failed={unpatched_failed}; patched={patched_passed}; "
+                f"suite={suite_ok} new_failures={new_failures}"
+            ],
+            produced_by_run_id=run_id,
+            created_at=utcnow(),
         )
+        host.record_verification(verification)
         if accepted:
             setter = getattr(host, "set_finding_status", None)
             if callable(setter):
@@ -1282,6 +1312,33 @@ def _verify_functional_patch(host: AssessmentHostLike, orchestrator: Orchestrato
                 except Exception as exc:
                     host.progress(f"finding status verified not applied: {str(exc)[:200]}")
         host.finish_agent_run(run_id, _host_run_status("succeeded"))
+        if accepted and regression_sources is not None:
+            from types import SimpleNamespace
+
+            from shared.findings import HardeningRecommendation
+
+            try:
+                archive = verified_bundle(
+                    SimpleNamespace(id=patch.id, finding_id=patch.finding_id, tests_added=tests_added),
+                    verification,
+                    root,
+                    regression_sources,
+                )
+                archive["producer"] = "deterministic:functional-verify"
+                artifact = host.store_json(archive, kind=ArtifactKind.test_report)
+                host.record(
+                    patch.finding_id,
+                    HardeningRecommendation(
+                        id=new_id(IdPrefix.hdn),
+                        finding_id=patch.finding_id,
+                        category="policy_test",
+                        effort="small",
+                        recommendation="Retain regression sources associated with the accepted independent functional verification.",
+                        proposed_test_artifact_id=artifact.id,
+                    ),
+                )
+            except (RegressionEvidenceUnavailable, PlatformError) as exc:
+                host.progress(f"functional regression artifact unavailable: {exc}"[:500])
         host.progress(f"functional Verify {'accepted' if accepted else 'rejected'} for {patch.finding_id}")
     except Exception as exc:
         with contextlib.suppress(Exception):

@@ -56,7 +56,13 @@ def parse_pytest(stdout: str) -> dict[str, Any]:
     failing = sorted(set(re.findall(r"^FAILED (\S+)", stdout, flags=re.MULTILINE))) or sorted(
         set(re.findall(r"^(\S+::\S+) FAILED", stdout, flags=re.MULTILINE))
     )
-    return {"passed": passed, "failed": failed, "errors": errors, "skipped": skipped, "failing_tests": failing[:20]}
+    return {
+        "passed": passed,
+        "failed": failed,
+        "errors": errors,
+        "skipped": skipped,
+        "failing_tests": failing[:20],
+    }
 
 
 def _result_summary(res: SandboxResult) -> dict[str, Any]:
@@ -370,6 +376,14 @@ class PatchApplier:
         out_of_scope = [p for p in touched if p not in plan_files and p not in new_tests]
         tampered = self._tampered_tests(diff_text, record.get("protected_tests", []))
         ctx.artifacts["verify_workspace"] = root
+        from ..regressions import RegressionEvidenceUnavailable, read_sources
+
+        try:
+            ctx.artifacts["regression_sources_before_tests"] = read_sources(
+                root, list(record.get("tests_added") or [])
+            )
+        except (RegressionEvidenceUnavailable, PlatformError):
+            ctx.artifacts["regression_sources_before_tests"] = None
         ctx.artifacts["verify_facts"] = {
             "applied": ok,
             "files_touched": touched,
