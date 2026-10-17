@@ -13,7 +13,7 @@ export function findingStandards(finding: Finding): { labels: string[]; cvss: st
   return {
     labels: mappings.map(mappingLabel),
     cvss: cvss?.complete
-      ? `CVSS ${cvss.version}: ${cvss.score} ${cvss.severity} · ${cvss.vector}`
+      ? `${cvss.assumptions.length ? "Provisional " : ""}CVSS ${cvss.version}: ${cvss.score} ${cvss.severity} · ${cvss.vector}`
       : `Unscored${cvss?.missing_metrics.length ? ` · missing ${cvss.missing_metrics.join(', ')}` : ''}`,
     limitations: [ ...standards.unmapped, ...(cvss?.assumptions ?? []) ],
   };

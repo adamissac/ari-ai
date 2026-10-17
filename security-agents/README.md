@@ -159,3 +159,5 @@ D3FEND mappings use the owner-reviewed rules keyed by Fortify category and
 confirmed check category. Unsupported combinations remain unmapped. Reviewed RL actions have simulation-derived D3FEND
 classifications, while unsupported actions stay unmapped. No rule
 executes a defensive action against real systems.
+
+Model-proposed CVSS metrics are explicit provisional assumptions, even when they cite an executed run. A run identifier supplies provenance but does not prove an impact. Such scores list every assumption and require human review; missing metrics remain unscored. Incident closure requires actual regression artifact IDs/hashes; eradication requires a succeeded independent Verify run. All currently supported runtime sources are demo/replay/simulation, so correlated incidents retain simulated labeling even for executed demo logs.

@@ -83,7 +83,8 @@ def test_auth_and_validation(env, client_factory) -> None:
     assert _post(anon, ids["project"], ids["token"], _batch(now, 10)).status_code == 401
 
 
-def test_spike_creates_labeled_event_linked_to_open_finding(env) -> None:
+@pytest.mark.parametrize("source", ["simulated", "runtime_demo"])
+def test_spike_creates_labeled_event_linked_to_open_finding(env, source) -> None:
     alice, _, ids, anon = env
     asm = alice.post(
         f"/api/v1/projects/{ids['project']}/assessments",
@@ -118,16 +119,21 @@ def test_spike_creates_labeled_event_linked_to_open_finding(env) -> None:
     base = now.replace(second=0, microsecond=0, tzinfo=UTC) - timedelta(minutes=10)
     for i, n in enumerate([100, 104, 97, 101]):
         r = _post(
-            anon, ids["project"], ids["token"], _batch(base + timedelta(minutes=i + 1), n, e4=2)
+            anon,
+            ids["project"],
+            ids["token"],
+            _batch(base + timedelta(minutes=i + 1), n, e4=2, source=source),
         )
         assert r.status_code == 202 and r.json()["anomalies"] == 0, r.text
     spike_end = base + timedelta(minutes=6)
-    r = _post(anon, ids["project"], ids["token"], _batch(spike_end, 950, e4=420, auth=400))
+    r = _post(
+        anon, ids["project"], ids["token"], _batch(spike_end, 950, e4=420, auth=400, source=source)
+    )
     body = r.json()
     assert body["anomalies"] == 1 and body["scores"][0]["alert_rate"] == 3
     assert body["scores"][0]["history_windows"] == 4
     replay = _post(
-        anon, ids["project"], ids["token"], _batch(spike_end, 950, e4=420, auth=400)
+        anon, ids["project"], ids["token"], _batch(spike_end, 950, e4=420, auth=400, source=source)
     ).json()
     assert replay["anomalies"] == 0 and replay["scores"][0] == body["scores"][0], (
         "replay is idempotent"
@@ -138,8 +144,8 @@ def test_spike_creates_labeled_event_linked_to_open_finding(env) -> None:
     ev = anomalies[0]
     assert (
         ev["source"] == "runtime"
-        and ev["simulated"] is True
-        and ev["status_reason"].startswith("[simulated]")
+        and ev["simulated"] is (source != "runtime_demo")
+        and ev["status_reason"].startswith(f"[{source}]")
     )
     assert fid in ev["status_reason"]
     incidents = alice.get(f"/api/v1/projects/{ids['project']}/incidents").json()["items"]

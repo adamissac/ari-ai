@@ -236,7 +236,7 @@ def to_attack_path(
 
 
 def _cvss(out: TraceOutput, validation: ValidationResult | None) -> CVSSAssessment | None:
-    """Score only complete metrics linked to the actual executed validation run.
+    """Compute a provisional score from explicitly labeled model assumptions.
 
     The custom severity factors do not establish CVSS base metrics. An artifact
     citation provides provenance for analyst-proposed metrics, not automatic proof
@@ -260,19 +260,26 @@ def _cvss(out: TraceOutput, validation: ValidationResult | None) -> CVSSAssessme
             metric: CVSSMetricValue(
                 metric=metric,
                 value=value,
-                basis="evidence",
-                rationale=out.severity_rationale[:500],
+                basis="assumption",
+                rationale=(
+                    "Model-proposed metric; the cited run supplies context, not proof of this metric. Human review required. "
+                    + out.severity_rationale
+                )[:500],
                 evidence=evidence,
             )
             for metric, value in out.cvss_metrics.items()
         },
-        assessor="system:trace:explicit-metrics",
+        assessor="agent:trace:provisional-metric-assumptions",
     )
 
 
 def _reviewed_attack(data: TraceInput, out: TraceOutput, evidence: list[EvidenceRef]) -> list:
     from shared.standards import Observation
     from standards.mapping import attack_for_check
-    return attack_for_check(data.check_category, {"reachability": out.reachability},
+
+    return attack_for_check(
+        data.check_category,
+        {"reachability": out.reachability},
         observation=Observation.observed_in_sandbox,
-        evidence=[contract_export.evidence_ref(ref,producer="agent:trace") for ref in evidence])[0]
+        evidence=[contract_export.evidence_ref(ref, producer="agent:trace") for ref in evidence],
+    )[0]

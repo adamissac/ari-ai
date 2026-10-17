@@ -83,6 +83,8 @@ def test_standards_survive_real_host_flow(
         if complete:
             assert finding.standards.cvss and finding.standards.cvss.complete
             assert finding.standards.cvss.score is not None
+            assert len(finding.standards.cvss.assumptions) == 11
+            assert "provisional" in finding.standards.cvss.assessor
             assert finding.severity and finding.severity.cvss == finding.standards.cvss
         else:
             assert finding.standards.cvss is None or not finding.standards.cvss.complete
