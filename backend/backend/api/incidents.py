@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 import sqlalchemy as sa
 from fastapi import APIRouter, Header, Query, Request
 from fastapi.responses import StreamingResponse
 
 from backend import incidents as service
-from backend.api.deps import require_project, require_user
+from backend.api.deps import idempotent_finish, idempotent_replay, require_project, require_user
 from backend.db import defense_recommendations, findings, incidents, transaction
 from shared.incident import Incident, IncidentAction, IncidentCreate, IncidentDetail
 from shared.tenancy import MemberRole
@@ -34,11 +35,24 @@ def list_incidents(project_id: str, request: Request) -> dict:
 
 
 @router.post("/projects/{project_id}/incidents", status_code=201, response_model=Incident)
-def create_incident(project_id: str, body: IncidentCreate, request: Request) -> Incident:
+def create_incident(
+    project_id: str,
+    body: IncidentCreate,
+    request: Request,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+) -> Any:
     with transaction() as conn:
         user = require_user(conn, request)
         require_project(conn, user, project_id, MemberRole.owner)
-        return service.create(conn, project_id, body, user.id)
+        retry = {
+            "route": "create_incident",
+            "project_id": project_id,
+            "body": body.model_dump(mode="json"),
+        }
+        if replay := idempotent_replay(conn, user.id, idempotency_key, retry):
+            return replay
+        created = service.create(conn, project_id, body, user.id)
+        return idempotent_finish(conn, user.id, idempotency_key, retry, 201, created)
 
 
 @router.get("/incidents/{incident_id}", response_model=IncidentDetail)
@@ -85,12 +99,25 @@ def incident_detail(incident_id: str, request: Request) -> dict:
 @router.post(
     "/incidents/{incident_id}/transition", response_model=Incident, include_in_schema=False
 )
-def incident_action(incident_id: str, body: IncidentAction, request: Request) -> Incident:
+def incident_action(
+    incident_id: str,
+    body: IncidentAction,
+    request: Request,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+) -> Any:
     with transaction() as conn:
         user = require_user(conn, request)
         incident = service.load(conn, incident_id, lock=True)
         require_project(conn, user, incident.project_id, MemberRole.owner)
-        return service.act(conn, incident, body, user.id)
+        retry = {
+            "route": "incident_action",
+            "incident_id": incident_id,
+            "body": body.model_dump(mode="json"),
+        }
+        if replay := idempotent_replay(conn, user.id, idempotency_key, retry):
+            return replay
+        acted = service.act(conn, incident, body, user.id)
+        return idempotent_finish(conn, user.id, idempotency_key, retry, 200, acted)
 
 
 @router.get("/incidents/{incident_id}/events")
