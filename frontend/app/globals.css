@@ -152,6 +152,7 @@ button.label-mono, a.label-mono, nav.label-mono, nav .label-mono {
 .hero-step[data-active] { background: color-mix(in srgb, var(--color-brand) 55%, transparent); color: #fff; }
 
 @media (prefers-reduced-motion: reduce) {
+  .animate-pulse { animation: none; }
   .hero-orb, .hero-ping::after, .hero-stage .hero-in { animation: none; }
   .hero-content, .hero-orbs { transform: none; opacity: 1; }
   .hero-full { position: relative; }
