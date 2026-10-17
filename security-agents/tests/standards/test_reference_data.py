@@ -51,14 +51,18 @@ def test_tampered_index_fails_closed(tmp_path, monkeypatch):
         registry.load.cache_clear()
 
 
-def test_no_pinned_data_is_unverified():
+def test_only_the_owasp_llm_edition_is_unverified_in_pinned_data():
     sources = registry.provenance()["sources"]
-    assert all(not entry.get("unverified") for entry in sources.values())
+    flagged = sorted(name for name, entry in sources.items() if entry.get("unverified"))
+    assert flagged == ["owasp_llm"]
+    assert "2026" in sources["owasp_llm"]["unverified"][0]
 
 
-def test_only_the_nvd_license_is_unverified_and_it_is_surfaced():
-    assert list(registry.unverified()) == ["cvss31_vectors"]
-    assert "Cloudflare" in registry.unverified()["cvss31_vectors"][0]
+def test_unverified_items_are_surfaced():
+    found = registry.unverified()
+    assert sorted(found) == ["cvss31_vectors", "owasp_llm"]
+    assert "Cloudflare" in found["cvss31_vectors"][0]
+    assert "not the current edition" in found["owasp_llm"][0]
 
 
 def test_share_alike_licenses_are_flagged():
@@ -83,6 +87,7 @@ def test_third_party_notices_reproduce_the_required_designations():
         ("d3fend", "1.6.0"),
         ("owasp_api", "2023"),
         ("owasp_llm", "2025"),
+
         ("cvss31", "3.1"),
     ],
 )

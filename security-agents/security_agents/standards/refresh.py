@@ -421,8 +421,28 @@ def build_owasp_llm() -> Built:
         version_source="LLMnn:YYYY identifiers on the OWASP GenAI project page",
         sources=[fetched],
         license_note=SOURCES["owasp_llm"]["license"],
-        notes=["titles taken from the anchor text of each risk on the project page"],
+        notes=_owasp_llm_edition_notes(current),
     )
+
+
+GENAI_TOP10_REPO = "https://api.github.com/repos/GenAI-Security-Project/GenAI-LLM-Top10/contents"
+
+
+def _owasp_llm_edition_notes(page_edition: str) -> list[str]:
+    notes = ["titles taken from the anchor text of each risk on the project page"]
+    try:
+        listing = json.loads(fetch(GENAI_TOP10_REPO).body)
+    except Exception as error:  # noqa: BLE001
+        notes.append(f"UNVERIFIED: could not list the GenAI-LLM-Top10 repository: {type(error).__name__}")
+        return notes
+    years = sorted(entry["name"] for entry in listing if entry.get("type") == "dir" and entry["name"].isdigit())
+    newer = [year for year in years if page_edition and year > page_edition]
+    if newer:
+        notes.append(
+            f"UNVERIFIED: the GenAI-Security-Project/GenAI-LLM-Top10 repository has edition directories {', '.join(newer)} "
+            f"newer than the {page_edition} identifiers on the project page; this index is not the current edition"
+        )
+    return notes
 
 
 METRIC_TABLE_ORDER = [

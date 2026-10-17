@@ -1,6 +1,6 @@
 {
  "generated_by": "security_agents.standards.refresh",
- "generated_at": "2026-10-17T05:14:24Z",
+ "generated_at": "2026-10-17T05:40:28Z",
  "note": "Identifiers and versions are taken from the primary sources listed here. Nothing in this directory is authored from memory.",
  "sources": {
   "attack_enterprise": {
@@ -306,20 +306,23 @@
    "file_sha256": "4595a164bbd8cd33e83755a50959aa413ab24f264eb13d1965eccd455cf0e548",
    "version": "2025",
    "version_source": "LLMnn:YYYY identifiers on the OWASP GenAI project page",
-   "retrieved_at": "2026-10-17T04:58:53Z",
+   "retrieved_at": "2026-10-17T05:40:28Z",
    "license_note": "see the OWASP GenAI Security Project site terms",
    "landing_page": "https://genai.owasp.org/llm-top-10/",
    "downloads": [
     {
      "url": "https://genai.owasp.org/llm-top-10/",
-     "sha256": "1af8e3885c562352ea58c65af74330b34af69c6f7dac989e5a6b901b6b731ff7",
-     "bytes": 924158
+     "sha256": "f56af84ba3ff19dc51c414ea36c93c2be00f7dc6ef5fae6529637e7aaea15a35",
+     "bytes": 924208
     }
    ],
    "notes": [
-    "titles taken from the anchor text of each risk on the project page"
+    "titles taken from the anchor text of each risk on the project page",
+    "UNVERIFIED: the GenAI-Security-Project/GenAI-LLM-Top10 repository has edition directories 2026 newer than the 2025 identifiers on the project page; this index is not the current edition"
    ],
-   "unverified": []
+   "unverified": [
+    "UNVERIFIED: the GenAI-Security-Project/GenAI-LLM-Top10 repository has edition directories 2026 newer than the 2025 identifiers on the project page; this index is not the current edition"
+   ]
   }
  },
  "licenses": {
