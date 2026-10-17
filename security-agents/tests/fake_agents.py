@@ -12,6 +12,7 @@ evidence.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -124,11 +125,26 @@ def scout_script() -> list:
             span = location.rsplit(":", 1)[-1]
             start, end = (int(x) for x in span.split("-"))
         return FakeTurn(
-            tool_calls=[("code__read_span", {"path": WEAK_HANDLER_PATH, "start_line": start, "end_line": end})]
+            tool_calls=[
+                ("code__read_span", {"path": WEAK_HANDLER_PATH, "start_line": start, "end_line": end})
+            ]
         )
 
     def turn3(request) -> FakeTurn:
         payload = _last_json(request)
+        observed_expectations = {}
+        for index, message in enumerate(request.messages):
+            if message["role"] != "user":
+                continue
+            for observed in _all_json(replace(request, messages=request.messages[: index + 1])):
+                observed_expectations.update({item["id"]: item for item in observed.get("expectations", [])})
+        expectation_ids = [
+            item["id"]
+            for item in sorted(
+                observed_expectations.values(),
+                key=lambda item: item.get("data_sensitivity") != "financial",
+            )
+        ][:6]  # Scout output bounds the number of linked expectations.
         start = int(payload.get("start_line", 1))
         end = int(payload.get("end_line", start + 8))
         return FakeTurn(
@@ -155,7 +171,7 @@ def scout_script() -> list:
                                 "cited_paths": [WEAK_HANDLER_PATH],
                                 "cited_start_lines": [start],
                                 "cited_end_lines": [end],
-                                "expectation_ids": ["exp_owner_only"],
+                                "expectation_ids": list(dict.fromkeys(expectation_ids)),
                                 "entry_point_id": None,
                                 "confidence": "high",
                                 "suggested_check_category": "access_control.ownership",
@@ -163,8 +179,10 @@ def scout_script() -> list:
                         ],
                         "coverage": {
                             "entry_points_reviewed": [
-                                "ent_get_payments", "ent_get_payments_payment_id",
-                                "ent_get_customers_customer_id", "ent_get_refunds_refund_id",
+                                "ent_get_payments",
+                                "ent_get_payments_payment_id",
+                                "ent_get_customers_customer_id",
+                                "ent_get_refunds_refund_id",
                             ],
                             "looks_correct": [
                                 "GET /customers/{customer_id} calls require_owner",
@@ -303,14 +321,17 @@ def trace_script() -> list:
                                 "evidence_artifact_id": None,
                             },
                         ],
-                        "preconditions": ["a valid customer token", "knowledge of another customer's payment id"],
+                        "preconditions": [
+                            "a valid customer token",
+                            "knowledge of another customer's payment id",
+                        ],
                         "impact_summary": "financial payment records of other customers are readable",
-                        "reachability": "authenticated",
-                        "privileges_required": "low",
-                        "data_sensitivity": "financial",
+                        "cvss_base_metrics": trace_cvss_metrics(sandbox_run_id),
                         "severity_rationale": (
-                            "The expectation tagged financial data sensitivity is violated on an "
-                            "authenticated route, and the first step is backed by an executed check."
+                            "Reachable over the network by any authenticated customer with no user "
+                            "interaction; the executed check showed another customer's payment record "
+                            "is returned in full, so confidentiality impact is high, with no integrity "
+                            "or availability impact."
                         ),
                         "followup_validation_suggestions": [
                             "check the same route for refund records of other customers"
@@ -323,6 +344,36 @@ def trace_script() -> list:
     return [turn0, turn1]
 
 
+def trace_cvss_metrics(sandbox_run_id: str | None) -> list[dict[str, Any]]:
+    handler = {"evidence_path": WEAK_HANDLER_PATH, "evidence_start_line": 137, "evidence_end_line": 150}
+    executed = {"evidence_artifact_id": sandbox_run_id}
+    return [
+        {"metric": "AV", "value": "N", "rationale": "The route is an HTTP API endpoint.", **handler},
+        {
+            "metric": "AC",
+            "value": "L",
+            "rationale": "No special conditions; a payment id is enough.",
+            **executed,
+        },
+        {
+            "metric": "PR",
+            "value": "L",
+            "rationale": "Any valid customer token is required, nothing more.",
+            **handler,
+        },
+        {"metric": "UI", "value": "N", "rationale": "No other user is involved.", **executed},
+        {"metric": "S", "value": "U", "rationale": "The impact stays within the payments-lite API."},
+        {
+            "metric": "C",
+            "value": "H",
+            "rationale": "Another customer's full payment record is returned.",
+            **executed,
+        },
+        {"metric": "I", "value": "N", "rationale": "The route only reads data.", **handler},
+        {"metric": "A", "value": "N", "rationale": "Availability is not affected."},
+    ]
+
+
 def _sandbox_run_id_from_prompt(request) -> str | None:
     import re
 
@@ -330,7 +381,7 @@ def _sandbox_run_id_from_prompt(request) -> str | None:
         content = message.get("content")
         if not isinstance(content, str):
             continue
-        match = re.search(r'"sandbox_run_id":\s*"([^"]+)"', content)
+        match = re.search(r'"(?:validation_)?sandbox_run_id":\s*"([^"]+)"', content)
         if match:
             return match.group(1)
     return None
@@ -387,6 +438,7 @@ def diagnose_script() -> list:
                         "related_sites": [
                             "payments_lite.app.create_app.require_owner is the shared ownership helper"
                         ],
+                        "d3fend_technique": "D3-AMED",
                     },
                 )
             ]
@@ -440,7 +492,10 @@ def patch_script(
         if out_of_scope:
             store = (snapshot_root / "payments_lite/store.py").read_text(encoding="utf-8")
             calls.append(
-                ("worktree__write_file", {"path": "payments_lite/store.py", "content": store + "\n# touched\n"})
+                (
+                    "worktree__write_file",
+                    {"path": "payments_lite/store.py", "content": store + "\n# touched\n"},
+                )
             )
         if weaken_tests:
             existing = (snapshot_root / "tests/test_api.py").read_text(encoding="utf-8")
@@ -468,9 +523,7 @@ def patch_script(
     def turn5(request) -> FakeTurn:
         diff_payload = _last_json(request)
         files = diff_payload.get("files_changed") or []
-        tests_run = [
-            p for p in _collect_test_payloads(request)
-        ]
+        tests_run = [p for p in _collect_test_payloads(request)]
         passed = tests_run[-1].get("failed", 0) == 0 if tests_run else False
         run_id = tests_run[-1].get("sandbox_run_id") if tests_run else None
         return FakeTurn(
@@ -634,6 +687,7 @@ def fortify_script() -> list:
                                 "reference_end_line": 80,
                                 "effort": "small",
                                 "owner_review_note": "changes the store API; review call sites",
+                                "d3fend_technique": "D3-SCH",
                             },
                             {
                                 "category": "policy_test",
@@ -647,6 +701,7 @@ def fortify_script() -> list:
                                 "reference_end_line": 10,
                                 "effort": "medium",
                                 "owner_review_note": "",
+                                "d3fend_technique": None,
                             },
                         ],
                         "future_hypotheses": [
@@ -660,7 +715,9 @@ def fortify_script() -> list:
                             }
                         ],
                         "monitoring_hints": ["GET /payments/{payment_id}", "POST /refunds"],
-                        "regression_test_names": [f"{REGRESSION_TEST_PATH}::test_non_owner_cannot_read_payment_detail"],
+                        "regression_test_names": [
+                            f"{REGRESSION_TEST_PATH}::test_non_owner_cannot_read_payment_detail"
+                        ],
                     },
                 )
             ]
