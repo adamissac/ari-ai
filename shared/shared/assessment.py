@@ -21,6 +21,7 @@ from shared.ids import (
     ContextPackId,
     ProjectId,
     ReassessmentRequestId,
+    RepositoryId,
     ScopeId,
     SnapshotId,
     UserId,
@@ -96,6 +97,11 @@ class Assessment(StrictModel):
         default=None, description="Set once the commit is indexed; commit_sha is always set"
     )
     commit_sha: str = Field(pattern=r"^[0-9a-f]{40}$")
+    repo_id: RepositoryId | None = Field(
+        default=None,
+        description="The one repository this assessment ran on (always set by the backend); "
+        "findings link source lines to it, so multi-repository scopes need no guessing",
+    )
     scope_id: ScopeId
     trigger: AssessmentTrigger
     reassessment_request_id: ReassessmentRequestId | None = None
