@@ -25,6 +25,7 @@ from typing import Any
 from code_review.agent import BUNDLE_KIND, ReviewerAgentRunner, ReviewError
 from code_review.models import GeneratedTestSource, RepairOutcome, ReviewOutcome
 from code_review.ports import IntelligencePort, RepoSource, ReviewHost, SandboxPort
+from code_review.shared_sandbox import build_sandbox
 from code_review.tools import ReviewBudget
 from shared.assessment import AssessmentTrigger
 from shared.errors import ErrorCode
@@ -137,8 +138,7 @@ def _runner(
         "intelligence": build_intelligence() if intelligence is True else (intelligence or None),
         "budget": budget or ReviewBudget(),
     }
-    if sandbox is not None:
-        kw["sandbox"] = sandbox
+    kw["sandbox"] = sandbox if sandbox is not None else build_sandbox()
     return ReviewerAgentRunner(**kw)
 
 
