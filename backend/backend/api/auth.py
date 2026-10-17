@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import secrets
 from typing import Any
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 
 import httpx
 import sqlalchemy as sa
@@ -128,6 +128,15 @@ def github_callback(
         # trust it; start a normal sign-in instead, which refreshes the repository list.
         return RedirectResponse(f"{s.api_base_url}/api/v1/auth/github/login", status_code=302)
     expected = request.cookies.get(STATE_COOKIE, "")
+    public_host = urlsplit(s.api_base_url).netloc
+    arrived_on = request.headers.get("x-forwarded-host") or request.headers.get("host", "")
+    if not expected and public_host and arrived_on != public_host:
+        # GitHub sent the browser to this backend's own domain (a GitHub App callback URL
+        # that points here), but the state cookie lives on the public origin that started
+        # sign-in. Bounce once to the public callback; the code is not used before that.
+        return RedirectResponse(
+            f"{s.api_base_url}/api/v1/auth/github/callback?{request.url.query}", status_code=302
+        )
     if not code or not state or not secrets.compare_digest(state.encode(), expected.encode()):
         raise ApiError(ErrorCode.FORBIDDEN, "invalid OAuth state", 403)
     if not (s.github_oauth_client_id and s.github_oauth_client_secret):
