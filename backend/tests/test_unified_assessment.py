@@ -133,7 +133,15 @@ def unified(tmp_path, settings_override, monkeypatch, client_factory):
         },
     ).json()["id"]
     assert bob.post(f"/api/v1/scopes/{sid}/approve").status_code == 200
-    yield {"alice": alice, "bob": bob, "project": pid, "repo": rid, "scope": sid, "sha": sha}
+    yield {
+        "alice": alice,
+        "bob": bob,
+        "project": pid,
+        "repo": rid,
+        "scope": sid,
+        "sha": sha,
+        "repo_path": repo,
+    }
     if str(SAI_TESTS) in sys.path:
         sys.path.remove(str(SAI_TESTS))
 
