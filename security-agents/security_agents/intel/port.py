@@ -1,16 +1,9 @@
 """Code-intelligence port + local adapter.
 
-INTEGRATION NOTE: `code_intelligence.api` (owner: Sarosh, INTEL-*) is the real
-producer of snapshots, symbols, call graphs, entry points, expectations and
-context packs. It does not exist yet, so the seven-agent runtime depends on the
-narrow `CodeIntel` protocol below and ships `LocalIntel`, a real (not mocked)
-tree-sitter-free implementation over a pinned snapshot directory using Python's
-`ast` module plus the target's `expectations.json` fixture file. When Sarosh's
-API lands, an adapter implementing `CodeIntel` replaces `LocalIntel` and the
-agents, tools and tests stay unchanged.
-
-Status of each capability is reported by `provenance()` so no caller mistakes
-the local adapter's output for the full index.
+The runtime depends on the narrow CodeIntel protocol. Production host mode uses
+CodeIntelligenceAdapter over code_intelligence.api and a Git-pinned workspace;
+LocalIntel remains an explicit development/test fixture adapter. Provenance
+identifies the producer and mode so directory fixtures cannot imply live index proof.
 """
 
 from __future__ import annotations
@@ -169,9 +162,7 @@ class LocalIntel:
                 decorators = tuple(_decorator_text(d) for d in node.decorator_list)
                 kind = "class" if isinstance(node, ast.ClassDef) else ("method" if stack else "function")
                 calls = tuple(sorted(set(_called_names(node))))
-                params = (
-                    tuple(a.arg for a in node.args.args) if not isinstance(node, ast.ClassDef) else ()
-                )
+                params = tuple(a.arg for a in node.args.args) if not isinstance(node, ast.ClassDef) else ()
                 end = int(getattr(node, "end_lineno", node.lineno) or node.lineno)
                 symbols.append(
                     SymbolInfo(
@@ -214,7 +205,9 @@ class LocalIntel:
         for s in syms:
             if s.qualified_name == name:
                 return s
-        return next((s for s in syms if s.qualified_name.endswith("." + name) or s.qualified_name == name), None)
+        return next(
+            (s for s in syms if s.qualified_name.endswith("." + name) or s.qualified_name == name), None
+        )
 
     def neighbors(self, qualified_name: str) -> dict[str, list[str]]:
         syms = self._index[0]
@@ -227,11 +220,16 @@ class LocalIntel:
             matches = [
                 s.qualified_name
                 for s in syms
-                if s.qualified_name.rsplit(".", 1)[-1] == name
-                and s.qualified_name != target.qualified_name
+                if s.qualified_name.rsplit(".", 1)[-1] == name and s.qualified_name != target.qualified_name
             ]
-            callees.append(matches[0] if len(matches) == 1 else (f"{name} (ambiguous: {len(matches)} candidates)" if matches else f"{name} (unresolved)"))
-        callers = [s.qualified_name for s in syms if short in s.calls and s.qualified_name != target.qualified_name]
+            callees.append(
+                matches[0]
+                if len(matches) == 1
+                else (f"{name} (ambiguous: {len(matches)} candidates)" if matches else f"{name} (unresolved)")
+            )
+        callers = [
+            s.qualified_name for s in syms if short in s.calls and s.qualified_name != target.qualified_name
+        ]
         return {
             "symbol": [target.qualified_name],
             "location": [f"{target.path}:{target.start_line}-{target.end_line}"],
@@ -285,9 +283,7 @@ class LocalIntel:
             return list(items)
         needle = subject_ref.strip()
         return [
-            e
-            for e in items
-            if needle in e.subject_ref or e.subject_ref in needle or needle in e.statement
+            e for e in items if needle in e.subject_ref or e.subject_ref in needle or needle in e.statement
         ] or list(items)
 
 

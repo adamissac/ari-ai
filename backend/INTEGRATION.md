@@ -23,7 +23,10 @@ as a dependency with `[tool.uv.sources] hackatl-shared = { workspace = true }`.
 
 ## Alan — security-agents orchestrator → `AssessmentHost`
 
-The worker loads `ORCHESTRATOR_FACTORY` (default `security_agents.api:build_orchestrator`).
+The worker loads `ORCHESTRATOR_FACTORY` (default `security_agents.api:build_orchestrator`,
+security_agents **host mode**: every agent turn through `host.llm()`, real approvals with
+resume, Sai's reviewer at FUNCTIONAL_REVIEW, checkout pinned to `assessment.commit_sha` from
+`REPOSITORY_BINDINGS_FILE`, Docker sandbox unless `SECURITY_SANDBOX=local-dev` in dev/test).
 The factory returns an object with:
 
 ```python

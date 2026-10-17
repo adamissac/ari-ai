@@ -12,16 +12,26 @@ from ..sandbox.workspace import SnapshotHandle, copy_tree, resolve_under, safe_r
 from .code_intelligence_adapter import CodeIntelligenceAdapter
 
 
+def bindings_path() -> Path | None:
+    try:
+        from backend.settings import get_settings
+        configured = get_settings().repository_bindings_file
+    except ImportError:
+        configured = None
+    raw = configured or os.environ.get("REPOSITORY_BINDINGS_FILE")
+    return Path(raw) if raw else None
+
+
 def bound_intelligence(host: Any, workdir: Path, service: Any = None) -> CodeIntelligenceAdapter:
     """Read target bytes from git, never from the mutable working tree.
 
     REPOSITORY_BINDINGS_FILE is trusted operator configuration with the backend's
     existing list shape: repo_id, local_path, subdir. Intelligence owns indexing.
     """
-    bindings_path = os.environ.get("REPOSITORY_BINDINGS_FILE")
-    if not bindings_path:
+    path = bindings_path()
+    if path is None:
         raise PlatformError(ErrorCode.SNAPSHOT_NOT_READY, "REPOSITORY_BINDINGS_FILE is required")
-    bindings = json.loads(Path(bindings_path).read_text())
+    bindings = json.loads(path.read_text())
     matches = [binding for binding in bindings if binding.get("repo_id") == host.repo_id]
     if len(matches) != 1:
         raise PlatformError(ErrorCode.SNAPSHOT_NOT_READY, "repository needs exactly one trusted binding")

@@ -82,33 +82,67 @@ VERIFIED_SCHEMA_VERSIONS = ("0.2.0", "0.4.0")
 # not SCHEMA_VERSION moved.
 MAPPED_FIELDS: dict[tuple[str, str], dict[str, bool]] = {
     ("evidence", "EvidenceRef"): {
-        "kind": True, "path": False, "commit_sha": False, "span": False, "symbol": False,
-        "artifact_id": False, "sha256": False, "provenance": True, "note": False,
+        "kind": True,
+        "path": False,
+        "commit_sha": False,
+        "span": False,
+        "symbol": False,
+        "artifact_id": False,
+        "sha256": False,
+        "provenance": True,
+        "note": False,
     },
     ("findings", "Hypothesis"): {
-        "id": True, "finding_id": True, "weakness_class": True, "rationale": True,
-        "cited_spans": True, "expectation_ids": False, "confidence": True,
+        "id": True,
+        "finding_id": True,
+        "weakness_class": True,
+        "rationale": True,
+        "cited_spans": True,
+        "expectation_ids": False,
+        "confidence": True,
         "suggested_check_category": True,
     },
     ("findings", "ValidationResult"): {
-        "id": True, "hypothesis_id": True, "outcome": True, "check_template_id": True,
-        "check_template_version": True, "sandbox_run_id": True, "evidence": True,
+        "id": True,
+        "hypothesis_id": True,
+        "outcome": True,
+        "check_template_id": True,
+        "check_template_version": True,
+        "sandbox_run_id": True,
+        "evidence": True,
     },
     ("findings", "AttackPath"): {
-        "id": True, "finding_id": True, "steps": True, "preconditions": False,
+        "id": True,
+        "finding_id": True,
+        "steps": True,
+        "preconditions": False,
         "impact_summary": True,
     },
     ("findings", "RootCause"): {
-        "id": True, "finding_id": True, "summary": True, "violated_expectation_ids": False,
-        "cause_spans": True, "cause_class": True,
+        "id": True,
+        "finding_id": True,
+        "summary": True,
+        "violated_expectation_ids": False,
+        "cause_spans": True,
+        "cause_class": True,
     },
     ("findings", "RemediationPlan"): {
-        "id": True, "finding_id": True, "strategy": True, "constraints": False,
-        "files_expected": False, "test_plan": True,
+        "id": True,
+        "finding_id": True,
+        "strategy": True,
+        "constraints": False,
+        "files_expected": False,
+        "test_plan": True,
     },
     ("findings", "VerificationResult"): {
-        "id": True, "patch_id": True, "verdict": True, "checks": True, "sandbox_run_ids": True,
-        "reasons": False, "produced_by_run_id": True, "created_at": True,
+        "id": True,
+        "patch_id": True,
+        "verdict": True,
+        "checks": True,
+        "sandbox_run_ids": True,
+        "reasons": False,
+        "produced_by_run_id": True,
+        "created_at": True,
     },
 }
 
@@ -404,9 +438,7 @@ def verification_result(result: InternalVerificationResult, *, produced_by_run_i
                     note=_short(check.detail) or "decided from the absence of an executed run",
                 )
             ]
-        checks.append(
-            f.VerificationCheck(name=check.name.value, passed=check.passed, evidence=evidence)
-        )
+        checks.append(f.VerificationCheck(name=check.name.value, passed=check.passed, evidence=evidence))
     return f.VerificationResult(
         id=result.id,
         patch_id=result.patch_id,

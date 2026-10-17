@@ -14,7 +14,10 @@ from backend.llm import ProviderResponse
 class AlanScriptTransport:
     mode = "fake"
 
-    def __init__(self, snapshot_root: Path) -> None:
+    def __init__(self, snapshot_root: Path, fallback: Any | None = None) -> None:
+        """``fallback``: transport for requests that are not a security role (e.g. the
+        functional reviewer, which shares the same backend gateway in host mode)."""
+        self.fallback = fallback
         import sys
 
         from security_agents.agents import ALL_SPECS
@@ -33,7 +36,13 @@ class AlanScriptTransport:
         from security_agents.llm.types import LLMRequest
 
         self.requests.append(request)
-        spec = next(s for s in self.specs if request["system"].startswith(s.system_prompt))
+        spec = next((s for s in self.specs if request["system"].startswith(s.system_prompt)), None)
+        if spec is None:
+            if self.fallback is None:
+                raise AssertionError(
+                    "request is not from a security agent role and no fallback is set"
+                )
+            return self.fallback.create(request)
         resp = self.fake.complete(
             LLMRequest(
                 agent=spec.name,

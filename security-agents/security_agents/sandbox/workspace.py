@@ -18,7 +18,9 @@ from pathlib import Path, PurePosixPath
 
 from ..contracts import ErrorCode, PlatformError
 
-IGNORED_DIRS = frozenset({".git", "__pycache__", ".venv", ".pytest_cache", ".mypy_cache", ".ruff_cache", "node_modules"})
+IGNORED_DIRS = frozenset(
+    {".git", "__pycache__", ".venv", ".pytest_cache", ".mypy_cache", ".ruff_cache", "node_modules"}
+)
 
 
 def safe_rel_path(raw: str) -> str:
@@ -87,15 +89,20 @@ class SnapshotHandle:
     pinned_by: str  # "git" (real commit) or "directory-digest" (dev/test only)
 
     @classmethod
-    def from_git(cls, repo: Path, sha: str, subdir: str, dest: Path, *, snapshot_id: str, repo_id: str) -> SnapshotHandle:
+    def from_git(
+        cls, repo: Path, sha: str, subdir: str, dest: Path, *, snapshot_id: str, repo_id: str
+    ) -> SnapshotHandle:
         full = subprocess.run(
             ["git", "-C", str(repo), "rev-parse", "--verify", f"{sha}^{{commit}}"],
-            check=True, capture_output=True, text=True,
+            check=True,
+            capture_output=True,
+            text=True,
         ).stdout.strip()
         dest.mkdir(parents=True, exist_ok=False)
         archive = subprocess.run(
             ["git", "-C", str(repo), "archive", "--format=tar", full, subdir],
-            check=True, capture_output=True,
+            check=True,
+            capture_output=True,
         ).stdout
         with tempfile.NamedTemporaryFile(suffix=".tar") as tf:
             tf.write(archive)
@@ -196,7 +203,11 @@ def changed_paths(base_root: Path, new_root: Path) -> list[str]:
     new = set(_iter_files(new_root))
     out = []
     for rel in sorted(base | new):
-        if rel not in base or rel not in new or (base_root / rel).read_bytes() != (new_root / rel).read_bytes():
+        if (
+            rel not in base
+            or rel not in new
+            or (base_root / rel).read_bytes() != (new_root / rel).read_bytes()
+        ):
             out.append(rel)
     return out
 
@@ -224,17 +235,28 @@ def apply_diff(root: Path, diff_text: str) -> tuple[bool, str]:
         fh.write(diff_text)
         patch_file = fh.name
     # Never let git discover an enclosing repository: paths stay relative to `root`.
-    env = {"PATH": "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin", "GIT_CEILING_DIRECTORIES": str(root.resolve().parent)}
+    env = {
+        "PATH": "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin",
+        "GIT_CEILING_DIRECTORIES": str(root.resolve().parent),
+    }
     try:
         check = subprocess.run(
             ["git", "apply", "--check", "--whitespace=nowarn", patch_file],
-            cwd=root, capture_output=True, text=True, timeout=30, env=env,
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            env=env,
         )
         if check.returncode != 0:
             return False, check.stderr.strip()[:2000]
         res = subprocess.run(
             ["git", "apply", "--whitespace=nowarn", patch_file],
-            cwd=root, capture_output=True, text=True, timeout=30, env=env,
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            env=env,
         )
         return res.returncode == 0, res.stderr.strip()[:2000]
     finally:

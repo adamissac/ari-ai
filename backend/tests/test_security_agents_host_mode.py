@@ -4,7 +4,7 @@ the real LLMGateway (scripted transport labeled fake, see sa_bridge.py), the wor
 API approval and resume.
 
 Regression coverage: property access, persisted run IDs, per-run usage/tool records,
-and same-worker approval resume. Fresh-worker durable resume is a separate gate.
+and fresh-worker approval resume through an integrity-checked checkpoint.
 """
 
 from __future__ import annotations

@@ -300,7 +300,7 @@ def test_missing_target_fails_with_a_clear_error(monkeypatch):
     monkeypatch.delenv("SECURITY_AGENTS_TARGET_DIR", raising=False)
     with pytest.raises(PlatformError) as exc:
         build_orchestrator().run(FakeHost(gateway=FakeGateway(scripts={})))
-    assert exc.value.code is ErrorCode.CONFLICT_STATE
+    assert exc.value.code is ErrorCode.SNAPSHOT_NOT_READY  # no bound checkout, no target dir
     assert "SECURITY_AGENTS_TARGET_DIR" in exc.value.message
 
 

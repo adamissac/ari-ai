@@ -186,12 +186,20 @@ def run_agent(
     ctx.step_allowlist = spec.tools
     ctx.max_calls_per_tool = dict(spec.max_calls_per_tool)
     record = StepRecord(
-        run_id=run_id, agent=spec.name, spec_version=spec.version, model=model,
+        run_id=run_id,
+        agent=spec.name,
+        spec_version=spec.version,
+        model=model,
         provider_mode=gateway.mode,
     )
     run = AgentRun(
-        id=run_id, assessment_id=ctx.assessment_id, agent=spec.name, step_key=ctx.step_key,
-        status="running", input_ref=input_ref or ctx.step_key, model_id=model,
+        id=run_id,
+        assessment_id=ctx.assessment_id,
+        agent=spec.name,
+        step_key=ctx.step_key,
+        status="running",
+        input_ref=input_ref or ctx.step_key,
+        model_id=model,
         provider_mode=gateway.mode,  # type: ignore[arg-type]
     )
     tracker = BudgetTracker(budget=budget, share=spec.budget_share, assessment_usage=assessment_usage)
@@ -245,8 +253,13 @@ def run_agent(
             )
 
         request = LLMRequest(
-            agent=spec.name, model=model, system=system, messages=messages, tools=tools,
-            max_tokens=spec.max_output_tokens, effort=spec.effort,
+            agent=spec.name,
+            model=model,
+            system=system,
+            messages=messages,
+            tools=tools,
+            max_tokens=spec.max_output_tokens,
+            effort=spec.effort,
             timeout_s=min(float(spec.step_timeout_s), budget.max_wall_clock_s),
             metadata={"assessment_id": ctx.assessment_id, "step_key": ctx.step_key},
         )
@@ -341,8 +354,11 @@ def run_agent(
                 detail = _compact(exc)
                 record.tool_invocations.append(
                     ToolInvocation(
-                        name=spec.submit_tool_name(), args={}, ok=False,
-                        error_code=ErrorCode.SCHEMA_INVALID.value, summary={"detail": detail},
+                        name=spec.submit_tool_name(),
+                        args={},
+                        ok=False,
+                        error_code=ErrorCode.SCHEMA_INVALID.value,
+                        summary={"detail": detail},
                     )
                 )
                 if repair_used:
@@ -375,8 +391,11 @@ def run_agent(
                 }
             )
             ctx.audit.emit(
-                "agent.output_accepted", agent=spec.name.value, run_id=run_id,
-                tool_calls=len(record.tool_invocations), turns=len(record.turns),
+                "agent.output_accepted",
+                agent=spec.name.value,
+                run_id=run_id,
+                tool_calls=len(record.tool_invocations),
+                turns=len(record.turns),
             )
             run.output_ref = f"artifact:{run_id}:output"
             return finish("succeeded")
@@ -387,6 +406,4 @@ def run_agent(
 
 
 def _compact(exc: ValidationError) -> str:
-    return "; ".join(
-        f"{'.'.join(str(p) for p in e['loc'])}: {e['msg']}" for e in exc.errors()[:8]
-    )[:600]
+    return "; ".join(f"{'.'.join(str(p) for p in e['loc'])}: {e['msg']}" for e in exc.errors()[:8])[:600]

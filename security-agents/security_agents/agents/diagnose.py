@@ -90,10 +90,16 @@ SPEC = AgentSpec(
     version="0.1.0",
     input_model=DiagnoseInput,
     output_model=DiagnoseOutput,
-    tools=frozenset({
-        "code.read_span", "code.search", "graph.neighbors", "expectations.for_subject",
-        "findings.history", "static.analyze",
-    }),
+    tools=frozenset(
+        {
+            "code.read_span",
+            "code.search",
+            "graph.neighbors",
+            "expectations.for_subject",
+            "findings.history",
+            "static.analyze",
+        }
+    ),
     sandbox_profile="none",
     network="none",
     write_access="none",
@@ -133,8 +139,11 @@ def to_plan(
         end = min(max(start, out.cause_end_lines[i]), limit)
         spans.append(
             EvidenceRef(
-                path=path, sha=sha, span=SourceSpan(start_line=start, end_line=end),
-                symbol=out.cause_symbol, provenance="code",
+                path=path,
+                sha=sha,
+                span=SourceSpan(start_line=start, end_line=end),
+                symbol=out.cause_symbol,
+                provenance="code",
             )
         )
     if not spans:
@@ -144,7 +153,8 @@ def to_plan(
             raise ValueError("no valid cause span and no valid affected path")
         spans.append(
             EvidenceRef(
-                path=fallback, sha=sha,
+                path=fallback,
+                sha=sha,
                 span=SourceSpan(start_line=1, end_line=min(40, intel.snapshot.line_count(fallback))),
                 provenance="code",
             )
@@ -161,10 +171,7 @@ def to_plan(
         cause_class=CauseClass(out.cause_class),
     )
     # Enforced: planned files must exist in the snapshot, or be new test files.
-    files = [
-        p for p in out.files_expected
-        if intel.snapshot.exists(p) or p.startswith("tests/")
-    ]
+    files = [p for p in out.files_expected if intel.snapshot.exists(p) or p.startswith("tests/")]
     if not files:
         files = [spans[0].path or data.affected_paths[0]]
     plan = RemediationPlan(
@@ -177,7 +184,5 @@ def to_plan(
             must_pass_after=list(out.tests_must_pass_after),
         ),
     )
-    related = [
-        EvidenceRef(symbol=site[:200], provenance="agent_output") for site in out.related_sites
-    ]
+    related = [EvidenceRef(symbol=site[:200], provenance="agent_output") for site in out.related_sites]
     return root_cause, plan, related

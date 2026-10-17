@@ -2,12 +2,12 @@
 
 Owner: Alan (`security-agents/`, SEC-001 … SEC-013)
 Branch: `feat/alan/seven-agent-runtime`
-Current task: SEC-001 … SEC-013 implemented; integrating with the backend host
+Current task: host integration, durable approval recovery and indexed-context verification
 Last remote sync: 2026-10-17T02:05Z — merged `origin/main` @ `9beccf4` (shared V0, backend, canonical payments-lite)
 API/contract dependencies: `shared` V0 (acked with 6 deltas), `backend.host` (adapter written, unverified), `code_intelligence.api` (port + local adapter), `code_review` (shares my sandbox)
 Recent PR/commit: `b0ae682` on `feat/alan/seven-agent-runtime` (PR to open)
 Blockers: none blocking; 2 open questions to Srihith (host re-entry state, indexed workspace)
-Next action: open the PR, then verify the host adapter against the real `backend.host`
+Next action: finish CI/review on PR #35; live-provider and Docker gates remain opt-in/unverified here
 
 ## What runs today
 
@@ -129,3 +129,5 @@ Executed check results on the fixture (the precision evidence):
 - Durable approval resume implemented via additive host checkpoint API (hashed artifact + assessment-scoped event pointer). Host suite: 23 passed, Ruff clean; real backend fresh-factory resume: 1 passed. Checkpoint isolation/integrity suite in progress.
 
 - Host now pins execution to assessment SHA through trusted bindings and consumes upstream intelligence (34 host/index tests passed). Full real PostgreSQL host flow with actual Git SHA, indexed context and fresh-factory approval resume: 1 passed. Full pre-binding security suite: 350 passed, 4 skipped.
+
+- Integrated main's single-host reviewer/security path (c0b5136 / #36) without losing checkpoints or fail-closed authorization. Preserved the upstream canonical test rename. PostgreSQL reviewer + security + restart/gates subset: 10 passed. Pre-merge full workspace: 149 passed, 5 skipped; security runtime: 355 passed, 4 skipped. Re-running both after merge.

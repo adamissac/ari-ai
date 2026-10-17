@@ -373,6 +373,8 @@ class HostSink(AssessmentSink):
 
     def on_transition(self, src: AssessmentState, dst: AssessmentState, note: str) -> None:
         self.host.transition(_host_state(dst), note)
+        if dst is AssessmentState.FUNCTIONAL_REVIEW and hasattr(self.host, "repo_id"):
+            _functional_review(self.host)
 
     def on_finding(self, finding: FindingRecord) -> None:
         import importlib
@@ -497,10 +499,11 @@ class HostOrchestrator:
 
     def run(self, host: AssessmentHostLike) -> None:
         target = self.target_dir or _env_path("SECURITY_AGENTS_TARGET_DIR")
-        bound = bool(os.environ.get("REPOSITORY_BINDINGS_FILE"))
+        from .intel.host import bindings_path
+        bound = bindings_path() is not None
         if not bound and target is None:
             raise PlatformError(
-                ErrorCode.CONFLICT_STATE,
+                ErrorCode.SNAPSHOT_NOT_READY,
                 "no target directory: set SECURITY_AGENTS_TARGET_DIR or pass target_dir",
             )
         checkpoint = host.load_checkpoint("security_agents.approval.v1")
@@ -632,9 +635,7 @@ class HostOrchestrator:
         snapshot = SnapshotHandle.from_directory(
             staging, workdir / "snapshot", snapshot_id=snapshot_id or new_id("snp"), repo_id="rep_host"
         )
-        labels = self.labels_path or _env_path("SECURITY_AGENTS_LABELS") or (
-            target / "labels.yaml" if (target / "labels.yaml").is_file() else None
-        )
+        labels = self.labels_path or _env_path("SECURITY_AGENTS_LABELS")
         expectations = None
         if labels is not None:
             expectations = load_expectations(
@@ -642,6 +643,106 @@ class HostOrchestrator:
                 strip_prefix=strip_prefix,
             )
         return LocalIntel(snapshot, expectations=expectations)
+
+
+def _val(obj: Any, name: str) -> Any:
+    attr = getattr(obj, name, None)
+    return attr() if callable(attr) else attr
+
+
+_PROPAGATE = {"CANCELLED", "BUDGET_EXHAUSTED", "SCOPE_DENIED"}
+
+
+def _functional_review(host: Any) -> None:
+    """Pillar 1 inside the assessment: Sai's reviewer on the same commit, persisting its own
+    run and findings through the host. Unavailable/failing review is recorded and the
+    security run continues; cancel/budget/scope errors propagate."""
+    try:
+        from code_review import api as review_api
+    except ImportError:
+        host.progress("functional review unavailable: code_review is not installed in this worker")
+        return
+    intent = _change_intent(host)
+    try:
+        try:
+            outcome = review_api.review_assessment(host, change_intent=intent)
+        except Exception as exc:
+            if str(getattr(getattr(exc, "code", None), "value", "")) != "SNAPSHOT_NOT_READY":
+                raise
+            outcome = _review_without_snapshot(host, intent, review_api)
+        result = outcome.result
+        host.progress(
+            f"functional review {result.status.value}: {len(result.findings)} functional finding(s)"
+        )
+    except Exception as exc:
+        code = str(getattr(getattr(exc, "code", None), "value", type(exc).__name__))
+        if code in _PROPAGATE:
+            raise
+        host.progress(f"functional review failed ({code}): {exc}"[:500])
+
+
+def _review_without_snapshot(host: Any, intent: Any, review_api: Any) -> Any:
+    """No indexed snapshot row for this commit: review the pinned checkout directly."""
+    from shared.intelligence import SnapshotRef
+    from shared.review import ReviewRequest
+
+    a = _val(host, "assessment")
+    request = ReviewRequest(
+        assessment_id=a.id,
+        snapshot_ref=SnapshotRef(
+            project_id=a.project_id,
+            repo_id=host.repo_id,
+            commit_sha=a.commit_sha,
+            snapshot_id=a.snapshot_id or new_id("snp"),
+            index_version="checkout",
+        ),
+        change_intent=intent or _default_intent(a),
+        budget=a.budget,
+    )
+    source = review_api.resolve_repo(host.repo_id, commit_sha=a.commit_sha)
+    return review_api.review_full(host, request, source=source)
+
+
+def _default_intent(a: Any) -> Any:
+    from shared.review import ChangeIntent, ChangeIntentSource
+
+    return ChangeIntent(
+        source=ChangeIntentSource.manual, title=f"assessment of {a.commit_sha[:12]}", head_sha=a.commit_sha
+    )
+
+
+def _change_intent(host: Any) -> Any:
+    """Push/PR intent (commit range, PR title/body as untrusted text) of the monitoring event
+    that triggered this assessment; None for manual assessments."""
+    a = _val(host, "assessment")
+    if not getattr(a, "reassessment_request_id", None):
+        return None
+    try:
+        import sqlalchemy as sa
+        from backend.db import monitoring_events, reassessment_requests, transaction
+        from shared.review import ChangeIntent, ChangeIntentSource
+    except ImportError:
+        return None
+    with transaction() as conn:
+        rrq = conn.execute(
+            sa.select(reassessment_requests.c.doc).where(
+                reassessment_requests.c.id == a.reassessment_request_id
+            )
+        ).scalar()
+        ev = conn.execute(
+            sa.select(monitoring_events.c.doc).where(
+                monitoring_events.c.id == ((rrq or {}).get("event_ids") or [""])[0]
+            )
+        ).scalar()
+    if not ev or not ev.get("commit_range"):
+        return None
+    kind = ChangeIntentSource.pull_request if ev.get("type") == "pull_request" else ChangeIntentSource.push
+    return ChangeIntent(
+        source=kind,
+        title=f"{kind.value} {(ev.get('ref') or '')}"[:500],
+        base_sha=ev["commit_range"].get("base_sha"),
+        head_sha=a.commit_sha,
+    )
 
 
 class _NullGateway:
@@ -666,6 +767,15 @@ def _default_driver() -> SandboxDriver:
         os.environ.get("APP_ENV") in {"development", "test"}
         and os.environ.get("SANDBOX_ALLOW_LOCAL_PROCESS") == "1"
     ):
+        return LocalProcessDriver(allow=True)
+    try:
+        from backend.settings import get_settings
+        settings = get_settings()
+    except ImportError:
+        settings = None
+    if settings is not None and settings.security_sandbox == "local-dev":
+        if settings.app_env not in {"development", "test"}:
+            raise PlatformError(ErrorCode.SANDBOX_POLICY_VIOLATION, "local-dev sandbox outside development/test")
         return LocalProcessDriver(allow=True)
     return DockerSandboxDriver()
 

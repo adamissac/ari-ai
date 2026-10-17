@@ -40,4 +40,4 @@ jobs:
           ~/.local/bin/uv run ruff format --check code-intelligence
           ~/.local/bin/uv run mypy --config-file code-intelligence/pyproject.toml code-intelligence/code_intelligence
       - name: Intelligence and PostgreSQL integration (FakeTransport; no live key)
-        run: ~/.local/bin/uv run pytest -ra code-intelligence/tests backend/tests/test_intel_store.py backend/tests/test_backend_intel_integration.py
+        run: ~/.local/bin/uv run pytest -ra code-intelligence/tests backend/tests/test_intel_store.py backend/tests/test_payload_store_intel_integration.py

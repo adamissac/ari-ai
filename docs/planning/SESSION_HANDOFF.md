@@ -132,3 +132,5 @@ adds an entry before ending.
 
 - Follow-up: bound host execution now reads exactly the assessment Git SHA and uses the upstream intelligence service. Dirty-checkout regression and full hosted indexed-context flow pass. Approval parsing requires an identified human. Added security runtime CI so host-mode tests are installed rather than skipped.
 - Fixed root CI collection collision by renaming backend intelligence test and updating dynamic factory/workflow references (0f0b194). Initial combined run: 148 passed, 5 skipped, 1 failure due to stale renamed factory; corrected factory regression then passed.
+
+- Synced main's concurrent single-host implementation and preserved its functional reviewer hook, sandbox/runtime hardening and canonical intelligence test rename. Resolved overlap with approval checkpoints, strict authorization and upstream indexed contexts. PostgreSQL combined integration subset: 10 passed; final merged broad suites in progress.

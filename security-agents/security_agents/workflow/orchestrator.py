@@ -179,10 +179,16 @@ class AssessmentResult:
             "agents_executed": sorted(self.agents_executed()),
             "runs": [
                 {
-                    "agent": r.agent.value, "step_key": r.step_key, "attempt": r.attempt,
-                    "status": r.status, "model_id": r.model_id, "provider_mode": r.provider_mode,
-                    "tool_calls": r.tool_calls, "llm_turns": r.llm_turns,
-                    "tokens": r.usage.total_tokens, "usd": round(r.usage.usd, 6),
+                    "agent": r.agent.value,
+                    "step_key": r.step_key,
+                    "attempt": r.attempt,
+                    "status": r.status,
+                    "model_id": r.model_id,
+                    "provider_mode": r.provider_mode,
+                    "tool_calls": r.tool_calls,
+                    "llm_turns": r.llm_turns,
+                    "tokens": r.usage.total_tokens,
+                    "usd": round(r.usage.usd, 6),
                     "error_code": r.error_code.value if r.error_code else None,
                 }
                 for r in self.runs
@@ -269,8 +275,15 @@ class Orchestrator:
         self.state_log.record(src, dst, note)
         self.result.state = self.state
         self.sink.on_transition(src, dst, note)
-        self._audit("assessment.transition", "assessment", self.config.assessment_id,
-                    actor="system", src=src.value, dst=dst.value, note=note)
+        self._audit(
+            "assessment.transition",
+            "assessment",
+            self.config.assessment_id,
+            actor="system",
+            src=src.value,
+            dst=dst.value,
+            note=note,
+        )
 
     def _audit(
         self, action: str, subject_type: str, subject_id: str, *, actor: str = "system", **details: Any
@@ -288,7 +301,8 @@ class Orchestrator:
         }
         body = json.dumps(
             {**payload, "at": payload["at"].isoformat(), "prev_hash": self._audit_prev_hash},
-            sort_keys=True, default=str,
+            sort_keys=True,
+            default=str,
         )
         digest = hashlib.sha256(body.encode()).hexdigest()
         event = AuditEvent(**payload, prev_hash=self._audit_prev_hash, hash=digest)  # type: ignore[arg-type]
@@ -348,9 +362,15 @@ class Orchestrator:
         self.result.records.append(outcome.record)
         self._completed_steps[key] = outcome
         self._audit(
-            "agent.step", "agent_run", outcome.run.id, actor="agent", actor_id=spec.name.value,
-            status=outcome.run.status, provider_mode=outcome.run.provider_mode,
-            tool_calls=outcome.run.tool_calls, error_code=outcome.run.error_code,
+            "agent.step",
+            "agent_run",
+            outcome.run.id,
+            actor="agent",
+            actor_id=spec.name.value,
+            status=outcome.run.status,
+            provider_mode=outcome.run.provider_mode,
+            tool_calls=outcome.run.tool_calls,
+            error_code=outcome.run.error_code,
         )
         return outcome
 
@@ -365,8 +385,9 @@ class Orchestrator:
         self._goto(target, detail[:200])
         self.result.error_code = code
         self.result.error_detail = detail
-        self._audit("assessment.failed", "assessment", self.config.assessment_id,
-                    code=code.value, detail=detail[:300])
+        self._audit(
+            "assessment.failed", "assessment", self.config.assessment_id, code=code.value, detail=detail[:300]
+        )
         return self.result
 
     # ------------------------------------------------------------------ main
@@ -389,7 +410,10 @@ class Orchestrator:
             org_member_count=cfg.org_member_count,
         )
         self._audit(
-            "scope.checked", "scope", cfg.scope.id, allowed=decision.allowed,
+            "scope.checked",
+            "scope",
+            cfg.scope.id,
+            allowed=decision.allowed,
             reason_code=decision.reason_code,
         )
         if not decision.allowed:
@@ -447,7 +471,9 @@ class Orchestrator:
                 pending.append(waiting.finding_id)
                 finding.notes.append("awaiting human remediation approval")
                 self._audit(
-                    "approval.requested", "finding", finding.finding_id,
+                    "approval.requested",
+                    "finding",
+                    finding.finding_id,
                     approval_id=waiting.approval_id,
                 )
                 continue
@@ -470,8 +496,12 @@ class Orchestrator:
             finding.approval = approval
             approved.append(finding)
             self._audit(
-                "approval.granted", "finding", finding.finding_id, actor="user",
-                actor_id=approval.decided_by, approval_id=approval.id,
+                "approval.granted",
+                "finding",
+                finding.finding_id,
+                actor="user",
+                actor_id=approval.decided_by,
+                approval_id=approval.id,
             )
         if pending and not approved:
             # Stop here, without a terminal transition: a host persists the
@@ -498,8 +528,12 @@ class Orchestrator:
 
     def _finish(self) -> AssessmentResult:
         self._goto(AssessmentState.COMPLETED)
-        self._audit("assessment.completed", "assessment", self.config.assessment_id,
-                    findings=len(self.result.findings))
+        self._audit(
+            "assessment.completed",
+            "assessment",
+            self.config.assessment_id,
+            findings=len(self.result.findings),
+        )
         return self.result
 
     # ------------------------------------------------------------------ steps
@@ -514,8 +548,11 @@ class Orchestrator:
         )
         result = runner.run(ctx, "project_suite", [])
         self._audit(
-            "tests.baseline", "snapshot", self.intel.snapshot.snapshot_id,
-            failing=result.get("failing_tests"), passed=result.get("passed"),
+            "tests.baseline",
+            "snapshot",
+            self.intel.snapshot.snapshot_id,
+            failing=result.get("failing_tests"),
+            passed=result.get("passed"),
             sandbox_run_id=result.get("sandbox_run_id"),
         )
         self.result.usage.sandbox_seconds += float(result.get("duration_s") or 0)
@@ -544,19 +581,29 @@ class Orchestrator:
                 outcome.run.error_code or ErrorCode.SCHEMA_INVALID,
                 outcome.run.error_detail or "Scout failed to produce a valid result",
             )
+
         hypotheses = scout_agent.to_hypotheses(
             outcome.output, data, self.intel, max_items=self.config.max_hypotheses
         )
         ranked = scout_agent.rank(hypotheses, self.intel)
         for signal in outcome.output.suspicious_instructions:
-            self._audit("signal.suspicious_instruction", "snapshot",
-                        self.intel.snapshot.snapshot_id, detail=signal[:300])
+            self._audit(
+                "signal.suspicious_instruction",
+                "snapshot",
+                self.intel.snapshot.snapshot_id,
+                detail=signal[:300],
+            )
         for h in ranked:
             record = FindingRecord(finding_id=h.finding_id, hypothesis=h)
             self.result.findings.append(record)
             self.sink.on_finding(record)
-            self._audit("finding.hypothesis", "finding", h.finding_id,
-                        weakness_class=h.weakness_class, confidence=h.confidence.value)
+            self._audit(
+                "finding.hypothesis",
+                "finding",
+                h.finding_id,
+                weakness_class=h.weakness_class,
+                confidence=h.confidence.value,
+            )
         return ranked
 
     def _finding_for(self, hypothesis_id: str) -> FindingRecord:
@@ -584,7 +631,9 @@ class Orchestrator:
             ctx = self._context(AgentName.PROBE, f"validation:{index}", services=services)
             try:
                 outcome = self._run_step(
-                    probe_agent.SPEC, ctx, probe_agent.build_prompt(data, self.intel),
+                    probe_agent.SPEC,
+                    ctx,
+                    probe_agent.build_prompt(data, self.intel),
                     input_ref=f"probe:{hypothesis.id}",
                 )
             except PlatformError as exc:
@@ -610,8 +659,11 @@ class Orchestrator:
                 ValidationOutcome.INCONCLUSIVE: "inconclusive",
             }[validation.outcome]
             self._audit(
-                "finding.validation", "finding", finding.finding_id,
-                outcome=validation.outcome.value, sandbox_run_id=validation.sandbox_run_id,
+                "finding.validation",
+                "finding",
+                finding.finding_id,
+                outcome=validation.outcome.value,
+                sandbox_run_id=validation.sandbox_run_id,
                 template=validation.check_template_id,
             )
             self.history.records.append(
@@ -646,11 +698,11 @@ class Orchestrator:
             affected_symbol=symbol,
             expectation_ids=list(finding.hypothesis.expectation_ids),
         )
-        ctx = self._context(
-            AgentName.TRACE, f"analysis:{finding.finding_id}", services=self._read_services()
-        )
+        ctx = self._context(AgentName.TRACE, f"analysis:{finding.finding_id}", services=self._read_services())
         outcome = self._run_step(
-            trace_agent.SPEC, ctx, trace_agent.build_prompt(data, self.intel),
+            trace_agent.SPEC,
+            ctx,
+            trace_agent.build_prompt(data, self.intel),
             input_ref=f"trace:{finding.finding_id}",
         )
         if not isinstance(outcome.output, trace_agent.TraceOutput):
@@ -663,7 +715,10 @@ class Orchestrator:
         finding.severity = severity
         self.sink.on_record(finding, path, "attack_path")
         self._audit(
-            "finding.severity", "finding", finding.finding_id, level=severity.level.value,
+            "finding.severity",
+            "finding",
+            finding.finding_id,
+            level=severity.level.value,
             factors=severity.factors.model_dump(mode="json"),
             verified_steps=sum(1 for s in path.steps if s.verified),
         )
@@ -686,7 +741,9 @@ class Orchestrator:
             AgentName.DIAGNOSE, f"diagnosis:{finding.finding_id}", services=self._read_services()
         )
         outcome = self._run_step(
-            diagnose_agent.SPEC, ctx, diagnose_agent.build_prompt(data, self.intel),
+            diagnose_agent.SPEC,
+            ctx,
+            diagnose_agent.build_prompt(data, self.intel),
             input_ref=f"diagnose:{finding.finding_id}",
         )
         if not isinstance(outcome.output, diagnose_agent.DiagnoseOutput):
@@ -705,8 +762,12 @@ class Orchestrator:
         self.sink.on_record(finding, plan, "remediation_plan")
         self.sink.on_status(finding, finding.status)
         self._audit(
-            "finding.diagnosed", "finding", finding.finding_id, cause_class=root_cause.cause_class.value,
-            plan_id=plan.id, files_expected=plan.files_expected,
+            "finding.diagnosed",
+            "finding",
+            finding.finding_id,
+            cause_class=root_cause.cause_class.value,
+            plan_id=plan.id,
+            files_expected=plan.files_expected,
         )
 
     def _run_remediation(self, finding: FindingRecord) -> None:
@@ -735,7 +796,10 @@ class Orchestrator:
                     self.sink.on_verification(finding, verification)
                     reasons = list(verification.reasons)
                     self._audit(
-                        "finding.verification", "finding", finding.finding_id, verdict=verdict,
+                        "finding.verification",
+                        "finding",
+                        finding.finding_id,
+                        verdict=verdict,
                         checks={c.name.value: c.passed for c in verification.checks},
                         verify_run_id=verification.verify_run_id,
                     )
@@ -768,7 +832,9 @@ class Orchestrator:
             assessment_id=self.config.assessment_id,
             approval_id=finding.approval.id,
             attempt=attempt,
-            cause_paths=[s.path for s in (finding.root_cause.cause_spans if finding.root_cause else []) if s.path],
+            cause_paths=[
+                s.path for s in (finding.root_cause.cause_spans if finding.root_cause else []) if s.path
+            ],
             prior_reasons=reasons,
         )
         services = {
@@ -781,12 +847,17 @@ class Orchestrator:
             ),
         }
         ctx = self._context(
-            AgentName.PATCH, f"remediation:{finding.finding_id}:patch", services=services,
+            AgentName.PATCH,
+            f"remediation:{finding.finding_id}:patch",
+            services=services,
             read_root=worktree.root,
         )
         outcome = self._run_step(
-            patch_agent.SPEC, ctx, patch_agent.build_prompt(data, self.intel),
-            input_ref=f"patch:{finding.plan.id}", attempt=attempt,
+            patch_agent.SPEC,
+            ctx,
+            patch_agent.build_prompt(data, self.intel),
+            input_ref=f"patch:{finding.plan.id}",
+            attempt=attempt,
         )
         for run in ctx.artifacts.get("test_runs") or []:
             self.result.usage.sandbox_seconds += float(run.get("duration_s") or 0)
@@ -809,9 +880,15 @@ class Orchestrator:
         finding.candidates.append(candidate)
         self.sink.on_patch(finding, candidate, diff_text)
         self._audit(
-            "patch.candidate", "patch", candidate.id, actor="agent", actor_id="patch",
-            files_changed=candidate.files_changed, tests_added=candidate.tests_added,
-            diff_sha256=candidate.diff_sha256, attempt=attempt,
+            "patch.candidate",
+            "patch",
+            candidate.id,
+            actor="agent",
+            actor_id="patch",
+            files_changed=candidate.files_changed,
+            tests_added=candidate.tests_added,
+            diff_sha256=candidate.diff_sha256,
+            attempt=attempt,
         )
         return candidate, worktree
 
@@ -819,7 +896,9 @@ class Orchestrator:
         candidate = finding.candidates[-1]
         assert finding.plan is not None
         data = verify_agent.input_from_candidate(
-            candidate, finding.plan, finding.validation,
+            candidate,
+            finding.plan,
+            finding.validation,
             assessment_id=self.config.assessment_id,
             scope_id=self.config.scope.id,
             target_id=self.config.target_id,
@@ -847,13 +926,14 @@ class Orchestrator:
                 recipe_provider=recipe_from_snapshot(self.intel),
             ),
         }
-        ctx = self._context(
-            AgentName.VERIFY, f"remediation:{finding.finding_id}:verify", services=services
-        )
+        ctx = self._context(AgentName.VERIFY, f"remediation:{finding.finding_id}:verify", services=services)
         ctx.artifacts["tests_added"] = list(candidate.tests_added)
         outcome = self._run_step(
-            verify_agent.SPEC, ctx, verify_agent.build_prompt(data, self.intel),
-            input_ref=f"verify:{candidate.id}", attempt=attempt,
+            verify_agent.SPEC,
+            ctx,
+            verify_agent.build_prompt(data, self.intel),
+            input_ref=f"verify:{candidate.id}",
+            attempt=attempt,
         )
         check_runs = list(ctx.artifacts.get("check_runs") or [])
         test_runs = list(ctx.artifacts.get("test_runs") or [])
@@ -888,7 +968,9 @@ class Orchestrator:
             verification_result_id=verification.id,
             root_cause_summary=finding.root_cause.summary if finding.root_cause else finding.hypothesis.title,
             cause_class=finding.root_cause.cause_class.value if finding.root_cause else "unknown",
-            cause_paths=[s.path for s in (finding.root_cause.cause_spans if finding.root_cause else []) if s.path],
+            cause_paths=[
+                s.path for s in (finding.root_cause.cause_spans if finding.root_cause else []) if s.path
+            ],
             related_sites=[r.symbol or "" for r in finding.related_sites][:10],
             tests_added=list(candidate.tests_added),
             affected_symbol=self._handler_symbol(finding),
@@ -897,15 +979,15 @@ class Orchestrator:
             AgentName.FORTIFY, f"hardening:{finding.finding_id}", services=self._read_services()
         )
         outcome = self._run_step(
-            fortify_agent.SPEC, ctx, fortify_agent.build_prompt(data, self.intel),
+            fortify_agent.SPEC,
+            ctx,
+            fortify_agent.build_prompt(data, self.intel),
             input_ref=f"fortify:{finding.finding_id}",
         )
         if not isinstance(outcome.output, fortify_agent.FortifyOutput):
             finding.notes.append(f"fortify failed: {outcome.run.error_code}")
             return
-        tests, recommendations, drafts, hints = fortify_agent.to_records(
-            outcome.output, data, self.intel
-        )
+        tests, recommendations, drafts, hints = fortify_agent.to_records(outcome.output, data, self.intel)
         finding.regression_tests = tests
         finding.recommendations = recommendations
         finding.future_hypotheses = drafts
@@ -915,9 +997,12 @@ class Orchestrator:
             self.sink.on_record(finding, recommendation, "hardening_recommendation")
         self.sink.on_status(finding, finding.status)
         self._audit(
-            "finding.hardened", "finding", finding.finding_id,
+            "finding.hardened",
+            "finding",
+            finding.finding_id,
             regression_tests=[t.test_path for t in tests],
-            recommendations=len(recommendations), future_hypotheses=len(drafts),
+            recommendations=len(recommendations),
+            future_hypotheses=len(drafts),
         )
 
     # ------------------------------------------------------------------ helpers
@@ -928,7 +1013,9 @@ class Orchestrator:
                 if e.id == finding.hypothesis.entry_point_id:
                     return e.handler_symbol
         path = finding.hypothesis.cited_spans[0].path
-        line = finding.hypothesis.cited_spans[0].span.start_line if finding.hypothesis.cited_spans[0].span else 1
+        line = (
+            finding.hypothesis.cited_spans[0].span.start_line if finding.hypothesis.cited_spans[0].span else 1
+        )
         for s in self.intel.symbols():
             if s.path == path and s.start_line <= line <= s.end_line and s.kind != "class":
                 return s.qualified_name
