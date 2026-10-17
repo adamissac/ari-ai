@@ -69,9 +69,11 @@ describe('incident closure helpers', () => {
   }) as unknown as PatchView;
 
   it('pins patch diffs and Fortify tests as hash-carrying artifact evidence', () => {
-    const [opt] = patchEvidence('fnd_1', [view('accepted')]);
+    expect(patchEvidence('fnd_1', [view('accepted')], {})).toEqual([]);
+    const [opt] = patchEvidence('fnd_1', [view('accepted')], { art_diff: 'c'.repeat(64) });
     if (!opt) throw new Error('expected one evidence option');
-    expect(opt.ref).toMatchObject({ kind: 'artifact', artifact_id: 'art_diff', sha256: 'a'.repeat(64), provenance: 'agent:patch' });
+    expect(opt.ref).toMatchObject({ kind: 'artifact', artifact_id: 'art_diff', sha256: 'c'.repeat(64), provenance: 'agent:patch' });
+    expect(opt.label).toContain('stored copy redacted');
     expect(opt.regression).toBe(false);
     expect(opt.label).toContain('Verify accepted');
     const reg = regressionEvidence('fnd_1', 'art_test', 'b'.repeat(64));
