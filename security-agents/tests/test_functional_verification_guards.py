@@ -5,7 +5,12 @@ from types import SimpleNamespace
 import pytest
 
 from security_agents.contracts import PlatformError
-from security_agents.host_adapter import _functional_reproduced, _tests_passed, _write_generated_tests
+from security_agents.host_adapter import (
+    _functional_reproduced,
+    _pytest_list_truncated,
+    _tests_passed,
+    _write_generated_tests,
+)
 from security_agents.tools.services import parse_pytest
 
 TEST_PATH = "tests/generated/test_refund.py"
@@ -60,6 +65,26 @@ def test_success_requires_an_executed_run_without_skips_or_errors():
     assert parse_pytest("2 passed, 1 skipped in 0.1s")["skipped"] == 1
 
 
+def test_truncated_pytest_failure_list_is_not_complete_evidence():
+    lines = "\n".join(f"FAILED tests/test_x.py::test_{i}" for i in range(21))
+    parsed = parse_pytest(f"{lines}\n21 failed in 0.1s")
+    assert parsed["failed"] == 21
+    assert len(parsed["failing_tests"]) == 20
+    assert parsed["failing_truncated"] is True
+    assert _pytest_list_truncated(parsed)
+    assert not _functional_reproduced(
+        failed_run(
+            failed=21,
+            failing_tests=parsed["failing_tests"],
+            failing_truncated=True,
+        ),
+        [TEST_PATH],
+    )
+    complete = parse_pytest("FAILED tests/generated/test_refund.py::test_bound\n1 failed in 0.1s")
+    assert complete["failing_truncated"] is False
+    assert not _pytest_list_truncated(complete)
+
+
 def test_generated_tests_cannot_overwrite_existing_files_or_source(tmp_path):
     existing = tmp_path / "tests" / "test_existing.py"
     existing.parent.mkdir()
@@ -93,3 +118,23 @@ def test_platform_error_codes_map_onto_the_shared_catalog():
 
     shared_names = {e.value for e in shared_errors.ErrorCode}
     assert {e.value for e in ErrorCode} <= shared_names
+
+
+def test_every_error_code_referenced_in_the_package_exists():
+    """A missing member raises AttributeError inside error handlers (e.g. an AgentRun left running)."""
+    import re
+    from pathlib import Path
+
+    from security_agents.contracts import ErrorCode
+
+    root = Path(__file__).resolve().parents[1] / "security_agents"
+    names = {e.name for e in ErrorCode}
+    missing = sorted(
+        {
+            f"{path.relative_to(root)}:{m.group(1)}"
+            for path in root.rglob("*.py")
+            for m in re.finditer(r"\bErrorCode\.([A-Z_]+)\b", path.read_text(encoding="utf-8"))
+            if m.group(1) not in names
+        }
+    )
+    assert not missing, missing
