@@ -6,6 +6,7 @@ FakeTransport tests exercise the real gateway path without claiming live Claude 
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
 from pydantic import Field
@@ -19,7 +20,7 @@ from shared.intelligence import (
     ExpectationStatus,
 )
 
-from code_intelligence.models import IntelligenceError, StoredIndex, stable_id
+from code_intelligence.models import InferenceTrace, IntelligenceError, StoredIndex, stable_id
 
 if TYPE_CHECKING:
     from backend.llm import LLMGateway
@@ -36,15 +37,21 @@ class ExpectationProposals(StrictModel):
     proposals: list[InferenceProposal] = Field(max_length=10)
 
 
+@dataclass(frozen=True)
+class InferenceResult:
+    proposals: ExpectationProposals
+    trace: InferenceTrace
+
+
 class ExpectationProvider(Protocol):
-    def propose(self, pack: ContextPack) -> ExpectationProposals: ...
+    def propose(self, pack: ContextPack) -> InferenceResult: ...
 
 
 class ClaudeExpectationProvider:
     def __init__(self, gateway: LLMGateway) -> None:
         self.gateway = gateway
 
-    def propose(self, pack: ContextPack) -> ExpectationProposals:
+    def propose(self, pack: ContextPack) -> InferenceResult:
         result = self.gateway.run_tool_loop(
             agent="intelligence",
             system=(
@@ -62,7 +69,16 @@ class ClaudeExpectationProvider:
             max_invalid_outputs=1,
             max_tokens=2_000,
         )
-        return result.final
+        return InferenceResult(
+            result.final,
+            InferenceTrace(
+                model=result.model,
+                provider_mode=result.provider_mode,
+                turns=result.turns,
+                usage=result.usage,
+                tool_calls=result.tool_calls,
+            ),
+        )
 
 
 def validate_proposals(

@@ -6,11 +6,13 @@ repository registrations. Missing repositories/snapshots fail rather than fabric
 
 from __future__ import annotations
 
+import importlib
 import json
 import os
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 
 from shared.base import utcnow
 from shared.evidence import EvidenceKind, EvidenceRef, SourceSpan
@@ -34,6 +36,7 @@ from code_intelligence.extract import PythonExtractor, dependencies
 from code_intelligence.inference import ExpectationProvider, validate_proposals
 from code_intelligence.ingest import GitReader, Limits
 from code_intelligence.models import INDEX_VERSION, IntelligenceError, StoredIndex, stable_id
+from code_intelligence.persistence import PayloadIndexStore, PayloadStore
 from code_intelligence.retrieval import build_pack, delimited, estimate, neighbors
 from code_intelligence.store import IndexStore, SQLiteIndexStore
 
@@ -158,9 +161,9 @@ class IntelligenceService:
                 snapshot_ref=ref, purpose=ContextPurpose.review, token_budget=24_000
             )
             pack = build_pack(index, request)
-            index.expectations.extend(
-                validate_proposals(index, pack, self.expectation_provider.propose(pack))
-            )
+            inferred = self.expectation_provider.propose(pack)
+            index.expectations.extend(validate_proposals(index, pack, inferred.proposals))
+            index.inference_trace = inferred.trace
             index.snapshot.stats.expectations = len(index.expectations)
         self.store.put(index)
         return index
@@ -354,8 +357,14 @@ def build_service() -> IntelligenceService:
     """
     config = os.environ.get("INTELLIGENCE_REPOSITORIES_FILE")
     database = os.environ.get("INTELLIGENCE_DB_PATH")
-    if not config or not database:
-        raise IntelligenceError("Set INTELLIGENCE_REPOSITORIES_FILE and INTELLIGENCE_DB_PATH")
+    payload_factory = os.environ.get("INTELLIGENCE_PAYLOAD_STORE_FACTORY")
+    if not config or not (database or payload_factory):
+        raise IntelligenceError(
+            "Set INTELLIGENCE_REPOSITORIES_FILE and either "
+            "INTELLIGENCE_DB_PATH or INTELLIGENCE_PAYLOAD_STORE_FACTORY"
+        )
+    if database and payload_factory:
+        raise IntelligenceError("Choose exactly one intelligence persistence adapter")
     raw = json.loads(Path(config).read_text())
     registrations = [
         RepositoryBinding(
@@ -367,4 +376,14 @@ def build_service() -> IntelligenceService:
         )
         for item in raw
     ]
-    return IntelligenceService(SQLiteIndexStore(Path(database)), registrations)
+    store: IndexStore
+    if payload_factory:
+        module_name, separator, factory_name = payload_factory.partition(":")
+        if not separator or not module_name or not factory_name:
+            raise IntelligenceError("Payload store factory must use module:callable syntax")
+        factory = getattr(importlib.import_module(module_name), factory_name)
+        store = PayloadIndexStore(cast(PayloadStore, factory()))
+    else:
+        assert database is not None
+        store = SQLiteIndexStore(Path(database))
+    return IntelligenceService(store, registrations)

@@ -5,7 +5,7 @@ import sqlite3
 from pathlib import Path
 
 import pytest
-from conftest import commit
+from intel_test_helpers import commit
 from shared.base import utcnow
 from shared.intelligence import ContextPack, ContextPackRequest, Snapshot, SnapshotStatus
 

@@ -4,7 +4,7 @@ import shutil
 from pathlib import Path
 
 import pytest
-from conftest import commit
+from intel_test_helpers import commit
 from shared.intelligence import ContextPackRequest
 from test_service import service
 
