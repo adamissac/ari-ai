@@ -95,6 +95,8 @@ def check(
     if request.action == "run_check":
         if not request.check_category:
             return _deny(scope, now, "CATEGORY_REQUIRED")
-        if request.check_category not in scope.allowed_check_categories:
+        from shared.scope import check_category_allowed
+
+        if not check_category_allowed(request.check_category, scope.allowed_check_categories):
             return _deny(scope, now, "CATEGORY_NOT_ALLOWED", request.check_category[:80])
     return Decision(allowed=True, reason_code="OK", scope_id=scope.id, evaluated_at=now)

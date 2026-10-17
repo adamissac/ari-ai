@@ -199,3 +199,33 @@ def test_early_reporting_edges_match_security_agents_runtime() -> None:
         assert can_transition(src, AssessmentState.REPORTING)
     assert not can_transition(AssessmentState.SCOPE_CHECK, AssessmentState.REPORTING)
     assert not can_transition(AssessmentState.FUNCTIONAL_REVIEW, AssessmentState.REPORTING)
+
+
+def test_check_category_aliases_match_probe_library_ids() -> None:
+    from shared.scope import (
+        CheckCategory,
+        canonical_check_category,
+        check_category_allowed,
+    )
+
+    assert (
+        canonical_check_category("authorization.ownership")
+        is CheckCategory.access_control_ownership
+    )
+    assert canonical_check_category("input.bounds") is CheckCategory.input_validation_bounds
+    assert check_category_allowed(
+        "access_control.ownership", ["authorization.ownership", "input.bounds"]
+    )
+    assert check_category_allowed("input_validation.bounds", ["input.bounds"])
+    assert not check_category_allowed("access_control.ownership", ["input.bounds"])
+    scope = BY_NAME["AuthorizedScope"].model_validate_json(
+        (examples.FIXTURE_DIR / "AuthorizedScope.json").read_text()
+    )
+    assert [c.value for c in scope.allowed_check_categories] == [
+        "authorization.ownership",
+        "input.bounds",
+    ]
+    with pytest.raises(ValidationError):
+        BY_NAME["AuthorizedScope"].model_validate(
+            {**scope.model_dump(mode="json"), "allowed_check_categories": ["made.up.category"]}
+        )

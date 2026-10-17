@@ -67,3 +67,16 @@ def test_review_without_snapshot_uses_a_documented_synthetic_ref() -> None:
     assert seen[0].snapshot_id == f"snp_unindexed-{sha}"
     assert seen[0].index_version == "unindexed-checkout"
     assert seen[1].snapshot_id == seen[0].snapshot_id
+
+
+def test_functional_verify_is_labelled_none_not_a_model_provider() -> None:
+    """Deterministic functional Verify must not claim live/fake provider provenance (#84/#83 leftover)."""
+    import inspect
+
+    from security_agents.host_adapter import _verify_functional_patch
+
+    src = inspect.getsource(_verify_functional_patch)
+    assert 'provider_mode="none"' in src
+    assert 'model_id="deterministic:functional-verify"' in src
+    start = src.split("start_agent_run", 1)[1]
+    assert "provider_mode=provider_mode" not in start.split(")", 1)[0]

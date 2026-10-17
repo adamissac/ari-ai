@@ -1,5 +1,16 @@
 {
   "$defs": {
+    "CheckCategory": {
+      "description": "Probe template-library categories (SEC-005) plus published V0 fixture aliases.\n\nCanonical ids are the Probe library values. The two fixture strings are the\nsame categories and canonicalize onto them; they remain valid stored values\nso published ``AuthorizedScope`` fixtures round-trip unchanged.",
+      "enum": [
+        "access_control.ownership",
+        "input_validation.bounds",
+        "authorization.ownership",
+        "input.bounds"
+      ],
+      "title": "CheckCategory",
+      "type": "string"
+    },
     "ScopeTarget": {
       "additionalProperties": false,
       "description": "MVP permits only targets built from the connected repo inside our sandbox.",
@@ -42,8 +53,7 @@
   "properties": {
     "allowed_check_categories": {
       "items": {
-        "maxLength": 500,
-        "type": "string"
+        "$ref": "#/$defs/CheckCategory"
       },
       "title": "Allowed Check Categories",
       "type": "array"

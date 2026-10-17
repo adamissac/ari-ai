@@ -370,7 +370,7 @@ class AgentRun(StrictModel):
     input_ref: str
     output_ref: str | None = None
     model_id: str
-    provider_mode: Literal["live", "fake", "replay"]  # PROPOSED: honest provenance of model turns
+    provider_mode: Literal["live", "fake", "replay", "none"]
     usage: Usage = Field(default_factory=Usage)
     llm_turns: int = 0
     tool_calls: int = 0
