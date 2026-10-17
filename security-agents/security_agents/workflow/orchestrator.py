@@ -160,6 +160,7 @@ class AssessmentResult:
     usage: Usage = field(default_factory=Usage)
     error_code: ErrorCode | None = None
     error_detail: str | None = None
+    roe: Any = None
 
     def runs_by_agent(self) -> dict[str, list[AgentRun]]:
         out: dict[str, list[AgentRun]] = {}
@@ -265,6 +266,7 @@ class Orchestrator:
         self._completed_steps: dict[str, StepOutcome] = {}
         self._audit_prev_hash = "0" * 64
         self._baseline_failing: list[str] = []
+        self.roe: Any = None
         self.workdir.mkdir(parents=True, exist_ok=True)
 
     # ------------------------------------------------------------------ plumbing
@@ -331,7 +333,33 @@ class Orchestrator:
             audit=self.audit,
             kill_switch=self.kill_switch,
             now=self.now,
+            roe=self.roe,
         )
+
+    def _issue_roe(self) -> Any:
+        from ..standards.roe import RoeError, build_roe
+
+        scope_event = self.result.audit[-1].id if self.result.audit else None
+        try:
+            roe = build_roe(
+                self.config.scope,
+                self.library.list_public(),
+                audit_event_ids=[scope_event] if scope_event else [],
+            )
+        except RoeError as error:
+            self._audit("roe.refused", "scope", self.config.scope.id, detail=str(error)[:300])
+            return None
+        self._audit(
+            "roe.issued",
+            "rules_of_engagement",
+            roe.id,
+            scope_id=roe.scope_id,
+            digest=roe.digest,
+            permitted_templates=roe.permitted_check_templates,
+            valid_until=roe.valid_until.isoformat(),
+        )
+        self.result.roe = roe
+        return roe
 
     def _read_services(self) -> dict[str, Any]:
         return {"intel": self.intel, "history": self.history, "checks": self.library}
@@ -418,6 +446,7 @@ class Orchestrator:
         )
         if not decision.allowed:
             return self._fail(ErrorCode.SCOPE_DENIED, f"{decision.reason_code} {decision.detail}".strip())
+        self.roe = self._issue_roe()
 
         # ---- INDEXING (code intelligence is an upstream subsystem)
         self._goto(AssessmentState.INDEXING, self.intel.provenance().get("status", ""))

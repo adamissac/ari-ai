@@ -38,7 +38,8 @@ ignore = ["E501", "B008"]
 
 [tool.ruff.lint.per-file-ignores]
 # test helpers read better as dict(...) kwargs mirroring the model constructors
-"tests/*" = ["C408", "C416", "RUF059", "F841"]
+"tests/*" = ["C408", "C416", "RUF059", "F841", "E741"]
+"security_agents/standards/cvss.py" = ["E741"]
 
 [tool.mypy]
 python_version = "3.12"

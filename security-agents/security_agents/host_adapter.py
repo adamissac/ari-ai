@@ -504,7 +504,7 @@ class HostOrchestrator:
         if not bound and target is None:
             raise PlatformError(
                 ErrorCode.SNAPSHOT_NOT_READY,
-                "no target directory: set SECURITY_AGENTS_TARGET_DIR or pass target_dir",
+                "no trusted checkout (REPOSITORY_BINDINGS_FILE); for dev/test set SECURITY_AGENTS_TARGET_DIR",
             )
         checkpoint = host.load_checkpoint("security_agents.approval.v1")
         resuming = str(getattr(host.assessment, "state", "")).upper() == "AWAITING_APPROVAL"
@@ -572,6 +572,7 @@ class HostOrchestrator:
             decision = check(scope, ActionRequest(action="assessment_start"), utcnow())
             if not decision.allowed:
                 raise PlatformError(ErrorCode.SCOPE_DENIED, decision.reason_code)
+            orchestrator.roe = orchestrator._issue_roe()
             self._resume(orchestrator, host)
             return
         # The host already performed the scope gate and the first transition.

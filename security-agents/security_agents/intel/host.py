@@ -13,6 +13,9 @@ from .code_intelligence_adapter import CodeIntelligenceAdapter
 
 
 def bindings_path() -> Path | None:
+    explicit = os.environ.get("REPOSITORY_BINDINGS_FILE")
+    if explicit:
+        return Path(explicit)
     try:
         from backend.settings import get_settings
         configured = get_settings().repository_bindings_file

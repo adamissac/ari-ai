@@ -1,0 +1,281 @@
+{
+ "standard": "CVSS v3.1 base score test vectors",
+ "version": "3.1",
+ "vector_count": 34,
+ "origin": "NVD CVE API 2.0 cvssMetricV31 entries (NVD primary and CNA secondary), scored by the named source",
+ "vectors": [
+  {
+   "vector": "CVSS:3.1/AV:A/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N",
+   "base_score": 5.3,
+   "rating": "medium",
+   "cve": "CVE-2007-4786",
+   "source": "nvd@nist.gov",
+   "type": "Primary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:A/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:H",
+   "base_score": 9.3,
+   "rating": "critical",
+   "cve": "CVE-2013-6014",
+   "source": "nvd@nist.gov",
+   "type": "Primary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:A/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+   "base_score": 8.8,
+   "rating": "high",
+   "cve": "CVE-2011-1265",
+   "source": "nvd@nist.gov",
+   "type": "Primary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:A/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+   "base_score": 6.5,
+   "rating": "medium",
+   "cve": "CVE-2011-3363",
+   "source": "nvd@nist.gov",
+   "type": "Primary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H",
+   "base_score": 8.8,
+   "rating": "high",
+   "cve": "CVE-2008-3431",
+   "source": "nvd@nist.gov",
+   "type": "Primary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+   "base_score": 7.8,
+   "rating": "high",
+   "cve": "CVE-1999-1549",
+   "source": "nvd@nist.gov",
+   "type": "Primary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N",
+   "base_score": 5.5,
+   "rating": "medium",
+   "cve": "CVE-2000-0552",
+   "source": "nvd@nist.gov",
+   "type": "Primary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:H",
+   "base_score": 7.1,
+   "rating": "high",
+   "cve": "CVE-2001-0006",
+   "source": "nvd@nist.gov",
+   "type": "Primary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:N",
+   "base_score": 5.5,
+   "rating": "medium",
+   "cve": "CVE-1999-1386",
+   "source": "nvd@nist.gov",
+   "type": "Primary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
+   "base_score": 5.5,
+   "rating": "medium",
+   "cve": "CVE-1999-0783",
+   "source": "nvd@nist.gov",
+   "type": "Primary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+   "base_score": 7.8,
+   "rating": "high",
+   "cve": "CVE-2021-40444",
+   "source": "nvd@nist.gov",
+   "type": "Secondary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:L/I:N/A:N",
+   "base_score": 3.3,
+   "rating": "low",
+   "cve": "CVE-2014-8134",
+   "source": "nvd@nist.gov",
+   "type": "Primary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:L/A:N",
+   "base_score": 3.3,
+   "rating": "low",
+   "cve": "CVE-2002-1869",
+   "source": "nvd@nist.gov",
+   "type": "Primary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:L/I:L/A:N",
+   "base_score": 4.2,
+   "rating": "medium",
+   "cve": "CVE-2014-2532",
+   "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+   "type": "Secondary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:L/A:N",
+   "base_score": 3.7,
+   "rating": "low",
+   "cve": "CVE-2015-4000",
+   "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+   "type": "Secondary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:L/I:N/A:N",
+   "base_score": 3.4,
+   "rating": "low",
+   "cve": "CVE-2014-3566",
+   "source": "nvd@nist.gov",
+   "type": "Primary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H",
+   "base_score": 9.9,
+   "rating": "critical",
+   "cve": "CVE-2009-3616",
+   "source": "nvd@nist.gov",
+   "type": "Primary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+   "base_score": 8.8,
+   "rating": "high",
+   "cve": "CVE-2001-1471",
+   "source": "nvd@nist.gov",
+   "type": "Primary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H",
+   "base_score": 10.0,
+   "rating": "critical",
+   "cve": "CVE-2021-44228",
+   "source": "nvd@nist.gov",
+   "type": "Primary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+   "base_score": 9.8,
+   "rating": "critical",
+   "cve": "CVE-1999-0426",
+   "source": "nvd@nist.gov",
+   "type": "Primary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N",
+   "base_score": 9.1,
+   "rating": "critical",
+   "cve": "CVE-2021-26855",
+   "source": "secure@microsoft.com",
+   "type": "Secondary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:H",
+   "base_score": 9.1,
+   "rating": "critical",
+   "cve": "CVE-2018-13379",
+   "source": "psirt@fortinet.com",
+   "type": "Secondary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+   "base_score": 7.5,
+   "rating": "high",
+   "cve": "CVE-1999-0236",
+   "source": "nvd@nist.gov",
+   "type": "Primary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+   "base_score": 7.5,
+   "rating": "high",
+   "cve": "CVE-2000-0342",
+   "source": "nvd@nist.gov",
+   "type": "Primary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+   "base_score": 7.5,
+   "rating": "high",
+   "cve": "CVE-1999-1568",
+   "source": "nvd@nist.gov",
+   "type": "Primary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+   "base_score": 5.3,
+   "rating": "medium",
+   "cve": "CVE-2015-3195",
+   "source": "nvd@nist.gov",
+   "type": "Primary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:H/A:L",
+   "base_score": 8.8,
+   "rating": "high",
+   "cve": "CVE-2021-40444",
+   "source": "secure@microsoft.com",
+   "type": "Secondary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+   "base_score": 6.1,
+   "rating": "medium",
+   "cve": "CVE-2003-0981",
+   "source": "nvd@nist.gov",
+   "type": "Primary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+   "base_score": 8.8,
+   "rating": "high",
+   "cve": "CVE-2023-4863",
+   "source": "nvd@nist.gov",
+   "type": "Primary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N",
+   "base_score": 8.1,
+   "rating": "high",
+   "cve": "CVE-2020-0601",
+   "source": "nvd@nist.gov",
+   "type": "Primary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:P/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+   "base_score": 6.8,
+   "rating": "medium",
+   "cve": "CVE-2014-2005",
+   "source": "nvd@nist.gov",
+   "type": "Primary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:P/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:H",
+   "base_score": 6.1,
+   "rating": "medium",
+   "cve": "CVE-2011-1776",
+   "source": "nvd@nist.gov",
+   "type": "Primary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:P/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+   "base_score": 4.6,
+   "rating": "medium",
+   "cve": "CVE-2007-5460",
+   "source": "nvd@nist.gov",
+   "type": "Primary"
+  },
+  {
+   "vector": "CVSS:3.1/AV:P/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+   "base_score": 4.6,
+   "rating": "medium",
+   "cve": "CVE-2014-2019",
+   "source": "nvd@nist.gov",
+   "type": "Primary"
+  }
+ ],
+ "scope_changed_count": 7
+}

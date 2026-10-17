@@ -1,0 +1,325 @@
+{
+ "generated_by": "security_agents.standards.refresh",
+ "generated_at": "2026-10-17T05:14:24Z",
+ "note": "Identifiers and versions are taken from the primary sources listed here. Nothing in this directory is authored from memory.",
+ "sources": {
+  "attack_enterprise": {
+   "name": "attack_enterprise",
+   "file": "attack_enterprise.json",
+   "file_sha256": "6659ecc0bd39db3ee09bcde25c3c07f8207487a0c2f3b0e66eccc27b69fb3aba",
+   "version": "20.0",
+   "version_source": "collections[Enterprise ATT&CK].versions[max].version in index.json",
+   "retrieved_at": "2026-10-17T04:57:10Z",
+   "license_note": "ATT&CK is free to use with attribution; see the MITRE ATT&CK Terms of Use",
+   "landing_page": "https://attack.mitre.org/resources/legal-and-branding/terms-of-use/",
+   "downloads": [
+    {
+     "url": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/index.json",
+     "sha256": "c2a0a71ffc6f0242e7ea00cbac0fe64bc71d8415b21af05b8424d409bd562d7f",
+     "bytes": 33164
+    },
+    {
+     "url": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack-20.0.json",
+     "sha256": "81113ba98afa2928f3dcff62022539f7ce30c315c32e14422f11ff95ce534352",
+     "bytes": 55271014
+    }
+   ],
+   "notes": [
+    "bundle enterprise-attack-20.0.json"
+   ],
+   "unverified": []
+  },
+  "cvss31": {
+   "name": "cvss31",
+   "file": "cvss31.json",
+   "file_sha256": "46e803c5c4923be3dff0889a7edb88498eb2c8c7fb5a44eb8789ca2ec9162327",
+   "version": "3.1",
+   "version_source": "FIRST CVSS v3.1 specification document, section 7.4 Table 16 and Table 14",
+   "retrieved_at": "2026-10-17T05:14:24Z",
+   "license_note": "CVSS is owned by FIRST; free to use with attribution",
+   "landing_page": "https://www.first.org/cvss/",
+   "downloads": [
+    {
+     "url": "https://www.first.org/cvss/v3.1/specification-document",
+     "sha256": "9d42bcf56128811c055d87365e8118f97abb134962cfb444cec455fd513a01aa",
+     "bytes": 89323
+    }
+   ],
+   "notes": [
+    "all weights, bands and constants parsed from the specification"
+   ],
+   "unverified": []
+  },
+  "cvss31_vectors": {
+   "name": "cvss31_vectors",
+   "file": "cvss31_vectors.json",
+   "file_sha256": "5e7b0d30a4ef9c80fe6ca5dbdd9fdaf7fd8e4dd5c675bd48eecddbaefb3c83c3",
+   "version": "3.1",
+   "version_source": "NVD CVE API 2.0 cvssMetricV31 entries",
+   "retrieved_at": "2026-10-17T05:05:00Z",
+   "license_note": "NVD data is public domain; see https://nvd.nist.gov/general/FAQ-Sections/General-FAQs",
+   "landing_page": "https://nvd.nist.gov/developers/vulnerabilities",
+   "downloads": [
+    {
+     "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cvssV3Severity=CRITICAL&resultsPerPage=20&startIndex=0",
+     "sha256": "c570ea2ebd1122c44030957b000d4eff4b6e44cc1a3d05a1293d290698483069",
+     "bytes": 79840
+    },
+    {
+     "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cvssV3Severity=HIGH&resultsPerPage=20&startIndex=0",
+     "sha256": "25f918f4316723b588fa84e02748440471a36a83dce0f0d5a93022889c6ffcde",
+     "bytes": 56314
+    },
+    {
+     "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cvssV3Severity=MEDIUM&resultsPerPage=20&startIndex=0",
+     "sha256": "04abd04b83029c895edd7a91ef6bb94b7b41dc3a6b9de72f9d40ab08248ebf27",
+     "bytes": 70033
+    },
+    {
+     "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cvssV3Severity=LOW&resultsPerPage=20&startIndex=0",
+     "sha256": "21e8a705f5e38ccfb42a3abc9702d80fc38da4cf37467db61c23d1a7392e8b9c",
+     "bytes": 318293
+    },
+    {
+     "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cvssV3Metrics=AV:P&resultsPerPage=5&startIndex=0",
+     "sha256": "ef561381efd29f2df3caf37420226533a7c85cd992a3995d8b6d6ad95a39526f",
+     "bytes": 20144
+    },
+    {
+     "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cvssV3Metrics=AV:A&resultsPerPage=5&startIndex=0",
+     "sha256": "1142a51f3c6251bff7a18e992e1428582eff41df764e002a1880d7533ae10175",
+     "bytes": 23234
+    },
+    {
+     "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cvssV3Metrics=PR:H/UI:N/S:C&resultsPerPage=5&startIndex=0",
+     "sha256": "c2ec89d97abeed263ad4331f9d4978e7a0dbbf4a40a02ab6014ea2d2c4635739",
+     "bytes": 24399
+    },
+    {
+     "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cvssV3Metrics=PR:L/UI:N/S:C&resultsPerPage=5&startIndex=0",
+     "sha256": "ce3dee3bf2652c6f7dd22f6db0ecb6adfb24a7d930798ac1f9a35a84de519be3",
+     "bytes": 50634
+    },
+    {
+     "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cvssV3Metrics=AV:N/AC:L/PR:N/UI:R/S:C&resultsPerPage=5&startIndex=0",
+     "sha256": "dd809b2d0a3ac2a33183ed0d7691c53f840f1d90e08a9f66d3282d49bbf06b05",
+     "bytes": 18749
+    },
+    {
+     "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cvssV3Metrics=C:N/I:N/A:L&resultsPerPage=5&startIndex=0",
+     "sha256": "d3b1b86d6499e19290c84f39aefd0f39988843784d52a47375b07fa833cc4200",
+     "bytes": 99809
+    },
+    {
+     "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2021-44228",
+     "sha256": "42036478e4e2c26579d4cd2991e96c5a3274aca20d85e033c31bc2e51a18636a",
+     "bytes": 87139
+    },
+    {
+     "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2019-0708",
+     "sha256": "4c571c9fda427a87d89042e6b6d395b71524e241c4e2399c1910068cf15562c9",
+     "bytes": 37042
+    },
+    {
+     "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2021-34527",
+     "sha256": "6c334935d0cee567788fd0d44acedf01b3f588b476480122aaa498ad5bf510d8",
+     "bytes": 14325
+    },
+    {
+     "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2022-22965",
+     "sha256": "1fe869bd6599cc35615a64de6c91b0442ba6a06aeddf5462bb87f49d8178a7ee",
+     "bytes": 23347
+    },
+    {
+     "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2014-0160",
+     "sha256": "1e084f7d9a60eb8cefeec4aa4689fae9bd99655a1b950bd54e733b13e0c244f0",
+     "bytes": 53008
+    },
+    {
+     "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2017-5638",
+     "sha256": "8ef5135da4b58b7536174159bd805906932107058160fa90f770af2e67b2aa4c",
+     "bytes": 19028
+    },
+    {
+     "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2021-26855",
+     "sha256": "fb1a8e1bbfbcca7be2284dcb3ee2bbf613c71bbc10c04821fecba16833914401",
+     "bytes": 13606
+    },
+    {
+     "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2020-1472",
+     "sha256": "765dd4d7a424c5fca57c8435f9eb746a7cff24b4bb787f1134a3b73123f8d73d",
+     "bytes": 17902
+    },
+    {
+     "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2018-13379",
+     "sha256": "03ac94082165e410e3fd7a15536f0b114b298c158e2818c93e0b6ecd9aa9c1d7",
+     "bytes": 5235
+    },
+    {
+     "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2022-0847",
+     "sha256": "67d461fef884b729816ae9a18f7f3c45f26fa5ca92d99271edb62bf4c7feffaa",
+     "bytes": 17822
+    },
+    {
+     "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2021-3156",
+     "sha256": "66768376d382c80def6dc4b5dc9e3536507c64cf9697029a9f305be2e00c1828",
+     "bytes": 21582
+    },
+    {
+     "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2019-11510",
+     "sha256": "197bd9cbc1e532d6d22fe9178b2a88d89204479386a3b6c78947021c35f5b712",
+     "bytes": 12563
+    },
+    {
+     "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2021-21972",
+     "sha256": "6313f1fc77869dba4286686184e2c1b635e52678dd706daca6a69b10691a3265",
+     "bytes": 12086
+    },
+    {
+     "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2019-19781",
+     "sha256": "494b0aa0c5e59814c0dd449e8d7910d5108e262f9105072994e26e0306868cf0",
+     "bytes": 9037
+    },
+    {
+     "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2023-4863",
+     "sha256": "ecac8f29e41995a17c7e052e987a9ea2540f095e4d682a77af55c53af41cbdfe",
+     "bytes": 20895
+    },
+    {
+     "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2022-26134",
+     "sha256": "bcc010777ba1b7c6698f00397483d7ee46c24b30abe1f05ba5b8e39ab7c6fc18",
+     "bytes": 11819
+    },
+    {
+     "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2020-0601",
+     "sha256": "7bfc111b80c60fbb893649b2d9237c2b7c331b23c084f559aef051d2ecd9c662",
+     "bytes": 11382
+    },
+    {
+     "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2021-40444",
+     "sha256": "9e9abc85d8debb0946fde1e2007df9d7fea5c410193d76e7433c9d89068cbec0",
+     "bytes": 14606
+    }
+   ],
+   "notes": [
+    "34 official vector and score pairs"
+   ],
+   "unverified": []
+  },
+  "cwe": {
+   "name": "cwe",
+   "file": "cwe.json",
+   "file_sha256": "e3637f8697a163e48288e746f750d81f6fe5558020b348a7e24fd3207faea381",
+   "version": "4.20",
+   "version_source": "Weakness_Catalog/@Version in cwec_latest.xml",
+   "retrieved_at": "2026-10-17T04:58:52Z",
+   "license_note": "CWE is free to use with attribution; see https://cwe.mitre.org/about/termsofuse.html",
+   "landing_page": "https://cwe.mitre.org/data/downloads.html",
+   "downloads": [
+    {
+     "url": "https://cwe.mitre.org/data/xml/cwec_latest.xml.zip",
+     "sha256": "3976f599e5e5200219a3108bb896d06e2a88fbb293369e1883cb423a5e9d7d50",
+     "bytes": 2021351
+    }
+   ],
+   "notes": [
+    "catalog date 2026-04-30"
+   ],
+   "unverified": []
+  },
+  "d3fend": {
+   "name": "d3fend",
+   "file": "d3fend.json",
+   "file_sha256": "a00386efc67a846ecb8b9dd9dbeff0631d8eff9044d0b2ac88919c7e680857c3",
+   "version": "1.6.0",
+   "version_source": "owl:Ontology/owl:versionInfo in d3fend.json",
+   "retrieved_at": "2026-10-17T04:57:48Z",
+   "license_note": "ontology declares dcterms:license='MIT'",
+   "landing_page": "https://d3fend.mitre.org/resources/legal/",
+   "downloads": [
+    {
+     "url": "https://d3fend.mitre.org/ontologies/d3fend.json",
+     "sha256": "e1546d432c6aa64d45b62dd9e9484b0774ae84de7ff3605ff9dd4e20278957bf",
+     "bytes": 4833645
+    }
+   ],
+   "notes": [
+    "release date 2026-08-31T00:12:00+00:00"
+   ],
+   "unverified": []
+  },
+  "nist_sp_800_115": {
+   "name": "nist_sp_800_115",
+   "file": "nist_sp_800_115.json",
+   "file_sha256": "a4c2460b82911f0b85d03c17e5d8fda7cba0add3d2e5e0a2af317d7016d80ca3",
+   "version": "September 2008",
+   "version_source": "NIST CSRC publication detail page and the published PDF",
+   "retrieved_at": "2026-10-17T05:14:23Z",
+   "license_note": "NIST publications are public domain within the United States",
+   "landing_page": "https://csrc.nist.gov/pubs/sp/800/115/final",
+   "downloads": [
+    {
+     "url": "https://csrc.nist.gov/pubs/sp/800/115/final",
+     "sha256": "3e638193c22265650b098e39a82752da9eaa0c4ccf774f76e901823944af4144",
+     "bytes": 45549
+    },
+    {
+     "url": "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-115.pdf",
+     "sha256": "58e5ed41e5c8ca34ce14fd80b70f118f2c6d613d1647bc307edca30bcc45f063",
+     "bytes": 544047
+    }
+   ],
+   "notes": [
+    "CSRC status Final"
+   ],
+   "unverified": []
+  },
+  "owasp_api": {
+   "name": "owasp_api",
+   "file": "owasp_api.json",
+   "file_sha256": "3fb81d3617f9b6c1ad90a3a1f12dca4097da824670c41aa57209b7d94b7cc30e",
+   "version": "2023",
+   "version_source": "editions/ directory listing in the OWASP/API-Security repository",
+   "retrieved_at": "2026-10-17T04:57:48Z",
+   "license_note": "see the OWASP API Security project repository LICENSE",
+   "landing_page": "https://owasp.org/API-Security/",
+   "downloads": [
+    {
+     "url": "https://api.github.com/repos/OWASP/API-Security/contents/editions",
+     "sha256": "2049b0d63fe7c36734edd718a1aa92e7e6e105cb604d74b12007a4aa1f949ecb",
+     "bytes": 1381
+    },
+    {
+     "url": "https://raw.githubusercontent.com/OWASP/API-Security/master/editions/2023/en/0x11-t10.md",
+     "sha256": "c396a9fc70a64ea6bccba608b482a99750f00f0ad6c283d6fbdd5c4d936040a3",
+     "bytes": 4331
+    }
+   ],
+   "notes": [
+    "editions present: 2019, 2023"
+   ],
+   "unverified": []
+  },
+  "owasp_llm": {
+   "name": "owasp_llm",
+   "file": "owasp_llm.json",
+   "file_sha256": "4595a164bbd8cd33e83755a50959aa413ab24f264eb13d1965eccd455cf0e548",
+   "version": "2025",
+   "version_source": "LLMnn:YYYY identifiers on the OWASP GenAI project page",
+   "retrieved_at": "2026-10-17T04:58:53Z",
+   "license_note": "see the OWASP GenAI Security Project site terms",
+   "landing_page": "https://genai.owasp.org/llm-top-10/",
+   "downloads": [
+    {
+     "url": "https://genai.owasp.org/llm-top-10/",
+     "sha256": "1af8e3885c562352ea58c65af74330b34af69c6f7dac989e5a6b901b6b731ff7",
+     "bytes": 924158
+    }
+   ],
+   "notes": [
+    "titles taken from the anchor text of each risk on the project page"
+   ],
+   "unverified": []
+  }
+ }
+}
