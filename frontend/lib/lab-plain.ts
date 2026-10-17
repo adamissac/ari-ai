@@ -96,3 +96,45 @@ export function tradeoffNote(bundle: DefenseLabBundle): string | null {
   if (!best || lost === null || lost < 50) return null;
   return `No single measure tells the whole story: "${policyName(best.policy)}" has the best uptime, but the attacker reached its goal in ${lost.toFixed(1)}% of its games.`;
 }
+
+/** Plain names for the held-out scenarios; unknown names fall back to a de-snaked id. */
+export const SCENARIO_WORDS: Record<string, { name: string; note: string }> = {
+  eval_aggressive_noisy: { name: 'Loud, aggressive attacker', note: 'Moves fast and sets off many alerts.' },
+  eval_shifted_severity: { name: 'Weak spots moved', note: 'The most vulnerable machines differ from training.' },
+  eval_stealthy_lowsignal: { name: 'Quiet, stealthy attacker', note: 'Moves slowly and leaves few alerts.' },
+};
+export const scenarioName = (id: string): string => SCENARIO_WORDS[id]?.name ?? id.replace(/^eval_/, '').replaceAll('_', ' ');
+
+/** Plain names for the eight reward components recorded per step. */
+export const REWARD_WORDS: Record<string, string> = {
+  invalid_action: 'Invalid moves',
+  action_cost: 'Cost of acting',
+  escalation_cost: 'Calling a person',
+  disruption: 'Disrupting services',
+  adversary_progress: 'Attacker progress',
+  containment: 'Containing the attacker',
+  impact: 'Attack reached its goal',
+  terminal: 'End of game',
+};
+export const rewardWord = (key: string): string => REWARD_WORDS[key] ?? key.replaceAll('_', ' ');
+
+/**
+ * One plain sentence comparing the trained defender with the baselines on the two headline
+ * measures, using only bundle values. Null when the trained policy or the measures are missing.
+ */
+export function keyTakeaway(bundle: DefenseLabBundle): string | null {
+  const metric = (key: string) => SCORE_METRICS.find(m => m.key === key);
+  const compromise = metric('compromise_rate');
+  const uptime = metric('service_uptime');
+  if (!compromise || !uptime) return null;
+  const c = scoreboard(bundle, compromise);
+  const u = scoreboard(bundle, uptime);
+  const ai = (cells: ScoreCell[]) => cells.find(x => x.policy === 'ddqn')?.value ?? null;
+  const other = (cells: ScoreCell[], id: string) => cells.find(x => x.policy === id)?.value ?? null;
+  const aiC = ai(c); const aiU = ai(u);
+  const noopC = other(c, 'noop'); const rulesU = other(u, 'threshold_rules');
+  if (aiC === null || aiU === null) return null;
+  const vsNoop = noopC === null ? '' : ` (with no defense: ${noopC.toFixed(1)}%)`;
+  const vsRules = rulesU === null ? '' : ` (simple rules: ${rulesU.toFixed(1)}%)`;
+  return `The trained AI defender let the attacker reach its goal in ${aiC.toFixed(1)}% of games${vsNoop}, but kept services available ${aiU.toFixed(1)}% of the time${vsRules}.`;
+}
