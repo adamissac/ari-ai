@@ -5,7 +5,7 @@ Branch: `feat/alan/host-finding-persistence`
 Current task: finding lifecycle + durable approval resume + functional Verify on the host path
 Last remote sync: 2026-10-17T08:05Z — merged `origin/main` @ `03323cd` (#69 standards follow-up, #70 Sai status)
 API/contract dependencies: `shared` V0, `backend.host` (`save_checkpoint` / `load_checkpoint` / `set_finding_status`), `code_review.api` functional helpers (#68)
-Recent PR/commit: this branch (draft PR to main)
+Recent PR/commit: https://github.com/adamissac/hackatl-agentic-security/pull/73 (`feat/alan/host-finding-persistence`)
 Blockers: live seven-agent run (issue #10, no key); Docker images (INFRA-005); PR #35 should be **closed**, not merged
 Next action: land this PR; comment on #35; Vihaan re-check finding status in the UI
 
