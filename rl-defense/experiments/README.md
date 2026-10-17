@@ -179,3 +179,44 @@ What this shows:
   the reward, which requires a new env version (`-v1`) per docs/17, so it is out of scope here.
 - Reward-preserving options: penalize disruptive actions in checkpoint-selection scoring, or
   add false disruption as a tie-breaker in the selection rule.
+
+### Round 4 — false disruption (pre-registered before any round-4 run)
+
+**Goal:** cut v1's false disruption (held-out 75%, v0 54%) without giving up its gains.
+The reward and environment stay fixed (`DefenseSimEnv-v0`). Selection uses only training
+configs, validation training seeds 10–14 and validation episode seeds 2000–2099.
+
+**Levers (all reward-preserving, all off by default, so v0 and v1 retrain bit-identically):**
+- `disruption_margin` τ (deployment-time greedy rule): take rate_limit/isolate only if its
+  Q exceeds the best valid non-disruptive action by at least τ. Training behaviour and
+  in-training checkpoint selection are unaffected, so τ can be scored post hoc on the
+  round-3 v1-setting checkpoints (`from_run: r3/r3_1m_dr_nstep3_sel`). The τ grid was set
+  from a Q-gap calibration on **calibration seeds 6000–6029** (training configs ×1, disjoint
+  from every other range). For v1's disruptive greedy choices the gap median is 0.09, and
+  low-gap choices are more often benign (87% below τ = 0.1 vs 71% above), so the grid is
+  {0.05, 0.10, 0.15, 0.25}; τ ≥ 0.25 would block about 90% of disruptive choices.
+- `eps_disruptive_weight` 0.25: random exploration picks rate_limit/isolate at a quarter of
+  the weight of other valid actions (retrained, v1 setting otherwise).
+- `select_fd_penalty` 0.2: in-training checkpoint selection scores return − 0.2 × false
+  disruption (percentage points) on the selection seeds 5000–5029 (retrained).
+
+Candidates: `r4_margin005/010/015/025` (post hoc), `r4_explore_w025`, `r4_sel_fd02`,
+`r4_sel_fd02_explore` (retrained, 5 seeds each).
+
+**Reference:** the v1 setting trained on validation seeds 10–14 (`r3_1m_dr_nstep3_sel`,
+identical code path; 95% t-intervals over the 5 seeds): robust return −32.79 [−39.29, −26.28],
+×1 return −22.46 [−24.59, −20.33], robust db loss 1.84% [1.20, 2.48], ×1 compromise 4.47%
+[−4.57, 13.50], ×1 false disruption 75.83%. (×1 db loss is 0.0% on every seed, so its
+interval is degenerate; robust db loss is used instead.)
+
+**Pre-registered winning rule.** A candidate wins only if **all** hold (means over its 5
+validation seeds):
+1. ×1 false disruption ≤ **65.83%** (at least 10 points below the reference);
+2. robust return ≥ **−39.29** and ×1 return ≥ **−24.59**;
+3. robust db loss ≤ **2.48%**;
+4. ×1 compromise ≤ **13.50%**.
+
+If several win: the highest robust return; within one std of it, the lowest ×1 false
+disruption. The single winner goes to `experiments/final.py` (seeds 0–4, held-out once). If
+none wins, v1 stays current, the best candidate's numbers are reported here, and no
+held-out evaluation is run.

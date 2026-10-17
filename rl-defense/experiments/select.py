@@ -29,7 +29,7 @@ VAL_TRAIN_SEEDS = (10, 11, 12)
 VAL_EPISODE_SEEDS = range(2000, 2100)
 VAL_FACTORS = (0.5, 1.0, 1.5, 2.0, 2.5)
 FORBIDDEN_EPISODE_SEEDS = (*range(1000, 1100), *range(3000, 3050), *range(5000, 5030))
-TRAIN_OPTION_KEYS = ("adversary_scale", "select_every", "select_start")
+TRAIN_OPTION_KEYS = ("adversary_scale", "select_every", "select_start", "select_fd_penalty")
 FORBIDDEN_TRAIN_SEEDS = (0, 1, 2, 3, 4)
 NODE_NAMES = ("gateway", "api", "auth", "payments", "db")
 METRICS = (
@@ -44,11 +44,24 @@ METRICS = (
 RESULTS_DIR = Path(__file__).resolve().parent / "results"
 
 
+POSTHOC_OVERRIDES = ("disruption_margin",)  # deployment-only settings, no retraining needed
+
+
 def load_candidate(path: Path) -> tuple[str, int, dict[str, Any], dict[str, Any]]:
-    """Return (name, steps, DDQNConfig overrides, train() keyword options)."""
+    """Return (name, steps, DDQNConfig overrides, train() keyword options).
+
+    A candidate with ``from_run: <round>/<candidate>`` is evaluated post hoc: the
+    checkpoints of that earlier validation run are reused (same validation seeds) and only
+    deployment-time overrides (``POSTHOC_OVERRIDES``) are applied. Its ``from_run`` is
+    returned in the options under the key ``from_run``."""
     data = yaml.safe_load(path.read_text()) or {}
     steps = int(data.pop("steps", 200_000))
+    from_run = data.pop("from_run", None)
     opts = {k: data.pop(k) for k in TRAIN_OPTION_KEYS if k in data}
+    if from_run is not None:
+        if set(data) - set(POSTHOC_OVERRIDES):
+            raise ValueError(f"post-hoc candidate may only override {POSTHOC_OVERRIDES}")
+        opts["from_run"] = str(from_run)
     if "adversary_scale" in opts:
         opts["adversary_scale"] = tuple(opts["adversary_scale"])
     return path.stem, steps, data, opts
@@ -98,17 +111,29 @@ def run_job(
     assert not set(VAL_EPISODE_SEEDS) & set(FORBIDDEN_EPISODE_SEEDS)
     configs = load_configs(default_config_paths("train"))
     assert all(c.split == "train" for c in configs)
-    run_dir = Path(run_root) / name
-    manifest = train(
-        configs,
-        seed,
-        steps,
-        run_dir,
-        DDQNConfig(**overrides),
-        log_every=20_000,
-        **(train_options or {}),
-    )
-    policy = DDQNPolicy(run_dir / f"ddqn_seed{seed}.pt")
+    train_options = dict(train_options or {})
+    from_run = train_options.pop("from_run", None)
+    if from_run is None:
+        run_dir = Path(run_root) / name
+        manifest = train(
+            configs,
+            seed,
+            steps,
+            run_dir,
+            DDQNConfig(**overrides),
+            log_every=20_000,
+            **train_options,
+        )
+        policy = DDQNPolicy(run_dir / f"ddqn_seed{seed}.pt")
+    else:
+        run_dir = Path(run_root).parent / from_run
+        ckpt = run_dir / f"ddqn_seed{seed}.pt"
+        if not ckpt.exists():
+            raise FileNotFoundError(f"post-hoc candidate {name}: missing {ckpt}")
+        manifest = json.loads(ckpt.with_suffix(".manifest.json").read_text())
+        policy = DDQNPolicy(ckpt)
+        policy.agent.config = policy.agent.config.model_copy(update=overrides)
+        train_options["from_run"] = from_run
     by_factor: dict[str, dict[str, float]] = {}
     per_cfg_nominal: dict[str, dict[str, float]] = {}
     for factor in factors:
