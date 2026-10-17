@@ -129,7 +129,7 @@ class Workspace:
         if not _SHA.match(commit_sha):
             raise WorkspaceError("commit sha must be 40 lowercase hex chars")
         tmp = tempfile.TemporaryDirectory(prefix=f"cr-{commit_sha[:8]}-", dir=parent)
-        root = Path(tmp.name) / "repo"
+        root = Path(tmp.name).resolve() / "repo"
         root.mkdir()
         pathspec = [source.subdir] if source.subdir else []
         data = _git(source.local_path, "archive", "--format=tar", commit_sha, *pathspec)
@@ -139,7 +139,7 @@ class Workspace:
 
     def clone(self) -> Workspace:
         tmp = tempfile.TemporaryDirectory(prefix=f"cr-{self.commit_sha[:8]}-copy-")
-        root = Path(tmp.name) / "repo"
+        root = Path(tmp.name).resolve() / "repo"
         shutil.copytree(self.root, root, symlinks=False)
         return Workspace(source=self.source, commit_sha=self.commit_sha, root=root, _owner=tmp)
 
