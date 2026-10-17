@@ -13,6 +13,8 @@ All notable changes are documented here. Format follows
   edge (`DIAGNOSIS` → `AWAITING_APPROVAL`) instead of completing.
 
 ### Added
+- Assessment page shows each runtime agent with the job it does, only the runs and tool calls that were recorded, and what is still open for the next agent.
+- Finding detail shows the persisted standards view (CWE, CVSS, ATT&CK, D3FEND) as text, including when nothing was assessed.
 - Frontend: incident closure panel (link findings/verifications, closure criteria with artifact evidence, lessons learned, communications, readiness list).
 - Hosted assessments persist security finding lifecycle (`hypothesis → … → hardened`),
   durable approval checkpoints (`save_checkpoint` / `load_checkpoint` so a worker
