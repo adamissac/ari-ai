@@ -13,6 +13,7 @@ All notable changes are documented here. Format follows
   edge (`DIAGNOSIS` → `AWAITING_APPROVAL`) instead of completing.
 
 ### Added
+- Frontend: incident closure panel (link findings/verifications, closure criteria with artifact evidence, lessons learned, communications, readiness list).
 - Hosted assessments persist security finding lifecycle (`hypothesis → … → hardened`),
   durable approval checkpoints (`save_checkpoint` / `load_checkpoint` so a worker
   restart can resume), and approval-gated functional repair plus independent Verify.
