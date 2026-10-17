@@ -30,6 +30,19 @@ export default function MonitoringPage() {
   });
   return (
     <div className="flex flex-col gap-4">
+      <header className="monitor-head" data-testid="monitor-head">
+        <div>
+          <p className="label-mono text-white/60">Continuous defense monitor</p>
+          <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">What we have recorded for this project</h2>
+          <p className="mt-1 max-w-2xl text-sm text-white/70">Real events from your connected repository and runtime, plus re-checks they triggered. This is a record of what arrived, not a promise of round-the-clock protection.</p>
+        </div>
+        <ul className="monitor-chips" aria-label="Monitoring status">
+          <li><span className="text-white/50">Monitoring</span> {project.settings.monitoring_policy.enabled ? 'on' : 'off'}</li>
+          <li><span className="text-white/50">Events</span> {events.status === 'ready' ? `${events.data.items.length}${events.data.items.length >= 50 ? '+' : ''}` : '…'}</li>
+          <li><span className="text-white/50">Simulated events</span> {events.status === 'ready' ? events.data.items.filter(e => e.simulated).length : '…'}</li>
+          <li><span className="text-white/50">Re-checks</span> {reassess.status === 'ready' ? reassess.data.items.length : '…'}</li>
+        </ul>
+      </header>
       <p className="rounded-xl border border-line bg-panel p-5 text-sm text-ink" data-testid="monitoring-summary">{summary}</p>
     <div className="grid grid-cols-1 gap-4 xl:grid-cols-[3fr_2fr]">
       <div className="flex flex-col gap-4">
