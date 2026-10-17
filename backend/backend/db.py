@@ -381,6 +381,42 @@ index_snapshots = sa.Table(
     _created(),
 )
 
+ingest_tokens = sa.Table(
+    "ingest_tokens",
+    metadata,
+    _id(),
+    sa.Column(
+        "project_id", sa.String(80), sa.ForeignKey("projects.id"), nullable=False, index=True
+    ),
+    sa.Column("token_sha256", sa.String(64), nullable=False, unique=True),
+    sa.Column("created_by", sa.String(80), sa.ForeignKey("users.id"), nullable=False),
+    sa.Column("revoked_at", TS),
+    _created(),
+)
+
+runtime_windows = sa.Table(
+    "runtime_windows",
+    metadata,
+    _id(),
+    sa.Column("project_id", sa.String(80), sa.ForeignKey("projects.id"), nullable=False),
+    sa.Column("source", sa.String(20), nullable=False),
+    sa.Column("route", sa.String(320), nullable=False),
+    sa.Column("window_start", TS, nullable=False),
+    sa.Column("window_end", TS, nullable=False),
+    sa.Column("counters", JSONB, nullable=False),
+    sa.Column("score", JSONB, nullable=False),
+    _created(),
+    sa.UniqueConstraint(
+        "project_id", "source", "route", "window_end", name="uq_runtime_windows_key"
+    ),
+)
+sa.Index(
+    "ix_runtime_windows_lookup",
+    runtime_windows.c.project_id,
+    runtime_windows.c.route,
+    runtime_windows.c.window_end,
+)
+
 idempotency_keys = sa.Table(
     "idempotency_keys",
     metadata,
