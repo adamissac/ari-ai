@@ -2,8 +2,9 @@
 
     python -m experiments.select --round r2 configs/ddqn/r2_*.yaml
 
-Each candidate YAML holds DDQNConfig overrides plus ``steps`` and, optionally,
-``adversary_scale: [low, high]`` (training-time domain randomization). Every candidate is
+Each candidate YAML holds DDQNConfig overrides plus ``steps`` and, optionally, training
+options ``adversary_scale: [low, high]`` (domain randomization), ``select_every`` and
+``select_start`` (in-training checkpoint selection on training configs, seeds 5000-5029). Every candidate is
 trained on validation training seeds 10-12 using TRAINING configs, then scored on the
 same training configs, at adversary factors ×0.5 … ×2.5 (``VAL_FACTORS``), with validation
 episode seeds 2000-2099. Ranking is by the *robust* return: the mean over factors.
@@ -27,7 +28,8 @@ import yaml
 VAL_TRAIN_SEEDS = (10, 11, 12)
 VAL_EPISODE_SEEDS = range(2000, 2100)
 VAL_FACTORS = (0.5, 1.0, 1.5, 2.0, 2.5)
-FORBIDDEN_EPISODE_SEEDS = (*range(1000, 1100), *range(3000, 3050))
+FORBIDDEN_EPISODE_SEEDS = (*range(1000, 1100), *range(3000, 3050), *range(5000, 5030))
+TRAIN_OPTION_KEYS = ("adversary_scale", "select_every", "select_start")
 FORBIDDEN_TRAIN_SEEDS = (0, 1, 2, 3, 4)
 NODE_NAMES = ("gateway", "api", "auth", "payments", "db")
 METRICS = (
@@ -42,11 +44,14 @@ METRICS = (
 RESULTS_DIR = Path(__file__).resolve().parent / "results"
 
 
-def load_candidate(path: Path) -> tuple[str, int, dict[str, Any], tuple[float, float] | None]:
+def load_candidate(path: Path) -> tuple[str, int, dict[str, Any], dict[str, Any]]:
+    """Return (name, steps, DDQNConfig overrides, train() keyword options)."""
     data = yaml.safe_load(path.read_text()) or {}
     steps = int(data.pop("steps", 200_000))
-    scale = data.pop("adversary_scale", None)
-    return path.stem, steps, data, (tuple(scale) if scale else None)
+    opts = {k: data.pop(k) for k in TRAIN_OPTION_KEYS if k in data}
+    if "adversary_scale" in opts:
+        opts["adversary_scale"] = tuple(opts["adversary_scale"])
+    return path.stem, steps, data, opts
 
 
 def _nanmean(xs: list[float]) -> float:
@@ -79,7 +84,7 @@ def run_job(
     overrides: dict[str, Any],
     seed: int,
     run_root: str,
-    adversary_scale: tuple[float, float] | None = None,
+    train_options: dict[str, Any] | None = None,
     factors: tuple[float, ...] = VAL_FACTORS,
 ) -> dict[str, Any]:
     # Imports inside the worker so each process sets its own torch determinism.
@@ -101,7 +106,7 @@ def run_job(
         run_dir,
         DDQNConfig(**overrides),
         log_every=20_000,
-        adversary_scale=adversary_scale,
+        **(train_options or {}),
     )
     policy = DDQNPolicy(run_dir / f"ddqn_seed{seed}.pt")
     by_factor: dict[str, dict[str, float]] = {}
@@ -123,7 +128,13 @@ def run_job(
         "seed": seed,
         "steps": steps,
         "overrides": overrides,
-        "adversary_scale": list(adversary_scale) if adversary_scale else None,
+        "train_options": {
+            k: list(v) if isinstance(v, tuple) else v for k, v in (train_options or {}).items()
+        },
+        "adversary_scale": list(train_options["adversary_scale"])
+        if train_options and train_options.get("adversary_scale")
+        else None,
+        "checkpoint_selection": manifest.get("checkpoint_selection"),
         "pooled": by_factor.get("1", robust),  # nominal (×1.0) metrics
         "per_config": per_cfg_nominal,
         "by_factor": by_factor,
@@ -150,6 +161,7 @@ def summarize(jobs: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "steps": js[0]["steps"],
             "overrides": js[0]["overrides"],
             "adversary_scale": js[0].get("adversary_scale"),
+            "train_options": js[0].get("train_options", {}),
             "seeds": sorted(j["seed"] for j in js),
         }
         for k in METRICS:
@@ -176,7 +188,7 @@ def render(rows: list[dict[str, Any]], round_name: str) -> str:
     head = [
         f"# Validation round {round_name}",
         "",
-        f"Training configs only; validation training seeds {list(VAL_TRAIN_SEEDS)}; validation "
+        f"Training configs only; validation training seeds {sorted({s for r in rows for s in r['seeds']})}; validation "
         f"episode seeds {VAL_EPISODE_SEEDS.start}–{VAL_EPISODE_SEEDS.stop - 1} (100 per config). "
         "Mean ± std across seeds. Held-out eval configs NOT used. Overrides: "
         "`configs/ddqn/<candidate>.yaml`.",
@@ -232,11 +244,14 @@ def main() -> None:
     ap.add_argument("--round", required=True)
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 1))
     ap.add_argument("--run-root", default="runs/validation")
+    ap.add_argument("--seeds", type=int, nargs="+", default=list(VAL_TRAIN_SEEDS))
     ap.add_argument("candidates", nargs="+", type=Path)
     args = ap.parse_args()
+    if set(args.seeds) & set(FORBIDDEN_TRAIN_SEEDS):
+        ap.error("validation seeds must not include the final training seeds 0-4")
     cands = [load_candidate(p) for p in args.candidates]
     run_root = f"{args.run_root}/{args.round}"
-    specs = [(n, s, o, seed, run_root, sc) for n, s, o, sc in cands for seed in VAL_TRAIN_SEEDS]
+    specs = [(n, s, o, seed, run_root, opts) for n, s, o, opts in cands for seed in args.seeds]
     specs.sort(key=lambda j: -j[1])  # longest jobs first for better packing
     with ProcessPoolExecutor(max_workers=args.workers) as ex:
         jobs = list(ex.map(run_job, *zip(*specs, strict=True)))

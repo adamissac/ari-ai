@@ -131,6 +131,59 @@ def test_domain_randomization_rejects_bad_range(tmp_path):
         )
 
 
+def test_checkpoint_selection_saves_the_best_scored_weights(tmp_path, monkeypatch):
+    import rl_defense.train as train_mod
+
+    scores = iter([-50.0, -10.0, -30.0])  # best is the 2nd evaluation (step 400)
+    monkeypatch.setattr(train_mod, "selection_score", lambda agent, configs: next(scores))
+    small = DDQNConfig(learning_starts=50, buffer_size=1000, eps_decay_steps=300)
+    m = train(
+        load_configs(default_config_paths("train")),
+        seed=1,
+        steps=600,
+        run_dir=tmp_path,
+        ddqn_config=small,
+        select_every=200,
+    )
+    sel = m["checkpoint_selection"]
+    assert [h["step"] for h in sel["history"]] == [200, 400, 600]
+    assert sel["selected_step"] == 400 and sel["selected_score"] == -10.0
+    assert sel["updates_at_selected_step"] == 400 - 50  # saved weights are from step 400
+    assert m["gradient_updates"] == 600 - 50  # total training performed
+    loaded, _ = load_checkpoint(tmp_path / "ddqn_seed1.pt")
+    assert loaded.updates == 350
+
+
+def test_selection_score_uses_training_configs_only():
+    from rl_defense.train import selection_score
+
+    agent = DDQNAgent(OBS_DIM, N_ACTIONS, DDQNConfig(), seed=0)
+    with pytest.raises(AssertionError):
+        selection_score(agent, load_configs(default_config_paths("eval")))
+
+
+def test_linear_lr_decay_reaches_lr_end(tmp_path, monkeypatch):
+    import rl_defense.train as train_mod
+
+    seen = {}
+    real_save = train_mod.save_checkpoint
+
+    def spy(agent, path, **kw):
+        seen["lr"] = agent.optimizer.param_groups[0]["lr"]
+        return real_save(agent, path, **kw)
+
+    monkeypatch.setattr(train_mod, "save_checkpoint", spy)
+    cfg = DDQNConfig(lr=1e-3, lr_end=1e-4, learning_starts=50, buffer_size=500, eps_decay_steps=100)
+    train(
+        load_configs(default_config_paths("train")),
+        seed=0,
+        steps=300,
+        run_dir=tmp_path,
+        ddqn_config=cfg,
+    )
+    assert seen["lr"] == pytest.approx(1e-4)
+
+
 def test_nstep_training_runs(tmp_path):
     cfg = DDQNConfig(n_step=3, learning_starts=100, buffer_size=2000, eps_decay_steps=500)
     m = train(

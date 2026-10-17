@@ -30,6 +30,9 @@ class DDQNConfig(BaseModel):
     hidden_sizes: tuple[int, ...] = (128, 128)
     gamma: float = Field(0.99, gt=0.0, le=1.0)
     lr: float = Field(1e-3, gt=0.0)
+    lr_end: float | None = Field(
+        None, gt=0.0, description="Linear decay lr -> lr_end over training"
+    )
     batch_size: int = Field(64, ge=1)
     buffer_size: int = Field(100_000, ge=1)
     learning_starts: int = Field(1_000, ge=0)

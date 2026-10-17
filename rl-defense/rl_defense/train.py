@@ -12,6 +12,7 @@ it, the random-draw sequence is identical to protocol-v0, so v0 runs stay reprod
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import random
 import time
@@ -26,6 +27,7 @@ from rl_defense.checkpoint import save_checkpoint
 from rl_defense.envs import DefenseSimEnv, default_config_paths, load_configs
 from rl_defense.envs.config import ScenarioConfig
 from rl_defense.envs.defense_sim import N_ACTIONS, OBS_DIM
+from rl_defense.evaluate import run_episode
 from rl_defense.stress import scaled
 
 
@@ -37,6 +39,41 @@ def set_determinism(seed: int) -> None:
     torch.use_deterministic_algorithms(True)
 
 
+CKPT_SELECT_SEEDS = range(
+    5000, 5030
+)  # disjoint from eval 1000-1099, validation 2000-2099, stress 3000-3049
+CKPT_SELECT_FACTORS = (1.0, 2.0)
+
+
+class _GreedyPolicy:
+    """Greedy masked policy that does not consume the agent's exploration RNG."""
+
+    name = "ddqn_greedy"
+
+    def __init__(self, agent: DDQNAgent) -> None:
+        self.agent = agent
+
+    def reset(self, seed: int) -> None:
+        pass
+
+    def act(self, obs: np.ndarray, mask: np.ndarray) -> int:
+        q = self.agent.q_values(obs)
+        q[~mask] = -np.inf
+        return int(np.argmax(q))
+
+
+def selection_score(agent: DDQNAgent, configs: list[ScenarioConfig]) -> float:
+    """Mean greedy return on TRAINING configs at CKPT_SELECT_FACTORS (never eval configs)."""
+    assert all(c.split == "train" for c in configs)
+    policy = _GreedyPolicy(agent)
+    returns = []
+    for base in configs:
+        for factor in CKPT_SELECT_FACTORS:
+            env = DefenseSimEnv(base if factor == 1.0 else scaled(base, factor))
+            returns += [run_episode(env, policy, s)[0]["return"] for s in CKPT_SELECT_SEEDS]
+    return float(np.mean(returns))
+
+
 def train(
     configs: list[ScenarioConfig],
     seed: int,
@@ -45,11 +82,19 @@ def train(
     ddqn_config: DDQNConfig | None = None,
     log_every: int = 5_000,
     adversary_scale: tuple[float, float] | None = None,
+    select_every: int | None = None,
+    select_start: int = 0,
 ) -> dict:
+    """Train one seed. ``select_every`` enables in-training checkpoint selection: every
+    ``select_every`` steps after ``select_start`` the greedy policy is scored on the
+    TRAINING configs (factors ``CKPT_SELECT_FACTORS``, episode seeds ``CKPT_SELECT_SEEDS``)
+    and the best-scoring weights are the ones saved."""
     if any(c.split != "train" for c in configs):
         raise ValueError("training must only use configs with split=train")
     if adversary_scale is not None and not 0.0 < adversary_scale[0] <= adversary_scale[1]:
         raise ValueError(f"adversary_scale must satisfy 0 < low <= high, got {adversary_scale}")
+    if select_every is not None and select_every < 1:
+        raise ValueError("select_every must be >= 1")
     set_determinism(seed)
     cfg = ddqn_config or DDQNConfig()
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -77,9 +122,15 @@ def train(
     obs, info = env.reset(seed=int(rng.integers(2**31)))
     recent_returns: list[float] = []
     last_stats: dict[str, float] = {}
+    selection_history: list[dict[str, float]] = []
+    best: tuple[float, int, dict] | None = None
     start = time.time()
 
     for step in range(1, steps + 1):
+        if cfg.lr_end is not None:
+            lr = cfg.lr + (cfg.lr_end - cfg.lr) * min(1.0, step / steps)
+            for group in agent.optimizer.param_groups:
+                group["lr"] = lr
         eps = agent.epsilon(step)
         action = agent.act(obs, info["action_mask"], eps)
         next_obs, reward, terminated, truncated, info = env.step(action)
@@ -105,6 +156,12 @@ def train(
             obs, info = env.reset(seed=int(rng.integers(2**31)))
             ep_return, ep_len = 0.0, 0
 
+        if select_every and step >= select_start and (step % select_every == 0 or step == steps):
+            score = selection_score(agent, configs)
+            selection_history.append({"step": step, "score": score})
+            if best is None or score > best[0]:
+                best = (score, step, copy.deepcopy(agent.state_dict()))
+
         if step % log_every == 0 or step == steps:
             row = {
                 "step": step,
@@ -121,6 +178,9 @@ def train(
             log.flush()
     log.close()
 
+    final_step_updates = agent.updates
+    if best is not None:
+        agent.load_state_dict(best[2])
     param_change = float(
         sum(
             (p.detach() - p0).abs().sum()
@@ -135,7 +195,19 @@ def train(
         train_configs={c.name: c.config_hash() for c in configs},
         extra={
             "episodes": episode,
-            "gradient_updates": agent.updates,
+            "gradient_updates": final_step_updates,
+            "checkpoint_selection": {
+                "every": select_every,
+                "start": select_start,
+                "episode_seeds": [CKPT_SELECT_SEEDS.start, CKPT_SELECT_SEEDS.stop - 1],
+                "factors": list(CKPT_SELECT_FACTORS),
+                "selected_step": best[1],
+                "selected_score": best[0],
+                "updates_at_selected_step": agent.updates,
+                "history": selection_history,
+            }
+            if best is not None
+            else None,
             "param_abs_change": param_change,
             "wall_clock_s": round(time.time() - start, 1),
             "train_log": log_path.name,
@@ -172,11 +244,23 @@ def main() -> None:
         metavar=("LOW", "HIGH"),
         help="domain randomization: per-episode adversary probability factor ~ U[LOW, HIGH]",
     )
+    ap.add_argument("--select-every", type=int, help="in-training checkpoint selection interval")
+    ap.add_argument("--select-start", type=int, default=0)
     args = ap.parse_args()
     configs = load_configs(args.config or default_config_paths("train"))
     ddqn = DDQNConfig(**yaml.safe_load(args.ddqn_config.read_text())) if args.ddqn_config else None
     scale = tuple(args.adversary_scale) if args.adversary_scale else None
-    manifest = train(configs, args.seed, args.steps, args.run_dir, ddqn, args.log_every, scale)
+    manifest = train(
+        configs,
+        args.seed,
+        args.steps,
+        args.run_dir,
+        ddqn,
+        args.log_every,
+        scale,
+        select_every=args.select_every,
+        select_start=args.select_start,
+    )
     print(
         json.dumps(
             {
