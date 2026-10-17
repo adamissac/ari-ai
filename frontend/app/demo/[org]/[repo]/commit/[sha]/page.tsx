@@ -387,7 +387,6 @@ function Defense({ repo, analysis, done }: { repo: DemoRepo; analysis: Analysis;
           <ol className="mt-3 flex flex-col gap-3">
             {d.events.map((event, i) => (
               <li key={i} className="flex gap-3 text-sm">
-                <span aria-hidden="true" className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${event.tone === 'ok' ? 'bg-ok' : event.tone === 'warn' ? 'bg-warn' : 'bg-brand'}`} />
                 <span className="min-w-0"><span className="block">{event.text}</span><span className="text-xs text-faint" suppressHydrationWarning>{relativeTime(event.minutesAgo)}</span></span>
               </li>
             ))}
