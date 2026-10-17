@@ -89,3 +89,8 @@ Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablat
 - Branch `devin/1792226026-frontend-gaps`: `/projects/[id]/expectations`, `/incidents`, `/settings` + additive transport PATCH methods.
 - Executed: transport 27 passed; ESLint, tsc, Vitest 29 passed, Next build; browser e2e (stack.py) 11 passed incl. 3 new. Scripted model transports, not live.
 - Next owner action: Vihaan review of the PR; Alan continues functional remediation (#73).
+
+## 2026-10-17 09:40Z — incident closure UI (Devin session for Adam)
+- Branch `devin/1792226619-incident-closure`: closure panel on `/incidents` (link findings + accepted verifications, closure criteria satisfied with hash-pinned artifact evidence, lessons learned, communications, readiness list).
+- Executed: tsc, ESLint, Vitest 32 passed; browser e2e (stack.py) 12 passed incl. new closure spec. Scripted model transports, not live.
+- Blocker (other lanes): no producer sets `proposed_test_artifact_id`, so lessons learned → closure is unreachable for hosted assessments; stored diff hash ≠ `diff_sha256` after redaction. See coordination message 20261017T093000Z.
