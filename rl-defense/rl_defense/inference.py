@@ -1,0 +1,63 @@
+"""Deterministic policy inference -> DefenseRecommendation. No training code imported.
+
+There is intentionally no function here (or anywhere in this package) that
+applies a recommendation to a real system.
+"""
+
+from __future__ import annotations
+
+import uuid
+from datetime import UTC, datetime
+from pathlib import Path
+
+import numpy as np
+
+from rl_defense import ENV_ID
+from rl_defense.checkpoint import load_checkpoint
+from rl_defense.contracts import ActionScore, DefenseRecommendation, PlatformFacts
+from rl_defense.envs.config import NODE_NAMES
+from rl_defense.envs.defense_sim import NEG_INF_MASK, decode_action
+from rl_defense.observations import from_platform_facts, mask_from_facts
+
+
+class PolicyRunner:
+    def __init__(self, checkpoint: Path) -> None:
+        self.agent, self.manifest = load_checkpoint(checkpoint)
+        self.checkpoint_sha256 = self.manifest["checkpoint_sha256"]
+        self.policy_version = f"{ENV_ID}@{self.checkpoint_sha256[:12]}"
+
+    def recommend_from_observation(
+        self, obs: np.ndarray, mask: np.ndarray, project_id: str | None = None, top_k: int = 3
+    ) -> DefenseRecommendation:
+        if not mask.any():
+            raise ValueError("action mask has no valid actions")
+        q = self.agent.q_values(obs).astype(np.float64)
+        q_masked = np.where(mask, q, NEG_INF_MASK)
+        order = [int(a) for a in np.argsort(-q_masked) if mask[a]]
+        best = order[0]
+        margin = float(q[best] - q[order[1]]) if len(order) > 1 else 0.0
+        name, node = decode_action(best)
+
+        def score(a: int) -> ActionScore:
+            n, nd = decode_action(a)
+            return ActionScore(
+                action=n, node=None if nd is None else NODE_NAMES[nd], q_value=float(q[a])
+            )
+
+        return DefenseRecommendation(
+            id=f"rec_{uuid.uuid4().hex}",
+            project_id=project_id,
+            policy_version=self.policy_version,
+            checkpoint_sha256=self.checkpoint_sha256,
+            action=name,
+            node=None if node is None else NODE_NAMES[node],
+            q_margin=margin,
+            top_actions=tuple(score(a) for a in order[:top_k]),
+            observation=tuple(float(x) for x in obs),
+            created_at=datetime.now(UTC),
+        )
+
+    def recommend(self, facts: PlatformFacts) -> DefenseRecommendation:
+        return self.recommend_from_observation(
+            from_platform_facts(facts), mask_from_facts(facts), project_id=facts.project_id
+        )
