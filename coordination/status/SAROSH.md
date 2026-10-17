@@ -61,3 +61,91 @@ Add dated factual entries; do not overwrite history. Never claim unexecuted test
 
 - 2026-10-17T15:35Z: Cycle2/3 #190/#196 merged4119eff, all CI green. Reproduced #199 false exact call from beyond-package relative import to unrelated root helper. Parser0.3.1 keeps unresolved spelling and diagnostic; valid nested/init/aliased imports preserved. Focused15, broad producer/shared/PostgreSQL123 passed/1 opt-in skip, hosted reviewer/security/M7 consumer11 passed67.42s; mypy12/Ruff/format passed. Old refs/history immutable, active reindex required. Read-only font review188 approved e7cde76 after manifest/license presence and green checks; latest author commits require their own review. No UI edits. Next ten-minute read15:44:40Z.
 - 2026-10-17T15:53Z: Took over the active relative-import work from the prior Codex session in `/private/tmp/hackatl-sarosh-import-grounding`. Merged current `origin/main` (`a696361`) cleanly, reran focused/privacy **25 passed**, broader producer/shared/PostgreSQL **122 passed, 2 skipped**, hosted reviewer/security/M7 consumer **11 passed**, Ruff/format, strict producer mypy (12 modules), 345-document links and `git diff --check`. Polished user-facing changelog/README/task wording. PR #201 is mergeable with green CI; no product-code behavior changed beyond the already-described parser 0.3.1 fix.
+
+## 2026-10-17T18:45:19+00:00 — Sarosh: ARI frontend polish (local)
+
+Branch: `feat/sarosh/ari-frontend-polish` in `/tmp/ari-website-polish`, based on
+`e715ac7` from `adamissac/ari-ai` (owner corrected the original slide-deck URL).
+Updated header/hero/brand/pricing copy/metadata, one local font plus license/hash,
+and related unit/browser checks. Kept ant assets and existing body/display/mono fonts.
+
+Executed: `npm run lint --prefix frontend`; `npm run typecheck --prefix frontend`;
+`NEXT_PUBLIC_DEMO_ONLY=1 npm run build --prefix frontend` (all passed);
+`npm test --prefix frontend -- --maxWorkers=2` (49 files, 211 tests passed);
+`E2E_BASE_URL=http://127.0.0.1:3015 E2E_DEMO_ONLY=1 E2E_BROWSER_CHANNEL=chrome ARI_LANDING_SCREENSHOTS=/tmp/ari-polish-screens npm run e2e --prefix frontend -- tests/e2e/landing.spec.ts --reporter=list` (5 passed).
+Default parallel unit rerun hit one existing logo-file test's 5s timeout under concurrent
+build load; rerun with 2 workers passed without changing any timeouts.
+Rendered Chrome inspection covered desktop/mobile hero and scrolled light/dark content;
+no browser warnings/errors observed. Screenshots/logs are outside Git under `/tmp/ari-polish-*`.
+The full authenticated backend e2e suite was not run. No provider calls, API changes,
+push, merge or deployment. Next action: review local diff; publish via reviewed branch
+only when authorized (Git-connected pushes create Vercel previews).
+
+## 2026-10-17T19:01:17+00:00 — Sarosh: transparent navigation and warm headline refinement
+
+Local branch `feat/sarosh/ari-frontend-polish` in `/tmp/ari-website-polish`; integrated
+current main (`f81ab5a`) before changes. Removed logo/link cards, borders and shadows;
+ordinary links have subtle translucent hover fills. Pricing alone retains a solid accent.
+`HeaderContrast` samples the painted surface beneath each control, adapting white/ink
+text and the ant over hero, light chapters, later dark chapters and light cards.
+Uses passive scroll/resize listeners and coalesced animation frames; attributes change
+only when the tone changes. No dependencies or geometry/link changes.
+
+Headline content, structure, CTAs, workflow pills, spacing and background are untouched.
+Only its text styling gains a warm off-white core and three diffuse ember shadows.
+The dimmest core exceeds 4.7:1 against the solid brand color (unit assertion);
+no added filter or animation.
+
+Executed: transport build; `npm run lint --prefix frontend`; `npm run typecheck --prefix frontend`;
+`npm test --prefix frontend -- --maxWorkers=2` (50 files, 215 passed);
+`NEXT_PUBLIC_DEMO_ONLY=1 npm run build --prefix frontend` (passed);
+`E2E_BASE_URL=http://127.0.0.1:3015 E2E_DEMO_ONLY=1 E2E_BROWSER_CHANNEL=chrome ARI_LANDING_SCREENSHOTS=/tmp/ari-nav-glow-screens npm run e2e --prefix frontend -- tests/e2e/landing.spec.ts --reporter=list`
+(5 passed, 25.4s; 1440/1024/390/320px plus reduced motion). Verified transparent
+controls, dark/light/later-dark contrast, hover, 44px targets, routes, no overflow, warm
+headline styling and retained content. Corrected a browser-test race that interrupted
+the smooth anchor animation before checking the next scroll position.
+Rendered desktop/mobile and scrolled light views inspected; no browser warnings/errors
+observed. Full authenticated backend e2e not rerun. No push, merge to main or deployment.
+Screenshots and logs remain external to Git at `/tmp/ari-nav-glow-*` and `/tmp/ari-nav-*`.
+Next action: review local commit and authorize publishing if desired.
+
+## 2026-10-17T19:10:13+00:00 — Sarosh: homepage navigation scroll reveal (local)
+
+Branch `feat/sarosh/ari-frontend-polish`, `/tmp/ari-website-polish`. Integrated
+main through `0f645c2`, preserving Sai's refreshed README and the newer local ARI
+branding/font details during its sole merge conflict.
+
+`SiteNavigation` reveals Projects/Defense Lab/Demo/Pricing at `scrollY >= 100`,
+independent of direction, and hides them below it. Group geometry remains reserved;
+logo/account remain visible and Sign In's x/y stay unchanged. Hidden group uses
+`inert`, `aria-hidden`, visibility and pointer blocking. Transition: 250ms fade +8px
+horizontal offset, removed for reduced motion. Other routes always show all links.
+The checkout had no separate mobile menu, so added a compact phone Menu disclosure
+with Escape/focus restoration; crossing the threshold closes it. No hero/content,
+headline, font, background, workflow, CTA, backend or API changes.
+
+Executed: `npm run lint --prefix frontend`; `npm run typecheck --prefix frontend`;
+`npm test --prefix frontend -- --maxWorkers=2` (51 files, 219 passed);
+`NEXT_PUBLIC_DEMO_ONLY=1 npm run build --prefix frontend` (passed);
+`E2E_BASE_URL=http://127.0.0.1:3015 E2E_DEMO_ONLY=1 E2E_BROWSER_CHANNEL=chrome ARI_LANDING_SCREENSHOTS=/tmp/ari-reveal-screens npm run e2e --prefix frontend -- tests/e2e/landing.spec.ts --reporter=list`
+(5 passed, 36.6s, 1440/1024/390/320px and reduced motion). Browser assertions prove
+0/99 hidden, 100 shown, decreasing above threshold shown, returning to zero hidden,
+hidden-focus rejection, phone menu/Escape, unchanged account coordinates, no overflow
+and full navigation on pricing. Desktop/mobile top and revealed screenshots inspected.
+Existing brand e2e scroll checkpoint updated from 80px to 120px; its full backend
+suite was not rerun. Screenshots external to Git: `/tmp/ari-reveal-screens`.
+No push or deployment. Next action: review local commit; publishing remains pending.
+
+## 2026-10-17T19:14:09+00:00 — Owner-authorized publication to main
+
+The owner explicitly requested pushing the accumulated frontend changes to main.
+Product commits: `391831a`, `ed37e30`, `b2961f9`; current main base: `0f645c2`.
+Scope: ARI branding, local wordmark font, centered warm headline, transparent
+contrast-aware navigation and homepage 100px reveal with phone Menu access.
+Final unchanged product tree passed lint, type-check, demo-only production build,
+219 unit tests (51 files, two workers) and 5 Chromium browser tests (36.6s), covering
+1440/1024/390/320px, reduced motion, top/reveal/return, inert focus and anchored account.
+No backend/API changes in the publication diff. Earlier local-only notes describe
+the state before this authorization. Publishing via a normal fast-forward push;
+next action is to confirm GitHub main matches the release commit and inspect CI.
+The Git-connected Vercel deployment is triggered by that push; no project settings changed.

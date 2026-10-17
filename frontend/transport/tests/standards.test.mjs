@@ -16,3 +16,13 @@ test('scored vectors, versions, observation and review status stay visible', () 
   assert.match(value.cvss, /9\.3.*CVSS:4\.0/);
   assert.deepEqual(value.limitations, ['Human assessed']);
 });
+
+
+test('the CVSS 3.1 score that sets the level is shown, with 4.0 alongside (ADR-0012)', () => {
+  const v31 = { version: '3.1', vector: 'CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N', base_score: 6.5, rating: 'medium', score_kind: 'base', assessor: 'system:standards.cvss31',
+    metric_evidence: ['AV', 'AC', 'PR', 'UI', 'S', 'C', 'I', 'A'].map((metric, i) => ({ metric, status: i < 2 ? 'unverified' : 'cited', rationale: '' })) };
+  const both = findingStandards({ severity: { cvss_v31: v31 }, standards: { cwe: null, attack: [], d3fend: [], cvss: { complete: false, missing_metrics: ['AV'], assumptions: [] }, unmapped: [] } });
+  assert.match(both.cvss, /^CVSS 3\.1 \(sets the severity level\): 6\.5 medium · CVSS:3\.1\/AV:N.* · 2 of 8 metrics unverified \| alongside: Unscored · missing AV$/);
+  assert.equal(findingStandards({ severity: { cvss_v31: v31 }, standards: null }).cvss.startsWith('CVSS 3.1 (sets the severity level)'), true);
+  assert.equal(findingStandards({ severity: null, standards: null }).cvss, 'Not assessed');
+});

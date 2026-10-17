@@ -51,4 +51,10 @@ describe('WCAG contrast of design tokens', () => {
   it('disables animate-pulse under prefers-reduced-motion', () => {
     expect(css).toMatch(/prefers-reduced-motion: reduce\)\s*\{[^}]*\.animate-pulse\s*\{\s*animation:\s*none/);
   });
+
+  it('keeps the warm headline core above 4.5:1 over the brand background', () => {
+    expect(ratio('#fff7f2', token('brand'))).toBeGreaterThanOrEqual(4.7);
+    expect(css).toMatch(/\.hero-headline \.hero-line\s*\{[^}]*color: #fff7f2;[^}]*text-shadow:/);
+    expect(css).toContain('0.7em rgb(194 69 45 / 12%)');
+  });
 });

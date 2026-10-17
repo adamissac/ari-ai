@@ -172,7 +172,7 @@ function RepoScope({ assessmentId, projectId, repos, children }: {
         api().scopes(projectId, { signal }),
       ]);
       const scope = scopes.items.find(item => item.id === assessment.assessment.scope_id);
-      const name = repoFullNameForEvidence(rows, scope?.targets ?? null);
+      const name = repoFullNameForEvidence(rows, scope?.targets ?? null, assessment.assessment.repo_id ?? null);
       if (!signal.aborted) setResolved({ name, note: name ? null : 'Source lines stay unlinked: this scope does not name exactly one repository.' });
     })().catch((error: unknown) => {
       if (!signal.aborted) setResolved({ name: undefined, note: error instanceof Error ? error.message : 'Could not resolve the repository for source links.' });

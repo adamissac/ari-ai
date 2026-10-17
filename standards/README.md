@@ -53,8 +53,11 @@ prose. Current release coverage is distinct from the historical 2025 matrix.
 CVSS v3.1 base scoring (`standards.cvss31`), OWASP API Security 2023 categories
 (`standards.owasp_api`), and NIST SP 800-115 planning/ROE headings now use the
 canonical integrity-checked catalog store. The v3.1 calculator is separate from
-CVSS 4.0 and accepts only explicit base metrics. Runtime severity continues to use the canonical CVSS 4.0 port; this additional
-calculator is available explicitly for CVSS v3.1 references. CWE-to-OWASP API associations are labelled project
+CVSS 4.0 and accepts only explicit base metrics. **Runtime severity uses CVSS v3.1**
+(ADR-0012): Trace's v3.1 base metrics are scored by `standards.cvss31` and that rating sets
+`SeverityAssessment.level`. CVSS 4.0 is reported **alongside and never sets the level**:
+Trace's provisional `SeverityAssessment.cvss` and the fact-derived `Finding.standards.cvss`
+(`standards.cvss_assess`). Both are base scores only, not a vulnerability-management rating. CWE-to-OWASP API associations are labelled project
 mappings. `scripts/build_additional.py` records source hashes for explicit refresh;
 it never runs on the runtime path. NVD vector fixture terms remain labelled
 unverified in the manifest; no new redistribution approval is claimed.

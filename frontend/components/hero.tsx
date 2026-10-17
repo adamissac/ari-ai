@@ -6,8 +6,8 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
  * Full-screen interactive hero band. Pointer position and scroll progress are written as CSS
  * variables (--mx/--my on the band, --tx/--ty on each [data-spotlight] line, --scroll) once per
  * frame; all visuals live in globals.css (`.hero-stage`). While mounted it also drives the
- * floating site header through <html> data attributes: data-home-hero, data-hero-scrolled
- * (logo and tabs revealed) and data-hero-past (header switches to the light tone).
+ * fixed home header through <html data-home-hero>. Scroll attributes remain available
+ * to page styling; navigation itself stays visible with independent contrast surfaces.
  * `play` starts the entrance (after the intro loader lifts). Without JS, or with reduced
  * motion, the band renders as a static dark hero with fully visible text.
  */
