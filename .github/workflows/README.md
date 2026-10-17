@@ -23,3 +23,9 @@ check. **Implemented:** `docs.yml`, `secrets.yml` (INFRA-003), `backend.yml` (CO
 - Live-LLM evaluation suites never run on PRs automatically (cost + secret exposure);
   they run manually or on schedule with a budget cap.
 - Use only free GitHub Actions minutes unless paid usage is approved.
+
+## Code intelligence (INTEL-001..008)
+
+`code-intelligence.yml` adds locked-workspace Ruff/format/strict mypy, intelligence tests
+and real PostgreSQL payload/webhook integration. FakeTransport runs in CI; provider
+inference is opt-in and skipped without a key.

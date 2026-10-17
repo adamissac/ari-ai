@@ -19,5 +19,12 @@ All notable changes are documented here. Format follows
 - `DefenseSimEnv-v0`, Double DQN training, baselines, protocol-17 evaluation and
   simulation-derived recommendation adapter; reference results in `rl-defense/results/`.
 
+### Added (code intelligence, PR #6)
+- Persistent Python intelligence at an immutable Git SHA: symbols, static call/import
+  graph, route dependencies, source-cited behavioral intent, bounded context packs and
+  two-version impact. SQLite and backend PostgreSQL share one payload port.
+- Optional bounded Claude-gateway inference with validated citations, low confidence
+  and persisted provider metadata; FakeTransport CI coverage.
+
 ### Not yet implemented
-- All other product functionality.
+- Full cross-pillar runtime completion and production operation are not established here.
