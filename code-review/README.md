@@ -16,6 +16,7 @@ and proposes minimal repairs in isolated workspaces. Spec: [docs/06](../docs/06_
 | `code_review/shared_sandbox.py` | `SharedSandboxAdapter`: the same `SandboxPort` over Alan's `security_agents` drivers (fixed `pytest` mode, reporting plugin shipped via `extra_files`, results from `/out`). One isolation policy with the security agents: unset `CODE_REVIEW_SANDBOX` means `local` only when `APP_ENV` is development/test, otherwise the agents' driver (`vercel` when `SECURITY_SANDBOX=vercel`, else `docker`). `docker` = `DockerSandboxDriver` (network none); `vercel` = `VercelSandboxDriver` (deny-all egress); `shared-local` = dev `LocalProcessDriver` (needs `SANDBOX_ALLOW_LOCAL_PROCESS=1`). `local` / `shared-local` run customer code as a host process and are refused outside development/test with `SANDBOX_POLICY_VIOLATION` (#246). |
 | `code_review/api.py` | `review(host, ReviewRequest) -> ReviewResult`, `review_full`, `generate_tests`, `propose_repair(host, finding_id, approval_id, repo_id=)`, `load_test_sources`. |
 | `code_review/evaluation.py` | Scores an outcome against an answer key (`examples/payments-lite/labels.yaml`) after the run. Scripted runs are labeled "harness check only". |
+| `code_review/eval_corpus.py` + `eval/cases/` | Independent evaluation corpus: 10 small repositories (3 clean changes, 3 functional defects, 2 security regressions, 2 bad patches), each with a base/head commit, PR text, an answer key and an evaluator-only oracle test. `check_labels` **executes** every oracle (behavioral failures only, via the reviewer's report plugin) so each label is proven; `score_corpus` reports precision, recall and specificity (a mislocated flag is a miss; a failed run never helps the score). |
 
 ### Decision rules (deterministic)
 
@@ -41,6 +42,8 @@ and proposes minimal repairs in isolated workspaces. Spec: [docs/06](../docs/06_
 uv sync                                    # from the repo root (workspace member)
 uv run pytest -q code-review/tests         # Tier 1/2: FakeTransport + real tool execution
 RUN_LIVE_LLM_EVAL=1 uv run pytest -q -m live_llm code-review/tests -s   # Tier 3, costs money; CODE_REVIEW_LIVE_MAX_USD (default 1.00)
+uv run python -m code_review.eval_corpus   # prove every corpus label by executing its oracle (free)
+RUN_LIVE_LLM_EVAL=1 uv run pytest -q code-review/tests/test_live_corpus.py -s   # precision/recall on the corpus; costs money, CODE_REVIEW_CORPUS_MAX_USD (default 6.00)
 ```
 
 Repositories must be registered by the operator:
@@ -49,6 +52,10 @@ Repositories must be registered by the operator:
 `code-review/tests/test_shared_sandbox.py` (runs in CI now that `security-agents` is a workspace member).
 
 ## Evidence status
+
+* **Precision / recall:** the independent corpus exists and its 10 labels are proven by execution
+  (`test_eval_corpus.py`), and the scorer is tested. **No live corpus run yet**: real precision/recall
+  needs an approved paid run of `test_live_corpus.py`.
 
 * Executed (FakeTransport, real tools): `uv run pytest -q code-review/tests` → 60 passed,
   3 skipped (the live test and the two opt-in Docker tests, which run in the `docker-reviewer` CI job). Coverage: labeled scenarios (discount rounding, a fix that
