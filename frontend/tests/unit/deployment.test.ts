@@ -8,7 +8,7 @@ describe('demo-only deployment', () => {
 
   it('sends the console routes to the simulated demo when there is no backend', () => {
     const redirects = demoOnlyRedirects(true);
-    expect(redirects.map(r => r.source)).toEqual(['/projects', '/projects/:path*']);
+    expect(redirects.map(r => r.source)).toEqual(['/projects', '/projects/:path*', '/connect', '/connect/:path*']);
     for (const r of redirects) {
       expect(r.destination).toBe('/demo');
       expect(r.permanent).toBe(false);
