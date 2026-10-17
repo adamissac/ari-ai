@@ -169,3 +169,25 @@ def test_early_termination_is_not_cheaper_than_surviving():
 
     cfg = by_name("train_aggressive")
     assert _mean_return(cfg, noop) < _mean_return(cfg, isolate_all)
+
+
+def test_reward_components_sum_exactly_to_reward():
+    from rl_defense.envs.defense_sim import REWARD_COMPONENTS
+
+    env = DefenseSimEnv(by_name("eval_aggressive_noisy"))
+    rng = np.random.default_rng(0)
+    seen = set()
+    for ep in range(10):
+        _, info = env.reset(seed=ep)
+        done = False
+        while not done:
+            _, r, term, trunc, info = env.step(int(rng.choice(np.flatnonzero(info["action_mask"]))))
+            comp = info["events"]["reward_components"]
+            assert tuple(comp) == REWARD_COMPONENTS
+            total = 0.0
+            for k in REWARD_COMPONENTS:
+                total += comp[k]
+            assert total == r
+            seen |= {k for k, v in comp.items() if v != 0}
+            done = term or trunc
+    assert {"action_cost", "disruption", "adversary_progress"} <= seen
