@@ -44,13 +44,13 @@ export function ProjectShell({ children }: { children: ReactNode }) {
   return (
     <ProjectContext.Provider value={{ project: project.data, repos: repos.data.items, reloadRepos: repos.reload }}>
       <Crumbs items={[{ href: '/', label: 'Projects' }, { href: base, label: project.data.name }]} />
-      <nav aria-label="Project" className="mb-5 flex flex-wrap gap-1 border-b border-line">
+      <nav aria-label="Project" className="mb-6 flex flex-wrap gap-1 rounded-xl border border-line bg-panel-2 p-1">
         {TABS.map(t => {
           const href = base + t.href;
           const active = t.href === '' ? pathname === base : pathname.startsWith(href);
           return (
             <Link key={t.label} href={href} aria-current={active ? 'page' : undefined}
-              className={`-mb-px border-b-2 px-3 py-2 text-sm ${active ? 'border-accent text-ink' : 'border-transparent text-muted hover:text-ink'}`}>
+              className={`label-mono rounded-lg px-3 py-2 transition-[background-color,color,box-shadow] duration-[250ms] ${active ? 'bg-white text-brand shadow-[0_1px_3px_rgba(28,18,16,0.12)]' : 'text-muted hover:bg-white/70 hover:text-ink'}`}>
               {t.label}
             </Link>
           );
