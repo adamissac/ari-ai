@@ -1,0 +1,45 @@
+name: security-agents
+
+on:
+  pull_request:
+    paths: ["security-agents/**", "backend/**", "shared/**", "code-intelligence/**", "examples/payments-lite/**", "pyproject.toml", "uv.lock", ".github/workflows/security-agents.yml"]
+  push:
+    branches: [main]
+    paths: ["security-agents/**", "backend/**", "shared/**", "code-intelligence/**", "examples/payments-lite/**", "pyproject.toml", "uv.lock", ".github/workflows/security-agents.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci-only
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ci" --health-interval 2s
+          --health-timeout 5s --health-retries 30
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://ci:ci-only@localhost:5432/postgres
+      UV_PYTHON: "3.12"
+      RUN_LIVE_LLM_EVAL: "0"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install uv
+        run: python3 -m pip install --user "uv==0.11.28"
+      - name: Install locked workspace and security runtime
+        run: |
+          ~/.local/bin/uv sync --frozen
+          ~/.local/bin/uv pip install -e security-agents --no-deps
+      - name: Lint security runtime
+        run: ~/.local/bin/uv run --no-sync ruff check security-agents
+      - name: Security runtime suite (scripted provider, owned fixtures only)
+        run: ~/.local/bin/uv run --no-sync pytest -ra security-agents/tests
+      - name: Real backend host and fresh-worker approval resume
+        run: ~/.local/bin/uv run --no-sync pytest -ra backend/tests/test_security_agents_host_mode.py backend/tests/test_e2e_host.py

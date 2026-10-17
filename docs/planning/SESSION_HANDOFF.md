@@ -129,3 +129,6 @@ adds an entry before ending.
 - Added host checkpoint persistence for fresh-worker approval resume; no migration/shared schema change. Local runtime owns versioned typed payload, host owns artifacts/events.
 - Evidence: host unit suite 23 passed; real PostgreSQL full seven-agent fake-provider flow passed after clearing factory cache. No new live-provider or Docker execution.
 - Remaining: pin host target to assessment SHA via trusted bindings; use intelligence service in host path; recovery during remediation; reconcile gateway schema projection in hosted mode.
+
+- Follow-up: bound host execution now reads exactly the assessment Git SHA and uses the upstream intelligence service. Dirty-checkout regression and full hosted indexed-context flow pass. Approval parsing requires an identified human. Added security runtime CI so host-mode tests are installed rather than skipped.
+- Fixed root CI collection collision by renaming backend intelligence test and updating dynamic factory/workflow references (0f0b194). Initial combined run: 148 passed, 5 skipped, 1 failure due to stale renamed factory; corrected factory regression then passed.

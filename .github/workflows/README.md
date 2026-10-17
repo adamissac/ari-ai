@@ -37,3 +37,11 @@ code-intelligence, the security-agents sandbox, payments-lite). It runs Ruff, fo
 strict mypy on `code_review`, the reviewer suite against a Postgres service (FakeTransport;
 real git exports and pytest executions), and the reviewer through the shared
 `security_agents` sandbox driver. The live reviewer eval (`-m live_llm`) never runs here.
+
+## Security agents (SEC-001..013)
+
+`security-agents.yml` installs the security runtime alongside the locked workspace,
+runs its permission/scope/sandbox/replay tests, then executes real PostgreSQL-backed
+host and fresh-worker approval-resume tests with the upstream intelligence index.
+Provider calls are scripted; local fixture processes are explicitly opted in.
+This does not establish Docker or live-provider execution.
