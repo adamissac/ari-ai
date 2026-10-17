@@ -439,19 +439,13 @@ class Orchestrator:
         self._goto(AssessmentState.RECON)
         hypotheses = self._run_scout()
         if not hypotheses:
-            if self._wait_external():
-                return self._pause_for_external("no security hypotheses")
-            self._goto(AssessmentState.REPORTING, "no hypotheses")
-            return self._finish()
+            return self._report_or_wait("no hypotheses")
 
         # ---- VALIDATION (Probe, one step per hypothesis, capped)
         self._goto(AssessmentState.VALIDATION)
         confirmed = self._run_validation(hypotheses)
         if not confirmed:
-            if self._wait_external():
-                return self._pause_for_external("no confirmed security findings")
-            self._goto(AssessmentState.REPORTING, "no confirmed findings")
-            return self._finish()
+            return self._report_or_wait("no confirmed findings")
 
         # ---- ANALYSIS (Trace)
         self._goto(AssessmentState.ANALYSIS)
@@ -459,10 +453,7 @@ class Orchestrator:
             self._run_trace(finding)
         traced = [f for f in confirmed if f.attack_path is not None]
         if not traced:
-            if self._wait_external():
-                return self._pause_for_external("impact analysis failed for all findings")
-            self._goto(AssessmentState.REPORTING, "impact analysis failed for all findings")
-            return self._finish()
+            return self._report_or_wait("impact analysis failed for all findings")
 
         # ---- DIAGNOSIS (Diagnose)
         self._goto(AssessmentState.DIAGNOSIS)
@@ -470,10 +461,7 @@ class Orchestrator:
             self._run_diagnose(finding)
         diagnosed = [f for f in traced if f.plan is not None]
         if not diagnosed:
-            if self._wait_external():
-                return self._pause_for_external("no remediation plan produced")
-            self._goto(AssessmentState.REPORTING, "no remediation plan produced")
-            return self._finish()
+            return self._report_or_wait("no remediation plan produced")
 
         # ---- AWAITING_APPROVAL gate (human only)
         self._goto(AssessmentState.AWAITING_APPROVAL)
@@ -518,7 +506,9 @@ class Orchestrator:
                 actor_id=approval.decided_by,
                 approval_id=approval.id,
             )
-        if (pending and not approved) or (self._wait_external() and not approved):
+        # An undecided external (functional) approval pauses unconditionally, even when
+        # some security remediation is already approved: the resume handles both together.
+        if (pending and not approved) or self._wait_external():
             # Stop here, without a terminal transition: a host persists the
             # request and re-enters this orchestrator once a human decides.
             self.result.error_code = None
@@ -544,16 +534,23 @@ class Orchestrator:
     def _wait_external(self) -> bool:
         return bool(self.external_pending and self.external_pending())
 
-    def _pause_for_external(self, note: str) -> AssessmentResult:
-        """Reach AWAITING_APPROVAL from an early phase so functional approvals can resume."""
-        if self.state is AssessmentState.RECON:
-            self._goto(AssessmentState.VALIDATION, note)
-        if self.state is AssessmentState.VALIDATION:
-            self._goto(AssessmentState.ANALYSIS, note)
-        if self.state is AssessmentState.ANALYSIS:
-            self._goto(AssessmentState.DIAGNOSIS, note)
-        if self.state is AssessmentState.DIAGNOSIS:
-            self._goto(AssessmentState.AWAITING_APPROVAL, "awaiting functional remediation approval")
+    def _report_or_wait(self, note: str) -> AssessmentResult:
+        """Security work ended early. If a functional remediation approval is still owed,
+        walk the skipped phases (each labelled) to AWAITING_APPROVAL and pause;
+        otherwise report and finish. Only DIAGNOSIS→AWAITING_APPROVAL is a legal pause edge.
+        """
+        if not self._wait_external():
+            self._goto(AssessmentState.REPORTING, note)
+            return self._finish()
+        chain = (
+            AssessmentState.RECON,
+            AssessmentState.VALIDATION,
+            AssessmentState.ANALYSIS,
+            AssessmentState.DIAGNOSIS,
+            AssessmentState.AWAITING_APPROVAL,
+        )
+        for state in chain[chain.index(self.state) + 1 :]:
+            self._goto(state, f"skipped ({note}); awaiting functional remediation approval")
         self.result.error_code = None
         return self.result
 
