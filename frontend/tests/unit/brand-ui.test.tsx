@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { BRAND_NAME, LOGO_SRC, LogoMark, Wordmark } from '@/components/brand';
+import { BRAND_NAME, LOGO_ASPECT, LOGO_SRC, LogoMark, Wordmark } from '@/components/brand';
 import { Reveal } from '@/components/reveal';
 import { Button } from '@/components/ui';
 
@@ -18,23 +18,26 @@ describe('Ari AI brand and interactive UI', () => {
     expect(screen.getByTestId('icon')).toBeTruthy();
   });
 
-  it('shows the product name once with a decorative supplied mark', () => {
+  it('shows the product name once beside a decorative bare ant', () => {
     render(<Wordmark />);
     expect(BRAND_NAME).toBe('Ari AI');
     expect(screen.queryByRole('img')).toBeNull();
-    expect(screen.getByTestId('ari-logo').getAttribute('aria-hidden')).toBe('true');
-    expect(screen.getByTestId('ari-logo').style.width).toBe('24px');
+    const mark = screen.getByTestId('ari-logo');
+    expect(mark.getAttribute('aria-hidden')).toBe('true');
+    expect(mark.style.height).toBe('22px');
+    expect(mark.className).toContain('ari-mark');
     expect(screen.getByText('Ari AI')).toBeTruthy();
   });
 
-  it('sizes and names a standalone supplied logo without changing its source', () => {
+  it('draws just the ant (no tile) at the requested height and natural width', () => {
     render(<LogoMark size={40} />);
     expect(screen.getByRole('img', { name: `${BRAND_NAME} logo` })).toBeTruthy();
     const logo = screen.getByTestId('ari-logo');
-    expect(logo.style.width).toBe('40px');
     expect(logo.style.height).toBe('40px');
-    expect(logo.querySelector('img')?.getAttribute('src')).toContain(encodeURIComponent(LOGO_SRC));
-    expect(logo.querySelector('img')?.getAttribute('alt')).toBe(`${BRAND_NAME} logo`);
+    expect(logo.style.width).toBe(`${Math.round(40 * LOGO_ASPECT)}px`);
+    expect(logo.getAttribute('data-src')).toBe(LOGO_SRC);
+    expect(logo.className).not.toMatch(/rounded|bg-/);
+    expect(logo.querySelector('img')).toBeNull();
   });
 
   it('reveal content is visible by default (no JS / no IntersectionObserver)', () => {
