@@ -78,7 +78,7 @@
       "type": "string"
     },
     "id": {
-      "pattern": "^rec_[0-9A-Za-z]{8,64}$",
+      "pattern": "^rec_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Id",
       "type": "string"
     },
@@ -116,7 +116,7 @@
     "project_id": {
       "anyOf": [
         {
-          "pattern": "^prj_[0-9A-Za-z]{8,64}$",
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
           "type": "string"
         },
         {

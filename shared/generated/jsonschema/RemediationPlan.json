@@ -19,12 +19,12 @@
       "type": "array"
     },
     "finding_id": {
-      "pattern": "^fnd_[0-9A-Za-z]{8,64}$",
+      "pattern": "^fnd_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Finding Id",
       "type": "string"
     },
     "id": {
-      "pattern": "^rmp_[0-9A-Za-z]{8,64}$",
+      "pattern": "^rmp_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Id",
       "type": "string"
     },
