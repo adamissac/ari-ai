@@ -7,7 +7,7 @@ Last remote sync: 2026-10-17T01:03Z (`origin/main` a7f7c98 merged into branch; o
 API/contract dependencies: Alan `security_agents.api:build_orchestrator`; Sarosh `code_intelligence.api:build_service` (+ persistence port); Sai `code_review.api.review`; Adam `rl_defense` (integrated)
 Verified tests: see session log (exact command + counts)
 Recent PR/commit: PR #8 https://github.com/adamissac/hackatl-agentic-security/pull/8 ; contract ack issue #9
-Blockers: none hard. Live Claude smoke is unexecuted because there is no ANTHROPIC_API_KEY in this environment. The GitHub App flow is unexercised because no App credentials are configured. Docker is not installed, so the Compose file is unverified.
+Blockers: none hard. The GitHub App flow is unexercised because no App credentials are configured. Docker is not installed, so the Compose file is unverified.
 Next action: ack/counter from owners on V0 contracts; Postgres persistence port for Sarosh; wire Alan's orchestrator when `security_agents.api` exists; live LLM smoke once a key is authorized.
 
 ## Session entries
@@ -54,3 +54,16 @@ Add dated factual entries; do not overwrite history. Never claim unexecuted test
   - Added `.github/workflows/backend.yml`: ruff, mypy, contract freshness, and pytest against a Postgres service plus tsc.
   - First CI run on PR #8 failed on `ruff format --check` for `backend/replay_webhook.py`. That is fixed in `e6af6e9`.
   - Local result: `84 passed, 1 skipped`.
+
+### 2026-10-17 (session 1, continued)
+- **Tier 3 live smoke executed once:** `make smoke-live` → 1 passed.
+  - Model `claude-opus-5-5`, 2 turns.
+  - Tool calls `read_file` → `submit_result`.
+  - Usage: 1,375 input and 178 output tokens; cost $0.00906.
+  - The key lives in a local git-ignored `.env` (chmod 600) per issue #10.
+- Fixes:
+  - live-key capture in the test conftest (`323fd9c`);
+  - settings treat empty or `replace-me` values as unset (`9c57a24`).
+- Contracts 0.2.0: `RLExplanation` and `FeatureContribution`, migration 0002, endpoint `GET /defense-recommendations/{id}/explanation` (`14e65a2`).
+- Merged `origin/main` twice: Adam's #1 RL, #5 payments-lite and #7 CI.
+- Tests: `.venv/bin/python -m pytest -q` → 85 passed, 1 skipped (with `rl-defense` + tsc).
