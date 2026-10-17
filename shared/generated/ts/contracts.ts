@@ -1226,6 +1226,7 @@ export interface TriggerPolicy {
   min_interval_s: number;
   /** If every changed path matches these globs, record without assessment */
   ignore_paths_only: Array<string>;
+  /** Budget for one push-triggered monitoring run (smaller than default_budget by design) */
   monitoring_budget: Budget;
 }
 
