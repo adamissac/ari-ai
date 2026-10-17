@@ -1,6 +1,9 @@
 # 11 — Shared context and memory (Unified Intelligence Layer)
 
-Status: **specified**. This is the core of the product hypothesis
+Status: **Python structure and extracted intent implemented** via `code_intelligence.api`
+and the backend PostgreSQL PayloadStore. Full assurance/remediation joins and authenticated
+human intent decisions remain integration work. Facts require the complete SnapshotRef.
+See [implementation and limits](../code-intelligence/README.md). This is the core of the product hypothesis
 ([01](01_MASTER_PRODUCT_SPEC.md) §3).
 
 ## What it is

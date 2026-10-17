@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 from intel_test_helpers import commit
+from intel_test_helpers import repository as repository
 from shared.intelligence import SnapshotRef
 
 from code_intelligence.extract import PythonExtractor, dependencies
@@ -30,6 +31,8 @@ def test_pinned_objects_and_no_execution(repository: tuple[Path, str]) -> None:
     assert [f.model_dump() for f in files] == [f.model_dump() for f in GitReader(path).read(sha)[1]]
     with pytest.raises(IntelligenceError, match="full lowercase"):
         GitReader(path).read("HEAD")
+    with pytest.raises(IntelligenceError, match="output exceeds"):
+        GitReader(path).run("ls-tree", "-r", sha, limit=20)
 
 
 def test_exclusions_ignores_and_redaction(repository: tuple[Path, str], tmp_path: Path) -> None:
@@ -99,6 +102,8 @@ class Service:
     def method(self):
         return self.other()
     def other(self): return 2
+def via_typed_parameter(service: Service):
+    return service.other()
 """)
     sha = commit(path)
     parser = PythonExtractor(ref(sha), GitReader(path).read(sha)[1])
@@ -111,3 +116,4 @@ class Service:
     )
     assert any(e.callee_name == "helper" and e.resolution == "unresolved" for e in parser.calls)
     assert any(e.callee_name == "self.other" and e.resolution == "likely" for e in parser.calls)
+    assert any(e.callee_name == "service.other" and e.resolution == "likely" for e in parser.calls)

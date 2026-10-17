@@ -1,0 +1,475 @@
+{
+  "id": "ctx_7668ce480a5991abb2ba1f3bed850a66",
+  "snapshot_ref": {
+    "project_id": "prj_evaluation00",
+    "repo_id": "rep_evaluation00",
+    "commit_sha": "41fb569c791d1775a02bf1d385ea6903f4210d27",
+    "snapshot_id": "snp_a62a6a3b2fdd15783e7f71b1a86071e5",
+    "index_version": "python-ast-ts/0.1.0"
+  },
+  "request": {
+    "snapshot_ref": {
+      "project_id": "prj_evaluation00",
+      "repo_id": "rep_evaluation00",
+      "commit_sha": "41fb569c791d1775a02bf1d385ea6903f4210d27",
+      "snapshot_id": "snp_a62a6a3b2fdd15783e7f71b1a86071e5",
+      "index_version": "python-ast-ts/0.1.0"
+    },
+    "purpose": "scout",
+    "focus": [
+      "/payments/{payment_id}"
+    ],
+    "token_budget": 24000
+  },
+  "chunks": [
+    {
+      "provenance": {
+        "kind": "source_span",
+        "path": "examples/payments-lite/target/payments_lite/app.py",
+        "commit_sha": "41fb569c791d1775a02bf1d385ea6903f4210d27",
+        "span": {
+          "start_line": 131,
+          "end_line": 141,
+          "start_col": null,
+          "end_col": null
+        },
+        "symbol": "payments_lite.app.create_app.get_payment",
+        "artifact_id": null,
+        "sha256": null,
+        "provenance": "code_intelligence@python-ast-ts/0.1.0",
+        "note": null
+      },
+      "content": "<untrusted_repository_data trust=\"untrusted\">\n{&quot;kind&quot;:&quot;source_span&quot;,&quot;path&quot;:&quot;examples/payments-lite/target/payments_lite/app.py&quot;,&quot;commit_sha&quot;:&quot;41fb569c791d1775a02bf1d385ea6903f4210d27&quot;,&quot;span&quot;:{&quot;start_line&quot;:131,&quot;end_line&quot;:141,&quot;start_col&quot;:null,&quot;end_col&quot;:null},&quot;symbol&quot;:&quot;payments_lite.app.create_app.get_payment&quot;,&quot;artifact_id&quot;:null,&quot;sha256&quot;:null,&quot;provenance&quot;:&quot;code_intelligence@python-ast-ts/0.1.0&quot;,&quot;note&quot;:null}\nSymbol sym_226c61fb8bc2ff6709fbe277d25f879a: payments_lite.app.create_app.get_payment\nExpectation exp_98ee628c3a105388b9d4045af1878b20 [ambiguous; extracted; confidence=0.75]: HTTP test test_get_own_payment: r.status_code == 200\nExpectation exp_b22378ed4c77e49166780663a6a9c5da [ambiguous; extracted; confidence=0.75]: HTTP test test_partial_refund: r.status_code == 201\n    @app.get(&quot;/payments/{payment_id}&quot;, response_model=PaymentOut)\n    def get_payment(\n        payment_id: str,\n        customer: Customer = Depends(current_customer),\n        store: Store = Depends(get_store),\n    ) -&gt; PaymentOut:\n        &quot;&quot;&quot;Return one payment by id.&quot;&quot;&quot;\n        p = store.payments.get(payment_id)\n        if p is None:\n            raise HTTPException(status.HTTP_404_NOT_FOUND, &quot;not found&quot;)\n        return payment_out(store, p)\n</untrusted_repository_data>",
+      "trust": "untrusted",
+      "token_estimate": 1486
+    },
+    {
+      "provenance": {
+        "kind": "source_span",
+        "path": "examples/payments-lite/target/tests/test_api.py",
+        "commit_sha": "41fb569c791d1775a02bf1d385ea6903f4210d27",
+        "span": {
+          "start_line": 34,
+          "end_line": 34,
+          "start_col": null,
+          "end_col": null
+        },
+        "symbol": "tests.test_api.test_get_own_payment",
+        "artifact_id": null,
+        "sha256": null,
+        "provenance": "code_intelligence@python-ast-ts/0.1.0",
+        "note": "Heuristic HTTP test link, not executed"
+      },
+      "content": "<untrusted_repository_data trust=\"untrusted\">\n{&quot;kind&quot;:&quot;source_span&quot;,&quot;path&quot;:&quot;examples/payments-lite/target/tests/test_api.py&quot;,&quot;commit_sha&quot;:&quot;41fb569c791d1775a02bf1d385ea6903f4210d27&quot;,&quot;span&quot;:{&quot;start_line&quot;:34,&quot;end_line&quot;:34,&quot;start_col&quot;:null,&quot;end_col&quot;:null},&quot;symbol&quot;:&quot;tests.test_api.test_get_own_payment&quot;,&quot;artifact_id&quot;:null,&quot;sha256&quot;:null,&quot;provenance&quot;:&quot;code_intelligence@python-ast-ts/0.1.0&quot;,&quot;note&quot;:&quot;Heuristic HTTP test link, not executed&quot;}\nExpected behavior (ambiguous; 0.75): HTTP test test_get_own_payment: r.status_code == 200\n    assert r.status_code == 200\n</untrusted_repository_data>",
+      "trust": "untrusted",
+      "token_estimate": 774
+    },
+    {
+      "provenance": {
+        "kind": "source_span",
+        "path": "examples/payments-lite/target/tests/test_api.py",
+        "commit_sha": "41fb569c791d1775a02bf1d385ea6903f4210d27",
+        "span": {
+          "start_line": 50,
+          "end_line": 50,
+          "start_col": null,
+          "end_col": null
+        },
+        "symbol": "tests.test_api.test_partial_refund",
+        "artifact_id": null,
+        "sha256": null,
+        "provenance": "code_intelligence@python-ast-ts/0.1.0",
+        "note": "Heuristic HTTP test link, not executed"
+      },
+      "content": "<untrusted_repository_data trust=\"untrusted\">\n{&quot;kind&quot;:&quot;source_span&quot;,&quot;path&quot;:&quot;examples/payments-lite/target/tests/test_api.py&quot;,&quot;commit_sha&quot;:&quot;41fb569c791d1775a02bf1d385ea6903f4210d27&quot;,&quot;span&quot;:{&quot;start_line&quot;:50,&quot;end_line&quot;:50,&quot;start_col&quot;:null,&quot;end_col&quot;:null},&quot;symbol&quot;:&quot;tests.test_api.test_partial_refund&quot;,&quot;artifact_id&quot;:null,&quot;sha256&quot;:null,&quot;provenance&quot;:&quot;code_intelligence@python-ast-ts/0.1.0&quot;,&quot;note&quot;:&quot;Heuristic HTTP test link, not executed&quot;}\nExpected behavior (ambiguous; 0.75): HTTP test test_partial_refund: r.status_code == 201\n    assert r.status_code == 201\n</untrusted_repository_data>",
+      "trust": "untrusted",
+      "token_estimate": 772
+    },
+    {
+      "provenance": {
+        "kind": "source_span",
+        "path": "examples/payments-lite/target/payments_lite/app.py",
+        "commit_sha": "41fb569c791d1775a02bf1d385ea6903f4210d27",
+        "span": {
+          "start_line": 80,
+          "end_line": 89,
+          "start_col": null,
+          "end_col": null
+        },
+        "symbol": "payments_lite.app.create_app.payment_out",
+        "artifact_id": null,
+        "sha256": null,
+        "provenance": "code_intelligence@python-ast-ts/0.1.0",
+        "note": null
+      },
+      "content": "<untrusted_repository_data trust=\"untrusted\">\n{&quot;kind&quot;:&quot;source_span&quot;,&quot;path&quot;:&quot;examples/payments-lite/target/payments_lite/app.py&quot;,&quot;commit_sha&quot;:&quot;41fb569c791d1775a02bf1d385ea6903f4210d27&quot;,&quot;span&quot;:{&quot;start_line&quot;:80,&quot;end_line&quot;:89,&quot;start_col&quot;:null,&quot;end_col&quot;:null},&quot;symbol&quot;:&quot;payments_lite.app.create_app.payment_out&quot;,&quot;artifact_id&quot;:null,&quot;sha256&quot;:null,&quot;provenance&quot;:&quot;code_intelligence@python-ast-ts/0.1.0&quot;,&quot;note&quot;:null}\nSymbol sym_d20ebe6da2eb1ee35d477906c0ddc927: payments_lite.app.create_app.payment_out\n    def payment_out(store: Store, p: Payment) -&gt; PaymentOut:\n        refunded = sum((r.amount for r in store.refunds_for(p.id)), Decimal(&quot;0&quot;))\n        return PaymentOut(\n            id=p.id,\n            customer_id=p.customer_id,\n            amount=p.amount,\n            currency=p.currency,\n            description=p.description,\n            refunded=refunded,\n        )\n</untrusted_repository_data>",
+      "trust": "untrusted",
+      "token_estimate": 1085
+    },
+    {
+      "provenance": {
+        "kind": "source_span",
+        "path": "examples/payments-lite/target/tests/test_api.py",
+        "commit_sha": "41fb569c791d1775a02bf1d385ea6903f4210d27",
+        "span": {
+          "start_line": 32,
+          "end_line": 35,
+          "start_col": null,
+          "end_col": null
+        },
+        "symbol": "tests.test_api.test_get_own_payment",
+        "artifact_id": null,
+        "sha256": null,
+        "provenance": "code_intelligence@python-ast-ts/0.1.0",
+        "note": null
+      },
+      "content": "<untrusted_repository_data trust=\"untrusted\">\n{&quot;kind&quot;:&quot;source_span&quot;,&quot;path&quot;:&quot;examples/payments-lite/target/tests/test_api.py&quot;,&quot;commit_sha&quot;:&quot;41fb569c791d1775a02bf1d385ea6903f4210d27&quot;,&quot;span&quot;:{&quot;start_line&quot;:32,&quot;end_line&quot;:35,&quot;start_col&quot;:null,&quot;end_col&quot;:null},&quot;symbol&quot;:&quot;tests.test_api.test_get_own_payment&quot;,&quot;artifact_id&quot;:null,&quot;sha256&quot;:null,&quot;provenance&quot;:&quot;code_intelligence@python-ast-ts/0.1.0&quot;,&quot;note&quot;:null}\nSymbol sym_a8ceb318d68bd3201a36b9be6162215e: tests.test_api.test_get_own_payment\nExpectation exp_183a42d74da8fcf1bc68ea156ac536ee [ambiguous; extracted; confidence=0.9]: Test test_get_own_payment: r.status_code == 200\ndef test_get_own_payment(client):\n    r = client.get(&quot;/payments/pay_a1&quot;, headers=ALICE)\n    assert r.status_code == 200\n    assert Decimal(r.json()[&quot;amount&quot;]) == Decimal(&quot;120.00&quot;)\n</untrusted_repository_data>",
+      "trust": "untrusted",
+      "token_estimate": 1034
+    },
+    {
+      "provenance": {
+        "kind": "source_span",
+        "path": "examples/payments-lite/target/payments_lite/app.py",
+        "commit_sha": "41fb569c791d1775a02bf1d385ea6903f4210d27",
+        "span": {
+          "start_line": 60,
+          "end_line": 61,
+          "start_col": null,
+          "end_col": null
+        },
+        "symbol": "payments_lite.app.create_app.get_store",
+        "artifact_id": null,
+        "sha256": null,
+        "provenance": "code_intelligence@python-ast-ts/0.1.0",
+        "note": null
+      },
+      "content": "<untrusted_repository_data trust=\"untrusted\">\n{&quot;kind&quot;:&quot;source_span&quot;,&quot;path&quot;:&quot;examples/payments-lite/target/payments_lite/app.py&quot;,&quot;commit_sha&quot;:&quot;41fb569c791d1775a02bf1d385ea6903f4210d27&quot;,&quot;span&quot;:{&quot;start_line&quot;:60,&quot;end_line&quot;:61,&quot;start_col&quot;:null,&quot;end_col&quot;:null},&quot;symbol&quot;:&quot;payments_lite.app.create_app.get_store&quot;,&quot;artifact_id&quot;:null,&quot;sha256&quot;:null,&quot;provenance&quot;:&quot;code_intelligence@python-ast-ts/0.1.0&quot;,&quot;note&quot;:null}\nSymbol sym_b8b14429cd4102f49c4d4b01062f8419: payments_lite.app.create_app.get_store\n    def get_store() -&gt; Store:\n        return app.state.store\n</untrusted_repository_data>",
+      "trust": "untrusted",
+      "token_estimate": 760
+    },
+    {
+      "provenance": {
+        "kind": "source_span",
+        "path": "examples/payments-lite/target/payments_lite/app.py",
+        "commit_sha": "41fb569c791d1775a02bf1d385ea6903f4210d27",
+        "span": {
+          "start_line": 63,
+          "end_line": 73,
+          "start_col": null,
+          "end_col": null
+        },
+        "symbol": "payments_lite.app.create_app.current_customer",
+        "artifact_id": null,
+        "sha256": null,
+        "provenance": "code_intelligence@python-ast-ts/0.1.0",
+        "note": null
+      },
+      "content": "<untrusted_repository_data trust=\"untrusted\">\n{&quot;kind&quot;:&quot;source_span&quot;,&quot;path&quot;:&quot;examples/payments-lite/target/payments_lite/app.py&quot;,&quot;commit_sha&quot;:&quot;41fb569c791d1775a02bf1d385ea6903f4210d27&quot;,&quot;span&quot;:{&quot;start_line&quot;:63,&quot;end_line&quot;:73,&quot;start_col&quot;:null,&quot;end_col&quot;:null},&quot;symbol&quot;:&quot;payments_lite.app.create_app.current_customer&quot;,&quot;artifact_id&quot;:null,&quot;sha256&quot;:null,&quot;provenance&quot;:&quot;code_intelligence@python-ast-ts/0.1.0&quot;,&quot;note&quot;:null}\nSymbol sym_d07120607db2c4da817498e65fa7aa91: payments_lite.app.create_app.current_customer\n    def current_customer(\n        authorization: Annotated[str | None, Header()] = None,\n        store: Store = Depends(get_store),\n    ) -&gt; Customer:\n        &quot;&quot;&quot;Resolve the Bearer [REDACTED] to a customer; 401 if missing or unknown.&quot;&quot;&quot;\n        if not authorization or not authorization.startswith(&quot;Bearer &quot;):\n            raise HTTPException(status.HTTP_401_UNAUTHORIZED, &quot;missing Bearer [REDACTED]&quot;)\n        customer_id = store.tokens.get(authorization.removeprefix(&quot;Bearer &quot;))\n        if customer_id is None:\n            raise HTTPException(status.HTTP_401_UNAUTHORIZED, &quot;invalid token&quot;)\n        return store.customers[customer_id]\n</untrusted_repository_data>",
+      "trust": "untrusted",
+      "token_estimate": 1417
+    },
+    {
+      "provenance": {
+        "kind": "source_span",
+        "path": "examples/payments-lite/target/tests/test_api.py",
+        "commit_sha": "41fb569c791d1775a02bf1d385ea6903f4210d27",
+        "span": {
+          "start_line": 48,
+          "end_line": 52,
+          "start_col": null,
+          "end_col": null
+        },
+        "symbol": "tests.test_api.test_partial_refund",
+        "artifact_id": null,
+        "sha256": null,
+        "provenance": "code_intelligence@python-ast-ts/0.1.0",
+        "note": null
+      },
+      "content": "<untrusted_repository_data trust=\"untrusted\">\n{&quot;kind&quot;:&quot;source_span&quot;,&quot;path&quot;:&quot;examples/payments-lite/target/tests/test_api.py&quot;,&quot;commit_sha&quot;:&quot;41fb569c791d1775a02bf1d385ea6903f4210d27&quot;,&quot;span&quot;:{&quot;start_line&quot;:48,&quot;end_line&quot;:52,&quot;start_col&quot;:null,&quot;end_col&quot;:null},&quot;symbol&quot;:&quot;tests.test_api.test_partial_refund&quot;,&quot;artifact_id&quot;:null,&quot;sha256&quot;:null,&quot;provenance&quot;:&quot;code_intelligence@python-ast-ts/0.1.0&quot;,&quot;note&quot;:null}\nSymbol sym_02a6dc54fd2a931fd299a5e6ef2255ee: tests.test_api.test_partial_refund\nExpectation exp_183fb08968cc5b583e210c1958e2e65f [ambiguous; extracted; confidence=0.9]: Test test_partial_refund: r.status_code == 201\ndef test_partial_refund(client):\n    r = client.post(&quot;/refunds&quot;, headers=ALICE, json={&quot;payment_id&quot;: &quot;pay_a1&quot;, &quot;amount&quot;: &quot;20.00&quot;})\n    assert r.status_code == 201\n    pay = client.get(&quot;/payments/pay_a1&quot;, headers=ALICE).json()\n    assert Decimal(pay[&quot;refunded&quot;]) == Decimal(&quot;20.00&quot;)\n</untrusted_repository_data>",
+      "trust": "untrusted",
+      "token_estimate": 1182
+    },
+    {
+      "provenance": {
+        "kind": "source_span",
+        "path": "examples/payments-lite/target/payments_lite/app.py",
+        "commit_sha": "41fb569c791d1775a02bf1d385ea6903f4210d27",
+        "span": {
+          "start_line": 28,
+          "end_line": 34,
+          "start_col": null,
+          "end_col": null
+        },
+        "symbol": "payments_lite.app.PaymentOut",
+        "artifact_id": null,
+        "sha256": null,
+        "provenance": "code_intelligence@python-ast-ts/0.1.0",
+        "note": null
+      },
+      "content": "<untrusted_repository_data trust=\"untrusted\">\n{&quot;kind&quot;:&quot;source_span&quot;,&quot;path&quot;:&quot;examples/payments-lite/target/payments_lite/app.py&quot;,&quot;commit_sha&quot;:&quot;41fb569c791d1775a02bf1d385ea6903f4210d27&quot;,&quot;span&quot;:{&quot;start_line&quot;:28,&quot;end_line&quot;:34,&quot;start_col&quot;:null,&quot;end_col&quot;:null},&quot;symbol&quot;:&quot;payments_lite.app.PaymentOut&quot;,&quot;artifact_id&quot;:null,&quot;sha256&quot;:null,&quot;provenance&quot;:&quot;code_intelligence@python-ast-ts/0.1.0&quot;,&quot;note&quot;:null}\nSymbol sym_c794fc9974246318a8944d084dd1088e: payments_lite.app.PaymentOut\nclass PaymentOut(BaseModel):\n    id: str\n    customer_id: str\n    amount: Decimal\n    currency: str\n    description: str\n    refunded: Decimal\n</untrusted_repository_data>",
+      "trust": "untrusted",
+      "token_estimate": 819
+    },
+    {
+      "provenance": {
+        "kind": "source_span",
+        "path": "examples/payments-lite/target/payments_lite/app.py",
+        "commit_sha": "41fb569c791d1775a02bf1d385ea6903f4210d27",
+        "span": {
+          "start_line": 121,
+          "end_line": 129,
+          "start_col": null,
+          "end_col": null
+        },
+        "symbol": "payments_lite.app.create_app.create_payment",
+        "artifact_id": null,
+        "sha256": null,
+        "provenance": "code_intelligence@python-ast-ts/0.1.0",
+        "note": null
+      },
+      "content": "<untrusted_repository_data trust=\"untrusted\">\n{&quot;kind&quot;:&quot;source_span&quot;,&quot;path&quot;:&quot;examples/payments-lite/target/payments_lite/app.py&quot;,&quot;commit_sha&quot;:&quot;41fb569c791d1775a02bf1d385ea6903f4210d27&quot;,&quot;span&quot;:{&quot;start_line&quot;:121,&quot;end_line&quot;:129,&quot;start_col&quot;:null,&quot;end_col&quot;:null},&quot;symbol&quot;:&quot;payments_lite.app.create_app.create_payment&quot;,&quot;artifact_id&quot;:null,&quot;sha256&quot;:null,&quot;provenance&quot;:&quot;code_intelligence@python-ast-ts/0.1.0&quot;,&quot;note&quot;:null}\nSymbol sym_6c835ecafecbda075534fb10ebbb9bc6: payments_lite.app.create_app.create_payment\nExpectation exp_8542cc26e5953139eaffb21f743a8eb3 [ambiguous; extracted; confidence=0.75]: HTTP test test_create_payment: r.status_code == 201\nExpectation exp_98f87576fca57e6ba92120910adf0a3b [ambiguous; extracted; confidence=0.75]: HTTP test test_payment_amount_must_be_positive: client.post(&#x27;/payments&#x27;, headers=BOB, json={&#x27;amount&#x27;: &#x27;0&#x27;}).status_code == 422\n    @app.post(&quot;/payments&quot;, response_model=PaymentOut, status_code=status.HTTP_201_CREATED)\n    def create_payment(\n        body: PaymentIn,\n        customer: Customer = Depends(current_customer),\n        store: Store = Depends(get_store),\n    ) -&gt; PaymentOut:\n        p = Payment(store.next_id(&quot;pay&quot;), customer.id, body.amount, body.currency, body.description)\n        store.payments[p.id] = p\n        return payment_out(store, p)\n</untrusted_repository_data>",
+      "trust": "untrusted",
+      "token_estimate": 1551
+    },
+    {
+      "provenance": {
+        "kind": "source_span",
+        "path": "examples/payments-lite/target/tests/test_api.py",
+        "commit_sha": "41fb569c791d1775a02bf1d385ea6903f4210d27",
+        "span": {
+          "start_line": 40,
+          "end_line": 40,
+          "start_col": null,
+          "end_col": null
+        },
+        "symbol": "tests.test_api.test_create_payment",
+        "artifact_id": null,
+        "sha256": null,
+        "provenance": "code_intelligence@python-ast-ts/0.1.0",
+        "note": "Heuristic HTTP test link, not executed"
+      },
+      "content": "<untrusted_repository_data trust=\"untrusted\">\n{&quot;kind&quot;:&quot;source_span&quot;,&quot;path&quot;:&quot;examples/payments-lite/target/tests/test_api.py&quot;,&quot;commit_sha&quot;:&quot;41fb569c791d1775a02bf1d385ea6903f4210d27&quot;,&quot;span&quot;:{&quot;start_line&quot;:40,&quot;end_line&quot;:40,&quot;start_col&quot;:null,&quot;end_col&quot;:null},&quot;symbol&quot;:&quot;tests.test_api.test_create_payment&quot;,&quot;artifact_id&quot;:null,&quot;sha256&quot;:null,&quot;provenance&quot;:&quot;code_intelligence@python-ast-ts/0.1.0&quot;,&quot;note&quot;:&quot;Heuristic HTTP test link, not executed&quot;}\nExpected behavior (ambiguous; 0.75): HTTP test test_create_payment: r.status_code == 201\n    assert r.status_code == 201\n</untrusted_repository_data>",
+      "trust": "untrusted",
+      "token_estimate": 772
+    },
+    {
+      "provenance": {
+        "kind": "source_span",
+        "path": "examples/payments-lite/target/tests/test_api.py",
+        "commit_sha": "41fb569c791d1775a02bf1d385ea6903f4210d27",
+        "span": {
+          "start_line": 45,
+          "end_line": 45,
+          "start_col": null,
+          "end_col": null
+        },
+        "symbol": "tests.test_api.test_payment_amount_must_be_positive",
+        "artifact_id": null,
+        "sha256": null,
+        "provenance": "code_intelligence@python-ast-ts/0.1.0",
+        "note": "Heuristic HTTP test link, not executed"
+      },
+      "content": "<untrusted_repository_data trust=\"untrusted\">\n{&quot;kind&quot;:&quot;source_span&quot;,&quot;path&quot;:&quot;examples/payments-lite/target/tests/test_api.py&quot;,&quot;commit_sha&quot;:&quot;41fb569c791d1775a02bf1d385ea6903f4210d27&quot;,&quot;span&quot;:{&quot;start_line&quot;:45,&quot;end_line&quot;:45,&quot;start_col&quot;:null,&quot;end_col&quot;:null},&quot;symbol&quot;:&quot;tests.test_api.test_payment_amount_must_be_positive&quot;,&quot;artifact_id&quot;:null,&quot;sha256&quot;:null,&quot;provenance&quot;:&quot;code_intelligence@python-ast-ts/0.1.0&quot;,&quot;note&quot;:&quot;Heuristic HTTP test link, not executed&quot;}\nExpected behavior (ambiguous; 0.75): HTTP test test_payment_amount_must_be_positive: client.post(&#x27;/payments&#x27;, headers=BOB, json={&#x27;amount&#x27;: &#x27;0&#x27;}).status_code == 422\n    assert client.post(&quot;/payments&quot;, headers=BOB, json={&quot;amount&quot;: &quot;0&quot;}).status_code == 422\n</untrusted_repository_data>",
+      "trust": "untrusted",
+      "token_estimate": 982
+    }
+  ],
+  "token_budget": 24000,
+  "token_count": 23154,
+  "provenance": [
+    {
+      "kind": "source_span",
+      "path": "examples/payments-lite/target/payments_lite/app.py",
+      "commit_sha": "41fb569c791d1775a02bf1d385ea6903f4210d27",
+      "span": {
+        "start_line": 131,
+        "end_line": 141,
+        "start_col": null,
+        "end_col": null
+      },
+      "symbol": "payments_lite.app.create_app.get_payment",
+      "artifact_id": null,
+      "sha256": null,
+      "provenance": "code_intelligence@python-ast-ts/0.1.0",
+      "note": null
+    },
+    {
+      "kind": "source_span",
+      "path": "examples/payments-lite/target/tests/test_api.py",
+      "commit_sha": "41fb569c791d1775a02bf1d385ea6903f4210d27",
+      "span": {
+        "start_line": 34,
+        "end_line": 34,
+        "start_col": null,
+        "end_col": null
+      },
+      "symbol": "tests.test_api.test_get_own_payment",
+      "artifact_id": null,
+      "sha256": null,
+      "provenance": "code_intelligence@python-ast-ts/0.1.0",
+      "note": "Heuristic HTTP test link, not executed"
+    },
+    {
+      "kind": "source_span",
+      "path": "examples/payments-lite/target/tests/test_api.py",
+      "commit_sha": "41fb569c791d1775a02bf1d385ea6903f4210d27",
+      "span": {
+        "start_line": 50,
+        "end_line": 50,
+        "start_col": null,
+        "end_col": null
+      },
+      "symbol": "tests.test_api.test_partial_refund",
+      "artifact_id": null,
+      "sha256": null,
+      "provenance": "code_intelligence@python-ast-ts/0.1.0",
+      "note": "Heuristic HTTP test link, not executed"
+    },
+    {
+      "kind": "source_span",
+      "path": "examples/payments-lite/target/payments_lite/app.py",
+      "commit_sha": "41fb569c791d1775a02bf1d385ea6903f4210d27",
+      "span": {
+        "start_line": 80,
+        "end_line": 89,
+        "start_col": null,
+        "end_col": null
+      },
+      "symbol": "payments_lite.app.create_app.payment_out",
+      "artifact_id": null,
+      "sha256": null,
+      "provenance": "code_intelligence@python-ast-ts/0.1.0",
+      "note": null
+    },
+    {
+      "kind": "source_span",
+      "path": "examples/payments-lite/target/tests/test_api.py",
+      "commit_sha": "41fb569c791d1775a02bf1d385ea6903f4210d27",
+      "span": {
+        "start_line": 32,
+        "end_line": 35,
+        "start_col": null,
+        "end_col": null
+      },
+      "symbol": "tests.test_api.test_get_own_payment",
+      "artifact_id": null,
+      "sha256": null,
+      "provenance": "code_intelligence@python-ast-ts/0.1.0",
+      "note": null
+    },
+    {
+      "kind": "source_span",
+      "path": "examples/payments-lite/target/payments_lite/app.py",
+      "commit_sha": "41fb569c791d1775a02bf1d385ea6903f4210d27",
+      "span": {
+        "start_line": 60,
+        "end_line": 61,
+        "start_col": null,
+        "end_col": null
+      },
+      "symbol": "payments_lite.app.create_app.get_store",
+      "artifact_id": null,
+      "sha256": null,
+      "provenance": "code_intelligence@python-ast-ts/0.1.0",
+      "note": null
+    },
+    {
+      "kind": "source_span",
+      "path": "examples/payments-lite/target/payments_lite/app.py",
+      "commit_sha": "41fb569c791d1775a02bf1d385ea6903f4210d27",
+      "span": {
+        "start_line": 63,
+        "end_line": 73,
+        "start_col": null,
+        "end_col": null
+      },
+      "symbol": "payments_lite.app.create_app.current_customer",
+      "artifact_id": null,
+      "sha256": null,
+      "provenance": "code_intelligence@python-ast-ts/0.1.0",
+      "note": null
+    },
+    {
+      "kind": "source_span",
+      "path": "examples/payments-lite/target/tests/test_api.py",
+      "commit_sha": "41fb569c791d1775a02bf1d385ea6903f4210d27",
+      "span": {
+        "start_line": 48,
+        "end_line": 52,
+        "start_col": null,
+        "end_col": null
+      },
+      "symbol": "tests.test_api.test_partial_refund",
+      "artifact_id": null,
+      "sha256": null,
+      "provenance": "code_intelligence@python-ast-ts/0.1.0",
+      "note": null
+    },
+    {
+      "kind": "source_span",
+      "path": "examples/payments-lite/target/payments_lite/app.py",
+      "commit_sha": "41fb569c791d1775a02bf1d385ea6903f4210d27",
+      "span": {
+        "start_line": 28,
+        "end_line": 34,
+        "start_col": null,
+        "end_col": null
+      },
+      "symbol": "payments_lite.app.PaymentOut",
+      "artifact_id": null,
+      "sha256": null,
+      "provenance": "code_intelligence@python-ast-ts/0.1.0",
+      "note": null
+    },
+    {
+      "kind": "source_span",
+      "path": "examples/payments-lite/target/payments_lite/app.py",
+      "commit_sha": "41fb569c791d1775a02bf1d385ea6903f4210d27",
+      "span": {
+        "start_line": 121,
+        "end_line": 129,
+        "start_col": null,
+        "end_col": null
+      },
+      "symbol": "payments_lite.app.create_app.create_payment",
+      "artifact_id": null,
+      "sha256": null,
+      "provenance": "code_intelligence@python-ast-ts/0.1.0",
+      "note": null
+    },
+    {
+      "kind": "source_span",
+      "path": "examples/payments-lite/target/tests/test_api.py",
+      "commit_sha": "41fb569c791d1775a02bf1d385ea6903f4210d27",
+      "span": {
+        "start_line": 40,
+        "end_line": 40,
+        "start_col": null,
+        "end_col": null
+      },
+      "symbol": "tests.test_api.test_create_payment",
+      "artifact_id": null,
+      "sha256": null,
+      "provenance": "code_intelligence@python-ast-ts/0.1.0",
+      "note": "Heuristic HTTP test link, not executed"
+    },
+    {
+      "kind": "source_span",
+      "path": "examples/payments-lite/target/tests/test_api.py",
+      "commit_sha": "41fb569c791d1775a02bf1d385ea6903f4210d27",
+      "span": {
+        "start_line": 45,
+        "end_line": 45,
+        "start_col": null,
+        "end_col": null
+      },
+      "symbol": "tests.test_api.test_payment_amount_must_be_positive",
+      "artifact_id": null,
+      "sha256": null,
+      "provenance": "code_intelligence@python-ast-ts/0.1.0",
+      "note": "Heuristic HTTP test link, not executed"
+    }
+  ],
+  "created_at": "2026-10-17T01:51:50.558195Z"
+}

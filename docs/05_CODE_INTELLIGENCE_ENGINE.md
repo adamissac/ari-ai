@@ -1,6 +1,9 @@
 # 05 — Code intelligence engine
 
-Status: **specified**. Directory: `code-intelligence/`. Deep dive:
+Status: **Python producer implemented; full consumer integration in progress**.
+See [implementation and executed evidence](../code-intelligence/README.md). Tree-sitter
+validates syntax; AST supplies structural metadata. Head facts are fully re-derived;
+parse caching/carry-forward remain performance follow-ups. Directory: `code-intelligence/`. Deep dive:
 [architecture/code-intelligence](architecture/code-intelligence.md).
 
 ## Purpose

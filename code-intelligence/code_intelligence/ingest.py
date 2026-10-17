@@ -5,7 +5,9 @@ from __future__ import annotations
 import hashlib
 import os
 import re
+import selectors
 import subprocess
+import time
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
@@ -65,6 +67,7 @@ class GitReader:
                 "GIT_CONFIG_NOSYSTEM": "1",
                 "GIT_CONFIG_GLOBAL": os.devnull,
                 "GIT_NO_REPLACE_OBJECTS": "1",
+                "GIT_NO_LAZY_FETCH": "1",
                 "GIT_TERMINAL_PROMPT": "0",
             }
         )
@@ -80,28 +83,38 @@ class GitReader:
             "core.pager=cat",
             *args,
         ]
-        # Stream bounded output; communicate() alone permits an adversarial huge tree allocation.
-        import tempfile
-
-        with tempfile.TemporaryFile() as output, tempfile.TemporaryFile() as errors:
+        # Bound output while reading, including disk usage; never spool an entire huge tree.
+        maximum = limit or self.limits.max_tree_bytes
+        deadline = time.monotonic() + self.limits.git_timeout_seconds
+        data = bytearray()
+        with subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as proc:
+            assert proc.stdout is not None and proc.stderr is not None
             try:
-                result = subprocess.run(
-                    cmd,
-                    env=env,
-                    stdout=output,
-                    stderr=errors,
-                    check=False,
-                    timeout=self.limits.git_timeout_seconds,
-                )
+                with selectors.DefaultSelector() as selector:
+                    selector.register(proc.stdout, selectors.EVENT_READ, True)
+                    selector.register(proc.stderr, selectors.EVENT_READ, False)
+                    while selector.get_map():
+                        remaining = deadline - time.monotonic()
+                        if remaining <= 0:
+                            raise IntelligenceError("Git read timed out")
+                        for event, _ in selector.select(remaining):
+                            chunk = os.read(event.fd, 65_536)
+                            if not chunk:
+                                selector.unregister(event.fd)
+                            elif event.data:
+                                data.extend(chunk)
+                                if len(data) > maximum:
+                                    raise IntelligenceError("Git output exceeds configured limit")
+                proc.wait(timeout=max(0.001, deadline - time.monotonic()))
             except subprocess.TimeoutExpired as exc:
+                proc.kill()
                 raise IntelligenceError("Git read timed out") from exc
-            if result.returncode:
+            except BaseException:
+                proc.kill()
+                raise
+            if proc.returncode:
                 raise IntelligenceError(f"Git read failed: {args[0]}")
-            output.seek(0)
-            data = output.read((limit or self.limits.max_tree_bytes) + 1)
-            if len(data) > (limit or self.limits.max_tree_bytes):
-                raise IntelligenceError("Git output exceeds configured limit")
-            return data
+        return bytes(data)
 
     def read(self, sha: str) -> tuple[str, list[SourceFile], list[IndexIssue]]:
         if not _SHA.fullmatch(sha):

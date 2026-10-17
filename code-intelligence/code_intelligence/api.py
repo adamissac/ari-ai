@@ -321,14 +321,41 @@ class IntelligenceService:
         paths = sorted(
             p for p in old_files.keys() | new_files.keys() if old_files.get(p) != new_files.get(p)
         )
-        # Invalidation is conservative at file granularity, including moved/deleted spans.
-        # One-hop propagation includes both old and new graphs so removed edges are covered.
+
+        # Compare complete symbol spans rather than invalidating every symbol in a changed file.
+        # Both graphs participate so removed edges and unchanged callers of changed code survive.
+        def key(symbol: Symbol) -> tuple[str, str, str]:
+            return symbol.path, symbol.qualified_name, symbol.kind.value
+
+        def fingerprints(index: StoredIndex) -> dict[tuple[str, str, str], tuple[int, int, str]]:
+            files = {f.path: f.content.splitlines() for f in index.files}
+            return {
+                key(s): (
+                    s.start_line,
+                    s.end_line,
+                    "\n".join(files[s.path][s.start_line - 1 : s.end_line]),
+                )
+                for s in index.symbols
+            }
+
+        old_symbols = fingerprints(base) if base else {}
+        new_symbols = fingerprints(head)
+        changed_symbols = {
+            k
+            for k in old_symbols.keys() | new_symbols.keys()
+            if old_symbols.get(k) != new_symbols.get(k)
+        }
         affected: set[str] = set()
         expectations: set[str] = set()
         tests: set[str] = set()
-        for index in [base, head] if base else [head]:
-            seeds = {s.id for s in index.symbols if s.path in paths}
-            impacted = neighbors(index, seeds, 1)
+        indexes = [base, head] if base else [head]
+        logical_impact: set[tuple[str, str, str]] = set()
+        for index in indexes:
+            seeds = {s.id for s in index.symbols if key(s) in changed_symbols}
+            expanded = neighbors(index, seeds, 1)
+            logical_impact.update(key(s) for s in index.symbols if s.id in expanded)
+        for index in indexes:
+            impacted = {s.id for s in index.symbols if key(s) in logical_impact}
             affected.update(impacted)
             for exp in index.expectations:
                 if exp.subject_ref in impacted or any(e.path in paths for e in exp.sources):
