@@ -94,3 +94,31 @@ def test_generated_tests_cannot_overwrite_existing_files_or_source(tmp_path):
             _write_generated_tests(tmp_path, [SimpleNamespace(path=path, content="replacement")], "")
     assert existing.read_text() == "original"
     assert not (tmp_path / "app.py").exists()
+
+
+def test_every_error_code_referenced_in_the_package_exists():
+    """A missing member raises AttributeError inside error handlers (e.g. an AgentRun left running)."""
+    import re
+    from pathlib import Path
+
+    from security_agents.contracts import ErrorCode
+
+    root = Path(__file__).resolve().parents[1] / "security_agents"
+    names = {e.name for e in ErrorCode}
+    missing = sorted(
+        {
+            f"{path.relative_to(root)}:{m.group(1)}"
+            for path in root.rglob("*.py")
+            for m in re.finditer(r"\bErrorCode\.([A-Z_]+)\b", path.read_text(encoding="utf-8"))
+            if m.group(1) not in names
+        }
+    )
+    assert not missing, missing
+
+
+def test_platform_error_codes_map_onto_the_shared_catalog():
+    shared_errors = pytest.importorskip("shared.errors")
+    from security_agents.contracts import ErrorCode
+
+    shared_names = {e.value for e in shared_errors.ErrorCode}
+    assert {e.value for e in ErrorCode} - {"KILL_SWITCH"} <= shared_names
