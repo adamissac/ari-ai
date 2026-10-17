@@ -5,4 +5,4 @@ Import models from their modules (``from shared.findings import Finding``) or fr
 coordination/CONTRACTS.md.
 """
 
-SCHEMA_VERSION = "0.1.0"
+SCHEMA_VERSION = "0.2.0"  # 0.2.0: additive RLExplanation (V0.1 proposal)
