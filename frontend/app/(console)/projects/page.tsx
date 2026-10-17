@@ -27,7 +27,7 @@ export default function ProjectsPage() {
   return (
     <>
       <PageTitle title="Projects" subtitle="Each project links repositories, authorized test scopes, assessments and monitoring history." />
-      <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
         <Panel title="Your projects">
           <Async resource={projects} label="projects">
             {page => page.items.length === 0 ? <Empty>No projects yet. Create one to connect a repository.</Empty> : (
