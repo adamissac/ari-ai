@@ -170,3 +170,10 @@ at `5b3ef50` (6 container tests passed; ordinary suite 451 passed/18 skipped).
 INFRA-005 remains open for published test/check image digests; the Dockerfile pins
 its base but the verified CI image uses a temporary tag. M3's live-provider gate
 and SEC-005's human template review remain separate.
+
+### QA-002 — isolate the M7 demo runner
+Owner: Alan (continuing unfinished QA with repository-owner authorization).
+Status: IN_REVIEW on `fix/alan/m7-runner-isolation`. Remove PATH-only uv
+dependency and shared development database lifecycle operations; preserve command
+failures, force live calls off, and keep generated reports out of tracked evidence.
+Runner semantics covered by `tests/qa/test_m7_runner.py`.
