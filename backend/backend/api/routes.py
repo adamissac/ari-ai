@@ -678,7 +678,8 @@ def start_assessment(
     with transaction() as conn:
         user = _user(conn, request)
         require_project(conn, user, project_id, MemberRole.member)
-        replay = idempotent_lookup(conn, user.id, idempotency_key, body.model_dump(mode="json"))
+        retry_request = {"project_id": project_id, "body": body.model_dump(mode="json")}
+        replay = idempotent_lookup(conn, user.id, idempotency_key, retry_request)
         if replay:
             return JSONResponse(replay["body"], status_code=replay["status"])
         limiter.check(f"asm:{user.id}", get_settings().assessment_starts_per_hour, 3600)
@@ -707,7 +708,7 @@ def start_assessment(
         except DomainError as e:
             raise ApiError(e.code, str(e), e.status) from e
         payload = {"assessment": a.model_dump(mode="json"), "job_id": job_id}
-        idempotent_store(conn, user.id, idempotency_key, body.model_dump(mode="json"), 202, payload)
+        idempotent_store(conn, user.id, idempotency_key, retry_request, 202, payload)
         return JSONResponse(payload, status_code=202)
 
 
