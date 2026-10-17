@@ -33,6 +33,13 @@ test('recommendation list keeps the backend simulation label and rejects other e
   const page = await client(() => json({ items: [], next_cursor: null, label: 'simulation-derived' })).defenseRecommendations('prj_12345678');
   assert.equal(page.label, 'simulation-derived');
   await assert.rejects(client(() => json({ items: [], next_cursor: null })).defenseRecommendations('prj_12345678'), ProtocolError);
+  // A real cursor is accepted and passed back as ?cursor= (the list used to truncate at 50).
+  let seen = '';
+  const more = await client((url) => { seen = url; return json({ items: [], next_cursor: '2026-10-17T03:00:00+00:00|rec_1', label: 'x' }); })
+    .defenseRecommendations('prj_12345678', { cursor: '2026-10-17T04:00:00+00:00|rec_9' });
+  assert.equal(more.next_cursor, '2026-10-17T03:00:00+00:00|rec_1');
+  assert.ok(seen.endsWith('/defense-recommendations?cursor=2026-10-17T04%3A00%3A00%2B00%3A00%7Crec_9'), seen);
+  await assert.rejects(client(() => json({ items: [], next_cursor: 7, label: 'x' })).defenseRecommendations('prj_12345678'), ProtocolError);
 });
 
 test('artifact text is bounded and its declared SHA-256 must match the bytes', async () => {
