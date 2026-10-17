@@ -3,7 +3,7 @@
 Owner: Sarosh
 Branch: feat/sarosh/intelligence-handoff (implementation feat/sarosh/code-intelligence merged)
 Current task: INTEL-001 through INTEL-008 producer merged (#6); consumer/runtime handoff
-Last remote sync: 2026-10-17T02:06:06Z; main bcc2e23, PR #6 merged
+Last remote sync: 2026-10-17T02:07:54Z; main d194132 (contracts 0.4.0), implementation PR #6 merged bcc2e23
 API/contract dependencies: canonical shared models and backend PostgreSQL PayloadStore integrated from main; consumer runtime adapters pending
 Verified tests: 24 passed/1 opt-in skip focused; 115 passed/4 skipped broader; Ruff/format/strict mypy (11 modules) and final PR CI passed
 Recent PR/commit: PR #6 merged bcc2e23; ownership fix 10fd408; PostgreSQL/gateway 99cbc4c
@@ -27,3 +27,5 @@ Add dated factual entries; do not overwrite history. Never claim unexecuted test
 - 2026-10-17T02:03Z: Addressed Adam's cross-pillar review: route-attached module ownership intent plus sibling ownership-check inconsistency with exact call-site citations; get_store excluded from auth_dependencies; in-body require_owner recorded. Actual-target two-commit test proves warning disappears after the missing check is added. Broader suite **115 passed, 4 skipped**; own suite **19 passed, 1 skipped** before version-only refresh. INDEX_VERSION bumped to python-ast-ts/0.2.0, so old caches cannot masquerade as improved current facts. Regenerated canonical fixture: 49 expectations; 12 context chunks; conservative count 23,267 / 24,000. Final combined refresh follows in PR #6.
 
 - 2026-10-17T02:06:06Z: PR #6 **MERGED** as `bcc2e23389f147b82feef2bdac50f60965b7d350`. Final CI (both test jobs, links, gitleaks) passed for `d608af5`; `git diff --quiet HEAD origin/main` confirmed merged tree identity. Final focused tests **24 passed, 1 skipped**; broader tests **115 passed, 4 skipped**. Core implementation commits include `99cbc4c` (PostgreSQL/gateway), `87e898d` (evidence/CI), `cd24eda` (terminal failures), `10fd408` (reviewed ownership correction). Handoff message publishes current index 0.2.0 and re-index requirement. No live/complete consumer runtime claim.
+
+- 2026-10-17T02:07:54Z: Synced contracts 0.4.0 / hosted backend adapter (`d194132`). ID schema change allows underscores/hyphens; producer DTO fields are unchanged. Re-executed focused producer/PostgreSQL/webhook suite: **24 passed, 1 skipped**. No intelligence source changes required. Documentation handoff PR #21 records merged status; full consumer use of this producer remains a separate runtime evidence gate.
