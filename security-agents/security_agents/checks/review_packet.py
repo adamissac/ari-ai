@@ -13,7 +13,7 @@ from . import library as lib
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 RECIPE = PACKAGE_ROOT.parent / "examples" / "payments-lite" / "build_recipe.json"
-ALLOWED_IMPORTS = frozenset({"json", "decimal", "fastapi", "payments_lite"})
+ALLOWED_IMPORTS = frozenset({"json", "decimal", "fastapi"})  # + the recipe's app_factory package
 FORBIDDEN_TOKENS = ("subprocess", "socket", "http://", "https://", "requests.", "os.system", "eval(", "exec(")
 SAMPLES: dict[str, dict[str, Any]] = {
     "access_control.ownership@1": {
@@ -29,7 +29,7 @@ SAMPLES: dict[str, dict[str, Any]] = {
     },
 }
 CHECKLIST = (
-    "The rendered module imports only json, decimal, fastapi and payments_lite.",
+    "The rendered module imports only json, decimal, fastapi and the package named by the recipe's app_factory (validated as package.module:callable).",
     "It uses only fixture identities and resource ids declared in the build recipe.",
     "It opens no sockets, spawns no processes and reads no environment or files outside the workspace.",
     "Its assertions state the expectation, so a failure means the expectation did not hold.",
@@ -75,11 +75,18 @@ def packet(recipe_path: Path = RECIPE) -> list[dict[str, Any]]:
                 "side_effect_class": meta.side_effect_class,
                 "reviewed_by": meta.reviewed_by,
                 "parameters": list(meta.parameters),
-                "renderer_sha256": _sha(lib._PREAMBLE + lib._PREAMBLE_HTTP + renderer_source),
+                "renderer_sha256": _sha(
+                    lib._PREAMBLE
+                    + lib._PREAMBLE_HTTP
+                    + inspect.getsource(lib.app_factory)
+                    + inspect.getsource(lib._inprocess_preamble)
+                    + renderer_source
+                ),
                 "sample_parameters": SAMPLES[meta.ref],
                 "rendered_sha256": _sha(rendered),
                 "imports": imports,
-                "imports_within_allowlist": set(imports) <= ALLOWED_IMPORTS,
+                "imports_within_allowlist": set(imports)
+                <= ALLOWED_IMPORTS | {lib.app_factory(recipe)[0].split(".")[0]},
                 "forbidden_tokens_found": [t for t in FORBIDDEN_TOKENS if t in code],
                 "rendered": rendered,
             }
