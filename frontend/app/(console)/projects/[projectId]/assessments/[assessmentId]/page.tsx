@@ -33,31 +33,28 @@ export default function AssessmentPage() {
   const [streamNonce, setStreamNonce] = useState(0);
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const loadDetail = useCallback(async (signal?: AbortSignal) => {
-    try {
-      setDetail(await api().assessment(id, signal ? { signal } : {}));
-      setDetailError(null);
-    } catch (err) {
-      if (!signal?.aborted) setDetailError(err);
-    }
+  const loadDetail = useCallback((signal?: AbortSignal) => {
+    api().assessment(id, signal ? { signal } : {}).then(
+      d => { setDetail(d); setDetailError(null); },
+      (err: unknown) => { if (!signal?.aborted) setDetailError(err); },
+    );
   }, [id]);
 
   useEffect(() => {
     const controller = new AbortController();
-    void loadDetail(controller.signal);
+    loadDetail(controller.signal);
     return () => controller.abort();
   }, [loadDetail]);
 
   // Records change only when an event says so; coalesce bursts into one refetch.
   const scheduleRefresh = useCallback(() => {
     if (refreshTimer.current) clearTimeout(refreshTimer.current);
-    refreshTimer.current = setTimeout(() => void loadDetail(), 250);
+    refreshTimer.current = setTimeout(() => loadDetail(), 250);
   }, [loadDetail]);
 
   useEffect(() => {
     const controller = new AbortController();
     let cursor = 0;
-    setStreamError(null);
     (async () => {
       for await (const event of watchAssessment(api(), id, { after: cursor, signal: controller.signal, onConnection: setConnection })) {
         cursor = event.seq;
@@ -73,7 +70,7 @@ export default function AssessmentPage() {
 
   useEffect(() => () => { if (refreshTimer.current) clearTimeout(refreshTimer.current); }, []);
 
-  if (detailError && !detail) return <ErrorState error={detailError} onRetry={() => void loadDetail()} context="Could not load assessment" />;
+  if (detailError && !detail) return <ErrorState error={detailError} onRetry={() => loadDetail()} context="Could not load assessment" />;
   if (!detail) return <Loading label="Loading assessment" />;
   const a = detail.assessment;
   const terminal = TERMINAL_STATES.has(a.state);
@@ -83,9 +80,9 @@ export default function AssessmentPage() {
       <PageTitle
         title={<span className="flex flex-wrap items-center gap-2">Assessment <Mono className="text-base">{a.id}</Mono> <Badge view={ASSESSMENT_STATE[a.state]} /></span>}
         subtitle={<>Commit <Mono>{shortSha(a.commit_sha)}</Mono> · {a.trigger} trigger · scope <Mono>{a.scope_id}</Mono> · started <Time iso={a.created_at} />{a.completed_at && <> · ended <Time iso={a.completed_at} /></>}</>}
-        actions={!terminal && <CancelButton id={a.id} onDone={() => void loadDetail()} />}
+        actions={!terminal && <CancelButton id={a.id} onDone={() => loadDetail()} />}
       />
-      <ConnectionBar state={connection} error={streamError} onReconnect={() => setStreamNonce(n => n + 1)} />
+      <ConnectionBar state={connection} error={streamError} onReconnect={() => { setStreamError(null); setStreamNonce(n => n + 1); }} />
       {a.error && (
         <div role="alert" className="mb-4 rounded-md border border-bad/40 bg-bad/5 p-3 text-sm">
           <p className="font-semibold text-bad">Assessment error · {a.error.code}</p>
@@ -101,7 +98,7 @@ export default function AssessmentPage() {
         <Stat label="Sandbox time" value={`${a.usage.sandbox_seconds.toFixed(1)} s`} hint={`wall cap ${a.budget.max_wall_clock_s}s`} />
       </div>
       <BudgetMeter used={a.usage.usd} cap={a.budget.max_usd} />
-      {a.state === 'AWAITING_APPROVAL' && <ApprovalGate projectId={project.id} events={events} onDecided={() => void loadDetail()} />}
+      {a.state === 'AWAITING_APPROVAL' && <ApprovalGate projectId={project.id} events={events} onDecided={() => loadDetail()} />}
       <div className="mt-4 grid gap-4 xl:grid-cols-[3fr_2fr]">
         <Panel title="Runtime agents" actions={<span className="text-xs text-muted">one persisted record per agent execution</span>}>
           <AgentLanes runs={detail.agent_runs} />

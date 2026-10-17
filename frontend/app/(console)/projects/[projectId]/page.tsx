@@ -92,18 +92,17 @@ function StartAssessment({ onStarted }: { onStarted: () => void }) {
   const [repoId, setRepoId] = useState('');
   const [scopeId, setScopeId] = useState('');
   const [sha, setSha] = useState('');
-  const [key, setKey] = useState<string | null>(null);
+  // An unchanged retry of the same action reuses its key; any edit is a new action.
+  const [key, setKey] = useState<{ sig: string; value: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const active = scopes.status === 'ready' ? scopes.data.items.filter(s => s.status === 'active') : [];
 
-  // Changing any input is a new user action; an unchanged retry reuses its key.
-  useEffect(() => { setKey(null); }, [repoId, scopeId, sha]);
-
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    const actionKey = key ?? idempotencyKey('assessment');
-    setKey(actionKey);
+    const sig = `${repoId}|${scopeId}|${sha.trim()}`;
+    const actionKey = key?.sig === sig ? key.value : idempotencyKey('assessment');
+    setKey({ sig, value: actionKey });
     setBusy(true);
     setError(null);
     try {
