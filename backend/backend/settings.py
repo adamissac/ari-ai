@@ -86,6 +86,7 @@ class Settings(BaseSettings):
         "github_oauth_client_secret",
         "rl_checkpoint_path",
         "rl_topology_path",
+        "rl_checkpoint_sha256",
         "repository_bindings_file",
         "security_workdir",
         mode="before",
