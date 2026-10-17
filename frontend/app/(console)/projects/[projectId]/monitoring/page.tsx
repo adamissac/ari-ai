@@ -3,6 +3,7 @@
 import type { DefenseRecommendation, MonitoringEvent, RLExplanation } from '@hackatl/frontend-transport';
 import Link from 'next/link';
 import { useState } from 'react';
+import { AttackDrill } from '@/components/attack-drill';
 import { useProject } from '@/components/project';
 import { Async, Badge, Button, Empty, ErrorState, Loading, Mono, Panel, Tag, Time } from '@/components/ui';
 import { api } from '@/lib/api';
@@ -44,6 +45,7 @@ export default function MonitoringPage() {
         </ul>
       </header>
       <p className="rounded-xl border border-line bg-panel p-5 text-sm text-ink" data-testid="monitoring-summary">{summary}</p>
+      <AttackDrill projectId={project.id} onEvents={events.reload} />
     <div className="grid grid-cols-1 gap-4 xl:grid-cols-[3fr_2fr]">
       <div className="flex flex-col gap-4">
         <Panel title="Event feed" actions={<span className="text-xs text-muted">persisted webhook and runtime events · polled every 10 s</span>}>

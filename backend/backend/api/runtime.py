@@ -25,7 +25,7 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-from backend import audit
+from backend import audit, jobs
 from backend.api.deps import ApiError, limiter, not_found, require_project, require_user
 from backend.api.webhooks import _read_bounded
 from backend.db import (
@@ -71,6 +71,27 @@ OPEN = {
         FindingStatus.needs_recheck,
     )
 }
+
+
+@router.post("/projects/{project_id}/attack-drills", status_code=202)
+def start_attack_drill(project_id: str, request: Request) -> dict[str, Any]:
+    """Labelled simulated attack: Claude plans it, the real detection pipeline scores it."""
+    with transaction() as conn:
+        user = require_user(conn, request)
+        org_id, _ = require_project(conn, user, project_id, MemberRole.member)
+        limiter.check(f"drill:{project_id}", 10, 3600)
+        job_id, _ = jobs.enqueue(conn, "attack_drill", {"project_id": project_id}, max_attempts=1)
+        audit.record(
+            conn,
+            org_id=org_id,
+            project_id=project_id,
+            actor_type=ActorType.user,
+            actor_id=user.id,
+            action="attack_drill.requested",
+            subject_type="job",
+            subject_id=job_id,
+        )
+        return {"job_id": job_id, "simulated": True}
 
 
 def _sha(token: str) -> str:
