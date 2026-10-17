@@ -278,7 +278,7 @@ function EvidenceChain({ detail, patches, repo, projectId }: { detail: FindingDe
             <div key={h.id} className="mb-2 text-sm text-muted">
               <p className="text-xs"><Tag>{h.category}</Tag> effort {h.effort}</p>
               <p className="mt-1">{h.recommendation}</p>
-              {h.proposed_test_artifact_id && <ArtifactPeek id={h.proposed_test_artifact_id} label="proposed regression test" />}
+              {h.proposed_test_artifact_id && <ArtifactPeek key={h.proposed_test_artifact_id} id={h.proposed_test_artifact_id} label="proposed regression test" />}
             </div>
           ))}
         </Step>
@@ -300,7 +300,7 @@ function PatchCard({ view }: { view: PatchView }) {
         base <Mono>{shortSha(patch.base_commit_sha)}</Mono> · worktree <Mono>{patch.worktree_ref}</Mono> · files {patch.files_changed.join(', ') || '—'}
         {patch.tests_added.length > 0 && <> · tests added {patch.tests_added.join(', ')}</>}
       </p>
-      <ArtifactPeek id={patch.diff_artifact_id} label="diff" asDiff />
+      <ArtifactPeek key={patch.diff_artifact_id} id={patch.diff_artifact_id} label="diff" asDiff />
       {verification && (
         <div className="mt-3 border-t border-line pt-2">
           <p className="text-xs font-semibold">Verify checks <span className="font-normal text-faint">· sandbox runs {verification.sandbox_run_ids.join(', ') || '—'}</span></p>

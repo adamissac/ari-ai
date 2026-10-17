@@ -115,8 +115,12 @@ button.label-mono, a.label-mono, nav.label-mono, nav .label-mono {
    drifting light orbs, a pointer-following glow and text spotlight, staggered blur-in, and a
    gentle scroll parallax. JS writes --mx/--my/--tx/--ty/--scroll; everything else is CSS. */
 .hero-stage { --mx: 70%; --my: 30%; --scroll: 0; }
-.hero-content { position: relative; z-index: 1; transform: translateY(calc(var(--scroll) * -28px)); opacity: calc(1 - var(--scroll) * 0.5); }
-.hero-orbs { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; transform: translateY(calc(var(--scroll) * 60px)); }
+/* The hero rides the scroll momentum: content lifts, shrinks slightly and softens as the page
+   moves; the light orbs move at a different depth. Driven by --scroll (0..1) from hero.tsx. */
+.hero-content { position: relative; z-index: 1; transform-origin: 50% 30%; will-change: transform, opacity, filter;
+  transform: translateY(calc(var(--scroll) * -140px)) scale(calc(1 - var(--scroll) * 0.06));
+  opacity: calc(1 - var(--scroll) * 0.9); filter: blur(calc(var(--scroll) * 6px)); }
+.hero-orbs { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; transform: translateY(calc(var(--scroll) * 160px)) scale(calc(1 + var(--scroll) * 0.15)); }
 .hero-orb { position: absolute; border-radius: 9999px; filter: blur(60px); opacity: 0.55; will-change: transform; }
 .hero-orb-a { width: 46%; aspect-ratio: 1; left: -8%; top: -30%; background: color-mix(in srgb, var(--color-brand) 55%, transparent); animation: hero-drift-a 18s ease-in-out infinite alternate; }
 .hero-orb-b { width: 38%; aspect-ratio: 1; right: -6%; top: 10%; background: color-mix(in srgb, var(--color-brand-deep) 70%, transparent); animation: hero-drift-b 22s ease-in-out infinite alternate; }
@@ -154,7 +158,7 @@ button.label-mono, a.label-mono, nav.label-mono, nav .label-mono {
 @media (prefers-reduced-motion: reduce) {
   .animate-pulse { animation: none; }
   .hero-orb, .hero-ping::after, .hero-stage .hero-in { animation: none; }
-  .hero-content, .hero-orbs { transform: none; opacity: 1; }
+  .hero-content, .hero-orbs { transform: none; opacity: 1; filter: none; }
   .hero-full { position: relative; }
 }
 
@@ -210,6 +214,16 @@ html[data-home-hero][data-hero-past] .site-header nav a.hdr-cta { background: va
 .story-swap { display: grid; }
 .story-swap-item { grid-area: 1 / 1; opacity: 0; filter: blur(8px); transform: translateY(8px); transition: opacity 500ms var(--ease-quad), filter 500ms var(--ease-quad), transform 500ms var(--ease-quad); }
 .story-swap-item[data-on] { opacity: 1; filter: none; transform: none; }
+
+/* Non-sticky mode (below lg, or reduced motion): all three beats stack, visible. */
+@media not all and (min-width: 1024px) {
+  .story-swap { display: flex; flex-direction: column; gap: 1.5rem; min-height: 0; }
+  .story-swap-item { opacity: 1; filter: none; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .story-swap { display: flex; flex-direction: column; gap: 1.5rem; min-height: 0; }
+  .story-swap-item { opacity: 1; filter: none; transform: none; }
+}
 
 /* Change timeline. */
 .story-timeline { position: relative; height: 96px; border-block: 1px solid var(--color-line); background: color-mix(in srgb, var(--color-ink) 4%, transparent); }
@@ -281,6 +295,7 @@ html[data-home-hero][data-hero-past] .site-header nav a.hdr-cta { background: va
 
 @media (prefers-reduced-motion: reduce) {
   .story-rain::before, .story-panel .story-svg-node { animation: none; }
+  .story-card, .story-tick, .story-swap-item, .story-svg-path { transition: none; }
 }
 
 /* Obsidian-style graph view (components/node-graph.tsx). */
@@ -374,6 +389,89 @@ html[data-home-hero][data-hero-past] .site-header nav a.hdr-cta { background: va
 .faq-a p { max-width: 42rem; padding-bottom: 22px; font-size: 0.9rem; line-height: 1.6; color: var(--color-muted); opacity: 0; transform: translateY(-4px); transition: opacity 300ms, transform 300ms var(--ease-quad); }
 .faq-item[data-open] .faq-a p { opacity: 1; transform: none; }
 @media (prefers-reduced-motion: reduce) { .faq-a, .faq-a p, .faq-icon::after { transition: none; } }
+
+/* Defense Lab network map (components/node-graph.tsx). Signal states differ by ring weight and
+   dash as well as colour; defensive actions add labelled badges. Motion is one-shot only. */
+.net-map { position: relative; overflow: hidden; border-radius: 18px; background: radial-gradient(120% 90% at 50% 0%, #2b1d19 0%, var(--color-ink) 70%); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06); }
+.net-svg { display: block; width: 100%; height: auto; user-select: none; }
+.net-edge { fill: none; stroke: rgba(255, 255, 255, 0.24); stroke-width: 1.4; transition: stroke 250ms, opacity 250ms, stroke-width 250ms; }
+.net-edge[data-lit] { stroke: rgba(255, 255, 255, 0.75); stroke-width: 2; }
+.net-edge[data-dim] { opacity: 0.25; }
+.net-edge[data-slow] { stroke: #f0a868; stroke-dasharray: 2 5; stroke-width: 1.8; }
+.net-edge[data-cut] { stroke: rgba(255, 255, 255, 0.18); stroke-dasharray: 6 6; }
+.net-edge-flash { fill: none; stroke: #e0735c; stroke-width: 2.4; stroke-dasharray: 0.12 1; stroke-dashoffset: 1; animation: net-flash 900ms var(--ease-quad) 1 forwards; }
+@keyframes net-flash { from { stroke-dashoffset: 1; opacity: 1; } to { stroke-dashoffset: -0.12; opacity: 0; } }
+.net-cut circle { fill: var(--color-ink); stroke: #f0a868; stroke-width: 1.4; }
+.net-cut path { stroke: #f0a868; stroke-width: 1.6; stroke-linecap: round; }
+.net-node { cursor: pointer; outline: none; transition: opacity 250ms; }
+.net-node[data-dim] { opacity: 0.32; }
+.net-internet { cursor: default; }
+.net-body { fill: #2f211d; stroke: rgba(255, 255, 255, 0.14); stroke-width: 1; transition: fill 300ms; }
+.net-internet .net-body { fill: #3a2a25; }
+.net-icon { color: rgba(255, 255, 255, 0.92); }
+.net-ring { fill: none; stroke: rgba(255, 255, 255, 0.22); stroke-width: 1.2; transition: stroke 300ms, stroke-width 300ms; }
+.net-node[data-signal="elevated"] .net-ring { stroke: #f0a868; stroke-width: 2; stroke-dasharray: 5 3; }
+.net-node[data-signal="high"] .net-ring { stroke: #e0735c; stroke-width: 3; }
+.net-node[data-signal="high"] .net-body { fill: #4a231b; }
+.net-node[data-signal="unknown"] .net-ring { stroke: rgba(255, 255, 255, 0.35); stroke-dasharray: 1 4; }
+.net-node[data-isolated] .net-body { fill: #241917; }
+.net-node[data-isolated] .net-icon { opacity: 0.55; }
+.net-node[data-selected] .net-ring { stroke: #fff; stroke-width: 2.5; stroke-dasharray: none; }
+.net-node:focus-visible .net-ring { stroke: #fff; stroke-width: 3; }
+.net-glow { pointer-events: none; }
+.net-act { fill: none; stroke: #fff; stroke-width: 2; opacity: 0; animation: net-act 1100ms var(--ease-quad) 1; transform-box: fill-box; transform-origin: center; }
+@keyframes net-act { 0% { opacity: 0.9; transform: scale(0.9); } 100% { opacity: 0; transform: scale(1.35); } }
+.net-truth { fill: none; stroke: #ff8a75; stroke-width: 1.4; stroke-dasharray: 2 3; }
+.net-truth-label { fill: #ff8a75; font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em; pointer-events: none; }
+.net-label { fill: #fff; font-family: var(--font-sans); font-size: 12.5px; font-weight: 500; pointer-events: none; }
+.net-sub { fill: rgba(255, 255, 255, 0.5); font-family: var(--font-mono); font-size: 9.5px; pointer-events: none; }
+.map-badge circle { fill: var(--color-ink); stroke: rgba(255, 255, 255, 0.4); stroke-width: 1; }
+.map-badge { color: #fff; }
+.map-badge-cut circle, .map-badge-slow circle { stroke: #f0a868; }
+.map-badge-cut, .map-badge-slow { color: #f0a868; }
+.map-badge-recheck circle { stroke: #9cc3f0; }
+.map-badge-recheck { color: #9cc3f0; }
+.net-tip { position: absolute; z-index: 2; translate: -50% calc(-100% - 46px); pointer-events: none; min-width: 9rem; max-width: 15rem; border-radius: 10px; padding: 8px 10px; font-size: 12px; line-height: 1.35; background: rgba(28, 18, 16, 0.92); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 10px 30px -12px rgba(0, 0, 0, 0.6); }
+.net-tools { position: absolute; right: 12px; bottom: 12px; display: flex; gap: 4px; }
+.net-tools button { min-width: 32px; height: 32px; border-radius: 8px; padding: 0 8px; color: rgba(255, 255, 255, 0.85); font-family: var(--font-mono); font-size: 12px; background: rgba(255, 255, 255, 0.08); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12); transition: background-color 200ms; }
+.net-tools button:hover { background: rgba(255, 255, 255, 0.16); }
+.net-truth-chip { position: absolute; left: 12px; top: 12px; border-radius: 9999px; padding: 4px 10px; font-family: var(--font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.04em; color: #ff8a75; background: rgba(28, 18, 16, 0.85); box-shadow: inset 0 0 0 1px rgba(255, 138, 117, 0.4); }
+@media (prefers-reduced-motion: reduce) { .net-edge-flash, .net-act { animation: none; display: none; } }
+
+/* Defense Lab replay stage (components/lab-replay.tsx). */
+.lab-status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; border-radius: 14px; padding: 10px 14px; background: var(--color-panel-2); box-shadow: inset 0 0 0 1px var(--color-line); font-size: 0.85rem; }
+.lab-mode { border-radius: 9999px; padding: 4px 10px; color: #fff; background: var(--color-ink); }
+.lab-status-item { display: inline-flex; min-width: 0; align-items: center; gap: 6px; }
+.lab-dot { width: 8px; height: 8px; border-radius: 9999px; background: var(--color-faint); }
+.lab-tone-elevated .lab-dot { background: #d9822b; }
+.lab-tone-high .lab-dot { background: var(--color-brand); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-brand) 20%, transparent); }
+.lab-tone-high { color: var(--color-brand-deep); font-weight: 500; }
+.lab-q { margin-bottom: 2px; font-family: var(--font-mono); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255, 255, 255, 0.5); }
+.lab-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 10px; font-size: 0.75rem; color: var(--color-muted); }
+.lab-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.lab-key { width: 18px; height: 18px; flex: none; }
+.lab-key-dark { border-radius: 9999px; background: var(--color-ink); }
+.lk-quiet { fill: #2f211d; stroke: #9a857f; stroke-width: 1.4; }
+.lk-elevated { fill: #2f211d; stroke: #d9822b; stroke-width: 2.4; stroke-dasharray: 4 2.5; }
+.lk-high { fill: #4a231b; stroke: var(--color-brand); stroke-width: 3.4; }
+.lab-player { display: flex; flex-direction: column; gap: 10px; border-radius: 16px; padding: 12px; background: var(--color-panel); box-shadow: inset 0 0 0 1px var(--color-line); }
+.lab-ctl { height: 34px; min-width: 34px; border-radius: 9px; padding: 0 10px; font-size: 0.85rem; color: var(--color-ink); background: var(--color-panel-2); box-shadow: inset 0 0 0 1px var(--color-line); transition: background-color 200ms; }
+.lab-ctl:hover:not(:disabled) { background: var(--color-brand-soft); }
+.lab-ctl:disabled { opacity: 0.4; cursor: not-allowed; }
+.lab-ctl-main { min-width: 84px; font-weight: 500; color: #fff; background: var(--color-brand); box-shadow: 0 6px 16px -8px rgba(194, 69, 45, 0.6); }
+.lab-ctl-main:hover:not(:disabled) { background: var(--color-brand-deep); }
+.lab-moments { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
+.lab-moment { display: inline-flex; flex: none; align-items: center; gap: 6px; border-radius: 9999px; padding: 5px 11px; font-size: 0.78rem; color: var(--color-ink); background: var(--color-panel-2); box-shadow: inset 0 0 0 1px var(--color-line); transition: background-color 200ms, box-shadow 200ms; }
+.lab-moment:hover { background: var(--color-brand-soft); }
+.lab-moment[data-kind="signal"] { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-brand) 45%, transparent); }
+.lab-moment[data-kind="disruptive"] { color: #fff; background: var(--color-ink); box-shadow: none; }
+.lab-moment[data-kind="disruptive"] .text-faint { color: rgba(255, 255, 255, 0.55); }
+.lab-moment[aria-current="step"] { box-shadow: 0 0 0 2px var(--color-brand); }
+
+/* Project monitoring header (real recorded events; never a simulation). */
+.monitor-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; border-radius: 18px; padding: 20px 22px; background: radial-gradient(90% 120% at 100% 0%, color-mix(in srgb, var(--color-brand) 28%, transparent), transparent 60%), var(--color-ink); }
+.monitor-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.monitor-chips li { display: inline-flex; gap: 6px; border-radius: 9999px; padding: 5px 11px; font-size: 0.8rem; color: #fff; background: rgba(255, 255, 255, 0.08); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12); }
 
 /* Scroll reveal (see components/reveal.tsx). Content is visible without JS. */
 .reveal { transition: opacity 500ms var(--ease-quad), transform 500ms var(--ease-quad); }

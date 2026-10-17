@@ -63,6 +63,43 @@ class ToolInvocation:
     summary: dict[str, Any]
 
 
+# Diagnostic fields first, so the cap never drops the outcome.
+_SUMMARY_FIRST = (
+    "error",
+    "detail",
+    "matches_expectation",
+    "outcome",
+    "applied",
+    "exit_code",
+    "timed_out",
+    "passed",
+    "failed",
+    "errors",
+    "failing_tests",
+    "template_ref",
+    "parameters",
+    "target_contacted",
+    "transport",
+    "sandbox_run_id",
+)
+
+
+def result_summary(payload: dict[str, Any], *, max_keys: int = 20, max_len: int = 300) -> dict[str, Any]:
+    """Bounded, redacted view of a tool result for the step record (successful results too,
+    e.g. a check's matches_expectation / exit code), so a run can be diagnosed afterwards."""
+    out: dict[str, Any] = {}
+    first = [k for k in _SUMMARY_FIRST if k in payload]
+    for key in (first + [k for k in payload if k not in first])[:max_keys]:
+        value = redact(payload[key])
+        if isinstance(value, bool | int | float) or value is None:
+            out[key] = value
+        elif isinstance(value, str):
+            out[key] = value[:max_len]
+        else:
+            out[key] = json.dumps(value, default=str, sort_keys=True)[:max_len]
+    return out
+
+
 @dataclass
 class StepRecord:
     """Full, redacted transcript of one agent step (for audit, replay, UI)."""
@@ -91,7 +128,15 @@ class StepRecord:
                 "provider_mode": self.provider_mode,
                 "turns": self.turns,
                 "tool_invocations": [
-                    {"name": t.name, "args": t.args, "ok": t.ok, "error_code": t.error_code}
+                    {
+                        "name": t.name,
+                        "args": t.args,
+                        "ok": t.ok,
+                        "error_code": t.error_code,
+                        # bounded, redacted result (result_summary) so persisted hosted
+                        # transcripts can diagnose a successful-but-inconclusive check
+                        "summary": t.summary,
+                    }
                     for t in self.tool_invocations
                 ],
                 "usage": self.usage.model_dump(mode="json"),
@@ -331,7 +376,7 @@ def run_agent(
                     args=redact(args) if isinstance(args, dict) else {},
                     ok=ok,
                     error_code=error_code,
-                    summary={k: v for k, v in payload.items() if k in ("error", "detail")},
+                    summary=result_summary(payload),
                 )
             )
             tool_def = registry.get(name.replace("__", "."))

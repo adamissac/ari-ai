@@ -14,16 +14,20 @@ const RESPONSE_HEADERS = [
   'x-content-type-options', 'content-disposition', 'x-accel-buffering',
 ];
 
-export function backendOrigin(): string {
-  const origin = process.env.BACKEND_ORIGIN ?? 'http://127.0.0.1:8000';
+/** The configured API origin; one trailing slash is tolerated. Throws on anything else. */
+export function backendOrigin(value: string | undefined = process.env.BACKEND_ORIGIN): string {
+  const origin = (value ?? 'http://127.0.0.1:8000').replace(/\/$/, '');
   if (!/^https?:\/\/[^/?#@]+$/.test(origin)) throw new Error('BACKEND_ORIGIN must be an http(s) origin without path or credentials');
   return origin;
 }
 
+const envelope = (code: string, message: string, status: number): Response =>
+  Response.json({ error: { code, message, details: {}, request_id: null } }, { status });
+
 export async function proxy(request: Request): Promise<Response> {
   const url = new URL(request.url);
   if (!url.pathname.startsWith('/api/v1/') || url.pathname.includes('..')) {
-    return Response.json({ error: { code: 'NOT_FOUND', message: 'not found', details: {}, request_id: null } }, { status: 404 });
+    return envelope('NOT_FOUND', 'not found', 404);
   }
   const headers = new Headers();
   for (const name of REQUEST_HEADERS) {
@@ -31,9 +35,12 @@ export async function proxy(request: Request): Promise<Response> {
     if (value !== null) headers.set(name, value);
   }
   const hasBody = request.method !== 'GET' && request.method !== 'HEAD';
+  // A bad configuration is the frontend's fault, not an outage: report it as such.
+  let origin: string;
+  try { origin = backendOrigin(); } catch { return envelope('INTERNAL', 'frontend misconfigured: BACKEND_ORIGIN', 500); }
   let upstream: Response;
   try {
-    upstream = await fetch(`${backendOrigin()}${url.pathname}${url.search}`, {
+    upstream = await fetch(`${origin}${url.pathname}${url.search}`, {
       method: request.method,
       headers,
       redirect: 'manual',
@@ -43,10 +50,7 @@ export async function proxy(request: Request): Promise<Response> {
     } as RequestInit);
   } catch (error) {
     if (request.signal.aborted) throw error;
-    return Response.json(
-      { error: { code: 'SUBSYSTEM_UNAVAILABLE', message: 'control-plane API unreachable', details: {}, request_id: null } },
-      { status: 502 },
-    );
+    return envelope('SUBSYSTEM_UNAVAILABLE', 'control-plane API unreachable', 502);
   }
   const out = new Headers();
   for (const name of RESPONSE_HEADERS) {
