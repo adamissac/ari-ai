@@ -145,8 +145,7 @@ class CodeIntelligenceAdapter:
         except Exception as exc:
             raise PlatformError(ErrorCode.SCHEMA_INVALID, f"read_span failed: {exc}"[:300]) from exc
         numbered = "\n".join(
-            f"{number:>5}  {line}"
-            for number, line in enumerate(content.splitlines(), start=start)
+            f"{number:>5}  {line}" for number, line in enumerate(content.splitlines(), start=start)
         )
         return Span(path=rel, start_line=start, end_line=end, content=numbered)
 
@@ -215,9 +214,7 @@ class CodeIntelligenceAdapter:
         for symbol in candidates:
             if symbol.qualified_name == name:
                 return symbol
-        return next(
-            (s for s in candidates if s.qualified_name.rsplit(".", 1)[-1] == name), None
-        )
+        return next((s for s in candidates if s.qualified_name.rsplit(".", 1)[-1] == name), None)
 
     def _symbol_id(self, name: str) -> str | None:
         for symbol in self._symbols:
@@ -287,9 +284,7 @@ class CodeIntelligenceAdapter:
                     ),
                     handler_id,
                 )
-                symbol = next(
-                    (s for s in self._symbols if str(getattr(s, "id", "")) == handler_id), None
-                )
+                symbol = next((s for s in self._symbols if str(getattr(s, "id", "")) == handler_id), None)
                 out.append(
                     EntryPoint(
                         id=str(getattr(entry, "id", "")),
@@ -328,11 +323,7 @@ class CodeIntelligenceAdapter:
             span = getattr(source, "span", None)
             sources.append(
                 EvidenceRef(
-                    path=(
-                        self._to_workspace(str(source.path))
-                        if getattr(source, "path", None)
-                        else None
-                    ),
+                    path=(self._to_workspace(str(source.path)) if getattr(source, "path", None) else None),
                     sha=getattr(source, "commit_sha", None) or self._handle.commit_sha,
                     span=(
                         SourceSpan(

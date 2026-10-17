@@ -1,7 +1,7 @@
 # CI workflows — planned, not configured
 
 Each workflow below is added by the task that first creates something for it to
-check. **Implemented:** `docs.yml`, `secrets.yml` (INFRA-003), `backend.yml` (CORE-002/003), `rl.yml` (RL-001), `examples.yml` (DEMO-001). The others are still planned.
+check. **Implemented:** `docs.yml`, `secrets.yml` (INFRA-003), `backend.yml` (CORE-002/003), `rl.yml` (RL-001), `examples.yml` (DEMO-001), `security-agents.yml` (SEC). The others are still planned.
 
 | Workflow file (planned) | Triggers | Jobs | Added by |
 |---|---|---|---|
@@ -12,6 +12,7 @@ check. **Implemented:** `docs.yml`, `secrets.yml` (INFRA-003), `backend.yml` (CO
 | `contracts.yml` | PR touching `shared/` | folded into `backend.yml` (`shared.export --check`, `shared.examples --check`) | `CORE-003` |
 | `rl.yml` ✅ | PR touching `rl-defense/` | env API checks (`gymnasium.utils.env_checker`), determinism test, short smoke train (CPU, < 5 min) | `RL-001` |
 | `examples.yml` ✅ | PR touching `examples/` | payments-lite lint, its own tests, label checks, Docker build (non-root) | `DEMO-001` |
+| `security-agents.yml` ✅ | PR touching `security-agents/`, `shared/`, `code-intelligence/`, payments-lite | ruff + the seven-agent suite (FakeLLM, real registry/scope_guard/sandbox) | `SEC` |
 | `e2e.yml` | nightly + manual | docker compose up; demo-scenario e2e against `examples/` target | `TEST-005` |
 
 ## Rules for future workflows

@@ -44,7 +44,7 @@ uv sync --frozen
 uv run ruff check code-intelligence
 uv run ruff format --check code-intelligence
 uv run mypy --config-file code-intelligence/pyproject.toml code-intelligence/code_intelligence
-uv run pytest -ra code-intelligence/tests backend/tests/test_intel_store.py backend/tests/test_intel_integration.py
+uv run pytest -ra code-intelligence/tests backend/tests/test_intel_store.py backend/tests/test_payload_store_intel_integration.py
 ```
 
 Backend tests start real local PostgreSQL through `pgserver`, or use `TEST_DATABASE_URL`.

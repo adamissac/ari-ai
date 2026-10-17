@@ -129,7 +129,9 @@ def _render_ownership(recipe: dict[str, Any], params: dict[str, Any]) -> str:
     if method != "get":
         raise PlatformError(ErrorCode.SCHEMA_INVALID, "ownership template covers read routes only")
     denied = [int(c) for c in params.get("expected_denied_status", [403, 404])]
-    return _PREAMBLE.format(ref=params["_ref"]) + f'''
+    return (
+        _PREAMBLE.format(ref=params["_ref"])
+        + f"""
 
 PATH = {path!r}
 OWNER_HEADERS = {{"Authorization": {_identity(recipe, owner)!r}}}
@@ -150,7 +152,8 @@ def test_other_identity_is_denied():
     assert resp.status_code in DENIED, (
         f"expected one of {{DENIED}} for a non-owner, observed {{resp.status_code}}"
     )
-'''
+"""
+    )
 
 
 def _render_bounds(recipe: dict[str, Any], params: dict[str, Any]) -> str:
@@ -193,7 +196,9 @@ def _render_bounds(recipe: dict[str, Any], params: dict[str, Any]) -> str:
 
     full = str(Decimal(bound))
     extra = str(step)
-    return _PREAMBLE.format(ref=params["_ref"]) + f'''
+    return (
+        _PREAMBLE.format(ref=params["_ref"])
+        + f'''
 
 CREATE_PATH = {str(create["path_template"])!r}
 READ_PATH = {read_path!r}
@@ -230,6 +235,7 @@ def test_bound_is_enforced_across_requests():
         f"invariant broken: accumulated {{accumulated}} exceeds the bound {{BOUND}}"
     )
 '''
+    )
 
 
 OWNERSHIP = CheckTemplateMeta(

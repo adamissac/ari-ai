@@ -38,12 +38,14 @@ class RemediationState(StrEnum):
     UNRESOLVED = "unresolved"
 
 
-TERMINAL: frozenset[AssessmentState] = frozenset({
-    AssessmentState.COMPLETED,
-    AssessmentState.CANCELLED,
-    AssessmentState.FAILED,
-    AssessmentState.BUDGET_EXHAUSTED,
-})
+TERMINAL: frozenset[AssessmentState] = frozenset(
+    {
+        AssessmentState.COMPLETED,
+        AssessmentState.CANCELLED,
+        AssessmentState.FAILED,
+        AssessmentState.BUDGET_EXHAUSTED,
+    }
+)
 
 # The only legal forward edges. Anything else is CONFLICT_STATE.
 HAPPY_PATH: dict[AssessmentState, frozenset[AssessmentState]] = {
@@ -62,9 +64,13 @@ HAPPY_PATH: dict[AssessmentState, frozenset[AssessmentState]] = {
 }
 
 # From any active state the orchestrator may cancel, fail or stop on budget.
-INTERRUPTS: frozenset[AssessmentState] = frozenset({
-    AssessmentState.CANCELLED, AssessmentState.FAILED, AssessmentState.BUDGET_EXHAUSTED,
-})
+INTERRUPTS: frozenset[AssessmentState] = frozenset(
+    {
+        AssessmentState.CANCELLED,
+        AssessmentState.FAILED,
+        AssessmentState.BUDGET_EXHAUSTED,
+    }
+)
 
 
 class IllegalTransition(Exception):
@@ -90,9 +96,13 @@ def transition(src: AssessmentState, dst: AssessmentState) -> AssessmentState:
 
 REMEDIATION_EDGES: dict[RemediationState, frozenset[RemediationState]] = {
     RemediationState.PATCHING: frozenset({RemediationState.VERIFYING, RemediationState.UNRESOLVED}),
-    RemediationState.VERIFYING: frozenset({
-        RemediationState.ACCEPTED, RemediationState.PATCHING, RemediationState.UNRESOLVED,
-    }),
+    RemediationState.VERIFYING: frozenset(
+        {
+            RemediationState.ACCEPTED,
+            RemediationState.PATCHING,
+            RemediationState.UNRESOLVED,
+        }
+    ),
 }
 
 MAX_PATCH_ATTEMPTS = 2
