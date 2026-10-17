@@ -10,6 +10,7 @@ LLM provider: scripted FakeTransport via backend.llm.TRANSPORT_OVERRIDE (not liv
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import tempfile
@@ -436,3 +437,11 @@ def test_functional_remediation_helpers_respect_human_decisions(tmp_path: Path, 
     [rep] = api.repair_approved_functional_findings(host, repo_id=host.repo_id, source=source)
     assert rep.accepted_locally and rep.patch is not None
     assert host.findings()[0].status is FindingStatus.patch_proposed
+
+    # Adam (20261017T093000Z): the real host redacts before hashing, so a stored diff's
+    # hash can differ from a Patch-agent diff_sha256. Reviewer patches set diff_sha256 FROM
+    # the stored artifact, so the integrity-checked Verify inputs hold on the real host.
+    inp = api.functional_verification_inputs(host, rep.patch)
+    stored = api.read_artifact(host, rep.patch.diff_artifact_id)
+    assert hashlib.sha256(stored).hexdigest() == rep.patch.diff_sha256
+    assert inp.diff_text == stored.decode() and inp.protected_paths == []
