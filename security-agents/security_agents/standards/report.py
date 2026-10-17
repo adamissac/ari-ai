@@ -35,6 +35,7 @@ ROWS: list[tuple[str, str, str, str, str]] = [
         "roe_template_sections",
         "RoE sections",
     ),
+    ("OASIS SARIF 2.1.0 export", "sarif", "sarif-2.1.0.json", "schema.definitions", "schema definitions"),
 ]
 
 FILE_DEFAULTS: dict[str, str] = {
@@ -44,9 +45,11 @@ FILE_DEFAULTS: dict[str, str] = {
     "test_cvss_assess.py": "cvss40",
     "test_rules_of_engagement.py": "sp800115",
     "test_incident.py": "integrity",
+    "test_sarif.py": "sarif",
 }
 
 KEYWORDS: list[tuple[str, tuple[str, ...]]] = [
+    ("sarif", ("sarif",)),
     ("sp800115", ("roe", "rules_of_engagement", "800_115", "sp800115", "probe_without")),
     ("cvss31_vectors", ("nvd", "published")),
     ("cvss31", ("cvss31", "cvss_v3", "v31", "roundup", "severity", "score")),
@@ -132,7 +135,9 @@ def render(collector: Collector) -> tuple[str, int]:
     lines: list[tuple[str, ...]] = [header]
     for title, key, name, count_key, unit in ROWS:
         data = load_json(name)
-        value = data.get(count_key, [])
+        value: Any = data
+        for part in count_key.split("."):
+            value = value.get(part, []) if isinstance(value, dict) else []
         count = len(value) if isinstance(value, (list, dict)) else value
         counts = tallies.get(key, {"passed": 0, "failed": 0, "skipped": 0})
         lines.append(
