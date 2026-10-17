@@ -801,3 +801,41 @@ def test_live_style_security_concern_reaches_scout_and_matches_answer_key(tmp_pa
     assert sec.title.startswith("[CWE-639]")
     rep = score(outcome, PAYMENTS_LITE.parent / "labels.yaml").to_json()
     assert rep["security_handoffs_matched"] == ["fnd_planted_authz"]
+
+
+def _with_cwe(script: list, cwe: str) -> list:
+    """Same scripted review, but the submitted finding proposes ``weakness_class``."""
+    submit = script[-1]
+
+    def patched(req):
+        resp = submit(req)
+        for block in resp["content"]:
+            if block.get("type") == "tool_use":
+                block["input"]["findings"][0]["weakness_class"] = cwe
+        return resp
+
+    return [*script[:-1], patched]
+
+
+@pytest.mark.parametrize("cwe,recorded", [("CWE-841", True), ("CWE-840", False)])
+def test_reviewer_cwe_is_catalog_validated_end_to_end(
+    tmp_path: Path, cwe: str, recorded: bool
+) -> None:
+    sc = payments_lite(tmp_path)
+    host = InMemoryHost(fake(_with_cwe(pl_review_script(sc), cwe)))
+    outcome = ReviewerAgentRunner(host, RepoSource(sc.repo, subdir="target")).review(
+        make_request(host, sc)
+    )
+    [finding] = outcome.result.findings
+    assert (
+        finding.status is FindingStatus.validated
+    )  # a classification never decides or voids the finding
+    if recorded:
+        assert finding.standards is not None and finding.standards.cwe is not None
+        assert finding.standards.cwe.id == "CWE-841"
+        assert finding.standards.classified_by == "agent:reviewer"
+        assert any(e.kind is EvidenceKind.test_run for e in finding.standards.cwe.evidence)
+        assert not any("CWE not recorded" in r for r in outcome.rejected)
+    else:
+        assert finding.standards is None
+        assert any("CWE not recorded" in r and "CWE-840" in r for r in outcome.rejected)
