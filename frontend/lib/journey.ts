@@ -1,6 +1,17 @@
 import type { AssessmentState } from '@hackatl/frontend-transport';
 import { STATE_RAIL, railSteps } from '@/lib/status';
 
+/** Backend `events/log` returns at most this many events from `after=0`; `next_cursor` stays null. */
+export const EVENT_LOG_PAGE_LIMIT = 500;
+
+/** Shown when a phase view used a full first page and may therefore miss later states. */
+export const EVENT_LOG_PAGE_NOTE =
+  'Phases use the first 500 events from this check\'s log. A longer log can leave a later phase unmarked.';
+
+export function eventLogPageTruncated(count: number): boolean {
+  return count >= EVENT_LOG_PAGE_LIMIT;
+}
+
 export type JourneyStatus =
   | 'not_started'
   | 'running'
@@ -55,6 +66,8 @@ export interface JourneyInput {
   monitoringTruncated: boolean;
   monitoringFailed: boolean;
   newestMonitoringSimulated: boolean;
+  /** True when the first events/log page was full, so later states may be missing. */
+  eventLogTruncated: boolean;
 }
 
 /** Phases of the latest check. A phase is completed only when the log shows it was entered. */
@@ -123,11 +136,21 @@ function pipelineStage(
       group,
       'completed',
       someSkipped
-        ? 'The run entered this phase. A later step inside it is not in the event log.'
+        ? input.eventLogTruncated
+          ? 'The run entered this phase. A later step inside it is not in the first 500 events.'
+          : 'The run entered this phase. A later step inside it is not in the event log.'
         : 'The event log shows the run entered this phase.',
     );
   }
-  if (someSkipped) return stage(group, 'skipped', 'The event log does not show the run entering this phase.');
+  if (someSkipped) {
+    return stage(
+      group,
+      'skipped',
+      input.eventLogTruncated
+        ? 'The first 500 events do not show the run entering this phase. A later page may.'
+        : 'The event log does not show the run entering this phase.',
+    );
+  }
   return stage(group, 'not_started', 'No check has recorded this phase.');
 }
 
@@ -234,6 +257,7 @@ export function assessmentPhases(input: {
   state: AssessmentState;
   events: readonly { type: string; state: string | null; message: string }[] | null;
   findingStatuses: readonly string[];
+  eventLogTruncated?: boolean;
 }): JourneyStage[] {
   return projectJourney({
     repoCount: 1,
@@ -247,5 +271,6 @@ export function assessmentPhases(input: {
     monitoringTruncated: false,
     monitoringFailed: false,
     newestMonitoringSimulated: false,
+    eventLogTruncated: input.eventLogTruncated === true,
   }).filter(item => item.id !== 'monitor');
 }
