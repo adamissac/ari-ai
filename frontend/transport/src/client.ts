@@ -118,6 +118,15 @@ export class ApiClient {
   createSnapshot(repoId: string, body: C.SnapshotCreate, key: string, options?: RequestOptions): Promise<C.Snapshot> {
     return this.request(`/repositories/${segment(repoId)}/snapshots`, 'Snapshot', options, body, key) as Promise<C.Snapshot>;
   }
+  /** Newest first. `status: 'ready'` lists the snapshots intelligence reads can use. */
+  snapshots(repoId: string, query: SnapshotQuery = {}, options?: RequestOptions): Promise<Page<C.Snapshot>> {
+    const params = new URLSearchParams();
+    if (query.status) params.set('status', query.status);
+    if (query.limit !== undefined) params.set('limit', String(query.limit));
+    if (query.cursor) params.set('cursor', query.cursor);
+    const qs = params.toString();
+    return this.list(`/repositories/${segment(repoId)}/snapshots${qs ? `?${qs}` : ''}`, 'Snapshot', options);
+  }
   snapshot(id: string, options?: RequestOptions): Promise<C.Snapshot> {
     return this.request(`/snapshots/${segment(id)}`, 'Snapshot', options) as Promise<C.Snapshot>;
   }
@@ -179,6 +188,10 @@ export class ApiClient {
     });
     return { finding, records };
   }
+  /** Report assembled by the backend only from persisted records (shared AssessmentReport). */
+  report(assessmentId: string, options?: RequestOptions): Promise<C.AssessmentReport> {
+    return this.request(`/assessments/${segment(assessmentId)}/report`, 'AssessmentReport', options) as Promise<C.AssessmentReport>;
+  }
   patches(findingId: string, options?: RequestOptions): Promise<Page<C.PatchView>> {
     return this.list(`/findings/${segment(findingId)}/patches`, 'PatchView', options);
   }
@@ -226,6 +239,7 @@ export class ApiClient {
   }
 }
 
+export interface SnapshotQuery { status?: C.SnapshotStatus; limit?: number; cursor?: string }
 export interface CancelResult { assessment_id: string; cancelled: boolean; cancel_requested: true }
 export interface LabeledPage<T> extends Page<T> { label: string }
 export interface ArtifactText { id: string; text: string; sha256: string; hashVerified: boolean; mediaType: string }
