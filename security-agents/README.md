@@ -23,13 +23,13 @@ boundaries [docs/15](../docs/15_SECURITY_BOUNDARIES.md).
 | Worktree / test runner / check runner / patch applier | `security_agents/tools/services.py` | implemented, tested |
 | `scope_guard` (pure) | `security_agents/scope_guard.py` | implemented, exhaustively tested |
 | Sandbox: snapshots, diffs, local dev driver | `security_agents/sandbox/` | implemented, tested |
-| Sandbox: hardened Docker driver | `security_agents/sandbox/driver.py` | implemented; **argv + reaper tested, execution UNVERIFIED** (no Docker engine on the dev machine; needs pinned images, INFRA-005) |
+| Sandbox: hardened Docker driver | `security_agents/sandbox/driver.py` | implemented; **six real-container tests pass in CI** (digest-pinned base; isolation, timeout cleanup, fixture suite and checks) |
 | Check templates v0 (ownership, bounds) | `security_agents/checks/library.py` | implemented, executed against the owned fixture |
 | Orchestrator state machine + gates | `security_agents/workflow/` | implemented, tested; `external_pending` pauses for functional approvals |
 | Host adapter | `security_agents/host_adapter.py` | implemented: finding lifecycle via `set_finding_status`, durable `save_checkpoint` / `claim_checkpoint` resume, Sai's functional repair + independent Verify |
-| Contracts | `security_agents/contracts/` | **local V0 adapter**, pending `shared/` (CORE-001) |
-| Code intelligence | `security_agents/intel/` | **local Python-AST adapter**, pending `code_intelligence.api` (INTEL-007) |
-| LLM gateway | `security_agents/llm/` | consumer-side port + providers, pending the backend gateway (CORE-010) |
+| Contracts | `security_agents/contracts/` | local runtime adapters; host boundary exports canonical `shared/` contracts |
+| Code intelligence | `security_agents/intel/` | hosted Git snapshots use the shared durable intelligence service; explicit dev fixtures use the local adapter |
+| LLM gateway | `security_agents/llm/` | standalone providers plus hosted `host.llm()` gateway integration |
 
 ## Install and run
 
@@ -204,3 +204,18 @@ approval resume reloads the current scope and worker host before execution.
 ## Retained regression sources
 
 Accepted independent Verify can retain bounded test sources from its fresh workspace. Sources are captured before tests and compared afterward; unsafe, missing, symlinked, empty, changed or oversized sets produce no eligible archive. Host mode stores a redacted JSON archive with patch/verification/run IDs, checks and original source hashes, and attaches the returned artifact ID to hardening recommendations. Functional verification emits a deterministic policy-test retention recommendation. The archive associates source files with accepted verification; it does not claim every line or individual node ran. Incident evidence must use the stored artifact hash, since source redaction may change bytes.
+
+## Docker execution evidence
+
+[Security CI run 39033028814](https://github.com/adamissac/hackatl-agentic-security/actions/runs/39033028814)
+on main commit `5b3ef50` built the sandbox image from its digest-pinned Python base
+and executed `tests/test_docker_sandbox_live.py`: **6 passed**. The tests cover
+non-root execution, read-only root filesystem, writable work/output mounts, kernel
+network isolation, absence of host environment secrets, timeout removal, the owned
+payments-lite suite, and ownership/bounds checks (including the protected lookalike).
+The image tag is explicitly allowed only for this CI build; this evidence does not
+provide a published image digest or a deployment attestation.
+
+The same run's ordinary security suite passed **451 tests, with 18 skips**. These
+scripted model runs and container tests do not establish a live seven-role provider
+trace. Docker execution is CI evidence; no local Docker engine is claimed.

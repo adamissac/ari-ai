@@ -37,7 +37,7 @@ export default function ProjectsPage() {
     <>
       <section className="hero-ink -mx-4 mb-8 rounded-none px-6 py-14 sm:mx-0 sm:rounded-2xl md:px-12 md:py-20" aria-labelledby="hero-title">
         <p className="label-mono text-white/70">{BRAND_NAME} · software assurance</p>
-        <h1 id="hero-title" className="display mt-4 max-w-4xl text-4xl font-medium md:text-6xl">
+        <h1 id="hero-title" className="display mt-4 max-w-4xl text-4xl font-semibold md:text-6xl">
           {BRAND_HEADLINE}<br /><span className="text-white/70">{BRAND_HEADLINE_REST}</span>
         </h1>
         <p className="mt-5 max-w-2xl text-sm text-white/75 md:text-base">
