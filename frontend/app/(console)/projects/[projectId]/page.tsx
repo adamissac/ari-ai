@@ -12,7 +12,7 @@ import { CONNECT_REPOSITORY_NOTE } from '@/lib/connect';
 import { INDEX_COMMIT_NOTE } from '@/lib/index-commit';
 import { shortSha, usd } from '@/lib/format';
 import {
-  EVENT_LOG_PAGE_NOTE, JOURNEY_STATUS, eventLogPageTruncated, latestAssessmentEvent,
+  EVENT_LOG_PAGE_NOTE, JOURNEY_STATUS, fullEventLog, latestAssessmentEvent,
   projectJourney, statesFromLog,
 } from '@/lib/journey';
 import { projectOverview } from '@/lib/overview';
@@ -161,13 +161,18 @@ function ProjectJourney({
   const latestRunning = latest !== null && !TERMINAL_STATES.has(latest.state);
   const events = useResource(
     `journey-events:${latest?.id ?? 'none'}:${latest?.state ?? 'none'}`,
-    signal => latest ? api().eventsLog(latest.id, 0, { signal }) : Promise.resolve({ items: [], next_cursor: null }),
+    signal => latest
+      ? fullEventLog(after => api().eventsLog(latest.id, after, { signal }))
+      : Promise.resolve({ items: [], truncated: false }),
     latestRunning ? 5000 : undefined,
   );
   // Keep showing the previous log of the same check while the next one loads, instead of flashing "Loading".
-  const [lastLog, setLastLog] = useState<{ id: string; items: StreamEvent[] } | null>(null);
-  if (events.status === 'ready' && latest && lastLog?.items !== events.data.items) setLastLog({ id: latest.id, items: events.data.items });
-  const logItems = events.status === 'ready' ? events.data.items : lastLog && lastLog.id === latest?.id ? lastLog.items : null;
+  const [lastLog, setLastLog] = useState<{ id: string; items: StreamEvent[]; truncated: boolean } | null>(null);
+  if (events.status === 'ready' && latest && lastLog?.items !== events.data.items) {
+    setLastLog({ id: latest.id, items: events.data.items, truncated: events.data.truncated });
+  }
+  const shownLog = events.status === 'ready' ? events.data : lastLog && lastLog.id === latest?.id ? lastLog : null;
+  const logItems = shownLog?.items ?? null;
   const monitoring = useResource(
     `journey-mon:${projectId}`,
     signal => api().monitoringEvents(projectId, { signal }),
@@ -175,7 +180,7 @@ function ProjectJourney({
   );
   const logReady = latest === null || events.status !== 'loading' || logItems !== null;
   const visited = logItems ? statesFromLog(logItems) : null;
-  const logTruncated = logItems !== null && eventLogPageTruncated(logItems.length);
+  const logTruncated = shownLog?.truncated === true;
   const monitoringItems = monitoring.status === 'ready' ? monitoring.data.items : [];
   const stages = projectJourney({
     repoCount,
