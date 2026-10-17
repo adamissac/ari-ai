@@ -76,10 +76,10 @@ export default function DefenseLabPage() {
   );
 }
 
-const GAME_STEPS = [
-  { n: '01', title: 'A pretend network', body: 'Five fake machines, some reachable from the internet, some holding critical data.' },
-  { n: '02', title: 'A simulated attacker', body: 'It sneaks in and tries to reach a critical machine without being stopped.' },
-  { n: '03', title: 'A defender choosing moves', body: 'Each step it can watch, slow traffic, cut a machine off, ask for a re-check or call a person.' },
+const GAME_STEPS: { n: string; title: string; body: (machines: string) => string }[] = [
+  { n: '01', title: 'A pretend network', body: machines => `${machines.charAt(0).toUpperCase()}${machines.slice(1).replace(/machines?$/, m => `fake ${m}`)}, some reachable from the internet, some holding critical data.` },
+  { n: '02', title: 'A simulated attacker', body: () => 'It sneaks in and tries to reach a critical machine without being stopped.' },
+  { n: '03', title: 'A defender choosing moves', body: () => 'Each step it chooses from a fixed set of moves, such as watching, slowing traffic or cutting a machine off.' },
 ];
 
 function Lab({ data }: { data: BundleResponse }) {
@@ -98,7 +98,7 @@ function Lab({ data }: { data: BundleResponse }) {
             <li key={step.n} className="rounded-2xl border border-line bg-panel p-5">
               <p className="label-mono text-brand">{step.n}</p>
               <p className="mt-2 font-semibold tracking-tight">{step.title}</p>
-              <p className="mt-1 text-sm text-muted">{step.n === '01' ? step.body.replace('Five fake machines', `${machineCountPhrase(bundle.scenarios).replace(/^./, c => c.toUpperCase()).replace(/machines?$/, m => `fake ${m}`)}`) : step.body}</p>
+              <p className="mt-1 text-sm text-muted">{step.body(machineCountPhrase(bundle.scenarios))}</p>
             </li>
           ))}
         </ol>
