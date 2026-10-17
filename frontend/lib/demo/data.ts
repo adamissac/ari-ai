@@ -55,6 +55,11 @@ export const DEMO_ORGS: DemoOrg[] = [
   { login: DEMO_USER.login, name: DEMO_USER.name, kind: 'personal', members: 1, plan: 'Personal' },
 ];
 
+/** The demo account belongs to Alex Rivera at Lumen Pay: only that organization is connected. */
+export const ACCOUNT_ORGS: DemoOrg[] = DEMO_ORGS.filter(o => o.login === 'lumen-pay');
+/** When Lumen Pay connected Ari (before the oldest commit shown). */
+export const CONNECTED_DAYS_AGO = 7;
+
 const AUTHORS = ['alex-rivera', 'mina-okafor', 'jules-park', 'devon-shah', 'sam-lindqvist', 'priya-natarajan'];
 
 /** Stable 40-hex pseudo SHA so links and labels never change between renders. */
