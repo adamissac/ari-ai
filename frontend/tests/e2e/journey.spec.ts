@@ -194,6 +194,15 @@ test('create a project and connect a repository through the UI', async ({ browse
   await page.getByTestId('demo-tab-defense').click();
   await expect(page.getByTestId('demo-commit-message')).toHaveText('Simulated attack on acme/another-repo');
 
+  // Continuous defense: an attack drill goes through the real detection pipeline, labelled simulated.
+  await page.goto(page.url().replace(/\/simulate.*$/, '/monitoring'));
+  await page.getByTestId('attack-drill-start').click();
+  const report = page.getByTestId('attack-drill-report');
+  await expect(report).toBeVisible({ timeout: 30_000 });
+  await expect(report).toContainText('Detected');
+  await expect(report).toContainText('recommended, not executed');
+  await expect(page.getByTestId('monitoring-feed')).toContainText('log anomaly', { timeout: 15_000 });
+
   // GitHub onboarding: without App access the org chooser says how to add repositories.
   await page.goto('/connect');
   await expect(page.getByTestId('connect-empty')).toBeVisible();

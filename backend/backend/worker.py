@@ -72,7 +72,7 @@ def handler(kind: str) -> Callable[[Handler], Handler]:
 
 def _load_handlers() -> None:
     # Importing registers handlers via @handler.
-    from backend import pipeline  # noqa: F401
+    from backend import pipeline, simulated_attack  # noqa: F401
 
 
 def _heartbeat_loop(ctx: JobContext, lease_s: int, stop: threading.Event) -> None:
