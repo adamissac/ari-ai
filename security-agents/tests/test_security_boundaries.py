@@ -171,19 +171,29 @@ INJECTED_COMMENT = (
 @pytest.fixture
 def injected_intel(payments_lite_src, tmp_path):
     """A snapshot whose source contains instructions aimed at the agents."""
+    import shutil
+
     from security_agents.intel import LocalIntel
-    from security_agents.sandbox.workspace import SnapshotHandle
+    from security_agents.sandbox.workspace import SnapshotHandle, copy_tree
+
+    from .conftest import BUILD_RECIPE, LABELS
 
     staging = tmp_path / "staging"
-    from security_agents.sandbox.workspace import copy_tree
-
     copy_tree(payments_lite_src, staging)
+    shutil.copy2(BUILD_RECIPE, staging / "build_recipe.json")
     app = staging / "payments_lite" / "app.py"
     app.write_text(INJECTED_COMMENT + app.read_text())
     snapshot = SnapshotHandle.from_directory(
         staging, tmp_path / "snap_injected", snapshot_id="snp_inj", repo_id="rep_payments_lite"
     )
-    return LocalIntel(snapshot)
+    from security_agents.intel import load_expectations
+
+    return LocalIntel(
+        snapshot,
+        expectations=load_expectations(
+            LABELS, snapshot_id="snp_inj", commit_sha=snapshot.commit_sha, strip_prefix="target/"
+        ),
+    )
 
 
 def test_injected_instructions_are_reported_as_a_signal(injected_intel):

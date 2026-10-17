@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
+from decimal import Decimal, InvalidOperation
 from typing import Any, Literal
 
 from ..contracts import ErrorCode, PlatformError
@@ -80,12 +81,17 @@ def _resource_id(recipe: dict[str, Any], kind: str, owner: str) -> str:
     return str(entry["id"])
 
 
-def _resource_amount(recipe: dict[str, Any], kind: str, owner: str) -> int:
+def _resource_amount(recipe: dict[str, Any], kind: str, owner: str) -> str:
+    """Declared amount of a fixture resource, as the decimal string the API uses."""
     entry = recipe.get("resources", {}).get(kind, {}).get(owner, {})
-    amount = entry.get("amount_cents")
-    if not isinstance(amount, int):
-        raise PlatformError(ErrorCode.SCHEMA_INVALID, f"resource {kind}/{owner} has no amount_cents")
-    return amount
+    amount = entry.get("amount")
+    if amount is None:
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, f"resource {kind}/{owner} has no amount")
+    try:
+        Decimal(str(amount))
+    except InvalidOperation as exc:
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, f"amount {amount!r} is not a decimal") from exc
+    return str(amount)
 
 
 _PREAMBLE = '''"""Generated check: {ref}
@@ -94,6 +100,7 @@ Target is driven in-process through its own app factory; no sockets are opened.
 """
 
 import json
+from decimal import Decimal
 
 from fastapi.testclient import TestClient
 
@@ -147,45 +154,81 @@ def test_other_identity_is_denied():
 
 
 def _render_bounds(recipe: dict[str, Any], params: dict[str, Any]) -> str:
-    """A request exceeding the documented amount bound must be rejected 4xx."""
-    route = _route(recipe, str(params["route_id"]))
-    kind = str(route["resource"])
+    """The documented amount bound holds: an in-bounds request succeeds, a request
+    that would push the accumulated total past the bound is rejected, and the
+    accumulated total never exceeds the bound."""
+    create = _route(recipe, str(params["route_id"]))
+    read = _route(recipe, str(params["read_route_id"]))
     owner = str(params["owner_identity"])
-    amount_field = str(route.get("amount_field") or "")
-    if str(route.get("method", "")).upper() != "POST" or not amount_field:
-        raise PlatformError(ErrorCode.SCHEMA_INVALID, "bounds template needs a POST route with amount_field")
+    if str(create.get("method", "")).upper() != "POST":
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "bounds template needs a POST create route")
+    body_template = create.get("body_template")
+    if not isinstance(body_template, dict):
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "create route has no body_template")
+    kind = str(create["resource"])
     resource_id = _resource_id(recipe, kind, owner)
-    base = _resource_amount(recipe, kind, owner)
-    over = base + int(params.get("over_by_cents", 1))
-    read_route = _route(recipe, str(params["read_route_id"]))
-    read_path = str(read_route["path_template"]).replace("{id}", resource_id)
+    bound = _resource_amount(recipe, kind, owner)
+    accumulated_field = str(create.get("accumulated_field") or "")
+    if not accumulated_field:
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "create route has no accumulated_field")
+    read_path = str(read["path_template"]).replace("{id}", resource_id)
+    over_by = str(params.get("over_by", "1.00"))
+    try:
+        step = Decimal(over_by)
+    except InvalidOperation as exc:
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, f"over_by {over_by!r} is not a decimal") from exc
+    if step <= 0:
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "over_by must be positive")
+
+    def body_for(amount: str) -> dict[str, Any]:
+        out: dict[str, Any] = {}
+        for key, value in body_template.items():
+            if value == "{resource_id}":
+                out[key] = resource_id
+            elif value == "{amount}":
+                out[key] = amount
+            else:
+                out[key] = value
+        return out
+
+    full = str(Decimal(bound))
+    extra = str(step)
     return _PREAMBLE.format(ref=params["_ref"]) + f'''
 
-PATH = {str(route["path_template"]).replace("{id}", resource_id)!r}
+CREATE_PATH = {str(create["path_template"])!r}
 READ_PATH = {read_path!r}
 HEADERS = {{"Authorization": {_identity(recipe, owner)!r}}}
-AMOUNT_FIELD = {amount_field!r}
-BASE_AMOUNT = {base}
-OVER_AMOUNT = {over}
+BOUND = Decimal({full!r})
+ACCUMULATED_FIELD = {accumulated_field!r}
+FULL_BODY = {body_for(full)!r}
+EXTRA_BODY = {body_for(extra)!r}
 
 
 def test_in_bounds_request_is_accepted():
-    resp = _client().post(PATH, json={{AMOUNT_FIELD: 1}}, headers=HEADERS)
+    """A refund up to the bound is legitimate and must still work."""
+    resp = _client().post(CREATE_PATH, json=FULL_BODY, headers=HEADERS)
     RESULT["in_bounds_status"] = resp.status_code
     assert resp.status_code < 400, f"legitimate in-bounds request rejected: {{resp.status_code}}"
 
 
-def test_over_bound_request_is_rejected():
+def test_bound_is_enforced_across_requests():
     client = _client()
-    resp = client.post(PATH, json={{AMOUNT_FIELD: OVER_AMOUNT}}, headers=HEADERS)
-    RESULT["over_bound_status"] = resp.status_code
-    total = sum(item[AMOUNT_FIELD] for item in client.get(READ_PATH, headers=HEADERS).json())
-    RESULT["accumulated_total"] = total
-    RESULT["bound"] = BASE_AMOUNT
-    assert 400 <= resp.status_code < 500, (
-        f"expected 4xx for an amount above the {{BASE_AMOUNT}} bound, observed {{resp.status_code}}"
+    first = client.post(CREATE_PATH, json=FULL_BODY, headers=HEADERS)
+    RESULT["first_status"] = first.status_code
+    assert first.status_code < 400, f"setup request rejected: {{first.status_code}}"
+    second = client.post(CREATE_PATH, json=EXTRA_BODY, headers=HEADERS)
+    RESULT["over_bound_status"] = second.status_code
+    detail = client.get(READ_PATH, headers=HEADERS)
+    accumulated = Decimal(str(detail.json()[ACCUMULATED_FIELD]))
+    RESULT["accumulated"] = str(accumulated)
+    RESULT["bound"] = str(BOUND)
+    assert 400 <= second.status_code < 500, (
+        f"expected 4xx once the accumulated total would exceed {{BOUND}}, "
+        f"observed {{second.status_code}}"
     )
-    assert total <= BASE_AMOUNT, f"invariant broken: accumulated {{total}} exceeds bound {{BASE_AMOUNT}}"
+    assert accumulated <= BOUND, (
+        f"invariant broken: accumulated {{accumulated}} exceeds the bound {{BOUND}}"
+    )
 '''
 
 
@@ -208,13 +251,14 @@ BOUNDS = CheckTemplateMeta(
     version="1",
     category="input_validation.bounds",
     description=(
-        "Confirm a documented amount bound is enforced: an in-bounds request succeeds, a request "
-        "above the bound is rejected 4xx and the accumulated total stays within the bound. "
-        "Parameters: route_id, read_route_id, owner_identity, over_by_cents."
+        "Confirm a documented amount bound is enforced across requests: an in-bounds request "
+        "succeeds, a further request that would push the accumulated total past the bound is "
+        "rejected 4xx, and the accumulated total never exceeds the bound. "
+        "Parameters: route_id (POST create route), read_route_id, owner_identity, over_by."
     ),
     side_effect_class="ephemeral_target_only",
-    expectation_kinds=("business_rule", "input_validation"),
-    parameters=("route_id", "read_route_id", "owner_identity", "over_by_cents"),
+    expectation_kinds=("business_rule", "invariant", "input_validation"),
+    parameters=("route_id", "read_route_id", "owner_identity", "over_by"),
     reviewed_by="security-owner:pending-human-signoff",
 )
 
@@ -253,7 +297,8 @@ class CheckLibrary:
         unknown = set(params) - set(meta.parameters)
         if unknown:
             raise PlatformError(ErrorCode.SCHEMA_INVALID, f"unknown parameters {sorted(unknown)}")
-        missing = [p for p in meta.parameters if p not in params and p != "over_by_cents"]
+        optional = {"over_by", "expected_denied_status"}
+        missing = [p for p in meta.parameters if p not in params and p not in optional]
         if missing:
             raise PlatformError(ErrorCode.SCHEMA_INVALID, f"missing parameters {missing}")
         enriched = dict(params)

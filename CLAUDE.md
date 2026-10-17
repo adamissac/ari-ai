@@ -69,8 +69,20 @@ Numbers refer to `docs/NN_*.md`.
 
 ## Commands
 
-There are no build, lint, or test commands yet — no code exists. When a subsystem
-gains tooling, add its commands **here** and in that subsystem's README.
+When a subsystem gains tooling, add its commands **here** and in that subsystem's README.
+
+Control plane (`shared/`, `backend/`, `monitoring/` — uv workspace at the repo root, Python 3.12;
+details in [backend/README.md](backend/README.md)):
+
+```
+uv sync                         # install the workspace
+make check                      # ruff, ruff format --check, generated-contract freshness
+uv run mypy                     # type-check shared + monitoring
+make test                       # pytest; real PostgreSQL (embedded pgserver unless TEST_DATABASE_URL)
+make contracts                  # regenerate shared/generated (JSON Schema + TS) and fixtures
+make dev                        # migrate + API (:8000) + worker on embedded PostgreSQL
+make smoke-live                 # opt-in real Claude call (RUN_LIVE_LLM_EVAL=1 + key; costs money)
+```
 
 ## When you are uncertain
 
@@ -83,3 +95,29 @@ Never silently invent product requirements.
 ## Six-agent concurrent implementation protocol (current active phase)
 
 Read `MASTER_BUILD_SPEC.md` before work, then `coordination/MESSAGES.md`, `coordination/CONTRACTS.md`, `coordination/OWNERSHIP.md`, `coordination/MILESTONES.md`, applicable `team-prompts/<PERSON>_*.md`, and new messages in `coordination/messages/`. The previous "Phase 0 only" directive is superseded by the user's explicit authorization to implement; other security, Git, test and architecture constraints remain in force. Every agent checks GitHub at session start, milestones, shared interface changes and handoff. Never overwrite another owner's work or claim unexecuted tests pass.
+
+<!-- HACKATL_GIT_CADENCE -->
+## Git cadence — commit very often, always read what changed (mandatory for all six developers and their agents)
+
+1. **Commit very frequently.** Commit after every passing test, every finished sub-step,
+   and at least every 30 minutes of work. Small commits, Conventional Commit messages.
+   Never hold more than ~30 minutes of uncommitted work.
+2. **Push after every commit** to your own `feat/<owner>/<scope>` branch, so teammates
+   and their agents can see your work. An unpushed commit is invisible to everyone else.
+3. **Always read what changed before you act.** At session start, before every commit and
+   push, before changing any shared interface, and before opening or updating a PR, run:
+   ```
+   git fetch origin --prune
+   git log --oneline --decorate -15 origin/main          # what landed on main
+   git log --oneline HEAD..origin/main                   # what you are missing
+   git diff --stat HEAD...origin/main                    # which files changed
+   git for-each-ref --sort=-committerdate refs/remotes --format='%(refname:short) %(committerdate:relative) %(subject)'
+   gh pr list --state open; gh issue list --state open
+   ls -t coordination/messages/ | head                   # newest team messages
+   ```
+   Read the diffs and messages that touch your area (`git log -p origin/<branch> -- <path>`).
+4. **Integrate often.** Merge or rebase `origin/main` into your branch at least daily and
+   whenever main changes something you depend on (commit or stash first; never force-push
+   shared branches).
+5. **Respond in the same session.** If a teammate's change affects you, reply with an
+   immutable `coordination/messages/` file and a PR/issue comment before you stop.

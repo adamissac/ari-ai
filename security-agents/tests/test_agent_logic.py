@@ -40,9 +40,9 @@ def hypothesis_out(**kw):
         rationale="sibling comparison",
         expected_invariant="only the owner can read a payment",
         cited_paths=["payments_lite/app.py"],
-        cited_start_lines=[52],
-        cited_end_lines=[60],
-        expectation_ids=["exp_tenant_isolation_payments"],
+        cited_start_lines=[137],
+        cited_end_lines=[150],
+        expectation_ids=["exp_owner_only"],
         confidence="high",
         suggested_check_category="access_control.ownership",
     )
@@ -62,7 +62,7 @@ def test_scout_keeps_valid_citations(intel):
     assert len(result) == 1
     span = result[0].cited_spans[0]
     assert span.path == "payments_lite/app.py" and span.sha == intel.snapshot.commit_sha
-    assert span.span.start_line == 52
+    assert span.span.start_line == 137
 
 
 def test_scout_drops_hypothesis_citing_a_file_not_in_snapshot(intel):
@@ -329,7 +329,7 @@ def diagnose_input():
     return diagnose_agent.DiagnoseInput(
         assessment_id="asm", finding_id="fnd_1", weakness_class="CWE-639", hypothesis_title="t",
         severity_level="high", impact_summary="x", affected_paths=["payments_lite/app.py"],
-        affected_symbol="get_payment", violated_expectation_ids=["exp_tenant_isolation_payments"],
+        affected_symbol="get_payment", violated_expectation_ids=["exp_owner_only"],
     )
 
 
@@ -338,10 +338,10 @@ def diagnose_output(**kw):
         root_cause_summary="handler uses the unscoped lookup",
         cause_class="missing_check",
         cause_paths=["payments_lite/app.py"],
-        cause_start_lines=[52],
-        cause_end_lines=[60],
+        cause_start_lines=[137],
+        cause_end_lines=[150],
         cause_symbol="get_payment",
-        violated_expectation_ids=["exp_tenant_isolation_payments"],
+        violated_expectation_ids=["exp_owner_only"],
         strategy="use the ownership-scoped lookup like the sibling routes",
         files_expected=["payments_lite/app.py"],
         tests_must_fail_before=["a non-owner can read the payment"],
@@ -378,7 +378,7 @@ def test_diagnose_filters_unknown_expectation_ids(intel):
     rc, _, _ = diagnose_agent.to_plan(
         diagnose_output(violated_expectation_ids=["exp_made_up"]), diagnose_input(), intel
     )
-    assert rc.violated_expectation_ids == ["exp_tenant_isolation_payments"]
+    assert rc.violated_expectation_ids == ["exp_owner_only"]
 
 
 def test_diagnose_falls_back_to_affected_path_when_spans_invalid(intel):
@@ -546,7 +546,7 @@ class _IntelStub:
 
         return [
             BehavioralExpectation(
-                id="exp_tenant_isolation_payments", snapshot_id="snp", subject_ref="payments_lite/app.py",
+                id="exp_owner_only", snapshot_id="snp", subject_ref="payments_lite/app.py",
                 statement="s", kind="access_control", confidence=Confidence.HIGH, origin="fixture",
                 status="confirmed",
             )

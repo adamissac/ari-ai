@@ -17,3 +17,9 @@ The **schema source of truth is `shared/`**, initially maintained by Srihith, wi
 ## Freeze target
 
 Publish V0 early (M0), then minimize field/enum churn. Use adapters rather than divergent parallel definitions if an upstream API is temporarily absent. Every network-facing payload must validate strict schema and reject unsupported enum values. Never persist plaintext secrets in event payloads.
+
+## Decision record
+
+| Date (UTC) | Version | Change | Status |
+|---|---|---|---|
+| 2026-10-17 | 0.1.0 (V0) | Initial `shared/` contracts, generated JSON Schema/TS, fixtures (`20261017T010331Z-srihith-to-all-contracts-v0`). RL types adopted from Adam's proposal (#2). | Proposed in Srihith PR; in force after merge + owner acks |

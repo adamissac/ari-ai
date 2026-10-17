@@ -2,6 +2,8 @@
 
 This is the **single canonical team communication entry point**. Individual messages are **immutable** Markdown files in `coordination/messages/`, not concurrent edits to this index. This avoids overlapping Git writes from six coding agents.
 
+**Commit very often and push after every commit; always read what changed (`git fetch`, `git log HEAD..origin/main`, other branches, PRs, new messages) before acting.** Full rules: "Git cadence" in [AGENTS.md](../AGENTS.md).
+
 **Everybody must check at session start, before modifying any shared interface, after each integration milestone, immediately before opening a PR, and before ending the session.** Fetch the current `origin/main`, inspect GitHub PRs/issues and any new messages on team branches. Agents do not have push notifications merely by reading this file; git fetch and PR review are necessary.
 
 Each message file format: `YYYYMMDDTHHMMSSZ-<sender>-to-<recipient>-<slug>.md`. Example: `20261016T224000Z-sarosh-to-srihith-contextpack-schema.md`. Use UTC time, actual current value. Sender/recipient one of `adam,alan,sarosh,sai,vihaan,srihith,all`. Include fields as in [message template](templates/MESSAGE_TEMPLATE.md).
