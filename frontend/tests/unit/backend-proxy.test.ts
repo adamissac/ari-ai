@@ -36,6 +36,7 @@ describe('backend proxy', () => {
     expect(sent.get('x-csrf-token')).toBe('t');
     expect(sent.get('cookie')).toBe('s=1');
     expect(sent.get('x-evil')).toBeNull();
+    expect(sent.get('x-forwarded-host')).toBe('web');
     expect(res.headers.getSetCookie()).toEqual(['a=1', 'b=2']);
     expect(res.headers.get('x-internal')).toBeNull();
   });
