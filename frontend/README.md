@@ -86,6 +86,11 @@ installed Chrome instead of Playwright's Chromium, `E2E_SKIP_BUILD=1` to reuse `
 - Live-provider (`provider_mode=live`) runs have not been exercised through the UI.
 - The project journey cannot see a phase the latest assessment's event log did not record. A log longer than the 500-event page can leave a later phase unmarked.
 
+Assessment start retries keep their key after network errors. An explicit
+IDEMPOTENCY_CONFLICT offers “Prepare a new assessment action”: it sends nothing
+until Start assessment is pressed again. Check the existing assessment list first;
+a new action can create another assessment. Keys are scoped to the current project.
+
 ## Ari identity
 
 The owner-supplied ant PNG is preserved unchanged at `public/brand/ari-ant.png`
