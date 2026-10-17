@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from backend import jobs
-from backend.api import auth, incidents, intelligence, routes, runtime, webhooks
+from backend.api import auth, github_repos, incidents, intelligence, routes, runtime, webhooks
 from backend.api.deps import ApiError
 from backend.db import get_engine
 from backend.llm import llm_mode
@@ -121,7 +121,9 @@ def create_app() -> FastAPI:
             database=db_ok,
             queue=queue_ok,
             llm_mode=llm_mode(),
-            github_app_configured=bool(s.github_app_id and s.github_app_private_key_path),
+            github_app_configured=bool(
+                s.github_app_id and (s.github_app_private_key_path or s.github_app_private_key)
+            ),
             webhook_secret_configured=bool(
                 s.github_webhook_secret
                 and s.github_webhook_secret.get_secret_value() not in ("", "replace-me")
@@ -133,6 +135,7 @@ def create_app() -> FastAPI:
 
     for r in (
         auth.router,
+        github_repos.router,
         routes.router,
         webhooks.router,
         runtime.router,
