@@ -111,6 +111,8 @@ MODELS: tuple[type[BaseModel], ...] = (
     standards.CWEClassification,
     standards.CVSSMetricValue,
     standards.CVSSAssessment,
+    standards.CVSS31MetricEvidence,
+    standards.CVSS31Assessment,
     standards.LegacyScore,
     standards.FindingStandards,
     incident.TriageDecision,
