@@ -52,6 +52,7 @@ def test_candidate_regression_rejects_unsafe_paths_and_keeps_base_commit() -> No
         finding_id="fnd_12345678",
         patch_id="pat_12345678",
         verification_id="ver_12345678",
+        affected_paths=["app.py"],
         test_paths=["tests/test_owned.py"],
         evidence=[
             EvidenceRef(
