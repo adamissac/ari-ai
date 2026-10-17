@@ -121,6 +121,7 @@
       "version": "1.6.0"
     },
     "defense-rules.json": {
+      "curated": "Repository-maintained policy or self-assessment data, not an upstream standard.",
       "license": "project proprietary reviewed rules; D3FEND identifiers subject to MITRE terms",
       "sha256": "f5a395cbf92064980e3f13fa1c7fe9b4f05db6eccef72660dbd4ea9a623a055a",
       "upstream": [
@@ -193,11 +194,13 @@
       "version": "2026"
     },
     "owasp-llm-coverage-2026.json": {
+      "curated": "Repository-maintained policy or self-assessment data, not an upstream standard.",
       "sha256": "8b44ebe50f231bef61384490a5cb2d68bbe7d937f6ccd3e0c6908adee54eb676",
       "upstream": [],
       "version": "2"
     },
     "owasp-llm-coverage.json": {
+      "curated": "Repository-maintained policy or self-assessment data, not an upstream standard.",
       "sha256": "ef1c3f7b2355cb6857e041772d0a10c473890ddfc04986b8a1c36a14eb752a3c",
       "upstream": [],
       "version": "2"
@@ -250,22 +253,22 @@
       "version": "2025"
     },
     "rules/check_attack.json": {
-      "curated": "reviewed rule table",
+      "curated": "Repository-maintained policy or self-assessment data, not an upstream standard.",
       "sha256": "20a3357641df3275c2bb81da20802fcbe770ed505f2aadb4bb870cc54f65c2fd",
       "version": "1"
     },
     "rules/cvss_derivation.json": {
-      "curated": "reviewed rule table",
+      "curated": "Repository-maintained policy or self-assessment data, not an upstream standard.",
       "sha256": "4d107a016796bdc12db8f9ac57a88fbe59e5aa4ef6f93530e458319c7643d9d4",
       "version": "1"
     },
     "rules/fortify_d3fend.json": {
-      "curated": "reviewed rule table",
+      "curated": "Repository-maintained policy or self-assessment data, not an upstream standard.",
       "sha256": "00032f1aaf23363b902afd732a07d56a464a13f9aac44577a6d2078ba6f60acd",
       "version": "1"
     },
     "rules/rl_d3fend.json": {
-      "curated": "reviewed rule table",
+      "curated": "Repository-maintained policy or self-assessment data, not an upstream standard.",
       "sha256": "7aaa52aa5edd5a20f434dc0c6b53973756761975c7c8ced2bb4ca47ca80e5a6a",
       "version": "1"
     }
