@@ -234,3 +234,25 @@ def test_diff_preserves_unchanged_callers_and_excludes_unrelated_sibling(
     assert engine.get_symbol(head, "app.payments.read_payment").id in impact.symbols
     assert engine.get_symbol(base, "app.payments.read_payment").id in impact.symbols
     assert engine.get_symbol(head, "app.payments.unrelated").id not in impact.symbols
+
+
+def test_backend_adapter_reports_invalid_commit_as_terminal_failure(
+    repository: tuple[Path, str],
+    tmp_path: Path,
+) -> None:
+    root, _ = repository
+    engine = service(root, tmp_path / "index.sqlite")
+    pending = Snapshot(
+        id="snp_missing00",
+        repo_id="rep_fixture00",
+        commit_sha="f" * 40,
+        status=SnapshotStatus.pending,
+        index_version=INDEX_VERSION,
+        created_at=utcnow(),
+    )
+    failed = engine.index_snapshot(pending, "owned/fixture")
+    assert failed.status == "failed" and failed.completed_at is not None
+    assert failed.id == pending.id and failed.commit_sha == pending.commit_sha
+    assert failed.error_message.startswith("INDEX_FAILED")
+    with pytest.raises(IntelligenceError, match="SNAPSHOT_NOT_READY"):
+        engine.store.find("prj_fixture00", "rep_fixture00", pending.commit_sha, INDEX_VERSION)
