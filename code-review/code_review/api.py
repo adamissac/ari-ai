@@ -13,6 +13,7 @@ otherwise the reviewer says it is unavailable and works from the pinned files.
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import os
@@ -133,6 +134,8 @@ def load_test_sources(host: ReviewHost, finding: Finding) -> list[GeneratedTestS
         if hashlib.sha256(data).hexdigest() != ev.sha256:
             raise ReviewError(ErrorCode.VALIDATION_FAILED, "test bundle artifact hash mismatch")
         for t in json.loads(data)["tests"]:
+            if "content_b64" in t:
+                t["content"] = base64.b64decode(t.pop("content_b64")).decode()
             if hashlib.sha256(t["content"].encode()).hexdigest() != t["sha256"]:
                 raise ReviewError(
                     ErrorCode.VALIDATION_FAILED, "generated test content hash mismatch"

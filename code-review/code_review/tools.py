@@ -18,6 +18,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from backend.llm import Tool
+from backend.redaction import _PATTERNS as _SECRET_PATTERNS
 from code_review.ports import ExecResult, IntelligencePort, ReviewHost, SandboxPort
 from code_review.sandbox import SandboxPolicyError, classify
 from code_review.workspace import (
@@ -255,6 +256,12 @@ class ReviewerToolbox:
         problem = check_test_source(a.content)
         if problem:
             raise ToolDenied(problem)
+        unknown = [v for v in credential_values(a.content) if not self._in_repo(v)]
+        if unknown:
+            raise ToolDenied(
+                "generated tests may only use credential-shaped values that already exist in the "
+                "repository's own fixtures"
+            )
         rel = self.head.repo_rel(f"{GENERATED_TEST_DIR}/test_cr_{a.name}.py")
         if self.head.exists(rel):
             raise ToolDenied(f"{rel} already exists; choose another name")
@@ -270,6 +277,17 @@ class ReviewerToolbox:
         art = self.host.store_text(a.content, ArtifactKind.other, media_type="text/x-python")
         self.written[test_id] = WrittenTest(test_id, rel, a.content, a.claim_key, a.rationale, art)
         return f"wrote {rel} as test_id={test_id}. Run it with run_tests(target='generated', test_id='{test_id}')."
+
+    def _in_repo(self, value: str) -> bool:
+        for rel in self.head.files():
+            if is_denied_read(rel) or GENERATED_TEST_DIR in rel:
+                continue
+            try:
+                if value in self.head.read(rel):
+                    return True
+            except WorkspaceError:
+                continue
+        return False
 
     # ------------------------------------------------------- execution
     def _exec(self, ws: Workspace, targets: list[str]) -> ExecResult:
@@ -554,6 +572,11 @@ def check_test_source(content: str) -> str | None:
     if not has_test:
         return "module defines no test_* function"
     return None
+
+
+def credential_values(text: str) -> list[str]:
+    """Substrings the backend redactor would scrub (same patterns, single source)."""
+    return [m.group(0) for pattern, _ in _SECRET_PATTERNS for m in pattern.finditer(text)]
 
 
 def _case_lines(r: ExecResult, *, only_failing: bool = False) -> list[str]:

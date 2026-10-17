@@ -40,7 +40,7 @@ _CONFIDENCE = {
 
 _INJECTION = re.compile(
     r"(ignore (all |any )?(previous|prior|above) (instructions|rules)|disregard .{0,30}instructions"
-    r"|you are now|system prompt|as an ai|do not (report|flag|mention)|mark (this|it|the patch) as"
+    r"|you are now|system prompt|as an ai|do not (report|flag|mention)|mark (this|it|the)( \w+)? as"
     r" (verified|approved|safe)|approve (this|the) (pr|patch|change)|skip (the )?(tests|review)"
     r"|call the \w+ tool|submit_result)",
     re.IGNORECASE,
