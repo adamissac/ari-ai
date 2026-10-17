@@ -69,3 +69,27 @@ def test_generated_tests_cannot_overwrite_existing_files_or_source(tmp_path):
             _write_generated_tests(tmp_path, [SimpleNamespace(path=path, content="replacement")], "")
     assert existing.read_text() == "original"
     assert not (tmp_path / "app.py").exists()
+
+
+def test_host_error_maps_kill_switch_and_survives_agent_local_codes():
+    from security_agents.contracts import ErrorCode
+    from security_agents.host_adapter import _host_error
+
+    body = _host_error(ErrorCode.KILL_SWITCH, "assessments paused")
+    code = body["code"] if isinstance(body, dict) else body.code.value
+    assert code == "KILL_SWITCH"
+
+    # A code absent from the shared catalog must still reach the host, not raise ValueError.
+    class _Local:
+        value = "AGENT_LOCAL_CODE"
+
+    fallback = _host_error(_Local(), "x")
+    assert fallback["code"] == "AGENT_LOCAL_CODE"
+
+
+def test_platform_error_codes_map_onto_the_shared_catalog():
+    shared_errors = pytest.importorskip("shared.errors")
+    from security_agents.contracts import ErrorCode
+
+    shared_names = {e.value for e in shared_errors.ErrorCode}
+    assert {e.value for e in ErrorCode} <= shared_names
