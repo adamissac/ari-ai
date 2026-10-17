@@ -156,5 +156,6 @@ export function providerLabel(mode: string): StatusView {
   if (mode === 'live') return v('Live provider', 'ok', '●');
   if (mode === 'replay') return v('Replay of recorded run', 'warn', '↺');
   if (mode === 'fake') return v('Test provider (scripted)', 'warn', '⚙');
+  if (mode === 'deterministic') return v('No model call (deterministic checks)', 'neutral', '⚖');
   return v(`Provider: ${mode}`, 'neutral', '?');
 }

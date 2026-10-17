@@ -1109,6 +1109,9 @@ def _write_generated_tests(root: Path, tests: list[Any], prefix: str) -> list[st
     return paths
 
 
+FUNCTIONAL_VERIFY_PROVIDER_MODE = "deterministic"
+
+
 def _verify_functional_patch(host: AssessmentHostLike, orchestrator: Orchestrator, outcome: Any) -> None:
     """Independent Verify of a reviewer PatchCandidate (fresh checkout; not Patch's worktree).
 
@@ -1147,15 +1150,13 @@ def _verify_functional_patch(host: AssessmentHostLike, orchestrator: Orchestrato
     if not diff_text:
         host.progress(f"functional Verify skipped: empty diff for {patch.finding_id}")
         return
-    llm = host.llm()
-    provider_mode = str(_val(llm, "provider_mode") or "unknown")
-    model_id = str(getattr(llm, "model_for", lambda _a: "unknown")("verify"))
+    # Functional Verify is deterministic (sandboxed pytest runs only); it makes no model call.
     run_id = host.start_agent_run(
         _host_agent(AgentName.VERIFY),
         f"functional-verify:{patch.finding_id}",
         attempt=1,
-        provider_mode=provider_mode,
-        model_id=model_id,
+        provider_mode=FUNCTIONAL_VERIFY_PROVIDER_MODE,
+        model_id=None,
         prompt_version=verify_agent.SPEC.version,
         input_payload={"patch_id": patch.id, "finding_id": patch.finding_id, "kind": "functional"},
     )
