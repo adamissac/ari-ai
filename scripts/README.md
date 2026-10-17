@@ -1,6 +1,6 @@
 # scripts/
 
-> **What exists: nothing yet (Phase 0).**
+> **What exists:** `check_links.py` and `install_git_hooks.sh` (INFRA-003).
 
 ## Purpose
 Developer tooling only — never product logic.
@@ -8,7 +8,8 @@ Developer tooling only — never product logic.
 ## Planned scripts
 | Script | Purpose | Task |
 |---|---|---|
-| `check_links.py` | Verify internal Markdown links resolve (used by `docs.yml`) | INFRA-003 |
+| `check_links.py` ✅ | Verify internal Markdown links, anchors and Mermaid block types (used by `docs.yml`) | INFRA-003 |
+| `install_git_hooks.sh` ✅ | Install a gitleaks pre-commit hook that blocks staged secrets | INFRA-003 |
 | `codegen_contracts.sh` | Pydantic → JSON Schema → TS into `shared/generated/` | CORE-003 |
 | `dev_up.sh` / `dev_down.sh` | Wrap Docker Compose for the local stack | INFRA-004 |
 | `build_sandbox_images.sh` | Build pinned `test-runner` / `check-runner` images | INFRA-005 |
@@ -29,4 +30,7 @@ Command-line only. Documented commands are mirrored in [CLAUDE.md](../CLAUDE.md)
 Python 3.12 standard library preferred; Bash for thin wrappers.
 
 ## Commands
-None yet.
+```bash
+python3 scripts/check_links.py     # exit 1 on broken links/anchors
+bash scripts/install_git_hooks.sh  # optional: block secrets before they are committed
+```
