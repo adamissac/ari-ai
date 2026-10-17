@@ -28,3 +28,4 @@ Every prompt inherits the rules in [AGENTS.md](../../AGENTS.md); where they
 differ, AGENTS.md wins and the prompt should be fixed.
 
 - [10_STANDARDS_ALIGNMENT](10_STANDARDS_ALIGNMENT.md) — implementation prompt: ATT&CK, D3FEND, NIST SP 800-61, CVSS, CWE, OWASP LLM Top 10 (not yet implemented as of 2026-10-17).
+- [11_HOSTED_E2E_RUN](11_HOSTED_E2E_RUN.md) — one owner-approved, budget-capped live assessment through the hosted product (issue #244 P0), with the evidence to collect.
