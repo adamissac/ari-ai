@@ -100,13 +100,15 @@ and `app/icon.png`. `LogoMark` draws the existing transparent ant as a CSS mask;
 keeps Inter, Space Grotesk and IBM Plex Mono. Font provenance, licenses and hashes
 are in `app/fonts/`.
 
-The shared header is transparent with independent rounded controls and an orange
-Pricing button. Local white surfaces keep text and the ant readable over dark and
-light sections. All navigation links remain available on phones, wrapping into
-rows with 44px targets. The landing header stays fixed; other routes use sticky
+The shared header, logo and ordinary navigation controls are transparent; only
+Pricing keeps its orange fill. `HeaderContrast` adapts each control to the nearest
+painted surface beneath it (white text/ant on dark, ink on light), including light
+cards within dark sections. Hover adds a restrained translucent tint. All navigation
+links remain available on phones, wrapping into rows with 44px targets. The landing header stays fixed; other routes use sticky
 positioning. The hero centers “FIND THE FLAW. / PROVE THE FIX.”, the demo and how-it-works
-links, and the seven workflow pills. Its existing gradient, animation and reduced-motion
-behavior remain. The in-page anchor has an offset for the floating controls.
+links, and the seven workflow pills. Its headline uses a crisp warm off-white
+core and three low-opacity, em-scaled ember shadows; the original gradient, spacing,
+animation and reduced-motion behavior remain. The in-page anchor has an offset for the floating controls.
 
 No additional logo was added to the story, graph or footer. The intro's progress,
 reduced-motion, automated-browser and once-per-sign-in behavior remain in place.

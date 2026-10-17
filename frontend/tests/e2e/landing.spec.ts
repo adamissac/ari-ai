@@ -24,6 +24,9 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 76
     for (const name of ['Projects', 'Defense Lab', 'Demo', 'Pricing']) await expect(nav.getByRole('link', { name, exact: true })).toBeVisible();
     await expect(page.getByRole('link', { name: 'ARI home', exact: true })).toBeVisible();
     await expect.poll(() => page.locator('.hero-in').evaluateAll(els => els.every(el => Number(getComputedStyle(el).opacity) >= 0.99))).toBe(true);
+    await expect(page.locator('header .hdr-logo')).toHaveCSS('color', 'rgb(255, 255, 255)');
+    await expect(heading.locator('.hero-line').first()).toHaveCSS('color', 'rgb(255, 247, 242)');
+    await expect(heading.locator('.hero-line').first()).not.toHaveCSS('text-shadow', 'none');
     await expect.poll(() => page.evaluate(() => document.fonts.status)).toBe('loaded');
     const fonts = await page.evaluate(() => ({
       logo: getComputedStyle(document.querySelector('.ari-wordmark-text')!).fontFamily,
@@ -40,6 +43,12 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 76
       await expect.poll(() => page.locator('header').evaluate(el => Math.round(el.getBoundingClientRect().top))).toBe(0);
       const styles = await page.locator('header').evaluate(el => ({ bg: getComputedStyle(el).backgroundColor, border: getComputedStyle(el).borderBottomWidth }));
       expect(styles).toEqual({ bg: 'rgba(0, 0, 0, 0)', border: '0px' });
+      for (const item of await page.locator('header a:not(.hdr-cta)').all()) {
+        await expect(item).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+        await expect(item).toHaveCSS('box-shadow', 'none');
+        await expect(item).toHaveCSS('border-top-width', '0px');
+      }
+      if (scrollY === viewport.height + 200) await expect(page.locator('header .hdr-logo')).toHaveCSS('color', 'rgb(28, 18, 16)');
       await expect(nav.getByRole('link', { name: 'Pricing', exact: true })).toHaveCSS('background-color', 'rgb(194, 69, 45)');
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
       const boxes = await page.locator('header a').evaluateAll(els => els.map(el => { const r = el.getBoundingClientRect(); return { x: r.x, right: r.right, height: r.height }; }));
@@ -49,10 +58,15 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 76
         await page.screenshot({ path: `${process.env.ARI_LANDING_SCREENSHOTS}/${viewport.width}-${scrollY === 0 ? 'hero' : 'scrolled'}.png` });
       }
     }
+    // Move the dark chapter under every row of controls, not only below the anchor offset.
+    await page.locator('#how').evaluate(el => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY + 200));
+    await expect(page.locator('header .hdr-logo')).toHaveCSS('color', 'rgb(255, 255, 255)');
+    await nav.getByRole('link', { name: 'Demo', exact: true }).hover();
+    await expect(nav.getByRole('link', { name: 'Demo', exact: true })).toHaveCSS('background-color', 'rgba(255, 255, 255, 0.09)');
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.getByRole('link', { name: 'How It Works', exact: true }).click();
     await expect(page).toHaveURL(/#how$/);
-    await expect.poll(() => page.locator('#how').evaluate(el => Math.round(el.getBoundingClientRect().top) - document.querySelector('header')!.getBoundingClientRect().bottom)).toBeGreaterThanOrEqual(0);
+    await expect.poll(() => page.locator('#how').evaluate(el => Math.round(el.getBoundingClientRect().top))).toBe(viewport.width < 640 ? 176 : 80);
     await nav.getByRole('link', { name: 'Pricing', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'ARI pricing' })).toBeVisible();
     await expect(page.locator('body')).not.toContainText('Ari AI');
