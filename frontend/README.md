@@ -10,7 +10,7 @@ simulated in the browser. Spec: [docs/14](../docs/14_FRONTEND_UX_DESIGN.md).
 | Route | Backed by |
 |---|---|
 | `/` projects, create project | `GET/POST /projects` |
-| `/projects/[id]` assessments (5 s refresh), start assessment (idempotency key per action), findings summary, repositories, connect repo, index commit (snapshot polling) | `/projects/{id}/assessments`, `/findings`, `/repositories`, `/repositories/{id}/snapshots`, `/snapshots/{id}` |
+| `/projects/[id]` one next step from the loaded records (connect a repo, approve a scope, run a review, open the run, or view results), then assessments, findings, repositories | `/projects/{id}/assessments`, `/findings`, `/scopes`, `/repositories` |
 | `/projects/[id]/scopes` request, approve (backend enforces a different member), revoke | `/projects/{id}/scopes`, `/scopes/{id}/approve`, `/scopes/{id}/revoke` |
 | `/projects/[id]/assessments/[asm]` live timeline: state rail from states actually entered, per-agent lanes (provider mode, model, prompt version, usage, tool trace), budget meter, remediation approval gate, cancel, durable event log, provider-mode banner | `watchAssessment` SSE (`Last-Event-ID` resume) + `GET /assessments/{id}` + 5 s polling fallback while running |
 | `/projects/[id]/findings` validated / hypotheses / closed tabs | `/projects/{id}/findings` |
