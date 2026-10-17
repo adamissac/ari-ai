@@ -1968,6 +1968,98 @@
       "title": "EvidenceRef",
       "type": "object"
     },
+    "ExpectationDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "decided_at": {
+          "format": "date-time",
+          "title": "Decided At",
+          "type": "string"
+        },
+        "decided_by": {
+          "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Decided By",
+          "type": "string"
+        },
+        "expectation_id": {
+          "pattern": "^exp_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Expectation Id",
+          "type": "string"
+        },
+        "expected_revision": {
+          "minimum": 0,
+          "title": "Expected Revision",
+          "type": "integer"
+        },
+        "reason": {
+          "maxLength": 500,
+          "minLength": 3,
+          "title": "Reason",
+          "type": "string"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "snapshot_ref": {
+          "$ref": "#/$defs/SnapshotRef"
+        },
+        "status": {
+          "enum": [
+            "confirmed",
+            "conflicting",
+            "rejected"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "reason",
+        "expected_revision",
+        "snapshot_ref",
+        "expectation_id",
+        "revision",
+        "decided_by",
+        "decided_at"
+      ],
+      "title": "ExpectationDecision",
+      "type": "object"
+    },
+    "ExpectationDecisionRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_revision": {
+          "minimum": 0,
+          "title": "Expected Revision",
+          "type": "integer"
+        },
+        "reason": {
+          "maxLength": 500,
+          "minLength": 3,
+          "title": "Reason",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "confirmed",
+            "conflicting",
+            "rejected"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "reason",
+        "expected_revision"
+      ],
+      "title": "ExpectationDecisionRequest",
+      "type": "object"
+    },
     "ExpectationKind": {
       "enum": [
         "functional",
@@ -5286,6 +5378,65 @@
       "title": "VerificationVerdict",
       "type": "string"
     },
+    "VerifiedRegression": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "title": "Evidence",
+          "type": "array"
+        },
+        "finding_id": {
+          "pattern": "^fnd_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Finding Id",
+          "type": "string"
+        },
+        "patch_id": {
+          "pattern": "^pat_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Patch Id",
+          "type": "string"
+        },
+        "snapshot_ref": {
+          "$ref": "#/$defs/SnapshotRef"
+        },
+        "test_paths": {
+          "items": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "title": "Test Paths",
+          "type": "array"
+        },
+        "verification_id": {
+          "pattern": "^ver_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Verification Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "snapshot_ref",
+        "finding_id",
+        "patch_id",
+        "verification_id",
+        "test_paths",
+        "evidence",
+        "created_at"
+      ],
+      "title": "VerifiedRegression",
+      "type": "object"
+    },
     "WebhookAck": {
       "additionalProperties": false,
       "properties": {
@@ -5341,5 +5492,5 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "HackATL platform contracts",
-  "x-schema-version": "0.5.0"
+  "x-schema-version": "0.6.0"
 }
