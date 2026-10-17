@@ -121,3 +121,11 @@ Gate: observed real model/tool trace per required role (opt-in), fake-provider i
   Command for a key holder: `cd security-agents && RUN_LIVE_LLM_EVAL=1 LIVE_SEVEN_MAX_USD=8 .venv/bin/python -m pytest -q -m live tests/test_live_provider.py -s`
 
 Limitations: no authorized key in Alan's environment (issue #10). Docker execution is now CI-verified: [run 39033028814](https://github.com/adamissac/hackatl-agentic-security/actions/runs/39033028814) at `5b3ef50` built the pinned-base image and passed all six real-container isolation/timeout/fixture/check tests. The ordinary security suite passed 451 tests with 18 skips. No published sandbox image digest or local Docker execution is claimed; local-process execution is not a security boundary. The live seven-role trace remains unobserved.
+
+
+### M3 live attempt — Srihith (not met)
+
+- 2026-10-17, main @ live run: `RUN_LIVE_LLM_EVAL=1 LIVE_SEVEN_MAX_USD=8 ../.venv/bin/python -m pytest -q -m live tests/test_live_provider.py -k seven_roles -s` (in `security-agents/`) → **1 failed**.
+- Scout and Probe made live `claude-opus-5-5` turns with tool calls: Scout 4 turns / 11 tools, Probe 5 turns / 6 tools.
+- Probe's ownership check was **inconclusive**, so the run reported before Trace through Fortify ran. Cost $0.38.
+- M3 stays unchecked until all seven roles show live turns. Details: `coordination/messages/*-srihith-to-alan-live-seven-role-result.md`.
