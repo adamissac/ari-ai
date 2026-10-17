@@ -943,6 +943,7 @@ export interface VerifiedRegression {
   finding_id: string;
   patch_id: string;
   verification_id: string;
+  affected_paths: Array<string>;
   test_paths: Array<string>;
   evidence: Array<EvidenceRef>;
   created_at: string;

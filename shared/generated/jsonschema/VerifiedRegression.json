@@ -216,6 +216,17 @@
   },
   "additionalProperties": false,
   "properties": {
+    "affected_paths": {
+      "items": {
+        "maxLength": 1024,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 200,
+      "minItems": 1,
+      "title": "Affected Paths",
+      "type": "array"
+    },
     "created_at": {
       "format": "date-time",
       "title": "Created At",
@@ -265,6 +276,7 @@
     "finding_id",
     "patch_id",
     "verification_id",
+    "affected_paths",
     "test_paths",
     "evidence",
     "created_at"

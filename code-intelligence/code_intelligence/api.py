@@ -16,6 +16,12 @@ from typing import cast
 
 from shared.base import utcnow
 from shared.evidence import EvidenceKind, EvidenceRef, SourceSpan
+from shared.findings import (
+    PatchCandidate,
+    VerificationCheckName,
+    VerificationResult,
+    VerificationVerdict,
+)
 from shared.intelligence import (
     BehavioralExpectation,
     ContextChunk,
@@ -31,10 +37,16 @@ from shared.intelligence import (
     SnapshotStatus,
     Symbol,
 )
+from shared.intelligence_memory import (
+    ExpectationDecision,
+    ExpectationDecisionRequest,
+    VerifiedRegression,
+)
 
 from code_intelligence.extract import PythonExtractor, dependencies
 from code_intelligence.inference import ExpectationProvider, validate_proposals
 from code_intelligence.ingest import GitReader, Limits
+from code_intelligence.memory import MemoryStore, SQLiteMemoryStore, apply_decisions
 from code_intelligence.models import INDEX_VERSION, IntelligenceError, StoredIndex, stable_id
 from code_intelligence.persistence import PayloadIndexStore, PayloadStore
 from code_intelligence.retrieval import build_pack, delimited, estimate, neighbors
@@ -57,8 +69,16 @@ class IntelligenceService:
         repositories: Sequence[RepositoryBinding] = (),
         limits: Limits | None = None,
         expectation_provider: ExpectationProvider | None = None,
+        memory: MemoryStore | None = None,
     ) -> None:
         self.store = store
+        self.memory = memory
+        if self.memory is None and isinstance(store, SQLiteIndexStore):
+            self.memory = SQLiteMemoryStore(store.path)
+        if self.memory is None and isinstance(store, PayloadIndexStore):
+            companion = getattr(store.payloads, "memory_store", None)
+            if callable(companion):
+                self.memory = cast(MemoryStore, companion())
         self.limits = limits or Limits()
         self.expectation_provider = expectation_provider
         self.repositories = {r.repo_id: r for r in repositories}
@@ -235,7 +255,7 @@ class IntelligenceService:
     def expectations(
         self, ref: SnapshotRef, subject: str | None = None, *, offset: int = 0, limit: int = 100
     ) -> list[BehavioralExpectation]:
-        index = self.store.get(ref)
+        index = self._effective_index(ref)
         aliases = {subject} if subject is not None else set()
         aliases.update(s.id for s in index.symbols if subject in {s.id, s.qualified_name})
         for entry in index.entry_points:
@@ -250,7 +270,142 @@ class IntelligenceService:
         return result[offset : offset + limit]
 
     def build_context_pack(self, request: ContextPackRequest) -> ContextPack:
-        return build_pack(self.store.get(request.snapshot_ref), request)
+        index = self._effective_index(request.snapshot_ref)
+        supplements: list[tuple[set[str], str, EvidenceRef]] = []
+        if self.memory is not None:
+            by_id = {e.id: e for e in index.expectations}
+            for decision in self.memory.decisions(request.snapshot_ref):
+                expectation = by_id.get(decision.expectation_id)
+                if expectation is not None:
+                    supplements.append(
+                        (
+                            {
+                                expectation.id,
+                                expectation.subject_ref,
+                                *(e.path for e in expectation.sources if e.path),
+                            },
+                            f"Authenticated intended-behavior decision {decision.expectation_id} "
+                            f"revision {decision.revision}: {decision.status}. "
+                            f"Reason: {decision.reason}. "
+                            "This confirms intended behavior, not observed implementation "
+                            "correctness.",
+                            expectation.sources[-1],
+                        )
+                    )
+            for record in self.memory.regressions(request.snapshot_ref):
+                supplements.append(
+                    (
+                        {
+                            record.finding_id,
+                            record.patch_id,
+                            *record.affected_paths,
+                            *record.test_paths,
+                        },
+                        f"Independently verified CANDIDATE patch {record.patch_id} "
+                        f"for {record.finding_id} "
+                        f"at base {record.snapshot_ref.commit_sha}; "
+                        f"verification {record.verification_id}. "
+                        f"Regression test paths: {', '.join(record.test_paths)}. "
+                        "Candidate evidence only: not proof of merge, deployment, or passing "
+                        "tests on this "
+                        "unpatched base or any other commit. Re-execute before claiming "
+                        "current correctness.",
+                        record.evidence[0],
+                    )
+                )
+        return build_pack(index, request, supplements=supplements)
+
+    def _effective_index(self, ref: SnapshotRef) -> StoredIndex:
+        index = self.store.get(ref)
+        if self.memory is None:
+            return index
+        return index.model_copy(
+            update={"expectations": apply_decisions(index.expectations, self.memory.decisions(ref))}
+        )
+
+    def decide_expectation(
+        self,
+        ref: SnapshotRef,
+        expectation_id: str,
+        request: ExpectationDecisionRequest,
+        *,
+        actor_id: str,
+    ) -> ExpectationDecision:
+        """Backend supplies authenticated actor; this method is never an agent tool."""
+        index = self.store.get(ref)
+        if not any(e.id == expectation_id for e in index.expectations):
+            raise IntelligenceError("NOT_FOUND: expectation not in exact snapshot")
+        if self.memory is None:
+            raise IntelligenceError("SUBSYSTEM_UNAVAILABLE: intelligence memory is not configured")
+        decision = ExpectationDecision(
+            **request.model_dump(),
+            snapshot_ref=ref,
+            expectation_id=expectation_id,
+            revision=request.expected_revision + 1,
+            decided_by=actor_id,
+            decided_at=utcnow(),
+        )
+        return self.memory.put_decision(decision)
+
+    def decision_history(
+        self,
+        ref: SnapshotRef,
+        expectation_id: str,
+        *,
+        after: int = 0,
+        limit: int = 100,
+    ) -> list[ExpectationDecision]:
+        index = self.store.get(ref)
+        if not any(e.id == expectation_id for e in index.expectations):
+            raise IntelligenceError("NOT_FOUND: expectation not in exact snapshot")
+        if self.memory is None:
+            raise IntelligenceError("SUBSYSTEM_UNAVAILABLE: intelligence memory is not configured")
+        return self.memory.history(ref, expectation_id, after=after, limit=limit)
+
+    def verified_regressions(self, ref: SnapshotRef) -> list[VerifiedRegression]:
+        self.store.get(ref)
+        return self.memory.regressions(ref) if self.memory is not None else []
+
+    def register_verified_regression(
+        self,
+        ref: SnapshotRef,
+        patch: PatchCandidate,
+        verification: VerificationResult,
+    ) -> VerifiedRegression:
+        self.store.get(ref)
+        names = [c.name for c in verification.checks]
+        if (
+            verification.verdict is not VerificationVerdict.accepted
+            or verification.patch_id != patch.id
+            or patch.base_commit_sha != ref.commit_sha
+            or verification.produced_by_run_id == patch.produced_by_run_id
+            or len(names) != len(VerificationCheckName)
+            or set(names) != set(VerificationCheckName)
+            or not all(c.passed for c in verification.checks)
+        ):
+            raise IntelligenceError(
+                "SCHEMA_INVALID: regression requires all independent Verify checks"
+            )
+        if self.memory is None:
+            raise IntelligenceError("SUBSYSTEM_UNAVAILABLE: intelligence memory is not configured")
+        executed = [
+            e
+            for c in verification.checks
+            for e in c.evidence
+            if e.kind in {EvidenceKind.test_run, EvidenceKind.sandbox_run}
+        ]
+        record = VerifiedRegression(
+            snapshot_ref=ref,
+            finding_id=patch.finding_id,
+            patch_id=patch.id,
+            verification_id=verification.id,
+            affected_paths=sorted(set(patch.files_changed)),
+            test_paths=sorted({p.split("::", 1)[0] for p in patch.tests_added}),
+            evidence=executed,
+            created_at=verification.created_at,
+        )
+        self.memory.put_regression(record)
+        return record
 
     def graph_neighbors(self, ref: SnapshotRef, symbol_id: str, *, depth: int = 1) -> list[Symbol]:
         index = self.store.get(ref)
@@ -439,3 +594,13 @@ def build_service() -> IntelligenceService:
         assert database is not None
         store = SQLiteIndexStore(Path(database))
     return IntelligenceService(store, registrations)
+
+
+def create_service(
+    *,
+    payload_store: PayloadStore,
+    repositories: Sequence[RepositoryBinding],
+    memory: MemoryStore | None = None,
+) -> IntelligenceService:
+    """Public host adapter: one backend-owned persistent index and annotation store."""
+    return IntelligenceService(PayloadIndexStore(payload_store), repositories, memory=memory)

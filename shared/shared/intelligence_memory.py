@@ -50,6 +50,7 @@ class VerifiedRegression(StrictModel):
     finding_id: FindingId
     patch_id: PatchId
     verification_id: VerificationId
+    affected_paths: list[RepoRelPath] = Field(min_length=1, max_length=200)
     test_paths: list[RepoRelPath] = Field(min_length=1, max_length=100)
     evidence: list[EvidenceRef] = Field(min_length=1, max_length=100)
     created_at: UtcDatetime
