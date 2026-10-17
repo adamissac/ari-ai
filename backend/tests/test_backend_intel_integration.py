@@ -98,7 +98,7 @@ def test_symbol_impact_from_real_indexes(client_factory, settings_override, two_
     )
 
     _SERVICE[:] = [again]
-    settings_override(code_intelligence_factory="test_intel_integration:service_factory")
+    settings_override(code_intelligence_factory="test_backend_intel_integration:service_factory")
     post_webhook(alice, push_payload([changed_path], head=head, base=base))
     worker.drain(kinds=["process_github_delivery"])
     ev = alice.get(f"/api/v1/projects/{ids['project']}/events").json()["items"][0]

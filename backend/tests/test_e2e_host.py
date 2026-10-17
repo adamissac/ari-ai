@@ -216,9 +216,11 @@ def test_host_checkpoints_are_scoped_durable_and_integrity_checked(client_factor
     assert AssessmentHost(other).load_checkpoint("test.v1") is None
     assert host.load_checkpoint("different.v1") is None
     with transaction() as conn:
-        row = conn.execute(
-            sa.select(artifacts).where(artifacts.c.project_id == ids["project"])
-        ).mappings().all()
+        row = (
+            conn.execute(sa.select(artifacts).where(artifacts.c.project_id == ids["project"]))
+            .mappings()
+            .all()
+        )
     for artifact in row:
         (host.store.root / artifact["storage_key"]).write_bytes(b"corrupted")
     with pytest.raises(OSError, match="integrity"):

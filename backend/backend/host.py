@@ -373,7 +373,10 @@ class AssessmentHost:
                 conn, payload, kind=ArtifactKind.other, project_id=self.project_id
             )
             _emit(
-                conn, self.assessment_id, StreamEventType.progress, "checkpoint saved",
+                conn,
+                self.assessment_id,
+                StreamEventType.progress,
+                "checkpoint saved",
                 data={"checkpoint_namespace": namespace, "checkpoint_artifact_id": ref.id},
             )
 

@@ -75,6 +75,7 @@ def test_host_mode_full_flow_against_real_backend(
     )
     # Simulate a new worker process: discard the process-local orchestrator cache.
     from backend import pipeline
+
     pipeline._ORCHESTRATORS.clear()
     worker.drain(kinds=["run_assessment"])
 
