@@ -1033,11 +1033,20 @@ def _tests_passed(result: dict[str, Any] | None) -> bool:
 
 
 def _functional_reproduced(result: dict[str, Any] | None, tests: list[str]) -> bool:
-    """Only executed assertion failures in every generated file reproduce the defect."""
+    """Only a complete pytest-failed run counts as reproduction.
+
+    Partial output from a hang, timeout, or interrupted/collection-error run
+    (exit 2+, ``timed_out``, tool ``error``) is not proof the defect reproduced.
+    """
     if (
-        not tests or not result or result.get("error") or result.get("errors")
-        or result.get("timed_out") or result.get("exit_code") != 1
-        or not result.get("sandbox_run_id") or not result.get("failed")
+        not tests
+        or not result
+        or result.get("error")
+        or result.get("errors")
+        or result.get("timed_out")
+        or result.get("exit_code") != 1
+        or not result.get("sandbox_run_id")
+        or not result.get("failed")
     ):
         return False
     failed_paths = {node.split("::", 1)[0] for node in result.get("failing_tests", [])}

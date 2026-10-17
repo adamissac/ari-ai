@@ -6,6 +6,12 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+### Fixed
+- Hosted assessments with a still-pending functional approval now pause at
+  `AWAITING_APPROVAL` even when security work ended early or was already
+  approved. Early security exits walk skipped phases to the only legal pause
+  edge (`DIAGNOSIS` → `AWAITING_APPROVAL`) instead of completing.
+
 ### Added
 - Hosted assessments persist security finding lifecycle (`hypothesis → … → hardened`),
   durable approval checkpoints (`save_checkpoint` / `load_checkpoint` so a worker
