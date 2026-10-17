@@ -12,6 +12,19 @@ Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablat
 
 ## Session entries
 
+### 2026-10-17 (integration) — contracts verified, cross-pillar checks
+- shared V0 RL contract verified field-for-field against #8 (`tests/test_shared_contract.py`, 6/6);
+  local DTOs now mirror shared ID formats; ack posted (#9).
+- Re-ran Srihith's `backend/tests/test_rl_integration.py` (real embedded Postgres) against
+  `feat/adam/rl-defense` @ `c197381`: **2 passed**.
+- Reviewed #8 (RL parts): asked for expectations → criticality wiring and the real
+  `POST /refunds` route. Ran Sarosh's indexer (#6) on payments-lite: 8/8 entry points and the
+  refund invariant found; the ownership rule is not attached to `GET /payments/{payment_id}`
+  (feedback posted with a sibling-convention suggestion).
+- New: `explain()` occlusion explanations; `accepted_risk` counts as open exposure.
+- Other PRs from me: #5 payments-lite (DEMO-001), #7 link + secret CI (INFRA-003),
+  #10 API-key setup instructions (no key in GitHub).
+
 ### 2026-10-17 (later) — analysis, platform mapping, Defense Lab bundle, stress test
 - **Added:** per-step reward components (returns bit-identical to v0), failure-case analysis with
   deterministic replays (`results/protocol-v0/ANALYSIS.md`), `platform_mapping.facts_from_platform`
