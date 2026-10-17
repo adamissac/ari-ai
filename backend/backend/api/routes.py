@@ -883,6 +883,36 @@ def cancel_assessment(assessment_id: str, request: Request) -> dict[str, Any]:
         return {"assessment_id": assessment_id, "cancelled": immediate, "cancel_requested": True}
 
 
+@router.get("/assessments/{assessment_id}/rules-of-engagement")
+def rules_of_engagement(assessment_id: str, request: Request) -> dict[str, Any]:
+    """The RoE document issued for this assessment (404 when none was issued), served from the
+    artifact named by the hash-chained ``roe.recorded`` audit event; its digest is re-checked."""
+    import hashlib
+
+    with transaction() as conn:
+        row = _assessment_access(conn, _user(conn, request), assessment_id)
+        event = conn.execute(
+            sa.select(audit_events.c.doc)
+            .where(
+                audit_events.c.project_id == row["project_id"],
+                audit_events.c.doc["action"].astext == "roe.recorded",
+                audit_events.c.doc["subject_id"].astext == assessment_id,
+            )
+            .order_by(audit_events.c.seq.desc())
+            .limit(1)
+        ).scalar()
+        if event is None:
+            raise not_found("rules of engagement")
+        details = event.get("details") or {}
+        _, data = ArtifactStore().get(conn, details["artifact_id"])
+    doc = json.loads(data)
+    body = {k: v for k, v in doc.items() if k != "digest"}
+    digest = hashlib.sha256(json.dumps(body, sort_keys=True, default=str).encode()).hexdigest()
+    if digest != doc.get("digest") or digest != details.get("digest"):
+        raise ApiError(ErrorCode.INTERNAL, "stored rules of engagement failed integrity check", 500)
+    return doc
+
+
 @router.get("/assessments/{assessment_id}/report", response_model=AssessmentReport)
 def assessment_report(assessment_id: str, request: Request) -> dict[str, Any]:
     """Report assembled only from persisted records (no generated prose)."""
