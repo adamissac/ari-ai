@@ -14,7 +14,7 @@
   --color-ink: #1c1210;
   --color-ink-2: #2b1d19;
   --color-muted: #6b5752;
-  --color-faint: #9a857f;
+  --color-faint: #806b65; /* 4.99:1 on #fff, 4.59:1 on panel-2 (was #9a857f: 3.48 / 3.20) */
   --color-on-brand: #ffffff;
   --color-accent: #c2452d;
   --color-indigo: #8f2f1e;
