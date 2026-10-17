@@ -49,6 +49,7 @@ from code_intelligence.ingest import GitReader, Limits, ingestion_version
 from code_intelligence.memory import MemoryStore, SQLiteMemoryStore, apply_decisions
 from code_intelligence.models import IntelligenceError, StoredIndex, stable_id
 from code_intelligence.persistence import PayloadIndexStore, PayloadStore
+from code_intelligence.privacy import redact_evidence
 from code_intelligence.retrieval import build_pack, delimited, estimate, neighbors
 from code_intelligence.store import IndexStore, SQLiteIndexStore
 
@@ -269,7 +270,12 @@ class IntelligenceService:
                 aliases.update({entry.id, entry.handler_symbol_id})
         result = [e for e in index.expectations if subject is None or e.subject_ref in aliases]
         self._page(result, offset, limit)
-        return result[offset : offset + limit]
+        return [
+            expectation.model_copy(
+                update={"sources": [redact_evidence(source) for source in expectation.sources]}
+            )
+            for expectation in result[offset : offset + limit]
+        ]
 
     def build_context_pack(self, request: ContextPackRequest) -> ContextPack:
         index = self._effective_index(request.snapshot_ref)

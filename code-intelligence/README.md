@@ -163,3 +163,13 @@ performance follow-ups.
 Sai's reviewer and Alan's security host adapter consume this service; their complete runtime
 integration is not claimed by producer contract tests. No target security probe, target test
 execution, production deployment or live-model proof is implied here.
+
+## Context-output privacy
+
+Context chunks, their embedded citations, structured provenance, and public
+expectation sources redact credential-shaped text in free-form citation notes
+and provenance. Output metadata stays within the canonical ShortText limit.
+Source identities (commit, path/span/symbol and artifact/hash pointers) stay
+exact. This is a display/output projection: authenticated append-only decision
+history and immutable indexes retain their original bytes. Existing snapshots
+need no reindexing, and canonical DTOs are unchanged.
