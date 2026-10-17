@@ -18,7 +18,7 @@ const TONE: Record<Tone, string> = {
 
 export function Badge({ view, title }: { view: StatusView; title?: string }) {
   return (
-    <span title={title} className={`inline-flex items-center gap-1 whitespace-nowrap rounded border px-1.5 py-0.5 text-xs font-medium ${TONE[view.tone]}`}>
+    <span title={title} className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium ${TONE[view.tone]}`}>
       <span aria-hidden="true">{view.glyph}</span>
       {view.label}
     </span>
@@ -26,15 +26,15 @@ export function Badge({ view, title }: { view: StatusView; title?: string }) {
 }
 
 export function Tag({ children, tone = 'neutral' }: { children: ReactNode; tone?: Tone }) {
-  return <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-xs ${TONE[tone]}`}>{children}</span>;
+  return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${TONE[tone]}`}>{children}</span>;
 }
 
 export function Panel({ title, actions, children, className = '', id }: { title?: ReactNode; actions?: ReactNode; children: ReactNode; className?: string; id?: string }) {
   return (
-    <section id={id} className={`rounded-lg border border-line bg-panel ${className}`} aria-label={typeof title === 'string' ? title : undefined}>
+    <section id={id} className={`rounded-xl border border-line bg-panel shadow-[0_1px_0_rgba(28,18,16,0.04)] transition-[border-color,box-shadow] duration-300 ease-[var(--ease-quad)] hover:border-brand/30 hover:shadow-[0_8px_24px_-12px_rgba(194,69,45,0.25)] ${className}`} aria-label={typeof title === 'string' ? title : undefined}>
       {(title || actions) && (
         <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-2.5">
-          {title && <h2 className="text-sm font-semibold tracking-wide text-ink">{title}</h2>}
+          {title && <h2 className="label-mono text-ink">{title}</h2>}
           {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
         </header>
       )}
@@ -43,14 +43,32 @@ export function Panel({ title, actions, children, className = '', id }: { title?
   );
 }
 
-export function Button({ variant = 'secondary', className = '', ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'danger' | 'ghost' }) {
+export function Button({ variant = 'secondary', className = '', children, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'danger' | 'ghost' }) {
   const styles = {
-    primary: 'bg-accent text-bg hover:bg-accent/90 font-semibold',
-    secondary: 'border border-line bg-panel-2 text-ink hover:border-accent/60',
+    primary: 'bg-brand text-on-brand hover:bg-brand-deep shadow-[0_6px_16px_-8px_rgba(194,69,45,0.6)]',
+    secondary: 'bg-brand/[0.07] text-ink hover:bg-brand/[0.14]',
     danger: 'border border-bad/50 bg-bad/10 text-bad hover:bg-bad/20',
-    ghost: 'text-muted hover:text-ink',
+    ghost: 'text-muted hover:bg-brand/[0.07] hover:text-ink',
   }[variant];
-  return <button type="button" {...props} className={`inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${styles} ${className}`} />;
+  return (
+    <button
+      type="button"
+      {...props}
+      className={`group label-mono inline-flex h-8 items-center justify-center gap-1.5 rounded-md px-3 transition-[background-color,color,box-shadow,transform] duration-[250ms] ease-[var(--ease-quad)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 ${styles} ${className}`}
+    >
+      {typeof children === 'string' ? <RollText>{children}</RollText> : children}
+    </button>
+  );
+}
+
+/** Label that rolls up to a second copy on hover (the copy is hidden from assistive tech). */
+export function RollText({ children }: { children: string }) {
+  return (
+    <span className="roll">
+      <span>{children}</span>
+      <span aria-hidden="true">{children}</span>
+    </span>
+  );
 }
 
 export function ErrorState({ error, onRetry, context }: { error: unknown; onRetry?: () => void; context?: string }) {
@@ -70,7 +88,7 @@ export function ErrorState({ error, onRetry, context }: { error: unknown; onRetr
 }
 
 export function Empty({ children }: { children: ReactNode }) {
-  return <p className="rounded-md border border-dashed border-line px-3 py-4 text-center text-sm text-muted">{children}</p>;
+  return <p className="rounded-lg border border-dashed border-brand/25 bg-brand/[0.03] px-3 py-5 text-center text-sm text-muted">{children}</p>;
 }
 
 export function Loading({ label = 'Loading' }: { label?: string }) {
@@ -106,13 +124,13 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
   );
 }
 
-export const inputClass = 'rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm text-ink placeholder:text-faint focus:border-accent focus:outline-none';
+export const inputClass = 'rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm text-ink placeholder:text-faint transition-[border-color,box-shadow] duration-200 focus:border-brand focus:shadow-[0_0_0_3px_rgba(194,69,45,0.15)] focus:outline-none';
 
 export function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: string }) {
   return (
-    <div className="rounded-md border border-line bg-panel-2 px-3 py-2">
-      <p className="text-xs uppercase tracking-wider text-faint">{label}</p>
-      <p className="mt-0.5 text-lg font-semibold text-ink">{value}</p>
+    <div className="rounded-lg border border-line bg-panel-2 px-3 py-2.5 transition-colors duration-300 hover:border-brand/30">
+      <p className="label-mono text-faint">{label}</p>
+      <p className="mt-1 text-xl font-semibold tracking-tight text-ink">{value}</p>
       {hint && <p className="text-xs text-muted">{hint}</p>}
     </div>
   );
@@ -120,12 +138,12 @@ export function Stat({ label, value, hint }: { label: string; value: ReactNode; 
 
 export function Crumbs({ items }: { items: Array<{ href?: string; label: string }> }) {
   return (
-    <nav aria-label="Breadcrumb" className="mb-3 text-sm text-muted">
+    <nav aria-label="Breadcrumb" className="label-mono mb-3 text-muted">
       <ol className="flex flex-wrap items-center gap-1">
         {items.map((it, i) => (
           <li key={i} className="flex items-center gap-1">
             {i > 0 && <span aria-hidden="true" className="text-faint">/</span>}
-            {it.href ? <Link className="hover:text-accent" href={it.href}>{it.label}</Link> : <span className="text-ink">{it.label}</span>}
+            {it.href ? <Link className="transition-colors hover:text-brand" href={it.href}>{it.label}</Link> : <span className="text-ink">{it.label}</span>}
           </li>
         ))}
       </ol>
@@ -137,7 +155,7 @@ export function PageTitle({ title, subtitle, actions }: { title: ReactNode; subt
   return (
     <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-xl font-semibold text-ink">{title}</h1>
+        <h1 className="text-2xl font-semibold tracking-[-0.03em] text-ink md:text-3xl">{title}</h1>
         {subtitle && <div className="mt-1 text-sm text-muted">{subtitle}</div>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
