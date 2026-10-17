@@ -35,7 +35,7 @@ export function Panel({ title, actions, children, className = '', id }: { title?
       {(title || actions) && (
         <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-2.5">
           {title && <h2 className="label-mono text-ink">{title}</h2>}
-          {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+          {actions && <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">{actions}</div>}
         </header>
       )}
       <div className="p-4">{children}</div>
@@ -103,7 +103,8 @@ export function Async<T>({ resource, label, children }: { resource: Resource<T>;
 }
 
 export function Mono({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <code className={`font-mono text-[0.8rem] text-muted ${className}`}>{children}</code>;
+  // Long IDs and step keys may break anywhere so they never force sideways scrolling.
+  return <code className={`font-mono text-[0.8rem] text-muted [overflow-wrap:anywhere] ${className}`}>{children}</code>;
 }
 
 export function Time({ iso }: { iso: string | null | undefined }) {
@@ -124,7 +125,7 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
   );
 }
 
-export const inputClass = 'rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm text-ink placeholder:text-faint transition-[border-color,box-shadow] duration-200 focus:border-brand focus:shadow-[0_0_0_3px_rgba(194,69,45,0.15)] focus:outline-none';
+export const inputClass = 'max-w-full rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm text-ink placeholder:text-faint transition-[border-color,box-shadow] duration-200 focus:border-brand focus:shadow-[0_0_0_3px_rgba(194,69,45,0.15)] focus:outline-none';
 
 export function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: string }) {
   return (

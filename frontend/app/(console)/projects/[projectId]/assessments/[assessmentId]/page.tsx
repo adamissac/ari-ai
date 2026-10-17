@@ -146,7 +146,7 @@ export default function AssessmentPage() {
       </div>
       <div className="mt-4">
         <h2 className="mb-2 text-sm font-semibold">What the selected agent did, step by step</h2>
-        <AgentTeam runs={detail.agent_runs} selected={selectedAgent ?? detail.agent_runs[0]?.agent ?? 'reviewer'} onSelect={setSelectedAgent} />
+        <AgentTeam runs={detail.agent_runs} selected={selectedAgent ?? detail.agent_runs[0]?.agent ?? 'reviewer'} onSelect={setSelectedAgent} hideList />
       </div>
       <details className="group mt-4 rounded-xl border border-line bg-panel" data-testid="technical-details" open={technicalOpen} onToggle={e => setTechnicalOpen((e.currentTarget as HTMLDetailsElement).open)}>
         <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold marker:hidden">
@@ -312,7 +312,7 @@ function EventLog({ events }: { events: StreamEvent[] }) {
   return (
     <ol className="max-h-[28rem] overflow-y-auto text-xs" aria-live="polite" data-testid="event-log">
       {events.map(e => (
-        <li key={e.seq} className="grid grid-cols-[2.5rem_1fr] gap-2 border-b border-line/60 py-1.5">
+        <li key={e.seq} className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-2 border-b border-line/60 py-1.5">
           <span className="font-mono text-faint">#{e.seq}</span>
           <div>
             <p className="flex flex-wrap items-center gap-1.5">
