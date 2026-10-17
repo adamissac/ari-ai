@@ -42,7 +42,7 @@ NODEID = re.compile(r"^(?P<file>[\w./-]+\.py)(?:::(?P<rest>[\w:\[\]-]+))?$")
 
 def parse_pytest(stdout: str) -> dict[str, Any]:
     """Structured outcome from pytest output: counts plus failing test ids."""
-    passed = failed = errors = 0
+    passed = failed = errors = skipped = 0
     for m in re.finditer(r"(\d+) (passed|failed|error|errors|skipped)", stdout):
         n, what = int(m.group(1)), m.group(2)
         if what == "passed":
@@ -51,10 +51,12 @@ def parse_pytest(stdout: str) -> dict[str, Any]:
             failed = n
         elif what.startswith("error"):
             errors = n
+        elif what == "skipped":
+            skipped = n
     failing = sorted(set(re.findall(r"^FAILED (\S+)", stdout, flags=re.MULTILINE))) or sorted(
         set(re.findall(r"^(\S+::\S+) FAILED", stdout, flags=re.MULTILINE))
     )
-    return {"passed": passed, "failed": failed, "errors": errors, "failing_tests": failing[:20]}
+    return {"passed": passed, "failed": failed, "errors": errors, "skipped": skipped, "failing_tests": failing[:20]}
 
 
 def _result_summary(res: SandboxResult) -> dict[str, Any]:
