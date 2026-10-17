@@ -7,6 +7,12 @@ All notable changes are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- Frontend console pages on existing backend APIs: **Expectations** (snapshot-pinned behavioral
+  expectations with confirm/conflicting/reject decisions, optimistic `expected_revision` and
+  decision history), **Incidents** (NIST SP 800-61r3 lifecycle, triage, owner, two-person
+  approval gates, simulated-drill labels, timeline) and **Settings** (default and monitoring
+  budgets, trigger policy). Transport gains `expectations`, `decideExpectation`,
+  `expectationDecisions` and `updateProject` (PATCH).
 - Exact-snapshot human intent decisions (`confirmed`/`conflicting`/`rejected`) with
   authenticated backend routes, append-only revisions and `human_input` provenance.
 - Independently verified candidate-regression memory: accepted Verify results with all
