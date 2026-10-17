@@ -29,6 +29,7 @@ from typing import Any
 
 import pytest
 
+from security_agents.agents import ALL_SPECS
 from security_agents.contracts import AgentName, ErrorCode, PlatformError
 from security_agents.host_adapter import HostOrchestrator, build_orchestrator
 from security_agents.workflow import AssessmentState
@@ -454,7 +455,7 @@ def test_agent_runs_are_persisted_through_the_host(host_and_orchestrator):
     assert [r["agent"] for r in host.runs] == ["scout", "probe", "trace", "diagnose"]
     assert all(r["provider_mode"] == "fake" for r in host.runs)
     assert all(r["model_id"] == "claude-opus-5-5" for r in host.runs)
-    assert all(r["prompt_version"] == "0.1.0" for r in host.runs)
+    assert all(r["prompt_version"] == ALL_SPECS[AgentName(r["agent"])].version for r in host.runs)
     assert [f["status"] for f in host.finished] == ["succeeded"] * 4
     assert all("transcript" in f for f in host.finished)
 

@@ -6,19 +6,23 @@ from shared.standards import CVSSAssessment
 
 from security_agents.agents.probe import ProbeInput
 from security_agents.agents.scout import HypothesisOut
-from security_agents.agents.trace import TraceOutput, _cvss
+from security_agents.agents.trace import TraceOutput, _cvss4
 from security_agents.contracts import EvidenceRef, ValidationResult, export
 
 METRICS = dict(AV="N", AC="L", AT="N", PR="L", UI="N", VC="H", VI="N", VA="N", SC="N", SI="N", SA="N")
+
+
+V31 = [
+    {"metric": m, "value": v, "rationale": "r"}
+    for m, v in zip(("AV", "AC", "PR", "UI", "S", "C", "I", "A"), "NLLNUHNN", strict=True)
+]
 
 
 def trace_output(**kwargs):
     return TraceOutput(
         steps=[dict(description="Protected data is reachable", verified=False)],
         impact_summary="Cross-owner access",
-        reachability="authenticated",
-        privileges_required="low",
-        data_sensitivity="financial",
+        cvss_base_metrics=V31,
         severity_rationale="Executed owner-boundary check",
         **kwargs,
     )
@@ -57,8 +61,8 @@ def test_coarse_catalog_chain_is_not_automatically_a_mapping():
     assert export.attack_refs("CWE-639", evidence=[], confidence=0.5) == []
 
 
-def test_factors_alone_do_not_create_cvss():
-    assert _cvss(trace_output(), None) is None
+def test_v31_metrics_alone_do_not_create_a_v4_assessment():
+    assert _cvss4(trace_output(), None) is None
 
 
 def test_explicit_evidenced_cvss_is_scored_and_exported():
@@ -72,7 +76,7 @@ def test_explicit_evidenced_cvss_is_scored_and_exported():
         sandbox_run_id=run,
         evidence=[EvidenceRef(artifact_id=run, provenance="check_run")],
     )
-    assessment = _cvss(output, validation)
+    assessment = _cvss4(output, validation)
     assert assessment is not None
     assert len(assessment.assumptions) == 11
     assert all(metric.basis == "assumption" for metric in assessment.metrics)
@@ -83,7 +87,7 @@ def test_explicit_evidenced_cvss_is_scored_and_exported():
     with pytest.raises(ValidationError, match="score"):
         CVSSAssessment.model_validate(payload)
     output.cvss_metric_artifacts["AV"] = "invented-run"
-    assert _cvss(output, validation) is None
+    assert _cvss4(output, validation) is None
 
 
 def test_reviewed_check_rule_attaches_proposed_sandbox_mapping():
@@ -99,7 +103,7 @@ def test_reviewed_check_rule_attaches_proposed_sandbox_mapping():
         confirmed_outcome="confirmed",
     )
     refs = _reviewed_attack(
-        data, trace_output(), [EvidenceRef(artifact_id="sbx_executed", provenance="check_run")]
+        data, "authenticated", [EvidenceRef(artifact_id="sbx_executed", provenance="check_run")]
     )
     assert refs and all(
         ref.review_status == "proposed"

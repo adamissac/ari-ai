@@ -750,6 +750,7 @@ class HostOrchestrator:
         if not decision.allowed:
             raise PlatformError(ErrorCode.SCOPE_DENIED, decision.reason_code)
         orchestrator.config.scope = scope
+        orchestrator.roe = orchestrator._issue_roe()
         if isinstance(orchestrator.sink, HostSink):
             orchestrator.sink.host = host
         if isinstance(orchestrator.step_runner, HostStepRunner):
