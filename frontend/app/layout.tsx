@@ -4,9 +4,9 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { BRAND_NAME, Wordmark } from '@/components/brand';
 import { DemoBanner } from '@/components/demo-banner';
+import { NavLink } from '@/components/nav-link';
 import { SiteFooter } from '@/components/site-footer';
 import { SmoothScroll } from '@/components/smooth-scroll';
-import { RollText } from '@/components/ui';
 import './globals.css';
 
 // Packaged OFL fonts: no external font service is needed at build or runtime.
@@ -50,13 +50,3 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   );
 }
 
-function NavLink({ href, children, className = '' }: { href: string; children: string; className?: string }) {
-  return (
-    <Link
-      href={href}
-      className={`group label-mono inline-flex h-8 items-center rounded-md bg-brand/[0.06] px-3 text-ink transition-colors duration-[250ms] hover:bg-brand hover:text-on-brand ${className}`}
-    >
-      <RollText>{children}</RollText>
-    </Link>
-  );
-}

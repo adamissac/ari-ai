@@ -10,6 +10,7 @@ import { useParam, useProject } from '@/components/project';
 import { useSession } from '@/components/session';
 import { Badge, Button, Empty, ErrorState, Loading, Mono, PageTitle, Panel, Stat, Tag, Time } from '@/components/ui';
 import { api } from '@/lib/api';
+import { useActionKeys } from '@/lib/action-key';
 import { CANCEL_ASSESSMENT_NOTE, cancelAssessmentResult } from '@/lib/cancel-assessment';
 import { shortSha, usd } from '@/lib/format';
 import { assessmentPhases, EVENT_LOG_PAGE_NOTE, fullEventLog, JOURNEY_STATUS } from '@/lib/journey';
@@ -299,10 +300,11 @@ function ApprovalGate({ projectId, events, onDecided }: { projectId: string; eve
     api().pendingApprovals(projectId).then(p => setApprovals(p.items.filter(a => requested.has(a.id))), setError);
   }, [projectId, requested]);
   useEffect(load, [load]);
+  const keys = useActionKeys('decide-approval');
   const decide = async (ap: Approval, decision: 'approved' | 'declined') => {
     setBusy(true);
     setError(null);
-    try { await api().decideApproval(ap.id, { decision, reason: null }); onDecided(); load(); }
+    try { await api().decideApproval(ap.id, { decision, reason: null }, { idempotencyKey: keys.keyFor(`${ap.id}|${decision}`) }); keys.done(); onDecided(); load(); }
     catch (err) { setError(err); } finally { setBusy(false); }
   };
   return (

@@ -7,6 +7,7 @@ import { useProject } from '@/components/project';
 import { useSession } from '@/components/session';
 import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, Panel, Time } from '@/components/ui';
 import { api } from '@/lib/api';
+import { useActionKeys } from '@/lib/action-key';
 import { APPROVAL_STATUS } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
 
@@ -41,10 +42,15 @@ function ApprovalRow({ approval, onDone }: { approval: Approval; onDone: () => v
   const [error, setError] = useState<unknown>(null);
   const mine = approval.requested_by === me.user.id;
   const what = WHAT[approval.subject_type];
+  const keys = useActionKeys('decide-approval');
   const decide = async (decision: 'approved' | 'declined') => {
     setBusy(true);
     setError(null);
-    try { await api().decideApproval(approval.id, { decision, reason: reason.trim() || null }); onDone(); }
+    try {
+      await api().decideApproval(approval.id, { decision, reason: reason.trim() || null }, { idempotencyKey: keys.keyFor(`${approval.id}|${decision}|${reason.trim()}`) });
+      keys.done();
+      onDone();
+    }
     catch (err) { setError(err); } finally { setBusy(false); }
   };
   const subjectHref = approval.subject_type === 'scope' ? `/projects/${project.id}/scopes` : approval.subject_id.startsWith('asm_') ? `/projects/${project.id}/assessments/${approval.subject_id}` : approval.subject_id.startsWith('fnd_') ? `/projects/${project.id}/findings/${approval.subject_id}` : null;
