@@ -120,3 +120,8 @@ Add dated factual entries; do not overwrite history. Never claim unexecuted test
 - security-agents joined the workspace and CI.
 - Results: root suite 148 passed; security-agents 344 passed; CI green across 6 workflows.
 - Not yet re-verified live end to end after the fixes (needs one more paid run).
+
+### 2026-10-17: standards integration follow-up
+- Branch `feat/srihith/standards-alignment` builds on Alan PR #49 canonical work; shared0.7, persisted incident API, reports and producers, OWASP2025/2026 self-assessment, typed transport.
+- Evidence: root193 passed/2 live skips, security/reviewer400 passed/11 optional skips, RL82 passed, transport16 unit+4 real API tests, generated freshness and link check233/0.
+- Not claimed: production standards compliance, customer LLM-risk scanning, mounted frontend pages, paid live rerun, deployed containment.
