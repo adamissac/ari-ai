@@ -182,4 +182,8 @@ Add dated factual entries; do not overwrite history. Never claim unexecuted test
   - Locally, after the fix: 202, worker job succeeded, artifact persisted.
   - Added a CI `compose-stack` job that sends a simulated signed delivery.
 - Not verified: live LLM (no key authorized); real GitHub App deliveries (no App credentials).
+- Later in session 7:
+  - #85 merged into main (`e940c44`) after #84 closed the overlapping items; it added suite-run masking fix, `ErrorCode.INTERNAL`, and the static ErrorCode-reference guard.
+  - New PR #89 `feat/srihith/killswitch-error-code`: added `KILL_SWITCH` to `shared.errors` and made `_host_error` fall back to a dict for agent-local codes. An Adam-side session merged #83 into the branch mid-flight; all CI green.
+  - #86 still open, clean; its `compose-stack` CI job passed.
 
