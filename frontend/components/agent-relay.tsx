@@ -2,6 +2,7 @@
 
 import type { AgentName } from '@hackatl/frontend-transport';
 import type { RelayItem, RelayStatus } from '@/lib/relay';
+import { Term } from '@/components/term';
 
 const LOOK: Record<RelayStatus, { box: string; icon: string }> = {
   done: { box: 'border-ok/50 bg-ok/[0.06]', icon: '✓' },
@@ -23,8 +24,8 @@ export function AgentRelay({ items, selected, onSelect }: { items: RelayItem[]; 
     <section aria-labelledby="relay-title" data-testid="agent-relay">
       <h2 id="relay-title" className="text-lg font-semibold tracking-tight">The eight AI agents, in order</h2>
       <p className="mt-1 max-w-3xl text-sm text-muted">
-        Each agent is a separate AI worker with one job. It passes its result to the next one.
-        A person must approve before any fix is built. Select an agent to see exactly what it did.
+        Each <Term t="agent">agent</Term> is a separate AI worker with one job. It passes its result to the next one.
+        A person must give <Term t="approval">approval</Term> before any fix is built. Select an agent to see exactly what it did.
       </p>
       <ol className="mt-3 flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-stretch">
         {items.map((item, i) => {

@@ -3,6 +3,7 @@
 import type { AuthorizedScope, CheckCategory } from '@hackatl/frontend-transport';
 import { useState, type FormEvent } from 'react';
 import { useProject } from '@/components/project';
+import { Term } from '@/components/term';
 import { useSession } from '@/components/session';
 import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, Panel, Time } from '@/components/ui';
 import { api } from '@/lib/api';
@@ -17,7 +18,7 @@ export default function ScopesPage() {
     <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
       <Panel title="Authorized test scopes">
         <p className="mb-3 text-sm text-muted">
-          A scope lists the only targets agents may build and test, and the only check categories Probe may run. It becomes
+          A <Term t="scope">scope</Term> lists the only <Term t="sandbox">sandbox</Term> targets agents may build and test, and the only check categories Probe may run. It becomes
           active only after a <strong className="text-ink">different</strong> project member approves it; the backend enforces this.
         </p>
         <Async resource={scopes} label="scopes">

@@ -16,8 +16,10 @@ are not results are visibly marked as explanations.
       what was fixed and proven, and what the person should do next.
 - [x] Each of the three pillars has a plain-language question, a status in words, and a
       count taken from records, with a link to the detail.
-- [x] Jargon (finding, hypothesis, scope, sandbox, patch, verification, commit, SHA,
-      simulation, policy) has an inline, keyboard-accessible definition.
+- [x] Jargon has an inline, keyboard-accessible definition where it appears: finding,
+      hypothesis, validated, verification (Findings), scope and sandbox (Scopes), agent and
+      approval (agent relay), provider (assessment banner), patch and verification
+      (before/after), monitoring (pillar loop), simulation and policy (Defense Lab).
 - [x] Empty, loading, failed and "not live" states remain explicit and distinct.
 
 ## 2. The eight AI agents, understandable at a glance

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { Term } from '@/components/term';
 import { Badge, Button, Empty, ErrorState, Field, inputClass, Loading, Mono, PageTitle, Panel, Stat, Tag } from '@/components/ui';
 import { num } from '@/lib/format';
 import { cumulativeReturn, domain, episodeLabel, episodeStory, HIGHER_IS_BETTER, METRIC_LABEL, metricNames, metricRows, rewardTotals, sampleSize, stepObservation } from '@/lib/lab';
@@ -71,8 +72,8 @@ function Lab({ data }: { data: BundleResponse }) {
       <section aria-labelledby="lab-what" className="rounded-xl border border-line bg-panel p-5" data-testid="lab-intro">
         <h2 id="lab-what" className="text-lg font-semibold tracking-tight">What is this?</h2>
         <p className="mt-1 max-w-3xl text-sm text-ink">
-          A practice game. A pretend company network of five machines is attacked by a simulated intruder, and an AI defender
-          learned by trial and error which actions keep the intruder out without shutting the business down. Below you can see
+          A practice game (a <Term t="simulation">simulation</Term>). A pretend company network of five machines is attacked by a simulated intruder, and an AI defender
+          learned by trial and error a <Term t="policy">policy</Term>: which actions keep the intruder out without shutting the business down. Below you can see
           how it scores against simpler defenders, and replay a recorded game step by step.
         </p>
         <div role="note" className="mt-3 rounded-md border border-warn/50 bg-warn/10 px-3 py-2 text-sm text-warn" data-testid="lab-caveat">

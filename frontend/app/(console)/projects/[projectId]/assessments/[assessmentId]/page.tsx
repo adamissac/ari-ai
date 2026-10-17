@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AgentRelay } from '@/components/agent-relay';
 import { AgentTeam } from '@/components/agent-team';
+import { Term } from '@/components/term';
 import { useParam, useProject } from '@/components/project';
 import { useSession } from '@/components/session';
 import { Badge, Button, Empty, ErrorState, Loading, Mono, PageTitle, Panel, Stat, Tag, Time } from '@/components/ui';
@@ -217,7 +218,7 @@ function ProviderSummary({ runs }: { runs: AgentRun[] }) {
   return (
     <div className={`mb-4 rounded-md border px-3 py-2 text-sm ${notLive ? 'border-warn/50 bg-warn/10' : 'border-ok/40 bg-ok/5'}`} data-testid="provider-summary">
       <span className="font-semibold">{notLive ? 'Not a live-provider run. ' : 'Live provider run. '}</span>
-      Model turns came from: {[...modes].map(([m, n]) => `${providerLabel(m).label} × ${n}`).join(', ')}.
+      <Term t="provider">Model turns</Term> came from: {[...modes].map(([m, n]) => `${providerLabel(m).label} × ${n}`).join(', ')}.
       {notLive && <span className="text-muted"> Tool execution, sandbox checks, tests and persistence are still real; the model replies were scripted.</span>}
     </div>
   );
