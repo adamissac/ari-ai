@@ -80,11 +80,16 @@ def test_standards_survive_real_host_flow(
         assert finding.standards.cwe.id == "CWE-639"
         assert finding.standards.attack
         assert all(ref.review_status == "proposed" for ref in finding.standards.attack)
+        # Authoritative CVSS is derived from Probe/Trace facts, never from the
+        # model's optional eleven-metric dict (that dict, when present, stays on
+        # SeverityAssessment.cvss as a provisional annotation).
+        assert finding.standards.cvss and finding.standards.cvss.complete
+        assert finding.standards.cvss.score is not None
+        assert "cvss_assess" in finding.standards.cvss.assessor
+        assert "provisional" not in finding.standards.cvss.assessor
         if complete:
-            assert finding.standards.cvss and finding.standards.cvss.complete
-            assert finding.standards.cvss.score is not None
-            assert len(finding.standards.cvss.assumptions) == 11
-            assert "provisional" in finding.standards.cvss.assessor
-            assert finding.severity and finding.severity.cvss == finding.standards.cvss
+            assert finding.severity and finding.severity.cvss
+            assert "provisional" in finding.severity.cvss.assessor
+            assert finding.severity.cvss != finding.standards.cvss
         else:
-            assert finding.standards.cvss is None or not finding.standards.cvss.complete
+            assert finding.severity is None or finding.severity.cvss is None

@@ -130,13 +130,21 @@
     },
     {
       "risk": "LLM07:2025",
-      "status": "gap",
+      "status": "partial",
       "attack_surfaces": [
         "System Prompt Leakage"
       ],
-      "controls": [],
-      "tests": [],
-      "limitations": "System prompts must never contain secrets; extraction resistance is unproven.",
+      "controls": [
+        {
+          "name": "security_agents.runtime.spec.AgentSpec.system_prompt",
+          "location": "security-agents/security_agents/runtime/spec.py::AgentSpec",
+          "owner": "alan"
+        }
+      ],
+      "tests": [
+        "tests/security/test_owasp_llm_controls.py::test_system_prompts_hold_no_secret_shaped_values"
+      ],
+      "limitations": "Absence of secret-shaped literals in system prompts is not extraction resistance; a model can still be induced to reveal prompt text.",
       "customer_assessment": {
         "status": "unsupported",
         "note": "No customer-application LLM risk scanning is claimed."
