@@ -61,4 +61,4 @@ explicit_package_bases = true
 files = ["shared/shared", "monitoring/monitoring"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["shared", "backend", "monitoring", "rl_defense", "security_agents", "code_intelligence", "code_review"]
+known-first-party = ["shared", "standards", "backend", "monitoring", "rl_defense", "security_agents", "code_intelligence", "code_review"]
