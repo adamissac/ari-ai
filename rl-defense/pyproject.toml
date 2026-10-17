@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "Simulated cyber-defense environment and Double DQN policy (recommendations only)"
 requires-python = ">=3.12"
 dependencies = [
+  "hackatl-standards",
   "gymnasium>=1.0",
   "numpy>=1.26",
   "torch>=2.4",
@@ -21,6 +22,7 @@ dependencies = [
 dev = ["pytest>=8", "ruff>=0.6"]
 
 [tool.uv.sources]
+hackatl-standards = { path = "../standards", editable = true }
 hackatl-shared = { path = "../shared", editable = true }
 
 [tool.setuptools.packages.find]
