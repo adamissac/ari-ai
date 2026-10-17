@@ -396,7 +396,7 @@ function Timeline({ episode, t, onSeek }: { episode: LabEpisode; t: number; onSe
       <figcaption className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
         <span><strong>Top:</strong> how far the hidden attacker got (simulation ground truth, never shown to the defender):
           {' '}<Swatch c={STAGE_FILL.foothold} /> {STAGE_WORDS.foothold} <Swatch c={STAGE_FILL.escalated} /> {STAGE_WORDS.escalated} <Swatch c={STAGE_FILL.impact} /> {STAGE_WORDS.impact}</span>
-        <span><strong>Bottom:</strong> <Swatch c="var(--color-brand)" /> disruptive action (cut off / slow down) <Swatch c="color-mix(in srgb, var(--color-brand) 35%, white)" /> other action. Click to jump.</span>
+        <span><strong>Bottom:</strong> <Swatch c="var(--color-brand)" /> disruptive action (cut off / slow down) <Swatch c="color-mix(in srgb, var(--color-brand) 35%, white)" /> other action. Click to jump, or use the Step slider.</span>
       </figcaption>
     </figure>
   );
