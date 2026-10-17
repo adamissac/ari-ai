@@ -209,8 +209,22 @@ class PythonExtractor:
                         package = self._module(file.path).split(".")
                         if PurePosixPath(file.path).name != "__init__.py":
                             package.pop()
-                        prefix = package[: len(package) - node.level + 1]
-                        module = ".".join([*prefix, *([module] if module else [])])
+                        if node.level > len(package):
+                            # Preserve the unresolved relative spelling rather than
+                            # turning an invalid import into an unrelated root module.
+                            module = "." * node.level + module
+                            self.issues.append(
+                                IndexIssue(
+                                    path=file.path,
+                                    reason=(
+                                        f"Relative import at line {node.lineno} "
+                                        "exceeds known package depth"
+                                    ),
+                                )
+                            )
+                        else:
+                            prefix = package[: len(package) - node.level + 1]
+                            module = ".".join([*prefix, *([module] if module else [])])
                 for alias in node.names:
                     self.imports.append(
                         ImportRecord(
