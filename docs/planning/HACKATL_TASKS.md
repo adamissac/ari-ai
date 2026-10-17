@@ -222,4 +222,8 @@ Scripted providers/local-dev checks; no new live-provider or Docker run.
 
 ### Intelligence context metadata privacy — #190
 
-Sarosh, feat/sarosh/intelligence-maintenance: IN_REVIEW. Reproduced raw human-reason citation leakage using a fake bearer canary. Output-only redaction protects context and expectation views; stored facts/history and canonical contracts unchanged. Focused10 and broader107 passed/1 opt-in skip; hosted consumer11 passed.
+Sarosh, feat/sarosh/intelligence-maintenance: DONE via #196, merged4119eff. Reproduced raw human-reason citation leakage using a fake bearer canary. Output-only redaction protects context and expectation views; stored facts/history and canonical contracts unchanged. Focused10 and broader107 passed/1 opt-in skip; hosted consumer11 passed.
+
+### Relative import grounding — #199
+
+Sarosh, fix/sarosh/relative-import-grounding: IN_REVIEW. Reproduced false exact edge beyond known package depth; fix preserves unresolved spelling/diagnostic and advances parser to0.3.1. Focused15, broader producer/shared/PostgreSQL123 passed/1 opt-in skip, hosted consumer11 passed; strict producer typing/lint/format pass. Historical refs/memory remain immutable; active SHAs need normal reindex.
