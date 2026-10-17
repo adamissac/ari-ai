@@ -179,3 +179,7 @@ Final review follow-up: added strict regression artifact/hash proof, succeeded-V
 - Remaining: final remote sync, broad integration/CI, PR #35 frontend e2e failure.
 
 - Browser gate resolved: bound host path now reuses shared_host_intel and attaches the canonical snapshot. Host acceptance runs reviewer plus all seven roles on the same gateway and persists the full lifecycle. 12 index tests + 7 PostgreSQL integration tests + all 8 real-stack browser e2e tests passed.
+
+## 2026-10-17 — frontend expectations / incidents / settings pages (Devin for Adam)
+
+Branch `devin/1792226026-frontend-gaps` (merged `origin/main` at efc0e55). Frontend owner idle; these routes were specified in docs/14 with backend APIs already on main. Added transport `expectations`, `decideExpectation`, `expectationDecisions`, `updateProject` (PATCH; additive, no contract change) and pages `/projects/[id]/expectations`, `/incidents`, `/settings`. Executed: transport 27 passed; app ESLint, tsc, Vitest 29 passed, Next build; browser e2e via `tests/e2e/stack.py` 11 passed (3 new) against real FastAPI + PostgreSQL + worker with scripted (non-live) model transports. Not done: incident closure/lessons-learned/evidence-link UI, functional-remediation pause/resume (Alan #73), live provider, Docker sandbox proof.
