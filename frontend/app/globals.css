@@ -158,14 +158,11 @@ button.label-mono, a.label-mono, nav.label-mono, nav .label-mono {
 @keyframes hero-in { from { opacity: 0; filter: blur(10px); transform: translateY(14px); } }
 
 /* Live dot + running-pipeline highlight on the loop chips. */
-.hero-ping { position: relative; width: 6px; height: 6px; border-radius: 9999px; background: var(--color-brand); }
-.hero-ping::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: var(--color-brand); animation: hero-ping 2.4s cubic-bezier(0, 0, 0.2, 1) infinite; }
-@keyframes hero-ping { 75%, 100% { transform: scale(3); opacity: 0; } }
 .hero-step[data-active] { background: color-mix(in srgb, var(--color-brand) 55%, transparent); color: #fff; }
 
 @media (prefers-reduced-motion: reduce) {
   .animate-pulse { animation: none; }
-  .hero-orb, .hero-ping::after, .hero-stage .hero-in { animation: none; }
+  .hero-orb, .hero-stage .hero-in { animation: none; }
   .hero-content, .hero-orbs { transform: none; opacity: 1; }
   .hero-full { position: relative; }
 }

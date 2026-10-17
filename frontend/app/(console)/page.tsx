@@ -28,7 +28,7 @@ export default function HomePage() {
       <HeroStage className="hero-full px-6 pb-14 pt-24 md:px-12" labelledBy="hero-title" play={revealed}>
         <div className="mx-auto w-full max-w-7xl">
           <p className="hero-in label-mono flex items-center gap-2 text-white/70" style={i(0)}>
-            <span aria-hidden="true" className="hero-ping" />{BRAND_NAME} · software assurance
+            {BRAND_NAME} · software assurance
           </p>
           <h1 id="hero-title" className="display mt-4 max-w-4xl text-4xl font-semibold md:text-6xl">
             <span data-spotlight className="hero-line hero-in" style={i(1)}>{BRAND_HEADLINE}</span><br />
