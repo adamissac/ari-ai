@@ -148,6 +148,7 @@ class PostgresMemoryStore:
             latest = (
                 sa.select(
                     expectation_decisions.c.doc,
+                    expectation_decisions.c.expectation_id,
                     sa.func.row_number()
                     .over(
                         partition_by=expectation_decisions.c.expectation_id,
