@@ -18,10 +18,12 @@ export interface RelayTile {
   statusText: string;
   handoff: string;
 }
-export interface RelayGate { kind: 'gate'; status: 'waiting' | 'passed' | 'not_reached' | 'not_used'; text: string }
+export interface RelayGate { kind: 'gate'; status: 'waiting' | 'passed' | 'declined' | 'not_reached' | 'not_used'; text: string }
 export type RelayItem = RelayTile | RelayGate;
 
 interface RunFacts { agent: AgentName; status: string; tool_calls: readonly unknown[] }
+/** A persisted approval record for this assessment. */
+export interface ApprovalFacts { subject_type: string; status: string }
 interface FindingFacts { kind: string; status: string }
 
 const ORDER: readonly { agent: AgentName; stage: string; job: string }[] = [
@@ -94,7 +96,7 @@ function handoff(agent: AgentName, status: RelayStatus, findings: readonly Findi
   }
 }
 
-export function agentRelay(input: { runs: readonly RunFacts[]; findings: readonly FindingFacts[]; state: AssessmentState }): RelayItem[] {
+export function agentRelay(input: { runs: readonly RunFacts[]; findings: readonly FindingFacts[]; state: AssessmentState; approvals?: readonly ApprovalFacts[] | null }): RelayItem[] {
   const items: RelayItem[] = [];
   for (const step of ORDER) {
     if (step.agent === 'patch') items.push(gate(input));
@@ -108,10 +110,15 @@ export function agentRelay(input: { runs: readonly RunFacts[]; findings: readonl
   return items;
 }
 
-function gate(input: { runs: readonly RunFacts[]; state: AssessmentState }): RelayGate {
+function gate(input: { runs: readonly RunFacts[]; state: AssessmentState; approvals?: readonly ApprovalFacts[] | null }): RelayGate {
   if (input.state === 'AWAITING_APPROVAL') return { kind: 'gate', status: 'waiting', text: 'Waiting for a person to approve a fix. No code is changed until then.' };
-  if (input.runs.some(r => r.agent === 'patch')) return { kind: 'gate', status: 'passed', text: 'A person approved building a fix.' };
+  // The approval record is the only evidence of a decision; a patch run proves nothing about who approved.
+  if (!input.approvals) return { kind: 'gate', status: 'not_reached', text: 'The approval record could not be read, so whether a person approved is unknown.' };
+  const remediation = input.approvals.filter(a => a.subject_type === 'remediation');
+  if (remediation.some(a => a.status === 'approved')) return { kind: 'gate', status: 'passed', text: 'A person approved building a fix.' };
+  if (remediation.some(a => a.status === 'declined')) return { kind: 'gate', status: 'declined', text: 'A person declined the fix. No fix was built.' };
+  if (remediation.some(a => a.status === 'pending')) return { kind: 'gate', status: 'waiting', text: 'Waiting for a person to approve a fix. No code is changed until then.' };
   const done = input.state === 'COMPLETED' || input.state === 'FAILED' || input.state === 'CANCELLED' || input.state === 'BUDGET_EXHAUSTED';
-  if (done && input.runs.some(r => r.agent === 'diagnose')) return { kind: 'gate', status: 'not_used', text: 'No fix was built: the approval was declined or not requested.' };
+  if (done) return { kind: 'gate', status: 'not_used', text: 'No approval record: no fix was approved or built.' };
   return { kind: 'gate', status: 'not_reached', text: 'A person must approve before any fix is built.' };
 }

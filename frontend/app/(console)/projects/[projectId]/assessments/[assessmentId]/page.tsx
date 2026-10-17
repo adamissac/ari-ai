@@ -40,14 +40,26 @@ export default function AssessmentPage() {
   const [streamNonce, setStreamNonce] = useState(0);
   const [selectedAgent, setSelectedAgent] = useState<AgentName | null>(null);
   const [technicalOpen, setTechnicalOpen] = useState(false);
+  const [approvals, setApprovals] = useState<Approval[] | null>(null);
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const approvalsReq = useRef(0);
+  const projectId = project.id;
+
+  // The persisted approval records are the only evidence of who approved a fix.
+  const loadApprovals = useCallback(() => {
+    const rid = ++approvalsReq.current;
+    api().approvals(projectId).then(
+      page => { if (rid === approvalsReq.current) setApprovals(page.items); },
+      () => { if (rid === approvalsReq.current) setApprovals(null); },
+    );
+  }, [projectId]);
 
   const loadDetail = useCallback((signal?: AbortSignal) => {
     api().assessment(id, signal ? { signal } : {}).then(
-      d => { setDetail(d); setDetailError(null); },
+      d => { setDetail(d); setDetailError(null); loadApprovals(); },
       (err: unknown) => { if (!signal?.aborted) setDetailError(err); },
     );
-  }, [id]);
+  }, [id, loadApprovals]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -88,6 +100,10 @@ export default function AssessmentPage() {
     return () => clearInterval(t);
   }, [running, loadDetail]);
 
+  const eventApprovalIds = new Set<string>();
+  for (const e of [...events, ...(phaseLog.status === 'ready' ? phaseLog.data.items : [])]) if (e.approval_id) eventApprovalIds.add(e.approval_id);
+  const relayApprovals = approvals === null ? null : approvals.filter(ap => eventApprovalIds.has(ap.id));
+
   if (detailError && !detail) return <ErrorState error={detailError} onRetry={() => loadDetail()} context="Could not load assessment" />;
   if (!detail) return <Loading label="Loading assessment" />;
   const a = detail.assessment;
@@ -111,7 +127,7 @@ export default function AssessmentPage() {
       {a.state === 'AWAITING_APPROVAL' && <ApprovalGate projectId={project.id} events={events} onDecided={() => loadDetail()} />}
       <div className="mt-4 rounded-xl border border-line bg-panel p-5">
         <AgentRelay
-          items={agentRelay({ runs: detail.agent_runs, findings: detail.findings, state: a.state })}
+          items={agentRelay({ runs: detail.agent_runs, findings: detail.findings, state: a.state, approvals: relayApprovals })}
           selected={selectedAgent ?? detail.agent_runs[0]?.agent ?? 'reviewer'}
           onSelect={setSelectedAgent}
         />
