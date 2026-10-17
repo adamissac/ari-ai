@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { NodeGraph } from '@/components/node-graph';
 import { Term } from '@/components/term';
 import { Badge, Button, Empty, ErrorState, Field, inputClass, Loading, Mono, PageTitle, Panel, Stat, Tag } from '@/components/ui';
+import { countWord, defenderCountPhrase, machineCountPhrase } from '@/components/lab-copy';
 import { num } from '@/lib/format';
 import { cumulativeReturn, domain, episodeLabel, episodeStory, HIGHER_IS_BETTER, METRIC_LABEL, metricNames, metricRows, rewardTotals, sampleSize, stepObservation } from '@/lib/lab';
 import { actionInWords, episodeOutcome, episodeTimeline, POLICY_NAME, policyName, SCORE_METRICS, scoreboard, STAGE_WORDS, tradeoffNote } from '@/lib/lab-plain';
@@ -73,7 +74,7 @@ function Lab({ data }: { data: BundleResponse }) {
       <section aria-labelledby="lab-what" className="rounded-xl border border-line bg-panel p-5" data-testid="lab-intro">
         <h2 id="lab-what" className="text-lg font-semibold tracking-tight">What is this?</h2>
         <p className="mt-1 max-w-3xl text-sm text-ink">
-          A practice game (a <Term t="simulation">simulation</Term>). A pretend company network of five machines is attacked by a simulated intruder, and an AI defender
+          A practice game (a <Term t="simulation">simulation</Term>). A pretend company network of {machineCountPhrase(bundle.scenarios)} is attacked by a simulated intruder, and an AI defender
           learned by trial and error a <Term t="policy">policy</Term>: which actions keep the intruder out without shutting the business down. Below you can see
           how it scores against simpler defenders, and replay a recorded game step by step.
         </p>
@@ -113,8 +114,8 @@ function Scoreboard({ bundle }: { bundle: DefenseLabBundle }) {
     <section aria-labelledby="score-title" className="rounded-xl border border-line bg-panel p-5" data-testid="lab-scoreboard">
       <h2 id="score-title" className="text-lg font-semibold tracking-tight">Who defends best?</h2>
       <p className="mt-1 text-sm text-muted">
-        Four defenders, each tested on {n.toLocaleString()} games they never trained on. The range in brackets is the 95% confidence interval:
-        the true average very likely lies inside it. ★ marks the best of the four on that measure.
+        {defenderCountPhrase(bundle.metrics.length, true)}, each tested on {n.toLocaleString()} games they never trained on. The range in brackets is the 95% confidence interval:
+        the true average very likely lies inside it. ★ marks the best of the {countWord(bundle.metrics.length)} on that measure.
       </p>
       <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
         {SCORE_METRICS.map(metric => {
@@ -256,7 +257,7 @@ function Player({ episode, scenario }: { episode: LabEpisode; scenario: LabScena
             <Stat label="Outcome" value={<span className="text-sm">{episode.compromised ? 'compromised' : 'contained'}</span>} hint={episode.impact_nodes.length ? `impact: ${episode.impact_nodes.join(', ')}` : undefined} />
           </div>
           <div>
-            <p className="mb-1 text-xs font-semibold text-muted">Score so far, broken into its 8 parts (negative = cost to the defender)</p>
+            <p className="mb-1 text-xs font-semibold text-muted">Score so far, broken into its {Object.keys(totals).length} parts (negative = cost to the defender)</p>
             <ul className="flex flex-col gap-0.5 text-xs">
               {Object.entries(totals).map(([k, v]) => (
                 <li key={k} className="flex justify-between"><Mono>{k}</Mono><span className={`font-mono ${v < 0 ? 'text-bad' : v > 0 ? 'text-ok' : 'text-faint'}`}>{num(v, 3)}</span></li>
