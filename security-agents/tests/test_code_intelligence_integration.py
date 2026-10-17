@@ -248,6 +248,42 @@ def test_host_uses_bound_commit_and_upstream_index_despite_dirty_checkout(indexe
         source.write_bytes(original)
 
 
+def test_bound_intelligence_uses_the_host_service_without_a_second_registry(indexed, tmp_path, monkeypatch):
+    """The worker already has REPOSITORY_BINDINGS_FILE. Do not require a second env file."""
+    import json
+    from types import SimpleNamespace
+
+    from security_agents.intel.host import bound_intelligence
+
+    service, ref, workspace, sha = indexed
+    bindings = tmp_path / "bindings.json"
+    bindings.write_text(
+        json.dumps([{"repo_id": REPO_ID, "local_path": str(workspace.parent), "subdir": "target"}])
+    )
+    monkeypatch.setenv("REPOSITORY_BINDINGS_FILE", str(bindings))
+    for name in (
+        "INTELLIGENCE_REPOSITORIES_FILE",
+        "INTELLIGENCE_DB_PATH",
+        "INTELLIGENCE_PAYLOAD_STORE_FACTORY",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    calls: list[str] = []
+
+    def intelligence_service() -> object:
+        calls.append("host")
+        return service
+
+    host = SimpleNamespace(
+        project_id=PROJECT_ID,
+        repo_id=REPO_ID,
+        assessment=SimpleNamespace(commit_sha=sha, snapshot_id=ref.snapshot_id),
+        intelligence_service=intelligence_service,
+    )
+    adapter = bound_intelligence(host, tmp_path / "worker")
+    assert calls == ["host"]
+    assert adapter.ref == ref
+
+
 def test_host_refuses_an_unregistered_repository(indexed, tmp_path, monkeypatch):
     import json
     from types import SimpleNamespace
