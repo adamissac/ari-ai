@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Cancel assessment says queued checks stop immediately and in-flight checks only get a stop request. It does not delete findings or undo recorded work, and it surfaces which outcome the API returned.
+
 - Assessment job IDs returned by the API now resolve through their persisted assessment, allowing authorized status reads while preserving tenant denial.
 
 - Fix the development-login HTML pattern for current browser Unicode regex rules.
