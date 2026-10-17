@@ -1,0 +1,15 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "commit_sha": {
+      "pattern": "^[0-9a-f]{40}$",
+      "title": "Commit Sha",
+      "type": "string"
+    }
+  },
+  "required": [
+    "commit_sha"
+  ],
+  "title": "SnapshotCreate",
+  "type": "object"
+}

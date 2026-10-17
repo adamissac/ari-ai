@@ -1,7 +1,7 @@
 # examples/
 
-> **What exists: nothing yet (Phase 0).** Never deploy anything in this
-> directory publicly. See [SECURITY.md](../SECURITY.md).
+> **What exists:** [`payments-lite/`](payments-lite/README.md), the demo target (DEMO-001).
+> Never deploy anything in this directory publicly. See [SECURITY.md](../SECURITY.md).
 
 ## Purpose
 Deliberately vulnerable demo targets and labeled fixtures that **we own**, used
@@ -11,7 +11,7 @@ for the HackATL demo, integration tests and evaluation
 ## Planned contents
 | Path | What | Task |
 |---|---|---|
-| `payments-lite/` | Small FastAPI service (customers, payments, refunds) with seeded synthetic users; one planted functional bug (refund can exceed original amount) and one planted authorization weakness (a payment-detail route lacks the ownership check its siblings have); a passing but incomplete test suite; `labels.yaml`; sandbox build recipe | DEMO-001 |
+| `payments-lite/` ✅ | Small FastAPI service (customers, payments, refunds) with seeded synthetic users; one planted functional bug (refund can exceed original amount) and one planted authorization weakness (a payment-detail route lacks the ownership check its siblings have); a passing but incomplete test suite; `labels.yaml`; sandbox build recipe | DEMO-001 |
 | `fixtures/clean-*/` | Small apps without planted issues (negatives) | later |
 | `fixtures/bad-patches/` | Patches Verify must reject | SEC-010 |
 

@@ -1,47 +1,30 @@
 # shared/
 
-> **What exists: nothing yet (Phase 0).** Contracts are specified as docs in
-> [docs/12](../docs/12_DATA_MODELS_AND_CONTRACTS.md). Decision:
-> [ADR-0004](../docs/decisions/0004-contract-first-shared-models.md).
+Canonical cross-subsystem contracts: the single source of truth (ADR-0004). Owner:
+**Srihith**. Change procedure: [coordination/CONTRACTS.md](../coordination/CONTRACTS.md).
 
-## Purpose
-The single source of truth for every data contract that crosses a subsystem
-boundary: Pydantic v2 models, ID types, enums, the error-code catalog, and
-generated JSON Schema + TypeScript.
+## What exists
 
-## Responsibilities
-- Models listed in docs/12 (tenancy, scope, intelligence, assessment, findings,
-  evidence, monitoring, RL, audit).
-- Prefixed ULID ID types; error-code enum; `SCHEMA_VERSION` per module.
-- Codegen: `shared/generated/jsonschema/` and `shared/generated/ts/` (committed,
-  never hand-edited, regenerated in CI — `.gitattributes` marks them generated).
-
-**Must not:** contain subsystem logic, I/O, or imports of other repo packages.
-
-## Interfaces
-- Python package `shared` imported by every Python subsystem.
-- Generated TS consumed by `frontend/`.
-- JSON Schemas used for LLM structured outputs and contract tests.
-
-## Change rules
-Contract changes: `contract-change` label, contract-owner review, regenerate in
-the same PR, prefer additive changes ([AGENTS.md](../AGENTS.md) §12).
-
-## Dependencies
-Pydantic v2 only (+ a ULID library, proposed). Codegen tooling (e.g.
-`datamodel-code-generator` / `json-schema-to-typescript`, to decide in CORE-003).
-
-## Planned layout
-```
-shared/
-  shared/ ids.py errors.py tenancy.py scope.py intel.py assessment.py findings.py
-          evidence.py monitoring.py rl.py audit.py
-  generated/ jsonschema/ ts/
-  tests/
-```
-
-## First tasks
-CORE-001, CORE-003.
+* `shared/` Python package (Pydantic v2, `extra="forbid"`, UTC-only timestamps, prefixed
+  IDs, 40-hex commit SHAs, repo-relative paths) — schema version **0.1.0 (V0)**:
+  `tenancy`, `scope`, `intelligence`, `assessment` (+ state machine), `findings`,
+  `review`, `monitoring`, `rl`, `audit`, `events` (SSE), `errors`, `evidence`, `api` (DTOs).
+* `shared.registry.MODELS` lists every exported model.
+* Generated (committed, never hand-edited): `generated/jsonschema/<Model>.json`
+  (validation mode, usable for LLM structured output), `generated/contracts.schema.json`
+  (bundle), `generated/ts/contracts.ts` (frontend types).
+* Labeled V0 example payloads for consumer development: `fixtures/v0/<Model>.json`.
 
 ## Commands
-None yet.
+
+```bash
+uv run python -m shared.export            # regenerate JSON Schema + TypeScript
+uv run python -m shared.examples          # regenerate fixtures
+uv run python -m shared.export --check    # CI freshness check
+TSC=$(which tsc) uv run pytest shared/tests
+```
+
+## Rules
+
+No subsystem logic, I/O or imports of other repo packages. Additive changes preferred;
+breaking changes bump `SCHEMA_VERSION` and need acknowledgement from affected owners.

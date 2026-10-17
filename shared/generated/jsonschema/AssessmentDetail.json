@@ -1,0 +1,1024 @@
+{
+  "$defs": {
+    "AgentName": {
+      "enum": [
+        "scout",
+        "probe",
+        "trace",
+        "diagnose",
+        "patch",
+        "fortify",
+        "verify",
+        "reviewer"
+      ],
+      "title": "AgentName",
+      "type": "string"
+    },
+    "AgentRun": {
+      "additionalProperties": false,
+      "properties": {
+        "agent": {
+          "$ref": "#/$defs/AgentName"
+        },
+        "assessment_id": {
+          "pattern": "^asm_[0-9A-Za-z]{8,64}$",
+          "title": "Assessment Id",
+          "type": "string"
+        },
+        "attempt": {
+          "minimum": 1,
+          "title": "Attempt",
+          "type": "integer"
+        },
+        "ended_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ended At"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorBody"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "id": {
+          "pattern": "^run_[0-9A-Za-z]{8,64}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "input_artifact_id": {
+          "anyOf": [
+            {
+              "pattern": "^art_[0-9A-Za-z]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Input Artifact Id"
+        },
+        "model_id": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Id"
+        },
+        "output_artifact_id": {
+          "anyOf": [
+            {
+              "pattern": "^art_[0-9A-Za-z]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Output Artifact Id"
+        },
+        "prompt_version": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompt Version"
+        },
+        "provider_mode": {
+          "description": "'live' (real provider), 'replay' (recorded) or 'fake' (test transport)",
+          "maxLength": 500,
+          "title": "Provider Mode",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/AgentRunStatus"
+        },
+        "step_key": {
+          "description": "Orchestrator step, e.g. 'recon' or 'patch:fnd_\u2026'",
+          "maxLength": 500,
+          "title": "Step Key",
+          "type": "string"
+        },
+        "tool_calls": {
+          "items": {
+            "$ref": "#/$defs/ToolCallRecord"
+          },
+          "title": "Tool Calls",
+          "type": "array"
+        },
+        "transcript_artifact_id": {
+          "anyOf": [
+            {
+              "pattern": "^art_[0-9A-Za-z]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Transcript Artifact Id"
+        },
+        "usage": {
+          "$ref": "#/$defs/Usage"
+        }
+      },
+      "required": [
+        "id",
+        "assessment_id",
+        "agent",
+        "step_key",
+        "attempt",
+        "status",
+        "provider_mode",
+        "started_at"
+      ],
+      "title": "AgentRun",
+      "type": "object"
+    },
+    "AgentRunStatus": {
+      "enum": [
+        "queued",
+        "running",
+        "succeeded",
+        "failed",
+        "cancelled"
+      ],
+      "title": "AgentRunStatus",
+      "type": "string"
+    },
+    "Assessment": {
+      "additionalProperties": false,
+      "properties": {
+        "budget": {
+          "$ref": "#/$defs/Budget"
+        },
+        "commit_sha": {
+          "pattern": "^[0-9a-f]{40}$",
+          "title": "Commit Sha",
+          "type": "string"
+        },
+        "completed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Completed At"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "anyOf": [
+            {
+              "pattern": "^usr_[0-9A-Za-z]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "None for monitoring triggers",
+          "title": "Created By"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorBody"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "id": {
+          "pattern": "^asm_[0-9A-Za-z]{8,64}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^prj_[0-9A-Za-z]{8,64}$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "reassessment_request_id": {
+          "anyOf": [
+            {
+              "pattern": "^rrq_[0-9A-Za-z]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reassessment Request Id"
+        },
+        "scope_id": {
+          "pattern": "^scp_[0-9A-Za-z]{8,64}$",
+          "title": "Scope Id",
+          "type": "string"
+        },
+        "snapshot_id": {
+          "anyOf": [
+            {
+              "pattern": "^snp_[0-9A-Za-z]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Set once the commit is indexed; commit_sha is always set",
+          "title": "Snapshot Id"
+        },
+        "state": {
+          "$ref": "#/$defs/AssessmentState"
+        },
+        "trigger": {
+          "$ref": "#/$defs/AssessmentTrigger"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "usage": {
+          "$ref": "#/$defs/Usage"
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "commit_sha",
+        "scope_id",
+        "trigger",
+        "state",
+        "budget",
+        "created_at",
+        "updated_at"
+      ],
+      "title": "Assessment",
+      "type": "object"
+    },
+    "AssessmentState": {
+      "enum": [
+        "CREATED",
+        "SCOPE_CHECK",
+        "INDEXING",
+        "FUNCTIONAL_REVIEW",
+        "RECON",
+        "VALIDATION",
+        "ANALYSIS",
+        "DIAGNOSIS",
+        "AWAITING_APPROVAL",
+        "REMEDIATION",
+        "HARDENING",
+        "REPORTING",
+        "COMPLETED",
+        "FAILED",
+        "CANCELLED",
+        "BUDGET_EXHAUSTED"
+      ],
+      "title": "AssessmentState",
+      "type": "string"
+    },
+    "AssessmentTrigger": {
+      "enum": [
+        "manual",
+        "monitoring"
+      ],
+      "title": "AssessmentTrigger",
+      "type": "string"
+    },
+    "Budget": {
+      "additionalProperties": false,
+      "properties": {
+        "max_tokens": {
+          "default": 400000,
+          "minimum": 0,
+          "title": "Max Tokens",
+          "type": "integer"
+        },
+        "max_usd": {
+          "default": 10.0,
+          "minimum": 0,
+          "title": "Max Usd",
+          "type": "number"
+        },
+        "max_wall_clock_s": {
+          "default": 1800,
+          "minimum": 1,
+          "title": "Max Wall Clock S",
+          "type": "integer"
+        }
+      },
+      "title": "Budget",
+      "type": "object"
+    },
+    "ErrorBody": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "details": {
+          "additionalProperties": true,
+          "title": "Details",
+          "type": "object"
+        },
+        "message": {
+          "maxLength": 500,
+          "title": "Message",
+          "type": "string"
+        },
+        "request_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Request Id"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "ErrorBody",
+      "type": "object"
+    },
+    "ErrorCode": {
+      "enum": [
+        "SCOPE_DENIED",
+        "APPROVAL_REQUIRED",
+        "BUDGET_EXHAUSTED",
+        "SCHEMA_INVALID",
+        "SANDBOX_START_FAILED",
+        "SANDBOX_TIMEOUT",
+        "SANDBOX_POLICY_VIOLATION",
+        "TOOL_NOT_ALLOWED",
+        "SNAPSHOT_NOT_READY",
+        "WEBHOOK_SIGNATURE_INVALID",
+        "LLM_UNAVAILABLE",
+        "CONFLICT_STATE",
+        "LLM_REFUSAL",
+        "LLM_OUTPUT_TRUNCATED",
+        "UNAUTHENTICATED",
+        "FORBIDDEN",
+        "CSRF_FAILED",
+        "NOT_FOUND",
+        "VALIDATION_FAILED",
+        "RATE_LIMITED",
+        "PAYLOAD_TOO_LARGE",
+        "IDEMPOTENCY_CONFLICT",
+        "SUBSYSTEM_UNAVAILABLE",
+        "CANCELLED",
+        "JOB_LEASE_EXPIRED",
+        "INTERNAL"
+      ],
+      "title": "ErrorCode",
+      "type": "string"
+    },
+    "EvidenceKind": {
+      "enum": [
+        "source_span",
+        "test_run",
+        "sandbox_run",
+        "tool_output",
+        "artifact",
+        "human_input",
+        "doc",
+        "change_intent",
+        "monitoring_event"
+      ],
+      "title": "EvidenceKind",
+      "type": "string"
+    },
+    "EvidenceRef": {
+      "additionalProperties": false,
+      "description": "Pointer to a piece of evidence pinned to an exact code version.\n\n``source_span`` evidence must carry ``path`` + ``commit_sha`` + ``span``;\nartifact-backed kinds must carry ``artifact_id`` + ``sha256``.",
+      "properties": {
+        "artifact_id": {
+          "anyOf": [
+            {
+              "pattern": "^art_[0-9A-Za-z]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Artifact Id"
+        },
+        "commit_sha": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{40}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Commit Sha"
+        },
+        "kind": {
+          "$ref": "#/$defs/EvidenceKind"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "path": {
+          "anyOf": [
+            {
+              "maxLength": 1024,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Path"
+        },
+        "provenance": {
+          "description": "Producer and version, e.g. 'code_intelligence.indexer@0.1' or 'agent:probe'",
+          "maxLength": 500,
+          "title": "Provenance",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        },
+        "span": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SourceSpan"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "symbol": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Qualified symbol name or sym_ id",
+          "title": "Symbol"
+        }
+      },
+      "required": [
+        "kind",
+        "provenance"
+      ],
+      "title": "EvidenceRef",
+      "type": "object"
+    },
+    "Finding": {
+      "additionalProperties": false,
+      "properties": {
+        "assessment_id": {
+          "pattern": "^asm_[0-9A-Za-z]{8,64}$",
+          "title": "Assessment Id",
+          "type": "string"
+        },
+        "commit_sha": {
+          "pattern": "^[0-9a-f]{40}$",
+          "title": "Commit Sha",
+          "type": "string"
+        },
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "minItems": 1,
+          "title": "Evidence",
+          "type": "array"
+        },
+        "expectation_ids": {
+          "items": {
+            "pattern": "^exp_[0-9A-Za-z]{8,64}$",
+            "type": "string"
+          },
+          "title": "Expectation Ids",
+          "type": "array"
+        },
+        "history": {
+          "items": {
+            "$ref": "#/$defs/StatusChange"
+          },
+          "title": "History",
+          "type": "array"
+        },
+        "id": {
+          "pattern": "^fnd_[0-9A-Za-z]{8,64}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/FindingKind"
+        },
+        "produced_by_run_id": {
+          "anyOf": [
+            {
+              "pattern": "^run_[0-9A-Za-z]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Produced By Run Id"
+        },
+        "severity": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SeverityAssessment"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "snapshot_id": {
+          "anyOf": [
+            {
+              "pattern": "^snp_[0-9A-Za-z]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Snapshot Id"
+        },
+        "status": {
+          "$ref": "#/$defs/FindingStatus"
+        },
+        "subject_refs": {
+          "items": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "title": "Subject Refs",
+          "type": "array"
+        },
+        "title": {
+          "maxLength": 500,
+          "title": "Title",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "assessment_id",
+        "commit_sha",
+        "kind",
+        "title",
+        "status",
+        "evidence",
+        "confidence",
+        "created_at",
+        "updated_at"
+      ],
+      "title": "Finding",
+      "type": "object"
+    },
+    "FindingKind": {
+      "enum": [
+        "functional",
+        "security"
+      ],
+      "title": "FindingKind",
+      "type": "string"
+    },
+    "FindingStatus": {
+      "enum": [
+        "hypothesis",
+        "validated",
+        "refuted",
+        "inconclusive",
+        "diagnosed",
+        "patch_proposed",
+        "verified",
+        "patch_rejected",
+        "unresolved",
+        "hardened",
+        "accepted_risk",
+        "closed",
+        "needs_recheck"
+      ],
+      "title": "FindingStatus",
+      "type": "string"
+    },
+    "SeverityAssessment": {
+      "additionalProperties": false,
+      "properties": {
+        "factors": {
+          "$ref": "#/$defs/SeverityFactors"
+        },
+        "level": {
+          "$ref": "#/$defs/SeverityLevel"
+        },
+        "rationale": {
+          "maxLength": 500,
+          "title": "Rationale",
+          "type": "string"
+        }
+      },
+      "required": [
+        "level",
+        "factors",
+        "rationale"
+      ],
+      "title": "SeverityAssessment",
+      "type": "object"
+    },
+    "SeverityFactors": {
+      "additionalProperties": false,
+      "properties": {
+        "data_sensitivity": {
+          "maxLength": 500,
+          "title": "Data Sensitivity",
+          "type": "string"
+        },
+        "privileges_required": {
+          "maxLength": 500,
+          "title": "Privileges Required",
+          "type": "string"
+        },
+        "reachability": {
+          "maxLength": 500,
+          "title": "Reachability",
+          "type": "string"
+        },
+        "verified_path": {
+          "title": "Verified Path",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "reachability",
+        "privileges_required",
+        "data_sensitivity",
+        "verified_path"
+      ],
+      "title": "SeverityFactors",
+      "type": "object"
+    },
+    "SeverityLevel": {
+      "enum": [
+        "info",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "title": "SeverityLevel",
+      "type": "string"
+    },
+    "SourceSpan": {
+      "additionalProperties": false,
+      "properties": {
+        "end_col": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End Col"
+        },
+        "end_line": {
+          "minimum": 1,
+          "title": "End Line",
+          "type": "integer"
+        },
+        "start_col": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start Col"
+        },
+        "start_line": {
+          "minimum": 1,
+          "title": "Start Line",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "start_line",
+        "end_line"
+      ],
+      "title": "SourceSpan",
+      "type": "object"
+    },
+    "StatusChange": {
+      "additionalProperties": false,
+      "properties": {
+        "actor": {
+          "description": "'agent:<name>', 'user:<usr_id>' or 'system'",
+          "maxLength": 500,
+          "title": "Actor",
+          "type": "string"
+        },
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "from_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FindingStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "to_status": {
+          "$ref": "#/$defs/FindingStatus"
+        }
+      },
+      "required": [
+        "from_status",
+        "to_status",
+        "at",
+        "actor"
+      ],
+      "title": "StatusChange",
+      "type": "object"
+    },
+    "ToolCallOutcome": {
+      "enum": [
+        "ok",
+        "error",
+        "denied"
+      ],
+      "title": "ToolCallOutcome",
+      "type": "string"
+    },
+    "ToolCallRecord": {
+      "additionalProperties": false,
+      "description": "One tool invocation requested by an agent, as enforced by the tool registry.",
+      "properties": {
+        "duration_ms": {
+          "minimum": 0,
+          "title": "Duration Ms",
+          "type": "integer"
+        },
+        "error_code": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorCode"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "input_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Input Sha256",
+          "type": "string"
+        },
+        "outcome": {
+          "$ref": "#/$defs/ToolCallOutcome"
+        },
+        "output_artifact_id": {
+          "anyOf": [
+            {
+              "pattern": "^art_[0-9A-Za-z]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Output Artifact Id"
+        },
+        "tool_name": {
+          "maxLength": 500,
+          "title": "Tool Name",
+          "type": "string"
+        },
+        "turn": {
+          "minimum": 0,
+          "title": "Turn",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "turn",
+        "tool_name",
+        "input_sha256",
+        "outcome",
+        "duration_ms"
+      ],
+      "title": "ToolCallRecord",
+      "type": "object"
+    },
+    "Usage": {
+      "additionalProperties": false,
+      "properties": {
+        "cache_read_input_tokens": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Cache Read Input Tokens",
+          "type": "integer"
+        },
+        "input_tokens": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Input Tokens",
+          "type": "integer"
+        },
+        "llm_calls": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Llm Calls",
+          "type": "integer"
+        },
+        "output_tokens": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Output Tokens",
+          "type": "integer"
+        },
+        "sandbox_seconds": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Sandbox Seconds",
+          "type": "number"
+        },
+        "tool_calls": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Tool Calls",
+          "type": "integer"
+        },
+        "usd": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Usd",
+          "type": "number"
+        }
+      },
+      "title": "Usage",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "agent_runs": {
+      "items": {
+        "$ref": "#/$defs/AgentRun"
+      },
+      "title": "Agent Runs",
+      "type": "array"
+    },
+    "assessment": {
+      "$ref": "#/$defs/Assessment"
+    },
+    "findings": {
+      "items": {
+        "$ref": "#/$defs/Finding"
+      },
+      "title": "Findings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "assessment",
+    "agent_runs",
+    "findings"
+  ],
+  "title": "AssessmentDetail",
+  "type": "object"
+}

@@ -58,3 +58,9 @@ artifacts/
 *.sqlite
 *.db
 logs/
+
+# --- Local dev state (embedded Postgres, etc.) ---
+.dev/
+
+# Claude Code subagent worktrees
+.claude/worktrees/

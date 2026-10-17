@@ -27,7 +27,7 @@ as a result.
 |---|---|
 | Mean episodic return | Mean of total reward per episode |
 | Compromise rate | % episodes where any node reached `impact` |
-| Time to containment | Steps from first foothold to all nodes ≤ `foothold` and stable for 10 steps (censored at horizon) |
+| Time to containment | Steps from first foothold until all nodes are back to `none` and stay there for 10 consecutive steps (censored at horizon; episodes with no foothold excluded) |
 | False disruption rate | Disruptive actions (isolate/rate-limit) on nodes with stage `none` ÷ all disruptive actions |
 | Escalation rate | `escalate_to_human` actions per episode |
 | Action cost | Mean total action-cost component |

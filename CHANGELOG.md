@@ -15,5 +15,9 @@ All notable changes are documented here. Format follows
   template and proposed ADRs, research plan, GitHub templates.
 - Interim proprietary `LICENSE` (all rights reserved); see `LICENSE-DECISION.md`.
 
+### Added (rl-defense, branch `feat/adam/rl-defense`)
+- `DefenseSimEnv-v0`, Double DQN training, baselines, protocol-17 evaluation and
+  simulation-derived recommendation adapter; reference results in `rl-defense/results/`.
+
 ### Not yet implemented
-- All product functionality. No runnable application code exists.
+- All other product functionality.

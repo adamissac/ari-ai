@@ -1,44 +1,27 @@
 # monitoring/
 
-> **What exists: nothing yet (Phase 0).** Spec: [docs/10](../docs/10_CONTINUOUS_MONITORING.md),
-> lifecycle: [docs/architecture/event-lifecycle](../docs/architecture/event-lifecycle.md).
+Pure, deterministic monitoring logic (no I/O): GitHub payload normalization, impact
+correlation and the reassessment trigger policy ([docs/10](../docs/10_CONTINUOUS_MONITORING.md)).
+Persistence, signature verification, jobs and assessment creation live in `backend/`
+(`backend/api/webhooks.py`, `backend/pipeline.py`). Owner: **Srihith**.
 
-## Purpose
-Keep assurance current: ingest repository and runtime events, determine what
-they affect, and request targeted re-assessment under a policy.
+## What exists
 
-## Responsibilities
-- GitHub webhook verification (HMAC), dedupe, raw payload storage (redacted).
-- Normalization to `MonitoringEvent`; correlation to `ImpactSet` via
-  code-intelligence.
-- Trigger policy, coalescing and rate limits → `ReassessmentRequest`.
-- Runtime log signals from the sandboxed demo target (stretch).
-- Feed events and context to RL recommendations.
+* `monitoring.normalize` — `push` / `pull_request` → `GitHubChange` (validated SHAs, capped
+  strings, path traversal rejected, truncated pushes marked incomplete); everything else
+  → `Ignored(reason)`.
+* `monitoring.impact` — `ImpactProvider` protocol for code-intelligence
+  `affected_by_diff`; honest `path_only` fallback; rejects impact for a different SHA.
+* `monitoring.policy.decide` — record-only (tests/docs), `blocked_no_scope`, coalescing
+  (open or recent monitoring assessment), `regression_only` for verified-finding paths,
+  `targeted`, `full` when the path list is incomplete.
 
-**Must not:** run assessments itself, widen scope, pass raw payloads to an LLM,
-execute payload content.
+## Honesty notes
 
-## Interfaces
-| Interface | Notes |
-|---|---|
-| `monitoring.webhooks.handle_github(headers, body)` | Mounted by backend at `/api/v1/webhooks/github` |
-| `monitoring.ingest.handle_runtime(project_id, token, events)` | `/api/v1/ingest/runtime/{project_id}` |
-| `ProcessEventJob` handler | worker |
-| Emits `ReassessmentRequest` | backend orchestration service |
-
-## Dependencies
-`shared/`; `backend` persistence + queue; `code_intelligence.api.affected_by_diff`;
-GitHub App ([ADR-0009](../docs/decisions/0009-github-app-integration.md)).
-
-## Planned layout
-```
-monitoring/
-  monitoring/ webhooks/ ingest/ normalize/ correlate/ policy/ signals/
-  tests/ (recorded webhook fixtures)
-```
-
-## First tasks
-MON-001 → MON-002 → MON-003; MON-004 (stretch).
+"24/7" requires the worker deployed and running; locally it runs only while
+`make worker` / Compose is up. Locally signed deliveries are simulated events.
+Runtime telemetry ingestion (`/ingest/runtime`) is not implemented.
 
 ## Commands
-None yet.
+
+`uv run pytest monitoring/tests`
