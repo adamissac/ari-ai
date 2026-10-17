@@ -9,7 +9,8 @@ import { useEffect } from 'react';
  * it each frame. Native scrolling is kept for touch, keyboard, the scrollbar, pinch-zoom,
  * horizontal gestures, nested scroll areas, and anyone who prefers reduced motion.
  */
-const EASE = 0.12; // fraction of the remaining distance covered per frame
+const EASE = 0.085; // share of the remaining distance covered per 60 Hz frame (lower = longer glide)
+const FRAME = 1000 / 60;
 const LINE = 16;
 
 function scrollableParent(el: Element | null, dy: number): Element | null {
@@ -35,14 +36,18 @@ export function SmoothScroll() {
 
     const max = () => document.documentElement.scrollHeight - window.innerHeight;
     const stop = () => { cancelAnimationFrame(frame); animating = false; };
-    const tick = () => {
-      current += (target - current) * EASE;
+    let last = 0;
+    const tick = (now: number) => {
+      // Frame-rate independent: the same glide on 60 Hz and 120 Hz screens.
+      const dt = last ? Math.max(1, Math.min(64, now - last)) : FRAME;
+      last = now;
+      current += (target - current) * (1 - Math.pow(1 - EASE, dt / FRAME));
       if (Math.abs(target - current) < 0.5) current = target;
       animating = current !== target;
       window.scrollTo(0, current);
       if (animating) frame = requestAnimationFrame(tick);
     };
-    const start = () => { if (!animating) { animating = true; frame = requestAnimationFrame(tick); } };
+    const start = () => { if (!animating) { animating = true; last = 0; frame = requestAnimationFrame(tick); } };
 
     const onWheel = (e: WheelEvent) => {
       if (reduced.matches || coarse.matches || e.ctrlKey || e.defaultPrevented) return;

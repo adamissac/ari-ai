@@ -8,10 +8,12 @@ let frames: FrameRequestCallback[] = [];
 let positions: number[] = [];
 let reduced = false;
 
-function flush(n = 200) {
+let clock = 0;
+function flush(n = 400, frameMs = 1000 / 60) {
   for (let i = 0; i < n && frames.length; i++) {
     const run = frames; frames = [];
-    run.forEach(f => f(performance.now()));
+    clock += frameMs;
+    run.forEach(f => f(clock));
   }
 }
 
@@ -69,4 +71,16 @@ it('stays native for reduced-motion users', () => {
   render(<SmoothScroll />);
   expect(wheel(document.body, { deltaY: 600 }).defaultPrevented).toBe(false);
   expect(frames.length).toBe(0);
+});
+
+it('glides the same distance per second at 60 Hz and 120 Hz', () => {
+  render(<SmoothScroll />);
+  wheel(document.body, { deltaY: 600 });
+  flush(30, 1000 / 60); // half a second at 60 Hz
+  const at60 = positions.at(-1)!;
+  cleanup(); positions = []; frames = []; (window as { scrollY: number }).scrollY = 0;
+  render(<SmoothScroll />);
+  wheel(document.body, { deltaY: 600 });
+  flush(60, 1000 / 120); // half a second at 120 Hz
+  expect(Math.abs(positions.at(-1)! - at60)).toBeLessThan(8);
 });
