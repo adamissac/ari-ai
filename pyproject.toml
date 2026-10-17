@@ -10,13 +10,13 @@
 name = "hackatl-workspace"
 version = "0.1.0"
 requires-python = ">=3.12"
-dependencies = ["hackatl-shared", "hackatl-monitoring", "hackatl-backend", "hackatl-code-intelligence", "hackatl-code-review", "security-agents"]
+dependencies = ["hackatl-shared", "hackatl-monitoring", "hackatl-backend", "hackatl-code-intelligence", "hackatl-code-review", "security-agents", "hackatl-standards"]
 
 [tool.uv]
 package = false
 
 [tool.uv.workspace]
-members = ["shared", "monitoring", "backend", "code-intelligence", "code-review", "security-agents"]
+members = ["shared", "monitoring", "backend", "code-intelligence", "code-review", "security-agents", "standards"]
 
 [tool.uv.sources]
 hackatl-shared = { workspace = true }
@@ -25,6 +25,7 @@ hackatl-backend = { workspace = true }
 hackatl-code-intelligence = { workspace = true }
 hackatl-code-review = { workspace = true }
 security-agents = { workspace = true }
+hackatl-standards = { workspace = true }
 
 [dependency-groups]
 dev = [
