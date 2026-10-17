@@ -36,6 +36,14 @@ class _Token:
     expires_at: float
 
 
+def _private_key(settings: Settings) -> str | None:
+    if settings.github_app_private_key_path:
+        return settings.github_app_private_key_path.read_text()
+    if settings.github_app_private_key:
+        return settings.github_app_private_key.get_secret_value().replace("\\n", "\n")
+    return None
+
+
 class GitHubApp:
     """Short-lived installation tokens (ADR-0009). Never uses PATs."""
 
@@ -43,9 +51,12 @@ class GitHubApp:
         self, settings: Settings | None = None, client: httpx.Client | None = None
     ) -> None:
         self.settings = settings or get_settings()
-        if not (self.settings.github_app_id and self.settings.github_app_private_key_path):
-            raise GitHubNotConfigured("GITHUB_APP_ID / GITHUB_APP_PRIVATE_KEY_PATH not configured")
-        self._key = self.settings.github_app_private_key_path.read_text()
+        key = _private_key(self.settings)
+        if not (self.settings.github_app_id and key):
+            raise GitHubNotConfigured(
+                "GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY_PATH or GITHUB_APP_PRIVATE_KEY not configured"
+            )
+        self._key = key
         self._client = client or httpx.Client(base_url=self.settings.github_api_url, timeout=20.0)
         self._tokens: dict[int, _Token] = {}
 
