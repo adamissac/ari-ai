@@ -128,3 +128,9 @@ UI-001/UI-003/M6 acceptance remain pending. No claim that the full task rows are
 DONE. Evidence: 13 unit tests plus strict TypeScript; real HTTP/PostgreSQL parent
 and three subtests passed, including durable SSE replay, CSRF, tenant denial and
 abort. No provider or target execution occurred in transport tests.
+
+## Standards integration follow-up
+
+| ID | Objective | Owner | Status | Dependencies | Acceptance / integration / tests |
+|---|---|---|---|---|---|
+| STD-001 | Connect canonical PR #49 standards to persisted findings, incidents, reports and transport; cover OWASP editions | Srihith | IN_REVIEW on `feat/srihith/standards-alignment` | PR #49 canonical catalogs/contracts | Offline catalogs; reference scoring; host persistence; real PostgreSQL incident lifecycle/tenant/approval tests; generated types; truthful partial coverage. Rendered frontend integration remains separate. |
