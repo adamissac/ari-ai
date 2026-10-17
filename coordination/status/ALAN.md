@@ -179,3 +179,10 @@ UNVERIFIED: NVD terms page (Cloudflare challenge). All runs above are replay or 
 - API-RETRY-001 checkpoint d3320be: PostgreSQL transaction serialization and project-bound request digest prevent duplicate assessment starts and wrong-project cached acceptance. Before-fix reproduction2 failed; after-fix focused16 passed.
 - Required suites: root420 passed/9 optional skips; backend79 passed/5 optional skips. Lint/format/mypy/contracts/links clean. Actual PostgreSQL/handlers/jobs; scripted providers. No new browser/live/Docker proof.
 - PR for review only, no automatic merge. Compatibility note: old cached keys conflict after upgrade (fresh keys for new actions). Existing raw/stored patch hash issue155 remains in Claude's lane.
+
+### 2026-10-17 — Codex real application verification and job-status recovery
+- Existing PR166 all CI green, no review findings; merged by Srihith. New work isolated on test/alan/demo-recovery-smoke at /private/tmp/omen-demo-smoke, initial base30e1234, synced main056f65b.
+- Confirmed GET/jobs404 for a returned assessment job ID; resolved project through persisted assessment. Tenant404 and signed-out401 remain tested. Commit00d5f54, sync c185b67.
+- Real Chrome14 passed (full scoped/scripted assessment/approvals/evidence/closure plus new outage/Retry/reload/missing-assessment cases); HTTP/client6 passed (lost response after server commit, same IDs,409 for conflicting body/project, fresh key, actual artifact bytes and corrupt-download rejection).
+- Root422 passed/8 optional skips; backend80 passed/5 skips; targeted13 passed; frontend67/transport27 unit tests passed. Production webpack build, TS/ESLint, Ruff/format/mypy38 sources,112-file contracts current. No new live/Docker proof.
+- Frontend follow-up: unchanged form after409 retains the conflicting key; add an explicit new-action control rather than automatically rotating keys after network loss. Issue155 raw/stored patch hash and Claude's live/Probe/RoE/Docker lane untouched. Initial Turbopack font download failed; webpack build and actual browser then passed.
