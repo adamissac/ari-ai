@@ -518,7 +518,8 @@ def test_resume_after_approval_completes_remediation_and_hardening(host_and_orch
         (shared_findings.FindingStatus.patch_proposed, shared_findings.FindingStatus.verified),
         (shared_findings.FindingStatus.verified, shared_findings.FindingStatus.hardened),
     ]
-    assert host.checkpoints.get("security_agents.approval.v1")
+    assert "security_agents.approval.v1" in host.consumed_checkpoints
+    assert host.checkpoints.get("security_agents.approval.v1") is None
     assert host.charged, "sandbox seconds must reach host.charge"
 
 
