@@ -51,7 +51,7 @@ from shared.monitoring import (
     ReassessmentScope,
     ReassessmentStatus,
 )
-from shared.rl import DefenseRecommendation, PlatformFacts
+from shared.rl import DefenseRecommendation, PlatformFacts, RLExplanation
 
 log = logging.getLogger("backend.pipeline")
 
@@ -371,12 +371,24 @@ def rl_recommend(ctx: JobContext) -> dict[str, Any]:
         else:
             facts, provenance = platform_facts(conn, project_id)
     local_facts = rl_api.PlatformFacts.model_validate(facts.model_dump(mode="json"))
-    rec_local = rl_api.load_policy(settings.rl_checkpoint_path).recommend(local_facts)
-    rec = DefenseRecommendation.model_validate(rec_local.model_dump(mode="json"))
+    runner = rl_api.load_policy(settings.rl_checkpoint_path)
+    rec = DefenseRecommendation.model_validate(
+        runner.recommend(local_facts).model_dump(mode="json")
+    )
+    explanation = None
+    if hasattr(runner, "explain"):
+        try:
+            raw = runner.explain(local_facts).model_dump(mode="json")
+            explanation = RLExplanation.model_validate({**raw, "recommendation_id": rec.id})
+        except Exception:  # an explanation is optional; never block the recommendation
+            log.exception("rl explanation failed for %s", rec.id)
     with transaction() as conn:
         conn.execute(
             sa.insert(defense_recommendations).values(
-                id=rec.id, project_id=project_id, doc=rec.model_dump(mode="json")
+                id=rec.id,
+                project_id=project_id,
+                doc=rec.model_dump(mode="json"),
+                explanation=explanation.model_dump(mode="json") if explanation else None,
             )
         )
         audit.record(
@@ -395,7 +407,11 @@ def rl_recommend(ctx: JobContext) -> dict[str, Any]:
                 "facts_provenance": provenance,
             },
         )
-    return {"recommendation_id": rec.id, "facts_provenance": provenance}
+    return {
+        "recommendation_id": rec.id,
+        "facts_provenance": provenance,
+        "explained": explanation is not None,
+    }
 
 
 # ------------------------------------------------------------------- snapshots
