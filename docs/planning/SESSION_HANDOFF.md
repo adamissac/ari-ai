@@ -18,6 +18,17 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-17 — Adam — index commit note
+- Did: The repository list says indexing records symbols, calls, entry points, and expectations. The button enqueues `index_snapshot` only.
+- State of the code: branch `feat/adam/index-note`.
+- Commands run and results: `npm test -- --run tests/unit/index-commit.test.ts` 1 passed; `npm run typecheck` clean; `npm run lint` clean. Browser was not run.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): none.
+- Next steps: open the PR.
+- Warnings for the next session: if indexing starts an assessment, change the note.
+
+---
+
 ### 2026-10-17 — Adam — create project note
 - Did: The new-project form states that it records a name. The form sends `settings: null`, so monitoring uses the default enabled policy. It does not connect a repository or start a check.
 - State of the code: branch `feat/adam/create-project-note`.
