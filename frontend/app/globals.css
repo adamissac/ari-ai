@@ -115,8 +115,12 @@ button.label-mono, a.label-mono, nav.label-mono, nav .label-mono {
    drifting light orbs, a pointer-following glow and text spotlight, staggered blur-in, and a
    gentle scroll parallax. JS writes --mx/--my/--tx/--ty/--scroll; everything else is CSS. */
 .hero-stage { --mx: 70%; --my: 30%; --scroll: 0; }
-.hero-content { position: relative; z-index: 1; transform: translateY(calc(var(--scroll) * -28px)); opacity: calc(1 - var(--scroll) * 0.5); }
-.hero-orbs { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; transform: translateY(calc(var(--scroll) * 60px)); }
+/* The hero rides the scroll momentum: content lifts, shrinks slightly and softens as the page
+   moves; the light orbs move at a different depth. Driven by --scroll (0..1) from hero.tsx. */
+.hero-content { position: relative; z-index: 1; transform-origin: 50% 30%; will-change: transform, opacity, filter;
+  transform: translateY(calc(var(--scroll) * -140px)) scale(calc(1 - var(--scroll) * 0.06));
+  opacity: calc(1 - var(--scroll) * 0.9); filter: blur(calc(var(--scroll) * 6px)); }
+.hero-orbs { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; transform: translateY(calc(var(--scroll) * 160px)) scale(calc(1 + var(--scroll) * 0.15)); }
 .hero-orb { position: absolute; border-radius: 9999px; filter: blur(60px); opacity: 0.55; will-change: transform; }
 .hero-orb-a { width: 46%; aspect-ratio: 1; left: -8%; top: -30%; background: color-mix(in srgb, var(--color-brand) 55%, transparent); animation: hero-drift-a 18s ease-in-out infinite alternate; }
 .hero-orb-b { width: 38%; aspect-ratio: 1; right: -6%; top: 10%; background: color-mix(in srgb, var(--color-brand-deep) 70%, transparent); animation: hero-drift-b 22s ease-in-out infinite alternate; }
@@ -154,7 +158,7 @@ button.label-mono, a.label-mono, nav.label-mono, nav .label-mono {
 @media (prefers-reduced-motion: reduce) {
   .animate-pulse { animation: none; }
   .hero-orb, .hero-ping::after, .hero-stage .hero-in { animation: none; }
-  .hero-content, .hero-orbs { transform: none; opacity: 1; }
+  .hero-content, .hero-orbs { transform: none; opacity: 1; filter: none; }
   .hero-full { position: relative; }
 }
 
