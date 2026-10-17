@@ -57,9 +57,9 @@ acceptance criteria are the minimum for `DONE` in addition to
 | INTEL-006 | Behavioral expectation extractors + LLM inference with citation validation | code-intelligence/ | FR-1-03 | INTEL-004, INTEL-005, CORE-010 | Sarosh | DONE | payments-lite yields ownership + refund-bound expectations with provenance (IC-3) |
 | INTEL-007 | Context pack retrieval (graph + BM25, budgeted, delimited) | code-intelligence/ | — | INTEL-004, INTEL-006 | Sarosh | DONE | Packs within budget; provenance per chunk; untrusted delimiters |
 | INTEL-008 | Incremental indexing + `affected_by_diff` | code-intelligence/ | FR-1-09, FR-3-02 | INTEL-004 | Sarosh | DONE | ImpactSet correct on fixture diffs |
-| REVIEW-001 | Expectation-vs-implementation review with structured verdicts | code-review/ | FR-1-05 | INTEL-007, CORE-010 | UNASSIGNED | BLOCKED | Verdicts schema-valid with cited spans; recorded-response tests |
-| REVIEW-002 | Behavioral test generation + sandboxed execution | code-review/ | FR-1-06 | REVIEW-001, SEC-003 | UNASSIGNED | BLOCKED | Refund-bound bug validated by failing generated test |
-| REVIEW-003 | Candidate repair in isolated worktree | code-review/ | FR-1-07 | REVIEW-002 | UNASSIGNED | BLOCKED | Repair produces PatchCandidate accepted by Verify (IC-5, needs SEC-010) |
+| REVIEW-001 | Expectation-vs-implementation review with structured verdicts | code-review/ | FR-1-05 | INTEL-007, CORE-010 | Sai | DONE | Verdicts schema-valid with cited spans; recorded-response tests — evidence: #22, #59 (span verification), `code-review/tests` in CI |
+| REVIEW-002 | Behavioral test generation + sandboxed execution | code-review/ | FR-1-06 | REVIEW-001, SEC-003 | Sai | DONE | Refund-bound bug validated by failing generated test — evidence: #22; live runs (MILESTONES M2) |
+| REVIEW-003 | Candidate repair in isolated worktree | code-review/ | FR-1-07 | REVIEW-002 | Sai | DONE | Repair produces PatchCandidate accepted by Verify (IC-5, needs SEC-010) — evidence: #22, #41, #68; independent functional Verify → `verified` via #73 (`backend/tests/test_unified_assessment.py`) |
 
 ## Phase 3 — Security team (P2)
 
