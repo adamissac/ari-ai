@@ -214,3 +214,7 @@ API-JOB-001 evidence: Chrome14 passed, real HTTP/client6 passed, root422 passed/
 skips, backend80 passed/5 skips, frontend67 and transport27 unit tests passed.
 Webpack production build, TypeScript, ESLint, Ruff/format, mypy and contracts pass.
 Scripted providers/local-dev checks; no new live-provider or Docker run.
+
+### Intelligence context metadata privacy — #190
+
+Sarosh, feat/sarosh/intelligence-maintenance: IN_REVIEW. Reproduced raw human-reason citation leakage using a fake bearer canary. Output-only redaction protects context and expectation views; stored facts/history and canonical contracts unchanged. Focused10 and broader107 passed/1 opt-in skip; hosted consumer11 passed.

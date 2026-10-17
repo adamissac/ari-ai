@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Redact credential-shaped free-form citation metadata in context packs and public expectation views while preserving original authenticated history and source identities.
+
 - Assessment job IDs returned by the API now resolve through their persisted assessment, allowing authorized status reads while preserving tenant denial.
 
 - Fix the development-login HTML pattern for current browser Unicode regex rules.
