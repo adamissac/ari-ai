@@ -16,6 +16,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from shared.scope import check_category_allowed
+
 from .. import standards_bridge
 from ..agents import diagnose as diagnose_agent
 from ..agents import fortify as fortify_agent
@@ -683,7 +685,9 @@ class Orchestrator:
             refuted_keys=self.history.refuted_keys(),
             max_hypotheses=self.config.max_hypotheses,
             available_check_categories=sorted(
-                self.library.categories() & set(self.config.scope.allowed_check_categories)
+                c
+                for c in self.library.categories()
+                if check_category_allowed(c, self.config.scope.allowed_check_categories)
             ),
         )
         ctx = self._context(AgentName.SCOUT, "recon", services=self._read_services())
@@ -732,6 +736,7 @@ class Orchestrator:
                 assessment_id=self.config.assessment_id,
                 scope_id=self.config.scope.id,
                 target_id=self.config.target_id,
+                intel=self.intel,
             )
             services = {
                 **self._read_services(),

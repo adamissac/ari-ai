@@ -75,6 +75,7 @@ class ProbeInput(StrictModel):
     suggested_check_category: str
     cited_paths: list[str] = Field(default_factory=list)
     expectation_ids: list[str] = Field(default_factory=list)
+    subject_routes: list[str] = Field(default_factory=list)
 
 
 class ProbeOutput(StrictModel):
@@ -127,8 +128,30 @@ SPEC = AgentSpec(
 )
 
 
+def subject_routes(hypothesis: Hypothesis, intel: CodeIntel) -> list[str]:
+    found: set[str] = set()
+    for entry in intel.entry_points():
+        if entry.kind != "http_route" or not entry.method or not entry.path_template:
+            continue
+        cited = hypothesis.entry_point_id == entry.id or any(
+            ref.path == entry.path
+            and ref.span is not None
+            and ref.span.start_line <= entry.span.end_line
+            and entry.span.start_line <= ref.span.end_line
+            for ref in hypothesis.cited_spans
+        )
+        if cited:
+            found.add(f"{entry.method.upper()} {entry.path_template}")
+    return sorted(found)
+
+
 def input_from_hypothesis(
-    hypothesis: Hypothesis, *, assessment_id: str, scope_id: str, target_id: str
+    hypothesis: Hypothesis,
+    *,
+    assessment_id: str,
+    scope_id: str,
+    target_id: str,
+    intel: CodeIntel | None = None,
 ) -> ProbeInput:
     return ProbeInput(
         assessment_id=assessment_id,
@@ -141,6 +164,7 @@ def input_from_hypothesis(
         suggested_check_category=hypothesis.suggested_check_category,
         cited_paths=[s.path for s in hypothesis.cited_spans if s.path],
         expectation_ids=list(hypothesis.expectation_ids),
+        subject_routes=subject_routes(hypothesis, intel) if intel is not None else [],
     )
 
 
@@ -158,8 +182,16 @@ def build_prompt(data: ProbeInput, intel: CodeIntel) -> str:
         f"{data_block('cited_files', rows, provenance='code_intelligence')}\n\n"
         f"Authorized target id: {data.target_id} (scope {data.scope_id}). "
         f"You may only run checks against this target id.\n"
-        "Read the cited code and the linked expectation first, then choose and run the matching "
-        "template. Report the outcome that the executed result supports."
+        + (
+            f"Routes handled by the cited code: {', '.join(data.subject_routes)}. Only checks on "
+            "these routes decide this hypothesis; a check on any other route does not refute it.\n"
+            if data.subject_routes
+            else ""
+        )
+        + (
+            "Read the cited code and the linked expectation first, then choose and run the matching "
+            "template. Report the outcome that the executed result supports."
+        )
     )
 
 
@@ -173,25 +205,53 @@ def to_validation_result(
     successful run, the outcome is `inconclusive` regardless of what was claimed.
     """
     successful = [r for r in check_runs if not r.get("error")]
-    last = successful[-1] if successful else None
     claimed = ValidationOutcome(out.outcome)
+    subject = set(data.subject_routes)
 
-    if last is None:
-        outcome = ValidationOutcome.INCONCLUSIVE
-    else:
+    def route_key(run: dict[str, Any]) -> str | None:
+        route = run.get("route")
+        if not isinstance(route, dict) or not route.get("path_template"):
+            return None
+        return f"{route.get('method', 'GET')} {route['path_template']}"
+
+    relevant = [r for r in successful if not subject or route_key(r) is None or route_key(r) in subject]
+    outside = sorted({k for r in successful if (k := route_key(r)) and subject and k not in subject})
+    violating = [r for r in relevant if r.get("matches_expectation") is False]
+    holding = [r for r in relevant if r.get("matches_expectation") is True]
+    note = ""
+    if subject and violating:
+        last, outcome = violating[-1], ValidationOutcome.CONFIRMED
+    elif subject and holding:
+        last, outcome = holding[-1], ValidationOutcome.REFUTED
+    elif not subject and violating and holding:
+        last, outcome = relevant[-1], ValidationOutcome.INCONCLUSIVE
+        note = "checks disagree and the hypothesis subject route is unknown"
+    elif relevant:
+        last = relevant[-1]
         matches = last.get("matches_expectation")
-        if matches is False:
-            outcome = ValidationOutcome.CONFIRMED
-        elif matches is True:
-            outcome = ValidationOutcome.REFUTED
-        else:
-            outcome = ValidationOutcome.INCONCLUSIVE
+        outcome = (
+            ValidationOutcome.CONFIRMED
+            if matches is False
+            else ValidationOutcome.REFUTED
+            if matches is True
+            else ValidationOutcome.INCONCLUSIVE
+        )
+    else:
+        last, outcome = None, ValidationOutcome.INCONCLUSIVE
+        if outside:
+            note = f"checks ran only on routes outside the hypothesis subject: {', '.join(outside)}"
 
     observations: dict[str, Any] = {
         "agent_claimed_outcome": claimed.value,
         "outcome_source": "executed_check" if last else "no_successful_check_run",
         "agent_notes": out.observations[:10],
     }
+    if note:
+        observations["reconciliation"] = note
+    if outside:
+        observations["routes_outside_subject"] = outside
+    if subject:
+        observations["subject_routes"] = sorted(subject)
     if claimed != outcome:
         observations["disagreement"] = (
             f"agent claimed {claimed.value}; executed evidence gives {outcome.value}"
