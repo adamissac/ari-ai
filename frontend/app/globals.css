@@ -63,7 +63,7 @@ body { background: var(--color-bg); color: var(--color-ink); font-family: var(--
   overflow: hidden;
   color: #fff;
   background:
-    radial-gradient(120% 90% at 50% 120%, color-mix(in srgb, var(--color-brand) 85%, transparent) 0%, transparent 60%),
+    radial-gradient(75% 65% at 50% 108%, var(--color-brand) 0%, color-mix(in srgb, var(--color-brand) 60%, transparent) 35%, transparent 70%),
     radial-gradient(60% 50% at 85% 0%, color-mix(in srgb, var(--color-brand) 30%, transparent) 0%, transparent 70%),
     var(--color-ink);
 }
