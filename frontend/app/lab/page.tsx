@@ -243,7 +243,7 @@ function Player({ episode, scenario }: { episode: LabEpisode; scenario: LabScena
         <div>
           <Topology scenario={scenario} states={step?.nodes ?? []} />
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Button onClick={() => setPlaying(p => !p)} aria-pressed={playing}>{playing ? 'Pause' : 'Play'}</Button>
+            <Button onClick={() => { if (!playing && t >= steps - 1) setT(0); setPlaying(p => !p); }} aria-pressed={playing}>{playing ? 'Pause' : 'Play'}</Button>
             <input aria-label="Step" type="range" min={0} max={Math.max(0, steps - 1)} value={t} onChange={e => { setPlaying(false); setT(Number(e.target.value)); }} className="flex-1 accent-[var(--color-accent)]" />
             <span className="font-mono text-xs text-muted">t = {step?.t ?? 0} / {scenario.horizon}</span>
           </div>
