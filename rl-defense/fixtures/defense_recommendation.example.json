@@ -161,5 +161,49 @@
       "train_balanced": "535d99ff8777c11e",
       "train_stealthy": "c9e32096ebd76da4"
     }
+  },
+  "explanation": {
+    "action": "rate_limit:auth",
+    "runner_up": "rate_limit:payments",
+    "margin": 0.02557,
+    "method": "occlusion: feature set to 0, change in Q(chosen) - Q(runner-up)",
+    "top_contributions": [
+      {
+        "node": "payments",
+        "feature": "finding_severity",
+        "value": 0.6,
+        "delta_margin": 0.57131,
+        "kind": "signal"
+      },
+      {
+        "node": null,
+        "feature": "time_fraction",
+        "value": 0.3,
+        "delta_margin": -0.55087,
+        "kind": "global"
+      },
+      {
+        "node": "auth",
+        "feature": "finding_severity",
+        "value": 0.2,
+        "delta_margin": 0.2736,
+        "kind": "signal"
+      },
+      {
+        "node": "api",
+        "feature": "alert_rate",
+        "value": 0.45,
+        "delta_margin": 0.24734,
+        "kind": "signal"
+      },
+      {
+        "node": "api",
+        "feature": "anomaly_score",
+        "value": 0.35,
+        "delta_margin": 0.17445,
+        "kind": "signal"
+      }
+    ],
+    "caveat": "Explains the simulation-trained policy's decision, not real-world causality."
   }
 }

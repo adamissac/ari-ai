@@ -20,6 +20,9 @@
 | Inference → typed `DefenseRecommendation` (`simulation_derived=true`, caveat) | `rl_defense/inference.py`, `rl_defense/contracts.py` | ✅ local DTOs, **pending `shared/` V0** |
 | Platform facts → observation mapping | `rl_defense/observations.py` | ✅ (hand-written topology mapping; see limits) |
 | Public API for other subsystems | `rl_defense/api.py` | ✅ |
+| Recommendation explanations (occlusion) | `rl_defense/explain.py` | ✅ exact-value tests |
+| Platform records → policy inputs (findings, expectations, signals) | `rl_defense/platform_mapping.py` | ✅ |
+| Failure analysis, stress test, Defense Lab export | `analysis.py`, `stress.py`, `lab_export.py` | ✅ |
 | Reference evaluation results | [`results/protocol-v0/`](results/protocol-v0/eval_table.md) | ✅ real output, see below |
 | Backend endpoint / UI panel | backend (Srihith), frontend (Vihaan) | ❌ not integrated yet |
 
@@ -119,6 +122,12 @@ facts, provenance = facts_from_platform(
 runner = load_policy("runs/protocol-v0/ddqn_seed0.pt")  # verifies sha256 against the manifest
 rec = runner.recommend(facts)                           # -> DefenseRecommendation
 ```
+
+`runner.explain(facts)` returns which observed inputs drove the choice (occlusion
+analysis on the same Q-network): each input is set to zero and the change in the
+chosen action's margin over the runner-up is measured. When inputs move the margin far
+more than the margin itself, the decision is low-confidence, and the UI should say so.
+Example output is in the same fixture file.
 
 Only validated, still-open findings raise a node's risk input. Hypotheses, refuted
 findings and verified fixes don't, so a fix verified by the Verify agent changes the
