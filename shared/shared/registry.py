@@ -13,6 +13,7 @@ from shared import (
     evidence,
     findings,
     intelligence,
+    intelligence_memory,
     monitoring,
     review,
     rl,
@@ -53,6 +54,9 @@ MODELS: tuple[type[BaseModel], ...] = (
     intelligence.ContextChunk,
     intelligence.ContextPack,
     intelligence.ImpactSet,
+    intelligence_memory.ExpectationDecisionRequest,
+    intelligence_memory.ExpectationDecision,
+    intelligence_memory.VerifiedRegression,
     # assessment / agents
     assessment.Assessment,
     assessment.ToolCallRecord,
