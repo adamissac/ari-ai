@@ -1,5 +1,5 @@
 Env: DefenseSimEnv-v0, eval configs: eval_aggressive_noisy (0f088b0baba76eef), eval_shifted_severity (8408d6aa4d5bdf4d), eval_stealthy_lowsignal (b712960bd39563c8)
-Training seeds: [0, 1, 2, 3, 4] × 100 episodes per config (eval seeds 1000–1099); 200000 training steps per seed; git 118277336a2c
+Training seeds: [0, 1, 2, 3, 4] × 100 episodes per config (eval seeds 1000–1099); 200000 training steps per seed; git 38fb5305056d
 
 Pooled over held-out configs. Mean [95% bootstrap CI across training seeds].
 

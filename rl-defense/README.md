@@ -63,6 +63,13 @@ What this shows, and does not show:
   **but it disrupts benign nodes more often** (54% vs 29% false disruption).
 - `random` is compromised far less (8.9%) only because it constantly isolates nodes:
   uptime drops to 41%. DDQN is **worse than random on compromise rate**.
+- **DDQN loses the db node in 9.8% of episodes; the threshold rules in 0.3%.** The rules
+  sacrifice gateway/api (~65% impact) to protect critical nodes; DDQN spreads protection
+  more evenly. DDQN's worst episodes are all fast attacks in the aggressive scenario
+  (foothold at step 0–1, impact by step 6). See
+  [`results/protocol-v0/ANALYSIS.md`](results/protocol-v0/ANALYSIS.md) for reward
+  breakdowns, per-node impact, action mix, per-seed variation (compromise 25–63%) and
+  deterministic replays of the worst episodes.
 - CIs are across 5 seeds; deterministic baselines have zero seed variance.
 - *Results are from a simulated environment and do not establish real-world effectiveness.*
 
@@ -78,6 +85,7 @@ uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -e ".[de
 # Full protocol (≈75 s per seed on CPU; seeds run in parallel)
 for s in 0 1 2 3 4; do .venv/bin/python -m rl_defense.train --seed $s --steps 200000 --run-dir runs/protocol-v0 & done; wait
 .venv/bin/python -m rl_defense.evaluate --run-dir runs/protocol-v0
+.venv/bin/python -m rl_defense.analysis --run-dir runs/protocol-v0   # failure cases + breakdowns
 ```
 
 `runs/` (checkpoints, logs, raw episodes) is git-ignored. Reference copies of the
