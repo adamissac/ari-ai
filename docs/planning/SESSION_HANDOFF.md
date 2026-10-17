@@ -494,3 +494,15 @@ Polished changelog/README/task wording. Parser 0.3.1 keeps beyond-package relati
 unresolved with a diagnostic; active SHAs need normal reindex, historical refs/decisions
 remain immutable. PR #201 is the delivery vehicle; no target code executed and no live
 provider/UI-owner edit.
+
+### 2026-10-17 — Vihaan backend review-cycle fixes
+
+Branch `codex/backend-artifact-snapshot-fixes` fixes same-process artifact temp-file
+collisions and ready snapshot reuse across parser/profile changes. Adds public
+`current_index_version(project_id, repo_id)` on IntelligenceService; no DTO/schema
+change. Existing history stays readable; unavailable version resolution returns
+503 on ready refresh. Initial/failed requests retain asynchronous enqueueing.
+Local intelligence suite: 53 passed, 1 live skip before the additional version
+registration test; strict producer mypy passed (12 modules), Ruff/format passed.
+Real PostgreSQL tests cannot initialize locally: sandbox denies SysV shared memory
+and pgserver process enumeration. CI must verify the new backend regressions.

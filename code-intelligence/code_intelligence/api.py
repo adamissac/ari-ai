@@ -94,6 +94,16 @@ class IntelligenceService:
                 "Repository is not registered for intelligence ingestion"
             ) from exc
 
+    def current_index_version(self, project_id: str, repo_id: str) -> str:
+        """Public cache identity for the configured parser, coverage and ingestion limits.
+
+        This reads registration metadata only; it does not inspect or execute target code.
+        """
+        binding = self._binding(repo_id)
+        if binding.project_id != project_id:
+            raise IntelligenceError("Repository does not belong to requested project")
+        return ingestion_version(binding.include_prefix, self.limits)
+
     def index_repository(
         self,
         project_id: str,

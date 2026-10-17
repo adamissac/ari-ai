@@ -182,3 +182,12 @@ unrelated top-level module. Valid nested and aliased imports remain grounded.
 Use normal indexing for active commits to obtain corrected graph facts under the
 new parser version. Historical 0.3.0 refs and their decisions remain unchanged and
 readable; never relabel them or carry human confirmation into the new version.
+
+### Current ingestion identity
+
+`IntelligenceService.current_index_version(project_id, repo_id)` exposes the same
+parser/prefix/limits version used by ingestion. It validates registration and
+project ownership without reading target files. The backend uses this public API
+to decide whether a ready snapshot can be reused after parser or profile changes.
+Custom indexing factories serving snapshot refresh requests must provide this
+method; no shared DTO or persisted version format changes.
