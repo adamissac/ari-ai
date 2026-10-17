@@ -7,6 +7,8 @@ All notable changes are documented here. Format follows
 ## [Unreleased]
 
 - Starting an assessment says it enqueues a scoped check. It does not merge, deploy, or prove the application is secure when it finishes.
+- Project and assessment phase views say when they used a full first page of 500 assessment events, so a skipped phase may still exist later in the log.
+- Cancel assessment says queued checks stop immediately and in-flight checks only get a stop request. It does not delete findings or undo recorded work, and it surfaces which outcome the API returned.
 
 - Assessment job IDs returned by the API now resolve through their persisted assessment, allowing authorized status reads while preserving tenant denial.
 
