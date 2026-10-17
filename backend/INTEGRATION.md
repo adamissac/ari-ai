@@ -31,6 +31,16 @@ class Orchestrator(Protocol):
     def run(self, host: backend.host.AssessmentHost) -> None: ...
 ```
 
+* **Attribute shapes (exact):** `host.assessment`, `host.scope`, `host.assessment_id`,
+  `host.project_id`, `host.repo_id`, `host.org_id` are **properties/attributes**, not methods.
+  `host.approvals()`, `host.findings()`, `host.llm()` are methods. On the gateway,
+  `provider_mode` is a **property** (`"live" | "fake"`), `model_for(agent)` is a method.
+  Every record you persist must cite a **host** run id (`start_agent_run` return value);
+  an unknown id is rejected with `NOT_FOUND`. Pass `usage=` and `tool_calls=` to
+  `finish_agent_run` so per-run cost and tool history show in the UI.
+* The worker keeps one orchestrator object per process and factory, so an in-memory
+  pause survives a resume handled by the same worker. Durable resume (other worker,
+  restart) must rebuild from host records (`host.findings()`, `host.approvals()`).
 * `run` is called with the assessment in `SCOPE_CHECK` after the backend scope gate passes.
   It is called again in `AWAITING_APPROVAL` after a human approves or declines a remediation
   approval. Return either in a terminal state or in `AWAITING_APPROVAL`. Anything else is

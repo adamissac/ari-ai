@@ -185,3 +185,17 @@ def test_readable_producer_ids_accepted_but_prefix_still_enforced() -> None:
     for bad in ("fnd_tenant_isolation", "exp_short", "exp_has space here", "exp_../../etc"):
         with pytest.raises(ValidationError):
             ta.validate_python(bad)
+
+
+def test_early_reporting_edges_match_security_agents_runtime() -> None:
+    for src in (
+        AssessmentState.RECON,
+        AssessmentState.VALIDATION,
+        AssessmentState.ANALYSIS,
+        AssessmentState.DIAGNOSIS,
+        AssessmentState.AWAITING_APPROVAL,
+        AssessmentState.REMEDIATION,
+    ):
+        assert can_transition(src, AssessmentState.REPORTING)
+    assert not can_transition(AssessmentState.SCOPE_CHECK, AssessmentState.REPORTING)
+    assert not can_transition(AssessmentState.FUNCTIONAL_REVIEW, AssessmentState.REPORTING)

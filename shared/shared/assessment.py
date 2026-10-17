@@ -58,12 +58,14 @@ _FORWARD: dict[AssessmentState, frozenset[AssessmentState]] = {
     S.SCOPE_CHECK: frozenset({S.INDEXING}),
     S.INDEXING: frozenset({S.FUNCTIONAL_REVIEW}),
     S.FUNCTIONAL_REVIEW: frozenset({S.RECON}),
-    S.RECON: frozenset({S.VALIDATION}),
-    S.VALIDATION: frozenset({S.ANALYSIS}),
-    S.ANALYSIS: frozenset({S.DIAGNOSIS}),
+    # Each analysis phase may end early in REPORTING when it has nothing to hand on
+    # (no hypotheses, nothing confirmed, no path, nothing to remediate). 0.5.0.
+    S.RECON: frozenset({S.VALIDATION, S.REPORTING}),
+    S.VALIDATION: frozenset({S.ANALYSIS, S.REPORTING}),
+    S.ANALYSIS: frozenset({S.DIAGNOSIS, S.REPORTING}),
     S.DIAGNOSIS: frozenset({S.AWAITING_APPROVAL, S.REPORTING}),
     S.AWAITING_APPROVAL: frozenset({S.REMEDIATION, S.REPORTING}),
-    S.REMEDIATION: frozenset({S.HARDENING}),
+    S.REMEDIATION: frozenset({S.HARDENING, S.REPORTING}),
     S.HARDENING: frozenset({S.REPORTING}),
     S.REPORTING: frozenset({S.COMPLETED}),
 }
