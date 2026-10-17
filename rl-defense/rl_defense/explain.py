@@ -8,13 +8,11 @@ that produced the recommendation. It explains the *policy*, not the real world.
 
 from __future__ import annotations
 
-from typing import Literal
-
 import numpy as np
 import torch
-from pydantic import BaseModel, ConfigDict
 
 from rl_defense.agents.ddqn import NEG_INF
+from rl_defense.contracts import FeatureContribution, RLExplanation
 from rl_defense.envs.config import NODE_NAMES
 from rl_defense.envs.defense_sim import GLOBAL_FEATURES, NODE_FEATURES, OBS_DIM, action_label
 
@@ -23,25 +21,8 @@ from rl_defense.envs.defense_sim import GLOBAL_FEATURES, NODE_FEATURES, OBS_DIM,
 STATIC_FEATURES = frozenset({"criticality", "exposed"})
 
 
-class _Strict(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-
-class FeatureContribution(_Strict):
-    node: str | None  # None for global features
-    feature: str
-    value: float
-    delta_margin: float  # margin(original) - margin(feature occluded); > 0 supports the choice
-    kind: Literal["signal", "context", "defense_state", "global"]
-
-
-class Explanation(_Strict):
-    action: str
-    runner_up: str | None
-    margin: float
-    method: str = "occlusion: feature set to 0, change in Q(chosen) - Q(runner-up)"
-    top_contributions: tuple[FeatureContribution, ...]
-    caveat: str = "Explains the simulation-trained policy's decision, not real-world causality."
+METHOD = "occlusion: feature set to 0, change in Q(chosen) - Q(runner-up)"
+CAVEAT = "Explains the simulation-trained policy's decision, not real-world causality."
 
 
 def _feature_meta(index: int) -> tuple[str | None, str, str]:
@@ -59,8 +40,12 @@ def _feature_meta(index: int) -> tuple[str | None, str, str]:
 
 
 def explain(
-    q_network: torch.nn.Module, obs: np.ndarray, mask: np.ndarray, top_k: int = 5
-) -> Explanation:
+    q_network: torch.nn.Module,
+    obs: np.ndarray,
+    mask: np.ndarray,
+    recommendation_id: str,
+    top_k: int = 5,
+) -> RLExplanation:
     if obs.shape != (OBS_DIM,):
         raise ValueError(f"observation must have shape ({OBS_DIM},)")
     if mask.sum() < 1:
@@ -99,9 +84,12 @@ def explain(
         )
         if len(contributions) == top_k:
             break
-    return Explanation(
+    return RLExplanation(
+        recommendation_id=recommendation_id,
+        method=METHOD,
+        caveat=CAVEAT,
         action=action_label(best),
         runner_up=None if runner is None else action_label(runner),
         margin=round(margin, 5),
-        top_contributions=tuple(contributions),
+        top_contributions=contributions,
     )

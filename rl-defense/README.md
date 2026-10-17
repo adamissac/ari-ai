@@ -17,7 +17,7 @@
 | Baselines: `noop`, `random` (valid actions), `threshold_rules` (tuned on train configs only) | `rl_defense/baselines/` | ✅ |
 | Training CLI with checkpoint + manifest (sha256, git SHA, configs, seed) | `rl_defense/train.py`, `rl_defense/checkpoint.py` | ✅ |
 | Protocol-17 evaluation (5 seeds × 100 episodes × held-out configs, bootstrap CIs, Welch + Holm) | `rl_defense/evaluate.py` | ✅ |
-| Inference → typed `DefenseRecommendation` (`simulation_derived=true`, caveat) | `rl_defense/inference.py`, `rl_defense/contracts.py` | ✅ local DTOs, **pending `shared/` V0** |
+| Inference → typed `DefenseRecommendation` (`simulation_derived=true`, caveat) | `rl_defense/inference.py`, `rl_defense/contracts.py` | ✅ re-exports canonical `shared.rl` (V0) |
 | Platform facts → observation mapping | `rl_defense/observations.py` | ✅ (hand-written topology mapping; see limits) |
 | Public API for other subsystems | `rl_defense/api.py` | ✅ |
 | Recommendation explanations (occlusion) | `rl_defense/explain.py` | ✅ exact-value tests |
@@ -85,7 +85,7 @@ What this shows, and does not show:
 
 ```bash
 cd rl-defense
-uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -e ".[dev]"
+uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -e ../shared -e ".[dev]"
 
 .venv/bin/python -m pytest -q                       # all tests (~1 min)
 .venv/bin/ruff check rl_defense tests && .venv/bin/ruff format --check rl_defense tests
@@ -123,7 +123,8 @@ runner = load_policy("runs/protocol-v0/ddqn_seed0.pt")  # verifies sha256 agains
 rec = runner.recommend(facts)                           # -> DefenseRecommendation
 ```
 
-`runner.explain(facts)` returns which observed inputs drove the choice (occlusion
+`runner.recommend_with_explanation(facts)` also returns an `RLExplanation` (shared V0.1)
+listing which observed inputs drove the choice (occlusion
 analysis on the same Q-network): each input is set to zero and the change in the
 chosen action's margin over the runner-up is measured. When inputs move the margin far
 more than the margin itself, the decision is low-confidence, and the UI should say so.
