@@ -1,58 +1,75 @@
 # frontend/
 
-> **What exists:** a standalone, validated REST/SSE transport package in
-> [`transport/`](transport/README.md). The Next.js page scaffold and rendered UI
-> are still pending with Vihaan. Spec: [docs/14](../docs/14_FRONTEND_UX_DESIGN.md).
+Next.js 16 (App Router) + React 19 + strict TypeScript + Tailwind 4 dashboard for the
+whole product. Every screen reads the control-plane API (`/api/v1`) or, for the Defense
+Lab, a committed and schema-validated RL evaluation bundle. Nothing is generated or
+simulated in the browser. Spec: [docs/14](../docs/14_FRONTEND_UX_DESIGN.md).
 
-## Purpose
-The web dashboard: connect repos, register and approve scopes, watch
-assessments live, inspect evidence chains, approve remediation, review patches
-and verification, follow monitoring and RL recommendations.
+## What is implemented
 
-## Responsibilities
-- Screens and flows in [docs/14](../docs/14_FRONTEND_UX_DESIGN.md).
-- Honest status presentation (hypothesis / validated / verified / rejected / stale).
-- SSE client for live assessment progress.
-- Accessibility (WCAG 2.1 AA target for core flows).
-
-**Must not:** hold business logic, call Claude or any LLM, define its own API
-types, render repository content as HTML.
-
-## Interfaces
-| Direction | Interface |
+| Route | Backed by |
 |---|---|
-| Consumes | Backend REST `/api/v1` + SSE `/api/v1/assessments/{id}/events` ([docs/13](../docs/13_BACKEND_API_DESIGN.md)) |
-| Types | Generated TypeScript from `shared/generated/ts` (never hand-edited) |
-| Auth | Session cookie set by backend OAuth flow; CSRF header on mutations |
+| `/` projects, create project | `GET/POST /projects` |
+| `/projects/[id]` assessments (5 s refresh), start assessment (idempotency key per action), findings summary, repositories, connect repo, index commit (snapshot polling) | `/projects/{id}/assessments`, `/findings`, `/repositories`, `/repositories/{id}/snapshots`, `/snapshots/{id}` |
+| `/projects/[id]/scopes` request, approve (backend enforces a different member), revoke | `/projects/{id}/scopes`, `/scopes/{id}/approve`, `/scopes/{id}/revoke` |
+| `/projects/[id]/assessments/[asm]` live timeline: state rail from states actually entered, per-agent lanes (provider mode, model, prompt version, usage, tool trace), budget meter, remediation approval gate, cancel, durable event log, provider-mode banner | `watchAssessment` SSE (`Last-Event-ID` resume) + `GET /assessments/{id}` + 5 s polling fallback while running |
+| `/projects/[id]/findings` validated / hypotheses / closed tabs | `/projects/{id}/findings` |
+| `/projects/[id]/findings/[fnd]` evidence chain (expectation → Scout → Probe → Trace → Diagnose → Patch → Verify → Fortify), GitHub links at the exact SHA, line-numbered diff, Verify checks, status history, accept risk | `/findings/{id}`, `/findings/{id}/patches`, `/artifacts/{id}` (size-bounded, SHA-256 checked) |
+| `/projects/[id]/approvals` inbox with will / will-not summaries | `/projects/{id}/approvals`, `/approvals/{id}/decision` |
+| `/projects/[id]/monitoring` webhook/runtime event feed (simulated events labelled), impact sets, re-assessments, simulation-derived RL recommendations + explanations, imported RL evaluations | `/projects/{id}/events`, `/reassessments`, `/defense-recommendations`, `/rl-evaluations` |
+| `/lab` Defense Lab: provenance (path, SHA-256, checkpoints, seeds), held-out metrics with 95% CI and n, topology, episode replay with reward components; hidden attacker stage only as labelled simulation ground truth | `rl-defense/results/protocol-*/defense_lab.json`, validated server-side against `rl-defense/fixtures/defense_lab.schema.json` |
 
-## Dependencies
-- Upstream: `shared/` generated types (CORE-003), backend API (CORE-002+).
-- Proposed stack: Next.js (App Router), React, TypeScript strict, Tailwind,
-  ESLint, Prettier, Vitest + Testing Library, pnpm (RQ-008).
-- Hosting (only if approved): Vercel free tier.
+Same-origin API: `app/api/v1/[...path]` proxies to `BACKEND_ORIGIN` at request time
+(no CORS; the backend's `SameSite=Lax` cookie and CSRF header work as designed;
+SSE streams unbuffered). Types and runtime validation come only from
+`shared/generated` through [`transport/`](transport/README.md).
 
-## Planned layout
-```
-frontend/
-  app/                      # routes per docs/14 information architecture
-  components/ui/            # shared primitives
-  components/<feature>/     # evidence-chain, timeline, approvals, diff, monitoring
-  lib/api/                  # generated client wrapper
-  lib/sse/                  # SSE hook with Last-Event-ID reconnect
-  tests/
-```
-
-## First tasks
-UI-001 (scaffold), then UI-002…UI-007 ([HACKATL_TASKS](../docs/planning/HACKATL_TASKS.md)).
+Honesty rules enforced in code: backend offline → "Backend unreachable"; a response
+that fails the shared JSON Schema → "Backend response rejected" (never rendered);
+non-`live` `provider_mode` runs are labelled "Not a live-provider run"; fixture mode
+exists only behind `NEXT_PUBLIC_DEMO_FIXTURES=1` and shows a permanent DEMO DATA banner.
 
 ## Commands
 
-Transport commands are implemented; app dev/browser commands follow with the scaffold.
+Node ≥ 22.12. From `frontend/`:
 
 ```sh
-npm ci --prefix frontend/transport
-npm test --prefix frontend/transport
-npm run test:integration --prefix frontend/transport
+npm ci --prefix transport && npm run build --prefix transport   # after every contract regeneration
+npm ci
+npm run lint && npm run typecheck && npm test && npm run build
+BACKEND_ORIGIN=http://127.0.0.1:8000 NEXT_PUBLIC_DEV_LOGIN=1 npm run dev   # with `make dev` running the API
+../.venv/bin/python tests/e2e/stack.py                                # browser e2e, see below
 ```
 
-See [transport integration notes](transport/README.md) for Python/PostgreSQL setup.
+`NEXT_PUBLIC_DEV_LOGIN=1` only shows the development sign-in form; the backend still
+refuses it unless `APP_ENV` is development/test and `AUTH_DEV_LOGIN_ENABLED=true`.
+
+## Browser e2e (`tests/e2e/stack.py`)
+
+Starts real FastAPI + PostgreSQL migrations + the job worker + `next start`, seeds two
+org owners, a project and the `examples/payments-lite` repository binding (an operator
+registry the UI cannot set), then runs Playwright. The journey test drives the rendered
+UI: request scope → second user approves → start assessment → live SSE timeline →
+second user approves remediation → reviewer + seven security agents complete → security
+finding evidence chain → hash-checked diff → Verify accepted → state survives reload.
+Also: signed GitHub push appears in monitoring, create project / connect repo,
+backend-offline and contract-violation states, Defense Lab, bundle path refusal.
+
+Model replies come from the backend's own TEST-ONLY scripted transports (the same ones
+as `backend/tests/test_unified_assessment.py`), so every agent run is persisted with
+`provider_mode="fake"` and the UI says so. Everything else — HTTP, cookies/CSRF, queue,
+git checkout, reviewer test execution, local-dev sandbox checks, Patch/Verify, artifacts,
+SSE — is real. No API key is read. Screenshots of the executed run are written to
+`test-results/evidence/`.
+
+Env: `TEST_DATABASE_URL` (admin URL of an existing Postgres; default embedded pgserver,
+which cannot start from a path containing spaces), `E2E_BROWSER_CHANNEL=chrome` to use an
+installed Chrome instead of Playwright's Chromium, `E2E_SKIP_BUILD=1` to reuse `.next`.
+
+## Known gaps (not hidden in the UI)
+
+- No backend endpoint serves the Defense Lab bundle or lists snapshots; the Lab reads the
+  committed artifact, and snapshot status is tracked only for snapshots requested in-page.
+- Expectation details are shown as IDs (no expectation read endpoint yet; Sarosh's #38).
+- GitHub links need exactly one repository in the project (findings carry no repo id).
+- Live-provider (`provider_mode=live`) runs have not been exercised through the UI.
