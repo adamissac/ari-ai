@@ -1,27 +1,16 @@
 'use client';
 
+import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
-import { SessionGate, useSession } from '@/components/session';
-import { Button } from '@/components/ui';
-
-function UserBar() {
-  const { me, signOut } = useSession();
-  const org = me.memberships[0];
-  return (
-    <div className="mb-5 flex flex-wrap items-center justify-end gap-3 text-sm text-muted">
-      <span>
-        Signed in as <span className="text-ink" data-testid="signed-in-user">{me.user.github_login}</span>
-        {org && <> · {org.organization.name} ({org.role})</>}
-      </span>
-      <Button variant="ghost" onClick={() => void signOut()}>Sign out</Button>
-    </div>
-  );
-}
+import { SessionGate } from '@/components/session';
+import { UserBar } from '@/components/user-bar';
 
 export default function ConsoleLayout({ children }: { children: ReactNode }) {
+  // The home page opens on a full-screen hero and renders its own UserBar below it.
+  const home = usePathname() === '/';
   return (
     <SessionGate>
-      <UserBar />
+      {!home && <UserBar />}
       {children}
     </SessionGate>
   );
