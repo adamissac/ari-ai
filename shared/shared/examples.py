@@ -208,6 +208,7 @@ def build() -> dict[str, BaseModel]:
         project_id=PRJ,
         snapshot_id=SNP,
         commit_sha=HEAD,
+        repo_id=REP,
         scope_id=SCP,
         trigger=assessment.AssessmentTrigger.monitoring,
         state=assessment.AssessmentState.VALIDATION,
