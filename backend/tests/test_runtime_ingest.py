@@ -8,10 +8,10 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 import sqlalchemy as sa
+from helpers import setup_project
 
 from backend.db import ingest_tokens, transaction
 from backend.host import AssessmentHost
-from helpers import setup_project
 from shared.base import utcnow
 from shared.evidence import EvidenceKind, EvidenceRef, SourceSpan
 from shared.findings import Finding, FindingKind, FindingStatus
@@ -152,7 +152,6 @@ def test_signals_feed_rl_facts(env, settings_override) -> None:
     from pathlib import Path
 
     import rl_defense
-
     from backend.pipeline import platform_facts
 
     _, _, ids, anon = env
