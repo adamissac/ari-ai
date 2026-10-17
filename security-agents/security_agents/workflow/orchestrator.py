@@ -177,6 +177,27 @@ class AssessmentResult:
     def agents_executed(self) -> set[str]:
         return {r.agent.value for r in self.runs}
 
+    def _tool_trace(self, run_id: str) -> list[dict[str, Any]]:
+        """Per-call trace of one run (name, ok/error, args, result summary), re-redacted and
+        bounded, so a failed paid run can be diagnosed from the report alone."""
+        from ..redact import redact
+
+        record = next((r for r in self.records if r.run_id == run_id), None)
+        if record is None:
+            return []
+        trace = []
+        for call in record.tool_invocations[:40]:
+            trace.append(
+                {
+                    "name": call.name,
+                    "ok": call.ok,
+                    "error_code": call.error_code,
+                    "args": json.dumps(redact(call.args), default=str, sort_keys=True)[:800],
+                    "summary": json.dumps(redact(call.summary), default=str, sort_keys=True)[:1200],
+                }
+            )
+        return trace
+
     def report(self) -> dict[str, Any]:
         return {
             "assessment_id": self.assessment_id,
@@ -197,6 +218,7 @@ class AssessmentResult:
                     "tokens": r.usage.total_tokens,
                     "usd": round(r.usage.usd, 6),
                     "error_code": r.error_code.value if r.error_code else None,
+                    "tool_trace": self._tool_trace(r.id),
                 }
                 for r in self.runs
             ],
