@@ -7,6 +7,7 @@ All notable changes are documented here. Format follows
 ## [Unreleased]
 
 - Requesting a scope says it records a pending authorization. It does not activate until another member approves it, and it does not start a check or open access outside the listed targets.
+- Frontend fonts are bundled locally with their licenses, removing Google Fonts downloads from production builds and preserving the existing typography.
 - Assessment conflicts now offer explicit preparation of a separate action; ordinary network retries retain their key, and project changes get distinct keys.
 
 - Assessment job IDs returned by the API now resolve through their persisted assessment, allowing authorized status reads while preserving tenant denial.
@@ -102,3 +103,4 @@ All notable changes are documented here. Format follows
 
 ### Not yet implemented
 - Full cross-pillar runtime completion and production operation are not established here.
+
