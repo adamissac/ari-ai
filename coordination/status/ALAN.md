@@ -125,3 +125,5 @@ Executed check results on the fixture (the precision evidence):
 - Host adapter continuation: aligned property access, populated actual role run IDs, and passed gateway usage/tool records to finish_agent_run. Host unit suite: 12 passed; Ruff clean. PostgreSQL acceptance in progress.
 
 - Hardened host defaults and scope adaptation: 21 host tests passed, Ruff clean; real PostgreSQL host acceptance now 1 passed (removed obsolete xfail). Docker execution remains unverified.
+
+- Durable approval resume implemented via additive host checkpoint API (hashed artifact + assessment-scoped event pointer). Host suite: 23 passed, Ruff clean; real backend fresh-factory resume: 1 passed. Checkpoint isolation/integrity suite in progress.

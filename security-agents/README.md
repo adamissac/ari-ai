@@ -146,3 +146,9 @@ Host mode defaults to the Docker driver. The local process driver requires both
 `APP_ENV=development|test` and `SANDBOX_ALLOW_LOCAL_PROCESS=1`, or explicit driver
 injection for owned fixture tests. Scope adaptation preserves missing approvals,
 expired authorization and empty category lists; it never supplies approval facts.
+
+The host adapter persists a versioned approval checkpoint through
+`save_checkpoint`/`load_checkpoint`. A new worker rebuilds its workspace and typed
+finding records, verifies snapshot identity, and reloads scope and human approvals.
+The checkpoint excludes conversation history. Checkpoints cover the approval pause;
+recovery from interruption during Patch/Verify remains a separate requirement.

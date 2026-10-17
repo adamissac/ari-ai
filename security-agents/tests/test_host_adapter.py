@@ -158,11 +158,18 @@ class FakeHost:
     progress_messages: list[str] = field(default_factory=list)
     _approvals: list[Any] = field(default_factory=list)
     cancelled: bool = False
+    checkpoints: dict[str, dict] = field(default_factory=dict)
+
+    def save_checkpoint(self, namespace, payload):
+        self.checkpoints[namespace] = json.loads(json.dumps(payload))
+
+    def load_checkpoint(self, namespace):
+        return self.checkpoints.get(namespace)
 
     # -- state / events
     @property
     def assessment(self) -> Any:
-        return type("A", (), {"budget": type("B", (), {"max_tokens": 2_000_000, "max_usd": 50.0, "max_wall_clock_s": 900.0})()})()
+        return type("A", (), {"state": self.states[-1] if self.states else "SCOPE_CHECK", "budget": type("B", (), {"max_tokens": 2_000_000, "max_usd": 50.0, "max_wall_clock_s": 900.0})()})()
 
     @property
     def scope(self) -> Any:
@@ -495,3 +502,29 @@ def test_host_default_driver_requires_explicit_dev_opt_in(monkeypatch, app_env, 
     monkeypatch.setenv("SANDBOX_ALLOW_LOCAL_PROCESS", opt_in)
     monkeypatch.setenv("SANDBOX_IMAGE", "test@sha256:" + "a" * 64)
     assert isinstance(_default_driver(), LocalProcessDriver) is local
+
+
+def test_new_factory_resumes_after_approval_without_repeating_scout(host_and_orchestrator, tmp_path):
+    host, first, gateway = host_and_orchestrator
+    first.run(host)
+    host.approve_all()
+    replacement = build_orchestrator(
+        target_dir=first.target_dir, labels_path=first.labels_path,
+        workdir=tmp_path / "fresh-worker", driver=first.driver,
+    )
+    replacement.run(host)
+    assert host.states[-1] == "COMPLETED"
+    assert [run["agent"] for run in host.runs].count("scout") == 1
+    assert len(host.patches) == 1
+
+
+def test_resume_refuses_changed_snapshot(host_and_orchestrator, tmp_path):
+    host, first, _ = host_and_orchestrator
+    first.run(host)
+    host.approve_all()
+    host.checkpoints["security_agents.approval.v1"]["commit_sha"] = "0" * 40
+    replacement = build_orchestrator(target_dir=first.target_dir, workdir=tmp_path / "other", driver=first.driver)
+    with pytest.raises(PlatformError) as exc:
+        replacement.run(host)
+    assert exc.value.code is ErrorCode.SNAPSHOT_NOT_READY
+    assert not host.patches

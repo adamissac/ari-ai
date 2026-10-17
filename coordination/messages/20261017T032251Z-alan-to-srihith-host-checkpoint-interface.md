@@ -1,0 +1,11 @@
+# MSG: Additive host checkpoint interface for approval resume
+- From: alan
+- To: srihith
+- Kind: contract-proposal
+- Branch: feat/alan/seven-agent-runtime, PR #35
+- Problem: same-worker approval flow passes, but process-local resume cannot survive restart.
+- Interface: AssessmentHost.save_checkpoint(namespace: str, payload: dict[str, Any]) -> None; load_checkpoint(namespace: str) -> dict[str, Any] | None.
+- Implementation: hashed JSON artifact + assessment-scoped progress-event pointer in one DB transaction; retrieval validates artifact project ownership and integrity. No shared model or database migration.
+- Security runtime checkpoint: version, assessment ID, snapshot SHA/ID, typed diagnosed findings, usage and baseline failures; excludes conversations and Patch state. Rebuild scope from current host on every resume.
+- Validation planned: a new factory after approval resumes from persisted state without rerunning Scout, plus cross-assessment isolation and missing/corrupt checkpoint denial.
+- Compatibility: additive; runtime requires checkpoint-capable host to pause durably. Existing default backend adapter unaffected.

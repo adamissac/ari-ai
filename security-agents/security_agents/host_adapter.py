@@ -28,6 +28,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
+from pydantic import TypeAdapter
+
 from .agents import ALL_SPECS
 from .checks.library import default_library
 from .contracts import (
@@ -89,6 +91,8 @@ class AssessmentHostLike(Protocol):
     def assessment(self) -> Any: ...
     @property
     def scope(self) -> Any: ...
+    def save_checkpoint(self, namespace: str, payload: dict[str, Any]) -> None: ...
+    def load_checkpoint(self, namespace: str) -> dict[str, Any] | None: ...
     def approvals(self) -> list[Any]: ...
     def transition(self, target: Any, message: str = "") -> Any: ...
     def progress(self, message: str, *, agent: Any = None, **data: Any) -> None: ...
@@ -491,7 +495,6 @@ class HostOrchestrator:
     registry: ToolRegistry | None = None
     max_hypotheses: int = 3
     validate_count: int = 2
-    _resumable: dict[str, Orchestrator] = field(default_factory=dict)
 
     def run(self, host: AssessmentHostLike) -> None:
         target = self.target_dir or _env_path("SECURITY_AGENTS_TARGET_DIR")
@@ -500,17 +503,26 @@ class HostOrchestrator:
                 ErrorCode.CONFLICT_STATE,
                 "no target directory: set SECURITY_AGENTS_TARGET_DIR or pass target_dir",
             )
-        existing = self._resumable.pop(host.assessment_id, None)
-        if existing is not None:
-            self._resume(existing, host)
-            return
+        checkpoint = host.load_checkpoint("security_agents.approval.v1")
+        resuming = str(getattr(host.assessment, "state", "")).upper() == "AWAITING_APPROVAL"
+        if resuming and checkpoint is None:
+            raise PlatformError(ErrorCode.CONFLICT_STATE, "approval checkpoint is missing")
+        if checkpoint is not None and (
+            checkpoint.get("version") != 1 or checkpoint.get("assessment_id") != host.assessment_id
+        ):
+            raise PlatformError(ErrorCode.CONFLICT_STATE, "invalid approval checkpoint identity/version")
 
-        workdir = self.workdir or _env_path("SECURITY_AGENTS_WORKDIR")
-        if workdir is None:
-            import tempfile
+        import tempfile
 
-            workdir = Path(tempfile.mkdtemp(prefix=f"{host.assessment_id}-"))
-        intel = self._build_intel(target, workdir)
+        base_workdir = self.workdir or _env_path("SECURITY_AGENTS_WORKDIR")
+        if base_workdir is not None:
+            base_workdir.mkdir(parents=True, exist_ok=True)
+        workdir = Path(tempfile.mkdtemp(prefix=f"{host.assessment_id}-", dir=base_workdir))
+        intel = self._build_intel(
+            target, workdir, snapshot_id=checkpoint.get("snapshot_id") if resuming else None
+        )
+        if resuming and checkpoint["commit_sha"] != intel.snapshot.commit_sha:
+            raise PlatformError(ErrorCode.SNAPSHOT_NOT_READY, "approval snapshot changed")
         scope = _adapt_scope(host.scope, intel)
         if not scope.targets:
             raise PlatformError(ErrorCode.SCOPE_DENIED, "host scope has no authorized targets")
@@ -540,11 +552,31 @@ class HostOrchestrator:
             approve_remediation=_approver(host),
             cancelled=lambda: _cancelled(host),
         )
+        if resuming:
+            orchestrator.state = AssessmentState.AWAITING_APPROVAL
+            orchestrator.result.state = AssessmentState.AWAITING_APPROVAL
+            orchestrator.result.findings = TypeAdapter(list[FindingRecord]).validate_python(checkpoint["findings"])
+            orchestrator.result.usage = Usage.model_validate(checkpoint["usage"])
+            orchestrator._baseline_failing = list(checkpoint["baseline_failing"])
+            # Approval applies only while current scope remains valid.
+            from .scope_guard import ActionRequest, check
+            decision = check(scope, ActionRequest(action="assessment_start"), utcnow())
+            if not decision.allowed:
+                raise PlatformError(ErrorCode.SCOPE_DENIED, decision.reason_code)
+            self._resume(orchestrator, host)
+            return
         # The host already performed the scope gate and the first transition.
-        orchestrator.state = AssessmentState.CREATED
         result = orchestrator.run()
         if result.state is AssessmentState.AWAITING_APPROVAL:
-            self._resumable[host.assessment_id] = orchestrator
+            host.save_checkpoint("security_agents.approval.v1", {
+                "version": 1,
+                "assessment_id": host.assessment_id,
+                "commit_sha": intel.snapshot.commit_sha,
+                "snapshot_id": intel.snapshot.snapshot_id,
+                "findings": TypeAdapter(list[FindingRecord]).dump_python(result.findings, mode="json"),
+                "usage": result.usage.model_dump(mode="json"),
+                "baseline_failing": orchestrator._baseline_failing,
+            })
             host.progress("awaiting human remediation approval")
 
     def _resume(self, orchestrator: Orchestrator, host: AssessmentHostLike) -> None:
@@ -553,7 +585,11 @@ class HostOrchestrator:
         diagnosed = [f for f in orchestrator.result.findings if f.plan is not None]
         approved: list[FindingRecord] = []
         for finding in diagnosed:
-            decision = _approver(host)(finding)
+            try:
+                decision = _approver(host)(finding)
+            except ApprovalPending:
+                host.progress("awaiting human remediation approval")
+                return
             if decision is not None and decision.decision == "approved":
                 finding.approval = decision
                 approved.append(finding)
@@ -571,7 +607,7 @@ class HostOrchestrator:
         orchestrator._goto(AssessmentState.REPORTING)
         orchestrator._finish()
 
-    def _build_intel(self, target: Path, workdir: Path) -> CodeIntel:
+    def _build_intel(self, target: Path, workdir: Path, *, snapshot_id: str | None = None) -> CodeIntel:
         import json
         import shutil
 
@@ -588,7 +624,7 @@ class HostOrchestrator:
         if recipe_path.is_file():
             shutil.copy2(recipe_path, staging / "build_recipe.json")
         snapshot = SnapshotHandle.from_directory(
-            staging, workdir / "snapshot", snapshot_id=new_id("snp"), repo_id="rep_host"
+            staging, workdir / "snapshot", snapshot_id=snapshot_id or new_id("snp"), repo_id="rep_host"
         )
         labels = self.labels_path or _env_path("SECURITY_AGENTS_LABELS") or (
             target / "labels.yaml" if (target / "labels.yaml").is_file() else None

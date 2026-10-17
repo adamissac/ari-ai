@@ -122,3 +122,10 @@ adds an entry before ending.
 - Fixed strict-provider numeric tool schema rejection while retaining Pydantic validation; Scout errors now fail the assessment with original error code/detail.
 - Executed 28 runtime/schema/intelligence tests plus 1 Scout failure regression; all passed. Ruff clean. No live-provider execution.
 - Next: finish backend host-mode integration; request separately authorized live rerun after deterministic verification.
+
+### 2026-10-16 — Codex — host integration continuation
+- Fixed host properties, real patch/Verify run IDs, and usage/tool accounting (a9ac7ea).
+- Hardened missing approval facts/empty scope categories/zero budget; default Docker driver with explicit dev opt-in (5c46918).
+- Added host checkpoint persistence for fresh-worker approval resume; no migration/shared schema change. Local runtime owns versioned typed payload, host owns artifacts/events.
+- Evidence: host unit suite 23 passed; real PostgreSQL full seven-agent fake-provider flow passed after clearing factory cache. No new live-provider or Docker execution.
+- Remaining: pin host target to assessment SHA via trusted bindings; use intelligence service in host path; recovery during remediation; reconcile gateway schema projection in hosted mode.

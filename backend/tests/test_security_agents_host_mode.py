@@ -73,6 +73,9 @@ def test_host_mode_full_flow_against_real_backend(
         ).status_code
         == 200
     )
+    # Simulate a new worker process: discard the process-local orchestrator cache.
+    from backend import pipeline
+    pipeline._ORCHESTRATORS.clear()
     worker.drain(kinds=["run_assessment"])
 
     detail = alice.get(f"/api/v1/assessments/{asm}").json()

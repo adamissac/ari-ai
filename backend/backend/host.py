@@ -362,6 +362,44 @@ class AssessmentHost:
         )
 
     # --------------------------------------------------------------- artifacts
+    def save_checkpoint(self, namespace: str, payload: dict[str, Any]) -> None:
+        """Atomically publish an assessment-scoped pointer to a hashed JSON artifact."""
+        self.check_cancelled()
+        if not namespace or len(namespace) > 100:
+            raise HostError(ErrorCode.VALIDATION_FAILED, "invalid checkpoint namespace")
+        with transaction() as conn:
+            self._row(conn)
+            ref = self.store.put_json(
+                conn, payload, kind=ArtifactKind.other, project_id=self.project_id
+            )
+            _emit(
+                conn, self.assessment_id, StreamEventType.progress, "checkpoint saved",
+                data={"checkpoint_namespace": namespace, "checkpoint_artifact_id": ref.id},
+            )
+
+    def load_checkpoint(self, namespace: str) -> dict[str, Any] | None:
+        """Load only this assessment's latest checkpoint, checking artifact integrity."""
+        with transaction() as conn:
+            self._row(conn)
+            event = conn.execute(
+                sa.select(assessment_events.c.doc)
+                .where(
+                    assessment_events.c.assessment_id == self.assessment_id,
+                    assessment_events.c.doc["data"]["checkpoint_namespace"].astext == namespace,
+                )
+                .order_by(assessment_events.c.seq.desc())
+                .limit(1)
+            ).scalar_one_or_none()
+            if event is None:
+                return None
+            row, content = self.store.get(conn, event["data"]["checkpoint_artifact_id"])
+            if row["project_id"] != self.project_id:
+                raise HostError(ErrorCode.VALIDATION_FAILED, "checkpoint project mismatch")
+        payload = json.loads(content)
+        if not isinstance(payload, dict):
+            raise HostError(ErrorCode.VALIDATION_FAILED, "checkpoint must be an object")
+        return payload
+
     def store_json(self, value: Any, kind: ArtifactKind = ArtifactKind.tool_output) -> ArtifactRef:
         with transaction() as conn:
             return self.store.put_json(conn, value, kind=kind, project_id=self.project_id)

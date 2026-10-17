@@ -130,3 +130,5 @@ and three subtests passed, including durable SSE replay, CSRF, tenant denial and
 abort. No provider or target execution occurred in transport tests.
 
 SEC-001 / SEC-012 continuation (2026-10-16, Alan branch): provider schema projection and failed-Scout terminal state fixed; 28 focused tests plus Scout failure regression pass. Live rerun remains unverified.
+
+SEC-001 / SEC-012 host integration continuation: real backend approval flow passes, including fresh-factory resume from a hashed checkpoint. Authorization mapping and sandbox opt-in hardened. Live-provider/Docker gates remain unverified.

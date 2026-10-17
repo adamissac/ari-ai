@@ -38,9 +38,13 @@ class Orchestrator(Protocol):
   Every record you persist must cite a **host** run id (`start_agent_run` return value);
   an unknown id is rejected with `NOT_FOUND`. Pass `usage=` and `tool_calls=` to
   `finish_agent_run` so per-run cost and tool history show in the UI.
-* The worker keeps one orchestrator object per process and factory, so an in-memory
-  pause survives a resume handled by the same worker. Durable resume (other worker,
-  restart) must rebuild from host records (`host.findings()`, `host.approvals()`).
+* `host.save_checkpoint(namespace, payload)` atomically stores a hashed JSON artifact
+  and an assessment-scoped event pointer; `host.load_checkpoint(namespace)` returns
+  the latest object or `None`, validating project ownership and content integrity.
+  Runtime payloads must be versioned and tied to assessment and snapshot identity.
+  On resume, reload current scope and approvals; checkpoint data grants no authority.
+  The security adapter uses this for fresh-worker approval resume without sharing
+  conversations or rerunning completed investigation steps.
 * `run` is called with the assessment in `SCOPE_CHECK` after the backend scope gate passes.
   It is called again in `AWAITING_APPROVAL` after a human approves or declines a remediation
   approval. Return either in a terminal state or in `AWAITING_APPROVAL`. Anything else is

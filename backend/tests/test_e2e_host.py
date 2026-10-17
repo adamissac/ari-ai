@@ -190,3 +190,36 @@ def test_host_refuses_illegal_transitions_and_unapproved_remediation(
     with pytest.raises(HostError) as e:
         host.transition(AssessmentState.INDEXING)
     assert e.value.code.value in ("SCOPE_DENIED", "CANCELLED")
+
+
+def test_host_checkpoints_are_scoped_durable_and_integrity_checked(client_factory):
+    import sqlalchemy as sa
+
+    from backend.db import artifacts, transaction
+    from backend.host import AssessmentHost
+
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+
+    def create():
+        return alice.post(
+            f"/api/v1/projects/{ids['project']}/assessments",
+            json={"scope_id": ids["scope"], "repo_id": ids["repo"], "commit_sha": "f" * 40},
+        ).json()["assessment"]["id"]
+
+    first, other = create(), create()
+    host = AssessmentHost(first)
+    assert host.load_checkpoint("test.v1") is None
+    host.save_checkpoint("test.v1", {"step": 1})
+    host.save_checkpoint("test.v1", {"step": 2})
+    assert AssessmentHost(first).load_checkpoint("test.v1") == {"step": 2}
+    assert AssessmentHost(other).load_checkpoint("test.v1") is None
+    assert host.load_checkpoint("different.v1") is None
+    with transaction() as conn:
+        row = conn.execute(
+            sa.select(artifacts).where(artifacts.c.project_id == ids["project"])
+        ).mappings().all()
+    for artifact in row:
+        (host.store.root / artifact["storage_key"]).write_bytes(b"corrupted")
+    with pytest.raises(OSError, match="integrity"):
+        host.load_checkpoint("test.v1")
