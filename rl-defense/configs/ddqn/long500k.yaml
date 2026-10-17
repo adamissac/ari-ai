@@ -1,0 +1,2 @@
+steps: 500000
+eps_decay_steps: 150000

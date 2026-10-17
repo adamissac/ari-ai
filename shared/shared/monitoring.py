@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 from enum import StrEnum
+from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from shared.base import CommitSha, ShortText, StrictModel, UtcDatetime
 from shared.ids import (
     ArtifactId,
     AssessmentId,
+    IngestTokenId,
     MonitoringEventId,
     ProjectId,
     ReassessmentRequestId,
@@ -92,4 +94,78 @@ class ReassessmentRequest(StrictModel):
     status: ReassessmentStatus
     reason: ShortText
     assessment_id: AssessmentId | None = None
+    created_at: UtcDatetime
+
+
+# --------------------------------------------------------------- runtime signals (docs/10 "S")
+
+RuntimeSource = Literal["runtime_demo", "replay", "simulated"]
+"""Provenance label. There is NO production telemetry source in MVP: ``runtime_demo`` is
+the sandboxed demo target, ``replay``/``simulated`` are recorded or synthetic windows."""
+
+
+class RouteWindow(StrictModel):
+    """Aggregated counters for one route over one window (no raw logs, no payloads)."""
+
+    route: str = Field(pattern=r"^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS) /[^\s]{0,300}$")
+    requests: int = Field(ge=0, le=10_000_000)
+    status_4xx: int = Field(default=0, ge=0)
+    status_5xx: int = Field(default=0, ge=0)
+    auth_failures: int = Field(default=0, ge=0, description="401/403 responses")
+
+    @model_validator(mode="after")
+    def _bounded(self) -> RouteWindow:
+        if (
+            self.status_4xx + self.status_5xx > self.requests
+            or self.auth_failures > self.status_4xx
+        ):
+            raise ValueError("error counts exceed request counts")
+        return self
+
+
+class RuntimeSignalBatch(StrictModel):
+    source: RuntimeSource
+    repo_id: RepositoryId | None = None
+    window_start: UtcDatetime
+    window_end: UtcDatetime
+    routes: list[RouteWindow] = Field(min_length=1, max_length=500)
+
+    @model_validator(mode="after")
+    def _window(self) -> RuntimeSignalBatch:
+        seconds = (self.window_end - self.window_start).total_seconds()
+        if not 1 <= seconds <= 3600:
+            raise ValueError("window must be between 1 second and 1 hour")
+        if len({r.route for r in self.routes}) != len(self.routes):
+            raise ValueError("duplicate route in batch")
+        return self
+
+
+class RouteScore(StrictModel):
+    """Explainable per-route score against that route's own recent history."""
+
+    route: str
+    source: RuntimeSource
+    window_end: UtcDatetime
+    request_rate_z: float
+    error_ratio: float = Field(ge=0, le=1)
+    error_ratio_delta: float
+    auth_failure_ratio: float = Field(ge=0, le=1)
+    auth_failure_ratio_delta: float
+    history_windows: int = Field(ge=0)
+    alert_rate: float = Field(ge=0, description="Number of triggered rules in this window")
+    anomaly_score: float = Field(ge=0, le=1)
+    reasons: list[ShortText] = Field(default_factory=list)
+
+
+class RuntimeIngestAck(StrictModel):
+    accepted_routes: int
+    anomalies: int
+    monitoring_event_ids: list[MonitoringEventId] = Field(default_factory=list)
+    scores: list[RouteScore]
+
+
+class IngestTokenCreated(StrictModel):
+    id: IngestTokenId
+    project_id: ProjectId
+    token: str = Field(description="Shown once; only its SHA-256 is stored")
     created_at: UtcDatetime
