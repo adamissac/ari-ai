@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 from dataclasses import dataclass, field
 from importlib import resources
 from typing import Any
@@ -87,6 +88,19 @@ _CONF = {
     FindingStatus.inconclusive: 0.3,
     FindingStatus.refuted: 0.1,
 }
+
+
+_AUTHZ = re.compile(
+    r"(\bowner(ship)?\b|\bown(s)? (their|the)\b|\btenant|authori[sz]|authenticat|permission"
+    r"|access control|\bidor\b|privilege|other (customer|user|tenant)s?'?|\bonly (read|access|see|"
+    r"refund|modify|update|delete)\b.{0,40}\b(own|their)\b|cross-tenant|\brole\b)",
+    re.IGNORECASE,
+)
+
+
+def is_authorization_rule(*texts: str) -> bool:
+    """Deterministic routing: does this rule/finding concern who may access what?"""
+    return any(_AUTHZ.search(t or "") for t in texts)
 
 
 class ReviewError(Exception):
@@ -308,6 +322,7 @@ class ReviewerAgentRunner:
         )
         now = utcnow()
         findings: list[Finding] = []
+        handoffs: list[Finding] = []
 
         def spans(cits: list[CitationIn]) -> list[EvidenceRef]:
             out = []
@@ -402,6 +417,39 @@ class ReviewerAgentRunner:
                     if ex.outcome_on_base == "passed" and ex.outcome_on_head == "failed":
                         reason += "; passes on base, so the change introduced it"
             evidence.extend(decision.claim.citations[:3])
+            if is_authorization_rule(decision.claim.statement, f.title, f.rationale):
+                # Authorization/tenant rules belong to the security team: hand to Scout as a
+                # hypothesis carrying the executed test, never self-declare it validated.
+                handoffs.append(
+                    Finding(
+                        id=new_id(IdPrefix.fnd),
+                        assessment_id=request.assessment_id,
+                        snapshot_id=request.snapshot_ref.snapshot_id,
+                        commit_sha=ci.head_sha,
+                        kind=FindingKind.security,
+                        title=f"[authorization] {f.title}"[:500],
+                        status=FindingStatus.hypothesis,
+                        subject_refs=sorted({e.path for e in evidence if e.path})[:10],
+                        expectation_ids=[decision.claim.expectation_id]
+                        if decision.claim.expectation_id
+                        else [],
+                        evidence=evidence,
+                        confidence=0.7 if status is FindingStatus.validated else 0.4,
+                        produced_by_run_id=run_id,
+                        history=[
+                            StatusChange(
+                                from_status=None,
+                                to_status=FindingStatus.hypothesis,
+                                at=now,
+                                actor=ACTOR,
+                                reason=f"handoff to scout: reviewer test evidence — {reason}"[:500],
+                            )
+                        ],
+                        created_at=now,
+                        updated_at=now,
+                    )
+                )
+                continue
             level = SeverityLevel(f.severity.value)
             findings.append(
                 Finding(
@@ -445,7 +493,6 @@ class ReviewerAgentRunner:
                 )
             )
 
-        handoffs: list[Finding] = []
         for s in report.security_concerns:
             evidence = spans(s.spans)
             if not evidence:
