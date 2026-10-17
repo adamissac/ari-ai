@@ -193,3 +193,14 @@ Add dated factual entries; do not overwrite history. Never claim unexecuted test
 Branch `fix/srihith/fortify-closure-artifacts`, based on merged Devin PRs80/81 and Alan PR83. Real security and functional Verify now retain bounded, unchanged regression sources as redacted ArtifactStore archives and publish their actual canonical hardening artifact IDs. Incident eradication resolves remediation-plan approval to the same finding/project/assessment. Evidence selectors now accept options that arrive after linking a finding.
 
 Executed: focused host/unified/verification/closure54 passed; root325 passed/7 skips (optional RL dependency, global tsc unavailable, opt-in live providers); security-agent396 passed/11 optional skips; frontend32 unit tests; real PostgreSQL/API/worker/Chrome browser12 passed, including complete two-person incident lifecycle through Closed and reload. ESLint, TypeScript, production build, Ruff/format, mypy and generated contracts110-file freshness passed. Browser runs use scripted transports; no paid provider calls, deployment or individual test-node execution claim.
+
+
+## 2026-10-17 — session-8: monitor + fix across lanes
+
+- Bisected and fixed a real main regression from #100: host-mode e2e had no `SECURITY_AGENTS_LABELS`, so the reworked scripted agents saw zero expectations → `data_sensitivity="none"` → fact-derived CVSS incomplete (VC missing). PR **#107** (merged) wires `examples/payments-lite/labels.yaml`; verified 3 passed.
+- Merged green PRs per #12: #88, #99, #102, #106, #107 (plus earlier #89, #97).
+- Resolved merge conflicts on #104/#105 (CHANGELOG + lib.test.ts unions, tests green locally) and pushed to their branches.
+- Contract replies to Alan: ACK'd canonical CheckCategory (#91) and chose Option B for CVSS v3.1 (`SeverityAssessment.cvss_v31`); required backend persistence for the RoE endpoint proposal.
+- Verified M5 artifacts (`rl-defense/results/protocol-v0`) are complete and sent Adam the gate data to record.
+- Documented the `monitoring_budget` default as intentional in `shared/tenancy.py` (#101, merged) — the message asked owners to pick a fix; picked the documentation option.
+- Executed: backend+shared+monitoring 65 passed; frontend unit 23/22 passed on the merge branches.
