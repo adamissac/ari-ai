@@ -19,6 +19,7 @@ from rl_defense.envs.config import NODE_NAMES
 from rl_defense.envs.defense_sim import NEG_INF_MASK, decode_action
 from rl_defense.explain import explain
 from rl_defense.observations import from_platform_facts, mask_from_facts
+from rl_defense.standards import defensive_refs
 
 
 class PolicyRunner:
@@ -51,6 +52,7 @@ class PolicyRunner:
             policy_version=self.policy_version,
             checkpoint_sha256=self.checkpoint_sha256,
             action=name,
+            d3fend=defensive_refs(name),
             node=None if node is None else NODE_NAMES[node],
             q_margin=margin,
             top_actions=tuple(score(a) for a in order[:top_k]),

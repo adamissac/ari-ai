@@ -2,10 +2,10 @@ name: code-intelligence
 
 on:
   pull_request:
-    paths: ["code-intelligence/**", "shared/**", "backend/**", "monitoring/**", "examples/payments-lite/**", "pyproject.toml", "uv.lock", ".github/workflows/code-intelligence.yml"]
+    paths: ["standards/**", "code-intelligence/**", "shared/**", "backend/**", "monitoring/**", "examples/payments-lite/**", "pyproject.toml", "uv.lock", ".github/workflows/code-intelligence.yml"]
   push:
     branches: [main]
-    paths: ["code-intelligence/**", "shared/**", "backend/**", "monitoring/**", "pyproject.toml", "uv.lock", ".github/workflows/code-intelligence.yml"]
+    paths: ["standards/**", "code-intelligence/**", "shared/**", "backend/**", "monitoring/**", "pyproject.toml", "uv.lock", ".github/workflows/code-intelligence.yml"]
 
 permissions:
   contents: read

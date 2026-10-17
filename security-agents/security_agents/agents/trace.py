@@ -9,7 +9,9 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
+from shared.standards import CVSSAssessment, CVSSMetricValue
+from standards.cvss import vector
 
 from ..contracts import (
     AgentName,
@@ -23,6 +25,7 @@ from ..contracts import (
     StrictModel,
     ValidationResult,
 )
+from ..contracts import export as contract_export
 from ..intel import CodeIntel
 from ..runtime import AgentSpec, data_block
 
@@ -46,13 +49,16 @@ Rules:
 - Do not run anything; you have read-only tools.
 - Do not describe how to carry out an attack. Describe what is reachable and why \
 it matters, at the level of data classes and operations.
-- Every step should cite the symbol or span it concerns where one exists."""
+- Every step should cite the symbol or span it concerns where one exists.
+- Optional CVSS base metrics require ALL eleven metrics with an executed validation artifact for each. Omit them if any metric is uncertain; the custom severity factors do not determine CVSS. Never provide a numeric score."""
 
 
 class TraceInput(StrictModel):
+    check_category: str = ""
     assessment_id: str
     finding_id: str
     validation_result_id: str
+    sandbox_run_id: str | None = None
     hypothesis_title: ShortText
     weakness_class: str
     confirmed_outcome: str
@@ -75,6 +81,20 @@ class PathStepOut(StrictModel):
 
 
 class TraceOutput(StrictModel):
+    cvss_metrics: dict[str, str] | None = Field(
+        default=None,
+        description="Optional complete CVSS v4 base metrics, each backed by an executed evidence artifact. Never supply a score.",
+    )
+    cvss_metric_artifacts: dict[str, str] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _complete_cvss(self) -> TraceOutput:
+        if self.cvss_metrics is not None:
+            vector(self.cvss_metrics)
+            if set(self.cvss_metrics) != set(self.cvss_metric_artifacts):
+                raise ValueError("Every explicit CVSS metric needs its supporting artifact")
+        return self
+
     steps: list[PathStepOut] = Field(min_length=1, max_length=12)
     preconditions: list[ShortText] = Field(default_factory=list, max_length=8)
     impact_summary: ShortText
@@ -191,6 +211,7 @@ def to_attack_path(
                 symbol_ref=item.symbol_ref,
                 verified=verified,
                 evidence=evidence,
+                attack=_reviewed_attack(data, out, evidence) if verified else [],
             )
         )
     factors = SeverityFactors(
@@ -203,6 +224,7 @@ def to_attack_path(
         level=compute_severity(factors),
         factors=factors,
         rationale=out.severity_rationale[:2000],
+        cvss=_cvss(out, validation),
     )
     path = AttackPath(
         finding_id=data.finding_id,
@@ -211,3 +233,53 @@ def to_attack_path(
         impact_summary=out.impact_summary,
     )
     return path, severity
+
+
+def _cvss(out: TraceOutput, validation: ValidationResult | None) -> CVSSAssessment | None:
+    """Compute a provisional score from explicitly labeled model assumptions.
+
+    The custom severity factors do not establish CVSS base metrics. An artifact
+    citation provides provenance for analyst-proposed metrics, not automatic proof
+    that the interpretation of every metric is correct.
+    """
+    if out.cvss_metrics is None or validation is None or not validation.sandbox_run_id:
+        return None
+    if any(artifact != validation.sandbox_run_id for artifact in out.cvss_metric_artifacts.values()):
+        return None
+    evidence = [contract_export.evidence_ref(ref, producer="agent:trace") for ref in validation.evidence]
+    if not evidence:
+        return None
+    from standards.cvss_assess import assess
+
+    from ..contracts import utcnow
+
+    return assess(
+        {},
+        now=utcnow(),
+        overrides={
+            metric: CVSSMetricValue(
+                metric=metric,
+                value=value,
+                basis="assumption",
+                rationale=(
+                    "Model-proposed metric; the cited run supplies context, not proof of this metric. Human review required. "
+                    + out.severity_rationale
+                )[:500],
+                evidence=evidence,
+            )
+            for metric, value in out.cvss_metrics.items()
+        },
+        assessor="agent:trace:provisional-metric-assumptions",
+    )
+
+
+def _reviewed_attack(data: TraceInput, out: TraceOutput, evidence: list[EvidenceRef]) -> list:
+    from shared.standards import Observation
+    from standards.mapping import attack_for_check
+
+    return attack_for_check(
+        data.check_category,
+        {"reachability": out.reachability},
+        observation=Observation.observed_in_sandbox,
+        evidence=[contract_export.evidence_ref(ref, producer="agent:trace") for ref in evidence],
+    )[0]

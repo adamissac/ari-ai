@@ -1,10 +1,10 @@
 name: containers
 on:
   pull_request:
-    paths: ["backend/Dockerfile", ".dockerignore", "pyproject.toml", "uv.lock", "shared/**", "backend/**", "code-intelligence/**", "code-review/**", "security-agents/**", "tests/packaging/**", ".github/workflows/containers.yml"]
+    paths: ["backend/Dockerfile", ".dockerignore", "pyproject.toml", "uv.lock", "shared/**", "backend/**", "code-intelligence/**", "code-review/**", "security-agents/**", "standards/**", "tests/packaging/**", ".github/workflows/containers.yml"]
   push:
     branches: [main]
-    paths: ["backend/Dockerfile", ".dockerignore", "pyproject.toml", "uv.lock", "shared/**", "backend/**", "code-intelligence/**", "code-review/**", "security-agents/**", "tests/packaging/**", ".github/workflows/containers.yml"]
+    paths: ["backend/Dockerfile", ".dockerignore", "pyproject.toml", "uv.lock", "shared/**", "backend/**", "code-intelligence/**", "code-review/**", "security-agents/**", "standards/**", "tests/packaging/**", ".github/workflows/containers.yml"]
 permissions:
   contents: read
 jobs:
