@@ -8,9 +8,13 @@ import { HowItWorks, ProblemScene, ProofStats, Walkthrough } from '@/components/
 import { HeroStage, useLoopCursor } from '@/components/hero';
 import { IntroLoader } from '@/components/intro-loader';
 import { UserBar } from '@/components/user-bar';
+import { DEMO_ONLY } from '@/lib/deployment';
 import { RollText } from '@/components/ui';
 
 const LOOP = ['Understand', 'Review', 'Attack safely', 'Diagnose', 'Repair', 'Verify', 'Monitor'];
+
+// A demo-only build has no backend, so the calls to action open the simulated demo instead.
+const START = DEMO_ONLY ? { href: '/demo', hero: 'Try the demo', end: 'Try the demo' } : { href: '/projects', hero: 'Go to projects', end: 'Open projects' };
 
 const i = (n: number) => ({ '--i': n }) as CSSProperties;
 
@@ -35,8 +39,8 @@ export default function HomePage() {
             and only calls a repair done when independent, executed tests agree.
           </p>
           <div className="hero-in mt-8 flex flex-wrap gap-2" style={i(4)}>
-            <Link href="/projects" className="group label-mono inline-flex h-10 items-center rounded-md bg-white px-4 text-ink transition-colors duration-[250ms] hover:bg-brand hover:text-on-brand">
-              <RollText>Go to projects</RollText>
+            <Link href={START.href} className="group label-mono inline-flex h-10 items-center rounded-md bg-white px-4 text-ink transition-colors duration-[250ms] hover:bg-brand hover:text-on-brand">
+              <RollText>{START.hero}</RollText>
             </Link>
             <a href="#how" className="group label-mono inline-flex h-10 items-center rounded-md bg-white/10 px-4 text-white backdrop-blur transition-colors duration-[250ms] hover:bg-white/20">
               <RollText>How it works</RollText>
@@ -53,7 +57,7 @@ export default function HomePage() {
       </HeroStage>
 
       <div className="hero-cover -mb-6 pb-30 pt-6 md:pb-38">
-        <UserBar />
+        {!DEMO_ONLY && <UserBar />}
 
         <ProblemScene />
         <HowItWorks />
@@ -65,8 +69,8 @@ export default function HomePage() {
             <h2 id="start-title" className="display max-w-2xl text-3xl font-semibold md:text-4xl">See it on a real change.</h2>
             <p className="mt-3 max-w-xl text-sm text-white/75">Open a project to connect a repository and start an assessment, or explore how the defense policy was evaluated.</p>
             <div className="mt-6 flex flex-wrap gap-2">
-              <Link href="/projects" className="group label-mono inline-flex h-10 items-center rounded-md bg-white px-4 text-ink transition-colors duration-[250ms] hover:bg-brand hover:text-on-brand">
-                <RollText>Open projects</RollText>
+              <Link href={START.href} className="group label-mono inline-flex h-10 items-center rounded-md bg-white px-4 text-ink transition-colors duration-[250ms] hover:bg-brand hover:text-on-brand">
+                <RollText>{START.end}</RollText>
               </Link>
               <Link href="/lab" className="group label-mono inline-flex h-10 items-center rounded-md bg-white/10 px-4 text-white transition-colors duration-[250ms] hover:bg-white/20">
                 <RollText>Defense Lab</RollText>
