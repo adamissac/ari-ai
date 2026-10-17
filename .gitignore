@@ -58,3 +58,6 @@ artifacts/
 *.sqlite
 *.db
 logs/
+
+# --- security-agents local dev ---
+security-agents/.venv/
