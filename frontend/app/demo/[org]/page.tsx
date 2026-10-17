@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Avatar, DemoBar, VerdictChip } from '@/components/demo/ui';
 import { Empty } from '@/components/ui';
-import { DEMO_ORGS, relativeTime, reposFor } from '@/lib/demo/data';
+import { CONNECTED_DAYS_AGO, DEMO_ORGS, relativeTime, reposFor } from '@/lib/demo/data';
 import { useDemoGate } from '@/lib/demo/gate';
 
 const LANG_DOT: Record<string, string> = { Python: '#3572A5', TypeScript: '#3178c6', Rust: '#dea584', Go: '#00ADD8' };
@@ -23,7 +23,7 @@ export default function DemoReposPage() {
         <Avatar login={login} size={48} />
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">{org?.name ?? login}</h1>
-          <p className="mt-0.5 text-sm text-muted">Choose a repository to see its recent commits and what {repos.length === 1 ? 'was' : 'each was'} found.</p>
+          <p className="mt-0.5 text-sm text-muted">Connected to Ari {CONNECTED_DAYS_AGO} days ago · {repos.length} {repos.length === 1 ? 'repository' : 'repositories'} watched. Open one to see every commit since.</p>
         </div>
       </header>
       {repos.length === 0 ? <Empty>No repositories in this organization.</Empty> : (
