@@ -639,3 +639,40 @@ def test_fortify_without_added_tests_promotes_nothing(intel):
     )
     tests, recs, _, _ = fortify_agent.to_records(out, data, intel)
     assert tests == [] and len(recs) == 1
+
+
+def test_verify_later_run_does_not_mask_added_test_failure():
+    runs = [
+        {"selection": "added_tests", "passed": 0, "failed": 1,
+         "failing_tests": ["tests/test_authz.py::test_denied"], "errors": 0, "sandbox_run_id": "s1"},
+        {"selection": "project_suite", "passed": 9, "failed": 0,
+         "failing_tests": [], "errors": 0, "sandbox_run_id": "s2"},
+    ]
+    verdict, checks, reasons = verify_agent.compute_verdict(evidence(test_runs=runs))
+    assert verdict == "rejected"
+    assert not next(c for c in checks if c.name is VerificationCheckName.GENERATED_TESTS_PASS).passed
+    assert any("tests/test_authz.py::test_denied" in r for r in reasons)
+
+
+def test_verify_later_suite_run_does_not_mask_earlier_suite_failure():
+    runs = [
+        {"selection": "project_suite", "passed": 8, "failed": 1,
+         "failing_tests": ["tests/test_payments.py::test_x"], "errors": 0, "sandbox_run_id": "s1"},
+        {"selection": "project_suite", "passed": 9, "failed": 0,
+         "failing_tests": [], "errors": 0, "sandbox_run_id": "s2"},
+    ]
+    verdict, checks, _ = verify_agent.compute_verdict(evidence(test_runs=runs))
+    assert verdict == "rejected"
+    assert not next(c for c in checks if c.name is VerificationCheckName.FUNCTIONAL_SUITE_PASSES).passed
+
+
+def test_verify_later_suite_run_does_not_mask_collection_errors():
+    runs = [
+        {"selection": "project_suite", "passed": 3, "failed": 0,
+         "failing_tests": [], "errors": 2, "sandbox_run_id": "s1"},
+        {"selection": "project_suite", "passed": 9, "failed": 0,
+         "failing_tests": [], "errors": 0, "sandbox_run_id": "s2"},
+    ]
+    verdict, _, reasons = verify_agent.compute_verdict(evidence(test_runs=runs))
+    assert verdict == "rejected"
+    assert any("collection errors" in r for r in reasons)
