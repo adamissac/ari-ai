@@ -45,7 +45,7 @@ function RepositoryHistory({ repo, projectId }: { repo: Repository; projectId: s
         {!runs.length && <p className="text-sm text-muted">No matching run in the loaded history. Start an authorized analysis to create one.</p>}
         {(records.data.snapshots.next_cursor || records.data.assessments.next_cursor) && <p className="text-xs text-muted">Showing up to 100 recent snapshots and the latest assessment page; older runs may not appear here.</p>}
         {records.refreshError !== undefined && <p role="status" className="text-xs text-warn">Could not refresh. These are the last loaded records.</p>}
-        <Link className="commit-analyze" href={`/projects/${projectId}/simulate?repo=${encodeURIComponent(repo.full_name)}&sha=${sha}`}>Analyze this commit <span aria-hidden="true">→</span></Link>
+        <Link className="commit-analyze" href={`/connect/${repo.full_name.split('/').map(encodeURIComponent).join('/')}/commit/${sha}`}>Analyze this commit <span aria-hidden="true">→</span></Link>
       </>}
     </div></div>
   </section>;

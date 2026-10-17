@@ -28,8 +28,8 @@ function Simulation() {
   if (!repo || !sim) return <Empty>Connect a repository to run a simulated attack.</Empty>;
   if (sha && commits.status === 'loading') return <Loading label="Loading the commit" />;
   return (
-    <div data-testid="simulated-attack">
-      <div className="mb-4 flex flex-wrap items-start gap-3 rounded-xl border border-line bg-panel-2 px-4 py-3 text-sm" data-testid="simulated-attack-note">
+    <div data-testid="simulated-attack" className="commit-stage">
+      <div className="glass mb-6 flex flex-wrap items-start gap-3 px-4 py-3 text-sm" data-testid="simulated-attack-note">
         <DemoMarker />
         <p className="min-w-0 flex-1 text-muted">
           In this simulated run, Ari AI&apos;s Probe agent performs <span className="text-ink">{sim.attack}</span> against an illustrative copy of <span className="font-mono text-ink">{repo.full_name}</span>{real && <> at <span className="font-mono text-ink">{real.sha.slice(0, 7)}</span></>}.

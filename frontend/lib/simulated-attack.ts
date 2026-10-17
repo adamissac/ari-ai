@@ -17,7 +17,12 @@ const ATTACK_NAME: Record<(typeof ATTACKS)[number], string> = {
 };
 
 /** A real commit to frame the replay around (its SHA, message and author are shown as-is). */
-export interface RealCommit { sha: string; message: string; author: string }
+export interface RealCommit { sha: string; message: string; author: string; committed_at?: string | null }
+
+export function minutesSince(iso: string | null | undefined, now = Date.now()): number {
+  const t = iso ? Date.parse(iso) : NaN;
+  return Number.isFinite(t) ? Math.max(0, Math.round((now - t) / 60000)) : 0;
+}
 
 export function simulatedAttack(fullName: string, defaultBranch: string, real?: RealCommit): SimulatedAttack {
   const [owner = fullName, name = fullName] = fullName.split('/');
@@ -31,7 +36,7 @@ export function simulatedAttack(fullName: string, defaultBranch: string, real?: 
     message: real?.message ?? `Simulated attack on ${fullName}`,
     body: `Probe attempted ${ATTACK_NAME[scenario]} against an illustrative service; Patch, Fortify and Verify closed it.`,
     author: real?.author ?? 'ari-red-team',
-    minutesAgo: 0,
+    minutesAgo: minutesSince(real?.committed_at),
     branch: defaultBranch,
   };
   return {
