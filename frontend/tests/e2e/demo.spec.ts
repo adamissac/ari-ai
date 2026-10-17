@@ -19,6 +19,12 @@ test('demo account: access code, Lumen Pay, repo, commit, seven agents, review, 
   await signInWithCode(page);
   await expect(page.getByTestId('demo-orgs')).toBeVisible();
   await expect(page.getByTestId('demo-account-tag').first()).toContainText('Demo account');
+  await expect(page.getByTestId('demo-account-tag').first()).toHaveAttribute('title', /recorded live run is saved evidence.*not account activity/);
+  await expect(page.getByTestId('site-footer')).toContainText('not sample data or a run happening now');
+  await expect(page.getByTestId('recorded-live-run')).toContainText('does not establish red-to-green proof');
+  await page.setViewportSize({ width: 375, height: 800 });
+  await expectNoSideScroll(page);
+  await page.setViewportSize({ width: 1280, height: 800 });
   await expect(page.getByTestId('header-account')).toContainText('alex-rivera');
   await page.getByTestId('demo-org-lumen-pay').click();
   await expect(page.getByTestId('demo-repos')).toContainText('payments-api');
