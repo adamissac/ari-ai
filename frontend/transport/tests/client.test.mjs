@@ -73,3 +73,20 @@ test('logout accepts 204 and clears mutation credentials', async () => {
   await api.logout();
   await assert.rejects(api.approveScope('scp_12345678'), ProtocolError);
 });
+
+test('incident methods keep scoped paths, typed envelopes and explicit CSRF mutations', async () => {
+  const calls = [];
+  const client = new ApiClient({ baseUrl: 'http://localhost/api/v1', fetch: async (url, init) => {
+    calls.push({ url, init });
+    if (url.endsWith('/me')) return json(me);
+    if (init.method === 'GET' && url.endsWith('/incidents')) return json({ items: [], next_cursor: null });
+    return json({ error: { code: 'APPROVAL_REQUIRED', message: 'Human approval required', details: {}, request_id: null } }, 403);
+  }});
+  await client.session();
+  assert.deepEqual(await client.incidents('prj_12345678'), { items: [], next_cursor: null });
+  await assert.rejects(client.actOnIncident('inc_12345678', { kind: 'transition', target_state: 'containment' }), e => e instanceof ApiError && e.status === 403);
+  assert.equal(calls.at(-1).url, 'http://localhost/api/v1/incidents/inc_12345678/actions');
+  assert.equal(calls.at(-1).init.headers.get('X-CSRF-Token'), 'test-csrf');
+  assert.equal(JSON.parse(calls.at(-1).init.body).target_state, 'containment');
+  assert.throws(() => client.incident('../escape'), ProtocolError);
+});
