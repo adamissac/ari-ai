@@ -5,8 +5,20 @@ import { parseUnifiedDiff } from '@/lib/diff';
 import { duration, githubLink, relativeTime, shortSha } from '@/lib/format';
 import { domain, metricRows, rewardTotals, sampleSize } from '@/lib/lab';
 import type { DefenseLabBundle, LabEpisode } from '@/lib/lab-types';
+import { matchExpectationStatements } from '@/lib/expectations';
 import { SCOPE_CHECK_CATEGORIES } from '@/lib/scope';
 import { ASSESSMENT_STATE, FINDING_STATUS, providerLabel, railSteps } from '@/lib/status';
+
+describe('finding expectations', () => {
+  it('keeps an id visible when the snapshot has no matching statement', () => {
+    const rows = matchExpectationStatements(
+      ['exp_known', 'exp_missing'],
+      [{ id: 'exp_known', statement: 'A customer can only read their own payment.', status: 'confirmed' }],
+    );
+    expect(rows[0]).toEqual({ id: 'exp_known', statement: 'A customer can only read their own payment.', status: 'confirmed' });
+    expect(rows[1]).toEqual({ id: 'exp_missing', statement: null, status: null });
+  });
+});
 
 describe('state rail', () => {
   it('marks only states the run actually entered as done; jumped-over states are skipped', () => {
