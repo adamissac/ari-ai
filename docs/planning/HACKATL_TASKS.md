@@ -189,3 +189,7 @@ failures, force live calls off, and keep generated reports out of tracked eviden
 Runner semantics covered by `tests/qa/test_m7_runner.py`.
 
 Issue #148 status: DONE via PR #150, merged `1129434`; all executable CI checks passed on combined head `91cea8c`. Historical references remain immutable.
+
+### Ari logo integration — #165 / #169
+
+Sarosh, `feat/sarosh/ari-logo`: IN_PROGRESS. Owner-supplied source preserved; shared mark, hero, intro and browser icon integrated using Sai published UI guidance as a reversible default (no direct sign-off). Unit71, tsc and lint passed; final real-stack browser validation pending.
