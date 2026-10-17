@@ -268,3 +268,8 @@ reduced-motion fallback and phone Menu access. Other pages retain full navigatio
 Lint/typecheck/demo-only production build passed; 219 unit tests and 5 responsive
 browser tests passed, including top/reveal/return, account position and focus checks.
 No hero or other product sections changed. No push/deployment.
+
+
+### UI-PROVENANCE — Sarosh (2026-10-17)
+
+Implemented on `feat/sarosh/demo-provenance-labels`, PR [#282](https://github.com/adamissac/ari-ai/pull/282): #278 real commit metadata label; #262 sample-account/recorded-evidence boundaries, historical proof caveat and current runbook; #273 UI-only drill provenance. Backend #273 concerns remain open. Verification and integration status: [SAROSH.md](../../coordination/status/SAROSH.md).

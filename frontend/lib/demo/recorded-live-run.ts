@@ -38,5 +38,6 @@ export const RECORDED_LIVE_RUN = {
     'One run on one owned fixture',
     'Local-process sandbox, not Docker',
     'Remediation approved automatically by the CLI, not by a person',
+    'The new regression test was not run on the unpatched snapshot; this recording does not establish red-to-green proof',
   ],
 } as const;
