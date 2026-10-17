@@ -87,12 +87,12 @@ export function ReplayStage({ episode, scenario }: { episode: LabEpisode; scenar
       <div className="lab-player">
         <div className="lab-controls">
           <button type="button" className="lab-ctl" onClick={() => prevMoment && seek(prevMoment.t)} disabled={!prevMoment} aria-label="Previous key moment">⏮</button>
-          <button type="button" className="lab-ctl lab-ctl-main" onClick={() => { if (!playing && t >= steps - 1) setT(0); setPlaying(p => !p); }} aria-pressed={playing}>{playing ? 'Pause' : t >= steps - 1 ? 'Replay' : 'Play'}</button>
+          <button type="button" className="lab-ctl lab-ctl-main" onClick={() => { if (!playing && t >= steps - 1) setT(0); setPlaying(p => !p); }}>{playing ? 'Pause' : t >= steps - 1 ? 'Replay' : 'Play'}</button>
           <button type="button" className="lab-ctl" onClick={() => nextMoment && seek(nextMoment.t)} disabled={!nextMoment} aria-label="Next key moment">⏭</button>
           <div role="group" aria-label="Speed" className="lab-segment lab-segment-sm">
             {SPEEDS.map((sp, i) => <button key={sp.label} type="button" aria-pressed={speed === i} onClick={() => setSpeed(i)} className="lab-segment-btn">{sp.label}</button>)}
           </div>
-          <input aria-label="Step" type="range" min={0} max={Math.max(0, steps - 1)} value={t} onChange={e => seek(Number(e.target.value))} className="order-last min-w-0 basis-full accent-[var(--color-brand)] sm:order-none sm:basis-0 sm:flex-1" />
+          <input aria-label="Step" aria-valuetext={`Step ${step?.t ?? t} of ${scenario.horizon}`} type="range" min={0} max={Math.max(0, steps - 1)} value={t} onChange={e => seek(Number(e.target.value))} className="order-last min-w-0 basis-full accent-[var(--color-brand)] sm:order-none sm:basis-0 sm:flex-1" />
           <span className="font-mono text-xs text-muted">t = {step?.t ?? 0} / {scenario.horizon}</span>
         </div>
         <Timeline episode={episode} moments={moments} t={t} onSeek={seek} truth={truth} />
@@ -235,7 +235,7 @@ function Timeline({ episode, moments, t, onSeek, truth }: { episode: LabEpisode;
         <span><Swatch c="#1c1210" /> disruptive AI action (slow / cut off) <Swatch c="#9a857f" /> other AI action</span>
         <span><Swatch c="#c2452d" o={0.5} w /> moment a service turned suspicious</span>
         {truth && <span><Swatch c={STAGE_FILL.foothold} /> <Swatch c={STAGE_FILL.escalated} /> <Swatch c={STAGE_FILL.impact} /> hidden attacker progress (truth, not seen by the defender)</span>}
-        <span>Click to jump.</span>
+        <span>Click to jump, or use the Step slider.</span>
       </figcaption>
     </figure>
   );
