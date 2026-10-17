@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { cloneElement, isValidElement, useId, type ButtonHTMLAttributes, type ReactElement, type ReactNode } from 'react';
 import { describeError } from '@/lib/api';
 import type { Resource } from '@/lib/use-resource';
 import type { StatusView, Tone } from '@/lib/status';
@@ -93,13 +93,16 @@ export function Time({ iso }: { iso: string | null | undefined }) {
   return <time dateTime={iso} title={formatTime(iso)} className="whitespace-nowrap">{relativeTime(iso)}</time>;
 }
 
-export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+/** Label and hint are tied to the control by id, so its accessible name is only the label. */
+export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactElement<{ id?: string; 'aria-describedby'?: string }> }) {
+  const id = useId();
+  const control = isValidElement(children) ? cloneElement(children, { id, ...(hint ? { 'aria-describedby': `${id}-hint` } : {}) }) : children;
   return (
-    <label className="flex flex-col gap-1 text-sm">
-      <span className="text-muted">{label}</span>
-      {children}
-      {hint && <span className="text-xs text-faint">{hint}</span>}
-    </label>
+    <div className="flex flex-col gap-1 text-sm">
+      <label htmlFor={id} className="text-muted">{label}</label>
+      {control}
+      {hint && <span id={`${id}-hint`} className="text-xs text-faint">{hint}</span>}
+    </div>
   );
 }
 

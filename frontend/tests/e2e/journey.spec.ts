@@ -84,10 +84,11 @@ test('one real assessment from scope approval to verified patch', async ({ brows
 test('signed GitHub push appears in the monitoring feed', async ({ browser, request }) => {
   const page = await newUser(browser, 'e2e-alice');
   const payload = {
-    ref: 'refs/heads/main', before: 'a'.repeat(40), after: 'c'.repeat(40), forced: false, deleted: false,
+    // A docs-only push: monitoring must record it, and the default policy skips re-assessment.
+    ref: 'refs/heads/main', before: env('E2E_COMMIT'), after: env('E2E_COMMIT'), forced: false, deleted: false,
     repository: { full_name: env('E2E_REPO'), id: 1 }, sender: { login: 'dev' },
     head_commit: { timestamp: new Date().toISOString(), message: 'e2e push' },
-    commits: [{ added: [], modified: ['target/payments_lite/app.py'], removed: [] }],
+    commits: [{ added: [], modified: ['docs/notes.md'], removed: [] }],
   };
   const raw = JSON.stringify(payload);
   const signature = `sha256=${createHmac('sha256', env('E2E_WEBHOOK_SECRET')).update(raw).digest('hex')}`;
@@ -113,6 +114,6 @@ test('create a project and connect a repository through the UI', async ({ browse
   await expect(page.getByText('No repository connected.')).toBeVisible();
   await page.getByLabel('owner/name').fill('acme/another-repo');
   await page.getByRole('button', { name: 'Connect' }).click();
-  await expect(page.getByText('acme/another-repo')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Repositories' }).getByText('acme/another-repo')).toBeVisible();
   await expect(page.getByText('No assessments yet.')).toBeVisible();
 });

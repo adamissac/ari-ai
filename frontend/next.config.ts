@@ -8,6 +8,9 @@ if (!/^https?:\/\/[^/?#@]+$/.test(backend)) throw new Error('BACKEND_ORIGIN must
 
 const config: NextConfig = {
   reactStrictMode: true,
+  // gzip buffers proxied text/event-stream responses, so live assessment events would
+  // arrive only when the stream closes. Leave compression to a fronting proxy.
+  compress: false,
   poweredByHeader: false,
   // The transport package is a symlinked local workspace dependency.
   turbopack: { root: path.resolve(import.meta.dirname, '..') },
