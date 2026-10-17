@@ -190,9 +190,7 @@ def changed_paths(base_root: Path, new_root: Path) -> list[str]:
     new = set(_iter_files(new_root))
     out = []
     for rel in sorted(base | new):
-        if rel not in base or rel not in new:
-            out.append(rel)
-        elif (base_root / rel).read_bytes() != (new_root / rel).read_bytes():
+        if rel not in base or rel not in new or (base_root / rel).read_bytes() != (new_root / rel).read_bytes():
             out.append(rel)
     return out
 

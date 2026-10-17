@@ -241,7 +241,7 @@ class ToolRegistry:
             ok = not bool(payload.get("error"))
         except PlatformError:
             raise
-        except Exception as exc:  # noqa: BLE001 - tool failures are data for the model
+        except Exception as exc:
             ctx.audit.emit(
                 "tool.error", agent=ctx.agent.value, tool=name, run_id=ctx.run_id,
                 error=f"{type(exc).__name__}: {exc}"[:300],

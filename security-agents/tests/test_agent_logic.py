@@ -12,6 +12,7 @@ from security_agents.agents import scout as scout_agent
 from security_agents.agents import trace as trace_agent
 from security_agents.agents import verify as verify_agent
 from security_agents.contracts import (
+    AgentName,
     Confidence,
     SeverityFactors,
     SeverityLevel,
@@ -19,7 +20,6 @@ from security_agents.contracts import (
     VerificationCheckName,
 )
 from security_agents.runtime import StepRecord
-from security_agents.contracts import AgentName
 
 # --------------------------------------------------------------------------- scout
 
@@ -542,7 +542,7 @@ class _IntelStub:
     snapshot = _Snap()
 
     def expectations(self, subject=None):
-        from security_agents.contracts import BehavioralExpectation, Confidence
+        from security_agents.contracts import BehavioralExpectation
 
         return [
             BehavioralExpectation(

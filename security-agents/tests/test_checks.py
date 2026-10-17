@@ -11,8 +11,8 @@ import pytest
 
 from security_agents.checks.library import BOUNDS, OWNERSHIP, default_library, empty_library
 from security_agents.contracts import AgentName, ErrorCode, PlatformError
-from security_agents.tools import CheckRunner, recipe_from_snapshot
 from security_agents.scope_guard import Decision
+from security_agents.tools import CheckRunner, recipe_from_snapshot
 
 from .conftest import NOW, TARGET_ID, make_ctx, make_scope
 

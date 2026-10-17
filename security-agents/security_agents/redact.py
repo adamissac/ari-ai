@@ -7,13 +7,16 @@ from typing import Any
 
 REDACTED = "[REDACTED]"
 
+# Token shapes are matched WITHOUT a leading word boundary: a secret glued to
+# other characters (e.g. inside a longer string or a URL) must still be removed.
+# Over-redaction is the safe direction here.
 _PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"sk-ant-[A-Za-z0-9_\-]{8,}"),
-    re.compile(r"\bsk-[A-Za-z0-9]{20,}"),
-    re.compile(r"\bgh[pousr]_[A-Za-z0-9]{20,}"),
-    re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}"),
-    re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
-    re.compile(r"\bxox[abpr]-[A-Za-z0-9\-]{10,}"),
+    re.compile(r"sk-[A-Za-z0-9]{20,}"),
+    re.compile(r"github_pat_[A-Za-z0-9_]{20,}"),
+    re.compile(r"gh[pousr]_[A-Za-z0-9]{20,}"),
+    re.compile(r"AKIA[0-9A-Z]{16}"),
+    re.compile(r"xox[abpr]-[A-Za-z0-9\-]{10,}"),
     re.compile(
         r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----", re.DOTALL
     ),
@@ -30,9 +33,7 @@ _PATTERNS: list[re.Pattern[str]] = [
 def redact_text(text: str) -> str:
     out = text
     for pat in _PATTERNS:
-        if pat.groups >= 2:
-            out = pat.sub(lambda m: m.group(1) + REDACTED, out)
-        elif pat.groups == 1:
+        if pat.groups >= 2 or pat.groups == 1:
             out = pat.sub(lambda m: m.group(1) + REDACTED, out)
         else:
             out = pat.sub(REDACTED, out)
