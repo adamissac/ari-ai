@@ -92,7 +92,7 @@ The problem left is **seed instability**: for the winner, seeds 11 and 12 reach 
 −37.6 while seed 10 gets −95.5 (54% compromise at ×1). With 3 seeds that also makes the
 selection itself noisy. So before using the final seeds, round 3 targets variance.
 
-### Round 3 — seed stability ([table](results/r3.md))
+### Round 3 — seed stability (table: `results/r3.md`, written when the round finishes)
 
 Candidates, all at lr 3e-4, 1M steps, DR ×0.5–2.5: the round-2 winner (reference);
 in-training checkpoint selection (`select_every: 50000` from 300k steps, scored on training
