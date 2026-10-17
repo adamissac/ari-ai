@@ -1242,39 +1242,18 @@ def _tests_passed(result: dict[str, Any] | None) -> bool:
 
 
 def _functional_reproduced(result: dict[str, Any] | None, tests: list[str]) -> bool:
-    """Only a complete pytest-failed run counts as reproduction.
+    """Only a complete pytest-failed run counts as reproduction (shared predicate, see
+    ``verify.clean_reproduction``)."""
+    from .agents.verify import clean_reproduction
 
-    Partial output from a hang, timeout, or interrupted/collection-error run
-    (exit 2+, ``timed_out``, tool ``error``) is not proof the defect reproduced.
-    """
-    if (
-        not tests
-        or not result
-        or result.get("error")
-        or result.get("errors")
-        or result.get("timed_out")
-        or result.get("exit_code") != 1
-        or not result.get("sandbox_run_id")
-        or not result.get("failed")
-        or _pytest_list_truncated(result)
-    ):
-        return False
-    failed_paths = {node.split("::", 1)[0] for node in result.get("failing_tests", [])}
-    return set(tests) <= failed_paths
+    return clean_reproduction(result, tests)
 
 
 def _pytest_list_truncated(result: dict[str, Any] | None) -> bool:
     """True when pytest reported more failures than the retained node-id list."""
-    if not result:
-        return False
-    if result.get("failing_truncated"):
-        return True
-    failing = result.get("failing_tests") or []
-    try:
-        failed = int(result.get("failed") or 0)
-    except (TypeError, ValueError):
-        return False
-    return failed > len(failing)
+    from .agents.verify import pytest_list_truncated
+
+    return pytest_list_truncated(result)
 
 
 def _recipe_strip_prefix(root: Path, paths: list[str]) -> str:

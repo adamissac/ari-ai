@@ -225,6 +225,67 @@ def http_recheck_evidence(ev: VerifyEvidence, verdict: str) -> dict[str, Any] | 
     }
 
 
+def pytest_list_truncated(result: dict[str, Any] | None) -> bool:
+    """True when pytest reported more failures than the retained node-id list."""
+    if not result:
+        return False
+    if result.get("failing_truncated"):
+        return True
+    failing = result.get("failing_tests") or []
+    try:
+        failed = int(result.get("failed") or 0)
+    except (TypeError, ValueError):
+        return False
+    return failed > len(failing)
+
+
+def clean_reproduction(result: dict[str, Any] | None, tests: list[str]) -> bool:
+    """Only a complete pytest-failed run counts as reproduction (shared by the security and
+    functional Verify paths).
+
+    Partial output from a hang, timeout, or interrupted/collection-error run (exit 2+,
+    ``timed_out``, pytest ``errors``, tool ``error``) is not proof the defect reproduced.
+    Every added test file must have at least one failing test.
+    """
+    if (
+        not tests
+        or not result
+        or result.get("error")
+        or result.get("errors")
+        or result.get("timed_out")
+        or result.get("exit_code") != 1
+        or not result.get("sandbox_run_id")
+        or not result.get("failed")
+        or pytest_list_truncated(result)
+    ):
+        return False
+    failed_paths = {node.split("::", 1)[0] for node in result.get("failing_tests", [])}
+    return set(tests) <= failed_paths
+
+
+def _unpatched_problem(run: dict[str, Any] | None, tests: list[str]) -> str | None:
+    """Why the unpatched run does not prove the added tests reproduce the finding, or None."""
+    if not run:
+        return "the added tests could not be run on the unpatched code, so it is unproven that they reproduce the finding"
+    if run.get("error"):
+        return f"the run on the unpatched code failed to execute ({run.get('error')}), so reproduction is unproven"
+    if run.get("timed_out"):
+        return "the run on the unpatched code timed out, so reproduction is unproven"
+    if run.get("errors"):
+        return f"the run on the unpatched code had collection/setup errors ({run.get('errors')}), so reproduction is unproven"
+    if pytest_list_truncated(run):
+        return "the failing-test list from the unpatched run was truncated, so reproduction is unproven"
+    if run.get("exit_code") not in (0, 1):
+        return f"the run on the unpatched code exited {run.get('exit_code')}, so reproduction is unproven"
+    failed_paths = {node.split("::", 1)[0] for node in run.get("failing_tests", [])}
+    if not (set(tests) & failed_paths):
+        return "the added tests already pass on the unpatched code, so they do not reproduce the finding"
+    if not clean_reproduction(run, tests):
+        missing = sorted(set(tests) - failed_paths)
+        return f"not every added test file fails on the unpatched code ({missing}), so they do not all reproduce the finding"
+    return None
+
+
 def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], list[str]]:
     """Deterministic verdict rules (docs/agents/INDEPENDENT_VERIFY.md).
 
@@ -422,30 +483,19 @@ def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], l
                 )
             elif ev.unpatched_added_runs is not None:
                 # A regression test must reproduce the finding: it fails on the unpatched code
-                # and passes after the patch. Without the failing half it proves nothing.
-                red_runs = [r for r in ev.unpatched_added_runs if not r.get("error")]
-                red = sorted(
-                    f
-                    for r in red_runs
-                    for f in (r.get("failing_tests") or [])
-                    if any(f.startswith(t) for t in ev.tests_added)
-                )
-                red_artifact = str(red_runs[-1].get("sandbox_run_id") or "") if red_runs else None
-                if not red_runs:
-                    add(
-                        VerificationCheckName.GENERATED_TESTS_PASS,
-                        False,
-                        "the added tests could not be run on the unpatched code, so it is unproven that they reproduce the finding",
-                        artifact,
-                    )
-                elif not red:
-                    add(
-                        VerificationCheckName.GENERATED_TESTS_PASS,
-                        False,
-                        "the added tests already pass on the unpatched code, so they do not reproduce the finding",
-                        red_artifact,
-                    )
+                # (a clean pytest-failed run, same predicate as the functional path) and passes
+                # after the patch. Anything less is unproven and rejects the fix.
+                red_run = ev.unpatched_added_runs[-1] if ev.unpatched_added_runs else None
+                problem = _unpatched_problem(red_run, ev.tests_added)
+                red_artifact = str((red_run or {}).get("sandbox_run_id") or "") or None
+                if problem:
+                    add(VerificationCheckName.GENERATED_TESTS_PASS, False, problem, red_artifact or artifact)
                 else:
+                    red = sorted(
+                        f
+                        for f in (red_run or {}).get("failing_tests", [])
+                        if any(f.startswith(t) for t in ev.tests_added)
+                    )
                     add(
                         VerificationCheckName.GENERATED_TESTS_PASS,
                         True,
