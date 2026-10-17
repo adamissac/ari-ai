@@ -82,11 +82,12 @@ def _environment() -> tuple[str, str]:
     """(APP_ENV, SECURITY_SANDBOX) from the backend settings when hosted, else the env."""
     try:
         from backend.settings import get_settings  # type: ignore[import-not-found,unused-ignore]
-
-        s = get_settings()
-        return str(s.app_env), str(s.security_sandbox)
-    except Exception:
+    except ImportError:  # standalone reviewer (CLI / tests without the backend package)
         return os.environ.get("APP_ENV", "development"), os.environ.get("SECURITY_SANDBOX", "")
+    # Hosted: an invalid backend configuration must surface (fail closed), never be masked
+    # by a fallback that could re-allow host-process execution.
+    s = get_settings()
+    return str(s.app_env), str(s.security_sandbox)
 
 
 def build_sandbox(kind: str | None = None) -> SandboxPort:
