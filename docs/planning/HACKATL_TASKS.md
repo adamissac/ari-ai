@@ -41,7 +41,7 @@ acceptance criteria are the minimum for `DONE` in addition to
 | SEC-002 | Tool registry + `scope_guard` (pure) | security-agents/ | NFR-02 | CORE-001 | UNASSIGNED | BLOCKED | Allowlist enforcement (SB-06); scope_guard exhaustive tests ≥ 95% branch |
 | SEC-003 | Sandbox driver: profiles, network `none`, limits, reaper | security-agents/ | NFR-01, NFR-02 | INFRA-005 | UNASSIGNED | BLOCKED | SB-03, SB-05 pass; orphan reaping tested |
 | UI-001 | Next.js scaffold, Tailwind, ESLint/tsc, generated API client, `frontend.yml` | frontend/ | — | CORE-003 | UNASSIGNED | BLOCKED | Builds; typed client generated; CI green |
-| DEMO-001 | `examples/payments-lite` vulnerable demo target with fixtures + build recipe | examples/ | — | — | UNASSIGNED | READY | Documented planted functional bug + authorization weakness; passing (incomplete) test suite; builds in sandbox |
+| DEMO-001 | `examples/payments-lite` vulnerable demo target with fixtures + build recipe | examples/ | — | — | Adam | IN_REVIEW | Documented planted functional bug + authorization weakness; passing (incomplete) test suite; builds in sandbox |
 | TEST-001 | Test harness: FakeLLM, recorded-response replay, fixture layout | tests/ | — | CORE-010 | UNASSIGNED | BLOCKED | Replay of a recorded fixture through gateway in tests |
 | TEST-002 | Contract test suite (IC-1) | tests/contract | — | CORE-003 | UNASSIGNED | BLOCKED | Round-trip + schema drift + OpenAPI checks green |
 
