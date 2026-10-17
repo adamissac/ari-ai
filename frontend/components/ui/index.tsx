@@ -56,7 +56,7 @@ export function Button({ variant = 'secondary', className = '', ...props }: Butt
 export function ErrorState({ error, onRetry, context }: { error: unknown; onRetry?: () => void; context?: string }) {
   const e = describeError(error);
   return (
-    <div role="alert" className="rounded-md border border-bad/40 bg-bad/5 p-3 text-sm">
+    <div role="alert" data-testid="error-state" className="rounded-md border border-bad/40 bg-bad/5 p-3 text-sm">
       <p className="font-semibold text-bad"><span aria-hidden="true">× </span>{context ? `${context}: ` : ''}{e.title}</p>
       <p className="mt-1 text-muted">{e.detail}</p>
       {(e.code || e.requestId) && (
