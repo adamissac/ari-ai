@@ -1,15 +1,40 @@
 import type { AssessmentState } from '@hackatl/frontend-transport';
 import { STATE_RAIL, railSteps } from '@/lib/status';
 
-/** Backend `events/log` returns at most this many events from `after=0`; `next_cursor` stays null. */
+/** Backend `events/log` returns at most this many events per page and a `next_cursor` while more exist. */
 export const EVENT_LOG_PAGE_LIMIT = 500;
 
-/** Shown when a phase view used a full first page and may therefore miss later states. */
-export const EVENT_LOG_PAGE_NOTE =
-  'Phases use the first 500 events from this check\'s log. A longer log can leave a later phase unmarked.';
+/** Pages a phase view follows before it stops. A run that writes more events than this is unusual. */
+export const EVENT_LOG_MAX_PAGES = 20;
 
-export function eventLogPageTruncated(count: number): boolean {
-  return count >= EVENT_LOG_PAGE_LIMIT;
+const EVENT_LOG_MAX_EVENTS = (EVENT_LOG_PAGE_LIMIT * EVENT_LOG_MAX_PAGES).toLocaleString('en-US');
+
+/** Shown when a phase view stopped at the page cap and may therefore miss later states. */
+export const EVENT_LOG_PAGE_NOTE =
+  `Phases use the first ${EVENT_LOG_MAX_EVENTS} events from this check's log. A longer log can leave a later phase unmarked.`;
+
+/** The whole event log, or its first EVENT_LOG_MAX_PAGES pages with `truncated` set. */
+export interface EventLog<T> {
+  items: T[];
+  truncated: boolean;
+}
+
+/** Follows `next_cursor` from `after=0` until the log ends or the page cap is reached. */
+export async function fullEventLog<T>(
+  fetchPage: (after: number) => Promise<{ items: T[]; next_cursor: string | null }>,
+): Promise<EventLog<T>> {
+  const items: T[] = [];
+  let after = 0;
+  for (let page = 0; page < EVENT_LOG_MAX_PAGES; page++) {
+    const result = await fetchPage(after);
+    items.push(...result.items);
+    if (result.next_cursor === null) return { items, truncated: false };
+    const next = Number(result.next_cursor);
+    // A cursor that does not move forward would loop on the same page; stop and say the log is partial.
+    if (!Number.isSafeInteger(next) || next <= after) return { items, truncated: true };
+    after = next;
+  }
+  return { items, truncated: true };
 }
 
 export type JourneyStatus =
@@ -66,7 +91,7 @@ export interface JourneyInput {
   monitoringTruncated: boolean;
   monitoringFailed: boolean;
   newestMonitoringSimulated: boolean;
-  /** True when the first events/log page was full, so later states may be missing. */
+  /** True when the events/log walk stopped at the page cap, so later states may be missing. */
   eventLogTruncated: boolean;
 }
 
@@ -137,7 +162,7 @@ function pipelineStage(
       'completed',
       someSkipped
         ? input.eventLogTruncated
-          ? 'The run entered this phase. A later step inside it is not in the first 500 events.'
+          ? `The run entered this phase. A later step inside it is not in the first ${EVENT_LOG_MAX_EVENTS} events.`
           : 'The run entered this phase. A later step inside it is not in the event log.'
         : 'The event log shows the run entered this phase.',
     );
@@ -147,7 +172,7 @@ function pipelineStage(
       group,
       'skipped',
       input.eventLogTruncated
-        ? 'The first 500 events do not show the run entering this phase. A later page may.'
+        ? `The first ${EVENT_LOG_MAX_EVENTS} events do not show the run entering this phase. A later page may.`
         : 'The event log does not show the run entering this phase.',
     );
   }

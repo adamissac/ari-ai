@@ -12,7 +12,7 @@ import { Badge, Button, Empty, ErrorState, Loading, Mono, PageTitle, Panel, Stat
 import { api } from '@/lib/api';
 import { CANCEL_ASSESSMENT_NOTE, cancelAssessmentResult } from '@/lib/cancel-assessment';
 import { shortSha, usd } from '@/lib/format';
-import { assessmentPhases, EVENT_LOG_PAGE_NOTE, eventLogPageTruncated, JOURNEY_STATUS } from '@/lib/journey';
+import { assessmentPhases, EVENT_LOG_PAGE_NOTE, fullEventLog, JOURNEY_STATUS } from '@/lib/journey';
 import { currentPhaseSentence } from '@/lib/phase';
 import { agentRelay, providerNote } from '@/lib/relay';
 import { useResource } from '@/lib/use-resource';
@@ -97,7 +97,11 @@ export default function AssessmentPage() {
 
   // Polling fallback: persisted records stay current even if an intermediary buffers SSE.
   const running = detail !== null && !TERMINAL_STATES.has(detail.assessment.state);
-  const phaseLog = useResource(`phase-log:${id}`, signal => api().eventsLog(id, 0, { signal }), running ? 5000 : undefined);
+  const phaseLog = useResource(
+    `phase-log:${id}`,
+    signal => fullEventLog(after => api().eventsLog(id, after, { signal })),
+    running ? 5000 : undefined,
+  );
   useEffect(() => {
     if (!running) return;
     const t = setInterval(() => loadDetail(), 5000);
@@ -201,12 +205,12 @@ function AssessmentPhases({
 }: {
   state: AssessmentState;
   findingStatuses: readonly string[];
-  log: { status: 'loading' | 'ready' | 'error'; data?: { items: StreamEvent[] }; error?: unknown; reload: () => void };
+  log: { status: 'loading' | 'ready' | 'error'; data?: { items: StreamEvent[]; truncated: boolean }; error?: unknown; reload: () => void };
 }) {
   if (log.status === 'loading') return <p className="mb-4 text-sm text-muted">Loading the recorded phases…</p>;
   if (log.status === 'error') return <div className="mb-4"><ErrorState error={log.error} onRetry={log.reload} context="Event log" /></div>;
   const items = log.data?.items ?? [];
-  const truncated = eventLogPageTruncated(items.length);
+  const truncated = log.data?.truncated === true;
   const phases = assessmentPhases({ state, events: items, findingStatuses, eventLogTruncated: truncated });
   return (
     <div className="mb-4">
