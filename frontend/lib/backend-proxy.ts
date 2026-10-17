@@ -34,6 +34,8 @@ export async function proxy(request: Request): Promise<Response> {
     const value = request.headers.get(name);
     if (value !== null) headers.set(name, value);
   }
+  // The public host the browser used, so the backend can tell proxied requests from direct ones.
+  headers.set('x-forwarded-host', url.host);
   const hasBody = request.method !== 'GET' && request.method !== 'HEAD';
   // A bad configuration is the frontend's fault, not an outage: report it as such.
   let origin: string;
