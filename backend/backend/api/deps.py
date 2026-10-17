@@ -185,3 +185,21 @@ def idempotent_store(
         )
         .on_conflict_do_nothing()
     )
+
+
+def idempotent_replay(conn: Connection, user_id: str, key: str | None, request: Any) -> Any | None:
+    """Call AFTER authorization: a stored response for (user, key) is replayed only to a
+    caller allowed to make the request; a different request under the same key is 409."""
+    from fastapi.responses import JSONResponse
+
+    replay = idempotent_lookup(conn, user_id, key, request)
+    return JSONResponse(replay["body"], status_code=replay["status"]) if replay else None
+
+
+def idempotent_finish(
+    conn: Connection, user_id: str, key: str | None, request: Any, status: int, result: Any
+) -> Any:
+    """Store the response for a retried key (same transaction as the work) and return it."""
+    body = result.model_dump(mode="json") if hasattr(result, "model_dump") else result
+    idempotent_store(conn, user_id, key, request, status, body)
+    return result
