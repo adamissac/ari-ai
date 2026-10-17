@@ -95,3 +95,24 @@ adds an entry before ending.
   **24 passed, 1 skipped**; broader suite: **115 passed, 4 skipped**. Consumers should pull
   main and re-index at python-ast-ts/0.2.0. Full reviewer/security pipeline proof and live
   inference remain outstanding; see the immutable merged-producer message.
+
+### 2026-10-17 — Sarosh / Codex — UI-001/UI-003 transport assistance
+
+- User authorized isolated help in unfinished lanes and frequent direct main commits.
+  Reserved only `frontend/transport/**` in issue #29; no remote Vihaan branch or
+  scaffold existed at each milestone check. No app, backend or shared source edits.
+- Implemented standalone strict TS/ESM package consuming canonical generated types
+  and JSON schemas. Session/CSRF, explicit approvals, idempotency, lists/logout,
+  bounded JSON and SSE, Last-Event-ID resume, retries, abort and terminal-state
+  verification. API contract mismatches found by integration were fixed.
+- Executed `npm test --prefix frontend/transport`: 13 passed plus strict TS build.
+  `npm run test:integration --prefix frontend/transport`: 4 passed (parent + 3
+  subtests) against real FastAPI and isolated PostgreSQL; zero model calls/target
+  executions. Ruff/format of Python harness passed. Initially mislabeled 4-pass
+  status corrected explicitly: first unit run was 3 passed/1 failed, later fixed.
+- Commits: `d4a0fce`, `3bc4e28`, `05ce162`, `a48a202`; pushed main per user direction.
+- Next: Vihaan adopts file dependency and connects pages; Adam/Vihaan wire transport
+  commands into frontend CI. Browser CORS/cookies/rendered behavior remain unverified.
+- Sai's real-index consumer integration merged PR #31. Sarosh attempted its test
+  but collection failed because local environment lacks installed `code_review`;
+  no independent consumer-pass claim. Producer suite was rechecked separately.
