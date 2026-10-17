@@ -81,6 +81,24 @@ def test_evaluation_protocol_outputs(trained_run):
     assert load_eval_summary(run)["env_id"] == "DefenseSimEnv-v0"
 
 
+def test_analysis_report_and_deterministic_failure_replays(trained_run):
+    from rl_defense.analysis import analyze
+
+    run, _ = trained_run
+    if not (run / "eval_episodes.jsonl").exists():
+        evaluate(run, EVAL, TRAIN, episodes=range(1000, 1004), trajectories_per_policy=1)
+    text = analyze(run, n_failures=2)
+    for section in (
+        "Where each policy loses reward",
+        "Which nodes fall",
+        "Action mix",
+        "Failure cases",
+    ):
+        assert section in text
+    cases = sorted((run / "failure_cases").glob("ddqn_*.json"))
+    assert len(cases) == 2  # replay_episode asserts the replayed return equals the recorded one
+
+
 def test_holm_correction():
     assert holm({"a": 0.01, "b": 0.04, "c": 0.03}) == {"a": True, "b": False, "c": False}
     assert holm({"a": 0.001, "b": 0.02}) == {"a": True, "b": True}

@@ -91,10 +91,12 @@ def run_episode(
     crit = np.array([n.criticality for n in cfg.nodes])
     trajectory: list[dict[str, Any]] = []
     component_totals = dict.fromkeys(REWARD_COMPONENTS, 0.0)
+    action_counts: dict[str, int] = {}
     while not done:
         mask = info["action_mask"]
         action = policy.act(obs, mask)
         name, _ = decode_action(action)
+        action_counts[name] = action_counts.get(name, 0) + 1
         next_obs, reward, term, trunc, next_info = env.step(action)
         ev = next_info["events"]
         for key, value in ev["reward_components"].items():
@@ -142,6 +144,8 @@ def run_episode(
         "invalid_actions": float(invalid),
         "length": float(steps),
         "reward_components": component_totals,
+        "action_counts": action_counts,
+        "impact_nodes": m["impact_nodes"],
     }, trajectory
 
 

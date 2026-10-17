@@ -424,5 +424,6 @@ class DefenseSimEnv(gym.Env[np.ndarray, np.int64]):
                 "ever_impact": h.ever_impact,
                 "first_foothold_t": h.first_foothold_t,
                 "containment_t": h.containment_t,
+                "impact_nodes": sorted(NODE_NAMES[i] for i in h.impact_nodes),
             },
         }
