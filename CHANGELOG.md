@@ -7,6 +7,7 @@ All notable changes are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- Frontend: incident closure panel (link findings/verifications, closure criteria with artifact evidence, lessons learned, communications, readiness list).
 - Frontend console pages on existing backend APIs: **Expectations** (snapshot-pinned behavioral
   expectations with confirm/conflicting/reject decisions, optimistic `expected_revision` and
   decision history), **Incidents** (NIST SP 800-61r3 lifecycle, triage, owner, two-person
