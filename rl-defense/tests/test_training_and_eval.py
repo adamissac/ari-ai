@@ -199,3 +199,18 @@ def test_baselines_only_choose_valid_actions():
             if term or trunc:
                 break
     assert NoopPolicy().act(np.zeros(OBS_DIM), np.ones(22, dtype=bool)) == NOOP_ACTION
+
+
+def test_defense_lab_bundle_exports_valid_typed_replays(trained_run):
+    from rl_defense.lab_export import DefenseLabBundle, export
+
+    run, _ = trained_run
+    if not (run / "eval_summary.json").exists():
+        evaluate(run, EVAL, TRAIN, episodes=range(1000, 1004), trajectories_per_policy=1)
+    bundle = export(run)
+    again = DefenseLabBundle.model_validate_json(bundle.model_dump_json())
+    assert again.simulation_only is True and "simulated" in again.caveat
+    assert {e.policy for e in again.episodes} == {"ddqn", "threshold_rules", "noop"}
+    step = again.episodes[0].steps[0]
+    assert len(step.nodes) == 5
+    assert abs(sum(step.reward_components.values()) - step.reward) < 1e-2
