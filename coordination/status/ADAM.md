@@ -17,11 +17,11 @@ Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablat
   (#5), link+secret CI (#7), shared V0 + backend (#8, verified with the backend + RL suites), RL
   contracts re-exported from `shared.rl` (#13), training improvements round 1–2 (#15), build-recipe
   consistency check (#18). RL suite on main: 80 passed. Backend: 40 passed, 1 skipped (live opt-in).
-- **In progress:** `feat/adam/rl-training-v1` validation round 3 (seed stability: checkpoint
-  selection, lr decay). Final held-out run (seeds 0–4) NOT done yet → `experiments/final.py`.
-- **Next steps:** (1) run the final candidate once on held-out eval + stress and commit
-  `results/<name>/COMPARISON.md`; (2) refresh `results/protocol-*/defense_lab.json` from the new
-  checkpoint for Vihaan; (3) decide checkpoint storage with Srihith (`RL_CHECKPOINT_PATH`).
+- **Done since:** protocol-v1 merged to main (held-out return −29.1 vs −65.6, db loss 1.1% vs
+  9.8%; false disruption worse, 75%); audited from raw episodes; Defense Lab bundle + fixture
+  regenerated from v1. Current policy: `runs/protocol-v1/ddqn_seed0.pt`.
+- **Next steps:** (1) reduce false disruption without losing the v1 gains (new validation round);
+  (2) decide checkpoint storage with Srihith (`RL_CHECKPOINT_PATH`); (3) run failure analysis on v1.
 - **Open asks:** Alan — real path templates in `build_recipe.json` (#17); Sarosh — attach the
   ownership expectation to `GET /payments/{payment_id}` (review on #6); Srihith — pass expectations
   into `facts_from_platform` for criticality (review on #8).
