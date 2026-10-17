@@ -7,29 +7,28 @@ authorized payments-lite demonstration target.
 
 This script:
 - Validates prerequisites
-- Starts the local application stack
+- Lets the backend test fixture manage its isolated PostgreSQL database
 - Executes the supported core M7 workflow
 - Waits for completion with bounded timeouts
 - Confirms persisted results
 - Verifies evidence references
 - Distinguishes passed, failed, skipped, and blocked stages
-- Saves a redacted JSON report
+- Saves a JSON report with bounded test output excerpts
 - Exits nonzero when any required stage fails
 - Avoids real API charges by default
 - Cleans up only resources created by the test
 
 Usage:
-    python3 scripts/devin_qa/verify_m7_demo.py [--no-cleanup]
+    python3 scripts/devin_qa/verify_m7_demo.py
 """
 
+import argparse
+import json
+import os
 import subprocess
 import sys
-import os
-import json
-import time
+from datetime import UTC, datetime
 from pathlib import Path
-from datetime import datetime, timezone
-from typing import Dict, List, Any, Optional
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -57,16 +56,17 @@ def print_status(status: str, message: str) -> None:
 
 
 def run_command(
-    command: List[str],
-    cwd: Optional[Path] = None,
+    command: list[str],
+    cwd: Path | None = None,
     timeout: int = 900,
-    env: Optional[Dict[str, str]] = None,
+    env: dict[str, str] | None = None,
 ) -> tuple[int, str, str]:
     """Run a command and return exit code, stdout, stderr."""
     try:
         merged_env = dict(os.environ)
         if env:
             merged_env.update(env)
+        merged_env["RUN_LIVE_LLM_EVAL"] = "0"
 
         result = subprocess.run(
             command,
@@ -83,10 +83,13 @@ def run_command(
         return -1, "", str(e)
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     """Main entry point."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output", type=Path, default=ROOT / ".dev/qa/m7-evidence.json")
+    args = parser.parse_args(argv)
     print(f"{BOLD}=== M7 DEMO VALIDATION ==={RESET}")
-    print(f"Timestamp: {datetime.now(timezone.utc).isoformat()}")
+    print(f"Timestamp: {datetime.now(UTC).isoformat()}")
     print(f"Repository: {ROOT}\n")
 
     results = []
@@ -95,7 +98,7 @@ def main() -> int:
     print(f"{BOLD}=== Stage 1: Prerequisites ==={RESET}")
 
     # Check Python
-    code, stdout, _ = run_command(["python3", "--version"])
+    code, stdout, _ = run_command([sys.executable, "--version"])
     if code == 0:
         print_status("PASS", f"Python available: {stdout.strip()}")
         results.append({"stage": "prerequisites", "check": "python", "status": "PASS"})
@@ -103,78 +106,56 @@ def main() -> int:
         print_status("FAIL", "Python not available")
         results.append({"stage": "prerequisites", "check": "python", "status": "FAIL"})
 
-    # Check UV
-    code, stdout, _ = run_command(["uv", "--version"])
-    if code == 0:
-        print_status("PASS", f"UV available: {stdout.strip()}")
-        results.append({"stage": "prerequisites", "check": "uv", "status": "PASS"})
-    else:
-        print_status("FAIL", "UV not available")
-        results.append({"stage": "prerequisites", "check": "uv", "status": "FAIL"})
-
     # === Stage 2: Run M7 Test ===
     print(f"\n{BOLD}=== Stage 2: Execute M7 Test ==={RESET}")
     print("Running backend/tests/test_m7_push_to_regression.py...\n")
 
-    # Use the existing M7 test which already implements the full chain
-    # Set TEST_DATABASE_URL to use embedded DB in backend directory
-    backend_dir = ROOT / "backend"
-    code, db_url, _ = run_command(
-        ["uv", "run", "python", "-m", "backend.devdb"],
-        cwd=backend_dir,
-        timeout=30,
+    # conftest creates and drops a session-specific database. Do not start or stop
+    # backend.devdb's default server: it may belong to an active development stack.
+    test_env = {
+        "PYTHONPATH": os.pathsep.join(
+            str(ROOT / package)
+            for package in (
+                "backend",
+                "shared",
+                "security-agents",
+                "code-review",
+                "code-intelligence",
+                "monitoring",
+                "standards",
+            )
+        ),
+    }
+    code, stdout, stderr = run_command(
+        [sys.executable, "-m", "pytest", "-q", "backend/tests/test_m7_push_to_regression.py", "-s"],
+        timeout=1200,
+        env=test_env,
+        cwd=ROOT,
     )
-
-    if code != 0:
-        print_status("FAIL", "Failed to start embedded database")
-        results.append({
-            "stage": "m7_execution",
-            "check": "database",
-            "status": "FAIL",
-            "error": "Failed to start embedded database",
-        })
-    else:
-        db_url = db_url.strip()
-        test_env = {
-            "RUN_LIVE_LLM_EVAL": "0",
-            "TEST_DATABASE_URL": db_url,
-            "PYTHONPATH": f"{ROOT}/backend:{ROOT}/shared:{ROOT}/security-agents:{ROOT}/code-review:{ROOT}/code-intelligence:{ROOT}/monitoring:{ROOT}/standards",
-        }
-
-        code, stdout, stderr = run_command(
-            ["uv", "run", "pytest", "-q", "backend/tests/test_m7_push_to_regression.py", "-s"],
-            timeout=1200,  # 20 minutes for full chain
-            env=test_env,
-            cwd=ROOT,  # Run from repo root to ensure proper workspace resolution
-        )
 
     if code == 0:
         print_status("PASS", "M7 test passed - full chain executed successfully")
-        results.append({
-            "stage": "m7_execution",
-            "check": "full_chain",
-            "status": "PASS",
-            "output": stdout[:500],
-        })
+        results.append(
+            {
+                "stage": "m7_execution",
+                "check": "full_chain",
+                "status": "PASS",
+                "output": stdout[:500],
+            }
+        )
     else:
         print_status("FAIL", f"M7 test failed with exit code {code}")
         print(f"Stdout: {stdout[:500]}")
         print(f"Stderr: {stderr[:500]}")
-        results.append({
-            "stage": "m7_execution",
-            "check": "full_chain",
-            "status": "FAIL",
-            "exit_code": code,
-            "output": stdout[:1000],
-            "error": stderr[:1000],
-        })
-
-        # Stop embedded database
-        print("\nStopping embedded database...")
-        run_command(
-            ["uv", "run", "python", "-m", "backend.devdb", "--stop"],
-            cwd=backend_dir,
-            timeout=30,
+        results.append(
+            {
+                "stage": "m7_execution",
+                "check": "full_chain",
+                "status": "FAIL",
+                "exit_code": code,
+                "output": stdout[:1000],
+                "error": stderr[:1000],
+            }
         )
 
     # === Stage 3: Browser Demo ===
@@ -184,29 +165,32 @@ def main() -> int:
     # Check if Playwright test exists
     playwright_test = ROOT / "frontend" / "tests" / "e2e" / "stack.py"
     if playwright_test.exists():
-        print("Playwright test found - BLOCKED (requires running services, not in scope for this validation)")
-        results.append({
-            "stage": "browser_demo",
-            "check": "playwright",
-            "status": "BLOCKED",
-            "reason": "Browser E2E requires running API/worker services - use frontend/tests/e2e/stack.py manually with make dev",
-        })
+        print("Playwright test found - BLOCKED (not executed by this backend-only validation)")
+        results.append(
+            {
+                "stage": "browser_demo",
+                "check": "playwright",
+                "status": "BLOCKED",
+                "reason": "Browser E2E was not selected; run frontend/tests/e2e/stack.py (it starts its own test services)",
+            }
+        )
     else:
         print_status("BLOCKED", "Playwright test not found at frontend/tests/e2e/stack.py")
-        results.append({
-            "stage": "browser_demo",
-            "check": "playwright",
-            "status": "BLOCKED",
-            "reason": "Test file not found",
-        })
+        results.append(
+            {
+                "stage": "browser_demo",
+                "check": "playwright",
+                "status": "BLOCKED",
+                "reason": "Test file not found",
+            }
+        )
 
     # === Save Report ===
     print(f"\n{BOLD}=== Saving Report ==={RESET}")
 
     report = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "repository": str(ROOT),
-        "branch": "devin/m7-demo-validation",
         "results": results,
         "summary": {
             "total": len(results),
@@ -217,10 +201,9 @@ def main() -> int:
         },
     }
 
-    output_dir = ROOT / "docs" / "devin_qa" / "m7"
-    output_dir.mkdir(parents=True, exist_ok=True)
+    report_path = args.output
+    report_path.parent.mkdir(parents=True, exist_ok=True)
 
-    report_path = output_dir / "DEMO_EVIDENCE.json"
     with open(report_path, "w") as f:
         json.dump(report, f, indent=2)
 
