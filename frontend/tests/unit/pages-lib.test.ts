@@ -1,6 +1,6 @@
-import type { Incident, Project } from '@hackatl/frontend-transport';
+import type { Incident, PatchView, Project } from '@hackatl/frontend-transport';
 import { describe, expect, it } from 'vitest';
-import { action, approvalFor, GATE_FOR, NEXT_STATES } from '@/lib/incidents';
+import { acceptedVerifications, action, approvalFor, closureBlockers, GATE_FOR, NEXT_STATES, patchEvidence, regressionEvidence } from '@/lib/incidents';
 import { draftOf, parseSettings } from '@/lib/settings';
 
 const project = {
@@ -59,5 +59,39 @@ describe('incident helpers', () => {
     ] } as unknown as Incident;
     expect(approvalFor(inc, 'containment')?.status).toBe('approved');
     expect(approvalFor(inc, 'closure')).toBeUndefined();
+  });
+});
+
+describe('incident closure helpers', () => {
+  const view = (verdict: 'accepted' | 'rejected' | null) => ({
+    patch: { id: 'pat_1', finding_id: 'fnd_1', attempt: 2, diff_artifact_id: 'art_diff', diff_sha256: 'a'.repeat(64) },
+    verification: verdict ? { id: `ver_${verdict}`, verdict } : null,
+  }) as unknown as PatchView;
+
+  it('pins patch diffs and Fortify tests as hash-carrying artifact evidence', () => {
+    const [opt] = patchEvidence('fnd_1', [view('accepted')]);
+    expect(opt.ref).toMatchObject({ kind: 'artifact', artifact_id: 'art_diff', sha256: 'a'.repeat(64), provenance: 'agent:patch' });
+    expect(opt.regression).toBe(false);
+    expect(opt.label).toContain('Verify accepted');
+    const reg = regressionEvidence('fnd_1', 'art_test', 'b'.repeat(64));
+    expect(reg.regression).toBe(true);
+    expect(reg.ref).toMatchObject({ artifact_id: 'art_test', sha256: 'b'.repeat(64), provenance: 'agent:fortify', path: null, span: null });
+  });
+
+  it('offers only accepted verifications for linking', () => {
+    expect(acceptedVerifications([view('accepted'), view('rejected'), view(null)])).toEqual(['ver_accepted']);
+  });
+
+  it('lists every outstanding closure requirement and none once closed', () => {
+    const base = { state: 'recovery', closure_criteria: [], lessons_learned: null, lessons_learned_evidence: [], approvals: [] } as unknown as Incident;
+    expect(closureBlockers(base)).toHaveLength(3);
+    const ready = {
+      ...base,
+      closure_criteria: [{ key: 'tests', description: 'd', satisfied: true, evidence: [{}], satisfied_by: 'usr_1' }, { key: 'comms', description: 'd', satisfied: false, evidence: [], satisfied_by: null }],
+      lessons_learned: 'keep the tenant test', lessons_learned_evidence: [{}],
+      approvals: [{ gate: 'closure', status: 'approved' }],
+    } as unknown as Incident;
+    expect(closureBlockers(ready)).toEqual(['Satisfy with evidence: comms.']);
+    expect(closureBlockers({ ...base, state: 'closed' } as Incident)).toEqual([]);
   });
 });
