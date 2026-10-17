@@ -13,7 +13,8 @@ independent of any prompt:
 * a VerificationResult must come from a ``verify`` AgentRun that is not the run
   that produced the patch (Verify independence);
 * REMEDIATION is only reachable through an approved ``remediation`` approval.
-* approval-pause checkpoints are hashed artifacts, keyed per assessment + namespace.
+* approval-pause checkpoints are hashed artifacts, keyed per assessment + namespace;
+  ``claim_checkpoint`` consumes the latest payload under an assessment row lock.
 
 Integration contract (published V0, see coordination message):
 
@@ -428,16 +429,8 @@ class AssessmentHost:
         """Load only this assessment's latest checkpoint, checking artifact integrity."""
         with transaction() as conn:
             self._row(conn)
-            event = conn.execute(
-                sa.select(assessment_events.c.doc)
-                .where(
-                    assessment_events.c.assessment_id == self.assessment_id,
-                    assessment_events.c.doc["data"]["checkpoint_namespace"].astext == namespace,
-                )
-                .order_by(assessment_events.c.seq.desc())
-                .limit(1)
-            ).scalar_one_or_none()
-            if event is None:
+            event = self._latest_checkpoint_event(conn, namespace)
+            if event is None or event.get("data", {}).get("checkpoint_consumed"):
                 return None
             row, content = self.store.get(conn, event["data"]["checkpoint_artifact_id"])
             if row["project_id"] != self.project_id:
@@ -446,6 +439,56 @@ class AssessmentHost:
         if not isinstance(payload, dict):
             raise HostError(ErrorCode.VALIDATION_FAILED, "checkpoint must be an object")
         return payload
+
+    def claim_checkpoint(self, namespace: str) -> dict[str, Any] | None:
+        """Atomically consume this assessment's latest checkpoint for ``namespace``.
+
+        Serialized with ``FOR UPDATE`` on the assessment row so two workers cannot
+        both resume Patch/Verify from the same payload. Returns the payload when
+        this caller uniquely claimed it, or ``None`` when a previous caller already
+        consumed it. Raises ``CONFLICT_STATE`` when no checkpoint was ever saved.
+        """
+        self.check_cancelled()
+        if not namespace or len(namespace) > 100:
+            raise HostError(ErrorCode.VALIDATION_FAILED, "invalid checkpoint namespace")
+        with transaction() as conn:
+            self._row(conn, lock=True)
+            event = self._latest_checkpoint_event(conn, namespace)
+            if event is None:
+                raise HostError(ErrorCode.CONFLICT_STATE, "no checkpoint to claim")
+            if event.get("data", {}).get("checkpoint_consumed"):
+                return None
+            artifact_id = event["data"]["checkpoint_artifact_id"]
+            row, content = self.store.get(conn, artifact_id)
+            if row["project_id"] != self.project_id:
+                raise HostError(ErrorCode.VALIDATION_FAILED, "checkpoint project mismatch")
+            payload = json.loads(content)
+            if not isinstance(payload, dict):
+                raise HostError(ErrorCode.VALIDATION_FAILED, "checkpoint must be an object")
+            _emit(
+                conn,
+                self.assessment_id,
+                StreamEventType.progress,
+                "checkpoint consumed",
+                data={
+                    "checkpoint_namespace": namespace,
+                    "checkpoint_artifact_id": artifact_id,
+                    "checkpoint_consumed": True,
+                },
+            )
+            return payload
+
+    def _latest_checkpoint_event(self, conn: Connection, namespace: str) -> dict[str, Any] | None:
+        event = conn.execute(
+            sa.select(assessment_events.c.doc)
+            .where(
+                assessment_events.c.assessment_id == self.assessment_id,
+                assessment_events.c.doc["data"]["checkpoint_namespace"].astext == namespace,
+            )
+            .order_by(assessment_events.c.seq.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+        return dict(event) if isinstance(event, dict) else None
 
     # --------------------------------------------------------------------- llm
     def llm(self) -> Any:
@@ -843,6 +886,11 @@ class AssessmentHost:
         if vrun.id == patch.produced_by_run_id or vrun.assessment_id != self.assessment_id:
             raise HostError(
                 ErrorCode.FORBIDDEN, "Verify must run independently of the patch-producing run"
+            )
+        if vrun.status is not AgentRunStatus.succeeded:
+            raise HostError(
+                ErrorCode.CONFLICT_STATE,
+                "VerificationResult must cite a finished successful verify run",
             )
         if result.verdict.value == "accepted":
             from shared.findings import VerificationCheckName
