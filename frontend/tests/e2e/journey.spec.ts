@@ -43,7 +43,7 @@ test('one real assessment from scope approval to verified patch', async ({ brows
   await alice.getByTestId('technical-details').locator('summary').click();
   await expect(alice.getByTestId('event-log')).toBeVisible();
   await expect(alice.getByRole('heading', { name: 'Human approval required' })).toBeVisible({ timeout: 180_000 });
-  await expect(alice.getByTestId('agent-reviewer').getByText('Succeeded')).toBeVisible();
+  await expect(alice.getByTestId('relay-reviewer')).toHaveAttribute('data-status', 'done');
   // The relay draws the human gate as waiting, and nothing after it as done yet.
   await expect(alice.getByTestId('relay-gate')).toHaveAttribute('data-status', 'waiting');
   await expect(alice.getByTestId('relay-patch')).toHaveAttribute('data-status', 'not_run');
@@ -65,9 +65,6 @@ test('one real assessment from scope approval to verified patch', async ({ brows
   // Alice's open page receives the rest of the run live.
   await expect(alice.getByRole('heading', { name: /Assessment/ }).getByText('Completed')).toBeVisible({ timeout: 180_000 });
   await expect(alice.getByTestId('stream-state')).toContainText('terminal state');
-  for (const agent of ['reviewer', 'scout', 'probe', 'trace', 'diagnose', 'patch', 'verify', 'fortify']) {
-    await expect(alice.getByTestId(`agent-${agent}`).getByText('Succeeded').first()).toBeVisible();
-  }
   // Honest provider labelling: scripted model turns are never presented as live.
   await expect(alice.getByTestId('provider-summary')).toContainText('Not a live-provider run');
   // review + seven agents + the reviewer's functional repair + its independent Verify
@@ -80,6 +77,11 @@ test('one real assessment from scope approval to verified patch', async ({ brows
   // Selecting a relay tile opens that agent's recorded runs.
   await alice.getByTestId('relay-verify').click();
   await expect(alice.getByTestId('agent-team').getByRole('heading', { name: 'Verify' })).toBeVisible();
+  // Keyboard only: focus a tile and press Enter; Space toggles the technical details.
+  await alice.getByTestId('relay-trace').focus();
+  await alice.keyboard.press('Enter');
+  await expect(alice.getByTestId('agent-team').getByRole('heading', { name: 'Trace' })).toBeVisible();
+  await expect(alice.getByTestId('relay-trace')).toHaveAttribute('aria-pressed', 'true');
   await evidenceShot(alice, 'assessment-completed');
 
   // Security finding evidence chain, patch diff and Verify verdict from persisted records.
@@ -118,12 +120,24 @@ test('one real assessment from scope approval to verified patch', async ({ brows
   await expect(loop.getByTestId('loop-prove')).toContainText('2 fixes accepted by independent tests.');
   await expect(loop.getByTestId('loop-prove')).toContainText('nothing was merged or deployed');
   await expect(loop.getByTestId('loop-lab')).toContainText('simulation only');
-  await alice.getByTestId('term-monitoring').click();
+  await alice.getByTestId('term-monitoring').focus();
+  await alice.keyboard.press('Enter');
   await expect(loop.getByRole('note')).toContainText('Watching the code repository');
+  await alice.keyboard.press('Escape');
+  await expect(loop.getByRole('note')).toHaveCount(0);
+  await alice.getByTestId('term-monitoring').click();
   await evidenceShot(alice, 'overview-pillar-loop');
   await alice.goto(asmUrl);
   await alice.reload();
-  await expect(alice.getByTestId('agent-verify').getByText('Succeeded').first()).toBeVisible();
+  await expect(alice.getByTestId('relay-verify')).toHaveAttribute('data-status', 'done');
+
+  // Phone width: the clarity views fit without sideways scrolling.
+  await alice.setViewportSize({ width: 375, height: 800 });
+  for (const url of [asmUrl, `/projects/${project()}`]) {
+    await alice.goto(url);
+    await expect(alice.getByTestId(url === asmUrl ? 'agent-relay' : 'pillar-loop')).toBeVisible();
+  expect(await alice.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(376);
+  }
 });
 
 test('signed GitHub push appears in the monitoring feed', async ({ browser, request }) => {

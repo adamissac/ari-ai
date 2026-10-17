@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { afterSide, beforeSide, splitRows } from '@/lib/before-after';
 import { parseUnifiedDiff } from '@/lib/diff';
 import { GLOSSARY } from '@/lib/glossary';
-import { actionInWords, episodeOutcome, episodeTimeline, policyName, SCORE_METRICS, scoreboard } from '@/lib/lab-plain';
+import { actionInWords, episodeOutcome, episodeTimeline, policyName, SCORE_METRICS, scoreboard, tradeoffNote } from '@/lib/lab-plain';
 import type { DefenseLabBundle, LabEpisode } from '@/lib/lab-types';
 import { pillarLoop } from '@/lib/pillars';
 import { agentRelay, type RelayTile } from '@/lib/relay';
@@ -122,6 +122,11 @@ describe('Defense Lab in plain words', () => {
     expect(uptime.map(c => c.best)).toEqual([false, true]);
     const fd = scoreboard(bundle, SCORE_METRICS.find(m => m.key === 'false_disruption_rate')!);
     expect(fd[1]?.value).toBeNull();
+  });
+  it('warns, from bundle values, when the best-uptime defender loses most games', () => {
+    expect(tradeoffNote(bundle)).toBe('No single measure tells the whole story: "Does nothing" has the best uptime, but the attacker reached its goal in 100.0% of its games.');
+    const fair = { metrics: [bundle.metrics[0]] } as unknown as DefenseLabBundle;
+    expect(tradeoffNote(fair)).toBeNull();
   });
   it('policies and actions have plain names, unknown ones stay raw', () => {
     expect(policyName('ddqn')).toBe('Trained AI defender');
