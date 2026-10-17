@@ -168,7 +168,7 @@ function Scoreboard({ bundle }: { bundle: DefenseLabBundle }) {
                     <li key={c.policy} className="text-sm">
                       <p className="flex items-baseline justify-between gap-2">
                         <span className={ai ? 'font-semibold text-ink' : 'text-muted'} title={POLICY_NAME[c.policy]?.note}>
-                          {policyName(c.policy)}{c.best && <span aria-label="best" className="lab-best">★ best</span>}
+                          {policyName(c.policy)}{c.best && <span className="lab-best">★ best</span>}
                         </span>
                         <span className="whitespace-nowrap font-mono text-xs">{fmt(c.value)} <span className="text-faint">[{fmt(c.lo)}–{fmt(c.hi)}]</span></span>
                       </p>
