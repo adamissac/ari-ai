@@ -135,3 +135,16 @@ def test_host_mode_full_flow_against_real_backend(
     assert usage["tool_calls"] == sum(len(r["tool_calls"]) for r in runs) > 0
     assert usage["llm_calls"] == sum(r["usage"]["llm_calls"] for r in runs)
     assert usage["sandbox_seconds"] > 0, "Probe/Verify sandbox time reaches the ledger"
+    # The persisted transcript keeps successful tool results (Codex review on #218).
+    calls = _probe_transcript_calls(alice, runs)
+    check = next(c for c in calls if c["name"] == "checks.run_template" and c["ok"])
+    assert "matches_expectation" in check["summary"] and "exit_code" in check["summary"]
+
+
+def _probe_transcript_calls(client, runs):
+    import json as _json
+
+    probe = next(r for r in runs if r["agent"] == "probe")
+    art = client.get(f"/api/v1/artifacts/{probe['transcript_artifact_id']}")
+    assert art.status_code == 200
+    return _json.loads(art.content)["tool_invocations"]
