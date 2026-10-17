@@ -7,6 +7,7 @@ import { useProject } from '@/components/project';
 import { useSession } from '@/components/session';
 import { Async, Button, Empty, ErrorState, Field, inputClass, Mono, Panel, Tag, Time } from '@/components/ui';
 import { api } from '@/lib/api';
+import { useActionKeys } from '@/lib/action-key';
 import { CREATE_INCIDENT_NOTE } from '@/lib/create-incident';
 import { action, approvalFor, GATE_FOR, LIFECYCLE, NEXT_STATES, STATE_LABEL } from '@/lib/incidents';
 import { useResource } from '@/lib/use-resource';
@@ -54,12 +55,15 @@ function OpenIncident({ onCreated }: { onCreated: (id: string) => void }) {
   const [simulated, setSimulated] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const createKeys = useActionKeys('create-incident');
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      const created = await api().createIncident(project.id, { title: title.trim(), note: note.trim(), severity, simulated, monitoring_event_ids: [], finding_ids: [], recommendation_ids: [] });
+      const body = { title: title.trim(), note: note.trim(), severity, simulated, monitoring_event_ids: [], finding_ids: [], recommendation_ids: [] };
+      const created = await api().createIncident(project.id, body, { idempotencyKey: createKeys.keyFor(JSON.stringify(body)) });
+      createKeys.done();
       setTitle(''); setNote('');
       onCreated(created.id);
     } catch (err) { setError(err); } finally { setBusy(false); }
@@ -91,10 +95,11 @@ function IncidentDetailView({ id, onChange }: { id: string; onChange: () => void
   const detail = useResource(`incident:${id}`, s => api().incident(id, { signal: s }), 15000);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const actionKeys = useActionKeys('incident-action');
   const act = async (body: IncidentAction): Promise<boolean> => {
     setBusy(true);
     setError(null);
-    try { await api().actOnIncident(id, body); detail.reload(); onChange(); return true; } catch (err) { setError(err); return false; } finally { setBusy(false); }
+    try { await api().actOnIncident(id, body, { idempotencyKey: actionKeys.keyFor(`${id}|${JSON.stringify(body)}`) }); actionKeys.done(); detail.reload(); onChange(); return true; } catch (err) { setError(err); return false; } finally { setBusy(false); }
   };
   return (
     <Async resource={detail} label="incident">

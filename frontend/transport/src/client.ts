@@ -4,6 +4,8 @@ import type * as C from './contracts.js';
 export type Fetch = typeof globalThis.fetch;
 export interface Page<T> { items: T[]; next_cursor: string | null }
 export interface RequestOptions { signal?: AbortSignal }
+/** A create/decide call: `idempotencyKey` makes a retry of the same user action replay instead of duplicating. */
+export interface MutationOptions extends RequestOptions { idempotencyKey?: string }
 export class ApiError extends Error {
   override name = 'ApiError';
   constructor(readonly status: number, readonly error: C.ErrorBody) { super(error.message); }
@@ -113,8 +115,8 @@ export class ApiClient {
   project(id: string, options?: RequestOptions): Promise<C.Project> {
     return this.request(`/projects/${segment(id)}`, 'Project', options) as Promise<C.Project>;
   }
-  createProject(body: C.ProjectCreate, options?: RequestOptions): Promise<C.Project> {
-    return this.request('/projects', 'Project', options, body) as Promise<C.Project>;
+  createProject(body: C.ProjectCreate, options?: MutationOptions): Promise<C.Project> {
+    return this.request('/projects', 'Project', options, body, options?.idempotencyKey) as Promise<C.Project>;
   }
   connectRepository(projectId: string, body: C.RepositoryConnect, options?: RequestOptions): Promise<C.Repository> {
     return this.request(`/projects/${segment(projectId)}/repositories`, 'Repository', options, body) as Promise<C.Repository>;
@@ -134,8 +136,8 @@ export class ApiClient {
   snapshot(id: string, options?: RequestOptions): Promise<C.Snapshot> {
     return this.request(`/snapshots/${segment(id)}`, 'Snapshot', options) as Promise<C.Snapshot>;
   }
-  createScope(projectId: string, body: C.ScopeCreate, options?: RequestOptions): Promise<C.AuthorizedScope> {
-    return this.request(`/projects/${segment(projectId)}/scopes`, 'AuthorizedScope', options, body) as Promise<C.AuthorizedScope>;
+  createScope(projectId: string, body: C.ScopeCreate, options?: MutationOptions): Promise<C.AuthorizedScope> {
+    return this.request(`/projects/${segment(projectId)}/scopes`, 'AuthorizedScope', options, body, options?.idempotencyKey) as Promise<C.AuthorizedScope>;
   }
   approveScope(id: string, options?: RequestOptions): Promise<C.AuthorizedScope> {
     return this.request(`/scopes/${segment(id)}/approve`, 'AuthorizedScope', options, {}) as Promise<C.AuthorizedScope>;
@@ -150,17 +152,17 @@ export class ApiClient {
   incidents(projectId: string, options?: RequestOptions): Promise<Page<C.Incident>> {
     return this.list(`/projects/${segment(projectId)}/incidents`, 'Incident', options);
   }
-  createIncident(projectId: string, body: C.IncidentCreate, options?: RequestOptions): Promise<C.Incident> {
-    return this.request(`/projects/${segment(projectId)}/incidents`, 'Incident', options, body) as Promise<C.Incident>;
+  createIncident(projectId: string, body: C.IncidentCreate, options?: MutationOptions): Promise<C.Incident> {
+    return this.request(`/projects/${segment(projectId)}/incidents`, 'Incident', options, body, options?.idempotencyKey) as Promise<C.Incident>;
   }
   incident(id: string, options?: RequestOptions): Promise<C.IncidentDetail> {
     return this.request(`/incidents/${segment(id)}`, 'IncidentDetail', options) as Promise<C.IncidentDetail>;
   }
-  actOnIncident(id: string, body: C.IncidentAction, options?: RequestOptions): Promise<C.Incident> {
-    return this.request(`/incidents/${segment(id)}/actions`, 'Incident', options, body) as Promise<C.Incident>;
+  actOnIncident(id: string, body: C.IncidentAction, options?: MutationOptions): Promise<C.Incident> {
+    return this.request(`/incidents/${segment(id)}/actions`, 'Incident', options, body, options?.idempotencyKey) as Promise<C.Incident>;
   }
-  decideApproval(id: string, body: C.ApprovalDecision, options?: RequestOptions): Promise<C.Approval> {
-    return this.request(`/approvals/${segment(id)}/decision`, 'Approval', options, body) as Promise<C.Approval>;
+  decideApproval(id: string, body: C.ApprovalDecision, options?: MutationOptions): Promise<C.Approval> {
+    return this.request(`/approvals/${segment(id)}/decision`, 'Approval', options, body, options?.idempotencyKey) as Promise<C.Approval>;
   }
   revokeScope(id: string, options?: RequestOptions): Promise<C.AuthorizedScope> {
     return this.request(`/scopes/${segment(id)}/revoke`, 'AuthorizedScope', options, {}) as Promise<C.AuthorizedScope>;
