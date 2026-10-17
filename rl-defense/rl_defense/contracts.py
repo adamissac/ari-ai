@@ -10,14 +10,19 @@ RLCheckpoint) plus ``simulation_derived`` required by MASTER_BUILD_SPEC.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from rl_defense import SIMULATION_CAVEAT
 from rl_defense.envs.config import NODE_NAMES
 
 SCHEMA_VERSION = "0.1.0"
+# ID formats mirror shared/ids.py (prefix + 8-64 alphanumerics) so payloads pass shared V0.
+ProjectId = Annotated[str, StringConstraints(pattern=r"^prj_[0-9A-Za-z]{8,64}$")]
+RecommendationId = Annotated[str, StringConstraints(pattern=r"^rec_[0-9A-Za-z]{8,64}$")]
+CheckpointId = Annotated[str, StringConstraints(pattern=r"^ckp_[0-9A-Za-z]{8,64}$")]
+Sha256Hex = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
 NodeName = Literal["gateway", "api", "auth", "payments", "db"]
 ActionName = Literal[
     "noop", "raise_monitoring", "rate_limit", "isolate", "request_reassessment", "escalate_to_human"
@@ -49,7 +54,7 @@ class NodeSignals(_Strict):
 class PlatformFacts(_Strict):
     """Input to ``recommend``: the project's demo topology mapped onto the simulator."""
 
-    project_id: str | None = None
+    project_id: ProjectId | None = None
     nodes: tuple[NodeSignals, ...] = Field(min_length=5, max_length=5)
     time_fraction: float = Field(0.0, ge=0.0, le=1.0)
     escalations_remaining_fraction: float = Field(1.0, ge=0.0, le=1.0)
@@ -64,10 +69,10 @@ class ActionScore(_Strict):
 
 class DefenseRecommendation(_Strict):
     schema_version: str = SCHEMA_VERSION
-    id: str
-    project_id: str | None
+    id: RecommendationId
+    project_id: ProjectId | None
     policy_version: str = Field(description="RLCheckpoint id: env id + checkpoint sha256 prefix")
-    checkpoint_sha256: str
+    checkpoint_sha256: Sha256Hex
     action: ActionName
     node: NodeName | None
     q_margin: float = Field(description="Q(best) − Q(second best valid action)")
@@ -79,11 +84,11 @@ class DefenseRecommendation(_Strict):
 
 
 class RLCheckpointRef(_Strict):
-    id: str
+    id: CheckpointId
     env_id: str
     seed: int
     steps: int
     git_sha: str
     checkpoint_file: str
-    checkpoint_sha256: str
+    checkpoint_sha256: Sha256Hex
     train_configs: dict[str, str]
