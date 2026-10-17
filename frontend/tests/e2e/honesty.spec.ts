@@ -33,7 +33,7 @@ test('Defense Lab plots only the committed, schema-validated evaluation bundle',
   await expect(board.getByTestId('score-compromise_rate')).toContainText('Trained AI defender');
   await expect(board.getByTestId('score-compromise_rate')).toContainText('Does nothing');
   await expect(board.getByTestId('score-compromise_rate')).toContainText(/\d+\.\d% \[\d+\.\d%–\d+\.\d%\]/);
-  await expect(board.getByLabel('best').first()).toBeVisible();
+  await expect(board.getByText('★ best').first()).toBeVisible();
   await expect(page.getByTestId('lab-tradeoff')).toContainText('No single measure tells the whole story');
   await expect(page.getByTestId('lab-timeline')).toBeVisible();
   await expect(page.getByTestId('lab-episode-outcome')).toContainText('simulated attacker');
@@ -51,6 +51,13 @@ test('Defense Lab plots only the committed, schema-validated evaluation bundle',
   const slider = page.getByLabel('Step', { exact: true });
   await slider.fill('50');
   await expect(page.getByText('t = 50 /', { exact: false })).toBeVisible();
+  // The replay is always labelled as a recorded simulation, and a service can be inspected.
+  await expect(page.getByTestId('lab-mode')).toHaveText('Simulation · recorded evaluation');
+  await page.getByRole('button', { name: /^Gateway \(gateway\)/ }).click();
+  await expect(page.getByTestId('lab-service-panel')).toContainText('Reachable from the internet: yes');
+  await expect(page.getByText('attacker: ', { exact: false })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Next key moment' }).click();
+  await expect(page.getByTestId('lab-step-action')).toContainText('the defender:');
   await evidenceShot(page, 'defense-lab');
   await page.setViewportSize({ width: 375, height: 800 });
   await page.reload();

@@ -1,6 +1,6 @@
 'use client';
 
-import { ApiError, type Assessment, type AssessmentState, type Repository, type Snapshot, type StreamEvent } from '@hackatl/frontend-transport';
+import { ApiError, type Assessment, type AssessmentState, type Page, type Repository, type Snapshot, type StreamEvent } from '@hackatl/frontend-transport';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
@@ -91,7 +91,7 @@ export default function ProjectOverview() {
       <div className="flex flex-col gap-4">
         <Panel title="Assessments" actions={<span className="text-xs text-muted">refreshes every 5 s</span>}>
           <Async resource={assessments} label="assessments">
-            {page => <AssessmentList projectId={project.id} items={page.items} />}
+            {page => <AssessmentList projectId={project.id} page={page} />}
           </Async>
         </Panel>
         <StartAssessment onStarted={assessments.reload} />
@@ -234,7 +234,32 @@ function ProjectJourney({
   );
 }
 
-function AssessmentList({ projectId, items }: { projectId: string; items: Assessment[] }) {
+/** Older pages appended below the polled first page. `anchor` is the first page's next_cursor they were loaded from. */
+interface OlderChecks { anchor: string; items: Assessment[]; next: string | null }
+
+function AssessmentList({ projectId, page }: { projectId: string; page: Page<Assessment> }) {
+  const [older, setOlder] = useState<OlderChecks | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  // If the polled first page moved past the point the older pages were loaded from, a gap could
+  // hide checks in between, so those pages are dropped rather than shown as if contiguous.
+  const validOlder = older !== null && older.anchor === page.next_cursor ? older : null;
+  const seen = new Set(page.items.map(a => a.id));
+  const items = [...page.items, ...(validOlder?.items ?? []).filter(a => !seen.has(a.id))];
+  const nextCursor = validOlder ? validOlder.next : page.next_cursor;
+  const loadOlder = async () => {
+    if (nextCursor === null || page.next_cursor === null) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await api().assessments(projectId, { cursor: nextCursor });
+      setOlder(prev => {
+        const base = prev !== null && prev.anchor === page.next_cursor ? prev.items : [];
+        const have = new Set(base.map(a => a.id));
+        return { anchor: page.next_cursor as string, items: [...base, ...result.items.filter(a => !have.has(a.id))], next: result.next_cursor };
+      });
+    } catch (err) { setError(err); } finally { setBusy(false); }
+  };
   if (items.length === 0) return <Empty>No assessments yet. Approve a scope, then start one below.</Empty>;
   return (
     <div className="overflow-x-auto">
@@ -255,6 +280,13 @@ function AssessmentList({ projectId, items }: { projectId: string; items: Assess
           ))}
         </tbody>
       </table>
+      {nextCursor !== null && (
+        <div className="mt-3 flex flex-wrap items-center gap-3" data-testid="assessments-truncated">
+          <p className="text-xs text-muted">Showing the newest {items.length} checks. Older checks exist.</p>
+          <Button type="button" disabled={busy} onClick={() => void loadOlder()} data-testid="load-older-assessments">{busy ? 'Loading…' : 'Load older checks'}</Button>
+        </div>
+      )}
+      {error !== null && <div className="mt-2"><ErrorState error={error} onRetry={() => void loadOlder()} context="Older checks" /></div>}
     </div>
   );
 }
