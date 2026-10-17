@@ -20,6 +20,8 @@ before Phase 1 implementation relies on them.
 | [0008](0008-offline-double-dqn.md) | Offline Double DQN in a Gymnasium simulator; recommendations only | Proposed |
 | [0009](0009-github-app-integration.md) | GitHub App for repository access and webhooks | Proposed |
 | [0010](0010-no-vector-db-for-mvp.md) | No vector database for MVP | Proposed |
+| [0011](0011-standards-integration.md) | Versioned standards integration | Proposed |
+| [0012](0012-cvss-v31-primary-v40-alongside.md) | CVSS v3.1 sets the level now; v4.0 alongside | Proposed |
 
 ## Process
 
