@@ -1,6 +1,6 @@
 import { createHmac, randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
-import { env, newUser } from './helpers';
+import { env, evidenceShot, newUser } from './helpers';
 
 const project = () => env('E2E_PROJECT_ID');
 
@@ -42,6 +42,7 @@ test('one real assessment from scope approval to verified patch', async ({ brows
   await expect(alice.getByTestId('event-log')).toBeVisible();
   await expect(alice.getByRole('heading', { name: 'Human approval required' })).toBeVisible({ timeout: 180_000 });
   await expect(alice.getByTestId('agent-reviewer').getByText('Succeeded')).toBeVisible();
+  await evidenceShot(alice, 'assessment-awaiting-approval');
 
   // Bob approves remediation from his inbox (with the will / will-not summary).
   await bob.goto(`/projects/${project()}/approvals`);
@@ -59,6 +60,7 @@ test('one real assessment from scope approval to verified patch', async ({ brows
   // Honest provider labelling: scripted model turns are never presented as live.
   await expect(alice.getByTestId('provider-summary')).toContainText('Not a live-provider run');
   await expect(alice.getByTestId('provider-summary')).toContainText('Test provider (scripted) × 8');
+  await evidenceShot(alice, 'assessment-completed');
 
   // Security finding evidence chain, patch diff and Verify verdict from persisted records.
   const findingLinks = alice.locator('a[href*="/findings/fnd_"]');
@@ -72,6 +74,7 @@ test('one real assessment from scope approval to verified patch', async ({ brows
   await alice.getByRole('button', { name: /View diff/ }).first().click();
   await expect(alice.getByTestId('diff-view').first()).toBeVisible();
   await expect(alice.getByText('matches server hash')).toBeVisible();
+  await evidenceShot(alice, 'finding-evidence-chain');
 
   // Everything survives a full reload: it is persisted state, not client memory.
   await alice.goto(asmUrl);
@@ -102,6 +105,7 @@ test('signed GitHub push appears in the monitoring feed', async ({ browser, requ
   await expect(feed).toContainText('github');
   await expect(feed).toContainText('push');
   await expect(feed).toContainText('refs/heads/main');
+  await evidenceShot(page, 'monitoring');
   await expect(page.getByTestId('rl-caveat')).toHaveText('Recommendation from a policy trained in simulation. Not applied automatically.');
 });
 

@@ -73,6 +73,8 @@ function SignIn({ onSignedIn }: { onSignedIn: (me: MeResponse) => void }) {
     <div className="mx-auto mt-16 max-w-md rounded-lg border border-line bg-panel p-6">
       <h1 className="text-lg font-semibold">Sign in</h1>
       <p className="mt-1 text-sm text-muted">Sessions are issued by the control-plane backend. No token is stored in the browser.</p>
+      {/* OAuth must be a full browser navigation to the backend (proxied), not client routing. */}
+      {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
       <a href="/api/v1/auth/github/login" className="mt-4 flex w-full items-center justify-center rounded-md bg-accent px-3 py-2 text-sm font-semibold text-bg hover:bg-accent/90">
         Continue with GitHub
       </a>

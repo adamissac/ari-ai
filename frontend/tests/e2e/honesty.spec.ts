@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { evidenceShot } from './helpers';
 
 // These tests intercept the network on purpose: they prove the UI shows honest
 // failure states instead of substituting data when the backend misbehaves.
@@ -37,6 +38,7 @@ test('Defense Lab plots only the committed, schema-validated evaluation bundle',
   const slider = page.getByLabel('Step');
   await slider.fill('50');
   await expect(page.getByText('t = 50 /', { exact: false })).toBeVisible();
+  await evidenceShot(page, 'defense-lab');
 });
 
 test('a malformed bundle name is refused by the server', async ({ request }) => {
