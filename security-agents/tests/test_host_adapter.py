@@ -93,8 +93,12 @@ class FakeGateway:
         transcript: list[dict[str, Any]] = []
         for turn in range(max_turns):
             request = LLMRequest(
-                agent=AgentName(agent), model="fake", system=system, messages=messages,
-                tools=[{"name": n} for n in registry], max_tokens=max_tokens,
+                agent=AgentName(agent),
+                model="fake",
+                system=system,
+                messages=messages,
+                tools=[{"name": n} for n in registry],
+                max_tokens=max_tokens,
             )
             step = script[min(turn, len(script) - 1)]
             fake_turn = step(request) if callable(step) else step
@@ -125,8 +129,11 @@ class FakeGateway:
                 else:
                     payload = tool.handler(tool.input_model.model_validate(args))
                 results.append(
-                    {"type": "tool_result", "tool_use_id": block_id,
-                     "content": json.dumps(payload, default=str)}
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": block_id,
+                        "content": json.dumps(payload, default=str),
+                    }
                 )
             messages.append({"role": "assistant", "content": assistant})
             transcript.extend(assistant)
@@ -142,35 +149,67 @@ class FakeHost:
     assessment_id: str = "asm_01HOSTADAPTER"
     project_id: str = "prj_01HOSTADAPTER"
     org_id: str = "org_01HOSTADAPTER"
+    repo_id: str = "rep_payments_lite"
     gateway: FakeGateway | None = None
     states: list[str] = field(default_factory=list)
     runs: list[dict[str, Any]] = field(default_factory=list)
     finished: list[dict[str, Any]] = field(default_factory=list)
-    findings: list[Any] = field(default_factory=list)
+    recorded_findings: list[Any] = field(default_factory=list)
     records: list[tuple[str, Any]] = field(default_factory=list)
     patches: list[Any] = field(default_factory=list)
     verifications: list[Any] = field(default_factory=list)
     approval_requests: list[tuple[str, str]] = field(default_factory=list)
     stored: list[Any] = field(default_factory=list)
     progress_messages: list[str] = field(default_factory=list)
+    checkpoints: dict[str, dict[str, Any]] = field(default_factory=dict)
+    charged: list[Any] = field(default_factory=list)
     _approvals: list[Any] = field(default_factory=list)
     cancelled: bool = False
 
     # -- state / events
     def assessment(self) -> Any:
-        return type("A", (), {"budget": type("B", (), {"max_tokens": 2_000_000, "max_usd": 50.0, "max_wall_clock_s": 900.0})()})()
+        state = self.states[-1] if self.states else "CREATED"
+        return type(
+            "A",
+            (),
+            {
+                "id": self.assessment_id,
+                "project_id": self.project_id,
+                "commit_sha": "b" * 40,
+                "snapshot_id": None,
+                "reassessment_request_id": None,
+                "state": type("St", (), {"value": state})(),
+                "budget": type(
+                    "B", (), {"max_tokens": 2_000_000, "max_usd": 50.0, "max_wall_clock_s": 900.0}
+                )(),
+            },
+        )()
 
     def scope(self) -> Any:
         return type(
-            "S", (),
+            "S",
+            (),
             {
-                "id": "scp_01HOSTADAPTER", "project_id": self.project_id, "name": "host scope",
-                "status": "active", "requested_by": "usr_requester", "approved_by": "usr_approver",
-                "approved_at": None, "expires_at": None,
+                "id": "scp_01HOSTADAPTER",
+                "project_id": self.project_id,
+                "name": "host scope",
+                "status": "active",
+                "requested_by": "usr_requester",
+                "approved_by": "usr_approver",
+                "approved_at": None,
+                "expires_at": None,
                 "allowed_check_categories": ["access_control.ownership", "input_validation.bounds"],
                 "targets": [
-                    type("T", (), {"target_id": "tgt_payments_lite", "repo_id": "rep_payments_lite",
-                                   "build_recipe_ref": "build_recipe.json", "exposed_ports": [8000]})()
+                    type(
+                        "T",
+                        (),
+                        {
+                            "target_id": "tgt_payments_lite",
+                            "repo_id": "rep_payments_lite",
+                            "build_recipe_ref": "build_recipe.json",
+                            "exposed_ports": [8000],
+                        },
+                    )()
                 ],
             },
         )()
@@ -181,15 +220,31 @@ class FakeHost:
     def approve_all(self) -> None:
         for _subject_type, subject_id in self.approval_requests:
             self._approvals.append(
-                type("Ap", (), {"id": "apv_01HOSTADAPTER", "subject_id": subject_id,
-                                "status": "approved", "decided_by": "usr_human"})()
+                type(
+                    "Ap",
+                    (),
+                    {
+                        "id": "apv_01HOSTADAPTER",
+                        "subject_id": subject_id,
+                        "status": "approved",
+                        "decided_by": "usr_human",
+                    },
+                )()
             )
 
     def decline_all(self) -> None:
         for _subject_type, subject_id in self.approval_requests:
             self._approvals.append(
-                type("Ap", (), {"id": "apv_01DECLINED", "subject_id": subject_id,
-                                "status": "declined", "decided_by": "usr_human"})()
+                type(
+                    "Ap",
+                    (),
+                    {
+                        "id": "apv_01DECLINED",
+                        "subject_id": subject_id,
+                        "status": "declined",
+                        "decided_by": "usr_human",
+                    },
+                )()
             )
 
     def transition(self, target: Any, message: str = "") -> Any:
@@ -220,8 +275,9 @@ class FakeHost:
     # -- runs
     def start_agent_run(self, agent: Any, step_key: str, **kwargs: Any) -> str:
         run_id = f"run_{len(self.runs):08d}HOST"
-        self.runs.append({"id": run_id, "agent": getattr(agent, "value", str(agent)),
-                          "step_key": step_key, **kwargs})
+        self.runs.append(
+            {"id": run_id, "agent": getattr(agent, "value", str(agent)), "step_key": step_key, **kwargs}
+        )
         return run_id
 
     def finish_agent_run(self, run_id: str, status: Any, **kwargs: Any) -> Any:
@@ -229,8 +285,53 @@ class FakeHost:
         return None
 
     # -- records
+    def findings(self) -> list[Any]:
+        return list(self.recorded_findings)
+
+    def save_checkpoint(self, namespace: str, payload: dict[str, Any]) -> None:
+        self.checkpoints[namespace] = json.loads(json.dumps(payload, default=str))
+
+    def load_checkpoint(self, namespace: str) -> dict[str, Any] | None:
+        return self.checkpoints.get(namespace)
+
+    def charge(self, usage: Any) -> None:
+        self.charged.append(usage)
+
+    def set_finding_status(
+        self, finding_id: str, status: str, *, actor: str, reason: str | None = None
+    ) -> Any:
+        from shared.base import utcnow
+
+        target = shared_findings.FindingStatus(status)
+        for index, finding in enumerate(self.recorded_findings):
+            if finding.id != finding_id:
+                continue
+            if finding.status is target:
+                return finding
+            change = shared_findings.StatusChange(
+                from_status=finding.status,
+                to_status=target,
+                at=utcnow(),
+                actor=actor,
+                reason=reason,
+            )
+            updated = finding.model_copy(
+                update={
+                    "status": target,
+                    "history": [*finding.history, change],
+                    "updated_at": utcnow(),
+                }
+            )
+            self.recorded_findings[index] = updated
+            return updated
+        return None
+
     def record_finding(self, finding: Any, *, actor: str) -> Any:
-        self.findings.append(finding)
+        for index, existing in enumerate(self.recorded_findings):
+            if existing.id == finding.id:
+                self.recorded_findings[index] = finding
+                return finding
+        self.recorded_findings.append(finding)
         return finding
 
     def record(self, finding_id: str, record: Any) -> None:
@@ -295,7 +396,12 @@ def test_runs_the_pre_approval_phases_and_requests_approval(host_and_orchestrato
     orchestrator.run(host)
 
     assert host.states[:7] == [
-        "SCOPE_CHECK", "INDEXING", "FUNCTIONAL_REVIEW", "RECON", "VALIDATION", "ANALYSIS",
+        "SCOPE_CHECK",
+        "INDEXING",
+        "FUNCTIONAL_REVIEW",
+        "RECON",
+        "VALIDATION",
+        "ANALYSIS",
         "DIAGNOSIS",
     ]
     assert host.states[7] == "AWAITING_APPROVAL"
@@ -315,8 +421,13 @@ def test_every_agent_turn_goes_through_the_host_gateway(host_and_orchestrator):
     # each role sends its own system instruction
     assert len({c["system"] for c in gateway.calls}) == 4
     # and its own tool list, built from the registry allowlist
-    assert "checks__run_template" in dict(zip(agents, [c["tools"] for c in gateway.calls], strict=True))["probe"]
-    assert "checks__run_template" not in dict(zip(agents, [c["tools"] for c in gateway.calls], strict=True))["scout"]
+    assert (
+        "checks__run_template" in dict(zip(agents, [c["tools"] for c in gateway.calls], strict=True))["probe"]
+    )
+    assert (
+        "checks__run_template"
+        not in dict(zip(agents, [c["tools"] for c in gateway.calls], strict=True))["scout"]
+    )
     assert gateway.denied == [], "no scripted call should hit an ungranted tool here"
 
 
@@ -334,8 +445,8 @@ def test_agent_runs_are_persisted_through_the_host(host_and_orchestrator):
 def test_findings_and_records_are_mirrored_as_canonical_models(host_and_orchestrator):
     host, orchestrator, gateway = host_and_orchestrator
     orchestrator.run(host)
-    assert len(host.findings) == 1
-    finding = host.findings[0]
+    assert len(host.recorded_findings) == 1
+    finding = host.recorded_findings[0]
     assert isinstance(finding, shared_findings.Finding)
     assert finding.kind is shared_findings.FindingKind.security
     assert finding.assessment_id == host.assessment_id
@@ -345,6 +456,12 @@ def test_findings_and_records_are_mirrored_as_canonical_models(host_and_orchestr
     assert "AttackPath" in kinds
     assert "RootCause" in kinds
     assert "RemediationPlan" in kinds
+    assert finding.status is shared_findings.FindingStatus.diagnosed
+    path = [(h.from_status, h.to_status) for h in finding.history]
+    assert path == [
+        (shared_findings.FindingStatus.hypothesis, shared_findings.FindingStatus.validated),
+        (shared_findings.FindingStatus.validated, shared_findings.FindingStatus.diagnosed),
+    ]
 
 
 def test_resume_after_approval_completes_remediation_and_hardening(host_and_orchestrator):
@@ -355,7 +472,13 @@ def test_resume_after_approval_completes_remediation_and_hardening(host_and_orch
 
     assert host.states[-4:] == ["REMEDIATION", "HARDENING", "REPORTING", "COMPLETED"]
     assert [r["agent"] for r in host.runs] == [
-        "scout", "probe", "trace", "diagnose", "patch", "verify", "fortify",
+        "scout",
+        "probe",
+        "trace",
+        "diagnose",
+        "patch",
+        "verify",
+        "fortify",
     ]
     assert len(host.patches) == 1
     patch = host.patches[0]
@@ -368,6 +491,56 @@ def test_resume_after_approval_completes_remediation_and_hardening(host_and_orch
     assert verification.verdict is shared_findings.VerificationVerdict.accepted
     assert verification.produced_by_run_id != patch.produced_by_run_id, "Verify must be its own run"
     assert any("hardened" in m for m in host.progress_messages)
+    finding = host.recorded_findings[0]
+    assert finding.status is shared_findings.FindingStatus.hardened
+    path = [(h.from_status, h.to_status) for h in finding.history]
+    assert path == [
+        (shared_findings.FindingStatus.hypothesis, shared_findings.FindingStatus.validated),
+        (shared_findings.FindingStatus.validated, shared_findings.FindingStatus.diagnosed),
+        (shared_findings.FindingStatus.diagnosed, shared_findings.FindingStatus.patch_proposed),
+        (shared_findings.FindingStatus.patch_proposed, shared_findings.FindingStatus.verified),
+        (shared_findings.FindingStatus.verified, shared_findings.FindingStatus.hardened),
+    ]
+    assert host.checkpoints.get("security_agents.approval.v1")
+    assert host.charged, "sandbox seconds must reach host.charge"
+
+
+def test_resume_after_losing_in_memory_state(host_and_orchestrator, tmp_path):
+    """A new HostOrchestrator (worker restart) must resume from the durable checkpoint."""
+    host, first, _ = host_and_orchestrator
+    first.run(host)
+    assert host.states[-1] == "AWAITING_APPROVAL"
+    assert "security_agents.approval.v1" in host.checkpoints
+    host.approve_all()
+    replacement = build_orchestrator(
+        target_dir=first.target_dir,
+        labels_path=first.labels_path,
+        workdir=tmp_path / "fresh-worker",
+        driver=first.driver,
+    )
+    assert replacement._resumable == {}
+    replacement.run(host)
+    assert host.states[-1] == "COMPLETED"
+    assert [run["agent"] for run in host.runs].count("scout") == 1
+    assert len(host.patches) == 1
+    assert host.recorded_findings[0].status is shared_findings.FindingStatus.hardened
+
+
+def test_resume_refuses_changed_snapshot(host_and_orchestrator, tmp_path):
+    host, first, _ = host_and_orchestrator
+    first.run(host)
+    host.approve_all()
+    host.checkpoints["security_agents.approval.v1"]["commit_sha"] = "0" * 40
+    replacement = build_orchestrator(
+        target_dir=first.target_dir,
+        labels_path=first.labels_path,
+        workdir=tmp_path / "other",
+        driver=first.driver,
+    )
+    with pytest.raises(PlatformError) as exc:
+        replacement.run(host)
+    assert exc.value.code is ErrorCode.SNAPSHOT_NOT_READY
+    assert not host.patches
 
 
 def test_declined_approval_reports_without_patching(host_and_orchestrator):
