@@ -85,15 +85,15 @@ by FastAPI is the source for frontend client generation.
 |---|---|---|
 | POST | `/webhooks/github` | GitHub App webhook (signature-verified, no session) |
 | POST | `/ingest/runtime/{project_id}` | Runtime events (ingest token) |
-| GET | `/projects/{id}/events` | Monitoring feed |
-| GET | `/projects/{id}/defense-recommendations` | RL recommendations (labeled) |
+| GET | `/projects/{id}/events?limit=&cursor=` | Monitoring feed, newest first; `next_cursor` when older events exist |
+| GET | `/projects/{id}/defense-recommendations?limit=&cursor=` | RL recommendations (labeled), newest first; `next_cursor` when older exist |
 
 ### Ops
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/healthz` | Liveness |
 | GET | `/readyz` | DB + queue reachable |
-| GET | `/audit?project_id=` | Audit log (owners) |
+| GET | `/audit?project_id=&limit=&cursor=` | Audit log (owners), newest first; `next_cursor` = last `seq` when older exist; chain verification covers the whole org |
 
 ## SSE event shape
 ```

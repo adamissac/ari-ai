@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 import sqlalchemy as sa
@@ -129,6 +129,32 @@ def _audit(
         subject_id=subject_id,
         details=details,
     )
+
+
+def _keyset_where(table: sa.Table, cursor: str | None) -> list[Any]:
+    """Newest-first keyset paging on (created_at, id); the cursor is "<iso>|<id>" from the
+    previous page's last row. Rows written in one transaction share created_at, so id breaks ties."""
+    if not cursor:
+        return []
+    ts, sep, rid = cursor.partition("|")
+    try:
+        when = datetime.fromisoformat(ts)
+    except ValueError:
+        when = None
+    if not sep or not rid or when is None:
+        raise ApiError(ErrorCode.VALIDATION_FAILED, "invalid cursor", 422)
+    return [
+        sa.tuple_(table.c.created_at, table.c.id) < sa.tuple_(sa.literal(when), sa.literal(rid))
+    ]
+
+
+def _keyset_page(rows: list[Any], limit: int) -> tuple[list[Any], str | None]:
+    """``rows`` are (created_at, id, doc) fetched with limit+1."""
+    items = rows[:limit]
+    if len(rows) > limit and items:
+        last = items[-1]
+        return [r[2] for r in items], f"{last[0].isoformat()}|{last[1]}"
+    return [r[2] for r in items], None
 
 
 def _page(rows: list[Any], limit: int, key: str = "id") -> dict[str, Any]:
@@ -1169,19 +1195,25 @@ def get_artifact(artifact_id: str, request: Request) -> Response:
 
 @router.get("/projects/{project_id}/events")
 def monitoring_feed(
-    project_id: str, request: Request, limit: int = Query(50, ge=1, le=200)
+    project_id: str,
+    request: Request,
+    limit: int = Query(50, ge=1, le=200),
+    cursor: str | None = None,
 ) -> dict[str, Any]:
+    """Newest first; ``next_cursor`` is set when older events exist (pass it as ``cursor``)."""
+    t = monitoring_events
     with transaction() as conn:
         require_project(conn, _user(conn, request), project_id)
-        docs = conn.execute(
-            sa.select(monitoring_events.c.doc)
-            .where(monitoring_events.c.project_id == project_id)
-            .order_by(monitoring_events.c.created_at.desc())
-            .limit(limit)
-        ).scalars()
+        rows = conn.execute(
+            sa.select(t.c.created_at, t.c.id, t.c.doc)
+            .where(t.c.project_id == project_id, *_keyset_where(t, cursor))
+            .order_by(t.c.created_at.desc(), t.c.id.desc())
+            .limit(limit + 1)
+        ).all()
+        docs, nxt = _keyset_page(rows, limit)
         return {
             "items": [MonitoringEvent.model_validate(d).model_dump(mode="json") for d in docs],
-            "next_cursor": None,
+            "next_cursor": nxt,
         }
 
 
@@ -1201,20 +1233,28 @@ def reassessments(project_id: str, request: Request) -> dict[str, Any]:
 
 
 @router.get("/projects/{project_id}/defense-recommendations")
-def list_recommendations(project_id: str, request: Request) -> dict[str, Any]:
+def list_recommendations(
+    project_id: str,
+    request: Request,
+    limit: int = Query(50, ge=1, le=200),
+    cursor: str | None = None,
+) -> dict[str, Any]:
+    """Newest first; ``next_cursor`` is set when older recommendations exist."""
+    t = defense_recommendations
     with transaction() as conn:
         require_project(conn, _user(conn, request), project_id)
-        docs = conn.execute(
-            sa.select(defense_recommendations.c.doc)
-            .where(defense_recommendations.c.project_id == project_id)
-            .order_by(defense_recommendations.c.created_at.desc())
-            .limit(50)
-        ).scalars()
+        rows = conn.execute(
+            sa.select(t.c.created_at, t.c.id, t.c.doc)
+            .where(t.c.project_id == project_id, *_keyset_where(t, cursor))
+            .order_by(t.c.created_at.desc(), t.c.id.desc())
+            .limit(limit + 1)
+        ).all()
+        docs, nxt = _keyset_page(rows, limit)
         return {
             "items": [
                 DefenseRecommendation.model_validate(d).model_dump(mode="json") for d in docs
             ],
-            "next_cursor": None,
+            "next_cursor": nxt,
             "label": "simulation-derived decision support; never executed automatically",
         }
 
@@ -1357,20 +1397,28 @@ def get_job(job_id: str, request: Request) -> dict[str, Any]:
 
 
 @router.get("/audit")
-def audit_log(request: Request, project_id: str) -> dict[str, Any]:
+def audit_log(
+    request: Request,
+    project_id: str,
+    limit: int = Query(500, ge=1, le=500),
+    cursor: str | None = Query(None, pattern=r"^\d{1,18}$"),
+) -> dict[str, Any]:
+    """Newest first. ``next_cursor`` is the last returned ``seq`` when older events exist;
+    pass it as ``cursor`` to continue. Chain verification always covers the whole org chain."""
     with transaction() as conn:
         user = _user(conn, request)
         org_id, _ = require_project(conn, user, project_id, MemberRole.owner)
-        docs = conn.execute(
-            sa.select(audit_events.c.doc)
-            .where(audit_events.c.project_id == project_id)
-            .order_by(audit_events.c.seq.desc())
-            .limit(500)
-        ).scalars()
+        q = sa.select(audit_events.c.seq, audit_events.c.doc).where(
+            audit_events.c.project_id == project_id
+        )
+        if cursor:
+            q = q.where(audit_events.c.seq < int(cursor))
+        rows = conn.execute(q.order_by(audit_events.c.seq.desc()).limit(limit + 1)).all()
+        page = rows[:limit]
         ok, n = audit.verify_chain(conn, org_id)
         return {
-            "items": [AuditEvent.model_validate(d).model_dump(mode="json") for d in docs],
+            "items": [AuditEvent.model_validate(r.doc).model_dump(mode="json") for r in page],
             "chain_verified": ok,
             "chain_events_checked": n,
-            "next_cursor": None,
+            "next_cursor": str(page[-1].seq) if len(rows) > limit and page else None,
         }
