@@ -41,18 +41,30 @@ def test_strict_tools_use_only_supported_keywords(spec) -> None:
         if not tool["strict"]:
             continue
         for node in _walk(tool["input_schema"]):
-            assert not (UNSUPPORTED_IN_STRICT & node.keys()), (tool["name"], UNSUPPORTED_IN_STRICT & node.keys())
+            assert not (UNSUPPORTED_IN_STRICT & node.keys()), (
+                tool["name"],
+                UNSUPPORTED_IN_STRICT & node.keys(),
+            )
             ap = node.get("additionalProperties")
             assert ap in (None, False), (tool["name"], ap)
 
 
 def test_free_form_maps_are_sent_non_strict_with_full_schema() -> None:
-    schema = {"type": "object", "properties": {"params": {"type": "object", "additionalProperties": {"type": "string"}},
-                                               "n": {"type": "integer", "minimum": 1}}}
+    schema = {
+        "type": "object",
+        "properties": {
+            "params": {"type": "object", "additionalProperties": {"type": "string"}},
+            "n": {"type": "integer", "minimum": 1},
+        },
+    }
     sent, strict = tool_input_schema(schema)
     assert strict is False and sent["properties"]["n"]["minimum"] == 1
-    sent, strict = tool_input_schema({"type": "object", "properties": {"n": {"type": "integer", "minimum": 1}}})
-    assert strict is True and "minimum" not in sent["properties"]["n"] and sent["additionalProperties"] is False
+    sent, strict = tool_input_schema(
+        {"type": "object", "properties": {"n": {"type": "integer", "minimum": 1}}}
+    )
+    assert (
+        strict is True and "minimum" not in sent["properties"]["n"] and sent["additionalProperties"] is False
+    )
 
 
 def test_bounds_still_enforced_client_side() -> None:
@@ -69,13 +81,19 @@ def test_bounds_still_enforced_client_side() -> None:
 
 
 @pytest.mark.live
-@pytest.mark.skipif(os.environ.get("RUN_LIVE_LLM_EVAL") != "1" or not os.environ.get("ANTHROPIC_API_KEY"),
-                    reason="opt-in: RUN_LIVE_LLM_EVAL=1 and ANTHROPIC_API_KEY")
+@pytest.mark.skipif(
+    os.environ.get("RUN_LIVE_LLM_EVAL") != "1" or not os.environ.get("ANTHROPIC_API_KEY"),
+    reason="opt-in: RUN_LIVE_LLM_EVAL=1 and ANTHROPIC_API_KEY",
+)
 @pytest.mark.parametrize("spec", SPECS, ids=lambda s: s.name.value)
 def test_api_accepts_every_agents_tool_set(spec) -> None:
     """messages.count_tokens validates tool definitions and is free of charge."""
     import anthropic
 
     client = anthropic.Anthropic(max_retries=1)
-    client.messages.count_tokens(model=os.environ.get("ANTHROPIC_MODEL", "claude-opus-5-5"), system="schema check",
-                                 messages=[{"role": "user", "content": "ok"}], tools=[*_tools(spec), submit_schema(spec)])
+    client.messages.count_tokens(
+        model=os.environ.get("ANTHROPIC_MODEL", "claude-opus-5-5"),
+        system="schema check",
+        messages=[{"role": "user", "content": "ok"}],
+        tools=[*_tools(spec), submit_schema(spec)],
+    )

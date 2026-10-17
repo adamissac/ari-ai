@@ -68,9 +68,7 @@ def validate_cwe(identifier: str) -> CweRecord:
         record = data["categories"].get(value)
         kind = "category"
     if record is None:
-        raise StandardsViolation(
-            "CWE", value, f"not in the pinned CWE {data['version']} catalog"
-        )
+        raise StandardsViolation("CWE", value, f"not in the pinned CWE {data['version']} catalog")
     if record.get("status") == "Deprecated":
         raise StandardsViolation("CWE", value, "is deprecated in the CWE catalog")
     usage = record.get("mapping_usage", "")
@@ -98,9 +96,7 @@ def validate_attack_technique(identifier: str) -> AttackRecord:
     data = load("attack_enterprise")
     record = data["techniques"].get(value)
     if record is None:
-        raise StandardsViolation(
-            "ATT&CK", value, f"not in the pinned Enterprise ATT&CK v{data['version']}"
-        )
+        raise StandardsViolation("ATT&CK", value, f"not in the pinned Enterprise ATT&CK v{data['version']}")
     if record.get("revoked"):
         raise StandardsViolation("ATT&CK", value, "is revoked in Enterprise ATT&CK")
     if record.get("deprecated"):
@@ -132,9 +128,7 @@ def validate_owasp_api(identifier: str) -> OwaspRecord:
     data = load("owasp_api")
     title = data["categories"].get(value)
     if title is None:
-        raise StandardsViolation(
-            "OWASP API Top 10", value, f"not in the pinned {data['version']} edition"
-        )
+        raise StandardsViolation("OWASP API Top 10", value, f"not in the pinned {data['version']} edition")
     return OwaspRecord(identifier=value, title=title, edition=str(data["version"]))
 
 
@@ -145,9 +139,7 @@ def validate_owasp_llm(identifier: str) -> OwaspRecord:
     data = load("owasp_llm")
     title = data["risks"].get(value)
     if title is None:
-        raise StandardsViolation(
-            "OWASP LLM Top 10", value, f"not in the pinned {data['version']} edition"
-        )
+        raise StandardsViolation("OWASP LLM Top 10", value, f"not in the pinned {data['version']} edition")
     return OwaspRecord(identifier=value, title=title, edition=str(data["version"]))
 
 

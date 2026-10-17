@@ -1,4 +1,5 @@
 """Provider schema projection; Pydantic remains the argument validator."""
+
 from typing import Any
 
 _NUMERIC_BOUNDS = frozenset({"minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf"})

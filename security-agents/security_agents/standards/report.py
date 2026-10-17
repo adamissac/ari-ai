@@ -27,7 +27,10 @@ ROWS: list[tuple[str, str, str]] = [
 KEYWORDS: list[tuple[str, tuple[str, ...]]] = [
     ("nist_sp_800_115", ("roe", "rules_of_engagement", "800_115", "sp_800")),
     ("cvss31_vectors", ("published_base_score", "official_vectors")),
-    ("cvss31", ("cvss", "roundup", "vector", "score", "rating", "impact", "exploitation", "severity", "level")),
+    (
+        "cvss31",
+        ("cvss", "roundup", "vector", "score", "rating", "impact", "exploitation", "severity", "level"),
+    ),
     ("attack_enterprise", ("attack",)),
     ("d3fend", ("d3fend",)),
     ("owasp_llm", ("llm",)),
@@ -62,7 +65,16 @@ def run_tests(extra: list[str]) -> Collector:
 
     collector = Collector()
     pytest.main(
-        [str(TEST_DIR), "-q", "-p", "no:cacheprovider", "--no-header", "-o", "console_output_style=classic", *extra],
+        [
+            str(TEST_DIR),
+            "-q",
+            "-p",
+            "no:cacheprovider",
+            "--no-header",
+            "-o",
+            "console_output_style=classic",
+            *extra,
+        ],
         plugins=[collector],
     )
     return collector
@@ -73,7 +85,7 @@ def git_sha() -> str:
         return subprocess.run(
             ["git", "rev-parse", "HEAD"], cwd=PACKAGE_ROOT, capture_output=True, text=True, check=True
         ).stdout.strip()
-    except Exception:  # noqa: BLE001
+    except Exception:
         return "unknown"
 
 
@@ -101,7 +113,16 @@ def render(collector: Collector) -> tuple[str, int]:
             )
         )
     integrity = tallies.get("integrity", {"passed": 0, "failed": 0, "skipped": 0})
-    lines.append(("Provenance and integrity", "8 pinned files", "PROVENANCE.json", str(integrity["passed"]), str(integrity["failed"]), "none"))
+    lines.append(
+        (
+            "Provenance and integrity",
+            "8 pinned files",
+            "PROVENANCE.json",
+            str(integrity["passed"]),
+            str(integrity["failed"]),
+            "none",
+        )
+    )
     widths = [max(len(line[i]) for line in lines) for i in range(len(header))]
     out = []
     for index, line in enumerate(lines):

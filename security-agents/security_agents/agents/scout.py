@@ -20,9 +20,9 @@ from ..contracts import (
     new_id,
 )
 from ..intel import CodeIntel, hypothesis_key
+from ..runtime import AgentSpec, data_block
 from ..standards.mapping import owasp_api_tag
 from ..standards.validators import validate_cwe
-from ..runtime import AgentSpec, data_block
 
 SYSTEM = """You are Scout, the reconnaissance agent of an automated security review platform.
 
@@ -117,6 +117,7 @@ class HypothesisOut(StrictModel):
     suggested_check_category: str = Field(
         max_length=100, description="Which available check category could validate this."
     )
+
 
 class CoverageOut(StrictModel):
     entry_points_reviewed: list[str] = Field(default_factory=list, max_length=40)

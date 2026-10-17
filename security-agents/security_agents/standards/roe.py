@@ -209,9 +209,7 @@ def check_roe(
     template_ref: str | None,
 ) -> RoeDecision:
     def deny(reason: RoeReason, detail: str = "") -> RoeDecision:
-        return RoeDecision(
-            allowed=False, reason=reason, roe_id=roe.id if roe else None, detail=detail[:300]
-        )
+        return RoeDecision(allowed=False, reason=reason, roe_id=roe.id if roe else None, detail=detail[:300])
 
     if roe is None:
         return deny("MISSING_ROE", "no rules of engagement issued for this assessment")

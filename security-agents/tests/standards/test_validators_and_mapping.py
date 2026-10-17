@@ -57,7 +57,11 @@ def test_known_attack_technique_and_sub_technique():
     technique = validate_attack_technique("T1190")
     assert technique.name == "Exploit Public-Facing Application"
     assert technique.version == "20.0"
-    sub = next(k for k, v in registry.load("attack_enterprise")["techniques"].items() if v["sub_technique"] and not v["revoked"] and not v["deprecated"])
+    sub = next(
+        k
+        for k, v in registry.load("attack_enterprise")["techniques"].items()
+        if v["sub_technique"] and not v["revoked"] and not v["deprecated"]
+    )
     assert validate_attack_technique(sub).sub_technique is True
 
 
@@ -72,7 +76,7 @@ def test_revoked_or_deprecated_attack_technique_is_rejected():
     retired = [k for k, v in techniques.items() if v["revoked"] or v["deprecated"]]
     assert retired, "the pinned bundle should contain retired techniques to test against"
     for identifier in retired[:5]:
-        with pytest.raises(StandardsViolation, match="revoked|deprecated"):
+        with pytest.raises(StandardsViolation, match=r"revoked|deprecated"):
             validate_attack_technique(identifier)
 
 

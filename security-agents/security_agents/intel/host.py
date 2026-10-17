@@ -1,4 +1,5 @@
 """Trusted repository binding to SHA-pinned workspace and upstream intelligence."""
+
 from __future__ import annotations
 
 import json
@@ -18,6 +19,7 @@ def bindings_path() -> Path | None:
         return Path(explicit)
     try:
         from backend.settings import get_settings
+
         configured = get_settings().repository_bindings_file
     except ImportError:
         configured = None
@@ -43,8 +45,11 @@ def bound_intelligence(host: Any, workdir: Path, service: Any = None) -> CodeInt
     subdir = "." if subdir == "." else safe_rel_path(subdir)
     assessment = host.assessment
     raw = SnapshotHandle.from_git(
-        Path(binding["local_path"]).expanduser().resolve(), assessment.commit_sha, subdir,
-        workdir / "checkout", snapshot_id=getattr(assessment, "snapshot_id", None) or new_id("snp"),
+        Path(binding["local_path"]).expanduser().resolve(),
+        assessment.commit_sha,
+        subdir,
+        workdir / "checkout",
+        snapshot_id=getattr(assessment, "snapshot_id", None) or new_id("snp"),
         repo_id=host.repo_id,
     )
     recipe = raw.root / "build_recipe.json"
@@ -60,12 +65,16 @@ def bound_intelligence(host: Any, workdir: Path, service: Any = None) -> CodeInt
         prefix_parts.append(target_dir)
     if service is None:
         from code_intelligence.api import build_service
+
         service = build_service()
     ref = service.index_repository(host.project_id, host.repo_id, assessment.commit_sha)
     if ref.commit_sha != raw.commit_sha or ref.repo_id != host.repo_id or ref.project_id != host.project_id:
         raise PlatformError(ErrorCode.SNAPSHOT_NOT_READY, "intelligence snapshot identity mismatch")
     adapter = CodeIntelligenceAdapter(
-        service=service, ref=ref, workspace=workspace, path_prefix="/".join(prefix_parts),
+        service=service,
+        ref=ref,
+        workspace=workspace,
+        path_prefix="/".join(prefix_parts),
     )
     adapter.verify_workspace()
     return adapter

@@ -123,11 +123,11 @@ def base_score(metrics: BaseMetrics) -> BaseScore:
     availability = cia[LABELS["A"][metrics.A]]
     iss = 1 - ((1 - confidentiality) * (1 - integrity) * (1 - availability))
     if changed:
-        impact = constants["impact_changed_factor"] * (
-            iss - constants["impact_changed_iss_offset"]
-        ) - constants["impact_changed_subtrahend"] * (
-            iss - constants["impact_changed_power_offset"]
-        ) ** constants["impact_changed_power"]
+        impact = (
+            constants["impact_changed_factor"] * (iss - constants["impact_changed_iss_offset"])
+            - constants["impact_changed_subtrahend"]
+            * (iss - constants["impact_changed_power_offset"]) ** constants["impact_changed_power"]
+        )
     else:
         impact = constants["impact_unchanged_factor"] * iss
     privileges = weights["PR_scope_changed" if changed else "PR"][LABELS["PR"][metrics.PR]]

@@ -37,7 +37,12 @@ def test_tampered_index_fails_closed(tmp_path, monkeypatch):
     for path in registry.DATA_DIR.iterdir():
         (data / path.name).write_bytes(path.read_bytes())
     cwe = json.loads((data / "cwe.json").read_text())
-    cwe["weaknesses"]["CWE-99999"] = {"name": "invented", "abstraction": "Base", "status": "Draft", "mapping_usage": "Allowed"}
+    cwe["weaknesses"]["CWE-99999"] = {
+        "name": "invented",
+        "abstraction": "Base",
+        "status": "Draft",
+        "mapping_usage": "Allowed",
+    }
     (data / "cwe.json").write_text(json.dumps(cwe))
     monkeypatch.setattr(registry, "DATA_DIR", data)
     monkeypatch.setattr(registry, "PROVENANCE_FILE", data / "PROVENANCE.json")
@@ -73,7 +78,7 @@ def test_share_alike_licenses_are_flagged():
 
 def test_third_party_notices_reproduce_the_required_designations():
     notices = (registry.DATA_DIR.parent / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
-    assert "Copyright © 2006–2026, The MITRE Corporation" in notices
+    assert "Copyright © 2006–2026, The MITRE Corporation" in notices  # noqa: RUF001
     assert "© 2026 The MITRE Corporation. This work is reproduced and distributed" in notices
     assert "CVSS is owned by FIRST and used by permission" in notices
     assert "CC BY-SA 4.0" in notices
@@ -87,7 +92,6 @@ def test_third_party_notices_reproduce_the_required_designations():
         ("d3fend", "1.6.0"),
         ("owasp_api", "2023"),
         ("owasp_llm", "2025"),
-
         ("cvss31", "3.1"),
     ],
 )

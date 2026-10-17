@@ -28,6 +28,10 @@ How to work (use the tools; do not guess):
    claim they are exploited.
 6. Finish by calling `submit_result` with: claims, findings (each naming its claim_key and
    the test_id that demonstrates it), security_concerns, open_questions, and a summary.
+   Optionally give a finding a `weakness_class`: one specific CWE *weakness* that names the
+   root cause (for example CWE-841 for a broken business-workflow invariant). Categories and
+   views such as CWE-840 are rejected. If no specific weakness clearly fits, leave it empty;
+   an unsuitable id is dropped with a recorded reason and never invalidates the finding.
    Report every finding you tested, including refuted ones; the platform decides statuses
    from executed evidence, not from your wording.
 

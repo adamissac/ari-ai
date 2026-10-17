@@ -90,7 +90,9 @@ def test_roe_for_another_scope_is_denied():
 def test_roe_is_stale_when_the_scope_changes_after_issue():
     scope = make_scope()
     roe = roe_for(scope)
-    widened = scope.model_copy(update={"allowed_check_categories": [*scope.allowed_check_categories, "other"]})
+    widened = scope.model_copy(
+        update={"allowed_check_categories": [*scope.allowed_check_categories, "other"]}
+    )
     assert allowed(roe, widened).reason == "ROE_STALE"
 
 
@@ -119,7 +121,9 @@ def test_unlisted_target_template_and_agent_are_denied():
 def test_altered_roe_document_is_denied():
     scope = make_scope()
     roe = roe_for(scope)
-    tampered = roe.model_copy(update={"permitted_check_templates": [*roe.permitted_check_templates, "made.up@1"]})
+    tampered = roe.model_copy(
+        update={"permitted_check_templates": [*roe.permitted_check_templates, "made.up@1"]}
+    )
     assert allowed(tampered, scope, template="made.up@1").reason == "ROE_DIGEST_MISMATCH"
 
 

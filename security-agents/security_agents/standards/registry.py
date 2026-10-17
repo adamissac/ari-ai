@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from functools import lru_cache
+from functools import cache, lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -32,7 +32,7 @@ def provenance() -> dict[str, Any]:
     return json.loads(PROVENANCE_FILE.read_text(encoding="utf-8"))
 
 
-@lru_cache(maxsize=None)
+@cache
 def load(name: str) -> dict[str, Any]:
     if name not in INDEX_NAMES:
         raise KeyError(f"unknown standards index {name!r}")
@@ -43,9 +43,7 @@ def load(name: str) -> dict[str, Any]:
     body = path.read_bytes()
     digest = hashlib.sha256(body).hexdigest()
     if digest != entry["file_sha256"]:
-        raise IntegrityError(
-            f"{path.name} sha256 {digest} does not match the pinned {entry['file_sha256']}"
-        )
+        raise IntegrityError(f"{path.name} sha256 {digest} does not match the pinned {entry['file_sha256']}")
     return json.loads(body)
 
 

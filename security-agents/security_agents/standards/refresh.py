@@ -195,6 +195,7 @@ def build_cwe() -> Built:
     namespace = root.tag.split("}")[0].strip("{")
     version = root.attrib["Version"]
     catalog_date = root.attrib.get("Date", "")
+
     def usage_of(element: ET.Element) -> str:
         notes = element.find(f"{{{namespace}}}Mapping_Notes")
         usage = notes.find(f"{{{namespace}}}Usage") if notes is not None else None
@@ -251,9 +252,7 @@ def _cwe_sort(item: tuple[str, Any]) -> tuple[int, str]:
 def build_attack_enterprise() -> Built:
     index = fetch(SOURCES["attack_enterprise"]["url"])
     catalog = json.loads(index.body)
-    collection = next(
-        c for c in catalog["collections"] if c["name"].lower().startswith("enterprise")
-    )
+    collection = next(c for c in catalog["collections"] if c["name"].lower().startswith("enterprise"))
     newest = max(collection["versions"], key=lambda v: _version_key(v["version"]))
     bundle = fetch(newest["url"])
     objects = json.loads(bundle.body)["objects"]
@@ -363,9 +362,7 @@ def _scalar(value: Any) -> str:
 
 def build_owasp_api() -> Built:
     editions = fetch("https://api.github.com/repos/OWASP/API-Security/contents/editions")
-    names = sorted(
-        entry["name"] for entry in json.loads(editions.body) if entry.get("type") == "dir"
-    )
+    names = sorted(entry["name"] for entry in json.loads(editions.body) if entry.get("type") == "dir")
     years = [name for name in names if name.isdigit()]
     current = max(years) if years else "2023"
     listing = fetch(SOURCES["owasp_api"]["url"])
@@ -432,10 +429,12 @@ def _owasp_llm_edition_notes(page_edition: str) -> list[str]:
     notes = ["titles taken from the anchor text of each risk on the project page"]
     try:
         listing = json.loads(fetch(GENAI_TOP10_REPO).body)
-    except Exception as error:  # noqa: BLE001
+    except Exception as error:
         notes.append(f"UNVERIFIED: could not list the GenAI-LLM-Top10 repository: {type(error).__name__}")
         return notes
-    years = sorted(entry["name"] for entry in listing if entry.get("type") == "dir" and entry["name"].isdigit())
+    years = sorted(
+        entry["name"] for entry in listing if entry.get("type") == "dir" and entry["name"].isdigit()
+    )
     newer = [year for year in years if page_edition and year > page_edition]
     if newer:
         notes.append(
@@ -604,18 +603,22 @@ def build_cvss31_vectors() -> Built:
     collected: dict[str, dict[str, Any]] = {}
     sources: list[Fetched] = []
     notes: list[str] = []
-    queries = [
-        f"{SOURCES['cvss31_vectors']['url']}?cvssV3Severity={severity}&resultsPerPage={count}&startIndex=0"
-        for severity, count in NVD_PAGES
-    ] + [
-        f"{SOURCES['cvss31_vectors']['url']}?cvssV3Metrics={metric}&resultsPerPage=5&startIndex=0"
-        for metric in NVD_METRIC_FILTERS
-    ] + [f"{SOURCES['cvss31_vectors']['url']}?cveId={cve}" for cve in NVD_RECORDS]
+    queries = (
+        [
+            f"{SOURCES['cvss31_vectors']['url']}?cvssV3Severity={severity}&resultsPerPage={count}&startIndex=0"
+            for severity, count in NVD_PAGES
+        ]
+        + [
+            f"{SOURCES['cvss31_vectors']['url']}?cvssV3Metrics={metric}&resultsPerPage=5&startIndex=0"
+            for metric in NVD_METRIC_FILTERS
+        ]
+        + [f"{SOURCES['cvss31_vectors']['url']}?cveId={cve}" for cve in NVD_RECORDS]
+    )
     for url in queries:
         severity = url.rsplit("=", 1)[-1]
         try:
             fetched = fetch(url)
-        except Exception as error:  # noqa: BLE001
+        except Exception as error:
             notes.append(f"UNVERIFIED: NVD page {severity} failed: {type(error).__name__}")
             continue
         sources.append(fetched)
@@ -644,16 +647,16 @@ def build_cvss31_vectors() -> Built:
         "version": "3.1",
         "vector_count": len(collected),
         "origin": "NVD CVE API 2.0 cvssMetricV31 entries (NVD primary and CNA secondary), scored by the named source",
-        "vectors": [
-            {"vector": vector, **values} for vector, values in sorted(collected.items())
-        ],
+        "vectors": [{"vector": vector, **values} for vector, values in sorted(collected.items())],
     }
     if len(collected) < 10:
         notes.append(f"UNVERIFIED: only {len(collected)} vectors collected, fewer than the 10 required")
     changed = sum(1 for vector in collected if "/S:C/" in vector)
     payload["scope_changed_count"] = changed
     if changed == 0:
-        notes.append("UNVERIFIED: no Scope:Changed vector collected, so that branch is not tested against NVD")
+        notes.append(
+            "UNVERIFIED: no Scope:Changed vector collected, so that branch is not tested against NVD"
+        )
     return Built(
         name="cvss31_vectors",
         payload=payload,
@@ -675,7 +678,9 @@ def build_nist_sp_800_115() -> Built:
             break
     title_match = re.search(r"SP 800-115,? ([A-Z][^|]{10,120}?)(?: \| CSRC|Date Published)", text)
     date_match = re.search(r"Date Published:? ([A-Za-z]+ \d{4})", text)
-    notes: list[str] = [] if status else ["UNVERIFIED: could not read a publication status from the CSRC page"]
+    notes: list[str] = (
+        [] if status else ["UNVERIFIED: could not read a publication status from the CSRC page"]
+    )
     pdf = fetch(SOURCES["nist_sp_800_115"]["pdf"])
     planning: list[dict[str, str]] = []
     roe_template: list[dict[str, str]] = []
@@ -695,8 +700,10 @@ def build_nist_sp_800_115() -> Built:
         body = document[start:end]
         for match in re.finditer(r"^\s*(\d+(?:\.\d+)*)\.\s+([A-Z][A-Za-z /,&()-]{2,60})\s*$", body, re.M):
             roe_template.append({"section": match.group(1), "title": match.group(2).strip()})
-    except Exception as error:  # noqa: BLE001
-        notes.append(f"UNVERIFIED: could not extract headings from the SP 800-115 PDF: {type(error).__name__}")
+    except Exception as error:
+        notes.append(
+            f"UNVERIFIED: could not extract headings from the SP 800-115 PDF: {type(error).__name__}"
+        )
     if not planning:
         notes.append("UNVERIFIED: no section 6 planning headings extracted")
     if not roe_template:
@@ -769,14 +776,14 @@ def refresh(names: list[str]) -> dict[str, Any]:
             print(f"  {note}", flush=True)
     provenance = {
         "generated_by": "security_agents.standards.refresh",
-        "generated_at": existing.get("generated_at") if not names else datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "generated_at": existing.get("generated_at")
+        if not names
+        else datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "note": "Identifiers and versions are taken from the primary sources listed here. Nothing in this directory is authored from memory.",
         "sources": dict(sorted(entries.items())),
         "licenses": LICENSES,
     }
-    PROVENANCE_FILE.write_text(
-        json.dumps(provenance, indent=1, ensure_ascii=False) + "\n", encoding="utf-8"
-    )
+    PROVENANCE_FILE.write_text(json.dumps(provenance, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     return provenance
 
 
@@ -797,11 +804,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     names = sorted(BUILDERS) if args.all or not args.source else args.source
     provenance = refresh(names)
-    unverified = [
-        note
-        for entry in provenance["sources"].values()
-        for note in entry.get("unverified", [])
-    ]
+    unverified = [note for entry in provenance["sources"].values() for note in entry.get("unverified", [])]
     print(f"wrote {len(names)} index files to {DATA_DIR}")
     if unverified:
         print("UNVERIFIED items:")

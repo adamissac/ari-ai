@@ -136,3 +136,95 @@ def test_reviewer_uses_real_index_expectations_and_context(tmp_path: Path) -> No
     assert finding.expectation_ids == [exp.id]  # linked back to the index's expectation
     run = host.runs[outcome.result.agent_run_id]
     assert [t.tool_name for t in run.tool_calls][:2] == ["list_expectations", "get_context_pack"]
+
+
+def test_human_decisions_from_real_service_drive_reviewer_claims(tmp_path: Path) -> None:
+    """Consumer proof for #38/#39: a human decision recorded in the REAL intelligence memory
+    surfaces through ``expectations(ref)`` and the reviewer honors it (confirmed confirms,
+    rejected is dropped). Model turns scripted; service, memory and adjudication real."""
+    from shared.intelligence import ExpectationStatus
+    from shared.intelligence_memory import ExpectationDecisionRequest
+
+    sc = payments_lite(tmp_path)
+    host = InMemoryHost(fake([]))
+    svc = IntelligenceService(
+        SQLiteIndexStore(tmp_path / "intel.db"),
+        [
+            RepositoryBinding(
+                host.project_id,
+                "rep_fixture0001",
+                "acme/payments-lite",
+                sc.repo,
+                include_prefix="target/",
+            )
+        ],
+    )
+    ref = svc.index_repository(host.project_id, "rep_fixture0001", sc.head_sha)
+    exps = svc.expectations(ref, limit=200)
+    bound = next(
+        e
+        for e in exps
+        if e.statement.startswith("Total refunds")
+        and e.sources[0].path == "target/payments_lite/app.py"
+    )
+    other = next(
+        e for e in exps if e.id != bound.id and e.statement.startswith("Test test_partial_refund")
+    )
+    assert bound.status is ExpectationStatus.ambiguous  # extracted, not human intent
+
+    svc.decide_expectation(
+        ref,
+        bound.id,
+        ExpectationDecisionRequest(
+            status="confirmed", reason="product owner confirmed", expected_revision=0
+        ),
+        actor_id="usr_fixtureowner01",
+    )
+    svc.decide_expectation(
+        ref,
+        other.id,
+        ExpectationDecisionRequest(
+            status="rejected", reason="obsolete test intent", expected_revision=0
+        ),
+        actor_id="usr_fixtureowner01",
+    )
+    decided = {e.id: e for e in svc.expectations(ref, limit=200)}
+    assert decided[bound.id].status is ExpectationStatus.confirmed
+    assert any(s.kind.value == "human_input" for s in decided[bound.id].sources)
+
+    host.transport = fake(
+        [
+            call("list_expectations"),
+            call(
+                "submit_result",
+                summary="Decided intent only.",
+                claims=[
+                    {
+                        "key": "c_human",
+                        "statement": "Refund total bound (human-confirmed).",
+                        "proposed_status": "confirmed",
+                        "citations": [{"source_kind": "expectation", "expectation_id": bound.id}],
+                    },
+                    {
+                        "key": "c_rejected",
+                        "statement": "Partial refund rule (rejected).",
+                        "proposed_status": "confirmed",
+                        "citations": [{"source_kind": "expectation", "expectation_id": other.id}],
+                    },
+                ],
+            ),
+        ]
+    )
+    req = make_request(host, sc).model_copy(update={"snapshot_ref": ref})
+    outcome = ReviewerAgentRunner(
+        host, RepoSource(sc.repo, subdir="target"), intelligence=svc
+    ).review(req)
+    seen = all_tool_results(host.transport.requests[-1])
+    assert f"{bound.id} [confirmed/" in seen
+    claims = {c.statement: c for c in outcome.result.intent_evidence.claims}
+    assert claims["Refund total bound (human-confirmed)."].status is IntentClaimStatus.confirmed
+    assert claims["Refund total bound (human-confirmed)."].expectation_id == bound.id
+    assert "Partial refund rule (rejected)." not in claims
+    assert any(
+        "rejected by a human decision" in r or "unknown expectation" in r for r in outcome.rejected
+    )
