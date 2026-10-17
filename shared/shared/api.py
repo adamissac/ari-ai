@@ -20,7 +20,7 @@ from shared.findings import (
     VerificationResult,
 )
 from shared.ids import FindingId, RepositoryId, ScopeId, SnapshotId
-from shared.scope import ApprovalStatus, ScopeTarget
+from shared.scope import ApprovalStatus, CheckCategory, ScopeTarget
 from shared.standards import FindingStandards
 from shared.tenancy import Budget, MemberRole, Organization, ProjectSettings, User
 
@@ -79,7 +79,7 @@ class SnapshotCreate(StrictModel):
 class ScopeCreate(StrictModel):
     name: ShortText
     targets: list[ScopeTarget] = Field(min_length=1, max_length=8)
-    allowed_check_categories: list[ShortText] = Field(default_factory=list)
+    allowed_check_categories: list[CheckCategory] = Field(default_factory=list)
     expires_at: UtcDatetime
     notes: ShortText | None = None
 

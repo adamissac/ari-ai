@@ -49,7 +49,7 @@ Repository { id, project_id, provider: github, full_name, default_branch, instal
 AuthorizedScope {
   id, project_id, name,
   targets: [ScopeTarget],
-  allowed_check_categories: [str],       # from Probe template library categories
+  allowed_check_categories: [CheckCategory],  # Probe library ids; V0 aliases accepted
   status: pending|active|expired|revoked,
   requested_by, approved_by?, approved_at?, expires_at,
   notes
@@ -64,6 +64,17 @@ Approval { id, project_id, subject_type: scope|remediation|pr, subject_id,
 ```
 MVP permits only `sandbox_build` targets. Any other target kind (staging URL,
 etc.) is a later, separately reviewed contract change.
+
+`CheckCategory` (canonical Probe library ids, plus published V0 fixture aliases
+that canonicalize onto them):
+
+| Canonical (Probe / SEC-005) | V0 fixture alias |
+|---|---|
+| `access_control.ownership` | `authorization.ownership` |
+| `input_validation.bounds` | `input.bounds` |
+
+A scope listing an alias authorizes the matching Probe template. Unknown
+category strings are rejected.
 
 ### Code intelligence
 ```
