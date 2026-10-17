@@ -256,6 +256,20 @@
           "default": null,
           "title": "Reassessment Request Id"
         },
+        "repo_id": {
+          "anyOf": [
+            {
+              "pattern": "^rep_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The one repository this assessment ran on (always set by the backend); findings link source lines to it, so multi-repository scopes need no guessing",
+          "title": "Repo Id"
+        },
         "scope_id": {
           "pattern": "^scp_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Scope Id",

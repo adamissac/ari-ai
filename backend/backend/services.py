@@ -112,6 +112,7 @@ def create_assessment(
         project_id=project_id,
         snapshot_id=snapshot_id,
         commit_sha=commit_sha,
+        repo_id=repo_id,
         scope_id=scope_id,
         trigger=trigger,
         reassessment_request_id=reassessment_request_id,
