@@ -86,7 +86,7 @@ function OpenIncident({ onCreated }: { onCreated: (id: string) => void }) {
 }
 
 function IncidentDetailView({ id, onChange }: { id: string; onChange: () => void }) {
-  const detail = useResource(`incident:${id}`, s => api().incident(id, { signal: s }));
+  const detail = useResource(`incident:${id}`, s => api().incident(id, { signal: s }), 15000);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const act = async (body: IncidentAction): Promise<boolean> => {
@@ -141,9 +141,15 @@ function Lifecycle({ state }: { state: IncidentState }) {
   );
 }
 
-function Actions({ incident, busy, act }: { incident: Incident; busy: boolean; act: (a: IncidentAction) => Promise<boolean> }) {
+function Actions({ incident, busy, act: submitAction }: { incident: Incident; busy: boolean; act: (a: IncidentAction) => Promise<boolean> }) {
   const { me } = useSession();
   const [note, setNote] = useState('');
+  /** The note is the rationale for one action; clear it once that action succeeded so it is not reused as the next summary. */
+  const act = async (a: IncidentAction): Promise<boolean> => {
+    const ok = await submitAction(a);
+    if (ok) setNote('');
+    return ok;
+  };
   const [category, setCategory] = useState('');
   const [decision, setDecision] = useState<TriageDecisionKind>('confirmed_incident');
   const terminal = incident.state === 'closed' || incident.state === 'rejected';
