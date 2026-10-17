@@ -45,7 +45,7 @@ backend/tests/test_jobs_queue.py backend/tests/test_api_core.py backend/tests/te
 - The CI `backend` workflow runs the same suite on every PR touching backend/shared.
 - Limitations:
   - no GitHub App credentials, so the installation-token flow is unexercised;
-  - Docker is not installed locally, but CI's `containers` workflow builds the image (`backend-image`) and smoke-runs the Compose stack (`compose-stack`) on every PR.
+  - Docker is not installed locally. CI's `containers` workflow builds the image (`backend-image`) and smoke-runs the Compose stack (`compose-stack`), but only on PRs and main pushes that touch its path filter (`.github/workflows/containers.yml`). Docs-, frontend- or RL-only changes skip it. Last green run on main: [39028402915](https://github.com/adamissac/hackatl-agentic-security/actions/runs/39028402915) @ `f3d026f`.
 
 ### M7 evidence — Srihith
 
@@ -75,7 +75,8 @@ Limitations:
 
 - Issue #9 has ACKs from all six owners: Sarosh, Adam, Alan, Sai, Vihaan, plus Srihith as contract owner.
 - The contracts evolved additively to `SCHEMA_VERSION` 0.8.0.
-- Every PR runs `uv run python -m shared.export --check` and `uv run python -m shared.examples --check` (the backend workflow), and the transport validates every wire DTO against `shared/generated/contracts.schema.json`.
+- The `backend` workflow runs `uv run python -m shared.export --check` and `uv run python -m shared.examples --check` on every PR and main push that touches its path filter (`shared/**`, `backend/**`, `standards/**`, …; see `.github/workflows/backend.yml`). A coordination-only change does not trigger it. The transport validates every wire DTO against `shared/generated/contracts.schema.json`.
+- Executed green run: [backend 39026585122](https://github.com/adamissac/hackatl-agentic-security/actions/runs/39026585122) on main @ `6aee237` (ubuntu, real PostgreSQL service, fake LLM transport only). Results: lint/format "All checks passed!"; contract freshness "checked 112 files (0 changed)"; tests "407 passed, 6 skipped".
 - Run commands are in CLAUDE.md "Commands". Branch and merge conventions: issue #12.
 
 
