@@ -92,7 +92,7 @@ The problem left is **seed instability**: for the winner, seeds 11 and 12 reach 
 −37.6 while seed 10 gets −95.5 (54% compromise at ×1). With 3 seeds that also makes the
 selection itself noisy. So before using the final seeds, round 3 targets variance.
 
-### Round 3 — seed stability (table: `results/r3.md`, written when the round finishes)
+### Round 3 — seed stability ([table](results/r3.md))
 
 Candidates, all at lr 3e-4, 1M steps, DR ×0.5–2.5: the round-2 winner (reference);
 in-training checkpoint selection (`select_every: 50000` from 300k steps, scored on training
@@ -102,3 +102,28 @@ linear lr decay to 3e-5; both together; and n-step 3 with checkpoint selection.
 **Selection rule (written before seeing round-3 results):** same as round 2, on **5**
 validation seeds (10–14): highest robust return; within one std of the leader prefer lower
 robust db loss; must beat `r2_v0_ref` at ×1. The winner goes to the final held-out run.
+
+Round-3 results (5 validation seeds; robust = mean over ×0.5…×2.5):
+
+| Candidate | Robust return | Robust per seed | ×1 | ×2.5 | db loss ×1 / robust % | Compromise ×1 % | False disruption ×1 % | Uptime ×1 % |
+|---|---|---|---|---|---|---|---|---|
+| **r3_1m_dr_nstep3_sel** | **−32.8 ± 5.2** | −32.6, −27.3, −41.4, −31.1, −31.6 | −22.5 | −51.9 | 0.0 / 1.8 | 4.5 | 75.8 | 96.0 |
+| r3_1m_dr_lrdecay_sel | −33.6 ± 2.4 | −31.1, −32.0, −32.6, −35.5, −36.8 | −22.4 | −57.2 | 0.4 / 3.1 | 4.2 | 74.9 | 97.0 |
+| r3_1m_dr_sel | −38.1 ± 2.8 | −40.8, −37.6, −41.1, −36.3, −34.5 | −23.1 | −68.5 | 1.0 / 5.3 | 3.9 | 72.2 | 96.3 |
+| r3_1m_dr (round-2 winner) | −55.1 ± 23.8 | −95.5, −37.6, −37.6, −55.6, −49.3 | −29.4 | −107.1 | 1.0 / 7.4 | 15.1 | 62.8 | 94.8 |
+| r3_1m_dr_lrdecay | −55.4 ± 14.2 | −53.3, −38.9, −56.7, −77.9, −50.1 | −29.3 | −106.7 | 3.1 / 11.9 | 13.8 | 55.7 | 95.5 |
+
+Findings:
+- **In-training checkpoint selection is the third lever.** It fixes the seed instability:
+  std drops from 23.8 to 2.4–5.2 and the worst seed improves from −95.5 to −41.4. The
+  selected steps range from 350k to 1M, which confirms the final checkpoint is often not
+  the best one. lr decay alone does not fix it (−55.4 ± 14.2).
+- **Regression to report:** false disruption at ×1 rises to about 75% (round-2 winner 63%,
+  v0 defaults 60% on validation). With compromise down to about 4%, most disruptive
+  actions are precautionary. Uptime still improves (96% vs 90% for v0 defaults), so the
+  cost is acceptable in this reward, but the stated goal of *lower* false disruption was
+  not met.
+
+Applying the rule: `r3_1m_dr_nstep3_sel` leads; only `r3_1m_dr_lrdecay_sel` is within one
+std (−33.6 ≥ −38.0), and nstep3_sel has the lower robust db loss (1.8% vs 3.1%); its ×1
+return (−22.5) beats v0 defaults (−91.8). **Final candidate: `r3_1m_dr_nstep3_sel`.**
