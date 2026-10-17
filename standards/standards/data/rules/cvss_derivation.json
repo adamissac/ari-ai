@@ -11,7 +11,8 @@
    "confirmed": {"value": "L", "basis": "rule", "rationale": "A fixed, parameterised check reproduced the behaviour without defeating any mitigation."}
   }},
   "AT": {"fact": "attack_preconditions", "cases": {
-   "none_recorded": {"value": "N", "basis": "assumption", "rationale": "The attack path records no deployment or execution preconditions; a human should confirm none exist in production."}
+   "none_recorded": {"value": "N", "basis": "assumption", "rationale": "The attack path records no deployment or execution preconditions; a human should confirm none exist in production."},
+   "recorded": {"value": "P", "basis": "rule", "rationale": "The attack path lists preconditions that must hold (token, knowledge of an identifier); Attack Requirements are Present."}
   }},
   "PR": {"fact": "privileges_required", "cases": {
    "none": {"value": "N", "basis": "evidence", "rationale": "The check succeeded without authenticating."},
