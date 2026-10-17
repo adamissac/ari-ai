@@ -43,7 +43,14 @@ class Orchestrator(Protocol):
   `finish_agent_run` so per-run cost and tool history show in the UI.
 * The worker keeps one orchestrator object per process and factory, so an in-memory
   pause survives a resume handled by the same worker. Durable resume (other worker,
-  restart) must rebuild from host records (`host.findings()`, `host.approvals()`).
+  restart) uses `host.save_checkpoint(namespace, payload)` /
+  `host.load_checkpoint(namespace)` (hashed JSON artifact + assessment-scoped
+  pointer). Rebuild from that payload plus `host.findings()` / `host.approvals()`.
+  A missing checkpoint in `AWAITING_APPROVAL` is `CONFLICT_STATE`.
+* Finding lifecycle: `host.set_finding_status(finding_id, status, actor=, reason=)`
+  appends a `StatusChange` along the docs/12 edges and refuses unbacked claims
+  (validated needs a confirmed ValidationResult, patch_proposed a PatchCandidate,
+  verified an accepted VerificationResult). Idempotent for the same status.
 * `run` is called with the assessment in `SCOPE_CHECK` after the backend scope gate passes.
   It is called again in `AWAITING_APPROVAL` after a human approves or declines a remediation
   approval. Return either in a terminal state or in `AWAITING_APPROVAL`. Anything else is

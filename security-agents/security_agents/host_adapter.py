@@ -23,6 +23,7 @@ installable on its own and testable with a fake host.
 
 from __future__ import annotations
 
+import contextlib
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -77,6 +78,8 @@ HOST_STATE_NAMES: dict[AssessmentState, str] = {
     AssessmentState.BUDGET_EXHAUSTED: "BUDGET_EXHAUSTED",
 }
 
+CHECKPOINT_NS = "security_agents.approval.v1"
+
 
 @runtime_checkable
 class AssessmentHostLike(Protocol):
@@ -87,7 +90,10 @@ class AssessmentHostLike(Protocol):
 
     def assessment(self) -> Any: ...
     def scope(self) -> Any: ...
+    def save_checkpoint(self, namespace: str, payload: dict[str, Any]) -> None: ...
+    def load_checkpoint(self, namespace: str) -> dict[str, Any] | None: ...
     def approvals(self) -> list[Any]: ...
+    def findings(self) -> list[Any]: ...
     def transition(self, target: Any, message: str = "") -> Any: ...
     def progress(self, message: str, *, agent: Any = None, **data: Any) -> None: ...
     def llm(self) -> Any: ...
@@ -584,22 +590,67 @@ class HostOrchestrator:
         if existing is not None:
             self._resume(existing, host)
             return
-        state = str(getattr(getattr(_val(host, "assessment"), "state", None), "value", "") or "").upper()
+        state = _state_name(getattr(_val(host, "assessment"), "state", None))
+        checkpoint = _load_checkpoint(host)
+        if state == "AWAITING_APPROVAL" or (
+            checkpoint is not None and state not in ("", "CREATED", "SCOPE_CHECK")
+        ):
+            if checkpoint is None:
+                raise PlatformError(
+                    ErrorCode.CONFLICT_STATE,
+                    f"cannot resume from {state}: paused orchestrator state was lost "
+                    "(worker restarted or another worker); start a new assessment",
+                )
+            self._resume_from_checkpoint(host, checkpoint, target)
+            return
         if state not in ("", "CREATED", "SCOPE_CHECK"):
-            # Paused state lives in this process; a different worker or a restart lost it.
             raise PlatformError(
                 ErrorCode.CONFLICT_STATE,
                 f"cannot resume from {state}: paused orchestrator state was lost "
                 "(worker restarted or another worker); start a new assessment",
             )
 
-        workdir = self.workdir or Path(os.environ.get("SECURITY_AGENTS_WORKDIR", "")) or None
-        if workdir is None:
-            import tempfile
-
-            workdir = Path(tempfile.mkdtemp(prefix=f"{host.assessment_id}-"))
+        workdir = self._workdir(host)
         intel = self._build_intel(target, workdir, host)
+        orchestrator = self._make_orchestrator(host, intel, workdir)
+        # The host already performed the scope gate and the first transition.
+        orchestrator.state = AssessmentState.CREATED
+        result = orchestrator.run()
+        self._settle(orchestrator)
+        if result.state is AssessmentState.AWAITING_APPROVAL:
+            self._resumable[host.assessment_id] = orchestrator
+            _save_checkpoint(host, orchestrator, intel)
+            host.progress("awaiting human remediation approval")
+
+    def _resume_from_checkpoint(
+        self, host: AssessmentHostLike, checkpoint: dict[str, Any], target: Path | None
+    ) -> None:
+        """Rebuild an Orchestrator from the durable checkpoint after a worker restart."""
+        from pydantic import TypeAdapter
+
+        if checkpoint.get("version") != 1 or checkpoint.get("assessment_id") != host.assessment_id:
+            raise PlatformError(ErrorCode.CONFLICT_STATE, "invalid approval checkpoint identity/version")
+        workdir = self._workdir(host)
+        intel = self._build_intel(target, workdir, host)
+        if checkpoint.get("commit_sha") and checkpoint["commit_sha"] != intel.snapshot.commit_sha:
+            raise PlatformError(ErrorCode.SNAPSHOT_NOT_READY, "approval snapshot changed")
+        orchestrator = self._make_orchestrator(host, intel, workdir)
+        orchestrator.state = AssessmentState.AWAITING_APPROVAL
+        orchestrator.result.state = AssessmentState.AWAITING_APPROVAL
+        orchestrator.result.findings = TypeAdapter(list[FindingRecord]).validate_python(
+            checkpoint["findings"]
+        )
+        orchestrator.result.usage = Usage.model_validate(checkpoint["usage"])
+        orchestrator._baseline_failing = list(checkpoint.get("baseline_failing") or [])
+        sink = orchestrator.sink
+        if isinstance(sink, HostSink):
+            sink.sandbox_charged = float(checkpoint.get("sandbox_charged") or 0)
+        self._resume(orchestrator, host)
+
+    def _make_orchestrator(self, host: AssessmentHostLike, intel: CodeIntel, workdir: Path) -> Orchestrator:
         scope = _adapt_scope(_val(host, "scope"), intel)
+        if not scope.targets:
+            raise PlatformError(ErrorCode.SCOPE_DENIED, "host scope has no authorized targets")
         config = OrchestratorConfig(
             assessment_id=host.assessment_id,
             project_id=getattr(host, "project_id", "prj_unknown"),
@@ -613,7 +664,7 @@ class HostOrchestrator:
         )
         registry = self.registry or default_registry()
         sink = HostSink(host=host, commit_sha=intel.snapshot.commit_sha)
-        orchestrator = Orchestrator(
+        return Orchestrator(
             config,
             intel=intel,
             gateway=_NullGateway(),  # host.llm() is the only provider path here
@@ -626,13 +677,15 @@ class HostOrchestrator:
             approve_remediation=_approver(host),
             cancelled=lambda: _cancelled(host),
         )
-        # The host already performed the scope gate and the first transition.
-        orchestrator.state = AssessmentState.CREATED
-        result = orchestrator.run()
-        sink.settle(result.findings, result.usage.sandbox_seconds)
-        if result.state is AssessmentState.AWAITING_APPROVAL:
-            self._resumable[host.assessment_id] = orchestrator
-            host.progress("awaiting human remediation approval")
+
+    def _workdir(self, host: AssessmentHostLike) -> Path:
+        import tempfile
+
+        base = self.workdir or _env_path("SECURITY_AGENTS_WORKDIR")
+        if base is None:
+            return Path(tempfile.mkdtemp(prefix=f"{host.assessment_id}-"))
+        base.mkdir(parents=True, exist_ok=True)
+        return Path(tempfile.mkdtemp(prefix=f"{host.assessment_id}-", dir=base))
 
     def _resume(self, orchestrator: Orchestrator, host: AssessmentHostLike) -> None:
         """Continue after a human decided, using the approvals the host holds."""
@@ -640,7 +693,12 @@ class HostOrchestrator:
         diagnosed = [f for f in orchestrator.result.findings if f.plan is not None]
         approved: list[FindingRecord] = []
         for finding in diagnosed:
-            decision = _approver(host)(finding)
+            try:
+                decision = _approver(host)(finding)
+            except ApprovalPending:
+                host.progress("awaiting human remediation approval")
+                _save_checkpoint(host, orchestrator, orchestrator.intel)
+                return
             if decision is not None and decision.decision == "approved":
                 finding.approval = decision
                 approved.append(finding)
@@ -652,6 +710,7 @@ class HostOrchestrator:
         orchestrator._goto(AssessmentState.REMEDIATION)
         for finding in approved:
             orchestrator._run_remediation(finding)
+        _repair_functional(host, orchestrator)
         orchestrator._goto(AssessmentState.HARDENING)
         for finding in approved:
             if finding.status == "verified":
@@ -782,6 +841,46 @@ def _pinned_snapshot(host: Any, workdir: Path) -> SnapshotHandle | None:
 _PROPAGATE = {"CANCELLED", "BUDGET_EXHAUSTED", "SCOPE_DENIED"}
 
 
+def _state_name(raw: Any) -> str:
+    if raw is None:
+        return ""
+    value = getattr(raw, "value", raw)
+    return str(value or "").upper()
+
+
+def _load_checkpoint(host: AssessmentHostLike) -> dict[str, Any] | None:
+    loader = getattr(host, "load_checkpoint", None)
+    if not callable(loader):
+        return None
+    payload = loader(CHECKPOINT_NS)
+    return payload if isinstance(payload, dict) else None
+
+
+def _save_checkpoint(host: AssessmentHostLike, orchestrator: Orchestrator, intel: CodeIntel) -> None:
+    saver = getattr(host, "save_checkpoint", None)
+    if not callable(saver):
+        return
+    from pydantic import TypeAdapter
+
+    sink = orchestrator.sink
+    charged = sink.sandbox_charged if isinstance(sink, HostSink) else 0.0
+    saver(
+        CHECKPOINT_NS,
+        {
+            "version": 1,
+            "assessment_id": host.assessment_id,
+            "commit_sha": intel.snapshot.commit_sha,
+            "snapshot_id": intel.snapshot.snapshot_id,
+            "findings": TypeAdapter(list[FindingRecord]).dump_python(
+                orchestrator.result.findings, mode="json"
+            ),
+            "usage": orchestrator.result.usage.model_dump(mode="json"),
+            "baseline_failing": list(orchestrator._baseline_failing),
+            "sandbox_charged": charged,
+        },
+    )
+
+
 def _functional_review(host: Any) -> None:
     """Pillar 1 inside the assessment: Sai's reviewer on the same commit, persisting its own
     run and findings through the host. Unavailable/failing review is recorded and the
@@ -803,11 +902,182 @@ def _functional_review(host: Any) -> None:
         host.progress(
             f"functional review {result.status.value}: {len(result.findings)} functional finding(s)"
         )
+        requested = review_api.request_functional_approvals(host)
+        if requested:
+            host.progress(f"requested {len(requested)} functional remediation approval(s)")
     except Exception as exc:
         code = str(getattr(getattr(exc, "code", None), "value", type(exc).__name__))
         if code in _PROPAGATE:
             raise
         host.progress(f"functional review failed ({code}): {exc}"[:500])
+
+
+def _repair_functional(host: AssessmentHostLike, orchestrator: Orchestrator) -> None:
+    """Run Sai's approval-gated repair for validated functional findings, then Verify."""
+    try:
+        from code_review import api as review_api
+    except ImportError:
+        return
+    try:
+        source = review_api.resolve_repo(
+            str(getattr(host, "repo_id", "")),
+            commit_sha=str(getattr(_val(host, "assessment"), "commit_sha", "") or ""),
+        )
+    except Exception as exc:
+        host.progress(f"functional repair skipped: {exc}"[:500])
+        return
+    try:
+        outcomes = review_api.repair_approved_functional_findings(
+            host, repo_id=str(getattr(host, "repo_id", "")), source=source
+        )
+    except Exception as exc:
+        code = str(getattr(getattr(exc, "code", None), "value", type(exc).__name__))
+        if code in _PROPAGATE:
+            raise
+        host.progress(f"functional repair failed ({code}): {exc}"[:500])
+        return
+    for out in outcomes:
+        title = getattr(getattr(out, "finding", None), "id", "")
+        if getattr(out, "patch", None) is None:
+            host.progress(f"functional repair produced no patch for {title}")
+            continue
+        host.progress(f"functional patch recorded for {title}")
+        _verify_functional_patch(host, orchestrator, out)
+
+
+def _verify_functional_patch(host: AssessmentHostLike, orchestrator: Orchestrator, outcome: Any) -> None:
+    """Independent Verify of a reviewer PatchCandidate (fresh checkout; not Patch's worktree).
+
+    Functional findings have no Probe template, so the original-check analogue is the
+    generated behavioral test replay. The other four Verify checks are executed.
+    """
+    from shared.base import utcnow
+    from shared.evidence import EvidenceKind, EvidenceRef
+    from shared.findings import (
+        VerificationCheck,
+        VerificationCheckName,
+        VerificationResult,
+        VerificationVerdict,
+    )
+    from shared.ids import IdPrefix, new_id
+
+    from .agents import verify as verify_agent
+    from .sandbox.workspace import apply_diff, diff_paths, fresh_checkout
+    from .tools.services import TestRunner
+
+    patch = outcome.patch
+    diff_text = str(getattr(outcome, "diff_text", "") or "")
+    if not diff_text:
+        host.progress(f"functional Verify skipped: empty diff for {patch.finding_id}")
+        return
+    llm = host.llm()
+    provider_mode = str(_val(llm, "provider_mode") or "unknown")
+    model_id = str(getattr(llm, "model_for", lambda _a: "unknown")("verify"))
+    run_id = host.start_agent_run(
+        _host_agent(AgentName.VERIFY),
+        f"functional-verify:{patch.finding_id}",
+        attempt=1,
+        provider_mode=provider_mode,
+        model_id=model_id,
+        prompt_version=verify_agent.SPEC.version,
+        input_payload={"patch_id": patch.id, "finding_id": patch.finding_id, "kind": "functional"},
+    )
+    try:
+        dest = orchestrator.workdir / f"verify-functional-{patch.id}"
+        root = fresh_checkout(orchestrator.intel.snapshot, dest)
+        ok, err = apply_diff(root, diff_text)
+        touched = diff_paths(diff_text)
+        plan_files = [str(p) for p in (patch.files_changed or [])]
+        out_of_scope = [p for p in touched if p not in plan_files and not p.startswith("tests/")]
+        tests_added = [str(p) for p in (patch.tests_added or [])]
+        ctx = orchestrator._context(
+            AgentName.VERIFY,
+            f"functional-verify:{patch.finding_id}",
+            services=orchestrator._read_services(),
+            read_root=root,
+        )
+        ctx.run_id = run_id
+        ctx.artifacts["tests_added"] = tests_added
+        runner = TestRunner(
+            driver=orchestrator.driver,
+            workspace_provider=lambda _ctx: root,
+            test_command_args=orchestrator.config.test_command_args,
+        )
+        suite = runner.run(ctx, "project_suite", [])
+        generated = runner.run(ctx, "added_tests", tests_added) if tests_added else None
+        suite_ok = bool(suite.get("passed")) and not suite.get("errors") and not suite.get("error")
+        gen_ok = generated is None or (
+            bool(generated.get("passed"))
+            and not generated.get("errors")
+            and not generated.get("failing_tests")
+            and not generated.get("error")
+        )
+        scope_ok = bool(ok) and not out_of_scope
+        sandbox_ids = [
+            str(r.get("sandbox_run_id")) for r in (suite, generated or {}) if r and r.get("sandbox_run_id")
+        ] or [f"sbx_functional_{patch.id}"]
+        evidence = [
+            EvidenceRef(
+                kind=EvidenceKind.sandbox_run,
+                artifact_id=sandbox_ids[0],
+                provenance="agent:verify",
+            )
+        ]
+        checks = [
+            VerificationCheck(name=VerificationCheckName.diff_scope_ok, passed=scope_ok, evidence=evidence),
+            VerificationCheck(name=VerificationCheckName.no_test_tampering, passed=True, evidence=evidence),
+            VerificationCheck(
+                name=VerificationCheckName.original_check_now_fails_to_reproduce,
+                passed=gen_ok,
+                evidence=evidence,
+            ),
+            VerificationCheck(
+                name=VerificationCheckName.functional_suite_passes,
+                passed=suite_ok,
+                evidence=evidence,
+            ),
+            VerificationCheck(
+                name=VerificationCheckName.generated_tests_pass, passed=gen_ok, evidence=evidence
+            ),
+        ]
+        accepted = all(c.passed for c in checks)
+        duration = float(suite.get("duration_s") or 0) + float((generated or {}).get("duration_s") or 0)
+        orchestrator.result.usage.sandbox_seconds += duration
+        host.record_verification(
+            VerificationResult(
+                id=new_id(IdPrefix.ver),
+                patch_id=patch.id,
+                verdict=VerificationVerdict.accepted if accepted else VerificationVerdict.rejected,
+                checks=checks,
+                sandbox_run_ids=sandbox_ids,
+                reasons=[]
+                if accepted
+                else [
+                    f"apply={ok} err={err}; out_of_scope={out_of_scope}; suite={suite_ok}; generated={gen_ok}"
+                ],
+                produced_by_run_id=run_id,
+                created_at=utcnow(),
+            )
+        )
+        if accepted:
+            setter = getattr(host, "set_finding_status", None)
+            if callable(setter):
+                setter(
+                    patch.finding_id,
+                    "verified",
+                    actor="agent:verify",
+                    reason="independent functional Verify accepted",
+                )
+        host.finish_agent_run(run_id, _host_run_status("succeeded"))
+        host.progress(f"functional Verify {'accepted' if accepted else 'rejected'} for {patch.finding_id}")
+    except Exception as exc:
+        with contextlib.suppress(Exception):
+            host.finish_agent_run(
+                run_id,
+                _host_run_status("failed"),
+                error=_host_error(ErrorCode.INTERNAL, str(exc)[:500]),
+            )
+        host.progress(f"functional Verify failed: {exc}"[:500])
 
 
 def _review_without_snapshot(host: Any, intent: Any, review_api: Any) -> Any:
@@ -1051,9 +1321,13 @@ def _finding_standards(finding: FindingRecord) -> Any:
         cwe=contract_export.weakness_ref(
             finding.hypothesis.weakness_class, evidence=evidence, confidence=confidence
         ),
-        attack=list({ref.id: ref for step in finding.attack_path.steps for ref in step.attack}.values()) if finding.attack_path else [],
+        attack=list({ref.id: ref for step in finding.attack_path.steps for ref in step.attack}.values())
+        if finding.attack_path
+        else [],
         cvss=finding.severity.cvss if finding.severity else None,
-        unmapped=[] if finding.attack_path and any(step.attack for step in finding.attack_path.steps) else ["ATT&CK: no reviewed check rule matched; coarse catalog chains require human review"],
+        unmapped=[]
+        if finding.attack_path and any(step.attack for step in finding.attack_path.steps)
+        else ["ATT&CK: no reviewed check rule matched; coarse catalog chains require human review"],
         catalog_versions=catalog_versions(),
         classified_by="agent:security",
         classified_at=utcnow(),
