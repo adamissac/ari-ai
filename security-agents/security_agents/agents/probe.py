@@ -9,7 +9,8 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
+from standards.mapping import check_cwe
 
 from ..contracts import (
     AgentName,
@@ -58,6 +59,18 @@ class ProbeInput(StrictModel):
     target_id: str
     hypothesis_title: ShortText
     weakness_class: str
+
+    @field_validator("weakness_class")
+    @classmethod
+    def _catalog_cwe(cls, value: str) -> str:
+        try:
+            entry = check_cwe(value)
+            if entry.status != "active" or entry.detail.get("kind", "").lower() != "weakness":
+                raise ValueError("SCHEMA_INVALID: CWE must be an active weakness")
+        except (KeyError, ValueError) as exc:
+            raise ValueError(f"SCHEMA_INVALID: rejected CWE identifier {value}: {exc}") from exc
+        return value
+
     expected_invariant: str = Field(max_length=4000)
     suggested_check_category: str
     cited_paths: list[str] = Field(default_factory=list)

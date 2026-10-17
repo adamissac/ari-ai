@@ -132,3 +132,7 @@ strings such as `"POST /payments/{id}/refunds"`. Imported evaluations:
 * Anomalies (score ≥ 0.5) appear in `GET /projects/{id}/events` as `type=log_anomaly`,
   `source=runtime`, with `simulated=true` unless `source=runtime_demo`. The UI must show
   the source label. They never start assessments. RL facts consume the latest scores.
+
+## Standards contracts 0.7.0
+
+`host.record_standards(finding_id, FindingStandards, severity=optional_SeverityAssessment)` performs a validated row-locked update without replacing the finding history or status. Finding classifications use `Finding.standards`; hardening/defense recommendations carry proposed D3FEND mappings. Complete CVSS requires each metric and reference calculation; unknown metrics remain unscored. `GET /incidents/{id}` returns `IncidentDetail {incident, standards}`; mutations use `POST /incidents/{id}/actions` with `IncidentAction`. The host, persistence, and frontend transport changes build on Alan’s canonical PR #49 contracts.

@@ -267,6 +267,9 @@ def ingest(project_id: str, token_id: str, batch: RuntimeSignalBatch) -> Runtime
                 )
                 .on_conflict_do_nothing()
             )
+            from backend.incidents import correlate_anomaly
+
+            correlate_anomaly(conn, ev, linked, window.route)
             event_ids.append(ev.id)
         audit.record(
             conn,

@@ -81,6 +81,7 @@ def catalog_versions() -> dict[str, str]:
         "cwe": str(load_json("cwe.json")["version"]),
         "capec": str(load_json("capec.json")["version"]),
         "owasp_llm": str(load_json("owasp-llm.json")["version"]),
+        "owasp_llm2026": str(load_json("owasp-llm-2026.json")["version"]),
         "cvss": "4.0",
         "nist_800_61": str(load_json("nist-sp800-61r3.json")["version"]),
         "nist_csf": str(load_json("nist-sp800-61r3.json")["csf_version"]),
@@ -94,7 +95,7 @@ _TACTIC_RE = re.compile(r"^TA\d{4}$")
 _D3_RE = re.compile(r"^D3-[A-Z0-9]+$")
 _CWE_RE = re.compile(r"^CWE-\d{1,5}$")
 _CAPEC_RE = re.compile(r"^CAPEC-\d{1,5}$")
-_OWASP_RE = re.compile(r"^LLM(0[1-9]|10):2025$")
+_OWASP_RE = re.compile(r"^LLM(0[1-9]|10):202[56]$")
 
 
 def _check(pattern: re.Pattern[str], value: str, framework: str) -> str:
@@ -212,8 +213,9 @@ def capec(capec_id: str) -> CatalogEntry:
 
 
 def owasp_llm(risk_id: str) -> CatalogEntry:
-    _check(_OWASP_RE, risk_id, "OWASP LLM Top 10 2025")
-    data = load_json("owasp-llm.json")
+    _check(_OWASP_RE, risk_id, "OWASP LLM Top 10 2025/2026")
+    filename = "owasp-llm-2026.json" if risk_id.endswith(":2026") else "owasp-llm.json"
+    data = load_json(filename)
     raw = data["risks"].get(risk_id)
     if raw is None:  # pragma: no cover - the regex admits exactly the ten ids
         raise UnknownIdentifier(risk_id)
@@ -228,8 +230,11 @@ def owasp_llm(risk_id: str) -> CatalogEntry:
     )
 
 
-def owasp_llm_ids() -> list[str]:
-    return sorted(load_json("owasp-llm.json")["risks"])
+def owasp_llm_ids(version: str = "2025") -> list[str]:
+    if version not in ("2025", "2026"):
+        raise UnknownIdentifier(f"unsupported OWASP LLM release: {version}")
+    filename = "owasp-llm-2026.json" if version == "2026" else "owasp-llm.json"
+    return sorted(load_json(filename)["risks"])
 
 
 def nist_csf_function(code: str) -> CatalogEntry:

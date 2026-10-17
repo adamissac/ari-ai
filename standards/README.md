@@ -35,3 +35,15 @@ independent JavaScript oracle. The published page has inconsistent table/detail
 scores; tests preserve that fact instead of altering numeric scoring to fit labels.
 Run `uv run pytest -q standards/tests` and `uv run ruff check standards`.
 See [third-party notices](../docs/THIRD_PARTY_DATA.md) before distribution.
+
+## OWASP 2026 and historical 2025 IDs
+
+The current OWASP LLM Top 10 2026 release is also pinned, from official repository
+commit `9253e38ade58e959b531c0c5c9a4842272c9cd0e`. `owasp_llm("LLM03:2026")`
+resolves Excessive Agency; the historical `LLM03:2025` still resolves Supply Chain.
+IDs must always retain their year because ordering and terminology changed.
+`owasp_llm_ids(version="2026")` lists current IDs; the default remains `"2025"`
+for compatibility. `catalog_versions()["owasp_llm2026"]` reports the new release.
+`build_subsets.py` pins every 2026 Markdown source hash and parses only headings.
+The normalized catalog contains identifiers, titles, and provenance, without risk
+prose. Current release coverage is distinct from the historical 2025 matrix.

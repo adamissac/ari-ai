@@ -4,3 +4,4 @@ export { ProtocolError } from './contracts.js';
 export type * from './contracts.js';
 export { watchAssessment } from './sse.js';
 export type { StreamOptions, ConnectionState } from './sse.js';
+export { mappingLabel, findingStandards, incidentLabel } from './standards.js';

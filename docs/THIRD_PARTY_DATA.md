@@ -33,3 +33,18 @@ The D3FEND full mapping download contains ontology-inferred relationships across
 frameworks. Runtime extraction includes only ATT&CK techniques that resolve in
 the pinned Enterprise catalog and defensive IDs that resolve in D3FEND. This
 relationship is a candidate mapping, not demonstrated defensive effectiveness.
+
+## OWASP LLM Top 10 2026 (current release; 2025 retained)
+
+The [official 2026 release announcement](https://genai.owasp.org/2026/09/01/owasp-genai-security-project-unveils-2026-top-10-for-llm-applications-new-agent-control-standard-and-sponsors-as-community-tops-30000-members/)
+was checked on 2026-10-17. New normalized data in `owasp-llm-2026.json` derives
+from [official final Markdown](https://github.com/GenAI-Security-Project/GenAI-LLM-Top10/tree/9253e38ade58e959b531c0c5c9a4842272c9cd0e/2026/final),
+pinned to commit `9253e38ade58e959b531c0c5c9a4842272c9cd0e`. All ten upstream
+URLs and SHA-256 values, normalized-file SHA-256, version, and license are in
+`MANIFEST.json`. The extraction is repeatable using `build_subsets.py`.
+
+The [repository license declaration](https://github.com/GenAI-Security-Project/GenAI-LLM-Top10/blob/9253e38ade58e959b531c0c5c9a4842272c9cd0e/README.md#license)
+specifies CC BY-SA 4.0. Attribution: OWASP GenAI Security Project and contributors,
+Top 10 for LLM Applications 2026. The derived file is CC BY-SA 4.0; changes extract
+identifiers and titles only, adding source provenance, without copying risk text.
+Historical 2025 identifiers retain their original meanings and are not relabeled.

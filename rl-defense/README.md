@@ -168,3 +168,23 @@ Example payload: [`fixtures/defense_recommendation.example.json`](fixtures/defen
 - Mapping a real project onto the 5-node topology is a hand-written config, and
   real alert signals are not calibrated to the simulator's noise model.
 - There is no code path from a recommendation to any action.
+
+### Standards classifications
+
+Producer standards fields resolve through the pinned offline `standards` catalog.
+CWE proposals must identify real, nondeprecated weaknesses (categories such as
+CWE-840 are not accepted as weakness classifications). CWE/CAPEC/ATT&CK catalog relationships are review candidates; they are not
+automatically attached as ATT&CK mappings. These are
+classifications, not evidence of production adversary activity.
+
+Canonical `standards.mapping` validates classifications and reviewed rules.
+CVSS is separate from the existing qualitative severity rubric. Trace can accept
+a complete set of explicit CVSS v4 base metrics with executed validation artifact
+references, then computes and validates the vector and score deterministically.
+Missing metrics or unrelated artifacts leave the finding unscored. Evidence
+provenance does not by itself prove an analyst's metric interpretation.
+
+D3FEND mappings use the owner-reviewed rules keyed by Fortify category and
+confirmed check category. Unsupported combinations remain unmapped. Reviewed RL actions have simulation-derived D3FEND
+classifications, while unsupported actions stay unmapped. No rule
+executes a defensive action against real systems.

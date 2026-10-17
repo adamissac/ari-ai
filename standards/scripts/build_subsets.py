@@ -29,6 +29,19 @@ DATA = Path(__file__).resolve().parents[1] / "standards" / "data"
 
 FIRST_CALC_COMMIT = "c5b0d409ae9f57c44264c6ce5f27d89298e1d32a"
 OWASP_COMMIT = "99f4395589bdbd120ae961f9cd179e79d7f9b27f"
+OWASP_2026_COMMIT = "9253e38ade58e959b531c0c5c9a4842272c9cd0e"
+OWASP_2026_FILES = {
+    "LLM01_PromptInjection": "ff036047755c505e6d7837a0114f6056f8f751a3628061b6711b6eac19e1f8b0",
+    "LLM02_SensitiveInformationDisclosure": "009153f4880fdabd79585cf1b74e60e2dfe79668c5581853890aa2bec36ab05e",
+    "LLM03_ExcessiveAgency": "e961d0d9fe8382be4086aaddd65c1fad0d5d53220174493fe8c287f864c0529e",
+    "LLM04_SupplyChain": "b5cb83fe937ecf38b8017918ac90b378da6d9c8ec9e2b485f422c08e4d66ac9e",
+    "LLM05_DataModelPoisoning": "28ba5d86c102c82916066aae4bde2c10605cdb98cca51f572093ba002d2a198d",
+    "LLM06_UnboundedConsumption": "e121147737d4750f89466fe191b5581fe71a822d8e1cfb621ea91d0d6a1dc6d5",
+    "LLM07_Misinformation": "5686479c061cd2057b9905775ce70fc92b1b26e9daf296928521d56837ad4732",
+    "LLM08_HiddenContextExposure": "e00d214f81757f626510df57e92116bec026b6c31ef7c3fb2bb52b71318c5ffe",
+    "LLM09_VectorAndEmbeddingWeaknesses": "e1a3aff504a708d46c5dbf1c4bbc9ae05f3206cc6ea8e6e9d544b3f0d0ff7c23",
+    "LLM10_ImproperOutputHandling": "d61a5ca0eddb38cdd0f485d642ed263c259638e2f1cf82eb1563c064491d67f0",
+}
 OWASP_FILES = [
     "LLM01_PromptInjection",
     "LLM02_SensitiveInformationDisclosure",
@@ -88,6 +101,15 @@ SOURCES: dict[str, dict[str, str]] = {
         for name in OWASP_FILES
     },
 }
+SOURCES.update(
+    {
+        f"owasp2026/{name}.md": {
+            "url": f"https://raw.githubusercontent.com/GenAI-Security-Project/GenAI-LLM-Top10/{OWASP_2026_COMMIT}/2026/final/{name}.md",
+            "sha256": digest,
+        }
+        for name, digest in OWASP_2026_FILES.items()
+    }
+)
 
 
 def sha256_file(path: Path) -> str:
@@ -342,6 +364,30 @@ def build_owasp(src: Path, digests: dict[str, str]) -> dict[str, Any]:
     }
 
 
+def build_owasp2026(src: Path, digests: dict[str, str]) -> dict[str, Any]:
+    risks = {}
+    for name in OWASP_2026_FILES:
+        source = f"owasp2026/{name}.md"
+        text = (src / source).read_text(encoding="utf-8")
+        match = re.fullmatch(r"##\s+(LLM\d\d:2026)\s+(.+?)\s*", text.splitlines()[0])
+        if not match:
+            raise SystemExit(f"unexpected OWASP 2026 heading in {name}")
+        risks[match.group(1)] = {
+            "name": match.group(2),
+            "source_file": f"2026/final/{name}.md",
+            "source_sha256": digests[source],
+        }
+    return {
+        "framework": "owasp_llm",
+        "version": "2026",
+        "source_commit": OWASP_2026_COMMIT,
+        "url": "https://github.com/GenAI-Security-Project/GenAI-LLM-Top10/tree/"
+        + OWASP_2026_COMMIT
+        + "/2026/final",
+        "risks": risks,
+    }
+
+
 # ------------------------------------------------------------------ CVSS v4.0
 
 
@@ -456,6 +502,7 @@ def build(src: Path) -> None:
         "cwe.json": build_cwe(src),
         "capec.json": build_capec(src),
         "owasp-llm.json": build_owasp(src, digests),
+        "owasp-llm-2026.json": build_owasp2026(src, digests),
         "cvss-v4.0.json": build_cvss(src),
         "cvss-v4.0-first-examples.json": build_cvss_examples(src),
     }
@@ -468,6 +515,7 @@ def build(src: Path) -> None:
         "cwe.json": ["cwec_latest.xml.zip"],
         "capec.json": ["capec_latest.xml"],
         "owasp-llm.json": [f"owasp/{n}.md" for n in OWASP_FILES],
+        "owasp-llm-2026.json": [f"owasp2026/{n}.md" for n in OWASP_2026_FILES],
         "cvss-v4.0.json": [
             "cvss/cvss_lookup.js",
             "cvss/max_composed.js",
