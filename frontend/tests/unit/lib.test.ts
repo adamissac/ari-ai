@@ -7,6 +7,7 @@ import { domain, episodeStory, metricRows, rewardTotals, sampleSize } from '@/li
 import type { DefenseLabBundle, LabEpisode } from '@/lib/lab-types';
 import { matchExpectationStatements } from '@/lib/expectations';
 import { findingStory, repoFullNameForEvidence } from '@/lib/finding-story';
+import { latestAssessmentEvent, projectJourney, statesFromLog } from '@/lib/journey';
 import { projectOverview } from '@/lib/overview';
 import { SCOPE_CHECK_CATEGORIES } from '@/lib/scope';
 import { AGENTS, ASSESSMENT_STATE, FINDING_STATUS, agentRunSummary, handoffNote, providerLabel, railSteps } from '@/lib/status';
@@ -87,6 +88,121 @@ describe('project overview', () => {
     expect(view.securityOpen).toBe(1);
     expect(view.codeOpen).toBe(1);
     expect(view.verifiedFixes).toBe(1);
+  });
+});
+
+describe('project journey', () => {
+  const idle = {
+    repoCount: 1,
+    activeScopeCount: 1,
+    current: null,
+    visited: [] as const,
+    findingStatuses: [] as const,
+    monitoringEnabled: false,
+    monitoringKnown: true,
+    monitoringEventCount: 0,
+    monitoringTruncated: false,
+    monitoringFailed: false,
+    newestMonitoringSimulated: false,
+  };
+  const byId = (view: ReturnType<typeof projectJourney>) => Object.fromEntries(view.map(stage => [stage.id, stage]));
+
+  it('blocks understanding until a repository is connected', () => {
+    const view = byId(projectJourney({ ...idle, repoCount: 0 }));
+    expect(view.understand?.status).toBe('blocked');
+    expect(view.security?.status).toBe('not_started');
+    expect(view.monitor?.status).toBe('not_applicable');
+  });
+
+  it('marks only phases the event log entered, and does not treat a hypothesis as verified', () => {
+    const view = byId(projectJourney({
+      ...idle,
+      current: 'VALIDATION',
+      visited: ['CREATED', 'SCOPE_CHECK', 'FUNCTIONAL_REVIEW', 'RECON', 'VALIDATION'],
+      findingStatuses: ['hypothesis'],
+    }));
+    expect(view.understand?.status).toBe('skipped');
+    expect(view.review?.status).toBe('completed');
+    expect(view.security?.status).toBe('running');
+    expect(view.repair?.status).toBe('not_started');
+    expect(view.verify?.status).toBe('not_started');
+    expect(view.verify?.detail).not.toMatch(/secure/);
+  });
+
+  it('a skipped transition is not painted as entered', () => {
+    const visited = statesFromLog([
+      { type: 'assessment.state_changed', state: 'INDEXING', message: 'state -> INDEXING' },
+      { type: 'assessment.state_changed', state: 'RECON', message: 'skipped (no hypotheses); awaiting functional remediation approval' },
+    ]);
+    expect(visited).toEqual(['INDEXING']);
+  });
+
+  it('pauses repair for a human and does not call that a finished fix', () => {
+    const view = byId(projectJourney({
+      ...idle,
+      current: 'AWAITING_APPROVAL',
+      visited: ['INDEXING', 'FUNCTIONAL_REVIEW', 'RECON', 'VALIDATION', 'ANALYSIS', 'DIAGNOSIS', 'AWAITING_APPROVAL'],
+    }));
+    expect(view.repair?.status).toBe('needs_attention');
+    expect(view.repair?.detail).toMatch(/Nothing is merged/);
+    expect(view.verify?.status).toBe('not_started');
+  });
+
+  it('attributes a failure to the last phase the log entered', () => {
+    const view = byId(projectJourney({
+      ...idle,
+      current: 'FAILED',
+      visited: ['CREATED', 'SCOPE_CHECK', 'INDEXING'],
+    }));
+    expect(view.understand?.status).toBe('failed');
+    expect(view.review?.status).toBe('not_started');
+  });
+
+  it('does not verify a run that never entered repair', () => {
+    const view = byId(projectJourney({
+      ...idle,
+      current: 'COMPLETED',
+      visited: ['INDEXING', 'FUNCTIONAL_REVIEW', 'RECON', 'REPORTING', 'COMPLETED'],
+    }));
+    expect(view.repair?.status).toBe('skipped');
+    expect(view.verify?.status).toBe('skipped');
+  });
+
+  it('verification comes from a finding verdict, not from the run merely finishing', () => {
+    const view = byId(projectJourney({
+      ...idle,
+      current: 'COMPLETED',
+      visited: ['INDEXING', 'FUNCTIONAL_REVIEW', 'RECON', 'VALIDATION', 'ANALYSIS', 'DIAGNOSIS', 'AWAITING_APPROVAL', 'REMEDIATION', 'HARDENING', 'REPORTING', 'COMPLETED'],
+      findingStatuses: ['verified'],
+    }));
+    expect(view.verify?.status).toBe('completed');
+    expect(view.verify?.detail).toMatch(/not a claim about the whole application/);
+  });
+
+  it('leaves phases unmarked when the event log did not load', () => {
+    const view = byId(projectJourney({ ...idle, current: 'COMPLETED', visited: null }));
+    expect(view.understand?.status).toBe('not_started');
+    expect(view.understand?.detail).toMatch(/event log did not load/);
+  });
+
+  it('keeps the newest recorded event message and drops an empty one', () => {
+    expect(latestAssessmentEvent([
+      { seq: 1, message: 'state -> INDEXING', at: '2026-10-17T00:00:00Z' },
+      { seq: 3, message: '  ', at: '2026-10-17T00:02:00Z' },
+      { seq: 2, message: 'state -> RECON', at: '2026-10-17T00:01:00Z' },
+    ])).toEqual({ message: 'state -> RECON', at: '2026-10-17T00:01:00Z' });
+  });
+
+  it('labels a simulated monitoring event and a failed one', () => {
+    const failed = byId(projectJourney({ ...idle, monitoringEnabled: true, monitoringFailed: true }));
+    expect(failed.monitor?.status).toBe('failed');
+    const simulated = byId(projectJourney({
+      ...idle,
+      monitoringEnabled: true,
+      monitoringEventCount: 1,
+      newestMonitoringSimulated: true,
+    }));
+    expect(simulated.monitor?.detail).toMatch(/simulated/);
   });
 });
 
