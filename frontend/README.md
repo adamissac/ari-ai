@@ -9,7 +9,9 @@ simulated in the browser. Spec: [docs/14](../docs/14_FRONTEND_UX_DESIGN.md).
 
 | Route | Backed by |
 |---|---|
-| `/` projects, create project | `GET/POST /projects` |
+| `/` landing (signed in): intro loader once per sign-in, full-screen hero, scroll-told chapters (problem timeline, how it works, one finding start to proof, checkable proof stats) | Nothing beyond the session; copy is product-accurate and static |
+| `/projects` projects, create project | `GET/POST /projects` |
+| `/pricing` plans in the kairo.security layout, clearly marked **hackathon preview: proposals, nothing can be purchased** | Nothing (static) |
 | `/projects/[id]` one next step from the loaded records (connect a repo, approve a scope, run a review, open the run, or view results), then assessments (start note: enqueue only), findings, repositories | `/projects/{id}/assessments`, `/findings`, `/scopes`, `/repositories` |
 | `/projects/[id]/scopes` request (pending-only note), approve (backend enforces a different member), revoke | `/projects/{id}/scopes`, `/scopes/{id}/approve`, `/scopes/{id}/revoke` |
 | `/projects/[id]/assessments/[asm]` live timeline: state rail from states actually entered, selectable eight-agent view (job, recorded outcome, real tool calls, handoff), budget meter, remediation approval gate, cancel (queued vs stop-requested, findings kept), durable event log, provider-mode banner | `watchAssessment` SSE (`Last-Event-ID` resume) + `GET /assessments/{id}` + `POST .../cancel` + 5 s polling fallback while running |
@@ -20,7 +22,7 @@ simulated in the browser. Spec: [docs/14](../docs/14_FRONTEND_UX_DESIGN.md).
 | `/projects/[id]/expectations` snapshot picker (ready snapshots only), behavioral expectations with status filters, sources at file:line, confirm / conflicting / reject with a reason and `expected_revision` (409 on stale view), decision history | `/repositories/{id}/snapshots`, `/snapshots/{id}/expectations`, `PATCH /snapshots/{id}/expectations/{exp}`, `/decisions` |
 | `/projects/[id]/incidents` open (record-only note; simulated by default, labelled), NIST lifecycle rail, triage, assign owner, transitions, two-person approval gates (requester cannot decide), timeline with CSF refs; closure panel: link findings and accepted verifications, closure criteria satisfied with hash-pinned patch/regression artifacts, lessons learned (Fortify regression evidence), communications (RS.CO-02/03, RC.CO-03), closure readiness list | `/projects/{id}/incidents`, `/incidents/{id}`, `/incidents/{id}/actions` |
 | `/projects/[id]/settings` project name, languages, default + monitoring budgets, trigger policy (enabled, coalescing interval, record-only globs); validated client-side, owner-only on the backend | `PATCH /projects/{id}` |
-| `/lab` Defense Lab: command center (the trained defender's recorded game on the continuous-defense map, headline held-out scores), provenance (path, SHA-256, checkpoints, seeds), held-out metrics with 95% CI and n, topology, episode replay with reward components; hidden attacker stage only as labelled simulation ground truth | `rl-defense/results/protocol-*/defense_lab.json`, validated server-side against `rl-defense/fixtures/defense_lab.schema.json` |
+| `/lab` Defense Lab: plain-language header and game explainer; **recorded-episode replay first** (status bar labelled SIMULATION · RECORDED EVALUATION, stable network map with service icons, signal states and action badges, story panel — what's happening / what the AI did / why (reasoning shown as not recorded) / effect / cost — service inspector, key moments, playback with speed and an observed-signal timeline); then held-out scores with 95% CI, a computed key takeaway, every metric and provenance one click away. Hidden attacker stage only as an opt-in, labelled overlay | `rl-defense/results/protocol-*/defense_lab.json`, validated server-side against `rl-defense/fixtures/defense_lab.schema.json` |
 | `/demo` **simulated demo** ([ADR-0013](../docs/decisions/0013-labelled-simulated-demo.md)): GitHub-style sign-in, organization → repository → recent commits; per commit an animated replay with Overview, Code review (intent, expectations, diff with comments, generated tests, fix), Seven agents (rail, outcome, evidence, tool-call timeline incl. policy denials, handoff) and Defense Lab (continuous-defense map, recommendation). "Simulated demo" marker on every page | Nothing: illustrative data in `lib/demo/` (no backend, GitHub or model calls) |
 
 Same-origin API: `app/api/v1/[...path]` proxies to `BACKEND_ORIGIN` at request time
@@ -40,6 +42,19 @@ For readers with no programming, security or RL background, see
 relay with its human approval gate, before/after fix evidence, inline glossary terms, and a
 Defense Lab that explains itself. Technical detail (orchestrator states, usage, event log,
 every RL metric and provenance) is kept, one click away. All counts come from records.
+
+## Landing, header and motion
+
+- `components/hero.tsx`, `intro-loader.tsx`, `story.tsx`: the landing's hero, once-per-sign-in
+  intro and scroll-told chapters. Chapters pin and scrub only at `lg` with motion allowed;
+  otherwise they render their final, readable state.
+- `components/smooth-scroll.tsx` (root layout): Lenis-style momentum for mouse wheels and
+  trackpads, frame-rate independent, no dependency. Native for touch, keyboard, scrollbar,
+  zoom, horizontal gestures, nested scroll areas and `prefers-reduced-motion`.
+- Header: `components/account-link.tsx` sits top right and is always visible: **Sign in**
+  when signed out (or the backend is unreachable), otherwise the GitHub login. On the
+  landing, the other tabs fade in on scroll over the hero.
+- `components/faq.tsx`: accessible accordion used on `/pricing`.
 
 ## Commands
 
@@ -95,10 +110,13 @@ a new action can create another assessment. Keys are scoped to the current proje
 ## ARI identity and landing page
 
 The owner-supplied ant PNG is preserved unchanged at `public/brand/ari-ant.png`
-and `app/icon.png`. `LogoMark` draws the existing transparent ant as a CSS mask;
-`Wordmark` pairs it with **ARI** in locally bundled Chakra Petch 700. Other text
-keeps Inter, Space Grotesk and IBM Plex Mono. Font provenance, licenses and hashes
-are in `app/fonts/`.
+and `app/icon.png` (favicon). The on-screen mark is just the ant:
+`public/brand/ari-ant-mark.png` is a transparent, tightly cropped cut-out derived
+from the original. `LogoMark` draws it as a CSS mask filled with `currentColor`;
+`size` is its height and width follows the ant's aspect ratio. `Wordmark` pairs it
+with **ARI** in locally bundled Chakra Petch 700. Other text keeps Inter, Space
+Grotesk and IBM Plex Mono. Font provenance, licenses and hashes are in `app/fonts/`.
+
 
 The shared header, logo and ordinary navigation controls are transparent; only
 Pricing keeps its orange fill. `HeaderContrast` adapts each control to the nearest
