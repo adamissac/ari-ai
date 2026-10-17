@@ -211,6 +211,16 @@ html[data-home-hero][data-hero-past] .site-header nav a.hdr-cta { background: va
 .story-swap-item { grid-area: 1 / 1; opacity: 0; filter: blur(8px); transform: translateY(8px); transition: opacity 500ms var(--ease-quad), filter 500ms var(--ease-quad), transform 500ms var(--ease-quad); }
 .story-swap-item[data-on] { opacity: 1; filter: none; transform: none; }
 
+/* Non-sticky mode (below lg, or reduced motion): all three beats stack, visible. */
+@media not all and (min-width: 1024px) {
+  .story-swap { display: flex; flex-direction: column; gap: 1.5rem; min-height: 0; }
+  .story-swap-item { opacity: 1; filter: none; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .story-swap { display: flex; flex-direction: column; gap: 1.5rem; min-height: 0; }
+  .story-swap-item { opacity: 1; filter: none; transform: none; }
+}
+
 /* Change timeline. */
 .story-timeline { position: relative; height: 96px; border-block: 1px solid var(--color-line); background: color-mix(in srgb, var(--color-ink) 4%, transparent); }
 .story-tick { position: absolute; top: 18px; bottom: 18px; width: 3px; border-radius: 3px; background: var(--color-ink); opacity: 0; filter: blur(1.5px); transform: scaleY(0.4); transition: opacity 400ms, transform 400ms var(--ease-quad), filter 400ms, background-color 400ms; }
