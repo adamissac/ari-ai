@@ -21,7 +21,22 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 76
     await expect(page.getByRole('link', { name: 'How It Works', exact: true })).toHaveAttribute('href', '#how');
     await expect(page.locator('[aria-label="Assessment loop"] li')).toHaveText(steps.map((step, i) => `${String(i + 1).padStart(2, '0')}${step}`));
     const nav = page.getByRole('navigation', { name: 'Primary', exact: true });
-    for (const name of ['Projects', 'Defense Lab', 'Demo', 'Pricing']) await expect(nav.getByRole('link', { name, exact: true })).toBeVisible();
+    const secondary = nav.locator('.nav-secondary');
+    await expect(secondary).toHaveAttribute('inert', '');
+    await expect(secondary).toHaveCSS('opacity', '0');
+    const account = nav.locator('[data-testid="header-signin"], [data-testid="header-account"]');
+    await expect(account).toBeVisible();
+    const initialAccount = (await account.boundingBox())!;
+    await secondary.locator('a').first().evaluate(el => (el as HTMLAnchorElement).focus());
+    expect(await page.evaluate(() => document.activeElement?.closest('.nav-secondary') !== null)).toBe(false);
+    if (viewport.width < 640) {
+      await nav.getByRole('button', { name: 'Menu', exact: true }).click();
+      for (const name of ['Projects', 'Defense Lab', 'Demo', 'Pricing']) await expect(nav.getByRole('link', { name, exact: true })).toBeVisible();
+      await nav.getByRole('link', { name: 'Projects', exact: true }).focus();
+      await page.keyboard.press('Escape');
+      await expect(nav.getByRole('button', { name: 'Menu', exact: true })).toBeFocused();
+      await expect(secondary).toHaveAttribute('inert', '');
+    }
     await expect(page.getByRole('link', { name: 'ARI home', exact: true })).toBeVisible();
     await expect.poll(() => page.locator('.hero-in').evaluateAll(els => els.every(el => Number(getComputedStyle(el).opacity) >= 0.99))).toBe(true);
     await expect(page.locator('header .hdr-logo')).toHaveCSS('color', 'rgb(255, 255, 255)');
@@ -38,7 +53,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 76
     expect(fonts.weight).toBe('700');
     expect(fonts.headline).not.toMatch(/chakra/i);
     expect(fonts.button).not.toMatch(/chakra/i);
-    for (const scrollY of [0, 90, viewport.height + 200, 3000]) {
+    for (const scrollY of [0, 99, 100, 150, 110, 0, viewport.height + 200, 3000]) {
       await page.evaluate(y => window.scrollTo(0, y), scrollY);
       await expect.poll(() => page.locator('header').evaluate(el => Math.round(el.getBoundingClientRect().top))).toBe(0);
       const styles = await page.locator('header').evaluate(el => ({ bg: getComputedStyle(el).backgroundColor, border: getComputedStyle(el).borderBottomWidth }));
@@ -49,13 +64,22 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 76
         await expect(item).toHaveCSS('border-top-width', '0px');
       }
       if (scrollY === viewport.height + 200) await expect(page.locator('header .hdr-logo')).toHaveCSS('color', 'rgb(28, 18, 16)');
-      await expect(nav.getByRole('link', { name: 'Pricing', exact: true })).toHaveCSS('background-color', 'rgb(194, 69, 45)');
+      await expect(secondary).toHaveCSS('opacity', scrollY >= 100 ? '1' : '0');
+      await expect(secondary).toHaveAttribute('aria-hidden', String(scrollY < 100));
+      for (const item of await secondary.locator('a').all()) {
+        if (scrollY < 100) await expect(item).toBeHidden();
+        else await expect(item).toBeVisible();
+      }
+      await expect(secondary.locator('a[href="/pricing"]')).toHaveCSS('background-color', 'rgb(194, 69, 45)');
+      const currentAccount = (await account.boundingBox())!;
+      expect(currentAccount.x).toBe(initialAccount.x);
+      expect(currentAccount.y).toBe(initialAccount.y);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
       const boxes = await page.locator('header a').evaluateAll(els => els.map(el => { const r = el.getBoundingClientRect(); return { x: r.x, right: r.right, height: r.height }; }));
       expect(boxes.every(r => r.x >= 0 && r.right <= viewport.width && r.height >= 44)).toBe(true);
-      if (process.env.ARI_LANDING_SCREENSHOTS && (scrollY === 0 || scrollY === viewport.height + 200)) {
+      if (process.env.ARI_LANDING_SCREENSHOTS && (scrollY === 0 || scrollY === 100 || scrollY === viewport.height + 200)) {
         await mkdir(process.env.ARI_LANDING_SCREENSHOTS, { recursive: true });
-        await page.screenshot({ path: `${process.env.ARI_LANDING_SCREENSHOTS}/${viewport.width}-${scrollY === 0 ? 'hero' : 'scrolled'}.png` });
+        await page.screenshot({ path: `${process.env.ARI_LANDING_SCREENSHOTS}/${viewport.width}-${scrollY === 0 ? 'hero' : scrollY === 100 ? 'revealed' : 'scrolled'}.png` });
       }
     }
     // Move the dark chapter under every row of controls, not only below the anchor offset.
@@ -69,6 +93,8 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 76
     await expect.poll(() => page.locator('#how').evaluate(el => Math.round(el.getBoundingClientRect().top))).toBe(viewport.width < 640 ? 176 : 80);
     await nav.getByRole('link', { name: 'Pricing', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'ARI pricing' })).toBeVisible();
+    await page.evaluate(() => window.scrollTo(0, 0));
+    for (const name of ['Projects', 'Defense Lab', 'Demo', 'Pricing']) await expect(nav.getByRole('link', { name, exact: true })).toBeVisible();
     await expect(page.locator('body')).not.toContainText('Ari AI');
     await expect(page.locator('nextjs-portal')).toHaveCount(0);
     expect(errors).toEqual([]);
@@ -82,6 +108,13 @@ test('reduced motion keeps the hero, logo and menu visible', async ({ page }) =>
   await expect(page.locator('.intro')).toHaveCount(0);
   await expect(page.locator('.hero-content')).toHaveCSS('opacity', '1');
   await expect(page.locator('.hero-orb').first()).toHaveCSS('animation-name', 'none');
+  await expect(page.locator('.nav-secondary')).toHaveCSS('transition-duration', '0s');
+  await expect(page.locator('.nav-secondary')).toHaveAttribute('inert', '');
+  await page.evaluate(() => window.scrollTo(0, 100));
+  await expect(page.locator('.nav-secondary')).toHaveCSS('opacity', '1');
+  await expect(page.locator('.nav-secondary')).toHaveCSS('translate', 'none');
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(page.locator('.nav-secondary')).toHaveCSS('opacity', '0');
   await expect(page.getByRole('link', { name: 'ARI home', exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Try the Demo', exact: true }).first().click();
   await expect(page).toHaveURL(/\/demo$/);

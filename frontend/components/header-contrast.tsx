@@ -27,7 +27,7 @@ export function HeaderContrast() {
     let frame = 0;
     const paint = () => {
       frame = 0;
-      const tones = [...header.querySelectorAll<HTMLElement>('a:not(.hdr-cta)')].map(link => {
+      const tones = [...header.querySelectorAll<HTMLElement>('a:not(.hdr-cta), .nav-menu-toggle')].map(link => {
         const box = link.getBoundingClientRect();
         const underneath = document.elementsFromPoint(box.x + box.width / 2, box.y + box.height / 2)
           .find(element => !header.contains(element)) ?? null;
