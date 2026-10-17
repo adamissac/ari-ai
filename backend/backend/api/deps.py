@@ -142,6 +142,13 @@ def idempotent_lookup(
         return None
     if len(key) > 200:
         raise ApiError(ErrorCode.VALIDATION_FAILED, "Idempotency-Key too long", 422)
+    # A unique insert at store time cannot undo duplicate work already created.
+    # Serialize lookup + work + store across API processes until this transaction
+    # commits (or rolls back). Unrelated users/keys do not share a lock.
+    lock_id = int.from_bytes(
+        hashlib.sha256(json.dumps([user_id, key]).encode()).digest()[:8], signed=True
+    )
+    conn.execute(sa.text("SELECT pg_advisory_xact_lock(:lock_id)"), {"lock_id": lock_id})
     digest = hashlib.sha256(json.dumps(body, sort_keys=True, default=str).encode()).hexdigest()
     row = (
         conn.execute(
