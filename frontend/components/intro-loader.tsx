@@ -22,12 +22,13 @@ function shouldPlay(): boolean {
  * intercepts input (pointer-events: none), and is skipped under reduced motion or automation.
  */
 export function IntroLoader({ onReveal }: { onReveal: () => void }) {
-  const [play] = useState(shouldPlay);
   const [pct, setPct] = useState(0);
-  const [phase, setPhase] = useState<'count' | 'lift' | 'gone'>(play ? 'count' : 'gone');
+  // Server and first client render both start 'gone' (no hydration mismatch); playing is decided after mount.
+  const [phase, setPhase] = useState<'count' | 'lift' | 'gone'>('gone');
 
   useEffect(() => {
-    if (!play) { onReveal(); return; }
+    if (!shouldPlay()) { onReveal(); return; }
+    setPhase('count');
     const root = document.documentElement;
     root.dataset.intro = 'playing';
     let frame = 0;
