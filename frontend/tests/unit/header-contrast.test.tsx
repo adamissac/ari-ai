@@ -43,7 +43,7 @@ it('keeps white ink over the pinned home hero even when hit-testing reports a li
   document.documentElement.dataset.homeHero = '';
   const { container, unmount } = render(
     <>
-      <header className="site-header"><a className="hdr-logo" href="/">ARI</a></header>
+      <header className="site-header"><a className="hdr-logo" href="#home">ARI</a></header>
       <section style={{ backgroundColor: '#fff' }}>Mis-sampled light</section>
       <HeaderContrast />
     </>,
