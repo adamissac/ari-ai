@@ -1,10 +1,17 @@
 import type { Metadata } from 'next';
+import { IBM_Plex_Mono, Inter, Space_Grotesk } from 'next/font/google';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { BRAND_NAME, Wordmark } from '@/components/brand';
 import { DemoBanner } from '@/components/demo-banner';
 import { RollText } from '@/components/ui';
 import './globals.css';
+
+// Typography: Space Grotesk (headings), Inter (body, nav, buttons, metrics), IBM Plex Mono (code
+// and technical data). Self-hosted by next/font at build time; exposed as CSS variables.
+const inter = Inter({ subsets: ['latin'], weight: ['400', '500', '600'], display: 'swap', variable: '--font-inter' });
+const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], weight: ['500', '600', '700'], display: 'swap', variable: '--font-space-grotesk' });
+const plexMono = IBM_Plex_Mono({ subsets: ['latin'], weight: ['400', '500', '600'], display: 'swap', variable: '--font-ibm-plex-mono' });
 
 export const metadata: Metadata = {
   title: `${BRAND_NAME} Console`,
@@ -13,7 +20,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable} ${plexMono.variable}`}>
       <body className="min-h-screen antialiased">
         <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:rounded focus:bg-accent focus:px-2 focus:py-1 focus:text-bg">Skip to content</a>
         <header className="sticky top-0 z-40 border-b border-line/80 bg-white/80 backdrop-blur-md">
