@@ -215,6 +215,12 @@ def test_attack_path_and_severity_export(completed):
     assert [s.order for s in path.steps] == list(range(1, len(path.steps) + 1))
     assert isinstance(severity, shared_findings.SeverityAssessment)
     assert severity.level is shared_findings.SeverityLevel.medium
+    assert severity.cvss_v31 is not None
+    assert severity.cvss_v31.vector == "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N"
+    assert severity.cvss_v31.base_score == 6.5 and severity.cvss_v31.rating == "medium"
+    assert severity.cvss_v31.score_kind.startswith("CVSS v3.1 base score only")
+    statuses = {m.metric: m.status for m in severity.cvss_v31.metric_evidence}
+    assert statuses["S"] == "unverified" and statuses["C"] == "cited"
     assert severity.factors.verified_path is True
     verified = [s for s in path.steps if s.verified]
     assert verified and all(s.evidence for s in verified)
