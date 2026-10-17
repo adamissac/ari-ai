@@ -119,6 +119,20 @@ intent decisions, and full Sai/Alan runtime adapters remain explicit follow-ups.
 
 Producer acceptance and CI passed; PR #6 merged as `bcc2e23`. INTEL rows refer to the implemented Python producer, not complete cross-pillar runtime integration. Final counts: 24 passed/1 skipped focused; 115 passed/4 skipped broader.
 
+### Sarosh human-intent and verified-regression memory (PR #39)
+
+Additive 0.6.0 contracts `ExpectationDecisionRequest`, `ExpectationDecision` and
+`VerifiedRegression` are implemented with append-only PostgreSQL/SQLite stores,
+authenticated backend routes, optimistic concurrency and an immutable audit trail.
+Exact-snapshot decisions surface through `expectations`/context packs with
+`human_input` evidence; independent Verify accepted candidates enqueue a durable,
+deduplicated regression-join job. The reviewer and security host adapter consume
+the same service. Evidence on the branch: backend/API/PostgreSQL **154 passed,
+5 skipped**; code-intelligence/shared **62 passed, 2 skipped**; reviewer **48
+passed, 1 skipped**; security agents **344 passed, 11 skipped**. Skips are
+opt-in live provider, RL package/TypeScript compiler and sandbox-only tests.
+Srihith's contract-owner acknowledgment remains pending before merge.
+
 ### Sarosh frontend transport assistance (issue #29)
 
 UI-001 generated-contract client and UI-003 SSE transport substeps are implemented

@@ -511,3 +511,10 @@ def index_snapshot(ctx: JobContext) -> dict[str, Any]:
             )
         )
     return {"status": result.status.value}
+
+
+@handler("register_verified_regression")
+def register_verified_regression(ctx: JobContext) -> dict[str, str]:
+    from backend.intelligence_jobs import persist_verified_regression
+
+    return persist_verified_regression(ctx)

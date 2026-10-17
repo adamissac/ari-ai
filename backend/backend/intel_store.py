@@ -74,6 +74,12 @@ class PostgresPayloadStore:
     def __init__(self, engine: Engine | None = None) -> None:
         self.engine = engine or get_engine()
 
+    def memory_store(self) -> object:
+        """Companion append-only memory; source payload immutability is unchanged."""
+        from backend.intelligence_memory import PostgresMemoryStore
+
+        return PostgresMemoryStore(self.engine)
+
     # -------------------------------------------------------------- helpers
     def _validate_ref(self, conn: sa.Connection, ref: SnapshotRef) -> None:
         ref = SnapshotRef.model_validate(ref.model_dump())
