@@ -38,7 +38,7 @@ test('supplied logo loads on sign-in, scrolled header and projects on desktop/mo
     const signedOut = message.text().includes('401') && message.location().url.endsWith('/api/v1/me');
     if (message.type() === 'error' && !signedOut) errors.push(message.text());
   });
-  await page.goto('/');
+  await page.goto('/projects'); // the sign-in panel; the home page is public
   await expect(page).toHaveTitle('ARI Console');
   await expect(page.getByRole('heading', { name: 'Sign in', exact: true })).toBeVisible();
   await settledHeader(page);
@@ -57,6 +57,7 @@ test('supplied logo loads on sign-in, scrolled header and projects on desktop/mo
   expect(await login.evaluate((input: HTMLInputElement) => input.checkValidity())).toBe(true);
   await screenshot(page, 'desktop-sign-in');
   await signIn(page, 'e2e-alice');
+  await page.goto('/'); // sign-in happens on a console page; the hero is the public home
   await settledHero(page);
   await expect(page.locator('.hero-stage [data-testid="ari-logo"]')).toHaveCount(0);
   await screenshot(page, 'desktop-hero');
@@ -91,6 +92,7 @@ test('intro uses the supplied mark and exits; reduced motion skips it', async ({
   const page = await context.newPage();
   try {
     await signIn(page, 'e2e-alice');
+    await page.goto('/'); // the intro plays on the public home page
     await loadedMark(page, '.intro [data-testid="ari-logo"]');
     await expect.poll(() => page.locator('.intro-mark').evaluate(element => Number(getComputedStyle(element).opacity))).toBe(1);
     await screenshot(page, 'desktop-intro');
