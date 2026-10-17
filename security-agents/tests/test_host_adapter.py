@@ -593,6 +593,102 @@ def test_tool_denial_still_enforced_in_host_mode(tmp_path):
     assert next(f["status"] for f in host.finished) == "succeeded"
 
 
+def test_pauses_for_pending_functional_when_scout_finds_nothing(host_and_orchestrator):
+    """Srihith design (b): AWAITING_APPROVAL even when there are no security hypotheses."""
+    from shared.scope import ApprovalStatus, ApprovalSubject
+
+    from security_agents.llm import FakeTurn
+
+    host, orchestrator, gateway = host_and_orchestrator
+    gateway.scripts[AgentName.SCOUT] = [
+        FakeTurn(
+            tool_calls=[
+                (
+                    SUBMIT,
+                    {
+                        "hypotheses": [],
+                        "coverage": {
+                            "entry_points_reviewed": [],
+                            "looks_correct": [],
+                            "skipped_with_reason": [],
+                        },
+                        "suspicious_instructions": [],
+                    },
+                )
+            ]
+        )
+    ]
+    host._approvals.append(
+        type(
+            "Ap",
+            (),
+            {
+                "id": "apv_functional",
+                "subject_id": "fnd_functional",
+                "subject_type": ApprovalSubject.remediation,
+                "status": ApprovalStatus.pending,
+                "decided_by": None,
+            },
+        )()
+    )
+    orchestrator.run(host)
+    assert host.states[-1] == "AWAITING_APPROVAL"
+    assert "COMPLETED" not in host.states
+    assert "security_agents.approval.v1" in host.checkpoints
+
+
+def test_empty_scout_completes_when_no_external_approval_is_pending(host_and_orchestrator):
+    from security_agents.llm import FakeTurn
+
+    host, orchestrator, gateway = host_and_orchestrator
+    gateway.scripts[AgentName.SCOUT] = [
+        FakeTurn(
+            tool_calls=[
+                (
+                    SUBMIT,
+                    {
+                        "hypotheses": [],
+                        "coverage": {
+                            "entry_points_reviewed": [],
+                            "looks_correct": [],
+                            "skipped_with_reason": [],
+                        },
+                        "suspicious_instructions": [],
+                    },
+                )
+            ]
+        )
+    ]
+    orchestrator.run(host)
+    assert host.states[-1] == "COMPLETED"
+    assert not host.patches
+
+
+def test_recipe_prefix_is_stripped_for_functional_verify(tmp_path):
+    from security_agents.host_adapter import (
+        _diff_for_snapshot,
+        _recipe_strip_prefix,
+        _snapshot_rel,
+    )
+
+    root = tmp_path / "snap"
+    (root / "payments_lite").mkdir(parents=True)
+    (root / "payments_lite" / "app.py").write_text("x")
+    (root / "tests").mkdir()
+    paths = ["target/payments_lite/app.py", "target/tests/generated/t.py"]
+    prefix = _recipe_strip_prefix(root, paths)
+    assert prefix == "target"
+    assert _snapshot_rel("target/tests/generated/t.py", prefix) == "tests/generated/t.py"
+    diff = (
+        "diff --git a/target/payments_lite/app.py b/target/payments_lite/app.py\n"
+        "--- a/target/payments_lite/app.py\n"
+        "+++ b/target/payments_lite/app.py\n"
+    )
+    rewritten = _diff_for_snapshot(diff, prefix)
+    assert "a/payments_lite/app.py" in rewritten
+    assert "a/target/" not in rewritten
+
+
 def test_host_state_names_cover_every_state():
     from security_agents.host_adapter import HOST_STATE_NAMES
 
