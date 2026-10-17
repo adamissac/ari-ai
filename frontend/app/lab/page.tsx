@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { NodeGraph } from '@/components/node-graph';
 import { Term } from '@/components/term';
 import { Badge, Button, Empty, ErrorState, Field, inputClass, Loading, Mono, Panel, Tag } from '@/components/ui';
+import { defenderCountPhrase, machineCountPhrase } from '@/components/lab-copy';
 import { num } from '@/lib/format';
 import { cumulativeReturn, domain, episodeLabel, episodeStory, HIGHER_IS_BETTER, METRIC_LABEL, metricNames, metricRows, rewardTotals, sampleSize, stepObservation } from '@/lib/lab';
 import { actionInWords, episodeOutcome, episodeTimeline, keyTakeaway, POLICY_NAME, policyName, rewardWord, SCENARIO_WORDS, scenarioName, SCORE_METRICS, scoreboard, STAGE_WORDS, tradeoffNote } from '@/lib/lab-plain';
@@ -97,7 +98,7 @@ function Lab({ data }: { data: BundleResponse }) {
             <li key={step.n} className="rounded-2xl border border-line bg-panel p-5">
               <p className="label-mono text-brand">{step.n}</p>
               <p className="mt-2 font-semibold tracking-tight">{step.title}</p>
-              <p className="mt-1 text-sm text-muted">{step.body}</p>
+              <p className="mt-1 text-sm text-muted">{step.n === '01' ? step.body.replace('Five fake machines', `${machineCountPhrase(bundle.scenarios).replace(/^./, c => c.toUpperCase()).replace(/machines?$/, m => `fake ${m}`)}`) : step.body}</p>
             </li>
           ))}
         </ol>
@@ -141,7 +142,7 @@ function Scoreboard({ bundle }: { bundle: DefenseLabBundle }) {
       <p className="label-mono text-brand">The scores</p>
       <h2 id="score-title" className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Who defends best?</h2>
       <p className="mt-2 max-w-3xl text-sm text-muted">
-        Four defenders, each tested on {n.toLocaleString()} games they never trained on. Brackets show the 95% range the true average very likely falls in. ★ marks the best on each measure.
+        {defenderCountPhrase(bundle.metrics.length, true)}, each tested on {n.toLocaleString()} games they never trained on. Brackets show the 95% range the true average very likely falls in. ★ marks the best on each measure.
       </p>
       {takeaway && <p className="lab-takeaway mt-5" data-testid="lab-takeaway">{takeaway}</p>}
       <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -217,7 +218,7 @@ function Metrics({ bundle }: { bundle: DefenseLabBundle }) {
       <figure aria-label={`${METRIC_LABEL[metric] ?? metric} by policy`} className="flex flex-col gap-2" data-testid="metric-chart">
         {rows.map(r => (
           <div key={r.policy} className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-2 text-xs sm:grid-cols-[8rem_minmax(0,1fr)_13rem]">
-            <span className={r.policy === 'ddqn' ? 'font-semibold text-accent' : 'text-muted'}>{r.policy}</span>
+            <span className={`min-w-0 [overflow-wrap:anywhere] ${r.policy === 'ddqn' ? 'font-semibold text-accent' : 'text-muted'}`}>{r.policy}</span>
             <svg viewBox="0 0 100 10" preserveAspectRatio="none" className="h-5 w-full" role="img" aria-label={`${r.policy}: ${r.mean === null ? 'no value' : num(r.mean, 3)}`}>
               <line x1={x(0)} x2={x(0)} y1={0} y2={10} stroke="var(--color-line)" strokeWidth={0.4} />
               {r.mean !== null && <rect x={Math.min(x(0), x(r.mean))} width={Math.abs(x(r.mean) - x(0))} y={2.5} height={5} fill={r.policy === 'ddqn' ? 'var(--color-brand)' : 'var(--color-faint)'} opacity={r.policy === 'ddqn' ? 0.9 : 0.55} />}
