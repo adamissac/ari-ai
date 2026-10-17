@@ -204,3 +204,11 @@ Executed: focused host/unified/verification/closure54 passed; root325 passed/7 s
 - Verified M5 artifacts (`rl-defense/results/protocol-v0`) are complete and sent Adam the gate data to record.
 - Documented the `monitoring_budget` default as intentional in `shared/tenancy.py` (#101, merged) — the message asked owners to pick a fix; picked the documentation option.
 - Executed: backend+shared+monitoring 65 passed; frontend unit 23/22 passed on the merge branches.
+
+### 2026-10-17T13:05Z (monitor + standards)
+
+- Merged #139 (own): mirrored Sai's five `test_owasp_llm_reviewer.py` node ids onto 2025 rows LLM01/02/05/06/09:2025; MANIFEST refreshed; `owasp_llm --check` 0 problems; full multi-package run 814 passed, 22 opt-in skips.
+- Merged #141 (Sai): 2025 matrix cites tests/security only, so `pytest tests/security` passes standalone — verified the diff kept the mirror entries.
+- Closed #38 (Sarosh contract tracker): schema 0.6.0 landed via #39, ACK recorded, registry now 0.10.0; nothing outstanding.
+- Remaining open issues: #10 (Anthropic key — external), #12 (standing merge-cadence directive).
+- Repo quiet otherwise: main `5b3ef50`, 0 open PRs.
