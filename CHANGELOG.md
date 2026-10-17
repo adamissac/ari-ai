@@ -7,6 +7,11 @@ All notable changes are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- Hosted assessments persist security finding lifecycle (`hypothesis → … → hardened`),
+  durable approval checkpoints (`save_checkpoint` / `load_checkpoint` so a worker
+  restart can resume), and approval-gated functional repair plus independent Verify.
+  Assessment usage now includes `tool_calls` and `sandbox_seconds` from host runs.
+  Fake-provider only; live seven-agent path still unverified (no Anthropic key).
 - Exact-snapshot human intent decisions (`confirmed`/`conflicting`/`rejected`) with
   authenticated backend routes, append-only revisions and `human_input` provenance.
 - Independently verified candidate-regression memory: accepted Verify results with all
