@@ -244,7 +244,12 @@ def main() -> None:
     ap.add_argument("--round", required=True)
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 1))
     ap.add_argument("--run-root", default="runs/validation")
-    ap.add_argument("--seeds", type=int, nargs="+", default=list(VAL_TRAIN_SEEDS))
+    ap.add_argument(
+        "--seeds",
+        type=lambda s: [int(x) for x in s.split(",")],
+        default=list(VAL_TRAIN_SEEDS),
+        help="comma-separated validation training seeds, e.g. 10,11,12,13,14",
+    )
     ap.add_argument("candidates", nargs="+", type=Path)
     args = ap.parse_args()
     if set(args.seeds) & set(FORBIDDEN_TRAIN_SEEDS):
