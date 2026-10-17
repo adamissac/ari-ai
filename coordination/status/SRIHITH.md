@@ -187,3 +187,9 @@ Add dated factual entries; do not overwrite history. Never claim unexecuted test
   - New PR #89 `feat/srihith/killswitch-error-code`: added `KILL_SWITCH` to `shared.errors` and made `_host_error` fall back to a dict for agent-local codes. An Adam-side session merged #83 into the branch mid-flight; all CI green.
   - #86 still open, clean; its `compose-stack` CI job passed.
 
+
+## 2026-10-17 — REG-001 complete: Devin closure evidence continuation
+
+Branch `fix/srihith/fortify-closure-artifacts`, based on merged Devin PRs80/81 and Alan PR83. Real security and functional Verify now retain bounded, unchanged regression sources as redacted ArtifactStore archives and publish their actual canonical hardening artifact IDs. Incident eradication resolves remediation-plan approval to the same finding/project/assessment. Evidence selectors now accept options that arrive after linking a finding.
+
+Executed: focused host/unified/verification/closure54 passed; root325 passed/7 skips (optional RL dependency, global tsc unavailable, opt-in live providers); security-agent396 passed/11 optional skips; frontend32 unit tests; real PostgreSQL/API/worker/Chrome browser12 passed, including complete two-person incident lifecycle through Closed and reload. ESLint, TypeScript, production build, Ruff/format, mypy and generated contracts110-file freshness passed. Browser runs use scripted transports; no paid provider calls, deployment or individual test-node execution claim.

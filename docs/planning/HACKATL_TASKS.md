@@ -152,3 +152,9 @@ abort. No provider or target execution occurred in transport tests.
 Alan recovered-catalog continuation (2026-10-17): isolated canonical CVSS3.1/OWASP API/NIST800-115 additions from PR #35; narrow offline catalog PR follows. Host/functional-Verify continuation is reviewed separately in PR #73.
 
 SEC-010/SEC-012 continuation (2026-10-17, PR #73 merged): hardened functional evidence gates and current-scope resume. Codex P1/P2 follow-up is `feat/alan/host-resume-hardening` (resume repo filter, `claim_checkpoint`, finish-before-verdict, truncated pytest lists, approved functional as outstanding work, full `target_dir` strip, `patch_rejected`). Duplicate legacy PR #35 is superseded and should be closed, not merged. Canonical recovered catalogs remain isolated in PR #74.
+
+### REG-001 — Finish Devin’s incident closure evidence connection
+
+Owner: Srihith. Status: IN_REVIEW on `fix/srihith/fortify-closure-artifacts`. Dependencies: merged UI PRs80/81 and host verification. Acceptance: real hosted assessment persists regression source artifact; lessons learned and complete approved incident lifecycle work via API and rendered UI; rejected/unsafe/mutated source guards remain enforced; no fabricated verification claims.
+
+REG-001 validation: focused54/root325/security396/frontend32/browser12 passed; real source archive → lessons → two-person approved Closed persists on reload. See SESSION_HANDOFF for skips and limits.

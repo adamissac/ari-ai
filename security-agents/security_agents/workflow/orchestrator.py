@@ -132,6 +132,7 @@ class FindingRecord:
     candidates: list[PatchCandidate] = field(default_factory=list)
     verifications: list[VerificationResult] = field(default_factory=list)
     regression_tests: list[RegressionTest] = field(default_factory=list)
+    verified_regression_bundle: dict[str, Any] | None = None
     recommendations: list[HardeningRecommendation] = field(default_factory=list)
     future_hypotheses: list[HypothesisDraft] = field(default_factory=list)
     monitoring_hints: list[str] = field(default_factory=list)
@@ -904,6 +905,7 @@ class Orchestrator:
         (self.workdir / f"patch-{finding.finding_id}-{attempt}.diff").write_text(diff_text, encoding="utf-8")
         self._patch_artifacts[candidate.id] = {
             "diff": diff_text,
+            "tests_added": list(candidate.tests_added),
             "plan_files": list(finding.plan.files_expected),
             "protected_tests": self._protected_tests(),
         }
@@ -983,9 +985,22 @@ class Orchestrator:
         sandbox_ids = [
             str(r.get("sandbox_run_id")) for r in check_runs + test_runs if r.get("sandbox_run_id")
         ]
-        return verify_agent.to_result(
+        result = verify_agent.to_result(
             out, data, evidence, sandbox_run_ids=sandbox_ids, verify_run_id=outcome.run.id
         )
+        from ..regressions import RegressionEvidenceUnavailable, verified_bundle
+
+        finding.verified_regression_bundle = None
+        if result.verdict == "accepted" and outcome.ok:
+            try:
+                initial = ctx.artifacts.get("regression_sources_before_tests")
+                root = ctx.artifacts.get("verify_workspace")
+                if initial is None or root is None:
+                    raise RegressionEvidenceUnavailable("no captured Verify regression sources")
+                finding.verified_regression_bundle = verified_bundle(candidate, result, root, initial)
+            except (RegressionEvidenceUnavailable, PlatformError) as exc:
+                finding.notes.append(f"regression artifact unavailable: {exc}")
+        return result
 
     def _run_fortify(self, finding: FindingRecord) -> None:
         candidate = finding.candidates[-1] if finding.candidates else None
