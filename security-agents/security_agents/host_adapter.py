@@ -554,6 +554,9 @@ class HostSink(AssessmentSink):
                 produced_by_run_id=run_id,
                 rationale=finding.plan.strategy if finding.plan else "",
                 diff_artifact_id=artifact_id,
+                # The stored bytes (possibly redacted) are what anyone can fetch and check;
+                # Sai's reviewer records the same (#155).
+                diff_sha256=getattr(artifact, "sha256", None),
             )
         )
         self.recorded.append("patch")
