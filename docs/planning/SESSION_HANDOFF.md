@@ -629,3 +629,8 @@ No backend/API changes in the publication diff. Earlier local-only notes describ
 the state before this authorization. Publishing via a normal fast-forward push;
 next action is to confirm GitHub main matches the release commit and inspect CI.
 The Git-connected Vercel deployment is triggered by that push; no project settings changed.
+
+
+## 2026-10-17 — Srihith: owner-requested product readiness audit
+
+Published the complete feature inventory, evidence boundaries and prioritized checklist as [issue #244](https://github.com/adamissac/ari-ai/issues/244), with dated report in [PRODUCT_READINESS_AUDIT_2026-10-17.md](PRODUCT_READINESS_AUDIT_2026-10-17.md) and immutable all-team message `20261017T203234Z-srihith-to-all-product-readiness-audit`. No application changes. Primary snapshot882daa2, publication baseb44d372; accounts for resolved frontend241, open onboarding239 and newly reported Fortify/M3 issue243. Fresh sweep1035passed/35skipped/one audit Git-metadata failure; affected owned-target tests2passed after restoring metadata. Full audit discloses local opt-in skips, CI evidence, public readiness gaps and raw RL recomputation. Next: owners add acceptance evidence on issue244; no feature is completed by this documentation change.
