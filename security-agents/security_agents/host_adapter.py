@@ -410,8 +410,11 @@ class HostSink(AssessmentSink):
     recorded: list[str] = field(default_factory=list)
     sandbox_charged: float = 0.0
     regression_artifact_ids: dict[str, str] = field(default_factory=dict)
+    result: Any = None
 
     def on_transition(self, src: AssessmentState, dst: AssessmentState, note: str) -> None:
+        if self.result is not None and dst in (AssessmentState.COMPLETED, AssessmentState.AWAITING_APPROVAL):
+            _store_standards_artifacts(self, self.result)
         self.host.transition(_host_state(dst), note)
         if dst is AssessmentState.FUNCTIONAL_REVIEW:
             _functional_review(self.host)
@@ -605,6 +608,35 @@ def _hardening(
 # --------------------------------------------------------------------------- orchestrator
 
 
+def _store_standards_artifacts(sink: HostSink, result: Any) -> None:
+    import json
+
+    from shared.evidence import ArtifactKind
+
+    from .standards.sarif import to_sarif
+
+    stored: dict[str, str] = {}
+    try:
+        if result.findings:
+            log = to_sarif(result, commit_sha=sink.commit_sha, run_mode="hosted")
+            ref = sink.host.store_text(
+                json.dumps(log, indent=2), kind=ArtifactKind.report, media_type="application/sarif+json"
+            )
+            stored["sarif_artifact_id"] = str(getattr(ref, "id", ref))
+        if result.roe is not None:
+            ref = sink.host.store_text(
+                json.dumps(result.roe.model_dump(mode="json"), indent=2),
+                kind=ArtifactKind.report,
+                media_type="application/json",
+            )
+            stored["roe_artifact_id"] = str(getattr(ref, "id", ref))
+    except Exception as exc:  # reported, never hidden, and never fails the assessment
+        sink.host.progress(f"standards artifacts not stored: {str(exc)[:200]}")
+        return
+    if stored:
+        sink.host.progress("standards artifacts stored (SARIF 2.1.0, rules of engagement)", **stored)
+
+
 @dataclass
 class HostOrchestrator:
     """`security_agents.api:build_orchestrator()` result: `run(host)`.
@@ -717,7 +749,7 @@ class HostOrchestrator:
         )
         registry = self.registry or default_registry()
         sink = HostSink(host=host, commit_sha=intel.snapshot.commit_sha)
-        return Orchestrator(
+        orchestrator = Orchestrator(
             config,
             intel=intel,
             gateway=_NullGateway(),  # host.llm() is the only provider path here
@@ -731,6 +763,8 @@ class HostOrchestrator:
             cancelled=lambda: _cancelled(host),
             external_pending=lambda: _pending_remediation(host) or _has_approved_functional(host),
         )
+        sink.result = orchestrator.result
+        return orchestrator
 
     def _workdir(self, host: AssessmentHostLike) -> Path:
         import tempfile
