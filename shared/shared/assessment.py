@@ -165,7 +165,10 @@ class AgentRun(StrictModel):
     attempt: int = Field(ge=1)
     status: AgentRunStatus
     provider_mode: ShortText = Field(
-        description="'live' (real provider), 'replay' (recorded) or 'fake' (test transport)"
+        description=(
+            "'live' (real provider), 'replay' (recorded), 'fake' (test transport), "
+            "or 'none' (deterministic / no model call)"
+        )
     )
     model_id: ShortText | None = None
     prompt_version: ShortText | None = None

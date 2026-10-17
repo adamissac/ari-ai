@@ -749,6 +749,33 @@ def test_recipe_prefix_is_stripped_for_functional_verify(tmp_path):
     assert "a/services/" not in _diff_for_snapshot(nested_diff, nested_prefix)
 
 
+def test_pinned_snapshot_escaping_target_dir_is_schema_invalid(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    from security_agents.host_adapter import _pinned_snapshot
+    from security_agents.sandbox.workspace import SnapshotHandle
+
+    checkout = tmp_path / "checkout"
+    checkout.mkdir()
+    (checkout / "build_recipe.json").write_text('{"target_dir": "../outside"}', encoding="utf-8")
+    monkeypatch.setattr(
+        "security_agents.host_adapter._bindings",
+        lambda: [{"repo_id": "rep_x", "local_path": str(tmp_path), "subdir": "."}],
+    )
+    monkeypatch.setattr(
+        SnapshotHandle,
+        "from_git",
+        staticmethod(lambda *args, **kwargs: SimpleNamespace(root=checkout, commit_sha="a" * 40)),
+    )
+    host = SimpleNamespace(
+        repo_id="rep_x",
+        assessment=SimpleNamespace(commit_sha="a" * 40, snapshot_id=None),
+    )
+    with pytest.raises(PlatformError) as exc:
+        _pinned_snapshot(host, tmp_path / "work")
+    assert exc.value.code is ErrorCode.SCHEMA_INVALID
+
+
 def test_host_state_names_cover_every_state():
     from security_agents.host_adapter import HOST_STATE_NAMES
 
