@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Published a dated product-readiness audit and shared follow-up checklist (issue #244), distinguishing executed prototype capabilities, reported live evidence, hosted integration gaps and proposed work.
+
 - Homepage navigation reveals the four secondary links at 100px with a subtle 250ms fade/slide; logo and account entry stay anchored. Hidden links are inert, phones retain Menu access, and reduced motion removes the animation. Other pages keep full navigation.
 
 - ARI branding, a centered oversized two-line hero, transparent floating navigation with persistent phone links, and locally bundled Chakra Petch bold for the wordmark only. The logo and ordinary navigation links float without cards; text and icon contrast adapts over dark and light sections, with Pricing the sole filled CTA. The unchanged two-line hero headline has a warm off-white core and a restrained responsive ember bloom.

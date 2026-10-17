@@ -632,7 +632,7 @@ The Git-connected Vercel deployment is triggered by that push; no project settin
 
 ## 2026-10-17T19:50:00+00:00 — Adam: GitHub onboarding (org → repo) and labelled simulated attacks
 
-Branch `feat/adam/github-onboarding` (PR #235 already merged to main with all checks green).
+Branch `feat/adam/github-onboarding` (merged as PR #239).
 - Backend: GitHub sign-in now lands on `/connect`; returning from installing the App
   (`setup_action=install|update`, no OAuth state) restarts sign-in instead of a 403, which
   refreshes the repository list. `GITHUB_APP_PRIVATE_KEY_PATH` also accepts pasted PEM
@@ -650,3 +650,7 @@ Branch `feat/adam/github-onboarding` (PR #235 already merged to main with all ch
   once GitHub sign-in works against Railway.
 Executed: backend key/access tests (9 passed), frontend lint, typecheck, 224 unit tests,
 production build. E2E result recorded in the PR.
+
+## 2026-10-17 — Srihith: owner-requested product readiness audit
+
+Published the complete feature inventory, evidence boundaries and prioritized checklist as [issue #244](https://github.com/adamissac/ari-ai/issues/244), with dated report in [PRODUCT_READINESS_AUDIT_2026-10-17.md](PRODUCT_READINESS_AUDIT_2026-10-17.md) and immutable all-team message `20261017T203234Z-srihith-to-all-product-readiness-audit`. No application changes. Primary snapshot `882daa2`, publication base `b44d372`; accounts for resolved frontend #241, onboarding #239 (merged after the audit draft) and Fortify/M3 #243. Fresh sweep 1035 passed / 35 skipped / one audit Git-metadata failure; affected owned-target tests 2 passed after restoring metadata. Full audit discloses local opt-in skips, CI evidence, public readiness gaps and raw RL recomputation. Next: owners add acceptance evidence on issue #244; no feature is completed by this documentation change.
