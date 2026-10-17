@@ -26,3 +26,15 @@ def classify_weakness(
         classified_at=datetime.now(UTC),
         catalog_versions=catalog_versions(),
     )
+
+
+def classify_weakness_safely(
+    identifier: str | None, evidence: list[EvidenceRef], confidence: float
+) -> tuple[FindingStandards | None, str | None]:
+    """Catalog-validate during adjudication: an unknown or unsuitable CWE (MappingRejected
+    is a ValueError; unknown ids raise KeyError) yields ``(None, reason)`` so the finding
+    survives without a standards tag instead of voiding the whole report."""
+    try:
+        return classify_weakness(identifier, evidence, confidence), None
+    except (KeyError, ValueError) as exc:
+        return None, f"{identifier}: {exc}"[:300]
