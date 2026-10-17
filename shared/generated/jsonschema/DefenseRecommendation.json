@@ -1,0 +1,166 @@
+{
+  "$defs": {
+    "ActionScore": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "enum": [
+            "noop",
+            "raise_monitoring",
+            "rate_limit",
+            "isolate",
+            "request_reassessment",
+            "escalate_to_human"
+          ],
+          "title": "Action",
+          "type": "string"
+        },
+        "node": {
+          "anyOf": [
+            {
+              "enum": [
+                "gateway",
+                "api",
+                "auth",
+                "payments",
+                "db"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Node"
+        },
+        "q_value": {
+          "title": "Q Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "action",
+        "node",
+        "q_value"
+      ],
+      "title": "ActionScore",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "action": {
+      "enum": [
+        "noop",
+        "raise_monitoring",
+        "rate_limit",
+        "isolate",
+        "request_reassessment",
+        "escalate_to_human"
+      ],
+      "title": "Action",
+      "type": "string"
+    },
+    "caveat": {
+      "default": "Simulation-derived recommendation from a policy trained only in DefenseSimEnv; not a detection of a real attack and never executed automatically.",
+      "maxLength": 500,
+      "title": "Caveat",
+      "type": "string"
+    },
+    "checkpoint_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Checkpoint Sha256",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^rec_[0-9A-Za-z]{8,64}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "node": {
+      "anyOf": [
+        {
+          "enum": [
+            "gateway",
+            "api",
+            "auth",
+            "payments",
+            "db"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Node"
+    },
+    "observation": {
+      "items": {
+        "type": "number"
+      },
+      "title": "Observation",
+      "type": "array"
+    },
+    "policy_version": {
+      "description": "env id + checkpoint sha256 prefix",
+      "maxLength": 500,
+      "title": "Policy Version",
+      "type": "string"
+    },
+    "project_id": {
+      "anyOf": [
+        {
+          "pattern": "^prj_[0-9A-Za-z]{8,64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Project Id"
+    },
+    "q_margin": {
+      "description": "Q(best) - Q(second best valid action)",
+      "title": "Q Margin",
+      "type": "number"
+    },
+    "schema_version": {
+      "default": "0.1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "simulation_derived": {
+      "const": true,
+      "default": true,
+      "title": "Simulation Derived",
+      "type": "boolean"
+    },
+    "top_actions": {
+      "items": {
+        "$ref": "#/$defs/ActionScore"
+      },
+      "title": "Top Actions",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "project_id",
+    "policy_version",
+    "checkpoint_sha256",
+    "action",
+    "node",
+    "q_margin",
+    "top_actions",
+    "observation",
+    "created_at"
+  ],
+  "title": "DefenseRecommendation",
+  "type": "object"
+}
