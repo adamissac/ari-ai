@@ -9,6 +9,7 @@ import { useSession } from '@/components/session';
 import { Badge, Button, Empty, ErrorState, Loading, Mono, PageTitle, Panel, Stat, Tag, Time } from '@/components/ui';
 import { api } from '@/lib/api';
 import { shortSha, usd } from '@/lib/format';
+import { currentPhaseSentence } from '@/lib/phase';
 import {
   agentRole, APPROVAL_STATUS, ASSESSMENT_STATE, FINDING_STATUS, providerLabel,
   railSteps, SEVERITY, TERMINAL_STATES,
@@ -91,6 +92,7 @@ export default function AssessmentPage() {
         subtitle={<>Commit <Mono>{shortSha(a.commit_sha)}</Mono> · {a.trigger} trigger · scope <Mono>{a.scope_id}</Mono> · started <Time iso={a.created_at} />{a.completed_at && <> · ended <Time iso={a.completed_at} /></>}</>}
         actions={!terminal && <CancelButton id={a.id} onDone={() => loadDetail()} />}
       />
+      <p className="mb-4 text-sm text-ink" data-testid="assessment-phase">{currentPhaseSentence(a.state)}</p>
       <ConnectionBar state={connection} error={streamError} onReconnect={() => { setStreamError(null); setStreamNonce(n => n + 1); }} />
       {a.error && (
         <div role="alert" className="mb-4 rounded-md border border-bad/40 bg-bad/5 p-3 text-sm">
