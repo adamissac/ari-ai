@@ -83,3 +83,27 @@ and deduplicates by repository/commit in the backend.
 ## Standards and incidents
 
 `incidents`, `createIncident`, `incident`, and `actOnIncident` use the canonical DTOs and existing cookie/CSRF flow. `incident` returns the typed `{incident, standards}` envelope. `mappingLabel`, `findingStandards`, and `incidentLabel` preserve catalog versions, proposed/hypothesis/simulation labels, vectors, assumptions, and unscored gaps. Render returned values as text. These helpers are not mounted dashboard pages; the frontend owner retains that integration.
+
+## Reproducible demo/recovery checks
+
+After installing the root Python workspace and both frontend lockfiles:
+
+```bash
+npm run build --prefix frontend/transport
+.venv/bin/python frontend/transport/tests/real_backend.py
+# Actual HTTP + isolated PostgreSQL; lost-response retry, 409/new-key recovery,
+# job lookup, stored artifact hashes, tenant denial and SSE; no worker/provider.
+cd frontend
+NEXT_PUBLIC_DEV_LOGIN=1 npm run build -- --webpack
+E2E_SKIP_BUILD=1 E2E_BROWSER_CHANNEL=chrome ../.venv/bin/python tests/e2e/stack.py
+```
+
+The browser suite uses actual API/DB/worker/Next components, scripted providers
+and the explicitly enabled local-dev check driver. The new recovery spec injects
+a temporary network failure, then verifies Retry/reload against the real API; it
+also checks a genuine missing-assessment 404. `E2E_SKIP_BUILD=1` requires a fresh
+build of the tested source. The webpack build avoids the observed Turbopack font
+fetch failure, but fonts can still require internet at build time. The harnesses
+drop only their temporary databases/artifacts and do not stop the shared server.
+Stored-byte integrity does not establish that a PatchCandidate's raw diff hash
+matches its redacted artifact (issue155 remains separately owned).

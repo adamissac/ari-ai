@@ -183,3 +183,10 @@ UNVERIFIED: NVD terms page (Cloudflare challenge). All runs above are replay or 
 ### 2026-10-17 — Codex explicit assessment conflict recovery
 - fix/alan/explicit-conflict-recovery, own worktree from d1d324d. Reproduced absent reset and cross-project key retention (2 failed tests);3 targeted and70 frontend unit tests now pass. TS/lint/production build pass.
 - Actual Chrome13 passed, including real409, retained-key retry, explicit preparation with zero requests, then exactly one new accepted assessment/job. Normal network-error retries keep the key; project identity is in the key signature. No product API or security changes.
+
+### 2026-10-17 — Codex real application verification and job-status recovery
+- Existing PR166 all CI green, no review findings; merged by Srihith. New work isolated on test/alan/demo-recovery-smoke at /private/tmp/omen-demo-smoke, initial base30e1234, synced main056f65b.
+- Confirmed GET/jobs404 for a returned assessment job ID; resolved project through persisted assessment. Tenant404 and signed-out401 remain tested. Commit00d5f54, sync c185b67.
+- Real Chrome14 passed (full scoped/scripted assessment/approvals/evidence/closure plus new outage/Retry/reload/missing-assessment cases); HTTP/client6 passed (lost response after server commit, same IDs,409 for conflicting body/project, fresh key, actual artifact bytes and corrupt-download rejection).
+- Root422 passed/8 optional skips; backend80 passed/5 skips; targeted13 passed; frontend67/transport27 unit tests passed. Production webpack build, TS/ESLint, Ruff/format/mypy38 sources,112-file contracts current. No new live/Docker proof.
+- Frontend follow-up: unchanged form after409 retains the conflicting key; add an explicit new-action control rather than automatically rotating keys after network loss. Issue155 raw/stored patch hash and Claude's live/Probe/RoE/Docker lane untouched. Initial Turbopack font download failed; webpack build and actual browser then passed.

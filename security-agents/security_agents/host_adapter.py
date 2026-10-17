@@ -24,6 +24,7 @@ installable on its own and testable with a fake host.
 from __future__ import annotations
 
 import contextlib
+import importlib
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -409,6 +410,8 @@ class HostSink(AssessmentSink):
     run_ids: dict[str, str] = field(default_factory=dict)
     recorded: list[str] = field(default_factory=list)
     sandbox_charged: float = 0.0
+    # patch id -> (stored artifact id, stored sha256, sha256 of the bytes Verify executes)
+    stored_diffs: dict[str, tuple[str, str | None, str]] = field(default_factory=dict)
     regression_artifact_ids: dict[str, str] = field(default_factory=dict)
     result: Any = None
 
@@ -530,6 +533,8 @@ class HostSink(AssessmentSink):
                 if finding.attack_path
                 else [],
             )
+        if kind == "validation_result" and mapped is not None:
+            mapped = self._with_http_evidence(record, mapped)
         if mapped is not None:
             self.host.record(finding.finding_id, mapped)
             self.recorded.append(kind)
@@ -541,9 +546,49 @@ class HostSink(AssessmentSink):
                     reason=f"probe {outcome} via {mapped.check_template_id}",
                 )
 
+    def _with_http_evidence(self, record: Any, mapped: Any) -> Any:
+        observations = record.observations or {}
+        if observations.get("transport") != "http" or not observations.get("target_contacted"):
+            return mapped
+        import json
+
+        from shared.evidence import ArtifactKind, EvidenceKind, EvidenceRef
+
+        payload = {
+            key: observations.get(key)
+            for key in (
+                "transport",
+                "target_contacted",
+                "target_requests",
+                "target_log_sha256",
+                "network",
+                "driver",
+            )
+        }
+        payload["sandbox_run_id"] = record.sandbox_run_id
+        artifact = self.host.store_text(
+            json.dumps(payload, indent=2, sort_keys=True),
+            kind=ArtifactKind.tool_output,
+            media_type="application/json",
+        )
+        ref = EvidenceRef(
+            kind=EvidenceKind.tool_output,
+            artifact_id=artifact.id,
+            sha256=artifact.sha256,
+            provenance="agent:probe",
+            note="http check transport: requests observed in the target container log",
+        )
+        return mapped.model_copy(update={"evidence": [*mapped.evidence, ref]})
+
     def on_patch(self, finding: FindingRecord, candidate: Any, diff: str) -> None:
         artifact = self.host.store_text(diff)
         artifact_id = getattr(artifact, "id", None) or str(artifact)
+        # Verify executes the in-memory diff; the store may hold a redacted copy (#155).
+        self.stored_diffs[candidate.id] = (
+            artifact_id,
+            getattr(artifact, "sha256", None),
+            candidate.diff_sha256,
+        )
         run_id = self.run_ids.get("patch")
         if run_id is None:  # never cite a run the host did not create
             raise PlatformError(ErrorCode.CONFLICT_STATE, "patch recorded without a host patch run")
@@ -563,14 +608,47 @@ class HostSink(AssessmentSink):
         self.set_status(finding.finding_id, "patch_proposed", reason="patch candidate recorded")
 
     def on_verification(self, finding: FindingRecord, result: Any) -> None:
-        self.host.record_verification(
-            contract_export.verification_result(
-                result, produced_by_run_id=result.verify_run_id or self.run_ids["verify"]
-            )
+        canonical = contract_export.verification_result(
+            result, produced_by_run_id=result.verify_run_id or self.run_ids["verify"]
         )
+        self.host.record_verification(self._bind_verified_bytes(canonical))
         self.recorded.append("verification")
         if str(getattr(result.verdict, "value", result.verdict)) == "accepted":
             self.set_status(finding.finding_id, "verified", reason="independent Verify accepted")
+
+    def _bind_verified_bytes(self, canonical: Any) -> Any:
+        """Bind the verdict to the exact diff bytes Verify executed. The PatchCandidate names
+        the stored artifact, which the store may have redacted, so the verdict carries a
+        binding artifact with both hashes as evidence on ``diff_scope_ok``. The pre-redaction
+        bytes themselves are never stored."""
+        stored = self.stored_diffs.get(canonical.patch_id)
+        if stored is None or not hasattr(self.host, "store_json"):
+            return canonical
+        stored_id, stored_sha, verified_sha = stored
+        binding = self.host.store_json(
+            {
+                "patch_id": canonical.patch_id,
+                "verified_diff_sha256": verified_sha,
+                "stored_diff_artifact_id": stored_id,
+                "stored_diff_sha256": stored_sha,
+                "redacted": verified_sha != stored_sha,
+            }
+        )
+        ev = importlib.import_module("shared.evidence")
+        ref = ev.EvidenceRef(
+            kind=ev.EvidenceKind.artifact,
+            artifact_id=binding.id,
+            sha256=binding.sha256,
+            provenance="agent:verify",
+            note="verified-bytes binding: the diff Verify executed vs the stored diff artifact",
+        )
+        checks = [
+            c.model_copy(update={"evidence": [*c.evidence, ref]})
+            if str(getattr(c.name, "value", c.name)) == "diff_scope_ok"
+            else c
+            for c in canonical.checks
+        ]
+        return canonical.model_copy(update={"checks": checks})
 
     def on_standards(self, finding: FindingRecord) -> None:
         if hasattr(self.host, "record_standards"):
@@ -749,6 +827,7 @@ class HostOrchestrator:
             budget=_adapt_budget(_val(host, "assessment")),
             max_hypotheses=self.max_hypotheses,
             max_hypotheses_to_validate=self.validate_count,
+            probe_check_transport=os.environ.get("SECURITY_AGENTS_PROBE_TRANSPORT", "inprocess"),
         )
         registry = self.registry or default_registry()
         sink = HostSink(host=host, commit_sha=intel.snapshot.commit_sha)
