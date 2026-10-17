@@ -34,6 +34,14 @@ ADDITIONAL_SOURCES: dict[str, dict[str, str]] = {
         "url": "https://csrc.nist.gov/pubs/sp/800/115/final",
         "sha256": "",
     },
+    "sarif-schema-2.1.0.json": {
+        "url": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/schemas/sarif-schema-2.1.0.json",
+        "sha256": "",
+    },
+    "sarif-v2.1.0-errata01-os-complete.html": {
+        "url": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/sarif-v2.1.0-errata01-os-complete.html",
+        "sha256": "",
+    },
 }
 
 PINS_FILE = HERE / "additional_pins.json"
@@ -44,6 +52,7 @@ LICENSES = {
     "nist-sp800-115.json": "NIST public information (https://www.nist.gov/copyrights-disclaimers); credit requested",
     "cvss-v3.1-nvd-vectors.json": "UNVERIFIED: NVD terms page returned a Cloudflare challenge; CVE ids, vectors and scores only",
     "rules/cwe_owasp_api.json": "project mapping authored in this repository",
+    "sarif-2.1.0.json": "OASIS copyright and IPR notice copied from the pinned specification into the file's notice field; schema stored for validation only",
 }
 
 
@@ -51,8 +60,10 @@ def pins() -> dict[str, str]:
     return json.loads(PINS_FILE.read_text()) if PINS_FILE.exists() else {}
 
 
-def download(dest: Path) -> None:
+def download(dest: Path, names: list[str] | None = None) -> None:
     for name, meta in ADDITIONAL_SOURCES.items():
+        if names and name not in names:
+            continue
         target = dest / name
         target.parent.mkdir(parents=True, exist_ok=True)
         request = urllib.request.Request(
@@ -63,10 +74,10 @@ def download(dest: Path) -> None:
         print("downloaded", name)
 
 
-def verify(src: Path, *, repin: bool) -> dict[str, str]:
+def verify(src: Path, *, repin: bool, names: list[str] | None = None) -> dict[str, str]:
     pinned = pins()
     digests: dict[str, str] = {}
-    for name in ADDITIONAL_SOURCES:
+    for name in names or list(ADDITIONAL_SOURCES):
         digest = sha256_file(src / name)
         expected = pinned.get(name)
         if expected and digest != expected and not repin:
@@ -74,13 +85,13 @@ def verify(src: Path, *, repin: bool) -> dict[str, str]:
                 f"{name}: sha256 {digest} != pinned {expected}; rerun with --repin to accept"
             )
         digests[name] = digest
-    if repin or not pinned:
-        PINS_FILE.write_text(json.dumps(digests, indent=1, sort_keys=True) + "\n")
+    if repin or not pinned or any(name not in pinned for name in digests):
+        PINS_FILE.write_text(json.dumps({**pinned, **digests}, indent=1, sort_keys=True) + "\n")
     return digests
 
 
-def _text(raw: bytes) -> str:
-    text = raw.decode("utf-8", errors="replace")
+def _text(raw: bytes, encoding: str = "utf-8") -> str:
+    text = raw.decode(encoding, errors="replace")
     text = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", text, flags=re.S)
     text = re.sub(r"<[^>]+>", " ", text)
     return re.sub(r"\s+", " ", unescape(text))
@@ -245,10 +256,34 @@ def build_sp800115(src: Path) -> dict[str, Any]:
     }
 
 
+def build_sarif(src: Path) -> dict[str, Any]:
+    schema = json.loads((src / "sarif-schema-2.1.0.json").read_bytes())
+    page = _text((src / "sarif-v2.1.0-errata01-os-complete.html").read_bytes(), "windows-1252")
+    stage = re.search(
+        r"OASIS Standard incorporating Approved Errata\s+(\d{1,2} [A-Z][a-z]+ \d{4})", page
+    )
+    start = page.find("Copyright")
+    end = page.find("Table of Contents", start)
+    if not stage or start < 0 or end < 0 or "version 2.1.0" not in schema.get("title", "").lower():
+        raise SystemExit("could not extract the SARIF stage, notice or schema title")
+    return {
+        "framework": "sarif",
+        "version": "2.1.0",
+        "stage": "OASIS Standard incorporating Approved Errata",
+        "date": stage.group(1),
+        "notice": page[start:end].strip(),
+        "schema": schema,
+    }
+
+
 BUILDERS = {
     "cvss-v3.1.json": (build_cvss31, ["cvss-v3.1-specification.html"]),
     "owasp-api-2023.json": (build_owasp_api, ["owasp-api-2023/0x11-t10.md"]),
     "nist-sp800-115.json": (build_sp800115, ["nist-sp800-115.pdf", "nist-sp800-115-csrc.html"]),
+    "sarif-2.1.0.json": (
+        build_sarif,
+        ["sarif-schema-2.1.0.json", "sarif-v2.1.0-errata01-os-complete.html"],
+    ),
 }
 
 CURATED = {
@@ -257,11 +292,14 @@ CURATED = {
 }
 
 
-def build(src: Path, *, repin: bool) -> None:
-    digests = verify(src, repin=repin)
+def build(src: Path, *, repin: bool, only: list[str] | None = None) -> None:
+    selected = {name: BUILDERS[name] for name in (only or list(BUILDERS))}
+    digests = verify(
+        src, repin=repin, names=sorted({u for _, ins in selected.values() for u in ins})
+    )
     manifest_path = DATA / "MANIFEST.json"
     manifest = json.loads(manifest_path.read_text())
-    for name, (builder, inputs) in BUILDERS.items():
+    for name, (builder, inputs) in selected.items():
         value = builder(src)
         entry = manifest["files"].setdefault(name, {})
         entry["sha256"] = write_json(name, value)
@@ -271,7 +309,7 @@ def build(src: Path, *, repin: bool) -> None:
             {"url": ADDITIONAL_SOURCES[u]["url"], "sha256": digests[u]} for u in inputs
         ]
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
-    print("wrote", ", ".join(BUILDERS))
+    print("wrote", ", ".join(selected))
     refresh_curated()
 
 
@@ -300,16 +338,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--download", type=Path)
     parser.add_argument("--repin", action="store_true")
     parser.add_argument("--refresh-curated", action="store_true")
+    parser.add_argument("--only", action="append", choices=sorted(BUILDERS))
     args = parser.parse_args(argv)
     if args.refresh_curated:
         refresh_curated()
         return 0
     if args.download:
-        download(args.download)
+        wanted = sorted({u for n in (args.only or BUILDERS) for u in BUILDERS[n][1]})
+        download(args.download, wanted)
         args.src = args.download
     if not args.src:
         parser.error("--src or --download is required")
-    build(args.src, repin=args.repin)
+    build(args.src, repin=args.repin, only=args.only)
     return 0
 
 

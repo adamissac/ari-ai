@@ -17,6 +17,7 @@ from ..sandbox.driver import LocalProcessDriver
 from ..sandbox.workspace import SnapshotHandle, copy_tree
 from ..workflow import Orchestrator, OrchestratorConfig
 from .roe import coverage_table
+from .sarif import to_sarif, validate
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 REPO_ROOT = PACKAGE_ROOT.parent
@@ -192,12 +193,16 @@ def run(out_dir: Path) -> dict[str, Path]:
         "tagged_finding": out_dir / "finding.tagged.json",
         "rules_of_engagement": out_dir / "rules_of_engagement.json",
         "sp_800_115_coverage": out_dir / "sp800115_coverage.json",
+        "sarif": out_dir / "findings.sarif.json",
     }
     paths["tagged_finding"].write_text(json.dumps(_tagged(result, intel), indent=2) + "\n", encoding="utf-8")
     paths["rules_of_engagement"].write_text(
         json.dumps(result.roe.model_dump(mode="json"), indent=2) + "\n", encoding="utf-8"
     )
     paths["sp_800_115_coverage"].write_text(json.dumps(coverage_table(), indent=2) + "\n", encoding="utf-8")
+    sarif = to_sarif(result, commit_sha=intel.snapshot.commit_sha, run_mode="replay")
+    validate(sarif)
+    paths["sarif"].write_text(json.dumps(sarif, indent=2) + "\n", encoding="utf-8")
     shutil.rmtree(workdir, ignore_errors=True)
     return paths
 
@@ -227,7 +232,7 @@ def main(argv: list[str] | None = None) -> int:
     print("written:")
     for label, path in paths.items():
         print(f"  {label}: {path}")
-    print("  sarif: not produced yet (P1, after the M3 gate)")
+    print("SARIF 2.1.0: validated against the pinned OASIS schema")
     return 0
 
 

@@ -31,3 +31,16 @@ def test_project_mapping_returns_independent_lists():
     original = owasp_api.project_mapping()["API1:2023"]
     owasp_api.project_mapping()["API1:2023"].append("CWE-99999")
     assert owasp_api.project_mapping()["API1:2023"] == original
+
+
+def test_sarif_schema_is_pinned_with_its_oasis_stage_and_notice():
+    from standards.catalog import load_json, manifest
+
+    data = load_json("sarif-2.1.0.json")
+    assert data["version"] == "2.1.0"
+    assert data["stage"] == "OASIS Standard incorporating Approved Errata"
+    assert data["date"] == "28 August 2023"
+    assert data["notice"].startswith("Copyright © OASIS Open")
+    assert "2.1.0" in data["schema"]["title"]
+    entry = manifest()["files"]["sarif-2.1.0.json"]
+    assert len(entry["upstream"]) == 2 and all(len(u["sha256"]) == 64 for u in entry["upstream"])
