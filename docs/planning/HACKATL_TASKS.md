@@ -232,3 +232,12 @@ Sarosh, feat/sarosh/intelligence-maintenance: DONE via #196, merged4119eff. Repr
 ### Relative import grounding — #199
 
 Sarosh, fix/sarosh/relative-import-grounding: DONE via PR #201. Reproduced false exact edge beyond known package depth; fix preserves unresolved spelling/diagnostic and advances parser to 0.3.1. Focused 15, broader producer/shared/PostgreSQL 122 passed/2 skipped, hosted consumer 11 passed; strict producer typing/lint/format pass. Historical refs/memory remain immutable; active SHAs need normal reindex.
+
+### Backend review-cycle fixes — Vihaan (2026-10-17)
+
+IN_PROGRESS on `codex/backend-artifact-snapshot-fixes`: unique atomic artifact
+publication and version-aware ready snapshot reuse. Regression coverage includes
+concurrent identical writes, failed publication cleanup, parser/prefix/limit
+changes, rollback reuse, historical immutability, unavailable providers and failed
+retries. No canonical DTO changes. Local PostgreSQL initialization is sandbox
+blocked; database-backed checks require CI before completion.

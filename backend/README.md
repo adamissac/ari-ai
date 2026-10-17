@@ -77,3 +77,21 @@ Assessment queue jobs and approval resumes can carry only `assessment_id`.
 `GET /jobs/{job_id}` resolves their project through the persisted assessment,
 then checks membership; the accepted job identifier is readable by members and
 remains 404 to other tenants. No redundant payload project field is required.
+
+## Artifact publication and snapshot refresh
+
+Content-addressed artifacts use a unique temporary file per publication, including
+concurrent threads in the same process. Publication remains atomic, failed writes
+clean up their temporary files, and identical bytes retain the same content hash
+with independently authorized artifact records.
+
+`POST /repositories/{repo_id}/snapshots` reuses in-flight work. For ready snapshots
+it asks the configured `CODE_INTELLIGENCE_FACTORY` service for
+`current_index_version(project_id, repo_id)` and reuses only a ready snapshot for
+that parser/coverage/limits version. An upgrade queues normal indexing for a new
+snapshot; historical snapshots remain readable and immutable. Returning to an
+older configuration reuses its existing ready snapshot. If a ready snapshot exists
+but its current version cannot be resolved, the API returns 503
+`SUBSYSTEM_UNAVAILABLE` rather than presenting historical facts as current.
+Initial requests and failed retries still enqueue work without requiring the
+provider to initialize in the HTTP process. No request/response DTO changes.
