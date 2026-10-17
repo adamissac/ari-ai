@@ -168,3 +168,7 @@ fail on the unpatched commit and pass after the candidate diff. Runner errors,
 collection failures, timeouts, missing sandbox records and skipped generated tests
 cannot establish a fix. Generated tests may not overwrite existing files. Human
 approval resume reloads the current scope and worker host before execution.
+
+## Retained regression sources
+
+Accepted independent Verify can retain bounded test sources from its fresh workspace. Sources are captured before tests and compared afterward; unsafe, missing, symlinked, empty, changed or oversized sets produce no eligible archive. Host mode stores a redacted JSON archive with patch/verification/run IDs, checks and original source hashes, and attaches the returned artifact ID to hardening recommendations. Functional verification emits a deterministic policy-test retention recommendation. The archive associates source files with accepted verification; it does not claim every line or individual node ran. Incident evidence must use the stored artifact hash, since source redaction may change bytes.

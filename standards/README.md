@@ -47,3 +47,14 @@ for compatibility. `catalog_versions()["owasp_llm2026"]` reports the new release
 `build_subsets.py` pins every 2026 Markdown source hash and parses only headings.
 The normalized catalog contains identifiers, titles, and provenance, without risk
 prose. Current release coverage is distinct from the historical 2025 matrix.
+
+## Additional runtime reference catalogs
+
+CVSS v3.1 base scoring (`standards.cvss31`), OWASP API Security 2023 categories
+(`standards.owasp_api`), and NIST SP 800-115 planning/ROE headings now use the
+canonical integrity-checked catalog store. The v3.1 calculator is separate from
+CVSS 4.0 and accepts only explicit base metrics. Runtime severity continues to use the canonical CVSS 4.0 port; this additional
+calculator is available explicitly for CVSS v3.1 references. CWE-to-OWASP API associations are labelled project
+mappings. `scripts/build_additional.py` records source hashes for explicit refresh;
+it never runs on the runtime path. NVD vector fixture terms remain labelled
+unverified in the manifest; no new redistribution approval is claimed.
