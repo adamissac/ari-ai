@@ -487,11 +487,15 @@ class AssessmentHost:
 
     def agent_run(self, run_id: str) -> AgentRun:
         with transaction() as conn:
-            return AgentRun.model_validate(
-                conn.execute(
-                    sa.select(agent_runs.c.doc).where(agent_runs.c.id == run_id)
-                ).scalar_one()
+            doc = conn.execute(
+                sa.select(agent_runs.c.doc).where(agent_runs.c.id == run_id)
+            ).scalar()
+        if doc is None:
+            raise HostError(
+                ErrorCode.NOT_FOUND,
+                f"agent run {run_id} not found (records must cite a host run id)",
             )
+        return AgentRun.model_validate(doc)
 
     # --------------------------------------------------------------- findings
     def record_finding(self, finding: Finding, *, actor: str) -> Finding:
