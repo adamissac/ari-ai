@@ -216,6 +216,15 @@ def build_prompt(data: ScoutInput, intel: CodeIntel) -> str:
     )
 
 
+def _canonical_category(value: str) -> str:
+    from shared.scope import canonical_check_category
+
+    try:
+        return canonical_check_category(value).value
+    except ValueError:
+        return value
+
+
 def to_hypotheses(
     out: ScoutOutput, data: ScoutInput, intel: CodeIntel, *, max_items: int | None = None
 ) -> list[Hypothesis]:
@@ -250,7 +259,8 @@ def to_hypotheses(
             )
         if not spans:
             continue
-        if available and item.suggested_check_category not in available:
+        category = _canonical_category(item.suggested_check_category)
+        if available and category not in {_canonical_category(c) for c in available}:
             continue
         key = hypothesis_key(item.weakness_class, spans[0].path or "", item.entry_point_id)
         if key in refuted:
@@ -267,7 +277,7 @@ def to_hypotheses(
                 expectation_ids=[e for e in item.expectation_ids if e],
                 entry_point_id=item.entry_point_id,
                 confidence=item.confidence,
-                suggested_check_category=item.suggested_check_category,
+                suggested_check_category=category,
                 cwe_name=cwe.name,
                 cwe_mapping_usage=str(cwe.detail.get("mapping_usage", "")),
                 cwe_catalog_version=cwe.catalog_version,
