@@ -64,6 +64,12 @@ def main() -> int:
     # Run frontend integration tests
     results["Frontend Integration"] = run_test_suite("test_frontend_integration.py", "Frontend/Backend Integration Tests")
 
+    # Run end-to-end smoke tests
+    results["E2E Smoke"] = run_test_suite("test_e2e_smoke.py", "End-to-End Smoke Tests")
+
+    # Run failure scenario tests
+    results["Failure Scenarios"] = run_test_suite("test_failure_scenarios.py", "Failure Injection and Resilience Tests")
+
     # Print overall summary
     print_header("OVERALL SUMMARY")
 
