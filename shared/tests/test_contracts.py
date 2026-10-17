@@ -11,6 +11,8 @@ from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
+
+from shared import examples, export
 from shared.assessment import (
     ALLOWED_TRANSITIONS,
     TERMINAL_STATES,
@@ -22,8 +24,6 @@ from shared.evidence import EvidenceKind, EvidenceRef
 from shared.findings import VerificationResult
 from shared.ids import IdPrefix, new_id
 from shared.registry import BY_NAME, MODELS
-
-from shared import examples, export
 
 FIXTURES = sorted(examples.FIXTURE_DIR.glob("*.json"))
 

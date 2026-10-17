@@ -53,3 +53,6 @@ python_version = "3.12"
 plugins = ["pydantic.mypy"]
 ignore_missing_imports = true
 packages = ["shared", "monitoring"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["shared", "backend", "monitoring", "rl_defense", "security_agents", "code_intelligence", "code_review"]

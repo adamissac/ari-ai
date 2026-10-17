@@ -283,9 +283,8 @@ def build() -> dict[str, BaseModel]:
         at=T0.isoformat(),
         details={"approver_is_requester": False},
     )
-    aud = audit.AuditEvent(
-        **audit_body, prev_hash=GENESIS_HASH, hash=audit_hash(GENESIS_HASH, audit_body)
-    )
+    draft = audit.AuditEvent(**audit_body, prev_hash=GENESIS_HASH, hash=GENESIS_HASH)
+    aud = draft.model_copy(update={"hash": audit_hash(GENESIS_HASH, draft.model_dump(mode="json"))})
     sc = scope.AuthorizedScope(
         id=SCP,
         project_id=PRJ,
