@@ -84,8 +84,11 @@ def _identity(recipe: dict[str, Any], name: str) -> str:
 def _resource_id(recipe: dict[str, Any], kind: str, owner: str) -> str:
     entry = recipe.get("resources", {}).get(kind, {}).get(owner)
     if not entry or "id" not in entry:
+        owners = sorted(recipe.get("resources", {}).get(kind, {}))
         raise PlatformError(
-            ErrorCode.SCHEMA_INVALID, f"resource {kind!r} for identity {owner!r} is not in the build recipe"
+            ErrorCode.SCHEMA_INVALID,
+            f"resource {kind!r} for identity {owner!r} is not in the build recipe; "
+            f"identities owning a {kind}: {', '.join(owners)}",
         )
     return str(entry["id"])
 
