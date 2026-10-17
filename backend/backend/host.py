@@ -928,6 +928,49 @@ class AssessmentHost:
         return result
 
     # --------------------------------------------------------------- approvals
+    def record_roe(self, doc: dict[str, Any]) -> ArtifactRef:
+        """Persist the rules-of-engagement document the orchestrator issued at SCOPE_CHECK
+        (security_agents.standards.roe, NIST SP 800-115 App. B alignment).
+
+        Checked here, not trusted: it must name this assessment's project and scope, carry the
+        scope's current status, and its ``digest`` must equal the sha256 of the document body.
+        Stored as a content-addressed artifact; the hash-chained audit event ``roe.recorded``
+        on the assessment is the durable pointer the API serves it from.
+        """
+        if not isinstance(doc, dict):
+            raise HostError(ErrorCode.VALIDATION_FAILED, "rules of engagement must be an object")
+        scope = self.scope
+        if doc.get("project_id") != self.project_id or doc.get("scope_id") != scope.id:
+            raise HostError(
+                ErrorCode.VALIDATION_FAILED, "rules of engagement name another project or scope"
+            )
+        body = {k: v for k, v in doc.items() if k != "digest"}
+        digest = hashlib.sha256(json.dumps(body, sort_keys=True, default=str).encode()).hexdigest()
+        if not doc.get("digest") or doc["digest"] != digest:
+            raise HostError(ErrorCode.VALIDATION_FAILED, "rules of engagement digest mismatch")
+        self.require_active_scope()
+        ref = self.store_json(doc, ArtifactKind.report)
+        with transaction() as conn:
+            audit.record(
+                conn,
+                org_id=self.org_id,
+                project_id=self.project_id,
+                actor_type=ActorType.system,
+                actor_id="orchestrator",
+                action="roe.recorded",
+                subject_type="assessment",
+                subject_id=self.assessment_id,
+                details={"artifact_id": ref.id, "roe_id": str(doc.get("id")), "digest": digest},
+            )
+            _emit(
+                conn,
+                self.assessment_id,
+                StreamEventType.progress,
+                "rules of engagement recorded",
+                data={"artifact_id": ref.id, "roe_id": str(doc.get("id"))},
+            )
+        return ref
+
     def request_approval(
         self, subject_type: ApprovalSubject, subject_id: str, reason: str
     ) -> Approval:
