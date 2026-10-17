@@ -398,12 +398,24 @@ def _functional_reproduction(ev: VerifyEvidence, add: Any) -> None:
     on the unpatched checkout (the defect reproduced). That it now passes is
     GENERATED_TESTS_PASS; both are required for acceptance."""
     name = VerificationCheckName.ORIGINAL_CHECK_NOW_FAILS
-    runs = [r for r in ev.reproduction_runs if not r.get("error")]
+    # Only a COMPLETE run counts: no tool error, not timed out, and pytest's exit status 1
+    # ("tests failed"). Partial output from a timeout or an interrupted/collection-error run
+    # (exit 2+) is not proof that the defect reproduced.
+    runs = [
+        r
+        for r in ev.reproduction_runs
+        if not r.get("error") and not r.get("timed_out") and r.get("exit_code", 1) == 1
+    ]
     if not ev.tests_added:
         add(name, False, "no generated test to reproduce the functional defect")
         return
     if not runs:
-        add(name, False, "the generated tests were not run on the unpatched checkout")
+        add(
+            name,
+            False,
+            "the generated tests did not complete a failing run on the unpatched checkout "
+            "(not run, errored, timed out or interrupted)",
+        )
         return
     last = runs[-1]
     artifact = str(last.get("sandbox_run_id") or "")

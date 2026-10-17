@@ -522,3 +522,39 @@ def test_finding_standards_are_evidence_backed(result):
     assert summary["cwe"] == "CWE-639"
     assert summary["cvss_complete"] is True
     assert "D3-AMED" in [m.id for m in std.d3fend]
+
+
+# --- functional remediation approvals owed by the host (Codex review on #71) ---
+
+
+def test_pending_functional_approval_pauses_even_with_approved_security_work(
+    intel, driver, library, tmp_path
+):
+    orch, _ = build(intel, driver, library, tmp_path)  # security remediation approved
+    orch.external_pending = lambda: True
+    res = orch.run()
+    assert res.state is AssessmentState.AWAITING_APPROVAL
+    assert "patch" not in [r.agent.value for r in res.runs], "nothing remediated before all decide"
+
+
+def test_early_security_exit_still_waits_for_a_functional_approval(intel, driver, library, tmp_path):
+    from security_agents.agents import scout as scout_agent
+    from security_agents.llm import FakeTurn
+
+    submit = scout_agent.SPEC.submit_tool_name()
+    empty = {
+        "hypotheses": [],
+        "coverage": {"entry_points_reviewed": [], "looks_correct": [], "skipped_with_reason": []},
+        "suspicious_instructions": [],
+    }
+    scripts = fake_agents.all_scripts(intel.snapshot.root)
+    scripts[AgentName.SCOUT] = [FakeTurn(tool_calls=[(submit, empty)])]
+    orch, _ = build(intel, driver, library, tmp_path, scripts=scripts)
+    orch.external_pending = lambda: True
+    res = orch.run()
+    assert res.state is AssessmentState.AWAITING_APPROVAL
+    skipped = [e for e in res.state_log.entries if "skipped (no hypotheses)" in e[2]]
+    assert len(skipped) == 4, res.state_log  # VALIDATION, ANALYSIS, DIAGNOSIS, AWAITING_APPROVAL
+
+    orch2, _ = build(intel, driver, library, tmp_path / "b", scripts=scripts)
+    assert orch2.run().state is AssessmentState.COMPLETED  # nothing owed: report as before

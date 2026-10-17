@@ -47,7 +47,16 @@ def test_functional_accepts_only_a_reproduced_then_fixed_defect() -> None:
     assert verdict == "rejected" and any("did not fail unpatched" in r for r in reasons)
 
     verdict, _, reasons = verify_agent.compute_verdict(_evidence(reproduction_runs=[]))
-    assert verdict == "rejected" and any("not run on the unpatched" in r for r in reasons)
+    assert verdict == "rejected" and any("did not complete a failing run" in r for r in reasons)
+
+    failing = [f"{TEST}::test_bound"]
+    for partial in (
+        {"timed_out": True, "exit_code": None, "failing_tests": failing},  # one quick fail, then hang
+        {"exit_code": 2, "failing_tests": failing},  # interrupted / collection error
+        {"error": "SANDBOX_TIMEOUT", "failing_tests": failing},
+    ):
+        verdict, _, _ = verify_agent.compute_verdict(_evidence(reproduction_runs=[partial]))
+        assert verdict == "rejected", partial
 
     still_failing = _evidence(
         test_runs=[
