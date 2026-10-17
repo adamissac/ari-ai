@@ -394,3 +394,7 @@ reviewer integration suite **11 passed** after `uv sync --frozen`.
 - Continued unfinished Devin runner: uses selected Python, no uv PATH requirement, no shared devdb start/stop, forced live-provider opt-out, ignored report output with --output override. Removed hardcoded branch metadata.
 - Executed M7 through isolated PostgreSQL fixture successfully; wrapper exits2 truthfully because browser is unexecuted. QA unit suite13 passed; Ruff/format and link checks passed.
 - Primary Devin checkout and its existing untracked reports remain untouched. No live model or deployment.
+
+### 2026-10-17T13:45Z — Sarosh ingestion profile fix merged
+
+PR #150 merged as `1129434`; issue #148 closed. Product fix `5015d67` was tested on combined head `91cea8c`, including Sai typography main. All executable CI checks passed (backend417, producer33, reviewer60, security455, Docker security6/reviewer2, Vitest67/browser12; skips and exact commands recorded in the PR). Final consumer migration, remaining human/account gates and M5 owner reconciliation request: `coordination/messages/20261017T134500Z-sarosh-to-all-profile-fix-merged.md`. Existing primary checkout untracked paths and other owners worktrees were preserved.
