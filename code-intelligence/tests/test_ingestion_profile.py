@@ -42,6 +42,7 @@ def test_same_commit_different_prefix_never_reuses_the_wrong_coverage(
     db = tmp_path / "index.db"
     full = service(root, db)
     full_ref = full.index_repository("prj_fixture00", "rep_fixture00", sha)
+    assert full.current_index_version("prj_fixture00", "rep_fixture00") == full_ref.index_version
     expectation = full.expectations(full_ref, subject="app.payments.read_payment")[0]
     full.decide_expectation(
         full_ref,
@@ -55,6 +56,7 @@ def test_same_commit_different_prefix_never_reuses_the_wrong_coverage(
     )
     narrowed = service(root, db, "app")
     app_ref = narrowed.index_repository("prj_fixture00", "rep_fixture00", sha)
+    assert narrowed.current_index_version("prj_fixture00", "rep_fixture00") == app_ref.index_version
     assert app_ref != full_ref
     assert app_ref.commit_sha == full_ref.commit_sha
     assert len(app_ref.index_version) <= 80  # PostgreSQL's existing version column
@@ -129,3 +131,16 @@ def test_backend_and_diff_queries_select_the_same_scoped_version(
     impact = service(root, db, "./app/").affected_by_diff("rep_fixture00", base, head)
     assert impact.base_snapshot_id == ref.snapshot_id
     assert impact.changed_paths == ["app/payments.py"]
+
+
+def test_version_lookup_checks_registration_without_reading_target(tmp_path: Path) -> None:
+    configured = service(tmp_path / "nonexistent-target", tmp_path / "index.db")
+    assert configured.current_index_version("prj_fixture00", "rep_fixture00")
+    with pytest.raises(IntelligenceError, match="requested project"):
+        configured.current_index_version("prj_foreign00", "rep_fixture00")
+    with pytest.raises(IntelligenceError, match="not registered"):
+        configured.current_index_version("prj_fixture00", "rep_unknown00")
+    with pytest.raises(IntelligenceError, match="prefix"):
+        service(tmp_path, tmp_path / "other.db", "../invalid").current_index_version(
+            "prj_fixture00", "rep_fixture00"
+        )
