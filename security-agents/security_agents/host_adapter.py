@@ -1275,7 +1275,9 @@ def _verify_functional_patch(host: AssessmentHostLike, orchestrator: Orchestrato
             str(r.get("sandbox_run_id")) for r in (unpatched, patched, suite) if r and r.get("sandbox_run_id")
         ]
         if not sandbox_ids:
-            raise PlatformError(ErrorCode.SANDBOX_START_FAILED, "functional Verify has no executed sandbox records")
+            raise PlatformError(
+                ErrorCode.SANDBOX_START_FAILED, "functional Verify has no executed sandbox records"
+            )
         report = host.store_json(
             {
                 "sandbox_run_ids": sandbox_ids,
@@ -1546,7 +1548,9 @@ def _scope_for_host(host: AssessmentHostLike, intel: CodeIntel) -> Any:
     if repo_id:
         scope.targets = [target for target in scope.targets if target.repo_id == repo_id]
     if not scope.targets:
-        raise PlatformError(ErrorCode.SCOPE_DENIED, "host scope has no authorized targets for this repository")
+        raise PlatformError(
+            ErrorCode.SCOPE_DENIED, "host scope has no authorized targets for this repository"
+        )
     return scope
 
 
