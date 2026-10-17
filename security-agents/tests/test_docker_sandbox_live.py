@@ -144,7 +144,7 @@ def payments_intel(tmp_path_factory):
     return LocalIntel(snapshot)
 
 
-def _docker_check(intel, template_ref: str, params: dict) -> dict:
+def _docker_check(intel, template_ref: str, params: dict, transport: str = "inprocess") -> dict:
     from datetime import UTC, datetime
 
     from security_agents.checks.library import default_library
@@ -157,6 +157,7 @@ def _docker_check(intel, template_ref: str, params: dict) -> dict:
         library=default_library(),
         workspace_provider=lambda _ctx: intel.snapshot.root,
         recipe_provider=recipe_from_snapshot(intel),
+        transport=transport,
     )
     ctx = ToolContext(
         assessment_id="asm_docker",
@@ -202,3 +203,36 @@ def test_bounds_check_in_docker_flags_the_planted_defect(payments_intel):
         },
     )
     assert result["matches_expectation"] is False, result
+
+
+needs_target_image = pytest.mark.skipif(
+    not os.environ.get("SANDBOX_TARGET_IMAGE"),
+    reason="needs SANDBOX_TARGET_IMAGE serving the target on :8000",
+)
+
+
+@needs_target_image
+def test_http_ownership_check_reaches_the_target_container_and_flags_the_planted_route(payments_intel):
+    result = _docker_check(
+        payments_intel,
+        "access_control.ownership@1",
+        {"route_id": "payment_detail", "owner_identity": "alice", "other_identity": "bob"},
+        transport="http",
+    )
+    assert result["matches_expectation"] is False, result
+    assert result["transport"] == "http" and result["target_contacted"] is True, result
+    hits = [r for r in result["target_requests"] if r["path"].startswith("/payments/")]
+    assert len(hits) == 2 and all(r["status"] == 200 for r in hits), result["target_requests"]
+
+
+@needs_target_image
+def test_http_ownership_check_clears_the_lookalike_route_over_the_network(payments_intel):
+    result = _docker_check(
+        payments_intel,
+        "access_control.ownership@1",
+        {"route_id": "customer_detail", "owner_identity": "alice", "other_identity": "bob"},
+        transport="http",
+    )
+    assert result["matches_expectation"] is True, result
+    statuses = sorted(r["status"] for r in result["target_requests"] if r["path"].startswith("/customers/"))
+    assert len(statuses) == 2 and statuses[0] == 200 and statuses[1] in (403, 404), result["target_requests"]
