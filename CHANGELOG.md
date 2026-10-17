@@ -6,15 +6,33 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Hosted security and functional verification retain actual regression sources as hash-pinned artifacts; incident lessons learned can cite them. Plan-bound security approvals are resolved through persisted finding/assessment records for incident eradication.
+
+- Added canonical offline CVSS v3.1, OWASP API 2023 and NIST SP 800-115 reference catalogs with integrity checks and pinned-source refresh tooling.
+
+- QA scripts execute the existing suites and preserve failed versus incomplete results; preflight no longer declares demo readiness from warnings.
+
 ### Fixed
 - Hosted assessments with a still-pending functional approval now pause at
   `AWAITING_APPROVAL` even when security work ended early or was already
   approved. Early security exits walk skipped phases to the only legal pause
   edge (`DIAGNOSIS` → `AWAITING_APPROVAL`) instead of completing.
+- Approval resume re-applies the `host.repo_id` target filter, atomically claims
+  the checkpoint so two workers cannot both Patch/Verify, finishes the Verify run
+  before publishing a verdict, rejects truncated pytest failure lists, treats
+  already-approved functional findings as outstanding work, strips the complete
+  recipe `target_dir`, and persists `patch_rejected` when functional Verify is
+  not accepted.
+- Functional Verify stays labelled `provider_mode="none"` (no model call). An
+  escaping `build_recipe.json` `target_dir` raises `SCHEMA_INVALID`.
 
 ### Added
 - Assessment page shows each runtime agent with the job it does, only the runs and tool calls that were recorded, and what is still open for the next agent.
 - Finding detail shows the persisted standards view (CWE, CVSS, ATT&CK, D3FEND) as text, including when nothing was assessed.
+- Canonical `CheckCategory` in `shared` (schema 0.9.0): Probe library ids
+  `access_control.ownership` / `input_validation.bounds`, with published V0
+  fixture aliases `authorization.ownership` / `input.bounds`. Scope matching
+  treats each pair as the same category.
 - Frontend: incident closure panel (link findings/verifications, closure criteria with artifact evidence, lessons learned, communications, readiness list).
 - Hosted assessments persist security finding lifecycle (`hypothesis → … → hardened`),
   durable approval checkpoints (`save_checkpoint` / `load_checkpoint` so a worker

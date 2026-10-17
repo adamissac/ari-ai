@@ -6,7 +6,7 @@ Canonical cross-subsystem contracts: the single source of truth (ADR-0004). Owne
 ## What exists
 
 * `shared/` Python package (Pydantic v2, `extra="forbid"`, UTC-only timestamps, prefixed
-  IDs, 40-hex commit SHAs, repo-relative paths) — schema version **0.7.0**:
+  IDs, 40-hex commit SHAs, repo-relative paths) — schema version **0.9.0**:
   `tenancy`, `scope`, `intelligence`, `assessment` (+ state machine), `findings`,
   `review`, `monitoring`, `rl`, `audit`, `events` (SSE), `errors`, `evidence`, `api` (DTOs).
 * `shared.registry.MODELS` lists every exported model.

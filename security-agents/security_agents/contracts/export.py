@@ -75,7 +75,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 # version is accepted when the models this package maps are unchanged — see
 # `MAPPED_FIELDS` and `assert_mappings_current()`, which is the check that
 # actually matters.
-VERIFIED_SCHEMA_VERSIONS = ("0.2.0", "0.4.0", "0.7.0")
+VERIFIED_SCHEMA_VERSIONS = ("0.2.0", "0.4.0", "0.7.0", "0.9.0")
 
 # Field sets this adapter depends on, per canonical model: (module, class) ->
 # {field: required}. A change here means a mapping must be revisited, whether or

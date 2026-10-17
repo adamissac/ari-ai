@@ -7,7 +7,7 @@ Last remote sync: 2026-10-17 ~02:30Z (main 369a9a0)
 API/contract dependencies: Alan `security_agents.api:build_orchestrator`; Sarosh `code_intelligence.api:build_service` (+ persistence port); Sai `code_review.api.review`; Adam `rl_defense` (integrated)
 Verified tests: see session log (exact command + counts)
 Recent PR/commit: merged #8, #14, #16, #20, #24, #25; issues #9, #17
-Blockers: none hard. The GitHub App flow is unexercised because no App credentials are configured. Docker is not installed, so the Compose file is unverified.
+Blockers: none hard. The GitHub App flow is unexercised because no App credentials are configured. Compose was verified on 2026-10-17 (session 7). The documented `.env` template caused webhooks to return 500; the fix is in #86.
 Next action: ack/counter from owners on V0 contracts; Postgres persistence port for Sarosh; wire Alan's orchestrator when `security_agents.api` exists; live LLM smoke once a key is authorized.
 
 ## Session entries
@@ -165,3 +165,31 @@ Add dated factual entries; do not overwrite history. Never claim unexecuted test
   I'll close #71 once #73 lands.
 - Gitleaks false positive (`OWASP_API_COMMIT` SHA on Alan's branches) blocked every PR. Sai's #76 landed the same allowlist first; mine was dropped (#75 now carries only the coordination message).
 - #77 merged: transport `snapshots()` / `report()`. Transport 23 passed; real-backend integration 4 passed.
+
+### 2026-10-17 (session 7, Devin on behalf of Srihith, pushing with Adam's session token)
+- Baseline on main `236838e`, all executed:
+  - root `uv run pytest -q`: 323 passed, 7 skipped;
+  - `security-agents/tests`: 382 passed, 11 skipped;
+  - frontend typecheck, lint, vitest (29) and build: green;
+  - `docker compose up --build`: db, migrate, api and worker healthy; `/readyz` ok.
+- PR #85 `feat/srihith/functional-verify-honesty` addresses the #73 review items still open (files are Alan's; message sent):
+  - added the missing `ErrorCode.INTERNAL` and `ErrorCode.VALIDATION_FAILED`, whose absence left a failed functional-verify AgentRun `running`;
+  - functional Verify is recorded as `provider_mode="deterministic"` with no model;
+  - `compute_verdict` no longer lets a later green run mask an earlier failure.
+  - Focused tests: 71 passed.
+- PR #86 `feat/srihith/compose-artifact-store`:
+  - the `.env.example` `ARTIFACT_STORE_URI` overrode the image default, so every signed webhook returned 500 with `PermissionError` on `/app/artifacts`. Compose now pins the volume URI.
+  - Locally, after the fix: 202, worker job succeeded, artifact persisted.
+  - Added a CI `compose-stack` job that sends a simulated signed delivery.
+- Not verified: live LLM (no key authorized); real GitHub App deliveries (no App credentials).
+- Later in session 7:
+  - #85 merged into main (`e940c44`) after #84 closed the overlapping items; it added suite-run masking fix, `ErrorCode.INTERNAL`, and the static ErrorCode-reference guard.
+  - New PR #89 `feat/srihith/killswitch-error-code`: added `KILL_SWITCH` to `shared.errors` and made `_host_error` fall back to a dict for agent-local codes. An Adam-side session merged #83 into the branch mid-flight; all CI green.
+  - #86 still open, clean; its `compose-stack` CI job passed.
+
+
+## 2026-10-17 — REG-001 complete: Devin closure evidence continuation
+
+Branch `fix/srihith/fortify-closure-artifacts`, based on merged Devin PRs80/81 and Alan PR83. Real security and functional Verify now retain bounded, unchanged regression sources as redacted ArtifactStore archives and publish their actual canonical hardening artifact IDs. Incident eradication resolves remediation-plan approval to the same finding/project/assessment. Evidence selectors now accept options that arrive after linking a finding.
+
+Executed: focused host/unified/verification/closure54 passed; root325 passed/7 skips (optional RL dependency, global tsc unavailable, opt-in live providers); security-agent396 passed/11 optional skips; frontend32 unit tests; real PostgreSQL/API/worker/Chrome browser12 passed, including complete two-person incident lifecycle through Closed and reload. ESLint, TypeScript, production build, Ruff/format, mypy and generated contracts110-file freshness passed. Browser runs use scripted transports; no paid provider calls, deployment or individual test-node execution claim.

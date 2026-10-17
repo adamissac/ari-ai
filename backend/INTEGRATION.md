@@ -38,15 +38,20 @@ class Orchestrator(Protocol):
   `host.project_id`, `host.repo_id`, `host.org_id` are **properties/attributes**, not methods.
   `host.approvals()`, `host.findings()`, `host.llm()` are methods. On the gateway,
   `provider_mode` is a **property** (`"live" | "fake"`), `model_for(agent)` is a method.
+  Agent runs that make no model call (functional Verify from executed tests) are
+  persisted as `provider_mode="none"`, never as live/fake.
   Every record you persist must cite a **host** run id (`start_agent_run` return value);
   an unknown id is rejected with `NOT_FOUND`. Pass `usage=` and `tool_calls=` to
   `finish_agent_run` so per-run cost and tool history show in the UI.
 * The worker keeps one orchestrator object per process and factory, so an in-memory
   pause survives a resume handled by the same worker. Durable resume (other worker,
   restart) uses `host.save_checkpoint(namespace, payload)` /
-  `host.load_checkpoint(namespace)` (hashed JSON artifact + assessment-scoped
-  pointer). Rebuild from that payload plus `host.findings()` / `host.approvals()`.
-  A missing checkpoint in `AWAITING_APPROVAL` is `CONFLICT_STATE`.
+  `host.load_checkpoint(namespace)` / `host.claim_checkpoint(namespace)` (hashed
+  JSON artifact + assessment-scoped pointer). `claim_checkpoint` locks the
+  assessment row and consumes the latest payload so two workers cannot both
+  Patch/Verify. Rebuild from that payload plus `host.findings()` / `host.approvals()`.
+  A missing checkpoint in `AWAITING_APPROVAL` is `CONFLICT_STATE`; an already
+  consumed checkpoint is a no-op.
 * Finding lifecycle: `host.set_finding_status(finding_id, status, actor=, reason=)`
   appends a `StatusChange` along the docs/12 edges and refuses unbacked claims
   (validated needs a confirmed ValidationResult, patch_proposed a PatchCandidate,

@@ -26,7 +26,7 @@ boundaries [docs/15](../docs/15_SECURITY_BOUNDARIES.md).
 | Sandbox: hardened Docker driver | `security_agents/sandbox/driver.py` | implemented; **argv + reaper tested, execution UNVERIFIED** (no Docker engine on the dev machine; needs pinned images, INFRA-005) |
 | Check templates v0 (ownership, bounds) | `security_agents/checks/library.py` | implemented, executed against the owned fixture |
 | Orchestrator state machine + gates | `security_agents/workflow/` | implemented, tested; `external_pending` pauses for functional approvals |
-| Host adapter | `security_agents/host_adapter.py` | implemented: finding lifecycle via `set_finding_status`, durable `save_checkpoint` resume, Sai's functional repair + independent Verify |
+| Host adapter | `security_agents/host_adapter.py` | implemented: finding lifecycle via `set_finding_status`, durable `save_checkpoint` / `claim_checkpoint` resume, Sai's functional repair + independent Verify |
 | Contracts | `security_agents/contracts/` | **local V0 adapter**, pending `shared/` (CORE-001) |
 | Code intelligence | `security_agents/intel/` | **local Python-AST adapter**, pending `code_intelligence.api` (INTEL-007) |
 | LLM gateway | `security_agents/llm/` | consumer-side port + providers, pending the backend gateway (CORE-010) |
@@ -168,3 +168,7 @@ fail on the unpatched commit and pass after the candidate diff. Runner errors,
 collection failures, timeouts, missing sandbox records and skipped generated tests
 cannot establish a fix. Generated tests may not overwrite existing files. Human
 approval resume reloads the current scope and worker host before execution.
+
+## Retained regression sources
+
+Accepted independent Verify can retain bounded test sources from its fresh workspace. Sources are captured before tests and compared afterward; unsafe, missing, symlinked, empty, changed or oversized sets produce no eligible archive. Host mode stores a redacted JSON archive with patch/verification/run IDs, checks and original source hashes, and attaches the returned artifact ID to hardening recommendations. Functional verification emits a deterministic policy-test retention recommendation. The archive associates source files with accepted verification; it does not claim every line or individual node ran. Incident evidence must use the stored artifact hash, since source redaction may change bytes.

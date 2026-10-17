@@ -1,13 +1,13 @@
 # Alan — implementation status
 
 Owner: Alan (`security-agents/`, SEC-001 … SEC-013)
-Branch: `feat/alan/host-finding-persistence`
-Current task: finding lifecycle + durable approval resume + functional Verify on the host path
-Last remote sync: 2026-10-17T08:05Z — merged `origin/main` @ `03323cd` (#69 standards follow-up, #70 Sai status)
-API/contract dependencies: `shared` V0, `backend.host` (`save_checkpoint` / `load_checkpoint` / `set_finding_status`), `code_review.api` functional helpers (#68)
-Recent PR/commit: https://github.com/adamissac/hackatl-agentic-security/pull/73 (`feat/alan/host-finding-persistence`)
-Blockers: live seven-agent run (issue #10, no key); Docker images (INFRA-005); PR #35 should be **closed**, not merged
-Next action: land this PR; comment on #35; Vihaan re-check finding status in the UI
+Branch: `feat/alan/verify-honesty-check-category`
+Current task: honest functional Verify label + canonical CheckCategory
+Last remote sync: 2026-10-17T09:22Z — `origin/main` @ `139ab2f` (#83 merged)
+API/contract dependencies: `shared` 0.9.0 `CheckCategory`; `backend.host` checkpoints; `code_review.api` functional helpers
+Recent PR/commit: `feat/alan/verify-honesty-check-category` (do not push merged `host-finding-persistence` / `host-resume-hardening`)
+Blockers: live seven-agent run (issue #10, no key); Docker images (INFRA-005)
+Next action: land CheckCategory + honesty PR; Srihith ACK; leave #85 to Srihith
 
 ## What runs today
 
@@ -87,6 +87,18 @@ Executed check results on the fixture (the precision evidence):
 
 ## Session entries
 
+### 2026-10-17 (verify honesty + CheckCategory)
+
+- Kept #84 `provider_mode="none"` for functional Verify. Canonical `CheckCategory`
+  with Probe ids + fixture aliases. `SCHEMA_INVALID` regression for recipe
+  `target_dir`. Message: `20261017T092222Z-alan-to-srihith-check-category-canonical.md`.
+
+### 2026-10-17 (Codex P1/P2 after #73 merged)
+
+- #73 is on main. Did not push the merged branch. All seven Codex items were
+  missing from `origin/main`; implemented on `feat/alan/host-resume-hardening`.
+- Message: `20261017T085211Z-alan-to-srihith-host-resume-hardening.md`.
+
 ### 2026-10-17 (Srihith follow-up c75a56e on #73)
 
 - Ported `_report_or_wait` + unconditional `external_pending` pause from
@@ -133,6 +145,13 @@ Executed check results on the fixture (the precision evidence):
   the pillar, with the approval round-trip, and sent the two open questions.
 - Messages sent: contracts ack + deltas (srihith), shared repair sandbox (sai),
   code-intelligence port (sarosh), agent UI fields (vihaan).
+
+### 2026-10-17 — Codex recovered catalog consolidation
+- Preserved Claude's uncommitted catalog work as 93c0225 on PR #35, with subsequent integration fixes committed/pushed.
+- Reviewed/merged PR #69 with all CI green. PR #73 is a newer focused host/functional-Verify implementation; PR #35 will be superseded once unique fixes are preserved.
+- Isolated canonical CVSS3.1, OWASP API2023 and NIST800-115 package additions onto feat/alan/recovered-catalogs, excluding the duplicate legacy security-agents standards tree and schema projection.
+- Standards/runtime standards source tests passed 300 offline; narrow canonical tests will be rerun here. Earlier recovered runtime passed 524 tests (11 optional skips), root 358 (6 optional skips), browser 8. These counts belong to PR #35 and are not claims about this new branch.
+- Exact .gitleaksignore fingerprint is a public OWASP source commit, not a credential; full-history scan clean and synthetic credential detection remains enforced.
 
 ### 2026-10-17 — Codex host-recovery hardening
 - Continued PR #73 after isolating unique catalog recovery in PR #74. Preserved fail-closed scope/budget/human-approver mapping from #35; resume reloads authorization and rebinds the current worker host.

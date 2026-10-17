@@ -163,6 +163,7 @@ class FakeHost:
     stored: list[Any] = field(default_factory=list)
     progress_messages: list[str] = field(default_factory=list)
     checkpoints: dict[str, dict[str, Any]] = field(default_factory=dict)
+    consumed_checkpoints: set[str] = field(default_factory=set)
     charged: list[Any] = field(default_factory=list)
     _approvals: list[Any] = field(default_factory=list)
     cancelled: bool = False
@@ -293,9 +294,19 @@ class FakeHost:
 
     def save_checkpoint(self, namespace: str, payload: dict[str, Any]) -> None:
         self.checkpoints[namespace] = json.loads(json.dumps(payload, default=str))
+        self.consumed_checkpoints.discard(namespace)
 
     def load_checkpoint(self, namespace: str) -> dict[str, Any] | None:
         return self.checkpoints.get(namespace)
+
+    def claim_checkpoint(self, namespace: str) -> dict[str, Any] | None:
+        payload = self.checkpoints.pop(namespace, None)
+        if payload is None:
+            if namespace in self.consumed_checkpoints:
+                return None
+            raise PlatformError(ErrorCode.CONFLICT_STATE, "no checkpoint to claim")
+        self.consumed_checkpoints.add(namespace)
+        return payload
 
     def charge(self, usage: Any) -> None:
         self.charged.append(usage)
@@ -345,6 +356,9 @@ class FakeHost:
         return patch
 
     def record_verification(self, result: Any) -> Any:
+        run_id = getattr(result, "produced_by_run_id", None)
+        if run_id and not any(item.get("id") == run_id for item in self.finished):
+            raise AssertionError(f"record_verification before finish_agent_run for {run_id}")
         self.verifications.append(result)
         return result
 
@@ -504,7 +518,8 @@ def test_resume_after_approval_completes_remediation_and_hardening(host_and_orch
         (shared_findings.FindingStatus.patch_proposed, shared_findings.FindingStatus.verified),
         (shared_findings.FindingStatus.verified, shared_findings.FindingStatus.hardened),
     ]
-    assert host.checkpoints.get("security_agents.approval.v1")
+    assert "security_agents.approval.v1" in host.consumed_checkpoints
+    assert host.checkpoints.get("security_agents.approval.v1") is None
     assert host.charged, "sandbox seconds must reach host.charge"
 
 
@@ -716,6 +731,50 @@ def test_recipe_prefix_is_stripped_for_functional_verify(tmp_path):
     assert "a/payments_lite/app.py" in rewritten
     assert "a/target/" not in rewritten
 
+    nested = tmp_path / "nested"
+    nested.mkdir()
+    (nested / "app.py").write_text("x")
+    (nested / "tests").mkdir()
+    (nested / "build_recipe.json").write_text('{"target_dir": "services/api"}')
+    nested_paths = ["services/api/app.py", "services/api/tests/generated/t.py"]
+    nested_prefix = _recipe_strip_prefix(nested, nested_paths)
+    assert nested_prefix == "services/api"
+    assert _snapshot_rel("services/api/tests/generated/t.py", nested_prefix) == "tests/generated/t.py"
+    nested_diff = (
+        "diff --git a/services/api/app.py b/services/api/app.py\n"
+        "--- a/services/api/app.py\n"
+        "+++ b/services/api/app.py\n"
+    )
+    assert "a/app.py" in _diff_for_snapshot(nested_diff, nested_prefix)
+    assert "a/services/" not in _diff_for_snapshot(nested_diff, nested_prefix)
+
+
+def test_pinned_snapshot_escaping_target_dir_is_schema_invalid(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    from security_agents.host_adapter import _pinned_snapshot
+    from security_agents.sandbox.workspace import SnapshotHandle
+
+    checkout = tmp_path / "checkout"
+    checkout.mkdir()
+    (checkout / "build_recipe.json").write_text('{"target_dir": "../outside"}', encoding="utf-8")
+    monkeypatch.setattr(
+        "security_agents.host_adapter._bindings",
+        lambda: [{"repo_id": "rep_x", "local_path": str(tmp_path), "subdir": "."}],
+    )
+    monkeypatch.setattr(
+        SnapshotHandle,
+        "from_git",
+        staticmethod(lambda *args, **kwargs: SimpleNamespace(root=checkout, commit_sha="a" * 40)),
+    )
+    host = SimpleNamespace(
+        repo_id="rep_x",
+        assessment=SimpleNamespace(commit_sha="a" * 40, snapshot_id=None),
+    )
+    with pytest.raises(PlatformError) as exc:
+        _pinned_snapshot(host, tmp_path / "work")
+    assert exc.value.code is ErrorCode.SCHEMA_INVALID
+
 
 def test_host_state_names_cover_every_state():
     from security_agents.host_adapter import HOST_STATE_NAMES
@@ -728,14 +787,21 @@ def test_host_state_names_cover_every_state():
         assert member.name == HOST_STATE_NAMES[state]
 
 
-@pytest.mark.parametrize("field,value", [
-    ("approved_by", None), ("approved_at", None), ("expires_at", None), ("status", "inactive"),
-])
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("approved_by", None),
+        ("approved_at", None),
+        ("expires_at", None),
+        ("status", "inactive"),
+    ],
+)
 def test_host_scope_adapter_cannot_invent_approval(host_and_orchestrator, field, value):
     from types import SimpleNamespace
 
     from security_agents.host_adapter import _adapt_scope
     from security_agents.scope_guard import ActionRequest, check
+
     host, _, _ = host_and_orchestrator
     scope = host.scope()
     setattr(scope, field, value)
@@ -755,3 +821,117 @@ def test_resume_rechecks_revoked_scope_before_any_patch(host_and_orchestrator, m
         orchestrator.run(host)
     assert exc.value.code is ErrorCode.SCOPE_DENIED
     assert not host.patches
+
+
+def _empty_scout(gateway) -> None:
+    from security_agents.llm import FakeTurn
+
+    gateway.scripts[AgentName.SCOUT] = [
+        FakeTurn(
+            tool_calls=[
+                (
+                    SUBMIT,
+                    {
+                        "hypotheses": [],
+                        "coverage": {
+                            "entry_points_reviewed": [],
+                            "looks_correct": [],
+                            "skipped_with_reason": [],
+                        },
+                        "suspicious_instructions": [],
+                    },
+                )
+            ]
+        )
+    ]
+
+
+def test_resume_reapplies_host_repo_filter(host_and_orchestrator, monkeypatch):
+    from security_agents.host_adapter import HostOrchestrator
+
+    host, orchestrator, _ = host_and_orchestrator
+    orchestrator.run(host)
+    host.approve_all()
+    scope = host.scope()
+    extra = type(
+        "T",
+        (),
+        {
+            "target_id": "tgt_other",
+            "repo_id": "rep_other",
+            "build_recipe_ref": "build_recipe.json",
+            "exposed_ports": [],
+        },
+    )()
+    scope.targets = [*list(scope.targets), extra]
+    monkeypatch.setattr(host, "scope", lambda: scope)
+    seen: dict[str, list[str]] = {}
+    original = HostOrchestrator._resume
+
+    def wrapped(self, orch, h):
+        original(self, orch, h)
+        seen["repos"] = [target.repo_id for target in orch.config.scope.targets]
+
+    monkeypatch.setattr(HostOrchestrator, "_resume", wrapped)
+    orchestrator.run(host)
+    assert seen["repos"] == [host.repo_id]
+
+
+def test_resume_denies_when_no_scope_target_matches_repo(host_and_orchestrator, monkeypatch):
+    host, orchestrator, _ = host_and_orchestrator
+    orchestrator.run(host)
+    host.approve_all()
+    scope = host.scope()
+    scope.targets[0].repo_id = "rep_other"
+    monkeypatch.setattr(host, "scope", lambda: scope)
+    with pytest.raises(PlatformError) as exc:
+        orchestrator.run(host)
+    assert exc.value.code is ErrorCode.SCOPE_DENIED
+    assert not host.patches
+
+
+def test_second_worker_noops_after_checkpoint_is_claimed(host_and_orchestrator, tmp_path):
+    host, first, _ = host_and_orchestrator
+    first.run(host)
+    host.approve_all()
+    assert host.claim_checkpoint("security_agents.approval.v1") is not None
+    first._resumable.clear()
+    replacement = build_orchestrator(
+        target_dir=first.target_dir,
+        labels_path=first.labels_path,
+        workdir=tmp_path / "other-worker",
+        driver=first.driver,
+    )
+    replacement.run(host)
+    assert not host.patches
+    assert host.states[-1] == "AWAITING_APPROVAL"
+    assert any("already claimed" in message for message in host.progress_messages)
+
+
+def test_empty_scout_pauses_when_functional_is_already_approved(host_and_orchestrator):
+    """Codex r4302039275: approved functional work is outstanding, not only pending decisions."""
+    from shared.scope import ApprovalStatus, ApprovalSubject
+
+    host, orchestrator, gateway = host_and_orchestrator
+    _empty_scout(gateway)
+    finding_id = "fnd_01FUNCTIONALAPPROVED"
+    host.recorded_findings.append(
+        type("F", (), {"id": finding_id, "kind": "functional", "status": "validated"})()
+    )
+    host._approvals.append(
+        type(
+            "Ap",
+            (),
+            {
+                "id": "apv_func_approved",
+                "subject_id": finding_id,
+                "subject_type": ApprovalSubject.remediation,
+                "status": ApprovalStatus.approved,
+                "decided_by": "usr_human",
+            },
+        )()
+    )
+    orchestrator.run(host)
+    assert host.states[-1] == "AWAITING_APPROVAL"
+    assert "COMPLETED" not in host.states
+    assert "security_agents.approval.v1" in host.checkpoints
