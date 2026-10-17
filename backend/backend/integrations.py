@@ -32,4 +32,7 @@ def load_factory(spec: str, *args: Any, **kwargs: Any) -> Loaded:
     factory = getattr(module, attr, None)
     if factory is None:
         return Loaded(None, f"{module_name} has no attribute {attr!r}")
-    return Loaded(factory(*args, **kwargs), None)
+    try:
+        return Loaded(factory(*args, **kwargs), None)
+    except Exception as exc:  # misconfigured subsystem: report it, never crash the job
+        return Loaded(None, f"{spec} failed to initialize: {type(exc).__name__}: {exc}"[:400])

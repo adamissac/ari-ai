@@ -352,6 +352,35 @@ rl_evaluations = sa.Table(
     _created(),
 )
 
+# Code-intelligence PayloadStore (backend/intel_store.py): immutable, SnapshotRef-keyed.
+index_payloads = sa.Table(
+    "index_payloads",
+    metadata,
+    sa.Column("project_id", sa.String(80), sa.ForeignKey("projects.id"), primary_key=True),
+    sa.Column("repo_id", sa.String(80), sa.ForeignKey("repositories.id"), primary_key=True),
+    sa.Column("commit_sha", sa.String(40), primary_key=True),
+    sa.Column("index_version", sa.String(80), primary_key=True),
+    sa.Column("kind", sa.String(80), primary_key=True),
+    sa.Column("key", sa.String(300), primary_key=True),
+    sa.Column("snapshot_id", sa.String(80), nullable=False, index=True),
+    sa.Column("sha256", sa.String(64), nullable=False),
+    sa.Column("size_bytes", sa.BigInteger, nullable=False),
+    sa.Column("data", sa.LargeBinary, nullable=False),
+    _created(),
+)
+
+index_snapshots = sa.Table(
+    "index_snapshots",
+    metadata,
+    sa.Column("project_id", sa.String(80), sa.ForeignKey("projects.id"), primary_key=True),
+    sa.Column("repo_id", sa.String(80), sa.ForeignKey("repositories.id"), primary_key=True),
+    sa.Column("commit_sha", sa.String(40), primary_key=True),
+    sa.Column("index_version", sa.String(80), primary_key=True),
+    sa.Column("snapshot_id", sa.String(80), nullable=False, unique=True),
+    sa.Column("stats", JSONB, nullable=False),
+    _created(),
+)
+
 idempotency_keys = sa.Table(
     "idempotency_keys",
     metadata,
