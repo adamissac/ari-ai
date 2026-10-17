@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { describeError } from '@/lib/api';
 import { parseUnifiedDiff } from '@/lib/diff';
 import { duration, githubLink, relativeTime, shortSha } from '@/lib/format';
-import { domain, episodeStory, metricRows, rewardTotals, sampleSize } from '@/lib/lab';
+import { domain, episodeStory, metricRows, rewardTotals, sampleSize, stepObservation } from '@/lib/lab';
 import type { DefenseLabBundle, LabEpisode } from '@/lib/lab-types';
 import { matchExpectationStatements } from '@/lib/expectations';
 import { findingStory, repoFullNameForEvidence } from '@/lib/finding-story';
@@ -26,6 +26,27 @@ describe('lab episode story', () => {
     expect(text).toContain('compromised');
     expect(text).toContain('db');
     expect(text).toContain('not a live network');
+  });
+});
+
+describe('lab step observation', () => {
+  const node = (name: string, alert: number, hidden: 'none' | 'impact') => ({
+    node: name, alert_rate: alert, anomaly_score: 0, monitoring_level: 0,
+    rate_limited: false, isolated: false, reassessment_pending: false, hidden_stage_ground_truth: hidden,
+  });
+  it('names the highest alert and the recorded action, not the hidden stage', () => {
+    const text = stepObservation({
+      t: 3, action: 'rate_limit:api', reward: 0, reward_components: {},
+      nodes: [node('db', 0.01, 'impact'), node('api', 0.14, 'none'), node('auth', 0.14, 'none')],
+    });
+    expect(text).toContain('0.14 on api, auth');
+    expect(text).toContain('rate-limit api in this simulation');
+    expect(text).not.toContain('impact');
+    expect(text).not.toContain('db');
+  });
+  it('keeps an unknown action as the recorded string', () => {
+    expect(stepObservation({ t: 0, action: 'teleport:db', reward: 0, reward_components: {}, nodes: [] }))
+      .toContain('teleport:db');
   });
 });
 
