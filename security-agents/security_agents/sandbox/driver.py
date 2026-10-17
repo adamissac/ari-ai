@@ -298,8 +298,11 @@ class DockerSandboxDriver:
     only after the scope decision is re-validated.
 
     STATUS: argument construction and reaping are unit-tested with a fake
-    command runner. End-to-end execution is UNVERIFIED on the development
-    machine (no Docker engine available) and needs pinned images (INFRA-005).
+    command runner. The CI docker-sandbox job (tests/test_docker_sandbox_live.py)
+    runs real containers for the `none` path and for reviewed checks on the
+    `target-only` path. v0 check templates exercise the app in process, so the
+    target container and internal network are created but not yet used by a
+    check; the check harness is not installed (INFRA-005).
     """
 
     name = "docker"
