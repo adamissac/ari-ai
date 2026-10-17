@@ -7228,7 +7228,8 @@
           "type": "integer"
         },
         "monitoring_budget": {
-          "$ref": "#/$defs/Budget"
+          "$ref": "#/$defs/Budget",
+          "description": "Budget for one push-triggered monitoring run (smaller than default_budget by design)"
         }
       },
       "required": [
