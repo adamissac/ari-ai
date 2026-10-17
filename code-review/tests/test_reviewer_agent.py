@@ -928,3 +928,25 @@ def test_authorization_handoff_carries_catalog_validated_cwe(tmp_path: Path) -> 
     assert sec.standards.cwe is not None and sec.standards.cwe.id == "CWE-639"
     assert any(e.kind is EvidenceKind.test_run for e in sec.standards.cwe.evidence)
     assert not any("CWE not recorded" in r for r in outcome.rejected)
+
+
+def test_generated_test_paths_are_repo_relative_contract(tmp_path: Path) -> None:
+    """Contract relied on by security_agents' functional Verify (Alan, 20261017T080558Z):
+    generated test paths are repository-relative INCLUDING the project subdir (``target/``),
+    in GeneratedTest, the cited bundle, PatchCandidate.tests_added and FunctionalVerifyInputs."""
+    from code_review.api import functional_verification_inputs
+
+    sc, host, source, outcome = _pl_review(tmp_path)
+    assert source.subdir == "target"
+    [gt] = outcome.result.generated_tests
+    assert gt.path.startswith("target/tests/generated/") and not gt.path.startswith("/")
+    [finding] = outcome.result.findings
+    tests = load_test_sources(host, finding)
+    assert [t.path for t in tests] == [gt.path]
+    host.transport = fake(pl_repair_script(tests[0].path))
+    rep = ReviewerAgentRunner(host, source).repair(finding, host.approve(finding.id), tests)
+    assert rep.patch is not None and rep.patch.tests_added == [gt.path]
+    assert all(p.startswith("target/") for p in rep.patch.files_changed)
+    inp = functional_verification_inputs(host, rep.patch)
+    assert [t.path for t in inp.generated_tests] == [gt.path]
+    assert "a/target/payments_lite/app.py" in inp.diff_text

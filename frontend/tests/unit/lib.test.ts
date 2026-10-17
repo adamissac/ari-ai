@@ -37,6 +37,7 @@ describe('status vocabulary', () => {
   it('only provider_mode=live is labelled live', () => {
     expect(providerLabel('live').label).toBe('Live provider');
     expect(providerLabel('fake').label).toMatch(/scripted/);
+    expect(providerLabel('none').label).toBe('Deterministic (no model call)');
     expect(providerLabel('replay').label).toMatch(/Replay/);
     expect(providerLabel('mystery').label).not.toMatch(/Live/);
   });
