@@ -14,10 +14,10 @@ import numpy as np
 
 from rl_defense import ENV_ID
 from rl_defense.checkpoint import load_checkpoint
-from rl_defense.contracts import ActionScore, DefenseRecommendation, PlatformFacts
+from rl_defense.contracts import ActionScore, DefenseRecommendation, PlatformFacts, RLExplanation
 from rl_defense.envs.config import NODE_NAMES
 from rl_defense.envs.defense_sim import NEG_INF_MASK, decode_action
-from rl_defense.explain import Explanation, explain
+from rl_defense.explain import explain
 from rl_defense.observations import from_platform_facts, mask_from_facts
 
 
@@ -58,9 +58,33 @@ class PolicyRunner:
             created_at=datetime.now(UTC),
         )
 
-    def explain(self, facts: PlatformFacts, top_k: int = 5) -> Explanation:
-        """Which observed inputs drove the recommended action (occlusion analysis)."""
-        return explain(self.agent.online, from_platform_facts(facts), mask_from_facts(facts), top_k)
+    def explain(
+        self,
+        facts: PlatformFacts,
+        recommendation: DefenseRecommendation | None = None,
+        top_k: int = 5,
+    ) -> RLExplanation:
+        """Which observed inputs drove the decision for ``facts`` (occlusion on the same Q-network).
+
+        ``recommendation`` is optional for backward compatibility with ``explain(facts)``
+        (used by the backend, which then sets ``recommendation_id`` itself). Without it, the
+        explanation carries the id of an equivalent fresh recommendation; inference is
+        deterministic, so the explained decision is the same.
+        """
+        rec_id = (recommendation or self.recommend(facts)).id
+        return explain(
+            self.agent.online,
+            from_platform_facts(facts),
+            mask_from_facts(facts),
+            rec_id,
+            top_k,
+        )
+
+    def recommend_with_explanation(
+        self, facts: PlatformFacts, top_k: int = 5
+    ) -> tuple[DefenseRecommendation, RLExplanation]:
+        rec = self.recommend(facts)
+        return rec, self.explain(facts, rec, top_k)
 
     def recommend(self, facts: PlatformFacts) -> DefenseRecommendation:
         return self.recommend_from_observation(
