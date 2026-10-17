@@ -94,3 +94,5 @@ All notable changes are documented here. Format follows
 
 ### Not yet implemented
 - Full cross-pillar runtime completion and production operation are not established here.
+
+- Frontend fonts are bundled locally with their licenses, removing Google Fonts downloads from production builds and preserving the existing typography.
