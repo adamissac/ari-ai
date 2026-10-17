@@ -5,8 +5,8 @@ Branch: `feat/sai/reviewer-repair-agent`
 Current task: REVIEW-001..006 reviewer/repair runtime agent — implemented; live Tier-3 not yet run
 Last remote sync: 2026-10-17 (fetched origin; merged origin/main into branch)
 API/contract dependencies: `shared.review` V0 (consumed unchanged), `backend.host.AssessmentHost` + `backend.llm` gateway (integrated, tested on PostgreSQL), `code_intelligence` via `IntelligencePort` (UNVERIFIED until Sarosh's package is on main), Alan's sandbox driver / Verify (NOT YET WIRED; local-process sandbox + Verify test double used in tests)
-Verified tests: `uv run pytest -q code-review/tests` → 33 passed, 1 skipped (live opt-in); full repo `uv run pytest -q` → passed except opt-in/optional skips (exact counts in session log)
-Recent PR/commit: see session log
+Verified tests: `uv run pytest -q code-review/tests` → 33 passed, 1 skipped (live opt-in); full repo `uv run pytest -q` after merging origin/main → 129 passed, 6 skipped
+Recent PR/commit: PR #22 https://github.com/adamissac/hackatl-agentic-security/pull/22 (branch head after this commit)
 Blockers: live Claude run needs an authorized key holder to run `RUN_LIVE_LLM_EVAL=1` (this environment has none and spends nothing)
 Next action: someone with a key runs the live reviewer test and reports cost/turns; wire Alan's `SandboxDriver` + Verify once on main; consume Sarosh's `IntelligenceService` once on main
 
