@@ -401,7 +401,7 @@ def test_attack_technique_is_validated_and_enriched(intel):
 def test_invented_attack_technique_is_rejected():
     import pydantic
 
-    with pytest.raises(pydantic.ValidationError, match="not in the pinned Enterprise ATT&CK"):
+    with pytest.raises(pydantic.ValidationError, match=r"T9999.*ATT&CK"):
         trace_agent.PathStepOut(description="x", verified=False, attack_technique="T9999")
 
 

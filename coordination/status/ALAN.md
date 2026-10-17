@@ -141,3 +141,6 @@ Executed check results on the fixture (the precision evidence):
 
 - Fixed PR #35 browser regression: bound host intake now prefers the backend's shared intelligence service and attaches the exact snapshot instead of requiring independent service configuration.
 - Executed 12 indexed-host tests, 7 PostgreSQL host/unified/memory tests, and the real Next/FastAPI/PostgreSQL/worker browser stack: 8 passed (10.4s). Scripted models and explicitly scoped local fixture execution; no live/Docker claim.
+
+- Final-integration follow-ups: replay Scout now links the bounded IDs actually retrieved from the snapshot (rather than fixture-only IDs); real-host fact-derived CVSS tests pass in both provisional-model modes (3 targeted tests passed).
+- Secret scan false positive identified as public OWASP source commit in build_additional.py. Added one exact historical fingerprint to .gitleaksignore; checksum-verified gitleaks scanned 214 commits with zero leaks, and synthetic credential-shaped stdin still fails detection.

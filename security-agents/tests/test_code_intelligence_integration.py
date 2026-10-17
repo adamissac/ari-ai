@@ -216,6 +216,9 @@ def test_scout_runs_end_to_end_against_the_real_index(adapter):
     assert hypotheses, "citations should validate against the real snapshot"
     assert hypotheses[0].cited_spans[0].sha == adapter.snapshot.commit_sha
     assert hypotheses[0].weakness_class == "CWE-639"
+    assert hypotheses[0].expectation_ids
+    assert set(hypotheses[0].expectation_ids) <= {item.id for item in adapter.expectations()}
+
 
 
 def test_host_uses_bound_commit_and_upstream_index_despite_dirty_checkout(indexed, tmp_path, monkeypatch):

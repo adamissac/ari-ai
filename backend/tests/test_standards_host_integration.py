@@ -83,7 +83,9 @@ def test_standards_survive_real_host_flow(
         # Authoritative CVSS is derived from Probe/Trace facts, never from the
         # model's optional eleven-metric dict (that dict, when present, stays on
         # SeverityAssessment.cvss as a provisional annotation).
-        assert finding.standards.cvss and finding.standards.cvss.complete
+        assert finding.standards.cvss and finding.standards.cvss.complete, (
+            finding.standards.cvss.missing_metrics
+        )
         assert finding.standards.cvss.score is not None
         assert "cvss_assess" in finding.standards.cvss.assessor
         assert "provisional" not in finding.standards.cvss.assessor

@@ -12,6 +12,7 @@ evidence.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -131,6 +132,18 @@ def scout_script() -> list:
 
     def turn3(request) -> FakeTurn:
         payload = _last_json(request)
+        observed_expectations = {}
+        for index, message in enumerate(request.messages):
+            if message["role"] != "user":
+                continue
+            for observed in _all_json(replace(request, messages=request.messages[:index + 1])):
+                observed_expectations.update({item["id"]: item for item in observed.get("expectations", [])})
+        expectation_ids = [
+            item["id"] for item in sorted(
+                observed_expectations.values(),
+                key=lambda item: item.get("data_sensitivity") != "financial",
+            )
+        ][:6]  # Scout output bounds the number of linked expectations.
         start = int(payload.get("start_line", 1))
         end = int(payload.get("end_line", start + 8))
         return FakeTurn(
@@ -157,7 +170,7 @@ def scout_script() -> list:
                                 "cited_paths": [WEAK_HANDLER_PATH],
                                 "cited_start_lines": [start],
                                 "cited_end_lines": [end],
-                                "expectation_ids": ["exp_owner_only"],
+                                "expectation_ids": list(dict.fromkeys(expectation_ids)),
                                 "entry_point_id": None,
                                 "confidence": "high",
                                 "suggested_check_category": "access_control.ownership",
