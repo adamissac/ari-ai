@@ -962,13 +962,8 @@ class AssessmentHost:
                 subject_id=self.assessment_id,
                 details={"artifact_id": ref.id, "roe_id": str(doc.get("id")), "digest": digest},
             )
-            _emit(
-                conn,
-                self.assessment_id,
-                StreamEventType.progress,
-                "rules of engagement recorded",
-                data={"artifact_id": ref.id, "roe_id": str(doc.get("id"))},
-            )
+        # No stream event: the adapter hands the RoE over while settling, which can be after
+        # the terminal event, and nothing may follow that in the SSE stream (clients close).
         return ref
 
     def request_approval(
