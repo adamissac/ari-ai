@@ -936,3 +936,22 @@ def test_empty_scout_pauses_when_functional_is_already_approved(host_and_orchest
     assert host.states[-1] == "AWAITING_APPROVAL"
     assert "COMPLETED" not in host.states
     assert "security_agents.approval.v1" in host.checkpoints
+
+
+def test_issued_rules_of_engagement_are_handed_to_the_host(host_and_orchestrator):
+    host, orchestrator, gateway = host_and_orchestrator
+    recorded: list[dict] = []
+    host.record_roe = recorded.append
+    orchestrator.run(host)
+    assert recorded, "the worker must hand the issued RoE to host.record_roe"
+    doc = recorded[-1]
+    assert doc["id"].startswith("roe_") and doc["digest"]
+    assert doc["permitted_check_templates"]
+    assert doc["alignment"].startswith("aligned with NIST SP 800-115")
+
+
+def test_hosts_without_record_roe_still_run(host_and_orchestrator):
+    host, orchestrator, gateway = host_and_orchestrator
+    assert not hasattr(host, "record_roe")
+    orchestrator.run(host)
+    assert [r["agent"] for r in host.runs] == ["scout", "probe", "trace", "diagnose"]
