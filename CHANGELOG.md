@@ -6,6 +6,9 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Assessment conflicts now offer explicit preparation of a separate action; ordinary network retries retain their key, and project changes get distinct keys.
+
+
 - Assessment job IDs returned by the API now resolve through their persisted assessment, allowing authorized status reads while preserving tenant denial.
 
 - Fix the development-login HTML pattern for current browser Unicode regex rules.
