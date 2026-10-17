@@ -70,6 +70,14 @@ export default function AssessmentPage() {
 
   useEffect(() => () => { if (refreshTimer.current) clearTimeout(refreshTimer.current); }, []);
 
+  // Polling fallback: persisted records stay current even if an intermediary buffers SSE.
+  const running = detail !== null && !TERMINAL_STATES.has(detail.assessment.state);
+  useEffect(() => {
+    if (!running) return;
+    const t = setInterval(() => loadDetail(), 5000);
+    return () => clearInterval(t);
+  }, [running, loadDetail]);
+
   if (detailError && !detail) return <ErrorState error={detailError} onRetry={() => loadDetail()} context="Could not load assessment" />;
   if (!detail) return <Loading label="Loading assessment" />;
   const a = detail.assessment;
