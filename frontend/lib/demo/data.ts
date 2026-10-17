@@ -47,7 +47,7 @@ export interface DemoCommit {
 
 export type ScenarioId = 'authz' | 'refund' | 'clean' | 'injection' | 'dependency';
 
-export const DEMO_USER: DemoUser = { login: 'alex-rivera', name: 'Alex Rivera' };
+export const DEMO_USER: DemoUser = { login: 'akshar-koth', name: 'Akshar Koth' };
 
 export const DEMO_ORGS: DemoOrg[] = [
   { login: 'lumen-pay', name: 'Lumen Pay', kind: 'organization', members: 48, plan: 'Enterprise' },
@@ -55,12 +55,12 @@ export const DEMO_ORGS: DemoOrg[] = [
   { login: DEMO_USER.login, name: DEMO_USER.name, kind: 'personal', members: 1, plan: 'Personal' },
 ];
 
-/** The demo account belongs to Alex Rivera at Lumen Pay: only that organization is connected. */
+/** The demo account belongs to Akshar Koth at Lumen Pay: only that organization is connected. */
 export const ACCOUNT_ORGS: DemoOrg[] = DEMO_ORGS.filter(o => o.login === 'lumen-pay');
 /** When Lumen Pay connected Ari (before the oldest commit shown). */
 export const CONNECTED_DAYS_AGO = 7;
 
-const AUTHORS = ['alex-rivera', 'mina-okafor', 'jules-park', 'devon-shah', 'sam-lindqvist', 'priya-natarajan'];
+const AUTHORS = ['akshar-koth', 'mina-okafor', 'jules-park', 'devon-shah', 'sam-lindqvist', 'priya-natarajan'];
 
 /** Stable 40-hex pseudo SHA so links and labels never change between renders. */
 export function demoSha(seed: string): string {
