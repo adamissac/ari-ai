@@ -25,7 +25,8 @@ boundaries [docs/15](../docs/15_SECURITY_BOUNDARIES.md).
 | Sandbox: snapshots, diffs, local dev driver | `security_agents/sandbox/` | implemented, tested |
 | Sandbox: hardened Docker driver | `security_agents/sandbox/driver.py` | implemented; **argv + reaper tested, execution UNVERIFIED** (no Docker engine on the dev machine; needs pinned images, INFRA-005) |
 | Check templates v0 (ownership, bounds) | `security_agents/checks/library.py` | implemented, executed against the owned fixture |
-| Orchestrator state machine + gates | `security_agents/workflow/` | implemented, tested |
+| Orchestrator state machine + gates | `security_agents/workflow/` | implemented, tested; `external_pending` pauses for functional approvals |
+| Host adapter | `security_agents/host_adapter.py` | implemented: finding lifecycle via `set_finding_status`, durable `save_checkpoint` resume, Sai's functional repair + independent Verify |
 | Contracts | `security_agents/contracts/` | **local V0 adapter**, pending `shared/` (CORE-001) |
 | Code intelligence | `security_agents/intel/` | **local Python-AST adapter**, pending `code_intelligence.api` (INTEL-007) |
 | LLM gateway | `security_agents/llm/` | consumer-side port + providers, pending the backend gateway (CORE-010) |
@@ -161,3 +162,9 @@ classifications, while unsupported actions stay unmapped. No rule
 executes a defensive action against real systems.
 
 Model-proposed CVSS metrics are explicit provisional assumptions, even when they cite an executed run. A run identifier supplies provenance but does not prove an impact. Such scores list every assumption and require human review; missing metrics remain unscored. Incident closure requires actual regression artifact IDs/hashes; eradication requires a succeeded independent Verify run. All currently supported runtime sources are demo/replay/simulation, so correlated incidents retain simulated labeling even for executed demo logs.
+
+Functional Verify requires nonempty generated regression tests that demonstrably
+fail on the unpatched commit and pass after the candidate diff. Runner errors,
+collection failures, timeouts, missing sandbox records and skipped generated tests
+cannot establish a fix. Generated tests may not overwrite existing files. Human
+approval resume reloads the current scope and worker host before execution.
