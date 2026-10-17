@@ -1,0 +1,52 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "category": {
+      "maxLength": 500,
+      "title": "Category",
+      "type": "string"
+    },
+    "effort": {
+      "maxLength": 500,
+      "title": "Effort",
+      "type": "string"
+    },
+    "finding_id": {
+      "pattern": "^fnd_[0-9A-Za-z]{8,64}$",
+      "title": "Finding Id",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^hdn_[0-9A-Za-z]{8,64}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "proposed_test_artifact_id": {
+      "anyOf": [
+        {
+          "pattern": "^art_[0-9A-Za-z]{8,64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Proposed Test Artifact Id"
+    },
+    "recommendation": {
+      "maxLength": 500,
+      "title": "Recommendation",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "finding_id",
+    "category",
+    "recommendation",
+    "effort"
+  ],
+  "title": "HardeningRecommendation",
+  "type": "object"
+}

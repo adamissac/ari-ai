@@ -1,63 +1,50 @@
 # backend/
 
-> **What exists: nothing yet (Phase 0).** Spec: [docs/13](../docs/13_BACKEND_API_DESIGN.md),
-> [docs/04](../docs/04_SYSTEM_ARCHITECTURE.md).
+The control plane: the FastAPI `/api/v1` API, PostgreSQL persistence and migrations, the
+durable job queue and worker, the hash-chained audit log, the artifact store, GitHub
+webhook and App integration, the Claude LLM gateway, and the `AssessmentHost` that runtime
+agents use. Owner: **Srihith**. Spec: [docs/13](../docs/13_BACKEND_API_DESIGN.md),
+[docs/10](../docs/10_CONTINUOUS_MONITORING.md). Integration guide for the other owners:
+[INTEGRATION.md](INTEGRATION.md).
 
-## Purpose
-The control plane: HTTP API, authentication, projects and repositories,
-authorized scopes and approvals, persistence, job queue, orchestrator host, SSE,
-audit log, LLM gateway, artifact store abstraction.
+## What exists (verified by tests on this branch)
 
-## Responsibilities
-- `/api/v1` endpoints in [docs/13](../docs/13_BACKEND_API_DESIGN.md).
-- PostgreSQL schema + migrations; repository layer that always scopes by
-  `org_id`/`project_id`.
-- Job queue (`SKIP LOCKED`, leases) and the `worker` process entrypoint.
-- Hosting the orchestrator state machine defined in `security-agents/`
-  ([docs/08](../docs/08_AGENT_ORCHESTRATION.md)).
-- LLM gateway: the only path to Anthropic; budgets, redaction, structured-output
-  validation, record/replay ([ADR-0007](../docs/decisions/0007-claude-llm-gateway.md)).
-- Hash-chained audit log; artifact store with SHA-256 addressing.
-- Settings from environment ([.env.example](../.env.example)).
-
-**Must not:** execute untrusted code in-process, run long work in request
-handlers, bypass the scope guard, merge or deploy code.
-
-## Interfaces
-| Direction | Interface |
-|---|---|
-| Exposes | REST + SSE to `frontend/`; `/webhooks/github` and `/ingest/runtime/{project_id}` to external sources |
-| Exposes (Python) | `backend.llm_gateway`, `backend.artifacts`, `backend.persistence` for workers |
-| Consumes | `shared/` models; `code_intelligence.api` (read queries); `monitoring` handlers; `security_agents` orchestrator definitions and `scope_guard`; `rl_defense.inference` |
-| Data | PostgreSQL (`DATABASE_URL`), artifact store (`ARTIFACT_STORE_URI`) |
-| External | GitHub OAuth + App, Anthropic API |
-
-## Dependencies
-Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2.x + Alembic (proposed),
-Anthropic SDK, structlog + OpenTelemetry (proposed), pytest/ruff/mypy.
-Upstream tasks: CORE-001 (`shared/`).
-
-## Planned layout
-```
-backend/
-  backend/
-    main.py            # FastAPI app factory
-    settings.py
-    api/v1/            # routers per resource
-    auth/              # GitHub OAuth, sessions, CSRF
-    persistence/       # models, repositories, migrations (alembic/)
-    jobs/              # queue, worker runner, leases
-    orchestration/     # host for security_agents state machine, gates
-    llm_gateway/       # client, budgets, redaction, record/replay
-    artifacts/         # store abstraction
-    audit/             # hash-chained log
-    sse/
-  tests/
-  Dockerfile
-```
-
-## First tasks
-CORE-002 → CORE-004 → CORE-005/006/007/008; CORE-009, CORE-010.
+| Area | Module | Status |
+|---|---|---|
+| Settings from env | `settings.py` | implemented |
+| Schema + Alembic migration (append-only audit trigger) | `db.py`, `migrations/` | implemented; up/down/up tested |
+| Durable queue: SKIP LOCKED, leases, heartbeats, retry/backoff, dead-letter, cancel | `jobs.py`, `worker.py` | implemented; crash/lease-expiry recovery tested |
+| Sessions (dev login + GitHub OAuth), CSRF, org authz, rate limits, idempotency | `api/` | implemented; OAuth exchange not exercised against real GitHub |
+| Projects, repos, scopes (approver ≠ requester), approvals, assessments, findings, patches, artifacts, audit | `api/routes.py` | implemented |
+| SSE with `Last-Event-ID` resume from the durable log | `api/routes.py` | implemented |
+| GitHub webhook: size bound, HMAC on raw body, delivery dedupe, redacted payload, enqueue | `api/webhooks.py` | implemented |
+| Monitoring pipeline (normalize → correlate → policy → reassessment) | `pipeline.py` + `monitoring/` | implemented; symbol-level impact waits on code-intelligence |
+| AssessmentHost gates (transitions, scope, approval, budget, cancel, Verify independence) | `host.py` | implemented |
+| Claude gateway (Anthropic SDK, retries, typed errors, usage/USD, redaction, tool loop) | `llm.py` | implemented; **live provider not yet exercised** (no key in this environment) |
+| RL recommendations via `rl_defense` | `pipeline.py` | integrated against `feat/adam/rl-defense` |
+| GitHub App installation tokens / compare API | `github.py` | implemented; **not exercised against a real App** |
+| Seven-agent orchestrator | — | **not here**: Alan's `security_agents`. Until it lands, assessments end `FAILED / SUBSYSTEM_UNAVAILABLE` |
+| `POST /patches/{id}/pull-request`, `/ingest/runtime/{project_id}`, `PATCH /expectations/{id}` | — | **not implemented** (MVP cut order / owned by intelligence) |
 
 ## Commands
-None yet. Added by CORE-002.
+
+```bash
+uv sync                                  # install workspace (Python 3.12)
+make test                                # all tests; embedded real PostgreSQL if DATABASE_URL unset
+make check                               # ruff + generated-contract freshness
+make dev                                 # migrate + API (:8000) + worker against embedded Postgres
+docker compose up --build                # alternative: Postgres + migrate + API + worker
+uv run python -m backend.replay_webhook --repo owner/name --head <sha> --path app/x.py   # signed local delivery
+RUN_LIVE_LLM_EVAL=1 ANTHROPIC_API_KEY=... make smoke-live   # opt-in real Claude call (costs money)
+```
+
+Set `TSC=/path/to/tsc` to run the generated-TypeScript compile test.
+`TEST_DATABASE_URL` points tests at an existing server. Each run creates a fresh database.
+
+## Rules this package enforces
+
+* No long or LLM work in request handlers. The API enqueues and the worker executes.
+* No endpoint executes commands, accepts code to run, merges, or deploys.
+* Every state change is authorized in code and appended to the audit chain.
+* A missing subsystem, key, checkpoint or GitHub App is reported as an explicit error
+  code, never replaced with fabricated output.
