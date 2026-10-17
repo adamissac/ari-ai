@@ -18,6 +18,7 @@ from backend.db import (
     monitoring_events,
     reassessment_requests,
     repositories,
+    snapshots,
     transaction,
     webhook_deliveries,
 )
@@ -277,8 +278,11 @@ def _orchestrator() -> Any:
 def _catalog_code(exc: BaseException) -> ErrorCode:
     """The shared ErrorCode carried by an exception (``exc.code``), else INTERNAL."""
     raw = getattr(exc, "code", None)
+    value = getattr(raw, "value", raw)
+    if not isinstance(value, str):
+        return ErrorCode.INTERNAL
     try:
-        return ErrorCode(getattr(raw, "value", raw))
+        return ErrorCode(value)
     except ValueError:
         return ErrorCode.INTERNAL
 
@@ -349,77 +353,64 @@ def run_assessment(ctx: JobContext) -> dict[str, Any]:
 _ROUTE = re.compile(r"^(GET|POST|PUT|PATCH|DELETE) /\S*$")
 
 
-def route_expectations(conn: sa.engine.Connection, project_id: str) -> list[dict[str, str]]:
-    """Expectations (Sarosh's intelligence, with human decisions applied) that resolve to an
-    HTTP EntryPoint, from the latest ready index of each repository in the project.
+def _paged(fetch: Any, ref: Any, limit: int = 200) -> list[Any]:
+    out: list[Any] = []
+    while True:
+        page = fetch(ref, offset=len(out), limit=limit)
+        out.extend(page)
+        if len(page) < limit:
+            return out
 
-    ``subject_ref`` matches an entry point by id, handler symbol id or path template.
-    Rejected expectations are dropped by the mapper; unresolvable ones are skipped. Returns
-    [] when code_intelligence is not installed or nothing has been indexed yet.
+
+def _expectation_inputs(conn: sa.engine.Connection, project_id: str) -> tuple[list[Any], str]:
+    """Expectations with data sensitivity → RL criticality (the P1→P3 link).
+
+    Uses the latest READY snapshot per repository of the project, resolves each
+    expectation's ``subject_ref`` (entry point or handler symbol) to "METHOD /path", and
+    skips rejected expectations. Never fails the RL job: if intelligence is unavailable,
+    criticality falls back to the topology floors and the reason is returned.
     """
-    from backend.db import index_snapshots
+    from backend.intelligence import build_service, snapshot_ref
+    from rl_defense import platform_mapping as pm
 
-    latest: dict[str, Any] = {}
-    for row in conn.execute(
-        sa.select(index_snapshots)
-        .where(index_snapshots.c.project_id == project_id)
-        .order_by(index_snapshots.c.created_at.desc())
-    ):
-        latest.setdefault(row.repo_id, row)
+    rows = conn.execute(
+        sa.select(snapshots.c.id, snapshots.c.repo_id)
+        .join(repositories, repositories.c.id == snapshots.c.repo_id)
+        .where(repositories.c.project_id == project_id, snapshots.c.status == "ready")
+        .order_by(snapshots.c.created_at.desc())
+    ).all()
+    latest: dict[str, str] = {}
+    for row in rows:
+        latest.setdefault(row.repo_id, row.id)
     if not latest:
-        return []
-    from backend.intelligence import build_service
-
+        return [], "no ready snapshot"
     try:
         service = build_service()
-    except ModuleNotFoundError:
-        log.info("code_intelligence not installed; RL criticality uses topology floors")
-        return []
-    from shared.intelligence import SnapshotRef
-
-    status_map = {"confirmed": "confirmed", "rejected": "rejected"}
-    out: list[dict[str, str]] = []
-    seen: set[str] = set()
-    for row in latest.values():
-        ref = SnapshotRef(
-            project_id=project_id,
-            repo_id=row.repo_id,
-            commit_sha=row.commit_sha,
-            snapshot_id=row.snapshot_id,
-            index_version=row.index_version,
-        )
-        routes: dict[str, str] = {}
-        for entry in _all_pages(lambda o, lim, r=ref: service.entry_points(r, offset=o, limit=lim)):
-            if entry.kind.value != "http_route" or not entry.method or not entry.path_template:
-                continue
-            route = f"{entry.method.upper()} {entry.path_template}"
-            for alias in (entry.id, entry.handler_symbol_id, entry.path_template):
-                routes.setdefault(alias, route)
-        for exp in _all_pages(lambda o, lim, r=ref: service.expectations(r, offset=o, limit=lim)):
-            exp_route = routes.get(exp.subject_ref)
-            if exp_route is None or not _ROUTE.match(exp_route) or exp.id in seen:
-                continue
-            seen.add(exp.id)
-            out.append(
-                {
-                    "id": exp.id,
-                    "route": exp_route,
-                    "data_sensitivity": exp.data_sensitivity.value
-                    if exp.data_sensitivity
-                    else "none",
-                    "status": status_map.get(exp.status.value, "proposed"),
-                }
-            )
-    return out
-
-
-def _all_pages(fetch: Any, limit: int = 500) -> list[Any]:
-    items: list[Any] = []
-    while True:
-        page = fetch(len(items), limit)
-        items.extend(page)
-        if len(page) < limit:
-            return items
+        inputs = []
+        for snapshot_id in latest.values():
+            ref = snapshot_ref(snapshot_id)
+            routes_by_subject: dict[str, list[str]] = {}
+            for ep in _paged(service.entry_points, ref):
+                if ep.method and ep.path_template:
+                    route = f"{ep.method} {ep.path_template}"
+                    routes_by_subject.setdefault(ep.id, []).append(route)
+                    routes_by_subject.setdefault(ep.handler_symbol_id, []).append(route)
+            for exp in _paged(service.expectations, ref):
+                if exp.data_sensitivity is None or exp.status.value == "rejected":
+                    continue
+                for route in dict.fromkeys(routes_by_subject.get(exp.subject_ref, [])):
+                    inputs.append(
+                        pm.ExpectationInput(
+                            id=exp.id,
+                            route=route,
+                            data_sensitivity=exp.data_sensitivity.value,
+                            status=exp.status.value,
+                        )
+                    )
+        return inputs, f"{len(inputs)} expectation-route inputs from {len(latest)} snapshot(s)"
+    except Exception as exc:  # intelligence is optional for RL; never block a recommendation
+        log.warning("rl: expectations unavailable for %s: %s", project_id, exc)
+        return [], f"intelligence unavailable: {type(exc).__name__}"
 
 
 def platform_facts(
@@ -461,14 +452,11 @@ def platform_facts(
     from backend.api.runtime import latest_route_signals
 
     signals = [pm.RouteSignal(**sig) for sig in latest_route_signals(conn, project_id)]
-    expectations = route_expectations(conn, project_id)
+    expectations, expectation_note = _expectation_inputs(conn, project_id)
     facts, provenance = pm.facts_from_platform(
-        topology,
-        inputs,
-        [pm.ExpectationInput(**e) for e in expectations],
-        signals,
-        project_id=project_id,
+        topology, inputs, expectations, signals, project_id=project_id
     )
+    provenance = {**provenance, "expectations_source": expectation_note}
     return PlatformFacts.model_validate(facts.model_dump(mode="json")), provenance
 
 
