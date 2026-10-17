@@ -1,6 +1,7 @@
 """HTTP reindexing respects producer versions and preserves historical snapshots."""
 
 from dataclasses import replace
+from types import SimpleNamespace
 
 import pytest
 import sqlalchemy as sa
@@ -114,3 +115,35 @@ def test_failed_snapshot_can_be_retried_without_loading_provider(
     retried = alice.post(url, json=body)
     assert retried.status_code == 202
     assert retried.json()["id"] != pending["id"]
+
+
+def test_failed_newer_profile_does_not_hide_matching_ready_snapshot(
+    client_factory, monkeypatch
+) -> None:
+    alice, bob = client_factory("version-alice"), client_factory("version-bob")
+    ids = setup_project(alice, bob)
+    url = f"/api/v1/repositories/{ids['repo']}/snapshots"
+    body = {"commit_sha": "a" * 40}
+    old = alice.post(url, json=body).json()
+    with transaction() as conn:
+        conn.execute(
+            sa.update(snapshots)
+            .where(snapshots.c.id == old["id"])
+            .values(
+                status="ready",
+                index_version="old",
+                doc={**old, "status": "ready", "index_version": "old"},
+            )
+        )
+    service = SimpleNamespace(current_index_version=lambda *_: "new")
+    monkeypatch.setattr(routes, "load_factory", lambda _: Loaded(service, None))
+    pending = alice.post(url, json=body).json()
+    assert pending["id"] != old["id"]
+    with transaction() as conn:
+        conn.execute(
+            sa.update(snapshots)
+            .where(snapshots.c.id == pending["id"])
+            .values(status="failed", doc={**pending, "status": "failed"})
+        )
+    service.current_index_version = lambda *_: "old"
+    assert alice.post(url, json=body).json()["id"] == old["id"]
