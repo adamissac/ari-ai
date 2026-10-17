@@ -25,7 +25,8 @@ boundaries [docs/15](../docs/15_SECURITY_BOUNDARIES.md).
 | Sandbox: snapshots, diffs, local dev driver | `security_agents/sandbox/` | implemented, tested |
 | Sandbox: hardened Docker driver | `security_agents/sandbox/driver.py` | implemented; **argv + reaper tested, execution UNVERIFIED** (no Docker engine on the dev machine; needs pinned images, INFRA-005) |
 | Check templates v0 (ownership, bounds) | `security_agents/checks/library.py` | implemented, executed against the owned fixture |
-| Orchestrator state machine + gates | `security_agents/workflow/` | implemented, tested |
+| Orchestrator state machine + gates | `security_agents/workflow/` | implemented, tested; `external_pending` pauses for functional approvals |
+| Host adapter | `security_agents/host_adapter.py` | implemented: finding lifecycle via `set_finding_status`, durable `save_checkpoint` resume, Sai's functional repair + independent Verify |
 | Contracts | `security_agents/contracts/` | **local V0 adapter**, pending `shared/` (CORE-001) |
 | Code intelligence | `security_agents/intel/` | **local Python-AST adapter**, pending `code_intelligence.api` (INTEL-007) |
 | LLM gateway | `security_agents/llm/` | consumer-side port + providers, pending the backend gateway (CORE-010) |

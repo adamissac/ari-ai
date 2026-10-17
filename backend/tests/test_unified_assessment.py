@@ -180,7 +180,13 @@ def test_review_then_seven_agents_in_one_assessment(unified) -> None:
     for role in EXPECTED:
         assert role in agents, role
     assert all(r["status"] == "succeeded" and r["provider_mode"] == "fake" for r in runs)
-    assert all(r["usage"]["llm_calls"] > 0 for r in runs), "every run's model usage is recorded"
+    model_runs = [
+        r for r in runs if not str(r.get("step_key") or "").startswith("functional-verify:")
+    ]
+    assert model_runs and all(r["usage"]["llm_calls"] > 0 for r in model_runs), (
+        "every model-backed run records usage"
+    )
+    assert any(str(r.get("step_key") or "").startswith("functional-verify:") for r in runs)
     assert a["usage"]["llm_calls"] == sum(r["usage"]["llm_calls"] for r in runs), (
         "one gateway, one ledger"
     )
@@ -205,9 +211,24 @@ def test_review_then_seven_agents_in_one_assessment(unified) -> None:
     assert by_id[patches[-1]["verification"]["produced_by_run_id"]] == "verify"
     functional = next(f for f in detail["findings"] if f["kind"] == "functional")
     fun_body = h["alice"].get(f"/api/v1/findings/{functional['id']}").json()["finding"]
-    assert fun_body["status"] in {"patch_proposed", "verified"}, fun_body["status"]
+    assert fun_body["status"] == "verified", fun_body["status"]
+    fun_path = [(chg["from_status"], chg["to_status"]) for chg in fun_body["history"]]
+    assert ("validated", "patch_proposed") in fun_path
+    assert ("patch_proposed", "verified") in fun_path
     fun_patches = h["alice"].get(f"/api/v1/findings/{functional['id']}/patches").json()["items"]
     assert fun_patches, "validated functional defects must be repaired after approval"
+    fun_ver = fun_patches[-1]["verification"]
+    assert fun_ver["verdict"] == "accepted", fun_ver
+    assert by_id[fun_ver["produced_by_run_id"]] == "verify"
+    check_names = {c["name"] for c in fun_ver["checks"]}
+    assert check_names == {
+        "diff_scope_ok",
+        "no_test_tampering",
+        "original_check_now_fails_to_reproduce",
+        "functional_suite_passes",
+        "generated_tests_pass",
+    }
+    assert all(c["passed"] for c in fun_ver["checks"]), fun_ver["checks"]
     log = h["alice"].get(f"/api/v1/assessments/{asm_id}/events/log").json()["items"]
     assert any(
         "functional review" in e["message"] for e in log if e["type"] == "assessment.progress"

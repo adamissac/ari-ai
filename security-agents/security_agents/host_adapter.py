@@ -676,6 +676,7 @@ class HostOrchestrator:
             step_runner=HostStepRunner(host=host, tool_factory=build_tools, run_ids=sink.run_ids),
             approve_remediation=_approver(host),
             cancelled=lambda: _cancelled(host),
+            external_pending=lambda: _pending_remediation(host),
         )
 
     def _workdir(self, host: AssessmentHostLike) -> Path:
@@ -702,7 +703,8 @@ class HostOrchestrator:
             if decision is not None and decision.decision == "approved":
                 finding.approval = decision
                 approved.append(finding)
-        if not approved:
+        functional_approved = _has_approved_functional(host)
+        if not approved and not functional_approved:
             orchestrator._goto(AssessmentState.REPORTING, "remediation declined")
             orchestrator._finish()
             self._settle(orchestrator)
@@ -912,6 +914,36 @@ def _functional_review(host: Any) -> None:
         host.progress(f"functional review failed ({code}): {exc}"[:500])
 
 
+def _enum_value(value: Any) -> str:
+    return str(getattr(value, "value", value) or "").lower()
+
+
+def _pending_remediation(host: AssessmentHostLike) -> bool:
+    """True when a human still owes a remediation decision (security or functional)."""
+    return any(
+        "remediation" in _enum_value(getattr(a, "subject_type", ""))
+        and "pending" in _enum_value(getattr(a, "status", ""))
+        for a in host.approvals()
+    )
+
+
+def _has_approved_functional(host: AssessmentHostLike) -> bool:
+    approved = {
+        str(getattr(a, "subject_id", ""))
+        for a in host.approvals()
+        if "remediation" in _enum_value(getattr(a, "subject_type", ""))
+        and "approved" in _enum_value(getattr(a, "status", ""))
+    }
+    finder = getattr(host, "findings", None)
+    findings = finder() if callable(finder) else []
+    return any(
+        _enum_value(getattr(f, "kind", "")) == "functional"
+        and _enum_value(getattr(f, "status", "")) == "validated"
+        and str(getattr(f, "id", "")) in approved
+        for f in findings
+    )
+
+
 def _repair_functional(host: AssessmentHostLike, orchestrator: Orchestrator) -> None:
     """Run Sai's approval-gated repair for validated functional findings, then Verify."""
     try:
@@ -945,14 +977,82 @@ def _repair_functional(host: AssessmentHostLike, orchestrator: Orchestrator) -> 
         _verify_functional_patch(host, orchestrator, out)
 
 
+def _tests_passed(result: dict[str, Any] | None) -> bool:
+    if not result:
+        return False
+    return (
+        not result.get("error")
+        and not result.get("errors")
+        and not result.get("failed")
+        and not result.get("failing_tests")
+        and bool(result.get("passed"))
+    )
+
+
+def _recipe_strip_prefix(root: Path, paths: list[str]) -> str:
+    """Reviewer diffs are repository-relative (`target/...`); the intel snapshot is already
+    the recipe `target_dir`. Strip that leading directory when it is not in the snapshot."""
+    from .sandbox.workspace import safe_rel_path
+
+    for raw in paths:
+        try:
+            rel = safe_rel_path(str(raw))
+        except Exception:
+            continue
+        first, _, rest = rel.partition("/")
+        if rest and not (root / first).exists():
+            return first
+    return ""
+
+
+def _snapshot_rel(rel: str, prefix: str) -> str:
+    from .sandbox.workspace import safe_rel_path
+
+    path = safe_rel_path(rel)
+    if prefix and (path == prefix or path.startswith(prefix + "/")):
+        path = path[len(prefix) :].lstrip("/")
+    return path
+
+
+def _diff_for_snapshot(diff_text: str, prefix: str) -> str:
+    if not prefix:
+        return diff_text
+    token = prefix.strip("/") + "/"
+    rewritten: list[str] = []
+    for line in diff_text.splitlines(keepends=True):
+        if line.startswith(("diff --git ", "--- ", "+++ ")):
+            line = line.replace(f"a/{token}", "a/").replace(f"b/{token}", "b/")
+        rewritten.append(line)
+    return "".join(rewritten)
+
+
+def _write_generated_tests(root: Path, tests: list[Any], prefix: str) -> list[str]:
+    from .sandbox.workspace import resolve_under
+
+    paths: list[str] = []
+    for test in tests:
+        path = str(getattr(test, "path", "") or "")
+        content = str(getattr(test, "content", "") or "")
+        if not path or not content:
+            continue
+        rel = _snapshot_rel(path, prefix)
+        dest = resolve_under(root, rel)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(content, encoding="utf-8")
+        paths.append(rel)
+    return paths
+
+
 def _verify_functional_patch(host: AssessmentHostLike, orchestrator: Orchestrator, outcome: Any) -> None:
     """Independent Verify of a reviewer PatchCandidate (fresh checkout; not Patch's worktree).
 
-    Functional findings have no Probe template, so the original-check analogue is the
-    generated behavioral test replay. The other four Verify checks are executed.
+    Uses Sai's `functional_verification_inputs` so the recorded artifact diff, generated
+    tests, protected paths, and baseline failures are integrity-checked before any
+    verdict. Functional findings have no Probe template; the original-check analogue is
+    that the generated tests fail on the unpatched commit and pass after the diff.
     """
     from shared.base import utcnow
-    from shared.evidence import EvidenceKind, EvidenceRef
+    from shared.evidence import ArtifactKind, EvidenceKind, EvidenceRef
     from shared.findings import (
         VerificationCheck,
         VerificationCheckName,
@@ -965,8 +1065,19 @@ def _verify_functional_patch(host: AssessmentHostLike, orchestrator: Orchestrato
     from .sandbox.workspace import apply_diff, diff_paths, fresh_checkout
     from .tools.services import TestRunner
 
+    try:
+        from code_review import api as review_api
+    except ImportError:
+        host.progress("functional Verify skipped: code_review is not installed")
+        return
+
     patch = outcome.patch
-    diff_text = str(getattr(outcome, "diff_text", "") or "")
+    try:
+        inputs = review_api.functional_verification_inputs(host, patch)
+    except Exception as exc:
+        host.progress(f"functional Verify skipped: {exc}"[:500])
+        return
+    diff_text = inputs.diff_text
     if not diff_text:
         host.progress(f"functional Verify skipped: empty diff for {patch.finding_id}")
         return
@@ -985,11 +1096,13 @@ def _verify_functional_patch(host: AssessmentHostLike, orchestrator: Orchestrato
     try:
         dest = orchestrator.workdir / f"verify-functional-{patch.id}"
         root = fresh_checkout(orchestrator.intel.snapshot, dest)
-        ok, err = apply_diff(root, diff_text)
-        touched = diff_paths(diff_text)
-        plan_files = [str(p) for p in (patch.files_changed or [])]
-        out_of_scope = [p for p in touched if p not in plan_files and not p.startswith("tests/")]
-        tests_added = [str(p) for p in (patch.tests_added or [])]
+        prefix = _recipe_strip_prefix(
+            root,
+            [str(p) for p in (patch.files_changed or [])]
+            + [str(getattr(t, "path", "") or "") for t in inputs.generated_tests],
+        )
+        tests_added = _write_generated_tests(root, list(inputs.generated_tests), prefix)
+        snapshot_diff = _diff_for_snapshot(diff_text, prefix)
         ctx = orchestrator._context(
             AgentName.VERIFY,
             f"functional-verify:{patch.finding_id}",
@@ -1003,32 +1116,57 @@ def _verify_functional_patch(host: AssessmentHostLike, orchestrator: Orchestrato
             workspace_provider=lambda _ctx: root,
             test_command_args=orchestrator.config.test_command_args,
         )
-        suite = runner.run(ctx, "project_suite", [])
-        generated = runner.run(ctx, "added_tests", tests_added) if tests_added else None
-        suite_ok = bool(suite.get("passed")) and not suite.get("errors") and not suite.get("error")
-        gen_ok = generated is None or (
-            bool(generated.get("passed"))
-            and not generated.get("errors")
-            and not generated.get("failing_tests")
-            and not generated.get("error")
+        unpatched = runner.run(ctx, "added_tests", tests_added) if tests_added else None
+        ok, err = apply_diff(root, snapshot_diff)
+        touched = [_snapshot_rel(p, prefix) for p in diff_paths(diff_text)]
+        plan_files = [_snapshot_rel(str(p), prefix) for p in (patch.files_changed or [])]
+        out_of_scope = [p for p in touched if p not in plan_files and not p.startswith("tests/")]
+        patched = runner.run(ctx, "added_tests", tests_added) if tests_added and ok else None
+        suite = runner.run(ctx, "project_suite", []) if ok else {}
+        failing = set(suite.get("failing_tests") or [])
+        new_failures = sorted(failing - set(inputs.baseline_failing or []))
+        unpatched_failed = (not tests_added) or (unpatched is not None and not _tests_passed(unpatched))
+        patched_passed = (not tests_added) or _tests_passed(patched)
+        suite_ok = (
+            bool(ok)
+            and not suite.get("error")
+            and not suite.get("errors")
+            and not new_failures
+            and bool(suite.get("passed"))
         )
         scope_ok = bool(ok) and not out_of_scope
+        tamper_ok = not list(inputs.protected_paths)
         sandbox_ids = [
-            str(r.get("sandbox_run_id")) for r in (suite, generated or {}) if r and r.get("sandbox_run_id")
+            str(r.get("sandbox_run_id")) for r in (unpatched, patched, suite) if r and r.get("sandbox_run_id")
         ] or [f"sbx_functional_{patch.id}"]
+        report = host.store_json(
+            {
+                "sandbox_run_ids": sandbox_ids,
+                "unpatched": unpatched,
+                "patched": patched,
+                "suite": suite,
+                "protected_paths": list(inputs.protected_paths),
+                "baseline_failing": list(inputs.baseline_failing),
+                "out_of_scope": out_of_scope,
+            },
+            kind=ArtifactKind.test_report,
+        )
         evidence = [
             EvidenceRef(
                 kind=EvidenceKind.sandbox_run,
-                artifact_id=sandbox_ids[0],
+                artifact_id=report.id,
+                sha256=getattr(report, "sha256", None),
                 provenance="agent:verify",
             )
         ]
         checks = [
             VerificationCheck(name=VerificationCheckName.diff_scope_ok, passed=scope_ok, evidence=evidence),
-            VerificationCheck(name=VerificationCheckName.no_test_tampering, passed=True, evidence=evidence),
+            VerificationCheck(
+                name=VerificationCheckName.no_test_tampering, passed=tamper_ok, evidence=evidence
+            ),
             VerificationCheck(
                 name=VerificationCheckName.original_check_now_fails_to_reproduce,
-                passed=gen_ok,
+                passed=unpatched_failed,
                 evidence=evidence,
             ),
             VerificationCheck(
@@ -1037,11 +1175,11 @@ def _verify_functional_patch(host: AssessmentHostLike, orchestrator: Orchestrato
                 evidence=evidence,
             ),
             VerificationCheck(
-                name=VerificationCheckName.generated_tests_pass, passed=gen_ok, evidence=evidence
+                name=VerificationCheckName.generated_tests_pass, passed=patched_passed, evidence=evidence
             ),
         ]
         accepted = all(c.passed for c in checks)
-        duration = float(suite.get("duration_s") or 0) + float((generated or {}).get("duration_s") or 0)
+        duration = sum(float((r or {}).get("duration_s") or 0) for r in (unpatched, patched, suite))
         orchestrator.result.usage.sandbox_seconds += duration
         host.record_verification(
             VerificationResult(
@@ -1053,7 +1191,9 @@ def _verify_functional_patch(host: AssessmentHostLike, orchestrator: Orchestrato
                 reasons=[]
                 if accepted
                 else [
-                    f"apply={ok} err={err}; out_of_scope={out_of_scope}; suite={suite_ok}; generated={gen_ok}"
+                    f"apply={ok} err={err}; out_of_scope={out_of_scope}; protected={list(inputs.protected_paths)}; "
+                    f"unpatched_failed={unpatched_failed}; patched={patched_passed}; "
+                    f"suite={suite_ok} new_failures={new_failures}"
                 ],
                 produced_by_run_id=run_id,
                 created_at=utcnow(),
@@ -1062,12 +1202,15 @@ def _verify_functional_patch(host: AssessmentHostLike, orchestrator: Orchestrato
         if accepted:
             setter = getattr(host, "set_finding_status", None)
             if callable(setter):
-                setter(
-                    patch.finding_id,
-                    "verified",
-                    actor="agent:verify",
-                    reason="independent functional Verify accepted",
-                )
+                try:
+                    setter(
+                        patch.finding_id,
+                        "verified",
+                        actor="agent:verify",
+                        reason="independent functional Verify accepted",
+                    )
+                except Exception as exc:
+                    host.progress(f"finding status verified not applied: {str(exc)[:200]}")
         host.finish_agent_run(run_id, _host_run_status("succeeded"))
         host.progress(f"functional Verify {'accepted' if accepted else 'rejected'} for {patch.finding_id}")
     except Exception as exc:
