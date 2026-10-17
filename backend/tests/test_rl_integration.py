@@ -172,7 +172,18 @@ def test_checkpoint_pin_is_verified_before_loading(
 
     good = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
     settings_override(rl_checkpoint_path=str(checkpoint), rl_checkpoint_sha256=good)
-    assert verify_rl_checkpoint(get_settings()) == good
+    data, digest = verify_rl_checkpoint(get_settings())
+    assert digest == good
+    assert hashlib.sha256(data).hexdigest() == digest
+
+    # The verified bytes are what inference loads: swapping the file afterward
+    # cannot bypass the pin.
+    from rl_defense.api import load_policy
+
+    checkpoint.write_bytes(b"replaced")
+    runner = load_policy(checkpoint, blob=data)
+    assert runner.checkpoint_sha256[:12] == good[:12]
+    checkpoint.write_bytes(data)
 
     swapped = tmp_path / "ddqn_seed0.pt"
     shutil.copy2(checkpoint, swapped)
