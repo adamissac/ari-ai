@@ -53,8 +53,8 @@ test('Defense Lab plots only the committed, schema-validated evaluation bundle',
   const board = page.getByTestId('lab-scoreboard');
   await expect(board.getByTestId('score-compromise_rate')).toContainText('Trained AI defender');
   await expect(board.getByTestId('score-compromise_rate')).toContainText('Does nothing');
-  await expect(board.getByTestId('score-compromise_rate')).toContainText(/\d+\.\d% \[\d+\.\d%–\d+\.\d%\]/);
-  await expect(board.getByText('★ best').first()).toBeVisible();
+  await expect(board.getByTestId('score-compromise_rate')).toContainText(/\d+\.\d%\s*95% range \d+\.\d–\d+\.\d%/);
+  await expect(board.getByText('Best', { exact: true }).first()).toBeVisible();
   await expect(page.getByTestId('lab-tradeoff')).toContainText('No single measure tells the whole story');
   await expect(page.getByTestId('lab-timeline')).toBeVisible();
   await expect(page.getByTestId('lab-episode-outcome')).toContainText('simulated attacker');
