@@ -1,0 +1,28 @@
+name: containers
+on:
+  pull_request:
+    paths: ["backend/Dockerfile", ".dockerignore", "pyproject.toml", "uv.lock", "shared/**", "backend/**", "code-intelligence/**", "code-review/**", "security-agents/**", "tests/packaging/**", ".github/workflows/containers.yml"]
+  push:
+    branches: [main]
+    paths: ["backend/Dockerfile", ".dockerignore", "pyproject.toml", "uv.lock", "shared/**", "backend/**", "code-intelligence/**", "code-review/**", "security-agents/**", "tests/packaging/**", ".github/workflows/containers.yml"]
+permissions:
+  contents: read
+jobs:
+  backend-image:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Install pinned uv
+        run: python3 -m pip install --user "uv==0.11.28"
+      - name: Verify build inputs
+        run: |
+          ~/.local/bin/uv sync --frozen
+          ~/.local/bin/uv run pytest -ra tests/packaging
+      - name: Build actual control-plane image
+        run: docker build -f backend/Dockerfile -t hackatl-backend:ci .
+      - name: Non-root imports without network, credentials or a database
+        run: >-
+          docker run --rm --network none --read-only --tmpfs /tmp
+          hackatl-backend:ci python -c
+          "import os, importlib; assert os.getuid() != 0; [importlib.import_module(m) for m in ('shared', 'backend.main', 'monitoring.api', 'code_intelligence.api', 'code_review.api', 'security_agents.api')]; print('all runtime packages imported as non-root')"

@@ -29,6 +29,7 @@ from shared.intelligence import BehavioralExpectation, ExpectationStatus
 from shared.review import ChangeIntent, IntentClaim, IntentClaimStatus, IntentEvidence
 
 PROVENANCE = "agent:reviewer"
+CONFLICT_NOTE = "expectation is marked conflicting"
 _DOC_SUFFIXES = {".md", ".rst", ".txt", ".yaml", ".yml", ".json", ".toml"}
 _SUPPORTING = {SourceKind.doc, SourceKind.docstring, SourceKind.test, SourceKind.expectation}
 _CONFIDENCE = {
@@ -100,6 +101,8 @@ class CitationChecker:
             exp = self.expectations.get(c.expectation_id or "")
             if exp is None:
                 return None, c.source_kind, f"unknown expectation {c.expectation_id}"
+            if exp.status is ExpectationStatus.rejected:
+                return None, c.source_kind, f"expectation {exp.id} was rejected by a human decision"
             base = exp.sources[0]
             ev = base.model_copy(
                 update={"note": f"expectation {exp.id} ({exp.status.value}): {exp.statement}"[:500]}
@@ -109,6 +112,8 @@ class CitationChecker:
                 if exp.status is ExpectationStatus.confirmed
                 else SourceKind.code
             )
+            if exp.status is ExpectationStatus.conflicting:
+                return ev, kind, CONFLICT_NOTE
             return ev, kind, "" if kind is SourceKind.expectation else "expectation not confirmed"
         if not c.path or c.start_line is None:
             return None, c.source_kind, "file citation needs path and start_line"
@@ -182,6 +187,8 @@ def adjudicate_claims(
             rejected.append(f"claim {claim.key}: no verifiable citation; dropped")
             continue
         status = IntentClaimStatus(claim.proposed_status.value)
+        if CONFLICT_NOTE in notes:  # a human/index decision says sources disagree: never confirm
+            status = IntentClaimStatus.conflicting
         if status is IntentClaimStatus.confirmed and not kinds & _SUPPORTING:
             status = IntentClaimStatus.inferred
             notes.append("downgraded to inferred: only PR text or implementation code supports it")

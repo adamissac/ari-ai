@@ -40,3 +40,10 @@ Add dated factual entries; do not overwrite history. Never claim unexecuted test
 - Found that PRs touching only `code-review/` ran no CI tests (the `backend.yml` path filters exclude it). Added `.github/workflows/code-review.yml` (#32, merged): Ruff, format, strict mypy on `code_review`, the reviewer suite on Postgres 16, and the shared-sandbox step. GitHub Actions run 38997658460: mypy clean, 43 passed / 2 skipped, sandbox step 3 passed.
 - `code_review` now passes strict mypy (config in `code-review/pyproject.toml`).
 - Replied on issue #9: the reviewer is verified against Sarosh's real index, and I ack V0.
+
+### 2026-10-17 (session 1, round 3)
+
+- #40 merged: the reviewer honors human expectation decisions (confirmed confirms, conflicting forces `conflicting`, rejected is dropped). Acked Sarosh's #38 contracts, with two surfacing asks (decided status via `expectations()`, `verified_regressions(ref)`).
+- #41 merged: `request_functional_approvals` and `repair_approved_functional_findings`. Validated functional findings were never repaired in the unified flow. Hook requested from Srihith/Alan (issue #17 comment + message).
+- Standards alignment (docs/prompts/10): the reviewer's CWE piece is blocked on the unclaimed `standards/` catalog and shared 0.6.0 `Finding.cwe`. I'm not starting the catalog: it needs downloading external data files and licensing decisions.
+- CI on both PRs: `code-review` test job passed (GitHub Actions).
