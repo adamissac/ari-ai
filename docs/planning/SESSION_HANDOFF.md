@@ -89,3 +89,9 @@ adds an entry before ending.
   require_owner is restored. Broader suite: **115 passed, 4 skipped**. Index version 0.2.0
   requires re-indexing old 0.1.0 payloads; all fact/source keys remain immutable. Updated
   producer evidence/context fixture have 49 expectations and a 23,267 / 24,000 pack.
+
+- Sarosh merged producer (2026-10-17T02:06:06Z): PR #6 → `bcc2e23`, exact tested tree
+  `d608af5`. Final CI passed both test jobs, links and gitleaks. Final focused suite:
+  **24 passed, 1 skipped**; broader suite: **115 passed, 4 skipped**. Consumers should pull
+  main and re-index at python-ast-ts/0.2.0. Full reviewer/security pipeline proof and live
+  inference remain outstanding; see the immutable merged-producer message.
