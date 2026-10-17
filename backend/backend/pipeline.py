@@ -299,6 +299,11 @@ def run_assessment(ctx: JobContext) -> dict[str, Any]:
         if not resuming:
             host.transition(AssessmentState.SCOPE_CHECK, "checking authorized scope")
             host.require_active_scope()
+        # A repository connected through the GitHub App is fetched at the exact commit
+        # and bound for the reviewer, code intelligence and the agents (no-op otherwise).
+        from backend.checkouts import ensure_checkout
+
+        ensure_checkout(host.repo_id, a.commit_sha)
         loaded = _orchestrator()
         if loaded.obj is None:
             host.terminate(
