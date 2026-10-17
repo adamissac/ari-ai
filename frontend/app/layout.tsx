@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import localFont from 'next/font/local';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { AccountLink } from '@/components/account-link';
 import { BRAND_NAME, Wordmark } from '@/components/brand';
 import { DemoBanner } from '@/components/demo-banner';
 import { NavLink } from '@/components/nav-link';
@@ -33,11 +34,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <Link href="/" aria-label={`${BRAND_NAME} home`} className="hdr-reveal">
               <Wordmark priority />
             </Link>
-            <nav aria-label="Primary" className="flex items-center gap-1.5">
+            <nav aria-label="Primary" className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
               <NavLink href="/projects" className="hdr-reveal">Projects</NavLink>
               <NavLink href="/lab" className="hdr-reveal">Defense Lab</NavLink>
               <NavLink href="/demo" className="hdr-reveal">Demo</NavLink>
               <NavLink href="/pricing" className="hdr-cta">Pricing</NavLink>
+              <AccountLink />
             </nav>
           </div>
         </header>
