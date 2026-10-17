@@ -10,7 +10,7 @@ simulated in the browser. Spec: [docs/14](../docs/14_FRONTEND_UX_DESIGN.md).
 | Route | Backed by |
 |---|---|
 | `/` projects, create project | `GET/POST /projects` |
-| `/projects/[id]` one next step from the loaded records (connect a repo, approve a scope, run a review, open the run, or view results), then assessments, findings, repositories | `/projects/{id}/assessments`, `/findings`, `/scopes`, `/repositories` |
+| `/projects/[id]` one next step from the loaded records (connect a repo, approve a scope, run a review, open the run, or view results), then assessments (start note: enqueue only), findings, repositories | `/projects/{id}/assessments`, `/findings`, `/scopes`, `/repositories` |
 | `/projects/[id]/scopes` request, approve (backend enforces a different member), revoke | `/projects/{id}/scopes`, `/scopes/{id}/approve`, `/scopes/{id}/revoke` |
 | `/projects/[id]/assessments/[asm]` live timeline: state rail from states actually entered, selectable eight-agent view (job, recorded outcome, real tool calls, handoff), budget meter, remediation approval gate, cancel (queued vs stop-requested, findings kept), durable event log, provider-mode banner | `watchAssessment` SSE (`Last-Event-ID` resume) + `GET /assessments/{id}` + `POST .../cancel` + 5 s polling fallback while running |
 | `/projects/[id]/findings` validated / hypotheses / closed tabs | `/projects/{id}/findings` |
@@ -84,7 +84,7 @@ installed Chrome instead of Playwright's Chromium, `E2E_SKIP_BUILD=1` to reuse `
 - Lessons learned stay blocked, and the closure panel says so, when Fortify did not record a regression-test artifact.
 - GitHub links stay off when an assessment scope names more than one repository. Findings still do not carry a repo id.
 - Live-provider (`provider_mode=live`) runs have not been exercised through the UI.
-- The project journey cannot see a phase the latest assessment's event log did not record. A log longer than the 500-event page can leave a later phase unmarked.
+- The project journey cannot see a phase the latest assessment's event log did not record. When the first 500-event page is full, the UI says a later phase may be unmarked (the API still returns `next_cursor: null`, so the UI cannot page further yet).
 
 Assessment start retries keep their key after network errors. An explicit
 IDEMPOTENCY_CONFLICT offers “Prepare a new assessment action”: it sends nothing

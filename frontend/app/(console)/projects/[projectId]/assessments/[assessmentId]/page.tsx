@@ -12,7 +12,7 @@ import { Badge, Button, Empty, ErrorState, Loading, Mono, PageTitle, Panel, Stat
 import { api } from '@/lib/api';
 import { CANCEL_ASSESSMENT_NOTE, cancelAssessmentResult } from '@/lib/cancel-assessment';
 import { shortSha, usd } from '@/lib/format';
-import { assessmentPhases, JOURNEY_STATUS } from '@/lib/journey';
+import { assessmentPhases, EVENT_LOG_PAGE_NOTE, eventLogPageTruncated, JOURNEY_STATUS } from '@/lib/journey';
 import { currentPhaseSentence } from '@/lib/phase';
 import { agentRelay } from '@/lib/relay';
 import { useResource } from '@/lib/use-resource';
@@ -185,17 +185,22 @@ function AssessmentPhases({
 }) {
   if (log.status === 'loading') return <p className="mb-4 text-sm text-muted">Loading the recorded phases…</p>;
   if (log.status === 'error') return <div className="mb-4"><ErrorState error={log.error} onRetry={log.reload} context="Event log" /></div>;
-  const phases = assessmentPhases({ state, events: log.data?.items ?? [], findingStatuses });
+  const items = log.data?.items ?? [];
+  const truncated = eventLogPageTruncated(items.length);
+  const phases = assessmentPhases({ state, events: items, findingStatuses, eventLogTruncated: truncated });
   return (
-    <ol aria-label="Phases of this check" className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3" data-testid="assessment-phases">
-      {phases.map(item => (
-        <li key={item.id} className="rounded-lg border border-line p-3" data-testid={`assessment-phase-${item.id}`}>
-          <p className="text-sm font-medium">{item.label}</p>
-          <p className="text-xs text-muted">{JOURNEY_STATUS[item.status]}</p>
-          <p className="mt-1 text-xs text-muted">{item.detail}</p>
-        </li>
-      ))}
-    </ol>
+    <div className="mb-4">
+      {truncated && <p className="mb-2 text-sm text-muted" data-testid="event-log-page-note">{EVENT_LOG_PAGE_NOTE}</p>}
+      <ol aria-label="Phases of this check" className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3" data-testid="assessment-phases">
+        {phases.map(item => (
+          <li key={item.id} className="rounded-lg border border-line p-3" data-testid={`assessment-phase-${item.id}`}>
+            <p className="text-sm font-medium">{item.label}</p>
+            <p className="text-xs text-muted">{JOURNEY_STATUS[item.status]}</p>
+            <p className="mt-1 text-xs text-muted">{item.detail}</p>
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }
 
