@@ -24,3 +24,10 @@ Add dated factual entries; do not overwrite history. Never claim unexecuted test
   were the backend's TEST-ONLY scripted transports (`provider_mode=fake`, labelled in UI); no live
   provider call. Not run here: transport `test:integration` (pgserver cannot start from a path with a
   space). Reported backend observations in `20261017T040659Z-vihaan-to-all-frontend-m6.md`.
+
+- 2026-10-17T13:45Z: UX clarity on `feat/vihaan/ux-clarity` (docs/27 not yet published; assumed
+  checklist in `frontend/UX_CLARITY_CHECKLIST.md`): pillar loop, eight-agent relay with approval
+  gate, before/after fix evidence, glossary terms, plain-language Defense Lab, 375 px layouts.
+  Executed: ESLint + tsc clean; Vitest 85 passed; transport 27 passed; Playwright 12 passed on the
+  real stack after merging main `bb94f27`. Model replies scripted (labelled). Open: Patch-agent
+  `diff_sha256` vs redacted stored diff (alan) — message `20261017T134525Z-vihaan-to-all-ux-clarity.md`.
