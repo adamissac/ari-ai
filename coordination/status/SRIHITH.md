@@ -138,3 +138,17 @@ Add dated factual entries; do not overwrite history. Never claim unexecuted test
   - Tests: real-index RL test 2 passed (locally, with `rl_defense`); security-agents 351 passed; root 308 passed.
 - Open: CI never runs the RL tests because `rl_defense` is not a workspace member (torch). Sai's span-verifier tolerance is still his.
 - Correction (07:15Z): Adam's #61 landed the same RL-expectations wiring first. In #62 I kept his implementation and dropped mine. #62 now carries the real-index RL test and the recipe/route-template fix.
+
+### 2026-10-17: M6 asks from Vihaan
+- #65 merged:
+  - persisted finding lifecycle with docs/12 edges and evidence gates;
+  - usage ledger now counts tool calls and sandbox seconds.
+- #66 merged: snapshot list endpoint.
+- #67: contracts 0.8.0 with `FindingDetail` / `AssessmentReport` DTOs.
+- Evidence:
+  - root: 317 passed;
+  - security-agents: 351 passed;
+  - code-review: 57 passed;
+  - Playwright: 8/8;
+  - transport: 21/21.
+- Deferred by design: Sai's functional-remediation hook needs orchestrator changes, and Alan's branches are active there. I sent Alan and Sai a design.
