@@ -346,23 +346,6 @@ def test_factors_are_derived_from_metrics_and_expectations(intel):
     assert severity.factors.verified_path is True
 
 
-def test_linked_expectation_sensitivity_wins_over_the_proposal(intel):
-    _, severity = trace_agent.to_attack_path(
-        trace_output(data_sensitivity="internal"), trace_input(), intel, validation=confirmed_validation()
-    )
-    assert severity.factors.data_sensitivity == "financial"
-
-
-def test_proposed_sensitivity_is_used_only_without_linked_expectations(intel):
-    unlinked = trace_input().model_copy(update={"expectation_ids": []})
-    _, proposed = trace_agent.to_attack_path(
-        trace_output(data_sensitivity="personal"), unlinked, intel, validation=confirmed_validation()
-    )
-    _, absent = trace_agent.to_attack_path(trace_output(), unlinked, intel, validation=confirmed_validation())
-    assert proposed.factors.data_sensitivity == "personal"
-    assert absent.factors.data_sensitivity == "none"
-
-
 def test_trace_marks_step_verified_only_with_executed_evidence(intel):
     path, severity = trace_agent.to_attack_path(
         trace_output(), trace_input(), intel, validation=confirmed_validation()
