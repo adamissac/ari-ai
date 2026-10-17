@@ -399,6 +399,13 @@ reviewer integration suite **11 passed** after `uv sync --frozen`.
 
 PR #150 merged as `1129434`; issue #148 closed. Product fix `5015d67` was tested on combined head `91cea8c`, including Sai typography main. All executable CI checks passed (backend417, producer33, reviewer60, security455, Docker security6/reviewer2, Vitest67/browser12; skips and exact commands recorded in the PR). Final consumer migration, remaining human/account gates and M5 owner reconciliation request: `coordination/messages/20261017T134500Z-sarosh-to-all-profile-fix-merged.md`. Existing primary checkout untracked paths and other owners worktrees were preserved.
 
+### 2026-10-17T14:21Z — Ari logo integration awaiting Sai guidance
+
+Owner explicitly asked to consult Sai UI agent and place official ant logo according to its answer. Original asset is pushed unchanged on `feat/sarosh/ari-logo` at `frontend/public/brand/ari-ant.png`. Issue #165 requests surfaces, wordmark, dark/light and intro treatment; Sai was also tagged on #164. Do not invent a reply or claim the logo is integrated: UI files are still unchanged. Isolated worktree `/tmp/hackatl-sarosh-ari-logo` has installed frontend/transport dependencies. Baseline `npm run test -- --run tests/unit/brand-ui.test.tsx tests/unit/brand.test.ts`6 passed, `npm run typecheck` passed. Vihaan #156 does not overlap proposed brand/intro files; recheck active ownership before editing.
+
+### 2026-10-17T14:39Z — Actual Sai logo sign-off received
+
+Sai responded in #165 and merged message #176. PR #169 now follows it: shared header/sign-in24px, intro96px with700ms fade/scale0.94, original-byte app/icon.png; Ari AI text and header/intro contracts preserved; provisional landing mark removed. This supersedes the earlier pending-reply handoff. Source-byte checks/unit71/tsc/lint and provisional browser2 pass; rerun full browser suite on combined main before merge. Invalid dev-login HTMLpattern discovered and corrected equivalently; mobile story overflow reported to #156 without touching that owner work.
 ### 2026-10-17 — Codex primary application sprint — API-RETRY-001
 - Base37b0920c37d0460ecf988126693e79761478a888; dedicated worktree /private/tmp/omen-codex-integration, branch fix/alan/demo-api-reliability. Existing Claude/Devin checkouts untouched. Reviewed125/133/142/143/146/147 (all merged); active156/161 frontend changes avoided. No attributable active Grok branch found.
 - Confirmed before fix: two same-key concurrent API requests created distinct assessment/job IDs; same body/key on another project URL returned the first project's acceptance.
@@ -406,3 +413,11 @@ PR #150 merged as `1129434`; issue #148 closed. Product fix `5015d67` was tested
 - Executed with existing Python3.12 interpreter and local checkout packages on PYTHONPATH: pytest backend/tests/test_assessment_retries.py backend/tests/test_api_core.py -q (16 passed); pytest -q (420 passed/9 skips); pytest backend/tests -q (79 passed/5 skips). Logs /tmp/omen-{retry-before,retry-after,root-tests,backend-tests}.log. Ruff/format clean, mypy38 sources, shared.export112 files current, shared.examples current, links320 files clean.
 - Root test includes the existing API/worker M7 scripted chain. Not run here: browser, frontend build, Docker or live provider. Optional RL deps and tsc absent; live/Docker opt-ins skipped. Prior cached retry keys use the old hash and return409 after upgrade; new actions need fresh keys.
 - Next: reviewer inspect retry PR; do not auto-merge under this sprint instruction. Claude owns Probe/Docker/RoE/SEC-005/INFRA-005. Existing issue155 (stored patch hash mismatch) and the latest inconclusive live Probe/M3 run remain demo blockers for those owners.
+
+### 2026-10-17T14:42Z — Ari logo verification complete, CI next
+
+#169 follows actual Sai sign-off #165/#176. Unit71, tsc/lint/build passed; full real-stack Chrome/PostgreSQL/API/worker browser14 passed47.9s; focused screenshot2 passed13.6s. Both PNG copies match original source hash. Exact commands in PR; final screenshots `/tmp/ari-logo-proof-final`. Await CI green then normal PR merge. No other owner product code was edited except preserving incoming main through merge; shared header/intro contracts intact.
+
+### 2026-10-17T14:52Z — Ari logo merged, #165 closed
+
+PR #169 merged as `b38b6ff` after all executable checks passed on `4b48388` (unit71, browser14, build/types/lint/docs/gitleaks). Actual Sai sign-off #165/#176 applied exactly; source PNG copies remain byte-identical. Initial CI browser job failed in Next font resolution before tests; unchanged-head retry passed. Local full browser14 and final screenshot2 passed. Final immutable receipt: `coordination/messages/20261017T145240Z-sarosh-to-sai-ari-logo-merged.md`. Sai can resume reserved UI files. Existing mobile story overflow remains with #156; no deployment/live-provider proof claimed.

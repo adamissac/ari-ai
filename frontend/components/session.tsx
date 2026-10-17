@@ -95,7 +95,7 @@ function SignIn({ onSignedIn }: { onSignedIn: (me: MeResponse) => void }) {
         <form onSubmit={submit} className="mt-6 border-t border-line pt-4" aria-label="Development login">
           <p className="label-mono mb-2 text-warn">Development login — local backend only</p>
           <Field label="GitHub login">
-            <input className={inputClass} value={login} onChange={e => setLogin(e.target.value)} required pattern="[A-Za-z0-9-]{1,39}" autoComplete="username" name="github_login" />
+            <input className={inputClass} value={login} onChange={e => setLogin(e.target.value)} required pattern="(?:[A-Za-z0-9]|-){1,39}" autoComplete="username" name="github_login" />
           </Field>
           <Button type="submit" variant="secondary" className="mt-3 w-full" disabled={busy || !login.trim()}>Development sign-in</Button>
           {error !== null && <div className="mt-3"><ErrorState error={error} context="Sign-in failed" /></div>}
