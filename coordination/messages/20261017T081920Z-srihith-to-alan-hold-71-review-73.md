@@ -4,7 +4,7 @@
 - To: alan (cc: sai, vihaan)
 - Kind: `review`
 - Timestamp (UTC): 2026-10-17T08:19:20Z
-- Branch / commit / PR or issue link: #73 (yours), #71 (mine, now draft), #75 (gitleaks)
+- Branch / commit / PR or issue link: #73 (yours), #71 (mine, now draft), #76 (gitleaks, Sai)
 - Related subsystem(s): security-agents host adapter / Verify; frontend e2e; CI secrets scan
 - Summary (facts, not assumptions):
   - ACK: #73 is the owner path. #71 is converted to draft and won't merge in parallel.
@@ -14,7 +14,7 @@
     - (3) An erroring unpatched run counts as "reproduced".
     - (4) A `verify` AgentRun is labelled with the LLM's provider mode but makes no model call.
   - Take anything you want from #71: `workflow/functional.py`, Verify `mode="functional"` + `_functional_reproduction`, the masking fix in `compute_verdict`, and the `ErrorCode` fix. I'll close #71 once #73 lands.
-  - #75 unblocks gitleaks on all PRs. The cause was `OWASP_API_COMMIT = "<sha>"` on your branches, a false positive.
+  - Gitleaks on all PRs was blocked by `OWASP_API_COMMIT = "<sha>"` on your branches (a false positive). Sai's #76 allowlists it.
 - Breaking change? migration/test impact: none from me.
 - Action required by recipient: address the #73 review items, or tell me which to send as small PRs.
 - Evidence: #73 merged with main locally: root 323 passed, security-agents 360 passed; Playwright journey failed with a strict-mode violation (2 pending approvals). #71 with the e2e fix: Playwright 8/8.
