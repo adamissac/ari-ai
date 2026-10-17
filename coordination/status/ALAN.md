@@ -1,13 +1,13 @@
 # Alan — implementation status
 
 Owner: Alan (`security-agents/`, SEC-001 … SEC-013)
-Branch: `feat/alan/seven-agent-runtime`
-Current task: SEC-001 … SEC-013 implemented; integrating with the backend host
-Last remote sync: 2026-10-17T02:05Z — merged `origin/main` @ `9beccf4` (shared V0, backend, canonical payments-lite)
-API/contract dependencies: `shared` V0 (acked with 6 deltas), `backend.host` (adapter written, unverified), `code_intelligence.api` (port + local adapter), `code_review` (shares my sandbox)
-Recent PR/commit: `b0ae682` on `feat/alan/seven-agent-runtime` (PR to open)
-Blockers: none blocking; 2 open questions to Srihith (host re-entry state, indexed workspace)
-Next action: open the PR, then verify the host adapter against the real `backend.host`
+Branch: `feat/alan/host-finding-persistence`
+Current task: finding lifecycle + durable approval resume + functional Verify on the host path
+Last remote sync: 2026-10-17T08:05Z — merged `origin/main` @ `03323cd` (#69 standards follow-up, #70 Sai status)
+API/contract dependencies: `shared` V0, `backend.host` (`save_checkpoint` / `load_checkpoint` / `set_finding_status`), `code_review.api` functional helpers (#68)
+Recent PR/commit: this branch (draft PR to main)
+Blockers: live seven-agent run (issue #10, no key); Docker images (INFRA-005); PR #35 should be **closed**, not merged
+Next action: land this PR; comment on #35; Vihaan re-check finding status in the UI
 
 ## What runs today
 
@@ -86,6 +86,18 @@ Executed check results on the fixture (the precision evidence):
   refused at runtime.
 
 ## Session entries
+
+### 2026-10-17 (host finding persistence)
+
+- Branch `feat/alan/host-finding-persistence` off current main. Did not continue
+  `feat/alan/security-standards` or merge PR #35.
+- `HostSink` persists finding status/history; checkpoint save/load resumes after
+  `pipeline._ORCHESTRATORS.clear()`; functional repair + five-check Verify via Sai's
+  `functional_verification_inputs`; `tool_calls` / `sandbox_seconds` charged.
+- Tests actually run: `make check`; host-adapter 16 passed; unified + host-mode +
+  e2e-host included in 27 passed after merging main.
+- Messages: srihith (checkpoints/lifecycle), sai (functional Verify wired),
+  vihaan (status no longer stuck at hypothesis).
 
 ### 2026-10-17 (session 1)
 
