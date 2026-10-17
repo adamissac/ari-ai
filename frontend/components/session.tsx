@@ -4,6 +4,7 @@ import { ApiError, type MeResponse } from '@hackatl/frontend-transport';
 import { createContext, useCallback, useContext, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { api } from '@/lib/api';
 import { BRAND_NAME, BRAND_TAGLINE, Wordmark } from '@/components/brand';
+import { INTRO_KEY } from '@/components/intro-loader';
 import { Button, ErrorState, Field, inputClass, Loading, RollText } from '@/components/ui';
 
 type SessionState =
@@ -43,6 +44,7 @@ export function SessionGate({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     await api().logout();
+    try { window.sessionStorage.removeItem(INTRO_KEY); } catch { /* storage unavailable */ }
     setState({ status: 'signed-out' });
   }, []);
 
