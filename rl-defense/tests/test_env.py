@@ -191,3 +191,17 @@ def test_reward_components_sum_exactly_to_reward():
             seen |= {k for k, v in comp.items() if v != 0}
             done = term or trunc
     assert {"action_cost", "disruption", "adversary_progress"} <= seen
+
+
+def test_stress_scaling_only_changes_adversary_and_caps_probabilities():
+    from rl_defense.stress import scaled
+
+    base = by_name("eval_aggressive_noisy")
+    s = scaled(base, 2.5)
+    assert s.name == "eval_aggressive_noisy_x2.5" and s.split == "eval"
+    assert s.reward == base.reward and s.signals == base.signals and s.defense == base.defense
+    assert s.adversary.entry_prob == pytest.approx(min(1.0, base.adversary.entry_prob * 2.5))
+    assert all(
+        p <= 1.0 for p in (s.adversary.lateral_prob, scaled(base, 100).adversary.impact_prob)
+    )
+    assert s.config_hash() != base.config_hash()
