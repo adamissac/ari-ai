@@ -1,6 +1,6 @@
 'use client';
 
-import type { FindingDetail, FindingRecord, PatchView } from '@hackatl/frontend-transport';
+import { findingStandards, type FindingDetail, type FindingRecord, type PatchView } from '@hackatl/frontend-transport';
 import Link from 'next/link';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { ArtifactPeek, EvidenceList } from '@/components/evidence';
@@ -55,6 +55,7 @@ export default function FindingPage() {
               </Panel>
             </div>
             <div className="flex flex-col gap-4">
+              <StandardsPanel finding={d.finding} />
               {d.finding.severity && (
                 <Panel title="Severity">
                   <Badge view={SEVERITY[d.finding.severity.level]} />
@@ -87,6 +88,27 @@ export default function FindingPage() {
         </>
       )}
     </Async>
+  );
+}
+
+function StandardsPanel({ finding }: { finding: FindingDetail['finding'] }) {
+  const view = findingStandards(finding);
+  return (
+    <Panel title="Standards">
+      <div data-testid="finding-standards">
+      <p className="text-sm">{view.cvss}</p>
+      {view.labels.length === 0 ? <p className="mt-2 text-xs text-faint">No CWE, ATT&CK, or D3FEND mapping was recorded.</p> : (
+        <ul className="mt-2 flex flex-col gap-1 text-xs text-muted">
+          {view.labels.map(label => <li key={label}>{label}</li>)}
+        </ul>
+      )}
+      {view.limitations.length > 0 && (
+        <ul className="mt-2 list-disc pl-4 text-xs text-muted">
+          {view.limitations.map(item => <li key={item}>{item}</li>)}
+        </ul>
+      )}
+      </div>
+    </Panel>
   );
 }
 
