@@ -140,8 +140,16 @@ def build_pack(index: StoredIndex, request: ContextPackRequest) -> ContextPack:
         if symbol.kind.value == "module" and symbol.id not in seeds:
             continue
         source = files[symbol.path].content.splitlines()
+        metadata = [f"Symbol {symbol.id}: {symbol.qualified_name}"]
+        for exp in index.expectations:
+            if exp.subject_ref == symbol.id:
+                metadata.append(
+                    f"Expectation {exp.id} [{exp.status.value}; {exp.origin.value}; "
+                    f"confidence={exp.confidence}]: {exp.statement}"
+                )
         append(
-            "\n".join(source[symbol.start_line - 1 : symbol.end_line]), citation(index.ref, symbol)
+            "\n".join(metadata) + "\n" + "\n".join(source[symbol.start_line - 1 : symbol.end_line]),
+            citation(index.ref, symbol),
         )
         for expectation in index.expectations:
             if expectation.subject_ref != symbol.id:

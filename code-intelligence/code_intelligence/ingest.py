@@ -43,10 +43,19 @@ class Limits:
 
 
 class GitReader:
-    def __init__(self, local_path: Path, limits: Limits | None = None) -> None:
+    def __init__(
+        self, local_path: Path, limits: Limits | None = None, include_prefix: str = ""
+    ) -> None:
         self.path = local_path.resolve(strict=True)
         self.limits = limits or Limits()
         self.manifest: dict[str, str] = {}
+        if include_prefix and (
+            include_prefix.startswith("/")
+            or "\\" in include_prefix
+            or ".." in PurePosixPath(include_prefix).parts
+        ):
+            raise IntelligenceError("Index prefix must be a repository-relative directory")
+        self.prefix = include_prefix.strip("/") + "/" if include_prefix else ""
 
     def run(self, *args: str, limit: int | None = None) -> bytes:
         # Never inherit Git tracing, object replacement, alternate worktrees or caller config.
@@ -119,6 +128,8 @@ class GitReader:
                 or ".." in PurePosixPath(path).parts
             ):
                 issues.append(IndexIssue(path="<unsupported>", reason="unsafe or long path"))
+                continue
+            if self.prefix and not path.startswith(self.prefix):
                 continue
             self.manifest[path] = oid
             if kind != "blob" or mode not in {"100644", "100755"}:
