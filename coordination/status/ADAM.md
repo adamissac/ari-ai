@@ -13,7 +13,7 @@ Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablat
 ## Session entries
 
 ### 2026-10-17 — RL-001…RL-004 implemented, RL-005 adapter ready
-- **Built:** `DefenseSimEnv-v0` (Gymnasium; 47-dim observation, 22 masked actions, hidden
+- **Built:** `DefenseSimEnv-v0` (Gymnasium; 48-dim observation, 22 masked actions, hidden
   stage adversary), 3 train + 3 held-out configs, masked Double DQN, baselines, checkpoint
   manifests, protocol-17 evaluation, typed simulation-derived recommendation adapter, `rl.yml` CI.
 - **Executed:** 5 seeds × 200k steps (199,000 gradient updates each, ~72 s/seed CPU) and full

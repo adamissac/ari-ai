@@ -1,7 +1,7 @@
 {
   "env_id": "DefenseSimEnv-v0",
   "caveat": "Results are from a simulated environment and do not establish real-world effectiveness.",
-  "git_sha": "118277336a2c5b22595ac57c6122a4531e917302",
+  "git_sha": "38fb5305056d1fa65d1eadd813478e49c30fae8a",
   "eval_configs": {
     "eval_aggressive_noisy": "0f088b0baba76eef",
     "eval_shifted_severity": "8408d6aa4d5bdf4d",

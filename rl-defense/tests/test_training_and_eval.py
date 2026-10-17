@@ -81,6 +81,24 @@ def test_evaluation_protocol_outputs(trained_run):
     assert load_eval_summary(run)["env_id"] == "DefenseSimEnv-v0"
 
 
+def test_analysis_report_and_deterministic_failure_replays(trained_run):
+    from rl_defense.analysis import analyze
+
+    run, _ = trained_run
+    if not (run / "eval_episodes.jsonl").exists():
+        evaluate(run, EVAL, TRAIN, episodes=range(1000, 1004), trajectories_per_policy=1)
+    text = analyze(run, n_failures=2)
+    for section in (
+        "Where each policy loses reward",
+        "Which nodes fall",
+        "Action mix",
+        "Failure cases",
+    ):
+        assert section in text
+    cases = sorted((run / "failure_cases").glob("ddqn_*.json"))
+    assert len(cases) == 2  # replay_episode asserts the replayed return equals the recorded one
+
+
 def test_holm_correction():
     assert holm({"a": 0.01, "b": 0.04, "c": 0.03}) == {"a": True, "b": False, "c": False}
     assert holm({"a": 0.001, "b": 0.02}) == {"a": True, "b": True}
@@ -181,3 +199,18 @@ def test_baselines_only_choose_valid_actions():
             if term or trunc:
                 break
     assert NoopPolicy().act(np.zeros(OBS_DIM), np.ones(22, dtype=bool)) == NOOP_ACTION
+
+
+def test_defense_lab_bundle_exports_valid_typed_replays(trained_run):
+    from rl_defense.lab_export import DefenseLabBundle, export
+
+    run, _ = trained_run
+    if not (run / "eval_summary.json").exists():
+        evaluate(run, EVAL, TRAIN, episodes=range(1000, 1004), trajectories_per_policy=1)
+    bundle = export(run)
+    again = DefenseLabBundle.model_validate_json(bundle.model_dump_json())
+    assert again.simulation_only is True and "simulated" in again.caveat
+    assert {e.policy for e in again.episodes} == {"ddqn", "threshold_rules", "noop"}
+    step = again.episodes[0].steps[0]
+    assert len(step.nodes) == 5
+    assert abs(sum(step.reward_components.values()) - step.reward) < 1e-2
