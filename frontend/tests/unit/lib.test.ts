@@ -6,6 +6,7 @@ import { duration, githubLink, relativeTime, shortSha } from '@/lib/format';
 import { domain, metricRows, rewardTotals, sampleSize } from '@/lib/lab';
 import type { DefenseLabBundle, LabEpisode } from '@/lib/lab-types';
 import { matchExpectationStatements } from '@/lib/expectations';
+import { findingStory, repoFullNameForEvidence } from '@/lib/finding-story';
 import { projectOverview } from '@/lib/overview';
 import { SCOPE_CHECK_CATEGORIES } from '@/lib/scope';
 import { AGENTS, ASSESSMENT_STATE, FINDING_STATUS, agentRunSummary, handoffNote, providerLabel, railSteps } from '@/lib/status';
@@ -18,6 +19,28 @@ describe('finding expectations', () => {
     );
     expect(rows[0]).toEqual({ id: 'exp_known', statement: 'A customer can only read their own payment.', status: 'confirmed' });
     expect(rows[1]).toEqual({ id: 'exp_missing', statement: null, status: null });
+  });
+});
+
+describe('finding story', () => {
+  it('does not claim a fix worked without a verification verdict', () => {
+    const lines = Object.fromEntries(findingStory({
+      title: 'Another user could read a payment',
+      status: 'patch_proposed',
+      severityRationale: null,
+      validationOutcome: 'confirmed',
+      patchRationale: 'Check the payment owner.',
+      verification: null,
+    }).map(line => [line.label, line.text]));
+    expect(lines['Did it work?']).toMatch(/has not recorded a verdict/);
+    expect(lines['Why it matters']).toMatch(/No impact statement/);
+    expect(lines['What happens next?']).toMatch(/has not been independently accepted/);
+  });
+  it('uses the scope target only when that scope covers one repository', () => {
+    const repos = [{ id: 'rep_a', full_name: 'acme/a' }, { id: 'rep_b', full_name: 'acme/b' }];
+    expect(repoFullNameForEvidence(repos, [{ repo_id: 'rep_b' }])).toBe('acme/b');
+    expect(repoFullNameForEvidence(repos, [{ repo_id: 'rep_a' }, { repo_id: 'rep_b' }])).toBeUndefined();
+    expect(repoFullNameForEvidence([{ id: 'rep_a', full_name: 'acme/a' }], null)).toBe('acme/a');
   });
 });
 
