@@ -5,10 +5,10 @@ name: security-agents
 # provider tests never run here.
 on:
   pull_request:
-    paths: ["security-agents/**", "shared/**", "code-intelligence/**", "examples/payments-lite/**", "pyproject.toml", "uv.lock", ".github/workflows/security-agents.yml"]
+    paths: ["security-agents/**", "shared/**", "standards/**", "code-intelligence/**", "examples/payments-lite/**", "pyproject.toml", "uv.lock", ".github/workflows/security-agents.yml"]
   push:
     branches: [main]
-    paths: ["security-agents/**", "shared/**", "code-intelligence/**", "examples/payments-lite/**", "pyproject.toml", "uv.lock", ".github/workflows/security-agents.yml"]
+    paths: ["security-agents/**", "shared/**", "standards/**", "code-intelligence/**", "examples/payments-lite/**", "pyproject.toml", "uv.lock", ".github/workflows/security-agents.yml"]
 
 permissions:
   contents: read
