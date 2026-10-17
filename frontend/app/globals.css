@@ -13,6 +13,7 @@
   --color-line: #ecdcd7;
   --color-ink: #1c1210;
   --color-ink-2: #2b1d19;
+  --color-control: #9a857f; /* form-control borders: 3.48:1 on #fff (WCAG 1.4.11); --color-line stays decorative */
   --color-muted: #6b5752;
   --color-faint: #806b65; /* 4.99:1 on #fff, 4.59:1 on panel-2 (was #9a857f: 3.48 / 3.20) */
   --color-on-brand: #ffffff;
