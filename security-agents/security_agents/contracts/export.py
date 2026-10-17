@@ -71,7 +71,46 @@ from ..contracts import (
 if TYPE_CHECKING:  # pragma: no cover - typing only
     pass
 
-SUPPORTED_SCHEMA_VERSIONS = ("0.2.0",)
+# The adapter was written and verified against these schema versions. A newer
+# version is accepted when the models this package maps are unchanged — see
+# `MAPPED_FIELDS` and `assert_mappings_current()`, which is the check that
+# actually matters.
+VERIFIED_SCHEMA_VERSIONS = ("0.2.0", "0.4.0")
+
+# Field sets this adapter depends on, per canonical model: (module, class) ->
+# {field: required}. A change here means a mapping must be revisited, whether or
+# not SCHEMA_VERSION moved.
+MAPPED_FIELDS: dict[tuple[str, str], dict[str, bool]] = {
+    ("evidence", "EvidenceRef"): {
+        "kind": True, "path": False, "commit_sha": False, "span": False, "symbol": False,
+        "artifact_id": False, "sha256": False, "provenance": True, "note": False,
+    },
+    ("findings", "Hypothesis"): {
+        "id": True, "finding_id": True, "weakness_class": True, "rationale": True,
+        "cited_spans": True, "expectation_ids": False, "confidence": True,
+        "suggested_check_category": True,
+    },
+    ("findings", "ValidationResult"): {
+        "id": True, "hypothesis_id": True, "outcome": True, "check_template_id": True,
+        "check_template_version": True, "sandbox_run_id": True, "evidence": True,
+    },
+    ("findings", "AttackPath"): {
+        "id": True, "finding_id": True, "steps": True, "preconditions": False,
+        "impact_summary": True,
+    },
+    ("findings", "RootCause"): {
+        "id": True, "finding_id": True, "summary": True, "violated_expectation_ids": False,
+        "cause_spans": True, "cause_class": True,
+    },
+    ("findings", "RemediationPlan"): {
+        "id": True, "finding_id": True, "strategy": True, "constraints": False,
+        "files_expected": False, "test_plan": True,
+    },
+    ("findings", "VerificationResult"): {
+        "id": True, "patch_id": True, "verdict": True, "checks": True, "sandbox_run_ids": True,
+        "reasons": False, "produced_by_run_id": True, "created_at": True,
+    },
+}
 
 # `shared` expresses confidence as a number in [0, 1].
 CONFIDENCE_SCORE: dict[Confidence, float] = dict(CONFIDENCE_WEIGHT)
@@ -127,13 +166,41 @@ def schema_version() -> str:
     return str(shared_module().SCHEMA_VERSION)
 
 
-def assert_supported_schema() -> None:
-    version = schema_version()
-    if version not in SUPPORTED_SCHEMA_VERSIONS:
+def mapping_drift() -> list[str]:
+    """Differences between the canonical models and what this adapter assumes."""
+    problems: list[str] = []
+    for (module_name, class_name), expected in MAPPED_FIELDS.items():
+        try:
+            model = getattr(shared_module(module_name), class_name)
+        except AttributeError:
+            problems.append(f"{module_name}.{class_name} no longer exists")
+            continue
+        actual = {name: field.is_required() for name, field in model.model_fields.items()}
+        for field, required in expected.items():
+            if field not in actual:
+                problems.append(f"{module_name}.{class_name}.{field} was removed or renamed")
+            elif actual[field] != required:
+                became = "required" if actual[field] else "optional"
+                problems.append(f"{module_name}.{class_name}.{field} became {became}")
+        for field in actual:
+            if field not in expected:
+                problems.append(f"{module_name}.{class_name}.{field} is new (not mapped)")
+    return problems
+
+
+def assert_mappings_current() -> None:
+    """Fail loudly when a canonical model this adapter maps has changed shape."""
+    problems = mapping_drift()
+    if problems:
         raise ContractUnavailable(
-            f"shared SCHEMA_VERSION {version} is not one this adapter was written against "
-            f"({', '.join(SUPPORTED_SCHEMA_VERSIONS)}); re-check the mappings"
+            f"shared SCHEMA_VERSION {schema_version()} changed models this adapter maps: "
+            + "; ".join(problems)
         )
+
+
+def assert_supported_schema() -> None:
+    """Version check plus the structural check. The structural one decides."""
+    assert_mappings_current()
 
 
 # --------------------------------------------------------------------------- evidence

@@ -1,5 +1,6 @@
 """Code-intelligence consumer port and local adapter (pending INTEL-007)."""
 
+from .code_intelligence_adapter import CodeIntelligenceAdapter
 from .labels import answer_key, load_expectations
 from .port import (
     CodeIntel,
@@ -13,6 +14,7 @@ from .port import (
 
 __all__ = [
     "CodeIntel",
+    "CodeIntelligenceAdapter",
     "FindingsHistory",
     "LocalIntel",
     "Span",
