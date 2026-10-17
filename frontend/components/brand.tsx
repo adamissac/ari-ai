@@ -1,6 +1,8 @@
 /** Product identity. The logo is a PLACEHOLDER until the real mark is designed. */
 export const BRAND_NAME = 'Ari AI';
-export const BRAND_TAGLINE = 'Ship fast. Prove every change.';
+export const BRAND_HEADLINE = 'Every change understood.';
+export const BRAND_HEADLINE_REST = 'A fix counts only when independent tests agree.';
+export const BRAND_TAGLINE = 'A repair counts only when independent, executed tests agree.';
 
 export function LogoPlaceholder({ size = 24, className = '' }: { size?: number; className?: string }) {
   return (
