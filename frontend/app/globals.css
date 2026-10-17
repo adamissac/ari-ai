@@ -150,7 +150,52 @@ button.label-mono, a.label-mono, nav.label-mono, nav .label-mono {
 @media (prefers-reduced-motion: reduce) {
   .hero-orb, .hero-ping::after, .hero-stage .hero-in { animation: none; }
   .hero-content, .hero-orbs { transform: none; opacity: 1; }
+  .hero-full { position: relative; }
 }
+
+/* Home hero is full-screen and full-bleed, pinned while the page content scrolls up over it. */
+body { overflow-x: clip; }
+.hero-full {
+  position: sticky; top: 0; display: flex; flex-direction: column; justify-content: center;
+  min-height: 100svh; margin-inline: calc(50% - 50vw); margin-top: -1.5rem;
+}
+.hero-cover {
+  position: relative; z-index: 10; background: var(--color-bg);
+  box-shadow: 0 0 0 100vmax var(--color-bg); clip-path: inset(0 -100vmax);
+}
+
+/* Floating site header on the home hero (Kairo pattern): no bar, only the CTA at the very top;
+   the logo and tabs fade in once the visitor scrolls; dark tone over the hero, light after it;
+   hidden while the intro plays. Driven by <html data-*> attributes set in components/hero.tsx. */
+html[data-home-hero] .site-header {
+  position: fixed; inset-inline: 0; top: 0; border-color: transparent; background: transparent;
+  backdrop-filter: none; transition: opacity 800ms ease-out, translate 800ms ease-out;
+}
+html[data-home-hero][data-intro] .site-header { opacity: 0; translate: 0 -12px; pointer-events: none; }
+html[data-home-hero] .site-header .hdr-reveal { transition: opacity 600ms ease-out, translate 600ms ease-out, visibility 600ms, background-color 250ms, color 250ms; }
+html[data-home-hero]:not([data-hero-scrolled]) .site-header .hdr-reveal { opacity: 0; translate: 0 -6px; visibility: hidden; }
+html[data-home-hero]:not([data-hero-past]) .site-header { color: #fff; }
+html[data-home-hero]:not([data-hero-past]) .site-header nav a { background: rgba(255, 255, 255, 0.1); color: #fff; backdrop-filter: blur(12px); }
+html[data-home-hero]:not([data-hero-past]) .site-header nav a.hdr-cta { background: #fff; color: var(--color-ink); }
+html[data-home-hero] .site-header nav a:hover { background: var(--color-brand); color: var(--color-on-brand); }
+html[data-home-hero][data-hero-past] .site-header nav a { background: color-mix(in srgb, #fff 80%, transparent); backdrop-filter: blur(12px); box-shadow: inset 0 0 0 1px var(--color-line); }
+html[data-home-hero][data-hero-past] .site-header nav a.hdr-cta { background: var(--color-brand); color: var(--color-on-brand); box-shadow: none; }
+
+/* Intro loader (components/intro-loader.tsx): the mark draws, a counter runs, the curtain lifts. */
+.intro { position: fixed; inset: 0; z-index: 60; background: var(--color-ink); pointer-events: none; transition: translate 800ms cubic-bezier(0.76, 0, 0.24, 1); }
+.intro[data-phase="lift"] { translate: 0 -100%; }
+.intro-mark { position: absolute; top: 50%; left: 50%; width: 64px; height: 64px; translate: -50% -50%; overflow: visible; }
+.intro-mark rect, .intro-mark path {
+  fill: transparent; stroke: #fff; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 1; stroke-dashoffset: 1; animation: intro-draw 1100ms var(--ease-quad) forwards;
+}
+.intro-mark path { animation-delay: 250ms; }
+.intro-mark rect { animation: intro-draw 1100ms var(--ease-quad) forwards, intro-fill 500ms ease-out 1150ms forwards; }
+@keyframes intro-draw { to { stroke-dashoffset: 0; } }
+@keyframes intro-fill { to { fill: var(--color-brand); stroke: var(--color-brand); } }
+.intro-progress { position: absolute; bottom: 80px; left: 50%; translate: -50%; display: grid; grid-template-columns: 36px min(300px, calc(100vw - 96px)); align-items: center; column-gap: 10px; }
+.intro-pct { justify-self: end; font-family: var(--font-mono); font-size: 12px; line-height: 1; color: rgba(255, 255, 255, 0.85); font-variant-numeric: tabular-nums; }
+.intro-line { height: 2px; border-radius: 15px; background: var(--color-brand); transform-origin: 0 50%; transform: scaleX(0); }
 
 /* Scroll reveal (see components/reveal.tsx). Content is visible without JS. */
 .reveal { transition: opacity 500ms var(--ease-quad), transform 500ms var(--ease-quad); }
