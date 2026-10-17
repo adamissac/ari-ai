@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BRAND_NAME } from '@/components/brand';
+import { BRAND_NAME, LogoMark } from '@/components/brand';
 
 /** Session key: the intro plays once per sign-in (cleared on sign-out, see session.tsx). */
 export const INTRO_KEY = 'ari-intro-played';
@@ -17,7 +17,7 @@ function shouldPlay(): boolean {
 }
 
 /**
- * Full-screen intro shown on the home hero right after sign-in: the mark draws itself while a
+ * Full-screen intro shown on the home hero right after sign-in: the supplied mark fades in while a
  * percentage counts up, then the curtain lifts and `onReveal` starts the hero entrance. It never
  * intercepts input (pointer-events: none), and is skipped under reduced motion or automation.
  */
@@ -51,10 +51,7 @@ export function IntroLoader({ onReveal }: { onReveal: () => void }) {
   if (phase === 'gone') return null;
   return (
     <div aria-hidden="true" className="intro" data-phase={phase}>
-      <svg className="intro-mark" viewBox="0 0 60 60" role="presentation">
-        <rect x="2" y="2" width="56" height="56" rx="10" pathLength={1} />
-        <path d="M19 45 L30 15 L41 45 M23.5 34 H36.5" pathLength={1} />
-      </svg>
+      <LogoMark size={96} decorative className="intro-mark" />
       <div className="intro-progress">
         <span className="intro-pct">{pct}%</span>
         <span className="intro-line" style={{ transform: `scaleX(${pct / 100})` }} />

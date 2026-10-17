@@ -6,6 +6,10 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Fix the development-login HTML pattern for current browser Unicode regex rules.
+
+- Use the supplied Ari ant logo in the header, sign-in, intro and browser icon; preserve the original asset and reduced-motion behavior.
+
 - Indexing a commit says it records symbols, calls, entry points, and expectations. It does not run a security check or change the repository.
 - Creating a project says it records a name. It does not connect a repository, approve a test environment, or start a check. Monitoring is on by default.
 - The sign-in line and the projects headline no longer say every fix is already proven or that the product ships it. A fix counts only when independent tests agree.
