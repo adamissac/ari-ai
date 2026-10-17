@@ -2,11 +2,11 @@
 
 Owner: Srihith
 Branch: `feat/srihith/backend-monitoring`
-Current task: CORE-001..010, MON-001..003 (contracts V0, backend, monitoring); next: integrate Alan/Sai/Sarosh as their APIs land
-Last remote sync: 2026-10-17T01:03Z (`origin/main` a7f7c98 merged into branch; open PRs #1 #5 #6 inspected)
+Current task: integration host for all pillars. PayloadStore (Sarosh), runtime ingest and the seven-agent hosting adapter (Alan) are done. Next: single intelligence layer (Sarosh intel behind Alan's CodeIntel port), and reviewer/frontend when their branches land.
+Last remote sync: 2026-10-17 ~02:05Z (main d194132 merged into branch)
 API/contract dependencies: Alan `security_agents.api:build_orchestrator`; Sarosh `code_intelligence.api:build_service` (+ persistence port); Sai `code_review.api.review`; Adam `rl_defense` (integrated)
 Verified tests: see session log (exact command + counts)
-Recent PR/commit: PR #8 https://github.com/adamissac/hackatl-agentic-security/pull/8 ; contract ack issue #9
+Recent PR/commit: merged #8, #14, #16, #20; issues #9 (contract ack), #17 (security-agents integration)
 Blockers: none hard. The GitHub App flow is unexercised because no App credentials are configured. Docker is not installed, so the Compose file is unverified.
 Next action: ack/counter from owners on V0 contracts; Postgres persistence port for Sarosh; wire Alan's orchestrator when `security_agents.api` exists; live LLM smoke once a key is authorized.
 
@@ -67,3 +67,22 @@ Add dated factual entries; do not overwrite history. Never claim unexecuted test
 - Contracts 0.2.0: `RLExplanation` and `FeatureContribution`, migration 0002, endpoint `GET /defense-recommendations/{id}/explanation` (`14e65a2`).
 - Merged `origin/main` twice: Adam's #1 RL, #5 payments-lite and #7 CI.
 - Tests: `.venv/bin/python -m pytest -q` → 85 passed, 1 skipped (with `rl-defense` + tsc).
+
+### 2026-10-17 (session 1, later)
+- PR #14 (merged):
+  - `backend.intel_store.PostgresPayloadStore` for Sarosh's PayloadStore, plus migration 0003.
+  - Integration-tested: Sarosh's IntelligenceService indexes two real payments-lite commits through it, and a signed push yields **symbol-level** impact.
+  - `load_factory` now degrades when a subsystem factory fails to initialize.
+- PR #16 (merged): runtime signal ingestion, contracts 0.3.0.
+  - Hashed per-project ingest tokens and `/ingest/runtime/{project_id}`.
+  - Explainable per-route scoring and labeled `log_anomaly` events.
+  - Signals feed rl_defense `RouteSignal`. Migration 0004.
+- PR #20 (merged): `backend.adapters.security_agents` hosts Alan's unmodified Orchestrator in the worker, with live mirroring into AssessmentHost and real API approval. Contracts 0.4.0 (id bodies allow `_` and `-`).
+  - E2E test with Alan's FakeLLM scripts: 7 agents → COMPLETED, finding verified→hardened, Verify attributed to its own run, diff artifact, 13 SSE states.
+- Test infra fix: conftest reuses one embedded server and drops its database per session. 34 leaked servers had exhausted macOS shared memory; I stopped them and cleaned their segments.
+- Evidence:
+  - local `pytest -q` → 103 passed, 1 skipped (security_agents @ c417b77, code-intelligence, rl-defense installed);
+  - CI backend green on each PR (cross-owner tests skip in CI because those packages aren't installed).
+- Open asks:
+  - Alan (#17): rebase, resolve the payments-lite layout, adopt `shared`, add hooks.
+  - Sarosh: a `build_service()` factory option for the Postgres store, and relaxing the `pathspec` pin.
