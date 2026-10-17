@@ -65,7 +65,7 @@ test('one real assessment from scope approval to verified patch', async ({ brows
   // Honest provider labelling: scripted model turns are never presented as live.
   await expect(alice.getByTestId('provider-summary')).toContainText('Not a live-provider run');
   // review + seven agents + the reviewer's functional repair + its independent Verify
-  await expect(alice.getByTestId('provider-summary')).toContainText('Test provider (scripted) × 10');
+  await expect(alice.getByTestId('provider-summary')).toContainText('Test provider (scripted) × 9, Deterministic (no model call) × 1');
   await evidenceShot(alice, 'assessment-completed');
 
   // Security finding evidence chain, patch diff and Verify verdict from persisted records.

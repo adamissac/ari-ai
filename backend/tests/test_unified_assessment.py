@@ -179,10 +179,16 @@ def test_review_then_seven_agents_in_one_assessment(unified) -> None:
     assert agents[0] == "reviewer"
     for role in EXPECTED:
         assert role in agents, role
-    assert all(r["status"] == "succeeded" and r["provider_mode"] == "fake" for r in runs)
     model_runs = [
         r for r in runs if not str(r.get("step_key") or "").startswith("functional-verify:")
     ]
+    assert all(r["status"] == "succeeded" and r["provider_mode"] == "fake" for r in model_runs)
+    # The functional Verify makes no model call, so it is labelled as such, never as a provider.
+    deterministic = [r for r in runs if r not in model_runs]
+    assert deterministic and all(
+        r["status"] == "succeeded" and r["provider_mode"] == "none" and r["usage"]["llm_calls"] == 0
+        for r in deterministic
+    )
     assert model_runs and all(r["usage"]["llm_calls"] > 0 for r in model_runs), (
         "every model-backed run records usage"
     )

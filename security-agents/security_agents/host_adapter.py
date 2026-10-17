@@ -866,7 +866,7 @@ def _pinned_snapshot(host: Any, workdir: Path) -> SnapshotHandle | None:
         return raw
     if str(target_dir).startswith("/") or ".." in Path(str(target_dir)).parts:
         raise PlatformError(
-            ErrorCode.VALIDATION_FAILED, "build_recipe.json target_dir must stay inside the checkout"
+            ErrorCode.SCHEMA_INVALID, "build_recipe.json target_dir must stay inside the checkout"
         )
     root = workdir / "snapshot"
     copy_tree(raw.root / str(target_dir), root)
@@ -1147,15 +1147,14 @@ def _verify_functional_patch(host: AssessmentHostLike, orchestrator: Orchestrato
     if not diff_text:
         host.progress(f"functional Verify skipped: empty diff for {patch.finding_id}")
         return
-    llm = host.llm()
-    provider_mode = str(_val(llm, "provider_mode") or "unknown")
-    model_id = str(getattr(llm, "model_for", lambda _a: "unknown")("verify"))
+    # This run makes NO model call: the verdict is computed from executed tests. Label it
+    # truthfully so a live assessment never shows it as a live-provider agent turn.
     run_id = host.start_agent_run(
         _host_agent(AgentName.VERIFY),
         f"functional-verify:{patch.finding_id}",
         attempt=1,
-        provider_mode=provider_mode,
-        model_id=model_id,
+        provider_mode="none",
+        model_id="deterministic:functional-verify",
         prompt_version=verify_agent.SPEC.version,
         input_payload={"patch_id": patch.id, "finding_id": patch.finding_id, "kind": "functional"},
     )
@@ -1306,8 +1305,10 @@ def _review_without_snapshot(host: Any, intent: Any, review_api: Any) -> Any:
             project_id=a.project_id,
             repo_id=host.repo_id,
             commit_sha=a.commit_sha,
-            snapshot_id=a.snapshot_id or new_id("snp"),
-            index_version="checkout",
+            # Never invent a random id: with no indexed snapshot, use a documented synthetic id
+            # derived from the commit, labelled by index_version so nothing mistakes it for an index.
+            snapshot_id=a.snapshot_id or f"snp_unindexed-{a.commit_sha[:40]}",
+            index_version="unindexed-checkout",
         ),
         change_intent=intent or _default_intent(a),
         budget=a.budget,
