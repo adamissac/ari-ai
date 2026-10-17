@@ -32,6 +32,14 @@ that fails the shared JSON Schema → "Backend response rejected" (never rendere
 non-`live` `provider_mode` runs are labelled "Not a live-provider run"; fixture mode
 exists only behind `NEXT_PUBLIC_DEMO_FIXTURES=1` and shows a permanent DEMO DATA banner.
 
+## Plain-language layer (UX clarity)
+
+For readers with no programming, security or RL background, see
+[UX_CLARITY_CHECKLIST.md](UX_CLARITY_CHECKLIST.md): the overview's pillar loop, the eight-agent
+relay with its human approval gate, before/after fix evidence, inline glossary terms, and a
+Defense Lab that explains itself. Technical detail (orchestrator states, usage, event log,
+every RL metric and provenance) is kept, one click away. All counts come from records.
+
 ## Commands
 
 Node ^22.22.2 or ≥ 24.15 (jsdom 30 for the unit tests). From `frontend/`:
