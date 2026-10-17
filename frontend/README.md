@@ -85,7 +85,7 @@ installed Chrome instead of Playwright's Chromium, `E2E_SKIP_BUILD=1` to reuse `
 - Lessons learned stay blocked, and the closure panel says so, when Fortify did not record a regression-test artifact.
 - GitHub links stay off when an assessment scope names more than one repository. Findings still do not carry a repo id.
 - Live-provider (`provider_mode=live`) runs have not been exercised through the UI.
-- The project journey cannot see a phase the latest assessment's event log did not record. When the first 500-event page is full, the UI says a later phase may be unmarked (the API still returns `next_cursor: null`, so the UI cannot page further yet).
+- The project journey cannot see a phase the latest assessment's event log did not record. Phase views follow the events log's `next_cursor` from `after=0`; they stop after 20 pages (10,000 events) and then say a later phase may be unmarked.
 
 Assessment start retries keep their key after network errors. An explicit
 IDEMPOTENCY_CONFLICT offers “Prepare a new assessment action”: it sends nothing
