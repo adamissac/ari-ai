@@ -70,6 +70,7 @@ describe('incident closure helpers', () => {
 
   it('pins patch diffs and Fortify tests as hash-carrying artifact evidence', () => {
     const [opt] = patchEvidence('fnd_1', [view('accepted')]);
+    if (!opt) throw new Error('expected one evidence option');
     expect(opt.ref).toMatchObject({ kind: 'artifact', artifact_id: 'art_diff', sha256: 'a'.repeat(64), provenance: 'agent:patch' });
     expect(opt.regression).toBe(false);
     expect(opt.label).toContain('Verify accepted');
