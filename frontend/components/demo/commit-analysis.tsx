@@ -119,7 +119,7 @@ function Overview({ analysis, t, position, done, statuses, commit, onOpen }: { a
     { label: 'Understand', sub: 'Index the commit', status: phase(0, t.reviewStart) },
     { label: 'Review', sub: 'Check the intent', status: phase(t.reviewStart, t.agentsStart) },
     ...AGENT_ORDER.map(role => ({ label: role.label, sub: role.job, status: statuses[role.agent] })),
-    { label: 'Monitor', sub: 'Watch 24/7', status: done ? 'running' as Status : 'queued' as Status },
+    { label: 'Monitor', sub: 'Simulated policy', status: done ? 'running' as Status : 'queued' as Status },
   ];
   const fixed = commit.verdict === 'fixed';
   return (
