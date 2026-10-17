@@ -23,9 +23,8 @@ installable on its own and testable with a fake host.
 
 from __future__ import annotations
 
-import importlib
-
 import contextlib
+import importlib
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
