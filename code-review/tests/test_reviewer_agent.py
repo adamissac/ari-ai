@@ -865,3 +865,66 @@ def test_functional_verification_inputs_from_persisted_records(tmp_path: Path) -
         functional_verification_inputs(
             host, rep.patch.model_copy(update={"tests_added": ["target/tests/other.py"]})
         )
+
+
+def test_authorization_handoff_carries_catalog_validated_cwe(tmp_path: Path) -> None:
+    """The IDOR handed to Scout keeps the reviewer's CWE-639 proposal, catalog-validated."""
+    sc = payments_lite(tmp_path)
+    app = (sc.repo / "target/payments_lite/app.py").read_text()
+    doc = line_of(app, "A customer can only read their own profile, payments and refunds.")
+    handler = line_of(app, "def get_payment(")
+    script = [
+        call(
+            "write_test",
+            name="payment_owner_only",
+            content=IDOR_TEST,
+            claim_key="c_own",
+            rationale="ownership",
+        ),
+        lambda req: call("run_tests", target="generated", test_id=written_ids(req)[-1]),
+        lambda req: _submit(
+            summary="GET /payments/{id} does not check ownership.",
+            claims=[
+                {
+                    "key": "c_own",
+                    "statement": "A customer can only read their own payments.",
+                    "proposed_status": "confirmed",
+                    "citations": [
+                        {
+                            "source_kind": "docstring",
+                            "path": "target/payments_lite/app.py",
+                            "start_line": doc,
+                            "end_line": doc,
+                        }
+                    ],
+                }
+            ],
+            findings=[
+                {
+                    "title": "GET /payments/{payment_id} returns other customers' payments",
+                    "claim_key": "c_own",
+                    "test_id": written_ids(req)[-1],
+                    "weakness_class": "CWE-639",
+                    "suspected_spans": [
+                        {
+                            "source_kind": "code",
+                            "path": "target/payments_lite/app.py",
+                            "start_line": handler,
+                            "end_line": handler + 10,
+                        }
+                    ],
+                    "severity": "high",
+                    "rationale": "no require_owner call",
+                }
+            ],
+        ),
+    ]
+    host = InMemoryHost(fake(script))
+    outcome = ReviewerAgentRunner(host, RepoSource(sc.repo, subdir="target")).review(
+        make_request(host, sc)
+    )
+    [sec] = outcome.security_handoffs
+    assert sec.status is FindingStatus.hypothesis and sec.standards is not None
+    assert sec.standards.cwe is not None and sec.standards.cwe.id == "CWE-639"
+    assert any(e.kind is EvidenceKind.test_run for e in sec.standards.cwe.evidence)
+    assert not any("CWE not recorded" in r for r in outcome.rejected)
