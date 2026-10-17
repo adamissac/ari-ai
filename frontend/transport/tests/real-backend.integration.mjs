@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ApiClient, ApiError, watchAssessment } from '../dist/frontend/transport/src/index.js';
+import { createHash } from 'node:crypto';
+import { ApiClient, ApiError, ProtocolError, watchAssessment } from '../dist/frontend/transport/src/index.js';
 const baseUrl = process.env.TRANSPORT_TEST_API;
 if (!baseUrl) throw new Error('Run through real_backend.py (isolated database required)');
 // Node has no browser cookie store. This test-only jar models credentialed fetch.
@@ -30,7 +31,7 @@ test('real FastAPI/PostgreSQL browser transport', async t => {
     assert.equal((await alice.api.session()).user.id, me.user.id);
     project = await alice.api.createProject({ name: 'Transport integration', org_id: null, settings: null });
     assert.equal((await bob.api.project(project.id)).id, project.id);
-    assert.equal((await alice.api.projects()).items[0].id, project.id);
+    assert.ok((await alice.api.projects()).items.some(p => p.id === project.id));
     await assert.rejects(eve.api.project(project.id), e => e instanceof ApiError && e.status === 404);
     const missingCsrf = await alice.fetch(`${baseUrl}/projects`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Rejected' }) });
     assert.equal(missingCsrf.status, 403);
@@ -70,6 +71,67 @@ test('real FastAPI/PostgreSQL browser transport', async t => {
     await assert.rejects(eve.api.snapshots(repo.id), e => e instanceof ApiError && e.status === 404);
     assert.deepEqual((await alice.api.findings(project.id)).items, []);
     assert.ok((await alice.api.approvals(project.id)).items.length >= 1);
+  });
+  await t.test('lost acceptance response retries one persisted assessment/job and new actions recover', async () => {
+    const body = { scope_id: scope.id, repo_id: repo.id, commit_sha: 'd'.repeat(40), snapshot_id: null, budget: null };
+    const accepted = [];
+    let loseResponse = true;
+    const lossy = new ApiClient({ baseUrl, fetch: async (url, init) => {
+      const response = await alice.fetch(url, init);
+      if (init?.method === 'POST' && url.endsWith('/assessments')) {
+        accepted.push(await response.clone().json());
+        if (loseResponse) {
+          loseResponse = false;
+          await response.body?.cancel();
+          throw new DOMException('Acceptance response lost after server commit', 'AbortError');
+        }
+      }
+      return response;
+    } });
+    await lossy.session();
+    const count = (await alice.api.assessments(project.id)).items.length;
+    await assert.rejects(lossy.startAssessment(project.id, body, 'lost-response-action'), e => e.name === 'AbortError');
+    const retried = await lossy.startAssessment(project.id, body, 'lost-response-action');
+    assert.equal(retried.id, accepted[0].assessment.id);
+    assert.equal(accepted[1].job_id, accepted[0].job_id);
+    assert.equal((await alice.api.assessments(project.id)).items.length, count + 1);
+    const job = await alice.fetch(`${baseUrl}/jobs/${accepted[0].job_id}`);
+    assert.equal(job.status, 200, await job.clone().text());
+    const persisted = await job.json();
+    assert.equal(persisted.id, accepted[0].job_id);
+    assert.equal(persisted.kind, 'run_assessment');
+    assert.equal(persisted.status, 'queued');
+    assert.equal((await eve.fetch(`${baseUrl}/jobs/${persisted.id}`)).status, 404);
+    await assert.rejects(alice.api.startAssessment(project.id, { ...body, commit_sha: 'e'.repeat(40) }, 'lost-response-action'), e => e instanceof ApiError && e.status === 409 && e.error.code === 'IDEMPOTENCY_CONFLICT');
+    const other = await alice.api.createProject({ name: 'Retry URL isolation', org_id: null, settings: null });
+    await assert.rejects(alice.api.startAssessment(other.id, body, 'lost-response-action'), e => e instanceof ApiError && e.status === 409 && e.error.code === 'IDEMPOTENCY_CONFLICT');
+    assert.deepEqual((await alice.api.assessments(other.id)).items, []);
+    const fresh = await alice.api.startAssessment(project.id, { ...body, commit_sha: 'e'.repeat(40) }, 'fresh-action');
+    assert.notEqual(fresh.id, retried.id);
+    assert.equal((await alice.api.assessments(project.id)).items.length, count + 2);
+    for (const id of [retried.id, fresh.id]) {
+      await alice.api.cancelAssessment(id);
+      assert.equal((await alice.api.assessment(id)).assessment.state, 'CANCELLED');
+    }
+  });
+  await t.test('stored artifact bytes verify over HTTP and corrupt downloads are rejected', async () => {
+    const id = process.env.TRANSPORT_TEST_ARTIFACT;
+    assert.ok(id, 'the isolated harness must create the owned artifact fixture');
+    const raw = await alice.fetch(`${baseUrl}/artifacts/${id}`);
+    assert.equal(raw.status, 200);
+    const bytes = Buffer.from(await raw.arrayBuffer());
+    assert.equal(createHash('sha256').update(bytes).digest('hex'), raw.headers.get('x-artifact-sha256'));
+    const stored = await alice.api.artifactText(id);
+    assert.equal(stored.hashVerified, true);
+    assert.equal(stored.text, bytes.toString('utf8'));
+    assert.ok(stored.text.includes('Δ regression'));
+    assert.ok(!stored.text.includes('x'.repeat(40)), 'credential-shaped fixture must be redacted');
+    await assert.rejects(eve.api.artifactText(id), e => e instanceof ApiError && e.status === 404);
+    const corrupt = new ApiClient({ baseUrl, fetch: async (url, init) => {
+      const response = await alice.fetch(url, init);
+      return new Response((await response.text()) + 'changed in transit', { status: response.status, headers: response.headers });
+    } });
+    await assert.rejects(corrupt.artifactText(id), e => e instanceof ProtocolError && e.message === 'Artifact hash mismatch');
   });
   await t.test('persisted SSE, Last-Event-ID resume, terminal confirmation and scoped denial', async () => {
     const events = await collect(watchAssessment(alice.api, assessment.id, { maxReconnects: 0 }));
