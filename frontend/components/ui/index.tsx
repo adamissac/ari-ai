@@ -31,14 +31,14 @@ export function Tag({ children, tone = 'neutral' }: { children: ReactNode; tone?
 
 export function Panel({ title, actions, children, className = '', id }: { title?: ReactNode; actions?: ReactNode; children: ReactNode; className?: string; id?: string }) {
   return (
-    <section id={id} className={`rounded-xl border border-line bg-panel shadow-[0_1px_0_rgba(28,18,16,0.04)] transition-[border-color,box-shadow] duration-300 ease-[var(--ease-quad)] hover:border-brand/30 hover:shadow-[0_8px_24px_-12px_rgba(194,69,45,0.25)] ${className}`} aria-label={typeof title === 'string' ? title : undefined}>
+    <section id={id} className={`panel rounded-2xl border border-line bg-panel shadow-[0_1px_2px_rgba(28,18,16,0.04)] ${className}`} aria-label={typeof title === 'string' ? title : undefined}>
       {(title || actions) && (
         <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-2.5">
           {title && <h2 className="label-mono text-ink">{title}</h2>}
           {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
         </header>
       )}
-      <div className="p-4">{children}</div>
+      <div className="p-5">{children}</div>
     </section>
   );
 }
@@ -88,7 +88,7 @@ export function ErrorState({ error, onRetry, context }: { error: unknown; onRetr
 }
 
 export function Empty({ children }: { children: ReactNode }) {
-  return <p className="rounded-lg border border-dashed border-brand/25 bg-brand/[0.03] px-3 py-5 text-center text-sm text-muted">{children}</p>;
+  return <p className="rounded-xl border border-dashed border-line bg-panel-2/50 px-4 py-8 text-center text-sm text-muted">{children}</p>;
 }
 
 export function Loading({ label = 'Loading' }: { label?: string }) {
@@ -128,9 +128,9 @@ export const inputClass = 'rounded-md border border-line bg-bg px-2.5 py-1.5 tex
 
 export function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: string }) {
   return (
-    <div className="rounded-lg border border-line bg-panel-2 px-3 py-2.5 transition-colors duration-300 hover:border-brand/30">
+    <div className="rounded-xl border border-line bg-panel px-4 py-3.5">
       <p className="label-mono text-faint">{label}</p>
-      <p className="mt-1 text-xl font-semibold tracking-tight text-ink">{value}</p>
+      <p className="mt-2 font-display text-2xl font-semibold tracking-tight text-ink">{value}</p>
       {hint && <p className="text-xs text-muted">{hint}</p>}
     </div>
   );
@@ -151,12 +151,13 @@ export function Crumbs({ items }: { items: Array<{ href?: string; label: string 
   );
 }
 
-export function PageTitle({ title, subtitle, actions }: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode }) {
+export function PageTitle({ title, subtitle, actions, eyebrow }: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode; eyebrow?: ReactNode }) {
   return (
-    <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-[-0.03em] text-ink md:text-3xl">{title}</h1>
-        {subtitle && <div className="mt-1 text-sm text-muted">{subtitle}</div>}
+    <div className="mb-6 flex flex-wrap items-end justify-between gap-3 border-b border-line pb-5">
+      <div className="min-w-0">
+        {eyebrow && <p className="label-mono mb-2 text-brand">{eyebrow}</p>}
+        <h1 className="text-3xl font-semibold tracking-[-0.03em] text-ink md:text-4xl">{title}</h1>
+        {subtitle && <div className="mt-2 max-w-2xl text-sm text-muted">{subtitle}</div>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </div>
