@@ -20,7 +20,9 @@ export function HeroStage({ children, className = '', labelledBy, play = true }:
     const root = document.documentElement;
     root.dataset.homeHero = '';
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const ease = 0.16;
     let frame = 0;
+    let momentumY = window.scrollY;
     let pointer: { x: number; y: number } | null = null;
     const paint = () => {
       frame = 0;
@@ -39,7 +41,10 @@ export function HeroStage({ children, className = '', labelledBy, play = true }:
           line.style.setProperty('--ty', `${pointer!.y - r.top}px`);
         });
       }
-      el.style.setProperty('--scroll', Math.min(1, Math.max(0, y / height)).toFixed(3));
+      momentumY += (y - momentumY) * ease;
+      if (Math.abs(y - momentumY) < 0.5) momentumY = y;
+      el.style.setProperty('--scroll', Math.min(1, Math.max(0, momentumY / height)).toFixed(3));
+      if (momentumY !== y) frame = requestAnimationFrame(paint);
     };
     const schedule = () => { if (!frame) frame = requestAnimationFrame(paint); };
     const onMove = (e: PointerEvent) => { pointer = { x: e.clientX, y: e.clientY }; el.dataset.pointer = 'on'; schedule(); };
