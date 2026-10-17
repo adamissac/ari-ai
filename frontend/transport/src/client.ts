@@ -27,7 +27,7 @@ export class ApiClient {
     this.fetch = options.fetch ?? globalThis.fetch.bind(globalThis);
   }
   clearSession(): void { this.csrf = undefined; }
-  private async request(path: string, schema: Parameters<typeof decode>[0], options: RequestOptions = {}, body?: unknown, key?: string): Promise<unknown> {
+  private async request(path: string, schema: Parameters<typeof decode>[0], options: RequestOptions = {}, body?: unknown, key?: string, envelope?: 'assessment'): Promise<unknown> {
     const headers = new Headers({ Accept: 'application/json' });
     if (body !== undefined) {
       if (!this.csrf && path !== '/auth/dev/login') throw new ProtocolError('Load the authenticated session before a mutation');
@@ -46,6 +46,10 @@ export class ApiClient {
     if (response.status === 401) this.clearSession();
     const value = await readJson(response);
     if (!response.ok) throw new ApiError(response.status, decode<C.ErrorResponse>('ErrorResponse', value).error);
+    if (envelope) {
+      if (!value || typeof value !== 'object' || !(envelope in value)) throw new ProtocolError('Invalid assessment acceptance envelope');
+      return decode(schema, (value as Record<string, unknown>)[envelope]);
+    }
     return decode(schema, value);
   }
   async session(options?: RequestOptions): Promise<C.MeResponse> {
@@ -81,7 +85,7 @@ export class ApiClient {
     return this.request(`/scopes/${segment(id)}/approve`, 'AuthorizedScope', options, {}) as Promise<C.AuthorizedScope>;
   }
   startAssessment(projectId: string, body: C.AssessmentCreate, key: string, options?: RequestOptions): Promise<C.Assessment> {
-    return this.request(`/projects/${segment(projectId)}/assessments`, 'Assessment', options, body, key) as Promise<C.Assessment>;
+    return this.request(`/projects/${segment(projectId)}/assessments`, 'Assessment', options, body, key, 'assessment') as Promise<C.Assessment>;
   }
   assessment(id: string, options?: RequestOptions): Promise<C.AssessmentDetail> {
     return this.request(`/assessments/${segment(id)}`, 'AssessmentDetail', options) as Promise<C.AssessmentDetail>;

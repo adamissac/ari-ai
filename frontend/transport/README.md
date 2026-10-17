@@ -62,3 +62,20 @@ sequence across remounts. Throwing from the consumer does not auto-replay its UI
 side effects. Aborting cancels fetch/body/reconnect delays. Framing supports
 chunked UTF-8, CR/LF/CRLF, multiline data, comments, retry controls and discards
 incomplete EOF frames. JSON bodies default to 8 MiB and SSE frames to 1 MiB.
+
+## Real backend proof
+
+After the root Python dev workspace is installed (`uv sync --dev --all-packages`),
+run `npm run test:integration --prefix frontend/transport`. This starts real
+FastAPI HTTP with real PostgreSQL migrations in a uniquely named temporary DB on
+`.dev/pgtest`, and drops only that DB afterward. It never runs a worker or target
+code and never calls a model. Node uses a test-only cookie jar; this does not
+prove browser CORS/SameSite or any rendered page behavior.
+
+The three integration subtests cover session/CSRF/tenant denial, two-human scope
+approval and idempotent assessment creation, then cancellation with three durable
+events and resume from seq 1 to seqs 2/3. Empty terminal replay is confirmed via
+persisted assessment state. Assessment creation unwraps the existing backend
+`{assessment, job_id}` envelope and returns its canonical `Assessment`; job
+metadata is not consumed. Snapshot creation currently ignores idempotency headers
+and deduplicates by repository/commit in the backend.

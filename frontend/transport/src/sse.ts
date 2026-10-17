@@ -134,7 +134,7 @@ export async function* watchAssessment(api: ApiClient, assessmentId: string, opt
           if (event.seq <= cursor) continue;
           cursor = event.seq;
           yield event;
-          if (event.type === 'assessment.completed' || event.type === 'assessment.failed' || (event.state && terminal.has(event.state))) {
+          if (event.type === 'assessment.completed' || event.type === 'assessment.failed') {
             completed = true;
             options.onConnection?.('completed');
             return;
