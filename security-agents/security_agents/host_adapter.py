@@ -97,6 +97,7 @@ class AssessmentHostLike(Protocol):
     def finish_agent_run(self, run_id: str, status: Any, **kwargs: Any) -> Any: ...
     def record_finding(self, finding: Any, *, actor: str) -> Any: ...
     def record(self, finding_id: str, record: Any) -> None: ...
+    def record_standards(self, finding_id: str, standards: Any, *, severity: Any = None) -> None: ...
     def record_patch(self, patch: Any) -> Any: ...
     def record_verification(self, result: Any) -> Any: ...
     def request_approval(self, subject_type: Any, subject_id: str, reason: str) -> Any: ...
@@ -417,6 +418,7 @@ class HostSink(AssessmentSink):
             assessment_id=self.host.assessment_id,
             commit_sha=self.commit_sha,
             kind=findings_module.FindingKind.security,
+            standards=_finding_standards(finding),
             title=hypothesis.title[:500],
             status=findings_module.FindingStatus.hypothesis,
             subject_refs=[hypothesis.entry_point_id or ""] if hypothesis.entry_point_id else [],
@@ -446,12 +448,23 @@ class HostSink(AssessmentSink):
                 return
         elif kind == "attack_path":
             mapped = contract_export.attack_path(record)
+            if hasattr(self.host, "record_standards"):
+                self.host.record_standards(
+                    finding.finding_id,
+                    _finding_standards(finding),
+                    severity=contract_export.severity(finding.severity) if finding.severity else None,
+                )
         elif kind == "root_cause":
             mapped = contract_export.root_cause(record)
         elif kind == "remediation_plan":
             mapped = contract_export.remediation_plan(record)
         elif kind == "hardening_recommendation":
-            mapped = _hardening(record)
+            mapped = _hardening(
+                record,
+                attack=[ref for step in finding.attack_path.steps for ref in step.attack]
+                if finding.attack_path
+                else [],
+            )
         if mapped is not None:
             self.host.record(finding.finding_id, mapped)
             self.recorded.append(kind)
@@ -485,19 +498,22 @@ class HostSink(AssessmentSink):
         self.host.progress(f"finding {status}", finding_id=finding.finding_id, status=status)
 
 
-def _hardening(record: Any) -> Any:
+def _hardening(record: Any, *, attack: list[Any] | None = None) -> Any:
     import importlib
 
     try:
         findings_module = importlib.import_module("shared.findings")
     except ModuleNotFoundError:  # pragma: no cover
         return None
+
+    refs = {ref.id: ref for ref in record.d3fend}
     return findings_module.HardeningRecommendation(
         id=record.id,
         finding_id=record.finding_id,
         category=record.category,
         recommendation=record.recommendation[:500],
         effort=record.effort,
+        d3fend=list(refs.values()),
     )
 
 
@@ -969,3 +985,27 @@ def build_orchestrator(**kwargs: Any) -> HostOrchestrator:
 
 
 SPEC_TABLE = {name.value: spec.version for name, spec in ALL_SPECS.items()}
+
+
+def _finding_standards(finding: FindingRecord) -> Any:
+    from shared.standards import FindingStandards
+    from standards.catalog import catalog_versions
+
+    evidence = [
+        contract_export.evidence_ref(ref, producer="agent:scout") for ref in finding.hypothesis.cited_spans
+    ]
+    confidence = contract_export.CONFIDENCE_SCORE[finding.hypothesis.confidence]
+    return FindingStandards(
+        cwe=contract_export.weakness_ref(
+            finding.hypothesis.weakness_class, evidence=evidence, confidence=confidence
+        ),
+        attack=list({ref.id: ref for step in finding.attack_path.steps for ref in step.attack}.values()) if finding.attack_path else [],
+        cvss=finding.severity.cvss if finding.severity else None,
+        unmapped=[] if finding.attack_path and any(step.attack for step in finding.attack_path.steps) else ["ATT&CK: no reviewed check rule matched; coarse catalog chains require human review"],
+        catalog_versions=catalog_versions(),
+        classified_by="agent:security",
+        classified_at=utcnow(),
+        exploit_status="reproduced_in_sandbox"
+        if finding.validation and finding.validation.outcome.value == "confirmed"
+        else "not_tested",
+    )

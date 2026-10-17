@@ -39,6 +39,7 @@ from code_review.models import (
 )
 from code_review.ports import ExecResult, IntelligencePort, RepoSource, ReviewHost, SandboxPort
 from code_review.sandbox import LocalProcessSandbox, classify
+from code_review.standards import classify_weakness
 from code_review.tools import (
     ReviewBudget,
     ReviewerToolbox,
@@ -458,6 +459,7 @@ class ReviewerAgentRunner:
                     snapshot_id=request.snapshot_ref.snapshot_id,
                     commit_sha=ci.head_sha,
                     kind=FindingKind.functional,
+                    standards=classify_weakness(f.weakness_class, evidence, _CONF[status]),
                     title=f.title,
                     status=status,
                     severity=SeverityAssessment(
@@ -506,6 +508,7 @@ class ReviewerAgentRunner:
                     commit_sha=ci.head_sha,
                     kind=FindingKind.security,
                     title=f"[{s.weakness_class}] {s.title}"[:500],
+                    standards=classify_weakness(s.weakness_class, evidence, 0.5),
                     status=FindingStatus.hypothesis,
                     subject_refs=sorted({e.path for e in evidence if e.path})[:10],
                     evidence=evidence,

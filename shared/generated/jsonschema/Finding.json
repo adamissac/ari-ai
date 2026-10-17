@@ -834,6 +834,17 @@
     "SeverityAssessment": {
       "additionalProperties": false,
       "properties": {
+        "cvss": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CVSSAssessment"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "factors": {
           "$ref": "#/$defs/SeverityFactors"
         },

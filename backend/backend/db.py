@@ -417,6 +417,19 @@ sa.Index(
     runtime_windows.c.window_end,
 )
 
+incidents = sa.Table(
+    "incidents",
+    metadata,
+    _id(),
+    sa.Column(
+        "project_id", sa.String(80), sa.ForeignKey("projects.id"), nullable=False, index=True
+    ),
+    sa.Column("phase", sa.String(40), nullable=False),
+    sa.Column("doc", JSONB, nullable=False),
+    _created(),
+)
+
+
 idempotency_keys = sa.Table(
     "idempotency_keys",
     metadata,

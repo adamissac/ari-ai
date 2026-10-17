@@ -116,6 +116,7 @@ MODELS: tuple[type[BaseModel], ...] = (
     incident.IncidentTimelineEntry,
     incident.Incident,
     incident.IncidentCreate,
+    incident.IncidentDetail,
     incident.IncidentAction,
     # audit / events
     audit.AuditEvent,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 
 from shared.base import Confidence, RepoRelPath, Sha256Hex, ShortText, StrictModel, UtcDatetime
 from shared.evidence import EvidenceRef
@@ -25,7 +25,7 @@ from shared.ids import (
     ValidationId,
     VerificationId,
 )
-from shared.standards import FindingStandards
+from shared.standards import CVSSAssessment, DefensiveMapping, FindingStandards, StandardMapping
 
 
 class FindingKind(StrEnum):
@@ -65,6 +65,7 @@ class SeverityFactors(StrictModel):
 
 
 class SeverityAssessment(StrictModel):
+    cvss: CVSSAssessment | None = None
     level: SeverityLevel
     factors: SeverityFactors
     rationale: ShortText
@@ -110,6 +111,19 @@ class Hypothesis(StrictModel):
     confidence: Confidence
     suggested_check_category: ShortText
 
+    @field_validator("weakness_class")
+    @classmethod
+    def _known_cwe(cls, value: str) -> str:
+        from standards.catalog import cwe
+
+        try:
+            entry = cwe(value)
+        except KeyError as exc:
+            raise ValueError("unknown CWE identifier") from exc
+        if entry.status != "active":
+            raise ValueError("CWE identifier is not active")
+        return value
+
 
 class ValidationOutcome(StrEnum):
     confirmed = "confirmed"
@@ -128,6 +142,7 @@ class ValidationResult(StrictModel):
 
 
 class PathStep(StrictModel):
+    attack: list[StandardMapping] = Field(default_factory=list)
     order: int = Field(ge=1)
     description: ShortText
     symbol_ref: ShortText | None = None
@@ -216,6 +231,7 @@ class VerificationResult(StrictModel):
 
 
 class HardeningRecommendation(StrictModel):
+    d3fend: list[DefensiveMapping] = Field(default_factory=list)
     id: HardeningId
     finding_id: FindingId
     category: ShortText

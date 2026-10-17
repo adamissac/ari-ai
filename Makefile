@@ -42,3 +42,7 @@ smoke: check test
 
 stop-db:
 	uv run python -m backend.devdb --stop
+
+# Offline verification of pinned standards data (no downloads at runtime).
+standards-data:
+	uv run python -m standards.catalog --check
