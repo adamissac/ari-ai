@@ -18,6 +18,17 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-17 — Adam — assessment phase list
+- Did: The assessment page lists Understand, Review, Security test, Repair, and Verify from that check's event log. A missing log stays unmarked. Verify still needs a finding verdict. Monitor is not shown here.
+- State of the code: branch `feat/adam/assessment-phases`.
+- Commands run and results: `npm test -- --run tests/unit/assessment-phases.test.ts` 3 passed; `npm run typecheck` clean; `npm run lint` clean. Browser was not run.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): while the check is running, the phase list polls the event log every 5 seconds. It is not painted from the partial stream buffer.
+- Next steps: open the PR.
+- Warnings for the next session: do not add Monitor to this list unless the project monitoring feed was actually loaded.
+
+---
+
 ### 2026-10-17 — Adam — finding list groups
 - Did: The findings list open tab is no longer labelled "Validated and beyond." Open means not a hypothesis and not refuted, accepted, or closed.
 - State of the code: branch `feat/adam/finding-groups`.
