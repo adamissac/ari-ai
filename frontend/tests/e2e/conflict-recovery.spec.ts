@@ -59,5 +59,13 @@ test('a conflicting action requires explicit preparation before a single new sub
   expect(accepted[1]!.job_id).not.toBe(accepted[0]!.job_id);
   const list = await alice.request.get(`${api}/projects/${project.id}/assessments`);
   expect((await list.json()).items).toHaveLength(2);
-  await post(alice, `/assessments/${accepted[1]!.assessment.id}/cancel`, {});
+  // Unbound projects often hit SNAPSHOT_NOT_READY before cancel runs; terminal is fine here.
+  const meAgain = await alice.request.get(`${api}/me`);
+  const cancel = await alice.request.post(`${api}/assessments/${accepted[1]!.assessment.id}/cancel`, {
+    data: {},
+    headers: { 'X-CSRF-Token': (await meAgain.json()).csrf_token },
+  });
+  if (!cancel.ok()) {
+    expect((await cancel.json()).error?.code).toBe('CONFLICT_STATE');
+  }
 });
