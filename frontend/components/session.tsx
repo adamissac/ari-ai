@@ -2,6 +2,7 @@
 
 import { ApiError, type MeResponse } from '@hackatl/frontend-transport';
 import { createContext, useCallback, useContext, useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import Link from 'next/link';
 import { api } from '@/lib/api';
 import { BRAND_NAME, BRAND_TAGLINE, Wordmark } from '@/components/brand';
 import { INTRO_KEY } from '@/components/intro-loader';
@@ -118,6 +119,9 @@ function SignIn({ onSignedIn }: { onSignedIn: (me: MeResponse) => void }) {
       <a href="/api/v1/auth/github/login" className="group label-mono mt-6 flex h-10 w-full items-center justify-center rounded-md bg-brand px-3 text-on-brand shadow-[0_6px_16px_-8px_rgba(194,69,45,0.6)] transition-colors duration-[250ms] hover:bg-brand-deep">
         <RollText>Continue with GitHub</RollText>
       </a>
+      <p className="mt-3 text-center text-xs text-muted">
+        Have an access code? <Link href="/access" className="text-brand underline-offset-2 hover:underline" data-testid="access-link">Sign in with it</Link>
+      </p>
       {devLoginVisible && (
         <form onSubmit={submit} className="mt-6 border-t border-line pt-4" aria-label="Development login">
           <p className="label-mono mb-2 text-warn">Development login — local backend only</p>
