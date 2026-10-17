@@ -34,3 +34,9 @@ Add dated factual entries; do not overwrite history. Never claim unexecuted test
 - PR #22 merged by a teammate; follow-ups merged: #27 (no leaked test postmasters, team acks), #28 (authorization findings → Scout hypotheses with test evidence), #30 (SandboxPort over Alan's shared drivers).
 - New: `test_intel_integration.py`: the reviewer on the real code-intelligence index of payments-lite (49 extracted expectations, all `ambiguous`). An index-only claim stays `inferred`; with docstring corroboration it is `confirmed`; the validated finding links to the index expectation id.
 - 9 stale temp postmasters from earlier test runs are still running. Stopping them was blocked by this environment's process-permission policy, and they are reported in the team message.
+
+### 2026-10-17 (session 1, CI)
+
+- Found that PRs touching only `code-review/` ran no CI tests (the `backend.yml` path filters exclude it). Added `.github/workflows/code-review.yml` (#32, merged): Ruff, format, strict mypy on `code_review`, the reviewer suite on Postgres 16, and the shared-sandbox step. GitHub Actions run 38997658460: mypy clean, 43 passed / 2 skipped, sandbox step 3 passed.
+- `code_review` now passes strict mypy (config in `code-review/pyproject.toml`).
+- Replied on issue #9: the reviewer is verified against Sarosh's real index, and I ack V0.
