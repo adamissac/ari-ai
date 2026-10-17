@@ -57,21 +57,27 @@ class _GreedyPolicy:
         pass
 
     def act(self, obs: np.ndarray, mask: np.ndarray) -> int:
-        q = self.agent.q_values(obs)
-        q[~mask] = -np.inf
-        return int(np.argmax(q))
+        return self.agent.greedy_action(obs, mask)
 
 
-def selection_score(agent: DDQNAgent, configs: list[ScenarioConfig]) -> float:
-    """Mean greedy return on TRAINING configs at CKPT_SELECT_FACTORS (never eval configs)."""
+def selection_score(
+    agent: DDQNAgent, configs: list[ScenarioConfig], fd_penalty: float = 0.0
+) -> float:
+    """Mean greedy return on TRAINING configs at CKPT_SELECT_FACTORS (never eval configs),
+    minus ``fd_penalty`` × mean false-disruption rate in percentage points (0 = return only).
+    Episodes without disruptive actions count as 0% false disruption."""
     assert all(c.split == "train" for c in configs)
     policy = _GreedyPolicy(agent)
-    returns = []
+    returns, fds = [], []
     for base in configs:
         for factor in CKPT_SELECT_FACTORS:
             env = DefenseSimEnv(base if factor == 1.0 else scaled(base, factor))
-            returns += [run_episode(env, policy, s)[0]["return"] for s in CKPT_SELECT_SEEDS]
-    return float(np.mean(returns))
+            for s in CKPT_SELECT_SEEDS:
+                row = run_episode(env, policy, s)[0]
+                returns.append(row["return"])
+                fd = row["false_disruption_rate"]
+                fds.append(0.0 if fd != fd else fd)  # NaN -> 0
+    return float(np.mean(returns)) - fd_penalty * 100.0 * float(np.mean(fds))
 
 
 def train(
@@ -84,6 +90,7 @@ def train(
     adversary_scale: tuple[float, float] | None = None,
     select_every: int | None = None,
     select_start: int = 0,
+    select_fd_penalty: float = 0.0,
 ) -> dict:
     """Train one seed. ``select_every`` enables in-training checkpoint selection: every
     ``select_every`` steps after ``select_start`` the greedy policy is scored on the
@@ -110,7 +117,12 @@ def train(
         factors.append(factor)
         return DefenseSimEnv(scaled(configs[base], factor))
 
-    agent = DDQNAgent(OBS_DIM, N_ACTIONS, cfg, seed=seed)
+    # disruption_margin is a deployment-time rule: training behaviour and in-training
+    # checkpoint selection use the plain masked argmax; the margin is saved with the
+    # checkpoint and applies to greedy evaluation and recommendations.
+    agent = DDQNAgent(
+        OBS_DIM, N_ACTIONS, cfg.model_copy(update={"disruption_margin": 0.0}), seed=seed
+    )
     buffer = ReplayBuffer(cfg.buffer_size, OBS_DIM, N_ACTIONS, seed=seed)
     nstep = NStepAccumulator(cfg.n_step, cfg.gamma) if cfg.n_step > 1 else None
     initial_params = [p.detach().clone() for p in agent.online.parameters()]
@@ -157,7 +169,7 @@ def train(
             ep_return, ep_len = 0.0, 0
 
         if select_every and step >= select_start and (step % select_every == 0 or step == steps):
-            score = selection_score(agent, configs)
+            score = selection_score(agent, configs, select_fd_penalty)
             selection_history.append({"step": step, "score": score})
             if best is None or score > best[0]:
                 best = (score, step, copy.deepcopy(agent.state_dict()))
@@ -179,6 +191,7 @@ def train(
     log.close()
 
     final_step_updates = agent.updates
+    agent.config = cfg  # restore the deployment margin before saving
     if best is not None:
         agent.load_state_dict(best[2])
     param_change = float(
@@ -201,6 +214,7 @@ def train(
                 "start": select_start,
                 "episode_seeds": [CKPT_SELECT_SEEDS.start, CKPT_SELECT_SEEDS.stop - 1],
                 "factors": list(CKPT_SELECT_FACTORS),
+                "fd_penalty": select_fd_penalty,
                 "selected_step": best[1],
                 "selected_score": best[0],
                 "updates_at_selected_step": agent.updates,
@@ -246,6 +260,12 @@ def main() -> None:
     )
     ap.add_argument("--select-every", type=int, help="in-training checkpoint selection interval")
     ap.add_argument("--select-start", type=int, default=0)
+    ap.add_argument(
+        "--select-fd-penalty",
+        type=float,
+        default=0.0,
+        help="checkpoint selection: subtract this × false-disruption percentage points",
+    )
     args = ap.parse_args()
     configs = load_configs(args.config or default_config_paths("train"))
     ddqn = DDQNConfig(**yaml.safe_load(args.ddqn_config.read_text())) if args.ddqn_config else None
@@ -260,6 +280,7 @@ def main() -> None:
         scale,
         select_every=args.select_every,
         select_start=args.select_start,
+        select_fd_penalty=args.select_fd_penalty,
     )
     print(
         json.dumps(
