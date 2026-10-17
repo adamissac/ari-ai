@@ -1,13 +1,13 @@
 # Alan — implementation status
 
 Owner: Alan (`security-agents/`, SEC-001 … SEC-013)
-Branch: `feat/alan/seven-agent-runtime`
-Current task: SEC-001 … SEC-013 implemented; integrating with the backend host
-Last remote sync: 2026-10-17T02:05Z — merged `origin/main` @ `9beccf4` (shared V0, backend, canonical payments-lite)
-API/contract dependencies: `shared` V0 (acked with 6 deltas), `backend.host` (adapter written, unverified), `code_intelligence.api` (port + local adapter), `code_review` (shares my sandbox)
-Recent PR/commit: `b0ae682` on `feat/alan/seven-agent-runtime` (PR to open)
-Blockers: none blocking; 2 open questions to Srihith (host re-entry state, indexed workspace)
-Next action: open the PR, then verify the host adapter against the real `backend.host`
+Branch: `feat/alan/host-finding-persistence`
+Current task: finding lifecycle + durable approval resume + functional Verify on the host path
+Last remote sync: 2026-10-17T08:05Z — merged `origin/main` @ `03323cd` (#69 standards follow-up, #70 Sai status)
+API/contract dependencies: `shared` V0, `backend.host` (`save_checkpoint` / `load_checkpoint` / `set_finding_status`), `code_review.api` functional helpers (#68)
+Recent PR/commit: https://github.com/adamissac/hackatl-agentic-security/pull/73 (`feat/alan/host-finding-persistence`)
+Blockers: live seven-agent run (issue #10, no key); Docker images (INFRA-005); PR #35 should be **closed**, not merged
+Next action: land this PR; comment on #35; Vihaan re-check finding status in the UI
 
 ## What runs today
 
@@ -87,6 +87,26 @@ Executed check results on the fixture (the precision evidence):
 
 ## Session entries
 
+### 2026-10-17 (Srihith follow-up c75a56e on #73)
+
+- Ported `_report_or_wait` + unconditional `external_pending` pause from
+  `feat/srihith/functional-remediation` @ `c75a56e`. Did **not** merge #71.
+- Complete-run functional reproduction was already `_functional_reproduced`
+  on this branch; added hang/`exit_code=None` to the guards test.
+- Message: `20261017T083214Z-alan-to-srihith-ported-c75a56e-pause-gates.md`.
+
+### 2026-10-17 (host finding persistence)
+
+- Branch `feat/alan/host-finding-persistence` off current main. Did not continue
+  `feat/alan/security-standards` or merge PR #35.
+- `HostSink` persists finding status/history; checkpoint save/load resumes after
+  `pipeline._ORCHESTRATORS.clear()`; functional repair + five-check Verify via Sai's
+  `functional_verification_inputs`; `tool_calls` / `sandbox_seconds` charged.
+- Tests actually run: `make check`; host-adapter 16 passed; unified + host-mode +
+  e2e-host included in 27 passed after merging main.
+- Messages: srihith (checkpoints/lifecycle), sai (functional Verify wired),
+  vihaan (status no longer stuck at hypothesis).
+
 ### 2026-10-17 (session 1)
 
 - Read `MASTER_BUILD_SPEC.md`, `AGENTS.md`, `CLAUDE.md`, the coordination files,
@@ -120,3 +140,10 @@ Executed check results on the fixture (the precision evidence):
 - Isolated canonical CVSS3.1, OWASP API2023 and NIST800-115 package additions onto feat/alan/recovered-catalogs, excluding the duplicate legacy security-agents standards tree and schema projection.
 - Standards/runtime standards source tests passed 300 offline; narrow canonical tests will be rerun here. Earlier recovered runtime passed 524 tests (11 optional skips), root 358 (6 optional skips), browser 8. These counts belong to PR #35 and are not claims about this new branch.
 - Exact .gitleaksignore fingerprint is a public OWASP source commit, not a credential; full-history scan clean and synthetic credential detection remains enforced.
+
+### 2026-10-17 — Codex host-recovery hardening
+- Continued PR #73 after isolating unique catalog recovery in PR #74. Preserved fail-closed scope/budget/human-approver mapping from #35; resume reloads authorization and rebinds the current worker host.
+- Functional Verify requires actual failed assertions on every generated test file and recorded sandbox runs; errors, timeout, empty tests, skipped generated tests, source overwrite and test overwrite are rejected. Added 19 negative/authorization regressions (36 focused tests passed).
+- Adopted PR #71's two-approval browser harness without merging its competing host implementation. Browser e2e: 8 passed (23.1s).
+- Full root suite: 324 passed, 6 optional skips. Security suite: 379 passed, 11 opt-in/optional skips. Ruff/format/mypy pass. No new live-provider or Docker proof.
+- PR #35 remains recoverable and will be superseded by #73/#74; no work discarded. Merge these only after current-head CI passes.

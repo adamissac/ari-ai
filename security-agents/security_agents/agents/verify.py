@@ -340,7 +340,9 @@ def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], l
             add(VerificationCheckName.GENERATED_TESTS_PASS, False, "the added tests were not run")
         else:
             last = added_runs[-1]
-            failing = set(last.get("failing_tests") or [])
+            # Verify never changes code between runs, so an added test failing in ANY run
+            # after the patch was applied is a real failure; a later run cannot mask it.
+            failing = {f for r in added_runs for f in (r.get("failing_tests") or [])}
             offending = sorted(f for f in failing if any(f.startswith(t) for t in ev.tests_added))
             artifact = str(last.get("sandbox_run_id") or "")
             if offending:

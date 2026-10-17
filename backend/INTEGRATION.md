@@ -43,7 +43,14 @@ class Orchestrator(Protocol):
   `finish_agent_run` so per-run cost and tool history show in the UI.
 * The worker keeps one orchestrator object per process and factory, so an in-memory
   pause survives a resume handled by the same worker. Durable resume (other worker,
-  restart) must rebuild from host records (`host.findings()`, `host.approvals()`).
+  restart) uses `host.save_checkpoint(namespace, payload)` /
+  `host.load_checkpoint(namespace)` (hashed JSON artifact + assessment-scoped
+  pointer). Rebuild from that payload plus `host.findings()` / `host.approvals()`.
+  A missing checkpoint in `AWAITING_APPROVAL` is `CONFLICT_STATE`.
+* Finding lifecycle: `host.set_finding_status(finding_id, status, actor=, reason=)`
+  appends a `StatusChange` along the docs/12 edges and refuses unbacked claims
+  (validated needs a confirmed ValidationResult, patch_proposed a PatchCandidate,
+  verified an accepted VerificationResult). Idempotent for the same status.
 * `run` is called with the assessment in `SCOPE_CHECK` after the backend scope gate passes.
   It is called again in `AWAITING_APPROVAL` after a human approves or declines a remediation
   approval. Return either in a terminal state or in `AWAITING_APPROVAL`. Anything else is
@@ -69,6 +76,14 @@ class Orchestrator(Protocol):
   Verification is rejected unless it was produced by a `verify` AgentRun that is not the
   patch-producing run.
 * Approvals: `host.request_approval(ApprovalSubject.remediation, finding_id, reason)`.
+  Functional defects use the same subject type: after `FUNCTIONAL_REVIEW` the adapter
+  calls `code_review.api.request_functional_approvals`. `Orchestrator(external_pending=...)`
+  pauses in `AWAITING_APPROVAL` when those approvals are pending even if Scout produced
+  no hypotheses. On resume, `repair_approved_functional_findings` plus an independent
+  functional Verify (`code_review.api.functional_verification_inputs`) run next to
+  security Patch/Verify. The functional Verify verdict is computed from executed tests
+  (generated tests fail unpatched and pass patched; suite has no new failures;
+  `protected_paths` empty; diff applies), not from a model opinion.
 * `host.store_text / store_json` return an `ArtifactRef` for `EvidenceRef(artifact_id, sha256)`.
 * Errors: raise or let propagate `HostError` / `LLMError`. The worker maps them to
   `FAILED` / `CANCELLED` / `BUDGET_EXHAUSTED`, keeping the error code.
