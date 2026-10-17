@@ -60,14 +60,22 @@ export function SessionGate({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const controller = new AbortController();
-    api().session({ signal: controller.signal }).then(
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    // The API restarts briefly on every deploy: retry a few times before showing an error.
+    const attempt = (left: number) => api().session({ signal: controller.signal }).then(
       me => setState({ status: 'signed-in', me }),
       (error: unknown) => {
         if (controller.signal.aborted) return;
-        setState(error instanceof ApiError && error.status === 401 ? { status: 'signed-out' } : { status: 'error', error });
+        if (error instanceof ApiError && error.status === 401) return setState({ status: 'signed-out' });
+        if (left > 0 && (!(error instanceof ApiError) || error.status >= 500)) {
+          timer = setTimeout(() => void attempt(left - 1), 2000);
+          return;
+        }
+        setState({ status: 'error', error });
       },
     );
-    return () => controller.abort();
+    void attempt(4);
+    return () => { controller.abort(); if (timer) clearTimeout(timer); };
   }, [nonce]);
 
   const signOut = useCallback(async () => {

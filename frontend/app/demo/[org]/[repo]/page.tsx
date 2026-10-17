@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Avatar, CiBadge, DemoBar, VerdictChip } from '@/components/demo/ui';
 import { Empty } from '@/components/ui';
-import { DEMO_ORGS, findRepo, relativeTime, type DemoCommit } from '@/lib/demo/data';
+import { CONNECTED_DAYS_AGO, DEMO_ORGS, findRepo, relativeTime, type DemoCommit } from '@/lib/demo/data';
 import { useDemoGate } from '@/lib/demo/gate';
 
 /** Groups commits under "Today", "Yesterday" and "Earlier", like a commit history page. */
@@ -31,8 +31,8 @@ export default function DemoCommitsPage() {
       <DemoBar crumbs={[{ href: '/demo', label: 'Organizations' }, { href: `/demo/${org}`, label: orgName }, { label: repo.name }]} user={session.user} onSignOut={session.signOut} />
       <header className="demo-ink mb-6 rounded-3xl px-6 py-7 md:px-9">
         <p className="label-mono text-white/60">{org} / {repo.name}</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">Recent commits</h1>
-        <p className="mt-1.5 max-w-2xl text-sm text-white/70">Every push to <span className="font-mono">{repo.defaultBranch}</span> and open branches is reviewed, tested by the security agents and watched afterwards. Open a commit to see how it was analyzed.</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight">Commits since {orgName} connected Ari</h1>
+        <p className="mt-1.5 max-w-2xl text-sm text-white/70">Connected {CONNECTED_DAYS_AGO} days ago. Every push since then was reviewed and checked by the seven agents. Open a commit to replay it.</p>
         <dl className="mt-6 grid max-w-2xl grid-cols-3 gap-4">
           <div><dt className="label-mono text-white/50">Commits analyzed</dt><dd className="mt-1 font-display text-2xl font-semibold">{repo.commits.length}</dd></div>
           <div><dt className="label-mono text-white/50">Issues fixed</dt><dd className="mt-1 font-display text-2xl font-semibold">{caught}</dd></div>
