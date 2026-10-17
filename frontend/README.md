@@ -31,7 +31,7 @@ exists only behind `NEXT_PUBLIC_DEMO_FIXTURES=1` and shows a permanent DEMO DATA
 
 ## Commands
 
-Node ≥ 22.12. From `frontend/`:
+Node ^22.22.2 or ≥ 24.15 (jsdom 30 for the unit tests). From `frontend/`:
 
 ```sh
 npm ci --prefix transport && npm run build --prefix transport   # after every contract regeneration
