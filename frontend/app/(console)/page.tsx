@@ -5,6 +5,7 @@ import { useState, type FormEvent } from 'react';
 import { api } from '@/lib/api';
 import { useResource } from '@/lib/use-resource';
 import { BRAND_HEADLINE, BRAND_HEADLINE_REST, BRAND_NAME } from '@/components/brand';
+import { CREATE_PROJECT_NOTE } from '@/lib/create-project';
 import { Reveal } from '@/components/reveal';
 import { Async, Button, Empty, ErrorState, Field, inputClass, PageTitle, Panel, Time } from '@/components/ui';
 
@@ -79,6 +80,7 @@ export default function ProjectsPage() {
           </Async>
         </Panel>
         <Panel title="New project">
+          <p className="mb-3 text-sm text-muted" data-testid="create-project-note">{CREATE_PROJECT_NOTE}</p>
           <form onSubmit={create} className="flex flex-col gap-3">
             <Field label="Name"><input className={inputClass} value={name} onChange={e => setName(e.target.value)} required maxLength={200} name="project_name" /></Field>
             <Button type="submit" variant="primary" disabled={busy || !name.trim()}>Create project</Button>
