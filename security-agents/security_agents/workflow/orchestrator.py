@@ -222,6 +222,7 @@ class OrchestratorConfig:
     org_member_count: int = 1
     protected_tests: list[str] = field(default_factory=list)
     test_command_args: tuple[str, ...] = ("-q", "tests")
+    probe_check_transport: str = "inprocess"
 
 
 class Orchestrator:
@@ -344,6 +345,32 @@ class Orchestrator:
             roe=self.roe,
         )
 
+    def _probe_transport_problem(self) -> str | None:
+        from ..checks.library import TRANSPORTS
+
+        transport = self.config.probe_check_transport
+        if transport not in TRANSPORTS:
+            return f"unknown probe check transport {transport!r}"
+        if transport == "inprocess":
+            return None
+        image = getattr(self.driver, "image", "")
+        target_image = getattr(self.driver, "target_image", "")
+        if getattr(self.driver, "name", "") != "docker":
+            return "the http probe transport requires the Docker sandbox driver"
+        if not target_image or target_image == image:
+            return "the http probe transport requires a dedicated target image (SANDBOX_TARGET_IMAGE)"
+        if self.roe is None:
+            return "the http probe transport requires issued rules of engagement"
+        self._audit(
+            "probe.transport",
+            "assessment",
+            self.config.assessment_id,
+            transport=transport,
+            target_image=target_image,
+            target_id=self.config.target_id,
+        )
+        return None
+
     def _issue_roe(self) -> Any:
         from ..standards.roe import RoeError, build_roe
 
@@ -455,6 +482,9 @@ class Orchestrator:
         if not decision.allowed:
             return self._fail(ErrorCode.SCOPE_DENIED, f"{decision.reason_code} {decision.detail}".strip())
         self.roe = self._issue_roe()
+        transport_problem = self._probe_transport_problem()
+        if transport_problem:
+            return self._fail(ErrorCode.SANDBOX_START_FAILED, transport_problem)
 
         # ---- INDEXING (code intelligence is an upstream subsystem)
         self._goto(AssessmentState.INDEXING, self.intel.provenance().get("status", ""))
@@ -682,6 +712,7 @@ class Orchestrator:
                     library=self.library,
                     workspace_provider=lambda _ctx: self.intel.snapshot.root,
                     recipe_provider=recipe_from_snapshot(self.intel),
+                    transport=self.config.probe_check_transport,
                 ),
             }
             ctx = self._context(AgentName.PROBE, f"validation:{index}", services=services)

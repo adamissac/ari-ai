@@ -47,13 +47,25 @@ export function ProjectShell({ children }: { children: ReactNode }) {
   return (
     <ProjectContext.Provider value={{ project: project.data, repos: repos.data.items, reloadRepos: repos.reload }}>
       <Crumbs items={[{ href: '/projects', label: 'Projects' }, { href: base, label: project.data.name }]} />
-      <nav aria-label="Project" className="mb-6 flex flex-wrap gap-1 rounded-xl border border-line bg-panel-2 p-1">
+      <header className="hero-ink project-head mb-2 rounded-2xl px-6 py-7 md:px-8">
+        <p className="label-mono text-white/60">Project</p>
+        <p className="display mt-2 text-3xl font-semibold md:text-4xl" data-testid="project-title">{project.data.name}</p>
+        <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-white/70">
+          {repos.data.items.length === 0
+            ? <span>No repository connected</span>
+            : repos.data.items.map(r => <span key={r.id} className="font-mono text-xs text-white/85">{r.full_name}<span className="text-white/50"> · {r.default_branch}</span></span>)}
+          <span className="flex items-center gap-1.5">
+            <span aria-hidden="true" className={project.data.settings.monitoring_policy.enabled ? 'hero-ping' : 'inline-block h-1.5 w-1.5 rounded-full bg-white/40'} />
+            Monitoring {project.data.settings.monitoring_policy.enabled ? 'on' : 'off'}
+          </span>
+        </p>
+      </header>
+      <nav aria-label="Project" className="project-tabs mb-8">
         {TABS.map(t => {
           const href = base + t.href;
           const active = t.href === '' ? pathname === base : pathname.startsWith(href);
           return (
-            <Link key={t.label} href={href} aria-current={active ? 'page' : undefined}
-              className={`label-mono rounded-lg px-3 py-2 transition-[background-color,color,box-shadow] duration-[250ms] ${active ? 'bg-white text-brand shadow-[0_1px_3px_rgba(28,18,16,0.12)]' : 'text-muted hover:bg-white/70 hover:text-ink'}`}>
+            <Link key={t.label} href={href} aria-current={active ? 'page' : undefined} className="project-tab label-mono">
               {t.label}
             </Link>
           );

@@ -48,8 +48,7 @@ body { background: var(--color-bg); color: var(--color-ink); font-family: var(--
   font-family: "Ari Logo Inter";
   src: local("Inter");
 }
-[data-testid="logo-placeholder"],
-[data-testid="logo-placeholder"] + span {
+.ari-wordmark {
   font-family: "Ari Logo Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 :focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
@@ -181,18 +180,11 @@ html[data-home-hero] .site-header nav a:hover { background: var(--color-brand); 
 html[data-home-hero][data-hero-past] .site-header { background: color-mix(in srgb, #fff 85%, transparent); backdrop-filter: blur(12px); border-color: color-mix(in srgb, var(--color-line) 80%, transparent); }
 html[data-home-hero][data-hero-past] .site-header nav a.hdr-cta { background: var(--color-brand); color: var(--color-on-brand); box-shadow: none; }
 
-/* Intro loader (components/intro-loader.tsx): the mark draws, a counter runs, the curtain lifts. */
+/* Intro loader: the supplied mark fades in, a counter runs, the curtain lifts. */
 .intro { position: fixed; inset: 0; z-index: 60; background: var(--color-ink); pointer-events: none; transition: translate 800ms cubic-bezier(0.76, 0, 0.24, 1); }
 .intro[data-phase="lift"] { translate: 0 -100%; }
-.intro-mark { position: absolute; top: 50%; left: 50%; width: 64px; height: 64px; translate: -50% -50%; overflow: visible; }
-.intro-mark rect, .intro-mark path {
-  fill: transparent; stroke: #fff; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round;
-  stroke-dasharray: 1; stroke-dashoffset: 1; animation: intro-draw 1100ms var(--ease-quad) forwards;
-}
-.intro-mark path { animation-delay: 250ms; }
-.intro-mark rect { animation: intro-draw 1100ms var(--ease-quad) forwards, intro-fill 500ms ease-out 1150ms forwards; }
-@keyframes intro-draw { to { stroke-dashoffset: 0; } }
-@keyframes intro-fill { to { fill: var(--color-brand); stroke: var(--color-brand); } }
+.intro-mark { position: absolute; top: 50%; left: 50%; translate: -50% -50%; animation: intro-mark-reveal 700ms var(--ease-quad) both; }
+@keyframes intro-mark-reveal { from { opacity: 0; scale: 0.94; } to { opacity: 1; scale: 1; } }
 .intro-progress { position: absolute; bottom: 80px; left: 50%; translate: -50%; display: grid; grid-template-columns: 36px min(300px, calc(100vw - 96px)); align-items: center; column-gap: 10px; }
 .intro-pct { justify-self: end; font-family: var(--font-mono); font-size: 12px; line-height: 1; color: rgba(255, 255, 255, 0.85); font-variant-numeric: tabular-nums; }
 .intro-line { height: 2px; border-radius: 15px; background: var(--color-brand); transform-origin: 0 50%; transform: scaleX(0); }
@@ -308,6 +300,18 @@ html[data-home-hero][data-hero-past] .site-header nav a.hdr-cta { background: va
 .graph-key { display: inline-block; width: 10px; height: 10px; border-radius: 9999px; }
 .graph-key-line { display: inline-block; width: 16px; border-top: 2px dashed var(--color-brand); }
 @media (prefers-reduced-motion: reduce) { .graph-edge[data-flow], .graph-truth { animation: none; } }
+
+/* App pages: project header + underline tabs (components/project.tsx), calmer panels. */
+.project-head { min-height: 0; }
+.project-tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--color-line); scrollbar-width: none; }
+.project-tabs::-webkit-scrollbar { display: none; }
+.project-tab { position: relative; flex: none; padding: 14px 12px 12px; color: var(--color-muted); transition: color 200ms; }
+.project-tab:hover { color: var(--color-ink); }
+.project-tab::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: -1px; height: 2px; border-radius: 2px; background: var(--color-brand); transform: scaleX(0); transition: transform 250ms var(--ease-quad); }
+.project-tab[aria-current="page"] { color: var(--color-ink); }
+.project-tab[aria-current="page"]::after, .project-tab:hover::after { transform: scaleX(1); }
+.project-tab:hover:not([aria-current="page"])::after { background: var(--color-line); }
+.panel > header { background: color-mix(in srgb, var(--color-panel-2) 55%, transparent); border-top-left-radius: inherit; border-top-right-radius: inherit; }
 
 /* Scroll reveal (see components/reveal.tsx). Content is visible without JS. */
 .reveal { transition: opacity 500ms var(--ease-quad), transform 500ms var(--ease-quad); }
