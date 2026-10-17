@@ -58,3 +58,6 @@ artifacts/
 *.sqlite
 *.db
 logs/
+
+# Claude Code subagent worktrees
+.claude/worktrees/

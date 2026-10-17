@@ -86,11 +86,11 @@ acceptance criteria are the minimum for `DONE` in addition to
 | MON-002 | Normalization + correlation → ImpactSet | monitoring/ | FR-3-02 | MON-001, INTEL-008 | UNASSIGNED | BLOCKED | Push fixture maps to correct symbols/findings |
 | MON-003 | Trigger policy + ReassessmentRequest + coalescing | monitoring/ | FR-3-03 | MON-002, SEC-012 | UNASSIGNED | BLOCKED | IC-7 passes |
 | MON-004 | Runtime log signals from sandboxed demo target | monitoring/ | FR-3-04 | SEC-004 | UNASSIGNED | BLOCKED | Per-route signals computed from target logs |
-| RL-001 | `DefenseSimEnv-v0` Gymnasium environment + configs | rl-defense/ | FR-3-05 | — | UNASSIGNED | READY | `check_env` + determinism tests; train/eval configs separated; `rl.yml` CI |
-| RL-002 | Baselines: random, noop, threshold_rules | rl-defense/ | FR-3-05 | RL-001 | UNASSIGNED | BLOCKED | Thresholds tuned on train configs only |
-| RL-003 | Double DQN training | rl-defense/ | FR-3-05 | RL-001 | UNASSIGNED | BLOCKED | 5-seed runs with manifests; CPU smoke train < 5 min |
-| RL-004 | Evaluation harness per protocol 17 | rl-defense/ | FR-3-05 | RL-002, RL-003 | UNASSIGNED | BLOCKED | `eval_summary.json` + table with CIs for all policies and metrics |
-| RL-005 | Inference → DefenseRecommendation + API endpoint | rl-defense/, backend/ | FR-3-06 | RL-004, CORE-004 | UNASSIGNED | BLOCKED | Recommendation stored with caveat; no action path (test) |
+| RL-001 | `DefenseSimEnv-v0` Gymnasium environment + configs | rl-defense/ | FR-3-05 | — | Adam | IN_REVIEW | `check_env` + determinism tests; train/eval configs separated; `rl.yml` CI |
+| RL-002 | Baselines: random, noop, threshold_rules | rl-defense/ | FR-3-05 | RL-001 | Adam | IN_REVIEW | Thresholds tuned on train configs only |
+| RL-003 | Double DQN training | rl-defense/ | FR-3-05 | RL-001 | Adam | IN_REVIEW | 5-seed runs with manifests; CPU smoke train < 5 min |
+| RL-004 | Evaluation harness per protocol 17 | rl-defense/ | FR-3-05 | RL-002, RL-003 | Adam | IN_REVIEW | `eval_summary.json` + table with CIs for all policies and metrics |
+| RL-005 | Inference → DefenseRecommendation + API endpoint | rl-defense/, backend/ | FR-3-06 | RL-004, CORE-004 | Adam | IN_PROGRESS | Recommendation stored with caveat; no action path (test) |
 
 ## Phase 5 — Integration, UI & demo
 
