@@ -7,9 +7,8 @@ All notable changes are documented here. Format follows
 ## [Unreleased]
 
 - Opening an incident says it records a title and report. It does not contain systems, notify outsiders, or attach evidence until linked, and new cases default to a labelled simulated drill.
-
+- Frontend fonts are bundled locally with their licenses, removing Google Fonts downloads from production builds and preserving the existing typography.
 - Assessment conflicts now offer explicit preparation of a separate action; ordinary network retries retain their key, and project changes get distinct keys.
-
 
 - Assessment job IDs returned by the API now resolve through their persisted assessment, allowing authorized status reads while preserving tenant denial.
 
@@ -104,3 +103,4 @@ All notable changes are documented here. Format follows
 
 ### Not yet implemented
 - Full cross-pillar runtime completion and production operation are not established here.
+
