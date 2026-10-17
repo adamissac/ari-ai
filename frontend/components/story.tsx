@@ -77,6 +77,7 @@ export function ProblemScene() {
           ))}
         </div>
 
+        <p className="label-mono mt-10 text-faint">Illustration · not measured</p>
         <div className="relative mt-10" aria-hidden="true">
           <span className="label-mono absolute -top-8 left-0 rounded-md bg-ink px-2 py-1 text-white" data-testid="problem-count">
             {count} of {TICKS} changes checked
@@ -154,6 +155,7 @@ export function HowItWorks() {
             <li key={card.label} className="story-card" data-active={active === n || undefined}>
               <span className="story-card-num" aria-hidden="true">{String(n + 1).padStart(2, '0')}</span>
               <div className="story-card-body">
+                <p className="label-mono mb-2 text-white/60">Illustration · not a recorded run</p>
                 <div className="story-window" aria-hidden="true">
                   <p className="story-window-bar"><span>{card.file}</span><span>{BRAND_NAME}</span></p>
                   {card.lines.map(([kind, text, note]) => (
@@ -214,6 +216,8 @@ export function Walkthrough() {
             ))}
           </ol>
         </div>
+        <div>
+        <p className="label-mono mb-2 text-faint">Illustration · not a recorded run</p>
         <div className="story-panel" data-step={step} aria-hidden="true">
           <svg viewBox="0 0 360 200" className="h-auto w-full">
             {ROWS.map(r => (
@@ -231,6 +235,7 @@ export function Walkthrough() {
             <text x="300" y="186" textAnchor="middle" className="story-svg-root">root cause · create_refund</text>
             <text x="300" y="186" textAnchor="middle" className="story-svg-ok">verified · replay 2 / 2</text>
           </svg>
+        </div>
         </div>
       </section>
     </div>
@@ -265,9 +270,9 @@ function CountUp({ to, suffix = '' }: { to: number; suffix?: string }) {
 }
 
 const STATS: Array<{ n: number; suffix?: string; tag: string; body: string }> = [
-  { n: 7, tag: 'Agents', body: 'Separate security agents, each its own tool loop with enforced permissions.' },
-  { n: 2, suffix: '×', tag: 'Reproduction', body: 'A generated test must fail twice on unpatched code before a finding is validated.' },
-  { n: 0, tag: 'Self-approval', body: 'Fixes verified by the agent that wrote them. Verify is always independent.' },
+  { n: 7, tag: 'Design', body: 'Separate security agents, each its own tool loop with enforced permissions.' },
+  { n: 2, suffix: '×', tag: 'Rule', body: 'A failing test only counts if it fails the same way twice.' },
+  { n: 0, tag: 'Rule', body: 'The person who asks can never approve.' },
 ];
 
 export function ProofStats(): ReactNode {
@@ -278,7 +283,7 @@ export function ProofStats(): ReactNode {
           <p className="label-mono text-white/60">Proof, not promises</p>
           <h2 id="proof-title" className="display mt-3 text-3xl font-semibold md:text-5xl">The record is checkable.</h2>
         </div>
-        <p className="max-w-md text-sm text-white/70">No model output counts as proof, including ours. Every status on these pages comes from executed tests and persisted evidence.</p>
+        <p className="max-w-md text-sm text-white/70">No model output counts as proof, including ours. In the console, every status comes from saved records.</p>
       </div>
       <div className="mt-10 grid grid-cols-1 gap-3 md:grid-cols-3">
         {STATS.map((s, n) => (
