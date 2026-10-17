@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Added canonical offline CVSS v3.1, OWASP API 2023 and NIST SP 800-115 reference catalogs with integrity checks and pinned-source refresh tooling.
+
 ### Added
 - Exact-snapshot human intent decisions (`confirmed`/`conflicting`/`rejected`) with
   authenticated backend routes, append-only revisions and `human_input` provenance.
