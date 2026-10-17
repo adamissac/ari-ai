@@ -6,5 +6,5 @@
       "main": true
     }
   },
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- frontend shared/generated"
+  "ignoreCommand": "[ -n \"$VERCEL_GIT_PREVIOUS_SHA\" ] && git cat-file -e \"$VERCEL_GIT_PREVIOUS_SHA\" 2>/dev/null && git diff --quiet \"$VERCEL_GIT_PREVIOUS_SHA\" HEAD -- frontend shared/generated"
 }
