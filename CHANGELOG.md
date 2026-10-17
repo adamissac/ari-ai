@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- The monitoring page leads with a count of recorded events, how many are labelled simulated, and how many simulation recommendations are stored. It says this page is not the Defense Lab.
 - An assessment page lists Understand, Review, Security test, Repair, and Verify from that check's event log. Monitoring stays on the project page.
 - The findings list no longer calls its open tab "Validated and beyond." Open includes inconclusive results and rejected fixes.
 - An assessment page leads with one sentence for its recorded state. A finished check is not described as a secure application.
