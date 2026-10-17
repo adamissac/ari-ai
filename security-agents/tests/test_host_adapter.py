@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -196,8 +197,8 @@ class FakeHost:
                 "status": "active",
                 "requested_by": "usr_requester",
                 "approved_by": "usr_approver",
-                "approved_at": None,
-                "expires_at": None,
+                "approved_at": datetime.now(UTC),
+                "expires_at": datetime.now(UTC) + timedelta(days=1),
                 "allowed_check_categories": ["access_control.ownership", "input_validation.bounds"],
                 "targets": [
                     type(
@@ -227,6 +228,7 @@ class FakeHost:
                         "id": "apv_01HOSTADAPTER",
                         "subject_id": subject_id,
                         "status": "approved",
+                        "subject_type": "remediation",
                         "decided_by": "usr_human",
                     },
                 )()
@@ -242,6 +244,7 @@ class FakeHost:
                         "id": "apv_01DECLINED",
                         "subject_id": subject_id,
                         "status": "declined",
+                        "subject_type": "remediation",
                         "decided_by": "usr_human",
                     },
                 )()
@@ -723,3 +726,32 @@ def test_host_state_names_cover_every_state():
         assert state in HOST_STATE_NAMES, state
         member = shared_assessment.AssessmentState(HOST_STATE_NAMES[state])
         assert member.name == HOST_STATE_NAMES[state]
+
+
+@pytest.mark.parametrize("field,value", [
+    ("approved_by", None), ("approved_at", None), ("expires_at", None), ("status", "inactive"),
+])
+def test_host_scope_adapter_cannot_invent_approval(host_and_orchestrator, field, value):
+    from types import SimpleNamespace
+
+    from security_agents.host_adapter import _adapt_scope
+    from security_agents.scope_guard import ActionRequest, check
+    host, _, _ = host_and_orchestrator
+    scope = host.scope()
+    setattr(scope, field, value)
+    intel = SimpleNamespace(snapshot=SimpleNamespace(repo_id="rep_host"))
+    mapped = _adapt_scope(scope, intel)
+    assert not check(mapped, ActionRequest(action="assessment_start"), datetime.now(UTC)).allowed
+
+
+def test_resume_rechecks_revoked_scope_before_any_patch(host_and_orchestrator, monkeypatch):
+    host, orchestrator, _ = host_and_orchestrator
+    orchestrator.run(host)
+    host.approve_all()
+    scope = host.scope()
+    scope.status = "revoked"
+    monkeypatch.setattr(host, "scope", lambda: scope)
+    with pytest.raises(PlatformError) as exc:
+        orchestrator.run(host)
+    assert exc.value.code is ErrorCode.SCOPE_DENIED
+    assert not host.patches
