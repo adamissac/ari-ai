@@ -2525,6 +2525,39 @@
       "title": "ImpactSet",
       "type": "object"
     },
+    "IngestTokenCreated": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^itk_[0-9A-Za-z]{8,64}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^prj_[0-9A-Za-z]{8,64}$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "token": {
+          "description": "Shown once; only its SHA-256 is stored",
+          "title": "Token",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "token",
+        "created_at"
+      ],
+      "title": "IngestTokenCreated",
+      "type": "object"
+    },
     "IntentClaim": {
       "additionalProperties": false,
       "properties": {
@@ -3959,6 +3992,231 @@
       "title": "RootCause",
       "type": "object"
     },
+    "RouteScore": {
+      "additionalProperties": false,
+      "description": "Explainable per-route score against that route's own recent history.",
+      "properties": {
+        "alert_rate": {
+          "description": "Number of triggered rules in this window",
+          "minimum": 0,
+          "title": "Alert Rate",
+          "type": "number"
+        },
+        "anomaly_score": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Anomaly Score",
+          "type": "number"
+        },
+        "auth_failure_ratio": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Auth Failure Ratio",
+          "type": "number"
+        },
+        "auth_failure_ratio_delta": {
+          "title": "Auth Failure Ratio Delta",
+          "type": "number"
+        },
+        "error_ratio": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Error Ratio",
+          "type": "number"
+        },
+        "error_ratio_delta": {
+          "title": "Error Ratio Delta",
+          "type": "number"
+        },
+        "history_windows": {
+          "minimum": 0,
+          "title": "History Windows",
+          "type": "integer"
+        },
+        "reasons": {
+          "items": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "request_rate_z": {
+          "title": "Request Rate Z",
+          "type": "number"
+        },
+        "route": {
+          "title": "Route",
+          "type": "string"
+        },
+        "source": {
+          "enum": [
+            "runtime_demo",
+            "replay",
+            "simulated"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "window_end": {
+          "format": "date-time",
+          "title": "Window End",
+          "type": "string"
+        }
+      },
+      "required": [
+        "route",
+        "source",
+        "window_end",
+        "request_rate_z",
+        "error_ratio",
+        "error_ratio_delta",
+        "auth_failure_ratio",
+        "auth_failure_ratio_delta",
+        "history_windows",
+        "alert_rate",
+        "anomaly_score",
+        "reasons"
+      ],
+      "title": "RouteScore",
+      "type": "object"
+    },
+    "RouteWindow": {
+      "additionalProperties": false,
+      "description": "Aggregated counters for one route over one window (no raw logs, no payloads).",
+      "properties": {
+        "auth_failures": {
+          "default": 0,
+          "description": "401/403 responses",
+          "minimum": 0,
+          "title": "Auth Failures",
+          "type": "integer"
+        },
+        "requests": {
+          "maximum": 10000000,
+          "minimum": 0,
+          "title": "Requests",
+          "type": "integer"
+        },
+        "route": {
+          "pattern": "^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS) /[^\\s]{0,300}$",
+          "title": "Route",
+          "type": "string"
+        },
+        "status_4xx": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Status 4Xx",
+          "type": "integer"
+        },
+        "status_5xx": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Status 5Xx",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "route",
+        "requests",
+        "status_4xx",
+        "status_5xx",
+        "auth_failures"
+      ],
+      "title": "RouteWindow",
+      "type": "object"
+    },
+    "RuntimeIngestAck": {
+      "additionalProperties": false,
+      "properties": {
+        "accepted_routes": {
+          "title": "Accepted Routes",
+          "type": "integer"
+        },
+        "anomalies": {
+          "title": "Anomalies",
+          "type": "integer"
+        },
+        "monitoring_event_ids": {
+          "items": {
+            "pattern": "^evt_[0-9A-Za-z]{8,64}$",
+            "type": "string"
+          },
+          "title": "Monitoring Event Ids",
+          "type": "array"
+        },
+        "scores": {
+          "items": {
+            "$ref": "#/$defs/RouteScore"
+          },
+          "title": "Scores",
+          "type": "array"
+        }
+      },
+      "required": [
+        "accepted_routes",
+        "anomalies",
+        "monitoring_event_ids",
+        "scores"
+      ],
+      "title": "RuntimeIngestAck",
+      "type": "object"
+    },
+    "RuntimeSignalBatch": {
+      "additionalProperties": false,
+      "properties": {
+        "repo_id": {
+          "anyOf": [
+            {
+              "pattern": "^rep_[0-9A-Za-z]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Repo Id"
+        },
+        "routes": {
+          "items": {
+            "$ref": "#/$defs/RouteWindow"
+          },
+          "maxItems": 500,
+          "minItems": 1,
+          "title": "Routes",
+          "type": "array"
+        },
+        "source": {
+          "enum": [
+            "runtime_demo",
+            "replay",
+            "simulated"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "window_end": {
+          "format": "date-time",
+          "title": "Window End",
+          "type": "string"
+        },
+        "window_start": {
+          "format": "date-time",
+          "title": "Window Start",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "repo_id",
+        "window_start",
+        "window_end",
+        "routes"
+      ],
+      "title": "RuntimeSignalBatch",
+      "type": "object"
+    },
     "ScopeCreate": {
       "additionalProperties": false,
       "properties": {
@@ -5083,5 +5341,5 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "HackATL platform contracts",
-  "x-schema-version": "0.2.0"
+  "x-schema-version": "0.3.0"
 }
