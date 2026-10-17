@@ -10,15 +10,16 @@
 name = "hackatl-workspace"
 version = "0.1.0"
 requires-python = ">=3.12"
-dependencies = ["hackatl-shared", "hackatl-monitoring", "hackatl-backend", "hackatl-code-intelligence", "hackatl-code-review", "security-agents"]
+dependencies = ["hackatl-standards", "hackatl-shared", "hackatl-monitoring", "hackatl-backend", "hackatl-code-intelligence", "hackatl-code-review", "security-agents"]
 
 [tool.uv]
 package = false
 
 [tool.uv.workspace]
-members = ["shared", "monitoring", "backend", "code-intelligence", "code-review", "security-agents"]
+members = ["standards", "shared", "monitoring", "backend", "code-intelligence", "code-review", "security-agents"]
 
 [tool.uv.sources]
+hackatl-standards = { workspace = true }
 hackatl-shared = { workspace = true }
 hackatl-monitoring = { workspace = true }
 hackatl-backend = { workspace = true }
@@ -36,11 +37,12 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["shared/tests", "monitoring/tests", "backend/tests", "code-review/tests"]
+testpaths = ["shared/tests", "monitoring/tests", "backend/tests", "code-review/tests", "standards/tests", "tests/security"]
 addopts = "-ra"
 markers = [
   "live_llm: real Anthropic provider call; requires RUN_LIVE_LLM_EVAL=1 and a key",
   "db: needs PostgreSQL",
+  "owasp_llm(category): evidence for an OWASP LLM Top 10 control",
 ]
 
 [tool.ruff]

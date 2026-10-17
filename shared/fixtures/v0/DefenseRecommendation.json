@@ -3,6 +3,7 @@
   "caveat": "Simulation-derived recommendation from a policy trained only in DefenseSimEnv; not a detection of a real attack and never executed automatically.",
   "checkpoint_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
   "created_at": "2026-10-17T01:00:00Z",
+  "d3fend": [],
   "id": "rec_0123456789abcdef0123456789abcdef",
   "node": "payments",
   "observation": [
