@@ -144,7 +144,9 @@ def payments_intel(tmp_path_factory):
     return LocalIntel(snapshot)
 
 
-def _docker_check(intel, template_ref: str, params: dict, transport: str = "inprocess") -> dict:
+def _docker_check(
+    intel, template_ref: str, params: dict, transport: str = "inprocess", workspace: Path | None = None
+) -> dict:
     from datetime import UTC, datetime
 
     from security_agents.checks.library import default_library
@@ -155,7 +157,7 @@ def _docker_check(intel, template_ref: str, params: dict, transport: str = "inpr
     runner = CheckRunner(
         driver=DockerSandboxDriver(),
         library=default_library(),
-        workspace_provider=lambda _ctx: intel.snapshot.root,
+        workspace_provider=lambda _ctx: workspace or intel.snapshot.root,
         recipe_provider=recipe_from_snapshot(intel),
         transport=transport,
     )
@@ -205,13 +207,6 @@ def test_bounds_check_in_docker_flags_the_planted_defect(payments_intel):
     assert result["matches_expectation"] is False, result
 
 
-needs_target_image = pytest.mark.skipif(
-    not os.environ.get("SANDBOX_TARGET_IMAGE"),
-    reason="needs SANDBOX_TARGET_IMAGE serving the target on :8000",
-)
-
-
-@needs_target_image
 def test_http_ownership_check_reaches_the_target_container_and_flags_the_planted_route(payments_intel):
     result = _docker_check(
         payments_intel,
@@ -225,7 +220,6 @@ def test_http_ownership_check_reaches_the_target_container_and_flags_the_planted
     assert len(hits) == 2 and all(r["status"] == 200 for r in hits), result["target_requests"]
 
 
-@needs_target_image
 def test_http_ownership_check_clears_the_lookalike_route_over_the_network(payments_intel):
     result = _docker_check(
         payments_intel,
@@ -238,7 +232,6 @@ def test_http_ownership_check_clears_the_lookalike_route_over_the_network(paymen
     assert len(statuses) == 2 and statuses[0] == 200 and statuses[1] in (403, 404), result["target_requests"]
 
 
-@needs_target_image
 def test_seven_agent_run_probes_the_docker_target_over_http_and_persists_the_evidence(
     intel, library, tmp_path
 ):
@@ -266,3 +259,34 @@ def test_seven_agent_run_probes_the_docker_target_over_http_and_persists_the_evi
     assert len(obs["target_log_sha256"]) == 64
     assert validation.sandbox_run_id and validation.evidence
     assert finding.verifications and finding.verifications[-1].verdict == "accepted"
+
+
+def test_http_target_serves_the_assessed_snapshot_not_a_fixture_image(payments_intel, tmp_path):
+    patched = tmp_path / "patched_snapshot"
+    shutil.copytree(payments_intel.snapshot.root, patched)
+    app = patched / "payments_lite" / "app.py"
+    app.chmod(0o644)
+    planted = (
+        '            raise HTTPException(status.HTTP_404_NOT_FOUND, "not found")\n'
+        "        return payment_out(store, p)\n"
+    )
+    source = app.read_text(encoding="utf-8")
+    assert source.count(planted) == 1
+    app.write_text(
+        source.replace(
+            planted,
+            '            raise HTTPException(status.HTTP_404_NOT_FOUND, "not found")\n'
+            "        require_owner(p.customer_id, customer)\n"
+            "        return payment_out(store, p)\n",
+        ),
+        encoding="utf-8",
+    )
+    params = {"route_id": "payment_detail", "owner_identity": "alice", "other_identity": "bob"}
+    original = _docker_check(payments_intel, "access_control.ownership@1", params, transport="http")
+    fixed = _docker_check(
+        payments_intel, "access_control.ownership@1", params, transport="http", workspace=patched
+    )
+    assert original["matches_expectation"] is False, original
+    assert fixed["matches_expectation"] is True, fixed
+    statuses = sorted(r["status"] for r in fixed["target_requests"] if r["path"].startswith("/payments/"))
+    assert statuses[0] == 200 and statuses[1] in (403, 404), fixed["target_requests"]
