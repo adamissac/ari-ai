@@ -6,7 +6,7 @@ const me = { user: { id: 'usr_12345678', github_login: 'test', display_name: nul
 const json = (body, status = 200) => Response.json(body, { status });
 const expectation = {
   id: 'exp_12345678', snapshot_id: 'snp_12345678', subject_ref: 'GET /payments/{payment_id}', kind: 'authorization',
-  statement: 'A customer can only read their own payments.', origin: 'docstring', confidence: 0.55, status: 'inferred',
+  statement: 'A customer can only read their own payments.', origin: 'extracted', confidence: 0.55, status: 'inferred',
   data_sensitivity: null,
   sources: [{ kind: 'code_span', ref: 'src/app.py', path: 'src/app.py', start_line: 10, end_line: 12, sha256: null, note: null }],
 };
