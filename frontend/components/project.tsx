@@ -8,7 +8,7 @@ import { api } from '@/lib/api';
 import { useResource } from '@/lib/use-resource';
 import { Crumbs, ErrorState, Loading } from '@/components/ui';
 
-interface ProjectValue { project: Project; repos: Repository[]; reloadRepos: () => void }
+interface ProjectValue { project: Project; repos: Repository[]; reloadRepos: () => void; reloadProject: () => void }
 const ProjectContext = createContext<ProjectValue | null>(null);
 
 export function useProject(): ProjectValue {
@@ -45,7 +45,7 @@ export function ProjectShell({ children }: { children: ReactNode }) {
   if (repos.status === 'error') return <ErrorState error={repos.error} onRetry={repos.reload} context="Could not load repositories" />;
   const base = `/projects/${project.data.id}`;
   return (
-    <ProjectContext.Provider value={{ project: project.data, repos: repos.data.items, reloadRepos: repos.reload }}>
+    <ProjectContext.Provider value={{ project: project.data, repos: repos.data.items, reloadRepos: repos.reload, reloadProject: project.reload }}>
       <Crumbs items={[{ href: '/projects', label: 'Projects' }, { href: base, label: project.data.name }]} />
       <header className="hero-ink project-head mb-2 rounded-2xl px-6 py-7 md:px-8">
         <p className="label-mono text-white/60">Project</p>
