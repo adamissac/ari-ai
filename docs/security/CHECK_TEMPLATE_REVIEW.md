@@ -18,7 +18,7 @@ Checklist for each template:
 - category: `access_control.ownership`; side effects: `read_only`
 - current reviewed_by: `security-owner:pending-human-signoff`
 - parameters: route_id, owner_identity, other_identity
-- renderer_sha256: `40ab1f1ac65513dc79b331de4f2ca8004db67ad9bbbaf7b2adc6f8ee5fd67297`
+- renderer_sha256: `d8aa32da22c9d55f98de9d19ccfdc77b2f439309ef320910d434fb8e733f1d09`
 - sample parameters: `{"other_identity": "bob", "owner_identity": "alice", "route_id": "payment_detail"}`
 - rendered_sha256 (sample): `edf41dbd1dce5f14c86d37e311020c082660c88d84534e71b15a7f697776a258`
 - imports: decimal, fastapi, json, payments_lite (within allowlist: True)
@@ -70,7 +70,7 @@ def test_other_identity_is_denied():
 - category: `input_validation.bounds`; side effects: `ephemeral_target_only`
 - current reviewed_by: `security-owner:pending-human-signoff`
 - parameters: route_id, read_route_id, owner_identity, over_by
-- renderer_sha256: `fae992c47ccde2f2f4e55e9c22852bb3573b2249cf4d736e50e58ee6026e6782`
+- renderer_sha256: `f849e25fbd746f08a44547b3b57335a730e90099d79556c31120a347aa4b7757`
 - sample parameters: `{"over_by": "1.00", "owner_identity": "alice", "read_route_id": "payment_detail", "route_id": "create_refund"}`
 - rendered_sha256 (sample): `60cdf74e814323158346001798f60210c32ddd387aa3cf7d4de4dc04b62786ed`
 - imports: decimal, fastapi, json, payments_lite (within allowlist: True)
