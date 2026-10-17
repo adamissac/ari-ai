@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Clarify real commit metadata versus illustrative analysis, synthetic drill planning and response limits, and saved live evidence versus sample-account data. Disclose missing historical red-to-green proof, update the access-code demo runbook, and wrap long recorded-run IDs on phones.
+
 - The demo is no longer public. `/demo` opens only after signing in on `/access` with an access code (`DEMO_ACCESS_CODE`, checked on the server; a signed httpOnly cookie, enforced by `proxy.ts`), and shows the Lumen Pay sample account with a small "Demo account · sample data" tag. Public "Demo" links were removed from the navigation, home page and pricing.
 
 - Published a dated product-readiness audit and shared follow-up checklist (issue #244), distinguishing executed prototype capabilities, reported live evidence, hosted integration gaps and proposed work.

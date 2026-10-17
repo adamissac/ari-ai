@@ -17,7 +17,7 @@ export function SiteFooter() {
   if (pathname === '/demo' || pathname.startsWith('/demo/')) {
     return (
       <footer className="label-mono mx-auto max-w-7xl border-t border-line px-4 py-6 text-faint" data-testid="site-footer">
-        Demo account. The organization, repositories, commits and results shown are sample data.
+        Demo account. The organization, repositories, commits and illustrative results are sample data. The separately labelled recorded live run is saved evidence from an owned test fixture, not sample data or a run happening now.
       </footer>
     );
   }

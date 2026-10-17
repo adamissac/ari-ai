@@ -149,3 +149,12 @@ No backend/API changes in the publication diff. Earlier local-only notes describ
 the state before this authorization. Publishing via a normal fast-forward push;
 next action is to confirm GitHub main matches the release commit and inspect CI.
 The Git-connected Vercel deployment is triggered by that push; no project settings changed.
+
+
+## 2026-10-17T23:35Z — demo provenance follow-ups (#262, #273, #278)
+
+Branch: `feat/sarosh/demo-provenance-labels`; PR: [#282](https://github.com/adamissac/ari-ai/pull/282).
+
+Implemented frontend-only corrections: real commit metadata vs illustrative replay, neutral drill pending text and synthetic/optional-provider provenance, recorded-evidence carve-out from sample-account labels, explicit historical missing red-to-green proof, current access-code/runbook commands, and wrapping the recorded assessment ID on phones.
+
+Executed before integrating newest main: lint, typecheck, production build, 246 unit tests, four demo browser tests; links 385 checked, zero problems. Desktop/mobile browser inspection identified long assessment-ID overflow; added wrapping and a phone assertion, with final checks pending. No paid provider calls or backend changes. #273 remains open for backend baseline isolation, usage accounting and durable rate limiting. Raw historical report is retained by Alan; this pass used the curated recorded summary and existing milestone disclosure, not a new live run.
