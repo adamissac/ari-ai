@@ -2,10 +2,10 @@ name: rl-defense
 
 on:
   pull_request:
-    paths: ["rl-defense/**", ".github/workflows/rl.yml"]
+    paths: ["rl-defense/**", "shared/shared/rl.py", "shared/shared/ids.py", "shared/shared/base.py", ".github/workflows/rl.yml"]
   push:
     branches: [main]
-    paths: ["rl-defense/**", ".github/workflows/rl.yml"]
+    paths: ["rl-defense/**", "shared/shared/rl.py", "shared/shared/ids.py", "shared/shared/base.py", ".github/workflows/rl.yml"]
 
 permissions:
   contents: read
@@ -24,7 +24,7 @@ jobs:
         run: |
           uv venv --python 3.12 .venv
           uv pip install --python .venv/bin/python --index-url https://download.pytorch.org/whl/cpu torch
-          uv pip install --python .venv/bin/python -e ".[dev]"
+          uv pip install --python .venv/bin/python -e ../shared -e ".[dev]"
       - name: Lint
         run: |
           .venv/bin/ruff check rl_defense tests

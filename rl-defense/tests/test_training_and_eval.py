@@ -146,7 +146,7 @@ def test_inference_recommendation_is_typed_masked_and_labeled(trained_run):
     runner = load_policy(ckpt)
     rec = runner.recommend(_facts(api={"isolated": True, "anomaly_score": 0.9, "alert_rate": 6.0}))
     assert isinstance(rec, DefenseRecommendation)
-    assert rec.simulation_derived is True and "simulation" in rec.caveat
+    assert rec.simulation_derived is True and "simulation" in rec.caveat.lower()
     assert not (rec.action in ("isolate", "rate_limit") and rec.node == "api"), (
         "masked action recommended"
     )

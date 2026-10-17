@@ -1,43 +1,39 @@
-"""Consumer contract test: local RL DTOs must match shared/ V0 (owner: Srihith).
-
-Runs when the ``shared`` package is importable (installed, or SHARED_PATH points at
-the repo's ``shared/`` directory); skipped otherwise. Once shared/ V0 merges,
-``rl_defense.contracts`` will re-export from ``shared.rl`` and this test keeps the
-two from drifting until then.
-"""
+"""rl_defense.contracts must BE shared.rl (re-exports), and real payloads must validate."""
 
 import json
-import os
-import sys
 from pathlib import Path
 
-import pytest
+import shared.rl as shared_rl
 
-if os.environ.get("SHARED_PATH"):
-    sys.path.insert(0, os.environ["SHARED_PATH"])
-shared_rl = pytest.importorskip("shared.rl", reason="shared/ V0 not available in this checkout")
+import rl_defense
+import rl_defense.contracts as contracts
 
-import rl_defense.contracts as local  # noqa: E402
-
-MODELS = ("NodeSignals", "PlatformFacts", "ActionScore", "DefenseRecommendation", "RLCheckpointRef")
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures/defense_recommendation.example.json"
+MODELS = (
+    "NodeSignals",
+    "PlatformFacts",
+    "ActionScore",
+    "DefenseRecommendation",
+    "RLCheckpointRef",
+    "RLEvaluation",
+    "FeatureContribution",
+    "RLExplanation",
+)
 
 
-def _shape(model):
-    schema = model.model_json_schema()
-    return {
-        name: (prop.get("type"), prop.get("enum"), prop.get("const"), prop.get("pattern"))
-        for name, prop in schema.get("properties", {}).items()
-    }
+def test_contracts_are_reexports_not_copies():
+    for name in MODELS:
+        assert getattr(contracts, name) is getattr(shared_rl, name), name
 
 
-@pytest.mark.parametrize("name", MODELS)
-def test_field_names_and_types_match_shared(name):
-    assert _shape(getattr(local, name)) == _shape(getattr(shared_rl, name))
+def test_package_caveat_matches_shared_default():
+    assert rl_defense.SIMULATION_CAVEAT == shared_rl.SIMULATION_CAVEAT_DEFAULT
 
 
-def test_real_recommendation_fixture_validates_against_shared():
+def test_real_example_fixture_validates_against_shared():
     ex = json.loads(FIXTURE.read_text())
     shared_rl.PlatformFacts.model_validate(ex["input_facts"])
-    shared_rl.DefenseRecommendation.model_validate(ex["recommendation"])
+    rec = shared_rl.DefenseRecommendation.model_validate(ex["recommendation"])
     shared_rl.RLCheckpointRef.model_validate(ex["checkpoint"])
+    expl = shared_rl.RLExplanation.model_validate(ex["explanation"])
+    assert expl.recommendation_id == rec.id
