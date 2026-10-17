@@ -18,7 +18,7 @@ const LOOK: Record<RelayStatus, { box: string; icon: string }> = {
  * agent's recorded runs below.
  */
 export function AgentRelay({ items, selected, onSelect }: { items: RelayItem[]; selected: AgentName; onSelect: (a: AgentName) => void }) {
-  let n = 0;
+  const numbers = new Map(items.filter(i => i.kind === 'agent').map((item, i) => [item.kind === 'agent' ? item.agent : '', i + 1]));
   return (
     <section aria-labelledby="relay-title" data-testid="agent-relay">
       <h2 id="relay-title" className="text-lg font-semibold tracking-tight">The eight AI agents, in order</h2>
@@ -37,7 +37,7 @@ export function AgentRelay({ items, selected, onSelect }: { items: RelayItem[]; 
               </li>
             );
           }
-          n += 1;
+          const n = numbers.get(item.agent) ?? 0;
           const look = LOOK[item.status];
           const pressed = item.agent === selected;
           const prev = items[i - 1];

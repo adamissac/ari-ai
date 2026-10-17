@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Badge, Button, Empty, ErrorState, Field, inputClass, Loading, Mono, PageTitle, Panel, Stat, Tag } from '@/components/ui';
 import { num } from '@/lib/format';
 import { cumulativeReturn, domain, episodeLabel, episodeStory, HIGHER_IS_BETTER, METRIC_LABEL, metricNames, metricRows, rewardTotals, sampleSize, stepObservation } from '@/lib/lab';
+import { actionInWords, episodeOutcome, episodeTimeline, POLICY_NAME, policyName, SCORE_METRICS, scoreboard, STAGE_WORDS } from '@/lib/lab-plain';
 import type { BundleResponse, DefenseLabBundle, LabEpisode, LabNodeState, LabScenario } from '@/lib/lab-types';
 
 type Load<T> = { status: 'loading' } | { status: 'ready'; data: T } | { status: 'error'; error: unknown };
@@ -67,23 +68,88 @@ function Lab({ data }: { data: BundleResponse }) {
   const { bundle, provenance } = data;
   return (
     <div className="flex flex-col gap-4">
-      <div role="note" className="rounded-md border border-warn/50 bg-warn/10 px-3 py-2 text-sm text-warn" data-testid="lab-caveat">
-        <strong>Simulation only{bundle.simulation_only ? '' : ' (flag missing!)'}.</strong> {bundle.caveat} This is not real network detection and no action is ever applied automatically.
-      </div>
-      <Panel title="Provenance">
-        <dl className="grid gap-x-4 gap-y-1 text-xs text-muted sm:grid-cols-[auto_1fr]">
-          <dt>Source</dt><dd><Mono>{provenance.path}</Mono> — committed evaluation artifact, validated against <Mono>{provenance.schemaPath}</Mono>. Not yet served by the backend API.</dd>
-          <dt>Bundle sha256</dt><dd><Mono>{provenance.sha256}</Mono> ({(provenance.bytes / 1024 / 1024).toFixed(2)} MB)</dd>
-          <dt>Environment</dt><dd><Mono>{bundle.env_id}</Mono> · schema {bundle.schema_version}</dd>
-          <dt>Run</dt><dd><Mono>{bundle.source_run}</Mono> at commit <Mono>{bundle.git_sha.slice(0, 12)}</Mono></dd>
-          <dt>Training seeds</dt><dd>{bundle.training_seeds.join(', ')} · {bundle.episodes_per_config_per_seed} episodes per held-out config per seed</dd>
-          <dt>Checkpoints</dt>
-          <dd className="flex flex-col">{Object.entries(bundle.checkpoint_sha256).map(([f, h]) => <span key={f}><Mono>{f}</Mono> sha256 <Mono>{h.slice(0, 16)}…</Mono></span>)}</dd>
-        </dl>
-      </Panel>
+      <section aria-labelledby="lab-what" className="rounded-xl border border-line bg-panel p-5" data-testid="lab-intro">
+        <h2 id="lab-what" className="text-lg font-semibold tracking-tight">What is this?</h2>
+        <p className="mt-1 max-w-3xl text-sm text-ink">
+          A practice game. A pretend company network of five machines is attacked by a simulated intruder, and an AI defender
+          learned by trial and error which actions keep the intruder out without shutting the business down. Below you can see
+          how it scores against simpler defenders, and replay a recorded game step by step.
+        </p>
+        <div role="note" className="mt-3 rounded-md border border-warn/50 bg-warn/10 px-3 py-2 text-sm text-warn" data-testid="lab-caveat">
+          <strong>Simulation only{bundle.simulation_only ? '' : ' (flag missing!)'}.</strong> {bundle.caveat} This is not real network detection and no action is ever applied automatically.
+        </div>
+      </section>
+      <Scoreboard bundle={bundle} />
       <Replay bundle={bundle} />
-      <Metrics bundle={bundle} />
+      <details className="group rounded-xl border border-line bg-panel" data-testid="lab-details">
+        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold">
+          <span aria-hidden="true" className="mr-1 inline-block transition-transform group-open:rotate-90">▸</span>
+          For reviewers: every metric, per scenario, and where these numbers come from
+        </summary>
+        <div className="flex flex-col gap-4 border-t border-line p-4">
+          <Panel title="Provenance">
+            <dl className="grid gap-x-4 gap-y-1 text-xs text-muted sm:grid-cols-[auto_1fr]">
+              <dt>Source</dt><dd><Mono>{provenance.path}</Mono> — committed evaluation artifact, validated against <Mono>{provenance.schemaPath}</Mono>. Not yet served by the backend API.</dd>
+              <dt>Bundle sha256</dt><dd><Mono>{provenance.sha256}</Mono> ({(provenance.bytes / 1024 / 1024).toFixed(2)} MB)</dd>
+              <dt>Environment</dt><dd><Mono>{bundle.env_id}</Mono> · schema {bundle.schema_version}</dd>
+              <dt>Run</dt><dd><Mono>{bundle.source_run}</Mono> at commit <Mono>{bundle.git_sha.slice(0, 12)}</Mono></dd>
+              <dt>Training seeds</dt><dd>{bundle.training_seeds.join(', ')} · {bundle.episodes_per_config_per_seed} episodes per held-out config per seed</dd>
+              <dt>Checkpoints</dt>
+              <dd className="flex flex-col">{Object.entries(bundle.checkpoint_sha256).map(([f, h]) => <span key={f}><Mono>{f}</Mono> sha256 <Mono>{h.slice(0, 16)}…</Mono></span>)}</dd>
+            </dl>
+          </Panel>
+          <Metrics bundle={bundle} />
+        </div>
+      </details>
     </div>
+  );
+}
+
+function Scoreboard({ bundle }: { bundle: DefenseLabBundle }) {
+  const n = sampleSize(bundle, null);
+  return (
+    <section aria-labelledby="score-title" className="rounded-xl border border-line bg-panel p-5" data-testid="lab-scoreboard">
+      <h2 id="score-title" className="text-lg font-semibold tracking-tight">Who defends best?</h2>
+      <p className="mt-1 text-sm text-muted">
+        Four defenders, each tested on {n.toLocaleString()} games they never trained on. The range in brackets is the 95% confidence interval:
+        the true average very likely lies inside it. ★ marks the best of the four on that measure.
+      </p>
+      <div className="mt-3 grid gap-3 md:grid-cols-2">
+        {SCORE_METRICS.map(metric => {
+          const cells = scoreboard(bundle, metric);
+          if (cells.every(c => c.value === null)) return null;
+          const fmt = (x: number | null) => (x === null ? '—' : metric.percent ? `${x.toFixed(1)}%` : x.toFixed(1));
+          return (
+            <figure key={metric.key} className="rounded-lg border border-line p-3" data-testid={`score-${metric.key}`}>
+              <figcaption>
+                <span className="font-semibold">{metric.title}</span>
+                <span className="ml-2 text-xs text-faint">{metric.higherIsBetter ? 'higher is better' : 'lower is better'}</span>
+                <span className="mt-0.5 block text-xs text-muted">{metric.explain}</span>
+              </figcaption>
+              <ul className="mt-2 flex flex-col gap-1.5">
+                {cells.map(c => {
+                  const width = c.value === null ? 0 : metric.percent ? Math.min(100, Math.max(0, c.value)) : Math.min(100, (c.value / Math.max(...cells.map(x => x.value ?? 0), 1)) * 100);
+                  return (
+                    <li key={c.policy} className="grid grid-cols-[9.5rem_1fr_auto] items-center gap-2 text-sm">
+                      <span className={c.policy === 'ddqn' ? 'font-semibold' : ''} title={POLICY_NAME[c.policy]?.note}>{policyName(c.policy)}</span>
+                      <span className="h-2.5 overflow-hidden rounded-full bg-panel-2" aria-hidden="true">
+                        <span className={`block h-full rounded-full ${c.policy === 'ddqn' ? 'bg-brand' : 'bg-faint/60'}`} style={{ width: `${width}%` }} />
+                      </span>
+                      <span className="whitespace-nowrap font-mono text-xs">
+                        {c.best && <span aria-label="best">★ </span>}{fmt(c.value)} <span className="text-faint">[{fmt(c.lo)}–{fmt(c.hi)}]</span>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </figure>
+          );
+        })}
+      </div>
+      <ul className="mt-3 grid gap-1 text-xs text-muted sm:grid-cols-2">
+        {bundle.metrics.map(m => <li key={m.policy}><span className="font-semibold text-ink">{policyName(m.policy)}</span> — {POLICY_NAME[m.policy]?.note ?? 'Policy id from the bundle.'}</li>)}
+      </ul>
+    </section>
   );
 }
 
@@ -141,9 +207,9 @@ function Replay({ bundle }: { bundle: DefenseLabBundle }) {
   const scenario = bundle.scenarios.find(s => s.name === episode?.scenario);
   if (!episode || !scenario) return <Panel title="Episode replay"><Empty>This bundle has no recorded episodes.</Empty></Panel>;
   return (
-    <Panel title="Episode replay" actions={
+    <Panel title="Replay a recorded game" actions={
       <select aria-label="Episode" className={inputClass} value={index} onChange={e => setIndex(Number(e.target.value))}>
-        {bundle.episodes.map((e, i) => <option key={i} value={i}>{episodeLabel(e)}</option>)}
+        {bundle.episodes.map((e, i) => <option key={i} value={i}>{policyName(e.policy)} · {e.scenario.replace(/^eval_/, '').replaceAll('_', ' ')} · game {e.episode_seed}</option>)}
       </select>
     }>
       <Player key={index} episode={episode} scenario={scenario} />
@@ -165,7 +231,10 @@ function Player({ episode, scenario }: { episode: LabEpisode; scenario: LabScena
   const totals = rewardTotals(episode, t + 1);
   return (
     <>
-      <p className="mb-3 text-sm text-ink" data-testid="lab-episode-story">{episodeStory(episode)}</p>
+      <p className="mb-1 text-base font-semibold" data-testid="lab-episode-outcome">{episodeOutcome(episode)}</p>
+      <p className="mb-3 text-xs text-muted" data-testid="lab-episode-story">{episodeStory(episode)} {episodeLabel(episode)}.</p>
+      <Timeline episode={episode} t={t} onSeek={v => { setPlaying(false); setT(v); }} />
+      <p className="mb-1 mt-3 text-sm" data-testid="lab-step-action"><span className="text-faint">At step {step?.t ?? 0} the defender: </span><strong>{step ? actionInWords(step.action) : '—'}</strong></p>
       <p className="mb-3 text-sm text-ink" data-testid="lab-step-story">{stepObservation(step)}</p>
       <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
         <div>
@@ -178,13 +247,13 @@ function Player({ episode, scenario }: { episode: LabEpisode; scenario: LabScena
         </div>
         <div className="flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-2">
-            <Stat label="Action at t" value={<span className="text-sm">{step?.action.replace(':', ' → ') ?? '—'}</span>} />
+            <Stat label="Action at t" value={<span className="text-sm">{step ? actionInWords(step.action) : '—'}</span>} hint={step?.action} />
             <Stat label="Step reward" value={num(step?.reward ?? 0, 3)} />
             <Stat label="Return so far" value={num(cumulativeReturn(episode, t + 1), 2)} hint={`episode total ${num(episode.total_return, 2)}`} />
             <Stat label="Outcome" value={<span className="text-sm">{episode.compromised ? 'compromised' : 'contained'}</span>} hint={episode.impact_nodes.length ? `impact: ${episode.impact_nodes.join(', ')}` : undefined} />
           </div>
           <div>
-            <p className="mb-1 text-xs font-semibold text-muted">Reward breakdown through t (8 named components)</p>
+            <p className="mb-1 text-xs font-semibold text-muted">Score so far, broken into its 8 parts (negative = cost to the defender)</p>
             <ul className="flex flex-col gap-0.5 text-xs">
               {Object.entries(totals).map(([k, v]) => (
                 <li key={k} className="flex justify-between"><Mono>{k}</Mono><span className={`font-mono ${v < 0 ? 'text-bad' : v > 0 ? 'text-ok' : 'text-faint'}`}>{num(v, 3)}</span></li>
@@ -256,4 +325,36 @@ function Topology({ scenario, states }: { scenario: LabScenario; states: LabNode
       </div>
     </figure>
   );
+}
+
+const STAGE_FILL = { none: 'transparent', foothold: 'var(--color-warn)', escalated: 'color-mix(in srgb, var(--color-bad) 65%, white)', impact: 'var(--color-bad)' } as const;
+
+/** Whole game at a glance: hidden attacker progress (ground truth) above, defender actions below. */
+function Timeline({ episode, t, onSeek }: { episode: LabEpisode; t: number; onSeek: (t: number) => void }) {
+  const rows = useMemo(() => episodeTimeline(episode), [episode]);
+  const w = Math.max(1, rows.length);
+  return (
+    <figure data-testid="lab-timeline">
+      <svg viewBox={`0 0 ${w} 22`} preserveAspectRatio="none" className="h-14 w-full cursor-pointer rounded border border-line bg-bg" role="img"
+        aria-label={`Game timeline over ${rows.length} steps: attacker progress and defender actions`}
+        onClick={e => { const r = (e.currentTarget as SVGSVGElement).getBoundingClientRect(); onSeek(Math.min(rows.length - 1, Math.max(0, Math.floor(((e.clientX - r.left) / r.width) * rows.length)))); }}>
+        {rows.map((r, i) => (
+          <g key={i}>
+            <rect x={i} y={1} width={1.02} height={9} fill={STAGE_FILL[r.stage]} />
+            {r.acted && <rect x={i} y={13} width={1.02} height={8} fill={r.disruptive ? 'var(--color-brand)' : 'color-mix(in srgb, var(--color-brand) 35%, white)'} />}
+          </g>
+        ))}
+        <line x1={t + 0.5} x2={t + 0.5} y1={0} y2={22} stroke="var(--color-ink)" strokeWidth={Math.max(0.6, w / 300)} vectorEffect="non-scaling-stroke" />
+      </svg>
+      <figcaption className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
+        <span><strong>Top:</strong> how far the hidden attacker got (simulation ground truth, never shown to the defender):
+          {' '}<Swatch c={STAGE_FILL.foothold} /> {STAGE_WORDS.foothold} <Swatch c={STAGE_FILL.escalated} /> {STAGE_WORDS.escalated} <Swatch c={STAGE_FILL.impact} /> {STAGE_WORDS.impact}</span>
+        <span><strong>Bottom:</strong> <Swatch c="var(--color-brand)" /> disruptive action (cut off / slow down) <Swatch c="color-mix(in srgb, var(--color-brand) 35%, white)" /> other action. Click to jump.</span>
+      </figcaption>
+    </figure>
+  );
+}
+
+function Swatch({ c }: { c: string }) {
+  return <span aria-hidden="true" className="inline-block h-2.5 w-2.5 rounded-sm align-middle" style={{ background: c }} />;
 }
