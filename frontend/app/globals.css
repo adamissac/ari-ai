@@ -587,3 +587,6 @@ html[data-home-hero][data-hero-past] .site-header nav a.hdr-cta { background: va
   .demo-rise, .dm-flow, .dm-scan, .dm-blink, .demo-agent-dot, .demo-step-dot { animation: none !important; }
   .demo-card { transition: none; }
 }
+
+/* The header tab for the section you are on: solid brand, same as hover. */
+.site-header nav a[aria-current="page"] { background: var(--color-brand); color: var(--color-on-brand); }

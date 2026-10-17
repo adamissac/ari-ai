@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { api } from '@/lib/api';
+import { useActionKeys } from '@/lib/action-key';
 import { useResource } from '@/lib/use-resource';
 import { CREATE_PROJECT_NOTE } from '@/lib/create-project';
 import { Async, Button, Empty, ErrorState, Field, inputClass, PageTitle, Panel, Time } from '@/components/ui';
@@ -13,12 +14,14 @@ export default function ProjectsPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
+  const keys = useActionKeys('create-project');
   const create = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      await api().createProject({ name: name.trim(), org_id: null, settings: null });
+      await api().createProject({ name: name.trim(), org_id: null, settings: null }, { idempotencyKey: keys.keyFor(name.trim()) });
+      keys.done();
       setName('');
       projects.reload();
     } catch (err) { setError(err); } finally { setBusy(false); }
