@@ -128,3 +128,9 @@ def test_score_is_labelled_base_score_only():
     result = cvss.score_vector("CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N")
     assert result.kind == "CVSS v3.1 base score only (severity, not risk)"
     assert cvss.severity_level(result) == "medium"
+
+
+def test_every_published_score_carries_its_vector():
+    for values in ALL_VECTORS[:200]:
+        result = cvss.base_score(cvss.BaseMetrics(**values))
+        assert result.vector.startswith("CVSS:3.1/") and result.score is not None

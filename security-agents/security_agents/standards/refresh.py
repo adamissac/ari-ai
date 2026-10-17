@@ -66,6 +66,90 @@ SOURCES: dict[str, dict[str, str]] = {
 }
 
 
+LICENSES: dict[str, dict[str, Any]] = {
+    "cwe": {
+        "license": "CWE Terms of Use: non-exclusive, royalty-free license for research, development and commercial purposes",
+        "terms_url": "https://cwe.mitre.org/about/termsofuse.html",
+        "obligations": ["reproduce MITRE's copyright designation and the license in any copy"],
+        "restrictive": False,
+        "verified": True,
+        "read_at": "2026-10-17",
+    },
+    "attack_enterprise": {
+        "license": "MITRE ATT&CK Terms of Use: non-exclusive, royalty-free license for research, development and commercial purposes",
+        "terms_url": "https://attack.mitre.org/resources/legal-and-branding/terms-of-use/",
+        "obligations": ["reproduce MITRE's copyright designation and the license in any copy"],
+        "restrictive": False,
+        "verified": True,
+        "read_at": "2026-10-17",
+    },
+    "d3fend": {
+        "license": "MIT, as declared by dcterms:license in the D3FEND ontology itself",
+        "terms_url": "https://d3fend.mitre.org/ontologies/d3fend.json",
+        "obligations": ["keep the MIT copyright and permission notice"],
+        "restrictive": False,
+        "verified": True,
+        "read_at": "2026-10-17",
+        "note": "the D3FEND legal page URL returned 404 on retrieval; the license is taken from the ontology",
+    },
+    "owasp_api": {
+        "license": "Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)",
+        "terms_url": "https://github.com/OWASP/API-Security/blob/master/LICENSE",
+        "obligations": [
+            "attribute OWASP and link the license",
+            "indicate changes",
+            "share adapted material under the same license",
+        ],
+        "restrictive": True,
+        "verified": True,
+        "read_at": "2026-10-17",
+        "note": "only identifiers and verbatim category titles are stored, unmodified",
+    },
+    "owasp_llm": {
+        "license": "Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)",
+        "terms_url": "https://github.com/OWASP/www-project-top-10-for-large-language-model-applications/blob/main/LICENSE.md",
+        "obligations": [
+            "attribute OWASP and link the license",
+            "indicate changes",
+            "share adapted material under the same license",
+        ],
+        "restrictive": True,
+        "verified": True,
+        "read_at": "2026-10-17",
+        "note": "only identifiers and verbatim risk titles are stored, unmodified",
+    },
+    "cvss31": {
+        "license": "CVSS is owned by FIRST.Org, Inc. and licensed to the public freely, subject to conditions in the specification",
+        "terms_url": "https://www.first.org/cvss/v3.1/specification-document",
+        "obligations": [
+            "attribute that CVSS is owned by FIRST and used by permission",
+            "anyone publishing scores must follow the specification and publish both the score and the vector",
+        ],
+        "restrictive": False,
+        "verified": True,
+        "read_at": "2026-10-17",
+    },
+    "cvss31_vectors": {
+        "license": "NVD terms of use could not be read: the terms page returned a Cloudflare challenge",
+        "terms_url": "https://nvd.nist.gov/developers/terms-of-use",
+        "obligations": [],
+        "restrictive": False,
+        "verified": False,
+        "read_at": "2026-10-17",
+        "note": "only CVE ids, vector strings and base scores are stored, as test data",
+    },
+    "nist_sp_800_115": {
+        "license": "NIST public information: except material marked as copyrighted, information on NIST sites may be distributed or copied",
+        "terms_url": "https://www.nist.gov/copyrights-disclaimers",
+        "obligations": ["appropriate credit is requested"],
+        "restrictive": False,
+        "verified": True,
+        "read_at": "2026-10-17",
+        "note": "only the publication status, title and section headings are stored",
+    },
+}
+
+
 @dataclass
 class Fetched:
     url: str
@@ -665,9 +749,10 @@ def refresh(names: list[str]) -> dict[str, Any]:
             print(f"  {note}", flush=True)
     provenance = {
         "generated_by": "security_agents.standards.refresh",
-        "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "generated_at": existing.get("generated_at") if not names else datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "note": "Identifiers and versions are taken from the primary sources listed here. Nothing in this directory is authored from memory.",
         "sources": dict(sorted(entries.items())),
+        "licenses": LICENSES,
     }
     PROVENANCE_FILE.write_text(
         json.dumps(provenance, indent=1, ensure_ascii=False) + "\n", encoding="utf-8"
@@ -680,10 +765,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--source", action="append", choices=sorted(BUILDERS), default=None)
     parser.add_argument("--all", action="store_true")
     parser.add_argument("--list", action="store_true")
+    parser.add_argument("--licenses-only", action="store_true")
     args = parser.parse_args(argv)
     if args.list:
         for name, source in sorted(SOURCES.items()):
             print(f"{name}: {source['url']}")
+        return 0
+    if args.licenses_only:
+        refresh([])
+        print("updated license metadata in PROVENANCE.json")
         return 0
     names = sorted(BUILDERS) if args.all or not args.source else args.source
     provenance = refresh(names)

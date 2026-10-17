@@ -51,8 +51,28 @@ def test_tampered_index_fails_closed(tmp_path, monkeypatch):
         registry.load.cache_clear()
 
 
-def test_no_index_is_marked_unverified():
-    assert registry.unverified() == {}
+def test_no_pinned_data_is_unverified():
+    sources = registry.provenance()["sources"]
+    assert all(not entry.get("unverified") for entry in sources.values())
+
+
+def test_only_the_nvd_license_is_unverified_and_it_is_surfaced():
+    assert list(registry.unverified()) == ["cvss31_vectors"]
+    assert "Cloudflare" in registry.unverified()["cvss31_vectors"][0]
+
+
+def test_share_alike_licenses_are_flagged():
+    restrictive = sorted(name for name, terms in registry.licenses().items() if terms["restrictive"])
+    assert restrictive == ["owasp_api", "owasp_llm"]
+    assert all("CC BY-SA 4.0" in registry.licenses()[name]["license"] for name in restrictive)
+
+
+def test_third_party_notices_reproduce_the_required_designations():
+    notices = (registry.DATA_DIR.parent / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+    assert "Copyright © 2006–2026, The MITRE Corporation" in notices
+    assert "© 2026 The MITRE Corporation. This work is reproduced and distributed" in notices
+    assert "CVSS is owned by FIRST and used by permission" in notices
+    assert "CC BY-SA 4.0" in notices
 
 
 @pytest.mark.parametrize(

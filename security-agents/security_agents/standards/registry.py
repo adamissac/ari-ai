@@ -54,11 +54,19 @@ def version(name: str) -> str:
 
 
 def unverified() -> dict[str, list[str]]:
-    return {
+    out: dict[str, list[str]] = {
         name: list(entry.get("unverified", []))
         for name, entry in provenance()["sources"].items()
         if entry.get("unverified")
     }
+    for name, terms in provenance().get("licenses", {}).items():
+        if not terms.get("verified"):
+            out.setdefault(name, []).append(f"license terms not verified: {terms.get('license', '')}")
+    return out
+
+
+def licenses() -> dict[str, dict[str, Any]]:
+    return dict(provenance().get("licenses", {}))
 
 
 def summary() -> list[dict[str, Any]]:
