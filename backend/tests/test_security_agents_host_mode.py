@@ -28,10 +28,6 @@ from helpers import add_member  # noqa: E402
 from backend import llm, worker  # noqa: E402
 
 
-@pytest.mark.xfail(
-    reason="security_agents host mode not yet conformant with backend.host (see module docstring)",
-    strict=False,
-)
 def test_host_mode_full_flow_against_real_backend(
     client_factory, settings_override, monkeypatch, tmp_path
 ):
