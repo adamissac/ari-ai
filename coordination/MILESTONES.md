@@ -1,6 +1,6 @@
 # Integration milestones and evidence requirements
 
-- [ ] **M0** shared schemas, importable packages, reproducible local run commands, PR/branch conventions agreed. Gate: 6 owners acknowledge types; CI contract tests pass.
+- [x] **M0** shared schemas, importable packages, reproducible local run commands, PR/branch conventions agreed. Gate: 6 owners acknowledge types; CI contract tests pass.
 - [x] **M1** intelligence indexes the owned Python example by SHA, structured graphs, expectations and citeable context packs. Gate: tests and provenance inspection.
 - [ ] **M2** reviewer with real Claude agent loop can interpret commit intention, call retrieval/tests, generate candidate in safe worktree, inspect results. Gate: live optional smoke and deterministic fixture tests; functional defect reproduced.
 - [ ] **M3** 7 *different* agent runners with actual bounded tool-use and distinct permissions and typed handoffs. Gate: observed real model/tool trace per required role (opt-in), fake-provider integration tests; separated Verify actual tests.
@@ -45,7 +45,7 @@ backend/tests/test_jobs_queue.py backend/tests/test_api_core.py backend/tests/te
 - The CI `backend` workflow runs the same suite on every PR touching backend/shared.
 - Limitations:
   - no GitHub App credentials, so the installation-token flow is unexercised;
-  - Compose/Docker stack not run locally (CI builds the image: `backend-image`).
+  - Docker is not installed locally, but CI's `containers` workflow builds the image (`backend-image`) and smoke-runs the Compose stack (`compose-stack`) on every PR.
 
 ### M7 evidence — Srihith
 
@@ -69,3 +69,11 @@ Limitations:
 - model turns are TEST-ONLY scripted transports (`provider_mode=fake`; the functional Verify makes no model call: `none`), so there is no live-provider M7 run yet;
 - the browser journey starts the assessment manually, while the push-triggered chain is asserted at the API level;
 - the default monitoring budget (150k tokens / $3) is too small for the full chain. The test raises it to the manual default (400k / $10) through `PATCH /projects/{id}`, as an owner would. Changing the default is a product decision.
+
+
+### M0 evidence — Srihith
+
+- Issue #9 has ACKs from all six owners: Sarosh, Adam, Alan, Sai, Vihaan, plus Srihith as contract owner.
+- The contracts evolved additively to `SCHEMA_VERSION` 0.8.0.
+- Every PR runs `uv run python -m shared.export --check` and `uv run python -m shared.examples --check` (the backend workflow), and the transport validates every wire DTO against `shared/generated/contracts.schema.json`.
+- Run commands are in CLAUDE.md "Commands". Branch and merge conventions: issue #12.
