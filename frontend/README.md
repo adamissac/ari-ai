@@ -121,8 +121,15 @@ Grotesk and IBM Plex Mono. Font provenance, licenses and hashes are in `app/font
 The shared header, logo and ordinary navigation controls are transparent; only
 Pricing keeps its orange fill. `HeaderContrast` adapts each control to the nearest
 painted surface beneath it (white text/ant on dark, ink on light), including light
-cards within dark sections. Hover adds a restrained translucent tint. All navigation
-links remain available on phones, wrapping into rows with 44px targets. The landing header stays fixed; other routes use sticky
+cards within dark sections. Hover adds a restrained translucent tint.
+`SiteNavigation` shows only the logo and account entry at the homepage top; Projects,
+Defense Lab, Demo and Pricing reveal at `scrollY >= 100` with a 250ms fade and 8px
+horizontal movement, and hide below that threshold. Reserved layout slots keep the
+account entry anchored; hidden links are inert and excluded from accessibility.
+Phones have a compact Menu disclosure for access before scrolling, including Escape
+to close and restore focus. Scroll reveal closes that disclosure, so returning to the
+top hides the links again. Reduced motion removes the fade/translation. Other pages
+always show full navigation. The landing header stays fixed; other routes use sticky
 positioning. The hero centers “FIND THE FLAW. / PROVE THE FIX.”, the demo and how-it-works
 links, and the seven workflow pills. Its headline uses a crisp warm off-white
 core and three low-opacity, em-scaled ember shadows; the original gradient, spacing,

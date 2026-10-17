@@ -2,11 +2,10 @@ import type { Metadata } from 'next';
 import localFont from 'next/font/local';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { AccountLink } from '@/components/account-link';
 import { BRAND_NAME, Wordmark } from '@/components/brand';
 import { DemoBanner } from '@/components/demo-banner';
 import { HeaderContrast } from '@/components/header-contrast';
-import { NavLink } from '@/components/nav-link';
+import { SiteNavigation } from '@/components/site-navigation';
 import { SiteFooter } from '@/components/site-footer';
 import { SmoothScroll } from '@/components/smooth-scroll';
 import './globals.css';
@@ -46,13 +45,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <Link href="/" aria-label={`${BRAND_NAME} home`} className="hdr-logo">
               <Wordmark priority />
             </Link>
-            <nav aria-label="Primary" className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
-              <NavLink href="/projects">Projects</NavLink>
-              <NavLink href="/lab">Defense Lab</NavLink>
-              <NavLink href="/demo">Demo</NavLink>
-              <NavLink href="/pricing" className="hdr-cta">Pricing</NavLink>
-              <AccountLink />
-            </nav>
+            <SiteNavigation />
           </div>
         </header>
         <HeaderContrast />
