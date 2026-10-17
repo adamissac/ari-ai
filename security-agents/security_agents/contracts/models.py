@@ -12,6 +12,8 @@ from enum import StrEnum
 from typing import Literal
 
 from pydantic import Field, field_validator
+from shared.standards import CVSSAssessment, DefensiveMapping, StandardMapping
+from standards.mapping import check_cwe
 
 from .base import (
     AgentName,
@@ -141,6 +143,18 @@ class Hypothesis(StrictModel):
     id: str = Field(default_factory=lambda: new_id("hyp"))
     finding_id: str = Field(default_factory=lambda: new_id("fnd"))
     weakness_class: str = Field(pattern=r"^CWE-\d{1,5}$")
+
+    @field_validator("weakness_class")
+    @classmethod
+    def _catalog_cwe(cls, value: str) -> str:
+        try:
+            entry = check_cwe(value)
+            if entry.status != "active" or entry.detail.get("kind", "").lower() != "weakness":
+                raise ValueError("SCHEMA_INVALID: CWE must be an active weakness")
+        except (KeyError, ValueError) as exc:
+            raise ValueError(f"SCHEMA_INVALID: rejected CWE identifier {value}: {exc}") from exc
+        return value
+
     title: ShortText
     rationale: LongText
     cited_spans: list[EvidenceRef] = Field(min_length=1)
@@ -171,6 +185,7 @@ class ValidationResult(StrictModel):
 
 
 class PathStep(StrictModel):
+    attack: list[StandardMapping] = Field(default_factory=list)
     order: int = Field(ge=1)
     description: ShortText
     symbol_ref: str | None = None
@@ -194,6 +209,7 @@ class SeverityLevel(StrEnum):
 
 
 class SeverityAssessment(StrictModel):
+    cvss: CVSSAssessment | None = None
     level: SeverityLevel
     factors: SeverityFactors
     rationale: ShortText
@@ -288,6 +304,7 @@ class RegressionTest(StrictModel):
 
 
 class HardeningRecommendation(StrictModel):
+    d3fend: list[DefensiveMapping] = Field(default_factory=list)
     id: str = Field(default_factory=lambda: new_id("hdn"))
     finding_id: str
     category: Literal["centralize_check", "lint_rule", "policy_test", "config", "monitoring", "other"]
@@ -300,6 +317,18 @@ class HardeningRecommendation(StrictModel):
 
 class HypothesisDraft(StrictModel):
     weakness_class: str = Field(pattern=r"^CWE-\d{1,5}$")
+
+    @field_validator("weakness_class")
+    @classmethod
+    def _catalog_cwe(cls, value: str) -> str:
+        try:
+            entry = check_cwe(value)
+            if entry.status != "active" or entry.detail.get("kind", "").lower() != "weakness":
+                raise ValueError("SCHEMA_INVALID: CWE must be an active weakness")
+        except (KeyError, ValueError) as exc:
+            raise ValueError(f"SCHEMA_INVALID: rejected CWE identifier {value}: {exc}") from exc
+        return value
+
     title: ShortText
     rationale: ShortText
     cited_spans: list[EvidenceRef] = Field(min_length=1)

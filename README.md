@@ -1,8 +1,8 @@
 # hackatl-agentic-security
 
-> **Status: Phase 0 — repository foundation and architecture only.**
-> No product functionality is implemented yet. Every capability described in this
-> repository is a *specification*, not a working feature. See
+> **Status: implementation in progress.**
+> Runtime packages and integration tests now exist. Specifications still describe
+> capabilities beyond the implemented scope. See
 > [Current implementation status](#current-implementation-status).
 
 An autonomous software engineering and cybersecurity platform, being built for
@@ -94,3 +94,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md), [docs/24_DEVELOPMENT_STANDARDS.md](docs/
 and [SECURITY.md](SECURITY.md). This project builds offensive-security tooling;
 **all security testing must target only explicitly authorized, isolated environments**
 ([docs/15_SECURITY_BOUNDARIES.md](docs/15_SECURITY_BOUNDARIES.md)).
+
+## Standards alignment
+
+Versioned ATT&CK/D3FEND/CWE catalogs, deterministic CVSS 4.0, persisted incident handling aligned to NIST SP 800-61r3, and OWASP LLM Top 10 2025/2026 platform self-assessments are implemented on this branch. See [standards](standards/README.md), [incident handling](docs/security/NIST_INCIDENT_HANDLING.md), and [OWASP coverage](docs/security/OWASP_LLM_TOP10_COVERAGE.md). Controls have explicit gaps; these are not certification or comprehensive detection claims. Frontend transport supports incident actions and standards labels; rendered dashboard integration remains with the frontend owner. No production containment is executed.
