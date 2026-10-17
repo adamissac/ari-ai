@@ -360,3 +360,8 @@ Replaced invalid imports/nonexistent npm commands and skip-as-success summaries 
 - Continued from Claude's current main-based worktree; #73/#74 are merged and #35 is closed. Left the separate Devin M7 branch and untracked reports intact.
 - Inspected successful security CI 39033028814 (`5b3ef50`): 6 real Docker tests passed; ordinary suite 451 passed/18 skipped. Corrected stale execution-unverified and integration-pending README claims.
 - INFRA-005 still needs published image digests; CI's temporary image tag is not a published release. Live seven-role provider proof remains separate.
+
+### 2026-10-17 — QA-002 M7 runner isolation
+- Continued unfinished Devin runner: uses selected Python, no uv PATH requirement, no shared devdb start/stop, forced live-provider opt-out, ignored report output with --output override. Removed hardcoded branch metadata.
+- Executed M7 through isolated PostgreSQL fixture successfully; wrapper exits2 truthfully because browser is unexecuted. QA unit suite13 passed; Ruff/format and link checks passed.
+- Primary Devin checkout and its existing untracked reports remain untouched. No live model or deployment.

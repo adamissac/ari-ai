@@ -169,3 +169,7 @@ UNVERIFIED: NVD terms page (Cloudflare challenge). All runs above are replay or 
 - Confirmed #73/#74 merged, #35 closed, and no open PRs at session start. Preserved the primary Devin checkout and its untracked reports.
 - Verified security CI 39033028814 on main `5b3ef50`: 6 real-container tests passed and ordinary security suite 451 passed/18 skipped. Reviewer Docker CI 39028078294 also passed.
 - Corrected stale README integration dependencies and Docker-unverified claims in README/milestone/task evidence. No new live provider or local Docker run; published sandbox image digests and live seven-role proof remain open.
+
+### 2026-10-17 — QA-002 M7 runner continuation
+- Fixed the remaining Devin M7 runner's uv dependency/shared-db lifecycle operations and moved generated output into ignored .dev/qa (overridable). Exact current interpreter is retained; live calls forced off.
+- QA runner13 tests passed; actual M7 backend workflow passed against PostgreSQL. Wrapper correctly exits2 for unexecuted browser stage. Full current security451 passed/18 skipped and standards190 passed earlier this session.
