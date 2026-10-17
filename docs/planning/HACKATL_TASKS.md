@@ -189,3 +189,14 @@ failures, force live calls off, and keep generated reports out of tracked eviden
 Runner semantics covered by `tests/qa/test_m7_runner.py`.
 
 Issue #148 status: DONE via PR #150, merged `1129434`; all executable CI checks passed on combined head `91cea8c`. Historical references remain immutable.
+
+### API-RETRY-001 — assessment creation retries
+Owner: Alan (Codex), explicitly assigned application integration sprint. Status:
+IN_REVIEW on `fix/alan/demo-api-reliability`, base `37b0920`.
+Acceptance: overlapping same-user/key starts persist one assessment/job/audit entry;
+conflicting request/project yields409; failure rolls back key reservation; root and
+backend tests pass. Dedicated worktree; no security-agent lane changes.
+
+API-RETRY-001 validation: targeted16 passed; root420 passed/9 optional skips;
+backend79 passed/5 optional skips. Real PostgreSQL, scripted model transports;
+Ruff/format/mypy, 112-file contract freshness, links passed. PR remains for review.
