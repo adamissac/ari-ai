@@ -26,6 +26,7 @@ export function useParam(name: string): string {
 
 const TABS = [
   { href: '', label: 'Overview' },
+  { href: '/commits', label: 'Commits' },
   { href: '/scopes', label: 'Scopes' },
   { href: '/expectations', label: 'Expectations' },
   { href: '/findings', label: 'Findings' },
