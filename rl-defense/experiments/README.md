@@ -127,3 +127,55 @@ Findings:
 Applying the rule: `r3_1m_dr_nstep3_sel` leads; only `r3_1m_dr_lrdecay_sel` is within one
 std (−33.6 ≥ −38.0), and nstep3_sel has the lower robust db loss (1.8% vs 3.1%); its ×1
 return (−22.5) beats v0 defaults (−91.8). **Final candidate: `r3_1m_dr_nstep3_sel`.**
+
+## Final held-out result: protocol-v1
+
+`python -m experiments.final --candidate configs/ddqn/r3_1m_dr_nstep3_sel.yaml --name protocol-v1`
+trained the single selected candidate on seeds 0–4 (1M steps each, 999,000 gradient
+updates, ~400 s per seed; checkpoint selection picked steps 500k, 700k, 950k, 650k and
+950k), then ran the official held-out evaluation once and the held-out stress test. Full
+comparison: [results/protocol-v1/COMPARISON.md](../results/protocol-v1/COMPARISON.md).
+
+| Held-out, pooled (mean [95% CI over 5 seeds]) | v0 DDQN | **v1 DDQN** | threshold rules |
+|---|---|---|---|
+| Return | −65.6 [−72.1, −59.7] | **−29.1 [−32.1, −26.1]** | −96.0 |
+| Compromise % | 47.5 [35.3, 58.9] | **7.1 [4.1, 11.2]** | 83.0 |
+| db lost % | 9.8 [7.1, 11.9] | **1.1 [0.3, 2.1]** | 0.3 |
+| Time to containment (steps) | 84.5 | **25.6** | 158.3 |
+| Uptime % | 93.8 | 94.4 | 93.3 |
+| Escalations / episode | 2.0 | 0.7 | 3.0 |
+| False disruption % | **53.9** [45.8, 63.1] | 75.0 [69.6, 79.8] | 28.7 |
+
+Stress test (held-out configs, every adversary probability × factor, seeds 3000–3049):
+
+| Factor | v0 return | v1 return | rules return | v0 db lost % | v1 db lost % | rules db lost % |
+|---|---|---|---|---|---|---|
+| ×0.5 | −25.1 | −21.0 | −46.8 | 0.4 | 0.0 | 0.0 |
+| ×1 | −66.9 | −30.6 | −97.1 | 9.5 | 1.7 | 0.7 |
+| ×1.5 | −128.8 | −45.4 | −155.0 | 26.7 | 3.3 | 2.7 |
+| ×2 | −198.2 | −60.5 | −204.1 | 44.8 | 6.5 | 4.7 |
+| ×2.5 | −257.8 | −85.4 | −246.7 | 61.3 | 11.6 | 10.0 |
+
+What this shows:
+- v1 more than halves v0's held-out loss, cuts compromise from 47.5% to 7.1% and db loss
+  from 9.8% to 1.1%, and contains attacks about 3× faster. The validation estimate
+  (×1 −22.5 on training configs) and the held-out result (−29.1) agree in direction; the
+  held-out configs are harder, as expected.
+- v1 no longer collapses as attackers speed up: it beats the threshold rules on return at
+  every factor, and its db loss now tracks the rules' instead of reaching 61%.
+- **Where v1 is worse:** false disruption rises from 54% to 75% (rules: 29%). v1 acts early
+  and often on nodes that are not yet compromised; uptime is still slightly higher than
+  v0's because isolations are shorter and better targeted. The goal of *lower* false
+  disruption was **not** met. The rules still lose the db slightly less often (0.3% vs 1.1%).
+- Against held-out baselines (Holm-corrected): v1 is significantly better than the rules on
+  return, compromise, containment, escalations and action cost, worse on false disruption,
+  and not significantly different on uptime.
+
+*Results are from a simulated environment and do not establish real-world effectiveness.*
+
+### Possible next steps (not done)
+
+- Target false disruption directly: e.g. a validation-selected `c_disrupt` sweep would change
+  the reward, which requires a new env version (`-v1`) per docs/17, so it is out of scope here.
+- Reward-preserving options: penalize disruptive actions in checkpoint-selection scoring, or
+  add false disruption as a tie-breaker in the selection rule.
