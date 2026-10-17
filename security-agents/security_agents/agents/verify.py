@@ -176,6 +176,9 @@ class VerifyEvidence:
     required_transport: str = "inprocess"
     original_tree_sha256: str | None = None
     patched_tree_sha256: str | None = None
+    # Platform-run (not model-run) execution of the candidate's added tests on an unpatched
+    # fresh checkout. None = not collected (callers outside the orchestrator); a list = required.
+    unpatched_added_runs: list[dict[str, Any]] | None = None
 
 
 def _transport_problem(ev: VerifyEvidence, run: dict[str, Any]) -> str | None:
@@ -417,6 +420,39 @@ def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], l
                     "no test executed in that run",
                     artifact,
                 )
+            elif ev.unpatched_added_runs is not None:
+                # A regression test must reproduce the finding: it fails on the unpatched code
+                # and passes after the patch. Without the failing half it proves nothing.
+                red_runs = [r for r in ev.unpatched_added_runs if not r.get("error")]
+                red = sorted(
+                    f
+                    for r in red_runs
+                    for f in (r.get("failing_tests") or [])
+                    if any(f.startswith(t) for t in ev.tests_added)
+                )
+                red_artifact = str(red_runs[-1].get("sandbox_run_id") or "") if red_runs else None
+                if not red_runs:
+                    add(
+                        VerificationCheckName.GENERATED_TESTS_PASS,
+                        False,
+                        "the added tests could not be run on the unpatched code, so it is unproven that they reproduce the finding",
+                        artifact,
+                    )
+                elif not red:
+                    add(
+                        VerificationCheckName.GENERATED_TESTS_PASS,
+                        False,
+                        "the added tests already pass on the unpatched code, so they do not reproduce the finding",
+                        red_artifact,
+                    )
+                else:
+                    add(
+                        VerificationCheckName.GENERATED_TESTS_PASS,
+                        True,
+                        f"added tests fail on the unpatched code ({', '.join(red)}) and pass after the patch "
+                        f"({', '.join(ev.tests_added)})",
+                        artifact,
+                    )
             else:
                 add(
                     VerificationCheckName.GENERATED_TESTS_PASS,

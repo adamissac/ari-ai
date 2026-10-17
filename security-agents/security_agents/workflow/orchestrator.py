@@ -57,7 +57,7 @@ from ..intel import CodeIntel, FindingsHistory, hypothesis_key
 from ..llm import LLMGateway
 from ..runtime import AgentSpec, StepOutcome, StepRecord, run_agent
 from ..sandbox.driver import SandboxDriver
-from ..sandbox.workspace import tree_digest
+from ..sandbox.workspace import fresh_checkout, resolve_under, tree_digest
 from ..scope_guard import ActionRequest
 from ..scope_guard import check as scope_check
 from ..tools import (
@@ -659,6 +659,47 @@ class Orchestrator:
 
     # ------------------------------------------------------------------ steps
 
+    def _added_tests_on_unpatched(self, candidate: Any, verify_ctx: ToolContext, attempt: int) -> list[dict[str, Any]]:
+        """Run the candidate's added tests on a fresh UNPATCHED checkout (platform-run, no model).
+
+        Only the added test files are copied in from Verify's patched workspace; the code under
+        test is the pinned snapshot. Verify requires at least one of them to fail here.
+        Returns [] when nothing could be run (Verify then fails closed).
+        """
+        patched = verify_ctx.artifacts.get("verify_workspace")
+        tests = [t for t in candidate.tests_added if isinstance(t, str) and t.startswith("tests/")]
+        if not patched or not tests:
+            return []
+        dest = self.workdir / f"unpatched-{candidate.id}-{attempt}"
+        try:
+            root = fresh_checkout(self.intel.snapshot, dest)
+            for rel in tests:
+                src = resolve_under(Path(patched), rel)
+                if not src.is_file():
+                    return []
+                target = resolve_under(root, rel)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(src.read_bytes())
+        except (OSError, PlatformError, ValueError):
+            return []
+        ctx = self._context(AgentName.VERIFY, f"remediation:{candidate.finding_id}:unpatched-tests", services={})
+        ctx.artifacts["tests_added"] = tests
+        runner = TestRunner(
+            driver=self.driver,
+            workspace_provider=lambda _ctx: root,
+            test_command_args=self.config.test_command_args,
+        )
+        result = runner.run(ctx, "added_tests", [])
+        self._audit(
+            "tests.added_on_unpatched",
+            "patch",
+            candidate.id,
+            failing=result.get("failing_tests"),
+            passed=result.get("passed"),
+            sandbox_run_id=result.get("sandbox_run_id"),
+        )
+        return [result]
+
     def _baseline_test_failures(self) -> list[str]:
         """Record which tests already fail on the unpatched snapshot (Verify needs this)."""
         ctx = self._context(AgentName.VERIFY, "baseline", services={})
@@ -1068,6 +1109,9 @@ class Orchestrator:
         test_runs = list(ctx.artifacts.get("test_runs") or [])
         for run in check_runs + test_runs:
             self.result.usage.sandbox_seconds += float(run.get("duration_s") or 0)
+        unpatched_added_runs = self._added_tests_on_unpatched(candidate, ctx, attempt)
+        for run in unpatched_added_runs:
+            self.result.usage.sandbox_seconds += float(run.get("duration_s") or 0)
         evidence = verify_agent.VerifyEvidence(
             apply_facts=dict(ctx.artifacts.get("verify_facts") or {}),
             recheck_runs=check_runs,
@@ -1082,6 +1126,7 @@ class Orchestrator:
             patched_tree_sha256=tree_digest(ctx.artifacts["verify_workspace"])
             if ctx.artifacts.get("verify_workspace")
             else None,
+            unpatched_added_runs=unpatched_added_runs,
         )
         out = outcome.output if isinstance(outcome.output, verify_agent.VerifyOutput) else None
         sandbox_ids = [
