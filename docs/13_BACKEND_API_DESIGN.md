@@ -64,6 +64,7 @@ by FastAPI is the source for frontend client generation.
 | POST | `/projects/{id}/assessments` | Start `{snapshot_id or commit_sha, scope_id, budget?}` |
 | GET | `/assessments/{asm_id}` | State, usage, summary |
 | GET | `/assessments/{asm_id}/events` | **SSE** progress stream |
+| GET | `/assessments/{asm_id}/events/log?after=&limit=` | Durable JSON event log, oldest first; `next_cursor` = last `seq` when more exist (pass as `after`), `null` at the end |
 | POST | `/assessments/{asm_id}/cancel` | Cancel |
 | GET | `/assessments/{asm_id}/runs` | AgentRuns (no raw prompts by default) |
 | GET | `/assessments/{asm_id}/report` | Final report JSON (Markdown export later) |
