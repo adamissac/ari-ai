@@ -250,8 +250,8 @@ function GroundTruth({ episode, t, truth, onToggle, label }: { episode: LabEpiso
   return (
     <div className="rounded-xl border border-line px-4 py-3 text-xs">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="font-semibold text-muted">Ground truth (simulation) — hidden attacker stage, never observed by the policy</p>
-        <label className="flex cursor-pointer items-center gap-2 text-muted">
+        <p className="label-mono text-muted">Ground truth (simulation) — hidden attacker stage, never observed by the policy</p>
+        <label className="label-mono flex cursor-pointer items-center gap-2 text-muted">
           <input type="checkbox" checked={truth} onChange={e => onToggle(e.target.checked)} className="accent-[var(--color-brand)]" />
           Show on the map (for learning)
         </label>
@@ -260,7 +260,7 @@ function GroundTruth({ episode, t, truth, onToggle, label }: { episode: LabEpiso
         <ul className="mt-2 flex flex-wrap gap-1.5">
           {states.map(s => <li key={s.node} className="rounded-full border border-line px-2 py-0.5"><Mono>{label(s.node)}</Mono> · attacker {STAGE_WORDS[s.hidden_stage_ground_truth]}</li>)}
         </ul>
-      ) : <p className="mt-1 text-faint">Hidden by default. The trained defender only sees alert rates, anomaly scores, monitoring levels and its own actions.</p>}
+      ) : <p className="mt-1 font-mono text-[0.72rem] text-faint">Hidden by default. The trained defender only sees alert rates, anomaly scores, monitoring levels and its own actions.</p>}
     </div>
   );
 }
