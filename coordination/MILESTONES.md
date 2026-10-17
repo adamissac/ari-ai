@@ -105,9 +105,9 @@ Gate: live optional smoke + deterministic fixture tests; functional defect repro
   and the existing suite in a fresh replay. Since #73 the hosted flow takes that patch through an independent
   functional Verify to `verified` (`backend/tests/test_unified_assessment.py`).
 
-Limitations: live runs are opt-in and were run by a key holder, not in CI. Docker sandbox execution for
-reviewer tests is unverified (no engine); CI uses the local-process sandbox plus the shared driver in
-local mode.
+Limitations: live runs are opt-in and were run by a key holder, not in CI. Update: reviewer tests now also run
+inside the real Docker sandbox in CI (`docker-reviewer` job, #127, GitHub Actions run 39028078294: 2 passed:
+kernel-level `--network none`, no host-env leak, defect validated in a container).
 
 
 ### M3 evidence (partial, gate NOT met) - Alan
