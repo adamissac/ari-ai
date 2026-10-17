@@ -132,6 +132,9 @@ def _runner(
     intelligence: IntelligencePort | None | bool,
     budget: ReviewBudget | None,
 ) -> ReviewerAgentRunner:
+    shared_factory = getattr(host, "intelligence_service", None)
+    if intelligence is True and callable(shared_factory):
+        intelligence = shared_factory()
     kw: dict[str, Any] = {
         "host": host,
         "source": source or resolve_repo(repo_id, commit_sha=commit_sha),
