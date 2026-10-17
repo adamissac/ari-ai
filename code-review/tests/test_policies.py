@@ -347,3 +347,64 @@ def test_resolve_repo_registries_and_build_recipe(tmp_path: Path, monkeypatch) -
     finally:
         monkeypatch.delenv("REPOSITORY_BINDINGS_FILE")
         get_settings.cache_clear()
+
+
+def test_human_expectation_decisions_drive_claim_status(tmp_path: Path) -> None:
+    """Consumer side of #38: confirmed decisions confirm, conflicting ones force `conflicting`,
+    rejected ones cannot support anything."""
+    from shared.base import utcnow  # noqa: F401
+    from shared.evidence import EvidenceKind, EvidenceRef
+    from shared.intelligence import BehavioralExpectation, ExpectationKind, ExpectationOrigin
+
+    sc = tenant_auth(tmp_path)
+    ws = Workspace.export(RepoSource(sc.repo), sc.head_sha)
+    src = EvidenceRef(
+        kind=EvidenceKind.human_input, provenance="backend:expectation_decision", note="decided"
+    )
+
+    def exp(eid: str, status: str) -> BehavioralExpectation:
+        return BehavioralExpectation(
+            id=eid,
+            snapshot_id="snp_fixture0001",
+            subject_ref="payments.refunds.refund",
+            statement=f"rule {eid}",
+            kind=ExpectationKind.invariant,
+            sources=[src],
+            confidence=0.9,
+            origin=ExpectationOrigin.human_input,
+            status=status,
+        )
+
+    exps = {
+        e.id: e
+        for e in (
+            exp("exp_confirmed01", "confirmed"),
+            exp("exp_conflict001", "conflicting"),
+            exp("exp_rejected001", "rejected"),
+        )
+    }
+    claims = [
+        ClaimIn(
+            key=k,
+            statement=k,
+            proposed_status="confirmed",
+            citations=[CitationIn(source_kind="expectation", expectation_id=eid)],
+        )
+        for k, eid in (
+            ("ok", "exp_confirmed01"),
+            ("conf", "exp_conflict001"),
+            ("rej", "exp_rejected001"),
+        )
+    ]
+    try:
+        adj = adjudicate_claims(claims, ws, _intent(sc), exps, [], [])
+        assert adj.by_key["ok"].claim.status is IntentClaimStatus.confirmed
+        assert adj.by_key["ok"].claim.expectation_id == "exp_confirmed01"
+        assert adj.by_key["conf"].claim.status is IntentClaimStatus.conflicting
+        assert "rej" not in adj.by_key
+        assert any("rejected by a human decision" in r for r in adj.rejected)
+        assert any(
+            "Please confirm the intended behavior: conf" in q for q in adj.evidence.open_questions
+        )
+    finally:
+        ws.close()
