@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { LabCommandCenter } from '@/components/lab-command';
 import { ReplayStage } from '@/components/lab-replay';
 import { Term } from '@/components/term';
 import { Empty, ErrorState, Field, inputClass, Loading, Mono, Panel } from '@/components/ui';
@@ -87,7 +86,6 @@ function Lab({ data }: { data: BundleResponse }) {
   const { bundle, provenance } = data;
   return (
     <div className="flex flex-col gap-10">
-      <LabCommandCenter bundle={bundle} />
       <section aria-labelledby="lab-what" data-testid="lab-intro">
         <p className="label-mono text-brand">How the game works</p>
         <h2 id="lab-what" className="sr-only">What is this?</h2>

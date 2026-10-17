@@ -47,10 +47,11 @@ test('simulated demo pages send a signed-out visitor to the sign-in', async ({ p
   await expect(page.getByTestId('demo-signin')).toBeVisible();
 });
 
-test('Defense Lab command center replays a recorded game from the bundle', async ({ page }) => {
+test('Defense Lab replays a recorded game from the bundle, labelled as simulation, with held-out scores', async ({ page }) => {
+  // The overview command center was merged into the main replay (one game, shown once).
   await page.goto('/lab');
-  const command = page.getByTestId('lab-command');
-  await expect(command).toContainText('recorded game');
-  await expect(command.getByTestId('defense-map')).toContainText('simulation only');
-  await expect(command).toContainText(/\d+\.\d%/);
+  await expect(page.getByTestId('lab-command')).toHaveCount(0);
+  await expect(page.getByText('Replay a recorded game')).toBeVisible();
+  await expect(page.getByTestId('lab-mode')).toHaveText('Simulation · recorded evaluation');
+  await expect(page.getByTestId('score-compromise_rate')).toContainText(/\d+\.\d%/);
 });
