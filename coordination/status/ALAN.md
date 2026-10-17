@@ -87,6 +87,14 @@ Executed check results on the fixture (the precision evidence):
 
 ## Session entries
 
+### 2026-10-17 (Srihith follow-up c75a56e on #73)
+
+- Ported `_report_or_wait` + unconditional `external_pending` pause from
+  `feat/srihith/functional-remediation` @ `c75a56e`. Did **not** merge #71.
+- Complete-run functional reproduction was already `_functional_reproduced`
+  on this branch; added hang/`exit_code=None` to the guards test.
+- Message: `20261017T083214Z-alan-to-srihith-ported-c75a56e-pause-gates.md`.
+
 ### 2026-10-17 (host finding persistence)
 
 - Branch `feat/alan/host-finding-persistence` off current main. Did not continue
