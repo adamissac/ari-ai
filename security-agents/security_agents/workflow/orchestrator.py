@@ -78,6 +78,40 @@ from .states import (
 DEFAULT_BUDGET = Budget(max_tokens=400_000, max_usd=8.0, max_wall_clock_s=3600.0)
 
 
+class ApprovalPending(Exception):
+    """Raised by an approval callback when a human decision is outstanding.
+
+    The orchestrator stops in `AWAITING_APPROVAL` without a terminal
+    transition, so a host can persist the request and re-enter later.
+    """
+
+    def __init__(self, finding_id: str, approval_id: str | None = None) -> None:
+        super().__init__(f"approval pending for {finding_id}")
+        self.finding_id = finding_id
+        self.approval_id = approval_id
+
+
+class AssessmentSink:
+    """Hooks a host uses to mirror orchestration into its own store.
+
+    Every method is a no-op by default, so the standalone orchestrator behaves
+    exactly as before. A host implementation (see `security_agents.host_adapter`)
+    persists each record and emits progress events.
+    """
+
+    def on_transition(self, src: AssessmentState, dst: AssessmentState, note: str) -> None: ...
+
+    def on_finding(self, finding: FindingRecord) -> None: ...
+
+    def on_record(self, finding: FindingRecord, record: Any, kind: str) -> None: ...
+
+    def on_patch(self, finding: FindingRecord, candidate: PatchCandidate, diff: str) -> None: ...
+
+    def on_verification(self, finding: FindingRecord, result: VerificationResult) -> None: ...
+
+    def on_status(self, finding: FindingRecord, status: str) -> None: ...
+
+
 @dataclass
 class FindingRecord:
     """Everything the platform knows about one security finding."""
@@ -192,6 +226,8 @@ class Orchestrator:
         registry: ToolRegistry | None = None,
         history: FindingsHistory | None = None,
         approve_remediation: Callable[[FindingRecord], Approval | None] | None = None,
+        sink: AssessmentSink | None = None,
+        step_runner: Callable[..., StepOutcome] | None = None,
         kill_switch: Callable[[], bool] = lambda: False,
         cancelled: Callable[[], bool] = lambda: False,
         now: Callable[[], datetime] = utcnow,
@@ -205,6 +241,10 @@ class Orchestrator:
         self.registry = registry or default_registry()
         self.history = history or FindingsHistory()
         self.approve_remediation = approve_remediation
+        self.sink = sink or AssessmentSink()
+        # Injected so a backend host can run the agent turn through its own
+        # gateway instead of this package's provider (ADR-0007: one gateway).
+        self.step_runner = step_runner
         self.kill_switch = kill_switch
         self.cancelled = cancelled
         self.now = now
@@ -228,6 +268,7 @@ class Orchestrator:
         self.state = transition(src, dst)
         self.state_log.record(src, dst, note)
         self.result.state = self.state
+        self.sink.on_transition(src, dst, note)
         self._audit("assessment.transition", "assessment", self.config.assessment_id,
                     actor="system", src=src.value, dst=dst.value, note=note)
 
@@ -290,7 +331,8 @@ class Orchestrator:
             return self._completed_steps[key]
         if not self._budget_left():
             raise PlatformError(ErrorCode.BUDGET_EXHAUSTED, "assessment budget exhausted")
-        outcome = run_agent(
+        runner = self.step_runner or run_agent
+        outcome = runner(
             spec,
             gateway=self.gateway,
             registry=self.registry,
@@ -397,8 +439,18 @@ class Orchestrator:
         # ---- AWAITING_APPROVAL gate (human only)
         self._goto(AssessmentState.AWAITING_APPROVAL)
         approved: list[FindingRecord] = []
+        pending: list[str] = []
         for finding in diagnosed:
-            approval = self.approve_remediation(finding) if self.approve_remediation else None
+            try:
+                approval = self.approve_remediation(finding) if self.approve_remediation else None
+            except ApprovalPending as waiting:
+                pending.append(waiting.finding_id)
+                finding.notes.append("awaiting human remediation approval")
+                self._audit(
+                    "approval.requested", "finding", finding.finding_id,
+                    approval_id=waiting.approval_id,
+                )
+                continue
             if approval is None:
                 finding.notes.append("remediation not approved; finding stays diagnosed")
                 self._audit("approval.absent", "finding", finding.finding_id)
@@ -421,6 +473,11 @@ class Orchestrator:
                 "approval.granted", "finding", finding.finding_id, actor="user",
                 actor_id=approval.decided_by, approval_id=approval.id,
             )
+        if pending and not approved:
+            # Stop here, without a terminal transition: a host persists the
+            # request and re-enters this orchestrator once a human decides.
+            self.result.error_code = None
+            return self.result
         if not approved:
             self._goto(AssessmentState.REPORTING, "no approved remediation")
             return self._finish()
@@ -494,6 +551,7 @@ class Orchestrator:
         for h in ranked:
             record = FindingRecord(finding_id=h.finding_id, hypothesis=h)
             self.result.findings.append(record)
+            self.sink.on_finding(record)
             self._audit("finding.hypothesis", "finding", h.finding_id,
                         weakness_class=h.weakness_class, confidence=h.confidence.value)
         return ranked
@@ -542,6 +600,7 @@ class Orchestrator:
                 continue
             validation = probe_agent.to_validation_result(out, data, outcome.record, check_runs)
             finding.validation = validation
+            self.sink.on_record(finding, validation, "validation_result")
             finding.status = {
                 ValidationOutcome.CONFIRMED: "validated",
                 ValidationOutcome.REFUTED: "refuted",
@@ -599,6 +658,7 @@ class Orchestrator:
         )
         finding.attack_path = path
         finding.severity = severity
+        self.sink.on_record(finding, path, "attack_path")
         self._audit(
             "finding.severity", "finding", finding.finding_id, level=severity.level.value,
             factors=severity.factors.model_dump(mode="json"),
@@ -638,6 +698,9 @@ class Orchestrator:
         finding.plan = plan
         finding.related_sites = related
         finding.status = "diagnosed"
+        self.sink.on_record(finding, root_cause, "root_cause")
+        self.sink.on_record(finding, plan, "remediation_plan")
+        self.sink.on_status(finding, finding.status)
         self._audit(
             "finding.diagnosed", "finding", finding.finding_id, cause_class=root_cause.cause_class.value,
             plan_id=plan.id, files_expected=plan.files_expected,
@@ -666,6 +729,7 @@ class Orchestrator:
                 verdict = verification.verdict if verification else "rejected"
                 if verification:
                     finding.verifications.append(verification)
+                    self.sink.on_verification(finding, verification)
                     reasons = list(verification.reasons)
                     self._audit(
                         "finding.verification", "finding", finding.finding_id, verdict=verdict,
@@ -677,6 +741,7 @@ class Orchestrator:
                 sub_state = next_remediation_state(sub_state, verdict=verdict, attempt=attempt)
                 if sub_state is RemediationState.ACCEPTED:
                     finding.status = "verified"
+                    self.sink.on_status(finding, finding.status)
                     return
                 if sub_state is RemediationState.UNRESOLVED:
                     finding.status = "patch_rejected"
@@ -739,6 +804,7 @@ class Orchestrator:
             "protected_tests": self._protected_tests(),
         }
         finding.candidates.append(candidate)
+        self.sink.on_patch(finding, candidate, diff_text)
         self._audit(
             "patch.candidate", "patch", candidate.id, actor="agent", actor_id="patch",
             files_changed=candidate.files_changed, tests_added=candidate.tests_added,
@@ -842,6 +908,9 @@ class Orchestrator:
         finding.future_hypotheses = drafts
         finding.monitoring_hints = hints
         finding.status = "hardened"
+        for recommendation in recommendations:
+            self.sink.on_record(finding, recommendation, "hardening_recommendation")
+        self.sink.on_status(finding, finding.status)
         self._audit(
             "finding.hardened", "finding", finding.finding_id,
             regression_tests=[t.test_path for t in tests],

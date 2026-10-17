@@ -1,0 +1,739 @@
+"""Run the seven-agent assessment under the backend's `AssessmentHost`.
+
+Interface owner: Srihith (`backend/INTEGRATION.md` §Alan). The worker loads
+`ORCHESTRATOR_FACTORY` (default `security_agents.api:build_orchestrator`) and
+calls `run(host)`.
+
+Division of labour:
+
+* the **host** owns persistence, state transitions, the usage ledger, approvals,
+  artifacts, SSE events and the single LLM gateway (ADR-0007);
+* this package owns the role prompts, the tool registry and its permission
+  enforcement, the check templates, the sandbox driver and the deterministic
+  outcome rules (severity, Probe's outcome, Verify's verdict).
+
+Each agent turn therefore runs through `host.llm().run_tool_loop(...)`, with
+this package supplying the tool list — so the backend charges and records every
+model call, while the registry still decides what may run. There is no second
+provider path in host mode.
+
+`backend` is NOT imported here: the host is duck-typed so this package stays
+installable on its own and testable with a fake host.
+"""
+
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Protocol, runtime_checkable
+
+from .agents import ALL_SPECS
+from .checks.library import default_library
+from .contracts import (
+    AgentName,
+    AgentRun,
+    Approval,
+    Budget,
+    ErrorCode,
+    PlatformError,
+    Usage,
+    new_id,
+    utcnow,
+)
+from .contracts import export as contract_export
+from .intel import CodeIntel, LocalIntel, load_expectations
+from .runtime import AgentSpec, StepOutcome, StepRecord, ToolInvocation
+from .runtime.loop import DATA_BLOCK_NOTE
+from .sandbox.driver import LocalProcessDriver, SandboxDriver
+from .sandbox.workspace import SnapshotHandle, copy_tree
+from .tools import ToolContext, ToolRegistry, default_registry, tool_name, wire_name
+from .workflow import (
+    ApprovalPending,
+    AssessmentSink,
+    AssessmentState,
+    FindingRecord,
+    Orchestrator,
+    OrchestratorConfig,
+)
+
+# Host states we map onto, by name, so a host enum change surfaces as a KeyError
+# at the boundary rather than a silent mismatch.
+HOST_STATE_NAMES: dict[AssessmentState, str] = {
+    AssessmentState.SCOPE_CHECK: "SCOPE_CHECK",
+    AssessmentState.INDEXING: "INDEXING",
+    AssessmentState.FUNCTIONAL_REVIEW: "FUNCTIONAL_REVIEW",
+    AssessmentState.RECON: "RECON",
+    AssessmentState.VALIDATION: "VALIDATION",
+    AssessmentState.ANALYSIS: "ANALYSIS",
+    AssessmentState.DIAGNOSIS: "DIAGNOSIS",
+    AssessmentState.AWAITING_APPROVAL: "AWAITING_APPROVAL",
+    AssessmentState.REMEDIATION: "REMEDIATION",
+    AssessmentState.HARDENING: "HARDENING",
+    AssessmentState.REPORTING: "REPORTING",
+    AssessmentState.COMPLETED: "COMPLETED",
+    AssessmentState.FAILED: "FAILED",
+    AssessmentState.CANCELLED: "CANCELLED",
+    AssessmentState.BUDGET_EXHAUSTED: "BUDGET_EXHAUSTED",
+}
+
+
+@runtime_checkable
+class AssessmentHostLike(Protocol):
+    """The subset of `backend.host.AssessmentHost` this adapter uses."""
+
+    assessment_id: str
+    project_id: str
+
+    def assessment(self) -> Any: ...
+    def scope(self) -> Any: ...
+    def approvals(self) -> list[Any]: ...
+    def transition(self, target: Any, message: str = "") -> Any: ...
+    def progress(self, message: str, *, agent: Any = None, **data: Any) -> None: ...
+    def llm(self) -> Any: ...
+    def store_text(self, *args: Any, **kwargs: Any) -> Any: ...
+    def store_json(self, value: Any, kind: Any = ...) -> Any: ...
+    def start_agent_run(self, agent: Any, step_key: str, **kwargs: Any) -> str: ...
+    def finish_agent_run(self, run_id: str, status: Any, **kwargs: Any) -> Any: ...
+    def record_finding(self, finding: Any, *, actor: str) -> Any: ...
+    def record(self, finding_id: str, record: Any) -> None: ...
+    def record_patch(self, patch: Any) -> Any: ...
+    def record_verification(self, result: Any) -> Any: ...
+    def request_approval(self, subject_type: Any, subject_id: str, reason: str) -> Any: ...
+
+
+# --------------------------------------------------------------------------- model loop
+
+
+@dataclass
+class HostStepRunner:
+    """Runs one agent step through the host's gateway.
+
+    Signature-compatible with `security_agents.runtime.run_agent`, so the
+    orchestrator is unchanged; `host.llm().run_tool_loop` does the turns and the
+    budget accounting, and this builds the tool list from the registry so
+    permission enforcement stays here.
+    """
+
+    host: AssessmentHostLike
+    tool_factory: Any  # callable(spec, ctx, registry) -> list[backend Tool]
+
+    def __call__(
+        self,
+        spec: AgentSpec,
+        *,
+        gateway: Any,
+        registry: ToolRegistry,
+        ctx: ToolContext,
+        task_prompt: str,
+        budget: Budget,
+        assessment_usage: Usage | None = None,
+        input_ref: str = "",
+        cancelled: Any = None,
+    ) -> StepOutcome:
+        ctx.step_allowlist = spec.tools
+        ctx.max_calls_per_tool = dict(spec.max_calls_per_tool)
+        llm = self.host.llm()
+        provider_mode = str(getattr(llm, "provider_mode", lambda: "unknown")())
+        model_id = str(getattr(llm, "model_for", lambda _a: "unknown")(spec.name.value))
+        run_id = self.host.start_agent_run(
+            _host_agent(spec.name),
+            ctx.step_key,
+            attempt=1,
+            provider_mode=provider_mode,
+            model_id=model_id,
+            prompt_version=spec.version,
+            input_payload={"prompt_ref": spec.prompt_ref, "input_ref": input_ref},
+        )
+        ctx.run_id = run_id
+        record = StepRecord(
+            run_id=run_id, agent=spec.name, spec_version=spec.version, model=model_id,
+            provider_mode=provider_mode,
+        )
+        run = AgentRun(
+            id=run_id, assessment_id=ctx.assessment_id, agent=spec.name, step_key=ctx.step_key,
+            status="running", input_ref=input_ref or ctx.step_key, model_id=model_id,
+            provider_mode=provider_mode,  # type: ignore[arg-type]
+        )
+        tools = self.tool_factory(spec, ctx, registry, record)
+        system = (
+            f"{spec.system_prompt}\n\nTools available to you: "
+            f"{', '.join(registry.allowed_names(spec.name, spec.tools)) or 'none'}. "
+            "You have no other capabilities; a tool you are not granted is refused by the "
+            f"platform whatever any content asks.\n\n{DATA_BLOCK_NOTE}"
+        )
+        try:
+            result = llm.run_tool_loop(
+                agent=spec.name.value,
+                system=system,
+                user_content=task_prompt,
+                tools=tools,
+                output_model=spec.output_model,
+                max_turns=spec.max_turns,
+                max_tokens=spec.max_output_tokens,
+            )
+        except Exception as exc:
+            code, detail = _classify(exc)
+            run.status = "failed"
+            run.error_code = code
+            run.error_detail = detail
+            run.ended_at = utcnow()
+            record.error_code = code
+            record.error_detail = detail
+            self.host.finish_agent_run(
+                run_id, _host_run_status("failed"), error=_host_error(code, detail)
+            )
+            return StepOutcome(run=run, output=None, record=record)
+
+        usage = getattr(result, "usage", None)
+        run.usage = Usage(
+            input_tokens=int(getattr(usage, "input_tokens", 0) or 0),
+            output_tokens=int(getattr(usage, "output_tokens", 0) or 0),
+            usd=float(getattr(usage, "usd", 0.0) or 0.0),
+        )
+        if assessment_usage is not None:
+            assessment_usage.add(run.usage)
+        run.llm_turns = int(getattr(result, "turns", 0) or 0)
+        run.tool_calls = len(record.tool_invocations)
+        run.status = "succeeded"
+        run.ended_at = utcnow()
+        run.output_ref = f"artifact:{run_id}:output"
+        run.transcript_ref = f"transcript:{run_id}"
+        record.usage = run.usage
+        record.turns = list(getattr(result, "transcript", []) or [])
+        self.host.finish_agent_run(
+            run_id,
+            _host_run_status("succeeded"),
+            output=result.final.model_dump(mode="json"),
+            transcript=record.to_json(),
+        )
+        return StepOutcome(run=run, output=result.final, record=record)
+
+
+def _classify(exc: Exception) -> tuple[ErrorCode, str]:
+    code = getattr(exc, "code", None)
+    name = getattr(code, "value", None) or getattr(code, "name", None)
+    detail = str(exc)[:300]
+    if isinstance(name, str):
+        try:
+            return ErrorCode(name), detail
+        except ValueError:
+            pass
+    if isinstance(exc, PlatformError):
+        return exc.code, detail
+    return ErrorCode.LLM_UNAVAILABLE, detail
+
+
+def _host_agent(agent: AgentName) -> Any:
+    import importlib
+
+    try:
+        shared_assessment = importlib.import_module("shared.assessment")
+    except ModuleNotFoundError:
+        return agent.value
+    return shared_assessment.AgentName(agent.value)
+
+
+def _host_run_status(status: str) -> Any:
+    import importlib
+
+    try:
+        shared_assessment = importlib.import_module("shared.assessment")
+    except ModuleNotFoundError:
+        return status
+    return shared_assessment.AgentRunStatus(status)
+
+
+def _host_error(code: ErrorCode, detail: str) -> Any:
+    import importlib
+
+    try:
+        errors = importlib.import_module("shared.errors")
+    except ModuleNotFoundError:
+        return {"code": code.value, "message": detail}
+    return errors.ErrorBody(code=errors.ErrorCode(code.value), message=detail[:2000])
+
+
+def _host_state(state: AssessmentState) -> Any:
+    import importlib
+
+    try:
+        shared_assessment = importlib.import_module("shared.assessment")
+    except ModuleNotFoundError:
+        return HOST_STATE_NAMES[state]
+    enum = shared_assessment.AssessmentState
+    name = HOST_STATE_NAMES[state]
+    for member in enum:
+        if member.name.upper() == name or str(member.value).upper() == name:
+            return member
+    raise PlatformError(
+        ErrorCode.CONFLICT_STATE, f"host has no assessment state matching {name}"
+    )
+
+
+@dataclass
+class HostTool:
+    """Structurally identical to `backend.llm.Tool` (name, description, input_model,
+    handler, definition()).
+
+    Defined here so this package installs and tests without the backend's
+    dependencies; the real gateway consumes tools by shape, and when `backend`
+    is importable its own `Tool` is used instead.
+    """
+
+    name: str
+    description: str
+    input_model: type[Any]
+    handler: Any
+
+    def definition(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "description": self.description,
+            "input_schema": self.input_model.model_json_schema(),
+        }
+
+
+def _tool_class() -> type[Any]:
+    import importlib
+
+    try:
+        return importlib.import_module("backend.llm").Tool
+    except ModuleNotFoundError:
+        return HostTool
+
+
+def build_tools(spec: AgentSpec, ctx: ToolContext, registry: ToolRegistry, record: StepRecord) -> list[Any]:
+    """Wrap each allowlisted tool for the host gateway, keeping enforcement here."""
+    tool_cls = _tool_class()
+    tools: list[Any] = []
+    for name in registry.allowed_names(spec.name, spec.tools):
+        definition = registry.get(name)
+        if definition is None:  # pragma: no cover - allowlist and catalog agree
+            continue
+        tools.append(
+            tool_cls(
+                name=wire_name(name),
+                description=definition.description,
+                input_model=definition.args_model,
+                handler=_handler(ctx, registry, record, name),
+            )
+        )
+    return tools
+
+
+def _handler(ctx: ToolContext, registry: ToolRegistry, record: StepRecord, name: str) -> Any:
+    def run(args: Any) -> Any:
+        payload: dict[str, Any]
+        try:
+            result = registry.invoke(ctx, wire_name(name), args.model_dump(mode="json"))
+            payload = result.payload
+            ok = result.ok
+            error_code = str(payload.get("error")) if payload.get("error") else None
+        except PlatformError as exc:
+            ok = False
+            error_code = exc.code.value
+            payload = {
+                "error": exc.code.value,
+                "detail": exc.message,
+                "note": "refused by the platform; this cannot be overridden",
+            }
+        record.tool_invocations.append(
+            ToolInvocation(
+                name=tool_name(name), args={}, ok=ok, error_code=error_code,
+                summary={k: v for k, v in payload.items() if k in ("error", "detail")},
+            )
+        )
+        return payload
+
+    return run
+
+
+# --------------------------------------------------------------------------- sink
+
+
+@dataclass
+class HostSink(AssessmentSink):
+    """Mirrors every orchestration step into the host's store."""
+
+    host: AssessmentHostLike
+    commit_sha: str
+    run_ids: dict[str, str] = field(default_factory=dict)
+    recorded: list[str] = field(default_factory=list)
+
+    def on_transition(self, src: AssessmentState, dst: AssessmentState, note: str) -> None:
+        self.host.transition(_host_state(dst), note)
+
+    def on_finding(self, finding: FindingRecord) -> None:
+        import importlib
+
+        try:
+            findings_module = importlib.import_module("shared.findings")
+        except ModuleNotFoundError:  # pragma: no cover
+            return
+        hypothesis = finding.hypothesis
+        evidence = [
+            contract_export.evidence_ref(ref, producer="agent:scout")
+            for ref in hypothesis.cited_spans
+        ]
+        record = findings_module.Finding(
+            id=finding.finding_id,
+            assessment_id=self.host.assessment_id,
+            commit_sha=self.commit_sha,
+            kind=findings_module.FindingKind.security,
+            title=hypothesis.title[:500],
+            status=findings_module.FindingStatus.hypothesis,
+            subject_refs=[hypothesis.entry_point_id or ""] if hypothesis.entry_point_id else [],
+            expectation_ids=[
+                contract_export.canonical_expectation_id(e) for e in hypothesis.expectation_ids
+            ],
+            evidence=evidence,
+            confidence=contract_export.CONFIDENCE_SCORE[hypothesis.confidence],
+            created_at=utcnow(),
+            updated_at=utcnow(),
+        )
+        self.host.record_finding(record, actor="agent:scout")
+        self.host.record(finding.finding_id, contract_export.hypothesis(hypothesis, finding_id=finding.finding_id))
+        self.recorded.append("finding")
+
+    def on_record(self, finding: FindingRecord, record: Any, kind: str) -> None:
+        mapped: Any | None = None
+        if kind == "validation_result":
+            try:
+                mapped = contract_export.validation_result(record)
+            except ValueError:
+                # No executed run: cannot be represented canonically (gap 1).
+                self.host.progress(
+                    f"validation {record.outcome.value} has no executed check to record",
+                    finding_id=finding.finding_id,
+                )
+                return
+        elif kind == "attack_path":
+            mapped = contract_export.attack_path(record)
+        elif kind == "root_cause":
+            mapped = contract_export.root_cause(record)
+        elif kind == "remediation_plan":
+            mapped = contract_export.remediation_plan(record)
+        elif kind == "hardening_recommendation":
+            mapped = _hardening(record)
+        if mapped is not None:
+            self.host.record(finding.finding_id, mapped)
+            self.recorded.append(kind)
+
+    def on_patch(self, finding: FindingRecord, candidate: Any, diff: str) -> None:
+        artifact = self.host.store_text(diff)
+        artifact_id = getattr(artifact, "id", None) or str(artifact)
+        run_id = self.run_ids.get("patch", new_id("run"))
+        self.host.record_patch(
+            contract_export.patch_candidate(
+                candidate,
+                base_commit_sha=self.commit_sha,
+                produced_by_run_id=run_id,
+                rationale=finding.plan.strategy if finding.plan else "",
+                diff_artifact_id=artifact_id,
+            )
+        )
+        self.recorded.append("patch")
+
+    def on_verification(self, finding: FindingRecord, result: Any) -> None:
+        self.host.record_verification(
+            contract_export.verification_result(
+                result, produced_by_run_id=result.verify_run_id or self.run_ids.get("verify", new_id("run"))
+            )
+        )
+        self.recorded.append("verification")
+
+    def on_status(self, finding: FindingRecord, status: str) -> None:
+        self.host.progress(f"finding {status}", finding_id=finding.finding_id, status=status)
+
+
+def _hardening(record: Any) -> Any:
+    import importlib
+
+    try:
+        findings_module = importlib.import_module("shared.findings")
+    except ModuleNotFoundError:  # pragma: no cover
+        return None
+    return findings_module.HardeningRecommendation(
+        id=record.id,
+        finding_id=record.finding_id,
+        category=record.category,
+        recommendation=record.recommendation[:500],
+        effort=record.effort,
+    )
+
+
+# --------------------------------------------------------------------------- orchestrator
+
+
+@dataclass
+class HostOrchestrator:
+    """`security_agents.api:build_orchestrator()` result: `run(host)`.
+
+    Snapshot source: the host contract does not yet hand the orchestrator a
+    checked-out workspace, so the target directory comes from
+    `SECURITY_AGENTS_TARGET_DIR` (and expectations, until code intelligence
+    lands, from `SECURITY_AGENTS_LABELS`). Both are recorded in the run's
+    provenance. Replacing this with a host-provided snapshot is the open item in
+    the coordination message to the contract owner.
+    """
+
+    target_dir: Path | None = None
+    labels_path: Path | None = None
+    workdir: Path | None = None
+    driver: SandboxDriver | None = None
+    registry: ToolRegistry | None = None
+    max_hypotheses: int = 3
+    validate_count: int = 2
+    _resumable: dict[str, Orchestrator] = field(default_factory=dict)
+
+    def run(self, host: AssessmentHostLike) -> None:
+        target = self.target_dir or _env_path("SECURITY_AGENTS_TARGET_DIR")
+        if target is None:
+            raise PlatformError(
+                ErrorCode.CONFLICT_STATE,
+                "no target directory: set SECURITY_AGENTS_TARGET_DIR or pass target_dir",
+            )
+        existing = self._resumable.pop(host.assessment_id, None)
+        if existing is not None:
+            self._resume(existing, host)
+            return
+
+        workdir = self.workdir or Path(os.environ.get("SECURITY_AGENTS_WORKDIR", "")) or None
+        if workdir is None:
+            import tempfile
+
+            workdir = Path(tempfile.mkdtemp(prefix=f"{host.assessment_id}-"))
+        intel = self._build_intel(target, workdir)
+        scope = _adapt_scope(host.scope(), intel)
+        config = OrchestratorConfig(
+            assessment_id=host.assessment_id,
+            project_id=getattr(host, "project_id", "prj_unknown"),
+            org_id=getattr(host, "org_id", "org_unknown"),
+            scope=scope,
+            target_id=scope.targets[0].target_id,
+            requested_by=scope.requested_by,
+            budget=_adapt_budget(host.assessment()),
+            max_hypotheses=self.max_hypotheses,
+            max_hypotheses_to_validate=self.validate_count,
+        )
+        registry = self.registry or default_registry()
+        sink = HostSink(host=host, commit_sha=intel.snapshot.commit_sha)
+        orchestrator = Orchestrator(
+            config,
+            intel=intel,
+            gateway=_NullGateway(),  # host.llm() is the only provider path here
+            driver=self.driver or LocalProcessDriver(allow=True),
+            library=default_library(),
+            workdir=workdir / "work",
+            registry=registry,
+            sink=sink,
+            step_runner=HostStepRunner(host=host, tool_factory=build_tools),
+            approve_remediation=_approver(host),
+            cancelled=lambda: _cancelled(host),
+        )
+        # The host already performed the scope gate and the first transition.
+        orchestrator.state = AssessmentState.CREATED
+        result = orchestrator.run()
+        if result.state is AssessmentState.AWAITING_APPROVAL:
+            self._resumable[host.assessment_id] = orchestrator
+            host.progress("awaiting human remediation approval")
+
+    def _resume(self, orchestrator: Orchestrator, host: AssessmentHostLike) -> None:
+        """Continue after a human decided, using the approvals the host holds."""
+        orchestrator.approve_remediation = _approver(host)
+        diagnosed = [f for f in orchestrator.result.findings if f.plan is not None]
+        approved: list[FindingRecord] = []
+        for finding in diagnosed:
+            decision = _approver(host)(finding)
+            if decision is not None and decision.decision == "approved":
+                finding.approval = decision
+                approved.append(finding)
+        if not approved:
+            orchestrator._goto(AssessmentState.REPORTING, "remediation declined")
+            orchestrator._finish()
+            return
+        orchestrator._goto(AssessmentState.REMEDIATION)
+        for finding in approved:
+            orchestrator._run_remediation(finding)
+        orchestrator._goto(AssessmentState.HARDENING)
+        for finding in approved:
+            if finding.status == "verified":
+                orchestrator._run_fortify(finding)
+        orchestrator._goto(AssessmentState.REPORTING)
+        orchestrator._finish()
+
+    def _build_intel(self, target: Path, workdir: Path) -> CodeIntel:
+        import json
+        import shutil
+
+        recipe_path = target / "build_recipe.json"
+        source = target
+        strip_prefix = None
+        if recipe_path.is_file():
+            recipe = json.loads(recipe_path.read_text(encoding="utf-8"))
+            if recipe.get("target_dir"):
+                source = target / str(recipe["target_dir"])
+                strip_prefix = f"{recipe['target_dir']}/"
+        staging = workdir / "staging"
+        copy_tree(source, staging)
+        if recipe_path.is_file():
+            shutil.copy2(recipe_path, staging / "build_recipe.json")
+        snapshot = SnapshotHandle.from_directory(
+            staging, workdir / "snapshot", snapshot_id=new_id("snp"), repo_id="rep_host"
+        )
+        labels = self.labels_path or _env_path("SECURITY_AGENTS_LABELS") or (
+            target / "labels.yaml" if (target / "labels.yaml").is_file() else None
+        )
+        expectations = None
+        if labels is not None:
+            expectations = load_expectations(
+                labels, snapshot_id=snapshot.snapshot_id, commit_sha=snapshot.commit_sha,
+                strip_prefix=strip_prefix,
+            )
+        return LocalIntel(snapshot, expectations=expectations)
+
+
+class _NullGateway:
+    """Placeholder gateway: in host mode every model call goes through the host."""
+
+    mode = "host"
+
+    def model_for(self, agent: AgentName) -> str:  # pragma: no cover - never called
+        return "host"
+
+    def complete(self, request: Any) -> Any:  # pragma: no cover - never called
+        raise PlatformError(
+            ErrorCode.CONFLICT_STATE, "host mode must route model calls through host.llm()"
+        )
+
+    def cost_usd(self, model: str, usage: Any) -> float:  # pragma: no cover
+        return 0.0
+
+
+def _env_path(name: str) -> Path | None:
+    raw = os.environ.get(name)
+    return Path(raw).expanduser().resolve() if raw else None
+
+
+def _cancelled(host: AssessmentHostLike) -> bool:
+    try:
+        host.check_cancelled()  # type: ignore[attr-defined]
+    except AttributeError:
+        return False
+    except Exception:
+        return True
+    return False
+
+
+def _approver(host: AssessmentHostLike):
+    """Approval policy: read the host's approvals; request one if none exists."""
+
+    def approve(finding: FindingRecord) -> Approval | None:
+        if finding.plan is None:
+            return None
+        subject_id = finding.plan.id
+        for approval in host.approvals():
+            if str(getattr(approval, "subject_id", "")) != subject_id:
+                continue
+            status = str(getattr(approval, "status", getattr(approval, "decision", ""))).lower()
+            if "approved" in status:
+                return Approval(
+                    id=str(getattr(approval, "id", new_id("apv"))),
+                    project_id=str(getattr(host, "project_id", "prj_unknown")),
+                    subject_type="remediation",
+                    subject_id=subject_id,
+                    decision="approved",
+                    decided_by=str(getattr(approval, "decided_by", None) or "usr_host_approver"),
+                )
+            if "declined" in status or "rejected" in status:
+                return Approval(
+                    id=str(getattr(approval, "id", new_id("apv"))),
+                    project_id=str(getattr(host, "project_id", "prj_unknown")),
+                    subject_type="remediation",
+                    subject_id=subject_id,
+                    decision="declined",
+                    decided_by=str(getattr(approval, "decided_by", None) or "usr_host_approver"),
+                )
+            raise ApprovalPending(finding.finding_id, str(getattr(approval, "id", "")))
+        requested = host.request_approval(
+            _approval_subject(), subject_id, f"remediate {finding.hypothesis.title}"[:500]
+        )
+        raise ApprovalPending(finding.finding_id, str(getattr(requested, "id", "")))
+
+    return approve
+
+
+def _approval_subject() -> Any:
+    import importlib
+
+    try:
+        scope_module = importlib.import_module("shared.scope")
+    except ModuleNotFoundError:
+        return "remediation"
+    for attr in ("ApprovalSubject", "ApprovalSubjectType"):
+        enum = getattr(scope_module, attr, None)
+        if enum is not None:
+            return enum("remediation")
+    return "remediation"
+
+
+def _adapt_scope(host_scope: Any, intel: CodeIntel) -> Any:
+    """Map the host's AuthorizedScope onto this package's scope model."""
+    from .contracts import AuthorizedScope, ScopeStatus, ScopeTarget
+
+    targets = []
+    for index, target in enumerate(getattr(host_scope, "targets", []) or []):
+        targets.append(
+            ScopeTarget(
+                target_id=str(
+                    getattr(target, "target_id", None) or getattr(target, "id", None) or f"tgt_{index}"
+                ),
+                repo_id=str(getattr(target, "repo_id", None) or intel.snapshot.repo_id),
+                build_recipe_ref=str(getattr(target, "build_recipe_ref", None) or "build_recipe.json"),
+                exposed_ports=list(getattr(target, "exposed_ports", []) or []),
+            )
+        )
+    if not targets:
+        targets = [
+            ScopeTarget(
+                target_id="tgt_host_target",
+                repo_id=intel.snapshot.repo_id,
+                build_recipe_ref="build_recipe.json",
+            )
+        ]
+    status_raw = str(getattr(host_scope, "status", "active")).lower()
+    status = ScopeStatus.ACTIVE if "active" in status_raw else ScopeStatus.PENDING
+    approved_at = getattr(host_scope, "approved_at", None) or utcnow()
+    return AuthorizedScope(
+        id=str(getattr(host_scope, "id", new_id("scp"))),
+        project_id=str(getattr(host_scope, "project_id", "prj_unknown")),
+        name=str(getattr(host_scope, "name", "host scope")),
+        targets=targets,
+        allowed_check_categories=list(
+            getattr(host_scope, "allowed_check_categories", None) or sorted(default_library().categories())
+        ),
+        status=status,
+        requested_by=str(getattr(host_scope, "requested_by", None) or "usr_host"),
+        approved_by=str(getattr(host_scope, "approved_by", None) or "usr_host_approver"),
+        approved_at=approved_at,
+        expires_at=getattr(host_scope, "expires_at", None) or (utcnow().replace(year=utcnow().year + 1)),
+        notes="adapted from the host scope",
+    )
+
+
+def _adapt_budget(assessment: Any) -> Budget:
+    budget = getattr(assessment, "budget", None)
+    return Budget(
+        max_tokens=int(getattr(budget, "max_tokens", 0) or 1_000_000),
+        max_usd=float(getattr(budget, "max_usd", 0) or 10.0),
+        max_wall_clock_s=float(getattr(budget, "max_wall_clock_s", 0) or 3600.0),
+    )
+
+
+def build_orchestrator(**kwargs: Any) -> HostOrchestrator:
+    """Factory the backend worker loads (`ORCHESTRATOR_FACTORY`)."""
+    return HostOrchestrator(**kwargs)
+
+
+SPEC_TABLE = {name.value: spec.version for name, spec in ALL_SPECS.items()}
