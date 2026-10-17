@@ -514,3 +514,14 @@ Local intelligence suite: 53 passed, 1 live skip before the additional version
 registration test; strict producer mypy passed (12 modules), Ruff/format passed.
 Real PostgreSQL tests cannot initialize locally: sandbox denies SysV shared memory
 and pgserver process enumeration. CI must verify the new backend regressions.
+
+### 2026-10-17T16:21Z — Hero momentum follow-up (PR #217)
+
+User requested momentum scrolling on the hero page as well. Site-wide `SmoothScroll`
+from #206 is already mounted in `app/layout.tsx`; this branch adds inertia only to
+`HeroStage`'s scroll-linked `--scroll` so the hero parallax/orbs settle after the page
+stops. Header state still uses the real scroll position; reduced motion keeps the static
+hero. Frontend `npm test`: 158 passed/38 files (new `hero-momentum.test.tsx`), lint and
+typecheck pass. Worktree `/private/tmp/hackatl-sarosh-import-grounding`, branch
+`feat/sarosh/hero-momentum-scroll`, PR #217. Sai/Vihaan notified via immutable message
+and PR comment; no global scroll or other page edits.
