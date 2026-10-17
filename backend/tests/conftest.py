@@ -74,6 +74,8 @@ from backend.migrate import upgrade  # noqa: E402
 upgrade()
 
 _TABLES = [
+    "index_payloads",
+    "index_snapshots",
     "idempotency_keys",
     "rl_evaluations",
     "defense_recommendations",
