@@ -81,3 +81,15 @@ def test_user_repositories_walks_installations() -> None:
     assert repos == [
         {"full_name": "acme/shop", "installation_id": 7, "default_branch": "trunk", "private": True}
     ]
+
+
+def test_returning_from_app_install_restarts_sign_in(client_factory) -> None:
+    c = client_factory()
+    r = c.get(
+        "/api/v1/auth/github/callback?code=x&installation_id=9&setup_action=install",
+        follow_redirects=False,
+    )
+    assert r.status_code == 302
+    assert r.headers["location"].endswith("/api/v1/auth/github/login")
+    # Without the install marker, a missing state is still rejected.
+    assert c.get("/api/v1/auth/github/callback?code=x", follow_redirects=False).status_code == 403
