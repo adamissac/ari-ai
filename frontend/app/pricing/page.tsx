@@ -3,6 +3,9 @@ import Link from 'next/link';
 import { BRAND_NAME } from '@/components/brand';
 import { Faq } from '@/components/faq';
 import { RollText } from '@/components/ui';
+import { DEMO_ONLY } from '@/lib/deployment';
+
+const START = DEMO_ONLY ? '/demo' : '/projects';
 
 export const metadata: Metadata = {
   title: `Pricing · ${BRAND_NAME}`,
@@ -15,8 +18,8 @@ const TEAM = {
   name: 'Team',
   tagline: 'Assurance on every pull request',
   price: '$40',
-  unit: '/ seat / month',
-  cta: 'Start 14-day free trial',
+  unit: '/ seat / month · proposed',
+  cta: 'Open the console',
   heading: 'What’s included',
   features: [
     'Intent-aware review of every pull request against what the code is meant to do',
@@ -24,9 +27,8 @@ const TEAM = {
     'Seven security agents probing only inside the sandbox scope you approve',
     'Fixes proposed only after human approval, and closed only when independent tests pass',
     'Signed GitHub monitoring that re-checks every push for regressions',
-    'Unlimited repositories and every developer’s pull requests',
+    'Every connected repository and every developer’s pull requests',
     'Evidence for every claim: source spans, test reports and agent transcripts',
-    '14-day free trial',
   ],
 };
 
@@ -34,7 +36,7 @@ const ENTERPRISE = {
   name: 'Enterprise',
   tagline: 'Best for organizations at scale',
   price: 'Custom pricing',
-  cta: 'Contact sales',
+  cta: 'See how it works',
   heading: 'Everything in Team, plus',
   features: [
     'Continuous re-assessment on every change, not a point-in-time test',
@@ -43,19 +45,17 @@ const ENTERPRISE = {
     'Scope and rules of engagement agreed in writing before any testing',
     'Defense Lab decision support, trained in simulation and never applied automatically',
     'Two-person approval for containment and incident closure workflows',
-    'SSO, audit logging and per-tenant isolation',
-    'A named security engineer and a quarterly programme review',
-    'Annual terms and invoiced billing',
+    'A persisted audit trail of every approval and decision',
   ],
 };
 
 const FAQ = [
-  { q: 'What counts as a seat?', a: 'A developer whose pull requests Ari AI reviews in a billing month. Reviewers, approvers and read-only viewers are free.' },
+  { q: 'What would count as a seat?', a: 'In this proposal, a developer whose pull requests Ari AI reviews in a month. Reviewers, approvers and read-only viewers would be free.' },
   { q: 'What is an assessment?', a: 'One run on one commit: intent review, the seven security agents inside your approved scope, and independent verification of any fix.' },
   { q: 'Does Ari AI ever change our code on its own?', a: 'No. Patches are proposed only after a person approves remediation, and a fix only counts when independent, executed tests agree.' },
   { q: 'What will Ari AI test?', a: 'Only the scope you approve, such as sandbox builds of your own repositories. It never targets third-party systems.' },
   { q: 'Is the Defense Lab live network defense?', a: 'No. It is a policy trained and evaluated in simulation, shown as decision support. Nothing it recommends is applied automatically.' },
-  { q: 'Can I cancel?', a: 'Yes, at any time. Your plan stays active until the end of the billing period.' },
+  { q: 'Can I buy a plan today?', a: 'Not yet. This is a hackathon preview: the plans above are proposals and nothing can be purchased. You can open the console and try the product.' },
 ];
 
 function Check({ dark }: { dark?: boolean }) {
@@ -82,7 +82,8 @@ export default function PricingPage() {
           <p className="pricing-pill label-mono"><span aria-hidden="true" className="hero-ping" />Pricing</p>
           <h1 id="pricing-title" className="display mt-5 text-5xl font-semibold md:text-7xl">{BRAND_NAME} pricing</h1>
           <p className="mt-4 max-w-xl text-sm text-white/70 md:text-base">Know what every change does, prove every fix, and keep checking as your code moves.</p>
-          <div className="mt-7"><Cta href="/projects" tone="light">Start 14-day free trial</Cta></div>
+          <p className="mt-3 text-xs text-white/60" data-testid="pricing-proposal">Hackathon preview: plans are proposals, nothing can be purchased.</p>
+          <div className="mt-7"><Cta href={START} tone="light">Open the console</Cta></div>
         </div>
       </header>
 
@@ -97,7 +98,7 @@ export default function PricingPage() {
             <span className="font-display text-6xl font-semibold tracking-tight">{TEAM.price}</span>
             <span className="label-mono text-white/60">{TEAM.unit}</span>
           </p>
-          <div className="mt-6"><Cta href="/projects" tone="light">{TEAM.cta}</Cta></div>
+          <div className="mt-6"><Cta href={START} tone="light">{TEAM.cta}</Cta></div>
           <hr className="my-8 border-white/10" />
           <p className="label-mono text-white/60">{TEAM.heading}</p>
           <ul className="mt-4 flex flex-col gap-3 text-sm text-white/85">
@@ -108,8 +109,8 @@ export default function PricingPage() {
         <article className="pricing-card pricing-card-light" aria-labelledby="plan-enterprise">
           <h2 id="plan-enterprise" className="text-2xl font-semibold">{ENTERPRISE.name}</h2>
           <p className="mt-2 text-sm text-muted">{ENTERPRISE.tagline}</p>
-          <p className="mt-8 font-display text-5xl font-semibold tracking-tight md:text-6xl">{ENTERPRISE.price}</p>
-          <div className="mt-6"><Cta href="/projects" tone="dark">{ENTERPRISE.cta}</Cta></div>
+          <p className="mt-8 font-display text-4xl font-semibold tracking-tight sm:text-5xl md:text-6xl">{ENTERPRISE.price}</p>
+          <div className="mt-6"><Cta href="/#how" tone="dark">{ENTERPRISE.cta}</Cta></div>
           <hr className="my-8 border-line" />
           <p className="label-mono text-faint">{ENTERPRISE.heading}</p>
           <ul className="mt-4 flex flex-col gap-3 text-sm text-ink">
@@ -117,7 +118,7 @@ export default function PricingPage() {
           </ul>
         </article>
       </section>
-      <p className="mt-4 text-center text-xs text-faint" data-testid="pricing-preview">Preview pricing, subject to change. Prices are in USD and exclude tax.</p>
+      <p className="mt-4 text-center text-xs text-faint" data-testid="pricing-preview">Hackathon preview: these plans are proposals and nothing can be purchased yet. Prices in USD.</p>
 
       <section aria-labelledby="faq-title" className="bleed bleed-paper mt-24 grid gap-6 py-16 md:grid-cols-12 md:py-24">
         <div className="md:col-span-3">
@@ -129,7 +130,7 @@ export default function PricingPage() {
       <section aria-labelledby="pricing-cta" className="hero-ink mb-16 mt-16 rounded-2xl px-6 py-14 text-center md:px-12 md:py-20">
         <h2 id="pricing-cta" className="display mx-auto max-w-3xl text-3xl font-semibold md:text-5xl">See what your code really does before an attacker does.</h2>
         <div className="mt-8 flex flex-wrap justify-center gap-2">
-          <Cta href="/projects" tone="light">Get started</Cta>
+          <Cta href={START} tone="light">Open the console</Cta>
           <Link href="/#how" className="group label-mono inline-flex h-10 items-center rounded-md bg-white/10 px-4 text-white transition-colors duration-[250ms] hover:bg-white/20">
             <RollText>See how it works</RollText>
           </Link>
