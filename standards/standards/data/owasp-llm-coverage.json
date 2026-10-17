@@ -24,8 +24,6 @@
    ],
    "tests": [
     "tests/security/test_owasp_llm_controls.py::test_injected_request_cannot_grant_tool_permission",
-    "code-review/tests/test_policies.py::test_injection_scan",
-    "code-review/tests/test_reviewer_agent.py::test_discount_rounding_defect_validated_with_multi_turn_trace",
     "tests/security/test_owasp_llm_reviewer.py::test_reviewer_change_text_is_data_and_cannot_confirm_intent"
    ],
    "limitations": "Tool denial does not prove the model cannot be manipulated within its allowed capabilities.",
@@ -54,8 +52,6 @@
    ],
    "tests": [
     "tests/security/test_owasp_llm_controls.py::test_credentials_redacted_before_provider_call",
-    "code-review/tests/test_policies.py::test_generated_tests_cannot_introduce_new_credentials",
-    "code-review/tests/test_policies.py::test_sandbox_classifies_behavior_vs_tooling_and_scrubs_env",
     "tests/security/test_owasp_llm_reviewer.py::test_reviewer_generated_tests_cannot_introduce_credentials"
    ],
    "limitations": "Pattern redaction cannot detect every secret or prevent every cross-tenant disclosure.",
@@ -120,8 +116,6 @@
    ],
    "tests": [
     "tests/security/test_owasp_llm_controls.py::test_invalid_structured_output_is_rejected",
-    "code-review/tests/test_reviewer_agent.py::test_failing_test_against_unconfirmed_rule_stays_hypothesis",
-    "code-review/tests/test_policies.py::test_intent_adjudication_rules",
     "tests/security/test_owasp_llm_reviewer.py::test_reviewer_output_is_schema_strict"
    ],
    "limitations": "Schema validation does not prove output semantics, safe rendering, or safe tool effects.",
@@ -150,11 +144,6 @@
    ],
    "tests": [
     "tests/security/test_owasp_llm_controls.py::test_injected_request_cannot_grant_tool_permission",
-    "code-review/tests/test_policies.py::test_write_protection_and_budgets",
-    "code-review/tests/test_policies.py::test_generated_test_policy",
-    "code-review/tests/test_policies.py::test_sandbox_refuses_option_injection",
-    "code-review/tests/test_reviewer_agent.py::test_repair_requires_approved_remediation_for_that_finding",
-    "code-review/tests/test_reviewer_agent.py::test_repair_that_only_tampers_produces_no_patch",
     "tests/security/test_owasp_llm_reviewer.py::test_reviewer_tools_cannot_edit_tests_config_or_run_arbitrary_code"
    ],
    "limitations": "Allowed tools require separate scope and least-privilege enforcement; no comprehensive assessment claimed.",
@@ -219,8 +208,6 @@
    ],
    "tests": [
     "tests/security/test_owasp_llm_controls.py::test_fabricated_standard_cannot_be_used_as_fact",
-    "code-review/tests/test_policies.py::test_intent_adjudication_rules",
-    "code-review/tests/test_reviewer_agent.py::test_off_by_two_anchor_is_reanchored_and_far_or_fake_quotes_still_rejected",
     "tests/security/test_owasp_llm_reviewer.py::test_reviewer_rejects_fabricated_citations_and_unbacked_confirmation"
    ],
    "limitations": "Catalog validation prevents fabricated IDs, not false interpretations or unsupported findings.",
