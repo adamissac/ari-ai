@@ -65,7 +65,7 @@ Executed check results on the fixture (the precision evidence):
   fallback, typed error mapping) and the opt-in tests exist, but they have not
   run — no authorized key in this environment (issue #10). Until they do, the
   live mode is **UNVERIFIED**.
-- **The Docker sandbox driver has never executed a container here.** Its
+- **The Docker sandbox driver now runs real containers in CI (`none` network only).** The `docker-sandbox` job builds `security-agents/sandbox/Dockerfile` (digest-pinned python:3.12-slim) and passes 3 live tests: uid 65534, read-only root, raw socket blocked by the kernel, no host env, timeout kill and removal, and the payments-lite suite inside the container. The reviewed ownership and bounds checks also run through the Docker driver on the `target-only` path and give the same verdicts as the local driver (planted routes flagged, lookalike cleared). v0 checks call the app in process, so the target container and internal network are created but not used by a check yet. Earlier note: Its
   argument construction, policy checks and reaper are unit-tested with a fake
   command runner; there is no Docker engine on this machine and no pinned image
   yet (INFRA-005). The development driver that the tests use is a subprocess
