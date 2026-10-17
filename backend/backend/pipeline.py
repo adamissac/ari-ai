@@ -18,6 +18,7 @@ from backend.db import (
     monitoring_events,
     reassessment_requests,
     repositories,
+    snapshots,
     transaction,
     webhook_deliveries,
 )
@@ -349,6 +350,66 @@ def run_assessment(ctx: JobContext) -> dict[str, Any]:
 _ROUTE = re.compile(r"^(GET|POST|PUT|PATCH|DELETE) /\S*$")
 
 
+def _paged(fetch: Any, ref: Any, limit: int = 200) -> list[Any]:
+    out: list[Any] = []
+    while True:
+        page = fetch(ref, offset=len(out), limit=limit)
+        out.extend(page)
+        if len(page) < limit:
+            return out
+
+
+def _expectation_inputs(conn: sa.engine.Connection, project_id: str) -> tuple[list[Any], str]:
+    """Expectations with data sensitivity → RL criticality (the P1→P3 link).
+
+    Uses the latest READY snapshot per repository of the project, resolves each
+    expectation's ``subject_ref`` (entry point or handler symbol) to "METHOD /path", and
+    skips rejected expectations. Never fails the RL job: if intelligence is unavailable,
+    criticality falls back to the topology floors and the reason is returned.
+    """
+    from backend.intelligence import build_service, snapshot_ref
+    from rl_defense import platform_mapping as pm
+
+    rows = conn.execute(
+        sa.select(snapshots.c.id, snapshots.c.repo_id)
+        .join(repositories, repositories.c.id == snapshots.c.repo_id)
+        .where(repositories.c.project_id == project_id, snapshots.c.status == "ready")
+        .order_by(snapshots.c.created_at.desc())
+    ).all()
+    latest: dict[str, str] = {}
+    for row in rows:
+        latest.setdefault(row.repo_id, row.id)
+    if not latest:
+        return [], "no ready snapshot"
+    try:
+        service = build_service()
+        inputs = []
+        for snapshot_id in latest.values():
+            ref = snapshot_ref(snapshot_id)
+            routes_by_subject: dict[str, list[str]] = {}
+            for ep in _paged(service.entry_points, ref):
+                if ep.method and ep.path_template:
+                    route = f"{ep.method} {ep.path_template}"
+                    routes_by_subject.setdefault(ep.id, []).append(route)
+                    routes_by_subject.setdefault(ep.handler_symbol_id, []).append(route)
+            for exp in _paged(service.expectations, ref):
+                if exp.data_sensitivity is None or exp.status.value == "rejected":
+                    continue
+                for route in dict.fromkeys(routes_by_subject.get(exp.subject_ref, [])):
+                    inputs.append(
+                        pm.ExpectationInput(
+                            id=exp.id,
+                            route=route,
+                            data_sensitivity=exp.data_sensitivity.value,
+                            status=exp.status.value,
+                        )
+                    )
+        return inputs, f"{len(inputs)} expectation-route inputs from {len(latest)} snapshot(s)"
+    except Exception as exc:  # intelligence is optional for RL; never block a recommendation
+        log.warning("rl: expectations unavailable for %s: %s", project_id, exc)
+        return [], f"intelligence unavailable: {type(exc).__name__}"
+
+
 def platform_facts(
     conn: sa.engine.Connection, project_id: str
 ) -> tuple[PlatformFacts, dict[str, Any]]:
@@ -388,7 +449,11 @@ def platform_facts(
     from backend.api.runtime import latest_route_signals
 
     signals = [pm.RouteSignal(**sig) for sig in latest_route_signals(conn, project_id)]
-    facts, provenance = pm.facts_from_platform(topology, inputs, [], signals, project_id=project_id)
+    expectations, expectation_note = _expectation_inputs(conn, project_id)
+    facts, provenance = pm.facts_from_platform(
+        topology, inputs, expectations, signals, project_id=project_id
+    )
+    provenance = {**provenance, "expectations_source": expectation_note}
     return PlatformFacts.model_validate(facts.model_dump(mode="json")), provenance
 
 
