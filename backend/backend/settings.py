@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     # GitHub
     github_app_id: str | None = None
     github_app_private_key_path: Path | None = None
+    # PEM contents, for hosts that pass secrets as environment variables (Railway).
+    # Literal "\n" sequences are accepted for single-line dashboards. The path wins if both are set.
+    github_app_private_key: SecretStr | None = None
     github_webhook_secret: SecretStr | None = None
     github_oauth_client_id: str | None = None
     github_oauth_client_secret: SecretStr | None = None
@@ -81,6 +84,7 @@ class Settings(BaseSettings):
         "anthropic_model_fast",
         "github_app_id",
         "github_app_private_key_path",
+        "github_app_private_key",
         "github_webhook_secret",
         "github_oauth_client_id",
         "github_oauth_client_secret",
