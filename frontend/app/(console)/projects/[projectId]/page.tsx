@@ -7,6 +7,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useProject } from '@/components/project';
 import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, Panel, Stat, Time } from '@/components/ui';
 import { api, idempotencyKey } from '@/lib/api';
+import { CONNECT_REPOSITORY_NOTE } from '@/lib/connect';
 import { shortSha, usd } from '@/lib/format';
 import { JOURNEY_STATUS, latestAssessmentEvent, projectJourney, statesFromLog } from '@/lib/journey';
 import { projectOverview } from '@/lib/overview';
@@ -272,6 +273,7 @@ function Repositories({ repos }: { repos: Repository[] }) {
   };
   return (
     <Panel title="Repositories" id="connect-repo">
+      <p className="mb-3 text-sm text-muted" data-testid="connect-repository-note">{CONNECT_REPOSITORY_NOTE}</p>
       {repos.length === 0 ? <Empty>No repository connected.</Empty> : (
         <ul className="flex flex-col gap-3">
           {repos.map(r => <RepoRow key={r.id} repo={r} />)}
