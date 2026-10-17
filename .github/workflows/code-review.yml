@@ -2,10 +2,10 @@ name: code-review
 
 on:
   pull_request:
-    paths: ["code-review/**", "shared/**", "backend/**", "code-intelligence/**", "security-agents/security_agents/sandbox/**", "examples/payments-lite/**", "pyproject.toml", "uv.lock", ".github/workflows/code-review.yml"]
+    paths: ["standards/**", "code-review/**", "shared/**", "backend/**", "code-intelligence/**", "security-agents/security_agents/sandbox/**", "examples/payments-lite/**", "pyproject.toml", "uv.lock", ".github/workflows/code-review.yml"]
   push:
     branches: [main]
-    paths: ["code-review/**", "shared/**", "backend/**", "code-intelligence/**", "security-agents/security_agents/sandbox/**", "examples/payments-lite/**", "pyproject.toml", "uv.lock", ".github/workflows/code-review.yml"]
+    paths: ["standards/**", "code-review/**", "shared/**", "backend/**", "code-intelligence/**", "security-agents/security_agents/sandbox/**", "examples/payments-lite/**", "pyproject.toml", "uv.lock", ".github/workflows/code-review.yml"]
 
 permissions:
   contents: read

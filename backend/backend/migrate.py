@@ -18,7 +18,7 @@ def alembic_config() -> Config:
     return cfg
 
 
-def upgrade(revision: str = "head") -> None:
+def upgrade(revision: str = "heads") -> None:
     cfg = alembic_config()
     with get_engine().begin() as conn:
         cfg.attributes["connection"] = conn
