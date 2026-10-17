@@ -839,3 +839,29 @@ def test_reviewer_cwe_is_catalog_validated_end_to_end(
     else:
         assert finding.standards is None
         assert any("CWE not recorded" in r and "CWE-840" in r for r in outcome.rejected)
+
+
+def test_functional_verification_inputs_from_persisted_records(tmp_path: Path) -> None:
+    """Srihith's functional-Verify design (c): the inputs Verify needs come straight from
+    what propose_repair recorded, integrity-checked; tampering is refused."""
+    from code_review.api import functional_verification_inputs
+
+    sc, host, source, outcome = _pl_review(tmp_path)
+    [finding] = outcome.result.findings
+    tests = load_test_sources(host, finding)
+    host.transport = fake(pl_repair_script(tests[0].path))
+    rep = ReviewerAgentRunner(host, source).repair(finding, host.approve(finding.id), tests)
+    assert rep.patch is not None
+
+    inp = functional_verification_inputs(host, rep.patch)
+    assert inp.unpatched_commit == sc.head_sha == inp.finding.commit_sha
+    assert "already + body.amount > p.amount" in inp.diff_text
+    assert [t.path for t in inp.generated_tests] == rep.patch.tests_added
+    assert inp.protected_paths == [] and inp.baseline_failing == []
+
+    with pytest.raises(ReviewError, match="diff_sha256"):
+        functional_verification_inputs(host, rep.patch.model_copy(update={"diff_sha256": "0" * 64}))
+    with pytest.raises(ReviewError, match="tests_added"):
+        functional_verification_inputs(
+            host, rep.patch.model_copy(update={"tests_added": ["target/tests/other.py"]})
+        )
