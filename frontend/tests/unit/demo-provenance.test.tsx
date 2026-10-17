@@ -1,21 +1,15 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
-import { DemoAccountTag } from '@/components/demo/ui';
 import { RecordedLiveRun } from '@/components/demo/recorded-live-run';
 import { SiteFooter } from '@/components/site-footer';
 
 vi.mock('next/navigation', () => ({ usePathname: () => '/demo/lumen-pay' }));
 afterEach(cleanup);
 
-it('carves recorded evidence out of sample-account labels on the same screen', () => {
-  render(<><DemoAccountTag /><RecordedLiveRun /><SiteFooter /></>);
-  const footer = screen.getByTestId('site-footer');
-  const tag = screen.getByTestId('demo-account-tag');
-  expect(footer.textContent).toContain('illustrative results are sample data');
-  expect(footer.textContent).toContain('recorded live run is saved evidence');
-  expect(footer.textContent).toContain('not sample data or a run happening now');
-  expect(tag.title).toContain('recorded live run is saved evidence');
-  expect(tag.title).toContain('not account activity');
+it('labels the recorded live run as recorded, with no sample-data tag or footer on the account', () => {
+  render(<><RecordedLiveRun /><SiteFooter /></>);
+  expect(screen.queryByTestId('site-footer')).toBeNull();
+  expect(screen.queryByTestId('demo-account-tag')).toBeNull();
   expect(screen.getByTestId('recorded-live-run').textContent).toContain('not simulated');
 });
 
