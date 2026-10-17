@@ -304,11 +304,11 @@ function Player({ episode, scenario }: { episode: LabEpisode; scenario: LabScena
         <div className="min-w-0">
           <Topology scenario={scenario} states={step?.nodes ?? []} />
           <div className="lab-controls mt-3">
-            <Button variant="primary" onClick={() => { if (!playing && t >= steps - 1) setT(0); setPlaying(p => !p); }} aria-pressed={playing}>{playing ? 'Pause' : t >= steps - 1 ? 'Replay' : 'Play'}</Button>
+            <Button variant="primary" onClick={() => { if (!playing && t >= steps - 1) setT(0); setPlaying(p => !p); }}>{playing ? 'Pause' : t >= steps - 1 ? 'Replay' : 'Play'}</Button>
             <div role="group" aria-label="Speed" className="lab-segment lab-segment-sm">
               {SPEEDS.map((sp, i) => <button key={sp.label} type="button" aria-pressed={speed === i} onClick={() => setSpeed(i)} className="lab-segment-btn">{sp.label}</button>)}
             </div>
-            <input aria-label="Step" type="range" min={0} max={Math.max(0, steps - 1)} value={t} onChange={e => seek(Number(e.target.value))} className="order-last min-w-0 basis-full accent-[var(--color-brand)] sm:order-none sm:basis-0 sm:flex-1" />
+            <input aria-label="Step" aria-valuetext={`Step ${step?.t ?? t} of ${scenario.horizon}`} type="range" min={0} max={Math.max(0, steps - 1)} value={t} onChange={e => seek(Number(e.target.value))} className="order-last min-w-0 basis-full accent-[var(--color-brand)] sm:order-none sm:basis-0 sm:flex-1" />
             <span className="font-mono text-xs text-muted">t = {step?.t ?? 0} / {scenario.horizon}</span>
           </div>
           <div className="mt-3"><Timeline episode={episode} t={t} onSeek={seek} /></div>
