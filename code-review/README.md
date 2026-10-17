@@ -13,6 +13,7 @@ and proposes minimal repairs in isolated workspaces. Spec: [docs/06](../docs/06_
 | `code_review/tools.py` | Permission-enforced tools: `list_files`, `read_file`, `search_code`, `get_change_diff`, `list_expectations`, `get_context_pack`, `write_test` (only new files under `tests/generated/`, AST policy: no subprocess/network/fs abuse, no new credential-shaped values), `run_tests`; repair mode adds `edit_file`, `apply_patch`, `show_diff`, `revert_file`. Tests, conftest, pytest/tox/setup config, `pyproject.toml` and lockfiles are never writable. Budgets cap tests written, runs and edits. |
 | `code_review/workspace.py` | SHA-pinned exports via `git archive` into temp dirs: no `.git`, no link back to the customer repo. Unified diffs, `git apply` inside the workspace, docstring ranges. |
 | `code_review/sandbox.py` | `LocalProcessSandbox` (`SandboxPort`): fixed pytest command, scrubbed env (no keys), rlimits, timeout, process-group kill, output cap; a pytest plugin records each test's exception type. Classifies runs as `passed`, `failed` (AssertionError / pytest.fail) or `error` (tooling, which is inconclusive). **No network isolation**; production should use Alan's Docker driver through the same port. |
+| `code_review/shared_sandbox.py` | `SharedSandboxAdapter`: the same `SandboxPort` over Alan's `security_agents` drivers (fixed `pytest` mode, reporting plugin shipped via `extra_files`, results from `/out`). `CODE_REVIEW_SANDBOX=docker` uses `DockerSandboxDriver` (network none); `shared-local` uses the dev `LocalProcessDriver` (needs `SANDBOX_ALLOW_LOCAL_PROCESS=1`); the default `local` keeps `LocalProcessSandbox`. |
 | `code_review/api.py` | `review(host, ReviewRequest) -> ReviewResult`, `review_full`, `generate_tests`, `propose_repair(host, finding_id, approval_id, repo_id=)`, `load_test_sources`. |
 | `code_review/evaluation.py` | Scores an outcome against an answer key (`examples/payments-lite/labels.yaml`) after the run. Scripted runs are labeled "harness check only". |
 
@@ -44,7 +45,7 @@ RUN_LIVE_LLM_EVAL=1 uv run pytest -q -m live_llm code-review/tests -s   # Tier 3
 
 Repositories must be registered by the operator:
 `CODE_REVIEW_REPOSITORIES="rep_<id>=/abs/path/to/repo#optional/subdir"`. Optional:
-`CODE_REVIEW_SANDBOX_PYTHON` (interpreter that has the target's deps).
+`CODE_REVIEW_SANDBOX_PYTHON` (interpreter that has the target's deps), `CODE_REVIEW_SANDBOX` (`local` | `shared-local` | `docker`). Docker execution of the shared driver is UNVERIFIED here (no Docker engine); the adapter is tested with the shared local-process driver (`uv pip install -e security-agents --no-deps && uv run --no-sync pytest -q code-review/tests/test_shared_sandbox.py`).
 
 ## Evidence status
 

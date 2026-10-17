@@ -52,6 +52,8 @@ def pytest_collectreport(report):
 
 def pytest_sessionfinish(session, exitstatus):
     path = os.environ.get("CR_REPORT_PATH")
+    if not path and os.environ.get("SANDBOX_OUT"):  # security_agents drivers collect /out
+        path = os.path.join(os.environ["SANDBOX_OUT"], "cr_report.json")
     if path:
         with open(path, "w", encoding="utf-8") as fh:
             json.dump({"exitstatus": int(exitstatus), "cases": _RESULTS}, fh)
