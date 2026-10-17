@@ -17,11 +17,17 @@ import urllib.request
 import urllib.error
 from pathlib import Path
 from typing import Dict, List, Tuple
+from datetime import datetime, timezone
+
+# Add current directory for shared schema
+sys.path.insert(0, str(Path(__file__).parent))
+from shared_test_schema import TestResult, TestSuite, TestStatus
 
 # ANSI color codes
 GREEN = "\033[92m"
 RED = "\033[91m"
 YELLOW = "\033[93m"
+BLUE = "\033[94m"
 RESET = "\033[0m"
 BOLD = "\033[1m"
 
