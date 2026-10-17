@@ -378,6 +378,14 @@ class PatchApplier:
         out_of_scope = [p for p in touched if p not in plan_files and p not in new_tests]
         tampered = self._tampered_tests(diff_text, record.get("protected_tests", []))
         ctx.artifacts["verify_workspace"] = root
+        from ..regressions import RegressionEvidenceUnavailable, read_sources
+
+        try:
+            ctx.artifacts["regression_sources_before_tests"] = read_sources(
+                root, list(record.get("tests_added") or [])
+            )
+        except (RegressionEvidenceUnavailable, PlatformError):
+            ctx.artifacts["regression_sources_before_tests"] = None
         ctx.artifacts["verify_facts"] = {
             "applied": ok,
             "files_touched": touched,
