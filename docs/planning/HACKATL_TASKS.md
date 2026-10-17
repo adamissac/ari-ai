@@ -162,4 +162,11 @@ REG-001 validation: focused54/root325/security396/frontend32/browser12 passed; r
 ### QA-001 — execute Devin’s unfinished QA proposal
 Owner: Srihith; IN_REVIEW on `fix/srihith/qa-reliability`. Existing suite wrappers now use valid imports/commands, preserve the Python interpreter and live-call opt-out, report incomplete prerequisites separately, validate readiness JSON, and have CI-tested failure semantics. See docs/devin_qa/README.md and SESSION_HANDOFF for executed evidence.
 
-SEC-001 to SEC-013 (Alan): implemented; acceptance shown on replay with scripted model turns and real tools, sandboxes and tests (`cd security-agents && .venv/bin/python -m pytest tests -q`). Not yet shown: a live seven-role run (M3, issue #10), Docker sandbox execution (INFRA-005), human review of check templates (SEC-005). See `coordination/status/ALAN.md`.
+SEC-001 to SEC-013 (Alan): implemented; acceptance shown on replay with scripted model turns and real tools, sandboxes and tests (`cd security-agents && .venv/bin/python -m pytest tests -q`). Not yet shown: a live seven-role run (M3, issue #10), published sandbox image digests (INFRA-005), human review of check templates (SEC-005). See `coordination/status/ALAN.md`.
+
+SEC-003/SEC-004 evidence refresh (2026-10-17): real Docker execution is verified in
+[security CI 39033028814](https://github.com/adamissac/hackatl-agentic-security/actions/runs/39033028814)
+at `5b3ef50` (6 container tests passed; ordinary suite 451 passed/18 skipped).
+INFRA-005 remains open for published test/check image digests; the Dockerfile pins
+its base but the verified CI image uses a temporary tag. M3's live-provider gate
+and SEC-005's human template review remain separate.
