@@ -151,3 +151,13 @@ describe('glossary', () => {
     for (const t of ['finding', 'scope', 'sandbox', 'patch', 'verification', 'monitoring', 'simulation'] as const) expect(GLOSSARY[t].length).toBeGreaterThan(20);
   });
 });
+
+describe('lab plain words (redesign)', () => {
+  it('names scenarios and reward parts in plain words with safe fallbacks', async () => {
+    const { rewardWord, scenarioName } = await import('@/lib/lab-plain');
+    expect(scenarioName('eval_stealthy_lowsignal')).toBe('Quiet, stealthy attacker');
+    expect(scenarioName('eval_new_thing')).toBe('new thing');
+    expect(rewardWord('adversary_progress')).toBe('Attacker progress');
+    expect(rewardWord('mystery_part')).toBe('mystery part');
+  });
+});
