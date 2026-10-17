@@ -5,7 +5,12 @@ from types import SimpleNamespace
 import pytest
 
 from security_agents.contracts import PlatformError
-from security_agents.host_adapter import _functional_reproduced, _tests_passed, _write_generated_tests
+from security_agents.host_adapter import (
+    _functional_reproduced,
+    _pytest_list_truncated,
+    _tests_passed,
+    _write_generated_tests,
+)
 from security_agents.tools.services import parse_pytest
 
 TEST_PATH = "tests/generated/test_refund.py"
@@ -58,6 +63,26 @@ def test_success_requires_an_executed_run_without_skips_or_errors():
     ):
         assert not _tests_passed({**valid, **changed})
     assert parse_pytest("2 passed, 1 skipped in 0.1s")["skipped"] == 1
+
+
+def test_truncated_pytest_failure_list_is_not_complete_evidence():
+    lines = "\n".join(f"FAILED tests/test_x.py::test_{i}" for i in range(21))
+    parsed = parse_pytest(f"{lines}\n21 failed in 0.1s")
+    assert parsed["failed"] == 21
+    assert len(parsed["failing_tests"]) == 20
+    assert parsed["failing_truncated"] is True
+    assert _pytest_list_truncated(parsed)
+    assert not _functional_reproduced(
+        failed_run(
+            failed=21,
+            failing_tests=parsed["failing_tests"],
+            failing_truncated=True,
+        ),
+        [TEST_PATH],
+    )
+    complete = parse_pytest("FAILED tests/generated/test_refund.py::test_bound\n1 failed in 0.1s")
+    assert complete["failing_truncated"] is False
+    assert not _pytest_list_truncated(complete)
 
 
 def test_generated_tests_cannot_overwrite_existing_files_or_source(tmp_path):
