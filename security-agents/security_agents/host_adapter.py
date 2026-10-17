@@ -533,6 +533,8 @@ class HostSink(AssessmentSink):
                 if finding.attack_path
                 else [],
             )
+        if kind == "validation_result" and mapped is not None:
+            mapped = self._with_http_evidence(record, mapped)
         if mapped is not None:
             self.host.record(finding.finding_id, mapped)
             self.recorded.append(kind)
@@ -543,6 +545,40 @@ class HostSink(AssessmentSink):
                     {"confirmed": "validated"}.get(outcome, outcome),
                     reason=f"probe {outcome} via {mapped.check_template_id}",
                 )
+
+    def _with_http_evidence(self, record: Any, mapped: Any) -> Any:
+        observations = record.observations or {}
+        if observations.get("transport") != "http" or not observations.get("target_contacted"):
+            return mapped
+        import json
+
+        from shared.evidence import ArtifactKind, EvidenceKind, EvidenceRef
+
+        payload = {
+            key: observations.get(key)
+            for key in (
+                "transport",
+                "target_contacted",
+                "target_requests",
+                "target_log_sha256",
+                "network",
+                "driver",
+            )
+        }
+        payload["sandbox_run_id"] = record.sandbox_run_id
+        artifact = self.host.store_text(
+            json.dumps(payload, indent=2, sort_keys=True),
+            kind=ArtifactKind.tool_output,
+            media_type="application/json",
+        )
+        ref = EvidenceRef(
+            kind=EvidenceKind.tool_output,
+            artifact_id=artifact.id,
+            sha256=artifact.sha256,
+            provenance="agent:probe",
+            note="http check transport: requests observed in the target container log",
+        )
+        return mapped.model_copy(update={"evidence": [*mapped.evidence, ref]})
 
     def on_patch(self, finding: FindingRecord, candidate: Any, diff: str) -> None:
         artifact = self.host.store_text(diff)
@@ -791,6 +827,7 @@ class HostOrchestrator:
             budget=_adapt_budget(_val(host, "assessment")),
             max_hypotheses=self.max_hypotheses,
             max_hypotheses_to_validate=self.validate_count,
+            probe_check_transport=os.environ.get("SECURITY_AGENTS_PROBE_TRANSPORT", "inprocess"),
         )
         registry = self.registry or default_registry()
         sink = HostSink(host=host, commit_sha=intel.snapshot.commit_sha)
