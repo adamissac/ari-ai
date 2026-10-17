@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Creating a project says it records a name. It does not connect a repository, approve a test environment, or start a check. Monitoring is on by default.
 - The sign-in line and the projects headline no longer say every fix is already proven or that the product ships it. A fix counts only when independent tests agree.
 - Connecting a repository says it records the name and default branch. It does not attach a GitHub App, approve a test environment, or start a check.
 - The monitoring page leads with a count of recorded events, how many are labelled simulated, and how many simulation recommendations are stored. It says this page is not the Defense Lab.
