@@ -664,3 +664,140 @@ def test_authorization_rule_routing(text: str, authz: bool) -> None:
     from code_review.agent import is_authorization_rule
 
     assert is_authorization_rule(text) is authz
+
+
+# ---- regression: live run (Adam, 20261017T063638Z) dropped correct security spans ----
+# Real model quotes copy read_file line numbers, elide with "...", re-indent, or anchor a
+# line or two off. These are the exact spans the live run rejected on payments-lite.
+LIVE_QUOTES = [
+    # numbered copy from read_file output, multi-line, at the exact get_payment span
+    (
+        131,
+        141,
+        '  131      @app.get("/payments/{payment_id}", response_model=PaymentOut)\n'
+        "  132      def get_payment(\n  138          p = store.payments.get(payment_id)",
+    ),
+    # elided quote, re-indented
+    (
+        138,
+        141,
+        "p = store.payments.get(payment_id)\nif p is None: ... return payment_out(store, p)",
+    ),
+    # refund check-then-write, quoted without indentation
+    (
+        153,
+        160,
+        "p = store.payments.get(body.payment_id)\nif body.amount > p.amount:\n"
+        '    raise HTTPException(422, "refund exceeds payment amount")\nstore.refunds[r.id] = r',
+    ),
+]
+
+
+@pytest.mark.parametrize("start,end,quote", LIVE_QUOTES)
+def test_live_run_quotes_are_accepted_at_their_spans(
+    tmp_path: Path, start: int, end: int, quote: str
+) -> None:
+    from code_review.intent import CitationChecker
+    from code_review.models import CitationIn
+    from code_review.workspace import Workspace
+
+    sc = payments_lite(tmp_path)
+    ws = Workspace.export(RepoSource(sc.repo, subdir="target"), sc.head_sha)
+    try:
+        checker = CitationChecker(ws, make_request(InMemoryHost(fake([])), sc).change_intent, {})
+        ev, _, note = checker.check(
+            CitationIn(
+                source_kind="code",
+                path="target/payments_lite/app.py",
+                start_line=start,
+                end_line=end,
+                quote=quote,
+            )
+        )
+        assert ev is not None, note
+        assert ev.span is not None and (ev.span.start_line, ev.span.end_line) == (start, end)
+        assert "  131  " not in (ev.note or "")  # copied line numbers are stripped from the note
+    finally:
+        ws.close()
+
+
+def test_off_by_two_anchor_is_reanchored_and_far_or_fake_quotes_still_rejected(
+    tmp_path: Path,
+) -> None:
+    from code_review.intent import CitationChecker
+    from code_review.models import CitationIn
+    from code_review.workspace import Workspace
+
+    sc = payments_lite(tmp_path)
+    ws = Workspace.export(RepoSource(sc.repo, subdir="target"), sc.head_sha)
+    try:
+        checker = CitationChecker(ws, make_request(InMemoryHost(fake([])), sc).change_intent, {})
+        path = "target/payments_lite/app.py"
+        ev, _, note = checker.check(
+            CitationIn(
+                source_kind="code",
+                path=path,
+                start_line=136,
+                end_line=136,
+                quote="p = store.payments.get(payment_id)",
+            )
+        )
+        assert (
+            ev is not None
+            and ev.span is not None
+            and ev.span.start_line == 138
+            and "re-anchored 136-136 -> 138-138" in note
+        )
+        for start, quote in (
+            (131, "def create_refund("),
+            (131, "admin_override = True"),
+            (20, "def get_payment("),
+        ):
+            ev, _, note = checker.check(
+                CitationIn(source_kind="code", path=path, start_line=start, quote=quote)
+            )
+            assert ev is None and "quote not present" in note
+    finally:
+        ws.close()
+
+
+def test_live_style_security_concern_reaches_scout_and_matches_answer_key(tmp_path: Path) -> None:
+    from cr_scenarios import PAYMENTS_LITE
+
+    from code_review.evaluation import score
+
+    sc = payments_lite(tmp_path)
+    host = InMemoryHost(
+        fake(
+            [
+                call("read_file", path="target/payments_lite/app.py", start_line=125, end_line=162),
+                _submit(
+                    summary="GET /payments/{id} skips the ownership check.",
+                    security_concerns=[
+                        {
+                            "title": "Payment read does not verify ownership",
+                            "weakness_class": "CWE-639",
+                            "spans": [
+                                {
+                                    "source_kind": "code",
+                                    "path": "target/payments_lite/app.py",
+                                    "start_line": 131,
+                                    "end_line": 141,
+                                    "quote": LIVE_QUOTES[0][2],
+                                }
+                            ],
+                            "rationale": "siblings call require_owner; get_payment does not",
+                        }
+                    ],
+                ),
+            ]
+        )
+    )
+    outcome = ReviewerAgentRunner(host, RepoSource(sc.repo, subdir="target")).review(
+        make_request(host, sc)
+    )
+    assert outcome.rejected == []
+    [sec] = outcome.security_handoffs
+    assert sec.title.startswith("[CWE-639]")
+    rep = score(outcome, PAYMENTS_LITE.parent / "labels.yaml").to_json()
+    assert rep["security_handoffs_matched"] == ["fnd_planted_authz"]
