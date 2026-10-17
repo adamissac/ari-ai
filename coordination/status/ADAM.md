@@ -84,3 +84,8 @@ Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablat
   five random "seeds" were identical; fixed and re-evaluated (conclusions unchanged).
 - **Not done / unverified:** backend endpoint and UI panel (other owners); live provider not
   applicable to RL; real-world transfer is not claimed (RQ-005).
+
+## 2026-10-17 08:45Z — frontend gap pages (Devin session for Adam)
+- Branch `devin/1792226026-frontend-gaps`: `/projects/[id]/expectations`, `/incidents`, `/settings` + additive transport PATCH methods.
+- Executed: transport 27 passed; ESLint, tsc, Vitest 29 passed, Next build; browser e2e (stack.py) 11 passed incl. 3 new. Scripted model transports, not live.
+- Next owner action: Vihaan review of the PR; Alan continues functional remediation (#73).
