@@ -79,6 +79,7 @@ HOST_STATE_NAMES: dict[AssessmentState, str] = {
 }
 
 CHECKPOINT_NS = "security_agents.approval.v1"
+_CHECKPOINT_CLAIMED_ELSEWHERE = object()
 
 
 @runtime_checkable
@@ -92,6 +93,7 @@ class AssessmentHostLike(Protocol):
     def scope(self) -> Any: ...
     def save_checkpoint(self, namespace: str, payload: dict[str, Any]) -> None: ...
     def load_checkpoint(self, namespace: str) -> dict[str, Any] | None: ...
+    def claim_checkpoint(self, namespace: str) -> dict[str, Any] | None: ...
     def approvals(self) -> list[Any]: ...
     def findings(self) -> list[Any]: ...
     def transition(self, target: Any, message: str = "") -> Any: ...
@@ -602,23 +604,36 @@ class HostOrchestrator:
     def run(self, host: AssessmentHostLike) -> None:
         target = self.target_dir or _env_path("SECURITY_AGENTS_TARGET_DIR")
         existing = self._resumable.pop(host.assessment_id, None)
-        if existing is not None:
-            self._resume(existing, host)
-            return
         state = _state_name(getattr(_val(host, "assessment"), "state", None))
-        checkpoint = _load_checkpoint(host)
-        if state == "AWAITING_APPROVAL" or (
-            checkpoint is not None and state not in ("", "CREATED", "SCOPE_CHECK")
-        ):
-            if checkpoint is None:
+        start_states = ("", "CREATED", "SCOPE_CHECK")
+        if existing is not None or state == "AWAITING_APPROVAL":
+            claimed = _claim_checkpoint(host)
+            if claimed is _CHECKPOINT_CLAIMED_ELSEWHERE:
+                host.progress("approval resume already claimed by another worker")
+                return
+            if existing is not None:
+                self._resume(existing, host)
+                return
+            if not isinstance(claimed, dict):
                 raise PlatformError(
                     ErrorCode.CONFLICT_STATE,
                     f"cannot resume from {state}: paused orchestrator state was lost "
                     "(worker restarted or another worker); start a new assessment",
                 )
-            self._resume_from_checkpoint(host, checkpoint, target)
+            self._resume_from_checkpoint(host, claimed, target)
             return
-        if state not in ("", "CREATED", "SCOPE_CHECK"):
+        checkpoint = _load_checkpoint(host)
+        if checkpoint is not None and state not in start_states:
+            claimed = _claim_checkpoint(host)
+            if not isinstance(claimed, dict):
+                raise PlatformError(
+                    ErrorCode.CONFLICT_STATE,
+                    f"cannot resume from {state}: paused orchestrator state was lost "
+                    "(worker restarted or another worker); start a new assessment",
+                )
+            self._resume_from_checkpoint(host, claimed, target)
+            return
+        if state not in start_states:
             raise PlatformError(
                 ErrorCode.CONFLICT_STATE,
                 f"cannot resume from {state}: paused orchestrator state was lost "
@@ -663,12 +678,7 @@ class HostOrchestrator:
         self._resume(orchestrator, host)
 
     def _make_orchestrator(self, host: AssessmentHostLike, intel: CodeIntel, workdir: Path) -> Orchestrator:
-        scope = _adapt_scope(_val(host, "scope"), intel)
-        repo_id = getattr(host, "repo_id", None)
-        if repo_id:
-            scope.targets = [target for target in scope.targets if target.repo_id == repo_id]
-        if not scope.targets:
-            raise PlatformError(ErrorCode.SCOPE_DENIED, "host scope has no authorized targets for this repository")
+        scope = _scope_for_host(host, intel)
         config = OrchestratorConfig(
             assessment_id=host.assessment_id,
             project_id=getattr(host, "project_id", "prj_unknown"),
@@ -694,7 +704,7 @@ class HostOrchestrator:
             step_runner=HostStepRunner(host=host, tool_factory=build_tools, run_ids=sink.run_ids),
             approve_remediation=_approver(host),
             cancelled=lambda: _cancelled(host),
-            external_pending=lambda: _pending_remediation(host),
+            external_pending=lambda: _pending_remediation(host) or _has_approved_functional(host),
         )
 
     def _workdir(self, host: AssessmentHostLike) -> Path:
@@ -714,7 +724,7 @@ class HostOrchestrator:
         """
         from .scope_guard import ActionRequest, check
 
-        scope = _adapt_scope(_val(host, "scope"), orchestrator.intel)
+        scope = _scope_for_host(host, orchestrator.intel)
         decision = check(scope, ActionRequest(action="assessment_start"), utcnow())
         if not decision.allowed:
             raise PlatformError(ErrorCode.SCOPE_DENIED, decision.reason_code)
@@ -897,6 +907,28 @@ def _load_checkpoint(host: AssessmentHostLike) -> dict[str, Any] | None:
     return payload if isinstance(payload, dict) else None
 
 
+def _claim_checkpoint(host: AssessmentHostLike) -> dict[str, Any] | object | None:
+    """Consume the durable pause payload, or signal that another worker already did.
+
+    Returns the checkpoint dict, ``_CHECKPOINT_CLAIMED_ELSEWHERE`` if a previous
+    caller already consumed it, or ``None`` if nothing was ever saved. Hosts
+    without ``claim_checkpoint`` fall back to a non-atomic load.
+    """
+    claimer = getattr(host, "claim_checkpoint", None)
+    if callable(claimer):
+        try:
+            payload = claimer(CHECKPOINT_NS)
+        except Exception as exc:
+            code = str(getattr(getattr(exc, "code", None), "value", getattr(exc, "code", "")) or "")
+            if code == "CONFLICT_STATE":
+                return None
+            raise
+        if payload is None:
+            return _CHECKPOINT_CLAIMED_ELSEWHERE
+        return payload if isinstance(payload, dict) else None
+    return _load_checkpoint(host)
+
+
 def _save_checkpoint(host: AssessmentHostLike, orchestrator: Orchestrator, intel: CodeIntel) -> None:
     saver = getattr(host, "save_checkpoint", None)
     if not callable(saver):
@@ -1047,22 +1079,55 @@ def _functional_reproduced(result: dict[str, Any] | None, tests: list[str]) -> b
         or result.get("exit_code") != 1
         or not result.get("sandbox_run_id")
         or not result.get("failed")
+        or _pytest_list_truncated(result)
     ):
         return False
     failed_paths = {node.split("::", 1)[0] for node in result.get("failing_tests", [])}
     return set(tests) <= failed_paths
 
 
+def _pytest_list_truncated(result: dict[str, Any] | None) -> bool:
+    """True when pytest reported more failures than the retained node-id list."""
+    if not result:
+        return False
+    if result.get("failing_truncated"):
+        return True
+    failing = result.get("failing_tests") or []
+    try:
+        failed = int(result.get("failed") or 0)
+    except (TypeError, ValueError):
+        return False
+    return failed > len(failing)
+
+
 def _recipe_strip_prefix(root: Path, paths: list[str]) -> str:
     """Reviewer diffs are repository-relative (`target/...`); the intel snapshot is already
-    the recipe `target_dir`. Strip that leading directory when it is not in the snapshot."""
+    the recipe ``target_dir``. Strip that complete directory, not only the first component."""
+    import json
+
     from .sandbox.workspace import safe_rel_path
+
+    recipe_dir = ""
+    recipe = root / "build_recipe.json"
+    if recipe.is_file():
+        try:
+            raw = str(json.loads(recipe.read_text(encoding="utf-8")).get("target_dir") or "").strip("/")
+        except (OSError, TypeError, ValueError, json.JSONDecodeError):
+            raw = ""
+        if raw and not raw.startswith("/") and ".." not in Path(raw).parts:
+            recipe_dir = raw
 
     for raw in paths:
         try:
             rel = safe_rel_path(str(raw))
         except Exception:
             continue
+        if (
+            recipe_dir
+            and (rel == recipe_dir or rel.startswith(recipe_dir + "/"))
+            and not (root / recipe_dir).exists()
+        ):
+            return recipe_dir
         first, _, rest = rel.partition("/")
         if rest and not (root / first).exists():
             return first
@@ -1202,6 +1267,7 @@ def _verify_functional_patch(host: AssessmentHostLike, orchestrator: Orchestrato
             and not suite.get("errors")
             and not new_failures
             and bool(suite.get("passed"))
+            and not _pytest_list_truncated(suite)
         )
         scope_ok = bool(ok) and not out_of_scope
         tamper_ok = not list(inputs.protected_paths)
@@ -1252,6 +1318,7 @@ def _verify_functional_patch(host: AssessmentHostLike, orchestrator: Orchestrato
         accepted = all(c.passed for c in checks)
         duration = sum(float((r or {}).get("duration_s") or 0) for r in (unpatched, patched, suite))
         orchestrator.result.usage.sandbox_seconds += duration
+        host.finish_agent_run(run_id, _host_run_status("succeeded"))
         host.record_verification(
             VerificationResult(
                 id=new_id(IdPrefix.ver),
@@ -1270,19 +1337,21 @@ def _verify_functional_patch(host: AssessmentHostLike, orchestrator: Orchestrato
                 created_at=utcnow(),
             )
         )
-        if accepted:
-            setter = getattr(host, "set_finding_status", None)
-            if callable(setter):
-                try:
-                    setter(
-                        patch.finding_id,
-                        "verified",
-                        actor="agent:verify",
-                        reason="independent functional Verify accepted",
-                    )
-                except Exception as exc:
-                    host.progress(f"finding status verified not applied: {str(exc)[:200]}")
-        host.finish_agent_run(run_id, _host_run_status("succeeded"))
+        setter = getattr(host, "set_finding_status", None)
+        if callable(setter):
+            try:
+                setter(
+                    patch.finding_id,
+                    "verified" if accepted else "patch_rejected",
+                    actor="agent:verify",
+                    reason=(
+                        "independent functional Verify accepted"
+                        if accepted
+                        else "independent functional Verify rejected"
+                    ),
+                )
+            except Exception as exc:
+                host.progress(f"finding status not applied: {str(exc)[:200]}")
         host.progress(f"functional Verify {'accepted' if accepted else 'rejected'} for {patch.finding_id}")
     except Exception as exc:
         with contextlib.suppress(Exception):
@@ -1468,6 +1537,17 @@ def _approval_subject() -> Any:
         if enum is not None:
             return enum("remediation")
     return "remediation"
+
+
+def _scope_for_host(host: AssessmentHostLike, intel: CodeIntel) -> Any:
+    """Adapt the current host scope and keep only targets for ``host.repo_id``."""
+    scope = _adapt_scope(_val(host, "scope"), intel)
+    repo_id = getattr(host, "repo_id", None)
+    if repo_id:
+        scope.targets = [target for target in scope.targets if target.repo_id == repo_id]
+    if not scope.targets:
+        raise PlatformError(ErrorCode.SCOPE_DENIED, "host scope has no authorized targets for this repository")
+    return scope
 
 
 def _adapt_scope(host_scope: Any, intel: CodeIntel) -> Any:
