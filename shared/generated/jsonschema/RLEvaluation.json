@@ -4,7 +4,7 @@
   "properties": {
     "checkpoint_ids": {
       "items": {
-        "pattern": "^ckp_[0-9A-Za-z]{8,64}$",
+        "pattern": "^ckp_[0-9A-Za-z_\\-]{8,64}$",
         "type": "string"
       },
       "title": "Checkpoint Ids",
@@ -16,7 +16,7 @@
       "type": "string"
     },
     "id": {
-      "pattern": "^rle_[0-9A-Za-z]{8,64}$",
+      "pattern": "^rle_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Id",
       "type": "string"
     },
@@ -32,7 +32,7 @@
       "type": "boolean"
     },
     "summary_artifact_id": {
-      "pattern": "^art_[0-9A-Za-z]{8,64}$",
+      "pattern": "^art_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Summary Artifact Id",
       "type": "string"
     },

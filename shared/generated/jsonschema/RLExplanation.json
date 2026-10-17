@@ -81,7 +81,7 @@
       "type": "string"
     },
     "recommendation_id": {
-      "pattern": "^rec_[0-9A-Za-z]{8,64}$",
+      "pattern": "^rec_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Recommendation Id",
       "type": "string"
     },

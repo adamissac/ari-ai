@@ -101,7 +101,7 @@
     },
     "monitoring_event_ids": {
       "items": {
-        "pattern": "^evt_[0-9A-Za-z]{8,64}$",
+        "pattern": "^evt_[0-9A-Za-z_\\-]{8,64}$",
         "type": "string"
       },
       "title": "Monitoring Event Ids",
