@@ -75,12 +75,14 @@ from shared.findings import (
     PatchCandidate,
     RemediationPlan,
     RootCause,
+    SeverityAssessment,
     ValidationResult,
     VerificationResult,
 )
 from shared.ids import IdPrefix, new_id
 from shared.intelligence import SnapshotRef
 from shared.scope import Approval, ApprovalStatus, ApprovalSubject, AuthorizedScope, ScopeStatus
+from shared.standards import FindingStandards
 from shared.tenancy import Usage
 
 
@@ -609,6 +611,49 @@ class AssessmentHost:
                 data={"status": finding.status.value, "actor": actor},
             )
         return finding
+
+    def record_standards(
+        self,
+        finding_id: str,
+        standards: FindingStandards,
+        *,
+        severity: SeverityAssessment | None = None,
+    ) -> None:
+        """Update classifications under a row lock without reverting finding state/history."""
+        checked = FindingStandards.model_validate(standards.model_dump(mode="json"))
+        with transaction() as conn:
+            doc = conn.execute(
+                sa.select(findings.c.doc)
+                .where(
+                    findings.c.id == finding_id,
+                    findings.c.assessment_id == self.assessment_id,
+                )
+                .with_for_update()
+            ).scalar()
+            if doc is None:
+                raise HostError(ErrorCode.NOT_FOUND, "finding not in this assessment")
+            finding = Finding.model_validate(doc)
+            update: dict[str, Any] = {"standards": checked, "updated_at": utcnow()}
+            if severity is not None:
+                update["severity"] = SeverityAssessment.model_validate(
+                    severity.model_dump(mode="json")
+                )
+            refreshed = Finding.model_validate(
+                finding.model_copy(update=update).model_dump(mode="json")
+            )
+            conn.execute(
+                sa.update(findings)
+                .where(findings.c.id == finding_id)
+                .values(doc=refreshed.model_dump(mode="json"))
+            )
+            _emit(
+                conn,
+                self.assessment_id,
+                StreamEventType.finding_updated,
+                "standards classification updated",
+                finding_id=finding_id,
+                data={"actor": "system:standards", "classification_only": True},
+            )
 
     def record(self, finding_id: str, record: BaseModel) -> None:
         """Persist Hypothesis/ValidationResult/AttackPath/RootCause/RemediationPlan/Hardening."""

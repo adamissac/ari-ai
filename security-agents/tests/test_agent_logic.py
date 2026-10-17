@@ -199,7 +199,7 @@ def trace_input():
         assessment_id="asm",
         finding_id="fnd_1",
         validation_result_id="val_1",
-        validation_sandbox_run_id="sbx_1",
+        sandbox_run_id="sbx_1",
         hypothesis_title="t",
         weakness_class="CWE-639",
         confirmed_outcome="confirmed",

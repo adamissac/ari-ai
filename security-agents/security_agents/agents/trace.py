@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import Literal
 
 from pydantic import Field, field_validator, model_validator
+from shared.standards import CVSSAssessment, CVSSMetricValue
+from standards.cvss import vector as cvss4_vector
 
 from ..contracts import (
     AgentName,
@@ -18,6 +20,7 @@ from ..contracts import (
     StrictModel,
     ValidationResult,
 )
+from ..contracts import export as contract_export
 from ..intel import CodeIntel
 from ..runtime import AgentSpec, data_block
 from ..standards import cvss
@@ -47,6 +50,10 @@ Rules:
 - You never choose a score, a rating or a severity level. The platform computes \
 the CVSS vector, base score and rating from your metrics, and that base score \
 measures severity, not business risk.
+- You may also propose all eleven CVSS v4.0 base metrics in `cvss_metrics`, each \
+backed by the executed validation run in `cvss_metric_artifacts`. Omit them if \
+any v4.0 metric is uncertain. They are recorded as provisional assumptions that \
+need human review and never set the platform severity level.
 - Do not run anything; you have read-only tools.
 - Do not describe how to carry out an attack. Describe what is reachable and why \
 it matters, at the level of data classes and operations."""
@@ -55,10 +62,11 @@ MetricName = Literal["AV", "AC", "PR", "UI", "S", "C", "I", "A"]
 
 
 class TraceInput(StrictModel):
+    check_category: str = ""
     assessment_id: str
     finding_id: str
     validation_result_id: str
-    validation_sandbox_run_id: str | None = None
+    sandbox_run_id: str | None = None
     hypothesis_title: ShortText
     weakness_class: str
     confirmed_outcome: str
@@ -109,6 +117,11 @@ class CvssMetricProposal(StrictModel):
 
 
 class TraceOutput(StrictModel):
+    cvss_metrics: dict[str, str] | None = Field(
+        default=None,
+        description="Optional complete CVSS v4.0 base metrics, each backed by an executed evidence artifact. Never supply a score.",
+    )
+    cvss_metric_artifacts: dict[str, str] = Field(default_factory=dict)
     steps: list[PathStepOut] = Field(min_length=1, max_length=12)
     preconditions: list[ShortText] = Field(default_factory=list, max_length=8)
     impact_summary: ShortText
@@ -121,6 +134,14 @@ class TraceOutput(StrictModel):
         max_length=5,
         description="Informational only; nothing here is executed automatically.",
     )
+
+    @model_validator(mode="after")
+    def _complete_cvss4(self) -> TraceOutput:
+        if self.cvss_metrics is not None:
+            cvss4_vector(self.cvss_metrics)
+            if set(self.cvss_metrics) != set(self.cvss_metric_artifacts):
+                raise ValueError("Every explicit CVSS v4.0 metric needs its supporting artifact")
+        return self
 
     @model_validator(mode="after")
     def _each_metric_once(self) -> TraceOutput:
@@ -137,7 +158,7 @@ class TraceOutput(StrictModel):
 
 SPEC = AgentSpec(
     name=AgentName.TRACE,
-    version="0.2.0",
+    version="0.3.0",
     input_model=TraceInput,
     output_model=TraceOutput,
     tools=frozenset(
@@ -156,7 +177,7 @@ SPEC = AgentSpec(
     step_timeout_s=180,
     max_tool_calls=25,
     max_turns=12,
-    prompt_ref="prompts/trace/v0.2.0.md",
+    prompt_ref="prompts/trace/v0.3.0.md",
     system_prompt=SYSTEM,
     max_output_tokens=6000,
 )
@@ -219,6 +240,9 @@ def to_attack_path(
     out: TraceOutput, data: TraceInput, intel: CodeIntel, *, validation: ValidationResult | None = None
 ) -> tuple[AttackPath, SeverityAssessment]:
     executed_run = validation.sandbox_run_id if validation and validation.sandbox_run_id else None
+    by_metric = {proposal.metric: proposal for proposal in out.cvss_base_metrics}
+    metrics = cvss.BaseMetrics(**{name: by_metric[name].value for name in cvss.BASE_ORDER})
+    metrics_reachability = _factors(metrics, "none", False).reachability
     steps: list[PathStep] = []
     any_verified = False
     for index, item in enumerate(out.steps, start=1):
@@ -234,6 +258,7 @@ def to_attack_path(
             evidence.append(EvidenceRef(artifact_id=artifact, provenance="check_run", symbol=item.symbol_ref))
         verified = bool(item.verified and executed)
         any_verified = any_verified or verified
+        reviewed_attack = _reviewed_attack(data, metrics_reachability, evidence) if verified else []
         technique = validate_attack_technique(item.attack_technique) if item.attack_technique else None
         steps.append(
             PathStep(
@@ -242,6 +267,7 @@ def to_attack_path(
                 symbol_ref=item.symbol_ref,
                 verified=verified,
                 evidence=evidence,
+                attack=reviewed_attack,
                 attack_technique=technique.identifier if technique else None,
                 attack_technique_name=technique.name if technique else "",
                 attack_version=technique.version if technique else "",
@@ -253,8 +279,6 @@ def to_attack_path(
             )
         )
 
-    by_metric = {proposal.metric: proposal for proposal in out.cvss_base_metrics}
-    metrics = cvss.BaseMetrics(**{name: by_metric[name].value for name in cvss.BASE_ORDER})
     result = cvss.base_score(metrics)
     metric_evidence: list[CvssMetricEvidence] = []
     for name in cvss.BASE_ORDER:
@@ -288,6 +312,7 @@ def to_attack_path(
         score_kind=cvss.SCORE_KIND,
         level_source="derived from the CVSS v3.1 qualitative rating computed by the platform",
         metric_evidence=metric_evidence,
+        cvss=_cvss4(out, validation),
     )
     path = AttackPath(
         finding_id=data.finding_id,
@@ -296,3 +321,47 @@ def to_attack_path(
         impact_summary=out.impact_summary,
     )
     return path, severity
+
+
+def _cvss4(out: TraceOutput, validation: ValidationResult | None) -> CVSSAssessment | None:
+    if out.cvss_metrics is None or validation is None or not validation.sandbox_run_id:
+        return None
+    if any(artifact != validation.sandbox_run_id for artifact in out.cvss_metric_artifacts.values()):
+        return None
+    evidence = [contract_export.evidence_ref(ref, producer="agent:trace") for ref in validation.evidence]
+    if not evidence:
+        return None
+    from standards.cvss_assess import assess
+
+    from ..contracts import utcnow
+
+    return assess(
+        {},
+        now=utcnow(),
+        overrides={
+            metric: CVSSMetricValue(
+                metric=metric,
+                value=value,
+                basis="assumption",
+                rationale=(
+                    "Model-proposed metric; the cited run supplies context, not proof of this metric. "
+                    "Human review required. " + out.severity_rationale
+                )[:500],
+                evidence=evidence,
+            )
+            for metric, value in out.cvss_metrics.items()
+        },
+        assessor="agent:trace:provisional-metric-assumptions",
+    )
+
+
+def _reviewed_attack(data: TraceInput, reachability: str, evidence: list[EvidenceRef]) -> list:
+    from shared.standards import Observation
+    from standards.mapping import attack_for_check
+
+    return attack_for_check(
+        data.check_category,
+        {"reachability": reachability},
+        observation=Observation.observed_in_sandbox,
+        evidence=[contract_export.evidence_ref(ref, producer="agent:trace") for ref in evidence],
+    )[0]

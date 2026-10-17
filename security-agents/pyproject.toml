@@ -4,6 +4,8 @@ version = "0.1.0"
 description = "Pillar 2: seven runtime security agents, orchestrator, tool registry and sandbox"
 requires-python = ">=3.12"
 dependencies = [
+  "hackatl-standards",
+  "hackatl-shared",
   "pydantic>=2.8",
   "anthropic>=1.15",
   "httpx>=0.27",
@@ -21,7 +23,7 @@ include = ["security_agents*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = [".", "../shared", "../code-intelligence", "../examples/payments-lite/target"]
+pythonpath = [".", "../shared", "../standards", "../code-intelligence", "../examples/payments-lite/target"]
 markers = [
   "live: requires RUN_LIVE_LLM_EVAL=1 and an authorized Anthropic key",
   "boundary: security-boundary suite (release blocking)",
@@ -48,3 +50,7 @@ python_version = "3.12"
 packages = ["security_agents"]
 warn_unused_ignores = false
 ignore_missing_imports = true
+
+[tool.uv.sources]
+hackatl-shared = { workspace = true }
+hackatl-standards = { workspace = true }

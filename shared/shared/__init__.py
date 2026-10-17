@@ -5,4 +5,7 @@ Import models from their modules (``from shared.findings import Finding``) or fr
 coordination/CONTRACTS.md.
 """
 
-SCHEMA_VERSION = "0.6.0"  # 0.6 intelligence memory; 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING
+SCHEMA_VERSION = (
+    "0.7.0"  # 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING;
+    # 0.6 intelligence memory (PR #39); 0.7 security standards + incidents
+)

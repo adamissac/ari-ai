@@ -8,12 +8,14 @@ version = "0.1.0"
 description = "Pillar 1 reviewer/repair runtime agent: intent evidence, generated behavioral tests, isolated candidate repairs"
 requires-python = ">=3.12"
 dependencies = [
+  "hackatl-standards",
   "hackatl-shared",
   "hackatl-backend",
   "pyyaml>=6",
 ]
 
 [tool.uv.sources]
+hackatl-standards = { workspace = true }
 hackatl-shared = { workspace = true }
 hackatl-backend = { workspace = true }
 

@@ -72,7 +72,7 @@ def test_invented_cwe_fails_the_scout_step_loudly(intel):
     outcome, gateway = run(scout_agent.SPEC, AgentName.SCOUT, script, intel)
     assert not outcome.ok
     assert outcome.run.error_code is ErrorCode.SCHEMA_INVALID
-    assert "not in the pinned CWE 4.20 catalog" in outcome.run.error_detail
+    assert "CWE-99999 is not in CWE 4.20" in outcome.run.error_detail
     assert len(gateway.provider.calls) == 2, "one repair attempt, then the step fails"
 
 

@@ -19,6 +19,8 @@ All notable changes are documented here. Format follows
   five unique checks enqueue a durable, idempotent regression join and surface through
   context packs and the shared hosted intelligence adapter. Candidate evidence only;
   never a merge/current-SHA claim.
+
+- Standards integration: pinned ATT&CK/D3FEND/CWE, deterministic CVSS 4.0, NIST SP 800-61r3 incident APIs with persisted evidence and approval gates, OWASP LLM Top 10 2025/2026 self-assessments, and frontend transport support. No certification or autonomous containment claims.
 - Standalone frontend REST/SSE transport with canonical schema validation, cookie/CSRF auth, idempotency, durable event resume and real FastAPI/PostgreSQL integration tests. Page integration remains pending.
 - Phase 0 repository foundation: product specification, system architecture,
   seven runtime agent contracts, RL defense design and evaluation protocol,

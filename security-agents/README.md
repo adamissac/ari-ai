@@ -158,3 +158,25 @@ Production host mode requires `REPOSITORY_BINDINGS_FILE` (the backend's trusted
 It exports exactly the assessment SHA, respects the pinned recipe's target
 subdirectory, and uses `CodeIntelligenceAdapter` over the upstream service.
 Uncommitted checkout changes never enter the execution workspace.
+
+### Standards classifications
+
+Producer standards fields resolve through the pinned offline `standards` catalog.
+CWE proposals must identify real, nondeprecated weaknesses (categories such as
+CWE-840 are not accepted as weakness classifications). CWE/CAPEC/ATT&CK catalog relationships are review candidates; they are not
+automatically attached as ATT&CK mappings. These are
+classifications, not evidence of production adversary activity.
+
+Canonical `standards.mapping` validates classifications and reviewed rules.
+CVSS is separate from the existing qualitative severity rubric. Trace can accept
+a complete set of explicit CVSS v4 base metrics with executed validation artifact
+references, then computes and validates the vector and score deterministically.
+Missing metrics or unrelated artifacts leave the finding unscored. Evidence
+provenance does not by itself prove an analyst's metric interpretation.
+
+D3FEND mappings use the owner-reviewed rules keyed by Fortify category and
+confirmed check category. Unsupported combinations remain unmapped. Reviewed RL actions have simulation-derived D3FEND
+classifications, while unsupported actions stay unmapped. No rule
+executes a defensive action against real systems.
+
+Model-proposed CVSS metrics are explicit provisional assumptions, even when they cite an executed run. A run identifier supplies provenance but does not prove an impact. Such scores list every assumption and require human review; missing metrics remain unscored. Incident closure requires actual regression artifact IDs/hashes; eradication requires a succeeded independent Verify run. All currently supported runtime sources are demo/replay/simulation, so correlated incidents retain simulated labeling even for executed demo logs.

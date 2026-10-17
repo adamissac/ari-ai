@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Literal
 
 from pydantic import Field, field_validator
+from standards.mapping import check_cwe, d3fend_for_hardening
 
 from ..contracts import (
     AgentName,
@@ -21,6 +22,7 @@ from ..contracts import (
     SourceSpan,
     StrictModel,
 )
+from ..contracts import export as contract_export
 from ..intel import CodeIntel
 from ..runtime import AgentSpec, data_block
 from ..standards.validators import optional_d3fend_field, validate_d3fend
@@ -47,6 +49,7 @@ read-only tools.
 
 
 class FortifyInput(StrictModel):
+    check_category: str = ""
     assessment_id: str
     finding_id: str
     verification_result_id: str
@@ -79,6 +82,18 @@ class RecommendationOut(StrictModel):
 
 class FutureHypothesisOut(StrictModel):
     weakness_class: str = Field(pattern=r"^CWE-\d{1,5}$")
+
+    @field_validator("weakness_class")
+    @classmethod
+    def _catalog_cwe(cls, value: str) -> str:
+        try:
+            entry = check_cwe(value)
+            if entry.status != "active" or entry.detail.get("kind", "").lower() != "weakness":
+                raise ValueError("SCHEMA_INVALID: CWE must be an active weakness")
+        except (KeyError, ValueError) as exc:
+            raise ValueError(f"SCHEMA_INVALID: rejected CWE identifier {value}: {exc}") from exc
+        return value
+
     title: ShortText
     rationale: ShortText
     path: str
@@ -174,6 +189,13 @@ def to_records(
                 recommendation=item.recommendation,
                 references=refs,
                 effort=item.effort,
+                d3fend=d3fend_for_hardening(
+                    item.category,
+                    data.check_category,
+                    evidence=[contract_export.evidence_ref(ref, producer="agent:fortify") for ref in refs],
+                )[0]
+                if refs
+                else [],
                 owner_review_note=item.owner_review_note,
                 d3fend_technique=countermeasure.identifier if countermeasure else None,
                 d3fend_label=countermeasure.label if countermeasure else "",
@@ -181,20 +203,20 @@ def to_records(
             )
         )
     drafts: list[HypothesisDraft] = []
-    for item in out.future_hypotheses:
-        if not intel.snapshot.exists(item.path):
+    for draft in out.future_hypotheses:
+        if not intel.snapshot.exists(draft.path):
             continue
-        limit = intel.snapshot.line_count(item.path)
-        start = min(max(1, item.start_line), limit)
-        end = min(max(start, item.end_line), limit)
+        limit = intel.snapshot.line_count(draft.path)
+        start = min(max(1, draft.start_line), limit)
+        end = min(max(start, draft.end_line), limit)
         drafts.append(
             HypothesisDraft(
-                weakness_class=item.weakness_class,
-                title=item.title,
-                rationale=item.rationale,
+                weakness_class=draft.weakness_class,
+                title=draft.title,
+                rationale=draft.rationale,
                 cited_spans=[
                     EvidenceRef(
-                        path=item.path,
+                        path=draft.path,
                         sha=sha,
                         span=SourceSpan(start_line=start, end_line=end),
                         provenance="code",

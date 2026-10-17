@@ -2,10 +2,10 @@ name: security-agents
 
 on:
   pull_request:
-    paths: ["security-agents/**", "backend/**", "shared/**", "code-intelligence/**", "examples/payments-lite/**", "pyproject.toml", "uv.lock", ".github/workflows/security-agents.yml"]
+    paths: ["standards/**", "security-agents/**", "backend/**", "shared/**", "code-intelligence/**", "examples/payments-lite/**", "pyproject.toml", "uv.lock", ".github/workflows/security-agents.yml"]
   push:
     branches: [main]
-    paths: ["security-agents/**", "backend/**", "shared/**", "code-intelligence/**", "examples/payments-lite/**", "pyproject.toml", "uv.lock", ".github/workflows/security-agents.yml"]
+    paths: ["standards/**", "security-agents/**", "backend/**", "shared/**", "code-intelligence/**", "examples/payments-lite/**", "pyproject.toml", "uv.lock", ".github/workflows/security-agents.yml"]
 
 permissions:
   contents: read
