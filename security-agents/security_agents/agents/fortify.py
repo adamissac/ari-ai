@@ -58,9 +58,7 @@ class FortifyInput(StrictModel):
 
 
 class RecommendationOut(StrictModel):
-    category: Literal[
-        "centralize_check", "lint_rule", "policy_test", "config", "monitoring", "other"
-    ]
+    category: Literal["centralize_check", "lint_rule", "policy_test", "config", "monitoring", "other"]
     recommendation: str = Field(max_length=4000)
     reference_path: str | None = None
     reference_start_line: int | None = None
@@ -83,7 +81,8 @@ class FortifyOutput(StrictModel):
     future_hypotheses: list[FutureHypothesisOut] = Field(default_factory=list, max_length=6)
     monitoring_hints: list[ShortText] = Field(default_factory=list, max_length=8)
     regression_test_names: list[ShortText] = Field(
-        default_factory=list, max_length=6,
+        default_factory=list,
+        max_length=6,
         description="Test ids from the fix that should become permanent regression tests.",
     )
 
@@ -93,10 +92,16 @@ SPEC = AgentSpec(
     version="0.1.0",
     input_model=FortifyInput,
     output_model=FortifyOutput,
-    tools=frozenset({
-        "code.read_span", "code.search", "graph.neighbors", "expectations.for_subject",
-        "findings.history", "static.analyze",
-    }),
+    tools=frozenset(
+        {
+            "code.read_span",
+            "code.search",
+            "graph.neighbors",
+            "expectations.for_subject",
+            "findings.history",
+            "static.analyze",
+        }
+    ),
     sandbox_profile="none",
     network="none",
     write_access="none",
@@ -131,9 +136,7 @@ def to_records(
             RegressionTest(
                 finding_id=data.finding_id,
                 test_path=path,
-                test_name=next(
-                    (n for n in out.regression_test_names if n.startswith(path)), path
-                ),
+                test_name=next((n for n in out.regression_test_names if n.startswith(path)), path),
                 affected_symbols=[data.affected_symbol] if data.affected_symbol else [],
                 origin="patch",
             )
@@ -147,8 +150,10 @@ def to_records(
             end = min(max(start, item.reference_end_line or start), limit)
             refs.append(
                 EvidenceRef(
-                    path=item.reference_path, sha=sha,
-                    span=SourceSpan(start_line=start, end_line=end), provenance="code",
+                    path=item.reference_path,
+                    sha=sha,
+                    span=SourceSpan(start_line=start, end_line=end),
+                    provenance="code",
                 )
             )
         recommendations.append(
@@ -175,8 +180,10 @@ def to_records(
                 rationale=item.rationale,
                 cited_spans=[
                     EvidenceRef(
-                        path=item.path, sha=sha,
-                        span=SourceSpan(start_line=start, end_line=end), provenance="code",
+                        path=item.path,
+                        sha=sha,
+                        span=SourceSpan(start_line=start, end_line=end),
+                        provenance="code",
                     )
                 ],
             )

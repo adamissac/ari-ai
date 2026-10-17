@@ -75,7 +75,8 @@ class ProbeOutput(StrictModel):
         default=None, max_length=120, description="sandbox_run_id from the check result."
     )
     observations: list[ShortText] = Field(
-        default_factory=list, max_length=10,
+        default_factory=list,
+        max_length=10,
         description="Structured facts from the check result (status codes, counts).",
     )
     interpretation: str = Field(
@@ -91,9 +92,14 @@ SPEC = AgentSpec(
     version="0.1.0",
     input_model=ProbeInput,
     output_model=ProbeOutput,
-    tools=frozenset({
-        "code.read_span", "expectations.for_subject", "checks.list_templates", "checks.run_template",
-    }),
+    tools=frozenset(
+        {
+            "code.read_span",
+            "expectations.for_subject",
+            "checks.list_templates",
+            "checks.run_template",
+        }
+    ),
     sandbox_profile="check-runner",
     network="target-only",
     write_access="out_dir",
@@ -179,8 +185,15 @@ def to_validation_result(
         )
     if last:
         for key in (
-            "passed", "failed", "errors", "failing_tests", "exit_code", "driver",
-            "isolation_level", "network", "params_hash",
+            "passed",
+            "failed",
+            "errors",
+            "failing_tests",
+            "exit_code",
+            "driver",
+            "isolation_level",
+            "network",
+            "params_hash",
         ):
             if key in last:
                 observations[key] = last[key]

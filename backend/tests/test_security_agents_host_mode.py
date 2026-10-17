@@ -3,14 +3,9 @@
 the real LLMGateway (scripted transport labeled fake, see sa_bridge.py), the worker,
 API approval and resume.
 
-Expected to fail until the issues below are fixed on feat/alan/seven-agent-runtime
-(reported in coordination/messages/*-srihith-to-alan-host-mode-findings.md, issue #17):
-  1. calls host.scope() / host.assessment() — they are properties;
-  2. calls llm.provider_mode() — it is a property (str);
-  3. on_patch cites a fabricated run id (run_ids["patch"] is never populated);
-  4. finish_agent_run is called without usage/tool_calls;
-  5. resume state lives only in memory (lost across workers/restarts).
-xfail is non-strict: this flips to XPASS when host mode works end to end.
+Initially failed on five conformance issues (property/method shapes, provider_mode,
+fabricated patch run id, missing per-run usage/tool calls, in-memory resume); fixed in
+security_agents/host_adapter.py by Srihith while Alan was unavailable.
 """
 
 from __future__ import annotations
@@ -33,10 +28,6 @@ from helpers import add_member  # noqa: E402
 from backend import llm, worker  # noqa: E402
 
 
-@pytest.mark.xfail(
-    reason="security_agents host mode not yet conformant with backend.host (see module docstring)",
-    strict=False,
-)
 def test_host_mode_full_flow_against_real_backend(
     client_factory, settings_override, monkeypatch, tmp_path
 ):
@@ -44,7 +35,9 @@ def test_host_mode_full_flow_against_real_backend(
 
     monkeypatch.setenv("SECURITY_AGENTS_TARGET_DIR", str(TARGET))
     monkeypatch.setenv("SECURITY_AGENTS_WORKDIR", str(tmp_path / "w"))
-    settings_override(orchestrator_factory="security_agents.api:build_orchestrator")
+    settings_override(
+        orchestrator_factory="security_agents.api:build_orchestrator", security_sandbox="local-dev"
+    )
     bridge = AlanScriptTransport(TARGET / "target")
     llm.TRANSPORT_OVERRIDE = lambda: bridge
     alice, bob = client_factory("alice"), client_factory("bob")

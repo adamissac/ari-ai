@@ -71,9 +71,7 @@ class ProviderGateway:
         self.mode: ProviderMode = provider.mode
         self.default_model = default_model or os.environ.get("ANTHROPIC_MODEL") or DEFAULT_MODEL
         self.overrides = (
-            overrides
-            if overrides is not None
-            else parse_overrides(os.environ.get("AGENT_MODEL_OVERRIDES"))
+            overrides if overrides is not None else parse_overrides(os.environ.get("AGENT_MODEL_OVERRIDES"))
         )
 
     def model_for(self, agent: AgentName) -> str:
@@ -91,7 +89,5 @@ class ProviderGateway:
 def live_gateway_from_env() -> ProviderGateway:
     """Live gateway. Requires credentials resolvable by the Anthropic SDK."""
     if not (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN")):
-        raise RuntimeError(
-            "live mode requires ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN in the environment"
-        )
+        raise RuntimeError("live mode requires ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN in the environment")
     return ProviderGateway(AnthropicProvider())
