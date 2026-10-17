@@ -3,7 +3,8 @@
 import { ApiError, type MeResponse } from '@hackatl/frontend-transport';
 import { createContext, useCallback, useContext, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { api } from '@/lib/api';
-import { Button, ErrorState, Field, inputClass, Loading } from '@/components/ui';
+import { BRAND_NAME, BRAND_TAGLINE, Wordmark } from '@/components/brand';
+import { Button, ErrorState, Field, inputClass, Loading, RollText } from '@/components/ui';
 
 type SessionState =
   | { status: 'loading' }
@@ -70,15 +71,25 @@ function SignIn({ onSignedIn }: { onSignedIn: (me: MeResponse) => void }) {
     finally { setBusy(false); }
   };
   return (
-    <div className="mx-auto mt-16 max-w-md rounded-lg border border-line bg-panel p-6">
-      <h1 className="text-lg font-semibold">Sign in</h1>
+    <div className="mx-auto mt-12 grid max-w-4xl overflow-hidden rounded-2xl border border-line bg-panel shadow-[0_24px_60px_-30px_rgba(194,69,45,0.45)] md:grid-cols-2">
+      <div className="hero-ink hidden flex-col justify-between p-8 md:flex">
+        <Wordmark className="text-white" />
+        <div>
+          <p className="label-mono text-white/60">Software assurance</p>
+          <p className="display mt-3 text-3xl font-medium">Every fix,<br />proven.</p>
+          <p className="mt-3 text-sm text-white/70">{BRAND_TAGLINE}</p>
+        </div>
+      </div>
+      <div className="p-8">
+      <p className="label-mono text-brand">Welcome to {BRAND_NAME}</p>
+      <h1 className="mt-2 text-2xl font-semibold tracking-tight">Sign in</h1>
       <p className="mt-1 text-sm text-muted">Sessions are issued by the control-plane backend. No token is stored in the browser.</p>
-      <a href="/api/v1/auth/github/login" className="mt-4 flex w-full items-center justify-center rounded-md bg-accent px-3 py-2 text-sm font-semibold text-bg hover:bg-accent/90">
-        Continue with GitHub
+      <a href="/api/v1/auth/github/login" className="group label-mono mt-6 flex h-10 w-full items-center justify-center rounded-md bg-brand px-3 text-on-brand shadow-[0_6px_16px_-8px_rgba(194,69,45,0.6)] transition-colors duration-[250ms] hover:bg-brand-deep">
+        <RollText>Continue with GitHub</RollText>
       </a>
       {devLoginVisible && (
         <form onSubmit={submit} className="mt-6 border-t border-line pt-4" aria-label="Development login">
-          <p className="mb-2 text-xs uppercase tracking-wider text-warn">Development login — local backend only</p>
+          <p className="label-mono mb-2 text-warn">Development login — local backend only</p>
           <Field label="GitHub login">
             <input className={inputClass} value={login} onChange={e => setLogin(e.target.value)} required pattern="[A-Za-z0-9-]{1,39}" autoComplete="username" name="github_login" />
           </Field>
@@ -86,6 +97,7 @@ function SignIn({ onSignedIn }: { onSignedIn: (me: MeResponse) => void }) {
           {error !== null && <div className="mt-3"><ErrorState error={error} context="Sign-in failed" /></div>}
         </form>
       )}
+      </div>
     </div>
   );
 }
