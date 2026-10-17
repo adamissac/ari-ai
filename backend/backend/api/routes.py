@@ -46,6 +46,7 @@ from backend.db import (
     transaction,
     verification_results,
 )
+from backend.integrations import load_factory
 from backend.services import (
     DomainError,
     cancel_queued_assessment,
@@ -304,11 +305,43 @@ def request_snapshot(repo_id: str, body: SnapshotCreate, request: Request) -> Sn
         repo = _repo_access(conn, user, repo_id, MemberRole.member)
         existing = conn.execute(
             sa.select(snapshots.c.doc)
-            .where(snapshots.c.repo_id == repo_id, snapshots.c.commit_sha == body.commit_sha)
+            .where(
+                snapshots.c.repo_id == repo_id,
+                snapshots.c.commit_sha == body.commit_sha,
+                snapshots.c.status != SnapshotStatus.failed.value,
+            )
             .order_by(snapshots.c.created_at.desc())
         ).scalar()
-        if existing and existing["status"] != SnapshotStatus.failed.value:
+        if existing and existing["status"] in (
+            SnapshotStatus.pending.value,
+            SnapshotStatus.indexing.value,
+        ):
             return Snapshot.model_validate(existing)
+        if existing and existing["status"] == SnapshotStatus.ready.value:
+            # Historical ready snapshots remain readable, but must not prevent a
+            # parser/profile upgrade from indexing this SHA through the normal API.
+            loaded = load_factory(get_settings().code_intelligence_factory)
+            version_for = getattr(loaded.obj, "current_index_version", None)
+            if not callable(version_for):
+                raise ApiError(
+                    ErrorCode.SUBSYSTEM_UNAVAILABLE, "Indexer version is unavailable", 503
+                )
+            try:
+                version = version_for(repo["project_id"], repo_id)
+            except ValueError as exc:
+                raise ApiError(
+                    ErrorCode.SUBSYSTEM_UNAVAILABLE, "Indexer version is unavailable", 503
+                ) from exc
+            current = conn.execute(
+                sa.select(snapshots.c.doc).where(
+                    snapshots.c.repo_id == repo_id,
+                    snapshots.c.commit_sha == body.commit_sha,
+                    snapshots.c.index_version == version,
+                    snapshots.c.status == SnapshotStatus.ready.value,
+                )
+            ).scalar()
+            if current:
+                return Snapshot.model_validate(current)
         snap = Snapshot(
             id=new_id(IdPrefix.snp),
             repo_id=repo_id,
