@@ -287,7 +287,7 @@ export function ProofStats(): ReactNode {
       </div>
       <div className="mt-10 grid grid-cols-1 gap-3 md:grid-cols-3">
         {STATS.map((s, n) => (
-          <div key={s.tag} className="story-stat">
+          <div key={s.body} className="story-stat">
             <p className="label-mono flex justify-between text-white/50"><span>{String(n + 1).padStart(2, '0')}</span><span>{s.tag}</span></p>
             <p className="mt-8 font-mono text-6xl font-semibold tracking-tight md:text-7xl"><CountUp to={s.n} suffix={s.suffix} /></p>
             <p className="mt-3 text-sm text-white/70">{s.body}</p>
