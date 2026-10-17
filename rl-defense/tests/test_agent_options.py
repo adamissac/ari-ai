@@ -101,6 +101,36 @@ def test_variants_update_and_checkpoint(cfg, tmp_path):
     assert torch.equal(loaded.online(obs), agent.online(obs))
 
 
+def test_domain_randomization_records_sampled_factors(tmp_path):
+    cfgs = load_configs(default_config_paths("train"))
+    small = DDQNConfig(learning_starts=100, buffer_size=2000, eps_decay_steps=500)
+    m = train(
+        cfgs,
+        seed=3,
+        steps=1500,
+        run_dir=tmp_path / "dr",
+        ddqn_config=small,
+        adversary_scale=(0.5, 2.5),
+    )
+    assert m["adversary_scale"] == [0.5, 2.5]
+    s = m["adversary_scale_sampled"]
+    assert 0.5 <= s["min"] <= s["mean"] <= s["max"] <= 2.5
+    plain = train(cfgs, seed=3, steps=1500, run_dir=tmp_path / "plain", ddqn_config=small)
+    assert plain["adversary_scale"] is None and plain["adversary_scale_sampled"] is None
+    assert plain["param_abs_change"] != m["param_abs_change"]
+
+
+def test_domain_randomization_rejects_bad_range(tmp_path):
+    with pytest.raises(ValueError, match="adversary_scale"):
+        train(
+            load_configs(default_config_paths("train")),
+            seed=0,
+            steps=10,
+            run_dir=tmp_path,
+            adversary_scale=(2.0, 1.0),
+        )
+
+
 def test_nstep_training_runs(tmp_path):
     cfg = DDQNConfig(n_step=3, learning_starts=100, buffer_size=2000, eps_decay_steps=500)
     m = train(

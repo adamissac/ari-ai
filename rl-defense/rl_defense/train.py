@@ -3,7 +3,10 @@
     python -m rl_defense.train --seed 0 --steps 200000 --run-dir runs/<run_id>
 
 Each episode samples one training config uniformly. Held-out eval configs are
-never loaded here.
+never loaded here. With ``--adversary-scale LOW HIGH`` (domain randomization), each
+episode also samples a factor uniformly in [LOW, HIGH] and multiplies the sampled
+training config's adversary transition probabilities by it (capped at 1.0). Without
+it, the random-draw sequence is identical to protocol-v0, so v0 runs stay reproducible.
 """
 
 from __future__ import annotations
@@ -23,6 +26,7 @@ from rl_defense.checkpoint import save_checkpoint
 from rl_defense.envs import DefenseSimEnv, default_config_paths, load_configs
 from rl_defense.envs.config import ScenarioConfig
 from rl_defense.envs.defense_sim import N_ACTIONS, OBS_DIM
+from rl_defense.stress import scaled
 
 
 def set_determinism(seed: int) -> None:
@@ -40,14 +44,27 @@ def train(
     run_dir: Path,
     ddqn_config: DDQNConfig | None = None,
     log_every: int = 5_000,
+    adversary_scale: tuple[float, float] | None = None,
 ) -> dict:
     if any(c.split != "train" for c in configs):
         raise ValueError("training must only use configs with split=train")
+    if adversary_scale is not None and not 0.0 < adversary_scale[0] <= adversary_scale[1]:
+        raise ValueError(f"adversary_scale must satisfy 0 < low <= high, got {adversary_scale}")
     set_determinism(seed)
     cfg = ddqn_config or DDQNConfig()
     run_dir.mkdir(parents=True, exist_ok=True)
     envs = [DefenseSimEnv(c) for c in configs]
     rng = np.random.default_rng(seed)
+    factors: list[float] = []
+
+    def next_env() -> DefenseSimEnv:
+        base = int(rng.integers(len(envs)))
+        if adversary_scale is None:
+            return envs[base]
+        factor = float(rng.uniform(*adversary_scale))
+        factors.append(factor)
+        return DefenseSimEnv(scaled(configs[base], factor))
+
     agent = DDQNAgent(OBS_DIM, N_ACTIONS, cfg, seed=seed)
     buffer = ReplayBuffer(cfg.buffer_size, OBS_DIM, N_ACTIONS, seed=seed)
     nstep = NStepAccumulator(cfg.n_step, cfg.gamma) if cfg.n_step > 1 else None
@@ -56,7 +73,7 @@ def train(
     log_path = run_dir / f"train_seed{seed}.jsonl"
     log = log_path.open("w")
     episode, ep_return, ep_len = 0, 0.0, 0
-    env = envs[rng.integers(len(envs))]
+    env = next_env()
     obs, info = env.reset(seed=int(rng.integers(2**31)))
     recent_returns: list[float] = []
     last_stats: dict[str, float] = {}
@@ -84,7 +101,7 @@ def train(
         if terminated or truncated:
             recent_returns.append(ep_return)
             episode += 1
-            env = envs[rng.integers(len(envs))]
+            env = next_env()
             obs, info = env.reset(seed=int(rng.integers(2**31)))
             ep_return, ep_len = 0.0, 0
 
@@ -122,6 +139,14 @@ def train(
             "param_abs_change": param_change,
             "wall_clock_s": round(time.time() - start, 1),
             "train_log": log_path.name,
+            "adversary_scale": list(adversary_scale) if adversary_scale else None,
+            "adversary_scale_sampled": {
+                "min": min(factors),
+                "mean": float(np.mean(factors)),
+                "max": max(factors),
+            }
+            if factors
+            else None,
         },
     )
     return manifest
@@ -140,10 +165,18 @@ def main() -> None:
     )
     ap.add_argument("--ddqn-config", type=Path, help="YAML of DDQNConfig overrides")
     ap.add_argument("--log-every", type=int, default=5_000)
+    ap.add_argument(
+        "--adversary-scale",
+        type=float,
+        nargs=2,
+        metavar=("LOW", "HIGH"),
+        help="domain randomization: per-episode adversary probability factor ~ U[LOW, HIGH]",
+    )
     args = ap.parse_args()
     configs = load_configs(args.config or default_config_paths("train"))
     ddqn = DDQNConfig(**yaml.safe_load(args.ddqn_config.read_text())) if args.ddqn_config else None
-    manifest = train(configs, args.seed, args.steps, args.run_dir, ddqn, args.log_every)
+    scale = tuple(args.adversary_scale) if args.adversary_scale else None
+    manifest = train(configs, args.seed, args.steps, args.run_dir, ddqn, args.log_every, scale)
     print(
         json.dumps(
             {
