@@ -127,6 +127,10 @@ function EventFeed({ items }: { items: MonitoringEvent[] }) {
 
 function Recommendation({ rec }: { rec: DefenseRecommendation }) {
   const [exp, setExp] = useState<{ status: 'idle' } | { status: 'loading' } | { status: 'ready'; data: RLExplanation } | { status: 'error'; error: unknown }>({ status: 'idle' });
+  const explain = async () => {
+    setExp({ status: 'loading' });
+    try { setExp({ status: 'ready', data: await api().recommendationExplanation(rec.id) }); } catch (error) { setExp({ status: 'error', error }); }
+  };
   return (
     <li className="rounded-md border border-line bg-panel-2 p-2.5 text-xs">
       <p className="flex flex-wrap items-center gap-2 text-sm">
@@ -136,13 +140,10 @@ function Recommendation({ rec }: { rec: DefenseRecommendation }) {
       <p className="mt-1 text-muted">policy <Mono>{rec.policy_version}</Mono> · checkpoint <Mono>{rec.checkpoint_sha256.slice(0, 12)}</Mono> · <Time iso={rec.created_at} /></p>
       <p className="mt-1 text-warn">{rec.caveat}</p>
       {exp.status === 'idle' && (
-        <Button className="mt-1 !px-2 !py-0.5 text-xs" onClick={async () => {
-          setExp({ status: 'loading' });
-          try { setExp({ status: 'ready', data: await api().recommendationExplanation(rec.id) }); } catch (error) { setExp({ status: 'error', error }); }
-        }}>Why this action?</Button>
+        <Button className="mt-1 !px-2 !py-0.5 text-xs" onClick={() => void explain()}>Why this action?</Button>
       )}
       {exp.status === 'loading' && <Loading label="Loading explanation" />}
-      {exp.status === 'error' && <ErrorState error={exp.error} context="Explanation" />}
+      {exp.status === 'error' && <ErrorState error={exp.error} onRetry={() => void explain()} context="Explanation" />}
       {exp.status === 'ready' && (
         <div className="mt-1">
           <p className="text-muted">Method {exp.data.method} · runner-up {exp.data.runner_up ?? '—'} · margin {num(exp.data.margin, 3)}</p>
