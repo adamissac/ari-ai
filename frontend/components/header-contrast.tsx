@@ -28,7 +28,7 @@ export function HeaderContrast() {
     const paint = () => {
       frame = 0;
       // While the pinned home hero is still under the header, keep white ink even if
-      // hit-testing misses the dark band (gradients / stacked layers can look "light").
+      // hit-testing briefly misses the dark band during intro/hero settle.
       const overHomeHero =
         document.documentElement.hasAttribute('data-home-hero')
         && !document.documentElement.hasAttribute('data-hero-past');
@@ -46,15 +46,25 @@ export function HeaderContrast() {
     const schedule = () => { if (!frame) frame = requestAnimationFrame(paint); };
     window.addEventListener('scroll', schedule, { passive: true });
     window.addEventListener('resize', schedule);
+    // The surface under the header also changes without a scroll: the intro loader exits,
+    // the hero animates in, fonts swap. Re-read when those settle, or the first tone sticks.
+    document.addEventListener('animationend', schedule, true);
+    document.addEventListener('transitionend', schedule, true);
+    void document.fonts?.ready.then(schedule);
     const observer = new MutationObserver(schedule);
     observer.observe(header, { childList: true, subtree: true });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-home-hero', 'data-hero-past'] });
+    const page = new MutationObserver(schedule);
+    page.observe(document.body, { childList: true });
     schedule();
     return () => {
       cancelAnimationFrame(frame);
       window.removeEventListener('scroll', schedule);
       window.removeEventListener('resize', schedule);
+      document.removeEventListener('animationend', schedule, true);
+      document.removeEventListener('transitionend', schedule, true);
       observer.disconnect();
+      page.disconnect();
     };
   }, [pathname]);
   return null;
