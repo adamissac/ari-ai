@@ -79,3 +79,7 @@ persisted assessment state. Assessment creation unwraps the existing backend
 `{assessment, job_id}` envelope and returns its canonical `Assessment`; job
 metadata is not consumed. Snapshot creation currently ignores idempotency headers
 and deduplicates by repository/commit in the backend.
+
+## Standards and incidents
+
+`incidents`, `createIncident`, `incident`, and `actOnIncident` use the canonical DTOs and existing cookie/CSRF flow. `incident` returns the typed `{incident, standards}` envelope. `mappingLabel`, `findingStandards`, and `incidentLabel` preserve catalog versions, proposed/hypothesis/simulation labels, vectors, assumptions, and unscored gaps. Render returned values as text. These helpers are not mounted dashboard pages; the frontend owner retains that integration.

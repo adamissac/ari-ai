@@ -6,7 +6,8 @@ the orchestrator decides which hypotheses reach Probe.
 
 from __future__ import annotations
 
-from pydantic import Field
+from pydantic import Field, field_validator
+from standards.mapping import check_cwe
 
 from ..contracts import (
     AgentName,
@@ -70,6 +71,18 @@ class HypothesisOut(StrictModel):
     weakness_class: str = Field(
         pattern=r"^CWE-\d{1,5}$", description="CWE identifier for the weakness class."
     )
+
+    @field_validator("weakness_class")
+    @classmethod
+    def _catalog_cwe(cls, value: str) -> str:
+        try:
+            entry = check_cwe(value)
+            if entry.status != "active" or entry.detail.get("kind", "").lower() != "weakness":
+                raise ValueError("SCHEMA_INVALID: CWE must be an active weakness")
+        except (KeyError, ValueError) as exc:
+            raise ValueError(f"SCHEMA_INVALID: rejected CWE identifier {value}: {exc}") from exc
+        return value
+
     rationale: str = Field(
         max_length=4000,
         description="Why the evidence suggests this, including the sibling comparison you made.",

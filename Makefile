@@ -26,8 +26,8 @@ contracts:
 	uv run python -m shared.examples
 
 check:
-	uv run ruff check shared monitoring backend
-	uv run ruff format --check shared monitoring backend
+	uv run ruff check shared monitoring backend standards
+	uv run ruff format --check shared monitoring backend standards
 	uv run python -m shared.export --check
 	uv run python -m shared.examples --check
 
@@ -42,3 +42,7 @@ smoke: check test
 
 stop-db:
 	uv run python -m backend.devdb --stop
+
+# Offline verification of pinned standards data (no downloads at runtime).
+standards-data:
+	uv run python -m standards.catalog --check
