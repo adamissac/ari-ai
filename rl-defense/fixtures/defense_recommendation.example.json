@@ -70,7 +70,7 @@
   },
   "recommendation": {
     "schema_version": "0.1.0",
-    "id": "rec_983826c9ca1949da9a9f712891d4e734",
+    "id": "rec_8dd3ee92e03049b3916adaac270d257c",
     "project_id": "prj_01DEMOPAYMENTSLITE",
     "policy_version": "DefenseSimEnv-v0@48289e79c567",
     "checkpoint_sha256": "48289e79c567c21ace95ce5d54702f6ece5c302d2bf4b2424ccb8435b539e38a",
@@ -145,8 +145,8 @@
       0.0
     ],
     "simulation_derived": true,
-    "caveat": "Recommendation from a policy trained in simulation. Not applied automatically.",
-    "created_at": "2026-10-17T01:07:32.530396Z"
+    "caveat": "Simulation-derived recommendation from a policy trained only in DefenseSimEnv; not a detection of a real attack and never executed automatically.",
+    "created_at": "2026-10-17T01:38:48.586435Z"
   },
   "checkpoint": {
     "id": "ckp_48289e79c567c21ace95ce5d",
@@ -163,6 +163,7 @@
     }
   },
   "explanation": {
+    "recommendation_id": "rec_8dd3ee92e03049b3916adaac270d257c",
     "action": "rate_limit:auth",
     "runner_up": "rate_limit:payments",
     "margin": 0.02557,
@@ -204,6 +205,7 @@
         "kind": "signal"
       }
     ],
-    "caveat": "Explains the simulation-trained policy's decision, not real-world causality."
+    "caveat": "Explains the simulation-trained policy's decision, not real-world causality.",
+    "simulation_derived": true
   }
 }
