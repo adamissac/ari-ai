@@ -30,6 +30,7 @@ from ..sandbox.workspace import (
     resolve_under,
     safe_rel_path,
     sha256_text,
+    tree_digest,
     unified_diff,
 )
 from .registry import ToolContext
@@ -357,6 +358,7 @@ class CheckRunner:
         return {
             **_result_summary(res),
             **target_contact(res.target_log, self.transport),
+            "target_tree_sha256": tree_digest(spec.target_workspace) if spec.target_workspace else None,
             "template_ref": template_ref,
             "template_id": meta.template_id,
             "template_version": meta.version,
