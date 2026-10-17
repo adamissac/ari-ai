@@ -1,0 +1,161 @@
+{
+ "description": "Platform self-assessment against the OWASP Top 10 for LLM Applications 2025. 'platform' rows cover this platform's own agents, retrieval, tools, models and data flows. 'customer_assessment' says what the platform can assess in a customer's application. Status meanings: implemented_tested = a control exists and the listed executed tests exercise it; partial = some attack surfaces are controlled, others are not; gap = no control; not_applicable = the attack surface does not exist in this platform today. A status is a statement about listed tests passing, not a claim that the risk is prevented or detected.",
+ "owasp_version": "2025",
+ "matrix_version": "1",
+ "assessed_at": "2026-10-17",
+ "rows": [
+  {
+   "risk": "LLM01:2025",
+   "status": "partial",
+   "attack_surfaces": ["repository content placed in agent context (code, docs, comments)", "tool results returned to agents", "webhook payloads and runtime signals"],
+   "controls": [
+    {"name": "Untrusted-data framing of all context and tool output", "location": "security-agents/security_agents/runtime/loop.py::data_block", "owner": "alan"},
+    {"name": "Injected instructions surfaced as a signal", "location": "security-agents/security_agents/tools/catalog.py::_suspicious_instructions", "owner": "alan"},
+    {"name": "Per-agent tool allowlist enforced in code (an obeyed injection still cannot call a forbidden tool)", "location": "security-agents/security_agents/tools/registry.py::ToolRegistry", "owner": "alan"}
+   ],
+   "tests": [
+    "security-agents/tests/test_security_boundaries.py::test_context_is_wrapped_as_untrusted_data",
+    "security-agents/tests/test_security_boundaries.py::test_injected_instructions_are_reported_as_a_signal",
+    "security-agents/tests/test_security_boundaries.py::test_an_agent_obeying_an_injection_still_cannot_use_a_forbidden_tool",
+    "security-agents/tests/test_security_boundaries.py::test_injected_repository_content_does_not_change_the_assessment_flow"
+   ],
+   "limitations": "Framing does not stop a model from being influenced; the tests show injected content cannot widen tool permissions or change the deterministic workflow, not that model text is unaffected. No live-model injection evaluation has been run.",
+   "customer_assessment": {"status": "unsupported", "note": "No check template exercises prompt injection in a customer application."}
+  },
+  {
+   "risk": "LLM02:2025",
+   "status": "implemented_tested",
+   "attack_surfaces": ["secrets in repository content reaching transcripts, audit details or model calls", "webhook payloads"],
+   "controls": [
+    {"name": "Secret redaction of transcripts and audit details", "location": "security-agents/security_agents/redact.py::redact", "owner": "alan"},
+    {"name": "Backend redaction before persistence", "location": "backend/backend/redaction.py::redact", "owner": "srihith"}
+   ],
+   "tests": [
+    "security-agents/tests/test_security_boundaries.py::test_redactor_removes_assignment_style_secrets",
+    "security-agents/tests/test_security_boundaries.py::test_transcripts_are_redacted",
+    "security-agents/tests/test_security_boundaries.py::test_audit_details_are_redacted"
+   ],
+   "limitations": "Pattern-based redaction only catches known secret shapes; customer personal data in repositories is not classified or redacted before model calls.",
+   "customer_assessment": {"status": "unsupported", "note": "No check template tests a customer LLM application for disclosure."}
+  },
+  {
+   "risk": "LLM03:2025",
+   "status": "partial",
+   "attack_surfaces": ["Python dependencies", "vendored framework catalogs", "model provider (hosted Claude API)"],
+   "controls": [
+    {"name": "Lockfile-pinned dependencies", "location": "uv.lock", "owner": "srihith"},
+    {"name": "SHA-256-pinned framework catalogs refused on mismatch", "location": "standards/standards/catalog.py::load_json", "owner": "alan"}
+   ],
+   "tests": [
+    "standards/tests/test_catalog.py::test_manifest_checksums_match",
+    "standards/tests/test_catalog.py::test_tampered_file_is_refused"
+   ],
+   "limitations": "No dependency vulnerability scanning or SBOM; the hosted model is trusted as a supplier without independent verification.",
+   "customer_assessment": {"status": "unsupported", "note": "Dependency/model supply-chain checks for customer applications are not implemented."}
+  },
+  {
+   "risk": "LLM04:2025",
+   "status": "partial",
+   "attack_surfaces": ["code-intelligence index built from untrusted repository content", "RL policy checkpoints"],
+   "controls": [
+    {"name": "Facts pinned to a commit SHA with provenance; no fine-tuning or training on customer data", "location": "shared/shared/evidence.py::EvidenceRef", "owner": "srihith"}
+   ],
+   "tests": [
+    "shared/tests/test_standards_contracts.py::test_mapping_requires_evidence"
+   ],
+   "limitations": "Poisoned repository content can still mislead retrieval and agents; there is no poisoning detection. The platform does not train LLMs. RL checkpoints are trained in a simulator only.",
+   "customer_assessment": {"status": "unsupported", "note": "Not assessed."}
+  },
+  {
+   "risk": "LLM05:2025",
+   "status": "implemented_tested",
+   "attack_surfaces": ["agent outputs consumed by the orchestrator, database and UI", "framework identifiers and scores in reports"],
+   "controls": [
+    {"name": "Strict output schema validation; invalid output retried once then the step fails SCHEMA_INVALID", "location": "security-agents/security_agents/runtime/loop.py::run_agent", "owner": "alan"},
+    {"name": "Framework identifiers validated against pinned catalogs; CVSS computed, never generated", "location": "standards/standards/mapping.py::resolve", "owner": "alan"}
+   ],
+   "tests": [
+    "security-agents/tests/test_runtime_loop.py::test_schema_invalid_output_is_retried_exactly_once",
+    "security-agents/tests/test_runtime_loop.py::test_schema_invalid_twice_fails_the_step",
+    "security-agents/tests/test_standards_integration.py::test_scout_unknown_cwe_is_schema_invalid",
+    "standards/tests/test_mapping.py::test_unknown_and_malformed_ids_are_rejected"
+   ],
+   "limitations": "Free-text fields (rationales, summaries) are schema-bounded but not semantically checked; the UI must render them as text.",
+   "customer_assessment": {"status": "unsupported", "note": "Not assessed."}
+  },
+  {
+   "risk": "LLM06:2025",
+   "status": "implemented_tested",
+   "attack_surfaces": ["agent tool calls", "sandbox code execution", "patch application and merge", "network access to targets"],
+   "controls": [
+    {"name": "Per-agent tool allowlists", "location": "security-agents/security_agents/tools/registry.py::ToolRegistry", "owner": "alan"},
+    {"name": "Deterministic authorized-scope check before any target action", "location": "security-agents/security_agents/scope_guard.py::check", "owner": "alan"},
+    {"name": "Human approval gates; Verify independent of Patch", "location": "security-agents/security_agents/workflow/orchestrator.py::Orchestrator", "owner": "alan"},
+    {"name": "Incident containment/eradication/recovery/closure require a second human's approval", "location": "standards/standards/incident.py::apply_action", "owner": "alan"}
+   ],
+   "tests": [
+    "security-agents/tests/test_tool_registry.py::test_forbidden_tool_raises_tool_not_allowed",
+    "security-agents/tests/test_tool_registry.py::test_registry_exposes_no_generic_execution_tool",
+    "security-agents/tests/test_scope_guard.py::test_target_not_in_scope_denied",
+    "security-agents/tests/test_security_boundaries.py::test_a_patch_cannot_be_verified_without_an_independent_verify_run",
+    "standards/tests/test_incident.py::test_gated_transitions_need_a_second_humans_approval"
+   ],
+   "limitations": "Controls are enforced in this codebase's process; sandbox hardening is Docker-level (gVisor/Firecracker not adopted).",
+   "customer_assessment": {"status": "unsupported", "note": "Not assessed."}
+  },
+  {
+   "risk": "LLM07:2025",
+   "status": "partial",
+   "attack_surfaces": ["agent system prompts"],
+   "controls": [
+    {"name": "System prompts are static source text with no credentials; authority lives in code, not in prompts", "location": "security-agents/security_agents/runtime/spec.py::AgentSpec", "owner": "alan"}
+   ],
+   "tests": [
+    "security-agents/tests/test_standards_integration.py::test_system_prompts_hold_no_secret_shaped_values"
+   ],
+   "limitations": "Prompts are in the repository and should be assumed disclosable; the test only proves they carry no secret-shaped strings.",
+   "customer_assessment": {"status": "unsupported", "note": "Not assessed."}
+  },
+  {
+   "risk": "LLM08:2025",
+   "status": "not_applicable",
+   "attack_surfaces": [],
+   "controls": [],
+   "tests": [],
+   "limitations": "The platform uses no embeddings or vector store today (AGENTS.md: vector search is a proposal). Re-assess if pgvector is adopted.",
+   "customer_assessment": {"status": "unsupported", "note": "Not assessed."}
+  },
+  {
+   "risk": "LLM09:2025",
+   "status": "partial",
+   "attack_surfaces": ["agent explanations, severity rationales and summaries presented to users"],
+   "controls": [
+    {"name": "Conclusions require executed evidence; Verify verdict computed from checks, not from the model's summary", "location": "security-agents/security_agents/agents/verify.py::compute_verdict", "owner": "alan"},
+    {"name": "Framework mappings stay 'proposed' until a human reviews them", "location": "standards/standards/mapping.py::review", "owner": "alan"}
+   ],
+   "tests": [
+    "security-agents/tests/test_security_boundaries.py::test_verify_glowing_summary_cannot_override_failed_checks",
+    "security-agents/tests/test_security_boundaries.py::test_probe_cannot_confirm_without_execution",
+    "standards/tests/test_mapping.py::test_only_humans_review_mappings"
+   ],
+   "limitations": "Narrative text (impact summaries, rationales) can still be wrong; it is labelled non-authoritative but not fact-checked.",
+   "customer_assessment": {"status": "unsupported", "note": "Not assessed."}
+  },
+  {
+   "risk": "LLM10:2025",
+   "status": "implemented_tested",
+   "attack_surfaces": ["model tokens and cost", "tool calls", "wall-clock time", "sandbox time"],
+   "controls": [
+    {"name": "Per-step token/USD/turn/tool-call budgets", "location": "security-agents/security_agents/runtime/loop.py::run_agent", "owner": "alan"}
+   ],
+   "tests": [
+    "security-agents/tests/test_runtime_loop.py::test_token_budget_stops_the_step",
+    "security-agents/tests/test_runtime_loop.py::test_usd_budget_stops_the_step",
+    "security-agents/tests/test_runtime_loop.py::test_max_turns_without_submit_fails",
+    "security-agents/tests/test_tool_registry.py::test_tool_call_cap_enforced"
+   ],
+   "limitations": "Budgets bound one assessment; there is no org-wide rate limit on assessment creation in this matrix's scope.",
+   "customer_assessment": {"status": "unsupported", "note": "Not assessed."}
+  }
+ ]
+}

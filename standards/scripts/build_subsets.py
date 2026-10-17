@@ -204,7 +204,9 @@ def build_d3fend(src: Path) -> dict[str, Any]:
     def parents(node: dict[str, Any]) -> list[str]:
         sub = node.get("rdfs:subClassOf", [])
         sub = sub if isinstance(sub, list) else [sub]
-        return [s["@id"] for s in sub if isinstance(s, dict) and s.get("@id", "").startswith("d3f:")]
+        return [
+            s["@id"] for s in sub if isinstance(s, dict) and s.get("@id", "").startswith("d3f:")
+        ]
 
     def tactic_of(node_id: str, seen: set[str] | None = None) -> str | None:
         seen = seen or set()
@@ -270,7 +272,9 @@ def build_cwe(src: Path) -> dict[str, Any]:
                 entry["capec"] = sorted(
                     {
                         f"CAPEC-{r.get('CAPEC_ID')}"
-                        for r in el.findall("c:Related_Attack_Patterns/c:Related_Attack_Pattern", CWE_NS)
+                        for r in el.findall(
+                            "c:Related_Attack_Patterns/c:Related_Attack_Pattern", CWE_NS
+                        )
                     },
                     key=lambda s: int(s.split("-")[1]),
                 )
@@ -415,9 +419,7 @@ def build_cvss_golden(src: Path, example_vectors: list[str]) -> dict[str, Any]:
     base = ("AV", "AC", "AT", "PR", "UI", "VC", "VI", "VA", "SC", "SI", "SA")
 
     def render(sel: dict[str, str]) -> str:
-        parts = ["CVSS:4.0"] + [
-            f"{k}:{v}" for k, v in sel.items() if k in base or v != "X"
-        ]
+        parts = ["CVSS:4.0"] + [f"{k}:{v}" for k, v in sel.items() if k in base or v != "X"]
         return "/".join(parts)
 
     rng = random.Random(20261017)

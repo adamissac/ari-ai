@@ -41,7 +41,22 @@ _LEVELS: dict[str, dict[str, float]] = {
     "IR": {"H": 0.0, "M": 0.1, "L": 0.2},
     "AR": {"H": 0.0, "M": 0.1, "L": 0.2},
 }
-_DISTANCE_ORDER = ("AV", "PR", "UI", "AC", "AT", "VC", "VI", "VA", "SC", "SI", "SA", "CR", "IR", "AR")
+_DISTANCE_ORDER = (
+    "AV",
+    "PR",
+    "UI",
+    "AC",
+    "AT",
+    "VC",
+    "VI",
+    "VA",
+    "SC",
+    "SI",
+    "SA",
+    "CR",
+    "IR",
+    "AR",
+)
 
 
 class CVSSVectorError(ValueError):
@@ -284,7 +299,22 @@ def nomenclature(sel: dict[str, str]) -> str:
     threat = sel.get("E", "X") != "X"
     env = any(
         sel.get(k, "X") != "X"
-        for k in ("CR", "IR", "AR", "MAV", "MAC", "MAT", "MPR", "MUI", "MVC", "MVI", "MVA", "MSC", "MSI", "MSA")
+        for k in (
+            "CR",
+            "IR",
+            "AR",
+            "MAV",
+            "MAC",
+            "MAT",
+            "MPR",
+            "MUI",
+            "MVC",
+            "MVI",
+            "MVA",
+            "MSC",
+            "MSI",
+            "MSA",
+        )
     )
     return "CVSS-B" + ("T" if threat else "") + ("E" if env else "")
 
