@@ -82,3 +82,24 @@ Assessment start retries keep their key after network errors. An explicit
 IDEMPOTENCY_CONFLICT offers “Prepare a new assessment action”: it sends nothing
 until Start assessment is pressed again. Check the existing assessment list first;
 a new action can create another assessment. Keys are scoped to the current project.
+
+## Ari identity
+
+The owner-supplied ant PNG is preserved unchanged at `public/brand/ari-ant.png`
+and `app/icon.png`. `LogoMark` and `Wordmark` in `components/brand.tsx` reuse it
+in the shared header and sign-in panel (24px), and the intro (96px). A layout crop
+trims the wide margins; the black ant and off-white rounded tile remain intact
+on light and dark surfaces. The App Router serves `app/icon.png` as the favicon.
+The header preloads its image with explicit dimensions. Wordmark text retains
+its existing font stack and the name Ari AI.
+
+Sai approved these locations and treatment in issue #165 and the immutable
+`20261017T143403Z-sai-to-sarosh-logo-placement.md` message (#176). The landing
+eyebrow, story, graph and footer do not receive additional logos. The intro uses
+a 700ms fade/scale reveal; its progress/counter, reduced-motion, automated-browser
+and once-per-sign-in behavior remain in place.
+
+Brand/intro unit tests cover accessibility, source integrity and skip behavior.
+`tests/e2e/brand.spec.ts` checks real image loads, sign-in, desktop/mobile logo
+bounds, header navigation, the served favicon and intro/reduced-motion behavior.
+Set `ARI_LOGO_SCREENSHOTS` to an external directory for optional screenshot proof.

@@ -207,6 +207,10 @@ def to_validation_result(
             "isolation_level",
             "network",
             "params_hash",
+            "transport",
+            "target_contacted",
+            "target_requests",
+            "target_log_sha256",
         ):
             if key in last:
                 observations[key] = last[key]
