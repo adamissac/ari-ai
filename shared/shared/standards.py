@@ -147,6 +147,18 @@ class CWEClassification(StandardMapping):
     def _is_cwe(self) -> CWEClassification:
         if self.framework is not StandardFramework.cwe:
             raise ValueError("CWE classification must use the cwe framework")
+        from standards.catalog import cwe
+
+        entry = cwe(self.id)
+        usage = entry.detail.get("mapping_usage")
+        if entry.detail.get("kind") != "weakness" or usage == "Prohibited":
+            raise ValueError(
+                "CWE categories, views and prohibited entries cannot classify findings"
+            )
+        if self.mapping_usage != usage:
+            raise ValueError("CWE mapping guidance must match the catalog")
+        if usage == "Discouraged" and self.mapped_via is not MappedVia.human:
+            raise ValueError("discouraged CWE classifications require human mapping")
         return self
 
 
