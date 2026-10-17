@@ -20,8 +20,8 @@ agents use. Owner: **Srihith**. Spec: [docs/13](../docs/13_BACKEND_API_DESIGN.md
 | GitHub webhook: size bound, HMAC on raw body, delivery dedupe, redacted payload, enqueue | `api/webhooks.py` | implemented |
 | Monitoring pipeline (normalize → correlate → policy → reassessment) | `pipeline.py` + `monitoring/` | implemented; symbol-level impact waits on code-intelligence |
 | AssessmentHost gates (transitions, scope, approval, budget, cancel, Verify independence) | `host.py` | implemented |
-| Claude gateway (Anthropic SDK, retries, typed errors, usage/USD, redaction, tool loop) | `llm.py` | implemented; **live provider not yet exercised** (no key in this environment) |
-| RL recommendations via `rl_defense` | `pipeline.py` | integrated against `feat/adam/rl-defense` |
+| Claude gateway (Anthropic SDK, retries, typed errors, usage/USD, redaction, tool loop) | `llm.py` | implemented; live provider exercised once via `make smoke-live` (claude-opus-5-5, 2 turns, $0.009) |
+| RL recommendations + explanations via `rl_defense` | `pipeline.py` | integrated and tested against `rl-defense` on main |
 | GitHub App installation tokens / compare API | `github.py` | implemented; **not exercised against a real App** |
 | Seven-agent orchestrator | — | **not here**: Alan's `security_agents`. Until it lands, assessments end `FAILED / SUBSYSTEM_UNAVAILABLE` |
 | Runtime signal ingestion: per-project ingest tokens, `/ingest/runtime/{project_id}`, explainable per-route scoring, labeled `log_anomaly` events, RL signal feed | `api/runtime.py` + `monitoring/runtime.py` | implemented; inputs are demo/replay/simulated only (no production telemetry) |
