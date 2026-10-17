@@ -38,6 +38,8 @@ class Orchestrator(Protocol):
   `host.project_id`, `host.repo_id`, `host.org_id` are **properties/attributes**, not methods.
   `host.approvals()`, `host.findings()`, `host.llm()` are methods. On the gateway,
   `provider_mode` is a **property** (`"live" | "fake"`), `model_for(agent)` is a method.
+  Agent runs that make no model call (functional Verify from executed tests) are
+  persisted as `provider_mode="none"`, never as live/fake.
   Every record you persist must cite a **host** run id (`start_agent_run` return value);
   an unknown id is rejected with `NOT_FOUND`. Pass `usage=` and `tool_calls=` to
   `finish_agent_run` so per-run cost and tool history show in the UI.
