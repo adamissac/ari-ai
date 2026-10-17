@@ -528,7 +528,7 @@ class HostOrchestrator:
             if os.environ.get("APP_ENV") not in {"development", "test"}:
                 raise PlatformError(ErrorCode.SNAPSHOT_NOT_READY, "production host requires REPOSITORY_BINDINGS_FILE")
             intel = self._build_intel(
-                target, workdir, snapshot_id=checkpoint.get("snapshot_id") if resuming else None
+                target, workdir, snapshot_id=checkpoint.get("snapshot_id") if resuming else None, host=host
             )
         if resuming and checkpoint["commit_sha"] != intel.snapshot.commit_sha:
             raise PlatformError(ErrorCode.SNAPSHOT_NOT_READY, "approval snapshot changed")
@@ -617,7 +617,9 @@ class HostOrchestrator:
         orchestrator._goto(AssessmentState.REPORTING)
         orchestrator._finish()
 
-    def _build_intel(self, target: Path, workdir: Path, *, snapshot_id: str | None = None) -> CodeIntel:
+    def _build_intel(
+        self, target: Path, workdir: Path, *, snapshot_id: str | None = None, host: Any = None
+    ) -> CodeIntel:
         import json
         import shutil
 
@@ -650,6 +652,17 @@ class HostOrchestrator:
                 strip_prefix=strip_prefix,
             )
         return LocalIntel(snapshot, expectations=expectations)
+
+
+def _bindings() -> list[dict[str, Any]]:
+    import json
+
+    from .intel.host import bindings_path
+
+    path = bindings_path()
+    if not path or not Path(path).is_file():
+        return []
+    return list(json.loads(Path(path).read_text(encoding="utf-8")))
 
 
 def _val(obj: Any, name: str) -> Any:
