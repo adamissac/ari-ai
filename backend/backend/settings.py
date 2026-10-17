@@ -66,6 +66,9 @@ class Settings(BaseSettings):
 
     # RL
     rl_checkpoint_path: Path | None = None
+    # Pinned SHA-256 of the checkpoint file. Verified BEFORE anything unpickles it; required
+    # outside development/test (a sidecar manifest next to the file is not an integrity root).
+    rl_checkpoint_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     rl_topology_path: Path | None = None
 
     # Rate limits (in-process, docs/13)
