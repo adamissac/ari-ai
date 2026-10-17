@@ -61,6 +61,19 @@ describe('lab story model', () => {
     expect(storyMoments(m, 3).at(-1)!.kind).toBe('end');
   });
 
+  it('story moments favour real beats over routine repeated moves', () => {
+    const m = (t: number, kind: 'signal' | 'action' | 'disruptive' | 'end', node: string | null, text: string) => ({ t, kind, node, text });
+    const many = [
+      ...Array.from({ length: 10 }, (_, i) => m(i, 'action', 'api', 'AI: Watch closely API server')),
+      m(20, 'signal', 'db', 'Suspicious activity at Database'),
+      m(30, 'disruptive', 'db', 'AI: Cut off Database'),
+      m(31, 'disruptive', 'db', 'AI: Cut off Database'),
+      m(40, 'end', null, 'Game over'),
+    ];
+    const picked = storyMoments(many, 8).map(x => x.t);
+    expect(picked).toEqual([0, 20, 30, 40]); // first watch, first suspicious signal, first cut-off, end
+  });
+
   it('says what happened, what the AI did, and admits the reasoning is not recorded', () => {
     const s = stepStory(episode, scenario, 3);
     expect(s.now).toBe('Suspicious activity at API server (0.75).');
