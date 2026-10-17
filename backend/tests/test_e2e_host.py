@@ -203,7 +203,7 @@ def test_host_checkpoints_are_scoped_durable_and_integrity_checked(client_factor
     import sqlalchemy as sa
 
     from backend.db import artifacts, transaction
-    from backend.host import AssessmentHost
+    from backend.host import AssessmentHost, HostError
 
     alice, bob = client_factory("alice"), client_factory("bob")
     ids = setup_project(alice, bob)
@@ -232,3 +232,11 @@ def test_host_checkpoints_are_scoped_durable_and_integrity_checked(client_factor
         (host.store.root / artifact["storage_key"]).write_bytes(b"corrupted")
     with pytest.raises(OSError, match="integrity"):
         host.load_checkpoint("test.v1")
+    host.save_checkpoint("claim.v1", {"step": 3})
+    claimed = AssessmentHost(first).claim_checkpoint("claim.v1")
+    assert claimed == {"step": 3}
+    assert AssessmentHost(first).claim_checkpoint("claim.v1") is None
+    assert AssessmentHost(first).load_checkpoint("claim.v1") is None
+    with pytest.raises(HostError) as missing:
+        AssessmentHost(first).claim_checkpoint("never-saved.v1")
+    assert missing.value.code.value == "CONFLICT_STATE"

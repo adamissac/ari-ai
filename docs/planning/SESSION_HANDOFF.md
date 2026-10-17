@@ -18,6 +18,14 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-17 — Alan — Codex P1/P2 host-resume hardening after #73
+- **Did:** #73 merged to main. Did **not** push to `feat/alan/host-finding-persistence`. Diffed Codex P1/P2 against `origin/main` (`236838e`): all seven items were missing. New branch `feat/alan/host-resume-hardening` off current main. Implemented: resume `host.repo_id` filter; `claim_checkpoint` (assessment row lock, consume); finish Verify before `record_verification`; truncated pytest lists rejected; `external_pending` includes already-approved functional work; full recipe `target_dir` strip; persist `patch_rejected`. Asked to close #35 (do not merge).
+- **State of the code:** Hosted resume is single-winner per checkpoint; functional Verify publishes only after the run finishes.
+- **Commands run:** recorded after pytest in this session.
+- **Decisions:** Follow-up PR rather than amending the merged branch. Did not merge #71 or #35.
+- **Next steps:** Land the follow-up PR; close #35.
+- **Warnings:** Do not push to `feat/alan/host-finding-persistence`. Do not merge #35 or #71.
+
 ### 2026-10-17 — Alan — port c75a56e pause gates onto #73
 - **Did:** Ported Srihith follow-up `c75a56e` (not #71): `_report_or_wait` for early security exits; unconditional pause while `external_pending`; kept existing `_functional_reproduced` complete-run rule (no error / not timed out / pytest exit 1) and added the hang/`exit_code=None` case.
 - **State of the code:** Standalone orchestrator now walks RECON→…→AWAITING_APPROVAL when a functional approval is owed; security auto-approve no longer skips a pending functional gate.
