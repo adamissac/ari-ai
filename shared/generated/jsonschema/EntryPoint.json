@@ -21,12 +21,12 @@
       "type": "array"
     },
     "handler_symbol_id": {
-      "pattern": "^sym_[0-9A-Za-z]{8,64}$",
+      "pattern": "^sym_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Handler Symbol Id",
       "type": "string"
     },
     "id": {
-      "pattern": "^ent_[0-9A-Za-z]{8,64}$",
+      "pattern": "^ent_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Id",
       "type": "string"
     },
@@ -60,7 +60,7 @@
       "title": "Path Template"
     },
     "snapshot_id": {
-      "pattern": "^snp_[0-9A-Za-z]{8,64}$",
+      "pattern": "^snp_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Snapshot Id",
       "type": "string"
     }
