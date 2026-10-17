@@ -6,6 +6,7 @@ import hashlib
 import hmac
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -38,7 +39,10 @@ class _Token:
 
 def _private_key(settings: Settings) -> str | None:
     if settings.github_app_private_key_path:
-        return settings.github_app_private_key_path.read_text()
+        value = settings.github_app_private_key_path.get_secret_value()
+        if "-----BEGIN" in value:
+            return value.replace("\\n", "\n")
+        return Path(value).read_text()
     if settings.github_app_private_key:
         return settings.github_app_private_key.get_secret_value().replace("\\n", "\n")
     return None
@@ -99,6 +103,29 @@ class GitHubApp:
         )
         r.raise_for_status()
         return r.json()
+
+    def recent_commits(
+        self, installation_id: int, full_name: str, branch: str, limit: int = 20
+    ) -> list[dict[str, Any]]:
+        """Newest-first commits on `branch`, trimmed to what the commit list shows."""
+        data = self._get(
+            installation_id, f"/repos/{full_name}/commits", sha=branch, per_page=min(limit, 100)
+        )
+        out = []
+        for c in data if isinstance(data, list) else []:
+            commit = c.get("commit") or {}
+            author = commit.get("author") or {}
+            login = (c.get("author") or {}).get("login")
+            out.append(
+                {
+                    "sha": c.get("sha"),
+                    "message": (commit.get("message") or "").split("\n", 1)[0][:300],
+                    "author": login or author.get("name") or "unknown",
+                    "committed_at": author.get("date"),
+                    "html_url": c.get("html_url"),
+                }
+            )
+        return [c for c in out if isinstance(c["sha"], str) and len(c["sha"]) == 40]
 
     def compare_paths(
         self, installation_id: int, full_name: str, base: str, head: str

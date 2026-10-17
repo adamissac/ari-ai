@@ -630,7 +630,27 @@ the state before this authorization. Publishing via a normal fast-forward push;
 next action is to confirm GitHub main matches the release commit and inspect CI.
 The Git-connected Vercel deployment is triggered by that push; no project settings changed.
 
+## 2026-10-17T19:50:00+00:00 — Adam: GitHub onboarding (org → repo) and labelled simulated attacks
+
+Branch `feat/adam/github-onboarding` (merged as PR #239).
+- Backend: GitHub sign-in now lands on `/connect`; returning from installing the App
+  (`setup_action=install|update`, no OAuth state) restarts sign-in instead of a 403, which
+  refreshes the repository list. `GITHUB_APP_PRIVATE_KEY_PATH` also accepts pasted PEM
+  contents (now SecretStr), because Railway has the key under that name.
+- Frontend: `/connect` lists organizations (owners of App-visible repositories);
+  `/connect/[org]` lists repositories, and Connect finds-or-creates a project named after
+  the organization, connects with the installation id and opens the project. Projects
+  page links to it. Demo-only builds redirect `/connect*` to `/demo`.
+- Simulated attack: `/projects/[id]/simulate?repo=` replays the demo's seven-agent run and
+  Defense Lab for a real connected repository, with a visible "Simulated demo" marker and a
+  note that nothing in the repository was read or attacked (ADR 0013). Live attacks remain
+  Python-ASGI-only. `CommitAnalysis` moved to `components/demo/commit-analysis.tsx`.
+- Railway: all seven secrets are present but **staged, not deployed**; `GITHUB_APP_SLUG`
+  is not set (install link hidden). Vercel still has `NEXT_PUBLIC_DEMO_ONLY=1`; unset it
+  once GitHub sign-in works against Railway.
+Executed: backend key/access tests (9 passed), frontend lint, typecheck, 224 unit tests,
+production build. E2E result recorded in the PR.
 
 ## 2026-10-17 — Srihith: owner-requested product readiness audit
 
-Published the complete feature inventory, evidence boundaries and prioritized checklist as [issue #244](https://github.com/adamissac/ari-ai/issues/244), with dated report in [PRODUCT_READINESS_AUDIT_2026-10-17.md](PRODUCT_READINESS_AUDIT_2026-10-17.md) and immutable all-team message `20261017T203234Z-srihith-to-all-product-readiness-audit`. No application changes. Primary snapshot882daa2, publication baseb44d372; accounts for resolved frontend241, open onboarding239 and newly reported Fortify/M3 issue243. Fresh sweep1035passed/35skipped/one audit Git-metadata failure; affected owned-target tests2passed after restoring metadata. Full audit discloses local opt-in skips, CI evidence, public readiness gaps and raw RL recomputation. Next: owners add acceptance evidence on issue244; no feature is completed by this documentation change.
+Published the complete feature inventory, evidence boundaries and prioritized checklist as [issue #244](https://github.com/adamissac/ari-ai/issues/244), with dated report in [PRODUCT_READINESS_AUDIT_2026-10-17.md](PRODUCT_READINESS_AUDIT_2026-10-17.md) and immutable all-team message `20261017T203234Z-srihith-to-all-product-readiness-audit`. No application changes. Primary snapshot `882daa2`, publication base `b44d372`; accounts for resolved frontend #241, onboarding #239 (merged after the audit draft) and Fortify/M3 #243. Fresh sweep 1035 passed / 35 skipped / one audit Git-metadata failure; affected owned-target tests 2 passed after restoring metadata. Full audit discloses local opt-in skips, CI evidence, public readiness gaps and raw RL recomputation. Next: owners add acceptance evidence on issue #244; no feature is completed by this documentation change.

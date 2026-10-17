@@ -8,15 +8,21 @@ which refreshes the list.
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
+import httpx
 import sqlalchemy as sa
 from fastapi import APIRouter, Request
 from sqlalchemy.engine import Connection
 
-from backend.api.deps import require_user
+from backend.api.deps import ApiError, require_project, require_user
 from backend.db import github_repo_access, repositories, transaction
+from backend.github import GitHubApp, GitHubNotConfigured
 from backend.settings import get_settings
+from shared.errors import ErrorCode
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(tags=["github"])
 
@@ -80,3 +86,35 @@ def list_accessible_repositories(request: Request) -> dict[str, Any]:
         "install_url": f"{s.github_web_url}/apps/{slug}/installations/new" if slug else None,
         "next_cursor": None,
     }
+
+
+@router.get("/repositories/{repo_id}/commits")
+def recent_commits(repo_id: str, request: Request) -> dict[str, Any]:
+    """Recent commits on the default branch, read live through the GitHub App installation."""
+    with transaction() as conn:
+        user = require_user(conn, request)
+        repo = conn.execute(sa.select(repositories).where(repositories.c.id == repo_id)).first()
+        if repo is None:
+            raise ApiError(ErrorCode.NOT_FOUND, "repository not found", 404)
+        require_project(conn, user, repo.project_id)
+    if repo.installation_id is None:
+        return {
+            "items": [],
+            "next_cursor": None,
+            "available": False,
+            "reason": "Connected by name, without the GitHub App, so commits cannot be read.",
+        }
+    try:
+        items = GitHubApp().recent_commits(
+            repo.installation_id, repo.full_name, repo.default_branch
+        )
+    except GitHubNotConfigured as exc:
+        raise ApiError(
+            ErrorCode.SUBSYSTEM_UNAVAILABLE, "GitHub App is not configured", 503
+        ) from exc
+    except httpx.HTTPError as exc:
+        log.warning("listing commits for %s failed: %s", repo.full_name, type(exc).__name__)
+        raise ApiError(
+            ErrorCode.SUBSYSTEM_UNAVAILABLE, "GitHub did not return commits", 503
+        ) from exc
+    return {"items": items, "next_cursor": None, "available": True, "reason": None}

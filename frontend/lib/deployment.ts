@@ -11,5 +11,5 @@ export interface Redirect { source: string; destination: string; permanent: fals
 /** Console routes that need the backend, redirected to the demo in a demo-only build. */
 export function demoOnlyRedirects(enabled: boolean): Redirect[] {
   if (!enabled) return [];
-  return ['/projects', '/projects/:path*'].map(source => ({ source, destination: '/demo', permanent: false }));
+  return ['/projects', '/projects/:path*', '/connect', '/connect/:path*'].map(source => ({ source, destination: '/demo', permanent: false }));
 }
