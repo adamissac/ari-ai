@@ -1,14 +1,14 @@
 # Sai — implementation status
 
 Owner: Sai
-Branch: `feat/sai/reviewer-repair-agent`
-Current task: REVIEW-001..006 reviewer/repair runtime agent — implemented; live Tier-3 not yet run
+Branch: short-lived `feat/sai/*` branches merged to main per sub-part
+Current task: REVIEW-001..006 on main (#22, #27, #28, #30 merged); integration follow-ups
 Last remote sync: 2026-10-17 (fetched origin; merged origin/main into branch)
-API/contract dependencies: `shared.review` V0 (consumed unchanged), `backend.host.AssessmentHost` + `backend.llm` gateway (integrated, tested on PostgreSQL), `code_intelligence` via `IntelligencePort` (UNVERIFIED until Sarosh's package is on main), Alan's sandbox driver / Verify (NOT YET WIRED; local-process sandbox + Verify test double used in tests)
+API/contract dependencies: `shared.review` V0 (consumed unchanged), `backend.host.AssessmentHost` + `backend.llm` gateway (integrated, tested on PostgreSQL), `code_intelligence` real index consumed + tested; Alan's sandbox driver adopted via `SharedSandboxAdapter` (Docker path unverified); Alan's Verify not yet consuming reviewer patches (test double in tests)
 Verified tests: `uv run pytest -q code-review/tests` → 33 passed, 1 skipped (live opt-in); full repo `uv run pytest -q` after merging origin/main → 129 passed, 6 skipped
 Recent PR/commit: PR #22 https://github.com/adamissac/hackatl-agentic-security/pull/22 (branch head after this commit)
-Blockers: live Claude run needs an authorized key holder to run `RUN_LIVE_LLM_EVAL=1` (this environment has none and spends nothing)
-Next action: someone with a key runs the live reviewer test and reports cost/turns; wire Alan's `SandboxDriver` + Verify once on main; consume Sarosh's `IntelligenceService` once on main
+Blockers: none. Live evidence exists from Srihith's unified run (reviewer: 2 validated findings, $0.37); this agent runs nothing live (zero-spend policy)
+Next action: Verify adjudicating reviewer PatchCandidates (with Alan); pass monitoring ChangeIntent through review_assessment
 
 ## Session entries
 
@@ -28,3 +28,9 @@ Add dated factual entries; do not overwrite history. Never claim unexecuted test
 - `resolve_repo` now uses the backend `REPOSITORY_BINDINGS_FILE` and the SHA-pinned `build_recipe.json` `target_dir`. Added `review_assessment(host)` as the FUNCTIONAL_REVIEW entry, tested on PostgreSQL.
 - Merging PR #22 into main was attempted after green tests. It was blocked by this environment's permission policy ("merge without review"). The PR is MERGEABLE/CLEAN with CI green; it needs a reviewer or a human merge.
 - Sent `20261017T022748Z-sai-to-srihith-functional-review-hook`.
+
+### 2026-10-17 (session 1, integration follow-ups)
+
+- PR #22 merged by a teammate; follow-ups merged: #27 (no leaked test postmasters, team acks), #28 (authorization findings → Scout hypotheses with test evidence), #30 (SandboxPort over Alan's shared drivers).
+- New: `test_intel_integration.py`: the reviewer on the real code-intelligence index of payments-lite (49 extracted expectations, all `ambiguous`). An index-only claim stays `inferred`; with docstring corroboration it is `confirmed`; the validated finding links to the index expectation id.
+- 9 stale temp postmasters from earlier test runs are still running. Stopping them was blocked by this environment's process-permission policy, and they are reported in the team message.
