@@ -253,6 +253,23 @@ export class ApiClient {
     });
     return { items, install_url: install as string | null };
   }
+  /** Recent commits on a connected repository's default branch, read live from GitHub. */
+  async repositoryCommits(repoId: string, options?: RequestOptions): Promise<RepositoryCommits> {
+    const record = object(await this.request(`/repositories/${segment(repoId)}/commits`, RAW, options), 'commit list');
+    if (!Array.isArray(record.items) || typeof record.available !== 'boolean' || !(record.reason === null || typeof record.reason === 'string') || record.next_cursor !== null) {
+      throw new ProtocolError('Invalid commit list');
+    }
+    const items = record.items.map(raw => {
+      const c = object(raw, 'commit');
+      if (typeof c.sha !== 'string' || !/^[0-9a-f]{40}$/.test(c.sha) || typeof c.message !== 'string' || typeof c.author !== 'string'
+        || !(c.committed_at === null || typeof c.committed_at === 'string')
+        || !(c.html_url === null || (typeof c.html_url === 'string' && /^https:\/\//.test(c.html_url)))) {
+        throw new ProtocolError('Invalid commit list');
+      }
+      return { sha: c.sha, message: c.message, author: c.author, committed_at: c.committed_at as string | null, html_url: c.html_url as string | null };
+    });
+    return { items, available: record.available, reason: record.reason as string | null };
+  }
   rlEvaluations(projectId: string, options?: RequestOptions): Promise<Page<C.RLEvaluation>> {
     return this.list(`/projects/${segment(projectId)}/rl-evaluations`, 'RLEvaluation', options);
   }
@@ -314,6 +331,8 @@ export interface AccessibleRepository {
   connected_repo_id: string | null;
 }
 export interface AccessibleRepositories { items: AccessibleRepository[]; install_url: string | null }
+export interface RepositoryCommit { sha: string; message: string; author: string; committed_at: string | null; html_url: string | null }
+export interface RepositoryCommits { items: RepositoryCommit[]; available: boolean; reason: string | null }
 export interface ArtifactText { id: string; text: string; sha256: string; hashVerified: boolean; mediaType: string }
 export type FindingRecord =
   | { type: 'hypothesis'; record: C.Hypothesis }

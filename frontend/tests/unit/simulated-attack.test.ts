@@ -21,3 +21,13 @@ describe('simulatedAttack', () => {
     }
   });
 });
+
+describe('simulatedAttack with a real commit', () => {
+  it('shows the real commit SHA, message and author', () => {
+    const real = { sha: 'c'.repeat(40), message: 'feat: real change', author: 'alice' };
+    const { commit } = simulatedAttack('acme/shop', 'main', real);
+    expect(commit.sha).toBe(real.sha);
+    expect(commit.message).toBe('feat: real change');
+    expect(commit.author).toBe('alice');
+  });
+});
