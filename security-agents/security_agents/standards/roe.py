@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import Field
+from shared.scope import check_category_allowed
 from standards.catalog import load_json
 
 from ..contracts import AgentName, AuthorizedScope, ScopeStatus, StrictModel
@@ -151,7 +152,7 @@ def build_roe(
         template["ref"]
         for template in templates
         if template.get("runnable")
-        and template.get("category") in scope.allowed_check_categories
+        and check_category_allowed(str(template.get("category")), scope.allowed_check_categories)
         and template.get("side_effect_class") in ("read_only", "ephemeral_target_only")
     )
     reference = load_json("nist-sp800-115.json")
