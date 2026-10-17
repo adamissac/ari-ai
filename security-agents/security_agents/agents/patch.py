@@ -7,8 +7,6 @@ Cannot push, open PRs, or mark anything verified.
 
 from __future__ import annotations
 
-from typing import Any
-
 from pydantic import Field
 
 from ..contracts import (

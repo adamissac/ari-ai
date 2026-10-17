@@ -16,10 +16,12 @@ from .checks.library import CheckLibrary, default_library
 from .contracts import SCHEMA_VERSION, AgentName
 from .intel import CodeIntel, LocalIntel
 from .llm import LLMGateway, ProviderGateway
-from .runtime import AgentSpec, StepOutcome, run_agent as run_agent_step
+from .runtime import AgentSpec, StepOutcome
+from .runtime import run_agent as run_agent_step
 from .sandbox.driver import DockerSandboxDriver, LocalProcessDriver, SandboxDriver
 from .sandbox.workspace import SnapshotHandle
-from .scope_guard import ActionRequest, Decision, check as scope_check
+from .scope_guard import ActionRequest, Decision
+from .scope_guard import check as scope_check
 from .tools import PatchWorktree, TestRunner, ToolContext, ToolRegistry, default_registry
 from .workflow import AssessmentResult, Orchestrator, OrchestratorConfig
 

@@ -20,7 +20,6 @@ import json
 import re
 from dataclasses import dataclass, field
 from functools import cached_property
-from pathlib import Path
 from typing import Any, Protocol
 
 from ..contracts import (
@@ -163,7 +162,7 @@ class LocalIntel:
                 qname = ".".join([module, *stack, node.name])
                 decorators = tuple(_decorator_text(d) for d in node.decorator_list)
                 kind = "class" if isinstance(node, ast.ClassDef) else ("method" if stack else "function")
-                calls = tuple(sorted({c for c in _called_names(node)}))
+                calls = tuple(sorted(set(_called_names(node))))
                 params = (
                     tuple(a.arg for a in node.args.args) if not isinstance(node, ast.ClassDef) else ()
                 )
@@ -303,7 +302,7 @@ def _walk_defs(tree: ast.AST, stack: tuple[str, ...] = ()) -> list[tuple[Def, tu
 def _decorator_text(node: ast.expr) -> str:
     try:
         return ast.unparse(node)
-    except Exception:  # noqa: BLE001 - unparse is best effort
+    except Exception:
         return "<decorator>"
 
 

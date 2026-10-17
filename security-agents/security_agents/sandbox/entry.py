@@ -62,7 +62,8 @@ def _emit_out() -> None:
     for name in sorted(os.listdir(OUT)) if os.path.isdir(OUT) else []:
         path = os.path.join(OUT, name)
         if os.path.isfile(path):
-            data = open(path, "rb").read()
+            with open(path, "rb") as fh:
+                data = fh.read()
             total += len(data)
             if total > 50 * 1024 * 1024:
                 break
@@ -95,7 +96,7 @@ def main(argv: list[str]) -> int:
                 s = socket.create_connection((host, port), timeout=2)
                 s.close()
                 result["connected"] = True
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 result["connected"] = False
                 result["error"] = f"{type(exc).__name__}: {exc}"[:300]
             with open(os.path.join(OUT, "netprobe.json"), "w") as fh:

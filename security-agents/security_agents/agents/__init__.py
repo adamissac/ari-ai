@@ -2,8 +2,8 @@
 schemas, AgentSpec and the deterministic post-processing of its output."""
 
 from ..contracts import AgentName
-from . import diagnose, fortify, patch, probe, scout, trace, verify
 from ..runtime import AgentSpec
+from . import diagnose, fortify, patch, probe, scout, trace, verify
 
 ALL_SPECS: dict[AgentName, AgentSpec] = {
     AgentName.SCOUT: scout.SPEC,

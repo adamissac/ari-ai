@@ -26,8 +26,8 @@ from typing import Any
 from pydantic import ValidationError
 
 from ..contracts import (
-    AgentRun,
     AgentName,
+    AgentRun,
     Budget,
     ErrorCode,
     PlatformError,
@@ -38,7 +38,7 @@ from ..contracts import (
 )
 from ..llm import LLMGateway, LLMRequest, LLMUnavailable
 from ..redact import redact
-from ..tools import ToolContext, ToolRegistry, wire_name
+from ..tools import ToolContext, ToolRegistry
 from .spec import AgentSpec
 
 DATA_BLOCK_NOTE = (

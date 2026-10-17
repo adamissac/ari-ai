@@ -17,15 +17,27 @@ from typing import Any
 
 from security_agents.agents import (
     diagnose as diagnose_agent,
+)
+from security_agents.agents import (
     fortify as fortify_agent,
+)
+from security_agents.agents import (
     patch as patch_agent,
+)
+from security_agents.agents import (
     probe as probe_agent,
+)
+from security_agents.agents import (
     scout as scout_agent,
+)
+from security_agents.agents import (
     trace as trace_agent,
+)
+from security_agents.agents import (
     verify as verify_agent,
 )
 from security_agents.contracts import AgentName
-from security_agents.llm import FakeTurn, assistant_turns, last_tool_results
+from security_agents.llm import FakeTurn, last_tool_results
 
 OWNERSHIP_REF = "access_control.ownership@1"
 WEAK_HANDLER_PATH = "payments_lite/app.py"
@@ -300,7 +312,6 @@ def trace_script() -> list:
 
 
 def _sandbox_run_id_from_prompt(request) -> str | None:
-    import json
     import re
 
     for message in request.messages:

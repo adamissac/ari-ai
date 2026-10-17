@@ -68,7 +68,6 @@ from ..tools import (
     recipe_from_snapshot,
 )
 from .states import (
-    MAX_PATCH_ATTEMPTS,
     AssessmentState,
     RemediationState,
     StateLog,
@@ -651,7 +650,7 @@ class Orchestrator:
         reasons: list[str] = []
         while True:
             if sub_state is RemediationState.PATCHING:
-                candidate, worktree = self._run_patch(finding, attempt, reasons)
+                candidate, _worktree = self._run_patch(finding, attempt, reasons)
                 patch_failed = candidate is None
                 sub_state = next_remediation_state(
                     sub_state, verdict=None, attempt=attempt, patch_failed=patch_failed

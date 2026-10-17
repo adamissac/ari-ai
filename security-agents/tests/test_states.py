@@ -6,13 +6,17 @@ import pytest
 
 from security_agents.workflow import (
     MAX_PATCH_ATTEMPTS,
-    AssessmentState as S,
     IllegalTransition,
-    RemediationState as R,
     StateLog,
     can_transition,
     next_remediation_state,
     transition,
+)
+from security_agents.workflow import (
+    AssessmentState as S,
+)
+from security_agents.workflow import (
+    RemediationState as R,
 )
 from security_agents.workflow.states import HAPPY_PATH, TERMINAL
 

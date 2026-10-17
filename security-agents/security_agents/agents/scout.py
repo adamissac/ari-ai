@@ -6,8 +6,6 @@ the orchestrator decides which hypotheses reach Probe.
 
 from __future__ import annotations
 
-from typing import Any
-
 from pydantic import Field
 
 from ..contracts import (

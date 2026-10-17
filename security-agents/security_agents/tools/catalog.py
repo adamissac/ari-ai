@@ -8,15 +8,13 @@ and returns a compact JSON payload with citations the agent can quote.
 from __future__ import annotations
 
 import ast
-import json
 import re
-from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import Field
 
 from ..checks.library import CheckLibrary
-from ..contracts import ErrorCode, PlatformError, StrictModel
+from ..contracts import StrictModel
 from ..intel import CodeIntel, FindingsHistory
 from ..sandbox.workspace import safe_rel_path
 from .registry import ToolContext, ToolDef, ToolRegistry

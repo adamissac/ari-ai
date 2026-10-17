@@ -338,8 +338,7 @@ def test_verify_rejects_a_planted_bad_patch_that_edits_a_protected_test(
     """
     from security_agents.agents import verify as verify_agent
     from security_agents.sandbox.workspace import fresh_checkout, unified_diff
-    from security_agents.tools import PatchApplier, ToolContext
-    from security_agents.tools import AuditSink
+    from security_agents.tools import AuditSink, PatchApplier, ToolContext
 
     work = tmp_path / "bad"
     wt = fresh_checkout(intel.snapshot, work / "wt")

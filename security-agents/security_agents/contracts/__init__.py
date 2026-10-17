@@ -1,5 +1,6 @@
 """Typed contracts used by the security pillar (local V0 adapter; see base.py)."""
 
+from . import models as _models
 from .base import (
     CONFIDENCE_WEIGHT,
     SCHEMA_VERSION,
@@ -11,7 +12,6 @@ from .base import (
     new_id,
     utcnow,
 )
-from . import models as _models
 from .models import *  # noqa: F403
 
 __all__ = [

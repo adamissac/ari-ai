@@ -6,7 +6,7 @@ import pytest
 
 from security_agents.agents import ALL_SPECS
 from security_agents.contracts import AgentName, ErrorCode, PlatformError, ScopeStatus
-from security_agents.tools import AGENT_TOOL_ALLOWLIST, default_registry, wire_name
+from security_agents.tools import AGENT_TOOL_ALLOWLIST, wire_name
 
 from .conftest import TARGET_ID, make_ctx, make_scope
 

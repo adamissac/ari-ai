@@ -8,6 +8,7 @@ before attaching any target network (docs/15 §3(c)).
 from __future__ import annotations
 
 import base64
+import contextlib
 import json
 import os
 import resource
@@ -216,14 +217,14 @@ class LocalProcessDriver:
                 resource.setrlimit(resource.RLIMIT_NOFILE, (256, 256))
 
             t0 = time.monotonic()
-            proc = subprocess.Popen(  # noqa: S603 - argv is platform-constructed
+            proc = subprocess.Popen(
                 argv,
                 cwd=ws,
                 env=env,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 start_new_session=True,
-                preexec_fn=_preexec,  # noqa: PLW1509
+                preexec_fn=_preexec,
             )
             timed_out = False
             try:
@@ -259,10 +260,8 @@ class LocalProcessDriver:
             )
         finally:
             for p in root.rglob("*"):
-                try:
+                with contextlib.suppress(OSError):
                     p.chmod(0o755 if p.is_dir() else 0o644)
-                except OSError:
-                    pass
             shutil.rmtree(root, ignore_errors=True)
 
 
@@ -272,7 +271,7 @@ CommandRunner = Callable[[list[str], bytes | None, float], subprocess.CompletedP
 
 
 def _default_runner(argv: list[str], stdin: bytes | None, timeout: float) -> subprocess.CompletedProcess[bytes]:
-    return subprocess.run(argv, input=stdin, capture_output=True, timeout=timeout, check=False)  # noqa: S603
+    return subprocess.run(argv, input=stdin, capture_output=True, timeout=timeout, check=False)
 
 
 LABEL_ROOT = "hackatl.sandbox"
