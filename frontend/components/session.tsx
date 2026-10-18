@@ -4,9 +4,11 @@ import { ApiError, type MeResponse } from '@hackatl/frontend-transport';
 import { createContext, useCallback, useContext, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
-import { BRAND_NAME, BRAND_TAGLINE, Wordmark } from '@/components/brand';
+import { AuthStage, LockIcon } from '@/components/auth-stage';
+import { BRAND_NAME } from '@/components/brand';
+import { GitHubMark } from '@/components/demo/ui';
 import { INTRO_KEY } from '@/components/intro-loader';
-import { Button, ErrorState, Field, inputClass, Loading, RollText } from '@/components/ui';
+import { ErrorState, Loading } from '@/components/ui';
 
 type SessionState =
   | { status: 'loading' }
@@ -109,38 +111,28 @@ function SignIn({ onSignedIn }: { onSignedIn: (me: MeResponse) => void }) {
     finally { setBusy(false); }
   };
   return (
-    <div className="signin-card mx-auto mt-12 grid max-w-4xl overflow-hidden rounded-2xl border border-line bg-panel shadow-[0_24px_60px_-30px_rgba(194,69,45,0.45)] md:grid-cols-2">
-      <div className="hero-ink hidden flex-col justify-between p-8 md:flex">
-        <Wordmark className="text-white" />
-        <div>
-          <p className="label-mono text-white/60">Software assurance</p>
-          <p className="display mt-3 text-3xl font-semibold">A fix counts only when independent tests accept it.</p>
-          <p className="mt-3 text-sm text-white/70">{BRAND_TAGLINE}</p>
-        </div>
-      </div>
-      <div className="p-8">
-      <p className="label-mono text-brand">Welcome to {BRAND_NAME}</p>
-      <h1 className="mt-2 text-2xl font-semibold tracking-tight">Sign in</h1>
-      <p className="mt-1 text-sm text-muted">Sessions are issued by the control-plane backend. No token is stored in the browser.</p>
+    <AuthStage
+      title="Sign in to your workspace"
+      subtitle="Connect GitHub to pick an organization, a repository and the commits to assess."
+      testId="signin"
+      footnote={<><LockIcon /><span>Read-only GitHub access. Sessions are issued by the {BRAND_NAME} control plane; no token is kept in your browser.</span></>}
+    >
       {/* OAuth must be a full browser navigation to the backend (proxied), not client routing. */}
       {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-      <a href="/api/v1/auth/github/login" className="group label-mono mt-6 flex h-10 w-full items-center justify-center rounded-md bg-brand px-3 text-on-brand shadow-[0_6px_16px_-8px_rgba(194,69,45,0.6)] transition-colors duration-[250ms] hover:bg-brand-deep">
-        <RollText>Continue with GitHub</RollText>
+      <a href="/api/v1/auth/github/login" className="auth-btn auth-btn-light bg-white">
+        <GitHubMark className="h-[18px] w-[18px]" /><span>Continue with GitHub</span>
       </a>
-      <p className="mt-3 text-center text-xs text-muted">
-        Have an access code? <Link href="/access" className="text-brand underline-offset-2 hover:underline" data-testid="access-link">Sign in with it</Link>
-      </p>
+      <div className="auth-divider">or</div>
+      <Link href="/access" className="auth-btn auth-btn-ghost" data-testid="access-link">Use an access code</Link>
       {devLoginVisible && (
-        <form onSubmit={submit} className="mt-6 border-t border-line pt-4" aria-label="Development login">
-          <p className="label-mono mb-2 text-warn">Development login — local backend only</p>
-          <Field label="GitHub login">
-            <input className={inputClass} value={login} onChange={e => setLogin(e.target.value)} required pattern="(?:[A-Za-z0-9]|-){1,39}" autoComplete="username" name="github_login" />
-          </Field>
-          <Button type="submit" variant="secondary" className="mt-3 w-full" disabled={busy || !login.trim()}>Development sign-in</Button>
+        <form onSubmit={submit} className="mt-6 border-t border-white/10 pt-5" aria-label="Development login">
+          <p className="label-mono mb-3 text-[11px] text-[#ffb8a6]">Development login · local backend only</p>
+          <label htmlFor="dev-login" className="auth-label">GitHub login</label>
+          <input id="dev-login" className="auth-input" value={login} onChange={e => setLogin(e.target.value)} required pattern="(?:[A-Za-z0-9]|-){1,39}" autoComplete="username" name="github_login" />
+          <button type="submit" className="auth-btn auth-btn-ghost mt-3" disabled={busy || !login.trim()}>Development sign-in</button>
           {error !== null && <div className="mt-3"><ErrorState error={error} context="Sign-in failed" /></div>}
         </form>
       )}
-      </div>
-    </div>
+    </AuthStage>
   );
 }

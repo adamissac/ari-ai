@@ -40,7 +40,7 @@ test('supplied logo loads on sign-in, scrolled header and projects on desktop/mo
   });
   await page.goto('/projects'); // the sign-in panel; the home page is public
   await expect(page).toHaveTitle('ARI Console');
-  await expect(page.getByRole('heading', { name: 'Sign in', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Sign in to your workspace', exact: true })).toBeVisible();
   await settledHeader(page);
   await loadedMark(page, '.hero-ink [data-testid="ari-logo"]');
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', /^\/icon\.png(?:\?|$)/);
