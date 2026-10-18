@@ -661,3 +661,38 @@ Published the complete feature inventory, evidence boundaries and prioritized ch
 PR [#282](https://github.com/adamissac/ari-ai/pull/282), `feat/sarosh/demo-provenance-labels`: dedicated real-commit/illustrative-analysis marker (#278), truthful synthetic drill/optional-Claude copy (#273 UI only), saved-live-evidence exception to sample-account copy plus historical missing red-to-green limitation and current runbook (#262). Preserve access-code gate, account framing and Sai's Defense Lab changes. Initial checks passed lint/typecheck/normal production build, 246 unit tests and four demo e2e tests; mobile visual inspection caught assessment-ID overflow, now wraps with a phone assertion. Final integrated checks pending. No live provider/backend run or raw historical artifact audit. Backend drill baseline/spend/rate-limit concerns stay on #273.
 
 Final local verification after integrating main `b2bb5ec`: lint, typecheck, normal production build, 248 unit tests (61 files), four demo e2e tests and Markdown link checks passed. Chrome visual inspection at desktop and 375px confirmed the caveat and no document overflow after wrapping. Unit tests mock real-commit/drill dependencies; browser tests use a local test-only access code and unavailable backend, with no live provider call. See PR #282 for final CI/merge state.
+
+## 2026-10-18T00:45Z — Srihith (cloud session): night surface on every page but the landing
+
+Branch `claude/wizardly-mccarthy-hni97r`, pushed to `main` at the user's request. Frontend
+only; no contract, backend or landing change.
+- **Did:** every page without a full-screen hero stage (`.hero-full`) now carries the landing
+  hero's ink + ember look. This covers the console, the Defense Lab, pricing, the demo account
+  and connect.
+  - Tokens flip under `:root:not(:has(.hero-full))` (globals.css, "Night surface").
+  - `components/ambient.tsx` adds fixed drifting ember light, a grid and grain, with scroll
+    parallax and a pointer glow on panels.
+  - Motion: page titles, ink bands and project headers blur-rise in, and panels rise on
+    first scroll. Primary buttons, tabs and link cards glow; `Loading` shows an ember pulse.
+  - The footer gets the wordmark and tagline. Pricing gets a lit recommended plan and
+    reveals.
+  - `--color-night` replaces `--color-ink` wherever ink was a background: `.hero-ink`,
+    `.lab-now`, `.net-map`, `.monitor-head`, and others.
+- **Verified:**
+  - `npm run lint`, `typecheck`, and `npm test`: 253 passed. Night contrast is asserted in
+    `contrast.test.ts`.
+  - `npm run build` succeeds.
+  - `tests/e2e/stack.py`: 30 passed (4.8 min) against the real API, Postgres and worker. That
+    run predates the `.monitor-head` one-token fix and the latest main merge (footer under
+    sign-in, #289).
+  - Visual check with Playwright at 1440 and 390 px: /lab, /pricing, /access, /demo/*,
+    commit view, and console journey evidence. No horizontal overflow; no console errors.
+- **Not done / open:**
+  - No Lighthouse or axe run.
+  - The monitoring page after the `.monitor-head` fix was not re-screenshotted.
+- **Warnings:**
+  - On night pages `--color-ink` is the light text colour. Use `--color-night` for any
+    surface that must stay dark.
+  - Playwright 1.64 wants Chromium 1248; the cloud image has 1194. Run e2e with
+    `PLAYWRIGHT_BROWSERS_PATH` pointing at a folder whose `chromium*-1248` paths symlink
+    to `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
