@@ -1,0 +1,64 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Ari trailer</title>
+<style>
+  /* Ari's own faces, copied from frontend/app/fonts (OFL). Display = Space Grotesk, UI = Inter.
+     Mono (IBM Plex Mono) is the product's label and code face; the wordmark alone uses Chakra Petch. */
+  @font-face { font-family: 'Display'; src: url(../assets/fonts/display.woff2) format('woff2'); font-weight: 300 700; }
+  @font-face { font-family: 'UI'; src: url(../assets/fonts/ui.woff2) format('woff2'); font-weight: 100 900; }
+  @font-face { font-family: 'Mono'; src: url(../assets/fonts/mono-400.woff2) format('woff2'); font-weight: 400; }
+  @font-face { font-family: 'Mono'; src: url(../assets/fonts/mono-500.woff2) format('woff2'); font-weight: 500; }
+  @font-face { font-family: 'Mono'; src: url(../assets/fonts/mono-600.woff2) format('woff2'); font-weight: 600; }
+  @font-face { font-family: 'Wordmark'; src: url(../assets/fonts/wordmark.woff2) format('woff2'); font-weight: 700; }
+  :root {
+    /* measured from frontend/app/globals.css @theme: white paper + one brand colour + warm ink */
+    --bg: #ffffff; --paper-2: #fbf4f2; --line: #ecdcd7;
+    --ink: #1c1210; --ink-2: #2b1d19; --muted: #6b5752; --faint: #806b65;
+    --accent: #c2452d; --deep: #8f2f1e; --soft: #f8e7e3; --ember: #e0684a;
+    --ok: #1f7a4d; --ok-dark: #4fbf87; --bad: #b42318; --card: #ffffff;
+  }
+  html, body { margin: 0; background: #000; overflow: hidden; }
+  #stage { position: relative; overflow: hidden; background: var(--ink); transform-origin: 0 0;
+           font-family: 'UI', 'Helvetica Neue', Arial, sans-serif; color: var(--ink);
+           -webkit-font-smoothing: antialiased; text-rendering: geometricPrecision; }
+  .scene { position: absolute; inset: 0; overflow: hidden; }
+  .abs { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  .display { font-family: 'Display', 'Helvetica Neue', Arial, sans-serif; font-weight: 700; letter-spacing: -0.04em;
+             line-height: 0.95; white-space: nowrap; }
+  .ui { font-family: 'UI', sans-serif; font-weight: 500; letter-spacing: -0.01em; }
+  .mono { font-family: 'Mono', ui-monospace, monospace; }
+  .eyebrow { font-family: 'Mono', monospace; font-weight: 500; font-size: 26px; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; }
+  .line { position: absolute; overflow: hidden; padding: 0.08em 0.04em 0.18em; margin: -0.08em -0.04em 0; white-space: nowrap; }
+  .word { display: inline-block; }
+  .card { position: absolute; background: var(--card); border-radius: 18px;
+          box-shadow: 0 2px 6px rgba(28,18,16,.06), 0 40px 90px -30px rgba(28,18,16,.35); }
+  /* the hero band: ink + brand glow from below + fine grain (frontend .hero-ink) */
+  .ink { background: var(--ink); color: #fff; }
+  .glow { position: absolute; inset: -10%; }
+  .grain { position: absolute; inset: -40px; opacity: 0.16; pointer-events: none;
+           background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.6'/></svg>"); }
+  .mark { display: inline-block; background: currentColor; -webkit-mask: url(../assets/brand/ant-mask-hd.png) center / contain no-repeat;
+          mask: url(../assets/brand/ant-mask-hd.png) center / contain no-repeat; }
+  .shot { position: absolute; overflow: hidden; border-radius: 14px; background: #120b0a;
+          box-shadow: 0 0 0 1px rgba(255,255,255,.07), 0 50px 120px -30px rgba(0,0,0,.65); }
+  .shot img { position: absolute; left: 0; top: 0; transform-origin: 0 0; display: block; }
+  body.play { display: block; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script src="lib/motion.js"></script>
+<script src="data.js"></script>
+<script src="core.js"></script>
+<script src="type.js"></script>
+<script src="kit.js"></script>
+<script src="act1.js"></script>
+<script src="act2.js"></script>
+<script src="act3.js"></script>
+<script src="act4.js"></script>
+<script src="act5.js"></script>
+<script src="film.js"></script>
+</body>
+</html>
