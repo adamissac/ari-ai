@@ -107,3 +107,9 @@ Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablat
 ## 2026-10-17 cloud run (unattended, ~19:30Z) — no-op
 - Synced origin/main (882daa2); no messages addressed to Adam since the last entry; gh unauthenticated (git only for sync).
 - Executed: rl-defense 92 passed; payments-lite target 13 passed, label_checks 11 passed; check_links 0 problems. Nothing broken; no changes to Adam areas.
+
+## 2026-10-18 cloud run (unattended) — partial, rl-defense tests NOT run
+- Synced origin/main (9ebc524). Only message mentioning Adam: Srihith's 20261018T010448Z (informational, frontend demo replay; no ask). gh unauthenticated (git/MCP only).
+- Executed: payments-lite target 13 passed, label_checks 11 passed; check_links 0 problems.
+- NOT executed: rl-defense pytest. `uv pip install -e '.[dev]'` stalled for >1h downloading CUDA torch/nvidia wheels (88K venv, no progress); abandoned. rl-defense/shared changed since 882daa2: contracts 0.11 `Assessment.repo_id` (b50c3ae), not yet verified against the RL adapter.
+- Open: next run should try a CPU-only torch index (or a warmed uv cache) so the install completes; check the RL adapter against contracts 0.11.
