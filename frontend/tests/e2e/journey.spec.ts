@@ -119,7 +119,7 @@ test('one real assessment from scope approval to verified patch', async ({ brows
   await expect(loop.getByTestId('loop-review')).toContainText('No open problems in how the code behaves.');
   await expect(loop.getByTestId('loop-prove')).toContainText('2 fixes accepted by independent tests.');
   await expect(loop.getByTestId('loop-prove')).toContainText('nothing was merged or deployed');
-  await expect(loop.getByTestId('loop-lab')).toContainText('simulation only');
+  await expect(loop.getByTestId('loop-lab')).toContainText('isolated test environment');
   await alice.getByTestId('term-monitoring').focus();
   await alice.keyboard.press('Enter');
   await expect(loop.getByRole('note')).toContainText('Watching the code repository');
@@ -166,7 +166,7 @@ test('signed GitHub push appears in the monitoring feed', async ({ browser, requ
   await expect(feed).toContainText('push');
   await expect(feed).toContainText('refs/heads/main');
   await evidenceShot(page, 'monitoring');
-  await expect(page.getByTestId('rl-caveat')).toHaveText('Recommendation from a policy trained in simulation. Not applied automatically.');
+  await expect(page.getByTestId('rl-caveat')).toHaveText('Recommendation from a policy trained in an isolated test environment. Not applied automatically.');
 });
 
 test('create a project and connect a repository through the UI', async ({ browser }) => {
