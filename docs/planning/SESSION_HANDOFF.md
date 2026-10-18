@@ -771,3 +771,5 @@ Pushed to `main` at the user's request. Frontend only, no contract or backend ch
   - Hero scroll on the production build with the colony (headless Chromium, 3 runs, 934 frames): mean frame 16.8 ms, p95 16.7 ms, 0 frames over 50 ms.
   - Before the glow and spotlight change: mean 38.2 ms, p95 116.6 ms, 246 frames over 50 ms.
   - Screenshots of both replay bars at the start and end, and of the Lab tracker at 1440 and 390 px (no horizontal scroll).
+  - E2e, `tests/e2e/stack.py` (real API, Postgres, worker, `next start`, Playwright): 31 passed in 4.3 min.
+  - Warning: `E2E_SKIP_BUILD=1` needs a `.next` built with `NEXT_PUBLIC_DEV_LOGIN=1`. A plain `npm run build` drops the dev sign-in form, and every signed-in test then times out at 240 s.
