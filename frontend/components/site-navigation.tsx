@@ -57,7 +57,7 @@ function NavigationLinks({ home }: { home: boolean }) {
       <div id="primary-links" className="nav-secondary" data-visible={visible} aria-hidden={!visible} inert={!visible} onKeyDown={onKeyDown} onClick={() => setMenuOpen(false)}>
         <NavLink href="/projects">Projects</NavLink>
         <NavLink href="/lab">Defense Lab</NavLink>
-        <NavLink href="/pricing" className="hdr-cta">Pricing</NavLink>
+        <NavLink href="/pricing">Pricing</NavLink>
       </div>
     </>
   );
