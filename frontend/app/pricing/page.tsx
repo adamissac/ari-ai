@@ -119,11 +119,12 @@ export default function PricingPage() {
       <p className="mt-4 text-center text-xs text-faint" data-testid="pricing-preview">Hackathon preview: these plans are proposals and nothing can be purchased yet. Prices in USD.</p>
 
       <Reveal>
-        <section aria-labelledby="faq-title" className="pricing-faq paper mt-24 grid gap-6 py-16 md:grid-cols-12 md:py-24">
-          <div className="md:col-span-4">
+        <section aria-labelledby="faq-title" className="pricing-faq paper mt-24 grid items-start gap-10 py-16 md:grid-cols-12 md:gap-6 md:py-24">
+          <div className="faq-aside md:col-span-4">
             <p className="faq-pill label-mono">FAQ</p>
-            <h2 id="faq-title" className="faq-title">Questions, answered</h2>
-            <p className="mt-3 max-w-xs text-sm leading-relaxed text-muted">What a plan covers, what ARI tests, and what it never does on its own.</p>
+            <h2 id="faq-title" className="display mt-5 text-4xl font-semibold md:text-5xl">Questions, answered</h2>
+            <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted">How plans, assessments and assessed lines would work, and what {BRAND_NAME} will and won’t do to your code.</p>
+            <Link href="/#how" className="label-mono mt-6 inline-flex items-center gap-2 text-brand hover:text-brand-deep">See how it works <span aria-hidden="true">→</span></Link>
           </div>
           <div className="md:col-span-8"><Faq items={FAQ} /></div>
         </section>

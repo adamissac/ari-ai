@@ -2,7 +2,7 @@
 
 import { useId, useState } from 'react';
 
-/** FAQ accordion (kairo.security pattern): one row per question, answer slides open. */
+/** FAQ accordion (kairo.security pattern): one numbered card per question, answer slides open. */
 export function Faq({ items }: { items: ReadonlyArray<{ q: string; a: string }> }) {
   const [open, setOpen] = useState<number | null>(null);
   const base = useId();
@@ -15,7 +15,8 @@ export function Faq({ items }: { items: ReadonlyArray<{ q: string; a: string }> 
           <li key={item.q} className="faq-item" data-open={isOpen || undefined}>
             <h3>
               <button type="button" className="faq-q" aria-expanded={isOpen} aria-controls={panel} onClick={() => setOpen(isOpen ? null : i)}>
-                <span>{item.q}</span>
+                <span aria-hidden="true" className="faq-num">{String(i + 1).padStart(2, '0')}</span>
+                <span className="faq-q-text">{item.q}</span>
                 <span aria-hidden="true" className="faq-icon" />
               </button>
             </h3>
