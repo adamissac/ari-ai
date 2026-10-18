@@ -27,3 +27,6 @@ pulled into MVP only if MVP tasks they would compete with are `DONE`.
 | PROD-101 | Design-partner interviews (validate A-1…A-4) | later | [02](../02_PROBLEM_AND_USERS.md) | — |
 
 - DONE (2026-10-17): Pricing navigation uses the same color, hover, and contrast handling as sibling links.
+
+
+Completed: homepage invitation and evaluation selector alignment (feat/adam/home-next-step).

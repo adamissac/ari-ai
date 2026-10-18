@@ -170,3 +170,6 @@ Set `ARI_LOGO_SCREENSHOTS` to an external directory for optional screenshot proo
 Real GitHub commit metadata is labelled separately from illustrative analysis. The monitoring attack drill uses real project routes and detection, synthetic counters, and either Claude or scripted planning; it sends no service attack traffic and only recommends responses. Its pending state does not assert that Claude was called.
 
 The access-gated sample account distinguishes its sample data from the separately labelled saved live-run panel. The panel discloses the historical run's missing unpatched-snapshot regression execution, so it does not establish red-to-green proof. See [the demo runbook](../docs/demo/RUNBOOK.md) for current access, setup and evidence boundaries. No new live provider run was performed for these wording changes.
+
+
+The homepage closing invitation uses responsive assessment and Defense Lab action cards. Evaluation selection uses aligned native controls.
