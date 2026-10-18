@@ -48,6 +48,26 @@ describe('WCAG contrast of design tokens', () => {
     expect(ratio(over(Number(dim![1]), '#ffffff', brand), brand)).toBeGreaterThanOrEqual(4.5);
   });
 
+  it('night tokens (every page but the landing) keep text and controls readable', () => {
+    const block = css.slice(css.indexOf(':root:not(:has(.hero-full)) {'));
+    const night = (name: string) => {
+      const m = block.match(new RegExp(`--color-${name}:\\s*(#[0-9a-fA-F]{6})`));
+      if (!m) throw new Error(`night token ${name} missing`);
+      return m[1]!;
+    };
+    for (const surface of [night('bg'), night('panel'), night('panel-2')]) {
+      expect(ratio(night('ink'), surface)).toBeGreaterThanOrEqual(7);
+      expect(ratio(night('muted'), surface)).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(night('faint'), surface)).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(night('ember'), surface)).toBeGreaterThanOrEqual(4.5);
+      for (const status of ['ok', 'warn', 'bad', 'info']) expect(ratio(night(status), surface)).toBeGreaterThanOrEqual(4.5);
+    }
+    expect(ratio(night('control'), night('panel'))).toBeGreaterThanOrEqual(3);
+    expect(lum(night('faint'))).toBeLessThan(lum(night('muted')));
+    // The landing keeps its own palette: night applies only where there is no full hero.
+    expect(css).toContain(':root:not(:has(.hero-full)) {');
+  });
+
   it('disables animate-pulse under prefers-reduced-motion', () => {
     expect(css).toMatch(/prefers-reduced-motion: reduce\)\s*\{[^}]*\.animate-pulse\s*\{\s*animation:\s*none/);
   });

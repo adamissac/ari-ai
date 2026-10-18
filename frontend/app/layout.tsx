@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import localFont from 'next/font/local';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { Ambient } from '@/components/ambient';
 import { BRAND_NAME, Wordmark } from '@/components/brand';
 import { DemoBanner } from '@/components/demo-banner';
 import { HeaderContrast } from '@/components/header-contrast';
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable} ${plexMono.variable} ${chakraPetch.variable}`}>
       <body className="min-h-screen antialiased">
+        <Ambient />
         <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:rounded focus:bg-accent focus:px-2 focus:py-1 focus:text-bg">Skip to content</a>
         <header className="site-header relative z-40">
           <div className="site-header-inner mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">

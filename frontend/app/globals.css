@@ -13,6 +13,7 @@
   --color-line: #ecdcd7;
   --color-ink: #1c1210;
   --color-ink-2: #2b1d19;
+  --color-night: #1c1210; /* fixed dark surface: unlike ink, it never flips on night pages */
   --color-control: #9a857f; /* form-control borders: 3.48:1 on #fff (WCAG 1.4.11); --color-line stays decorative */
   --color-muted: #6b5752;
   --color-faint: #806b65; /* 4.99:1 on #fff, 4.59:1 on panel-2 (was #9a857f: 3.48 / 3.20) */
@@ -97,7 +98,7 @@ button.label-mono, a.label-mono, nav.label-mono, nav .label-mono {
   background:
     radial-gradient(75% 65% at 50% 108%, var(--color-brand) 0%, color-mix(in srgb, var(--color-brand) 60%, transparent) 35%, transparent 70%),
     radial-gradient(60% 50% at 85% 0%, color-mix(in srgb, var(--color-brand) 30%, transparent) 0%, transparent 70%),
-    var(--color-ink);
+    var(--color-night);
 }
 .hero-ink::after {
   content: "";
@@ -237,7 +238,7 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 }
 
 /* Intro loader: the supplied mark fades in, a counter runs, the curtain lifts. */
-.intro { position: fixed; inset: 0; z-index: 60; background: var(--color-ink); pointer-events: none; transition: translate 800ms cubic-bezier(0.76, 0, 0.24, 1); }
+.intro { position: fixed; inset: 0; z-index: 60; background: var(--color-night); pointer-events: none; transition: translate 800ms cubic-bezier(0.76, 0, 0.24, 1); }
 .intro[data-phase="lift"] { translate: 0 -100%; }
 .intro-mark { position: absolute; top: 50%; left: 50%; translate: -50% -50%; animation: intro-mark-reveal 700ms var(--ease-quad) both; }
 @keyframes intro-mark-reveal { from { opacity: 0; scale: 0.94; } to { opacity: 1; scale: 1; } }
@@ -320,7 +321,7 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 .story-step-body { max-height: 0; overflow: hidden; opacity: 0; transition: max-height 400ms var(--ease-quad), opacity 300ms; }
 .story-step[data-active] .story-step-body { max-height: 6rem; opacity: 1; margin-top: 4px; }
 @media not all and (min-width: 1024px) { .story-step-body { max-height: none; opacity: 1; } .story-step { color: var(--color-ink); } }
-.story-panel { border-radius: 20px; background: var(--color-ink); padding: 24px; }
+.story-panel { border-radius: 20px; background: var(--color-night); padding: 24px; }
 .story-svg-label { fill: rgba(255, 255, 255, 0.45); font-family: var(--font-mono); font-size: 8px; text-transform: uppercase; letter-spacing: 0.06em; }
 .story-svg-bar { fill: #fff; }
 .story-svg-node { fill: var(--color-ink); stroke: rgba(255, 255, 255, 0.35); stroke-width: 1.5; opacity: 0; transition: opacity 400ms, fill 400ms, stroke 400ms; }
@@ -345,7 +346,7 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 }
 
 /* Obsidian-style graph view (components/node-graph.tsx). */
-.graph-view { background: radial-gradient(120% 90% at 50% 0%, #2b1d19 0%, var(--color-ink) 70%); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06); }
+.graph-view { background: radial-gradient(120% 90% at 50% 0%, #2b1d19 0%, var(--color-night) 70%); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06); }
 .graph-edge { stroke: rgba(255, 255, 255, 0.22); stroke-width: 1.2; transition: stroke 200ms, opacity 200ms; }
 .graph-edge[data-flow] { stroke: color-mix(in srgb, #c2452d 70%, transparent); animation: graph-flow 1.2s linear infinite; }
 .graph-edge[data-hot] { stroke: #e0735c; stroke-width: 2; }
@@ -417,7 +418,7 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 .lab-segment-btn[aria-pressed="true"] { background: #fff; color: var(--color-ink); box-shadow: 0 1px 3px rgba(28, 18, 16, 0.14); }
 .lab-segment-sm .lab-segment-btn { padding: 4px 9px; font-family: var(--font-mono); font-size: 0.72rem; }
 .lab-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; border-radius: 14px; padding: 8px 10px; background: var(--color-panel-2); box-shadow: inset 0 0 0 1px var(--color-line); }
-.lab-now { border-radius: 16px; padding: 18px; color: #fff; background: radial-gradient(120% 120% at 100% 0%, color-mix(in srgb, var(--color-brand) 40%, transparent), transparent 60%), var(--color-ink); }
+.lab-now { border-radius: 16px; padding: 18px; color: #fff; background: radial-gradient(120% 120% at 100% 0%, color-mix(in srgb, var(--color-brand) 40%, transparent), transparent 60%), var(--color-night); }
 .lab-outcome { border-radius: 9999px; padding: 5px 12px; font-family: var(--font-mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
 .lab-outcome-ok { color: var(--color-ok); background: color-mix(in srgb, var(--color-ok) 12%, transparent); }
 .lab-outcome-bad { color: var(--color-bad); background: color-mix(in srgb, var(--color-bad) 12%, transparent); }
@@ -436,9 +437,9 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 .pricing-plans { position: relative; z-index: 1; }
 .pricing-card { border-radius: 20px; padding: 28px; }
 @media (min-width: 768px) { .pricing-card { padding: 36px; } }
-.pricing-card-dark { color: #fff; background: radial-gradient(90% 60% at 100% 0%, color-mix(in srgb, var(--color-brand) 32%, transparent), transparent 70%), var(--color-ink); box-shadow: 0 30px 60px -30px rgba(28, 18, 16, 0.6); }
+.pricing-card-dark { color: #fff; background: radial-gradient(90% 60% at 100% 0%, color-mix(in srgb, var(--color-brand) 32%, transparent), transparent 70%), var(--color-night); box-shadow: 0 30px 60px -30px rgba(28, 18, 16, 0.6); }
 .pricing-card-light { background: var(--color-panel); box-shadow: inset 0 0 0 1px var(--color-line), 0 30px 60px -36px rgba(28, 18, 16, 0.35); }
-.pricing-badge { border-radius: 9999px; padding: 4px 10px; color: var(--color-ink); background: #fff; }
+.pricing-badge { border-radius: 9999px; padding: 4px 10px; color: var(--color-night); background: #fff; }
 
 /* FAQ accordion (components/faq.tsx). */
 .faq-pill { display: inline-flex; align-items: center; gap: 8px; border-radius: 9999px; padding: 5px 12px; color: var(--color-muted); background: var(--color-panel); box-shadow: inset 0 0 0 1px var(--color-line); }
@@ -459,7 +460,7 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 
 /* Defense Lab network map (components/node-graph.tsx). Signal states differ by ring weight and
    dash as well as colour; defensive actions add labelled badges. Motion is one-shot only. */
-.net-map { position: relative; overflow: hidden; border-radius: 18px; background: radial-gradient(120% 90% at 50% 0%, #2b1d19 0%, var(--color-ink) 70%); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06); }
+.net-map { position: relative; overflow: hidden; border-radius: 18px; background: radial-gradient(120% 90% at 50% 0%, #2b1d19 0%, var(--color-night) 70%); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06); }
 .net-svg { display: block; width: 100%; height: auto; user-select: none; }
 /* Narrow screens: keep labels readable and swipe sideways inside the map, not the page. */
 .net-scroll { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
@@ -475,7 +476,7 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 .net-edge[data-cut] { stroke: rgba(255, 255, 255, 0.18); stroke-dasharray: 6 6; }
 .net-edge-flash { fill: none; stroke: #e0735c; stroke-width: 2.4; stroke-dasharray: 0.12 1; stroke-dashoffset: 1; animation: net-flash 900ms var(--ease-quad) 1 forwards; }
 @keyframes net-flash { from { stroke-dashoffset: 1; opacity: 1; } to { stroke-dashoffset: -0.12; opacity: 0; } }
-.net-cut circle { fill: var(--color-ink); stroke: #f0a868; stroke-width: 1.4; }
+.net-cut circle { fill: var(--color-night); stroke: #f0a868; stroke-width: 1.4; }
 .net-cut path { stroke: #f0a868; stroke-width: 1.6; stroke-linecap: round; }
 .net-node { cursor: pointer; outline: none; transition: opacity 250ms; }
 .net-node[data-dim] { opacity: 0.32; }
@@ -499,7 +500,7 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 .net-truth-label { fill: #ff8a75; font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em; pointer-events: none; }
 .net-label { fill: #fff; font-family: var(--font-sans); font-size: 12.5px; font-weight: 500; pointer-events: none; }
 .net-sub { fill: rgba(255, 255, 255, 0.5); font-family: var(--font-mono); font-size: 9.5px; pointer-events: none; }
-.map-badge circle { fill: var(--color-ink); stroke: rgba(255, 255, 255, 0.4); stroke-width: 1; }
+.map-badge circle { fill: var(--color-night); stroke: rgba(255, 255, 255, 0.4); stroke-width: 1; }
 .map-badge { color: #fff; }
 .map-badge-cut circle, .map-badge-slow circle { stroke: #f0a868; }
 .map-badge-cut, .map-badge-slow { color: #f0a868; }
@@ -514,7 +515,7 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 
 /* Defense Lab replay stage (components/lab-replay.tsx). */
 .lab-status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; border-radius: 14px; padding: 10px 14px; background: var(--color-panel-2); box-shadow: inset 0 0 0 1px var(--color-line); font-size: 0.85rem; }
-.lab-mode { border-radius: 9999px; padding: 4px 10px; color: #fff; background: var(--color-ink); }
+.lab-mode { border-radius: 9999px; padding: 4px 10px; color: #fff; background: var(--color-night); }
 .lab-status-item { display: inline-flex; min-width: 0; align-items: center; gap: 6px; }
 .lab-dot { width: 8px; height: 8px; border-radius: 9999px; background: var(--color-faint); }
 .lab-tone-elevated .lab-dot { background: #d9822b; }
@@ -524,7 +525,7 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 .lab-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 10px; font-size: 0.75rem; color: var(--color-muted); }
 .lab-legend > span { display: inline-flex; align-items: center; gap: 6px; }
 .lab-key { width: 18px; height: 18px; flex: none; }
-.lab-key-dark { border-radius: 9999px; background: var(--color-ink); }
+.lab-key-dark { border-radius: 9999px; background: var(--color-night); }
 .lk-quiet { fill: #2f211d; stroke: #9a857f; stroke-width: 1.4; }
 .lk-elevated { fill: #2f211d; stroke: #d9822b; stroke-width: 2.4; stroke-dasharray: 4 2.5; }
 .lk-high { fill: #4a231b; stroke: var(--color-brand); stroke-width: 3.4; }
@@ -633,8 +634,8 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 .demo-tabs { display: inline-flex; flex-wrap: wrap; gap: 2px; border-radius: 12px; padding: 3px; background: rgba(255, 255, 255, 0.06); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); }
 .demo-tab { border-radius: 9px; padding: 7px 14px; font-size: 0.84rem; font-weight: 500; color: rgba(255, 255, 255, 0.7); transition: background-color 200ms, color 200ms; }
 .demo-tab:hover { color: #fff; }
-.demo-tab[aria-selected="true"] { background: #fff; color: var(--color-ink); }
-.demo-ink .demo-tab[aria-selected="true"] span { color: var(--color-ink); }
+.demo-tab[aria-selected="true"] { background: #fff; color: var(--color-night); }
+.demo-ink .demo-tab[aria-selected="true"] span { color: var(--color-night); }
 .demo-rise { animation: demo-rise 600ms var(--ease-quad) both; animation-delay: calc(var(--i, 0) * 60ms); }
 @keyframes demo-rise { from { opacity: 0; transform: translateY(8px); filter: blur(4px); } }
 .demo-progress { height: 2px; border-radius: 2px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
@@ -777,12 +778,12 @@ body:has(.commit-stage) main { color: #fff; }
 .amap-phases li[data-state="active"] { color: #fff; background: color-mix(in srgb, var(--color-brand) 55%, transparent); }
 .amap-phases li[data-state="done"] { color: #9ff0c6; background: rgba(95, 212, 154, 0.1); }
 .amap-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-.amap-btn { display: inline-flex; width: 34px; height: 34px; align-items: center; justify-content: center; border-radius: 9999px; background: #fff; color: var(--color-ink); font-size: 0.8rem; transition: transform 200ms; }
+.amap-btn { display: inline-flex; width: 34px; height: 34px; align-items: center; justify-content: center; border-radius: 9999px; background: #fff; color: var(--color-night); font-size: 0.8rem; transition: transform 200ms; }
 .amap-btn:hover { transform: scale(1.06); }
 .amap-scrub { width: 160px; accent-color: var(--color-brand); }
 .amap-speeds { display: inline-flex; border-radius: 9999px; padding: 2px; background: rgba(255,255,255,0.06); }
 .amap-speeds button { border-radius: 9999px; padding: 3px 9px; font-family: var(--font-mono); font-size: 0.68rem; color: rgba(255,255,255,0.6); }
-.amap-speeds button[aria-pressed="true"] { background: rgba(255,255,255,0.9); color: var(--color-ink); }
+.amap-speeds button[aria-pressed="true"] { background: rgba(255,255,255,0.9); color: var(--color-night); }
 .amap-grid { display: grid; gap: 14px; }
 @media (min-width: 1100px) { .amap-grid { grid-template-columns: 15.5rem minmax(0, 1fr) 19rem; } }
 .amap-rail { display: flex; flex-direction: column; gap: 6px; }
@@ -860,4 +861,194 @@ body:has(.commit-stage) main { color: #fff; }
   .lab-step { display: grid; grid-template-columns: 30px minmax(0, 1fr); column-gap: 14px; padding: 16px 18px; }
   .lab-step-n { grid-row: span 2; }
   .lab-step > p:first-of-type { margin-top: 4px; }
+}
+
+/* ==========================================================================================
+   Night surface — every page except the landing (which keeps its own hero → paper chapters).
+   The landing hero's world carried inward: warm ink, drifting ember light, fine grain, a
+   faint grid, glowing type and the same blur-rise motion. Tokens flip here, so components
+   written against bg-panel / text-ink / border-line follow without per-component changes.
+   `:root:not(:has(.hero-full))` is "not the landing"; it is plain CSS, so there is no flash.
+   ========================================================================================== */
+:root:not(:has(.hero-full)) {
+  color-scheme: dark;
+  --color-bg: #1c1210;
+  --color-panel: #261a17;
+  --color-panel-2: #2e211d;
+  --color-line: #3e2d28;
+  --color-control: #8a736c; /* 3.9:1 on panel: form borders stay visible (WCAG 1.4.11) */
+  --color-ink: #fff7f2;
+  --color-ink-2: #f6e9e3;
+  --color-muted: #cdbab3;
+  --color-faint: #a89089;
+  --color-brand-soft: #3d1f17;
+  --color-ok: #5fcf94;
+  --color-warn: #f0a868;
+  --color-bad: #ff7d69;
+  --color-info: #86b6f0;
+  --color-ember: #ff8a75; /* brand-coloured text on night: #c2452d is only 3.6:1 there */
+  --glass: rgb(255 247 242 / 4%);
+  --glass-line: rgb(255 247 242 / 9%);
+}
+:root:not(:has(.hero-full)) body { background: var(--color-night); }
+:root:not(:has(.hero-full)) ::selection { background: color-mix(in srgb, var(--color-brand) 45%, transparent); color: #fff; }
+:root:not(:has(.hero-full)) :focus-visible { outline-color: var(--color-ember); }
+
+/* Ambient light (components/ambient.tsx): fixed behind the page, the hero's orbs at roughly
+   two-thirds intensity so content stays readable. Orbs drift on transform; `translate` adds a
+   slow scroll parallax from --sy (0..1, written once per frame). Nothing here repaints text. */
+.ambient { display: none; }
+:root:not(:has(.hero-full)) .ambient { display: block; position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; --sy: 0; }
+.ambient-orb { position: absolute; border-radius: 9999px; will-change: transform; background: radial-gradient(circle, var(--orb) 0%, transparent 66%); }
+.ambient-orb-a { width: 70vmax; aspect-ratio: 1; left: -26vmax; top: -34vmax; --orb: color-mix(in srgb, var(--color-brand) 52%, transparent);
+  translate: 0 calc(var(--sy) * 14vh); animation: hero-drift-a 26s ease-in-out infinite alternate; }
+.ambient-orb-b { width: 56vmax; aspect-ratio: 1; right: -22vmax; top: 18vh; --orb: color-mix(in srgb, var(--color-brand-deep) 62%, transparent);
+  translate: 0 calc(var(--sy) * -22vh); animation: hero-drift-b 32s ease-in-out infinite alternate; }
+.ambient-orb-c { width: 90vmax; aspect-ratio: 1; left: 50%; bottom: -66vmax; margin-left: -45vmax; --orb: color-mix(in srgb, var(--color-brand) 58%, transparent);
+  translate: 0 calc(var(--sy) * -10vh); animation: ambient-breathe 14s ease-in-out infinite alternate; }
+@keyframes ambient-breathe { from { transform: scale(0.92); opacity: 0.75; } to { transform: scale(1.06); opacity: 1; } }
+.ambient-grid { position: absolute; inset: 0; opacity: 0.8;
+  background-image: linear-gradient(rgb(255 247 242 / 3.5%) 1px, transparent 1px), linear-gradient(90deg, rgb(255 247 242 / 3.5%) 1px, transparent 1px);
+  background-size: 56px 56px; background-position: center top;
+  mask-image: radial-gradient(90% 70% at 50% 0%, #000 0%, transparent 75%); -webkit-mask-image: radial-gradient(90% 70% at 50% 0%, #000 0%, transparent 75%); }
+.ambient-grain { position: absolute; inset: 0; opacity: 0.11;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.6'/></svg>"); }
+
+/* Brand-coloured text and links read as ember on night. */
+:root:not(:has(.hero-full)) :is(.text-brand, .text-accent),
+:root:not(:has(.hero-full)) :is(.hover\:text-brand, .hover\:text-accent):hover { color: var(--color-ember); }
+:root:not(:has(.hero-full)) :is(.lab-eyebrow, .lab-headline-num, .lab-tone-high) { color: var(--color-ember); }
+:root:not(:has(.hero-full)) :is(.lab-best, .lab-step-n, .demo-marker, .demo-chip-info) { color: #ffb4a3; background: rgb(194 69 45 / 20%); }
+:root:not(:has(.hero-full)) .demo-chip-ok { color: #7fe0aa; background: rgb(95 196 141 / 14%); }
+:root:not(:has(.hero-full)) .demo-chip-warn { color: #ffc36b; background: rgb(240 164 58 / 14%); }
+:root:not(:has(.hero-full)) .demo-chip-bad { color: #ff9b88; background: rgb(224 115 92 / 16%); }
+
+/* Ink bands (project header, Lab header, pricing, sign-in) become small heroes: a drifting
+   ember orb under the grain, glowing display type, and the hero's staggered blur-rise. */
+:root:not(:has(.hero-full)) main .hero-ink::before {
+  content: ""; position: absolute; z-index: -1; width: 60%; aspect-ratio: 1; right: -12%; top: -70%; border-radius: 9999px; pointer-events: none;
+  background: radial-gradient(circle, color-mix(in srgb, var(--color-brand) 55%, transparent) 0%, transparent 65%);
+  animation: hero-drift-b 18s ease-in-out infinite alternate; will-change: transform;
+}
+:root:not(:has(.hero-full)) main .hero-ink { box-shadow: inset 0 0 0 1px rgb(255 247 242 / 7%), 0 40px 80px -48px rgb(194 69 45 / 55%); }
+:root:not(:has(.hero-full)) main .hero-ink .display { color: #fff7f2; text-shadow: 0 0 0.12em rgb(255 205 184 / 18%), 0 0 0.45em rgb(229 113 78 / 14%); }
+:root:not(:has(.hero-full)) main :is(.hero-ink, .page-title, .project-head) > * { animation: night-rise 800ms var(--ease-quad) both; }
+:root:not(:has(.hero-full)) main :is(.hero-ink, .page-title, .project-head) > :nth-child(2) { animation-delay: 90ms; }
+:root:not(:has(.hero-full)) main :is(.hero-ink, .page-title, .project-head) > :nth-child(3) { animation-delay: 180ms; }
+:root:not(:has(.hero-full)) main :is(.hero-ink, .page-title, .project-head) > :nth-child(n + 4) { animation-delay: 270ms; }
+@keyframes night-rise { from { opacity: 0; filter: blur(8px); transform: translateY(12px); } }
+.page-title h1 { text-wrap: balance; }
+:root:not(:has(.hero-full)) .page-title { border-bottom: 0; position: relative; }
+:root:not(:has(.hero-full)) .page-title::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--color-brand) 70%, transparent), var(--glass-line) 35%, transparent); }
+:root:not(:has(.hero-full)) .page-title h1 { text-shadow: 0 0 0.5em rgb(229 113 78 / 16%); }
+
+/* Panels: dark glass on the ambient light, with a pointer-following ember glow (--gx/--gy
+   from ambient.tsx) and a one-time rise when first scrolled into view. */
+@property --glow { syntax: "<number>"; inherits: false; initial-value: 0; }
+:root:not(:has(.hero-full)) .panel {
+  border-color: var(--glass-line);
+  background:
+    radial-gradient(420px circle at var(--gx, 50%) var(--gy, 0%), rgb(194 69 45 / calc(var(--glow) * 14%)), transparent 60%),
+    linear-gradient(180deg, rgb(255 247 242 / 5%), rgb(255 247 242 / 2%) 40%), rgb(38 26 23 / 72%);
+  box-shadow: inset 0 1px 0 rgb(255 247 242 / 6%), 0 24px 48px -32px rgb(0 0 0 / 70%);
+  transition: border-color 300ms var(--ease-quad), --glow 400ms var(--ease-quad);
+}
+:root:not(:has(.hero-full)) .panel:hover { --glow: 1; border-color: rgb(255 138 117 / 22%); }
+:root:not(:has(.hero-full)) .panel > header { background: transparent; border-color: var(--glass-line); }
+:root:not(:has(.hero-full)) .panel > header h2 { color: var(--color-muted); }
+:root:not(:has(.hero-full)) .panel > header h2::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 8px; vertical-align: 1px; border-radius: 9999px; background: var(--color-brand); box-shadow: 0 0 10px 1px rgb(194 69 45 / 70%); }
+[data-reveal] { transition: opacity 700ms var(--ease-quad), transform 700ms var(--ease-quad), filter 700ms var(--ease-quad); }
+[data-reveal="hidden"] { opacity: 0; transform: translateY(18px); filter: blur(6px); }
+
+/* Interactive cards and rows lift toward the light. */
+:root:not(:has(.hero-full)) main a:is(.rounded-xl, .rounded-2xl).border,
+:root:not(:has(.hero-full)) .demo-card {
+  border-color: var(--glass-line); background: linear-gradient(180deg, rgb(255 247 242 / 5%), rgb(255 247 242 / 2%)), rgb(38 26 23 / 70%);
+  transition: border-color 250ms var(--ease-quad), box-shadow 250ms var(--ease-quad), transform 250ms var(--ease-quad);
+}
+:root:not(:has(.hero-full)) main a:is(.rounded-xl, .rounded-2xl).border:hover,
+:root:not(:has(.hero-full)) .demo-card:hover { border-color: rgb(255 138 117 / 45%); box-shadow: 0 20px 44px -26px rgb(194 69 45 / 60%); transform: translateY(-2px); }
+:root:not(:has(.hero-full)) main .bg-white:not(a, button) { background: linear-gradient(180deg, rgb(255 247 242 / 5%), rgb(255 247 242 / 2%)), rgb(38 26 23 / 80%); border-color: var(--glass-line); }
+:root:not(:has(.hero-full)) main :is(a, button).bg-white { --color-ink: var(--color-night); --color-brand: #c2452d; color: var(--color-night); }
+:root:not(:has(.hero-full)) main :is(ol, ul).divide-y > li { transition: background-color 200ms; }
+:root:not(:has(.hero-full)) main :is(ol, ul).divide-y > li:hover { background-color: rgb(255 247 242 / 2.5%); }
+
+/* Buttons (components/ui Button, data-variant). Primary glows like the hero CTA on hover. */
+:root:not(:has(.hero-full)) .btn[data-variant="primary"] { box-shadow: 0 0 0 1px rgb(255 138 117 / 25%) inset, 0 10px 24px -12px rgb(194 69 45 / 80%); }
+:root:not(:has(.hero-full)) .btn[data-variant="primary"]:not(:disabled):hover { background: #d4543a; box-shadow: 0 0 0 1px rgb(255 160 140 / 40%) inset, 0 14px 32px -10px rgb(194 69 45 / 95%); }
+:root:not(:has(.hero-full)) .btn[data-variant="secondary"] { background: rgb(255 247 242 / 7%); box-shadow: inset 0 0 0 1px var(--glass-line); }
+:root:not(:has(.hero-full)) .btn[data-variant="secondary"]:not(:disabled):hover { background: rgb(255 247 242 / 12%); }
+:root:not(:has(.hero-full)) .btn[data-variant="ghost"]:not(:disabled):hover { background: rgb(255 247 242 / 7%); }
+:root:not(:has(.hero-full)) :is(input, select, textarea):not([type="checkbox"], [type="radio"], [type="range"]) { background-color: rgb(20 13 11 / 65%); }
+:root:not(:has(.hero-full)) :is(input, select, textarea):focus { box-shadow: 0 0 0 3px rgb(194 69 45 / 30%), 0 0 24px -4px rgb(194 69 45 / 45%); }
+:root:not(:has(.hero-full)) :is(input[type="checkbox"], input[type="radio"], input[type="range"]) { accent-color: var(--color-brand); }
+
+/* Loading: an ember pulse instead of a blinking grey line. */
+.loading-dot { display: inline-block; width: 7px; height: 7px; margin-right: 8px; vertical-align: 1px; border-radius: 9999px; background: var(--color-brand); box-shadow: 0 0 0 0 rgb(194 69 45 / 60%); animation: loading-ping 1.4s var(--ease-quad) infinite; }
+@keyframes loading-ping { 0% { box-shadow: 0 0 0 0 rgb(194 69 45 / 60%); } 80%, 100% { box-shadow: 0 0 0 10px rgb(194 69 45 / 0%); } }
+
+/* Project tabs: the active tab is lit from below. */
+:root:not(:has(.hero-full)) .project-tabs { border-color: var(--glass-line); }
+:root:not(:has(.hero-full)) .project-tab::after { box-shadow: 0 0 12px 1px rgb(194 69 45 / 75%); }
+:root:not(:has(.hero-full)) .project-tab:hover:not([aria-current="page"])::after { background: rgb(255 247 242 / 25%); box-shadow: none; }
+:root:not(:has(.hero-full)) .project-tab[aria-current="page"] { text-shadow: 0 0 14px rgb(255 138 117 / 45%); }
+
+/* Defense Lab and demo surfaces that were drawn light on purpose. */
+:root:not(:has(.hero-full)) .lab-segment-btn[aria-pressed="true"] { background: rgb(255 247 242 / 12%); color: var(--color-ink); box-shadow: inset 0 0 0 1px rgb(255 247 242 / 14%); }
+:root:not(:has(.hero-full)) :is(.lab-headline, .lab-score-card, .lab-step, .lab-replay-card, .pricing-card-light) {
+  background: linear-gradient(180deg, rgb(255 247 242 / 5%), rgb(255 247 242 / 2%) 45%), rgb(38 26 23 / 72%);
+  box-shadow: inset 0 0 0 1px var(--glass-line), 0 24px 48px -32px rgb(0 0 0 / 70%);
+}
+:root:not(:has(.hero-full)) .lab-headline-tile { box-shadow: -1px 0 0 0 var(--glass-line), 0 -1px 0 0 var(--glass-line); }
+:root:not(:has(.hero-full)) .lab-headline-num { text-shadow: 0 0 0.5em rgb(229 113 78 / 35%); }
+:root:not(:has(.hero-full)) .lab-score-row[data-ai] .lab-score-bar { background: linear-gradient(90deg, var(--color-brand-deep), var(--color-brand) 60%, #e5654b); box-shadow: 0 0 12px rgb(194 69 45 / 55%); }
+:root:not(:has(.hero-full)) .lab-scrub-played { background: color-mix(in srgb, var(--color-brand) 45%, transparent); }
+:root:not(:has(.hero-full)) .agent-journey { background: linear-gradient(135deg, rgb(90 150 160 / 12%), transparent); }
+
+/* Footer (components/site-footer.tsx) on night pages: lit hairline, wordmark and the note. */
+.night-footer { position: relative; margin-top: 64px; }
+.night-footer::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--color-brand) 70%, transparent) 50%, transparent); }
+.night-footer::after { content: ""; position: absolute; left: 25%; right: 25%; top: -40px; height: 80px; pointer-events: none; background: radial-gradient(50% 50% at 50% 50%, rgb(194 69 45 / 16%), transparent 70%); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-orb, :root:not(:has(.hero-full)) main .hero-ink::before, .loading-dot { animation: none; }
+  .ambient-orb { translate: none; }
+  :root:not(:has(.hero-full)) main :is(.hero-ink, .page-title, .project-head) > * { animation: none; }
+  [data-reveal] { transition: none; }
+  [data-reveal="hidden"] { opacity: 1; transform: none; filter: none; }
+  :root:not(:has(.hero-full)) main a:is(.rounded-xl, .rounded-2xl).border:hover, :root:not(:has(.hero-full)) .demo-card:hover { transform: none; }
+}
+
+/* Pricing on night: the recommended plan is the lit one; the band dissolves into the page. */
+:root:not(:has(.hero-full)) .bleed-hero { -webkit-mask-image: linear-gradient(180deg, transparent, #000 14%, #000 72%, transparent); mask-image: linear-gradient(180deg, transparent, #000 14%, #000 72%, transparent); }
+:root:not(:has(.hero-full)) .pricing-card-dark {
+  background: radial-gradient(90% 60% at 100% 0%, color-mix(in srgb, var(--color-brand) 38%, transparent), transparent 70%), radial-gradient(70% 50% at 0% 100%, rgb(143 47 30 / 35%), transparent 70%), #21150f;
+  box-shadow: inset 0 0 0 1px rgb(255 138 117 / 28%), 0 40px 90px -40px rgb(194 69 45 / 75%);
+}
+:root:not(:has(.hero-full)) .pricing-card { transition: transform 400ms var(--ease-quad), box-shadow 400ms var(--ease-quad); }
+:root:not(:has(.hero-full)) .pricing-card:hover { transform: translateY(-3px); }
+:root:not(:has(.hero-full)) .pricing-plans > * { animation: night-rise 900ms var(--ease-quad) both; animation-delay: 260ms; }
+:root:not(:has(.hero-full)) .pricing-plans > :nth-child(2) { animation-delay: 380ms; }
+:root:not(:has(.hero-full)) .faq-pill { background: var(--glass); box-shadow: inset 0 0 0 1px var(--glass-line); }
+:root:not(:has(.hero-full)) .faq, :root:not(:has(.hero-full)) .faq-item { border-color: var(--glass-line); }
+:root:not(:has(.hero-full)) .faq-q:hover { color: var(--color-ember); }
+:root:not(:has(.hero-full)) .faq-item[data-open] .faq-q { color: var(--color-ember); }
+@media (prefers-reduced-motion: reduce) {
+  :root:not(:has(.hero-full)) .pricing-plans > * { animation: none; }
+  :root:not(:has(.hero-full)) .pricing-card:hover { transform: none; }
+}
+
+/* Sign-in cards (access code, console sign-in): a lit glass card that rises in, md:mt more air. */
+:root:not(:has(.hero-full)) .signin-card {
+  margin-top: clamp(3rem, 10vh, 7rem); border-color: rgb(255 138 117 / 18%);
+  background: linear-gradient(180deg, rgb(255 247 242 / 5%), rgb(255 247 242 / 1.5%)), rgb(38 26 23 / 78%);
+  box-shadow: inset 0 1px 0 rgb(255 247 242 / 7%), 0 50px 100px -50px rgb(194 69 45 / 70%), 0 0 0 1px rgb(0 0 0 / 30%);
+  animation: night-rise 900ms var(--ease-quad) both;
+}
+:root:not(:has(.hero-full)) .signin-card > :last-child > * { animation: night-rise 800ms var(--ease-quad) both; animation-delay: 200ms; }
+:root:not(:has(.hero-full)) .signin-card > :last-child > :nth-child(n + 3) { animation-delay: 300ms; }
+:root:not(:has(.hero-full)) .signin-card .hero-ink { box-shadow: none; }
+@media (prefers-reduced-motion: reduce) {
+  :root:not(:has(.hero-full)) .signin-card, :root:not(:has(.hero-full)) .signin-card > :last-child > * { animation: none; }
 }

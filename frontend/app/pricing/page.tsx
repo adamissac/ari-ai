@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BRAND_NAME } from '@/components/brand';
 import { Faq } from '@/components/faq';
+import { Reveal } from '@/components/reveal';
 import { RollText } from '@/components/ui';
 import { DEMO_ONLY } from '@/lib/deployment';
 
@@ -68,7 +69,7 @@ function Check({ dark }: { dark?: boolean }) {
 
 function Cta({ href, children, tone }: { href: string; children: string; tone: 'light' | 'dark' }) {
   return (
-    <Link href={href} className={`group label-mono inline-flex h-10 items-center rounded-md px-4 transition-colors duration-[250ms] ${tone === 'light' ? 'bg-white text-ink hover:bg-brand hover:text-on-brand' : 'bg-ink text-white hover:bg-brand'}`}>
+    <Link href={href} className={`group label-mono inline-flex h-10 items-center rounded-md px-4 transition-colors duration-[250ms] ${tone === 'light' ? 'bg-white text-ink hover:bg-brand hover:text-on-brand' : 'bg-white/10 text-white shadow-[inset_0_0_0_1px_rgb(255_247_242_/_14%)] hover:bg-brand'}`}>
       <RollText>{children}</RollText>
     </Link>
   );
@@ -120,13 +121,16 @@ export default function PricingPage() {
       </section>
       <p className="mt-4 text-center text-xs text-faint" data-testid="pricing-preview">Hackathon preview: these plans are proposals and nothing can be purchased yet. Prices in USD.</p>
 
-      <section aria-labelledby="faq-title" className="bleed bleed-paper mt-24 grid gap-6 py-16 md:grid-cols-12 md:py-24">
-        <div className="md:col-span-3">
-          <h2 id="faq-title" className="faq-pill label-mono">FAQ</h2>
-        </div>
-        <div className="md:col-span-9"><Faq items={FAQ} /></div>
-      </section>
+      <Reveal>
+        <section aria-labelledby="faq-title" className="pricing-faq mt-24 grid gap-6 py-16 md:grid-cols-12 md:py-24">
+          <div className="md:col-span-3">
+            <h2 id="faq-title" className="faq-pill label-mono">FAQ</h2>
+          </div>
+          <div className="md:col-span-9"><Faq items={FAQ} /></div>
+        </section>
+      </Reveal>
 
+      <Reveal>
       <section aria-labelledby="pricing-cta" className="hero-ink mb-16 mt-16 rounded-2xl px-6 py-14 text-center md:px-12 md:py-20">
         <h2 id="pricing-cta" className="display mx-auto max-w-3xl text-3xl font-semibold md:text-5xl">See what your code really does before an attacker does.</h2>
         <div className="mt-8 flex flex-wrap justify-center gap-2">
@@ -136,6 +140,7 @@ export default function PricingPage() {
           </Link>
         </div>
       </section>
+      </Reveal>
     </div>
   );
 }
