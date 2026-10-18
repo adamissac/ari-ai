@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { evidenceShot, expectNoSideScroll, newUser } from './helpers';
+import { evidenceShot, expectNoSideScroll, newUser, signIn } from './helpers';
 
 // These tests intercept the network on purpose: they prove the UI shows honest
 // failure states instead of substituting data when the backend misbehaves.
@@ -43,6 +43,18 @@ test('signed-out users see sign-in, not data', async ({ page }) => {
   await page.goto('/projects');
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Continue with GitHub' })).toHaveAttribute('href', '/api/v1/auth/github/login');
+  // A sign-in screen shows no records, so the records footer must not claim it does (#288).
+  await expect(page.getByTestId('site-footer')).toHaveCount(0);
+  await page.goto('/access');
+  await expect(page.getByTestId('access-signin')).toBeVisible();
+  await expect(page.getByTestId('site-footer')).toHaveCount(0);
+});
+
+test('signed-in console and Defense Lab keep the records footer', async ({ page }) => {
+  await signIn(page, 'e2e-alice');
+  await expect(page.getByTestId('site-footer')).toContainText('saved records');
+  await page.goto('/lab');
+  await expect(page.getByTestId('site-footer')).toContainText('saved records');
 });
 
 test('Defense Lab plots only the committed, schema-validated evaluation bundle', async ({ page }) => {
