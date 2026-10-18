@@ -25,6 +25,7 @@ export function HeroStage({ children, className = '', labelledBy, play = true }:
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let frame = 0;
     let pointer: { x: number; y: number } | null = null;
+    let moved = false; // the spotlight only needs repainting when the pointer moves
     let lastScroll = '';
     const paint = () => {
       frame = 0;
@@ -36,7 +37,8 @@ export function HeroStage({ children, className = '', labelledBy, play = true }:
       // Once the page has fully covered the pinned hero, stop painting it (orbs, glow, text).
       toggle(el.dataset, 'covered', y > height * 1.05);
       if (reduced) return;
-      if (pointer && y < height) {
+      if (pointer && moved && y < height) {
+        moved = false;
         el.style.setProperty('--mx', `${pointer.x - box.left}px`);
         el.style.setProperty('--my', `${pointer.y - box.top}px`);
         el.querySelectorAll<HTMLElement>('[data-spotlight]').forEach(line => {
@@ -49,7 +51,7 @@ export function HeroStage({ children, className = '', labelledBy, play = true }:
       if (scroll !== lastScroll) { lastScroll = scroll; el.style.setProperty('--scroll', scroll); }
     };
     const schedule = () => { if (!frame) frame = requestAnimationFrame(paint); };
-    const onMove = (e: PointerEvent) => { pointer = { x: e.clientX, y: e.clientY }; el.dataset.pointer = 'on'; schedule(); };
+    const onMove = (e: PointerEvent) => { pointer = { x: e.clientX, y: e.clientY }; moved = true; el.dataset.pointer = 'on'; schedule(); };
     const onLeave = () => { el.dataset.pointer = 'off'; };
     el.addEventListener('pointermove', onMove);
     el.addEventListener('pointerleave', onLeave);

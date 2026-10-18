@@ -41,7 +41,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 76
     await expect.poll(() => page.locator('.hero-in').evaluateAll(els => els.every(el => Number(getComputedStyle(el).opacity) >= 0.99))).toBe(true);
     await expect(page.locator('header .hdr-logo')).toHaveCSS('color', 'rgb(255, 255, 255)');
     await expect(heading.locator('.hero-line').first()).toHaveCSS('color', 'rgb(255, 247, 242)');
-    await expect(heading.locator('.hero-line').first()).not.toHaveCSS('text-shadow', 'none');
+    await expect(heading.locator('.hero-line').first()).toHaveCSS('text-shadow', 'none'); // no glow on the headline
     await expect.poll(() => page.evaluate(() => document.fonts.status)).toBe('loaded');
     const fonts = await page.evaluate(() => ({
       logo: getComputedStyle(document.querySelector('.ari-wordmark-text')!).fontFamily,

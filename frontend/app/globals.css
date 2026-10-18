@@ -215,10 +215,9 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 .hero-headline .hero-line {
   white-space: nowrap;
   color: #fff7f2;
-  text-shadow: 0 0 0.12em rgb(255 205 184 / 20%), 0 0 0.35em rgb(229 113 78 / 15%), 0 0 0.7em rgb(194 69 45 / 12%);
 }
-/* Keep the pointer spotlight's crisp text core, with a warm tint and diffuse ember bloom.
-   Em-based shadow radii scale with the existing responsive headline. No extra blur layer. */
+/* The pointer spotlight keeps a crisp, warm-white text core. No glow: a blurred text-shadow on
+   type this large had to be repainted with the spotlight and made scrolling over the hero chop. */
 .hero-stage[data-fx="on"] .hero-headline .hero-line {
   --dim: #fff7f2;
   background-image: radial-gradient(260px circle at var(--tx) var(--ty), #fffbf8 0%, #fff9f5 30%, var(--dim) 100%);
