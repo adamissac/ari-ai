@@ -173,3 +173,6 @@ The access-gated sample account distinguishes its sample data from the separatel
 
 
 The homepage closing invitation uses responsive assessment and Defense Lab action cards. Evaluation selection uses aligned native controls.
+
+
+Sign-in screens share a centered form over subtle decorative orbits; reduced motion disables orbit animation.

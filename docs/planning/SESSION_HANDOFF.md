@@ -776,3 +776,6 @@ Pushed to `main` at the user's request. Frontend only, no contract or backend ch
 
 
 Homepage invitation and evaluation picker polish: responsive action cards, explicit simulation description, aligned native select. ESLint and TypeScript pass after rebuilding transport.
+
+
+Sign-in refinement: removed promotional side content and centered the shared AuthStage card. Verified centers at 720px/195px in 1440px/390px viewports, no horizontal overflow, and reduced-motion animation disabled. ESLint and TypeScript pass.

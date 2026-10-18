@@ -1517,3 +1517,13 @@ body:has(.commit-stage) main { color: #fff; }
 .next-step-primary:hover { background: #fff9f3; border-color: #fff9f3; }
 @media (max-width: 700px) { .next-step { grid-template-columns: 1fr; border-radius: 18px; gap: 28px; } .next-step-card { padding: 20px; } .next-step-sequence { margin-top: 24px; } }
 @media (prefers-reduced-motion: reduce) { .next-step-card { transition: none; } }
+
+/* Quiet motion frames the form without competing with it. */
+.auth-stage .hero-content { position: relative; }
+.auth-orbits { position: absolute; inset: 50% auto auto 50%; width: min(100vw, 1000px); aspect-ratio: 1; transform: translate(-50%, -50%); pointer-events: none; z-index: -1; }
+.auth-orbits span { position: absolute; inset: 9%; border: 1px solid rgb(255 184 166 / 9%); border-radius: 50%; animation: auth-orbit 42s linear infinite; }
+.auth-orbits span::after { content: ''; position: absolute; left: 50%; top: -3px; width: 5px; height: 5px; border-radius: 50%; background: #e9a18b; box-shadow: 0 0 18px 3px #e9a18340; }
+.auth-orbits span:nth-child(2) { inset: 0; animation-duration: 65s; animation-direction: reverse; opacity: .6; }
+.auth-orbits span:nth-child(3) { inset: 20%; animation-duration: 32s; opacity: .45; }
+@keyframes auth-orbit { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .auth-orbits span { animation: none; } }
