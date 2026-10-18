@@ -1401,3 +1401,32 @@ body:has(.commit-stage) main { color: #fff; }
 :root:not(:has(.hero-full)) .net-edge[data-slow] { stroke: #f0a868; stroke-dasharray: 2 5; stroke-width: 1.6; }
 :root:not(:has(.hero-full)) .net-tag-contained rect { fill: #5fd49a; }
 :root:not(:has(.hero-full)) .net-tag-contained text { fill: #06200f; }
+
+/* ==========================================================================================
+   Paper bands: white sections inside night pages, like the landing's light chapters between its
+   dark ones. Full bleed; the light palette is restored inside, so components read as on paper.
+   ========================================================================================== */
+.paper {
+  position: relative; isolation: isolate; color-scheme: light; color: var(--color-ink);
+  --color-bg: #ffffff; --color-panel: #ffffff; --color-panel-2: #faf6f4; --color-line: #ece1dd; --color-control: #9a857f;
+  --color-ink: #1c1210; --color-ink-2: #2b1d19; --color-muted: #6b5752; --color-faint: #806b65; --color-brand-soft: #f8e7e3;
+  --color-ok: #1f7a4d; --color-warn: #a35a00; --color-bad: #b42318; --color-info: #1d5fa8; --glass-line: #ece1dd;
+}
+.paper::after { content: ""; position: absolute; z-index: -1; inset-block: 0; inset-inline: calc(50% - 50vw); pointer-events: none;
+  background: linear-gradient(180deg, #fbf8f6 0%, #ffffff 120px); box-shadow: 0 -1px 0 rgb(255 247 242 / 8%); }
+.paper ::selection { background: color-mix(in srgb, var(--color-brand) 22%, transparent); color: inherit; }
+/* Night accents switched back to their paper values inside a band. */
+:root:not(:has(.hero-full)) .paper :is(.text-brand, .text-accent) { color: var(--color-brand); }
+:root:not(:has(.hero-full)) .paper :is(.lab-eyebrow) { color: var(--color-brand-deep); }
+:root:not(:has(.hero-full)) .paper .lab-headline-num { color: var(--color-ink); text-shadow: none; }
+:root:not(:has(.hero-full)) .paper :is(.lab-best, .lab-step-n) { color: var(--color-brand-deep); background: var(--color-brand-soft); box-shadow: none; }
+:root:not(:has(.hero-full)) .paper .lab-step-n { background: none; color: var(--color-faint); }
+:root:not(:has(.hero-full)) .paper .lab-step { border-top-color: var(--color-line); }
+:root:not(:has(.hero-full)) .paper :is(.lab-headline, .lab-score-card) { background: #fff; box-shadow: inset 0 0 0 1px var(--color-line), 0 1px 2px rgb(28 18 16 / 4%), 0 18px 40px -30px rgb(28 18 16 / 25%); }
+:root:not(:has(.hero-full)) .paper .lab-score-bar { background: color-mix(in srgb, var(--color-faint) 45%, transparent); box-shadow: none; }
+:root:not(:has(.hero-full)) .paper .lab-score-row[data-ai] .lab-score-bar { background: var(--color-ink); box-shadow: none; }
+:root:not(:has(.hero-full)) .paper .lab-score-row[data-ai] .lab-score-band { background: color-mix(in srgb, var(--color-ink) 14%, transparent); }
+:root:not(:has(.hero-full)) .paper .lab-score-track { background: #f1ebe8; }
+:root:not(:has(.hero-full)) .paper .faq-pill { background: #fff; box-shadow: inset 0 0 0 1px var(--color-line); }
+:root:not(:has(.hero-full)) .paper :is(.faq-q:hover, .faq-item[data-open] .faq-q) { color: var(--color-brand); }
+:root:not(:has(.hero-full)) .paper .panel { background: #fff; border-color: var(--color-line); box-shadow: 0 1px 2px rgb(28 18 16 / 4%); }
