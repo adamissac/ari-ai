@@ -56,12 +56,6 @@ class IdPrefix(StrEnum):
     itk = "itk"
     rtw = "rtw"
     inc = "inc"
-    lap = "lap"  # live-defense connected application
-    lgr = "lgr"  # live-defense action grant
-    sev = "sev"  # security telemetry event
-    lin = "lin"  # live incident
-    dac = "dac"  # defense action
-    lnt = "lnt"  # live notification
 
 
 def ulid() -> str:
@@ -116,9 +110,3 @@ JobId = Annotated[str, _pattern("job")]
 RequestId = Annotated[str, _pattern("req")]
 IngestTokenId = Annotated[str, _pattern("itk")]
 IncidentId = Annotated[str, _pattern("inc")]
-LiveAppId = Annotated[str, _pattern("lap")]
-LiveGrantId = Annotated[str, _pattern("lgr")]
-SecurityEventId = Annotated[str, _pattern("sev")]
-LiveIncidentId = Annotated[str, _pattern("lin")]
-DefenseActionId = Annotated[str, _pattern("dac")]
-LiveNotificationId = Annotated[str, _pattern("lnt")]
