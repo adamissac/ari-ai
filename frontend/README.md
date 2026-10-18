@@ -57,6 +57,26 @@ every RL metric and provenance) is kept, one click away. All counts come from re
   landing, the other tabs fade in on scroll over the hero.
 - `components/faq.tsx`: accessible accordion used on `/pricing`.
 
+## Night surface (every page except the landing)
+
+Pages without a full-screen hero stage (`.hero-full`: the landing and the sign-in screens)
+carry the hero's look at lower intensity. Everything is in the "Night surface" section of
+`app/globals.css`:
+
+- **Tokens flip** under `:root:not(:has(.hero-full))`: `bg`, `panel`, `panel-2`, `line`,
+  `ink`, `muted`, `faint`, `control` and the status colours get night values, so anything
+  written against `bg-panel` / `text-ink` / `border-line` follows with no component change.
+  Use `--color-night` (never flips) for a surface that must stay dark, and `--color-ember`
+  for brand-coloured text. Night contrast is asserted in `tests/unit/contrast.test.ts`.
+- **Ambient light**: `components/ambient.tsx` (root layout) is a fixed layer of drifting
+  ember orbs, a faint grid and grain, with a slow scroll parallax (`--sy`). It also sets
+  `--gx/--gy` on the panel under the mouse for its glow.
+- **Motion**: page titles (`PageTitle` → `.page-title`), ink bands (`.hero-ink`) and the
+  project header rise in with the hero's blur; `Panel` rises once when first scrolled into
+  view (`useRevealOnScroll` in `components/reveal.tsx`); primary buttons, project tabs and
+  bordered link cards glow on hover; `Loading` shows an ember pulse. All of it stops under
+  `prefers-reduced-motion`.
+
 ## Commands
 
 Node ^22.22.2 or ≥ 24.15 (jsdom 30 for the unit tests). From `frontend/`:

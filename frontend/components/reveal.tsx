@@ -22,6 +22,8 @@ export function useRevealOnScroll<T extends HTMLElement>(): RefObject<T | null> 
       io.disconnect();
       el.style.transitionDelay = `${Math.round(Math.min(1, Math.max(0, el.getBoundingClientRect().left / window.innerWidth)) * 160)}ms`;
       el.dataset.reveal = 'shown';
+      // The stagger is for the entrance only; later hover transitions start at once.
+      el.addEventListener('transitionend', () => { el.style.transitionDelay = ''; }, { once: true });
     }, { rootMargin: '0px 0px -6% 0px' });
     io.observe(el);
     return () => io.disconnect();
