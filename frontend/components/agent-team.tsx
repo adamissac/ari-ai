@@ -32,7 +32,7 @@ export function AgentTeam({ runs, selected: controlled, onSelect, hideList = fal
                 aria-pressed={pressed}
                 data-testid={`agent-${item.name}`}
                 onClick={() => setSelected(item.name)}
-                className={`w-full rounded-md border px-3 py-2 text-left ${pressed ? 'border-accent bg-accent/10' : 'border-line bg-panel-2 hover:border-accent/40'}`}
+                className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${pressed ? 'border-ink bg-ink/5' : 'border-line bg-panel-2 hover:border-ink/30'}`}
               >
                 <span className="flex items-center justify-between gap-2">
                   <span className="font-semibold">{item.label}</span>
