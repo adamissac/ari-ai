@@ -70,7 +70,8 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 76
         if (scrollY < 100) await expect(item).toBeHidden();
         else await expect(item).toBeVisible();
       }
-      await expect(secondary.locator('a[href="/pricing"]')).toHaveCSS('background-color', 'rgb(194, 69, 45)');
+      // Pricing is a plain sibling link (#290), not a filled call to action.
+      await expect(secondary.locator('a[href="/pricing"]')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
       const currentAccount = (await account.boundingBox())!;
       expect(currentAccount.x).toBe(initialAccount.x);
       expect(currentAccount.y).toBe(initialAccount.y);
