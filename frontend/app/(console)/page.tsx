@@ -5,13 +5,13 @@ import { useState, type CSSProperties } from 'react';
 import { BRAND_HEADLINE, BRAND_HEADLINE_REST } from '@/components/brand';
 import { Reveal } from '@/components/reveal';
 import { HowItWorks, ProblemScene, ProofStats, Walkthrough } from '@/components/story';
-import { HeroStage, useLoopCursor } from '@/components/hero';
+import { ASSESSMENT_LOOP, HeroStage, useLoopCursor } from '@/components/hero';
 import { IntroLoader } from '@/components/intro-loader';
 import { OptionalUserBar } from '@/components/user-bar';
 import { DEMO_ONLY } from '@/lib/deployment';
 import { RollText } from '@/components/ui';
 
-const LOOP = ['Understand', 'Review', 'Attack Safely', 'Diagnose', 'Repair', 'Verify', 'Monitor'];
+const LOOP = ASSESSMENT_LOOP;
 
 // A demo-only build has no backend, so the calls to action open the access-code sign-in.
 const START = DEMO_ONLY ? { href: '/access', hero: 'Sign in', end: 'Sign in' } : { href: '/projects', hero: 'Go to projects', end: 'Open projects' };

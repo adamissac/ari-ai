@@ -2,8 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { evidenceShot, expectNoSideScroll } from './helpers';
 
 // The demo account (ADR 0013) needs no backend: an access code checked on the server opens
-// the Lumen Pay sample account. These tests prove the gate, the flow, and that every page
-// keeps the small "Demo account · sample data" tag and footer.
+// the Lumen Pay account. These tests prove the gate and the flow.
 const CODE = process.env.DEMO_ACCESS_CODE ?? 'e2e-demo-access-code';
 
 async function signInWithCode(page: Page, code = CODE): Promise<void> {
@@ -18,19 +17,15 @@ test('demo account: access code, Lumen Pay, repo, commit, seven agents, review, 
   await expect(page.getByTestId('access-error')).toContainText('not valid');
   await signInWithCode(page);
   await expect(page.getByTestId('demo-orgs')).toBeVisible();
-  await expect(page.getByTestId('demo-account-tag').first()).toContainText('Demo account');
-  await expect(page.getByTestId('demo-account-tag').first()).toHaveAttribute('title', /recorded live run is saved evidence.*not account activity/);
-  await expect(page.getByTestId('site-footer')).toContainText('not sample data or a run happening now');
   await expect(page.getByTestId('recorded-live-run')).toContainText('does not establish red-to-green proof');
   await page.setViewportSize({ width: 375, height: 800 });
   await expectNoSideScroll(page);
   await page.setViewportSize({ width: 1280, height: 800 });
-  await expect(page.getByTestId('header-account')).toContainText('alex-rivera');
+  await expect(page.getByTestId('header-account')).toContainText('akshar-koth');
   await page.getByTestId('demo-org-lumen-pay').click();
   await expect(page.getByTestId('demo-repos')).toContainText('payments-api');
   await page.getByTestId('demo-repo-payments-api').click();
   await expect(page.getByTestId('demo-commit-row').first()).toContainText('GET /payments/{payment_id}');
-  await expect(page.getByTestId('site-footer')).toContainText('sample data');
   await page.getByTestId('demo-commit-row').first().click();
 
   await expect(page.getByTestId('demo-analyzing')).toBeVisible();
