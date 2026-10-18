@@ -236,8 +236,8 @@
       put(S.stack, { o: 1 - gone, s: 1 - 0.08 * back - 0.1 * gone, filter: back > 0.01 ? `brightness(${(1 - 0.72 * back).toFixed(3)}) blur(${(5 * back).toFixed(2)}px)` : 'none' });
       rise(t, S.v1, [24, 24.25], 26.85, { exit: 0.3 });
       rise(t, S.v2, [25, 25.25, 25.5], 26.85, { exit: 0.3 });
-      rise(t, S.q1, [27, 27.25], 30.85, { exit: 0.3 });
-      rise(t, S.q2, [27.5, 27.75], 30.85, { exit: 0.3 });
+      rise(t, S.q1, [27, 27.25], 31.75, { exit: 0.25 });
+      rise(t, S.q2, [27.5, 27.75], 31.75, { exit: 0.25 });
       const g = S.ctx; g.clearRect(0, 0, W, H);
       const walk = seg(t, 28.4, 31), d = S.lone.length * ease.out(walk);
       if (walk > 0) {

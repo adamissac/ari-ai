@@ -296,20 +296,20 @@
     },
     run(t, b, S) {
       K.inkRun(t, S.bg, 0.25 + 0.35 * sp(t, 'verify', 'heavy'), 116);
-      put(S.cam, K.aim(W / 2, H / 2, 1.03 - 0.03 * ease.out(seg(t, 88, 92))));
+      put(S.cam, K.aim(W / 2, H / 2, 1.03 - 0.03 * ease.out(seg(t, 88, 92)) + 0.06 * ease.inOut(seg(t, 96.5, 104))));   // the hold keeps moving
       S.eyes.forEach((e, i) => K.eyebrowRun(t, e, [87.9, 'patch', 'verify'][i], [91.75, 93.75, 96.6][i]));
       const c = spHit(t, 88, 'default');
       put(S.code, { o: c > 0.002 ? 1 : 0, y: 50 * (1 - c), css: { height: `${(b < 92 ? DIFF.length : PATCH.length) * FL + 40}px` } });
       // diagnose: the commit diff builds, the removed guard gets boxed
-      S.dl.forEach((ln, i) => { const p = spHit(t, 88 + i * 0.0625, 'snappy'), q = sp(t, 91.72, 'snappy'); put(ln, { o: p > 0.002 && q < 0.99 ? 1 - q : 0, x: -20 * (1 - p) }); });
+      S.dl.forEach((ln, i) => { const p = spHit(t, 88 + i * 0.0625, 'snappy'), q = sp(t, 91.82, 'snappy'); put(ln, { o: p > 0.002 && q < 0.99 ? 1 - q : 0, x: -20 * (1 - p) }); });
       const rb = spHit(t, 89.5, 'snappy');
       put(S.rootBox, { o: rb > 0.002 && b < 91.9 ? 1 : 0, s: 1 + 0.03 * (1 - rb), css: { transformOrigin: '50% 50%' } });
       K.textRun(t, S.why, 90, 91.7);
       // repair: the patch lines type on (only + lines type; context and − lines snap in)
       S.pl.forEach((ln, i) => {
-        const k = PATCH[i][0], at = 'patch', p = spHit(t, beatOf(at) - 0.05 + i * 0.25, 'snappy');
+        const k = PATCH[i][0], at = 'patch', p = spHit(t, beatOf(at) - 0.08 + i * 0.12, 'snappy');
         const body = PATCH[i][1];
-        const n = k === '+' ? Math.floor(seg(t, beatOf(at) + i * 0.25, beatOf(at) + i * 0.25 + 0.9) * body.length) : body.length;
+        const n = k === '+' ? Math.floor(seg(t, beatOf(at) + i * 0.4, beatOf(at) + i * 0.4 + 0.75) * body.length) : body.length;
         put(ln, { o: p > 0.002 ? 1 : 0, html: `<span style="display:inline-block;width:56px;text-align:center;opacity:.8">${k === 'h' ? '' : k}</span>${body.slice(0, n).replace(/</g, '&lt;')}` });
       });
       // verify: the window rises over the patch; rows land on beats

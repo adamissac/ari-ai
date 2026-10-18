@@ -650,7 +650,7 @@
       "type": "tick",
       "gain": 0.35,
       "what": "patch types",
-      "to": 93.75,
+      "to": 93.5,
       "every": 0.25
     },
     {
@@ -890,7 +890,7 @@
       "what": "ant wipe lands"
     },
     {
-      "at": 152.25,
+      "at": 152,
       "type": "pop",
       "gain": 0.55,
       "what": "NO MODEL OUTPUT"
@@ -934,17 +934,17 @@
     {
       "at": 164,
       "type": "shutter",
-      "gain": 0.5,
+      "gain": 0.4,
       "what": "cut to standards"
     },
     {
-      "at": 164.25,
+      "at": 164,
       "type": "pop",
       "gain": 0.5,
       "what": "EVERY FINDING"
     },
     {
-      "at": 164.75,
+      "at": 164.5,
       "type": "thump",
       "gain": 0.6,
       "what": "TAGGED."

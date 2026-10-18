@@ -34,7 +34,7 @@
       const wp = K.wipe(t, 151, 152);
       put(S.root, { clip: wp < 1 ? C.inset(0, 100 * (1 - wp), 0, 0) : 'none' });
       put(S.cam, K.aim(W / 2, H / 2, 1 + 0.04 * ease.inOut(seg(t, 152, 164))));
-      rise(t, S.l1, [152.25, 152.5, 152.75], 155.75, { exit: 0.3 });
+      rise(t, S.l1, [151.5, 151.75, 152], 155.75, { exit: 0.3 });
       rise(t, S.l2, [153, 153.25, 153.5], 155.75, { exit: 0.3 });
       rise(t, S.l3, [156, 156.5], 157.8, { exit: 0.3 });
       K.eyebrowRun(t, S.eye, 157.75, 163.2);
@@ -68,9 +68,9 @@
       // build: the camera creeps in, then everything lifts away a beat before the stop
       put(S.cam, K.aim(W / 2, H / 2, 1 + 0.06 * ease.expoIn(seg(t, 164, 171))));
       const gone = sp(t, 170.3, 'default');
-      K.eyebrowRun(t, S.eye, 164, 170.2);
-      rise(t, S.t1, [164.25, 164.5], 170.3, { exit: 0.3 });
-      rise(t, S.t2, [164.75], 170.3, { exit: 0.3 });
+      K.eyebrowRun(t, S.eye, 163.9, 170.2);
+      rise(t, S.t1, [164, 164.25], 170.3, { exit: 0.3 });
+      rise(t, S.t2, [164.5], 170.3, { exit: 0.3 });
       S.chips.forEach((c, i) => {
         const p = spHit(t, 165.5 + i * 0.5, 'snappy');
         const lit = Math.exp(-Math.max(0, t - bt(165.5 + i * 0.5)) * 5) * (p > 0.002 ? 1 : 0);
