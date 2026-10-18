@@ -748,5 +748,26 @@ Pushed to `main` at the user's request. Frontend only. The landing is still unto
   - Lint, typecheck and unit tests: 258 passed. New tests cover the Lab colour rules and the false-alarm state.
   - Landing pixel parity re-checked.
   - Screenshots of the map at contained and false-alarm steps.
-  - E2e results are in the next line.
+  - E2e: see the 02:30Z entry below for the current run.
 - **Notes for Sai:** `node-graph.tsx` cards are `CW=196, CH=88`. `nodeTone()` holds the colour rule. Tags stack when both the attacker and the defender are on one node. The `Legend` in `lab-replay.tsx` was removed; the map header has the legend now.
+
+## 2026-10-18T02:30Z — Srihith (cloud session): false alarms, Lab tracker, replay bars, hero glow, FAQ
+
+Pushed to `main` at the user's request. Frontend only, no contract or backend change. Merged with #293 (Sai's hero ant colony).
+
+- **Did:**
+  - **Demo replay:** authz now has two confirmed issues (red) and one false alarm (yellow, "False alarm": suspected, checked, nothing there). Injection has one false alarm. The blue team never acts on false-alarm or checked parts.
+  - **Agent-map replay bar:** it spans the agents' steps only. Before, it began at about 12% (the read/review ticks) and snapped back there when dragged to the start.
+  - **Defense Lab:**
+    - A tracker line under the map legend: where the attacker is (truth overlay only) and the defender's latest move with its step.
+    - The blue defender tag stays on the last service it acted on, faded once that move is in the past.
+    - A "Slowed traffic" legend entry, and quieter notes on healthy cards.
+    - Scrubber marks and the hidden input share one geometry, so step 0 is at the far left and the last step at the far right. The time label has a fixed width.
+  - **Lab scoreboard:** a plain summary, with the technical detail under "How these scores work".
+  - **Landing:** no glow on "FIND THE FLAW. PROVE THE FIX." (the owner asked). The spotlight repaints only on pointer move. `HeaderContrast` skips the hit-test over the home hero. Momentum scroll and all animations are unchanged.
+  - **Pricing FAQ:** a titled left column and soft rounded open rows.
+- **Verified:**
+  - `npm run lint` and `npm run typecheck` are clean. `npm test`: 64 files, 261 passed. `npm run build` OK.
+  - Hero scroll on the production build with the colony (headless Chromium, 3 runs, 934 frames): mean frame 16.8 ms, p95 16.7 ms, 0 frames over 50 ms.
+  - Before the glow and spotlight change: mean 38.2 ms, p95 116.6 ms, 246 frames over 50 ms.
+  - Screenshots of both replay bars at the start and end, and of the Lab tracker at 1440 and 390 px (no horizontal scroll).
