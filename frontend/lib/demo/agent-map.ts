@@ -68,9 +68,15 @@ export function coreComponent(repo: DemoRepo): string {
   return byKind(repo, ['service']) ?? byKind(repo, ['site']) ?? repo.components[0]!.id;
 }
 
+/** The component of a given kind in this repository (the changed service when there is none). */
+export function partOfKind(repo: DemoRepo, kind: string | undefined): string {
+  return (kind && byKind(repo, [kind])) || coreComponent(repo);
+}
+
 /** Which component a step touched. Unknown → the core component. */
 export function stepComponent(step: ToolStep, repo: DemoRepo, previous?: string): string {
   const core = coreComponent(repo);
+  if (step.on) return partOfKind(repo, step.on);
   if (step.outcome === 'denied' && /https?:\/\//.test(step.input)) return byKind(repo, ['edge']) ?? core;
   if (/^fixture\.identities/.test(step.tool)) return byKind(repo, ['identity']) ?? core;
   // A request inside the sandbox hits the changed service's endpoint, whoever it is sent as.
@@ -90,26 +96,32 @@ export function stepComponent(step: ToolStep, repo: DemoRepo, previous?: string)
 const RED_TEAM: ReadonlySet<AgentId> = new Set(['scout', 'probe']);
 export const isRedTeam = (agent: AgentId) => RED_TEAM.has(agent);
 
-/**
- * Where the confirmed finding lives, or null when the red team confirmed nothing. Findings in
- * this demo are on the changed service. Only a finding Probe confirmed counts.
- */
-export function issueComponent(analysis: Analysis, repo: DemoRepo): string | null {
+/** Every part with a finding Probe confirmed (empty when the red team confirmed nothing). */
+export function issueComponents(analysis: Analysis, repo: DemoRepo): string[] {
   const probe = analysis.agents.find(a => a.agent === 'probe');
-  return analysis.findings.length > 0 && probe?.status === 'done' ? coreComponent(repo) : null;
+  if (probe?.status !== 'done') return [];
+  return [...new Set(analysis.findings.map(f => partOfKind(repo, f.on)))];
+}
+
+/** The main confirmed part (the first finding's), or null when nothing was confirmed. */
+export function issueComponent(analysis: Analysis, repo: DemoRepo): string | null {
+  return issueComponents(analysis, repo)[0] ?? null;
 }
 
 /**
  * Every step of the run, in orchestrator order, pinned to a component. Red-team steps go where
- * they looked; Trace, the blue team and Verify only ever work on the confirmed issue.
+ * they looked; Trace, the blue team and Verify only ever work on a confirmed issue (the one a
+ * step names, else the main one).
  */
 export function ticks(analysis: Analysis, repo: DemoRepo): Tick[] {
-  const issue = issueComponent(analysis, repo) ?? coreComponent(repo);
+  const issues = issueComponents(analysis, repo);
+  const main = issues[0] ?? coreComponent(repo);
   const out: Tick[] = [];
   for (const agent of analysis.agents) {
     let previous: string | undefined;
     agent.steps.forEach((step, index) => {
-      const component = isRedTeam(agent.agent) ? stepComponent(step, repo, previous) : issue;
+      const named = step.on ? partOfKind(repo, step.on) : null;
+      const component = isRedTeam(agent.agent) ? stepComponent(step, repo, previous) : named && issues.includes(named) ? named : main;
       previous = component;
       out.push({ agent: agent.agent, team: agent.team, step, index, component });
     });
@@ -130,35 +142,39 @@ export function redTeamEnd(all: Tick[]): number {
 }
 
 /**
- * The part a suspicion was raised on and then refuted by Probe (a false alarm), or null. In this
- * demo a refuted hypothesis is always about the changed service.
+ * Parts where a suspicion was raised and Probe refuted it (false alarms). A clean commit whose
+ * only hypothesis was refuted counts too: the suspicion was about the changed service.
  */
-export function refutedComponent(analysis: Analysis, repo: DemoRepo): string | null {
+export function refutedComponents(analysis: Analysis, repo: DemoRepo): string[] {
   const probe = analysis.agents.find(a => a.agent === 'probe');
-  return analysis.findings.length === 0 && probe?.status === 'done' ? coreComponent(repo) : null;
+  if (probe?.status !== 'done') return [];
+  const issues = new Set(issueComponents(analysis, repo));
+  const named = (analysis.falseAlarms ?? []).map(f => partOfKind(repo, f.on));
+  const parts = analysis.findings.length === 0 ? [coreComponent(repo), ...named] : named;
+  return [...new Set(parts)].filter(id => !issues.has(id));
 }
 
 /**
  * State of each component after `played` ticks (`active` is the step in progress, if any).
  * While the red team works, parts it has looked at wait for Probe's verdict ("scanned"). Once
- * Probe is done, the confirmed part turns to "issue" and stays red while Trace and the blue team
+ * Probe is done, each confirmed part turns to "issue" and stays red while Trace and the blue team
  * work on it; it becomes "fixed" only when Verify accepted the fix. A suspicion Probe refuted is
- * a "refuted" false alarm. Every other part it looked at is "clear".
+ * a "refuted" false alarm. A part the red team only passed through is "clear" (checked).
  */
 export function componentStates(all: Tick[], played: number, repo: DemoRepo, analysis: Analysis, accepted: boolean, active?: Tick): Record<string, ComponentState> {
   const touched = affected(all, repo);
   const seen = new Set(all.slice(0, played).map(t => t.component));
   const verdictIn = played >= redTeamEnd(all);
-  const issue = verdictIn ? issueComponent(analysis, repo) : null;
-  const refuted = verdictIn ? refutedComponent(analysis, repo) : null;
+  const issues = new Set(verdictIn ? issueComponents(analysis, repo) : []);
+  const refuted = new Set(verdictIn ? refutedComponents(analysis, repo) : []);
   const verifyDone = played >= all.length && all.length > 0;
   const states: Record<string, ComponentState> = {};
   for (const c of repo.components) {
     if (!touched.has(c.id)) states[c.id] = 'outside';
-    else if (c.id === issue) states[c.id] = verifyDone && accepted ? 'fixed' : 'issue';
+    else if (issues.has(c.id)) states[c.id] = verifyDone && accepted ? 'fixed' : 'issue';
     else if (active?.component === c.id) states[c.id] = 'checking';
     else if (!seen.has(c.id)) states[c.id] = 'waiting';
-    else if (c.id === refuted) states[c.id] = 'refuted';
+    else if (refuted.has(c.id)) states[c.id] = 'refuted';
     else states[c.id] = verdictIn ? 'clear' : 'scanned';
   }
   return states;
@@ -169,7 +185,7 @@ export const STATE_LABEL: Record<ComponentState, string> = {
   waiting: 'Queued',
   checking: 'Being tested',
   scanned: 'Tested · waiting for proof',
-  clear: 'No issue',
+  clear: 'Checked',
   refuted: 'False alarm',
   issue: 'Issue confirmed',
   fixed: 'Fixed & verified',
