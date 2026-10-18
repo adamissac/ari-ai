@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Replace game-like language with evaluation terminology, and use synthetic/illustrative labels while preserving test-environment provenance.
+
 - Center sign-in forms, remove the promotional side panel, and add subtle background orbits that respect reduced motion.
 
 - Refine the homepage closing invitation with two clear action cards, and align the Defense Lab evaluation selector.

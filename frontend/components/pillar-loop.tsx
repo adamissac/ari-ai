@@ -51,9 +51,9 @@ export function PillarLoop({ nodes }: { nodes: LoopNode[] }) {
         A new code change sends the loop back to step 01: the changed code is understood, reviewed and tested again.
       </p>
       <Link href="/lab" className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-line p-3 text-sm hover:bg-panel-2" data-testid="loop-lab">
-        <span className="label-mono text-faint">Research · simulation only</span>
+        <span className="label-mono text-faint">Research · isolated test environment</span>
         <span className="font-semibold">Defense Lab</span>
-        <span className="text-muted">An AI defender practising against simulated attacks. It explores how step 05 could respond in future; it never acts on real systems.</span>
+        <span className="text-muted">An AI defender evaluating responses to controlled test attacks. It explores how step 05 could respond in future; it never acts on real systems.</span>
       </Link>
     </section>
   );

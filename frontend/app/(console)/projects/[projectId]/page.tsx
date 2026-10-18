@@ -429,7 +429,7 @@ function RepoRow({ repo }: { repo: Repository }) {
         <span className="font-medium">{repo.full_name}</span>
         <span className="flex flex-wrap items-center gap-3 text-xs text-muted">
           {repo.default_branch} · {repo.installation_id ? 'GitHub App installed' : 'no GitHub App installation'}
-          <Link className="text-brand hover:underline" href={`/projects/${repo.project_id}/simulate?repo=${encodeURIComponent(repo.full_name)}`} data-testid={`simulate-${repo.full_name}`}>Simulate attack →</Link>
+          <Link className="text-brand hover:underline" href={`/projects/${repo.project_id}/simulate?repo=${encodeURIComponent(repo.full_name)}`} data-testid={`simulate-${repo.full_name}`}>Attack walkthrough →</Link>
         </span>
       </div>
       <div className="mt-3"><RepoCommits repo={repo} onPick={setSha} /></div>
