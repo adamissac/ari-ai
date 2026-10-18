@@ -22,7 +22,7 @@ export default function IncidentsPage() {
       <div className="flex flex-col gap-4">
         <Panel title="Incidents">
           <Async resource={list} label="incidents">
-            {page => page.items.length === 0 ? <Empty>No incidents. Open one from a monitoring event, finding or simulated drill.</Empty> : (
+            {page => page.items.length === 0 ? <Empty>No incidents. Open one from a monitoring event, finding or synthetic drill.</Empty> : (
               <ul className="flex flex-col gap-2">
                 {page.items.map(i => (
                   <li key={i.id}>
@@ -30,7 +30,7 @@ export default function IncidentsPage() {
                       className={`w-full rounded-md border p-3 text-left ${selected === i.id ? 'border-brand bg-white' : 'border-line bg-panel-2 hover:bg-white'}`}>
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="font-medium">{i.title}</span>
-                        <span className="flex gap-1">{i.simulated && <Tag tone="warn">Simulated</Tag>}<Tag tone={i.state === 'closed' || i.state === 'rejected' ? 'neutral' : 'info'}>{STATE_LABEL[i.state]}</Tag></span>
+                        <span className="flex gap-1">{i.simulated && <Tag tone="warn">Synthetic</Tag>}<Tag tone={i.state === 'closed' || i.state === 'rejected' ? 'neutral' : 'info'}>{STATE_LABEL[i.state]}</Tag></span>
                       </div>
                       <div className="mt-1 text-xs text-muted">CSF {i.csf_function} · {i.severity ?? 'unscored'} · priority {i.business_priority} · opened <Time iso={i.opened_at} /></div>
                     </button>
@@ -82,7 +82,7 @@ function OpenIncident({ onCreated }: { onCreated: (id: string) => void }) {
         </Field>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={simulated} onChange={e => setSimulated(e.target.checked)} />
-          Simulated drill (labelled as simulated everywhere it appears)
+          Synthetic drill (labelled as synthetic everywhere it appears)
         </label>
         <Button type="submit" variant="primary" disabled={busy || title.trim().length === 0}>Open incident</Button>
         {error !== null && <ErrorState error={error} context="Incident not opened" />}
@@ -105,7 +105,7 @@ function IncidentDetailView({ id, onChange }: { id: string; onChange: () => void
     <Async resource={detail} label="incident">
       {({ incident }) => (
         <div className="flex flex-col gap-4">
-          <Panel title={incident.title} actions={incident.simulated ? <Tag tone="warn">Simulated drill</Tag> : undefined}>
+          <Panel title={incident.title} actions={incident.simulated ? <Tag tone="warn">Synthetic drill</Tag> : undefined}>
             <Lifecycle state={incident.state} />
             <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs text-muted">
               <dt>CSF function</dt><dd>{incident.csf_function}</dd>

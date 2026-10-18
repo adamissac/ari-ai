@@ -39,8 +39,8 @@ export function AttackDrill({ projectId, onEvents }: { projectId: string; onEven
   };
 
   return (
-    <Panel title="Attack drill" actions={<span className="demo-marker" data-testid="attack-drill-provenance" title="Uses real project routes and the detection pipeline with synthetic counters. Planning may call Claude or use a scripted fallback. Responses are recommendations only; no attack traffic reaches your service and no response action is executed.">Simulated drill · no service traffic</span>}>
-      <p className="text-sm text-muted">Plans a simulated attack using this repository&apos;s real routes, with Claude or a scripted fallback. ARI&apos;s detection scores synthetic traffic and recommends a response. No attack traffic reaches your service and no response action is executed.</p>
+    <Panel title="Attack drill" actions={<span className="demo-marker" data-testid="attack-drill-provenance" title="Uses real project routes and the detection pipeline with synthetic counters. Planning may call Claude or use a scripted fallback. Responses are recommendations only; no attack traffic reaches your service and no response action is executed.">Synthetic drill · no service traffic</span>}>
+      <p className="text-sm text-muted">Plans a synthetic attack drill using this repository&apos;s real routes, with Claude or a scripted fallback. ARI&apos;s detection scores synthetic traffic and recommends a response. No attack traffic reaches your service and no response action is executed.</p>
       <div className="mt-3">
         <Button variant="primary" onClick={() => void start()} disabled={state.kind === 'running'} data-testid="attack-drill-start">
           {state.kind === 'running' ? 'Running drill…' : state.kind === 'done' ? 'Run another drill' : 'Run an attack drill'}

@@ -102,7 +102,7 @@ describe('replay stage', () => {
 
   it('labels the view as a recorded simulation and tells the step story', () => {
     render(<ReplayStage episode={episode} scenario={scenario} />);
-    expect(screen.getByTestId('lab-mode').textContent).toBe('Simulation · recorded evaluation');
+    expect(screen.getByTestId('lab-mode').textContent).toBe('Isolated test network · recorded evaluation');
     expect(screen.getByTestId('lab-step-action').textContent).toContain('At step 0 the defender:');
     expect(screen.getByTestId('lab-step-story').textContent).toContain('quiet');
   });
