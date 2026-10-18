@@ -386,8 +386,11 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 .intro .ari-mark { color: #fff; }
 
 /* Defense Lab (app/lab/page.tsx). */
-.lab-run-picker { min-width: 12rem; border-radius: 14px; padding: 10px 12px; background: rgba(255, 255, 255, 0.08); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12); }
-.lab-run-picker label { color: rgba(255, 255, 255, 0.7); }
+.lab-run-picker { width: 15rem; max-width: 100%; flex-shrink: 0; align-self: flex-start; border-radius: 12px; padding: 14px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.16); }
+.lab-run-picker > div { gap: 8px; }
+.lab-run-picker label { padding-left: 12px; color: rgba(255, 255, 255, 0.7); font-size: 11px; line-height: 16px; letter-spacing: .06em; text-transform: uppercase; }
+.lab-run-picker select { display: block; width: 100%; min-height: 44px; margin: 0; padding: 10px 36px 10px 12px; font-size: 14px; line-height: 22px; color: #fff8f2; border-color: #ffffff38; border-radius: 7px; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23fff8f2' stroke-width='1.5'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+@media (max-width: 640px) { .lab-run-picker { width: 100%; } }
 .lab-best { margin-left: 8px; display: inline-block; border-radius: 9999px; padding: 1px 8px; font-size: 0.68rem; font-weight: 600; line-height: 1.5; vertical-align: 1px; color: var(--color-brand-deep); background: var(--color-brand-soft); }
 .lab-headline { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); border-radius: 20px; background: var(--color-panel); box-shadow: inset 0 0 0 1px var(--color-line); overflow: hidden; }
 .lab-headline-tile { padding: 22px 24px; box-shadow: -1px 0 0 0 var(--color-line), 0 -1px 0 0 var(--color-line); }
@@ -1492,3 +1495,25 @@ body:has(.commit-stage) main { color: #fff; }
 .faq-item[data-open] .faq-icon { background: var(--color-ink); color: var(--color-bg); box-shadow: none; }
 .faq-a p { padding: 0 64px 22px 20px; font-size: 0.95rem; line-height: 1.65; }
 :root:not(:has(.hero-full)) .paper :is(.faq-q:hover, .faq-item[data-open] .faq-q) { color: var(--color-ink); }
+
+/* Closing invitation: repository assessment or recorded defense simulation. */
+.next-step { display: grid; grid-template-columns: 1.15fr 1fr; gap: clamp(32px, 6vw, 96px); align-items: center; padding: clamp(28px, 5vw, 72px); border: 1px solid #493a34; border-radius: 24px; color: #fff8f2; background: radial-gradient(ellipse at 0% 100%, #71382455, transparent 65%), #211d1b; }
+.next-step-eyebrow { color: #e7ad91; margin-bottom: 24px; }
+.next-step h2 { font-size: clamp(32px, 3.8vw, 56px); font-weight: 550; line-height: 1.08; letter-spacing: -.045em; }
+.next-step h2 > span { color: #e7ad91; }
+.next-step-copy > p:not(.next-step-eyebrow) { max-width: 400px; margin-top: 22px; color: #c8bfb9; font-size: 15px; line-height: 1.75; }
+.next-step-sequence { display: flex; flex-wrap: wrap; gap: 13px; margin-top: 32px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #c8bfb9; }
+.next-step-sequence > span { color: #9e7d6c; }
+.next-step-actions { display: grid; gap: 12px; min-width: 0; }
+.next-step-card { display: grid; gap: 12px; padding: 24px; border: 1px solid #ffffff26; border-radius: 12px; background: #ffffff04; transition: background 180ms, border-color 180ms; }
+.next-step-card:hover { background: #ffffff0d; border-color: #e7ad9180; }
+.next-step-card:focus-visible { outline: 3px solid #e7ad91; outline-offset: 4px; }
+.next-step-card-label { font-size: 10px; color: #c8bfb9; }
+.next-step-card-title { display: flex; justify-content: space-between; align-items: center; gap: 16px; font-size: clamp(19px, 2vw, 24px); letter-spacing: -.025em; font-weight: 550; }
+.next-step-card-title > span { font-size: 24px; font-weight: 400; }
+.next-step-card-detail { color: #c8bfb9; font-size: 13px; line-height: 1.6; max-width: 340px; }
+.next-step-primary { background: #f7eee6; border-color: #f7eee6; color: #2d231e; }
+.next-step-primary .next-step-card-label, .next-step-primary .next-step-card-detail { color: #6b5143; }
+.next-step-primary:hover { background: #fff9f3; border-color: #fff9f3; }
+@media (max-width: 700px) { .next-step { grid-template-columns: 1fr; border-radius: 18px; gap: 28px; } .next-step-card { padding: 20px; } .next-step-sequence { margin-top: 24px; } }
+@media (prefers-reduced-motion: reduce) { .next-step-card { transition: none; } }
