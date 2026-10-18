@@ -32,10 +32,10 @@ export function metricNames(bundle: DefenseLabBundle): string[] {
 const ACTION_PHRASE: Record<string, (node: string | null) => string> = {
   noop: () => 'do nothing',
   escalate_to_human: () => 'escalate to a person',
-  isolate: node => `isolate ${node} in this simulation`,
-  rate_limit: node => `rate-limit ${node} in this simulation`,
-  raise_monitoring: node => `raise monitoring on ${node} in this simulation`,
-  request_reassessment: node => `request a reassessment of ${node} in this simulation`,
+  isolate: node => `isolate ${node} in this test environment`,
+  rate_limit: node => `rate-limit ${node} in this test environment`,
+  raise_monitoring: node => `raise monitoring on ${node} in this test environment`,
+  request_reassessment: node => `request a reassessment of ${node} in this test environment`,
 };
 
 /** What this recorded step shows the defender, without the hidden attacker stage. */
@@ -74,7 +74,7 @@ export function episodeStory(episode: LabEpisode): string {
   const impact = episode.impact_nodes.length === 0
     ? 'No node is recorded as reaching impact.'
     : `Impact is recorded on ${episode.impact_nodes.join(', ')}.`;
-  return `First recorded action: ${first.action}. Last recorded action: ${last.action}. ${outcome} ${impact} This is one simulated episode, not a live network.`;
+  return `First recorded action: ${first.action}. Last recorded action: ${last.action}. ${outcome} ${impact} This is one controlled evaluation run, not a live network.`;
 }
 
 /** Evaluation episodes behind each pooled number: seeds × episodes × held-out scenarios. */

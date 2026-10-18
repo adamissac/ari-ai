@@ -138,7 +138,7 @@ const HOW = [
     label: 'Monitor and retest', title: 'Keep it secure',
     body: 'Signed GitHub events re-run the assessment as code changes, and every finding feeds the next test.',
     file: 'events',
-    lines: [['ok', 'push · main · signature verified', ''], ['run', 're-assessment queued', ''], ['q', 'policy advice (simulation-trained)', 'not auto-applied']],
+    lines: [['ok', 'push · main · signature verified', ''], ['run', 're-assessment queued', ''], ['q', 'policy advice (test-environment-trained)', 'not auto-applied']],
   },
 ] as const;
 

@@ -264,7 +264,7 @@ export function NodeGraph({ scenario, states, action = 'noop', t = 0, lastAction
         className="net-svg"
         style={{ touchAction: 'pan-y' }}
         role="group"
-        aria-label={`Simulated network for ${scenario.name}: ${views.length} services. Tab to a service and use the arrow keys to move between them.`}
+        aria-label={`Test network for ${scenario.name}: ${views.length} services. Tab to a service and use the arrow keys to move between them.`}
         data-testid="topology"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -394,7 +394,7 @@ export function NodeGraph({ scenario, states, action = 'noop', t = 0, lastAction
         <button type="button" onClick={() => zoom(1 / 1.2)} aria-label="Zoom out">−</button>
         <button type="button" onClick={reset} aria-label="Reset view">Fit</button>
       </div>
-      {showTruth && <p className="net-truth-chip" role="note">Showing hidden simulation truth — the defender cannot see this</p>}
+      {showTruth && <p className="net-truth-chip" role="note">Showing hidden test-environment state — the defender cannot see this</p>}
 
       <table className="sr-only">
         <caption>Observed values per service at this step</caption>

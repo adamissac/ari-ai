@@ -74,7 +74,7 @@ export default function HomePage() {
               <Link href="/lab" className="next-step-card">
                 <span className="label-mono next-step-card-label">02 / The defense in action</span>
                 <span className="next-step-card-title">Explore Defense Lab<span aria-hidden="true">↗</span></span>
-                <span className="next-step-card-detail">Follow a simulated attack and the trained defender’s response.</span>
+                <span className="next-step-card-detail">Follow a test attack and the trained defender’s response.</span>
               </Link>
             </div>
           </section>
