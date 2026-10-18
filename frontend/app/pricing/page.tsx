@@ -120,10 +120,12 @@ export default function PricingPage() {
 
       <Reveal>
         <section aria-labelledby="faq-title" className="pricing-faq paper mt-24 grid gap-6 py-16 md:grid-cols-12 md:py-24">
-          <div className="md:col-span-3">
-            <h2 id="faq-title" className="faq-pill label-mono">FAQ</h2>
+          <div className="md:col-span-4">
+            <p className="faq-pill label-mono">FAQ</p>
+            <h2 id="faq-title" className="faq-title">Questions, answered</h2>
+            <p className="mt-3 max-w-xs text-sm leading-relaxed text-muted">What a plan covers, what ARI tests, and what it never does on its own.</p>
           </div>
-          <div className="md:col-span-9"><Faq items={FAQ} /></div>
+          <div className="md:col-span-8"><Faq items={FAQ} /></div>
         </section>
       </Reveal>
 
