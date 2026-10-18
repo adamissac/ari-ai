@@ -86,7 +86,7 @@ function Lab({ data }: { data: BundleResponse }) {
   const { bundle, provenance } = data;
   return (
     <div className="flex flex-col gap-16">
-      <section aria-labelledby="lab-what" data-testid="lab-intro">
+      <section aria-labelledby="lab-what" data-testid="lab-intro" className="paper py-14 md:py-16">
         <h2 id="lab-what" className="sr-only">What is this?</h2>
         <p className="lab-lede">
           A practice game (a <Term t="simulation">simulation</Term>). An AI defender learned by trial and error a <Term t="policy">policy</Term>:
@@ -186,7 +186,7 @@ function Scoreboard({ bundle }: { bundle: DefenseLabBundle }) {
   const n = sampleSize(bundle, null);
   const tradeoff = tradeoffNote(bundle);
   return (
-    <section aria-labelledby="score-title" data-testid="lab-scoreboard">
+    <section aria-labelledby="score-title" data-testid="lab-scoreboard" className="paper py-14 md:py-20">
       <p className="lab-eyebrow">02 · Compare</p>
       <h2 id="score-title" className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Who defends best?</h2>
       <p className="mt-2 max-w-3xl text-sm text-muted">
