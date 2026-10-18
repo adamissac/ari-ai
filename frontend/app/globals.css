@@ -1296,3 +1296,45 @@ body:has(.commit-stage) main { color: #fff; }
 :root:not(:has(.hero-full)) .relay-tile:hover { border-color: rgb(255 247 242 / 25%); }
 :root:not(:has(.hero-full)) .relay-tile[aria-pressed="true"] { border-color: #fff; box-shadow: 0 0 0 1px #fff, 0 0 24px -8px rgb(255 247 242 / 35%); }
 @media (prefers-reduced-motion: reduce) { .relay-status .relay-dot, .relay-gate .relay-dot { animation: none !important; } }
+
+/* One continuous background on night pages: the commit stage no longer paints its own opaque
+   band (that drew a hard edge under the header), and page headers are open hero headings rather
+   than rounded boxes. */
+:root:not(:has(.hero-full)) .commit-stage { background: transparent; }
+:root:not(:has(.hero-full)) .commit-stage::before { display: none; }
+:root:not(:has(.hero-full)) main header.hero-ink.rounded-2xl { background: none; box-shadow: none; border-radius: 0; overflow: visible; padding-left: 0; padding-right: 0; border-bottom: 1px solid var(--glass-line); }
+:root:not(:has(.hero-full)) main header.hero-ink.rounded-2xl::before,
+:root:not(:has(.hero-full)) main header.hero-ink.rounded-2xl::after { display: none; }
+
+/* Agent map node colours: red = issue confirmed, yellow = false alarm, green = fixed and verified,
+   white dashed = tested and waiting for Probe's proof. The tag above a node names the agent
+   working there, in its team colour (red team, blue team, independent). */
+.amap-slot { position: relative; }
+.amap-tag { position: absolute; left: 12px; top: -9px; z-index: 2; max-width: calc(100% - 24px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  border-radius: 6px; padding: 2px 7px; font-size: 0.68rem; font-weight: 600; line-height: 1.35; color: #120c0a; background: var(--team); box-shadow: 0 4px 14px -4px var(--team); }
+.amap-node-dot { display: inline-block; width: 6px; height: 6px; margin-right: 7px; vertical-align: 1px; border-radius: 9999px; background: rgb(255 255 255 / 30%); }
+.amap-node-state { padding-left: 0; }
+.amap-node[data-state="scanned"] { box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0%); outline: 1px dashed rgb(255 255 255 / 30%); outline-offset: -1px; }
+.amap-node[data-state="clear"] .amap-node-dot { background: rgb(255 255 255 / 60%); }
+.amap-node[data-state="refuted"] { background: rgb(60 46 14 / 70%); box-shadow: inset 0 0 0 1.5px #f2c14e, 0 0 28px -12px rgb(242 193 78 / 70%); }
+.amap-node[data-state="refuted"] .amap-node-state { color: #f7d98c; }
+.amap-node[data-state="refuted"] .amap-node-dot { background: #f2c14e; }
+.amap-node[data-state="issue"] { background: rgb(64 18 12 / 85%); box-shadow: inset 0 0 0 1.5px #ff5a46, 0 0 34px -10px rgb(255 90 70 / 80%); }
+.amap-node[data-state="issue"] .amap-node-dot { background: #ff5a46; box-shadow: 0 0 8px #ff5a46; }
+.amap-node[data-state="fixed"] .amap-node-dot { background: #5fd49a; }
+.amap-node[data-active]:not([data-state="issue"]) .amap-node-dot { background: var(--beam); animation: demo-blink 1s ease-in-out infinite; }
+.amap-pill[data-state="refuted"] { color: #f7d98c; }
+.amap-pill[data-state="refuted"]::before { background: #f2c14e; }
+.amap-pill[data-state="issue"]::before { background: #ff5a46; }
+@media (prefers-reduced-motion: reduce) { .amap-node-dot { animation: none !important; } }
+.amap-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 10px 20px 0; font-size: 0.72rem; color: rgb(255 255 255 / 55%); }
+.amap-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.amap-legend li::before { content: ""; width: 10px; height: 10px; border-radius: 3px; box-shadow: inset 0 0 0 1.5px var(--k); background: color-mix(in srgb, var(--k) 18%, transparent); }
+.amap-legend [data-k="issue"] { --k: #ff5a46; }
+.amap-legend [data-k="refuted"] { --k: #f2c14e; }
+.amap-legend [data-k="fixed"] { --k: #5fd49a; }
+.amap-legend [data-k="scanned"] { --k: rgb(255 255 255 / 45%); }
+.amap-legend [data-k="scanned"]::before { box-shadow: none; outline: 1px dashed rgb(255 255 255 / 45%); outline-offset: -1px; background: none; }
+.amap-legend [data-k="red"] { --k: #ff7a5c; }
+.amap-legend [data-k="blue"] { --k: #6ea8ff; }
+.amap-legend :is([data-k="red"], [data-k="blue"])::before { border-radius: 4px; background: var(--k); box-shadow: none; height: 8px; width: 14px; }
