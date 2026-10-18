@@ -68,7 +68,8 @@ describe('agent map', () => {
       const end = componentStates(all, all.length, repo, a, false);
       expect(Object.values(end)).not.toContain('issue');
       expect(Object.values(end)).not.toContain('fixed');
-      expect(end[coreComponent(repo)]).toBe('clear');
+      // A suspicion Probe refuted reads as a false alarm; with nothing to test it is simply clear.
+      expect(end[coreComponent(repo)]).toBe(scenario === 'clean' ? 'refuted' : 'clear');
     }
   });
 

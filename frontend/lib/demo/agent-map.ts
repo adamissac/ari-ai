@@ -18,7 +18,7 @@ export interface Tick {
   component: string;
 }
 
-export type ComponentState = 'outside' | 'waiting' | 'checking' | 'scanned' | 'clear' | 'issue' | 'fixed';
+export type ComponentState = 'outside' | 'waiting' | 'checking' | 'scanned' | 'clear' | 'refuted' | 'issue' | 'fixed';
 
 /** Plain-language description of a tool step, for people who do not read tool names. */
 const PLAIN: [RegExp, string][] = [
@@ -130,17 +130,27 @@ export function redTeamEnd(all: Tick[]): number {
 }
 
 /**
+ * The part a suspicion was raised on and then refuted by Probe (a false alarm), or null. In this
+ * demo a refuted hypothesis is always about the changed service.
+ */
+export function refutedComponent(analysis: Analysis, repo: DemoRepo): string | null {
+  const probe = analysis.agents.find(a => a.agent === 'probe');
+  return analysis.findings.length === 0 && probe?.status === 'done' ? coreComponent(repo) : null;
+}
+
+/**
  * State of each component after `played` ticks (`active` is the step in progress, if any).
  * While the red team works, parts it has looked at wait for Probe's verdict ("scanned"). Once
  * Probe is done, the confirmed part turns to "issue" and stays red while Trace and the blue team
- * work on it; it becomes "fixed" only when Verify accepted the fix. Every other part it looked
- * at is "clear".
+ * work on it; it becomes "fixed" only when Verify accepted the fix. A suspicion Probe refuted is
+ * a "refuted" false alarm. Every other part it looked at is "clear".
  */
 export function componentStates(all: Tick[], played: number, repo: DemoRepo, analysis: Analysis, accepted: boolean, active?: Tick): Record<string, ComponentState> {
   const touched = affected(all, repo);
   const seen = new Set(all.slice(0, played).map(t => t.component));
   const verdictIn = played >= redTeamEnd(all);
   const issue = verdictIn ? issueComponent(analysis, repo) : null;
+  const refuted = verdictIn ? refutedComponent(analysis, repo) : null;
   const verifyDone = played >= all.length && all.length > 0;
   const states: Record<string, ComponentState> = {};
   for (const c of repo.components) {
@@ -148,6 +158,7 @@ export function componentStates(all: Tick[], played: number, repo: DemoRepo, ana
     else if (c.id === issue) states[c.id] = verifyDone && accepted ? 'fixed' : 'issue';
     else if (active?.component === c.id) states[c.id] = 'checking';
     else if (!seen.has(c.id)) states[c.id] = 'waiting';
+    else if (c.id === refuted) states[c.id] = 'refuted';
     else states[c.id] = verdictIn ? 'clear' : 'scanned';
   }
   return states;
@@ -159,6 +170,7 @@ export const STATE_LABEL: Record<ComponentState, string> = {
   checking: 'Being tested',
   scanned: 'Tested · waiting for proof',
   clear: 'No issue',
+  refuted: 'False alarm',
   issue: 'Issue confirmed',
   fixed: 'Fixed & verified',
 };
