@@ -25,14 +25,14 @@ function Simulation() {
   const commits = useResource(repo && sha ? `commits:${repo.id}` : null, signal => api().repositoryCommits(repo!.id, { signal }));
   const real: RealCommit | undefined = commits.status === 'ready' ? commits.data.items.find(c => c.sha === sha) : undefined;
   const sim = useMemo(() => (repo ? simulatedAttack(repo.full_name, repo.default_branch, real) : null), [repo, real]);
-  if (!repo || !sim) return <Empty>Connect a repository to run a simulated attack.</Empty>;
+  if (!repo || !sim) return <Empty>Connect a repository to open an illustrative attack walkthrough.</Empty>;
   if (sha && commits.status === 'loading') return <Loading label="Loading the commit" />;
   return (
     <div data-testid="simulated-attack" className="commit-stage">
       <div className="glass mb-6 flex flex-wrap items-start gap-3 px-4 py-3 text-sm" data-testid="simulated-attack-note">
         <DemoMarker />
         <p className="min-w-0 flex-1 text-muted">
-          In this simulated run, Ari AI&apos;s Probe agent performs <span className="text-ink">{sim.attack}</span> against an illustrative copy of <span className="font-mono text-ink">{repo.full_name}</span>{real && <> at <span className="font-mono text-ink">{real.sha.slice(0, 7)}</span></>}.
+          In this illustrative run, Ari AI&apos;s Probe agent performs <span className="text-ink">{sim.attack}</span> against an illustrative copy of <span className="font-mono text-ink">{repo.full_name}</span>{real && <> at <span className="font-mono text-ink">{real.sha.slice(0, 7)}</span></>}.
           Live attacks run only against Python ASGI services in the sandbox, so this replay uses illustrative code, findings and defense events. The commit header is real; nothing in the repository was attacked.
         </p>
       </div>

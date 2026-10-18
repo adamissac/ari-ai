@@ -45,7 +45,7 @@ export function ReplayStage({ episode, scenario }: { episode: LabEpisode; scenar
     <div className="flex flex-col gap-5">
       {/* Status overview */}
       <div className="lab-status" data-testid="lab-status">
-        <span className="lab-mode label-mono" data-testid="lab-mode">Simulation · recorded evaluation</span>
+        <span className="lab-mode label-mono" data-testid="lab-mode">Isolated test network · recorded evaluation</span>
         <span className="lab-status-item"><span className="text-faint">Attacker</span> {SCENARIO_WORDS[episode.scenario]?.name ?? episode.scenario}</span>
         <span className="lab-status-item"><span className="text-faint">Watching</span> {scenario.nodes.length} services</span>
         <span className={`lab-status-item lab-tone-${status.tone}`}><span aria-hidden="true" className="lab-dot" />{status.text}</span>
@@ -242,7 +242,7 @@ function GroundTruth({ episode, t, truth, onToggle, label }: { episode: LabEpiso
         <span aria-hidden="true" className="lab-switch-track"><span /></span>
         <span className="text-sm text-ink">Show on the map (for learning)</span>
       </label>
-      <p className="text-xs text-faint">Ground truth (simulation) — hidden attacker stage, never observed by the policy</p>
+      <p className="text-xs text-faint">Test-environment ground truth — hidden attacker stage, never observed by the policy</p>
       {truth && (
         <ul className="mt-1 flex w-full flex-wrap gap-1.5 text-xs">
           {states.map(s => <li key={s.node} className="rounded-full bg-panel-2 px-2 py-0.5">{label(s.node)} · attacker {STAGE_WORDS[s.hidden_stage_ground_truth]}</li>)}

@@ -52,7 +52,7 @@ export default function DefenseLabPage() {
             <p className="label-mono text-white/60">Defense Lab · research</p>
             <h1 className="display mt-3 text-3xl font-semibold md:text-5xl">Can an AI learn to defend a network?</h1>
             <p className="mt-4 text-sm text-white/75 md:text-base">
-              We trained an AI defender in a practice network and tested it against simpler defenders on games it never saw. This page shows the scores and lets you replay real recorded games.
+              We trained an AI defender in a practice network and tested it against simpler defenders on held-out evaluation runs. This page shows the scores and lets you replay recorded evaluation runs.
             </p>
           </div>
           {protocols.status === 'ready' && protocols.data.length > 0 && (
@@ -77,9 +77,9 @@ export default function DefenseLabPage() {
 }
 
 const GAME_STEPS: { n: string; title: string; body: (machines: string) => string }[] = [
-  { n: '01', title: 'A pretend network', body: machines => `${machines.charAt(0).toUpperCase()}${machines.slice(1).replace(/machines?$/, m => `fake ${m}`)}, some reachable from the internet, some holding critical data.` },
-  { n: '02', title: 'A simulated attacker', body: () => 'It sneaks in and tries to reach a critical machine without being stopped.' },
-  { n: '03', title: 'A defender choosing moves', body: () => 'Each step it chooses from a fixed set of moves, such as watching, slowing traffic or cutting a machine off.' },
+  { n: '01', title: 'An isolated test network', body: machines => `${machines.charAt(0).toUpperCase()}${machines.slice(1).replace(/machines?$/, m => `test ${m}`)}, some reachable from the internet, some holding critical data.` },
+  { n: '02', title: 'An adversarial test agent', body: () => 'It attempts to reach a critical service while the defender responds.' },
+  { n: '03', title: 'A defender choosing responses', body: () => 'Each step it chooses from a fixed set of responses, such as watching, slowing traffic or cutting a machine off.' },
 ];
 
 function Lab({ data }: { data: BundleResponse }) {
@@ -89,8 +89,8 @@ function Lab({ data }: { data: BundleResponse }) {
       <section aria-labelledby="lab-what" data-testid="lab-intro" className="paper py-14 md:py-16">
         <h2 id="lab-what" className="sr-only">What is this?</h2>
         <p className="lab-lede">
-          A practice game (a <Term t="simulation">simulation</Term>). An AI defender learned by trial and error a <Term t="policy">policy</Term>:
-          which moves keep the intruder out without shutting the business down.
+          A controlled network evaluation. An AI defender learned by trial and error a <Term t="policy">policy</Term>:
+          which responses protect services without shutting the business down.
         </p>
         <ol className="mt-5 grid gap-3 md:grid-cols-3">
           {GAME_STEPS.map(step => (
@@ -103,7 +103,7 @@ function Lab({ data }: { data: BundleResponse }) {
         </ol>
         <p role="note" className="lab-caveat mt-4" data-testid="lab-caveat">
           <svg viewBox="0 0 16 16" className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round"><path d="M8 1.8 14.6 13.5H1.4z" strokeLinejoin="round" /><path d="M8 6.3v3.4M8 11.7v.01" /></svg>
-          <span><strong>Simulation only{bundle.simulation_only ? '' : ' (flag missing!)'}.</strong> {bundle.caveat} This is not real network detection and no action is ever applied automatically.</span>
+          <span><strong>Controlled test environment{bundle.simulation_only ? '' : ' (flag missing!)'}.</strong> Results come from an isolated test network, not a connected production system. This is not real network detection and no action is ever applied automatically.</span>
         </p>
       </section>
       <Replay bundle={bundle} />
@@ -191,7 +191,7 @@ function Scoreboard({ bundle }: { bundle: DefenseLabBundle }) {
       <p className="lab-eyebrow">02 · Compare</p>
       <h2 id="score-title" className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Who defends best?</h2>
       <p className="mt-2 max-w-3xl text-sm text-muted">
-        {defenderCountPhrase(bundle.metrics.length, true)}, each tested on {n.toLocaleString()} games they never trained on.
+        {defenderCountPhrase(bundle.metrics.length, true)}, each tested on {n.toLocaleString()} evaluation runs excluded from training.
       </p>
       <Headline bundle={bundle} />
       <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -238,7 +238,7 @@ function Scoreboard({ bundle }: { bundle: DefenseLabBundle }) {
       <details className="lab-more mt-6" data-testid="lab-score-details">
         <summary>How these scores work</summary>
         <div className="lab-more-body">
-          <p>Each bar is the average over {n.toLocaleString()} games. The shaded band around it is the 95% range: the true average very likely falls inside it.</p>
+          <p>Each bar is the average over {n.toLocaleString()} evaluation runs. The shaded band around it is the 95% range: the true average very likely falls inside it.</p>
           <dl className="lab-more-grid">
             {metrics.map(({ metric }) => (
               <div key={metric.key}>
@@ -339,7 +339,7 @@ function Replay({ bundle }: { bundle: DefenseLabBundle }) {
   return (
     <section aria-labelledby="replay-title">
       <p className="lab-eyebrow">01 · Watch</p>
-      <h2 id="replay-title" className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Replay a recorded game</h2>
+      <h2 id="replay-title" className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Replay a recorded evaluation</h2>
       <p className="mt-2 max-w-3xl text-sm text-muted">Pick a defender and an attacker, press play, and follow what the defender saw and did at each step.</p>
       {!episode || !scenario ? <div className="mt-4"><Empty>This bundle has no recorded episodes.</Empty></div> : (
         <div className="lab-replay-card mt-6">

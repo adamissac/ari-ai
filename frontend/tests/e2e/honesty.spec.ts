@@ -59,8 +59,8 @@ test('signed-in console and Defense Lab keep the records footer', async ({ page 
 
 test('Defense Lab plots only the committed, schema-validated evaluation bundle', async ({ page }) => {
   await page.goto('/lab');
-  await expect(page.getByTestId('lab-caveat')).toContainText('Simulation only');
-  await expect(page.getByTestId('lab-intro')).toContainText('A practice game (a simulation).');
+  await expect(page.getByTestId('lab-caveat')).toContainText('Controlled test environment');
+  await expect(page.getByTestId('lab-intro')).toContainText('A controlled network evaluation.');
   // Plain scoreboard: named defenders, values with their 95% interval, best marked.
   const board = page.getByTestId('lab-scoreboard');
   await expect(board.getByTestId('score-compromise_rate')).toContainText('Trained AI defender');
@@ -69,7 +69,7 @@ test('Defense Lab plots only the committed, schema-validated evaluation bundle',
   await expect(board.getByText('Best', { exact: true }).first()).toBeVisible();
   await expect(page.getByTestId('lab-tradeoff')).toContainText('No single measure tells the whole story');
   await expect(page.getByTestId('lab-timeline')).toBeVisible();
-  await expect(page.getByTestId('lab-episode-outcome')).toContainText('simulated attacker');
+  await expect(page.getByTestId('lab-episode-outcome')).toContainText('test attacker');
   await expect(page.getByTestId('lab-step-action')).toContainText('At step 0 the defender:');
   // Every metric and the provenance remain one click away for reviewers.
   await page.getByTestId('lab-details').locator('summary').click();
@@ -80,12 +80,12 @@ test('Defense Lab plots only the committed, schema-validated evaluation bundle',
   await expect(chart).toContainText(/n = |Axis/);
   await expect(page.getByText(/Mean with 95% confidence interval over n = [\d,]+ evaluation episodes/)).toBeVisible();
   await expect(page.getByTestId('topology')).toBeVisible();
-  await expect(page.getByText('Ground truth (simulation) — hidden attacker stage, never observed by the policy')).toBeVisible();
+  await expect(page.getByText('Test-environment ground truth — hidden attacker stage, never observed by the policy')).toBeVisible();
   const slider = page.getByLabel('Step', { exact: true });
   await slider.fill('50');
   await expect(page.getByText('t = 50 /', { exact: false })).toBeVisible();
   // The replay is always labelled as a recorded simulation, and a service can be inspected.
-  await expect(page.getByTestId('lab-mode')).toHaveText('Simulation · recorded evaluation');
+  await expect(page.getByTestId('lab-mode')).toHaveText('Isolated test network · recorded evaluation');
   await page.getByRole('button', { name: /^Gateway \(gateway\)/ }).click();
   await expect(page.getByTestId('lab-service-panel')).toContainText('Reachable from the internet: yes');
   const truthToggle = page.getByLabel('Show on the map (for learning)');

@@ -2,7 +2,7 @@ import type { DefenseLabBundle, HiddenStage, LabEpisode } from './lab-types';
 
 /** Plain names for the bundle's policies; unknown ids fall back to the raw id. */
 export const POLICY_NAME: Record<string, { name: string; note: string }> = {
-  ddqn: { name: 'Trained AI defender', note: 'Learned by trial and error in the simulation (Double DQN).' },
+  ddqn: { name: 'Trained AI defender', note: 'Learned by trial and error in the isolated test environment (Double DQN).' },
   threshold_rules: { name: 'Simple rules', note: 'Acts when an alert crosses a fixed threshold.' },
   random: { name: 'Random actions', note: 'Picks actions at random. A sanity baseline.' },
   noop: { name: 'Does nothing', note: 'Never acts. Shows what happens with no defense.' },
@@ -15,7 +15,7 @@ export const policyName = (id: string): string => POLICY_NAME[id]?.name ?? id;
  */
 export interface ScoreMetric { key: string; title: string; higherIsBetter: boolean; percent: boolean; explain: string }
 export const SCORE_METRICS: readonly ScoreMetric[] = [
-  { key: 'compromise_rate', title: 'Attacks that reached their goal', higherIsBetter: false, percent: true, explain: 'Share of simulated episodes where the attacker reached a critical machine.' },
+  { key: 'compromise_rate', title: 'Attacks that reached their goal', higherIsBetter: false, percent: true, explain: 'Share of controlled evaluation runs where the attacker reached a critical machine.' },
   { key: 'service_uptime', title: 'Time services stayed available', higherIsBetter: true, percent: true, explain: 'Share of time steps where services were not cut off by the defender.' },
   { key: 'false_disruption_rate', title: 'Disruptions aimed at a healthy machine', higherIsBetter: false, percent: true, explain: 'Of the defender\'s disruptive actions (isolate, rate-limit), the share aimed at a machine the attacker had not touched.' },
   { key: 'time_to_containment', title: 'Steps until the attack was contained', higherIsBetter: false, percent: false, explain: 'Average number of time steps before the attack was stopped.' },
@@ -79,8 +79,8 @@ export function episodeOutcome(episode: LabEpisode): string {
   const n = episode.steps.filter(s => !s.action.startsWith('noop')).length;
   const acts = `${n} time${n === 1 ? '' : 's'}`;
   return episode.compromised
-    ? `${who}: the simulated attacker reached its goal (${episode.impact_nodes.join(', ') || 'a critical machine'}). The defender acted ${acts} in ${episode.steps.length} steps.`
-    : `${who}: the simulated attacker never reached its goal. The defender acted ${acts} in ${episode.steps.length} steps.`;
+    ? `${who}: the test attacker reached its goal (${episode.impact_nodes.join(', ') || 'a critical machine'}). The defender acted ${acts} in ${episode.steps.length} steps.`
+    : `${who}: the test attacker never reached its goal. The defender acted ${acts} in ${episode.steps.length} steps.`;
 }
 
 /**
@@ -94,7 +94,7 @@ export function tradeoffNote(bundle: DefenseLabBundle): string | null {
   const best = scoreboard(bundle, uptime).find(c => c.best);
   const lost = best ? scoreboard(bundle, compromise).find(c => c.policy === best.policy)?.value ?? null : null;
   if (!best || lost === null || lost < 50) return null;
-  return `No single measure tells the whole story: "${policyName(best.policy)}" has the best uptime, but the attacker reached its goal in ${lost.toFixed(1)}% of its games.`;
+  return `No single measure tells the whole story: "${policyName(best.policy)}" has the best uptime, but the attacker reached its goal in ${lost.toFixed(1)}% of its evaluation runs.`;
 }
 
 /** Plain names for the held-out scenarios; unknown names fall back to a de-snaked id. */
@@ -114,7 +114,7 @@ export const REWARD_WORDS: Record<string, string> = {
   adversary_progress: 'Attacker progress',
   containment: 'Containing the attacker',
   impact: 'Attack reached its goal',
-  terminal: 'End of game',
+  terminal: 'End of evaluation',
 };
 export const rewardWord = (key: string): string => REWARD_WORDS[key] ?? key.replaceAll('_', ' ');
 
@@ -136,5 +136,5 @@ export function keyTakeaway(bundle: DefenseLabBundle): string | null {
   if (aiC === null || aiU === null) return null;
   const vsNoop = noopC === null ? '' : ` (with no defense: ${noopC.toFixed(1)}%)`;
   const vsRules = rulesU === null ? '' : ` (simple rules: ${rulesU.toFixed(1)}%)`;
-  return `The trained AI defender let the attacker reach its goal in ${aiC.toFixed(1)}% of games${vsNoop}, but kept services available ${aiU.toFixed(1)}% of the time${vsRules}.`;
+  return `The trained AI defender let the attacker reach its goal in ${aiC.toFixed(1)}% of evaluation runs${vsNoop}, but kept services available ${aiU.toFixed(1)}% of the time${vsRules}.`;
 }
