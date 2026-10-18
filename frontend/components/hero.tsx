@@ -11,6 +11,9 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
  * `play` starts the entrance (after the intro loader lifts). Without JS, or with reduced
  * motion, the band renders as a static dark hero with fully visible text.
  */
+/** The seven steps of an assessment, shown as chips on the hero and sign-in screens. */
+export const ASSESSMENT_LOOP = ['Understand', 'Review', 'Attack Safely', 'Diagnose', 'Repair', 'Verify', 'Monitor'];
+
 export function HeroStage({ children, className = '', labelledBy, play = true }: { children: ReactNode; className?: string; labelledBy: string; play?: boolean }) {
   const ref = useRef<HTMLElement>(null);
 
