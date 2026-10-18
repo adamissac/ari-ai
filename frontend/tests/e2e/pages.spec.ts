@@ -29,7 +29,7 @@ test('simulated incident: triage, owner, two-person containment approval', async
   await alice.getByLabel('Initial report').fill('Monitoring flagged cross-customer payment reads');
   await alice.getByRole('button', { name: 'Open incident' }).click();
   const note = alice.getByLabel('Note / rationale');
-  await expect(alice.getByText('Simulated drill', { exact: true })).toBeVisible();
+  await expect(alice.getByText('Synthetic drill', { exact: true })).toBeVisible();
 
   await note.fill('Reproduced in sandbox');
   await alice.getByLabel('Category').fill('broken access control');
