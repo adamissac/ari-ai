@@ -86,9 +86,9 @@ it('shows a summary on focus and hides it on blur', () => {
 
 it('hides the attacker ground truth unless the overlay is on, and labels it when shown', () => {
   const { rerender } = render(<NodeGraph scenario={scenario} states={states} />);
-  expect(screen.queryByText(/attacker: foothold/)).toBeNull();
+  expect(screen.queryByText(/attacker/i)).toBeNull();
   rerender(<NodeGraph scenario={scenario} states={states} showTruth />);
-  expect(screen.getByText('attacker: foothold')).toBeTruthy();
+  expect(screen.getByText('Attacker got a foothold')).toBeTruthy();
   expect(screen.getByRole('note').textContent).toContain('the defender cannot see this');
 });
 
@@ -101,7 +101,22 @@ it('highlights the acted-on service only when the step has a real action', () =>
 
 it('places distinct attacker and defender markers at their recorded services', () => {
   render(<NodeGraph scenario={scenario} states={states} action="isolate:db" showTruth />);
-  expect(document.querySelector('[data-node="api"] .network-intruder')?.textContent).toContain('ATTACKER HERE');
-  expect(document.querySelector('[data-node="db"] .network-defender')?.textContent).toContain('DEFENDER HERE');
+  expect(document.querySelector('[data-node="api"] .network-intruder')?.textContent).toBe('Attacker here');
+  expect(document.querySelector('[data-node="db"] .network-defender')?.textContent).toBe('Defender cut it off');
   expect(document.querySelector('[data-node="gateway"] .network-intruder')).toBeNull();
+});
+
+it('colours each service by what is true: compromised red, false alarm yellow, contained green', () => {
+  const { rerender } = render(<NodeGraph scenario={scenario} states={states} showTruth />);
+  const tone = (n: string) => document.querySelector(`[data-node="${n}"]`)?.getAttribute('data-tone');
+  expect(tone('api')).toBe('compromised'); // attacker present, not cut off
+  expect(tone('db')).toBe('false-alarm'); // high signal and cut off, but no attacker
+  expect(tone('gateway')).toBe('healthy');
+  const contained = states.map(s => (s.node === 'api' ? { ...s, isolated: true } : s));
+  rerender(<NodeGraph scenario={scenario} states={contained} showTruth />);
+  expect(tone('api')).toBe('contained');
+  // Without the ground truth the map shows only what the defender saw: nothing is red or green.
+  rerender(<NodeGraph scenario={scenario} states={states} />);
+  expect(tone('api')).toBe('suspicious');
+  expect(tone('db')).toBe('isolated');
 });
