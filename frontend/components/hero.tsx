@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { AntColony } from '@/components/ant-colony';
 
 /**
  * Full-screen interactive hero band. Pointer position and scroll progress are written as CSS
@@ -9,12 +10,13 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
  * fixed home header through <html data-home-hero>. Scroll attributes remain available
  * to page styling; navigation itself stays visible with independent contrast surfaces.
  * `play` starts the entrance (after the intro loader lifts). Without JS, or with reduced
- * motion, the band renders as a static dark hero with fully visible text.
+ * motion, the band renders as a static dark hero with fully visible text. `colony` adds the
+ * landing page's ant-colony canvas behind the content.
  */
 /** The seven steps of an assessment, shown as chips on the hero and sign-in screens. */
 export const ASSESSMENT_LOOP = ['Understand', 'Review', 'Attack Safely', 'Diagnose', 'Repair', 'Verify', 'Monitor'];
 
-export function HeroStage({ children, className = '', labelledBy, play = true }: { children: ReactNode; className?: string; labelledBy: string; play?: boolean }) {
+export function HeroStage({ children, className = '', labelledBy, play = true, colony = false }: { children: ReactNode; className?: string; labelledBy: string; play?: boolean; colony?: boolean }) {
   const ref = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -81,6 +83,7 @@ export function HeroStage({ children, className = '', labelledBy, play = true }:
         <span className="hero-orb hero-orb-c" />
         <span className="hero-glow" />
       </div>
+      {colony && <AntColony play={play} />}
       <div className="hero-content">{children}</div>
     </section>
   );
