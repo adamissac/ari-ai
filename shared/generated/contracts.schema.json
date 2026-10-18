@@ -6215,7 +6215,8 @@
           "enum": [
             "runtime_demo",
             "replay",
-            "simulated"
+            "simulated",
+            "drill"
           ],
           "title": "Source",
           "type": "string"
@@ -6353,7 +6354,8 @@
           "enum": [
             "runtime_demo",
             "replay",
-            "simulated"
+            "simulated",
+            "drill"
           ],
           "title": "Source",
           "type": "string"
@@ -7824,5 +7826,5 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "HackATL platform contracts",
-  "x-schema-version": "0.11.0"
+  "x-schema-version": "0.12.0"
 }

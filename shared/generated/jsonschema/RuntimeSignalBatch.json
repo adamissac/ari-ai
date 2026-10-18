@@ -71,7 +71,8 @@
       "enum": [
         "runtime_demo",
         "replay",
-        "simulated"
+        "simulated",
+        "drill"
       ],
       "title": "Source",
       "type": "string"
