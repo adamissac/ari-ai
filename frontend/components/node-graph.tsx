@@ -3,7 +3,9 @@
 import { useCallback, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { num } from '@/lib/format';
 import type { LabNodeState, LabScenario } from '@/lib/lab-types';
-import { INTERNET, nodeStatusLine, nodeViews, parseAction, type NodeView, type ServiceKind } from '@/lib/lab-story';
+import { STAGE_WORDS } from '@/lib/lab-plain';
+import { INTERNET, nodeStatusLine, nodeViews, parseAction, SIGNAL_BANDS, type NodeView } from '@/lib/lab-story';
+import type { HiddenStage } from '@/lib/lab-types';
 
 /**
  * Network map of a simulated scenario (Defense Lab). The layout is stable (columns from the
@@ -43,21 +45,6 @@ export function layoutNetwork(scenario: LabScenario): Map<string, Point> {
   return pos;
 }
 
-function Icon({ kind }: { kind: ServiceKind }) {
-  const p = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
-  switch (kind) {
-    case 'internet': return <g {...p}><circle cx="0" cy="0" r="8" /><path d="M-8 0h16M0-8c3 3 3 13 0 16M0-8c-3 3-3 13 0 16" /></g>;
-    case 'gateway': return <g {...p}><path d="M-7 8V-3l7-5 7 5V8" /><path d="M-3 8V2h6v6" /></g>;
-    case 'api': return <g {...p}><path d="M-3-7c-3 0-3 2-3 4s-2 3-2 3 2 1 2 3 0 4 3 4M3-7c3 0 3 2 3 4s2 3 2 3-2 1-2 3 0 4-3 4" /></g>;
-    case 'auth': return <g {...p}><rect x="-6" y="-1" width="12" height="9" rx="2" /><path d="M-3.5-1v-3a3.5 3.5 0 0 1 7 0v3" /></g>;
-    case 'payments': return <g {...p}><rect x="-8" y="-6" width="16" height="12" rx="2" /><path d="M-8-2h16M-5 3h4" /></g>;
-    case 'database': return <g {...p}><ellipse cx="0" cy="-5" rx="7" ry="2.6" /><path d="M-7-5v10c0 1.4 3.1 2.6 7 2.6S7 6.4 7 5V-5M-7 0c0 1.4 3.1 2.6 7 2.6S7 1.4 7 0" /></g>;
-    case 'web': return <g {...p}><rect x="-8" y="-6" width="16" height="12" rx="2" /><path d="M-8-2h16" /></g>;
-    case 'monitoring': return <g {...p}><path d="M-8 1h4l2-5 3 9 2-4h5" /></g>;
-    default: return <g {...p}><rect x="-6" y="-6" width="12" height="12" rx="2" /></g>;
-  }
-}
-
 type BadgeKind = 'watch' | 'slow' | 'cut' | 'recheck';
 const BADGE_TITLE: Record<BadgeKind, string> = { watch: 'Watched closely', slow: 'Traffic slowed', cut: 'Cut off from the network', recheck: 'Re-check requested' };
 
@@ -76,12 +63,40 @@ export function StateBadge({ kind, x = 0, y = 0 }: { kind: BadgeKind; x?: number
   );
 }
 
-function badgesFor(v: NodeView): BadgeKind[] {
-  const out: BadgeKind[] = [];
-  if (v.isolated) out.push('cut'); else if (v.rateLimited) out.push('slow');
-  if (v.watching) out.push('watch');
-  if (v.recheck) out.push('recheck');
-  return out;
+/* Node cards (pattern study of Omen's network view, own implementation): a card per service with
+   its name, one status line with a coloured dot, and the observed signal as a bar. Colour means
+   the same everywhere: red = attacker present for sure (ground truth), green = attacker cut off,
+   yellow = false alarm (high signal, no attacker), blue = what the defender did. Without the
+   ground-truth overlay only what the defender observed is shown (amber = suspicious). */
+const CW = 196; const CH = 88; // card size in map units
+const IW = 140; const IH = 64; // the internet card
+
+type Tone = 'compromised' | 'contained' | 'false-alarm' | 'suspicious' | 'isolated' | 'healthy';
+
+export function nodeTone(v: NodeView, stage: HiddenStage, truth: boolean): { tone: Tone; text: string } {
+  const attacker = truth && stage !== 'none';
+  if (attacker && v.isolated) return { tone: 'contained', text: 'Attacker cut off' };
+  if (attacker) return { tone: 'compromised', text: `Attacker ${STAGE_WORDS[stage]}` };
+  if (v.isolated) return { tone: truth && v.signal === 'high' ? 'false-alarm' : 'isolated', text: truth && v.signal === 'high' ? 'Cut off · false alarm' : 'Cut off (offline)' };
+  if (v.signal === 'high') return truth ? { tone: 'false-alarm', text: 'False alarm' } : { tone: 'suspicious', text: 'Suspicious activity' };
+  if (v.signal === 'elevated') return { tone: 'suspicious', text: 'Elevated activity' };
+  if (v.rateLimited) return { tone: 'healthy', text: 'Healthy · traffic slowed' };
+  if (v.watching) return { tone: 'healthy', text: 'Healthy · watched closely' };
+  return { tone: 'healthy', text: 'Healthy' };
+}
+
+const DEFENDER_DID: Record<string, string> = {
+  isolate: 'Defender cut it off',
+  rate_limit: 'Defender slowed traffic',
+  raise_monitoring: 'Defender is watching',
+  request_reassessment: 'Defender asked for a re-check',
+};
+
+const tagWidth = (text: string) => Math.round(text.length * 5.5 + 16);
+
+function Tag({ text, x, className, row = 0 }: { text: string; x: number; className: string; row?: number }) {
+  const w = tagWidth(text);
+  return <g transform={`translate(${x},${-CH / 2 - 19 - row * 19})`} className={`net-tag ${className}`}><rect width={w} height="16" rx="5" /><text x={w / 2} y="11.3" textAnchor="middle">{text}</text></g>;
 }
 
 export interface NetworkMapProps {
@@ -114,9 +129,6 @@ export function NodeGraph({ scenario, states, action = 'noop', t = 0, selected =
   const focus = selected ?? hover;
   const neighbours = new Set<string>();
   if (focus) { neighbours.add(focus); for (const [a, b] of edges) { if (a === focus) neighbours.add(b); if (b === focus) neighbours.add(a); } }
-  const crit = new Map(scenario.nodes.map(n => [n.name, n.criticality]));
-  const maxCrit = Math.max(1e-9, ...scenario.nodes.map(n => n.criticality));
-  const radius = (name: string) => 22 + ((crit.get(name) ?? 0) / maxCrit) * 12;
 
   const toSvg = useCallback((e: { clientX: number; clientY: number }) => {
     const m = svg.current?.getScreenCTM?.();
@@ -176,10 +188,17 @@ export function NodeGraph({ scenario, states, action = 'noop', t = 0, selected =
 
   return (
     <div className="net-map" data-truth={showTruth || undefined}>
-      <div className="network-heading"><span className="network-eyebrow">NETWORK / RECORDED STEP {t}</span><span>Follow the connections. Select a service to look inside.</span></div>
-      <div className="network-actors">
-        <div><span className="actor-dot actor-threat" /><span><b>Attacker location</b><small>{showTruth ? states.filter(s => s.hidden_stage_ground_truth !== 'none').map(s => byName.get(s.node)?.info.label ?? s.node).join(', ') || 'Not inside the network at this step' : 'Hidden — turn on replay ground truth to see it'}</small></span></div>
-        <div><span className="actor-dot actor-guard" /><span><b>Defender location</b><small>{target ? `${byName.get(target)?.info.label ?? target} · ${parseAction(action).verb.replaceAll('_', ' ')}` : action === 'escalate_to_human' ? 'Calling a person for help' : 'Watching the network; no move this step'}</small></span></div>
+      <div className="network-heading">
+        <span className="network-title">Network at step {t}</span>
+        <ul className="network-legend" aria-label="Map colours">
+          {showTruth && <li data-k="attacker">Attacker present</li>}
+          {showTruth && <li data-k="contained">Attacker cut off</li>}
+          {showTruth && <li data-k="false">False alarm</li>}
+          {!showTruth && <li data-k="suspicious">Suspicious</li>}
+          <li data-k="defender">Defender action</li>
+          <li data-k="isolated">Cut off</li>
+          {showTruth && <li data-k="path">Attack path</li>}
+        </ul>
       </div>
       <div className="net-scroll">
       <div className="net-canvas">
@@ -206,21 +225,34 @@ export function NodeGraph({ scenario, states, action = 'noop', t = 0, selected =
         <line x1="205" x2="205" y1="48" y2={H - 20} className="network-boundary" />
         <g transform={`translate(${view.x} ${view.y}) scale(${view.k})`}>
           {edges.map(([a, b]) => {
-            const p = pos(a); const q = pos(b);
-            const va = byName.get(a); const vb = byName.get(b);
+            let p = pos(a); let q = pos(b);
+            let from = a; let to = b;
+            if (q.x < p.x - 1) { [p, q] = [q, p]; [from, to] = [to, from]; }
+            const va = byName.get(from); const vb = byName.get(to);
             const cut = va?.isolated || vb?.isolated;
             const slow = !cut && (va?.rateLimited || vb?.rateLimited);
             const lit = focus !== null && (a === focus || b === focus);
             const acted = target !== null && (a === target || b === target);
-            const mx = (p.x + q.x) / 2; const my = (p.y + q.y) / 2;
-            const bend = Math.abs(p.x - q.x) < 1 ? 46 : 0; // same-column links bow out so they stay visible
-            const d = `M${p.x},${p.y} Q${mx + bend},${my} ${q.x},${q.y}`;
-            const iso = va?.isolated ? p : q; const other = va?.isolated ? q : p;
+            const hasAttacker = (n: string) => n === INTERNET_ID || (stateBy.get(n)?.hidden_stage_ground_truth ?? 'none') !== 'none';
+            const attack = showTruth && hasAttacker(from) && hasAttacker(to) && (from !== INTERNET_ID || to !== INTERNET_ID);
+            const fromW = from === INTERNET_ID ? IW : CW; const toW = to === INTERNET_ID ? IW : CW;
+            let d: string; let mid: Point;
+            if (Math.abs(p.x - q.x) < 1) {
+              // Same column: a short vertical link on the right side, clear of the tags.
+              const [top, bottom] = p.y < q.y ? [p, q] : [q, p];
+              const x = p.x + CW / 2 - 24;
+              d = `M${x},${top.y + CH / 2} L${x},${bottom.y - CH / 2}`;
+              mid = { x, y: (top.y + bottom.y) / 2 };
+            } else {
+              const x1 = p.x + fromW / 2; const x2 = q.x - toW / 2; const dx = (x2 - x1) / 2;
+              d = `M${x1},${p.y} C${x1 + dx},${p.y} ${x2 - dx},${q.y} ${x2},${q.y}`;
+              mid = { x: (x1 + x2) / 2, y: (p.y + q.y) / 2 };
+            }
             return (
               <g key={`${a}>${b}`}>
-                <path d={d} className="net-edge" data-cut={cut || undefined} data-slow={slow || undefined} data-lit={lit || undefined} data-dim={(focus !== null && !lit) || undefined} />
+                <path d={d} className="net-edge" data-cut={cut || undefined} data-slow={(slow && !attack) || undefined} data-lit={lit || undefined} data-attack={attack || undefined} data-dim={(focus !== null && !lit) || undefined} />
                 {acted && <path key={`flash-${t}`} d={d} className="net-edge-flash" pathLength={1} />}
-                {cut && <g transform={`translate(${iso.x + (other.x - iso.x) * 0.3},${iso.y + (other.y - iso.y) * 0.3})`} className="net-cut"><circle r="6" /><path d="M-3-3l6 6M3-3l-6 6" /></g>}
+                {cut && <g transform={`translate(${mid.x},${mid.y})`} className="net-cut"><circle r="6" /><path d="M-3-3l6 6M3-3l-6 6" /></g>}
               </g>
             );
           })}
@@ -231,25 +263,31 @@ export function NodeGraph({ scenario, states, action = 'noop', t = 0, selected =
               <g transform={`translate(${p.x},${p.y})`} className="net-node net-internet" data-dim={(focus !== null && !neighbours.has(INTERNET_ID)) || undefined}
                 onPointerEnter={() => setHover(INTERNET_ID)} onPointerLeave={() => setHover(null)}>
                 <title>{INTERNET.role}</title>
-                <rect x="-68" y="-42" width="136" height="104" rx="12" className="network-card" /><circle r="20" className="net-body" />
-                <g className="net-icon"><Icon kind="internet" /></g>
-                <text y="38" textAnchor="middle" className="net-label">Internet</text>
-                <text y="51" textAnchor="middle" className="net-sub">outside traffic</text>
+                <rect x={-IW / 2} y={-IH / 2} width={IW} height={IH} rx="12" className="network-card" />
+                <text x={-IW / 2 + 14} y="-5" className="net-label">Internet</text>
+                <text x={-IW / 2 + 14} y="14" className="net-sub">Outside traffic</text>
+                <circle cx={IW / 2} cy="0" r="2.6" className="net-port" />
               </g>
             );
           })()}
 
           {views.map(v => {
             const p = pos(v.name);
-            const r = radius(v.name);
             const stage = stateBy.get(v.name)?.hidden_stage_ground_truth ?? 'none';
             const isTarget = target === v.name;
+            const { tone, text } = nodeTone(v, stage, showTruth);
+            const intruder = showTruth && stage !== 'none' ? (v.isolated ? 'Attacker cut off' : 'Attacker here') : null;
+            const did = isTarget ? DEFENDER_DID[parseAction(action).verb] : undefined;
+            const value = v.value ?? 0;
+            const band = value >= SIGNAL_BANDS.high ? 'high' : value >= SIGNAL_BANDS.elevated ? 'elevated' : 'quiet';
+            const barW = 74;
             return (
               <g
                 key={v.name}
                 data-node={v.name}
                 transform={`translate(${p.x},${p.y})`}
                 className="net-node"
+                data-tone={tone}
                 data-signal={v.signal}
                 data-isolated={v.isolated || undefined}
                 data-selected={selected === v.name || undefined}
@@ -265,21 +303,19 @@ export function NodeGraph({ scenario, states, action = 'noop', t = 0, selected =
                 onBlur={() => setHover(h => (h === v.name ? null : h))}
                 onKeyDown={onKey(v.name)}
               >
-                {/* Everything about a node stays inside its card, so stacked nodes never collide. */}
-                <rect x={-82} y={-60} width={164} height={132} rx={14} className="network-card" />
-                {v.signal === 'high' && <circle r={r * 2.1} fill="url(#net-hot)" className="net-glow" />}
-                {showTruth && stage !== 'none' && <circle r={r + 12} className="net-truth" />}
-                {isTarget && <circle key={`act-${t}`} r={r + 6} className="net-act" />}
-                <circle r={r + 4} className="net-ring" />
-                <circle r={r} className="net-body" />
-                <g className="net-icon" transform={`scale(${(r / 24).toFixed(3)})`}><Icon kind={v.info.kind} /></g>
-                {badgesFor(v).map((b, i) => <StateBadge key={b} kind={b} x={r * 0.8} y={-r * 0.8 + i * 20} />)}
-                <text y={r + 20} textAnchor="middle" className="net-label">{v.info.label}</text>
-                {showTruth && stage !== 'none'
-                  ? <text y={r + 34} textAnchor="middle" className="net-truth-label">attacker: {stage}</text>
-                  : v.critical && <text y={r + 34} textAnchor="middle" className="net-sub">Critical</text>}
-                {showTruth && stage !== 'none' && <g transform="translate(-76,-54)" className="network-intruder"><rect width="74" height="17" rx="8.5" /><text x="37" y="11.8" textAnchor="middle">{v.isolated ? 'ATTACKER CUT OFF' : 'ATTACKER HERE'}</text></g>}
-                {isTarget && <g transform="translate(2,-54)" className="network-defender"><rect width="74" height="17" rx="8.5" /><text x="37" y="11.8" textAnchor="middle">DEFENDER HERE</text></g>}
+                {isTarget && <rect key={`act-${t}`} x={-CW / 2 - 5} y={-CH / 2 - 5} width={CW + 10} height={CH + 10} rx="16" className="net-act" />}
+                <rect x={-CW / 2} y={-CH / 2} width={CW} height={CH} rx="12" className="network-card" />
+                <circle cx={-CW / 2} cy="0" r="2.6" className="net-port" /><circle cx={CW / 2} cy="0" r="2.6" className="net-port" />
+                <text x={-CW / 2 + 14} y={-CH / 2 + 24} className="net-label">{v.info.label}</text>
+                {v.critical && <text x={CW / 2 - 14} y={-CH / 2 + 23} textAnchor="end" className="net-crit">critical</text>}
+                <circle cx={-CW / 2 + 18} cy={-1} r="3.6" className="net-dot" />
+                <text x={-CW / 2 + 28} y={3} className="net-status">{text}</text>
+                <text x={-CW / 2 + 14} y={CH / 2 - 15} className="net-sub">Signal</text>
+                <rect x={-CW / 2 + 60} y={CH / 2 - 21} width={barW} height="4" rx="2" className="net-bar-track" />
+                <rect x={-CW / 2 + 60} y={CH / 2 - 21} width={Math.max(2, barW * Math.min(1, value))} height="4" rx="2" className="net-bar" data-band={band} />
+                <text x={CW / 2 - 14} y={CH / 2 - 15} textAnchor="end" className="net-pct">{Math.round(value * 100)}%</text>
+                {intruder && <g className="network-intruder"><Tag text={intruder} x={-CW / 2} className={v.isolated ? 'net-tag-contained' : 'net-tag-attacker'} /></g>}
+                {did && <g className="network-defender"><Tag text={did} x={-CW / 2} row={intruder ? 1 : 0} className="net-tag-defender" /></g>}
               </g>
             );
           })}

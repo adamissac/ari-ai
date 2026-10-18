@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { NodeGraph, StateBadge } from '@/components/node-graph';
+import { NodeGraph } from '@/components/node-graph';
 import { Mono } from '@/components/ui';
 import { num } from '@/lib/format';
 import { cumulativeReturn, rewardTotals, stepObservation } from '@/lib/lab';
 import { episodeOutcome, rewardWord, SCENARIO_WORDS, STAGE_WORDS } from '@/lib/lab-plain';
 import {
   ACTION_SHORT, actionMeaning, keyMoments, latestAction, nodeStatusLine, nodeViews, overallStatus, parseAction,
-  serviceInfo, signalValue, SIGNAL_BANDS, SIGNAL_WORDS, stepStory, storyMoments, type Moment,
+  serviceInfo, signalValue, SIGNAL_BANDS, stepStory, storyMoments, type Moment,
 } from '@/lib/lab-story';
 import type { HiddenStage, LabEpisode, LabScenario } from '@/lib/lab-types';
 
@@ -78,7 +78,6 @@ export function ReplayStage({ episode, scenario }: { episode: LabEpisode; scenar
           <p className="lab-now-moment" aria-live="polite">
             {currentMoment ? <><span className="font-mono text-faint">{currentMoment.t}</span> {currentMoment.text}</> : <span className="text-faint">Press play or use the arrows to jump between key moments.</span>}
           </p>
-          <Legend />
         </div>
 
         <aside className="replay-explanation" aria-label="What's happening">
@@ -114,21 +113,6 @@ export function ReplayStage({ episode, scenario }: { episode: LabEpisode; scenar
         </div>
         <GroundTruth episode={episode} t={t} truth={truth} onToggle={setTruth} label={label} />
       </div>
-    </div>
-  );
-}
-
-function Legend() {
-  return (
-    <div className="lab-legend" aria-label="Map legend">
-      <span><svg viewBox="-12 -12 24 24" className="lab-key"><circle r="8" className="lk-quiet" /></svg>{SIGNAL_WORDS.quiet}</span>
-      <span><svg viewBox="-12 -12 24 24" className="lab-key"><circle r="8" className="lk-elevated" /></svg>{SIGNAL_WORDS.elevated}</span>
-      <span><svg viewBox="-12 -12 24 24" className="lab-key"><circle r="8" className="lk-high" /></svg>{SIGNAL_WORDS.high}</span>
-      <span><svg viewBox="-12 -12 24 24" className="lab-key lab-key-dark"><StateBadge kind="watch" /></svg>Watched closely</span>
-      <span><svg viewBox="-12 -12 24 24" className="lab-key lab-key-dark"><StateBadge kind="slow" /></svg>Traffic slowed</span>
-      <span><svg viewBox="-12 -12 24 24" className="lab-key lab-key-dark"><StateBadge kind="cut" /></svg>Cut off</span>
-      <span><svg viewBox="-12 -12 24 24" className="lab-key lab-key-dark"><StateBadge kind="recheck" /></svg>Re-check requested</span>
-      <span className="text-faint">Bigger = more critical. Signal bands: elevated ≥ {SIGNAL_BANDS.elevated}, suspicious ≥ {SIGNAL_BANDS.high} (alert rate or anomaly score).</span>
     </div>
   );
 }

@@ -1338,3 +1338,66 @@ body:has(.commit-stage) main { color: #fff; }
 .amap-legend [data-k="red"] { --k: #ff7a5c; }
 .amap-legend [data-k="blue"] { --k: #6ea8ff; }
 .amap-legend :is([data-k="red"], [data-k="blue"])::before { border-radius: 4px; background: var(--k); box-shadow: none; height: 8px; width: 14px; }
+
+/* Defense Lab network cards (components/node-graph.tsx). Red = attacker present (ground truth),
+   green = attacker cut off, yellow = false alarm, amber = suspicious (defender's view), blue =
+   defender action, dashed = cut off. One card per service; status lives on the card. */
+:root:not(:has(.hero-full)) .network-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 20px; padding: 14px 18px; border-bottom: 1px solid rgb(255 247 242 / 8%); }
+.network-title { font-size: 0.9rem; font-weight: 600; color: #fff7f2; }
+.network-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.72rem; color: rgb(255 247 242 / 60%); }
+.network-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.network-legend li::before { content: ""; width: 12px; height: 9px; border-radius: 3px; box-shadow: inset 0 0 0 1.5px var(--k); background: color-mix(in srgb, var(--k) 16%, transparent); }
+.network-legend [data-k="attacker"] { --k: #ff5a46; }
+.network-legend [data-k="contained"] { --k: #5fd49a; }
+.network-legend [data-k="false"] { --k: #f2c14e; }
+.network-legend [data-k="suspicious"] { --k: #f0a868; }
+.network-legend [data-k="defender"] { --k: #6ea8ff; }
+.network-legend [data-k="defender"]::before { background: var(--k); box-shadow: none; }
+.network-legend [data-k="isolated"]::before { box-shadow: none; outline: 1.5px dashed rgb(255 247 242 / 50%); outline-offset: -1.5px; background: none; }
+.network-legend [data-k="path"]::before { height: 0; border-radius: 0; box-shadow: none; background: none; border-top: 2px dashed #ff5a46; width: 16px; }
+
+:root:not(:has(.hero-full)) .net-node .network-card { fill: #1d1513; stroke: rgb(255 247 242 / 13%); stroke-width: 1; transition: stroke 250ms, fill 250ms; }
+:root:not(:has(.hero-full)) .net-node[data-tone="compromised"] .network-card { fill: #3a1510; stroke: #ff5a46; stroke-width: 1.6; }
+:root:not(:has(.hero-full)) .net-node[data-tone="contained"] .network-card { fill: #102a1e; stroke: #5fd49a; stroke-width: 1.4; stroke-dasharray: 6 4; }
+:root:not(:has(.hero-full)) .net-node[data-tone="false-alarm"] .network-card { fill: #322811; stroke: #f2c14e; stroke-width: 1.4; }
+:root:not(:has(.hero-full)) .net-node[data-tone="suspicious"] .network-card { stroke: #f0a868; stroke-width: 1.3; }
+:root:not(:has(.hero-full)) .net-node[data-tone="isolated"] .network-card { stroke: rgb(255 247 242 / 45%); stroke-dasharray: 6 4; }
+:root:not(:has(.hero-full)) .net-node[data-tone="false-alarm"][data-isolated] .network-card { stroke-dasharray: 6 4; }
+:root:not(:has(.hero-full)) .net-node[data-selected] .network-card, :root:not(:has(.hero-full)) .net-node:focus-visible .network-card { stroke: #fff; stroke-width: 2; }
+:root:not(:has(.hero-full)) .net-internet .network-card { fill: #181210; stroke: rgb(255 247 242 / 13%); }
+:root:not(:has(.hero-full)) .net-map .net-label { fill: #fff7f2; font: 600 14px var(--font-sans); }
+:root:not(:has(.hero-full)) .net-map .net-sub { fill: rgb(255 247 242 / 45%); font: 400 10.5px var(--font-sans); letter-spacing: 0; text-transform: none; }
+.net-crit { fill: rgb(255 247 242 / 45%); font: 400 10px var(--font-mono); }
+.net-status { fill: rgb(255 247 242 / 78%); font: 400 12px var(--font-sans); }
+.net-pct { fill: rgb(255 247 242 / 70%); font: 500 10.5px var(--font-mono); }
+.net-port { fill: rgb(255 247 242 / 45%); }
+.net-dot { fill: #5fd49a; }
+.net-node[data-tone="compromised"] .net-dot { fill: #ff5a46; }
+.net-node[data-tone="compromised"] .net-status { fill: #ffb0a3; }
+.net-node[data-tone="contained"] .net-status { fill: #9ff0c6; }
+.net-node[data-tone="false-alarm"] .net-dot { fill: #f2c14e; }
+.net-node[data-tone="false-alarm"] .net-status { fill: #f7d98c; }
+.net-node[data-tone="suspicious"] .net-dot { fill: #f0a868; }
+.net-node[data-tone="suspicious"] .net-status { fill: #f7c59a; }
+.net-node[data-tone="isolated"] .net-dot { fill: rgb(255 247 242 / 45%); }
+.net-bar-track { fill: rgb(255 247 242 / 10%); }
+.net-bar { fill: rgb(255 247 242 / 45%); transition: width 300ms var(--ease-quad); }
+.net-bar[data-band="elevated"] { fill: #f2c14e; }
+.net-bar[data-band="high"] { fill: #ff5a46; }
+.net-tag rect { stroke: none; }
+.net-tag text { font: 600 9.5px var(--font-sans); letter-spacing: 0.01em; }
+:root:not(:has(.hero-full)) .net-tag-attacker rect { fill: #ff5a46; }
+:root:not(:has(.hero-full)) .net-tag-attacker text { fill: #1c0906; }
+:root:not(:has(.hero-full)) .net-tag-defender rect { fill: #6ea8ff; }
+:root:not(:has(.hero-full)) .net-tag-defender text { fill: #08132a; }
+:root:not(:has(.hero-full)) .net-act { stroke: #6ea8ff; stroke-width: 2; }
+:root:not(:has(.hero-full)) .net-edge { stroke: rgb(255 247 242 / 20%); stroke-width: 1.3; }
+:root:not(:has(.hero-full)) .net-edge[data-attack] { stroke: #ff5a46; stroke-width: 2; stroke-dasharray: 6 5; animation: amap-flow 0.9s linear infinite; }
+:root:not(:has(.hero-full)) .net-edge[data-cut] { stroke: rgb(255 247 242 / 16%); stroke-dasharray: 5 5; }
+.net-map svg { overflow: visible; }
+@media (max-width: 999px) { :root:not(:has(.hero-full)) .net-canvas { min-width: 900px; } }
+@media (prefers-reduced-motion: reduce) { :root:not(:has(.hero-full)) .net-edge[data-attack] { animation: none; } }
+:root:not(:has(.hero-full)) .net-tag text { font: 600 9.5px var(--font-sans); letter-spacing: 0.01em; }
+:root:not(:has(.hero-full)) .net-edge[data-slow] { stroke: #f0a868; stroke-dasharray: 2 5; stroke-width: 1.6; }
+:root:not(:has(.hero-full)) .net-tag-contained rect { fill: #5fd49a; }
+:root:not(:has(.hero-full)) .net-tag-contained text { fill: #06200f; }
