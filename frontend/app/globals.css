@@ -1178,3 +1178,14 @@ body:has(.commit-stage) main { color: #fff; }
 .review-item:first-child { padding-top: 0; border-top: 0; }
 .demo-pipe-item[data-status="running"] { background: rgb(255 255 255 / 9%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 70%); }
 .demo-pipe-item[data-status="done"] { box-shadow: inset 0 0 0 1px rgb(255 255 255 / 16%); }
+
+/* Page transition between parts of the site (components/route-transition.tsx): the landing
+   intro's look (mark, counter, load bar on warm ink), fading in fast and lifting like a curtain. */
+.route-veil { position: fixed; inset: 0; z-index: 70; pointer-events: none; background: var(--color-night); animation: route-veil-in 200ms var(--ease-quad) both; transition: translate 750ms cubic-bezier(0.76, 0, 0.24, 1); }
+.route-veil[data-phase="lift"] { translate: 0 -100%; }
+@keyframes route-veil-in { from { opacity: 0; } }
+.route-veil-mark { position: absolute; top: 50%; left: 50%; translate: -50% -50%; color: #fff; animation: intro-mark-reveal 500ms var(--ease-quad) both; }
+.route-veil-progress { position: absolute; bottom: 80px; left: 50%; translate: -50%; display: grid; grid-template-columns: 36px min(300px, calc(100vw - 96px)); align-items: center; column-gap: 10px; }
+.route-veil-pct { justify-self: end; font-family: var(--font-mono); font-size: 12px; line-height: 1; color: rgba(255, 255, 255, 0.85); font-variant-numeric: tabular-nums; }
+.route-veil-line { height: 2px; border-radius: 15px; background: var(--color-brand); transform-origin: 0 50%; transform: scaleX(0); }
+@media (prefers-reduced-motion: reduce) { .route-veil { display: none; } }

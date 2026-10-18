@@ -6,6 +6,7 @@ import { Ambient } from '@/components/ambient';
 import { BRAND_NAME, Wordmark } from '@/components/brand';
 import { DemoBanner } from '@/components/demo-banner';
 import { HeaderContrast } from '@/components/header-contrast';
+import { RouteTransition } from '@/components/route-transition';
 import { SiteNavigation } from '@/components/site-navigation';
 import { SiteFooter } from '@/components/site-footer';
 import { SmoothScroll } from '@/components/smooth-scroll';
@@ -52,6 +53,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         </header>
         <HeaderContrast />
         <SmoothScroll />
+        <RouteTransition />
         <DemoBanner />
         <main id="main" className="mx-auto max-w-7xl px-4 py-6">{children}</main>
         <SiteFooter />
