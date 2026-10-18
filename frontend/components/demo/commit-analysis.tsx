@@ -2,8 +2,8 @@
 
 /**
  * One commit through Ari: overview, the code review in plain words, and a replay of the
- * seven security agents checking the parts of the app the change touches. Details live in
- * dropdowns. Illustrative only (ADR 0013). Continuous 24/7 defense is not part of a
+ * seven security agents checking the parts of the app the change touches. Opens on the
+ * overview; everything in the review is shown in place. Illustrative only (ADR 0013). Continuous 24/7 defense is not part of a
  * commit's analysis and lives under Monitoring / Defense Lab.
  */
 import { useMemo, useState } from 'react';
@@ -53,7 +53,7 @@ export function CommitAnalysis({ repo, commit }: { repo: DemoRepo; commit: DemoC
   const analysis = useMemo(() => analyze(repo, commit), [repo, commit]);
   const t = useMemo(() => timeline(analysis), [analysis]);
   const replay = useReplay(t.total);
-  const [tab, setTab] = useState<Tab>('agents');
+  const [tab, setTab] = useState<Tab>('overview');
   const statuses = Object.fromEntries(analysis.agents.map(a => [a.agent, agentStatus(a, t, replay.position)])) as Record<AgentId, Status>;
   const ran = analysis.agents.filter(a => a.status === 'done' && statuses[a.agent] === 'done').length;
   const pct = Math.round((Math.min(replay.position, t.total) / t.total) * 100);
@@ -135,32 +135,32 @@ function Overview({ analysis, t, position, done, statuses, accepted, onOpen }: {
       </ol>
       {!done ? (
         <section className="glass p-6" aria-live="polite">
-          <p className="label-mono text-[#ffb4a3]">In progress</p>
+          <p className="label-mono text-white/55">In progress</p>
           <p className="big-verdict mt-2">{currentActivity(analysis, t, position)}</p>
-          <button type="button" className="mt-4 rounded-full bg-white px-4 py-2 text-sm font-medium text-ink" onClick={() => onOpen('agents')}>Watch the agents →</button>
+          <button type="button" className="mt-4 rounded-full bg-white px-4 py-2 text-sm font-medium text-ink" onClick={() => onOpen('agents')}>Watch the agents</button>
         </section>
       ) : (
         <section className="grid gap-4 lg:grid-cols-[1.5fr_1fr]" data-testid="demo-result">
           <div className="glass p-6">
-            <p className="label-mono text-[#ffb4a3]">{analysis.findings.length ? 'What Ari found' : 'Result'}</p>
+            <p className="label-mono text-white/55">{analysis.findings.length ? 'What Ari found' : 'Result'}</p>
             <h2 className="big-verdict mt-2">{analysis.headline}</h2>
             <div className="mt-5 flex flex-col gap-2">
               {analysis.findings.map(f => (
-                <details key={f.id} className="more">
-                  <summary>
+                <div key={f.id} className="review-item">
+                  <p className="flex flex-wrap items-center gap-2">
                     <span className={`demo-chip ${f.severity === 'critical' || f.severity === 'high' ? 'demo-chip-bad' : 'demo-chip-warn'}`}>{f.severity}</span>
                     <span className="text-sm font-medium text-white">{f.title}</span>
                     <span className={`demo-chip ${accepted ? 'demo-chip-ok' : 'demo-chip-warn'}`}>{accepted ? 'fixed' : 'open'}</span>
-                  </summary>
-                  <p className="mt-3 text-sm text-white/70">{analysis.summary}</p>
+                  </p>
+                  <p className="mt-3 text-sm leading-relaxed text-white/70">{analysis.summary}</p>
                   <p className="mt-2 font-mono text-xs text-white/50">{f.where} · {f.cwe}{f.cvss !== '—' ? ` · CVSS ${f.cvss}` : ''}</p>
-                </details>
+                </div>
               ))}
               {analysis.findings.length === 0 && <p className="text-sm text-white/65">{analysis.summary}</p>}
             </div>
           </div>
           <div className="glass flex flex-col p-6">
-            <p className="label-mono text-[#ffb4a3]">What happens next</p>
+            <p className="label-mono text-white/55">What happens next</p>
             <p className="mt-2 text-lg font-semibold">{analysis.patch ? (accepted ? 'A pull request with the verified fix is waiting for your team' : 'The fix needs a person to look at it') : 'Nothing to fix'}</p>
             <p className="mt-1 text-sm text-white/60">{analysis.patch ? 'Nothing is merged automatically.' : 'This commit is clean.'}</p>
             <div className="mt-auto flex flex-wrap gap-2 pt-5">
@@ -187,7 +187,7 @@ function currentActivity(analysis: Analysis, t: Timeline, position: number): str
 
 function Review({ analysis, reviewed, accepted }: { analysis: Analysis; reviewed: boolean; accepted: boolean }) {
   const r = analysis.review;
-  if (!reviewed) return <section className="glass p-6"><p className="label-mono text-[#ffb4a3]">Code review</p><p className="big-verdict mt-2">The reviewer is still reading this change…</p></section>;
+  if (!reviewed) return <section className="glass p-6"><p className="label-mono text-white/55">Code review</p><p className="big-verdict mt-2">The reviewer is still reading this change…</p></section>;
   const blockers = r.comments.filter(c => c.severity === 'blocker' || c.severity === 'major');
   const brokenTests = new Set(r.tests.filter(x => x.before === 'fail').map(x => x.expectation));
   const verdict = blockers.length === 0 ? { tone: 'ok', word: 'Looks right' } : accepted ? { tone: 'ok', word: 'Problem found and fixed' } : { tone: 'warn', word: 'Problem found' };
@@ -195,52 +195,49 @@ function Review({ analysis, reviewed, accepted }: { analysis: Analysis; reviewed
     <div className="flex flex-col gap-5" data-testid="demo-review">
       <section className="glass grid gap-6 p-6 lg:grid-cols-[1.4fr_1fr]">
         <div>
-          <p className="label-mono text-[#ffb4a3]">What this change does</p>
+          <p className="label-mono text-white/55">What this change does</p>
           <p className="big-verdict mt-2">{r.intent}</p>
         </div>
         <div className="flex flex-col items-start gap-3 lg:items-end lg:text-right">
           <span className={`demo-chip ${verdict.tone === 'ok' ? 'demo-chip-ok' : 'demo-chip-warn'} text-[0.75rem]`}>{verdict.word}</span>
           <p className="text-sm text-white/65">{blockers.length === 0 ? 'The reviewer found nothing that needs changing.' : `${blockers.length} problem${blockers.length === 1 ? '' : 's'} flagged before merge.`}</p>
-          <details className="amap-more lg:text-left"><summary>Reviewer&apos;s full note</summary><p className="mt-2 max-w-md text-sm text-white/70">{r.verdict}</p></details>
+          <p className="max-w-md text-sm leading-relaxed text-white/75 lg:text-right">{r.verdict}</p>
         </div>
       </section>
 
       <section className="grid gap-5 lg:grid-cols-2">
         <div className="glass p-6">
-          <p className="label-mono text-white/50">What the code should always do</p>
-          <ul className="mt-4 flex flex-col gap-2">
+          <h3 className="review-heading">What the code should always do</h3>
+          <ul className="mt-4 flex flex-col gap-3">
             {r.expectations.map(e => {
               const broken = brokenTests.has(e.id);
               const tests = r.tests.filter(x => x.expectation === e.id);
+              const ok = !broken || accepted;
               return (
-                <li key={e.id}>
-                  <details className="more">
-                    <summary>
-                      <span aria-hidden="true" className={broken ? (accepted ? 'text-[#9ff0c6]' : 'text-[#ff9b88]') : 'text-[#9ff0c6]'}>{broken ? (accepted ? '✓' : '✕') : '✓'}</span>
-                      <span className="text-sm text-white">{e.text}</span>
-                    </summary>
-                    <p className="mt-2 text-xs text-white/55">{broken ? (accepted ? 'This change broke it; the fix restores it.' : 'This change breaks it.') : 'Still holds after this change.'} Learned from {e.source}.</p>
-                    {tests.length > 0 && <ul className="mt-2 flex flex-col gap-1 font-mono text-[0.7rem] text-white/60">{tests.map(x => <li key={x.name}>{x.name}: {x.before === 'fail' ? 'failed before the fix' : 'passed'} → passes now</li>)}</ul>}
-                  </details>
+                <li key={e.id} className="review-item">
+                  <p className="flex items-start gap-2.5">
+                    <span aria-hidden="true" className={ok ? 'text-[#9ff0c6]' : 'text-[#ff9b88]'}>{ok ? '✓' : '✕'}</span>
+                    <span className="text-sm text-white">{e.text}</span>
+                  </p>
+                  <p className="mt-1.5 pl-6 text-xs leading-relaxed text-white/55">{broken ? (accepted ? 'This change broke it; the fix restores it.' : 'This change breaks it.') : 'Still holds after this change.'} Learned from {e.source}.</p>
+                  {tests.length > 0 && <ul className="mt-1.5 flex flex-col gap-1 pl-6 font-mono text-[0.72rem] text-white/60">{tests.map(x => <li key={x.name}>{x.name}: {x.before === 'fail' ? 'failed before the fix' : 'passed'}, passes now</li>)}</ul>}
                 </li>
               );
             })}
           </ul>
         </div>
         <div className="glass p-6">
-          <p className="label-mono text-white/50">What the reviewer flagged</p>
+          <h3 className="review-heading">What the reviewer flagged</h3>
           {r.comments.length === 0 ? <p className="mt-4 text-sm text-white/65">Nothing.</p> : (
-            <ul className="mt-4 flex flex-col gap-2">
+            <ul className="mt-4 flex flex-col gap-3">
               {r.comments.map((c, i) => (
-                <li key={i}>
-                  <details className="more">
-                    <summary>
-                      <span className={`demo-chip ${c.severity === 'blocker' ? 'demo-chip-bad' : c.severity === 'major' ? 'demo-chip-warn' : 'demo-chip-info'}`}>{c.severity === 'blocker' ? 'must fix' : c.severity === 'major' ? 'should fix' : 'tip'}</span>
-                      <span className="text-sm text-white">{c.title}</span>
-                    </summary>
-                    <p className="mt-2 text-sm text-white/70">{c.body}</p>
-                    <p className="mt-1 font-mono text-[0.7rem] text-white/45">{c.path} · {c.line}</p>
-                  </details>
+                <li key={i} className="review-item">
+                  <p className="flex flex-wrap items-center gap-2">
+                    <span className={`demo-chip ${c.severity === 'blocker' ? 'demo-chip-bad' : c.severity === 'major' ? 'demo-chip-warn' : 'demo-chip-info'}`}>{c.severity === 'blocker' ? 'must fix' : c.severity === 'major' ? 'should fix' : 'tip'}</span>
+                    <span className="text-sm font-medium text-white">{c.title}</span>
+                  </p>
+                  <p className="mt-2 text-sm leading-relaxed text-white/70">{c.body}</p>
+                  <p className="mt-1.5 font-mono text-[0.72rem] text-white/45">{c.path} · {c.line}</p>
                 </li>
               ))}
             </ul>
@@ -248,33 +245,33 @@ function Review({ analysis, reviewed, accepted }: { analysis: Analysis; reviewed
         </div>
       </section>
 
-      <section className="flex flex-col gap-2">
-        <details className="more">
-          <summary>See the code that changed ({r.diff.length} file{r.diff.length === 1 ? '' : 's'})</summary>
-          <div className="mt-3 flex flex-col gap-3">{r.diff.map(file => <DemoDiff key={file.path} file={file} comments={r.comments} />)}</div>
-        </details>
-        {analysis.patch && (
-          <details className="more">
-            <summary>See the fix {accepted ? '(verified)' : '(not yet accepted)'}</summary>
-            <div className="mt-3"><DemoDiff file={analysis.patch} label="fix" /></div>
-          </details>
-        )}
-        <details className="more">
-          <summary>See the tests Ari wrote ({r.tests.length})</summary>
-          <table className="mt-3 w-full text-xs">
-            <thead><tr className="text-left text-white/45"><th className="pb-2 font-normal">Test</th><th className="pb-2 font-normal">Before</th><th className="pb-2 font-normal">After fix</th></tr></thead>
-            <tbody>
-              {r.tests.map(test => (
-                <tr key={test.name} className="border-t border-white/10 align-top">
-                  <td className="py-2 pr-2 font-mono [overflow-wrap:anywhere]">{test.name}</td>
-                  <td className={`whitespace-nowrap py-2 pr-2 ${test.before === 'fail' ? 'text-[#ff9b88]' : 'text-[#9ff0c6]'}`}>{test.before === 'fail' ? '✕ fail' : '✓ pass'}</td>
-                  <td className="whitespace-nowrap py-2 text-[#9ff0c6]">✓ pass</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="mt-2 text-xs text-white/45">A test that fails before the fix and passes after is what makes a fix count.</p>
-        </details>
+      <section className="flex flex-col gap-3">
+        <h3 className="review-heading">The code that changed <span className="text-white/45">· {r.diff.length} file{r.diff.length === 1 ? '' : 's'}</span></h3>
+        {r.diff.map(file => <DemoDiff key={file.path} file={file} comments={r.comments} />)}
+      </section>
+
+      {analysis.patch && (
+        <section className="flex flex-col gap-3">
+          <h3 className="review-heading">The fix <span className="text-white/45">· {accepted ? 'verified' : 'not yet accepted'}</span></h3>
+          <DemoDiff file={analysis.patch} label="fix" />
+        </section>
+      )}
+
+      <section className="glass p-6">
+        <h3 className="review-heading">The tests Ari wrote <span className="text-white/45">· {r.tests.length}</span></h3>
+        <table className="mt-4 w-full text-sm">
+          <thead><tr className="text-left text-xs text-white/45"><th className="pb-2 font-normal">Test</th><th className="pb-2 font-normal">Before</th><th className="pb-2 font-normal">After fix</th></tr></thead>
+          <tbody>
+            {r.tests.map(test => (
+              <tr key={test.name} className="border-t border-white/10 align-top">
+                <td className="py-2.5 pr-3 font-mono text-xs [overflow-wrap:anywhere]">{test.name}</td>
+                <td className={`whitespace-nowrap py-2.5 pr-3 ${test.before === 'fail' ? 'text-[#ff9b88]' : 'text-[#9ff0c6]'}`}>{test.before === 'fail' ? '✕ fail' : '✓ pass'}</td>
+                <td className="whitespace-nowrap py-2.5 text-[#9ff0c6]">✓ pass</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="mt-3 text-xs text-white/45">A test that fails before the fix and passes after is what makes a fix count.</p>
       </section>
     </div>
   );
