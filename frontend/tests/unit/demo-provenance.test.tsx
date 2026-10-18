@@ -10,7 +10,7 @@ it('labels the recorded live run as recorded, with no sample-data tag or footer 
   render(<><RecordedLiveRun /><SiteFooter /></>);
   expect(screen.queryByTestId('site-footer')).toBeNull();
   expect(screen.queryByTestId('demo-account-tag')).toBeNull();
-  expect(screen.getByTestId('recorded-live-run').textContent).toContain('not simulated');
+  expect(screen.getByTestId('recorded-live-run').textContent).toContain('executed evidence');
 });
 
 it('states the recorded run did not prove new tests failed before the patch', () => {

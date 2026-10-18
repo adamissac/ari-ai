@@ -41,7 +41,7 @@ describe('lab step observation', () => {
       nodes: [node('db', 0.01, 'impact'), node('api', 0.14, 'none'), node('auth', 0.14, 'none')],
     });
     expect(text).toContain('0.14 on api, auth');
-    expect(text).toContain('rate-limit api in this simulation');
+    expect(text).toContain('rate-limit api in this test environment');
     expect(text).not.toContain('impact');
     expect(text).not.toContain('db');
   });
