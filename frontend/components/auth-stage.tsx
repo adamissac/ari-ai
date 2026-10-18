@@ -3,6 +3,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { BRAND_HEADLINE, BRAND_HEADLINE_REST, BRAND_NAME, BRAND_TAGLINE, LogoMark } from '@/components/brand';
 import { ASSESSMENT_LOOP, HeroStage, useLoopCursor } from '@/components/hero';
+import { useMarkAuthStage } from '@/lib/auth-stage-presence';
 
 const i = (n: number) => ({ '--i': n }) as CSSProperties;
 
@@ -26,6 +27,7 @@ export function AuthStage({
   footnote?: ReactNode;
   testId?: string;
 }) {
+  useMarkAuthStage();
   const active = useLoopCursor(ASSESSMENT_LOOP.length);
   return (
     <HeroStage className="hero-full auth-stage px-5 pb-16 pt-36 sm:pt-28 md:px-12" labelledBy="auth-title">
