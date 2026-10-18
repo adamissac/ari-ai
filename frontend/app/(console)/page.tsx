@@ -25,7 +25,7 @@ export default function HomePage() {
   return (
     <>
       <IntroLoader onReveal={() => setRevealed(true)} />
-      <HeroStage className="hero-full px-6 pb-14 pt-44 md:px-12 md:pt-32" labelledBy="hero-title" play={revealed}>
+      <HeroStage className="hero-full px-6 pb-14 pt-44 md:px-12 md:pt-32" labelledBy="hero-title" play={revealed} colony>
         <div className="mx-auto w-full max-w-7xl text-center">
           <h1 id="hero-title" className="hero-headline display font-bold">
             <span data-spotlight className="hero-line hero-in" style={i(1)}>{BRAND_HEADLINE}</span><br />
