@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useSyncExternalStore } from 'react';
+import { useLayoutEffect, useSyncExternalStore } from 'react';
 
 /**
  * Whether a sign-in screen (components/auth-stage.tsx) is on the page. The root layout's
@@ -19,9 +19,12 @@ function subscribe(listener: () => void): () => void {
   return () => listeners.delete(listener);
 }
 
-/** Call from the sign-in screen: marks it present while mounted. */
+/**
+ * Call from the sign-in screen: marks it present while mounted. A layout effect, so the
+ * footer re-renders away before the first paint instead of flashing for a frame.
+ */
 export function useMarkAuthStage(): void {
-  useEffect(() => {
+  useLayoutEffect(() => {
     mounted += 1;
     emit();
     return () => {
