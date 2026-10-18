@@ -30,3 +30,6 @@ pulled into MVP only if MVP tasks they would compete with are `DONE`.
 
 
 Completed: homepage invitation and evaluation selector alignment (feat/adam/home-next-step).
+
+
+Completed: centered sign-in form and reduced-motion-aware background decoration.
