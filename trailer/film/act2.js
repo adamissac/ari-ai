@@ -54,9 +54,9 @@
       const g = S.ctx; g.clearRect(0, 0, W, H);
       K.colonyDraw(g, COL, t - T0(), { scale: 1.7 });
       put(S.cam, K.aim(W / 2, H / 2, 1 + 0.05 * ease.inOut(seg(t, 40, 48))));
-      rise(t, S.l1, [40, 40.5, 41], 47.3, { exit: 0.3 });
-      rise(t, S.l2, [42, 42.5, 43], 47.3, { exit: 0.3 });
-      K.textRun(t, S.tag, 44, 47.2);
+      rise(t, S.l1, [40, 40.5, 41], 47.7, { exit: 0.3 });
+      rise(t, S.l2, [42, 42.5, 43], 47.7, { exit: 0.3 });
+      K.textRun(t, S.tag, 44, 47.6);
     },
   });
 })();

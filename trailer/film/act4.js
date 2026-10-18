@@ -22,9 +22,8 @@
     [125, { x: 700, y: 590, z: 1.5 }],                     // what Ari found
     [127, { x: 690, y: 655, z: 2.05 }],
     [129, { x: 1345, y: 595, z: 1.75 }],                   // what happens next
-    [131, { x: 960, y: 480, z: 0.95 }],
-    [132, { x: 1500, y: 182, z: 2.4 }],                    // issue found · fix verified
-    [133.25, { x: 560, y: 330, z: 1.7 }],                  // tabs: the cursor goes to Code review
+    [130.75, { x: 960, y: 500, z: 0.95 }],                 // the whole result
+    [132.5, { x: 560, y: 330, z: 1.7 }],                   // tabs: the cursor goes to Code review
     [135, { x: 680, y: 475, z: 1.45 }],                    // the intent
     [136.5, { x: 960, y: 705, z: 1.2 }],                   // should always do / reviewer flagged
     [138.5, { x: 720, y: 1095, z: 1.25 }],                 // the code that changed (tall page: second capture at +760)
@@ -56,7 +55,7 @@
     },
     run(t, b, S) {
       K.inkRun(t, S.bg, 0.45 + 0.5 * sp(t, 'product', 'heavy'), 110);
-      rise(t, S.w1, [112.5, 113, 113.5], 114.5, { exit: 0.3 });
+      rise(t, S.w1, [112, 112.5, 113], 114.5, { exit: 0.3 });
       CAPS.forEach(([, a, z], i) => K.eyebrowRun(t, S.caps[i], a, z));
       // the window rises as a card and settles from a slight tilt; it stays put while the camera works inside it
       const up = sp(t, 114.75, 'default');
@@ -96,7 +95,7 @@
     name: 'lab', from: 'lab', to: 'proof',
     build(root, S) {
       root.style.background = '#1c1210';
-      S.scr = K.screen(root, ['lab.png', 'lab_s1.png', 'lab_s2.png'], { x: 0, y: 0, w: W, h: H, radius: 0 });
+      S.scr = K.screen(root, ['lab.jpg', 'lab_s1.jpg', 'lab_s2.jpg'], { x: 0, y: 0, w: W, h: H, radius: 0 });
       S.scr.box.style.boxShadow = 'none';
       S.tag = K.eyebrow(root, 'Defense Lab · isolated test network · simulation only', PAD, 990, '#fff', 24);
       S.tag.style.cssText += ';background:rgba(28,18,16,.82);padding:10px 16px;border-radius:8px';

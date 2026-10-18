@@ -238,7 +238,7 @@
     {
       "at": 8,
       "type": "shutter",
-      "gain": 0.7,
+      "gain": 0.6,
       "what": "cut to the week"
     },
     {
@@ -414,13 +414,13 @@
       "what": "cut to the loop"
     },
     {
-      "at": 48.5,
+      "at": 48,
       "type": "pop",
       "gain": 0.5,
       "what": "title"
     },
     {
-      "at": 49.5,
+      "at": 49,
       "type": "pop",
       "gain": 0.5,
       "what": "title 2"
@@ -632,11 +632,11 @@
       "what": "push into the panel"
     },
     {
-      "at": 88.25,
+      "at": 88,
       "type": "tick",
       "gain": 0.25,
       "what": "diff builds",
-      "to": 88.75,
+      "to": 88.5,
       "every": 0.125
     },
     {
@@ -716,19 +716,19 @@
       "what": "into the console"
     },
     {
-      "at": 112.5,
+      "at": 112,
       "type": "thump",
       "gain": 0.7,
       "what": "WATCH"
     },
     {
-      "at": 113,
+      "at": 112.5,
       "type": "pop",
       "gain": 0.6,
       "what": "IT"
     },
     {
-      "at": 113.5,
+      "at": 113,
       "type": "thump",
       "gain": 0.75,
       "what": "RUN."
@@ -806,10 +806,10 @@
       "what": "camera move"
     },
     {
-      "at": 132,
-      "type": "pop",
-      "gain": 0.5,
-      "what": "issue found badge"
+      "at": 130.75,
+      "type": "whoosh",
+      "gain": 0.33,
+      "what": "pull back to the result"
     },
     {
       "at": 134.5,

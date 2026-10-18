@@ -34,9 +34,9 @@
       const wp = K.wipe(t, 151, 152);
       put(S.root, { clip: wp < 1 ? C.inset(0, 100 * (1 - wp), 0, 0) : 'none' });
       put(S.cam, K.aim(W / 2, H / 2, 1 + 0.04 * ease.inOut(seg(t, 152, 164))));
-      rise(t, S.l1, [152.25, 152.5, 152.75], 155.3, { exit: 0.3 });
-      rise(t, S.l2, [153, 153.25, 153.5], 155.3, { exit: 0.3 });
-      rise(t, S.l3, [156, 156.5], 157.45, { exit: 0.3 });
+      rise(t, S.l1, [152.25, 152.5, 152.75], 155.75, { exit: 0.3 });
+      rise(t, S.l2, [153, 153.25, 153.5], 155.75, { exit: 0.3 });
+      rise(t, S.l3, [156, 156.5], 157.8, { exit: 0.3 });
       K.eyebrowRun(t, S.eye, 157.75, 163.2);
       rise(t, S.title, [158, 158.2, 158.4, 158.6], 163.3, { exit: 0.3 });
       S.cards.forEach((c, i) => {

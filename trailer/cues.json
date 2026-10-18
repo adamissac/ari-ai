@@ -138,7 +138,7 @@
   {
    "t": 4.00013,
    "type": "shutter",
-   "gain": 0.7,
+   "gain": 0.6,
    "pitch": 1.033,
    "pan": 0.227,
    "beat": 8,
@@ -664,27 +664,27 @@
    "what": "cut to the loop"
   },
   {
-   "t": 24.24523,
+   "t": 24.00015,
    "type": "pop",
    "gain": 0.5,
    "pitch": 1.052,
    "pan": -0.226,
-   "beat": 48.5,
+   "beat": 48,
    "mark": null,
    "snapped_to_hit": true,
-   "snap_ms": -4.77,
+   "snap_ms": 0.15,
    "what": "title"
   },
   {
-   "t": 24.7464,
+   "t": 24.50015,
    "type": "pop",
    "gain": 0.5,
    "pitch": 1.006,
    "pan": -0.185,
-   "beat": 49.5,
+   "beat": 49,
    "mark": null,
    "snapped_to_hit": true,
-   "snap_ms": -3.6,
+   "snap_ms": 0.15,
    "what": "title 2"
   },
   {
@@ -1300,11 +1300,35 @@
    "what": "push into the panel"
   },
   {
-   "t": 44.125,
+   "t": 44.00012,
    "type": "tick",
    "gain": 0.25,
    "pitch": 0.987,
    "pan": -0.029,
+   "beat": 88,
+   "mark": null,
+   "snapped_to_hit": true,
+   "snap_ms": 0.12,
+   "what": "diff builds"
+  },
+  {
+   "t": 44.0625,
+   "type": "tick",
+   "gain": 0.25,
+   "pitch": 0.956,
+   "pan": 0.124,
+   "beat": 88.125,
+   "mark": null,
+   "snapped_to_hit": false,
+   "snap_ms": 0,
+   "what": "diff builds"
+  },
+  {
+   "t": 44.125,
+   "type": "tick",
+   "gain": 0.25,
+   "pitch": 1.036,
+   "pan": 0.155,
    "beat": 88.25,
    "mark": null,
    "snapped_to_hit": false,
@@ -1315,36 +1339,12 @@
    "t": 44.1875,
    "type": "tick",
    "gain": 0.25,
-   "pitch": 0.956,
-   "pan": 0.124,
+   "pitch": 1.017,
+   "pan": -0.093,
    "beat": 88.375,
    "mark": null,
    "snapped_to_hit": false,
    "snap_ms": 0,
-   "what": "diff builds"
-  },
-  {
-   "t": 44.25,
-   "type": "tick",
-   "gain": 0.25,
-   "pitch": 1.036,
-   "pan": 0.155,
-   "beat": 88.5,
-   "mark": null,
-   "snapped_to_hit": false,
-   "snap_ms": 0,
-   "what": "diff builds"
-  },
-  {
-   "t": 44.31442,
-   "type": "tick",
-   "gain": 0.25,
-   "pitch": 1.017,
-   "pan": -0.093,
-   "beat": 88.625,
-   "mark": null,
-   "snapped_to_hit": true,
-   "snap_ms": 1.92,
    "what": "diff builds"
   },
   {
@@ -1624,39 +1624,39 @@
    "what": "into the console"
   },
   {
-   "t": 56.24523,
+   "t": 56.00012,
    "type": "thump",
    "gain": 0.7,
    "pitch": 0.956,
    "pan": 0.156,
-   "beat": 112.5,
+   "beat": 112,
    "mark": null,
    "snapped_to_hit": true,
-   "snap_ms": -4.77,
+   "snap_ms": 0.12,
    "what": "WATCH"
   },
   {
-   "t": 56.50012,
+   "t": 56.24523,
    "type": "pop",
    "gain": 0.6,
    "pitch": 1.005,
    "pan": 0.066,
-   "beat": 113,
+   "beat": 112.5,
    "mark": null,
    "snapped_to_hit": true,
-   "snap_ms": 0.12,
+   "snap_ms": -4.77,
    "what": "IT"
   },
   {
-   "t": 56.74642,
+   "t": 56.50012,
    "type": "thump",
    "gain": 0.75,
    "pitch": 1.001,
    "pan": 0.226,
-   "beat": 113.5,
+   "beat": 113,
    "mark": null,
    "snapped_to_hit": true,
-   "snap_ms": -3.58,
+   "snap_ms": 0.12,
    "what": "RUN."
   },
   {
@@ -1792,6 +1792,18 @@
    "what": "camera move"
   },
   {
+   "t": 65.375,
+   "type": "whoosh",
+   "gain": 0.33,
+   "pitch": 1.011,
+   "pan": 0.001,
+   "beat": 130.75,
+   "mark": null,
+   "snapped_to_hit": false,
+   "snap_ms": 0,
+   "what": "pull back to the result"
+  },
+  {
    "t": 65.50015,
    "type": "whoosh",
    "gain": 0.35,
@@ -1802,18 +1814,6 @@
    "snapped_to_hit": true,
    "snap_ms": 0.15,
    "what": "camera move"
-  },
-  {
-   "t": 66.00015,
-   "type": "pop",
-   "gain": 0.5,
-   "pitch": 1.011,
-   "pan": 0.001,
-   "beat": 132,
-   "mark": null,
-   "snapped_to_hit": true,
-   "snap_ms": 0.15,
-   "what": "issue found badge"
   },
   {
    "t": 67.24525,

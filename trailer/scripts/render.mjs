@@ -169,7 +169,7 @@ for (const fmt of FORMATS) {
     // Adaptive 180° motion blur: each frame is probed at two shutter points; the mean pixel difference sets how many
     // sub-frames to average (2 when static → 24 on the fastest moves). Sub-frames sit symmetrically around the frame
     // time and never straddle a hard cut (window.CUTS), so a cut is never double-exposed.
-    const SHUTTER = 0.5, MIN_SUB = 2, MAX_SUB = 24;
+    const SHUTTER = 0.5, MIN_SUB = 2, MAX_SUB = 16;
     const clampCut = (tc, ts) => {
       for (const c of F.CUTS) {
         if (tc < c && ts >= c) return c - 1e-4;

@@ -23,9 +23,9 @@
     run(t, b, S) {
       K.inkRun(t, S.bg, 0.35, 118);
       put(S.cam, K.aim(W / 2, H / 2, 1 + 0.04 * ease.inOut(seg(t, 48, 55))));
-      K.eyebrowRun(t, S.eye, 48);
-      rise(t, S.t1, [48.5, 48.75, 49], 54.6, { exit: 0.3 });
-      rise(t, S.t2, [49.5, 49.75, 50], 54.6, { exit: 0.3 });
+      K.eyebrowRun(t, S.eye, 47.9);
+      rise(t, S.t1, [48, 48.25, 48.5], 54.6, { exit: 0.3 });
+      rise(t, S.t2, [49, 49.25, 49.5], 54.6, { exit: 0.3 });
       // the pipeline runs: one chip lights per quarter beat, then it comes back to Understand
       const step = b < 52.5 ? -1 : b < 54.25 ? Math.floor((b - 52.5) / 0.25) : 0;
       S.chips.forEach((c, i) => {
@@ -244,7 +244,7 @@
         g.fillStyle = root ? '#ff6a52' : '#fff'; g.beginPath(); g.arc(cx, cy, (root ? 14 : 11) * p, 0, Math.PI * 2); g.fill();
       });
       const lab = spHit(t, 87, 'snappy');
-      if (lab > 0.002) { g.globalAlpha = clamp(lab * 1.4); g.font = '600 24px Mono'; g.fillStyle = '#ff8a78'; g.textAlign = 'center'; g.fillText('root cause · create_refund', 20 + 300 * KK - 10, 22 + 186 * KK - 6 + 10 * (1 - lab)); g.textAlign = 'left'; g.globalAlpha = 1; }
+      if (lab > 0.002) { g.globalAlpha = clamp(lab * 1.4); g.font = '600 24px Mono'; g.fillStyle = '#ff8a78'; g.textAlign = 'right'; g.fillText('root cause · create_refund', PW - 26, 22 + 186 * KK - 6 + 10 * (1 - lab)); g.textAlign = 'left'; g.globalAlpha = 1; }
     },
   });
 
@@ -297,17 +297,17 @@
     run(t, b, S) {
       K.inkRun(t, S.bg, 0.25 + 0.35 * sp(t, 'verify', 'heavy'), 116);
       put(S.cam, K.aim(W / 2, H / 2, 1.03 - 0.03 * ease.out(seg(t, 88, 92))));
-      S.eyes.forEach((e, i) => K.eyebrowRun(t, e, [88, 'patch', 'verify'][i], [91.75, 93.75, 96.6][i]));
-      const c = sp(t, 88, 'default');
+      S.eyes.forEach((e, i) => K.eyebrowRun(t, e, [87.9, 'patch', 'verify'][i], [91.75, 93.75, 96.6][i]));
+      const c = spHit(t, 88, 'default');
       put(S.code, { o: c > 0.002 ? 1 : 0, y: 50 * (1 - c), css: { height: `${(b < 92 ? DIFF.length : PATCH.length) * FL + 40}px` } });
       // diagnose: the commit diff builds, the removed guard gets boxed
-      S.dl.forEach((ln, i) => { const p = spHit(t, 88.25 + i * 0.0625, 'snappy'), q = sp(t, 91.8, 'snappy'); put(ln, { o: p > 0.002 && q < 0.99 ? 1 - q : 0, x: -20 * (1 - p) }); });
+      S.dl.forEach((ln, i) => { const p = spHit(t, 88 + i * 0.0625, 'snappy'), q = sp(t, 91.72, 'snappy'); put(ln, { o: p > 0.002 && q < 0.99 ? 1 - q : 0, x: -20 * (1 - p) }); });
       const rb = spHit(t, 89.5, 'snappy');
       put(S.rootBox, { o: rb > 0.002 && b < 91.9 ? 1 : 0, s: 1 + 0.03 * (1 - rb), css: { transformOrigin: '50% 50%' } });
       K.textRun(t, S.why, 90, 91.7);
       // repair: the patch lines type on (only + lines type; context and − lines snap in)
       S.pl.forEach((ln, i) => {
-        const k = PATCH[i][0], at = 'patch', p = spHit(t, beatOf(at) + i * 0.25, 'snappy');
+        const k = PATCH[i][0], at = 'patch', p = spHit(t, beatOf(at) - 0.05 + i * 0.25, 'snappy');
         const body = PATCH[i][1];
         const n = k === '+' ? Math.floor(seg(t, beatOf(at) + i * 0.25, beatOf(at) + i * 0.25 + 0.9) * body.length) : body.length;
         put(ln, { o: p > 0.002 ? 1 : 0, html: `<span style="display:inline-block;width:56px;text-align:center;opacity:.8">${k === 'h' ? '' : k}</span>${body.slice(0, n).replace(/</g, '&lt;')}` });
@@ -316,10 +316,10 @@
       K.winRun(t, S.ver, 94, [94.5, 95, 95.5], 96.6);
       // the code steps back for the line that matters
       const back = sp(t, 96.5, 'heavy');
-      put(S.stack, { s: 1 - 0.08 * back, filter: back > 0.01 ? `brightness(${(1 - 0.72 * back).toFixed(3)}) blur(${(5 * back).toFixed(2)}px)` : 'none', o: 1 - sp(t, 103.2, 'default') });
-      rise(t, S.v1, [97, 97.5], 102.6, { exit: 0.3 });
-      rise(t, S.v2, [98, 98.5], 102.6, { exit: 0.3 });
-      K.textRun(t, S.pr, 99.5, 102.4);
+      put(S.stack, { s: 1 - 0.08 * back, filter: back > 0.01 ? `brightness(${(1 - 0.72 * back).toFixed(3)}) blur(${(5 * back).toFixed(2)}px)` : 'none', o: 1 - sp(t, 103.5, 'default') });
+      rise(t, S.v1, [97, 97.5], 103.6, { exit: 0.3 });
+      rise(t, S.v2, [98, 98.5], 103.6, { exit: 0.3 });
+      K.textRun(t, S.pr, 99.5, 103.4);
     },
   });
 

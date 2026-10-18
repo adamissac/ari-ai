@@ -113,8 +113,8 @@
       const z = 1 + 0.06 * ease.out(seg(t, 8, 16)) + 1.4 * dive;
       const cam = K.aim(lerp(W / 2, tickX(TARGET), dive), lerp(H / 2, TL_Y + 50, dive), z, W / 2, H / 2);
       put(S.cam, cam);
-      K.eyebrowRun(t, S.eye, 8);
-      rise(t, S.ta, [8.25, 8.5, 8.75, 9], 11.72, { exit: 0.25 });
+      K.eyebrowRun(t, S.eye, 7.9);
+      rise(t, S.ta, [8, 8.25, 8.5, 8.75], 11.72, { exit: 0.25 });
       rise(t, S.tb, [12, 12.25, 12.5, 12.75]);
       K.textRun(t, S.ba, 9.25, 11.7);
       K.textRun(t, S.bb, 13);
@@ -140,9 +140,9 @@
       put(S.count, { o: cn > 0.002 ? 1 : 0, s: 0.85 + 0.15 * cn });
       // grow: ink block from the tick to full frame (in stage px; the camera moves underneath it)
       // grow: an ink block starts exactly on the target tick (page → stage through the camera) and fills the frame
-      const g = ease.expoIn(seg(t, 16.2, 17.85));
+      const gy = ease.inOut(seg(t, 16.25, 16.95)), gx = ease.expoIn(seg(t, 16.95, 17.85));
       const tx = (tickX(TARGET) - 6) * cam.s + cam.x, ty = TL_Y * cam.s + cam.y;
-      put(S.grow, { o: g > 0.001 ? 1 : 0, x: lerp(tx, -20, g), y: lerp(ty, -20, g), sx: lerp(12 * cam.s, W + 40, g), sy: lerp(100 * cam.s, H + 40, g) });
+      put(S.grow, { o: gy > 0.001 ? 1 : 0, x: lerp(tx, -20, gx), y: lerp(ty, -20, gy), sx: lerp(12 * cam.s, W + 40, gx), sy: lerp(100 * cam.s, H + 40, gy) });
     },
   });
 
@@ -206,7 +206,7 @@
       S.q1 = K.head(S.cam, 'WHO CHECKS', PAD, 340, 150, { color: '#fff' });
       S.q2 = K.head(S.cam, 'EVERY CHANGE?', PAD, 500, 150, { color: 'var(--ember)' });
       S.ctx = canvas(root);
-      S.lone = K.path([{ x: -60, y: 760 }, { x: 420, y: 760 }, { x: 700, y: 742 }, { x: 860, y: 745 }]);
+      S.lone = K.path([{ x: -80, y: 820 }, { x: 420, y: 820 }, { x: 760, y: 800 }, { x: 980, y: 804 }]);
     },
     run(t, b, S) {
       K.inkRun(t, S.bg, 0.1 + 0.3 * sp(t, 'total', 'heavy') - 0.4 * sp(t, 29, 'heavy'), 120);
@@ -234,16 +234,16 @@
       // verdict over the receding evidence; then the question; then a lone scout in the dark
       const back = sp(t, 23.85, 'heavy'), gone = sp(t, 26.3, 'default');
       put(S.stack, { o: 1 - gone, s: 1 - 0.08 * back - 0.1 * gone, filter: back > 0.01 ? `brightness(${(1 - 0.72 * back).toFixed(3)}) blur(${(5 * back).toFixed(2)}px)` : 'none' });
-      rise(t, S.v1, [24, 24.25], 26.6, { exit: 0.3 });
-      rise(t, S.v2, [25, 25.25, 25.5], 26.6, { exit: 0.3 });
-      rise(t, S.q1, [27, 27.25], 29.4, { exit: 0.3 });
-      rise(t, S.q2, [27.5, 27.75], 29.4, { exit: 0.3 });
+      rise(t, S.v1, [24, 24.25], 26.85, { exit: 0.3 });
+      rise(t, S.v2, [25, 25.25, 25.5], 26.85, { exit: 0.3 });
+      rise(t, S.q1, [27, 27.25], 30.85, { exit: 0.3 });
+      rise(t, S.q2, [27.5, 27.75], 30.85, { exit: 0.3 });
       const g = S.ctx; g.clearRect(0, 0, W, H);
-      const walk = seg(t, 29.6, 31.2), d = S.lone.length * ease.out(walk);
+      const walk = seg(t, 28.4, 31), d = S.lone.length * ease.out(walk);
       if (walk > 0) {
-        g.save(); g.lineWidth = 1.8; g.setLineDash([2, 9]); g.lineDashOffset = -(t - bt(29.6)) * 22; g.strokeStyle = K.TRAILC; K.strokeSpan(g, S.lone, 0, d); g.restore();
-        const stop = t > bt(31.2);
-        K.antOn(g, S.lone, Math.max(0.1, d), 1, { t: stop ? bt(31.2) + (t - bt(31.2)) * 0.15 : t, scale: 3.6, color: K.SCOUT, alpha: 1, phase: 0.5 });
+        g.save(); g.lineWidth = 1.8; g.setLineDash([2, 9]); g.lineDashOffset = -(t - bt(28.4)) * 22; g.strokeStyle = K.TRAILC; K.strokeSpan(g, S.lone, 0, d); g.restore();
+        const stop = t > bt(31);
+        K.antOn(g, S.lone, Math.max(0.1, d), 1, { t: stop ? bt(31) + (t - bt(31)) * 0.15 : t, scale: 4.6, color: K.SCOUT, alpha: 1, phase: 0.5 });
       }
     },
   });

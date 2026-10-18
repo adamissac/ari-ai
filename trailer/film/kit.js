@@ -26,8 +26,7 @@
     put(bg.glow, { css: { background:
       `radial-gradient(75% 65% at ${x}% ${y}%, rgba(194,69,45,${a(1)}) 0%, rgba(194,69,45,${a(0.6)}) 35%, rgba(194,69,45,0) 70%),` +
       `radial-gradient(60% 50% at 85% 0%, rgba(194,69,45,${a(0.3)}) 0%, rgba(194,69,45,0) 70%)` } });
-    const r = C.mulberry32(Math.floor(t * 24) * 7919 + 13);   // grain re-seeds 24x a second, like film
-    put(bg.grain, { x: -r() * 40, y: -r() * 40 });
+    // grain stays put, like the site's (moving grain is pure noise to a web encoder and bloats the file)
   };
   /** Paper: white or warm paper, with the same grain at low strength so cuts between worlds feel related. */
   K.paper = (root, warm = false) => {
@@ -35,7 +34,7 @@
     const grain = reg(el('div', { class: 'grain', style: 'opacity:0.05' }, root));
     return { grain };
   };
-  K.paperRun = (t, bg) => { const r = C.mulberry32(Math.floor(t * 24) * 104729 + 7); put(bg.grain, { x: -r() * 40, y: -r() * 40 }); };
+  K.paperRun = () => {};
 
   // ------------------------------------------------------------------ type
   /** Mono uppercase eyebrow (frontend .label-mono). Small, so it may slide + fade in. */
