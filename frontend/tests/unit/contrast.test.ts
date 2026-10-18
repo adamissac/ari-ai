@@ -72,9 +72,11 @@ describe('WCAG contrast of design tokens', () => {
     expect(css).toMatch(/prefers-reduced-motion: reduce\)\s*\{[^}]*\.animate-pulse\s*\{\s*animation:\s*none/);
   });
 
-  it('keeps the warm headline core above 4.5:1 over the brand background', () => {
+  it('keeps the warm headline core above 4.5:1 over the brand background, with no glow', () => {
     expect(ratio('#fff7f2', token('brand'))).toBeGreaterThanOrEqual(4.7);
-    expect(css).toMatch(/\.hero-headline \.hero-line\s*\{[^}]*color: #fff7f2;[^}]*text-shadow:/);
-    expect(css).toContain('0.7em rgb(194 69 45 / 12%)');
+    const rule = css.match(/\.hero-headline \.hero-line\s*\{([^}]*)\}/);
+    expect(rule?.[1]).toContain('color: #fff7f2;');
+    // The owner removed the glow; a blurred shadow on type this size also made scrolling chop.
+    expect(rule?.[1]).not.toContain('text-shadow');
   });
 });

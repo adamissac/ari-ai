@@ -33,10 +33,12 @@ export function HeaderContrast() {
         document.documentElement.hasAttribute('data-home-hero')
         && !document.documentElement.hasAttribute('data-hero-past');
       const tones = [...header.querySelectorAll<HTMLElement>('a:not(.hdr-cta), .nav-menu-toggle')].map(link => {
+        // Over the pinned hero the answer is always dark: skip the hit-test (it forces layout).
+        if (overHomeHero) return { link, tone: 'dark' };
         const box = link.getBoundingClientRect();
         const underneath = document.elementsFromPoint(box.x + box.width / 2, box.y + box.height / 2)
           .find(element => !header.contains(element)) ?? null;
-        const tone = overHomeHero || isDarkSurface(underneath) ? 'dark' : 'light';
+        const tone = isDarkSurface(underneath) ? 'dark' : 'light';
         return { link, tone };
       });
       for (const { link, tone } of tones) {
