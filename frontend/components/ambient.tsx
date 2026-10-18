@@ -50,6 +50,8 @@ export function Ambient() {
     };
   }, [pathname]);
 
+  // The landing keeps its own hero exactly as designed: nothing of this layer is rendered there.
+  if (pathname === '/') return null;
   return (
     <div ref={ref} aria-hidden="true" className="ambient">
       <span className="ambient-orb ambient-orb-a" />

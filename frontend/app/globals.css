@@ -98,7 +98,7 @@ button.label-mono, a.label-mono, nav.label-mono, nav .label-mono {
   background:
     radial-gradient(75% 65% at 50% 108%, var(--color-brand) 0%, color-mix(in srgb, var(--color-brand) 60%, transparent) 35%, transparent 70%),
     radial-gradient(60% 50% at 85% 0%, color-mix(in srgb, var(--color-brand) 30%, transparent) 0%, transparent 70%),
-    var(--color-night);
+    var(--color-ink);
 }
 .hero-ink::after {
   content: "";
@@ -238,7 +238,7 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 }
 
 /* Intro loader: the supplied mark fades in, a counter runs, the curtain lifts. */
-.intro { position: fixed; inset: 0; z-index: 60; background: var(--color-night); pointer-events: none; transition: translate 800ms cubic-bezier(0.76, 0, 0.24, 1); }
+.intro { position: fixed; inset: 0; z-index: 60; background: var(--color-ink); pointer-events: none; transition: translate 800ms cubic-bezier(0.76, 0, 0.24, 1); }
 .intro[data-phase="lift"] { translate: 0 -100%; }
 .intro-mark { position: absolute; top: 50%; left: 50%; translate: -50% -50%; animation: intro-mark-reveal 700ms var(--ease-quad) both; }
 @keyframes intro-mark-reveal { from { opacity: 0; scale: 0.94; } to { opacity: 1; scale: 1; } }
@@ -321,7 +321,7 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 .story-step-body { max-height: 0; overflow: hidden; opacity: 0; transition: max-height 400ms var(--ease-quad), opacity 300ms; }
 .story-step[data-active] .story-step-body { max-height: 6rem; opacity: 1; margin-top: 4px; }
 @media not all and (min-width: 1024px) { .story-step-body { max-height: none; opacity: 1; } .story-step { color: var(--color-ink); } }
-.story-panel { border-radius: 20px; background: var(--color-night); padding: 24px; }
+.story-panel { border-radius: 20px; background: var(--color-ink); padding: 24px; }
 .story-svg-label { fill: rgba(255, 255, 255, 0.45); font-family: var(--font-mono); font-size: 8px; text-transform: uppercase; letter-spacing: 0.06em; }
 .story-svg-bar { fill: #fff; }
 .story-svg-node { fill: var(--color-ink); stroke: rgba(255, 255, 255, 0.35); stroke-width: 1.5; opacity: 0; transition: opacity 400ms, fill 400ms, stroke 400ms; }
@@ -925,6 +925,12 @@ body:has(.commit-stage) main { color: #fff; }
 
 /* Ink bands (project header, Lab header, pricing, sign-in) become small heroes: a drifting
    ember orb under the grain, glowing display type, and the hero's staggered blur-rise. */
+:root:not(:has(.hero-full)) .hero-ink {
+  background:
+    radial-gradient(75% 65% at 50% 108%, var(--color-brand) 0%, color-mix(in srgb, var(--color-brand) 60%, transparent) 35%, transparent 70%),
+    radial-gradient(60% 50% at 85% 0%, color-mix(in srgb, var(--color-brand) 30%, transparent) 0%, transparent 70%),
+    var(--color-night);
+}
 :root:not(:has(.hero-full)) main .hero-ink::before {
   content: ""; position: absolute; z-index: -1; width: 60%; aspect-ratio: 1; right: -12%; top: -70%; border-radius: 9999px; pointer-events: none;
   background: radial-gradient(circle, color-mix(in srgb, var(--color-brand) 55%, transparent) 0%, transparent 65%);
