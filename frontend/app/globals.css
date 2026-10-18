@@ -531,7 +531,7 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 .lk-high { fill: #4a231b; stroke: var(--color-brand); stroke-width: 3.4; }
 
 /* Project monitoring header (real recorded events; never a simulation). */
-.monitor-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; border-radius: 18px; padding: 20px 22px; background: radial-gradient(90% 120% at 100% 0%, color-mix(in srgb, var(--color-brand) 28%, transparent), transparent 60%), var(--color-ink); }
+.monitor-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; border-radius: 18px; padding: 20px 22px; background: radial-gradient(90% 120% at 100% 0%, color-mix(in srgb, var(--color-brand) 28%, transparent), transparent 60%), var(--color-night); }
 .monitor-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .monitor-chips li { display: inline-flex; gap: 6px; border-radius: 9999px; padding: 5px 11px; font-size: 0.8rem; color: #fff; background: rgba(255, 255, 255, 0.08); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12); }
 
