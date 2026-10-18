@@ -1,111 +1,205 @@
-// ACT 4: the real product. Captured screens of the demo console (frontend/app/demo/..., recorded run on
-// lumen-pay/payments-api @ 06e0663) and Defense Lab, driven by a beat-locked camera. Nothing here is redrawn UI
-// except the cursor and the click ripple.
+// CHAPTER 3: DEFENSE LAB. A practice network (rebuilt from the Defense Lab map), a test attacker, an AI defender that
+// picks one move per step, how it learned (reward), the real lab page, and the measured results from the committed
+// evaluation bundle shown on the site (frontend/app/lab, rl-defense/results). Simulation only; it only recommends.
 (() => {
-  const { W, H, el, reg, put, scene, sp, spHit, trkObj, seg, clamp, lerp, ease, bt } = C;
+  const { W, H, el, reg, put, scene, canvas, sp, spHit, seg, clamp, lerp, ease, bt, beatOf } = C;
   const { rise } = TYPE;
-  const PAD = K.PAD;
+  const PAD = K.PAD, TAG = '03 · Defense Lab';
   const full = (root) => reg(el('div', { class: 'abs', style: `width:${W}px;height:${H}px` }, root));
-  const L = Math.log;
-  /** Camera on a page: keys [[beat, {x, y, z}, preset?]]; zoom springs in log space so pushes feel even. */
-  const camAt = (t, keys) => { const k = trkObj(t, keys.map(([b, v, p]) => [b, { x: v.x, y: v.y, lz: L(v.z) }, p]), 'heavy'); return { x: k.x, y: k.y, z: Math.exp(k.lz) }; };
-  const CURSOR = '<svg width="34" height="46" viewBox="0 0 22 30"><path d="M1 1 L1 25 L7.2 19.2 L11.4 28.6 L15.4 26.8 L11.3 17.6 L19.5 17.6 Z" fill="#fff" stroke="#1c1210" stroke-width="1.4" stroke-linejoin="round"/></svg>';
 
-  // ------------------------------------------------------------------ 13 · console: watch it run, what Ari found, the review (b112 → b144)
-  const SHOTS = ['run_016.jpg', 'run_026.jpg', 'run_046.jpg', 'run_076.jpg', 'run_086.jpg', 'run_096.jpg', 'run_116.jpg', 'tab_code.jpg', 'tab_code_s1.jpg'];
-  const SX = 210, SY = 128, SW = 1500, SH = 844, BAR = 46, CY = BAR + (SH - BAR) / 2;
-  const CAM = [
-    [112, { x: 418, y: 600, z: 1.9 }],
-    [115.5, { x: 418, y: 618, z: 2.6 }],                   // lean in on "Watch the agents"
-    [120, { x: 960, y: 540, z: SW / 1920 }],               // the drop: pull back to the whole run
-    [120.75, { x: 895, y: 512, z: 1.18 }],                 // the agents step through
-    [125, { x: 700, y: 590, z: 1.5 }],                     // what Ari found
-    [127, { x: 690, y: 655, z: 2.05 }],
-    [129, { x: 1345, y: 595, z: 1.75 }],                   // what happens next
-    [130.75, { x: 960, y: 500, z: 0.95 }],                 // the whole result
-    [132.5, { x: 560, y: 330, z: 1.7 }],                   // tabs: the cursor goes to Code review
-    [135, { x: 680, y: 475, z: 1.45 }],                    // the intent
-    [136.5, { x: 960, y: 705, z: 1.2 }],                   // should always do / reviewer flagged
-    [138.5, { x: 720, y: 1095, z: 1.25 }],                 // the code that changed (tall page: second capture at +760)
-    [140, { x: 720, y: 1392, z: 1.6 }],                    // the fix, verified
-    [141.5, { x: 960, y: 1655, z: 1.4 }],                  // the tests Ari wrote
-  ];
-  const IMG = (b) => (b < 120 ? 0 : b < 121 ? 1 : b < 122 ? 2 : b < 123 ? 3 : b < 124 ? 4 : b < 125 ? 5 : b < 135 ? 6 : 7);
-  const CAPS = [['Replay of a recorded run · payments-api @ 06e0663', 114.9, 124.6], ['One finding · repaired · verified · nothing merged', 125.2, 132.9], ['The review · the tests Ari wrote', 135.2, null]];
+  K.menu('menu3', 'menu3', 'c3', 2, false);
+  K.chapter('c3title', 'c3', 'c3_sim', '03', 'DEFENSE LAB', 'After launch, attackers keep trying.');
+
+  // ------------------------------------------------------------------ the practice network (b324 → b360)
+  const N = { I: ['Internet', 260, 650], G: ['Gateway', 650, 500], S: ['Sign-in', 1060, 500], A: ['API server', 650, 800], P: ['Payments', 1060, 800], D: ['Database', 1470, 650] };
+  const E = [['I', 'G'], ['I', 'A'], ['G', 'S'], ['A', 'P'], ['S', 'D'], ['P', 'D']];
+  const MOVES = ['Watch closely', 'Slow traffic', 'Cut a machine off', 'Call a human'];
+  const RAID1 = [['I', 'G', 332.5], ['G', 'S', 334.5], ['S', 'D', 336.5]];          // no defense: it walks in
+  const RAID2 = [['I', 'G', 347.5], ['G', 'S', 350]];                                // defended: stopped at Sign-in
+  const at = (path, t) => {                                                          // attacker position on a path
+    let p = null;
+    for (const [a, z, b0] of path) {
+      const k = ease.inOut(seg(t, b0, b0 + 1));
+      if (t >= bt(b0)) p = { x: lerp(N[a][1], N[z][1], k), y: lerp(N[a][2], N[z][2], k) };
+    }
+    return p;
+  };
   scene({
-    name: 'console', from: 'build2', to: 'lab',
+    name: 'c3_sim', from: 'c3_sim', to: 'c3_learn',
     build(root, S) {
       S.bg = K.ink(root);
       S.cam = full(root);
-      S.w1 = K.head(S.cam, 'WATCH IT RUN.', PAD, 420, 190, { color: '#fff' });
-      S.w1.words[2].style.color = 'var(--ember)';
-      S.caps = CAPS.map(([s]) => K.eyebrow(S.cam, s, SX + 4, 62, 'rgba(255,255,255,.62)', 24));
-      S.scr = K.screen(S.cam, SHOTS, { x: SX, y: SY, w: SW, h: SH, radius: 18 });
-      S.scr.box.style.transformOrigin = '50% 100%';
-      S.scr.box.style.boxShadow = '0 0 0 1px rgba(255,255,255,.16), 0 60px 140px -30px rgba(0,0,0,.7)';
-      // browser chrome around the captured page, so it reads as the live site (rebuilt; monochrome on purpose)
-      const dot = '<i style="display:block;width:13px;height:13px;border-radius:50%;background:rgba(255,255,255,.22)"></i>';
-      el('div', { class: 'abs', style: `left:0;top:0;width:${SW}px;height:${BAR}px;background:#241815;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:9px;padding:0 20px;box-sizing:border-box` }, S.scr.box,
-        `${dot}${dot}${dot}<span class="mono" style="margin-left:22px;padding:6px 18px;border-radius:8px;background:rgba(255,255,255,.06);font-size:19px;color:rgba(255,255,255,.62)">ari-ai-lake.vercel.app/demo/lumen-pay/payments-api</span>`);
-      S.scr.imgs[8].style.top = '760px';
-      // the one failing-then-passing test, outlined on the page (page px of tab_code_s1 + 760)
-      S.hl = reg(el('div', { class: 'abs', style: 'left:326px;top:1640px;width:1282px;height:42px;border:3px solid var(--ember);border-radius:10px' }, S.scr.cam), { o: 0 });
-      S.ripple = reg(el('div', { class: 'abs', style: 'width:80px;height:80px;margin:-40px 0 0 -40px;border-radius:50%;border:3px solid #fff;transform-origin:40px 40px' }, S.scr.box), { o: 0 });
-      S.cursor = reg(el('div', { class: 'abs', style: 'width:34px;height:46px;filter:drop-shadow(0 6px 10px rgba(0,0,0,.45))' }, S.scr.box, CURSOR), { o: 0 });
+      S.ctx = canvas(S.cam);
+      S.tag = K.tag(S.cam, TAG);
+      S.s1 = K.say(S.cam, ['We built a practice network', 'with a database to protect.'], PAD, 130, { size: 56 });
+      S.s2 = K.say(S.cam, ['A test attacker tries to work', 'its way in, one step at a time.'], PAD, 130, { size: 56 });
+      S.s3 = K.say(S.cam, ['With no defense,', 'it reaches the database.'], PAD, 130, { size: 56, hl: ['reaches', 'the', 'database.'] });
+      S.s4 = K.say(S.cam, ['Now an AI defender watches', 'and makes one move each step.'], PAD, 130, { size: 56, hl: ['AI', 'defender'], hlc: 'var(--ok-dark)' });
+      S.nodes = Object.entries(N).map(([k, [name, x, y]]) => {
+        const d = reg(el('div', { class: 'abs', style: `left:${x - 130}px;top:${y - 50}px;width:260px;height:100px;border-radius:16px;background:#2b1d19;box-shadow:0 0 0 2px rgba(255,255,255,.12);color:#fff;transform-origin:50% 50%` }, S.cam,
+          `<div style="position:absolute;left:22px;top:14px;font:600 32px UI">${name}</div>` + (k === 'D' ? '<div class="eyebrow" style="position:absolute;right:16px;top:20px;font-size:18px;color:var(--ember)">critical</div>' : '') +
+          '<div class="mono st" style="position:absolute;left:22px;top:60px;font-size:22px;color:var(--ok-dark)">● Healthy</div>'), { o: 0 });
+        d._st = reg(d.querySelector('.st')); d._k = k;
+        return d;
+      });
+      S.moves = reg(el('div', { class: 'abs', style: `left:${PAD}px;top:320px;display:flex;gap:14px` }, S.cam), { o: 0 });
+      S.chips = MOVES.map((m) => reg(el('div', { style: 'position:relative;padding:12px 20px;border-radius:12px;background:rgba(79,191,135,.1);box-shadow:0 0 0 2px rgba(79,191,135,.35);font:600 28px UI;color:var(--ok-dark)' }, S.moves, m), { o: 0 }));
+      S.badge = reg(el('div', { class: 'abs', style: 'left:1220px;top:880px;padding:14px 22px;border-radius:12px;background:var(--ok-dark);color:#0f2a1c;font:700 32px UI;transform-origin:50% 50%' }, S.cam, '✓ Attack stopped'), { o: 0 });
+      S.lost = reg(el('div', { class: 'abs', style: 'left:1300px;top:880px;padding:14px 22px;border-radius:12px;background:#ff6a52;color:#2b0d07;font:700 32px UI;transform-origin:50% 50%' }, S.cam, '✕ Database reached'), { o: 0 });
     },
     run(t, b, S) {
-      K.inkRun(t, S.bg, 0.45 + 0.5 * sp(t, 'product', 'heavy'), 110);
-      rise(t, S.w1, [112, 112.5, 113], 114.5, { exit: 0.3 });
-      CAPS.forEach(([, a, z], i) => K.eyebrowRun(t, S.caps[i], a, z));
-      // the window rises as a card and settles from a slight tilt; it stays put while the camera works inside it
-      const up = sp(t, 114.75, 'default');
-      put(S.scr.box, { o: up > 0.002 ? 1 : 0, y: 760 * (1 - up), r: -4 * (1 - up), s: 0.9 + 0.1 * up });
-      const c = camAt(t, CAM), i = IMG(b);
-      S.scr.imgs.forEach((im, k) => put(im, { o: k === i || (i === 7 && k === 8) ? 1 : 0 }));
-      put(S.scr.cam, { x: SW / 2 - c.x * c.z, y: CY - c.y * c.z, s: c.z });
-      const hl = spHit(t, 142.5, 'snappy');
-      put(S.hl, { o: hl > 0.002 ? 1 : 0, s: 1 + 0.04 * (1 - hl), css: { transformOrigin: '50% 50%' } });
-      // the cursor: page point → window point through the camera
-      const win = (px, py) => ({ x: SW / 2 + (px - c.x) * c.z, y: CY + (py - c.y) * c.z });
-      const moves = [[115.75, 117.25, 117.5, { x: 1260, y: 760 }, [418, 622]], [133.6, 134.25, 134.5, { x: 1300, y: 640 }, [405, 348]]];
-      let cur = null;
-      for (const [m0, m1, click, from, [px, py]] of moves) {
-        if (b < m0 - 0.2 || b > click + 0.75) continue;
-        const k = ease.inOut(seg(t, m0, m1)), to = win(px, py);
-        const press = Math.exp(-Math.max(0, t - bt(click)) * 12) * (t > bt(click) ? 1 : 0);
-        cur = { x: lerp(from.x, to.x, k), y: lerp(from.y, to.y, k), s: 1 - 0.18 * press, o: clamp((b - (m0 - 0.2)) / 0.2) * (1 - clamp((b - click - 0.5) / 0.25)) };
-        const rp = seg(t, click, click + 0.75);
-        put(S.ripple, { o: rp > 0 && rp < 1 ? 1 - rp : 0, x: to.x, y: to.y, s: 0.3 + 1.4 * ease.out(rp) });
+      K.inkRun(t, S.bg, 0.4, 116);
+      put(S.cam, K.aim(W / 2, H / 2, 1 + 0.03 * ease.inOut(seg(t, 324, 360))));
+      K.eyebrowRun(t, S.tag, 323.8);
+      K.sayRun(t, S.s1, 324.5, 330.6); K.sayRun(t, S.s2, 331, 337.6); K.sayRun(t, S.s3, 338, 342.6); K.sayRun(t, S.s4, 343);
+      const run2 = b >= 342.5;
+      const g = S.ctx; g.clearRect(0, 0, W, H);
+      g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,.14)';
+      for (const [a, z] of E) { const k = sp(t, 325.5, 'default'); g.beginPath(); g.moveTo(N[a][1], N[a][2]); g.lineTo(lerp(N[a][1], N[z][1], k), lerp(N[a][2], N[z][2], k)); g.stroke(); }
+      // attacker: a red pulse with a short trail; in run 2 it is cut off at Sign-in
+      const p = run2 ? at(RAID2, t) : at(RAID1, t);
+      const gone = run2 ? sp(t, 353.5, 'default') : 0;
+      if (p && (!run2 || b >= 347.4) && gone < 0.99) {
+        const pulse = 0.5 + 0.5 * Math.sin(t * 9);
+        g.fillStyle = `rgba(255,106,82,${(0.25 * (1 - gone)).toFixed(3)})`; g.beginPath(); g.arc(p.x, p.y, 34 + 10 * pulse, 0, Math.PI * 2); g.fill();
+        g.fillStyle = `rgba(255,106,82,${(1 - gone).toFixed(3)})`; g.beginPath(); g.arc(p.x, p.y, 16 * (1 - 0.6 * gone), 0, Math.PI * 2); g.fill();
       }
-      put(S.cursor, cur ? { o: cur.o, x: cur.x, y: cur.y, s: cur.s } : { o: 0 });
-      put(S.cam, K.aim(W / 2, H / 2, 1 + 0.02 * Math.sin((t - bt(112)) * 0.4)));
+      const st = (k) => {                                                // node status this frame
+        if (!run2) {
+          if (k === 'G' && b >= 333.5) return ['● Attacker got in', '#ff8a78'];
+          if (k === 'S' && b >= 335.5) return ['● Attacker got in', '#ff8a78'];
+          if (k === 'D' && b >= 337.5) return ['● Reached', '#ff8a78'];
+          return null;
+        }
+        if (k === 'G' && b >= 349) return ['● Watched closely', 'var(--ok-dark)'];
+        if (k === 'S' && b >= 353) return ['● Cut off', 'var(--ok-dark)'];
+        if (k === 'S' && b >= 351.5) return ['● Traffic slowed', 'var(--ok-dark)'];
+        return null;
+      };
+      S.nodes.forEach((d, i) => {
+        const pp = spHit(t, 326 + i * 0.4, 'snappy'), s = st(d._k);
+        const red = s && s[1] === '#ff8a78', act = s && !red;
+        put(d, { o: pp > 0.002 ? 1 : 0, s: 0.85 + 0.15 * pp, css: { boxShadow: red ? '0 0 0 3px #ff6a52' : act ? '0 0 0 3px var(--ok-dark)' : '0 0 0 2px rgba(255,255,255,.12)', background: red && d._k === 'D' ? '#4a1a12' : '#2b1d19' } });
+        put(d._st, { html: s ? s[0] : '● Healthy', css: { color: s ? s[1] : 'var(--ok-dark)' } });
+      });
+      const mv = sp(t, 344.5, 'default'); put(S.moves, { o: mv > 0.002 ? 1 : 0 });
+      const used = [[0, 349], [1, 351.5], [2, 353]];
+      S.chips.forEach((c, i) => {
+        const p = spHit(t, 345 + i * 0.5, 'snappy'), u = used.find(([k]) => k === i), on = u && t > bt(u[1]) ? Math.exp(-(t - bt(u[1])) * 1.6) : 0;
+        put(c, { o: p > 0.002 ? 1 : 0, s: (0.85 + 0.15 * p) * (1 + 0.08 * on), css: { background: `rgba(79,191,135,${(0.1 + 0.55 * on).toFixed(3)})`, color: on > 0.4 ? '#0f2a1c' : 'var(--ok-dark)' } });
+      });
+      const ok = spHit(t, 355, 'snappy'), bad = spHit(t, 338, 'snappy') * (1 - sp(t, 342.3, 'snappy'));
+      put(S.badge, { o: ok > 0.002 ? 1 : 0, s: 0.8 + 0.2 * ok });
+      put(S.lost, { o: bad > 0.002 ? 1 : 0, s: 0.8 + 0.2 * bad });
     },
   });
 
-  // ------------------------------------------------------------------ 14 · lab: can an AI learn to defend a network? (b144 → b152)
-  const LAB = [
-    [144, { x: 640, y: 300, z: 1.5 }],
-    [145, { x: 690, y: 320, z: 1.35 }],
-    [146, { x: 960, y: 520, z: 1.0 }],                     // the isolated test network
-    [147.5, { x: 1010, y: 570, z: 1.55 }],                 // the defender watching Payments
-    [149, { x: 960, y: 745, z: 1.3 }],                     // who defends best
-    [150.5, { x: 560, y: 760, z: 1.9 }],                   // 7.1% of attacks reached their goal
-  ];
+  // ------------------------------------------------------------------ how it learned (b360 → b376)
   scene({
-    name: 'lab', from: 'lab', to: 'proof',
+    name: 'c3_learn', from: 'c3_learn', to: 'c3_real',
     build(root, S) {
-      root.style.background = '#1c1210';
-      S.scr = K.screen(root, ['lab.jpg', 'lab_s1.jpg', 'lab_s2.jpg'], { x: 0, y: 0, w: W, h: H, radius: 0 });
-      S.scr.box.style.boxShadow = 'none';
-      S.tag = K.eyebrow(root, 'Defense Lab · isolated test network · simulation only', PAD, 990, '#fff', 24);
-      S.tag.style.cssText += ';background:rgba(28,18,16,.82);padding:10px 16px;border-radius:8px';
+      S.bg = K.ink(root);
+      S.cam = full(root);
+      S.ctx = canvas(S.cam);
+      S.tag = K.tag(S.cam, TAG);
+      S.s1 = K.say(S.cam, ['It learned by practicing,', 'thousands of times.'], PAD, 130, { size: 56 });
+      S.s2 = K.say(S.cam, ['Points for stopping attacks.', 'Penalties for getting in users\' way.'], PAD, 130, { size: 56 });
+      S.ill = K.eyebrow(S.cam, 'Illustration · the idea, not a measurement', PAD, 930, 'rgba(255,255,255,.5)', 22);
+      S.ax = K.eyebrow(S.cam, 'Practice runs →', PAD + 760, 880, 'rgba(255,255,255,.6)', 22);
+      S.ay = K.eyebrow(S.cam, 'Attacks stopped', PAD, 330, 'rgba(255,255,255,.6)', 22);
+      S.rw = [['+ Stopped an attack', 'var(--ok-dark)', 'rgba(79,191,135,.12)'], ['− Let the attacker in', '#ff8a78', 'rgba(255,106,82,.12)'], ['− Blocked real users', '#ff8a78', 'rgba(255,106,82,.12)']]
+        .map(([s, c, bg], i) => reg(el('div', { class: 'abs', style: `left:1260px;top:${420 + i * 110}px;padding:18px 26px;border-radius:14px;background:${bg};color:${c};font:600 36px UI;transform-origin:0 50%` }, S.cam, s), { o: 0 }));
     },
     run(t, b, S) {
-      put(S.scr.box, { o: 1 });
-      const c = camAt(t, LAB), i = b < 146 ? 0 : b < 149 ? 1 : 2;
-      S.scr.imgs.forEach((im, k) => put(im, { o: k === i ? 1 : 0 }));
-      put(S.scr.cam, { x: W / 2 - c.x * c.z, y: H / 2 - c.y * c.z, s: c.z });
-      K.eyebrowRun(t, S.tag, 144.5);
+      K.inkRun(t, S.bg, 0.35, 116);
+      put(S.cam, K.aim(W / 2, H / 2, 1 + 0.03 * ease.inOut(seg(t, 360, 376))));
+      K.eyebrowRun(t, S.tag, 359.8);
+      K.sayRun(t, S.s1, 360.5, 366.6); K.sayRun(t, S.s2, 367);
+      K.eyebrowRun(t, S.ill, 361); K.eyebrowRun(t, S.ax, 361); K.eyebrowRun(t, S.ay, 361);
+      const g = S.ctx; g.clearRect(0, 0, W, H);
+      const X0 = PAD, Y0 = 860, CWD = 1000, CHT = 470;
+      g.strokeStyle = 'rgba(255,255,255,.2)'; g.lineWidth = 2; g.beginPath(); g.moveTo(X0, Y0 - CHT); g.lineTo(X0, Y0); g.lineTo(X0 + CWD, Y0); g.stroke();
+      const k = ease.inOut(seg(t, 361, 366.5)), r = C.noise1(9), n = 160;
+      g.strokeStyle = 'var(--ember)'; g.strokeStyle = '#e0684a'; g.lineWidth = 5; g.lineJoin = 'round'; g.beginPath();
+      for (let i = 0; i <= n * k; i++) { const u = i / n, y = 0.08 + 0.8 * (1 - Math.exp(-4.2 * u)) + 0.05 * r(u * 30) * (1 - u * 0.6); const x = X0 + u * CWD, yy = Y0 - y * CHT; i ? g.lineTo(x, yy) : g.moveTo(x, yy); }
+      g.stroke();
+      S.rw.forEach((c, i) => { const p = spHit(t, 368 + i * 1, 'snappy'); put(c, { o: p > 0.002 ? 1 : 0, s: 0.85 + 0.15 * p, x: 30 * (1 - p) }); });
+    },
+  });
+
+  // ------------------------------------------------------------------ the real lab (b376 → b396)
+  const SX = 720, SY = 120, SW = 1060, SH = 840, FULLZ = SW / 1920;
+  const CAM = [[376, { x: 640, y: 330, z: 0.95 }], [382, { x: 960, y: 520, z: FULLZ * 1.05 }], [389, { x: 950, y: 745, z: 0.82 }]];
+  const CAPS = [[['This is Defense Lab,', 'live on the Ari site.'], 376.5, 381.6], [['Pick a defender, press', 'play, and watch every', 'move it made.'], 382, 388.6],
+    [['It\'s scored against', 'simpler defenders.'], 389, null]];
+  scene({
+    name: 'c3_real', from: 'c3_real', to: 'c3_results',
+    build(root, S) {
+      S.bg = K.ink(root);
+      S.cam = full(root);
+      S.tag = K.tag(S.cam, TAG);
+      S.caps = CAPS.map(([l]) => K.say(S.cam, l, PAD, 400, { size: 46, gap: 1.25 }));
+      S.win = K.window(S.cam, [['lab.jpg', 0], ['lab_s1.jpg', 0], ['lab_s2.jpg', 0]], { x: SX, y: SY, w: SW, h: SH, url: 'ari-ai-lake.vercel.app/lab' });
+    },
+    run(t, b, S) {
+      K.inkRun(t, S.bg, 0.6, 110);
+      K.eyebrowRun(t, S.tag, 375.8);
+      CAPS.forEach(([, a, z], i) => K.sayRun(t, S.caps[i], a, z));
+      K.windowRun(S.win, [b < 382 ? 0 : b < 389 ? 1 : 2], K.camAt(t, CAM), sp(t, 376, 'default'));
+    },
+  });
+
+  // ------------------------------------------------------------------ the results (b396 → b412)
+  const STATS = [[7.1, '%', 'of test attacks reached their goal', '100% with no defense'], [94.4, '%', 'of the time, services stayed up', '93.3% with simple rules'],
+    [25.6, '', 'steps to stop an attack', '158.3 with simple rules']];
+  const DEALS = [399, 400.5, 402];
+  scene({
+    name: 'c3_results', from: 'c3_results', to: 'c3_honest',
+    build(root, S) {
+      S.bg = K.ink(root);
+      S.cam = full(root);
+      S.tag = K.tag(S.cam, TAG);
+      S.s1 = K.say(S.cam, ['Tested on 1,500 attacks', 'it never practiced on:'], PAD, 130, { size: 56 });
+      S.cards = STATS.map(([, , lab, vs], i) => {
+        const c = reg(el('div', { class: 'abs', style: `left:${PAD + i * 556}px;top:400px;width:528px;height:440px;border-radius:22px;background:rgba(255,255,255,.05);box-shadow:0 0 0 1px rgba(255,255,255,.1);color:#fff;transform-origin:50% 100%` }, S.cam,
+          `<div class="mono" style="position:absolute;left:34px;top:46px;font-size:132px;font-weight:600;letter-spacing:-.04em;line-height:1;color:var(--ok-dark)"></div>` +
+          `<div style="position:absolute;left:36px;top:214px;width:450px;font:600 36px UI;line-height:1.25">${lab}</div>` +
+          `<div class="eyebrow" style="position:absolute;left:36px;top:360px;font-size:24px;color:rgba(255,255,255,.55)">vs ${vs}</div>`), { o: 0 });
+        c._n = reg(c.firstChild);
+        return c;
+      });
+    },
+    run(t, b, S) {
+      K.inkRun(t, S.bg, 0.45, 114);
+      put(S.cam, K.aim(W / 2, H / 2, 1 + 0.03 * ease.inOut(seg(t, 396, 412))));
+      K.eyebrowRun(t, S.tag, 395.8);
+      K.sayRun(t, S.s1, 396.5);
+      S.cards.forEach((c, i) => {
+        const p = spHit(t, DEALS[i], 'snappy'), [v, suf] = STATS[i];
+        put(c, { o: p > 0.002 ? 1 : 0, y: 120 * (1 - p), s: 0.92 + 0.08 * p });
+        put(c._n, { text: `${(v * ease.out(seg(t, DEALS[i], DEALS[i] + 1.5))).toFixed(1)}${suf}` });
+      });
+    },
+  });
+
+  // ------------------------------------------------------------------ it recommends, you decide (b412 → b420)
+  scene({
+    name: 'c3_honest', from: 'c3_honest', to: 'loop',
+    build(root, S) {
+      S.bg = K.ink(root);
+      S.cam = full(root);
+      S.tag = K.tag(S.cam, TAG);
+      S.l1 = K.head(S.cam, 'IT RECOMMENDS.', PAD, 300, 170, { color: '#fff' });
+      S.l2 = K.head(S.cam, 'YOU DECIDE.', PAD, 470, 170, { color: 'var(--ember)' });
+      S.sub = K.say(S.cam, ['It trains in a simulation and never', 'touches your real systems on its own.'], PAD, 720, { size: 50 });
+    },
+    run(t, b, S) {
+      K.inkRun(t, S.bg, 0.6, 112);
+      put(S.cam, K.aim(W / 2, H / 2, 1 + 0.05 * ease.inOut(seg(t, 412, 420))));
+      K.eyebrowRun(t, S.tag, 411.8, 419.3);
+      rise(t, S.l1, [412.5, 413], 419.5, { exit: 0.3 });
+      rise(t, S.l2, [413.5, 414], 419.5, { exit: 0.3 });
+      K.sayRun(t, S.sub, 415, 419.4);
     },
   });
 })();

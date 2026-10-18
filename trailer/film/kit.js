@@ -6,6 +6,7 @@
   const { el, reg, put, W, H, clamp, lerp } = C;
   const K = {};
   K.PAD = 140;
+  const PAD_ = () => K.PAD;
   K.col = {
     ink: '#1c1210', ink2: '#2b1d19', paper: '#ffffff', paper2: '#fbf4f2', line: '#ecdcd7', accent: '#c2452d',
     deep: '#8f2f1e', soft: '#f8e7e3', ember: '#e0684a', muted: '#6b5752', faint: '#806b65', ok: '#1f7a4d', okd: '#4fbf87', bad: '#b42318',
@@ -226,6 +227,47 @@
   // ------------------------------------------------------------------ transition: the ant pulls the next scene across
   /** Progress of a left→right wipe between beats (ease in-out). Use the same numbers in the overlay ant. */
   K.wipe = (t, b0, b1) => C.ease.inOut(C.seg(t, b0, b1));
+
+
+  // ------------------------------------------------------------------ explainer pieces (plain-language chapters)
+  /** Chapter tag, top-left, stays on for the whole scene. */
+  K.tag = (parent, text, color = 'var(--ember)') => K.eyebrow(parent, text, PAD_(), 78, color, 24);
+  /** A plain sentence, pre-split into lines; each line rises as a unit. hl: words drawn in the accent. */
+  K.say = (parent, lines, x, y, { size = 58, color = '#fff', gap = 1.2, hl = [], hlc = 'var(--ember)', weight = 600 } = {}) =>
+    lines.map((s, i) => {
+      const L = TYPE.line(parent, s, { x, y: y + i * size * gap, size, cls: 'ui', color });
+      Object.assign(L.el.style, { fontWeight: String(weight), letterSpacing: '-0.02em' });
+      L.words.forEach((w) => { if (hl.includes(w.textContent)) w.style.color = hlc; });
+      return L;
+    });
+  K.sayRun = (t, lines, inAt, outAt = null) => lines.forEach((L, i) =>
+    TYPE.rise(t, L, C.beatOf(inAt) + i * 0.3, outAt == null ? null : C.beatOf(outAt) + i * 0.06, { stagger: 0.02, preset: 'heavy', exit: 0.25 }));
+  /** Camera on a page: keys [[beat, {x, y, z}, preset?]]; zoom springs in log space. */
+  K.camAt = (t, keys) => { const k = C.trkObj(t, keys.map(([b, v, p]) => [b, { x: v.x, y: v.y, lz: Math.log(v.z) }, p]), 'heavy'); return { x: k.x, y: k.y, z: Math.exp(k.lz) }; };
+  /** A captured page inside browser chrome. imgs: [[file, topOffset]], cam via K.windowRun. */
+  K.window = (parent, imgs, { x, y, w, h, url = 'ari-ai-lake.vercel.app' }) => {
+    const S = K.screen(parent, imgs.map(([f]) => f), { x, y, w, h, radius: 18 });
+    imgs.forEach(([, top], i) => { if (top) S.imgs[i].style.top = top + 'px'; });
+    S.box.style.boxShadow = '0 0 0 1px rgba(255,255,255,.16), 0 60px 140px -30px rgba(0,0,0,.7)';
+    S.box.style.transformOrigin = '50% 100%';
+    const dot = '<i style="display:block;width:13px;height:13px;border-radius:50%;background:rgba(255,255,255,.22)"></i>';
+    el('div', { class: 'abs', style: `left:0;top:0;width:${w}px;height:46px;background:#241815;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:9px;padding:0 20px;box-sizing:border-box` }, S.box,
+      `${dot}${dot}${dot}<span class="mono" style="margin-left:22px;padding:6px 18px;border-radius:8px;background:rgba(255,255,255,.06);font-size:19px;color:rgba(255,255,255,.62)">${url}</span>`);
+    S.cy = 46 + (h - 46) / 2;
+    return S;
+  };
+  /** show: which images are visible (array of indexes); c: {x, y, z} page camera. */
+  K.windowRun = (S, show, c, up = 1) => {
+    put(S.box, { o: up > 0.002 ? 1 : 0, y: 600 * (1 - up), r: -3 * (1 - up), s: 0.92 + 0.08 * up });
+    S.imgs.forEach((im, k) => put(im, { o: show.includes(k) ? 1 : 0 }));
+    put(S.cam, { x: S.w / 2 - c.x * c.z, y: S.cy - c.y * c.z, s: c.z });
+  };
+  /** Simple line icons for the three parts. */
+  K.ICON = {
+    review: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5h17l9 9v29H12z"/><path d="M29 5v9h9"/><path d="M18 22h13M18 28h13M18 34h6"/><path d="M27 37l4 4 8-8" stroke="var(--ember)"/></svg>',
+    team: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M24 4l16 6v12c0 11-7 18-16 22C15 40 8 33 8 22V10z"/><circle cx="24" cy="17" r="2.2" fill="var(--ember)" stroke="none"/><circle cx="17" cy="23" r="2.2" fill="var(--ember)" stroke="none"/><circle cx="31" cy="23" r="2.2" fill="var(--ember)" stroke="none"/><circle cx="18" cy="31" r="2.2" fill="currentColor" stroke="none"/><circle cx="30" cy="31" r="2.2" fill="currentColor" stroke="none"/><circle cx="24" cy="25" r="2.2" fill="currentColor" stroke="none"/><circle cx="24" cy="34" r="2.2" fill="var(--ok-dark)" stroke="none"/></svg>',
+    lab: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="24" r="4"/><circle cx="24" cy="11" r="4"/><circle cx="24" cy="37" r="4"/><circle cx="40" cy="24" r="4.5" stroke="var(--ember)"/><path d="M12 22l8-8M12 26l8 8M28 13l8 8M28 35l8-8"/></svg>',
+  };
 
   window.K = K;
 })();

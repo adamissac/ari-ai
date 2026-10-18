@@ -3,6 +3,8 @@ review/
 renders/*
 !renders/ari-trailer-1080p.mp4
 !renders/ari-trailer-poster.jpg
+!renders/ari-explainer-1080p.mp4
+!renders/ari-explainer-poster.jpg
 audio/*.wav
 audio/vo/
 assets/cap/*
@@ -15,6 +17,7 @@ assets/cap/*
 !assets/cap/run_116.jpg
 !assets/cap/tab_code.jpg
 !assets/cap/tab_code_s1.jpg
+!assets/cap/tab_seven.jpg
 !assets/cap/lab.jpg
 !assets/cap/lab_s1.jpg
 !assets/cap/lab_s2.jpg
