@@ -700,3 +700,29 @@ only; no contract, backend or landing change.
 ### 2026-10-17 — Pricing navigation consistency
 
 Removed Pricing CTA class and color overrides on current main. Pricing now shares navigation colors, hover styling, and HeaderContrast handling. git diff --check passed; frontend dependencies absent, so runtime checks were not run.
+
+## 2026-10-18T01:20Z — Srihith (cloud session): replay order, commit view, page transition, calmer surfaces, Defense Lab
+
+Branch `claude/wizardly-mccarthy-hni97r`, pushed to `main` at the user's request. Frontend only. The landing page is untouched: it is pixel-identical to `089fc77` at 1440 and 390 px, motion on and off. The only differences are timed animations and #290's nav link.
+
+- **Did:**
+  - **Demo replay** (`lib/demo/agent-map.ts`):
+    - The red team (Scout, Probe) explores. The confirmed part turns red at Probe's verdict.
+    - Trace and the blue team (Diagnose, Patch, Fortify) plus Verify work only on that part. Before, they landed on parts already marked clear.
+    - Clean commits stop after the red team.
+  - **Commit view:** opens on Overview; the code review has no dropdowns; the agent map is rebuilt calmer.
+  - **Page transition:** a full-screen intro-style veil between parts of the site (`components/route-transition.tsx`).
+  - **Night surfaces:** white accents instead of orange boxes.
+  - **Defense Lab:** warm-ink map instead of teal. Node markers sit inside cards, so stacked nodes no longer overlap. Calmer player and story panel.
+  - **Agent relay:** hairline tiles with a status dot.
+  - **Landing test:** the stale Pricing assertion is aligned with #290 (main fixed the same line in #291).
+- **Verified:**
+  - Lint, typecheck and unit tests: 257 passed, including new tests for replay order and the transition rule.
+  - Production build passes.
+  - `tests/e2e/stack.py`: 27 passed and 4 failed, all at the stale `landing.spec.ts:73` assertion; after the fix the landing spec passes 5/5.
+  - Playwright screenshots of the commit view, Lab, pricing and demo at 1440, 1024, 820 and 390 px. No horizontal overflow.
+  - The transition timeline was checked in a real browser.
+- **Open:**
+  - No axe or Lighthouse run.
+  - Below 1000 px the Lab map still swipes sideways inside its own frame (canvas is 700 px wide).
+- **Warning:** the transition and the intro both skip under `navigator.webdriver`. Override it to see them in Playwright.
