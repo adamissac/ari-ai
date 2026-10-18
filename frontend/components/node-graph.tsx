@@ -92,11 +92,56 @@ const DEFENDER_DID: Record<string, string> = {
   request_reassessment: 'Defender asked for a re-check',
 };
 
+/** What the defender did, as a phrase after "Defender" in the tracker line. */
+const DEFENDER_MOVE: Record<string, (service: string) => string> = {
+  isolate: n => `cut off ${n}`,
+  rate_limit: n => `slowed traffic to ${n}`,
+  raise_monitoring: n => `is watching ${n} closely`,
+  request_reassessment: n => `asked for a re-check of ${n}`,
+  escalate_to_human: () => 'called in a person',
+};
+const STAGE_RANK: Record<HiddenStage, number> = { none: 0, foothold: 1, escalated: 2, impact: 3 };
+
+const listNames = (names: string[]) => (names.length <= 2 ? names.join(' and ') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`);
+
+/**
+ * One line each for who is where at this step. The attacker line is ground truth, so it exists
+ * only with the overlay on; the defender line is its latest recorded move and when it happened.
+ */
+export function trackerLines(views: NodeView[], states: LabNodeState[], lastAction: { t: number; action: string } | null, t: number, truth: boolean) {
+  let attacker: string | null = null;
+  let inside = false;
+  if (truth) {
+    const label = (n: string) => views.find(v => v.name === n)?.info.label ?? n;
+    const present = states.filter(s => s.hidden_stage_ground_truth !== 'none').sort((a, b) => STAGE_RANK[b.hidden_stage_ground_truth] - STAGE_RANK[a.hidden_stage_ground_truth]);
+    const loose = present.filter(s => !s.isolated);
+    const cut = present.filter(s => s.isolated);
+    inside = loose.length > 0;
+    if (loose.length) attacker = `${STAGE_WORDS[loose[0]!.hidden_stage_ground_truth]} on ${listNames(loose.map(s => label(s.node)))}`;
+    else if (cut.length) attacker = `is cut off on ${listNames(cut.map(s => label(s.node)))}`;
+    else attacker = 'is not inside the network right now';
+  }
+  let defender = 'has not acted yet, only watching';
+  if (lastAction) {
+    const a = parseAction(lastAction.action);
+    const name = a.node ? (views.find(v => v.name === a.node)?.info.label ?? a.node) : '';
+    defender = `${DEFENDER_MOVE[a.verb]?.(name) ?? a.verb} · ${lastAction.t === t ? 'this step' : `at step ${lastAction.t}`}`;
+  }
+  return { attacker, inside, defender };
+}
+
 const tagWidth = (text: string) => Math.round(text.length * 5.5 + 16);
 
 function Tag({ text, x, className, row = 0 }: { text: string; x: number; className: string; row?: number }) {
   const w = tagWidth(text);
   return <g transform={`translate(${x},${-CH / 2 - 19 - row * 19})`} className={`net-tag ${className}`}><rect width={w} height="16" rx="5" /><text x={w / 2} y="11.3" textAnchor="middle">{text}</text></g>;
+}
+
+/** The card's status line: the state in the tone colour; a healthy service's note ("· watched closely") quieter. */
+function StatusText({ text, tone }: { text: string; tone: Tone }) {
+  const cut = tone === 'healthy' ? text.indexOf(' · ') : -1;
+  if (cut < 0) return <text x={-CW / 2 + 28} y={3} className="net-status">{text}</text>;
+  return <text x={-CW / 2 + 28} y={3} className="net-status">{text.slice(0, cut)}<tspan className="net-status-note">{text.slice(cut)}</tspan></text>;
 }
 
 export interface NetworkMapProps {
@@ -106,12 +151,14 @@ export interface NetworkMapProps {
   action?: string;
   /** Current step; restarts the one-shot action highlight. */
   t?: number;
+  /** The defender's latest recorded action at or before this step; defaults to this step's action. */
+  lastAction?: { t: number; action: string } | null;
   selected?: string | null;
   onSelect?: (node: string | null) => void;
   showTruth?: boolean;
 }
 
-export function NodeGraph({ scenario, states, action = 'noop', t = 0, selected = null, onSelect = () => {}, showTruth = false }: NetworkMapProps) {
+export function NodeGraph({ scenario, states, action = 'noop', t = 0, lastAction, selected = null, onSelect = () => {}, showTruth = false }: NetworkMapProps) {
   const base = useMemo(() => layoutNetwork(scenario), [scenario]);
   const [moved, setMoved] = useState<Map<string, Point>>(new Map());
   const [view, setView] = useState({ k: 1, x: 0, y: 0 });
@@ -126,6 +173,9 @@ export function NodeGraph({ scenario, states, action = 'noop', t = 0, selected =
   const exposed = scenario.nodes.filter(n => n.exposed).map(n => n.name);
   const edges: [string, string][] = [...exposed.map(e => [INTERNET_ID, e] as [string, string]), ...scenario.edges];
   const target = action.startsWith('noop') ? null : parseAction(action).node;
+  const latest = lastAction !== undefined ? lastAction : action.startsWith('noop') ? null : { t, action };
+  const latestNode = latest ? parseAction(latest.action).node : null;
+  const track = trackerLines(views, states, latest, t, showTruth);
   const focus = selected ?? hover;
   const neighbours = new Set<string>();
   if (focus) { neighbours.add(focus); for (const [a, b] of edges) { if (a === focus) neighbours.add(b); if (b === focus) neighbours.add(a); } }
@@ -195,10 +245,16 @@ export function NodeGraph({ scenario, states, action = 'noop', t = 0, selected =
           {showTruth && <li data-k="contained">Attacker cut off</li>}
           {showTruth && <li data-k="false">False alarm</li>}
           {!showTruth && <li data-k="suspicious">Suspicious</li>}
-          <li data-k="defender">Defender action</li>
+          <li data-k="defender">Defender&apos;s move</li>
           <li data-k="isolated">Cut off</li>
+          <li data-k="slow">Slowed traffic</li>
           {showTruth && <li data-k="path">Attack path</li>}
         </ul>
+        {/* Who is where, in words: the same facts as the tags on the cards. */}
+        <p className="net-track" data-testid="lab-tracker">
+          {track.attacker && <span className="net-track-item" data-who="attacker" data-out={!track.inside || undefined}><span aria-hidden="true" className="net-track-dot" /><strong>Attacker</strong> {track.attacker}</span>}
+          <span className="net-track-item" data-who="defender"><span aria-hidden="true" className="net-track-dot" /><strong>Defender</strong> {track.defender}</span>
+        </p>
       </div>
       <div className="net-scroll">
       <div className="net-canvas">
@@ -277,7 +333,9 @@ export function NodeGraph({ scenario, states, action = 'noop', t = 0, selected =
             const isTarget = target === v.name;
             const { tone, text } = nodeTone(v, stage, showTruth);
             const intruder = showTruth && stage !== 'none' ? (v.isolated ? 'Attacker cut off' : 'Attacker here') : null;
-            const did = isTarget ? DEFENDER_DID[parseAction(action).verb] : undefined;
+            // The defender's tag stays on the service of its latest move, faded once that move is in the past.
+            const did = latest && latestNode === v.name ? DEFENDER_DID[parseAction(latest.action).verb] : undefined;
+            const didBefore = did !== undefined && latest!.t !== t;
             const value = v.value ?? 0;
             const band = value >= SIGNAL_BANDS.high ? 'high' : value >= SIGNAL_BANDS.elevated ? 'elevated' : 'quiet';
             const barW = 74;
@@ -309,13 +367,13 @@ export function NodeGraph({ scenario, states, action = 'noop', t = 0, selected =
                 <text x={-CW / 2 + 14} y={-CH / 2 + 24} className="net-label">{v.info.label}</text>
                 {v.critical && <text x={CW / 2 - 14} y={-CH / 2 + 23} textAnchor="end" className="net-crit">critical</text>}
                 <circle cx={-CW / 2 + 18} cy={-1} r="3.6" className="net-dot" />
-                <text x={-CW / 2 + 28} y={3} className="net-status">{text}</text>
+                <StatusText text={text} tone={tone} />
                 <text x={-CW / 2 + 14} y={CH / 2 - 15} className="net-sub">Signal</text>
                 <rect x={-CW / 2 + 60} y={CH / 2 - 21} width={barW} height="4" rx="2" className="net-bar-track" />
                 <rect x={-CW / 2 + 60} y={CH / 2 - 21} width={Math.max(2, barW * Math.min(1, value))} height="4" rx="2" className="net-bar" data-band={band} />
                 <text x={CW / 2 - 14} y={CH / 2 - 15} textAnchor="end" className="net-pct">{Math.round(value * 100)}%</text>
                 {intruder && <g className="network-intruder"><Tag text={intruder} x={-CW / 2} className={v.isolated ? 'net-tag-contained' : 'net-tag-attacker'} /></g>}
-                {did && <g className="network-defender"><Tag text={did} x={-CW / 2} row={intruder ? 1 : 0} className="net-tag-defender" /></g>}
+                {did && <g className="network-defender" data-before={didBefore || undefined}><Tag text={did} x={-CW / 2} row={intruder ? 1 : 0} className="net-tag-defender" /></g>}
               </g>
             );
           })}
