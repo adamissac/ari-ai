@@ -109,7 +109,7 @@ function SignIn({ onSignedIn }: { onSignedIn: (me: MeResponse) => void }) {
     finally { setBusy(false); }
   };
   return (
-    <div className="mx-auto mt-12 grid max-w-4xl overflow-hidden rounded-2xl border border-line bg-panel shadow-[0_24px_60px_-30px_rgba(194,69,45,0.45)] md:grid-cols-2">
+    <div className="signin-card mx-auto mt-12 grid max-w-4xl overflow-hidden rounded-2xl border border-line bg-panel shadow-[0_24px_60px_-30px_rgba(194,69,45,0.45)] md:grid-cols-2">
       <div className="hero-ink hidden flex-col justify-between p-8 md:flex">
         <Wordmark className="text-white" />
         <div>
