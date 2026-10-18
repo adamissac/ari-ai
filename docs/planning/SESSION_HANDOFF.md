@@ -696,3 +696,7 @@ only; no contract, backend or landing change.
   - Playwright 1.64 wants Chromium 1248; the cloud image has 1194. Run e2e with
     `PLAYWRIGHT_BROWSERS_PATH` pointing at a folder whose `chromium*-1248` paths symlink
     to `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
+
+### 2026-10-17 — Pricing navigation consistency
+
+Removed Pricing CTA class and color overrides on current main. Pricing now shares navigation colors, hover styling, and HeaderContrast handling. git diff --check passed; frontend dependencies absent, so runtime checks were not run.
