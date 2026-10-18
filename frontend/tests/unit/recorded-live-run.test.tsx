@@ -11,7 +11,7 @@ describe('recorded live run panel', () => {
     const panel = screen.getByTestId('recorded-live-run');
     expect(panel.textContent).toContain(`Replay of recorded run ${RECORDED_LIVE_RUN.assessmentId}`);
     expect(panel.textContent).toContain('not a run happening now');
-    expect(panel.textContent).toContain('not simulated');
+    expect(panel.textContent).toContain('executed evidence');
   });
 
   it('shows all seven agents and the recorded cost from the saved report', () => {

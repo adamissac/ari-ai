@@ -76,11 +76,11 @@ test('the access cookie cannot be forged', async ({ page, context, baseURL }) =>
   expect(await session.json()).toEqual({ signedIn: false });
 });
 
-test('Defense Lab replays a recorded game from the bundle, labelled as simulation, with held-out scores', async ({ page }) => {
+test('Defense Lab replays a recorded evaluation from the bundle, labelled as an isolated test network, with held-out scores', async ({ page }) => {
   // The overview command center was merged into the main replay (one game, shown once).
   await page.goto('/lab');
   await expect(page.getByTestId('lab-command')).toHaveCount(0);
-  await expect(page.getByText('Replay a recorded game')).toBeVisible();
-  await expect(page.getByTestId('lab-mode')).toHaveText('Simulation · recorded evaluation');
+  await expect(page.getByText('Replay a recorded evaluation')).toBeVisible();
+  await expect(page.getByTestId('lab-mode')).toHaveText('Isolated test network · recorded evaluation');
   await expect(page.getByTestId('score-compromise_rate')).toContainText(/\d+\.\d%/);
 });

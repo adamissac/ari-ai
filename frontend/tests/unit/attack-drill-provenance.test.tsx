@@ -9,7 +9,7 @@ afterEach(() => { cleanup(); startAttackDrill.mockReset(); });
 it('labels real routes, synthetic counters and optional model use accurately', () => {
   render(<AttackDrill projectId="prj_test" onEvents={vi.fn()} />);
   const badge = screen.getByTestId('attack-drill-provenance');
-  expect(badge.textContent).toBe('Simulated drill · no service traffic');
+  expect(badge.textContent).toBe('Synthetic drill · no service traffic');
   expect(badge.title).toContain('real project routes');
   expect(badge.title).toContain('synthetic counters');
   expect(badge.title).toContain('Claude or use a scripted fallback');

@@ -124,7 +124,7 @@ describe('Defense Lab in plain words', () => {
     expect(fd[1]?.value).toBeNull();
   });
   it('warns, from bundle values, when the best-uptime defender loses most games', () => {
-    expect(tradeoffNote(bundle)).toBe('No single measure tells the whole story: "Does nothing" has the best uptime, but the attacker reached its goal in 100.0% of its games.');
+    expect(tradeoffNote(bundle)).toBe('No single measure tells the whole story: "Does nothing" has the best uptime, but the attacker reached its goal in 100.0% of its evaluation runs.');
     const fair = { metrics: [bundle.metrics[0]] } as unknown as DefenseLabBundle;
     expect(tradeoffNote(fair)).toBeNull();
   });
@@ -142,7 +142,7 @@ describe('Defense Lab in plain words', () => {
       { t: 1, action: 'isolate:api', reward: 0, reward_components: {}, nodes: [node('escalated'), node('none')] },
     ] } as unknown as LabEpisode;
     expect(episodeTimeline(ep)).toEqual([{ stage: 'foothold', acted: false, disruptive: false }, { stage: 'escalated', acted: true, disruptive: true }]);
-    expect(episodeOutcome(ep)).toBe('Trained AI defender: the simulated attacker never reached its goal. The defender acted 1 time in 2 steps.');
+    expect(episodeOutcome(ep)).toBe('Trained AI defender: the test attacker never reached its goal. The defender acted 1 time in 2 steps.');
   });
 });
 
