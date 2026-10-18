@@ -1,0 +1,87 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "attempts": {
+      "title": "Attempts",
+      "type": "integer"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "delivered_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Delivered At"
+    },
+    "error": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Error"
+    },
+    "event": {
+      "title": "Event",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^lnt_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "incident_id": {
+      "pattern": "^lin_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Incident Id",
+      "type": "string"
+    },
+    "response_status": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Response Status"
+    },
+    "status": {
+      "enum": [
+        "pending",
+        "delivered",
+        "failed",
+        "not_configured",
+        "suppressed"
+      ],
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "incident_id",
+    "event",
+    "status",
+    "attempts",
+    "response_status",
+    "error",
+    "created_at",
+    "delivered_at"
+  ],
+  "title": "LiveNotification",
+  "type": "object"
+}

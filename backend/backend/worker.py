@@ -73,6 +73,7 @@ def handler(kind: str) -> Callable[[Handler], Handler]:
 def _load_handlers() -> None:
     # Importing registers handlers via @handler.
     from backend import pipeline, simulated_attack  # noqa: F401
+    from backend.live_defense import engine  # noqa: F401
 
 
 def _heartbeat_loop(ctx: JobContext, lease_s: int, stop: threading.Event) -> None:
@@ -159,6 +160,33 @@ def drain(max_jobs: int = 100, kinds: list[str] | None = None) -> list[str]:
     return done
 
 
+def beat(owner: str) -> None:
+    """Record liveness (shown by the Live Defense status) and schedule reconciliation."""
+    import sqlalchemy as sa
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+    from backend.db import worker_heartbeats
+
+    now = time.time()
+    with transaction() as conn:
+        conn.execute(
+            pg_insert(worker_heartbeats)
+            .values(worker_id=owner)
+            .on_conflict_do_update(
+                index_elements=[worker_heartbeats.c.worker_id],
+                set_={"last_seen": sa.func.now()},
+            )
+        )
+        # One reconcile per 30 s across all workers (dedupe key per bucket).
+        jobs.enqueue(
+            conn,
+            "live_defense_reconcile",
+            {},
+            dedupe_key=f"ld:reconcile:{int(now // 30)}",
+            max_attempts=1,
+        )
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--once", action="store_true")
@@ -172,7 +200,14 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     owner = worker_id()
     log.info("worker %s started", owner)
+    last_beat = 0.0
     while True:
+        if time.monotonic() - last_beat >= get_settings().worker_heartbeat_s:
+            try:
+                beat(owner)
+            except Exception:  # pragma: no cover - a missed beat shows as a stale worker
+                log.exception("worker heartbeat failed")
+            last_beat = time.monotonic()
         if run_one(owner) is None:
             time.sleep(get_settings().worker_poll_interval_s)
 

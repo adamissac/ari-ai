@@ -1,0 +1,94 @@
+{
+  "$defs": {
+    "LiveIncidentState": {
+      "enum": [
+        "DETECTED",
+        "TRIAGED",
+        "RECOMMENDED",
+        "AWAITING_APPROVAL",
+        "AUTHORIZED",
+        "EXECUTING",
+        "VERIFYING",
+        "RESOLVED",
+        "ESCALATED",
+        "FAILED",
+        "DENIED",
+        "ROLLED_BACK"
+      ],
+      "title": "LiveIncidentState",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "actor_id": {
+      "title": "Actor Id",
+      "type": "string"
+    },
+    "actor_type": {
+      "enum": [
+        "system",
+        "user",
+        "policy",
+        "worker"
+      ],
+      "title": "Actor Type",
+      "type": "string"
+    },
+    "at": {
+      "format": "date-time",
+      "title": "At",
+      "type": "string"
+    },
+    "details": {
+      "additionalProperties": true,
+      "title": "Details",
+      "type": "object"
+    },
+    "event": {
+      "title": "Event",
+      "type": "string"
+    },
+    "from_state": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LiveIncidentState"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "note": {
+      "maxLength": 500,
+      "title": "Note",
+      "type": "string"
+    },
+    "seq": {
+      "title": "Seq",
+      "type": "integer"
+    },
+    "to_state": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LiveIncidentState"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "seq",
+    "at",
+    "from_state",
+    "to_state",
+    "event",
+    "actor_type",
+    "actor_id",
+    "note"
+  ],
+  "title": "LiveTimelineEntry",
+  "type": "object"
+}

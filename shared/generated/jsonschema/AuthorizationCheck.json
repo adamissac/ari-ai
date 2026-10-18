@@ -1,0 +1,25 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "detail": {
+      "maxLength": 500,
+      "title": "Detail",
+      "type": "string"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "passed": {
+      "title": "Passed",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "name",
+    "passed",
+    "detail"
+  ],
+  "title": "AuthorizationCheck",
+  "type": "object"
+}

@@ -77,6 +77,21 @@ class Settings(BaseSettings):
     rl_checkpoint_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     rl_topology_path: Path | None = None
 
+    # Live autonomous defense
+    # Fernet key (urlsafe base64, 32 bytes) that encrypts per-application signing secrets
+    # at rest. Generate: python -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())"
+    # Required to connect an application; never logged or returned.
+    live_defense_secret_key: SecretStr | None = None
+    # Exact host:port pairs on private/loopback addresses that control and notification
+    # URLs may use (an owned test app on this machine). Everything else must resolve to a
+    # public address; cloud metadata addresses are never allowed.
+    live_defense_allowed_private_hosts: str = ""
+    live_defense_stale_after_s: int = 300
+    live_defense_verify_interval_s: float = 3.0
+    live_defense_verify_attempts: int = 10
+    live_defense_http_timeout_s: float = 5.0
+    worker_heartbeat_s: float = 5.0
+
     # Rate limits (in-process, docs/13)
     rate_limit_per_minute: int = 60
     assessment_starts_per_hour: int = 5
@@ -97,6 +112,7 @@ class Settings(BaseSettings):
         "rl_checkpoint_sha256",
         "repository_bindings_file",
         "security_workdir",
+        "live_defense_secret_key",
         mode="before",
     )
     @classmethod

@@ -1,0 +1,121 @@
+{
+  "$defs": {
+    "LiveEventKind": {
+      "enum": [
+        "auth_failure",
+        "request",
+        "not_found",
+        "server_error",
+        "waf_alert",
+        "blocked",
+        "deploy",
+        "config_change"
+      ],
+      "title": "LiveEventKind",
+      "type": "string"
+    },
+    "LiveSeverity": {
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "title": "LiveSeverity",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "controlled_test": {
+      "default": false,
+      "description": "the sender marks traffic it generated for a controlled test",
+      "title": "Controlled Test",
+      "type": "boolean"
+    },
+    "detail": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Detail"
+    },
+    "event_id": {
+      "description": "sender id; dedupe key",
+      "pattern": "^[A-Za-z0-9_.:-]{1,120}$",
+      "title": "Event Id",
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/$defs/LiveEventKind"
+    },
+    "occurred_at": {
+      "format": "date-time",
+      "title": "Occurred At",
+      "type": "string"
+    },
+    "route": {
+      "anyOf": [
+        {
+          "maxLength": 300,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Route"
+    },
+    "severity": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LiveSeverity"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "source_ip": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Ip"
+    },
+    "status": {
+      "anyOf": [
+        {
+          "maximum": 599,
+          "minimum": 100,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Status"
+    }
+  },
+  "required": [
+    "event_id",
+    "kind",
+    "occurred_at"
+  ],
+  "title": "SecurityEventIn",
+  "type": "object"
+}

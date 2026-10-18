@@ -96,6 +96,14 @@ from backend.migrate import upgrade  # noqa: E402
 upgrade()
 
 _TABLES = [
+    "live_notifications",
+    "defense_actions",
+    "live_timeline",
+    "live_incidents",
+    "security_events",
+    "live_grants",
+    "live_apps",
+    "worker_heartbeats",
     "incidents",
     "runtime_windows",
     "ingest_tokens",

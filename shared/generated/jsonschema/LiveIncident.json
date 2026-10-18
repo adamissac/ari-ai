@@ -1,0 +1,554 @@
+{
+  "$defs": {
+    "AppEnvironment": {
+      "enum": [
+        "owned_test",
+        "staging",
+        "production"
+      ],
+      "title": "AppEnvironment",
+      "type": "string"
+    },
+    "AuthorizationCheck": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "maxLength": 500,
+          "title": "Detail",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "passed": {
+          "title": "Passed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "name",
+        "passed",
+        "detail"
+      ],
+      "title": "AuthorizationCheck",
+      "type": "object"
+    },
+    "AuthorizationResult": {
+      "additionalProperties": false,
+      "properties": {
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/AuthorizationCheck"
+          },
+          "title": "Checks",
+          "type": "array"
+        },
+        "detail": {
+          "maxLength": 500,
+          "title": "Detail",
+          "type": "string"
+        },
+        "outcome": {
+          "enum": [
+            "authorized",
+            "requires_human",
+            "denied",
+            "not_applicable"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "reason_code": {
+          "title": "Reason Code",
+          "type": "string"
+        }
+      },
+      "required": [
+        "outcome",
+        "reason_code",
+        "detail"
+      ],
+      "title": "AuthorizationResult",
+      "type": "object"
+    },
+    "DefenseActionKind": {
+      "enum": [
+        "increase_logging",
+        "rate_limit",
+        "block_source",
+        "escalate",
+        "request_reassessment"
+      ],
+      "title": "DefenseActionKind",
+      "type": "string"
+    },
+    "FinalDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "duration_s": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Duration S"
+        },
+        "kind": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DefenseActionKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "maxLength": 500,
+          "title": "Reason",
+          "type": "string"
+        },
+        "selected_by": {
+          "enum": [
+            "rl",
+            "rules",
+            "rl_and_rules",
+            "none"
+          ],
+          "title": "Selected By",
+          "type": "string"
+        },
+        "target": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Target"
+        }
+      },
+      "required": [
+        "kind",
+        "target",
+        "duration_s",
+        "selected_by",
+        "reason"
+      ],
+      "title": "FinalDecision",
+      "type": "object"
+    },
+    "LiveIncidentState": {
+      "enum": [
+        "DETECTED",
+        "TRIAGED",
+        "RECOMMENDED",
+        "AWAITING_APPROVAL",
+        "AUTHORIZED",
+        "EXECUTING",
+        "VERIFYING",
+        "RESOLVED",
+        "ESCALATED",
+        "FAILED",
+        "DENIED",
+        "ROLLED_BACK"
+      ],
+      "title": "LiveIncidentState",
+      "type": "string"
+    },
+    "LiveSeverity": {
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "title": "LiveSeverity",
+      "type": "string"
+    },
+    "PolicyDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "authorization": {
+          "$ref": "#/$defs/AuthorizationResult"
+        },
+        "decided_at": {
+          "format": "date-time",
+          "title": "Decided At",
+          "type": "string"
+        },
+        "final": {
+          "$ref": "#/$defs/FinalDecision"
+        },
+        "rl": {
+          "$ref": "#/$defs/RLInference"
+        },
+        "rules": {
+          "$ref": "#/$defs/RuleEvaluation"
+        }
+      },
+      "required": [
+        "rl",
+        "rules",
+        "final",
+        "authorization",
+        "decided_at"
+      ],
+      "title": "PolicyDecision",
+      "type": "object"
+    },
+    "RLActionScore": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "title": "Action",
+          "type": "string"
+        },
+        "node": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Node"
+        },
+        "q_value": {
+          "title": "Q Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "action",
+        "node",
+        "q_value"
+      ],
+      "title": "RLActionScore",
+      "type": "object"
+    },
+    "RLInference": {
+      "additionalProperties": false,
+      "description": "What the learned policy said. Present even when it was not used.",
+      "properties": {
+        "action": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Action"
+        },
+        "checkpoint_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Checkpoint Sha256"
+        },
+        "explanation": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Explanation"
+        },
+        "mapped_kind": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DefenseActionKind"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "mapping_note": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mapping Note"
+        },
+        "node": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Node"
+        },
+        "observation_provenance": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Observation Provenance",
+          "type": "object"
+        },
+        "policy_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Policy Version"
+        },
+        "q_margin": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Q Margin"
+        },
+        "reason": {
+          "maxLength": 500,
+          "title": "Reason",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "unavailable",
+            "error",
+            "rejected_input"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "top_actions": {
+          "items": {
+            "$ref": "#/$defs/RLActionScore"
+          },
+          "title": "Top Actions",
+          "type": "array"
+        },
+        "trained_in": {
+          "default": "DefenseSimEnv simulation (offline training); live inference only here",
+          "maxLength": 500,
+          "title": "Trained In",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "reason"
+      ],
+      "title": "RLInference",
+      "type": "object"
+    },
+    "RuleEvaluation": {
+      "additionalProperties": false,
+      "properties": {
+        "duration_s": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Duration S"
+        },
+        "minimum_kind": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DefenseActionKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rationale": {
+          "maxLength": 500,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "rule_id": {
+          "title": "Rule Id",
+          "type": "string"
+        },
+        "target": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Target"
+        }
+      },
+      "required": [
+        "rule_id",
+        "minimum_kind",
+        "target",
+        "duration_s",
+        "rationale"
+      ],
+      "title": "RuleEvaluation",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "app_id": {
+      "pattern": "^lap_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "App Id",
+      "type": "string"
+    },
+    "app_name": {
+      "title": "App Name",
+      "type": "string"
+    },
+    "category": {
+      "title": "Category",
+      "type": "string"
+    },
+    "closed_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Closed At"
+    },
+    "controlled_test": {
+      "description": "every evidence event was marked as controlled test",
+      "title": "Controlled Test",
+      "type": "boolean"
+    },
+    "decision": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PolicyDecision"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "environment": {
+      "$ref": "#/$defs/AppEnvironment"
+    },
+    "event_count": {
+      "title": "Event Count",
+      "type": "integer"
+    },
+    "id": {
+      "pattern": "^lin_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "opened_at": {
+      "format": "date-time",
+      "title": "Opened At",
+      "type": "string"
+    },
+    "project_id": {
+      "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "rationale": {
+      "maxLength": 500,
+      "title": "Rationale",
+      "type": "string"
+    },
+    "rule_id": {
+      "title": "Rule Id",
+      "type": "string"
+    },
+    "severity": {
+      "$ref": "#/$defs/LiveSeverity"
+    },
+    "source": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Source"
+    },
+    "state": {
+      "$ref": "#/$defs/LiveIncidentState"
+    },
+    "updated_at": {
+      "format": "date-time",
+      "title": "Updated At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "project_id",
+    "app_id",
+    "app_name",
+    "environment",
+    "category",
+    "source",
+    "severity",
+    "state",
+    "rationale",
+    "rule_id",
+    "event_count",
+    "controlled_test",
+    "opened_at",
+    "updated_at",
+    "closed_at",
+    "decision"
+  ],
+  "title": "LiveIncident",
+  "type": "object"
+}

@@ -1,0 +1,68 @@
+{
+  "$defs": {
+    "DefenseActionKind": {
+      "enum": [
+        "increase_logging",
+        "rate_limit",
+        "block_source",
+        "escalate",
+        "request_reassessment"
+      ],
+      "title": "DefenseActionKind",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "duration_s": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Duration S"
+    },
+    "minimum_kind": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DefenseActionKind"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "rationale": {
+      "maxLength": 500,
+      "title": "Rationale",
+      "type": "string"
+    },
+    "rule_id": {
+      "title": "Rule Id",
+      "type": "string"
+    },
+    "target": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Target"
+    }
+  },
+  "required": [
+    "rule_id",
+    "minimum_kind",
+    "target",
+    "duration_s",
+    "rationale"
+  ],
+  "title": "RuleEvaluation",
+  "type": "object"
+}

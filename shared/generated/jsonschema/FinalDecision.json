@@ -1,0 +1,74 @@
+{
+  "$defs": {
+    "DefenseActionKind": {
+      "enum": [
+        "increase_logging",
+        "rate_limit",
+        "block_source",
+        "escalate",
+        "request_reassessment"
+      ],
+      "title": "DefenseActionKind",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "duration_s": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Duration S"
+    },
+    "kind": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DefenseActionKind"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "reason": {
+      "maxLength": 500,
+      "title": "Reason",
+      "type": "string"
+    },
+    "selected_by": {
+      "enum": [
+        "rl",
+        "rules",
+        "rl_and_rules",
+        "none"
+      ],
+      "title": "Selected By",
+      "type": "string"
+    },
+    "target": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Target"
+    }
+  },
+  "required": [
+    "kind",
+    "target",
+    "duration_s",
+    "selected_by",
+    "reason"
+  ],
+  "title": "FinalDecision",
+  "type": "object"
+}

@@ -1,0 +1,151 @@
+{
+  "$defs": {
+    "LiveEventKind": {
+      "enum": [
+        "auth_failure",
+        "request",
+        "not_found",
+        "server_error",
+        "waf_alert",
+        "blocked",
+        "deploy",
+        "config_change"
+      ],
+      "title": "LiveEventKind",
+      "type": "string"
+    },
+    "LiveSeverity": {
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "title": "LiveSeverity",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "app_id": {
+      "pattern": "^lap_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "App Id",
+      "type": "string"
+    },
+    "app_name": {
+      "maxLength": 500,
+      "title": "App Name",
+      "type": "string"
+    },
+    "controlled_test": {
+      "title": "Controlled Test",
+      "type": "boolean"
+    },
+    "detail": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Detail"
+    },
+    "id": {
+      "pattern": "^sev_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "incident_id": {
+      "anyOf": [
+        {
+          "pattern": "^lin_[0-9A-Za-z_\\-]{8,64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Incident Id"
+    },
+    "kind": {
+      "$ref": "#/$defs/LiveEventKind"
+    },
+    "occurred_at": {
+      "format": "date-time",
+      "title": "Occurred At",
+      "type": "string"
+    },
+    "received_at": {
+      "format": "date-time",
+      "title": "Received At",
+      "type": "string"
+    },
+    "route": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Route"
+    },
+    "seq": {
+      "title": "Seq",
+      "type": "integer"
+    },
+    "severity": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LiveSeverity"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "source_ip": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Source Ip"
+    },
+    "status": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Status"
+    }
+  },
+  "required": [
+    "id",
+    "seq",
+    "app_id",
+    "app_name",
+    "kind",
+    "source_ip",
+    "route",
+    "status",
+    "severity",
+    "controlled_test",
+    "occurred_at",
+    "received_at",
+    "incident_id",
+    "detail"
+  ],
+  "title": "SecurityEventView",
+  "type": "object"
+}

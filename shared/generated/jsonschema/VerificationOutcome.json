@@ -1,0 +1,52 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "attempt": {
+      "title": "Attempt",
+      "type": "integer"
+    },
+    "attempts_after": {
+      "title": "Attempts After",
+      "type": "integer"
+    },
+    "blocked_after": {
+      "title": "Blocked After",
+      "type": "integer"
+    },
+    "checked_at": {
+      "format": "date-time",
+      "title": "Checked At",
+      "type": "string"
+    },
+    "control_state": {
+      "title": "Control State",
+      "type": "string"
+    },
+    "detail": {
+      "maxLength": 500,
+      "title": "Detail",
+      "type": "string"
+    },
+    "result": {
+      "enum": [
+        "effective",
+        "ineffective",
+        "inconclusive",
+        "pending"
+      ],
+      "title": "Result",
+      "type": "string"
+    }
+  },
+  "required": [
+    "result",
+    "control_state",
+    "blocked_after",
+    "attempts_after",
+    "attempt",
+    "checked_at",
+    "detail"
+  ],
+  "title": "VerificationOutcome",
+  "type": "object"
+}

@@ -1,0 +1,198 @@
+{
+  "$defs": {
+    "ActionGrant": {
+      "additionalProperties": false,
+      "properties": {
+        "app_id": {
+          "pattern": "^lap_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "App Id",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "granted_by": {
+          "title": "Granted By",
+          "type": "string"
+        },
+        "hourly_budget": {
+          "title": "Hourly Budget",
+          "type": "integer"
+        },
+        "id": {
+          "pattern": "^lgr_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/DefenseActionKind"
+        },
+        "max_duration_s": {
+          "title": "Max Duration S",
+          "type": "integer"
+        },
+        "revoked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Revoked At"
+        }
+      },
+      "required": [
+        "id",
+        "app_id",
+        "kind",
+        "max_duration_s",
+        "hourly_budget",
+        "granted_by",
+        "created_at",
+        "revoked_at"
+      ],
+      "title": "ActionGrant",
+      "type": "object"
+    },
+    "AppEnvironment": {
+      "enum": [
+        "owned_test",
+        "staging",
+        "production"
+      ],
+      "title": "AppEnvironment",
+      "type": "string"
+    },
+    "ConnectedApp": {
+      "additionalProperties": false,
+      "properties": {
+        "auto_response": {
+          "title": "Auto Response",
+          "type": "boolean"
+        },
+        "control_url": {
+          "title": "Control Url",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "enabled": {
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "environment": {
+          "$ref": "#/$defs/AppEnvironment"
+        },
+        "grants": {
+          "items": {
+            "$ref": "#/$defs/ActionGrant"
+          },
+          "title": "Grants",
+          "type": "array"
+        },
+        "id": {
+          "pattern": "^lap_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_event_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Last Event At"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "notify_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Notify Url"
+        },
+        "project_id": {
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "protected_sources": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Protected Sources",
+          "type": "array"
+        },
+        "secret_storage": {
+          "const": "encrypted",
+          "title": "Secret Storage",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "name",
+        "environment",
+        "control_url",
+        "notify_url",
+        "auto_response",
+        "enabled",
+        "protected_sources",
+        "grants",
+        "secret_storage",
+        "created_at",
+        "last_event_at"
+      ],
+      "title": "ConnectedApp",
+      "type": "object"
+    },
+    "DefenseActionKind": {
+      "enum": [
+        "increase_logging",
+        "rate_limit",
+        "block_source",
+        "escalate",
+        "request_reassessment"
+      ],
+      "title": "DefenseActionKind",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "app": {
+      "$ref": "#/$defs/ConnectedApp"
+    },
+    "signing_secret": {
+      "description": "shown once; the owner installs it in the app",
+      "title": "Signing Secret",
+      "type": "string"
+    }
+  },
+  "required": [
+    "app",
+    "signing_secret"
+  ],
+  "title": "ConnectedAppCreated",
+  "type": "object"
+}
