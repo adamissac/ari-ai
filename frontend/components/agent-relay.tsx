@@ -4,14 +4,8 @@ import type { AgentName } from '@hackatl/frontend-transport';
 import type { RelayItem, RelayStatus } from '@/lib/relay';
 import { Term } from '@/components/term';
 
-const LOOK: Record<RelayStatus, { box: string; icon: string }> = {
-  done: { box: 'border-ok/50 bg-ok/[0.06]', icon: '✓' },
-  running: { box: 'border-info/60 bg-info/[0.06] animate-pulse', icon: '◔' },
-  queued: { box: 'border-line bg-panel-2', icon: '○' },
-  failed: { box: 'border-bad/60 bg-bad/[0.06]', icon: '×' },
-  cancelled: { box: 'border-line bg-panel-2', icon: '■' },
-  not_run: { box: 'border-dashed border-line bg-panel', icon: '·' },
-};
+/** Status reads as a small mark and a word; the tile itself stays calm (globals.css `.relay-tile`). */
+const STATUS_MARK: Record<RelayStatus, string> = { done: 'done', running: 'running', queued: 'queued', failed: 'failed', cancelled: 'queued', not_run: 'idle' };
 
 /**
  * The eight agents as a relay, in the order the orchestrator runs them, with the
@@ -31,16 +25,14 @@ export function AgentRelay({ items, selected, onSelect }: { items: RelayItem[]; 
       <ol className="mt-3 flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-stretch">
         {items.map((item, i) => {
           if (item.kind === 'gate') {
-            const tone = item.status === 'waiting' ? 'border-warn bg-warn/10 text-warn' : item.status === 'passed' ? 'border-ok/50 text-ok' : 'border-line text-muted';
             return (
-              <li key="gate" className={`flex items-center gap-2 rounded-lg border-2 border-dashed px-3 py-2 text-xs lg:w-40 ${tone}`} data-testid="relay-gate" data-status={item.status}>
-                <span aria-hidden="true" className="text-lg">✋</span>
+              <li key="gate" className="relay-gate flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs lg:w-40" data-testid="relay-gate" data-status={item.status}>
+                <span aria-hidden="true" className="relay-dot" />
                 <span><span className="block font-semibold">Human approval</span>{item.text}</span>
               </li>
             );
           }
           const n = numbers.get(item.agent) ?? 0;
-          const look = LOOK[item.status];
           const pressed = item.agent === selected;
           const prev = items[i - 1];
           const newStage = !prev || prev.kind === 'gate' || prev.stage !== item.stage;
@@ -53,12 +45,12 @@ export function AgentRelay({ items, selected, onSelect }: { items: RelayItem[]; 
                 data-testid={`relay-${item.agent}`}
                 data-status={item.status}
                 data-team={item.agent === 'reviewer' ? 'review' : ['scout', 'probe', 'trace'].includes(item.agent) ? 'challenge' : item.agent === 'verify' ? 'proof' : 'defend'}
-                className={`flex w-full flex-col rounded-lg border-2 p-3 text-left transition-shadow ${look.box} ${pressed ? 'ring-2 ring-brand ring-offset-1' : 'hover:shadow-md'}`}
+                className="relay-tile flex w-full flex-col rounded-xl p-3 text-left"
               >
                 <span className="label-mono text-faint">{newStage ? item.stage : ' '}</span>
                 <span className="mt-1 flex items-center justify-between gap-2">
                   <span className="font-semibold"><span className="text-faint">{n}.</span> {item.label}</span>
-                  <span className="flex items-center gap-1 text-xs"><span aria-hidden="true">{look.icon}</span>{item.statusText}</span>
+                  <span className="relay-status flex items-center gap-1.5 text-xs" data-mark={STATUS_MARK[item.status]}><span aria-hidden="true" className="relay-dot" />{item.statusText}</span>
                 </span>
                 <span className="mt-1 text-xs text-muted">{item.job}</span>
                 <span className="mt-2 border-t border-line/70 pt-1.5 text-xs"><span className="text-faint">Handed on: </span>{item.handoff}</span>

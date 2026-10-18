@@ -265,7 +265,8 @@ export function NodeGraph({ scenario, states, action = 'noop', t = 0, selected =
                 onBlur={() => setHover(h => (h === v.name ? null : h))}
                 onKeyDown={onKey(v.name)}
               >
-                <rect x={-82} y={-49} width={164} height={128} rx={13} className="network-card" />
+                {/* Everything about a node stays inside its card, so stacked nodes never collide. */}
+                <rect x={-82} y={-60} width={164} height={132} rx={14} className="network-card" />
                 {v.signal === 'high' && <circle r={r * 2.1} fill="url(#net-hot)" className="net-glow" />}
                 {showTruth && stage !== 'none' && <circle r={r + 12} className="net-truth" />}
                 {isTarget && <circle key={`act-${t}`} r={r + 6} className="net-act" />}
@@ -273,11 +274,12 @@ export function NodeGraph({ scenario, states, action = 'noop', t = 0, selected =
                 <circle r={r} className="net-body" />
                 <g className="net-icon" transform={`scale(${(r / 24).toFixed(3)})`}><Icon kind={v.info.kind} /></g>
                 {badgesFor(v).map((b, i) => <StateBadge key={b} kind={b} x={r * 0.8} y={-r * 0.8 + i * 20} />)}
-                <text y={r + 18} textAnchor="middle" className="net-label">{v.info.label}</text>
-                <text y={r + 31} textAnchor="middle" className="net-sub">{v.critical ? 'IMPORTANT SERVICE' : 'APPLICATION SERVICE'}</text>
-                {isTarget && <g transform="translate(-64,88)" className="network-defender"><rect width="128" height="24" rx="5" /><text x="64" y="16" textAnchor="middle">◇ DEFENDER HERE</text></g>}
-                {showTruth && stage !== 'none' && <g transform="translate(-64,-83)" className="network-intruder"><rect width="128" height="24" rx="5" /><text x="64" y="16" textAnchor="middle">{v.isolated ? '× ATTACKER CUT OFF' : '▲ ATTACKER HERE'}</text></g>}
-                {showTruth && stage !== 'none' && <text y={-r - 7} textAnchor="middle" className="net-truth-label">attacker: {stage}</text>}
+                <text y={r + 20} textAnchor="middle" className="net-label">{v.info.label}</text>
+                {showTruth && stage !== 'none'
+                  ? <text y={r + 34} textAnchor="middle" className="net-truth-label">attacker: {stage}</text>
+                  : v.critical && <text y={r + 34} textAnchor="middle" className="net-sub">Critical</text>}
+                {showTruth && stage !== 'none' && <g transform="translate(-76,-54)" className="network-intruder"><rect width="74" height="17" rx="8.5" /><text x="37" y="11.8" textAnchor="middle">{v.isolated ? 'ATTACKER CUT OFF' : 'ATTACKER HERE'}</text></g>}
+                {isTarget && <g transform="translate(2,-54)" className="network-defender"><rect width="74" height="17" rx="8.5" /><text x="37" y="11.8" textAnchor="middle">DEFENDER HERE</text></g>}
               </g>
             );
           })}
