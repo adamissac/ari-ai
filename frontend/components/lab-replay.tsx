@@ -70,7 +70,7 @@ export function ReplayStage({ episode, scenario }: { episode: LabEpisode; scenar
               <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12 3v10M3.5 3.6v8.8L9.5 8z" /></svg>
             </button>
             <Scrubber episode={episode} moments={story} t={t} steps={steps} horizon={scenario.horizon} onSeek={seek} truth={truth} />
-            <span className="lab-time">t = {step?.t ?? 0} / {scenario.horizon}</span>
+            <span className="lab-time" style={{ minWidth: `${7 + 2 * String(scenario.horizon).length}ch` }}>t = {step?.t ?? 0} / {scenario.horizon}</span>
             <button type="button" className="lab-speed" onClick={() => setSpeed(v => (v + 1) % SPEEDS.length)} aria-label={`Playback speed ${SPEEDS[speed]?.label ?? ''}, click to change`}>
               {SPEEDS[speed]?.label}
             </button>
@@ -185,6 +185,7 @@ function ScoreParts({ episode, t }: { episode: LabEpisode; t: number }) {
 }
 
 const STAGE_FILL: Record<HiddenStage, string> = { none: 'transparent', foothold: '#f0a868', escalated: '#e0735c', impact: '#b42318' };
+const THUMB = 14; // px; matches .lab-scrub-thumb and the input's thumb in globals.css
 const STAGE_RANK: Record<HiddenStage, number> = { none: 0, foothold: 1, escalated: 2, impact: 3 };
 
 /**
@@ -200,22 +201,25 @@ function Scrubber({ episode, moments, t, steps, horizon, onSeek, truth }: { epis
     for (const x of s.nodes) if (STAGE_RANK[x.hidden_stage_ground_truth] > STAGE_RANK[stage]) stage = x.hidden_stage_ground_truth;
     return stage;
   }), [episode]);
-  const pct = (i: number) => `${(Math.min(i, n - 1) / Math.max(1, n - 1)) * 100}%`;
+  // Every mark sits where the input's own (14px) thumb would: step 0 at the far left, the last
+  // step at the far right, never past either end. Step i's shading is centred on that spot too.
+  const at = (i: number) => `calc(${THUMB / 2}px + (100% - ${THUMB}px) * ${Math.min(i, n - 1) / Math.max(1, n - 1)})`;
+  const cells = `-0.5 0 ${Math.max(1, n - 1)} 1`;
   return (
     <div className="lab-scrub" data-testid="lab-timeline">
       <div className="lab-scrub-track" aria-hidden="true">
-        <svg viewBox={`0 0 ${n} 1`} preserveAspectRatio="none" className="lab-scrub-heat">
-          {peaks.map((p, i) => <rect key={i} x={i} y={0} width={1.02} height={1} fill="#c2452d" opacity={0.06 + p * 0.55} />)}
+        <svg viewBox={cells} preserveAspectRatio="none" className="lab-scrub-heat">
+          {peaks.map((p, i) => <rect key={i} x={i - 0.5} y={0} width={1.02} height={1} fill="#c2452d" opacity={0.06 + p * 0.55} />)}
         </svg>
-        <span className="lab-scrub-played" style={{ width: pct(t) }} />
+        <span className="lab-scrub-played" style={{ width: at(t) }} />
         {truth && (
-          <svg viewBox={`0 0 ${n} 1`} preserveAspectRatio="none" className="lab-scrub-truth">
-            {stages.map((st, i) => st !== 'none' && <rect key={i} x={i} y={0} width={1.02} height={1} fill={STAGE_FILL[st]} />)}
+          <svg viewBox={cells} preserveAspectRatio="none" className="lab-scrub-truth">
+            {stages.map((st, i) => st !== 'none' && <rect key={i} x={i - 0.5} y={0} width={1.02} height={1} fill={STAGE_FILL[st]} />)}
           </svg>
         )}
       </div>
       {moments.filter(m => m.kind !== 'end').map(m => (
-        <button key={`${m.t}-${m.text}`} type="button" className="lab-scrub-dot" data-kind={m.kind} style={{ left: pct(m.t) }} onClick={() => onSeek(m.t)} aria-label={`Jump to step ${m.t}: ${m.text}`} title={`${m.t} · ${m.text}`} />
+        <button key={`${m.t}-${m.text}`} type="button" className="lab-scrub-dot" data-kind={m.kind} style={{ left: at(m.t) }} onClick={() => onSeek(m.t)} aria-label={`Jump to step ${m.t}: ${m.text}`} title={`${m.t} · ${m.text}`} />
       ))}
       <input
         aria-label="Step"
@@ -224,7 +228,7 @@ function Scrubber({ episode, moments, t, steps, horizon, onSeek, truth }: { epis
         onChange={e => onSeek(Number(e.target.value))}
         className="lab-scrub-input"
       />
-      <span className="lab-scrub-thumb" style={{ left: pct(t) }} aria-hidden="true" />
+      <span className="lab-scrub-thumb" style={{ left: at(t) }} aria-hidden="true" />
     </div>
   );
 }
