@@ -1118,5 +1118,3 @@ body:has(.commit-stage) main { color: #fff; }
 .auth-error { display: flex; gap: 8px; align-items: flex-start; margin-top: 0.875rem; padding: 10px 12px; border-radius: 12px; font-size: 13px; background: rgb(194 69 45 / 18%); border: 1px solid rgb(255 140 115 / 30%); }
 .auth-footnote { display: flex; align-items: center; gap: 8px; padding-top: 1.25rem; border-top: 1px solid rgb(255 255 255 / 10%); font-size: 12px; color: rgb(255 255 255 / 55%); }
 .hero-ink .auth-footnote, .hero-ink .auth-footnote span { color: rgb(255 255 255 / 58%); }
-/* The sign-in screens are one dark surface: no records footer under them. */
-body:has(.auth-stage) [data-testid="site-footer"] { display: none; }
