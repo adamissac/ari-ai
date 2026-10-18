@@ -99,9 +99,11 @@ class ReassessmentRequest(StrictModel):
 
 # --------------------------------------------------------------- runtime signals (docs/10 "S")
 
-RuntimeSource = Literal["runtime_demo", "replay", "simulated"]
+RuntimeSource = Literal["runtime_demo", "replay", "simulated", "drill"]
 """Provenance label. There is NO production telemetry source in MVP: ``runtime_demo`` is
-the sandboxed demo target, ``replay``/``simulated`` are recorded or synthetic windows."""
+the sandboxed demo target, ``replay``/``simulated`` are recorded or synthetic windows, and
+``drill`` is an attack drill's synthetic counters (backend.simulated_attack). Each source has
+its own scoring history, so a drill never becomes the baseline of a real reporter."""
 
 
 class RouteWindow(StrictModel):

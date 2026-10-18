@@ -4,7 +4,7 @@ Live production telemetry does not exist in the MVP, so the 24/7 defense leg is 
 with a drill: Claude plays an attacker *on paper* against the connected repository's real
 routes (entry points from the latest ready snapshot, and routes of open findings), and the
 drill turns that plan into synthetic per-route counters. Those counters go through the real
-runtime ingest and scorer (``backend.api.runtime.ingest``) with ``source="simulated"``, so
+runtime ingest and scorer (``backend.api.runtime.ingest``) with ``source="drill"``, so
 detection, ``log_anomaly`` events, finding links and incident correlation are the product's
 own code paths. Claude never sends traffic, never runs code and never sees the repository's
 contents beyond route names; nothing in the defense response is executed.
@@ -168,7 +168,7 @@ def traffic(plan: AttackPlan, now: datetime, seed: str) -> list[RuntimeSignalBat
         errors = rng.randint(0, 2)
         batches.append(
             RuntimeSignalBatch(
-                source="simulated",
+                source="drill",
                 window_start=end - WINDOW,
                 window_end=end,
                 routes=[
@@ -188,7 +188,7 @@ def traffic(plan: AttackPlan, now: datetime, seed: str) -> list[RuntimeSignalBat
     }[plan.technique]
     batches.append(
         RuntimeSignalBatch(
-            source="simulated",
+            source="drill",
             window_start=now - WINDOW,
             window_end=now,
             routes=[RouteWindow(route=plan.route, **spike)],
