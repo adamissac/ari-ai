@@ -1,19 +1,37 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { along, buildTrail, colonySize, spawnGap, TRAILS } from '@/components/ant-colony';
+import { along, buildTrail, colonySize, firstWave, NESTS, spawnGap, TRAILS } from '@/components/ant-colony';
 import { HeroStage } from '@/components/hero';
 
 beforeEach(() => { vi.stubGlobal('matchMedia', (q: string) => ({ matches: false, media: q, addEventListener() {}, removeEventListener() {} })); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
-it('trails are closed loops that start at the nest on the right', () => {
+it('trails are closed loops', () => {
   for (const curve of TRAILS) {
     const t = buildTrail(curve, 1200, 800);
     const first = t.pts[0]!;
     const last = t.pts[t.pts.length - 1]!;
     expect(Math.hypot(first.x - last.x, first.y - last.y)).toBeLessThan(0.5);
-    expect(first.x).toBeGreaterThan(1200 * 0.85);
   }
+});
+
+it('ants come out of nests spread around the hero: right, left, top and bottom', () => {
+  const trails = TRAILS.map(c => buildTrail(c, 1200, 800));
+  const nests = NESTS.map(n => along(trails[n.trail]!, n.at * trails[n.trail]!.length).p);
+  expect(nests.length).toBeGreaterThanOrEqual(4);
+  expect(Math.max(...nests.map(p => p.x))).toBeGreaterThan(1200 * 0.85);
+  expect(Math.min(...nests.map(p => p.x))).toBeLessThan(1200 * 0.25);
+  expect(Math.min(...nests.map(p => p.y))).toBeLessThan(800 * 0.3);
+  expect(Math.max(...nests.map(p => p.y))).toBeGreaterThan(800 * 0.7);
+  for (let i = 0; i < nests.length; i++) for (let j = i + 1; j < nests.length; j++) {
+    expect(Math.hypot(nests[i]!.x - nests[j]!.x, nests[i]!.y - nests[j]!.y)).toBeGreaterThan(200);
+  }
+});
+
+it('the colony starts with a first wave, more than one ant but well under the cap', () => {
+  expect(firstWave(colonySize(375, 812))).toBe(5);
+  expect(firstWave(colonySize(1440, 900))).toBe(10);
+  expect(firstWave(34)).toBeLessThan(34);
 });
 
 it('ants walk at constant speed along the trail, and distance wraps around', () => {
