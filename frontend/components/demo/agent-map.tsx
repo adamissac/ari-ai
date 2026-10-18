@@ -141,11 +141,13 @@ function Transport({ playback, total, played, offset }: { playback: Playback; to
           ? <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="3" width="3" height="10" rx="1" /><rect x="9" y="3" width="3" height="10" rx="1" /></svg>
           : <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6a.6.6 0 0 0 .9.5l7.6-4.8a.6.6 0 0 0 0-1L5.9 2.7a.6.6 0 0 0-.9.5z" /></svg>}
       </button>
+      {/* The bar spans the agents' steps only: its far left is the first agent step, so dragging to
+          the start shows the start (the read and code-review ticks before it are not on this bar). */}
       <input
-        type="range" min={0} max={total + offset} value={Math.min(played + offset, total + offset)}
-        onChange={e => playback.seek(Number(e.target.value))}
-        aria-label="Replay position" className="amap-scrub"
-        style={{ ['--fill' as string]: `${(Math.min(played + offset, total + offset) / Math.max(1, total + offset)) * 100}%` }}
+        type="range" min={0} max={Math.max(1, total)} step={1} value={Math.min(played, total)}
+        onChange={e => playback.seek(offset + Number(e.target.value))}
+        aria-label="Replay position" aria-valuetext={`Step ${Math.min(played, total)} of ${total}`} className="amap-scrub"
+        style={{ ['--f' as string]: Math.min(played, total) / Math.max(1, total) }}
       />
       <span className="amap-count">{played} / {total}</span>
       <button type="button" className="amap-speed" onClick={() => playback.setSpeed(next)} aria-label={`Replay speed ${playback.speed}×, change to ${next}×`}>{playback.speed}×</button>
