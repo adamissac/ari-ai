@@ -342,11 +342,13 @@ async def ingest_runtime(project_id: str, request: Request) -> JSONResponse:
 def latest_route_signals(
     conn: sa.Connection, project_id: str, within: timedelta = timedelta(minutes=30)
 ) -> list[dict[str, Any]]:
-    """Most recent score per (source, route) inside ``within``: input for RL RouteSignal."""
+    """Most recent score per (source, route) inside ``within``: input for RL RouteSignal.
+    Attack-drill windows are excluded: a drill must not steer a real recommendation."""
     rows = conn.execute(
         sa.select(runtime_windows.c.score)
         .where(
             runtime_windows.c.project_id == project_id,
+            runtime_windows.c.source != "drill",
             runtime_windows.c.window_end > utcnow() - within,
         )
         .order_by(runtime_windows.c.window_end.desc())
