@@ -121,6 +121,8 @@ button.label-mono, a.label-mono, nav.label-mono, nav .label-mono {
   opacity: calc(1 - var(--scroll) * 0.9); }
 /* Covered by the page: nothing in the hero is visible, so stop animating and painting it. */
 .hero-stage[data-covered] { visibility: hidden; }
+.hero-colony { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; pointer-events: none; animation: hero-colony-in 1200ms var(--ease-quad) both; }
+@keyframes hero-colony-in { from { opacity: 0; } to { opacity: 1; } }
 .hero-stage[data-covered] .hero-orb { animation-play-state: paused; }
 .hero-orbs { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; transform: translateY(calc(var(--scroll) * 160px)) scale(calc(1 + var(--scroll) * 0.15)); }
 /* Soft orbs are radial gradients, not blur(60px): the same glow without re-rasterising a
