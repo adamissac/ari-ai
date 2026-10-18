@@ -2,7 +2,7 @@
 // Last comes the fx overlay: the scout ant that pulls one scene across the next (its wipe edges live in the scenes).
 (() => {
   const { W, H, scene, canvas, seg, ease, bt, lerp } = C;
-  const WIPES = [[79, 80, 560]];                                     // [from beat, to beat, ant height]
+  const WIPES = [[79, 80, 560], [151, 152, 560]];                                     // [from beat, to beat, ant height]
   scene({
     name: 'fx', from: 0, to: 'done',
     build(root, S) { S.ctx = canvas(root); S.ctx.canvas.style.pointerEvents = 'none'; },

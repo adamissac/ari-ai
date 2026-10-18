@@ -4,51 +4,994 @@
   "duration": 90,
   "fps": 60,
   "bpm": 120,
-  "formats": ["16x9"],
-  "brand": { "product": "ARI", "cta": "ari-ai-lake.vercel.app" },
+  "formats": [
+    "16x9"
+  ],
+  "brand": {
+    "product": "ARI",
+    "cta": "ari-ai-lake.vercel.app"
+  },
   "music": {
     "source": "synth",
     "seed": 146,
-    "chords": ["Am", "F", "C", "G"],
-    "sections": [
-      { "at": "open", "kind": "intro" },
-      { "at": "dive", "kind": "dark" },
-      { "at": 26, "kind": "build" },
-      { "at": "gap1", "kind": "gap" },
-      { "at": "ari", "kind": "drop" },
-      { "at": "loop", "kind": "full" },
-      { "at": "fix", "kind": "dark" },
-      { "at": "monitor", "kind": "full" },
-      { "at": "build2", "kind": "build" },
-      { "at": "gap2", "kind": "gap" },
-      { "at": "product", "kind": "drop" },
-      { "at": "proof", "kind": "dark" },
-      { "at": "standards", "kind": "build" },
-      { "at": "gap3", "kind": "gap" },
-      { "at": "end", "kind": "drop" },
-      { "at": 176, "kind": "outro" }
+    "chords": [
+      "Am",
+      "F",
+      "C",
+      "G"
     ],
-    "accents": ["ari", "product", "end"]
+    "sections": [
+      {
+        "at": "open",
+        "kind": "intro"
+      },
+      {
+        "at": "dive",
+        "kind": "dark"
+      },
+      {
+        "at": 26,
+        "kind": "build"
+      },
+      {
+        "at": "gap1",
+        "kind": "gap"
+      },
+      {
+        "at": "ari",
+        "kind": "drop"
+      },
+      {
+        "at": "loop",
+        "kind": "full"
+      },
+      {
+        "at": "fix",
+        "kind": "dark"
+      },
+      {
+        "at": "monitor",
+        "kind": "full"
+      },
+      {
+        "at": "build2",
+        "kind": "build"
+      },
+      {
+        "at": "gap2",
+        "kind": "gap"
+      },
+      {
+        "at": "product",
+        "kind": "drop"
+      },
+      {
+        "at": "proof",
+        "kind": "dark"
+      },
+      {
+        "at": "standards",
+        "kind": "build"
+      },
+      {
+        "at": "gap3",
+        "kind": "gap"
+      },
+      {
+        "at": "end",
+        "kind": "drop"
+      },
+      {
+        "at": 176,
+        "kind": "outro"
+      }
+    ],
+    "accents": [
+      "ari",
+      "product",
+      "end"
+    ]
   },
-  "mix": { "music": 0, "sfx": -3, "vo": 0, "duck": false },
+  "mix": {
+    "music": 0,
+    "sfx": -3,
+    "vo": 0,
+    "duck": false
+  },
   "voiceover": null,
   "marks": {
-    "open": 0, "w_every": 2, "commits": 3,
-    "week": 8, "ticks": 9, "pr": 11.5, "scan_title": 12, "scanner": 13, "count": 14, "dive": 16,
-    "flaw": 18, "code": 19, "pay": 20, "ref1": 21, "ref2": 22, "total": 23, "ci": 24, "shipped": 25,
-    "q": 28, "gap1": 31,
-    "ari": 32, "ari_sub": 36, "headline": 40, "h2": 42, "tagline": 44,
-    "loop": 48, "loop_run": 52, "loop_dive": 54,
-    "understand": 56, "u1": 58, "u2": 59, "u3": 60,
-    "attack": 64, "a1": 65, "a2": 66, "a3": 67, "twice": 68,
-    "agents": 72, "ag_red": 73, "ag_blue": 75, "ag_verify": 77, "perm": 78,
-    "walk": 80, "scout": 81, "probe": 83, "trace": 85, "diagnose": 87,
-    "fix": 88, "approve": 90, "patch": 92, "verify": 94, "tests": 98,
-    "monitor": 104, "build2": 112, "gap2": 119,
-    "product": 120, "result": 128, "review": 136, "lab": 144,
-    "proof": 152, "ours": 156, "stats": 158,
-    "standards": 164, "gap3": 171,
-    "end": 172, "cta": 174, "done": 180
+    "open": 0,
+    "w_every": 2,
+    "commits": 3,
+    "week": 8,
+    "ticks": 9,
+    "pr": 11.5,
+    "scan_title": 12,
+    "scanner": 13,
+    "count": 14,
+    "dive": 16,
+    "flaw": 18,
+    "code": 19,
+    "pay": 20,
+    "ref1": 21,
+    "ref2": 22,
+    "total": 23,
+    "ci": 24,
+    "shipped": 25,
+    "q": 28,
+    "gap1": 31,
+    "ari": 32,
+    "ari_sub": 36,
+    "headline": 40,
+    "h2": 42,
+    "tagline": 44,
+    "loop": 48,
+    "loop_run": 52,
+    "loop_dive": 54,
+    "understand": 56,
+    "u1": 58,
+    "u2": 59,
+    "u3": 60,
+    "attack": 64,
+    "a1": 65,
+    "a2": 66,
+    "a3": 67,
+    "twice": 68,
+    "agents": 72,
+    "ag_red": 73,
+    "ag_blue": 75,
+    "ag_verify": 77,
+    "perm": 78,
+    "walk": 80,
+    "scout": 81,
+    "probe": 83,
+    "trace": 85,
+    "diagnose": 87,
+    "fix": 88,
+    "approve": 90,
+    "patch": 92,
+    "verify": 94,
+    "tests": 98,
+    "monitor": 104,
+    "build2": 112,
+    "gap2": 119,
+    "product": 120,
+    "result": 128,
+    "review": 136,
+    "lab": 144,
+    "proof": 152,
+    "ours": 156,
+    "stats": 158,
+    "standards": 164,
+    "gap3": 171,
+    "end": 172,
+    "cta": 174,
+    "done": 180
   },
-  "sfx": []
+  "sfx": [
+    {
+      "at": 0.5,
+      "type": "pop",
+      "gain": 0.6,
+      "what": "CHANGES"
+    },
+    {
+      "at": 2,
+      "type": "pop",
+      "gain": 0.6,
+      "what": "EVERY"
+    },
+    {
+      "at": 2.5,
+      "type": "pop",
+      "gain": 0.55,
+      "what": "DAY."
+    },
+    {
+      "at": 3,
+      "type": "pop",
+      "gain": 0.38,
+      "what": "commit card lands"
+    },
+    {
+      "at": 4,
+      "type": "pop",
+      "gain": 0.38,
+      "what": "commit card lands"
+    },
+    {
+      "at": 5,
+      "type": "pop",
+      "gain": 0.38,
+      "what": "commit card lands"
+    },
+    {
+      "at": 5.5,
+      "type": "pop",
+      "gain": 0.38,
+      "what": "commit card lands"
+    },
+    {
+      "at": 6,
+      "type": "pop",
+      "gain": 0.38,
+      "what": "commit card lands"
+    },
+    {
+      "at": 6.5,
+      "type": "pop",
+      "gain": 0.38,
+      "what": "commit card lands"
+    },
+    {
+      "at": 7,
+      "type": "pop",
+      "gain": 0.38,
+      "what": "commit card lands"
+    },
+    {
+      "at": 7.5,
+      "type": "pop",
+      "gain": 0.38,
+      "what": "commit card lands"
+    },
+    {
+      "at": 8,
+      "type": "shutter",
+      "gain": 0.7,
+      "what": "cut to the week"
+    },
+    {
+      "at": 9,
+      "type": "tick",
+      "gain": 0.32,
+      "what": "ticks drop",
+      "to": 11.75,
+      "every": 0.25
+    },
+    {
+      "at": 11.5,
+      "type": "pop",
+      "gain": 0.55,
+      "what": "PR review pill"
+    },
+    {
+      "at": 12,
+      "type": "pop",
+      "gain": 0.5,
+      "what": "scans title"
+    },
+    {
+      "at": 13,
+      "type": "shutter",
+      "gain": 0.8,
+      "what": "scanner snapshot"
+    },
+    {
+      "at": 14,
+      "type": "pop",
+      "gain": 0.6,
+      "what": "3 of 12 checked"
+    },
+    {
+      "at": 15,
+      "type": "click",
+      "gain": 0.5,
+      "what": "unchecked pulse"
+    },
+    {
+      "at": 15.5,
+      "type": "click",
+      "gain": 0.5,
+      "what": "unchecked pulse"
+    },
+    {
+      "at": 18,
+      "type": "whoosh",
+      "gain": 0.7,
+      "what": "dive into the tick lands"
+    },
+    {
+      "at": 18,
+      "type": "thump",
+      "gain": 0.65,
+      "what": "commit card"
+    },
+    {
+      "at": 19,
+      "type": "tick",
+      "gain": 0.28,
+      "what": "code builds",
+      "to": 19.75,
+      "every": 0.125
+    },
+    {
+      "at": 20,
+      "type": "pop",
+      "gain": 0.5,
+      "what": "the intent"
+    },
+    {
+      "at": 20.5,
+      "type": "pop",
+      "gain": 0.5,
+      "what": "payment"
+    },
+    {
+      "at": 21.5,
+      "type": "click",
+      "gain": 0.65,
+      "what": "refund 1: 201"
+    },
+    {
+      "at": 22,
+      "type": "click",
+      "gain": 0.65,
+      "what": "refund 2: 201"
+    },
+    {
+      "at": 22.5,
+      "type": "pop",
+      "gain": 0.5,
+      "what": "one-refund check"
+    },
+    {
+      "at": 23,
+      "type": "thump",
+      "gain": 0.85,
+      "what": "refunded 120 of 100"
+    },
+    {
+      "at": 24,
+      "type": "pop",
+      "gain": 0.65,
+      "what": "CI PASSED"
+    },
+    {
+      "at": 25,
+      "type": "thump",
+      "gain": 0.8,
+      "what": "THE FLAW SHIPPED"
+    },
+    {
+      "at": 27,
+      "type": "pop",
+      "gain": 0.6,
+      "what": "WHO CHECKS"
+    },
+    {
+      "at": 27.5,
+      "type": "pop",
+      "gain": 0.6,
+      "what": "EVERY CHANGE?"
+    },
+    {
+      "at": 32,
+      "type": "riser",
+      "gain": 0.6,
+      "what": "riser into the drop"
+    },
+    {
+      "at": 32,
+      "type": "thump",
+      "gain": 0.9,
+      "what": "logo lands"
+    },
+    {
+      "at": 34,
+      "type": "pop",
+      "gain": 0.5,
+      "what": "checks every change"
+    },
+    {
+      "at": 40,
+      "type": "thump",
+      "gain": 0.7,
+      "what": "FIND"
+    },
+    {
+      "at": 41,
+      "type": "pop",
+      "gain": 0.55,
+      "what": "FLAW."
+    },
+    {
+      "at": 42,
+      "type": "thump",
+      "gain": 0.7,
+      "what": "PROVE"
+    },
+    {
+      "at": 43,
+      "type": "pop",
+      "gain": 0.55,
+      "what": "FIX."
+    },
+    {
+      "at": 48,
+      "type": "shutter",
+      "gain": 0.55,
+      "what": "cut to the loop"
+    },
+    {
+      "at": 48.5,
+      "type": "pop",
+      "gain": 0.5,
+      "what": "title"
+    },
+    {
+      "at": 49.5,
+      "type": "pop",
+      "gain": 0.5,
+      "what": "title 2"
+    },
+    {
+      "at": 50.5,
+      "type": "pop",
+      "gain": 0.36,
+      "what": "chips deal",
+      "to": 52,
+      "every": 0.25
+    },
+    {
+      "at": 52.5,
+      "type": "tick",
+      "gain": 0.4,
+      "what": "pipeline runs",
+      "to": 54.25,
+      "every": 0.25
+    },
+    {
+      "at": 54.5,
+      "type": "click",
+      "gain": 0.6,
+      "what": "back to Understand"
+    },
+    {
+      "at": 56,
+      "type": "whoosh",
+      "gain": 0.7,
+      "what": "push-through lands"
+    },
+    {
+      "at": 57,
+      "type": "pop",
+      "gain": 0.5,
+      "what": "title"
+    },
+    {
+      "at": 58,
+      "type": "pop",
+      "gain": 0.5,
+      "what": "expectation 1"
+    },
+    {
+      "at": 59,
+      "type": "pop",
+      "gain": 0.45,
+      "what": "expectation 2"
+    },
+    {
+      "at": 60,
+      "type": "pop",
+      "gain": 0.45,
+      "what": "expectation 3"
+    },
+    {
+      "at": 61.5,
+      "type": "thump",
+      "gain": 0.6,
+      "what": "broken by 06e0663"
+    },
+    {
+      "at": 64,
+      "type": "whoosh",
+      "gain": 0.75,
+      "what": "whip to attack"
+    },
+    {
+      "at": 65,
+      "type": "pop",
+      "gain": 0.5,
+      "what": "sandbox row"
+    },
+    {
+      "at": 66,
+      "type": "pop",
+      "gain": 0.5,
+      "what": "sandbox row"
+    },
+    {
+      "at": 67,
+      "type": "pop",
+      "gain": 0.5,
+      "what": "sandbox row"
+    },
+    {
+      "at": 68,
+      "type": "pop",
+      "gain": 0.5,
+      "what": "sandbox row"
+    },
+    {
+      "at": 69.75,
+      "type": "pop",
+      "gain": 0.4,
+      "what": "sandbox scope"
+    },
+    {
+      "at": 72,
+      "type": "shutter",
+      "gain": 0.6,
+      "what": "cut to agents"
+    },
+    {
+      "at": 72.25,
+      "type": "pop",
+      "gain": 0.5,
+      "what": "SEVEN AGENTS"
+    },
+    {
+      "at": 73,
+      "type": "pop",
+      "gain": 0.6,
+      "what": "agent card"
+    },
+    {
+      "at": 73.5,
+      "type": "pop",
+      "gain": 0.6,
+      "what": "agent card"
+    },
+    {
+      "at": 74,
+      "type": "pop",
+      "gain": 0.6,
+      "what": "agent card"
+    },
+    {
+      "at": 75,
+      "type": "pop",
+      "gain": 0.6,
+      "what": "agent card"
+    },
+    {
+      "at": 75.5,
+      "type": "pop",
+      "gain": 0.6,
+      "what": "agent card"
+    },
+    {
+      "at": 76,
+      "type": "pop",
+      "gain": 0.6,
+      "what": "agent card"
+    },
+    {
+      "at": 77,
+      "type": "pop",
+      "gain": 0.6,
+      "what": "agent card"
+    },
+    {
+      "at": 80,
+      "type": "whoosh",
+      "gain": 0.7,
+      "what": "ant wipe lands"
+    },
+    {
+      "at": 81,
+      "type": "tick",
+      "gain": 0.3,
+      "what": "scout scan",
+      "to": 82.25,
+      "every": 0.25
+    },
+    {
+      "at": 83,
+      "type": "pop",
+      "gain": 0.6,
+      "what": "probe step"
+    },
+    {
+      "at": 83.5,
+      "type": "pop",
+      "gain": 0.6,
+      "what": "probe step"
+    },
+    {
+      "at": 84,
+      "type": "pop",
+      "gain": 0.6,
+      "what": "probe step"
+    },
+    {
+      "at": 85,
+      "type": "tick",
+      "gain": 0.3,
+      "what": "trace path",
+      "to": 86,
+      "every": 0.25
+    },
+    {
+      "at": 86.5,
+      "type": "thump",
+      "gain": 0.7,
+      "what": "root node"
+    },
+    {
+      "at": 87,
+      "type": "pop",
+      "gain": 0.5,
+      "what": "root cause label"
+    },
+    {
+      "at": 88,
+      "type": "whoosh",
+      "gain": 0.6,
+      "what": "push into the panel"
+    },
+    {
+      "at": 88.25,
+      "type": "tick",
+      "gain": 0.25,
+      "what": "diff builds",
+      "to": 88.75,
+      "every": 0.125
+    },
+    {
+      "at": 89.5,
+      "type": "thump",
+      "gain": 0.6,
+      "what": "root cause box"
+    },
+    {
+      "at": 92,
+      "type": "tick",
+      "gain": 0.35,
+      "what": "patch types",
+      "to": 93.75,
+      "every": 0.25
+    },
+    {
+      "at": 94,
+      "type": "whoosh",
+      "gain": 0.45,
+      "what": "verify window"
+    },
+    {
+      "at": 94.5,
+      "type": "pop",
+      "gain": 0.55,
+      "what": "verify row"
+    },
+    {
+      "at": 95,
+      "type": "pop",
+      "gain": 0.55,
+      "what": "verify row"
+    },
+    {
+      "at": 95.5,
+      "type": "pop",
+      "gain": 0.55,
+      "what": "verify row"
+    },
+    {
+      "at": 97,
+      "type": "thump",
+      "gain": 0.75,
+      "what": "NOTHING MERGES"
+    },
+    {
+      "at": 98,
+      "type": "thump",
+      "gain": 0.75,
+      "what": "AUTOMATICALLY."
+    },
+    {
+      "at": 104,
+      "type": "shutter",
+      "gain": 0.6,
+      "what": "cut to monitor"
+    },
+    {
+      "at": 105,
+      "type": "pop",
+      "gain": 0.35,
+      "what": "ring chips",
+      "to": 106.5,
+      "every": 0.25
+    },
+    {
+      "at": 108,
+      "type": "pop",
+      "gain": 0.4,
+      "what": "every finding feeds the next test"
+    },
+    {
+      "at": 112,
+      "type": "whoosh",
+      "gain": 0.6,
+      "what": "into the console"
+    },
+    {
+      "at": 112.5,
+      "type": "thump",
+      "gain": 0.7,
+      "what": "WATCH"
+    },
+    {
+      "at": 113,
+      "type": "pop",
+      "gain": 0.6,
+      "what": "IT"
+    },
+    {
+      "at": 113.5,
+      "type": "thump",
+      "gain": 0.75,
+      "what": "RUN."
+    },
+    {
+      "at": 114.75,
+      "type": "whoosh",
+      "gain": 0.55,
+      "what": "window rises"
+    },
+    {
+      "at": 117.5,
+      "type": "click",
+      "gain": 0.9,
+      "what": "Watch the agents"
+    },
+    {
+      "at": 120,
+      "type": "riser",
+      "gain": 0.6,
+      "what": "riser into the console drop"
+    },
+    {
+      "at": 120,
+      "type": "thump",
+      "gain": 0.9,
+      "what": "pull back on the drop"
+    },
+    {
+      "at": 121,
+      "type": "click",
+      "gain": 0.5,
+      "what": "agent step"
+    },
+    {
+      "at": 122,
+      "type": "click",
+      "gain": 0.5,
+      "what": "agent step"
+    },
+    {
+      "at": 123,
+      "type": "click",
+      "gain": 0.5,
+      "what": "agent step"
+    },
+    {
+      "at": 124,
+      "type": "click",
+      "gain": 0.5,
+      "what": "agent step"
+    },
+    {
+      "at": 125,
+      "type": "thump",
+      "gain": 0.7,
+      "what": "what Ari found"
+    },
+    {
+      "at": 127,
+      "type": "whoosh",
+      "gain": 0.35,
+      "what": "camera move"
+    },
+    {
+      "at": 129,
+      "type": "whoosh",
+      "gain": 0.35,
+      "what": "camera move"
+    },
+    {
+      "at": 131,
+      "type": "whoosh",
+      "gain": 0.35,
+      "what": "camera move"
+    },
+    {
+      "at": 132,
+      "type": "pop",
+      "gain": 0.5,
+      "what": "issue found badge"
+    },
+    {
+      "at": 134.5,
+      "type": "click",
+      "gain": 0.8,
+      "what": "Code review tab"
+    },
+    {
+      "at": 135,
+      "type": "whoosh",
+      "gain": 0.33,
+      "what": "camera move"
+    },
+    {
+      "at": 136.5,
+      "type": "whoosh",
+      "gain": 0.33,
+      "what": "camera move"
+    },
+    {
+      "at": 138.5,
+      "type": "whoosh",
+      "gain": 0.33,
+      "what": "camera move"
+    },
+    {
+      "at": 140,
+      "type": "whoosh",
+      "gain": 0.33,
+      "what": "camera move"
+    },
+    {
+      "at": 141.5,
+      "type": "whoosh",
+      "gain": 0.33,
+      "what": "camera move"
+    },
+    {
+      "at": 142.5,
+      "type": "pop",
+      "gain": 0.7,
+      "what": "fail then pass"
+    },
+    {
+      "at": 144,
+      "type": "shutter",
+      "gain": 0.7,
+      "what": "cut to Defense Lab"
+    },
+    {
+      "at": 146,
+      "type": "whoosh",
+      "gain": 0.42,
+      "what": "lab camera"
+    },
+    {
+      "at": 147.5,
+      "type": "whoosh",
+      "gain": 0.42,
+      "what": "lab camera"
+    },
+    {
+      "at": 149,
+      "type": "whoosh",
+      "gain": 0.42,
+      "what": "lab camera"
+    },
+    {
+      "at": 150.5,
+      "type": "whoosh",
+      "gain": 0.42,
+      "what": "lab camera"
+    },
+    {
+      "at": 152,
+      "type": "whoosh",
+      "gain": 0.6,
+      "what": "ant wipe lands"
+    },
+    {
+      "at": 152.25,
+      "type": "pop",
+      "gain": 0.55,
+      "what": "NO MODEL OUTPUT"
+    },
+    {
+      "at": 153,
+      "type": "pop",
+      "gain": 0.55,
+      "what": "COUNTS AS PROOF"
+    },
+    {
+      "at": 156,
+      "type": "thump",
+      "gain": 0.85,
+      "what": "INCLUDING OURS."
+    },
+    {
+      "at": 158,
+      "type": "pop",
+      "gain": 0.5,
+      "what": "record is checkable"
+    },
+    {
+      "at": 158.75,
+      "type": "pop",
+      "gain": 0.6,
+      "what": "stat card"
+    },
+    {
+      "at": 159.25,
+      "type": "pop",
+      "gain": 0.6,
+      "what": "stat card"
+    },
+    {
+      "at": 159.75,
+      "type": "pop",
+      "gain": 0.6,
+      "what": "stat card"
+    },
+    {
+      "at": 164,
+      "type": "shutter",
+      "gain": 0.5,
+      "what": "cut to standards"
+    },
+    {
+      "at": 164.25,
+      "type": "pop",
+      "gain": 0.5,
+      "what": "EVERY FINDING"
+    },
+    {
+      "at": 164.75,
+      "type": "thump",
+      "gain": 0.6,
+      "what": "TAGGED."
+    },
+    {
+      "at": 165.5,
+      "type": "pop",
+      "gain": 0.5,
+      "what": "standard chip",
+      "to": 168.5,
+      "every": 0.5
+    },
+    {
+      "at": 172,
+      "type": "riser",
+      "gain": 0.7,
+      "what": "riser into the logo"
+    },
+    {
+      "at": 172,
+      "type": "thump",
+      "gain": 0.95,
+      "what": "logo lands"
+    },
+    {
+      "at": 173,
+      "type": "pop",
+      "gain": 0.5,
+      "what": "find the flaw"
+    },
+    {
+      "at": 173.5,
+      "type": "pop",
+      "gain": 0.5,
+      "what": "prove the fix"
+    },
+    {
+      "at": 174.25,
+      "type": "click",
+      "gain": 0.6,
+      "what": "the address"
+    },
+    {
+      "at": 175,
+      "type": "whoosh",
+      "gain": 0.3,
+      "what": "underline sweep"
+    }
+  ]
 }
