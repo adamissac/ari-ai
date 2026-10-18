@@ -185,28 +185,24 @@ function Direction({ higher }: { higher: boolean }) {
 function Scoreboard({ bundle }: { bundle: DefenseLabBundle }) {
   const n = sampleSize(bundle, null);
   const tradeoff = tradeoffNote(bundle);
+  const metrics = SCORE_METRICS.map(metric => ({ metric, cells: scoreboard(bundle, metric) })).filter(m => !m.cells.every(c => c.value === null));
   return (
     <section aria-labelledby="score-title" data-testid="lab-scoreboard" className="paper py-14 md:py-20">
       <p className="lab-eyebrow">02 · Compare</p>
       <h2 id="score-title" className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Who defends best?</h2>
       <p className="mt-2 max-w-3xl text-sm text-muted">
-        {defenderCountPhrase(bundle.metrics.length, true)}, each tested on {n.toLocaleString()} games they never trained on. The shaded band on each bar is the 95% range the true average very likely falls in.
+        {defenderCountPhrase(bundle.metrics.length, true)}, each tested on {n.toLocaleString()} games they never trained on.
       </p>
       <Headline bundle={bundle} />
       <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {SCORE_METRICS.map(metric => {
-          const cells = scoreboard(bundle, metric);
-          if (cells.every(c => c.value === null)) return null;
+        {metrics.map(({ metric, cells }) => {
           const top = Math.max(...cells.map(x => x.hi ?? x.value ?? 0), 1);
           const pct = (x: number | null) => (x === null ? 0 : Math.min(100, Math.max(0, metric.percent ? x : (x / top) * 100)));
           return (
             <figure key={metric.key} className="lab-score-card" data-testid={`score-${metric.key}`}>
-              <figcaption>
-                <span className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                  <span className="font-semibold tracking-tight text-ink">{metric.title}</span>
-                  <Direction higher={metric.higherIsBetter} />
-                </span>
-                <span className="mt-1 block text-xs leading-relaxed text-muted">{metric.explain}</span>
+              <figcaption className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                <span className="font-semibold tracking-tight text-ink">{metric.title}</span>
+                <Direction higher={metric.higherIsBetter} />
               </figcaption>
               <ul className="mt-5 flex flex-col gap-4">
                 {cells.map(c => {
@@ -223,7 +219,7 @@ function Scoreboard({ bundle }: { bundle: DefenseLabBundle }) {
                       </span>
                       <span className="lab-score-value">
                         {fmtScore(metric, c.value)}
-                        <span className="lab-score-range"><span className="sr-only">95% range </span>{fmtRange(metric, c.lo, c.hi)}</span>
+                        <span className="sr-only"> 95% range {fmtRange(metric, c.lo, c.hi)}</span>
                       </span>
                     </li>
                   );
@@ -239,14 +235,47 @@ function Scoreboard({ bundle }: { bundle: DefenseLabBundle }) {
           <span>{tradeoff}</span>
         </p>
       )}
-      <dl className="lab-defenders mt-6">
-        {bundle.metrics.map(m => (
-          <div key={m.policy}>
-            <dt>{policyName(m.policy)}</dt>
-            <dd>{POLICY_NAME[m.policy]?.note ?? 'Policy id from the bundle.'}</dd>
+      <details className="lab-more mt-6" data-testid="lab-score-details">
+        <summary>How these scores work</summary>
+        <div className="lab-more-body">
+          <p>Each bar is the average over {n.toLocaleString()} games. The shaded band around it is the 95% range: the true average very likely falls inside it.</p>
+          <dl className="lab-more-grid">
+            {metrics.map(({ metric }) => (
+              <div key={metric.key}>
+                <dt>{metric.title}</dt>
+                <dd>{metric.explain}</dd>
+              </div>
+            ))}
+          </dl>
+          <div className="overflow-x-auto">
+            <table className="lab-more-table">
+              <caption className="sr-only">Average and 95% range per defender</caption>
+              <thead>
+                <tr><th scope="col">Defender</th>{metrics.map(({ metric }) => <th key={metric.key} scope="col">{metric.title}</th>)}</tr>
+              </thead>
+              <tbody>
+                {bundle.metrics.map(m => (
+                  <tr key={m.policy}>
+                    <th scope="row">{policyName(m.policy)}</th>
+                    {metrics.map(({ metric, cells }) => {
+                      const c = cells.find(x => x.policy === m.policy);
+                      return <td key={metric.key}>{c ? fmtScore(metric, c.value) : '—'}<span className="block text-faint">{c ? fmtRange(metric, c.lo, c.hi) : ''}</span></td>;
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        ))}
-      </dl>
+          <dl className="lab-defenders">
+            {bundle.metrics.map(m => (
+              <div key={m.policy}>
+                <dt>{policyName(m.policy)}</dt>
+                <dd>{POLICY_NAME[m.policy]?.note ?? 'Policy id from the bundle.'}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </details>
     </section>
   );
 }

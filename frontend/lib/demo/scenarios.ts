@@ -15,7 +15,8 @@ export interface Expectation { id: string; text: string; source: string }
 export interface GeneratedTest { name: string; expectation: string; before: 'fail' | 'pass'; after: 'pass' }
 
 export type AgentId = 'scout' | 'probe' | 'trace' | 'diagnose' | 'patch' | 'fortify' | 'verify';
-export interface ToolStep { tool: string; input: string; result: string; ms: number; outcome: 'ok' | 'denied' }
+/** `on` names the kind of app part a step is about (e.g. 'logging'); unset, the map infers it. */
+export interface ToolStep { tool: string; input: string; result: string; ms: number; outcome: 'ok' | 'denied'; on?: string }
 export interface AgentRunView {
   agent: AgentId;
   label: string;
@@ -38,7 +39,10 @@ export interface DefenseView {
   events: { minutesAgo: number; text: string; tone: 'ok' | 'warn' | 'info' }[];
 }
 
-export interface Finding { id: string; title: string; kind: 'security' | 'functional'; cwe: string; severity: 'critical' | 'high' | 'medium' | 'low'; cvss: string; where: string }
+/** `on` is the kind of app part the finding is in; unset, it is the changed service. */
+export interface Finding { id: string; title: string; kind: 'security' | 'functional'; cwe: string; severity: 'critical' | 'high' | 'medium' | 'low'; cvss: string; where: string; on?: string }
+/** A suspicion the red team raised and Probe refuted: shown as a false alarm on that part. */
+export interface FalseAlarm { on: string; text: string }
 
 export interface Analysis {
   headline: string;
@@ -46,6 +50,7 @@ export interface Analysis {
   seconds: number;
   usd: number;
   findings: Finding[];
+  falseAlarms?: FalseAlarm[];
   review: {
     intent: string;
     expectations: Expectation[];
@@ -136,26 +141,32 @@ function authz(repo: DemoRepo, commit: DemoCommit): Analysis {
       L('+', '        return payment_out(store, p)'),
     ]);
   const patch = ts
-    ? file(path, `@@ -46,4 +46,5 @@ ${noun}Routes.get('/${noun}s/:id', requireSession, async (req, res) => {`, [
+    ? file(path, `@@ -46,4 +46,6 @@ ${noun}Routes.get('/${noun}s/:id', requireSession, async (req, res) => {`, [
       L(' ', `  const ${noun} = await db.${noun}s.findById(req.params.id);`),
       L(' ', `  if (!${noun}) return res.status(404).json({ error: 'not found' });`),
       L('+', `  if (${noun}.ownerId !== req.user.id) return res.status(404).json({ error: 'not found' });`),
+      L('+', `  await audit.record('${noun}.read', ${noun}.id, req.user.id);`),
       L(' ', `  res.json(serialize(${noun}));`),
     ])
-    : file(path, '@@ -136,5 +136,6 @@ def get_payment(', [
+    : file(path, '@@ -136,5 +136,7 @@ def get_payment(', [
       L(' ', '        p = store.payments.get(payment_id)'),
       L(' ', '        if p is None:'),
       L(' ', '            raise HTTPException(status.HTTP_404_NOT_FOUND, "not found")'),
       L('+', '        require_owner(p.customer_id, customer)'),
+      L('+', '        audit.record("payment.read", p.id, customer.id)'),
       L(' ', '        return payment_out(store, p)'),
     ]);
   const guard = ts ? 'ownerId check' : 'require_owner()';
   const svc = serviceId(repo);
   return {
-    headline: `Any signed-in user could read another customer's ${noun}`,
-    summary: `The new ${route} handler skipped the ownership check its sibling routes use. Probe confirmed the leak in the sandbox with two test identities, Patch added the check, and Verify accepted the fix after the exploit test failed against the patched build.`,
+    headline: `Two confirmed issues: another customer's ${noun} could be read, with no trace in the audit log`,
+    summary: `The new ${route} handler skipped the ownership check and the audit record its sibling routes use. Probe confirmed both in the sandbox with two test identities and refuted a third suspicion (an edge rate-limit bypass: a false alarm). Patch added the check and the audit call, and Verify accepted the fix after the exploit test failed against the patched build.`,
     seconds: 412, usd: 1.84,
-    findings: [{ id: `fnd_${commit.sha.slice(0, 6)}_authz`, title: `Missing ownership check on ${route}`, kind: 'security', cwe: 'CWE-639 Authorization bypass through user-controlled key', severity: 'high', cvss: '7.1', where: `${path} · ${route}` }],
+    findings: [
+      { id: `fnd_${commit.sha.slice(0, 6)}_authz`, title: `Missing ownership check on ${route}`, kind: 'security', cwe: 'CWE-639 Authorization bypass through user-controlled key', severity: 'high', cvss: '7.1', where: `${path} · ${route}`, on: 'service' },
+      { id: `fnd_${commit.sha.slice(0, 6)}_audit`, title: `Reads through ${route} leave no audit record`, kind: 'security', cwe: 'CWE-778 Insufficient logging', severity: 'medium', cvss: '4.3', where: `${path} · ${route}`, on: 'logging' },
+    ],
+    falseAlarms: [{ on: 'edge', text: 'The new route might bypass the edge rate limit' }],
     review: {
       intent: `Add a lookup for a single ${noun} so support tooling and the app can fetch it by id.`,
       expectations: [
@@ -177,31 +188,33 @@ function authz(repo: DemoRepo, commit: DemoCommit): Analysis {
     agents: [
       run('scout', {
         status: 'done', seconds: 48, tokens: 18_420,
-        outcome: `Raised 3 hypotheses on the changed routes. The strongest: ${route} does not check ownership.`,
-        evidence: [`${route}: no ${guard} on the read path (sibling routes all have it)`, `GET /${noun}s: owner filter present → low likelihood`, `POST /${noun}s: owner taken from the session, not the body → low likelihood`],
+        outcome: `Raised 3 hypotheses on the change: ${route} skips the ownership check (H1), its reads are not audited (H2), and it may bypass the edge rate limit (H3).`,
+        evidence: [`${route}: no ${guard} on the read path (sibling routes all have it)`, 'No audit record on the new read (4 of 4 sibling reads write one)', 'Edge rate-limit rules match routes by prefix; the new route might not be covered'],
         steps: [
-          { tool: 'intel.changed_symbols', input: `commit ${commit.sha.slice(0, 7)}`, result: `1 new route, 0 removed`, ms: 220, outcome: 'ok' },
-          { tool: 'intel.entry_points', input: `${repo.name}@${commit.sha.slice(0, 7)}`, result: '9 HTTP entry points, 7 authenticated', ms: 340, outcome: 'ok' },
-          { tool: 'intel.call_graph', input: route, result: `handler → db lookup → serialize (no ${guard})`, ms: 410, outcome: 'ok' },
-          { tool: 'intel.convention', input: 'ownership checks on sibling routes', result: `${guard} on 4 of 4 sibling reads`, ms: 290, outcome: 'ok' },
-          { tool: 'record.hypothesis', input: 'H1 ownership, H2 list filter, H3 create owner', result: '3 hypotheses saved', ms: 35, outcome: 'ok' },
+          { tool: 'intel.changed_symbols', input: `commit ${commit.sha.slice(0, 7)}`, result: `1 new route, 0 removed`, ms: 220, outcome: 'ok', on: 'service' },
+          { tool: 'intel.call_graph', input: route, result: `handler → db lookup → serialize (no ${guard})`, ms: 410, outcome: 'ok', on: 'service' },
+          { tool: 'intel.convention', input: 'ownership checks on sibling routes', result: `${guard} on 4 of 4 sibling reads`, ms: 290, outcome: 'ok', on: 'service' },
+          { tool: 'intel.convention', input: 'audit records on sibling reads', result: 'audit.record on 4 of 4 sibling reads, none on the new route', ms: 260, outcome: 'ok', on: 'logging' },
+          { tool: 'intel.entry_points', input: 'edge rate-limit rules', result: 'the new route is not listed by name', ms: 180, outcome: 'ok', on: 'edge' },
+          { tool: 'record.hypothesis', input: 'H1 ownership, H2 audit gap, H3 rate-limit bypass', result: '3 hypotheses saved', ms: 35, outcome: 'ok', on: 'service' },
         ],
         handoff: 'Three hypotheses for Probe, ranked. None is confirmed yet.',
       }),
       run('probe', {
         status: 'done', seconds: 96, tokens: 22_310,
-        outcome: `Confirmed H1: customer B read customer A's ${noun} (HTTP 200). Refuted H2 and H3.`,
-        evidence: [`GET /${noun}s/${noun.slice(0, 3)}_1001 as cus_b → 200 with cus_a's record`, `GET /${noun}s as cus_b → only cus_b's ${noun}s (H2 refuted)`, 'Every request stayed inside the approved sandbox scope'],
+        outcome: `Confirmed H1: customer B read customer A's ${noun} (HTTP 200). Confirmed H2: that read left no audit record. Refuted H3: the edge rate-limits the new route like every other (a false alarm).`,
+        evidence: [`GET /${noun}s/${noun.slice(0, 3)}_1001 as cus_b → 200 with cus_a's record`, 'Audit log after the read: no entry (H2 confirmed)', '60 lookups in 10 s through the edge → 429 after 30 (H3 refuted)', 'Every request stayed inside the approved sandbox scope'],
         steps: [
-          { tool: 'sandbox.start', input: `${repo.name}@${commit.sha.slice(0, 7)} (no network egress)`, result: 'container healthy in 8.4 s', ms: 8_420, outcome: 'ok' },
-          { tool: 'fixture.identities', input: 'cus_a, cus_b', result: '2 bearer tokens issued inside the sandbox', ms: 120, outcome: 'ok' },
-          { tool: 'http.request', input: `GET /${noun}s/${noun.slice(0, 3)}_1001 as cus_a`, result: '200 (own record)', ms: 31, outcome: 'ok' },
-          { tool: 'http.request', input: `GET /${noun}s/${noun.slice(0, 3)}_1001 as cus_b`, result: "200 — returned cus_a's record", ms: 29, outcome: 'ok' },
-          { tool: 'http.request', input: 'GET https://api.stripe.com/v1/charges', result: 'denied: host is outside the authorized scope', ms: 2, outcome: 'denied' },
-          { tool: 'http.request', input: `GET /${noun}s as cus_b`, result: '200, 2 records, all owned by cus_b', ms: 27, outcome: 'ok' },
-          { tool: 'record.check', input: 'access_control.ownership', result: 'H1 confirmed · H2 refuted · H3 refuted', ms: 40, outcome: 'ok' },
+          { tool: 'sandbox.start', input: `${repo.name}@${commit.sha.slice(0, 7)} (no network egress)`, result: 'container healthy in 8.4 s', ms: 8_420, outcome: 'ok', on: 'service' },
+          { tool: 'fixture.identities', input: 'cus_a, cus_b', result: '2 bearer tokens issued inside the sandbox', ms: 120, outcome: 'ok', on: 'service' },
+          { tool: 'http.request', input: `GET /${noun}s/${noun.slice(0, 3)}_1001 as cus_a`, result: '200 (own record)', ms: 31, outcome: 'ok', on: 'service' },
+          { tool: 'http.request', input: `GET /${noun}s/${noun.slice(0, 3)}_1001 as cus_b`, result: "200 — returned cus_a's record", ms: 29, outcome: 'ok', on: 'service' },
+          { tool: 'http.request', input: 'GET https://api.stripe.com/v1/charges', result: 'denied: host is outside the authorized scope', ms: 2, outcome: 'denied', on: 'service' },
+          { tool: 'http.request', input: 'read the audit log after the lookup', result: 'no entry for the read (H2 confirmed)', ms: 24, outcome: 'ok', on: 'logging' },
+          { tool: 'http.request', input: '60 lookups in 10 s through the edge', result: '429 after 30: the rate limit applies (H3 refuted)', ms: 410, outcome: 'ok', on: 'edge' },
+          { tool: 'record.check', input: 'ownership, audit, rate limit', result: 'H1 confirmed · H2 confirmed · H3 refuted', ms: 40, outcome: 'ok', on: 'service' },
         ],
-        handoff: 'One confirmed weakness with the exact request and response. Two hypotheses closed as refuted.',
+        handoff: 'Two confirmed weaknesses with the exact requests and responses. One hypothesis refuted: a false alarm.',
       }),
       run('trace', {
         status: 'done', seconds: 41, tokens: 9_870,
@@ -210,28 +223,32 @@ function authz(repo: DemoRepo, commit: DemoCommit): Analysis {
         steps: [
           { tool: 'intel.path', input: `internet → ${route}`, result: '3 hops, session required, no ownership gate', ms: 260, outcome: 'ok' },
           { tool: 'intel.data_classes', input: `${noun} serializer`, result: 'amount, currency, description, customer id', ms: 180, outcome: 'ok' },
+          { tool: 'intel.path', input: 'audit pipeline', result: 'the read bypasses audit.record, so the leak is invisible to monitoring', ms: 190, outcome: 'ok', on: 'logging' },
           { tool: 'record.attack_path', input: 'P1', result: 'saved with 1 unverified step', ms: 30, outcome: 'ok' },
         ],
         handoff: 'Attack path with impact. One step stays a hypothesis.',
       }),
       run('diagnose', {
         status: 'done', seconds: 37, tokens: 8_940,
-        outcome: `Root cause: the new handler was written without the ${guard} step every sibling route has. Fix in one place; no schema change.`,
+        outcome: `Root cause: the new handler was written without the ${guard} step and the audit record every sibling route has. Fix both in one place; no schema change.`,
         evidence: [`Convention: ${guard} on 4 of 4 sibling routes`, 'CVSS 3.1 AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N → 7.1 High', `Remediation: call ${guard} after the not-found check, keep 404`],
         steps: [
           { tool: 'intel.symbol', input: guard, result: 'defined once, used by 4 routes', ms: 150, outcome: 'ok' },
           { tool: 'score.cvss31', input: 'confirmed check + attack path', result: '7.1 High', ms: 20, outcome: 'ok' },
+          { tool: 'intel.symbol', input: 'audit.record', result: 'used by 4 sibling reads', ms: 120, outcome: 'ok', on: 'logging' },
+          { tool: 'score.cvss31', input: 'H2 audit gap', result: '4.3 Medium', ms: 20, outcome: 'ok', on: 'logging' },
           { tool: 'record.remediation_plan', input: 'RP1', result: 'awaiting human approval', ms: 25, outcome: 'ok' },
         ],
         handoff: `Remediation plan. Approved by ${commit.author} at 2:14 PM; only then did Patch start.`,
       }),
       run('patch', {
         status: 'done', seconds: 64, tokens: 14_200,
-        outcome: `Added ${guard} to ${route} in an isolated worktree. 1 line, nothing merged.`,
-        evidence: [`Diff: +1 −0 in ${path}`, "Existing test suite: 31 passed", 'Worktree discarded after export; production untouched'],
+        outcome: `Added ${guard} and the audit record to ${route} in an isolated worktree. 2 lines, nothing merged.`,
+        evidence: [`Diff: +2 −0 in ${path}`, "Existing test suite: 31 passed", 'Worktree discarded after export; production untouched'],
         steps: [
           { tool: 'worktree.create', input: `${commit.sha.slice(0, 7)} (isolated)`, result: 'ready', ms: 900, outcome: 'ok' },
-          { tool: 'fs.edit', input: path, result: '+1 −0', ms: 40, outcome: 'ok' },
+          { tool: 'fs.edit', input: `${path} (ownership check)`, result: '+1 −0', ms: 40, outcome: 'ok' },
+          { tool: 'fs.edit', input: `${path} (audit record)`, result: '+1 −0', ms: 35, outcome: 'ok', on: 'logging' },
           { tool: 'sandbox.run_tests', input: ts ? 'npm test' : 'pytest -q', result: '31 passed', ms: 7_800, outcome: 'ok' },
           { tool: 'git.push', input: 'origin main', result: 'denied: Patch may not push or merge', ms: 1, outcome: 'denied' },
           { tool: 'record.patch_candidate', input: 'PC1', result: 'saved for independent verification', ms: 30, outcome: 'ok' },
@@ -251,11 +268,12 @@ function authz(repo: DemoRepo, commit: DemoCommit): Analysis {
       }),
       run('verify', {
         status: 'done', seconds: 93, tokens: 11_630,
-        outcome: 'Accepted. The exploit request now gets 404 and all functional tests pass on the patched build.',
+        outcome: 'Accepted. The exploit request now gets 404, the read is written to the audit log, and all functional tests pass on the patched build.',
         evidence: ['Exploit replay as cus_b: 200 before → 404 after', 'Functional: 34 passed (31 existing + 3 generated)', 'Verified against the exact bytes of the candidate diff (sha256 bound)'],
         steps: [
           { tool: 'sandbox.start', input: 'patched build (fresh container)', result: 'healthy in 8.1 s', ms: 8_100, outcome: 'ok' },
           { tool: 'http.request', input: `GET /${noun}s/${noun.slice(0, 3)}_1001 as cus_b`, result: '404 not found', ms: 28, outcome: 'ok' },
+          { tool: 'http.request', input: 'read as cus_a, then the audit log', result: '1 audit entry recorded', ms: 26, outcome: 'ok', on: 'logging' },
           { tool: 'sandbox.run_tests', input: 'existing + generated', result: '34 passed', ms: 9_400, outcome: 'ok' },
           { tool: 'record.verification', input: 'PC1', result: 'accepted', ms: 30, outcome: 'ok' },
         ],
@@ -436,6 +454,7 @@ function injection(repo: DemoRepo, commit: DemoCommit): Analysis {
       : 'The new search builds its SQL with string formatting. Probe confirmed the injection in the sandbox. The candidate patch is waiting on a failing CI job, so Verify has not accepted it yet.',
     seconds: 377, usd: 1.52,
     findings: [{ id: `fnd_${commit.sha.slice(0, 6)}_sqli`, title: 'SQL injection in search', kind: 'security', cwe: 'CWE-89 SQL injection', severity: 'critical', cvss: '8.8', where: `${path} · GET /search` }],
+    falseAlarms: [{ on: 'edge', text: 'Search results might be cached at the edge and served to other users' }],
     review: {
       intent: 'Let a signed-in user search their own records by text.',
       expectations: [
@@ -451,17 +470,19 @@ function injection(repo: DemoRepo, commit: DemoCommit): Analysis {
       verdict: 'Matches the intent for normal input; breaks the parameterised-SQL convention. Sent to security.',
     },
     agents: [
-      run('scout', { status: 'done', seconds: 44, tokens: 16_800, outcome: 'Raised SQL injection on the new search; also checked owner scoping.', evidence: ['Query text built with string formatting', 'Owner filter present but inside the same string'], steps: [
+      run('scout', { status: 'done', seconds: 44, tokens: 16_800, outcome: 'Raised SQL injection on the new search (H1, with owner bypass through it as H2) and a possible edge-cache leak of search results (H3).', evidence: ['Query text built with string formatting', 'Owner filter present but inside the same string', 'Edge cache rules do not mention the new query string'], steps: [
         { tool: 'intel.changed_symbols', input: `commit ${commit.sha.slice(0, 7)}`, result: '1 new route', ms: 210, outcome: 'ok' },
         { tool: 'intel.taint', input: 'q → db call', result: 'unsanitised flow, 1 hop', ms: 380, outcome: 'ok' },
-        { tool: 'record.hypothesis', input: 'H1 SQLi, H2 owner bypass', result: '2 saved', ms: 30, outcome: 'ok' },
-      ], handoff: 'Two hypotheses for Probe.' }),
-      run('probe', { status: 'done', seconds: 88, tokens: 20_400, outcome: 'Confirmed: a crafted term returned records owned by another fixture user. Non-destructive payload only.', evidence: ["q = x' OR '1'='1 → 14 rows across 2 owners", 'Read-only payloads; no writes attempted (policy)'], steps: [
+        { tool: 'intel.entry_points', input: 'edge cache rules for search', result: 'no rule names the new query string', ms: 170, outcome: 'ok', on: 'edge' },
+        { tool: 'record.hypothesis', input: 'H1 SQLi, H2 owner bypass, H3 cached results', result: '3 saved', ms: 30, outcome: 'ok' },
+      ], handoff: 'Three hypotheses for Probe.' }),
+      run('probe', { status: 'done', seconds: 88, tokens: 20_400, outcome: 'Confirmed: a crafted term returned records owned by another fixture user (non-destructive payload only). Refuted the edge-cache leak: search responses are never cached (a false alarm).', evidence: ["q = x' OR '1'='1 → 14 rows across 2 owners", 'Read-only payloads; no writes attempted (policy)'], steps: [
         { tool: 'sandbox.start', input: `${repo.name}@${commit.sha.slice(0, 7)}`, result: 'healthy in 9.0 s', ms: 9_000, outcome: 'ok' },
         { tool: 'http.request', input: 'GET /search?q=coffee as cus_a', result: '200, 2 rows (own)', ms: 34, outcome: 'ok' },
         { tool: 'http.request', input: "GET /search?q=x' OR '1'='1 as cus_a", result: '200, 14 rows, 2 owners', ms: 36, outcome: 'ok' },
         { tool: 'http.request', input: "GET /search?q='; DROP TABLE payments;--", result: 'denied: destructive payloads are blocked by policy', ms: 1, outcome: 'denied' },
-        { tool: 'record.check', input: 'injection.sql', result: 'H1 confirmed, H2 confirmed via H1', ms: 30, outcome: 'ok' },
+        { tool: 'http.request', input: 'the same search as two users, through the edge', result: 'Cache-Control: private, no-store; nothing cached (H3 refuted)', ms: 52, outcome: 'ok', on: 'edge' },
+        { tool: 'record.check', input: 'injection.sql, edge.cache', result: 'H1 confirmed, H2 confirmed via H1, H3 refuted', ms: 30, outcome: 'ok' },
       ], handoff: 'Confirmed weakness with request and response.' }),
       run('trace', { status: 'done', seconds: 30, tokens: 7_000, outcome: 'Any signed-in user can read every row in the table behind search.', evidence: ['edge → api → data store', 'Database user has read access to the whole table'], steps: [
         { tool: 'intel.path', input: 'GET /search', result: '3 hops, session only', ms: 240, outcome: 'ok' },

@@ -1437,3 +1437,20 @@ body:has(.commit-stage) main { color: #fff; }
 :root:not(:has(.hero-full)) .paper .faq-pill { background: #fff; box-shadow: inset 0 0 0 1px var(--color-line); }
 :root:not(:has(.hero-full)) .paper :is(.faq-q:hover, .faq-item[data-open] .faq-q) { color: var(--color-brand); }
 :root:not(:has(.hero-full)) .paper .panel { background: #fff; border-color: var(--color-line); box-shadow: 0 1px 2px rgb(28 18 16 / 4%); }
+
+/* "How these scores work" (app/lab/page.tsx): the technical detail behind the scoreboard,
+   folded away so the section reads in plain words first. */
+.lab-more { border-top: 1px solid var(--color-line); border-bottom: 1px solid var(--color-line); }
+.lab-more > summary { display: flex; cursor: pointer; list-style: none; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 2px; font-size: 0.95rem; font-weight: 500; color: var(--color-ink); }
+.lab-more > summary::-webkit-details-marker { display: none; }
+.lab-more > summary::after { content: ""; width: 9px; height: 9px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; rotate: 45deg; translate: 0 -3px; transition: rotate 250ms var(--ease-quad); }
+.lab-more[open] > summary::after { rotate: 225deg; translate: 0 2px; }
+.lab-more-body { display: flex; flex-direction: column; gap: 20px; padding: 4px 2px 22px; font-size: 0.85rem; line-height: 1.6; color: var(--color-muted); }
+.lab-more-grid { display: grid; gap: 12px 32px; }
+@media (min-width: 768px) { .lab-more-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.lab-more-grid dt { font-weight: 600; color: var(--color-ink); }
+.lab-more-table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 0.8rem; }
+.lab-more-table th, .lab-more-table td { padding: 8px 10px 8px 0; text-align: left; vertical-align: top; border-bottom: 1px solid var(--color-line); }
+.lab-more-table thead th { font-weight: 500; color: var(--color-faint); }
+.lab-more-table tbody th { font-weight: 600; color: var(--color-ink); white-space: nowrap; }
+.lab-more-table td { font-family: var(--font-mono); color: var(--color-ink); font-variant-numeric: tabular-nums; }

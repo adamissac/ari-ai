@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { affected, componentStates, coreComponent, isRedTeam, issueComponent, plainStep, redTeamEnd, stepComponent, ticks } from '@/lib/demo/agent-map';
+import { affected, componentStates, coreComponent, isRedTeam, issueComponent, issueComponents, plainStep, redTeamEnd, refutedComponents, stepComponent, ticks } from '@/lib/demo/agent-map';
 import { DEMO_REPOS } from '@/lib/demo/data';
 import { analyze } from '@/lib/demo/scenarios';
 
@@ -48,14 +48,30 @@ describe('agent map', () => {
     const after = componentStates(all, verdict, repo, analysis, true);
     expect(after[issue]).toBe('issue');
     expect(Object.values(after)).not.toContain('scanned');
-    // Every step after the red team (Trace, Diagnose, Patch, Fortify, Verify) is on the red part.
+    // Every step after the red team (Trace, Diagnose, Patch, Fortify, Verify) is on a red part.
+    const red = new Set(issueComponents(analysis, repo));
     const later = all.slice(verdict);
     expect(later.map(t => t.agent)).toEqual(expect.arrayContaining(['trace', 'diagnose', 'patch', 'fortify', 'verify']));
-    expect(later.every(t => t.component === issue)).toBe(true);
+    expect(later.every(t => red.has(t.component))).toBe(true);
     // It stays red while they work, even when it is the part being worked on.
     for (let p = verdict; p < all.length; p++) expect(componentStates(all, p, repo, analysis, true, all[p])[issue]).toBe('issue');
     // A fix that Verify did not accept leaves it red.
     expect(componentStates(all, all.length, repo, analysis, false)[issue]).toBe('issue');
+  });
+
+  it('shows two confirmed issues and one false alarm on the ownership commit, then two fixes', () => {
+    const all = ticks(analysis, repo);
+    const verdict = redTeamEnd(all);
+    const after = componentStates(all, verdict, repo, analysis, true);
+    expect(Object.entries(after).filter(([, s]) => s === 'issue').map(([id]) => id).sort()).toEqual(['api', 'logs']);
+    expect(Object.entries(after).filter(([, s]) => s === 'refuted').map(([id]) => id)).toEqual(['edge']);
+    expect(refutedComponents(analysis, repo)).toEqual(['edge']);
+    const end = componentStates(all, all.length, repo, analysis, true);
+    expect(end.api).toBe('fixed');
+    expect(end.logs).toBe('fixed');
+    expect(end.edge).toBe('refuted'); // a false alarm stays a false alarm
+    // Only suspected parts are visited: everything else is left alone.
+    for (const id of ['auth', 'db', 'refunds']) expect(end[id]).toBe('outside');
   });
 
   it('stops after the red team on a clean commit: nothing turns red and the blue team never runs', () => {
