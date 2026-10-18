@@ -6,6 +6,7 @@ import { describeError } from '@/lib/api';
 import type { Resource } from '@/lib/use-resource';
 import type { StatusView, Tone } from '@/lib/status';
 import { formatTime, relativeTime } from '@/lib/format';
+import { useRevealOnScroll } from '@/components/reveal';
 
 const TONE: Record<Tone, string> = {
   ok: 'border-ok/40 bg-ok/10 text-ok',
@@ -30,8 +31,9 @@ export function Tag({ children, tone = 'neutral' }: { children: ReactNode; tone?
 }
 
 export function Panel({ title, actions, children, className = '', id }: { title?: ReactNode; actions?: ReactNode; children: ReactNode; className?: string; id?: string }) {
+  const ref = useRevealOnScroll<HTMLElement>();
   return (
-    <section id={id} className={`panel rounded-2xl border border-line bg-panel shadow-[0_1px_2px_rgba(28,18,16,0.04)] ${className}`} aria-label={typeof title === 'string' ? title : undefined}>
+    <section ref={ref} id={id} className={`panel rounded-2xl border border-line bg-panel shadow-[0_1px_2px_rgba(28,18,16,0.04)] ${className}`} aria-label={typeof title === 'string' ? title : undefined}>
       {(title || actions) && (
         <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-2.5">
           {title && <h2 className="label-mono text-ink">{title}</h2>}
@@ -53,8 +55,9 @@ export function Button({ variant = 'secondary', className = '', children, ...pro
   return (
     <button
       type="button"
+      data-variant={variant}
       {...props}
-      className={`group label-mono inline-flex h-8 items-center justify-center gap-1.5 rounded-md px-3 transition-[background-color,color,box-shadow,transform] duration-[250ms] ease-[var(--ease-quad)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 ${styles} ${className}`}
+      className={`btn group label-mono inline-flex h-8 items-center justify-center gap-1.5 rounded-md px-3 transition-[background-color,color,box-shadow,transform] duration-[250ms] ease-[var(--ease-quad)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 ${styles} ${className}`}
     >
       {typeof children === 'string' ? <RollText>{children}</RollText> : children}
     </button>
@@ -92,7 +95,7 @@ export function Empty({ children }: { children: ReactNode }) {
 }
 
 export function Loading({ label = 'Loading' }: { label?: string }) {
-  return <p role="status" aria-live="polite" className="animate-pulse text-sm text-muted">{label}…</p>;
+  return <p role="status" aria-live="polite" className="text-sm text-muted"><span aria-hidden="true" className="loading-dot" />{label}…</p>;
 }
 
 /** Render loading / error / ready for a resource with no silent fallbacks. */
@@ -154,7 +157,7 @@ export function Crumbs({ items }: { items: Array<{ href?: string; label: string 
 
 export function PageTitle({ title, subtitle, actions, eyebrow }: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode; eyebrow?: ReactNode }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-3 border-b border-line pb-5">
+    <div className="page-title mb-6 flex flex-wrap items-end justify-between gap-3 border-b border-line pb-5">
       <div className="min-w-0">
         {eyebrow && <p className="label-mono mb-2 text-brand">{eyebrow}</p>}
         <h1 className="text-3xl font-semibold tracking-[-0.03em] text-ink md:text-4xl">{title}</h1>
