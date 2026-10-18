@@ -726,3 +726,27 @@ Branch `claude/wizardly-mccarthy-hni97r`, pushed to `main` at the user's request
   - No axe or Lighthouse run.
   - Below 1000 px the Lab map still swipes sideways inside its own frame (canvas is 700 px wide).
 - **Warning:** the transition and the intro both skip under `navigator.webdriver`. Override it to see them in Playwright.
+
+## 2026-10-18T01:55Z — Srihith (cloud session): Lab network cards, agent map colours, white sections, commit background
+
+Pushed to `main` at the user's request. Frontend only. The landing is still untouched: pixel-identical below the header; the header differs only by #290's nav link.
+
+- **Did:**
+  - **Defense Lab map:** service cards (pattern study of Omen's network view, own implementation). Each card has a name, a status dot with plain words and a signal bar. Colours:
+    - red: attacker present (ground truth);
+    - green: attacker cut off;
+    - yellow: false alarm;
+    - amber: suspicious (the defender's view);
+    - blue: defender action;
+    - dashed: cut off;
+    - red dashed: the attack path.
+  - **Lab layout:** "who is where" is now tags on the cards, and the separate location strip and icon legend are gone. The header is open, not a box.
+  - **Agent map:** a false-alarm (yellow) state, an on-node tag for the agent working there, and a colour legend.
+  - **Commit page:** it no longer paints its own band under the header (that was the seam).
+  - **White sections:** paper bands (`.paper`) in the Lab (intro and scoreboard) and on pricing (FAQ).
+- **Verified:**
+  - Lint, typecheck and unit tests: 258 passed. New tests cover the Lab colour rules and the false-alarm state.
+  - Landing pixel parity re-checked.
+  - Screenshots of the map at contained and false-alarm steps.
+  - E2e results are in the next line.
+- **Notes for Sai:** `node-graph.tsx` cards are `CW=196, CH=88`. `nodeTone()` holds the colour rule. Tags stack when both the attacker and the defender are on one node. The `Legend` in `lab-replay.tsx` was removed; the map header has the legend now.
