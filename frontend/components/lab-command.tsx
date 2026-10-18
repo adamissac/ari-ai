@@ -18,7 +18,7 @@ export function observedState(s: LabNodeState): MapState {
 }
 
 /**
- * Command-center view of the Defense Lab: a recorded game of the trained defender, played on
+ * Command-center view of the Defense Lab: a recorded evaluation of the trained defender, played on
  * the continuous-defense map, next to the held-out scores. Every value comes from the
  * validated bundle; the map shows observed state and defender actions only.
  */
@@ -59,7 +59,7 @@ export function LabCommandCenter({ bundle }: { bundle: DefenseLabBundle }) {
     <section aria-labelledby="command-title" className="demo-ink rounded-3xl p-5 md:p-8" data-testid="lab-command">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="label-mono text-white/55">Continuous defense · recorded game</p>
+          <p className="label-mono text-white/55">Continuous defense · recorded evaluation</p>
           <h2 id="command-title" className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">The trained defender, watching a network</h2>
         </div>
         <button type="button" onClick={() => setPaused(p => !p)} className="rounded-md bg-white/10 px-3 py-1.5 text-xs text-white transition-colors hover:bg-white/20">{paused ? '▶ Resume' : '❚❚ Pause'}</button>
@@ -71,7 +71,7 @@ export function LabCommandCenter({ bundle }: { bundle: DefenseLabBundle }) {
             links={links}
             states={states}
             title={`${scenarioName(scenario.name)} · step ${step?.t ?? 0} of ${scenario.horizon}`}
-            footnote="Replay of a recorded simulator game (simulation only). States show what the defender observed and did — never the hidden attacker."
+            footnote="Replay of a recorded isolated-network evaluation. States show what the defender observed and did — never the hidden attacker."
           />
           <p className="mt-3 text-sm text-white/80" aria-live="off">
             <span className="label-mono mr-2 text-white/50">Defender move</span>{step ? actionInWords(step.action) : '—'}
@@ -90,7 +90,7 @@ export function LabCommandCenter({ bundle }: { bundle: DefenseLabBundle }) {
               </p>
             </div>
           ))}
-          <p className="text-xs text-white/50 md:col-span-3">Pooled over {games.toLocaleString()} held-out games per defender that it never trained on. Full intervals below.</p>
+          <p className="text-xs text-white/50 md:col-span-3">Pooled over {games.toLocaleString()} held-out evaluation runs per defender that it never trained on. Full intervals below.</p>
         </div>
       </div>
     </section>
