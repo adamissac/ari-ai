@@ -6,6 +6,10 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Center sign-in forms, remove the promotional side panel, and add subtle background orbits that respect reduced motion.
+
+- Refine the homepage closing invitation with two clear action cards, and align the Defense Lab evaluation selector.
+
 - Match Pricing to the other navigation links, including automatic surface contrast and hover styling.
 
 - Clarify real commit metadata versus illustrative analysis, synthetic drill planning and response limits, and saved live evidence versus sample-account data. Disclose missing historical red-to-green proof, update the access-code demo runbook, and wrap long recorded-run IDs on phones.

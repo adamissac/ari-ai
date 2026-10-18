@@ -58,15 +58,23 @@ export default function HomePage() {
         <ProofStats />
 
         <Reveal className="mt-10">
-          <section aria-labelledby="start-title" className="hero-ink rounded-2xl px-6 py-12 md:px-12">
-            <h2 id="start-title" className="display max-w-2xl text-3xl font-semibold md:text-4xl">See it on a real change.</h2>
-            <p className="mt-3 max-w-xl text-sm text-white/75">Open a project to connect a repository and start an assessment, or explore how the defense policy was evaluated.</p>
-            <div className="mt-6 flex flex-wrap gap-2">
-              <Link href={START.href} className="group label-mono inline-flex h-10 items-center rounded-md bg-white px-4 text-ink transition-colors duration-[250ms] hover:bg-brand hover:text-on-brand">
-                <RollText>{START.end}</RollText>
+          <section aria-labelledby="start-title" className="next-step">
+            <div className="next-step-copy">
+              <p className="label-mono next-step-eyebrow">✦ Your next move</p>
+              <h2 id="start-title">From code change<br />to <span>clear evidence.</span></h2>
+              <p>Bring a repository. See what changed, what needs attention, and the evidence behind each finding.</p>
+              <div className="next-step-sequence" aria-label="Assessment workflow">Connect <span aria-hidden="true">/</span> Assess <span aria-hidden="true">/</span> Understand</div>
+            </div>
+            <div className="next-step-actions">
+              <Link href={START.href} className="next-step-card next-step-primary">
+                <span className="label-mono next-step-card-label">01 / Your code</span>
+                <span className="next-step-card-title">{START.end}<span aria-hidden="true">↗</span></span>
+                <span className="next-step-card-detail">Connect a repository and start an assessment.</span>
               </Link>
-              <Link href="/lab" className="group label-mono inline-flex h-10 items-center rounded-md bg-white/10 px-4 text-white transition-colors duration-[250ms] hover:bg-white/20">
-                <RollText>Defense Lab</RollText>
+              <Link href="/lab" className="next-step-card">
+                <span className="label-mono next-step-card-label">02 / The defense in action</span>
+                <span className="next-step-card-title">Explore Defense Lab<span aria-hidden="true">↗</span></span>
+                <span className="next-step-card-detail">Follow a simulated attack and the trained defender’s response.</span>
               </Link>
             </div>
           </section>
