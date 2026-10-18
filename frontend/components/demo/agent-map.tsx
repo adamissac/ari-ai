@@ -98,6 +98,14 @@ export function AgentMap({ repo, commitSha, analysis, statuses, played, started,
 
         <div className="amap-stage">
           <SystemMap repo={repo} commitSha={commitSha} states={states} touched={touched} current={current} analysis={analysis} selected={view.kind === 'component' ? view.id : null} onSelect={id => setFocus({ kind: 'component', id })} />
+          <ul className="amap-legend" aria-label="Colours on the map">
+            <li data-k="issue">Issue confirmed</li>
+            <li data-k="refuted">False alarm</li>
+            <li data-k="fixed">Fixed &amp; verified</li>
+            <li data-k="scanned">Waiting for proof</li>
+            <li data-k="red">Red team</li>
+            <li data-k="blue">Blue team</li>
+          </ul>
           <Transport playback={playback} total={all.length} played={played} offset={offset} />
         </div>
 
@@ -161,14 +169,19 @@ function SystemMap({ repo, commitSha, states, touched, current, analysis, select
   const files = analysis.review.diff.length;
   const card = (c: DemoComponent) => {
     const active = current?.component === c.id;
+    const state = states[c.id] ?? 'outside';
     return (
-      <li key={c.id}>
+      <li key={c.id} className="amap-slot">
+        {active && agent && current && (
+          <span className="amap-tag" style={{ ['--team' as string]: color }} aria-hidden="true">{agent.label} · {plainStep(current.step).toLowerCase()}</span>
+        )}
         <button
           type="button"
           className="amap-node"
-          data-state={states[c.id]}
+          data-state={state}
           data-active={active || undefined}
           aria-pressed={selected === c.id}
+          aria-label={`${c.label}${c.critical ? ', critical' : ''}: ${STATE_LABEL[state]}${active && agent ? `, ${agent.label} working here` : ''}`}
           onClick={() => onSelect(c.id)}
           data-testid={`demo-node-${c.id}`}
           style={active ? { ['--beam' as string]: color } : undefined}
@@ -178,7 +191,7 @@ function SystemMap({ repo, commitSha, states, touched, current, analysis, select
             <span className="min-w-0 flex-1 truncate text-sm font-medium">{c.label}</span>
             {c.critical && <span className="amap-crit">Critical</span>}
           </span>
-          <span className="amap-node-state">{active && agent ? `${agent.label} · ${plainStep(current!.step).toLowerCase()}` : STATE_LABEL[states[c.id] ?? 'outside']}</span>
+          <span className="amap-node-state"><span className="amap-node-dot" aria-hidden="true" />{active && state !== 'issue' ? 'Being tested' : STATE_LABEL[state]}</span>
         </button>
       </li>
     );
