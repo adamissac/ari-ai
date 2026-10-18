@@ -9,13 +9,12 @@ import type { AgentId, AgentRunView, Analysis } from '@/lib/demo/scenarios';
 type Status = 'queued' | 'running' | 'done' | 'skipped';
 const STATUS_WORD: Record<Status, string> = { queued: 'Queued', running: 'Working', done: 'Done', skipped: 'Not needed' };
 
-const KIND_ICON: Record<string, string> = { edge: '⇄', service: '◆', site: '◇', identity: '⚿', worker: '⟳', data: '▤', logging: '≡', endpoints: '⌂' };
-
 /**
- * Seven-agent replay as a live map (pattern from Omen AI's change workspace): agents on the
- * left, the parts of the app this commit touches in the middle with a beam to the part the
- * active agent is checking, and what was found there on the right. Replay can be paused,
- * sped up or scrubbed. Illustrative (ADR 0013).
+ * Seven-agent replay as a live map: agents grouped by phase on the left (red team, Trace, blue
+ * team, Verify), the parts of the app this commit touches in the middle with a beam to the part
+ * the active agent is on, and what happened there on the right. The red team looks around; a
+ * part turns red only when Probe confirms an issue there, and only that part is traced, fixed and
+ * verified. Replay can be paused, sped up or scrubbed. Illustrative (ADR 0013).
  */
 export function AgentMap({ repo, commitSha, analysis, statuses, played, started, playback, accepted, offset }: {
   repo: DemoRepo;
@@ -38,83 +37,110 @@ export function AgentMap({ repo, commitSha, analysis, statuses, played, started,
   const [focus, setFocus] = useState<{ kind: 'component'; id: string } | { kind: 'agent'; id: AgentId } | null>(null);
   const following = focus === null;
   const view = focus ?? (current ? { kind: 'component' as const, id: current.component } : { kind: 'component' as const, id: coreComponent(repo) });
+  const byId = new Map(analysis.agents.map(a => [a.agent, a]));
+  const finished = played >= all.length;
+  const label = current ? `${byId.get(current.agent)?.label} · ${plainStep(current.step)}` : finished ? 'All seven agents finished' : 'Reading the change before the agents start';
 
   return (
     <section className="amap" data-testid="demo-agents" aria-label="Seven agents at work">
-      <ReplayBar playback={playback} total={all.length} played={played} offset={offset} current={current} analysis={analysis} />
-      <div className="amap-grid">
-        <ol className="amap-rail" aria-label="Agents in orchestrator order">
-          {analysis.agents.map((agent, i) => {
-            const status = statuses[agent.agent];
-            const live = current?.agent === agent.agent;
-            return (
-              <li key={agent.agent}>
-                <button
-                  type="button"
-                  className="amap-agent"
-                  data-status={status}
-                  aria-pressed={view.kind === 'agent' && view.id === agent.agent}
-                  onClick={() => setFocus(view.kind === 'agent' && view.id === agent.agent ? null : { kind: 'agent', id: agent.agent })}
-                  data-testid={`demo-agent-${agent.agent}`}
-                  style={{ ['--team' as string]: TEAM_COLOR[agent.team] }}
-                >
-                  <span className="amap-agent-dot" aria-hidden="true" />
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-2">
-                      <span className="font-mono text-[0.65rem] text-white/35">{String(i + 1).padStart(2, '0')}</span>
-                      <span className="text-sm font-semibold">{agent.label}</span>
-                      <span className="ml-auto text-[0.65rem] uppercase tracking-wider text-white/45">{STATUS_WORD[status]}</span>
-                    </span>
-                    <span className="block truncate text-xs text-white/50">{live && current ? plainStep(current.step) : agent.job}</span>
-                  </span>
-                </button>
-              </li>
-            );
+      <header className="amap-head">
+        <p className="amap-now">
+          <span className="amap-live" data-on={playback.playing || undefined} aria-hidden="true" />
+          <span className="min-w-0 truncate" data-testid="demo-agent-now">{label}</span>
+        </p>
+        <ol className="amap-phases" aria-label="Phases">
+          {PHASES.map(phase => {
+            const st = phase.agents.map(a => statuses[a]);
+            const state = st.every(s => s === 'skipped') ? 'skipped' : st.some(s => s === 'running') ? 'active' : st.every(s => s === 'done' || s === 'skipped') ? 'done' : 'todo';
+            return <li key={phase.label} data-state={state}><span>{phase.label}</span>{state === 'skipped' && <span className="sr-only"> (not needed)</span>}</li>;
           })}
         </ol>
+      </header>
 
-        <SystemMap repo={repo} commitSha={commitSha} states={states} touched={touched} current={current} analysis={analysis} selected={view.kind === 'component' ? view.id : null} onSelect={id => setFocus({ kind: 'component', id })} />
+      <div className="amap-grid">
+        <nav className="amap-rail" aria-label="Agents in orchestrator order">
+          {PHASES.map(phase => (
+            <div key={phase.label} className="amap-group">
+              <p className="amap-group-label">{phase.label}</p>
+              <ol>
+                {phase.agents.map(id => {
+                  const agent = byId.get(id);
+                  if (!agent) return null;
+                  const status = statuses[id];
+                  const live = current?.agent === id;
+                  return (
+                    <li key={id}>
+                      <button
+                        type="button"
+                        className="amap-agent"
+                        data-status={status}
+                        aria-pressed={view.kind === 'agent' && view.id === id}
+                        onClick={() => setFocus(view.kind === 'agent' && view.id === id ? null : { kind: 'agent', id })}
+                        data-testid={`demo-agent-${id}`}
+                        style={{ ['--team' as string]: TEAM_COLOR[agent.team] }}
+                      >
+                        <StatusMark status={status} />
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-baseline justify-between gap-2">
+                            <span className="amap-agent-name">{agent.label}</span>
+                            <span className="amap-agent-status">{STATUS_WORD[status]}</span>
+                          </span>
+                          <span className="amap-agent-job">{live && current ? plainStep(current.step) : agent.job}</span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+          ))}
+        </nav>
+
+        <div className="amap-stage">
+          <SystemMap repo={repo} commitSha={commitSha} states={states} touched={touched} current={current} analysis={analysis} selected={view.kind === 'component' ? view.id : null} onSelect={id => setFocus({ kind: 'component', id })} />
+          <Transport playback={playback} total={all.length} played={played} offset={offset} />
+        </div>
 
         <aside className="amap-inspect" aria-live="polite">
           {view.kind === 'agent'
-            ? <AgentDetail agent={analysis.agents.find(a => a.agent === view.id)!} status={statuses[view.id]} />
+            ? <AgentDetail agent={byId.get(view.id)!} status={statuses[view.id]} />
             : <ComponentDetail component={repo.components.find(c => c.id === view.id)!} state={states[view.id] ?? 'outside'} done={all.slice(0, played).filter(t => t.component === view.id)} live={current?.component === view.id ? current : undefined} />}
-          {!following && <button type="button" className="mt-4 text-xs text-white/50 underline-offset-2 hover:text-white hover:underline" onClick={() => setFocus(null)}>Follow the active agent</button>}
+          {!following && <button type="button" className="amap-follow" onClick={() => setFocus(null)}>Follow the active agent</button>}
         </aside>
       </div>
     </section>
   );
 }
 
-function ReplayBar({ playback, total, played, offset, current, analysis }: { playback: Playback; total: number; played: number; offset: number; current?: Tick; analysis: Analysis }) {
-  const recording = playback.playing;
-  const activePhase = current ? PHASES.findIndex(p => p.agents.includes(current.agent)) : -1;
-  const label = current ? `${analysis.agents.find(a => a.agent === current.agent)?.label} · ${plainStep(current.step)}` : played >= total ? 'All seven agents finished' : 'Reading the change before the agents start';
+function StatusMark({ status }: { status: Status }) {
   return (
-    <div className="amap-bar">
-      <div className="flex min-w-0 flex-wrap items-center gap-3">
-        <span className="amap-rec" data-on={recording || undefined}>{recording ? 'Replaying' : played >= total ? 'Recorded' : 'Paused'}</span>
-        <span className="min-w-0 truncate text-sm text-white/80" data-testid="demo-agent-now">{label}</span>
-      </div>
-      <ol className="amap-phases" aria-label="Phases">
-        {PHASES.map((p, i) => (
-          <li key={p.label} data-state={played >= total || i < activePhase ? 'done' : i === activePhase ? 'active' : 'todo'}>{p.label}</li>
-        ))}
-      </ol>
-      <div className="amap-controls">
-        <button type="button" className="amap-btn" onClick={playback.toggle} aria-label={playback.playing ? 'Pause replay' : 'Play replay'} data-testid="demo-play">
-          {playback.playing ? '❚❚' : '▶'}
-        </button>
-        <input
-          type="range" min={0} max={total + offset} value={Math.min(played + offset, total + offset)}
-          onChange={e => playback.seek(Number(e.target.value))}
-          aria-label="Replay position" className="amap-scrub"
-        />
-        <span className="font-mono text-[0.7rem] tabular-nums text-white/50">{played}/{total} steps</span>
-        <span className="amap-speeds" role="group" aria-label="Replay speed">
-          {SPEEDS.map(s => <button key={s} type="button" aria-pressed={playback.speed === s} onClick={() => playback.setSpeed(s)}>{s}×</button>)}
-        </span>
-      </div>
+    <svg viewBox="0 0 16 16" className="amap-mark" aria-hidden="true">
+      {status === 'done' && <><circle cx="8" cy="8" r="7" className="amap-mark-fill" /><path d="M5 8.2l2 2 4-4.4" className="amap-mark-ink" /></>}
+      {status === 'running' && <><circle cx="8" cy="8" r="6.25" className="amap-mark-ring" /><path d="M8 1.75a6.25 6.25 0 0 1 6.25 6.25" className="amap-mark-arc" /></>}
+      {status === 'queued' && <circle cx="8" cy="8" r="6.25" className="amap-mark-ring" />}
+      {status === 'skipped' && <><circle cx="8" cy="8" r="6.25" className="amap-mark-ring" /><path d="M5.5 8h5" className="amap-mark-dash" /></>}
+    </svg>
+  );
+}
+
+function Transport({ playback, total, played, offset }: { playback: Playback; total: number; played: number; offset: number }) {
+  const speedIndex = SPEEDS.indexOf(playback.speed);
+  const next = SPEEDS[(speedIndex + 1) % SPEEDS.length]!;
+  return (
+    <div className="amap-transport">
+      <button type="button" className="amap-play" onClick={playback.toggle} aria-label={playback.playing ? 'Pause replay' : 'Play replay'} data-testid="demo-play">
+        {playback.playing
+          ? <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="3" width="3" height="10" rx="1" /><rect x="9" y="3" width="3" height="10" rx="1" /></svg>
+          : <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6a.6.6 0 0 0 .9.5l7.6-4.8a.6.6 0 0 0 0-1L5.9 2.7a.6.6 0 0 0-.9.5z" /></svg>}
+      </button>
+      <input
+        type="range" min={0} max={total + offset} value={Math.min(played + offset, total + offset)}
+        onChange={e => playback.seek(Number(e.target.value))}
+        aria-label="Replay position" className="amap-scrub"
+        style={{ ['--fill' as string]: `${(Math.min(played + offset, total + offset) / Math.max(1, total + offset)) * 100}%` }}
+      />
+      <span className="amap-count">{played} / {total}</span>
+      <button type="button" className="amap-speed" onClick={() => playback.setSpeed(next)} aria-label={`Replay speed ${playback.speed}×, change to ${next}×`}>{playback.speed}×</button>
     </div>
   );
 }
@@ -133,26 +159,30 @@ function SystemMap({ repo, commitSha, states, touched, current, analysis, select
   const agent = current ? analysis.agents.find(a => a.agent === current.agent) : undefined;
   const color = current ? TEAM_COLOR[current.team] : '#fff';
   const files = analysis.review.diff.length;
-  const card = (c: DemoComponent) => (
-    <li key={c.id}>
-      <button
-        type="button"
-        className="amap-node"
-        data-state={states[c.id]}
-        aria-pressed={selected === c.id}
-        onClick={() => onSelect(c.id)}
-        data-testid={`demo-node-${c.id}`}
-        style={current?.component === c.id ? { ['--beam' as string]: color } : undefined}
-      >
-        <span className="flex items-center gap-2">
-          <span aria-hidden="true" className="amap-icon">{KIND_ICON[c.kind] ?? '◆'}</span>
-          <span className="truncate text-sm font-medium">{c.label}</span>
-          {c.critical && <span className="amap-crit">critical</span>}
-        </span>
-        <span className="amap-node-state">{current?.component === c.id && agent ? `${agent.label} · ${plainStep(current.step).toLowerCase()}` : STATE_LABEL[states[c.id] ?? 'outside']}</span>
-      </button>
-    </li>
-  );
+  const card = (c: DemoComponent) => {
+    const active = current?.component === c.id;
+    return (
+      <li key={c.id}>
+        <button
+          type="button"
+          className="amap-node"
+          data-state={states[c.id]}
+          data-active={active || undefined}
+          aria-pressed={selected === c.id}
+          onClick={() => onSelect(c.id)}
+          data-testid={`demo-node-${c.id}`}
+          style={active ? { ['--beam' as string]: color } : undefined}
+        >
+          <span className="flex items-center gap-2.5">
+            <ComponentIcon kind={c.kind} />
+            <span className="min-w-0 flex-1 truncate text-sm font-medium">{c.label}</span>
+            {c.critical && <span className="amap-crit">Critical</span>}
+          </span>
+          <span className="amap-node-state">{active && agent ? `${agent.label} · ${plainStep(current!.step).toLowerCase()}` : STATE_LABEL[states[c.id] ?? 'outside']}</span>
+        </button>
+      </li>
+    );
+  };
   return (
     <div className="amap-map" role="group" aria-label="Parts of the app this commit touches">
       <ul className="amap-col">{left.map(card)}</ul>
@@ -181,10 +211,10 @@ function SystemMap({ repo, commitSha, states, touched, current, analysis, select
             />
           )}
         </svg>
-        <div className="amap-hub" style={current ? { ['--beam' as string]: color } : undefined}>
-          <span className="label-mono text-white/45">This commit</span>
-          <span className="mt-1 block font-mono text-sm text-white">{commitSha.slice(0, 7)}</span>
-          <span className="mt-1 block text-[0.7rem] text-white/50">{files} file{files === 1 ? '' : 's'} · {touched.size} of {repo.components.length} parts touched</span>
+        <div className="amap-hub" data-active={current ? true : undefined} style={current ? { ['--beam' as string]: color } : undefined}>
+          <span className="amap-hub-label">This commit</span>
+          <span className="mt-1.5 block font-mono text-base text-white">{commitSha.slice(0, 7)}</span>
+          <span className="mt-1 block text-[0.72rem] text-white/50">{files} file{files === 1 ? '' : 's'} · {touched.size} of {repo.components.length} parts</span>
         </div>
       </div>
       <ul className="amap-col">{right.map(card)}</ul>
@@ -192,28 +222,40 @@ function SystemMap({ repo, commitSha, states, touched, current, analysis, select
   );
 }
 
-const LATEST = 4;
+/** One consistent line-icon set for the parts of an app. */
+function ComponentIcon({ kind }: { kind: string }) {
+  const p = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.4, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  let glyph;
+  switch (kind) {
+    case 'edge': glyph = <g {...p}><path d="M8 1.8 13.2 4v3.6c0 3.2-2.2 5.6-5.2 6.6-3-1-5.2-3.4-5.2-6.6V4z" /><path d="M5.6 8h4.8" /></g>; break;
+    case 'service': glyph = <g {...p}><rect x="2.5" y="2.5" width="11" height="4.5" rx="1.2" /><rect x="2.5" y="9" width="11" height="4.5" rx="1.2" /><path d="M5 4.75h.01M5 11.25h.01" /></g>; break;
+    case 'site': glyph = <g {...p}><rect x="2" y="3" width="12" height="10" rx="1.6" /><path d="M2 6h12" /></g>; break;
+    case 'identity': glyph = <g {...p}><circle cx="5.5" cy="8" r="2.8" /><path d="M8.3 8H14M12 8v2.2M14 8v1.6" /></g>; break;
+    case 'worker': glyph = <g {...p}><path d="M13 8a5 5 0 1 1-1.5-3.55" /><path d="M13.2 2.6v2.6h-2.6" /></g>; break;
+    case 'data': glyph = <g {...p}><ellipse cx="8" cy="4" rx="5" ry="1.8" /><path d="M3 4v8c0 1 2.2 1.8 5 1.8s5-.8 5-1.8V4M3 8c0 1 2.2 1.8 5 1.8S13 9 13 8" /></g>; break;
+    case 'logging': glyph = <g {...p}><path d="M5.5 4h8M5.5 8h8M5.5 12h8M2.5 4h.01M2.5 8h.01M2.5 12h.01" /></g>; break;
+    case 'endpoints': glyph = <g {...p}><path d="M6 2.5v3M10 2.5v3M4.5 5.5h7v2.5a3.5 3.5 0 0 1-7 0zM8 11.5v2" /></g>; break;
+    default: glyph = <g {...p}><rect x="3" y="3" width="10" height="10" rx="2" /></g>;
+  }
+  return <svg viewBox="0 0 16 16" className="amap-icon" aria-hidden="true">{glyph}</svg>;
+}
+
+const LATEST = 5;
 
 function ComponentDetail({ component, state, done, live }: { component: DemoComponent; state: ComponentState; done: Tick[]; live?: Tick }) {
+  const recent = [...done].reverse();
   return (
     <div data-testid="demo-node-detail">
-      <p className="label-mono text-white/45">Part of the app</p>
-      <p className="mt-1 text-lg font-semibold">{component.label}</p>
+      <p className="amap-kicker">Part of the app</p>
+      <p className="mt-1 text-lg font-semibold tracking-tight">{component.label}</p>
       <p className="amap-pill mt-2" data-state={state}>{STATE_LABEL[state]}</p>
       {done.length === 0 && !live && <p className="mt-4 text-sm text-white/55">{state === 'outside' ? 'This commit does not touch it, so the agents leave it alone.' : 'No agent has reached this part yet.'}</p>}
       {(done.length > 0 || live) && (
-        <>
-          <ol className="mt-4 flex flex-col gap-3">
-            {live && <TickLine tick={live} live />}
-            {[...done].reverse().slice(0, LATEST).map((t, i) => <TickLine key={i} tick={t} />)}
-          </ol>
-          {done.length > LATEST && (
-            <details className="amap-more mt-3">
-              <summary>Earlier checks here ({done.length - LATEST})</summary>
-              <ol className="mt-3 flex flex-col gap-3">{[...done].reverse().slice(LATEST).map((t, i) => <TickLine key={i} tick={t} />)}</ol>
-            </details>
-          )}
-        </>
+        <ol className="amap-ticks">
+          {live && <TickLine tick={live} live />}
+          {recent.slice(0, LATEST).map((t, i) => <TickLine key={i} tick={t} />)}
+          {recent.length > LATEST && <li className="text-xs text-white/40">and {recent.length - LATEST} earlier step{recent.length - LATEST === 1 ? '' : 's'}</li>}
+        </ol>
       )}
     </div>
   );
@@ -222,8 +264,8 @@ function ComponentDetail({ component, state, done, live }: { component: DemoComp
 function TickLine({ tick, live = false }: { tick: Tick; live?: boolean }) {
   return (
     <li className="amap-tick" data-live={live || undefined} style={{ ['--team' as string]: TEAM_COLOR[tick.team] }}>
-      <p className="text-sm text-white/90"><span className="font-semibold capitalize">{tick.agent}</span> · {plainStep(tick.step)}</p>
-      <p className={`text-xs ${tick.step.outcome === 'denied' ? 'text-[#ffc36b]' : 'text-white/55'}`}>{live ? 'working…' : tick.step.outcome === 'denied' ? `Blocked by policy: ${tick.step.result}` : tick.step.result}</p>
+      <p className="text-sm text-white/90"><span className="font-medium capitalize">{tick.agent}</span> <span className="text-white/45">·</span> {plainStep(tick.step)}</p>
+      <p className={`mt-0.5 text-xs ${tick.step.outcome === 'denied' ? 'text-[#ffc36b]' : 'text-white/50'}`}>{live ? 'Working…' : tick.step.outcome === 'denied' ? `Blocked by policy: ${tick.step.result}` : tick.step.result}</p>
     </li>
   );
 }
@@ -231,31 +273,31 @@ function TickLine({ tick, live = false }: { tick: Tick; live?: boolean }) {
 function AgentDetail({ agent, status }: { agent: AgentRunView; status: Status }) {
   return (
     <div>
-      <p className="label-mono text-white/45">{agent.team === 'Independent' ? 'Independent check' : `${agent.team} team`}</p>
-      <p className="mt-1 text-lg font-semibold">{agent.label} <span className="text-sm font-normal text-white/50">· {agent.job}</span></p>
-      <p className="mt-3 text-sm text-white/85" data-testid="demo-agent-outcome">
+      <p className="amap-kicker">{agent.team === 'Independent' ? 'Independent check' : `${agent.team} team`}</p>
+      <p className="mt-1 text-lg font-semibold tracking-tight">{agent.label} <span className="text-sm font-normal text-white/50">· {agent.job}</span></p>
+      <p className="mt-3 text-sm leading-relaxed text-white/85" data-testid="demo-agent-outcome">
         {status === 'queued' ? 'Waiting for the previous agent to hand off.' : status === 'running' ? 'Working…' : agent.outcome}
       </p>
-      {(status === 'done' || status === 'skipped') && <p className="mt-3 text-xs text-white/55" data-testid="demo-agent-handoff">Hands off: {agent.handoff}</p>}
+      {(status === 'done' || status === 'skipped') && <p className="mt-3 text-xs leading-relaxed text-white/55" data-testid="demo-agent-handoff">Hands off: {agent.handoff}</p>}
+      {agent.evidence.length > 0 && status === 'done' && (
+        <>
+          <p className="amap-kicker mt-5">Evidence</p>
+          <ul className="mt-2 flex flex-col gap-1.5 text-xs text-white/70">{agent.evidence.map(e => <li key={e} className="amap-evidence">{e}</li>)}</ul>
+        </>
+      )}
       {agent.steps.length > 0 && (
-        <details className="amap-more mt-4">
-          <summary>See every step ({agent.steps.length})</summary>
-          <ol className="mt-3 flex flex-col gap-2.5" data-testid="demo-agent-steps">
+        <>
+          <p className="amap-kicker mt-5">Every step ({agent.steps.length})</p>
+          <ol className="mt-2 flex flex-col gap-2.5" data-testid="demo-agent-steps">
             {agent.steps.map((step, i) => (
               <li key={i} className="text-xs">
-                <p className="text-white/85">{plainStep(step)} <span className="font-mono text-white/40">{step.tool}</span></p>
-                <p className="text-white/50">{step.input}</p>
-                <p className={step.outcome === 'denied' ? 'text-[#ffc36b]' : 'text-white/60'}>{step.outcome === 'denied' ? 'Blocked by policy: ' : '→ '}{step.result}</p>
+                <p className="text-white/85">{plainStep(step)} <span className="font-mono text-white/35">{step.tool}</span></p>
+                <p className="text-white/45">{step.input}</p>
+                <p className={step.outcome === 'denied' ? 'text-[#ffc36b]' : 'text-white/60'}>{step.outcome === 'denied' ? 'Blocked by policy: ' : ''}{step.result}</p>
               </li>
             ))}
           </ol>
-        </details>
-      )}
-      {agent.evidence.length > 0 && status === 'done' && (
-        <details className="amap-more mt-2">
-          <summary>Evidence ({agent.evidence.length})</summary>
-          <ul className="mt-2 flex flex-col gap-1.5 text-xs text-white/70">{agent.evidence.map(e => <li key={e}>▸ {e}</li>)}</ul>
-        </details>
+        </>
       )}
     </div>
   );
