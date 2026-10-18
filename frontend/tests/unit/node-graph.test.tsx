@@ -120,3 +120,21 @@ it('colours each service by what is true: compromised red, false alarm yellow, c
   expect(tone('api')).toBe('suspicious');
   expect(tone('db')).toBe('isolated');
 });
+
+it('says who is where in words: the attacker only with the overlay, the defender’s latest move with its step', () => {
+  const { rerender } = render(<NodeGraph scenario={scenario} states={states} t={5} lastAction={{ t: 3, action: 'isolate:db' }} />);
+  const tracker = () => screen.getByTestId('lab-tracker').textContent;
+  expect(tracker()).toBe('Defender cut off Database · at step 3');
+  // The defender's tag stays on the service it last acted on, marked as an earlier move.
+  expect(document.querySelector('[data-node="db"] .network-defender')?.textContent).toBe('Defender cut it off');
+  expect(document.querySelector('[data-node="db"] .network-defender')?.getAttribute('data-before')).toBe('true');
+  rerender(<NodeGraph scenario={scenario} states={states} t={3} lastAction={{ t: 3, action: 'isolate:db' }} showTruth />);
+  expect(tracker()).toBe('Attacker got a foothold on API server' + 'Defender cut off Database · this step');
+  expect(document.querySelector('[data-node="db"] .network-defender')?.getAttribute('data-before')).toBeNull();
+  const contained = states.map(s => (s.node === 'api' ? { ...s, isolated: true } : s));
+  rerender(<NodeGraph scenario={scenario} states={contained} t={4} lastAction={null} showTruth />);
+  expect(tracker()).toBe('Attacker is cut off on API server' + 'Defender has not acted yet, only watching');
+  const clean = states.map(s => ({ ...s, hidden_stage_ground_truth: 'none' as const }));
+  rerender(<NodeGraph scenario={scenario} states={clean} t={4} lastAction={null} showTruth />);
+  expect(tracker()).toContain('Attacker is not inside the network right now');
+});

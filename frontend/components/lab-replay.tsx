@@ -54,7 +54,7 @@ export function ReplayStage({ episode, scenario }: { episode: LabEpisode; scenar
 
       <div className="replay-stage-grid">
         <div className="min-w-0">
-          <NodeGraph scenario={scenario} states={step?.nodes ?? []} action={step?.action} t={t} selected={selected} onSelect={setSelected} showTruth={truth} />
+          <NodeGraph scenario={scenario} states={step?.nodes ?? []} action={step?.action} t={t} lastAction={last} selected={selected} onSelect={setSelected} showTruth={truth} />
           <p className="lab-swipe">Swipe the map sideways to see every service →</p>
           {/* Playback: one slim control bar; the scrubber is the timeline (YouTube-style chapter dots). */}
           <div className="lab-player">
@@ -76,7 +76,7 @@ export function ReplayStage({ episode, scenario }: { episode: LabEpisode; scenar
             </button>
           </div>
           <p className="lab-now-moment" aria-live="polite">
-            {currentMoment ? <><span className="font-mono text-faint">{currentMoment.t}</span> {currentMoment.text}</> : <span className="text-faint">Press play or use the arrows to jump between key moments.</span>}
+            {currentMoment ? <><span className="lab-now-moment-when">Last key moment · step {currentMoment.t}</span> {currentMoment.text}</> : <span className="text-faint">Press play or use the arrows to jump between key moments.</span>}
           </p>
         </div>
 
