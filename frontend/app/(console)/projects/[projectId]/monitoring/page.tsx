@@ -12,7 +12,7 @@ import { monitoringSummary } from '@/lib/monitoring';
 import { EVENT_STATUS } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
 
-const RL_CAVEAT = 'Recommendation from a policy trained in simulation. Not applied automatically.';
+const RL_CAVEAT = 'Recommendation from a policy trained in an isolated test environment. Not applied automatically.';
 
 export default function MonitoringPage() {
   const { project } = useProject();
@@ -40,7 +40,7 @@ export default function MonitoringPage() {
         <ul className="monitor-chips" aria-label="Monitoring status">
           <li><span className="text-white/50">Monitoring</span> {project.settings.monitoring_policy.enabled ? 'on' : 'off'}</li>
           <li><span className="text-white/50">Events</span> {events.status === 'ready' ? `${events.data.items.length}${events.data.items.length >= 50 ? '+' : ''}` : '…'}</li>
-          <li><span className="text-white/50">Simulated events</span> {events.status === 'ready' ? events.data.items.filter(e => e.simulated).length : '…'}</li>
+          <li><span className="text-white/50">Synthetic events</span> {events.status === 'ready' ? events.data.items.filter(e => e.simulated).length : '…'}</li>
           <li><span className="text-white/50">Re-checks</span> {reassess.status === 'ready' ? reassess.data.items.length : '…'}</li>
         </ul>
       </header>
@@ -74,7 +74,7 @@ export default function MonitoringPage() {
         </Panel>
       </div>
       <div className="flex flex-col gap-4">
-        <Panel title="Defense recommendations (simulation-derived)">
+        <Panel title="Defense recommendations (test-environment-derived)">
           <p className="mb-3 rounded border border-warn/40 bg-warn/10 px-2 py-1.5 text-xs text-warn" data-testid="rl-caveat">{RL_CAVEAT}</p>
           <Async resource={recs} label="recommendations">
             {page => (

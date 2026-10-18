@@ -176,3 +176,6 @@ The homepage closing invitation uses responsive assessment and Defense Lab actio
 
 
 Sign-in screens share a centered form over subtle decorative orbits; reduced motion disables orbit animation.
+
+
+User-facing lab copy describes controlled evaluation runs and isolated test networks. Synthetic drills and illustrative walkthroughs retain explicit provenance.

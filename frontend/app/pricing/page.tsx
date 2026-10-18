@@ -39,7 +39,7 @@ const FAQ = [
   { q: 'What counts as assessed source lines?', a: 'In this proposal, the source lines ARI reads across all full assessments in a month. Assessing a 50,000-line repository three times counts as 150,000 lines.' },
   { q: 'Does ARI ever change our code on its own?', a: 'No. Patches are proposed only after a person approves remediation, and a fix only counts when independent, executed tests agree.' },
   { q: 'What will ARI test?', a: 'Only the scope you approve, such as sandbox builds of your own repositories. It never targets third-party systems.' },
-  { q: 'Is the Defense Lab live network defense?', a: 'No. It is a policy trained and evaluated in simulation, shown as decision support. Nothing it recommends is applied automatically.' },
+  { q: 'Is the Defense Lab live network defense?', a: 'No. It is a policy trained and evaluated in an isolated test network, shown as decision support. Nothing it recommends is applied automatically.' },
   { q: 'Can I buy a plan today?', a: 'Not yet. This is a hackathon preview: the plans above are proposals and nothing can be purchased. You can open the console and try the product.' },
 ];
 

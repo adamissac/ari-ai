@@ -26,7 +26,7 @@ const KINDS: Array<[RegExp, ServiceInfo]> = [
 export function serviceInfo(name: string): ServiceInfo {
   const n = name.toLowerCase();
   for (const [re, info] of KINDS) if (re.test(n)) return info;
-  return { kind: 'service', label: name, role: 'A service in the simulated network.' };
+  return { kind: 'service', label: name, role: 'A service in the test network.' };
 }
 
 export const INTERNET: ServiceInfo = { kind: 'internet', label: 'Internet', role: 'Outside traffic. Services marked internet-exposed can be reached from here.' };
@@ -155,7 +155,7 @@ export function keyMoments(episode: LabEpisode, scenario: LabScenario): Moment[]
     if (a.verb !== 'noop') out.push({ t, kind: isDisruptive(a.verb) ? 'disruptive' : 'action', node: a.node, text: `AI: ${ACTION_SHORT[a.verb] ?? a.verb}${a.node ? ` ${label(a.node)}` : ''}` });
   });
   const last = episode.steps.at(-1);
-  if (last) out.push({ t: last.t ?? episode.steps.length - 1, kind: 'end', node: null, text: episode.compromised ? 'Game over: the attacker reached its goal' : 'Game over: the attacker never reached its goal' });
+  if (last) out.push({ t: last.t ?? episode.steps.length - 1, kind: 'end', node: null, text: episode.compromised ? 'Evaluation complete: the attacker reached its goal' : 'Evaluation complete: the attacker never reached its goal' });
   void scenario;
   return out;
 }

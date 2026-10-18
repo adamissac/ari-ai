@@ -33,3 +33,6 @@ Completed: homepage invitation and evaluation selector alignment (feat/adam/home
 
 
 Completed: centered sign-in form and reduced-motion-aware background decoration.
+
+
+Completed: evaluation terminology cleanup and explicit synthetic/illustrative provenance labels.

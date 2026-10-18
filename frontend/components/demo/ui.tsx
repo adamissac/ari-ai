@@ -8,8 +8,8 @@ import type { DiffFile, ReviewComment } from '@/lib/demo/scenarios';
 /** Always-visible label: everything under /demo is illustrative (ADR 0013). */
 export function DemoMarker({ className = '' }: { className?: string }) {
   return (
-    <span className={`demo-marker ${className}`} data-testid="demo-marker" title="Simulated demo: illustrative accounts, repositories, commits and agent runs. No repository is accessed and no model is called.">
-      <span aria-hidden="true" className="demo-marker-dot" />Simulated demo
+    <span className={`demo-marker ${className}`} data-testid="demo-marker" title="Illustrative demo: illustrative accounts, repositories, commits and agent runs. No repository is accessed and no model is called.">
+      <span aria-hidden="true" className="demo-marker-dot" />Illustrative demo
     </span>
   );
 }
