@@ -1,0 +1,23 @@
+# Held-out v4 (created 2026-10-19, before any evaluation on it). Three identities (an
+# outsider and two customers) interleave per request with rotating tokens at high volume,
+# under heavy benign load and one bookkeeper. Unseen: attack volume of 8, benign volume of
+# 12, three identities switching per request.
+name: outsider_flood
+split: holdout
+horizon: 30
+schedule: bursty
+p_start: 0.2
+p_stop: 0.3
+attack_per_step: 8
+benign_per_step: 12
+attackers: [mallory, carol, bob]
+attacker_switch: per_request
+rotate_tokens: true
+victims: [alice]
+benign: [alice, bob, carol, dave]
+delegations: ["dave:alice"]
+delegate_per_step: 1
+delegate_burst_p: 0.2
+delegate_burst_size: 2
+seed_start: 44000
+episodes: 30

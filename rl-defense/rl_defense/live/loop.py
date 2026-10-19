@@ -16,6 +16,12 @@ observations gain one feature and masks one entry. The default ``"sim"`` is the 
 ``"live_v3"`` adds ``block_principal_long`` / ``block_top_principal_long`` (block or extend
 for ``block_long_duration`` windows; every flagged principal / only the heaviest) and six
 detector features describing the flagged principals.
+
+v4 (``LoopConfig.delegation_aware_detector=True``): the gateway's instrumentation gets
+the scenario's delegation grants (the operator's own authorization data), so authorized
+delegated reads are not flagged. v4 also runs with ``c_disrupt=1.0`` (a blocked
+legitimate request costs as much as a compromised read, each normalized per window).
+Both default to the v1-v3 values, so earlier runs reproduce unchanged.
 """
 
 from __future__ import annotations
@@ -34,7 +40,7 @@ from rl_defense.live.actions import (
     ActionSpace,
     live_decode_action,
 )
-from rl_defense.live.adversary import TrafficDriver
+from rl_defense.live.adversary import TrafficDriver, delegation_grants
 from rl_defense.live.contracts import DefenseControls, LiveTransition, StepOutcome
 from rl_defense.live.gateway import DefensiveGateway
 from rl_defense.live.telemetry import build_facts
@@ -66,9 +72,11 @@ class LoopConfig:
     block_long_duration: int = 10  # live_v3: block_principal_long
     action_space: ActionSpace = "sim"
     reassessment_severity_after: float = 0.2
+    # v4: the detector consults the delegation grant table (operator authorization data)
+    delegation_aware_detector: bool = False
     # reward coefficients (applied to measured, normalized counts)
     c_impact: float = 1.0
-    c_disrupt: float = 0.5
+    c_disrupt: float = 0.5  # v1-v3; v4 uses 1.0 (V4_LOOP_OVERRIDES in evaluate.py)
     c_action: float = 0.02
     c_escalate: float = 0.1
 
@@ -126,7 +134,14 @@ class LiveDefenseLoop:
         self.step_idx = 0
         self.escalations_used = 0
         self.driver.reset(seed)
-        self._gateway = DefensiveGateway(self._app_factory(), self.topology, self.controls)
+        grants = (
+            delegation_grants(self.driver.delegates)
+            if self.config.delegation_aware_detector
+            else None
+        )
+        self._gateway = DefensiveGateway(
+            self._app_factory(), self.topology, self.controls, grants=grants
+        )
         # one warm-up window to establish an initial observation from real traffic
         self.driver.run_window(self._gateway)
         facts = self._facts()

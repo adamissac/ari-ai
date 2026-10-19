@@ -1,0 +1,23 @@
+# Val v4 (created 2026-10-19, before the v4 run). The attack is already running in the
+# first window: bob and mallory take turns per window, rotating tokens; erin reads carol's
+# payments as a bookkeeper.
+name: val4_rotation_start
+split: val
+horizon: 30
+schedule: bursty
+p_start: 0.2
+p_stop: 0.15
+start_active: true
+attack_per_step: 6
+benign_per_step: 6
+attackers: [bob, mallory]
+attacker_switch: per_window
+rotate_tokens: true
+victims: [alice, carol]
+benign: [alice, bob, carol, erin]
+delegations: ["erin:carol"]
+delegate_per_step: 1
+delegate_burst_p: 0.2
+delegate_burst_size: 2
+seed_start: 23000
+episodes: 15
