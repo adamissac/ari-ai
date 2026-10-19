@@ -51,20 +51,30 @@ def test_projects_are_isolated_between_orgs(client_factory) -> None:
     assert r.status_code == 422 and r.json()["error"]["code"] == "VALIDATION_FAILED"
 
 
-def test_scope_approval_requires_a_different_owner(client_factory) -> None:
+def test_owner_can_approve_own_sandbox_scope(client_factory) -> None:
     alice, bob = client_factory("alice"), client_factory("bob")
     ids = setup_project(alice, bob, approve=False)
     r = alice.post(f"/api/v1/scopes/{ids['scope']}/approve")
-    assert r.status_code == 403 and "differ" in r.json()["error"]["message"]
-    r = bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
+    assert r.status_code == 200, r.text
     assert (
         r.status_code == 200
         and r.json()["status"] == "active"
-        and r.json()["approved_by"] == bob.me["user"]["id"]
+        and r.json()["approved_by"] == alice.me["user"]["id"]
     )
     assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 409
     approvals = alice.get(f"/api/v1/projects/{ids['project']}/approvals").json()["items"]
     assert approvals[0]["status"] == "approved"
+
+
+def test_sandbox_scope_approval_still_requires_an_owner(client_factory) -> None:
+    from helpers import add_member
+
+    alice, bob, member, outsider = (client_factory(name) for name in ("alice", "bob", "member", "outsider"))
+    ids = setup_project(alice, bob, approve=False)
+    add_member(ids["org"], member.me["user"]["id"], "member")
+    assert member.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 403
+    assert outsider.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code in (403, 404)
+    assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
 
 
 def test_scope_rejects_foreign_repo_and_bad_expiry(client_factory) -> None:
