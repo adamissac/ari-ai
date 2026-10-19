@@ -182,3 +182,6 @@ User-facing lab copy describes controlled evaluation runs and isolated test netw
 
 
 Homepage wheel scrolling stops once at the expanded walkthrough video. The arriving gesture is absorbed until a new gesture (180ms idle) or a 1.2-second maximum. A new wheel gesture, upward scrolling, keyboard navigation or Continue exploring can leave immediately. Touch and reduced-motion scrolling remain native.
+
+
+The walkthrough zoom uses smoothstep scroll progress and a 1.5-second CSS transition so hard wheel gestures do not snap it to full size. Reduced motion disables the transition.

@@ -919,3 +919,6 @@ Removed the homepage Your next move section at owner request, including both act
 
 
 Video arrival fix: SmoothScroll clamps the first homepage wheel gesture at the expanded video, consumes only its momentum, then releases on a new gesture or 1.2-second bound. Explicit anchors bypass the stop. Browser proof: 12,000px wheel lands at scrollY 1624 with video chapter visible; second 5,000px wheel reaches 6624. Controls are visible and include Continue exploring.
+
+
+Calmer video zoom: replace front-loaded cubic progress with smoothstep and interpolate scale/radius over 1500ms. Chrome hard-scroll samples verify intermediate scale remains below full size at 450ms, scales monotonically, and settles by 3 seconds. Reduced-motion transition is disabled. ESLint and TypeScript pass.
