@@ -1583,3 +1583,7 @@ body:has(.commit-stage) main { color: #fff; }
 .explainer-btn:hover { background: rgba(255, 255, 255, 0.28); }
 @media (pointer: coarse) { .explainer-btn { min-height: 44px; } }
 @media (prefers-reduced-motion: reduce) { .explainer-frame { transform: none; } }
+
+/* Keep the walkthrough controls discoverable after the first scroll lands here. */
+.explainer-controls { opacity: 1; }
+.explainer-btn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }

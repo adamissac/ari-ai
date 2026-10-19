@@ -179,3 +179,6 @@ The homepage ends after its proof section; the former closing invitation (and it
 Sign-in screens share a centered form over subtle decorative orbits; reduced motion disables orbit animation.
 
 User-facing lab copy describes controlled evaluation runs and isolated test networks. Synthetic drills and illustrative walkthroughs retain explicit provenance.
+
+
+Homepage wheel scrolling stops once at the expanded walkthrough video. The arriving gesture is absorbed until a new gesture (180ms idle) or a 1.2-second maximum. A new wheel gesture, upward scrolling, keyboard navigation or Continue exploring can leave immediately. Touch and reduced-motion scrolling remain native.
