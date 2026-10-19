@@ -36,3 +36,6 @@ Completed: centered sign-in form and reduced-motion-aware background decoration.
 
 
 Completed: evaluation terminology cleanup and explicit synthetic/illustrative provenance labels.
+
+
+Completed: remove homepage closing invitation at owner request.
