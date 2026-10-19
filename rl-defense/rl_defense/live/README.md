@@ -22,7 +22,7 @@ step(action):
 | Module | Role |
 |---|---|
 | `gateway.py` | `DefensiveGateway` wraps the target ASGI app; enforces `isolate`/`rate_limit`/`raise_monitoring` and (v2) principal blocks for real; records every request's true outcome. |
-| `actions.py` | Live action space v2: the 22 simulator actions plus `block_principal` (index 22) and one obs feature; widens sim checkpoints without changing their choices. |
+| `actions.py` | Live action spaces v2 (`block_principal`, index 22) and v3 (`block_principal_long` 23, `block_top_principal_long` 24, six detector features); widens narrower checkpoints without changing their choices. |
 | `telemetry.py` | Real request records → `PlatformFacts` (measured `alert_rate`, `anomaly_score`). |
 | `adversary.py` | `TrafficDriver`: real benign traffic + real cross-tenant attackers abusing the planted BOLA in `GET /payments/{id}` (one or more identities, optional token rotation; fixture tenants in `IDENTITIES`). |
 | `loop.py` | `LiveDefenseLoop`: the episode harness; loads any checkpoint via the existing `PolicyRunner`. |
@@ -99,6 +99,18 @@ See [`results/live-retrain-v2/REPORT.md`](../../results/live-retrain-v2/REPORT.m
   --base-steps 30000 --rounds 3 --out runs/live/retrain-v2 --evidence-dir results/live-retrain-v2
 ```
 
+**Third result (v3, long and targeted blocks, delegated reads):** scenarios gain bookkeepers
+with legitimate cross-tenant read access, which the detector flags. Blanket blocking now
+costs availability. Live action space v3 adds `block_principal_long` (23) and
+`block_top_principal_long` (24) plus six detector features. The candidate abstains unless an
+action beats noop by a val-selected `noop_margin`, the fix for v2's useless
+`raise_monitoring` steps. The rules are tuned with every new control. The gate **rejects** the
+candidate: −13.87 vs rules −10.98, and availability 0.797. On val the candidate beat the
+rules by about 3, but that did not transfer to `holdout_v3`. No containing policy reaches
+the 0.85 floor there.
+See [`results/live-retrain-v3/REPORT.md`](../../results/live-retrain-v3/REPORT.md) and
+[`PROVENANCE.md`](../../results/live-retrain-v3/PROVENANCE.md).
+
 ## What is real, and what is not
 
 **Real:** the target app (a real FastAPI service, in-process over an ASGI transport — no
@@ -126,8 +138,15 @@ reach an observation. The gateway's own blocking is not counted as an anomaly.
 ## Tests
 
 ```sh
-.venv/bin/python -m pytest -q tests/test_live_gateway.py tests/test_live_loop.py tests/test_live_retrain.py tests/test_live_block_principal.py
+.venv/bin/python -m pytest -q tests/test_live_gateway.py tests/test_live_loop.py tests/test_live_retrain.py tests/test_live_block_principal.py tests/test_live_v3.py
 ```
+
+`test_live_v3.py` proves that delegated reads are benign but flagged, and that blanket
+blocking then costs availability with no attack at all. It proves that long blocks close the
+identity-switch leak, that extensions never shorten a block, and that the top-target block
+spares a delegate seen in the same window. It also covers the detector features, the strict
+v2⊂v3 extension, exact widening, the noop margin, v3 rules using every control, holdout_v3
+hygiene, and a v3 pipeline smoke test (on the exposed holdout_v2).
 
 `test_live_block_principal.py` proves the block's real effect (403, no data, other tenants
 unaffected, rotated tokens still blocked), its duration and masking in the loop, that it
