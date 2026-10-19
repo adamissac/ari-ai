@@ -101,3 +101,11 @@ Horizon 200 steps; terminates early if `impact` on the `db` node.
 Checkpoints (`*.pt`) and run logs go to `rl-defense/runs/` locally (git-ignored)
 and the artifact store later. Every checkpoint has a manifest: env version,
 config hash, seed, git SHA, training steps, eval summary path.
+
+## Future: seven-agent adversarial post-training (design only, gated)
+A future phase would let the seven-agent offensive pipeline generate scenarios the RL
+defender trains against. The eventual integration — reusable episode/experience schemas,
+exact seams in today's code, and the decoupling/offline/gating constraints — is designed in
+[architecture/seven-agent-rl-adversarial-integration](architecture/seven-agent-rl-adversarial-integration.md)
+and decided in [ADR-0014](decisions/0014-seven-agent-rl-adversarial-post-training.md).
+**Not implemented, and gated** until the standalone live RL pipeline is functional and tested.
