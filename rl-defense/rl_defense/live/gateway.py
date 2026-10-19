@@ -2,7 +2,9 @@
 
 Every request the traffic driver makes goes through :meth:`DefensiveGateway.request`.
 The gateway enforces the currently-selected defensive controls **for real** (an
-isolated node's requests are never forwarded; a rate-limited node drops a fraction),
+isolated node's requests are never forwarded; a rate-limited node drops a fraction; a
+blocked principal's requests to the node it was blocked on get 403, whichever token it
+presents),
 forwards the rest to the real app over an in-process ASGI transport, and records the
 true outcome of each request. Telemetry and reward are computed from these records,
 not from any hidden state.
@@ -70,9 +72,10 @@ class RequestRecord:
     actor: str  # customer id of the caller (or "anon")
     is_attack: bool  # generator's label — METRICS ONLY, never used for telemetry
     status: int  # HTTP status actually returned (gateway 503/429 or the app's own)
-    blocked_reason: str | None  # "isolated" | "rate_limited" | None
+    blocked_reason: str | None  # "isolated" | "principal_blocked" | "rate_limited" | None
     compromised: bool  # really succeeded cross-tenant read (allowed, 200, foreign owner in body)
     cross_tenant_attempt: bool = False  # detector: token's principal != object owner
+    principal: str | None = None  # whom the bearer token belongs to (operator-visible)
 
     @property
     def allowed(self) -> bool:
@@ -124,13 +127,17 @@ class DefensiveGateway:
         cross = principal is not None and owner is not None and owner != principal
 
         def blocked(status: int, reason: str) -> RequestRecord:
-            rec = RequestRecord(node, method, path, actor, is_attack, status, reason, False, cross)
+            rec = RequestRecord(
+                node, method, path, actor, is_attack, status, reason, False, cross, principal
+            )
             self.records.append(rec)
             return rec
 
         # --- enforcement happens before anything reaches the app ---
         if self.controls.isolated.get(node, False):
             return blocked(503, "isolated")
+        if principal is not None and node in self.controls.blocked_principals.get(principal, ()):
+            return blocked(403, "principal_blocked")
         if self.controls.rate_limited.get(node, False):
             n = self._rl_counter.get(node, 0)
             self._rl_counter[node] = n + 1
@@ -142,10 +149,28 @@ class DefensiveGateway:
         resp = self._client.request(method, path, headers=headers)
         compromised = self._is_compromise(principal, resp)
         rec = RequestRecord(
-            node, method, path, actor, is_attack, resp.status_code, None, compromised, cross
+            node,
+            method,
+            path,
+            actor,
+            is_attack,
+            resp.status_code,
+            None,
+            compromised,
+            cross,
+            principal,
         )
         self.records.append(rec)
         return rec
+
+    def flagged_principals(self) -> dict[str, set[str]]:
+        """Principals the instrumentation saw attempting cross-tenant access in the current
+        records, with the nodes they did it on. Detector output only (no generator label)."""
+        out: dict[str, set[str]] = {}
+        for r in self.records:
+            if r.cross_tenant_attempt and r.principal is not None:
+                out.setdefault(r.principal, set()).add(r.node)
+        return out
 
     @staticmethod
     def _is_compromise(principal: str | None, resp: httpx.Response) -> bool:
