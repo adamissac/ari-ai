@@ -66,6 +66,7 @@ export function ExplainerVideo() {
           <video
             ref={video}
             src={SRC}
+            poster="/videos/ari-explainer-poster.jpg"
             className="explainer-video"
             muted
             loop
