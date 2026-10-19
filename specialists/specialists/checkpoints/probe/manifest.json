@@ -1,0 +1,107 @@
+{
+ "agent": "probe",
+ "architecture": {
+  "hidden": 48,
+  "input_dim": 8192,
+  "output": "softmax",
+  "type": "mlp-relu"
+ },
+ "dataset": {
+  "sha256": "1ead8169f498d1f40790f176b1818e8aac9fe9498cec390ff7c045bfceb36df8",
+  "sizes": {
+   "test": 480,
+   "train": 960,
+   "val": 480
+  },
+  "train_label_counts": {
+   "WSTG-ATHN-02": 80,
+   "WSTG-ATHZ-01": 80,
+   "WSTG-ATHZ-02": 80,
+   "WSTG-ATHZ-04": 80,
+   "WSTG-BUSL-01": 80,
+   "WSTG-CLNT-07": 80,
+   "WSTG-CRYP-04": 80,
+   "WSTG-INPV-01": 80,
+   "WSTG-INPV-05": 80,
+   "WSTG-INPV-11": 80,
+   "WSTG-INPV-12": 80,
+   "WSTG-INPV-19": 80
+  },
+  "version": "corpus-1+mitre-pinned"
+ },
+ "description": "Rank OWASP WSTG validation strategies for a hypothesis (text + a possibly wrong CWE).",
+ "evaluation": {
+  "best_baseline": "cwe_lookup",
+  "best_baseline_test": 0.6062,
+  "primary_metric": "accuracy",
+  "promoted": true,
+  "test": 0.6312
+ },
+ "fallback": {
+  "default": "WSTG-ATHZ-04",
+  "key": "cwe",
+  "name": "cwe_lookup",
+  "table": {
+   "CWE-1284": "WSTG-BUSL-01",
+   "CWE-22": "WSTG-ATHZ-01",
+   "CWE-502": "WSTG-INPV-11",
+   "CWE-639": "WSTG-ATHZ-04",
+   "CWE-78": "WSTG-INPV-12",
+   "CWE-79": "WSTG-INPV-01",
+   "CWE-798": "WSTG-ATHN-02",
+   "CWE-862": "WSTG-ATHZ-02",
+   "CWE-89": "WSTG-INPV-05",
+   "CWE-916": "WSTG-CRYP-04",
+   "CWE-918": "WSTG-INPV-19",
+   "CWE-942": "WSTG-CLNT-07"
+  }
+ },
+ "features": {
+  "char_ngrams": true,
+  "fields": [
+   "hypothesis",
+   "cwe"
+  ],
+  "hashing": "crc32 signed, log-count, L2",
+  "input_dim": 8192
+ },
+ "labels": [
+  "WSTG-ATHN-02",
+  "WSTG-ATHZ-01",
+  "WSTG-ATHZ-02",
+  "WSTG-ATHZ-04",
+  "WSTG-BUSL-01",
+  "WSTG-CLNT-07",
+  "WSTG-CRYP-04",
+  "WSTG-INPV-01",
+  "WSTG-INPV-05",
+  "WSTG-INPV-11",
+  "WSTG-INPV-12",
+  "WSTG-INPV-19"
+ ],
+ "model_id": "ari-probe-strategy",
+ "task": {
+  "top_k": 3,
+  "type": "multiclass"
+ },
+ "training": {
+  "batch_size": 64,
+  "best_epoch": 8,
+  "best_val_loss": 1.46494,
+  "dropout": 0.2,
+  "epochs": 60,
+  "epochs_run": 14,
+  "hidden": 48,
+  "input_dim": 8192,
+  "lr": 0.003,
+  "numpy": "2.5.4",
+  "patience": 6,
+  "python": "3.12.14",
+  "seconds": 0.29,
+  "seed": 7,
+  "weight_decay": 1e-05
+ },
+ "version": "1.0.0",
+ "weights_bytes": 1575408,
+ "weights_sha256": "d3d4d2371fc746914b32b75e48df6a544d3cf655b781da43945c670d6afc51f9"
+}

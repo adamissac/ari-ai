@@ -30,6 +30,7 @@ boundaries [docs/15](../docs/15_SECURITY_BOUNDARIES.md).
 | Contracts | `security_agents/contracts/` | local runtime adapters; host boundary exports canonical `shared/` contracts |
 | Code intelligence | `security_agents/intel/` | hosted Git snapshots use the shared durable intelligence service; explicit dev fixtures use the local adapter |
 | LLM gateway | `security_agents/llm/` | standalone providers plus hosted `host.llm()` gateway integration |
+| Trained specialists | `security_agents/specialist_bridge.py` → `../specialists/` | one trained model per agent; advisory prompt data, Scout re-rank, Verify review note; audited `specialist.inference`; no authority ([ADR-0014](../docs/decisions/0014-trained-specialist-models.md)) |
 
 ## Install and run
 

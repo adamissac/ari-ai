@@ -14,6 +14,7 @@ COPY backend/ backend/
 COPY code-intelligence/ code-intelligence/
 COPY code-review/ code-review/
 COPY security-agents/ security-agents/
+COPY specialists/ specialists/
 RUN uv sync --frozen --no-dev
 # Railway runs API + worker in one service (deploy/railway/start.sh).
 COPY --chmod=755 deploy/railway/start.sh /usr/local/bin/railway-start

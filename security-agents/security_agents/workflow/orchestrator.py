@@ -18,7 +18,7 @@ from typing import Any
 
 from shared.scope import check_category_allowed
 
-from .. import standards_bridge
+from .. import specialist_bridge, standards_bridge
 from ..agents import diagnose as diagnose_agent
 from ..agents import fortify as fortify_agent
 from ..agents import patch as patch_agent
@@ -232,6 +232,11 @@ class AssessmentResult:
             "findings": [f.public() for f in self.findings],
             "usage": self.usage.model_dump(mode="json"),
             "audit_actions": [e.action for e in self.audit],
+            "specialist_inferences": [
+                {k: e.details.get(k) for k in ("agent", "model", "source", "top", "latency_ms", "reason")}
+                for e in self.audit
+                if e.action == "specialist.inference"
+            ],
             "error_code": self.error_code.value if self.error_code else None,
             "error_detail": self.error_detail,
         }
@@ -276,8 +281,11 @@ class Orchestrator:
         cancelled: Callable[[], bool] = lambda: False,
         now: Callable[[], datetime] = utcnow,
         external_pending: Callable[[], bool] | None = None,
+        specialists: Any | None = None,
     ) -> None:
         self.config = config
+        # Trained specialist models (advisory). None → the agents run without them.
+        self.specialists = specialists if specialists is not None else specialist_bridge.default()
         self.intel = intel
         self.gateway = gateway
         self.driver = driver
@@ -469,6 +477,13 @@ class Orchestrator:
             error_code=outcome.run.error_code,
         )
         return outcome
+
+    def _advise(self, subject_type: str, subject_id: str, advice: Any) -> Any:
+        """Audit one specialist inference (persisted with the assessment's audit chain)."""
+        if advice is not None:
+            self._audit("specialist.inference", subject_type, subject_id, actor="agent", actor_id=f"specialist:{advice.agent}",
+                        **specialist_bridge.audit_fields(advice))
+        return advice
 
     def _fail(self, code: ErrorCode, detail: str) -> AssessmentResult:
         target = (
@@ -735,8 +750,18 @@ class Orchestrator:
             ),
         )
         ctx = self._context(AgentName.SCOUT, "recon", services=self._read_services())
+        survey_block = ""
+        if self.specialists is not None:
+            rows, advices = specialist_bridge.scout_survey(self.specialists, self.intel)
+            model_id = next((a.model_id for a in advices if a.source == "model"), None)
+            self._audit("specialist.inference", "snapshot", self.intel.snapshot.snapshot_id, actor="agent",
+                        actor_id="specialist:scout", agent="scout", model=model_id,
+                        source="model" if rows else (advices[0].source if advices else "unavailable"),
+                        spans_scored=len(advices), top=json.dumps(rows[:5]),
+                        reason=None if rows else (advices[0].reason if advices else "no entry points"))
+            survey_block = specialist_bridge.scout_block(rows, model_id)
         outcome = self._run_step(
-            scout_agent.SPEC, ctx, scout_agent.build_prompt(data, self.intel), input_ref="scout:input"
+            scout_agent.SPEC, ctx, scout_agent.build_prompt(data, self.intel) + survey_block, input_ref="scout:input"
         )
         if not outcome.ok or not isinstance(outcome.output, scout_agent.ScoutOutput):
             self._audit("recon.failed", "assessment", self.config.assessment_id, error=outcome.run.error_code)
@@ -748,6 +773,17 @@ class Orchestrator:
             outcome.output, data, self.intel, max_items=self.config.max_hypotheses
         )
         ranked = scout_agent.rank(hypotheses, self.intel)
+        if self.specialists is not None and len(ranked) > 1:
+            suspicion: dict[str, float] = {}
+            for h in ranked:
+                a = specialist_bridge.scout_suspicion(self.specialists, self.intel, h)
+                if a is not None and a.source == "model":
+                    suspicion[h.id] = 1.0 - (a.score("safe") or 0.0)
+            reranked = specialist_bridge.blended_rank(hypotheses, ranked, suspicion)
+            if [h.id for h in reranked] != [h.id for h in ranked]:
+                self._audit("specialist.rerank", "assessment", self.config.assessment_id, actor="agent",
+                            actor_id="specialist:scout", before=[h.id for h in ranked], after=[h.id for h in reranked])
+            ranked = reranked
         for signal in outcome.output.suspicious_instructions:
             self._audit(
                 "signal.suspicious_instruction",
@@ -794,10 +830,16 @@ class Orchestrator:
             }
             ctx = self._context(AgentName.PROBE, f"validation:{index}", services=services)
             try:
+                advice = (
+                    self._advise("finding", finding.finding_id, specialist_bridge.probe_advice(self.specialists, hypothesis))
+                    if self.specialists is not None else None
+                )
                 outcome = self._run_step(
                     probe_agent.SPEC,
                     ctx,
-                    probe_agent.build_prompt(data, self.intel),
+                    probe_agent.build_prompt(data, self.intel) + specialist_bridge.block(
+                        advice, "Ranked OWASP WSTG validation strategies from a trained model. Choose a reviewed check "
+                        "template yourself; the executed template's result decides the outcome, not this ranking."),
                     input_ref=f"probe:{hypothesis.id}",
                 )
             except PlatformError as exc:
@@ -869,7 +911,11 @@ class Orchestrator:
         outcome = self._run_step(
             trace_agent.SPEC,
             ctx,
-            trace_agent.build_prompt(data, self.intel),
+            trace_agent.build_prompt(data, self.intel) + specialist_bridge.block(
+                self._advise("finding", finding.finding_id, specialist_bridge.trace_advice(self.specialists, finding.hypothesis))
+                if self.specialists is not None else None,
+                "MITRE ATT&CK tactics a trained model associates with this weakness (via CAPEC). Use them to decide "
+                "which paths to follow. Severity is computed by deterministic rules from verified steps, not from this."),
             input_ref=f"trace:{finding.finding_id}",
         )
         if not isinstance(outcome.output, trace_agent.TraceOutput):
@@ -911,7 +957,11 @@ class Orchestrator:
         outcome = self._run_step(
             diagnose_agent.SPEC,
             ctx,
-            diagnose_agent.build_prompt(data, self.intel),
+            diagnose_agent.build_prompt(data, self.intel) + specialist_bridge.block(
+                self._advise("finding", finding.finding_id, specialist_bridge.diagnose_advice(self.specialists, self.intel, finding))
+                if self.specialists is not None else None,
+                "Likely root-cause class from a trained model or its baseline (see source). Confirm it against the "
+                "code and the validation evidence; cite the cause span yourself."),
             input_ref=f"diagnose:{finding.finding_id}",
         )
         if not isinstance(outcome.output, diagnose_agent.DiagnoseOutput):
@@ -1023,7 +1073,11 @@ class Orchestrator:
         outcome = self._run_step(
             patch_agent.SPEC,
             ctx,
-            patch_agent.build_prompt(data, self.intel),
+            patch_agent.build_prompt(data, self.intel) + specialist_bridge.block(
+                self._advise("finding", finding.finding_id, specialist_bridge.patch_advice(self.specialists, self.intel, finding))
+                if attempt == 1 and self.specialists is not None else None,
+                "Suggested minimal remediation strategy (trained model or its baseline; see source). Keep the change "
+                "inside the approved files and preserve existing tests. Verify decides acceptance from executed checks."),
             input_ref=f"patch:{finding.plan.id}",
             attempt=attempt,
         )
@@ -1135,6 +1189,15 @@ class Orchestrator:
         result = verify_agent.to_result(
             out, data, evidence, sandbox_run_ids=sandbox_ids, verify_run_id=outcome.run.id
         )
+        if self.specialists is not None:
+            diff = str(self._patch_artifacts.get(candidate.id, {}).get("diff") or "")
+            advice = self._advise("patch", candidate.id, specialist_bridge.verify_advice(
+                self.specialists, diff, test_runs, unpatched_added_runs))
+            # Advisory only: the verdict above came from executed checks and stays as computed.
+            if advice is not None and advice.source == "model" and result.verdict == "accepted" and advice.top != "adequate":
+                finding.notes.append(
+                    f"verify specialist ({advice.model_id}) rates the evidence '{advice.top}' "
+                    f"({advice.predictions[0]['score']:.2f}); verdict unchanged, human review recommended"[:300])
         from ..regressions import RegressionEvidenceUnavailable, verified_bundle
 
         finding.verify_http_evidence = verify_agent.http_recheck_evidence(evidence, result.verdict)
@@ -1176,7 +1239,11 @@ class Orchestrator:
         outcome = self._run_step(
             fortify_agent.SPEC,
             ctx,
-            fortify_agent.build_prompt(data, self.intel),
+            fortify_agent.build_prompt(data, self.intel) + specialist_bridge.block(
+                self._advise("finding", finding.finding_id, specialist_bridge.fortify_advice(self.specialists, finding))
+                if self.specialists is not None else None,
+                "MITRE D3FEND countermeasures a trained model ranks for the ATT&CK technique this finding maps to. "
+                "Recommend only what fits this codebase; mappings stay proposed until a human accepts them."),
             input_ref=f"fortify:{finding.finding_id}",
         )
         if not isinstance(outcome.output, fortify_agent.FortifyOutput):
