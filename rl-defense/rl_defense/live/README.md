@@ -141,8 +141,12 @@ steps. The gate returns **`recommend_promote`**: all seven checks pass, the firs
 candidate to do so. It scores −5.30 against the tuned rules' −7.58, +9.51 [8.17, 10.79]
 over deployed and +2.28 [1.80, 2.76] over its own teacher. Caveats: the fixed
 `always_block_principal_long` scores −3.89 on this holdout; the online phase barely moved
-val after pretraining; and the live_v3 checkpoint cannot be served until the long-block
-contract extension lands. Promotion needs a human approver and was not done. See
+val after pretraining; and the review found that the historical lineage overstates the
+selected snapshot's history and that 60 online updates were skipped. The live_v3 checkpoint
+is servable since contracts 0.13. The original checkpoint and experience bytes are committed
+and hash-pinned (`EVIDENCE.json`; the log is gzip, restored with
+`python -m rl_defense.live.evidence restore results/live-retrain-v6`). Promotion needs a
+human approver and was not done. See
 [`results/live-retrain-v6/`](../../results/live-retrain-v6/PROVENANCE.md).
 
 ## What is real, and what is not
@@ -173,7 +177,7 @@ reach an observation. The gateway's own blocking is not counted as an anomaly.
 ## Tests
 
 ```sh
-.venv/bin/python -m pytest -q tests/test_live_gateway.py tests/test_live_loop.py tests/test_live_retrain.py tests/test_live_block_principal.py tests/test_live_v3.py tests/test_live_v4.py tests/test_live_v5.py tests/test_live_v6.py
+.venv/bin/python -m pytest -q tests/test_live_gateway.py tests/test_live_loop.py tests/test_live_retrain.py tests/test_live_block_principal.py tests/test_live_v3.py tests/test_live_v4.py tests/test_live_v5.py tests/test_live_v6.py tests/test_v6_evidence.py
 ```
 
 `test_live_v3.py` proves that delegated reads are benign but flagged, and that blanket

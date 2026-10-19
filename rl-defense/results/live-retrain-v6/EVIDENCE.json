@@ -1,0 +1,28 @@
+{
+  "schema": "live-evidence-index/0.1",
+  "run": "live-retrain-v6 (online DQfD), git_sha c788b5d, 2026-10-19 09:26-10:28 UTC",
+  "restored": "2026-10-19 from the run's own git-ignored output directory (runs/live/retrain-v6/) on the machine that produced it; bytes unchanged",
+  "artifacts": {
+    "checkpoint": {
+      "path": "candidate_online.pt",
+      "stored_as": "file",
+      "sha256": "8113a37f4ff9360a9efed2e9f499c4b2ae36e97bfb78372436f97da106fc05f1",
+      "note": "the selected candidate (env step 105000, noop margin 0.1); digest equals candidate.manifest.json checkpoint_sha256"
+    },
+    "experiment": {
+      "path": "candidate_online_experience.jsonl",
+      "stored_as": "gzip",
+      "stored_path": "candidate_online_experience.jsonl.gz",
+      "sha256": "bc04e57bc55493ebccd4b20a7b54ae82de7330fb5e41f384081adbb6b119d6d8",
+      "note": "complete log: 3000 demonstration + 150000 online transitions (153000 lines); the hash the checkpoint's own lineage.experience_sha256 pins"
+    },
+    "selected_experience": {
+      "path": "candidate_online_selected_experience.jsonl",
+      "stored_as": "prefix",
+      "of": "experiment",
+      "lines": 108000,
+      "sha256": "95ac416043056c8d8e9ab05c76edf2528f1ac4e9092f9b18a59017c597ab3080",
+      "note": "derived: the first 108000 lines (3000 demos + 105000 online steps, ending on an episode boundary) = the data available at the selected snapshot. Not pinned by the historical checkpoint, whose lineage overstates its history (PROVENANCE.md)"
+    }
+  }
+}
