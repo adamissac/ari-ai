@@ -17,6 +17,9 @@ Metrics (aggregated over episodes):
 ``action_space="live_v2"`` runs the loop with ``block_principal`` available. Policies built
 for the 48/22 simulator layout (``dqn_policy`` of a sim checkpoint, the v1 rules) see the
 first 48 features and 22 mask entries only, i.e. they cannot block principals.
+``"live_v3"`` adds ``block_principal_long``; the rules then also choose a block duration
+(``long_mode``) and a minimum per-principal volume (``block_min_volume``), see
+:func:`tune_rules_v3`.
 """
 
 from __future__ import annotations
@@ -29,7 +32,13 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from rl_defense.envs.config import NODE_NAMES
 from rl_defense.envs.defense_sim import N_ACTIONS, NOOP_ACTION, OBS_DIM, encode_action
-from rl_defense.live.actions import BLOCK_PRINCIPAL_ACTION, ActionSpace
+from rl_defense.live.actions import (
+    BLOCK_PRINCIPAL_ACTION,
+    BLOCK_PRINCIPAL_LONG_ACTION,
+    BLOCK_TOP_PRINCIPAL_LONG_ACTION,
+    FEATURE_INDEX,
+    ActionSpace,
+)
 from rl_defense.live.contracts import LiveTransition
 from rl_defense.live.loop import LiveDefenseLoop, LoopConfig
 from rl_defense.live.scenarios import LiveScenario
@@ -172,14 +181,36 @@ def always_block_principal(obs: np.ndarray, mask: np.ndarray) -> int:  # noqa: A
     return NOOP_ACTION
 
 
+def always_block_principal_long(obs: np.ndarray, mask: np.ndarray) -> int:  # noqa: ARG001
+    """Naive v3 reference: block (or extend) every flagged principal for the long duration."""
+    if len(mask) > BLOCK_PRINCIPAL_LONG_ACTION and mask[BLOCK_PRINCIPAL_LONG_ACTION]:
+        return BLOCK_PRINCIPAL_LONG_ACTION
+    return NOOP_ACTION
+
+
+def always_block_top_principal_long(obs: np.ndarray, mask: np.ndarray) -> int:  # noqa: ARG001
+    """Naive v3 reference: long-block the heaviest flagged principal whenever possible."""
+    if len(mask) > BLOCK_TOP_PRINCIPAL_LONG_ACTION and mask[BLOCK_TOP_PRINCIPAL_LONG_ACTION]:
+        return BLOCK_TOP_PRINCIPAL_LONG_ACTION
+    return NOOP_ACTION
+
+
+def prefix_view(policy: PolicyFn, obs_dim: int, n_actions: int) -> PolicyFn:
+    """Run a narrower-layout policy inside a wider loop: it sees only its own features and
+    actions (an extension's extras are invisible, its indices unchanged)."""
+    return lambda obs, mask: int(policy(obs[:obs_dim], mask[:n_actions]))
+
+
 def sim_view(policy: PolicyFn) -> PolicyFn:
-    """Run a 48/22 simulator-layout policy inside either loop (v2 extras are invisible)."""
-    return lambda obs, mask: int(policy(obs[:OBS_DIM], mask[:N_ACTIONS]))
+    """Run a 48/22 simulator-layout policy inside any loop (live extras are invisible)."""
+    return prefix_view(policy, OBS_DIM, N_ACTIONS)
 
 
 def dqn_policy(agent) -> PolicyFn:  # noqa: ANN001
     act = lambda obs, mask: int(agent.greedy_action(obs, mask))  # noqa: E731
-    return sim_view(act) if agent.n_actions == N_ACTIONS else act
+    if agent.n_actions == N_ACTIONS:
+        return sim_view(act)
+    return prefix_view(act, agent.obs_dim, agent.n_actions)
 
 
 RULES_GRID = {
@@ -208,7 +239,8 @@ def tune_rules(
     if any(s.split != "train" for s in train_scenarios):
         raise ValueError("rules must be tuned on train scenarios only")
     g = grid or RULES_GRID
-    blocks = g.get("block_anomaly", RULES_BLOCK_GRID) if action_space == "live_v2" else (None,)
+    has_block = action_space in ("live_v2", "live_v3")
+    blocks = g.get("block_anomaly", RULES_BLOCK_GRID) if has_block else (None,)
     keys = ("isolate_anomaly", "rate_limit_alerts", "monitor_anomaly")
     table: list[dict] = []
     for iso, rl, mon, blk in product(*(g[k] for k in keys), blocks):
@@ -230,24 +262,116 @@ def tune_rules(
     return params, table
 
 
+# live_v3 stage-2 grid (base docs/09 thresholds fixed at the stage-1 optimum):
+# block_anomaly as above; block_min_volume = block only if cross-tenant attempts per flagged
+# principal (obs ``flagged_volume``, /6) exceed it; long_mode = when to use the long block:
+#   never  - short blocks only (the v2 rules)
+#   always - every block is long
+#   repeat - long when a flagged principal was blocked before this episode (re-offender)
+#   extend - short first; long only to extend a block whose principal is still flagged
+#   outsider - long when the flagged principals read none of their own data (no customer
+#            traffic to lose), short otherwise
+# long_target = whom a long block covers: every flagged principal, or only the heaviest
+RULES_V3_GRID = {
+    "block_anomaly": (0.1, 0.2, 0.35, 0.5),
+    "block_min_volume": (0.0, 0.2, 0.35, 0.5),
+    "long_mode": ("never", "always", "repeat", "extend", "outsider"),
+    "long_target": ("all", "top"),
+}
+LONG_MODES = RULES_V3_GRID["long_mode"]
+
+
 def rules_policy(params: dict) -> PolicyFn:
-    """docs/09 threshold rules; with ``block_anomaly`` they first try ``block_principal``."""
+    """docs/09 threshold rules; with ``block_anomaly`` they first try ``block_principal``,
+    and with ``long_mode`` (live_v3) also ``block_principal_long``."""
     from rl_defense.baselines.policies import ThresholdParams, ThresholdRulesPolicy, node_feature
     from rl_defense.envs.config import NODE_NAMES as _NODES
 
     p = dict(params)
     block = p.pop("block_anomaly", None)
+    min_vol = p.pop("block_min_volume", 0.0)
+    long_mode = p.pop("long_mode", "never")
+    long_target = p.pop("long_target", "all")
+    if long_mode not in LONG_MODES or long_target not in ("all", "top"):
+        raise ValueError(f"unknown long_mode/long_target {long_mode!r}/{long_target!r}")
+    long_action = (
+        BLOCK_TOP_PRINCIPAL_LONG_ACTION if long_target == "top" else BLOCK_PRINCIPAL_LONG_ACTION
+    )
     base = sim_view(ThresholdRulesPolicy(ThresholdParams(**p)).act)
     if block is None:
         return base
+    i_vol, i_rep = FEATURE_INDEX["flagged_volume"], FEATURE_INDEX["flagged_repeat"]
+    i_own = FEATURE_INDEX["flagged_own_share"]
 
     def act(obs: np.ndarray, mask: np.ndarray) -> int:
         hottest = max(node_feature(obs, i, "anomaly_score") for i in range(len(_NODES)))
-        if len(mask) > BLOCK_PRINCIPAL_ACTION and mask[BLOCK_PRINCIPAL_ACTION] and hottest > block:
+        has_long = len(mask) > BLOCK_PRINCIPAL_LONG_ACTION
+        trigger = hottest > block and (not has_long or obs[i_vol] > min_vol)
+        if trigger and has_long:
+            short_ok = bool(mask[BLOCK_PRINCIPAL_ACTION])
+            long_ok = bool(mask[long_action])
+            want_long = (
+                long_mode == "always"
+                or (long_mode == "repeat" and obs[i_rep] > 0)
+                or (long_mode == "outsider" and obs[i_own] == 0)
+            )
+            if long_ok and (want_long or (long_mode == "extend" and not short_ok)):
+                return long_action
+            if short_ok and long_mode != "always":
+                return BLOCK_PRINCIPAL_ACTION
+        elif trigger and len(mask) > BLOCK_PRINCIPAL_ACTION and mask[BLOCK_PRINCIPAL_ACTION]:
             return BLOCK_PRINCIPAL_ACTION
         return base(obs, mask)
 
     return act
+
+
+def tune_rules_v3(
+    train_scenarios: list[LiveScenario],
+    app_factory,  # noqa: ANN001
+    *,
+    episodes: int = 2,
+    grid: dict[str, tuple] | None = None,
+    base_grid: dict[str, tuple[float, ...]] | None = None,
+) -> tuple[dict, list[dict]]:
+    """Two-stage tuning on TRAIN only, fixed before any v3 evaluation:
+    stage 1 = the v2 grid (docs/09 thresholds × short-block threshold) in the v3 loop;
+    stage 2 = the stage-1 docs/09 thresholds fixed, grid over :data:`RULES_V3_GRID`.
+    Returns the best of both stages (stage-1 rows carry ``long_mode="never"``)."""
+    stage1_params, stage1 = tune_rules(
+        train_scenarios, app_factory, episodes=episodes, grid=base_grid, action_space="live_v3"
+    )
+    fixed = {
+        k: stage1_params[k] for k in ("isolate_anomaly", "rate_limit_alerts", "monitor_anomaly")
+    }
+    g = grid or RULES_V3_GRID
+    from itertools import product
+
+    table = [{**r, "stage": 1} for r in stage1]
+    for blk, vol, mode, tgt in product(
+        g["block_anomaly"], g["block_min_volume"], g["long_mode"], g["long_target"]
+    ):
+        if mode == "never" and tgt != "all":
+            continue  # long_target is irrelevant without long blocks
+        params = {
+            **fixed,
+            "block_anomaly": blk,
+            "block_min_volume": vol,
+            "long_mode": mode,
+            "long_target": tgt,
+        }
+        s = summarize(
+            run_policy(
+                rules_policy(params),
+                train_scenarios,
+                app_factory,
+                episodes=episodes,
+                action_space="live_v3",
+            )
+        )
+        table.append({**params, "train_reward": s["reward"], "stage": 2})
+    best = max(table, key=lambda r: r["train_reward"])
+    return {k: v for k, v in best.items() if k not in ("train_reward", "stage")}, table
 
 
 # ---------------------------------------------------------------------- promotion gate

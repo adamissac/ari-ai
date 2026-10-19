@@ -1,0 +1,20 @@
+# Train v3 (created 2026-10-19). A bookkeeper (dave) legitimately reads alice's payments
+# every window; rare short attacks by bob. Blanket blocking of everyone the cross-tenant
+# detector flags therefore blocks a legitimate reader most of the time.
+name: delegate_quiet
+split: train
+horizon: 30
+schedule: bursty
+p_start: 0.08
+p_stop: 0.4
+attack_per_step: 6
+benign_per_step: 6
+attackers: [bob]
+victims: [alice]
+benign: [alice, bob, dave]
+delegations: ["dave:alice"]
+delegate_per_step: 1
+delegate_burst_p: 0.15
+delegate_burst_size: 3
+seed_start: 5000
+episodes: 14
