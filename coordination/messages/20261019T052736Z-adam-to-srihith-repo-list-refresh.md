@@ -1,0 +1,22 @@
+# MSG: refresh repository picker after GitHub App selection changes
+- ID: `20261019T052736Z-adam-to-srihith-repo-list-refresh`
+- From: Adam
+- To: Srihith
+- Kind: implementation-handoff
+- Timestamp (UTC): 2026-10-19T05:27:36Z
+- Branch / commit / PR or issue link: `fix/GH-repo-list-refresh` (pushed; no PR opened)
+- Related subsystem(s): backend GitHub App and repository-list API; frontend connect page and repo picker
+- Summary (facts, not assumptions):
+  - `GET /api/v1/github/repositories` now attempts a live refresh for the authenticated user's GitHub App personal installation before returning repository rows.
+  - Refresh is accepted only for a `User` installation matching the stored GitHub ID, or a case-insensitive login match when no GitHub ID is stored. Only rows for that installation are replaced; rows from other installations are preserved.
+  - Organization-installation repositories remain in the sign-in snapshot. App-not-configured and HTTP errors are logged and fall back to the stored snapshot.
+  - The connect page and repository picker link to `/api/v1/auth/github/login` with the copy: “Added repositories to an organization? Refresh from GitHub to see them.”
+  - Dev-login sessions skip live refresh when dev login is enabled and no GitHub ID is present, because the dev login name is user-supplied rather than an authenticated GitHub identity.
+- Interface requested/proposed:
+  - No shared API contract or database change. `GitHubApp` now exposes `user_installation(login)` and `installation_repositories(installation_id)`; the repository-list response shape is unchanged.
+- Breaking change? No. Live personal-installation refresh is best-effort; existing snapshots are served on GitHub configuration or HTTP errors.
+- Action required by recipient: review the implementation and tests on `fix/GH-repo-list-refresh`; no contract approval is needed.
+- Evidence:
+  - Backend lint/format passed; targeted backend suite: 39 passed, full touched backend tests: 24 passed.
+  - Frontend lint and typecheck passed; Vitest: 69 files and 277 tests passed.
+  - No live GitHub App request or browser visual check was performed.
