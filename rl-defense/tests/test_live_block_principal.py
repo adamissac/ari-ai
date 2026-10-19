@@ -196,7 +196,7 @@ def test_widened_sim_agent_acts_exactly_like_the_sim_agent(sim_ckpt):
             assert wide.greedy_action(o2, np.append(mask, True)) == a
 
 
-def test_v2_checkpoint_roundtrip_and_lab_only(sim_ckpt, tmp_path):
+def test_v2_checkpoint_roundtrip(sim_ckpt, tmp_path):
     from rl_defense.checkpoint import load_checkpoint, save_checkpoint
     from rl_defense.inference import PolicyRunner
 
@@ -214,8 +214,7 @@ def test_v2_checkpoint_roundtrip_and_lab_only(sim_ckpt, tmp_path):
     assert (back.obs_dim, back.n_actions) == (LIVE_V2_OBS_DIM, LIVE_V2_N_ACTIONS)
     assert bm["checkpoint_sha256"] == m["checkpoint_sha256"]
     assert back.disruptive[BLOCK_PRINCIPAL_ACTION]
-    with pytest.raises(ValueError, match="lab-only"):
-        PolicyRunner(tmp_path / "v2.pt")
+    assert PolicyRunner(tmp_path / "v2.pt").space == "live_v2"  # served: test_v2_recommendations
     with pytest.raises(ValueError, match="does not match env"):
         save_checkpoint(wide, tmp_path / "bad.pt", seed=0, steps=1, train_configs={})
 
