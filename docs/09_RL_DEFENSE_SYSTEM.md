@@ -44,8 +44,12 @@ actions. All actions are *simulated* effects.
 
 The live lab (`rl-defense/rl_defense/live/`) also has an action space v2: the same 22
 actions plus global `block_principal` (index 22), which the gateway enforces against the
-in-process demo app. `block_principal` is part of `shared.rl.DefenseActionName`, but no
-simulator policy can choose it, and v2 checkpoints are not served as recommendations.
+in-process demo app. `block_principal` is part of `shared.rl.DefenseActionName`; no
+simulator policy can choose it. `PolicyRunner` serves v2 checkpoints too: it reads
+`PlatformFacts.principal_block_active` (observation feature 48) and
+`principal_block_available` (the block mask entry). Both default to False, so a source
+without a principal-detecting gateway (the backend today) never gets `block_principal`
+recommended. v2 recommendations carry a lab-derived caveat.
 
 ### Adversary model
 Abstract stage progression per node: `none → foothold → escalated → impact`.
