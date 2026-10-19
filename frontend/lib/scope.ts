@@ -8,4 +8,4 @@ export const SCOPE_CHECK_CATEGORIES: readonly CheckCategory[] = [
 
 /** What Request scope records: a pending authorization, not an active test window. */
 export const REQUEST_SCOPE_NOTE =
-  'Requesting a scope records a pending authorization for the listed sandbox build targets and check categories. It does not become active until a different project member approves it, and it does not start a check or grant access outside those targets.';
+  'Requesting a scope records a pending authorization for the listed sandbox build targets and check categories. It does not become active until a project owner explicitly approves it (owners may approve their own sandbox-only scopes), and it does not start a check or grant access outside those targets.';
