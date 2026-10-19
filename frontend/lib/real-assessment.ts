@@ -22,7 +22,7 @@ export function scopeStateFor(
   const active = scopes.find(scope => scope.status === 'active' && coversRepo(scope) && Date.parse(scope.expires_at) > now.getTime());
   if (active) return { kind: 'active', scope: active };
 
-  const pending = scopes.find(scope => scope.status === 'pending' && coversRepo(scope));
+  const pending = scopes.find(scope => scope.status === 'pending' && coversRepo(scope) && Date.parse(scope.expires_at) > now.getTime());
   return pending ? { kind: 'pending', scope: pending } : { kind: 'none' };
 }
 
@@ -30,4 +30,9 @@ export function assessmentsForCommit(items: Assessment[], repoId: string, sha: s
   return items
     .filter(item => item.repo_id === repoId && item.commit_sha === sha)
     .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+}
+
+/** Owners may approve their own scope only when every target is sandbox-bound. */
+export function isSandboxOnlyScope(scope: AuthorizedScope): boolean {
+  return scope.targets.length > 0 && scope.targets.every(target => target.kind === 'sandbox_build');
 }
