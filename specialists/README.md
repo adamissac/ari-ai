@@ -126,7 +126,8 @@ it). Agents do receive behavioral expectations from the same file's `expectation
 and invariants also stated in the target README); discovery is therefore with intended-behavior
 context, not a fully blind hunt. Results go in
 [`results/live_comparison.json`](results/live_comparison.json) (every run, the summary, excluded runs).
-`--resume` refuses if mode or settings differ from the file on disk.
+`--resume` refuses if mode, settings, or the SHA-256 of the target tree or `labels.yaml`
+(`settings.target_sha256` / `labels_sha256`) differ from the file on disk.
 
 - `claude_only`: `Orchestrator(specialists=Specialists(enabled=False))`
 - `hybrid`: the deployed specialists (Scout, Probe, Verify models; baselines for the other four)
@@ -137,9 +138,11 @@ Settings: `claude-opus-5-5` for all roles, `--max-hypotheses 3 --validate 2`, $4
 **Status: one usable run per configuration, so there is no comparison yet.** Six runs were
 started ($7.04 in total). After three of them the provider returned `LLM_UNAVAILABLE` on every
 call: one Claude-only run failed in Patch after spending $1.79, and three runs failed at Scout's
-first turn ($0). Those four are excluded and listed in `excluded_runs`. The provider failures are
-an outage or credit problem, not agent behaviour; `provider_failure()` keeps model refusals in
-the results.
+first turn ($0). Those four are excluded and listed in `excluded_runs`. They were scored before
+per-invocation error details were recorded, so their reason is marked *unverified*. A direct API
+call made right after them returned HTTP 400 "credit balance is too low", which is why they are
+treated as a credit failure rather than agent behaviour. New runs record each failure's detail, and
+`provider_failure()` keeps model refusals in the results.
 
 | Per assessment (n = 1 each) | Claude-only | Hybrid |
 |---|---|---|

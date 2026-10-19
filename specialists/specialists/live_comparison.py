@@ -38,6 +38,7 @@ part of the specialists' runtime (which stays dependency-free).
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -499,6 +500,7 @@ def provider_failure(score: dict[str, Any]) -> str | None:
     if score.get("state") == "crashed":
         return f"crashed: {score.get('error_code')}"
     for agent, a in (score.get("per_agent") or {}).items():
+        legacy = "error_details" not in a and "error_turns" not in a
         details = a.get("error_details") or []
         error_turns = a.get("error_turns") or []
         for i, code in enumerate(a.get("error_codes", [])):
@@ -511,6 +513,9 @@ def provider_failure(score: dict[str, Any]) -> str | None:
                 turns = int(error_turns[i]) if i < len(error_turns) else 0
                 if turns > 0:
                     continue
+            if legacy:
+                # Recorded before details were kept: refusal vs provider failure is not on record.
+                return f"{agent}: LLM_UNAVAILABLE, unverified (legacy record without error detail)"
             return f"{agent}: LLM_UNAVAILABLE {detail or '(provider error)'}"[:200]
     return None
 
@@ -530,6 +535,20 @@ def _finish(doc: dict[str, Any], runs: list[dict[str, Any]], planted_ids: list[s
     _write(out, doc)
 
 
+def _digest(paths: list[Path], root: Path) -> str:
+    h = hashlib.sha256()
+    for f in sorted(paths):
+        h.update(str(f.relative_to(root)).encode() + b"\0" + f.read_bytes() + b"\0")
+    return h.hexdigest()
+
+
+def experiment_identity() -> dict[str, str]:
+    """What was evaluated: the target's source tree and the answer key, by content hash."""
+    src = TARGET / "target"
+    files = [f for f in src.rglob("*") if f.is_file() and "__pycache__" not in f.parts]
+    return {"target_sha256": _digest(files, src), "labels_sha256": _digest([TARGET / "labels.yaml"], TARGET)}
+
+
 def _settings(*, max_hypotheses: int, validate: int, per_run_cap: float, total_max_usd: float) -> dict[str, Any]:
     return {
         "max_hypotheses": max_hypotheses,
@@ -537,6 +556,7 @@ def _settings(*, max_hypotheses: int, validate: int, per_run_cap: float, total_m
         "per_run_cap_usd": per_run_cap,
         "total_cap_usd": total_max_usd,
         "target": "examples/payments-lite",
+        **experiment_identity(),
     }
 
 
@@ -547,7 +567,7 @@ def _resume_compatible(doc: dict[str, Any], *, mode: str, settings: dict[str, An
     if doc.get("mode") != mode:
         return f"mode mismatch: file has {doc.get('mode')!r}, invocation wants {mode!r}"
     prior = doc.get("settings") or {}
-    for key in ("max_hypotheses", "validate", "per_run_cap_usd", "target"):
+    for key in ("max_hypotheses", "validate", "per_run_cap_usd", "target", "target_sha256", "labels_sha256"):
         if key in prior and prior[key] != settings.get(key):
             return f"settings.{key} mismatch: file has {prior[key]!r}, invocation wants {settings.get(key)!r}"
     return None

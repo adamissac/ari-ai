@@ -6,7 +6,9 @@
   "validate": 2,
   "per_run_cap_usd": 4.0,
   "total_cap_usd": 20.0,
-  "target": "examples/payments-lite"
+  "target": "examples/payments-lite",
+  "target_sha256": "74a85456408cef54f25ef513a5254d7545d723a4f7bf69f71596827e47f8da6c",
+  "labels_sha256": "5ccbdd38cc27f50ee6ab59f2973258a7f35fd9e4670bba7e2874bb898757a1c9"
  },
  "answer_key": {
   "planted": [
@@ -2303,25 +2305,26 @@
    "config": "claude_only",
    "attempt": 2,
    "usd": 1.79438,
-   "reason": "patch: LLM_UNAVAILABLE (provider error)"
+   "reason": "patch: LLM_UNAVAILABLE, unverified (legacy record without error detail)"
   },
   {
    "config": "hybrid",
    "attempt": 2,
    "usd": 0.0,
-   "reason": "scout: LLM_UNAVAILABLE (provider error)"
+   "reason": "scout: LLM_UNAVAILABLE, unverified (legacy record without error detail)"
   },
   {
    "config": "claude_only",
    "attempt": 3,
    "usd": 0.0,
-   "reason": "scout: LLM_UNAVAILABLE (provider error)"
+   "reason": "scout: LLM_UNAVAILABLE, unverified (legacy record without error detail)"
   },
   {
    "config": "hybrid",
    "attempt": 3,
    "usd": 0.0,
-   "reason": "scout: LLM_UNAVAILABLE (provider error)"
+   "reason": "scout: LLM_UNAVAILABLE, unverified (legacy record without error detail)"
   }
- ]
+ ],
+ "excluded_runs_note": "The four excluded attempts were scored before per-invocation error details were recorded, so their reason is marked unverified. A direct API call made right after them returned HTTP 400 'credit balance is too low', which is the basis for excluding them as provider failures, not agent behaviour."
 }

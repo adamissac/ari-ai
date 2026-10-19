@@ -143,3 +143,16 @@ def test_replay_fixed_results_include_verify_evidence():
     assert authz["verify_evidence"]
     assert authz["verify_evidence"][0]["verdict"] == "accepted"
     assert authz["verify_evidence"][0]["checks"]
+
+
+def test_legacy_failure_without_detail_is_marked_unverified():
+    legacy = {"state": "completed", "per_agent": {"patch": {"error_codes": ["LLM_UNAVAILABLE"], "llm_turns": 6}}}
+    assert "unverified" in lc.provider_failure(legacy)
+
+
+def test_resume_refuses_a_different_target_or_answer_key():
+    settings = lc._settings(max_hypotheses=3, validate=2, per_run_cap=4.0, total_max_usd=20.0)
+    doc = {"mode": "live", "runs": [{}], "settings": dict(settings)}
+    assert lc._resume_compatible(doc, mode="live", settings=settings) is None
+    doc["settings"]["target_sha256"] = "0" * 64
+    assert "target_sha256" in lc._resume_compatible(doc, mode="live", settings=settings)
