@@ -223,3 +223,6 @@ provide a published image digest or a deployment attestation.
 The same run's ordinary security suite passed **451 tests, with 18 skips**. These
 scripted model runs and container tests do not establish a live seven-role provider
 trace. Docker execution is CI evidence; no local Docker engine is claimed.
+
+
+Scope guard policy follows ADR-0016: an owner-approved sandbox-only scope may have the same requester and approver, including in multi-member organizations. Empty or mixed/non-sandbox target sets do not receive the self-approval exception.

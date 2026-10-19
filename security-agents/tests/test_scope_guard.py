@@ -52,11 +52,21 @@ def test_unapproved_scope_denied():
     assert not d.allowed and d.reason_code == "SCOPE_NOT_APPROVED"
 
 
-def test_self_approval_denied_in_multi_member_org():
+@pytest.mark.parametrize("member_count", [1, 2])
+def test_self_approved_sandbox_scope_is_allowed(member_count):
     scope = make_scope(approved_by="usr_same", requested_by="usr_same")
-    assert not check(scope, RUN, NOW, org_member_count=2).allowed
-    # A single-member org may self-approve (docs/15 §3).
-    assert check(scope, RUN, NOW, org_member_count=1).allowed
+    assert check(scope, RUN, NOW, org_member_count=member_count).allowed
+    assert check(scope, ActionRequest(action="assessment_start"), NOW, org_member_count=member_count).allowed
+
+
+def test_self_approval_does_not_authorize_non_sandbox_targets():
+    scope = make_scope(approved_by="usr_same", requested_by="usr_same")
+    # Simulate a future target kind, bypassing schema validation only in this boundary test.
+    target = scope.targets[0].model_copy(update={"kind": "external_host"})
+    for targets in ([], [target], [scope.targets[0], target]):
+        invalid = scope.model_copy(update={"targets": targets})
+        decision = check(invalid, ActionRequest(action="assessment_start"), NOW, org_member_count=2)
+        assert not decision.allowed and decision.reason_code == "APPROVER_IS_REQUESTER"
 
 
 def test_target_not_in_scope_denied():

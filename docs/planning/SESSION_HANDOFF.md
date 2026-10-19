@@ -930,3 +930,6 @@ Calmer video zoom: replace front-loaded cubic progress with smoothstep and inter
 
 
 Fixed commit-screen authorization deadlock at explicit owner direction. Sandbox-only owner self-approval is allowed and audited; other members cannot activate scopes. Added an inline approval action, ten-second/focus refresh via useResource, stale-refresh errors, and expiry filtering. Backend API/idempotency tests: 15 passed. Frontend full suite: 283 passed; ESLint/TypeScript passed. Policy recorded in ADR-0016.
+
+
+Follow-up: aligned the runtime scope guard with owner sandbox self-approval (both single- and multi-member orgs), added empty/external/mixed-target denial regressions (27 guard tests pass), and fixed backend test formatting required by CI.
