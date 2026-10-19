@@ -16,6 +16,7 @@
   "raise_monitoring": "The simulated action does not specify what is monitored, so no single D3FEND detection technique can be justified.",
   "noop": "Not a countermeasure.",
   "request_reassessment": "A workflow action, not a countermeasure.",
-  "escalate_to_human": "A workflow action, not a countermeasure."
+  "escalate_to_human": "A workflow action, not a countermeasure.",
+  "block_principal": "Live-lab action that temporarily refuses a flagged principal's requests on one node. D3FEND Account Locking (D3-AL) is the nearest candidate, but the control is per-node and lasts a few windows, so no mapping is asserted until a human reviews it."
  }
 }
