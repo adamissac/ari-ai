@@ -2,11 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { ReplayStage } from '@/components/lab-replay';
-import { Term } from '@/components/term';
 import { Empty, ErrorState, Field, inputClass, Loading, Mono, Panel } from '@/components/ui';
-import { defenderCountPhrase, machineCountPhrase } from '@/components/lab-copy';
-import { num } from '@/lib/format';
-import { domain, HIGHER_IS_BETTER, METRIC_LABEL, metricNames, metricRows, sampleSize } from '@/lib/lab';
+import { defenderCountPhrase } from '@/components/lab-copy';
+import { sampleSize } from '@/lib/lab';
 import { keyTakeaway, POLICY_NAME, policyName, scenarioName, SCORE_METRICS, scoreboard, type ScoreMetric, tradeoffNote } from '@/lib/lab-plain';
 import type { BundleResponse, DefenseLabBundle, LabEpisode } from '@/lib/lab-types';
 
@@ -52,7 +50,7 @@ export default function DefenseLabPage() {
             <p className="label-mono text-white/60">Defense Lab · research</p>
             <h1 className="display mt-3 text-3xl font-semibold md:text-5xl">Can an AI learn to defend a network?</h1>
             <p className="mt-4 text-sm text-white/75 md:text-base">
-              We trained an AI defender in a practice network and tested it against simpler defenders on held-out evaluation runs. This page shows the scores and lets you replay recorded evaluation runs.
+              We trained an AI defender in a practice network and scored it against simpler defenders on runs it never saw in training.
             </p>
           </div>
           {protocols.status === 'ready' && protocols.data.length > 0 && (
@@ -76,56 +74,37 @@ export default function DefenseLabPage() {
   );
 }
 
-const GAME_STEPS: { n: string; title: string; body: (machines: string) => string }[] = [
-  { n: '01', title: 'An isolated test network', body: machines => `${machines.charAt(0).toUpperCase()}${machines.slice(1).replace(/machines?$/, m => `test ${m}`)}, some reachable from the internet, some holding critical data.` },
-  { n: '02', title: 'An adversarial test agent', body: () => 'It attempts to reach a critical service while the defender responds.' },
-  { n: '03', title: 'A defender choosing responses', body: () => 'Each step it chooses from a fixed set of responses, such as watching, slowing traffic or cutting a machine off.' },
-];
-
 function Lab({ data }: { data: BundleResponse }) {
   const { bundle, provenance } = data;
   return (
     <div className="flex flex-col gap-16">
-      <section aria-labelledby="lab-what" data-testid="lab-intro" className="paper py-14 md:py-16">
+      <section aria-labelledby="lab-what" data-testid="lab-intro">
         <h2 id="lab-what" className="sr-only">What is this?</h2>
         <p className="lab-lede">
-          A controlled network evaluation. An AI defender learned by trial and error a <Term t="policy">policy</Term>:
-          which responses protect services without shutting the business down.
+          A controlled network evaluation. An AI defender learned by trial and error which
+          responses protect services without shutting the business down.
         </p>
-        <ol className="mt-5 grid gap-3 md:grid-cols-3">
-          {GAME_STEPS.map(step => (
-            <li key={step.n} className="lab-step">
-              <span className="lab-step-n" aria-hidden="true">{step.n}</span>
-              <p className="mt-4 font-semibold tracking-tight">{step.title}</p>
-              <p className="mt-1 text-sm text-muted">{step.body(machineCountPhrase(bundle.scenarios))}</p>
-            </li>
-          ))}
-        </ol>
         <p role="note" className="lab-caveat mt-4" data-testid="lab-caveat">
           <svg viewBox="0 0 16 16" className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round"><path d="M8 1.8 14.6 13.5H1.4z" strokeLinejoin="round" /><path d="M8 6.3v3.4M8 11.7v.01" /></svg>
-          <span><strong>Controlled test environment{bundle.simulation_only ? '' : ' (flag missing!)'}.</strong> Results come from an isolated test network, not a connected production system. This is not real network detection and no action is ever applied automatically.</span>
+          <span><strong>Controlled test environment{bundle.simulation_only ? '' : ' (flag missing!)'}.</strong> Results come from an isolated test network, not a connected production system. No action is ever applied automatically.</span>
         </p>
       </section>
-      <Replay bundle={bundle} />
       <Scoreboard bundle={bundle} />
+      <Replay bundle={bundle} />
       <details className="group rounded-2xl border border-line bg-panel" data-testid="lab-details">
         <summary className="flex cursor-pointer list-none items-center gap-2 px-5 py-4 text-sm font-semibold">
           <span aria-hidden="true" className="inline-block transition-transform group-open:rotate-90">▸</span>
-          For reviewers: every metric, per scenario, and where these numbers come from
+          Where these numbers come from
         </summary>
-        <div className="flex flex-col gap-4 border-t border-line p-5">
+        <div className="border-t border-line p-5">
           <Panel title="Provenance">
             <dl className="grid gap-x-4 gap-y-1 text-xs text-muted sm:grid-cols-[auto_1fr]">
               <dt>Source</dt><dd><Mono>{provenance.path}</Mono> — committed evaluation artifact, validated against <Mono>{provenance.schemaPath}</Mono>. Not yet served by the backend API.</dd>
-              <dt>Bundle sha256</dt><dd><Mono>{provenance.sha256}</Mono> ({(provenance.bytes / 1024 / 1024).toFixed(2)} MB)</dd>
               <dt>Environment</dt><dd><Mono>{bundle.env_id}</Mono> · schema {bundle.schema_version}</dd>
               <dt>Run</dt><dd><Mono>{bundle.source_run}</Mono> at commit <Mono>{bundle.git_sha.slice(0, 12)}</Mono></dd>
               <dt>Training seeds</dt><dd>{bundle.training_seeds.join(', ')} · {bundle.episodes_per_config_per_seed} episodes per held-out config per seed</dd>
-              <dt>Checkpoints</dt>
-              <dd className="flex flex-col">{Object.entries(bundle.checkpoint_sha256).map(([f, h]) => <span key={f}><Mono>{f}</Mono> sha256 <Mono>{h.slice(0, 16)}…</Mono></span>)}</dd>
             </dl>
           </Panel>
-          <Metrics bundle={bundle} />
         </div>
       </details>
     </div>
@@ -137,6 +116,7 @@ const HEADLINE: readonly { key: string; label: string; vs: string }[] = [
   { key: 'service_uptime', label: 'of the time services stayed up', vs: 'threshold_rules' },
   { key: 'time_to_containment', label: 'steps on average to contain', vs: 'threshold_rules' },
 ];
+const HEADLINE_KEYS = new Set(HEADLINE.map(h => h.key));
 
 const fmtScore = (metric: ScoreMetric, x: number | null) => (x === null ? '—' : metric.percent ? `${x.toFixed(1)}%` : x.toFixed(1));
 const fmtRange = (metric: ScoreMetric, lo: number | null, hi: number | null) =>
@@ -185,16 +165,18 @@ function Direction({ higher }: { higher: boolean }) {
 function Scoreboard({ bundle }: { bundle: DefenseLabBundle }) {
   const n = sampleSize(bundle, null);
   const tradeoff = tradeoffNote(bundle);
-  const metrics = SCORE_METRICS.map(metric => ({ metric, cells: scoreboard(bundle, metric) })).filter(m => !m.cells.every(c => c.value === null));
+  const metrics = SCORE_METRICS.filter(m => HEADLINE_KEYS.has(m.key))
+    .map(metric => ({ metric, cells: scoreboard(bundle, metric) }))
+    .filter(m => !m.cells.every(c => c.value === null));
   return (
     <section aria-labelledby="score-title" data-testid="lab-scoreboard" className="paper py-14 md:py-20">
-      <p className="lab-eyebrow">02 · Compare</p>
+      <p className="lab-eyebrow">The numbers</p>
       <h2 id="score-title" className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Who defends best?</h2>
       <p className="mt-2 max-w-3xl text-sm text-muted">
         {defenderCountPhrase(bundle.metrics.length, true)}, each tested on {n.toLocaleString()} evaluation runs excluded from training.
       </p>
       <Headline bundle={bundle} />
-      <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-3">
         {metrics.map(({ metric, cells }) => {
           const top = Math.max(...cells.map(x => x.hi ?? x.value ?? 0), 1);
           const pct = (x: number | null) => (x === null ? 0 : Math.min(100, Math.max(0, metric.percent ? x : (x / top) * 100)));
@@ -235,96 +217,7 @@ function Scoreboard({ bundle }: { bundle: DefenseLabBundle }) {
           <span>{tradeoff}</span>
         </p>
       )}
-      <details className="lab-more mt-6" data-testid="lab-score-details">
-        <summary>How these scores work</summary>
-        <div className="lab-more-body">
-          <p>Each bar is the average over {n.toLocaleString()} evaluation runs. The shaded band around it is the 95% range: the true average very likely falls inside it.</p>
-          <dl className="lab-more-grid">
-            {metrics.map(({ metric }) => (
-              <div key={metric.key}>
-                <dt>{metric.title}</dt>
-                <dd>{metric.explain}</dd>
-              </div>
-            ))}
-          </dl>
-          <div className="overflow-x-auto">
-            <table className="lab-more-table">
-              <caption className="sr-only">Average and 95% range per defender</caption>
-              <thead>
-                <tr><th scope="col">Defender</th>{metrics.map(({ metric }) => <th key={metric.key} scope="col">{metric.title}</th>)}</tr>
-              </thead>
-              <tbody>
-                {bundle.metrics.map(m => (
-                  <tr key={m.policy}>
-                    <th scope="row">{policyName(m.policy)}</th>
-                    {metrics.map(({ metric, cells }) => {
-                      const c = cells.find(x => x.policy === m.policy);
-                      return <td key={metric.key}>{c ? fmtScore(metric, c.value) : '—'}<span className="block text-faint">{c ? fmtRange(metric, c.lo, c.hi) : ''}</span></td>;
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <dl className="lab-defenders">
-            {bundle.metrics.map(m => (
-              <div key={m.policy}>
-                <dt>{policyName(m.policy)}</dt>
-                <dd>{POLICY_NAME[m.policy]?.note ?? 'Policy id from the bundle.'}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      </details>
     </section>
-  );
-}
-
-function Metrics({ bundle }: { bundle: DefenseLabBundle }) {
-  const names = metricNames(bundle);
-  const [metric, setMetric] = useState(names[0] ?? 'return');
-  const [scenario, setScenario] = useState<string>('');
-  const rows = metricRows(bundle, metric, scenario || null);
-  const [min, max] = domain(rows);
-  const x = (v: number) => ((v - min) / (max - min)) * 100;
-  const n = sampleSize(bundle, scenario || null);
-  return (
-    <Panel title="Held-out evaluation: policy vs baselines" actions={
-      <div className="flex flex-wrap gap-2">
-        <select aria-label="Metric" className={inputClass} value={metric} onChange={e => setMetric(e.target.value)}>
-          {names.map(m => <option key={m} value={m}>{METRIC_LABEL[m] ?? m}</option>)}
-        </select>
-        <select aria-label="Scenario" className={inputClass} value={scenario} onChange={e => setScenario(e.target.value)}>
-          <option value="">All held-out scenarios (pooled)</option>
-          {bundle.scenarios.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
-        </select>
-      </div>
-    }>
-      <p className="mb-3 text-xs text-muted">
-        Mean with 95% confidence interval over n = {n.toLocaleString()} evaluation episodes per policy ({bundle.training_seeds.length} training seeds × {bundle.episodes_per_config_per_seed} episodes{scenario ? '' : ` × ${bundle.scenarios.length} scenarios`}).
-        {' '}{HIGHER_IS_BETTER.has(metric) ? 'Higher is better.' : 'Lower is better.'}
-      </p>
-      <figure aria-label={`${METRIC_LABEL[metric] ?? metric} by policy`} className="flex flex-col gap-2" data-testid="metric-chart">
-        {rows.map(r => (
-          <div key={r.policy} className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-2 text-xs sm:grid-cols-[8rem_minmax(0,1fr)_13rem]">
-            <span className={`min-w-0 [overflow-wrap:anywhere] ${r.policy === 'ddqn' ? 'font-semibold text-accent' : 'text-muted'}`}>{r.policy}</span>
-            <svg viewBox="0 0 100 10" preserveAspectRatio="none" className="h-5 w-full" role="img" aria-label={`${r.policy}: ${r.mean === null ? 'no value' : num(r.mean, 3)}`}>
-              <line x1={x(0)} x2={x(0)} y1={0} y2={10} stroke="var(--color-line)" strokeWidth={0.4} />
-              {r.mean !== null && <rect x={Math.min(x(0), x(r.mean))} width={Math.abs(x(r.mean) - x(0))} y={2.5} height={5} fill={r.policy === 'ddqn' ? 'var(--color-brand)' : 'var(--color-faint)'} opacity={r.policy === 'ddqn' ? 0.9 : 0.55} />}
-              {r.lo !== null && r.hi !== null && (
-                <g stroke="var(--color-ink)" strokeWidth={0.5}>
-                  <line x1={x(r.lo)} x2={x(r.hi)} y1={5} y2={5} />
-                  <line x1={x(r.lo)} x2={x(r.lo)} y1={2} y2={8} />
-                  <line x1={x(r.hi)} x2={x(r.hi)} y1={2} y2={8} />
-                </g>
-              )}
-            </svg>
-            <span className="font-mono text-muted sm:whitespace-nowrap">{r.mean === null ? 'n/a' : num(r.mean, 3)} <span className="text-faint">[{r.lo === null ? '—' : num(r.lo, 2)}, {r.hi === null ? '—' : num(r.hi, 2)}]</span></span>
-          </div>
-        ))}
-        <figcaption className="text-xs text-faint">Axis {num(min, 2)} … {num(max, 2)}. Values are copied from the bundle; nothing is recomputed in the browser.</figcaption>
-      </figure>
-    </Panel>
   );
 }
 
@@ -338,7 +231,7 @@ function Replay({ bundle }: { bundle: DefenseLabBundle }) {
   const scenario = bundle.scenarios.find(s => s.name === episode?.scenario);
   return (
     <section aria-labelledby="replay-title">
-      <p className="lab-eyebrow">01 · Watch</p>
+      <p className="lab-eyebrow">Watch it in action</p>
       <h2 id="replay-title" className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Replay a recorded evaluation</h2>
       <p className="mt-2 max-w-3xl text-sm text-muted">Pick a defender and an attacker, press play, and follow what the defender saw and did at each step.</p>
       {!episode || !scenario ? <div className="mt-4"><Empty>This bundle has no recorded episodes.</Empty></div> : (

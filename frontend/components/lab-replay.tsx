@@ -2,10 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { NodeGraph } from '@/components/node-graph';
-import { Mono } from '@/components/ui';
 import { num } from '@/lib/format';
-import { cumulativeReturn, rewardTotals, stepObservation } from '@/lib/lab';
-import { episodeOutcome, rewardWord, SCENARIO_WORDS, STAGE_WORDS } from '@/lib/lab-plain';
+import { episodeOutcome, SCENARIO_WORDS, STAGE_WORDS } from '@/lib/lab-plain';
 import {
   ACTION_SHORT, actionMeaning, keyMoments, latestAction, nodeStatusLine, nodeViews, overallStatus, parseAction,
   serviceInfo, signalValue, SIGNAL_BANDS, stepStory, storyMoments, type Moment,
@@ -91,18 +89,11 @@ export function ReplayStage({ episode, scenario }: { episode: LabEpisode; scenar
               </div>
               <div><dt className="lab-q">Why</dt><dd className="text-white/70">{s.why}</dd></div>
               {s.effect && <div><dt className="lab-q">Did it change anything?</dt><dd className="text-white/85" data-testid="lab-step-effect">{s.effect}</dd></div>}
-              <div><dt className="lab-q">Cost</dt><dd className="text-white/70">{s.cost}</dd></div>
             </dl>
           </div>
           {selected ? <ServicePanel episode={episode} scenario={scenario} name={selected} t={t} truth={truth} onClose={() => setSelected(null)} /> : (
             <p className="rounded-xl border border-dashed border-line px-4 py-3 text-sm text-muted">Select a service on the map to see what it does and what the AI saw there.</p>
           )}
-          <details className="rounded-xl border border-line px-4 py-3 text-xs">
-            <summary className="cursor-pointer font-semibold text-muted">Technical details for this step</summary>
-            <p className="mt-2 text-muted">{stepObservation(step)}</p>
-            <p className="mt-2">Raw action: <Mono>{step?.action ?? '—'}</Mono> · step reward <Mono>{num(step?.reward ?? 0, 3)}</Mono> · score so far <Mono>{num(cumulativeReturn(episode, t + 1), 2)}</Mono> (final {num(episode.total_return, 2)})</p>
-            <ScoreParts episode={episode} t={t} />
-          </details>
         </aside>
       </div>
 
@@ -165,22 +156,6 @@ function ServicePanel({ episode, scenario, name, t, truth, onClose }: { episode:
         </dl>
       </details>
     </section>
-  );
-}
-
-function ScoreParts({ episode, t }: { episode: LabEpisode; t: number }) {
-  const totals = rewardTotals(episode, t + 1);
-  const scale = Math.max(0.001, ...Object.values(totals).map(v => Math.abs(v)));
-  return (
-    <ul className="mt-3 flex flex-col gap-1.5">
-      {Object.entries(totals).map(([k, v]) => (
-        <li key={k} className="grid grid-cols-[minmax(0,1fr)_4.5rem_3.5rem] items-center gap-2" title={k}>
-          <span className="truncate">{rewardWord(k)}</span>
-          <span className="lab-diverge" aria-hidden="true"><span className={v < 0 ? 'lab-diverge-neg' : 'lab-diverge-pos'} style={{ width: `${(Math.abs(v) / scale) * 50}%` }} /></span>
-          <span className={`text-right font-mono ${v < 0 ? 'text-bad' : v > 0 ? 'text-ok' : 'text-faint'}`}>{num(v, 2)}</span>
-        </li>
-      ))}
-    </ul>
   );
 }
 

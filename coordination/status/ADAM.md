@@ -182,3 +182,6 @@ Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablat
 - Synced origin/main (dd81316; new since baa7fae: live v3 verdict (#333), block_principal in shared.rl (#324), Srihith handover, CI backend<->rl integration). Messages to Adam are FYI only (block_principal sign-off, long-block proposal); no reply required. gh unauthenticated (git/MCP only).
 - Executed: rl-defense pytest 145 passed, ruff check + format clean; payments-lite target 13 passed, label_checks 11 passed; check_links 0 problems.
 - No changes to Adam areas needed. DefenseSimEnv (22 actions, 48 features) and protocol-v1 unchanged.
+
+## 2026-10-19 — Defense Lab simplification
+- Branch `feat/adam/simplify-defense-lab`: `/lab` rebuilt to lead with the three headline numbers; deep reviewer detail (metric explorer, reward parts, checkpoint hashes) removed, provenance kept in a collapsed footer. Replay trimmed (no cost row / technical-details block). Lint, typecheck, 275 unit tests and `next build` executed; e2e spec updated but the e2e stack not run.
