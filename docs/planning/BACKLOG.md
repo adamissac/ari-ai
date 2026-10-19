@@ -45,3 +45,6 @@ Completed: one-time homepage video wheel landing with bounded momentum absorptio
 
 
 Completed: slower, smoother walkthrough video zoom after large scroll input.
+
+
+Completed: owner sandbox authorization flow, live approval-status refresh and expired pending scope recovery.

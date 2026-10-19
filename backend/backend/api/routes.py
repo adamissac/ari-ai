@@ -607,8 +607,13 @@ def approve_scope(scope_id: str, request: Request) -> AuthorizedScope:
         org_id, _ = require_project(conn, user, scope.project_id, MemberRole.owner)
         if scope.status is not ScopeStatus.pending:
             raise ApiError(ErrorCode.CONFLICT_STATE, f"scope is {scope.status.value}", 409)
-        if scope.requested_by == user.id:
-            raise ApiError(ErrorCode.FORBIDDEN, "approver must differ from requester", 403)
+        sandbox_only = bool(scope.targets) and all(
+            target.kind == "sandbox_build" for target in scope.targets
+        )
+        if scope.requested_by == user.id and not sandbox_only:
+            raise ApiError(
+                ErrorCode.FORBIDDEN, "self-approval is limited to sandbox-only scopes", 403
+            )
         if scope.expires_at <= utcnow():
             raise ApiError(ErrorCode.CONFLICT_STATE, "scope already expired", 409)
         now = utcnow()
@@ -626,6 +631,8 @@ def approve_scope(scope_id: str, request: Request) -> AuthorizedScope:
             "scope",
             scope.id,
             requested_by=scope.requested_by,
+            self_approved=scope.requested_by == user.id,
+            sandbox_only=sandbox_only,
         )
         return scope
 
