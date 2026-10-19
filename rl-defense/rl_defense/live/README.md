@@ -182,6 +182,12 @@ identity-switch leak, that extensions never shorten a block, and that the top-ta
 spares a delegate seen in the same window. It also covers the detector features, the strict
 v2⊂v3 extension, exact widening, the noop margin, v3 rules using every control, holdout_v3
 hygiene, and a v3 pipeline smoke test (on the exposed holdout_v2).
+`test_v2_recommendations.py` and `test_v3_recommendations.py` cover serving live
+checkpoints as `DefenseRecommendation`s (contracts 0.13). The loop is the `PlatformFacts`
+producer (`LiveDefenseLoop.platform_facts()`), and its observation is built through the same
+mapping that serving uses. A v3 runner recommends a long block only when the facts make it
+valid. Inference imports no live-lab module, and `live.run` drives a v3 checkpoint in its
+own layout.
 `test_live_v4.py` proves that the grant-aware detector stops flagging authorized delegated
 reads but still flags reads outside a grant, that it never depends on `is_attack`, and that
 this removes the availability cost of blanket blocking while still containing attackers.
@@ -200,7 +206,7 @@ pipeline smoke test.
 `test_live_block_principal.py` proves the block's real effect (403, no data, other tenants
 unaffected, rotated tokens still blocked), its duration and masking in the loop, that it
 beats isolation on availability under identical traffic, that widened sim agents act
-exactly as before, that v2 checkpoints are refused by `PolicyRunner`, and the gate's
+exactly as before, and the gate's
 behavior on measured v2 episodes.
 
 `test_live_gateway.py` proves each action's real effect and that telemetry is measured;
