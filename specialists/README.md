@@ -25,9 +25,10 @@ code intelligence → specialist model → Claude (when needed) → authorized t
   *promoted* only when the paired-bootstrap 95% interval of its gain over the strongest
   deterministic baseline excludes zero on held-out data. An unpromoted model's checkpoint still
   ships, but the agent receives that **baseline's** answer (labelled `source: baseline:<name>`).
-- **Not done:** no comparison against Claude-only or hybrid Claude+specialist agent behaviour.
-  That needs live provider calls (`RUN_LIVE_LLM_EVAL=1` and an API key) and was not run. Nothing here
-  claims the models outperform Claude.
+- **Live comparison started, not conclusive:** one valid live assessment per configuration
+  (Claude-only, hybrid). Both found and fixed both planted defects. One run each cannot show an
+  improvement or a regression; see [Live comparison](#live-comparison-claude-only-vs-hybrid).
+  Nothing here claims the models outperform Claude.
 
 ## Results (held-out test split)
 
@@ -116,6 +117,77 @@ uv run pytest -q specialists/tests                    # checkpoints, hashes, fal
 Re-running training is deterministic (seeded); the dataset SHA-256 in each manifest must match
 `digest(BUILDERS[agent]())`, which a test asserts.
 
+## Live comparison: Claude-only vs hybrid
+
+`python -m specialists.live_comparison` runs the full seven-agent assessment on
+`examples/payments-lite` (authorized, owned fixture) in each configuration, interleaved, and scores
+each run against `labels.yaml` `planted_findings` / `negatives` (the answer key — agents never see
+it). Agents do receive behavioral expectations from the same file's `expectations:` section (routes
+and invariants also stated in the target README); discovery is therefore with intended-behavior
+context, not a fully blind hunt. Results go in
+[`results/live_comparison.json`](results/live_comparison.json) (every run, the summary, excluded runs).
+`--resume` refuses if mode or settings differ from the file on disk.
+
+- `claude_only`: `Orchestrator(specialists=Specialists(enabled=False))`
+- `hybrid`: the deployed specialists (Scout, Probe, Verify models; baselines for the other four)
+- `specialists_only`: the specialists' advice for the planted spans, without Claude
+
+Settings: `claude-opus-5-5` for all roles, `--max-hypotheses 3 --validate 2`, $4 cap per run.
+
+**Status: one usable run per configuration, so there is no comparison yet.** Six runs were
+started ($7.04 in total). After three of them the provider returned `LLM_UNAVAILABLE` on every
+call: one Claude-only run failed in Patch after spending $1.79, and three runs failed at Scout's
+first turn ($0). Those four are excluded and listed in `excluded_runs`. The provider failures are
+an outage or credit problem, not agent behaviour; `provider_failure()` keeps model refusals in
+the results.
+
+| Per assessment (n = 1 each) | Claude-only | Hybrid |
+|---|---|---|
+| IDOR `GET /payments/{id}`: hypothesised / validated / correct diagnosis / fixed, Verify accepted / hardened | yes / yes / yes / yes / yes | yes / yes / yes / yes / yes |
+| Refund bound `POST /refunds`: same stages | yes / yes / yes / yes / yes | yes / yes / yes / yes / yes |
+| Rank of IDOR / refund hypothesis after Scout | 1 / 2 | 1 / 2 |
+| CWE reported for the refund defect (label: CWE-840) | CWE-841 | CWE-1284 |
+| Confirmed false positives; hypotheses on the three lookalike routes | 0; 0 | 0; 0 |
+| Tokens | 495,385 | 499,896 |
+| USD | $2.65 | $2.59 |
+| Wall clock | 441 s | 406 s |
+
+Per agent, USD (Claude-only → hybrid): Scout 0.19 → 0.21, Probe 0.16 → 0.17, Trace 0.40 → 0.45,
+Diagnose 0.37 → 0.37, Patch 0.74 → 0.62, Verify 0.17 → 0.14, Fortify 0.61 → 0.63. All 14 agent
+runs succeeded. In the hybrid run the Scout specialist did not change the hypothesis order. The
+Verify specialist rated one of the two accepted patches `test_weakened` (0.61) and added a
+human-review note. The verdict stayed accepted, as designed. Whether that note is right or a false
+alarm was not checked by hand.
+
+What these numbers can and cannot say:
+
+- Both configurations solved the whole task once. The fixture has two planted defects, so the
+  task has no headroom: Claude alone already gets both. On this target a hybrid gain could only
+  show up as cost or latency, and with n = 1 a 2% USD or 8% latency difference is within ordinary
+  run-to-run variation. **No improvement is shown.**
+- A Wilson 95% interval on 1/1 is [0.21, 1.0]. Telling the configurations apart needs many more
+  runs and a target where Claude-only misses things.
+- The excluded Claude-only run fixed the IDOR (Verify accepted) and validated the refund defect,
+  then Patch hit the provider failure. It is not counted.
+
+Specialists only (no Claude, deterministic): Scout ranks the IDOR handler 3rd and the refund
+handler 4th of 8 (top pick `GET /health`, a false positive). The CWE it gives each is in the
+right family. Probe's top strategy maps to the labelled check category for the IDOR but not for
+the refund bound (`WSTG-INPV-12`). The Diagnose baseline gives `missing_check` for both, which is
+right for the IDOR and wrong for the refund bound (`wrong_check`). Validation, patching and
+verification need executed checks, so this configuration cannot do them. Trace and Fortify have
+no answer key in `labels.yaml`.
+
+To finish (costs money; needs a working key):
+
+```bash
+RUN_LIVE_LLM_EVAL=1 LIVE_SEVEN_MAX_USD=4 uv run python -m specialists.live_comparison \
+    --mode live --i-have-authorization --reps 5 --total-max-usd 30 --resume
+```
+
+`--resume` keeps the runs already recorded. A free replay check of the harness (scripted, not evidence):
+`uv run python -m specialists.live_comparison --mode replay --reps 1 --out /tmp/replay.json`.
+
 ## Data and privacy
 
 - **Training data:** only the generator in `data/corpus.py` and the pinned MITRE catalogs (licences in
@@ -130,5 +202,6 @@ Re-running training is deterministic (seeded); the dataset SHA-256 in each manif
 
 - Train Scout/Diagnose/Patch on real, permissively licensed vulnerability-fix data (e.g. CVEfixes,
   OSV-linked fix commits) and evaluate on real repositories; the synthetic corpus is the main limit.
-- Measure Claude-only vs hybrid agent quality, tokens and latency with live provider calls.
+- Finish the live comparison (more runs per configuration) and add a harder owned fixture where
+  Claude-only misses defects, so a hybrid gain could show at all.
 - Larger MITRE-derived test sets (or cross-validation) for Trace and Fortify, whose test sets are small.
