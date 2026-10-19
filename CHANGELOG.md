@@ -8,7 +8,7 @@ All notable changes are documented here. Format follows
 
 ### Added
 - Specialist training now augments the synthetic corpus with real public corpora (DiverseVul functions, NVD CVE descriptions, MITRE ATT&CK technique descriptions) fetched via `python -m specialists.data.fetch` into the git-ignored `specialists/specialists/data/cache/`; corpus-2 adds 5-6 code families per CWE so Diagnose/Patch labels can no longer be looked up from the CWE alone.
-- Add a 24/7 defense switch to project monitoring and the Defense Lab, with clearer push re-check wording in settings.
+- Add a 24/7 defense switch to project monitoring and the Defense Lab, with light-panel theme colors, clearer push re-check wording in settings, and preserved contrast on dark headers.
 - Show readable assessment state labels in the real-run panel, such as “Awaiting human approval”.
 - Simplify the `/connect` drill-down and commit page: select an organization, repository and commit, then switch between Code review and 7 agents; keep real-run controls compact and reduce page copy.
 - Default Anthropic model is now Claude Haiku 5.5 (`claude-haiku-5-5`) for the backend gateway, all seven security agents, the reviewer and the frontend live commit analysis, to cut API cost. `ANTHROPIC_MODEL` / `AGENT_MODEL_OVERRIDES` still override it. The server-side refusal fallback is no longer sent for Haiku models (Haiku has none); the frontend analysis prices usage by model instead of at Opus rates.
