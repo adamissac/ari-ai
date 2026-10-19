@@ -4,7 +4,7 @@ import type { Assessment, AuthorizedScope, AccessibleRepository } from '@hackatl
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Button, Empty, ErrorState, Loading, Panel } from '@/components/ui';
+import { ErrorState } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useActionKeys } from '@/lib/action-key';
 import { connectRepo, projectFor } from '@/lib/github-connect';
@@ -17,8 +17,6 @@ type LoadedData =
     projectId: string;
     scopes: AuthorizedScope[];
     assessments: Assessment[];
-    hasMoreScopes: boolean;
-    hasMoreAssessments: boolean;
   };
 type DataState = { status: 'loading' } | LoadedData;
 
@@ -62,8 +60,6 @@ export function RealAssessmentPanel({
               projectId,
               scopes: scopes.items,
               assessments: assessments.items,
-              hasMoreScopes: scopes.next_cursor !== null,
-              hasMoreAssessments: assessments.next_cursor !== null,
             },
           });
         }
@@ -130,98 +126,42 @@ export function RealAssessmentPanel({
     }
   };
 
-  return (
-    <div data-testid="real-assessment-panel" className="mb-6">
-      <Panel title="Real seven-agent assessment">
-        {!connectedRepoId ? (
-          <div className="flex flex-col items-start gap-3">
-            <p className="text-sm text-muted">Connect this GitHub repository to the project before starting a backend assessment.</p>
-            <Button variant="primary" disabled={busy} onClick={() => void connect()}>Connect</Button>
-          </div>
-        ) : data.status === 'loading' ? (
-          <Loading label="Loading project scopes and assessments" />
-        ) : data.status === 'error' ? (
-          <ErrorState error={data.error} onRetry={reload} context="Could not load real assessments" />
-        ) : (
-          <AssessmentReady
-            data={data}
-            repoId={connectedRepoId}
-            sha={sha}
-            busy={busy}
-            onRequestAuthorization={() => void requestAuthorization(data.projectId)}
-            onStart={scopeId => void startAssessment(data.projectId, scopeId)}
-          />
-        )}
-        {actionError !== null && <div className="mt-3"><ErrorState error={actionError} /></div>}
-      </Panel>
-    </div>
-  );
-}
-
-function AssessmentReady({
-  data,
-  repoId,
-  sha,
-  busy,
-  onRequestAuthorization,
-  onStart,
-}: {
-  data: Extract<DataState, { status: 'ready' }>;
-  repoId: string;
-  sha: string;
-  busy: boolean;
-  onRequestAuthorization: () => void;
-  onStart: (scopeId: string) => void;
-}) {
-  const scopeState = scopeStateFor(data.scopes, repoId, new Date());
-  const assessments = assessmentsForCommit(data.assessments, repoId, sha);
+  const scopeState = data.status === 'ready' && connectedRepoId
+    ? scopeStateFor(data.scopes, connectedRepoId, new Date())
+    : null;
+  const latest = data.status === 'ready' && connectedRepoId
+    ? assessmentsForCommit(data.assessments, connectedRepoId, sha)[0]
+    : undefined;
 
   return (
-    <div className="flex flex-col gap-4">
-      <section aria-label="Assessments for this commit">
-        <h3 className="mb-2 text-sm font-semibold text-ink">Assessments for this commit</h3>
-        {assessments.length === 0 ? <Empty>No real backend assessment has been recorded for this commit yet.</Empty> : (
-          <ul className="flex flex-col gap-2">
-            {assessments.map(assessment => (
-              <li key={assessment.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-panel-2/50 px-3 py-2 text-sm">
-                <Link className="text-brand hover:underline" href={`/projects/${data.projectId}/assessments/${assessment.id}`}>
-                  Assessment <code>{assessment.id}</code>
-                </Link>
-                <span className="text-muted">{assessment.state}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-        {data.hasMoreAssessments && (
-          <Link className="mt-2 block text-xs text-muted hover:underline" href={`/projects/${data.projectId}`}>
-            Showing runs from the most recent page only; see the project&apos;s assessments for the full list.
-          </Link>
-        )}
-      </section>
-
-      {scopeState.kind === 'none' ? (
-        <div className="flex flex-col items-start gap-3">
-          <p className="text-sm text-muted">No active or pending authorization covers this repository.</p>
-          {data.hasMoreScopes && <p className="text-xs text-muted">Only the most recent scopes were checked.</p>}
-          <Button variant="primary" disabled={busy} onClick={onRequestAuthorization}>Request authorization</Button>
+    <div data-testid="real-assessment-panel" className="space-y-3">
+      <div className="glass flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+        <div>
+          <p className="label-mono text-white/55">Real run</p>
+          <p className="text-sm text-white/70">
+            {!connectedRepoId ? 'Connect this repository to run the 7 agents for real.' : data.status === 'loading' ? 'Loading…' : data.status === 'error' ? 'Could not load the latest run.' : latest ? `Last run: ${latest.state}` : scopeState?.kind === 'none' ? 'Needs an approved authorization before the agents can run.' : scopeState?.kind === 'pending' ? 'Waiting for another project owner to approve.' : 'Authorization is active.'}
+          </p>
         </div>
-      ) : scopeState.kind === 'pending' ? (
-        <div className="flex flex-col items-start gap-2 text-sm">
-          <p className="text-muted">A different project owner must approve this scope before any agent runs. The requester cannot approve their own scope.</p>
-          <Link className="text-brand hover:underline" href={`/projects/${data.projectId}/scopes`}>Review project scopes</Link>
+        <div className="flex flex-wrap items-center gap-3">
+          {!connectedRepoId && <button type="button" className="rounded-full bg-white px-4 py-2 text-sm font-medium text-ink disabled:opacity-50" disabled={busy} onClick={() => void connect()}>Connect</button>}
+          {data.status === 'ready' && latest && (
+            <>
+              <Link className="text-sm text-white/80 underline-offset-2 hover:underline" href={`/projects/${data.projectId}/assessments/${latest.id}`}>Open run →</Link>
+              {scopeState?.kind === 'active' && <button type="button" className="rounded-full bg-white px-4 py-2 text-sm font-medium text-ink disabled:opacity-50" disabled={busy} onClick={() => void startAssessment(data.projectId, scopeState.scope.id)}>Run again</button>}
+            </>
+          )}
+          {data.status === 'ready' && !latest && scopeState?.kind === 'none' && <button type="button" className="rounded-full bg-white px-4 py-2 text-sm font-medium text-ink disabled:opacity-50" disabled={busy} onClick={() => void requestAuthorization(data.projectId)}>Request authorization</button>}
+          {data.status === 'ready' && !latest && scopeState?.kind === 'pending' && <Link className="text-sm text-white/80 underline-offset-2 hover:underline" href={`/projects/${data.projectId}/scopes`}>Review</Link>}
+          {data.status === 'ready' && !latest && scopeState?.kind === 'active' && (
+            <>
+              <button type="button" className="rounded-full bg-white px-4 py-2 text-sm font-medium text-ink disabled:opacity-50" disabled={busy} onClick={() => void startAssessment(data.projectId, scopeState.scope.id)}>Run the 7 agents</button>
+              <span className="text-xs text-white/50">Uses real Claude spend.</span>
+            </>
+          )}
         </div>
-      ) : (
-        <div className="flex flex-col items-start gap-3">
-          <Button variant="primary" disabled={busy} onClick={() => onStart(scopeState.scope.id)}>
-            Run the seven agents on {sha.slice(0, 7)}
-          </Button>
-          <p className="text-xs text-muted">Uses the project budget (default cap $10); costs real Claude spend.</p>
-        </div>
-      )}
-
-      <p className="text-xs text-muted">
-        Probe can only run executed checks when the repository has a <code>build_recipe.json</code>; without it validation is inconclusive, and Patch/Verify run only on confirmed findings.
-      </p>
+      </div>
+      {data.status === 'error' && <ErrorState error={data.error} onRetry={reload} context="Could not load real assessments" />}
+      {actionError !== null && <ErrorState error={actionError} />}
     </div>
   );
 }

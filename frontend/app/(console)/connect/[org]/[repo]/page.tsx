@@ -13,7 +13,7 @@ import { useAccessibleRepo } from '@/lib/real-repo';
 import { minutesSince } from '@/lib/simulated-attack';
 import { useResource } from '@/lib/use-resource';
 
-/** A connected repository's most recent commits, read live from GitHub (same layout as /demo). */
+/** A connected repository's most recent commits, read live from GitHub. */
 export default function RepoCommitsPage() {
   const params = useParams<{ org: string; repo: string }>();
   const org = decodeURIComponent(params.org);
@@ -46,10 +46,9 @@ function Commits({ org, name, repo, onConnected }: { org: string; name: string; 
   };
   return (
     <>
-      <header className="demo-ink mb-6 rounded-3xl px-6 py-7 md:px-9">
-        <p className="label-mono text-white/60">{org} / {name}</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">Recent commits</h1>
-        <p className="mt-1.5 max-w-2xl text-sm text-white/70">The latest commits on <span className="font-mono">{repo.default_branch}</span>, straight from GitHub. Open one to see the code review and the seven agents check it.</p>
+      <header className="mb-6">
+        <h1 className="text-3xl font-semibold tracking-tight">{name}</h1>
+        <p className="mt-1 text-sm text-muted">Commits on {repo.default_branch}</p>
       </header>
       {!id && (
         <div className="rounded-2xl border border-line bg-panel p-6">
@@ -78,8 +77,8 @@ function Commits({ org, name, repo, onConnected }: { org: string; name: string; 
                     </span>
                   </span>
                   <span className="flex items-center gap-3 pl-[42px] md:pl-0">
-                    <span className="demo-chip demo-chip-info">Open analysis</span>
                     <span className="rounded-md border border-line px-2 py-1 font-mono text-xs text-muted group-hover:border-brand/40">{c.sha.slice(0, 7)}</span>
+                    <span aria-hidden="true" className="text-muted">→</span>
                   </span>
                 </Link>
               </li>
