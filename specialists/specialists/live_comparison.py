@@ -270,7 +270,8 @@ def score_run(result: Any, intel: Any, key: dict[str, Any], wall_s: float) -> di
         "unmatched_hypotheses": len(unmatched),
         "negative_subjects_hypothesised": negatives_hit,
         "specialist_rerank_changed_order": "specialist.rerank" in report["audit_actions"],
-        "specialist_sources": {s["agent"]: s["source"] for s in spec},
+        "specialist_sources": {s["agent"]: s["source"] for s in spec},  # last per agent; see below
+        "specialist_inferences": [{"agent": s["agent"], "model": s.get("model"), "source": s["source"]} for s in spec],
         "verify_specialist_top": [s["top"] for s in spec if s["agent"] == "verify"],
         "verify_specialist_notes": [n for f in findings for n in f.notes if n.startswith("verify specialist")],
         "per_agent": per_agent,
@@ -282,6 +283,25 @@ def score_run(result: Any, intel: Any, key: dict[str, Any], wall_s: float) -> di
 
 
 # ------------------------------------------------------------------ one assessment
+
+def _is_provider_error(exc: BaseException) -> bool:
+    """True only for a positively identified provider failure (API error, credentials, outage)."""
+    try:
+        import anthropic
+
+        if isinstance(exc, (anthropic.APIError, anthropic.APIConnectionError)):
+            return True
+    except ImportError:  # pragma: no cover
+        pass
+    try:
+        from security_agents.llm import LLMUnavailable
+
+        if isinstance(exc, LLMUnavailable):
+            return True
+    except ImportError:  # pragma: no cover
+        pass
+    return isinstance(exc, RuntimeError) and "requires ANTHROPIC_API_KEY" in str(exc)
+
 
 def _usage_from_orch(orch: Any) -> tuple[float, int]:
     """Sum USD/tokens from orchestrator agent runs (partial live spend after a crash)."""
@@ -367,17 +387,24 @@ def run_one(config: str, *, mode: str, max_usd: float, max_hypotheses: int, vali
             # so the total budget cannot be bypassed by repeated late crashes.
             usd = float(max_usd)
             debited = "per_run_cap"
+        missed = {st: False for st in STAGES}
         score = {
             "state": "crashed",
             "error_code": type(exc).__name__,
             "error_detail": str(exc)[:500],
+            "provider_error": _is_provider_error(exc),
             "usd": round(usd, 6),
             "tokens": tokens,
             "wall_s": round(wall, 2),
             "usage_debited": debited,
-            "planted": {},
+            # Full shape, so a crash that is kept counts as a failed assessment in the summary.
+            "planted": {p["id"]: {**missed, "rank": None} for p in load_key()["planted"]},
             "false_positives_confirmed": 0,
-            "per_agent": {},
+            "unmatched_hypotheses": 0,
+            "specialist_rerank_changed_order": False,
+            "verify_specialist_notes": [],
+            "per_agent": {a: {"runs": 0, "succeeded": False, "error_codes": [], "error_details": [], "error_turns": [],
+                              "llm_turns": 0, "tool_calls": 0, "tokens": 0, "usd": 0.0, "latency_s": 0.0} for a in AGENTS},
         }
         return score, None, None
     finally:
@@ -498,7 +525,9 @@ def provider_failure(score: dict[str, Any]) -> str | None:
     sum, which would hide a later zero-turn outage after an earlier success.
     """
     if score.get("state") == "crashed":
-        return f"crashed: {score.get('error_code')}"
+        # Excluded only when the crash is a positively identified provider failure; any other
+        # crash (e.g. in specialist bridging or scoring) is a failed assessment and stays in.
+        return f"crashed: {score.get('error_code')} (provider)" if score.get("provider_error") else None
     for agent, a in (score.get("per_agent") or {}).items():
         legacy = "error_details" not in a and "error_turns" not in a
         details = a.get("error_details") or []
@@ -603,6 +632,9 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     per_run_cap = float(os.environ.get("LIVE_SEVEN_MAX_USD", "4"))
     configs = [c for c in args.configs.split(",") if c]
+    if not configs:
+        print(f"--configs is empty; choose from {list(CONFIGS)}", file=sys.stderr)
+        return 2
     unknown = [c for c in configs if c not in CONFIGS]
     if unknown:
         print(f"unknown --configs {unknown!r}; choose from {list(CONFIGS)}", file=sys.stderr)

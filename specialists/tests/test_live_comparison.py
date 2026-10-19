@@ -63,7 +63,8 @@ def test_provider_failures_are_excluded_but_refusals_are_not():
     assert lc.provider_failure(score("LLM_UNAVAILABLE", "Error code: 400 credit balance is too low"))
     assert lc.provider_failure(score("LLM_UNAVAILABLE", "refusal: policy")) is None
     assert lc.provider_failure(score("BUDGET_EXCEEDED", "cap")) is None
-    assert lc.provider_failure({"state": "crashed", "error_code": "RuntimeError"})
+    assert lc.provider_failure({"state": "crashed", "error_code": "APIConnectionError", "provider_error": True})
+    assert lc.provider_failure({"state": "crashed", "error_code": "KeyError", "provider_error": False}) is None
     # Missing details: use per-invocation error_turns, not role-wide llm_turns.
     assert lc.provider_failure(score("LLM_UNAVAILABLE", None, error_turns=[0], llm_turns=9))
     assert lc.provider_failure(score("LLM_UNAVAILABLE", None, error_turns=[3], llm_turns=9)) is None
@@ -156,3 +157,20 @@ def test_resume_refuses_a_different_target_or_answer_key():
     assert lc._resume_compatible(doc, mode="live", settings=settings) is None
     doc["settings"]["target_sha256"] = "0" * 64
     assert "target_sha256" in lc._resume_compatible(doc, mode="live", settings=settings)
+
+
+def test_empty_configs_are_rejected(tmp_path):
+    assert lc.main(["--mode", "replay", "--configs", "", "--out", str(tmp_path / "x.json")]) == 2
+
+
+def test_a_non_provider_crash_stays_in_the_summary_as_a_failed_assessment(monkeypatch):
+    def boom(*_a, **_k):
+        raise KeyError("bug in hybrid-only code")
+
+    monkeypatch.setattr(lc, "Specialists", boom)
+    score, _, _ = lc.run_one("hybrid", mode="replay", max_usd=1.0, max_hypotheses=3, validate=2)
+    assert score["state"] == "crashed" and score["provider_error"] is False
+    assert lc.provider_failure(score) is None
+    summary = lc.summarise([{"config": "hybrid", "score": score}], ["fnd_planted_authz", "fnd_planted_refund_bound"])
+    assert summary["hybrid"]["completed"]["k"] == 0
+    assert summary["hybrid"]["planted"]["fnd_planted_authz"]["validated"]["k"] == 0
