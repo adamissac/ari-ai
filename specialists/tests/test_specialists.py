@@ -24,7 +24,9 @@ def test_every_agent_has_a_hash_verified_versioned_checkpoint(agent):
     assert len(man["weights_sha256"]) == 64 and man["dataset"]["sha256"]
     assert man["evaluation"]["promoted"] in (True, False)
     if not man["evaluation"]["promoted"]:
-        assert man["fallback"]["table"] or man["fallback"]["default"], "an unpromoted model must ship the baseline the runtime uses instead"
+        assert man["fallback"]["table"] or man["fallback"]["default"], (
+            "an unpromoted model must ship the baseline the runtime uses instead"
+        )
 
 
 def test_tampered_weights_are_refused(tmp_path):
@@ -34,7 +36,10 @@ def test_tampered_weights_are_refused(tmp_path):
     (tmp_path / "verify" / "weights.bin").write_bytes(bytes(blob))
     with pytest.raises(CheckpointError, match="does not match"):
         SpecialistModel.load(tmp_path / "verify")
-    assert Specialists(root=tmp_path).advise("verify", {"diff": "", "tests": ""}).source == "unavailable"
+    assert (
+        Specialists(root=tmp_path).advise("verify", {"diff": "", "tests": ""}).source
+        == "unavailable"
+    )
 
 
 def test_unpromoted_model_answers_from_its_recorded_baseline():
@@ -47,8 +52,12 @@ def test_unpromoted_model_answers_from_its_recorded_baseline():
 
 
 def test_features_are_deterministic_and_per_field_normalised():
-    a = featurize([("code", "db.execute(f\"SELECT * FROM t WHERE id = '{x}'\")"), ("cwe", "CWE-89")], 4096)
-    b = featurize([("code", "db.execute(f\"SELECT * FROM t WHERE id = '{x}'\")"), ("cwe", "CWE-89")], 4096)
+    a = featurize(
+        [("code", "db.execute(f\"SELECT * FROM t WHERE id = '{x}'\")"), ("cwe", "CWE-89")], 4096
+    )
+    b = featurize(
+        [("code", "db.execute(f\"SELECT * FROM t WHERE id = '{x}'\")"), ("cwe", "CWE-89")], 4096
+    )
     assert a == b
     assert abs(sum(v * v for v in a.values()) - 1.0) < 0.25  # two unit fields scaled by 1/sqrt(2)
 
@@ -58,7 +67,9 @@ def test_scout_recognises_textbook_sinks_and_their_fixes():
     vuln = '@app.post("/restore")\ndef restore(body: Blob):\n    return pickle.loads(base64.b64decode(body.data))\n'
     fixed = '@app.post("/restore")\ndef restore(body: Blob):\n    return State.model_validate_json(base64.b64decode(body.data))\n'
     assert sp.advise("scout", {"code": vuln}).top == "CWE-502"
-    assert (sp.advise("scout", {"code": fixed}).score("safe") or 0) > (sp.advise("scout", {"code": vuln}).score("safe") or 0)
+    assert (sp.advise("scout", {"code": fixed}).score("safe") or 0) > (
+        sp.advise("scout", {"code": vuln}).score("safe") or 0
+    )
 
 
 @pytest.mark.parametrize("agent", CORPUS_TASKS)
@@ -76,7 +87,10 @@ def test_mitre_splits_share_no_cwe_or_parent_technique(agent):
 
 @pytest.mark.parametrize("agent", AGENTS)
 def test_datasets_are_reproducible_and_match_the_checkpoint(agent):
-    assert digest(BUILDERS[agent]()) == SpecialistModel.load(CHECKPOINT_ROOT / agent).manifest["dataset"]["sha256"]
+    assert (
+        digest(BUILDERS[agent]())
+        == SpecialistModel.load(CHECKPOINT_ROOT / agent).manifest["dataset"]["sha256"]
+    )
 
 
 @pytest.mark.parametrize("agent", AGENTS)

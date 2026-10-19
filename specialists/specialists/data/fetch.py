@@ -27,8 +27,10 @@ DV_BASE = "https://huggingface.co/datasets/bstee615/diversevul/resolve/main/data
 ATTACK_URL = "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json"
 NVD = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 NVD_PAGES = 8  # ~16k CVEs from index 0; pass --pages to go deeper
-NVD_RANGES = [("2019-01-01T00:00:00.000", "2020-01-01T00:00:00.000"),
-              ("2021-01-01T00:00:00.000", "2022-01-01T00:00:00.000")]
+NVD_RANGES = [
+    ("2019-01-01T00:00:00.000", "2020-01-01T00:00:00.000"),
+    ("2021-01-01T00:00:00.000", "2022-01-01T00:00:00.000"),
+]
 
 
 def _get(url: str, dest: Path | None = None) -> bytes:
@@ -54,8 +56,11 @@ def main() -> int:
         print("downloading ATT&CK STIX", flush=True)
         _get(ATTACK_URL, stix)
     nvd = (CACHE / "nvd-cves.jsonl").open("a")
-    seen = {json.loads(line)["id"] for line in (CACHE / "nvd-cves.jsonl").open() if line.strip()} \
-        if (CACHE / "nvd-cves.jsonl").is_file() else set()
+    seen = (
+        {json.loads(line)["id"] for line in (CACHE / "nvd-cves.jsonl").open() if line.strip()}
+        if (CACHE / "nvd-cves.jsonl").is_file()
+        else set()
+    )
     windows = [None] + NVD_RANGES
     for win in windows:
         for start in range(0, NVD_PAGES * 2000, 2000):
@@ -77,8 +82,16 @@ def main() -> int:
                 if c["id"] in seen:
                     continue
                 desc = next((x["value"] for x in c["descriptions"] if x["lang"] == "en"), "")
-                cwes = [x["description"][0]["value"] for x in c.get("weaknesses", []) if x.get("description")]
-                cwes = [w for w in cwes if w.startswith("CWE-") and w not in ("NVD-CWE-noinfo", "NVD-CWE-Other")]
+                cwes = [
+                    x["description"][0]["value"]
+                    for x in c.get("weaknesses", [])
+                    if x.get("description")
+                ]
+                cwes = [
+                    w
+                    for w in cwes
+                    if w.startswith("CWE-") and w not in ("NVD-CWE-noinfo", "NVD-CWE-Other")
+                ]
                 if desc and cwes:
                     print(json.dumps({"id": c["id"], "desc": desc, "cwe": cwes}), file=nvd)
                     seen.add(c["id"])

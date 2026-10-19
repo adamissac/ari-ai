@@ -7,36 +7,37 @@
   "type": "mlp-relu"
  },
  "dataset": {
-  "sha256": "e73a1ae8b9f72493fc8693dae2d9adfb5bb664ea0b8f323870f10ec816e5633c",
+  "sha256": "edcdea35904bce4c8ca285beaceec9ce431a46f3e0417fe15889b15b143bd23c",
   "sizes": {
-   "test": 1296,
-   "train": 3240,
-   "val": 648
+   "test": 8997,
+   "train": 35218,
+   "val": 8264
   },
   "train_label_counts": {
-   "CWE-1284": 180,
-   "CWE-22": 180,
-   "CWE-502": 180,
-   "CWE-639": 180,
-   "CWE-78": 180,
-   "CWE-79": 180,
-   "CWE-798": 180,
-   "CWE-862": 180,
-   "CWE-89": 180,
-   "CWE-916": 180,
-   "CWE-918": 180,
-   "CWE-942": 180,
-   "safe": 1080
+   "CWE-1284": 300,
+   "CWE-22": 393,
+   "CWE-502": 306,
+   "CWE-639": 300,
+   "CWE-78": 272,
+   "CWE-79": 326,
+   "CWE-798": 241,
+   "CWE-862": 316,
+   "CWE-89": 331,
+   "CWE-916": 300,
+   "CWE-918": 241,
+   "CWE-942": 240,
+   "safe": 22044,
+   "vuln_other": 9608
   },
-  "version": "corpus-1+mitre-pinned"
+  "version": "corpus-2+mitre-pinned+real-corpus"
  },
- "description": "Classify a code span as one of 12 CWE weakness classes or safe; the safe-probability ranks suspicious paths.",
+ "description": "Classify a code span as one of 12 CWE weakness classes, other-vulnerable, or safe; the safe-probability ranks suspicious paths.",
  "evaluation": {
   "best_baseline": "static_analyze_patterns",
-  "best_baseline_test": 0.0897,
+  "best_baseline_test": 0.0985,
   "primary_metric": "macro_f1",
   "promoted": true,
-  "test": 0.2982
+  "test": 0.3738
  },
  "features": {
   "char_ngrams": true,
@@ -59,7 +60,8 @@
   "CWE-916",
   "CWE-918",
   "CWE-942",
-  "safe"
+  "safe",
+  "vuln_other"
  ],
  "model_id": "ari-scout-vulnclass",
  "task": {
@@ -68,22 +70,22 @@
  },
  "training": {
   "batch_size": 64,
-  "best_epoch": 38,
-  "best_val_loss": 0.00389,
+  "best_epoch": 2,
+  "best_val_loss": 0.62016,
   "dropout": 0.25,
   "epochs": 40,
-  "epochs_run": 40,
+  "epochs_run": 8,
   "hidden": 96,
   "input_dim": 16384,
   "lr": 0.002,
   "numpy": "2.5.4",
   "patience": 6,
-  "python": "3.12.14",
-  "seconds": 8.24,
+  "python": "3.12.15",
+  "seconds": 18.26,
   "seed": 7,
   "weight_decay": 1e-05
  },
- "version": "1.0.0",
- "weights_bytes": 6296884,
- "weights_sha256": "fa3ee354837f8690866f25d20b7c50e3d72487bb9568805a538df3ec2fe4bd8e"
+ "version": "1.1.0",
+ "weights_bytes": 6297272,
+ "weights_sha256": "13c5bbca7fd7d03a6cfba1fc8a5618d724bacfb4b14d715bed0f36ed82067a8a"
 }

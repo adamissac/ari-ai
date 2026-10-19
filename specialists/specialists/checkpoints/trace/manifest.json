@@ -7,39 +7,39 @@
   "type": "linear"
  },
  "dataset": {
-  "sha256": "ab3b5010966367bffcc5af1b5a22ee925ddc3e59807c45f8b8f41fb6426dcfb4",
+  "sha256": "ad1d96445dd5fb16d34074380d3f3182bec57f0949ac314069f46ea41f9b2664",
   "sizes": {
-   "test": 21,
-   "train": 91,
-   "val": 17
+   "test": 27,
+   "train": 336,
+   "val": 134
   },
   "train_label_counts": {
-   "collection": 33,
+   "collection": 84,
    "command-and-control": 4,
-   "credential-access": 45,
-   "discovery": 15,
-   "execution": 26,
-   "impact": 14,
-   "initial-access": 13,
-   "lateral-movement": 19,
-   "persistence": 17,
-   "privilege-escalation": 26
+   "credential-access": 187,
+   "discovery": 136,
+   "execution": 161,
+   "impact": 51,
+   "initial-access": 24,
+   "lateral-movement": 133,
+   "persistence": 94,
+   "privilege-escalation": 190
   },
-  "version": "corpus-1+mitre-pinned"
+  "version": "corpus-2+mitre-pinned+real-corpus"
  },
  "description": "Predict the MITRE ATT&CK tactics an attacker reaches through a weakness (via CAPEC), from the CWE name.",
  "evaluation": {
   "best_baseline": "prior_top3",
-  "best_baseline_test": 0.4381,
+  "best_baseline_test": 0.4539,
   "primary_metric": "f1_at_k",
   "promoted": false,
-  "test": 0.4571
+  "test": 0.4681
  },
  "fallback": {
   "default": [
+   "privilege-escalation",
    "credential-access",
-   "collection",
-   "privilege-escalation"
+   "execution"
   ],
   "key": "",
   "name": "prior_top3",
@@ -73,22 +73,22 @@
  },
  "training": {
   "batch_size": 16,
-  "best_epoch": 43,
-  "best_val_loss": 0.3128,
+  "best_epoch": 2,
+  "best_val_loss": 0.39709,
   "dropout": 0.0,
   "epochs": 200,
-  "epochs_run": 63,
+  "epochs_run": 22,
   "hidden": 0,
   "input_dim": 4096,
   "lr": 0.01,
   "numpy": "2.5.4",
   "patience": 20,
-  "python": "3.12.14",
+  "python": "3.12.15",
   "seconds": 0.06,
   "seed": 7,
   "weight_decay": 0.0001
  },
- "version": "1.0.0",
+ "version": "1.1.0",
  "weights_bytes": 180268,
- "weights_sha256": "632f6f6087567197005dc603cf499b21c777a9753acd556a8b6b676bde1764a4"
+ "weights_sha256": "febfb40dd90cab603501e8bdabdddc0358fd2b18a5ba24eb07fe7d64cc7c22ec"
 }

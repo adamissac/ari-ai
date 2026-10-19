@@ -40,8 +40,18 @@ CACHE = Path(os.environ.get("SPECIALISTS_DATA_CACHE", Path(__file__).parent / "c
 VULN_OTHER = "vuln_other"
 
 OUR_SCOUT_CWES = [
-    "CWE-22", "CWE-78", "CWE-79", "CWE-89", "CWE-502", "CWE-639", "CWE-798",
-    "CWE-862", "CWE-916", "CWE-918", "CWE-942", "CWE-1284",
+    "CWE-22",
+    "CWE-78",
+    "CWE-79",
+    "CWE-89",
+    "CWE-502",
+    "CWE-639",
+    "CWE-798",
+    "CWE-862",
+    "CWE-916",
+    "CWE-918",
+    "CWE-942",
+    "CWE-1284",
 ]
 
 
@@ -77,10 +87,15 @@ def diversevul(cache: Path = CACHE, *, max_per_label: int = 30000) -> list[dict[
             counts[label] = counts.get(label, 0) + 1
             bucket = zlib.crc32(str(commit).encode()) % 6
             split = {0: "test", 1: "val"}.get(bucket, "train")
-            rows.append({
-                "family": f"dv:{commit}", "split": split, "framework": "c",
-                "code": func[:20000], "label": label,
-            })
+            rows.append(
+                {
+                    "family": f"dv:{commit}",
+                    "split": split,
+                    "framework": "c",
+                    "code": func[:20000],
+                    "label": label,
+                }
+            )
     return rows
 
 
@@ -111,8 +126,11 @@ def attack_descriptions(cache: Path = CACHE) -> dict[str, str]:
         if o.get("type") != "attack-pattern" or o.get("revoked") or o.get("x_mitre_deprecated"):
             continue
         ext = next(
-            (e.get("external_id") for e in o.get("external_references", [])
-             if e.get("source_name") == "mitre-attack"),
+            (
+                e.get("external_id")
+                for e in o.get("external_references", [])
+                if e.get("source_name") == "mitre-attack"
+            ),
             None,
         )
         if ext and o.get("description"):
