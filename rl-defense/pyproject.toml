@@ -19,7 +19,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "ruff>=0.6"]
+# fastapi/httpx are only needed by the live-loop tests (rl_defense/live/), which run the
+# owned demo app (examples/payments-lite) in-process; tests/conftest.py puts it on sys.path.
+dev = ["pytest>=8", "ruff>=0.6", "fastapi>=0.110", "httpx>=0.27"]
 
 [tool.uv.sources]
 hackatl-standards = { path = "../standards", editable = true }

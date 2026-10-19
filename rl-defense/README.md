@@ -1,8 +1,12 @@
 # rl-defense/
 
-> **Implemented (simulation only).** A Gymnasium environment, a trained Double DQN,
-> three baselines, a protocol-compliant evaluation, and an inference adapter that
-> produces *recommendations*. Nothing here acts on a real system.
+> **Implemented.** A Gymnasium environment, a trained Double DQN, three baselines, a
+> protocol-compliant evaluation, and an inference adapter that produces *recommendations*
+> — all in simulation. Additionally, a **live defense loop** (`rl_defense/live/`, vertical
+> slice) runs a trained policy against the owned, isolated demo app over an in-process
+> transport: it observes real telemetry, enforces a permitted action, measures the real
+> outcome, and records a reward + transition. It touches only that demo app and no other
+> system; every number is lab evidence (RQ-005).
 > Specs: [docs/09](../docs/09_RL_DEFENSE_SYSTEM.md), [docs/17](../docs/17_RL_EVALUATION_PROTOCOL.md),
 > [architecture/rl-training-and-inference](../docs/architecture/rl-training-and-inference.md).
 > Owner: Adam ([coordination/OWNERSHIP](../coordination/OWNERSHIP.md)).
@@ -24,6 +28,7 @@
 | Platform records → policy inputs (findings, expectations, signals) | `rl_defense/platform_mapping.py` | ✅ |
 | Failure analysis, stress test, Defense Lab export | `analysis.py`, `stress.py`, `lab_export.py` | ✅ |
 | Reference evaluation results | [`results/protocol-v1/`](results/protocol-v1/COMPARISON.md) (current), [`results/protocol-v0/`](results/protocol-v0/eval_table.md) | ✅ real output, see below |
+| **Live defense loop (vertical slice)**: real telemetry → DQN → enforced action → measured outcome → reward → transition, against the owned demo app | `rl_defense/live/` | ✅ closed loop, 11 tests; sim-trained policy, lab evidence only (see [`live/README.md`](rl_defense/live/README.md)) |
 | Backend endpoint / UI panel | backend (Srihith), frontend (Vihaan) | ❌ not integrated yet |
 
 ## The environment in one paragraph
