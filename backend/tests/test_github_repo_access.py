@@ -5,10 +5,12 @@ from __future__ import annotations
 from typing import Any
 
 import httpx
+import pytest
+import sqlalchemy as sa
 
 from backend.api.github_repos import store_repo_access
-from backend.db import transaction
-from backend.github import user_repositories
+from backend.db import transaction, users
+from backend.github import GitHubNotConfigured, user_repositories
 from backend.settings import Settings
 
 
@@ -17,10 +19,24 @@ def _grant(user_id: str, repos: list[dict[str, Any]]) -> None:
         store_repo_access(conn, user_id, repos)
 
 
+def _set_github_id(user_id: str, github_id: int | None) -> None:
+    with transaction() as conn:
+        conn.execute(sa.update(users).where(users.c.id == user_id).values(github_id=github_id))
+
+
+def _without_personal_installation(monkeypatch) -> None:
+    class NoInstallation:
+        def user_installation(self, login):
+            return None
+
+    monkeypatch.setattr("backend.api.github_repos.GitHubApp", NoInstallation)
+
+
 ACME = {"full_name": "acme/shop", "installation_id": 42, "default_branch": "main", "private": True}
 
 
-def test_picker_lists_only_the_users_repositories(client_factory) -> None:
+def test_picker_lists_only_the_users_repositories(client_factory, monkeypatch) -> None:
+    _without_personal_installation(monkeypatch)
     alice, bob = client_factory("alice"), client_factory("bob")
     _grant(alice.me["user"]["id"], [ACME])
     mine = alice.get("/api/v1/github/repositories").json()["items"]
@@ -30,7 +46,8 @@ def test_picker_lists_only_the_users_repositories(client_factory) -> None:
     assert client_factory().get("/api/v1/github/repositories").status_code == 401
 
 
-def test_connect_requires_access_through_that_installation(client_factory) -> None:
+def test_connect_requires_access_through_that_installation(client_factory, monkeypatch) -> None:
+    _without_personal_installation(monkeypatch)
     alice, mallory = client_factory("alice"), client_factory("mallory")
     _grant(alice.me["user"]["id"], [ACME])
     for user in (alice, mallory):
@@ -49,13 +66,205 @@ def test_connect_requires_access_through_that_installation(client_factory) -> No
     assert listed["connected_repo_id"] is not None
 
 
-def test_access_list_is_replaced_on_each_sign_in(client_factory) -> None:
+def test_access_list_is_replaced_on_each_sign_in(client_factory, monkeypatch) -> None:
+    _without_personal_installation(monkeypatch)
     alice = client_factory("alice")
     uid = alice.me["user"]["id"]
     _grant(uid, [ACME])
     _grant(uid, [{**ACME, "full_name": "acme/api"}])
     names = [r["full_name"] for r in alice.get("/api/v1/github/repositories").json()["items"]]
     assert names == ["acme/api"]
+
+
+def test_picker_refreshes_personal_installation_additions(client_factory, monkeypatch) -> None:
+    alice = client_factory("alice")
+    user_id = alice.me["user"]["id"]
+    _grant(user_id, [ACME])
+    _set_github_id(user_id, 123)
+
+    class FakeApp:
+        def user_installation(self, login):
+            assert login == "alice"
+            return {"id": 42, "account": {"type": "User", "id": 123, "login": "renamed"}}
+
+        def installation_repositories(self, installation_id):
+            assert installation_id == 42
+            return [
+                ACME,
+                {
+                    "full_name": "acme/api",
+                    "installation_id": 42,
+                    "default_branch": "trunk",
+                    "private": False,
+                },
+            ]
+
+    monkeypatch.setattr("backend.api.github_repos.GitHubApp", FakeApp)
+    response = alice.get("/api/v1/github/repositories")
+
+    assert response.status_code == 200, response.text
+    assert {item["full_name"] for item in response.json()["items"]} == {
+        "acme/shop",
+        "acme/api",
+    }
+
+
+def test_picker_refresh_removes_repositories_removed_from_personal_installation(
+    client_factory, monkeypatch
+) -> None:
+    alice = client_factory("alice")
+    user_id = alice.me["user"]["id"]
+    _grant(user_id, [ACME])
+    monkeypatch.setattr(
+        "backend.api.github_repos.get_settings",
+        lambda: Settings(auth_dev_login_enabled=False),
+    )
+
+    class FakeApp:
+        def user_installation(self, login):
+            assert login == "alice"
+            return {"id": 42, "account": {"type": "User", "id": 123, "login": "ALICE"}}
+
+        def installation_repositories(self, installation_id):
+            assert installation_id == 42
+            return [
+                {
+                    "full_name": "acme/api",
+                    "installation_id": 42,
+                    "default_branch": None,
+                    "private": False,
+                }
+            ]
+
+    monkeypatch.setattr("backend.api.github_repos.GitHubApp", FakeApp)
+    response = alice.get("/api/v1/github/repositories")
+
+    assert response.status_code == 200, response.text
+    assert [item["full_name"] for item in response.json()["items"]] == ["acme/api"]
+    assert response.json()["items"][0]["default_branch"] == "main"
+
+
+@pytest.mark.parametrize(
+    ("github_id", "account"),
+    [
+        (123, {"type": "Organization", "id": 123, "login": "alice"}),
+        (123, {"type": "User", "id": 456, "login": "alice"}),
+    ],
+)
+def test_picker_does_not_refresh_organization_or_mismatched_installations(
+    client_factory, monkeypatch, github_id, account
+) -> None:
+    alice = client_factory("alice")
+    user_id = alice.me["user"]["id"]
+    _grant(user_id, [ACME])
+    _set_github_id(user_id, github_id)
+
+    class FakeApp:
+        def user_installation(self, login):
+            return {"id": 42, "account": account}
+
+        def installation_repositories(self, installation_id):
+            raise AssertionError("untrusted installations must not be listed")
+
+    monkeypatch.setattr("backend.api.github_repos.GitHubApp", FakeApp)
+    response = alice.get("/api/v1/github/repositories")
+
+    assert response.status_code == 200, response.text
+    assert [item["full_name"] for item in response.json()["items"]] == ["acme/shop"]
+
+
+@pytest.mark.parametrize("failure", ["http", "not-configured"])
+def test_picker_serves_snapshot_when_github_refresh_fails(
+    client_factory, monkeypatch, failure
+) -> None:
+    alice = client_factory("alice")
+    user_id = alice.me["user"]["id"]
+    _grant(user_id, [ACME])
+
+    class FakeApp:
+        def __init__(self):
+            if failure == "not-configured":
+                raise GitHubNotConfigured("not configured")
+
+        def user_installation(self, login):
+            raise httpx.ConnectError("offline")
+
+    monkeypatch.setattr("backend.api.github_repos.GitHubApp", FakeApp)
+    response = alice.get("/api/v1/github/repositories")
+
+    assert response.status_code == 200, response.text
+    assert [item["full_name"] for item in response.json()["items"]] == ["acme/shop"]
+
+
+def test_picker_keeps_rows_from_other_installations_when_refreshing(
+    client_factory, monkeypatch
+) -> None:
+    alice = client_factory("alice")
+    user_id = alice.me["user"]["id"]
+    other_installation = {
+        "full_name": "org/keep",
+        "installation_id": 99,
+        "default_branch": "main",
+        "private": True,
+    }
+    _grant(user_id, [ACME, other_installation])
+    _set_github_id(user_id, 123)
+
+    class FakeApp:
+        def user_installation(self, login):
+            return {"id": 42, "account": {"type": "User", "id": 123, "login": "alice"}}
+
+        def installation_repositories(self, installation_id):
+            return [
+                {
+                    "full_name": "acme/new",
+                    "installation_id": 42,
+                    "default_branch": "main",
+                    "private": False,
+                }
+            ]
+
+    monkeypatch.setattr("backend.api.github_repos.GitHubApp", FakeApp)
+    response = alice.get("/api/v1/github/repositories")
+
+    assert response.status_code == 200, response.text
+    items = {item["full_name"]: item for item in response.json()["items"]}
+    assert set(items) == {"acme/new", "org/keep"}
+    assert items["org/keep"]["installation_id"] == 99
+
+
+def test_picker_skips_refresh_without_a_github_login(client_factory, monkeypatch) -> None:
+    alice = client_factory("alice")
+    user_id = alice.me["user"]["id"]
+    _grant(user_id, [ACME])
+    with transaction() as conn:
+        conn.execute(sa.update(users).where(users.c.id == user_id).values(github_login=""))
+
+    class UnexpectedApp:
+        def __init__(self):
+            raise AssertionError("a missing GitHub login should skip refresh")
+
+    monkeypatch.setattr("backend.api.github_repos.GitHubApp", UnexpectedApp)
+    response = alice.get("/api/v1/github/repositories")
+
+    assert response.status_code == 200, response.text
+    assert [item["full_name"] for item in response.json()["items"]] == ["acme/shop"]
+
+
+def test_picker_skips_refresh_for_dev_login(client_factory, monkeypatch) -> None:
+    alice = client_factory("alice")
+    user_id = alice.me["user"]["id"]
+    _grant(user_id, [ACME])
+
+    class UnexpectedApp:
+        def __init__(self):
+            raise AssertionError("dev login must not trigger a GitHub refresh")
+
+    monkeypatch.setattr("backend.api.github_repos.GitHubApp", UnexpectedApp)
+    response = alice.get("/api/v1/github/repositories")
+
+    assert response.status_code == 200, response.text
+    assert [item["full_name"] for item in response.json()["items"]] == ["acme/shop"]
 
 
 def test_user_repositories_walks_installations() -> None:

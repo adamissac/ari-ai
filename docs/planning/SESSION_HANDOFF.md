@@ -833,5 +833,20 @@ Replaced game-like UI copy with evaluation terminology and synthetic/illustrativ
 - The isolated Probe test failed: its `ToolContext` had no rules of engagement, so `checks.list_templates` withheld parameter values (`MISSING_ROE`) and live Probe refused to guess, reporting inconclusive. Correct agent behaviour, wrong test fixture. The test now issues RoE with `build_roe` like the orchestrator.
 - After the fix, live Probe ran `access_control.ownership@1` (route `payment_detail`, alice vs bob) in sandbox `sbx_01M594NN5VE87WXM4E7EEWF5MG`: `matches_expectation=false`, outcome `confirmed` from the executed check. 1 passed in 15 s.
 - Not exercised: a production GitHub sign-in → repo connect → push → assessment on Railway (needs a signed-in user session and an authorized scope).
-
 Removed the homepage Your next move section at owner request, including both action cards, unused Reveal import, closing-link labels and dedicated CSS.
+
+## 2026-10-19T05:27Z — Adam — refresh GitHub repository picker from personal installations
+
+- **Did:**
+  - On `fix/GH-repo-list-refresh`, the repository-list API refreshes only a trusted personal GitHub App installation before reading the snapshot. It replaces rows for that installation only; organization-installation repositories remain from the sign-in snapshot. App configuration and HTTP failures fall back to stored rows.
+  - Added App-JWT personal-installation lookup and paginated installation-repository listing (100 per page, at most 10 pages).
+  - Added the GitHub sign-in refresh link on the connect page and repo picker. `useResource` fetches on mount and has no cross-navigation cache.
+  - Added backend regression coverage for additions, removals, rejected installations/identities, failures, preserving other installations, and dev-login skipping; added frontend link tests on both surfaces.
+  - Dev-login sessions are gated when the dev login setting is enabled and the stored GitHub ID is absent. The database stores the supplied dev-login name in `github_login`, so this avoids treating that unverified name as a real GitHub identity; case-insensitive login matching remains available when dev login is disabled.
+- **Verified:**
+  - `uv run ruff check backend` passed; `uv run ruff format --check backend`: 92 files already formatted.
+  - `uv run pytest -q backend/tests -k "github or repo or auth"`: 39 passed, 106 deselected, one SQLAlchemy deprecation warning.
+  - Full touched backend tests: 24 passed.
+  - Frontend lint and typecheck passed; Vitest: 69 files, 277 tests passed. Vitest printed the existing jsdom canvas warning.
+  - `uv run mypy` was not run: root configuration checks `shared/shared`, `monitoring/monitoring`, and `standards/standards`, not backend.
+- **Not exercised:** live GitHub App requests or a visual browser check. CI was intentionally not watched after push per the task scope.
