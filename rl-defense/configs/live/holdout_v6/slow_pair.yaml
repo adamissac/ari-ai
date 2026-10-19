@@ -1,0 +1,22 @@
+# Held-out v6 (created 2026-10-19, before any evaluation on it). A customer (carol) and an
+# outsider (mallory) take turns per window at low volume in long campaigns, rotating tokens.
+# Unseen: a customer + outsider pair at 3 requests/window with token rotation.
+name: slow_pair
+split: holdout
+horizon: 30
+schedule: bursty
+p_start: 0.12
+p_stop: 0.08
+attack_per_step: 3
+benign_per_step: 8
+attackers: [carol, mallory]
+attacker_switch: per_window
+rotate_tokens: true
+victims: [alice, erin]
+benign: [alice, bob, carol, dave, erin]
+delegations: ["dave:alice"]
+delegate_per_step: 1
+delegate_burst_p: 0.2
+delegate_burst_size: 3
+seed_start: 47500
+episodes: 30

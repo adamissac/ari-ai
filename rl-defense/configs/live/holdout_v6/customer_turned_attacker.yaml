@@ -1,0 +1,22 @@
+# Held-out v6 (created 2026-10-19, committed before any policy was evaluated on it; see
+# results/live-retrain-v6/PREREGISTRATION.md). bob is an active customer (own reads every
+# window) who also reads alice's and carol's payments in short, frequent bursts; both
+# bookkeepers are busy. Unseen: an attacker whose own legitimate traffic is a large share
+# of the benign load, frequent short bursts.
+name: customer_turned_attacker
+split: holdout
+horizon: 30
+schedule: bursty
+p_start: 0.3
+p_stop: 0.5
+attack_per_step: 4
+benign_per_step: 6
+attackers: [bob]
+victims: [alice, carol]
+benign: [bob, alice]
+delegations: ["dave:alice", "erin:carol"]
+delegate_per_step: 1
+delegate_burst_p: 0.25
+delegate_burst_size: 3
+seed_start: 45500
+episodes: 30
