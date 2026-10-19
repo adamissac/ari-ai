@@ -57,8 +57,8 @@ experience:
 
 The behavior policy is the sim-trained policy plus ε-greedy exploration, and that policy
 favours monitoring and reassessment. So the data covers the useless actions densely and
-the useful ones thinly. Plain DDQN (v4) overestimated the rare actions and degraded with
-more updates. CQL with α = 1.0 suppresses them, so the candidate rarely blocks (compromise
+the useful ones thinly. The likely reading of v4, not verified here, is that plain DDQN
+overestimated the rare actions and degraded with more updates. CQL with α = 1.0 suppresses them, so the candidate rarely blocks (compromise
 0.675). This is offline RL's known coverage limit: it cannot do much better than the
 behavior data supports. A smaller α would sit between the two failure modes, but tuning α
 after seeing this would break the pre-registration, so it was not done.
