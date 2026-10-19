@@ -21,6 +21,9 @@ unweighted mean over the val scenarios of each scenario's mean return
 (:func:`evaluate.scenario_mean_reward`), and the per-scenario val returns are recorded.
 v3 selected on a single val scenario and overfit it (results/live-retrain-v3/REPORT.md).
 ``"pooled"`` (default) is the v1-v3 score, the mean over all pooled val episodes.
+
+``cql_alpha`` (live v5): train with the conservative Q-learning penalty
+(``DDQNConfig.cql_alpha``, rl_defense/agents/ddqn.py). 0 (default) = the v1-v4 updates.
 """
 
 from __future__ import annotations
@@ -83,6 +86,7 @@ def retrain(
     noop_margins: tuple[float, ...] = (0.0,),
     loop_overrides: Mapping[str, object] | None = None,
     selection: Literal["pooled", "scenario_mean"] = "pooled",
+    cql_alpha: float = 0.0,
 ) -> dict:
     if any(s.split != "val" for s in val_scenarios):
         raise ValueError("checkpoint selection must use validation scenarios only")
@@ -94,6 +98,8 @@ def retrain(
         agent = as_space(agent, action_space)  # widen without changing its greedy choices
     for g in agent.optimizer.param_groups:
         g["lr"] = lr
+    if cql_alpha:
+        agent.config = agent.config.model_copy(update={"cql_alpha": float(cql_alpha)})
 
     records: list[dict] = []
     ds_manifests: list[dict] = []
@@ -137,14 +143,18 @@ def retrain(
     history = [{"update": 0, "role": "base", **_brief(s0), **_margin(m0, noop_margins)}]
     best: tuple[float, int, dict, float] | None = None
     losses: list[float] = []
+    gaps: list[float] = []
     for u in range(1, updates + 1):
-        losses.append(agent.update(buf.sample(batch_size))["loss"])
+        info = agent.update(buf.sample(batch_size))
+        losses.append(info["loss"])
+        gaps.append(info["cql_gap"])
         if u % eval_every == 0:
             s, m = val_score()
             history.append(
                 {
                     "update": u,
                     "loss_mean": float(np.mean(losses[-eval_every:])),
+                    **({"cql_gap_mean": float(np.mean(gaps[-eval_every:]))} if cql_alpha else {}),
                     **_brief(s),
                     **_margin(m, noop_margins),
                 }
@@ -184,6 +194,7 @@ def retrain(
                 "noop_margins": list(noop_margins),
                 "selected_noop_margin": best[3],
                 "selection": selection,
+                "cql_alpha": float(cql_alpha),
                 **({"loop_overrides": dict(loop_overrides)} if loop_overrides else {}),
                 "val_scenarios": {s.name: s.config_hash() for s in val_scenarios},
                 "selection_history": history,

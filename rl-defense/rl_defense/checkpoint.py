@@ -101,7 +101,7 @@ def load_checkpoint(
         )
     agent = DDQNAgent(*space, DDQNConfig(**manifest["ddqn_config"]), seed=manifest["seed"])
     if manifest["env_id"] != ENV_ID:
-        from rl_defense.live.actions import disruptive_mask
+        from rl_defense.layouts import disruptive_mask
 
         agent.disruptive = disruptive_mask(agent.n_actions)
     agent.load_state_dict(loaded["agent"])

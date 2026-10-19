@@ -6,6 +6,18 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Add the lab-only online DQfD training workflow (expert demonstrations plus online DDQN updates). Selected-checkpoint lineage records only its training prefix; full experiment logs remain separate, and evidence export includes reloadable checkpoint and experience bytes. Promotion refuses unsupported serving layouts and missing/hash-mismatched DQfD evidence. The historical v6 gate result is not independently reloadable because its original artifact bytes were not retained; no policy is promoted.
+
+- Fix live-layout recommendation serving: load checkpoints without lab dependencies, explain the policy-selected action after abstention, keep Q confidence metadata ranked, and avoid inferring training origin from checkpoint layout.
+
+- Contracts 0.13 (additive): `DefenseActionName` gains `block_principal_long` and `block_top_principal_long`, and `PlatformFacts` gains the live v3 detector fields (defaults keep old payloads valid). The schema bump also covers `block_principal` (#324) and the principal-block fields (#334). `PolicyRunner` can now serve live v3 checkpoints as lab-scoped recommendations. Inference no longer imports the live lab.
+
+- Let project owners explicitly approve their own sandbox-only authorization, with audit recording. The commit run panel refreshes approval status automatically and no longer gets stuck on expired pending scopes.
+
+- Slow the walkthrough zoom with a 1.5-second transform/radius transition and balanced scroll growth; reduced motion remains immediate.
+
+- Land the first large homepage wheel gesture on the expanded walkthrough video; absorb that gesture’s momentum, allow the next scroll or Continue exploring link to skip, and keep video controls visible.
+
 ### Added
 - Specialist training now augments the synthetic corpus with real public corpora (DiverseVul functions, NVD CVE descriptions, MITRE ATT&CK technique descriptions) fetched via `python -m specialists.data.fetch` into the git-ignored `specialists/specialists/data/cache/`; corpus-2 adds 5-6 code families per CWE so Diagnose/Patch labels can no longer be looked up from the CWE alone.
 
