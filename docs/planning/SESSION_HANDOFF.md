@@ -921,3 +921,7 @@ Removed the homepage Your next move section at owner request, including both act
 - Updated Settings copy and added focused switch/sessionless-Lab tests.
 - Verification: frontend lint and typecheck passed; focused tests passed (2 files, 4 tests); full frontend suite passed (70 files, 282 tests).
 - No visual browser check was run.
+
+### 2026-10-19 — 24/7 defense switch contrast (Adam, `feat/adam/defense-switch`)
+- Made `DefenseSwitch` light by default for theme-token panels and retained its existing white styling behind `tone="dark"` for the Monitoring header.
+- Added light/default and dark-tone class assertions.

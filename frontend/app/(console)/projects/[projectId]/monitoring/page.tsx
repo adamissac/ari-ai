@@ -39,7 +39,7 @@ export default function MonitoringPage() {
           <p className="mt-1 max-w-2xl text-sm text-white/70">Real events from your connected repository and runtime, plus re-checks they triggered. This is a record of what arrived, not a promise of round-the-clock protection.</p>
         </div>
         <div className="flex flex-col items-start gap-3 lg:items-end">
-          <DefenseSwitch project={project} onChange={() => reloadProject()} />
+          <DefenseSwitch project={project} onChange={() => reloadProject()} tone="dark" />
           <ul className="monitor-chips" aria-label="Monitoring activity">
             <li><span className="text-white/50">Events</span> {events.status === 'ready' ? `${events.data.items.length}${events.data.items.length >= 50 ? '+' : ''}` : '…'}</li>
             <li><span className="text-white/50">Synthetic events</span> {events.status === 'ready' ? events.data.items.filter(e => e.simulated).length : '…'}</li>

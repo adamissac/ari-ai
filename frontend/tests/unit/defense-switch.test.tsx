@@ -42,6 +42,14 @@ it('renders enabled defense as On', () => {
   expect(screen.getByText('Watching every push and re-checking what changed.')).toBeTruthy();
 });
 
+it('uses theme colors by default and keeps white text for the dark tone', () => {
+  const { rerender } = render(<DefenseSwitch project={project} />);
+  expect(screen.getByTestId('defense-switch').classList.contains('text-white')).toBe(false);
+
+  rerender(<DefenseSwitch project={project} tone="dark" />);
+  expect(screen.getByTestId('defense-switch').classList.contains('text-white')).toBe(true);
+});
+
 it('PATCHes the whole settings object with defense disabled', async () => {
   const requests: { url: string; init?: RequestInit }[] = [];
   const fetcher: typeof fetch = async (input, init) => {
