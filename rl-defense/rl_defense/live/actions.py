@@ -14,10 +14,10 @@ Layout (a strict extension, so a v1 index means the same thing in v2):
 - obs 0..47     = DefenseSimEnv features
 - obs 48        = ``principal_block_active`` (1.0 while any principal block is in force)
 
-This is a **live-only** extension. ``shared.rl.DefenseActionName`` and DefenseSimEnv are
-unchanged; the shared change is proposed in coordination/messages/
-20261019T043718Z-alan-to-srihith-adam-block-principal-action.md. A v2 policy is lab-only
-until that lands and must never emit a ``DefenseRecommendation``.
+``block_principal`` is a member of ``shared.rl.DefenseActionName`` (proposal and
+sign-off record in coordination/messages/). DefenseSimEnv is unchanged. v2 checkpoints
+stay lab-only: ``PolicyRunner`` refuses them, because ``PlatformFacts`` carries no
+principal-block state to build the 49-feature observation from.
 """
 
 from __future__ import annotations
