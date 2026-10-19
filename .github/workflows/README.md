@@ -7,7 +7,7 @@ check. **Implemented:** `docs.yml`, `secrets.yml` (INFRA-003), `frontend.yml` (U
 |---|---|---|---|
 | `docs.yml` ✅ | PR touching `**/*.md` | Markdown link + anchor check, Mermaid block-type check | `INFRA-003` |
 | `secrets.yml` ✅ | every PR + push to `main` | gitleaks scan of full history with `.gitleaks.toml` (adds a rule for every `sk-ant-*` key form) | `INFRA-003` |
-| `backend.yml` ✅ | PR touching `backend/`, `shared/`, `monitoring/` | ruff, mypy, generated-contract freshness, pytest against a Postgres service (incl. TS compile of generated types) | `CORE-002` |
+| `backend.yml` ✅ | PR touching `backend/`, `shared/`, `monitoring/`, `rl-defense/rl_defense/` | ruff, mypy, generated-contract freshness, pytest against a Postgres service (incl. TS compile of generated types); `rl-integration` job runs `backend/tests/test_rl_integration.py` with CPU torch + rl-defense installed and fails if it skips | `CORE-002` |
 | `frontend.yml` ✅ | PR touching `frontend/`, `shared/generated/`, `backend/`, RL bundles | transport tests, eslint, strict tsc, Vitest, next build; Postgres-backed real-stack Playwright e2e | `UI-001` |
 | `contracts.yml` | PR touching `shared/` | folded into `backend.yml` (`shared.export --check`, `shared.examples --check`) | `CORE-003` |
 | `rl.yml` ✅ | PR touching `rl-defense/` | env API checks (`gymnasium.utils.env_checker`), determinism test, short smoke train (CPU, < 5 min) | `RL-001` |
