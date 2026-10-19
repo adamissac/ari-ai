@@ -10,3 +10,4 @@ specialists/specialists/checkpoints/*/weights.bin binary
 
 # Generated contract artifacts: collapse in diffs, regenerate on conflict
 shared/generated/** linguist-generated=true -diff
+*.gz binary

@@ -1,4 +1,6 @@
-> **Artifact limitation (2026-10-19 review):** The original checkpoint and experience JSONL bytes were not committed or provided in a durable store. The recorded `recommend_promote` verdict and metrics below describe that historical run; they are not a currently executable promotion instruction or independently reloadable evidence. Its selected checkpoint was restored at step 105,000, but the old lineage counted all 150,000 online transitions (153,000 including demonstrations). Do not use that count as the selected checkpoint's training history. The old run also skipped the first 60 online updates. Future runs retain selected-prefix lineage, the complete experiment separately, and all hash-pinned artifact bytes. No historical bytes, hashes, metrics or corrected-run results have been fabricated.
+> **Evidence restored (2026-10-19, after the review below):** the original bytes were recovered unchanged from the run's own git-ignored output directory and are now committed and hash-pinned. They are the checkpoint `candidate_online.pt` (`8113a37f…`, equal to `candidate.manifest.json`) and the complete 153,000-line experience log, stored as `candidate_online_experience.jsonl.gz` (uncompressed `bc04e57b…`, the hash the checkpoint's own lineage pins). The selected snapshot's 108,000-line prefix is derived from the log (`95ac4160…`). `EVIDENCE.json` lists them, and `python -m rl_defense.live.evidence verify|restore results/live-retrain-v6` checks or rebuilds the uncompressed files. `tests/test_v6_evidence.py` verifies all of it in CI, including the registry's durable-evidence gate on a temporary copy. The historical lineage *count* is still overstated, as the review says (153,000 recorded vs 108,000 available at selection), and the 60 skipped updates still stand. The restore does not change any metric, the verdict, or the checkpoint. Nothing was promoted.
+>
+> **Artifact limitation (2026-10-19 review, superseded in part by the restore above):** The original checkpoint and experience JSONL bytes were not committed or provided in a durable store. The recorded `recommend_promote` verdict and metrics below describe that historical run; they are not a currently executable promotion instruction or independently reloadable evidence. Its selected checkpoint was restored at step 105,000, but the old lineage counted all 150,000 online transitions (153,000 including demonstrations). Do not use that count as the selected checkpoint's training history. The old run also skipped the first 60 online updates. Future runs retain selected-prefix lineage, the complete experiment separately, and all hash-pinned artifact bytes. No historical bytes, hashes, metrics or corrected-run results have been fabricated.
 
 # Provenance of the v6 live-training evidence (online DQfD)
 
@@ -17,8 +19,10 @@ was started from the repo root rather than `rl-defense/` and the shell could not
 log path. No Python ran and no policy saw any scenario. The laptop also slept for part of
 the run, which suspends the process without changing it.
 
-Checkpoints and the 156,000-transition experience log are in `runs/` (git-ignored). The
-log's SHA-256 is in `candidate.manifest.json` (`lineage.experience_sha256`).
+The checkpoint and the 153,000-transition experience log (3,000 demonstrations + 150,000
+online) were first kept only in `runs/` (git-ignored); an earlier version of this file said
+156,000, which was wrong. They are now committed here (see the restore note at the top).
+The log's SHA-256 is in `candidate.manifest.json` (`lineage.experience_sha256`).
 
 ## Order of events
 
