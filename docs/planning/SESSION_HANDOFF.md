@@ -18,6 +18,13 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-19 — Claude (agent, Alan) — live retraining pipeline + pre-registered promotion gate
+- Did: branch `feat/alan/live-rl-retrain`. Fixed two #315 bugs (stored obs came from an empty telemetry window; telemetry read the generator's `is_attack` label and counted our own blocking as anomalous — detection now uses gateway instrumentation only). Added bursty attack schedule, versioned live scenarios with disjoint train/val/holdout seed bands, train-only SHA-pinned experience datasets, offline Double-DQN candidate retraining (warm start, val selection, lineage manifest), paired held-out evaluation with live-tuned threshold rules, a deterministic promotion gate (`configs/live/promotion.yaml`, committed before the final run), and a registry requiring a human `usr_*` approver and a passing report bound to the checkpoint bytes, with rollback.
+- Result (`rl-defense/results/live-retrain/REPORT.md`, 3 holdout scenarios × 30 paired episodes): candidate +5.38 return [4.54, 6.35] vs deployed sim-trained policy, compromise 100% → 28.3%, no per-scenario regression — but verdict **reject**: live-tuned rules score higher (−6.69 vs −7.98) and availability 0.76 < 0.85. The floor is unreachable with node-level isolation while attacks are active ~45% of windows (rules get 0.74).
+- Honesty note: holdout was evaluated 3× during development and two design changes followed (disclosed in `results/live-retrain/PROVENANCE.md`); v2 needs new holdout scenarios.
+- Commands: rl suite 114 passed; ruff check/format clean; pipeline run deterministic (round val returns reproduced exactly).
+- Open for humans: add a finer-grained control (block a principal), revisit availability floor or `c_disrupt`. Nothing was promoted; no registry exists in the repo (runs/ is git-ignored).
+
 ### 2026-10-19 — Claude (agent, Alan) — Live RL Defense Lab audit + live-loop vertical slice
 - Did: audited Phases 0-9 against spec for the RL pillar (`rl-defense/LIVE_RL_GAP_AUDIT.md`): env/DDQN/eval/inference are real but simulation-only; no telemetry source, no action execution, no live loop, no reward-from-real-outcome. Then built the highest-priority gap as a vertical slice: `rl_defense/live/` closes the loop against examples/payments-lite (real telemetry -> trained DQN -> enforced permitted action -> measured outcome -> reward -> LiveTransition). Branch `feat/alan/live-rl-loop` off main.
 - State of the code: `rl_defense/live/{gateway,telemetry,adversary,loop,contracts,topology,run}.py` + README; tests `tests/test_live_gateway.py` (7) + `tests/test_live_loop.py` (4) + `tests/conftest.py`. Full RL suite 103 passed (was 92). Reproducible evidence in `results/live-slice/`.
