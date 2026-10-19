@@ -13,6 +13,10 @@ Metrics (aggregated over episodes):
 - ``no_attack_defense_duty`` share of attack-free windows in which the defense blocked at
                              least one legitimate request (reward-hacking guard)
 - ``actions_per_step``       non-noop actions per step (action cost)
+
+``action_space="live_v2"`` runs the loop with ``block_principal`` available. Policies built
+for the 48/22 simulator layout (``dqn_policy`` of a sim checkpoint, the v1 rules) see the
+first 48 features and 22 mask entries only, i.e. they cannot block principals.
 """
 
 from __future__ import annotations
@@ -24,7 +28,8 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 
 from rl_defense.envs.config import NODE_NAMES
-from rl_defense.envs.defense_sim import NOOP_ACTION, encode_action
+from rl_defense.envs.defense_sim import N_ACTIONS, NOOP_ACTION, OBS_DIM, encode_action
+from rl_defense.live.actions import BLOCK_PRINCIPAL_ACTION, ActionSpace
 from rl_defense.live.contracts import LiveTransition
 from rl_defense.live.loop import LiveDefenseLoop, LoopConfig
 from rl_defense.live.scenarios import LiveScenario
@@ -82,11 +87,14 @@ def run_policy(
     *,
     episodes: int | None = None,
     on_episode: Callable[[LiveScenario, int, list[LiveTransition]], None] | None = None,
+    action_space: ActionSpace = "sim",
 ) -> list[EpisodeMetrics]:
     rows: list[EpisodeMetrics] = []
     for sc in scenarios:
         loop = LiveDefenseLoop(
-            app_factory, config=LoopConfig(horizon=sc.horizon), driver=sc.driver()
+            app_factory,
+            config=LoopConfig(horizon=sc.horizon, action_space=action_space),
+            driver=sc.driver(),
         )
         try:
             for seed in sc.seeds(episodes):
@@ -157,8 +165,21 @@ def always_isolate_payments(obs: np.ndarray, mask: np.ndarray) -> int:  # noqa: 
     return a if mask[a] else NOOP_ACTION
 
 
+def always_block_principal(obs: np.ndarray, mask: np.ndarray) -> int:  # noqa: ARG001
+    """Naive v2 reference: block every flagged principal whenever possible."""
+    if len(mask) > BLOCK_PRINCIPAL_ACTION and mask[BLOCK_PRINCIPAL_ACTION]:
+        return BLOCK_PRINCIPAL_ACTION
+    return NOOP_ACTION
+
+
+def sim_view(policy: PolicyFn) -> PolicyFn:
+    """Run a 48/22 simulator-layout policy inside either loop (v2 extras are invisible)."""
+    return lambda obs, mask: int(policy(obs[:OBS_DIM], mask[:N_ACTIONS]))
+
+
 def dqn_policy(agent) -> PolicyFn:  # noqa: ANN001
-    return lambda obs, mask: int(agent.greedy_action(obs, mask))
+    act = lambda obs, mask: int(agent.greedy_action(obs, mask))  # noqa: E731
+    return sim_view(act) if agent.n_actions == N_ACTIONS else act
 
 
 RULES_GRID = {
@@ -166,6 +187,9 @@ RULES_GRID = {
     "rate_limit_alerts": (0.2, 0.4, 0.6, 1.1),  # 1.1 = never (normalized alerts ≤ 1)
     "monitor_anomaly": (0.1, 0.3, 1.1),
 }
+# live_v2: the rules get the new control too, so "beats static rules" stays a fair bar.
+# block when the hottest node's anomaly exceeds this (1.1 = never → the v1 rules).
+RULES_BLOCK_GRID = (0.1, 0.2, 0.35, 0.5, 1.1)
 
 
 def tune_rules(
@@ -174,37 +198,56 @@ def tune_rules(
     *,
     episodes: int = 2,
     grid: dict[str, tuple[float, ...]] | None = None,
+    action_space: ActionSpace = "sim",
 ) -> tuple[dict, list[dict]]:
     """Grid-tune the docs/09 threshold rules on the SAME live training scenarios the
-    candidate learns from (never on val/holdout), so the static-rules comparison is fair."""
+    candidate learns from (never on val/holdout), so the static-rules comparison is fair.
+    In ``live_v2`` the grid also covers the ``block_principal`` threshold."""
     from itertools import product
-
-    from rl_defense.baselines.policies import ThresholdParams, ThresholdRulesPolicy
 
     if any(s.split != "train" for s in train_scenarios):
         raise ValueError("rules must be tuned on train scenarios only")
     g = grid or RULES_GRID
+    blocks = g.get("block_anomaly", RULES_BLOCK_GRID) if action_space == "live_v2" else (None,)
+    keys = ("isolate_anomaly", "rate_limit_alerts", "monitor_anomaly")
     table: list[dict] = []
-    for iso, rl, mon in product(g["isolate_anomaly"], g["rate_limit_alerts"], g["monitor_anomaly"]):
-        pol = ThresholdRulesPolicy(ThresholdParams(iso, rl, mon))
-        s = summarize(run_policy(pol.act, train_scenarios, app_factory, episodes=episodes))
-        table.append(
-            {
-                "isolate_anomaly": iso,
-                "rate_limit_alerts": rl,
-                "monitor_anomaly": mon,
-                "train_reward": s["reward"],
-            }
+    for iso, rl, mon, blk in product(*(g[k] for k in keys), blocks):
+        params = dict(zip(keys, (iso, rl, mon), strict=True))
+        if blk is not None:
+            params["block_anomaly"] = blk
+        s = summarize(
+            run_policy(
+                rules_policy(params),
+                train_scenarios,
+                app_factory,
+                episodes=episodes,
+                action_space=action_space,
+            )
         )
+        table.append({**params, "train_reward": s["reward"]})
     best = max(table, key=lambda r: r["train_reward"])
-    params = {k: best[k] for k in ("isolate_anomaly", "rate_limit_alerts", "monitor_anomaly")}
+    params = {k: v for k, v in best.items() if k != "train_reward"}
     return params, table
 
 
 def rules_policy(params: dict) -> PolicyFn:
-    from rl_defense.baselines.policies import ThresholdParams, ThresholdRulesPolicy
+    """docs/09 threshold rules; with ``block_anomaly`` they first try ``block_principal``."""
+    from rl_defense.baselines.policies import ThresholdParams, ThresholdRulesPolicy, node_feature
+    from rl_defense.envs.config import NODE_NAMES as _NODES
 
-    return ThresholdRulesPolicy(ThresholdParams(**params)).act
+    p = dict(params)
+    block = p.pop("block_anomaly", None)
+    base = sim_view(ThresholdRulesPolicy(ThresholdParams(**p)).act)
+    if block is None:
+        return base
+
+    def act(obs: np.ndarray, mask: np.ndarray) -> int:
+        hottest = max(node_feature(obs, i, "anomaly_score") for i in range(len(_NODES)))
+        if len(mask) > BLOCK_PRINCIPAL_ACTION and mask[BLOCK_PRINCIPAL_ACTION] and hottest > block:
+            return BLOCK_PRINCIPAL_ACTION
+        return base(obs, mask)
+
+    return act
 
 
 # ---------------------------------------------------------------------- promotion gate

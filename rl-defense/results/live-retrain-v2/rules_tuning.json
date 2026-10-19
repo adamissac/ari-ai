@@ -1,0 +1,1690 @@
+{
+  "selected": {
+    "isolate_anomaly": 0.6,
+    "rate_limit_alerts": 1.1,
+    "monitor_anomaly": 1.1,
+    "block_anomaly": 0.1
+  },
+  "grid": [
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.1,
+      "train_reward": -5.28875
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.2,
+      "train_reward": -5.28875
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.35,
+      "train_reward": -5.517916666666666
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.5,
+      "train_reward": -5.510416666666666
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 1.1,
+      "train_reward": -5.679166666666667
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.1,
+      "train_reward": -5.28125
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.2,
+      "train_reward": -5.28125
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.35,
+      "train_reward": -5.456250000000001
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.5,
+      "train_reward": -5.534583333333333
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 1.1,
+      "train_reward": -5.666666666666667
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.1,
+      "train_reward": -5.228750000000001
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.2,
+      "train_reward": -5.228750000000001
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.35,
+      "train_reward": -5.3475
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.5,
+      "train_reward": -5.5841666666666665
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 1.1,
+      "train_reward": -5.5841666666666665
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.1,
+      "train_reward": -5.28875
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.2,
+      "train_reward": -5.28875
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.35,
+      "train_reward": -5.517916666666666
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.5,
+      "train_reward": -5.510416666666666
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 1.1,
+      "train_reward": -5.679166666666667
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.1,
+      "train_reward": -5.28125
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.2,
+      "train_reward": -5.28125
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.35,
+      "train_reward": -5.456250000000001
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.5,
+      "train_reward": -5.534583333333333
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 1.1,
+      "train_reward": -5.666666666666667
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.1,
+      "train_reward": -5.228750000000001
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.2,
+      "train_reward": -5.228750000000001
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.35,
+      "train_reward": -5.3475
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.5,
+      "train_reward": -5.5841666666666665
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 1.1,
+      "train_reward": -5.5841666666666665
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.1,
+      "train_reward": -5.28875
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.2,
+      "train_reward": -5.28875
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.35,
+      "train_reward": -5.517916666666666
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.5,
+      "train_reward": -5.510416666666666
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 1.1,
+      "train_reward": -5.679166666666667
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.1,
+      "train_reward": -5.28125
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.2,
+      "train_reward": -5.28125
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.35,
+      "train_reward": -5.456250000000001
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.5,
+      "train_reward": -5.534583333333333
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 1.1,
+      "train_reward": -5.666666666666667
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.1,
+      "train_reward": -5.228750000000001
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.2,
+      "train_reward": -5.228750000000001
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.35,
+      "train_reward": -5.3475
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.5,
+      "train_reward": -5.5841666666666665
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 1.1,
+      "train_reward": -5.5841666666666665
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.1,
+      "train_reward": -5.28875
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.2,
+      "train_reward": -5.28875
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.35,
+      "train_reward": -5.517916666666666
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.5,
+      "train_reward": -5.510416666666666
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 1.1,
+      "train_reward": -5.679166666666667
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.1,
+      "train_reward": -5.28125
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.2,
+      "train_reward": -5.28125
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.35,
+      "train_reward": -5.456250000000001
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.5,
+      "train_reward": -5.534583333333333
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 1.1,
+      "train_reward": -5.666666666666667
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.1,
+      "train_reward": -5.228750000000001
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.2,
+      "train_reward": -5.228750000000001
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.35,
+      "train_reward": -5.3475
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.5,
+      "train_reward": -5.5841666666666665
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 1.1,
+      "train_reward": -5.5841666666666665
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.1,
+      "train_reward": -5.26
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.2,
+      "train_reward": -5.26
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.35,
+      "train_reward": -5.528333333333333
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.5,
+      "train_reward": -5.575416666666667
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 1.1,
+      "train_reward": -5.744166666666667
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.1,
+      "train_reward": -5.239583333333333
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.2,
+      "train_reward": -5.239583333333333
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.35,
+      "train_reward": -5.692916666666667
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.5,
+      "train_reward": -5.714583333333334
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 1.1,
+      "train_reward": -5.914583333333334
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.1,
+      "train_reward": -5.152916666666666
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.2,
+      "train_reward": -5.152916666666666
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.35,
+      "train_reward": -5.667083333333333
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.5,
+      "train_reward": -6.031666666666667
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 1.1,
+      "train_reward": -6.031666666666667
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.1,
+      "train_reward": -5.26
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.2,
+      "train_reward": -5.26
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.35,
+      "train_reward": -5.528333333333333
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.5,
+      "train_reward": -5.575416666666667
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 1.1,
+      "train_reward": -5.744166666666667
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.1,
+      "train_reward": -5.239583333333333
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.2,
+      "train_reward": -5.239583333333333
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.35,
+      "train_reward": -5.692916666666667
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.5,
+      "train_reward": -5.714583333333334
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 1.1,
+      "train_reward": -5.914583333333334
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.1,
+      "train_reward": -5.152916666666666
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.2,
+      "train_reward": -5.152916666666666
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.35,
+      "train_reward": -5.667083333333333
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.5,
+      "train_reward": -6.031666666666667
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 1.1,
+      "train_reward": -6.031666666666667
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.1,
+      "train_reward": -5.22875
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.2,
+      "train_reward": -5.22875
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.35,
+      "train_reward": -5.497083333333333
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.5,
+      "train_reward": -5.575416666666667
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 1.1,
+      "train_reward": -5.744166666666667
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.1,
+      "train_reward": -5.1825
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.2,
+      "train_reward": -5.1825
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.35,
+      "train_reward": -5.862916666666667
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.5,
+      "train_reward": -5.766249999999999
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 1.1,
+      "train_reward": -5.9662500000000005
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.1,
+      "train_reward": -5.095833333333333
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.2,
+      "train_reward": -5.095833333333333
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.35,
+      "train_reward": -5.837083333333333
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.5,
+      "train_reward": -6.274166666666667
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 1.1,
+      "train_reward": -6.274166666666667
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.1,
+      "train_reward": -5.247083333333334
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.2,
+      "train_reward": -5.247083333333334
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.35,
+      "train_reward": -5.528333333333333
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.5,
+      "train_reward": -5.604166666666666
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 1.1,
+      "train_reward": -5.783333333333333
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.1,
+      "train_reward": -5.14125
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.2,
+      "train_reward": -5.14125
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.35,
+      "train_reward": -5.93625
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.5,
+      "train_reward": -5.8475
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 1.1,
+      "train_reward": -6.198333333333333
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.1,
+      "train_reward": -4.976666666666667
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.2,
+      "train_reward": -4.976666666666667
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.35,
+      "train_reward": -6.121666666666666
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.5,
+      "train_reward": -6.576666666666666
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 1.1,
+      "train_reward": -6.576666666666666
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.1,
+      "train_reward": -4.957916666666667
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.2,
+      "train_reward": -4.957916666666667
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.35,
+      "train_reward": -5.364166666666666
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.5,
+      "train_reward": -6.102083333333333
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 1.1,
+      "train_reward": -6.28125
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.1,
+      "train_reward": -4.90625
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.2,
+      "train_reward": -4.90625
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.35,
+      "train_reward": -5.533333333333333
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.5,
+      "train_reward": -6.3575
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 1.1,
+      "train_reward": -6.6433333333333335
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.1,
+      "train_reward": -4.66875
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.2,
+      "train_reward": -4.66875
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.35,
+      "train_reward": -6.080833333333333
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.5,
+      "train_reward": -8.626249999999999
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 1.1,
+      "train_reward": -8.626249999999999
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.1,
+      "train_reward": -4.957916666666667
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.2,
+      "train_reward": -4.957916666666667
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.35,
+      "train_reward": -5.364166666666666
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.5,
+      "train_reward": -6.102083333333333
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 1.1,
+      "train_reward": -6.28125
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.1,
+      "train_reward": -4.90625
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.2,
+      "train_reward": -4.90625
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.35,
+      "train_reward": -5.533333333333333
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.5,
+      "train_reward": -6.3575
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 1.1,
+      "train_reward": -6.6433333333333335
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.1,
+      "train_reward": -4.66875
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.2,
+      "train_reward": -4.66875
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.35,
+      "train_reward": -6.080833333333333
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.5,
+      "train_reward": -8.626249999999999
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 1.1,
+      "train_reward": -8.626249999999999
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.1,
+      "train_reward": -4.85125
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.2,
+      "train_reward": -4.85125
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.35,
+      "train_reward": -5.257499999999999
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.5,
+      "train_reward": -6.114583333333333
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 1.1,
+      "train_reward": -6.278333333333334
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.1,
+      "train_reward": -4.820416666666667
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.2,
+      "train_reward": -4.820416666666667
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.35,
+      "train_reward": -5.469166666666666
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.5,
+      "train_reward": -6.320833333333333
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 1.1,
+      "train_reward": -6.6120833333333335
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.1,
+      "train_reward": -4.4870833333333335
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.2,
+      "train_reward": -4.4870833333333335
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.35,
+      "train_reward": -6.395
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.5,
+      "train_reward": -9.465
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 1.1,
+      "train_reward": -9.465
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.1,
+      "train_reward": -4.898333333333333
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.2,
+      "train_reward": -4.898333333333333
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.35,
+      "train_reward": -5.09375
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.5,
+      "train_reward": -6.177083333333333
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 1.1,
+      "train_reward": -7.072916666666667
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.1,
+      "train_reward": -4.747916666666667
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.2,
+      "train_reward": -4.747916666666667
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.35,
+      "train_reward": -5.389166666666666
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.5,
+      "train_reward": -6.469166666666666
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 1.1,
+      "train_reward": -7.28125
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.1,
+      "train_reward": -3.617916666666667
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.2,
+      "train_reward": -3.617916666666667
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.35,
+      "train_reward": -7.445
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.5,
+      "train_reward": -13.606666666666666
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 1.1,
+      "train_reward": -13.606666666666666
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.1,
+      "train_reward": -4.91875
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.2,
+      "train_reward": -4.91875
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.35,
+      "train_reward": -5.301666666666666
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.5,
+      "train_reward": -6.367083333333333
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 1.1,
+      "train_reward": -6.9904166666666665
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.1,
+      "train_reward": -4.890416666666667
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.2,
+      "train_reward": -4.890416666666667
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.35,
+      "train_reward": -5.530833333333333
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.5,
+      "train_reward": -6.3758333333333335
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 1.1,
+      "train_reward": -7.2404166666666665
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.1,
+      "train_reward": -4.655833333333334
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.2,
+      "train_reward": -4.655833333333334
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.35,
+      "train_reward": -6.049583333333333
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.5,
+      "train_reward": -8.800833333333333
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 1.1,
+      "train_reward": -8.800833333333333
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.1,
+      "train_reward": -4.91875
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.2,
+      "train_reward": -4.91875
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.35,
+      "train_reward": -5.301666666666666
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.5,
+      "train_reward": -6.367083333333333
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 1.1,
+      "train_reward": -6.9904166666666665
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.1,
+      "train_reward": -4.890416666666667
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.2,
+      "train_reward": -4.890416666666667
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.35,
+      "train_reward": -5.530833333333333
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.5,
+      "train_reward": -6.3758333333333335
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 1.1,
+      "train_reward": -7.2404166666666665
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.1,
+      "train_reward": -4.655833333333334
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.2,
+      "train_reward": -4.655833333333334
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.35,
+      "train_reward": -6.049583333333333
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.5,
+      "train_reward": -8.800833333333333
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 1.1,
+      "train_reward": -8.800833333333333
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.1,
+      "train_reward": -4.809583333333333
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.2,
+      "train_reward": -4.809583333333333
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.35,
+      "train_reward": -5.1925
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.5,
+      "train_reward": -6.3412500000000005
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 1.1,
+      "train_reward": -7.598749999999999
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.1,
+      "train_reward": -4.760416666666666
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.2,
+      "train_reward": -4.760416666666666
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.35,
+      "train_reward": -5.453749999999999
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.5,
+      "train_reward": -6.292083333333333
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 1.1,
+      "train_reward": -7.890833333333332
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.1,
+      "train_reward": -4.474166666666667
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.2,
+      "train_reward": -4.474166666666667
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.35,
+      "train_reward": -6.36375
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.5,
+      "train_reward": -9.639583333333334
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 1.1,
+      "train_reward": -9.639583333333334
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.1,
+      "train_reward": -4.310416666666667
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.2,
+      "train_reward": -4.310416666666667
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.35,
+      "train_reward": -4.695833333333334
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 0.5,
+      "train_reward": -6.045
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.1,
+      "block_anomaly": 1.1,
+      "train_reward": -8.412083333333333
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.1,
+      "train_reward": -4.251250000000001
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.2,
+      "train_reward": -4.251250000000001
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.35,
+      "train_reward": -5.11625
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 0.5,
+      "train_reward": -6.329166666666667
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.3,
+      "block_anomaly": 1.1,
+      "train_reward": -8.378333333333334
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.1,
+      "train_reward": -3.5737500000000004
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.2,
+      "train_reward": -3.5737500000000004
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.35,
+      "train_reward": -7.400833333333333
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 0.5,
+      "train_reward": -13.875
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 1.1,
+      "block_anomaly": 1.1,
+      "train_reward": -13.875
+    }
+  ]
+}

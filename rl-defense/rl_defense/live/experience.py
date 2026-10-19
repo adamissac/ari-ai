@@ -17,6 +17,7 @@ from pathlib import Path
 import numpy as np
 
 from rl_defense.checkpoint import git_sha, sha256_file
+from rl_defense.live.actions import ActionSpace
 from rl_defense.live.evaluate import PolicyFn, run_policy
 from rl_defense.live.scenarios import LiveScenario
 
@@ -46,6 +47,7 @@ def collect(
     epsilon: float = 0.3,
     seed: int = 0,
     episodes: int | None = None,
+    action_space: ActionSpace = "sim",
 ) -> dict:
     bad = [s.name for s in scenarios if s.split != "train"]
     if bad:
@@ -77,6 +79,7 @@ def collect(
             app_factory,
             episodes=episodes,
             on_episode=write,
+            action_space=action_space,
         )
     digest = sha256_file(out_path)
     manifest = {
@@ -88,6 +91,7 @@ def collect(
         "episodes": n_eps,
         "scenarios": {s.name: s.config_hash() for s in scenarios},
         "splits": ["train"],
+        "action_space": action_space,
         "behavior": {
             "kind": "epsilon_greedy" if agent is not None else "uniform_valid",
             "checkpoint_sha256": behavior_checkpoint_sha256,
