@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Simplify the Defense Lab page for demo visitors: the intro collapses to one line plus the test-environment caveat, the headline numbers (compromise rate, uptime, steps to contain) lead, the per-scenario metric explorer and reward/technical-detail panels are removed, and provenance stays one click away in a collapsed footer.
+
 - Refresh trusted personal GitHub App repositories live in the repo picker; organization repositories still refresh through GitHub sign-in.
 
 - Remove the homepage closing invitation and its action cards.
