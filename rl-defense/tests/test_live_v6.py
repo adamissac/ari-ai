@@ -8,7 +8,9 @@ run (results/live-retrain-v6/PREREGISTRATION.md).
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import shutil
 from pathlib import Path
 
 import numpy as np
@@ -148,7 +150,9 @@ def test_online_training_uses_demos_then_live_train_episodes(tmp_path):
     assert any(r["action"] == BLOCK_PRINCIPAL_ACTION for r in demos)
     lin, o = m["lineage"], m["online"]
     assert lin["base_checkpoint_sha256"] is None
-    assert (lin["demo_transitions"], lin["agent_transitions"]) == (10, 40)
+    assert (lin["demo_transitions"], lin["agent_transitions"]) == (10, o["selected_env_step"])
+    assert o["experiment"]["agent_transitions"] == 40
+    assert o["experiment"]["updates"] == TINY.pretrain_updates + 40
     assert [h["env_step"] for h in o["selection_history"]] == [0, 20, 40]
     assert o["selection_history"][0]["phase"] == "pretrained"
     assert m["env_id"] == "LiveDefense-payments-lite-v3" and m["ddqn_config"]["demo_lambda"] == 1.0
@@ -230,5 +234,99 @@ def test_online_pipeline_smoke(tmp_path, monkeypatch):
     assert {"deployed", "candidate", "threshold_rules", "always_block_principal"} <= set(
         r["policies"]
     )
+    # The evidence directory must be self-contained after the transient run is removed.
+    shutil.rmtree(tmp_path / "run")
+    from rl_defense.checkpoint import load_checkpoint
+
+    for item in r["artifacts"].values():
+        artifact = tmp_path / "ev" / item["path"]
+        assert hashlib.sha256(artifact.read_bytes()).hexdigest() == item["sha256"]
+    _, reloaded = load_checkpoint(tmp_path / "ev" / r["artifacts"]["checkpoint"]["path"])
+    assert reloaded["checkpoint_sha256"] == r["candidate"]["checkpoint_sha256"]
     md = (tmp_path / "ev" / "REPORT.md").read_text()
     assert "Demonstrations and online schedule" in md and "candidate − expert" in md
+
+
+def test_selected_snapshot_lineage_excludes_later_experience(tmp_path, monkeypatch):
+    # Force selection of the pretraining snapshot, before all 40 online transitions.
+    scores = iter((3.0, 2.0, 1.0))
+    monkeypatch.setattr(ev, "scenario_mean_reward", lambda rows: next(scores))
+    m = online.train_online(
+        [_sc()],
+        [_sc("val")],
+        live_app,
+        ev.always_block_principal,
+        tmp_path,
+        cfg=TINY,
+        loop_overrides=ev.V4_LOOP_OVERRIDES,
+    )
+    from rl_defense.checkpoint import load_checkpoint
+
+    agent, _ = load_checkpoint(tmp_path / "candidate_online.pt")
+    assert m["steps"] == m["lineage"]["agent_transitions"] == 0
+    assert m["lineage"]["transitions"] == 10
+    selected = tmp_path / m["lineage"]["experience_file"]
+    assert len(selected.read_text().splitlines()) == 10
+    assert all(json.loads(row)["kind"] == "demo" for row in selected.read_text().splitlines())
+    assert hashlib.sha256(selected.read_bytes()).hexdigest() == m["lineage"]["experience_sha256"]
+    assert agent.updates == TINY.pretrain_updates
+    assert m["online"]["experiment"]["updates"] == TINY.pretrain_updates + 40
+
+
+def test_registry_refuses_unservable_checkpoint_and_missing_dqfd_evidence(tmp_path, monkeypatch):
+    from rl_defense import inference
+    from rl_defense.checkpoint import save_checkpoint
+    from rl_defense.envs.defense_sim import N_ACTIONS, OBS_DIM
+    from rl_defense.live.registry import Registry, RegistryError
+
+    path = tmp_path / "candidate.pt"
+    m = save_checkpoint(
+        DDQNAgent(OBS_DIM, N_ACTIONS, DDQNConfig(), seed=0), path, seed=0, steps=0, train_configs={}
+    )
+    report = tmp_path / "report.json"
+    report.write_text(
+        json.dumps(
+            {
+                "mode": "online_dqfd",
+                "decision": "recommend_promote",
+                "candidate": {"checkpoint_sha256": m["checkpoint_sha256"]},
+            }
+        )
+    )
+    reg = Registry(tmp_path / "registry.json")
+    vid = reg.register(path, report)
+    with pytest.raises(RegistryError, match="missing durable checkpoint evidence"):
+        reg.promote(vid, "usr_test", "test missing evidence")
+
+    experience = tmp_path / "selected.jsonl"
+    experience.write_bytes(b"retained experience\n")
+    digest = hashlib.sha256(experience.read_bytes()).hexdigest()
+    report.write_text(
+        json.dumps(
+            {
+                "mode": "online_dqfd",
+                "decision": "recommend_promote",
+                "candidate": {
+                    "checkpoint_sha256": m["checkpoint_sha256"],
+                    "lineage": {"experience_sha256": digest},
+                },
+                "artifacts": {
+                    "checkpoint": {"path": path.name, "sha256": m["checkpoint_sha256"]},
+                    "experience": {"path": experience.name, "sha256": digest},
+                },
+            }
+        )
+    )
+    reg.promote(vid, "usr_test", "retained evidence")
+    assert reg.deployed["sha256"] == m["checkpoint_sha256"]
+    experience.write_bytes(b"changed")
+    with pytest.raises(RegistryError, match="experience evidence hash mismatch"):
+        reg.promote(vid, "usr_test", "tampered evidence")
+
+    def refuse(*args, **kwargs):
+        raise ValueError("unsupported layout")
+
+    monkeypatch.setattr(inference, "PolicyRunner", refuse)
+    with pytest.raises(RegistryError, match="not servable"):
+        reg.promote(vid, "usr_test", "test unsupported layout")
+    assert reg.deployed["sha256"] == m["checkpoint_sha256"]

@@ -1,3 +1,5 @@
+> **Artifact limitation (2026-10-19 review):** The original checkpoint and experience JSONL bytes were not committed or provided in a durable store. The recorded `recommend_promote` verdict and metrics below describe that historical run; they are not a currently executable promotion instruction or independently reloadable evidence. Its selected checkpoint was restored at step 105,000, but the old lineage counted all 150,000 online transitions (153,000 including demonstrations). Do not use that count as the selected checkpoint's training history. The old run also skipped the first 60 online updates. Future runs retain selected-prefix lineage, the complete experiment separately, and all hash-pinned artifact bytes. No historical bytes, hashes, metrics or corrected-run results have been fabricated.
+
 # Live retraining — held-out evaluation and promotion verdict
 
 > Measured against the owned demo app (examples/payments-lite) in an isolated, in-process lab. Lab evidence only; not proof of real-world effectiveness (RQ-005).
