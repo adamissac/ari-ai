@@ -31,8 +31,10 @@ Untrusted data may influence *what is analyzed*, never *what is permitted*.
   `status = active`, unexpired, whose targets include the target.
 - MVP target kind is **only** `sandbox_build`: a container we build from the
   connected repo and run on an isolated network. No external hosts, URLs or IPs.
-- Scope approval is a human API action; when the org has more than one member,
-  approver ≠ requester.
+- Scope approval is an explicit human API action by a project owner. Owners may
+  approve their own scopes only when every target is `sandbox_build`
+  ([ADR-0016](decisions/0016-owner-sandbox-approval.md)). Other scope kinds and
+  remediation/PR approvals retain independent-approver requirements.
 - `scope_guard.check(scope_id, target, action)` is a pure deterministic function
   called (a) at `SCOPE_CHECK`, (b) before every network-capable tool invocation,
   (c) by the sandbox driver when creating a network attachment. Denials are

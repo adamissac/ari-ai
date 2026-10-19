@@ -96,3 +96,6 @@ but its current version cannot be resolved, the API returns 503
 `SUBSYSTEM_UNAVAILABLE` rather than presenting historical facts as current.
 Initial requests and failed retries still enqueue work without requiring the
 provider to initialize in the HTTP process. No request/response DTO changes.
+
+
+Scope activation policy (ADR-0016): an owner may explicitly approve their own nonempty sandbox-only scope. Owner membership, pending/unexpired state and audit recording remain mandatory. Other approval subjects retain independent-approver requirements.
