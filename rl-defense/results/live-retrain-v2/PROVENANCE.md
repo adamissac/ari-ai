@@ -25,6 +25,9 @@ covers the embedded manifest (git SHA, timestamp), not only the weights.
 1. `configs/live/holdout_v2/` (two_identities, token_rotation, outsider_and_insider; seeds
    45000–47029, disjoint from v1 holdout seeds) was written and committed in `f222b09`,
    together with the control and its tests. The run reports that same `git_sha`.
+   That commit was later reworded (trailer removed per CLAUDE.md) and is now `4381bbd`.
+   Both have the same tree, `4db439ef2574a69c5c7cccb392395aba0aec596f`
+   (`git cat-file -p 4381bbd`), so the code and configs the run used are unchanged.
 2. `configs/live/promotion.yaml` is **unchanged** from v1. No criterion was changed.
 3. **No policy was evaluated on holdout_v2 before the final run.** The tests use it only
    for hygiene checks (names, seed disjointness, identity fields). They do not run
