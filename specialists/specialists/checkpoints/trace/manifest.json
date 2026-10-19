@@ -1,0 +1,94 @@
+{
+ "agent": "trace",
+ "architecture": {
+  "hidden": 0,
+  "input_dim": 4096,
+  "output": "sigmoid",
+  "type": "linear"
+ },
+ "dataset": {
+  "sha256": "ab3b5010966367bffcc5af1b5a22ee925ddc3e59807c45f8b8f41fb6426dcfb4",
+  "sizes": {
+   "test": 21,
+   "train": 91,
+   "val": 17
+  },
+  "train_label_counts": {
+   "collection": 33,
+   "command-and-control": 4,
+   "credential-access": 45,
+   "discovery": 15,
+   "execution": 26,
+   "impact": 14,
+   "initial-access": 13,
+   "lateral-movement": 19,
+   "persistence": 17,
+   "privilege-escalation": 26
+  },
+  "version": "corpus-1+mitre-pinned"
+ },
+ "description": "Predict the MITRE ATT&CK tactics an attacker reaches through a weakness (via CAPEC), from the CWE name.",
+ "evaluation": {
+  "best_baseline": "prior_top3",
+  "best_baseline_test": 0.4381,
+  "primary_metric": "f1_at_k",
+  "promoted": false,
+  "test": 0.4571
+ },
+ "fallback": {
+  "default": [
+   "credential-access",
+   "collection",
+   "privilege-escalation"
+  ],
+  "key": "",
+  "name": "prior_top3",
+  "table": {}
+ },
+ "features": {
+  "char_ngrams": true,
+  "fields": [
+   "name"
+  ],
+  "hashing": "crc32 signed, log-count, L2",
+  "input_dim": 4096
+ },
+ "labels": [
+  "collection",
+  "command-and-control",
+  "credential-access",
+  "discovery",
+  "execution",
+  "exfiltration",
+  "impact",
+  "initial-access",
+  "lateral-movement",
+  "persistence",
+  "privilege-escalation"
+ ],
+ "model_id": "ari-trace-tactics",
+ "task": {
+  "top_k": 3,
+  "type": "multilabel"
+ },
+ "training": {
+  "batch_size": 16,
+  "best_epoch": 43,
+  "best_val_loss": 0.3128,
+  "dropout": 0.0,
+  "epochs": 200,
+  "epochs_run": 63,
+  "hidden": 0,
+  "input_dim": 4096,
+  "lr": 0.01,
+  "numpy": "2.5.4",
+  "patience": 20,
+  "python": "3.12.14",
+  "seconds": 0.06,
+  "seed": 7,
+  "weight_decay": 0.0001
+ },
+ "version": "1.0.0",
+ "weights_bytes": 180268,
+ "weights_sha256": "632f6f6087567197005dc603cf499b21c777a9753acd556a8b6b676bde1764a4"
+}
