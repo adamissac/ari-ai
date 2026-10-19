@@ -63,6 +63,9 @@ export default function RealCommitPage() {
     };
     return { commit, repo: demoRepo, analysis: data.analysis, live: { model: data.model, truncated: data.truncated, htmlUrl: data.commit.htmlUrl } };
   }, [live, repo.data, org, name]);
+  const realRun = repo.status === 'ready' && repo.data
+    ? <RealAssessmentPanel org={org} repo={repo.data} sha={params.sha} onConnected={repo.reload} />
+    : null;
 
   return (
     <div className="commit-stage" data-testid="real-commit">
@@ -73,21 +76,12 @@ export default function RealCommitPage() {
           <Link href={`/connect/${encodeURIComponent(org)}/${encodeURIComponent(name)}`}>{name}</Link><span aria-hidden="true" className="text-white/30">/</span>
           <span className="font-semibold">{params.sha.slice(0, 7)}</span>
         </nav>
-        <details className="amap-more text-right" data-testid="real-commit-note">
-          <summary><span className="demo-marker" data-testid="real-commit-provenance" title="The diff comes from GitHub. This is one Claude call, not an executed assessment.">Quick read · one Claude call, nothing executed</span> What is real here?</summary>
-          <p className="mt-2 max-w-sm text-left text-xs text-white/60">
-            The commit and its diff come from GitHub. The code review, findings, proposed fix and each agent&apos;s steps are a live
-            analysis of that diff by {view?.live.model ?? 'Claude'}{live.status === 'ready' ? `, run in ${live.data.analysis.seconds}s for about $${live.data.analysis.usd.toFixed(2)}` : ''}.
-            The seven-agent assessment above is the real run; this is a narrated preview. It is static: no code was run, nothing was attacked, the proposed tests have not been executed and no fix was applied.
-            The agent view replays that run step by step.
-          </p>
-        </details>
+        <span className="demo-marker" data-testid="real-commit-provenance" title="The diff comes from GitHub. This is one Claude call, not an executed assessment.">Quick read · nothing executed</span>
       </div>
       {repo.status === 'loading' && <Loading label="Loading the repository" />}
       {repo.status === 'error' && <ErrorState error={repo.error} onRetry={repo.reload} />}
       {repo.status === 'ready' && !repo.data && <Empty>{org}/{name} is not reachable through your GitHub App installation.</Empty>}
-      {repo.status === 'ready' && repo.data && <RealAssessmentPanel org={org} repo={repo.data} sha={params.sha} onConnected={repo.reload} />}
-      {full && live.status === 'loading' && <Loading label="Reading the diff and generating a narrated quick read (this takes a minute or two)" />}
+      {full && live.status === 'loading' && <Loading label="Reading this commit…" />}
       {live.status === 'error' && (
         <div className="glass flex flex-col items-start gap-3 p-6" role="alert">
           <p className="text-sm text-white/80">{live.message}</p>
@@ -95,7 +89,8 @@ export default function RealCommitPage() {
         </div>
       )}
       {view?.live.truncated && <p className="mb-4 text-xs text-white/55">This commit is large: only the first part of its diff was analysed.</p>}
-      {view && <CommitAnalysis key={view.commit.sha} repo={view.repo} commit={view.commit} analysis={view.analysis} live={view.live} />}
+      {view && <CommitAnalysis key={view.commit.sha} repo={view.repo} commit={view.commit} analysis={view.analysis} live={view.live} realRun={realRun} />}
+      {!view && realRun}
     </div>
   );
 }
