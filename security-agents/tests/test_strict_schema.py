@@ -77,5 +77,5 @@ def test_api_accepts_every_agents_tool_set(spec) -> None:
     import anthropic
 
     client = anthropic.Anthropic(max_retries=1)
-    client.messages.count_tokens(model=os.environ.get("ANTHROPIC_MODEL", "claude-opus-5-5"), system="schema check",
+    client.messages.count_tokens(model=os.environ.get("ANTHROPIC_MODEL", "claude-haiku-5-5"), system="schema check",
                                  messages=[{"role": "user", "content": "ok"}], tools=[*_tools(spec), submit_schema(spec)])

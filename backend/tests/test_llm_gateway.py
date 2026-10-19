@@ -76,11 +76,11 @@ def test_tool_loop_executes_allowed_tools_denies_others_and_validates_output() -
     assert "TOOL_NOT_ALLOWED" in str(transport.requests[2]["messages"][-1]["content"])
     assert len(charged) == 4 and result.usage.input_tokens == 4000 and result.usage.llm_calls == 4
     assert result.usage.usd == pytest.approx(
-        4 * cost_usd("claude-opus-5-5", {"input_tokens": 1000, "output_tokens": 200})
+        4 * cost_usd("claude-haiku-5-5", {"input_tokens": 1000, "output_tokens": 200})
     )
 
 
-def test_request_shape_targets_opus_5_5_and_redacts_secrets() -> None:
+def test_request_shape_targets_haiku_5_5_and_redacts_secrets() -> None:
     transport = FakeTransport(
         [{"content": [{"type": "text", "text": "ok"}], "stop_reason": "end_turn"}]
     )
@@ -98,7 +98,7 @@ def test_request_shape_targets_opus_5_5_and_redacts_secrets() -> None:
         ],
     )
     req = transport.requests[0]
-    assert req["model"] == "claude-opus-5-5"
+    assert req["model"] == "claude-haiku-5-5"
     assert req["thinking"] == {"type": "adaptive"} and req["output_config"]["effort"] == "high"
     assert "SECRETSECRET" not in str(req) and "REDACTED" in str(req)
     assert gw.model_for("fortify") == "claude-sonnet-5-5"
@@ -207,3 +207,53 @@ def test_live_provider_tool_loop_smoke() -> None:
     print(
         f"LIVE model={result.model} turns={result.turns} usage={result.usage.model_dump()} verdict={result.final}"
     )
+
+
+class _RecordingMessages:
+    def __init__(self, calls: list[tuple[str, dict]], kind: str) -> None:
+        self.calls, self.kind = calls, kind
+
+    def create(self, **kw):
+        from types import SimpleNamespace
+
+        self.calls.append((self.kind, kw))
+        return SimpleNamespace(
+            id="msg_1",
+            model=kw["model"],
+            content=[],
+            stop_reason="end_turn",
+            stop_details=None,
+            usage=SimpleNamespace(model_dump=lambda **_: {"input_tokens": 1, "output_tokens": 1}),
+        )
+
+
+def _live_transport_calls(model: str) -> list[tuple[str, dict]]:
+    from types import SimpleNamespace
+
+    from backend.llm import AnthropicTransport
+
+    t = AnthropicTransport(
+        Settings(_env_file=None, anthropic_api_key="sk-test", anthropic_model=model)
+    )
+    calls: list[tuple[str, dict]] = []
+    t._client = SimpleNamespace(
+        messages=_RecordingMessages(calls, "messages"),
+        beta=SimpleNamespace(messages=_RecordingMessages(calls, "beta")),
+    )
+    try:
+        t.create({"model": model, "max_tokens": 10, "messages": []})
+    except Exception:  # response parsing is not what this test checks
+        pass
+    return calls
+
+
+def test_default_model_is_haiku_5_5_and_live_requests_send_no_fallbacks() -> None:
+    assert Settings(_env_file=None).anthropic_model == "claude-haiku-5-5"
+    [(kind, kw)] = _live_transport_calls("claude-haiku-5-5")
+    assert kind == "messages" and kw["model"] == "claude-haiku-5-5"
+    assert "fallbacks" not in str(kw) and "betas" not in kw
+
+
+def test_server_fallback_is_kept_for_models_that_support_it() -> None:
+    [(kind, kw)] = _live_transport_calls("claude-opus-5-5")
+    assert kind == "beta" and kw["extra_body"] == {"fallbacks": "default"}

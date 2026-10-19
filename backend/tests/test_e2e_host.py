@@ -42,7 +42,7 @@ def test_full_loop_with_approval_gate(client_factory, reference) -> None:
         r["status"] == "succeeded" and r["provider_mode"] == "fake" for r in detail["agent_runs"]
     )
     assert all(
-        r["transcript_artifact_id"] and r["model_id"] == "claude-opus-5-5"
+        r["transcript_artifact_id"] and r["model_id"] == "claude-haiku-5-5"
         for r in detail["agent_runs"]
     )
     usage = detail["assessment"]["usage"]

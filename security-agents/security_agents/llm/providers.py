@@ -31,14 +31,20 @@ class LLMProvider(Protocol):
 # --------------------------------------------------------------------------- live
 
 
+def supports_server_fallback(model: str) -> bool:
+    """Claude Haiku has no server-side refusal fallback; the parameter is not sent for it."""
+    return not model.split(":", 1)[-1].startswith("claude-haiku-")
+
+
 class AnthropicProvider:
     """Live Claude via the official `anthropic` SDK (manual tool-use loop is in runtime).
 
     - Model comes from the request (resolved by the gateway from env/overrides).
-    - Claude Opus 5.5 runs adaptive thinking by default and rejects forced
-      tool_choice, so we send `tool_choice=auto` and steer via the prompt.
+    - Current models run adaptive thinking by default and Opus/Sonnet 5.5 reject
+      forced tool_choice, so we send `tool_choice=auto` and steer via the prompt.
     - Server-side refusal fallback is enabled by default
-      (`ANTHROPIC_SERVER_FALLBACKS=default`; set to `off` to disable).
+      (`ANTHROPIC_SERVER_FALLBACKS=default`; set to `off` to disable). It is never
+      sent for Claude Haiku, which has no server-side fallback.
     - SDK retries 408/409/429/5xx/connection errors (`max_retries`); anything
       that still fails is raised as `LLMUnavailable`.
     """
@@ -76,7 +82,7 @@ class AnthropicProvider:
             "timeout": request.timeout_s,
         }
         try:
-            if self.server_fallbacks:
+            if self.server_fallbacks and supports_server_fallback(request.model):
                 msg = self.client.beta.messages.create(
                     **kwargs,
                     betas=["server-side-fallback-2026-07-01"],
