@@ -18,7 +18,7 @@ from ..contracts import AgentName
 from .providers import AnthropicProvider, LLMProvider
 from .types import LLMRequest, LLMResponse, LLMUsage, ProviderMode
 
-DEFAULT_MODEL = "claude-opus-5-5"
+DEFAULT_MODEL = "claude-haiku-5-5"
 
 # USD per million tokens (input, output). Unknown models are priced at the most
 # expensive known rate so budgets fail safe.

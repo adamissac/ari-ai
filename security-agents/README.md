@@ -75,7 +75,7 @@ only with a digest-pinned image.
 
 | Variable | Meaning |
 |---|---|
-| `ANTHROPIC_MODEL` | default model id (falls back to `claude-opus-5-5`) |
+| `ANTHROPIC_MODEL` | default model id (falls back to `claude-haiku-5-5`) |
 | `AGENT_MODEL_OVERRIDES` | per-role override, JSON (`{"patch":"claude-opus-5-5"}`) or `scout=...,patch=...` |
 | `ANTHROPIC_SERVER_FALLBACKS` | server-side refusal fallback mode; `off` disables |
 | `RUN_LIVE_LLM_EVAL` | `1` enables the opt-in live tests |
