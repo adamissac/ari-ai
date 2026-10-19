@@ -91,7 +91,8 @@ from expectations) and is always labeled with its inputs.
 ## Model usage
 
 All agents use the LLM gateway with model id from `ANTHROPIC_MODEL`
-(initial target `claude-opus-5-5`) or `AGENT_MODEL_OVERRIDES`. Structured outputs
+(default `claude-haiku-5-5` since #340, [ADR-0015](decisions/0015-haiku-default-model.md); the initial target was
+`claude-opus-5-5`) or `AGENT_MODEL_OVERRIDES`. Structured outputs
 are validated with Pydantic; invalid output = failed step with one retry
 including the validation error. Each agent has its own token budget slice
 ([08](08_AGENT_ORCHESTRATION.md) §Budgets).
