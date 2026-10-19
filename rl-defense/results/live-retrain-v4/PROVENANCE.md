@@ -24,6 +24,13 @@ margin grid and the rules grids. The only new flags are the three v4 fixes and t
 (`6c130629…`) again differs from earlier runs only because the digest covers the embedded
 manifest.
 
+**Commit SHAs.** `main`'s history was rewritten while the run was in progress (Adam's
+contributors rewrite, coordination/messages/20261019T063626Z-…), so the merged branch
+`feat/alan/live-v4-final` carries cherry-picks. The original pre-registration commit
+`0220e7d` is still on the pushed branch `feat/alan/live-v4`, which was left as is. Its
+cherry-pick on the new main is `bf240e9`, and `git diff 0220e7d bf240e9 -- rl-defense` is
+empty: the code and configs the run used are unchanged.
+
 ## The three v3 causes and the v4 fixes (decided by Alan before the run, not tuned afterwards)
 
 1. **Reward not aligned with the gate.** `c_disrupt` was 0.5, which made giving up about
