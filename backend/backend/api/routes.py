@@ -601,6 +601,7 @@ def _save_scope(conn: Any, scope: AuthorizedScope) -> None:
 
 @router.post("/scopes/{scope_id}/approve", response_model=AuthorizedScope)
 def approve_scope(scope_id: str, request: Request) -> AuthorizedScope:
+    """Activate a pending scope; owners may self-approve sandbox-only targets."""
     with transaction() as conn:
         user = _user(conn, request)
         scope = _scope_row(conn, scope_id)
