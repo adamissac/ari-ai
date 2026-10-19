@@ -203,3 +203,24 @@ def test_run_cli_drives_a_v3_checkpoint_in_its_own_layout(sim_ckpt, tmp_path, ca
     )
     rows = [json.loads(x) for x in out.read_text().splitlines()]
     assert rows and len(rows[0]["obs"]) == lay.LIVE_V3_OBS_DIM
+
+
+def test_served_action_is_the_evaluated_greedy_action(sim_ckpt, tmp_path, facts):
+    """A checkpoint selected with a noop margin abstains when serving exactly as it did in
+    evaluation; with margin 0 the served action is the plain argmax."""
+    facts = facts.model_copy(update={"principal_block_long_available": True})
+    path = _v3_ckpt(sim_ckpt, tmp_path / "m.pt", favour=lay.BLOCK_PRINCIPAL_LONG_ACTION)
+    agent, _ = load_checkpoint(path)
+    obs = from_platform_facts(facts, space="live_v3")
+    mask = mask_from_facts(facts, space="live_v3")
+    q = np.where(mask, agent.q_values(obs), -np.inf)
+    best = int(np.argmax(q))
+    gap = float(q[best] - q[0])
+    agent.config = agent.config.model_copy(update={"noop_margin": gap + 1.0})
+    save_checkpoint(
+        agent, tmp_path / "abstain.pt", seed=0, steps=1, train_configs={}, env_id=lay.LIVE_V3_ENV_ID
+    )
+    plain = PolicyRunner(path).recommend(facts)
+    abstain = PolicyRunner(tmp_path / "abstain.pt").recommend(facts)
+    assert best == lay.BLOCK_PRINCIPAL_LONG_ACTION and plain.action == "block_principal_long"
+    assert abstain.action == "noop" and abstain.top_actions[0].action == "noop"

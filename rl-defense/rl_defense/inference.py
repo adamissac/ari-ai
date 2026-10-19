@@ -49,8 +49,11 @@ class PolicyRunner:
             raise ValueError("action mask has no valid actions")
         q = self.agent.q_values(obs).astype(np.float64)
         q_masked = np.where(mask, q, NEG_INF_MASK)
-        order = [int(a) for a in np.argsort(-q_masked) if mask[a]]
-        best = order[0]
+        by_q = [int(a) for a in np.argsort(-q_masked) if mask[a]]
+        # the checkpoint's own greedy rule, abstention margins included, so the served action
+        # is the action the evaluated policy takes (identical to argmax when margins are 0)
+        best = int(self.agent.greedy_action(obs, mask))
+        order = [best, *(a for a in by_q if a != best)]
         margin = float(q[best] - q[order[1]]) if len(order) > 1 else 0.0
         name, node = live_decode_action(best)
 
