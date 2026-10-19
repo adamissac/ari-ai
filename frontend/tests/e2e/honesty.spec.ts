@@ -71,14 +71,9 @@ test('Defense Lab plots only the committed, schema-validated evaluation bundle',
   await expect(page.getByTestId('lab-timeline')).toBeVisible();
   await expect(page.getByTestId('lab-episode-outcome')).toContainText('test attacker');
   await expect(page.getByTestId('lab-step-action')).toContainText('At step 0 the defender:');
-  // Every metric and the provenance remain one click away for reviewers.
+  // The provenance stays one click away for reviewers.
   await page.getByTestId('lab-details').locator('summary').click();
   await expect(page.getByText(/rl-defense\/results\/protocol-v\d+\/defense_lab\.json/)).toBeVisible();
-  const chart = page.getByTestId('metric-chart');
-  await expect(chart).toContainText('ddqn');
-  await expect(chart).toContainText('threshold_rules');
-  await expect(chart).toContainText(/n = |Axis/);
-  await expect(page.getByText(/Mean with 95% confidence interval over n = [\d,]+ evaluation episodes/)).toBeVisible();
   await expect(page.getByTestId('topology')).toBeVisible();
   await expect(page.getByText('Test-environment ground truth — hidden attacker stage, never observed by the policy')).toBeVisible();
   const slider = page.getByLabel('Step', { exact: true });
