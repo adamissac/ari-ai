@@ -203,3 +203,15 @@ def test_online_pipeline_smoke_with_platform_context(tmp_path, monkeypatch):
     assert r["candidate_vs_reference_paired"]["pairs"] == r["candidate_vs_expert_paired"]["pairs"]
     md = (tmp_path / "ev" / "REPORT.md").read_text()
     assert "Finding-severity context: `platform`" in md and "Reference (reported only" in md
+    # pack: the run's evidence becomes a hash-pinned, compressed, restorable index
+    from rl_defense.live import evidence
+
+    ev_dir = tmp_path / "ev"
+    idx = evidence.pack(ev_dir, "smoke")["artifacts"]
+    assert idx["checkpoint"]["sha256"] == r["candidate"]["checkpoint_sha256"]
+    assert idx["selected_experience"]["sha256"] == r["candidate"]["lineage"]["experience_sha256"]
+    assert idx["selected_experience"]["lines"] == r["candidate"]["lineage"]["transitions"]
+    assert not (ev_dir / idx["experiment"]["path"]).exists()
+    assert set(evidence.verify(ev_dir)) == {"checkpoint", "experiment", "selected_experience"}
+    restored = {p.name for p in evidence.restore(ev_dir)}
+    assert restored == {idx["experiment"]["path"], idx["selected_experience"]["path"]}
