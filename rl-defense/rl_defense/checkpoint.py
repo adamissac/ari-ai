@@ -16,6 +16,14 @@ from rl_defense import ENV_ID
 from rl_defense.agents.ddqn import DDQNAgent, DDQNConfig
 from rl_defense.envs.defense_sim import N_ACTIONS, OBS_DIM
 
+# env id -> (obs_dim, n_actions). The live v2 layout is a strict extension of the
+# simulator's (rl_defense/live/actions.py); it is registered here so its checkpoints load
+# through the same hash-verified path.
+KNOWN_SPACES: dict[str, tuple[int, int]] = {
+    ENV_ID: (OBS_DIM, N_ACTIONS),
+    "LiveDefense-payments-lite-v2": (OBS_DIM + 1, N_ACTIONS + 1),
+}
+
 
 def git_sha() -> str:
     try:
@@ -42,12 +50,17 @@ def save_checkpoint(
     steps: int,
     train_configs: dict[str, str],
     extra: dict[str, Any] | None = None,
+    env_id: str = ENV_ID,
 ) -> dict[str, Any]:
+    if KNOWN_SPACES.get(env_id) != (agent.obs_dim, agent.n_actions):
+        raise ValueError(
+            f"agent shape ({agent.obs_dim}, {agent.n_actions}) does not match env {env_id}"
+        )
     path.parent.mkdir(parents=True, exist_ok=True)
     manifest = {
-        "env_id": ENV_ID,
-        "obs_dim": OBS_DIM,
-        "n_actions": N_ACTIONS,
+        "env_id": env_id,
+        "obs_dim": agent.obs_dim,
+        "n_actions": agent.n_actions,
         "seed": seed,
         "steps": steps,
         "train_configs": train_configs,  # name -> config hash
@@ -80,13 +93,16 @@ def load_checkpoint(
     source = io.BytesIO(blob) if blob is not None else path
     loaded = torch.load(source, map_location="cpu", weights_only=True)
     manifest = loaded["manifest"]
-    if manifest["env_id"] != ENV_ID or manifest["obs_dim"] != OBS_DIM:
+    space = KNOWN_SPACES.get(manifest["env_id"])
+    if space is None or manifest["obs_dim"] != space[0]:
         raise ValueError(
             f"checkpoint was trained for {manifest['env_id']} obs_dim={manifest['obs_dim']}"
         )
-    agent = DDQNAgent(
-        OBS_DIM, N_ACTIONS, DDQNConfig(**manifest["ddqn_config"]), seed=manifest["seed"]
-    )
+    agent = DDQNAgent(*space, DDQNConfig(**manifest["ddqn_config"]), seed=manifest["seed"])
+    if manifest["env_id"] != ENV_ID:
+        from rl_defense.live.actions import disruptive_mask
+
+        agent.disruptive = disruptive_mask(agent.n_actions)
     agent.load_state_dict(loaded["agent"])
     agent.online.eval()
     # Provenance is the manifest embedded in the verified bytes; the re-read sidecar
