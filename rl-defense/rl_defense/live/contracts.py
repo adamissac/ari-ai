@@ -24,12 +24,15 @@ class DefenseControls(_Strict):
 
     ``rate_limit_allow_every`` = N means 1 of every N requests to the node is allowed
     through; the rest get 429. ``monitoring_level`` raises detection fidelity only.
+    ``blocked_principals`` maps a principal (customer id) to the nodes on which its
+    requests are refused with 403 (live action space v2, ``block_principal``).
     """
 
     isolated: dict[str, bool] = Field(default_factory=dict)
     rate_limited: dict[str, bool] = Field(default_factory=dict)
     monitoring_level: dict[str, int] = Field(default_factory=dict)
     reassessment_pending: dict[str, bool] = Field(default_factory=dict)
+    blocked_principals: dict[str, list[str]] = Field(default_factory=dict)
     rate_limit_allow_every: int = 3
 
     def clone(self) -> DefenseControls:
