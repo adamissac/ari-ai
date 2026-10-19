@@ -1,0 +1,749 @@
+{
+  "schema": "live-promotion-report/0.1",
+  "caveat": "Measured against the owned demo app (examples/payments-lite) in an isolated, in-process lab. Lab evidence only; not proof of real-world effectiveness (RQ-005).",
+  "target": "examples/payments-lite (in-process, owned demo app)",
+  "action_space": "live_v3",
+  "holdout_dir": "configs/live/holdout_v4",
+  "train_dir": "configs/live/train_v3",
+  "val_dir": "configs/live/val_v4",
+  "noop_margins": [
+    0.0,
+    0.1,
+    0.2,
+    0.3,
+    0.5
+  ],
+  "loop_overrides": {
+    "c_disrupt": 1.0,
+    "delegation_aware_detector": true
+  },
+  "val_selection": "scenario_mean",
+  "deployed": {
+    "checkpoint_sha256": "6c130629506c294dfe1f6057ba6161b6beab1c40fce5fe1424c8371a24cbe86f",
+    "env_id": "DefenseSimEnv-v0",
+    "trained_on": "simulator (DefenseSimEnv-v0)"
+  },
+  "candidate": {
+    "checkpoint_sha256": "0389c820a4a21795d5efbb947823e569c409f92b8eb3c0616f77c7ae520af8c7",
+    "round": 2,
+    "lineage": {
+      "base_checkpoint_sha256": "6c130629506c294dfe1f6057ba6161b6beab1c40fce5fe1424c8371a24cbe86f",
+      "base_env_id": "DefenseSimEnv-v0",
+      "datasets": [
+        "exp_e96af9b152e2f5b0",
+        "exp_f0397512618f6684"
+      ],
+      "transitions": 4200
+    },
+    "selected_update": 2000
+  },
+  "criteria": {
+    "min_paired_reward_gain_ci_low": 0.0,
+    "max_compromise_rate_vs_deployed": 1.0,
+    "min_availability": 0.85,
+    "max_false_disruption": 0.25,
+    "max_no_attack_defense_duty": 0.5,
+    "must_beat_rules": true,
+    "max_per_scenario_regression": 0.0
+  },
+  "splits": {
+    "train": {
+      "always_on_delegated": "0ca4eb74ff30686e",
+      "delegate_quiet": "d885e2af92ffa274",
+      "insider_delegate": "e5d5ce05dd734a54",
+      "outsider_rotation": "b487792f970fe9dd",
+      "two_identities_delegated": "b3743ace0117b909"
+    },
+    "val": {
+      "val3_mixed": "ec853cc6fb765381",
+      "val4_rogue_delegate": "d4aaa15edb991fdc",
+      "val4_rotation_start": "ee9c95e941ab2e27",
+      "val4_slow_insider": "d9b0f571f1cab722"
+    },
+    "holdout": {
+      "outsider_flood": "7fc83bce6ac2a979",
+      "payroll_rush": "d1fbabefd206480f",
+      "two_rogue_delegates": "d39942e7f8dcae0c"
+    }
+  },
+  "holdout_episodes_per_scenario": 30,
+  "rounds": [
+    {
+      "round": 1,
+      "dataset_id": "exp_e96af9b152e2f5b0",
+      "transitions": 2100,
+      "epsilon": 0.5,
+      "behavior_checkpoint_sha256": "6c130629506c294dfe1f6057ba6161b6beab1c40fce5fe1424c8371a24cbe86f",
+      "candidate_checkpoint_sha256": "8865771f7ba0bb464b41a53d887235e4abf50afddddefe6c70cdb0d52855b012",
+      "selected_update": 2000,
+      "val_reward": -5.841865079365079,
+      "val_compromise_rate": 0.151129363449692,
+      "val_availability": 0.9138709677419354,
+      "noop_margin": 0.5,
+      "val_reward_by_scenario": {
+        "val3_mixed": -5.4278,
+        "val4_rogue_delegate": -8.1286,
+        "val4_rotation_start": -6.0686,
+        "val4_slow_insider": -3.7425
+      }
+    },
+    {
+      "round": 2,
+      "dataset_id": "exp_f0397512618f6684",
+      "transitions": 2100,
+      "epsilon": 0.3,
+      "behavior_checkpoint_sha256": "8865771f7ba0bb464b41a53d887235e4abf50afddddefe6c70cdb0d52855b012",
+      "candidate_checkpoint_sha256": "0389c820a4a21795d5efbb947823e569c409f92b8eb3c0616f77c7ae520af8c7",
+      "selected_update": 2000,
+      "val_reward": -5.610763888888888,
+      "val_compromise_rate": 0.1597535934291581,
+      "val_availability": 0.9126881720430108,
+      "noop_margin": 0.3,
+      "val_reward_by_scenario": {
+        "val3_mixed": -4.9831,
+        "val4_rogue_delegate": -7.7925,
+        "val4_rotation_start": -6.2675,
+        "val4_slow_insider": -3.4
+      }
+    },
+    {
+      "round": 3,
+      "dataset_id": "exp_d25c98d103fbd46f",
+      "transitions": 2100,
+      "epsilon": 0.2,
+      "behavior_checkpoint_sha256": "0389c820a4a21795d5efbb947823e569c409f92b8eb3c0616f77c7ae520af8c7",
+      "candidate_checkpoint_sha256": "e4df543dd3e5cab8e42d4b7cd2c39a08bec660a6929fdb04564052dcc24fa0d5",
+      "selected_update": 2000,
+      "val_reward": -5.744355158730158,
+      "val_compromise_rate": 0.151129363449692,
+      "val_availability": 0.9097849462365591,
+      "noop_margin": 0.1,
+      "val_reward_by_scenario": {
+        "val3_mixed": -5.4431,
+        "val4_rogue_delegate": -7.0947,
+        "val4_rotation_start": -6.8096,
+        "val4_slow_insider": -3.63
+      }
+    }
+  ],
+  "rules_params": {
+    "isolate_anomaly": 0.45,
+    "rate_limit_alerts": 1.1,
+    "monitor_anomaly": 1.1,
+    "block_anomaly": 0.2,
+    "block_min_volume": 0.0,
+    "long_mode": "repeat",
+    "long_target": "all"
+  },
+  "rules_no_block_params": {
+    "isolate_anomaly": 0.15,
+    "rate_limit_alerts": 0.2,
+    "monitor_anomaly": 1.1
+  },
+  "rules_short_only_params": {
+    "isolate_anomaly": 0.45,
+    "rate_limit_alerts": 1.1,
+    "monitor_anomaly": 1.1,
+    "block_anomaly": 0.2
+  },
+  "policies": {
+    "deployed": {
+      "episodes": 90,
+      "reward": -15.736444444444446,
+      "reward_ci95": [
+        -16.953133333333334,
+        -14.47316111111111
+      ],
+      "compromise_rate": 1.0,
+      "availability": 1.0,
+      "false_disruption": 0.0,
+      "no_attack_defense_duty": 0.0,
+      "actions_per_step": 0.5662962962962963
+    },
+    "candidate": {
+      "episodes": 90,
+      "reward": -7.849489553656221,
+      "reward_ci95": [
+        -8.763226020892688,
+        -6.962890954415955
+      ],
+      "compromise_rate": 0.14525500322788895,
+      "availability": 0.8470814153794018,
+      "false_disruption": 0.1389374344634743,
+      "no_attack_defense_duty": 0.5865457294028723,
+      "actions_per_step": 0.3296296296296296
+    },
+    "threshold_rules": {
+      "episodes": 90,
+      "reward": -12.15294254510921,
+      "reward_ci95": [
+        -13.376692058404556,
+        -10.921501792497626
+      ],
+      "compromise_rate": 0.2685603615235636,
+      "availability": 0.861794357685465,
+      "false_disruption": 0.1326459279972038,
+      "no_attack_defense_duty": 0.4981103552532124,
+      "actions_per_step": 0.09407407407407407
+    },
+    "noop": {
+      "episodes": 90,
+      "reward": -15.3,
+      "reward_ci95": [
+        -16.511111111111113,
+        -14.033333333333333
+      ],
+      "compromise_rate": 1.0,
+      "availability": 1.0,
+      "false_disruption": 0.0,
+      "no_attack_defense_duty": 0.0,
+      "actions_per_step": 0.0
+    },
+    "always_isolate_payments": {
+      "episodes": 90,
+      "reward": -21.76106362773029,
+      "reward_ci95": [
+        -22.741704653371322,
+        -20.85218186134853
+      ],
+      "compromise_rate": 0.0,
+      "availability": 0.3553980401570134,
+      "false_disruption": 0.6432482814866597,
+      "no_attack_defense_duty": 1.0,
+      "actions_per_step": 0.3333333333333333
+    },
+    "threshold_rules_no_block": {
+      "episodes": 90,
+      "reward": -15.255749287749287,
+      "reward_ci95": [
+        -16.264738746438745,
+        -14.197864529914533
+      ],
+      "compromise_rate": 0.23967075532601678,
+      "availability": 0.6802406032023947,
+      "false_disruption": 0.18554118606547826,
+      "no_attack_defense_duty": 0.34618291761148906,
+      "actions_per_step": 0.20592592592592593
+    },
+    "always_block_principal": {
+      "episodes": 90,
+      "reward": -7.31416809116809,
+      "reward_ci95": [
+        -8.18172849002849,
+        -6.500494005223173
+      ],
+      "compromise_rate": 0.2077146546158812,
+      "availability": 0.8817034254892547,
+      "false_disruption": 0.08283816847256203,
+      "no_attack_defense_duty": 0.3340891912320484,
+      "actions_per_step": 0.21888888888888888
+    },
+    "threshold_rules_short_only": {
+      "episodes": 90,
+      "reward": -12.153806742640079,
+      "reward_ci95": [
+        -13.420031244064575,
+        -10.875347162867996
+      ],
+      "compromise_rate": 0.3973531310522918,
+      "availability": 0.9058202253537037,
+      "false_disruption": 0.07316789001514622,
+      "no_attack_defense_duty": 0.2819349962207105,
+      "actions_per_step": 0.13666666666666666
+    },
+    "always_block_principal_long": {
+      "episodes": 90,
+      "reward": -7.479539411206077,
+      "reward_ci95": [
+        -8.372663877018045,
+        -6.629641488603989
+      ],
+      "compromise_rate": 0.08973531310522918,
+      "availability": 0.8355030922594674,
+      "false_disruption": 0.15309332401258302,
+      "no_attack_defense_duty": 0.6061980347694633,
+      "actions_per_step": 0.11851851851851852
+    },
+    "always_block_top_principal_long": {
+      "episodes": 90,
+      "reward": -7.79060873694207,
+      "reward_ci95": [
+        -8.66587638888889,
+        -6.907080792972461
+      ],
+      "compromise_rate": 0.17914783731439637,
+      "availability": 0.8524187399395668,
+      "false_disruption": 0.13392753116625888,
+      "no_attack_defense_duty": 0.5933484504913077,
+      "actions_per_step": 0.15888888888888889
+    }
+  },
+  "by_scenario": {
+    "deployed": {
+      "outsider_flood": {
+        "episodes": 30,
+        "reward": -14.624666666666668,
+        "reward_ci95": [
+          -16.633350000000004,
+          -12.663799999999997
+        ],
+        "compromise_rate": 1.0,
+        "availability": 1.0,
+        "false_disruption": 0.0,
+        "no_attack_defense_duty": 0.0,
+        "actions_per_step": 0.7244444444444444
+      },
+      "payroll_rush": {
+        "episodes": 30,
+        "reward": -17.002666666666666,
+        "reward_ci95": [
+          -19.57493333333333,
+          -14.130533333333334
+        ],
+        "compromise_rate": 1.0,
+        "availability": 1.0,
+        "false_disruption": 0.0,
+        "no_attack_defense_duty": 0.0,
+        "actions_per_step": 0.2822222222222222
+      },
+      "two_rogue_delegates": {
+        "episodes": 30,
+        "reward": -15.581999999999999,
+        "reward_ci95": [
+          -17.217383333333334,
+          -13.986516666666668
+        ],
+        "compromise_rate": 1.0,
+        "availability": 1.0,
+        "false_disruption": 0.0,
+        "no_attack_defense_duty": 0.0,
+        "actions_per_step": 0.6922222222222222
+      }
+    },
+    "candidate": {
+      "outsider_flood": {
+        "episodes": 30,
+        "reward": -7.974602564102565,
+        "reward_ci95": [
+          -8.536415384615385,
+          -7.390630128205129
+        ],
+        "compromise_rate": 0.18173758865248227,
+        "availability": 0.8352668213457076,
+        "false_disruption": 0.14783559931239257,
+        "no_attack_defense_duty": 0.6729559748427673,
+        "actions_per_step": 0.4022222222222222
+      },
+      "payroll_rush": {
+        "episodes": 30,
+        "reward": -2.8647179487179484,
+        "reward_ci95": [
+          -3.160135897435898,
+          -2.557762820512822
+        ],
+        "compromise_rate": 0.07171314741035857,
+        "availability": 0.9626395939086294,
+        "false_disruption": 0.023270149483741717,
+        "no_attack_defense_duty": 0.2562814070351759,
+        "actions_per_step": 0.23777777777777778
+      },
+      "two_rogue_delegates": {
+        "episodes": 30,
+        "reward": -12.709148148148149,
+        "reward_ci95": [
+          -13.304315740740739,
+          -12.113375000000001
+        ],
+        "compromise_rate": 0.11780973451327434,
+        "availability": 0.6644491129785248,
+        "false_disruption": 0.3010752688172043,
+        "no_attack_defense_duty": 0.7879464285714286,
+        "actions_per_step": 0.3488888888888889
+      }
+    },
+    "threshold_rules": {
+      "outsider_flood": {
+        "episodes": 30,
+        "reward": -7.354346153846153,
+        "reward_ci95": [
+          -7.695472435897437,
+          -7.001546153846153
+        ],
+        "compromise_rate": 0.10726950354609929,
+        "availability": 0.8140536957242294,
+        "false_disruption": 0.17362087826222847,
+        "no_attack_defense_duty": 0.7421383647798742,
+        "actions_per_step": 0.14666666666666667
+      },
+      "payroll_rush": {
+        "episodes": 30,
+        "reward": -16.733333333333334,
+        "reward_ci95": [
+          -19.3,
+          -13.866666666666667
+        ],
+        "compromise_rate": 1.0,
+        "availability": 1.0,
+        "false_disruption": 0.0,
+        "no_attack_defense_duty": 0.0,
+        "actions_per_step": 0.0
+      },
+      "two_rogue_delegates": {
+        "episodes": 30,
+        "reward": -12.371148148148148,
+        "reward_ci95": [
+          -13.15392222222222,
+          -11.615831481481484
+        ],
+        "compromise_rate": 0.16426991150442477,
+        "availability": 0.6907096171802054,
+        "false_disruption": 0.27255726975222067,
+        "no_attack_defense_duty": 0.6808035714285714,
+        "actions_per_step": 0.13555555555555557
+      }
+    },
+    "noop": {
+      "outsider_flood": {
+        "episodes": 30,
+        "reward": -14.1,
+        "reward_ci95": [
+          -16.066666666666666,
+          -12.19916666666667
+        ],
+        "compromise_rate": 1.0,
+        "availability": 1.0,
+        "false_disruption": 0.0,
+        "no_attack_defense_duty": 0.0,
+        "actions_per_step": 0.0
+      },
+      "payroll_rush": {
+        "episodes": 30,
+        "reward": -16.733333333333334,
+        "reward_ci95": [
+          -19.3,
+          -13.866666666666667
+        ],
+        "compromise_rate": 1.0,
+        "availability": 1.0,
+        "false_disruption": 0.0,
+        "no_attack_defense_duty": 0.0,
+        "actions_per_step": 0.0
+      },
+      "two_rogue_delegates": {
+        "episodes": 30,
+        "reward": -15.066666666666666,
+        "reward_ci95": [
+          -16.7,
+          -13.5
+        ],
+        "compromise_rate": 1.0,
+        "availability": 1.0,
+        "false_disruption": 0.0,
+        "no_attack_defense_duty": 0.0,
+        "actions_per_step": 0.0
+      }
+    },
+    "always_isolate_payments": {
+      "outsider_flood": {
+        "episodes": 30,
+        "reward": -17.41794871794872,
+        "reward_ci95": [
+          -17.702564102564104,
+          -17.117948717948718
+        ],
+        "compromise_rate": 0.0,
+        "availability": 0.4435697712959894,
+        "false_disruption": 0.5669635880606345,
+        "no_attack_defense_duty": 1.0,
+        "actions_per_step": 0.3333333333333333
+      },
+      "payroll_rush": {
+        "episodes": 30,
+        "reward": -27.661538461538463,
+        "reward_ci95": [
+          -28.13076923076923,
+          -27.2
+        ],
+        "compromise_rate": 0.0,
+        "availability": 0.2751269035532995,
+        "false_disruption": 0.7264601633533673,
+        "no_attack_defense_duty": 1.0,
+        "actions_per_step": 0.3333333333333333
+      },
+      "two_rogue_delegates": {
+        "episodes": 30,
+        "reward": -20.203703703703702,
+        "reward_ci95": [
+          -20.65555555555555,
+          -19.78509259259259
+        ],
+        "compromise_rate": 0.0,
+        "availability": 0.3696311858076564,
+        "false_disruption": 0.6311360448807855,
+        "no_attack_defense_duty": 1.0,
+        "actions_per_step": 0.3333333333333333
+      }
+    },
+    "threshold_rules_no_block": {
+      "outsider_flood": {
+        "episodes": 30,
+        "reward": -12.955230769230768,
+        "reward_ci95": [
+          -14.035192307692308,
+          -11.9178358974359
+        ],
+        "compromise_rate": 0.21513002364066194,
+        "availability": 0.6832117998011269,
+        "false_disruption": 0.21706516643225504,
+        "no_attack_defense_duty": 0.3836477987421384,
+        "actions_per_step": 0.1988888888888889
+      },
+      "payroll_rush": {
+        "episodes": 30,
+        "reward": -16.97646153846154,
+        "reward_ci95": [
+          -19.24707307692308,
+          -14.448864102564107
+        ],
+        "compromise_rate": 0.37749003984063745,
+        "availability": 0.7218274111675127,
+        "false_disruption": 0.08445060872245339,
+        "no_attack_defense_duty": 0.16834170854271358,
+        "actions_per_step": 0.20222222222222222
+      },
+      "two_rogue_delegates": {
+        "episodes": 30,
+        "reward": -15.835555555555555,
+        "reward_ci95": [
+          -16.922218518518516,
+          -14.6533
+        ],
+        "compromise_rate": 0.20907079646017698,
+        "availability": 0.604341736694678,
+        "false_disruption": 0.2917251051893408,
+        "no_attack_defense_duty": 0.4642857142857143,
+        "actions_per_step": 0.21666666666666667
+      }
+    },
+    "always_block_principal": {
+      "outsider_flood": {
+        "episodes": 30,
+        "reward": -7.2954358974358975,
+        "reward_ci95": [
+          -7.858072435897435,
+          -6.767291025641026
+        ],
+        "compromise_rate": 0.22695035460992907,
+        "availability": 0.8718926085515413,
+        "false_disruption": 0.08860759493670886,
+        "no_attack_defense_duty": 0.38784067085953877,
+        "actions_per_step": 0.21888888888888888
+      },
+      "payroll_rush": {
+        "episodes": 30,
+        "reward": -2.841846153846155,
+        "reward_ci95": [
+          -3.1337628205128203,
+          -2.5285564102564106
+        ],
+        "compromise_rate": 0.09362549800796813,
+        "availability": 0.9695431472081218,
+        "false_disruption": 0.00878409616273694,
+        "no_attack_defense_duty": 0.10804020100502512,
+        "actions_per_step": 0.20222222222222222
+      },
+      "two_rogue_delegates": {
+        "episodes": 30,
+        "reward": -11.805222222222222,
+        "reward_ci95": [
+          -12.517843518518518,
+          -11.021532407407406
+        ],
+        "compromise_rate": 0.23506637168141592,
+        "availability": 0.7440476190476191,
+        "false_disruption": 0.18653576437587657,
+        "no_attack_defense_duty": 0.47767857142857145,
+        "actions_per_step": 0.23555555555555555
+      }
+    },
+    "threshold_rules_short_only": {
+      "outsider_flood": {
+        "episodes": 30,
+        "reward": -7.347679487179488,
+        "reward_ci95": [
+          -7.897149038461539,
+          -6.834333333333335
+        ],
+        "compromise_rate": 0.23138297872340424,
+        "availability": 0.8722240636393769,
+        "false_disruption": 0.08860759493670886,
+        "no_attack_defense_duty": 0.38784067085953877,
+        "actions_per_step": 0.21888888888888888
+      },
+      "payroll_rush": {
+        "episodes": 30,
+        "reward": -16.733333333333334,
+        "reward_ci95": [
+          -19.3,
+          -13.866666666666667
+        ],
+        "compromise_rate": 1.0,
+        "availability": 1.0,
+        "false_disruption": 0.0,
+        "no_attack_defense_duty": 0.0,
+        "actions_per_step": 0.0
+      },
+      "two_rogue_delegates": {
+        "episodes": 30,
+        "reward": -12.380407407407407,
+        "reward_ci95": [
+          -13.396987037037038,
+          -11.358561111111111
+        ],
+        "compromise_rate": 0.3733407079646018,
+        "availability": 0.7907329598506069,
+        "false_disruption": 0.16105656848994857,
+        "no_attack_defense_duty": 0.41964285714285715,
+        "actions_per_step": 0.19111111111111112
+      }
+    },
+    "always_block_principal_long": {
+      "outsider_flood": {
+        "episodes": 30,
+        "reward": -7.207974358974359,
+        "reward_ci95": [
+          -7.564240064102565,
+          -6.834569551282054
+        ],
+        "compromise_rate": 0.09988179669030733,
+        "availability": 0.8149651972157772,
+        "false_disruption": 0.17096421315830598,
+        "no_attack_defense_duty": 0.7358490566037735,
+        "actions_per_step": 0.12333333333333334
+      },
+      "payroll_rush": {
+        "episodes": 30,
+        "reward": -2.6753846153846155,
+        "reward_ci95": [
+          -2.959919230769231,
+          -2.3781769230769236
+        ],
+        "compromise_rate": 0.07171314741035857,
+        "availability": 0.9626395939086294,
+        "false_disruption": 0.023270149483741717,
+        "no_attack_defense_duty": 0.2562814070351759,
+        "actions_per_step": 0.1
+      },
+      "two_rogue_delegates": {
+        "episodes": 30,
+        "reward": -12.555259259259257,
+        "reward_ci95": [
+          -13.098741666666669,
+          -12.02552685185185
+        ],
+        "compromise_rate": 0.08075221238938053,
+        "availability": 0.6451914098972922,
+        "false_disruption": 0.3232819074333801,
+        "no_attack_defense_duty": 0.7790178571428571,
+        "actions_per_step": 0.1322222222222222
+      }
+    },
+    "always_block_top_principal_long": {
+      "outsider_flood": {
+        "episodes": 30,
+        "reward": -8.17725641025641,
+        "reward_ci95": [
+          -8.630193589743591,
+          -7.690646794871795
+        ],
+        "compromise_rate": 0.24408983451536642,
+        "availability": 0.8510109380178985,
+        "false_disruption": 0.13361462728551335,
+        "no_attack_defense_duty": 0.6792452830188679,
+        "actions_per_step": 0.2088888888888889
+      },
+      "payroll_rush": {
+        "episodes": 30,
+        "reward": -2.6753846153846155,
+        "reward_ci95": [
+          -2.959919230769231,
+          -2.3781769230769236
+        ],
+        "compromise_rate": 0.07171314741035857,
+        "availability": 0.9626395939086294,
+        "false_disruption": 0.023270149483741717,
+        "no_attack_defense_duty": 0.2562814070351759,
+        "actions_per_step": 0.1
+      },
+      "two_rogue_delegates": {
+        "episodes": 30,
+        "reward": -12.519185185185187,
+        "reward_ci95": [
+          -13.042135185185185,
+          -12.003363888888888
+        ],
+        "compromise_rate": 0.1172566371681416,
+        "availability": 0.6643323996265174,
+        "false_disruption": 0.3022440392706872,
+        "no_attack_defense_duty": 0.8013392857142857,
+        "actions_per_step": 0.16777777777777778
+      }
+    }
+  },
+  "decision": "reject",
+  "requires_human_approval": true,
+  "checks": [
+    {
+      "name": "paired_reward_gain_ci_low",
+      "passed": true,
+      "value": 6.3883852682811035,
+      "threshold": "> 0.0"
+    },
+    {
+      "name": "compromise_rate_not_worse",
+      "passed": true,
+      "value": 0.14525500322788895,
+      "threshold": "<= 1.0 x deployed (1.000)"
+    },
+    {
+      "name": "availability_floor",
+      "passed": false,
+      "value": 0.8470814153794018,
+      "threshold": ">= 0.85"
+    },
+    {
+      "name": "false_disruption_cap",
+      "passed": true,
+      "value": 0.1389374344634743,
+      "threshold": "<= 0.25"
+    },
+    {
+      "name": "reward_hacking_no_blanket_isolation",
+      "passed": false,
+      "value": 0.5865457294028723,
+      "threshold": "<= 0.5"
+    },
+    {
+      "name": "beats_static_rules",
+      "passed": true,
+      "value": -7.849489553656221,
+      "threshold": "> rules (-12.153)"
+    },
+    {
+      "name": "no_per_scenario_regression",
+      "passed": true,
+      "value": 2.87285185185185,
+      "threshold": ">= -0.0"
+    }
+  ],
+  "paired_reward_diff": {
+    "mean": 7.886954890788224,
+    "ci95": [
+      6.3883852682811035,
+      9.336929178537511
+    ],
+    "pairs": 90
+  },
+  "git_sha": "0220e7dba2c499d68ccfd0f8f6a5cfa9bab8ddd5",
+  "created_at": "2026-10-19T07:26:22.444838+00:00"
+}
