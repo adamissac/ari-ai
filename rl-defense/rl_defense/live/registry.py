@@ -131,6 +131,28 @@ class Registry:
             raise RegistryError(f"{version}: report was produced for a different checkpoint")
         if sha256_file(Path(v["checkpoint"])) != v["sha256"]:
             raise RegistryError(f"{version}: checkpoint bytes changed since registration")
+        # The local gate cannot deploy a layout the installed serving path refuses.
+        from rl_defense.inference import PolicyRunner
+
+        try:
+            PolicyRunner(Path(v["checkpoint"]))
+        except (ValueError, ImportError) as exc:
+            raise RegistryError(f"{version}: checkpoint is not servable: {exc}") from exc
+        if report.get("mode") == "online_dqfd":
+            artifacts = report.get("artifacts", {})
+            for name, expected in (
+                ("checkpoint", v["sha256"]),
+                (
+                    "experience",
+                    report.get("candidate", {}).get("lineage", {}).get("experience_sha256"),
+                ),
+            ):
+                item = artifacts.get(name, {})
+                path = Path(v["report"]).parent / item.get("path", "")
+                if not expected or item.get("sha256") != expected or not path.is_file():
+                    raise RegistryError(f"{version}: missing durable {name} evidence")
+                if sha256_file(path) != expected:
+                    raise RegistryError(f"{version}: {name} evidence hash mismatch")
         prev = self.data["deployed"]
         if version == prev:
             raise RegistryError(f"{version} is already deployed")

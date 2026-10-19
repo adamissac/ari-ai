@@ -39,3 +39,20 @@ Completed: evaluation terminology cleanup and explicit synthetic/illustrative pr
 
 
 Completed: remove homepage closing invitation at owner request.
+
+
+Completed: one-time homepage video wheel landing with bounded momentum absorption and explicit continuation.
+
+
+Completed: slower, smoother walkthrough video zoom after large scroll input.
+
+
+Completed: owner sandbox authorization flow, live approval-status refresh and expired pending scope recovery.
+
+
+Completed: #359 review fixes for selected-prefix lineage, the promised online update count, self-contained evidence export, servability/evidence promotion guards and changelog. Historical v6 artifact bytes remain unavailable and are explicitly marked as such.
+
+Completed: PR #360 review follow-up — standalone live-layout checkpoint loading, abstention-consistent explanations, Q-ranked confidence metadata and neutral CLI provenance. No checkpoint promotion.
+
+
+Completed: align browser scope approval assertion with explicit sandbox-owner approval, retaining independent Bob approval and the full persisted Verify journey.

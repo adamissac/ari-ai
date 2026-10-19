@@ -33,6 +33,7 @@ import numpy as np
 from rl_defense.envs.config import NODE_NAMES
 from rl_defense.envs.defense_sim import ESCALATE_ACTION, NOOP_ACTION, decode_action
 from rl_defense.inference import PolicyRunner
+from rl_defense.layouts import LIVE_V3_DETECTOR_FEATURES
 from rl_defense.live.actions import (
     BLOCK_PRINCIPAL_ACTION,
     BLOCK_PRINCIPAL_LONG_ACTION,
@@ -119,6 +120,7 @@ class LiveDefenseLoop:
         # principals the detector flagged in the window the current observation describes
         self._flagged: dict[str, set[str]] = {}
         self._top: dict[str, set[str]] = {}  # live_v3: the heaviest flagged principal(s)
+        self._pf = None  # PlatformFacts behind the current observation
         self._applied_block: list[str] = []
         # live_v3: principals blocked at any point this episode (operator's own history)
         self._ever_blocked: set[str] = set()
@@ -346,20 +348,35 @@ class LiveDefenseLoop:
         )
 
     def _obs_mask(self, facts) -> tuple[np.ndarray, np.ndarray]:
-        obs = from_platform_facts(facts, self.config.max_monitoring_level)
-        mask = mask_from_facts(facts, self.config.max_monitoring_level)
         self._flagged = self._gateway.flagged_principals()
         self._top = self._top_flagged()
-        if self.config.action_space in ("live_v2", "live_v3"):
-            active = bool(self._timers.block)
-            # valid only if the detector flagged someone not already blocked where flagged
-            can_block = any(
-                (p, n) not in self._timers.block for p, ns in self._flagged.items() for n in ns
-            )
-            obs = np.append(obs, np.float32(active)).astype(np.float32)
-            mask = np.append(mask, can_block)
-        if self.config.action_space == "live_v3":
-            obs = np.append(obs, self._v3_features()).astype(np.float32)
+        self._pf = self._principal_facts(facts)
+        space = self.config.action_space
+        lvl = self.config.max_monitoring_level
+        # the same PlatformFacts -> obs/mask mapping that serving uses (rl_defense/observations)
+        return (
+            from_platform_facts(self._pf, lvl, space=space),
+            mask_from_facts(self._pf, lvl, space=space),
+        )
+
+    def platform_facts(self):  # noqa: ANN201
+        """The PlatformFacts the current observation was built from, principal fields
+        included (the loop is the producer that has a principal detector)."""
+        return self._pf
+
+    def _principal_facts(self, facts):  # noqa: ANN001, ANN202
+        space = self.config.action_space
+        if space == "sim":
+            return facts
+        # valid only if the detector flagged someone not already blocked where flagged
+        can_block = any(
+            (p, n) not in self._timers.block for p, ns in self._flagged.items() for n in ns
+        )
+        update: dict = {
+            "principal_block_active": bool(self._timers.block),
+            "principal_block_available": can_block,
+        }
+        if space == "live_v3":
             # valid while some target is unblocked or its block is about to lapse (no longer
             # than a short block): that is when blocking/extending it changes anything
             short_d = self.config.block_duration
@@ -371,8 +388,12 @@ class LiveDefenseLoop:
                     for n in ns
                 )
 
-            mask = np.append(mask, [can(self._flagged), can(self._top)])
-        return obs, mask
+            update["principal_block_long_available"] = can(self._flagged)
+            update["principal_block_top_long_available"] = can(self._top)
+            update.update(
+                zip(LIVE_V3_DETECTOR_FEATURES, (float(x) for x in self._v3_features()), strict=True)
+            )
+        return facts.model_copy(update=update)
 
     def _cross_counts(self) -> dict[str, int]:
         out: dict[str, int] = {}
