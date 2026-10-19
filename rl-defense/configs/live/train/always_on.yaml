@@ -1,0 +1,9 @@
+# Continuous attack from the first window (train).
+name: always_on
+split: train
+horizon: 30
+schedule: always
+attack_per_step: 6
+benign_per_step: 6
+seed_start: 2000
+episodes: 10

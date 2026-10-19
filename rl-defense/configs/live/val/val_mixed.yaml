@@ -1,0 +1,11 @@
+# Model/checkpoint selection only — never used for training or the final verdict.
+name: val_mixed
+split: val
+horizon: 30
+schedule: bursty
+p_start: 0.2
+p_stop: 0.2
+attack_per_step: 5
+benign_per_step: 7
+seed_start: 20000
+episodes: 15

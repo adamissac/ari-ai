@@ -63,7 +63,7 @@ class LiveDefenseLoop:
     def __init__(
         self,
         app_factory,
-        runner: PolicyRunner,
+        runner: PolicyRunner | None = None,
         *,
         config: LoopConfig | None = None,
         topology: RouteTopology | None = None,
@@ -80,6 +80,9 @@ class LiveDefenseLoop:
         self._gateway: DefensiveGateway | None = None
         self.step_idx = 0
         self.escalations_used = 0
+        # the observation/mask the policy is acting on (recorded as the transition's s_t)
+        self._obs: np.ndarray | None = None
+        self._mask: np.ndarray | None = None
 
     # ------------------------------------------------------------------ lifecycle
     def reset(self, seed: int = 0) -> tuple[np.ndarray, np.ndarray]:
@@ -96,7 +99,8 @@ class LiveDefenseLoop:
         self.driver.run_window(self._gateway)
         facts = self._facts()
         self._gateway.clear_records()
-        return self._obs_mask(facts)
+        self._obs, self._mask = self._obs_mask(facts)
+        return self._obs.copy(), self._mask.copy()
 
     def close(self) -> None:
         if self._gateway is not None:
@@ -105,11 +109,14 @@ class LiveDefenseLoop:
 
     # ------------------------------------------------------------------ one step
     def step(self, action: int) -> LiveTransition:
-        assert self._gateway is not None, "call reset() first"
-        obs_before, mask_before = self._obs_mask(self._facts_no_traffic())
-        if not mask_before[action]:
+        assert self._gateway is not None and self._obs is not None, "call reset() first"
+        obs_before, mask_before = self._obs, self._mask
+        if not (0 <= action < len(mask_before)) or not mask_before[action]:
             action = NOOP_ACTION
         self._apply_action(action)
+        disruptive_active = any(self.controls.isolated.values()) or any(
+            self.controls.rate_limited.values()
+        )
 
         self._gateway.clear_records()
         self.driver.run_window(self._gateway)
@@ -138,11 +145,14 @@ class LiveDefenseLoop:
             compromised_reads=compromised,
             benign_requests=len(benign),
             benign_blocked=benign_blocked,
+            disruptive_controls_active=disruptive_active,
+            attack_active=bool(self.driver.attack_active),
             reward=reward,
             reward_components=comps,
             terminated=False,
             truncated=truncated,
         )
+        self._obs, self._mask = next_obs, next_mask
         return LiveTransition(
             obs=[float(x) for x in obs_before],
             action=int(action),
@@ -156,14 +166,18 @@ class LiveDefenseLoop:
 
     def act(self, obs: np.ndarray, mask: np.ndarray) -> int:
         """The trained policy's greedy, mask-respecting choice."""
+        if self.runner is None:
+            raise ValueError("no policy checkpoint loaded; pass policy= to run_episode")
         return int(self.runner.agent.greedy_action(obs, mask))
 
-    def run_episode(self, seed: int = 0) -> list[LiveTransition]:
+    def run_episode(self, seed: int = 0, policy=None) -> list[LiveTransition]:  # noqa: ANN001
+        """Run one episode. ``policy(obs, mask) -> action`` defaults to the loaded DQN."""
+        choose = policy or self.act
         obs, mask = self.reset(seed)
         transitions: list[LiveTransition] = []
         done = False
         while not done:
-            action = self.act(obs, mask)
+            action = int(choose(obs, mask))
             t = self.step(action)
             transitions.append(t)
             obs = np.asarray(t.next_obs, dtype=np.float32)
@@ -239,21 +253,6 @@ class LiveDefenseLoop:
     def _facts(self):
         return build_facts(
             self._gateway.records,
-            self.controls,
-            self.topology,
-            finding_severity=self.finding_severity,
-            step=self.step_idx,
-            horizon=self.config.horizon,
-            escalations_used=self.escalations_used,
-            max_escalations=self.config.max_escalations,
-            escalation_pending=self._timers.escalation > 0,
-            max_monitoring_level=self.config.max_monitoring_level,
-        )
-
-    def _facts_no_traffic(self):
-        """Facts reflecting current controls but no new traffic (used to mask the action)."""
-        return build_facts(
-            [],
             self.controls,
             self.topology,
             finding_severity=self.finding_severity,

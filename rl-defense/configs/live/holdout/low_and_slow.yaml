@@ -1,0 +1,11 @@
+# Held-out: weak, sparse attack signal (2 requests/window). Unseen intensity.
+name: low_and_slow
+split: holdout
+horizon: 30
+schedule: bursty
+p_start: 0.1
+p_stop: 0.1
+attack_per_step: 2
+benign_per_step: 6
+seed_start: 40000
+episodes: 30

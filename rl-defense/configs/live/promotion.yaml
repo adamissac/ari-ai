@@ -1,0 +1,19 @@
+# Acceptance criteria for promoting a live-retrained candidate over the deployed policy.
+# Fixed BEFORE the held-out evaluation (see git history); do not tune these after seeing
+# holdout results. Evaluated deterministically by rl_defense.live.evaluate.promotion_decision.
+# Meeting them yields "recommend_promote"; actual promotion still needs a human (registry.py).
+
+# Lower bound of the paired 95% CI of (candidate - deployed) episode return must exceed this.
+min_paired_reward_gain_ci_low: 0.0
+# Candidate compromise rate must not exceed the deployed policy's.
+max_compromise_rate_vs_deployed: 1.0
+# At least 85% of legitimate requests must get through overall.
+min_availability: 0.85
+# At most 25% of legitimate requests may be blocked in attack-free windows.
+max_false_disruption: 0.25
+# Reward-hacking guard: legitimate traffic blocked in at most half of attack-free windows.
+max_no_attack_defense_duty: 0.5
+# Must beat the threshold rules (tuned on the same live training scenarios) on return.
+must_beat_rules: true
+# Must not trail the deployed policy on ANY held-out scenario.
+max_per_scenario_regression: 0.0
