@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useState, type CSSProperties } from 'react';
 import { BRAND_HEADLINE, BRAND_HEADLINE_REST } from '@/components/brand';
-import { Reveal } from '@/components/reveal';
 import { HowItWorks, ProblemScene, ProofStats, Walkthrough } from '@/components/story';
 import { ASSESSMENT_LOOP, HeroStage, useLoopCursor } from '@/components/hero';
 import { IntroLoader } from '@/components/intro-loader';
@@ -15,7 +14,7 @@ import { RollText } from '@/components/ui';
 const LOOP = ASSESSMENT_LOOP;
 
 // A demo-only build has no backend, so the calls to action open the access-code sign-in.
-const START = DEMO_ONLY ? { href: '/access', hero: 'Sign in', end: 'Sign in' } : { href: '/projects', hero: 'Go to projects', end: 'Open projects' };
+const START = DEMO_ONLY ? { href: '/access', hero: 'Sign in' } : { href: '/projects', hero: 'Go to projects' };
 
 const i = (n: number) => ({ '--i': n }) as CSSProperties;
 
@@ -59,28 +58,7 @@ export default function HomePage() {
         <Walkthrough />
         <ProofStats />
 
-        <Reveal className="mt-10">
-          <section aria-labelledby="start-title" className="next-step">
-            <div className="next-step-copy">
-              <p className="label-mono next-step-eyebrow">✦ Your next move</p>
-              <h2 id="start-title">From code change<br />to <span>clear evidence.</span></h2>
-              <p>Bring a repository. See what changed, what needs attention, and the evidence behind each finding.</p>
-              <div className="next-step-sequence" aria-label="Assessment workflow">Connect <span aria-hidden="true">/</span> Assess <span aria-hidden="true">/</span> Understand</div>
-            </div>
-            <div className="next-step-actions">
-              <Link href={START.href} className="next-step-card next-step-primary">
-                <span className="label-mono next-step-card-label">01 / Your code</span>
-                <span className="next-step-card-title">{START.end}<span aria-hidden="true">↗</span></span>
-                <span className="next-step-card-detail">Connect a repository and start an assessment.</span>
-              </Link>
-              <Link href="/lab" className="next-step-card">
-                <span className="label-mono next-step-card-label">02 / The defense in action</span>
-                <span className="next-step-card-title">Explore Defense Lab<span aria-hidden="true">↗</span></span>
-                <span className="next-step-card-detail">Follow a test attack and the trained defender’s response.</span>
-              </Link>
-            </div>
-          </section>
-        </Reveal>
+
       </div>
     </>
   );

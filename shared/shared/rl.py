@@ -22,8 +22,16 @@ SIMULATION_CAVEAT_DEFAULT = (
 )
 
 NodeName = Literal["gateway", "api", "auth", "payments", "db"]
+# ``block_principal`` exists only in the live lab's action space v2
+# (rl-defense/rl_defense/live/actions.py); DefenseSimEnv policies never emit it.
 DefenseActionName = Literal[
-    "noop", "raise_monitoring", "rate_limit", "isolate", "request_reassessment", "escalate_to_human"
+    "noop",
+    "raise_monitoring",
+    "rate_limit",
+    "isolate",
+    "request_reassessment",
+    "escalate_to_human",
+    "block_principal",
 ]
 
 

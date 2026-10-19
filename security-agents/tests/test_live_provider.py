@@ -140,6 +140,11 @@ def test_live_probe_executes_a_real_check_and_reports_the_executed_outcome(
             )
         },
     )
+    # The orchestrator issues NIST SP 800-115 rules of engagement before Probe runs;
+    # without them the tools rightly withhold parameter values (MISSING_ROE).
+    from security_agents.standards.roe import build_roe
+
+    ctx.roe = build_roe(ctx.scope, library.list_public())
     outcome = run_agent(
         probe_agent.SPEC,
         gateway=live_gateway,

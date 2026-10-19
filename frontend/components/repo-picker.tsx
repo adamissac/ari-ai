@@ -2,13 +2,14 @@
 
 import type { AccessibleRepository } from '@hackatl/frontend-transport';
 import { useState } from 'react';
+import { RefreshFromGitHub } from '@/components/refresh-from-github';
 import { Button, ErrorState, Loading, Mono, Tag } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useResource } from '@/lib/use-resource';
 
 /**
  * Repositories the signed-in user can connect through the Ari AI GitHub App. The backend
- * captured this list at GitHub sign-in and only accepts a connection that matches it.
+ * refreshes personal installations live and retains organization access from GitHub sign-in.
  */
 export function RepoPicker({ projectId, onConnected }: { projectId: string; onConnected: () => void }) {
   const list = useResource('github-repos', signal => api().githubRepositories({ signal }));
@@ -25,8 +26,9 @@ export function RepoPicker({ projectId, onConnected }: { projectId: string; onCo
     } catch (err) { setError(err); } finally { setBusy(null); }
   };
 
-  if (list.status === 'loading') return <Loading label="Loading your GitHub repositories" />;
-  if (list.status === 'error') return <ErrorState error={list.error} onRetry={list.reload} context="Could not list your GitHub repositories" />;
+  const refreshLink = <RefreshFromGitHub className="mt-3" />;
+  if (list.status === 'loading') return <div><Loading label="Loading your GitHub repositories" />{refreshLink}</div>;
+  if (list.status === 'error') return <div><ErrorState error={list.error} onRetry={list.reload} context="Could not list your GitHub repositories" />{refreshLink}</div>;
   const { items, install_url } = list.data;
   return (
     <section aria-label="Your GitHub repositories" data-testid="repo-picker">
@@ -54,6 +56,7 @@ export function RepoPicker({ projectId, onConnected }: { projectId: string; onCo
         </ul>
       )}
       {error !== null && <div className="mt-2"><ErrorState error={error} context="Connect failed" /></div>}
+      {refreshLink}
     </section>
   );
 }

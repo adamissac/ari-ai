@@ -14,10 +14,10 @@ Layout (a strict extension, so a v1 index means the same thing in v2):
 - obs 0..47     = DefenseSimEnv features
 - obs 48        = ``principal_block_active`` (1.0 while any principal block is in force)
 
-This is a **live-only** extension. ``shared.rl.DefenseActionName`` and DefenseSimEnv are
-unchanged; the shared change is proposed in coordination/messages/
-20261019T043718Z-alan-to-srihith-adam-block-principal-action.md. A v2 policy is lab-only
-until that lands and must never emit a ``DefenseRecommendation``.
+``block_principal`` is a member of ``shared.rl.DefenseActionName`` (proposal and
+sign-off record in coordination/messages/). DefenseSimEnv is unchanged. v2 checkpoints
+stay lab-only: ``PolicyRunner`` refuses them, because ``PlatformFacts`` carries no
+principal-block state to build the 49-feature observation from.
 
 **v3** (results/live-retrain-v3/) is a strict extension of v2 (every v2 index keeps its
 meaning) that addresses the identity-switch leak (results/live-retrain-v2/PROVENANCE.md):
@@ -40,10 +40,10 @@ meaning) that addresses the identity-switch leak (results/live-retrain-v2/PROVEN
 - obs 54        = ``flagged_top_share``: the heaviest flagged principal's share of all
                   flagged cross-tenant attempts (1.0 = one principal did all of them)
 
-All five features come from the gateway's instrumentation and the loop's own block history.
+All six features come from the gateway's instrumentation and the loop's own block history.
 ``block_principal_long`` and ``block_top_principal_long`` are **not** in
-``shared.rl.DefenseActionName``; it is proposed in
-coordination/messages/ (owner: Srihith) and stays live-only (lab evidence, no
+``shared.rl.DefenseActionName``; they are proposed in coordination/messages/
+20261019T053641Z-alan-to-srihith-adam-long-block-actions.md and stay live-only (lab evidence, no
 ``DefenseRecommendation``).
 """
 

@@ -9,6 +9,7 @@ import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, Panel
 import { api } from '@/lib/api';
 import { useActionKeys } from '@/lib/action-key';
 import { REQUEST_SCOPE_NOTE, SCOPE_CHECK_CATEGORIES } from '@/lib/scope';
+import { scopeBody } from '@/lib/real-assessment';
 import { SCOPE_STATUS } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
 
@@ -93,13 +94,17 @@ function RequestScope({ onCreated }: { onCreated: () => void }) {
     const sig = JSON.stringify([name.trim(), repoId, recipe.trim(), categories, days, notes.trim()]);
     try {
       // Built once per action: a retry resends the same expiry under the same key.
-      const body = keys.payloadFor(sig, () => ({
-        name: name.trim(),
-        targets: [{ kind: 'sandbox_build' as const, repo_id: repoId, build_recipe_ref: recipe.trim(), exposed_ports: [] }],
-        allowed_check_categories: categories,
-        expires_at: new Date(Date.now() + days * 86_400_000).toISOString(),
-        notes: notes.trim() || null,
-      }));
+      const body = keys.payloadFor(sig, () => {
+        const defaults = scopeBody(repoId, new Date());
+        return {
+          ...defaults,
+          name: name.trim(),
+          targets: [{ ...defaults.targets[0]!, build_recipe_ref: recipe.trim() }],
+          allowed_check_categories: categories,
+          expires_at: new Date(Date.now() + days * 86_400_000).toISOString(),
+          notes: notes.trim() || null,
+        };
+      });
       await api().createScope(project.id, body, { idempotencyKey: keys.keyFor(sig) });
       keys.done();
       setName('');
