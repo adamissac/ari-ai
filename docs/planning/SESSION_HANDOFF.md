@@ -31,6 +31,15 @@ adds an entry before ending.
 - Commands: rl suite 114 passed; ruff check/format clean; pipeline run deterministic (round val returns reproduced exactly).
 - Open for humans: add a finer-grained control (block a principal), revisit availability floor or `c_disrupt`. Nothing was promoted; no registry exists in the repo (runs/ is git-ignored).
 
+### 2026-10-19 — Adam — connected commit real assessment
+- Did: Added helper functions for default assessment scopes, repo-covering scope selection, and commit assessment filtering; connected the commit page to project scopes and persisted assessments, with connect/request-authorization/start flows. Kept the single Claude call as a clearly labelled narrated quick read and updated the provenance test and frontend documentation.
+- State of the code (what exists now, verified how): `frontend/lib/real-assessment.ts`, `frontend/components/real-assessment-panel.tsx`, and unit tests are in place. Lint, typecheck, all frontend tests, and production build passed. The connected page was not visually checked, and no live backend assessment was started. No matching connect-commit e2e spec was found.
+- Commands run and results: `npm test --prefix frontend/transport` — 33 passed; `npm run lint --prefix frontend` — passed; `npm run typecheck --prefix frontend` — passed; `npm test --prefix frontend` — 68 files, 275 tests passed; `npm run build --prefix frontend` — passed.
+- Decisions made (ADR links): Reused the existing transport signature for `startAssessment` (idempotency key as its third argument); no transport contract changes.
+- Assumptions / open questions (RQ links): The connected repository ID is used in the default scope name because `scopeBody` accepts a repo ID.
+- Next steps: Review the branch, then commit and push through the authorized lead workflow; exercise the panel against a backend with an active scope and a different project owner available for approval.
+- Warnings for the next session: Dependency installation reported audit advisories (one moderate in transport; six frontend vulnerabilities: one moderate and five high). A Vitest jsdom canvas warning appeared, but the suite passed. The pre-existing untracked `frontend/AGENTS.md` was left untouched.
+
 ### 2026-10-19 — Claude (agent, Alan) — Live RL Defense Lab audit + live-loop vertical slice
 - Did: audited Phases 0-9 against spec for the RL pillar (`rl-defense/LIVE_RL_GAP_AUDIT.md`): env/DDQN/eval/inference are real but simulation-only; no telemetry source, no action execution, no live loop, no reward-from-real-outcome. Then built the highest-priority gap as a vertical slice: `rl_defense/live/` closes the loop against examples/payments-lite (real telemetry -> trained DQN -> enforced permitted action -> measured outcome -> reward -> LiveTransition). Branch `feat/alan/live-rl-loop` off main.
 - State of the code: `rl_defense/live/{gateway,telemetry,adversary,loop,contracts,topology,run}.py` + README; tests `tests/test_live_gateway.py` (7) + `tests/test_live_loop.py` (4) + `tests/conftest.py`. Full RL suite 103 passed (was 92). Reproducible evidence in `results/live-slice/`.

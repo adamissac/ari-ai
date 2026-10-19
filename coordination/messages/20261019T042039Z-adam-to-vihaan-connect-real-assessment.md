@@ -1,0 +1,16 @@
+# MSG: connected commit real assessment
+- ID: `20261019T042039Z-adam-to-vihaan-connect-real-assessment`
+- From: adam
+- To: vihaan
+- Kind: `implementation-handoff`
+- Timestamp (UTC): 20261019T042039Z
+- Branch / commit / PR or issue link: `feat/UI-connect-real-assessment` (uncommitted; no PR)
+- Related subsystem(s): frontend.connected_commit, frontend.assessments, frontend.scopes
+- Summary (facts, not assumptions):
+  - Added `scopeBody`, `scopeStateFor`, and `assessmentsForCommit` in `frontend/lib/real-assessment.ts`, with unit tests for scope body shape, status/expiry/repository coverage, newest-first selection, and assessment filtering.
+  - Added a real-assessment panel to the connected-commit page: it can connect the repo, list matching persisted assessments, request a default 30-day scope, explain the separate-owner approval gate, and start an assessment for the commit SHA with `snapshot_id: null` and `budget: null`.
+  - The commit page’s one-call Claude preview is labelled “Quick read · one Claude call, nothing executed”; its provenance note says the seven-agent assessment above is the real run.
+  - Updated the frontend README, Unreleased changelog, and session handoff. Frontend lint and typecheck passed; Vitest passed (68 files, 275 tests); production build passed. Transport tests passed (33).
+- Breaking change? No.
+- Action required by recipient: Review the implementation and complete the authorized commit/push workflow; exercise the panel against a configured backend.
+- Evidence: `npm run lint --prefix frontend`; `npm run typecheck --prefix frontend`; `npm test --prefix frontend` (68 files, 275 tests); `npm run build --prefix frontend`; `npm test --prefix frontend/transport` (33 tests).
