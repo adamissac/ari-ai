@@ -197,18 +197,28 @@ async function analyse(fullName: string, sha: string): Promise<LiveResult> {
   const client = new Anthropic();
   let message;
   try {
-    const stream = client.beta.messages.stream({
+    const baseRequest = {
       model: MODEL,
       max_tokens: 32_000,
       ...(SERVER_FALLBACK ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const } : {}),
-      output_config: { effort: 'medium', format: { type: 'json_schema', schema: SCHEMA } },
       system: SYSTEM,
       messages: [{
-        role: 'user',
+        role: 'user' as const,
         content: `Repository: ${fullName}\nCommit: ${gh.sha}\nAuthor: ${gh.author?.login ?? gh.commit.author?.name ?? 'unknown'}\n\nCommit message:\n${gh.commit.message}\n\nDiff${truncated ? ' (cut: the commit is larger than shown)' : ''}:\n${text || '(this commit changes no files)'}`,
       }],
-    });
-    message = await stream.finalMessage();
+    };
+    try {
+      message = await client.beta.messages
+        .stream({ ...baseRequest, output_config: { effort: 'medium', format: { type: 'json_schema', schema: SCHEMA } } })
+        .finalMessage();
+    } catch (error) {
+      // The full schema compiles to a grammar too large for some models (400); retry with
+      // plain JSON output — the text is still JSON.parsed and shape-checked below.
+      if (!(error instanceof Anthropic.APIError) || error.status !== 400) throw error;
+      message = await client.beta.messages
+        .stream({ ...baseRequest, output_config: { effort: 'medium' } })
+        .finalMessage();
+    }
   } catch (error) {
     if (error instanceof Anthropic.AuthenticationError) throw new LiveError(503, 'NOT_CONFIGURED', 'The server\'s Anthropic API key was rejected.');
     if (error instanceof Anthropic.RateLimitError) throw new LiveError(503, 'RATE_LIMITED', 'Claude is rate limited right now. Try again in a minute.');
