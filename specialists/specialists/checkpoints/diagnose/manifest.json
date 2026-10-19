@@ -7,28 +7,28 @@
   "type": "mlp-relu"
  },
  "dataset": {
-  "sha256": "a46a9b32318194597010f6d0ff319b7ef2a27d76531fc8a892f962e0af654a62",
+  "sha256": "d9fd85bf46726e46650d77a4624168a39a36cc5a684fe7545706b5fb5ef9a490",
   "sizes": {
    "test": 432,
-   "train": 1080,
-   "val": 216
+   "train": 1680,
+   "val": 336
   },
   "train_label_counts": {
-   "configuration": 120,
-   "logic_error": 30,
-   "missing_check": 630,
-   "unsafe_default": 150,
-   "wrong_check": 150
+   "configuration": 150,
+   "logic_error": 180,
+   "missing_check": 720,
+   "unsafe_default": 210,
+   "wrong_check": 420
   },
-  "version": "corpus-1+mitre-pinned"
+  "version": "corpus-2+mitre-pinned+real-corpus"
  },
  "description": "Classify the root cause (CauseClass) from the vulnerable span, CWE and the executed validation's observation.",
  "evaluation": {
   "best_baseline": "cwe_lookup",
   "best_baseline_test": 0.525,
   "primary_metric": "macro_f1",
-  "promoted": false,
-  "test": 0.525
+  "promoted": true,
+  "test": 0.6014
  },
  "fallback": {
   "default": "missing_check",
@@ -74,7 +74,7 @@
  "training": {
   "batch_size": 64,
   "best_epoch": 40,
-  "best_val_loss": 0.00069,
+  "best_val_loss": 0.00076,
   "dropout": 0.25,
   "epochs": 40,
   "epochs_run": 40,
@@ -83,12 +83,12 @@
   "lr": 0.002,
   "numpy": "2.5.4",
   "patience": 6,
-  "python": "3.12.14",
-  "seconds": 1.96,
+  "python": "3.12.15",
+  "seconds": 2.78,
   "seed": 7,
   "weight_decay": 1e-05
  },
- "version": "1.0.0",
+ "version": "1.1.0",
  "weights_bytes": 4195860,
- "weights_sha256": "6aa70d000ac705226501caa17dd8ec253226d009abf4b46165be4ceb6cb9166b"
+ "weights_sha256": "6fb0e1ccd76c7ffc89c041546527ced68bc7fec5c4591517799dea022c331f20"
 }
