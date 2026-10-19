@@ -4,10 +4,10 @@ name: backend
 # suite against a real PostgreSQL service. The live Claude smoke never runs here.
 on:
   pull_request:
-    paths: ["standards/**", "specialists/**", "tests/security/**", "shared/**", "backend/**", "monitoring/**", "pyproject.toml", "uv.lock", ".github/workflows/backend.yml"]
+    paths: ["standards/**", "specialists/**", "tests/security/**", "shared/**", "backend/**", "monitoring/**", "pyproject.toml", "uv.lock", "rl-defense/rl_defense/**", "rl-defense/pyproject.toml", "rl-defense/configs/topology/**", ".github/workflows/backend.yml"]
   push:
     branches: [main]
-    paths: ["standards/**", "specialists/**", "tests/security/**", "shared/**", "backend/**", "monitoring/**", "pyproject.toml", "uv.lock", ".github/workflows/backend.yml"]
+    paths: ["standards/**", "specialists/**", "tests/security/**", "shared/**", "backend/**", "monitoring/**", "pyproject.toml", "uv.lock", "rl-defense/rl_defense/**", "rl-defense/pyproject.toml", "rl-defense/configs/topology/**", ".github/workflows/backend.yml"]
 
 permissions:
   contents: read
@@ -48,3 +48,38 @@ jobs:
         run: npm install --global --no-audit --no-fund typescript@5.6.3
       - name: Tests (real PostgreSQL; fake LLM transport only)
         run: TSC=$(command -v tsc) ~/.local/bin/uv run pytest -q
+
+  # backend/tests/test_rl_integration.py importorskips rl_defense, which the workspace does
+  # not install, so the `test` job above always skips it. This job installs CPU torch and
+  # rl-defense into the workspace venv (without touching uv.lock) and runs it for real.
+  rl-integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci-only
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ci" --health-interval 2s --health-timeout 5s --health-retries 30
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://ci:ci-only@localhost:5432/postgres
+      UV_PYTHON: "3.12"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install uv (pinned)
+        run: python3 -m pip install --user "uv==0.11.28"
+      - name: Install workspace + rl-defense (CPU-only torch)
+        run: |
+          ~/.local/bin/uv sync --frozen
+          ~/.local/bin/uv pip install --python .venv/bin/python --index-url https://download.pytorch.org/whl/cpu torch
+          ~/.local/bin/uv pip install --python .venv/bin/python gymnasium scipy
+          ~/.local/bin/uv pip install --python .venv/bin/python --no-deps -e rl-defense
+      - name: Backend <-> rl_defense integration (must run, not skip)
+        run: |
+          set -o pipefail
+          ~/.local/bin/uv run --no-sync pytest -q -rs backend/tests/test_rl_integration.py | tee rl.log
+          ! grep -q SKIPPED rl.log
