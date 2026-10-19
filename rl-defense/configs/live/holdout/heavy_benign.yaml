@@ -1,0 +1,11 @@
+# Held-out: twice the benign load, so disruption is costlier. Unseen mix.
+name: heavy_benign
+split: holdout
+horizon: 30
+schedule: bursty
+p_start: 0.15
+p_stop: 0.2
+attack_per_step: 4
+benign_per_step: 12
+seed_start: 42000
+episodes: 30

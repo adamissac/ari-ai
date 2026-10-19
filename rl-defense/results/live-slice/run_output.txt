@@ -1,5 +1,5 @@
-policy checkpoint: /var/folders/zx/g7x09fys7f39_65741pxh9h00000gn/T/live_ckpt_ihvymnpu/ddqn_seed0.pt
-policy_version:    DefenseSimEnv-v0@5843ad54218a
+policy checkpoint: /var/folders/zx/g7x09fys7f39_65741pxh9h00000gn/T/live_ckpt__bhippcz/ddqn_seed0.pt
+policy_version:    DefenseSimEnv-v0@1820745a8e66
 ------------------------------------------------------------------------------
 ep    reward  compromised  attacks  benign_blk  benign
  0     -30.6          180      180           0     180
