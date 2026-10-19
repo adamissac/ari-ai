@@ -56,6 +56,16 @@ class PlatformFacts(StrictModel):
     time_fraction: float = Field(default=0.0, ge=0.0, le=1.0)
     escalations_remaining_fraction: float = Field(default=1.0, ge=0.0, le=1.0)
     escalation_pending: bool = False
+    # Live action space v2 (block_principal). Only a source with a gateway that detects
+    # principals (the live lab) can set these; elsewhere they stay False, so a v2 policy
+    # sees "no block in force" and block_principal is not a valid action.
+    principal_block_active: bool = Field(
+        default=False, description="a block_principal control is currently in force"
+    )
+    principal_block_available: bool = Field(
+        default=False,
+        description="the detector flagged a principal that is not yet blocked where it was seen",
+    )
 
 
 class ActionScore(StrictModel):

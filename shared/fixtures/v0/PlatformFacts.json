@@ -63,6 +63,8 @@
       "reassessment_pending": false
     }
   ],
+  "principal_block_active": false,
+  "principal_block_available": false,
   "project_id": "prj_01JFIXTURE0000000000000PRJ",
   "time_fraction": 0.0
 }
