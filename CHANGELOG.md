@@ -6,6 +6,18 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Add the lab-only online DQfD training workflow (expert demonstrations plus online DDQN updates). Selected-checkpoint lineage records only its training prefix; full experiment logs remain separate, and evidence export includes reloadable checkpoint and experience bytes. Promotion refuses unsupported serving layouts and missing/hash-mismatched DQfD evidence. The historical v6 gate result is not independently reloadable because its original artifact bytes were not retained; no policy is promoted.
+
+- Fix live-layout recommendation serving: load checkpoints without lab dependencies, explain the policy-selected action after abstention, keep Q confidence metadata ranked, and avoid inferring training origin from checkpoint layout.
+
+- Contracts 0.13 (additive): `DefenseActionName` gains `block_principal_long` and `block_top_principal_long`, and `PlatformFacts` gains the live v3 detector fields (defaults keep old payloads valid). The schema bump also covers `block_principal` (#324) and the principal-block fields (#334). `PolicyRunner` can now serve live v3 checkpoints as lab-scoped recommendations. Inference no longer imports the live lab.
+
+- Let project owners explicitly approve their own sandbox-only authorization, with audit recording. The commit run panel refreshes approval status automatically and no longer gets stuck on expired pending scopes.
+
+- Slow the walkthrough zoom with a 1.5-second transform/radius transition and balanced scroll growth; reduced motion remains immediate.
+
+- Land the first large homepage wheel gesture on the expanded walkthrough video; absorb that gesture’s momentum, allow the next scroll or Continue exploring link to skip, and keep video controls visible.
+
 ### Added
 - Specialist training now augments the synthetic corpus with real public corpora (DiverseVul functions, NVD CVE descriptions, MITRE ATT&CK technique descriptions) fetched via `python -m specialists.data.fetch` into the git-ignored `specialists/specialists/data/cache/`; corpus-2 adds 5-6 code families per CWE so Diagnose/Patch labels can no longer be looked up from the CWE alone.
 - Add a 24/7 defense switch to project monitoring and the Defense Lab, with light-panel theme colors, clearer push re-check wording in settings, and preserved contrast on dark headers.
@@ -13,6 +25,7 @@ All notable changes are documented here. Format follows
 - Simplify the `/connect` drill-down and commit page: select an organization, repository and commit, then switch between Code review and 7 agents; keep real-run controls compact and reduce page copy.
 - Default Anthropic model is now Claude Haiku 5.5 (`claude-haiku-5-5`) for the backend gateway, all seven security agents, the reviewer and the frontend live commit analysis, to cut API cost. `ANTHROPIC_MODEL` / `AGENT_MODEL_OVERRIDES` still override it. The server-side refusal fallback is no longer sent for Haiku models (Haiku has none); the frontend analysis prices usage by model instead of at Opus rates.
 - Simplify the Defense Lab page for demo visitors: the intro collapses to one line plus the test-environment caveat, the headline numbers (compromise rate, uptime, steps to contain) lead, the per-scenario metric explorer and reward/technical-detail panels are removed, and provenance stays one click away in a collapsed footer.
+- Rework the Defense Lab look again: the scoreboard is now a white section on the dark page (numbered eyebrows, ink numerals, no brand gradient), and the network map uses light node cards with dark labels so the page is no longer a wall of orange.
 - Restyle the Defense Lab page: the intro and caveat now sit inside the dark hero, a monospace stat-chip strip summarizes the evaluation (held-out runs, defenders, scenarios, seeds), and the scoreboard is a "command console" panel — night surface with brand glow and faint grid, ember headline numerals, the trained defender's bar highlighted in brand gradient.
 - `/projects` now opens the connected-organization drill-down (organization → repositories → commits → per-commit code review and the seven agents). The standalone project list and create-project form are gone; a project is still created implicitly when a repository is connected.
 - Add a specialists live-comparison harness (Claude-only vs hybrid vs specialists-only) with n=1 inconclusive results; no performance claim.

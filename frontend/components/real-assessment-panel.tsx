@@ -8,8 +8,9 @@ import { ErrorState } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useActionKeys } from '@/lib/action-key';
 import { connectRepo, projectFor } from '@/lib/github-connect';
-import { assessmentsForCommit, scopeBody, scopeStateFor } from '@/lib/real-assessment';
+import { assessmentsForCommit, isSandboxOnlyScope, scopeBody, scopeStateFor } from '@/lib/real-assessment';
 import { ASSESSMENT_STATE } from '@/lib/status';
+import { useResource } from '@/lib/use-resource';
 
 type LoadedData =
   | { status: 'error'; error: unknown }
@@ -34,47 +35,27 @@ export function RealAssessmentPanel({
 }) {
   const router = useRouter();
   const [connectedRepoId, setConnectedRepoId] = useState(repo.connected_repo_id);
-  const [loaded, setLoaded] = useState<{ key: string; data: LoadedData } | null>(null);
-  const [reloadCount, setReloadCount] = useState(0);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<unknown>(null);
   const scopeKeys = useActionKeys('request-scope');
   const assessmentKeys = useActionKeys('start-assessment');
-  const loadKey = `${org}|${connectedRepoId ?? ''}|${reloadCount}`;
-  const data: DataState = !connectedRepoId || loaded?.key !== loadKey ? { status: 'loading' } : loaded.data;
-
+  const resource = useResource(connectedRepoId ? `real-run:${org}:${connectedRepoId}` : null, async signal => {
+    const projectId = await projectFor(org);
+    const [scopes, assessments] = await Promise.all([
+      api().scopes(projectId, { signal }),
+      api().assessments(projectId, { signal }),
+    ]);
+    return { projectId, scopes: scopes.items, assessments: assessments.items };
+  }, 10000);
+  const data: DataState = resource.status === 'ready'
+    ? { status: 'ready', ...resource.data }
+    : resource.status === 'error' ? { status: 'error', error: resource.error } : { status: 'loading' };
+  const reload = resource.reload;
   useEffect(() => {
-    if (!connectedRepoId) return;
-    const controller = new AbortController();
-    let current = true;
-    void projectFor(org)
-      .then(async projectId => {
-        const [scopes, assessments] = await Promise.all([
-          api().scopes(projectId, { signal: controller.signal }),
-          api().assessments(projectId, { signal: controller.signal }),
-        ]);
-        if (current) {
-          setLoaded({
-            key: loadKey,
-            data: {
-              status: 'ready',
-              projectId,
-              scopes: scopes.items,
-              assessments: assessments.items,
-            },
-          });
-        }
-      })
-      .catch((error: unknown) => {
-        if (current && !controller.signal.aborted) setLoaded({ key: loadKey, data: { status: 'error', error } });
-      });
-    return () => {
-      current = false;
-      controller.abort();
-    };
-  }, [connectedRepoId, loadKey, org]);
+    window.addEventListener('focus', reload);
+    return () => window.removeEventListener('focus', reload);
+  }, [reload]);
 
-  const reload = () => setReloadCount(count => count + 1);
   const connect = async () => {
     setBusy(true);
     setActionError(null);
@@ -97,11 +78,22 @@ export function RealAssessmentPanel({
     const signature = `${projectId}|${repoId}`;
     try {
       const body = scopeKeys.payloadFor(signature, () => scopeBody(repoId, new Date()));
-      const created = await api().createScope(projectId, body, { idempotencyKey: scopeKeys.keyFor(signature) });
+      await api().createScope(projectId, body, { idempotencyKey: scopeKeys.keyFor(signature) });
       scopeKeys.done();
-      setLoaded(previous => previous?.key === loadKey && previous.data.status === 'ready'
-        ? { ...previous, data: { ...previous.data, scopes: [created, ...previous.data.scopes] } }
-        : previous);
+      reload();
+    } catch (error) {
+      setActionError(error);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const approveAuthorization = async (scopeId: string) => {
+    setBusy(true);
+    setActionError(null);
+    try {
+      await api().approveScope(scopeId);
+      reload();
     } catch (error) {
       setActionError(error);
     } finally {
@@ -139,8 +131,8 @@ export function RealAssessmentPanel({
       <div className="glass flex flex-wrap items-center justify-between gap-3 px-5 py-4">
         <div>
           <p className="label-mono text-white/55">Real run</p>
-          <p className="text-sm text-white/70">
-            {!connectedRepoId ? 'Connect this repository to run the 7 agents for real.' : data.status === 'loading' ? 'Loading…' : data.status === 'error' ? 'Could not load the latest run.' : latest ? `Last run: ${ASSESSMENT_STATE[latest.state].label}` : scopeState?.kind === 'none' ? 'Needs an approved authorization before the agents can run.' : scopeState?.kind === 'pending' ? 'Waiting for another project owner to approve.' : 'Authorization is active.'}
+          <p className="text-sm text-white/70" aria-live="polite">
+            {!connectedRepoId ? 'Connect this repository to run the 7 agents for real.' : data.status === 'loading' ? 'Loading…' : data.status === 'error' ? 'Could not load the latest run.' : latest ? `Last run: ${ASSESSMENT_STATE[latest.state].label}` : scopeState?.kind === 'none' ? 'Needs an approved authorization before the agents can run.' : scopeState?.kind === 'pending' ? isSandboxOnlyScope(scopeState.scope) ? 'A project owner can approve this sandbox-only authorization.' : 'Waiting for another project owner to approve.' : 'Authorization is active.'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -152,7 +144,13 @@ export function RealAssessmentPanel({
             </>
           )}
           {data.status === 'ready' && !latest && scopeState?.kind === 'none' && <button type="button" className="rounded-full bg-white px-4 py-2 text-sm font-medium text-ink disabled:opacity-50" disabled={busy} onClick={() => void requestAuthorization(data.projectId)}>Request authorization</button>}
-          {data.status === 'ready' && !latest && scopeState?.kind === 'pending' && <Link className="text-sm text-white/80 underline-offset-2 hover:underline" href={`/projects/${data.projectId}/scopes`}>Review</Link>}
+          {data.status === 'ready' && scopeState?.kind === 'pending' && (
+            <>
+              {isSandboxOnlyScope(scopeState.scope) && <button type="button" className="rounded-full bg-white px-4 py-2 text-sm font-medium text-ink disabled:opacity-50" disabled={busy || resource.refreshError !== undefined} onClick={() => void approveAuthorization(scopeState.scope.id)}>Approve sandbox authorization</button>}
+              <Link className="text-sm text-white/80 underline-offset-2 hover:underline" href={`/projects/${data.projectId}/scopes`}>Review authorization</Link>
+              <button type="button" className="text-sm text-white/80 underline-offset-2 hover:underline" onClick={reload}>Refresh status</button>
+            </>
+          )}
           {data.status === 'ready' && !latest && scopeState?.kind === 'active' && (
             <>
               <button type="button" className="rounded-full bg-white px-4 py-2 text-sm font-medium text-ink disabled:opacity-50" disabled={busy} onClick={() => void startAssessment(data.projectId, scopeState.scope.id)}>Run the 7 agents</button>
@@ -162,6 +160,7 @@ export function RealAssessmentPanel({
         </div>
       </div>
       {data.status === 'error' && <ErrorState error={data.error} onRetry={reload} context="Could not load real assessments" />}
+      {resource.refreshError !== undefined && <ErrorState error={resource.refreshError} onRetry={reload} context="Status refresh failed; showing the last loaded run" />}
       {actionError !== null && <ErrorState error={actionError} />}
     </div>
   );

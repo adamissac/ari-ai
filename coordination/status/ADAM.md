@@ -194,3 +194,15 @@ Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablat
 - Synced origin/main (then at 7ba9af4; since dd81316: live v3/v4 verdicts, serve-v2 recommendations, Haiku 5.5 default ADR-0015, explainer player polish); no new messages to Adam needing a reply; gh unauthenticated (git/MCP only).
 - Executed: rl-defense pytest 164 passed; payments-lite target 13 passed, label_checks 11 passed; check_links 0 problems.
 - Cloud run itself made no code changes (UI polish landed separately).
+
+## 2026-10-19 — `/lab` redesign v2 on `feat/adam/lab-redesign-v2`
+- White "The numbers" section breaks up the orange; sections numbered 01/02; map nodes are light cards with dark labels. Same content/tests.
+
+## 2026-10-19 — #359 DQfD review fixes
+- Branch `fix/adam/dqfd-review`: selected-prefix lineage, full experiment provenance, complete evidence export, exact update count and servability/evidence promotion guards.
+- Original v6 bytes remain unavailable; historical report limitations explicitly documented. No promotion or fresh holdout_v6 evaluation. Tests/results recorded in PR.
+
+## 2026-10-19 — Alan GitHub review follow-up
+- Reviewed recent coordination messages and open PRs #359/#360. Recent Alan messages to Adam are FYI/decisions.
+- Fixed all four #360 serving findings on `fix/adam/live-v3-review`, with targeted regression coverage (10 passed) and clean ruff checks. Full results in PR.
+- No promotion, paid training or deployment. #359 has separate evidence/lineage findings; its original checkpoint and experience bytes are not in Git.

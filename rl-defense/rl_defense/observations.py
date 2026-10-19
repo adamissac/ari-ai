@@ -18,7 +18,8 @@ from rl_defense.envs.defense_sim import ALERT_NORM, OBS_DIM
 def from_platform_facts(
     facts: PlatformFacts, max_monitoring_level: int = 2, *, space: str = "sim"
 ) -> np.ndarray:
-    """48-feature simulator observation, or 49 for ``space="live_v2"`` (+ principal_block_active)."""
+    """48-feature simulator observation; ``space="live_v2"`` appends principal_block_active
+    (49), ``"live_v3"`` also the six detector features (55, rl_defense/layouts.py)."""
     by_name = {n.node: n for n in facts.nodes}
     if set(by_name) != set(NODE_NAMES):
         raise ValueError(f"facts must cover exactly the nodes {NODE_NAMES}")
@@ -45,8 +46,13 @@ def from_platform_facts(
     ]
     obs = np.clip(np.concatenate([np.ravel(rows), glob]), 0.0, 1.0).astype(np.float32)
     assert obs.shape == (OBS_DIM,)
-    if space == "live_v2":
+    if space in ("live_v2", "live_v3"):
         obs = np.append(obs, np.float32(facts.principal_block_active)).astype(np.float32)
+    if space == "live_v3":
+        from rl_defense.layouts import LIVE_V3_DETECTOR_FEATURES
+
+        extra = [getattr(facts, f) for f in LIVE_V3_DETECTOR_FEATURES]
+        obs = np.append(obs, np.asarray(extra, dtype=np.float32)).astype(np.float32)
     return obs
 
 
@@ -54,7 +60,8 @@ def mask_from_facts(
     facts: PlatformFacts, max_monitoring_level: int = 2, *, space: str = "sim"
 ) -> np.ndarray:
     """Valid-action mask from observable facts (mirrors DefenseSimEnv.action_masks).
-    ``space="live_v2"`` appends block_principal, valid iff ``principal_block_available``."""
+    ``space="live_v2"`` appends block_principal, valid iff ``principal_block_available``;
+    ``"live_v3"`` also block_principal_long / block_top_principal_long."""
     from rl_defense.envs.defense_sim import ESCALATE_ACTION, N_ACTIONS, NOOP_ACTION, encode_action
 
     by_name = {n.node: n for n in facts.nodes}
@@ -71,6 +78,14 @@ def mask_from_facts(
     mask[ESCALATE_ACTION] = (
         facts.escalations_remaining_fraction > 0 and not facts.escalation_pending
     )
-    if space == "live_v2":
+    if space in ("live_v2", "live_v3"):
         mask = np.append(mask, bool(facts.principal_block_available))
+    if space == "live_v3":
+        mask = np.append(
+            mask,
+            [
+                bool(facts.principal_block_long_available),
+                bool(facts.principal_block_top_long_available),
+            ],
+        )
     return mask

@@ -1,0 +1,21 @@
+# Held-out v5 (created 2026-10-19, before any evaluation on it). Two customers (bob, carol)
+# interleave per request reading the bookkeepers' own payments under heavy benign load.
+# Unseen: the delegates as victims, benign volume of 10.
+name: mixed_insiders
+split: holdout
+horizon: 30
+schedule: bursty
+p_start: 0.25
+p_stop: 0.35
+attack_per_step: 5
+benign_per_step: 10
+attackers: [bob, carol]
+attacker_switch: per_request
+victims: [dave, erin]
+benign: [alice, bob, carol, dave, erin]
+delegations: ["dave:alice", "erin:carol"]
+delegate_per_step: 1
+delegate_burst_p: 0.2
+delegate_burst_size: 3
+seed_start: 49600
+episodes: 30

@@ -76,7 +76,8 @@ def check(
         return _deny(scope, now, "SCOPE_EXPIRED")
     if scope.approved_by is None or scope.approved_at is None:
         return _deny(scope, now, "SCOPE_NOT_APPROVED")
-    if org_member_count > 1 and scope.approved_by == scope.requested_by:
+    sandbox_only = bool(scope.targets) and all(target.kind == "sandbox_build" for target in scope.targets)
+    if scope.approved_by == scope.requested_by and not sandbox_only:
         return _deny(scope, now, "APPROVER_IS_REQUESTER")
 
     if request.action == "assessment_start":

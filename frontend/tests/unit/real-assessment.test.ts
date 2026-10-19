@@ -67,11 +67,12 @@ describe('scopeStateFor', () => {
 
   it('ignores expired and other-repository scopes, then returns the newest covering pending scope', () => {
     const expired = scope('scp_expired', 'repo_123', 'active', '2025-12-31T23:59:59.999Z');
+    const expiredPending = scope('scp_expired_pending', 'repo_123', 'pending', '2025-12-31T23:59:59.999Z');
     const otherRepo = scope('scp_other', 'repo_other', 'active');
     const newestPending = scope('scp_pending_new', 'repo_123', 'pending');
     const olderPending = scope('scp_pending_old', 'repo_123', 'pending');
-    expect(scopeStateFor([expired, otherRepo, newestPending, olderPending], 'repo_123', now)).toEqual({ kind: 'pending', scope: newestPending });
-    expect(scopeStateFor([expired, otherRepo], 'repo_123', now)).toEqual({ kind: 'none' });
+    expect(scopeStateFor([expired, expiredPending, otherRepo, newestPending, olderPending], 'repo_123', now)).toEqual({ kind: 'pending', scope: newestPending });
+    expect(scopeStateFor([expired, expiredPending, otherRepo], 'repo_123', now)).toEqual({ kind: 'none' });
   });
 });
 

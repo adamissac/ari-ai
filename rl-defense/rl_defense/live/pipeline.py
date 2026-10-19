@@ -33,6 +33,9 @@ legitimate request like a compromised read, the detector honours the delegation 
 and snapshots/margins/rounds are selected on the mean over several val scenarios. The
 defaults (0.5, off, pooled) reproduce v1-v3. Every policy, the rules tuning and the
 experience run in the same loop configuration (results/live-retrain-v4/PROVENANCE.md).
+
+v5 (v4 flags plus ``--cql-alpha 1.0 --holdout-dir holdout_v5``): the candidate is trained
+with the conservative Q-learning penalty (results/live-retrain-v5/PROVENANCE.md).
 """
 
 from __future__ import annotations
@@ -135,6 +138,7 @@ def run(args: argparse.Namespace) -> dict:
             noop_margins=margins,
             loop_overrides=lo,
             selection=selection,
+            cql_alpha=float(getattr(args, "cql_alpha", 0.0) or 0.0),
         )
         sel = next(
             h
@@ -154,6 +158,10 @@ def run(args: argparse.Namespace) -> dict:
                 "val_compromise_rate": sel["val_compromise_rate"],
                 "val_availability": sel["val_availability"],
                 "noop_margin": cm["retrain"]["selected_noop_margin"],
+                "val_curve": [
+                    [h["update"], round(h["val_reward"], 4)]
+                    for h in cm["retrain"]["selection_history"]
+                ],
                 **(
                     {"val_reward_by_scenario": sel["val_reward_by_scenario"]}
                     if "val_reward_by_scenario" in sel
@@ -241,6 +249,7 @@ def run(args: argparse.Namespace) -> dict:
         "noop_margins": list(margins),
         "loop_overrides": loop_overrides,
         "val_selection": selection,
+        "cql_alpha": float(getattr(args, "cql_alpha", 0.0) or 0.0),
         "deployed": {
             "checkpoint_sha256": deployed_m["checkpoint_sha256"],
             "env_id": deployed_m["env_id"],
@@ -317,6 +326,11 @@ def render_markdown(r: dict) -> str:
             if r.get("loop_overrides")
             else []
         ),
+        *(
+            [f"Offline training: CQL penalty `cql_alpha={r['cql_alpha']}`."]
+            if r.get("cql_alpha")
+            else []
+        ),
         f"Deployed `{r['deployed']['checkpoint_sha256'][:12]}` (sim-trained) vs candidate "
         f"`{r['candidate']['checkpoint_sha256'][:12]}` (round {r['candidate']['round']}, "
         f"{r['candidate']['lineage']['transitions']} live transitions). "
@@ -390,6 +404,20 @@ def render_markdown(r: dict) -> str:
         for x in per_val:
             v = x["val_reward_by_scenario"]
             lines.append(f"| {x['round']} | " + " | ".join(f"{v[n]:.2f}" for n in names) + " |")
+    curves = [x for x in r["rounds"] if x.get("val_curve")]
+    if curves:
+        ups = [u for u, _ in curves[0]["val_curve"]]
+        lines += [
+            "",
+            "Val return by number of offline updates (selection score; update 0 = warm start):",
+            "",
+            "| Round | " + " | ".join(str(u) for u in ups) + " |",
+            "|---|" + "---|" * len(ups),
+        ]
+        for x in curves:
+            lines.append(
+                f"| {x['round']} | " + " | ".join(f"{v:.2f}" for _, v in x["val_curve"]) + " |"
+            )
     lines += ["", f"Threshold rules tuned on train scenarios: `{r['rules_params']}`."]
     if r.get("rules_no_block_params"):
         lines.append(f"Best rules without `block_principal`: `{r['rules_no_block_params']}`.")
@@ -445,6 +473,12 @@ def main(argv: list[str] | None = None) -> int:
         choices=["pooled", "scenario_mean"],
         default="pooled",
         help="v4: select on the unweighted mean over val scenarios",
+    )
+    ap.add_argument(
+        "--cql-alpha",
+        type=float,
+        default=0.0,
+        help="v5: conservative Q-learning penalty weight for the offline candidate (0 = off)",
     )
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", default="runs/live/retrain")
