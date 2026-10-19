@@ -938,3 +938,6 @@ Fixed commit-screen authorization deadlock at explicit owner direction. Sandbox-
 
 
 Follow-up: aligned the runtime scope guard with owner sandbox self-approval (both single- and multi-member orgs), added empty/external/mixed-target denial regressions (27 guard tests pass), and fixed backend test formatting required by CI.
+
+
+2026-10-19 Adam: reviewed Alan’s recent coordination messages and open PR #360. Fixed its four review findings on fix/adam/live-v3-review. Full RL regression suite and lint results recorded in the PR; no training, checkpoint promotion or deployment performed.
