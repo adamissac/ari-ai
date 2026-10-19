@@ -13,12 +13,18 @@ Detection uses only what the operator's own instrumentation can see: who the bea
 token belongs to and who owns the object being requested (read from the app's own
 store). The traffic generator's ``is_attack`` label is kept on each record for
 *metrics only* and never feeds telemetry.
+
+v4: the instrumentation may also be given the business's delegation grants
+(``grants``: delegate principal -> owners whose objects it may read). That is the
+operator's own authorization data, so a read covered by a grant is not a cross-tenant
+attempt. Without grants (the v1-v3 default) every foreign-owner read is flagged.
 """
 
 from __future__ import annotations
 
 import re
 import warnings
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -40,6 +46,8 @@ class Instrumentation(Protocol):
 
     def resource_owner(self, method: str, path: str) -> str | None: ...
 
+    def is_authorized_delegate(self, principal: str, owner: str) -> bool: ...
+
 
 class PaymentsLiteInstrumentation:
     """Reads the owned demo app's own store (tokens, payments, customers)."""
@@ -47,8 +55,13 @@ class PaymentsLiteInstrumentation:
     _PAYMENT = re.compile(r"^/payments/([^/]+)$")
     _CUSTOMER = re.compile(r"^/customers/([^/]+)$")
 
-    def __init__(self, app) -> None:  # noqa: ANN001
+    def __init__(self, app, grants: Mapping[str, Iterable[str]] | None = None) -> None:  # noqa: ANN001
         self._store = app.state.store
+        self._grants = {d: frozenset(o) for d, o in (grants or {}).items()}
+
+    def is_authorized_delegate(self, principal: str, owner: str) -> bool:
+        """True when the business granted ``principal`` read access to ``owner``'s data."""
+        return owner in self._grants.get(principal, ())
 
     def principal(self, token: str | None) -> str | None:
         return self._store.tokens.get(token) if token else None
@@ -74,7 +87,8 @@ class RequestRecord:
     status: int  # HTTP status actually returned (gateway 503/429 or the app's own)
     blocked_reason: str | None  # "isolated" | "principal_blocked" | "rate_limited" | None
     compromised: bool  # really succeeded cross-tenant read (allowed, 200, foreign owner in body)
-    cross_tenant_attempt: bool = False  # detector: token's principal != object owner
+    # detector: token's principal != object owner (and, v4, no delegation grant covers it)
+    cross_tenant_attempt: bool = False
     principal: str | None = None  # whom the bearer token belongs to (operator-visible)
 
     @property
@@ -91,10 +105,14 @@ class DefensiveGateway:
         topology: RouteTopology,
         controls: DefenseControls,
         instrumentation: Instrumentation | None = None,
+        *,
+        grants: Mapping[str, Iterable[str]] | None = None,
     ) -> None:
+        if instrumentation is not None and grants is not None:
+            raise ValueError("pass grants to the instrumentation, not to both")
         self._client = TestClient(app, raise_server_exceptions=False)
         self._topology = topology
-        self._inst = instrumentation or PaymentsLiteInstrumentation(app)
+        self._inst = instrumentation or PaymentsLiteInstrumentation(app, grants)
         self.controls = controls
         self.records: list[RequestRecord] = []
         self._rl_counter: dict[str, int] = {}
@@ -124,7 +142,12 @@ class DefensiveGateway:
         headers = {"Authorization": f"Bearer {token}"} if token else {}
         principal = self._inst.principal(token)
         owner = self._inst.resource_owner(method, path)
-        cross = principal is not None and owner is not None and owner != principal
+        cross = (
+            principal is not None
+            and owner is not None
+            and owner != principal
+            and not self._inst.is_authorized_delegate(principal, owner)
+        )
 
         def blocked(status: int, reason: str) -> RequestRecord:
             rec = RequestRecord(

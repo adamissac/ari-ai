@@ -129,6 +129,7 @@ class DelegateProfile:
     actor: str
     token: str
     delegated_payment_ids: tuple[str, ...]
+    owner: str = ""  # customer id of the tenant whose payments the delegate may read
 
 
 def delegate_profile(spec: str) -> DelegateProfile:
@@ -139,7 +140,19 @@ def delegate_profile(spec: str) -> DelegateProfile:
     d, o = IDENTITIES[delegate], IDENTITIES[owner]
     if not o.payments:
         raise ValueError(f"delegation {spec!r}: {owner} owns no payments")
-    return DelegateProfile(d.customer_id, d.tokens[0], o.payments)
+    return DelegateProfile(d.customer_id, d.tokens[0], o.payments, o.customer_id)
+
+
+def delegation_grants(delegates: tuple[DelegateProfile, ...]) -> dict[str, frozenset[str]]:
+    """The business's grant table (delegate principal -> owners it may read), v4.
+
+    This is authorization data the operator owns (who was granted access to whom), not
+    traffic ground truth: a delegate that also reads a tenant outside its grants is
+    still flagged on those reads."""
+    out: dict[str, set[str]] = {}
+    for d in delegates:
+        out.setdefault(d.actor, set()).add(d.owner)
+    return {k: frozenset(v) for k, v in out.items()}
 
 
 @dataclass
