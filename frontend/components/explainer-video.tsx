@@ -86,6 +86,7 @@ export function ExplainerVideo() {
             </button>
             <button type="button" onClick={() => void video.current?.requestFullscreen?.()} className="explainer-btn">Full screen</button>
             <a href={SRC} download="ari-explainer.mp4" className="explainer-btn">Download</a>
+            <a href="#how" className="explainer-btn">Continue exploring ↓</a>
           </figcaption>
         </figure>
       </section>
