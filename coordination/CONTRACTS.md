@@ -10,7 +10,7 @@ The **schema source of truth is `shared/`**, initially maintained by Srihith, wi
 
 1. Consumer writes message with field-by-field proposed schema and exact reason.
 2. Producer/owner acknowledges with acceptance, counterproposal or versioned alternative.
-3. Srihith updates canonical Pydantic model and generated JSON Schema/TS types in PR; impacted owners review.
+3. The `shared/` owner updates canonical Pydantic model and generated JSON Schema/TS types in PR; impacted owners review. (Srihith originally; since 2026-10-19 Alan is interim approver — see OWNERSHIP.md.)
 4. Contract tests run in each consumer. Breaking change: require schema version bump and migration/compatibility plan. No unreviewed unilateral shared model edits.
 5. New contract is in force only after agreed PR merges and relevant branches sync.
 
