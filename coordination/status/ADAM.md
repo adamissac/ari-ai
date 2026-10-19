@@ -185,3 +185,7 @@ Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablat
 
 ## 2026-10-19 — Defense Lab simplification
 - Branch `feat/adam/simplify-defense-lab`: `/lab` rebuilt to lead with the three headline numbers; deep reviewer detail (metric explorer, reward parts, checkpoint hashes) removed, provenance kept in a collapsed footer. Replay trimmed (no cost row / technical-details block). Lint, typecheck, 275 unit tests and `next build` executed; e2e spec updated but the e2e stack not run.
+
+## 2026-10-19 — `/lab` restyle on `feat/adam/polish-defense-lab`
+- Same content as the simplification pass; new look: hero now carries the intro + caveat, stat chips row under it, and "The numbers" is a dark command-console panel (brand glow, grid, ember numerals, AI defender highlighted). Kairo.security-inspired.
+- Verified: lint/typecheck/276 unit tests/build pass; lab honesty e2e passes vs `next dev`.
