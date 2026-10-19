@@ -9,6 +9,7 @@ import { api } from '@/lib/api';
 import { useActionKeys } from '@/lib/action-key';
 import { connectRepo, projectFor } from '@/lib/github-connect';
 import { assessmentsForCommit, scopeBody, scopeStateFor } from '@/lib/real-assessment';
+import { ASSESSMENT_STATE } from '@/lib/status';
 
 type LoadedData =
   | { status: 'error'; error: unknown }
@@ -139,7 +140,7 @@ export function RealAssessmentPanel({
         <div>
           <p className="label-mono text-white/55">Real run</p>
           <p className="text-sm text-white/70">
-            {!connectedRepoId ? 'Connect this repository to run the 7 agents for real.' : data.status === 'loading' ? 'Loading…' : data.status === 'error' ? 'Could not load the latest run.' : latest ? `Last run: ${latest.state}` : scopeState?.kind === 'none' ? 'Needs an approved authorization before the agents can run.' : scopeState?.kind === 'pending' ? 'Waiting for another project owner to approve.' : 'Authorization is active.'}
+            {!connectedRepoId ? 'Connect this repository to run the 7 agents for real.' : data.status === 'loading' ? 'Loading…' : data.status === 'error' ? 'Could not load the latest run.' : latest ? `Last run: ${ASSESSMENT_STATE[latest.state].label}` : scopeState?.kind === 'none' ? 'Needs an approved authorization before the agents can run.' : scopeState?.kind === 'pending' ? 'Waiting for another project owner to approve.' : 'Authorization is active.'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">

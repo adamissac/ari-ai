@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Show readable assessment state labels in the real-run panel, such as “Awaiting human approval”.
 - Simplify the `/connect` drill-down and commit page: select an organization, repository and commit, then switch between Code review and 7 agents; keep real-run controls compact and reduce page copy.
 - Default Anthropic model is now Claude Haiku 5.5 (`claude-haiku-5-5`) for the backend gateway, all seven security agents, the reviewer and the frontend live commit analysis, to cut API cost. `ANTHROPIC_MODEL` / `AGENT_MODEL_OVERRIDES` still override it. The server-side refusal fallback is no longer sent for Haiku models (Haiku has none); the frontend analysis prices usage by model instead of at Opus rates.
 - Simplify the Defense Lab page for demo visitors: the intro collapses to one line plus the test-environment caveat, the headline numbers (compromise rate, uptime, steps to contain) lead, the per-scenario metric explorer and reward/technical-detail panels are removed, and provenance stays one click away in a collapsed footer.
