@@ -1,7 +1,7 @@
 """LLM gateway (ADR-0007): the only path from product agents to Anthropic Claude.
 
 Responsibilities enforced here, independent of prompts:
-  * model selection from config (default ``claude-opus-5-5``; per-agent overrides);
+  * model selection from config (default ``claude-haiku-5-5``; per-agent overrides);
   * retries with backoff on retryable provider errors (429 / 5xx / network);
   * typed failure codes: LLM_UNAVAILABLE, LLM_REFUSAL, LLM_OUTPUT_TRUNCATED,
     BUDGET_EXHAUSTED, TOOL_NOT_ALLOWED, SCHEMA_INVALID;
@@ -44,6 +44,11 @@ PRICING: dict[str, tuple[float, float, float]] = {
 }
 _CONSERVATIVE = max(PRICING.values())
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
+
+
+def supports_server_fallback(model: str) -> bool:
+    """Claude Haiku has no server-side refusal fallback; the parameter is not sent for it."""
+    return not model.split(":", 1)[-1].startswith("claude-haiku-")
 
 
 class LLMError(Exception):
@@ -105,7 +110,7 @@ class AnthropicTransport:
     def create(self, request: dict[str, Any]) -> ProviderResponse:
         a = self._anthropic
         try:
-            if self._fallbacks:
+            if self._fallbacks and supports_server_fallback(str(request.get("model", ""))):
                 resp = self._client.beta.messages.create(
                     **request, betas=[FALLBACK_BETA], extra_body={"fallbacks": "default"}
                 )

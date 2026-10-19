@@ -74,7 +74,7 @@ Each directory's README defines its future responsibilities, interfaces, and dep
 ## Proposed stack (to be validated — see [ADRs](docs/decisions/README.md))
 
 Next.js · React · TypeScript · Tailwind | Python · FastAPI · Pydantic v2 |
-Anthropic Claude (model id configurable, initial target `claude-opus-5-5`) |
+Anthropic Claude (model id configurable, default `claude-haiku-5-5`) |
 Tree-sitter | PostgreSQL | Docker-isolated sandboxes | PyTorch · Gymnasium · Double DQN |
 Vercel (frontend) · Railway (backend) — not provisioned.
 

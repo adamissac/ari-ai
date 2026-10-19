@@ -27,7 +27,7 @@ class Settings(BaseSettings):
 
     # Anthropic / LLM gateway
     anthropic_api_key: SecretStr | None = None
-    anthropic_model: str = "claude-opus-5-5"
+    anthropic_model: str = "claude-haiku-5-5"
     anthropic_model_fast: str | None = None
     agent_model_overrides: str = ""
     anthropic_effort: Literal["low", "medium", "high", "xhigh", "max"] = "high"

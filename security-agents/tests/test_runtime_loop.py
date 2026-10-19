@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
+
 import pytest
 
 from security_agents.agents import scout as scout_agent
@@ -266,3 +268,33 @@ def test_assistant_turn_counter_drives_fake_script(intel):
         tools=[], max_tokens=10,
     )
     assert assistant_turns(req) == 1
+
+
+def test_default_model_is_haiku_5_5_and_no_server_fallback_is_sent(monkeypatch):
+    from types import SimpleNamespace
+
+    from security_agents.llm import DEFAULT_MODEL
+    from security_agents.llm.providers import AnthropicProvider
+    from security_agents.llm.types import LLMRequest
+
+    monkeypatch.delenv("ANTHROPIC_MODEL", raising=False)
+    monkeypatch.delenv("AGENT_MODEL_OVERRIDES", raising=False)
+    assert DEFAULT_MODEL == "claude-haiku-5-5"
+    assert ProviderGateway(FakeLLM({})).model_for(AgentName.PATCH) == "claude-haiku-5-5"
+
+    calls: list[tuple[str, dict]] = []
+
+    def recorder(kind):
+        def create(**kw):
+            calls.append((kind, kw))
+            raise RuntimeError("stop after recording")
+        return SimpleNamespace(create=create)
+
+    client = SimpleNamespace(messages=recorder("messages"), beta=SimpleNamespace(messages=recorder("beta")))
+    provider = AnthropicProvider(client, server_fallbacks="default")
+    for model, kind in (("claude-haiku-5-5", "messages"), ("claude-opus-5-5", "beta")):
+        req = LLMRequest(agent=AgentName.SCOUT, model=model, system="s", messages=[], tools=[], max_tokens=10)
+        with contextlib.suppress(RuntimeError):
+            provider.complete(req)
+        assert calls[-1][0] == kind and calls[-1][1]["model"] == model
+    assert "fallbacks" not in calls[0][1]

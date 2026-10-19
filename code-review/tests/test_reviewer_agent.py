@@ -121,7 +121,7 @@ def test_discount_rounding_defect_validated_with_multi_turn_trace(tmp_path: Path
     # a real multi-turn loop: 7 model turns, tools executed between them
     assert outcome.turns == 7 and outcome.provider_mode == "fake"
     run = host.runs[res.agent_run_id]
-    assert run.status is AgentRunStatus.succeeded and run.model_id == "claude-opus-5-5"
+    assert run.status is AgentRunStatus.succeeded and run.model_id == "claude-haiku-5-5"
     assert [t.tool_name for t in run.tool_calls] == [
         "read_file",
         "get_change_diff",

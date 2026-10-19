@@ -103,8 +103,8 @@ budget, handoff conditions, and success criteria.
 ## 7. Technologies
 
 Chosen-as-default (revisable via ADR): Python 3.12, FastAPI, Pydantic v2,
-PostgreSQL, Anthropic Claude (model id via `ANTHROPIC_MODEL`, initial target
-`claude-opus-5-5`, per-agent overrides allowed), Tree-sitter, Docker sandboxes,
+PostgreSQL, Anthropic Claude (model id via `ANTHROPIC_MODEL`, default
+`claude-haiku-5-5` (was `claude-opus-5-5`), per-agent overrides allowed), Tree-sitter, Docker sandboxes,
 PyTorch + Gymnasium (Double DQN), Next.js + React + TypeScript + Tailwind.
 
 Proposed, not decided: task queue (Postgres `SKIP LOCKED` queue vs. Celery/Redis

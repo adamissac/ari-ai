@@ -12,11 +12,21 @@ import { countLines, parsePatch, type GitHubFile } from '@/lib/live-diff';
  * result is shaped like the demo `Analysis`, so the same commit view renders it.
  */
 
-const MODEL = process.env.ANTHROPIC_MODEL || 'claude-opus-5-5';
+const MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-5-5';
 /** Diff text sent to the model, in characters. Larger commits are cut, and the page says so. */
 const MAX_PROMPT_DIFF = 180_000;
-const USD_PER_INPUT_TOKEN = 4 / 1_000_000;
-const USD_PER_OUTPUT_TOKEN = 20 / 1_000_000;
+/** USD per million tokens (input, output); unknown models use the most expensive rate. */
+const PRICING: Record<string, [number, number]> = {
+  'claude-haiku-5-5': [0.10, 0.50],
+  'claude-sonnet-5-5': [2, 10],
+  'claude-opus-5-5': [4, 20],
+  'claude-fable-5-1': [10, 50],
+};
+const [USD_PER_MTOK_IN, USD_PER_MTOK_OUT] = PRICING[MODEL] ?? [10, 50];
+const USD_PER_INPUT_TOKEN = USD_PER_MTOK_IN / 1_000_000;
+const USD_PER_OUTPUT_TOKEN = USD_PER_MTOK_OUT / 1_000_000;
+/** Claude Haiku has no server-side refusal fallback; the parameter is not sent for it. */
+const SERVER_FALLBACK = !MODEL.startsWith('claude-haiku-');
 
 const KINDS = ['service', 'site', 'worker', 'data', 'logging', 'identity', 'edge'] as const;
 /** Analysis steps the agents may record. All are reasoning over the diff; none executes. */
@@ -190,8 +200,7 @@ async function analyse(fullName: string, sha: string): Promise<LiveResult> {
     const stream = client.beta.messages.stream({
       model: MODEL,
       max_tokens: 32_000,
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
+      ...(SERVER_FALLBACK ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const } : {}),
       output_config: { effort: 'medium', format: { type: 'json_schema', schema: SCHEMA } },
       system: SYSTEM,
       messages: [{
