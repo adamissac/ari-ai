@@ -16,6 +16,14 @@ index, or drawn from the driver's own RNG independently of the defender, so traf
 paired across policies. The default (one attacker, Bob's primary token, victim Alice) is
 byte-for-byte the v1 traffic.
 
+v3 adds **legitimate cross-tenant access**: a delegate (e.g. a bookkeeper) is authorized
+by the business to read another tenant's payments (``delegations``). Those reads are benign
+(``is_attack=False``) but the gateway's detector, which only sees "token principal != object
+owner", flags them exactly like an attack, so blanket blocking costs real availability.
+Delegates read a few owner payments every window (``delegate_per_step``) and occasionally
+run a reconciliation burst (``delegate_burst_p`` / ``delegate_burst_size``). With no
+delegations no extra RNG draw is made, so v1/v2 traffic is unchanged.
+
 Fixture-bound (``seeded_store`` plus :func:`live_store`): tokens and ids are synthetic test
 data, not secrets. Everything is sent through the :class:`DefensiveGateway`, so
 enforcement applies.
@@ -66,6 +74,9 @@ IDENTITIES: dict[str, FixtureIdentity] = {
         ("fixture-token-mallory", "fixture-token-mallory-2", "fixture-token-mallory-3"),
         (),
     ),
+    # v3: bookkeepers with delegated read access to another tenant's payments
+    "dave": FixtureIdentity("cus_dave", "Dave Example", ("fixture-token-dave",), ("pay_d1",)),
+    "erin": FixtureIdentity("cus_erin", "Erin Example", ("fixture-token-erin",), ("pay_e1",)),
 }
 
 
@@ -111,6 +122,26 @@ def attacker_profile(name: str, victims: tuple[str, ...]) -> ClientProfile:
     return ClientProfile(i.customer_id, i.tokens[0], targets, i.tokens[1:])
 
 
+@dataclass(frozen=True)
+class DelegateProfile:
+    """A tenant the business authorized to read another tenant's payments (v3)."""
+
+    actor: str
+    token: str
+    delegated_payment_ids: tuple[str, ...]
+
+
+def delegate_profile(spec: str) -> DelegateProfile:
+    """``"dave:alice"`` = dave may read alice's payments."""
+    delegate, _, owner = spec.partition(":")
+    if delegate not in IDENTITIES or owner not in IDENTITIES or delegate == owner:
+        raise ValueError(f"bad delegation {spec!r}; expected '<delegate>:<owner>'")
+    d, o = IDENTITIES[delegate], IDENTITIES[owner]
+    if not o.payments:
+        raise ValueError(f"delegation {spec!r}: {owner} owns no payments")
+    return DelegateProfile(d.customer_id, d.tokens[0], o.payments)
+
+
 @dataclass
 class TrafficDriver:
     """Drives one window of real requests per :meth:`run_window` call."""
@@ -137,6 +168,16 @@ class TrafficDriver:
     attacker_switch: Literal["per_window", "per_request"] = "per_window"
     # cycle through the attacker's valid tokens window by window
     rotate_tokens: bool = False
+    # v3: legitimate cross-tenant readers (empty = v1/v2 behaviour, no extra RNG draws)
+    delegates: tuple[DelegateProfile, ...] = ()
+    delegate_per_step: int = 1
+    delegate_burst_p: float = 0.0
+    delegate_burst_size: int = 0
+
+    @property
+    def benign_norm(self) -> int:
+        """Expected legitimate requests per window (reward normalizer)."""
+        return self.benign_per_step + len(self.delegates) * self.delegate_per_step
 
     def __post_init__(self) -> None:
         self._rng = random.Random(self.seed)
@@ -168,10 +209,21 @@ class TrafficDriver:
         self._window += 1
         attackers = (self.attacker, *self.extra_attackers)
         n_attack = self.attack_per_step if self.attack_active else 0
-        plan: list[bool] = [False] * self.benign_per_step + [True] * n_attack
+        plan: list[bool | DelegateProfile] = [False] * self.benign_per_step + [True] * n_attack
+        for d in self.delegates:
+            burst = self._rng.random() < self.delegate_burst_p
+            plan += [d] * (self.delegate_per_step + (self.delegate_burst_size if burst else 0))
         self._rng.shuffle(plan)
-        for is_attack in plan:
-            if is_attack:
+        for item in plan:
+            if isinstance(item, DelegateProfile):
+                # authorized by the business, flagged by the detector like any cross-tenant read
+                gateway.request(
+                    "GET",
+                    f"/payments/{self._rng.choice(item.delegated_payment_ids)}",
+                    actor=item.actor,
+                    token=item.token,
+                )
+            elif item:
                 if len(attackers) == 1:
                     att = attackers[0]  # no extra RNG draw: v1 traffic is unchanged
                 elif self.attacker_switch == "per_window":

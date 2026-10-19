@@ -13,6 +13,9 @@ Nothing here observes hidden state; everything is measured from HTTP outcomes.
 
 ``LoopConfig.action_space="live_v2"`` adds ``block_principal`` (rl_defense/live/actions.py):
 observations gain one feature and masks one entry. The default ``"sim"`` is the v1 loop.
+``"live_v3"`` adds ``block_principal_long`` / ``block_top_principal_long`` (block or extend
+for ``block_long_duration`` windows; every flagged principal / only the heaviest) and six
+detector features describing the flagged principals.
 """
 
 from __future__ import annotations
@@ -25,8 +28,9 @@ from rl_defense.envs.config import NODE_NAMES
 from rl_defense.envs.defense_sim import ESCALATE_ACTION, NOOP_ACTION, decode_action
 from rl_defense.inference import PolicyRunner
 from rl_defense.live.actions import (
-    BLOCK_PRINCIPAL,
     BLOCK_PRINCIPAL_ACTION,
+    BLOCK_PRINCIPAL_LONG_ACTION,
+    BLOCK_TOP_PRINCIPAL_LONG_ACTION,
     ActionSpace,
     live_decode_action,
 )
@@ -41,6 +45,13 @@ from rl_defense.observations import from_platform_facts, mask_from_facts
 DEFAULT_FINDING_SEVERITY = {"gateway": 0.1, "api": 0.3, "auth": 0.2, "payments": 0.8, "db": 0.1}
 
 
+_BLOCK_ACTIONS = (
+    BLOCK_PRINCIPAL_ACTION,
+    BLOCK_PRINCIPAL_LONG_ACTION,
+    BLOCK_TOP_PRINCIPAL_LONG_ACTION,
+)
+
+
 @dataclass
 class LoopConfig:
     horizon: int = 30
@@ -52,6 +63,7 @@ class LoopConfig:
     reassessment_delay: int = 4
     escalation_duration: int = 3
     block_duration: int = 3
+    block_long_duration: int = 10  # live_v3: block_principal_long
     action_space: ActionSpace = "sim"
     reassessment_severity_after: float = 0.2
     # reward coefficients (applied to measured, normalized counts)
@@ -98,7 +110,10 @@ class LiveDefenseLoop:
         self._mask: np.ndarray | None = None
         # principals the detector flagged in the window the current observation describes
         self._flagged: dict[str, set[str]] = {}
+        self._top: dict[str, set[str]] = {}  # live_v3: the heaviest flagged principal(s)
         self._applied_block: list[str] = []
+        # live_v3: principals blocked at any point this episode (operator's own history)
+        self._ever_blocked: set[str] = set()
 
     # ------------------------------------------------------------------ lifecycle
     def reset(self, seed: int = 0) -> tuple[np.ndarray, np.ndarray]:
@@ -107,6 +122,7 @@ class LiveDefenseLoop:
         self.controls = DefenseControls()
         self.finding_severity = dict(DEFAULT_FINDING_SEVERITY)
         self._timers = _Timers()
+        self._ever_blocked = set()
         self.step_idx = 0
         self.escalations_used = 0
         self.driver.reset(seed)
@@ -155,8 +171,8 @@ class LiveDefenseLoop:
 
         name, node_idx = live_decode_action(action)
         label = name if node_idx is None else f"{name}:{NODE_NAMES[node_idx]}"
-        if action == BLOCK_PRINCIPAL_ACTION:
-            label = f"{BLOCK_PRINCIPAL}:{','.join(sorted(self._applied_block))}"
+        if action in _BLOCK_ACTIONS:
+            label = f"{name}:{','.join(sorted(self._applied_block))}"
         outcome = StepOutcome(
             step=self.step_idx,
             action=action,
@@ -210,7 +226,7 @@ class LiveDefenseLoop:
     def _reward(self, action: int, compromised: int, benign_blocked: int) -> tuple[float, dict]:
         cfg = self.config
         anorm = max(1, self.driver.attack_per_step)
-        bnorm = max(1, self.driver.benign_per_step)
+        bnorm = max(1, self.driver.benign_norm)
         comps = {
             "compromise": -cfg.c_impact * (compromised / anorm),
             "disruption": -cfg.c_disrupt * (benign_blocked / bnorm),
@@ -221,12 +237,21 @@ class LiveDefenseLoop:
 
     def _apply_action(self, action: int) -> None:
         self._applied_block = []
-        if action == BLOCK_PRINCIPAL_ACTION:
-            # targets = whom the detector flagged in the window the policy observed
-            for principal, nodes in self._flagged.items():
+        if action in _BLOCK_ACTIONS:
+            dur = (
+                self.config.block_duration
+                if action == BLOCK_PRINCIPAL_ACTION
+                else self.config.block_long_duration
+            )
+            # targets = whom the detector flagged in the window the policy observed (all of
+            # them, or only the heaviest); a block is never shortened
+            targets = self._top if action == BLOCK_TOP_PRINCIPAL_LONG_ACTION else self._flagged
+            for principal, nodes in targets.items():
                 for node in nodes:
-                    self._timers.block[(principal, node)] = self.config.block_duration
+                    key = (principal, node)
+                    self._timers.block[key] = max(self._timers.block.get(key, 0), dur)
                 self._applied_block.append(principal)
+                self._ever_blocked.add(principal)
             self._sync_blocks()
             return
         name, node_idx = decode_action(action)
@@ -309,7 +334,8 @@ class LiveDefenseLoop:
         obs = from_platform_facts(facts, self.config.max_monitoring_level)
         mask = mask_from_facts(facts, self.config.max_monitoring_level)
         self._flagged = self._gateway.flagged_principals()
-        if self.config.action_space == "live_v2":
+        self._top = self._top_flagged()
+        if self.config.action_space in ("live_v2", "live_v3"):
             active = bool(self._timers.block)
             # valid only if the detector flagged someone not already blocked where flagged
             can_block = any(
@@ -317,4 +343,60 @@ class LiveDefenseLoop:
             )
             obs = np.append(obs, np.float32(active)).astype(np.float32)
             mask = np.append(mask, can_block)
+        if self.config.action_space == "live_v3":
+            obs = np.append(obs, self._v3_features()).astype(np.float32)
+            # valid while some target is unblocked or its block is about to lapse (no longer
+            # than a short block): that is when blocking/extending it changes anything
+            short_d = self.config.block_duration
+
+            def can(targets: dict[str, set[str]]) -> bool:
+                return any(
+                    self._timers.block.get((p, n), 0) <= short_d
+                    for p, ns in targets.items()
+                    for n in ns
+                )
+
+            mask = np.append(mask, [can(self._flagged), can(self._top)])
         return obs, mask
+
+    def _cross_counts(self) -> dict[str, int]:
+        out: dict[str, int] = {}
+        for r in self._gateway.records:
+            if r.cross_tenant_attempt and r.principal is not None:
+                out[r.principal] = out.get(r.principal, 0) + 1
+        return out
+
+    def _top_flagged(self) -> dict[str, set[str]]:
+        """The flagged principal(s) with the most cross-tenant attempts (ties: all)."""
+        counts = self._cross_counts()
+        if not counts:
+            return {}
+        hi = max(counts.values())
+        return {p: ns for p, ns in self._flagged.items() if counts.get(p, 0) == hi}
+
+    def _v3_features(self) -> np.ndarray:
+        """Detector-side description of the principals flagged in the last window.
+
+        Computed from operator-visible records only (token principal, object owner, our own
+        block history); the generator's ``is_attack`` label is never read."""
+        flagged = self._flagged
+        n = len(flagged)
+        own = cross = total = 0
+        for r in self._gateway.records:
+            if r.principal in flagged:
+                total += 1
+                cross += r.cross_tenant_attempt
+                own += not r.cross_tenant_attempt
+        longest = max(self._timers.block.values(), default=0)
+        counts = self._cross_counts()
+        return np.array(
+            [
+                min(1.0, longest / max(1, self.config.block_long_duration)),
+                min(1.0, n / 3),
+                min(1.0, cross / (6 * n)) if n else 0.0,
+                own / total if total else 0.0,
+                sum(p in self._ever_blocked for p in flagged) / n if n else 0.0,
+                max(counts.values()) / cross if cross else 0.0,
+            ],
+            dtype=np.float32,
+        )
