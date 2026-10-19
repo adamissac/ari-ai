@@ -1,0 +1,20 @@
+# Held-out v3. A bookkeeper authorized for carol (erin) also reads alice's payments, and an
+# outsider (mallory) joins, the two interleaved per request in frequent short bursts.
+# Unseen: a rogue delegate attacking together with an outsider, rapid timing.
+name: rogue_bookkeeper
+split: holdout
+horizon: 30
+schedule: bursty
+p_start: 0.35
+p_stop: 0.45
+attack_per_step: 6
+benign_per_step: 7
+attackers: [erin, mallory]
+attacker_switch: per_request
+rotate_tokens: true
+victims: [alice]
+benign: [alice, carol, dave, erin]
+delegations: ["erin:carol", "dave:alice"]
+delegate_per_step: 1
+seed_start: 49000
+episodes: 30
