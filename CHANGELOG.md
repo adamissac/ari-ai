@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Remove the homepage closing invitation and its action cards.
+
 - Live Probe provider test now issues NIST SP 800-115 rules of engagement before running, as the orchestrator does; without them the tools withheld parameter values and Probe correctly reported inconclusive.
 
 - Add a connected-commit panel that requests scope authorization, starts a persisted seven-agent assessment, and links existing commit runs; relabel the separate one-call Claude analysis as a narrated quick read.
