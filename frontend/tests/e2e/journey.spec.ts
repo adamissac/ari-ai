@@ -169,13 +169,18 @@ test('signed GitHub push appears in the monitoring feed', async ({ browser, requ
   await expect(page.getByTestId('rl-caveat')).toHaveText('Recommendation from a policy trained in an isolated test environment. Not applied automatically.');
 });
 
-test('create a project and connect a repository through the UI', async ({ browser }) => {
+test('connect a repository to a project through the UI', async ({ browser }) => {
   const page = await newUser(browser, 'e2e-alice');
-  await page.goto('/projects');
-  const name = `ui-project-${Date.now()}`;
-  await page.getByLabel('Name').fill(name);
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await page.getByRole('link', { name }).click();
+  // Projects are created implicitly when a repository is connected; for this walkthrough
+  // seed one through the API, then drive the project pages in the rendered UI.
+  const me = await page.request.get(`${env('E2E_API')}/me`);
+  const created = await page.request.post(`${env('E2E_API')}/projects`, {
+    data: { name: `ui-project-${Date.now()}` },
+    headers: { 'X-CSRF-Token': (await me.json()).csrf_token },
+  });
+  expect(created.ok(), await created.text()).toBeTruthy();
+  const seeded = (await created.json()) as { id: string };
+  await page.goto(`/projects/${seeded.id}`);
   await expect(page.getByText('No repository connected.')).toBeVisible();
   // Dev login has no GitHub App access, so the picker explains how to add repositories.
   await expect(page.getByTestId('repo-picker-empty')).toBeVisible();

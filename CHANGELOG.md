@@ -7,6 +7,7 @@ All notable changes are documented here. Format follows
 ## [Unreleased]
 
 - Simplify the Defense Lab page for demo visitors: the intro collapses to one line plus the test-environment caveat, the headline numbers (compromise rate, uptime, steps to contain) lead, the per-scenario metric explorer and reward/technical-detail panels are removed, and provenance stays one click away in a collapsed footer.
+- `/projects` now opens the connected-organization drill-down (organization → repositories → commits → per-commit code review and the seven agents). The standalone project list and create-project form are gone; a project is still created implicitly when a repository is connected.
 
 - Refresh trusted personal GitHub App repositories live in the repo picker; organization repositories still refresh through GitHub sign-in.
 
