@@ -181,3 +181,6 @@ Sign-in screens share a centered form over subtle decorative orbits; reduced mot
 
 
 User-facing lab copy describes controlled evaluation runs and isolated test networks. Synthetic drills and illustrative walkthroughs retain explicit provenance.
+
+
+The homepage ends after its proof section; the former closing invitation and its dedicated styles have been removed.
