@@ -170,10 +170,10 @@ function Scoreboard({ bundle }: { bundle: DefenseLabBundle }) {
     .map(metric => ({ metric, cells: scoreboard(bundle, metric) }))
     .filter(m => !m.cells.every(c => c.value === null));
   return (
-    <section aria-labelledby="score-title" data-testid="lab-scoreboard" className="lab-console">
-      <p className="lab-eyebrow">The numbers</p>
-      <h2 id="score-title" className="mt-2 text-2xl font-semibold tracking-tight text-white md:text-3xl">Who defends best?</h2>
-      <p className="mt-2 max-w-3xl text-sm text-white/60">
+    <section aria-labelledby="score-title" data-testid="lab-scoreboard" className="paper py-14 md:py-20">
+      <p className="lab-eyebrow">01 — The numbers</p>
+      <h2 id="score-title" className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Who defends best?</h2>
+      <p className="mt-2 max-w-3xl text-sm text-muted">
         {defenderCountPhrase(bundle.metrics.length, true)}, each tested on {n.toLocaleString()} evaluation runs excluded from training.
       </p>
       <Headline bundle={bundle} />
@@ -184,7 +184,7 @@ function Scoreboard({ bundle }: { bundle: DefenseLabBundle }) {
           return (
             <figure key={metric.key} className="lab-score-card" data-testid={`score-${metric.key}`}>
               <figcaption className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                <span className="font-semibold tracking-tight">{metric.title}</span>
+                <span className="font-semibold tracking-tight text-ink">{metric.title}</span>
                 <Direction higher={metric.higherIsBetter} />
               </figcaption>
               <ul className="mt-5 flex flex-col gap-4">
@@ -213,7 +213,7 @@ function Scoreboard({ bundle }: { bundle: DefenseLabBundle }) {
         })}
       </div>
       {tradeoff && (
-        <p className="mt-5 flex items-start gap-2.5 text-sm text-white/60" data-testid="lab-tradeoff">
+        <p className="mt-5 flex items-start gap-2.5 text-sm text-muted" data-testid="lab-tradeoff">
           <svg viewBox="0 0 16 16" className="mt-0.5 h-4 w-4 shrink-0 text-brand" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth={1.5}><circle cx="8" cy="8" r="6.5" /><path d="M8 7.2v4M8 4.8v.01" strokeLinecap="round" /></svg>
           <span>{tradeoff}</span>
         </p>
@@ -232,7 +232,7 @@ function Replay({ bundle }: { bundle: DefenseLabBundle }) {
   const scenario = bundle.scenarios.find(s => s.name === episode?.scenario);
   return (
     <section aria-labelledby="replay-title">
-      <p className="lab-eyebrow">Watch it in action</p>
+      <p className="lab-eyebrow">02 — Watch it in action</p>
       <h2 id="replay-title" className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Replay a recorded evaluation</h2>
       <p className="mt-2 max-w-3xl text-sm text-muted">Pick a defender and an attacker, press play, and follow what the defender saw and did at each step.</p>
       {!episode || !scenario ? <div className="mt-4"><Empty>This bundle has no recorded episodes.</Empty></div> : (
