@@ -102,6 +102,7 @@ acceptance criteria are the minimum for `DONE` in addition to
 | UI-005 | Approval inbox | frontend/ | FR-2-05 | UI-002 | UNASSIGNED | BLOCKED | Approve/decline remediation with summary |
 | UI-006 | Patch diff + verification checks view | frontend/ | FR-2-06 | UI-004 | UNASSIGNED | BLOCKED | Shows each Verify check with evidence |
 | UI-007 | Monitoring feed + RL recommendation panel | frontend/ | FR-3-06 | UI-001, MON-003, RL-005 | UNASSIGNED | BLOCKED | Caveat text always shown |
+| UI-008 | Project 24/7 defense switch | frontend/ | FR-3-06 | — | Adam | DONE | Owners can toggle automatic re-checks from Monitoring and the Defense Lab without changing other project settings; the switch has contrast for light panels and dark headers, and the Defense Lab stays available offline |
 | TEST-005 | Demo-scenario e2e (`e2e.yml`) | tests/e2e | — | IC-1…IC-8 tasks, UI-006 | UNASSIGNED | BLOCKED | IC-9 green on clean stack |
 | DEMO-002 | Demo rehearsal + offline fallback | — | — | TEST-005 | UNASSIGNED | BLOCKED | Checklist in [20](../20_DEMO_SCRIPT.md) complete |
 | DEMO-003 | Pitch slides with traceable numbers | — | — | RL-004, TEST-005 | UNASSIGNED | BLOCKED | Every number cites a run ID or eval summary |

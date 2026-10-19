@@ -1,9 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import type { Project } from '@hackatl/frontend-transport';
+import { DefenseSwitch } from '@/components/defense-switch';
 import { ReplayStage } from '@/components/lab-replay';
+import { OptionalSession, useOptionalSession } from '@/components/session';
 import { Empty, ErrorState, Field, inputClass, Loading, Mono, Panel } from '@/components/ui';
 import { defenderCountPhrase } from '@/components/lab-copy';
+import { api } from '@/lib/api';
+import { DEMO_ONLY } from '@/lib/deployment';
 import { sampleSize } from '@/lib/lab';
 import { keyTakeaway, POLICY_NAME, policyName, scenarioName, SCORE_METRICS, scoreboard, type ScoreMetric, tradeoffNote } from '@/lib/lab-plain';
 import type { BundleResponse, DefenseLabBundle, LabEpisode } from '@/lib/lab-types';
@@ -68,6 +73,7 @@ export default function DefenseLabPage() {
           )}
         </div>
       </header>
+      {!DEMO_ONLY && <OptionalSession><SignedInDefenseProjects /></OptionalSession>}
       {protocols.status === 'loading' && <Loading label="Finding evaluation runs" />}
       {protocols.status === 'error' && <ErrorState error={protocols.error} context="Could not list evaluation runs" />}
       {protocols.status === 'ready' && protocols.data.length === 0 && <Empty>No committed evaluation bundle (rl-defense/results/protocol-*/defense_lab.json) was found.</Empty>}
@@ -75,6 +81,44 @@ export default function DefenseLabPage() {
       {bundle.status === 'error' && <ErrorState error={bundle.error} context="Evaluation bundle rejected" />}
       {bundle.status === 'ready' && <Lab data={bundle.data} />}
     </>
+  );
+}
+
+function SignedInDefenseProjects() {
+  const session = useOptionalSession();
+  const [projects, setProjects] = useState<Project[] | null>(null);
+  const userId = session?.me.user.id ?? null;
+
+  useEffect(() => {
+    if (!userId) return;
+    const controller = new AbortController();
+    api().projects({ signal: controller.signal }).then(
+      page => { if (!controller.signal.aborted) setProjects(page.items); },
+      () => { if (!controller.signal.aborted) setProjects(null); },
+    );
+    return () => controller.abort();
+  }, [userId]);
+
+  if (!userId || projects === null) return null;
+
+  return (
+    <Panel title="Your 24/7 defense" className="mb-6">
+      {projects.length === 0 ? (
+        <p className="text-sm text-muted">No projects yet.</p>
+      ) : (
+        <ul className="divide-y divide-line">
+          {projects.map(project => (
+            <li key={project.id} className="flex flex-wrap items-start justify-between gap-4 py-3 first:pt-0 last:pb-0">
+              <p className="pt-2 text-sm font-medium">{project.name}</p>
+              <DefenseSwitch
+                project={project}
+                onChange={next => setProjects(current => current?.map(item => item.id === next.id ? next : item) ?? null)}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
   );
 }
 
