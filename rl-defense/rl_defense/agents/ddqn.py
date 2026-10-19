@@ -21,6 +21,8 @@ import torch
 from pydantic import BaseModel, ConfigDict, Field
 from torch import nn
 
+NOOP = 0  # DefenseSimEnv's noop index (shared by every live action-space extension)
+
 NEG_INF = -1e9
 
 
@@ -52,6 +54,12 @@ class DDQNConfig(BaseModel):
         ge=0.0,
         description="Greedy abstention: take a disruptive action (rate_limit/isolate) only if its "
         "Q exceeds the best valid non-disruptive action's Q by at least this margin. 0 = off.",
+    )
+    noop_margin: float = Field(
+        0.0,
+        ge=0.0,
+        description="Greedy abstention: take any non-noop action only if its Q exceeds Q(noop) "
+        "by at least this margin (live v3: effect-free actions win argmax ties by noise). 0 = off.",
     )
     eps_disruptive_weight: float | None = Field(
         None,
@@ -252,7 +260,10 @@ class DDQNAgent:
             if safe.any():
                 alt = int(np.argmax(np.where(safe, q, NEG_INF)))
                 if q[best] - q[alt] < margin:
-                    return alt
+                    best = alt
+        nm = self.config.noop_margin
+        if nm > 0.0 and best != NOOP and mask[NOOP] and q[best] - q[NOOP] < nm:
+            return NOOP
         return best
 
     def act(self, obs: np.ndarray, mask: np.ndarray, epsilon: float = 0.0) -> int:

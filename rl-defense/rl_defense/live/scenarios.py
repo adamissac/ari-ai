@@ -12,6 +12,11 @@ describe who attacks with which tokens (fixture identities in ``adversary.IDENTI
 At their defaults they reproduce the v1 traffic, and they are left out of the config hash
 so v1 scenario hashes are unchanged. ``configs/live/holdout_v2/`` holds holdout scenarios
 created after the v1 holdout was exposed (results/live-retrain/PROVENANCE.md).
+
+v3 fields (``delegations``, ``delegate_per_step``, ``delegate_burst_p``,
+``delegate_burst_size``) add legitimate cross-tenant readers (adversary.DelegateProfile);
+like the v2 fields they are omitted from the hash at their defaults. v3 scenarios live in
+``train_v3/``, ``val_v3/`` and ``holdout_v3/`` (results/live-retrain-v3/PROVENANCE.md).
 """
 
 from __future__ import annotations
@@ -24,7 +29,12 @@ from typing import Literal
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from rl_defense.live.adversary import TrafficDriver, attacker_profile, benign_profile
+from rl_defense.live.adversary import (
+    TrafficDriver,
+    attacker_profile,
+    benign_profile,
+    delegate_profile,
+)
 
 CONFIG_DIR = Path(__file__).resolve().parents[2] / "configs" / "live"
 Split = Literal["train", "val", "holdout"]
@@ -56,6 +66,11 @@ class LiveScenario(BaseModel):
     benign: tuple[str, ...] = ("alice", "bob")
     attacker_switch: Literal["per_window", "per_request"] = "per_window"
     rotate_tokens: bool = False
+    # --- v3: legitimate cross-tenant readers ("delegate:owner"; defaults = none) ---
+    delegations: tuple[str, ...] = ()
+    delegate_per_step: int = Field(1, ge=0)
+    delegate_burst_p: float = Field(0.0, ge=0.0, le=1.0)
+    delegate_burst_size: int = Field(0, ge=0)
 
     @model_validator(mode="after")
     def _seeds_in_band(self) -> LiveScenario:
@@ -89,6 +104,10 @@ class LiveScenario(BaseModel):
             p_start=self.p_start,
             p_stop=self.p_stop,
             start_active=self.start_active,
+            delegates=tuple(delegate_profile(d) for d in self.delegations),
+            delegate_per_step=self.delegate_per_step,
+            delegate_burst_p=self.delegate_burst_p,
+            delegate_burst_size=self.delegate_burst_size,
         )
 
     def config_hash(self) -> str:
@@ -100,7 +119,18 @@ class LiveScenario(BaseModel):
         return hashlib.sha256(payload.encode()).hexdigest()[:16]
 
 
-_V2 = ("attackers", "victims", "benign", "attacker_switch", "rotate_tokens")
+_V2 = (
+    "attackers",
+    "victims",
+    "benign",
+    "attacker_switch",
+    "rotate_tokens",
+    # v3
+    "delegations",
+    "delegate_per_step",
+    "delegate_burst_p",
+    "delegate_burst_size",
+)
 
 
 def load_scenarios(
