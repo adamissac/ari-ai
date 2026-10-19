@@ -15,7 +15,10 @@ from rl_defense.envs.config import NODE_NAMES
 from rl_defense.envs.defense_sim import ALERT_NORM, OBS_DIM
 
 
-def from_platform_facts(facts: PlatformFacts, max_monitoring_level: int = 2) -> np.ndarray:
+def from_platform_facts(
+    facts: PlatformFacts, max_monitoring_level: int = 2, *, space: str = "sim"
+) -> np.ndarray:
+    """48-feature simulator observation, or 49 for ``space="live_v2"`` (+ principal_block_active)."""
     by_name = {n.node: n for n in facts.nodes}
     if set(by_name) != set(NODE_NAMES):
         raise ValueError(f"facts must cover exactly the nodes {NODE_NAMES}")
@@ -42,11 +45,16 @@ def from_platform_facts(facts: PlatformFacts, max_monitoring_level: int = 2) -> 
     ]
     obs = np.clip(np.concatenate([np.ravel(rows), glob]), 0.0, 1.0).astype(np.float32)
     assert obs.shape == (OBS_DIM,)
+    if space == "live_v2":
+        obs = np.append(obs, np.float32(facts.principal_block_active)).astype(np.float32)
     return obs
 
 
-def mask_from_facts(facts: PlatformFacts, max_monitoring_level: int = 2) -> np.ndarray:
-    """Valid-action mask from observable facts (mirrors DefenseSimEnv.action_masks)."""
+def mask_from_facts(
+    facts: PlatformFacts, max_monitoring_level: int = 2, *, space: str = "sim"
+) -> np.ndarray:
+    """Valid-action mask from observable facts (mirrors DefenseSimEnv.action_masks).
+    ``space="live_v2"`` appends block_principal, valid iff ``principal_block_available``."""
     from rl_defense.envs.defense_sim import ESCALATE_ACTION, N_ACTIONS, NOOP_ACTION, encode_action
 
     by_name = {n.node: n for n in facts.nodes}
@@ -63,4 +71,6 @@ def mask_from_facts(facts: PlatformFacts, max_monitoring_level: int = 2) -> np.n
     mask[ESCALATE_ACTION] = (
         facts.escalations_remaining_fraction > 0 and not facts.escalation_pending
     )
+    if space == "live_v2":
+        mask = np.append(mask, bool(facts.principal_block_available))
     return mask
