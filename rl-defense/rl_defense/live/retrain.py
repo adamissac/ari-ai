@@ -14,18 +14,22 @@ from pathlib import Path
 
 import numpy as np
 
+from rl_defense import ENV_ID
 from rl_defense.agents.ddqn import ReplayBuffer
 from rl_defense.checkpoint import load_checkpoint, save_checkpoint
-from rl_defense.envs.defense_sim import N_ACTIONS, OBS_DIM
+from rl_defense.live.actions import LIVE_V2_ENV_ID, ActionSpace, as_v2, dims
 from rl_defense.live.evaluate import dqn_policy, run_policy, summarize
 from rl_defense.live.experience import load_dataset
 from rl_defense.live.scenarios import LiveScenario
 from rl_defense.train import set_determinism
 
 
-def _buffer(records: list[dict], seed: int) -> ReplayBuffer:
-    buf = ReplayBuffer(len(records), OBS_DIM, N_ACTIONS, seed=seed)
+def _buffer(records: list[dict], seed: int, space: ActionSpace = "sim") -> ReplayBuffer:
+    obs_dim, n_actions = dims(space)
+    buf = ReplayBuffer(len(records), obs_dim, n_actions, seed=seed)
     for r in records:
+        if len(r["obs"]) != obs_dim or len(r["action_mask"]) != n_actions:
+            raise ValueError(f"transition shape does not match action space {space}")
         buf.add(
             np.asarray(r["obs"], dtype=np.float32),
             int(r["action"]),
@@ -51,6 +55,7 @@ def retrain(
     val_episodes: int | None = None,
     seed: int = 0,
     name: str = "candidate",
+    action_space: ActionSpace = "sim",
 ) -> dict:
     if any(s.split != "val" for s in val_scenarios):
         raise ValueError("checkpoint selection must use validation scenarios only")
@@ -58,6 +63,8 @@ def retrain(
         raise ValueError("need updates >= eval_every >= 1")
     set_determinism(seed)
     agent, base_manifest = load_checkpoint(Path(base_checkpoint))
+    if action_space == "live_v2":
+        agent = as_v2(agent)  # widen a sim base without changing its greedy choices
     for g in agent.optimizer.param_groups:
         g["lr"] = lr
 
@@ -69,11 +76,17 @@ def retrain(
         ds_manifests.append(m)
     if not records:
         raise ValueError("no transitions to train on")
-    buf = _buffer(records, seed)
+    buf = _buffer(records, seed, action_space)
 
     def val_score() -> dict:
         return summarize(
-            run_policy(dqn_policy(agent), val_scenarios, app_factory, episodes=val_episodes)
+            run_policy(
+                dqn_policy(agent),
+                val_scenarios,
+                app_factory,
+                episodes=val_episodes,
+                action_space=action_space,
+            )
         )
 
     history = [{"update": 0, "role": "base", **_brief(val_score())}]
@@ -101,7 +114,9 @@ def retrain(
         seed=seed,
         steps=best[1],
         train_configs={f"live:{k}": v for k, v in train_scen.items()},
+        env_id=ENV_ID if action_space == "sim" else LIVE_V2_ENV_ID,
         extra={
+            "action_space": action_space,
             "trained_on": "live:examples/payments-lite (offline, from recorded experience)",
             "lineage": {
                 "base_checkpoint_sha256": base_manifest["checkpoint_sha256"],
