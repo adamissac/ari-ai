@@ -1,0 +1,15 @@
+policy checkpoint: /var/folders/zx/g7x09fys7f39_65741pxh9h00000gn/T/live_ckpt_ihvymnpu/ddqn_seed0.pt
+policy_version:    DefenseSimEnv-v0@5843ad54218a
+------------------------------------------------------------------------------
+ep    reward  compromised  attacks  benign_blk  benign
+ 0     -30.6          180      180           0     180
+ 1     -30.6          180      180           0     180
+ 2     -30.6          180      180           0     180
+------------------------------------------------------------------------------
+ep0 actions: {'raise_monitoring:auth': 5, 'raise_monitoring:db': 9, 'raise_monitoring:payments': 8, 'rate_limit:gateway': 1, 'request_reassessment:payments': 3, 'request_reassessment:auth': 3, 'rate_limit:db': 1}
+ep1 actions: {'raise_monitoring:auth': 5, 'raise_monitoring:payments': 7, 'raise_monitoring:db': 8, 'rate_limit:gateway': 2, 'request_reassessment:payments': 3, 'request_reassessment:auth': 3, 'raise_monitoring:gateway': 2}
+ep2 actions: {'raise_monitoring:auth': 5, 'raise_monitoring:payments': 8, 'raise_monitoring:db': 9, 'rate_limit:gateway': 2, 'request_reassessment:payments': 3, 'request_reassessment:auth': 3}
+
+NOTE: measured from real HTTP outcomes against examples/payments-lite in-process. The policy here is trained on the abstract simulator; its behavior on real telemetry is itself a research question (RQ-005). Numbers are lab evidence, not real-world proof.
+
+transitions written to results/live-slice/transitions.jsonl
