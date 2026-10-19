@@ -110,6 +110,7 @@ class LiveDefenseLoop:
         self._mask: np.ndarray | None = None
         # principals the detector flagged in the window the current observation describes
         self._flagged: dict[str, set[str]] = {}
+        self._top: dict[str, set[str]] = {}  # live_v3: the heaviest flagged principal(s)
         self._applied_block: list[str] = []
         # live_v3: principals blocked at any point this episode (operator's own history)
         self._ever_blocked: set[str] = set()
@@ -244,9 +245,7 @@ class LiveDefenseLoop:
             )
             # targets = whom the detector flagged in the window the policy observed (all of
             # them, or only the heaviest); a block is never shortened
-            targets = (
-                self._top_flagged() if action == BLOCK_TOP_PRINCIPAL_LONG_ACTION else self._flagged
-            )
+            targets = self._top if action == BLOCK_TOP_PRINCIPAL_LONG_ACTION else self._flagged
             for principal, nodes in targets.items():
                 for node in nodes:
                     key = (principal, node)
@@ -335,6 +334,7 @@ class LiveDefenseLoop:
         obs = from_platform_facts(facts, self.config.max_monitoring_level)
         mask = mask_from_facts(facts, self.config.max_monitoring_level)
         self._flagged = self._gateway.flagged_principals()
+        self._top = self._top_flagged()
         if self.config.action_space in ("live_v2", "live_v3"):
             active = bool(self._timers.block)
             # valid only if the detector flagged someone not already blocked where flagged
@@ -345,18 +345,18 @@ class LiveDefenseLoop:
             mask = np.append(mask, can_block)
         if self.config.action_space == "live_v3":
             obs = np.append(obs, self._v3_features()).astype(np.float32)
-            long_d = self.config.block_long_duration
-            # valid while some flagged principal is not already blocked that long (= extend)
-            can_long = any(
-                self._timers.block.get((p, n), 0) < long_d
-                for p, ns in self._flagged.items()
-                for n in ns
-            )
-            top = self._top_flagged()
-            can_top = any(
-                self._timers.block.get((p, n), 0) < long_d for p, ns in top.items() for n in ns
-            )
-            mask = np.append(mask, [can_long, can_top])
+            # valid while some target is unblocked or its block is about to lapse (no longer
+            # than a short block): that is when blocking/extending it changes anything
+            short_d = self.config.block_duration
+
+            def can(targets: dict[str, set[str]]) -> bool:
+                return any(
+                    self._timers.block.get((p, n), 0) <= short_d
+                    for p, ns in targets.items()
+                    for n in ns
+                )
+
+            mask = np.append(mask, [can(self._flagged), can(self._top)])
         return obs, mask
 
     def _cross_counts(self) -> dict[str, int]:
