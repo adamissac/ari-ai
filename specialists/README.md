@@ -37,21 +37,22 @@ detail (per-label precision/recall, confusion, training curve, cross-validation)
 
 | Agent | Model | Task | Metric | Model | Best baseline | Δ (95% CI) | Used |
 |---|---|---|---|---|---|---|---|
-| Scout | `ari-scout-vulnclass@1.0.0` | code span → 12 CWE classes or safe | macro-F1 | **0.298** | platform `static.analyze` regexes 0.090 | +0.208 [+0.188, +0.227] | **model** |
-| Probe | `ari-probe-strategy@1.0.0` | hypothesis text + (noisy) CWE → OWASP WSTG test | accuracy | **0.631** | CWE→WSTG lookup 0.606 | +0.025 [+0.004, +0.048] | **model** |
-| Trace | `ari-trace-tactics@1.0.0` | CWE name → ATT&CK tactics (via CAPEC) | F1@3 | 0.457 | prior top-3 0.438 | +0.019 [−0.095, +0.126] | baseline |
-| Diagnose | `ari-diagnose-rootcause@1.0.0` | span + CWE + validation evidence → root-cause class | macro-F1 | 0.525 | CWE lookup 0.525 | 0.000 [0, 0] | baseline |
-| Patch | `ari-patch-strategy@1.0.0` | span + CWE → remediation strategy | macro-F1 | 0.734 | CWE lookup 0.750 | −0.016 [−0.027, −0.008] | baseline |
-| Fortify | `ari-fortify-d3fend@1.0.0` | ATT&CK technique → D3FEND countermeasures | F1@5 | 0.286 | name kNN 0.263 | +0.024 [−0.101, +0.152] | baseline |
-| Verify | `ari-verify-evidence@1.0.0` | patch diff + executed test summary → evidence class | macro-F1 | **0.976** | diff heuristics 0.859 | +0.118 [+0.102, +0.134] | **model** (advisory) |
+| Scout | `ari-scout-vulnclass@1.1.0` | code span → 12 CWE classes, other-vulnerable or safe | macro-F1 | **0.374** | platform `static.analyze` regexes 0.099 | +0.275 [+0.259, +0.291] | **model** |
+| Probe | `ari-probe-strategy@1.1.0` | hypothesis text + (noisy) CWE → OWASP WSTG test | accuracy | **0.631** | CWE→WSTG lookup 0.606 | +0.025 [+0.004, +0.048] | **model** |
+| Trace | `ari-trace-tactics@1.1.0` | CWE name or CVE text → ATT&CK tactics (via CAPEC) | F1@3 | 0.468 | prior top-3 0.454 | +0.014 [−0.030, +0.060] | baseline |
+| Diagnose | `ari-diagnose-rootcause@1.1.0` | span + CWE + validation evidence → root-cause class | macro-F1 | **0.601** | CWE lookup 0.525 | +0.076 [+0.025, +0.130] | **model** |
+| Patch | `ari-patch-strategy@1.1.0` | span + CWE → remediation strategy | macro-F1 | 0.654 | CWE lookup 0.750 | −0.096 [−0.121, −0.075] | baseline |
+| Fortify | `ari-fortify-d3fend@1.1.0` | ATT&CK technique → D3FEND countermeasures | F1@5 | 0.327 | name kNN 0.280 | +0.047 [−0.022, +0.119] | baseline |
+| Verify | `ari-verify-evidence@1.1.0` | patch diff + executed test summary → evidence class | macro-F1 | **0.971** | diff heuristics 0.864 | +0.107 [+0.091, +0.124] | **model** (advisory) |
 
 Leave-one-family-out cross-validation (each of the four families per class is the unseen test
-set once), mean primary metric: Scout 0.350 vs regexes 0.098; Diagnose 0.475 vs lookup 0.574;
-Patch 0.751 vs lookup 0.750; Verify 0.976 vs heuristics 0.857.
+set once). Scout 0.374 vs regexes 0.099; Diagnose 0.601 vs lookup 0.525; Patch 0.654 vs lookup 0.750; Verify 0.971 vs heuristics 0.864.
 
-Scout as a detector on the test split (any CWE = flagged): precision 0.76, recall 0.49,
-false-positive rate 0.31, false-negative rate 0.51. The platform's regex patterns: precision 0.75,
-recall 0.08, FPR 0.06, FNR 0.92. The model finds about six times more of the vulnerable spans at
+Scout as a detector on the test split (any CWE = flagged): precision 0.66, recall 0.49,
+false-positive rate 0.17, false-negative rate 0.51. The platform's regex patterns remain far more
+conservative (recall ~0.08). Absolute numbers moved because corpus-2 adds a real-code
+`vuln_other` class (DiverseVul functions whose CWE is outside our 12), which is deliberately
+harder than the v1.0.0 all-synthetic test set — the versions are not comparable. The model finds about six times more of the vulnerable spans at
 the cost of more false positives; that trade is why it only *ranks* spans and never drops or raises
 a hypothesis on its own.
 
@@ -71,7 +72,7 @@ per call, no tokens, no external calls. Checkpoints total about 21 MB.
 
 | Agent | Architecture | Inputs (hashed features) | Labels | Dataset (train / val / test) | Split |
 |---|---|---|---|---|---|
-| Scout | MLP 16384→96→13, ReLU, softmax | `code` | 12 CWEs + safe | 3240 / 648 / 1296 | by code family |
+| Scout | MLP 16384→96→14, ReLU, softmax | `code` | 12 CWEs + vuln_other + safe | 35218 / 8264 / 8997 | by code family (synthetic) + commit id (DiverseVul) |
 | Probe | MLP 8192→48→12 | `hypothesis`, `cwe` (25% wrong, 15% missing) | 12 WSTG tests | 960 / 480 / 480 | by phrasing family |
 | Trace | linear 4096→10, sigmoid | `name` (CWE name) | ATT&CK tactics | 91 / 17 / 21 | by CWE |
 | Diagnose | MLP 16384→64→6 | `code`, `cwe`, `evidence` | `CauseClass` | 1080 / 216 / 432 | by code family |
@@ -200,7 +201,7 @@ RUN_LIVE_LLM_EVAL=1 LIVE_SEVEN_MAX_USD=4 uv run python -m specialists.live_compa
 
 ## Next steps (not done)
 
-- Train Scout/Diagnose/Patch on real, permissively licensed vulnerability-fix data (e.g. CVEfixes,
+- Scout now trains on DiverseVul (real C/C++ functions, commit-bucket splits); Diagnose/Patch train on the diversified corpus-2. Remaining gaps: Trace/Fortify eval sets are still small, and DiverseVul is C/C++-skewed while our CWE classes are web-flavoured. Next: CVEfixes-style patch corpora,
   OSV-linked fix commits) and evaluate on real repositories; the synthetic corpus is the main limit.
 - Finish the live comparison (more runs per configuration) and add a harder owned fixture where
   Claude-only misses defects, so a hybrid gain could show at all.

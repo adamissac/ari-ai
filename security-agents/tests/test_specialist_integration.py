@@ -59,7 +59,7 @@ def test_every_agent_invokes_its_trained_model_and_it_is_audited(intel, driver, 
     events = inferences(res)
     assert {e["agent"] for e in events} == AGENTS
     for e in events:
-        assert e["model"] and e["model"].startswith("ari-") and e["model"].endswith("@1.0.0"), e
+        assert e["model"] and e["model"].startswith("ari-") and e["model"].endswith("@1.1.0"), e
         assert e["source"] == "model" or e["source"].startswith("baseline:"), e
     # The model's output reached Claude's prompt as a provenance-labelled data block.
     seen = prompts(fake)

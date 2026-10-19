@@ -27,7 +27,7 @@
    "WSTG-INPV-12": 80,
    "WSTG-INPV-19": 80
   },
-  "version": "corpus-1+mitre-pinned"
+  "version": "corpus-2+mitre-pinned+real-corpus"
  },
  "description": "Rank OWASP WSTG validation strategies for a hypothesis (text + a possibly wrong CWE).",
  "evaluation": {
@@ -96,12 +96,12 @@
   "lr": 0.003,
   "numpy": "2.5.4",
   "patience": 6,
-  "python": "3.12.14",
-  "seconds": 0.29,
+  "python": "3.12.15",
+  "seconds": 0.21,
   "seed": 7,
   "weight_decay": 1e-05
  },
- "version": "1.0.0",
+ "version": "1.1.0",
  "weights_bytes": 1575408,
  "weights_sha256": "d3d4d2371fc746914b32b75e48df6a544d3cf655b781da43945c670d6afc51f9"
 }
