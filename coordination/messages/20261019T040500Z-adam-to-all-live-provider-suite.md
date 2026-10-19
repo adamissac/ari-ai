@@ -1,0 +1,14 @@
+# MSG: live provider suite run with real Claude; Probe test fixture fixed
+- ID: `20261019T040500Z-adam-to-all-live-provider-suite`
+- From: Adam
+- To: all
+- Kind: `status`
+- Timestamp (UTC): 2026-10-19T04:05:00Z
+- Branch / commit / PR or issue link: `fix/SEC-live-probe-roe`
+- Related subsystem(s): security-agents
+- Summary (facts, not assumptions): live seven-role end-to-end run completed with every agent live; the isolated live Probe test lacked rules of engagement and now issues them.
+- Interface requested/proposed (field-level types/example payload): none
+- Breaking change? migration/test impact: none; test-only change
+- Action required by recipient: none
+- Response-by milestone (not invented clock time): none
+- Evidence: `security-agents/tests/artifacts/live/*-seven_roles_end_to_end_report.json` (local, not committed); live Probe 1 passed after fix
