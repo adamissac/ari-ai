@@ -49,8 +49,12 @@ export default function DefenseLabPage() {
           <div className="max-w-2xl">
             <p className="label-mono text-white/60">Defense Lab · research</p>
             <h1 className="display mt-3 text-3xl font-semibold md:text-5xl">Can an AI learn to defend a network?</h1>
-            <p className="mt-4 text-sm text-white/75 md:text-base">
-              We trained an AI defender in a practice network and scored it against simpler defenders on runs it never saw in training.
+            <p className="mt-4 max-w-xl text-sm text-white/75 md:text-base" data-testid="lab-intro">
+              A controlled network evaluation. We trained an AI defender in a practice network and scored it against simpler defenders on runs it never saw in training.
+            </p>
+            <p role="note" className="lab-caveat lab-caveat-dark mt-4" data-testid="lab-caveat">
+              <svg viewBox="0 0 16 16" className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round"><path d="M8 1.8 14.6 13.5H1.4z" strokeLinejoin="round" /><path d="M8 6.3v3.4M8 11.7v.01" /></svg>
+              <span><strong>Controlled test environment.</strong> Results come from an isolated test network, not a connected production system. No action is ever applied automatically.</span>
             </p>
           </div>
           {protocols.status === 'ready' && protocols.data.length > 0 && (
@@ -76,19 +80,16 @@ export default function DefenseLabPage() {
 
 function Lab({ data }: { data: BundleResponse }) {
   const { bundle, provenance } = data;
+  const n = sampleSize(bundle, null);
   return (
     <div className="flex flex-col gap-16">
-      <section aria-labelledby="lab-what" data-testid="lab-intro">
-        <h2 id="lab-what" className="sr-only">What is this?</h2>
-        <p className="lab-lede">
-          A controlled network evaluation. An AI defender learned by trial and error which
-          responses protect services without shutting the business down.
-        </p>
-        <p role="note" className="lab-caveat mt-4" data-testid="lab-caveat">
-          <svg viewBox="0 0 16 16" className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round"><path d="M8 1.8 14.6 13.5H1.4z" strokeLinejoin="round" /><path d="M8 6.3v3.4M8 11.7v.01" /></svg>
-          <span><strong>Controlled test environment{bundle.simulation_only ? '' : ' (flag missing!)'}.</strong> Results come from an isolated test network, not a connected production system. No action is ever applied automatically.</span>
-        </p>
-      </section>
+      <ul className="lab-chips" aria-label="Evaluation at a glance">
+        <li className="lab-chip"><strong>{n.toLocaleString()}</strong> held-out runs</li>
+        <li className="lab-chip"><strong>{bundle.metrics.length}</strong> defenders compared</li>
+        <li className="lab-chip"><strong>{bundle.scenarios.length}</strong> attacker scenarios</li>
+        <li className="lab-chip"><strong>{bundle.training_seeds.length}</strong> training seeds</li>
+        {!bundle.simulation_only && <li className="lab-chip lab-chip-warn">simulation flag missing</li>}
+      </ul>
       <Scoreboard bundle={bundle} />
       <Replay bundle={bundle} />
       <details className="group rounded-2xl border border-line bg-panel" data-testid="lab-details">
@@ -169,10 +170,10 @@ function Scoreboard({ bundle }: { bundle: DefenseLabBundle }) {
     .map(metric => ({ metric, cells: scoreboard(bundle, metric) }))
     .filter(m => !m.cells.every(c => c.value === null));
   return (
-    <section aria-labelledby="score-title" data-testid="lab-scoreboard" className="paper py-14 md:py-20">
+    <section aria-labelledby="score-title" data-testid="lab-scoreboard" className="lab-console">
       <p className="lab-eyebrow">The numbers</p>
-      <h2 id="score-title" className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Who defends best?</h2>
-      <p className="mt-2 max-w-3xl text-sm text-muted">
+      <h2 id="score-title" className="mt-2 text-2xl font-semibold tracking-tight text-white md:text-3xl">Who defends best?</h2>
+      <p className="mt-2 max-w-3xl text-sm text-white/60">
         {defenderCountPhrase(bundle.metrics.length, true)}, each tested on {n.toLocaleString()} evaluation runs excluded from training.
       </p>
       <Headline bundle={bundle} />
@@ -183,7 +184,7 @@ function Scoreboard({ bundle }: { bundle: DefenseLabBundle }) {
           return (
             <figure key={metric.key} className="lab-score-card" data-testid={`score-${metric.key}`}>
               <figcaption className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                <span className="font-semibold tracking-tight text-ink">{metric.title}</span>
+                <span className="font-semibold tracking-tight">{metric.title}</span>
                 <Direction higher={metric.higherIsBetter} />
               </figcaption>
               <ul className="mt-5 flex flex-col gap-4">
@@ -212,7 +213,7 @@ function Scoreboard({ bundle }: { bundle: DefenseLabBundle }) {
         })}
       </div>
       {tradeoff && (
-        <p className="mt-5 flex items-start gap-2.5 text-sm text-muted" data-testid="lab-tradeoff">
+        <p className="mt-5 flex items-start gap-2.5 text-sm text-white/60" data-testid="lab-tradeoff">
           <svg viewBox="0 0 16 16" className="mt-0.5 h-4 w-4 shrink-0 text-brand" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth={1.5}><circle cx="8" cy="8" r="6.5" /><path d="M8 7.2v4M8 4.8v.01" strokeLinecap="round" /></svg>
           <span>{tradeoff}</span>
         </p>
