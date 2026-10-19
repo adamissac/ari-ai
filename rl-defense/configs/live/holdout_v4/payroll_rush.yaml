@@ -1,0 +1,21 @@
+# Held-out v4 (created 2026-10-19, committed before any policy was evaluated on it; see
+# results/live-retrain-v4/PROVENANCE.md). A very low-volume insider (2 requests/window,
+# long campaigns) against two victims while both bookkeepers run heavy reconciliation.
+# Unseen: attack volume of 2, delegate bursts of 5, benign volume of 9.
+name: payroll_rush
+split: holdout
+horizon: 30
+schedule: bursty
+p_start: 0.12
+p_stop: 0.06
+attack_per_step: 2
+benign_per_step: 9
+attackers: [bob]
+victims: [alice, carol]
+benign: [alice, bob, carol, dave, erin]
+delegations: ["dave:alice", "erin:carol"]
+delegate_per_step: 2
+delegate_burst_p: 0.35
+delegate_burst_size: 5
+seed_start: 43000
+episodes: 30

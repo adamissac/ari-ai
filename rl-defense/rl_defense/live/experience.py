@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -48,6 +49,7 @@ def collect(
     seed: int = 0,
     episodes: int | None = None,
     action_space: ActionSpace = "sim",
+    loop_overrides: Mapping[str, object] | None = None,
 ) -> dict:
     bad = [s.name for s in scenarios if s.split != "train"]
     if bad:
@@ -80,6 +82,7 @@ def collect(
             episodes=episodes,
             on_episode=write,
             action_space=action_space,
+            loop_overrides=loop_overrides,
         )
     digest = sha256_file(out_path)
     manifest = {
@@ -92,6 +95,7 @@ def collect(
         "scenarios": {s.name: s.config_hash() for s in scenarios},
         "splits": ["train"],
         "action_space": action_space,
+        **({"loop_overrides": dict(loop_overrides)} if loop_overrides else {}),
         "behavior": {
             "kind": "epsilon_greedy" if agent is not None else "uniform_valid",
             "checkpoint_sha256": behavior_checkpoint_sha256,
