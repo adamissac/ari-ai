@@ -20,6 +20,7 @@ from typing import Any
 from standards import catalog
 
 from .corpus import GENERATOR_VERSION, SAFE, generate
+from .realdata import attack_descriptions, diversevul, nvd_cves
 
 Split = dict[str, list[dict[str, Any]]]
 
@@ -44,6 +45,11 @@ def scout(test_family: int = 3) -> Split:
         out[r["split"]].append({**base, "code": r["vulnerable"], "label": r["cwe"]})
         out[r["split"]].append({**base, "code": r["partial"], "label": r["cwe"]})
         out[r["split"]].append({**base, "code": r["fixed"], "label": SAFE})
+    # Real functions (DiverseVul). Their split is pinned by commit id, independent of the
+    # corpus fold, so cross-validation folds stay consistent; the held-out fold is always
+    # bucket 0. Vulnerable functions outside our 12 classes are "vuln_other", never "safe".
+    for r in diversevul():
+        out[r["split"]].append({"family": r["family"], "framework": "c", "code": r["code"], "label": r["label"]})
     return out
 
 
@@ -245,6 +251,18 @@ def trace() -> Split:
             continue
         split = {0: "test", 1: "val"}.get(_bucket(cid, 6), "train")
         out[split].append({"family": cid, "cwe": cid, "name": entry["name"], "label": sorted(labels)})
+    # Real CVE descriptions as extra "name"-field inputs (NVD). A CVE's rows land in the
+    # same split as its CWE, so no weakness appears on both sides.
+    for cve in nvd_cves():
+        labels = set()
+        for cid in cve["cwe"]:
+            labels |= tactics.get(cid, set())
+        if not labels:
+            continue
+        primary = cve["cwe"][0]
+        split = {0: "test", 1: "val"}.get(_bucket(primary, 6), "train")
+        out[split].append({"family": primary, "cwe": primary, "name": cve["desc"][:1500],
+                           "label": sorted(labels)})
     return out
 
 
@@ -263,7 +281,7 @@ def fortify() -> Split:
     for ids in mapping.values():
         for d in ids:
             counts[d] += 1
-    keep = {d for d, n in counts.items() if n >= 15}
+    keep = {d for d, n in counts.items() if n >= 10}
     out = _splits()
     for tid, ids in sorted(mapping.items()):
         labels = sorted(set(ids) & keep)
@@ -276,9 +294,21 @@ def fortify() -> Split:
             name = f"{attack[parent]['name']}: {name}"
         split = {0: "test", 1: "val"}.get(_bucket(parent, 6), "train")
         out[split].append({"family": parent, "technique": tid, "name": name, "tactics": " ".join(tech.get("tactics", [])), "label": labels})
+    # ATT&CK STIX descriptions as additional "name"-field rows with the same labels: the
+    # model sees real technique wording, not only titles. Same split as the technique.
+    descs = attack_descriptions()
+    for tid, ids in sorted(mapping.items()):
+        labels = sorted(set(ids) & keep)
+        tech = attack.get(tid)
+        if not labels or not tech or tid not in descs:
+            continue
+        parent = tid.split(".")[0]
+        split = {0: "test", 1: "val"}.get(_bucket(parent, 6), "train")
+        out[split].append({"family": parent, "technique": tid, "name": descs[tid][:1500],
+                           "tactics": " ".join(tech.get("tactics", [])), "label": labels})
     return out
 
 
 CORPUS_TASKS = ("scout", "diagnose", "patch", "verify")
 BUILDERS = {"scout": scout, "probe": probe, "trace": trace, "diagnose": diagnose, "patch": patch, "fortify": fortify, "verify": verify}
-DATASET_VERSION = f"{GENERATOR_VERSION}+mitre-pinned"
+DATASET_VERSION = f"{GENERATOR_VERSION}+mitre-pinned+real-corpus"
