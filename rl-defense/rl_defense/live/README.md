@@ -1,4 +1,4 @@
-# `rl_defense.live` — the live defense loop (vertical slice)
+# `rl_defense.live` — the live defense loop and live retraining
 
 Closes the loop the simulator cannot: a **trained DQN observes real telemetry** from the
 owned demo app, **executes a permitted defensive action** that really takes effect,
@@ -27,6 +27,12 @@ step(action):
 | `loop.py` | `LiveDefenseLoop`: the episode harness; loads any checkpoint via the existing `PolicyRunner`. |
 | `contracts.py` | `LiveTransition`, `StepOutcome`, `DefenseControls` (local realization of the PROPOSED shared experience schema). |
 | `run.py` | CLI: train-or-load a policy, run N live episodes, write transitions + a summary. |
+| `scenarios.py` | Versioned, hashed live scenarios (`configs/live/{train,val,holdout}`) with disjoint seed bands. |
+| `experience.py` | Collects ε-greedy experience on **train** scenarios into a SHA-256-pinned JSONL dataset. |
+| `retrain.py` | Offline Double-DQN retraining of a **candidate** from datasets; warm start from the deployed checkpoint; selection on **val**. |
+| `evaluate.py` | Paired held-out metrics, live-tuned threshold rules, and the deterministic promotion gate. |
+| `registry.py` | Versioned policy registry: human-approved (`usr_*`) promotion bound to a passing report, rollback. |
+| `pipeline.py` | Rounds of collect → retrain → val selection, then one held-out verdict and report. |
 
 ## Run it
 
@@ -40,33 +46,82 @@ PYTHONPATH=.:../shared:../standards:../examples/payments-lite/target \
 Reference output of this exact command is in
 [`results/live-slice/run_output.txt`](../../results/live-slice/run_output.txt).
 
+## Live retraining (closing the sim-to-real gap)
+
+```
+deployed policy (sim-trained) ──ε-greedy──▶ experience on TRAIN scenarios (pinned dataset)
+        │                                              │ aggregate rounds
+        └──── warm start ────▶ offline Double DQN ◀────┘
+                                    │ select snapshot on VAL scenarios
+                                    ▼
+                       candidate checkpoint (+ lineage manifest)
+                                    │ evaluate ONCE on HOLDOUT (paired episodes)
+                                    ▼
+          promotion_report.json  ──▶  registry promote --approved-by usr_*  (human)
+```
+
+```sh
+cd rl-defense
+PYTHONPATH=.:../shared:../standards:../examples/payments-lite/target \
+  .venv/bin/python -m rl_defense.live.pipeline --base-steps 30000 --rounds 3 \
+  --out runs/live/retrain-v1 --evidence-dir results/live-retrain
+# then, only if the report says recommend_promote and a human agrees (k = report candidate.round):
+.venv/bin/python -m rl_defense.live.registry init --checkpoint runs/live/retrain-v1/base/ddqn_seed0.pt --approved-by usr_<you>
+.venv/bin/python -m rl_defense.live.registry register --checkpoint runs/live/retrain-v1/candidate_round<k>.pt --report runs/live/retrain-v1/promotion_report.json
+.venv/bin/python -m rl_defense.live.registry promote --version pol_<id> --approved-by usr_<you> --reason "..."
+```
+
+Discipline: the candidate only ever trains on **train** scenarios, snapshots and rounds are
+chosen on **val**, and the **holdout** scenarios (unseen timing and intensity) are evaluated
+once. Traffic for a (scenario, seed) is identical for every policy, so comparisons are paired.
+
+**First result (v1):** the candidate beats the deployed sim-trained policy by +5.38
+return [4.54, 6.35] and cuts compromise from 100% to 28%. The gate still **rejects** it:
+live-tuned threshold rules score higher (−6.69 vs −7.98), and availability is 0.76 against
+the 0.85 floor, which node-level isolation cannot reach while attacks are active about 45%
+of the time. Holdout exposure during development is disclosed in [`PROVENANCE.md`](../../results/live-retrain/PROVENANCE.md).
+The acceptance criteria in `configs/live/promotion.yaml` were committed before the held-out
+run. Nothing updates the deployed policy automatically. Results: [`results/live-retrain/REPORT.md`](../../results/live-retrain/REPORT.md).
+
 ## What is real, and what is not
 
 **Real:** the target app (a real FastAPI service, in-process over an ASGI transport — no
 sockets), the BOLA it contains, every HTTP request/response, the enforcement of each
 defensive action, the compromise/disruption counts, the reward, and the transitions.
 
+**Detection uses instrumentation only.** The gateway flags a cross-tenant attempt when the
+bearer token's principal differs from the requested object's owner, both read from the
+owned app's own store. The traffic generator's `is_attack` label and per-window
+`attack_active` ground truth are kept for metrics (compromise, false disruption) and never
+reach an observation. The gateway's own blocking is not counted as an anomaly.
+
 **Honest limits (RQ-005):**
-- The policy shipped today is trained on the **abstract simulator**; how it behaves on
-  real telemetry is itself a research question. The reference run shows the sim-trained
-  policy under-containing on real signals (it raises monitoring instead of isolating) —
-  a sim-to-real gap the simulator alone could never surface. Containment itself works:
-  `tests/test_live_loop.py::test_isolating_payments_really_contains_and_moves_reward`
-  proves that taking `isolate:payments` drives measured compromise to zero and raises the
-  reward, so the reward signal is correct; the policy simply has not learned to use it.
+- The sim-trained policy under-contains on real signals (a sim-to-real gap); live
+  retraining is how this module addresses it — see the report for the measured result.
+- The reward weights (`LoopConfig`: `c_impact=1.0`, `c_disrupt=0.5`) were fixed before
+  retraining. They price availability low enough that blanket isolation of payments earns
+  a competitive return while blocking about half of legitimate traffic; the gate's
+  availability, false-disruption and duty checks exist precisely to reject that.
+- One small demo app, one attack class (BOLA reads), one attacker identity, and a fixed
+  five-node topology; generalization beyond these is untested.
 - The route→node topology is the hand-written `configs/topology/payments_lite.yaml`.
 - Numbers are lab evidence, not proof of real-world effectiveness.
 
 ## Tests
 
 ```sh
-.venv/bin/python -m pytest -q tests/test_live_gateway.py tests/test_live_loop.py
+.venv/bin/python -m pytest -q tests/test_live_gateway.py tests/test_live_loop.py tests/test_live_retrain.py
 ```
 
 `test_live_gateway.py` proves each action's real effect and that telemetry is measured;
 `test_live_loop.py` proves the full trained-DQN loop produces well-formed transitions,
 never picks a masked action, really contains when it isolates, and that
 `request_reassessment` really lowers the observed finding severity after its delay.
+`test_live_retrain.py` proves transitions chain (s′ of one step is s of the next),
+telemetry never reads the generator label, traffic is paired across policies, splits are
+disjoint, datasets are train-only and tamper-evident, retraining selects on val only and
+records lineage, the gate rejects blanket isolation, and the registry refuses agent
+approvers, failing reports, mismatched bytes, and swapped checkpoints, and rolls back.
 
 ## Safety
 

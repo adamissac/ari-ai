@@ -59,3 +59,32 @@ The loop runs the owned demo app in-process over an ASGI transport (no sockets, 
 semantics only), enforces only the permitted defensive actions, and treats every produced
 number as simulation-adjacent lab evidence, not proof of real-world effectiveness
 (RQ-005). It adds no authority and no path to any system outside the isolated app.
+
+## Update 2026-10-19 — live retraining and promotion gate
+
+Status of the five live-run blockers: all closed for the owned demo app. Telemetry,
+enforced actions, the live loop, measured reward and transition recording landed in #315.
+This update adds the experience → offline retraining → held-out evaluation → human-gated
+promotion path (`rl_defense/live/{scenarios,experience,retrain,evaluate,registry,pipeline}.py`).
+It also fixes two correctness bugs in #315: recorded `obs` came from an empty telemetry
+window instead of what the policy acted on, and telemetry read the traffic generator's
+`is_attack` label.
+
+Measured result ([`results/live-retrain/REPORT.md`](results/live-retrain/REPORT.md); 3
+held-out scenarios × 30 paired episodes; criteria committed before the run):
+
+- Retraining on 6,300 live transitions closes most of the sim-to-real gap. Paired return
+  gain over the deployed sim-trained policy is +5.38 [4.54, 6.35]; compromise drops from
+  100% to 28.3%; no held-out scenario regresses.
+- **Verdict: `reject`.** Threshold rules tuned on the same live training scenarios still
+  win (−6.69 vs −7.98). Availability is 0.76 against a 0.85 floor. With node-level
+  `isolate` as the only containment and attacks active in about 45% of windows, no policy
+  that contains the attack reaches 0.85 (the rules get 0.74). That is a limit of the
+  action set, not of training.
+- Open for a human: add a finer-grained control (e.g. block a principal), revisit the
+  availability floor, or reprice disruption in the reward.
+- **Holdout exposure (disclosed):** the holdout scenarios are not pristine. During
+  development they were evaluated three times before the final run, and two design
+  changes followed (see [`results/live-retrain/PROVENANCE.md`](results/live-retrain/PROVENANCE.md)).
+  The final candidate was selected on val only, and the verdict is a rejection, so the
+  exposure did not favour promotion. Any v2 must still be judged on new holdout scenarios.
