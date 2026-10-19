@@ -133,6 +133,18 @@ this closes the learned-policy track on payments-lite. See
 [`results/live-retrain-v5/REPORT.md`](../../results/live-retrain-v5/REPORT.md) and
 [`PROVENANCE.md`](../../results/live-retrain-v5/PROVENANCE.md).
 
+**Sixth result (v6, online training from demonstrations):** `online.py` trains a fresh
+network inside the live loop, DQfD style. A teacher is chosen on train only (the tuned
+rules), its episodes fill a permanent demonstration buffer, the network is pretrained with
+a large-margin loss (`DDQNConfig.demo_lambda`), and then it trains on 150k online live
+steps. The gate returns **`recommend_promote`**: all seven checks pass, the first learned
+candidate to do so. It scores −5.30 against the tuned rules' −7.58, +9.51 [8.17, 10.79]
+over deployed and +2.28 [1.80, 2.76] over its own teacher. Caveats: the fixed
+`always_block_principal_long` scores −3.89 on this holdout; the online phase barely moved
+val after pretraining; and the live_v3 checkpoint cannot be served until the long-block
+contract extension lands. Promotion needs a human approver and was not done. See
+[`results/live-retrain-v6/`](../../results/live-retrain-v6/PROVENANCE.md).
+
 ## What is real, and what is not
 
 **Real:** the target app (a real FastAPI service, in-process over an ASGI transport — no
@@ -161,7 +173,7 @@ reach an observation. The gateway's own blocking is not counted as an anomaly.
 ## Tests
 
 ```sh
-.venv/bin/python -m pytest -q tests/test_live_gateway.py tests/test_live_loop.py tests/test_live_retrain.py tests/test_live_block_principal.py tests/test_live_v3.py tests/test_live_v4.py tests/test_live_v5.py
+.venv/bin/python -m pytest -q tests/test_live_gateway.py tests/test_live_loop.py tests/test_live_retrain.py tests/test_live_block_principal.py tests/test_live_v3.py tests/test_live_v4.py tests/test_live_v5.py tests/test_live_v6.py
 ```
 
 `test_live_v3.py` proves that delegated reads are benign but flagged, and that blanket
@@ -179,6 +191,11 @@ and it runs a v4 pipeline smoke test (on holdout_v2).
 `test_live_v5.py` proves CQL is off by default (and old manifests still load), checks that
 the loss is exactly TD + α·(logsumexp − Q(data action)), shows that CQL pushes down actions
 the data never took, checks holdout_v5 hygiene, and runs a v5 pipeline smoke test.
+`test_live_v6.py` checks the DQfD loss against its formula, proves it is off by default,
+that it applies to demonstration rows only and that it teaches the demonstrated action by
+the margin. It also proves the teacher is chosen on train only, that training uses
+train-band seeds and a fresh network, checks holdout_v6 hygiene, and runs an online
+pipeline smoke test.
 
 `test_live_block_principal.py` proves the block's real effect (403, no data, other tenants
 unaffected, rotated tokens still blocked), its duration and masking in the loop, that it
