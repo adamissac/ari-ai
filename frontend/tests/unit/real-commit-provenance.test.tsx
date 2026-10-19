@@ -14,11 +14,8 @@ it('labels the Claude call as a narrated preview, and asks the analyze route for
   vi.stubGlobal('fetch', fetchMock);
   render(<RealCommitPage />);
   const badge = screen.getByTestId('real-commit-provenance');
-  expect(badge.textContent).toBe('Quick read · one Claude call, nothing executed');
+  expect(badge.textContent).toBe('Quick read · nothing executed');
   expect(badge.title).toContain('The diff comes from GitHub');
-  expect(screen.getByTestId('real-commit-note').textContent).toContain('no code was run, nothing was attacked');
-  expect(screen.getByTestId('real-commit-note').textContent).toContain('seven-agent assessment above is the real run');
-  expect(screen.getByTestId('real-commit-note').textContent).toContain('this is a narrated preview');
   expect(fetchMock).toHaveBeenCalledWith('/api/analyze', expect.objectContaining({ method: 'POST', body: JSON.stringify({ repo: 'test-team/test-app', sha: 'c'.repeat(40) }) }));
   await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('not configured'));
 });

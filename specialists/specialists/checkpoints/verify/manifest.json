@@ -7,27 +7,27 @@
   "type": "mlp-relu"
  },
  "dataset": {
-  "sha256": "cbd74e111b25e0aecb87118c7d99217381a6f7b12caf64932394c48d2ad51c4b",
+  "sha256": "20436d69e3f9bb26a6332aed6c8ebea1ec8e5db6345f81b7c08dc4ac31a119eb",
   "sizes": {
    "test": 1728,
-   "train": 4320,
-   "val": 864
+   "train": 6720,
+   "val": 1344
   },
   "train_label_counts": {
-   "adequate": 1080,
-   "incomplete_fix": 1080,
-   "no_security_change": 1080,
-   "test_weakened": 1080
+   "adequate": 1680,
+   "incomplete_fix": 1680,
+   "no_security_change": 1680,
+   "test_weakened": 1680
   },
-  "version": "corpus-1+mitre-pinned"
+  "version": "corpus-2+mitre-pinned+real-corpus"
  },
  "description": "Flag whether a patch's diff and executed test evidence look adequate, incomplete, test-weakening or cosmetic. Advisory only.",
  "evaluation": {
   "best_baseline": "diff_rules",
-  "best_baseline_test": 0.8587,
+  "best_baseline_test": 0.8636,
   "primary_metric": "macro_f1",
   "promoted": true,
-  "test": 0.9763
+  "test": 0.971
  },
  "features": {
   "char_ngrams": true,
@@ -51,22 +51,22 @@
  },
  "training": {
   "batch_size": 64,
-  "best_epoch": 33,
-  "best_val_loss": 0.00378,
+  "best_epoch": 14,
+  "best_val_loss": 0.00657,
   "dropout": 0.25,
   "epochs": 40,
-  "epochs_run": 39,
+  "epochs_run": 20,
   "hidden": 64,
   "input_dim": 16384,
   "lr": 0.002,
   "numpy": "2.5.4",
   "patience": 6,
-  "python": "3.12.14",
-  "seconds": 7.76,
+  "python": "3.12.15",
+  "seconds": 5.6,
   "seed": 7,
   "weight_decay": 1e-05
  },
- "version": "1.0.0",
+ "version": "1.1.0",
  "weights_bytes": 4195600,
- "weights_sha256": "7172e5d57952e1c365b68f56bf54ca8816c8754858f05c1c5780de1f9bd26b39"
+ "weights_sha256": "258eb613de67feddbd137af32471dfcf3425cf275b0cd15d016816c3385c564f"
 }

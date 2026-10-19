@@ -287,6 +287,10 @@ describe('status vocabulary', () => {
       expect(view.glyph.length).toBeGreaterThan(0);
     }
   });
+  it('uses readable labels for real assessment run states', () => {
+    expect(ASSESSMENT_STATE.AWAITING_APPROVAL.label).toBe('Awaiting human approval');
+    expect(ASSESSMENT_STATE.COMPLETED.label).toBe('Completed');
+  });
   it('only provider_mode=live is labelled live', () => {
     expect(providerLabel('live').label).toBe('Live provider');
     expect(providerLabel('fake').label).toMatch(/scripted/);

@@ -4,7 +4,7 @@ ADRs record decisions with lasting consequences. Template:
 [0000-template](0000-template.md). Statuses: `Proposed` → `Accepted` |
 `Rejected`; later `Superseded by ADR-NNNN` or `Deprecated`.
 
-**All ADRs below are `Proposed`.** They capture the working defaults written into
+**ADRs below are `Proposed` unless their row says otherwise.** They capture the working defaults written into
 [AGENTS.md](../../AGENTS.md) §7 and must be ratified by the team (`DOCS-002`)
 before Phase 1 implementation relies on them.
 
@@ -24,6 +24,8 @@ before Phase 1 implementation relies on them.
 | [0012](0012-cvss-v31-primary-v40-alongside.md) | CVSS v3.1 sets the level now; v4.0 alongside | Proposed |
 | [0013](0013-labelled-simulated-demo.md) | A labelled, self-contained simulated demo at /demo | Proposed |
 | [0014](0014-seven-agent-rl-adversarial-post-training.md) | Seven-agent adversarial post-training: decoupled, offline, gated | Proposed |
+| [0014](0014-trained-specialist-models.md) | One trained specialist model per runtime agent, advisory and evidence-gated (numbered 0014 alongside the RL ADR) | Proposed |
+| [0015](0015-haiku-default-model.md) | Claude Haiku 5.5 is the default Anthropic model (cost; Opus via override) | Accepted |
 
 ## Process
 

@@ -12,7 +12,7 @@ dependencies = ["hackatl-standards"]
 
 [project.optional-dependencies]
 # Training and evaluation only (offline). Never needed to load a checkpoint.
-train = ["numpy>=1.26"]
+train = ["numpy>=1.26", "pyarrow>=14"]
 
 [tool.uv.sources]
 hackatl-standards = { workspace = true }

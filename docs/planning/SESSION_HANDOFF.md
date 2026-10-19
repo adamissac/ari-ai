@@ -899,3 +899,25 @@ Removed the homepage Your next move section at owner request, including both act
 - `frontend/tests/e2e/honesty.spec.ts`: dropped the metric-chart/per-policy-CI assertions that exercised the removed explorer; honesty labelling, scoreboard, replay and provenance checks remain.
 - Executed: `npm run lint`, `npm run typecheck`, `npm test` (68 files, 275 passed), `npm run build`, and a manual look at `/lab` on `next dev`. E2e stack not run.
 - Bundle untouched: `lib/lab-plain.ts`, `lib/lab.ts` and the bundle route still ship every metric; only the page's presentation changed.
+
+### 2026-10-19 — Adam (agent) — simplify connect drill-down and commit pages
+- Did: Reduced `/connect` to organization → repository → commit selection; simplified the commit header and review layout; replaced Overview with exactly two tabs, Code review and 7 agents; placed real-run controls in the agents tab, with a compact standalone state while the quick read loads or errors.
+- Commands run from `frontend/` and results:
+  - `npm run lint && npm run typecheck && npx vitest run tests/unit/live-commit-analysis.test.tsx tests/unit/real-commit-provenance.test.tsx` — lint and typecheck passed; 2 files, 3 tests passed.
+  - `npm test` — 68 files, 277 tests passed.
+  - `npm run build` — production build passed on Next.js 16.4.2.
+  - `../.venv/bin/python tests/e2e/stack.py tests/e2e/demo.spec.ts tests/e2e/brand.spec.ts tests/e2e/journey.spec.ts` — 9 passed in 44.7s. The output included `ResponseAborted` notices and one scripted-plan fallback; all selected tests passed.
+- No separate manual visual check was performed. Commit and push were pending when this entry was written.
+
+## 2026-10-19 — Defense Lab visual polish (`feat/adam/polish-defense-lab`)
+- `frontend/app/lab/page.tsx`: lede + caveat moved into the hero (keeps `lab-intro`/`lab-caveat` testids); new `.lab-chips` strip summarizes the eval (held-out runs, defenders, scenarios, seeds); scoreboard section is now `.lab-console` instead of `.paper`.
+- `frontend/app/globals.css`: added `.lab-caveat-dark`, `.lab-chips`/`.lab-chip`, and `.lab-console` (always-dark panel: night surface, brand radial glow, faint grid overlay) plus console-scoped overrides for headline/score elements (white numerals, glassy cards, AI row in ember→brand gradient, `.text-*` utility remaps).
+- Inspired by kairo.security's dark "mission control" look (mono stat chips, dark evidence surface, severity/ember tones).
+- Executed: `npm run lint`, `npm run typecheck`, `npm test` (276 passed), `npm run build`; visual check via Playwright screenshots at 1440px and 390px; honesty.spec.ts lab tests passed against `next dev` (the three auth/backend tests can't run without the real API).
+
+
+### 2026-10-19 — Specialists: corpus-2 + real-corpus retraining (Adam, `feat/adam/specialists-real-corpus`)
+- `specialists/data/corpus_variants.py` registers ~16 extra corpus families (5-6 per CWE) with varied (CauseClass, strategy) labels so the by-CWE lookup baseline stops saturating Diagnose/Patch. `GENERATOR_VERSION` is now corpus-2.
+- `specialists/data/realdata.py` + `fetch.py`: optional real corpora in git-ignored `specialists/data/cache/` — DiverseVul (HF `bstee615/diversevul` parquets, split by commit id, out-of-space CWEs labelled `vuln_other` never safe), NVD CVE descriptions (Trace name-field rows, CWE-aligned splits), ATT&CK STIX technique descriptions (Fortify). Missing cache → builders fall back to bundled data.
+- `datasets.py` merges those rows into scout/trace/fortify; `DATASET_VERSION` bumped; manifest `version` bumped to 1.1.0 (test updated).
+- Retrained v1.1.0 checkpoints committed with eval: **5/7 promoted** — Scout 0.374 vs 0.099, Probe 0.631 vs 0.606, Diagnose 0.601 vs 0.525 (newly promoted), Verify 0.971 vs 0.864. Patch (0.654 vs 0.750), Trace (n=27), Fortify (n=70) stay on baselines; CI rules kept. 44 specialist tests pass; README/results tables updated with honest numbers and the corpus-2/non-comparability caveat.

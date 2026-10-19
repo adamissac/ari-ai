@@ -173,11 +173,11 @@
  },
  "inference": {
   "llm_tokens": 0,
-  "mean_latency_ms_pure_python": 0.438,
+  "mean_latency_ms_pure_python": 0.313,
   "numpy_parity_argmax": 1.0,
   "usd": 0.0
  },
- "model": "ari-probe-strategy@1.0.0",
+ "model": "ari-probe-strategy@1.1.0",
  "model_scores": {
   "accuracy": 0.6312,
   "macro_f1": 0.6322,

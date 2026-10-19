@@ -12,6 +12,12 @@
      "recall": 1.0,
      "support": 36
     },
+    "allowlist_command": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
     "allowlist_identifier": {
      "f1": 0.0,
      "precision": 0.0,
@@ -24,13 +30,49 @@
      "recall": 1.0,
      "support": 36
     },
+    "bind_authorization_to_session": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
     "canonicalize_and_contain_path": {
      "f1": 0.0,
      "precision": 0.0,
      "recall": 0.0,
      "support": 0
     },
+    "check_arithmetic_bounds": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
     "check_owner_after_load": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
+    "check_realpath_and_scope": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
+    "contextual_escape": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
+    "deny_by_default": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
+    "derive_scope_server_side": {
      "f1": 0.0,
      "precision": 0.0,
      "recall": 0.0,
@@ -54,11 +96,53 @@
      "recall": 0.0,
      "support": 0
     },
+    "enforce_invariant": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
     "enforce_role_check": {
      "f1": 1.0,
      "precision": 1.0,
      "recall": 1.0,
      "support": 36
+    },
+    "escape_like_wildcards": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
+    "exact_match_origin_list": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
+    "expand_bind_params": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
+    "indirect_reference_map": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
+    "integrity_sign_serialized": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
+    "memory_hard_kdf": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
     },
     "move_secret_to_environment": {
      "f1": 1.0,
@@ -71,6 +155,12 @@
      "precision": 1.0,
      "recall": 1.0,
      "support": 36
+    },
+    "per_user_salt": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
     },
     "raise_kdf_work_factor": {
      "f1": 0.0,
@@ -96,7 +186,19 @@
      "recall": 1.0,
      "support": 36
     },
+    "safe_json_serialization": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
     "sanitize_rich_text": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
+    "schema_validate_payload": {
      "f1": 0.0,
      "precision": 0.0,
      "recall": 0.0,
@@ -121,6 +223,18 @@
      "support": 36
     },
     "use_safe_loader": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
+    "use_secret_manager_reference": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
+    "validate_after_redirect": {
      "f1": 0.0,
      "precision": 0.0,
      "recall": 0.0,
@@ -151,6 +265,12 @@
      "recall": 0.0,
      "support": 36
     },
+    "allowlist_command": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
     "allowlist_identifier": {
      "f1": 0.0,
      "precision": 0.0,
@@ -163,13 +283,49 @@
      "recall": 0.0,
      "support": 36
     },
+    "bind_authorization_to_session": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
     "canonicalize_and_contain_path": {
      "f1": 0.0,
      "precision": 0.0,
      "recall": 0.0,
      "support": 0
     },
+    "check_arithmetic_bounds": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
     "check_owner_after_load": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
+    "check_realpath_and_scope": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
+    "contextual_escape": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
+    "deny_by_default": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
+    "derive_scope_server_side": {
      "f1": 0.0,
      "precision": 0.0,
      "recall": 0.0,
@@ -193,11 +349,53 @@
      "recall": 0.0,
      "support": 0
     },
+    "enforce_invariant": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
     "enforce_role_check": {
      "f1": 0.0,
      "precision": 0.0,
      "recall": 0.0,
      "support": 36
+    },
+    "escape_like_wildcards": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
+    "exact_match_origin_list": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
+    "expand_bind_params": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
+    "indirect_reference_map": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
+    "integrity_sign_serialized": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
+    "memory_hard_kdf": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
     },
     "move_secret_to_environment": {
      "f1": 0.0,
@@ -210,6 +408,12 @@
      "precision": 0.0,
      "recall": 0.0,
      "support": 36
+    },
+    "per_user_salt": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
     },
     "raise_kdf_work_factor": {
      "f1": 0.0,
@@ -235,7 +439,19 @@
      "recall": 0.0,
      "support": 36
     },
+    "safe_json_serialization": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
     "sanitize_rich_text": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
+    "schema_validate_payload": {
      "f1": 0.0,
      "precision": 0.0,
      "recall": 0.0,
@@ -265,6 +481,18 @@
      "recall": 0.0,
      "support": 0
     },
+    "use_secret_manager_reference": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
+    "validate_after_redirect": {
+     "f1": 0.0,
+     "precision": 0.0,
+     "recall": 0.0,
+     "support": 0
+    },
     "validate_and_use_argument_list": {
      "f1": 0.0,
      "precision": 0.0,
@@ -283,12 +511,12 @@
  "comparison": {
   "best_baseline": "cwe_lookup",
   "best_baseline_score": 0.75,
-  "delta": -0.0162,
+  "delta": -0.096,
   "delta_ci95": [
-   -0.0268,
-   -0.0078
+   -0.1207,
+   -0.0749
   ],
-  "model": 0.7338,
+  "model": 0.654,
   "significant": true
  },
  "cross_validation": {
@@ -296,57 +524,63 @@
    {
     "cwe_lookup": 0.8333,
     "majority": 0.0,
-    "model": 0.8924,
+    "model": 0.6318,
     "test_family": 0
    },
    {
     "cwe_lookup": 0.5833,
     "majority": 0.0,
-    "model": 0.5645,
+    "model": 0.3421,
     "test_family": 1
    },
    {
     "cwe_lookup": 0.8333,
     "majority": 0.0,
-    "model": 0.8118,
+    "model": 0.5845,
     "test_family": 2
    },
    {
     "cwe_lookup": 0.75,
     "majority": 0.0,
-    "model": 0.7338,
+    "model": 0.654,
     "test_family": 3
    }
   ],
   "mean": {
    "cwe_lookup": 0.75,
    "majority": 0.0,
-   "model": 0.7506
+   "model": 0.5531
   },
   "metric": "macro_f1"
  },
  "inference": {
   "llm_tokens": 0,
-  "mean_latency_ms_pure_python": 0.728,
+  "mean_latency_ms_pure_python": 0.636,
   "numpy_parity_argmax": 1.0,
   "usd": 0.0
  },
- "model": "ari-patch-strategy@1.0.0",
+ "model": "ari-patch-strategy@1.1.0",
  "model_scores": {
-  "accuracy": 0.7245,
-  "macro_f1": 0.7338,
+  "accuracy": 0.6088,
+  "macro_f1": 0.654,
   "n": 432,
   "per_label": {
    "add_ownership_predicate": {
-    "f1": 0.9863,
-    "precision": 0.973,
+    "f1": 1.0,
+    "precision": 1.0,
     "recall": 1.0,
     "support": 36
    },
-   "allowlist_identifier": {
+   "allowlist_command": {
     "f1": 0.0,
     "precision": 0.0,
     "recall": 0.0,
+    "support": 0
+   },
+   "allowlist_identifier": {
+    "f1": 0.7018,
+    "precision": 0.9524,
+    "recall": 0.5556,
     "support": 36
    },
    "allowlist_outbound_hosts": {
@@ -355,13 +589,49 @@
     "recall": 1.0,
     "support": 36
    },
+   "bind_authorization_to_session": {
+    "f1": 0.0,
+    "precision": 0.0,
+    "recall": 0.0,
+    "support": 0
+   },
    "canonicalize_and_contain_path": {
     "f1": 0.0,
     "precision": 0.0,
     "recall": 0.0,
     "support": 0
    },
+   "check_arithmetic_bounds": {
+    "f1": 0.0,
+    "precision": 0.0,
+    "recall": 0.0,
+    "support": 0
+   },
    "check_owner_after_load": {
+    "f1": 0.0,
+    "precision": 0.0,
+    "recall": 0.0,
+    "support": 0
+   },
+   "check_realpath_and_scope": {
+    "f1": 0.0,
+    "precision": 0.0,
+    "recall": 0.0,
+    "support": 0
+   },
+   "contextual_escape": {
+    "f1": 0.0,
+    "precision": 0.0,
+    "recall": 0.0,
+    "support": 0
+   },
+   "deny_by_default": {
+    "f1": 0.0,
+    "precision": 0.0,
+    "recall": 0.0,
+    "support": 0
+   },
+   "derive_scope_server_side": {
     "f1": 0.0,
     "precision": 0.0,
     "recall": 0.0,
@@ -385,11 +655,53 @@
     "recall": 0.0,
     "support": 0
    },
+   "enforce_invariant": {
+    "f1": 0.0,
+    "precision": 0.0,
+    "recall": 0.0,
+    "support": 0
+   },
    "enforce_role_check": {
-    "f1": 0.8197,
+    "f1": 0.9091,
     "precision": 1.0,
-    "recall": 0.6944,
+    "recall": 0.8333,
     "support": 36
+   },
+   "escape_like_wildcards": {
+    "f1": 0.0,
+    "precision": 0.0,
+    "recall": 0.0,
+    "support": 0
+   },
+   "exact_match_origin_list": {
+    "f1": 0.0,
+    "precision": 0.0,
+    "recall": 0.0,
+    "support": 0
+   },
+   "expand_bind_params": {
+    "f1": 0.0,
+    "precision": 0.0,
+    "recall": 0.0,
+    "support": 0
+   },
+   "indirect_reference_map": {
+    "f1": 0.0,
+    "precision": 0.0,
+    "recall": 0.0,
+    "support": 0
+   },
+   "integrity_sign_serialized": {
+    "f1": 0.0,
+    "precision": 0.0,
+    "recall": 0.0,
+    "support": 0
+   },
+   "memory_hard_kdf": {
+    "f1": 0.0,
+    "precision": 0.0,
+    "recall": 0.0,
+    "support": 0
    },
    "move_secret_to_environment": {
     "f1": 1.0,
@@ -402,6 +714,12 @@
     "precision": 1.0,
     "recall": 1.0,
     "support": 36
+   },
+   "per_user_salt": {
+    "f1": 0.0,
+    "precision": 0.0,
+    "recall": 0.0,
+    "support": 0
    },
    "raise_kdf_work_factor": {
     "f1": 0.0,
@@ -422,12 +740,24 @@
     "support": 0
    },
    "restrict_cors_origins": {
-    "f1": 1.0,
+    "f1": 0.5,
     "precision": 1.0,
-    "recall": 1.0,
+    "recall": 0.3333,
     "support": 36
    },
+   "safe_json_serialization": {
+    "f1": 0.0,
+    "precision": 0.0,
+    "recall": 0.0,
+    "support": 0
+   },
    "sanitize_rich_text": {
+    "f1": 0.0,
+    "precision": 0.0,
+    "recall": 0.0,
+    "support": 0
+   },
+   "schema_validate_payload": {
     "f1": 0.0,
     "precision": 0.0,
     "recall": 0.0,
@@ -446,12 +776,24 @@
     "support": 0
    },
    "use_safe_data_format": {
-    "f1": 1.0,
-    "precision": 1.0,
-    "recall": 1.0,
+    "f1": 0.0,
+    "precision": 0.0,
+    "recall": 0.0,
     "support": 36
    },
    "use_safe_loader": {
+    "f1": 0.0,
+    "precision": 0.0,
+    "recall": 0.0,
+    "support": 0
+   },
+   "use_secret_manager_reference": {
+    "f1": 0.0,
+    "precision": 0.0,
+    "recall": 0.0,
+    "support": 0
+   },
+   "validate_after_redirect": {
     "f1": 0.0,
     "precision": 0.0,
     "recall": 0.0,
@@ -464,9 +806,9 @@
     "support": 0
    },
    "validate_range": {
-    "f1": 1.0,
+    "f1": 0.7368,
     "precision": 1.0,
-    "recall": 1.0,
+    "recall": 0.5833,
     "support": 36
    }
   }
@@ -477,203 +819,203 @@
  "training_history": [
   {
    "epoch": 1,
-   "train_loss": 2.54444,
-   "val_loss": 2.64347
+   "train_loss": 2.97835,
+   "val_loss": 3.09004
   },
   {
    "epoch": 2,
-   "train_loss": 1.72417,
-   "val_loss": 1.90528
+   "train_loss": 1.80793,
+   "val_loss": 2.0197
   },
   {
    "epoch": 3,
-   "train_loss": 0.92206,
-   "val_loss": 1.11646
+   "train_loss": 0.86229,
+   "val_loss": 1.07644
   },
   {
    "epoch": 4,
-   "train_loss": 0.42705,
-   "val_loss": 0.57599
+   "train_loss": 0.39896,
+   "val_loss": 0.55419
   },
   {
    "epoch": 5,
-   "train_loss": 0.19764,
-   "val_loss": 0.29911
+   "train_loss": 0.20638,
+   "val_loss": 0.31448
   },
   {
    "epoch": 6,
-   "train_loss": 0.10381,
-   "val_loss": 0.17006
+   "train_loss": 0.11979,
+   "val_loss": 0.19771
   },
   {
    "epoch": 7,
-   "train_loss": 0.06266,
-   "val_loss": 0.10909
+   "train_loss": 0.07556,
+   "val_loss": 0.13362
   },
   {
    "epoch": 8,
-   "train_loss": 0.04206,
-   "val_loss": 0.07681
+   "train_loss": 0.05105,
+   "val_loss": 0.09472
   },
   {
    "epoch": 9,
-   "train_loss": 0.02995,
-   "val_loss": 0.05662
+   "train_loss": 0.03667,
+   "val_loss": 0.07045
   },
   {
    "epoch": 10,
-   "train_loss": 0.02277,
-   "val_loss": 0.04401
+   "train_loss": 0.0275,
+   "val_loss": 0.0546
   },
   {
    "epoch": 11,
-   "train_loss": 0.01783,
-   "val_loss": 0.03534
+   "train_loss": 0.02141,
+   "val_loss": 0.04377
   },
   {
    "epoch": 12,
-   "train_loss": 0.01435,
-   "val_loss": 0.02911
+   "train_loss": 0.01711,
+   "val_loss": 0.03548
   },
   {
    "epoch": 13,
-   "train_loss": 0.01195,
-   "val_loss": 0.02472
+   "train_loss": 0.01401,
+   "val_loss": 0.02987
   },
   {
    "epoch": 14,
-   "train_loss": 0.0099,
-   "val_loss": 0.02071
+   "train_loss": 0.0117,
+   "val_loss": 0.02543
   },
   {
    "epoch": 15,
-   "train_loss": 0.00834,
-   "val_loss": 0.01782
+   "train_loss": 0.01001,
+   "val_loss": 0.02194
   },
   {
    "epoch": 16,
-   "train_loss": 0.00716,
-   "val_loss": 0.01549
+   "train_loss": 0.00869,
+   "val_loss": 0.01932
   },
   {
    "epoch": 17,
-   "train_loss": 0.0063,
-   "val_loss": 0.01376
+   "train_loss": 0.00761,
+   "val_loss": 0.01711
   },
   {
    "epoch": 18,
-   "train_loss": 0.00563,
-   "val_loss": 0.01249
+   "train_loss": 0.00679,
+   "val_loss": 0.01535
   },
   {
    "epoch": 19,
-   "train_loss": 0.00504,
-   "val_loss": 0.01131
+   "train_loss": 0.00605,
+   "val_loss": 0.01381
   },
   {
    "epoch": 20,
-   "train_loss": 0.00453,
-   "val_loss": 0.01027
+   "train_loss": 0.00548,
+   "val_loss": 0.01269
   },
   {
    "epoch": 21,
-   "train_loss": 0.00414,
-   "val_loss": 0.00942
+   "train_loss": 0.00503,
+   "val_loss": 0.01165
   },
   {
    "epoch": 22,
-   "train_loss": 0.00381,
-   "val_loss": 0.00868
+   "train_loss": 0.00458,
+   "val_loss": 0.01064
   },
   {
    "epoch": 23,
-   "train_loss": 0.00352,
-   "val_loss": 0.00809
+   "train_loss": 0.00422,
+   "val_loss": 0.00996
   },
   {
    "epoch": 24,
-   "train_loss": 0.00323,
-   "val_loss": 0.00745
+   "train_loss": 0.00393,
+   "val_loss": 0.00924
   },
   {
    "epoch": 25,
-   "train_loss": 0.003,
-   "val_loss": 0.00698
+   "train_loss": 0.00365,
+   "val_loss": 0.0087
   },
   {
    "epoch": 26,
-   "train_loss": 0.00279,
-   "val_loss": 0.00654
+   "train_loss": 0.00344,
+   "val_loss": 0.00825
   },
   {
    "epoch": 27,
-   "train_loss": 0.0026,
-   "val_loss": 0.00612
+   "train_loss": 0.00327,
+   "val_loss": 0.00792
   },
   {
    "epoch": 28,
-   "train_loss": 0.00244,
-   "val_loss": 0.00576
+   "train_loss": 0.00311,
+   "val_loss": 0.00751
   },
   {
    "epoch": 29,
-   "train_loss": 0.0023,
-   "val_loss": 0.00547
+   "train_loss": 0.00297,
+   "val_loss": 0.00729
   },
   {
    "epoch": 30,
-   "train_loss": 0.00217,
-   "val_loss": 0.0052
+   "train_loss": 0.00282,
+   "val_loss": 0.00684
   },
   {
    "epoch": 31,
-   "train_loss": 0.00204,
-   "val_loss": 0.0049
+   "train_loss": 0.00267,
+   "val_loss": 0.00647
   },
   {
    "epoch": 32,
-   "train_loss": 0.00194,
-   "val_loss": 0.00471
+   "train_loss": 0.00255,
+   "val_loss": 0.0062
   },
   {
    "epoch": 33,
-   "train_loss": 0.00183,
-   "val_loss": 0.00442
+   "train_loss": 0.00245,
+   "val_loss": 0.00605
   },
   {
    "epoch": 34,
-   "train_loss": 0.00174,
-   "val_loss": 0.00419
+   "train_loss": 0.00236,
+   "val_loss": 0.00582
   },
   {
    "epoch": 35,
-   "train_loss": 0.00166,
-   "val_loss": 0.004
+   "train_loss": 0.00229,
+   "val_loss": 0.00566
   },
   {
    "epoch": 36,
-   "train_loss": 0.00159,
-   "val_loss": 0.00385
+   "train_loss": 0.00221,
+   "val_loss": 0.00551
   },
   {
    "epoch": 37,
-   "train_loss": 0.00154,
-   "val_loss": 0.00377
+   "train_loss": 0.00212,
+   "val_loss": 0.00524
   },
   {
    "epoch": 38,
-   "train_loss": 0.00148,
-   "val_loss": 0.00364
+   "train_loss": 0.00208,
+   "val_loss": 0.00514
   },
   {
    "epoch": 39,
-   "train_loss": 0.00142,
-   "val_loss": 0.00347
+   "train_loss": 0.00201,
+   "val_loss": 0.00505
   },
   {
    "epoch": 40,
-   "train_loss": 0.00137,
-   "val_loss": 0.00336
+   "train_loss": 0.00195,
+   "val_loss": 0.00486
   }
  ]
 }
