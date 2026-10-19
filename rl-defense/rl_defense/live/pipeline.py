@@ -173,7 +173,7 @@ def run(args: argparse.Namespace) -> dict:
             key=lambda r: r["train_reward"],
         )
         no_block_params = {
-            k: v for k, v in nb.items() if k not in ("train_reward", "block_anomaly")
+            k: v for k, v in nb.items() if k not in ("train_reward", "block_anomaly", "stage")
         }
         policies["threshold_rules_no_block"] = ev.rules_policy(no_block_params)
         policies["always_block_principal"] = ev.always_block_principal

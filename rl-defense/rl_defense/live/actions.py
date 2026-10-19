@@ -24,8 +24,9 @@ meaning) that addresses the identity-switch leak (results/live-retrain-v2/PROVEN
 
 - action  23    = ``block_principal_long``: block (or *extend* an existing block of) every
                   flagged principal for ``LoopConfig.block_long_duration`` windows. Valid
-                  while some flagged principal is not already under a block that long, so
-                  it also extends a block while the same principal keeps being flagged.
+                  while some flagged principal is unblocked or has at most
+                  ``block_duration`` windows of block left, so it also extends a block while
+                  the same principal keeps being flagged.
 - action  24    = ``block_top_principal_long``: the same long block/extension, but only for
                   the flagged principal(s) with the most cross-tenant attempts in the window
                   (a heavy hitter rather than every reader the detector flagged, e.g. a
