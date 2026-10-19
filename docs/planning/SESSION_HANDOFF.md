@@ -916,3 +916,13 @@ Removed the homepage Your next move section at owner request, including both act
 - `specialists/data/realdata.py` + `fetch.py`: optional real corpora in git-ignored `specialists/data/cache/` — DiverseVul (HF `bstee615/diversevul` parquets, split by commit id, out-of-space CWEs labelled `vuln_other` never safe), NVD CVE descriptions (Trace name-field rows, CWE-aligned splits), ATT&CK STIX technique descriptions (Fortify). Missing cache → builders fall back to bundled data.
 - `datasets.py` merges those rows into scout/trace/fortify; `DATASET_VERSION` bumped; manifest `version` bumped to 1.1.0 (test updated).
 - Retrained v1.1.0 checkpoints committed with eval: **5/7 promoted** — Scout 0.374 vs 0.099, Probe 0.631 vs 0.606, Diagnose 0.601 vs 0.525 (newly promoted), Verify 0.971 vs 0.864. Patch (0.654 vs 0.750), Trace (n=27), Fortify (n=70) stay on baselines; CI rules kept. 44 specialist tests pass; README/results tables updated with honest numbers and the corpus-2/non-comparability caveat.
+
+
+
+## 2026-10-19 — Defense Lab redesign v2 (`feat/adam/lab-redesign-v2`)
+- Adam feedback: the all-dark-orange console still looked "vibe coded"; wants contrast/white sections and a fresher node map (kairo.security reference).
+- `frontend/app/lab/page.tsx`: scoreboard back on `.paper` (white section, which the night theme already styles light); eyebrows numbered "01 — The numbers" / "02 — Watch it in action".
+- `frontend/app/globals.css`: removed the `.lab-console` block entirely; kept the score-card stacked-row fix (now scoped to `.lab-score-card`, surface-agnostic); added a light-node variant for the lab map — `.lab-replay-card`-scoped `network-card`/label/status/bar overrides (warm-white cards, ink labels, tinted tone fills) under the `:root:not(:has(.hero-full))` prefix.
+- Executed: lint, typecheck, `npm run build`; Playwright screenshots at 1440px + 390px.
+
+
