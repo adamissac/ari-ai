@@ -59,7 +59,7 @@ export function projectOverview(input: OverviewInput): Overview {
     return {
       ...base,
       headline: 'A repository is connected. No safe test environment is approved.',
-      detail: 'Security checks stay blocked until a different member approves a scope.',
+      detail: 'Security checks stay blocked until a project owner approves a scope. Owners can approve their own sandbox-only scope.',
       action: { label: 'Approve a safe test environment', href: `/projects/${input.projectId}/scopes` },
     };
   }

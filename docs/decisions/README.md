@@ -27,6 +27,8 @@ before Phase 1 implementation relies on them.
 | [0014](0014-trained-specialist-models.md) | One trained specialist model per runtime agent, advisory and evidence-gated (numbered 0014 alongside the RL ADR) | Proposed |
 | [0015](0015-haiku-default-model.md) | Claude Haiku 5.5 is the default Anthropic model (cost; Opus via override) | Accepted |
 
+| [0016](0016-owner-sandbox-approval.md) | Explicit owner approval for sandbox-only scopes | Accepted |
+
 ## Process
 
 1. Copy the template to `NNNN-short-title.md` (next number).

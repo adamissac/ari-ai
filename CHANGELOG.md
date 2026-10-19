@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Let project owners explicitly approve their own sandbox-only authorization, with audit recording. The commit run panel refreshes approval status automatically and no longer gets stuck on expired pending scopes.
+
 - Slow the walkthrough zoom with a 1.5-second transform/radius transition and balanced scroll growth; reduced motion remains immediate.
 
 - Land the first large homepage wheel gesture on the expanded walkthrough video; absorb that gesture’s momentum, allow the next scroll or Continue exploring link to skip, and keep video controls visible.
