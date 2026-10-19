@@ -21,9 +21,10 @@ step(action):
 
 | Module | Role |
 |---|---|
-| `gateway.py` | `DefensiveGateway` wraps the target ASGI app; enforces `isolate`/`rate_limit`/`raise_monitoring` for real; records every request's true outcome. |
+| `gateway.py` | `DefensiveGateway` wraps the target ASGI app; enforces `isolate`/`rate_limit`/`raise_monitoring` and (v2) principal blocks for real; records every request's true outcome. |
+| `actions.py` | Live action space v2: the 22 simulator actions plus `block_principal` (index 22) and one obs feature; widens sim checkpoints without changing their choices. |
 | `telemetry.py` | Real request records → `PlatformFacts` (measured `alert_rate`, `anomaly_score`). |
-| `adversary.py` | `TrafficDriver`: real benign traffic + a real cross-tenant attacker abusing the planted BOLA in `GET /payments/{id}`. |
+| `adversary.py` | `TrafficDriver`: real benign traffic + real cross-tenant attackers abusing the planted BOLA in `GET /payments/{id}` (one or more identities, optional token rotation; fixture tenants in `IDENTITIES`). |
 | `loop.py` | `LiveDefenseLoop`: the episode harness; loads any checkpoint via the existing `PolicyRunner`. |
 | `contracts.py` | `LiveTransition`, `StepOutcome`, `DefenseControls` (local realization of the PROPOSED shared experience schema). |
 | `run.py` | CLI: train-or-load a policy, run N live episodes, write transitions + a summary. |
@@ -83,6 +84,21 @@ of the time. Holdout exposure during development is disclosed in [`PROVENANCE.md
 The acceptance criteria in `configs/live/promotion.yaml` were committed before the held-out
 run. Nothing updates the deployed policy automatically. Results: [`results/live-retrain/REPORT.md`](../../results/live-retrain/REPORT.md).
 
+**Second result (v2, `block_principal`):** a live-only action space adds a principal-scoped
+block (`actions.py`; contract proposal in `coordination/messages/20261019T043718Z-alan-to-srihith-adam-block-principal-action.md`).
+It was judged on new, never-evaluated holdout scenarios (`configs/live/holdout_v2`: two
+attacker identities, token rotation, outsider + insider). The candidate now clears the
+availability floor (0.889) and gains +7.30 [6.27, 8.39] over the deployed policy. The gate
+still **rejects** it: rules that may also block score −6.96 vs −7.29, because the candidate
+adds `raise_monitoring` steps that cost reward and contain nothing.
+See [`results/live-retrain-v2/REPORT.md`](../../results/live-retrain-v2/REPORT.md) and its
+[`PROVENANCE.md`](../../results/live-retrain-v2/PROVENANCE.md).
+
+```sh
+.venv/bin/python -m rl_defense.live.pipeline --action-space live_v2 --holdout-dir holdout_v2 \
+  --base-steps 30000 --rounds 3 --out runs/live/retrain-v2 --evidence-dir results/live-retrain-v2
+```
+
 ## What is real, and what is not
 
 **Real:** the target app (a real FastAPI service, in-process over an ASGI transport — no
@@ -102,16 +118,22 @@ reach an observation. The gateway's own blocking is not counted as an anomaly.
   retraining. They price availability low enough that blanket isolation of payments earns
   a competitive return while blocking about half of legitimate traffic; the gate's
   availability, false-disruption and duty checks exist precisely to reject that.
-- One small demo app, one attack class (BOLA reads), one attacker identity, and a fixed
-  five-node topology; generalization beyond these is untested.
+- One small demo app, one attack class (BOLA reads), a handful of fixture attacker
+  identities, and a fixed five-node topology; generalization beyond these is untested.
 - The route→node topology is the hand-written `configs/topology/payments_lite.yaml`.
 - Numbers are lab evidence, not proof of real-world effectiveness.
 
 ## Tests
 
 ```sh
-.venv/bin/python -m pytest -q tests/test_live_gateway.py tests/test_live_loop.py tests/test_live_retrain.py
+.venv/bin/python -m pytest -q tests/test_live_gateway.py tests/test_live_loop.py tests/test_live_retrain.py tests/test_live_block_principal.py
 ```
+
+`test_live_block_principal.py` proves the block's real effect (403, no data, other tenants
+unaffected, rotated tokens still blocked), its duration and masking in the loop, that it
+beats isolation on availability under identical traffic, that widened sim agents act
+exactly as before, that v2 checkpoints are refused by `PolicyRunner`, and the gate's
+behavior on measured v2 episodes.
 
 `test_live_gateway.py` proves each action's real effect and that telemetry is measured;
 `test_live_loop.py` proves the full trained-DQN loop produces well-formed transitions,

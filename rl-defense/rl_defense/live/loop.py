@@ -10,6 +10,9 @@ One :meth:`LiveDefenseLoop.step` does, in order:
 
 The policy is any trained checkpoint, loaded through the existing ``PolicyRunner``.
 Nothing here observes hidden state; everything is measured from HTTP outcomes.
+
+``LoopConfig.action_space="live_v2"`` adds ``block_principal`` (rl_defense/live/actions.py):
+observations gain one feature and masks one entry. The default ``"sim"`` is the v1 loop.
 """
 
 from __future__ import annotations
@@ -21,6 +24,12 @@ import numpy as np
 from rl_defense.envs.config import NODE_NAMES
 from rl_defense.envs.defense_sim import ESCALATE_ACTION, NOOP_ACTION, decode_action
 from rl_defense.inference import PolicyRunner
+from rl_defense.live.actions import (
+    BLOCK_PRINCIPAL,
+    BLOCK_PRINCIPAL_ACTION,
+    ActionSpace,
+    live_decode_action,
+)
 from rl_defense.live.adversary import TrafficDriver
 from rl_defense.live.contracts import DefenseControls, LiveTransition, StepOutcome
 from rl_defense.live.gateway import DefensiveGateway
@@ -42,6 +51,8 @@ class LoopConfig:
     monitoring_duration: int = 5
     reassessment_delay: int = 4
     escalation_duration: int = 3
+    block_duration: int = 3
+    action_space: ActionSpace = "sim"
     reassessment_severity_after: float = 0.2
     # reward coefficients (applied to measured, normalized counts)
     c_impact: float = 1.0
@@ -56,6 +67,8 @@ class _Timers:
     rate_limit: dict[str, int] = field(default_factory=dict)
     monitoring: dict[str, int] = field(default_factory=dict)
     reassess: dict[str, int] = field(default_factory=dict)
+    # (principal, node) -> windows left
+    block: dict[tuple[str, str], int] = field(default_factory=dict)
     escalation: int = 0
 
 
@@ -83,6 +96,9 @@ class LiveDefenseLoop:
         # the observation/mask the policy is acting on (recorded as the transition's s_t)
         self._obs: np.ndarray | None = None
         self._mask: np.ndarray | None = None
+        # principals the detector flagged in the window the current observation describes
+        self._flagged: dict[str, set[str]] = {}
+        self._applied_block: list[str] = []
 
     # ------------------------------------------------------------------ lifecycle
     def reset(self, seed: int = 0) -> tuple[np.ndarray, np.ndarray]:
@@ -98,8 +114,8 @@ class LiveDefenseLoop:
         # one warm-up window to establish an initial observation from real traffic
         self.driver.run_window(self._gateway)
         facts = self._facts()
-        self._gateway.clear_records()
         self._obs, self._mask = self._obs_mask(facts)
+        self._gateway.clear_records()
         return self._obs.copy(), self._mask.copy()
 
     def close(self) -> None:
@@ -114,8 +130,10 @@ class LiveDefenseLoop:
         if not (0 <= action < len(mask_before)) or not mask_before[action]:
             action = NOOP_ACTION
         self._apply_action(action)
-        disruptive_active = any(self.controls.isolated.values()) or any(
-            self.controls.rate_limited.values()
+        disruptive_active = (
+            any(self.controls.isolated.values())
+            or any(self.controls.rate_limited.values())
+            or any(self.controls.blocked_principals.values())
         )
 
         self._gateway.clear_records()
@@ -135,11 +153,14 @@ class LiveDefenseLoop:
         next_obs, next_mask = self._obs_mask(facts_next)
         truncated = self.step_idx >= self.config.horizon
 
-        name, node_idx = decode_action(action)
+        name, node_idx = live_decode_action(action)
+        label = name if node_idx is None else f"{name}:{NODE_NAMES[node_idx]}"
+        if action == BLOCK_PRINCIPAL_ACTION:
+            label = f"{BLOCK_PRINCIPAL}:{','.join(sorted(self._applied_block))}"
         outcome = StepOutcome(
             step=self.step_idx,
             action=action,
-            action_label=name if node_idx is None else f"{name}:{NODE_NAMES[node_idx]}",
+            action_label=label,
             node=None if node_idx is None else NODE_NAMES[node_idx],
             attack_requests=len(attack),
             compromised_reads=compromised,
@@ -199,6 +220,15 @@ class LiveDefenseLoop:
         return float(sum(comps.values())), comps
 
     def _apply_action(self, action: int) -> None:
+        self._applied_block = []
+        if action == BLOCK_PRINCIPAL_ACTION:
+            # targets = whom the detector flagged in the window the policy observed
+            for principal, nodes in self._flagged.items():
+                for node in nodes:
+                    self._timers.block[(principal, node)] = self.config.block_duration
+                self._applied_block.append(principal)
+            self._sync_blocks()
+            return
         name, node_idx = decode_action(action)
         if name == "noop":
             return
@@ -247,8 +277,19 @@ class LiveDefenseLoop:
                 )
                 self.controls.reassessment_pending[node] = False
                 del self._timers.reassess[node]
+        for key in list(self._timers.block):
+            self._timers.block[key] -= 1
+            if self._timers.block[key] <= 0:
+                del self._timers.block[key]
+        self._sync_blocks()
         if self._timers.escalation > 0:
             self._timers.escalation -= 1
+
+    def _sync_blocks(self) -> None:
+        blocked: dict[str, list[str]] = {}
+        for principal, node in sorted(self._timers.block):
+            blocked.setdefault(principal, []).append(node)
+        self.controls.blocked_principals = blocked
 
     def _facts(self):
         return build_facts(
@@ -267,4 +308,13 @@ class LiveDefenseLoop:
     def _obs_mask(self, facts) -> tuple[np.ndarray, np.ndarray]:
         obs = from_platform_facts(facts, self.config.max_monitoring_level)
         mask = mask_from_facts(facts, self.config.max_monitoring_level)
+        self._flagged = self._gateway.flagged_principals()
+        if self.config.action_space == "live_v2":
+            active = bool(self._timers.block)
+            # valid only if the detector flagged someone not already blocked where flagged
+            can_block = any(
+                (p, n) not in self._timers.block for p, ns in self._flagged.items() for n in ns
+            )
+            obs = np.append(obs, np.float32(active)).astype(np.float32)
+            mask = np.append(mask, can_block)
         return obs, mask
