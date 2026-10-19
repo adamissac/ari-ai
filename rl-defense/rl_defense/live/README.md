@@ -111,6 +111,17 @@ the 0.85 floor there.
 See [`results/live-retrain-v3/REPORT.md`](../../results/live-retrain-v3/REPORT.md) and
 [`PROVENANCE.md`](../../results/live-retrain-v3/PROVENANCE.md).
 
+**Fourth and final result (v4, gate-aligned reward, grant-aware detector, multi-val
+selection):** `c_disrupt=1.0`, the detector honours the delegation grant table (operator
+authorization data), and selection uses the mean over four val scenarios. A fresh
+`holdout_v4` was committed before the run. The gate **rejects** the candidate on two of
+seven checks: availability 0.847 < 0.85 and no-attack duty 0.587 > 0.5. It beats deployed
+(+7.89 [6.39, 9.34]) and the tuned rules (−7.85 vs −12.15). The fixed baseline
+`always_block_principal` (−7.31, availability 0.882) matches it, and the best val snapshot
+is again the first one. See
+[`results/live-retrain-v4/REPORT.md`](../../results/live-retrain-v4/REPORT.md) and
+[`PROVENANCE.md`](../../results/live-retrain-v4/PROVENANCE.md). No v5 is planned.
+
 ## What is real, and what is not
 
 **Real:** the target app (a real FastAPI service, in-process over an ASGI transport — no
@@ -119,15 +130,16 @@ defensive action, the compromise/disruption counts, the reward, and the transiti
 
 **Detection uses instrumentation only.** The gateway flags a cross-tenant attempt when the
 bearer token's principal differs from the requested object's owner, both read from the
-owned app's own store. The traffic generator's `is_attack` label and per-window
+owned app's own store. With `delegation_aware_detector` (v4) it also consults the
+business's delegation grant table, so an authorized delegated read is not flagged. The traffic generator's `is_attack` label and per-window
 `attack_active` ground truth are kept for metrics (compromise, false disruption) and never
 reach an observation. The gateway's own blocking is not counted as an anomaly.
 
 **Honest limits (RQ-005):**
 - The sim-trained policy under-contains on real signals (a sim-to-real gap); live
   retraining is how this module addresses it — see the report for the measured result.
-- The reward weights (`LoopConfig`: `c_impact=1.0`, `c_disrupt=0.5`) were fixed before
-  retraining. They price availability low enough that blanket isolation of payments earns
+- The reward weights (`LoopConfig`: `c_impact=1.0`, `c_disrupt=0.5`; v4 runs with
+  `c_disrupt=1.0`) were fixed before each retraining run. They price availability low enough that blanket isolation of payments earns
   a competitive return while blocking about half of legitimate traffic; the gate's
   availability, false-disruption and duty checks exist precisely to reject that.
 - One small demo app, one attack class (BOLA reads), a handful of fixture attacker
@@ -138,7 +150,7 @@ reach an observation. The gateway's own blocking is not counted as an anomaly.
 ## Tests
 
 ```sh
-.venv/bin/python -m pytest -q tests/test_live_gateway.py tests/test_live_loop.py tests/test_live_retrain.py tests/test_live_block_principal.py tests/test_live_v3.py
+.venv/bin/python -m pytest -q tests/test_live_gateway.py tests/test_live_loop.py tests/test_live_retrain.py tests/test_live_block_principal.py tests/test_live_v3.py tests/test_live_v4.py
 ```
 
 `test_live_v3.py` proves that delegated reads are benign but flagged, and that blanket
@@ -147,6 +159,12 @@ identity-switch leak, that extensions never shorten a block, and that the top-ta
 spares a delegate seen in the same window. It also covers the detector features, the strict
 v2⊂v3 extension, exact widening, the noop margin, v3 rules using every control, holdout_v3
 hygiene, and a v3 pipeline smoke test (on the exposed holdout_v2).
+`test_live_v4.py` proves that the grant-aware detector stops flagging authorized delegated
+reads but still flags reads outside a grant, that it never depends on `is_attack`, and that
+this removes the availability cost of blanket blocking while still containing attackers.
+It also proves the v4 reward is opt-in (defaults stay v1-v3) and doubles the disruption
+price, that selection uses an unweighted mean over scenarios, that holdout_v4 is disjoint,
+and it runs a v4 pipeline smoke test (on holdout_v2).
 
 `test_live_block_principal.py` proves the block's real effect (403, no data, other tenants
 unaffected, rotated tokens still blocked), its duration and masking in the loop, that it

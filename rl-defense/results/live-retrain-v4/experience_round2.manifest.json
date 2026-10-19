@@ -1,0 +1,32 @@
+{
+  "schema": "live-experience/0.1",
+  "dataset_id": "exp_f0397512618f6684",
+  "file": "experience_round2.jsonl",
+  "sha256": "f0397512618f66849f1cedfc90e27fd888fe2cdf480c36703c9924f0cfa35815",
+  "transitions": 2100,
+  "episodes": 70,
+  "scenarios": {
+    "always_on_delegated": "0ca4eb74ff30686e",
+    "delegate_quiet": "d885e2af92ffa274",
+    "insider_delegate": "e5d5ce05dd734a54",
+    "outsider_rotation": "b487792f970fe9dd",
+    "two_identities_delegated": "b3743ace0117b909"
+  },
+  "splits": [
+    "train"
+  ],
+  "action_space": "live_v3",
+  "loop_overrides": {
+    "c_disrupt": 1.0,
+    "delegation_aware_detector": true
+  },
+  "behavior": {
+    "kind": "epsilon_greedy",
+    "checkpoint_sha256": "8865771f7ba0bb464b41a53d887235e4abf50afddddefe6c70cdb0d52855b012",
+    "epsilon": 0.3,
+    "seed": 2
+  },
+  "target": "examples/payments-lite (in-process)",
+  "git_sha": "0220e7dba2c499d68ccfd0f8f6a5cfa9bab8ddd5",
+  "created_at": "2026-10-19T06:47:57.361123+00:00"
+}

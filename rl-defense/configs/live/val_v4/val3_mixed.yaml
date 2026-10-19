@@ -1,0 +1,22 @@
+# Copied unchanged into val_v4 (same name, seeds and hash) so v4 selection still sees it.
+# Val v3 (checkpoint and noop-margin selection only; never training or the verdict).
+# A compromised customer and an outsider alternate per window; two bookkeepers read
+# their clients' payments, one with reconciliation bursts.
+name: val3_mixed
+split: val
+horizon: 30
+schedule: bursty
+p_start: 0.2
+p_stop: 0.2
+attack_per_step: 5
+benign_per_step: 7
+attackers: [bob, mallory]
+attacker_switch: per_window
+victims: [alice, carol]
+benign: [alice, bob, carol, dave, erin]
+delegations: ["dave:alice", "erin:carol"]
+delegate_per_step: 1
+delegate_burst_p: 0.2
+delegate_burst_size: 3
+seed_start: 25000
+episodes: 15

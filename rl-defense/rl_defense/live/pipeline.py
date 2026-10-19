@@ -26,6 +26,13 @@ delegated cross-tenant reads. The rules are tuned with :func:`evaluate.tune_rule
 the v2-style rules (short blocks only), ``always_block_principal`` and
 ``always_block_principal_long`` and ``always_block_top_principal_long`` are reported
 for context.
+
+v4 (v3 flags plus ``--c-disrupt 1.0 --delegation-aware-detector --val-selection
+scenario_mean --val-dir val_v4 --holdout-dir holdout_v4``): the reward prices a blocked
+legitimate request like a compromised read, the detector honours the delegation grants,
+and snapshots/margins/rounds are selected on the mean over several val scenarios. The
+defaults (0.5, off, pooled) reproduce v1-v3. Every policy, the rules tuning and the
+experience run in the same loop configuration (results/live-retrain-v4/PROVENANCE.md).
 """
 
 from __future__ import annotations
@@ -62,6 +69,14 @@ def run(args: argparse.Namespace) -> dict:
     train_dir = getattr(args, "train_dir", None) or "train"
     val_dir = getattr(args, "val_dir", None) or "val"
     margins = tuple(float(x) for x in str(getattr(args, "noop_margins", "0") or "0").split(","))
+    loop_overrides: dict[str, object] = {}
+    c_disrupt = getattr(args, "c_disrupt", None)
+    if c_disrupt is not None:
+        loop_overrides["c_disrupt"] = float(c_disrupt)
+    if getattr(args, "delegation_aware_detector", False):
+        loop_overrides["delegation_aware_detector"] = True
+    selection = getattr(args, "val_selection", None) or "pooled"
+    lo = loop_overrides or None
     tr, va = load_scenarios("train", subdir=train_dir), load_scenarios("val", subdir=val_dir)
     ho = load_scenarios("holdout", subdir=holdout_dir)
     # extra fixture tenants/tokens only when needed: the v1 run stays on the stock seed
@@ -102,6 +117,7 @@ def run(args: argparse.Namespace) -> dict:
             seed=args.seed + k,
             episodes=args.train_episodes,
             action_space=space,
+            loop_overrides=lo,
         )
         datasets.append(ds)
         cm = retrain(
@@ -117,6 +133,8 @@ def run(args: argparse.Namespace) -> dict:
             name=f"candidate_round{k}",
             action_space=space,
             noop_margins=margins,
+            loop_overrides=lo,
+            selection=selection,
         )
         sel = next(
             h
@@ -136,6 +154,11 @@ def run(args: argparse.Namespace) -> dict:
                 "val_compromise_rate": sel["val_compromise_rate"],
                 "val_availability": sel["val_availability"],
                 "noop_margin": cm["retrain"]["selected_noop_margin"],
+                **(
+                    {"val_reward_by_scenario": sel["val_reward_by_scenario"]}
+                    if "val_reward_by_scenario" in sel
+                    else {}
+                ),
             }
         )
         behavior, behavior_m = load_checkpoint(out / f"candidate_round{k}.pt")
@@ -151,10 +174,12 @@ def run(args: argparse.Namespace) -> dict:
 
     # 4. rules on train scenarios
     if space == "live_v3":
-        rules_params, rules_table = ev.tune_rules_v3(tr, app_factory, episodes=args.rules_episodes)
+        rules_params, rules_table = ev.tune_rules_v3(
+            tr, app_factory, episodes=args.rules_episodes, loop_overrides=lo
+        )
     else:
         rules_params, rules_table = ev.tune_rules(
-            tr, app_factory, episodes=args.rules_episodes, action_space=space
+            tr, app_factory, episodes=args.rules_episodes, action_space=space, loop_overrides=lo
         )
 
     # 5. holdout, once
@@ -187,7 +212,14 @@ def run(args: argparse.Namespace) -> dict:
         policies["always_block_principal_long"] = ev.always_block_principal_long
         policies["always_block_top_principal_long"] = ev.always_block_top_principal_long
     rows = {
-        n: ev.run_policy(p, ho, app_factory, episodes=args.holdout_episodes, action_space=space)
+        n: ev.run_policy(
+            p,
+            ho,
+            app_factory,
+            episodes=args.holdout_episodes,
+            action_space=space,
+            loop_overrides=lo,
+        )
         for n, p in policies.items()
     }
 
@@ -207,6 +239,8 @@ def run(args: argparse.Namespace) -> dict:
         "train_dir": f"configs/live/{train_dir}",
         "val_dir": f"configs/live/{val_dir}",
         "noop_margins": list(margins),
+        "loop_overrides": loop_overrides,
+        "val_selection": selection,
         "deployed": {
             "checkpoint_sha256": deployed_m["checkpoint_sha256"],
             "env_id": deployed_m["env_id"],
@@ -275,6 +309,14 @@ def render_markdown(r: dict) -> str:
         f"**Decision: `{r['decision']}`** (requires human approval: {r['requires_human_approval']}).",
         f"Action space: `{r.get('action_space', 'sim')}`; holdout scenarios from "
         f"`{r.get('holdout_dir', 'configs/live/holdout')}`.",
+        *(
+            [
+                f"Loop overrides: `{r['loop_overrides']}`; val selection: "
+                f"`{r.get('val_selection', 'pooled')}` over {', '.join(r['splits']['val'])}."
+            ]
+            if r.get("loop_overrides")
+            else []
+        ),
         f"Deployed `{r['deployed']['checkpoint_sha256'][:12]}` (sim-trained) vs candidate "
         f"`{r['candidate']['checkpoint_sha256'][:12]}` (round {r['candidate']['round']}, "
         f"{r['candidate']['lineage']['transitions']} live transitions). "
@@ -334,6 +376,20 @@ def render_markdown(r: dict) -> str:
             f"{x.get('noop_margin', 0.0)} | "
             f"{x['val_reward']:.2f} | {_f(x['val_compromise_rate'])} | {_f(x['val_availability'])} |"
         )
+    per_val = [x for x in r["rounds"] if x.get("val_reward_by_scenario")]
+    if per_val:
+        names = list(per_val[0]["val_reward_by_scenario"])
+        lines += [
+            "",
+            "Val return per scenario at each round's selected snapshot (the score above is "
+            "their unweighted mean):",
+            "",
+            "| Round | " + " | ".join(names) + " |",
+            "|---|" + "---|" * len(names),
+        ]
+        for x in per_val:
+            v = x["val_reward_by_scenario"]
+            lines.append(f"| {x['round']} | " + " | ".join(f"{v[n]:.2f}" for n in names) + " |")
     lines += ["", f"Threshold rules tuned on train scenarios: `{r['rules_params']}`."]
     if r.get("rules_no_block_params"):
         lines.append(f"Best rules without `block_principal`: `{r['rules_no_block_params']}`.")
@@ -372,6 +428,23 @@ def main(argv: list[str] | None = None) -> int:
         "--noop-margins",
         default="0",
         help="comma-separated greedy abstention margins chosen on val per snapshot",
+    )
+    ap.add_argument(
+        "--c-disrupt",
+        type=float,
+        default=None,
+        help="reward weight of blocked legitimate traffic (default: LoopConfig, 0.5; v4: 1.0)",
+    )
+    ap.add_argument(
+        "--delegation-aware-detector",
+        action="store_true",
+        help="v4: the detector honours the delegation grant table",
+    )
+    ap.add_argument(
+        "--val-selection",
+        choices=["pooled", "scenario_mean"],
+        default="pooled",
+        help="v4: select on the unweighted mean over val scenarios",
     )
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", default="runs/live/retrain")

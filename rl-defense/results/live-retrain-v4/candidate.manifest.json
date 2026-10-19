@@ -1,0 +1,218 @@
+{
+  "env_id": "LiveDefense-payments-lite-v3",
+  "obs_dim": 55,
+  "n_actions": 25,
+  "seed": 0,
+  "steps": 2000,
+  "train_configs": {
+    "live:always_on_delegated": "0ca4eb74ff30686e",
+    "live:delegate_quiet": "d885e2af92ffa274",
+    "live:insider_delegate": "e5d5ce05dd734a54",
+    "live:outsider_rotation": "b487792f970fe9dd",
+    "live:two_identities_delegated": "b3743ace0117b909"
+  },
+  "ddqn_config": {
+    "hidden_sizes": [
+      128,
+      128
+    ],
+    "gamma": 0.99,
+    "lr": 0.001,
+    "lr_end": null,
+    "batch_size": 64,
+    "buffer_size": 100000,
+    "learning_starts": 1000,
+    "train_freq": 1,
+    "target_update": "hard",
+    "target_update_interval": 1000,
+    "tau": 0.005,
+    "eps_start": 1.0,
+    "eps_end": 0.05,
+    "eps_decay_steps": 50000,
+    "grad_clip": 10.0,
+    "double": true,
+    "dueling": false,
+    "n_step": 1,
+    "disruption_margin": 0.0,
+    "noop_margin": 0.3,
+    "eps_disruptive_weight": null
+  },
+  "git_sha": "0220e7dba2c499d68ccfd0f8f6a5cfa9bab8ddd5",
+  "created_at": "2026-10-19T06:56:24.843606+00:00",
+  "action_space": "live_v3",
+  "trained_on": "live:examples/payments-lite (offline, from recorded experience)",
+  "lineage": {
+    "base_checkpoint_sha256": "6c130629506c294dfe1f6057ba6161b6beab1c40fce5fe1424c8371a24cbe86f",
+    "base_env_id": "DefenseSimEnv-v0",
+    "datasets": [
+      "exp_e96af9b152e2f5b0",
+      "exp_f0397512618f6684"
+    ],
+    "transitions": 4200
+  },
+  "retrain": {
+    "updates_run": 16000,
+    "selected_update": 2000,
+    "batch_size": 64,
+    "lr": 0.0003,
+    "eval_every": 2000,
+    "noop_margins": [
+      0.0,
+      0.1,
+      0.2,
+      0.3,
+      0.5
+    ],
+    "selected_noop_margin": 0.3,
+    "selection": "scenario_mean",
+    "loop_overrides": {
+      "c_disrupt": 1.0,
+      "delegation_aware_detector": true
+    },
+    "val_scenarios": {
+      "val3_mixed": "ec853cc6fb765381",
+      "val4_rogue_delegate": "d4aaa15edb991fdc",
+      "val4_rotation_start": "ee9c95e941ab2e27",
+      "val4_slow_insider": "d9b0f571f1cab722"
+    },
+    "selection_history": [
+      {
+        "update": 0,
+        "role": "base",
+        "val_reward": -15.85125,
+        "val_compromise_rate": 1.0,
+        "val_availability": 1.0,
+        "val_no_attack_defense_duty": 0.0,
+        "val_reward_by_scenario": {
+          "val3_mixed": -15.2825,
+          "val4_rogue_delegate": -13.825,
+          "val4_rotation_start": -19.405,
+          "val4_slow_insider": -14.8925
+        },
+        "noop_margin": 0.5
+      },
+      {
+        "update": 2000,
+        "loss_mean": 0.19633205177262425,
+        "val_reward": -5.610763888888888,
+        "val_compromise_rate": 0.1597535934291581,
+        "val_availability": 0.9126881720430108,
+        "val_no_attack_defense_duty": 0.5109649122807017,
+        "val_reward_by_scenario": {
+          "val3_mixed": -4.9831,
+          "val4_rogue_delegate": -7.7925,
+          "val4_rotation_start": -6.2675,
+          "val4_slow_insider": -3.4
+        },
+        "noop_margin": 0.3
+      },
+      {
+        "update": 4000,
+        "loss_mean": 0.08563433324173093,
+        "val_reward": -5.825436507936509,
+        "val_compromise_rate": 0.16344969199178644,
+        "val_availability": 0.9139784946236559,
+        "val_no_attack_defense_duty": 0.4934210526315789,
+        "val_reward_by_scenario": {
+          "val3_mixed": -5.0814,
+          "val4_rogue_delegate": -8.385,
+          "val4_rotation_start": -6.3329,
+          "val4_slow_insider": -3.5025
+        },
+        "noop_margin": 0.2
+      },
+      {
+        "update": 6000,
+        "loss_mean": 0.058809100172482434,
+        "val_reward": -7.463075396825397,
+        "val_compromise_rate": 0.2817248459958932,
+        "val_availability": 0.9265591397849462,
+        "val_no_attack_defense_duty": 0.4057017543859649,
+        "val_reward_by_scenario": {
+          "val3_mixed": -8.0003,
+          "val4_rogue_delegate": -9.4567,
+          "val4_rotation_start": -7.8329,
+          "val4_slow_insider": -4.5625
+        },
+        "noop_margin": 0.2
+      },
+      {
+        "update": 8000,
+        "loss_mean": 0.0599008617606014,
+        "val_reward": -6.938869047619047,
+        "val_compromise_rate": 0.2620123203285421,
+        "val_availability": 0.9243010752688172,
+        "val_no_attack_defense_duty": 0.4342105263157895,
+        "val_reward_by_scenario": {
+          "val3_mixed": -7.0369,
+          "val4_rogue_delegate": -9.3489,
+          "val4_rotation_start": -7.5671,
+          "val4_slow_insider": -3.8025
+        },
+        "noop_margin": 0.2
+      },
+      {
+        "update": 10000,
+        "loss_mean": 0.07059462740737944,
+        "val_reward": -9.306815476190476,
+        "val_compromise_rate": 0.3946611909650924,
+        "val_availability": 0.9348387096774193,
+        "val_no_attack_defense_duty": 0.3815789473684211,
+        "val_reward_by_scenario": {
+          "val3_mixed": -8.6047,
+          "val4_rogue_delegate": -9.3761,
+          "val4_rotation_start": -9.7964,
+          "val4_slow_insider": -9.45
+        },
+        "noop_margin": 0.1
+      },
+      {
+        "update": 12000,
+        "loss_mean": 0.09552621679753065,
+        "val_reward": -14.331805555555555,
+        "val_compromise_rate": 0.7880903490759753,
+        "val_availability": 0.9717204301075268,
+        "val_no_attack_defense_duty": 0.14692982456140352,
+        "val_reward_by_scenario": {
+          "val3_mixed": -15.4836,
+          "val4_rogue_delegate": -11.8186,
+          "val4_rotation_start": -14.7675,
+          "val4_slow_insider": -15.2575
+        },
+        "noop_margin": 0.0
+      },
+      {
+        "update": 14000,
+        "loss_mean": 0.13374585479870438,
+        "val_reward": -14.952380952380953,
+        "val_compromise_rate": 0.8164271047227926,
+        "val_availability": 0.9604301075268817,
+        "val_no_attack_defense_duty": 0.16228070175438597,
+        "val_reward_by_scenario": {
+          "val3_mixed": -14.8206,
+          "val4_rogue_delegate": -12.1636,
+          "val4_rotation_start": -17.6204,
+          "val4_slow_insider": -15.205
+        },
+        "noop_margin": 0.3
+      },
+      {
+        "update": 16000,
+        "loss_mean": 0.19169329669512808,
+        "val_reward": -15.280267857142857,
+        "val_compromise_rate": 0.7860369609856263,
+        "val_availability": 0.94,
+        "val_no_attack_defense_duty": 0.14692982456140352,
+        "val_reward_by_scenario": {
+          "val3_mixed": -14.7622,
+          "val4_rogue_delegate": -13.5628,
+          "val4_rotation_start": -17.5436,
+          "val4_slow_insider": -15.2525
+        },
+        "noop_margin": 0.3
+      }
+    ]
+  },
+  "checkpoint_file": "candidate_round2.pt",
+  "checkpoint_sha256": "0389c820a4a21795d5efbb947823e569c409f92b8eb3c0616f77c7ae520af8c7"
+}
