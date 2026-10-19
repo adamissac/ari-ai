@@ -454,12 +454,13 @@ def platform_facts(
                     routes=routes,
                 )
             )
-    from backend.api.runtime import latest_route_signals
+    from backend.api.runtime import latest_route_detections, latest_route_signals
 
     signals = [pm.RouteSignal(**sig) for sig in latest_route_signals(conn, project_id)]
+    detections = [pm.RouteDetection(**d) for d in latest_route_detections(conn, project_id)]
     expectations, expectation_note = _expectation_inputs(conn, project_id)
     facts, provenance = pm.facts_from_platform(
-        topology, inputs, expectations, signals, project_id=project_id
+        topology, inputs, expectations, signals, detections=detections, project_id=project_id
     )
     provenance = {**provenance, "expectations_source": expectation_note}
     return PlatformFacts.model_validate(facts.model_dump(mode="json")), provenance
@@ -518,6 +519,16 @@ def rl_recommend(ctx: JobContext) -> dict[str, Any]:
     rec = DefenseRecommendation.model_validate(
         runner.recommend(local_facts).model_dump(mode="json")
     )
+    # A principal block names whom it would cover (pseudonymous refs from the reporter).
+    target_key = {
+        "block_principal": "principal_targets:all",
+        "block_principal_long": "principal_targets:all",
+        "block_top_principal_long": "principal_targets:top",
+    }.get(rec.action)
+    if target_key:
+        rec = DefenseRecommendation.model_validate(
+            {**rec.model_dump(mode="json"), "principal_targets": provenance.get(target_key, [])}
+        )
     explanation = None
     if hasattr(runner, "explain"):
         try:
@@ -547,6 +558,7 @@ def rl_recommend(ctx: JobContext) -> dict[str, Any]:
                 "policy_version": rec.policy_version,
                 "action": rec.action,
                 "node": rec.node,
+                "principal_targets": rec.principal_targets,
                 "facts_provenance": provenance,
             },
         )

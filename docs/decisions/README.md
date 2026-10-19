@@ -28,6 +28,7 @@ before Phase 1 implementation relies on them.
 | [0015](0015-haiku-default-model.md) | Claude Haiku 5.5 is the default Anthropic model (cost; Opus via override) | Accepted |
 
 | [0016](0016-owner-sandbox-approval.md) | Explicit owner approval for sandbox-only scopes | Accepted |
+| [0017](0017-runtime-principal-detection.md) | Runtime principal detection feeds the RL defense (pseudonymous, aggregated) | Accepted |
 
 ## Process
 

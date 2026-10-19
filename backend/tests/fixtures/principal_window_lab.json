@@ -1,0 +1,65 @@
+{
+  "_generated_by": "python -m rl_defense.live.report --subdir train_v3 --scenario always_on_delegated --windows 1 --out <path>",
+  "_flagged_principals": [
+    "prn_6061c08b8647a8d8dc7afd7e"
+  ],
+  "batch": {
+    "source": "simulated",
+    "repo_id": null,
+    "window_start": "2026-10-19T11:59:00Z",
+    "window_end": "2026-10-19T12:00:00Z",
+    "routes": [
+      {
+        "route": "GET /me",
+        "requests": 3,
+        "status_4xx": 0,
+        "status_5xx": 0,
+        "auth_failures": 0,
+        "principals": [
+          {
+            "principal": "prn_b13eae4326cf04b64c514dd9",
+            "cross_tenant": 0,
+            "delegated": 0,
+            "own": 3
+          }
+        ]
+      },
+      {
+        "route": "GET /payments",
+        "requests": 3,
+        "status_4xx": 0,
+        "status_5xx": 0,
+        "auth_failures": 0,
+        "principals": [
+          {
+            "principal": "prn_6061c08b8647a8d8dc7afd7e",
+            "cross_tenant": 0,
+            "delegated": 0,
+            "own": 3
+          }
+        ]
+      },
+      {
+        "route": "GET /payments/{payment_id}",
+        "requests": 7,
+        "status_4xx": 0,
+        "status_5xx": 0,
+        "auth_failures": 0,
+        "principals": [
+          {
+            "principal": "prn_6061c08b8647a8d8dc7afd7e",
+            "cross_tenant": 6,
+            "delegated": 0,
+            "own": 0
+          },
+          {
+            "principal": "prn_667856c31b4b098f61242c29",
+            "cross_tenant": 0,
+            "delegated": 1,
+            "own": 0
+          }
+        ]
+      }
+    ]
+  }
+}

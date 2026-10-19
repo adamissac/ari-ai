@@ -13,6 +13,7 @@ from pydantic import Field
 
 from shared.base import Sha256Hex, ShortText, StrictModel, UtcDatetime
 from shared.ids import ArtifactId, CheckpointId, ProjectId, RecommendationId, RLEvaluationId
+from shared.monitoring import PrincipalRef
 from shared.standards import DefensiveMapping
 
 RL_SCHEMA_VERSION = "0.1.0"
@@ -130,6 +131,12 @@ class DefenseRecommendation(StrictModel):
     simulation_derived: Literal[True] = True
     caveat: ShortText = SIMULATION_CAVEAT_DEFAULT
     created_at: UtcDatetime
+    principal_targets: list[PrincipalRef] = Field(
+        default_factory=list,
+        max_length=500,
+        description="for block_principal* actions: the pseudonymous principals the block "
+        "would cover (contracts 0.14); the operator maps them back. Never executed.",
+    )
 
 
 class RLCheckpointRef(StrictModel):
