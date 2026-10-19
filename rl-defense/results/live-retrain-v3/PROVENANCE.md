@@ -39,7 +39,7 @@ given there: the digest covers the embedded manifest (git SHA, timestamp).
   `test_long_block_closes_the_identity_switch_leak`,
   `test_long_block_extends_a_short_block_and_short_never_shortens_long`,
   `test_top_target_spares_the_delegate_seen_in_the_same_window`.
-  The new names are not in `shared.rl.DefenseActionName`. They are proposed to Srihith in
+  The new names are not in `shared.rl.DefenseActionName`. They are proposed (to the interim `shared/` approver; Srihith has left) in
   `coordination/messages/20261019T053641Z-alan-to-srihith-adam-long-block-actions.md`.
 - **Rules get every new action.** `evaluate.tune_rules_v3` runs two stages on train only.
   Stage 1 is the v2 grid in the v3 loop. Stage 2 fixes the stage-1 docs/09 thresholds and

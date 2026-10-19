@@ -5,6 +5,7 @@ import { Avatar, GitHubMark } from '@/components/demo/ui';
 import { BRAND_NAME } from '@/components/brand';
 import { ErrorState, Loading } from '@/components/ui';
 import { useSession } from '@/components/session';
+import { RefreshFromGitHub } from '@/components/refresh-from-github';
 import { api } from '@/lib/api';
 import { groupByOrg } from '@/lib/github-orgs';
 import { useResource } from '@/lib/use-resource';
@@ -20,6 +21,7 @@ export default function ConnectOrgsPage() {
         <p className="label-mono text-brand">Signed in as {me.user.github_login}</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">Where should {BRAND_NAME} look?</h1>
         <p className="mt-1.5 text-sm text-muted">Pick an organization. Only repositories the {BRAND_NAME} GitHub App is installed on appear here.</p>
+        <RefreshFromGitHub className="mt-2 text-sm" />
       </header>
       {list.status === 'loading' && <Loading label="Loading your GitHub organizations" />}
       {list.status === 'error' && <ErrorState error={list.error} onRetry={list.reload} context="Could not list your GitHub repositories" />}

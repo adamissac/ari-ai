@@ -42,6 +42,11 @@ stochastic model of **stages**, not real techniques.
 `request_reassessment`; plus global `escalate_to_human`. 5 nodes → 1 + 5×4 + 1 = 22
 actions. All actions are *simulated* effects.
 
+The live lab (`rl-defense/rl_defense/live/`) also has an action space v2: the same 22
+actions plus global `block_principal` (index 22), which the gateway enforces against the
+in-process demo app. `block_principal` is part of `shared.rl.DefenseActionName`, but no
+simulator policy can choose it, and v2 checkpoints are not served as recommendations.
+
 ### Adversary model
 Abstract stage progression per node: `none → foothold → escalated → impact`.
 Transition probabilities depend on node exposure, open-finding severity, and
