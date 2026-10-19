@@ -284,7 +284,7 @@ def train_online(
             prev = step
             step += len(ts)
             episode += 1
-            if len(agent_buf) >= cfg.batch_size:
+            if len(agent_buf) > 0:
                 for _ in range(len(ts) * cfg.updates_per_step):
                     b = cat_batches(
                         _demo_flag(agent_buf.sample(cfg.batch_size - n_demo), False),
@@ -301,7 +301,16 @@ def train_online(
     assert best is not None
     agent.load_state_dict(best[2])
     agent.config = base_config.model_copy(update={"noop_margin": best[3]})
-    digest = hashlib.sha256(exp_path.read_bytes()).hexdigest()
+    # A selected snapshot only learned from the prefix available at that step.
+    # Keep the complete experiment separately, including post-selection interaction.
+    selected_exp = out_dir / f"{name}_selected_experience.jsonl"
+    with exp_path.open("rb") as source, selected_exp.open("wb") as dest:
+        for _ in range(demo_steps + best[1]):
+            row = source.readline()
+            if not row:
+                raise ValueError("experience log is shorter than selected snapshot lineage")
+            dest.write(row)
+    digest = hashlib.sha256(selected_exp.read_bytes()).hexdigest()
     return save_checkpoint(
         agent,
         out_dir / f"{name}.pt",
@@ -316,13 +325,20 @@ def train_online(
                 "base_checkpoint_sha256": None,
                 "base_env_id": None,
                 "datasets": [f"exp_{digest[:16]}"],
-                "transitions": demo_steps + step,
+                "transitions": demo_steps + best[1],
                 "demo_transitions": demo_steps,
-                "agent_transitions": step,
+                "agent_transitions": best[1],
                 "experience_sha256": digest,
+                "experience_file": selected_exp.name,
             },
             "online": {
                 **{k: list(v) if isinstance(v, tuple) else v for k, v in asdict(cfg).items()},
+                "experiment": {
+                    "agent_transitions": step,
+                    "experience_file": exp_path.name,
+                    "experience_sha256": hashlib.sha256(exp_path.read_bytes()).hexdigest(),
+                    "updates": history[-1]["updates"],
+                },
                 "expert": expert_name,
                 "loop_overrides": overrides,
                 "selected_env_step": best[1],
@@ -467,6 +483,18 @@ def run(args: argparse.Namespace) -> dict:
         "git_sha": git_sha(),
         "created_at": datetime.now(UTC).isoformat(),
     }
+    # Durable, hash-pinned locators alongside the report. Relative paths survive copying.
+    report["artifacts"] = {
+        "checkpoint": {"path": cand_path.name, "sha256": cand_m["checkpoint_sha256"]},
+        "experience": {
+            "path": cm["lineage"]["experience_file"],
+            "sha256": cm["lineage"]["experience_sha256"],
+        },
+        "experiment": {
+            "path": cm["online"]["experiment"]["experience_file"],
+            "sha256": cm["online"]["experiment"]["experience_sha256"],
+        },
+    }
     (out / "promotion_report.json").write_text(json.dumps(report, indent=2))
     (out / "holdout_episodes.json").write_text(
         json.dumps({n: [asdict(x) for x in r] for n, r in rows.items()})
@@ -485,7 +513,12 @@ def run(args: argparse.Namespace) -> dict:
             "holdout_episodes.json",
         ]:
             shutil.copy(out / f, ed / f)
-        shutil.copy(cand_path.with_suffix(".manifest.json"), ed / "candidate.manifest.json")
+        for artifact in report["artifacts"].values():
+            shutil.copy(out / artifact["path"], ed / artifact["path"])
+        shutil.copy(
+            cand_path.with_suffix(".manifest.json"),
+            ed / cand_path.with_suffix(".manifest.json").name,
+        )
     return report
 
 

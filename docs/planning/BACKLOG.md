@@ -48,3 +48,6 @@ Completed: slower, smoother walkthrough video zoom after large scroll input.
 
 
 Completed: owner sandbox authorization flow, live approval-status refresh and expired pending scope recovery.
+
+
+Completed: #359 review fixes for selected-prefix lineage, the promised online update count, self-contained evidence export, servability/evidence promotion guards and changelog. Historical v6 artifact bytes remain unavailable and are explicitly marked as such.
