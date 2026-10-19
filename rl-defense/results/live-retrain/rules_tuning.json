@@ -1,0 +1,297 @@
+{
+  "selected": {
+    "isolate_anomaly": 0.15,
+    "rate_limit_alerts": 0.2,
+    "monitor_anomaly": 1.1
+  },
+  "grid": [
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.1,
+      "train_reward": -5.679166666666667
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.3,
+      "train_reward": -5.666666666666667
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 1.1,
+      "train_reward": -5.5841666666666665
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.1,
+      "train_reward": -5.679166666666667
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.3,
+      "train_reward": -5.666666666666667
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 1.1,
+      "train_reward": -5.5841666666666665
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.1,
+      "train_reward": -5.679166666666667
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.3,
+      "train_reward": -5.666666666666667
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 1.1,
+      "train_reward": -5.5841666666666665
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.1,
+      "train_reward": -5.679166666666667
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.3,
+      "train_reward": -5.666666666666667
+    },
+    {
+      "isolate_anomaly": 0.15,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 1.1,
+      "train_reward": -5.5841666666666665
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.1,
+      "train_reward": -5.744166666666667
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.3,
+      "train_reward": -5.914583333333334
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 1.1,
+      "train_reward": -6.031666666666667
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.1,
+      "train_reward": -5.744166666666667
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.3,
+      "train_reward": -5.914583333333334
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 1.1,
+      "train_reward": -6.031666666666667
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.1,
+      "train_reward": -5.744166666666667
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.3,
+      "train_reward": -5.9662500000000005
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 1.1,
+      "train_reward": -6.274166666666667
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.1,
+      "train_reward": -5.783333333333333
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.3,
+      "train_reward": -6.198333333333333
+    },
+    {
+      "isolate_anomaly": 0.3,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 1.1,
+      "train_reward": -6.576666666666666
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.1,
+      "train_reward": -6.28125
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.3,
+      "train_reward": -6.6433333333333335
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 1.1,
+      "train_reward": -8.626249999999999
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.1,
+      "train_reward": -6.28125
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.3,
+      "train_reward": -6.6433333333333335
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 1.1,
+      "train_reward": -8.626249999999999
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.1,
+      "train_reward": -6.278333333333334
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.3,
+      "train_reward": -6.6120833333333335
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 1.1,
+      "train_reward": -9.465
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.1,
+      "train_reward": -7.072916666666667
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.3,
+      "train_reward": -7.28125
+    },
+    {
+      "isolate_anomaly": 0.45,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 1.1,
+      "train_reward": -13.606666666666666
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.1,
+      "train_reward": -6.9904166666666665
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 0.3,
+      "train_reward": -7.2404166666666665
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.2,
+      "monitor_anomaly": 1.1,
+      "train_reward": -8.800833333333333
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.1,
+      "train_reward": -6.9904166666666665
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 0.3,
+      "train_reward": -7.2404166666666665
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.4,
+      "monitor_anomaly": 1.1,
+      "train_reward": -8.800833333333333
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.1,
+      "train_reward": -7.598749999999999
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 0.3,
+      "train_reward": -7.890833333333332
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 0.6,
+      "monitor_anomaly": 1.1,
+      "train_reward": -9.639583333333334
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.1,
+      "train_reward": -8.412083333333333
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 0.3,
+      "train_reward": -8.378333333333334
+    },
+    {
+      "isolate_anomaly": 0.6,
+      "rate_limit_alerts": 1.1,
+      "monitor_anomaly": 1.1,
+      "train_reward": -13.875
+    }
+  ]
+}

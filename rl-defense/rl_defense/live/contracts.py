@@ -48,6 +48,11 @@ class StepOutcome(_Strict):
     compromised_reads: int  # attack requests that really returned cross-tenant data (HTTP 200)
     benign_requests: int
     benign_blocked: int  # benign requests the defense really blocked/throttled (503/429)
+    # isolate/rate_limit in force on any node during this window (observable)
+    disruptive_controls_active: bool
+    # traffic generator's ground truth for this window — METRICS ONLY (e.g. false
+    # disruption); it never enters an observation.
+    attack_active: bool
     reward: float
     reward_components: dict[str, float]
     terminated: bool

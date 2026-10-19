@@ -1,0 +1,11 @@
+# Rare onset but long-lasting campaigns (train).
+name: long_campaign
+split: train
+horizon: 30
+schedule: bursty
+p_start: 0.1
+p_stop: 0.08
+attack_per_step: 5
+benign_per_step: 6
+seed_start: 1000
+episodes: 20

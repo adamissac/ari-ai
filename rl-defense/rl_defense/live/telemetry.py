@@ -2,8 +2,8 @@
 
 Signals are measured, not assumed:
 - ``alert_rate``  = number of anomalous requests seen on the node this window
-  (errors, blocked/throttled responses, or attack traffic). Normalized downstream by
-  ``observations.from_platform_facts`` (ALERT_NORM).
+  (cross-tenant attempts flagged by the gateway's instrumentation, or errors the app
+  returned). Normalized downstream by ``observations.from_platform_facts`` (ALERT_NORM).
 - ``anomaly_score`` = the fraction of the node's traffic that looked anomalous, scaled
   by how much monitoring is raised (more monitoring → the detector sees more of the
   true anomaly fraction). A higher ``monitoring_level`` therefore sharpens detection
@@ -25,7 +25,10 @@ _MONITORING_SENSITIVITY = {0: 0.5, 1: 0.75, 2: 1.0, 3: 1.0, 4: 1.0, 5: 1.0}
 
 
 def _anomalous(r: RequestRecord) -> bool:
-    return r.is_attack or (not r.allowed) or r.status >= 400 or r.compromised
+    """Observable anomaly: a cross-tenant attempt seen by the gateway (whether or not it
+    was blocked), or an error the app itself returned. Our own blocking of a request is
+    not evidence of an attack, and the generator's ``is_attack`` label is never read."""
+    return r.cross_tenant_attempt or (r.allowed and r.status >= 400)
 
 
 def build_facts(

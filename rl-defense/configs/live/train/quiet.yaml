@@ -1,0 +1,11 @@
+# Mostly benign; short rare bursts. Teaches the cost of needless disruption (train).
+name: quiet
+split: train
+horizon: 30
+schedule: bursty
+p_start: 0.05
+p_stop: 0.5
+attack_per_step: 6
+benign_per_step: 6
+seed_start: 3000
+episodes: 20
