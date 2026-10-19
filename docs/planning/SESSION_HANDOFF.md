@@ -817,3 +817,10 @@ Sign-in refinement: removed promotional side content and centered the shared Aut
 
 
 Replaced game-like UI copy with evaluation terminology and synthetic/illustrative labels. Kept explicit isolated-test-network caveats and unchanged simulation contract fields. Lint, TypeScript and 13 focused lab tests pass.
+
+
+### 2026-10-19 — live provider suite with real Claude (Adam's key)
+- `RUN_LIVE_LLM_EVAL=1 pytest -m live security-agents/tests/test_live_provider.py`: Scout, role separation and **seven roles end to end** passed live (`asm_01M594BBKZGTTVTY770XYT4HF7`, all seven agents `provider_mode=live`, Probe and Verify executed `checks.run_template`, about $1.27 total).
+- The isolated Probe test failed: its `ToolContext` had no rules of engagement, so `checks.list_templates` withheld parameter values (`MISSING_ROE`) and live Probe refused to guess, reporting inconclusive. Correct agent behaviour, wrong test fixture. The test now issues RoE with `build_roe` like the orchestrator.
+- After the fix, live Probe ran `access_control.ownership@1` (route `payment_detail`, alice vs bob) in sandbox `sbx_01M594NN5VE87WXM4E7EEWF5MG`: `matches_expectation=false`, outcome `confirmed` from the executed check. 1 passed in 15 s.
+- Not exercised: a production GitHub sign-in → repo connect → push → assessment on Railway (needs a signed-in user session and an authorized scope).

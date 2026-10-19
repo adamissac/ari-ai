@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Live Probe provider test now issues NIST SP 800-115 rules of engagement before running, as the orchestrator does; without them the tools withheld parameter values and Probe correctly reported inconclusive.
+
 - Replace game-like language with evaluation terminology, and use synthetic/illustrative labels while preserving test-environment provenance.
 
 - Center sign-in forms, remove the promotional side panel, and add subtle background orbits that respect reduced motion.
