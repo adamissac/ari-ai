@@ -51,3 +51,16 @@ it('renders a live analysis through every tab without claiming execution', () =>
   fireEvent.click(screen.getByTestId('demo-tab-agents'));
   expect(document.body.textContent).toContain('API');
 });
+
+it('shows exactly two tabs, opens on review, and reveals the real-run slot only in agents', () => {
+  render(<CommitAnalysis repo={repo} commit={commit} analysis={analysis} realRun={<p>real-run-slot</p>} />);
+  const tabs = screen.getAllByRole('tab');
+  expect(tabs.map(tab => tab.textContent)).toEqual(['Code review', '7 agents']);
+  expect(screen.getByTestId('demo-tab-review').getAttribute('aria-selected')).toBe('true');
+  expect(screen.getByTestId('demo-tab-agents').getAttribute('aria-selected')).toBe('false');
+  expect(screen.queryByText('real-run-slot')).toBeNull();
+  fireEvent.click(screen.getByTestId('demo-tab-agents'));
+  expect(screen.getByText('real-run-slot')).not.toBeNull();
+  fireEvent.click(screen.getByTestId('demo-tab-review'));
+  expect(screen.queryByText('real-run-slot')).toBeNull();
+});
