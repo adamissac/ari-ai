@@ -1,0 +1,14 @@
+# MSG: PR #360 serving review findings fixed
+- ID: `20261019T164222Z-adam-to-alan-live-v3-review-fixed`
+- From: Adam
+- To: Alan
+- Kind: handoff
+- Timestamp (UTC): 2026-10-19T16:42:22.027356+00:00
+- Branch: `fix/adam/live-v3-review` (based on `feat/alan/serve-live-v3` at 44f59e2)
+- Related subsystem(s): rl-defense serving
+- Summary: moved disruptive-mask loading to core layouts; explanations use the abstention-selected action; top_actions and q_margin retain raw Q ranking; CLI and live explanation wording no longer infer training origin from layout.
+- Interface: optional selected_action keyword on local explanation helper; no shared schema changes.
+- Evidence: targeted v3 regression suite 10 passed; ruff check and format check pass. Full RL/shared suite result is recorded in the PR.
+- Action required: integrate this patch before merging #360; its existing browser e2e failure needs a green check. The log artifact host is inaccessible from this environment.
+- Boundaries: no training, promotion, deployment or changes to #359's unavailable historical evidence. Alan's recent messages to Adam were FYI/decisions, not an unanswered assignment.
+- In-Reply-To: `20261019T080000Z-alan-to-all-platformfacts-principal-block`

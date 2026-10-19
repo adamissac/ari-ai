@@ -53,8 +53,8 @@ class PolicyRunner:
         # the checkpoint's own greedy rule, abstention margins included, so the served action
         # is the action the evaluated policy takes (identical to argmax when margins are 0)
         best = int(self.agent.greedy_action(obs, mask))
-        order = [best, *(a for a in by_q if a != best)]
-        margin = float(q[best] - q[order[1]]) if len(order) > 1 else 0.0
+        # Confidence metadata remains Q-ranked, independent of policy abstention.
+        margin = float(q[by_q[0]] - q[by_q[1]]) if len(by_q) > 1 else 0.0
         name, node = live_decode_action(best)
 
         def score(a: int) -> ActionScore:
@@ -72,7 +72,7 @@ class PolicyRunner:
             d3fend=defensive_refs(name),
             node=None if node is None else NODE_NAMES[node],
             q_margin=margin,
-            top_actions=tuple(score(a) for a in order[:top_k]),
+            top_actions=tuple(score(a) for a in by_q[:top_k]),
             observation=tuple(float(x) for x in obs),
             created_at=datetime.now(UTC),
             **({"caveat": LIVE_LAB_CAVEAT} if self.space != "sim" else {}),
@@ -92,12 +92,15 @@ class PolicyRunner:
         deterministic, so the explained decision is the same.
         """
         rec_id = (recommendation or self.recommend(facts)).id
+        obs = from_platform_facts(facts, space=self.space)
+        mask = mask_from_facts(facts, space=self.space)
         return explain(
             self.agent.online,
-            from_platform_facts(facts, space=self.space),
-            mask_from_facts(facts, space=self.space),
+            obs,
+            mask,
             rec_id,
             top_k,
+            selected_action=int(self.agent.greedy_action(obs, mask)),
         )
 
     def recommend_with_explanation(
