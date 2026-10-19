@@ -31,7 +31,7 @@ acceptance criteria are the minimum for `DONE` in addition to
 | CORE-002 | Backend FastAPI skeleton, Settings, `/healthz` `/readyz`, ruff/mypy/pytest, `backend.yml` | backend/ | FR-P-* | CORE-001 | UNASSIGNED | BLOCKED | App starts; health endpoints tested; CI job green |
 | CORE-003 | Contract codegen: Pydantic → JSON Schema → TS; `contracts.yml` | shared/, scripts/ | — | CORE-001 | UNASSIGNED | BLOCKED | `scripts/` command regenerates; CI fails on dirty diff |
 | CORE-004 | PostgreSQL schema, Alembic migrations, org/project-scoped repository layer | backend/ | FR-P-02 | CORE-002 | UNASSIGNED | BLOCKED | Migrations up/down tested; repository layer requires org/project ids |
-| CORE-005 | GitHub OAuth sign-in + projects/repositories API | backend/ | FR-P-01, FR-P-02 | CORE-004 | UNASSIGNED | BLOCKED | OAuth flow works locally; endpoints per doc 13 with tests |
+| CORE-005 | GitHub OAuth sign-in + projects/repositories API | backend/ | FR-P-01, FR-P-02 | CORE-004 | UNASSIGNED | BLOCKED | OAuth flow works locally; endpoints per doc 13 with tests. Repo picker refreshes trusted personal App installations live; organization repositories still use the sign-in snapshot. |
 | CORE-006 | Postgres job queue (`SKIP LOCKED`), worker runner, leases, SSE stream | backend/ | — | CORE-004 | UNASSIGNED | BLOCKED | Jobs leased/requeued on expiry; SSE emits test events; tests |
 | CORE-007 | AuthorizedScope + approvals API wired to `scope_guard` | backend/ | FR-P-03 | CORE-004, SEC-002 | UNASSIGNED | BLOCKED | Scope lifecycle endpoints; approver ≠ requester rule; SB-02 passes |
 | CORE-008 | Hash-chained append-only audit log | backend/ | FR-P-04 | CORE-004 | UNASSIGNED | BLOCKED | Chain verification test; DB role cannot update/delete |

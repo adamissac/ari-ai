@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CommitAnalysis } from '@/components/demo/commit-analysis';
+import { RealAssessmentPanel } from '@/components/real-assessment-panel';
 import { Empty, ErrorState, Loading } from '@/components/ui';
 import type { DemoCommit, DemoRepo } from '@/lib/demo/data';
 import type { LiveResult } from '@/lib/live-analysis';
@@ -13,9 +14,8 @@ import { useAccessibleRepo } from '@/lib/real-repo';
 type Live = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; data: LiveResult };
 
 /**
- * A real commit from the user's repository, analysed live: the diff comes from GitHub and the
- * code review plus the seven agents' reasoning come from Claude over that diff (lib/live-analysis.ts).
- * Static analysis only: nothing is run or attacked, and the page says so.
+ * A real commit from the user's repository, with a persisted backend assessment and a
+ * separate narrated preview from one Claude call (lib/live-analysis.ts).
  */
 export default function RealCommitPage() {
   const params = useParams<{ org: string; repo: string; sha: string }>();
@@ -74,11 +74,11 @@ export default function RealCommitPage() {
           <span className="font-semibold">{params.sha.slice(0, 7)}</span>
         </nav>
         <details className="amap-more text-right" data-testid="real-commit-note">
-          <summary><span className="demo-marker" data-testid="real-commit-provenance" title="The diff comes from GitHub. The review and agent results come from a live Claude analysis of that diff.">Live analysis · real commit</span> What is real here?</summary>
+          <summary><span className="demo-marker" data-testid="real-commit-provenance" title="The diff comes from GitHub. This is one Claude call, not an executed assessment.">Quick read · one Claude call, nothing executed</span> What is real here?</summary>
           <p className="mt-2 max-w-sm text-left text-xs text-white/60">
             The commit and its diff come from GitHub. The code review, findings, proposed fix and each agent&apos;s steps are a live
             analysis of that diff by {view?.live.model ?? 'Claude'}{live.status === 'ready' ? `, run in ${live.data.analysis.seconds}s for about $${live.data.analysis.usd.toFixed(2)}` : ''}.
-            It is static: no code was run, nothing was attacked, the proposed tests have not been executed and no fix was applied.
+            The seven-agent assessment above is the real run; this is a narrated preview. It is static: no code was run, nothing was attacked, the proposed tests have not been executed and no fix was applied.
             The agent view replays that run step by step.
           </p>
         </details>
@@ -86,7 +86,8 @@ export default function RealCommitPage() {
       {repo.status === 'loading' && <Loading label="Loading the repository" />}
       {repo.status === 'error' && <ErrorState error={repo.error} onRetry={repo.reload} />}
       {repo.status === 'ready' && !repo.data && <Empty>{org}/{name} is not reachable through your GitHub App installation.</Empty>}
-      {full && live.status === 'loading' && <Loading label="Reading the diff and running the review and the seven agents (this takes a minute or two)" />}
+      {repo.status === 'ready' && repo.data && <RealAssessmentPanel org={org} repo={repo.data} sha={params.sha} onConnected={repo.reload} />}
+      {full && live.status === 'loading' && <Loading label="Reading the diff and generating a narrated quick read (this takes a minute or two)" />}
       {live.status === 'error' && (
         <div className="glass flex flex-col items-start gap-3 p-6" role="alert">
           <p className="text-sm text-white/80">{live.message}</p>

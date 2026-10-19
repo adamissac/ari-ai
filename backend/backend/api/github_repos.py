@@ -1,9 +1,9 @@
-"""Repository picker: what the signed-in user can connect through the GitHub App.
+"""Repository picker: a sign-in snapshot plus live refresh of personal App installations.
 
 The list is captured at GitHub sign-in from the App's user-to-server token and stored
-without the token (`github_repo_access`). Installing the App on more repositories sends
-the user through sign-in again (GitHub "request user authorization during installation"),
-which refreshes the list.
+without the token (`github_repo_access`). The picker refreshes the signed-in user's
+trusted personal installation with an App JWT; organization installations still rely on
+the sign-in snapshot so GitHub can enforce user-to-server visibility.
 """
 
 from __future__ import annotations
@@ -14,10 +14,11 @@ from typing import Any
 import httpx
 import sqlalchemy as sa
 from fastapi import APIRouter, Request
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.engine import Connection
 
 from backend.api.deps import ApiError, require_project, require_user
-from backend.db import github_repo_access, repositories, transaction
+from backend.db import github_repo_access, repositories, transaction, users
 from backend.github import GitHubApp, GitHubNotConfigured
 from backend.settings import get_settings
 from shared.errors import ErrorCode
@@ -54,12 +55,104 @@ def can_connect(conn: Connection, user_id: str, full_name: str, installation_id:
     )
 
 
+def _refresh_personal_installation_repositories(
+    user_id: str, login: str | None, github_id: int | None
+) -> None:
+    settings = get_settings()
+    if (
+        not isinstance(login, str)
+        or not login.strip()
+        or (github_id is None and settings.is_dev and settings.auth_dev_login_enabled)
+    ):
+        return
+
+    try:
+        app = GitHubApp()
+        installation = app.user_installation(login)
+        if installation is None:
+            return
+        account = installation.get("account")
+        installation_id = installation.get("id")
+        if (
+            not isinstance(account, dict)
+            or account.get("type") != "User"
+            or type(installation_id) is not int
+        ):
+            return
+        if github_id is not None:
+            trusted = account.get("id") == github_id
+        else:
+            account_login = account.get("login")
+            trusted = (
+                isinstance(account_login, str) and account_login.casefold() == login.casefold()
+            )
+        if not trusted:
+            return
+        repositories_for_installation = app.installation_repositories(installation_id)
+    except GitHubNotConfigured:
+        log.warning(
+            "could not refresh GitHub repositories for %s (GitHub App not configured)", login
+        )
+        return
+    except httpx.HTTPError as exc:
+        log.warning("could not refresh GitHub repositories for %s (%s)", login, type(exc).__name__)
+        return
+
+    rows: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for repo in repositories_for_installation:
+        full_name = repo.get("full_name")
+        if not isinstance(full_name, str) or full_name in seen:
+            continue
+        seen.add(full_name)
+        rows.append(
+            {
+                "user_id": user_id,
+                "full_name": full_name,
+                "installation_id": installation_id,
+                "default_branch": repo.get("default_branch") or "main",
+                "private": bool(repo.get("private")),
+            }
+        )
+
+    with transaction() as conn:
+        conn.execute(
+            sa.delete(github_repo_access).where(
+                github_repo_access.c.user_id == user_id,
+                github_repo_access.c.installation_id == installation_id,
+            )
+        )
+        if rows:
+            conn.execute(
+                pg_insert(github_repo_access)
+                .values(rows)
+                .on_conflict_do_nothing(
+                    index_elements=[
+                        github_repo_access.c.user_id,
+                        github_repo_access.c.full_name,
+                    ]
+                )
+            )
+
+
 @router.get("/github/repositories")
 def list_accessible_repositories(request: Request) -> dict[str, Any]:
     """Repositories the user can connect, and whether each is already connected."""
-    s = get_settings()
     with transaction() as conn:
         user = require_user(conn, request)
+        identity = (
+            conn.execute(
+                sa.select(users.c.github_login, users.c.github_id).where(users.c.id == user.id)
+            )
+            .mappings()
+            .one_or_none()
+        )
+    if identity is not None:
+        _refresh_personal_installation_repositories(
+            user.id, identity["github_login"], identity["github_id"]
+        )
+
+    with transaction() as conn:
         rows = conn.execute(
             sa.select(github_repo_access, repositories.c.id.label("repo_id"))
             .join(
@@ -80,6 +173,7 @@ def list_accessible_repositories(request: Request) -> dict[str, Any]:
             }
             for r in rows
         ]
+    s = get_settings()
     slug = s.github_app_slug
     return {
         "items": items,

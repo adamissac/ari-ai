@@ -19,10 +19,10 @@ adds an entry before ending.
 ---
 
 ### 2026-10-19 — Claude (agent, Alan) — live RL v3: delegated reads, long/targeted blocks, v3 held-out verdict
-- Did: branch `feat/alan/live-v3`. Scenarios gain legitimate delegated cross-tenant readers (bookkeeper fixtures `dave`, `erin`; `delegations` in `LiveScenario`). The detector flags them, so blanket blocking costs availability. Live action space v3 is a strict extension of v2: `block_principal_long` (23, block or extend every flagged principal for 10 windows) and `block_top_principal_long` (24, only the heaviest flagged principal), plus six detector features (obs 49..54), all live-only. The proposal to Srihith is in `coordination/messages/20261019T053641Z-alan-to-srihith-adam-long-block-actions.md`. Diagnosed v2's `raise_monitoring` waste: at the update-2000 snapshot, Q was still at sim scale (Q ≈ +1.5 vs returns ≈ −3.7), and about ten effect-free actions tie with noop within noise. The fix is a val-selected greedy `DDQNConfig.noop_margin`. The rules get every new control (`tune_rules_v3`, 384 grid points, train only). New `train_v3`/`val_v3`/`holdout_v3` (seeds 48000–49029) were committed before any evaluation. `promotion.yaml` and DefenseSimEnv are unchanged.
+- Did: branch `feat/alan/live-v3`. Scenarios gain legitimate delegated cross-tenant readers (bookkeeper fixtures `dave`, `erin`; `delegations` in `LiveScenario`). The detector flags them, so blanket blocking costs availability. Live action space v3 is a strict extension of v2: `block_principal_long` (23, block or extend every flagged principal for 10 windows) and `block_top_principal_long` (24, only the heaviest flagged principal), plus six detector features (obs 49..54), all live-only. The proposal (interim `shared/` approver, since Srihith has left) is in `coordination/messages/20261019T053641Z-alan-to-srihith-adam-long-block-actions.md`. Diagnosed v2's `raise_monitoring` waste: at the update-2000 snapshot, Q was still at sim scale (Q ≈ +1.5 vs returns ≈ −3.7), and about ten effect-free actions tie with noop within noise. The fix is a val-selected greedy `DDQNConfig.noop_margin`. The rules get every new control (`tune_rules_v3`, 384 grid points, train only). New `train_v3`/`val_v3`/`holdout_v3` (seeds 48000–49029) were committed before any evaluation. `promotion.yaml` and DefenseSimEnv are unchanged.
 - Result (`rl-defense/results/live-retrain-v3/`): **reject**. Candidate −13.87 vs rules −10.98, vs deployed +2.01 [0.94, 3.06]. Fails availability (0.797), no-attack duty, beats-rules and per-scenario regression (heavy_reconciliation). On val the candidate beat the rules by about 3 using margin 0.5 (edge of the grid), which did not transfer. No containing policy reaches the 0.85 availability floor on holdout_v3.
 - Commands: `.venv/bin/python -m pytest -q` (rl-defense) → 145 passed before the run; `ruff check` + `ruff format --check rl_defense tests` clean.
-- Next (needs humans): decide whether the 0.85 floor fits scenarios with standing legitimate cross-tenant reads; Srihith to choose the shape of the new action names. A v4 needs per-principal targeting (or a richer selection signal than one val scenario) and a new unseen holdout; holdout_v3 is now exposed.
+- Next (needs humans): decide whether the 0.85 floor fits scenarios with standing legitimate cross-tenant reads; the `shared/` approver to choose the shape of the new action names. A v4 needs per-principal targeting (or a richer selection signal than one val scenario) and a new unseen holdout; holdout_v3 is now exposed.
 
 ### 2026-10-19 — Claude (agent, Alan) — live `block_principal` control + v2 held-out verdict
 - Did: branch `feat/alan/live-block-principal`. Added a principal-scoped containment control: the gateway refuses (403) requests from principals its instrumentation flagged for cross-tenant attempts, on the node they were flagged on, for 3 windows, whichever token they present. Implemented as a **live-only** action space v2 (`rl_defense/live/actions.py`: 22 sim actions + `block_principal` at index 22, obs + `principal_block_active`); `shared.rl.DefenseActionName` and DefenseSimEnv are unchanged. Proposal in `coordination/messages/20261019T043718Z-alan-to-srihith-adam-block-principal-action.md`. `PolicyRunner` refuses v2 checkpoints (lab-only). New unseen holdout `configs/live/holdout_v2/` (two identities, token rotation, outsider+insider), committed before the run; `promotion.yaml` unchanged; the rules baseline may also block.
@@ -36,6 +36,15 @@ adds an entry before ending.
 - Honesty note: holdout was evaluated 3× during development and two design changes followed (disclosed in `results/live-retrain/PROVENANCE.md`); v2 needs new holdout scenarios.
 - Commands: rl suite 114 passed; ruff check/format clean; pipeline run deterministic (round val returns reproduced exactly).
 - Open for humans: add a finer-grained control (block a principal), revisit availability floor or `c_disrupt`. Nothing was promoted; no registry exists in the repo (runs/ is git-ignored).
+
+### 2026-10-19 — Adam — connected commit real assessment
+- Did: Added helper functions for default assessment scopes, repo-covering scope selection, and commit assessment filtering; connected the commit page to project scopes and persisted assessments, with connect/request-authorization/start flows. Kept the single Claude call as a clearly labelled narrated quick read and updated the provenance test and frontend documentation.
+- State of the code (what exists now, verified how): `frontend/lib/real-assessment.ts`, `frontend/components/real-assessment-panel.tsx`, and unit tests are in place. Lint, typecheck, all frontend tests, and production build passed. The connected page was not visually checked, and no live backend assessment was started. No matching connect-commit e2e spec was found.
+- Commands run and results: `npm test --prefix frontend/transport` — 33 passed; `npm run lint --prefix frontend` — passed; `npm run typecheck --prefix frontend` — passed; `npm test --prefix frontend` — 68 files, 275 tests passed; `npm run build --prefix frontend` — passed.
+- Decisions made (ADR links): Reused the existing transport signature for `startAssessment` (idempotency key as its third argument); no transport contract changes.
+- Assumptions / open questions (RQ links): The connected repository ID is used in the default scope name because `scopeBody` accepts a repo ID.
+- Next steps: Review the branch, then commit and push through the authorized lead workflow; exercise the panel against a backend with an active scope and a different project owner available for approval.
+- Warnings for the next session: Dependency installation reported audit advisories (one moderate in transport; six frontend vulnerabilities: one moderate and five high). A Vitest jsdom canvas warning appeared, but the suite passed. The pre-existing untracked `frontend/AGENTS.md` was left untouched.
 
 ### 2026-10-19 — Claude (agent, Alan) — Live RL Defense Lab audit + live-loop vertical slice
 - Did: audited Phases 0-9 against spec for the RL pillar (`rl-defense/LIVE_RL_GAP_AUDIT.md`): env/DDQN/eval/inference are real but simulation-only; no telemetry source, no action execution, no live loop, no reward-from-real-outcome. Then built the highest-priority gap as a vertical slice: `rl_defense/live/` closes the loop against examples/payments-lite (real telemetry -> trained DQN -> enforced permitted action -> measured outcome -> reward -> LiveTransition). Branch `feat/alan/live-rl-loop` off main.
@@ -823,3 +832,27 @@ Sign-in refinement: removed promotional side content and centered the shared Aut
 
 
 Replaced game-like UI copy with evaluation terminology and synthetic/illustrative labels. Kept explicit isolated-test-network caveats and unchanged simulation contract fields. Lint, TypeScript and 13 focused lab tests pass.
+
+
+### 2026-10-19 — live provider suite with real Claude (Adam's key)
+- `RUN_LIVE_LLM_EVAL=1 pytest -m live security-agents/tests/test_live_provider.py`: Scout, role separation and **seven roles end to end** passed live (`asm_01M594BBKZGTTVTY770XYT4HF7`, all seven agents `provider_mode=live`, Probe and Verify executed `checks.run_template`, about $1.27 total).
+- The isolated Probe test failed: its `ToolContext` had no rules of engagement, so `checks.list_templates` withheld parameter values (`MISSING_ROE`) and live Probe refused to guess, reporting inconclusive. Correct agent behaviour, wrong test fixture. The test now issues RoE with `build_roe` like the orchestrator.
+- After the fix, live Probe ran `access_control.ownership@1` (route `payment_detail`, alice vs bob) in sandbox `sbx_01M594NN5VE87WXM4E7EEWF5MG`: `matches_expectation=false`, outcome `confirmed` from the executed check. 1 passed in 15 s.
+- Not exercised: a production GitHub sign-in → repo connect → push → assessment on Railway (needs a signed-in user session and an authorized scope).
+Removed the homepage Your next move section at owner request, including both action cards, unused Reveal import, closing-link labels and dedicated CSS.
+
+## 2026-10-19T05:27Z — Adam — refresh GitHub repository picker from personal installations
+
+- **Did:**
+  - On `fix/GH-repo-list-refresh`, the repository-list API refreshes only a trusted personal GitHub App installation before reading the snapshot. It replaces rows for that installation only; organization-installation repositories remain from the sign-in snapshot. App configuration and HTTP failures fall back to stored rows.
+  - Added App-JWT personal-installation lookup and paginated installation-repository listing (100 per page, at most 10 pages).
+  - Added the GitHub sign-in refresh link on the connect page and repo picker. `useResource` fetches on mount and has no cross-navigation cache.
+  - Added backend regression coverage for additions, removals, rejected installations/identities, failures, preserving other installations, and dev-login skipping; added frontend link tests on both surfaces.
+  - Dev-login sessions are gated when the dev login setting is enabled and the stored GitHub ID is absent. The database stores the supplied dev-login name in `github_login`, so this avoids treating that unverified name as a real GitHub identity; case-insensitive login matching remains available when dev login is disabled.
+- **Verified:**
+  - `uv run ruff check backend` passed; `uv run ruff format --check backend`: 92 files already formatted.
+  - `uv run pytest -q backend/tests -k "github or repo or auth"`: 39 passed, 106 deselected, one SQLAlchemy deprecation warning.
+  - Full touched backend tests: 24 passed.
+  - Frontend lint and typecheck passed; Vitest: 69 files, 277 tests passed. Vitest printed the existing jsdom canvas warning.
+  - `uv run mypy` was not run: root configuration checks `shared/shared`, `monitoring/monitoring`, and `standards/standards`, not backend.
+- **Not exercised:** live GitHub App requests or a visual browser check. CI was intentionally not watched after push per the task scope.
