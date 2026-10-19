@@ -8,6 +8,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 
@@ -103,6 +104,42 @@ class GitHubApp:
         )
         r.raise_for_status()
         return r.json()
+
+    def user_installation(self, login: str) -> dict[str, Any] | None:
+        """Return this App's installation for a GitHub user, if one exists."""
+        r = self._client.get(
+            f"/users/{quote(login, safe='')}/installation",
+            headers={
+                "Authorization": f"Bearer {self._app_jwt()}",
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+        )
+        if r.status_code == 404:
+            return None
+        r.raise_for_status()
+        return r.json()
+
+    def installation_repositories(self, installation_id: int) -> list[dict[str, Any]]:
+        """List repositories selected for one installation, capped at 1000."""
+        repos: list[dict[str, Any]] = []
+        for page in range(1, 11):
+            data = self._get(installation_id, "/installation/repositories", per_page=100, page=page)
+            batch = data.get("repositories") or []
+            for repo in batch:
+                full_name = repo.get("full_name")
+                if isinstance(full_name, str):
+                    repos.append(
+                        {
+                            "full_name": full_name,
+                            "installation_id": installation_id,
+                            "default_branch": repo.get("default_branch") or "main",
+                            "private": bool(repo.get("private")),
+                        }
+                    )
+            if len(batch) < 100:
+                break
+        return repos
 
     def recent_commits(
         self, installation_id: int, full_name: str, branch: str, limit: int = 20
