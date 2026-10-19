@@ -18,6 +18,15 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-19 — Claude (agent, Alan) — Live RL Defense Lab audit + live-loop vertical slice
+- Did: audited Phases 0-9 against spec for the RL pillar (`rl-defense/LIVE_RL_GAP_AUDIT.md`): env/DDQN/eval/inference are real but simulation-only; no telemetry source, no action execution, no live loop, no reward-from-real-outcome. Then built the highest-priority gap as a vertical slice: `rl_defense/live/` closes the loop against examples/payments-lite (real telemetry -> trained DQN -> enforced permitted action -> measured outcome -> reward -> LiveTransition). Branch `feat/alan/live-rl-loop` off main.
+- State of the code: `rl_defense/live/{gateway,telemetry,adversary,loop,contracts,topology,run}.py` + README; tests `tests/test_live_gateway.py` (7) + `tests/test_live_loop.py` (4) + `tests/conftest.py`. Full RL suite 103 passed (was 92). Reproducible evidence in `results/live-slice/`.
+- Commands run: `.venv/bin/python -m pytest -q` -> 103 passed; `ruff check` clean; `python -m rl_defense.live.run --steps 30000 --episodes 3 --horizon 30` -> transitions.jsonl (90 valid transitions).
+- Key finding: mechanism works end-to-end; the sim-trained policy UNDER-CONTAINS on real telemetry (raises monitoring instead of isolating -> 180/180 attacks still compromise). Causal test proves isolate:payments drives compromise to 0 and raises reward, so the reward signal is correct; the policy just hasn't learned to use it on real signals. This sim-to-real gap is the honest motivation for live/adversarial training.
+- Assumptions/open: route->node topology is hand-written (configs/topology/payments_lite.yaml); LiveTransition is a local realization of the PROPOSED shared experience schema (not in shared/ yet). venv set up at rl-defense/.venv; macOS needs PYTHONPATH=.:../shared:../standards:../examples/payments-lite/target for the CLI.
+- Next steps: offline-retrain / live-train a policy on live transitions to close the sim-to-real gap; wire backend/UI. Do NOT merge without review; Phase 10 stays deferred (PR #313 untouched).
+- Warnings: the loop enforces real controls against the demo app only, in-process, no egress.
+
 ### 2026-10-17 — Adam (cloud session) — scroll performance, demo-only hosted build
 - Did: branch `feat/adam/hosted-demo-scroll` (stacked on #226). Fixed landing scroll jank: the mean frame went from 82 ms to 21 ms (headless Chromium, software rendering). Added a `NEXT_PUBLIC_DEMO_ONLY` build flag (Vercel only): `/projects*` redirects to `/demo` and `/` renders without a backend. Fixed the blank white-button label in dark bands. Redeployed production from this branch: https://ari-ai-lake.vercel.app.
 - Commands: `npm run lint`, `tsc`, `npm test` (202 passed); demo-only build with an unreachable backend: `/projects` returns 307 to `/demo`.
