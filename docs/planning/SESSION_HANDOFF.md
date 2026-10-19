@@ -933,21 +933,11 @@ Removed the homepage Your next move section at owner request, including both act
 - Retrained v1.1.0 checkpoints committed with eval: **5/7 promoted** — Scout 0.374 vs 0.099, Probe 0.631 vs 0.606, Diagnose 0.601 vs 0.525 (newly promoted), Verify 0.971 vs 0.864. Patch (0.654 vs 0.750), Trace (n=27), Fortify (n=70) stay on baselines; CI rules kept. 44 specialist tests pass; README/results tables updated with honest numbers and the corpus-2/non-comparability caveat.
 
 
-Video arrival fix: SmoothScroll clamps the first homepage wheel gesture at the expanded video, consumes only its momentum, then releases on a new gesture or 1.2-second bound. Explicit anchors bypass the stop. Browser proof: 12,000px wheel lands at scrollY 1624 with video chapter visible; second 5,000px wheel reaches 6624. Controls are visible and include Continue exploring.
+
+## 2026-10-19 — Defense Lab redesign v2 (`feat/adam/lab-redesign-v2`)
+- Adam feedback: the all-dark-orange console still looked "vibe coded"; wants contrast/white sections and a fresher node map (kairo.security reference).
+- `frontend/app/lab/page.tsx`: scoreboard back on `.paper` (white section, which the night theme already styles light); eyebrows numbered "01 — The numbers" / "02 — Watch it in action".
+- `frontend/app/globals.css`: removed the `.lab-console` block entirely; kept the score-card stacked-row fix (now scoped to `.lab-score-card`, surface-agnostic); added a light-node variant for the lab map — `.lab-replay-card`-scoped `network-card`/label/status/bar overrides (warm-white cards, ink labels, tinted tone fills) under the `:root:not(:has(.hero-full))` prefix.
+- Executed: lint, typecheck, `npm run build`; Playwright screenshots at 1440px + 390px.
 
 
-Calmer video zoom: replace front-loaded cubic progress with smoothstep and interpolate scale/radius over 1500ms. Chrome hard-scroll samples verify intermediate scale remains below full size at 450ms, scales monotonically, and settles by 3 seconds. Reduced-motion transition is disabled. ESLint and TypeScript pass.
-
-
-Fixed commit-screen authorization deadlock at explicit owner direction. Sandbox-only owner self-approval is allowed and audited; other members cannot activate scopes. Added an inline approval action, ten-second/focus refresh via useResource, stale-refresh errors, and expiry filtering. Backend API/idempotency tests: 15 passed. Frontend full suite: 283 passed; ESLint/TypeScript passed. Policy recorded in ADR-0016.
-
-
-Follow-up: aligned the runtime scope guard with owner sandbox self-approval (both single- and multi-member orgs), added empty/external/mixed-target denial regressions (27 guard tests pass), and fixed backend test formatting required by CI.
-
-
-2026-10-19 Adam: fixed #359 training review findings on fix/adam/dqfd-review. Selected-prefix provenance and full experiment are distinct, export retains bytes, promotion refuses unservable/missing-evidence candidates. Original v6 artifacts cannot be recovered from Git, so reports now disclose that limit; no rerun of holdout_v6 or policy promotion.
-
-2026-10-19 Adam: reviewed Alan’s recent coordination messages and open PR #360. Fixed its four review findings on fix/adam/live-v3-review. Full RL regression suite and lint results recorded in the PR; no training, checkpoint promotion or deployment performed.
-
-
-2026-10-19 Adam: fixed the stale browser journey assertion on #360/#361 to match the explicitly approved sandbox-owner policy (#357/#358). Alice’s owner approval button is enabled; Bob still independently approves this journey. The real-stack assessment-to-verified-patch journey now passes. Final suite result recorded in PR.

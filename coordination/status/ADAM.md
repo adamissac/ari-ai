@@ -195,6 +195,8 @@ Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablat
 - Executed: rl-defense pytest 164 passed; payments-lite target 13 passed, label_checks 11 passed; check_links 0 problems.
 - Cloud run itself made no code changes (UI polish landed separately).
 
+## 2026-10-19 — `/lab` redesign v2 on `feat/adam/lab-redesign-v2`
+- White "The numbers" section breaks up the orange; sections numbered 01/02; map nodes are light cards with dark labels. Same content/tests.
 
 ## 2026-10-19 — #359 DQfD review fixes
 - Branch `fix/adam/dqfd-review`: selected-prefix lineage, full experiment provenance, complete evidence export, exact update count and servability/evidence promotion guards.
