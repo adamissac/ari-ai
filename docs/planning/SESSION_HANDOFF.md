@@ -948,3 +948,5 @@ Removed the homepage Your next move section at owner request, including both act
 - `frontend/app/lab/page.tsx`: scoreboard back on `.paper` (white section, which the night theme already styles light); eyebrows numbered "01 — The numbers" / "02 — Watch it in action".
 - `frontend/app/globals.css`: removed the `.lab-console` block entirely; kept the score-card stacked-row fix (now scoped to `.lab-score-card`, surface-agnostic); added a light-node variant for the lab map — `.lab-replay-card`-scoped `network-card`/label/status/bar overrides (warm-white cards, ink labels, tinted tone fills) under the `:root:not(:has(.hero-full))` prefix.
 - Executed: lint, typecheck, `npm run build`; Playwright screenshots at 1440px + 390px.
+
+2026-10-19 Adam: finishing #352 against the merged Defense Lab redesign. Preserved both handoffs during the main merge; added a real-stack browser assertion for turning monitoring off/on and verifying persistence after reload. Production build passes; final lint, typecheck, unit and browser results are recorded in the PR.

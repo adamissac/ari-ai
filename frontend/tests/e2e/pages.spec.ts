@@ -20,6 +20,23 @@ test('owner edits project settings and they persist on reload', async ({ browser
   await evidenceShot(page, 'settings');
 });
 
+test('owner toggles defense and the setting persists after reload', async ({ browser }) => {
+  const page = await newUser(browser, 'e2e-alice');
+  await page.goto(`/projects/${project()}/monitoring`);
+  const toggle = page.getByRole('switch', { name: '24/7 defense' });
+  await expect(toggle).toHaveAttribute('aria-checked', 'true');
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-checked', 'false');
+  await expect(toggle).toBeEnabled();
+  await page.reload();
+  await expect(toggle).toHaveAttribute('aria-checked', 'false');
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-checked', 'true');
+  await expect(toggle).toBeEnabled();
+  await page.reload();
+  await expect(toggle).toHaveAttribute('aria-checked', 'true');
+});
+
 test('simulated incident: triage, owner, two-person containment approval', async ({ browser }) => {
   const alice = await newUser(browser, 'e2e-alice');
   const bob = await newUser(browser, 'e2e-bob');
