@@ -1,0 +1,20 @@
+# Held-out v3. A low-and-slow insider (3 requests/window, long campaigns) hides among two
+# busy bookkeepers whose reconciliation bursts often out-read the attacker. Unseen: delegate
+# volume above attack volume, and two cross-tenant reads per delegate per window.
+name: heavy_reconciliation
+split: holdout
+horizon: 30
+schedule: bursty
+p_start: 0.1
+p_stop: 0.08
+attack_per_step: 3
+benign_per_step: 10
+attackers: [bob]
+victims: [alice, carol]
+benign: [alice, bob, carol, dave, erin]
+delegations: ["dave:alice", "erin:carol"]
+delegate_per_step: 2
+delegate_burst_p: 0.3
+delegate_burst_size: 4
+seed_start: 48500
+episodes: 30
