@@ -26,6 +26,10 @@
     }
   },
   "rl": {
+    "block_principal": {
+      "ids": [],
+      "rationale": "Live-lab action that temporarily refuses a flagged principal's requests on one node; no specific implemented defensive technique is established without human review."
+    },
     "escalate_to_human": {
       "ids": [],
       "rationale": "Action name alone does not establish a specific implemented defensive technique."
