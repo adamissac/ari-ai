@@ -39,3 +39,6 @@ Completed: evaluation terminology cleanup and explicit synthetic/illustrative pr
 
 
 Completed: remove homepage closing invitation at owner request.
+
+
+Completed: one-time homepage video wheel landing with bounded momentum absorption and explicit continuation.
