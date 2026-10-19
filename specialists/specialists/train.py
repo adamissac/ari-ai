@@ -24,7 +24,7 @@ from .model import CHECKPOINT_ROOT, SpecialistModel, write_checkpoint
 from .tasks import TASKS, Task
 
 RESULTS = Path(__file__).resolve().parent.parent / "results"
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 
 def _score(task: Task, labels: list[str], gold: list[Any], pred: list[Any]) -> dict[str, Any]:

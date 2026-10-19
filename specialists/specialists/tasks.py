@@ -148,7 +148,7 @@ def verify_rules_baseline(_train: list[Row]) -> Callable[[Row], Any]:
 TASKS: dict[str, Task] = {
     "scout": Task(
         agent="scout", model_id="ari-scout-vulnclass",
-        description="Classify a code span as one of 12 CWE weakness classes or safe; the safe-probability ranks suspicious paths.",
+        description="Classify a code span as one of 12 CWE weakness classes, other-vulnerable, or safe; the safe-probability ranks suspicious paths.",
         fields=["code"], multilabel=False, primary_metric="macro_f1",
         config=TrainConfig(input_dim=16384, hidden=96, epochs=40, lr=2e-3, dropout=0.25),
         baselines={"static_analyze_patterns": static_analyze_baseline, "majority": majority_baseline},

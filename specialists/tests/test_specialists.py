@@ -19,7 +19,7 @@ RESULTS = Path(__file__).resolve().parent.parent / "specialists" / ".." / "resul
 def test_every_agent_has_a_hash_verified_versioned_checkpoint(agent):
     m = SpecialistModel.load(CHECKPOINT_ROOT / agent)
     man = m.manifest
-    assert man["agent"] == agent and man["version"] == "1.0.0"
+    assert man["agent"] == agent and man["version"] == "1.1.0"
     assert man["model_id"].startswith(f"ari-{agent}-")
     assert len(man["weights_sha256"]) == 64 and man["dataset"]["sha256"]
     assert man["evaluation"]["promoted"] in (True, False)

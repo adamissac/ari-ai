@@ -909,3 +909,10 @@ Removed the homepage Your next move section at owner request, including both act
 - `frontend/app/globals.css`: added `.lab-caveat-dark`, `.lab-chips`/`.lab-chip`, and `.lab-console` (always-dark panel: night surface, brand radial glow, faint grid overlay) plus console-scoped overrides for headline/score elements (white numerals, glassy cards, AI row in ember→brand gradient, `.text-*` utility remaps).
 - Inspired by kairo.security's dark "mission control" look (mono stat chips, dark evidence surface, severity/ember tones).
 - Executed: `npm run lint`, `npm run typecheck`, `npm test` (276 passed), `npm run build`; visual check via Playwright screenshots at 1440px and 390px; honesty.spec.ts lab tests passed against `next dev` (the three auth/backend tests can't run without the real API).
+
+
+### 2026-10-19 — Specialists: corpus-2 + real-corpus retraining (Adam, `feat/adam/specialists-real-corpus`)
+- `specialists/data/corpus_variants.py` registers ~16 extra corpus families (5-6 per CWE) with varied (CauseClass, strategy) labels so the by-CWE lookup baseline stops saturating Diagnose/Patch. `GENERATOR_VERSION` is now corpus-2.
+- `specialists/data/realdata.py` + `fetch.py`: optional real corpora in git-ignored `specialists/data/cache/` — DiverseVul (HF `bstee615/diversevul` parquets, split by commit id, out-of-space CWEs labelled `vuln_other` never safe), NVD CVE descriptions (Trace name-field rows, CWE-aligned splits), ATT&CK STIX technique descriptions (Fortify). Missing cache → builders fall back to bundled data.
+- `datasets.py` merges those rows into scout/trace/fortify; `DATASET_VERSION` bumped; manifest `version` bumped to 1.1.0 (test updated).
+- Training run in progress at handoff; checkpoints/results/README land with the finished eval numbers.
