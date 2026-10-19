@@ -14,14 +14,15 @@ test('one real assessment from scope approval to verified patch', async ({ brows
   const alice = await newUser(browser, 'e2e-alice');
   const bob = await newUser(browser, 'e2e-bob');
 
-  // Alice requests a sandbox scope; she cannot approve her own request.
+  // Alice requests a sandbox scope. As an owner she may explicitly approve it,
+  // but this journey exercises independent approval by Bob.
   await alice.goto(`/projects/${project()}/scopes`);
   await alice.getByLabel('Name').fill('payments-lite sandbox');
   await alice.getByLabel('Repository (sandbox build target)').selectOption({ label: env('E2E_REPO') });
   await alice.getByRole('button', { name: 'Request scope' }).click();
   const scopeRow = alice.locator('[data-testid^="scope-"]').filter({ hasText: 'payments-lite sandbox' });
   await expect(scopeRow.getByText('Pending approval')).toBeVisible();
-  await expect(scopeRow.getByRole('button', { name: 'Approve scope' })).toBeDisabled();
+  await expect(scopeRow.getByRole('button', { name: 'Approve scope' })).toBeEnabled();
 
   // Bob approves it.
   await bob.goto(`/projects/${project()}/scopes`);
