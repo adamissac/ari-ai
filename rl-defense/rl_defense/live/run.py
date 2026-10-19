@@ -110,7 +110,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ep{s['episode']} actions: {s['actions']}")
     print(
         "\nNOTE: measured from real HTTP outcomes against examples/payments-lite in-process. "
-        "The policy here is trained on the abstract simulator; its behavior on real telemetry "
+        "The checkpoint layout does not establish its training origin; transfer to real telemetry "
         "is itself a research question (RQ-005). Numbers are lab evidence, not real-world proof."
     )
     if args.out:

@@ -37,7 +37,7 @@ STATIC_FEATURES = frozenset({"criticality", "exposed"})
 
 METHOD = "occlusion: feature set to 0, change in Q(chosen) - Q(runner-up)"
 CAVEAT = "Explains the simulation-trained policy's decision, not real-world causality."
-LIVE_CAVEAT = "Explains the lab-retrained policy's decision, not real-world causality."
+LIVE_CAVEAT = "Explains the lab policy's decision, not real-world causality."
 _GLOBALS = (*GLOBAL_FEATURES, *LIVE_V3_EXTRA_FEATURES)  # v2/v3 obs are prefixes
 
 
@@ -66,6 +66,8 @@ def explain(
     mask: np.ndarray,
     recommendation_id: str,
     top_k: int = 5,
+    *,
+    selected_action: int | None = None,
 ) -> RLExplanation:
     dims = tuple((d,) for d, _ in DIMS.values())
     if obs.shape not in dims:
@@ -81,8 +83,10 @@ def explain(
         )
         qm = np.where(mask, q, NEG_INF)
         order = np.argsort(-qm)
-        best = int(order[0])
-        runner = int(order[1]) if mask.sum() > 1 else None
+        best = int(order[0]) if selected_action is None else selected_action
+        if not 0 <= best < len(mask) or not mask[best]:
+            raise ValueError("selected action must be valid under the action mask")
+        runner = next((int(a) for a in order if mask[a] and a != best), None)
         margin = float(q[best] - q[runner]) if runner is not None else 0.0
 
         # Batch all occlusions: row i = obs with feature i set to 0.

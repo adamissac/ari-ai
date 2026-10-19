@@ -51,11 +51,10 @@ loop, :meth:`LiveDefenseLoop.platform_facts`) fills. The layout constants live i
 
 from __future__ import annotations
 
-import numpy as np
 import torch
 
 from rl_defense.agents.ddqn import DDQNAgent
-from rl_defense.envs.defense_sim import DISRUPTIVE, N_ACTIONS, NOOP_ACTION, OBS_DIM, decode_action
+from rl_defense.envs.defense_sim import N_ACTIONS, NOOP_ACTION, OBS_DIM
 from rl_defense.layouts import (
     BLOCK_PRINCIPAL,
     BLOCK_PRINCIPAL_ACTION,
@@ -75,6 +74,7 @@ from rl_defense.layouts import (
     LIVE_V3_OBS_DIM,
     ActionSpace,
     dims,
+    disruptive_mask,
     live_decode_action,
 )
 
@@ -116,12 +116,6 @@ def space_of(agent: DDQNAgent) -> ActionSpace:
         if d == shape:
             return name  # type: ignore[return-value]
     raise ValueError(f"unknown action-space shape {shape}")
-
-
-def disruptive_mask(n_actions: int) -> np.ndarray:
-    """Disruptive actions (can block legitimate traffic) for any layout."""
-    m = np.array([decode_action(a)[0] in DISRUPTIVE for a in range(N_ACTIONS)])
-    return np.append(m, np.ones(n_actions - N_ACTIONS, dtype=bool))
 
 
 def widen_agent(
