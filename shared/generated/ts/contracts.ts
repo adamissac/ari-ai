@@ -9,7 +9,7 @@ export interface AcceptRisk {
 }
 
 export interface ActionScore {
-  action: "noop" | "raise_monitoring" | "rate_limit" | "isolate" | "request_reassessment" | "escalate_to_human";
+  action: "noop" | "raise_monitoring" | "rate_limit" | "isolate" | "request_reassessment" | "escalate_to_human" | "block_principal";
   node: "gateway" | "api" | "auth" | "payments" | "db" | null;
   q_value: number;
 }
@@ -391,7 +391,7 @@ export interface DefenseRecommendation {
   /** env id + checkpoint sha256 prefix */
   policy_version: string;
   checkpoint_sha256: string;
-  action: "noop" | "raise_monitoring" | "rate_limit" | "isolate" | "request_reassessment" | "escalate_to_human";
+  action: "noop" | "raise_monitoring" | "rate_limit" | "isolate" | "request_reassessment" | "escalate_to_human" | "block_principal";
   node: "gateway" | "api" | "auth" | "payments" | "db" | null;
   /** Q(best) - Q(second best valid action) */
   q_margin: number;
