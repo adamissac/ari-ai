@@ -6,8 +6,14 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+### Added
+- Specialist training now augments the synthetic corpus with real public corpora (DiverseVul functions, NVD CVE descriptions, MITRE ATT&CK technique descriptions) fetched via `python -m specialists.data.fetch` into the git-ignored `specialists/specialists/data/cache/`; corpus-2 adds 5-6 code families per CWE so Diagnose/Patch labels can no longer be looked up from the CWE alone.
+
+- Show readable assessment state labels in the real-run panel, such as “Awaiting human approval”.
+- Simplify the `/connect` drill-down and commit page: select an organization, repository and commit, then switch between Code review and 7 agents; keep real-run controls compact and reduce page copy.
 - Default Anthropic model is now Claude Haiku 5.5 (`claude-haiku-5-5`) for the backend gateway, all seven security agents, the reviewer and the frontend live commit analysis, to cut API cost. `ANTHROPIC_MODEL` / `AGENT_MODEL_OVERRIDES` still override it. The server-side refusal fallback is no longer sent for Haiku models (Haiku has none); the frontend analysis prices usage by model instead of at Opus rates.
 - Simplify the Defense Lab page for demo visitors: the intro collapses to one line plus the test-environment caveat, the headline numbers (compromise rate, uptime, steps to contain) lead, the per-scenario metric explorer and reward/technical-detail panels are removed, and provenance stays one click away in a collapsed footer.
+- Restyle the Defense Lab page: the intro and caveat now sit inside the dark hero, a monospace stat-chip strip summarizes the evaluation (held-out runs, defenders, scenarios, seeds), and the scoreboard is a "command console" panel — night surface with brand glow and faint grid, ember headline numerals, the trained defender's bar highlighted in brand gradient.
 - `/projects` now opens the connected-organization drill-down (organization → repositories → commits → per-commit code review and the seven agents). The standalone project list and create-project form are gone; a project is still created implicitly when a repository is connected.
 - Add a specialists live-comparison harness (Claude-only vs hybrid vs specialists-only) with n=1 inconclusive results; no performance claim.
 
