@@ -13,6 +13,7 @@ simulated in the browser. Spec: [docs/14](../docs/14_FRONTEND_UX_DESIGN.md).
 | `/projects` projects, create project | `GET/POST /projects` |
 | `/pricing` plans in the kairo.security layout, clearly marked **hackathon preview: proposals, nothing can be purchased** | Nothing (static) |
 | `/projects/[id]` one next step from the loaded records (connect a repo, approve a scope, run a review, open the run, or view results), then assessments (start note: enqueue only), findings, repositories | `/projects/{id}/assessments`, `/findings`, `/scopes`, `/repositories` |
+| `/connect/[org]/[repo]/commit/[sha]` **live analysis** of a real commit: the diff from GitHub, then one Claude call (`claude-opus-5-5`, structured JSON output) writes the code review, findings, a proposed fix and each of the seven agents' steps, replayed in the same view as `/demo`. Static only and labelled so: nothing is run or attacked, proposed tests are not executed, no fix is applied. Results are cached per server instance | `POST /api/analyze` (`app/api/analyze/route.ts`, `lib/live-analysis.ts`): checks the signed-in user reaches the repo through the GitHub App (`/github/repositories` with their cookie), reads `api.github.com/repos/{repo}/commits/{sha}`. Server env: `ANTHROPIC_API_KEY` (required), `GITHUB_TOKEN` (optional; needed for private repos and higher rate limits), `ANTHROPIC_MODEL` (optional) |
 | `/projects/[id]/commits` select a GitHub commit, see matching recorded assessments, open the code-review and seven-agent journey | GitHub commits, repository snapshots and project assessments (bounded recent pages, stated in UI) |
 | `/projects/[id]/scopes` request (pending-only note), approve (backend enforces a different member), revoke | `/projects/{id}/scopes`, `/scopes/{id}/approve`, `/scopes/{id}/revoke` |
 | `/projects/[id]/assessments/[asm]` live timeline: state rail from states actually entered, selectable eight-agent view (job, recorded outcome, real tool calls, handoff), budget meter, remediation approval gate, cancel (queued vs stop-requested, findings kept), durable event log, provider-mode banner | `watchAssessment` SSE (`Last-Event-ID` resume) + `GET /assessments/{id}` + `POST .../cancel` + 5 s polling fallback while running |
@@ -46,6 +47,7 @@ every RL metric and provenance) is kept, one click away. All counts come from re
 
 ## Landing, header and motion
 
+- `components/explainer-video.tsx`: the landing's video chapter right after the hero (`public/videos/ari-explainer.mp4`). On `lg` with motion allowed it is a sticky 220vh track and scroll grows the player from an inset card to full size; it plays muted while on screen, pauses off screen, and offers sound, full screen and a download.
 - `components/hero.tsx`, `intro-loader.tsx`, `story.tsx`: the landing's hero, once-per-sign-in
   intro and scroll-told chapters. Chapters pin and scrub only at `lg` with motion allowed;
   otherwise they render their final, readable state.

@@ -18,6 +18,13 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-18 — Adam (Claude Code) — live commit analysis, landing explainer video
+- Did: branch `feat/adam/live-commit-analysis-video`. (1) `/connect/[org]/[repo]/commit/[sha]` no longer shows the illustrative replay: `POST /api/analyze` reads the commit's real diff from GitHub and runs one Claude call (`claude-opus-5-5`, JSON-schema output, server-side refusal fallback) that writes the code review, findings, proposed fix and the seven agents' steps; the existing commit view replays it. Static only and labelled so (no execution, proposed tests not run, fix not applied). Access is checked against `/github/repositories` with the caller's session cookie. (2) Landing: `components/explainer-video.tsx` scroll chapter with the explainer video (`frontend/public/videos/ari-explainer.mp4`, 42 MB) and a download link.
+- State: lint, typecheck clean; `npm test` 271 passed; `next build` ok. Browser: video chapter checked at 1440x900 (grows 0.62 → 1.0 with scroll, autoplays muted, 3m48s). `/api/analyze` guards checked with curl (401 without session, 400 on bad input).
+- Not verified: an end-to-end live analysis. No `ANTHROPIC_API_KEY` locally or on Vercel, so the model call has not run; the JSON schema has not been accepted by the API yet.
+- Next steps: set `ANTHROPIC_API_KEY` (and `GITHUB_TOKEN` for private repos) on the Vercel project, deploy, open a commit and check the first live run.
+- Warnings: `/projects/[id]/simulate` still uses the labelled illustrative drill (unchanged). Continuous 24/7 defense is unchanged.
+
 ### 2026-10-17 — Adam (cloud session) — scroll performance, demo-only hosted build
 - Did: branch `feat/adam/hosted-demo-scroll` (stacked on #226). Fixed landing scroll jank: the mean frame went from 82 ms to 21 ms (headless Chromium, software rendering). Added a `NEXT_PUBLIC_DEMO_ONLY` build flag (Vercel only): `/projects*` redirects to `/demo` and `/` renders without a backend. Fixed the blank white-button label in dark bands. Redeployed production from this branch: https://ari-ai-lake.vercel.app.
 - Commands: `npm run lint`, `tsc`, `npm test` (202 passed); demo-only build with an unreachable backend: `/projects` returns 307 to `/demo`.
