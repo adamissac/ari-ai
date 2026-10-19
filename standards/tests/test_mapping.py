@@ -177,7 +177,7 @@ def test_d3fend_hardening_is_proposed_and_rl_actions_are_simulation_only() -> No
     assert maps[0].simulation_derived and maps[0].observation is Observation.simulated
     with pytest.raises(ValidationError):
         type(maps[0]).model_validate({**maps[0].model_dump(), "control_status": "implemented"})
-    for action in ("rate_limit", "noop", "escalate_to_human"):
+    for action in ("rate_limit", "noop", "escalate_to_human", "block_principal"):
         assert mapping.d3fend_for_rl_action(action, evidence=[SPAN]) == (
             [],
             [

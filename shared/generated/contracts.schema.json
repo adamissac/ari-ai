@@ -26,7 +26,8 @@
             "rate_limit",
             "isolate",
             "request_reassessment",
-            "escalate_to_human"
+            "escalate_to_human",
+            "block_principal"
           ],
           "title": "Action",
           "type": "string"
@@ -2198,7 +2199,8 @@
             "rate_limit",
             "isolate",
             "request_reassessment",
-            "escalate_to_human"
+            "escalate_to_human",
+            "block_principal"
           ],
           "title": "Action",
           "type": "string"
