@@ -49,7 +49,7 @@ canonical_vihaan_email="106044596+vihaankrishna100@users.noreply.github.com"
 
 is_ai_email() {
   case "$1" in
-    cursoragent@cursor.com|noreply@anthropic.com|206951365+cursor[bot]@users.noreply.github.com) return 0 ;;
+    cursoragent@cursor.com|noreply@anthropic.com|206951365+cursor[bot]@users.noreply.github.com|158243242+devin-ai-integration[bot]@users.noreply.github.com) return 0 ;;
     *devin-ai-integration*) return 0 ;;
   esac
   return 1
@@ -57,7 +57,7 @@ is_ai_email() {
 
 is_ai_name() {
   case "$1" in
-    "Cursor Agent"|"cursor[bot]"|Claude|"Claude Opus 5.5"|Cursor|"Devin AI") return 0 ;;
+    "Cursor Agent"|"cursor[bot]"|Claude|"Claude Opus 5.5"|Cursor|"Devin AI"|"devin-ai-integration[bot]") return 0 ;;
   esac
   return 1
 }
