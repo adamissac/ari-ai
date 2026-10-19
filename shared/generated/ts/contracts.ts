@@ -862,6 +862,10 @@ export interface PlatformFacts {
   time_fraction: number;
   escalations_remaining_fraction: number;
   escalation_pending: boolean;
+  /** a block_principal control is currently in force */
+  principal_block_active: boolean;
+  /** the detector flagged a principal that is not yet blocked where it was seen */
+  principal_block_available: boolean;
 }
 
 export interface Project {
