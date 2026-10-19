@@ -120,7 +120,18 @@ seven checks: availability 0.847 < 0.85 and no-attack duty 0.587 > 0.5. It beats
 `always_block_principal` (−7.31, availability 0.882) matches it, and the best val snapshot
 is again the first one. See
 [`results/live-retrain-v4/REPORT.md`](../../results/live-retrain-v4/REPORT.md) and
-[`PROVENANCE.md`](../../results/live-retrain-v4/PROVENANCE.md). No v5 is planned.
+[`PROVENANCE.md`](../../results/live-retrain-v4/PROVENANCE.md).
+
+**Fifth result (v5, conservative Q-learning):** v4 plus a CQL penalty (`cql_alpha=1.0`,
+`DDQNConfig.cql_alpha`). It was pre-registered with a fresh `holdout_v5`
+([`PREREGISTRATION.md`](../../results/live-retrain-v5/PREREGISTRATION.md)). CQL fixed the
+degradation (selected snapshots at 6000–12000 updates instead of 2000), but it anchored the
+candidate to the behavior data. That data is mostly monitoring and reassessment; blocks are
+3–5% of it. The gate **rejects** the candidate: −12.17 vs rules −7.41, compromise 0.675,
+availability 0.991. The fixed `always_block_principal` scores −4.79. As pre-registered,
+this closes the learned-policy track on payments-lite. See
+[`results/live-retrain-v5/REPORT.md`](../../results/live-retrain-v5/REPORT.md) and
+[`PROVENANCE.md`](../../results/live-retrain-v5/PROVENANCE.md).
 
 ## What is real, and what is not
 
@@ -150,7 +161,7 @@ reach an observation. The gateway's own blocking is not counted as an anomaly.
 ## Tests
 
 ```sh
-.venv/bin/python -m pytest -q tests/test_live_gateway.py tests/test_live_loop.py tests/test_live_retrain.py tests/test_live_block_principal.py tests/test_live_v3.py tests/test_live_v4.py
+.venv/bin/python -m pytest -q tests/test_live_gateway.py tests/test_live_loop.py tests/test_live_retrain.py tests/test_live_block_principal.py tests/test_live_v3.py tests/test_live_v4.py tests/test_live_v5.py
 ```
 
 `test_live_v3.py` proves that delegated reads are benign but flagged, and that blanket
@@ -165,6 +176,9 @@ this removes the availability cost of blanket blocking while still containing at
 It also proves the v4 reward is opt-in (defaults stay v1-v3) and doubles the disruption
 price, that selection uses an unweighted mean over scenarios, that holdout_v4 is disjoint,
 and it runs a v4 pipeline smoke test (on holdout_v2).
+`test_live_v5.py` proves CQL is off by default (and old manifests still load), checks that
+the loss is exactly TD + α·(logsumexp − Q(data action)), shows that CQL pushes down actions
+the data never took, checks holdout_v5 hygiene, and runs a v5 pipeline smoke test.
 
 `test_live_block_principal.py` proves the block's real effect (403, no data, other tenants
 unaffected, rotated tokens still blocked), its duration and masking in the loop, that it
