@@ -21,7 +21,8 @@ export function ExplainerVideo() {
 
   // Grow over the first 45% of the track, then hold full size while the rest scrolls by.
   const grow = sticky ? Math.min(1, p / 0.45) : 1;
-  const ease = 1 - (1 - grow) ** 3;
+  // Smoothstep spreads growth across the chapter instead of front-loading the zoom.
+  const ease = grow * grow * (3 - 2 * grow);
   const style = { '--vs': (0.62 + 0.38 * ease).toFixed(4), '--vr': `${(28 - 16 * ease).toFixed(1)}px` } as CSSProperties;
 
   useEffect(() => {

@@ -42,3 +42,6 @@ Completed: remove homepage closing invitation at owner request.
 
 
 Completed: one-time homepage video wheel landing with bounded momentum absorption and explicit continuation.
+
+
+Completed: slower, smoother walkthrough video zoom after large scroll input.
