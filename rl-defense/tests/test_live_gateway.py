@@ -85,8 +85,15 @@ def test_raise_monitoring_sharpens_detection_without_disruption(topo):
 
     def anomaly(gw, ctrl):
         facts = build_facts(
-            gw.records, ctrl, topo, finding_severity={"payments": 0.8}, step=1, horizon=30,
-            escalations_used=0, max_escalations=3, escalation_pending=False,
+            gw.records,
+            ctrl,
+            topo,
+            finding_severity={"payments": 0.8},
+            step=1,
+            horizon=30,
+            escalations_used=0,
+            max_escalations=3,
+            escalation_pending=False,
         )
         return next(n.anomaly_score for n in facts.nodes if n.node == "payments")
 
@@ -105,8 +112,15 @@ def test_telemetry_alert_rate_tracks_attack_volume(topo):
         gw = DefensiveGateway(create_app(), topo, DefenseControls())
         TrafficDriver(seed=1, benign_per_step=4, attack_per_step=attack_per_step).run_window(gw)
         facts = build_facts(
-            gw.records, DefenseControls(), topo, finding_severity={"payments": 0.8}, step=1,
-            horizon=30, escalations_used=0, max_escalations=3, escalation_pending=False,
+            gw.records,
+            DefenseControls(),
+            topo,
+            finding_severity={"payments": 0.8},
+            step=1,
+            horizon=30,
+            escalations_used=0,
+            max_escalations=3,
+            escalation_pending=False,
         )
         gw.close()
         return next(n.alert_rate for n in facts.nodes if n.node == "payments")

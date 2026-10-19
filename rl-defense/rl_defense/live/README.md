@@ -37,7 +37,8 @@ PYTHONPATH=.:../shared:../standards:../examples/payments-lite/target \
   --out results/live-slice/transitions.jsonl
 ```
 
-Reference output of this exact command is in [`../results/live-slice/`](../results/live-slice/).
+Reference output of this exact command is in
+[`results/live-slice/run_output.txt`](../../results/live-slice/run_output.txt).
 
 ## What is real, and what is not
 

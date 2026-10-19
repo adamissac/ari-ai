@@ -86,14 +86,18 @@ class DefensiveGateway:
             self._rl_counter[node] = n + 1
             every = max(1, self.controls.rate_limit_allow_every)
             if n % every != 0:  # only 1 of every `every` requests passes
-                rec = RequestRecord(node, method, path, actor, is_attack, 429, "rate_limited", False)
+                rec = RequestRecord(
+                    node, method, path, actor, is_attack, 429, "rate_limited", False
+                )
                 self.records.append(rec)
                 return rec
 
         # --- forward to the real app ---
         resp = self._client.request(method, path, headers=headers)
         compromised = self._is_compromise(is_attack, actor, resp)
-        rec = RequestRecord(node, method, path, actor, is_attack, resp.status_code, None, compromised)
+        rec = RequestRecord(
+            node, method, path, actor, is_attack, resp.status_code, None, compromised
+        )
         self.records.append(rec)
         return rec
 
