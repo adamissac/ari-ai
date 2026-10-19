@@ -202,3 +202,89 @@ def test_checkpoint_pin_is_verified_before_loading(
         assert get_settings().rl_checkpoint_sha256 is None
     with _pytest.raises(PermanentJobError, match="must pin"):
         verify_rl_checkpoint(get_settings())
+
+
+def test_v6_policy_recommends_a_targeted_block_from_runtime_principal_counters(
+    client_factory, settings_override
+) -> None:
+    """End to end in the product path: a reporter that detects principals sends one window
+    (a real lab window, pseudonymous, backend/tests/fixtures/principal_window_lab.json),
+    a validated BOLA finding is on record, and the promoted v6 live policy served by the
+    worker recommends blocking exactly the flagged principal. Recommendations only."""
+    from datetime import timedelta
+
+    ckpt = PKG / "results" / "live-retrain-v6" / "candidate_online.pt"
+    settings_override(
+        rl_checkpoint_path=str(ckpt),
+        rl_topology_path=str(PKG / "configs" / "topology" / "payments_lite.yaml"),
+    )
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" / "principal_window_lab.json").read_text()
+    )
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+    token = alice.post(f"/api/v1/projects/{ids['project']}/ingest-tokens").json()["token"]
+    end = utcnow().replace(microsecond=0)
+    batch = {
+        **fixture["batch"],
+        "window_start": (end - timedelta(minutes=1)).isoformat(),
+        "window_end": end.isoformat(),
+    }
+    r = client_factory().post(
+        f"/api/v1/ingest/runtime/{ids['project']}",
+        headers={"Authorization": f"Bearer {token}"},
+        json=batch,
+    )
+    assert r.status_code == 202, r.text
+
+    asm = alice.post(
+        f"/api/v1/projects/{ids['project']}/assessments",
+        json={"scope_id": ids["scope"], "repo_id": ids["repo"], "commit_sha": "c" * 40},
+    ).json()["assessment"]
+    now = utcnow()
+    AssessmentHost(asm["id"]).record_finding(
+        Finding(
+            id=new_id(IdPrefix.fnd),
+            assessment_id=asm["id"],
+            commit_sha="c" * 40,
+            kind=FindingKind.security,
+            title="payment read lacks ownership check (BOLA)",
+            status=FindingStatus.validated,
+            severity=SeverityAssessment(
+                level=SeverityLevel.high,
+                rationale="probe confirmed a cross-tenant read",
+                factors=SeverityFactors(
+                    reachability="authenticated route",
+                    privileges_required="customer",
+                    data_sensitivity="financial",
+                    verified_path=True,
+                ),
+            ),
+            subject_refs=["GET /payments/{payment_id}"],
+            confidence=0.9,
+            created_at=now,
+            updated_at=now,
+            evidence=[
+                EvidenceRef(
+                    kind=EvidenceKind.source_span,
+                    path="app/payments.py",
+                    commit_sha="c" * 40,
+                    span=SourceSpan(start_line=1, end_line=2),
+                    provenance="test",
+                )
+            ],
+        ),
+        actor="test",
+    )
+    r = alice.post(f"/api/v1/projects/{ids['project']}/defense-recommendations", json={})
+    assert r.status_code == 202
+    worker.drain(kinds=["rl_recommend"])
+    job = alice.get(f"/api/v1/jobs/{r.json()['job_id']}").json()
+    assert job["status"] == "succeeded", job
+    prov = job["result"]["facts_provenance"]
+    assert prov["principal_targets:all"] == fixture["_flagged_principals"]
+    rec = alice.get(f"/api/v1/projects/{ids['project']}/defense-recommendations").json()["items"][0]
+    assert rec["policy_version"] == "LiveDefense-payments-lite-v3@8113a37f4ff9"
+    assert len(rec["observation"]) == 55 and "lab" in rec["caveat"].lower()
+    assert rec["action"] == "block_principal"
+    assert rec["principal_targets"] == fixture["_flagged_principals"]

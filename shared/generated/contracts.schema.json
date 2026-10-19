@@ -2268,6 +2268,17 @@
           "title": "Policy Version",
           "type": "string"
         },
+        "principal_targets": {
+          "description": "for block_principal* actions: the pseudonymous principals the block would cover (contracts 0.14); the operator maps them back. Never executed.",
+          "items": {
+            "description": "Pseudonymous principal reference chosen by the reporter (e.g. an HMAC of its user id under a key the platform never sees); never an email or raw id",
+            "pattern": "^prn_[A-Za-z0-9_-]{4,64}$",
+            "type": "string"
+          },
+          "maxItems": 500,
+          "title": "Principal Targets",
+          "type": "array"
+        },
         "project_id": {
           "anyOf": [
             {
@@ -2318,7 +2329,8 @@
         "observation",
         "simulation_derived",
         "caveat",
-        "created_at"
+        "created_at",
+        "principal_targets"
       ],
       "title": "DefenseRecommendation",
       "type": "object"
@@ -5350,6 +5362,47 @@
       "title": "PlatformFacts",
       "type": "object"
     },
+    "PrincipalCounts": {
+      "additionalProperties": false,
+      "description": "One principal's requests on one route in one window, as classified by the\noperator's own instrumentation: who the bearer token belongs to versus who owns the\nrequested object, with the business's delegation grants applied (contracts 0.14).",
+      "properties": {
+        "cross_tenant": {
+          "default": 0,
+          "description": "reads of another tenant's object not covered by a grant",
+          "minimum": 0,
+          "title": "Cross Tenant",
+          "type": "integer"
+        },
+        "delegated": {
+          "default": 0,
+          "description": "reads of another tenant's object covered by a grant",
+          "minimum": 0,
+          "title": "Delegated",
+          "type": "integer"
+        },
+        "own": {
+          "default": 0,
+          "description": "every other request (own tenant or no tenant object)",
+          "minimum": 0,
+          "title": "Own",
+          "type": "integer"
+        },
+        "principal": {
+          "description": "Pseudonymous principal reference chosen by the reporter (e.g. an HMAC of its user id under a key the platform never sees); never an email or raw id",
+          "pattern": "^prn_[A-Za-z0-9_-]{4,64}$",
+          "title": "Principal",
+          "type": "string"
+        }
+      },
+      "required": [
+        "principal",
+        "cross_tenant",
+        "delegated",
+        "own"
+      ],
+      "title": "PrincipalCounts",
+      "type": "object"
+    },
     "Project": {
       "additionalProperties": false,
       "properties": {
@@ -6343,6 +6396,15 @@
           "title": "Auth Failures",
           "type": "integer"
         },
+        "principals": {
+          "description": "optional per-principal counters from a reporter that detects principals",
+          "items": {
+            "$ref": "#/$defs/PrincipalCounts"
+          },
+          "maxItems": 500,
+          "title": "Principals",
+          "type": "array"
+        },
         "requests": {
           "maximum": 10000000,
           "minimum": 0,
@@ -6372,7 +6434,8 @@
         "requests",
         "status_4xx",
         "status_5xx",
-        "auth_failures"
+        "auth_failures",
+        "principals"
       ],
       "title": "RouteWindow",
       "type": "object"
@@ -7914,5 +7977,5 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "HackATL platform contracts",
-  "x-schema-version": "0.13.0"
+  "x-schema-version": "0.14.0"
 }

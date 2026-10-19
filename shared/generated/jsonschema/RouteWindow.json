@@ -1,4 +1,44 @@
 {
+  "$defs": {
+    "PrincipalCounts": {
+      "additionalProperties": false,
+      "description": "One principal's requests on one route in one window, as classified by the\noperator's own instrumentation: who the bearer token belongs to versus who owns the\nrequested object, with the business's delegation grants applied (contracts 0.14).",
+      "properties": {
+        "cross_tenant": {
+          "default": 0,
+          "description": "reads of another tenant's object not covered by a grant",
+          "minimum": 0,
+          "title": "Cross Tenant",
+          "type": "integer"
+        },
+        "delegated": {
+          "default": 0,
+          "description": "reads of another tenant's object covered by a grant",
+          "minimum": 0,
+          "title": "Delegated",
+          "type": "integer"
+        },
+        "own": {
+          "default": 0,
+          "description": "every other request (own tenant or no tenant object)",
+          "minimum": 0,
+          "title": "Own",
+          "type": "integer"
+        },
+        "principal": {
+          "description": "Pseudonymous principal reference chosen by the reporter (e.g. an HMAC of its user id under a key the platform never sees); never an email or raw id",
+          "pattern": "^prn_[A-Za-z0-9_-]{4,64}$",
+          "title": "Principal",
+          "type": "string"
+        }
+      },
+      "required": [
+        "principal"
+      ],
+      "title": "PrincipalCounts",
+      "type": "object"
+    }
+  },
   "additionalProperties": false,
   "description": "Aggregated counters for one route over one window (no raw logs, no payloads).",
   "properties": {
@@ -8,6 +48,15 @@
       "minimum": 0,
       "title": "Auth Failures",
       "type": "integer"
+    },
+    "principals": {
+      "description": "optional per-principal counters from a reporter that detects principals",
+      "items": {
+        "$ref": "#/$defs/PrincipalCounts"
+      },
+      "maxItems": 500,
+      "title": "Principals",
+      "type": "array"
     },
     "requests": {
       "maximum": 10000000,
