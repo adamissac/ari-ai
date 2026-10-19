@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ari-specialists"
+version = "0.1.0"
+description = "Seven small trained models, one per runtime security agent (Scout..Verify): datasets, training, evaluation and pure-Python inference"
+requires-python = ">=3.12"
+# Inference is pure Python on purpose: the control-plane image stays free of numpy/torch.
+dependencies = ["hackatl-standards"]
+
+[project.optional-dependencies]
+# Training and evaluation only (offline). Never needed to load a checkpoint.
+train = ["numpy>=1.26"]
+
+[tool.uv.sources]
+hackatl-standards = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["specialists"]

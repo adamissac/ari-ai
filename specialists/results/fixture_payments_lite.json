@@ -1,0 +1,69 @@
+{
+ "target": "examples/payments-lite (authorized fixture, never trained on)",
+ "handlers_ranked": [
+  {
+   "route": "GET /health",
+   "symbol": "health",
+   "suspicion": 0.9045,
+   "static_analyze": null
+  },
+  {
+   "route": "GET /payments/{payment_id}",
+   "symbol": "get_payment",
+   "suspicion": 0.4095,
+   "static_analyze": null
+  },
+  {
+   "route": "POST /payments",
+   "symbol": "create_payment",
+   "suspicion": 0.1045,
+   "static_analyze": null
+  },
+  {
+   "route": "GET /me",
+   "symbol": "me",
+   "suspicion": 0.0577,
+   "static_analyze": null
+  },
+  {
+   "route": "POST /refunds",
+   "symbol": "create_refund",
+   "suspicion": 0.057,
+   "static_analyze": null
+  },
+  {
+   "route": "GET /refunds/{refund_id}",
+   "symbol": "get_refund",
+   "suspicion": 0.0125,
+   "static_analyze": null
+  },
+  {
+   "route": "GET /customers/{customer_id}",
+   "symbol": "get_customer",
+   "suspicion": 0.0052,
+   "static_analyze": null
+  },
+  {
+   "route": "GET /payments",
+   "symbol": "list_payments",
+   "suspicion": 0.0027,
+   "static_analyze": null
+  }
+ ],
+ "planted": {
+  "GET /payments/{payment_id}": {
+   "scout_rank": 2,
+   "of": 8,
+   "static_analyze_flagged": false,
+   "probe_top": "WSTG-ATHZ-04",
+   "probe_maps_to_expected_category": true
+  },
+  "POST /refunds": {
+   "scout_rank": 5,
+   "of": 8,
+   "static_analyze_flagged": false,
+   "probe_top": "WSTG-BUSL-01",
+   "probe_maps_to_expected_category": true
+  }
+ }
+}

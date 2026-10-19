@@ -10,7 +10,7 @@ import { BRAND_NAME } from '@/components/brand';
  * collapse to normal flow and scenes render their final, fully readable state.
  */
 
-function useTrack<T extends HTMLElement>(): [React.RefObject<T | null>, number, boolean] {
+export function useTrack<T extends HTMLElement>(): [React.RefObject<T | null>, number, boolean] {
   const ref = useRef<T>(null);
   const [p, setP] = useState(1);
   const [sticky, setSticky] = useState(false);

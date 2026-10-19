@@ -4,10 +4,10 @@ name: backend
 # suite against a real PostgreSQL service. The live Claude smoke never runs here.
 on:
   pull_request:
-    paths: ["standards/**", "tests/security/**", "shared/**", "backend/**", "monitoring/**", "pyproject.toml", "uv.lock", ".github/workflows/backend.yml"]
+    paths: ["standards/**", "specialists/**", "tests/security/**", "shared/**", "backend/**", "monitoring/**", "pyproject.toml", "uv.lock", ".github/workflows/backend.yml"]
   push:
     branches: [main]
-    paths: ["standards/**", "tests/security/**", "shared/**", "backend/**", "monitoring/**", "pyproject.toml", "uv.lock", ".github/workflows/backend.yml"]
+    paths: ["standards/**", "specialists/**", "tests/security/**", "shared/**", "backend/**", "monitoring/**", "pyproject.toml", "uv.lock", ".github/workflows/backend.yml"]
 
 permissions:
   contents: read
