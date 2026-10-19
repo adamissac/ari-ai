@@ -18,6 +18,11 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-19 — Claude (agent, Alan) — live RL v6: online DQfD — first `recommend_promote`
+- Did: branch `feat/alan/live-v6-dqfd`. Alan's direction: RL stays the defense; rules only teach. Added the DQfD large-margin loss (`DDQNConfig.demo_lambda`, default 0) and `rl_defense/live/online.py`. The teacher is chosen on train only. The network is fresh, with no sim prior. It gets 3k demonstration transitions and 5k pretraining updates, then 150k online live steps on `train_v3` with 25% demonstrations in every batch, selection on `val_v4`, and the v4 loop. Pre-registered in `rl-defense/results/live-retrain-v6/PREREGISTRATION.md` (`c788b5d`) with a fresh `holdout_v6`. Tests: `rl-defense/tests/test_live_v6.py` (8).
+- Result: **`recommend_promote`**, all 7 checks pass. Candidate −5.30 vs rules −7.58; +9.51 [8.17, 10.79] vs deployed; +2.28 [1.80, 2.76] vs its teacher. Caveats are in PROVENANCE: fixed `always_block_principal_long` scores −3.89 on this holdout; val was flat from pretraining onwards; nothing was promoted.
+- Next (needs humans): Alan to decide on promotion via `rl_defense.live.registry promote` (usr_* approver), and on the long-block action contract extension in `shared/`. That extension is required before `PolicyRunner` can serve live_v3 checkpoints.
+
 ### 2026-10-19 — Claude (agent, Alan) — live RL v5: conservative Q-learning (CQL); learned-policy track closed
 - Did: branch `feat/alan/live-v5-cql`. At Alan's request, one more pre-registered run (`rl-defense/results/live-retrain-v5/PREREGISTRATION.md`, committed in `687629d` before the run). It added a discrete CQL(H) penalty, `DDQNConfig.cql_alpha` (default 0, so v1-v4 are unchanged), set to `cql_alpha=1.0`, fixed beforehand. Everything else is v4. Fresh `configs/live/holdout_v5/` (seeds 44500/49200/49600). The report now includes each round's val curve. Tests: `rl-defense/tests/test_live_v5.py` (5).
 - Result: **reject**. CQL fixed v4's degradation (snapshots selected at 6000/10000/12000 updates), but the candidate stays close to the behavior data. Blocks are only 3–5% of it, so the candidate rarely blocks: −12.17 vs rules −7.41, compromise 0.675, availability 0.991. Fixed `always_block_principal` scores −4.79. As pre-registered, the learned-policy track on payments-lite is closed. Never promoted.
