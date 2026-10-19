@@ -174,13 +174,8 @@ Real GitHub commit metadata is labelled separately from illustrative analysis. T
 The access-gated sample account distinguishes its sample data from the separately labelled saved live-run panel. The panel discloses the historical run's missing unpatched-snapshot regression execution, so it does not establish red-to-green proof. See [the demo runbook](../docs/demo/RUNBOOK.md) for current access, setup and evidence boundaries. No new live provider run was performed for these wording changes.
 
 
-The homepage closing invitation uses responsive assessment and Defense Lab action cards. Evaluation selection uses aligned native controls.
-
+The homepage ends after its proof section; the former closing invitation (and its dedicated styles) have been removed. Evaluation selection elsewhere uses aligned native controls.
 
 Sign-in screens share a centered form over subtle decorative orbits; reduced motion disables orbit animation.
 
-
 User-facing lab copy describes controlled evaluation runs and isolated test networks. Synthetic drills and illustrative walkthroughs retain explicit provenance.
-
-
-The homepage ends after its proof section; the former closing invitation and its dedicated styles have been removed.
