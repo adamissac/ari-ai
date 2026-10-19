@@ -1521,11 +1521,10 @@ body:has(.commit-stage) main { color: #fff; }
 @media (prefers-reduced-motion: reduce) { .auth-orbits span { animation: none; } }
 
 /* Landing explainer video (components/explainer-video.tsx). --vs / --vr are driven by scroll. */
-.explainer-frame { position: relative; margin: 0; width: 100%; aspect-ratio: 16 / 9; max-height: calc(100svh - 14rem); margin-inline: auto; overflow: hidden; border-radius: var(--vr, 12px); background: #000; box-shadow: 0 30px 120px -40px rgba(255, 106, 61, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.08); transform: scale(var(--vs, 1)); transform-origin: 50% 40%; will-change: transform; }
-.explainer-video { display: block; width: 100%; height: 100%; object-fit: cover; cursor: pointer; }
-.explainer-controls { position: absolute; inset: auto 0 0 0; display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 1rem; background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.6)); opacity: 0; transition: opacity 250ms; }
-.explainer-frame:hover .explainer-controls, .explainer-frame:focus-within .explainer-controls { opacity: 1; }
-@media (hover: none) { .explainer-controls { opacity: 1; } }
-.explainer-btn { font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; border-radius: 6px; background: rgba(255, 255, 255, 0.14); padding: 0.45rem 0.75rem; color: #fff; backdrop-filter: blur(8px); transition: background 250ms; }
+.explainer-frame { margin: 0; width: 100%; margin-inline: auto; overflow: hidden; border-radius: var(--vr, 12px); background: #000; box-shadow: 0 30px 120px -40px rgba(255, 106, 61, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.08); transform: scale(var(--vs, 1)); transform-origin: 50% 40%; will-change: transform; }
+.explainer-video { display: block; width: 100%; aspect-ratio: 16 / 9; max-height: calc(100svh - 18rem); object-fit: contain; cursor: pointer; }
+.explainer-controls { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0.75rem; }
+.explainer-btn { display: inline-flex; align-items: center; font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; border-radius: 6px; background: rgba(255, 255, 255, 0.14); padding: 0.45rem 0.75rem; color: #fff; backdrop-filter: blur(8px); transition: background 250ms; }
 .explainer-btn:hover { background: rgba(255, 255, 255, 0.28); }
+@media (pointer: coarse) { .explainer-btn { min-height: 44px; } }
 @media (prefers-reduced-motion: reduce) { .explainer-frame { transform: none; } }
