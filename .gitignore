@@ -68,3 +68,12 @@ logs/
 security-agents/.venv/
 
 specialists/specialists/data/cache/
+
+# Exception (pending approval, see PR): the v6 candidate is the one learned policy that passed
+# the promotion gate; its 445 KB checkpoint is committed as hash-pinned evidence. Loading is
+# hash-checked and weights_only (rl_defense/checkpoint.py).
+!rl-defense/results/live-retrain-v6/candidate_online.pt
+# rl-defense evidence restored from committed .gz / derived prefixes (python -m rl_defense.live.evidence restore)
+rl-defense/results/*/candidate_online_experience.jsonl
+rl-defense/results/*/candidate_online_selected_experience.jsonl
+rl-defense/results/*/*.partial
