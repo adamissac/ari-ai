@@ -239,11 +239,14 @@ def score_run(result: Any, intel: Any, key: dict[str, Any], wall_s: float) -> di
     per_agent: dict[str, Any] = {}
     for agent in AGENTS:
         runs = [r for r in result.runs if r.agent.value == agent]
+        failed = [r for r in runs if r.error_code]
         per_agent[agent] = {
             "runs": len(runs),
             "succeeded": bool(runs) and all(r.status == "succeeded" for r in runs),
-            "error_codes": [r.error_code.value for r in runs if r.error_code],
-            "error_details": [(r.error_detail or "")[:300] for r in runs if r.error_code],
+            "error_codes": [r.error_code.value for r in failed],
+            "error_details": [(r.error_detail or "")[:300] for r in failed],
+            # Per failed invocation (aligned with error_codes), not the role-wide sum.
+            "error_turns": [int(r.llm_turns or 0) for r in failed],
             "llm_turns": sum(r.llm_turns for r in runs),
             "tool_calls": sum(r.tool_calls for r in runs),
             "tokens": sum(r.usage.total_tokens for r in runs),
@@ -279,6 +282,22 @@ def score_run(result: Any, intel: Any, key: dict[str, Any], wall_s: float) -> di
 
 # ------------------------------------------------------------------ one assessment
 
+def _usage_from_orch(orch: Any) -> tuple[float, int]:
+    """Sum USD/tokens from orchestrator agent runs (partial live spend after a crash)."""
+    if orch is None:
+        return 0.0, 0
+    runs = getattr(orch, "runs", None) or []
+    usd = 0.0
+    tokens = 0
+    for r in runs:
+        usage = getattr(r, "usage", None)
+        if usage is None:
+            continue
+        usd += float(getattr(usage, "usd", 0.0) or 0.0)
+        tokens += int(getattr(usage, "total_tokens", 0) or 0)
+    return usd, tokens
+
+
 def run_one(config: str, *, mode: str, max_usd: float, max_hypotheses: int, validate: int) -> tuple[dict[str, Any], Any, Any]:
     sa_root = REPO / "security-agents"
     if str(sa_root) not in sys.path:
@@ -295,41 +314,73 @@ def run_one(config: str, *, mode: str, max_usd: float, max_hypotheses: int, vali
     recipe_path = TARGET / "build_recipe.json"
     recipe = json.loads(recipe_path.read_text(encoding="utf-8"))
     workdir = Path(tempfile.mkdtemp(prefix=f"livecmp-{config}-"))
-    staging = workdir / "staging"
-    copy_tree(TARGET / str(recipe.get("target_dir") or "."), staging)  # the answer key stays out
-    shutil.copy2(recipe_path, staging / "build_recipe.json")
-    snapshot = SnapshotHandle.from_directory(staging, workdir / "snapshot", snapshot_id=new_id("snp"), repo_id="rep_demo")
-    expectations = load_expectations(TARGET / "labels.yaml", snapshot_id=snapshot.snapshot_id, commit_sha=snapshot.commit_sha,
-                                     strip_prefix=f"{recipe.get('target_dir')}/" if recipe.get("target_dir") else None)
-    intel = LocalIntel(snapshot, expectations=expectations)
-    library = default_library()
-    if mode == "live":
-        gateway = live_gateway_from_env()
-    else:
-        from tests import fake_agents  # scripted trajectories: a pipeline check, not evidence
-
-        gateway = ProviderGateway(FakeLLM(fake_agents.all_scripts(snapshot.root)))
-
-    def approver(finding: Any) -> Any:
-        if finding.plan is None:
-            return None
-        return Approval(project_id="prj_demo", subject_type="remediation", subject_id=finding.plan.id,
-                        decision="approved", decided_by="usr_operator", reason="auto-approved by live_comparison")
-
-    cfg = OrchestratorConfig(
-        assessment_id=new_id("asm"), project_id="prj_demo", org_id="org_demo",
-        scope=build_scope(categories=sorted(library.categories())), target_id=TARGET_ID,
-        requested_by="usr_operator", budget=Budget(max_tokens=1_000_000, max_usd=max_usd, max_wall_clock_s=1800.0),
-        max_hypotheses=max_hypotheses, max_hypotheses_to_validate=validate,
-    )
-    specialists = Specialists(enabled=False) if config == "claude_only" else Specialists()
-    orch = Orchestrator(cfg, intel=intel, gateway=gateway, driver=LocalProcessDriver(allow=True), library=library,
-                        workdir=workdir / "work", approve_remediation=approver, specialists=specialists)
+    orch: Any = None
     t0 = time.monotonic()
-    result = orch.run()
-    wall = time.monotonic() - t0
-    shutil.rmtree(workdir, ignore_errors=True)
-    return score_run(result, intel, load_key(), wall), result, intel
+    try:
+        staging = workdir / "staging"
+        copy_tree(TARGET / str(recipe.get("target_dir") or "."), staging)  # the answer key stays out
+        shutil.copy2(recipe_path, staging / "build_recipe.json")
+        snapshot = SnapshotHandle.from_directory(staging, workdir / "snapshot", snapshot_id=new_id("snp"), repo_id="rep_demo")
+        expectations = load_expectations(
+            TARGET / "labels.yaml", snapshot_id=snapshot.snapshot_id, commit_sha=snapshot.commit_sha,
+            strip_prefix=f"{recipe.get('target_dir')}/" if recipe.get("target_dir") else None,
+        )
+        intel = LocalIntel(snapshot, expectations=expectations)
+        library = default_library()
+        if mode == "live":
+            gateway = live_gateway_from_env()
+        else:
+            from tests import fake_agents  # scripted trajectories: a pipeline check, not evidence
+
+            gateway = ProviderGateway(FakeLLM(fake_agents.all_scripts(snapshot.root)))
+
+        def approver(finding: Any) -> Any:
+            if finding.plan is None:
+                return None
+            return Approval(
+                project_id="prj_demo", subject_type="remediation", subject_id=finding.plan.id,
+                decision="approved", decided_by="usr_operator", reason="auto-approved by live_comparison",
+            )
+
+        cfg = OrchestratorConfig(
+            assessment_id=new_id("asm"), project_id="prj_demo", org_id="org_demo",
+            scope=build_scope(categories=sorted(library.categories())), target_id=TARGET_ID,
+            requested_by="usr_operator",
+            budget=Budget(max_tokens=1_000_000, max_usd=max_usd, max_wall_clock_s=1800.0),
+            max_hypotheses=max_hypotheses, max_hypotheses_to_validate=validate,
+        )
+        specialists = Specialists(enabled=False) if config == "claude_only" else Specialists()
+        orch = Orchestrator(
+            cfg, intel=intel, gateway=gateway, driver=LocalProcessDriver(allow=True), library=library,
+            workdir=workdir / "work", approve_remediation=approver, specialists=specialists,
+        )
+        result = orch.run()
+        wall = time.monotonic() - t0
+        return score_run(result, intel, load_key(), wall), result, intel
+    except Exception as exc:
+        wall = time.monotonic() - t0
+        usd, tokens = _usage_from_orch(orch)
+        debited = "orchestrator_runs"
+        if usd <= 0:
+            # No recorded spend (crash before any turn, or usage unavailable): debit the run cap
+            # so the total budget cannot be bypassed by repeated late crashes.
+            usd = float(max_usd)
+            debited = "per_run_cap"
+        score = {
+            "state": "crashed",
+            "error_code": type(exc).__name__,
+            "error_detail": str(exc)[:500],
+            "usd": round(usd, 6),
+            "tokens": tokens,
+            "wall_s": round(wall, 2),
+            "usage_debited": debited,
+            "planted": {},
+            "false_positives_confirmed": 0,
+            "per_agent": {},
+        }
+        return score, None, None
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
 
 
 # ------------------------------------------------------------------ specialists only (no Claude)
@@ -441,22 +492,25 @@ def provider_failure(score: dict[str, Any]) -> str | None:
     """Why a run says nothing about agent quality (the provider failed: credits, HTTP, outage), or None.
 
     LLM_UNAVAILABLE covers both an upstream failure after retries and a model refusal; a refusal is
-    model behaviour and stays in the results. Older records without ``error_details`` count as
-    provider failures only when that agent made no successful turn of its own.
+    model behaviour and stays in the results. When ``error_details`` is missing, use the matching
+    ``error_turns`` entry (turns for that failed invocation only) — not the role-wide ``llm_turns``
+    sum, which would hide a later zero-turn outage after an earlier success.
     """
     if score.get("state") == "crashed":
         return f"crashed: {score.get('error_code')}"
     for agent, a in (score.get("per_agent") or {}).items():
-        details = a.get("error_details")
+        details = a.get("error_details") or []
+        error_turns = a.get("error_turns") or []
         for i, code in enumerate(a.get("error_codes", [])):
             if code != "LLM_UNAVAILABLE":
                 continue
-            detail = details[i] if details and i < len(details) else None
+            detail = details[i] if i < len(details) else None
             if detail is not None and detail.startswith("refusal"):
                 continue
-            if detail is None and int(a.get("llm_turns") or 0) > 0:
-                # Legacy score without details but the agent did talk — keep in results.
-                continue
+            if detail is None:
+                turns = int(error_turns[i]) if i < len(error_turns) else 0
+                if turns > 0:
+                    continue
             return f"{agent}: LLM_UNAVAILABLE {detail or '(provider error)'}"[:200]
     return None
 
@@ -581,37 +635,48 @@ def main(argv: list[str] | None = None) -> int:
         cap = min(per_run_cap, args.total_max_usd - spent)
         attempt = sum(1 for r in runs if r["config"] == config) + 1
         print(f"[{datetime.now(UTC):%H:%M:%S}] {config} run {done[config] + 1}/{args.reps} (cap ${cap:.2f}) ...", flush=True)
-        try:
-            score, _, _ = run_one(config, mode=args.mode, max_usd=cap, max_hypotheses=args.max_hypotheses, validate=args.validate)
-        except Exception as exc:  # a crashed run is a result too; record it, keep going
-            score = {"state": "crashed", "error_code": type(exc).__name__, "error_detail": str(exc)[:500],
-                     "usd": 0.0, "tokens": 0}
-            print(f"  crashed: {exc}", file=sys.stderr)
-            runs.append({"config": config, "attempt": attempt, "at": datetime.now(UTC).isoformat(), "score": score})
-            _finish(doc, runs, planted_ids, spent, args.out)
-            continue
-        spent += score["usd"]
+        score, _, _ = run_one(
+            config, mode=args.mode, max_usd=cap, max_hypotheses=args.max_hypotheses, validate=args.validate,
+        )
+        spent += float(score.get("usd") or 0.0)
         failure = provider_failure(score)
         if not failure:
             done[config] += 1
         runs.append({"config": config, "attempt": attempt, "at": datetime.now(UTC).isoformat(), "score": score})
-        found = {p: ("F" if v["fixed_verify_accepted"] else "V" if v["validated"] else "H" if v["hypothesised"] else "-")
-                 for p, v in score["planted"].items()}
-        print(f"  {score['state']} planted={found} fp={score['false_positives_confirmed']} "
-              f"tokens={score['tokens']} usd={score['usd']:.4f} wall={score['wall_s']:.0f}s (total ${spent:.2f})", flush=True)
+        if score.get("state") == "crashed":
+            print(
+                f"  crashed: {score.get('error_code')} usd={score.get('usd', 0):.4f} "
+                f"(debited {score.get('usage_debited')}; total ${spent:.2f})",
+                file=sys.stderr, flush=True,
+            )
+        else:
+            found = {
+                p: ("F" if v["fixed_verify_accepted"] else "V" if v["validated"] else "H" if v["hypothesised"] else "-")
+                for p, v in (score.get("planted") or {}).items()
+            }
+            print(
+                f"  {score['state']} planted={found} fp={score.get('false_positives_confirmed')} "
+                f"tokens={score.get('tokens')} usd={score.get('usd', 0):.4f} "
+                f"wall={score.get('wall_s', 0):.0f}s (total ${spent:.2f})",
+                flush=True,
+            )
         _finish(doc, runs, planted_ids, spent, args.out)
         if failure:
             print(f"  provider failure, excluded from the results: {failure}", flush=True)
-            if score["tokens"] == 0:
+            if int(score.get("tokens") or 0) == 0 and score.get("usage_debited") != "per_run_cap":
                 print("provider is failing before the first turn; stopping (fix it, then --resume)", file=sys.stderr)
                 break
     _finish(doc, runs, planted_ids, spent, args.out)
     print(json.dumps({c: {k: v for k, v in s.items() if k in ("runs", "planted_fixed_per_assessment", "false_positives_confirmed", "usd", "wall_s")}
                       for c, s in doc["summary"].items()}, indent=1))
-    usable = [r for r in runs if not provider_failure(r["score"])]
-    if args.mode == "live" and not usable:
-        print("no usable live assessments completed (all crashed or provider failures)", file=sys.stderr)
-        return 1
+    if args.mode == "live":
+        missing = [
+            c for c in configs
+            if not any(r["config"] == c and not provider_failure(r["score"]) for r in runs)
+        ]
+        if missing:
+            print(f"no usable live assessments for: {missing}", file=sys.stderr)
+            return 1
     return 0
 
 

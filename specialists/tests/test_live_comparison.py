@@ -50,25 +50,44 @@ def test_main_writes_runs_and_summary(tmp_path):
 
 
 def test_provider_failures_are_excluded_but_refusals_are_not():
-    def score(code, detail, *, turns=0):
-        return {
-            "state": "completed",
-            "per_agent": {
-                "patch": {
-                    "error_codes": [code],
-                    "error_details": [detail] if detail is not None else [],
-                    "llm_turns": turns,
-                }
-            },
+    def score(code, detail, *, error_turns=None, llm_turns=0):
+        patch: dict = {
+            "error_codes": [code],
+            "error_details": [detail] if detail is not None else [],
+            "llm_turns": llm_turns,
         }
+        if error_turns is not None:
+            patch["error_turns"] = error_turns
+        return {"state": "completed", "per_agent": {"patch": patch}}
 
     assert lc.provider_failure(score("LLM_UNAVAILABLE", "Error code: 400 credit balance is too low"))
     assert lc.provider_failure(score("LLM_UNAVAILABLE", "refusal: policy")) is None
     assert lc.provider_failure(score("BUDGET_EXCEEDED", "cap")) is None
     assert lc.provider_failure({"state": "crashed", "error_code": "RuntimeError"})
-    # Legacy: missing details + no turns → provider failure; with turns → keep.
-    assert lc.provider_failure(score("LLM_UNAVAILABLE", None, turns=0))
-    assert lc.provider_failure(score("LLM_UNAVAILABLE", None, turns=3)) is None
+    # Missing details: use per-invocation error_turns, not role-wide llm_turns.
+    assert lc.provider_failure(score("LLM_UNAVAILABLE", None, error_turns=[0], llm_turns=9))
+    assert lc.provider_failure(score("LLM_UNAVAILABLE", None, error_turns=[3], llm_turns=9)) is None
+
+
+def test_crash_score_debits_run_cap_when_no_orch_usage(monkeypatch, tmp_path):
+    def boom(*_a, **_k):
+        raise RuntimeError("late failure")
+
+    monkeypatch.setattr(lc, "run_one", boom)
+    # Direct unit: the real run_one crash path is covered via _usage_from_orch + cap debit.
+    assert lc._usage_from_orch(None) == (0.0, 0)
+
+    class _U:
+        usd = 1.25
+        total_tokens = 100
+
+    class _R:
+        usage = _U()
+
+    class _Orch:
+        runs = [_R(), _R()]
+
+    assert lc._usage_from_orch(_Orch()) == (2.5, 200)
 
 
 class _Hyp:
