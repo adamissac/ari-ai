@@ -6,13 +6,14 @@ import { useAuthStageShowing } from '@/lib/auth-stage-presence';
 
 /** Routes where every number really is read from saved records or the committed RL bundle. */
 export function showsRecordsFooter(pathname: string): boolean {
-  return pathname === '/lab' || pathname.startsWith('/lab/') || pathname === '/projects' || pathname.startsWith('/projects/');
+  return pathname === '/lab' || pathname.startsWith('/lab/') || pathname === '/projects' || pathname.startsWith('/projects/')
+    || pathname === '/connect' || pathname.startsWith('/connect/');
 }
 
 /**
  * The records-only promise holds for the console and the Defense Lab only. Marketing
  * pages (landing illustrations, pricing) do not get it, because it would be false there,
- * and neither does a sign-in screen (signed-out /projects shows no records).
+ * and neither does a sign-in screen (signed-out console pages show no records).
  * No links here: the header already carries navigation.
  */
 export function SiteFooter() {

@@ -65,9 +65,10 @@ test('supplied logo loads on sign-in, scrolled header and projects on desktop/mo
   await settledHeader(page);
   await screenshot(page, 'desktop-scrolled-header');
   await page.getByRole('link', { name: 'Projects', exact: true }).click();
-  await expect(page).toHaveURL(/\/projects$/);
+  // Projects opens the connected-organization drill-down at /connect.
+  await expect(page).toHaveURL(/\/connect$/);
   await loadedMark(page, 'header [data-testid="ari-logo"]');
-  await expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Where should ARI look?', exact: true })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await screenshot(page, 'mobile-projects');
   await page.getByRole('link', { name: 'ARI home', exact: true }).click();

@@ -849,6 +849,22 @@ Replaced game-like UI copy with evaluation terminology and synthetic/illustrativ
 - Not exercised: a production GitHub sign-in → repo connect → push → assessment on Railway (needs a signed-in user session and an authorized scope).
 Removed the homepage Your next move section at owner request, including both action cards, unused Reveal import, closing-link labels and dedicated CSS.
 
+### 2026-10-19 — Projects nav simplified to the connect drill-down (Adam)
+- `frontend/app/(console)/projects/page.tsx` is now a redirect to `/connect`: the Projects
+  section is organization → repositories → commits → per-commit code review and the real
+  seven-agent assessment. The standalone project list, the "Connect from GitHub" strip and
+  the create-project form are gone (`lib/create-project.ts` deleted with its unit test).
+  A project is still created implicitly on first connect via `lib/github-connect.ts`;
+  the deep `/projects/[projectId]` views (scopes, assessments, findings, monitoring…) are
+  unchanged and still reachable through the assessment/scope links on the commit pages.
+- `showsRecordsFooter` now covers `/connect` too — those pages only render saved records.
+- E2e: `journey.spec.ts` seeds its project through `POST /projects` instead of the removed
+  form; `idempotent-retry.spec.ts` exercises the same lost-response replay through a
+  browser-side `POST /api/v1/projects` with a fixed `Idempotency-Key`.
+- Verified: `npm run lint`, `npm run typecheck`, `npm test` (67 files, 274 tests) and
+  `npm run build` all clean after a fresh `npm ci` + `frontend/transport` build. E2e not run
+  here (needs the full stack harness).
+
 ## 2026-10-19T05:27Z — Adam — refresh GitHub repository picker from personal installations
 
 - **Did:**
