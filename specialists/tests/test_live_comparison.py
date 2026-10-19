@@ -50,13 +50,25 @@ def test_main_writes_runs_and_summary(tmp_path):
 
 
 def test_provider_failures_are_excluded_but_refusals_are_not():
-    def score(code, detail):
-        return {"state": "completed", "per_agent": {"patch": {"error_codes": [code], "error_details": [detail]}}}
+    def score(code, detail, *, turns=0):
+        return {
+            "state": "completed",
+            "per_agent": {
+                "patch": {
+                    "error_codes": [code],
+                    "error_details": [detail] if detail is not None else [],
+                    "llm_turns": turns,
+                }
+            },
+        }
 
     assert lc.provider_failure(score("LLM_UNAVAILABLE", "Error code: 400 credit balance is too low"))
     assert lc.provider_failure(score("LLM_UNAVAILABLE", "refusal: policy")) is None
     assert lc.provider_failure(score("BUDGET_EXCEEDED", "cap")) is None
     assert lc.provider_failure({"state": "crashed", "error_code": "RuntimeError"})
+    # Legacy: missing details + no turns → provider failure; with turns → keep.
+    assert lc.provider_failure(score("LLM_UNAVAILABLE", None, turns=0))
+    assert lc.provider_failure(score("LLM_UNAVAILABLE", None, turns=3)) is None
 
 
 class _Hyp:
@@ -71,6 +83,23 @@ def test_matches_rejects_entry_point_mismatch_without_span_fallback():
     assert not lc._matches(_Hyp("ent_b"), loc)  # explicit mismatch: no span fallback
 
 
+class _HypClass(_Hyp):
+    def __init__(self, entry_point_id, weakness_class, cited_spans=None):
+        super().__init__(entry_point_id, cited_spans)
+        self.weakness_class = weakness_class
+
+
+def test_planted_match_requires_class_family_on_shared_route():
+    # POST /refunds is both planted CWE-840 and a CWE-639 negative lookalike.
+    loc = {
+        "entry_point_id": "ent_post_refunds", "path": "app.py", "symbol": "create_refund",
+        "lines": (40, 60), "planted_id": "fnd_planted_refund_bound", "weakness_class": "CWE-840",
+    }
+    assert lc._matches_planted(_HypClass("ent_post_refunds", "CWE-840"), loc)
+    assert lc._matches_planted(_HypClass("ent_post_refunds", "CWE-1284"), loc)  # family
+    assert not lc._matches_planted(_HypClass("ent_post_refunds", "CWE-639"), loc)
+
+
 def test_resume_refuses_mode_or_settings_mismatch(tmp_path):
     out = tmp_path / "cmp.json"
     assert lc.main(["--mode", "replay", "--reps", "1", "--configs", "claude_only", "--out", str(out)]) == 0
@@ -81,3 +110,17 @@ def test_resume_refuses_mode_or_settings_mismatch(tmp_path):
         "--mode", "replay", "--reps", "1", "--configs", "claude_only", "--out", str(out),
         "--resume", "--validate", "1",
     ]) == 2
+
+
+def test_unknown_config_name_is_rejected(tmp_path):
+    out = tmp_path / "cmp.json"
+    assert lc.main(["--mode", "replay", "--reps", "1", "--configs", "hybird", "--out", str(out)]) == 2
+
+
+def test_replay_fixed_results_include_verify_evidence():
+    score, _, _ = lc.run_one("claude_only", mode="replay", max_usd=5.0, max_hypotheses=3, validate=2)
+    authz = score["planted"]["fnd_planted_authz"]
+    assert authz["fixed_verify_accepted"]
+    assert authz["verify_evidence"]
+    assert authz["verify_evidence"][0]["verdict"] == "accepted"
+    assert authz["verify_evidence"][0]["checks"]

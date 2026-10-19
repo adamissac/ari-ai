@@ -98,14 +98,24 @@ def _locate(intel: Any, key: dict[str, Any]) -> dict[str, dict[str, Any]]:
     for p in key["planted"]:
         ep = by_route.get(p["subject"]) or next(
             (e for e in intel.entry_points() if e.handler_symbol.rsplit(".", 1)[-1] == p["symbol"]), None)
-        out[p["id"]] = {"entry_point_id": ep.id if ep else None, "path": p["path"],
-                        "lines": (ep.span.start_line, ep.span.end_line) if ep else None, "symbol": p["symbol"]}
+        out[p["id"]] = {
+            "entry_point_id": ep.id if ep else None, "path": p["path"],
+            "lines": (ep.span.start_line, ep.span.end_line) if ep else None, "symbol": p["symbol"],
+            "weakness_class": p["weakness_class"], "planted_id": p["id"],
+        }
     for n in key["negatives"]:
         ep = by_route.get(n["subject"])
-        if ep is not None:
-            out.setdefault(f"neg:{n['subject']}", {"entry_point_id": ep.id, "path": ep.path,
-                                                    "lines": (ep.span.start_line, ep.span.end_line),
-                                                    "symbol": ep.handler_symbol.rsplit(".", 1)[-1]})
+        if ep is None:
+            continue
+        hyp_class = n.get("hypothesis_class") or ""
+        # Key includes class so POST /refunds can be both a planted CWE-840 and a CWE-639 negative.
+        nid = f"neg:{n['subject']}:{hyp_class}"
+        out[nid] = {
+            "entry_point_id": ep.id, "path": ep.path,
+            "lines": (ep.span.start_line, ep.span.end_line),
+            "symbol": ep.handler_symbol.rsplit(".", 1)[-1],
+            "hypothesis_class": hyp_class,
+        }
     return out
 
 
@@ -124,7 +134,7 @@ def _covers(refs: list[Any], loc: dict[str, Any]) -> bool:
 
 
 def _matches(h: Any, loc: dict[str, Any]) -> bool:
-    """Match a hypothesis to a planted location.
+    """Match a hypothesis to a location by entry point (or span fallback).
 
     Prefer entry-point identity. If both sides name an entry point and they differ, that is a
     mismatch (do not fall back to span overlap — a broad citation like ``create_app`` would
@@ -142,6 +152,47 @@ def _matches(h: Any, loc: dict[str, Any]) -> bool:
     return False
 
 
+def _matches_planted(h: Any, loc: dict[str, Any]) -> bool:
+    """Planted match requires route/entry-point agreement *and* an accepted class family."""
+    if not _matches(h, loc):
+        return False
+    planted_id = loc.get("planted_id")
+    family = CLASS_FAMILY.get(planted_id or "", set()) or {loc.get("weakness_class")}
+    return getattr(h, "weakness_class", None) in family
+
+
+def _matches_negative(h: Any, loc: dict[str, Any]) -> bool:
+    """Negative lookalike: same handler and the labelled hypothesis_class."""
+    if not _matches(h, loc):
+        return False
+    want = loc.get("hypothesis_class")
+    return not want or getattr(h, "weakness_class", None) == want
+
+
+def _verify_evidence(fixed: list[Any]) -> list[dict[str, Any]]:
+    """Bounded executed evidence for accepted patches (survives workdir cleanup)."""
+    out: list[dict[str, Any]] = []
+    for f in fixed:
+        for v in f.verifications:
+            out.append({
+                "verification_id": getattr(v, "id", None),
+                "patch_id": getattr(v, "patch_id", None),
+                "verdict": v.verdict,
+                "sandbox_run_ids": list(getattr(v, "sandbox_run_ids", []) or []),
+                "verify_run_id": getattr(v, "verify_run_id", None),
+                "checks": [
+                    {
+                        "name": (c.name.value if hasattr(c.name, "value") else str(c.name)),
+                        "passed": bool(c.passed),
+                        "detail": (c.detail or "")[:200],
+                    }
+                    for c in (v.checks or [])
+                ],
+                "reasons": [str(r)[:200] for r in (getattr(v, "reasons", None) or [])][:10],
+            })
+    return out
+
+
 # ------------------------------------------------------------------ scoring one run
 
 def score_run(result: Any, intel: Any, key: dict[str, Any], wall_s: float) -> dict[str, Any]:
@@ -151,7 +202,7 @@ def score_run(result: Any, intel: Any, key: dict[str, Any], wall_s: float) -> di
     matched_ids: set[str] = set()
     for p in key["planted"]:
         loc = locs[p["id"]]
-        hits = [(i, f) for i, f in enumerate(findings) if _matches(f.hypothesis, loc)]
+        hits = [(i, f) for i, f in enumerate(findings) if _matches_planted(f.hypothesis, loc)]
         matched_ids.update(f.finding_id for _, f in hits)
         validated = [f for _, f in hits if f.validation is not None]
         confirmed = [f for f in validated if f.validation.outcome.value == "confirmed"]
@@ -175,18 +226,22 @@ def score_run(result: Any, intel: Any, key: dict[str, Any], wall_s: float) -> di
             "patched": any(f.candidates for f in confirmed),
             "fixed_verify_accepted": bool(fixed),
             "verdicts": [v.verdict for f in confirmed for v in f.verifications],
+            "verify_evidence": _verify_evidence(fixed),
             "hardened": any(f.status == "hardened" for f in fixed),
         }
     unmatched = [f for f in findings if f.finding_id not in matched_ids]
     false_pos = [f for f in unmatched if f.validation is not None and f.validation.outcome.value == "confirmed"]
-    negatives_hit = [k for k, loc in locs.items() if k.startswith("neg:") and any(_matches(f.hypothesis, loc) for f in unmatched)]
+    negatives_hit = [
+        k for k, loc in locs.items()
+        if k.startswith("neg:") and any(_matches_negative(f.hypothesis, loc) for f in unmatched)
+    ]
     report = result.report()
     per_agent: dict[str, Any] = {}
     for agent in AGENTS:
         runs = [r for r in result.runs if r.agent.value == agent]
         per_agent[agent] = {
             "runs": len(runs),
-            "succeeded": bool(runs) and runs[-1].status == "succeeded",
+            "succeeded": bool(runs) and all(r.status == "succeeded" for r in runs),
             "error_codes": [r.error_code.value for r in runs if r.error_code],
             "error_details": [(r.error_detail or "")[:300] for r in runs if r.error_code],
             "llm_turns": sum(r.llm_turns for r in runs),
@@ -386,8 +441,8 @@ def provider_failure(score: dict[str, Any]) -> str | None:
     """Why a run says nothing about agent quality (the provider failed: credits, HTTP, outage), or None.
 
     LLM_UNAVAILABLE covers both an upstream failure after retries and a model refusal; a refusal is
-    model behaviour and stays in the results. Older records without details count as provider
-    failures only when the agent made no successful turn of its own.
+    model behaviour and stays in the results. Older records without ``error_details`` count as
+    provider failures only when that agent made no successful turn of its own.
     """
     if score.get("state") == "crashed":
         return f"crashed: {score.get('error_code')}"
@@ -397,8 +452,12 @@ def provider_failure(score: dict[str, Any]) -> str | None:
             if code != "LLM_UNAVAILABLE":
                 continue
             detail = details[i] if details and i < len(details) else None
-            if detail is None or not detail.startswith("refusal"):
-                return f"{agent}: LLM_UNAVAILABLE {detail or '(provider error)'}"[:200]
+            if detail is not None and detail.startswith("refusal"):
+                continue
+            if detail is None and int(a.get("llm_turns") or 0) > 0:
+                # Legacy score without details but the agent did talk — keep in results.
+                continue
+            return f"{agent}: LLM_UNAVAILABLE {detail or '(provider error)'}"[:200]
     return None
 
 
@@ -470,6 +529,10 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     per_run_cap = float(os.environ.get("LIVE_SEVEN_MAX_USD", "4"))
     configs = [c for c in args.configs.split(",") if c]
+    unknown = [c for c in configs if c not in CONFIGS]
+    if unknown:
+        print(f"unknown --configs {unknown!r}; choose from {list(CONFIGS)}", file=sys.stderr)
+        return 2
     key = load_key()
     planted_ids = [p["id"] for p in key["planted"]]
     settings = _settings(
@@ -500,7 +563,14 @@ def main(argv: list[str] | None = None) -> int:
     })
     doc["specialists_only"] = specialists_only()
     spent = sum(r["score"].get("usd", 0.0) for r in runs)
-    order = [c for _ in range(args.reps) for c in configs]  # interleaved A B A B
+    # Counterbalance: ABAB… then flip each pair so latency/rate-limit drift does not always
+    # hit the same configuration first (A B B A A B …).
+    order: list[str] = []
+    for i in range(args.reps):
+        pair = list(configs)
+        if i % 2:
+            pair.reverse()
+        order.extend(pair)
     done = {c: sum(1 for r in runs if r["config"] == c and not provider_failure(r["score"])) for c in configs}
     for config in order:
         if done[config] >= args.reps:
@@ -538,6 +608,10 @@ def main(argv: list[str] | None = None) -> int:
     _finish(doc, runs, planted_ids, spent, args.out)
     print(json.dumps({c: {k: v for k, v in s.items() if k in ("runs", "planted_fixed_per_assessment", "false_positives_confirmed", "usd", "wall_s")}
                       for c, s in doc["summary"].items()}, indent=1))
+    usable = [r for r in runs if not provider_failure(r["score"])]
+    if args.mode == "live" and not usable:
+        print("no usable live assessments completed (all crashed or provider failures)", file=sys.stderr)
+        return 1
     return 0
 
 
