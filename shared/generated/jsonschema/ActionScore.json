@@ -9,7 +9,9 @@
         "isolate",
         "request_reassessment",
         "escalate_to_human",
-        "block_principal"
+        "block_principal",
+        "block_principal_long",
+        "block_top_principal_long"
       ],
       "title": "Action",
       "type": "string"

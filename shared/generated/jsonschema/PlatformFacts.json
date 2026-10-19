@@ -78,6 +78,14 @@
   },
   "additionalProperties": false,
   "properties": {
+    "block_remaining": {
+      "default": 0.0,
+      "description": "longest remaining block / long duration",
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Block Remaining",
+      "type": "number"
+    },
     "escalation_pending": {
       "default": false,
       "title": "Escalation Pending",
@@ -88,6 +96,46 @@
       "maximum": 1.0,
       "minimum": 0.0,
       "title": "Escalations Remaining Fraction",
+      "type": "number"
+    },
+    "flagged_own_share": {
+      "default": 0.0,
+      "description": "share of flagged principals' requests that read their own tenant",
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Flagged Own Share",
+      "type": "number"
+    },
+    "flagged_principals": {
+      "default": 0.0,
+      "description": "distinct flagged principals / 3 (capped)",
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Flagged Principals",
+      "type": "number"
+    },
+    "flagged_repeat": {
+      "default": 0.0,
+      "description": "share of flagged principals blocked before",
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Flagged Repeat",
+      "type": "number"
+    },
+    "flagged_top_share": {
+      "default": 0.0,
+      "description": "heaviest flagged principal's share of flagged cross-tenant attempts",
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Flagged Top Share",
+      "type": "number"
+    },
+    "flagged_volume": {
+      "default": 0.0,
+      "description": "cross-tenant attempts per flagged principal / 6 (capped)",
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Flagged Volume",
       "type": "number"
     },
     "nodes": {
@@ -109,6 +157,18 @@
       "default": false,
       "description": "the detector flagged a principal that is not yet blocked where it was seen",
       "title": "Principal Block Available",
+      "type": "boolean"
+    },
+    "principal_block_long_available": {
+      "default": false,
+      "description": "some flagged principal is unblocked or its block is about to lapse",
+      "title": "Principal Block Long Available",
+      "type": "boolean"
+    },
+    "principal_block_top_long_available": {
+      "default": false,
+      "description": "the same, for the most active flagged principal(s)",
+      "title": "Principal Block Top Long Available",
       "type": "boolean"
     },
     "project_id": {
