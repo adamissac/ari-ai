@@ -903,3 +903,9 @@ Removed the homepage Your next move section at owner request, including both act
   - `npm run build` — production build passed on Next.js 16.4.2.
   - `../.venv/bin/python tests/e2e/stack.py tests/e2e/demo.spec.ts tests/e2e/brand.spec.ts tests/e2e/journey.spec.ts` — 9 passed in 44.7s. The output included `ResponseAborted` notices and one scripted-plan fallback; all selected tests passed.
 - No separate manual visual check was performed. Commit and push were pending when this entry was written.
+
+## 2026-10-19 — Defense Lab visual polish (`feat/adam/polish-defense-lab`)
+- `frontend/app/lab/page.tsx`: lede + caveat moved into the hero (keeps `lab-intro`/`lab-caveat` testids); new `.lab-chips` strip summarizes the eval (held-out runs, defenders, scenarios, seeds); scoreboard section is now `.lab-console` instead of `.paper`.
+- `frontend/app/globals.css`: added `.lab-caveat-dark`, `.lab-chips`/`.lab-chip`, and `.lab-console` (always-dark panel: night surface, brand radial glow, faint grid overlay) plus console-scoped overrides for headline/score elements (white numerals, glassy cards, AI row in ember→brand gradient, `.text-*` utility remaps).
+- Inspired by kairo.security's dark "mission control" look (mono stat chips, dark evidence surface, severity/ember tones).
+- Executed: `npm run lint`, `npm run typecheck`, `npm test` (276 passed), `npm run build`; visual check via Playwright screenshots at 1440px and 390px; honesty.spec.ts lab tests passed against `next dev` (the three auth/backend tests can't run without the real API).
