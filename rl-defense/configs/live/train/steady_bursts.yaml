@@ -1,0 +1,11 @@
+# Moderate, regular attack bursts (train).
+name: steady_bursts
+split: train
+horizon: 30
+schedule: bursty
+p_start: 0.15
+p_stop: 0.25
+attack_per_step: 6
+benign_per_step: 6
+seed_start: 0
+episodes: 20
