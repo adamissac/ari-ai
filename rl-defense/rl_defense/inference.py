@@ -16,23 +16,32 @@ from rl_defense import ENV_ID
 from rl_defense.checkpoint import load_checkpoint
 from rl_defense.contracts import ActionScore, DefenseRecommendation, PlatformFacts, RLExplanation
 from rl_defense.envs.config import NODE_NAMES
-from rl_defense.envs.defense_sim import NEG_INF_MASK, decode_action
+from rl_defense.envs.defense_sim import NEG_INF_MASK
 from rl_defense.explain import explain
 from rl_defense.observations import from_platform_facts, mask_from_facts
 from rl_defense.standards import defensive_refs
+
+# A live v2 policy was retrained on the owned demo app, not only in the simulator.
+LIVE_LAB_CAVEAT = (
+    "Lab-derived recommendation from a policy retrained on the owned demo app "
+    "(examples/payments-lite) in an isolated in-process lab; not a detection of a real "
+    "attack and never executed automatically."
+)
 
 
 class PolicyRunner:
     def __init__(self, checkpoint: Path, *, blob: bytes | None = None) -> None:
         self.agent, self.manifest = load_checkpoint(checkpoint, blob=blob)
-        if self.manifest["env_id"] != ENV_ID:
-            # e.g. live action space v2 (block_principal): PlatformFacts has no
-            # principal-block state, so the 49-feature observation cannot be built from it.
-            raise ValueError(
-                f"{self.manifest['env_id']} checkpoints are lab-only; recommendations need {ENV_ID}"
-            )
+        # lazy: rl_defense.live imports this module (same pattern as checkpoint.py)
+        from rl_defense.live.actions import LIVE_V2_ENV_ID
+
+        env_id = self.manifest["env_id"]
+        if env_id not in (ENV_ID, LIVE_V2_ENV_ID):
+            raise ValueError(f"no recommendation path for {env_id} checkpoints")
+        # live v2 adds block_principal; its two PlatformFacts fields feed obs/mask
+        self.space = "sim" if env_id == ENV_ID else "live_v2"
         self.checkpoint_sha256 = self.manifest["checkpoint_sha256"]
-        self.policy_version = f"{ENV_ID}@{self.checkpoint_sha256[:12]}"
+        self.policy_version = f"{env_id}@{self.checkpoint_sha256[:12]}"
 
     def recommend_from_observation(
         self, obs: np.ndarray, mask: np.ndarray, project_id: str | None = None, top_k: int = 3
@@ -44,10 +53,12 @@ class PolicyRunner:
         order = [int(a) for a in np.argsort(-q_masked) if mask[a]]
         best = order[0]
         margin = float(q[best] - q[order[1]]) if len(order) > 1 else 0.0
-        name, node = decode_action(best)
+        from rl_defense.live.actions import live_decode_action
+
+        name, node = live_decode_action(best)
 
         def score(a: int) -> ActionScore:
-            n, nd = decode_action(a)
+            n, nd = live_decode_action(a)
             return ActionScore(
                 action=n, node=None if nd is None else NODE_NAMES[nd], q_value=float(q[a])
             )
@@ -64,6 +75,7 @@ class PolicyRunner:
             top_actions=tuple(score(a) for a in order[:top_k]),
             observation=tuple(float(x) for x in obs),
             created_at=datetime.now(UTC),
+            **({"caveat": LIVE_LAB_CAVEAT} if self.space == "live_v2" else {}),
         )
 
     def explain(
@@ -82,8 +94,8 @@ class PolicyRunner:
         rec_id = (recommendation or self.recommend(facts)).id
         return explain(
             self.agent.online,
-            from_platform_facts(facts),
-            mask_from_facts(facts),
+            from_platform_facts(facts, space=self.space),
+            mask_from_facts(facts, space=self.space),
             rec_id,
             top_k,
         )
@@ -96,5 +108,7 @@ class PolicyRunner:
 
     def recommend(self, facts: PlatformFacts) -> DefenseRecommendation:
         return self.recommend_from_observation(
-            from_platform_facts(facts), mask_from_facts(facts), project_id=facts.project_id
+            from_platform_facts(facts, space=self.space),
+            mask_from_facts(facts, space=self.space),
+            project_id=facts.project_id,
         )

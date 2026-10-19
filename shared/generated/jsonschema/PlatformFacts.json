@@ -99,6 +99,18 @@
       "title": "Nodes",
       "type": "array"
     },
+    "principal_block_active": {
+      "default": false,
+      "description": "a block_principal control is currently in force",
+      "title": "Principal Block Active",
+      "type": "boolean"
+    },
+    "principal_block_available": {
+      "default": false,
+      "description": "the detector flagged a principal that is not yet blocked where it was seen",
+      "title": "Principal Block Available",
+      "type": "boolean"
+    },
     "project_id": {
       "anyOf": [
         {
