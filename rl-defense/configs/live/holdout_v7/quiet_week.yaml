@@ -1,0 +1,22 @@
+# Held-out v7 (created 2026-10-19, committed before any policy was evaluated on it; see
+# results/live-retrain-v7/PREREGISTRATION.md). Mostly attack-free windows: erin, a
+# customer and bookkeeper, makes rare short cross-tenant runs against bob while dave and
+# erin reconcile in bursts. Unseen: an attacker who is also a delegate, very rare short
+# campaigns. Most windows are quiet, where ADR-0017's gap shows (noop vs escalate).
+name: quiet_week
+split: holdout
+horizon: 30
+schedule: bursty
+p_start: 0.05
+p_stop: 0.5
+attack_per_step: 3
+benign_per_step: 7
+attackers: [erin]
+victims: [bob]
+benign: [alice, bob, carol, dave, erin]
+delegations: ["dave:alice", "erin:carol"]
+delegate_per_step: 1
+delegate_burst_p: 0.3
+delegate_burst_size: 4
+seed_start: 40500
+episodes: 30
