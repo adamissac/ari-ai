@@ -1,0 +1,94 @@
+{
+ "agent": "diagnose",
+ "architecture": {
+  "hidden": 64,
+  "input_dim": 16384,
+  "output": "softmax",
+  "type": "mlp-relu"
+ },
+ "dataset": {
+  "sha256": "a46a9b32318194597010f6d0ff319b7ef2a27d76531fc8a892f962e0af654a62",
+  "sizes": {
+   "test": 432,
+   "train": 1080,
+   "val": 216
+  },
+  "train_label_counts": {
+   "configuration": 120,
+   "logic_error": 30,
+   "missing_check": 630,
+   "unsafe_default": 150,
+   "wrong_check": 150
+  },
+  "version": "corpus-1+mitre-pinned"
+ },
+ "description": "Classify the root cause (CauseClass) from the vulnerable span, CWE and the executed validation's observation.",
+ "evaluation": {
+  "best_baseline": "cwe_lookup",
+  "best_baseline_test": 0.525,
+  "primary_metric": "macro_f1",
+  "promoted": false,
+  "test": 0.525
+ },
+ "fallback": {
+  "default": "missing_check",
+  "key": "cwe",
+  "name": "cwe_lookup",
+  "table": {
+   "CWE-1284": "missing_check",
+   "CWE-22": "missing_check",
+   "CWE-502": "unsafe_default",
+   "CWE-639": "missing_check",
+   "CWE-78": "missing_check",
+   "CWE-79": "missing_check",
+   "CWE-798": "configuration",
+   "CWE-862": "missing_check",
+   "CWE-89": "missing_check",
+   "CWE-916": "wrong_check",
+   "CWE-918": "missing_check",
+   "CWE-942": "configuration"
+  }
+ },
+ "features": {
+  "char_ngrams": true,
+  "fields": [
+   "code",
+   "cwe",
+   "evidence"
+  ],
+  "hashing": "crc32 signed, log-count, L2",
+  "input_dim": 16384
+ },
+ "labels": [
+  "configuration",
+  "logic_error",
+  "missing_check",
+  "unsafe_default",
+  "wrong_check"
+ ],
+ "model_id": "ari-diagnose-rootcause",
+ "task": {
+  "top_k": 3,
+  "type": "multiclass"
+ },
+ "training": {
+  "batch_size": 64,
+  "best_epoch": 40,
+  "best_val_loss": 0.00069,
+  "dropout": 0.25,
+  "epochs": 40,
+  "epochs_run": 40,
+  "hidden": 64,
+  "input_dim": 16384,
+  "lr": 0.002,
+  "numpy": "2.5.4",
+  "patience": 6,
+  "python": "3.12.14",
+  "seconds": 1.96,
+  "seed": 7,
+  "weight_decay": 1e-05
+ },
+ "version": "1.0.0",
+ "weights_bytes": 4195860,
+ "weights_sha256": "6aa70d000ac705226501caa17dd8ec253226d009abf4b46165be4ceb6cb9166b"
+}

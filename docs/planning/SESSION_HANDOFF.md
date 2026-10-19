@@ -18,6 +18,13 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-18 — Adam (Claude Code) — seven trained specialist models (ADR-0014)
+- Did: branch `feat/adam/specialist-models`. New workspace package `specialists/` with one trained model per runtime agent (datasets, NumPy training, held-out evaluation vs deterministic baselines with bootstrap CIs, SHA-256-verified checkpoints, pure-Python inference). `security_agents/specialist_bridge.py` + orchestrator: each agent step gets its specialist's ranked output as an advisory `trained_model` data block; Scout hypotheses are re-ranked; Verify's evidence model can only add a review note; every call is a `specialist.inference` audit event. `backend/Dockerfile` copies `specialists/`.
+- Results (held-out, see `specialists/README.md`): promoted on evidence — Scout (macro-F1 0.298 vs regex 0.090), Probe (acc 0.631 vs CWE lookup 0.606), Verify (macro-F1 0.976 vs heuristics 0.859). Not promoted, baseline used — Trace, Fortify (gains not significant on 21/32 test rows), Diagnose (tie), Patch (worse). payments-lite OOD: Scout ranks the planted IDOR 2/8, refund bug 5/8.
+- Commands and results: `pytest specialists/tests` 31 passed; `security-agents/tests/test_specialist_integration.py` 5 passed; full suites in the PR description.
+- Not done: Claude-only vs hybrid comparison (no live key/budget in session); real-world training data; deployment (Railway redeploy after merge).
+- Warnings: the root test suite needs a virtualenv path without spaces on macOS (pgserver's psql call breaks on "Application Support"); `UV_PROJECT_ENVIRONMENT=/tmp/...` works.
+
 ### 2026-10-18 — Adam (Claude Code) — live commit analysis, landing explainer video
 - Did: branch `feat/adam/live-commit-analysis-video`. (1) `/connect/[org]/[repo]/commit/[sha]` no longer shows the illustrative replay: `POST /api/analyze` reads the commit's real diff from GitHub and runs one Claude call (`claude-opus-5-5`, JSON-schema output, server-side refusal fallback) that writes the code review, findings, proposed fix and the seven agents' steps; the existing commit view replays it. Static only and labelled so (no execution, proposed tests not run, fix not applied). Access is checked against `/github/repositories` with the caller's session cookie. (2) Landing: `components/explainer-video.tsx` scroll chapter with the explainer video (`frontend/public/videos/ari-explainer.mp4`, 42 MB) and a download link.
 - State: lint, typecheck clean; `npm test` 271 passed; `next build` ok. Browser: video chapter checked at 1440x900 (grows 0.62 → 1.0 with scroll, autoplays muted, 3m48s). `/api/analyze` guards checked with curl (401 without session, 400 on bad input).

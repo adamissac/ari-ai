@@ -1,0 +1,278 @@
+{
+ "agent": "fortify",
+ "architecture": {
+  "hidden": 0,
+  "input_dim": 4096,
+  "output": "sigmoid",
+  "type": "linear"
+ },
+ "dataset": {
+  "sha256": "5483c221e8f136828006fba01971acaa849b1605ea5d666083732b5507a75c38",
+  "sizes": {
+   "test": 32,
+   "train": 220,
+   "val": 24
+  },
+  "train_label_counts": {
+   "D3-AA": 13,
+   "D3-AL": 13,
+   "D3-AM": 19,
+   "D3-ANCI": 14,
+   "D3-APCA": 55,
+   "D3-AVE": 16,
+   "D3-CAA": 13,
+   "D3-CCSA": 14,
+   "D3-CDP": 16,
+   "D3-CF": 82,
+   "D3-CH": 14,
+   "D3-CI": 41,
+   "D3-CM": 82,
+   "D3-CQ": 93,
+   "D3-CR": 14,
+   "D3-CRO": 14,
+   "D3-CSPP": 55,
+   "D3-CTS": 14,
+   "D3-DA": 33,
+   "D3-DF": 82,
+   "D3-DI": 26,
+   "D3-DUC": 14,
+   "D3-EAL": 43,
+   "D3-EDL": 43,
+   "D3-EFA": 33,
+   "D3-FA": 82,
+   "D3-FE": 82,
+   "D3-FEV": 82,
+   "D3-FIM": 82,
+   "D3-HBPI": 27,
+   "D3-LFP": 83,
+   "D3-MFA": 14,
+   "D3-NTCD": 55,
+   "D3-NTF": 55,
+   "D3-NTSA": 55,
+   "D3-OTF": 24,
+   "D3-PHDURA": 55,
+   "D3-PMAD": 55,
+   "D3-PSA": 27,
+   "D3-RC": 41,
+   "D3-RD": 19,
+   "D3-RF": 82,
+   "D3-RFAM": 82,
+   "D3-RIC": 14,
+   "D3-RPA": 24,
+   "D3-RS": 16,
+   "D3-RTSD": 55,
+   "D3-RUAA": 13,
+   "D3-SCA": 31,
+   "D3-SCF": 39,
+   "D3-SU": 16,
+   "D3-SWI": 16,
+   "D3-UAP": 13,
+   "D3-UGLPA": 55,
+   "D3-ULA": 13
+  },
+  "version": "corpus-1+mitre-pinned"
+ },
+ "description": "Rank MITRE D3FEND countermeasures for an ATT&CK technique an attack path reaches.",
+ "evaluation": {
+  "best_baseline": "knn_name",
+  "best_baseline_test": 0.2625,
+  "primary_metric": "f1_at_k",
+  "promoted": false,
+  "test": 0.2864
+ },
+ "fallback": {
+  "default": [
+   "D3-CQ",
+   "D3-LFP",
+   "D3-CF",
+   "D3-CM",
+   "D3-DF"
+  ],
+  "key": "tactics",
+  "name": "tactic_frequency",
+  "table": {
+   "collection": [
+    "D3-CF",
+    "D3-CM",
+    "D3-CQ",
+    "D3-DF",
+    "D3-FA"
+   ],
+   "command-and-control": [
+    "D3-APCA",
+    "D3-CSPP",
+    "D3-NTCD",
+    "D3-NTF",
+    "D3-NTSA"
+   ],
+   "credential-access": [
+    "D3-ANCI",
+    "D3-CCSA",
+    "D3-CH",
+    "D3-CR",
+    "D3-CRO"
+   ],
+   "defense-impairment": [
+    "D3-CI",
+    "D3-RC",
+    "D3-AM",
+    "D3-CQ",
+    "D3-DI"
+   ],
+   "discovery": [
+    "D3-SCA",
+    "D3-SCF",
+    "D3-EAL",
+    "D3-EDL",
+    "D3-HBPI"
+   ],
+   "execution": [
+    "D3-CQ",
+    "D3-CF",
+    "D3-CM",
+    "D3-DF",
+    "D3-FA"
+   ],
+   "exfiltration": [
+    "D3-APCA",
+    "D3-CSPP",
+    "D3-NTCD",
+    "D3-NTF",
+    "D3-NTSA"
+   ],
+   "impact": [
+    "D3-APCA",
+    "D3-CSPP",
+    "D3-NTCD",
+    "D3-NTF",
+    "D3-NTSA"
+   ],
+   "initial-access": [
+    "D3-AA",
+    "D3-AL",
+    "D3-AM",
+    "D3-CDP",
+    "D3-RUAA"
+   ],
+   "lateral-movement": [
+    "D3-APCA",
+    "D3-CSPP",
+    "D3-NTCD",
+    "D3-NTF",
+    "D3-NTSA"
+   ],
+   "persistence": [
+    "D3-CQ",
+    "D3-LFP",
+    "D3-CF",
+    "D3-CM",
+    "D3-DF"
+   ],
+   "privilege-escalation": [
+    "D3-CQ",
+    "D3-LFP",
+    "D3-CF",
+    "D3-CM",
+    "D3-DF"
+   ],
+   "stealth": [
+    "D3-CQ",
+    "D3-CF",
+    "D3-CM",
+    "D3-DF",
+    "D3-FA"
+   ]
+  }
+ },
+ "features": {
+  "char_ngrams": true,
+  "fields": [
+   "name",
+   "tactics"
+  ],
+  "hashing": "crc32 signed, log-count, L2",
+  "input_dim": 4096
+ },
+ "labels": [
+  "D3-AA",
+  "D3-AL",
+  "D3-AM",
+  "D3-ANCI",
+  "D3-APCA",
+  "D3-AVE",
+  "D3-CAA",
+  "D3-CCSA",
+  "D3-CDP",
+  "D3-CF",
+  "D3-CH",
+  "D3-CI",
+  "D3-CM",
+  "D3-CQ",
+  "D3-CR",
+  "D3-CRO",
+  "D3-CSPP",
+  "D3-CTS",
+  "D3-DA",
+  "D3-DF",
+  "D3-DI",
+  "D3-DUC",
+  "D3-EAL",
+  "D3-EDL",
+  "D3-EFA",
+  "D3-FA",
+  "D3-FE",
+  "D3-FEV",
+  "D3-FIM",
+  "D3-HBPI",
+  "D3-LFP",
+  "D3-MFA",
+  "D3-NTCD",
+  "D3-NTF",
+  "D3-NTSA",
+  "D3-OTF",
+  "D3-PHDURA",
+  "D3-PMAD",
+  "D3-PSA",
+  "D3-RC",
+  "D3-RD",
+  "D3-RF",
+  "D3-RFAM",
+  "D3-RIC",
+  "D3-RPA",
+  "D3-RS",
+  "D3-RTSD",
+  "D3-RUAA",
+  "D3-SCA",
+  "D3-SCF",
+  "D3-SU",
+  "D3-SWI",
+  "D3-UAP",
+  "D3-UGLPA",
+  "D3-ULA"
+ ],
+ "model_id": "ari-fortify-d3fend",
+ "task": {
+  "top_k": 5,
+  "type": "multilabel"
+ },
+ "training": {
+  "batch_size": 16,
+  "best_epoch": 21,
+  "best_val_loss": 0.30596,
+  "dropout": 0.0,
+  "epochs": 200,
+  "epochs_run": 41,
+  "hidden": 0,
+  "input_dim": 4096,
+  "lr": 0.01,
+  "numpy": "2.5.4",
+  "patience": 20,
+  "python": "3.12.14",
+  "seconds": 0.31,
+  "seed": 7,
+  "weight_decay": 0.0001
+ },
+ "version": "1.0.0",
+ "weights_bytes": 901340,
+ "weights_sha256": "2a1bf71ff69dc304fcabc4517b08a539362150f6f0f407abe6bc5c98df1a1ae7"
+}
