@@ -19,6 +19,13 @@ with a human approver id.
 v2 (``--action-space live_v2 --holdout-dir holdout_v2``): the candidate and the rules may
 use ``block_principal``; the deployed sim policy cannot. ``always_block_principal`` and the
 best rules without blocking (``threshold_rules_no_block``) are reported for context.
+
+v3 (``--action-space live_v3 --train-dir train_v3 --val-dir val_v3 --holdout-dir
+holdout_v3 --noop-margins 0,0.1,0.2,0.3,0.5``): adds ``block_principal_long`` and legitimate
+delegated cross-tenant reads. The rules are tuned with :func:`evaluate.tune_rules_v3`;
+the v2-style rules (short blocks only), ``always_block_principal`` and
+``always_block_principal_long`` and ``always_block_top_principal_long`` are reported
+for context.
 """
 
 from __future__ import annotations
@@ -36,7 +43,7 @@ from payments_lite.app import create_app
 from rl_defense.checkpoint import git_sha, load_checkpoint
 from rl_defense.envs import default_config_paths, load_configs
 from rl_defense.live import evaluate as ev
-from rl_defense.live.actions import as_v2
+from rl_defense.live.actions import as_space
 from rl_defense.live.adversary import live_app
 from rl_defense.live.experience import collect
 from rl_defense.live.retrain import retrain
@@ -52,10 +59,13 @@ def run(args: argparse.Namespace) -> dict:
     criteria = ev.PromotionCriteria(**yaml.safe_load(Path(args.criteria).read_text()))
     space = getattr(args, "action_space", "sim")
     holdout_dir = getattr(args, "holdout_dir", None) or "holdout"
-    tr, va = load_scenarios("train"), load_scenarios("val")
+    train_dir = getattr(args, "train_dir", None) or "train"
+    val_dir = getattr(args, "val_dir", None) or "val"
+    margins = tuple(float(x) for x in str(getattr(args, "noop_margins", "0") or "0").split(","))
+    tr, va = load_scenarios("train", subdir=train_dir), load_scenarios("val", subdir=val_dir)
     ho = load_scenarios("holdout", subdir=holdout_dir)
     # extra fixture tenants/tokens only when needed: the v1 run stays on the stock seed
-    v2_world = space == "live_v2" or any(s.uses_extra_identities for s in [*tr, *va, *ho])
+    v2_world = space != "sim" or any(s.uses_extra_identities for s in [*tr, *va, *ho])
     app_factory = live_app if v2_world else create_app
 
     # 1. deployed policy
@@ -76,7 +86,7 @@ def run(args: argparse.Namespace) -> dict:
     epsilons = [float(e) for e in args.epsilons.split(",")]
     if len(epsilons) < args.rounds:
         epsilons += [epsilons[-1]] * (args.rounds - len(epsilons))
-    behavior = as_v2(deployed_agent) if space == "live_v2" else deployed_agent
+    behavior = as_space(deployed_agent, space) if space != "sim" else deployed_agent
     behavior_m = deployed_m
     datasets: list[Path] = []
     rounds: list[dict] = []
@@ -106,6 +116,7 @@ def run(args: argparse.Namespace) -> dict:
             seed=args.seed,
             name=f"candidate_round{k}",
             action_space=space,
+            noop_margins=margins,
         )
         sel = next(
             h
@@ -124,6 +135,7 @@ def run(args: argparse.Namespace) -> dict:
                 "val_reward": sel["val_reward"],
                 "val_compromise_rate": sel["val_compromise_rate"],
                 "val_availability": sel["val_availability"],
+                "noop_margin": cm["retrain"]["selected_noop_margin"],
             }
         )
         behavior, behavior_m = load_checkpoint(out / f"candidate_round{k}.pt")
@@ -138,9 +150,12 @@ def run(args: argparse.Namespace) -> dict:
     cand_agent, cand_m = load_checkpoint(cand_path)
 
     # 4. rules on train scenarios
-    rules_params, rules_table = ev.tune_rules(
-        tr, app_factory, episodes=args.rules_episodes, action_space=space
-    )
+    if space == "live_v3":
+        rules_params, rules_table = ev.tune_rules_v3(tr, app_factory, episodes=args.rules_episodes)
+    else:
+        rules_params, rules_table = ev.tune_rules(
+            tr, app_factory, episodes=args.rules_episodes, action_space=space
+        )
 
     # 5. holdout, once
     policies = {
@@ -151,16 +166,26 @@ def run(args: argparse.Namespace) -> dict:
         "always_isolate_payments": ev.always_isolate_payments,
     }
     no_block_params = None
-    if space == "live_v2":
+    short_only_params = None
+    if space in ("live_v2", "live_v3"):
         nb = max(
             (r for r in rules_table if r.get("block_anomaly", 1.1) > 1.0),
             key=lambda r: r["train_reward"],
         )
         no_block_params = {
-            k: v for k, v in nb.items() if k not in ("train_reward", "block_anomaly")
+            k: v for k, v in nb.items() if k not in ("train_reward", "block_anomaly", "stage")
         }
         policies["threshold_rules_no_block"] = ev.rules_policy(no_block_params)
         policies["always_block_principal"] = ev.always_block_principal
+    if space == "live_v3":
+        so = max(
+            (r for r in rules_table if r.get("long_mode", "never") == "never"),
+            key=lambda r: r["train_reward"],
+        )
+        short_only_params = {k: v for k, v in so.items() if k not in ("train_reward", "stage")}
+        policies["threshold_rules_short_only"] = ev.rules_policy(short_only_params)
+        policies["always_block_principal_long"] = ev.always_block_principal_long
+        policies["always_block_top_principal_long"] = ev.always_block_top_principal_long
     rows = {
         n: ev.run_policy(p, ho, app_factory, episodes=args.holdout_episodes, action_space=space)
         for n, p in policies.items()
@@ -179,6 +204,9 @@ def run(args: argparse.Namespace) -> dict:
         "target": "examples/payments-lite (in-process, owned demo app)",
         "action_space": space,
         "holdout_dir": f"configs/live/{holdout_dir}",
+        "train_dir": f"configs/live/{train_dir}",
+        "val_dir": f"configs/live/{val_dir}",
+        "noop_margins": list(margins),
         "deployed": {
             "checkpoint_sha256": deployed_m["checkpoint_sha256"],
             "env_id": deployed_m["env_id"],
@@ -200,6 +228,7 @@ def run(args: argparse.Namespace) -> dict:
         "rounds": rounds,
         "rules_params": rules_params,
         "rules_no_block_params": no_block_params,
+        "rules_short_only_params": short_only_params,
         "policies": {n: ev.summarize(r) for n, r in rows.items()},
         "by_scenario": {n: ev.summarize_by_scenario(r) for n, r in rows.items()},
         **verdict,
@@ -296,17 +325,20 @@ def render_markdown(r: dict) -> str:
         "",
         "## Rounds (selection on validation only)",
         "",
-        "| Round | ε | New transitions | Selected update | Val return | Val compromise | Val availability |",
-        "|---|---|---|---|---|---|---|",
+        "| Round | ε | New transitions | Selected update | Noop margin | Val return | Val compromise | Val availability |",
+        "|---|---|---|---|---|---|---|---|",
     ]
     for x in r["rounds"]:
         lines.append(
             f"| {x['round']} | {x['epsilon']} | {x['transitions']} | {x['selected_update']} | "
+            f"{x.get('noop_margin', 0.0)} | "
             f"{x['val_reward']:.2f} | {_f(x['val_compromise_rate'])} | {_f(x['val_availability'])} |"
         )
     lines += ["", f"Threshold rules tuned on train scenarios: `{r['rules_params']}`."]
     if r.get("rules_no_block_params"):
         lines.append(f"Best rules without `block_principal`: `{r['rules_no_block_params']}`.")
+    if r.get("rules_short_only_params"):
+        lines.append(f"Best rules with short blocks only: `{r['rules_short_only_params']}`.")
     lines.append("")
     return "\n".join(lines)
 
@@ -330,9 +362,16 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument("--rules-episodes", type=int, default=2)
     ap.add_argument("--criteria", default=str(CONFIG_DIR / "promotion.yaml"))
-    ap.add_argument("--action-space", choices=["sim", "live_v2"], default="sim")
+    ap.add_argument("--action-space", choices=["sim", "live_v2", "live_v3"], default="sim")
     ap.add_argument(
         "--holdout-dir", default="holdout", help="subdirectory of configs/live with holdout yaml"
+    )
+    ap.add_argument("--train-dir", default="train", help="subdirectory with train yaml")
+    ap.add_argument("--val-dir", default="val", help="subdirectory with val yaml")
+    ap.add_argument(
+        "--noop-margins",
+        default="0",
+        help="comma-separated greedy abstention margins chosen on val per snapshot",
     )
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", default="runs/live/retrain")

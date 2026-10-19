@@ -16,12 +16,13 @@ from rl_defense import ENV_ID
 from rl_defense.agents.ddqn import DDQNAgent, DDQNConfig
 from rl_defense.envs.defense_sim import N_ACTIONS, OBS_DIM
 
-# env id -> (obs_dim, n_actions). The live v2 layout is a strict extension of the
-# simulator's (rl_defense/live/actions.py); it is registered here so its checkpoints load
-# through the same hash-verified path.
+# env id -> (obs_dim, n_actions). The live v2/v3 layouts are strict extensions of the
+# simulator's (rl_defense/live/actions.py); they are registered here so their checkpoints
+# load through the same hash-verified path.
 KNOWN_SPACES: dict[str, tuple[int, int]] = {
     ENV_ID: (OBS_DIM, N_ACTIONS),
     "LiveDefense-payments-lite-v2": (OBS_DIM + 1, N_ACTIONS + 1),
+    "LiveDefense-payments-lite-v3": (OBS_DIM + 7, N_ACTIONS + 3),
 }
 
 
