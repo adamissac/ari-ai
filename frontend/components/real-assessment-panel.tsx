@@ -12,7 +12,14 @@ import { assessmentsForCommit, scopeBody, scopeStateFor } from '@/lib/real-asses
 
 type LoadedData =
   | { status: 'error'; error: unknown }
-  | { status: 'ready'; projectId: string; scopes: AuthorizedScope[]; assessments: Assessment[] };
+  | {
+    status: 'ready';
+    projectId: string;
+    scopes: AuthorizedScope[];
+    assessments: Assessment[];
+    hasMoreScopes: boolean;
+    hasMoreAssessments: boolean;
+  };
 type DataState = { status: 'loading' } | LoadedData;
 
 export function RealAssessmentPanel({
@@ -47,7 +54,19 @@ export function RealAssessmentPanel({
           api().scopes(projectId, { signal: controller.signal }),
           api().assessments(projectId, { signal: controller.signal }),
         ]);
-        if (current) setLoaded({ key: loadKey, data: { status: 'ready', projectId, scopes: scopes.items, assessments: assessments.items } });
+        if (current) {
+          setLoaded({
+            key: loadKey,
+            data: {
+              status: 'ready',
+              projectId,
+              scopes: scopes.items,
+              assessments: assessments.items,
+              hasMoreScopes: scopes.next_cursor !== null,
+              hasMoreAssessments: assessments.next_cursor !== null,
+            },
+          });
+        }
       })
       .catch((error: unknown) => {
         if (current && !controller.signal.aborted) setLoaded({ key: loadKey, data: { status: 'error', error } });
@@ -173,11 +192,17 @@ function AssessmentReady({
             ))}
           </ul>
         )}
+        {data.hasMoreAssessments && (
+          <Link className="mt-2 block text-xs text-muted hover:underline" href={`/projects/${data.projectId}`}>
+            Showing runs from the most recent page only; see the project&apos;s assessments for the full list.
+          </Link>
+        )}
       </section>
 
       {scopeState.kind === 'none' ? (
         <div className="flex flex-col items-start gap-3">
           <p className="text-sm text-muted">No active or pending authorization covers this repository.</p>
+          {data.hasMoreScopes && <p className="text-xs text-muted">Only the most recent scopes were checked.</p>}
           <Button variant="primary" disabled={busy} onClick={onRequestAuthorization}>Request authorization</Button>
         </div>
       ) : scopeState.kind === 'pending' ? (
