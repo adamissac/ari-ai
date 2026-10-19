@@ -22,8 +22,9 @@ SIMULATION_CAVEAT_DEFAULT = (
 )
 
 NodeName = Literal["gateway", "api", "auth", "payments", "db"]
-# ``block_principal`` exists only in the live lab's action space v2
-# (rl-defense/rl_defense/live/actions.py); DefenseSimEnv policies never emit it.
+# ``block_principal`` (live action space v2) and ``block_principal_long`` /
+# ``block_top_principal_long`` (v3) exist only in the live lab's action spaces
+# (rl-defense/rl_defense/layouts.py); DefenseSimEnv policies never emit them.
 DefenseActionName = Literal[
     "noop",
     "raise_monitoring",
@@ -32,6 +33,8 @@ DefenseActionName = Literal[
     "request_reassessment",
     "escalate_to_human",
     "block_principal",
+    "block_principal_long",
+    "block_top_principal_long",
 ]
 
 
@@ -65,6 +68,44 @@ class PlatformFacts(StrictModel):
     principal_block_available: bool = Field(
         default=False,
         description="the detector flagged a principal that is not yet blocked where it was seen",
+    )
+    # Live action space v3 (long/targeted blocks). Same rule: only a principal detector can
+    # set these; elsewhere they stay at their defaults, so a v3 policy sees "nothing
+    # flagged" and neither long block is a valid action.
+    principal_block_long_available: bool = Field(
+        default=False,
+        description="some flagged principal is unblocked or its block is about to lapse",
+    )
+    principal_block_top_long_available: bool = Field(
+        default=False,
+        description="the same, for the most active flagged principal(s)",
+    )
+    block_remaining: float = Field(
+        default=0.0, ge=0.0, le=1.0, description="longest remaining block / long duration"
+    )
+    flagged_principals: float = Field(
+        default=0.0, ge=0.0, le=1.0, description="distinct flagged principals / 3 (capped)"
+    )
+    flagged_volume: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="cross-tenant attempts per flagged principal / 6 (capped)",
+    )
+    flagged_own_share: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="share of flagged principals' requests that read their own tenant",
+    )
+    flagged_repeat: float = Field(
+        default=0.0, ge=0.0, le=1.0, description="share of flagged principals blocked before"
+    )
+    flagged_top_share: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="heaviest flagged principal's share of flagged cross-tenant attempts",
     )
 
 

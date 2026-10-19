@@ -84,3 +84,37 @@ it('glides the same distance per second at 60 Hz and 120 Hz', () => {
   flush(60, 1000 / 120); // half a second at 120 Hz
   expect(Math.abs(positions.at(-1)! - at60)).toBeLessThan(8);
 });
+
+function addVideoChapter() {
+  const chapter = document.createElement('div');
+  chapter.id = 'explainer';
+  chapter.getBoundingClientRect = () => ({ top: 1000 - window.scrollY, height: 1600 }) as DOMRect;
+  document.body.appendChild(chapter);
+  return chapter;
+}
+
+it('lands a huge first wheel gesture on the video and absorbs its momentum', () => {
+  const chapter = addVideoChapter();
+  render(<SmoothScroll />);
+  wheel(document.body, { deltaY: 10000 });
+  wheel(document.body, { deltaY: 1000 });
+  flush();
+  expect(positions.at(-1)).toBe(1400);
+  chapter.remove();
+});
+
+it('allows a new gesture to skip the video after the brief landing pause', () => {
+  const chapter = addVideoChapter();
+  let now = 0;
+  vi.spyOn(performance, 'now').mockImplementation(() => now);
+  render(<SmoothScroll />);
+  wheel(document.body, { deltaY: 10000 }); flush();
+  now = 250;
+  wheel(document.body, { deltaY: 2000 }); flush();
+  expect(positions.at(-1)).toBe(3400);
+  wheel(document.body, { deltaY: -3400 }); flush();
+  wheel(document.body, { deltaY: 10000 }); flush();
+  expect(positions.at(-1)).toBe(4200);
+  chapter.remove();
+  vi.restoreAllMocks();
+});

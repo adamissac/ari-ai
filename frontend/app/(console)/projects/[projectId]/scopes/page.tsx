@@ -9,7 +9,7 @@ import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, Panel
 import { api } from '@/lib/api';
 import { useActionKeys } from '@/lib/action-key';
 import { REQUEST_SCOPE_NOTE, SCOPE_CHECK_CATEGORIES } from '@/lib/scope';
-import { scopeBody } from '@/lib/real-assessment';
+import { isSandboxOnlyScope, scopeBody } from '@/lib/real-assessment';
 import { SCOPE_STATUS } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
 
@@ -21,7 +21,7 @@ export default function ScopesPage() {
       <Panel title="Authorized test scopes">
         <p className="mb-3 text-sm text-muted">
           A <Term t="scope">scope</Term> lists the only <Term t="sandbox">sandbox</Term> targets agents may build and test, and the only check categories Probe may run. It becomes
-          active only after a <strong className="text-ink">different</strong> project member approves it; the backend enforces this.
+          active after a project owner explicitly approves it. Owners may approve their own sandbox-only scopes; other scopes require a different owner. The backend enforces this.
         </p>
         <Async resource={scopes} label="scopes">
           {page => page.items.length === 0 ? <Empty>No scopes requested.</Empty> : (
@@ -45,6 +45,7 @@ function ScopeRow({ scope, onChange }: { scope: AuthorizedScope; onChange: () =>
     try { await fn(); onChange(); } catch (err) { setError(err); } finally { setBusy(false); }
   };
   const mine = scope.requested_by === me.user.id;
+  const needsOtherOwner = mine && !isSandboxOnlyScope(scope);
   return (
     <li className="rounded-md border border-line bg-panel-2 p-3" data-testid={`scope-${scope.id}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -62,14 +63,14 @@ function ScopeRow({ scope, onChange }: { scope: AuthorizedScope; onChange: () =>
       </dl>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {scope.status === 'pending' && (
-          <Button variant="primary" disabled={busy || mine} onClick={() => act(() => api().approveScope(scope.id))} title={mine ? 'The requester cannot approve their own scope' : undefined}>
+          <Button variant="primary" disabled={busy || needsOtherOwner} onClick={() => act(() => api().approveScope(scope.id))} title={needsOtherOwner ? 'This scope requires a different owner' : undefined}>
             Approve scope
           </Button>
         )}
         {(scope.status === 'pending' || scope.status === 'active') && (
           <Button variant="danger" disabled={busy} onClick={() => act(() => api().revokeScope(scope.id))}>Revoke</Button>
         )}
-        {scope.status === 'pending' && mine && <span className="text-xs text-warn">Waiting for another member to approve.</span>}
+        {scope.status === 'pending' && needsOtherOwner && <span className="text-xs text-warn">Waiting for another member to approve.</span>}
       </div>
       {error !== null && <div className="mt-2"><ErrorState error={error} context="Scope action failed" /></div>}
     </li>

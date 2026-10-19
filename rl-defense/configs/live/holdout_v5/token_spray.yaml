@@ -1,0 +1,23 @@
+# Held-out v5 (created 2026-10-19, before any evaluation on it). An outsider is already
+# attacking in the first window, rotating three tokens, in long campaigns against two
+# victims, with both bookkeepers active. Unseen: a long always-on-from-start outsider
+# campaign at 7 requests/window.
+name: token_spray
+split: holdout
+horizon: 30
+schedule: bursty
+p_start: 0.15
+p_stop: 0.1
+start_active: true
+attack_per_step: 7
+benign_per_step: 8
+attackers: [mallory]
+rotate_tokens: true
+victims: [alice, carol]
+benign: [alice, bob, carol, dave, erin]
+delegations: ["dave:alice", "erin:carol"]
+delegate_per_step: 1
+delegate_burst_p: 0.15
+delegate_burst_size: 2
+seed_start: 49200
+episodes: 30

@@ -1,0 +1,21 @@
+# Held-out v6 (created 2026-10-19, before any evaluation on it). An outsider rotating
+# tokens attacks in medium campaigns against three victims while both bookkeepers run very
+# heavy reconciliation. Unseen: three victims, delegate bursts of 6.
+name: rotating_outsider_busy_books
+split: holdout
+horizon: 30
+schedule: bursty
+p_start: 0.18
+p_stop: 0.2
+attack_per_step: 6
+benign_per_step: 7
+attackers: [mallory]
+rotate_tokens: true
+victims: [alice, bob, carol]
+benign: [alice, bob, carol, dave, erin]
+delegations: ["dave:alice", "erin:carol"]
+delegate_per_step: 1
+delegate_burst_p: 0.4
+delegate_burst_size: 6
+seed_start: 46500
+episodes: 30

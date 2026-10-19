@@ -120,7 +120,30 @@ seven checks: availability 0.847 < 0.85 and no-attack duty 0.587 > 0.5. It beats
 `always_block_principal` (−7.31, availability 0.882) matches it, and the best val snapshot
 is again the first one. See
 [`results/live-retrain-v4/REPORT.md`](../../results/live-retrain-v4/REPORT.md) and
-[`PROVENANCE.md`](../../results/live-retrain-v4/PROVENANCE.md). No v5 is planned.
+[`PROVENANCE.md`](../../results/live-retrain-v4/PROVENANCE.md).
+
+**Fifth result (v5, conservative Q-learning):** v4 plus a CQL penalty (`cql_alpha=1.0`,
+`DDQNConfig.cql_alpha`). It was pre-registered with a fresh `holdout_v5`
+([`PREREGISTRATION.md`](../../results/live-retrain-v5/PREREGISTRATION.md)). CQL fixed the
+degradation (selected snapshots at 6000–12000 updates instead of 2000), but it anchored the
+candidate to the behavior data. That data is mostly monitoring and reassessment; blocks are
+3–5% of it. The gate **rejects** the candidate: −12.17 vs rules −7.41, compromise 0.675,
+availability 0.991. The fixed `always_block_principal` scores −4.79. As pre-registered,
+this closes the learned-policy track on payments-lite. See
+[`results/live-retrain-v5/REPORT.md`](../../results/live-retrain-v5/REPORT.md) and
+[`PROVENANCE.md`](../../results/live-retrain-v5/PROVENANCE.md).
+
+**Sixth result (v6, online training from demonstrations):** `online.py` trains a fresh
+network inside the live loop, DQfD style. A teacher is chosen on train only (the tuned
+rules), its episodes fill a permanent demonstration buffer, the network is pretrained with
+a large-margin loss (`DDQNConfig.demo_lambda`), and then it trains on 150k online live
+steps. The gate returns **`recommend_promote`**: all seven checks pass, the first learned
+candidate to do so. It scores −5.30 against the tuned rules' −7.58, +9.51 [8.17, 10.79]
+over deployed and +2.28 [1.80, 2.76] over its own teacher. Caveats: the fixed
+`always_block_principal_long` scores −3.89 on this holdout; the online phase barely moved
+val after pretraining; and the live_v3 checkpoint cannot be served until the long-block
+contract extension lands. Promotion needs a human approver and was not done. See
+[`results/live-retrain-v6/`](../../results/live-retrain-v6/PROVENANCE.md).
 
 ## What is real, and what is not
 
@@ -150,7 +173,7 @@ reach an observation. The gateway's own blocking is not counted as an anomaly.
 ## Tests
 
 ```sh
-.venv/bin/python -m pytest -q tests/test_live_gateway.py tests/test_live_loop.py tests/test_live_retrain.py tests/test_live_block_principal.py tests/test_live_v3.py tests/test_live_v4.py
+.venv/bin/python -m pytest -q tests/test_live_gateway.py tests/test_live_loop.py tests/test_live_retrain.py tests/test_live_block_principal.py tests/test_live_v3.py tests/test_live_v4.py tests/test_live_v5.py tests/test_live_v6.py
 ```
 
 `test_live_v3.py` proves that delegated reads are benign but flagged, and that blanket
@@ -159,17 +182,31 @@ identity-switch leak, that extensions never shorten a block, and that the top-ta
 spares a delegate seen in the same window. It also covers the detector features, the strict
 v2⊂v3 extension, exact widening, the noop margin, v3 rules using every control, holdout_v3
 hygiene, and a v3 pipeline smoke test (on the exposed holdout_v2).
+`test_v2_recommendations.py` and `test_v3_recommendations.py` cover serving live
+checkpoints as `DefenseRecommendation`s (contracts 0.13). The loop is the `PlatformFacts`
+producer (`LiveDefenseLoop.platform_facts()`), and its observation is built through the same
+mapping that serving uses. A v3 runner recommends a long block only when the facts make it
+valid. Inference imports no live-lab module, and `live.run` drives a v3 checkpoint in its
+own layout.
 `test_live_v4.py` proves that the grant-aware detector stops flagging authorized delegated
 reads but still flags reads outside a grant, that it never depends on `is_attack`, and that
 this removes the availability cost of blanket blocking while still containing attackers.
 It also proves the v4 reward is opt-in (defaults stay v1-v3) and doubles the disruption
 price, that selection uses an unweighted mean over scenarios, that holdout_v4 is disjoint,
 and it runs a v4 pipeline smoke test (on holdout_v2).
+`test_live_v5.py` proves CQL is off by default (and old manifests still load), checks that
+the loss is exactly TD + α·(logsumexp − Q(data action)), shows that CQL pushes down actions
+the data never took, checks holdout_v5 hygiene, and runs a v5 pipeline smoke test.
+`test_live_v6.py` checks the DQfD loss against its formula, proves it is off by default,
+that it applies to demonstration rows only and that it teaches the demonstrated action by
+the margin. It also proves the teacher is chosen on train only, that training uses
+train-band seeds and a fresh network, checks holdout_v6 hygiene, and runs an online
+pipeline smoke test.
 
 `test_live_block_principal.py` proves the block's real effect (403, no data, other tenants
 unaffected, rotated tokens still blocked), its duration and masking in the loop, that it
 beats isolation on availability under identical traffic, that widened sim agents act
-exactly as before, that v2 checkpoints are refused by `PolicyRunner`, and the gate's
+exactly as before, and the gate's
 behavior on measured v2 episodes.
 
 `test_live_gateway.py` proves each action's real effect and that telemetry is measured;
@@ -186,3 +223,6 @@ approvers, failing reports, mismatched bytes, and swapped checkpoints, and rolls
 
 Owned, isolated target only; in-process (no network egress); only the permitted defensive
 actions are enforced; no path to any system outside the demo app. See docs/15.
+
+
+Online DQfD evidence exports now include the checkpoint, matching sidecar, selected-snapshot experience prefix and complete experiment JSONL. Lineage counts only transitions available at selection; `online.experiment` records the full collection and update count. Updates start with the first collected episode (sampling uses replacement). Registry promotion refuses unsupported layouts and online reports whose checkpoint/selected experience evidence is absent or hash-mismatched. The original v6 bytes remain unavailable; its historical report is not an executable promotion packet.

@@ -10,6 +10,26 @@ max_a' Q_target(s', a'); ``double_dqn_targets`` deliberately does not. Optional 
 (defaults reproduce protocol-v0): ``double=False`` for the vanilla-DQN ablation,
 ``dueling=True`` for a dueling head, ``n_step>1`` for n-step returns, in which case each
 stored transition carries its own discount gamma**k (k = steps actually accumulated).
+
+``cql_alpha>0`` adds the conservative Q-learning penalty for discrete actions (CQL(H),
+Kumar et al. 2020) to the TD loss:
+
+    loss = huber(Q(s,a), y) + cql_alpha * mean_batch( logsumexp_a' Q(s,a') - Q(s,a) )
+
+It pushes down Q-values of actions the dataset does not contain and up those it does, the
+standard fix for overestimation when training offline on a small fixed dataset (live v4:
+val return fell from -5.6 at update 2000 to -15.3 at 16000). The logsumexp runs over all
+actions: the buffer stores only the next state's mask, and masked actions are never taken.
+0 (default) = plain (Double) DQN.
+
+``demo_lambda>0`` adds the DQfD large-margin supervised loss (Hester et al. 2018) on the
+batch rows marked as demonstrations (``Batch.demo``):
+
+    J_E = mean_demo( max_a [Q(s,a) + demo_margin * 1(a != a_E)] - Q(s,a_E) )
+
+so the demonstrated action's Q must exceed every other action's by the margin, while TD
+learning on the same data (and on the agent's own experience) can still overrule it where
+returns say so. 0 (default) = off.
 """
 
 from __future__ import annotations
@@ -68,6 +88,15 @@ class DDQNConfig(BaseModel):
         description="Exploration: relative probability weight of disruptive actions when "
         "acting randomly (None = uniform over valid actions, the v0/v1 behaviour).",
     )
+    cql_alpha: float = Field(
+        0.0,
+        ge=0.0,
+        description="Conservative Q-learning penalty weight for offline training (live v5). 0 = off.",
+    )
+    demo_lambda: float = Field(
+        0.0, ge=0.0, description="DQfD large-margin loss weight on demonstration rows (live v6)."
+    )
+    demo_margin: float = Field(0.8, ge=0.0, description="DQfD margin l(a_E, a) for a != a_E.")
 
 
 class QNetwork(nn.Module):
@@ -119,6 +148,27 @@ class Batch:
     dones: torch.Tensor
     next_masks: torch.Tensor
     discounts: torch.Tensor | None = None  # per-transition gamma**k for n-step; None = gamma
+    demo: torch.Tensor | None = None  # bool per row: a demonstration (DQfD margin loss)
+
+
+def cat_batches(*batches: Batch) -> Batch:
+    """Concatenate batches row-wise (e.g. agent replay + demonstration replay)."""
+
+    def cat(name: str) -> torch.Tensor | None:
+        parts = [getattr(b, name) for b in batches]
+        if all(x is None for x in parts):
+            return None
+        if any(x is None for x in parts):
+            raise ValueError(f"cannot concatenate batches with and without {name}")
+        return torch.cat(parts)
+
+    return Batch(
+        **{
+            f: cat(f)
+            for f in ("obs", "actions", "rewards", "next_obs", "dones", "next_masks", "discounts")
+        },
+        demo=cat("demo"),
+    )
 
 
 class ReplayBuffer:
@@ -283,8 +333,19 @@ class DDQNAgent:
             y = double_dqn_targets(self.online, self.target, batch, c.gamma)
         else:
             y = dqn_targets(self.target, batch, c.gamma)
-        q = self.online(batch.obs).gather(1, batch.actions.unsqueeze(1)).squeeze(1)
-        loss = nn.functional.smooth_l1_loss(q, y)
+        q_all = self.online(batch.obs)
+        q = q_all.gather(1, batch.actions.unsqueeze(1)).squeeze(1)
+        td_loss = nn.functional.smooth_l1_loss(q, y)
+        cql_gap = torch.zeros((), device=q.device)
+        if c.cql_alpha > 0:
+            cql_gap = (torch.logsumexp(q_all, dim=1) - q).mean()
+        demo_loss = torch.zeros((), device=q.device)
+        if c.demo_lambda > 0 and batch.demo is not None and bool(batch.demo.any()):
+            d = batch.demo
+            margins = torch.full_like(q_all[d], c.demo_margin)
+            margins.scatter_(1, batch.actions[d].unsqueeze(1), 0.0)
+            demo_loss = ((q_all[d] + margins).max(dim=1).values - q[d]).mean()
+        loss = td_loss + c.cql_alpha * cql_gap + c.demo_lambda * demo_loss
         self.optimizer.zero_grad()
         loss.backward()
         grad_norm = nn.utils.clip_grad_norm_(self.online.parameters(), c.grad_clip)
@@ -298,6 +359,9 @@ class DDQNAgent:
             "loss": loss.item(),
             "grad_norm": float(grad_norm),
             "q_mean": q.detach().mean().item(),
+            "td_loss": td_loss.item(),
+            "cql_gap": cql_gap.item(),
+            "demo_loss": demo_loss.item(),
         }
 
     def hard_update(self) -> None:

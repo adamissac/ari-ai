@@ -14,19 +14,21 @@ import torch
 from rl_defense.agents.ddqn import NEG_INF
 from rl_defense.contracts import FeatureContribution, RLExplanation
 from rl_defense.envs.config import NODE_NAMES
-from rl_defense.envs.defense_sim import (
-    GLOBAL_FEATURES,
-    N_ACTIONS,
-    NODE_FEATURES,
-    OBS_DIM,
-    decode_action,
+from rl_defense.envs.defense_sim import GLOBAL_FEATURES, NODE_FEATURES, OBS_DIM
+from rl_defense.layouts import (
+    BLOCK_PRINCIPAL,
+    BLOCK_PRINCIPAL_ACTION,
+    DIMS,
+    LIVE_V2_EXTRA_FEATURES,
+    LIVE_V2_OBS_DIM,
+    LIVE_V3_EXTRA_FEATURES,
+    live_decode_action,
 )
 
-# Live action space v2 layout (rl_defense/live/actions.py; kept in step by a test). Not
-# imported from there: rl_defense.live imports inference, which imports this module.
-_V2_OBS_DIM = OBS_DIM + 1
-_V2_EXTRA = ("principal_block_active",)
-_BLOCK_ACTION, _BLOCK_NAME = N_ACTIONS, "block_principal"
+# Live layouts (rl_defense/layouts.py: constants only, no live deps).
+_V2_OBS_DIM = LIVE_V2_OBS_DIM
+_V2_EXTRA = LIVE_V2_EXTRA_FEATURES
+_BLOCK_ACTION, _BLOCK_NAME = BLOCK_PRINCIPAL_ACTION, BLOCK_PRINCIPAL
 
 # Static context the platform supplies (not live signals); occluding these answers
 # "would the policy act differently on a less critical / less exposed node?".
@@ -35,14 +37,12 @@ STATIC_FEATURES = frozenset({"criticality", "exposed"})
 
 METHOD = "occlusion: feature set to 0, change in Q(chosen) - Q(runner-up)"
 CAVEAT = "Explains the simulation-trained policy's decision, not real-world causality."
-LIVE_CAVEAT = "Explains the lab-retrained policy's decision, not real-world causality."
-_GLOBALS = (*GLOBAL_FEATURES, *_V2_EXTRA)
+LIVE_CAVEAT = "Explains the lab policy's decision, not real-world causality."
+_GLOBALS = (*GLOBAL_FEATURES, *LIVE_V3_EXTRA_FEATURES)  # v2/v3 obs are prefixes
 
 
 def action_label(action: int) -> str:
-    if action == _BLOCK_ACTION:
-        return _BLOCK_NAME
-    name, node = decode_action(action)
+    name, node = live_decode_action(action)
     return name if node is None else f"{name}:{NODE_NAMES[node]}"
 
 
@@ -66,9 +66,12 @@ def explain(
     mask: np.ndarray,
     recommendation_id: str,
     top_k: int = 5,
+    *,
+    selected_action: int | None = None,
 ) -> RLExplanation:
-    if obs.shape not in ((OBS_DIM,), (_V2_OBS_DIM,)):
-        raise ValueError(f"observation must have shape ({OBS_DIM},) or ({_V2_OBS_DIM},)")
+    dims = tuple((d,) for d, _ in DIMS.values())
+    if obs.shape not in dims:
+        raise ValueError(f"observation must have one of the shapes {dims}")
     dim = obs.shape[0]
     if mask.sum() < 1:
         raise ValueError("action mask has no valid actions")
@@ -80,8 +83,10 @@ def explain(
         )
         qm = np.where(mask, q, NEG_INF)
         order = np.argsort(-qm)
-        best = int(order[0])
-        runner = int(order[1]) if mask.sum() > 1 else None
+        best = int(order[0]) if selected_action is None else selected_action
+        if not 0 <= best < len(mask) or not mask[best]:
+            raise ValueError("selected action must be valid under the action mask")
+        runner = next((int(a) for a in order if mask[a] and a != best), None)
         margin = float(q[best] - q[runner]) if runner is not None else 0.0
 
         # Batch all occlusions: row i = obs with feature i set to 0.
