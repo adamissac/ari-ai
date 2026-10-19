@@ -19,8 +19,9 @@ asked for Claude Haiku 5.5 ($0.10 / $0.50 per million tokens for prompts up to 1
    is one environment variable away (`ANTHROPIC_MODEL=claude-opus-5-5`).
 3. Haiku has no server-side refusal fallback, so the `fallbacks` parameter is not sent for
    `claude-haiku-*`. Nothing silently reroutes a request to a more expensive model.
-4. Cost accounting prices the model actually used (per-model tables), so budgets stay correct
-   under any override.
+4. Cost accounting prices the model actually used (per-model tables). Haiku prompts over 100K
+   tokens cost $0.50 / $2.50 per million, but the tables use the base rate, so such requests are
+   counted low; the per-assessment token cap bounds the error.
 
 ## Consequences
 - Much lower spend per assessment and per commit analysis.
