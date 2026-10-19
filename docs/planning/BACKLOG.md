@@ -51,3 +51,6 @@ Completed: owner sandbox authorization flow, live approval-status refresh and ex
 
 
 Completed: PR #360 review follow-up — standalone live-layout checkpoint loading, abstention-consistent explanations, Q-ranked confidence metadata and neutral CLI provenance. No checkpoint promotion.
+
+
+Completed: align browser scope approval assertion with explicit sandbox-owner approval, retaining independent Bob approval and the full persisted Verify journey.
