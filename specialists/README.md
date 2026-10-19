@@ -121,8 +121,12 @@ Re-running training is deterministic (seeded); the dataset SHA-256 in each manif
 
 `python -m specialists.live_comparison` runs the full seven-agent assessment on
 `examples/payments-lite` (authorized, owned fixture) in each configuration, interleaved, and scores
-each run against `labels.yaml`, which the agents never see. Results go in
+each run against `labels.yaml` `planted_findings` / `negatives` (the answer key — agents never see
+it). Agents do receive behavioral expectations from the same file's `expectations:` section (routes
+and invariants also stated in the target README); discovery is therefore with intended-behavior
+context, not a fully blind hunt. Results go in
 [`results/live_comparison.json`](results/live_comparison.json) (every run, the summary, excluded runs).
+`--resume` refuses if mode or settings differ from the file on disk.
 
 - `claude_only`: `Orchestrator(specialists=Specialists(enabled=False))`
 - `hybrid`: the deployed specialists (Scout, Probe, Verify models; baselines for the other four)

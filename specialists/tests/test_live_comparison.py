@@ -57,3 +57,27 @@ def test_provider_failures_are_excluded_but_refusals_are_not():
     assert lc.provider_failure(score("LLM_UNAVAILABLE", "refusal: policy")) is None
     assert lc.provider_failure(score("BUDGET_EXCEEDED", "cap")) is None
     assert lc.provider_failure({"state": "crashed", "error_code": "RuntimeError"})
+
+
+class _Hyp:
+    def __init__(self, entry_point_id, cited_spans=None):
+        self.entry_point_id = entry_point_id
+        self.cited_spans = cited_spans or []
+
+
+def test_matches_rejects_entry_point_mismatch_without_span_fallback():
+    loc = {"entry_point_id": "ent_a", "path": "app.py", "symbol": "get_payment", "lines": (10, 20)}
+    assert lc._matches(_Hyp("ent_a"), loc)
+    assert not lc._matches(_Hyp("ent_b"), loc)  # explicit mismatch: no span fallback
+
+
+def test_resume_refuses_mode_or_settings_mismatch(tmp_path):
+    out = tmp_path / "cmp.json"
+    assert lc.main(["--mode", "replay", "--reps", "1", "--configs", "claude_only", "--out", str(out)]) == 0
+    # Same settings resume is fine.
+    assert lc.main(["--mode", "replay", "--reps", "1", "--configs", "claude_only", "--out", str(out), "--resume"]) == 0
+    # Different validate limit must not pool with the prior runs.
+    assert lc.main([
+        "--mode", "replay", "--reps", "1", "--configs", "claude_only", "--out", str(out),
+        "--resume", "--validate", "1",
+    ]) == 2

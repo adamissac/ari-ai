@@ -1,11 +1,12 @@
 {
- "what": "seven-agent assessment on examples/payments-lite: Claude-only vs hybrid (trained specialists + Claude) vs specialists-only, scored against labels.yaml (never shown to the agents)",
+ "what": "seven-agent assessment on examples/payments-lite: Claude-only vs hybrid (trained specialists + Claude) vs specialists-only; scored against planted_findings/negatives (answer key never shown to agents). Agents receive behavioral expectations from labels.yaml expectations: (also in target README).",
  "mode": "live",
  "settings": {
   "max_hypotheses": 3,
   "validate": 2,
   "per_run_cap_usd": 4.0,
-  "total_cap_usd": 20.0
+  "total_cap_usd": 20.0,
+  "target": "examples/payments-lite"
  },
  "answer_key": {
   "planted": [

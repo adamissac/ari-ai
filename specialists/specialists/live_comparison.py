@@ -2,7 +2,11 @@
 
 Runs the full seven-agent assessment on the authorized planted-defect target
 ``examples/payments-lite`` in three configurations and scores every run against the answer key
-(``labels.yaml``: ``planted_findings`` and ``negatives``), which the agents never see:
+(``labels.yaml``: ``planted_findings`` and ``negatives``). Agents never see that answer key.
+They do receive behavioral expectations (routes + invariants) loaded from the ``expectations:``
+section of the same file — the same statements appear in the target README / docstrings and are
+what a production assessment would get from code intelligence. Discovery numbers are therefore
+"with intended-behavior context", not a fully blind hunt.
 
 * ``claude_only``       Orchestrator(specialists=Specialists(enabled=False)): no specialist advice.
 * ``hybrid``            the default trained specialists (checkpoints in ``specialists/checkpoints``).
@@ -22,8 +26,10 @@ tokens, USD and latency.
     RUN_LIVE_LLM_EVAL=1 LIVE_SEVEN_MAX_USD=4 uv run python -m specialists.live_comparison \\
         --mode live --i-have-authorization --reps 3 --total-max-usd 20
 
-Every finished run is written to ``--out`` immediately (``runs``) and the summary is recomputed,
-so an interrupted live evaluation keeps what it paid for; ``--resume`` continues it.
+Every finished run (including crashes) is written to ``--out`` immediately and the summary is
+recomputed, so an interrupted live evaluation keeps what it paid for. ``--resume`` continues only
+when mode and settings match the file on disk; otherwise it refuses so incomparable runs are not
+pooled.
 
 This module imports ``security_agents`` lazily: it is an evaluation harness for the workspace, not
 part of the specialists' runtime (which stays dependency-free).
@@ -118,9 +124,22 @@ def _covers(refs: list[Any], loc: dict[str, Any]) -> bool:
 
 
 def _matches(h: Any, loc: dict[str, Any]) -> bool:
-    if loc["entry_point_id"] and h.entry_point_id == loc["entry_point_id"]:
-        return True
-    return _covers(h.cited_spans, loc)
+    """Match a hypothesis to a planted location.
+
+    Prefer entry-point identity. If both sides name an entry point and they differ, that is a
+    mismatch (do not fall back to span overlap — a broad citation like ``create_app`` would
+    otherwise match every handler). Span/symbol fallback is only used when either side lacks an
+    entry-point id.
+    """
+    loc_ep = loc.get("entry_point_id")
+    hyp_ep = getattr(h, "entry_point_id", None)
+    if loc_ep and hyp_ep:
+        return loc_ep == hyp_ep
+    if loc_ep and hyp_ep is None:
+        return _covers(h.cited_spans, loc)
+    if not loc_ep:
+        return _covers(h.cited_spans, loc)
+    return False
 
 
 # ------------------------------------------------------------------ scoring one run
@@ -398,6 +417,36 @@ def _finish(doc: dict[str, Any], runs: list[dict[str, Any]], planted_ids: list[s
     _write(out, doc)
 
 
+def _settings(*, max_hypotheses: int, validate: int, per_run_cap: float, total_max_usd: float) -> dict[str, Any]:
+    return {
+        "max_hypotheses": max_hypotheses,
+        "validate": validate,
+        "per_run_cap_usd": per_run_cap,
+        "total_cap_usd": total_max_usd,
+        "target": "examples/payments-lite",
+    }
+
+
+def _resume_compatible(doc: dict[str, Any], *, mode: str, settings: dict[str, Any]) -> str | None:
+    """Return a refusal reason if ``doc`` cannot be resumed with the new invocation, else None."""
+    if not doc.get("runs"):
+        return None
+    if doc.get("mode") != mode:
+        return f"mode mismatch: file has {doc.get('mode')!r}, invocation wants {mode!r}"
+    prior = doc.get("settings") or {}
+    for key in ("max_hypotheses", "validate", "per_run_cap_usd", "target"):
+        if key in prior and prior[key] != settings.get(key):
+            return f"settings.{key} mismatch: file has {prior[key]!r}, invocation wants {settings.get(key)!r}"
+    return None
+
+
+WHAT = (
+    "seven-agent assessment on examples/payments-lite: Claude-only vs hybrid (trained specialists + Claude) "
+    "vs specialists-only; scored against planted_findings/negatives (answer key never shown to agents). "
+    "Agents receive behavioral expectations from labels.yaml expectations: (also in target README)."
+)
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="specialists.live_comparison", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -423,17 +472,29 @@ def main(argv: list[str] | None = None) -> int:
     configs = [c for c in args.configs.split(",") if c]
     key = load_key()
     planted_ids = [p["id"] for p in key["planted"]]
+    settings = _settings(
+        max_hypotheses=args.max_hypotheses, validate=args.validate,
+        per_run_cap=per_run_cap, total_max_usd=args.total_max_usd,
+    )
 
     doc: dict[str, Any] = {}
     if args.resume and args.out.is_file():
         doc = json.loads(args.out.read_text(encoding="utf-8"))
+        reason = _resume_compatible(doc, mode=args.mode, settings=settings)
+        if reason:
+            print(f"--resume refused: {reason}. Start a new --out file.", file=sys.stderr)
+            return 2
+    elif args.out.is_file() and not args.resume:
+        # Avoid silently overwriting a prior experiment with incompatible pooling semantics.
+        prior = json.loads(args.out.read_text(encoding="utf-8"))
+        if prior.get("runs"):
+            print(f"{args.out} already has runs; pass --resume (same settings) or a new --out", file=sys.stderr)
+            return 2
     runs: list[dict[str, Any]] = doc.get("runs", [])
     doc.update({
-        "what": "seven-agent assessment on examples/payments-lite: Claude-only vs hybrid (trained specialists + Claude) "
-                "vs specialists-only, scored against labels.yaml (never shown to the agents)",
+        "what": WHAT,
         "mode": args.mode,
-        "settings": {"max_hypotheses": args.max_hypotheses, "validate": args.validate,
-                     "per_run_cap_usd": per_run_cap, "total_cap_usd": args.total_max_usd},
+        "settings": settings,
         "answer_key": {"planted": key["planted"], "negatives": key["negatives"],
                        "class_family": {k: sorted(v) for k, v in CLASS_FAMILY.items()}, "expected_cause": EXPECTED_CAUSE},
     })
@@ -453,9 +514,11 @@ def main(argv: list[str] | None = None) -> int:
         try:
             score, _, _ = run_one(config, mode=args.mode, max_usd=cap, max_hypotheses=args.max_hypotheses, validate=args.validate)
         except Exception as exc:  # a crashed run is a result too; record it, keep going
-            score = {"state": "crashed", "error_code": type(exc).__name__, "error_detail": str(exc)[:500]}
+            score = {"state": "crashed", "error_code": type(exc).__name__, "error_detail": str(exc)[:500],
+                     "usd": 0.0, "tokens": 0}
             print(f"  crashed: {exc}", file=sys.stderr)
             runs.append({"config": config, "attempt": attempt, "at": datetime.now(UTC).isoformat(), "score": score})
+            _finish(doc, runs, planted_ids, spent, args.out)
             continue
         spent += score["usd"]
         failure = provider_failure(score)
