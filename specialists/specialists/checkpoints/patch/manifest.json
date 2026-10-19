@@ -1,0 +1,125 @@
+{
+ "agent": "patch",
+ "architecture": {
+  "hidden": 64,
+  "input_dim": 16384,
+  "output": "softmax",
+  "type": "mlp-relu"
+ },
+ "dataset": {
+  "sha256": "e21ab3e182702a9ebf27f59364e11ac1ec3d23ddd94e5e4fb25481c7d1c3f813",
+  "sizes": {
+   "test": 432,
+   "train": 1080,
+   "val": 216
+  },
+  "train_label_counts": {
+   "add_ownership_predicate": 60,
+   "allowlist_identifier": 30,
+   "allowlist_outbound_hosts": 90,
+   "canonicalize_and_contain_path": 90,
+   "check_owner_after_load": 30,
+   "encode_output": 60,
+   "enforce_cumulative_bound": 30,
+   "enforce_role_check": 60,
+   "move_secret_to_environment": 60,
+   "parameterize_query": 60,
+   "remove_default_credentials": 30,
+   "require_authentication": 30,
+   "restrict_cors_origins": 90,
+   "sanitize_rich_text": 30,
+   "use_argument_list": 60,
+   "use_password_kdf": 90,
+   "use_safe_data_format": 60,
+   "use_safe_loader": 30,
+   "validate_and_use_argument_list": 30,
+   "validate_range": 60
+  },
+  "version": "corpus-1+mitre-pinned"
+ },
+ "description": "Choose the minimal remediation strategy for a confirmed weakness from the vulnerable span and CWE.",
+ "evaluation": {
+  "best_baseline": "cwe_lookup",
+  "best_baseline_test": 0.75,
+  "primary_metric": "macro_f1",
+  "promoted": false,
+  "test": 0.7338
+ },
+ "fallback": {
+  "default": "canonicalize_and_contain_path",
+  "key": "cwe",
+  "name": "cwe_lookup",
+  "table": {
+   "CWE-1284": "validate_range",
+   "CWE-22": "canonicalize_and_contain_path",
+   "CWE-502": "use_safe_data_format",
+   "CWE-639": "add_ownership_predicate",
+   "CWE-78": "use_argument_list",
+   "CWE-79": "encode_output",
+   "CWE-798": "move_secret_to_environment",
+   "CWE-862": "enforce_role_check",
+   "CWE-89": "parameterize_query",
+   "CWE-916": "use_password_kdf",
+   "CWE-918": "allowlist_outbound_hosts",
+   "CWE-942": "restrict_cors_origins"
+  }
+ },
+ "features": {
+  "char_ngrams": true,
+  "fields": [
+   "code",
+   "cwe"
+  ],
+  "hashing": "crc32 signed, log-count, L2",
+  "input_dim": 16384
+ },
+ "labels": [
+  "add_ownership_predicate",
+  "allowlist_identifier",
+  "allowlist_outbound_hosts",
+  "canonicalize_and_contain_path",
+  "check_owner_after_load",
+  "enable_autoescape",
+  "encode_output",
+  "enforce_cumulative_bound",
+  "enforce_role_check",
+  "move_secret_to_environment",
+  "parameterize_query",
+  "raise_kdf_work_factor",
+  "remove_default_credentials",
+  "require_authentication",
+  "restrict_cors_origins",
+  "sanitize_rich_text",
+  "use_argument_list",
+  "use_password_kdf",
+  "use_safe_data_format",
+  "use_safe_loader",
+  "validate_and_use_argument_list",
+  "validate_range"
+ ],
+ "model_id": "ari-patch-strategy",
+ "task": {
+  "top_k": 3,
+  "type": "multiclass"
+ },
+ "training": {
+  "batch_size": 64,
+  "best_epoch": 40,
+  "best_val_loss": 0.00336,
+  "dropout": 0.25,
+  "epochs": 40,
+  "epochs_run": 40,
+  "hidden": 64,
+  "input_dim": 16384,
+  "lr": 0.002,
+  "numpy": "2.5.4",
+  "patience": 6,
+  "python": "3.12.14",
+  "seconds": 1.98,
+  "seed": 7,
+  "weight_decay": 1e-05
+ },
+ "version": "1.0.0",
+ "weights_bytes": 4200280,
+ "weights_sha256": "838d375d17f4e667e7e40a7053b586fad760ef1b62caa71ea76ea82a96f1f9e8"
+}
