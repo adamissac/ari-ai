@@ -196,6 +196,10 @@ Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablat
 - Cloud run itself made no code changes (UI polish landed separately).
 
 
+## 2026-10-19 — #359 DQfD review fixes
+- Branch `fix/adam/dqfd-review`: selected-prefix lineage, full experiment provenance, complete evidence export, exact update count and servability/evidence promotion guards.
+- Original v6 bytes remain unavailable; historical report limitations explicitly documented. No promotion or fresh holdout_v6 evaluation. Tests/results recorded in PR.
+
 ## 2026-10-19 — Alan GitHub review follow-up
 - Reviewed recent coordination messages and open PRs #359/#360. Recent Alan messages to Adam are FYI/decisions.
 - Fixed all four #360 serving findings on `fix/adam/live-v3-review`, with targeted regression coverage (10 passed) and clean ruff checks. Full results in PR.

@@ -18,6 +18,11 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-19 — Claude (agent, Alan) — live RL v6: online DQfD — first `recommend_promote`
+- Did: branch `feat/alan/live-v6-dqfd`. Alan's direction: RL stays the defense; rules only teach. Added the DQfD large-margin loss (`DDQNConfig.demo_lambda`, default 0) and `rl_defense/live/online.py`. The teacher is chosen on train only. The network is fresh, with no sim prior. It gets 3k demonstration transitions and 5k pretraining updates, then 150k online live steps on `train_v3` with 25% demonstrations in every batch, selection on `val_v4`, and the v4 loop. Pre-registered in `rl-defense/results/live-retrain-v6/PREREGISTRATION.md` (`c788b5d`) with a fresh `holdout_v6`. Tests: `rl-defense/tests/test_live_v6.py` (8).
+- Result: **`recommend_promote`**, all 7 checks pass. Candidate −5.30 vs rules −7.58; +9.51 [8.17, 10.79] vs deployed; +2.28 [1.80, 2.76] vs its teacher. Caveats are in PROVENANCE: fixed `always_block_principal_long` scores −3.89 on this holdout; val was flat from pretraining onwards; nothing was promoted.
+- Next (needs humans): Alan to decide on promotion via `rl_defense.live.registry promote` (usr_* approver), and on the long-block action contract extension in `shared/`. That extension is required before `PolicyRunner` can serve live_v3 checkpoints.
+
 ### 2026-10-19 — Claude (agent, Alan) — contracts 0.13: serve live_v3 RL policies (long blocks)
 - Did: branch `feat/alan/serve-live-v3`. Alan, as interim `shared/` approver, chose the first shape in the long-block proposal (decision `coordination/messages/20261019T110000Z-alan-to-all-long-block-actions-decision.md`). `DefenseActionName` gains `block_principal_long` and `block_top_principal_long`. `PlatformFacts` gains the v3 detector fields, all with defaults. `SCHEMA_VERSION` goes 0.12.0 → 0.13.0, which also covers #324 and #334. `PolicyRunner` serves live_v3 checkpoints and now uses the checkpoint's own greedy rule (noop margin included), so the served action equals the evaluated one. The live loop is the `PlatformFacts` producer (`platform_facts()`) and builds its obs through the serving mapping. The #335 items are done: `rl_defense/layouts.py` (inference imports no live lab), the `live/run.py` layout, the neutral caveat, docs, and CHANGELOG.
 - Verified: `rl-defense/tests/test_v3_recommendations.py` (10); rl suite 179 passed; `make check` clean (contracts fresh); shared + backend rl tests pass, and `test_rl_integration.py` runs with rl_defense installed. The real v6 candidate (`8113a37f4ff9`, from `runs/`) was served once on a train scenario after a temporary merge with the v6 branch: it recommends `block_principal` then `block_principal_long` while principals are flagged.
@@ -939,6 +944,8 @@ Fixed commit-screen authorization deadlock at explicit owner direction. Sandbox-
 
 Follow-up: aligned the runtime scope guard with owner sandbox self-approval (both single- and multi-member orgs), added empty/external/mixed-target denial regressions (27 guard tests pass), and fixed backend test formatting required by CI.
 
+
+2026-10-19 Adam: fixed #359 training review findings on fix/adam/dqfd-review. Selected-prefix provenance and full experiment are distinct, export retains bytes, promotion refuses unservable/missing-evidence candidates. Original v6 artifacts cannot be recovered from Git, so reports now disclose that limit; no rerun of holdout_v6 or policy promotion.
 
 2026-10-19 Adam: reviewed Alan’s recent coordination messages and open PR #360. Fixed its four review findings on fix/adam/live-v3-review. Full RL regression suite and lint results recorded in the PR; no training, checkpoint promotion or deployment performed.
 
