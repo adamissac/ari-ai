@@ -1,0 +1,137 @@
+{
+  "env_id": "DefenseSimEnv-v0",
+  "obs_dim": 48,
+  "n_actions": 22,
+  "seed": 0,
+  "steps": 4000,
+  "train_configs": {
+    "live:always_on": "91974014d5494ee6",
+    "live:long_campaign": "08b52b4dd848588b",
+    "live:quiet": "f15054ae1b8a606f",
+    "live:steady_bursts": "a15c8920cc624f6d"
+  },
+  "ddqn_config": {
+    "hidden_sizes": [
+      128,
+      128
+    ],
+    "gamma": 0.99,
+    "lr": 0.001,
+    "lr_end": null,
+    "batch_size": 64,
+    "buffer_size": 100000,
+    "learning_starts": 1000,
+    "train_freq": 1,
+    "target_update": "hard",
+    "target_update_interval": 1000,
+    "tau": 0.005,
+    "eps_start": 1.0,
+    "eps_end": 0.05,
+    "eps_decay_steps": 50000,
+    "grad_clip": 10.0,
+    "double": true,
+    "dueling": false,
+    "n_step": 1,
+    "disruption_margin": 0.0,
+    "eps_disruptive_weight": null
+  },
+  "git_sha": "33d2e173c7bde6ced56c02a394925451035fb403",
+  "created_at": "2026-10-19T04:18:37.045715+00:00",
+  "trained_on": "live:examples/payments-lite (offline, from recorded experience)",
+  "lineage": {
+    "base_checkpoint_sha256": "abc06befd5cef2f7f3281eec62e149ffa46d8139e440710da8afc806a8273f49",
+    "base_env_id": "DefenseSimEnv-v0",
+    "datasets": [
+      "exp_1751a5f3a9ce11df",
+      "exp_48adee8ae34bf464",
+      "exp_3c7c6ec191cb33d5"
+    ],
+    "transitions": 6300
+  },
+  "retrain": {
+    "updates_run": 16000,
+    "selected_update": 4000,
+    "batch_size": 64,
+    "lr": 0.0003,
+    "eval_every": 2000,
+    "val_scenarios": {
+      "val_mixed": "cf10841d5ccc6cbb"
+    },
+    "selection_history": [
+      {
+        "update": 0,
+        "role": "base",
+        "val_reward": -16.735,
+        "val_compromise_rate": 1.0,
+        "val_availability": 1.0,
+        "val_no_attack_defense_duty": 0.0
+      },
+      {
+        "update": 2000,
+        "loss_mean": 0.312469668161124,
+        "val_reward": -7.332142857142857,
+        "val_compromise_rate": 0.14728682170542637,
+        "val_availability": 0.7095238095238094,
+        "val_no_attack_defense_duty": 0.2882882882882883
+      },
+      {
+        "update": 4000,
+        "loss_mean": 0.18917358534038067,
+        "val_reward": -7.268571428571429,
+        "val_compromise_rate": 0.14728682170542637,
+        "val_availability": 0.7172619047619048,
+        "val_no_attack_defense_duty": 0.26126126126126126
+      },
+      {
+        "update": 6000,
+        "loss_mean": 0.11731805185787379,
+        "val_reward": -8.80857142857143,
+        "val_compromise_rate": 0.22945736434108527,
+        "val_availability": 0.7130952380952381,
+        "val_no_attack_defense_duty": 0.3153153153153153
+      },
+      {
+        "update": 8000,
+        "loss_mean": 0.10621985415555536,
+        "val_reward": -8.452142857142858,
+        "val_compromise_rate": 0.1937984496124031,
+        "val_availability": 0.6970238095238095,
+        "val_no_attack_defense_duty": 0.2972972972972973
+      },
+      {
+        "update": 10000,
+        "loss_mean": 0.10435580106824636,
+        "val_reward": -8.819285714285714,
+        "val_compromise_rate": 0.15813953488372093,
+        "val_availability": 0.6357142857142857,
+        "val_no_attack_defense_duty": 0.38738738738738737
+      },
+      {
+        "update": 12000,
+        "loss_mean": 0.10319964344520122,
+        "val_reward": -7.9521428571428565,
+        "val_compromise_rate": 0.16589147286821707,
+        "val_availability": 0.6970238095238095,
+        "val_no_attack_defense_duty": 0.35135135135135137
+      },
+      {
+        "update": 14000,
+        "loss_mean": 0.09796401545964181,
+        "val_reward": -9.491785714285715,
+        "val_compromise_rate": 0.20465116279069767,
+        "val_availability": 0.644047619047619,
+        "val_no_attack_defense_duty": 0.36936936936936937
+      },
+      {
+        "update": 16000,
+        "loss_mean": 0.10177139427140355,
+        "val_reward": -9.631071428571428,
+        "val_compromise_rate": 0.18604651162790697,
+        "val_availability": 0.6172619047619048,
+        "val_no_attack_defense_duty": 0.3963963963963964
+      }
+    ]
+  },
+  "checkpoint_file": "candidate_round3.pt",
+  "checkpoint_sha256": "2a481b169b5afb1f81adc1f52745587475f5d24fa44e58f74eeffeebdbbd26b5"
+}

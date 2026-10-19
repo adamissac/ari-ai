@@ -29,6 +29,7 @@
 | Failure analysis, stress test, Defense Lab export | `analysis.py`, `stress.py`, `lab_export.py` | ✅ |
 | Reference evaluation results | [`results/protocol-v1/`](results/protocol-v1/COMPARISON.md) (current), [`results/protocol-v0/`](results/protocol-v0/eval_table.md) | ✅ real output, see below |
 | **Live defense loop (vertical slice)**: real telemetry → DQN → enforced action → measured outcome → reward → transition, against the owned demo app | `rl_defense/live/` | ✅ closed loop, 11 tests; sim-trained policy, lab evidence only (see [`live/README.md`](rl_defense/live/README.md)) |
+| **Live retraining + promotion gate**: experience → offline candidate → held-out verdict → human-approved registry | `rl_defense/live/{experience,retrain,evaluate,registry,pipeline}.py` | ✅ 11 tests; first run: candidate +5.38 return vs deployed but **rejected** (rules still better, availability floor unmet) — [`results/live-retrain/REPORT.md`](results/live-retrain/REPORT.md) |
 | Backend endpoint / UI panel | backend (Srihith), frontend (Vihaan) | ❌ not integrated yet |
 
 ## The environment in one paragraph
