@@ -339,6 +339,44 @@ async def ingest_runtime(project_id: str, request: Request) -> JSONResponse:
     return JSONResponse(ack.model_dump(mode="json"), status_code=202)
 
 
+def latest_route_detections(
+    conn: sa.Connection, project_id: str, within: timedelta = timedelta(minutes=30)
+) -> list[dict[str, Any]]:
+    """The most recent window per (source, route) inside ``within`` that carries
+    per-principal counters (contracts 0.14): input for RL RouteDetection. Drill windows are
+    excluded, as for route signals. Only reporters that detect principals send these."""
+    rows = conn.execute(
+        sa.select(runtime_windows.c.source, runtime_windows.c.route, runtime_windows.c.counters)
+        .where(
+            runtime_windows.c.project_id == project_id,
+            runtime_windows.c.source != "drill",
+            runtime_windows.c.window_end > utcnow() - within,
+        )
+        .order_by(runtime_windows.c.window_end.desc())
+    ).all()
+    seen: set[tuple[str, str]] = set()
+    out = []
+    for row in rows:
+        key = (row.source, row.route)
+        if key in seen:
+            continue
+        seen.add(key)
+        c = row.counters
+        if not c.get("principals"):
+            continue
+        out.append(
+            {
+                "route": row.route,
+                "source": row.source,
+                "requests": c["requests"],
+                "status_4xx": c.get("status_4xx", 0),
+                "status_5xx": c.get("status_5xx", 0),
+                "principals": c["principals"],
+            }
+        )
+    return out
+
+
 def latest_route_signals(
     conn: sa.Connection, project_id: str, within: timedelta = timedelta(minutes=30)
 ) -> list[dict[str, Any]]:

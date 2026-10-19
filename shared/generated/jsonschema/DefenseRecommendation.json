@@ -500,6 +500,17 @@
       "title": "Policy Version",
       "type": "string"
     },
+    "principal_targets": {
+      "description": "for block_principal* actions: the pseudonymous principals the block would cover (contracts 0.14); the operator maps them back. Never executed.",
+      "items": {
+        "description": "Pseudonymous principal reference chosen by the reporter (e.g. an HMAC of its user id under a key the platform never sees); never an email or raw id",
+        "pattern": "^prn_[A-Za-z0-9_-]{4,64}$",
+        "type": "string"
+      },
+      "maxItems": 500,
+      "title": "Principal Targets",
+      "type": "array"
+    },
     "project_id": {
       "anyOf": [
         {

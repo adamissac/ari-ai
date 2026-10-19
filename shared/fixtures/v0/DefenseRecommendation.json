@@ -57,6 +57,7 @@
     0.0
   ],
   "policy_version": "DefenseSimEnv-v0@cccccccccccc",
+  "principal_targets": [],
   "project_id": "prj_01JFIXTURE0000000000000PRJ",
   "q_margin": 0.42,
   "schema_version": "0.1.0",

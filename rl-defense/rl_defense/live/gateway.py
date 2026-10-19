@@ -90,6 +90,7 @@ class RequestRecord:
     # detector: token's principal != object owner (and, v4, no delegation grant covers it)
     cross_tenant_attempt: bool = False
     principal: str | None = None  # whom the bearer token belongs to (operator-visible)
+    owner: str | None = None  # who owns the requested object (operator-visible), if any
 
     @property
     def allowed(self) -> bool:
@@ -151,7 +152,7 @@ class DefensiveGateway:
 
         def blocked(status: int, reason: str) -> RequestRecord:
             rec = RequestRecord(
-                node, method, path, actor, is_attack, status, reason, False, cross, principal
+                node, method, path, actor, is_attack, status, reason, False, cross, principal, owner
             )
             self.records.append(rec)
             return rec
@@ -182,6 +183,7 @@ class DefensiveGateway:
             compromised,
             cross,
             principal,
+            owner,
         )
         self.records.append(rec)
         return rec

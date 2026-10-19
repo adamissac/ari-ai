@@ -184,3 +184,52 @@ def test_signals_feed_rl_facts(env, settings_override) -> None:
     assert payments.anomaly_score > 0 and payments.alert_rate > 0
     assert any(p.startswith("signal:simulated:") for p in provenance["payments"])
     assert pm  # imported for the skip guard
+
+
+# ---------------------------------------------------------------- principal counters (0.14)
+def _principal_batch(
+    end: datetime, source: str = "simulated", principal: str = "prn_attacker01"
+) -> dict:
+    return {
+        "source": source,
+        "window_start": (end - timedelta(minutes=1)).isoformat(),
+        "window_end": end.isoformat(),
+        "routes": [
+            {
+                "route": ROUTE,
+                "requests": 8,
+                "principals": [
+                    {"principal": principal, "cross_tenant": 6},
+                    {"principal": "prn_bookkeeper1", "delegated": 2},
+                ],
+            }
+        ],
+    }
+
+
+def test_principal_counters_are_validated_stored_and_drills_excluded(env) -> None:
+    from backend.api.runtime import latest_route_detections
+
+    _, _, ids, anon = env
+    end = utcnow().replace(microsecond=0)
+    for bad in ("alice@example.com", "cus_alice", "prn_x"):  # raw ids / emails never accepted
+        r = _post(anon, ids["project"], ids["token"], _principal_batch(end, principal=bad))
+        assert r.status_code == 422, (bad, r.text)
+    over = _principal_batch(end)
+    over["routes"][0]["requests"] = 3
+    assert _post(anon, ids["project"], ids["token"], over).status_code == 422
+    assert _post(anon, ids["project"], ids["token"], _principal_batch(end)).status_code == 202
+    assert (
+        _post(
+            anon, ids["project"], ids["token"], _principal_batch(end, "drill", "prn_drillonly1")
+        ).status_code
+        == 202
+    )
+    with transaction() as conn:
+        det = latest_route_detections(conn, ids["project"])
+    assert len(det) == 1 and det[0]["source"] == "simulated" and det[0]["requests"] == 8
+    assert {p["principal"] for p in det[0]["principals"]} == {"prn_attacker01", "prn_bookkeeper1"}
+    # a reporter without principal detection contributes no detections
+    _post(anon, ids["project"], ids["token"], _batch(end + timedelta(seconds=5), 9))
+    with transaction() as conn:
+        assert latest_route_detections(conn, ids["project"]) == []
