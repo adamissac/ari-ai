@@ -5,6 +5,16 @@ from hash-verified, train-split-only datasets, selects the best snapshot on the
 **validation** scenarios, and writes a new candidate checkpoint whose manifest records
 its lineage (base checkpoint, datasets, selection history). It never touches the
 deployed policy: promotion is a separate, human-approved step (``registry.py``).
+
+``noop_margins`` (live v3): each snapshot is also scored on val with greedy abstention
+margins (``DDQNConfig.noop_margin``: take a non-noop action only if its Q beats Q(noop) by
+the margin), and the best (snapshot, margin) pair on val is kept. Why: the v2 candidate
+spent ~45% of val steps on ``raise_monitoring`` although monitoring cannot contain anything
+live. At the selected snapshot its Q-values were still near the simulator's scale (mean
+Q ≈ +1.5 against measured returns ≈ −3.7), so the many effect-free actions (raise_monitoring
+on five nodes, reassessment, escalation) tie with noop up to estimation noise far larger
+than their 0.02 action cost, and argmax over ~10 near-ties rarely lands on noop. See
+results/live-retrain-v3/PROVENANCE.md. ``(0.0,)`` = the v1/v2 behaviour.
 """
 
 from __future__ import annotations
@@ -17,7 +27,7 @@ import numpy as np
 from rl_defense import ENV_ID
 from rl_defense.agents.ddqn import ReplayBuffer
 from rl_defense.checkpoint import load_checkpoint, save_checkpoint
-from rl_defense.live.actions import LIVE_V2_ENV_ID, ActionSpace, as_v2, dims
+from rl_defense.live.actions import ENV_IDS, ActionSpace, as_space, dims
 from rl_defense.live.evaluate import dqn_policy, run_policy, summarize
 from rl_defense.live.experience import load_dataset
 from rl_defense.live.scenarios import LiveScenario
@@ -56,6 +66,7 @@ def retrain(
     seed: int = 0,
     name: str = "candidate",
     action_space: ActionSpace = "sim",
+    noop_margins: tuple[float, ...] = (0.0,),
 ) -> dict:
     if any(s.split != "val" for s in val_scenarios):
         raise ValueError("checkpoint selection must use validation scenarios only")
@@ -63,8 +74,8 @@ def retrain(
         raise ValueError("need updates >= eval_every >= 1")
     set_determinism(seed)
     agent, base_manifest = load_checkpoint(Path(base_checkpoint))
-    if action_space == "live_v2":
-        agent = as_v2(agent)  # widen a sim base without changing its greedy choices
+    if action_space != "sim":
+        agent = as_space(agent, action_space)  # widen without changing its greedy choices
     for g in agent.optimizer.param_groups:
         g["lr"] = lr
 
@@ -78,31 +89,49 @@ def retrain(
         raise ValueError("no transitions to train on")
     buf = _buffer(records, seed, action_space)
 
-    def val_score() -> dict:
-        return summarize(
-            run_policy(
-                dqn_policy(agent),
-                val_scenarios,
-                app_factory,
-                episodes=val_episodes,
-                action_space=action_space,
-            )
-        )
+    base_config = agent.config
 
-    history = [{"update": 0, "role": "base", **_brief(val_score())}]
-    best: tuple[float, int, dict] | None = None
+    def val_score() -> tuple[dict, float]:
+        """Best val summary over the abstention margins (and that margin)."""
+        best_m: tuple[dict, float] | None = None
+        for m in noop_margins:
+            agent.config = base_config.model_copy(update={"noop_margin": float(m)})
+            s = summarize(
+                run_policy(
+                    dqn_policy(agent),
+                    val_scenarios,
+                    app_factory,
+                    episodes=val_episodes,
+                    action_space=action_space,
+                )
+            )
+            if best_m is None or s["reward"] > best_m[0]["reward"]:
+                best_m = (s, float(m))
+        agent.config = base_config
+        assert best_m is not None
+        return best_m
+
+    s0, m0 = val_score()
+    history = [{"update": 0, "role": "base", **_brief(s0), **_margin(m0, noop_margins)}]
+    best: tuple[float, int, dict, float] | None = None
     losses: list[float] = []
     for u in range(1, updates + 1):
         losses.append(agent.update(buf.sample(batch_size))["loss"])
         if u % eval_every == 0:
-            s = val_score()
+            s, m = val_score()
             history.append(
-                {"update": u, "loss_mean": float(np.mean(losses[-eval_every:])), **_brief(s)}
+                {
+                    "update": u,
+                    "loss_mean": float(np.mean(losses[-eval_every:])),
+                    **_brief(s),
+                    **_margin(m, noop_margins),
+                }
             )
             if best is None or s["reward"] > best[0]:
-                best = (s["reward"], u, copy.deepcopy(agent.state_dict()))
+                best = (s["reward"], u, copy.deepcopy(agent.state_dict()), m)
     assert best is not None
     agent.load_state_dict(best[2])
+    agent.config = base_config.model_copy(update={"noop_margin": best[3]})
 
     train_scen: dict[str, str] = {}
     for m in ds_manifests:
@@ -114,7 +143,7 @@ def retrain(
         seed=seed,
         steps=best[1],
         train_configs={f"live:{k}": v for k, v in train_scen.items()},
-        env_id=ENV_ID if action_space == "sim" else LIVE_V2_ENV_ID,
+        env_id=ENV_ID if action_space == "sim" else ENV_IDS[action_space],
         extra={
             "action_space": action_space,
             "trained_on": "live:examples/payments-lite (offline, from recorded experience)",
@@ -130,12 +159,18 @@ def retrain(
                 "batch_size": batch_size,
                 "lr": lr,
                 "eval_every": eval_every,
+                "noop_margins": list(noop_margins),
+                "selected_noop_margin": best[3],
                 "val_scenarios": {s.name: s.config_hash() for s in val_scenarios},
                 "selection_history": history,
             },
         },
     )
     return manifest
+
+
+def _margin(m: float, margins: tuple[float, ...]) -> dict:
+    return {} if tuple(margins) == (0.0,) else {"noop_margin": m}
 
 
 def _brief(s: dict) -> dict:
