@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Land the first large homepage wheel gesture on the expanded walkthrough video; absorb that gesture’s momentum, allow the next scroll or Continue exploring link to skip, and keep video controls visible.
+
 ### Added
 - Specialist training now augments the synthetic corpus with real public corpora (DiverseVul functions, NVD CVE descriptions, MITRE ATT&CK technique descriptions) fetched via `python -m specialists.data.fetch` into the git-ignored `specialists/specialists/data/cache/`; corpus-2 adds 5-6 code families per CWE so Diagnose/Patch labels can no longer be looked up from the CWE alone.
 

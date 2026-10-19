@@ -33,6 +33,11 @@ export function SmoothScroll() {
     let current = window.scrollY;
     let frame = 0;
     let animating = false;
+    // Consume only the arriving wheel gesture, never force playback or lock navigation.
+    let videoStopUsed = pathname !== '/' || Boolean(location.hash);
+    let holdingVideo = false;
+    let videoArrival = 0;
+    let lastVideoWheel = 0;
 
     const max = () => document.documentElement.scrollHeight - window.innerHeight;
     const stop = () => { cancelAnimationFrame(frame); animating = false; };
@@ -56,12 +61,36 @@ export function SmoothScroll() {
       if (e.target instanceof Element && scrollableParent(e.target, dy)) return;
       e.preventDefault();
       if (!animating) { current = window.scrollY; target = current; }
-      target = Math.max(0, Math.min(max(), target + dy));
+      const now = performance.now();
+      if (holdingVideo) {
+        const newGesture = now - lastVideoWheel > 180;
+        const timeout = now - videoArrival > 1200;
+        lastVideoWheel = now;
+        if (dy > 0 && !newGesture && !timeout) return;
+        holdingVideo = false;
+      }
+      let next = Math.max(0, Math.min(max(), target + dy));
+      if (!videoStopUsed && dy > 0) {
+        const chapter = document.getElementById('explainer');
+        if (chapter) {
+          const rect = chapter.getBoundingClientRect();
+          // Stop where the sticky video has expanded to full size (growth ends at 45%).
+          const landing = Math.min(max(), rect.top + window.scrollY + Math.max(0, rect.height - innerHeight) * 0.5);
+          if (current >= landing) videoStopUsed = true;
+          else if (next >= landing) {
+            next = landing;
+            videoStopUsed = true;
+            holdingVideo = true;
+            videoArrival = lastVideoWheel = now;
+          }
+        }
+      }
+      target = next;
       start();
     };
     // Keyboard, scrollbar and programmatic jumps: follow the page and drop any momentum.
     const onScroll = () => { if (!animating) { current = window.scrollY; target = current; } };
-    const onKey = () => stop();
+    const onKey = () => { holdingVideo = false; stop(); };
     const onPointer = (e: PointerEvent) => { if (e.pointerType !== 'mouse' || e.button !== 1) stop(); };
     // In-page anchors glide to their target too.
     const onClick = (e: MouseEvent) => {
@@ -74,6 +103,9 @@ export function SmoothScroll() {
       const marginTop = parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
       current = window.scrollY;
       target = Math.max(0, Math.min(max(), el.getBoundingClientRect().top + window.scrollY - marginTop));
+      // Explicit anchor navigation is intentional, so never pull it back to the video.
+      holdingVideo = false;
+      videoStopUsed = true;
       history.pushState(null, '', a.hash);
       start();
     };
