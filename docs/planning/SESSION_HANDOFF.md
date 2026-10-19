@@ -18,6 +18,11 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-19 — Claude (agent, Alan) — contracts 0.13: serve live_v3 RL policies (long blocks)
+- Did: branch `feat/alan/serve-live-v3`. Alan, as interim `shared/` approver, chose the first shape in the long-block proposal (decision `coordination/messages/20261019T110000Z-alan-to-all-long-block-actions-decision.md`). `DefenseActionName` gains `block_principal_long` and `block_top_principal_long`. `PlatformFacts` gains the v3 detector fields, all with defaults. `SCHEMA_VERSION` goes 0.12.0 → 0.13.0, which also covers #324 and #334. `PolicyRunner` serves live_v3 checkpoints and now uses the checkpoint's own greedy rule (noop margin included), so the served action equals the evaluated one. The live loop is the `PlatformFacts` producer (`platform_facts()`) and builds its obs through the serving mapping. The #335 items are done: `rl_defense/layouts.py` (inference imports no live lab), the `live/run.py` layout, the neutral caveat, docs, and CHANGELOG.
+- Verified: `rl-defense/tests/test_v3_recommendations.py` (10); rl suite 179 passed; `make check` clean (contracts fresh); shared + backend rl tests pass, and `test_rl_integration.py` runs with rl_defense installed. The real v6 candidate (`8113a37f4ff9`, from `runs/`) was served once on a train scenario after a temporary merge with the v6 branch: it recommends `block_principal` then `block_principal_long` while principals are flagged.
+- Not done / needs humans: promoting the v6 candidate (`rl_defense.live.registry promote`, `usr_*` approver). The backend has no principal detector, so a v3 policy served there never recommends a block until a producer fills the fields.
+
 ### 2026-10-19 — Claude (agent, Alan) — live RL v5: conservative Q-learning (CQL); learned-policy track closed
 - Did: branch `feat/alan/live-v5-cql`. At Alan's request, one more pre-registered run (`rl-defense/results/live-retrain-v5/PREREGISTRATION.md`, committed in `687629d` before the run). It added a discrete CQL(H) penalty, `DDQNConfig.cql_alpha` (default 0, so v1-v4 are unchanged), set to `cql_alpha=1.0`, fixed beforehand. Everything else is v4. Fresh `configs/live/holdout_v5/` (seeds 44500/49200/49600). The report now includes each round's val curve. Tests: `rl-defense/tests/test_live_v5.py` (5).
 - Result: **reject**. CQL fixed v4's degradation (snapshots selected at 6000/10000/12000 updates), but the candidate stays close to the behavior data. Blocks are only 3–5% of it, so the candidate rarely blocks: −12.17 vs rules −7.41, compromise 0.675, availability 0.991. Fixed `always_block_principal` scores −4.79. As pre-registered, the learned-policy track on payments-lite is closed. Never promoted.
@@ -933,3 +938,9 @@ Fixed commit-screen authorization deadlock at explicit owner direction. Sandbox-
 
 
 Follow-up: aligned the runtime scope guard with owner sandbox self-approval (both single- and multi-member orgs), added empty/external/mixed-target denial regressions (27 guard tests pass), and fixed backend test formatting required by CI.
+
+
+2026-10-19 Adam: reviewed Alan’s recent coordination messages and open PR #360. Fixed its four review findings on fix/adam/live-v3-review. Full RL regression suite and lint results recorded in the PR; no training, checkpoint promotion or deployment performed.
+
+
+2026-10-19 Adam: fixed the stale browser journey assertion on #360/#361 to match the explicitly approved sandbox-owner policy (#357/#358). Alice’s owner approval button is enabled; Bob still independently approves this journey. The real-stack assessment-to-verified-patch journey now passes. Final suite result recorded in PR.

@@ -15,9 +15,9 @@ Layout (a strict extension, so a v1 index means the same thing in v2):
 - obs 48        = ``principal_block_active`` (1.0 while any principal block is in force)
 
 ``block_principal`` is a member of ``shared.rl.DefenseActionName`` (proposal and
-sign-off record in coordination/messages/). DefenseSimEnv is unchanged. v2 checkpoints
-stay lab-only: ``PolicyRunner`` refuses them, because ``PlatformFacts`` carries no
-principal-block state to build the 49-feature observation from.
+sign-off record in coordination/messages/). DefenseSimEnv is unchanged. ``PolicyRunner``
+serves v2 checkpoints from ``PlatformFacts.principal_block_active`` /
+``principal_block_available`` (contracts 0.13).
 
 **v3** (results/live-retrain-v3/) is a strict extension of v2 (every v2 index keeps its
 meaning) that addresses the identity-switch leak (results/live-retrain-v2/PROVENANCE.md):
@@ -41,59 +41,73 @@ meaning) that addresses the identity-switch leak (results/live-retrain-v2/PROVEN
                   flagged cross-tenant attempts (1.0 = one principal did all of them)
 
 All six features come from the gateway's instrumentation and the loop's own block history.
-``block_principal_long`` and ``block_top_principal_long`` are **not** in
-``shared.rl.DefenseActionName``; they are proposed in coordination/messages/
-20261019T053641Z-alan-to-srihith-adam-long-block-actions.md and stay live-only (lab evidence, no
-``DefenseRecommendation``).
+``block_principal_long`` and ``block_top_principal_long`` are members of
+``shared.rl.DefenseActionName`` since contracts 0.13 (decision: coordination/messages/
+20261019T110000Z-alan-to-all-long-block-actions-decision.md). ``PolicyRunner`` serves v3
+checkpoints from the v3 ``PlatformFacts`` fields, which only a principal detector (this
+loop, :meth:`LiveDefenseLoop.platform_facts`) fills. The layout constants live in
+``rl_defense/layouts.py`` (no live dependencies) and are re-exported here.
 """
 
 from __future__ import annotations
 
-from typing import Literal
-
-import numpy as np
 import torch
 
 from rl_defense.agents.ddqn import DDQNAgent
-from rl_defense.envs.defense_sim import DISRUPTIVE, N_ACTIONS, NOOP_ACTION, OBS_DIM, decode_action
-
-ActionSpace = Literal["sim", "live_v2", "live_v3"]
-LIVE_V2_ENV_ID = "LiveDefense-payments-lite-v2"
-LIVE_V3_ENV_ID = "LiveDefense-payments-lite-v3"
-BLOCK_PRINCIPAL = "block_principal"
-BLOCK_PRINCIPAL_ACTION = N_ACTIONS  # 22
-LIVE_V2_N_ACTIONS = N_ACTIONS + 1  # 23
-LIVE_V2_OBS_DIM = OBS_DIM + 1  # 49
-LIVE_V2_EXTRA_FEATURES: tuple[str, ...] = ("principal_block_active",)
-BLOCK_PRINCIPAL_LONG = "block_principal_long"
-BLOCK_PRINCIPAL_LONG_ACTION = LIVE_V2_N_ACTIONS  # 23
-BLOCK_TOP_PRINCIPAL_LONG = "block_top_principal_long"
-BLOCK_TOP_PRINCIPAL_LONG_ACTION = LIVE_V2_N_ACTIONS + 1  # 24
-LIVE_V3_EXTRA_FEATURES: tuple[str, ...] = (
-    *LIVE_V2_EXTRA_FEATURES,
-    "block_remaining",
-    "flagged_principals",
-    "flagged_volume",
-    "flagged_own_share",
-    "flagged_repeat",
-    "flagged_top_share",
+from rl_defense.envs.defense_sim import N_ACTIONS, NOOP_ACTION, OBS_DIM
+from rl_defense.layouts import (
+    BLOCK_PRINCIPAL,
+    BLOCK_PRINCIPAL_ACTION,
+    BLOCK_PRINCIPAL_LONG,
+    BLOCK_PRINCIPAL_LONG_ACTION,
+    BLOCK_TOP_PRINCIPAL_LONG,
+    BLOCK_TOP_PRINCIPAL_LONG_ACTION,
+    ENV_IDS,
+    FEATURE_INDEX,
+    LIVE_V2_ENV_ID,
+    LIVE_V2_EXTRA_FEATURES,
+    LIVE_V2_N_ACTIONS,
+    LIVE_V2_OBS_DIM,
+    LIVE_V3_ENV_ID,
+    LIVE_V3_EXTRA_FEATURES,
+    LIVE_V3_N_ACTIONS,
+    LIVE_V3_OBS_DIM,
+    ActionSpace,
+    dims,
+    disruptive_mask,
+    live_decode_action,
 )
-LIVE_V3_N_ACTIONS = LIVE_V2_N_ACTIONS + 2  # 25
-LIVE_V3_OBS_DIM = OBS_DIM + len(LIVE_V3_EXTRA_FEATURES)  # 55
-# obs index of each live extra feature (same index in every layout that has it)
-FEATURE_INDEX = {f: OBS_DIM + i for i, f in enumerate(LIVE_V3_EXTRA_FEATURES)}
-ENV_IDS = {"live_v2": LIVE_V2_ENV_ID, "live_v3": LIVE_V3_ENV_ID}
 
-_DIMS: dict[str, tuple[int, int]] = {
-    "sim": (OBS_DIM, N_ACTIONS),
-    "live_v2": (LIVE_V2_OBS_DIM, LIVE_V2_N_ACTIONS),
-    "live_v3": (LIVE_V3_OBS_DIM, LIVE_V3_N_ACTIONS),
-}
+# layout constants live in rl_defense/layouts.py (no live deps); re-exported here
+from rl_defense.layouts import DIMS as _DIMS
 
-
-def dims(space: ActionSpace) -> tuple[int, int]:
-    """(obs_dim, n_actions) of an action space."""
-    return _DIMS[space]
+__all__ = [
+    "ActionSpace",
+    "BLOCK_PRINCIPAL",
+    "BLOCK_PRINCIPAL_ACTION",
+    "BLOCK_PRINCIPAL_LONG",
+    "BLOCK_PRINCIPAL_LONG_ACTION",
+    "BLOCK_TOP_PRINCIPAL_LONG",
+    "BLOCK_TOP_PRINCIPAL_LONG_ACTION",
+    "ENV_IDS",
+    "FEATURE_INDEX",
+    "LIVE_V2_ENV_ID",
+    "LIVE_V2_EXTRA_FEATURES",
+    "LIVE_V2_N_ACTIONS",
+    "LIVE_V2_OBS_DIM",
+    "LIVE_V3_ENV_ID",
+    "LIVE_V3_EXTRA_FEATURES",
+    "LIVE_V3_N_ACTIONS",
+    "LIVE_V3_OBS_DIM",
+    "as_space",
+    "as_v2",
+    "dims",
+    "disruptive_mask",
+    "expand_agent_to_v2",
+    "live_decode_action",
+    "space_of",
+    "widen_agent",
+]
 
 
 def space_of(agent: DDQNAgent) -> ActionSpace:
@@ -102,22 +116,6 @@ def space_of(agent: DDQNAgent) -> ActionSpace:
         if d == shape:
             return name  # type: ignore[return-value]
     raise ValueError(f"unknown action-space shape {shape}")
-
-
-def live_decode_action(action: int) -> tuple[str, int | None]:
-    if action == BLOCK_PRINCIPAL_ACTION:
-        return BLOCK_PRINCIPAL, None
-    if action == BLOCK_PRINCIPAL_LONG_ACTION:
-        return BLOCK_PRINCIPAL_LONG, None
-    if action == BLOCK_TOP_PRINCIPAL_LONG_ACTION:
-        return BLOCK_TOP_PRINCIPAL_LONG, None
-    return decode_action(action)
-
-
-def disruptive_mask(n_actions: int) -> np.ndarray:
-    """Disruptive actions (can block legitimate traffic) for any layout."""
-    m = np.array([decode_action(a)[0] in DISRUPTIVE for a in range(N_ACTIONS)])
-    return np.append(m, np.ones(n_actions - N_ACTIONS, dtype=bool))
 
 
 def widen_agent(
