@@ -194,3 +194,6 @@ D3FEND mappings use the owner-reviewed rules keyed by Fortify category and
 confirmed check category. Unsupported combinations remain unmapped. Reviewed RL actions have simulation-derived D3FEND
 classifications, while unsupported actions stay unmapped. No rule
 executes a defensive action against real systems.
+
+
+Serving metadata: `action` follows the checkpoint’s greedy rule, including abstention. `top_actions` and `q_margin` describe raw valid Q rankings; explanations describe the selected action against its strongest alternative, so their signed margin may be negative after abstention. A live layout alone does not establish training origin.

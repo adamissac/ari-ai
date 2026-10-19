@@ -170,14 +170,22 @@ def test_widened_v3_policy_recommends_like_the_sim_policy(sim_ckpt, tmp_path, fa
     assert wide.recommend(facts).node == sim.recommend(facts).node
 
 
-def test_inference_does_not_import_the_live_lab():
+def test_inference_does_not_import_the_live_lab(sim_ckpt, tmp_path):
     """Serving any layout needs no httpx/starlette (issue #335): inference and the mapping
     use rl_defense.layouts, never rl_defense.live."""
-    code = (
-        "import sys, rl_defense.inference, rl_defense.observations, rl_defense.explain;"
-        "bad=[m for m in sys.modules if m.startswith('rl_defense.live') or m=='starlette'];"
-        "print(bad); sys.exit(1 if bad else 0)"
-    )
+    path = _v3_ckpt(sim_ckpt, tmp_path / "core.pt", favour=None)
+    code = f"""
+import importlib.abc
+import sys
+class NoLab(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname.split('.')[0] in {{'httpx', 'starlette', 'fastapi'}} or fullname.startswith('rl_defense.live'):
+            raise ImportError(fullname)
+sys.meta_path.insert(0, NoLab())
+from rl_defense.inference import PolicyRunner
+PolicyRunner({str(path)!r})
+assert not any(m.startswith('rl_defense.live') for m in sys.modules)
+"""
     r = subprocess.run([sys.executable, "-c", code], cwd=RL_ROOT, capture_output=True, text=True)
     assert r.returncode == 0, r.stdout + r.stderr
 
@@ -203,6 +211,9 @@ def test_run_cli_drives_a_v3_checkpoint_in_its_own_layout(sim_ckpt, tmp_path, ca
     )
     rows = [json.loads(x) for x in out.read_text().splitlines()]
     assert rows and len(rows[0]["obs"]) == lay.LIVE_V3_OBS_DIM
+    stdout = capsys.readouterr().out
+    assert "does not establish its training origin" in stdout
+    assert "trained on the abstract simulator" not in stdout
 
 
 def test_served_action_is_the_evaluated_greedy_action(sim_ckpt, tmp_path, facts):
@@ -221,6 +232,16 @@ def test_served_action_is_the_evaluated_greedy_action(sim_ckpt, tmp_path, facts)
         agent, tmp_path / "abstain.pt", seed=0, steps=1, train_configs={}, env_id=lay.LIVE_V3_ENV_ID
     )
     plain = PolicyRunner(path).recommend(facts)
-    abstain = PolicyRunner(tmp_path / "abstain.pt").recommend(facts)
+    abstain_runner = PolicyRunner(tmp_path / "abstain.pt")
+    abstain, explanation = abstain_runner.recommend_with_explanation(facts)
     assert best == lay.BLOCK_PRINCIPAL_LONG_ACTION and plain.action == "block_principal_long"
-    assert abstain.action == "noop" and abstain.top_actions[0].action == "noop"
+    assert abstain.action == "noop"
+    assert abstain.top_actions[0].action == "block_principal_long"
+    assert abstain.q_margin >= 0
+    assert [a.q_value for a in abstain.top_actions] == sorted(
+        [a.q_value for a in abstain.top_actions], reverse=True
+    )
+    assert explanation.action == abstain.action
+    assert explanation.runner_up == "block_principal_long"
+    assert explanation.recommendation_id == abstain.id
+    assert explanation.margin == pytest.approx(float(q[0] - q[best]), abs=1e-5)

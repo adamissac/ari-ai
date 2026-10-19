@@ -16,7 +16,9 @@ from __future__ import annotations
 
 from typing import Literal
 
-from rl_defense.envs.defense_sim import N_ACTIONS, OBS_DIM, decode_action
+import numpy as np
+
+from rl_defense.envs.defense_sim import DISRUPTIVE, N_ACTIONS, OBS_DIM, decode_action
 
 ActionSpace = Literal["sim", "live_v2", "live_v3"]
 LIVE_V2_ENV_ID = "LiveDefense-payments-lite-v2"
@@ -84,3 +86,9 @@ def live_decode_action(action: int) -> tuple[str, int | None]:
     if action in _LIVE_ACTIONS:
         return _LIVE_ACTIONS[action], None
     return decode_action(action)
+
+
+def disruptive_mask(n_actions: int) -> np.ndarray:
+    """Disruptive actions (can block legitimate traffic) for any layout."""
+    m = np.array([decode_action(a)[0] in DISRUPTIVE for a in range(N_ACTIONS)])
+    return np.append(m, np.ones(n_actions - N_ACTIONS, dtype=bool))
