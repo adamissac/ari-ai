@@ -10,6 +10,17 @@ max_a' Q_target(s', a'); ``double_dqn_targets`` deliberately does not. Optional 
 (defaults reproduce protocol-v0): ``double=False`` for the vanilla-DQN ablation,
 ``dueling=True`` for a dueling head, ``n_step>1`` for n-step returns, in which case each
 stored transition carries its own discount gamma**k (k = steps actually accumulated).
+
+``cql_alpha>0`` adds the conservative Q-learning penalty for discrete actions (CQL(H),
+Kumar et al. 2020) to the TD loss:
+
+    loss = huber(Q(s,a), y) + cql_alpha * mean_batch( logsumexp_a' Q(s,a') - Q(s,a) )
+
+It pushes down Q-values of actions the dataset does not contain and up those it does, the
+standard fix for overestimation when training offline on a small fixed dataset (live v4:
+val return fell from -5.6 at update 2000 to -15.3 at 16000). The logsumexp runs over all
+actions: the buffer stores only the next state's mask, and masked actions are never taken.
+0 (default) = plain (Double) DQN.
 """
 
 from __future__ import annotations
@@ -67,6 +78,11 @@ class DDQNConfig(BaseModel):
         le=1.0,
         description="Exploration: relative probability weight of disruptive actions when "
         "acting randomly (None = uniform over valid actions, the v0/v1 behaviour).",
+    )
+    cql_alpha: float = Field(
+        0.0,
+        ge=0.0,
+        description="Conservative Q-learning penalty weight for offline training (live v5). 0 = off.",
     )
 
 
@@ -283,8 +299,13 @@ class DDQNAgent:
             y = double_dqn_targets(self.online, self.target, batch, c.gamma)
         else:
             y = dqn_targets(self.target, batch, c.gamma)
-        q = self.online(batch.obs).gather(1, batch.actions.unsqueeze(1)).squeeze(1)
-        loss = nn.functional.smooth_l1_loss(q, y)
+        q_all = self.online(batch.obs)
+        q = q_all.gather(1, batch.actions.unsqueeze(1)).squeeze(1)
+        td_loss = nn.functional.smooth_l1_loss(q, y)
+        cql_gap = torch.zeros((), device=q.device)
+        if c.cql_alpha > 0:
+            cql_gap = (torch.logsumexp(q_all, dim=1) - q).mean()
+        loss = td_loss + c.cql_alpha * cql_gap
         self.optimizer.zero_grad()
         loss.backward()
         grad_norm = nn.utils.clip_grad_norm_(self.online.parameters(), c.grad_clip)
@@ -298,6 +319,8 @@ class DDQNAgent:
             "loss": loss.item(),
             "grad_norm": float(grad_norm),
             "q_mean": q.detach().mean().item(),
+            "td_loss": td_loss.item(),
+            "cql_gap": cql_gap.item(),
         }
 
     def hard_update(self) -> None:
