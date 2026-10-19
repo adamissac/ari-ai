@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field, model_validator
 
@@ -106,6 +106,33 @@ the sandboxed demo target, ``replay``/``simulated`` are recorded or synthetic wi
 its own scoring history, so a drill never becomes the baseline of a real reporter."""
 
 
+PrincipalRef = Annotated[
+    str,
+    Field(
+        pattern=r"^prn_[A-Za-z0-9_-]{4,64}$",
+        description="Pseudonymous principal reference chosen by the reporter (e.g. an HMAC "
+        "of its user id under a key the platform never sees); never an email or raw id",
+    ),
+]
+
+
+class PrincipalCounts(StrictModel):
+    """One principal's requests on one route in one window, as classified by the
+    operator's own instrumentation: who the bearer token belongs to versus who owns the
+    requested object, with the business's delegation grants applied (contracts 0.14)."""
+
+    principal: PrincipalRef
+    cross_tenant: int = Field(
+        default=0, ge=0, description="reads of another tenant's object not covered by a grant"
+    )
+    delegated: int = Field(
+        default=0, ge=0, description="reads of another tenant's object covered by a grant"
+    )
+    own: int = Field(
+        default=0, ge=0, description="every other request (own tenant or no tenant object)"
+    )
+
+
 class RouteWindow(StrictModel):
     """Aggregated counters for one route over one window (no raw logs, no payloads)."""
 
@@ -114,6 +141,11 @@ class RouteWindow(StrictModel):
     status_4xx: int = Field(default=0, ge=0)
     status_5xx: int = Field(default=0, ge=0)
     auth_failures: int = Field(default=0, ge=0, description="401/403 responses")
+    principals: list[PrincipalCounts] = Field(
+        default_factory=list,
+        max_length=500,
+        description="optional per-principal counters from a reporter that detects principals",
+    )
 
     @model_validator(mode="after")
     def _bounded(self) -> RouteWindow:
@@ -122,6 +154,10 @@ class RouteWindow(StrictModel):
             or self.auth_failures > self.status_4xx
         ):
             raise ValueError("error counts exceed request counts")
+        if len({p.principal for p in self.principals}) != len(self.principals):
+            raise ValueError("duplicate principal in route window")
+        if sum(p.cross_tenant + p.delegated + p.own for p in self.principals) > self.requests:
+            raise ValueError("principal counts exceed request counts")
         return self
 
 

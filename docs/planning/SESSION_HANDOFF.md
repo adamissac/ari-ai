@@ -18,6 +18,18 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-19 — Claude (agent, Alan) — runtime principal detector: the RL defense in the product path (contracts 0.14, ADR-0017)
+- Did: branch `feat/alan/runtime-principal-detector`.
+  - `RouteWindow.principals` (`PrincipalCounts`, pseudonymous `prn_…` refs) and `DefenseRecommendation.principal_targets`.
+  - The backend stores the counters with the route windows (no migration; `latest_route_detections`, drills excluded). `rl_recommend` fills the live v3 `PlatformFacts` fields and the lab's node detection signals via `platform_mapping.RouteDetection` / `principal_facts`, and attaches block targets.
+  - Lab gateway records gain `owner`. `rl_defense/live/report.py` is the reference reporter: aggregated, HMAC pseudonyms, grants counted as delegated. Its CLI generated `backend/tests/fixtures/principal_window_lab.json`.
+- Verified:
+  - `rl-defense/tests/test_principal_detection.py` (6): platform fields and node signals equal the lab loop's for the same window; no raw ids leave; grants count as delegated.
+  - Backend: ingest validation and storage, drills excluded, and end to end the promoted v6 policy recommends `block_principal` targeting exactly the flagged pseudonym.
+  - Suites: backend 159 passed (3 opt-in skips), rl 200 passed; `make check` clean.
+- Known gap (ADR-0017): v6 was trained with fixed baseline finding severities. With real (0) severities on clean nodes it says `escalate_to_human` instead of `noop` in quiet windows. Train with finding-derived severities (follow-up).
+- macOS note: if `shared`/`backend` import as empty namespace packages, run `chflags nohidden .venv/lib/python3.12/site-packages/*.pth`.
+
 ### 2026-10-19 — Claude (agent, Alan) — v6 evidence restored (original bytes, hash-pinned)
 - Did: branch `feat/alan/v6-evidence-restore`. Adam's #362 review found the v6 checkpoint and experience bytes were not durably stored. They were still in the run's git-ignored `rl-defense/runs/live/retrain-v6/` and match the committed hashes, so they are restored unchanged. `results/live-retrain-v6/` now has `candidate_online.pt` (`8113a37f…`), its sidecar, and `candidate_online_experience.jsonl.gz` (268 MB → 6.9 MB; uncompressed `bc04e57b…`, as pinned by the checkpoint's lineage). It also has `EVIDENCE.json`, which pins the checkpoint, the full log, and the derived 108k-line selected prefix (`95ac4160…`). `promotion_report.json` gains only the `artifacts` block in the #362 format; the rest is byte-identical. New `rl_defense/live/evidence.py` (`verify` / `restore`, streaming, hash-checked); restored files are git-ignored.
 - Verified: `rl-defense/tests/test_v6_evidence.py` (5). They prove the hashes agree across index, report and manifest, that a streaming verify of all bytes passes, that the checkpoint loads and serves, that tampering is refused, and that the registry's durable-evidence gate passes on a restored temporary copy. Nothing was promoted.
