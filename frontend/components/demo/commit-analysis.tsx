@@ -49,8 +49,11 @@ function agentStatus(agent: AgentRunView, t: Timeline, position: number): Status
   return position >= span.end ? 'done' : 'running';
 }
 
-export function CommitAnalysis({ repo, commit }: { repo: DemoRepo; commit: DemoCommit }) {
-  const analysis = useMemo(() => analyze(repo, commit), [repo, commit]);
+/** A live run on a real commit (see lib/live-analysis.ts): static reasoning, nothing executed. */
+export interface LiveRun { model: string; truncated: boolean; htmlUrl: string }
+
+export function CommitAnalysis({ repo, commit, analysis: given, live }: { repo: DemoRepo; commit: DemoCommit; analysis?: Analysis; live?: LiveRun }) {
+  const analysis = useMemo(() => given ?? analyze(repo, commit), [given, repo, commit]);
   const t = useMemo(() => timeline(analysis), [analysis]);
   const replay = useReplay(t.total);
   const [tab, setTab] = useState<Tab>('overview');
@@ -74,7 +77,7 @@ export function CommitAnalysis({ repo, commit }: { repo: DemoRepo; commit: DemoC
               <span suppressHydrationWarning>pushed {relativeTime(commit.minutesAgo)}</span>
               <span className="rounded bg-white/10 px-1.5 py-0.5 font-mono">{commit.branch}</span>
               <span><span className="text-[#7fe0aa]">+{commit.additions}</span> <span className="text-[#ff9b88]">−{commit.deletions}</span></span>
-              <CiBadge state={commit.ci} />
+              {live ? <a href={live.htmlUrl} target="_blank" rel="noreferrer" className="underline decoration-white/30 underline-offset-2 hover:text-white">View on GitHub</a> : <CiBadge state={commit.ci} />}
             </p>
           </div>
           <div className="flex flex-col items-start gap-2 md:items-end">
@@ -103,7 +106,7 @@ export function CommitAnalysis({ repo, commit }: { repo: DemoRepo; commit: DemoC
 
       <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="mt-6">
         {tab === 'overview' && <Overview analysis={analysis} t={t} position={replay.position} done={replay.done} statuses={statuses} accepted={accepted} onOpen={setTab} />}
-        {tab === 'review' && <Review analysis={analysis} reviewed={replay.position >= t.agentsStart} accepted={accepted} />}
+        {tab === 'review' && <Review analysis={analysis} reviewed={replay.position >= t.agentsStart} accepted={accepted} live={live} />}
         {tab === 'agents' && <AgentMap repo={repo} commitSha={commit.sha} analysis={analysis} statuses={statuses} played={played} started={replay.position >= t.agentsStart} playback={replay} accepted={accepted} offset={t.agentsStart} />}
       </div>
     </>
@@ -185,7 +188,7 @@ function currentActivity(analysis: Analysis, t: Timeline, position: number): str
 
 // ---------------------------------------------------------------- code review
 
-function Review({ analysis, reviewed, accepted }: { analysis: Analysis; reviewed: boolean; accepted: boolean }) {
+function Review({ analysis, reviewed, accepted, live }: { analysis: Analysis; reviewed: boolean; accepted: boolean; live?: LiveRun }) {
   const r = analysis.review;
   if (!reviewed) return <section className="glass p-6"><p className="label-mono text-white/55">Code review</p><p className="big-verdict mt-2">The reviewer is still reading this change…</p></section>;
   const blockers = r.comments.filter(c => c.severity === 'blocker' || c.severity === 'major');
@@ -252,26 +255,26 @@ function Review({ analysis, reviewed, accepted }: { analysis: Analysis; reviewed
 
       {analysis.patch && (
         <section className="flex flex-col gap-3">
-          <h3 className="review-heading">The fix <span className="text-white/45">· {accepted ? 'verified' : 'not yet accepted'}</span></h3>
+          <h3 className="review-heading">{live ? 'Proposed fix' : 'The fix'} <span className="text-white/45">· {live ? 'not applied, not tested' : accepted ? 'verified' : 'not yet accepted'}</span></h3>
           <DemoDiff file={analysis.patch} label="fix" />
         </section>
       )}
 
       <section className="glass p-6">
-        <h3 className="review-heading">The tests Ari wrote <span className="text-white/45">· {r.tests.length}</span></h3>
+        <h3 className="review-heading">{live ? 'The tests Ari proposes' : 'The tests Ari wrote'} <span className="text-white/45">· {r.tests.length}</span></h3>
         <table className="mt-4 w-full text-sm">
-          <thead><tr className="text-left text-xs text-white/45"><th className="pb-2 font-normal">Test</th><th className="pb-2 font-normal">Before</th><th className="pb-2 font-normal">After fix</th></tr></thead>
+          <thead><tr className="text-left text-xs text-white/45"><th className="pb-2 font-normal">Test</th><th className="pb-2 font-normal">{live ? 'Expected on this commit' : 'Before'}</th><th className="pb-2 font-normal">After fix</th></tr></thead>
           <tbody>
             {r.tests.map(test => (
               <tr key={test.name} className="border-t border-white/10 align-top">
                 <td className="py-2.5 pr-3 font-mono text-xs [overflow-wrap:anywhere]">{test.name}</td>
                 <td className={`whitespace-nowrap py-2.5 pr-3 ${test.before === 'fail' ? 'text-[#ff9b88]' : 'text-[#9ff0c6]'}`}>{test.before === 'fail' ? '✕ fail' : '✓ pass'}</td>
-                <td className="whitespace-nowrap py-2.5 text-[#9ff0c6]">✓ pass</td>
+                <td className={`whitespace-nowrap py-2.5 ${live ? 'text-white/55' : 'text-[#9ff0c6]'}`}>{live ? 'should pass' : '✓ pass'}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        <p className="mt-3 text-xs text-white/45">A test that fails before the fix and passes after is what makes a fix count.</p>
+        <p className="mt-3 text-xs text-white/45">{live ? 'Proposed from the diff and not run yet. A fix only counts once a test fails before it and passes after.' : 'A test that fails before the fix and passes after is what makes a fix count.'}</p>
       </section>
     </div>
   );
