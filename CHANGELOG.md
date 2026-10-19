@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Add the lab-only online DQfD training workflow (expert demonstrations plus online DDQN updates). Selected-checkpoint lineage records only its training prefix; full experiment logs remain separate, and evidence export includes reloadable checkpoint and experience bytes. Promotion refuses unsupported serving layouts and missing/hash-mismatched DQfD evidence. The historical v6 gate result is not independently reloadable because its original artifact bytes were not retained; no policy is promoted.
+
 - Fix live-layout recommendation serving: load checkpoints without lab dependencies, explain the policy-selected action after abstention, keep Q confidence metadata ranked, and avoid inferring training origin from checkpoint layout.
 
 - Contracts 0.13 (additive): `DefenseActionName` gains `block_principal_long` and `block_top_principal_long`, and `PlatformFacts` gains the live v3 detector fields (defaults keep old payloads valid). The schema bump also covers `block_principal` (#324) and the principal-block fields (#334). `PolicyRunner` can now serve live v3 checkpoints as lab-scoped recommendations. Inference no longer imports the live lab.
