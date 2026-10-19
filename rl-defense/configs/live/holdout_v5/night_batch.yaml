@@ -1,0 +1,21 @@
+# Held-out v5 (created 2026-10-19, committed before any policy was evaluated on it; see
+# results/live-retrain-v5/PROVENANCE.md). erin is authorized for carol but slowly reads
+# alice's and bob's payments in long campaigns while dave runs heavy reconciliation.
+# Unseen: a rogue delegate at 3 requests/window against two victims outside its grant.
+name: night_batch
+split: holdout
+horizon: 30
+schedule: bursty
+p_start: 0.1
+p_stop: 0.07
+attack_per_step: 3
+benign_per_step: 8
+attackers: [erin]
+victims: [alice, bob]
+benign: [alice, bob, carol, dave, erin]
+delegations: ["dave:alice", "erin:carol"]
+delegate_per_step: 1
+delegate_burst_p: 0.3
+delegate_burst_size: 4
+seed_start: 44500
+episodes: 30
