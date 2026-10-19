@@ -68,6 +68,14 @@ adds an entry before ending.
 - Next steps: set `ANTHROPIC_API_KEY` (and `GITHUB_TOKEN` for private repos) on the Vercel project, deploy, open a commit and check the first live run.
 - Warnings: `/projects/[id]/simulate` still uses the labelled illustrative drill (unchanged). Continuous 24/7 defense is unchanged.
 
+### 2026-10-19 — Claude (agent, Alan) — Phase 10 seven-agent → RL adversarial integration (design only)
+- Did: wrote the eventual-integration design `docs/architecture/seven-agent-rl-adversarial-integration.md` (grounded in code: agents are a Scout→Probe→Trace→Diagnose→Patch→Fortify→Verify pipeline, not 7 attackers; RL is the fixed 5-node DefenseSimEnv with a PlatformFacts→obs bridge). Proposed reusable schemas (OffensiveScenario, EpisodeSpec, Transition/ExperienceDataset, PromotionReport) — NOT committed to shared/. Added ADR-0014 (decoupled, offline, instrumented-ground-truth-only, reproducible-split, gated) + index row. Cross-linked from architecture/README and docs/09.
+- State of the code: no code changed; docs only. Schemas are marked PROPOSED and must go through contract-first (Srihith) before any build.
+- Decisions: ADR-0014.
+- Assumptions/open: projection of real findings onto the 5-node sim is lossy (RQ-005). Split assignment is by scenario-id hash (proposed).
+- Next steps: do NOT implement until the standalone live RL pipeline (telemetry→inference→action→reward→training) is functional/tested; then ratify schemas into shared/ first.
+- Warnings: nothing wires offensive output into training/orchestration; keep it that way per ADR-0014.
+
 ### 2026-10-17 — Adam (cloud session) — scroll performance, demo-only hosted build
 - Did: branch `feat/adam/hosted-demo-scroll` (stacked on #226). Fixed landing scroll jank: the mean frame went from 82 ms to 21 ms (headless Chromium, software rendering). Added a `NEXT_PUBLIC_DEMO_ONLY` build flag (Vercel only): `/projects*` redirects to `/demo` and `/` renders without a backend. Fixed the blank white-button label in dark bands. Redeployed production from this branch: https://ari-ai-lake.vercel.app.
 - Commands: `npm run lint`, `tsc`, `npm test` (202 passed); demo-only build with an unreachable backend: `/projects` returns 307 to `/demo`.
