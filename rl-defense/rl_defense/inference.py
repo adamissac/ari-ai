@@ -26,8 +26,8 @@ class PolicyRunner:
     def __init__(self, checkpoint: Path, *, blob: bytes | None = None) -> None:
         self.agent, self.manifest = load_checkpoint(checkpoint, blob=blob)
         if self.manifest["env_id"] != ENV_ID:
-            # e.g. live action space v2 (block_principal): not expressible as a shared
-            # DefenseRecommendation until shared.rl.DefenseActionName gains the action.
+            # e.g. live action space v2 (block_principal): PlatformFacts has no
+            # principal-block state, so the 49-feature observation cannot be built from it.
             raise ValueError(
                 f"{self.manifest['env_id']} checkpoints are lab-only; recommendations need {ENV_ID}"
             )

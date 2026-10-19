@@ -254,7 +254,7 @@
   "defense-rules.json": {
    "curated": "Repository-maintained policy or self-assessment data, not an upstream standard.",
    "license": "project proprietary reviewed rules; D3FEND identifiers subject to MITRE terms",
-   "sha256": "f5a395cbf92064980e3f13fa1c7fe9b4f05db6eccef72660dbd4ea9a623a055a",
+   "sha256": "2cd868723215b5d55576b7a88d34342b219c36534f85eaf0c41d95bc10d404d0",
    "upstream": [
     {
      "sha256": "9f2ace1728505a2c978e4d7a0e9328c32467e1d2971def1ba9ad0e49ce9ba667",
@@ -432,7 +432,7 @@
   },
   "rules/rl_d3fend.json": {
    "curated": "Repository-maintained policy or self-assessment data, not an upstream standard.",
-   "sha256": "7aaa52aa5edd5a20f434dc0c6b53973756761975c7c8ced2bb4ca47ca80e5a6a",
+   "sha256": "46086f31bc472172eb4a2f8e08e1b4deb602c2cf7d850fbcff176324320163a5",
    "version": "1"
   },
   "sarif-2.1.0.json": {
