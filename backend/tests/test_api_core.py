@@ -69,7 +69,9 @@ def test_owner_can_approve_own_sandbox_scope(client_factory) -> None:
 def test_sandbox_scope_approval_still_requires_an_owner(client_factory) -> None:
     from helpers import add_member
 
-    alice, bob, member, outsider = (client_factory(name) for name in ("alice", "bob", "member", "outsider"))
+    alice, bob, member, outsider = (
+        client_factory(name) for name in ("alice", "bob", "member", "outsider")
+    )
     ids = setup_project(alice, bob, approve=False)
     add_member(ids["org"], member.me["user"]["id"], "member")
     assert member.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 403
