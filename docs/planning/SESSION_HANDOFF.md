@@ -938,3 +938,6 @@ Fixed commit-screen authorization deadlock at explicit owner direction. Sandbox-
 
 
 Follow-up: aligned the runtime scope guard with owner sandbox self-approval (both single- and multi-member orgs), added empty/external/mixed-target denial regressions (27 guard tests pass), and fixed backend test formatting required by CI.
+
+
+2026-10-19 Adam: fixed #359 training review findings on fix/adam/dqfd-review. Selected-prefix provenance and full experiment are distinct, export retains bytes, promotion refuses unservable/missing-evidence candidates. Original v6 artifacts cannot be recovered from Git, so reports now disclose that limit; no rerun of holdout_v6 or policy promotion.

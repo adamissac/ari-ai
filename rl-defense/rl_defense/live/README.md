@@ -217,3 +217,6 @@ approvers, failing reports, mismatched bytes, and swapped checkpoints, and rolls
 
 Owned, isolated target only; in-process (no network egress); only the permitted defensive
 actions are enforced; no path to any system outside the demo app. See docs/15.
+
+
+Online DQfD evidence exports now include the checkpoint, matching sidecar, selected-snapshot experience prefix and complete experiment JSONL. Lineage counts only transitions available at selection; `online.experiment` records the full collection and update count. Updates start with the first collected episode (sampling uses replacement). Registry promotion refuses unsupported layouts and online reports whose checkpoint/selected experience evidence is absent or hash-mismatched. The original v6 bytes remain unavailable; its historical report is not an executable promotion packet.

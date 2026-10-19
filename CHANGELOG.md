@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Add the lab-only online DQfD training workflow (expert demonstrations plus online DDQN updates). Selected-checkpoint lineage records only its training prefix; full experiment logs remain separate, and evidence export includes reloadable checkpoint and experience bytes. Promotion refuses unsupported serving layouts and missing/hash-mismatched DQfD evidence. The historical v6 gate result is not independently reloadable because its original artifact bytes were not retained; no policy is promoted.
+
 - Let project owners explicitly approve their own sandbox-only authorization, with audit recording. The commit run panel refreshes approval status automatically and no longer gets stuck on expired pending scopes.
 
 - Slow the walkthrough zoom with a 1.5-second transform/radius transition and balanced scroll growth; reduced motion remains immediate.
