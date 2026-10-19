@@ -58,7 +58,7 @@ export default function SettingsPage() {
         </p>
         <label className="mb-3 flex items-center gap-2 text-sm">
           <input type="checkbox" checked={draft.enabled} onChange={e => set('enabled')(e.target.checked)} />
-          Start reassessments automatically on relevant changes
+          24/7 defense: re-check every relevant push automatically
         </label>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Minimum interval between reassessments (s)" hint="Changes inside this window are coalesced.">

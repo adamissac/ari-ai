@@ -925,12 +925,21 @@ Removed the homepage Your next move section at owner request, including both act
 - Inspired by kairo.security's dark "mission control" look (mono stat chips, dark evidence surface, severity/ember tones).
 - Executed: `npm run lint`, `npm run typecheck`, `npm test` (276 passed), `npm run build`; visual check via Playwright screenshots at 1440px and 390px; honesty.spec.ts lab tests passed against `next dev` (the three auth/backend tests can't run without the real API).
 
-
 ### 2026-10-19 — Specialists: corpus-2 + real-corpus retraining (Adam, `feat/adam/specialists-real-corpus`)
 - `specialists/data/corpus_variants.py` registers ~16 extra corpus families (5-6 per CWE) with varied (CauseClass, strategy) labels so the by-CWE lookup baseline stops saturating Diagnose/Patch. `GENERATOR_VERSION` is now corpus-2.
 - `specialists/data/realdata.py` + `fetch.py`: optional real corpora in git-ignored `specialists/data/cache/` — DiverseVul (HF `bstee615/diversevul` parquets, split by commit id, out-of-space CWEs labelled `vuln_other` never safe), NVD CVE descriptions (Trace name-field rows, CWE-aligned splits), ATT&CK STIX technique descriptions (Fortify). Missing cache → builders fall back to bundled data.
 - `datasets.py` merges those rows into scout/trace/fortify; `DATASET_VERSION` bumped; manifest `version` bumped to 1.1.0 (test updated).
 - Retrained v1.1.0 checkpoints committed with eval: **5/7 promoted** — Scout 0.374 vs 0.099, Probe 0.631 vs 0.606, Diagnose 0.601 vs 0.525 (newly promoted), Verify 0.971 vs 0.864. Patch (0.654 vs 0.750), Trace (n=27), Fortify (n=70) stay on baselines; CI rules kept. 44 specialist tests pass; README/results tables updated with honest numbers and the corpus-2/non-comparability caveat.
+
+### 2026-10-19 — 24/7 defense control (Adam, `feat/adam/defense-switch`)
+- Added an owner-only switch on the Monitoring page and a session-aware project panel in the Defense Lab; both preserve the full settings object, and the existing offline bundle view remains independent.
+- Updated Settings copy and added focused switch/sessionless-Lab tests.
+- Verification: frontend lint and typecheck passed; focused tests passed (2 files, 4 tests); full frontend suite passed (70 files, 282 tests).
+- No visual browser check was run.
+
+### 2026-10-19 — 24/7 defense switch contrast (Adam, `feat/adam/defense-switch`)
+- Made `DefenseSwitch` light by default for theme-token panels and retained its existing white styling behind `tone="dark"` for the Monitoring header.
+- Added light/default and dark-tone class assertions.
 
 
 
@@ -940,4 +949,4 @@ Removed the homepage Your next move section at owner request, including both act
 - `frontend/app/globals.css`: removed the `.lab-console` block entirely; kept the score-card stacked-row fix (now scoped to `.lab-score-card`, surface-agnostic); added a light-node variant for the lab map — `.lab-replay-card`-scoped `network-card`/label/status/bar overrides (warm-white cards, ink labels, tinted tone fills) under the `:root:not(:has(.hero-full))` prefix.
 - Executed: lint, typecheck, `npm run build`; Playwright screenshots at 1440px + 390px.
 
-
+2026-10-19 Adam: finishing #352 against the merged Defense Lab redesign. Preserved both handoffs during the main merge; added a real-stack browser assertion for turning monitoring off/on and verifying persistence after reload. Production build passes; final lint, typecheck, unit and browser results are recorded in the PR.
