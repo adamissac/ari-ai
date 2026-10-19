@@ -1,0 +1,22 @@
+# Held-out v4 (created 2026-10-19, before any evaluation on it). Both bookkeepers abuse
+# their access: each keeps reading its authorized client and also reads bob's payments,
+# interleaved per request. Unseen: two rogue delegates at once, a victim (bob) never
+# attacked in train or val.
+name: two_rogue_delegates
+split: holdout
+horizon: 30
+schedule: bursty
+p_start: 0.3
+p_stop: 0.3
+attack_per_step: 4
+benign_per_step: 7
+attackers: [dave, erin]
+attacker_switch: per_request
+victims: [bob]
+benign: [alice, bob, carol, dave, erin]
+delegations: ["dave:alice", "erin:carol"]
+delegate_per_step: 1
+delegate_burst_p: 0.15
+delegate_burst_size: 2
+seed_start: 43500
+episodes: 30

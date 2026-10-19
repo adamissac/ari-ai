@@ -15,12 +15,20 @@ Q ≈ +1.5 against measured returns ≈ −3.7), so the many effect-free actions
 on five nodes, reassessment, escalation) tie with noop up to estimation noise far larger
 than their 0.02 action cost, and argmax over ~10 near-ties rarely lands on noop. See
 results/live-retrain-v3/PROVENANCE.md. ``(0.0,)`` = the v1/v2 behaviour.
+
+``selection="scenario_mean"`` (live v4): a (snapshot, margin) pair is scored by the
+unweighted mean over the val scenarios of each scenario's mean return
+(:func:`evaluate.scenario_mean_reward`), and the per-scenario val returns are recorded.
+v3 selected on a single val scenario and overfit it (results/live-retrain-v3/REPORT.md).
+``"pooled"`` (default) is the v1-v3 score, the mean over all pooled val episodes.
 """
 
 from __future__ import annotations
 
 import copy
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Literal
 
 import numpy as np
 
@@ -28,7 +36,13 @@ from rl_defense import ENV_ID
 from rl_defense.agents.ddqn import ReplayBuffer
 from rl_defense.checkpoint import load_checkpoint, save_checkpoint
 from rl_defense.live.actions import ENV_IDS, ActionSpace, as_space, dims
-from rl_defense.live.evaluate import dqn_policy, run_policy, summarize
+from rl_defense.live.evaluate import (
+    dqn_policy,
+    run_policy,
+    scenario_mean_reward,
+    summarize,
+    summarize_by_scenario,
+)
 from rl_defense.live.experience import load_dataset
 from rl_defense.live.scenarios import LiveScenario
 from rl_defense.train import set_determinism
@@ -67,6 +81,8 @@ def retrain(
     name: str = "candidate",
     action_space: ActionSpace = "sim",
     noop_margins: tuple[float, ...] = (0.0,),
+    loop_overrides: Mapping[str, object] | None = None,
+    selection: Literal["pooled", "scenario_mean"] = "pooled",
 ) -> dict:
     if any(s.split != "val" for s in val_scenarios):
         raise ValueError("checkpoint selection must use validation scenarios only")
@@ -96,15 +112,21 @@ def retrain(
         best_m: tuple[dict, float] | None = None
         for m in noop_margins:
             agent.config = base_config.model_copy(update={"noop_margin": float(m)})
-            s = summarize(
-                run_policy(
-                    dqn_policy(agent),
-                    val_scenarios,
-                    app_factory,
-                    episodes=val_episodes,
-                    action_space=action_space,
-                )
+            rows = run_policy(
+                dqn_policy(agent),
+                val_scenarios,
+                app_factory,
+                episodes=val_episodes,
+                action_space=action_space,
+                loop_overrides=loop_overrides,
             )
+            s = summarize(rows)
+            if selection == "scenario_mean":
+                s["pooled_reward"] = s["reward"]
+                s["reward"] = scenario_mean_reward(rows)
+                s["by_scenario"] = {
+                    k: round(v["reward"], 4) for k, v in summarize_by_scenario(rows).items()
+                }
             if best_m is None or s["reward"] > best_m[0]["reward"]:
                 best_m = (s, float(m))
         agent.config = base_config
@@ -161,6 +183,8 @@ def retrain(
                 "eval_every": eval_every,
                 "noop_margins": list(noop_margins),
                 "selected_noop_margin": best[3],
+                "selection": selection,
+                **({"loop_overrides": dict(loop_overrides)} if loop_overrides else {}),
                 "val_scenarios": {s.name: s.config_hash() for s in val_scenarios},
                 "selection_history": history,
             },
@@ -174,9 +198,12 @@ def _margin(m: float, margins: tuple[float, ...]) -> dict:
 
 
 def _brief(s: dict) -> dict:
-    return {
+    out = {
         "val_reward": s["reward"],
         "val_compromise_rate": s["compromise_rate"],
         "val_availability": s["availability"],
         "val_no_attack_defense_duty": s["no_attack_defense_duty"],
     }
+    if "by_scenario" in s:
+        out["val_reward_by_scenario"] = s["by_scenario"]
+    return out

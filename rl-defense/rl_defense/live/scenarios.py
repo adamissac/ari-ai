@@ -17,6 +17,8 @@ v3 fields (``delegations``, ``delegate_per_step``, ``delegate_burst_p``,
 ``delegate_burst_size``) add legitimate cross-tenant readers (adversary.DelegateProfile);
 like the v2 fields they are omitted from the hash at their defaults. v3 scenarios live in
 ``train_v3/``, ``val_v3/`` and ``holdout_v3/`` (results/live-retrain-v3/PROVENANCE.md).
+v4 trains on ``train_v3/``, selects on the four scenarios in ``val_v4/`` (val3_mixed plus
+three new ones) and is judged once on ``holdout_v4/`` (results/live-retrain-v4/PROVENANCE.md).
 """
 
 from __future__ import annotations

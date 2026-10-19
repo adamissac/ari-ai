@@ -20,11 +20,14 @@ first 48 features and 22 mask entries only, i.e. they cannot block principals.
 ``"live_v3"`` adds ``block_principal_long``; the rules then also choose a block duration
 (``long_mode``) and a minimum per-principal volume (``block_min_volume``), see
 :func:`tune_rules_v3`.
+
+v4 passes ``loop_overrides`` (:data:`V4_LOOP_OVERRIDES`: ``c_disrupt=1.0`` and the
+delegation-aware detector) to every loop it builds; ``None`` is the v1-v3 loop.
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import asdict, dataclass
 
 import numpy as np
@@ -44,6 +47,10 @@ from rl_defense.live.loop import LiveDefenseLoop, LoopConfig
 from rl_defense.live.scenarios import LiveScenario
 
 PolicyFn = Callable[[np.ndarray, np.ndarray], int]
+# v4 (decided before the v4 run): a blocked legitimate request costs as much as a
+# compromised read (each normalized per window), and the detector honours delegation grants.
+V4_LOOP_OVERRIDES: dict[str, object] = {"c_disrupt": 1.0, "delegation_aware_detector": True}
+
 CAVEAT = (
     "Measured against the owned demo app (examples/payments-lite) in an isolated, "
     "in-process lab. Lab evidence only; not proof of real-world effectiveness (RQ-005)."
@@ -97,12 +104,15 @@ def run_policy(
     episodes: int | None = None,
     on_episode: Callable[[LiveScenario, int, list[LiveTransition]], None] | None = None,
     action_space: ActionSpace = "sim",
+    loop_overrides: Mapping[str, object] | None = None,
 ) -> list[EpisodeMetrics]:
     rows: list[EpisodeMetrics] = []
     for sc in scenarios:
         loop = LiveDefenseLoop(
             app_factory,
-            config=LoopConfig(horizon=sc.horizon, action_space=action_space),
+            config=LoopConfig(
+                horizon=sc.horizon, action_space=action_space, **dict(loop_overrides or {})
+            ),
             driver=sc.driver(),
         )
         try:
@@ -154,6 +164,13 @@ def summarize(rows: list[EpisodeMetrics]) -> dict:
 def summarize_by_scenario(rows: list[EpisodeMetrics]) -> dict[str, dict]:
     names = sorted({x.scenario for x in rows})
     return {n: summarize([x for x in rows if x.scenario == n]) for n in names}
+
+
+def scenario_mean_reward(rows: list[EpisodeMetrics]) -> float:
+    """Unweighted mean over scenarios of each scenario's mean return (v4 val selection:
+    every validation scenario counts equally, whatever its episode count)."""
+    by = summarize_by_scenario(rows)
+    return float(np.mean([s["reward"] for s in by.values()]))
 
 
 def paired_reward_diff(a: list[EpisodeMetrics], b: list[EpisodeMetrics]) -> dict:
@@ -230,6 +247,7 @@ def tune_rules(
     episodes: int = 2,
     grid: dict[str, tuple[float, ...]] | None = None,
     action_space: ActionSpace = "sim",
+    loop_overrides: Mapping[str, object] | None = None,
 ) -> tuple[dict, list[dict]]:
     """Grid-tune the docs/09 threshold rules on the SAME live training scenarios the
     candidate learns from (never on val/holdout), so the static-rules comparison is fair.
@@ -254,6 +272,7 @@ def tune_rules(
                 app_factory,
                 episodes=episodes,
                 action_space=action_space,
+                loop_overrides=loop_overrides,
             )
         )
         table.append({**params, "train_reward": s["reward"]})
@@ -333,13 +352,19 @@ def tune_rules_v3(
     episodes: int = 2,
     grid: dict[str, tuple] | None = None,
     base_grid: dict[str, tuple[float, ...]] | None = None,
+    loop_overrides: Mapping[str, object] | None = None,
 ) -> tuple[dict, list[dict]]:
     """Two-stage tuning on TRAIN only, fixed before any v3 evaluation:
     stage 1 = the v2 grid (docs/09 thresholds × short-block threshold) in the v3 loop;
     stage 2 = the stage-1 docs/09 thresholds fixed, grid over :data:`RULES_V3_GRID`.
     Returns the best of both stages (stage-1 rows carry ``long_mode="never"``)."""
     stage1_params, stage1 = tune_rules(
-        train_scenarios, app_factory, episodes=episodes, grid=base_grid, action_space="live_v3"
+        train_scenarios,
+        app_factory,
+        episodes=episodes,
+        grid=base_grid,
+        action_space="live_v3",
+        loop_overrides=loop_overrides,
     )
     fixed = {
         k: stage1_params[k] for k in ("isolate_anomaly", "rate_limit_alerts", "monitor_anomaly")
@@ -367,6 +392,7 @@ def tune_rules_v3(
                 app_factory,
                 episodes=episodes,
                 action_space="live_v3",
+                loop_overrides=loop_overrides,
             )
         )
         table.append({**params, "train_reward": s["reward"], "stage": 2})
