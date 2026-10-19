@@ -1,0 +1,2326 @@
+{
+ "what": "seven-agent assessment on examples/payments-lite: Claude-only vs hybrid (trained specialists + Claude) vs specialists-only, scored against labels.yaml (never shown to the agents)",
+ "mode": "live",
+ "settings": {
+  "max_hypotheses": 3,
+  "validate": 2,
+  "per_run_cap_usd": 4.0,
+  "total_cap_usd": 20.0
+ },
+ "answer_key": {
+  "planted": [
+   {
+    "id": "fnd_planted_authz",
+    "subject": "GET /payments/{payment_id}",
+    "weakness_class": "CWE-639",
+    "expectation": "exp_owner_only",
+    "path": "payments_lite/app.py",
+    "symbol": "get_payment",
+    "check_category": "access_control.ownership"
+   },
+   {
+    "id": "fnd_planted_refund_bound",
+    "subject": "POST /refunds",
+    "weakness_class": "CWE-840",
+    "expectation": "exp_refund_bound",
+    "path": "payments_lite/app.py",
+    "symbol": "create_refund",
+    "check_category": "input_validation.bounds"
+   }
+  ],
+  "negatives": [
+   {
+    "subject": "GET /customers/{customer_id}",
+    "hypothesis_class": "CWE-639"
+   },
+   {
+    "subject": "GET /refunds/{refund_id}",
+    "hypothesis_class": "CWE-639"
+   },
+   {
+    "subject": "POST /refunds",
+    "hypothesis_class": "CWE-639",
+    "note": "ownership is checked; only the amount bound is wrong"
+   }
+  ],
+  "class_family": {
+   "fnd_planted_authz": [
+    "CWE-200",
+    "CWE-284",
+    "CWE-285",
+    "CWE-566",
+    "CWE-639",
+    "CWE-862",
+    "CWE-863"
+   ],
+   "fnd_planted_refund_bound": [
+    "CWE-1284",
+    "CWE-20",
+    "CWE-682",
+    "CWE-799",
+    "CWE-837",
+    "CWE-840",
+    "CWE-841"
+   ]
+  },
+  "expected_cause": {
+   "fnd_planted_authz": "missing_check",
+   "fnd_planted_refund_bound": "wrong_check"
+  }
+ },
+ "specialists_only": {
+  "scout_survey": [
+   {
+    "entry_point_id": "ent_get_health",
+    "suspicion": 0.2794,
+    "likely_cwe": "CWE-918"
+   },
+   {
+    "entry_point_id": "ent_post_payments",
+    "suspicion": 0.0674,
+    "likely_cwe": "CWE-1284"
+   },
+   {
+    "entry_point_id": "ent_get_payments_payment_id",
+    "suspicion": 0.0509,
+    "likely_cwe": "CWE-639"
+   },
+   {
+    "entry_point_id": "ent_post_refunds",
+    "suspicion": 0.0437,
+    "likely_cwe": "CWE-1284"
+   },
+   {
+    "entry_point_id": "ent_get_me",
+    "suspicion": 0.0133,
+    "likely_cwe": "CWE-78"
+   },
+   {
+    "entry_point_id": "ent_get_customers_customer_id",
+    "suspicion": 0.0023,
+    "likely_cwe": "CWE-639"
+   },
+   {
+    "entry_point_id": "ent_get_refunds_refund_id",
+    "suspicion": 0.0023,
+    "likely_cwe": "CWE-1284"
+   },
+   {
+    "entry_point_id": "ent_get_payments",
+    "suspicion": 0.0013,
+    "likely_cwe": "CWE-639"
+   }
+  ],
+  "planted": {
+   "fnd_planted_authz": {
+    "scout_rank": 3,
+    "of": 8,
+    "scout_top3": true,
+    "scout_likely_cwe": "CWE-639",
+    "scout_likely_cwe_in_family": true,
+    "probe_top": "WSTG-ATHZ-04",
+    "probe_source": "model",
+    "probe_maps_to_expected_category": true,
+    "diagnose_top": "missing_check",
+    "diagnose_source": "baseline:cwe_lookup",
+    "diagnose_matches_expected_cause": true,
+    "patch_top": "add_ownership_predicate",
+    "patch_source": "baseline:cwe_lookup"
+   },
+   "fnd_planted_refund_bound": {
+    "scout_rank": 4,
+    "of": 8,
+    "scout_top3": false,
+    "scout_likely_cwe": "CWE-1284",
+    "scout_likely_cwe_in_family": true,
+    "probe_top": "WSTG-INPV-12",
+    "probe_source": "model",
+    "probe_maps_to_expected_category": false,
+    "diagnose_top": "missing_check",
+    "diagnose_source": "baseline:cwe_lookup",
+    "diagnose_matches_expected_cause": false,
+    "patch_top": "canonicalize_and_contain_path",
+    "patch_source": "baseline:cwe_lookup"
+   }
+  },
+  "negatives_in_scout_top3": [],
+  "not_scored": {
+   "validated / fixed / verify": "needs executed checks and patches, which only the Claude agents produce",
+   "trace / fortify": "labels.yaml has no ATT&CK or D3FEND answer key"
+  }
+ },
+ "runs": [
+  {
+   "config": "claude_only",
+   "at": "2026-10-19T04:35:15.041136+00:00",
+   "score": {
+    "state": "completed",
+    "error_code": null,
+    "provider_modes": [
+     "live"
+    ],
+    "models": [
+     "claude-opus-5-5"
+    ],
+    "planted": {
+     "fnd_planted_authz": {
+      "hypothesised": true,
+      "rank": 1,
+      "class_exact": true,
+      "class_family": true,
+      "reported_classes": [
+       "CWE-639"
+      ],
+      "selected_for_validation": true,
+      "validation_outcomes": [
+       "confirmed"
+      ],
+      "validated": true,
+      "diagnosed": true,
+      "diagnosed_correctly": true,
+      "cause_classes": [
+       "missing_check"
+      ],
+      "cause_class_expected": true,
+      "patched": true,
+      "fixed_verify_accepted": true,
+      "verdicts": [
+       "accepted"
+      ],
+      "hardened": true
+     },
+     "fnd_planted_refund_bound": {
+      "hypothesised": true,
+      "rank": 2,
+      "class_exact": false,
+      "class_family": true,
+      "reported_classes": [
+       "CWE-841"
+      ],
+      "selected_for_validation": true,
+      "validation_outcomes": [
+       "confirmed"
+      ],
+      "validated": true,
+      "diagnosed": true,
+      "diagnosed_correctly": true,
+      "cause_classes": [
+       "wrong_check"
+      ],
+      "cause_class_expected": true,
+      "patched": true,
+      "fixed_verify_accepted": true,
+      "verdicts": [
+       "accepted"
+      ],
+      "hardened": true
+     }
+    },
+    "hypotheses": [
+     {
+      "title": "GET /payments/{payment_id} may return any customer's payment because it never calls require_owner",
+      "weakness_class": "CWE-639",
+      "entry_point_id": "ent_get_payments_payment_id",
+      "validation": "confirmed",
+      "status": "hardened"
+     },
+     {
+      "title": "POST /refunds checks each refund against the payment amount but not the running total, so repeated refunds may exceed the original payment",
+      "weakness_class": "CWE-841",
+      "entry_point_id": "ent_post_refunds",
+      "validation": "confirmed",
+      "status": "hardened"
+     }
+    ],
+    "false_positives_confirmed": 0,
+    "false_positive_titles": [],
+    "unmatched_hypotheses": 0,
+    "negative_subjects_hypothesised": [],
+    "specialist_rerank_changed_order": false,
+    "specialist_sources": {
+     "scout": "unavailable",
+     "probe": "unavailable",
+     "trace": "unavailable",
+     "diagnose": "unavailable",
+     "patch": "unavailable",
+     "verify": "unavailable",
+     "fortify": "unavailable"
+    },
+    "verify_specialist_top": [
+     null,
+     null
+    ],
+    "verify_specialist_notes": [],
+    "per_agent": {
+     "scout": {
+      "runs": 1,
+      "succeeded": true,
+      "error_codes": [],
+      "llm_turns": 4,
+      "tool_calls": 8,
+      "tokens": 38986,
+      "usd": 0.189032,
+      "latency_s": 22.921
+     },
+     "probe": {
+      "runs": 2,
+      "succeeded": true,
+      "error_codes": [],
+      "llm_turns": 6,
+      "tool_calls": 8,
+      "tokens": 33107,
+      "usd": 0.160524,
+      "latency_s": 25.144
+     },
+     "trace": {
+      "runs": 2,
+      "succeeded": true,
+      "error_codes": [],
+      "llm_turns": 7,
+      "tool_calls": 9,
+      "tokens": 70411,
+      "usd": 0.402076,
+      "latency_s": 76.944
+     },
+     "diagnose": {
+      "runs": 2,
+      "succeeded": true,
+      "error_codes": [],
+      "llm_turns": 7,
+      "tool_calls": 10,
+      "tokens": 71756,
+      "usd": 0.374944,
+      "latency_s": 57.544
+     },
+     "patch": {
+      "runs": 2,
+      "succeeded": true,
+      "error_codes": [],
+      "llm_turns": 11,
+      "tool_calls": 18,
+      "tokens": 137412,
+      "usd": 0.739968,
+      "latency_s": 106.024
+     },
+     "verify": {
+      "runs": 2,
+      "succeeded": true,
+      "error_codes": [],
+      "llm_turns": 7,
+      "tool_calls": 9,
+      "tokens": 32383,
+      "usd": 0.171788,
+      "latency_s": 38.76
+     },
+     "fortify": {
+      "runs": 2,
+      "succeeded": true,
+      "error_codes": [],
+      "llm_turns": 9,
+      "tool_calls": 16,
+      "tokens": 111330,
+      "usd": 0.612152,
+      "latency_s": 109.437
+     }
+    },
+    "usage": {
+     "input_tokens": 453576,
+     "output_tokens": 41809,
+     "usd": 2.6504839999999996,
+     "sandbox_seconds": 15.925999999999998
+    },
+    "tokens": 495385,
+    "usd": 2.650484,
+    "wall_s": 440.5
+   },
+   "attempt": 1
+  },
+  {
+   "config": "hybrid",
+   "at": "2026-10-19T04:42:00.648024+00:00",
+   "score": {
+    "state": "completed",
+    "error_code": null,
+    "provider_modes": [
+     "live"
+    ],
+    "models": [
+     "claude-opus-5-5"
+    ],
+    "planted": {
+     "fnd_planted_authz": {
+      "hypothesised": true,
+      "rank": 1,
+      "class_exact": true,
+      "class_family": true,
+      "reported_classes": [
+       "CWE-639"
+      ],
+      "selected_for_validation": true,
+      "validation_outcomes": [
+       "confirmed"
+      ],
+      "validated": true,
+      "diagnosed": true,
+      "diagnosed_correctly": true,
+      "cause_classes": [
+       "missing_check"
+      ],
+      "cause_class_expected": true,
+      "patched": true,
+      "fixed_verify_accepted": true,
+      "verdicts": [
+       "accepted"
+      ],
+      "hardened": true
+     },
+     "fnd_planted_refund_bound": {
+      "hypothesised": true,
+      "rank": 2,
+      "class_exact": false,
+      "class_family": true,
+      "reported_classes": [
+       "CWE-1284"
+      ],
+      "selected_for_validation": true,
+      "validation_outcomes": [
+       "confirmed"
+      ],
+      "validated": true,
+      "diagnosed": true,
+      "diagnosed_correctly": true,
+      "cause_classes": [
+       "wrong_check"
+      ],
+      "cause_class_expected": true,
+      "patched": true,
+      "fixed_verify_accepted": true,
+      "verdicts": [
+       "accepted"
+      ],
+      "hardened": true
+     }
+    },
+    "hypotheses": [
+     {
+      "title": "GET /payments/{payment_id} may return any customer's payment: get_payment never calls require_owner",
+      "weakness_class": "CWE-639",
+      "entry_point_id": "ent_get_payments_payment_id",
+      "validation": "confirmed",
+      "status": "hardened"
+     },
+     {
+      "title": "POST /refunds may let total refunds exceed the payment amount: only the single refund is checked, not the running total",
+      "weakness_class": "CWE-1284",
+      "entry_point_id": "ent_post_refunds",
+      "validation": "confirmed",
+      "status": "hardened"
+     }
+    ],
+    "false_positives_confirmed": 0,
+    "false_positive_titles": [],
+    "unmatched_hypotheses": 0,
+    "negative_subjects_hypothesised": [],
+    "specialist_rerank_changed_order": false,
+    "specialist_sources": {
+     "scout": "model",
+     "probe": "model",
+     "trace": "baseline:prior_top3",
+     "diagnose": "baseline:cwe_lookup",
+     "patch": "baseline:cwe_lookup",
+     "verify": "model",
+     "fortify": "baseline:tactic_frequency"
+    },
+    "verify_specialist_top": [
+     "test_weakened",
+     "adequate"
+    ],
+    "verify_specialist_notes": [
+     "verify specialist (ari-verify-evidence@1.0.0) rates the evidence 'test_weakened' (0.61); verdict unchanged, human review recommended"
+    ],
+    "per_agent": {
+     "scout": {
+      "runs": 1,
+      "succeeded": true,
+      "error_codes": [],
+      "llm_turns": 4,
+      "tool_calls": 7,
+      "tokens": 43126,
+      "usd": 0.208888,
+      "latency_s": 24.497
+     },
+     "probe": {
+      "runs": 2,
+      "succeeded": true,
+      "error_codes": [],
+      "llm_turns": 6,
+      "tool_calls": 8,
+      "tokens": 35166,
+      "usd": 0.169944,
+      "latency_s": 28.74
+     },
+     "trace": {
+      "runs": 2,
+      "succeeded": true,
+      "error_codes": [],
+      "llm_turns": 8,
+      "tool_calls": 10,
+      "tokens": 82773,
+      "usd": 0.445156,
+      "latency_s": 76.78
+     },
+     "diagnose": {
+      "runs": 2,
+      "succeeded": true,
+      "error_codes": [],
+      "llm_turns": 7,
+      "tool_calls": 9,
+      "tokens": 72459,
+      "usd": 0.368748,
+      "latency_s": 54.069
+     },
+     "patch": {
+      "runs": 2,
+      "succeeded": true,
+      "error_codes": [],
+      "llm_turns": 9,
+      "tool_calls": 15,
+      "tokens": 113976,
+      "usd": 0.622384,
+      "latency_s": 88.802
+     },
+     "verify": {
+      "runs": 2,
+      "succeeded": true,
+      "error_codes": [],
+      "llm_turns": 6,
+      "tool_calls": 8,
+      "tokens": 26690,
+      "usd": 0.144008,
+      "latency_s": 36.068
+     },
+     "fortify": {
+      "runs": 2,
+      "succeeded": true,
+      "error_codes": [],
+      "llm_turns": 10,
+      "tool_calls": 16,
+      "tokens": 125706,
+      "usd": 0.633208,
+      "latency_s": 92.805
+     }
+    },
+    "usage": {
+     "input_tokens": 462849,
+     "output_tokens": 37047,
+     "usd": 2.592336,
+     "sandbox_seconds": 14.697000000000001
+    },
+    "tokens": 499896,
+    "usd": 2.592336,
+    "wall_s": 405.57
+   },
+   "attempt": 1
+  },
+  {
+   "config": "claude_only",
+   "at": "2026-10-19T04:46:47.866157+00:00",
+   "score": {
+    "state": "completed",
+    "error_code": null,
+    "provider_modes": [
+     "live"
+    ],
+    "models": [
+     "claude-opus-5-5"
+    ],
+    "planted": {
+     "fnd_planted_authz": {
+      "hypothesised": true,
+      "rank": 1,
+      "class_exact": true,
+      "class_family": true,
+      "reported_classes": [
+       "CWE-639"
+      ],
+      "selected_for_validation": true,
+      "validation_outcomes": [
+       "confirmed"
+      ],
+      "validated": true,
+      "diagnosed": true,
+      "diagnosed_correctly": true,
+      "cause_classes": [
+       "missing_check"
+      ],
+      "cause_class_expected": true,
+      "patched": true,
+      "fixed_verify_accepted": true,
+      "verdicts": [
+       "accepted"
+      ],
+      "hardened": false
+     },
+     "fnd_planted_refund_bound": {
+      "hypothesised": true,
+      "rank": 2,
+      "class_exact": false,
+      "class_family": true,
+      "reported_classes": [
+       "CWE-841"
+      ],
+      "selected_for_validation": true,
+      "validation_outcomes": [
+       "confirmed"
+      ],
+      "validated": true,
+      "diagnosed": true,
+      "diagnosed_correctly": true,
+      "cause_classes": [
+       "wrong_check"
+      ],
+      "cause_class_expected": true,
+      "patched": false,
+      "fixed_verify_accepted": false,
+      "verdicts": [],
+      "hardened": false
+     }
+    },
+    "hypotheses": [
+     {
+      "title": "GET /payments/{payment_id} may return any customer's payment: the require_owner check is missing",
+      "weakness_class": "CWE-639",
+      "entry_point_id": "ent_get_payments_payment_id",
+      "validation": "confirmed",
+      "status": "verified"
+     },
+     {
+      "title": "POST /refunds may let total refunds exceed the payment amount: each refund is checked alone, not against refunds already made",
+      "weakness_class": "CWE-841",
+      "entry_point_id": "ent_post_refunds",
+      "validation": "confirmed",
+      "status": "unresolved"
+     }
+    ],
+    "false_positives_confirmed": 0,
+    "false_positive_titles": [],
+    "unmatched_hypotheses": 0,
+    "negative_subjects_hypothesised": [],
+    "specialist_rerank_changed_order": false,
+    "specialist_sources": {
+     "scout": "unavailable",
+     "probe": "unavailable",
+     "trace": "unavailable",
+     "diagnose": "unavailable",
+     "patch": "unavailable",
+     "verify": "unavailable",
+     "fortify": "unavailable"
+    },
+    "verify_specialist_top": [
+     null
+    ],
+    "verify_specialist_notes": [],
+    "per_agent": {
+     "scout": {
+      "runs": 1,
+      "succeeded": true,
+      "error_codes": [],
+      "llm_turns": 4,
+      "tool_calls": 7,
+      "tokens": 39710,
+      "usd": 0.19228,
+      "latency_s": 22.569
+     },
+     "probe": {
+      "runs": 2,
+      "succeeded": true,
+      "error_codes": [],
+      "llm_turns": 6,
+      "tool_calls": 8,
+      "tokens": 33322,
+      "usd": 0.162936,
+      "latency_s": 25.463
+     },
+     "trace": {
+      "runs": 2,
+      "succeeded": true,
+      "error_codes": [],
+      "llm_turns": 9,
+      "tool_calls": 11,
+      "tokens": 98261,
+      "usd": 0.518388,
+      "latency_s": 83.181
+     },
+     "diagnose": {
+      "runs": 2,
+      "succeeded": true,
+      "error_codes": [],
+      "llm_turns": 7,
+      "tool_calls": 10,
+      "tokens": 74424,
+      "usd": 0.389504,
+      "latency_s": 57.618
+     },
+     "patch": {
+      "runs": 2,
+      "succeeded": false,
+      "error_codes": [
+       "LLM_UNAVAILABLE"
+      ],
+      "llm_turns": 6,
+      "tool_calls": 14,
+      "tokens": 64235,
+      "usd": 0.395468,
+      "latency_s": 72.463
+     },
+     "verify": {
+      "runs": 1,
+      "succeeded": true,
+      "error_codes": [],
+      "llm_turns": 5,
+      "tool_calls": 6,
+      "tokens": 27523,
+      "usd": 0.135804,
+      "latency_s": 23.099
+     },
+     "fortify": {
+      "runs": 1,
+      "succeeded": false,
+      "error_codes": [
+       "LLM_UNAVAILABLE"
+      ],
+      "llm_turns": 0,
+      "tool_calls": 0,
+      "tokens": 0,
+      "usd": 0.0,
+      "latency_s": 0.177
+     }
+    },
+    "usage": {
+     "input_tokens": 309695,
+     "output_tokens": 27780,
+     "usd": 1.7943799999999999,
+     "sandbox_seconds": 11.803
+    },
+    "tokens": 337475,
+    "usd": 1.79438,
+    "wall_s": 287.19
+   },
+   "attempt": 2
+  },
+  {
+   "config": "hybrid",
+   "at": "2026-10-19T04:46:49.269114+00:00",
+   "score": {
+    "state": "failed",
+    "error_code": "LLM_UNAVAILABLE",
+    "provider_modes": [
+     "live"
+    ],
+    "models": [
+     "claude-opus-5-5"
+    ],
+    "planted": {
+     "fnd_planted_authz": {
+      "hypothesised": false,
+      "rank": null,
+      "class_exact": false,
+      "class_family": false,
+      "reported_classes": [],
+      "selected_for_validation": false,
+      "validation_outcomes": [],
+      "validated": false,
+      "diagnosed": false,
+      "diagnosed_correctly": false,
+      "cause_classes": [],
+      "cause_class_expected": false,
+      "patched": false,
+      "fixed_verify_accepted": false,
+      "verdicts": [],
+      "hardened": false
+     },
+     "fnd_planted_refund_bound": {
+      "hypothesised": false,
+      "rank": null,
+      "class_exact": false,
+      "class_family": false,
+      "reported_classes": [],
+      "selected_for_validation": false,
+      "validation_outcomes": [],
+      "validated": false,
+      "diagnosed": false,
+      "diagnosed_correctly": false,
+      "cause_classes": [],
+      "cause_class_expected": false,
+      "patched": false,
+      "fixed_verify_accepted": false,
+      "verdicts": [],
+      "hardened": false
+     }
+    },
+    "hypotheses": [],
+    "false_positives_confirmed": 0,
+    "false_positive_titles": [],
+    "unmatched_hypotheses": 0,
+    "negative_subjects_hypothesised": [],
+    "specialist_rerank_changed_order": false,
+    "specialist_sources": {
+     "scout": "model"
+    },
+    "verify_specialist_top": [],
+    "verify_specialist_notes": [],
+    "per_agent": {
+     "scout": {
+      "runs": 1,
+      "succeeded": false,
+      "error_codes": [
+       "LLM_UNAVAILABLE"
+      ],
+      "llm_turns": 0,
+      "tool_calls": 0,
+      "tokens": 0,
+      "usd": 0.0,
+      "latency_s": 0.224
+     },
+     "probe": {
+      "runs": 0,
+      "succeeded": false,
+      "error_codes": [],
+      "llm_turns": 0,
+      "tool_calls": 0,
+      "tokens": 0,
+      "usd": 0,
+      "latency_s": 0
+     },
+     "trace": {
+      "runs": 0,
+      "succeeded": false,
+      "error_codes": [],
+      "llm_turns": 0,
+      "tool_calls": 0,
+      "tokens": 0,
+      "usd": 0,
+      "latency_s": 0
+     },
+     "diagnose": {
+      "runs": 0,
+      "succeeded": false,
+      "error_codes": [],
+      "llm_turns": 0,
+      "tool_calls": 0,
+      "tokens": 0,
+      "usd": 0,
+      "latency_s": 0
+     },
+     "patch": {
+      "runs": 0,
+      "succeeded": false,
+      "error_codes": [],
+      "llm_turns": 0,
+      "tool_calls": 0,
+      "tokens": 0,
+      "usd": 0,
+      "latency_s": 0
+     },
+     "verify": {
+      "runs": 0,
+      "succeeded": false,
+      "error_codes": [],
+      "llm_turns": 0,
+      "tool_calls": 0,
+      "tokens": 0,
+      "usd": 0,
+      "latency_s": 0
+     },
+     "fortify": {
+      "runs": 0,
+      "succeeded": false,
+      "error_codes": [],
+      "llm_turns": 0,
+      "tool_calls": 0,
+      "tokens": 0,
+      "usd": 0,
+      "latency_s": 0
+     }
+    },
+    "usage": {
+     "input_tokens": 0,
+     "output_tokens": 0,
+     "usd": 0.0,
+     "sandbox_seconds": 1.124
+    },
+    "tokens": 0,
+    "usd": 0.0,
+    "wall_s": 1.38
+   },
+   "attempt": 2
+  },
+  {
+   "config": "claude_only",
+   "at": "2026-10-19T04:46:50.829617+00:00",
+   "score": {
+    "state": "failed",
+    "error_code": "LLM_UNAVAILABLE",
+    "provider_modes": [
+     "live"
+    ],
+    "models": [
+     "claude-opus-5-5"
+    ],
+    "planted": {
+     "fnd_planted_authz": {
+      "hypothesised": false,
+      "rank": null,
+      "class_exact": false,
+      "class_family": false,
+      "reported_classes": [],
+      "selected_for_validation": false,
+      "validation_outcomes": [],
+      "validated": false,
+      "diagnosed": false,
+      "diagnosed_correctly": false,
+      "cause_classes": [],
+      "cause_class_expected": false,
+      "patched": false,
+      "fixed_verify_accepted": false,
+      "verdicts": [],
+      "hardened": false
+     },
+     "fnd_planted_refund_bound": {
+      "hypothesised": false,
+      "rank": null,
+      "class_exact": false,
+      "class_family": false,
+      "reported_classes": [],
+      "selected_for_validation": false,
+      "validation_outcomes": [],
+      "validated": false,
+      "diagnosed": false,
+      "diagnosed_correctly": false,
+      "cause_classes": [],
+      "cause_class_expected": false,
+      "patched": false,
+      "fixed_verify_accepted": false,
+      "verdicts": [],
+      "hardened": false
+     }
+    },
+    "hypotheses": [],
+    "false_positives_confirmed": 0,
+    "false_positive_titles": [],
+    "unmatched_hypotheses": 0,
+    "negative_subjects_hypothesised": [],
+    "specialist_rerank_changed_order": false,
+    "specialist_sources": {
+     "scout": "unavailable"
+    },
+    "verify_specialist_top": [],
+    "verify_specialist_notes": [],
+    "per_agent": {
+     "scout": {
+      "runs": 1,
+      "succeeded": false,
+      "error_codes": [
+       "LLM_UNAVAILABLE"
+      ],
+      "llm_turns": 0,
+      "tool_calls": 0,
+      "tokens": 0,
+      "usd": 0.0,
+      "latency_s": 0.28
+     },
+     "probe": {
+      "runs": 0,
+      "succeeded": false,
+      "error_codes": [],
+      "llm_turns": 0,
+      "tool_calls": 0,
+      "tokens": 0,
+      "usd": 0,
+      "latency_s": 0
+     },
+     "trace": {
+      "runs": 0,
+      "succeeded": false,
+      "error_codes": [],
+      "llm_turns": 0,
+      "tool_calls": 0,
+      "tokens": 0,
+      "usd": 0,
+      "latency_s": 0
+     },
+     "diagnose": {
+      "runs": 0,
+      "succeeded": false,
+      "error_codes": [],
+      "llm_turns": 0,
+      "tool_calls": 0,
+      "tokens": 0,
+      "usd": 0,
+      "latency_s": 0
+     },
+     "patch": {
+      "runs": 0,
+      "succeeded": false,
+      "error_codes": [],
+      "llm_turns": 0,
+      "tool_calls": 0,
+      "tokens": 0,
+      "usd": 0,
+      "latency_s": 0
+     },
+     "verify": {
+      "runs": 0,
+      "succeeded": false,
+      "error_codes": [],
+      "llm_turns": 0,
+      "tool_calls": 0,
+      "tokens": 0,
+      "usd": 0,
+      "latency_s": 0
+     },
+     "fortify": {
+      "runs": 0,
+      "succeeded": false,
+      "error_codes": [],
+      "llm_turns": 0,
+      "tool_calls": 0,
+      "tokens": 0,
+      "usd": 0,
+      "latency_s": 0
+     }
+    },
+    "usage": {
+     "input_tokens": 0,
+     "output_tokens": 0,
+     "usd": 0.0,
+     "sandbox_seconds": 1.247
+    },
+    "tokens": 0,
+    "usd": 0.0,
+    "wall_s": 1.54
+   },
+   "attempt": 3
+  },
+  {
+   "config": "hybrid",
+   "at": "2026-10-19T04:46:52.407986+00:00",
+   "score": {
+    "state": "failed",
+    "error_code": "LLM_UNAVAILABLE",
+    "provider_modes": [
+     "live"
+    ],
+    "models": [
+     "claude-opus-5-5"
+    ],
+    "planted": {
+     "fnd_planted_authz": {
+      "hypothesised": false,
+      "rank": null,
+      "class_exact": false,
+      "class_family": false,
+      "reported_classes": [],
+      "selected_for_validation": false,
+      "validation_outcomes": [],
+      "validated": false,
+      "diagnosed": false,
+      "diagnosed_correctly": false,
+      "cause_classes": [],
+      "cause_class_expected": false,
+      "patched": false,
+      "fixed_verify_accepted": false,
+      "verdicts": [],
+      "hardened": false
+     },
+     "fnd_planted_refund_bound": {
+      "hypothesised": false,
+      "rank": null,
+      "class_exact": false,
+      "class_family": false,
+      "reported_classes": [],
+      "selected_for_validation": false,
+      "validation_outcomes": [],
+      "validated": false,
+      "diagnosed": false,
+      "diagnosed_correctly": false,
+      "cause_classes": [],
+      "cause_class_expected": false,
+      "patched": false,
+      "fixed_verify_accepted": false,
+      "verdicts": [],
+      "hardened": false
+     }
+    },
+    "hypotheses": [],
+    "false_positives_confirmed": 0,
+    "false_positive_titles": [],
+    "unmatched_hypotheses": 0,
+    "negative_subjects_hypothesised": [],
+    "specialist_rerank_changed_order": false,
+    "specialist_sources": {
+     "scout": "model"
+    },
+    "verify_specialist_top": [],
+    "verify_specialist_notes": [],
+    "per_agent": {
+     "scout": {
+      "runs": 1,
+      "succeeded": false,
+      "error_codes": [
+       "LLM_UNAVAILABLE"
+      ],
+      "llm_turns": 0,
+      "tool_calls": 0,
+      "tokens": 0,
+      "usd": 0.0,
+      "latency_s": 0.236
+     },
+     "probe": {
+      "runs": 0,
+      "succeeded": false,
+      "error_codes": [],
+      "llm_turns": 0,
+      "tool_calls": 0,
+      "tokens": 0,
+      "usd": 0,
+      "latency_s": 0
+     },
+     "trace": {
+      "runs": 0,
+      "succeeded": false,
+      "error_codes": [],
+      "llm_turns": 0,
+      "tool_calls": 0,
+      "tokens": 0,
+      "usd": 0,
+      "latency_s": 0
+     },
+     "diagnose": {
+      "runs": 0,
+      "succeeded": false,
+      "error_codes": [],
+      "llm_turns": 0,
+      "tool_calls": 0,
+      "tokens": 0,
+      "usd": 0,
+      "latency_s": 0
+     },
+     "patch": {
+      "runs": 0,
+      "succeeded": false,
+      "error_codes": [],
+      "llm_turns": 0,
+      "tool_calls": 0,
+      "tokens": 0,
+      "usd": 0,
+      "latency_s": 0
+     },
+     "verify": {
+      "runs": 0,
+      "succeeded": false,
+      "error_codes": [],
+      "llm_turns": 0,
+      "tool_calls": 0,
+      "tokens": 0,
+      "usd": 0,
+      "latency_s": 0
+     },
+     "fortify": {
+      "runs": 0,
+      "succeeded": false,
+      "error_codes": [],
+      "llm_turns": 0,
+      "tool_calls": 0,
+      "tokens": 0,
+      "usd": 0,
+      "latency_s": 0
+     }
+    },
+    "usage": {
+     "input_tokens": 0,
+     "output_tokens": 0,
+     "usd": 0.0,
+     "sandbox_seconds": 1.284
+    },
+    "tokens": 0,
+    "usd": 0.0,
+    "wall_s": 1.55
+   },
+   "attempt": 3
+  }
+ ],
+ "summary": {
+  "claude_only": {
+   "runs": 1,
+   "completed": {
+    "k": 1,
+    "n": 1,
+    "rate": 1.0,
+    "wilson95": [
+     0.207,
+     1.0
+    ]
+   },
+   "planted": {
+    "fnd_planted_authz": {
+     "hypothesised": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "class_family": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "selected_for_validation": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "validated": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "diagnosed_correctly": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "cause_class_expected": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "fixed_verify_accepted": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "hardened": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     }
+    },
+    "fnd_planted_refund_bound": {
+     "hypothesised": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "class_family": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "selected_for_validation": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "validated": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "diagnosed_correctly": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "cause_class_expected": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "fixed_verify_accepted": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "hardened": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     }
+    },
+    "fnd_planted_authz.rank": {
+     "n": 1,
+     "mean": 1.0,
+     "sd": 0.0,
+     "min": 1,
+     "max": 1
+    },
+    "fnd_planted_refund_bound.rank": {
+     "n": 1,
+     "mean": 2.0,
+     "sd": 0.0,
+     "min": 2,
+     "max": 2
+    }
+   },
+   "planted_fixed_per_assessment": {
+    "n": 1,
+    "mean": 2.0,
+    "sd": 0.0,
+    "min": 2,
+    "max": 2
+   },
+   "planted_validated_per_assessment": {
+    "n": 1,
+    "mean": 2.0,
+    "sd": 0.0,
+    "min": 2,
+    "max": 2
+   },
+   "false_positives_confirmed": {
+    "n": 1,
+    "mean": 0.0,
+    "sd": 0.0,
+    "min": 0,
+    "max": 0
+   },
+   "unmatched_hypotheses": {
+    "n": 1,
+    "mean": 0.0,
+    "sd": 0.0,
+    "min": 0,
+    "max": 0
+   },
+   "tokens": {
+    "n": 1,
+    "mean": 495385.0,
+    "sd": 0.0,
+    "min": 495385,
+    "max": 495385
+   },
+   "usd": {
+    "n": 1,
+    "mean": 2.6505,
+    "sd": 0.0,
+    "min": 2.6505,
+    "max": 2.6505
+   },
+   "wall_s": {
+    "n": 1,
+    "mean": 440.5,
+    "sd": 0.0,
+    "min": 440.5,
+    "max": 440.5
+   },
+   "per_agent": {
+    "scout": {
+     "succeeded": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "tokens": {
+      "n": 1,
+      "mean": 38986.0,
+      "sd": 0.0,
+      "min": 38986,
+      "max": 38986
+     },
+     "usd": {
+      "n": 1,
+      "mean": 0.189,
+      "sd": 0.0,
+      "min": 0.189,
+      "max": 0.189
+     },
+     "latency_s": {
+      "n": 1,
+      "mean": 22.921,
+      "sd": 0.0,
+      "min": 22.921,
+      "max": 22.921
+     },
+     "llm_turns": {
+      "n": 1,
+      "mean": 4.0,
+      "sd": 0.0,
+      "min": 4,
+      "max": 4
+     },
+     "invoked": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     }
+    },
+    "probe": {
+     "succeeded": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "tokens": {
+      "n": 1,
+      "mean": 33107.0,
+      "sd": 0.0,
+      "min": 33107,
+      "max": 33107
+     },
+     "usd": {
+      "n": 1,
+      "mean": 0.1605,
+      "sd": 0.0,
+      "min": 0.1605,
+      "max": 0.1605
+     },
+     "latency_s": {
+      "n": 1,
+      "mean": 25.144,
+      "sd": 0.0,
+      "min": 25.144,
+      "max": 25.144
+     },
+     "llm_turns": {
+      "n": 1,
+      "mean": 6.0,
+      "sd": 0.0,
+      "min": 6,
+      "max": 6
+     },
+     "invoked": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     }
+    },
+    "trace": {
+     "succeeded": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "tokens": {
+      "n": 1,
+      "mean": 70411.0,
+      "sd": 0.0,
+      "min": 70411,
+      "max": 70411
+     },
+     "usd": {
+      "n": 1,
+      "mean": 0.4021,
+      "sd": 0.0,
+      "min": 0.4021,
+      "max": 0.4021
+     },
+     "latency_s": {
+      "n": 1,
+      "mean": 76.944,
+      "sd": 0.0,
+      "min": 76.944,
+      "max": 76.944
+     },
+     "llm_turns": {
+      "n": 1,
+      "mean": 7.0,
+      "sd": 0.0,
+      "min": 7,
+      "max": 7
+     },
+     "invoked": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     }
+    },
+    "diagnose": {
+     "succeeded": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "tokens": {
+      "n": 1,
+      "mean": 71756.0,
+      "sd": 0.0,
+      "min": 71756,
+      "max": 71756
+     },
+     "usd": {
+      "n": 1,
+      "mean": 0.3749,
+      "sd": 0.0,
+      "min": 0.3749,
+      "max": 0.3749
+     },
+     "latency_s": {
+      "n": 1,
+      "mean": 57.544,
+      "sd": 0.0,
+      "min": 57.544,
+      "max": 57.544
+     },
+     "llm_turns": {
+      "n": 1,
+      "mean": 7.0,
+      "sd": 0.0,
+      "min": 7,
+      "max": 7
+     },
+     "invoked": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     }
+    },
+    "patch": {
+     "succeeded": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "tokens": {
+      "n": 1,
+      "mean": 137412.0,
+      "sd": 0.0,
+      "min": 137412,
+      "max": 137412
+     },
+     "usd": {
+      "n": 1,
+      "mean": 0.74,
+      "sd": 0.0,
+      "min": 0.74,
+      "max": 0.74
+     },
+     "latency_s": {
+      "n": 1,
+      "mean": 106.024,
+      "sd": 0.0,
+      "min": 106.024,
+      "max": 106.024
+     },
+     "llm_turns": {
+      "n": 1,
+      "mean": 11.0,
+      "sd": 0.0,
+      "min": 11,
+      "max": 11
+     },
+     "invoked": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     }
+    },
+    "verify": {
+     "succeeded": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "tokens": {
+      "n": 1,
+      "mean": 32383.0,
+      "sd": 0.0,
+      "min": 32383,
+      "max": 32383
+     },
+     "usd": {
+      "n": 1,
+      "mean": 0.1718,
+      "sd": 0.0,
+      "min": 0.1718,
+      "max": 0.1718
+     },
+     "latency_s": {
+      "n": 1,
+      "mean": 38.76,
+      "sd": 0.0,
+      "min": 38.76,
+      "max": 38.76
+     },
+     "llm_turns": {
+      "n": 1,
+      "mean": 7.0,
+      "sd": 0.0,
+      "min": 7,
+      "max": 7
+     },
+     "invoked": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     }
+    },
+    "fortify": {
+     "succeeded": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "tokens": {
+      "n": 1,
+      "mean": 111330.0,
+      "sd": 0.0,
+      "min": 111330,
+      "max": 111330
+     },
+     "usd": {
+      "n": 1,
+      "mean": 0.6122,
+      "sd": 0.0,
+      "min": 0.6122,
+      "max": 0.6122
+     },
+     "latency_s": {
+      "n": 1,
+      "mean": 109.437,
+      "sd": 0.0,
+      "min": 109.437,
+      "max": 109.437
+     },
+     "llm_turns": {
+      "n": 1,
+      "mean": 9.0,
+      "sd": 0.0,
+      "min": 9,
+      "max": 9
+     },
+     "invoked": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     }
+    }
+   }
+  },
+  "hybrid": {
+   "runs": 1,
+   "completed": {
+    "k": 1,
+    "n": 1,
+    "rate": 1.0,
+    "wilson95": [
+     0.207,
+     1.0
+    ]
+   },
+   "planted": {
+    "fnd_planted_authz": {
+     "hypothesised": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "class_family": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "selected_for_validation": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "validated": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "diagnosed_correctly": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "cause_class_expected": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "fixed_verify_accepted": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "hardened": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     }
+    },
+    "fnd_planted_refund_bound": {
+     "hypothesised": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "class_family": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "selected_for_validation": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "validated": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "diagnosed_correctly": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "cause_class_expected": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "fixed_verify_accepted": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "hardened": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     }
+    },
+    "fnd_planted_authz.rank": {
+     "n": 1,
+     "mean": 1.0,
+     "sd": 0.0,
+     "min": 1,
+     "max": 1
+    },
+    "fnd_planted_refund_bound.rank": {
+     "n": 1,
+     "mean": 2.0,
+     "sd": 0.0,
+     "min": 2,
+     "max": 2
+    }
+   },
+   "planted_fixed_per_assessment": {
+    "n": 1,
+    "mean": 2.0,
+    "sd": 0.0,
+    "min": 2,
+    "max": 2
+   },
+   "planted_validated_per_assessment": {
+    "n": 1,
+    "mean": 2.0,
+    "sd": 0.0,
+    "min": 2,
+    "max": 2
+   },
+   "false_positives_confirmed": {
+    "n": 1,
+    "mean": 0.0,
+    "sd": 0.0,
+    "min": 0,
+    "max": 0
+   },
+   "unmatched_hypotheses": {
+    "n": 1,
+    "mean": 0.0,
+    "sd": 0.0,
+    "min": 0,
+    "max": 0
+   },
+   "tokens": {
+    "n": 1,
+    "mean": 499896.0,
+    "sd": 0.0,
+    "min": 499896,
+    "max": 499896
+   },
+   "usd": {
+    "n": 1,
+    "mean": 2.5923,
+    "sd": 0.0,
+    "min": 2.5923,
+    "max": 2.5923
+   },
+   "wall_s": {
+    "n": 1,
+    "mean": 405.57,
+    "sd": 0.0,
+    "min": 405.57,
+    "max": 405.57
+   },
+   "per_agent": {
+    "scout": {
+     "succeeded": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "tokens": {
+      "n": 1,
+      "mean": 43126.0,
+      "sd": 0.0,
+      "min": 43126,
+      "max": 43126
+     },
+     "usd": {
+      "n": 1,
+      "mean": 0.2089,
+      "sd": 0.0,
+      "min": 0.2089,
+      "max": 0.2089
+     },
+     "latency_s": {
+      "n": 1,
+      "mean": 24.497,
+      "sd": 0.0,
+      "min": 24.497,
+      "max": 24.497
+     },
+     "llm_turns": {
+      "n": 1,
+      "mean": 4.0,
+      "sd": 0.0,
+      "min": 4,
+      "max": 4
+     },
+     "invoked": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     }
+    },
+    "probe": {
+     "succeeded": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "tokens": {
+      "n": 1,
+      "mean": 35166.0,
+      "sd": 0.0,
+      "min": 35166,
+      "max": 35166
+     },
+     "usd": {
+      "n": 1,
+      "mean": 0.1699,
+      "sd": 0.0,
+      "min": 0.1699,
+      "max": 0.1699
+     },
+     "latency_s": {
+      "n": 1,
+      "mean": 28.74,
+      "sd": 0.0,
+      "min": 28.74,
+      "max": 28.74
+     },
+     "llm_turns": {
+      "n": 1,
+      "mean": 6.0,
+      "sd": 0.0,
+      "min": 6,
+      "max": 6
+     },
+     "invoked": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     }
+    },
+    "trace": {
+     "succeeded": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "tokens": {
+      "n": 1,
+      "mean": 82773.0,
+      "sd": 0.0,
+      "min": 82773,
+      "max": 82773
+     },
+     "usd": {
+      "n": 1,
+      "mean": 0.4452,
+      "sd": 0.0,
+      "min": 0.4452,
+      "max": 0.4452
+     },
+     "latency_s": {
+      "n": 1,
+      "mean": 76.78,
+      "sd": 0.0,
+      "min": 76.78,
+      "max": 76.78
+     },
+     "llm_turns": {
+      "n": 1,
+      "mean": 8.0,
+      "sd": 0.0,
+      "min": 8,
+      "max": 8
+     },
+     "invoked": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     }
+    },
+    "diagnose": {
+     "succeeded": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "tokens": {
+      "n": 1,
+      "mean": 72459.0,
+      "sd": 0.0,
+      "min": 72459,
+      "max": 72459
+     },
+     "usd": {
+      "n": 1,
+      "mean": 0.3687,
+      "sd": 0.0,
+      "min": 0.3687,
+      "max": 0.3687
+     },
+     "latency_s": {
+      "n": 1,
+      "mean": 54.069,
+      "sd": 0.0,
+      "min": 54.069,
+      "max": 54.069
+     },
+     "llm_turns": {
+      "n": 1,
+      "mean": 7.0,
+      "sd": 0.0,
+      "min": 7,
+      "max": 7
+     },
+     "invoked": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     }
+    },
+    "patch": {
+     "succeeded": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "tokens": {
+      "n": 1,
+      "mean": 113976.0,
+      "sd": 0.0,
+      "min": 113976,
+      "max": 113976
+     },
+     "usd": {
+      "n": 1,
+      "mean": 0.6224,
+      "sd": 0.0,
+      "min": 0.6224,
+      "max": 0.6224
+     },
+     "latency_s": {
+      "n": 1,
+      "mean": 88.802,
+      "sd": 0.0,
+      "min": 88.802,
+      "max": 88.802
+     },
+     "llm_turns": {
+      "n": 1,
+      "mean": 9.0,
+      "sd": 0.0,
+      "min": 9,
+      "max": 9
+     },
+     "invoked": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     }
+    },
+    "verify": {
+     "succeeded": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "tokens": {
+      "n": 1,
+      "mean": 26690.0,
+      "sd": 0.0,
+      "min": 26690,
+      "max": 26690
+     },
+     "usd": {
+      "n": 1,
+      "mean": 0.144,
+      "sd": 0.0,
+      "min": 0.144,
+      "max": 0.144
+     },
+     "latency_s": {
+      "n": 1,
+      "mean": 36.068,
+      "sd": 0.0,
+      "min": 36.068,
+      "max": 36.068
+     },
+     "llm_turns": {
+      "n": 1,
+      "mean": 6.0,
+      "sd": 0.0,
+      "min": 6,
+      "max": 6
+     },
+     "invoked": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     }
+    },
+    "fortify": {
+     "succeeded": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     },
+     "tokens": {
+      "n": 1,
+      "mean": 125706.0,
+      "sd": 0.0,
+      "min": 125706,
+      "max": 125706
+     },
+     "usd": {
+      "n": 1,
+      "mean": 0.6332,
+      "sd": 0.0,
+      "min": 0.6332,
+      "max": 0.6332
+     },
+     "latency_s": {
+      "n": 1,
+      "mean": 92.805,
+      "sd": 0.0,
+      "min": 92.805,
+      "max": 92.805
+     },
+     "llm_turns": {
+      "n": 1,
+      "mean": 10.0,
+      "sd": 0.0,
+      "min": 10,
+      "max": 10
+     },
+     "invoked": {
+      "k": 1,
+      "n": 1,
+      "rate": 1.0,
+      "wilson95": [
+       0.207,
+       1.0
+      ]
+     }
+    }
+   },
+   "specialist_rerank_changed_order": {
+    "k": 0,
+    "n": 1,
+    "rate": 0.0,
+    "wilson95": [
+     0.0,
+     0.793
+    ]
+   },
+   "verify_specialist_disagreed_with_accepted": {
+    "k": 1,
+    "n": 1,
+    "rate": 1.0,
+    "wilson95": [
+     0.207,
+     1.0
+    ]
+   }
+  }
+ },
+ "total_usd": 7.0372,
+ "excluded_runs": [
+  {
+   "config": "claude_only",
+   "attempt": 2,
+   "usd": 1.79438,
+   "reason": "patch: LLM_UNAVAILABLE (provider error)"
+  },
+  {
+   "config": "hybrid",
+   "attempt": 2,
+   "usd": 0.0,
+   "reason": "scout: LLM_UNAVAILABLE (provider error)"
+  },
+  {
+   "config": "claude_only",
+   "attempt": 3,
+   "usd": 0.0,
+   "reason": "scout: LLM_UNAVAILABLE (provider error)"
+  },
+  {
+   "config": "hybrid",
+   "attempt": 3,
+   "usd": 0.0,
+   "reason": "scout: LLM_UNAVAILABLE (provider error)"
+  }
+ ]
+}
