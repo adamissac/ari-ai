@@ -7,6 +7,8 @@
     # or drive an existing checkpoint
     python -m rl_defense.live.run --checkpoint runs/protocol-v1/ddqn_seed0.pt --episodes 3
 
+A live_v2/live_v3 checkpoint runs in its own layout (issue #335).
+
 Everything the loop reports is measured from real HTTP outcomes against
 ``examples/payments-lite`` running in-process. Numbers are lab evidence only (RQ-005).
 """
@@ -23,6 +25,7 @@ from payments_lite.app import create_app
 
 from rl_defense.envs import default_config_paths, load_configs
 from rl_defense.inference import PolicyRunner
+from rl_defense.live.adversary import live_app
 from rl_defense.live.loop import LiveDefenseLoop, LoopConfig
 from rl_defense.train import train
 
@@ -48,7 +51,14 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     runner, ckpt = _get_runner(args)
-    loop = LiveDefenseLoop(create_app, runner, config=LoopConfig(horizon=args.horizon))
+    # the loop must use the checkpoint's own layout (a v2/v3 policy needs the live obs and
+    # the extra fixture tenants); a sim checkpoint keeps the v1 loop on the stock app
+    app_factory = create_app if runner.space == "sim" else live_app
+    loop = LiveDefenseLoop(
+        app_factory,
+        runner,
+        config=LoopConfig(horizon=args.horizon, action_space=runner.space),
+    )
     out_fh = None
     if args.out:
         p = pathlib.Path(args.out)
@@ -100,7 +110,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ep{s['episode']} actions: {s['actions']}")
     print(
         "\nNOTE: measured from real HTTP outcomes against examples/payments-lite in-process. "
-        "The policy here is trained on the abstract simulator; its behavior on real telemetry "
+        "The checkpoint layout does not establish its training origin; transfer to real telemetry "
         "is itself a research question (RQ-005). Numbers are lab evidence, not real-world proof."
     )
     if args.out:

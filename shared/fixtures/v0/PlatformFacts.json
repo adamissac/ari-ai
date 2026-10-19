@@ -1,6 +1,12 @@
 {
+  "block_remaining": 0.0,
   "escalation_pending": false,
   "escalations_remaining_fraction": 1.0,
+  "flagged_own_share": 0.0,
+  "flagged_principals": 0.0,
+  "flagged_repeat": 0.0,
+  "flagged_top_share": 0.0,
+  "flagged_volume": 0.0,
   "nodes": [
     {
       "alert_rate": 0.0,
@@ -65,6 +71,8 @@
   ],
   "principal_block_active": false,
   "principal_block_available": false,
+  "principal_block_long_available": false,
+  "principal_block_top_long_available": false,
   "project_id": "prj_01JFIXTURE0000000000000PRJ",
   "time_fraction": 0.0
 }
