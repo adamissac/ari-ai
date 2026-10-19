@@ -856,3 +856,12 @@ Removed the homepage Your next move section at owner request, including both act
   - Frontend lint and typecheck passed; Vitest: 69 files, 277 tests passed. Vitest printed the existing jsdom canvas warning.
   - `uv run mypy` was not run: root configuration checks `shared/shared`, `monitoring/monitoring`, and `standards/standards`, not backend.
 - **Not exercised:** live GitHub App requests or a visual browser check. CI was intentionally not watched after push per the task scope.
+
+
+
+### 2026-10-19 — Defense Lab page simplified for demo visitors (Adam, `feat/adam/simplify-defense-lab`)
+- `frontend/app/lab/page.tsx` rebuilt around "just the numbers": intro is one lede line plus the controlled-test-environment caveat; the three headline metrics lead; scoreboard shows one compact card per headline metric (the fourth metric, false-disruption rate, was dropped from the page); the "How these scores work" block, per-scenario metric explorer and checkpoint hash list are gone. Provenance (source path, env, run, seeds) remains under a collapsed "Where these numbers come from" footer.
+- `frontend/components/lab-replay.tsx`: story panel no longer shows the "Cost" row or the "Technical details for this step" disclosure (raw action, step reward, cumulative score, reward-component bars). Map, service inspector, key moments, scrubber and the labelled ground-truth overlay are unchanged.
+- `frontend/tests/e2e/honesty.spec.ts`: dropped the metric-chart/per-policy-CI assertions that exercised the removed explorer; honesty labelling, scoreboard, replay and provenance checks remain.
+- Executed: `npm run lint`, `npm run typecheck`, `npm test` (68 files, 275 passed), `npm run build`, and a manual look at `/lab` on `next dev`. E2e stack not run.
+- Bundle untouched: `lib/lab-plain.ts`, `lib/lab.ts` and the bundle route still ship every metric; only the page's presentation changed.
