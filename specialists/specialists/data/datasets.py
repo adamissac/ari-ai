@@ -34,6 +34,16 @@ def digest(split: Split) -> str:
     return hashlib.sha256(blob).hexdigest()
 
 
+def bundled_digest(split: Split) -> str:
+    """Digest over the reproducible rows only (drops optional real-corpus rows).
+
+    Checkpoints record this so a machine without the downloaded cache can still verify
+    that the bundled data the checkpoint trained on is exactly what the builders emit.
+    """
+    bundled = {k: [r for r in rows if r.get("src") != "real"] for k, rows in split.items()}
+    return digest(bundled)
+
+
 # ----------------------------------------------------------------- Scout
 
 
@@ -51,7 +61,13 @@ def scout(test_family: int = 3) -> Split:
     # bucket 0. Vulnerable functions outside our 12 classes are "vuln_other", never "safe".
     for r in diversevul():
         out[r["split"]].append(
-            {"family": r["family"], "framework": "c", "code": r["code"], "label": r["label"]}
+            {
+                "family": r["family"],
+                "framework": "c",
+                "code": r["code"],
+                "label": r["label"],
+                "src": "real",
+            }
         )
     return out
 
@@ -408,7 +424,13 @@ def trace() -> Split:
         primary = cve["cwe"][0]
         split = {0: "test", 1: "val"}.get(_bucket(primary, 6), "train")
         out[split].append(
-            {"family": primary, "cwe": primary, "name": cve["desc"][:1500], "label": sorted(labels)}
+            {
+                "family": primary,
+                "cwe": primary,
+                "name": cve["desc"][:1500],
+                "label": sorted(labels),
+                "src": "real",
+            }
         )
     return out
 
@@ -467,6 +489,7 @@ def fortify() -> Split:
                 "name": descs[tid][:1500],
                 "tactics": " ".join(tech.get("tactics", [])),
                 "label": labels,
+                "src": "real",
             }
         )
     return out

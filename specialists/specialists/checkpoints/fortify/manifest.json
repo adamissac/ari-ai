@@ -7,7 +7,9 @@
   "type": "linear"
  },
  "dataset": {
-  "sha256": "3d4aec18f736070d1440efd2c6597293902afebc0c10ae38207fbfd7624c5dca",
+  "bundled_sha256": "ba70ad8b31b16df6708224bf1584477e2fd259c819638b6b49aea0e87e929ed9",
+  "real_rows": 294,
+  "sha256": "7fe4ac3bc4238fa66ef9856a66221d8ea5c9063ca7a23e12cd5708e9586619d0",
   "sizes": {
    "test": 70,
    "train": 458,
@@ -298,7 +300,7 @@
   "numpy": "2.5.4",
   "patience": 20,
   "python": "3.12.15",
-  "seconds": 0.51,
+  "seconds": 0.52,
   "seed": 7,
   "weight_decay": 0.0001
  },

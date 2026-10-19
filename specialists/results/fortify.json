@@ -31,7 +31,7 @@
  },
  "inference": {
   "llm_tokens": 0,
-  "mean_latency_ms_pure_python": 1.257,
+  "mean_latency_ms_pure_python": 1.619,
   "numpy_parity_argmax": 1.0,
   "usd": 0.0
  },

@@ -7,33 +7,35 @@
   "type": "linear"
  },
  "dataset": {
-  "sha256": "ad1d96445dd5fb16d34074380d3f3182bec57f0949ac314069f46ea41f9b2664",
+  "bundled_sha256": "ab3b5010966367bffcc5af1b5a22ee925ddc3e59807c45f8b8f41fb6426dcfb4",
+  "real_rows": 412,
+  "sha256": "b38e66020a770032a327f29e5ac31660026c7667fe5e2d6b93a7f481a9f40a4f",
   "sizes": {
-   "test": 27,
-   "train": 336,
-   "val": 134
+   "test": 30,
+   "train": 365,
+   "val": 146
   },
   "train_label_counts": {
-   "collection": 84,
+   "collection": 91,
    "command-and-control": 4,
-   "credential-access": 187,
-   "discovery": 136,
-   "execution": 161,
-   "impact": 51,
-   "initial-access": 24,
-   "lateral-movement": 133,
-   "persistence": 94,
-   "privilege-escalation": 190
+   "credential-access": 210,
+   "discovery": 158,
+   "execution": 181,
+   "impact": 52,
+   "initial-access": 25,
+   "lateral-movement": 156,
+   "persistence": 107,
+   "privilege-escalation": 217
   },
   "version": "corpus-2+mitre-pinned+real-corpus"
  },
  "description": "Predict the MITRE ATT&CK tactics an attacker reaches through a weakness (via CAPEC), from the CWE name.",
  "evaluation": {
   "best_baseline": "prior_top3",
-  "best_baseline_test": 0.4539,
+  "best_baseline_test": 0.4528,
   "primary_metric": "f1_at_k",
   "promoted": false,
-  "test": 0.4681
+  "test": 0.4654
  },
  "fallback": {
   "default": [
@@ -74,7 +76,7 @@
  "training": {
   "batch_size": 16,
   "best_epoch": 2,
-  "best_val_loss": 0.39709,
+  "best_val_loss": 0.40756,
   "dropout": 0.0,
   "epochs": 200,
   "epochs_run": 22,
@@ -90,5 +92,5 @@
  },
  "version": "1.1.0",
  "weights_bytes": 180268,
- "weights_sha256": "febfb40dd90cab603501e8bdabdddc0358fd2b18a5ba24eb07fe7d64cc7c22ec"
+ "weights_sha256": "ba9950b3c32a1ce81697e265bf1f5949422605fce31c78331225f2c5500ae41d"
 }

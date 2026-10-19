@@ -18,7 +18,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from .data.datasets import BUILDERS, CORPUS_TASKS, DATASET_VERSION, digest
+from .data.datasets import BUILDERS, CORPUS_TASKS, DATASET_VERSION, bundled_digest, digest
 from .metrics import detection, label_counts, ranked, single_label
 from .model import CHECKPOINT_ROOT, SpecialistModel, write_checkpoint
 from .tasks import TASKS, Task
@@ -182,6 +182,8 @@ def run(agent: str) -> dict[str, Any]:
         "dataset": {
             "version": DATASET_VERSION,
             "sha256": digest(data),
+            "bundled_sha256": bundled_digest(data),
+            "real_rows": sum(1 for rows in data.values() for r in rows if r.get("src") == "real"),
             "sizes": {k: len(v) for k, v in data.items()},
             "train_label_counts": label_counts(train_rows, task.multilabel),
         },
