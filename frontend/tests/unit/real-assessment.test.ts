@@ -1,6 +1,6 @@
 import type { Assessment, AuthorizedScope } from '@hackatl/frontend-transport';
 import { describe, expect, it } from 'vitest';
-import { assessmentsForCommit, scopeBody, scopeStateFor } from '@/lib/real-assessment';
+import { assessmentsForCommit, loadCommitAssessments, scopeBody, scopeStateFor } from '@/lib/real-assessment';
 import { SCOPE_CHECK_CATEGORIES } from '@/lib/scope';
 
 const scope = (
@@ -88,4 +88,16 @@ describe('assessmentsForCommit', () => {
     ];
     expect(assessmentsForCommit(items, 'repo_123', sha).map(item => item.id)).toEqual(['asm_new', 'asm_old']);
   });
+});
+
+
+it('finds this repository and commit beyond pages of unrelated runs', async () => {
+  const pages = [
+    { items: [assessment('wrong-repo', 'repo_other', 'abc', '2026-01-02')], next_cursor: 'older' },
+    { items: [assessment('wrong-commit', 'repo_this', 'def', '2026-01-02'), assessment('correct', 'repo_this', 'abc', '2026-01-01')], next_cursor: null },
+  ];
+  const seen: (string | undefined)[] = [];
+  const result = await loadCommitAssessments(async cursor => { seen.push(cursor); return pages.shift()!; }, 'repo_this', 'abc');
+  expect(result.map(r => r.id)).toEqual(['correct']);
+  expect(seen).toEqual([undefined, 'older']);
 });

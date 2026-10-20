@@ -29,7 +29,7 @@ export default function RepoCommitsPage() {
       {repo.status === 'loading' && <Loading label="Loading the repository" />}
       {repo.status === 'error' && <ErrorState error={repo.error} onRetry={repo.reload} context="Could not load your GitHub repositories" />}
       {repo.status === 'ready' && !repo.data && <Empty>{org}/{name} is not available to you through the Ari GitHub App.</Empty>}
-      {repo.status === 'ready' && repo.data && <Commits org={org} name={name} repo={repo.data} onConnected={repo.reload} />}
+      {repo.status === 'ready' && repo.data && <Commits key={repo.data.full_name} org={org} name={name} repo={repo.data} onConnected={repo.reload} />}
     </div>
   );
 }
