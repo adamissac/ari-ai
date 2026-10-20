@@ -1,0 +1,20 @@
+# V9 validation only; quiet periods with faint outsider campaigns, no legitimate
+# traffic from the attacker. Tests the different opportunity cost of outsider blocks.
+name: val9_faint_outsider
+split: val
+horizon: 30
+schedule: bursty
+p_start: 0.05
+p_stop: 0.35
+attack_per_step: 2
+benign_per_step: 9
+attackers: [mallory]
+rotate_tokens: true
+victims: [bob, dave]
+benign: [alice, bob, carol, dave, erin]
+delegations: ["alice:dave", "carol:bob"]
+delegate_per_step: 1
+delegate_burst_p: 0.2
+delegate_burst_size: 2
+seed_start: 26000
+episodes: 15

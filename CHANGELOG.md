@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Add opt-in seeded random-valid baseline and compressed raw holdout trajectories to the live online trainer, plus five-training-seed aggregation and preregistered v9 quiet-validation experiment. No policy promotion.
+
 - RL lab continuation: add `online --registry PATH` to gate against the verified incumbent;
   reject stale-baseline promotion reports, changed/unpinned registered reports and absent
   or failed checks. Existing registry reports need explicit re-registration. No promotion.

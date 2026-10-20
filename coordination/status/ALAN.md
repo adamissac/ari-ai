@@ -207,3 +207,9 @@ approval/report trust follow-ups remain. Next research step requires preregistra
 fresh holdout and incumbent comparison.
 
 Final local verification: **228 RL tests passed** on `f9962eb`; PR #375 awaits review.
+
+### 2026-10-20 — V9 explicitly requested by owner
+
+IN_PROGRESS `feat/alan/live-retrain-v9`, stacked on PR #375. Fresh val_v9/holdout_v9,
+five training seeds, actual incumbent v6, raw trajectories and seed-level aggregation.
+Preregistration must be committed/pushed before execution. No automatic promotion.

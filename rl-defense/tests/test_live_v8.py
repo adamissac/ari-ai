@@ -113,6 +113,8 @@ def test_online_pipeline_smoke_with_train_v8_and_two_references(tmp_path, monkey
     registry.save()
     args = argparse.Namespace(
         registry=str(registry.path),
+        random_baseline=True,
+        record_trajectories=True,
         base_checkpoint=None,
         base_steps=0,
         rules_episodes=1,
@@ -142,6 +144,17 @@ def test_online_pipeline_smoke_with_train_v8_and_two_references(tmp_path, monkey
     )
     r = online.run(args)
     assert r["deployed"]["checkpoint_sha256"] == registry.deployed["sha256"]
+    assert "random_valid" in r["policies"]
+    import gzip
+    import json
+
+    trajectory_path = tmp_path / "ev" / r["artifacts"]["holdout_trajectories"]["path"]
+    with gzip.open(trajectory_path, "rt") as stream:
+        episodes = [json.loads(line) for line in stream]
+    assert {e["policy"] for e in episodes} == set(r["policies"])
+    assert all(e["transitions"] for e in episodes)
+    assert len(episodes) == len(r["policies"]) * 3  # exposed holdout_v2: three scenarios
+
     assert set(r["splits"]["train"]) == set(
         s.name for s in load_scenarios("train", subdir="train_v8")
     )

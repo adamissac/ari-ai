@@ -221,3 +221,5 @@ be explicitly re-registered with their reviewed report before promotion. This lo
 pin detects edits after registration; it is not a report signature or authenticated user
 approval. The local CLI still trusts operator-supplied `usr_*` IDs and is not a production
 authorization boundary (issue #317). No policy is promoted by these changes.
+
+V9 experiment: [preregistration](results/live-retrain-v9/PREREGISTRATION.md), fresh quiet-validation/holdout scenarios, seeds0–4, actual incumbent comparison, opt-in `--random-baseline` and `--record-trajectories`. Results are pending execution; no promotion. The five-seed aggregator is `python -m rl_defense.live.study`.
