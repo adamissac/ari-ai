@@ -8,9 +8,9 @@ import { AgentTeam } from '@/components/agent-team';
 import { Term } from '@/components/term';
 import { useParam, useProject } from '@/components/project';
 import { ApprovalGate } from '@/components/assessment-approval-gate';
-import { Badge, Button, Empty, ErrorState, Loading, Mono, PageTitle, Panel, Stat, Tag, Time } from '@/components/ui';
+import { Badge, Empty, ErrorState, Loading, Mono, PageTitle, Panel, Stat, Tag, Time } from '@/components/ui';
 import { api } from '@/lib/api';
-import { CANCEL_ASSESSMENT_NOTE, cancelAssessmentResult } from '@/lib/cancel-assessment';
+import { CancelButton } from '@/components/assessment-cancel';
 import { shortSha, usd } from '@/lib/format';
 import { assessmentPhases, EVENT_LOG_PAGE_NOTE, fullEventLog, JOURNEY_STATUS } from '@/lib/journey';
 import { currentPhaseSentence } from '@/lib/phase';
@@ -290,28 +290,6 @@ function BudgetMeter({ used, cap }: { used: number; cap: number }) {
 }
 
 
-function CancelButton({ id, onDone }: { id: string; onDone: () => void }) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-  const [result, setResult] = useState<string | null>(null);
-  return (
-    <div className="flex max-w-sm flex-col items-end gap-1">
-      <Button variant="danger" disabled={busy} onClick={async () => {
-        setBusy(true);
-        setError(null);
-        setResult(null);
-        try {
-          const response = await api().cancelAssessment(id);
-          setResult(cancelAssessmentResult(response.cancelled));
-          onDone();
-        } catch (err) { setError(err); } finally { setBusy(false); }
-      }}>Cancel assessment</Button>
-      <p className="text-right text-xs text-muted" data-testid="cancel-assessment-note">{CANCEL_ASSESSMENT_NOTE}</p>
-      {result !== null && <p className="text-right text-xs text-ink" data-testid="cancel-assessment-result" role="status">{result}</p>}
-      {error !== null && <ErrorState error={error} context="Cancel" />}
-    </div>
-  );
-}
 
 function EventLog({ events }: { events: StreamEvent[] }) {
   if (events.length === 0) return <Empty>No events yet.</Empty>;
