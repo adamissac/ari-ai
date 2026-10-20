@@ -101,6 +101,7 @@ it('lands a huge first wheel gesture on the video and absorbs its momentum', () 
   flush();
   expect(positions.at(-1)).toBe(1400);
   chapter.remove();
+  vi.restoreAllMocks();
 });
 
 it('allows a new gesture to skip the video after the brief landing pause', () => {
@@ -115,6 +116,29 @@ it('allows a new gesture to skip the video after the brief landing pause', () =>
   wheel(document.body, { deltaY: -3400 }); flush();
   wheel(document.body, { deltaY: 10000 }); flush();
   expect(positions.at(-1)).toBe(4200);
+  chapter.remove();
+  vi.restoreAllMocks();
+});
+
+
+it('bounds a landing-page flick and its queued momentum to a readable distance', () => {
+  const chapter = document.createElement('section');
+  chapter.dataset.readingChapter = '';
+  document.body.appendChild(chapter);
+  let now = 0;
+  vi.spyOn(performance, 'now').mockImplementation(() => now);
+  render(<SmoothScroll />);
+  wheel(document.body, { deltaY: 10000 });
+  for (let i = 0; i < 40; i++) {
+    flush(1); now += 16;
+    wheel(document.body, { deltaY: 10000 });
+  }
+  flush();
+  expect(positions.at(-1)).toBe(680);
+  now += 200;
+  wheel(document.body, { deltaY: 10000 });
+  flush();
+  expect(positions.at(-1)).toBe(1200);
   chapter.remove();
   vi.restoreAllMocks();
 });
