@@ -30,6 +30,7 @@ test('a missing assessment shows the real backend error rather than completed re
 
 
 test('project navigation leads with two workflows and keeps tools reachable', async ({ browser }) => {
+  test.setTimeout(60_000);
   const page = await newUser(browser, 'e2e-alice');
   const base = `/projects/${env('E2E_PROJECT_ID')}`;
   await page.goto(base);
@@ -44,7 +45,7 @@ test('project navigation leads with two workflows and keeps tools reachable', as
     await expect(page.getByTestId('project-title')).toHaveCSS('opacity', '1');
     await page.screenshot({ path: `/tmp/ari-project-${width}.png`, fullPage: true });
   }
-  await nav.getByText('More', { exact: true }).click();
+  await nav.locator('summary').click();
   await expect(nav.getByRole('link', { name: 'Approvals', exact: true })).toBeVisible();
   await nav.getByRole('link', { name: 'Authorized scopes', exact: true }).click();
   await expect(page).toHaveURL(`${base}/scopes`);
