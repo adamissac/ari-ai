@@ -1,0 +1,292 @@
+{
+  "env_id": "LiveDefense-payments-lite-v3",
+  "obs_dim": 55,
+  "n_actions": 25,
+  "seed": 0,
+  "steps": 105000,
+  "train_configs": {
+    "live:always_on_delegated": "0ca4eb74ff30686e",
+    "live:delegate_quiet": "d885e2af92ffa274",
+    "live:insider_delegate": "e5d5ce05dd734a54",
+    "live:outsider_rotation": "b487792f970fe9dd",
+    "live:rare_delegate_runs": "836eceb5ff7469b9",
+    "live:trickle_outsider_quiet": "d159b2af9d857750",
+    "live:two_identities_delegated": "b3743ace0117b909"
+  },
+  "ddqn_config": {
+    "hidden_sizes": [
+      128,
+      128
+    ],
+    "gamma": 0.99,
+    "lr": 0.0003,
+    "lr_end": null,
+    "batch_size": 64,
+    "buffer_size": 100000,
+    "learning_starts": 1000,
+    "train_freq": 1,
+    "target_update": "hard",
+    "target_update_interval": 1000,
+    "tau": 0.005,
+    "eps_start": 1.0,
+    "eps_end": 0.05,
+    "eps_decay_steps": 50000,
+    "grad_clip": 10.0,
+    "double": true,
+    "dueling": false,
+    "n_step": 1,
+    "disruption_margin": 0.0,
+    "noop_margin": 0.0,
+    "eps_disruptive_weight": null,
+    "cql_alpha": 0.0,
+    "demo_lambda": 1.0,
+    "demo_margin": 0.8
+  },
+  "git_sha": "15e25f9f47d0f5a8aacb44f3d1e46342bb781eb2",
+  "created_at": "2026-10-20T02:16:36.625578+00:00",
+  "action_space": "live_v3",
+  "trained_on": "live:examples/payments-lite (online, from demonstrations)",
+  "lineage": {
+    "base_checkpoint_sha256": null,
+    "base_env_id": null,
+    "datasets": [
+      "exp_55f17bfc87a30dfb"
+    ],
+    "transitions": 109200,
+    "demo_transitions": 4200,
+    "agent_transitions": 105000,
+    "experience_sha256": "55f17bfc87a30dfb73d3fa5e8665c418f5862c18bf7b640d843e4e277b9ffcfc",
+    "experience_file": "candidate_online_selected_experience.jsonl"
+  },
+  "online": {
+    "demo_episodes_per_scenario": 20,
+    "pretrain_updates": 5000,
+    "env_steps": 150000,
+    "eps_start": 0.3,
+    "eps_end": 0.05,
+    "eps_decay_steps": 75000,
+    "updates_per_step": 1,
+    "batch_size": 64,
+    "demo_fraction": 0.25,
+    "lr": 0.0003,
+    "demo_lambda": 1.0,
+    "demo_margin": 0.8,
+    "target_update_interval": 1000,
+    "buffer_size": 100000,
+    "hidden_sizes": [
+      128,
+      128
+    ],
+    "eval_every": 15000,
+    "val_episodes": 8,
+    "noop_margins": [
+      0.0,
+      0.1,
+      0.2,
+      0.3,
+      0.5
+    ],
+    "seed": 0,
+    "experiment": {
+      "agent_transitions": 150000,
+      "experience_file": "candidate_online_experience.jsonl",
+      "experience_sha256": "c2789ebbd90c34c08a5d694911008737c80c641846d44e8419774e309aa1484a",
+      "updates": 155000
+    },
+    "expert": "threshold_rules",
+    "loop_overrides": {
+      "c_disrupt": 1.0,
+      "delegation_aware_detector": true,
+      "finding_severity_context": "platform"
+    },
+    "selected_env_step": 105000,
+    "selected_noop_margin": 0.0,
+    "val_scenarios": {
+      "val3_mixed": "ec853cc6fb765381",
+      "val4_rogue_delegate": "d4aaa15edb991fdc",
+      "val4_rotation_start": "ee9c95e941ab2e27",
+      "val4_slow_insider": "d9b0f571f1cab722"
+    },
+    "selection_history": [
+      {
+        "env_step": 0,
+        "phase": "pretrained",
+        "updates": 5000,
+        "val_reward": -7.028730158730159,
+        "val_compromise_rate": 0.29322381930184804,
+        "val_availability": 0.9184946236559139,
+        "val_no_attack_defense_duty": 0.46271929824561403,
+        "val_reward_by_scenario": {
+          "val3_mixed": -7.9056,
+          "val4_rogue_delegate": -7.0547,
+          "val4_rotation_start": -9.9696,
+          "val4_slow_insider": -3.185
+        },
+        "noop_margin": 0.5
+      },
+      {
+        "env_step": 15000,
+        "phase": "online",
+        "updates": 20000,
+        "val_reward": -7.037549603174604,
+        "val_compromise_rate": 0.291170431211499,
+        "val_availability": 0.9172043010752688,
+        "val_no_attack_defense_duty": 0.47368421052631576,
+        "val_reward_by_scenario": {
+          "val3_mixed": -7.9056,
+          "val4_rogue_delegate": -6.96,
+          "val4_rotation_start": -9.9696,
+          "val4_slow_insider": -3.315
+        },
+        "noop_margin": 0.5
+      },
+      {
+        "env_step": 30000,
+        "phase": "online",
+        "updates": 35000,
+        "val_reward": -7.037549603174604,
+        "val_compromise_rate": 0.291170431211499,
+        "val_availability": 0.9172043010752688,
+        "val_no_attack_defense_duty": 0.47368421052631576,
+        "val_reward_by_scenario": {
+          "val3_mixed": -7.9056,
+          "val4_rogue_delegate": -6.96,
+          "val4_rotation_start": -9.9696,
+          "val4_slow_insider": -3.315
+        },
+        "noop_margin": 0.5
+      },
+      {
+        "env_step": 45000,
+        "phase": "online",
+        "updates": 50000,
+        "val_reward": -7.008869047619048,
+        "val_compromise_rate": 0.28788501026694047,
+        "val_availability": 0.9161290322580645,
+        "val_no_attack_defense_duty": 0.4780701754385965,
+        "val_reward_by_scenario": {
+          "val3_mixed": -7.9056,
+          "val4_rogue_delegate": -6.8678,
+          "val4_rotation_start": -9.9696,
+          "val4_slow_insider": -3.2925
+        },
+        "noop_margin": 0.3
+      },
+      {
+        "env_step": 60000,
+        "phase": "online",
+        "updates": 65000,
+        "val_reward": -7.0199107142857144,
+        "val_compromise_rate": 0.28788501026694047,
+        "val_availability": 0.9158064516129032,
+        "val_no_attack_defense_duty": 0.4824561403508772,
+        "val_reward_by_scenario": {
+          "val3_mixed": -8.0444,
+          "val4_rogue_delegate": -6.7731,
+          "val4_rotation_start": -9.9696,
+          "val4_slow_insider": -3.2925
+        },
+        "noop_margin": 0.0
+      },
+      {
+        "env_step": 75000,
+        "phase": "online",
+        "updates": 80000,
+        "val_reward": -7.062202380952381,
+        "val_compromise_rate": 0.28788501026694047,
+        "val_availability": 0.9145161290322581,
+        "val_no_attack_defense_duty": 0.49780701754385964,
+        "val_reward_by_scenario": {
+          "val3_mixed": -8.0444,
+          "val4_rogue_delegate": -6.9422,
+          "val4_rotation_start": -9.9696,
+          "val4_slow_insider": -3.2925
+        },
+        "noop_margin": 0.0
+      },
+      {
+        "env_step": 90000,
+        "phase": "online",
+        "updates": 95000,
+        "val_reward": -6.8579662698412704,
+        "val_compromise_rate": 0.27761806981519505,
+        "val_availability": 0.9160215053763441,
+        "val_no_attack_defense_duty": 0.48026315789473684,
+        "val_reward_by_scenario": {
+          "val3_mixed": -7.3019,
+          "val4_rogue_delegate": -6.8678,
+          "val4_rotation_start": -9.9696,
+          "val4_slow_insider": -3.2925
+        },
+        "noop_margin": 0.0
+      },
+      {
+        "env_step": 105000,
+        "phase": "online",
+        "updates": 110000,
+        "val_reward": -6.741785714285714,
+        "val_compromise_rate": 0.26529774127310063,
+        "val_availability": 0.9138709677419354,
+        "val_no_attack_defense_duty": 0.4956140350877193,
+        "val_reward_by_scenario": {
+          "val3_mixed": -6.9319,
+          "val4_rogue_delegate": -6.7731,
+          "val4_rotation_start": -9.9696,
+          "val4_slow_insider": -3.2925
+        },
+        "noop_margin": 0.0
+      },
+      {
+        "env_step": 120000,
+        "phase": "online",
+        "updates": 125000,
+        "val_reward": -6.790396825396826,
+        "val_compromise_rate": 0.2673511293634497,
+        "val_availability": 0.9133333333333333,
+        "val_no_attack_defense_duty": 0.506578947368421,
+        "val_reward_by_scenario": {
+          "val3_mixed": -6.9572,
+          "val4_rogue_delegate": -6.9422,
+          "val4_rotation_start": -9.9696,
+          "val4_slow_insider": -3.2925
+        },
+        "noop_margin": 0.0
+      },
+      {
+        "env_step": 135000,
+        "phase": "online",
+        "updates": 140000,
+        "val_reward": -6.833184523809524,
+        "val_compromise_rate": 0.2698151950718686,
+        "val_availability": 0.9131182795698924,
+        "val_no_attack_defense_duty": 0.5087719298245614,
+        "val_reward_by_scenario": {
+          "val3_mixed": -7.1011,
+          "val4_rogue_delegate": -6.7731,
+          "val4_rotation_start": -10.1661,
+          "val4_slow_insider": -3.2925
+        },
+        "noop_margin": 0.0
+      },
+      {
+        "env_step": 150000,
+        "phase": "online",
+        "updates": 155000,
+        "val_reward": -6.922837301587301,
+        "val_compromise_rate": 0.27597535934291584,
+        "val_availability": 0.9132258064516129,
+        "val_no_attack_defense_duty": 0.5131578947368421,
+        "val_reward_by_scenario": {
+          "val3_mixed": -7.2906,
+          "val4_rogue_delegate": -6.9422,
+          "val4_rotation_start": -10.1661,
+          "val4_slow_insider": -3.2925
+        },
+        "noop_margin": 0.0
+      }
+    ],
+    "loss_mean_last_eval": 0.10720687563450386
+  },
+  "checkpoint_file": "candidate_online.pt",
+  "checkpoint_sha256": "ec8b5042fd56d2f75c6791b89152b57f4a6870c3656321b9f554056b4c0fc528"
+}
