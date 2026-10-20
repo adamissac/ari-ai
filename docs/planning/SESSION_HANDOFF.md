@@ -978,3 +978,5 @@ Removed the homepage Your next move section at owner request, including both act
 2026-10-20T01:10:10.487930+00:00 Adam: landing redesign on feat/adam/landing-redesign. Replaced scroll-swapped reading sections with manual process tabs and walkthrough buttons, bounded home wheel momentum, and added the requested cinematic footer. Captured and inspected Ari desktop/mobile previews. Kairo public source and owner-supplied screenshots informed the design; connected-browser tools were unavailable, so no live Kairo capture is claimed. Validation results in PR.
 
 Owner correction: restore the original landing hero, scroll-driven story animations and original wheel easing; remove the reading-distance cap and manual controls. Keep the new Ari-colored footer. Branch `fix/adam/restore-landing`; validation in PR.
+
+Footer correction: remove oversized minimum heights, reduce the wordmark and blank space, and place footer link groups side by side on mobile. Preserve Ari colors and restored hero/scroll animations. Validation recorded in PR.

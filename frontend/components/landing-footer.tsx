@@ -11,7 +11,7 @@ export function LandingFooter() {
     <footer className="landing-footer" data-testid="landing-footer">
       <div className="footer-ruler" aria-hidden="true" />
       <div className="footer-top">
-        <Link href="/" aria-label="Back to Ari home" className="footer-ant"><LogoMark size={74} decorative /></Link>
+        <Link href="/" aria-label="Back to Ari home" className="footer-ant"><LogoMark size={48} decorative /></Link>
         <div className="footer-directory">
           <span className="footer-wordmark ari-wordmark-text" aria-label="ARI">ARI<span aria-hidden="true">↗</span></span>
           <nav aria-label="Footer" className="footer-links">

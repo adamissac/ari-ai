@@ -123,11 +123,16 @@ test('reduced motion keeps the hero, logo and menu visible', async ({ page }) =>
 
 test('Ari footer fits desktop and mobile', async ({ page }) => {
   await page.goto('/');
-  for (const width of [1440, 390]) {
+  for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 844 });
     const footer = page.getByTestId('landing-footer');
     await footer.scrollIntoViewIfNeeded();
     await expect(footer.getByRole('navigation', { name: 'Footer' })).toBeVisible();
+    expect((await footer.boundingBox())!.height).toBeLessThan(500);
+    if (process.env.ARI_LANDING_SCREENSHOTS) {
+      await mkdir(process.env.ARI_LANDING_SCREENSHOTS, { recursive: true });
+      await footer.screenshot({ path: `${process.env.ARI_LANDING_SCREENSHOTS}/${width}-footer.png` });
+    }
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
   }
 });
