@@ -190,3 +190,5 @@ The walkthrough zoom uses smoothstep scroll progress and a 1.5-second CSS transi
 Landing: the original centered hero, scroll-driven problem timeline, expanding process cards and finding walkthrough are restored. Wheel scrolling uses the original momentum behavior without the redesign's reading-distance cap. `LandingFooter` retains Ari’s charcoal/burnt-orange/cream horizon design.
 
 Footer correction: use a conventional aligned footer with Ari branding/tagline on the left, two navigation columns on the right, and a separated copyright/back-to-top row. Stack branding above the link columns on mobile. Preserve Ari colors and restored hero/scroll animations. Validation recorded in PR.
+
+Refine the landing headline with tighter two-line rhythm, a stronger cream first line and a lighter warm-copper second line. Preserve wording, centered layout, pointer spotlight and scroll animations. Branch `fix/adam/hero-headline`; validation in PR.
