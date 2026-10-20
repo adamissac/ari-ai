@@ -59,6 +59,14 @@ successful BOLA read returns 200 and trips no error heuristic.
   The pre-registered gate rejected it on one per-scenario check (`quiet_week`), and its
   held-out return ties v6. **v6 stays the promoted policy, so the gap stays open in the
   product** until a candidate trained this way passes the gate.
+  **Update (v8, 2026-10-20):** `rl-defense/results/live-retrain-v8/` retrained the v7
+  method on a train mix with low-intensity, mostly quiet traffic. Its candidate keeps the
+  fixed behaviour (`noop` in 178/178 quiet train_v8 windows, `block_principal` in 102/102
+  flagged, lab/platform 280/280), and the gate returns `recommend_promote` on a fresh
+  holdout_v8. It ties v6 on held-out return and is worse than v7 there, and the
+  pre-registered hypothesis (better on low-intensity traffic) is not supported. **The gap
+  stays open in the product until a human approves a candidate.** v8 is the first gated
+  candidate that would close it. Nothing was promoted.
 - Window-size shift: the lab's features are per lab window (about 20 requests). A
   reporter's windows can be larger. The features are ratios or capped counts, but volume
   normalization (`flagged_volume`, /6 per principal) assumes lab-sized windows.
