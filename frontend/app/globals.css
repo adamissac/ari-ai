@@ -213,16 +213,22 @@ body:has(.hero-full) .site-header { --nav-ink: #fff; --nav-hover: rgb(255 255 25
   .nav-secondary[data-visible="false"] { translate: none; }
 }
 html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
-.hero-headline { font-size: clamp(2rem, 10vw, 9rem); letter-spacing: -0.055em; }
+.hero-headline { font-size: clamp(2rem, 9.6vw, 8.5rem); line-height: 1.04; letter-spacing: -0.06em; text-wrap: balance; }
 .hero-headline .hero-line {
+  display: inline-block;
   white-space: nowrap;
   color: #fff7f2;
 }
+.hero-headline .hero-line-dim { color: #dfb4a0; font-weight: 500; letter-spacing: -.055em; }
 /* The pointer spotlight keeps a crisp, warm-white text core. No glow: a blurred text-shadow on
    type this large had to be repainted with the spotlight and made scrolling over the hero chop. */
 .hero-stage[data-fx="on"] .hero-headline .hero-line {
   --dim: #fff7f2;
   background-image: radial-gradient(260px circle at var(--tx) var(--ty), #fffbf8 0%, #fff9f5 30%, var(--dim) 100%);
+}
+.hero-stage[data-fx="on"] .hero-headline .hero-line-dim {
+  --dim: #dfb4a0;
+  background-image: radial-gradient(260px circle at var(--tx) var(--ty), #ffe5d6 0%, #ecc5af 30%, var(--dim) 100%);
 }
 #how { scroll-margin-top: 5rem; }
 @media (max-width: 639px) {
