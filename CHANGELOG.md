@@ -177,3 +177,5 @@ All notable changes are documented here. Format follows
 
 ### Not yet implemented
 - Full cross-pillar runtime completion and production operation are not established here.
+
+Review follow-up: retain accepted starts while history refreshes to prevent duplicate paid runs; lift newly connected repository IDs into the commit workspace; correct replay indexing; bound project lookup concurrency and tolerate unrelated project errors. Added regression coverage for these cases.

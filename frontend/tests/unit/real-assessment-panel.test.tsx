@@ -56,10 +56,12 @@ it('rechecks approval when returning from another tab', async () => {
 it('starts only this commit and stays in its workspace', async () => {
   const selected = vi.fn();
   mocks.scopes.mockResolvedValue({ items: [{ ...scope, status: 'active' }], next_cursor: null });
-  mocks.startAssessment.mockResolvedValue({ id: 'asm_selected' });
+  mocks.startAssessment.mockResolvedValue({ id: 'asm_selected', repo_id: 'repo_test', commit_sha: 'a'.repeat(40), state: 'CREATED' });
   render(<RealAssessmentPanel org="alice" repo={repo} sha={'a'.repeat(40)} onConnected={vi.fn()} onRunSelected={selected} />);
   fireEvent.click(await screen.findByRole('button', { name: 'Run the 7 agents' }));
-  await screen.findByRole('button', { name: 'Run the 7 agents' });
+  await screen.findByText('Last run: Created');
+  expect(screen.queryByRole('button', { name: 'Run the 7 agents' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Run again' })).toBeNull();
   expect(mocks.startAssessment).toHaveBeenCalledWith('prj_test', expect.objectContaining({ repo_id: 'repo_test', commit_sha: 'a'.repeat(40) }), expect.any(String));
   expect(selected).toHaveBeenCalledWith('asm_selected');
   expect(mocks.push).not.toHaveBeenCalled();

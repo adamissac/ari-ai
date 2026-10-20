@@ -18,11 +18,17 @@ export async function connectRepo(org: string, repo: AccessibleRepository): Prom
 /** Resolve the selected repository's actual project; organization names are not project IDs. */
 export async function projectForRepository(repoId: string, signal?: AbortSignal): Promise<string> {
   const projects = await api().projects({ signal });
-  const groups = await Promise.all(projects.items.map(async project => ({
-    projectId: project.id,
-    repositories: await api().repositories(project.id, { signal }),
-  })));
-  const owner = groups.find(group => group.repositories.items.some(repo => repo.id === repoId));
-  if (!owner) throw new Error('The selected repository is not connected to an accessible project.');
-  return owner.projectId;
+  // Stop at the owner; an unrelated inaccessible project must not break this repository.
+  let lookupError: unknown;
+  for (const project of projects.items) {
+    try {
+      const repositories = await api().repositories(project.id, { signal });
+      if (repositories.items.some(repo => repo.id === repoId)) return project.id;
+    } catch (error) {
+      if (signal?.aborted) throw error;
+      lookupError = error;
+    }
+  }
+  if (lookupError) throw lookupError;
+  throw new Error('The selected repository is not connected to an accessible project.');
 }

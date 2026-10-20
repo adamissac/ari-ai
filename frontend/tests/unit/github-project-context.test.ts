@@ -8,3 +8,14 @@ it('uses the repository owner project rather than the matching organization name
   expect(await projectForRepository('repo_selected')).toBe('actual');
   await expect(projectForRepository('missing')).rejects.toThrow('not connected');
 });
+
+it('skips an unrelated failed project and stops after the repository owner', async () => {
+  calls.repositories.mockClear();
+  calls.projects.mockResolvedValue({ items: [{ id: 'broken' }, { id: 'actual' }, { id: 'unneeded' }] });
+  calls.repositories.mockImplementation(async (id: string) => {
+    if (id === 'broken') throw new Error('unrelated unavailable');
+    return { items: [{ id: 'repo_selected' }] };
+  });
+  expect(await projectForRepository('repo_selected')).toBe('actual');
+  expect(calls.repositories.mock.calls.map(call => call[0])).toEqual(['broken', 'actual']);
+});

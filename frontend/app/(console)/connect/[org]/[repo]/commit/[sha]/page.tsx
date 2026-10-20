@@ -30,7 +30,8 @@ export default function RealCommitPage() {
 function SelectedCommit({ org, name, sha, repo, onConnected }: {
   org: string; name: string; sha: string; repo: NonNullable<ReturnType<typeof useAccessibleRepo>['data']>; onConnected: () => void;
 }) {
-  const metadata = useResource(repo.connected_repo_id ? `selected-commit:${repo.connected_repo_id}:${sha}` : null, signal => api().repositoryCommits(repo.connected_repo_id!, { signal }));
+  const [connectedRepoId, setConnectedRepoId] = useState(repo.connected_repo_id);
+  const metadata = useResource(connectedRepoId ? `selected-commit:${connectedRepoId}:${sha}` : null, signal => api().repositoryCommits(connectedRepoId!, { signal }));
   const selectedCommit = metadata.data?.items.find(commit => commit.sha === sha);
   const [assessmentId, setAssessmentId] = useState<string | null>(null);
   const [request, setRequest] = useState(0);
@@ -62,7 +63,7 @@ function SelectedCommit({ org, name, sha, repo, onConnected }: {
       <Link href="/connect">Organizations</Link><span aria-hidden="true">/</span><Link href={`/connect/${encodeURIComponent(org)}`}>{org}</Link><span aria-hidden="true">/</span><Link href={base}>{name}</Link><span aria-hidden="true">/</span><span>{sha.slice(0, 7)}</span>
     </nav>
     <header className="mb-6"><p className="label-mono text-white/50">{repo.full_name}</p><h1 className="mt-3 text-3xl font-semibold">{selectedCommit?.message ?? `Commit ${sha.slice(0, 7)}`}</h1><p className="mt-2 text-sm text-white/60">Code review, seven agents, and recorded replay for this change.</p>{selectedCommit?.html_url && /^https?:\/\//.test(selectedCommit.html_url) && <a className="mt-3 inline-block text-xs text-white/65 underline" href={selectedCommit.html_url} target="_blank" rel="noreferrer">View commit on GitHub ↗</a>}</header>
-    <RealAssessmentPanel org={org} repo={repo} sha={sha} onConnected={onConnected} onRunSelected={setAssessmentId} />
-    <CommitRunWorkspace assessmentId={assessmentId} repoId={repo.connected_repo_id} sha={sha} fullName={repo.full_name} quickRead={<details className="mt-6 border-t border-white/10 pt-4"><summary>Optional quick read</summary><p className="mt-3 text-xs text-white/55" data-testid="real-commit-provenance" title="The diff comes from GitHub. This is one Claude call, not an executed assessment.">Quick read · nothing executed</p><button type="button" className="mt-3 rounded-full bg-white/10 px-4 py-2 text-sm" disabled={request > 0 && !live} onClick={() => setRequest(n => n + 1)}>{request > 0 && !live ? 'Reading…' : 'Read this diff'}</button>{live?.error && <p role="alert" className="mt-3 text-sm">{live.error}</p>}{view && <div className="mt-4"><CommitAnalysis {...view} reviewOnly /></div>}</details>} />
+    <RealAssessmentPanel org={org} repo={{ ...repo, connected_repo_id: connectedRepoId }} sha={sha} onConnected={id => { setConnectedRepoId(id); onConnected(); }} onRunSelected={setAssessmentId} />
+    <CommitRunWorkspace assessmentId={assessmentId} repoId={connectedRepoId} sha={sha} fullName={repo.full_name} quickRead={<details className="mt-6 border-t border-white/10 pt-4"><summary>Optional quick read</summary><p className="mt-3 text-xs text-white/55" data-testid="real-commit-provenance" title="The diff comes from GitHub. This is one Claude call, not an executed assessment.">Quick read · nothing executed</p><button type="button" className="mt-3 rounded-full bg-white/10 px-4 py-2 text-sm" disabled={request > 0 && !live} onClick={() => setRequest(n => n + 1)}>{request > 0 && !live ? 'Reading…' : 'Read this diff'}</button>{live?.error && <p role="alert" className="mt-3 text-sm">{live.error}</p>}{view && <div className="mt-4"><CommitAnalysis {...view} reviewOnly /></div>}</details>} />
   </div>;
 }

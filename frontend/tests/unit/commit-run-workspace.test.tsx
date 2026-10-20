@@ -34,3 +34,17 @@ it('can cancel the selected active run without leaving the commit', async () => 
   expect((await screen.findByTestId('cancel-assessment-result')).textContent).toContain('Stop requested');
   expect(state.cancel).toHaveBeenCalledWith('asm_one');
 });
+
+it('maps replay position zero to no call and positions one and two to each saved call', () => {
+  state.detail = detail();
+  state.detail.agent_runs = [{ assessment_id: 'asm_one', agent: 'scout', status: 'succeeded', started_at: '2026-01-01', provider: 'fake', tool_calls: [{ tool_name: 'first_saved_call' }, { tool_name: 'second_saved_call' }] }] as unknown as AssessmentDetail['agent_runs'];
+  render(<CommitRunWorkspace assessmentId="asm_one" repoId="repo_one" sha="abc" fullName="acme/one" />);
+  fireEvent.click(screen.getByRole('tab', { name: '7 agents' }));
+  const map = screen.getByTestId('commit-agent-map');
+  const worker = map.querySelector('.commit-recording-worker')!;
+  expect(worker.textContent).not.toContain('first_saved_call');
+  fireEvent.change(screen.getByRole('slider', { name: 'Replay position' }), { target: { value: '1' } });
+  expect(worker.textContent).toContain('first_saved_call');
+  fireEvent.change(screen.getByRole('slider', { name: 'Replay position' }), { target: { value: '2' } });
+  expect(worker.textContent).toContain('second_saved_call');
+});

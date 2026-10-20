@@ -1,0 +1,18 @@
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, expect, it, vi } from 'vitest';
+const calls = vi.hoisted(() => ({ commits: vi.fn(), reload: vi.fn() }));
+vi.mock('next/navigation', () => ({ useParams: () => ({ org: 'acme', repo: 'app', sha: 'abc' }) }));
+vi.mock('@/lib/real-repo', () => ({ useAccessibleRepo: () => ({ status: 'ready', data: { connected_repo_id: null, full_name: 'acme/app', default_branch: 'main', private: false }, reload: calls.reload }) }));
+vi.mock('@/lib/api', () => ({ api: () => ({ repositoryCommits: calls.commits }) }));
+vi.mock('@/components/real-assessment-panel', () => ({ RealAssessmentPanel: ({ onConnected, onRunSelected }: { onConnected: (id: string) => void; onRunSelected: (id: string) => void }) => <button onClick={() => { onConnected('repo_new'); onRunSelected('asm_new'); }}>Connect and select run</button> }));
+vi.mock('@/components/commit-run-workspace', () => ({ CommitRunWorkspace: ({ repoId, assessmentId }: { repoId: string; assessmentId: string }) => <div data-testid="context">{repoId}:{assessmentId}</div> }));
+import RealCommitPage from '@/app/(console)/connect/[org]/[repo]/commit/[sha]/page';
+afterEach(cleanup);
+it('retains the connected repository ID while the organization refresh has not returned', async () => {
+  calls.commits.mockResolvedValue({ items: [] });
+  render(<RealCommitPage />);
+  fireEvent.click(screen.getByRole('button', { name: 'Connect and select run' }));
+  expect(screen.getByTestId('context').textContent).toBe('repo_new:asm_new');
+  await waitFor(() => expect(calls.commits).toHaveBeenCalledWith('repo_new', expect.any(Object)));
+  expect(calls.reload).toHaveBeenCalledOnce();
+});
