@@ -75,8 +75,10 @@ Keep organization/repository/commit navigation scoped to the selected repository
 
 ### RL-REGISTRY-001 — v8 promotion review follow-up (Alan, 2026-10-20)
 
-IN_PROGRESS on `feat/alan/rl-v8-continuation`. Bind reports to the current incumbent,
+Implemented; awaiting review in PR #375 on `feat/alan/rl-v8-continuation`. Bind reports to the current incumbent,
 pin report bytes, reject missing/failed checks, add registry-backed experiment baseline,
 and resolve reference-name ambiguity from PR #370. Historical v8 evidence is preserved.
 Authenticated approvals and signed/schema-complete reports remain open in issue #317;
 next training experiment needs preregistration and a fresh holdout.
+
+RL-REGISTRY-001 validation: full RL suite 228 passed; Ruff lint/format and diff checks pass.
