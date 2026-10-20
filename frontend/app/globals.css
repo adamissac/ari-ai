@@ -232,6 +232,7 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 }
 #how { scroll-margin-top: 5rem; }
 @media (max-width: 639px) {
+  .hero-headline { font-size: clamp(2rem, 12vw, 4.75rem); }
   .site-header-inner { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 8px; }
   .site-header .hdr-logo { grid-column: 1; grid-row: 1; }
   .site-header .site-nav { display: contents; }
