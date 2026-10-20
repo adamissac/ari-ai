@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Reveal } from '@/components/reveal';
 import { BRAND_NAME } from '@/components/brand';
 
 /*
@@ -302,11 +303,11 @@ export function ProofStats(): ReactNode {
       </div>
       <div className="mt-10 grid grid-cols-1 gap-3 md:grid-cols-3">
         {STATS.map((s, n) => (
-          <div key={s.body} className="story-stat">
+          <Reveal key={s.body} className="story-stat" delay={n * 90}>
             <p className="label-mono flex justify-between text-white/50"><span>{String(n + 1).padStart(2, '0')}</span><span>{s.tag}</span></p>
             <p className="mt-8 font-mono text-6xl font-semibold tracking-tight md:text-7xl">{s.n === 0 ? 'Never' : <CountUp to={s.n} suffix={s.suffix} />}</p>
             <p className="mt-3 text-sm text-white/70">{s.body}</p>
-          </div>
+          </Reveal>
         ))}
       </div>
     </section>

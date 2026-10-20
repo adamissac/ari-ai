@@ -1602,3 +1602,25 @@ body:has(.commit-stage) main { color: #fff; }
   .footer-links a { font-size: 12px; }
   .footer-bottom { margin-top: 24px; padding-top: 12px; }
 }
+
+/* Small motion cues complement the existing scroll-driven chapters. */
+@media (prefers-reduced-motion: no-preference) {
+  .hero-full .hero-in > a { transition: translate 220ms var(--ease-quad), background-color 250ms, box-shadow 250ms; }
+  .hero-full .hero-in > a:hover, .hero-full .hero-in > a:focus-visible { translate: 0 -3px; box-shadow: 0 8px 24px #0003; }
+  .hero-full .hero-in > a:active { translate: 0 0; }
+  .hero-step { transition: translate 250ms var(--ease-quad), background-color 250ms; }
+  .hero-step[data-active] { translate: 0 -3px; }
+  .story-stat { transition: opacity 500ms var(--ease-quad), transform 500ms var(--ease-quad), background-color 250ms, box-shadow 250ms; }
+  .story-stat:hover { background: #ffffff0e; box-shadow: inset 0 0 0 1px #ffb89b44, 0 12px 32px #0002; }
+  .story-card[data-active] .story-window { animation: evidence-enter 500ms var(--ease-quad) both; }
+  .footer-brand { transition: translate 250ms var(--ease-quad); }
+  .footer-brand:hover, .footer-brand:focus-visible { translate: 3px 0; }
+  .footer-links a { transition: translate 220ms var(--ease-quad), color 220ms; }
+  .footer-links a:hover, .footer-links a:focus-visible { translate: 4px 0; color: #ffd5bf; }
+  .footer-top-link > span { transition: translate 220ms var(--ease-quad); }
+  .footer-top-link:hover > span { translate: 0 -3px; }
+  .btn:not(:disabled) { transition: translate 200ms var(--ease-quad), background-color 250ms, box-shadow 250ms; }
+  .btn:not(:disabled):hover { translate: 0 -2px; }
+  .btn:not(:disabled):active { translate: 0 0; }
+}
+@keyframes evidence-enter { from { opacity: .3; transform: translateY(8px); } to { opacity: 1; transform: none; } }
