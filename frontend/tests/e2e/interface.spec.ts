@@ -25,11 +25,11 @@ test('workspace design stays navigable and fits desktop and phone', async ({ bro
     await expect(page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Projects', exact: true })).toHaveAttribute('aria-current', 'page');
     await expect(page.getByTestId(`connect-org-${org}`)).toBeVisible();
     await expectNoSideScroll(page);
-    if (screenshots) await page.screenshot({ path: `${screenshots}/organizations-${width}.png`, fullPage: true });
+    if (screenshots) await page.screenshot({ animations: 'disabled', path: `${screenshots}/organizations-${width}.png`, fullPage: true });
     await page.getByTestId(`connect-org-${org}`).click();
     await expect(page.getByRole('button', { name: `Open ${full}` })).toBeVisible();
     await expectNoSideScroll(page);
-    if (screenshots) await page.screenshot({ path: `${screenshots}/repositories-${width}.png`, fullPage: true });
+    if (screenshots) await page.screenshot({ animations: 'disabled', path: `${screenshots}/repositories-${width}.png`, fullPage: true });
     await page.getByRole('button', { name: `Open ${full}` }).click();
     await expect(page).toHaveURL(`/connect/${org}/${repo}`);
     await page.getByRole('link', { name: /Validate payment boundaries/ }).click();
@@ -37,15 +37,15 @@ test('workspace design stays navigable and fits desktop and phone', async ({ bro
     await page.getByRole('tab', { name: '7 agents' }).click();
     await expect(page.getByTestId('commit-agent-map')).toBeVisible();
     await expectNoSideScroll(page);
-    if (screenshots) await page.screenshot({ path: `${screenshots}/agents-${width}.png`, fullPage: true });
+    if (screenshots) await page.screenshot({ animations: 'disabled', path: `${screenshots}/agents-${width}.png`, fullPage: true });
     await page.goto('/');
     await expect(page.locator('.hero-headline')).toBeVisible();
     await expect.poll(() => page.locator('.hero-line').first().evaluate(el => Number(getComputedStyle(el).opacity))).toBe(1);
     await expectNoSideScroll(page);
-    if (screenshots) await page.screenshot({ path: `${screenshots}/landing-${width}.png` });
+    if (screenshots) await page.screenshot({ animations: 'disabled', path: `${screenshots}/landing-${width}.png` });
     await page.getByTestId('landing-footer').scrollIntoViewIfNeeded();
     await expect(page.getByRole('navigation', { name: 'Footer' })).toBeVisible();
     await expectNoSideScroll(page);
-    if (screenshots) await page.screenshot({ path: `${screenshots}/footer-${width}.png` });
+    if (screenshots) await page.screenshot({ animations: 'disabled', path: `${screenshots}/footer-${width}.png` });
   }
 });
