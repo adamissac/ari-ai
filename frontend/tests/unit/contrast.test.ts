@@ -80,3 +80,11 @@ describe('WCAG contrast of design tokens', () => {
     expect(rule?.[1]).not.toContain('text-shadow');
   });
 });
+
+
+it('keeps the effective second-line headline colors above 4.5:1 on brand', () => {
+  const rule = css.match(/\.hero-stage\[data-fx="on"\] \.hero-headline \.hero-line-dim \{([^}]+)\}/)![1]!;
+  for (const color of rule.match(/#[0-9a-f]{6}/g)!) {
+    expect(ratio(color, token('brand'))).toBeGreaterThanOrEqual(4.5);
+  }
+});

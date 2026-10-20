@@ -287,7 +287,7 @@ function CountUp({ to, suffix = '' }: { to: number; suffix?: string }) {
 const STATS: Array<{ n: number; suffix?: string; tag: string; body: string }> = [
   { n: 7, tag: 'Design', body: 'Separate security agents, each its own tool loop with enforced permissions.' },
   { n: 2, suffix: '×', tag: 'Rule', body: 'A failing test only counts if it fails the same way twice.' },
-  { n: 0, tag: 'Rule', body: 'The person who asks can never approve.' },
+  { n: 0, tag: 'Rule', body: 'Remediation approval stays with a different human.' },
 ];
 
 export function ProofStats(): ReactNode {

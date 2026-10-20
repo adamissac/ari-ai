@@ -1,5 +1,7 @@
 'use client';
 
+import { LandingFooter } from '@/components/landing-footer';
+
 import Link from 'next/link';
 import { useState, type CSSProperties } from 'react';
 import { BRAND_HEADLINE, BRAND_HEADLINE_REST } from '@/components/brand';
@@ -49,7 +51,7 @@ export default function HomePage() {
         </div>
       </HeroStage>
 
-      <div className="hero-cover -mb-6 pb-30 pt-6 md:pb-38">
+      <div className="hero-cover -mb-6 pt-6">
         {!DEMO_ONLY && <OptionalUserBar />}
 
         <ExplainerVideo />
@@ -57,6 +59,7 @@ export default function HomePage() {
         <HowItWorks />
         <Walkthrough />
         <ProofStats />
+        <LandingFooter />
 
 
       </div>

@@ -118,3 +118,17 @@ it('allows a new gesture to skip the video after the brief landing pause', () =>
   chapter.remove();
   vi.restoreAllMocks();
 });
+
+
+it('allows consecutive wheel input to traverse beyond a viewport without a reading cap', () => {
+  const chapter = document.createElement('section');
+  chapter.dataset.readingChapter = '';
+  document.body.appendChild(chapter);
+  render(<SmoothScroll />);
+  wheel(document.body, { deltaY: 900 });
+  flush(3);
+  wheel(document.body, { deltaY: 900 });
+  flush();
+  expect(positions.at(-1)).toBe(1800);
+  chapter.remove();
+});
