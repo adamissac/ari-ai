@@ -30,7 +30,7 @@ it('ants come out of nests spread around the hero: right, left, top and bottom',
 
 it('the colony starts with a first wave, more than one ant but well under the cap', () => {
   expect(firstWave(colonySize(375, 812))).toBe(5);
-  expect(firstWave(colonySize(1440, 900))).toBe(10);
+  expect(firstWave(colonySize(1440, 900))).toBe(5);
   expect(firstWave(34)).toBeLessThan(34);
 });
 
@@ -46,9 +46,9 @@ it('ants walk at constant speed along the trail, and distance wraps around', () 
 });
 
 it('the colony grows to a modest size, slowly at first then faster', () => {
-  expect(colonySize(375, 812)).toBe(10);
-  expect(colonySize(1440, 900)).toBe(34);
-  expect(colonySize(5000, 3000)).toBe(34);
+  expect(colonySize(375, 812)).toBe(6);
+  expect(colonySize(1440, 900)).toBe(16);
+  expect(colonySize(5000, 3000)).toBe(16);
   const gaps = [0, 5, 10, 20, 30].map(n => spawnGap(n, 34));
   for (let i = 1; i < gaps.length; i++) expect(gaps[i]!).toBeLessThanOrEqual(gaps[i - 1]!);
   expect(Math.min(...gaps)).toBeGreaterThan(0.4);

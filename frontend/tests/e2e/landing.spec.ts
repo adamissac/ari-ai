@@ -151,3 +151,19 @@ test('process cards traverse with scrolling again', async ({ page }) => {
     await expect(cards.nth(index)).toHaveAttribute('data-active', 'true');
   }
 });
+
+test('motion accents respond to hover and respect reduced motion', async ({ page }) => {
+  await page.goto('/');
+  const cta = page.locator('.hero-full .hero-in > a').first();
+  await cta.hover();
+  await expect(cta).toHaveCSS('translate', '0px -3px');
+  const footer = page.getByTestId('landing-footer');
+  await footer.scrollIntoViewIfNeeded();
+  await expect(footer.locator('.footer-top')).toHaveAttribute('data-shown', 'true');
+  const link = footer.getByRole('link', { name: 'Pricing', exact: true });
+  await link.hover();
+  await expect(link).toHaveCSS('translate', '4px');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(link).toHaveCSS('translate', 'none');
+  await expect(footer.locator('.footer-top')).toHaveCSS('transition-duration', '0s');
+});
