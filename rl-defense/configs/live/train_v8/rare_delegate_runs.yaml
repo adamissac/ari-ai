@@ -1,0 +1,21 @@
+# Train v8 (created 2026-10-20, before the v8 run). Low-intensity, mostly quiet: carol, a
+# customer who is also bob's bookkeeper, makes rare short runs (3 requests/window) against
+# erin's payments, while dave reconciles alice's in bursts. Blocking carol also blocks her
+# legitimate reads, so a block only pays when it is short and well timed.
+name: rare_delegate_runs
+split: train
+horizon: 30
+schedule: bursty
+p_start: 0.06
+p_stop: 0.45
+attack_per_step: 3
+benign_per_step: 7
+attackers: [carol]
+victims: [erin]
+benign: [alice, bob, carol, dave, erin]
+delegations: ["carol:bob", "dave:alice"]
+delegate_per_step: 1
+delegate_burst_p: 0.25
+delegate_burst_size: 3
+seed_start: 8000
+episodes: 14

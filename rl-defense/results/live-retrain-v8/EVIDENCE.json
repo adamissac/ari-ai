@@ -1,0 +1,27 @@
+{
+  "schema": "live-evidence-index/0.1",
+  "run": "python -m rl_defense.live.online --base-steps 30000 --rules-episodes 2 --seed 0 --train-dir train_v8 --val-dir val_v4 --holdout-dir holdout_v8 --severity-context platform --reference-checkpoint v6=results/live-retrain-v6/candidate_online.pt --reference-checkpoint v7=results/live-retrain-v7/candidate_online.pt --out runs/live/retrain-v8 --evidence-dir results/live-retrain-v8",
+  "artifacts": {
+    "checkpoint": {
+      "path": "candidate_online.pt",
+      "stored_as": "file",
+      "sha256": "ec8b5042fd56d2f75c6791b89152b57f4a6870c3656321b9f554056b4c0fc528",
+      "note": "the selected candidate; digest equals the report's checkpoint_sha256"
+    },
+    "experiment": {
+      "path": "candidate_online_experience.jsonl",
+      "stored_as": "gzip",
+      "stored_path": "candidate_online_experience.jsonl.gz",
+      "sha256": "c2789ebbd90c34c08a5d694911008737c80c641846d44e8419774e309aa1484a",
+      "note": "complete log: demonstrations + all online transitions (154200 lines)"
+    },
+    "selected_experience": {
+      "path": "candidate_online_selected_experience.jsonl",
+      "stored_as": "prefix",
+      "of": "experiment",
+      "lines": 109200,
+      "sha256": "55f17bfc87a30dfb73d3fa5e8665c418f5862c18bf7b640d843e4e277b9ffcfc",
+      "note": "the data available at the selected snapshot; the hash the checkpoint's lineage.experience_sha256 pins"
+    }
+  }
+}

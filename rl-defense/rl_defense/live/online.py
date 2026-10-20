@@ -30,6 +30,10 @@ severities are drawn per episode from what ``platform_mapping`` can produce
 training, selection, holdout) sees that loop. ``--reference-checkpoint`` adds a fixed,
 already-trained policy (v7: the promoted v6) to the holdout table; it never enters the
 gate. Results: results/live-retrain-v7/ (PREREGISTRATION.md first).
+
+v8 keeps v7's loop and method and trains on ``--train-dir train_v8`` (train_v3 unchanged
+plus two low-intensity, mostly quiet scenarios). ``--reference-checkpoint`` is repeatable
+(``NAME=PATH``), so v6 and v7 are both reported. Results: results/live-retrain-v8/.
 """
 
 from __future__ import annotations
@@ -417,15 +421,19 @@ def run(args: argparse.Namespace) -> dict:
         "always_block_principal_long": ev.always_block_principal_long,
         "always_block_top_principal_long": ev.always_block_top_principal_long,
     }
-    reference = None
-    if getattr(args, "reference_checkpoint", None):
-        ref_agent, ref_m = load_checkpoint(Path(args.reference_checkpoint))
-        policies["reference"] = ev.dqn_policy(ref_agent)  # reported only; not in the gate
-        reference = {
-            "path": str(args.reference_checkpoint),
-            "checkpoint_sha256": ref_m["checkpoint_sha256"],
-            "env_id": ref_m["env_id"],
-        }
+    references = []
+    for ref_name, ref_path in parse_references(getattr(args, "reference_checkpoint", None)):
+        ref_agent, ref_m = load_checkpoint(Path(ref_path))
+        policies[ref_name] = ev.dqn_policy(ref_agent)  # reported only; not in the gate
+        references.append(
+            {
+                "name": ref_name,
+                "path": str(ref_path),
+                "checkpoint_sha256": ref_m["checkpoint_sha256"],
+                "env_id": ref_m["env_id"],
+            }
+        )
+    reference = references[0] if references else None
     rows = {
         n: ev.run_policy(
             p,
@@ -463,9 +471,15 @@ def run(args: argparse.Namespace) -> dict:
         "candidate_vs_expert_paired": ev.paired_reward_diff(rows["candidate"], expert_rows),
         "finding_severity_context": severity_context,
         "reference": reference,
-        "candidate_vs_reference_paired": ev.paired_reward_diff(rows["candidate"], rows["reference"])
+        "candidate_vs_reference_paired": ev.paired_reward_diff(
+            rows["candidate"], rows[reference["name"]]
+        )
         if reference
         else None,
+        "references": [
+            {**r, "candidate_vs_paired": ev.paired_reward_diff(rows["candidate"], rows[r["name"]])}
+            for r in references
+        ],
         "deployed": {
             "checkpoint_sha256": deployed_m["checkpoint_sha256"],
             "env_id": deployed_m["env_id"],
@@ -546,6 +560,26 @@ def run(args: argparse.Namespace) -> dict:
     return report
 
 
+_REF_PAIRED = "candidate_vs_reference_paired"
+
+
+def parse_references(spec: str | list[str] | None) -> list[tuple[str, str]]:
+    """``--reference-checkpoint`` values as (policy name, path). ``NAME=PATH`` names the
+    policy; a bare path is ``reference`` (v7's single reference), then ``reference_2``..."""
+    items = [spec] if isinstance(spec, str) else list(spec or [])
+    out: list[tuple[str, str]] = []
+    for i, item in enumerate(items):
+        name, sep, path = item.partition("=")
+        if not sep or not name.isidentifier():
+            name, path = ("reference" if i == 0 else f"reference_{i + 1}"), item
+        out.append((name, path))
+    names = [n for n, _ in out]
+    taken = set(names) & {"deployed", "candidate", "threshold_rules", "noop"}
+    if len(set(names)) != len(names) or taken or any(n.startswith("always_") for n in names):
+        raise ValueError(f"reference names must be unique and new: {names}")
+    return out
+
+
 def render_online_markdown(r: dict, render_markdown) -> str:  # noqa: ANN001
     """The shared report, with the online-training specifics (expert, schedule) added and
     the "rounds" wording adapted (one online run; "update" = environment step)."""
@@ -586,13 +620,18 @@ def render_online_markdown(r: dict, render_markdown) -> str:  # noqa: ANN001
             "from the severities platform_mapping can produce; every policy, every split).",
             "",
         ]
-    if r.get("reference"):
-        rd = r["candidate_vs_reference_paired"]
+    refs = r.get("references") or (
+        [{**r["reference"], "name": "reference", "candidate_vs_paired": r[_REF_PAIRED]}]
+        if r.get("reference")
+        else []
+    )
+    for ref in refs:
+        rd = ref["candidate_vs_paired"]
         extra += [
-            f"Reference (reported only, not in the gate): `{r['reference']['path']}` "
-            f"(`{r['reference']['checkpoint_sha256'][:12]}`). Paired return (candidate − "
-            f"reference) on holdout: {rd['mean']:.2f} [{rd['ci95'][0]:.2f}, {rd['ci95'][1]:.2f}] "
-            f"over {rd['pairs']} episodes.",
+            f"Reference (reported only, not in the gate) `{ref['name']}`: `{ref['path']}` "
+            f"(`{ref['checkpoint_sha256'][:12]}`). Paired return (candidate − "
+            f"{ref['name']}) on holdout: {rd['mean']:.2f} [{rd['ci95'][0]:.2f}, "
+            f"{rd['ci95'][1]:.2f}] over {rd['pairs']} episodes.",
             "",
         ]
     return md + "\n".join(extra)
@@ -621,8 +660,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument(
         "--reference-checkpoint",
+        action="append",
         default=None,
-        help="an already-trained policy reported on holdout next to the candidate (not gated)",
+        help="an already-trained policy reported on holdout next to the candidate (not gated);"
+        " repeatable, as NAME=PATH or a bare PATH (v8: v6=... and v7=...)",
     )
     r = run(ap.parse_args(argv))
     print(r["decision"])

@@ -1,0 +1,22 @@
+# Held-out v8 (created 2026-10-20, before any evaluation on it). Medium intensity: carol (a
+# customer) and dave (alice's bookkeeper) take turns per window reading bob's and erin's
+# payments, while dave keeps reading alice's under his grant. Unseen: an insider customer
+# paired with a rogue delegate per window, victims bob and erin.
+name: insider_pair_windows
+split: holdout
+horizon: 30
+schedule: bursty
+p_start: 0.2
+p_stop: 0.25
+attack_per_step: 5
+benign_per_step: 7
+attackers: [carol, dave]
+attacker_switch: per_window
+victims: [bob, erin]
+benign: [alice, bob, carol, dave, erin]
+delegations: ["dave:alice"]
+delegate_per_step: 1
+delegate_burst_p: 0.2
+delegate_burst_size: 2
+seed_start: 49900
+episodes: 30
