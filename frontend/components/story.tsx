@@ -178,7 +178,7 @@ export function HowItWorks() {
           <button type="button" className="chapter-next" onClick={() => setActive((active + 1) % HOW.length)}>
             {active === HOW.length - 1 ? 'Back to the beginning' : 'Explore the next step'}<span aria-hidden="true">→</span>
           </button>
-          <p className="process-reassurance">No autoplay. No disappearing explanations.</p>
+          <p className="process-reassurance">Choose a step. Stay for the details.</p>
         </div>
       </div>
     </section>
