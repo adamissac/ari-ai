@@ -70,8 +70,8 @@ export function along(trail: Trail, d: number): { p: Pt; tx: number; ty: number 
   return { p: { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k }, tx: (b.x - a.x) / len, ty: (b.y - a.y) / len };
 }
 
-/** Colony size for a canvas area: "more and more, not too much". */
-export const colonySize = (w: number, h: number): number => Math.max(10, Math.min(34, Math.round((w * h) / 36000)));
+/** Colony size for a canvas area: a lighter decorative population. */
+export const colonySize = (w: number, h: number): number => Math.max(6, Math.min(16, Math.round((w * h) / 80000)));
 
 /** Seconds until the next ant, given how many are out: slow at first, then quicker. */
 export const spawnGap = (count: number, max: number): number => 2.2 - 1.75 * Math.min(1, count / Math.max(1, max * 0.6));
