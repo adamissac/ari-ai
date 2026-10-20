@@ -1624,3 +1624,24 @@ body:has(.commit-stage) main { color: #fff; }
   .btn:not(:disabled):active { translate: 0 0; }
 }
 @keyframes evidence-enter { from { opacity: .3; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* Projects lead with two workflows; secondary records stay a click away. */
+.project-navigation { position: relative; display: flex; align-items: stretch; justify-content: space-between; border-bottom: 1px solid var(--color-line); gap: 12px; }
+.project-navigation .project-tabs { border: 0; }
+.project-tools { position: relative; flex: none; }
+.project-tools > summary { cursor: pointer; display: flex; gap: 12px; align-items: center; list-style: none; }
+.project-tools > summary::-webkit-details-marker { display: none; }
+.project-tools[open] > summary { color: var(--color-ink); }
+.project-tools-links { position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; width: 220px; padding: 8px; border: 1px solid var(--color-line); border-radius: 12px; background: var(--color-panel); box-shadow: 0 16px 40px #0004; }
+.project-tools-links a { display: block; padding: 10px 12px; border-radius: 6px; font-size: 13px; color: var(--color-ink); }
+.project-tools-links a:hover, .project-tools-links a[aria-current] { background: var(--color-panel-2); }
+.project-detail { border: 1px solid var(--color-line); border-radius: 12px; padding: 16px; }
+.project-detail > summary { cursor: pointer; font-size: 14px; font-weight: 500; }
+.project-detail[open] > summary { margin-bottom: 16px; }
+.project-detail > section + section { margin-top: 16px; }
+@media (max-width: 639px) {
+  .project-navigation { gap: 0; }
+  .project-navigation .project-tab { padding-inline: 8px; font-size: 10px; }
+}
+
+.project-tools > summary[data-active] { color: var(--color-ink); }

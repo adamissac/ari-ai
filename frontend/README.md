@@ -192,3 +192,5 @@ Footer correction: use a conventional aligned footer with Ari branding/tagline o
 Refine the landing headline with tighter two-line rhythm, a stronger cream first line and a lighter warm-ivory second line. Preserve wording, centered layout, pointer spotlight and scroll animations. Branch `fix/adam/hero-headline`; validation in PR.
 
 Add staggered proof-card/footer entrances and subtle button, workflow-chip, process-evidence and footer-link motion. Reduce hero ants from 10–34 to 6–16. Honor reduced motion; preserve existing scroll traversal. Branch `feat/adam/landing-motion`; validation in PR.
+
+Simplify project navigation to Code review and 7 agents. Move settings, scopes, approvals and other records into More; lead with run/replay and starting a check; disclose findings, repositories and progress on demand. Keep all routes and approval requirements. Branch `feat/adam/project-simplify`; validation in PR.

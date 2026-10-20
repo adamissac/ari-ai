@@ -116,6 +116,7 @@ test('one real assessment from scope approval to verified patch', async ({ brows
 
   // The overview connects the three pillars with this project's real records.
   await alice.goto(`/projects/${project()}`);
+  await alice.getByText('Project progress & details', { exact: true }).click();
   const loop = alice.getByTestId('pillar-loop');
   await expect(loop.getByTestId('loop-review')).toContainText('No open problems in how the code behaves.');
   await expect(loop.getByTestId('loop-prove')).toContainText('2 fixes accepted by independent tests.');
@@ -138,7 +139,7 @@ test('one real assessment from scope approval to verified patch', async ({ brows
     for (const url of [asmUrl, `/projects/${project()}`, '/projects', '/']) {
       await alice.goto(url);
       if (url === asmUrl) await expect(alice.getByTestId('agent-relay')).toBeVisible();
-      else if (url.startsWith('/projects/')) await expect(alice.getByTestId('pillar-loop')).toBeVisible();
+      else if (url.startsWith('/projects/')) await expect(alice.getByRole('heading', { name: '7 agents', exact: true })).toBeVisible();
       else await alice.waitForLoadState('networkidle');
       await expectNoSideScroll(alice);
     }
