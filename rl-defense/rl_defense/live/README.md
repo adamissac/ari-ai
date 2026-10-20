@@ -149,6 +149,18 @@ and hash-pinned (`EVIDENCE.json`; the log is gzip, restored with
 human approver and was not done. See
 [`results/live-retrain-v6/`](../../results/live-retrain-v6/PROVENANCE.md).
 
+**Seventh result (v7, platform finding severities):** the v6 method, with one change. Every
+loop draws per-episode finding severities that `platform_mapping` can actually produce
+(`--severity-context platform`, `LoopConfig.finding_severity_context`; the default
+`"fixed"` keeps v1–v6 unchanged). It closes ADR-0017's training-distribution gap on train
+windows (`python -m rl_defense.live.platform_check`). With real severities, v7 recommends
+`noop` in 106/106 quiet windows (v6: 0/106, `escalate_to_human` or `raise_monitoring`) and
+a principal block in 94/94 flagged ones. Lab and platform agree on 200/200 windows. The
+gate **rejects** it on one check: on `quiet_week` it scores −3.62 against deployed's −3.15.
+Held-out return −5.38 ties v6's −5.55 (+0.17 [−0.14, 0.47]) with 0.11 against 0.64 actions
+per step. v6 stays promoted. See
+[`results/live-retrain-v7/`](../../results/live-retrain-v7/PROVENANCE.md).
+
 ## What is real, and what is not
 
 **Real:** the target app (a real FastAPI service, in-process over an ASGI transport — no
@@ -177,7 +189,7 @@ reach an observation. The gateway's own blocking is not counted as an anomaly.
 ## Tests
 
 ```sh
-.venv/bin/python -m pytest -q tests/test_live_gateway.py tests/test_live_loop.py tests/test_live_retrain.py tests/test_live_block_principal.py tests/test_live_v3.py tests/test_live_v4.py tests/test_live_v5.py tests/test_live_v6.py tests/test_v6_evidence.py
+.venv/bin/python -m pytest -q tests/test_live_gateway.py tests/test_live_loop.py tests/test_live_retrain.py tests/test_live_block_principal.py tests/test_live_v3.py tests/test_live_v4.py tests/test_live_v5.py tests/test_live_v6.py tests/test_v6_evidence.py tests/test_live_v7.py tests/test_v7_evidence.py
 ```
 
 `test_live_v3.py` proves that delegated reads are benign but flagged, and that blanket
