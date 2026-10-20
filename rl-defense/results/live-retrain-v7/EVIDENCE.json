@@ -1,0 +1,27 @@
+{
+  "schema": "live-evidence-index/0.1",
+  "run": "live-retrain-v7 (online DQfD, platform finding-severity context), started from 4b537d2, 2026-10-19 23:07-00:20 UTC",
+  "artifacts": {
+    "checkpoint": {
+      "path": "candidate_online.pt",
+      "stored_as": "file",
+      "sha256": "d1c0c9b506fd29cc0e911aa6ad8d2a14943e7ece5ca03979a0377f043795108b",
+      "note": "the selected candidate; digest equals the report's checkpoint_sha256"
+    },
+    "experiment": {
+      "path": "candidate_online_experience.jsonl",
+      "stored_as": "gzip",
+      "stored_path": "candidate_online_experience.jsonl.gz",
+      "sha256": "86f0d9a02837406b2609a820d8c7a1d7c415df38d5e4186da25fe8d7414b922a",
+      "note": "complete log: demonstrations + all online transitions (153000 lines)"
+    },
+    "selected_experience": {
+      "path": "candidate_online_selected_experience.jsonl",
+      "stored_as": "prefix",
+      "of": "experiment",
+      "lines": 48000,
+      "sha256": "d249d20f7f2a4dafa1991ed12392f82a5cdb6198f4cc328c8c206717c8f82b6c",
+      "note": "the data available at the selected snapshot; the hash the checkpoint's lineage.experience_sha256 pins"
+    }
+  }
+}
