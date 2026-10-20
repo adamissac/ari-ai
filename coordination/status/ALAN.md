@@ -194,3 +194,14 @@ UNVERIFIED: NVD terms page (Cloudflare challenge). All runs above are replay or 
 - Real Chrome14 passed (full scoped/scripted assessment/approvals/evidence/closure plus new outage/Retry/reload/missing-assessment cases); HTTP/client6 passed (lost response after server commit, same IDs,409 for conflicting body/project, fresh key, actual artifact bytes and corrupt-download rejection).
 - Root422 passed/8 optional skips; backend80 passed/5 skips; targeted13 passed; frontend67/transport27 unit tests passed. Production webpack build, TS/ESLint, Ruff/format/mypy38 sources,112-file contracts current. No new live/Docker proof.
 - Frontend follow-up: unchanged form after409 retains the conflicting key; add an explicit new-action control rather than automatically rotating keys after network loss. Issue155 raw/stored patch hash and Claude's live/Probe/RoE/Docker lane untouched. Initial Turbopack font download failed; webpack build and actual browser then passed.
+
+
+### 2026-10-20 — Codex continuation of Claude RL v8
+
+Branch `feat/alan/rl-v8-continuation` from `45f71eca`. Fixed PR #370's incumbent-gate
+and reference-alias findings; added report hash pinning and registry-backed evaluation.
+V8 historical report is preserved and cannot promote over v6. No training or promotion.
+Focused RL suites: 35 passed; final evidence regression/full-suite results in continuation
+PR and immutable coordination message. Await owner review; issue #317 authenticated
+approval/report trust follow-ups remain. Next research step requires preregistration,
+fresh holdout and incumbent comparison.
