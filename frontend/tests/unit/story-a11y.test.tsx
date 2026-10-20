@@ -1,6 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HowItWorks, ProblemScene, ProofStats, Walkthrough } from '@/components/story';
+
+afterEach(cleanup);
 
 beforeEach(() => {
   vi.stubGlobal('matchMedia', (q: string) => ({
@@ -41,5 +43,15 @@ it('lets readers choose a process step and keeps it selected when scrolling', ()
   expect(tab.getAttribute('aria-selected')).toBe('true');
   fireEvent.keyDown(tab, { key: 'ArrowRight' });
   expect(screen.getByRole('tab', { name: /Repair and verify/ }).getAttribute('aria-selected')).toBe('true');
+  expect(screen.getByRole('heading', { name: 'Fix it, then prove it' })).toBeTruthy();
+});
+
+it('preserves keyboard focus on the next-step control', () => {
+  render(<HowItWorks />);
+  const next = screen.getByRole('button', { name: /Explore the next step/ });
+  next.focus();
+  fireEvent.click(next);
+  expect(document.activeElement).toBe(next);
+  fireEvent.click(next);
   expect(screen.getByRole('heading', { name: 'Fix it, then prove it' })).toBeTruthy();
 });

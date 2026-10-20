@@ -172,7 +172,7 @@ export function HowItWorks() {
             </p>)}
           </div>
         </div>
-        <div className="process-copy" key={card.title}>
+        <div className="process-copy">
           <span className="chapter-index">0{active + 1} / 04</span>
           <h3>{card.title}</h3><p>{card.body}</p>
           <button type="button" className="chapter-next" onClick={() => setActive((active + 1) % HOW.length)}>
@@ -215,7 +215,7 @@ export function Walkthrough() {
           <ol className="mt-8 space-y-1">
             {WALK.map((s, n) => (
               <li key={s.title} className="story-step" data-active={step === n || undefined} data-done={n < step || undefined}>
-                <button type="button" onClick={() => setStep(n)} aria-expanded={step === n} aria-controls={`walk-detail-${n}`} className="walk-step-button">
+                <button type="button" onClick={() => setStep(n)} aria-pressed={step === n} className="walk-step-button">
                   <span className="text-lg font-semibold">{s.title}</span>
                   <span className="label-mono text-faint">{s.agent}</span>
                 </button>
