@@ -119,3 +119,35 @@ test('reduced motion keeps the hero, logo and menu visible', async ({ page }) =>
   await page.getByRole('link', { name: 'Go to projects', exact: true }).first().click();
   await expect(page).toHaveURL(/\/projects$/);
 });
+
+
+test('Ari footer fits desktop and mobile', async ({ page }) => {
+  await page.goto('/');
+  for (const width of [1440, 390, 320]) {
+    await page.setViewportSize({ width, height: 844 });
+    const footer = page.getByTestId('landing-footer');
+    await footer.scrollIntoViewIfNeeded();
+    await expect(footer.getByRole('navigation', { name: 'Footer' })).toBeVisible();
+    expect((await footer.boundingBox())!.height).toBeLessThan(500);
+    if (process.env.ARI_LANDING_SCREENSHOTS) {
+      await mkdir(process.env.ARI_LANDING_SCREENSHOTS, { recursive: true });
+      await footer.screenshot({ path: `${process.env.ARI_LANDING_SCREENSHOTS}/${width}-footer.png` });
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+  }
+});
+
+
+test('process cards traverse with scrolling again', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/');
+  const chapter = page.locator('#how');
+  const cards = chapter.locator('.story-card');
+  for (const [progress, index] of [[0.08, 0], [0.4, 1], [0.68, 2], [0.94, 3]] as const) {
+    await chapter.evaluate((el, p) => {
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo(0, top + (el.clientHeight - innerHeight) * p);
+    }, progress);
+    await expect(cards.nth(index)).toHaveAttribute('data-active', 'true');
+  }
+});
