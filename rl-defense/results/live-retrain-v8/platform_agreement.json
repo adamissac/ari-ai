@@ -1,0 +1,222 @@
+{
+  "_generated_by": "python -m rl_defense.live.platform_check results/live-retrain-v8/candidate_online.pt results/live-retrain-v7/candidate_online.pt results/live-retrain-v6/candidate_online.pt --subdir train_v8 --episodes 2 --windows 10 --out <path>",
+  "train_dir": "configs/live/train_v8",
+  "checkpoints": {
+    "results/live-retrain-v8/candidate_online.pt": {
+      "checkpoint_sha256": "ec8b5042fd56d2f75c6791b89152b57f4a6870c3656321b9f554056b4c0fc528",
+      "cases": {
+        "no_findings": {
+          "finding_severity": {
+            "gateway": 0.0,
+            "api": 0.0,
+            "auth": 0.0,
+            "payments": 0.0,
+            "db": 0.0
+          },
+          "quiet": {
+            "windows": 89,
+            "agree": 89,
+            "agreement": 1.0,
+            "lab_actions": {
+              "noop": 89
+            },
+            "platform_actions": {
+              "noop": 89
+            }
+          },
+          "flagged": {
+            "windows": 51,
+            "agree": 51,
+            "agreement": 1.0,
+            "lab_actions": {
+              "block_principal": 51
+            },
+            "platform_actions": {
+              "block_principal": 51
+            }
+          }
+        },
+        "bola_high": {
+          "finding_severity": {
+            "gateway": 0.0,
+            "api": 0.0,
+            "auth": 0.0,
+            "payments": 0.75,
+            "db": 0.0
+          },
+          "quiet": {
+            "windows": 89,
+            "agree": 89,
+            "agreement": 1.0,
+            "lab_actions": {
+              "noop": 89
+            },
+            "platform_actions": {
+              "noop": 89
+            }
+          },
+          "flagged": {
+            "windows": 51,
+            "agree": 51,
+            "agreement": 1.0,
+            "lab_actions": {
+              "block_principal": 51
+            },
+            "platform_actions": {
+              "block_principal": 51
+            }
+          }
+        }
+      },
+      "windows": 280,
+      "agree": 280,
+      "agreement": 1.0
+    },
+    "results/live-retrain-v7/candidate_online.pt": {
+      "checkpoint_sha256": "d1c0c9b506fd29cc0e911aa6ad8d2a14943e7ece5ca03979a0377f043795108b",
+      "cases": {
+        "no_findings": {
+          "finding_severity": {
+            "gateway": 0.0,
+            "api": 0.0,
+            "auth": 0.0,
+            "payments": 0.0,
+            "db": 0.0
+          },
+          "quiet": {
+            "windows": 89,
+            "agree": 89,
+            "agreement": 1.0,
+            "lab_actions": {
+              "noop": 89
+            },
+            "platform_actions": {
+              "noop": 89
+            }
+          },
+          "flagged": {
+            "windows": 51,
+            "agree": 51,
+            "agreement": 1.0,
+            "lab_actions": {
+              "block_principal": 51
+            },
+            "platform_actions": {
+              "block_principal": 51
+            }
+          }
+        },
+        "bola_high": {
+          "finding_severity": {
+            "gateway": 0.0,
+            "api": 0.0,
+            "auth": 0.0,
+            "payments": 0.75,
+            "db": 0.0
+          },
+          "quiet": {
+            "windows": 89,
+            "agree": 89,
+            "agreement": 1.0,
+            "lab_actions": {
+              "noop": 89
+            },
+            "platform_actions": {
+              "noop": 89
+            }
+          },
+          "flagged": {
+            "windows": 51,
+            "agree": 51,
+            "agreement": 1.0,
+            "lab_actions": {
+              "block_principal": 51
+            },
+            "platform_actions": {
+              "block_principal": 51
+            }
+          }
+        }
+      },
+      "windows": 280,
+      "agree": 280,
+      "agreement": 1.0
+    },
+    "results/live-retrain-v6/candidate_online.pt": {
+      "checkpoint_sha256": "8113a37f4ff9360a9efed2e9f499c4b2ae36e97bfb78372436f97da106fc05f1",
+      "cases": {
+        "no_findings": {
+          "finding_severity": {
+            "gateway": 0.0,
+            "api": 0.0,
+            "auth": 0.0,
+            "payments": 0.0,
+            "db": 0.0
+          },
+          "quiet": {
+            "windows": 89,
+            "agree": 89,
+            "agreement": 1.0,
+            "lab_actions": {
+              "raise_monitoring:gateway": 89
+            },
+            "platform_actions": {
+              "raise_monitoring:gateway": 89
+            }
+          },
+          "flagged": {
+            "windows": 51,
+            "agree": 51,
+            "agreement": 1.0,
+            "lab_actions": {
+              "block_principal": 22,
+              "block_top_principal_long": 12,
+              "rate_limit:auth": 7,
+              "rate_limit:gateway": 10
+            },
+            "platform_actions": {
+              "block_principal": 22,
+              "block_top_principal_long": 12,
+              "rate_limit:auth": 7,
+              "rate_limit:gateway": 10
+            }
+          }
+        },
+        "bola_high": {
+          "finding_severity": {
+            "gateway": 0.0,
+            "api": 0.0,
+            "auth": 0.0,
+            "payments": 0.75,
+            "db": 0.0
+          },
+          "quiet": {
+            "windows": 89,
+            "agree": 89,
+            "agreement": 1.0,
+            "lab_actions": {
+              "escalate_to_human": 89
+            },
+            "platform_actions": {
+              "escalate_to_human": 89
+            }
+          },
+          "flagged": {
+            "windows": 51,
+            "agree": 51,
+            "agreement": 1.0,
+            "lab_actions": {
+              "block_principal": 51
+            },
+            "platform_actions": {
+              "block_principal": 51
+            }
+          }
+        }
+      },
+      "windows": 280,
+      "agree": 280,
+      "agreement": 1.0
+    }
+  }
+}

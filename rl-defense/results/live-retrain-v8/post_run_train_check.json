@@ -1,0 +1,41 @@
+{
+  "_generated_by": "python results/live-retrain-v8/post_run_train_check.py",
+  "checkpoint_sha256": "ec8b5042fd56d2f75c6791b89152b57f4a6870c3656321b9f554056b4c0fc528",
+  "train_v8": {
+    "always_on_delegated": {
+      "reward": -4.396,
+      "compromise_rate": 0.0,
+      "availability": 0.857
+    },
+    "delegate_quiet": {
+      "reward": -3.005,
+      "compromise_rate": 0.246,
+      "availability": 0.945
+    },
+    "insider_delegate": {
+      "reward": -5.296,
+      "compromise_rate": 0.121,
+      "availability": 0.868
+    },
+    "outsider_rotation": {
+      "reward": -1.944,
+      "compromise_rate": 0.157,
+      "availability": 0.997
+    },
+    "rare_delegate_runs": {
+      "reward": -4.007,
+      "compromise_rate": 0.386,
+      "availability": 0.922
+    },
+    "trickle_outsider_quiet": {
+      "reward": -1.253,
+      "compromise_rate": 0.447,
+      "availability": 1.0
+    },
+    "two_identities_delegated": {
+      "reward": -9.377,
+      "compromise_rate": 0.267,
+      "availability": 0.851
+    }
+  }
+}
