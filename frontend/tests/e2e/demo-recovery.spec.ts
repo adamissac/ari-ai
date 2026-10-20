@@ -41,6 +41,7 @@ test('project navigation leads with two workflows and keeps tools reachable', as
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
     await expectNoSideScroll(page);
+    await expect(page.getByTestId('project-title')).toHaveCSS('opacity', '1');
     await page.screenshot({ path: `/tmp/ari-project-${width}.png`, fullPage: true });
   }
   await nav.getByText('More', { exact: true }).click();
