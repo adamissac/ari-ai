@@ -1,0 +1,22 @@
+# Held-out v8 (created 2026-10-20, committed before any policy was evaluated on it; see
+# results/live-retrain-v8/PREREGISTRATION.md). Low-intensity and mostly quiet: bob, a
+# customer who is also carol's bookkeeper, makes very rare short runs (3 requests/window)
+# against dave's payments, while dave reconciles alice's in bursts. Unseen: bob as a
+# delegate, dave as the victim, campaigns rarer than any train scenario.
+name: rare_bookkeeper_raids
+split: holdout
+horizon: 30
+schedule: bursty
+p_start: 0.04
+p_stop: 0.5
+attack_per_step: 3
+benign_per_step: 8
+attackers: [bob]
+victims: [dave]
+benign: [alice, bob, carol, dave, erin]
+delegations: ["bob:carol", "dave:alice"]
+delegate_per_step: 1
+delegate_burst_p: 0.3
+delegate_burst_size: 3
+seed_start: 49700
+episodes: 30

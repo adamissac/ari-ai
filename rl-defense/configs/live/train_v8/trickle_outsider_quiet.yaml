@@ -1,0 +1,22 @@
+# Train v8 (created 2026-10-20, before the v8 run). Low-intensity, mostly quiet: an outsider
+# (mallory, no legitimate traffic) rotates tokens in rare runs of 2 requests/window against
+# alice, while erin reads carol's payments with reconciliation bursts. Here blocking the
+# attacker costs no legitimate traffic, unlike rare_delegate_runs.
+name: trickle_outsider_quiet
+split: train
+horizon: 30
+schedule: bursty
+p_start: 0.05
+p_stop: 0.5
+attack_per_step: 2
+benign_per_step: 8
+attackers: [mallory]
+rotate_tokens: true
+victims: [alice]
+benign: [alice, bob, carol, erin]
+delegations: ["erin:carol"]
+delegate_per_step: 1
+delegate_burst_p: 0.3
+delegate_burst_size: 3
+seed_start: 8500
+episodes: 14
