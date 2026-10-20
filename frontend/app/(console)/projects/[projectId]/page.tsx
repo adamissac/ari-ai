@@ -12,7 +12,7 @@ import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, Panel
 import { api, idempotencyKey } from '@/lib/api';
 import { CONNECT_REPOSITORY_NOTE } from '@/lib/connect';
 import { INDEX_COMMIT_NOTE } from '@/lib/index-commit';
-import { shortSha, usd } from '@/lib/format';
+import { shortSha } from '@/lib/format';
 import {
   EVENT_LOG_PAGE_NOTE, JOURNEY_STATUS, fullEventLog, latestAssessmentEvent,
   projectJourney, statesFromLog,
@@ -261,21 +261,19 @@ function AssessmentList({ projectId, page }: { projectId: string; page: Page<Ass
       });
     } catch (err) { setError(err); } finally { setBusy(false); }
   };
-  if (items.length === 0) return <Empty>No assessments yet. Approve a scope, then start one below.</Empty>;
+  if (items.length === 0) return <Empty>No assessments yet. Approve a scope, then start a check above.</Empty>;
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
         <thead className="text-xs uppercase tracking-wider text-faint">
-          <tr><th className="py-1.5 pr-3">Assessment</th><th className="pr-3">State</th><th className="pr-3">Commit</th><th className="pr-3">Trigger</th><th className="pr-3">Usage</th><th>Created</th></tr>
+          <tr><th className="py-1.5 pr-3">Run</th><th className="pr-3">Status</th><th className="pr-3">Commit</th><th>Started</th></tr>
         </thead>
         <tbody className="divide-y divide-line">
           {items.map(a => (
             <tr key={a.id}>
-              <td className="py-2 pr-3"><Link className="text-sm text-accent hover:underline" href={`/projects/${projectId}/assessments/${a.id}`}>Open run & replay<span className="mt-1 block font-mono text-xs text-muted">{a.id}</span></Link></td>
+              <td className="py-2 pr-3"><Link className="text-sm text-accent hover:underline" href={`/projects/${projectId}/assessments/${a.id}`} title={a.id}>Open run & replay</Link></td>
               <td className="pr-3"><Badge view={ASSESSMENT_STATE[a.state]} /></td>
               <td className="pr-3"><Mono>{shortSha(a.commit_sha)}</Mono></td>
-              <td className="pr-3 text-muted">{a.trigger}</td>
-              <td className="pr-3 text-muted">{a.usage.llm_calls} calls · {usd(a.usage.usd)}</td>
               <td className="text-muted"><Time iso={a.created_at} /></td>
             </tr>
           ))}
