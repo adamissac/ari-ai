@@ -206,3 +206,7 @@ Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablat
 - Reviewed recent coordination messages and open PRs #359/#360. Recent Alan messages to Adam are FYI/decisions.
 - Fixed all four #360 serving findings on `fix/adam/live-v3-review`, with targeted regression coverage (10 passed) and clean ruff checks. Full results in PR.
 - No promotion, paid training or deployment. #359 has separate evidence/lineage findings; its original checkpoint and experience bytes are not in Git.
+
+
+## Landing redesign
+- Branch `feat/adam/landing-redesign`: owner-requested hero/footer redesign and readable process interactions. No API/shared contract changes. Desktop/mobile previews captured through Playwright; tests and design study linked in PR.

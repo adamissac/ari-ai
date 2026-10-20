@@ -53,13 +53,11 @@ export function useTrack<T extends HTMLElement>(): [React.RefObject<T | null>, n
   return [ref, p, sticky];
 }
 
-const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
 /* ---------- 1. The problem ---------- */
 
 const TICKS = 12;
 const TICK_X = [4, 11, 17, 26, 31, 39, 47, 55, 62, 70, 79, 88];
-const SNAPSHOT_CAUGHT = new Set([1, 6, 7]); // a PR review and a periodic scan each see a moment
 const PROBLEM_LINES = [
   { title: 'Code changes every day.', body: 'Developers and AI agents ship new behaviour with every merge, and each one can change what the software does.' },
   { title: 'Reviews see a diff. Scans see a snapshot.', body: 'A reviewer reads the lines that changed. A scanner checks a moment in time. Intent and real exploitability go unchecked.' },
@@ -67,22 +65,20 @@ const PROBLEM_LINES = [
 ];
 
 export function ProblemScene() {
-  const [ref, p, sticky] = useTrack<HTMLDivElement>();
-  const phase = p < 0.34 ? 0 : p < 0.67 ? 1 : 2;
-  const shown = Math.max(1, Math.ceil(clamp01(p / 0.3) * TICKS));
-  const lens = clamp01((p - 0.7) / 0.25);
-  const caught = (n: number) => (phase >= 1 && SNAPSHOT_CAUGHT.has(n)) || (phase === 2 && (TICK_X[n] ?? 100) <= lens * 92);
-  const count = TICK_X.filter((_, n) => caught(n)).length;
+  const shown = TICKS;
+  const lens = 1;
+  const count = TICKS;
 
   return (
-    <div ref={ref} className="story-track story-track-3 bleed bleed-paper">
+    <div className="problem-chapter bleed bleed-paper" data-reading-chapter>
       <section aria-labelledby="problem-title" className="story-stage flex flex-col justify-center py-16">
         <p className="label-mono text-brand">The problem</p>
         <h2 id="problem-title" className="sr-only">Why every change needs checking</h2>
-        <div className="story-swap mt-4 min-h-[9.5rem] max-w-3xl md:min-h-[8.5rem]">
+        <div className="problem-beats">
           {PROBLEM_LINES.map((line, n) => (
-            <div key={line.title} className="story-swap-item" data-on={phase === n || undefined} aria-hidden={sticky ? phase !== n : undefined}>
-              <p className="display text-3xl font-semibold md:text-5xl">{line.title}</p>
+            <div key={line.title} className="problem-beat">
+              <span className="chapter-index">0{n + 1} /</span>
+              <p className="display text-2xl font-semibold md:text-3xl">{line.title}</p>
               <p className="mt-3 max-w-xl text-sm text-muted md:text-base">{line.body}</p>
             </div>
           ))}
@@ -96,11 +92,9 @@ export function ProblemScene() {
           <span className="label-mono absolute -top-8 right-0 text-faint">Today</span>
           <div className="story-timeline">
             {TICK_X.map((x, n) => (
-              <span key={x} className="story-tick" data-shown={n < shown || undefined} data-caught={caught(n) || undefined} style={{ left: `${x}%` }} />
+              <span key={x} className="story-tick" data-shown={n < shown || undefined} data-caught style={{ left: `${x}%` }} />
             ))}
-            <span className="story-pill" data-on={phase === 1 || undefined} style={{ left: '7%' }}>PR review</span>
-            <span className="story-pill" data-on={phase === 1 || undefined} style={{ left: '43%' }}>Scanner</span>
-            <span className="story-lens" style={{ width: `${Math.max(phase === 2 ? 8 : 0, lens * 96)}%`, opacity: phase === 2 ? 1 : 0 }}>
+            <span className="story-lens" style={{ width: `${lens * 96}%`, opacity: 1 }}>
               <span className="label-mono truncate">{BRAND_NAME} · every change, against intent</span>
             </span>
           </div>
@@ -145,45 +139,49 @@ const HOW = [
 const MARK: Record<string, string> = { ok: '✓', q: '?', bad: '✕', run: '›', del: '−', add: '+' };
 
 export function HowItWorks() {
-  const [ref, p] = useTrack<HTMLDivElement>();
-  const active = Math.min(HOW.length - 1, Math.floor(p * HOW.length * 0.999));
-
+  const [active, setActive] = useState(0);
+  const card = HOW[active]!;
   return (
-    <div ref={ref} className="story-track story-track-4 bleed bleed-ink text-white" id="how">
-      <section aria-labelledby="how-title" className="story-stage story-rain flex flex-col justify-center py-16">
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_1fr] lg:items-end">
-          <div>
-            <p className="label-mono text-white/60">How it works</p>
-            <h2 id="how-title" className="display mt-3 text-3xl font-semibold md:text-5xl">Assurance that runs<br /><span className="text-white/60">on every change.</span></h2>
+    <section className="how-chapter bleed bleed-ink text-white" id="how" aria-labelledby="how-title" data-reading-chapter>
+      <div className="chapter-heading">
+        <div><p className="label-mono text-white/60">01 / The process</p>
+          <h2 id="how-title" className="display">Speed is easy.<br /><span>Certainty is earned.</span></h2></div>
+        <p>From the intent behind your code to the evidence behind a fix. Explore each step, at your own pace.</p>
+      </div>
+      <div className="process-tabs" role="tablist" aria-label="How Ari works">
+        {HOW.map((step, n) => <button type="button" role="tab" key={step.label}
+          id={`process-tab-${n}`} aria-selected={active === n} aria-controls="process-panel"
+          tabIndex={active === n ? 0 : -1}
+          onKeyDown={event => {
+            const next = event.key === 'ArrowRight' ? (n + 1) % HOW.length : event.key === 'ArrowLeft' ? (n + HOW.length - 1) % HOW.length : event.key === 'Home' ? 0 : event.key === 'End' ? HOW.length - 1 : null;
+            if (next === null) return;
+            event.preventDefault(); setActive(next); document.getElementById(`process-tab-${next}`)?.focus();
+          }}
+          onClick={() => setActive(n)}>
+          <span>0{n + 1}</span>{step.label}<span aria-hidden="true">↗</span>
+        </button>)}
+      </div>
+      <div className="process-panel" id="process-panel" role="tabpanel" aria-labelledby={`process-tab-${active}`} tabIndex={0}>
+        <div className="process-visual">
+          <p className="label-mono">Illustration · not a recorded run</p>
+          <div className="process-orbit" aria-hidden="true"><span /><span /><span /></div>
+          <div className="story-window" key={card.file} aria-hidden="true">
+            <p className="story-window-bar"><span>{card.file}</span><span>ARI / 0{active + 1}</span></p>
+            {card.lines.map(([kind, text, note]) => <p key={text} className="story-window-line" data-kind={kind}>
+              <span className="w-4 shrink-0">{MARK[kind]}</span><span className="flex-1 truncate">{text}</span>{note && <span className="text-faint">{note}</span>}
+            </p>)}
           </div>
-          <p className="max-w-md text-sm text-white/70">
-            {BRAND_NAME} learns how the software is meant to behave, tests that behaviour safely, repairs only with approval,
-            and keeps checking as the code moves.
-          </p>
         </div>
-        <ol className="story-cards mt-10">
-          {HOW.map((card, n) => (
-            <li key={card.label} className="story-card" data-active={active === n || undefined}>
-              <span className="story-card-num" aria-hidden="true">{String(n + 1).padStart(2, '0')}</span>
-              <div className="story-card-body">
-                <p className="label-mono mb-2 text-white/60">Illustration · not a recorded run</p>
-                <div className="story-window" aria-hidden="true">
-                  <p className="story-window-bar"><span>{card.file}</span><span>{BRAND_NAME}</span></p>
-                  {card.lines.map(([kind, text, note]) => (
-                    <p key={text} className="story-window-line" data-kind={kind}>
-                      <span className="w-4 shrink-0">{MARK[kind]}</span><span className="flex-1 truncate">{text}</span>{note && <span className="text-faint">{note}</span>}
-                    </p>
-                  ))}
-                </div>
-                <h3 className="mt-5 text-xl font-semibold md:text-2xl">{card.title}</h3>
-                <p className="mt-2 max-w-md text-sm text-white/70">{card.body}</p>
-              </div>
-              <span className="story-card-label label-mono">{card.label}</span>
-            </li>
-          ))}
-        </ol>
-      </section>
-    </div>
+        <div className="process-copy" key={card.title}>
+          <span className="chapter-index">0{active + 1} / 04</span>
+          <h3>{card.title}</h3><p>{card.body}</p>
+          <button type="button" className="chapter-next" onClick={() => setActive((active + 1) % HOW.length)}>
+            {active === HOW.length - 1 ? 'Back to the beginning' : 'Explore the next step'}<span aria-hidden="true">→</span>
+          </button>
+          <p className="process-reassurance">No autoplay. No disappearing explanations.</p>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -205,12 +203,11 @@ const NODES = [
 ];
 
 export function Walkthrough() {
-  const [ref, p] = useTrack<HTMLDivElement>();
-  const step = Math.min(WALK.length - 1, Math.floor(p * WALK.length * 0.999));
+  const [step, setStep] = useState(0);
   const path = NODES.map(n => `${n.x},${n.y}`).join(' ');
 
   return (
-    <div ref={ref} className="story-track story-track-4">
+    <div className="walk-chapter" data-reading-chapter>
       <section aria-labelledby="walk-title" className="story-stage grid content-center gap-10 py-16 lg:grid-cols-[1fr_1.3fr] lg:items-center">
         <div>
           <p className="label-mono text-brand">One finding, start to proof</p>
@@ -218,11 +215,11 @@ export function Walkthrough() {
           <ol className="mt-8 space-y-1">
             {WALK.map((s, n) => (
               <li key={s.title} className="story-step" data-active={step === n || undefined} data-done={n < step || undefined}>
-                <p className="flex items-baseline justify-between gap-3">
+                <button type="button" onClick={() => setStep(n)} aria-expanded={step === n} aria-controls={`walk-detail-${n}`} className="walk-step-button">
                   <span className="text-lg font-semibold">{s.title}</span>
                   <span className="label-mono text-faint">{s.agent}</span>
-                </p>
-                <p className="story-step-body text-sm text-muted">{s.body}</p>
+                </button>
+                <p id={`walk-detail-${n}`} className="story-step-body text-sm text-muted">{s.body}</p>
               </li>
             ))}
           </ol>
@@ -287,7 +284,7 @@ function CountUp({ to, suffix = '' }: { to: number; suffix?: string }) {
 const STATS: Array<{ n: number; suffix?: string; tag: string; body: string }> = [
   { n: 7, tag: 'Design', body: 'Separate security agents, each its own tool loop with enforced permissions.' },
   { n: 2, suffix: '×', tag: 'Rule', body: 'A failing test only counts if it fails the same way twice.' },
-  { n: 0, tag: 'Rule', body: 'The person who asks can never approve.' },
+  { n: 0, tag: 'Rule', body: 'Remediation approval stays with a different human.' },
 ];
 
 export function ProofStats(): ReactNode {
