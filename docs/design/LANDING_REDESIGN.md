@@ -13,18 +13,13 @@ connected-browser tools were unavailable in this session; no new capture of the
 live Kairo page is claimed. Ari desktop/mobile screenshots were captured through
 its Playwright suite and inspected during development.
 
-## Readability changes
+## Owner correction
 
-- The three problem statements stay visible together.
-- Process explanations use keyboard-accessible tabs and a Next control. Selection
-  stays put while scrolling; there is no autoplay or scroll-triggered content swap.
-- The finding walkthrough has explicit step controls.
-- Landing-page wheel input bounds a single flick and accumulated momentum. Native
-  touch, keyboard, nested scrollers, pinch zoom and reduced-motion behavior remain.
-- Console scrolling retains its existing behavior. The video still has its
-  deliberate landing and explicit Continue exploring control.
-- Illustration provenance labels remain visible; no synthetic figures are
-  presented as recorded assessments.
+The owner requested restoring the original hero and scroll-driven storytelling.
+The original ProblemScene, HowItWorks and Walkthrough animations are restored,
+along with the original wheel easing and unrestricted chapter traversal. The
+redesign’s reading-distance cap and manual chapter controls are removed.
+The new Ari-colored footer remains.
 
 ## Visual changes
 
@@ -32,8 +27,6 @@ The palette stays Ari: charcoal brown (`--color-ink`), burnt orange
 (`--color-brand`) and warm cream. The footer horizon is terracotta/cream,
 not the reference site’s green palette.
 
-An editorial hero adds explanatory copy and clearer action hierarchy. The process
-panel combines a restrained orbital diagram and legible code illustration with a
-persistent text column. The full-bleed footer uses Ari's own ant and wordmark, an
-etched scale, fine grain, a softly lit horizon and useful navigation. All assets
-and fonts are local; no animation or image-generation service is required.
+The original centered hero and animated story sections remain. The full-bleed
+footer uses Ari's own ant and wordmark, an etched scale, fine grain, a softly lit
+horizon and useful navigation. All assets and fonts are local.
