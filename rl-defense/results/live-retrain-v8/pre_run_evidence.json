@@ -1,0 +1,363 @@
+{
+  "_generated_by": "PYTHONPATH=.:../shared:../standards:../examples/payments-lite/target .venv/bin/python results/live-retrain-v8/pre_run_evidence.py <scratch dir> (train_v8 x 14 episodes, val_v4 x 8 episodes; platform severity context; never holdout)",
+  "_note": "deployed_sha differs from earlier runs only because the checkpoint file embeds created_at; the sim weights are seeded (seed 0, 30k steps)",
+  "deployed_sha": "43b336c893b7ecd94a4013ffabcad4b2ccb9158a6f5541133dcc29bedd85d0ec",
+  "train_v8": {
+    "deployed": {
+      "always_on_delegated": {
+        "reward": -30.657,
+        "compromise_rate": 1.0,
+        "availability": 0.998
+      },
+      "delegate_quiet": {
+        "reward": -5.933,
+        "compromise_rate": 1.0,
+        "availability": 0.988
+      },
+      "insider_delegate": {
+        "reward": -11.646,
+        "compromise_rate": 1.0,
+        "availability": 0.986
+      },
+      "outsider_rotation": {
+        "reward": -11.879,
+        "compromise_rate": 1.0,
+        "availability": 0.991
+      },
+      "rare_delegate_runs": {
+        "reward": -3.902,
+        "compromise_rate": 1.0,
+        "availability": 0.995
+      },
+      "trickle_outsider_quiet": {
+        "reward": -3.644,
+        "compromise_rate": 1.0,
+        "availability": 0.989
+      },
+      "two_identities_delegated": {
+        "reward": -18.946,
+        "compromise_rate": 1.0,
+        "availability": 0.987
+      }
+    },
+    "v7": {
+      "always_on_delegated": {
+        "reward": -4.396,
+        "compromise_rate": 0.0,
+        "availability": 0.857
+      },
+      "delegate_quiet": {
+        "reward": -3.005,
+        "compromise_rate": 0.246,
+        "availability": 0.945
+      },
+      "insider_delegate": {
+        "reward": -5.296,
+        "compromise_rate": 0.121,
+        "availability": 0.868
+      },
+      "outsider_rotation": {
+        "reward": -1.567,
+        "compromise_rate": 0.137,
+        "availability": 1.0
+      },
+      "rare_delegate_runs": {
+        "reward": -3.607,
+        "compromise_rate": 0.386,
+        "availability": 0.933
+      },
+      "trickle_outsider_quiet": {
+        "reward": -1.183,
+        "compromise_rate": 0.421,
+        "availability": 1.0
+      },
+      "two_identities_delegated": {
+        "reward": -10.74,
+        "compromise_rate": 0.398,
+        "availability": 0.884
+      }
+    },
+    "v6": {
+      "always_on_delegated": {
+        "reward": -5.006,
+        "compromise_rate": 0.012,
+        "availability": 0.859
+      },
+      "delegate_quiet": {
+        "reward": -3.872,
+        "compromise_rate": 0.29,
+        "availability": 0.945
+      },
+      "insider_delegate": {
+        "reward": -5.491,
+        "compromise_rate": 0.121,
+        "availability": 0.875
+      },
+      "outsider_rotation": {
+        "reward": -2.119,
+        "compromise_rate": 0.15,
+        "availability": 1.0
+      },
+      "rare_delegate_runs": {
+        "reward": -4.659,
+        "compromise_rate": 0.477,
+        "availability": 0.923
+      },
+      "trickle_outsider_quiet": {
+        "reward": -1.827,
+        "compromise_rate": 0.447,
+        "availability": 1.0
+      },
+      "two_identities_delegated": {
+        "reward": -11.457,
+        "compromise_rate": 0.367,
+        "availability": 0.858
+      }
+    },
+    "rules_v7": {
+      "always_on_delegated": {
+        "reward": -4.396,
+        "compromise_rate": 0.0,
+        "availability": 0.857
+      },
+      "delegate_quiet": {
+        "reward": -3.005,
+        "compromise_rate": 0.246,
+        "availability": 0.945
+      },
+      "insider_delegate": {
+        "reward": -5.48,
+        "compromise_rate": 0.148,
+        "availability": 0.872
+      },
+      "outsider_rotation": {
+        "reward": -1.639,
+        "compromise_rate": 0.144,
+        "availability": 1.0
+      },
+      "rare_delegate_runs": {
+        "reward": -3.24,
+        "compromise_rate": 0.841,
+        "availability": 0.983
+      },
+      "trickle_outsider_quiet": {
+        "reward": -2.579,
+        "compromise_rate": 0.947,
+        "availability": 1.0
+      },
+      "two_identities_delegated": {
+        "reward": -8.08,
+        "compromise_rate": 0.139,
+        "availability": 0.819
+      }
+    },
+    "noop": {
+      "always_on_delegated": {
+        "reward": -30.0,
+        "compromise_rate": 1.0,
+        "availability": 1.0
+      },
+      "delegate_quiet": {
+        "reward": -4.929,
+        "compromise_rate": 1.0,
+        "availability": 1.0
+      },
+      "insider_delegate": {
+        "reward": -10.643,
+        "compromise_rate": 1.0,
+        "availability": 1.0
+      },
+      "outsider_rotation": {
+        "reward": -10.929,
+        "compromise_rate": 1.0,
+        "availability": 1.0
+      },
+      "rare_delegate_runs": {
+        "reward": -3.143,
+        "compromise_rate": 1.0,
+        "availability": 1.0
+      },
+      "trickle_outsider_quiet": {
+        "reward": -2.714,
+        "compromise_rate": 1.0,
+        "availability": 1.0
+      },
+      "two_identities_delegated": {
+        "reward": -17.929,
+        "compromise_rate": 1.0,
+        "availability": 1.0
+      }
+    },
+    "always_block_principal": {
+      "always_on_delegated": {
+        "reward": -4.476,
+        "compromise_rate": 0.0,
+        "availability": 0.857
+      },
+      "delegate_quiet": {
+        "reward": -2.789,
+        "compromise_rate": 0.333,
+        "availability": 0.966
+      },
+      "insider_delegate": {
+        "reward": -4.666,
+        "compromise_rate": 0.188,
+        "availability": 0.914
+      },
+      "outsider_rotation": {
+        "reward": -2.087,
+        "compromise_rate": 0.183,
+        "availability": 1.0
+      },
+      "rare_delegate_runs": {
+        "reward": -2.955,
+        "compromise_rate": 0.477,
+        "availability": 0.96
+      },
+      "trickle_outsider_quiet": {
+        "reward": -1.534,
+        "compromise_rate": 0.553,
+        "availability": 1.0
+      },
+      "two_identities_delegated": {
+        "reward": -13.921,
+        "compromise_rate": 0.578,
+        "availability": 0.888
+      }
+    }
+  },
+  "val_v4": {
+    "deployed": {
+      "val3_mixed": {
+        "reward": -16.379,
+        "compromise_rate": 1.0,
+        "availability": 0.986
+      },
+      "val4_rogue_delegate": {
+        "reward": -15.086,
+        "compromise_rate": 1.0,
+        "availability": 0.975
+      },
+      "val4_rotation_start": {
+        "reward": -20.277,
+        "compromise_rate": 1.0,
+        "availability": 0.985
+      },
+      "val4_slow_insider": {
+        "reward": -15.863,
+        "compromise_rate": 1.0,
+        "availability": 0.991
+      }
+    },
+    "v7": {
+      "val3_mixed": {
+        "reward": -8.044,
+        "compromise_rate": 0.459,
+        "availability": 0.973
+      },
+      "val4_rogue_delegate": {
+        "reward": -6.946,
+        "compromise_rate": 0.091,
+        "availability": 0.813
+      },
+      "val4_rotation_start": {
+        "reward": -9.97,
+        "compromise_rate": 0.386,
+        "availability": 0.922
+      },
+      "val4_slow_insider": {
+        "reward": -3.103,
+        "compromise_rate": 0.067,
+        "availability": 0.943
+      }
+    },
+    "v6": {
+      "val3_mixed": {
+        "reward": -7.591,
+        "compromise_rate": 0.393,
+        "availability": 0.972
+      },
+      "val4_rogue_delegate": {
+        "reward": -8.414,
+        "compromise_rate": 0.224,
+        "availability": 0.837
+      },
+      "val4_rotation_start": {
+        "reward": -11.505,
+        "compromise_rate": 0.497,
+        "availability": 0.952
+      },
+      "val4_slow_insider": {
+        "reward": -4.322,
+        "compromise_rate": 0.134,
+        "availability": 0.952
+      }
+    },
+    "rules_v7": {
+      "val3_mixed": {
+        "reward": -7.467,
+        "compromise_rate": 0.402,
+        "availability": 0.965
+      },
+      "val4_rogue_delegate": {
+        "reward": -6.942,
+        "compromise_rate": 0.073,
+        "availability": 0.805
+      },
+      "val4_rotation_start": {
+        "reward": -6.078,
+        "compromise_rate": 0.144,
+        "availability": 0.9
+      },
+      "val4_slow_insider": {
+        "reward": -12.905,
+        "compromise_rate": 0.849,
+        "availability": 0.993
+      }
+    },
+    "noop": {
+      "val3_mixed": {
+        "reward": -15.25,
+        "compromise_rate": 1.0,
+        "availability": 1.0
+      },
+      "val4_rogue_delegate": {
+        "reward": -13.75,
+        "compromise_rate": 1.0,
+        "availability": 1.0
+      },
+      "val4_rotation_start": {
+        "reward": -19.125,
+        "compromise_rate": 1.0,
+        "availability": 1.0
+      },
+      "val4_slow_insider": {
+        "reward": -14.875,
+        "compromise_rate": 1.0,
+        "availability": 1.0
+      }
+    },
+    "always_block_principal": {
+      "val3_mixed": {
+        "reward": -10.155,
+        "compromise_rate": 0.598,
+        "availability": 0.976
+      },
+      "val4_rogue_delegate": {
+        "reward": -7.848,
+        "compromise_rate": 0.265,
+        "availability": 0.865
+      },
+      "val4_rotation_start": {
+        "reward": -12.995,
+        "compromise_rate": 0.556,
+        "availability": 0.932
+      },
+      "val4_slow_insider": {
+        "reward": -3.15,
+        "compromise_rate": 0.109,
+        "availability": 0.96
+      }
+    }
+  }
+}
