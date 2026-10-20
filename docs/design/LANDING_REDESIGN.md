@@ -28,6 +28,10 @@ its Playwright suite and inspected during development.
 
 ## Visual changes
 
+The palette stays Ari: charcoal brown (`--color-ink`), burnt orange
+(`--color-brand`) and warm cream. The footer horizon is terracotta/cream,
+not the reference site’s green palette.
+
 An editorial hero adds explanatory copy and clearer action hierarchy. The process
 panel combines a restrained orbital diagram and legible code illustration with a
 persistent text column. The full-bleed footer uses Ari's own ant and wordmark, an
