@@ -10,7 +10,8 @@ export function isCurrentSection(pathname: string, href: string): boolean {
 }
 
 export function NavLink({ href, children, className = '' }: { href: string; children: string; className?: string }) {
-  const current = isCurrentSection(usePathname(), href);
+  const pathname = usePathname();
+  const current = isCurrentSection(pathname, href) || (href === '/projects' && isCurrentSection(pathname, '/connect'));
   return (
     <Link
       href={href}
