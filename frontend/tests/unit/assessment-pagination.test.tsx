@@ -38,7 +38,7 @@ it('says the list is truncated and appends older checks, deduped by id', async (
   fireEvent.click(screen.getByTestId('load-older-assessments'));
   await waitFor(() => expect(screen.queryByTestId('assessments-truncated')).toBeNull());
   expect(mocks.assessments).toHaveBeenCalledWith('prj_one', { cursor: 'asm_003' });
-  expect(screen.getAllByRole('link', { name: 'Open run & replay' }).map(a => a.getAttribute('href')?.split('/').at(-1))).toEqual(['asm_005', 'asm_004', 'asm_003', 'asm_002', 'asm_001']);
+  expect(screen.getAllByRole('link', { name: /^Open run & replay asm_/  }).map(a => a.getAttribute('href')?.split('/').at(-1))).toEqual(['asm_005', 'asm_004', 'asm_003', 'asm_002', 'asm_001']);
 });
 
 it('shows no truncation note when there is no next cursor', () => {

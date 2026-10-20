@@ -272,7 +272,7 @@ function AssessmentList({ projectId, page }: { projectId: string; page: Page<Ass
         <tbody className="divide-y divide-line">
           {items.map(a => (
             <tr key={a.id}>
-              <td className="py-2 pr-3"><Link className="text-sm text-accent hover:underline" href={`/projects/${projectId}/assessments/${a.id}`} title={a.id}>Open run & replay</Link></td>
+              <td className="py-2 pr-3"><Link className="text-sm text-accent hover:underline" href={`/projects/${projectId}/assessments/${a.id}`} aria-label={`Open run & replay ${a.id}`} title={a.id}>Open run & replay</Link></td>
               <td className="pr-3"><Badge view={ASSESSMENT_STATE[a.state]} /></td>
               <td className="pr-3"><Mono>{shortSha(a.commit_sha)}</Mono></td>
               <td className="text-muted"><Time iso={a.created_at} /></td>
