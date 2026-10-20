@@ -1016,3 +1016,13 @@ Next experiment: preregister validation coverage of quiet traffic with a fresh h
 using the actual incumbent as comparator. Do not promote v8 from its historical packet.
 
 Validation results are recorded in the continuation PR and coordination message.
+
+
+Final verification for PR #375 (`f9962eb`): from `rl-defense/`, run the existing
+v8 worktree's `.venv/bin/python -m pytest -q` with
+`PYTHONPATH=.:../shared:../standards:../examples/payments-lite/target` pointing at
+this checkout. **228 passed in 240.68s**, log `/private/tmp/rl-v8-final.log`.
+Focused runs: 35 passed; final retained-evidence/pipeline checks 15 passed.
+The first broad run collected an obsolete pre-edit test (226 pass/1 fail); the
+clean committed-tree rerun above supersedes it. Ruff check and Python format
+checks pass. PR: https://github.com/adamissac/ari-ai/pull/375 (review, no merge).

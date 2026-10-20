@@ -205,3 +205,5 @@ Focused RL suites: 35 passed; final evidence regression/full-suite results in co
 PR and immutable coordination message. Await owner review; issue #317 authenticated
 approval/report trust follow-ups remain. Next research step requires preregistration,
 fresh holdout and incumbent comparison.
+
+Final local verification: **228 RL tests passed** on `f9962eb`; PR #375 awaits review.
