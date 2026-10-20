@@ -179,7 +179,15 @@ def main(argv: list[str]) -> int:
         alice.headers["X-CSRF-Token"] = me["csrf_token"]
         pid = alice.post("/projects", json={"name": "payments-lite (e2e)"}).raise_for_status().json()["id"]
         rid = alice.post(f"/projects/{pid}/repositories", json={"full_name": REPO_NAME}).raise_for_status().json()["id"]
-        bindings.write_text(json.dumps([{"repo_id": rid, "local_path": str(repo), "subdir": "."}]))
+        # The commit-workspace journey completes its own runs. Keep its findings/approvals
+        # separate from the original journey's exact-count assertions.
+        workspace_pid = alice.post("/projects", json={"name": "commit-workspace (e2e)"}).raise_for_status().json()["id"]
+        workspace_name = "acme/commit-workspace"
+        workspace_rid = alice.post(f"/projects/{workspace_pid}/repositories", json={"full_name": workspace_name}).raise_for_status().json()["id"]
+        bindings.write_text(json.dumps([
+            {"repo_id": rid, "local_path": str(repo), "subdir": "."},
+            {"repo_id": workspace_rid, "local_path": str(repo), "subdir": "."},
+        ]))
         alice.close()
 
         web_port = _port()
@@ -195,7 +203,8 @@ def main(argv: list[str]) -> int:
             ["npx", "playwright", "test", *argv],
             cwd=FRONTEND,
             env={**env, "E2E_BASE_URL": f"http://127.0.0.1:{web_port}", "E2E_API": base, "E2E_PROJECT_ID": pid,
-                 "E2E_REPO_ID": rid, "E2E_REPO": REPO_NAME, "E2E_COMMIT": sha, "E2E_WEBHOOK_SECRET": WEBHOOK_SECRET},
+                 "E2E_REPO_ID": rid, "E2E_REPO": REPO_NAME, "E2E_WORKSPACE_PROJECT_ID": workspace_pid,
+                 "E2E_WORKSPACE_REPO_ID": workspace_rid, "E2E_WORKSPACE_REPO": workspace_name, "E2E_COMMIT": sha, "E2E_WEBHOOK_SECRET": WEBHOOK_SECRET},
             check=False,
         )
         return result.returncode

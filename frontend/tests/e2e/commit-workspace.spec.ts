@@ -4,7 +4,7 @@ import { env, newUser, expectNoSideScroll } from './helpers';
 // Only external GitHub discovery/metadata are fixtures. All run records use the real stack.
 test('organization → repository → commit keeps real agent work and replay in that commit', async ({ browser }) => {
   const page = await newUser(browser, 'e2e-alice');
-  const full = env('E2E_REPO');
+  const full = env('E2E_WORKSPACE_REPO');
   const [org, repo] = full.split('/');
   const sha = env('E2E_COMMIT');
   const otherSha = 'f'.repeat(40);
@@ -12,10 +12,10 @@ test('organization → repository → commit keeps real agent work and replay in
   let quickReads = 0;
   page.on('request', request => { if (request.url().endsWith('/api/analyze')) quickReads++; });
   await page.route('**/api/v1/github/repositories', route => route.fulfill({ json: { items: [
-    { full_name: full, installation_id: 1, default_branch: 'main', private: true, connected_repo_id: env('E2E_REPO_ID') },
+    { full_name: full, installation_id: 1, default_branch: 'main', private: true, connected_repo_id: env('E2E_WORKSPACE_REPO_ID') },
     { full_name: `${org}/sibling-repository`, installation_id: 1, default_branch: 'main', private: true, connected_repo_id: null },
   ], next_cursor: null, install_url: null } }));
-  await page.route(`**/api/v1/repositories/${env('E2E_REPO_ID')}/commits`, route => route.fulfill({ json: { items: [
+  await page.route(`**/api/v1/repositories/${env('E2E_WORKSPACE_REPO_ID')}/commits`, route => route.fulfill({ json: { items: [
     { sha, message: 'Selected payment change', author: 'test-author', committed_at: null, html_url: null },
     { sha: otherSha, message: 'A different commit', author: 'test-author', committed_at: null, html_url: null },
   ], next_cursor: null, available: true, reason: null } }));
@@ -54,7 +54,7 @@ test('organization → repository → commit keeps real agent work and replay in
   }
   // Finish this test's run so its approvals cannot leak into later suite cases.
   const bob = await newUser(browser, 'e2e-bob');
-  await bob.goto(`/projects/${env('E2E_PROJECT_ID')}/assessments/${assessmentId}`);
+  await bob.goto(`/projects/${env('E2E_WORKSPACE_PROJECT_ID')}/assessments/${assessmentId}`);
   await expect(bob.getByRole('heading', { name: 'Human approval required' })).toBeVisible({ timeout: 180_000 });
   const decisions = bob.getByRole('button', { name: 'Approve remediation', exact: true });
   await expect(decisions).toHaveCount(2);
