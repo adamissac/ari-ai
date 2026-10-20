@@ -212,3 +212,5 @@ Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablat
 - Branch `feat/adam/landing-redesign`: owner-requested hero/footer redesign and readable process interactions. No API/shared contract changes. Desktop/mobile previews captured through Playwright; tests and design study linked in PR.
 
 Owner correction: restore the original landing hero, scroll-driven story animations and original wheel easing; remove the reading-distance cap and manual controls. Keep the new Ari-colored footer. Branch `fix/adam/restore-landing`; validation in PR.
+
+Footer correction: use a conventional aligned footer with Ari branding/tagline on the left, two navigation columns on the right, and a separated copyright/back-to-top row. Stack branding above the link columns on mobile. Preserve Ari colors and restored hero/scroll animations. Validation recorded in PR.

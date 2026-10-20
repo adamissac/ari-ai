@@ -30,3 +30,7 @@ not the reference site’s green palette.
 The original centered hero and animated story sections remain. The full-bleed
 footer uses Ari's own ant and wordmark, an etched scale, fine grain, a softly lit
 horizon and useful navigation. All assets and fonts are local.
+
+Footer sizing correction: content determines height; reduced wordmark and gaps replace the oversized minimum heights. Mobile uses two link columns.
+
+Final owner alignment correction: conventional branding/links grid and legal row, with a subtle burnt-orange background glow. Remove the oversized wordmark and bright horizon so the layout reads as a standard website footer.
