@@ -161,6 +161,18 @@ Held-out return −5.38 ties v6's −5.55 (+0.17 [−0.14, 0.47]) with 0.11 agai
 per step. v6 stays promoted. See
 [`results/live-retrain-v7/`](../../results/live-retrain-v7/PROVENANCE.md).
 
+**Eighth result (v8, low-intensity train mix):** the v7 method, with one change: it trains on
+`train_v8` (train_v3 unchanged plus two low-intensity, mostly quiet scenarios). v6 and v7 are
+both references (`--reference-checkpoint NAME=PATH`, repeatable). The gate returns
+**`recommend_promote`**: all seven checks pass on a fresh `holdout_v8`, +4.47 [3.14, 5.81]
+over deployed. **The pre-registered hypothesis is not supported.** v8 trails v7 on both
+low-intensity holdout scenarios and overall (−0.46 [−0.96, −0.07]), ties the promoted v6
+(+0.08 [−0.40, 0.50]), and trails noop on the train scenario `rare_delegate_runs`. It keeps
+v7's quiet-window behaviour on train_v8 windows: `noop` in 178/178 quiet, `block_principal` in
+102/102 flagged, lab/platform agreement 280/280. holdout_v8 is easier for the per-scenario
+rule than holdout_v7. Nothing was promoted. Approval is a human decision. See
+[`results/live-retrain-v8/`](../../results/live-retrain-v8/PROVENANCE.md).
+
 ## What is real, and what is not
 
 **Real:** the target app (a real FastAPI service, in-process over an ASGI transport — no
@@ -189,7 +201,7 @@ reach an observation. The gateway's own blocking is not counted as an anomaly.
 ## Tests
 
 ```sh
-.venv/bin/python -m pytest -q tests/test_live_gateway.py tests/test_live_loop.py tests/test_live_retrain.py tests/test_live_block_principal.py tests/test_live_v3.py tests/test_live_v4.py tests/test_live_v5.py tests/test_live_v6.py tests/test_v6_evidence.py tests/test_live_v7.py tests/test_v7_evidence.py
+.venv/bin/python -m pytest -q tests/test_live_gateway.py tests/test_live_loop.py tests/test_live_retrain.py tests/test_live_block_principal.py tests/test_live_v3.py tests/test_live_v4.py tests/test_live_v5.py tests/test_live_v6.py tests/test_v6_evidence.py tests/test_live_v7.py tests/test_v7_evidence.py tests/test_live_v8.py tests/test_v8_evidence.py
 ```
 
 `test_live_v3.py` proves that delegated reads are benign but flagged, and that blanket
