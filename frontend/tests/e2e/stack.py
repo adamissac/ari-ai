@@ -27,6 +27,7 @@ import time
 import uuid
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 
 import sqlalchemy as sa
 
@@ -139,6 +140,24 @@ def main(argv: list[str]) -> int:
         ]
         bridge = AlanScriptTransport(repo / "target", fallback=fake(reviewer))
         llm.TRANSPORT_OVERRIDE = lambda: bridge
+        # Several UI journeys execute independent assessments in this stack. Give
+        # each one a fresh scripted conversation, retaining its real gateway hooks.
+        # A single shared FakeTransport would exhaust the reviewer after run one.
+        original_build_gateway = llm.build_gateway
+        assessment_transports: dict[str, AlanScriptTransport] = {}
+
+        def isolated_gateway(**kwargs: Any) -> llm.LLMGateway:
+            owner = getattr(kwargs.get("charge"), "__self__", None)
+            assessment_id = getattr(owner, "assessment_id", None)
+            if assessment_id and kwargs.get("transport") is None:
+                if assessment_id not in assessment_transports:
+                    assessment_transports[assessment_id] = AlanScriptTransport(
+                        repo / "target", fallback=fake(reviewer)
+                    )
+                kwargs["transport"] = assessment_transports[assessment_id]
+            return original_build_gateway(**kwargs)
+
+        llm.build_gateway = isolated_gateway
 
         import uvicorn
 
