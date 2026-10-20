@@ -14,8 +14,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 76
     await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute('content', 'ARI — Find the flaw. Prove the fix.');
     const heading = page.getByRole('heading', { level: 1 });
     await expect(heading).toHaveText('FIND THE FLAW.PROVE THE FIX.');
-    await expect(page.locator('.hero-eyebrow')).toContainText('SOFTWARE ASSURANCE');
-    await expect(page.locator('.hero-description-row')).toContainText('Independently verified fixes.');
+    await expect(page.locator('.hero-content p')).toHaveCount(0);
     // The demo account is not linked publicly; the call to action opens the console.
     await expect(page.getByRole('link', { name: 'Go to projects', exact: true }).first()).toHaveAttribute('href', '/projects');
     await expect(page.getByRole('link', { name: /demo/i })).toHaveCount(0);
@@ -121,28 +120,29 @@ test('reduced motion keeps the hero, logo and menu visible', async ({ page }) =>
   await expect(page).toHaveURL(/\/projects$/);
 });
 
-test('landing explanations stay selected and the new footer fits desktop and mobile', async ({ page }) => {
+
+test('Ari footer fits desktop and mobile', async ({ page }) => {
   await page.goto('/');
-  const processTab = page.getByRole('tab', { name: /Review and attack/ });
-  await processTab.scrollIntoViewIfNeeded();
-  await processTab.click();
-  await expect(page.getByRole('heading', { name: 'Test it like an attacker' })).toBeVisible();
-  await page.mouse.wheel(0, 300);
-  await expect(processTab).toHaveAttribute('aria-selected', 'true');
-  await page.getByRole('tab', { name: /Repair and verify/ }).click();
-  await expect(page.getByRole('heading', { name: 'Fix it, then prove it' })).toBeVisible();
-  const shots = process.env.ARI_LANDING_SCREENSHOTS;
-  if (shots) await mkdir(shots, { recursive: true });
   for (const width of [1440, 390]) {
-    await page.setViewportSize({ width, height: width === 1440 ? 1000 : 844 });
-    await page.locator('#how').scrollIntoViewIfNeeded();
-    if (shots) await page.screenshot({ path: `${shots}/${width}-process.png` });
+    await page.setViewportSize({ width, height: 844 });
     const footer = page.getByTestId('landing-footer');
     await footer.scrollIntoViewIfNeeded();
-    await expect(footer).toContainText('Software moves fast.');
     await expect(footer.getByRole('navigation', { name: 'Footer' })).toBeVisible();
-    await expect(footer.getByRole('link', { name: /Your projects/ })).toHaveAttribute('href', '/projects');
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
-    if (shots) await footer.screenshot({ path: `${shots}/${width}-footer.png` });
+  }
+});
+
+
+test('process cards traverse with scrolling again', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/');
+  const chapter = page.locator('#how');
+  const cards = chapter.locator('.story-card');
+  for (const [progress, index] of [[0.08, 0], [0.4, 1], [0.68, 2], [0.94, 3]] as const) {
+    await chapter.evaluate((el, p) => {
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo(0, top + (el.clientHeight - innerHeight) * p);
+    }, progress);
+    await expect(cards.nth(index)).toHaveAttribute('data-active', 'true');
   }
 });
