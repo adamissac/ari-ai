@@ -57,7 +57,7 @@ function RecordedAgentMap({ detail, sha, fullName }: { detail: AssessmentDetail 
   const active = selected ?? current?.run.agent ?? 'scout';
   const worker = AGENT_ORDER.find(a => a.agent === active)!;
   const mine = runs.filter(r => r.agent === active);
-  return <section className="amap" data-testid="commit-agent-map" aria-label="Seven agents at work">
+  return <section className="amap commit-recorded-workspace" data-testid="commit-agent-map" aria-label="Seven agents at work">
     <header className="amap-head"><p className="amap-now">{detail ? `Recorded run · ${ASSESSMENT_STATE[detail.assessment.state].label}` : 'No recorded run for this commit'}</p><p className="text-xs text-white/55">Playback shows saved tool calls. It does not run agents.</p></header>
     <div className="amap-grid">
       <nav className="amap-rail" aria-label="Security agents">

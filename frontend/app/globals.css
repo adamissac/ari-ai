@@ -1653,3 +1653,11 @@ body:has(.commit-stage) main { color: #fff; }
 .commit-recording-connector { height: 44px; width: 1px; background: linear-gradient(#ff997c80, #ff997c22); }
 .commit-recording-worker h3 { margin-top: 8px; font-size: 24px; }
 .commit-recording-worker > p { margin-top: 8px; color: #cdbab3; font-size: 12px; overflow-wrap: anywhere; }
+
+@media (max-width: 767px) {
+  .commit-recorded-workspace .amap-rail { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding: 12px; }
+  .commit-recorded-workspace .amap-group, .commit-recorded-workspace .amap-group ol { display: contents; }
+  .commit-recorded-workspace .amap-group-label { display: none; }
+  .commit-recorded-workspace .amap-agent { min-height: 58px; }
+  .commit-recorded-workspace .commit-recording-map { min-height: 280px; }
+}
