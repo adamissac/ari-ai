@@ -6,7 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
-- Footer correction: remove oversized minimum heights, reduce the wordmark and blank space, and place footer link groups side by side on mobile. Preserve Ari colors and restored hero/scroll animations. Validation recorded in PR.
+- Footer correction: use a conventional aligned footer with Ari branding/tagline on the left, two navigation columns on the right, and a separated copyright/back-to-top row. Stack branding above the link columns on mobile. Preserve Ari colors and restored hero/scroll animations. Validation recorded in PR.
 
 - Add an oversized Ari footer with a grainy terracotta/cream horizon. Restore the original centered hero, scroll-driven chapter animations and wheel scrolling after owner feedback; remove the redesign's reading-distance cap and manual chapter controls.
 
