@@ -198,12 +198,13 @@ def test_gate_passes_a_strictly_better_candidate():
 
 
 # ------------------------------------------------------------------ registry
-def _report(path: Path, sha: str, decision: str) -> Path:
+def _report(path: Path, sha: str, decision: str, baseline: str = "") -> Path:
     path.write_text(
         json.dumps(
             {
                 "decision": decision,
                 "candidate": {"checkpoint_sha256": sha},
+                "deployed": {"checkpoint_sha256": baseline},
                 "checks": [{"name": "x", "passed": decision == "recommend_promote"}],
             }
         )
@@ -233,7 +234,9 @@ def test_registry_requires_human_passing_report_and_supports_rollback(base_ckpt,
     with pytest.raises(RegistryError, match="different checkpoint"):
         reg.promote(v_mis, approved_by="usr_alan", reason="try")
 
-    v_ok = reg.register(cand, _report(tmp_path / "ok.json", sha, "recommend_promote"))
+    v_ok = reg.register(
+        cand, _report(tmp_path / "ok.json", sha, "recommend_promote", sha256_file(base_ckpt))
+    )
     assert v_ok == v_rej  # same bytes → same version; the re-evaluation's report is attached
     with pytest.raises(RegistryError, match="human"):
         reg.promote(v_ok, approved_by="claude", reason="auto")
@@ -291,3 +294,65 @@ def test_pipeline_end_to_end_smoke(base_ckpt, tmp_path, monkeypatch):
         "experience_round1.manifest.json",
     ]:
         assert (ev_dir / f).exists()
+
+
+def test_registry_report_integrity_and_incumbent_binding(base_ckpt, tmp_path):
+    from rl_defense.checkpoint import sha256_file
+
+    reg = Registry(tmp_path / "registry.json")
+    baseline = reg.init(base_ckpt, "usr_test")
+    cand = tmp_path / "candidate.pt"
+    cand.write_bytes(base_ckpt.read_bytes() + b"candidate")
+    report = _report(
+        tmp_path / "report.json", sha256_file(cand), "recommend_promote", sha256_file(base_ckpt)
+    )
+    vid = reg.register(cand, report)
+    reg.save()
+    reg = Registry(reg.path)
+    before = json.loads(json.dumps(reg.data))
+    payload = json.loads(report.read_text())
+    payload["decision"] = "reject"
+    report.write_text(json.dumps(payload))
+    with pytest.raises(RegistryError, match="report changed"):
+        reg.promote(vid, "usr_test", "edited report")
+    assert reg.data == before
+    payload["decision"] = "recommend_promote"
+    payload["deployed"]["checkpoint_sha256"] = "0" * 64
+    report.write_text(json.dumps(payload))
+    reg.register(cand, report)
+    with pytest.raises(RegistryError, match="report baseline differs"):
+        reg.promote(vid, "usr_test", "stale report")
+    assert reg.data["deployed"] == baseline
+    assert reg.data["stack"] == [baseline]
+    payload["deployed"]["checkpoint_sha256"] = sha256_file(base_ckpt)
+    report.write_text(json.dumps(payload))
+    reg.register(cand, report)
+    reg.promote(vid, "usr_test", "matching baseline")
+    other = tmp_path / "other.pt"
+    other.write_bytes(base_ckpt.read_bytes() + b"other")
+    old_report = _report(
+        tmp_path / "old.json", sha256_file(other), "recommend_promote", sha256_file(base_ckpt)
+    )
+    other_id = reg.register(other, old_report)
+    with pytest.raises(RegistryError, match="report baseline differs"):
+        reg.promote(other_id, "usr_test", "previous incumbent")
+    assert reg.data["deployed"] == vid
+
+
+def test_registry_rejects_missing_or_failed_checks(base_ckpt, tmp_path):
+    from rl_defense.checkpoint import sha256_file
+
+    reg = Registry(tmp_path / "registry.json")
+    reg.init(base_ckpt, "usr_test")
+    cand = tmp_path / "candidate.pt"
+    cand.write_bytes(base_ckpt.read_bytes() + b"candidate")
+    report = _report(
+        tmp_path / "report.json", sha256_file(cand), "recommend_promote", sha256_file(base_ckpt)
+    )
+    payload = json.loads(report.read_text())
+    for checks in (None, [], [{"passed": False}], [{"passed": "true"}]):
+        payload["checks"] = checks
+        report.write_text(json.dumps(payload))
+        vid = reg.register(cand, report)
+        with pytest.raises(RegistryError, match="nonempty passing checks"):
+            reg.promote(vid, "usr_test", "inconsistent decision")

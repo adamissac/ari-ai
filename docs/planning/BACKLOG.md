@@ -71,3 +71,12 @@ Add staggered proof-card/footer entrances and subtle button, workflow-chip, proc
 Simplify project navigation to Code review and 7 agents. Move settings, scopes, approvals and other records into More; lead with run/replay and starting a check; disclose findings, repositories and progress on demand. Keep all routes and approval requirements. Branch `feat/adam/project-simplify`; validation in PR.
 
 Keep organization/repository/commit navigation scoped to the selected repository and SHA. Real commit runs stay inline in a two-tab reviewer/seven-agent workspace with demo-style agent rail and recorded replay; no redirect to shared project history. Resolve the repository’s actual project, search older run pages, reject mismatched results and retain scoped remediation approvals. Optional narrated quick reads are explicitly requested and separate from executed records. Branch `fix/adam/commit-workspace`; validation in PR.
+
+
+### RL-REGISTRY-001 — v8 promotion review follow-up (Alan, 2026-10-20)
+
+IN_PROGRESS on `feat/alan/rl-v8-continuation`. Bind reports to the current incumbent,
+pin report bytes, reject missing/failed checks, add registry-backed experiment baseline,
+and resolve reference-name ambiguity from PR #370. Historical v8 evidence is preserved.
+Authenticated approvals and signed/schema-complete reports remain open in issue #317;
+next training experiment needs preregistration and a fresh holdout.

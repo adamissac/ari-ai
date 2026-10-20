@@ -997,3 +997,22 @@ Simplify project navigation to Code review and 7 agents. Move settings, scopes, 
 Keep organization/repository/commit navigation scoped to the selected repository and SHA. Real commit runs stay inline in a two-tab reviewer/seven-agent workspace with demo-style agent rail and recorded replay; no redirect to shared project history. Resolve the repository’s actual project, search older run pages, reject mismatched results and retain scoped remediation approvals. Optional narrated quick reads are explicitly requested and separate from executed records. Branch `fix/adam/commit-workspace`; validation in PR.
 
 Review follow-up: retain accepted starts while history refreshes to prevent duplicate paid runs; lift newly connected repository IDs into the commit workspace; correct replay indexing; bound project lookup concurrency and tolerate unrelated project errors. Added regression coverage for these cases.
+
+
+### 2026-10-20 — Alan / Codex — continue Claude's RL v8 review
+
+Isolated `/private/tmp/rl-v8-continuation`, branch `feat/alan/rl-v8-continuation`,
+base `45f71eca`. Read Alan's v8 evidence and PR #370's unresolved reviews. V8's
+historical pass compares to a fresh simulator baseline, not incumbent v6; retained
+results show a tie versus v6 overall and a per-scenario regression. No holdout rerun,
+training or promotion. Original dirty checkout and Claude worktrees preserved.
+
+Implemented current-incumbent digest binding at promotion, report hash pinning,
+nonempty passing-check validation, `online --registry PATH`, and reference-name alias
+validation. Old unpinned registry entries require explicit re-registration. Historical
+packets are preserved. Authenticated approval, signed/schema-complete reports and
+concurrent registry updates remain outside this local hardening; issue #317 remains open.
+Next experiment: preregister validation coverage of quiet traffic with a fresh holdout,
+using the actual incumbent as comparator. Do not promote v8 from its historical packet.
+
+Validation results are recorded in the continuation PR and coordination message.

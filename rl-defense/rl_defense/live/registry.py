@@ -3,8 +3,10 @@
 Deterministic gates, not prompts (docs/15):
 - a version is the SHA-256 of a checkpoint plus the evaluation report produced for it;
 - ``promote`` refuses unless the report's decision is ``recommend_promote``, the report
-  was produced for exactly these checkpoint bytes, and the approver is a human user id
-  (``usr_*``), never an agent;
+  was produced for exactly these checkpoint bytes and the current incumbent, and the
+  operator supplies a user-shaped id (``usr_*``); this local CLI does not authenticate it;
+- registered report bytes are hash-pinned; changed or legacy unpinned reports require
+  explicit re-registration; this is integrity checking, not a report signature;
 - ``rollback`` restores the previously deployed version; every change is appended to an
   audit history. Nothing here retrains or swaps a policy on its own.
 
@@ -18,6 +20,7 @@ Deterministic gates, not prompts (docs/15):
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 from datetime import UTC, datetime
@@ -86,6 +89,7 @@ class Registry:
             "checkpoint": str(checkpoint),
             "sha256": sha,
             "report": str(Path(report).resolve()) if report else None,
+            "report_sha256": sha256_file(Path(report)) if report else None,
             "registered_at": _now(),
             "note": note,
         }
@@ -96,6 +100,7 @@ class Registry:
         elif report:
             # same bytes re-evaluated: the newest report is the one promotion checks
             existing["report"] = entry["report"]
+            existing["report_sha256"] = entry["report_sha256"]
             self.data["history"].append(
                 {"action": "attach_report", "version": vid, "report": entry["report"], "at": _now()}
             )
@@ -121,7 +126,10 @@ class Registry:
             raise RegistryError(f"unknown version {version}")
         if not v["report"]:
             raise RegistryError(f"{version} has no evaluation report; cannot promote")
-        report = json.loads(Path(v["report"]).read_text())
+        report_bytes = Path(v["report"]).read_bytes()
+        if hashlib.sha256(report_bytes).hexdigest() != v.get("report_sha256"):
+            raise RegistryError(f"{version}: report changed or is unpinned; register it again")
+        report = json.loads(report_bytes)
         if report.get("decision") != "recommend_promote":
             raise RegistryError(
                 f"{version}: report decision is {report.get('decision')!r}; failed checks: "
@@ -153,6 +161,20 @@ class Registry:
                     raise RegistryError(f"{version}: missing durable {name} evidence")
                 if sha256_file(path) != expected:
                     raise RegistryError(f"{version}: {name} evidence hash mismatch")
+        # A historical pass against a weaker baseline cannot replace the incumbent.
+        incumbent = self.deployed
+        if incumbent is None:
+            raise RegistryError("no policy is deployed; use init for the baseline")
+        self.deployed_checkpoint()  # refuse changed incumbent bytes, too
+        if report.get("deployed", {}).get("checkpoint_sha256") != incumbent["sha256"]:
+            raise RegistryError(f"{version}: report baseline differs from the deployed checkpoint")
+        checks = report.get("checks")
+        if (
+            not isinstance(checks, list)
+            or not checks
+            or any(not isinstance(c, dict) or c.get("passed") is not True for c in checks)
+        ):
+            raise RegistryError(f"{version}: promotion requires nonempty passing checks")
         prev = self.data["deployed"]
         if version == prev:
             raise RegistryError(f"{version} is already deployed")

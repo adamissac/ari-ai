@@ -317,6 +317,14 @@ def test_registry_refuses_unservable_checkpoint_and_missing_dqfd_evidence(tmp_pa
             }
         )
     )
+    baseline = tmp_path / "baseline.pt"
+    baseline.write_bytes(path.read_bytes() + b"baseline")
+    reg.init(baseline, "usr_test")
+    payload = json.loads(report.read_text())
+    payload["deployed"] = {"checkpoint_sha256": hashlib.sha256(baseline.read_bytes()).hexdigest()}
+    payload["checks"] = [{"name": "test_gate", "passed": True}]
+    report.write_text(json.dumps(payload))
+    reg.register(path, report)  # explicitly attach and pin the new evaluation
     reg.promote(vid, "usr_test", "retained evidence")
     assert reg.deployed["sha256"] == m["checkpoint_sha256"]
     experience.write_bytes(b"changed")
