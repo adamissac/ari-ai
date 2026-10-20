@@ -7,8 +7,8 @@ import { useEffect, useState } from 'react';
 import { ErrorState } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useActionKeys } from '@/lib/action-key';
-import { connectRepo, projectFor } from '@/lib/github-connect';
-import { assessmentsForCommit, isSandboxOnlyScope, scopeBody, scopeStateFor } from '@/lib/real-assessment';
+import { connectRepo, projectForRepository } from '@/lib/github-connect';
+import { assessmentsForCommit, loadCommitAssessments, isSandboxOnlyScope, scopeBody, scopeStateFor } from '@/lib/real-assessment';
 import { ASSESSMENT_STATE } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
 
@@ -27,11 +27,13 @@ export function RealAssessmentPanel({
   repo,
   sha,
   onConnected,
+  onRunSelected,
 }: {
   org: string;
   repo: AccessibleRepository;
   sha: string;
   onConnected: () => void;
+  onRunSelected?: (assessmentId: string) => void;
 }) {
   const router = useRouter();
   const [connectedRepoId, setConnectedRepoId] = useState(repo.connected_repo_id);
@@ -39,13 +41,13 @@ export function RealAssessmentPanel({
   const [actionError, setActionError] = useState<unknown>(null);
   const scopeKeys = useActionKeys('request-scope');
   const assessmentKeys = useActionKeys('start-assessment');
-  const resource = useResource(connectedRepoId ? `real-run:${org}:${connectedRepoId}` : null, async signal => {
-    const projectId = await projectFor(org);
+  const resource = useResource(connectedRepoId ? `real-run:${org}:${connectedRepoId}:${sha}` : null, async signal => {
+    const projectId = await projectForRepository(connectedRepoId!, signal);
     const [scopes, assessments] = await Promise.all([
       api().scopes(projectId, { signal }),
-      api().assessments(projectId, { signal }),
+      loadCommitAssessments(cursor => api().assessments(projectId, { signal, ...(cursor ? { cursor } : {}) }), connectedRepoId!, sha),
     ]);
-    return { projectId, scopes: scopes.items, assessments: assessments.items };
+    return { projectId, scopes: scopes.items, assessments };
   }, 10000);
   const data: DataState = resource.status === 'ready'
     ? { status: 'ready', ...resource.data }
@@ -111,7 +113,8 @@ export function RealAssessmentPanel({
       const body = { scope_id: scopeId, repo_id: repoId, commit_sha: sha, snapshot_id: null, budget: null };
       const assessment = await api().startAssessment(projectId, body, assessmentKeys.keyFor(signature));
       assessmentKeys.done();
-      router.push(`/projects/${projectId}/assessments/${assessment.id}`);
+      if (onRunSelected) { onRunSelected(assessment.id); reload(); }
+      else router.push(`/projects/${projectId}/assessments/${assessment.id}`);
     } catch (error) {
       setActionError(error);
     } finally {
@@ -126,6 +129,9 @@ export function RealAssessmentPanel({
     ? assessmentsForCommit(data.assessments, connectedRepoId, sha)[0]
     : undefined;
 
+  const latestId = latest?.id;
+  useEffect(() => { if (latestId && onRunSelected) onRunSelected(latestId); }, [latestId, onRunSelected]);
+
   return (
     <div data-testid="real-assessment-panel" className="space-y-3">
       <div className="glass flex flex-wrap items-center justify-between gap-3 px-5 py-4">
@@ -139,7 +145,7 @@ export function RealAssessmentPanel({
           {!connectedRepoId && <button type="button" className="rounded-full bg-white px-4 py-2 text-sm font-medium text-ink disabled:opacity-50" disabled={busy} onClick={() => void connect()}>Connect</button>}
           {data.status === 'ready' && latest && (
             <>
-              <Link className="text-sm text-white/80 underline-offset-2 hover:underline" href={`/projects/${data.projectId}/assessments/${latest.id}`}>Open run →</Link>
+              {onRunSelected ? <button type="button" className="text-sm text-white/80 underline-offset-2 hover:underline" onClick={() => onRunSelected(latest.id)}>Open recorded run</button> : <Link className="text-sm text-white/80 underline-offset-2 hover:underline" href={`/projects/${data.projectId}/assessments/${latest.id}`}>Open run →</Link>}
               {scopeState?.kind === 'active' && <button type="button" className="rounded-full bg-white px-4 py-2 text-sm font-medium text-ink disabled:opacity-50" disabled={busy} onClick={() => void startAssessment(data.projectId, scopeState.scope.id)}>Run again</button>}
             </>
           )}

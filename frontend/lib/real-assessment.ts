@@ -36,3 +36,23 @@ export function assessmentsForCommit(items: Assessment[], repoId: string, sha: s
 export function isSandboxOnlyScope(scope: AuthorizedScope): boolean {
   return scope.targets.length > 0 && scope.targets.every(target => target.kind === 'sandbox_build');
 }
+
+/** Project history may contain other repositories. Search past those pages for this exact change. */
+export async function loadCommitAssessments(
+  load: (cursor?: string) => Promise<{ items: Assessment[]; next_cursor: string | null }>,
+  repoId: string,
+  sha: string,
+): Promise<Assessment[]> {
+  let cursor: string | undefined;
+  const seen = new Set<string>();
+  do {
+    const page = await load(cursor);
+    const matching = assessmentsForCommit(page.items, repoId, sha);
+    if (matching.length) return matching;
+    if (!page.next_cursor) return [];
+    if (seen.has(page.next_cursor)) throw new Error('Run history returned a repeated page.');
+    seen.add(page.next_cursor);
+    cursor = page.next_cursor;
+  } while (cursor);
+  return [];
+}

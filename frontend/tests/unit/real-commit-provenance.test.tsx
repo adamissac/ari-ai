@@ -1,9 +1,10 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import RealCommitPage from '@/app/(console)/connect/[org]/[repo]/commit/[sha]/page';
 
 vi.mock('next/navigation', () => ({ useParams: () => ({ org: 'test-team', repo: 'test-app', sha: 'c'.repeat(40) }) }));
 vi.mock('@/lib/real-repo', () => ({ useAccessibleRepo: () => ({ status: 'ready', data: { connected_repo_id: 'repo_test', full_name: 'test-team/test-app', default_branch: 'main', private: false } }) }));
+vi.mock('@/lib/api', () => ({ api: () => ({ repositoryCommits: async () => ({ items: [], next_cursor: null, available: false, reason: 'test' }) }) }));
 vi.mock('@/components/demo/commit-analysis', () => ({ CommitAnalysis: () => null }));
 vi.mock('@/components/real-assessment-panel', () => ({ RealAssessmentPanel: () => null }));
 
@@ -13,6 +14,9 @@ it('labels the Claude call as a narrated preview, and asks the analyze route for
   const fetchMock = vi.fn(async () => new Response(JSON.stringify({ error: { message: 'not configured' } }), { status: 503 }));
   vi.stubGlobal('fetch', fetchMock);
   render(<RealCommitPage />);
+  expect(fetchMock).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByText('Optional quick read'));
+  fireEvent.click(screen.getByRole('button', { name: 'Read this diff' }));
   const badge = screen.getByTestId('real-commit-provenance');
   expect(badge.textContent).toBe('Quick read · nothing executed');
   expect(badge.title).toContain('The diff comes from GitHub');
