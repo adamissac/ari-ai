@@ -26,15 +26,18 @@ export function ApprovalGate({ projectId, events, onDecided }: { projectId: stri
   };
   return (
     <Panel title="Human approval required" className="mt-4 border-warn/50">
-      <p className="text-sm text-muted">The orchestrator paused before remediation. Approving lets Patch build a candidate fix in an isolated worktree and Verify re-test it in a fresh sandbox. Nothing is merged or deployed.</p>
+      <p className="text-sm text-muted">Approve a candidate fix in an isolated copy. Verify will retest it; nothing is merged or deployed.</p>
       {approvals === null && !error && <Loading label="Loading approval" />}
       {approvals?.length === 0 && <Empty>No pending approval found for this run.</Empty>}
-      {approvals?.map(ap => (
-        <div key={ap.id} className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-          <Badge view={APPROVAL_STATUS[ap.status]} /> <Mono>{ap.subject_type}:{ap.subject_id}</Mono>
-          <span className="text-xs text-muted">requested by {ap.requested_by ?? 'system'} <Time iso={ap.requested_at} /></span>
+      {approvals?.map((ap, index) => (
+        <div key={ap.id} className="mt-3 rounded-lg border border-line p-3 text-sm">
+          <p className="mb-3 font-medium">Fix request {index + 1}</p>
+          <div className="flex flex-wrap items-center gap-2">
+          <Badge view={APPROVAL_STATUS[ap.status]} />
           <Button variant="primary" disabled={busy || ap.requested_by === me.user.id} onClick={() => void decide(ap, 'approved')}>Approve remediation</Button>
           <Button variant="danger" disabled={busy} onClick={() => void decide(ap, 'declined')}>Decline</Button>
+          </div>
+          <details className="mt-3 text-xs text-muted"><summary>Request details</summary><p className="mt-2 break-all"><Mono>{ap.subject_type}:{ap.subject_id}</Mono></p><p>Requested by {ap.requested_by ?? 'system'} <Time iso={ap.requested_at} /></p></details>
         </div>
       ))}
       {error !== null && <div className="mt-2"><ErrorState error={error} context="Approval" /></div>}
