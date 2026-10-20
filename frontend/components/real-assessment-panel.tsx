@@ -3,7 +3,7 @@
 import type { Assessment, AuthorizedScope, AccessibleRepository } from '@hackatl/frontend-transport';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ErrorState } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useActionKeys } from '@/lib/action-key';
@@ -41,11 +41,30 @@ export function RealAssessmentPanel({
   const [actionError, setActionError] = useState<unknown>(null);
   const scopeKeys = useActionKeys('request-scope');
   const assessmentKeys = useActionKeys('start-assessment');
+  const history = useRef<{ key: string; items: Assessment[] } | null>(null);
+  const owner = useRef<{ repoId: string; projectId: string } | null>(null);
   const resource = useResource(connectedRepoId ? `real-run:${org}:${connectedRepoId}:${sha}` : null, async signal => {
-    const projectId = await projectForRepository(connectedRepoId!, signal);
+    const repoId = connectedRepoId!;
+    const projectId = owner.current?.repoId === repoId ? owner.current.projectId : await projectForRepository(repoId, signal);
+    owner.current = { repoId, projectId };
+    const historyKey = `${repoId}:${sha}`;
+    const readHistory = async () => {
+      if (history.current?.key !== historyKey) {
+        const items = await loadCommitAssessments(cursor => api().assessments(projectId, { signal, ...(cursor ? { cursor } : {}) }), repoId, sha);
+        history.current = { key: historyKey, items };
+        return items;
+      }
+      const newest = await api().assessments(projectId, { signal });
+      const matches = assessmentsForCommit(newest.items, repoId, sha);
+      if (matches.length) { history.current = { key: historyKey, items: matches }; return matches; }
+      const previous = history.current.items[0];
+      if (!previous) return [];
+      const detail = await api().assessment(previous.id, { signal });
+      return assessmentsForCommit([detail.assessment], repoId, sha);
+    };
     const [scopes, assessments] = await Promise.all([
       api().scopes(projectId, { signal }),
-      loadCommitAssessments(cursor => api().assessments(projectId, { signal, ...(cursor ? { cursor } : {}) }), connectedRepoId!, sha),
+      readHistory(),
     ]);
     return { projectId, scopes: scopes.items, assessments };
   }, 10000);

@@ -2,13 +2,14 @@
 
 import type { AgentName, AgentRun, AssessmentDetail } from '@hackatl/frontend-transport';
 import { useMemo, useState, type ReactNode } from 'react';
+import { CancelButton } from '@/components/assessment-cancel';
 import { ApprovalGate } from '@/components/assessment-approval-gate';
 import { fullEventLog } from '@/lib/journey';
 import { ErrorState, Loading } from '@/components/ui';
 import { api } from '@/lib/api';
 import { AGENT_ORDER } from '@/lib/demo/scenarios';
 import { SPEEDS, useReplay } from '@/lib/demo/replay';
-import { agentRunSummary, AGENT_RUN_STATUS, providerLabel, ASSESSMENT_STATE } from '@/lib/status';
+import { agentRunSummary, AGENT_RUN_STATUS, providerLabel, ASSESSMENT_STATE, TERMINAL_STATES } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
 
 /** A run may only be rendered inside the repository and exact commit that created it. */
@@ -26,6 +27,7 @@ export function CommitRunWorkspace({ assessmentId, repoId, sha, fullName, quickR
   const detail = matching ? { ...matching, agent_runs: matching.agent_runs.filter(r => r.assessment_id === matching.assessment.id), findings: matching.findings.filter(f => f.assessment_id === matching.assessment.id && f.commit_sha === sha) } : null;
   const mismatch = run.status === 'ready' && !detail;
   return <>
+    {detail && !TERMINAL_STATES.has(detail.assessment.state) && <div className="mt-4 flex justify-end"><CancelButton compact id={detail.assessment.id} onDone={run.reload} /></div>}
     {detail?.assessment.state === 'AWAITING_APPROVAL' && <CommitApproval assessmentId={detail.assessment.id} projectId={detail.assessment.project_id} onDecided={run.reload} />}
     <div role="tablist" aria-label="Commit analysis" className="demo-tabs mt-6">
       {(['review', 'agents'] as const).map(key => <button type="button" role="tab" key={key} id={`commit-tab-${key}`} aria-controls="commit-work-panel" aria-selected={tab === key} className="demo-tab" onClick={() => setTab(key)}>{key === 'review' ? 'Code review' : '7 agents'}</button>)}

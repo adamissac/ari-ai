@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { AccessibleRepository, AuthorizedScope } from '@hackatl/frontend-transport';
 
-const mocks = vi.hoisted(() => ({ scopes: vi.fn(), assessments: vi.fn(), approveScope: vi.fn(), startAssessment: vi.fn(), push: vi.fn() }));
+const mocks = vi.hoisted(() => ({ scopes: vi.fn(), assessments: vi.fn(), approveScope: vi.fn(), startAssessment: vi.fn(), assessment: vi.fn(), push: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mocks.push }) }));
 vi.mock('@/lib/api', () => ({ api: () => mocks, idempotencyKey: () => 'key-test' }));
 vi.mock('@/lib/github-connect', () => ({ projectForRepository: async () => 'prj_test', connectRepo: vi.fn() }));
@@ -63,4 +63,16 @@ it('starts only this commit and stays in its workspace', async () => {
   expect(mocks.startAssessment).toHaveBeenCalledWith('prj_test', expect.objectContaining({ repo_id: 'repo_test', commit_sha: 'a'.repeat(40) }), expect.any(String));
   expect(selected).toHaveBeenCalledWith('asm_selected');
   expect(mocks.push).not.toHaveBeenCalled();
+});
+
+it('scans older history once and refreshes the resolved assessment directly', async () => {
+  vi.useFakeTimers();
+  const matching = { id: 'asm_old', repo_id: 'repo_test', commit_sha: 'a'.repeat(40), created_at: '2026-01-01', state: 'COMPLETED' };
+  mocks.assessments.mockImplementation(async (_id: string, options: { cursor?: string }) => options.cursor ? { items: [matching], next_cursor: null } : { items: [], next_cursor: 'old-page' });
+  mocks.assessment.mockResolvedValue({ assessment: matching });
+  await act(async () => { render(view()); });
+  expect(mocks.assessments.mock.calls.filter(call => call[1]?.cursor === 'old-page')).toHaveLength(1);
+  await act(async () => { await vi.advanceTimersByTimeAsync(10000); });
+  expect(mocks.assessments.mock.calls.filter(call => call[1]?.cursor === 'old-page')).toHaveLength(1);
+  expect(mocks.assessment).toHaveBeenCalledWith('asm_old', expect.any(Object));
 });
