@@ -2,10 +2,10 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { AccessibleRepository, AuthorizedScope } from '@hackatl/frontend-transport';
 
-const mocks = vi.hoisted(() => ({ scopes: vi.fn(), assessments: vi.fn(), approveScope: vi.fn(), push: vi.fn() }));
+const mocks = vi.hoisted(() => ({ scopes: vi.fn(), assessments: vi.fn(), approveScope: vi.fn(), startAssessment: vi.fn(), push: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mocks.push }) }));
 vi.mock('@/lib/api', () => ({ api: () => mocks, idempotencyKey: () => 'key-test' }));
-vi.mock('@/lib/github-connect', () => ({ projectFor: async () => 'prj_test', connectRepo: vi.fn() }));
+vi.mock('@/lib/github-connect', () => ({ projectForRepository: async () => 'prj_test', connectRepo: vi.fn() }));
 vi.mock('@/components/ui', () => ({ ErrorState: ({ context }: { context?: string }) => <div role="alert">{context}</div> }));
 import { RealAssessmentPanel } from '@/components/real-assessment-panel';
 
@@ -51,4 +51,16 @@ it('rechecks approval when returning from another tab', async () => {
   mocks.scopes.mockResolvedValue({ items: [{ ...scope, status: 'active' }], next_cursor: null });
   fireEvent.focus(window);
   expect(await screen.findByRole('button', { name: 'Run the 7 agents' })).toBeTruthy();
+});
+
+it('starts only this commit and stays in its workspace', async () => {
+  const selected = vi.fn();
+  mocks.scopes.mockResolvedValue({ items: [{ ...scope, status: 'active' }], next_cursor: null });
+  mocks.startAssessment.mockResolvedValue({ id: 'asm_selected' });
+  render(<RealAssessmentPanel org="alice" repo={repo} sha={'a'.repeat(40)} onConnected={vi.fn()} onRunSelected={selected} />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Run the 7 agents' }));
+  await screen.findByRole('button', { name: 'Run the 7 agents' });
+  expect(mocks.startAssessment).toHaveBeenCalledWith('prj_test', expect.objectContaining({ repo_id: 'repo_test', commit_sha: 'a'.repeat(40) }), expect.any(String));
+  expect(selected).toHaveBeenCalledWith('asm_selected');
+  expect(mocks.push).not.toHaveBeenCalled();
 });

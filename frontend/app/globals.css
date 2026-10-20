@@ -1645,3 +1645,11 @@ body:has(.commit-stage) main { color: #fff; }
 }
 
 .project-tools > summary[data-active] { color: var(--color-ink); }
+
+.commit-recording-map { display: flex; flex: 1; min-height: 340px; flex-direction: column; align-items: center; justify-content: center; padding: 32px 20px; text-align: center; background: radial-gradient(ellipse at center, #c2452d17, transparent 70%); }
+.commit-recording-map > p { max-width: 100%; overflow-wrap: anywhere; }
+.commit-recording-node { display: flex; flex-direction: column; gap: 8px; margin-top: 24px; border: 1px solid #ffffff26; border-radius: 12px; background: #ffffff08; padding: 18px 36px; }
+.commit-recording-node strong { font: 26px var(--font-mono); }
+.commit-recording-connector { height: 44px; width: 1px; background: linear-gradient(#ff997c80, #ff997c22); }
+.commit-recording-worker h3 { margin-top: 8px; font-size: 24px; }
+.commit-recording-worker > p { margin-top: 8px; color: #cdbab3; font-size: 12px; overflow-wrap: anywhere; }
