@@ -27,6 +27,7 @@ import time
 import uuid
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 
 import sqlalchemy as sa
 
@@ -139,6 +140,24 @@ def main(argv: list[str]) -> int:
         ]
         bridge = AlanScriptTransport(repo / "target", fallback=fake(reviewer))
         llm.TRANSPORT_OVERRIDE = lambda: bridge
+        # Several UI journeys execute independent assessments in this stack. Give
+        # each one a fresh scripted conversation, retaining its real gateway hooks.
+        # A single shared FakeTransport would exhaust the reviewer after run one.
+        original_build_gateway = llm.build_gateway
+        assessment_transports: dict[str, AlanScriptTransport] = {}
+
+        def isolated_gateway(**kwargs: Any) -> llm.LLMGateway:
+            owner = getattr(kwargs.get("charge"), "__self__", None)
+            assessment_id = getattr(owner, "assessment_id", None)
+            if assessment_id and kwargs.get("transport") is None:
+                if assessment_id not in assessment_transports:
+                    assessment_transports[assessment_id] = AlanScriptTransport(
+                        repo / "target", fallback=fake(reviewer)
+                    )
+                kwargs["transport"] = assessment_transports[assessment_id]
+            return original_build_gateway(**kwargs)
+
+        llm.build_gateway = isolated_gateway
 
         import uvicorn
 
@@ -179,7 +198,15 @@ def main(argv: list[str]) -> int:
         alice.headers["X-CSRF-Token"] = me["csrf_token"]
         pid = alice.post("/projects", json={"name": "payments-lite (e2e)"}).raise_for_status().json()["id"]
         rid = alice.post(f"/projects/{pid}/repositories", json={"full_name": REPO_NAME}).raise_for_status().json()["id"]
-        bindings.write_text(json.dumps([{"repo_id": rid, "local_path": str(repo), "subdir": "."}]))
+        # The commit-workspace journey completes its own runs. Keep its findings/approvals
+        # separate from the original journey's exact-count assertions.
+        workspace_pid = alice.post("/projects", json={"name": "commit-workspace (e2e)"}).raise_for_status().json()["id"]
+        workspace_name = "acme/commit-workspace"
+        workspace_rid = alice.post(f"/projects/{workspace_pid}/repositories", json={"full_name": workspace_name}).raise_for_status().json()["id"]
+        bindings.write_text(json.dumps([
+            {"repo_id": rid, "local_path": str(repo), "subdir": "."},
+            {"repo_id": workspace_rid, "local_path": str(repo), "subdir": "."},
+        ]))
         alice.close()
 
         web_port = _port()
@@ -195,7 +222,8 @@ def main(argv: list[str]) -> int:
             ["npx", "playwright", "test", *argv],
             cwd=FRONTEND,
             env={**env, "E2E_BASE_URL": f"http://127.0.0.1:{web_port}", "E2E_API": base, "E2E_PROJECT_ID": pid,
-                 "E2E_REPO_ID": rid, "E2E_REPO": REPO_NAME, "E2E_COMMIT": sha, "E2E_WEBHOOK_SECRET": WEBHOOK_SECRET},
+                 "E2E_REPO_ID": rid, "E2E_REPO": REPO_NAME, "E2E_WORKSPACE_PROJECT_ID": workspace_pid,
+                 "E2E_WORKSPACE_REPO_ID": workspace_rid, "E2E_WORKSPACE_REPO": workspace_name, "E2E_COMMIT": sha, "E2E_WEBHOOK_SECRET": WEBHOOK_SECRET},
             check=False,
         )
         return result.returncode

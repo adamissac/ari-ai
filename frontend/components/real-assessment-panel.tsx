@@ -3,13 +3,13 @@
 import type { Assessment, AuthorizedScope, AccessibleRepository } from '@hackatl/frontend-transport';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ErrorState } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useActionKeys } from '@/lib/action-key';
-import { connectRepo, projectFor } from '@/lib/github-connect';
-import { assessmentsForCommit, isSandboxOnlyScope, scopeBody, scopeStateFor } from '@/lib/real-assessment';
-import { ASSESSMENT_STATE } from '@/lib/status';
+import { connectRepo, projectForRepository } from '@/lib/github-connect';
+import { assessmentsForCommit, loadCommitAssessments, isSandboxOnlyScope, scopeBody, scopeStateFor } from '@/lib/real-assessment';
+import { ASSESSMENT_STATE, TERMINAL_STATES } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
 
 type LoadedData =
@@ -27,25 +27,47 @@ export function RealAssessmentPanel({
   repo,
   sha,
   onConnected,
+  onRunSelected,
 }: {
   org: string;
   repo: AccessibleRepository;
   sha: string;
-  onConnected: () => void;
+  onConnected: (repoId: string) => void;
+  onRunSelected?: (assessmentId: string) => void;
 }) {
   const router = useRouter();
   const [connectedRepoId, setConnectedRepoId] = useState(repo.connected_repo_id);
+  const [acceptedRun, setAcceptedRun] = useState<Assessment | null>(null);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<unknown>(null);
   const scopeKeys = useActionKeys('request-scope');
   const assessmentKeys = useActionKeys('start-assessment');
-  const resource = useResource(connectedRepoId ? `real-run:${org}:${connectedRepoId}` : null, async signal => {
-    const projectId = await projectFor(org);
+  const history = useRef<{ key: string; items: Assessment[] } | null>(null);
+  const owner = useRef<{ repoId: string; projectId: string } | null>(null);
+  const resource = useResource(connectedRepoId ? `real-run:${org}:${connectedRepoId}:${sha}` : null, async signal => {
+    const repoId = connectedRepoId!;
+    const projectId = owner.current?.repoId === repoId ? owner.current.projectId : await projectForRepository(repoId, signal);
+    owner.current = { repoId, projectId };
+    const historyKey = `${repoId}:${sha}`;
+    const readHistory = async () => {
+      if (history.current?.key !== historyKey) {
+        const items = await loadCommitAssessments(cursor => api().assessments(projectId, { signal, ...(cursor ? { cursor } : {}) }), repoId, sha);
+        history.current = { key: historyKey, items };
+        return items;
+      }
+      const newest = await api().assessments(projectId, { signal });
+      const matches = assessmentsForCommit(newest.items, repoId, sha);
+      if (matches.length) { history.current = { key: historyKey, items: matches }; return matches; }
+      const previous = history.current.items[0];
+      if (!previous) return [];
+      const detail = await api().assessment(previous.id, { signal });
+      return assessmentsForCommit([detail.assessment], repoId, sha);
+    };
     const [scopes, assessments] = await Promise.all([
       api().scopes(projectId, { signal }),
-      api().assessments(projectId, { signal }),
+      readHistory(),
     ]);
-    return { projectId, scopes: scopes.items, assessments: assessments.items };
+    return { projectId, scopes: scopes.items, assessments };
   }, 10000);
   const data: DataState = resource.status === 'ready'
     ? { status: 'ready', ...resource.data }
@@ -62,7 +84,7 @@ export function RealAssessmentPanel({
     try {
       const repoId = await connectRepo(org, repo);
       setConnectedRepoId(repoId);
-      onConnected();
+      onConnected(repoId);
     } catch (error) {
       setActionError(error);
     } finally {
@@ -110,8 +132,11 @@ export function RealAssessmentPanel({
     try {
       const body = { scope_id: scopeId, repo_id: repoId, commit_sha: sha, snapshot_id: null, budget: null };
       const assessment = await api().startAssessment(projectId, body, assessmentKeys.keyFor(signature));
+      setAcceptedRun(assessment);
+      history.current = { key: `${repoId}:${sha}`, items: [assessment] };
       assessmentKeys.done();
-      router.push(`/projects/${projectId}/assessments/${assessment.id}`);
+      if (onRunSelected) { onRunSelected(assessment.id); reload(); }
+      else router.push(`/projects/${projectId}/assessments/${assessment.id}`);
     } catch (error) {
       setActionError(error);
     } finally {
@@ -122,9 +147,14 @@ export function RealAssessmentPanel({
   const scopeState = data.status === 'ready' && connectedRepoId
     ? scopeStateFor(data.scopes, connectedRepoId, new Date())
     : null;
-  const latest = data.status === 'ready' && connectedRepoId
+  const persistedLatest = data.status === 'ready' && connectedRepoId
     ? assessmentsForCommit(data.assessments, connectedRepoId, sha)[0]
     : undefined;
+
+  // Keep an accepted run authoritative until polling observes it, even if refresh fails.
+  const latest = acceptedRun && persistedLatest?.id !== acceptedRun.id ? acceptedRun : persistedLatest;
+  const latestId = latest?.id;
+  useEffect(() => { if (latestId && onRunSelected) onRunSelected(latestId); }, [latestId, onRunSelected]);
 
   return (
     <div data-testid="real-assessment-panel" className="space-y-3">
@@ -139,8 +169,8 @@ export function RealAssessmentPanel({
           {!connectedRepoId && <button type="button" className="rounded-full bg-white px-4 py-2 text-sm font-medium text-ink disabled:opacity-50" disabled={busy} onClick={() => void connect()}>Connect</button>}
           {data.status === 'ready' && latest && (
             <>
-              <Link className="text-sm text-white/80 underline-offset-2 hover:underline" href={`/projects/${data.projectId}/assessments/${latest.id}`}>Open run →</Link>
-              {scopeState?.kind === 'active' && <button type="button" className="rounded-full bg-white px-4 py-2 text-sm font-medium text-ink disabled:opacity-50" disabled={busy} onClick={() => void startAssessment(data.projectId, scopeState.scope.id)}>Run again</button>}
+              {!onRunSelected && <Link className="text-sm text-white/80 underline-offset-2 hover:underline" href={`/projects/${data.projectId}/assessments/${latest.id}`}>Open run →</Link>}
+              {scopeState?.kind === 'active' && TERMINAL_STATES.has(latest.state) && <button type="button" className="rounded-full bg-white px-4 py-2 text-sm font-medium text-ink disabled:opacity-50" disabled={busy} onClick={() => void startAssessment(data.projectId, scopeState.scope.id)}>Run again</button>}
             </>
           )}
           {data.status === 'ready' && !latest && scopeState?.kind === 'none' && <button type="button" className="rounded-full bg-white px-4 py-2 text-sm font-medium text-ink disabled:opacity-50" disabled={busy} onClick={() => void requestAuthorization(data.projectId)}>Request authorization</button>}

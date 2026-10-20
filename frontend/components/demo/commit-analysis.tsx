@@ -50,7 +50,7 @@ function agentStatus(agent: AgentRunView, t: Timeline, position: number): Status
 /** A live run on a real commit (see lib/live-analysis.ts): static reasoning, nothing executed. */
 export interface LiveRun { model: string; truncated: boolean; htmlUrl: string }
 
-export function CommitAnalysis({ repo, commit, analysis: given, live, realRun }: { repo: DemoRepo; commit: DemoCommit; analysis?: Analysis; live?: LiveRun; realRun?: ReactNode }) {
+export function CommitAnalysis({ repo, commit, analysis: given, live, realRun, reviewOnly = false }: { repo: DemoRepo; commit: DemoCommit; analysis?: Analysis; live?: LiveRun; realRun?: ReactNode; reviewOnly?: boolean }) {
   const analysis = useMemo(() => given ?? analyze(repo, commit), [given, repo, commit]);
   const t = useMemo(() => timeline(analysis), [analysis]);
   const replay = useReplay(t.total);
@@ -59,6 +59,8 @@ export function CommitAnalysis({ repo, commit, analysis: given, live, realRun }:
   const pct = Math.round((Math.min(replay.position, t.total) / t.total) * 100);
   const played = Math.max(0, replay.position - t.agentsStart);
   const accepted = commit.verdict === 'fixed';
+
+  if (reviewOnly) return <Review analysis={analysis} accepted={accepted} live={live} />;
 
   return (
     <>
