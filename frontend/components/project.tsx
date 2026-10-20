@@ -52,7 +52,7 @@ export function ProjectNavigation({ base }: { base: string }) {
     <details key={pathname} className="project-tools" onKeyDown={event => {
       if (event.key === 'Escape') { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); }
     }}>
-      <summary className="project-tab label-mono" data-active={currentTool ? true : undefined}>More <span aria-hidden="true">⌄</span></summary>
+      <summary className="project-tab label-mono" aria-label={currentTool ? `More: ${currentTool.label}` : undefined} aria-current={currentTool ? 'page' : undefined} data-active={currentTool ? true : undefined}>More <span aria-hidden="true">⌄</span></summary>
       <div className="project-tools-links">
         {TOOLS.map(t => <Link key={t.href} href={base + t.href} aria-current={currentTool === t ? 'page' : undefined}>{t.label}</Link>)}
       </div>

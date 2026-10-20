@@ -20,3 +20,10 @@ it('keeps the seven-agent workflow selected on replay pages', () => {
   render(<ProjectNavigation base="/projects/p1" />);
   expect(screen.getByRole('link', { name: '7 agents' }).getAttribute('aria-current')).toBe('page');
 });
+
+it('announces the current secondary page while More is collapsed', () => {
+  route.path = '/projects/p1/scopes';
+  render(<ProjectNavigation base="/projects/p1" />);
+  expect(screen.getByText('More').getAttribute('aria-label')).toBe('More: Authorized scopes');
+  expect(screen.getByText('More').getAttribute('aria-current')).toBe('page');
+});
