@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Footer correction: use a conventional aligned footer with Ari branding/tagline on the left, two navigation columns on the right, and a separated copyright/back-to-top row. Stack branding above the link columns on mobile. Preserve Ari colors and restored hero/scroll animations. Validation recorded in PR.
+
 - Add an oversized Ari footer with a grainy terracotta/cream horizon. Restore the original centered hero, scroll-driven chapter animations and wheel scrolling after owner feedback; remove the redesign's reading-distance cap and manual chapter controls.
 
 - Contracts 0.14 (additive, ADR-0017): runtime route windows can carry pseudonymous per-principal counters (cross-tenant, delegated, own) from an operator's own gateway, and RL recommendations name the principals a block would cover. The backend's RL facts now include the lab's principal detection, so the promoted live policy can recommend a targeted block in the product. It remains a recommendation, never executed.
