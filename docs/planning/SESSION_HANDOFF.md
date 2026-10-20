@@ -1026,3 +1026,12 @@ Focused runs: 35 passed; final retained-evidence/pipeline checks 15 passed.
 The first broad run collected an obsolete pre-edit test (226 pass/1 fail); the
 clean committed-tree rerun above supersedes it. Ruff check and Python format
 checks pass. PR: https://github.com/adamissac/ari-ai/pull/375 (review, no merge).
+
+### 2026-10-20 — V9 preregistration and execution
+
+Owner said "Do it" after the proposed next experiment. Defined quiet-validation extension,
+fresh disjoint holdout, five seeds0–4×100 evaluation episodes, actual registered v6 as
+baseline. Pipeline adds opt-in random-valid baseline/raw trajectory retention; aggregation
+uses five seed means and refuses incomplete/mismatched cohorts. ADR-0018 proposes lab
+protocol extension; no simulator TTC is invented. Pre-run env/splits/online smoke31 passed.
+Source/config/preregistration must be pushed before launch; see results/live-retrain-v9.

@@ -1,0 +1,20 @@
+# Fresh v9 heldout: do not execute before preregistration.
+name: mixed_delegate_rotation
+split: holdout
+horizon: 30
+schedule: bursty
+benign: [alice, bob, carol, dave, erin]
+delegate_per_step: 1
+episodes: 100
+p_start: 0.18
+p_stop: 0.3
+attack_per_step: 4
+benign_per_step: 8
+attackers: [bob, erin]
+attacker_switch: per_request
+rotate_tokens: true
+victims: [alice, carol]
+delegations: ["bob:dave", "erin:dave"]
+delegate_burst_p: 0.3
+delegate_burst_size: 3
+seed_start: 41300

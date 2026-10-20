@@ -36,3 +36,5 @@ before Phase 1 implementation relies on them.
 2. Open a PR labelled `adr`; link affected specs.
 3. Decide in review; set status, date and deciders.
 4. Update specs that the decision changes in the same PR.
+
+- [ADR-0018: five-seed isolated live-lab evaluation (proposed)](0018-live-lab-five-seed-evaluation.md)
