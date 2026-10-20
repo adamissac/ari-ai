@@ -22,11 +22,23 @@ the scenario's delegation grants (the operator's own authorization data), so aut
 delegated reads are not flagged. v4 also runs with ``c_disrupt=1.0`` (a blocked
 legitimate request costs as much as a compromised read, each normalized per window).
 Both default to the v1-v3 values, so earlier runs reproduce unchanged.
+
+v7 (``LoopConfig.finding_severity_context="platform"``): instead of the fixed baseline
+severities (:data:`DEFAULT_FINDING_SEVERITY`, every node non-zero), each episode draws the
+finding-severity context the product can actually produce (``platform_mapping``: a node's
+severity is the max ``SEVERITY_SCORE`` of its open validated findings, 0 without one).
+Payments carries the BOLA finding with probability ``severity_p_payments``; gateway, api and
+auth each carry an unrelated finding with ``severity_p_other``; a present finding's level
+is uniform over the five ``SEVERITY_SCORE`` levels. ``db`` stays 0: no payments-lite route
+maps to it, so the platform can never give it a finding. The draw depends on the episode
+seed only (:func:`platform_severity_context`), so every policy sees the same context on the
+same paired episode. The default ``"fixed"`` keeps v1-v6 unchanged.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Literal
 
 import numpy as np
 
@@ -47,9 +59,26 @@ from rl_defense.live.gateway import DefensiveGateway
 from rl_defense.live.telemetry import build_facts
 from rl_defense.live.topology import RouteTopology, load_topology
 from rl_defense.observations import from_platform_facts, mask_from_facts
+from rl_defense.platform_mapping import SEVERITY_SCORE
 
 # payments-lite: the known BOLA lives on the payments node.
 DEFAULT_FINDING_SEVERITY = {"gateway": 0.1, "api": 0.3, "auth": 0.2, "payments": 0.8, "db": 0.1}
+# v7: nodes the platform can attach a finding to in payments-lite (db has no route)
+PLATFORM_FINDING_NODES = ("gateway", "api", "auth", "payments")
+_SEVERITY_LEVELS = tuple(sorted(SEVERITY_SCORE.values()))
+_CONTEXT_SALT = 0x5E7  # separates the severity draw from the traffic generator's stream
+
+
+def platform_severity_context(seed: int, p_payments: float, p_other: float) -> dict[str, float]:
+    """v7: one episode's finding severities, as ``platform_mapping`` could produce them."""
+    rng = np.random.default_rng([_CONTEXT_SALT, int(seed)])
+    out = dict.fromkeys(NODE_NAMES, 0.0)
+    for node in PLATFORM_FINDING_NODES:
+        p = p_payments if node == "payments" else p_other
+        present = rng.random() < p
+        level = _SEVERITY_LEVELS[int(rng.integers(len(_SEVERITY_LEVELS)))]
+        out[node] = float(level) if present else 0.0
+    return out
 
 
 _BLOCK_ACTIONS = (
@@ -75,6 +104,10 @@ class LoopConfig:
     reassessment_severity_after: float = 0.2
     # v4: the detector consults the delegation grant table (operator authorization data)
     delegation_aware_detector: bool = False
+    # v7: per-episode finding severities the platform can produce (module docstring)
+    finding_severity_context: Literal["fixed", "platform"] = "fixed"
+    severity_p_payments: float = 0.5
+    severity_p_other: float = 0.25
     # reward coefficients (applied to measured, normalized counts)
     c_impact: float = 1.0
     c_disrupt: float = 0.5  # v1-v3; v4 uses 1.0 (V4_LOOP_OVERRIDES in evaluate.py)
@@ -130,7 +163,7 @@ class LiveDefenseLoop:
         if self._gateway is not None:
             self._gateway.close()
         self.controls = DefenseControls()
-        self.finding_severity = dict(DEFAULT_FINDING_SEVERITY)
+        self.finding_severity = self._severity_context(seed)
         self._timers = _Timers()
         self._ever_blocked = set()
         self.step_idx = 0
@@ -155,6 +188,14 @@ class LiveDefenseLoop:
         if self._gateway is not None:
             self._gateway.close()
             self._gateway = None
+
+    def _severity_context(self, seed: int) -> dict[str, float]:
+        cfg = self.config
+        if cfg.finding_severity_context == "fixed":
+            return dict(DEFAULT_FINDING_SEVERITY)
+        if cfg.finding_severity_context == "platform":
+            return platform_severity_context(seed, cfg.severity_p_payments, cfg.severity_p_other)
+        raise ValueError(f"unknown finding_severity_context {cfg.finding_severity_context!r}")
 
     # ------------------------------------------------------------------ one step
     def step(self, action: int) -> LiveTransition:
