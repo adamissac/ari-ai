@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Redesign the landing page with an editorial hero, persistent keyboard-accessible process tabs, a selectable proof walkthrough, and an oversized Ari footer with a grainy illuminated horizon. Bound landing wheel momentum so large flicks do not skip whole explanations; retain native touch/reduced-motion behavior.
+
 - Contracts 0.14 (additive, ADR-0017): runtime route windows can carry pseudonymous per-principal counters (cross-tenant, delegated, own) from an operator's own gateway, and RL recommendations name the principals a block would cover. The backend's RL facts now include the lab's principal detection, so the promoted live policy can recommend a targeted block in the product. It remains a recommendation, never executed.
 
 - Add the lab-only online DQfD training workflow (expert demonstrations plus online DDQN updates). Selected-checkpoint lineage records only its training prefix; full experiment logs remain separate, and evidence export includes reloadable checkpoint and experience bytes. Promotion refuses unsupported serving layouts and missing/hash-mismatched DQfD evidence. The historical v6 gate result is not independently reloadable because its original artifact bytes were not retained; no policy is promoted.

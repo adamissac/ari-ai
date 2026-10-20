@@ -56,3 +56,6 @@ Completed: PR #360 review follow-up — standalone live-layout checkpoint loadin
 
 
 Completed: align browser scope approval assertion with explicit sandbox-owner approval, retaining independent Bob approval and the full persisted Verify journey.
+
+
+Completed: owner-requested landing design and readability update — Kairo visual study, editorial hero, persistent process controls, bounded wheel momentum and an original Ari horizon footer.

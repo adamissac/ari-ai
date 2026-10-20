@@ -185,3 +185,6 @@ Homepage wheel scrolling stops once at the expanded walkthrough video. The arriv
 
 
 The walkthrough zoom uses smoothstep scroll progress and a 1.5-second CSS transition so hard wheel gestures do not snap it to full size. Reduced motion disables the transition.
+
+
+Landing redesign: the process and finding walkthrough are reader-controlled instead of scroll-swapped. All problem statements stay visible. The home route bounds wheel momentum; touch and reduced-motion scrolling remain native. `LandingFooter` is a marketing-only footer with Ari’s local identity and valid navigation. Design study: `docs/design/LANDING_REDESIGN.md`.

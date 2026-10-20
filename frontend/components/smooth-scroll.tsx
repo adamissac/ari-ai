@@ -46,7 +46,7 @@ export function SmoothScroll() {
       // Frame-rate independent: the same glide on 60 Hz and 120 Hz screens.
       const dt = last ? Math.max(1, Math.min(64, now - last)) : FRAME;
       last = now;
-      current += (target - current) * (1 - Math.pow(1 - EASE, dt / FRAME));
+      current += (target - current) * (1 - Math.pow(1 - (pathname === '/' ? 0.085 : EASE), dt / FRAME));
       if (Math.abs(target - current) < 0.5) current = target;
       animating = current !== target;
       window.scrollTo(0, current);
@@ -69,7 +69,13 @@ export function SmoothScroll() {
         if (dy > 0 && !newGesture && !timeout) return;
         holdingVideo = false;
       }
-      let next = Math.max(0, Math.min(max(), target + dy));
+      // Bound both a single large flick and queued momentum on the landing story.
+      // Continued intentional scrolling still moves freely; touch and reduced motion stay native.
+      const reading = pathname === '/' && Boolean(document.querySelector('[data-reading-chapter]'));
+      const delta = reading ? Math.sign(dy) * Math.min(Math.abs(dy), innerHeight * 0.65) : dy;
+      const proposed = target + delta;
+      const nextTarget = reading ? Math.max(current - innerHeight * 0.85, Math.min(current + innerHeight * 0.85, proposed)) : proposed;
+      let next = Math.max(0, Math.min(max(), nextTarget));
       if (!videoStopUsed && dy > 0) {
         const chapter = document.getElementById('explainer');
         if (chapter) {

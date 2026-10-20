@@ -118,3 +118,19 @@ it('allows a new gesture to skip the video after the brief landing pause', () =>
   chapter.remove();
   vi.restoreAllMocks();
 });
+
+
+it('bounds a landing-page flick and its queued momentum to a readable distance', () => {
+  const chapter = document.createElement('section');
+  chapter.dataset.readingChapter = '';
+  document.body.appendChild(chapter);
+  render(<SmoothScroll />);
+  wheel(document.body, { deltaY: 10000 });
+  wheel(document.body, { deltaY: 10000 });
+  flush();
+  expect(positions.at(-1)).toBe(680);
+  wheel(document.body, { deltaY: 10000 });
+  flush();
+  expect(positions.at(-1)).toBe(1200);
+  chapter.remove();
+});
