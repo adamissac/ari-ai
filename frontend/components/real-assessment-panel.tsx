@@ -32,11 +32,12 @@ export function RealAssessmentPanel({
   org: string;
   repo: AccessibleRepository;
   sha: string;
-  onConnected: () => void;
+  onConnected: (repoId: string) => void;
   onRunSelected?: (assessmentId: string) => void;
 }) {
   const router = useRouter();
   const [connectedRepoId, setConnectedRepoId] = useState(repo.connected_repo_id);
+  const [acceptedRun, setAcceptedRun] = useState<Assessment | null>(null);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<unknown>(null);
   const scopeKeys = useActionKeys('request-scope');
@@ -83,7 +84,7 @@ export function RealAssessmentPanel({
     try {
       const repoId = await connectRepo(org, repo);
       setConnectedRepoId(repoId);
-      onConnected();
+      onConnected(repoId);
     } catch (error) {
       setActionError(error);
     } finally {
@@ -131,6 +132,8 @@ export function RealAssessmentPanel({
     try {
       const body = { scope_id: scopeId, repo_id: repoId, commit_sha: sha, snapshot_id: null, budget: null };
       const assessment = await api().startAssessment(projectId, body, assessmentKeys.keyFor(signature));
+      setAcceptedRun(assessment);
+      history.current = { key: `${repoId}:${sha}`, items: [assessment] };
       assessmentKeys.done();
       if (onRunSelected) { onRunSelected(assessment.id); reload(); }
       else router.push(`/projects/${projectId}/assessments/${assessment.id}`);
@@ -144,10 +147,12 @@ export function RealAssessmentPanel({
   const scopeState = data.status === 'ready' && connectedRepoId
     ? scopeStateFor(data.scopes, connectedRepoId, new Date())
     : null;
-  const latest = data.status === 'ready' && connectedRepoId
+  const persistedLatest = data.status === 'ready' && connectedRepoId
     ? assessmentsForCommit(data.assessments, connectedRepoId, sha)[0]
     : undefined;
 
+  // Keep an accepted run authoritative until polling observes it, even if refresh fails.
+  const latest = acceptedRun && persistedLatest?.id !== acceptedRun.id ? acceptedRun : persistedLatest;
   const latestId = latest?.id;
   useEffect(() => { if (latestId && onRunSelected) onRunSelected(latestId); }, [latestId, onRunSelected]);
 

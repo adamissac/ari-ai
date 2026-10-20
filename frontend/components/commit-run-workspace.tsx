@@ -55,7 +55,7 @@ function RecordedAgentMap({ detail, sha, fullName }: { detail: AssessmentDetail 
   const steps = useMemo(() => [...runs].sort((a, b) => Date.parse(a.started_at) - Date.parse(b.started_at)).flatMap(run => run.tool_calls.map(call => ({ run, call }))), [runs]);
   const replay = useReplay(steps.length, 900);
   const [selected, setSelected] = useState<AgentName | null>(null);
-  const current = steps[Math.min(replay.position, Math.max(0, steps.length - 1))];
+  const current = replay.position > 0 ? steps[replay.position - 1] : undefined;
   const active = selected ?? current?.run.agent ?? 'scout';
   const worker = AGENT_ORDER.find(a => a.agent === active)!;
   const mine = runs.filter(r => r.agent === active);
