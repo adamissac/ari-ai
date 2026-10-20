@@ -27,6 +27,7 @@ const SHA = /^[0-9a-f]{7,40}$/;
 
 export default function ProjectOverview() {
   const { project, repos } = useProject();
+  const [repositoriesOpen, setRepositoriesOpen] = useState(repos.length === 0);
   const assessments = useResource(`asm:${project.id}`, s => api().assessments(project.id, { signal: s }), 5000);
   const findings = useResource(`fnd:${project.id}`, s => api().findings(project.id, { signal: s }), 10000);
   const scopes = useResource(`scopes:${project.id}`, s => api().scopes(project.id, { signal: s }));
@@ -104,7 +105,7 @@ export default function ProjectOverview() {
           </Async>
         </Panel>
         </details>
-        <details className="project-detail" open={repos.length === 0}><summary>Connected repositories</summary><Repositories repos={repos} /></details>
+        <details className="project-detail" open={repositoriesOpen} onToggle={event => setRepositoriesOpen(event.currentTarget.open)}><summary>Connected repositories</summary><Repositories repos={repos} /></details>
       </div>
     </div>
       <details className="project-detail"><summary>Project progress & details</summary>
