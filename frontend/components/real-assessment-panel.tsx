@@ -9,7 +9,7 @@ import { api } from '@/lib/api';
 import { useActionKeys } from '@/lib/action-key';
 import { connectRepo, projectForRepository } from '@/lib/github-connect';
 import { assessmentsForCommit, loadCommitAssessments, isSandboxOnlyScope, scopeBody, scopeStateFor } from '@/lib/real-assessment';
-import { ASSESSMENT_STATE } from '@/lib/status';
+import { ASSESSMENT_STATE, TERMINAL_STATES } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
 
 type LoadedData =
@@ -145,8 +145,8 @@ export function RealAssessmentPanel({
           {!connectedRepoId && <button type="button" className="rounded-full bg-white px-4 py-2 text-sm font-medium text-ink disabled:opacity-50" disabled={busy} onClick={() => void connect()}>Connect</button>}
           {data.status === 'ready' && latest && (
             <>
-              {onRunSelected ? <button type="button" className="text-sm text-white/80 underline-offset-2 hover:underline" onClick={() => onRunSelected(latest.id)}>Open recorded run</button> : <Link className="text-sm text-white/80 underline-offset-2 hover:underline" href={`/projects/${data.projectId}/assessments/${latest.id}`}>Open run →</Link>}
-              {scopeState?.kind === 'active' && <button type="button" className="rounded-full bg-white px-4 py-2 text-sm font-medium text-ink disabled:opacity-50" disabled={busy} onClick={() => void startAssessment(data.projectId, scopeState.scope.id)}>Run again</button>}
+              {!onRunSelected && <Link className="text-sm text-white/80 underline-offset-2 hover:underline" href={`/projects/${data.projectId}/assessments/${latest.id}`}>Open run →</Link>}
+              {scopeState?.kind === 'active' && TERMINAL_STATES.has(latest.state) && <button type="button" className="rounded-full bg-white px-4 py-2 text-sm font-medium text-ink disabled:opacity-50" disabled={busy} onClick={() => void startAssessment(data.projectId, scopeState.scope.id)}>Run again</button>}
             </>
           )}
           {data.status === 'ready' && !latest && scopeState?.kind === 'none' && <button type="button" className="rounded-full bg-white px-4 py-2 text-sm font-medium text-ink disabled:opacity-50" disabled={busy} onClick={() => void requestAuthorization(data.projectId)}>Request authorization</button>}
