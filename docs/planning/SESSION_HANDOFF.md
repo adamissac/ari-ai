@@ -18,6 +18,12 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-20 — Claude (agent, Alan) — live RL v7: platform finding severities (ADR-0017 gap) — `reject`
+- Did: branch `feat/alan/live-retrain-v7`. Opt-in `LoopConfig.finding_severity_context="platform"`: per-episode severities drawn from `platform_mapping.SEVERITY_SCORE`. Payments has its BOLA finding with p 0.5, gateway/api/auth have unrelated findings with p 0.25, db is always 0, and the draw is seeded by the episode only. `online.py --severity-context/--reference-checkpoint`, `rl_defense/live/platform_check.py` (lab vs platform recommendations on train windows), `evidence.py pack`. Pre-registered (`4b537d2`) with a fresh `holdout_v7`; `promotion.yaml` unchanged.
+- Result: **`reject`**, 6/7 checks pass. On `quiet_week` it scores −3.62 vs deployed −3.15. Held-out −5.38 vs v6 −5.55: a tie (+0.17 [−0.14, 0.47]). Secondary: with real severities v7 recommends noop in 106/106 quiet train windows (v6 0/106) and block in 94/94 flagged; lab/platform agreement is 200/200 (v6 also 200/200: agreement measures the mapping). Nothing promoted; v6 stays promoted.
+- Verified: `tests/test_live_v7.py` (7), `tests/test_v7_evidence.py` (6, incl. the agreement test reproducing `platform_agreement.json`), full rl suite, ruff.
+- Next: a candidate that keeps v7's quiet-window behaviour and passes the gate needs a new holdout. Do not tune on holdout_v7.
+
 ### 2026-10-19 — Claude (agent, Alan) — runtime principal detector: the RL defense in the product path (contracts 0.14, ADR-0017)
 - Did: branch `feat/alan/runtime-principal-detector`.
   - `RouteWindow.principals` (`PrincipalCounts`, pseudonymous `prn_…` refs) and `DefenseRecommendation.principal_targets`.

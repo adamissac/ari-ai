@@ -1,0 +1,21 @@
+# Held-out v7 (created 2026-10-19, before any evaluation on it). A bookkeeper (dave,
+# authorized for alice) and an outsider (mallory, rotating tokens) alternate per request
+# against bob and erin, in medium campaigns. Unseen: a delegate paired with an outsider,
+# victims bob and erin.
+name: bookkeeper_and_outsider
+split: holdout
+horizon: 30
+schedule: bursty
+p_start: 0.15
+p_stop: 0.3
+attack_per_step: 5
+benign_per_step: 6
+attackers: [dave, mallory]
+attacker_switch: per_request
+rotate_tokens: true
+victims: [bob, erin]
+benign: [alice, bob, dave, erin]
+delegations: ["dave:alice"]
+delegate_per_step: 2
+seed_start: 41500
+episodes: 30

@@ -23,6 +23,13 @@ CQL anchored the candidate to that data (v5). v6 changes how the data is made:
 Everything runs in the v4 loop (``evaluate.V4_LOOP_OVERRIDES``: ``c_disrupt=1.0``, the
 grant-aware detector) and action space ``live_v3``. Training episodes use seeds drawn from
 the train seed band only. Results: results/live-retrain-v6/ (PREREGISTRATION.md first).
+
+v7 (``--severity-context platform``) runs the same method in a loop whose finding
+severities are drawn per episode from what ``platform_mapping`` can produce
+(``LoopConfig.finding_severity_context``); every policy (expert choice, rules tuning,
+training, selection, holdout) sees that loop. ``--reference-checkpoint`` adds a fixed,
+already-trained policy (v7: the promoted v6) to the holdout table; it never enters the
+gate. Results: results/live-retrain-v7/ (PREREGISTRATION.md first).
 """
 
 from __future__ import annotations
@@ -362,6 +369,9 @@ def run(args: argparse.Namespace) -> dict:
     criteria = ev.PromotionCriteria(**yaml.safe_load(Path(args.criteria).read_text()))
     cfg = getattr(args, "online_config", None) or OnlineConfig(seed=args.seed)
     lo = dict(ev.V4_LOOP_OVERRIDES)
+    severity_context = getattr(args, "severity_context", "fixed")
+    if severity_context != "fixed":  # v7; absent from v6's overrides, so v6 reproduces
+        lo["finding_severity_context"] = severity_context
     tr = load_scenarios("train", subdir=args.train_dir)
     va = load_scenarios("val", subdir=args.val_dir)
     ho = load_scenarios("holdout", subdir=args.holdout_dir)
@@ -407,6 +417,15 @@ def run(args: argparse.Namespace) -> dict:
         "always_block_principal_long": ev.always_block_principal_long,
         "always_block_top_principal_long": ev.always_block_top_principal_long,
     }
+    reference = None
+    if getattr(args, "reference_checkpoint", None):
+        ref_agent, ref_m = load_checkpoint(Path(args.reference_checkpoint))
+        policies["reference"] = ev.dqn_policy(ref_agent)  # reported only; not in the gate
+        reference = {
+            "path": str(args.reference_checkpoint),
+            "checkpoint_sha256": ref_m["checkpoint_sha256"],
+            "env_id": ref_m["env_id"],
+        }
     rows = {
         n: ev.run_policy(
             p,
@@ -442,6 +461,11 @@ def run(args: argparse.Namespace) -> dict:
         "online": {k: v for k, v in cm["online"].items() if k != "selection_history"},
         "expert": {"name": expert_name, "train_scores": expert_scores},
         "candidate_vs_expert_paired": ev.paired_reward_diff(rows["candidate"], expert_rows),
+        "finding_severity_context": severity_context,
+        "reference": reference,
+        "candidate_vs_reference_paired": ev.paired_reward_diff(rows["candidate"], rows["reference"])
+        if reference
+        else None,
         "deployed": {
             "checkpoint_sha256": deployed_m["checkpoint_sha256"],
             "env_id": deployed_m["env_id"],
@@ -556,6 +580,21 @@ def render_online_markdown(r: dict, render_markdown) -> str:  # noqa: ANN001
         f"[{d['ci95'][0]:.2f}, {d['ci95'][1]:.2f}] over {d['pairs']} episodes.",
         "",
     ]
+    if r.get("finding_severity_context", "fixed") != "fixed":
+        extra += [
+            f"Finding-severity context: `{r['finding_severity_context']}` (drawn per episode "
+            "from the severities platform_mapping can produce; every policy, every split).",
+            "",
+        ]
+    if r.get("reference"):
+        rd = r["candidate_vs_reference_paired"]
+        extra += [
+            f"Reference (reported only, not in the gate): `{r['reference']['path']}` "
+            f"(`{r['reference']['checkpoint_sha256'][:12]}`). Paired return (candidate − "
+            f"reference) on holdout: {rd['mean']:.2f} [{rd['ci95'][0]:.2f}, {rd['ci95'][1]:.2f}] "
+            f"over {rd['pairs']} episodes.",
+            "",
+        ]
     return md + "\n".join(extra)
 
 
@@ -574,6 +613,17 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", default="runs/live/retrain-v6")
     ap.add_argument("--evidence-dir", default=None)
+    ap.add_argument(
+        "--severity-context",
+        choices=["fixed", "platform"],
+        default="fixed",
+        help="finding severities per episode: fixed baseline (v1-v6) or platform-producible (v7)",
+    )
+    ap.add_argument(
+        "--reference-checkpoint",
+        default=None,
+        help="an already-trained policy reported on holdout next to the candidate (not gated)",
+    )
     r = run(ap.parse_args(argv))
     print(r["decision"])
     return 0

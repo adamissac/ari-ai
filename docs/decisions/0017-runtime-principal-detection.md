@@ -52,6 +52,13 @@ successful BOLA read returns 200 and trips no error heuristic.
   flagged, v6 tends to recommend `escalate_to_human` instead of `noop`. Training with
   finding-derived severities closes this. It is a follow-up and was not patched by faking
   severities.
+  **Update (v7, 2026-10-20):** `rl-defense/results/live-retrain-v7/` trained the v6 method
+  with per-episode, platform-producible severities. On train windows with real
+  severities, the v7 candidate recommends `noop` in every quiet window and
+  `block_principal` in every flagged one, and lab and platform agree on 200/200 windows.
+  The pre-registered gate rejected it on one per-scenario check (`quiet_week`), and its
+  held-out return ties v6. **v6 stays the promoted policy, so the gap stays open in the
+  product** until a candidate trained this way passes the gate.
 - Window-size shift: the lab's features are per lab window (about 20 requests). A
   reporter's windows can be larger. The features are ratios or capped counts, but volume
   normalization (`flagged_volume`, /6 per principal) assumes lab-sized windows.

@@ -1,0 +1,152 @@
+{
+  "_generated_by": "python -m rl_defense.live.platform_check results/live-retrain-v7/candidate_online.pt results/live-retrain-v6/candidate_online.pt --subdir train_v3 --episodes 2 --windows 10 --out <path>",
+  "train_dir": "configs/live/train_v3",
+  "checkpoints": {
+    "results/live-retrain-v7/candidate_online.pt": {
+      "checkpoint_sha256": "d1c0c9b506fd29cc0e911aa6ad8d2a14943e7ece5ca03979a0377f043795108b",
+      "cases": {
+        "no_findings": {
+          "finding_severity": {
+            "gateway": 0.0,
+            "api": 0.0,
+            "auth": 0.0,
+            "payments": 0.0,
+            "db": 0.0
+          },
+          "quiet": {
+            "windows": 53,
+            "agree": 53,
+            "agreement": 1.0,
+            "lab_actions": {
+              "noop": 53
+            },
+            "platform_actions": {
+              "noop": 53
+            }
+          },
+          "flagged": {
+            "windows": 47,
+            "agree": 47,
+            "agreement": 1.0,
+            "lab_actions": {
+              "block_principal": 47
+            },
+            "platform_actions": {
+              "block_principal": 47
+            }
+          }
+        },
+        "bola_high": {
+          "finding_severity": {
+            "gateway": 0.0,
+            "api": 0.0,
+            "auth": 0.0,
+            "payments": 0.75,
+            "db": 0.0
+          },
+          "quiet": {
+            "windows": 53,
+            "agree": 53,
+            "agreement": 1.0,
+            "lab_actions": {
+              "noop": 53
+            },
+            "platform_actions": {
+              "noop": 53
+            }
+          },
+          "flagged": {
+            "windows": 47,
+            "agree": 47,
+            "agreement": 1.0,
+            "lab_actions": {
+              "block_principal": 47
+            },
+            "platform_actions": {
+              "block_principal": 47
+            }
+          }
+        }
+      },
+      "windows": 200,
+      "agree": 200,
+      "agreement": 1.0
+    },
+    "results/live-retrain-v6/candidate_online.pt": {
+      "checkpoint_sha256": "8113a37f4ff9360a9efed2e9f499c4b2ae36e97bfb78372436f97da106fc05f1",
+      "cases": {
+        "no_findings": {
+          "finding_severity": {
+            "gateway": 0.0,
+            "api": 0.0,
+            "auth": 0.0,
+            "payments": 0.0,
+            "db": 0.0
+          },
+          "quiet": {
+            "windows": 53,
+            "agree": 53,
+            "agreement": 1.0,
+            "lab_actions": {
+              "raise_monitoring:gateway": 53
+            },
+            "platform_actions": {
+              "raise_monitoring:gateway": 53
+            }
+          },
+          "flagged": {
+            "windows": 47,
+            "agree": 47,
+            "agreement": 1.0,
+            "lab_actions": {
+              "block_principal": 18,
+              "block_top_principal_long": 12,
+              "rate_limit:auth": 7,
+              "rate_limit:gateway": 10
+            },
+            "platform_actions": {
+              "block_principal": 18,
+              "block_top_principal_long": 12,
+              "rate_limit:auth": 7,
+              "rate_limit:gateway": 10
+            }
+          }
+        },
+        "bola_high": {
+          "finding_severity": {
+            "gateway": 0.0,
+            "api": 0.0,
+            "auth": 0.0,
+            "payments": 0.75,
+            "db": 0.0
+          },
+          "quiet": {
+            "windows": 53,
+            "agree": 53,
+            "agreement": 1.0,
+            "lab_actions": {
+              "escalate_to_human": 53
+            },
+            "platform_actions": {
+              "escalate_to_human": 53
+            }
+          },
+          "flagged": {
+            "windows": 47,
+            "agree": 47,
+            "agreement": 1.0,
+            "lab_actions": {
+              "block_principal": 47
+            },
+            "platform_actions": {
+              "block_principal": 47
+            }
+          }
+        }
+      },
+      "windows": 200,
+      "agree": 200,
+      "agreement": 1.0
+    }
+  }
+}

@@ -1,0 +1,18 @@
+# Held-out v7 (created 2026-10-19, before any evaluation on it). carol reads alice's
+# payments two at a time in every window, under heavy legitimate load, while erin reads
+# carol's under her grant. Unseen: an always-on attack at 2 requests/window with 9 benign.
+name: steady_trickle
+split: holdout
+horizon: 30
+schedule: always
+attack_per_step: 2
+benign_per_step: 9
+attackers: [carol]
+victims: [alice]
+benign: [alice, bob, carol, dave, erin]
+delegations: ["erin:carol"]
+delegate_per_step: 1
+delegate_burst_p: 0.2
+delegate_burst_size: 3
+seed_start: 42500
+episodes: 30
