@@ -24,21 +24,44 @@ export function useParam(name: string): string {
   return typeof value === 'string' ? value : '';
 }
 
-const TABS = [
-  { href: '', label: 'Overview' },
-  { href: '/commits', label: 'Commits' },
-  { href: '/scopes', label: 'Scopes' },
-  { href: '/expectations', label: 'Expectations' },
+const PRIMARY = [
+  { href: '/commits', label: 'Code review' },
+  { href: '', label: '7 agents' },
+];
+const TOOLS = [
   { href: '/findings', label: 'Findings' },
   { href: '/approvals', label: 'Approvals' },
   { href: '/monitoring', label: 'Monitoring' },
   { href: '/incidents', label: 'Incidents' },
+  { href: '/scopes', label: 'Authorized scopes' },
+  { href: '/expectations', label: 'Expectations' },
   { href: '/settings', label: 'Settings' },
 ];
 
+export function ProjectNavigation({ base }: { base: string }) {
+  const pathname = usePathname();
+  const currentTool = TOOLS.find(t => pathname.startsWith(base + t.href));
+  return <nav aria-label="Project" className="project-navigation mb-8">
+    <div className="project-tabs">
+      {PRIMARY.map(t => {
+        const href = base + t.href;
+        const active = t.href === '' ? pathname === base || pathname.startsWith(base + '/assessments/') : pathname.startsWith(href);
+        return <Link key={t.label} href={href} aria-current={active ? 'page' : undefined} className="project-tab label-mono">{t.label}</Link>;
+      })}
+    </div>
+    <details key={pathname} className="project-tools" onKeyDown={event => {
+      if (event.key === 'Escape') { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); }
+    }}>
+      <summary className="project-tab label-mono" aria-label={currentTool ? `More: ${currentTool.label}` : undefined} aria-current={currentTool ? 'page' : undefined} data-active={currentTool ? true : undefined}>More <span aria-hidden="true">⌄</span></summary>
+      <div className="project-tools-links">
+        {TOOLS.map(t => <Link key={t.href} href={base + t.href} aria-current={currentTool === t ? 'page' : undefined}>{t.label}</Link>)}
+      </div>
+    </details>
+  </nav>;
+}
+
 export function ProjectShell({ children }: { children: ReactNode }) {
   const id = useParam('projectId');
-  const pathname = usePathname();
   const project = useResource(`project:${id}`, signal => api().project(id, { signal }));
   const repos = useResource(`repos:${id}`, signal => api().repositories(id, { signal }));
   if (project.status === 'loading' || repos.status === 'loading') return <Loading label="Loading project" />;
@@ -60,17 +83,7 @@ export function ProjectShell({ children }: { children: ReactNode }) {
           </span>
         </p>
       </header>
-      <nav aria-label="Project" className="project-tabs mb-8">
-        {TABS.map(t => {
-          const href = base + t.href;
-          const active = t.href === '' ? pathname === base : pathname.startsWith(href);
-          return (
-            <Link key={t.label} href={href} aria-current={active ? 'page' : undefined} className="project-tab label-mono">
-              {t.label}
-            </Link>
-          );
-        })}
-      </nav>
+      <ProjectNavigation base={base} />
       {children}
     </ProjectContext.Provider>
   );

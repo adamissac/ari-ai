@@ -12,7 +12,7 @@ import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, Panel
 import { api, idempotencyKey } from '@/lib/api';
 import { CONNECT_REPOSITORY_NOTE } from '@/lib/connect';
 import { INDEX_COMMIT_NOTE } from '@/lib/index-commit';
-import { shortSha, usd } from '@/lib/format';
+import { shortSha } from '@/lib/format';
 import {
   EVENT_LOG_PAGE_NOTE, JOURNEY_STATUS, fullEventLog, latestAssessmentEvent,
   projectJourney, statesFromLog,
@@ -27,6 +27,7 @@ const SHA = /^[0-9a-f]{7,40}$/;
 
 export default function ProjectOverview() {
   const { project, repos } = useProject();
+  const [repositoriesOpen, setRepositoriesOpen] = useState(repos.length === 0);
   const assessments = useResource(`asm:${project.id}`, s => api().assessments(project.id, { signal: s }), 5000);
   const findings = useResource(`fnd:${project.id}`, s => api().findings(project.id, { signal: s }), 10000);
   const scopes = useResource(`scopes:${project.id}`, s => api().scopes(project.id, { signal: s }));
@@ -59,11 +60,6 @@ export default function ProjectOverview() {
           <>
             <h2 className="text-xl font-semibold tracking-tight">{summary.headline}</h2>
             <p className="mt-2 max-w-3xl text-sm text-muted">{summary.detail}</p>
-            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <Stat label="Code health" value={summary.codeOpen} hint="open functional findings" />
-              <Stat label="Security" value={summary.securityOpen} hint={`confirmed weaknesses${summary.untested ? ` · ${summary.untested} untested suspicion${summary.untested === 1 ? '' : 's'}` : ''}${summary.inconclusive ? ` · ${summary.inconclusive} inconclusive` : ''}`} />
-              <Stat label="Continuous defense" value={summary.monitoring} hint={`${summary.verifiedFixes} verified fixes`} />
-            </div>
             {refreshFailed && <p role="status" className="mt-3 text-xs text-warn" data-testid="summary-stale">Could not refresh the latest records. The numbers above are from the last successful load and may be out of date.</p>}
             <div className="mt-4">
               <a href={summary.action.href} className="inline-flex items-center rounded-full bg-brand px-4 py-2 text-sm font-medium text-on-brand hover:bg-brand-deep">{summary.action.label}</a>
@@ -71,35 +67,18 @@ export default function ProjectOverview() {
           </>
         ) : <p className="text-sm text-muted">Loading the current project records…</p>}
       </section>
-      <PillarLoopSection
-        projectId={project.id}
-        repoCount={repos.length}
-        activeScopeCount={activeScopeCount}
-        monitoringEnabled={project.settings.monitoring_policy.enabled}
-        assessmentCount={assessments.status === 'ready' ? assessmentItems.length : null}
-        findings={findings.status === 'ready' ? findingItems : null}
-      />
-      {ready && activeScopeCount !== null && (
-        <ProjectJourney
-          projectId={project.id}
-          repoCount={repos.length}
-          activeScopeCount={activeScopeCount}
-          monitoringEnabled={project.settings.monitoring_policy.enabled}
-          assessments={assessmentItems}
-          findingStatuses={findingItems.map(f => f.status)}
-        />
-      )}
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[3fr_2fr]">
+      <div className="flex items-end justify-between gap-4"><div><h1 className="text-2xl font-semibold">7 agents</h1><p className="mt-2 text-sm text-muted">Start a security check, then open a run to replay the work and review its findings.</p></div></div>
+    <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-4">
-        <Panel title="Assessments" actions={<span className="text-xs text-muted">refreshes every 5 s</span>}>
+        <StartAssessment onStarted={assessments.reload} />
+        <Panel title="Runs & replay">
           <Async resource={assessments} label="assessments">
             {page => <AssessmentList projectId={project.id} page={page} />}
           </Async>
         </Panel>
-        <StartAssessment onStarted={assessments.reload} />
       </div>
-      <div className="flex flex-col gap-4">
-        <Panel title="Findings">
+      <div className="grid gap-4 md:grid-cols-2">
+        <details className="project-detail"><summary>Findings</summary><Panel title="Findings">
           <Async resource={findings} label="findings">
             {page => {
               const verified = page.items.filter(f => f.status === 'verified' || f.status === 'hardened').length;
@@ -125,9 +104,30 @@ export default function ProjectOverview() {
             }}
           </Async>
         </Panel>
-        <Repositories repos={repos} />
+        </details>
+        <details className="project-detail" open={repositoriesOpen} onToggle={event => setRepositoriesOpen(event.currentTarget.open)}><summary>Connected repositories</summary><Repositories repos={repos} /></details>
       </div>
     </div>
+      <details className="project-detail"><summary>Project progress & details</summary>
+      <PillarLoopSection
+        projectId={project.id}
+        repoCount={repos.length}
+        activeScopeCount={activeScopeCount}
+        monitoringEnabled={project.settings.monitoring_policy.enabled}
+        assessmentCount={assessments.status === 'ready' ? assessmentItems.length : null}
+        findings={findings.status === 'ready' ? findingItems : null}
+      />
+      {ready && activeScopeCount !== null && (
+        <ProjectJourney
+          projectId={project.id}
+          repoCount={repos.length}
+          activeScopeCount={activeScopeCount}
+          monitoringEnabled={project.settings.monitoring_policy.enabled}
+          assessments={assessmentItems}
+          findingStatuses={findingItems.map(f => f.status)}
+        />
+      )}
+      </details>
     </div>
   );
 }
@@ -262,21 +262,19 @@ function AssessmentList({ projectId, page }: { projectId: string; page: Page<Ass
       });
     } catch (err) { setError(err); } finally { setBusy(false); }
   };
-  if (items.length === 0) return <Empty>No assessments yet. Approve a scope, then start one below.</Empty>;
+  if (items.length === 0) return <Empty>No assessments yet. Approve a scope, then start a check above.</Empty>;
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
         <thead className="text-xs uppercase tracking-wider text-faint">
-          <tr><th className="py-1.5 pr-3">Assessment</th><th className="pr-3">State</th><th className="pr-3">Commit</th><th className="pr-3">Trigger</th><th className="pr-3">Usage</th><th>Created</th></tr>
+          <tr><th className="py-1.5 pr-3">Run</th><th className="pr-3">Status</th><th className="pr-3">Commit</th><th>Started</th></tr>
         </thead>
         <tbody className="divide-y divide-line">
           {items.map(a => (
             <tr key={a.id}>
-              <td className="py-2 pr-3"><Link className="font-mono text-xs text-accent hover:underline" href={`/projects/${projectId}/assessments/${a.id}`}>{a.id}</Link></td>
+              <td className="py-2 pr-3"><Link className="text-sm text-accent hover:underline" href={`/projects/${projectId}/assessments/${a.id}`} aria-label={`Open run & replay ${a.id}`} title={a.id}>Open run & replay</Link></td>
               <td className="pr-3"><Badge view={ASSESSMENT_STATE[a.state]} /></td>
               <td className="pr-3"><Mono>{shortSha(a.commit_sha)}</Mono></td>
-              <td className="pr-3 text-muted">{a.trigger}</td>
-              <td className="pr-3 text-muted">{a.usage.llm_calls} calls · {usd(a.usage.usd)}</td>
               <td className="text-muted"><Time iso={a.created_at} /></td>
             </tr>
           ))}
@@ -332,7 +330,7 @@ function StartAssessment({ onStarted }: { onStarted: () => void }) {
               {repos.map(r => <option key={r.id} value={r.id}>{r.full_name}</option>)}
             </select>
           </Field>
-          <Field label="Authorized scope" hint={scopes.status === 'ready' && active.length === 0 ? 'No active scope — request and approve one under Scopes.' : undefined}>
+          <Field label="Authorized scope" hint={scopes.status === 'ready' && active.length === 0 ? 'No active scope — request and approve one under More → Authorized scopes.' : undefined}>
             <select className={inputClass} value={scopeId} onChange={e => setScopeId(e.target.value)} required name="scope">
               <option value="">Select…</option>
               {active.filter(s => !repoId || s.targets.some(t => t.repo_id === repoId)).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
