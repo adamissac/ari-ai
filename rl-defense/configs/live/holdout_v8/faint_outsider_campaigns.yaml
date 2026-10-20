@@ -1,0 +1,22 @@
+# Held-out v8 (created 2026-10-20, before any evaluation on it). Low-intensity: an outsider
+# (mallory, rotating tokens) reads carol's and erin's payments one request per window, in
+# long faint campaigns, under heavy legitimate load with erin reconciling carol's books.
+# Unseen: 1 attack request per window, victims carol and erin together.
+name: faint_outsider_campaigns
+split: holdout
+horizon: 30
+schedule: bursty
+p_start: 0.08
+p_stop: 0.15
+attack_per_step: 1
+benign_per_step: 8
+attackers: [mallory]
+rotate_tokens: true
+victims: [carol, erin]
+benign: [alice, bob, carol, erin]
+delegations: ["erin:carol"]
+delegate_per_step: 1
+delegate_burst_p: 0.3
+delegate_burst_size: 3
+seed_start: 49800
+episodes: 30

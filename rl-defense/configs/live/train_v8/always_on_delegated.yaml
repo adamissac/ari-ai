@@ -1,0 +1,15 @@
+# Copied unchanged from train_v3 into train_v8 (same name, seeds and hash).
+# Train v3. Continuous attack by bob from the first window, plus a legitimate reader.
+name: always_on_delegated
+split: train
+horizon: 30
+schedule: always
+attack_per_step: 6
+benign_per_step: 6
+attackers: [bob]
+victims: [alice]
+benign: [alice, bob, dave]
+delegations: ["dave:alice"]
+delegate_per_step: 1
+seed_start: 7000
+episodes: 14

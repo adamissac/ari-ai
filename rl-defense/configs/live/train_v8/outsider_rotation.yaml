@@ -1,0 +1,21 @@
+# Copied unchanged from train_v3 into train_v8 (same name, seeds and hash).
+# Train v3. An outsider tenant (no legitimate traffic) rotates tokens against two victims;
+# a bookkeeper with reconciliation bursts reads alice's payments.
+name: outsider_rotation
+split: train
+horizon: 30
+schedule: bursty
+p_start: 0.15
+p_stop: 0.2
+attack_per_step: 6
+benign_per_step: 6
+attackers: [mallory]
+rotate_tokens: true
+victims: [alice, carol]
+benign: [alice, carol, dave]
+delegations: ["dave:alice"]
+delegate_per_step: 1
+delegate_burst_p: 0.25
+delegate_burst_size: 4
+seed_start: 6000
+episodes: 14

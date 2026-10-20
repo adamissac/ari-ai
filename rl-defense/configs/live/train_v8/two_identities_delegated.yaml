@@ -1,0 +1,19 @@
+# Copied unchanged from train_v3 into train_v8 (same name, seeds and hash).
+# Train v3. Two compromised tenants take turns per window (the v2 identity-switch leak),
+# while erin legitimately reads carol's payments.
+name: two_identities_delegated
+split: train
+horizon: 30
+schedule: bursty
+p_start: 0.2
+p_stop: 0.15
+attack_per_step: 5
+benign_per_step: 7
+attackers: [bob, carol]
+attacker_switch: per_window
+victims: [alice]
+benign: [alice, bob, carol, erin]
+delegations: ["erin:carol"]
+delegate_per_step: 1
+seed_start: 5500
+episodes: 14
