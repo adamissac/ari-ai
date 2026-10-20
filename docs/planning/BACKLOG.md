@@ -61,3 +61,5 @@ Completed: align browser scope approval assertion with explicit sandbox-owner ap
 Completed: owner-requested landing design and readability update — Kairo visual study, editorial hero, persistent process controls, bounded wheel momentum and an original Ari horizon footer.
 
 Owner correction: restore the original landing hero, scroll-driven story animations and original wheel easing; remove the reading-distance cap and manual controls. Keep the new Ari-colored footer. Branch `fix/adam/restore-landing`; validation in PR.
+
+Footer correction: remove oversized minimum heights, reduce the wordmark and blank space, and place footer link groups side by side on mobile. Preserve Ari colors and restored hero/scroll animations. Validation recorded in PR.
