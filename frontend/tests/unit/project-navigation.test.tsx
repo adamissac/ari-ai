@@ -1,0 +1,22 @@
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, expect, it, vi } from 'vitest';
+import { ProjectNavigation } from '@/components/project';
+const route = vi.hoisted(() => ({ path: '/projects/p1' }));
+vi.mock('next/navigation', () => ({ usePathname: () => route.path, useParams: () => ({}) }));
+afterEach(cleanup);
+it('leads with two workflows and retains secondary routes behind More', () => {
+  render(<ProjectNavigation base="/projects/p1" />);
+  const nav = screen.getByRole('navigation', { name: 'Project' });
+  expect(within(nav.querySelector('.project-tabs') as HTMLElement).getAllByRole('link').map(a => a.textContent)).toEqual(['Code review', '7 agents']);
+  expect(screen.getByRole('link', { name: '7 agents' }).getAttribute('aria-current')).toBe('page');
+  fireEvent.click(screen.getByText('More'));
+  expect(screen.getByRole('link', { name: 'Authorized scopes' }).getAttribute('href')).toBe('/projects/p1/scopes');
+  expect(screen.getByRole('link', { name: 'Approvals' }).getAttribute('href')).toBe('/projects/p1/approvals');
+  fireEvent.keyDown(screen.getByText('More'), { key: 'Escape' });
+  expect(screen.getByText('More').closest('details')!.open).toBe(false);
+});
+it('keeps the seven-agent workflow selected on replay pages', () => {
+  route.path = '/projects/p1/assessments/a1';
+  render(<ProjectNavigation base="/projects/p1" />);
+  expect(screen.getByRole('link', { name: '7 agents' }).getAttribute('aria-current')).toBe('page');
+});

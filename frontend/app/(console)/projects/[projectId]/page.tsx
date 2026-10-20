@@ -59,11 +59,6 @@ export default function ProjectOverview() {
           <>
             <h2 className="text-xl font-semibold tracking-tight">{summary.headline}</h2>
             <p className="mt-2 max-w-3xl text-sm text-muted">{summary.detail}</p>
-            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <Stat label="Code health" value={summary.codeOpen} hint="open functional findings" />
-              <Stat label="Security" value={summary.securityOpen} hint={`confirmed weaknesses${summary.untested ? ` · ${summary.untested} untested suspicion${summary.untested === 1 ? '' : 's'}` : ''}${summary.inconclusive ? ` · ${summary.inconclusive} inconclusive` : ''}`} />
-              <Stat label="Continuous defense" value={summary.monitoring} hint={`${summary.verifiedFixes} verified fixes`} />
-            </div>
             {refreshFailed && <p role="status" className="mt-3 text-xs text-warn" data-testid="summary-stale">Could not refresh the latest records. The numbers above are from the last successful load and may be out of date.</p>}
             <div className="mt-4">
               <a href={summary.action.href} className="inline-flex items-center rounded-full bg-brand px-4 py-2 text-sm font-medium text-on-brand hover:bg-brand-deep">{summary.action.label}</a>
@@ -71,35 +66,18 @@ export default function ProjectOverview() {
           </>
         ) : <p className="text-sm text-muted">Loading the current project records…</p>}
       </section>
-      <PillarLoopSection
-        projectId={project.id}
-        repoCount={repos.length}
-        activeScopeCount={activeScopeCount}
-        monitoringEnabled={project.settings.monitoring_policy.enabled}
-        assessmentCount={assessments.status === 'ready' ? assessmentItems.length : null}
-        findings={findings.status === 'ready' ? findingItems : null}
-      />
-      {ready && activeScopeCount !== null && (
-        <ProjectJourney
-          projectId={project.id}
-          repoCount={repos.length}
-          activeScopeCount={activeScopeCount}
-          monitoringEnabled={project.settings.monitoring_policy.enabled}
-          assessments={assessmentItems}
-          findingStatuses={findingItems.map(f => f.status)}
-        />
-      )}
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[3fr_2fr]">
+      <div className="flex items-end justify-between gap-4"><div><h1 className="text-2xl font-semibold">7 agents</h1><p className="mt-2 text-sm text-muted">Start a security check, then open a run to replay the work and review its findings.</p></div></div>
+    <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-4">
-        <Panel title="Assessments" actions={<span className="text-xs text-muted">refreshes every 5 s</span>}>
+        <StartAssessment onStarted={assessments.reload} />
+        <Panel title="Runs & replay">
           <Async resource={assessments} label="assessments">
             {page => <AssessmentList projectId={project.id} page={page} />}
           </Async>
         </Panel>
-        <StartAssessment onStarted={assessments.reload} />
       </div>
-      <div className="flex flex-col gap-4">
-        <Panel title="Findings">
+      <div className="grid gap-4 md:grid-cols-2">
+        <details className="project-detail"><summary>Findings</summary><Panel title="Findings">
           <Async resource={findings} label="findings">
             {page => {
               const verified = page.items.filter(f => f.status === 'verified' || f.status === 'hardened').length;
@@ -125,9 +103,30 @@ export default function ProjectOverview() {
             }}
           </Async>
         </Panel>
-        <Repositories repos={repos} />
+        </details>
+        <details className="project-detail" open={repos.length === 0}><summary>Connected repositories</summary><Repositories repos={repos} /></details>
       </div>
     </div>
+      <details className="project-detail"><summary>Project progress & details</summary>
+      <PillarLoopSection
+        projectId={project.id}
+        repoCount={repos.length}
+        activeScopeCount={activeScopeCount}
+        monitoringEnabled={project.settings.monitoring_policy.enabled}
+        assessmentCount={assessments.status === 'ready' ? assessmentItems.length : null}
+        findings={findings.status === 'ready' ? findingItems : null}
+      />
+      {ready && activeScopeCount !== null && (
+        <ProjectJourney
+          projectId={project.id}
+          repoCount={repos.length}
+          activeScopeCount={activeScopeCount}
+          monitoringEnabled={project.settings.monitoring_policy.enabled}
+          assessments={assessmentItems}
+          findingStatuses={findingItems.map(f => f.status)}
+        />
+      )}
+      </details>
     </div>
   );
 }
@@ -272,7 +271,7 @@ function AssessmentList({ projectId, page }: { projectId: string; page: Page<Ass
         <tbody className="divide-y divide-line">
           {items.map(a => (
             <tr key={a.id}>
-              <td className="py-2 pr-3"><Link className="font-mono text-xs text-accent hover:underline" href={`/projects/${projectId}/assessments/${a.id}`}>{a.id}</Link></td>
+              <td className="py-2 pr-3"><Link className="text-sm text-accent hover:underline" href={`/projects/${projectId}/assessments/${a.id}`}>Open run & replay<span className="mt-1 block font-mono text-xs text-muted">{a.id}</span></Link></td>
               <td className="pr-3"><Badge view={ASSESSMENT_STATE[a.state]} /></td>
               <td className="pr-3"><Mono>{shortSha(a.commit_sha)}</Mono></td>
               <td className="pr-3 text-muted">{a.trigger}</td>
@@ -332,7 +331,7 @@ function StartAssessment({ onStarted }: { onStarted: () => void }) {
               {repos.map(r => <option key={r.id} value={r.id}>{r.full_name}</option>)}
             </select>
           </Field>
-          <Field label="Authorized scope" hint={scopes.status === 'ready' && active.length === 0 ? 'No active scope — request and approve one under Scopes.' : undefined}>
+          <Field label="Authorized scope" hint={scopes.status === 'ready' && active.length === 0 ? 'No active scope — request and approve one under More → Authorized scopes.' : undefined}>
             <select className={inputClass} value={scopeId} onChange={e => setScopeId(e.target.value)} required name="scope">
               <option value="">Select…</option>
               {active.filter(s => !repoId || s.targets.some(t => t.repo_id === repoId)).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}

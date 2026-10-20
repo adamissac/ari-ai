@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { env, newUser } from './helpers';
+import { env, newUser, expectNoSideScroll } from './helpers';
 
 // Real application and backend. Only the deliberate transient HTTP fault is injected.
 test('project assessment list recovers from a lost backend response and survives refresh', async ({ browser }) => {
@@ -14,9 +14,9 @@ test('project assessment list recovers from a lost backend response and survives
   offline = false;
   await failure.getByRole('button', { name: 'Retry' }).click();
   await expect(failure).toHaveCount(0);
-  await expect(page.getByRole('region', { name: 'Assessments', exact: true })).toContainText('No assessments yet.');
+  await expect(page.getByRole('region', { name: 'Runs & replay', exact: true })).toContainText('No assessments yet.');
   await page.reload();
-  await expect(page.getByRole('region', { name: 'Assessments', exact: true })).toContainText('No assessments yet.');
+  await expect(page.getByRole('region', { name: 'Runs & replay', exact: true })).toContainText('No assessments yet.');
   await expect(page.getByTestId('error-state')).toHaveCount(0);
 });
 
@@ -26,4 +26,28 @@ test('a missing assessment shows the real backend error rather than completed re
   await expect(page.getByTestId('error-state')).toContainText('Not found');
   await expect(page.getByTestId('error-state')).toContainText('assessment not found');
   await expect(page.getByTestId('provider-summary')).toHaveCount(0);
+});
+
+
+test('project navigation leads with two workflows and keeps tools reachable', async ({ browser }) => {
+  const page = await newUser(browser, 'e2e-alice');
+  const base = `/projects/${env('E2E_PROJECT_ID')}`;
+  await page.goto(base);
+  const nav = page.getByRole('navigation', { name: 'Project', exact: true });
+  await expect(nav.getByRole('link')).toHaveCount(2);
+  await expect(nav.getByRole('link', { name: '7 agents', exact: true })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByTestId('pillar-loop')).toBeHidden();
+  await expect(page.getByRole('region', { name: 'Runs & replay' })).toBeVisible();
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expectNoSideScroll(page);
+    await page.screenshot({ path: `/tmp/ari-project-${width}.png`, fullPage: true });
+  }
+  await nav.getByText('More', { exact: true }).click();
+  await expect(nav.getByRole('link', { name: 'Approvals', exact: true })).toBeVisible();
+  await nav.getByRole('link', { name: 'Authorized scopes', exact: true }).click();
+  await expect(page).toHaveURL(`${base}/scopes`);
+  await nav.getByRole('link', { name: 'Code review', exact: true }).click();
+  await expect(page).toHaveURL(`${base}/commits`);
+  await expect(page.getByRole('heading', { name: 'Review a change.' })).toBeVisible();
 });
