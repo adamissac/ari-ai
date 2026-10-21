@@ -315,3 +315,47 @@ uniform seed2 persistent43203,84/84 compromised vs v6 0/84. No holdout reruns,
 retries or promotion. Real registry digest remains c3455933…; v6 stays deployed.
 Results/provenance: `rl-defense/results/live-retrain-v10/PROVENANCE.md`.
 Future experiments need fresh preregistration/holdout; no follow-up run launched.
+
+### 2026-10-21 — RL-DIAG-001: targeted v10 diagnosis (Alan, owner authorized)
+
+IN_PROGRESS `feat/alan/rl-targeted-diagnosis`. All ten selected checkpoints already
+miss85% validation availability; rotation exposes principal-block collateral cost,
+not token-rotation bypass. Added saved-data/input-pinned diagnostics and opt-in
+`--require-validation-availability` rejection before any holdout policy execution.
+Targeted gateway regressions preserve own/delegated access assertions and prove the
+current broad-control tradeoff. No new training/holdout replay or promotion. V6 stays
+deployed. No v11 launch: process guard is not proof of a better learned policy.
+
+Focused verification: 22 tests passed in 22.51s, including the unchanged complete v10
+evidence bundle. Ruff lint/format and diff checks pass. No new policy execution or
+training performed by this diagnosis. Full CI and review pending.
+
+PR #383 review follow-up: refuse stale output/evidence directories before training,
+bind validation diagnostics to checkpoint/seed/source/config/manifest provenance, and
+atomically export verified/restorable rejection evidence before exiting. No synthetic
+promotion report; original run files remain intact. Added stale-directory, durable
+restore, corrupt-input rollback and complete rejection-path regression tests.
+
+### 2026-10-21 — RL-DIAG-001 complete; pause further training
+
+Merged PR #383 at `79a21e8` (final source `d9ad43b`). Diagnosed exposed v10 data
+without policy replay: all ten selected models already miss validation availability;
+principal-wide long controls impose documented own/delegated-traffic costs during
+rotation. Added opt-in validation screening, candidate/source/config provenance, empty
+output preflight and atomic verified/restorable rejection export. All three automated
+review findings are fixed and resolved. Existing trainer defaults, serving and v10
+evidence are preserved.
+
+Final CI: **310 RL tests passed in 389.33s**, plus successful 20k-step gradient/reload
+smoke, full backend suite, backend-to-RL integration, frontend unit/build and browser
+checks, link checks and secret scan. Local focused verification: **28 passed in 22.73s**.
+No full research training, fresh/exposed holdout replay, registration or promotion.
+Registry SHA-256 remains `c345593354856c50559ba16611853a0e4936a7efc11fa5704c224d3189271408`;
+v6 remains deployed. The earlier v10 study monitor remains paused.
+
+Owner requested at most one justified follow-up experiment. **No v11 launched**: the
+process guard is proven, but no learned-policy improvement is established. Next research
+requires a specific objective/control or validation-selection intervention with
+train/validation proof, then at most one preregistered fresh-holdout experiment. If it
+fails, reconsider the approach before spending more CPU. Diagnosis and preserved paired
+traces: `rl-defense/results/v10-followup-diagnosis/README.md` and `diagnostics.json`.
