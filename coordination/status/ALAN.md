@@ -235,3 +235,12 @@ retained in `rl-defense/results/live-retrain-v9`. Reporting integrates only afte
 finish; no held-out rerun/tuning. Registry v6 unchanged. PR #376 awaits review, stacked
 on incumbent binding PR #375. Next experiments need fresh preregistration/holdout and
 should address mixed rotation/persistent attacks; this holdout is now exposed.
+
+### 2026-10-21 — V9 pre-merge review corrections
+
+Addressed five PR #376 review findings: require source/teacher-budget/expert/rule
+cohort provenance and complete holdout scenario sets; index trajectories at initial
+export; pin fixed v7/v8 bytes in launcher/reporter. Historical reports remain unchanged;
+explicit saved-command budgets reproduce the original summary. Focused31 tests pass.
+No retraining, holdout replay or promotion. Owner authorized merging #375/#376 and
+subsequent v10 failure analysis, regressions and preregistration.

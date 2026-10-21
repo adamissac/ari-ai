@@ -28,7 +28,7 @@ METRICS = (
 )
 
 
-def aggregate(reports: list[dict]) -> dict:
+def aggregate(reports: list[dict], *, legacy_rules_episodes: dict[int, int] | None = None) -> dict:
     ordered = sorted(reports, key=lambda r: r["online"]["seed"])
     if [r["online"]["seed"] for r in ordered] != list(SEEDS):
         raise ValueError("the study requires exactly training seeds 0 through 4")
@@ -41,7 +41,30 @@ def aggregate(reports: list[dict]) -> dict:
             raise ValueError("duplicate reference policy names")
         return identities
 
+    def teacher_budget(report: dict) -> int:
+        value = report.get("rules_episodes")
+        if value is None and legacy_rules_episodes is not None:
+            value = legacy_rules_episodes.get(report["online"]["seed"])
+        if type(value) is not int or value <= 0:
+            raise ValueError("missing or invalid teacher-selection rules_episodes")
+        return value
+
     for r in ordered:
+        if not isinstance(r.get("git_sha"), str) or not r["git_sha"].strip():
+            raise ValueError("missing source commit")
+        if teacher_budget(r) != teacher_budget(first):
+            raise ValueError("study reports disagree on teacher-selection rules_episodes")
+        for key in ("expert", "rules_params"):
+            if not r.get(key) or r[key] != first.get(key):
+                raise ValueError(f"missing or inconsistent teacher-selection {key}")
+        expected_scenarios = set(first["splits"]["holdout"])
+        actual = r.get("by_scenario", {})
+        if (
+            not expected_scenarios
+            or set(actual) != set(r["policies"])
+            or any(set(actual[name]) != expected_scenarios for name in r["policies"])
+        ):
+            raise ValueError("incomplete holdout scenario evidence")
         for field in fields(OnlineConfig):
             if field.name == "seed":
                 continue

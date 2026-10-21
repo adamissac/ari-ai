@@ -49,6 +49,10 @@ def test_v9_new_scenarios_and_seeds_are_disjoint():
 def _reports():
     return [
         {
+            "git_sha": "source",
+            "rules_episodes": 2,
+            "expert": {"name": "rules"},
+            "rules_params": {"threshold": 0.1},
             "online": asdict(OnlineConfig(seed=seed)),
             "splits": {"holdout": {"fresh": "hash"}},
             "criteria": {},
@@ -61,6 +65,10 @@ def _reports():
                 "candidate": {m: float(seed) for m in study.METRICS},
                 "deployed": {m: 0.0 for m in study.METRICS},
             },
+            "by_scenario": {
+                n: {"fresh": {m: float(seed) for m in study.METRICS}}
+                for n in ("candidate", "deployed")
+            },
             "decision": "reject",
             "checks": [],
         }
@@ -71,9 +79,9 @@ def _reports():
 def test_aggregate_uses_all_training_seeds_and_not_best_seed():
     reports = _reports()
     for r in reports:
-        r["by_scenario"] = {name: {"scenario1": values} for name, values in r["policies"].items()}
+        r["by_scenario"] = {name: {"fresh": values} for name, values in r["policies"].items()}
     result = study.aggregate(list(reversed(reports)))
-    assert result["by_scenario"]["candidate"]["scenario1"]["reward"]["mean"] == 2.0
+    assert result["by_scenario"]["candidate"]["fresh"]["reward"]["mean"] == 2.0
     r = result["policies"]["candidate"]["reward"]
     assert r["mean"] == 2.0 and r["by_training_seed"] == [0, 1, 2, 3, 4]
     assert r["ci95"][0] < 2 < r["ci95"][1]
@@ -132,4 +140,38 @@ def test_aggregate_refuses_missing_settings_changed_references_and_source():
     reports = _reports()
     reports[1]["git_sha"] = "different"
     with pytest.raises(ValueError, match="source commit"):
+        study.aggregate(reports)
+
+
+@pytest.mark.parametrize("value", [None, "", "   "])
+def test_aggregate_requires_source(value):
+    reports = _reports()
+    for report in reports:
+        report["git_sha"] = value
+    with pytest.raises(ValueError, match="source commit"):
+        study.aggregate(reports)
+
+
+@pytest.mark.parametrize("key", ["rules_episodes", "expert", "rules_params"])
+def test_aggregate_rejects_different_teacher_selection(key):
+    reports = _reports()
+    reports[1][key] = 3 if key == "rules_episodes" else {"changed": True}
+    with pytest.raises(ValueError, match="teacher-selection"):
+        study.aggregate(reports)
+
+
+def test_missing_teacher_budget_needs_explicit_historical_command_evidence():
+    reports = _reports()
+    for report in reports:
+        del report["rules_episodes"]
+    with pytest.raises(ValueError, match="rules_episodes"):
+        study.aggregate(reports)
+    assert study.aggregate(reports, legacy_rules_episodes=dict.fromkeys(range(5), 2))
+
+
+@pytest.mark.parametrize("seed", [0, 2])
+def test_aggregate_rejects_missing_scenario_in_any_report(seed):
+    reports = _reports()
+    del reports[seed]["by_scenario"]["candidate"]["fresh"]
+    with pytest.raises(ValueError, match="holdout scenario"):
         study.aggregate(reports)

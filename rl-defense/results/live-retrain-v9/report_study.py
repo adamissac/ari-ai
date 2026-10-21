@@ -6,6 +6,8 @@ import gzip
 import json
 from pathlib import Path
 
+from reference_pins import verify_report
+
 from rl_defense.checkpoint import load_checkpoint
 from rl_defense.live import platform_check, study
 from rl_defense.live.scenarios import load_scenarios
@@ -14,6 +16,8 @@ from rl_defense.live.scenarios import load_scenarios
 def main() -> None:
     root = Path(__file__).resolve().parent
     summary = json.loads((root / "study_summary.json").read_text())
+    for seed in study.SEEDS:
+        verify_report(json.loads((root / f"seed{seed}" / "promotion_report.json").read_text()))
     quiet_scenarios = ("quiet_rogue_reconciler", "faint_outsider_reconciliation")
     quiet_checks = {
         s: summary["by_scenario"]["candidate"][s]["reward"]["mean"]

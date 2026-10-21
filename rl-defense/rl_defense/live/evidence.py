@@ -183,6 +183,18 @@ def pack(evidence_dir: Path, run: str) -> dict:
             },
         },
     }
+    if trajectory := arts.get("holdout_trajectories"):
+        path = d / trajectory["path"]
+        container_sha, _ = _sha256(_chunks_file(path))
+        if container_sha != trajectory["sha256"]:
+            raise ValueError("holdout_trajectories: compressed digest differs from report")
+        logical_sha, _ = _sha256(_chunks_gzip(path))
+        idx["artifacts"]["holdout_trajectories"] = {
+            "path": str(Path(trajectory["path"]).with_suffix("")),
+            "stored_as": "gzip",
+            "stored_path": trajectory["path"],
+            "sha256": logical_sha,
+        }
     (d / INDEX).write_text(json.dumps(idx, indent=2) + "\n")
     verify(d)  # the stored forms reproduce every pinned digest before anything is removed
     (d / exp["path"]).unlink()
