@@ -62,11 +62,14 @@ successful BOLA read returns 200 and trips no error heuristic.
   **Update (v8, 2026-10-20):** `rl-defense/results/live-retrain-v8/` retrained the v7
   method on a train mix with low-intensity, mostly quiet traffic. Its candidate keeps the
   fixed behaviour (`noop` in 178/178 quiet train_v8 windows, `block_principal` in 102/102
-  flagged, lab/platform 280/280), and the gate returns `recommend_promote` on a fresh
-  holdout_v8. It ties v6 on held-out return and is worse than v7 there, and the
-  pre-registered hypothesis (better on low-intensity traffic) is not supported. **The gap
-  stays open in the product until a human approves a candidate.** v8 is the first gated
-  candidate that would close it. Nothing was promoted.
+  flagged, lab/platform 280/280), and its historical gate returns `recommend_promote` on a fresh
+  holdout_v8 against a newly trained simulator baseline, not incumbent v6. It ties v6 on held-out return and is worse than v7 there, and the
+  pre-registered hypothesis (better on low-intensity traffic) is not supported. **The gap stays open in the product.** The historical report cannot authorize
+  replacement of v6; incumbent-bound checks reject the comparison. Nothing was promoted.
+  **Update (v9, 2026-10-21):** Five fixed training seeds evaluated against actual v6 on
+  fresh holdout_v9 all reject. Overall return gain is −0.0458 (95% training-seed CI
+  −0.1758 to +0.0843); mixed rotation regresses despite improved compromise fraction.
+  See `rl-defense/results/live-retrain-v9/PROVENANCE.md`. v6 remains deployed.
 - Window-size shift: the lab's features are per lab window (about 20 requests). A
   reporter's windows can be larger. The features are ratios or capped counts, but volume
   normalization (`flagged_volume`, /6 per principal) assumes lab-sized windows.

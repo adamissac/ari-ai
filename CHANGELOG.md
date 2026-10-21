@@ -6,6 +6,14 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Tighten RL study source/teacher-budget/scenario validation, pin fixed references, and verify recorded trajectories during initial evidence packing. Historical v9 measurements are unchanged.
+
+- Complete preregistered five-seed v9 RL lab study with 16,500 held-out episodes, full compressed evidence and comparison figure. Hypothesis unsupported and every seed rejected; v6 remains deployed. Record compromise/availability tradeoffs and the persistent-attack failure trace.
+
+- Add read-only five-seed study evidence verification, metric/trajectory hash pins, explicit secondary diagnostic thresholds and optional scientific figures. Reject aggregation across different training budgets, source commits or reference checkpoints. Reporting tooling does not change the frozen learning experiment.
+
+- Add opt-in seeded random-valid baseline and compressed raw holdout trajectories to the live online trainer, plus five-training-seed aggregation and preregistered v9 quiet-validation experiment. No policy promotion.
+
 - RL lab continuation: add `online --registry PATH` to gate against the verified incumbent;
   reject stale-baseline promotion reports, changed/unpinned registered reports and absent
   or failed checks. Existing registry reports need explicit re-registration. No promotion.

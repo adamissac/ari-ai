@@ -1,0 +1,67 @@
+[
+  {
+    "seed": 0,
+    "selected_env_step": 105000,
+    "selected_noop_margin": 0.0,
+    "selected_updates": 110000,
+    "sha256": "253ac45202368f5c787fe97d4512227299b9733d9c0e67614662dd191869e576",
+    "complete_experiment": {
+      "agent_transitions": 150000,
+      "experience_file": "candidate_online_experience.jsonl",
+      "experience_sha256": "c2789ebbd90c34c08a5d694911008737c80c641846d44e8419774e309aa1484a",
+      "updates": 155000
+    }
+  },
+  {
+    "seed": 1,
+    "selected_env_step": 150000,
+    "selected_noop_margin": 0.0,
+    "selected_updates": 155000,
+    "sha256": "df00788a6c3e87697a91308a97b56bb796a0088de80618e1811b1c644ca906fe",
+    "complete_experiment": {
+      "agent_transitions": 150000,
+      "experience_file": "candidate_online_experience.jsonl",
+      "experience_sha256": "13dcc2add8eb1c10b825319e14d4e7b3c19b7c8ac402e4af020f0160df58bda7",
+      "updates": 155000
+    }
+  },
+  {
+    "seed": 2,
+    "selected_env_step": 75000,
+    "selected_noop_margin": 0.0,
+    "selected_updates": 80000,
+    "sha256": "b520ef54f7accf4ba9fd10a93beee7482feb8e9749e1991838364ce540c4a74d",
+    "complete_experiment": {
+      "agent_transitions": 150000,
+      "experience_file": "candidate_online_experience.jsonl",
+      "experience_sha256": "58c6c90380eefe10227c5df74930344a8103241f977b3110ead4cb1dbc67b618",
+      "updates": 155000
+    }
+  },
+  {
+    "seed": 3,
+    "selected_env_step": 120000,
+    "selected_noop_margin": 0.2,
+    "selected_updates": 125000,
+    "sha256": "b2599647d5d3218e208e86b5d25902871449f80ab900436e1eb2561238346f4e",
+    "complete_experiment": {
+      "agent_transitions": 150000,
+      "experience_file": "candidate_online_experience.jsonl",
+      "experience_sha256": "0712f4cd206339a23c3f7d588dfe4c7164151781d32e687b5e0b54b81bc61747",
+      "updates": 155000
+    }
+  },
+  {
+    "seed": 4,
+    "selected_env_step": 0,
+    "selected_noop_margin": 0.2,
+    "selected_updates": 5000,
+    "sha256": "1b63045132e6526c159345437ca3a703214f395bbd1d6c4bbcd9c0a77436ea83",
+    "complete_experiment": {
+      "agent_transitions": 150000,
+      "experience_file": "candidate_online_experience.jsonl",
+      "experience_sha256": "08a02f057dbe58f9c2d333a827f96670605e1680ad6394ea90e914d5df474aaa",
+      "updates": 155000
+    }
+  }
+]

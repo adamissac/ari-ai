@@ -207,3 +207,40 @@ approval/report trust follow-ups remain. Next research step requires preregistra
 fresh holdout and incumbent comparison.
 
 Final local verification: **228 RL tests passed** on `f9962eb`; PR #375 awaits review.
+
+### 2026-10-20 — V9 explicitly requested by owner
+
+IN_PROGRESS `feat/alan/live-retrain-v9`, stacked on PR #375. Fresh val_v9/holdout_v9,
+five training seeds, actual incumbent v6, raw trajectories and seed-level aggregation.
+Preregistration must be committed/pushed before execution. No automatic promotion.
+
+### 2026-10-20 — V9 reporting worktree
+
+Prepared `feat/alan/v9-reporting` in `/private/tmp/rl-v9-reporting` while training remains
+frozen at29aa5f8 in `/private/tmp/rl-v8-continuation`. Reporting/split/cohort guards20
+passed; earlier reporting/pipeline22 passed. No held-out v9 policy executed by these
+tests. Integrate reporting only after the complete cohort exits; no model promotion.
+
+### 2026-10-21 — V9 completed, no promotion
+
+All five frozen-source (`29aa5f8`) runs completed in 3h 7m 12s with no execution errors.
+16,500 held-out episodes retained across 11 policies. Primary hypothesis unsupported:
+return gain vs actual v6 −0.0458, 95% training-seed CI [−0.1758, +0.0843]. Both quiet
+scenario means exceed v8, but mixed rotation regresses and all five gates reject.
+Compromise fraction improves while availability and quiet disruption worsen.
+Selected online steps: 105k,150k,75k,120k,0; seed4 selects demo-pretrained weights.
+Exact checkpoints, compressed full experience/trajectories, all metrics, worst paired
+failure, train-only mapping/behavior checks, runtime/registry snapshots and figure are
+retained in `rl-defense/results/live-retrain-v9`. Reporting integrates only after jobs
+finish; no held-out rerun/tuning. Registry v6 unchanged. PR #376 awaits review, stacked
+on incumbent binding PR #375. Next experiments need fresh preregistration/holdout and
+should address mixed rotation/persistent attacks; this holdout is now exposed.
+
+### 2026-10-21 — V9 pre-merge review corrections
+
+Addressed five PR #376 review findings: require source/teacher-budget/expert/rule
+cohort provenance and complete holdout scenario sets; index trajectories at initial
+export; pin fixed v7/v8 bytes in launcher/reporter. Historical reports remain unchanged;
+explicit saved-command budgets reproduce the original summary. Focused31 tests pass.
+No retraining, holdout replay or promotion. Owner authorized merging #375/#376 and
+subsequent v10 failure analysis, regressions and preregistration.

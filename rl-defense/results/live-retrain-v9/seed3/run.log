@@ -1,0 +1,13 @@
+expert: threshold_rules {'threshold_rules': -3.6509467120181407, 'always_block_principal': -4.798446712018141, 'always_block_principal_long': -3.9418027210884357, 'always_block_top_principal_long': -3.9418027210884357}
+[pretrained] env_step 0: val -5.47 (margin 0.5)
+[online] env_step 15000: val -5.49 (margin 0.5)
+[online] env_step 30000: val -5.50 (margin 0.0)
+[online] env_step 45000: val -5.50 (margin 0.0)
+[online] env_step 60000: val -5.50 (margin 0.0)
+[online] env_step 75000: val -5.47 (margin 0.5)
+[online] env_step 90000: val -5.28 (margin 0.0)
+[online] env_step 105000: val -5.32 (margin 0.0)
+[online] env_step 120000: val -5.22 (margin 0.2)
+[online] env_step 135000: val -5.24 (margin 0.5)
+[online] env_step 150000: val -5.30 (margin 0.0)
+reject
