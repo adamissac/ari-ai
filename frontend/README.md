@@ -45,6 +45,10 @@ relay with its human approval gate, before/after fix evidence, inline glossary t
 Defense Lab that explains itself. Technical detail (orchestrator states, usage, event log,
 every RL metric and provenance) is kept, one click away. All counts come from records.
 
+## Interface finish
+
+`app/interface.css` supplies the shared editorial finish: workspace title hierarchy, numbered organization cards, precise repository rows, restrained charcoal panels, ember selection edges and a compact replay frame. It retains the hero and scroll timelines in `globals.css`. The Projects header link stays current across `/connect` and its descendants. The desktop/mobile browser test uses explicit GitHub metadata fixtures and the real session/router.
+
 ## Landing, header and motion
 
 - `components/explainer-video.tsx`: the landing's video chapter right after the hero (`public/videos/ari-explainer.mp4`). On `lg` with motion allowed it is a sticky 220vh track and scroll grows the player from an inset card to full size; it plays muted while on screen, pauses off screen, and offers sound, full screen and a download.

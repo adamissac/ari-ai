@@ -1026,3 +1026,7 @@ Focused runs: 35 passed; final retained-evidence/pipeline checks 15 passed.
 The first broad run collected an obsolete pre-edit test (226 pass/1 fail); the
 clean committed-tree rerun above supersedes it. Ruff check and Python format
 checks pass. PR: https://github.com/adamissac/ari-ai/pull/375 (review, no merge).
+
+### 2026-10-20 — interface polish
+
+Polish the shared ARI interface using Kairo’s restrained grids and technical typography in ARI’s warm charcoal/ember palette. Add consistent workspace headers, numbered organization cards, clearer repository rows, quieter panels and a precise replay frame. Preserve the original hero and scroll choreography; keep Projects highlighted throughout the organization/repository/commit flow. Branch `feat/adam/ui-polish`; validation and screenshots recorded in PR.
