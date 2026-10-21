@@ -1,0 +1,33 @@
+{
+  "schema": "live-evidence-index/0.1",
+  "run": "/Users/alanmozhoor/Documents/hackatl-agentic-security/.claude/worktrees/live-retrain-v8-4c5c2e/rl-defense/.venv/bin/python -m rl_defense.live.online --registry /Users/alanmozhoor/Documents/hackatl-agentic-security/.claude/worktrees/mystifying-hofstadter-c5aaf7/rl-defense/runs/live/registry.json --rules-episodes 2 --seed 4 --train-dir train_v8 --val-dir val_v10 --holdout-dir holdout_v10 --holdout-episodes 100 --severity-context platform --random-baseline --record-trajectories --reference-checkpoint v8=results/live-retrain-v8/candidate_online.pt --reference-checkpoint v9=results/live-retrain-v9/seed4/candidate_online.pt --out runs/live/retrain-v10/balanced/seed4 --evidence-dir results/live-retrain-v10/balanced/seed4 --balance-demo-actions",
+  "artifacts": {
+    "checkpoint": {
+      "path": "candidate_online.pt",
+      "stored_as": "file",
+      "sha256": "c2530bd3158418c11d22d96f4780f48376b601d1a6189e6c33d01deba18c1eb0",
+      "note": "the selected candidate; digest equals the report's checkpoint_sha256"
+    },
+    "experiment": {
+      "path": "candidate_online_experience.jsonl",
+      "stored_as": "gzip",
+      "stored_path": "candidate_online_experience.jsonl.gz",
+      "sha256": "4b8a6683782729ff247f496611c83f91804322befd4ac71641299148aa3d9b67",
+      "note": "complete log: demonstrations + all online transitions (154200 lines)"
+    },
+    "selected_experience": {
+      "path": "candidate_online_selected_experience.jsonl",
+      "stored_as": "prefix",
+      "of": "experiment",
+      "lines": 64200,
+      "sha256": "a4a26fa48c03a42c57e91551aa4d0fb2b61b2d892286bea12807b4f8943de0a3",
+      "note": "the data available at the selected snapshot; the hash the checkpoint's lineage.experience_sha256 pins"
+    },
+    "holdout_trajectories": {
+      "path": "holdout_trajectories.jsonl",
+      "stored_as": "gzip",
+      "stored_path": "holdout_trajectories.jsonl.gz",
+      "sha256": "4986db63f939cf6b8b6e0797049da85123063b02c2d82572f11d2fcbc4cfa9dc"
+    }
+  }
+}
