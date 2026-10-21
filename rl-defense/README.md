@@ -262,4 +262,7 @@ the default trainer/serving, and is not evidence of a better policy. No v11 laun
 existing outsider-duration rule and actual v6. This is a heuristic screen, not trained
 RL or serving logic. Source and success conditions are frozen before evaluation;
 no holdout is used. Only a passing availability/compromise screen can justify preparing
-one possible v11 preregistration. V6 remains deployed.
+one possible v11 preregistration. The completed screen failed its fixed availability
+confidence condition: +1.2373 points vs v6,95% CI[−0.0313,+2.5340]; compromise improved
+on validation but worsened on training. No v11 prepared or launched. See
+[results and limits](results/duration-screen/PROVENANCE.md). V6 remains deployed.

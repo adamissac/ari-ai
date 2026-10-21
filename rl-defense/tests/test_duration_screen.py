@@ -126,3 +126,25 @@ def test_observed_budget_cannot_be_silently_truncated():
     screen.validate_budget(rows, [scenario], 2)
     with pytest.raises(ValueError, match="budget"):
         screen.validate_budget(rows[:-1], [scenario], 2)
+
+
+def test_completed_duration_screen_raw_evidence_and_failed_decision_are_preserved():
+    import json
+
+    path = PATH.with_name("finalize.py")
+    spec = importlib.util.spec_from_file_location("duration_raw_verifier_test", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module.verify(PATH.parent) == {
+        "episodes": 520,
+        "windows": 15600,
+        "promotion_performed": False,
+    }
+    summary = json.loads(PATH.with_name("summary.json").read_text())
+    assert summary["prepare_v11_preregistration"] is False
+    assert summary["checks"]["availability_gain_ci_low_positive"] is False
+    assert all(
+        value
+        for key, value in summary["checks"].items()
+        if key != "availability_gain_ci_low_positive"
+    )
