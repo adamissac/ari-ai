@@ -1,15 +1,23 @@
-"""Per-commit push scheduling. Identity comes from GitHub, never a commit's email."""
+"""Per-commit scheduling, gated by signed push sender and GitHub commit attribution."""
 
 from __future__ import annotations
 
 import re
+from datetime import timedelta
 from typing import Any
 
 import sqlalchemy as sa
 from sqlalchemy.engine import Connection
 
 from backend import jobs
-from backend.db import monitoring_events, reassessment_requests, repositories, transaction
+from backend.db import (
+    assessments,
+    monitoring_events,
+    projects,
+    reassessment_requests,
+    repositories,
+    transaction,
+)
 from backend.github import GitHubApp
 from backend.services import (
     active_scope_for_repo,
@@ -43,8 +51,14 @@ def authors() -> set[str]:
 def schedule(
     conn: Connection, repo: Any, delivery: Any, payload: dict[str, Any], change: Any
 ) -> dict[str, Any]:
+    if not repo["automatic_assessments"]:
+        return {"ignored": "repository automatic assessments disabled"}
     if change.event != "push":
         return {"ignored": "automatic commit rollout accepts pushes only"}
+    allowed = authors()
+    sender = (change.sender or "").lower()
+    if not sender or ("*" not in allowed and sender not in allowed):
+        return {"ignored": "push sender is outside the automatic rollout"}
     installation = repo["installation_id"]
     if not installation or (payload.get("installation") or {}).get("id") != installation:
         return {"ignored": "push installation does not match connected repository"}
@@ -71,6 +85,7 @@ def schedule(
             {
                 "repo_id": repo["id"],
                 "sha": sha,
+                "sender": sender,
                 "installation_id": installation,
                 "payload_artifact_id": delivery["payload_artifact_id"],
                 "ref": change.ref,
@@ -88,6 +103,9 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
     allowed = authors()
     if not allowed:
         return {"ignored": "automatic commit rollout disabled"}
+    sender = p.get("sender", "").lower()
+    if not sender or ("*" not in allowed and sender not in allowed):
+        return {"ignored": "push sender is outside the automatic rollout"}
     with transaction() as conn:
         repo = (
             conn.execute(sa.select(repositories).where(repositories.c.id == p["repo_id"]))
@@ -104,6 +122,10 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
         return {"ignored": "commit author is outside the automatic rollout"}
     ctx.check_cancelled()
     with transaction() as conn:
+        # Serialize quota reservations across all repositories in a project.
+        conn.execute(
+            sa.select(projects.c.id).where(projects.c.id == repo["project_id"]).with_for_update()
+        ).one()
         # Serialize retries, duplicate deliveries, and scope activation for this repo.
         repo = (
             conn.execute(
@@ -114,6 +136,8 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
         )
         if repo["installation_id"] != p["installation_id"]:
             return {"ignored": "repository installation changed"}
+        if not repo["automatic_assessments"]:
+            return {"ignored": "repository automatic assessments disabled"}
         settings = project_settings(conn, repo["project_id"])
         if not settings.monitoring_policy.enabled:
             return {"ignored": "monitoring disabled"}
@@ -174,7 +198,37 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
                 created_at=utcnow(),
             )
         assert rrq is not None
+        delay_s = 0.0
         if scope:
+            now = utcnow()
+            limits = get_settings()
+            for seconds, limit in (
+                (3600, limits.automatic_assessments_per_hour),
+                (86400, limits.automatic_assessments_per_day),
+            ):
+                count, oldest = conn.execute(
+                    sa.select(sa.func.count(), sa.func.min(assessments.c.created_at)).where(
+                        assessments.c.project_id == repo["project_id"],
+                        assessments.c.trigger == AssessmentTrigger.monitoring.value,
+                        assessments.c.created_at > now - timedelta(seconds=seconds),
+                    )
+                ).one()
+                if count >= limit and oldest:
+                    delay_s = max(
+                        delay_s, (oldest + timedelta(seconds=seconds + 1) - now).total_seconds()
+                    )
+        if scope and delay_s:
+            reason = "queued: waiting for project automatic-run capacity"
+            rrq = rrq.model_copy(update={"status": ReassessmentStatus.queued, "reason": reason})
+            jobs.enqueue(
+                conn,
+                "assess_github_commit",
+                p,
+                delay_s=delay_s,
+                priority=60,
+                dedupe_key=f"github:deferred:{ctx.job.id}",
+            )
+        elif scope:
             asm, _ = create_assessment(
                 conn,
                 project_id=repo["project_id"],
@@ -193,13 +247,16 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
                     "reason": reason,
                 }
             )
-            if existing:
-                event_doc = {**existing["doc"], "status_reason": reason}
-                conn.execute(
-                    sa.update(monitoring_events)
-                    .where(monitoring_events.c.id == existing["id"])
-                    .values(doc=event_doc)
-                )
+        event_id = existing["id"] if existing else event.id
+        event_doc = {
+            **(existing["doc"] if existing else event.model_dump(mode="json")),
+            "status_reason": reason,
+        }
+        conn.execute(
+            sa.update(monitoring_events)
+            .where(monitoring_events.c.id == event_id)
+            .values(doc=event_doc)
+        )
         values = dict(status=rrq.status.value, doc=rrq.model_dump(mode="json"))
         if existing:
             conn.execute(

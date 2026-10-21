@@ -6039,6 +6039,11 @@
     "Repository": {
       "additionalProperties": false,
       "properties": {
+        "automatic_assessments": {
+          "default": true,
+          "title": "Automatic Assessments",
+          "type": "boolean"
+        },
         "created_at": {
           "format": "date-time",
           "title": "Created At",
@@ -6084,6 +6089,7 @@
         }
       },
       "required": [
+        "automatic_assessments",
         "id",
         "project_id",
         "provider",
@@ -6129,6 +6135,20 @@
         "installation_id"
       ],
       "title": "RepositoryConnect",
+      "type": "object"
+    },
+    "RepositoryUpdate": {
+      "additionalProperties": false,
+      "properties": {
+        "automatic_assessments": {
+          "title": "Automatic Assessments",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "automatic_assessments"
+      ],
+      "title": "RepositoryUpdate",
       "type": "object"
     },
     "ReviewRequest": {
@@ -7977,5 +7997,5 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "HackATL platform contracts",
-  "x-schema-version": "0.14.0"
+  "x-schema-version": "0.15.0"
 }

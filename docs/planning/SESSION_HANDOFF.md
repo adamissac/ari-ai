@@ -1135,3 +1135,8 @@ Use committed/pushed clean source and the real existing v6 registry with
 and its documented workspace PYTHONPATH. Source-byte/reference/registry guards,
 complete primary/secondary reporting and failure evidence are implemented; no
 automatic model choice, approval or promotion. This requested task ends at preparation.
+
+
+### Automatic/manual mode and Haiku-only follow-up (#377 / #380)
+
+Implemented per-repository persisted ON/OFF, owner-only API, migration 0009 and proposed additive schema 0.15.0; manual Run shown when OFF. Added signed-sender gate and per-project start quotas that defer every excess commit durably. Production/staging gateway, Railway startup and quick-read enforce Haiku 5.5. Historical evidence labels preserved. Contract review requested from Alan; full test/CI and deployment verification remain pending.

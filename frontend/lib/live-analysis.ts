@@ -12,7 +12,7 @@ import { countLines, parsePatch, type GitHubFile } from '@/lib/live-diff';
  * result is shaped like the demo `Analysis`, so the same commit view renders it.
  */
 
-const MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-5-5';
+const MODEL = 'claude-haiku-5-5';
 /** Diff text sent to the model, in characters. Larger commits are cut, and the page says so. */
 const MAX_PROMPT_DIFF = 180_000;
 /** USD per million tokens (input, output); unknown models use the most expensive rate. */

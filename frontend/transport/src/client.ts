@@ -121,6 +121,12 @@ export class ApiClient {
   connectRepository(projectId: string, body: C.RepositoryConnect, options?: RequestOptions): Promise<C.Repository> {
     return this.request(`/projects/${segment(projectId)}/repositories`, 'Repository', options, body) as Promise<C.Repository>;
   }
+  repository(repoId: string, options?: RequestOptions): Promise<C.Repository> {
+    return this.request(`/repositories/${segment(repoId)}`, 'Repository', options) as Promise<C.Repository>;
+  }
+  updateRepository(repoId: string, body: C.RepositoryUpdate, options?: RequestOptions): Promise<C.Repository> {
+    return this.request(`/repositories/${segment(repoId)}`, 'Repository', options, body, undefined, undefined, false, 'PATCH') as Promise<C.Repository>;
+  }
   createSnapshot(repoId: string, body: C.SnapshotCreate, key: string, options?: RequestOptions): Promise<C.Snapshot> {
     return this.request(`/repositories/${segment(repoId)}/snapshots`, 'Snapshot', options, body, key) as Promise<C.Snapshot>;
   }

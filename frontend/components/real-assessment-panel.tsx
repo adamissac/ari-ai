@@ -4,6 +4,7 @@ import type { Assessment, AuthorizedScope, AccessibleRepository } from '@hackatl
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { RepositoryAutomation } from '@/components/repository-automation';
 import { ErrorState } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useActionKeys } from '@/lib/action-key';
@@ -19,6 +20,7 @@ type LoadedData =
     projectId: string;
     scopes: AuthorizedScope[];
     assessments: Assessment[];
+    automatic: boolean;
   };
 type DataState = { status: 'loading' } | LoadedData;
 
@@ -63,11 +65,12 @@ export function RealAssessmentPanel({
       const detail = await api().assessment(previous.id, { signal });
       return assessmentsForCommit([detail.assessment], repoId, sha);
     };
-    const [scopes, assessments] = await Promise.all([
+    const [scopes, assessments, repository] = await Promise.all([
       api().scopes(projectId, { signal }),
       readHistory(),
+      api().repository(repoId, { signal }),
     ]);
-    return { projectId, scopes: scopes.items, assessments };
+    return { projectId, scopes: scopes.items, assessments, automatic: repository.automatic_assessments };
   }, 10000);
   const data: DataState = resource.status === 'ready'
     ? { status: 'ready', ...resource.data }
@@ -75,7 +78,8 @@ export function RealAssessmentPanel({
   const reload = resource.reload;
   useEffect(() => {
     window.addEventListener('focus', reload);
-    return () => window.removeEventListener('focus', reload);
+    window.addEventListener('ari:automation-changed', reload);
+    return () => { window.removeEventListener('focus', reload); window.removeEventListener('ari:automation-changed', reload); };
   }, [reload]);
 
   const connect = async () => {
@@ -158,11 +162,12 @@ export function RealAssessmentPanel({
 
   return (
     <div data-testid="real-assessment-panel" className="space-y-3">
+      {connectedRepoId && <RepositoryAutomation repoId={connectedRepoId} />}
       <div className="glass flex flex-wrap items-center justify-between gap-3 px-5 py-4">
         <div>
           <p className="label-mono text-white/55">Real run</p>
           <p className="text-sm text-white/70" aria-live="polite">
-            {!connectedRepoId ? 'Connect this repository to run the 7 agents for real.' : data.status === 'loading' ? 'Loading…' : data.status === 'error' ? 'Could not load the latest run.' : latest ? `Last run: ${ASSESSMENT_STATE[latest.state].label}` : scopeState?.kind === 'none' ? 'Needs an approved authorization before the agents can run.' : scopeState?.kind === 'pending' ? isSandboxOnlyScope(scopeState.scope) ? 'A project owner can approve this sandbox-only authorization.' : 'Waiting for another project owner to approve.' : 'No recorded run yet. Eligible pushes start automatically; this page refreshes as results arrive.'}
+            {!connectedRepoId ? 'Connect this repository to run the 7 agents for real.' : data.status === 'loading' ? 'Loading…' : data.status === 'error' ? 'Could not load the latest run.' : latest ? `Last run: ${ASSESSMENT_STATE[latest.state].label}` : scopeState?.kind === 'none' ? 'Needs an approved authorization before the agents can run.' : scopeState?.kind === 'pending' ? isSandboxOnlyScope(scopeState.scope) ? 'A project owner can approve this sandbox-only authorization.' : 'Waiting for another project owner to approve.' : data.automatic ? 'Waiting for an automatic run from an eligible push. Results appear here as they arrive.' : 'Automatic runs are off. Run this commit when you are ready.'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -170,7 +175,7 @@ export function RealAssessmentPanel({
           {data.status === 'ready' && latest && (
             <>
               {!onRunSelected && <Link className="text-sm text-white/80 underline-offset-2 hover:underline" href={`/projects/${data.projectId}/assessments/${latest.id}`}>Open run →</Link>}
-              {scopeState?.kind === 'active' && TERMINAL_STATES.has(latest.state) && <button type="button" className="rounded-full bg-white px-4 py-2 text-sm font-medium text-ink disabled:opacity-50" disabled={busy} onClick={() => void startAssessment(data.projectId, scopeState.scope.id)}>Run again</button>}
+              {!data.automatic && scopeState?.kind === 'active' && TERMINAL_STATES.has(latest.state) && <button type="button" className="rounded-full bg-white px-4 py-2 text-sm font-medium text-ink disabled:opacity-50" disabled={busy} onClick={() => void startAssessment(data.projectId, scopeState.scope.id)}>Run again</button>}
             </>
           )}
           {data.status === 'ready' && !latest && scopeState?.kind === 'none' && <button type="button" className="rounded-full bg-white px-4 py-2 text-sm font-medium text-ink disabled:opacity-50" disabled={busy} onClick={() => void requestAuthorization(data.projectId)}>Request authorization</button>}
@@ -181,7 +186,7 @@ export function RealAssessmentPanel({
               <button type="button" className="text-sm text-white/80 underline-offset-2 hover:underline" onClick={reload}>Refresh status</button>
             </>
           )}
-          {data.status === 'ready' && !latest && scopeState?.kind === 'active' && (
+          {data.status === 'ready' && !data.automatic && !latest && scopeState?.kind === 'active' && (
             <>
               <button type="button" className="rounded-full bg-white px-4 py-2 text-sm font-medium text-ink disabled:opacity-50" disabled={busy} onClick={() => void startAssessment(data.projectId, scopeState.scope.id)}>Run the 7 agents</button>
               <span className="text-xs text-white/50">Uses real Claude spend.</span>

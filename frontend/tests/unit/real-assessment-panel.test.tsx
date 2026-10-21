@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { AccessibleRepository, AuthorizedScope } from '@hackatl/frontend-transport';
 
-const mocks = vi.hoisted(() => ({ scopes: vi.fn(), assessments: vi.fn(), approveScope: vi.fn(), startAssessment: vi.fn(), assessment: vi.fn(), push: vi.fn() }));
+const mocks = vi.hoisted(() => ({ repository: vi.fn(), updateRepository: vi.fn(), scopes: vi.fn(), assessments: vi.fn(), approveScope: vi.fn(), startAssessment: vi.fn(), assessment: vi.fn(), push: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mocks.push }) }));
 vi.mock('@/lib/api', () => ({ api: () => mocks, idempotencyKey: () => 'key-test' }));
 vi.mock('@/lib/github-connect', () => ({ projectForRepository: async () => 'prj_test', connectRepo: vi.fn() }));
@@ -18,6 +18,8 @@ const scope: AuthorizedScope = {
 const view = () => <RealAssessmentPanel org="alice" repo={repo} sha={'a'.repeat(40)} onConnected={vi.fn()} />;
 
 beforeEach(() => {
+  mocks.repository.mockResolvedValue({ automatic_assessments: false });
+  mocks.updateRepository.mockImplementation(async (_id, body) => { mocks.repository.mockResolvedValue(body); return body; });
   mocks.scopes.mockResolvedValue({ items: [scope], next_cursor: null });
   mocks.assessments.mockResolvedValue({ items: [], next_cursor: null });
 });
@@ -77,4 +79,18 @@ it('scans older history once and refreshes the resolved assessment directly', as
   await act(async () => { await vi.advanceTimersByTimeAsync(10000); });
   expect(mocks.assessments.mock.calls.filter(call => call[1]?.cursor === 'old-page')).toHaveLength(1);
   expect(mocks.assessment).toHaveBeenCalledWith('asm_old', expect.any(Object));
+});
+
+
+it('shows automatic mode without a manual start and switches to manual only after saving OFF', async () => {
+  mocks.repository.mockResolvedValue({ automatic_assessments: true });
+  mocks.scopes.mockResolvedValue({ items: [{ ...scope, status: 'active' }], next_cursor: null });
+  render(view());
+  const toggle = await screen.findByRole('switch', { name: 'Automatic runs' });
+  await screen.findByText(/Waiting for an automatic run/);
+  expect(screen.queryByRole('button', { name: 'Run the 7 agents' })).toBeNull();
+  expect(mocks.startAssessment).not.toHaveBeenCalled();
+  fireEvent.click(toggle);
+  expect(await screen.findByRole('button', { name: 'Run the 7 agents' })).toBeTruthy();
+  expect(mocks.updateRepository).toHaveBeenCalledWith('repo_test', { automatic_assessments: false });
 });

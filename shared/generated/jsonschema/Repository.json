@@ -10,6 +10,11 @@
   },
   "additionalProperties": false,
   "properties": {
+    "automatic_assessments": {
+      "default": true,
+      "title": "Automatic Assessments",
+      "type": "boolean"
+    },
     "created_at": {
       "format": "date-time",
       "title": "Created At",

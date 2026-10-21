@@ -91,6 +91,7 @@ def test_signed_push_drives_the_full_chain_to_verified_regressions(
 
         monkeypatch.setattr("backend.checkouts.ensure_checkout", owned_checkout)
         payload["commits"][0]["id"] = head
+        payload["sender"] = {"login": "adamissac"}
     delivery = str(uuid.uuid4())
     assert post_webhook(alice, payload, delivery=delivery).status_code == 202
     assert post_webhook(alice, payload, delivery=delivery).status_code in (200, 202)  # redelivery

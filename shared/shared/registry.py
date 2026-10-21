@@ -136,6 +136,7 @@ MODELS: tuple[type[BaseModel], ...] = (
     api.ProjectCreate,
     api.ProjectUpdate,
     api.RepositoryConnect,
+    api.RepositoryUpdate,
     api.SnapshotCreate,
     api.ScopeCreate,
     api.ApprovalDecision,

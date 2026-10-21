@@ -109,6 +109,8 @@ def process_github_delivery(ctx: JobContext) -> dict[str, Any]:
     if repo is None:
         return {"ignored": f"repository {change.repo_full_name} is not connected"}
 
+    if not repo["automatic_assessments"]:
+        return {"ignored": "repository automatic assessments disabled"}
     if auto_commits.authors():
         with transaction() as conn:
             return auto_commits.schedule(conn, repo, d, payload, change)
@@ -300,6 +302,20 @@ def run_assessment(ctx: JobContext) -> dict[str, Any]:
         return {"state": a.state.value, "noop": True}
     try:
         resuming = a.state is not AssessmentState.CREATED
+        if not resuming and a.trigger is AssessmentTrigger.monitoring:
+            with transaction() as conn:
+                automatic = conn.execute(
+                    sa.select(repositories.c.automatic_assessments).where(
+                        repositories.c.id == host.repo_id
+                    )
+                ).scalar_one()
+            if not automatic:
+                host.terminate(
+                    AssessmentState.CANCELLED,
+                    ErrorCode.CANCELLED,
+                    "automatic assessments switched off before this run started",
+                )
+                return {"state": AssessmentState.CANCELLED.value}
         if not resuming:
             host.transition(AssessmentState.SCOPE_CHECK, "checking authorized scope")
             host.require_active_scope()

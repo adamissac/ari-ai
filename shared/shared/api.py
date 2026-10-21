@@ -72,6 +72,10 @@ class RepositoryConnect(StrictModel):
     installation_id: int | None = Field(default=None, ge=1)
 
 
+class RepositoryUpdate(StrictModel):
+    automatic_assessments: bool
+
+
 class SnapshotCreate(StrictModel):
     commit_sha: CommitSha
 
