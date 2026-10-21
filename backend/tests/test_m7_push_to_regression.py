@@ -43,6 +43,16 @@ def test_signed_push_drives_the_full_chain_to_verified_regressions(
 ) -> None:
     h = unified
     alice, bob, pid = h["alice"], h["bob"], h["project"]
+    # Automation is opt-in, including in this full-chain integration test.
+    settings = alice.get(f"/api/v1/projects/{pid}").json()["settings"]
+    settings["monitoring_policy"]["enabled"] = True
+    assert alice.patch(f"/api/v1/projects/{pid}", json={"settings": settings}).status_code == 200
+    assert (
+        alice.patch(
+            f"/api/v1/repositories/{h['repo']}", json={"automatic_assessments": True}
+        ).status_code
+        == 200
+    )
 
     # Legacy monitoring requires an explicit full-chain budget; automatic commits
     # use the normal project assessment budget without manual configuration.
