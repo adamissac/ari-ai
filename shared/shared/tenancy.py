@@ -35,7 +35,7 @@ class Usage(StrictModel):
 class TriggerPolicy(StrictModel):
     """Monitoring trigger policy (docs/10). Defaults match the MVP table."""
 
-    enabled: bool = True
+    enabled: bool = False
     min_interval_s: int = Field(default=600, ge=0, description="Coalescing window per repo")
     ignore_paths_only: list[ShortText] = Field(
         default_factory=lambda: ["tests/**", "docs/**", "**/*.md"],
@@ -89,7 +89,7 @@ class RepoProvider(StrEnum):
 
 
 class Repository(StrictModel):
-    automatic_assessments: bool = True
+    automatic_assessments: bool = False
     id: RepositoryId
     project_id: ProjectId
     provider: RepoProvider = RepoProvider.github

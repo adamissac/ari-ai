@@ -25,7 +25,10 @@ def setup_project(alice: Any, bob: Any, *, approve: bool = True) -> dict[str, st
     """Alice owns a project with a connected repo and requests a scope; Bob (co-owner) approves it."""
     org_id = alice.me["memberships"][0]["organization"]["id"]
     add_member(org_id, bob.me["user"]["id"])
-    p = alice.post("/api/v1/projects", json={"name": "payments-lite"})
+    p = alice.post(
+        "/api/v1/projects",
+        json={"name": "payments-lite", "settings": {"monitoring_policy": {"enabled": True}}},
+    )
     assert p.status_code == 201, p.text
     pid = p.json()["id"]
     r = alice.post(
@@ -33,6 +36,10 @@ def setup_project(alice: Any, bob: Any, *, approve: bool = True) -> dict[str, st
     )
     assert r.status_code == 201, r.text
     rid = r.json()["id"]
+    assert (
+        alice.patch(f"/api/v1/repositories/{rid}", json={"automatic_assessments": True}).status_code
+        == 200
+    )
     expires = (datetime.now(UTC) + timedelta(days=7)).isoformat()
     s = alice.post(
         f"/api/v1/projects/{pid}/scopes",

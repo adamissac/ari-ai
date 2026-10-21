@@ -6040,7 +6040,7 @@
       "additionalProperties": false,
       "properties": {
         "automatic_assessments": {
-          "default": true,
+          "default": false,
           "title": "Automatic Assessments",
           "type": "boolean"
         },
@@ -7528,7 +7528,7 @@
       "description": "Monitoring trigger policy (docs/10). Defaults match the MVP table.",
       "properties": {
         "enabled": {
-          "default": true,
+          "default": false,
           "title": "Enabled",
           "type": "boolean"
         },
@@ -7997,5 +7997,5 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "HackATL platform contracts",
-  "x-schema-version": "0.15.0"
+  "x-schema-version": "0.15.1"
 }

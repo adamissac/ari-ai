@@ -75,7 +75,7 @@ def _decide(paths: list[str], **kw: object):
     change = normalize_github("push", push(paths))
     assert not isinstance(change, Ignored)
     args = dict(
-        policy=TriggerPolicy(),
+        policy=TriggerPolicy(enabled=True),
         paths_complete=change.paths_complete,
         has_active_scope=True,
         verified_finding_paths={},

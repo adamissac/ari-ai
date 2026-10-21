@@ -301,6 +301,7 @@ def run_assessment(ctx: JobContext) -> dict[str, Any]:
     if a.state in TERMINAL_STATES:
         return {"state": a.state.value, "noop": True}
     try:
+        host.check_cancelled()
         resuming = a.state is not AssessmentState.CREATED
         if not resuming and a.trigger is AssessmentTrigger.monitoring:
             with transaction() as conn:

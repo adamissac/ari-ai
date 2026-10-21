@@ -1,0 +1,3 @@
+# Adam → Alan: owner-requested OFF defaults and one-time reset
+
+The owner explicitly requested all AI automation and Defense Lab switches OFF until a user enables them. Proposed schema 0.15.1: `Repository.automatic_assessments` default false and `TriggerPolicy.enabled` default false; no fields added/removed. Migration 0010 resets existing values once, requests cooperative cancellation of unfinished monitoring assessments, and wakes delayed commit jobs for normal skipped finalization. Manual runs/history preserved. Please review shared default semantics and backend migration on `fix/adam/automation-opt-in`. 36 focused tests pass; full suite running. Railway connection is installed but tools not yet exposed in this conversation.

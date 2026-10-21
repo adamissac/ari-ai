@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Default repository AI automation and project 24/7 defense OFF; migration 0010 pauses existing automatic work until explicit owner opt-in. Manual runs and historical results remain available.
+
 - Add per-repository Automatic runs ON/OFF and manual commit runs when OFF. Queue excess commits under project quotas, require authorized push sender plus commit attribution, and enforce Claude Haiku 5.5 in production. Contract 0.15.0 and migration 0009.
 
 - Automatically queue every eligible pushed commit, with verified GitHub author rollout (Railway defaults to `adamissac`), per-commit deduplication and resume after scope approval.

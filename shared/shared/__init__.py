@@ -6,7 +6,7 @@ coordination/CONTRACTS.md.
 """
 
 SCHEMA_VERSION = (
-    "0.15.0"  # 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING;
+    "0.15.1"  # 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING;
     # 0.6 intelligence memory (PR #39); 0.7 security standards + incidents (PR #49);
     # 0.8 FindingDetail / AssessmentReport response DTOs (additive);
     # 0.9 CheckCategory enum (Probe ids + V0 fixture aliases);

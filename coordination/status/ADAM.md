@@ -242,3 +242,8 @@ Implemented per-repository persisted ON/OFF, owner-only API, migration 0009 and 
 ### 2026-10-21 — automatic commit review fixes (#377)
 
 Finalized deferred requests as skipped when repository/rollout policy disables them; added regression coverage. Updated operator docs and ADR-0015 to the explicit Haiku-only production policy. Latest focused scheduling/migration verification: 26 passed; Ruff passed. Prior frontend verification: 305 tests, TypeScript, lint, production build and two real-stack browser checks passed. Integrating latest main; final CI and Alan contract approval remain required. No authenticated live-provider run has been verified.
+
+
+### 2026-10-21 — automation opt-in reset
+
+Owner requested AI automation and Defense Lab OFF until explicitly enabled. Branch `fix/adam/automation-opt-in`: schema 0.15.1 changes Repository.automatic_assessments and TriggerPolicy.enabled defaults to false; migration 0010 resets stored switches, requests cancellation of unfinished automatic assessments, and wakes deferred jobs. Worker checks cancellation before checkout. Manual runs and historical results remain intact. Focused PostgreSQL/monitoring checks: 36 passed. Full tests pending. Railway plugin is installed but no callable Railway tools/credentials are exposed in this conversation; live deployment/settings verification remains blocked on access. Alan review requested for default semantics and backend migration.
