@@ -148,6 +148,15 @@ test('one real assessment from scope approval to verified patch', async ({ brows
 
 test('signed GitHub push appears in the monitoring feed', async ({ browser, request }) => {
   const page = await newUser(browser, 'e2e-alice');
+  const me = await page.request.get(`${env('E2E_API')}/me`);
+  const headers = { 'X-CSRF-Token': (await me.json()).csrf_token };
+  const current = await (await page.request.get(`${env('E2E_API')}/projects/${project()}`)).json();
+  expect((await page.request.patch(`${env('E2E_API')}/projects/${project()}`, {
+    headers, data: { settings: { ...current.settings, monitoring_policy: { ...current.settings.monitoring_policy, enabled: true } } },
+  })).ok()).toBeTruthy();
+  expect((await page.request.patch(`${env('E2E_API')}/repositories/${env('E2E_REPO_ID')}`, {
+    headers, data: { automatic_assessments: true },
+  })).ok()).toBeTruthy();
   const payload = {
     // A docs-only push: monitoring must record it, and the default policy skips re-assessment.
     ref: 'refs/heads/main', before: env('E2E_COMMIT'), after: env('E2E_COMMIT'), forced: false, deleted: false,
