@@ -547,6 +547,7 @@ def run(args: argparse.Namespace) -> dict:
                 "val_curve": [[h["env_step"], round(h["val_reward"], 4)] for h in hist],
             }
         ],
+        "rules_episodes": args.rules_episodes,
         "rules_params": rules_params,
         "rules_no_block_params": None,
         "rules_short_only_params": None,

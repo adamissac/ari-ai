@@ -51,3 +51,17 @@ The evidence index hashes the logical uncompressed trajectory JSONL stream; the 
 promotion report also pins the gzip container bytes. Restored JSONL duplicates are
 git-ignored and excluded from the stored-file manifest, so verification stays portable
 after a local restore.
+
+## Post-run review guards
+
+The five historical promotion reports remain byte-for-byte unchanged. They predate the
+explicit `rules_episodes` field; re-aggregation now requires `legacy_rules_episodes`
+per seed, taken from each saved `command.json` (all2). Expert choice, training scores
+and rules parameters must also match. Missing source commits and missing/extra
+per-policy holdout scenarios are refused. Strict re-aggregation reproduces every
+original numeric result. New online reports include the teacher budget directly.
+
+`reference_pins.py` pins the historical v7/v8 bytes in both launcher and reporter.
+This is a post-run integrity guard, not a claim that the original launcher checked it.
+All five saved reports already identify those exact digests. Generic evidence packing
+now verifies/indexes recorded trajectories immediately, before removing plain logs.

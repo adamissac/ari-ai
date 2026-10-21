@@ -17,6 +17,8 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
+from reference_pins import verify_files, verify_report
+
 from rl_defense.checkpoint import git_sha, sha256_file
 from rl_defense.live import evidence, study
 from rl_defense.live.registry import Registry
@@ -29,6 +31,7 @@ def main() -> int:
     args = ap.parse_args()
     root = Path(__file__).resolve().parents[2]
     os.chdir(root)
+    verify_files(root)
     result_root = Path("results/live-retrain-v9")
     run_root = Path("runs/live/retrain-v9")
     registry = Registry(args.registry)
@@ -101,7 +104,9 @@ def main() -> int:
             raise ValueError("incumbent changed during study; results cannot support promotion")
         evidence.pack(dest, run=" ".join(command))
         evidence.verify(dest)
-        return json.loads((dest / "promotion_report.json").read_text())
+        report = json.loads((dest / "promotion_report.json").read_text())
+        verify_report(report)
+        return report
 
     errors, reports = [], []
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool:
