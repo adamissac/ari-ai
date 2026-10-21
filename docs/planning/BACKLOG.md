@@ -76,3 +76,4 @@ Keep organization/repository/commit navigation scoped to the selected repository
 ## Automatic commit assessments — 2026-10-21
 
 IN_PROGRESS on `feat/adam/automatic-commits`: signed pushes fan out into durable per-commit jobs; GitHub API author allowlist, exact SHA, duplicate protection, no docs-only skip/coalescing loss, scope-approval resume. Railway defaults to `adamissac`; configurable for other accounts. Shared contracts unchanged. Full-chain fixture tests use scripted model responses, not live provider evidence. Production readiness is reachable; authenticated production worker/run verification remains outstanding.
+- [x] UI-POLISH: coherent Kairo-inspired visual system across ARI workspace and landing chapters, with responsive navigation coverage (user-authorized Adam frontend work; `feat/adam/ui-polish`).
