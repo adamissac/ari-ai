@@ -80,10 +80,9 @@ def test_tampered_bytes_are_refused(tmp_path):
     assert not (d / "candidate_online_experience.jsonl").exists()
 
 
-def test_restored_evidence_satisfies_the_registry_gate(tmp_path):
-    """After restore, the registry's durable-evidence checks pass on a temporary copy, so
-    a human approver could promote this candidate. Nothing is promoted for real here."""
-    from rl_defense.live.registry import Registry
+def test_restored_evidence_still_requires_a_deployed_baseline(tmp_path):
+    """Durable evidence alone cannot authorize promotion without an incumbent."""
+    from rl_defense.live.registry import Registry, RegistryError
 
     d = _copy(tmp_path)
     written = {p.name for p in evidence.restore(d)}
@@ -93,5 +92,6 @@ def test_restored_evidence_satisfies_the_registry_gate(tmp_path):
     }
     reg = Registry(tmp_path / "registry.json")
     vid = reg.register(d / "candidate_online.pt", d / "promotion_report.json")
-    reg.promote(vid, "usr_test", "temporary copy in a test")
-    assert reg.deployed["sha256"] == evidence.load_index(d)["artifacts"]["checkpoint"]["sha256"]
+    with pytest.raises(RegistryError, match="no policy is deployed"):
+        reg.promote(vid, "usr_test", "temporary copy in a test")
+    assert reg.deployed is None

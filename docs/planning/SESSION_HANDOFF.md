@@ -998,6 +998,35 @@ Keep organization/repository/commit navigation scoped to the selected repository
 
 Review follow-up: retain accepted starts while history refreshes to prevent duplicate paid runs; lift newly connected repository IDs into the commit workspace; correct replay indexing; bound project lookup concurrency and tolerate unrelated project errors. Added regression coverage for these cases.
 
+
+### 2026-10-20 — Alan / Codex — continue Claude's RL v8 review
+
+Isolated `/private/tmp/rl-v8-continuation`, branch `feat/alan/rl-v8-continuation`,
+base `45f71eca`. Read Alan's v8 evidence and PR #370's unresolved reviews. V8's
+historical pass compares to a fresh simulator baseline, not incumbent v6; retained
+results show a tie versus v6 overall and a per-scenario regression. No holdout rerun,
+training or promotion. Original dirty checkout and Claude worktrees preserved.
+
+Implemented current-incumbent digest binding at promotion, report hash pinning,
+nonempty passing-check validation, `online --registry PATH`, and reference-name alias
+validation. Old unpinned registry entries require explicit re-registration. Historical
+packets are preserved. Authenticated approval, signed/schema-complete reports and
+concurrent registry updates remain outside this local hardening; issue #317 remains open.
+Next experiment: preregister validation coverage of quiet traffic with a fresh holdout,
+using the actual incumbent as comparator. Do not promote v8 from its historical packet.
+
+Validation results are recorded in the continuation PR and coordination message.
+
+
+Final verification for PR #375 (`f9962eb`): from `rl-defense/`, run the existing
+v8 worktree's `.venv/bin/python -m pytest -q` with
+`PYTHONPATH=.:../shared:../standards:../examples/payments-lite/target` pointing at
+this checkout. **228 passed in 240.68s**, log `/private/tmp/rl-v8-final.log`.
+Focused runs: 35 passed; final retained-evidence/pipeline checks 15 passed.
+The first broad run collected an obsolete pre-edit test (226 pass/1 fail); the
+clean committed-tree rerun above supersedes it. Ruff check and Python format
+checks pass. PR: https://github.com/adamissac/ari-ai/pull/375 (review, no merge).
+
 ### 2026-10-20 — interface polish
 
 Polish the shared ARI interface using Kairo’s restrained grids and technical typography in ARI’s warm charcoal/ember palette. Add consistent workspace headers, numbered organization cards, clearer repository rows, quieter panels and a precise replay frame. Preserve the original hero and scroll choreography; keep Projects highlighted throughout the organization/repository/commit flow. Branch `feat/adam/ui-polish`; validation and screenshots recorded in PR.

@@ -6,6 +6,12 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- RL lab continuation: add `online --registry PATH` to gate against the verified incumbent;
+  reject stale-baseline promotion reports, changed/unpinned registered reports and absent
+  or failed checks. Existing registry reports need explicit re-registration. No promotion.
+- Document the repeatable `--reference-checkpoint NAME=PATH` option and reserve the legacy
+  `reference` name for the first comparison to keep report aliases consistent.
+
 - Polish the shared ARI interface using Kairo’s restrained grids and technical typography in ARI’s warm charcoal/ember palette. Add consistent workspace headers, numbered organization cards, clearer repository rows, quieter panels and a precise replay frame. Preserve the original hero and scroll choreography; keep Projects highlighted throughout the organization/repository/commit flow.
 
 - Keep organization/repository/commit navigation scoped to the selected repository and SHA. Real commit runs stay inline in a two-tab reviewer/seven-agent workspace with demo-style agent rail and recorded replay; no redirect to shared project history. Resolve the repository’s actual project, search older run pages, reject mismatched results and retain scoped remediation approvals. Optional narrated quick reads are explicitly requested and separate from executed records.
