@@ -171,6 +171,7 @@ def train_online(
     cfg: OnlineConfig | None = None,
     loop_overrides: Mapping[str, object] | None = None,
     expert_name: str = "expert",
+    balance_demo_actions: bool = False,
     name: str = "candidate_online",
     log=print,  # noqa: ANN001
 ) -> dict:
@@ -272,7 +273,11 @@ def train_online(
                 demo_steps += len(ts)
         # 2. pretraining on demonstrations only
         for _ in range(cfg.pretrain_updates):
-            agent.update(_demo_flag(demo_buf.sample(cfg.batch_size), True))
+            agent.update(
+                _demo_flag(
+                    demo_buf.sample(cfg.batch_size, balance_actions=balance_demo_actions), True
+                )
+            )
         evaluate_snapshot(0, "pretrained")
         # 3. online interaction in the live loop
         rng = np.random.default_rng(cfg.seed + 3)
@@ -300,7 +305,9 @@ def train_online(
                 for _ in range(len(ts) * cfg.updates_per_step):
                     b = cat_batches(
                         _demo_flag(agent_buf.sample(cfg.batch_size - n_demo), False),
-                        _demo_flag(demo_buf.sample(n_demo), True),
+                        _demo_flag(
+                            demo_buf.sample(n_demo, balance_actions=balance_demo_actions), True
+                        ),
                     )
                     losses.append(agent.update(b)["loss"])
             if step // cfg.eval_every > prev // cfg.eval_every or step >= cfg.env_steps:
@@ -351,6 +358,7 @@ def train_online(
                     "experience_sha256": hashlib.sha256(exp_path.read_bytes()).hexdigest(),
                     "updates": history[-1]["updates"],
                 },
+                "balance_demo_actions": balance_demo_actions,
                 "expert": expert_name,
                 "loop_overrides": overrides,
                 "selected_env_step": best[1],
@@ -414,7 +422,15 @@ def run(args: argparse.Namespace) -> dict:
     expert = expert_candidates(rules_params)[expert_name]
 
     cm = train_online(
-        tr, va, app_factory, expert, out, cfg=cfg, loop_overrides=lo, expert_name=expert_name
+        tr,
+        va,
+        app_factory,
+        expert,
+        out,
+        cfg=cfg,
+        loop_overrides=lo,
+        expert_name=expert_name,
+        balance_demo_actions=getattr(args, "balance_demo_actions", False),
     )
     cand_path = out / "candidate_online.pt"
     cand_agent, cand_m = load_checkpoint(cand_path)
@@ -547,6 +563,7 @@ def run(args: argparse.Namespace) -> dict:
                 "val_curve": [[h["env_step"], round(h["val_reward"], 4)] for h in hist],
             }
         ],
+        "balance_demo_actions": getattr(args, "balance_demo_actions", False),
         "rules_episodes": args.rules_episodes,
         "rules_params": rules_params,
         "rules_no_block_params": None,
@@ -702,6 +719,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--val-dir", default="val_v4")
     ap.add_argument("--holdout-dir", default="holdout_v6")
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument(
+        "--balance-demo-actions",
+        action="store_true",
+        help="sample observed demonstration action classes uniformly (experimental)",
+    )
     ap.add_argument("--random-baseline", action="store_true")
     ap.add_argument("--record-trajectories", action="store_true")
     ap.add_argument("--out", default="runs/live/retrain-v6")
