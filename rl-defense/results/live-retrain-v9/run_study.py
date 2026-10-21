@@ -31,6 +31,7 @@ def main() -> int:
     args = ap.parse_args()
     root = Path(__file__).resolve().parents[2]
     os.chdir(root)
+    source_sha = study.require_clean_source(root)
     verify_files(root)
     result_root = Path("results/live-retrain-v9")
     run_root = Path("runs/live/retrain-v9")
@@ -46,7 +47,7 @@ def main() -> int:
     run_root.mkdir(parents=True, exist_ok=True)
     metadata = {
         "started_at": datetime.now(UTC).isoformat(),
-        "git_sha": git_sha(),
+        "git_sha": source_sha,
         "python": sys.version,
         "platform": platform.platform(),
         "cpu_count": os.cpu_count(),
@@ -59,6 +60,8 @@ def main() -> int:
     (run_root / "RUN.json").write_text(json.dumps(metadata, indent=2))
 
     def run_seed(seed: int) -> dict:
+        if git_sha() != source_sha:
+            raise ValueError("source changed during study")
         # Read-only use of the real local registry. No fabricated approval or init.
         out, dest = run_root / f"seed{seed}", result_root / f"seed{seed}"
         out.mkdir()
