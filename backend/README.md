@@ -116,7 +116,8 @@ Scope approval resumes commits previously blocked for lack of authorization.
 The existing commit page polls persisted assessments; opening it or clicking Run
 is not required. This applies to new pushes, not historical backfills.
 
-Monitoring budgets and operator caps still apply. Patch/Verify stages that depend
+Full automatic assessments use the project’s normal `default_budget`, clamped to
+operator caps, rather than the legacy cheaper monitoring budget. Patch/Verify stages that depend
 on remediation approval still wait for that approval; automatic triggering does
 not fabricate a successful seven-agent run or approve proposed repairs. Identity
 API failures retry in the durable queue and eventually dead-letter visibly.

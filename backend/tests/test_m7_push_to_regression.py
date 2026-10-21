@@ -44,16 +44,17 @@ def test_signed_push_drives_the_full_chain_to_verified_regressions(
     h = unified
     alice, bob, pid = h["alice"], h["bob"], h["project"]
 
-    # The project owner sizes the monitoring budget for the full chain (review + 7 agents +
-    # functional repair) through the settings API; the 150k-token default is a cheaper scan.
-    settings = alice.get(f"/api/v1/projects/{pid}").json()["settings"]
-    settings["monitoring_policy"]["monitoring_budget"] = {
-        "max_tokens": 400_000,
-        "max_usd": 10.0,
-        "max_wall_clock_s": 1800,
-    }
-    r = alice.patch(f"/api/v1/projects/{pid}", json={"settings": settings})
-    assert r.status_code == 200, r.text
+    # Legacy monitoring requires an explicit full-chain budget; automatic commits
+    # use the normal project assessment budget without manual configuration.
+    if not automatic:
+        settings = alice.get(f"/api/v1/projects/{pid}").json()["settings"]
+        settings["monitoring_policy"]["monitoring_budget"] = {
+            "max_tokens": 400_000,
+            "max_usd": 10.0,
+            "max_wall_clock_s": 1800,
+        }
+        r = alice.patch(f"/api/v1/projects/{pid}", json={"settings": settings})
+        assert r.status_code == 200, r.text
 
     # A real second commit on the owned repo (behaviour-neutral), pushed and signed.
     repo = h["repo_path"]

@@ -1001,7 +1001,7 @@ Review follow-up: retain accepted starts while history refreshes to prevent dupl
 
 ## Automatic commit assessments — 2026-10-21
 
-IN_PROGRESS on `feat/adam/automatic-commits`: signed pushes fan out into durable per-commit jobs; GitHub API author allowlist, exact SHA, duplicate protection, no docs-only skip/coalescing loss, scope-approval resume. Railway defaults to `adamissac`; configurable for other accounts. Shared contracts unchanged. Full-chain fixture tests use scripted model responses, not live provider evidence. Production readiness is reachable; authenticated production worker/run verification remains outstanding.
+IN_PROGRESS on `feat/adam/automatic-commits`: signed pushes fan out into durable per-commit jobs; GitHub API author allowlist, exact SHA, duplicate protection, no docs-only skip/coalescing loss, scope-approval resume. Railway defaults to `adamissac`; configurable for other accounts. Full runs use the normal project assessment budget (operator-capped), not the deliberately cheaper legacy monitoring budget. Shared contracts unchanged. Full-chain fixture tests use scripted model responses, not live provider evidence. Production readiness is reachable; authenticated production worker/run verification remains outstanding.
 ### 2026-10-20 — interface polish
 
 Polish the shared ARI interface using Kairo’s restrained grids and technical typography in ARI’s warm charcoal/ember palette. Add consistent workspace headers, numbered organization cards, clearer repository rows, quieter panels and a precise replay frame. Preserve the original hero and scroll choreography; keep Projects highlighted throughout the organization/repository/commit flow. Branch `feat/adam/ui-polish`; validation and screenshots recorded in PR.
