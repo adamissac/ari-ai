@@ -90,3 +90,5 @@ Preregister val_v9/fresh holdout_v9; train seeds0–4; use actual incumbent v6; 
 all trajectories and seed-level uncertainty. Completed all five seeds and 16,500 held-out
 episodes. Hypothesis unsupported; all seeds reject, v6 unchanged. Evidence/figure in
 `rl-defense/results/live-retrain-v9/`; no automatic promotion.
+
+- [x] UI-POLISH: coherent Kairo-inspired visual system across ARI workspace and landing chapters, with responsive navigation coverage (user-authorized Adam frontend work; `feat/adam/ui-polish`).
