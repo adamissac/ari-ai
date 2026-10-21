@@ -1,0 +1,31 @@
+# V10 preregistered split; no held-out execution before frozen source.
+horizon: 30
+schedule: bursty
+attack_per_step: 5
+benign_per_step: 8
+attackers:
+- bob
+- erin
+victims:
+- alice
+- carol
+benign:
+- alice
+- bob
+- carol
+- dave
+- erin
+delegations:
+- bob:dave
+- erin:dave
+delegate_per_step: 1
+delegate_burst_p: 0.35
+delegate_burst_size: 3
+p_start: 0.24
+p_stop: 0.18
+attacker_switch: per_request
+rotate_tokens: true
+name: val10_rotation
+split: val
+seed_start: 28600
+episodes: 16

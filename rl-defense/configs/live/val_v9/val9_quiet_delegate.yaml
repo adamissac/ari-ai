@@ -1,0 +1,19 @@
+# V9 validation only; written before training. Rare attacks by a legitimate customer
+# who is also a delegate; blocks have a real opportunity cost.
+name: val9_quiet_delegate
+split: val
+horizon: 30
+schedule: bursty
+p_start: 0.05
+p_stop: 0.4
+attack_per_step: 2
+benign_per_step: 9
+attackers: [erin]
+victims: [bob]
+benign: [alice, bob, carol, dave, erin]
+delegations: ["erin:alice", "dave:carol"]
+delegate_per_step: 1
+delegate_burst_p: 0.25
+delegate_burst_size: 3
+seed_start: 24000
+episodes: 15

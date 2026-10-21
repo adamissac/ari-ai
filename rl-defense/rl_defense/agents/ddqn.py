@@ -198,8 +198,18 @@ class ReplayBuffer:
         self._pos = (self._pos + 1) % self.capacity
         self._full = self._full or self._pos == 0
 
-    def sample(self, batch_size: int) -> Batch:
-        idx = self._rng.integers(0, len(self), size=batch_size)
+    def sample(self, batch_size: int, *, balance_actions: bool = False) -> Batch:
+        if balance_actions:
+            # Demonstration-only opt-in: choose an observed action class uniformly,
+            # then a row uniformly within it. Never synthesize actions or labels.
+            if not len(self):
+                raise ValueError("cannot sample an empty replay buffer")
+            actions = self.actions[: len(self)]
+            groups = [np.flatnonzero(actions == a) for a in np.unique(actions)]
+            classes = self._rng.integers(0, len(groups), size=batch_size)
+            idx = np.asarray([self._rng.choice(groups[c]) for c in classes], dtype=np.int64)
+        else:
+            idx = self._rng.integers(0, len(self), size=batch_size)
         return Batch(
             obs=torch.as_tensor(self.obs[idx]),
             actions=torch.as_tensor(self.actions[idx]),

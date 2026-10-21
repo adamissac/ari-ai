@@ -1,0 +1,28 @@
+# Frozen v10 holdout; no evaluation before preregistration.
+horizon: 30
+schedule: bursty
+attack_per_step: 3
+benign_per_step: 8
+attackers:
+- mallory
+victims:
+- alice
+- erin
+benign:
+- alice
+- bob
+- carol
+- dave
+- erin
+delegations:
+- carol:bob
+delegate_per_step: 1
+delegate_burst_p: 0.25
+delegate_burst_size: 3
+p_start: 0.3
+p_stop: 0.06
+start_active: true
+name: holdout10_persistent
+split: holdout
+seed_start: 43200
+episodes: 100

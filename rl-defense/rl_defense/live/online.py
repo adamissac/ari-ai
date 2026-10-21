@@ -41,6 +41,7 @@ from __future__ import annotations
 import argparse
 import copy
 import dataclasses
+import gzip
 import hashlib
 import json
 import shutil
@@ -170,6 +171,7 @@ def train_online(
     cfg: OnlineConfig | None = None,
     loop_overrides: Mapping[str, object] | None = None,
     expert_name: str = "expert",
+    balance_demo_actions: bool = False,
     name: str = "candidate_online",
     log=print,  # noqa: ANN001
 ) -> dict:
@@ -271,7 +273,11 @@ def train_online(
                 demo_steps += len(ts)
         # 2. pretraining on demonstrations only
         for _ in range(cfg.pretrain_updates):
-            agent.update(_demo_flag(demo_buf.sample(cfg.batch_size), True))
+            agent.update(
+                _demo_flag(
+                    demo_buf.sample(cfg.batch_size, balance_actions=balance_demo_actions), True
+                )
+            )
         evaluate_snapshot(0, "pretrained")
         # 3. online interaction in the live loop
         rng = np.random.default_rng(cfg.seed + 3)
@@ -299,7 +305,9 @@ def train_online(
                 for _ in range(len(ts) * cfg.updates_per_step):
                     b = cat_batches(
                         _demo_flag(agent_buf.sample(cfg.batch_size - n_demo), False),
-                        _demo_flag(demo_buf.sample(n_demo), True),
+                        _demo_flag(
+                            demo_buf.sample(n_demo, balance_actions=balance_demo_actions), True
+                        ),
                     )
                     losses.append(agent.update(b)["loss"])
             if step // cfg.eval_every > prev // cfg.eval_every or step >= cfg.env_steps:
@@ -350,6 +358,7 @@ def train_online(
                     "experience_sha256": hashlib.sha256(exp_path.read_bytes()).hexdigest(),
                     "updates": history[-1]["updates"],
                 },
+                "balance_demo_actions": balance_demo_actions,
                 "expert": expert_name,
                 "loop_overrides": overrides,
                 "selected_env_step": best[1],
@@ -379,10 +388,21 @@ def run(args: argparse.Namespace) -> dict:
     tr = load_scenarios("train", subdir=args.train_dir)
     va = load_scenarios("val", subdir=args.val_dir)
     ho = load_scenarios("holdout", subdir=args.holdout_dir)
+    if args.holdout_episodes is not None and (
+        args.holdout_episodes <= 0 or any(s.episodes < args.holdout_episodes for s in ho)
+    ):
+        raise ValueError("requested holdout budget exceeds a scenario or is nonpositive")
     app_factory = live_app
 
-    # deployed policy: the sim-trained one, as in every earlier run
-    if args.base_checkpoint:
+    # Registry-backed experiments gate against the hash-verified incumbent.
+    registry_path = getattr(args, "registry", None)
+    if registry_path and args.base_checkpoint:
+        raise ValueError("registry and base_checkpoint are mutually exclusive")
+    if registry_path:
+        from rl_defense.live.registry import Registry
+
+        base = Registry(Path(registry_path)).deployed_checkpoint()
+    elif args.base_checkpoint:
         base = Path(args.base_checkpoint)
     else:
         train(
@@ -406,7 +426,15 @@ def run(args: argparse.Namespace) -> dict:
     expert = expert_candidates(rules_params)[expert_name]
 
     cm = train_online(
-        tr, va, app_factory, expert, out, cfg=cfg, loop_overrides=lo, expert_name=expert_name
+        tr,
+        va,
+        app_factory,
+        expert,
+        out,
+        cfg=cfg,
+        loop_overrides=lo,
+        expert_name=expert_name,
+        balance_demo_actions=getattr(args, "balance_demo_actions", False),
     )
     cand_path = out / "candidate_online.pt"
     cand_agent, cand_m = load_checkpoint(cand_path)
@@ -421,6 +449,9 @@ def run(args: argparse.Namespace) -> dict:
         "always_block_principal_long": ev.always_block_principal_long,
         "always_block_top_principal_long": ev.always_block_top_principal_long,
     }
+    if getattr(args, "random_baseline", False):
+        random_rng = np.random.default_rng(cfg.seed + 91_019)
+        policies["random_valid"] = lambda obs, mask: int(random_rng.choice(np.flatnonzero(mask)))
     references = []
     for ref_name, ref_path in parse_references(getattr(args, "reference_checkpoint", None)):
         ref_agent, ref_m = load_checkpoint(Path(ref_path))
@@ -434,17 +465,41 @@ def run(args: argparse.Namespace) -> dict:
             }
         )
     reference = references[0] if references else None
-    rows = {
-        n: ev.run_policy(
-            p,
-            ho,
-            app_factory,
-            episodes=args.holdout_episodes,
-            action_space=SPACE,
-            loop_overrides=lo,
-        )
-        for n, p in policies.items()
-    }
+    trajectory_path = out / "holdout_trajectories.jsonl.gz"
+    trajectories = (
+        gzip.open(trajectory_path, "wt") if getattr(args, "record_trajectories", False) else None
+    )
+    rows = {}
+    try:
+        for policy_name, policy in policies.items():
+
+            def record_episode(sc, seed, transitions, policy_name=policy_name):  # noqa: ANN001, ANN202
+                if trajectories is not None:
+                    trajectories.write(
+                        json.dumps(
+                            {
+                                "policy": policy_name,
+                                "scenario": sc.name,
+                                "seed": seed,
+                                "transitions": [t.model_dump(mode="json") for t in transitions],
+                            },
+                            sort_keys=True,
+                        )
+                        + "\n"
+                    )
+
+            rows[policy_name] = ev.run_policy(
+                policy,
+                ho,
+                app_factory,
+                episodes=args.holdout_episodes,
+                action_space=SPACE,
+                loop_overrides=lo,
+                on_episode=record_episode,
+            )
+    finally:
+        if trajectories is not None:
+            trajectories.close()
     verdict = ev.promotion_decision(
         candidate=rows["candidate"],
         deployed=rows["deployed"],
@@ -512,6 +567,8 @@ def run(args: argparse.Namespace) -> dict:
                 "val_curve": [[h["env_step"], round(h["val_reward"], 4)] for h in hist],
             }
         ],
+        "balance_demo_actions": getattr(args, "balance_demo_actions", False),
+        "rules_episodes": args.rules_episodes,
         "rules_params": rules_params,
         "rules_no_block_params": None,
         "rules_short_only_params": None,
@@ -533,6 +590,11 @@ def run(args: argparse.Namespace) -> dict:
             "sha256": cm["online"]["experiment"]["experience_sha256"],
         },
     }
+    if trajectories is not None:
+        report["artifacts"]["holdout_trajectories"] = {
+            "path": trajectory_path.name,
+            "sha256": hashlib.sha256(trajectory_path.read_bytes()).hexdigest(),
+        }
     (out / "promotion_report.json").write_text(json.dumps(report, indent=2))
     (out / "holdout_episodes.json").write_text(
         json.dumps({n: [asdict(x) for x in r] for n, r in rows.items()})
@@ -574,8 +636,13 @@ def parse_references(spec: str | list[str] | None) -> list[tuple[str, str]]:
             name, path = ("reference" if i == 0 else f"reference_{i + 1}"), item
         out.append((name, path))
     names = [n for n, _ in out]
-    taken = set(names) & {"deployed", "candidate", "threshold_rules", "noop"}
-    if len(set(names)) != len(names) or taken or any(n.startswith("always_") for n in names):
+    taken = set(names) & {"deployed", "candidate", "threshold_rules", "noop", "random_valid"}
+    if (
+        len(set(names)) != len(names)
+        or taken
+        or "reference" in names[1:]
+        or any(n.startswith("always_") for n in names)
+    ):
         raise ValueError(f"reference names must be unique and new: {names}")
     return out
 
@@ -641,7 +708,13 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    ap.add_argument("--base-checkpoint", default=None)
+    baseline = ap.add_mutually_exclusive_group()
+    baseline.add_argument("--base-checkpoint", default=None)
+    baseline.add_argument(
+        "--registry",
+        default=None,
+        help="gate against the hash-verified deployed checkpoint in this local registry",
+    )
     ap.add_argument("--base-steps", type=int, default=30_000)
     ap.add_argument("--rules-episodes", type=int, default=2)
     ap.add_argument("--holdout-episodes", type=int, default=None)
@@ -650,6 +723,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--val-dir", default="val_v4")
     ap.add_argument("--holdout-dir", default="holdout_v6")
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument(
+        "--balance-demo-actions",
+        action="store_true",
+        help="sample observed demonstration action classes uniformly (experimental)",
+    )
+    ap.add_argument("--random-baseline", action="store_true")
+    ap.add_argument("--record-trajectories", action="store_true")
     ap.add_argument("--out", default="runs/live/retrain-v6")
     ap.add_argument("--evidence-dir", default=None)
     ap.add_argument(

@@ -1001,7 +1001,137 @@ Review follow-up: retain accepted starts while history refreshes to prevent dupl
 
 ## Automatic commit assessments — 2026-10-21
 
-IN_PROGRESS on `feat/adam/automatic-commits`: signed pushes fan out into durable per-commit jobs; GitHub API author allowlist, exact SHA, duplicate protection, no docs-only skip/coalescing loss, scope-approval resume. Railway defaults to `adamissac`; configurable for other accounts. Full runs use the normal project assessment budget (operator-capped), not the deliberately cheaper legacy monitoring budget. Shared contracts unchanged. Full-chain fixture tests use scripted model responses, not live provider evidence. Production readiness is reachable; authenticated production worker/run verification remains outstanding.
+IMPLEMENTED in [PR #377](https://github.com/adamissac/ari-ai/pull/377), pending merge/deployment verification: signed pushes fan out into durable per-commit jobs; GitHub API author allowlist, exact SHA, duplicate protection, no docs-only skip/coalescing loss, scope-approval resume. Railway defaults to `adamissac`; configurable for other accounts. Full runs use the normal project assessment budget (operator-capped), not the deliberately cheaper legacy monitoring budget. Shared contracts unchanged. Full-chain fixture tests use scripted model responses, not live provider evidence. Validation: 181 local backend/monitoring/security tests passed (7 optional/dependency skips); 12 final focused scheduling tests passed. Full-chain fixture covers reviewer and all seven roles with required repair approvals. All GitHub checks passed on cbc0782; checks rerun after integrating newer main documentation/RL changes. Production readiness is reachable; authenticated production worker/run verification remains outstanding.
+### 2026-10-20 — Alan / Codex — continue Claude's RL v8 review
+
+Isolated `/private/tmp/rl-v8-continuation`, branch `feat/alan/rl-v8-continuation`,
+base `45f71eca`. Read Alan's v8 evidence and PR #370's unresolved reviews. V8's
+historical pass compares to a fresh simulator baseline, not incumbent v6; retained
+results show a tie versus v6 overall and a per-scenario regression. No holdout rerun,
+training or promotion. Original dirty checkout and Claude worktrees preserved.
+
+Implemented current-incumbent digest binding at promotion, report hash pinning,
+nonempty passing-check validation, `online --registry PATH`, and reference-name alias
+validation. Old unpinned registry entries require explicit re-registration. Historical
+packets are preserved. Authenticated approval, signed/schema-complete reports and
+concurrent registry updates remain outside this local hardening; issue #317 remains open.
+Next experiment: preregister validation coverage of quiet traffic with a fresh holdout,
+using the actual incumbent as comparator. Do not promote v8 from its historical packet.
+
+Validation results are recorded in the continuation PR and coordination message.
+
+
+Final verification for PR #375 (`f9962eb`): from `rl-defense/`, run the existing
+v8 worktree's `.venv/bin/python -m pytest -q` with
+`PYTHONPATH=.:../shared:../standards:../examples/payments-lite/target` pointing at
+this checkout. **228 passed in 240.68s**, log `/private/tmp/rl-v8-final.log`.
+Focused runs: 35 passed; final retained-evidence/pipeline checks 15 passed.
+The first broad run collected an obsolete pre-edit test (226 pass/1 fail); the
+clean committed-tree rerun above supersedes it. Ruff check and Python format
+checks pass. PR: https://github.com/adamissac/ari-ai/pull/375 (review, no merge).
+
+### 2026-10-20 — V9 preregistration and execution
+
+Owner said "Do it" after the proposed next experiment. Defined quiet-validation extension,
+fresh disjoint holdout, five seeds0–4×100 evaluation episodes, actual registered v6 as
+baseline. Pipeline adds opt-in random-valid baseline/raw trajectory retention; aggregation
+uses five seed means and refuses incomplete/mismatched cohorts. ADR-0018 proposes lab
+protocol extension; no simulator TTC is invented. Pre-run env/splits/online smoke31 passed.
+Source/config/preregistration must be pushed before launch; see results/live-retrain-v9.
+
+### 2026-10-20 — V9 evidence tooling prepared during the fixed CPU run
+
+Separate reporting worktree `/private/tmp/rl-v9-reporting`, branch
+`feat/alan/v9-reporting`, based on29aa5f8. The actual training checkout stays on29aa5f8;
+learning modules/configs are unchanged. Added portable finalization/read-only hash
+verification, secondary threshold checks, isolated scientific plotting helpers and
+comparability guards for budgets/source/reference hashes. Targeted20 passed; earlier
+reporting/pipeline22 passed; lint/format clean. Fixture tests execute no held-out v9
+policy. Merge reporting into the experiment only after all five runs finish, then
+report/plot/finalize saved artifacts per POSTPROCESSING.md. No promotion.
+
+### 2026-10-21 — V9 completed, no promotion
+
+All five frozen-source (`29aa5f8`) runs completed in 3h 7m 12s with no execution errors.
+16,500 held-out episodes retained across 11 policies. Primary hypothesis unsupported:
+return gain vs actual v6 −0.0458, 95% training-seed CI [−0.1758, +0.0843]. Both quiet
+scenario means exceed v8, but mixed rotation regresses and all five gates reject.
+Compromise fraction improves while availability and quiet disruption worsen.
+Selected online steps: 105k,150k,75k,120k,0; seed4 selects demo-pretrained weights.
+Exact checkpoints, compressed full experience/trajectories, all metrics, worst paired
+failure, train-only mapping/behavior checks, runtime/registry snapshots and figure are
+retained in `rl-defense/results/live-retrain-v9`. Reporting integrates only after jobs
+finish; no held-out rerun/tuning. Registry v6 unchanged. PR #376 awaits review, stacked
+on incumbent binding PR #375. Next experiments need fresh preregistration/holdout and
+should address mixed rotation/persistent attacks; this holdout is now exposed.
+
+V9 final validation: core frozen-source RL suite 237 passed; reporting/portability suite
+20 passed in1.91s; Ruff and diff checks pass; 76 stored artifacts plus all five compressed
+evidence indices verified, checkpoint source/optimizer lineage verified, registry unchanged.
+
+### 2026-10-21 — V9 pre-merge review corrections
+
+Addressed five PR #376 review findings: require source/teacher-budget/expert/rule
+cohort provenance and complete holdout scenario sets; index trajectories at initial
+export; pin fixed v7/v8 bytes in launcher/reporter. Historical reports remain unchanged;
+explicit saved-command budgets reproduce the original summary. Focused31 tests pass.
+No retraining, holdout replay or promotion. Owner authorized merging #375/#376 and
+subsequent v10 failure analysis, regressions and preregistration.
+
 ### 2026-10-20 — interface polish
 
 Polish the shared ARI interface using Kairo’s restrained grids and technical typography in ARI’s warm charcoal/ember palette. Add consistent workspace headers, numbered organization cards, clearer repository rows, quieter panels and a precise replay frame. Preserve the original hero and scroll choreography; keep Projects highlighted throughout the organization/repository/commit flow. Branch `feat/adam/ui-polish`; validation and screenshots recorded in PR.
+
+### 2026-10-21 — V10 failure analysis, regression and preregistration
+
+Owner authorized all three follow-ups and merging #375/#376. Branch
+`feat/alan/v10-demo-balance`: saved-data analysis confirms ~87% noop teacher rows;
+seed0 chooses noop with higher Q than valid block actions in20 of23 compromised
+windows (current masks reconstructed from preceding transitions). No causal training
+mechanism or serving bug is established. Implemented opt-in action-balanced demo
+sampling with unchanged default/agent replay. Added sampler, tiny real training and
+paired-arm/split regression tests. Fresh val_v10 and holdout_v10 plus controlled
+two-arm/five-seed preregistration/runner are prepared. No v10 training or holdout run.
+V6 stays deployed; a future study needs ~6h CPU with five workers.
+
+Additional #376 review: expose explicit legacy teacher budget on aggregation CLI,
+require a clean concrete source commit before launch and validate actual pooled/scenario
+episode counts. Historical CLI re-aggregation and final evidence verification are
+executed before publishing. No held-out replay or learning changes.
+
+V10 review follow-up (#378): normalize only configured OnlineConfig settings across
+arms (not treatment/selected outputs), fingerprint tracked source/config bytes before
+and after every job, and complete both-arm train-only checks/worst-trace extraction
+and stored evidence verification before reporting success. Synthetic postprocessing
+and uncommitted-source-edit regressions added; integrated58 tests passed. No v10
+training/evaluation has run. #375 merged at64c38b7; #376 awaits final CI.
+
+#376 merged atce723f8 with267 RL tests passing; four new review findings arrived
+during merge and are addressed in #378: shared tracked-source fingerprint per job,
+source SHA in aggregate output, complete/consistent seed gates, and transactional
+finalization with validation-before-write and I/O rollback tests. Historical numeric
+results/weights remain unchanged. #378 still contains the unexecuted v10 study.
+
+### 2026-10-21 — Authorized RL continuation complete
+
+Merged #375 (`64c38b7`), #376 (`ce723f8`) and #378 (`fdc8e45`) after their required
+checks passed. #378's final RL suite:282 passed in829.86s plus successful20k-step
+training/checkpoint-reload smoke; backend, RL integration, frontend unit/browser,
+links and secret scanning all passed. Local focused follow-up64 passed;78 stored
+v9 artifacts and all five compressed indices verify. All reviewed findings, including
+the four late #376 findings corrected in #378, are addressed and resolved.
+
+Implemented saved-v9 failure analysis, opt-in balanced demonstration action sampling
+with default/agent replay unchanged, regression tests and fresh controlled v10
+preregistration/runner. V10 full study has NOT launched; its effectiveness remains an
+untested hypothesis. Original v9 reports, checkpoints and numeric results are preserved.
+The actual v6 registry remains unchanged (digest
+`c345593354856c50559ba16611853a0e4936a7efc11fa5704c224d3189271408`).
+
+Next technical action is the preregistered v10 uniform-versus-balanced comparison:
+five fixed seeds/arm, about6h CPU with five workers and33,000 held-out episodes.
+Use committed/pushed clean source and the real existing v6 registry with
+`results/live-retrain-v10/run_study.py --registry PATH --workers 5` from `rl-defense`
+and its documented workspace PYTHONPATH. Source-byte/reference/registry guards,
+complete primary/secondary reporting and failure evidence are implemented; no
+automatic model choice, approval or promotion. This requested task ends at preparation.

@@ -86,10 +86,10 @@ def stream(evidence_dir: Path, name: str, idx: dict | None = None) -> Iterator[b
     raise ValueError(f"{name}: unknown storage {kind!r}")
 
 
-def verify(evidence_dir: Path) -> dict[str, str]:
+def verify(evidence_dir: Path, *, index: dict | None = None) -> dict[str, str]:
     """Re-hash every artifact; raise on the first mismatch. Returns name -> sha256."""
     d = Path(evidence_dir)
-    idx = load_index(d)
+    idx = index if index is not None else load_index(d)
     out: dict[str, str] = {}
     for name, a in idx["artifacts"].items():
         h = hashlib.sha256()
@@ -183,6 +183,18 @@ def pack(evidence_dir: Path, run: str) -> dict:
             },
         },
     }
+    if trajectory := arts.get("holdout_trajectories"):
+        path = d / trajectory["path"]
+        container_sha, _ = _sha256(_chunks_file(path))
+        if container_sha != trajectory["sha256"]:
+            raise ValueError("holdout_trajectories: compressed digest differs from report")
+        logical_sha, _ = _sha256(_chunks_gzip(path))
+        idx["artifacts"]["holdout_trajectories"] = {
+            "path": str(Path(trajectory["path"]).with_suffix("")),
+            "stored_as": "gzip",
+            "stored_path": trajectory["path"],
+            "sha256": logical_sha,
+        }
     (d / INDEX).write_text(json.dumps(idx, indent=2) + "\n")
     verify(d)  # the stored forms reproduce every pinned digest before anything is removed
     (d / exp["path"]).unlink()

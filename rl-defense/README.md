@@ -168,12 +168,13 @@ Example payload: [`fixtures/defense_recommendation.example.json`](fixtures/defen
 
 ## Limits (read before presenting results)
 
-- Every number comes from **simulation**. Nothing here shows real-world detection or
-  response ability (RQ-005).
+- Simulator results come from **simulation**; live-loop results come from the owned,
+  isolated payments-lite lab. Neither establishes real-world effectiveness (RQ-005).
 - The adversary is an abstract stage model, not a model of real techniques.
 - Mapping a real project onto the 5-node topology is a hand-written config, and
   real alert signals are not calibrated to the simulator's noise model.
-- There is no code path from a recommendation to any action.
+- Platform inference produces recommendations only. The separate live lab enforces
+  permitted controls only against its isolated demo app.
 
 ### Standards classifications
 
@@ -197,3 +198,48 @@ executes a defensive action against real systems.
 
 
 Serving metadata: `action` follows the checkpoint’s greedy rule, including abstention. `top_actions` and `q_margin` describe raw valid Q rankings; explanations describe the selected action against its strongest alternative, so their signed margin may be negative after abstention. A live layout alone does not establish training origin.
+
+
+## Continuing after live v8
+
+The historical [v8 experiment](results/live-retrain-v8/PROVENANCE.md) gate
+passed against a fresh simulator baseline, **not the incumbent v6**. Candidate-minus-v6
+return CI contains zero and one held-out scenario regresses, so this packet must not
+replace v6 under the configured gate. Preserve these exposed holdout results; do not tune
+or reselect against them.
+
+For the next preregistered experiment, use `python -m rl_defense.live.online --registry
+/path/to/registry.json ...` to evaluate against the registry's hash-verified incumbent.
+`--registry` and `--base-checkpoint` are mutually exclusive. Without either option,
+historical standalone experiments still train a simulator baseline. The repeatable
+`--reference-checkpoint NAME=PATH` adds report-only comparisons; only the first entry
+may use the legacy name `reference`.
+
+Registry promotion requires a matching current-baseline digest and an unchanged registered
+report with nonempty passing checks. Old registry entries without `report_sha256` must
+be explicitly re-registered with their reviewed report before promotion. This local digest
+pin detects edits after registration; it is not a report signature or authenticated user
+approval. The local CLI still trusts operator-supplied `usr_*` IDs and is not a production
+authorization boundary (issue #317). No policy is promoted by these changes.
+
+V9 experiment: [preregistration](results/live-retrain-v9/PREREGISTRATION.md), fresh quiet-validation/holdout scenarios, seeds0–4, actual incumbent comparison, opt-in `--random-baseline` and `--record-trajectories`. Completed: all five seeds rejected; mean return gain vs v6 −0.0458 (95% CI −0.1758 to +0.0843). Both quiet scenarios exceed v8 in mean, but mixed rotation regresses. No promotion. See [results and limitations](results/live-retrain-v9/PROVENANCE.md) and [figure](results/live-retrain-v9/study_figure.png). The five-seed aggregator is `python -m rl_defense.live.study`.
+
+V9 evidence tools and read-only verification: [postprocessing instructions](results/live-retrain-v9/POSTPROCESSING.md). Reporting code is developed separately from the frozen training checkout; plots use an isolated optional Matplotlib runtime.
+
+## V10 candidate: demonstration action balance
+
+[Saved failure analysis](results/live-retrain-v10/ANALYSIS.md) finds quiet-heavy
+demonstrations and noop preference on saved flagged observations; causality is unproven.
+`online --balance-demo-actions` experimentally balances observed teacher action classes
+in demonstration batches only. Existing behavior stays uniform. [V10 preregistration](results/live-retrain-v10/PREREGISTRATION.md)
+defines a fresh two-arm, five-seed comparison; training/holdout evaluation has not run.
+Run `results/live-retrain-v10/run_study.py --registry PATH --workers 5` only from committed,
+pushed source with the existing workspace PYTHONPATH. Estimated compute about6hours.
+No policy promotion is automatic.
+
+V10's runner checks a digest of all tracked repository files before/after every job,
+then executes the preregistered train-only secondary checks and extracts the worst
+paired raw failure before claiming completion. `postprocess.py ROOT --verify-only`
+checks its final stored-file manifest and all ten seed evidence indices without
+executing policies. Sampling-arm comparison excludes intentional treatment and learned
+output differences while requiring identical training settings.

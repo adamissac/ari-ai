@@ -75,5 +75,33 @@ Keep organization/repository/commit navigation scoped to the selected repository
 
 ## Automatic commit assessments — 2026-10-21
 
-IN_PROGRESS on `feat/adam/automatic-commits`: signed pushes fan out into durable per-commit jobs; GitHub API author allowlist, exact SHA, duplicate protection, no docs-only skip/coalescing loss, scope-approval resume. Railway defaults to `adamissac`; configurable for other accounts. Full runs use the normal project assessment budget (operator-capped), not the deliberately cheaper legacy monitoring budget. Shared contracts unchanged. Full-chain fixture tests use scripted model responses, not live provider evidence. Production readiness is reachable; authenticated production worker/run verification remains outstanding.
+IMPLEMENTED in [PR #377](https://github.com/adamissac/ari-ai/pull/377), pending merge/deployment verification: signed pushes fan out into durable per-commit jobs; GitHub API author allowlist, exact SHA, duplicate protection, no docs-only skip/coalescing loss, scope-approval resume. Railway defaults to `adamissac`; configurable for other accounts. Full runs use the normal project assessment budget (operator-capped), not the deliberately cheaper legacy monitoring budget. Shared contracts unchanged. Full-chain fixture tests use scripted model responses, not live provider evidence. Validation: 181 local backend/monitoring/security tests passed (7 optional/dependency skips); 12 final focused scheduling tests passed. Full-chain fixture covers reviewer and all seven roles with required repair approvals. All GitHub checks passed on cbc0782; checks rerun after integrating newer main documentation/RL changes. Production readiness is reachable; authenticated production worker/run verification remains outstanding.
+### RL-REGISTRY-001 — v8 promotion review follow-up (Alan, 2026-10-20)
+
+Merged in PR #375 on `feat/alan/rl-v8-continuation`. Bind reports to the current incumbent,
+pin report bytes, reject missing/failed checks, add registry-backed experiment baseline,
+and resolve reference-name ambiguity from PR #370. Historical v8 evidence is preserved.
+Authenticated approvals and signed/schema-complete reports remain open in issue #317;
+next training experiment needs preregistration and a fresh holdout.
+
+RL-REGISTRY-001 validation: full RL suite 228 passed; Ruff lint/format and diff checks pass.
+
+### RL-V9-001 — Quiet-validation five-seed lab experiment
+
+Merged in PR #376 on `feat/alan/live-retrain-v9` (Alan).
+Preregister val_v9/fresh holdout_v9; train seeds0–4; use actual incumbent v6; preserve
+all trajectories and seed-level uncertainty. Completed all five seeds and 16,500 held-out
+episodes. Hypothesis unsupported; all seeds reject, v6 unchanged. Evidence/figure in
+`rl-defense/results/live-retrain-v9/`; no automatic promotion.
+
 - [x] UI-POLISH: coherent Kairo-inspired visual system across ARI workspace and landing chapters, with responsive navigation coverage (user-authorized Adam frontend work; `feat/adam/ui-polish`).
+
+### RL-V10-001 — Demonstration action balance (Alan, owner authorized)
+
+MERGED in PR #378 (`fdc8e45`) on `feat/alan/v10-demo-balance`. Saved-data failure analysis, opt-in
+balanced demo replay, regression tests and fresh two-arm preregistration implemented.
+Five seeds per arm; no v10 training/evaluation results yet. V6 unchanged.
+
+RL-V10-001 validation: all CI green,282 RL tests plus20k-step checkpoint smoke;
+64 local focused tests;78 saved v9 artifacts verified. Full v10 execution remains
+a future experiment (~6h CPU); no model promotion.
