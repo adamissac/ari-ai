@@ -52,7 +52,7 @@ def schedule(
         )
     elif not change.base_sha and len(commits) >= 2048:
         raise ValueError("new-branch push exceeds GitHub payload limit; cannot enumerate safely")
-    shas.append(change.head_sha)
+    shas = [*shas, change.head_sha]
     if any(
         not isinstance(s, str) or not re.fullmatch(r"[0-9a-f]{40}", s) or s == "0" * 40
         for s in shas
