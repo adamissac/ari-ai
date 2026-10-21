@@ -148,3 +148,71 @@ def test_completed_duration_screen_raw_evidence_and_failed_decision_are_preserve
         for key, value in summary["checks"].items()
         if key != "availability_gain_ci_low_positive"
     )
+
+
+@pytest.mark.parametrize("section", ["training", "training_by_scenario"])
+def test_historical_verifier_recomputes_training_aggregates_even_if_indices_repin(
+    tmp_path, section
+):
+    import hashlib
+    import json
+    import shutil
+
+    root = tmp_path / "copy"
+    shutil.copytree(PATH.parent, root, ignore=shutil.ignore_patterns("__pycache__"))
+    path = root / "summary.json"
+    summary = json.loads(path.read_text())
+    value = summary[section]["duration"]
+    if section == "training_by_scenario":
+        value = next(iter(value.values()))
+    value["compromise_rate"] += 0.01
+    path.write_text(json.dumps(summary))
+    previous = root / "frozen/pre_review_index.json"
+    index = json.loads(previous.read_text())
+    index["files"]["summary.json"] = hashlib.sha256(path.read_bytes()).hexdigest()
+    previous.write_text(json.dumps(index))
+    index_path = root / "EVIDENCE.json"
+    index = json.loads(index_path.read_text())
+    for name in ("summary.json", "frozen/pre_review_index.json"):
+        index["files"][name] = hashlib.sha256((root / name).read_bytes()).hexdigest()
+    index_path.write_text(json.dumps(index))
+    with pytest.raises(ValueError, match="training/validation summary does not reproduce"):
+        screen.verify_bundle(root)
+
+
+def test_historical_verification_does_not_use_current_metric_or_schema_code(monkeypatch):
+    from rl_defense.live import contracts, evaluate
+
+    def changed(*args, **kwargs):
+        raise AssertionError("current product implementation must not verify old evidence")
+
+    monkeypatch.setattr(evaluate, "summarize", changed)
+    monkeypatch.setattr(evaluate, "episode_metrics", changed)
+    monkeypatch.setattr(contracts.LiveTransition, "model_validate", changed)
+    screen.verify_bundle(PATH.parent)
+    spec = importlib.util.spec_from_file_location(
+        "duration_frozen_independence", PATH.with_name("finalize.py")
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module.verify(PATH.parent)["episodes"] == 520
+
+
+def test_verify_only_cli_works_when_current_product_imports_are_incompatible(tmp_path):
+    import json
+    import os
+    import subprocess
+    import sys
+
+    package = tmp_path / "rl_defense"
+    package.mkdir()
+    (package / "__init__.py").write_text('raise RuntimeError("current code is incompatible")\n')
+    result = subprocess.run(
+        [sys.executable, str(PATH.resolve()), "--verify-only"],
+        cwd=tmp_path,
+        env={**os.environ, "PYTHONPATH": str(tmp_path)},
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert json.loads(result.stdout)["episodes"] == 520
