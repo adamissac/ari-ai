@@ -18,7 +18,7 @@ const TONE: Record<Tone, string> = {
 
 export function Badge({ view, title }: { view: StatusView; title?: string }) {
   return (
-    <span title={title} className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium ${TONE[view.tone]}`}>
+    <span title={title} className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium shadow-sm ${TONE[view.tone]}`}>
       <span aria-hidden="true">{view.glyph}</span>
       {view.label}
     </span>
@@ -45,16 +45,16 @@ export function Panel({ title, actions, children, className = '', id }: { title?
 
 export function Button({ variant = 'secondary', className = '', children, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'danger' | 'ghost' }) {
   const styles = {
-    primary: 'bg-brand text-on-brand hover:bg-brand-deep shadow-[0_6px_16px_-8px_rgba(194,69,45,0.6)]',
-    secondary: 'bg-brand/[0.07] text-ink hover:bg-brand/[0.14]',
-    danger: 'border border-bad/50 bg-bad/10 text-bad hover:bg-bad/20',
-    ghost: 'text-muted hover:bg-brand/[0.07] hover:text-ink',
+    primary: 'bg-brand text-on-brand hover:bg-brand-deep shadow-[0_6px_16px_-8px_rgba(194,69,45,0.6)] hover:shadow-[0_8px_20px_-8px_rgba(194,69,45,0.5)] hover:-translate-y-0.5',
+    secondary: 'bg-brand/[0.07] text-ink hover:bg-brand/[0.14] hover:-translate-y-0.5 shadow-sm hover:shadow-md',
+    danger: 'border border-bad/50 bg-bad/10 text-bad hover:bg-bad/20 hover:-translate-y-0.5 shadow-sm hover:shadow-md',
+    ghost: 'text-muted hover:bg-brand/[0.07] hover:text-ink hover:-translate-y-0.5',
   }[variant];
   return (
     <button
       type="button"
       {...props}
-      className={`group label-mono inline-flex h-8 items-center justify-center gap-1.5 rounded-md px-3 transition-[background-color,color,box-shadow,transform] duration-[250ms] ease-[var(--ease-quad)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 ${styles} ${className}`}
+      className={`group label-mono inline-flex h-8 items-center justify-center gap-1.5 rounded-md px-3 transition-[background-color,color,box-shadow,transform] duration-[250ms] ease-[var(--ease-quad)] active:scale-[0.97] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:active:scale-100 ${styles} ${className}`}
     >
       {typeof children === 'string' ? <RollText>{children}</RollText> : children}
     </button>
@@ -74,7 +74,7 @@ export function RollText({ children }: { children: string }) {
 export function ErrorState({ error, onRetry, context }: { error: unknown; onRetry?: () => void; context?: string }) {
   const e = describeError(error);
   return (
-    <div role="alert" data-testid="error-state" className="rounded-md border border-bad/40 bg-bad/5 p-3 text-sm">
+    <div role="alert" data-testid="error-state" className="rounded-md border border-bad/40 bg-bad/5 p-4 text-sm shadow-sm hover:shadow-md transition-shadow duration-300">
       <p className="font-semibold text-bad"><span aria-hidden="true">× </span>{context ? `${context}: ` : ''}{e.title}</p>
       <p className="mt-1 text-muted">{e.detail}</p>
       {(e.code || e.requestId) && (
@@ -88,11 +88,28 @@ export function ErrorState({ error, onRetry, context }: { error: unknown; onRetr
 }
 
 export function Empty({ children }: { children: ReactNode }) {
-  return <p className="rounded-xl border border-dashed border-line bg-panel-2/50 px-4 py-8 text-center text-sm text-muted">{children}</p>;
+  return (
+    <div className="rounded-xl border border-dashed border-line bg-panel-2/50 px-4 py-8 text-center">
+      <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-brand/[0.08] mb-3">
+        <svg className="w-6 h-6 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 12H4" />
+        </svg>
+      </div>
+      <p className="text-sm text-muted">{children}</p>
+    </div>
+  );
 }
 
 export function Loading({ label = 'Loading' }: { label?: string }) {
-  return <p role="status" aria-live="polite" className="animate-pulse text-sm text-muted">{label}…</p>;
+  return (
+    <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-muted">
+      <svg className="animate-spin h-4 w-4 text-brand" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={3} />
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+      </svg>
+      <span>{label}…</span>
+    </div>
+  );
 }
 
 /** Render loading / error / ready for a resource with no silent fallbacks. */
@@ -125,11 +142,11 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
   );
 }
 
-export const inputClass = 'max-w-full rounded-md border border-control bg-bg px-2.5 py-1.5 text-sm text-ink placeholder:text-faint transition-[border-color,box-shadow] duration-200 focus:border-brand focus:shadow-[0_0_0_3px_rgba(194,69,45,0.15)] focus:outline-none';
+export const inputClass = 'max-w-full rounded-md border border-control bg-bg px-2.5 py-1.5 text-sm text-ink placeholder:text-faint transition-[border-color,box-shadow,transform] duration-200 focus:border-brand focus:shadow-[0_0_0_3px_rgba(194,69,45,0.15)] focus:outline-none focus:-translate-y-0.5 hover:border-control/80';
 
 export function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: string }) {
   return (
-    <div className="rounded-xl border border-line bg-panel px-4 py-3.5">
+    <div className="rounded-xl border border-line bg-panel px-4 py-3.5 shadow-sm hover:shadow-md transition-shadow duration-300">
       <p className="label-mono text-faint">{label}</p>
       <p className="mt-2 font-display text-2xl font-semibold tracking-tight text-ink">{value}</p>
       {hint && <p className="text-xs text-muted">{hint}</p>}

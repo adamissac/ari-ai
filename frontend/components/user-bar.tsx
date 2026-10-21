@@ -17,9 +17,9 @@ export function UserBar() {
   };
   return (
     <div className="mb-4 flex flex-col items-end gap-2">
-      <div className="flex flex-wrap items-center justify-end gap-2 text-xs text-faint">
+      <div className="flex flex-wrap items-center justify-end gap-3 rounded-full border border-line bg-panel-2 px-4 py-2 text-xs text-faint shadow-sm">
         <span>
-          Signed in as <span className="text-ink" data-testid="signed-in-user">{me.user.github_login}</span>
+          Signed in as <span className="text-ink font-medium" data-testid="signed-in-user">{me.user.github_login}</span>
           {org && <> · {org.organization.name} ({org.role})</>}
         </span>
         <Button variant="ghost" disabled={busy} onClick={() => void onSignOut()}>Sign out</Button>

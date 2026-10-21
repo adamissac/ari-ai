@@ -47,10 +47,10 @@ export function ProjectShell({ children }: { children: ReactNode }) {
   return (
     <ProjectContext.Provider value={{ project: project.data, repos: repos.data.items, reloadRepos: repos.reload, reloadProject: project.reload }}>
       <Crumbs items={[{ href: '/projects', label: 'Projects' }, { href: base, label: project.data.name }]} />
-      <header className="hero-ink project-head mb-2 rounded-2xl px-6 py-7 md:px-8">
+      <header className="hero-ink project-head mb-3 rounded-2xl px-6 py-8 md:px-8 shadow-lg">
         <p className="label-mono text-white/60">Project</p>
         <p className="display mt-2 text-3xl font-semibold md:text-4xl" data-testid="project-title">{project.data.name}</p>
-        <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-white/70">
+        <p className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-white/70">
           {repos.data.items.length === 0
             ? <span>No repository connected</span>
             : repos.data.items.map(r => <span key={r.id} className="font-mono text-xs text-white/85">{r.full_name}<span className="text-white/50"> · {r.default_branch}</span></span>)}

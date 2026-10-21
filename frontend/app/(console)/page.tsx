@@ -35,10 +35,10 @@ export default function HomePage() {
             and only calls a repair done when independent, executed tests agree.
           </p>
           <div className="hero-in mt-8 flex flex-wrap gap-2" style={i(4)}>
-            <Link href="/projects" className="group label-mono inline-flex h-10 items-center rounded-md bg-white px-4 text-ink transition-colors duration-[250ms] hover:bg-brand hover:text-on-brand">
+            <Link href="/projects" className="group label-mono inline-flex h-10 items-center rounded-md bg-white px-4 text-ink transition-all duration-[250ms] hover:bg-brand hover:text-on-brand hover:shadow-lg hover:-translate-y-0.5">
               <RollText>Go to projects</RollText>
             </Link>
-            <a href="#how" className="group label-mono inline-flex h-10 items-center rounded-md bg-white/10 px-4 text-white backdrop-blur transition-colors duration-[250ms] hover:bg-white/20">
+            <a href="#how" className="group label-mono inline-flex h-10 items-center rounded-md bg-white/10 px-4 text-white backdrop-blur transition-all duration-[250ms] hover:bg-white/20 hover:shadow-lg hover:-translate-y-0.5">
               <RollText>How it works</RollText>
             </a>
           </div>
@@ -61,14 +61,14 @@ export default function HomePage() {
         <ProofStats />
 
         <Reveal className="mt-10">
-          <section aria-labelledby="start-title" className="hero-ink rounded-2xl px-6 py-12 md:px-12">
+          <section aria-labelledby="start-title" className="hero-ink rounded-2xl px-6 py-12 md:px-12 shadow-xl">
             <h2 id="start-title" className="display max-w-2xl text-3xl font-semibold md:text-4xl">See it on a real change.</h2>
             <p className="mt-3 max-w-xl text-sm text-white/75">Open a project to connect a repository and start an assessment, or explore how the defense policy was evaluated.</p>
             <div className="mt-6 flex flex-wrap gap-2">
-              <Link href="/projects" className="group label-mono inline-flex h-10 items-center rounded-md bg-white px-4 text-ink transition-colors duration-[250ms] hover:bg-brand hover:text-on-brand">
+              <Link href="/projects" className="group label-mono inline-flex h-10 items-center rounded-md bg-white px-4 text-ink transition-all duration-[250ms] hover:bg-brand hover:text-on-brand hover:shadow-lg hover:-translate-y-0.5">
                 <RollText>Open projects</RollText>
               </Link>
-              <Link href="/lab" className="group label-mono inline-flex h-10 items-center rounded-md bg-white/10 px-4 text-white transition-colors duration-[250ms] hover:bg-white/20">
+              <Link href="/lab" className="group label-mono inline-flex h-10 items-center rounded-md bg-white/10 px-4 text-white transition-all duration-[250ms] hover:bg-white/20 hover:shadow-lg hover:-translate-y-0.5">
                 <RollText>Defense Lab</RollText>
               </Link>
             </div>

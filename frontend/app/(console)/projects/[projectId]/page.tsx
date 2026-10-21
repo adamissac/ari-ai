@@ -45,8 +45,8 @@ export default function ProjectOverview() {
   const failed = [assessments, findings, scopes].filter(r => r.status === 'error');
   const refreshFailed = [assessments, findings, scopes].some(r => r.refreshError !== undefined);
   return (
-    <div className="flex flex-col gap-4">
-      <section aria-label="Project summary" className="rounded-xl border border-line bg-panel p-5" data-testid="project-summary">
+    <div className="flex flex-col gap-5">
+      <section aria-label="Project summary" className="rounded-xl border border-line bg-panel p-6 shadow-sm hover:shadow-md transition-shadow duration-300" data-testid="project-summary">
         {failed.length > 0 ? (
           <ErrorState
             error={failed[0]?.error}
@@ -57,14 +57,14 @@ export default function ProjectOverview() {
           <>
             <h2 className="text-xl font-semibold tracking-tight">{summary.headline}</h2>
             <p className="mt-2 max-w-3xl text-sm text-muted">{summary.detail}</p>
-            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Stat label="Code health" value={summary.codeOpen} hint="open functional findings" />
               <Stat label="Security" value={summary.securityOpen} hint={`confirmed weaknesses${summary.untested ? ` · ${summary.untested} untested suspicion${summary.untested === 1 ? '' : 's'}` : ''}${summary.inconclusive ? ` · ${summary.inconclusive} inconclusive` : ''}`} />
               <Stat label="Continuous defense" value={summary.monitoring} hint={`${summary.verifiedFixes} verified fixes`} />
             </div>
             {refreshFailed && <p role="status" className="mt-3 text-xs text-warn" data-testid="summary-stale">Could not refresh the latest records. The numbers above are from the last successful load and may be out of date.</p>}
-            <div className="mt-4">
-              <a href={summary.action.href} className="inline-flex items-center rounded-full bg-brand px-4 py-2 text-sm font-medium text-on-brand hover:bg-brand-deep">{summary.action.label}</a>
+            <div className="mt-5">
+              <a href={summary.action.href} className="inline-flex items-center rounded-full bg-brand px-4 py-2 text-sm font-medium text-on-brand hover:bg-brand-deep hover:shadow-lg hover:-translate-y-0.5 transition-all duration-250">{summary.action.label}</a>
             </div>
           </>
         ) : <p className="text-sm text-muted">Loading the current project records…</p>}
@@ -111,7 +111,7 @@ export default function ProjectOverview() {
                   </div>
                   <ul className="mt-3 divide-y divide-line">
                     {page.items.slice(0, 6).map(f => (
-                      <li key={f.id} className="flex items-center justify-between gap-2 py-2 text-sm">
+                      <li key={f.id} className="flex items-center justify-between gap-2 py-2.5 text-sm hover:bg-panel-2/50 transition-colors duration-200 rounded px-2 -mx-2">
                         <Link className="truncate hover:text-accent" href={`/projects/${project.id}/findings/${f.id}`}>{f.title}</Link>
                         <Badge view={FINDING_STATUS[f.status]} />
                       </li>
@@ -200,18 +200,18 @@ function ProjectJourney({
   const assessmentHref = latest ? `/projects/${projectId}/assessments/${latest.id}` : null;
 
   return (
-    <section aria-label="Check progress" className="rounded-xl border border-line bg-panel p-5" data-testid="project-journey">
+    <section aria-label="Check progress" className="rounded-xl border border-line bg-panel p-6 shadow-sm hover:shadow-md transition-shadow duration-300" data-testid="project-journey">
       <h2 className="text-sm font-semibold tracking-tight">Where this check is</h2>
       {!logReady ? <p className="mt-2 text-sm text-muted">Loading the recorded phases…</p> : (
         <>
           {logTruncated && (
             <p className="mt-2 text-sm text-muted" data-testid="event-log-page-note">{EVENT_LOG_PAGE_NOTE}</p>
           )}
-          <ol className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <ol className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {stages.map(item => {
               const href = item.id === 'monitor' ? `/projects/${projectId}/monitoring` : assessmentHref;
               return (
-                <li key={item.id} className="rounded-lg border border-line p-3" data-testid={`journey-${item.id}`}>
+                <li key={item.id} className="rounded-lg border border-line p-4 hover:border-brand/30 hover:shadow-sm transition-all duration-250" data-testid={`journey-${item.id}`}>
                   <p className="text-sm font-medium">{item.label}</p>
                   <p className="text-xs text-muted">{JOURNEY_STATUS[item.status]}</p>
                   <p className="mt-1 text-xs text-muted">{item.detail}</p>
@@ -223,7 +223,7 @@ function ProjectJourney({
         </>
       )}
       {latestEvent && (
-        <p className="mt-3 text-sm text-muted" data-testid="project-latest-event">
+        <p className="mt-4 text-sm text-muted" data-testid="project-latest-event">
           Latest recorded event: {latestEvent.message} <Time iso={latestEvent.at} />
         </p>
       )}
@@ -264,13 +264,13 @@ function AssessmentList({ projectId, page }: { projectId: string; page: Page<Ass
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
-        <thead className="text-xs uppercase tracking-wider text-faint">
-          <tr><th className="py-1.5 pr-3">Assessment</th><th className="pr-3">State</th><th className="pr-3">Commit</th><th className="pr-3">Trigger</th><th className="pr-3">Usage</th><th>Created</th></tr>
+        <thead className="text-xs uppercase tracking-wider text-faint border-b border-line">
+          <tr><th className="py-2 pr-3 font-medium">Assessment</th><th className="pr-3 font-medium">State</th><th className="pr-3 font-medium">Commit</th><th className="pr-3 font-medium">Trigger</th><th className="pr-3 font-medium">Usage</th><th className="font-medium">Created</th></tr>
         </thead>
         <tbody className="divide-y divide-line">
           {items.map(a => (
-            <tr key={a.id}>
-              <td className="py-2 pr-3"><Link className="font-mono text-xs text-accent hover:underline" href={`/projects/${projectId}/assessments/${a.id}`}>{a.id}</Link></td>
+            <tr key={a.id} className="hover:bg-panel-2/50 transition-colors duration-200">
+              <td className="py-2.5 pr-3"><Link className="font-mono text-xs text-accent hover:underline" href={`/projects/${projectId}/assessments/${a.id}`}>{a.id}</Link></td>
               <td className="pr-3"><Badge view={ASSESSMENT_STATE[a.state]} /></td>
               <td className="pr-3"><Mono>{shortSha(a.commit_sha)}</Mono></td>
               <td className="pr-3 text-muted">{a.trigger}</td>
@@ -420,17 +420,17 @@ function RepoRow({ repo }: { repo: Repository }) {
   };
 
   return (
-    <li className="rounded-md border border-line bg-panel-2 p-3">
+    <li className="rounded-md border border-line bg-panel-2 p-4 hover:shadow-sm transition-shadow duration-300">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="font-medium">{repo.full_name}</span>
         <span className="text-xs text-muted">{repo.default_branch} · {repo.installation_id ? 'GitHub App installed' : 'no GitHub App installation'}</span>
       </div>
-      <form onSubmit={index} className="mt-2 flex flex-wrap items-center gap-2">
+      <form onSubmit={index} className="mt-3 flex flex-wrap items-center gap-2">
         <input aria-label={`Commit to index for ${repo.full_name}`} className={`${inputClass} flex-1 font-mono`} value={sha} onChange={e => setSha(e.target.value.toLowerCase())} pattern="[0-9a-f]{7,40}" placeholder="commit sha to index" required />
         <Button type="submit" disabled={busy || !SHA.test(sha)}>Index commit</Button>
       </form>
       {snapshot && (
-        <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted">
+        <p className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted">
           <Badge view={SNAPSHOT_STATUS[snapshot.status]} /> <Mono>{snapshot.id}</Mono> at <Mono>{shortSha(snapshot.commit_sha)}</Mono>
           {snapshot.status === 'ready' && <> · {snapshot.stats.files} files · {snapshot.stats.symbols} symbols · {snapshot.stats.call_edges} call edges · {snapshot.stats.entry_points} entry points · {snapshot.stats.expectations} expectations</>}
           {snapshot.error_message && <span className="text-bad">{snapshot.error_message}</span>}

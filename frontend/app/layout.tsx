@@ -28,7 +28,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable} ${plexMono.variable}`}>
       <body className="min-h-screen antialiased">
         <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:rounded focus:bg-accent focus:px-2 focus:py-1 focus:text-bg">Skip to content</a>
-        <header className="site-header sticky top-0 z-40 border-b border-line/80 bg-white/80 backdrop-blur-md">
+        <header className="site-header sticky top-0 z-40 border-b border-line/80 bg-white/85 backdrop-blur-lg shadow-sm">
           <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
             <Link href="/" aria-label={`${BRAND_NAME} home`} className="hdr-reveal">
               <Wordmark priority />
@@ -37,7 +37,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <NavLink href="/projects" className="hdr-reveal">Projects</NavLink>
               <NavLink href="/lab" className="hdr-reveal">Defense Lab</NavLink>
               <NavLink href="/demo" className="hdr-reveal">Demo</NavLink>
-              <NavLink href="/pricing" className="hdr-cta">Pricing</NavLink>
+              <NavLink href="/pricing" className="hdr-reveal">Pricing</NavLink>
             </nav>
           </div>
         </header>
@@ -54,7 +54,7 @@ function NavLink({ href, children, className = '' }: { href: string; children: s
   return (
     <Link
       href={href}
-      className={`group label-mono inline-flex h-8 items-center rounded-md bg-brand/[0.06] px-3 text-ink transition-colors duration-[250ms] hover:bg-brand hover:text-on-brand ${className}`}
+      className={`group label-mono inline-flex h-8 items-center rounded-md bg-brand/[0.06] px-3 text-ink transition-all duration-[250ms] hover:bg-brand hover:text-on-brand hover:-translate-y-0.5 hover:shadow-md ${className}`}
     >
       <RollText>{children}</RollText>
     </Link>
