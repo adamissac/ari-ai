@@ -50,6 +50,8 @@ def aggregate(reports: list[dict], *, legacy_rules_episodes: dict[int, int] | No
         return value
 
     for r in ordered:
+        if r.get("balance_demo_actions", False) != first.get("balance_demo_actions", False):
+            raise ValueError("study reports disagree on demonstration sampling")
         if not isinstance(r.get("git_sha"), str) or not r["git_sha"].strip():
             raise ValueError("missing source commit")
         if teacher_budget(r) != teacher_budget(first):

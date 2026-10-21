@@ -92,3 +92,9 @@ episodes. Hypothesis unsupported; all seeds reject, v6 unchanged. Evidence/figur
 `rl-defense/results/live-retrain-v9/`; no automatic promotion.
 
 - [x] UI-POLISH: coherent Kairo-inspired visual system across ARI workspace and landing chapters, with responsive navigation coverage (user-authorized Adam frontend work; `feat/adam/ui-polish`).
+
+### RL-V10-001 — Demonstration action balance (Alan, owner authorized)
+
+IN_PROGRESS on `feat/alan/v10-demo-balance`. Saved-data failure analysis, opt-in
+balanced demo replay, regression tests and fresh two-arm preregistration implemented.
+Five seeds per arm; no v10 training/evaluation results yet. V6 unchanged.
