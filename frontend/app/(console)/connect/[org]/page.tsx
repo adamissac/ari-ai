@@ -33,13 +33,16 @@ export default function ConnectReposPage() {
   const org = list.status === 'ready' ? groupByOrg(list.data.items).find(o => o.login === login) : undefined;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8" data-testid="connect-repos">
+    <div className="workspace-index mx-auto max-w-5xl px-4 py-8" data-testid="connect-repos">
       <nav aria-label="Breadcrumb" className="mb-5 text-sm text-muted">
         <Link href="/connect" className="hover:text-ink">Organizations</Link><span aria-hidden="true" className="mx-2">/</span><span className="text-ink">{login}</span>
       </nav>
-      <header className="mb-6 flex flex-wrap items-center gap-4">
+      <header className="workspace-heading mb-6">
+        <p className="workspace-eyebrow">Repositories / 02</p>
+        <div className="flex flex-wrap items-center gap-4">
         <Avatar login={login} size={48} />
-        <h1 className="text-3xl font-semibold tracking-tight">{login}</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">{login}</h1></div>
+        <p className="workspace-description">Select a repository to review its changes.</p>
       </header>
       {list.status === 'loading' && <Loading label="Loading repositories" />}
       {list.status === 'error' && <ErrorState error={list.error} onRetry={list.reload} context="Could not list your GitHub repositories" />}
@@ -47,7 +50,7 @@ export default function ConnectReposPage() {
         <p className="text-sm text-muted" data-testid="connect-org-missing">No repositories from {login} are available to you. <Link className="text-brand hover:underline" href="/connect">Choose another organization</Link>.</p>
       )}
       {org && (
-        <ul className="flex flex-col divide-y divide-line overflow-hidden rounded-2xl border border-line bg-panel">
+        <ul className="workspace-rows flex flex-col divide-y divide-line overflow-hidden rounded-2xl border border-line bg-panel">
           {org.repos.map(repo => (
             <li key={repo.full_name} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4" data-testid={`connect-repo-${repo.full_name}`}>
               <span className="flex min-w-0 flex-wrap items-center gap-2">
