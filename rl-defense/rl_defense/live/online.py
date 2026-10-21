@@ -381,8 +381,15 @@ def run(args: argparse.Namespace) -> dict:
     ho = load_scenarios("holdout", subdir=args.holdout_dir)
     app_factory = live_app
 
-    # deployed policy: the sim-trained one, as in every earlier run
-    if args.base_checkpoint:
+    # Registry-backed experiments gate against the hash-verified incumbent.
+    registry_path = getattr(args, "registry", None)
+    if registry_path and args.base_checkpoint:
+        raise ValueError("registry and base_checkpoint are mutually exclusive")
+    if registry_path:
+        from rl_defense.live.registry import Registry
+
+        base = Registry(Path(registry_path)).deployed_checkpoint()
+    elif args.base_checkpoint:
         base = Path(args.base_checkpoint)
     else:
         train(
@@ -575,7 +582,12 @@ def parse_references(spec: str | list[str] | None) -> list[tuple[str, str]]:
         out.append((name, path))
     names = [n for n, _ in out]
     taken = set(names) & {"deployed", "candidate", "threshold_rules", "noop"}
-    if len(set(names)) != len(names) or taken or any(n.startswith("always_") for n in names):
+    if (
+        len(set(names)) != len(names)
+        or taken
+        or "reference" in names[1:]
+        or any(n.startswith("always_") for n in names)
+    ):
         raise ValueError(f"reference names must be unique and new: {names}")
     return out
 
@@ -641,7 +653,13 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    ap.add_argument("--base-checkpoint", default=None)
+    baseline = ap.add_mutually_exclusive_group()
+    baseline.add_argument("--base-checkpoint", default=None)
+    baseline.add_argument(
+        "--registry",
+        default=None,
+        help="gate against the hash-verified deployed checkpoint in this local registry",
+    )
     ap.add_argument("--base-steps", type=int, default=30_000)
     ap.add_argument("--rules-episodes", type=int, default=2)
     ap.add_argument("--holdout-episodes", type=int, default=None)

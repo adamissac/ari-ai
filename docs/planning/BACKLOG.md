@@ -72,4 +72,15 @@ Simplify project navigation to Code review and 7 agents. Move settings, scopes, 
 
 Keep organization/repository/commit navigation scoped to the selected repository and SHA. Real commit runs stay inline in a two-tab reviewer/seven-agent workspace with demo-style agent rail and recorded replay; no redirect to shared project history. Resolve the repository’s actual project, search older run pages, reject mismatched results and retain scoped remediation approvals. Optional narrated quick reads are explicitly requested and separate from executed records. Branch `fix/adam/commit-workspace`; validation in PR.
 
+
+### RL-REGISTRY-001 — v8 promotion review follow-up (Alan, 2026-10-20)
+
+Implemented; awaiting review in PR #375 on `feat/alan/rl-v8-continuation`. Bind reports to the current incumbent,
+pin report bytes, reject missing/failed checks, add registry-backed experiment baseline,
+and resolve reference-name ambiguity from PR #370. Historical v8 evidence is preserved.
+Authenticated approvals and signed/schema-complete reports remain open in issue #317;
+next training experiment needs preregistration and a fresh holdout.
+
+RL-REGISTRY-001 validation: full RL suite 228 passed; Ruff lint/format and diff checks pass.
+
 - [x] UI-POLISH: coherent Kairo-inspired visual system across ARI workspace and landing chapters, with responsive navigation coverage (user-authorized Adam frontend work; `feat/adam/ui-polish`).

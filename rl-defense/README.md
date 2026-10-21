@@ -168,12 +168,13 @@ Example payload: [`fixtures/defense_recommendation.example.json`](fixtures/defen
 
 ## Limits (read before presenting results)
 
-- Every number comes from **simulation**. Nothing here shows real-world detection or
-  response ability (RQ-005).
+- Simulator results come from **simulation**; live-loop results come from the owned,
+  isolated payments-lite lab. Neither establishes real-world effectiveness (RQ-005).
 - The adversary is an abstract stage model, not a model of real techniques.
 - Mapping a real project onto the 5-node topology is a hand-written config, and
   real alert signals are not calibrated to the simulator's noise model.
-- There is no code path from a recommendation to any action.
+- Platform inference produces recommendations only. The separate live lab enforces
+  permitted controls only against its isolated demo app.
 
 ### Standards classifications
 
@@ -197,3 +198,26 @@ executes a defensive action against real systems.
 
 
 Serving metadata: `action` follows the checkpoint’s greedy rule, including abstention. `top_actions` and `q_margin` describe raw valid Q rankings; explanations describe the selected action against its strongest alternative, so their signed margin may be negative after abstention. A live layout alone does not establish training origin.
+
+
+## Continuing after live v8
+
+The latest experiment is [v8](results/live-retrain-v8/PROVENANCE.md). Its historical gate
+passed against a fresh simulator baseline, **not the incumbent v6**. Candidate-minus-v6
+return CI contains zero and one held-out scenario regresses, so this packet must not
+replace v6 under the configured gate. Preserve these exposed holdout results; do not tune
+or reselect against them.
+
+For the next preregistered experiment, use `python -m rl_defense.live.online --registry
+/path/to/registry.json ...` to evaluate against the registry's hash-verified incumbent.
+`--registry` and `--base-checkpoint` are mutually exclusive. Without either option,
+historical standalone experiments still train a simulator baseline. The repeatable
+`--reference-checkpoint NAME=PATH` adds report-only comparisons; only the first entry
+may use the legacy name `reference`.
+
+Registry promotion requires a matching current-baseline digest and an unchanged registered
+report with nonempty passing checks. Old registry entries without `report_sha256` must
+be explicitly re-registered with their reviewed report before promotion. This local digest
+pin detects edits after registration; it is not a report signature or authenticated user
+approval. The local CLI still trusts operator-supplied `usr_*` IDs and is not a production
+authorization boundary (issue #317). No policy is promoted by these changes.
