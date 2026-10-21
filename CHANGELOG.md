@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Preserve RL aggregate source provenance and validate complete seed gates. Validate all evidence before staged writes, with rollback on I/O failure; recheck tracked source bytes for every training job.
+
 - Add opt-in action-balanced demonstration sampling for the RL lab, saved-v9 failure diagnostics, and a fresh preregistered two-arm v10 study. Default replay is unchanged; v10 effectiveness remains untested and v6 remains deployed.
 
 - Tighten RL study source/teacher-budget/scenario validation, pin fixed references, and verify recorded trajectories during initial evidence packing. Historical v9 measurements are unchanged.

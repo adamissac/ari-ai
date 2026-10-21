@@ -163,6 +163,22 @@ def test_finalizer_pins_metrics_and_traces_and_preserves_primary_verdict(tmp_pat
         }
         (root / "EVIDENCE.json").write_text(json.dumps(index))
     monkeypatch.setattr(sys, "argv", ["finalize_study", str(tmp_path)])
+    archive = tmp_path / "seed4/holdout_trajectories.jsonl.gz"
+    original_archive = archive.read_bytes()
+    archive.write_bytes(b"corrupted late seed")
+    before_failure = {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
+    with pytest.raises(ValueError, match="trajectory digest"):
+        module.main()
+    assert {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()} == before_failure
+    archive.write_bytes(original_archive)
+    snapshot = tmp_path / "registry_snapshot.json"
+    original_snapshot = snapshot.read_bytes()
+    snapshot.write_bytes(b"corrupted registry snapshot")
+    before_failure = {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
+    with pytest.raises(ValueError, match="registry snapshot"):
+        module.main()
+    assert {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()} == before_failure
+    snapshot.write_bytes(original_snapshot)
     module.main()
     verdict = json.loads((tmp_path / "study_verdict.json").read_text())
     assert verdict["primary_hypothesis_supported"] is False
@@ -228,3 +244,22 @@ def test_seed_index_cannot_read_files_outside_its_directory(tmp_path):
     )
     with pytest.raises(ValueError, match="path escapes"):
         module.verify_seed(tmp_path)
+
+
+def test_staged_evidence_writes_roll_back_io_failure(tmp_path, monkeypatch):
+    module = _module("finalize_study")
+    first, second = tmp_path / "first.json", tmp_path / "second.json"
+    first.write_bytes(b"original first")
+    second.write_bytes(b"original second")
+    replace = Path.replace
+
+    def fail_second(path, target):
+        if path.name == "1.new":
+            raise OSError("synthetic write failure")
+        return replace(path, target)
+
+    monkeypatch.setattr(Path, "replace", fail_second)
+    with pytest.raises(OSError, match="synthetic write failure"):
+        module.commit_replacements(tmp_path, {first: b"new first", second: b"new second"})
+    assert first.read_bytes() == b"original first"
+    assert second.read_bytes() == b"original second"

@@ -1102,3 +1102,9 @@ and after every job, and complete both-arm train-only checks/worst-trace extract
 and stored evidence verification before reporting success. Synthetic postprocessing
 and uncommitted-source-edit regressions added; integrated58 tests passed. No v10
 training/evaluation has run. #375 merged at64c38b7; #376 awaits final CI.
+
+#376 merged atce723f8 with267 RL tests passing; four new review findings arrived
+during merge and are addressed in #378: shared tracked-source fingerprint per job,
+source SHA in aggregate output, complete/consistent seed gates, and transactional
+finalization with validation-before-write and I/O rollback tests. Historical numeric
+results/weights remain unchanged. #378 still contains the unexecuted v10 study.

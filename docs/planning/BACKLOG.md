@@ -75,7 +75,7 @@ Keep organization/repository/commit navigation scoped to the selected repository
 
 ### RL-REGISTRY-001 — v8 promotion review follow-up (Alan, 2026-10-20)
 
-Implemented; awaiting review in PR #375 on `feat/alan/rl-v8-continuation`. Bind reports to the current incumbent,
+Merged in PR #375 on `feat/alan/rl-v8-continuation`. Bind reports to the current incumbent,
 pin report bytes, reject missing/failed checks, add registry-backed experiment baseline,
 and resolve reference-name ambiguity from PR #370. Historical v8 evidence is preserved.
 Authenticated approvals and signed/schema-complete reports remain open in issue #317;
@@ -85,7 +85,7 @@ RL-REGISTRY-001 validation: full RL suite 228 passed; Ruff lint/format and diff 
 
 ### RL-V9-001 — Quiet-validation five-seed lab experiment
 
-IMPLEMENTED; awaiting review in PR #376 on `feat/alan/live-retrain-v9` (Alan).
+Merged in PR #376 on `feat/alan/live-retrain-v9` (Alan).
 Preregister val_v9/fresh holdout_v9; train seeds0–4; use actual incumbent v6; preserve
 all trajectories and seed-level uncertainty. Completed all five seeds and 16,500 held-out
 episodes. Hypothesis unsupported; all seeds reject, v6 unchanged. Evidence/figure in

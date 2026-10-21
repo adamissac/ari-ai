@@ -167,13 +167,14 @@ def test_two_arm_summary_pairs_seeds_and_requires_every_gate():
             if arm == "balanced":
                 row["policies"]["candidate"]["reward"] += 2
                 row["decision"] = "recommend_promote"
-                row["checks"] = [{"passed": True}]
+                row["checks"] = [{"name": n, "passed": True} for n in sorted(study.GATE_NAMES)]
     result = module.summarize(reports)
     assert result["balanced_minus_uniform"]["reward"]["by_training_seed"] == [2] * 5
     assert result["primary_hypothesis_supported"] is True
     assert result["promotion_performed"] is False
     bad = copy.deepcopy(reports)
     bad["balanced"][4]["checks"][0]["passed"] = False
+    bad["balanced"][4]["decision"] = "reject"
     assert module.summarize(bad)["primary_hypothesis_supported"] is False
     bad = copy.deepcopy(reports)
     bad["balanced"][0]["rules_episodes"] = 3
