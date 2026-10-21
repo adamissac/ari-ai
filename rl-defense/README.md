@@ -202,7 +202,7 @@ Serving metadata: `action` follows the checkpoint’s greedy rule, including abs
 
 ## Continuing after live v8
 
-The latest experiment is [v8](results/live-retrain-v8/PROVENANCE.md). Its historical gate
+The historical [v8 experiment](results/live-retrain-v8/PROVENANCE.md) gate
 passed against a fresh simulator baseline, **not the incumbent v6**. Candidate-minus-v6
 return CI contains zero and one held-out scenario regresses, so this packet must not
 replace v6 under the configured gate. Preserve these exposed holdout results; do not tune
@@ -222,6 +222,6 @@ pin detects edits after registration; it is not a report signature or authentica
 approval. The local CLI still trusts operator-supplied `usr_*` IDs and is not a production
 authorization boundary (issue #317). No policy is promoted by these changes.
 
-V9 experiment: [preregistration](results/live-retrain-v9/PREREGISTRATION.md), fresh quiet-validation/holdout scenarios, seeds0–4, actual incumbent comparison, opt-in `--random-baseline` and `--record-trajectories`. Results are pending execution; no promotion. The five-seed aggregator is `python -m rl_defense.live.study`.
+V9 experiment: [preregistration](results/live-retrain-v9/PREREGISTRATION.md), fresh quiet-validation/holdout scenarios, seeds0–4, actual incumbent comparison, opt-in `--random-baseline` and `--record-trajectories`. Completed: all five seeds rejected; mean return gain vs v6 −0.0458 (95% CI −0.1758 to +0.0843). Both quiet scenarios exceed v8 in mean, but mixed rotation regresses. No promotion. See [results and limitations](results/live-retrain-v9/PROVENANCE.md) and [figure](results/live-retrain-v9/study_figure.png). The five-seed aggregator is `python -m rl_defense.live.study`.
 
 V9 evidence tools and read-only verification: [postprocessing instructions](results/live-retrain-v9/POSTPROCESSING.md). Reporting code is developed separately from the frozen training checkout; plots use an isolated optional Matplotlib runtime.

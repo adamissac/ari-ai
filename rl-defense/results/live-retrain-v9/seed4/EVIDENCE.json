@@ -1,0 +1,54 @@
+{
+  "schema": "live-evidence-index/0.1",
+  "run": "/Users/alanmozhoor/Documents/hackatl-agentic-security/.claude/worktrees/live-retrain-v8-4c5c2e/rl-defense/.venv/bin/python -m rl_defense.live.online --registry /Users/alanmozhoor/Documents/hackatl-agentic-security/.claude/worktrees/mystifying-hofstadter-c5aaf7/rl-defense/runs/live/registry.json --rules-episodes 2 --seed 4 --train-dir train_v8 --val-dir val_v9 --holdout-dir holdout_v9 --holdout-episodes 100 --severity-context platform --random-baseline --record-trajectories --reference-checkpoint v7=results/live-retrain-v7/candidate_online.pt --reference-checkpoint v8=results/live-retrain-v8/candidate_online.pt --out runs/live/retrain-v9/seed4 --evidence-dir results/live-retrain-v9/seed4",
+  "artifacts": {
+    "checkpoint": {
+      "path": "candidate_online.pt",
+      "stored_as": "file",
+      "sha256": "1b63045132e6526c159345437ca3a703214f395bbd1d6c4bbcd9c0a77436ea83",
+      "note": "the selected candidate; digest equals the report's checkpoint_sha256"
+    },
+    "experiment": {
+      "path": "candidate_online_experience.jsonl",
+      "stored_as": "gzip",
+      "stored_path": "candidate_online_experience.jsonl.gz",
+      "sha256": "08a02f057dbe58f9c2d333a827f96670605e1680ad6394ea90e914d5df474aaa",
+      "note": "complete log: demonstrations + all online transitions (154200 lines)"
+    },
+    "selected_experience": {
+      "path": "candidate_online_selected_experience.jsonl",
+      "stored_as": "prefix",
+      "of": "experiment",
+      "lines": 4200,
+      "sha256": "0490d495da7e5332aa4ed9ad1d982074e55d387a15de7f523a008c3591d97c75",
+      "note": "the data available at the selected snapshot; the hash the checkpoint's lineage.experience_sha256 pins"
+    },
+    "holdout_episodes": {
+      "path": "holdout_episodes.json",
+      "stored_as": "file",
+      "sha256": "f74d564706b59bb833013a77d05f90632ed48938b6f361b828f47431c5e828f0"
+    },
+    "promotion_report": {
+      "path": "promotion_report.json",
+      "stored_as": "file",
+      "sha256": "463b3cc800d3b9f238b3f1b610f6d512e797ca2aa2501c49cfdbc6bd0d0f1063"
+    },
+    "checkpoint_manifest": {
+      "path": "candidate_online.manifest.json",
+      "stored_as": "file",
+      "sha256": "d9e973da580447e94accf6f09cfdadf7a572108254e47b7769dae0ce3d285531"
+    },
+    "rules_tuning": {
+      "path": "rules_tuning.json",
+      "stored_as": "file",
+      "sha256": "e491088453f27149138fdff514c8ce18165949357174bacdc2aba6c8e7979b29"
+    },
+    "holdout_trajectories": {
+      "path": "holdout_trajectories.jsonl",
+      "stored_as": "gzip",
+      "stored_path": "holdout_trajectories.jsonl.gz",
+      "sha256": "6322171defea83ff0ae18a2f26b22b5af253d0550e06edc413ba5a117d387532",
+      "note": "Logical JSONL digest; the promotion report separately pins the gzip container bytes."
+    }
+  }
+}

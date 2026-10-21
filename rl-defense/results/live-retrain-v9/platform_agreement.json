@@ -1,0 +1,347 @@
+{
+  "0": {
+    "cases": {
+      "no_findings": {
+        "finding_severity": {
+          "gateway": 0.0,
+          "api": 0.0,
+          "auth": 0.0,
+          "payments": 0.0,
+          "db": 0.0
+        },
+        "quiet": {
+          "windows": 89,
+          "agree": 89,
+          "agreement": 1.0,
+          "lab_actions": {
+            "noop": 89
+          },
+          "platform_actions": {
+            "noop": 89
+          }
+        },
+        "flagged": {
+          "windows": 51,
+          "agree": 51,
+          "agreement": 1.0,
+          "lab_actions": {
+            "block_principal": 51
+          },
+          "platform_actions": {
+            "block_principal": 51
+          }
+        }
+      },
+      "bola_high": {
+        "finding_severity": {
+          "gateway": 0.0,
+          "api": 0.0,
+          "auth": 0.0,
+          "payments": 0.75,
+          "db": 0.0
+        },
+        "quiet": {
+          "windows": 89,
+          "agree": 89,
+          "agreement": 1.0,
+          "lab_actions": {
+            "noop": 89
+          },
+          "platform_actions": {
+            "noop": 89
+          }
+        },
+        "flagged": {
+          "windows": 51,
+          "agree": 51,
+          "agreement": 1.0,
+          "lab_actions": {
+            "block_principal": 51
+          },
+          "platform_actions": {
+            "block_principal": 51
+          }
+        }
+      }
+    },
+    "windows": 280,
+    "agree": 280,
+    "agreement": 1.0
+  },
+  "1": {
+    "cases": {
+      "no_findings": {
+        "finding_severity": {
+          "gateway": 0.0,
+          "api": 0.0,
+          "auth": 0.0,
+          "payments": 0.0,
+          "db": 0.0
+        },
+        "quiet": {
+          "windows": 89,
+          "agree": 89,
+          "agreement": 1.0,
+          "lab_actions": {
+            "noop": 89
+          },
+          "platform_actions": {
+            "noop": 89
+          }
+        },
+        "flagged": {
+          "windows": 51,
+          "agree": 51,
+          "agreement": 1.0,
+          "lab_actions": {
+            "block_principal": 51
+          },
+          "platform_actions": {
+            "block_principal": 51
+          }
+        }
+      },
+      "bola_high": {
+        "finding_severity": {
+          "gateway": 0.0,
+          "api": 0.0,
+          "auth": 0.0,
+          "payments": 0.75,
+          "db": 0.0
+        },
+        "quiet": {
+          "windows": 89,
+          "agree": 89,
+          "agreement": 1.0,
+          "lab_actions": {
+            "noop": 89
+          },
+          "platform_actions": {
+            "noop": 89
+          }
+        },
+        "flagged": {
+          "windows": 51,
+          "agree": 51,
+          "agreement": 1.0,
+          "lab_actions": {
+            "block_principal": 51
+          },
+          "platform_actions": {
+            "block_principal": 51
+          }
+        }
+      }
+    },
+    "windows": 280,
+    "agree": 280,
+    "agreement": 1.0
+  },
+  "2": {
+    "cases": {
+      "no_findings": {
+        "finding_severity": {
+          "gateway": 0.0,
+          "api": 0.0,
+          "auth": 0.0,
+          "payments": 0.0,
+          "db": 0.0
+        },
+        "quiet": {
+          "windows": 89,
+          "agree": 89,
+          "agreement": 1.0,
+          "lab_actions": {
+            "noop": 89
+          },
+          "platform_actions": {
+            "noop": 89
+          }
+        },
+        "flagged": {
+          "windows": 51,
+          "agree": 51,
+          "agreement": 1.0,
+          "lab_actions": {
+            "block_principal": 51
+          },
+          "platform_actions": {
+            "block_principal": 51
+          }
+        }
+      },
+      "bola_high": {
+        "finding_severity": {
+          "gateway": 0.0,
+          "api": 0.0,
+          "auth": 0.0,
+          "payments": 0.75,
+          "db": 0.0
+        },
+        "quiet": {
+          "windows": 89,
+          "agree": 89,
+          "agreement": 1.0,
+          "lab_actions": {
+            "noop": 89
+          },
+          "platform_actions": {
+            "noop": 89
+          }
+        },
+        "flagged": {
+          "windows": 51,
+          "agree": 51,
+          "agreement": 1.0,
+          "lab_actions": {
+            "block_principal": 51
+          },
+          "platform_actions": {
+            "block_principal": 51
+          }
+        }
+      }
+    },
+    "windows": 280,
+    "agree": 280,
+    "agreement": 1.0
+  },
+  "3": {
+    "cases": {
+      "no_findings": {
+        "finding_severity": {
+          "gateway": 0.0,
+          "api": 0.0,
+          "auth": 0.0,
+          "payments": 0.0,
+          "db": 0.0
+        },
+        "quiet": {
+          "windows": 89,
+          "agree": 89,
+          "agreement": 1.0,
+          "lab_actions": {
+            "noop": 89
+          },
+          "platform_actions": {
+            "noop": 89
+          }
+        },
+        "flagged": {
+          "windows": 51,
+          "agree": 51,
+          "agreement": 1.0,
+          "lab_actions": {
+            "block_principal": 51
+          },
+          "platform_actions": {
+            "block_principal": 51
+          }
+        }
+      },
+      "bola_high": {
+        "finding_severity": {
+          "gateway": 0.0,
+          "api": 0.0,
+          "auth": 0.0,
+          "payments": 0.75,
+          "db": 0.0
+        },
+        "quiet": {
+          "windows": 89,
+          "agree": 89,
+          "agreement": 1.0,
+          "lab_actions": {
+            "noop": 89
+          },
+          "platform_actions": {
+            "noop": 89
+          }
+        },
+        "flagged": {
+          "windows": 51,
+          "agree": 51,
+          "agreement": 1.0,
+          "lab_actions": {
+            "block_principal": 51
+          },
+          "platform_actions": {
+            "block_principal": 51
+          }
+        }
+      }
+    },
+    "windows": 280,
+    "agree": 280,
+    "agreement": 1.0
+  },
+  "4": {
+    "cases": {
+      "no_findings": {
+        "finding_severity": {
+          "gateway": 0.0,
+          "api": 0.0,
+          "auth": 0.0,
+          "payments": 0.0,
+          "db": 0.0
+        },
+        "quiet": {
+          "windows": 89,
+          "agree": 89,
+          "agreement": 1.0,
+          "lab_actions": {
+            "noop": 89
+          },
+          "platform_actions": {
+            "noop": 89
+          }
+        },
+        "flagged": {
+          "windows": 51,
+          "agree": 51,
+          "agreement": 1.0,
+          "lab_actions": {
+            "block_principal": 51
+          },
+          "platform_actions": {
+            "block_principal": 51
+          }
+        }
+      },
+      "bola_high": {
+        "finding_severity": {
+          "gateway": 0.0,
+          "api": 0.0,
+          "auth": 0.0,
+          "payments": 0.75,
+          "db": 0.0
+        },
+        "quiet": {
+          "windows": 89,
+          "agree": 89,
+          "agreement": 1.0,
+          "lab_actions": {
+            "noop": 89
+          },
+          "platform_actions": {
+            "noop": 89
+          }
+        },
+        "flagged": {
+          "windows": 51,
+          "agree": 51,
+          "agreement": 1.0,
+          "lab_actions": {
+            "block_principal": 51
+          },
+          "platform_actions": {
+            "block_principal": 51
+          }
+        }
+      }
+    },
+    "windows": 280,
+    "agree": 280,
+    "agreement": 1.0
+  }
+}
