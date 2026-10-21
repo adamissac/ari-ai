@@ -224,6 +224,7 @@ def test_clean_source_guard_rejects_dirty_and_unknown_revision(monkeypatch, tmp_
 @pytest.mark.parametrize("budget", [0, -1, 100000])
 def test_online_refuses_impossible_budget_before_training(tmp_path, budget):
     import argparse
+
     from rl_defense.live import online
 
     args = argparse.Namespace(
