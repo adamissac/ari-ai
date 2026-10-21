@@ -118,15 +118,70 @@ def schedule(
     return {"commit_jobs": queued}
 
 
+def policy_exit(
+    payload: dict[str, Any], reason: str, conn: Connection | None = None
+) -> dict[str, Any]:
+    """A policy stop finalizes previously deferred/blocked work instead of stranding it."""
+    if conn is None:
+        with transaction() as connection:
+            return policy_exit(payload, reason, connection)
+    rows = (
+        conn.execute(
+            sa.select(reassessment_requests.c.doc)
+            .where(
+                reassessment_requests.c.repo_id == payload["repo_id"],
+                reassessment_requests.c.doc["head_sha"].astext == payload["sha"],
+                reassessment_requests.c.status.in_(
+                    [ReassessmentStatus.queued.value, ReassessmentStatus.blocked_no_scope.value]
+                ),
+            )
+            .with_for_update()
+        )
+        .scalars()
+        .all()
+    )
+    for doc in rows:
+        request = ReassessmentRequest.model_validate(doc).model_copy(
+            update={"status": ReassessmentStatus.skipped, "reason": reason}
+        )
+        conn.execute(
+            sa.update(reassessment_requests)
+            .where(reassessment_requests.c.id == request.id)
+            .values(status=request.status.value, doc=request.model_dump(mode="json"))
+        )
+        for event_id in request.event_ids:
+            event_doc = conn.execute(
+                sa.select(monitoring_events.c.doc).where(monitoring_events.c.id == event_id)
+            ).scalar_one()
+            event_doc = {**event_doc, "status": EventStatus.ignored.value, "status_reason": reason}
+            conn.execute(
+                sa.update(monitoring_events)
+                .where(monitoring_events.c.id == event_id)
+                .values(status=EventStatus.ignored.value, doc=event_doc)
+            )
+            audit.record(
+                conn,
+                org_id=project_org(conn, request.project_id),
+                project_id=request.project_id,
+                actor_type=ActorType.system,
+                actor_id="monitoring",
+                action="monitoring.event_processed",
+                subject_type="monitoring_event",
+                subject_id=event_id,
+                details={"head_sha": payload["sha"], "status": "skipped", "reason": reason},
+            )
+    return {"ignored": reason}
+
+
 @handler("assess_github_commit")
 def assess_commit(ctx: JobContext) -> dict[str, Any]:
     p = ctx.job.payload
     allowed = authors()
     if not allowed:
-        return {"ignored": "automatic commit rollout disabled"}
+        return policy_exit(p, "automatic commit rollout disabled")
     sender = p.get("sender", "").lower()
     if not sender or ("*" not in allowed and sender not in allowed):
-        return {"ignored": "push sender is outside the automatic rollout"}
+        return policy_exit(p, "push sender is outside the automatic rollout")
     with transaction() as conn:
         repo = (
             conn.execute(sa.select(repositories).where(repositories.c.id == p["repo_id"]))
@@ -134,13 +189,13 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
             .one()
         )
     if repo["installation_id"] != p["installation_id"]:
-        return {"ignored": "repository installation changed"}
+        return policy_exit(p, "repository installation changed")
     commit = github_client().commit(repo["installation_id"], repo["full_name"], p["sha"])
     if commit.get("sha") != p["sha"]:
         raise ValueError("GitHub returned a different commit")
     login = (commit.get("author") or {}).get("login", "").lower()
     if not login or ("*" not in allowed and login not in allowed):
-        return {"ignored": "commit author is outside the automatic rollout"}
+        return policy_exit(p, "commit author is outside the automatic rollout")
     ctx.check_cancelled()
     with transaction() as conn:
         # Serialize quota reservations across all repositories in a project.
@@ -156,12 +211,12 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
             .one()
         )
         if repo["installation_id"] != p["installation_id"]:
-            return {"ignored": "repository installation changed"}
+            return policy_exit(p, "repository installation changed", conn)
         if not repo["automatic_assessments"]:
-            return {"ignored": "repository automatic assessments disabled"}
+            return policy_exit(p, "repository automatic assessments disabled", conn)
         settings = project_settings(conn, repo["project_id"])
         if not settings.monitoring_policy.enabled:
-            return {"ignored": "monitoring disabled"}
+            return policy_exit(p, "monitoring disabled", conn)
         key = f"github:commit:{repo['id']}:{p['sha']}"
         existing = (
             conn.execute(sa.select(monitoring_events).where(monitoring_events.c.dedupe_key == key))

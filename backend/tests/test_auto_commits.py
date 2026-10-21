@@ -386,3 +386,30 @@ def test_github_client_is_reused_across_commits(automatic, monkeypatch):
     bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
     push(alice, HEAD, "c" * 40)
     assert len(calls) == 1
+
+
+def test_deferred_commit_is_finalized_when_automation_is_off(automatic, settings_override):
+    from backend.db import reassessment_requests
+    from shared.base import utcnow
+
+    alice, bob, ids, _ = automatic
+    settings_override(automatic_assessments_per_hour="1")
+    bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
+    push(alice, HEAD, "c" * 40)
+    alice.patch(f"/api/v1/repositories/{ids['repo']}", json={"automatic_assessments": False})
+    with transaction() as conn:
+        conn.execute(
+            sa.update(jobs)
+            .where(jobs.c.dedupe_key.like("github:deferred:%"))
+            .values(run_after=utcnow())
+        )
+    worker.drain(kinds=["assess_github_commit"])
+    with transaction() as conn:
+        row = conn.execute(
+            sa.select(reassessment_requests.c.doc).where(
+                reassessment_requests.c.doc["head_sha"].astext == "c" * 40
+            )
+        ).scalar_one()
+        assert row["status"] == "skipped"
+        assert "disabled" in row["reason"]
+    assert records() == [HEAD]
