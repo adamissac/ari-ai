@@ -26,7 +26,7 @@ export function RepositoryAutomation({ repoId }: { repoId: string }) {
       <div><h2 className="text-sm font-semibold">Automatic runs</h2><p className="mt-1 max-w-xl text-sm text-muted">{enabled === null ? 'Loading repository settings…' : enabled ? 'Every eligible new commit runs in the background. Open a commit to see its results.' : 'Off. Choose a commit and click Run when you want an assessment.'}</p></div>
       <button type="button" role="switch" aria-checked={enabled ?? false} aria-label="Automatic runs" disabled={enabled === null || busy || resource.refreshError !== undefined} onClick={() => void toggle()} className="shrink-0 rounded-full border border-line px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-50" style={enabled ? { background: 'var(--brand)', color: 'white' } : undefined}>{busy ? 'Saving…' : enabled ? 'ON' : 'OFF'}</button>
     </div>
-    <p className="mt-2 text-xs text-muted">This repository only. Requires approved sandbox authorization. Initial rollout: commits authored by adamissac.</p>
+    <p className="mt-2 text-xs text-muted">This repository only. Requires approved sandbox authorization and enabled project monitoring. Eligible commits may wait for available capacity.</p>
     {resource.status === 'error' && <ErrorState error={resource.error} onRetry={resource.reload} />}
     {resource.refreshError !== undefined && <ErrorState error={resource.refreshError} onRetry={resource.reload} />}
     {error !== null && <ErrorState error={error} />}

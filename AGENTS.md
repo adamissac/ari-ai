@@ -104,7 +104,8 @@ budget, handoff conditions, and success criteria.
 
 Chosen-as-default (revisable via ADR): Python 3.12, FastAPI, Pydantic v2,
 PostgreSQL, Anthropic Claude (model id via `ANTHROPIC_MODEL`, default
-`claude-haiku-5-5` (was `claude-opus-5-5`), per-agent overrides allowed), Tree-sitter, Docker sandboxes,
+`claude-haiku-5-5` only in production/staging per owner instruction (#380);
+development/test overrides allowed, see ADR-0015), Tree-sitter, Docker sandboxes,
 PyTorch + Gymnasium (Double DQN), Next.js + React + TypeScript + Tailwind.
 
 Proposed, not decided: task queue (Postgres `SKIP LOCKED` queue vs. Celery/Redis

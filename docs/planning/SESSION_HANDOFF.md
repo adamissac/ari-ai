@@ -1164,3 +1164,8 @@ uniform seed2 persistent43203,84/84 compromised vs v6 0/84. No holdout reruns,
 retries or promotion. Real registry digest remains c3455933…; v6 stays deployed.
 Results/provenance: `rl-defense/results/live-retrain-v10/PROVENANCE.md`.
 Future experiments need fresh preregistration/holdout; no follow-up run launched.
+
+
+### 2026-10-21 — automatic commit review fixes (#377)
+
+Finalized deferred requests as skipped when repository/rollout policy disables them; added regression coverage. Updated operator docs and ADR-0015 to the explicit Haiku-only production policy. Latest focused scheduling/migration verification: 26 passed; Ruff passed. Prior frontend verification: 305 tests, TypeScript, lint, production build and two real-stack browser checks passed. Integrating latest main; final CI and Alan contract approval remain required. No authenticated live-provider run has been verified.

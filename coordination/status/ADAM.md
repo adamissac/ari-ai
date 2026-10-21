@@ -237,3 +237,8 @@ Polish the shared ARI interface using Kairo’s restrained grids and technical t
 ### Automatic/manual mode and Haiku-only follow-up (#377 / #380)
 
 Implemented per-repository persisted ON/OFF, owner-only API, migration 0009 and proposed additive schema 0.15.0; manual Run shown when OFF. Added signed-sender gate and per-project start quotas that defer every excess commit durably. Production/staging gateway, Railway startup and quick-read enforce Haiku 5.5. Historical evidence labels preserved. Contract review requested from Alan; full test/CI and deployment verification remain pending.
+
+
+### 2026-10-21 — automatic commit review fixes (#377)
+
+Finalized deferred requests as skipped when repository/rollout policy disables them; added regression coverage. Updated operator docs and ADR-0015 to the explicit Haiku-only production policy. Latest focused scheduling/migration verification: 26 passed; Ruff passed. Prior frontend verification: 305 tests, TypeScript, lint, production build and two real-stack browser checks passed. Integrating latest main; final CI and Alan contract approval remain required. No authenticated live-provider run has been verified.
