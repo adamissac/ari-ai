@@ -153,6 +153,7 @@ def test_finalizer_pins_metrics_and_traces_and_preserves_primary_verdict(tmp_pat
                     "sha256": sha(experiment),
                 },
                 "selected_experience": {
+                    "path": "selected.jsonl",
                     "stored_as": "prefix",
                     "of": "experiment",
                     "lines": 1,
@@ -178,6 +179,19 @@ def test_finalizer_pins_metrics_and_traces_and_preserves_primary_verdict(tmp_pat
     before = (tmp_path / "STUDY_EVIDENCE.json").read_bytes()
     module.main()
     assert (tmp_path / "STUDY_EVIDENCE.json").read_bytes() == before
+    index = evidence.load_index(tmp_path / "seed4")
+    assert index["artifacts"]["holdout_trajectories"]["stored_as"] == "gzip"
+    assert (
+        b"".join(evidence.stream(tmp_path / "seed4", "holdout_trajectories"))
+        == b"synthetic trajectory\n"
+    )
+    evidence.restore(tmp_path / "seed4")
+    assert (tmp_path / "seed4/holdout_trajectories.jsonl").read_bytes() == b"synthetic trajectory\n"
+    monkeypatch.setattr(sys, "argv", ["finalize_study", str(tmp_path)])
+    module.main()
+    assert (tmp_path / "STUDY_EVIDENCE.json").read_bytes() == before
+    assert "seed4/holdout_trajectories.jsonl" not in json.loads(before)["files"]
+    monkeypatch.setattr(sys, "argv", ["finalize_study", str(tmp_path), "--verify-only"])
     (tmp_path / "seed4/holdout_episodes.json").write_text("changed")
     with pytest.raises(ValueError, match="artifact digest mismatch"):
         module.main()

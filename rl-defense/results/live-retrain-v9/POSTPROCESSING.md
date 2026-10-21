@@ -46,3 +46,8 @@ python results/live-retrain-v9/finalize_study.py results/live-retrain-v9 --verif
 This verifies the saved artifact hashes and all five compressed evidence indices.
 It does not retrain, repeat held-out evaluation, edit the bundle or promote a policy.
 Digest checking is not a report signature or an authenticated approval service.
+
+The evidence index hashes the logical uncompressed trajectory JSONL stream; the original
+promotion report also pins the gzip container bytes. Restored JSONL duplicates are
+git-ignored and excluded from the stored-file manifest, so verification stays portable
+after a local restore.
