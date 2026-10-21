@@ -32,6 +32,7 @@ def main() -> int:
     root = Path(__file__).resolve().parents[2]
     os.chdir(root)
     source_sha = study.require_clean_source(root)
+    source_digest = study.source_fingerprint(root)
     verify_files(root)
     result_root = Path("results/live-retrain-v9")
     run_root = Path("runs/live/retrain-v9")
@@ -48,6 +49,7 @@ def main() -> int:
     metadata = {
         "started_at": datetime.now(UTC).isoformat(),
         "git_sha": source_sha,
+        "source_fingerprint": source_digest,
         "python": sys.version,
         "platform": platform.platform(),
         "cpu_count": os.cpu_count(),
@@ -60,7 +62,7 @@ def main() -> int:
     (run_root / "RUN.json").write_text(json.dumps(metadata, indent=2))
 
     def run_seed(seed: int) -> dict:
-        if git_sha() != source_sha:
+        if git_sha() != source_sha or study.source_fingerprint(root) != source_digest:
             raise ValueError("source changed during study")
         # Read-only use of the real local registry. No fabricated approval or init.
         out, dest = run_root / f"seed{seed}", result_root / f"seed{seed}"
@@ -105,6 +107,8 @@ def main() -> int:
             )
         if sha256_file(Registry(args.registry).deployed_checkpoint()) != baseline_sha:
             raise ValueError("incumbent changed during study; results cannot support promotion")
+        if git_sha() != source_sha or study.source_fingerprint(root) != source_digest:
+            raise ValueError("source changed during study")
         evidence.pack(dest, run=" ".join(command))
         evidence.verify(dest)
         report = json.loads((dest / "promotion_report.json").read_text())

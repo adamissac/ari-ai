@@ -7,7 +7,9 @@ uses training-seed means for uncertainty, and never mutates a registry or promot
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import os
 import re
 import subprocess
 from dataclasses import fields
@@ -20,6 +22,18 @@ from rl_defense.live.evaluate import bootstrap_ci
 from rl_defense.live.online import OnlineConfig
 
 SEEDS = (0, 1, 2, 3, 4)
+GATE_NAMES = frozenset(
+    {
+        "paired_reward_gain_ci_low",
+        "compromise_rate_not_worse",
+        "availability_floor",
+        "false_disruption_cap",
+        "reward_hacking_no_blanket_isolation",
+        "beats_static_rules",
+        "no_per_scenario_regression",
+    }
+)
+
 METRICS = (
     "reward",
     "compromise_rate",
@@ -28,6 +42,34 @@ METRICS = (
     "no_attack_defense_duty",
     "actions_per_step",
 )
+
+
+def source_fingerprint(root: Path) -> str:
+    repo = Path(
+        subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+    )
+    names = subprocess.run(
+        ["git", "ls-files", "-z"], cwd=repo, capture_output=True, check=True
+    ).stdout.split(b"\0")
+    digest = hashlib.sha256()
+    for name in sorted(n for n in names if n):
+        path = repo / os.fsdecode(name)
+        digest.update(name + b"\0")
+        if path.is_symlink():
+            digest.update(b"symlink\0" + os.fsencode(os.readlink(path)))
+        else:
+            digest.update(b"file\0")
+            with path.open("rb") as stream:
+                while chunk := stream.read(1 << 20):
+                    digest.update(chunk)
+        digest.update(b"\0")
+    return digest.hexdigest()
 
 
 def require_clean_source(root: Path) -> str:
@@ -65,6 +107,26 @@ def aggregate(reports: list[dict], *, legacy_rules_episodes: dict[int, int] | No
         return value
 
     for r in ordered:
+        if not isinstance(r.get("criteria"), dict) or r["criteria"] != first["criteria"]:
+            raise ValueError("study reports disagree on criteria")
+        checks = r.get("checks")
+        expected = (
+            GATE_NAMES
+            if r["criteria"].get("must_beat_rules", True)
+            else GATE_NAMES - {"beats_static_rules"}
+        )
+        if (
+            not isinstance(checks, list)
+            or len(checks) != len(expected)
+            or any(not isinstance(c, dict) or type(c.get("passed")) is not bool for c in checks)
+            or {c.get("name") for c in checks} != expected
+        ):
+            raise ValueError("incomplete or invalid per-seed gate checks")
+        decision = "recommend_promote" if all(c["passed"] for c in checks) else "reject"
+        if r.get("decision") != decision:
+            raise ValueError("per-seed gate decision disagrees with checks")
+        if r.get("balance_demo_actions", False) != first.get("balance_demo_actions", False):
+            raise ValueError("study reports disagree on demonstration sampling")
         if not isinstance(r.get("git_sha"), str) or not re.fullmatch(r"[0-9a-f]{40}", r["git_sha"]):
             raise ValueError("missing source commit")
         if teacher_budget(r) != teacher_budget(first):
@@ -170,6 +232,7 @@ def aggregate(reports: list[dict], *, legacy_rules_episodes: dict[int, int] | No
         differences[metric]["holm_p"] = running
     return {
         "schema": "live-five-seed-study/0.1",
+        "git_sha": first["git_sha"],
         "training_seeds": list(SEEDS),
         "caveat": first["caveat"],
         "deployed": first["deployed"],

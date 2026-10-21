@@ -75,7 +75,7 @@ Keep organization/repository/commit navigation scoped to the selected repository
 
 ### RL-REGISTRY-001 — v8 promotion review follow-up (Alan, 2026-10-20)
 
-Implemented; awaiting review in PR #375 on `feat/alan/rl-v8-continuation`. Bind reports to the current incumbent,
+Merged in PR #375 on `feat/alan/rl-v8-continuation`. Bind reports to the current incumbent,
 pin report bytes, reject missing/failed checks, add registry-backed experiment baseline,
 and resolve reference-name ambiguity from PR #370. Historical v8 evidence is preserved.
 Authenticated approvals and signed/schema-complete reports remain open in issue #317;
@@ -85,10 +85,16 @@ RL-REGISTRY-001 validation: full RL suite 228 passed; Ruff lint/format and diff 
 
 ### RL-V9-001 — Quiet-validation five-seed lab experiment
 
-IMPLEMENTED; awaiting review in PR #376 on `feat/alan/live-retrain-v9` (Alan).
+Merged in PR #376 on `feat/alan/live-retrain-v9` (Alan).
 Preregister val_v9/fresh holdout_v9; train seeds0–4; use actual incumbent v6; preserve
 all trajectories and seed-level uncertainty. Completed all five seeds and 16,500 held-out
 episodes. Hypothesis unsupported; all seeds reject, v6 unchanged. Evidence/figure in
 `rl-defense/results/live-retrain-v9/`; no automatic promotion.
 
 - [x] UI-POLISH: coherent Kairo-inspired visual system across ARI workspace and landing chapters, with responsive navigation coverage (user-authorized Adam frontend work; `feat/adam/ui-polish`).
+
+### RL-V10-001 — Demonstration action balance (Alan, owner authorized)
+
+IMPLEMENTED / awaiting review in PR #378 on `feat/alan/v10-demo-balance`. Saved-data failure analysis, opt-in
+balanced demo replay, regression tests and fresh two-arm preregistration implemented.
+Five seeds per arm; no v10 training/evaluation results yet. V6 unchanged.

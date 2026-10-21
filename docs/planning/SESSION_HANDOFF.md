@@ -1079,7 +1079,32 @@ subsequent v10 failure analysis, regressions and preregistration.
 
 Polish the shared ARI interface using Kairo’s restrained grids and technical typography in ARI’s warm charcoal/ember palette. Add consistent workspace headers, numbered organization cards, clearer repository rows, quieter panels and a precise replay frame. Preserve the original hero and scroll choreography; keep Projects highlighted throughout the organization/repository/commit flow. Branch `feat/adam/ui-polish`; validation and screenshots recorded in PR.
 
+### 2026-10-21 — V10 failure analysis, regression and preregistration
+
+Owner authorized all three follow-ups and merging #375/#376. Branch
+`feat/alan/v10-demo-balance`: saved-data analysis confirms ~87% noop teacher rows;
+seed0 chooses noop with higher Q than valid block actions in20 of23 compromised
+windows (current masks reconstructed from preceding transitions). No causal training
+mechanism or serving bug is established. Implemented opt-in action-balanced demo
+sampling with unchanged default/agent replay. Added sampler, tiny real training and
+paired-arm/split regression tests. Fresh val_v10 and holdout_v10 plus controlled
+two-arm/five-seed preregistration/runner are prepared. No v10 training or holdout run.
+V6 stays deployed; a future study needs ~6h CPU with five workers.
+
 Additional #376 review: expose explicit legacy teacher budget on aggregation CLI,
 require a clean concrete source commit before launch and validate actual pooled/scenario
 episode counts. Historical CLI re-aggregation and final evidence verification are
 executed before publishing. No held-out replay or learning changes.
+
+V10 review follow-up (#378): normalize only configured OnlineConfig settings across
+arms (not treatment/selected outputs), fingerprint tracked source/config bytes before
+and after every job, and complete both-arm train-only checks/worst-trace extraction
+and stored evidence verification before reporting success. Synthetic postprocessing
+and uncommitted-source-edit regressions added; integrated58 tests passed. No v10
+training/evaluation has run. #375 merged at64c38b7; #376 awaits final CI.
+
+#376 merged atce723f8 with267 RL tests passing; four new review findings arrived
+during merge and are addressed in #378: shared tracked-source fingerprint per job,
+source SHA in aggregate output, complete/consistent seed gates, and transactional
+finalization with validation-before-write and I/O rollback tests. Historical numeric
+results/weights remain unchanged. #378 still contains the unexecuted v10 study.

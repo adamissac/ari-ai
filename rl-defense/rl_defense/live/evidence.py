@@ -86,10 +86,10 @@ def stream(evidence_dir: Path, name: str, idx: dict | None = None) -> Iterator[b
     raise ValueError(f"{name}: unknown storage {kind!r}")
 
 
-def verify(evidence_dir: Path) -> dict[str, str]:
+def verify(evidence_dir: Path, *, index: dict | None = None) -> dict[str, str]:
     """Re-hash every artifact; raise on the first mismatch. Returns name -> sha256."""
     d = Path(evidence_dir)
-    idx = load_index(d)
+    idx = index if index is not None else load_index(d)
     out: dict[str, str] = {}
     for name, a in idx["artifacts"].items():
         h = hashlib.sha256()

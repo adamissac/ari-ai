@@ -2,7 +2,7 @@
   "schema": "live-study-evidence/0.1",
   "training_source_commit": "29aa5f8ae3b2878ee7d95e22f0052ced7b3afca3",
   "files": {
-    "POSTPROCESSING.md": "b4cd8ebc0295dc08addc8d0c10c650babc2e75bdc35c878b5261eec3e5fc127b",
+    "POSTPROCESSING.md": "651455d63f1e268ffe14cd425e5f0913dbbf5f9df2ae78e58487d284c368999c",
     "PREREGISTRATION.md": "ec5a5d5765557d5dc2b0fc535929eee51b36a91623971a5888b180f39ea8a65b",
     "PROVENANCE.md": "6de70cbfd191419f3b4532e54355de338366acb71429a2ed6b8229e6a12c89e5",
     "RUN.json": "403a6d9dbb28cdb92c1bade0f91a3b8fa74f25062895b149ceb45b71b1146391",
@@ -10,7 +10,7 @@
     "environment.json": "d260e7dd51da333e9d1d853cbd0905c60a8ed6cfa3d79207b6ef0113698b91b2",
     "failure_case.json": "13bbad9c5727929a586ed418bccf9390f77ff2549600855966534013082f4e63",
     "figure_data.json": "25346cc4612104ebd7c85e7ee684a8c864dea983454a3be3fc68be4b1ea4922f",
-    "finalize_study.py": "799ec480cd4eeb788adfd97ee792ed0234d479eafee44dd2faf4ad66a88ecf6d",
+    "finalize_study.py": "e6b313e71f77c1bb2659c737ecc54b704e225b8291705a5e82bbc6028d85c40b",
     "observed_progress.json": "8d8f6d628f5b45e4a14715ace5bf3aa6654e2a931bdcf63eb8fa55911331f2ed",
     "platform_agreement.json": "8e56479efe039088aaf036a01aa6ea8ec4f0c607236c0ec7a4abbd668e05e05f",
     "plot_runtime.json": "2fb308e757e3b640c918976c19cd5c197eb12c0729548e3577bf17f78dbe6e99",
@@ -19,7 +19,7 @@
     "registry_snapshot.json": "c345593354856c50559ba16611853a0e4936a7efc11fa5704c224d3189271408",
     "render_plot.py": "114bb759696144dc4a5a2b176c18b15b5a1adeaab8e6c7efef014ddeefa94ef9",
     "report_study.py": "5f73abf011741efa2be755ff1cdf2b29fc510547db68f134cd5b9a119bad5bc5",
-    "run_study.py": "5057fee37860a60c683b8375edaac25c15a22abf6d759751af1a2e989a042daa",
+    "run_study.py": "f394102becef3847125de7e52e034ea579f45ac81adf8009c509d0f45af5197c",
     "seed0/EVIDENCE.json": "c108205ff4fdecec946448b9d03f521b74f4b8505491d61dc0e5803a290bffa1",
     "seed0/REPORT.md": "c796dc8b45c3cc79971b8dbf6721c4373d6a5f961e63826f3ce2fd6f5f1bca63",
     "seed0/candidate_online.manifest.json": "0db2c2d5a8e6ee8d7ec1eb4f156070f9bbcb479660cc6df5726198aaaac22d04",
@@ -78,6 +78,7 @@
     "study_figure.png": "c2e2d7c4ea8e438e7b775289facef582bb25bb798660cf5317c49012502a0bfc",
     "study_figure.svg": "34ea3070f8fe6afd4f7837f203e229b9439d3b282c348cccedbcb3574ef79943",
     "study_summary.json": "5874cfd5cfaa656a18bc6e30bb48bb69304dfd29818523bda85583fe92e3e83b",
+    "study_summary_verified.json": "d78c8cb6103211a48f68ba8f826988d61362e55a601a55040ef2f3346198b3a4",
     "study_verdict.json": "cb0ceb94e7598aa67c5a94b34e92c6ae5cbfcc8c0d3e71436082e340e9597104"
   },
   "promotion_performed": false
