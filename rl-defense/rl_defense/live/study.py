@@ -8,12 +8,14 @@ from __future__ import annotations
 
 import argparse
 import json
+from dataclasses import fields
 from pathlib import Path
 
 import numpy as np
 from scipy.stats import ttest_1samp
 
 from rl_defense.live.evaluate import bootstrap_ci
+from rl_defense.live.online import OnlineConfig
 
 SEEDS = (0, 1, 2, 3, 4)
 METRICS = (
@@ -31,7 +33,26 @@ def aggregate(reports: list[dict]) -> dict:
     if [r["online"]["seed"] for r in ordered] != list(SEEDS):
         raise ValueError("the study requires exactly training seeds 0 through 4")
     first = ordered[0]
+
+    def reference_ids(report: dict) -> dict:
+        references = report.get("references", [])
+        identities = {r["name"]: (r["checkpoint_sha256"], r["env_id"]) for r in references}
+        if len(identities) != len(references):
+            raise ValueError("duplicate reference policy names")
+        return identities
+
     for r in ordered:
+        for field in fields(OnlineConfig):
+            if field.name == "seed":
+                continue
+            if field.name not in r["online"] or field.name not in first["online"]:
+                raise ValueError(f"missing online setting {field.name}")
+            if r["online"][field.name] != first["online"][field.name]:
+                raise ValueError(f"study reports disagree on online setting {field.name}")
+        if reference_ids(r) != reference_ids(first):
+            raise ValueError("study reports disagree on reference checkpoints")
+        if r.get("git_sha") != first.get("git_sha"):
+            raise ValueError("study reports disagree on source commit")
         for key in ("splits", "criteria", "loop_overrides", "action_space", "deployed"):
             if r[key] != first[key]:
                 raise ValueError(f"study reports disagree on {key}")

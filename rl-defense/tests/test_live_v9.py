@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import copy
+from dataclasses import asdict
 
 import pytest
 
 from rl_defense.live import study
+from rl_defense.live.online import OnlineConfig
 from rl_defense.live.scenarios import CONFIG_DIR, load_scenarios
 
 
@@ -47,7 +49,7 @@ def test_v9_new_scenarios_and_seeds_are_disjoint():
 def _reports():
     return [
         {
-            "online": {"seed": seed},
+            "online": asdict(OnlineConfig(seed=seed)),
             "splits": {"holdout": {"fresh": "hash"}},
             "criteria": {},
             "loop_overrides": {},
@@ -101,4 +103,33 @@ def test_aggregate_refuses_missing_duplicated_seeds_and_undefined_metrics():
         study.aggregate(bad)
     reports[0]["policies"]["candidate"]["false_disruption"] = None
     with pytest.raises(ValueError, match="undefined"):
+        study.aggregate(reports)
+
+
+@pytest.mark.parametrize(
+    "field", ["env_steps", "pretrain_updates", "demo_fraction", "val_episodes"]
+)
+def test_aggregate_refuses_different_training_and_selection_budgets(field):
+    reports = _reports()
+    reports[1]["online"][field] += 1
+    with pytest.raises(ValueError, match=f"online setting {field}"):
+        study.aggregate(reports)
+
+
+def test_aggregate_refuses_missing_settings_changed_references_and_source():
+    reports = _reports()
+    del reports[0]["online"]["env_steps"]
+    with pytest.raises(ValueError, match="missing online setting"):
+        study.aggregate(reports)
+    reports = _reports()
+    for report in reports:
+        report["references"] = [
+            {"name": "v8", "checkpoint_sha256": "original", "env_id": "live_v3"}
+        ]
+    reports[1]["references"][0]["checkpoint_sha256"] = "swapped"
+    with pytest.raises(ValueError, match="reference checkpoints"):
+        study.aggregate(reports)
+    reports = _reports()
+    reports[1]["git_sha"] = "different"
+    with pytest.raises(ValueError, match="source commit"):
         study.aggregate(reports)

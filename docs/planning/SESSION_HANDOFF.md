@@ -1035,3 +1035,14 @@ baseline. Pipeline adds opt-in random-valid baseline/raw trajectory retention; a
 uses five seed means and refuses incomplete/mismatched cohorts. ADR-0018 proposes lab
 protocol extension; no simulator TTC is invented. Pre-run env/splits/online smoke31 passed.
 Source/config/preregistration must be pushed before launch; see results/live-retrain-v9.
+
+### 2026-10-20 — V9 evidence tooling prepared during the fixed CPU run
+
+Separate reporting worktree `/private/tmp/rl-v9-reporting`, branch
+`feat/alan/v9-reporting`, based on29aa5f8. The actual training checkout stays on29aa5f8;
+learning modules/configs are unchanged. Added portable finalization/read-only hash
+verification, secondary threshold checks, isolated scientific plotting helpers and
+comparability guards for budgets/source/reference hashes. Targeted20 passed; earlier
+reporting/pipeline22 passed; lint/format clean. Fixture tests execute no held-out v9
+policy. Merge reporting into the experiment only after all five runs finish, then
+report/plot/finalize saved artifacts per POSTPROCESSING.md. No promotion.
