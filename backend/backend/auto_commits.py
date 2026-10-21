@@ -9,7 +9,7 @@ from typing import Any
 import sqlalchemy as sa
 from sqlalchemy.engine import Connection
 
-from backend import jobs
+from backend import audit, jobs
 from backend.db import (
     assessments,
     monitoring_events,
@@ -23,12 +23,15 @@ from backend.services import (
     active_scope_for_repo,
     capped_budget,
     create_assessment,
+    project_org,
     project_settings,
 )
 from backend.settings import get_settings
-from backend.worker import JobContext, handler
+from backend.worker import JobContext, PermanentJobError, handler
 from shared.assessment import AssessmentTrigger
+from shared.audit import ActorType
 from shared.base import utcnow
+from shared.errors import ErrorCode
 from shared.ids import IdPrefix, new_id
 from shared.monitoring import (
     CommitRange,
@@ -40,6 +43,17 @@ from shared.monitoring import (
     ReassessmentScope,
     ReassessmentStatus,
 )
+
+_CLIENT: tuple[Any, Any, Any] | None = None
+
+
+def github_client() -> GitHubApp:
+    """Reuse short-lived installation tokens while worker settings remain unchanged."""
+    global _CLIENT
+    settings = get_settings()
+    if _CLIENT is None or _CLIENT[0] is not settings or _CLIENT[1] is not GitHubApp:
+        _CLIENT = (settings, GitHubApp, GitHubApp())
+    return _CLIENT[2]
 
 
 def authors() -> set[str]:
@@ -53,8 +67,6 @@ def schedule(
 ) -> dict[str, Any]:
     if not repo["automatic_assessments"]:
         return {"ignored": "repository automatic assessments disabled"}
-    if change.event != "push":
-        return {"ignored": "automatic commit rollout accepts pushes only"}
     allowed = authors()
     sender = (change.sender or "").lower()
     if not sender or ("*" not in allowed and sender not in allowed):
@@ -63,20 +75,25 @@ def schedule(
     if not installation or (payload.get("installation") or {}).get("id") != installation:
         return {"ignored": "push installation does not match connected repository"}
     commits = payload.get("commits") or []
+    if change.event == "pull_request":
+        commits = [{"id": change.head_sha}]
     shas = [c.get("id") for c in commits if isinstance(c, dict)]
     # Compare is paginated; webhook payloads can truncate large pushes.
-    if change.base_sha and (len(commits) >= 20 or not commits):
-        shas = GitHubApp().compare_commits(
+    if change.event == "push" and change.base_sha and (len(commits) >= 20 or not commits):
+        shas = github_client().compare_commits(
             installation, repo["full_name"], change.base_sha, change.head_sha
         )
     elif not change.base_sha and len(commits) >= 2048:
-        raise ValueError("new-branch push exceeds GitHub payload limit; cannot enumerate safely")
+        raise PermanentJobError(
+            ErrorCode.VALIDATION_FAILED,
+            "new-branch push exceeds GitHub payload limit; cannot enumerate safely",
+        )
     shas = [*shas, change.head_sha]
     if any(
         not isinstance(s, str) or not re.fullmatch(r"[0-9a-f]{40}", s) or s == "0" * 40
         for s in shas
     ):
-        raise ValueError("push contains an invalid commit SHA")
+        raise PermanentJobError(ErrorCode.VALIDATION_FAILED, "push contains an invalid commit SHA")
     queued = []
     for sha in dict.fromkeys(shas):
         job_id, _ = jobs.enqueue(
@@ -89,6 +106,10 @@ def schedule(
                 "installation_id": installation,
                 "payload_artifact_id": delivery["payload_artifact_id"],
                 "ref": change.ref,
+                "event_type": change.event,
+                "pr_number": change.pr_number,
+                "occurred_at": change.occurred_at.isoformat(),
+                "received_at": delivery["received_at"].isoformat(),
             },
             dedupe_key=f"github:commit:{repo['id']}:{sha}",
             priority=60,
@@ -114,7 +135,7 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
         )
     if repo["installation_id"] != p["installation_id"]:
         return {"ignored": "repository installation changed"}
-    commit = GitHubApp().commit(repo["installation_id"], repo["full_name"], p["sha"])
+    commit = github_client().commit(repo["installation_id"], repo["full_name"], p["sha"])
     if commit.get("sha") != p["sha"]:
         raise ValueError("GitHub returned a different commit")
     login = (commit.get("author") or {}).get("login", "").lower()
@@ -166,9 +187,11 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
                 project_id=repo["project_id"],
                 repo_id=repo["id"],
                 source=EventSource.github,
-                type=EventType.push,
-                occurred_at=utcnow(),
-                received_at=utcnow(),
+                type=EventType(p["event_type"]),
+                pr_number=p.get("pr_number"),
+                occurred_at=(commit.get("commit") or {}).get("committer", {}).get("date")
+                or p["occurred_at"],
+                received_at=p["received_at"],
                 dedupe_key=key,
                 payload_artifact_id=p["payload_artifact_id"],
                 commit_range=CommitRange(head_sha=p["sha"]),
@@ -270,6 +293,17 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
                     id=rrq.id, project_id=rrq.project_id, repo_id=rrq.repo_id, **values
                 )
             )
+        audit.record(
+            conn,
+            org_id=project_org(conn, repo["project_id"]),
+            project_id=repo["project_id"],
+            actor_type=ActorType.github,
+            actor_id=sender,
+            action="monitoring.event_processed",
+            subject_type="monitoring_event",
+            subject_id=event_id,
+            details={"head_sha": p["sha"], "status": rrq.status.value, "reason": reason},
+        )
         return {
             "reassessment_request_id": rrq.id,
             "assessment_id": rrq.assessment_id,
@@ -287,30 +321,27 @@ def resume_blocked(conn: Connection, project_id: str, scope_id: str) -> None:
         .order_by(repositories.c.id)
         .with_for_update()
     ).all()
-    for row in conn.execute(
+    # Select only blocked requests, then join their original durable job by its unique key.
+    source_key = (
+        sa.literal("github:commit:")
+        + reassessment_requests.c.repo_id
+        + ":"
+        + reassessment_requests.c.doc["head_sha"].astext
+    )
+    rows = conn.execute(
         sa.select(jobs_table.c.payload)
-        .join(
-            repositories,
-            jobs_table.c.payload["repo_id"].astext == repositories.c.id,
-        )
+        .select_from(reassessment_requests)
+        .join(jobs_table, jobs_table.c.dedupe_key == source_key)
         .where(
-            jobs_table.c.kind == "assess_github_commit",
-            repositories.c.project_id == project_id,
-            jobs_table.c.dedupe_key.like("github:commit:%"),
+            reassessment_requests.c.project_id == project_id,
+            reassessment_requests.c.status == ReassessmentStatus.blocked_no_scope.value,
         )
-    ).scalars():
-        blocked = conn.execute(
-            sa.select(reassessment_requests.c.id).where(
-                reassessment_requests.c.repo_id == row["repo_id"],
-                reassessment_requests.c.doc["head_sha"].astext == row["sha"],
-                reassessment_requests.c.status == ReassessmentStatus.blocked_no_scope.value,
-            )
-        ).first()
-        if blocked:
-            jobs.enqueue(
-                conn,
-                "assess_github_commit",
-                row,
-                dedupe_key=f"github:resume:{scope_id}:{row['repo_id']}:{row['sha']}",
-                priority=60,
-            )
+    ).scalars()
+    for row in rows:
+        jobs.enqueue(
+            conn,
+            "assess_github_commit",
+            row,
+            dedupe_key=f"github:resume:{scope_id}:{row['repo_id']}:{row['sha']}",
+            priority=60,
+        )

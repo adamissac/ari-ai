@@ -158,12 +158,13 @@ def ensure_checkout(
 
         token_for = GitHubApp(settings=s).installation_token
     repo_dir = s.security_workdir / "repos" / f"{repo_id}.git"
-    fetch_commit(
-        repo_dir,
-        str(row["full_name"]),
-        commit_sha,
-        token_for(int(row["installation_id"])),
-        github_web_url=s.github_web_url,
-    )
+    with _locked(repo_dir):
+        fetch_commit(
+            repo_dir,
+            str(row["full_name"]),
+            commit_sha,
+            token_for(int(row["installation_id"])),
+            github_web_url=s.github_web_url,
+        )
     register_binding(s.repository_bindings_file, repo_id, repo_dir)
     return repo_dir

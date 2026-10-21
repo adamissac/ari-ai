@@ -313,3 +313,76 @@ def test_quota_defers_excess_commits_without_dropping_them(
         conn.execute(sa.update(jobs).where(jobs.c.id == delayed["id"]).values(run_after=utcnow()))
     worker.drain(kinds=["assess_github_commit"])
     assert sorted(records()) == [HEAD, "c" * 40, "d" * 40]
+
+
+def test_reuses_inflight_manual_assessment(automatic):
+    alice, bob, ids, _ = automatic
+    bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
+    started = alice.post(
+        f"/api/v1/projects/{ids['project']}/assessments",
+        json={
+            "repo_id": ids["repo"],
+            "scope_id": ids["scope"],
+            "commit_sha": HEAD,
+        },
+    )
+    assert started.status_code == 202
+    push(alice, HEAD)
+    assert records() == [HEAD]
+    rrqs = alice.get(f"/api/v1/projects/{ids['project']}/reassessments").json()["items"]
+    assert rrqs[0]["assessment_id"] == started.json()["assessment"]["id"]
+
+
+def test_blocked_event_preserves_delivery_time_and_is_audited(automatic):
+    from backend.db import webhook_deliveries
+
+    alice, _, ids, _ = automatic
+    push(alice, HEAD)
+    event = alice.get(f"/api/v1/projects/{ids['project']}/events").json()["items"][0]
+    with transaction() as conn:
+        received = conn.execute(sa.select(webhook_deliveries.c.received_at)).scalar_one()
+    from datetime import datetime
+
+    assert datetime.fromisoformat(event["received_at"].replace("Z", "+00:00")) == received
+    assert event["occurred_at"].startswith("2026-10-17T01:02:03")
+    audit = alice.get("/api/v1/audit", params={"project_id": ids["project"]}).json()
+    assert any(item["action"] == "monitoring.event_processed" for item in audit["items"])
+
+
+def test_pull_request_commit_still_uses_authenticated_automatic_path(automatic):
+    alice, bob, ids, _ = automatic
+    bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
+    payload = {
+        "repository": {"full_name": "acme/payments-lite"},
+        "installation": {"id": 99},
+        "sender": {"login": "adamissac"},
+        "action": "synchronize",
+        "number": 7,
+        "pull_request": {
+            "head": {"sha": HEAD, "ref": "feature"},
+            "base": {"sha": "a" * 40},
+            "updated_at": "2026-10-17T01:02:03Z",
+        },
+    }
+    post_webhook(alice, payload, event="pull_request")
+    worker.drain(kinds=["process_github_delivery", "assess_github_commit"])
+    assert records() == [HEAD]
+    event = alice.get(f"/api/v1/projects/{ids['project']}/events").json()["items"][0]
+    assert event["type"] == "pull_request" and event["pr_number"] == 7
+
+
+def test_github_client_is_reused_across_commits(automatic, monkeypatch):
+    from backend import auto_commits
+
+    alice, bob, ids, _ = automatic
+    calls = []
+    original = auto_commits.GitHubApp
+
+    class CountingGitHub(original):
+        def __init__(self):
+            calls.append(1)
+
+    monkeypatch.setattr(auto_commits, "GitHubApp", CountingGitHub)
+    bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
+    push(alice, HEAD, "c" * 40)
+    assert len(calls) == 1
