@@ -105,3 +105,8 @@ Five seeds per arm; no v10 training/evaluation results yet. V6 unchanged.
 RL-V10-001 validation: all CI green,282 RL tests plus20k-step checkpoint smoke;
 64 local focused tests;78 saved v9 artifacts verified. Full v10 execution remains
 a future experiment (~6h CPU); no model promotion.
+
+
+### Automatic/manual mode and Haiku-only follow-up (#377 / #380)
+
+Implemented per-repository persisted ON/OFF, owner-only API, migration 0009 and proposed additive schema 0.15.0; manual Run shown when OFF. Added signed-sender gate and per-project start quotas that defer every excess commit durably. Production/staging gateway, Railway startup and quick-read enforce Haiku 5.5. Historical evidence labels preserved. Contract review requested from Alan; full test/CI and deployment verification remain pending.

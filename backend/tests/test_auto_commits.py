@@ -10,7 +10,11 @@ from backend.db import assessments, jobs, repositories, transaction
 
 @pytest.fixture
 def automatic(client_factory, settings_override, monkeypatch):
-    settings_override(github_auto_commit_authors="adamissac")
+    settings_override(
+        github_auto_commit_authors="adamissac",
+        automatic_assessments_per_hour="100",
+        automatic_assessments_per_day="100",
+    )
     alice, bob = client_factory("alice"), client_factory("bob")
     ids = setup_project(alice, bob, approve=False)
     with transaction() as conn:
@@ -31,6 +35,7 @@ def automatic(client_factory, settings_override, monkeypatch):
 
 def push(client, *shas):
     p = push_payload(["README.md"], head=shas[-1])
+    p["sender"] = {"login": "adamissac"}
     p["commits"] = [
         {"id": sha, "modified": ["README.md"], "author": {"username": "adamissac"}} for sha in shas
     ]
@@ -82,7 +87,11 @@ def test_rollout_configurable_for_other_accounts(automatic, settings_override):
     identity["login"] = "AnotherUser"
     settings_override(github_auto_commit_authors="anotheruser")
     bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
-    push(alice, HEAD)
+    p = push_payload(["app.py"])
+    p["commits"][0]["id"] = HEAD
+    p["sender"] = {"login": "anotheruser"}
+    post_webhook(alice, p)
+    worker.drain(kinds=["process_github_delivery", "assess_github_commit"])
     assert records() == [HEAD]
 
 
@@ -121,6 +130,7 @@ def test_identity_api_failure_retries_without_starting(automatic, monkeypatch):
 def test_wrong_installation_never_enqueues(automatic):
     alice, _, _, _ = automatic
     p = push_payload(["app.py"])
+    p["sender"] = {"login": "adamissac"}
     p["commits"][0]["id"] = HEAD
     p["installation"]["id"] = 101
     assert post_webhook(alice, p).status_code == 202
@@ -139,6 +149,7 @@ def test_truncated_push_enumerates_all_commits(automatic, monkeypatch):
     )
     bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
     p = push_payload(["app.py"], head=shas[-1])
+    p["sender"] = {"login": "adamissac"}
     p["commits"] = [{"id": sha} for sha in shas[:20]]
     assert post_webhook(alice, p).status_code == 202
     worker.drain(kinds=["process_github_delivery"])
@@ -189,3 +200,116 @@ def test_mixed_author_push_runs_only_allowed_commits_even_when_head_is_other_aut
     bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
     push(alice, HEAD, "c" * 40)
     assert records() == [HEAD]
+
+
+def test_repository_switch_persists_is_scoped_and_manual_runs_still_work(automatic):
+    alice, bob, ids, _ = automatic
+    bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
+    other = alice.post(
+        f"/api/v1/projects/{ids['project']}/repositories", json={"full_name": "acme/other"}
+    ).json()
+    endpoint = f"/api/v1/repositories/{ids['repo']}"
+    assert alice.get(endpoint).json()["automatic_assessments"] is True
+    assert (
+        alice.patch(endpoint, json={"automatic_assessments": False}).json()["automatic_assessments"]
+        is False
+    )
+    assert alice.get(f"/api/v1/repositories/{other['id']}").json()["automatic_assessments"] is True
+    push(alice, HEAD)
+    assert records() == []
+    response = alice.post(
+        f"/api/v1/projects/{ids['project']}/assessments",
+        json={
+            "repo_id": ids["repo"],
+            "scope_id": ids["scope"],
+            "commit_sha": HEAD,
+        },
+    )
+    assert response.status_code == 202, response.text
+    assert records() == [HEAD]
+    assert alice.patch(endpoint, json={"automatic_assessments": True}).status_code == 200
+    push(alice, "c" * 40)
+    assert sorted(records()) == [HEAD, "c" * 40]
+
+
+def test_off_before_worker_start_cancels_queued_automatic_assessment(automatic):
+    alice, bob, ids, _ = automatic
+    bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
+    push(alice, HEAD)
+    alice.patch(f"/api/v1/repositories/{ids['repo']}", json={"automatic_assessments": False})
+    worker.drain(kinds=["run_assessment"])
+    with transaction() as conn:
+        assert conn.execute(sa.select(assessments.c.state)).scalar_one() == "CANCELLED"
+
+
+def test_off_before_commit_job_blocks_automatic_start(automatic):
+    alice, bob, ids, _ = automatic
+    bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
+    p = push_payload(["app.py"])
+    p["sender"] = {"login": "adamissac"}
+    p["commits"][0]["id"] = HEAD
+    post_webhook(alice, p)
+    worker.drain(kinds=["process_github_delivery"])
+    alice.patch(f"/api/v1/repositories/{ids['repo']}", json={"automatic_assessments": False})
+    worker.drain(kinds=["assess_github_commit"])
+    assert records() == []
+
+
+def test_repository_switch_requires_owner_and_rejects_other_organizations(
+    automatic, client_factory
+):
+    from helpers import add_member
+
+    alice, _, ids, _ = automatic
+    outsider = client_factory("outsider")
+    endpoint = f"/api/v1/repositories/{ids['repo']}"
+    assert outsider.patch(endpoint, json={"automatic_assessments": False}).status_code in (403, 404)
+    add_member(ids["org"], outsider.me["user"]["id"], role="viewer")
+    assert outsider.get(endpoint).status_code == 200
+    assert outsider.patch(endpoint, json={"automatic_assessments": False}).status_code == 403
+    assert alice.get(endpoint).json()["automatic_assessments"] is True
+
+
+def test_spoofed_author_does_not_authorize_an_unlisted_push_sender(automatic):
+    alice, bob, ids, _ = automatic
+    bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
+    p = push_payload(["app.py"])
+    p["commits"][0]["id"] = HEAD
+    p["sender"] = {"login": "outsider"}
+    post_webhook(alice, p)
+    worker.drain(kinds=["process_github_delivery", "assess_github_commit"])
+    assert records() == []
+
+
+@pytest.mark.parametrize(
+    "limit_name", ["automatic_assessments_per_hour", "automatic_assessments_per_day"]
+)
+def test_quota_defers_excess_commits_without_dropping_them(
+    automatic, settings_override, limit_name
+):
+    from datetime import timedelta
+
+    from backend.db import reassessment_requests
+    from shared.base import utcnow
+
+    alice, bob, ids, _ = automatic
+    settings_override(**{limit_name: "2"})
+    bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
+    push(alice, HEAD, "c" * 40, "d" * 40)
+    assert sorted(records()) == [HEAD, "c" * 40]
+    with transaction() as conn:
+        queued = conn.execute(
+            sa.select(reassessment_requests.c.doc).where(reassessment_requests.c.status == "queued")
+        ).scalar_one()
+        assert queued["head_sha"] == "d" * 40 and queued["assessment_id"] is None
+        delayed = (
+            conn.execute(sa.select(jobs).where(jobs.c.dedupe_key.like("github:deferred:%")))
+            .mappings()
+            .one()
+        )
+        assert delayed["status"] == "queued" and delayed["run_after"] > utcnow()
+        # Advance the quota window without waiting an hour/day.
+        conn.execute(sa.update(assessments).values(created_at=utcnow() - timedelta(days=2)))
+        conn.execute(sa.update(jobs).where(jobs.c.id == delayed["id"]).values(run_after=utcnow()))
+    worker.drain(kinds=["assess_github_commit"])
+    assert sorted(records()) == [HEAD, "c" * 40, "d" * 40]

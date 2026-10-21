@@ -105,6 +105,7 @@ projects = sa.Table(
 repositories = sa.Table(
     "repositories",
     metadata,
+    sa.Column("automatic_assessments", sa.Boolean, nullable=False, server_default=sa.true()),
     _id(),
     sa.Column(
         "project_id", sa.String(80), sa.ForeignKey("projects.id"), nullable=False, index=True

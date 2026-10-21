@@ -7,6 +7,12 @@ set -eu
 # Initial rollout; set a comma-separated list or * to expand to other GitHub authors.
 export GITHUB_AUTO_COMMIT_AUTHORS="${GITHUB_AUTO_COMMIT_AUTHORS-adamissac}"
 
+# Product model policy: Haiku 5.5 only, including every agent and fast path.
+export ANTHROPIC_MODEL=claude-haiku-5-5
+export ANTHROPIC_MODEL_FAST=claude-haiku-5-5
+export AGENT_MODEL_OVERRIDES=""
+export LLM_SERVER_FALLBACKS=false
+
 hackatl-migrate
 
 hackatl-worker &
