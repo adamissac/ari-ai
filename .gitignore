@@ -82,3 +82,8 @@ rl-defense/results/*/*.partial
 rl-defense/results/*/seed*/candidate_online_experience.jsonl
 rl-defense/results/*/seed*/candidate_online_selected_experience.jsonl
 rl-defense/results/*/seed*/holdout_trajectories.jsonl
+
+# V10 two-arm restored experience/trajectory copies (compressed evidence is committed).
+rl-defense/results/*/*/seed*/candidate_online_experience.jsonl
+rl-defense/results/*/*/seed*/candidate_online_selected_experience.jsonl
+rl-defense/results/*/*/seed*/holdout_trajectories.jsonl

@@ -225,3 +225,21 @@ authorization boundary (issue #317). No policy is promoted by these changes.
 V9 experiment: [preregistration](results/live-retrain-v9/PREREGISTRATION.md), fresh quiet-validation/holdout scenarios, seeds0–4, actual incumbent comparison, opt-in `--random-baseline` and `--record-trajectories`. Completed: all five seeds rejected; mean return gain vs v6 −0.0458 (95% CI −0.1758 to +0.0843). Both quiet scenarios exceed v8 in mean, but mixed rotation regresses. No promotion. See [results and limitations](results/live-retrain-v9/PROVENANCE.md) and [figure](results/live-retrain-v9/study_figure.png). The five-seed aggregator is `python -m rl_defense.live.study`.
 
 V9 evidence tools and read-only verification: [postprocessing instructions](results/live-retrain-v9/POSTPROCESSING.md). Reporting code is developed separately from the frozen training checkout; plots use an isolated optional Matplotlib runtime.
+
+## V10 candidate: demonstration action balance
+
+[Saved failure analysis](results/live-retrain-v10/ANALYSIS.md) finds quiet-heavy
+demonstrations and noop preference on saved flagged observations; causality is unproven.
+`online --balance-demo-actions` experimentally balances observed teacher action classes
+in demonstration batches only. Existing behavior stays uniform. [V10 preregistration](results/live-retrain-v10/PREREGISTRATION.md)
+defines a fresh two-arm, five-seed comparison; training/holdout evaluation has not run.
+Run `results/live-retrain-v10/run_study.py --registry PATH --workers 5` only from committed,
+pushed source with the existing workspace PYTHONPATH. Estimated compute about6hours.
+No policy promotion is automatic.
+
+V10's runner checks a digest of all tracked repository files before/after every job,
+then executes the preregistered train-only secondary checks and extracts the worst
+paired raw failure before claiming completion. `postprocess.py ROOT --verify-only`
+checks its final stored-file manifest and all ten seed evidence indices without
+executing policies. Sampling-arm comparison excludes intentional treatment and learned
+output differences while requiring identical training settings.

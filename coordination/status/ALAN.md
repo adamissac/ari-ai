@@ -244,3 +244,25 @@ export; pin fixed v7/v8 bytes in launcher/reporter. Historical reports remain un
 explicit saved-command budgets reproduce the original summary. Focused31 tests pass.
 No retraining, holdout replay or promotion. Owner authorized merging #375/#376 and
 subsequent v10 failure analysis, regressions and preregistration.
+
+### 2026-10-21 — V10 failure analysis, regression and preregistration
+
+Owner authorized all three follow-ups and merging #375/#376. Branch
+`feat/alan/v10-demo-balance`: saved-data analysis confirms ~87% noop teacher rows;
+seed0 chooses noop with higher Q than valid block actions in20 of23 compromised
+windows (current masks reconstructed from preceding transitions). No causal training
+mechanism or serving bug is established. Implemented opt-in action-balanced demo
+sampling with unchanged default/agent replay. Added sampler, tiny real training and
+paired-arm/split regression tests. Fresh val_v10 and holdout_v10 plus controlled
+two-arm/five-seed preregistration/runner are prepared. No v10 training or holdout run.
+V6 stays deployed; a future study needs ~6h CPU with five workers.
+
+#375 merged at64c38b7 after all checks. #376's eight review findings addressed;
+its historical CLI reproduces the unchanged summary and77 stored artifacts verify.
+#378 holds candidate demo balance and unexecuted controlled preregistration.
+V10 review fixes include source-byte fingerprints and required secondary reporting;
+58 integrated tests pass. No new policy selected or promoted.
+
+#376 merged atce723f8 (all CI green,267 RL tests). Late review findings are fixed
+in #378 before its merge; v9 original summary preserved, enriched provenance copy
+added, and finalization fails without partial writes. No fresh evaluation or promotion.

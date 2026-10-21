@@ -68,3 +68,14 @@ now verifies/indexes recorded trajectories immediately, before removing plain lo
 
 The published historical cohort is reproducible through the CLI (output outside the
 immutable bundle): `python -m rl_defense.live.study results/live-retrain-v9/seed*/promotion_report.json --legacy-rules-episodes 2 --out /tmp/v9-summary.json`. The explicit historical budget comes from all five pinned `command.json` files. New reports need no legacy flag. The runner now refuses dirty/unknown source, and aggregation validates actual pooled/per-scenario episode counts.
+
+Post-merge follow-up: source-byte fingerprints are now rechecked before and after
+each seed, so uncommitted tracked changes invalidate a run. The aggregator emits the
+validated training `git_sha` and rejects incomplete/duplicate/nonboolean gate checks
+or a decision inconsistent with the check outcomes. `study_summary_verified.json`
+adds that provenance to the unchanged numeric summary; the original historical
+`study_summary.json` is preserved.
+
+Finalization validates all proposed documents and snapshots before writing, stages
+all replacements, atomically replaces files and rolls back an I/O failure. Late-seed
+corruption and registry-snapshot mismatch leave every output untouched.

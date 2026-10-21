@@ -6,7 +6,7 @@ import argparse
 import gzip
 import hashlib
 import json
-import shutil
+import tempfile
 from pathlib import Path
 
 BLOCKS = {"block_principal", "block_principal_long", "block_top_principal_long"}
@@ -64,16 +64,43 @@ def digest(path: Path, *, gzip_contents: bool = False) -> str:
     return h.hexdigest()
 
 
-def verify_seed(directory: Path) -> None:
+def verify_seed(directory: Path, index: dict | None = None) -> None:
     from rl_defense.live import evidence
 
     base = directory.resolve()
-    index = evidence.load_index(base)
+    index = index if index is not None else evidence.load_index(base)
     for artifact in index["artifacts"].values():
         for field in ("path", "stored_path"):
             if field in artifact and not (base / artifact[field]).resolve().is_relative_to(base):
                 raise ValueError("artifact path escapes the seed evidence directory")
-    evidence.verify(base)
+    evidence.verify(base, index=index)
+
+
+def commit_replacements(root: Path, replacements: dict[Path, bytes]) -> None:
+    """Stage every write first, atomically replace files, roll back an I/O failure."""
+    with tempfile.TemporaryDirectory(prefix="v9-finalize-", dir=root.parent) as temp:
+        stage = Path(temp)
+        prepared = []
+        for i, (target, data) in enumerate(replacements.items()):
+            new = stage / f"{i}.new"
+            new.write_bytes(data)
+            backup = None
+            if target.exists():
+                backup = stage / f"{i}.old"
+                backup.write_bytes(target.read_bytes())
+            prepared.append((target, new, backup))
+        committed = []
+        try:
+            for target, new, backup in prepared:
+                new.replace(target)
+                committed.append((target, backup))
+        except BaseException:
+            for target, backup in reversed(committed):
+                if backup is None:
+                    target.unlink()
+                else:
+                    backup.replace(target)
+            raise
 
 
 def main() -> None:
@@ -117,7 +144,7 @@ def main() -> None:
     checks = secondary_checks(platform)
     verdict = json.loads((root / "study_verdict.json").read_text())
     verdict["secondary_train_window_checks"] = checks
-    (root / "study_verdict.json").write_text(json.dumps(verdict, indent=2))
+    replacements = {root / "study_verdict.json": json.dumps(verdict, indent=2).encode()}
     restored_files: set[Path] = set()
     for seed in range(5):
         directory = root / f"seed{seed}"
@@ -147,40 +174,45 @@ def main() -> None:
         for artifact in index["artifacts"].values():
             if artifact["stored_as"] in {"gzip", "prefix"} and "path" in artifact:
                 restored_files.add((directory / artifact["path"]).resolve())
-        (directory / "EVIDENCE.json").write_text(json.dumps(index, indent=2) + "\n")
-        verify_seed(directory)
+        replacements[directory / "EVIDENCE.json"] = (json.dumps(index, indent=2) + "\n").encode()
+        verify_seed(directory, index=index)
     snapshots = {
         "registry_snapshot.json": args.registry_snapshot or root / "registry_snapshot.json",
         "environment.json": args.environment or root / "environment.json",
         "observed_progress.json": args.observed_progress or root / "observed_progress.json",
     }
-    if digest(snapshots["registry_snapshot.json"]) != metadata["registry_sha256"]:
+    snapshot_bytes = {filename: source.read_bytes() for filename, source in snapshots.items()}
+    if (
+        hashlib.sha256(snapshot_bytes["registry_snapshot.json"]).hexdigest()
+        != metadata["registry_sha256"]
+    ):
         raise ValueError("registry snapshot does not match the launch digest")
-    for filename, source in snapshots.items():
-        if source.resolve() != (root / filename).resolve():
-            shutil.copyfile(source, root / filename)
+    replacements.update({root / filename: data for filename, data in snapshot_bytes.items()})
     files = {}
-    for path in sorted(root.rglob("*")):
+    for path in sorted(set(root.rglob("*")) | set(replacements)):
         if (
-            path.is_file()
+            (path.is_file() or path in replacements)
             and "__pycache__" not in path.parts
             and path.name != "STUDY_EVIDENCE.json"
             and path.resolve() not in restored_files
         ):
             if not path.resolve().is_relative_to(root):
                 raise ValueError("artifact path escapes the study directory")
-            files[str(path.relative_to(root))] = digest(path)
-    (root / "STUDY_EVIDENCE.json").write_text(
-        json.dumps(
-            {
-                "schema": "live-study-evidence/0.1",
-                "training_source_commit": metadata["git_sha"],
-                "files": files,
-                "promotion_performed": False,
-            },
-            indent=2,
-        )
-    )
+            files[str(path.relative_to(root))] = (
+                hashlib.sha256(replacements[path]).hexdigest()
+                if path in replacements
+                else digest(path)
+            )
+    replacements[root / "STUDY_EVIDENCE.json"] = json.dumps(
+        {
+            "schema": "live-study-evidence/0.1",
+            "training_source_commit": metadata["git_sha"],
+            "files": files,
+            "promotion_performed": False,
+        },
+        indent=2,
+    ).encode()
+    commit_replacements(root, replacements)
     print("Final evidence and preregistered secondary checks verified; no held-out execution.")
 
 
