@@ -1,12 +1,14 @@
 """Summarize both preregistered arms using paired training-seed means."""
 
 import copy
+from dataclasses import fields
 
 import numpy as np
 from scipy.stats import ttest_1samp
 
 from rl_defense.live import study
 from rl_defense.live.evaluate import bootstrap_ci
+from rl_defense.live.online import OnlineConfig
 
 
 def summarize(reports: dict[str, list[dict]]) -> dict:
@@ -18,6 +20,13 @@ def summarize(reports: dict[str, list[dict]]) -> dict:
         for report in normalized:
             if report.get("balance_demo_actions", False) != (arm == "balanced"):
                 raise ValueError("wrong sampling arm")
+            if report["online"].get("balance_demo_actions", False) != (arm == "balanced"):
+                raise ValueError("embedded training sampling arm disagrees")
+            if len(report["references"]) != 2 or {r["name"] for r in report["references"]} != {
+                "v8",
+                "v9",
+            }:
+                raise ValueError("missing fixed/matched references")
             identities[arm].append(
                 [
                     {k: r[k] for k in ("name", "checkpoint_sha256", "env_id")}
@@ -32,8 +41,10 @@ def summarize(reports: dict[str, list[dict]]) -> dict:
     if [r["git_sha"] for r in left] != [r["git_sha"] for r in right]:
         raise ValueError("arms use different source commits")
     for a, b in zip(left, right, strict=True):
+        for setting in fields(OnlineConfig):
+            if a["online"][setting.name] != b["online"][setting.name]:
+                raise ValueError(f"arms disagree on online setting {setting.name}")
         for field in (
-            "online",
             "expert",
             "rules_params",
             "rules_episodes",

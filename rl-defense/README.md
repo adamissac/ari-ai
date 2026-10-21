@@ -236,3 +236,10 @@ defines a fresh two-arm, five-seed comparison; training/holdout evaluation has n
 Run `results/live-retrain-v10/run_study.py --registry PATH --workers 5` only from committed,
 pushed source with the existing workspace PYTHONPATH. Estimated compute about6hours.
 No policy promotion is automatic.
+
+V10's runner checks a digest of all tracked repository files before/after every job,
+then executes the preregistered train-only secondary checks and extracts the worst
+paired raw failure before claiming completion. `postprocess.py ROOT --verify-only`
+checks its final stored-file manifest and all ten seed evidence indices without
+executing policies. Sampling-arm comparison excludes intentional treatment and learned
+output differences while requiring identical training settings.

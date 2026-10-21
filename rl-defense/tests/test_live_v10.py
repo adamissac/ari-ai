@@ -152,6 +152,10 @@ def test_two_arm_summary_pairs_seeds_and_requires_every_gate():
     for arm, rows in reports.items():
         for row in rows:
             row["balance_demo_actions"] = arm == "balanced"
+            row["online"]["balance_demo_actions"] = arm == "balanced"
+            row["online"]["selected_env_step"] = 0 if arm == "uniform" else 150000
+            row["online"]["selection_history"] = [arm]
+            row["online"]["experiment"] = {"experience_sha256": arm}
             row["references"] = [
                 {"name": "v8", "checkpoint_sha256": "fixed", "env_id": "live_v3"},
                 {
