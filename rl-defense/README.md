@@ -246,3 +246,12 @@ paired raw failure before claiming completion. `postprocess.py ROOT --verify-onl
 checks its final stored-file manifest and all ten seed evidence indices without
 executing policies. Sampling-arm comparison excludes intentional treatment and learned
 output differences while requiring identical training settings.
+
+## Post-v10 diagnosis: pause further training
+
+[Saved-data follow-up](results/v10-followup-diagnosis/README.md) finds all ten selected
+models already below the85% validation availability floor; principal-wide long blocks
+carry legitimate-traffic costs in rotation. `online --require-validation-availability`
+can reject a selected checkpoint before any holdout execution, retaining a
+`validation_screen.json` diagnostic. This opt-in screen cannot promote, does not change
+the default trainer/serving, and is not evidence of a better policy. No v11 launched.
