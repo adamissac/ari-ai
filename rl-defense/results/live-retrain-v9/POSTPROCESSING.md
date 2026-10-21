@@ -65,3 +65,6 @@ original numeric result. New online reports include the teacher budget directly.
 This is a post-run integrity guard, not a claim that the original launcher checked it.
 All five saved reports already identify those exact digests. Generic evidence packing
 now verifies/indexes recorded trajectories immediately, before removing plain logs.
+
+The published historical cohort is reproducible through the CLI (output outside the
+immutable bundle): `python -m rl_defense.live.study results/live-retrain-v9/seed*/promotion_report.json --legacy-rules-episodes 2 --out /tmp/v9-summary.json`. The explicit historical budget comes from all five pinned `command.json` files. New reports need no legacy flag. The runner now refuses dirty/unknown source, and aggregation validates actual pooled/per-scenario episode counts.

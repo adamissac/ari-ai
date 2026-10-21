@@ -1090,3 +1090,8 @@ sampling with unchanged default/agent replay. Added sampler, tiny real training 
 paired-arm/split regression tests. Fresh val_v10 and holdout_v10 plus controlled
 two-arm/five-seed preregistration/runner are prepared. No v10 training or holdout run.
 V6 stays deployed; a future study needs ~6h CPU with five workers.
+
+Additional #376 review: expose explicit legacy teacher budget on aggregation CLI,
+require a clean concrete source commit before launch and validate actual pooled/scenario
+episode counts. Historical CLI re-aggregation and final evidence verification are
+executed before publishing. No held-out replay or learning changes.

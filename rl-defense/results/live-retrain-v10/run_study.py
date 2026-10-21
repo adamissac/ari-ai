@@ -42,10 +42,7 @@ def main() -> int:
         for s in study.SEEDS
     ):
         raise ValueError("study outputs already exist; refuse overwrite or implicit restart")
-    if subprocess.run(
-        ["git", "status", "--porcelain"], capture_output=True, text=True, check=True
-    ).stdout.strip():
-        raise ValueError("commit and push clean source before launching v10")
+    source_sha = study.require_clean_source(root)
     refs = {"v8": Path("results/live-retrain-v8/candidate_online.pt")}
     refs.update(
         {
@@ -67,7 +64,7 @@ def main() -> int:
     run_root.mkdir(parents=True, exist_ok=True)
     metadata = {
         "started_at": datetime.now(UTC).isoformat(),
-        "git_sha": git_sha(),
+        "git_sha": source_sha,
         "python": sys.version,
         "platform": platform.platform(),
         "cpu_count": os.cpu_count(),

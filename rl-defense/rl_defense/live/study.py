@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
+import subprocess
 from dataclasses import fields
 from pathlib import Path
 
@@ -26,6 +28,19 @@ METRICS = (
     "no_attack_defense_duty",
     "actions_per_step",
 )
+
+
+def require_clean_source(root: Path) -> str:
+    sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+    if not re.fullmatch(r"[0-9a-f]{40}", sha):
+        raise ValueError("study requires a concrete source commit")
+    if subprocess.run(
+        ["git", "status", "--porcelain"], cwd=root, capture_output=True, text=True, check=True
+    ).stdout.strip():
+        raise ValueError("commit clean source before launching study")
+    return sha
 
 
 def aggregate(reports: list[dict], *, legacy_rules_episodes: dict[int, int] | None = None) -> dict:
@@ -52,7 +67,7 @@ def aggregate(reports: list[dict], *, legacy_rules_episodes: dict[int, int] | No
     for r in ordered:
         if r.get("balance_demo_actions", False) != first.get("balance_demo_actions", False):
             raise ValueError("study reports disagree on demonstration sampling")
-        if not isinstance(r.get("git_sha"), str) or not r["git_sha"].strip():
+        if not isinstance(r.get("git_sha"), str) or not re.fullmatch(r"[0-9a-f]{40}", r["git_sha"]):
             raise ValueError("missing source commit")
         if teacher_budget(r) != teacher_budget(first):
             raise ValueError("study reports disagree on teacher-selection rules_episodes")
@@ -67,6 +82,20 @@ def aggregate(reports: list[dict], *, legacy_rules_episodes: dict[int, int] | No
             or any(set(actual[name]) != expected_scenarios for name in r["policies"])
         ):
             raise ValueError("incomplete holdout scenario evidence")
+        budget = r["holdout_episodes_per_scenario"]
+        if (
+            type(budget) is not int
+            or budget <= 0
+            or any(
+                r["policies"][name].get("episodes") != budget * len(expected_scenarios)
+                or any(
+                    actual[name][scenario].get("episodes") != budget
+                    for scenario in expected_scenarios
+                )
+                for name in r["policies"]
+            )
+        ):
+            raise ValueError("observed episode counts differ from declared holdout budget")
         for field in fields(OnlineConfig):
             if field.name == "seed":
                 continue
@@ -165,8 +194,20 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("reports", nargs=5, type=Path)
     ap.add_argument("--out", required=True, type=Path)
+    ap.add_argument(
+        "--legacy-rules-episodes",
+        type=int,
+        help="explicit historical teacher budget; verify against the saved command evidence",
+    )
     args = ap.parse_args(argv)
-    result = aggregate([json.loads(p.read_text()) for p in args.reports])
+    budgets = (
+        dict.fromkeys(SEEDS, args.legacy_rules_episodes)
+        if args.legacy_rules_episodes is not None
+        else None
+    )
+    result = aggregate(
+        [json.loads(p.read_text()) for p in args.reports], legacy_rules_episodes=budgets
+    )
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(result, indent=2, allow_nan=False) + "\n")
     return 0

@@ -388,6 +388,10 @@ def run(args: argparse.Namespace) -> dict:
     tr = load_scenarios("train", subdir=args.train_dir)
     va = load_scenarios("val", subdir=args.val_dir)
     ho = load_scenarios("holdout", subdir=args.holdout_dir)
+    if args.holdout_episodes is not None and (
+        args.holdout_episodes <= 0 or any(s.episodes < args.holdout_episodes for s in ho)
+    ):
+        raise ValueError("requested holdout budget exceeds a scenario or is nonpositive")
     app_factory = live_app
 
     # Registry-backed experiments gate against the hash-verified incumbent.
