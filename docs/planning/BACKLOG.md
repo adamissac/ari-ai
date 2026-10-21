@@ -25,3 +25,5 @@ pulled into MVP only if MVP tasks they would compete with are `DONE`.
 | DOCS-101 | Contributor License Agreement / DCO policy | later | Before outside contributions | DOCS-003 |
 | TEST-101 | Labeled benchmark for finding precision | later | [research/EVALUATION_DATASETS](../research/EVALUATION_DATASETS.md) | TEST-005 |
 | PROD-101 | Design-partner interviews (validate A-1…A-4) | later | [02](../02_PROBLEM_AND_USERS.md) | — |
+
+- DONE (2026-10-17): User-requested Pricing navigation styling fix; uses the same header class and color rules as sibling links. Verification limited to source checks (frontend dependencies unavailable).

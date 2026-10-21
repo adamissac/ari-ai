@@ -536,3 +536,7 @@ Local intelligence suite: 53 passed, 1 live skip before the additional version
 registration test; strict producer mypy passed (12 modules), Ruff/format passed.
 Real PostgreSQL tests cannot initialize locally: sandbox denies SysV shared memory
 and pgserver process enumeration. CI must verify the new backend regressions.
+
+### 2026-10-17 — Pricing navigation styling
+
+Removed Pricing-specific header color overrides and applied the same hdr-reveal class as sibling navigation links. Source checks passed; frontend dependencies are absent, so browser/build checks were not run. Git fetch cannot write FETCH_HEAD in this sandbox and GitHub CLI cannot connect; changes remain local.
