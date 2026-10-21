@@ -223,3 +223,5 @@ approval. The local CLI still trusts operator-supplied `usr_*` IDs and is not a 
 authorization boundary (issue #317). No policy is promoted by these changes.
 
 V9 experiment: [preregistration](results/live-retrain-v9/PREREGISTRATION.md), fresh quiet-validation/holdout scenarios, seeds0–4, actual incumbent comparison, opt-in `--random-baseline` and `--record-trajectories`. Results are pending execution; no promotion. The five-seed aggregator is `python -m rl_defense.live.study`.
+
+V9 evidence tools and read-only verification: [postprocessing instructions](results/live-retrain-v9/POSTPROCESSING.md). Reporting code is developed separately from the frozen training checkout; plots use an isolated optional Matplotlib runtime.

@@ -213,3 +213,10 @@ Final local verification: **228 RL tests passed** on `f9962eb`; PR #375 awaits r
 IN_PROGRESS `feat/alan/live-retrain-v9`, stacked on PR #375. Fresh val_v9/holdout_v9,
 five training seeds, actual incumbent v6, raw trajectories and seed-level aggregation.
 Preregistration must be committed/pushed before execution. No automatic promotion.
+
+### 2026-10-20 — V9 reporting worktree
+
+Prepared `feat/alan/v9-reporting` in `/private/tmp/rl-v9-reporting` while training remains
+frozen at29aa5f8 in `/private/tmp/rl-v8-continuation`. Reporting/split/cohort guards20
+passed; earlier reporting/pipeline22 passed. No held-out v9 policy executed by these
+tests. Integrate reporting only after the complete cohort exits; no model promotion.

@@ -1,0 +1,48 @@
+# V9 reporting and evidence verification
+
+The learning experiment is frozen at `29aa5f8`. Reporting helpers are developed on the
+separate `feat/alan/v9-reporting` worktree while the five jobs run. They are integrated
+only after the cohort finishes. They do not change the learning code, config, budgets,
+selection rule or held-out results.
+
+Reporting tests use synthetic files only. Default RL tests require no plotting package.
+The optional figure renderer uses an isolated Matplotlib 3.11.2 installation; it does
+not modify the training virtualenv. Numeric intervals are computed in the training
+runtime before rendering. Plotting only reads `figure_data.json`.
+
+## After all five seeds finish
+
+From `rl-defense`, with its Python interpreter and the workspace `PYTHONPATH` used for
+the run:
+
+```sh
+python results/live-retrain-v9/report_study.py
+python results/live-retrain-v9/prepare_plot.py results/live-retrain-v9
+# Optional: use a separate environment with matplotlib==3.11.2, Agg backend.
+python results/live-retrain-v9/render_plot.py results/live-retrain-v9
+python results/live-retrain-v9/finalize_study.py results/live-retrain-v9 \
+  --registry-snapshot /path/to/captured/registry.json \
+  --environment /path/to/captured/environment.json \
+  --observed-progress /path/to/observed/progress.json
+```
+
+The first command runs the predeclared **train-only** platform checks and reads saved
+held-out metrics/trajectories to find the worst paired episode. No held-out policy is
+executed by reporting. The finalizer checks preregistration identity, reports secondary
+quiet/flagged-window thresholds, and pins sidecars, metrics, rules and compressed raw
+traces alongside checkpoint/experience hashes. Run it last after all report files are
+final, since `STUDY_EVIDENCE.json` pins every saved file in the evidence directory.
+
+The captured registry snapshot must match the launch digest. Snapshot/default paths
+in a published bundle are local to that bundle; no access to the original owner's
+machine is needed for later verification.
+
+## Read-only verification of the published bundle
+
+```sh
+python results/live-retrain-v9/finalize_study.py results/live-retrain-v9 --verify-only
+```
+
+This verifies the saved artifact hashes and all five compressed evidence indices.
+It does not retrain, repeat held-out evaluation, edit the bundle or promote a policy.
+Digest checking is not a report signature or an authenticated approval service.
