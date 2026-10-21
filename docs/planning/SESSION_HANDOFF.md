@@ -1074,3 +1074,7 @@ export; pin fixed v7/v8 bytes in launcher/reporter. Historical reports remain un
 explicit saved-command budgets reproduce the original summary. Focused31 tests pass.
 No retraining, holdout replay or promotion. Owner authorized merging #375/#376 and
 subsequent v10 failure analysis, regressions and preregistration.
+
+### 2026-10-20 — interface polish
+
+Polish the shared ARI interface using Kairo’s restrained grids and technical typography in ARI’s warm charcoal/ember palette. Add consistent workspace headers, numbered organization cards, clearer repository rows, quieter panels and a precise replay frame. Preserve the original hero and scroll choreography; keep Projects highlighted throughout the organization/repository/commit flow. Branch `feat/adam/ui-polish`; validation and screenshots recorded in PR.
