@@ -19,7 +19,7 @@ const TONE: Record<Tone, string> = {
 
 export function Badge({ view, title }: { view: StatusView; title?: string }) {
   return (
-    <span title={title} className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium ${TONE[view.tone]}`}>
+    <span title={title} className={`status-badge inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium ${TONE[view.tone]}`}>
       <span aria-hidden="true">{view.glyph}</span>
       {view.label}
     </span>
@@ -91,7 +91,7 @@ export function ErrorState({ error, onRetry, context }: { error: unknown; onRetr
 }
 
 export function Empty({ children }: { children: ReactNode }) {
-  return <p className="rounded-xl border border-dashed border-line bg-panel-2/50 px-4 py-8 text-center text-sm text-muted">{children}</p>;
+  return <p className="empty-state rounded-xl border border-dashed border-line bg-panel-2/50 px-4 py-8 text-center text-sm text-muted">{children}</p>;
 }
 
 export function Loading({ label = 'Loading' }: { label?: string }) {
