@@ -11,7 +11,12 @@ from sqlalchemy.engine import Connection
 from backend import jobs
 from backend.db import monitoring_events, reassessment_requests, repositories, transaction
 from backend.github import GitHubApp
-from backend.services import active_scope_for_repo, create_assessment, project_settings
+from backend.services import (
+    active_scope_for_repo,
+    capped_budget,
+    create_assessment,
+    project_settings,
+)
 from backend.settings import get_settings
 from backend.worker import JobContext, handler
 from shared.assessment import AssessmentTrigger
@@ -109,7 +114,8 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
         )
         if repo["installation_id"] != p["installation_id"]:
             return {"ignored": "repository installation changed"}
-        if not project_settings(conn, repo["project_id"]).monitoring_policy.enabled:
+        settings = project_settings(conn, repo["project_id"])
+        if not settings.monitoring_policy.enabled:
             return {"ignored": "monitoring disabled"}
         key = f"github:commit:{repo['id']}:{p['sha']}"
         existing = (
@@ -176,7 +182,7 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
                 scope_id=scope.id,
                 commit_sha=p["sha"],
                 trigger=AssessmentTrigger.monitoring,
-                budget=None,
+                budget=capped_budget(settings.default_budget),
                 created_by=None,
                 reassessment_request_id=rrq.id,
             )

@@ -63,3 +63,7 @@ scope remain prerequisites. Approving a scope wakes blocked automatic commits.
 Opening the commit page is unnecessary; it polls the persisted run when visited.
 Check worker logs for `assess_github_commit` and the commit's monitoring assessment
 before claiming live execution: `/readyz` only checks configuration and storage.
+
+Full automatic assessments use the project’s normal assessment budget, clamped to
+operator limits (default ceiling: 400k tokens / $10 per assessment). The legacy
+monitoring budget remains for the impact-policy path when this rollout is disabled.

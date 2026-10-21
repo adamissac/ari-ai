@@ -162,3 +162,14 @@ def test_compare_reads_subsequent_pages(monkeypatch):
         "c" * 40,
     ]
     assert pages == [1, 2]
+
+
+def test_full_run_uses_project_budget_clamped_to_operator_cap(automatic, settings_override):
+    alice, bob, ids, _ = automatic
+    settings_override(llm_max_tokens_per_assessment="200000", llm_max_usd_per_assessment="4")
+    bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
+    push(alice, HEAD)
+    with transaction() as conn:
+        doc = conn.execute(sa.select(assessments.c.doc)).scalar_one()
+        assert doc["budget"]["max_tokens"] == 200000
+        assert doc["budget"]["max_usd"] == 4

@@ -72,3 +72,17 @@ the RL system consumes these as observations in simulation only.
 - Monitoring cannot widen scope: requested assessments reuse the project's
   existing active AuthorizedScope; if none, the request is recorded as
   `blocked_no_scope`.
+
+## Full per-commit rollout (implemented 2026-10-21)
+
+When `GITHUB_AUTO_COMMIT_AUTHORS` is nonempty, GitHub pushes use a separate full
+assessment scheduling policy: one durable job per repository/SHA, GitHub-verified
+author allowlist, no path-based skipping and no coalescing loss. Railway defaults
+to `adamissac`; an explicit comma-separated list or `*` expands the rollout.
+This mode uses the normal project assessment budget, clamped by operator limits,
+instead of the cheaper monitoring budget above. Monitoring enablement and scope
+authorization still apply; scope approval wakes blocked commits. Repair gates
+remain human decisions. Empty config retains the legacy impact policy described
+above. The new path does not backfill commits received before a repository was
+connected, and full execution still depends on configured workers, model access,
+repository checkout and an executable authorized sandbox target.
