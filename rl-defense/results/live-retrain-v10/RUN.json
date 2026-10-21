@@ -1,0 +1,39 @@
+{
+  "started_at": "2026-10-21T11:32:33.060195+00:00",
+  "git_sha": "a98899db58e007167f9c25a5982baade1b5693ee",
+  "source_fingerprint": "e8556ad88b303cf821e5ba661662aeb75583c208201d798073004bae6c42187b",
+  "python": "3.12.14 (main, Sep 24 2026, 17:46:32) [Clang 22.1.3 ]",
+  "packages": {
+    "torch": "2.14.1",
+    "numpy": "2.5.4",
+    "scipy": "1.18.1",
+    "gymnasium": "1.4.0",
+    "pydantic": "2.14.1",
+    "fastapi": "0.150.0",
+    "httpx": "0.28.1",
+    "PyYAML": "6.0.3"
+  },
+  "platform": "macOS-26.5-arm64-arm-64bit",
+  "cpu_count": 10,
+  "workers": 5,
+  "reference_sha256": {
+    "v8": "ec8b5042fd56d2f75c6791b89152b57f4a6870c3656321b9f554056b4c0fc528",
+    "v9_seed0": "253ac45202368f5c787fe97d4512227299b9733d9c0e67614662dd191869e576",
+    "v9_seed1": "df00788a6c3e87697a91308a97b56bb796a0088de80618e1811b1c644ca906fe",
+    "v9_seed2": "b520ef54f7accf4ba9fd10a93beee7482feb8e9749e1991838364ce540c4a74d",
+    "v9_seed3": "b2599647d5d3218e208e86b5d25902871449f80ab900436e1eb2561238346f4e",
+    "v9_seed4": "1b63045132e6526c159345437ca3a703214f395bbd1d6c4bbcd9c0a77436ea83"
+  },
+  "registry_sha256": "c345593354856c50559ba16611853a0e4936a7efc11fa5704c224d3189271408",
+  "incumbent_sha256": "8113a37f4ff9360a9efed2e9f499c4b2ae36e97bfb78372436f97da106fc05f1",
+  "training_seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "preregistration_sha256": "2d881d6a0a3b807e56da1775ad4cd33a1e19f144b727abc6e16e0bcb0c2209ef",
+  "finished_at": "2026-10-21T17:30:50.439306+00:00",
+  "errors": []
+}
