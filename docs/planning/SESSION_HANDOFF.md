@@ -997,3 +997,8 @@ Simplify project navigation to Code review and 7 agents. Move settings, scopes, 
 Keep organization/repository/commit navigation scoped to the selected repository and SHA. Real commit runs stay inline in a two-tab reviewer/seven-agent workspace with demo-style agent rail and recorded replay; no redirect to shared project history. Resolve the repository’s actual project, search older run pages, reject mismatched results and retain scoped remediation approvals. Optional narrated quick reads are explicitly requested and separate from executed records. Branch `fix/adam/commit-workspace`; validation in PR.
 
 Review follow-up: retain accepted starts while history refreshes to prevent duplicate paid runs; lift newly connected repository IDs into the commit workspace; correct replay indexing; bound project lookup concurrency and tolerate unrelated project errors. Added regression coverage for these cases.
+
+
+## Automatic commit assessments — 2026-10-21
+
+IN_PROGRESS on `feat/adam/automatic-commits`: signed pushes fan out into durable per-commit jobs; GitHub API author allowlist, exact SHA, duplicate protection, no docs-only skip/coalescing loss, scope-approval resume. Railway defaults to `adamissac`; configurable for other accounts. Shared contracts unchanged. Full-chain fixture tests use scripted model responses, not live provider evidence. Production readiness is reachable; authenticated production worker/run verification remains outstanding.

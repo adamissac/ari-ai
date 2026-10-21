@@ -51,3 +51,15 @@ Already set (non-secret): `DATABASE_URL` (reference to Postgres), `APP_ENV=produ
 Attacks never run on Railway. The worker fetches the selected repository at the exact
 commit with a short-lived, read-only installation token, and executes it only inside a
 throwaway Vercel Sandbox microVM (see `security-agents` Vercel Sandbox driver).
+
+### Per-commit automatic assessments
+
+The Railway entrypoint defaults `GITHUB_AUTO_COMMIT_AUTHORS` to `adamissac` when
+unset. Set a comma-separated list of GitHub logins to expand the rollout, or `*`
+for all GitHub-linked authors. Explicit empty uses the legacy impact/coalescing
+policy. The allowlist checks GitHub's commit author account, not the push sender.
+An installed App, connected repository, enabled monitoring and approved repository
+scope remain prerequisites. Approving a scope wakes blocked automatic commits.
+Opening the commit page is unnecessary; it polls the persisted run when visited.
+Check worker logs for `assess_github_commit` and the commit's monitoring assessment
+before claiming live execution: `/readyz` only checks configuration and storage.

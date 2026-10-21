@@ -4,6 +4,9 @@
 # then run both; if either exits, exit too so Railway restarts the container.
 set -eu
 
+# Initial rollout; set a comma-separated list or * to expand to other GitHub authors.
+export GITHUB_AUTO_COMMIT_AUTHORS="${GITHUB_AUTO_COMMIT_AUTHORS-adamissac}"
+
 hackatl-migrate
 
 hackatl-worker &

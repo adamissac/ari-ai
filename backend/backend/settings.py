@@ -51,6 +51,8 @@ class Settings(BaseSettings):
     github_app_slug: str | None = None  # github.com/apps/<slug>: link for installing the App
     github_api_url: str = "https://api.github.com"
     github_web_url: str = "https://github.com"
+    # Empty preserves legacy monitoring; comma-separated GitHub logins or * enables per-commit runs.
+    github_auto_commit_authors: str = ""
     webhook_max_bytes: int = 1_048_576
 
     # Workers

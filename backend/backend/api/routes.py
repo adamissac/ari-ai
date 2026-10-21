@@ -622,6 +622,9 @@ def approve_scope(scope_id: str, request: Request) -> AuthorizedScope:
             update={"status": ScopeStatus.active, "approved_by": user.id, "approved_at": now}
         )
         _save_scope(conn, scope)
+        from backend.auto_commits import resume_blocked
+
+        resume_blocked(conn, scope.project_id, scope.id)
         _decide_subject_approval(conn, "scope", scope.id, user.id, ApprovalStatus.approved, None)
         _audit(
             conn,
