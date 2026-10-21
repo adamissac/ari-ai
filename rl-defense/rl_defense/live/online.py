@@ -44,6 +44,7 @@ import dataclasses
 import gzip
 import hashlib
 import json
+import math
 import shutil
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass
@@ -373,6 +374,40 @@ def train_online(
     )
 
 
+def validation_availability_screen(manifest: dict, minimum: float) -> dict:
+    """Screen a selected checkpoint before holdout; this cannot authorize promotion."""
+    if not math.isfinite(minimum) or not 0 <= minimum <= 1:
+        raise ValueError("validation availability minimum must be finite and within [0, 1]")
+    online = manifest["online"]
+    selected = [
+        row for row in online["selection_history"] if row["env_step"] == online["selected_env_step"]
+    ]
+    if len(selected) != 1:
+        raise ValueError("selected checkpoint must have exactly one validation history entry")
+    row = selected[0]
+    if row["noop_margin"] != online["selected_noop_margin"]:
+        raise ValueError("selected validation margin disagrees with checkpoint")
+    availability = row.get("val_availability")
+    valid = (
+        isinstance(availability, (int, float))
+        and not isinstance(availability, bool)
+        and math.isfinite(availability)
+        and 0 <= availability <= 1
+    )
+    eligible = valid and availability >= minimum
+    return {
+        "schema": "live-validation-screen/0.1",
+        "scope": "selected checkpoint validation only; not a promotion decision",
+        "selected_env_step": online["selected_env_step"],
+        "selected_noop_margin": online["selected_noop_margin"],
+        "minimum_availability": minimum,
+        "validation_availability": availability if valid else None,
+        "eligible_for_holdout": bool(eligible),
+        "reason": "availability_floor_met" if eligible else "missing_or_below_availability_floor",
+        "promotion_performed": False,
+    }
+
+
 # ---------------------------------------------------------------------- the v6 run
 def run(args: argparse.Namespace) -> dict:
     from rl_defense.live.pipeline import render_markdown
@@ -436,6 +471,15 @@ def run(args: argparse.Namespace) -> dict:
         expert_name=expert_name,
         balance_demo_actions=getattr(args, "balance_demo_actions", False),
     )
+    screen = None
+    if getattr(args, "require_validation_availability", False):
+        screen = validation_availability_screen(cm, criteria.min_availability)
+        (out / "validation_screen.json").write_text(json.dumps(screen, indent=2))
+        if not screen["eligible_for_holdout"]:
+            raise ValueError(
+                "selected checkpoint failed validation availability screen; holdout not executed; "
+                "see validation_screen.json"
+            )
     cand_path = out / "candidate_online.pt"
     cand_agent, cand_m = load_checkpoint(cand_path)
 
@@ -578,6 +622,8 @@ def run(args: argparse.Namespace) -> dict:
         "git_sha": git_sha(),
         "created_at": datetime.now(UTC).isoformat(),
     }
+    if screen is not None:
+        report["validation_screen"] = screen
     # Durable, hash-pinned locators alongside the report. Relative paths survive copying.
     report["artifacts"] = {
         "checkpoint": {"path": cand_path.name, "sha256": cand_m["checkpoint_sha256"]},
@@ -727,6 +773,11 @@ def main(argv: list[str] | None = None) -> int:
         "--balance-demo-actions",
         action="store_true",
         help="sample observed demonstration action classes uniformly (experimental)",
+    )
+    ap.add_argument(
+        "--require-validation-availability",
+        action="store_true",
+        help="stop before holdout if selected validation availability misses the criteria floor",
     )
     ap.add_argument("--random-baseline", action="store_true")
     ap.add_argument("--record-trajectories", action="store_true")
