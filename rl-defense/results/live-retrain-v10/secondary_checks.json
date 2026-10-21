@@ -1,0 +1,214 @@
+{
+  "uniform": {
+    "scope": "secondary train-window diagnostics, not a held-out promotion gate",
+    "by_training_seed": {
+      "0": {
+        "no_findings": {
+          "quiet_noop_fraction": 1.0,
+          "flagged_principal_block_fraction": 1.0,
+          "quiet_noop_passed": true,
+          "flagged_principal_block_passed": true,
+          "mapping_agreement": 1.0,
+          "mapping_agree_windows": 140,
+          "checked_windows": 140
+        },
+        "bola_high": {
+          "quiet_noop_fraction": 1.0,
+          "flagged_principal_block_fraction": 1.0,
+          "quiet_noop_passed": true,
+          "flagged_principal_block_passed": true,
+          "mapping_agreement": 1.0,
+          "mapping_agree_windows": 140,
+          "checked_windows": 140
+        }
+      },
+      "1": {
+        "no_findings": {
+          "quiet_noop_fraction": 1.0,
+          "flagged_principal_block_fraction": 1.0,
+          "quiet_noop_passed": true,
+          "flagged_principal_block_passed": true,
+          "mapping_agreement": 1.0,
+          "mapping_agree_windows": 140,
+          "checked_windows": 140
+        },
+        "bola_high": {
+          "quiet_noop_fraction": 1.0,
+          "flagged_principal_block_fraction": 1.0,
+          "quiet_noop_passed": true,
+          "flagged_principal_block_passed": true,
+          "mapping_agreement": 1.0,
+          "mapping_agree_windows": 140,
+          "checked_windows": 140
+        }
+      },
+      "2": {
+        "no_findings": {
+          "quiet_noop_fraction": 1.0,
+          "flagged_principal_block_fraction": 1.0,
+          "quiet_noop_passed": true,
+          "flagged_principal_block_passed": true,
+          "mapping_agreement": 1.0,
+          "mapping_agree_windows": 140,
+          "checked_windows": 140
+        },
+        "bola_high": {
+          "quiet_noop_fraction": 1.0,
+          "flagged_principal_block_fraction": 1.0,
+          "quiet_noop_passed": true,
+          "flagged_principal_block_passed": true,
+          "mapping_agreement": 1.0,
+          "mapping_agree_windows": 140,
+          "checked_windows": 140
+        }
+      },
+      "3": {
+        "no_findings": {
+          "quiet_noop_fraction": 1.0,
+          "flagged_principal_block_fraction": 1.0,
+          "quiet_noop_passed": true,
+          "flagged_principal_block_passed": true,
+          "mapping_agreement": 1.0,
+          "mapping_agree_windows": 140,
+          "checked_windows": 140
+        },
+        "bola_high": {
+          "quiet_noop_fraction": 1.0,
+          "flagged_principal_block_fraction": 1.0,
+          "quiet_noop_passed": true,
+          "flagged_principal_block_passed": true,
+          "mapping_agreement": 1.0,
+          "mapping_agree_windows": 140,
+          "checked_windows": 140
+        }
+      },
+      "4": {
+        "no_findings": {
+          "quiet_noop_fraction": 1.0,
+          "flagged_principal_block_fraction": 1.0,
+          "quiet_noop_passed": true,
+          "flagged_principal_block_passed": true,
+          "mapping_agreement": 1.0,
+          "mapping_agree_windows": 140,
+          "checked_windows": 140
+        },
+        "bola_high": {
+          "quiet_noop_fraction": 1.0,
+          "flagged_principal_block_fraction": 1.0,
+          "quiet_noop_passed": true,
+          "flagged_principal_block_passed": true,
+          "mapping_agreement": 1.0,
+          "mapping_agree_windows": 140,
+          "checked_windows": 140
+        }
+      }
+    },
+    "all_seed_cases_pass_behavior_thresholds": true
+  },
+  "balanced": {
+    "scope": "secondary train-window diagnostics, not a held-out promotion gate",
+    "by_training_seed": {
+      "0": {
+        "no_findings": {
+          "quiet_noop_fraction": 1.0,
+          "flagged_principal_block_fraction": 1.0,
+          "quiet_noop_passed": true,
+          "flagged_principal_block_passed": true,
+          "mapping_agreement": 1.0,
+          "mapping_agree_windows": 140,
+          "checked_windows": 140
+        },
+        "bola_high": {
+          "quiet_noop_fraction": 1.0,
+          "flagged_principal_block_fraction": 1.0,
+          "quiet_noop_passed": true,
+          "flagged_principal_block_passed": true,
+          "mapping_agreement": 1.0,
+          "mapping_agree_windows": 140,
+          "checked_windows": 140
+        }
+      },
+      "1": {
+        "no_findings": {
+          "quiet_noop_fraction": 1.0,
+          "flagged_principal_block_fraction": 1.0,
+          "quiet_noop_passed": true,
+          "flagged_principal_block_passed": true,
+          "mapping_agreement": 1.0,
+          "mapping_agree_windows": 140,
+          "checked_windows": 140
+        },
+        "bola_high": {
+          "quiet_noop_fraction": 1.0,
+          "flagged_principal_block_fraction": 1.0,
+          "quiet_noop_passed": true,
+          "flagged_principal_block_passed": true,
+          "mapping_agreement": 1.0,
+          "mapping_agree_windows": 140,
+          "checked_windows": 140
+        }
+      },
+      "2": {
+        "no_findings": {
+          "quiet_noop_fraction": 1.0,
+          "flagged_principal_block_fraction": 1.0,
+          "quiet_noop_passed": true,
+          "flagged_principal_block_passed": true,
+          "mapping_agreement": 1.0,
+          "mapping_agree_windows": 140,
+          "checked_windows": 140
+        },
+        "bola_high": {
+          "quiet_noop_fraction": 1.0,
+          "flagged_principal_block_fraction": 1.0,
+          "quiet_noop_passed": true,
+          "flagged_principal_block_passed": true,
+          "mapping_agreement": 1.0,
+          "mapping_agree_windows": 140,
+          "checked_windows": 140
+        }
+      },
+      "3": {
+        "no_findings": {
+          "quiet_noop_fraction": 1.0,
+          "flagged_principal_block_fraction": 1.0,
+          "quiet_noop_passed": true,
+          "flagged_principal_block_passed": true,
+          "mapping_agreement": 1.0,
+          "mapping_agree_windows": 140,
+          "checked_windows": 140
+        },
+        "bola_high": {
+          "quiet_noop_fraction": 1.0,
+          "flagged_principal_block_fraction": 1.0,
+          "quiet_noop_passed": true,
+          "flagged_principal_block_passed": true,
+          "mapping_agreement": 1.0,
+          "mapping_agree_windows": 140,
+          "checked_windows": 140
+        }
+      },
+      "4": {
+        "no_findings": {
+          "quiet_noop_fraction": 1.0,
+          "flagged_principal_block_fraction": 1.0,
+          "quiet_noop_passed": true,
+          "flagged_principal_block_passed": true,
+          "mapping_agreement": 1.0,
+          "mapping_agree_windows": 140,
+          "checked_windows": 140
+        },
+        "bola_high": {
+          "quiet_noop_fraction": 1.0,
+          "flagged_principal_block_fraction": 1.0,
+          "quiet_noop_passed": true,
+          "flagged_principal_block_passed": true,
+          "mapping_agreement": 1.0,
+          "mapping_agree_windows": 140,
+          "checked_windows": 140
+        }
+      }
+    },
+    "all_seed_cases_pass_behavior_thresholds": true
+  }
+}

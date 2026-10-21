@@ -232,9 +232,12 @@ V9 evidence tools and read-only verification: [postprocessing instructions](resu
 demonstrations and noop preference on saved flagged observations; causality is unproven.
 `online --balance-demo-actions` experimentally balances observed teacher action classes
 in demonstration batches only. Existing behavior stays uniform. [V10 preregistration](results/live-retrain-v10/PREREGISTRATION.md)
-defines a fresh two-arm, five-seed comparison; training/holdout evaluation has not run.
-Run `results/live-retrain-v10/run_study.py --registry PATH --workers 5` only from committed,
-pushed source with the existing workspace PYTHONPATH. Estimated compute about6hours.
+defines the completed two-arm, five-seed comparison. All ten runs completed; the primary
+hypothesis is unsupported and every candidate rejected. Balanced return improved over
+uniform by0.05919 (95% CI0.03335–0.08713), with worse availability/quiet disruption.
+See [full results and provenance](results/live-retrain-v10/PROVENANCE.md).
+The completed study took5h58m17s before final diagnostics. Its runner refuses existing
+outputs; do not restart it over exposed evaluation data.
 No policy promotion is automatic.
 
 V10's runner checks a digest of all tracked repository files before/after every job,

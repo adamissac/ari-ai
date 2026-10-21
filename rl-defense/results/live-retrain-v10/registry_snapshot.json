@@ -1,0 +1,52 @@
+{
+  "versions": {
+    "pol_cb990dd4dedfb25e": {
+      "id": "pol_cb990dd4dedfb25e",
+      "checkpoint": "/Users/alanmozhoor/Documents/hackatl-agentic-security/.claude/worktrees/mystifying-hofstadter-c5aaf7/rl-defense/runs/live/retrain-v6/base/ddqn_seed0.pt",
+      "sha256": "cb990dd4dedfb25e41ff9c12fe344837886e3ce275d97f8c3308fc1405083bdb",
+      "report": null,
+      "registered_at": "2026-10-19T19:36:55.720816+00:00",
+      "note": "baseline"
+    },
+    "pol_8113a37f4ff9360a": {
+      "id": "pol_8113a37f4ff9360a",
+      "checkpoint": "/Users/alanmozhoor/Documents/hackatl-agentic-security/.claude/worktrees/mystifying-hofstadter-c5aaf7/rl-defense/results/live-retrain-v6/candidate_online.pt",
+      "sha256": "8113a37f4ff9360a9efed2e9f499c4b2ae36e97bfb78372436f97da106fc05f1",
+      "report": "/Users/alanmozhoor/Documents/hackatl-agentic-security/.claude/worktrees/mystifying-hofstadter-c5aaf7/rl-defense/results/live-retrain-v6/promotion_report.json",
+      "registered_at": "2026-10-19T19:36:56.981435+00:00",
+      "note": ""
+    }
+  },
+  "deployed": "pol_8113a37f4ff9360a",
+  "stack": [
+    "pol_cb990dd4dedfb25e",
+    "pol_8113a37f4ff9360a"
+  ],
+  "history": [
+    {
+      "action": "register",
+      "version": "pol_cb990dd4dedfb25e",
+      "at": "2026-10-19T19:36:55.721047+00:00"
+    },
+    {
+      "action": "init",
+      "version": "pol_cb990dd4dedfb25e",
+      "by": "usr_alan",
+      "reason": "baseline: sim-trained deployed policy the v6 gate compared against",
+      "at": "2026-10-19T19:36:55.721051+00:00"
+    },
+    {
+      "action": "register",
+      "version": "pol_8113a37f4ff9360a",
+      "at": "2026-10-19T19:36:56.981564+00:00"
+    },
+    {
+      "action": "promote",
+      "version": "pol_8113a37f4ff9360a",
+      "previous": "pol_cb990dd4dedfb25e",
+      "by": "usr_alan",
+      "reason": "Alan approved in chat 2026-10-19: v6 online DQfD candidate passed all 7 pre-registered checks on holdout_v6 (results/live-retrain-v6); evidence restored and hash-verified (PR #363)",
+      "at": "2026-10-19T19:37:06.127883+00:00"
+    }
+  ]
+}
