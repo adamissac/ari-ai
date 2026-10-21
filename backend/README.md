@@ -99,3 +99,26 @@ provider to initialize in the HTTP process. No request/response DTO changes.
 
 
 Scope activation policy (ADR-0016): an owner may explicitly approve their own nonempty sandbox-only scope. Owner membership, pending/unexpired state and audit recording remain mandatory. Other approval subjects retain independent-approver requirements.
+
+### Automatic commit rollout
+
+`GITHUB_AUTO_COMMIT_AUTHORS` enables a per-commit push queue for a comma-separated
+list of GitHub author logins (`*` allows any GitHub-linked author). The Railway
+entrypoint defaults to `adamissac`; other environments default to the existing
+monitoring policy when unset/empty. The commit's GitHub API author login, not the
+pusher, author name, email, or webhook author field, determines eligibility.
+
+Install the GitHub App with push events, connect the repository, enable project
+monitoring, and approve its sandbox scope once. Subsequent eligible pushes queue
+full assessments for every commit, including docs/tests-only changes and commits
+arriving during another assessment. Duplicate pushes do not create duplicate runs.
+Scope approval resumes commits previously blocked for lack of authorization.
+The existing commit page polls persisted assessments; opening it or clicking Run
+is not required. This applies to new pushes, not historical backfills.
+
+Monitoring budgets and operator caps still apply. Patch/Verify stages that depend
+on remediation approval still wait for that approval; automatic triggering does
+not fabricate a successful seven-agent run or approve proposed repairs. Identity
+API failures retry in the durable queue and eventually dead-letter visibly.
+Compare pagination handles truncated pushes; new-branch payloads at GitHub's 2048
+commit limit fail explicitly rather than silently dropping commits.

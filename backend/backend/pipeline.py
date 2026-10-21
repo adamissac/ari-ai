@@ -10,7 +10,7 @@ from typing import Any
 
 import sqlalchemy as sa
 
-from backend import audit
+from backend import audit, auto_commits
 from backend.artifacts import ArtifactStore
 from backend.db import (
     defense_recommendations,
@@ -108,6 +108,10 @@ def process_github_delivery(ctx: JobContext) -> dict[str, Any]:
         )
     if repo is None:
         return {"ignored": f"repository {change.repo_full_name} is not connected"}
+
+    if auto_commits.authors():
+        with transaction() as conn:
+            return auto_commits.schedule(conn, repo, d, payload, change)
 
     paths_complete = change.paths_complete
     changed_paths = list(change.changed_paths)
