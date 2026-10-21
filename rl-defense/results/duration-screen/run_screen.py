@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import concurrent.futures
 import gzip
+import importlib.util
 import json
 import os
 import platform
@@ -15,14 +16,25 @@ from datetime import UTC, datetime
 from importlib.metadata import version
 from pathlib import Path
 
-import numpy as np
+if __name__ == "__main__" and "--verify-only" in sys.argv:
+    # Historical verification must not import the current product's evaluation/schema code.
+    directory = Path(__file__).resolve().parent
+    spec = importlib.util.spec_from_file_location(
+        "duration_historical_verifier", directory / "finalize.py"
+    )
+    verifier = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(verifier)
+    print(json.dumps(verifier.verify(directory)))
+    raise SystemExit(0)
+else:
+    import numpy as np
 
-from rl_defense.checkpoint import git_sha, load_checkpoint, sha256_file
-from rl_defense.live import evaluate as ev
-from rl_defense.live.adversary import live_app
-from rl_defense.live.registry import Registry
-from rl_defense.live.scenarios import LiveScenario, load_scenarios
-from rl_defense.live.study import require_clean_source, source_fingerprint
+    from rl_defense.checkpoint import git_sha, load_checkpoint, sha256_file
+    from rl_defense.live import evaluate as ev
+    from rl_defense.live.adversary import live_app
+    from rl_defense.live.registry import Registry
+    from rl_defense.live.scenarios import LiveScenario, load_scenarios
+    from rl_defense.live.study import require_clean_source, source_fingerprint
 
 ROOT = Path(__file__).resolve().parent
 RL = ROOT.parents[1]
@@ -160,19 +172,12 @@ def validate_budget(
 
 
 def verify_bundle(root: Path) -> None:
-    root = root.resolve()
-    index = json.loads((root / "EVIDENCE.json").read_text())
-    for name, expected in index["files"].items():
-        path = (root / name).resolve()
-        if not path.is_relative_to(root) or sha256_file(path) != expected:
-            raise ValueError(f"screen artifact changed: {name}")
-    saved = json.loads((root / "summary.json").read_text())
-    rows = {
-        name: json.loads((root / "val" / name / "episodes.json").read_text()) for name in POLICIES
-    }
-    for key, value in json.loads(json.dumps(decide(rows))).items():
-        if saved[key] != value:
-            raise ValueError(f"saved screen summary does not reproduce: {key}")
+    spec = importlib.util.spec_from_file_location(
+        "duration_historical_verifier", root / "finalize.py"
+    )
+    verifier = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(verifier)
+    verifier.verify_summary(root)
 
 
 def verify_source(metadata: dict) -> None:

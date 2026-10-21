@@ -3,9 +3,20 @@
     "PLAN.md": "71350c8462f791fdc8e9349760eee0a221bb713308a97239f5c481f7167b62a7",
     "PROVENANCE.md": "15a35e3f4fb306765b1cd38a8809a71979f1df459845891382789083974368cc",
     "RUN.json": "0f615261e1ccbe0e4ecf5e81142f2d858e6519ac4518ec8e0452f1ae465c384c",
-    "finalize.py": "197a6111553831fc8a4ffe6a63a512b09f66e7c9c2e95cd7eca26d7a714ff777",
+    "VERIFICATION.md": "c566e66938666c16af67245bcc54ac5cf36d07bec5d03e6096a3ae688d866b5e",
+    "finalize.py": "b5559e00599a922cc0cc943572a92f6c2622164835372a048a81a2ca119c21e1",
+    "frozen/FROZEN.json": "953f5105b01b16d7da61506207d4f137550d57cdc1ca8860d3616d558277a0dc",
+    "frozen/evaluation.py": "9405b1ccac439ab9f6ee8b369c7771f0195f01eab57f52552058a4ea8ae7e381",
+    "frozen/pre_review_finalize.py.txt": "197a6111553831fc8a4ffe6a63a512b09f66e7c9c2e95cd7eca26d7a714ff777",
+    "frozen/pre_review_index.json": "9864ede04ec3776b6c5943790abbb8dd8219aed920793ba157ba3784ce2f9171",
+    "frozen/requirements.txt": "5e28ef4e95097bdde12fb404ed94cb75a86a6b8b8405547fb5dfc94287af2c5f",
+    "frozen/source_0.py.txt": "f0fae211d0c739a8e335a18d489700ffa69a18b82918d069ed4baa80f2d7a474",
+    "frozen/source_1.py.txt": "be4e01379160f492c84ad19a25024d2c48e5d896d8928bdf0ccd754663c64dee",
+    "frozen/source_2.py.txt": "13135d5b70ab1c8af2aa58e92a890276d8f24d1025d3e56cfba300d80b28184d",
+    "frozen/source_3.py.txt": "9cc5f48433cba360c89d6acf446c8fcb1194095316d03ec5c6410da40be69bb9",
+    "frozen_loader.py": "b0bfa23d5576ab2dba0ff17b3050544d23938c2ef94fbcc1d9643c1a67d1e3e5",
     "registry_snapshot.json": "c345593354856c50559ba16611853a0e4936a7efc11fa5704c224d3189271408",
-    "run_screen.py": "9cc5f48433cba360c89d6acf446c8fcb1194095316d03ec5c6410da40be69bb9",
+    "run_screen.py": "ae1b1ae4add1ab87f85226b8559d5ffe281d2f95cf7630e5bb6c4fd0ec2ac800",
     "summary.json": "33f050c8a9786ef62f45738fee9e426a2fcfc2e283524fa69dc5de63ea5726b2",
     "train/duration/command.json": "d0342b1d50be695eeec95f5e1ce70922cd5185ff7886b50bf2194ca0edf25835",
     "train/duration/episodes.json": "21496a34e2cc112650dbf1e9c9ae28150e49e86ae7defe5ae26244dd4c18341f",
@@ -43,5 +54,12 @@
     "episodes": 520,
     "windows": 15600,
     "promotion_performed": false
+  },
+  "historical_index": {
+    "path": "frozen/pre_review_index.json",
+    "replacements": {
+      "run_screen.py": "frozen/source_3.py.txt",
+      "finalize.py": "frozen/pre_review_finalize.py.txt"
+    }
   }
 }

@@ -1,0 +1,56 @@
+{
+  "source_commit": "d985e69406fc7bcacabc1eea1b29f2c256c3803a",
+  "module_sha256": "9405b1ccac439ab9f6ee8b369c7771f0195f01eab57f52552058a4ea8ae7e381",
+  "sources": [
+    {
+      "original_path": "rl-defense/rl_defense/live/contracts.py",
+      "snapshot": "source_0.py.txt",
+      "sha256": "f0fae211d0c739a8e335a18d489700ffa69a18b82918d069ed4baa80f2d7a474",
+      "definitions": {
+        "_Strict": "d14837b54643e5539e1ef191551a75fbb34b6da376b76a8dbc0041633af2f348",
+        "StepOutcome": "88fff53fef1867d73afe235ae4c2e8b8774ecd57cf0becc6d462f3bfebd4621b",
+        "LiveTransition": "43a91b7e9d8596b57a6f73b3e6de23801d25aa2c01ba0447c993e44485982ed3"
+      }
+    },
+    {
+      "original_path": "rl-defense/rl_defense/envs/defense_sim.py",
+      "snapshot": "source_1.py.txt",
+      "sha256": "be4e01379160f492c84ad19a25024d2c48e5d896d8928bdf0ccd754663c64dee",
+      "definitions": {
+        "NOOP_ACTION": "632267e22dcbf79505322ad8ba2c351a1cab068c9bbd0acc0c06621f8fbc3bb2"
+      }
+    },
+    {
+      "original_path": "rl-defense/rl_defense/live/evaluate.py",
+      "snapshot": "source_2.py.txt",
+      "sha256": "13135d5b70ab1c8af2aa58e92a890276d8f24d1025d3e56cfba300d80b28184d",
+      "definitions": {
+        "EpisodeMetrics": "68b6b91ea10bb84f6df976dcc57ac88e533be64249431d17dab961d3957852d1",
+        "episode_metrics": "0fdf7bcfedfa1e775dfeec108d521e88576f0ebb2fe6b5bd7cde3dfcbbab9074",
+        "_ratio": "2a04149875ff205147f814bb1977ee1c8d2e5adb4dab9edaa3622a48159c602b",
+        "bootstrap_ci": "980d64519b9f92d3eb5b488982828882321dbf8e80dc391575933f8f35916ae5",
+        "summarize": "2ae5a5612368c9957b67951da8c6c5a8256fc6d35414a4641ebfc206399f3a25",
+        "summarize_by_scenario": "25e0bda57d90580463014985474fbe893f93e194102b5f87509e9c038181e52c"
+      }
+    },
+    {
+      "original_path": "rl-defense/results/duration-screen/run_screen.py",
+      "snapshot": "source_3.py.txt",
+      "sha256": "9cc5f48433cba360c89d6acf446c8fcb1194095316d03ec5c6410da40be69bb9",
+      "definitions": {
+        "POLICIES": "b51e1bbf9160fdd1a6df5050231bb8347a5e7df702f77cace05c785428867a61",
+        "paired_ratios": "95ee360671b5b387c68a484cbf75427a6c9072886bb392b7acc4d58aee1ace3c",
+        "decide": "4214ac267c7d89251842d419c0c8f0c6442fcb38d65fe77da16ead25071669a5"
+      }
+    }
+  ],
+  "packages": {
+    "numpy": "2.5.4",
+    "pydantic": "2.14.1"
+  },
+  "definition_digest": "sha256(ast.dump(node, include_attributes=False))",
+  "python_minor": [
+    3,
+    12
+  ]
+}
