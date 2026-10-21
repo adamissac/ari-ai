@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import gzip
 import hashlib
 import json
 import shutil
@@ -55,9 +56,9 @@ def secondary_checks(checks: dict) -> dict:
     }
 
 
-def digest(path: Path) -> str:
+def digest(path: Path, *, gzip_contents: bool = False) -> str:
     h = hashlib.sha256()
-    with path.open("rb") as stream:
+    with gzip.open(path, "rb") if gzip_contents else path.open("rb") as stream:
         while chunk := stream.read(1 << 20):
             h.update(chunk)
     return h.hexdigest()
@@ -117,6 +118,7 @@ def main() -> None:
     verdict = json.loads((root / "study_verdict.json").read_text())
     verdict["secondary_train_window_checks"] = checks
     (root / "study_verdict.json").write_text(json.dumps(verdict, indent=2))
+    restored_files: set[Path] = set()
     for seed in range(5):
         directory = root / f"seed{seed}"
         report = json.loads((directory / "promotion_report.json").read_text())
@@ -125,7 +127,6 @@ def main() -> None:
             raise ValueError(f"seed{seed}: trajectory digest mismatch")
         index = evidence.load_index(directory)
         for name, filename in {
-            "holdout_trajectories": trajectory["path"],
             "holdout_episodes": "holdout_episodes.json",
             "promotion_report": "promotion_report.json",
             "checkpoint_manifest": "candidate_online.manifest.json",
@@ -136,6 +137,16 @@ def main() -> None:
                 "stored_as": "file",
                 "sha256": digest(directory / filename),
             }
+        index["artifacts"]["holdout_trajectories"] = {
+            "path": str(Path(trajectory["path"]).with_suffix("")),
+            "stored_as": "gzip",
+            "stored_path": trajectory["path"],
+            "sha256": digest(directory / trajectory["path"], gzip_contents=True),
+            "note": "Logical JSONL digest; the promotion report separately pins the gzip container bytes.",
+        }
+        for artifact in index["artifacts"].values():
+            if artifact["stored_as"] in {"gzip", "prefix"} and "path" in artifact:
+                restored_files.add((directory / artifact["path"]).resolve())
         (directory / "EVIDENCE.json").write_text(json.dumps(index, indent=2) + "\n")
         verify_seed(directory)
     snapshots = {
@@ -154,6 +165,7 @@ def main() -> None:
             path.is_file()
             and "__pycache__" not in path.parts
             and path.name != "STUDY_EVIDENCE.json"
+            and path.resolve() not in restored_files
         ):
             if not path.resolve().is_relative_to(root):
                 raise ValueError("artifact path escapes the study directory")
