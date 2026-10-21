@@ -255,3 +255,11 @@ carry legitimate-traffic costs in rotation. `online --require-validation-availab
 can reject a selected checkpoint before any holdout execution, retaining a
 `validation_screen.json` diagnostic. This opt-in screen cannot promote, does not change
 the default trainer/serving, and is not evidence of a better policy. No v11 launched.
+
+## Bounded duration screen (train/validation only)
+
+[Fixed plan](results/duration-screen/PLAN.md) compares short and long blocks with one
+existing outsider-duration rule and actual v6. This is a heuristic screen, not trained
+RL or serving logic. Source and success conditions are frozen before evaluation;
+no holdout is used. Only a passing availability/compromise screen can justify preparing
+one possible v11 preregistration. V6 remains deployed.
