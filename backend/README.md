@@ -105,8 +105,7 @@ Scope activation policy (ADR-0016): an owner may explicitly approve their own no
 `GITHUB_AUTO_COMMIT_AUTHORS` enables a per-commit push queue for a comma-separated
 list of GitHub author logins (`*` allows any GitHub-linked author). The Railway
 entrypoint defaults to `adamissac`; other environments default to the existing
-monitoring policy when unset/empty. The commit's GitHub API author login, not the
-pusher, author name, email, or webhook author field, determines eligibility.
+monitoring policy when unset/empty. Eligibility requires both the signed push sender and GitHub API commit-author attribution to match the rollout; author metadata alone never authorizes paid work.
 
 Install the GitHub App with push events, connect the repository, enable project
 monitoring, and approve its sandbox scope once. Subsequent eligible pushes queue
