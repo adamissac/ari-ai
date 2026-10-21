@@ -1078,3 +1078,8 @@ subsequent v10 failure analysis, regressions and preregistration.
 ### 2026-10-20 — interface polish
 
 Polish the shared ARI interface using Kairo’s restrained grids and technical typography in ARI’s warm charcoal/ember palette. Add consistent workspace headers, numbered organization cards, clearer repository rows, quieter panels and a precise replay frame. Preserve the original hero and scroll choreography; keep Projects highlighted throughout the organization/repository/commit flow. Branch `feat/adam/ui-polish`; validation and screenshots recorded in PR.
+
+Additional #376 review: expose explicit legacy teacher budget on aggregation CLI,
+require a clean concrete source commit before launch and validate actual pooled/scenario
+episode counts. Historical CLI re-aggregation and final evidence verification are
+executed before publishing. No held-out replay or learning changes.

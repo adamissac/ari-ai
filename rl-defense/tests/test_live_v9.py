@@ -49,7 +49,7 @@ def test_v9_new_scenarios_and_seeds_are_disjoint():
 def _reports():
     return [
         {
-            "git_sha": "source",
+            "git_sha": "1" * 40,
             "rules_episodes": 2,
             "expert": {"name": "rules"},
             "rules_params": {"threshold": 0.1},
@@ -62,11 +62,11 @@ def _reports():
             "holdout_episodes_per_scenario": 100,
             "caveat": "lab only",
             "policies": {
-                "candidate": {m: float(seed) for m in study.METRICS},
-                "deployed": {m: 0.0 for m in study.METRICS},
+                "candidate": {m: float(seed) for m in study.METRICS} | {"episodes": 100},
+                "deployed": {m: 0.0 for m in study.METRICS} | {"episodes": 100},
             },
             "by_scenario": {
-                n: {"fresh": {m: float(seed) for m in study.METRICS}}
+                n: {"fresh": {m: float(seed) for m in study.METRICS} | {"episodes": 100}}
                 for n in ("candidate", "deployed")
             },
             "decision": "reject",
@@ -143,7 +143,7 @@ def test_aggregate_refuses_missing_settings_changed_references_and_source():
         study.aggregate(reports)
 
 
-@pytest.mark.parametrize("value", [None, "", "   "])
+@pytest.mark.parametrize("value", [None, "", "   ", "unknown"])
 def test_aggregate_requires_source(value):
     reports = _reports()
     for report in reports:
@@ -175,3 +175,65 @@ def test_aggregate_rejects_missing_scenario_in_any_report(seed):
     del reports[seed]["by_scenario"]["candidate"]["fresh"]
     with pytest.raises(ValueError, match="holdout scenario"):
         study.aggregate(reports)
+
+
+@pytest.mark.parametrize("section", ["pooled", "scenario"])
+def test_aggregate_rejects_truncated_observed_episode_counts(section):
+    reports = _reports()
+    if section == "pooled":
+        reports[0]["policies"]["candidate"]["episodes"] = 99
+    else:
+        reports[0]["by_scenario"]["candidate"]["fresh"]["episodes"] = 99
+    with pytest.raises(ValueError, match="observed episode counts"):
+        study.aggregate(reports)
+
+
+def test_cli_exposes_historical_teacher_budget(tmp_path):
+    import json
+
+    reports = _reports()
+    paths = []
+    for report in reports:
+        del report["rules_episodes"]
+        p = tmp_path / f"seed{report['online']['seed']}.json"
+        p.write_text(json.dumps(report))
+        paths.append(str(p))
+    out = tmp_path / "summary.json"
+    assert study.main([*paths, "--out", str(out), "--legacy-rules-episodes", "2"]) == 0
+    assert json.loads(out.read_text())["training_seeds"] == list(range(5))
+
+
+def test_clean_source_guard_rejects_dirty_and_unknown_revision(monkeypatch, tmp_path):
+    from types import SimpleNamespace
+
+    def run(*args, **kwargs):
+        return SimpleNamespace(stdout="unknown" if args[0][1] == "rev-parse" else "")
+
+    monkeypatch.setattr(study.subprocess, "run", run)
+    with pytest.raises(ValueError, match="concrete source"):
+        study.require_clean_source(tmp_path)
+
+    def dirty(*args, **kwargs):
+        return SimpleNamespace(stdout="1" * 40 if args[0][1] == "rev-parse" else " M trainer.py")
+
+    monkeypatch.setattr(study.subprocess, "run", dirty)
+    with pytest.raises(ValueError, match="clean source"):
+        study.require_clean_source(tmp_path)
+
+
+@pytest.mark.parametrize("budget", [0, -1, 100000])
+def test_online_refuses_impossible_budget_before_training(tmp_path, budget):
+    import argparse
+    from rl_defense.live import online
+
+    args = argparse.Namespace(
+        out=str(tmp_path / "out"),
+        criteria=str(CONFIG_DIR / "promotion.yaml"),
+        seed=0,
+        train_dir="train_v8",
+        val_dir="val_v4",
+        holdout_dir="holdout_v2",
+        holdout_episodes=budget,
+    )
+    with pytest.raises(ValueError, match="requested holdout budget"):
+        online.run(args)
