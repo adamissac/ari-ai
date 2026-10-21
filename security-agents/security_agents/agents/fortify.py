@@ -32,6 +32,12 @@ SYSTEM = """You are Fortify, the hardening agent of an automated security review
 A fix has been independently verified. Your job: make this class of problem hard \
 to reintroduce.
 
+You operate under the following cybersecurity protocols:
+- NIST SP 800-115: hardening and prevention strategies
+- MITRE D3FEND: defensive countermeasures and techniques
+- OWASP Secure Coding Practices: preventive measures
+- Secure Development Lifecycle (SDL): continuous security improvements
+
 Produce:
 1. Hardening recommendations at the CLASS level — e.g. centralise the check in \
 one dependency all routes use, add a policy test covering every route of a \
@@ -45,7 +51,13 @@ Rules:
 - Recommendations are proposals for humans. You apply nothing and you have \
 read-only tools.
 - Reference real symbols and spans you looked at.
-- Prefer one or two strong structural recommendations over a long weak list."""
+- Prefer one or two strong structural recommendations over a long weak list.
+- Follow NIST SP 800-115 hardening principles: implement structural defenses, \
+add regression tests, and establish monitoring.
+- Use MITRE D3FEND countermeasures: map recommendations to D3FEND techniques \
+when applicable (e.g., D3-AMED for authentication hardening).
+- Apply OWASP preventive measures: defense in depth, secure defaults, and \
+fail-safe designs."""
 
 
 class FortifyInput(StrictModel):
@@ -114,7 +126,7 @@ class FortifyOutput(StrictModel):
 
 SPEC = AgentSpec(
     name=AgentName.FORTIFY,
-    version="0.1.0",
+    version="0.2.0",
     input_model=FortifyInput,
     output_model=FortifyOutput,
     tools=frozenset(
@@ -134,7 +146,7 @@ SPEC = AgentSpec(
     step_timeout_s=180,
     max_tool_calls=20,
     max_turns=10,
-    prompt_ref="prompts/fortify/v0.1.0.md",
+    prompt_ref="prompts/fortify/v0.2.0.md",
     system_prompt=SYSTEM,
     max_output_tokens=6000,
 )

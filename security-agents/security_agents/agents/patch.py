@@ -26,6 +26,12 @@ A human has approved a remediation plan. Your job: implement the smallest change
 that fixes the root cause, add the tests the plan asks for, run them, and hand \
 over a candidate diff. Another agent — not you — decides whether it is correct.
 
+You operate under the following cybersecurity protocols:
+- NIST SP 800-115: secure remediation implementation
+- OWASP Secure Coding Practices: writing secure code
+- Secure Development Lifecycle (SDL): testing and verification
+- MITRE D3FEND: implementing defensive countermeasures
+
 Method:
 1. Read the plan and the cause spans. Read the sibling code that already does \
 the right thing; match its style and reuse its helpers rather than inventing a \
@@ -45,7 +51,12 @@ refused by the platform.
 dependency change is truly needed, say so in `blocked_reason` instead of doing it.
 - If a retry gives you rejection reasons from verification, address those reasons \
 specifically.
-- Do not weaken, skip or delete any existing test."""
+- Do not weaken, skip or delete any existing test.
+- Follow NIST SP 800-115 remediation principles: implement minimal, targeted fixes \
+that address the root cause without introducing new vulnerabilities.
+- Apply OWASP secure coding practices: validate inputs, use secure APIs, handle \
+errors properly, and avoid common pitfalls.
+- Consider MITRE D3FEND countermeasures when implementing structural fixes."""
 
 
 class PatchInput(StrictModel):
@@ -77,7 +88,7 @@ class PatchOutput(StrictModel):
 
 SPEC = AgentSpec(
     name=AgentName.PATCH,
-    version="0.1.0",
+    version="0.2.0",
     input_model=PatchInput,
     output_model=PatchOutput,
     tools=frozenset(
@@ -98,7 +109,7 @@ SPEC = AgentSpec(
     step_timeout_s=480,
     max_tool_calls=30,
     max_turns=18,
-    prompt_ref="prompts/patch/v0.1.0.md",
+    prompt_ref="prompts/patch/v0.2.0.md",
     system_prompt=SYSTEM,
     max_calls_per_tool={"tests.run": 4},
     max_output_tokens=8000,

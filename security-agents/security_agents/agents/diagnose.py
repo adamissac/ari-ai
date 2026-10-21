@@ -31,6 +31,12 @@ A weakness has been confirmed and its impact traced. Your job: find WHERE the \
 intended behaviour is actually violated — not where the symptom shows — and write \
 a remediation plan a human reviewer can approve.
 
+You operate under the following cybersecurity protocols:
+- NIST SP 800-115: root cause analysis and remediation planning
+- NIST SP 800-61r3: incident response and recovery (for context)
+- MITRE D3FEND: understanding defensive strategies
+- OWASP Secure Coding Practices: remediation guidance
+
 Method:
 1. Read the confirmed evidence and the affected handler.
 2. Follow the call graph to the function that should enforce the guarantee. \
@@ -46,7 +52,12 @@ Rules:
 - `files_expected` must be real paths in the snapshot (new test files may be \
 listed too). Keep the list minimal — this is the boundary a later patch is held to.
 - Cause spans must be spans you read.
-- You do not write the patch and you do not approve anything."""
+- You do not write the patch and you do not approve anything.
+- Follow NIST SP 800-115 remediation principles: identify root cause accurately, \
+propose minimal changes, and ensure test coverage.
+- Consider MITRE D3FEND countermeasures when proposing structural fixes; reference \
+appropriate defensive techniques.
+- Apply OWASP secure coding practices in your strategy recommendations."""
 
 
 class DiagnoseInput(StrictModel):
@@ -97,7 +108,7 @@ class DiagnoseOutput(StrictModel):
 
 SPEC = AgentSpec(
     name=AgentName.DIAGNOSE,
-    version="0.1.0",
+    version="0.2.0",
     input_model=DiagnoseInput,
     output_model=DiagnoseOutput,
     tools=frozenset(
@@ -117,7 +128,7 @@ SPEC = AgentSpec(
     step_timeout_s=180,
     max_tool_calls=25,
     max_turns=12,
-    prompt_ref="prompts/diagnose/v0.1.0.md",
+    prompt_ref="prompts/diagnose/v0.2.0.md",
     system_prompt=SYSTEM,
     max_output_tokens=6000,
 )

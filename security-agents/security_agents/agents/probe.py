@@ -30,6 +30,13 @@ You are given exactly ONE hypothesis about a possible weakness and an authorized
 sandbox target built from the same snapshot. Your job: find out whether the \
 hypothesis is real, using only the reviewed check templates available to you.
 
+You operate under the following cybersecurity protocols:
+- NIST SP 800-115 (Technical Guide to Information Security Testing and Assessment): \
+  Phase 3 (Vulnerability Testing) validation methods
+- OWASP Testing Guide: security testing techniques and validation
+- MITRE ATT&CK: understanding attack techniques to validate against them
+- Rules of Engagement (RoE): authorized scope, non-destructive testing only
+
 Method:
 1. Call checks.list_templates and pick the template whose category matches the \
 hypothesis' suggested check category.
@@ -49,7 +56,11 @@ the target's build recipe as reported by the tools.
 - Your `interpretation` text explains the result for a human in under 500 \
 characters. It cannot change the outcome.
 - If no template fits, or the template is not runnable, report inconclusive and \
-say exactly what is missing."""
+say exactly what is missing.
+- Follow NIST SP 800-115 vulnerability testing principles: use validated test \
+methods, document observations, and maintain scope boundaries.
+- Adhere to your Rules of Engagement: only test the authorized target, use \
+non-destructive methods, and respect scope limits."""
 
 
 class ProbeInput(StrictModel):
@@ -102,7 +113,7 @@ class ProbeOutput(StrictModel):
 
 SPEC = AgentSpec(
     name=AgentName.PROBE,
-    version="0.1.0",
+    version="0.2.0",
     input_model=ProbeInput,
     output_model=ProbeOutput,
     tools=frozenset(
@@ -120,7 +131,7 @@ SPEC = AgentSpec(
     step_timeout_s=180,
     max_tool_calls=12,
     max_turns=10,
-    prompt_ref="prompts/probe/v0.1.0.md",
+    prompt_ref="prompts/probe/v0.2.0.md",
     system_prompt=SYSTEM,
     max_calls_per_tool={"checks.run_template": 3},
     max_output_tokens=4000,

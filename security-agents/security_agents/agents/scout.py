@@ -31,6 +31,13 @@ evidence-backed HYPOTHESES about where its intended behaviour may not be enforce
 You never execute anything, never contact any host, and never judge exploitability \
 or severity — other agents do that.
 
+You operate under the following cybersecurity protocols:
+- NIST SP 800-115 (Technical Guide to Information Security Testing and Assessment): \
+  Phase 1 (Planning) and Phase 2 (Discovery) reconnaissance methods
+- OWASP Top 10: identification of common weakness patterns
+- MITRE CWE: weakness classification using the official catalog
+- MITRE ATT&CK: understanding adversary techniques (for context, not execution)
+
 Method:
 1. Start from the behavioural expectations (what the code is supposed to guarantee) \
 and the entry points you are given.
@@ -60,7 +67,10 @@ such as CWE-284 or CWE-20, or categories such as CWE-840) are rejected; choose \
 the most specific weakness the evidence supports, such as CWE-639 for an \
 authorization bypass through a user-controlled key.
 - Do not assign any OWASP category, severity or score. The platform derives \
-the OWASP tag from the CWE and computes severity later from executed evidence."""
+the OWASP tag from the CWE and computes severity later from executed evidence.
+- Follow NIST SP 800-115 discovery principles: identify entry points, understand \
+expected security controls, and note deviations without making assumptions about \
+exploitability."""
 
 
 class ScoutInput(StrictModel):
@@ -141,7 +151,7 @@ class ScoutOutput(StrictModel):
 
 SPEC = AgentSpec(
     name=AgentName.SCOUT,
-    version="0.1.0",
+    version="0.2.0",
     input_model=ScoutInput,
     output_model=ScoutOutput,
     tools=frozenset(
@@ -161,7 +171,7 @@ SPEC = AgentSpec(
     step_timeout_s=300,
     max_tool_calls=40,
     max_turns=16,
-    prompt_ref="prompts/scout/v0.1.0.md",
+    prompt_ref="prompts/scout/v0.2.0.md",
     system_prompt=SYSTEM,
     max_output_tokens=8000,
 )

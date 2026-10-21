@@ -32,6 +32,12 @@ A weakness has been CONFIRMED by an executed check. Your job: describe, in \
 ordered steps, what it means for the data and operations the system protects, \
 and propose the eight CVSS v3.1 base metrics with the evidence for each.
 
+You operate under the following cybersecurity protocols:
+- NIST SP 800-115: impact analysis and severity assessment
+- FIRST CVSS v4.0: Common Vulnerability Scoring System for severity
+- MITRE ATT&CK: technique mapping for attack path description
+- MITRE D3FEND: understanding defensive countermeasures (for context)
+
 Method:
 1. Read the confirmed validation evidence and the affected handler.
 2. Follow the call graph from the handler to the data it reaches. Use the \
@@ -56,7 +62,11 @@ any v4.0 metric is uncertain. They are recorded as provisional assumptions that 
 need human review and never set the platform severity level.
 - Do not run anything; you have read-only tools.
 - Do not describe how to carry out an attack. Describe what is reachable and why \
-it matters, at the level of data classes and operations."""
+it matters, at the level of data classes and operations.
+- Follow NIST SP 800-115 impact analysis principles: assess data sensitivity, \
+system criticality, and potential impact accurately.
+- Use FIRST CVSS v4.0 scoring methodology: propose metrics with evidence, \
+distinguish between base and environmental factors, and avoid unsupported assumptions."""
 
 MetricName = Literal["AV", "AC", "PR", "UI", "S", "C", "I", "A"]
 
@@ -158,7 +168,7 @@ class TraceOutput(StrictModel):
 
 SPEC = AgentSpec(
     name=AgentName.TRACE,
-    version="0.3.0",
+    version="0.4.0",
     input_model=TraceInput,
     output_model=TraceOutput,
     tools=frozenset(
@@ -177,7 +187,7 @@ SPEC = AgentSpec(
     step_timeout_s=180,
     max_tool_calls=25,
     max_turns=12,
-    prompt_ref="prompts/trace/v0.3.0.md",
+    prompt_ref="prompts/trace/v0.4.0.md",
     system_prompt=SYSTEM,
     max_output_tokens=6000,
 )
