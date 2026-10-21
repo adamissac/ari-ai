@@ -193,6 +193,13 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
                     "reason": reason,
                 }
             )
+            if existing:
+                event_doc = {**existing["doc"], "status_reason": reason}
+                conn.execute(
+                    sa.update(monitoring_events)
+                    .where(monitoring_events.c.id == existing["id"])
+                    .values(doc=event_doc)
+                )
         values = dict(status=rrq.status.value, doc=rrq.model_dump(mode="json"))
         if existing:
             conn.execute(

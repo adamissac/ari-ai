@@ -64,6 +64,8 @@ def test_scope_approval_resumes_without_run_button(automatic):
     assert records() == [HEAD]
     rrqs = alice.get(f"/api/v1/projects/{ids['project']}/reassessments").json()["items"]
     assert len(rrqs) == 1 and rrqs[0]["status"] == "started"
+    events = alice.get(f"/api/v1/projects/{ids['project']}/events").json()["items"]
+    assert events[0]["status_reason"] == "automatic commit assessment"
 
 
 @pytest.mark.parametrize("login", ["someone-else", ""])
@@ -173,3 +175,17 @@ def test_full_run_uses_project_budget_clamped_to_operator_cap(automatic, setting
         doc = conn.execute(sa.select(assessments.c.doc)).scalar_one()
         assert doc["budget"]["max_tokens"] == 200000
         assert doc["budget"]["max_usd"] == 4
+
+
+def test_mixed_author_push_runs_only_allowed_commits_even_when_head_is_other_author(
+    automatic, monkeypatch
+):
+    alice, bob, ids, _ = automatic
+
+    def commit(self, installation, repo, sha):
+        return {"sha": sha, "author": {"login": "adamissac" if sha == HEAD else "teammate"}}
+
+    monkeypatch.setattr("backend.auto_commits.GitHubApp.commit", commit)
+    bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
+    push(alice, HEAD, "c" * 40)
+    assert records() == [HEAD]
