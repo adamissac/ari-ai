@@ -115,3 +115,24 @@ def test_post_run_train_check_shows_v8_still_trails_noop_on_rare_delegate_runs()
     sc = "rare_delegate_runs"
     assert post["train_v8"][sc]["reward"] < pre["noop"][sc]["reward"]
     assert post["train_v8"][sc]["reward"] < pre["v7"][sc]["reward"]
+
+
+def test_historical_v8_packet_cannot_replace_incumbent_v6(tmp_path):
+    """Use saved bytes only: do not re-evaluate or select on exposed holdout_v8."""
+    import shutil
+
+    import pytest
+
+    from rl_defense.live.registry import Registry, RegistryError
+
+    packet = tmp_path / "v8"
+    shutil.copytree(V8, packet)
+    evidence.restore(packet)
+    reg = Registry(tmp_path / "registry.json")
+    v6 = V8.parent / "live-retrain-v6" / "candidate_online.pt"
+    baseline = reg.init(v6, "usr_test")
+    vid = reg.register(packet / "candidate_online.pt", packet / "promotion_report.json")
+    with pytest.raises(RegistryError, match="report baseline differs"):
+        reg.promote(vid, "usr_test", "historical v8 report")
+    assert reg.data["deployed"] == baseline
+    assert reg.data["stack"] == [baseline]

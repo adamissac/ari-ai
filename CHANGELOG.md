@@ -7,6 +7,23 @@ All notable changes are documented here. Format follows
 ## [Unreleased]
 
 - Automatically queue every eligible pushed commit, with verified GitHub author rollout (Railway defaults to `adamissac`), per-commit deduplication and resume after scope approval.
+- Preserve RL aggregate source provenance and validate complete seed gates. Validate all evidence before staged writes, with rollback on I/O failure; recheck tracked source bytes for every training job.
+
+- Add opt-in action-balanced demonstration sampling for the RL lab, saved-v9 failure diagnostics, and a fresh preregistered two-arm v10 study. Default replay is unchanged; v10 effectiveness remains untested and v6 remains deployed.
+
+- Tighten RL study source/teacher-budget/scenario validation, pin fixed references, and verify recorded trajectories during initial evidence packing. Historical v9 measurements are unchanged.
+
+- Complete preregistered five-seed v9 RL lab study with 16,500 held-out episodes, full compressed evidence and comparison figure. Hypothesis unsupported and every seed rejected; v6 remains deployed. Record compromise/availability tradeoffs and the persistent-attack failure trace.
+
+- Add read-only five-seed study evidence verification, metric/trajectory hash pins, explicit secondary diagnostic thresholds and optional scientific figures. Reject aggregation across different training budgets, source commits or reference checkpoints. Reporting tooling does not change the frozen learning experiment.
+
+- Add opt-in seeded random-valid baseline and compressed raw holdout trajectories to the live online trainer, plus five-training-seed aggregation and preregistered v9 quiet-validation experiment. No policy promotion.
+
+- RL lab continuation: add `online --registry PATH` to gate against the verified incumbent;
+  reject stale-baseline promotion reports, changed/unpinned registered reports and absent
+  or failed checks. Existing registry reports need explicit re-registration. No promotion.
+- Document the repeatable `--reference-checkpoint NAME=PATH` option and reserve the legacy
+  `reference` name for the first comparison to keep report aliases consistent.
 
 - Polish the shared ARI interface using Kairo’s restrained grids and technical typography in ARI’s warm charcoal/ember palette. Add consistent workspace headers, numbered organization cards, clearer repository rows, quieter panels and a precise replay frame. Preserve the original hero and scroll choreography; keep Projects highlighted throughout the organization/repository/commit flow.
 

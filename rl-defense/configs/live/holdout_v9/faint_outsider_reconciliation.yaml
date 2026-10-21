@@ -1,0 +1,19 @@
+# Fresh v9 heldout: do not execute before preregistration.
+name: faint_outsider_reconciliation
+split: holdout
+horizon: 30
+schedule: bursty
+benign: [alice, bob, carol, dave, erin]
+delegate_per_step: 1
+episodes: 100
+p_start: 0.07
+p_stop: 0.2
+attack_per_step: 1
+benign_per_step: 10
+attackers: [mallory]
+rotate_tokens: true
+victims: [alice, dave]
+delegations: ["bob:dave", "erin:alice"]
+delegate_burst_p: 0.4
+delegate_burst_size: 4
+seed_start: 40700
