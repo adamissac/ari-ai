@@ -1,0 +1,302 @@
+[
+  {
+    "seed": "seed0",
+    "event": "train-only rules tuning",
+    "observed_at": "2026-10-20T23:27:35.824682+00:00",
+    "log_mtime": 1792536447.7839282
+  },
+  {
+    "seed": "seed1",
+    "event": "train-only rules tuning",
+    "observed_at": "2026-10-20T23:27:35.824886+00:00",
+    "log_mtime": 1792536447.783896
+  },
+  {
+    "seed": "seed2",
+    "event": "train-only rules tuning",
+    "observed_at": "2026-10-20T23:27:35.824920+00:00",
+    "log_mtime": 1792536447.7864678
+  },
+  {
+    "seed": "seed3",
+    "event": "train-only rules tuning",
+    "observed_at": "2026-10-20T23:27:35.824948+00:00",
+    "log_mtime": 1792536447.7864363
+  },
+  {
+    "seed": "seed4",
+    "event": "train-only rules tuning",
+    "observed_at": "2026-10-20T23:27:35.824977+00:00",
+    "log_mtime": 1792536447.7864988
+  },
+  {
+    "seed": "seed0",
+    "event": "expert: threshold_rules {'threshold_rules': -3.6509467120181407, 'always_block_principal': -4.798446712018141, 'always_block_principal_long': -3.9418027210884357, 'always_block_top_principal_long': -3.9418027210884357}",
+    "observed_at": "2026-10-20T23:33:26.134134+00:00",
+    "log_mtime": 1792539178.7324085
+  },
+  {
+    "seed": "seed1",
+    "event": "expert: threshold_rules {'threshold_rules': -3.6509467120181407, 'always_block_principal': -4.798446712018141, 'always_block_principal_long': -3.9418027210884357, 'always_block_top_principal_long': -3.9418027210884357}",
+    "observed_at": "2026-10-20T23:33:26.134349+00:00",
+    "log_mtime": 1792539200.431623
+  },
+  {
+    "seed": "seed2",
+    "event": "expert: threshold_rules {'threshold_rules': -3.6509467120181407, 'always_block_principal': -4.798446712018141, 'always_block_principal_long': -3.9418027210884357, 'always_block_top_principal_long': -3.9418027210884357}",
+    "observed_at": "2026-10-20T23:33:26.134460+00:00",
+    "log_mtime": 1792539190.3697722
+  },
+  {
+    "seed": "seed3",
+    "event": "expert: threshold_rules {'threshold_rules': -3.6509467120181407, 'always_block_principal': -4.798446712018141, 'always_block_principal_long': -3.9418027210884357, 'always_block_top_principal_long': -3.9418027210884357}",
+    "observed_at": "2026-10-20T23:33:26.134570+00:00",
+    "log_mtime": 1792539190.5845182
+  },
+  {
+    "seed": "seed4",
+    "event": "expert: threshold_rules {'threshold_rules': -3.6509467120181407, 'always_block_principal': -4.798446712018141, 'always_block_principal_long': -3.9418027210884357, 'always_block_top_principal_long': -3.9418027210884357}",
+    "observed_at": "2026-10-20T23:33:26.134706+00:00",
+    "log_mtime": 1792539196.9514184
+  },
+  {
+    "seed": "seed0",
+    "event": "[pretrained] env_step 0: val -5.47 (margin 0.5)",
+    "observed_at": "2026-10-20T23:36:59.315050+00:00",
+    "log_mtime": 1792539387.436701
+  },
+  {
+    "seed": "seed1",
+    "event": "[pretrained] env_step 0: val -5.47 (margin 0.0)",
+    "observed_at": "2026-10-20T23:36:59.315326+00:00",
+    "log_mtime": 1792539409.4037602
+  },
+  {
+    "seed": "seed2",
+    "event": "[pretrained] env_step 0: val -5.53 (margin 0.0)",
+    "observed_at": "2026-10-20T23:36:59.315470+00:00",
+    "log_mtime": 1792539400.0290668
+  },
+  {
+    "seed": "seed3",
+    "event": "[pretrained] env_step 0: val -5.47 (margin 0.5)",
+    "observed_at": "2026-10-20T23:36:59.315605+00:00",
+    "log_mtime": 1792539399.4112487
+  },
+  {
+    "seed": "seed4",
+    "event": "[pretrained] env_step 0: val -5.48 (margin 0.2)",
+    "observed_at": "2026-10-20T23:36:59.315737+00:00",
+    "log_mtime": 1792539405.5826676
+  },
+  {
+    "seed": "seed0",
+    "event": "[online] env_step 15000: val -5.48 (margin 0.5)",
+    "observed_at": "2026-10-20T23:42:54.863225+00:00",
+    "log_mtime": 1792539767.7245014
+  },
+  {
+    "seed": "seed1",
+    "event": "[online] env_step 15000: val -5.51 (margin 0.0)",
+    "observed_at": "2026-10-20T23:45:34.884040+00:00",
+    "log_mtime": 1792539791.294951
+  },
+  {
+    "seed": "seed2",
+    "event": "[online] env_step 15000: val -5.53 (margin 0.0)",
+    "observed_at": "2026-10-20T23:45:34.884320+00:00",
+    "log_mtime": 1792539782.7368045
+  },
+  {
+    "seed": "seed3",
+    "event": "[online] env_step 15000: val -5.49 (margin 0.5)",
+    "observed_at": "2026-10-20T23:45:34.884452+00:00",
+    "log_mtime": 1792539780.1073923
+  },
+  {
+    "seed": "seed4",
+    "event": "[online] env_step 15000: val -5.49 (margin 0.0)",
+    "observed_at": "2026-10-20T23:45:34.884634+00:00",
+    "log_mtime": 1792539785.7563455
+  },
+  {
+    "seed": "seed0",
+    "event": "[online] env_step 30000: val -5.48 (margin 0.5)",
+    "observed_at": "2026-10-20T23:54:07.485410+00:00",
+    "log_mtime": 1792540195.3240047
+  },
+  {
+    "seed": "seed1",
+    "event": "[online] env_step 30000: val -5.47 (margin 0.1)",
+    "observed_at": "2026-10-20T23:54:07.485681+00:00",
+    "log_mtime": 1792540227.2510679
+  },
+  {
+    "seed": "seed2",
+    "event": "[online] env_step 30000: val -5.53 (margin 0.0)",
+    "observed_at": "2026-10-20T23:54:07.485815+00:00",
+    "log_mtime": 1792540216.8656847
+  },
+  {
+    "seed": "seed3",
+    "event": "[online] env_step 30000: val -5.50 (margin 0.0)",
+    "observed_at": "2026-10-20T23:54:07.485935+00:00",
+    "log_mtime": 1792540210.7715786
+  },
+  {
+    "seed": "seed4",
+    "event": "[online] env_step 30000: val -5.49 (margin 0.0)",
+    "observed_at": "2026-10-20T23:54:07.486083+00:00",
+    "log_mtime": 1792540219.683154
+  },
+  {
+    "seed": "seed0",
+    "event": "[online] env_step 45000: val -5.46 (margin 0.3)",
+    "observed_at": "2026-10-20T23:57:46.349968+00:00",
+    "log_mtime": 1792540634.6202626
+  },
+  {
+    "seed": "seed1",
+    "event": "[online] env_step 45000: val -5.50 (margin 0.0)",
+    "observed_at": "2026-10-20T23:57:46.350192+00:00",
+    "log_mtime": 1792540663.6766996
+  },
+  {
+    "seed": "seed2",
+    "event": "[online] env_step 45000: val -5.53 (margin 0.0)",
+    "observed_at": "2026-10-20T23:57:46.350315+00:00",
+    "log_mtime": 1792540654.606141
+  },
+  {
+    "seed": "seed3",
+    "event": "[online] env_step 45000: val -5.50 (margin 0.0)",
+    "observed_at": "2026-10-20T23:57:46.350445+00:00",
+    "log_mtime": 1792540647.5455403
+  },
+  {
+    "seed": "seed4",
+    "event": "[online] env_step 45000: val -5.61 (margin 0.2)",
+    "observed_at": "2026-10-20T23:57:46.350583+00:00",
+    "log_mtime": 1792540656.1646745
+  },
+  {
+    "seed": "seed0",
+    "event": "[online] env_step 75000: val -5.50 (margin 0.0)",
+    "observed_at": "2026-10-21T00:18:20.816899+00:00",
+    "log_mtime": 1792541431.7376192
+  },
+  {
+    "seed": "seed1",
+    "event": "[online] env_step 75000: val -5.51 (margin 0.1)",
+    "observed_at": "2026-10-21T00:18:20.817355+00:00",
+    "log_mtime": 1792541474.3798723
+  },
+  {
+    "seed": "seed2",
+    "event": "[online] env_step 75000: val -5.20 (margin 0.0)",
+    "observed_at": "2026-10-21T00:18:20.817648+00:00",
+    "log_mtime": 1792541460.9446409
+  },
+  {
+    "seed": "seed3",
+    "event": "[online] env_step 75000: val -5.47 (margin 0.5)",
+    "observed_at": "2026-10-21T00:18:20.817989+00:00",
+    "log_mtime": 1792541450.3929994
+  },
+  {
+    "seed": "seed4",
+    "event": "[online] env_step 75000: val -5.59 (margin 0.2)",
+    "observed_at": "2026-10-21T00:18:20.818213+00:00",
+    "log_mtime": 1792541465.398145
+  },
+  {
+    "seed": "seed0",
+    "event": "[online] env_step 90000: val -5.36 (margin 0.0)",
+    "observed_at": "2026-10-21T00:20:41.270306+00:00",
+    "log_mtime": 1792542011.4987764
+  },
+  {
+    "seed": "seed3",
+    "event": "[online] env_step 90000: val -5.28 (margin 0.0)",
+    "observed_at": "2026-10-21T00:20:41.270855+00:00",
+    "log_mtime": 1792542041.101585
+  },
+  {
+    "seed": "seed1",
+    "event": "[online] env_step 90000: val -5.47 (margin 0.0)",
+    "observed_at": "2026-10-21T00:23:32.280616+00:00",
+    "log_mtime": 1792542076.005111
+  },
+  {
+    "seed": "seed2",
+    "event": "[online] env_step 90000: val -5.37 (margin 0.0)",
+    "observed_at": "2026-10-21T00:23:32.280904+00:00",
+    "log_mtime": 1792542054.4718354
+  },
+  {
+    "seed": "seed4",
+    "event": "[online] env_step 90000: val -5.63 (margin 0.0)",
+    "observed_at": "2026-10-21T00:23:32.281180+00:00",
+    "log_mtime": 1792542064.9182847
+  },
+  {
+    "seed": "seed0",
+    "event": "[online] env_step 105000: val -5.28 (margin 0.0)",
+    "observed_at": "2026-10-21T00:31:40.465959+00:00",
+    "log_mtime": 1792542653.589326
+  },
+  {
+    "seed": "seed3",
+    "event": "[online] env_step 105000: val -5.32 (margin 0.0)",
+    "observed_at": "2026-10-21T00:31:40.466651+00:00",
+    "log_mtime": 1792542687.1538596
+  },
+  {
+    "seed": "seed1",
+    "event": "[online] env_step 105000: val -5.26 (margin 0.0)",
+    "observed_at": "2026-10-21T00:33:54.666857+00:00",
+    "log_mtime": 1792542723.6016622
+  },
+  {
+    "seed": "seed2",
+    "event": "[online] env_step 105000: val -5.38 (margin 0.0)",
+    "observed_at": "2026-10-21T00:33:54.667238+00:00",
+    "log_mtime": 1792542703.5365872
+  },
+  {
+    "seed": "seed4",
+    "event": "[online] env_step 105000: val -5.62 (margin 0.2)",
+    "observed_at": "2026-10-21T00:33:54.667597+00:00",
+    "log_mtime": 1792542715.8898704
+  },
+  {
+    "seed": "seed0",
+    "event": "[online] env_step 120000: val -5.34 (margin 0.1)",
+    "observed_at": "2026-10-21T00:43:30.288862+00:00",
+    "log_mtime": 1792543316.688795
+  },
+  {
+    "seed": "seed1",
+    "event": "[online] env_step 120000: val -5.13 (margin 0.0)",
+    "observed_at": "2026-10-21T00:43:30.289313+00:00",
+    "log_mtime": 1792543396.1929288
+  },
+  {
+    "seed": "seed2",
+    "event": "[online] env_step 120000: val -5.20 (margin 0.1)",
+    "observed_at": "2026-10-21T00:43:30.289504+00:00",
+    "log_mtime": 1792543370.549153
+  },
+  {
+    "seed": "seed3",
+    "event": "[online] env_step 120000: val -5.22 (margin 0.2)",
+    "observed_at": "2026-10-21T00:43:30.289678+00:00",
+    "log_mtime": 1792543354.6854622
+  },
+  {
+    "seed": "seed4",
+    "event": "[online] env_step 120000: val -5.56 (margin 0.0)",
+    "observed_at": "2026-10-21T00:43:30.289846+00:00",
+    "log_mtime": 1792543389.941585
+  }
+]
