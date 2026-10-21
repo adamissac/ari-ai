@@ -1,0 +1,33 @@
+{
+  "schema": "live-evidence-index/0.1",
+  "run": "/Users/alanmozhoor/Documents/hackatl-agentic-security/.claude/worktrees/live-retrain-v8-4c5c2e/rl-defense/.venv/bin/python -m rl_defense.live.online --registry /Users/alanmozhoor/Documents/hackatl-agentic-security/.claude/worktrees/mystifying-hofstadter-c5aaf7/rl-defense/runs/live/registry.json --rules-episodes 2 --seed 0 --train-dir train_v8 --val-dir val_v10 --holdout-dir holdout_v10 --holdout-episodes 100 --severity-context platform --random-baseline --record-trajectories --reference-checkpoint v8=results/live-retrain-v8/candidate_online.pt --reference-checkpoint v9=results/live-retrain-v9/seed0/candidate_online.pt --out runs/live/retrain-v10/balanced/seed0 --evidence-dir results/live-retrain-v10/balanced/seed0 --balance-demo-actions",
+  "artifacts": {
+    "checkpoint": {
+      "path": "candidate_online.pt",
+      "stored_as": "file",
+      "sha256": "1666aca9978e04c9357b65602be04f0b72b5391f5c997d7192fae51ae3c10f0b",
+      "note": "the selected candidate; digest equals the report's checkpoint_sha256"
+    },
+    "experiment": {
+      "path": "candidate_online_experience.jsonl",
+      "stored_as": "gzip",
+      "stored_path": "candidate_online_experience.jsonl.gz",
+      "sha256": "b1eacb9635a62ea97fbcc80f7fb25895e86d8a83f1081394bffab1a52db53f4a",
+      "note": "complete log: demonstrations + all online transitions (154200 lines)"
+    },
+    "selected_experience": {
+      "path": "candidate_online_selected_experience.jsonl",
+      "stored_as": "prefix",
+      "of": "experiment",
+      "lines": 94200,
+      "sha256": "2caece8074fecc7a53aabaad34201427a3a6fabea9f2cac2a3b68bc18979478f",
+      "note": "the data available at the selected snapshot; the hash the checkpoint's lineage.experience_sha256 pins"
+    },
+    "holdout_trajectories": {
+      "path": "holdout_trajectories.jsonl",
+      "stored_as": "gzip",
+      "stored_path": "holdout_trajectories.jsonl.gz",
+      "sha256": "42cb3e39de1d31f2c62d1837ecc6e47349cad00b341caf14be240e59355d9ec1"
+    }
+  }
+}

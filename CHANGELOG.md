@@ -9,9 +9,11 @@ All notable changes are documented here. Format follows
 - Add per-repository Automatic runs ON/OFF and manual commit runs when OFF. Queue excess commits under project quotas, require authorized push sender plus commit attribution, and enforce Claude Haiku 5.5 in production. Contract 0.15.0 and migration 0009.
 
 - Automatically queue every eligible pushed commit, with verified GitHub author rollout (Railway defaults to `adamissac`), per-commit deduplication and resume after scope approval.
+- Complete the preregistered two-arm v10 RL study: ten runs and33,000 held-out episodes, full checkpoint/trajectory evidence and seed-level comparisons. Balancing improves mean return but every candidate rejects; primary hypothesis unsupported and v6 remains deployed.
+
 - Preserve RL aggregate source provenance and validate complete seed gates. Validate all evidence before staged writes, with rollback on I/O failure; recheck tracked source bytes for every training job.
 
-- Add opt-in action-balanced demonstration sampling for the RL lab, saved-v9 failure diagnostics, and a fresh preregistered two-arm v10 study. Default replay is unchanged; v10 effectiveness remains untested and v6 remains deployed.
+- Add opt-in action-balanced demonstration sampling for the RL lab, saved-v9 failure diagnostics, and a fresh preregistered two-arm v10 study. Default replay is unchanged; the completed v10 study is reported above and v6 remains deployed.
 
 - Tighten RL study source/teacher-budget/scenario validation, pin fixed references, and verify recorded trajectories during initial evidence packing. Historical v9 measurements are unchanged.
 

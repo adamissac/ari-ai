@@ -110,3 +110,27 @@ a future experiment (~6h CPU); no model promotion.
 ### Automatic/manual mode and Haiku-only follow-up (#377 / #380)
 
 Implemented per-repository persisted ON/OFF, owner-only API, migration 0009 and proposed additive schema 0.15.0; manual Run shown when OFF. Added signed-sender gate and per-project start quotas that defer every excess commit durably. Production/staging gateway, Railway startup and quick-read enforce Haiku 5.5. Historical evidence labels preserved. Contract review requested from Alan; full test/CI and deployment verification remain pending.
+### 2026-10-21 — V10 execution authorized
+
+IN_PROGRESS on `feat/alan/live-retrain-v10`: owner requested continuation after
+merged preregistration. Launch the unchanged two-arm/five-seed study with five CPU
+workers, fresh validation/holdout, actual read-only v6 registry and all ten runs
+retained. Expected compute roughly six hours. Freeze launch commit and tracked
+source until parent runner exits; no automatic retries, policy selection or promotion.
+Prior source validation: merged #378 CI,282 RL tests and20k-step reload smoke passed.
+This entry records authorization/preparation, not a successful experiment.
+
+### 2026-10-21 — RL-V10-001 completed, no promotion
+
+Completed uniform/balanced seeds0–4 from frozen source `a98899d` in5h58m17s
+(before final diagnostics), no execution errors;33,000 held-out episodes retained.
+Balanced-minus-uniform return +0.05919 (95% training-seed CI +0.03335 to +0.08713;
+Holm p0.0895); balanced-minus-v6 +0.29080 (CI +0.27056 to +0.31045). Primary
+hypothesis unsupported: all ten candidates reject; every balanced seed has a scenario
+regression, four fail availability, three fail static-rules comparison. Compromise
+improves but availability/quiet disruption worsen. Train-only diagnostics pass for
+all ten; all saved evidence verifies and checkpoints reload. Worst saved failure:
+uniform seed2 persistent43203,84/84 compromised vs v6 0/84. No holdout reruns,
+retries or promotion. Real registry digest remains c3455933…; v6 stays deployed.
+Results/provenance: `rl-defense/results/live-retrain-v10/PROVENANCE.md`.
+Future experiments need fresh preregistration/holdout; no follow-up run launched.
