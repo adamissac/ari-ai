@@ -19,11 +19,10 @@ from datetime import UTC, datetime
 from importlib.metadata import version
 from pathlib import Path
 
-from source_pin import source_fingerprint
-
 from rl_defense.checkpoint import git_sha, load_checkpoint, sha256_file
 from rl_defense.live import evidence, study
 from rl_defense.live.registry import Registry
+from rl_defense.live.study import source_fingerprint
 
 
 def main() -> int:

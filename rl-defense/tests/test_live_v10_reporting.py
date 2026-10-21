@@ -19,7 +19,8 @@ def module(name):
 
 
 def test_source_pin_detects_uncommitted_edits_without_head_change(tmp_path, monkeypatch):
-    source = module("source_pin")
+    from rl_defense.live import study as source
+
     (tmp_path / "trainer.py").write_text("version = 1\n")
     (tmp_path / "config.yaml").write_text("budget: 150000\n")
 

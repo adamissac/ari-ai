@@ -70,7 +70,7 @@ def _reports():
                 for n in ("candidate", "deployed")
             },
             "decision": "reject",
-            "checks": [],
+            "checks": [{"name": n, "passed": False} for n in sorted(study.GATE_NAMES)],
         }
         for seed in range(5)
     ]
@@ -238,3 +238,23 @@ def test_online_refuses_impossible_budget_before_training(tmp_path, budget):
     )
     with pytest.raises(ValueError, match="requested holdout budget"):
         online.run(args)
+
+
+@pytest.mark.parametrize("bad", ["missing", "duplicate", "nonbool", "decision"])
+def test_aggregate_rejects_invalid_or_inconsistent_gates(bad):
+    reports = _reports()
+    r = reports[0]
+    if bad == "missing":
+        r["checks"].pop()
+    elif bad == "duplicate":
+        r["checks"][1] = r["checks"][0].copy()
+    elif bad == "nonbool":
+        r["checks"][0]["passed"] = 1
+    else:
+        r["decision"] = "recommend_promote"
+    with pytest.raises(ValueError, match="gate"):
+        study.aggregate(reports)
+
+
+def test_summary_retains_validated_source():
+    assert study.aggregate(_reports())["git_sha"] == "1" * 40

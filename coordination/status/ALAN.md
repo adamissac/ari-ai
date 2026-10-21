@@ -262,3 +262,7 @@ its historical CLI reproduces the unchanged summary and77 stored artifacts verif
 #378 holds candidate demo balance and unexecuted controlled preregistration.
 V10 review fixes include source-byte fingerprints and required secondary reporting;
 58 integrated tests pass. No new policy selected or promoted.
+
+#376 merged atce723f8 (all CI green,267 RL tests). Late review findings are fixed
+in #378 before its merge; v9 original summary preserved, enriched provenance copy
+added, and finalization fails without partial writes. No fresh evaluation or promotion.
