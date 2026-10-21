@@ -256,3 +256,9 @@ sampling with unchanged default/agent replay. Added sampler, tiny real training 
 paired-arm/split regression tests. Fresh val_v10 and holdout_v10 plus controlled
 two-arm/five-seed preregistration/runner are prepared. No v10 training or holdout run.
 V6 stays deployed; a future study needs ~6h CPU with five workers.
+
+#375 merged at64c38b7 after all checks. #376's eight review findings addressed;
+its historical CLI reproduces the unchanged summary and77 stored artifacts verify.
+#378 holds candidate demo balance and unexecuted controlled preregistration.
+V10 review fixes include source-byte fingerprints and required secondary reporting;
+58 integrated tests pass. No new policy selected or promoted.

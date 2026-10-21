@@ -1095,3 +1095,10 @@ Additional #376 review: expose explicit legacy teacher budget on aggregation CLI
 require a clean concrete source commit before launch and validate actual pooled/scenario
 episode counts. Historical CLI re-aggregation and final evidence verification are
 executed before publishing. No held-out replay or learning changes.
+
+V10 review follow-up (#378): normalize only configured OnlineConfig settings across
+arms (not treatment/selected outputs), fingerprint tracked source/config bytes before
+and after every job, and complete both-arm train-only checks/worst-trace extraction
+and stored evidence verification before reporting success. Synthetic postprocessing
+and uncommitted-source-edit regressions added; integrated58 tests passed. No v10
+training/evaluation has run. #375 merged at64c38b7; #376 awaits final CI.

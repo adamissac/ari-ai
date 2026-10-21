@@ -12,10 +12,14 @@ import concurrent.futures
 import json
 import os
 import platform
+import shutil
 import subprocess
 import sys
 from datetime import UTC, datetime
+from importlib.metadata import version
 from pathlib import Path
+
+from source_pin import source_fingerprint
 
 from rl_defense.checkpoint import git_sha, load_checkpoint, sha256_file
 from rl_defense.live import evidence, study
@@ -43,6 +47,7 @@ def main() -> int:
     ):
         raise ValueError("study outputs already exist; refuse overwrite or implicit restart")
     source_sha = study.require_clean_source(root)
+    source_digest = source_fingerprint(root)
     refs = {"v8": Path("results/live-retrain-v8/candidate_online.pt")}
     refs.update(
         {
@@ -65,7 +70,21 @@ def main() -> int:
     metadata = {
         "started_at": datetime.now(UTC).isoformat(),
         "git_sha": source_sha,
+        "source_fingerprint": source_digest,
         "python": sys.version,
+        "packages": {
+            name: version(name)
+            for name in (
+                "torch",
+                "numpy",
+                "scipy",
+                "gymnasium",
+                "pydantic",
+                "fastapi",
+                "httpx",
+                "PyYAML",
+            )
+        },
         "platform": platform.platform(),
         "cpu_count": os.cpu_count(),
         "workers": args.workers,
@@ -75,10 +94,13 @@ def main() -> int:
         "training_seeds": list(study.SEEDS),
         "preregistration_sha256": sha256_file(result_root / "PREREGISTRATION.md"),
     }
+    shutil.copyfile(args.registry, result_root / "registry_snapshot.json")
+    if sha256_file(result_root / "registry_snapshot.json") != metadata["registry_sha256"]:
+        raise ValueError("registry changed while capturing launch metadata")
     (run_root / "RUN.json").write_text(json.dumps(metadata, indent=2))
 
     def run_seed(arm: str, seed: int) -> dict:
-        if git_sha() != metadata["git_sha"]:
+        if git_sha() != metadata["git_sha"] or source_fingerprint(root) != source_digest:
             raise ValueError("training source changed during study")
         # Read-only use of the real local registry. No fabricated approval or init.
         out, dest = run_root / arm / f"seed{seed}", result_root / arm / f"seed{seed}"
@@ -125,7 +147,7 @@ def main() -> int:
             )
         if sha256_file(Registry(args.registry).deployed_checkpoint()) != baseline_sha:
             raise ValueError("incumbent changed during study; results cannot support promotion")
-        if git_sha() != metadata["git_sha"]:
+        if git_sha() != metadata["git_sha"] or source_fingerprint(root) != source_digest:
             raise ValueError("training source changed during study")
         evidence.pack(dest, run=" ".join(command))
         evidence.verify(dest)
@@ -133,6 +155,8 @@ def main() -> int:
         expected = {"v8": pins["v8"], "v9": pins[f"v9_seed{seed}"]}
         if {r["name"]: r["checkpoint_sha256"] for r in report["references"]} != expected:
             raise ValueError("reference identity changed during run")
+        for filename in ("run.log", "command.json"):
+            shutil.copyfile(out / filename, dest / filename)
         return report
 
     errors, reports = [], {"uniform": [], "balanced": []}
@@ -156,6 +180,9 @@ def main() -> int:
 
     summary = summarize(reports)
     (result_root / "study_summary.json").write_text(json.dumps(summary, indent=2, allow_nan=False))
+    from postprocess import postprocess
+
+    postprocess(result_root)
     print("Both arms / all ten runs complete. Evidence retained; no policy promoted.", flush=True)
     return 0
 
