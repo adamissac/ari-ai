@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Diagnose v10 availability failures from saved evidence and add an opt-in validation availability screen that stops before holdout execution. Retain targeted access/control regressions; pause further long training pending an evidence-backed policy improvement.
+
 - Complete the preregistered two-arm v10 RL study: ten runs and33,000 held-out episodes, full checkpoint/trajectory evidence and seed-level comparisons. Balancing improves mean return but every candidate rejects; primary hypothesis unsupported and v6 remains deployed.
 
 - Preserve RL aggregate source provenance and validate complete seed gates. Validate all evidence before staged writes, with rollback on I/O failure; recheck tracked source bytes for every training job.
