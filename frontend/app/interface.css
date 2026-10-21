@@ -72,7 +72,7 @@
 .footer-ruler { height: 5px; background: repeating-linear-gradient(90deg, #d2b9ac55 0 1px, transparent 1px 7px); opacity: .55; }
 .footer-brand > span { font-size: 52px; }
 .footer-links a { transition: color 200ms, translate 200ms; }
-.footer-links a:hover { color: #ffb09b; translate: 3px 0; }
+.footer-links a:hover { color: #ffb09b; translate: 4px 0; }
 .footer-horizon { background: radial-gradient(ellipse at 25% 140%, #c2452d44, transparent 65%); }
 
 @media (max-width: 639px) {
