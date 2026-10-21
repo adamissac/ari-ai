@@ -1,0 +1,33 @@
+{
+  "schema": "live-evidence-index/0.1",
+  "run": "/Users/alanmozhoor/Documents/hackatl-agentic-security/.claude/worktrees/live-retrain-v8-4c5c2e/rl-defense/.venv/bin/python -m rl_defense.live.online --registry /Users/alanmozhoor/Documents/hackatl-agentic-security/.claude/worktrees/mystifying-hofstadter-c5aaf7/rl-defense/runs/live/registry.json --rules-episodes 2 --seed 2 --train-dir train_v8 --val-dir val_v10 --holdout-dir holdout_v10 --holdout-episodes 100 --severity-context platform --random-baseline --record-trajectories --reference-checkpoint v8=results/live-retrain-v8/candidate_online.pt --reference-checkpoint v9=results/live-retrain-v9/seed2/candidate_online.pt --out runs/live/retrain-v10/uniform/seed2 --evidence-dir results/live-retrain-v10/uniform/seed2",
+  "artifacts": {
+    "checkpoint": {
+      "path": "candidate_online.pt",
+      "stored_as": "file",
+      "sha256": "486c06e1febe71f92b0af4eddc3bf6a02cd16b3803940c483fd7937231cfef18",
+      "note": "the selected candidate; digest equals the report's checkpoint_sha256"
+    },
+    "experiment": {
+      "path": "candidate_online_experience.jsonl",
+      "stored_as": "gzip",
+      "stored_path": "candidate_online_experience.jsonl.gz",
+      "sha256": "58c6c90380eefe10227c5df74930344a8103241f977b3110ead4cb1dbc67b618",
+      "note": "complete log: demonstrations + all online transitions (154200 lines)"
+    },
+    "selected_experience": {
+      "path": "candidate_online_selected_experience.jsonl",
+      "stored_as": "prefix",
+      "of": "experiment",
+      "lines": 34200,
+      "sha256": "3849e8d9729a858d309e194a4279c9d80145b557cbb7ce6f1085a90989e83bf2",
+      "note": "the data available at the selected snapshot; the hash the checkpoint's lineage.experience_sha256 pins"
+    },
+    "holdout_trajectories": {
+      "path": "holdout_trajectories.jsonl",
+      "stored_as": "gzip",
+      "stored_path": "holdout_trajectories.jsonl.gz",
+      "sha256": "9d78142cd1b8ddb4d36d016bfdf3c38b1d9864682afd33965031237bf777cf1e"
+    }
+  }
+}
