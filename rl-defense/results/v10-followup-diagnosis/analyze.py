@@ -12,7 +12,7 @@ from rl_defense.live.online import validation_availability_screen
 def analyze(root: Path) -> dict:
     inputs = {}
 
-    def read(relative):
+    def read(relative: str) -> dict:
         path = root / relative
         inputs[relative] = sha256_file(path)
         return json.loads(path.read_text())

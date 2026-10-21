@@ -42,6 +42,14 @@ or executing any held-out policy/trajectory output. A missing, nonfinite, invali
 below-floor metric is rejected. Selected step/margin must match exactly one history
 entry. Rejection writes `validation_screen.json` and raises an explicit error while
 leaving the trained checkpoint/experience intact. Eligible screening is not promotion.
+Flagged runs require empty, non-overlapping transient/evidence directories before any
+training mutation, preserving any old results. The screen pins the checkpoint digest,
+training seed, source revision, validation scenario hashes and canonical manifest hash.
+If `--evidence-dir` is requested, rejection atomically exports a hash-verified, restorable
+bundle (screen, checkpoint, manifest, compressed full experience and selected prefix)
+before raising; it contains no promotion report. Use `python -m rl_defense.live.evidence
+verify PATH` or `restore PATH` for that bundle. The transient source remains intact.
+
 The flag is opt-in; old experiments/default training and serving behavior are unchanged.
 On a successful flagged run, the screen is embedded in the promotion report. This
 correction would have stopped all ten v10 selections before holdout execution.
