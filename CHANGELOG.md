@@ -6,6 +6,10 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Add per-repository Automatic runs ON/OFF and manual commit runs when OFF. Queue excess commits under project quotas, require authorized push sender plus commit attribution, and enforce Claude Haiku 5.5 in production. Contract 0.15.0 and migration 0009.
+
+- Automatically queue every eligible pushed commit, with verified GitHub author rollout (Railway defaults to `adamissac`), per-commit deduplication and resume after scope approval.
+
 - Diagnose v10 availability failures from saved evidence and add an opt-in validation availability screen that stops before holdout execution. Retain targeted access/control regressions; pause further long training pending an evidence-backed policy improvement.
 
 - Complete the preregistered two-arm v10 RL study: ten runs and33,000 held-out episodes, full checkpoint/trajectory evidence and seed-level comparisons. Balancing improves mean return but every candidate rejects; primary hypothesis unsupported and v6 remains deployed.

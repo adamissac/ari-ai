@@ -89,6 +89,7 @@ class RepoProvider(StrEnum):
 
 
 class Repository(StrictModel):
+    automatic_assessments: bool = True
     id: RepositoryId
     project_id: ProjectId
     provider: RepoProvider = RepoProvider.github

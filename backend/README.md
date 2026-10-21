@@ -99,3 +99,50 @@ provider to initialize in the HTTP process. No request/response DTO changes.
 
 
 Scope activation policy (ADR-0016): an owner may explicitly approve their own nonempty sandbox-only scope. Owner membership, pending/unexpired state and audit recording remain mandatory. Other approval subjects retain independent-approver requirements.
+
+### Automatic commit rollout
+
+`GITHUB_AUTO_COMMIT_AUTHORS` enables a per-commit push queue for a comma-separated
+list of GitHub author logins (`*` allows any GitHub-linked author). The Railway
+entrypoint defaults to `adamissac`; other environments default to the existing
+monitoring policy when unset/empty. Eligibility requires both the signed push sender and GitHub API commit-author attribution to match the rollout; author metadata alone never authorizes paid work.
+
+Install the GitHub App with push events, connect the repository, enable project
+monitoring, and approve its sandbox scope once. Subsequent eligible pushes queue
+full assessments for every commit, including docs/tests-only changes and commits
+arriving during another assessment. Duplicate pushes do not create duplicate runs.
+Scope approval resumes commits previously blocked for lack of authorization.
+The existing commit page polls persisted assessments; opening it or clicking Run
+is not required. This applies to new pushes, not historical backfills.
+
+Full automatic assessments use the project’s normal `default_budget`, clamped to
+operator caps, rather than the legacy cheaper monitoring budget. Patch/Verify stages that depend
+on remediation approval still wait for that approval; automatic triggering does
+not fabricate a successful seven-agent run or approve proposed repairs. Identity
+API failures retry in the durable queue and eventually dead-letter visibly.
+Compare pagination handles truncated pushes; new-branch payloads at GitHub's 2048
+commit limit fail explicitly rather than silently dropping commits.
+
+
+### Automatic/manual repository mode and Haiku 5.5 (#380)
+
+Each connected repository has a persisted `automatic_assessments` switch, default
+ON. ON queues every eligible new commit in the background without a browser visit
+or Run click. OFF prevents unstarted automatic work and exposes manual Run on
+selected commits; active runs and history remain intact. GET/PATCH
+`/api/v1/repositories/{repo_id}` returns Repository; PATCH requires a project owner
+and is audited. Migration 0009 adds the flag; schema 0.15.0 adds RepositoryUpdate
+and regenerates JSON/TypeScript. Deploy the backend and frontend together.
+
+The rollout requires both the signed push sender and GitHub-attributed commit
+author to match `GITHUB_AUTO_COMMIT_AUTHORS` (initially adamissac). Attribution
+alone is email-derived, not authorization. Project start limits default to 5/hour
+and 20/day (`AUTOMATIC_ASSESSMENTS_PER_HOUR`, `AUTOMATIC_ASSESSMENTS_PER_DAY`). Excess
+commits are durably deferred, not dropped. Full runs use the normal project budget,
+clamped to operator caps. Monitoring and approved sandbox scope remain prerequisites;
+repair approvals remain required.
+
+Production/staging gateway, Railway startup and frontend quick reads enforce
+`claude-haiku-5-5` only, overriding stale production model choices. Errors are
+reported instead of substituting another model. Historical recordings retain
+the model that produced them. Live production run verification remains outstanding.

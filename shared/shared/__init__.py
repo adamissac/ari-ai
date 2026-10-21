@@ -6,7 +6,7 @@ coordination/CONTRACTS.md.
 """
 
 SCHEMA_VERSION = (
-    "0.14.0"  # 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING;
+    "0.15.0"  # 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING;
     # 0.6 intelligence memory (PR #39); 0.7 security standards + incidents (PR #49);
     # 0.8 FindingDetail / AssessmentReport response DTOs (additive);
     # 0.9 CheckCategory enum (Probe ids + V0 fixture aliases);
@@ -16,6 +16,7 @@ SCHEMA_VERSION = (
     # 0.13 live RL lab (additive): DefenseActionName "block_principal" (#324),
     #      "block_principal_long", "block_top_principal_long"; PlatformFacts principal-block
     #      and v3 detector fields with defaults (#334, #335; old payloads validate unchanged);
+    # 0.15 repository automatic assessment mode and owner update (additive).
     # 0.14 runtime principal detection (additive): RouteWindow.principals (PrincipalCounts,
     #      pseudonymous PrincipalRef) and DefenseRecommendation.principal_targets
 )

@@ -54,6 +54,7 @@ from backend.services import (
     budget_over_cap,
     cancel_queued_assessment,
     create_assessment,
+    project_org,
     project_settings,
     request_assessment_cancel,
 )
@@ -69,6 +70,7 @@ from shared.api import (
     ProjectCreate,
     ProjectUpdate,
     RepositoryConnect,
+    RepositoryUpdate,
     ScopeCreate,
     SnapshotCreate,
 )
@@ -290,6 +292,7 @@ def _repo(r: Any) -> Repository:
         full_name=r["full_name"],
         default_branch=r["default_branch"],
         installation_id=r["installation_id"],
+        automatic_assessments=r["automatic_assessments"],
         created_at=r["created_at"],
     )
 
@@ -359,6 +362,39 @@ def _repo_access(
         raise not_found("repository")
     require_project(conn, user, r["project_id"], role)
     return dict(r)
+
+
+@router.get("/repositories/{repo_id}", response_model=Repository)
+def get_repository(repo_id: str, request: Request) -> Repository:
+    with transaction() as conn:
+        return _repo(_repo_access(conn, _user(conn, request), repo_id))
+
+
+@router.patch("/repositories/{repo_id}", response_model=Repository)
+def update_repository(repo_id: str, body: RepositoryUpdate, request: Request) -> Repository:
+    with transaction() as conn:
+        user = _user(conn, request)
+        repo = _repo_access(conn, user, repo_id, MemberRole.owner)
+        conn.execute(
+            sa.update(repositories)
+            .where(repositories.c.id == repo_id)
+            .values(automatic_assessments=body.automatic_assessments)
+        )
+        _audit(
+            conn,
+            project_org(conn, repo["project_id"]),
+            repo["project_id"],
+            user,
+            "repository.automation_updated",
+            "repository",
+            repo_id,
+            automatic_assessments=body.automatic_assessments,
+        )
+        return _repo(
+            conn.execute(sa.select(repositories).where(repositories.c.id == repo_id))
+            .mappings()
+            .one()
+        )
 
 
 @router.post("/repositories/{repo_id}/snapshots", status_code=202, response_model=Snapshot)
@@ -622,6 +658,9 @@ def approve_scope(scope_id: str, request: Request) -> AuthorizedScope:
             update={"status": ScopeStatus.active, "approved_by": user.id, "approved_at": now}
         )
         _save_scope(conn, scope)
+        from backend.auto_commits import resume_blocked
+
+        resume_blocked(conn, scope.project_id, scope.id)
         _decide_subject_approval(conn, "scope", scope.id, user.id, ApprovalStatus.approved, None)
         _audit(
             conn,

@@ -4,6 +4,7 @@ import type { AccessibleRepository } from '@hackatl/frontend-transport';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
+import { RepositoryAutomation } from '@/components/repository-automation';
 import { Avatar } from '@/components/demo/ui';
 import { Button, Empty, ErrorState, Loading } from '@/components/ui';
 import { api } from '@/lib/api';
@@ -58,6 +59,7 @@ function Commits({ org, name, repo, onConnected }: { org: string; name: string; 
           {error !== null && <div className="mt-3"><ErrorState error={error} context="Could not connect" /></div>}
         </div>
       )}
+      {id && <RepositoryAutomation repoId={id} />}
       {id && commits.status === 'loading' && <Loading label="Reading commits from GitHub" />}
       {id && commits.status === 'error' && <ErrorState error={commits.error} onRetry={commits.reload} context="Could not read commits from GitHub" />}
       {id && commits.status === 'ready' && (commits.data.items.length === 0

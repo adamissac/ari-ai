@@ -73,6 +73,9 @@ Simplify project navigation to Code review and 7 agents. Move settings, scopes, 
 Keep organization/repository/commit navigation scoped to the selected repository and SHA. Real commit runs stay inline in a two-tab reviewer/seven-agent workspace with demo-style agent rail and recorded replay; no redirect to shared project history. Resolve the repository’s actual project, search older run pages, reject mismatched results and retain scoped remediation approvals. Optional narrated quick reads are explicitly requested and separate from executed records. Branch `fix/adam/commit-workspace`; validation in PR.
 
 
+## Automatic commit assessments — 2026-10-21
+
+IMPLEMENTED in [PR #377](https://github.com/adamissac/ari-ai/pull/377), pending merge/deployment verification: signed pushes fan out into durable per-commit jobs; GitHub API author allowlist, exact SHA, duplicate protection, no docs-only skip/coalescing loss, scope-approval resume. Railway defaults to `adamissac`; configurable for other accounts. Full runs use the normal project assessment budget (operator-capped), not the deliberately cheaper legacy monitoring budget. Shared contracts unchanged. Full-chain fixture tests use scripted model responses, not live provider evidence. Validation: 181 local backend/monitoring/security tests passed (7 optional/dependency skips); 12 final focused scheduling tests passed. Full-chain fixture covers reviewer and all seven roles with required repair approvals. All GitHub checks passed on cbc0782; checks rerun after integrating newer main documentation/RL changes. Production readiness is reachable; authenticated production worker/run verification remains outstanding.
 ### RL-REGISTRY-001 — v8 promotion review follow-up (Alan, 2026-10-20)
 
 Merged in PR #375 on `feat/alan/rl-v8-continuation`. Bind reports to the current incumbent,
@@ -103,6 +106,10 @@ RL-V10-001 validation: all CI green,282 RL tests plus20k-step checkpoint smoke;
 64 local focused tests;78 saved v9 artifacts verified. Full v10 execution remains
 a future experiment (~6h CPU); no model promotion.
 
+
+### Automatic/manual mode and Haiku-only follow-up (#377 / #380)
+
+Implemented per-repository persisted ON/OFF, owner-only API, migration 0009 and proposed additive schema 0.15.0; manual Run shown when OFF. Added signed-sender gate and per-project start quotas that defer every excess commit durably. Production/staging gateway, Railway startup and quick-read enforce Haiku 5.5. Historical evidence labels preserved. Contract review requested from Alan; full test/CI and deployment verification remain pending.
 ### 2026-10-21 — V10 execution authorized
 
 IN_PROGRESS on `feat/alan/live-retrain-v10`: owner requested continuation after

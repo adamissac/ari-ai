@@ -999,6 +999,9 @@ Keep organization/repository/commit navigation scoped to the selected repository
 Review follow-up: retain accepted starts while history refreshes to prevent duplicate paid runs; lift newly connected repository IDs into the commit workspace; correct replay indexing; bound project lookup concurrency and tolerate unrelated project errors. Added regression coverage for these cases.
 
 
+## Automatic commit assessments — 2026-10-21
+
+IMPLEMENTED in [PR #377](https://github.com/adamissac/ari-ai/pull/377), pending merge/deployment verification: signed pushes fan out into durable per-commit jobs; GitHub API author allowlist, exact SHA, duplicate protection, no docs-only skip/coalescing loss, scope-approval resume. Railway defaults to `adamissac`; configurable for other accounts. Full runs use the normal project assessment budget (operator-capped), not the deliberately cheaper legacy monitoring budget. Shared contracts unchanged. Full-chain fixture tests use scripted model responses, not live provider evidence. Validation: 181 local backend/monitoring/security tests passed (7 optional/dependency skips); 12 final focused scheduling tests passed. Full-chain fixture covers reviewer and all seven roles with required repair approvals. All GitHub checks passed on cbc0782; checks rerun after integrating newer main documentation/RL changes. Production readiness is reachable; authenticated production worker/run verification remains outstanding.
 ### 2026-10-20 — Alan / Codex — continue Claude's RL v8 review
 
 Isolated `/private/tmp/rl-v8-continuation`, branch `feat/alan/rl-v8-continuation`,
@@ -1133,6 +1136,10 @@ and its documented workspace PYTHONPATH. Source-byte/reference/registry guards,
 complete primary/secondary reporting and failure evidence are implemented; no
 automatic model choice, approval or promotion. This requested task ends at preparation.
 
+
+### Automatic/manual mode and Haiku-only follow-up (#377 / #380)
+
+Implemented per-repository persisted ON/OFF, owner-only API, migration 0009 and proposed additive schema 0.15.0; manual Run shown when OFF. Added signed-sender gate and per-project start quotas that defer every excess commit durably. Production/staging gateway, Railway startup and quick-read enforce Haiku 5.5. Historical evidence labels preserved. Contract review requested from Alan; full test/CI and deployment verification remain pending.
 ### 2026-10-21 — V10 execution authorized
 
 IN_PROGRESS on `feat/alan/live-retrain-v10`: owner requested continuation after
@@ -1157,6 +1164,11 @@ uniform seed2 persistent43203,84/84 compromised vs v6 0/84. No holdout reruns,
 retries or promotion. Real registry digest remains c3455933…; v6 stays deployed.
 Results/provenance: `rl-defense/results/live-retrain-v10/PROVENANCE.md`.
 Future experiments need fresh preregistration/holdout; no follow-up run launched.
+
+
+### 2026-10-21 — automatic commit review fixes (#377)
+
+Finalized deferred requests as skipped when repository/rollout policy disables them; added regression coverage. Updated operator docs and ADR-0015 to the explicit Haiku-only production policy. Latest focused scheduling/migration verification: 26 passed; Ruff passed. Prior frontend verification: 305 tests, TypeScript, lint, production build and two real-stack browser checks passed. Integrating latest main; final CI and Alan contract approval remain required. No authenticated live-provider run has been verified.
 
 ### 2026-10-21 — RL-DIAG-001: targeted v10 diagnosis (Alan, owner authorized)
 

@@ -72,3 +72,41 @@ the RL system consumes these as observations in simulation only.
 - Monitoring cannot widen scope: requested assessments reuse the project's
   existing active AuthorizedScope; if none, the request is recorded as
   `blocked_no_scope`.
+
+## Full per-commit rollout (implemented 2026-10-21)
+
+When `GITHUB_AUTO_COMMIT_AUTHORS` is nonempty, GitHub pushes use a separate full
+assessment scheduling policy: one durable job per repository/SHA, GitHub-verified
+author allowlist, no path-based skipping and no coalescing loss. Railway defaults
+to `adamissac`; an explicit comma-separated list or `*` expands the rollout.
+This mode uses the normal project assessment budget, clamped by operator limits,
+instead of the cheaper monitoring budget above. Monitoring enablement and scope
+authorization still apply; scope approval wakes blocked commits. Repair gates
+remain human decisions. Empty config retains the legacy impact policy described
+above. The new path does not backfill commits received before a repository was
+connected, and full execution still depends on configured workers, model access,
+repository checkout and an executable authorized sandbox target.
+
+
+### Automatic/manual repository mode and Haiku 5.5 (#380)
+
+Each connected repository has a persisted `automatic_assessments` switch, default
+ON. ON queues every eligible new commit in the background without a browser visit
+or Run click. OFF prevents unstarted automatic work and exposes manual Run on
+selected commits; active runs and history remain intact. GET/PATCH
+`/api/v1/repositories/{repo_id}` returns Repository; PATCH requires a project owner
+and is audited. Migration 0009 adds the flag; schema 0.15.0 adds RepositoryUpdate
+and regenerates JSON/TypeScript. Deploy the backend and frontend together.
+
+The rollout requires both the signed push sender and GitHub-attributed commit
+author to match `GITHUB_AUTO_COMMIT_AUTHORS` (initially adamissac). Attribution
+alone is email-derived, not authorization. Project start limits default to 5/hour
+and 20/day (`AUTOMATIC_ASSESSMENTS_PER_HOUR`, `AUTOMATIC_ASSESSMENTS_PER_DAY`). Excess
+commits are durably deferred, not dropped. Full runs use the normal project budget,
+clamped to operator caps. Monitoring and approved sandbox scope remain prerequisites;
+repair approvals remain required.
+
+Production/staging gateway, Railway startup and frontend quick reads enforce
+`claude-haiku-5-5` only, overriding stale production model choices. Errors are
+reported instead of substituting another model. Historical recordings retain
+the model that produced them. Live production run verification remains outstanding.
