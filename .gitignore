@@ -77,3 +77,8 @@ specialists/specialists/data/cache/
 rl-defense/results/*/candidate_online_experience.jsonl
 rl-defense/results/*/candidate_online_selected_experience.jsonl
 rl-defense/results/*/*.partial
+
+# Restored five-seed study streams are derived from committed compressed evidence.
+rl-defense/results/*/seed*/candidate_online_experience.jsonl
+rl-defense/results/*/seed*/candidate_online_selected_experience.jsonl
+rl-defense/results/*/seed*/holdout_trajectories.jsonl

@@ -1,0 +1,18 @@
+# Fresh v9 heldout: do not execute before preregistration.
+name: quiet_rogue_reconciler
+split: holdout
+horizon: 30
+schedule: bursty
+benign: [alice, bob, carol, dave, erin]
+delegate_per_step: 1
+episodes: 100
+p_start: 0.035
+p_stop: 0.55
+attack_per_step: 2
+benign_per_step: 10
+attackers: [dave]
+victims: [carol]
+delegations: ["dave:erin", "bob:alice"]
+delegate_burst_p: 0.35
+delegate_burst_size: 4
+seed_start: 40300

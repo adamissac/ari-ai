@@ -1027,6 +1027,59 @@ The first broad run collected an obsolete pre-edit test (226 pass/1 fail); the
 clean committed-tree rerun above supersedes it. Ruff check and Python format
 checks pass. PR: https://github.com/adamissac/ari-ai/pull/375 (review, no merge).
 
+### 2026-10-20 — V9 preregistration and execution
+
+Owner said "Do it" after the proposed next experiment. Defined quiet-validation extension,
+fresh disjoint holdout, five seeds0–4×100 evaluation episodes, actual registered v6 as
+baseline. Pipeline adds opt-in random-valid baseline/raw trajectory retention; aggregation
+uses five seed means and refuses incomplete/mismatched cohorts. ADR-0018 proposes lab
+protocol extension; no simulator TTC is invented. Pre-run env/splits/online smoke31 passed.
+Source/config/preregistration must be pushed before launch; see results/live-retrain-v9.
+
+### 2026-10-20 — V9 evidence tooling prepared during the fixed CPU run
+
+Separate reporting worktree `/private/tmp/rl-v9-reporting`, branch
+`feat/alan/v9-reporting`, based on29aa5f8. The actual training checkout stays on29aa5f8;
+learning modules/configs are unchanged. Added portable finalization/read-only hash
+verification, secondary threshold checks, isolated scientific plotting helpers and
+comparability guards for budgets/source/reference hashes. Targeted20 passed; earlier
+reporting/pipeline22 passed; lint/format clean. Fixture tests execute no held-out v9
+policy. Merge reporting into the experiment only after all five runs finish, then
+report/plot/finalize saved artifacts per POSTPROCESSING.md. No promotion.
+
+### 2026-10-21 — V9 completed, no promotion
+
+All five frozen-source (`29aa5f8`) runs completed in 3h 7m 12s with no execution errors.
+16,500 held-out episodes retained across 11 policies. Primary hypothesis unsupported:
+return gain vs actual v6 −0.0458, 95% training-seed CI [−0.1758, +0.0843]. Both quiet
+scenario means exceed v8, but mixed rotation regresses and all five gates reject.
+Compromise fraction improves while availability and quiet disruption worsen.
+Selected online steps: 105k,150k,75k,120k,0; seed4 selects demo-pretrained weights.
+Exact checkpoints, compressed full experience/trajectories, all metrics, worst paired
+failure, train-only mapping/behavior checks, runtime/registry snapshots and figure are
+retained in `rl-defense/results/live-retrain-v9`. Reporting integrates only after jobs
+finish; no held-out rerun/tuning. Registry v6 unchanged. PR #376 awaits review, stacked
+on incumbent binding PR #375. Next experiments need fresh preregistration/holdout and
+should address mixed rotation/persistent attacks; this holdout is now exposed.
+
+V9 final validation: core frozen-source RL suite 237 passed; reporting/portability suite
+20 passed in1.91s; Ruff and diff checks pass; 76 stored artifacts plus all five compressed
+evidence indices verified, checkpoint source/optimizer lineage verified, registry unchanged.
+
+### 2026-10-21 — V9 pre-merge review corrections
+
+Addressed five PR #376 review findings: require source/teacher-budget/expert/rule
+cohort provenance and complete holdout scenario sets; index trajectories at initial
+export; pin fixed v7/v8 bytes in launcher/reporter. Historical reports remain unchanged;
+explicit saved-command budgets reproduce the original summary. Focused31 tests pass.
+No retraining, holdout replay or promotion. Owner authorized merging #375/#376 and
+subsequent v10 failure analysis, regressions and preregistration.
+
 ### 2026-10-20 — interface polish
 
 Polish the shared ARI interface using Kairo’s restrained grids and technical typography in ARI’s warm charcoal/ember palette. Add consistent workspace headers, numbered organization cards, clearer repository rows, quieter panels and a precise replay frame. Preserve the original hero and scroll choreography; keep Projects highlighted throughout the organization/repository/commit flow. Branch `feat/adam/ui-polish`; validation and screenshots recorded in PR.
+
+Additional #376 review: expose explicit legacy teacher budget on aggregation CLI,
+require a clean concrete source commit before launch and validate actual pooled/scenario
+episode counts. Historical CLI re-aggregation and final evidence verification are
+executed before publishing. No held-out replay or learning changes.

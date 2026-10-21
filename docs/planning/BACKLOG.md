@@ -83,4 +83,12 @@ next training experiment needs preregistration and a fresh holdout.
 
 RL-REGISTRY-001 validation: full RL suite 228 passed; Ruff lint/format and diff checks pass.
 
+### RL-V9-001 — Quiet-validation five-seed lab experiment
+
+IMPLEMENTED; awaiting review in PR #376 on `feat/alan/live-retrain-v9` (Alan).
+Preregister val_v9/fresh holdout_v9; train seeds0–4; use actual incumbent v6; preserve
+all trajectories and seed-level uncertainty. Completed all five seeds and 16,500 held-out
+episodes. Hypothesis unsupported; all seeds reject, v6 unchanged. Evidence/figure in
+`rl-defense/results/live-retrain-v9/`; no automatic promotion.
+
 - [x] UI-POLISH: coherent Kairo-inspired visual system across ARI workspace and landing chapters, with responsive navigation coverage (user-authorized Adam frontend work; `feat/adam/ui-polish`).

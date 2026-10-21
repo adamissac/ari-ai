@@ -1,0 +1,4 @@
+{
+  "matplotlib": "3.11.2",
+  "note": "Rendering only; primary statistics and figure_data.json computed in the frozen training environment."
+}
