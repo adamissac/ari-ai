@@ -1,0 +1,69 @@
+{
+  "started_at": "2026-10-21T19:09:56.344446+00:00",
+  "git_sha": "d985e69406fc7bcacabc1eea1b29f2c256c3803a",
+  "source_fingerprint": "50ae76453edce24068fd4f661ad91c92201deaa6d6aac2dace813526433c1f3a",
+  "registry": "/Users/alanmozhoor/Documents/hackatl-agentic-security/.claude/worktrees/mystifying-hofstadter-c5aaf7/rl-defense/runs/live/registry.json",
+  "registry_sha256": "c345593354856c50559ba16611853a0e4936a7efc11fa5704c224d3189271408",
+  "incumbent_checkpoint": "/Users/alanmozhoor/Documents/hackatl-agentic-security/.claude/worktrees/mystifying-hofstadter-c5aaf7/rl-defense/results/live-retrain-v6/candidate_online.pt",
+  "incumbent_sha256": "8113a37f4ff9360a9efed2e9f499c4b2ae36e97bfb78372436f97da106fc05f1",
+  "plan_sha256": "71350c8462f791fdc8e9349760eee0a221bb713308a97239f5c481f7167b62a7",
+  "rules_report_sha256": "9252a0fb8d45ebc2d650c77e134bc853b56d8ca094ac7ceacd7183fcee848710",
+  "rules_params": {
+    "isolate_anomaly": 0.45,
+    "rate_limit_alerts": 1.1,
+    "monitor_anomaly": 1.1,
+    "block_anomaly": 0.1,
+    "block_min_volume": 0.0,
+    "long_mode": "repeat",
+    "long_target": "all"
+  },
+  "duration_params": {
+    "isolate_anomaly": 1.1,
+    "rate_limit_alerts": 1.1,
+    "monitor_anomaly": 1.1,
+    "block_anomaly": 0.0,
+    "block_min_volume": 0.0,
+    "long_mode": "outsider",
+    "long_target": "all"
+  },
+  "workers": 5,
+  "python": "3.12.14 (main, Sep 24 2026, 17:46:32) [Clang 22.1.3 ]",
+  "packages": {
+    "torch": "2.14.1",
+    "numpy": "2.5.4",
+    "gymnasium": "1.4.0",
+    "fastapi": "0.150.0",
+    "pydantic": "2.14.1"
+  },
+  "platform": "macOS-26.5-arm64-arm-64bit",
+  "command": [
+    "/Users/alanmozhoor/Documents/hackatl-agentic-security/.claude/worktrees/live-retrain-v8-4c5c2e/rl-defense/.venv/bin/python",
+    "results/duration-screen/run_screen.py",
+    "--registry",
+    "/Users/alanmozhoor/Documents/hackatl-agentic-security/.claude/worktrees/mystifying-hofstadter-c5aaf7/rl-defense/runs/live/registry.json",
+    "--workers",
+    "5"
+  ],
+  "episodes_per_scenario": {
+    "train": 8,
+    "val": 16
+  },
+  "splits": {
+    "train": {
+      "always_on_delegated": "0ca4eb74ff30686e",
+      "delegate_quiet": "d885e2af92ffa274",
+      "insider_delegate": "e5d5ce05dd734a54",
+      "outsider_rotation": "b487792f970fe9dd",
+      "rare_delegate_runs": "836eceb5ff7469b9",
+      "trickle_outsider_quiet": "d159b2af9d857750",
+      "two_identities_delegated": "b3743ace0117b909"
+    },
+    "val": {
+      "val10_persistent": "cc87f03680e0c2f0",
+      "val10_quiet": "f23ee62fb337e0d1",
+      "val10_rotation": "917dc70963e1510a"
+    }
+  },
+  "finished_at": "2026-10-21T19:10:54.430022+00:00",
+  "errors": []
+}

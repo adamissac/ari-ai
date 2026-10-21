@@ -1,0 +1,9 @@
+[
+  "/Users/alanmozhoor/Documents/hackatl-agentic-security/.claude/worktrees/live-retrain-v8-4c5c2e/rl-defense/.venv/bin/python",
+  "-u",
+  "/private/tmp/rl-v10/rl-defense/results/duration-screen/run_screen.py",
+  "--worker",
+  "tuned_rules",
+  "--split",
+  "train"
+]

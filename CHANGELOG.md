@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Add a bounded train/validation-only duration screen that reuses existing block policies and compares one fixed duration-aware heuristic with actual v6. Completed all520 episodes: validation availability gain was uncertain and failed the fixed screen; no v11 prepared or launched. No learned-policy, control or serving changes; no holdout execution.
+
 - Add per-repository Automatic runs ON/OFF and manual commit runs when OFF. Queue excess commits under project quotas, require authorized push sender plus commit attribution, and enforce Claude Haiku 5.5 in production. Contract 0.15.0 and migration 0009.
 
 - Automatically queue every eligible pushed commit, with verified GitHub author rollout (Railway defaults to `adamissac`), per-commit deduplication and resume after scope approval.
