@@ -51,6 +51,10 @@ class Settings(BaseSettings):
     github_app_slug: str | None = None  # github.com/apps/<slug>: link for installing the App
     github_api_url: str = "https://api.github.com"
     github_web_url: str = "https://github.com"
+    # Empty preserves legacy monitoring; comma-separated GitHub logins or * enables per-commit runs.
+    github_auto_commit_authors: str = ""
+    automatic_assessments_per_hour: int = Field(default=5, ge=1)
+    automatic_assessments_per_day: int = Field(default=20, ge=1)
     webhook_max_bytes: int = 1_048_576
 
     # Workers
@@ -115,6 +119,8 @@ class Settings(BaseSettings):
         return self.app_env in ("development", "test")
 
     def model_for(self, agent: str) -> str:
+        if self.app_env in ("production", "staging"):
+            return "claude-haiku-5-5"
         for item in filter(None, (p.strip() for p in self.agent_model_overrides.split(","))):
             name, _, model = item.partition("=")
             if name.strip() == agent and model.strip():

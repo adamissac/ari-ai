@@ -141,6 +141,26 @@ class GitHubApp:
                 break
         return repos
 
+    def compare_commits(
+        self, installation_id: int, full_name: str, base: str, head: str
+    ) -> list[str]:
+        """Enumerate the complete push range; never silently accept a truncated response."""
+        shas: list[str] = []
+        for page in range(1, 101):
+            data = self._get(
+                installation_id,
+                f"/repos/{full_name}/compare/{base}...{head}",
+                per_page=100,
+                page=page,
+            )
+            batch = data.get("commits") or []
+            shas.extend(c["sha"] for c in batch)
+            if len(shas) >= data["total_commits"]:
+                return shas
+            if not batch:
+                break
+        raise ValueError("GitHub compare did not return the complete commit range")
+
     def recent_commits(
         self, installation_id: int, full_name: str, branch: str, limit: int = 20
     ) -> list[dict[str, Any]]:
