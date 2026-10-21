@@ -82,3 +82,5 @@ Authenticated approvals and signed/schema-complete reports remain open in issue 
 next training experiment needs preregistration and a fresh holdout.
 
 RL-REGISTRY-001 validation: full RL suite 228 passed; Ruff lint/format and diff checks pass.
+
+- [x] UI-POLISH: coherent Kairo-inspired visual system across ARI workspace and landing chapters, with responsive navigation coverage (user-authorized Adam frontend work; `feat/adam/ui-polish`).
