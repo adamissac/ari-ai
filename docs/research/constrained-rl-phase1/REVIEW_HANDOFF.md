@@ -58,3 +58,9 @@ Standalone legacy certification now uses the same private source snapshot and
 anchored source/runtime checks. The active results README invokes the supported
 reader; its original bytes are preserved under frozen/README.md and the unchanged
 reporting index resolves that known alias under review schema v2.
+
+CI found a portability error in the snapshot-I/O component test: it invoked archived
+macOS runtime certification on Linux. The test now targets only the captured-I/O
+component; a dedicated wrong-runtime rejection test retains the strict public gate.
+The production source/runtime checks are unchanged. Prior CI: 394 passed, 1 fixture
+failure; latest revision requires CI before merge.

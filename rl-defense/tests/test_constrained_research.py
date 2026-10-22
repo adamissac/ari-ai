@@ -832,7 +832,7 @@ def test_supported_legacy_reader_uses_private_captured_trajectories(monkeypatch)
         return original(path, **kwargs)
 
     monkeypatch.setattr(legacy, "load_legacy", verify_snapshot)
-    result = legacy._verify_legacy(source)
+    result = legacy._adapt_legacy_data(source, load_scenarios("train", subdir="train_v8"))
     assert sum(d["transitions"] for d in result["datasets"].values()) == 8400
     assert len(captured) == 5 and all(not p.exists() for p in captured)
 
@@ -921,3 +921,10 @@ def test_current_readme_uses_supported_reader_and_preserves_original():
     assert "python -m rl_defense.research.legacy" in current
     assert "python rl-defense/results/constrained-phase1/read_legacy.py" not in current
     assert digest((evidence / "frozen/README.md").read_bytes()) == index["files"]["README.md"]
+
+
+def test_standalone_legacy_rejects_a_different_python_runtime():
+    from rl_defense.research.legacy import _require_legacy_runtime
+
+    with pytest.raises(ValueError, match="recorded Python runtime"):
+        _require_legacy_runtime({"python": "unrecorded interpreter"}, ROOT)

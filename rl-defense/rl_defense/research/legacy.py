@@ -49,9 +49,17 @@ def _verify_legacy(root: Path) -> dict:
     index = json.loads(read_artifact(evidence / "EVIDENCE.json"))
     check_source(ROOT, evidence, config, set(index["files"]))
     semantic_inputs = check_semantic_inputs(ROOT, config)
+    _require_legacy_runtime(config, evidence)
+    return _adapt_legacy_data(root, scenarios_from_inputs(semantic_inputs))
+
+
+def _require_legacy_runtime(config: dict, evidence: Path) -> None:
     if config["python"] != sys.version:
         raise ValueError("legacy verification requires the recorded Python runtime")
     verify_runtime_closure(ROOT, evidence, config)
+
+
+def _adapt_legacy_data(root: Path, scenarios: list) -> dict:
     index_path = root / "EVIDENCE.json"
     index_blob = read_artifact(index_path)
     if digest(index_blob) != "ce9317baa7cad1c1a77dacf19736d0d8fb812e8c76af0b03fc3cc699c77291b6":
@@ -61,7 +69,6 @@ def _verify_legacy(root: Path) -> dict:
     if digest(run_blob) != index["files"]["RUN.json"]:
         raise ValueError("historical run pin changed")
     run = json.loads(run_blob)
-    scenarios = scenarios_from_inputs(semantic_inputs)
     if {s.name: s.config_hash() for s in scenarios} != run["splits"]["train"]:
         raise ValueError("historical scenario definitions changed")
     result = {
