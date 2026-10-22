@@ -19,11 +19,20 @@ adds an entry before ending.
 ---
 
 ### 2026-10-22 — Cursor (agent, Alan) — Live Defense Phase 2 shadow pilot
-- Did: branch `feat/live-defense-pilot-phase2` from `origin/main` (PR #390 already merged). Extended Phase 1; did not rebuild it. Shared 0.16.0: `ConnectedApplication`, `IngestTokenView`, `DefenseHealth`, `ComponentGraph`, `AnalystReview`. Backend migration 0010 + `backend/api/live_defense.py`. Frontend wires existing APIs end-to-end and adds Staging apps + analyst review. `rl-defense/` untouched. Draft PR only; do not merge.
+- Did: branch `feat/live-defense-pilot-phase2` from `origin/main` (PR #390 already merged). Extended Phase 1; did not rebuild it. Shared 0.16.0: `ConnectedApplication`, `IngestTokenView`, `DefenseHealth`, `ComponentGraph`, `AnalystReview`. Backend migration 0010 + `backend/api/live_defense.py`. Frontend wires existing APIs end-to-end and adds Staging apps + analyst review. `rl-defense/` untouched. Draft PR #391; do not merge.
 - State of the code: analyst can register sandbox/owned_test apps, mint a token (shown once), inspect ingested evidence, read a stored recommendation, and record accept/reject/needs-investigation without executing a control. Health status is always `unknown`. No live policy-decision producer.
-- Commands run and results: recorded on the PR after this session's test pass.
+- Commands run and results (executed):
+  - `make check` — ruff pass (157 files formatted); `shared.export --check` 123 files; examples check pass
+  - `uv run pytest -q shared/tests/test_contracts.py backend/tests/test_live_defense_pilot.py backend/tests/test_rl_no_action_path.py backend/tests/test_runtime_ingest.py` — 64 passed, 2 skipped (TSC missing; rl_defense not installed)
+  - `npm run lint --prefix frontend` — pass
+  - `npm run typecheck --prefix frontend` — pass
+  - `npm test --prefix frontend` — 323 passed / 77 files
+  - `npm test --prefix frontend/transport` — 34 passed
+  - `npm run build --prefix frontend` — pass; routes include `/live-defense`, `/live-defense/apps`, `/live-defense-pilot/apps`
+  - `E2E_SKIP_BUILD=1 ../.venv/bin/python tests/e2e/stack.py tests/e2e/live-defense.spec.ts` — 1 passed (4.0s)
+  - `gitleaks git --log-opts='origin/main..HEAD'` — no leaks found (4 commits). Full-history 5 hits are pre-existing `api.py` digest / `*_COMMIT` SHA false positives, not this PR.
 - Decisions: do not fake a live inference feed; do not infer healthy from HTTP 200; accept ≠ enforcement approval.
-- Next steps: customer shadow-pilot blockers listed on the PR (hosted ingest of a real staging app, live-inference producer if/when one exists, no autonomous enforcement).
+- Next steps: customer shadow-pilot blockers listed on PR #391 (hosted ingest of a real staging app, live-inference producer if/when one exists, no autonomous enforcement).
 - Warnings: `/live-defense-pilot` remains sample layout. Do not begin autonomous enforcement.
 
 ### 2026-10-22 — Cursor (agent, Alan) — Live Defense Phase 1 UI
