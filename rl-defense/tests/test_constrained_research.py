@@ -453,3 +453,67 @@ def test_policy_loader_uses_the_hashed_checkpoint_bytes(monkeypatch):
     monkeypatch.setattr(proof, "load_checkpoint", loader)
     proof.verify_policy_actions(ROOT, config, [])
     assert digest(captured[0]) == config["v6_checkpoint_sha256"]
+
+
+@pytest.mark.parametrize(
+    "field,value", [("resamples", 10**12), ("gamma", 0.5), ("bootstrap_seed", 99)]
+)
+def test_verifier_rejects_altered_statistical_profile(tmp_path, field, value):
+    import rl_defense.research.evaluate as ev
+
+    output = ROOT / "rl-defense/results/constrained-phase1"
+    config = json.loads((output / "config.json").read_text())
+    config[field] = value
+    raw = ev.encoded(config)
+    (tmp_path / "config.json").write_bytes(raw)
+    files = {"config.json": digest(raw)}
+    for name in ("raw.jsonl.gz", "transitions.jsonl.gz", "summary.json"):
+        (tmp_path / name).write_bytes(b"")
+        files[name] = digest(b"")
+    (tmp_path / "EVIDENCE.json").write_bytes(
+        ev.encoded({"schema": "constrained-lab-evidence/1", "files": files})
+    )
+    with pytest.raises(ValueError, match="profile semantics"):
+        ev.verify(tmp_path)
+
+
+def test_setup_failure_is_recorded_without_retry(tmp_path, monkeypatch):
+    import rl_defense.research.evaluate as ev
+
+    original = ev.subprocess.check_output
+
+    def command(args, **kw):
+        if args[:3] == ["git", "status", "--porcelain"]:
+            return ""
+        return original(args, **kw)
+
+    monkeypatch.setattr(ev.subprocess, "check_output", command)
+    monkeypatch.setattr(
+        ev, "load_checkpoint", lambda *a, **kw: (_ for _ in ()).throw(ValueError("setup failure"))
+    )
+    output = tmp_path / "failed"
+    with pytest.raises(ValueError, match="setup failure"):
+        ev.run(output, 2)
+    assert json.loads((output / "FAILURE.json").read_text()) == {
+        "error": "setup failure",
+        "automatic_retry": False,
+    }
+
+
+def test_verifier_rejects_self_declared_scenario_changes(tmp_path):
+    import shutil
+
+    import rl_defense.research.evaluate as ev
+
+    output = ROOT / "rl-defense/results/constrained-phase1"
+    shutil.copytree(output, tmp_path / "bundle")
+    bundle = tmp_path / "bundle"
+    config = json.loads((bundle / "config.json").read_text())
+    config["scenario_configs"][0]["attack_per_step"] += 1
+    data = ev.encoded(config)
+    (bundle / "config.json").write_bytes(data)
+    index = json.loads((bundle / "EVIDENCE.json").read_text())
+    index["files"]["config.json"] = digest(data)
+    (bundle / "EVIDENCE.json").write_bytes(ev.encoded(index))
+    with pytest.raises(ValueError, match="pinned train_v8"):
+        ev.verify(bundle)

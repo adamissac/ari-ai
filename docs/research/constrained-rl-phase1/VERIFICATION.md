@@ -1,6 +1,6 @@
 # Phase 1 verification results
 
-The focused research suite passes **35 tests**, covering request and transition
+The focused research suite passes **40 tests**, covering request and transition
 validation, seed selection, source provenance, named policy decisions, checkpoint
 integrity, capability limits, deterministic accounting, and registry preservation.
 The previous published revision passed **354 RL tests** in CI. CI must rerun for
@@ -31,3 +31,8 @@ No secret-scanning file exclusion was introduced.
 PR #388 remains unmerged. No promotion, deployment, new control, research training,
 or Phase 2 implementation occurred. The v6 checkpoint and registry are unchanged.
 See DECISION.md for the no-go decision and conditions for future work.
+
+Third review: scenario definitions must match the pinned training benchmark; statistical
+settings are fixed before bootstrap work starts; all post-creation setup exceptions
+produce a failure audit record without retry. The 39-test focused run and the added
+scenario-tampering regression both passed. Original measurements are preserved.

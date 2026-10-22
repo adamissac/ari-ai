@@ -195,52 +195,52 @@ def run(
         raise ValueError("published tree needs a commit")
     source_object = resolve_source(ROOT, revision, tree)
     output.mkdir(parents=True, exist_ok=False)
-    (output / "source.commit.txt").write_bytes(source_object)
-    ckpt = ROOT / "rl-defense/results/live-retrain-v6/candidate_online.pt"
-    before = ckpt.read_bytes()
-    if digest(before) != V6_SHA:
-        raise ValueError("frozen v6 checkpoint mismatch")
-    agent, manifest = load_checkpoint(ckpt, blob=before)
-    if agent.n_actions != 25 or manifest["checkpoint_sha256"] != V6_SHA:
-        raise ValueError("v6 layout/manifest mismatch")
-    params_path = ROOT / "rl-defense/results/duration-screen/RUN.json"
-    params = json.loads(params_path.read_text())["rules_params"]
-    scenarios = load_scenarios("train", subdir="train_v8")
-    config = {
-        "schema": "constrained-lab-evaluation/1",
-        "source_commit": revision,
-        "execution_local_commit": local_revision,
-        "source_tree": tree,
-        "publication": "Git-resolved commit with verified matching tree"
-        if published_commit
-        else "local Git commit",
-        "environment": "owned payments-lite in-process lab; not production",
-        "semantics": "all baselines share research capability mask; v6_shielded is NOT original v6 performance",
-        "reward": "negative compromised attack read count",
-        "cost": "blocked legitimate request count",
-        "gamma": 1.0,
-        "bootstrap_seed": 17,
-        "resamples": 2000,
-        "episodes_per_scenario": episodes,
-        "policies": list(POLICIES),
-        "scenario_configs": [s.model_dump(mode="json") for s in scenarios],
-        "scenario_hashes": {s.name: s.config_hash() for s in scenarios},
-        "episode_seeds": {s.name: s.seeds(episodes) for s in scenarios},
-        "loop_overrides": OVERRIDES,
-        "cost_aware_max_interventions": 2,
-        "v6_checkpoint_sha256": V6_SHA,
-        "v6_manifest_sha256": digest(ckpt.with_suffix(".manifest.json").read_bytes()),
-        "rules_params": params,
-        "rules_source_sha256": digest(params_path.read_bytes()),
-        "python": sys.version,
-        "dependencies": {
-            p: importlib.metadata.version(p)
-            for p in ("numpy", "pydantic", "torch", "gymnasium", "fastapi", "httpx", "PyYAML")
-        },
-        "code_sha256": {str(p.relative_to(ROOT)): digest(p.read_bytes()) for p in code_files()},
-    }
-    (output / "config.json").write_bytes(encoded(config))
     try:
+        (output / "source.commit.txt").write_bytes(source_object)
+        ckpt = ROOT / "rl-defense/results/live-retrain-v6/candidate_online.pt"
+        before = ckpt.read_bytes()
+        if digest(before) != V6_SHA:
+            raise ValueError("frozen v6 checkpoint mismatch")
+        agent, manifest = load_checkpoint(ckpt, blob=before)
+        if agent.n_actions != 25 or manifest["checkpoint_sha256"] != V6_SHA:
+            raise ValueError("v6 layout/manifest mismatch")
+        params_path = ROOT / "rl-defense/results/duration-screen/RUN.json"
+        params = json.loads(params_path.read_text())["rules_params"]
+        scenarios = load_scenarios("train", subdir="train_v8")
+        config = {
+            "schema": "constrained-lab-evaluation/1",
+            "source_commit": revision,
+            "execution_local_commit": local_revision,
+            "source_tree": tree,
+            "publication": "Git-resolved commit with verified matching tree"
+            if published_commit
+            else "local Git commit",
+            "environment": "owned payments-lite in-process lab; not production",
+            "semantics": "all baselines share research capability mask; v6_shielded is NOT original v6 performance",
+            "reward": "negative compromised attack read count",
+            "cost": "blocked legitimate request count",
+            "gamma": 1.0,
+            "bootstrap_seed": 17,
+            "resamples": 2000,
+            "episodes_per_scenario": episodes,
+            "policies": list(POLICIES),
+            "scenario_configs": [s.model_dump(mode="json") for s in scenarios],
+            "scenario_hashes": {s.name: s.config_hash() for s in scenarios},
+            "episode_seeds": {s.name: s.seeds(episodes) for s in scenarios},
+            "loop_overrides": OVERRIDES,
+            "cost_aware_max_interventions": 2,
+            "v6_checkpoint_sha256": V6_SHA,
+            "v6_manifest_sha256": digest(ckpt.with_suffix(".manifest.json").read_bytes()),
+            "rules_params": params,
+            "rules_source_sha256": digest(params_path.read_bytes()),
+            "python": sys.version,
+            "dependencies": {
+                p: importlib.metadata.version(p)
+                for p in ("numpy", "pydantic", "torch", "gymnasium", "fastapi", "httpx", "PyYAML")
+            },
+            "code_sha256": {str(p.relative_to(ROOT)): digest(p.read_bytes()) for p in code_files()},
+        }
+        (output / "config.json").write_bytes(encoded(config))
         with gzip.GzipFile(filename=str(output / "raw.jsonl.gz"), mode="wb", mtime=0) as fh:
             for sc in scenarios:
                 for seed in sc.seeds(episodes):
@@ -309,10 +309,16 @@ def verify(output: Path) -> dict:
         or config["policies"] != list(POLICIES)
         or config["v6_checkpoint_sha256"] != V6_SHA
         or config["cost_aware_max_interventions"] != 2
+        or type(config["resamples"]) is not int
+        or config["resamples"] != 2000
+        or config["bootstrap_seed"] != 17
+        or config["gamma"] != 1.0
     ):
         raise ValueError("unsupported baseline profile semantics")
     check_source(ROOT, output, config, set(index["files"]))
     scenarios = [LiveScenario.model_validate(d) for d in config["scenario_configs"]]
+    if scenarios != load_scenarios("train", subdir="train_v8"):
+        raise ValueError("scenario definitions differ from the pinned train_v8 benchmark")
     if any(s.split != "train" for s in scenarios):
         raise ValueError("Phase 1 fresh evaluation cannot contain holdout/validation")
     if index["source_commit"] != config["source_commit"]:
