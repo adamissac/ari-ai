@@ -26,10 +26,13 @@ from rl_defense.research.dataset import adapt, digest, evidence, validate_episod
 from rl_defense.research.metrics import report
 from rl_defense.research.policies import CostAwareRules, capability_mask
 from rl_defense.research.proof import (
+    bounded_gzip,
+    check_semantic_inputs,
     check_source,
     resolve_source,
     validate_raw_requests,
     validate_seed_selection,
+    verify_deterministic_replay,
     verify_policy_actions,
 )
 from rl_defense.research.records import ResearchTransition
@@ -299,6 +302,8 @@ def verify(output: Path) -> dict:
     if set(index["files"]) not in (expected_files, expected_files | {"source.commit.txt"}):
         raise ValueError("unexpected evidence files")
     for name, sha in index["files"].items():
+        if (output / name).stat().st_size > 8 * 1024 * 1024:
+            raise ValueError("evidence file exceeds verification limit")
         if digest((output / name).read_bytes()) != sha:
             raise ValueError(f"evidence hash mismatch: {name}")
     config = json.loads((output / "config.json").read_bytes())
@@ -321,6 +326,7 @@ def verify(output: Path) -> dict:
     ):
         raise ValueError("unsupported baseline profile semantics")
     check_source(ROOT, output, config, set(index["files"]))
+    check_semantic_inputs(ROOT, config)
     scenarios = [LiveScenario.model_validate(d) for d in config["scenario_configs"]]
     if scenarios != load_scenarios("train", subdir="train_v8"):
         raise ValueError("scenario definitions differ from the pinned train_v8 benchmark")
@@ -331,7 +337,27 @@ def verify(output: Path) -> dict:
     if {s.name: s.config_hash() for s in scenarios} != config["scenario_hashes"]:
         raise ValueError("scenario hash mismatch")
     validate_seed_selection(config, scenarios)
-    validate_raw_requests((output / "raw.jsonl.gz").read_bytes(), scenarios)
+    runtime = {
+        p: importlib.metadata.version(p)
+        for p in ("numpy", "pydantic", "torch", "gymnasium", "fastapi", "httpx", "PyYAML")
+    }
+    if config["python"] != sys.version or config["dependencies"] != runtime:
+        raise ValueError("recorded runtime differs; use the exact execution environment")
+    scope = {
+        "environment": "owned payments-lite in-process lab; not production",
+        "semantics": "all baselines share research capability mask; v6_shielded is NOT original v6 performance",
+        "reward": "negative compromised attack read count",
+        "cost": "blocked legitimate request count",
+    }
+    if any(config[k] != v for k, v in scope.items()) or config["publication"] not in (
+        "local Git commit",
+        "Git-resolved commit with verified matching tree",
+        "caller-supplied GitHub commit with matching tree",
+    ):
+        raise ValueError("evidence scope metadata mismatch")
+    raw = bounded_gzip(output / "raw.jsonl.gz")
+    bounded_gzip(output / "transitions.jsonl.gz")
+    validate_raw_requests(raw, scenarios)
     rows = records_from_raw((output / "raw.jsonl.gz").read_bytes(), scenarios)
     saved = [
         ResearchTransition.model_validate_json(line)
@@ -352,6 +378,7 @@ def verify(output: Path) -> dict:
         expected
     ):
         raise ValueError("missing, repeated or additional evaluation units")
+    verify_deterministic_replay(raw, scenarios)
     verify_policy_actions(ROOT, config, rows)
     actual = report(
         rows,
