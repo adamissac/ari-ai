@@ -24,11 +24,13 @@ adds an entry before ending.
 - Commands run and results (executed):
   - `make check` — ruff pass; format 165 files; `shared.export --check` 124 files; examples check pass
   - `uv run mypy` — Success: no issues found in 40 source files
-  - `uv run pytest -q backend/tests/test_live_defense_phase3.py backend/tests/test_runtime_ingest.py backend/tests/test_parallel_migrations.py backend/tests/test_live_defense_pilot.py backend/tests/test_rl_no_action_path.py monitoring/tests/test_detect.py shared/tests/test_contracts.py` — 85 passed, 2 skipped (`rl_defense` missing; TSC unset)
+  - `uv run pytest -q backend/tests monitoring/tests/test_detect.py shared/tests/test_contracts.py` — 239 passed, 8 skipped (`rl_defense` missing; Docker/live LLM opt-in; TSC unset)
   - `npm run lint && typecheck` — pass; `npm test --prefix frontend` — 325 passed / 77 files; `npm test --prefix frontend/transport` — 35 passed
   - `npm run build --prefix frontend` — pass; routes include `/live-defense`, `/live-defense/explain`, `/live-defense/apps`
+  - `cd frontend && ../.venv/bin/python tests/e2e/stack.py tests/e2e/live-defense.spec.ts` — 1 passed (6.6s)
+  - `gitleaks git --log-opts='origin/main..HEAD'` — 3 commits, no leaks
 - Decisions: v6 quiet-window → explicit abstention (ADR-0017); HTTP 200 without principals is unverified noop, not IDOR; accept ≠ execute; do not train or promote.
-- Next steps: gitleaks, e2e stack + screenshots, pilot eval report, draft PR, merge if protection allows.
+- Eval: `docs/LIVE_DEFENSE_PHASE3_PILOT_EVAL.md`. Draft PR #392. Merge only if CI is green and the slice stays shadow-only.
 - Warnings: `/live-defense-pilot` remains sample layout. Do not begin autonomous enforcement. Frozen v6 inference is `skipped_unavailable` without `rl_defense`+torch; CI `rl-integration` job is the path that can run it.
 
 ### 2026-10-22 — Cursor (agent, Alan) — Live Defense Phase 2 CI: Alembic head pin
