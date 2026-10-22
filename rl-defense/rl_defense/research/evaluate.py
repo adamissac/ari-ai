@@ -25,7 +25,13 @@ from rl_defense.live.scenarios import LiveScenario, load_scenarios
 from rl_defense.research.dataset import adapt, digest, evidence, validate_episodes
 from rl_defense.research.metrics import report
 from rl_defense.research.policies import CostAwareRules, capability_mask
-from rl_defense.research.proof import check_source, resolve_source, verify_policy_actions
+from rl_defense.research.proof import (
+    check_source,
+    resolve_source,
+    validate_raw_requests,
+    validate_seed_selection,
+    verify_policy_actions,
+)
 from rl_defense.research.records import ResearchTransition
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -191,10 +197,10 @@ def run(
     output.mkdir(parents=True, exist_ok=False)
     (output / "source.commit.txt").write_bytes(source_object)
     ckpt = ROOT / "rl-defense/results/live-retrain-v6/candidate_online.pt"
-    if digest(ckpt.read_bytes()) != V6_SHA:
-        raise ValueError("frozen v6 checkpoint mismatch")
     before = ckpt.read_bytes()
-    agent, manifest = load_checkpoint(ckpt)
+    if digest(before) != V6_SHA:
+        raise ValueError("frozen v6 checkpoint mismatch")
+    agent, manifest = load_checkpoint(ckpt, blob=before)
     if agent.n_actions != 25 or manifest["checkpoint_sha256"] != V6_SHA:
         raise ValueError("v6 layout/manifest mismatch")
     params_path = ROOT / "rl-defense/results/duration-screen/RUN.json"
@@ -313,10 +319,8 @@ def verify(output: Path) -> dict:
         raise ValueError("source commit identity mismatch")
     if {s.name: s.config_hash() for s in scenarios} != config["scenario_hashes"]:
         raise ValueError("scenario hash mismatch")
-    if config["episode_seeds"] != {
-        s.name: s.seeds(config["episodes_per_scenario"]) for s in scenarios
-    }:
-        raise ValueError("scenario seed selection mismatch")
+    validate_seed_selection(config, scenarios)
+    validate_raw_requests((output / "raw.jsonl.gz").read_bytes(), scenarios)
     rows = records_from_raw((output / "raw.jsonl.gz").read_bytes(), scenarios)
     saved = [
         ResearchTransition.model_validate_json(line)

@@ -402,3 +402,54 @@ def test_historical_exception_refuses_unrecorded_future_verifier_changes(monkeyp
     )
     with pytest.raises(ValueError, match="post-review source changed"):
         check_source(ROOT, root, config, set(index["files"]))
+
+
+@pytest.mark.parametrize("n", [True, 1, 9, 2.0, 8])
+def test_declared_seed_count_cannot_be_truncated(n):
+    from rl_defense.research.proof import validate_seed_selection
+
+    scenarios = load_scenarios("train", subdir="train_v8")
+    scenarios = [scenarios[0].model_copy(update={"episodes": 4})]
+    with pytest.raises(ValueError, match="episode count"):
+        validate_seed_selection({"episodes_per_scenario": n, "episode_seeds": {}}, scenarios)
+
+
+def test_historical_source_map_cannot_drop_pins():
+    from rl_defense.research.proof import check_source
+
+    output = ROOT / "rl-defense/results/constrained-phase1"
+    config = json.loads((output / "config.json").read_text())
+    config["code_sha256"] = {}
+    with pytest.raises(ValueError, match="source manifest"):
+        check_source(ROOT, output, config, set())
+
+
+def test_raw_request_cannot_claim_blocked_compromise():
+    from rl_defense.research.proof import validate_raw_requests
+
+    output = ROOT / "rl-defense/results/constrained-phase1"
+    config = json.loads((output / "config.json").read_text())
+    from rl_defense.live.scenarios import LiveScenario
+
+    scenarios = [LiveScenario.model_validate(d) for d in config["scenario_configs"]]
+    ep = json.loads(gzip.decompress((output / "raw.jsonl.gz").read_bytes()).splitlines()[0])
+    q = ep["steps"][0]["requests"][0]
+    q.update(blocked_reason="principal_blocked", status=403, compromised=True)
+    with pytest.raises(ValueError, match="contradictory"):
+        validate_raw_requests(gzip.compress(json.dumps(ep).encode()), scenarios)
+
+
+def test_policy_loader_uses_the_hashed_checkpoint_bytes(monkeypatch):
+    import rl_defense.research.proof as proof
+
+    output = ROOT / "rl-defense/results/constrained-phase1"
+    config = json.loads((output / "config.json").read_text())
+    captured = []
+
+    def loader(path, *, blob):
+        captured.append(blob)
+        return object(), {}
+
+    monkeypatch.setattr(proof, "load_checkpoint", loader)
+    proof.verify_policy_actions(ROOT, config, [])
+    assert digest(captured[0]) == config["v6_checkpoint_sha256"]
