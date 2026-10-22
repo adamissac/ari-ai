@@ -47,17 +47,17 @@ export function Panel({ title, actions, children, className = '', id }: { title?
 
 export function Button({ variant = 'secondary', className = '', children, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'danger' | 'ghost' }) {
   const styles = {
-    primary: 'bg-brand text-on-brand hover:bg-brand-deep shadow-[0_6px_16px_-8px_rgba(194,69,45,0.6)]',
-    secondary: 'bg-brand/[0.07] text-ink hover:bg-brand/[0.14]',
-    danger: 'border border-bad/50 bg-bad/10 text-bad hover:bg-bad/20',
-    ghost: 'text-muted hover:bg-brand/[0.07] hover:text-ink',
+    primary: 'bg-brand text-on-brand hover:bg-brand-deep shadow-[0_6px_16px_-8px_rgba(194,69,45,0.6)] hover:shadow-[0_8px_20px_-8px_rgba(194,69,45,0.5)]',
+    secondary: 'bg-brand/[0.07] text-ink hover:bg-brand/[0.14] shadow-sm hover:shadow-md',
+    danger: 'border border-bad/50 bg-bad/10 text-bad hover:bg-bad/20 shadow-sm hover:shadow-md',
+    ghost: 'text-muted hover:bg-brand/[0.07] hover:text-ink hover:shadow-sm',
   }[variant];
   return (
     <button
       type="button"
       data-variant={variant}
       {...props}
-      className={`btn group label-mono inline-flex h-8 items-center justify-center gap-1.5 rounded-md px-3 transition-[background-color,color,box-shadow,transform] duration-[250ms] ease-[var(--ease-quad)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 ${styles} ${className}`}
+      className={`btn group label-mono inline-flex h-8 items-center justify-center gap-1.5 rounded-md px-3 transition-[background-color,color,box-shadow,transform] duration-[250ms] ease-[var(--ease-smooth)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:active:scale-100 disabled:shadow-none ${styles} ${className}`}
     >
       {typeof children === 'string' ? <RollText>{children}</RollText> : children}
     </button>
@@ -77,7 +77,7 @@ export function RollText({ children }: { children: string }) {
 export function ErrorState({ error, onRetry, context }: { error: unknown; onRetry?: () => void; context?: string }) {
   const e = describeError(error);
   return (
-    <div role="alert" data-testid="error-state" className="rounded-md border border-bad/40 bg-bad/5 p-3 text-sm">
+    <div role="alert" data-testid="error-state" className="rounded-md border border-bad/40 bg-bad/5 p-3 text-sm shadow-sm hover:shadow-md transition-shadow duration-300">
       <p className="font-semibold text-bad"><span aria-hidden="true">× </span>{context ? `${context}: ` : ''}{e.title}</p>
       <p className="mt-1 text-muted">{e.detail}</p>
       {(e.code || e.requestId) && (
@@ -128,11 +128,11 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
   );
 }
 
-export const inputClass = 'max-w-full rounded-md border border-control bg-bg px-2.5 py-1.5 text-sm text-ink placeholder:text-faint transition-[border-color,box-shadow] duration-200 focus:border-brand focus:shadow-[0_0_0_3px_rgba(194,69,45,0.15)] focus:outline-none';
+export const inputClass = 'max-w-full rounded-md border border-control bg-bg px-2.5 py-1.5 text-sm text-ink placeholder:text-faint transition-[border-color,box-shadow,transform] duration-200 focus:border-brand focus:shadow-[0_0_0_3px_rgba(194,69,45,0.15)] focus:outline-none focus:-translate-y-0.5 hover:border-control/80';
 
 export function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: string }) {
   return (
-    <div className="rounded-xl border border-line bg-panel px-4 py-3.5">
+    <div className="rounded-xl border border-line bg-panel px-4 py-3.5 shadow-sm hover:shadow-md transition-shadow duration-300">
       <p className="label-mono text-faint">{label}</p>
       <p className="mt-2 font-display text-2xl font-semibold tracking-tight text-ink">{value}</p>
       {hint && <p className="text-xs text-muted">{hint}</p>}
