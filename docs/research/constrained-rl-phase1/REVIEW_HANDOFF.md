@@ -34,3 +34,7 @@ A swap-after-capture regression covers the race. Latest focused validation pendi
 Seventh review anchors the review manifest in the trusted checkout commit, records
 the full reproduction dependency closure separately from unknown historical closure,
 and supersedes the immutable legacy script with an anchored supported reader.
+
+Eighth review pins replay topology and the v6 sidecar to the source commit. The
+sidecar must also equal the manifest embedded in the hash-pinned checkpoint, with
+only the canonical filename added. No original artifact is changed.

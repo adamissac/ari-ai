@@ -448,7 +448,9 @@ def test_policy_loader_uses_the_hashed_checkpoint_bytes(monkeypatch):
 
     def loader(path, *, blob):
         captured.append(blob)
-        return object(), {}
+        manifest = json.loads(path.with_suffix(".manifest.json").read_bytes())
+        manifest.pop("checkpoint_file")
+        return object(), manifest
 
     monkeypatch.setattr(proof, "load_checkpoint", loader)
     proof.verify_policy_actions(ROOT, config, [])
@@ -734,3 +736,13 @@ def test_legacy_reader_rejects_rehashed_colocated_index(tmp_path):
     (tmp_path / "EVIDENCE.json").write_text(json.dumps({"files": {}, "source_commit": "forged"}))
     with pytest.raises(ValueError, match="trust anchor"):
         verify_legacy(tmp_path)
+
+
+def test_checkpoint_sidecar_cannot_rewrite_embedded_lineage():
+    from rl_defense.research.proof import validate_checkpoint_manifest
+
+    embedded = {"seed": 11, "checkpoint_sha256": "pinned"}
+    side = {**embedded, "checkpoint_file": "candidate_online.pt"}
+    validate_checkpoint_manifest(side, embedded, "candidate_online.pt")
+    with pytest.raises(ValueError, match="sidecar lineage"):
+        validate_checkpoint_manifest({**side, "seed": 99}, embedded, "candidate_online.pt")
