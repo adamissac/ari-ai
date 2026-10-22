@@ -48,3 +48,14 @@ scenario/rule inputs must match their source commit (or the immutable historical
 fingerprint). Compressed input is limited to 8 MiB, expanded input to 64 MiB, before
 JSON parsing. Scope metadata is fixed. Expected units are checked before replay.
 All 51 focused tests passed before the final ordering-only change.
+
+Seventh review: the review manifest is compared with its Git HEAD blob before its
+hashes are trusted. New bundles record the complete installed distribution closure.
+The original study did not capture that closure; it remains explicitly unknown.
+REVIEW_RUNTIME.json records the current reproduction environment separately and is
+Git-anchored. Successful verification reports its own source commit and this limit.
+
+Use `python -m rl_defense.research.legacy` for anchored legacy readiness checks.
+The original result-directory read_legacy.py is frozen archival source, retained for
+REPORT_EVIDENCE.json integrity; it is superseded and must not be used to certify
+mutable bundles. The supported reader anchors the historical root index digest.

@@ -90,7 +90,14 @@ def check_source(
     if old and config["source_tree"] != HISTORICAL_TREE:
         raise ValueError("historical source tree mismatch")
     if old:
-        review = json.loads((output / "REVIEW_EVIDENCE.json").read_bytes())
+        review_blob = read_artifact(output / "REVIEW_EVIDENCE.json")
+        committed_review = subprocess.check_output(
+            ["git", "show", "HEAD:rl-defense/results/constrained-phase1/REVIEW_EVIDENCE.json"],
+            cwd=root,
+        )
+        if review_blob != committed_review:
+            raise ValueError("review manifest differs from trusted checkout commit")
+        review = json.loads(review_blob)
         if review.get("schema") != "constrained-phase1-review-evidence/1":
             raise ValueError("unsupported review evidence schema")
         # The historical exception allows exactly the separately recorded verifier,
@@ -323,3 +330,35 @@ def read_artifact(path: Path) -> bytes:
     if len(blob) > 8 * 1024 * 1024:
         raise ValueError("evidence file exceeds verification limit")
     return blob
+
+
+def environment_packages() -> dict[str, str]:
+    """Full installed distribution closure, including HTTP replay dependencies."""
+    import importlib.metadata
+
+    return dict(
+        sorted(
+            (d.metadata["Name"].lower().replace("_", "-"), d.version)
+            for d in importlib.metadata.distributions()
+        )
+    )
+
+
+def verify_runtime_closure(root: Path, output: Path, config: dict) -> None:
+    expected = config.get("environment_packages")
+    if expected is None:
+        if config["source_commit"] != HISTORICAL_SOURCE:
+            raise ValueError("recorded full dependency closure missing")
+        # The original study did not capture its transitive closure. Do not invent
+        # it retrospectively: validate the separately recorded reproduction runtime.
+        path = "rl-defense/results/constrained-phase1/REVIEW_RUNTIME.json"
+        blob = read_artifact(output / "REVIEW_RUNTIME.json")
+        committed = subprocess.check_output(["git", "show", f"HEAD:{path}"], cwd=root)
+        if blob != committed:
+            raise ValueError("review runtime differs from trusted checkout commit")
+        profile = json.loads(blob)
+        if profile["original_dependency_closure_known"] is not False:
+            raise ValueError("historical dependency closure must remain unknown")
+        expected = profile["environment_packages"]
+    if expected != environment_packages():
+        raise ValueError("full dependency closure differs from recorded verification runtime")

@@ -699,3 +699,38 @@ def test_verifier_captures_each_indexed_artifact_once(tmp_path, monkeypatch):
     with pytest.raises(RuntimeError, match="captured configuration"):
         ev.verify(bundle)
     assert len(captured) == 5
+
+
+def test_review_manifest_cannot_replace_its_own_trust_anchor(tmp_path):
+    import shutil
+
+    from rl_defense.research.proof import check_source
+
+    output = ROOT / "rl-defense/results/constrained-phase1"
+    shutil.copytree(output, tmp_path / "bundle")
+    bundle = tmp_path / "bundle"
+    config = json.loads((bundle / "config.json").read_text())
+    index = json.loads((bundle / "EVIDENCE.json").read_text())
+    review = json.loads((bundle / "REVIEW_EVIDENCE.json").read_text())
+    review["files"]["rl-defense/rl_defense/research/proof.py"] = "0" * 64
+    (bundle / "REVIEW_EVIDENCE.json").write_text(json.dumps(review))
+    with pytest.raises(ValueError, match="trusted checkout commit"):
+        check_source(ROOT, bundle, config, set(index["files"]))
+
+
+def test_complete_dependency_closure_rejects_transitive_drift():
+    from rl_defense.research.proof import environment_packages, verify_runtime_closure
+
+    packages = environment_packages()
+    assert "starlette" in packages and "anyio" in packages and "httpcore" in packages
+    changed = {**packages, "starlette": "999.0"}
+    with pytest.raises(ValueError, match="full dependency closure"):
+        verify_runtime_closure(ROOT, ROOT, {"environment_packages": changed})
+
+
+def test_legacy_reader_rejects_rehashed_colocated_index(tmp_path):
+    from rl_defense.research.legacy import verify_legacy
+
+    (tmp_path / "EVIDENCE.json").write_text(json.dumps({"files": {}, "source_commit": "forged"}))
+    with pytest.raises(ValueError, match="trust anchor"):
+        verify_legacy(tmp_path)

@@ -30,3 +30,7 @@ No original measurement or v6 artifact is changed.
 Sixth review: bounded artifact reads are captured once and reused for digest checks,
 metadata, decompression, adaptation, reconstruction, summary and source-commit proof.
 A swap-after-capture regression covers the race. Latest focused validation pending.
+
+Seventh review anchors the review manifest in the trusted checkout commit, records
+the full reproduction dependency closure separately from unknown historical closure,
+and supersedes the immutable legacy script with an anchored supported reader.
