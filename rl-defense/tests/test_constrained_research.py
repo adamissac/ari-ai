@@ -786,3 +786,31 @@ def test_reconstruction_uses_captured_topology_not_a_reopened_file(scenario, mon
 
     monkeypatch.setattr(loop, "load_topology", reject_reopen)
     verify_deterministic_replay(raw, [scenario], topology)
+
+
+def test_supported_legacy_reader_bounds_root_index_before_parsing(tmp_path):
+    from rl_defense.research.legacy import verify_legacy
+
+    (tmp_path / "EVIDENCE.json").write_bytes(b"x" * (8 * 1024 * 1024 + 1))
+    with pytest.raises(ValueError, match="evidence file exceeds"):
+        verify_legacy(tmp_path)
+
+
+def test_supported_legacy_reader_uses_private_captured_trajectories(monkeypatch):
+    import rl_defense.research.legacy as legacy
+
+    original = legacy.load_legacy
+    source = ROOT / "rl-defense/results/duration-screen"
+    captured = []
+
+    def verify_snapshot(path, **kwargs):
+        assert not path.is_relative_to(source)
+        assert path.name == "trajectories.jsonl.gz"
+        assert digest(path.read_bytes()) == kwargs["expected_sha256"]
+        captured.append(path)
+        return original(path, **kwargs)
+
+    monkeypatch.setattr(legacy, "load_legacy", verify_snapshot)
+    result = legacy.verify_legacy(source)
+    assert sum(d["transitions"] for d in result["datasets"].values()) == 8400
+    assert len(captured) == 5 and all(not p.exists() for p in captured)

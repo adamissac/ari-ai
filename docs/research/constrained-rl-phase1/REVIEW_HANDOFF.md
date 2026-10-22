@@ -42,3 +42,6 @@ only the canonical filename added. No original artifact is changed.
 Ninth review captures scenario, topology, rule and sidecar bytes before parsing or
 reconstruction, passes captured topology into the verification-only loop, and enforces
 the original execution-index digest from the Git-anchored review manifest.
+
+The supported legacy reader also bounds index/run/trajectory reads and adapts private
+captured trajectory snapshots, preserving original artifact names and digests.

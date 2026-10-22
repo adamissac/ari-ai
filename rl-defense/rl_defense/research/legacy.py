@@ -8,21 +8,23 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from rl_defense.live.scenarios import load_scenarios
 from rl_defense.research.dataset import digest, load_legacy
+from rl_defense.research.proof import bounded_gzip, read_artifact
 
 
 def verify_legacy(root: Path) -> dict:
     index_path = root / "EVIDENCE.json"
-    index_blob = index_path.read_bytes()
+    index_blob = read_artifact(index_path)
     if digest(index_blob) != "ce9317baa7cad1c1a77dacf19736d0d8fb812e8c76af0b03fc3cc699c77291b6":
         raise ValueError("historical evidence index trust anchor mismatch")
     index = json.loads(index_blob)
-    run_blob = (root / "RUN.json").read_bytes()
-    run = json.loads(run_blob)
+    run_blob = read_artifact(root / "RUN.json")
     if digest(run_blob) != index["files"]["RUN.json"]:
         raise ValueError("historical run pin changed")
+    run = json.loads(run_blob)
     scenarios = load_scenarios("train", subdir="train_v8")
     if {s.name: s.config_hash() for s in scenarios} != run["splits"]["train"]:
         raise ValueError("historical scenario definitions changed")
@@ -35,20 +37,26 @@ def verify_legacy(root: Path) -> dict:
         "not_counterfactual_evaluation": True,
         "datasets": {},
     }
-    for policy in ("short", "long", "duration", "v6", "tuned_rules"):
-        rel = f"train/{policy}/trajectories.jsonl.gz"
-        rows = load_legacy(
-            root / rel, expected_sha256=index["files"][rel], scenarios=scenarios, policy=policy
-        )
-        result["datasets"][policy] = {
-            "source_sha256": index["files"][rel],
-            "transitions": len(rows),
-            "episodes": len({(r.scenario, r.seed) for r in rows}),
-            "measured_cost_records": sum(r.benign_cost.value is not None for r in rows),
-            "unknown_current_masks": sum(r.current_mask is None for r in rows),
-            "unknown_behavior_probabilities": sum(r.behavior_probability is None for r in rows),
-            "unknown_delegated_costs": sum(r.delegated_blocked.value is None for r in rows),
-        }
+    with TemporaryDirectory(prefix="rl-legacy-snapshot-") as private_snapshot:
+        for policy in ("short", "long", "duration", "v6", "tuned_rules"):
+            rel = f"train/{policy}/trajectories.jsonl.gz"
+            raw = bounded_gzip(read_artifact(root / rel))
+            if digest(raw) != index["files"][rel]:
+                raise ValueError("historical trajectory pin changed")
+            snapshot = Path(private_snapshot) / "trajectories.jsonl.gz"
+            snapshot.write_bytes(raw)
+            rows = load_legacy(
+                snapshot, expected_sha256=index["files"][rel], scenarios=scenarios, policy=policy
+            )
+            result["datasets"][policy] = {
+                "source_sha256": index["files"][rel],
+                "transitions": len(rows),
+                "episodes": len({(r.scenario, r.seed) for r in rows}),
+                "measured_cost_records": sum(r.benign_cost.value is not None for r in rows),
+                "unknown_current_masks": sum(r.current_mask is None for r in rows),
+                "unknown_behavior_probabilities": sum(r.behavior_probability is None for r in rows),
+                "unknown_delegated_costs": sum(r.delegated_blocked.value is None for r in rows),
+            }
     return result
 
 
