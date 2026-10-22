@@ -32,6 +32,8 @@ from rl_defense.research.proof import (
     environment_packages,
     read_artifact,
     resolve_source,
+    scenarios_from_inputs,
+    topology_from_inputs,
     validate_raw_requests,
     validate_seed_selection,
     verify_deterministic_replay,
@@ -299,7 +301,8 @@ def run(
 
 
 def verify(output: Path) -> dict:
-    index = json.loads(read_artifact(output / "EVIDENCE.json"))
+    index_blob = read_artifact(output / "EVIDENCE.json")
+    index = json.loads(index_blob)
     if index.get("schema") != "constrained-lab-evidence/1":
         raise ValueError("unsupported evidence schema")
     expected_files = {"config.json", "raw.jsonl.gz", "transitions.jsonl.gz", "summary.json"}
@@ -329,11 +332,16 @@ def verify(output: Path) -> dict:
     ):
         raise ValueError("unsupported baseline profile semantics")
     check_source(
-        ROOT, output, config, set(index["files"]), commit_object=artifacts.get("source.commit.txt")
+        ROOT,
+        output,
+        config,
+        set(index["files"]),
+        commit_object=artifacts.get("source.commit.txt"),
+        index_object=index_blob,
     )
-    check_semantic_inputs(ROOT, config)
+    semantic_inputs = check_semantic_inputs(ROOT, config)
     scenarios = [LiveScenario.model_validate(d) for d in config["scenario_configs"]]
-    if scenarios != load_scenarios("train", subdir="train_v8"):
+    if scenarios != scenarios_from_inputs(semantic_inputs):
         raise ValueError("scenario definitions differ from the pinned train_v8 benchmark")
     if any(s.split != "train" for s in scenarios):
         raise ValueError("Phase 1 fresh evaluation cannot contain holdout/validation")
@@ -382,8 +390,8 @@ def verify(output: Path) -> dict:
         expected
     ):
         raise ValueError("missing, repeated or additional evaluation units")
-    verify_deterministic_replay(raw, scenarios)
-    verify_policy_actions(ROOT, config, rows)
+    verify_deterministic_replay(raw, scenarios, topology_from_inputs(semantic_inputs))
+    verify_policy_actions(ROOT, config, rows, semantic_inputs=semantic_inputs)
     actual = report(
         rows,
         gamma=config["gamma"],
