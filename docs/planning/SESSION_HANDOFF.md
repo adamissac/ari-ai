@@ -1214,7 +1214,70 @@ train/validation proof, then at most one preregistered fresh-holdout experiment.
 fails, reconsider the approach before spending more CPU. Diagnosis and preserved paired
 traces: `rl-defense/results/v10-followup-diagnosis/README.md` and `diagnostics.json`.
 
+### 2026-10-21 — RL-DURATION-001 (Alan, owner authorized)
 
-### 2026-10-21 — automation opt-in reset
+IN_PROGRESS `feat/alan/rl-duration-study`. Bounded train/validation-only comparison of
+short/long controls and one fixed existing outsider-duration rule, with actual v6 and
+fixed tuned-rules references. Reuse existing implementation; no new control/action,
+serving fallback, learned policy or holdout execution. Plan frozen before execution in
+`rl-defense/results/duration-screen/PLAN.md`. Only prepare one possible v11 study if
+validation improves availability without worse compromise under the fixed screen.
 
-Owner requested AI automation and Defense Lab OFF until explicitly enabled. Branch `fix/adam/automation-opt-in`: schema 0.15.1 changes Repository.automatic_assessments and TriggerPolicy.enabled defaults to false; migration 0010 resets stored switches, requests cancellation of unfinished automatic assessments, and wakes deferred jobs. Worker checks cancellation before checkout. Manual runs and historical results remain intact. Focused PostgreSQL/monitoring checks: 36 passed. Full tests pending. Railway plugin is installed but no callable Railway tools/credentials are exposed in this conversation; live deployment/settings verification remains blocked on access. Alan review requested for default semantics and backend migration.
+### 2026-10-21 — RL-DURATION-001 screen complete; v11 not justified
+
+Source `d985e69`, fixed/pushed plan before execution; all five heuristic/reference
+policies completed 280 train and240 validation episodes,15,600 windows, no errors or
+retries. Duration-aware vs actual v6 on validation: availability +1.2373 percentage
+points,95% CI [−0.0313,+2.5340]; compromise −4.1464 points, CI [−7.4197,−1.1465].
+Availability CI includes zero, failing the precommitted strict screen. Other validation
+conditions pass, but training compromise also worsens vs v6 (16.3863% vs15.2552%).
+Do not relax the test, add samples/candidates or prepare/launch v11. Reconsider the
+objective/control design first. This is a deterministic heuristic, not trained RL.
+
+All520 saved metrics exactly reproduce from complete raw trajectories; initial35
+artifact pins and frozen source/actual registry verify. Expanded evidence additionally
+pins post-run report/verifier. 13 focused tests passed in0.97s; Ruff lint/format and
+diff checks pass. No holdout replay, new checkpoint, registration, serving change or
+promotion. V6 registry unchanged. Results in `rl-defense/results/duration-screen`.
+PR #386 holds the complete source/results; final review and CI pending.
+
+### Duration screen review correction — historical interpretation
+
+PR #386's two review findings are addressed locally: both commands now reproduce
+training and training-by-scenario aggregates, not only validation; raw verification
+uses hash-pinned historical metric/schema/decision definitions from frozen source
+`d985e69`, independently of current product imports. Exact prior execution/verifier
+source and the earlier index are retained for audit; original measurements, plan,
+traces, registry and failed screen decision are unchanged. Recorded Python/NumPy/
+Pydantic versions are required. 17 focused tests pass in3.91s, including corrupt/re-pinned
+training summaries and incompatible current-product imports. No policy replay or new
+candidate/training. Shell permission approval timed out twice; GitHub connector is
+used to publish the authorized changes. The temp worktree Git metadata may remain
+at its earlier head; modified local files are preserved and match the remote fix.
+
+### 2026-10-21 — RL-DURATION-001 complete; no v11
+
+Merged PR #386 at `9926d14` (final review-fix commit `1e42f3e`). The one fixed
+heuristic duration comparison completed all520 train/validation episodes and15,600
+windows from source `d985e69`, without errors, retries, holdout execution or model
+training. Validation availability +1.2373 percentage points versus v6 had95% CI
+[−0.0313,+2.5340], failing the precommitted strictly-positive lower bound. Compromise
+improved on validation but worsened on training. Do not relax the condition, add
+samples/candidates, or prepare/launch v11 from this screen. Reconsider objective/control
+design before further research. V6 and its original registry remain unchanged.
+
+Both review findings are fixed and resolved: complete training/validation aggregate
+reproduction, plus hash-pinned historical metric/schema/decision semantics and recorded
+Python/NumPy/Pydantic versions. Original execution/verifier sources and prior index are
+retained; all original measurements, raw traces, plan and decision are unchanged.
+Final CI: **327 RL tests passed in394.40s**, plus successful20k-step gradient/reload
+smoke, frontend unit/build and browser tests, links and secret scanning. Local focused
+verification17 passed (latest2.32s); all520 raw episode metrics reproduce. Full result:
+`rl-defense/results/duration-screen/PROVENANCE.md`; historical verification details:
+`rl-defense/results/duration-screen/VERIFICATION.md`.
+
+Shell permission review timed out; changes were committed/pushed/merged through the
+GitHub connector. The temporary checkout `/private/tmp/rl-v10` still has earlier local
+Git metadata and preserved files corresponding to remote fix `1e42f3e`; reconcile it
+with the remote before any cleanup or new work. The user's original dirty checkout
+was not overwritten. No study heartbeat was re-enabled or extra experiment scheduled.
