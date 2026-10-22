@@ -4,7 +4,7 @@ PR #388 remains unmerged. Verification now rejects incomplete source manifests,
 truncated registered seed selections, and inconsistent raw request outcomes.
 Policy certification loads exactly the checkpoint bytes whose digest was checked.
 
-Validation: 40 focused tests passed; the archived 140 episodes / 4,200 transitions
+Validation: 44 focused tests passed; the archived 140 episodes / 4,200 transitions
 verified successfully. Original execution and reporting artifacts are unchanged.
 The previous revision passed 354 RL tests in CI; the new revision requires CI.
 No research training, Phase 2 implementation, promotion, or deployment occurred.
@@ -16,4 +16,7 @@ scenario-tampering regression both passed. Original measurements are preserved.
 
 Fourth review: source fingerprints are checked against actual recorded Git blobs;
 successful foreign reads must retain their compromise flag; Phase 1 root flags
-are enforced. No original measurement is changed. Focused validation pending.
+are enforced. No original measurement is changed. All 44 focused tests passed; archived 140 episodes / 4,200 transitions verify.
+
+Proposed next readiness work is recorded in NEXT_GATE.md. Its budgets and thresholds
+remain unset, and it authorizes no experiment or training.

@@ -1,6 +1,6 @@
 # Phase 1 verification results
 
-The focused research suite passes **40 tests**, covering request and transition
+The focused research suite passes **44 tests**, covering request and transition
 validation, seed selection, source provenance, named policy decisions, checkpoint
 integrity, capability limits, deterministic accounting, and registry preservation.
 The previous published revision passed **354 RL tests** in CI. CI must rerun for
@@ -36,3 +36,8 @@ Third review: scenario definitions must match the pinned training benchmark; sta
 settings are fixed before bootstrap work starts; all post-creation setup exceptions
 produce a failure audit record without retry. The 39-test focused run and the added
 scenario-tampering regression both passed. Original measurements are preserved.
+
+Fourth review validation: all 44 focused research tests passed. Read-only verification
+again accepted the original 140 episodes and 4,200 transitions. Source fingerprints
+now match recorded Git blobs, compromise labels are checked in both directions,
+and the root index must retain its Phase 1 flags.
