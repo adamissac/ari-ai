@@ -33,6 +33,7 @@ Home once implemented: `shared/` (source of truth: Pydantic v2) →
 | `ctx_` | ContextPack | `ckp_` | RLCheckpoint |
 | `app_` | ConnectedApplication | `arv_` | AnalystReview |
 | `itk_` | IngestToken | `inc_` | Incident |
+| `lpd_` | LivePolicyDecision | | |
 
 ## Core entities
 

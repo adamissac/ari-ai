@@ -1,8 +1,9 @@
-"""Live Defense shadow-pilot API (Phase 2).
+"""Live Defense shadow-pilot API (Phase 2 + Phase 3 shadow runtime).
 
-Connected staging apps, ingest-token metadata, recorded health/topology, and
-analyst reviews of stored recommendations. Nothing here applies, isolates,
-rate-limits, or blocks. ``AnalystReview.accept`` is a recorded opinion.
+Connected staging apps, ingest-token metadata, recorded health/topology,
+analyst reviews, and genuine ``LivePolicyDecision`` rows. Nothing here
+applies, isolates, rate-limits, or blocks. ``AnalystReview.accept`` is a
+recorded opinion. ``LivePolicyDecision.enforcement`` is always NOT_EXECUTED.
 ``DefenseHealth.status`` is always ``unknown``.
 """
 
@@ -14,16 +15,17 @@ from datetime import UTC, datetime
 from typing import Any
 
 import sqlalchemy as sa
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Query, Request
 
 from backend import audit
-from backend.api.deps import not_found, require_project, require_user
+from backend.api.deps import ApiError, not_found, require_project, require_user
 from backend.db import (
     analyst_reviews,
     connected_applications,
     defense_recommendations,
     ingest_tokens,
     jobs,
+    live_policy_decisions,
     monitoring_events,
     runtime_windows,
     transaction,
@@ -31,6 +33,7 @@ from backend.db import (
 from monitoring.runtime import ANOMALY_EVENT_THRESHOLD
 from shared.audit import ActorType
 from shared.base import utcnow
+from shared.errors import ErrorCode
 from shared.ids import IdPrefix, new_id
 from shared.live_defense import (
     AnalystReview,
@@ -47,9 +50,10 @@ from shared.live_defense import (
     ConnectedApplicationCreate,
     DefenseHealth,
     IngestTokenView,
+    LivePolicyDecision,
     StagingEnvironment,
 )
-from shared.monitoring import IngestTokenCreated
+from shared.monitoring import AUTHENTICATED_RUNTIME_SOURCES, IngestTokenCreated
 from shared.tenancy import MemberRole
 
 router = APIRouter(tags=["live-defense"])
@@ -364,7 +368,7 @@ def defense_graph(project_id: str, request: Request) -> ComponentGraph:
             links.append(ComponentLink(source_id=window["application_id"], target_id=node_id))
         score = window["score"] or {}
         anomaly = float(score.get("anomaly_score") or 0)
-        simulated = window["source"] != "runtime_demo"
+        simulated = window["source"] not in AUTHENTICATED_RUNTIME_SOURCES
         attention = anomaly >= ANOMALY_EVENT_THRESHOLD
         observations.append(
             ComponentObservation(
@@ -475,6 +479,7 @@ def create_recommendation_review(
                 id=review.id,
                 project_id=rec["project_id"],
                 recommendation_id=rec_id,
+                live_policy_decision_id=None,
                 decision=body.decision.value,
                 reviewed_by=user.id,
                 doc=review.model_dump(mode="json"),
@@ -493,6 +498,164 @@ def create_recommendation_review(
                 "recommendation_id": rec_id,
                 "decision": body.decision.value,
                 "executes": False,
+                "enforcement": "none",
+            },
+        )
+        return review
+
+
+def _keyset_where(table: sa.Table, cursor: str | None) -> list[Any]:
+    if not cursor:
+        return []
+    ts, sep, rid = cursor.partition("|")
+    try:
+        when = datetime.fromisoformat(ts)
+    except ValueError:
+        when = None
+    if not sep or not rid or when is None:
+        raise ApiError(ErrorCode.VALIDATION_FAILED, "invalid cursor", 422)
+    return [
+        sa.tuple_(table.c.created_at, table.c.id) < sa.tuple_(sa.literal(when), sa.literal(rid))
+    ]
+
+
+def _keyset_page(rows: list[Any], limit: int) -> tuple[list[Any], str | None]:
+    items = rows[:limit]
+    if len(rows) > limit and items:
+        last = items[-1]
+        return [r[2] for r in items], f"{last[0].isoformat()}|{last[1]}"
+    return [r[2] for r in items], None
+
+
+@router.get("/projects/{project_id}/live-policy-decisions")
+def list_live_policy_decisions(
+    project_id: str,
+    request: Request,
+    limit: int = Query(50, ge=1, le=200),
+    cursor: str | None = None,
+) -> dict[str, Any]:
+    """Newest first. ``next_cursor`` is set when older shadow decisions exist."""
+    t = live_policy_decisions
+    with transaction() as conn:
+        require_project(conn, require_user(conn, request), project_id)
+        rows = conn.execute(
+            sa.select(t.c.created_at, t.c.id, t.c.doc)
+            .where(t.c.project_id == project_id, *_keyset_where(t, cursor))
+            .order_by(t.c.created_at.desc(), t.c.id.desc())
+            .limit(limit + 1)
+        ).all()
+        docs, nxt = _keyset_page(rows, limit)
+        return {
+            "items": [LivePolicyDecision.model_validate(d).model_dump(mode="json") for d in docs],
+            "next_cursor": nxt,
+            "label": "shadow decisions; enforcement NOT_EXECUTED; Q-values only when v6 ran",
+        }
+
+
+@router.get("/live-policy-decisions/{decision_id}", response_model=LivePolicyDecision)
+def get_live_policy_decision(decision_id: str, request: Request) -> LivePolicyDecision:
+    with transaction() as conn:
+        user = require_user(conn, request)
+        row = (
+            conn.execute(
+                sa.select(live_policy_decisions).where(live_policy_decisions.c.id == decision_id)
+            )
+            .mappings()
+            .first()
+        )
+        if row is None:
+            raise not_found("live policy decision")
+        require_project(conn, user, row["project_id"])
+        return LivePolicyDecision.model_validate(row["doc"])
+
+
+@router.get("/live-policy-decisions/{decision_id}/reviews")
+def list_live_policy_decision_reviews(decision_id: str, request: Request) -> dict[str, Any]:
+    with transaction() as conn:
+        user = require_user(conn, request)
+        row = (
+            conn.execute(
+                sa.select(live_policy_decisions).where(live_policy_decisions.c.id == decision_id)
+            )
+            .mappings()
+            .first()
+        )
+        if row is None:
+            raise not_found("live policy decision")
+        require_project(conn, user, row["project_id"])
+        rows = (
+            conn.execute(
+                sa.select(analyst_reviews)
+                .where(analyst_reviews.c.live_policy_decision_id == decision_id)
+                .order_by(analyst_reviews.c.created_at.desc())
+            )
+            .mappings()
+            .all()
+        )
+        return {
+            "items": [_review_from_row(r).model_dump(mode="json") for r in rows],
+            "next_cursor": None,
+        }
+
+
+@router.post(
+    "/live-policy-decisions/{decision_id}/reviews",
+    status_code=201,
+    response_model=AnalystReview,
+)
+def create_live_policy_decision_review(
+    decision_id: str, body: AnalystReviewCreate, request: Request
+) -> AnalystReview:
+    """Record an analyst opinion on a shadow decision. Accept does not execute."""
+    with transaction() as conn:
+        user = require_user(conn, request)
+        row = (
+            conn.execute(
+                sa.select(live_policy_decisions).where(live_policy_decisions.c.id == decision_id)
+            )
+            .mappings()
+            .first()
+        )
+        if row is None:
+            raise not_found("live policy decision")
+        org_id, _ = require_project(conn, user, row["project_id"], MemberRole.member)
+        now = utcnow()
+        review = AnalystReview(
+            id=new_id(IdPrefix.arv),
+            project_id=row["project_id"],
+            recommendation_id=None,
+            live_policy_decision_id=decision_id,
+            decision=body.decision,
+            reason=body.reason,
+            reviewed_by=user.id,
+            reviewed_at=now,
+        )
+        conn.execute(
+            sa.insert(analyst_reviews).values(
+                id=review.id,
+                project_id=row["project_id"],
+                recommendation_id=None,
+                live_policy_decision_id=decision_id,
+                decision=body.decision.value,
+                reviewed_by=user.id,
+                doc=review.model_dump(mode="json"),
+            )
+        )
+        audit.record(
+            conn,
+            org_id=org_id,
+            project_id=row["project_id"],
+            actor_type=ActorType.user,
+            actor_id=user.id,
+            action="live_defense.shadow_decision.reviewed",
+            subject_type="analyst_review",
+            subject_id=review.id,
+            details={
+                "live_policy_decision_id": decision_id,
+                "decision": body.decision.value,
+                "executes": False,
+                "enforcement": "none",
+                "rl_label": False,
             },
         )
         return review

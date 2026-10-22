@@ -58,6 +58,7 @@ class IdPrefix(StrEnum):
     inc = "inc"
     app = "app"
     arv = "arv"
+    lpd = "lpd"
 
 
 def ulid() -> str:
@@ -114,3 +115,4 @@ IngestTokenId = Annotated[str, _pattern("itk")]
 IncidentId = Annotated[str, _pattern("inc")]
 ConnectedApplicationId = Annotated[str, _pattern("app")]
 AnalystReviewId = Annotated[str, _pattern("arv")]
+LivePolicyDecisionId = Annotated[str, _pattern("lpd")]

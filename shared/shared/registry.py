@@ -108,6 +108,7 @@ MODELS: tuple[type[BaseModel], ...] = (
     live_defense.ComponentGraph,
     live_defense.AnalystReview,
     live_defense.AnalystReviewCreate,
+    live_defense.LivePolicyDecision,
     # rl
     rl.NodeSignals,
     rl.PlatformFacts,

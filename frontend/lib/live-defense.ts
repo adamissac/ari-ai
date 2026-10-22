@@ -70,6 +70,8 @@ export const USED_LIVE_APIS = [
   { method: 'GET', path: '/projects/{id}/defense-health', use: 'recorded worker/ingest timestamps; status always unknown' },
   { method: 'GET', path: '/projects/{id}/defense-graph', use: 'recorded apps and ingest routes; missing checks stay unknown' },
   { method: 'GET/POST', path: '/defense-recommendations/{id}/reviews', use: 'analyst accept/reject/needs-investigation; accept does not execute' },
+  { method: 'GET', path: '/projects/{id}/live-policy-decisions', use: 'shadow decisions from rules or validated v6; NOT EXECUTED' },
+  { method: 'GET/POST', path: '/live-policy-decisions/{id}/reviews', use: 'analyst review of a shadow decision; accept does not execute' },
 ] as const;
 
 /** Capabilities still missing. Shown as missing — never filled with live-looking numbers. */
@@ -78,11 +80,6 @@ export const MISSING_LIVE_APIS = [
     id: 'live_incidents',
     title: 'Live-defense incident machine',
     reason: 'DETECTED → TRIAGED → RECOMMENDED → AUTHORIZED → EXECUTING → VERIFYING is not an API. Existing incidents stay on the NIST human lifecycle.',
-  },
-  {
-    id: 'live_inference',
-    title: 'Live policy inference stream',
-    reason: 'No live policy-decision producer exists. Q-values on stored recommendations are simulation-derived snapshots, not a live confidence feed.',
   },
 ] as const;
 
@@ -100,6 +97,8 @@ export interface OverviewCounts {
   appCount: number;
   healthKnown: boolean;
   lastIngestAt: string | null;
+  shadowKnown: boolean;
+  shadowCount: number;
 }
 
 export function liveDefenseOverviewCopy(counts: OverviewCounts): string {
@@ -121,6 +120,11 @@ export function liveDefenseOverviewCopy(counts: OverviewCounts): string {
     : counts.recommendationCount === 0
       ? 'No simulation recommendation is stored.'
       : `${counts.recommendationCount} simulation recommendation${counts.recommendationCount === 1 ? '' : 's'} listed; none is applied automatically.`;
+  const shadow = !counts.shadowKnown
+    ? 'Shadow decisions have not loaded.'
+    : counts.shadowCount === 0
+      ? 'No shadow decision is stored.'
+      : `${counts.shadowCount} shadow decision${counts.shadowCount === 1 ? '' : 's'} recorded; none executed.`;
   const apps = !counts.appsKnown
     ? 'Staging apps have not loaded.'
     : counts.appCount === 0
@@ -131,7 +135,7 @@ export function liveDefenseOverviewCopy(counts: OverviewCounts): string {
     : counts.lastIngestAt
       ? 'Authenticated ingest has been recorded; health stays unknown without a health-check producer.'
       : 'No ingest recorded; health is unknown.';
-  return `${watch} ${events} ${incidents} ${recs} ${apps} ${ingest}`;
+  return `${watch} ${events} ${incidents} ${recs} ${shadow} ${apps} ${ingest}`;
 }
 
 export interface RankedAction {
@@ -206,5 +210,5 @@ export function unavailable(value: string | number | null | undefined): string {
 }
 
 export function ingestCurl(projectId: string): string {
-  return `curl -X POST "$ARI_API/api/v1/ingest/runtime/${projectId}" \\\n  -H "Authorization: Bearer $INGEST_TOKEN" \\\n  -H "Content-Type: application/json" \\\n  -d '{"source":"runtime_demo","window_start":"<utc>","window_end":"<utc>","routes":[{"route":"GET /health","requests":1}]}'`;
+  return `curl -X POST "$ARI_API/api/v1/ingest/runtime/${projectId}" \\\n  -H "Authorization: Bearer $INGEST_TOKEN" \\\n  -H "Content-Type: application/json" \\\n  -d '{"source":"owned_staging","window_start":"<utc>","window_end":"<utc>","routes":[{"route":"GET /health","requests":1}]}'`;
 }

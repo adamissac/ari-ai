@@ -1,9 +1,10 @@
-# Live Defense frontend — API contracts (Phase 2)
+# Live Defense frontend — API contracts (Phase 3)
 
-Status: **Phase 2 implemented** on `feat/live-defense-pilot-phase2`. Consumer:
-`frontend/` Live Defense dashboard. Producer: control plane (`backend/`, `shared/`
-0.16.0). Phase 1 (PR #390) is unchanged in spirit: live mode still refuses to mix
-layout-preview fixtures with records, and no route applies a control.
+Status: **Phase 3 shadow runtime** on `feat/live-defense-phase3-shadow-runtime`.
+Consumer: `frontend/` Live Defense dashboard. Producer: control plane (`backend/`,
+`shared/` 0.17.0). Phase 1 (PR #390) and Phase 2 (PR #391) are extended, not rebuilt:
+live mode still refuses to mix layout-preview fixtures with records, and no route
+applies a control.
 
 Canonical types: `shared/shared/monitoring.py`, `shared/shared/incident.py`,
 `shared/shared/rl.py`, `shared/shared/live_defense.py`, generated TS via
@@ -17,7 +18,8 @@ Canonical types: `shared/shared/monitoring.py`, `shared/shared/incident.py`,
 | Events | `GET /projects/{id}/events` | Preview fixtures, labelled SAMPLE LAYOUT | Empty feed copy; no invented events | — |
 | Reassessments | `GET /projects/{id}/reassessments` | Not shown as live counts | Zero is zero | — |
 | NIST incidents + timeline | `GET /projects/{id}/incidents`, `GET /incidents/{id}` | Preview incidents | Empty list; unknown correlation when no linked ids | Live DETECTED→EXECUTING machine |
-| Stored recommendations + Q ranking | `GET /projects/{id}/defense-recommendations` | Preview ranking | Empty list | Live policy-decision stream (no producer) |
+| Stored recommendations + Q ranking | `GET /projects/{id}/defense-recommendations` | Preview ranking | Empty list | — |
+| Shadow `LivePolicyDecision` | `GET /projects/{id}/live-policy-decisions` | Not mixed with live | Empty list | Q-values when inference did not run (never synthesized) |
 | Occlusion explanation | `GET /defense-recommendations/{id}/explanation` | Preview contributions | Button loads stored explanation; missing fields = unavailable | — |
 | RL evaluations | `GET /projects/{id}/rl-evaluations` | Not used | Empty; Lab reads committed bundle | — |
 | Staging apps | `GET/POST /projects/{id}/applications` | Sample chrome only | Empty onboarding | Production environment (rejected) |
@@ -31,9 +33,9 @@ Unknown correlations (event not on any incident, incident with no recommendation
 ## Honesty rules the API must keep
 
 1. Telemetry is never invented. `MonitoringEvent.simulated` / `Incident.simulated` stay accurate.
-2. `DefenseRecommendation.simulation_derived` is `Literal[True]` today. There is still **no live policy-decision producer**; this PR does not add a fake `LivePolicyDecision` feed.
+2. `DefenseRecommendation.simulation_derived` is `Literal[True]`. Genuine shadow rows are `LivePolicyDecision` (`enforcement: "NOT_EXECUTED"`). Q-values on a live decision are null unless frozen v6 inference actually ran.
 3. Q-values are stored scores, not a probability that an attack is happening now.
-4. No endpoint applies, isolates, rate-limits, or blocks. `AnalystReview.accept` sets `executes: false` and `enforcement: "none"`. It is not the NIST two-person incident approval.
+4. No endpoint applies, isolates, rate-limits, or blocks. `AnalystReview.accept` sets `executes: false` and `enforcement: "none"`. It is not the NIST two-person incident approval and is not converted into an RL label.
 5. `DefenseHealth.status` is always `"unknown"`. HTTP 200 is not a healthy verdict.
 
 ## Phase 2 resources (implemented)
@@ -59,10 +61,17 @@ Unknown correlations (event not on any incident, incident with no recommendation
 - `GET /defense-recommendations/{id}/reviews`
 - `GET /projects/{id}/defense-reviews`
 
+## Phase 3 resources (implemented)
+
+- `GET /projects/{id}/live-policy-decisions` — cursor-paginated shadow decisions
+- `GET /live-policy-decisions/{id}`
+- `POST/GET /live-policy-decisions/{id}/reviews` — accept does not execute
+- Authenticated ingest source `owned_staging` (application-bound token)
+- Deterministic rules in `monitoring/detect.py`; frozen v6 only when serving assumptions hold
+
 ## Still missing (do not fake)
 
 - Live-defense incident machine (DETECTED → … → EXECUTING)
-- Live policy inference / `LivePolicyDecision` history (no producer)
 - Autonomous block / isolate / rate-limit
 - Production enforcement grants
 

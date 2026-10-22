@@ -37,10 +37,10 @@ export function LiveDefenseShell({
     <div className="flex flex-col gap-4" data-testid="live-defense" data-mode={mode}>
       <header className="monitor-head" data-testid="live-defense-head">
         <div>
-          <p className="label-mono text-white/70">Ari Live Defense · phase 2 · shadow pilot</p>
-          <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">Recorded evidence, recommendations, and analyst review</h2>
+          <p className="label-mono text-white/70">Ari Live Defense · phase 3 · shadow runtime</p>
+          <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">Authenticated ingest, shadow decisions, and analyst review</h2>
           <p className="mt-1 max-w-2xl text-sm text-white/80">
-            Connect an authorized staging app, inspect ingested evidence, understand a stored recommendation, and record a review.
+            Connect an authorized staging app, inspect ingested evidence, read a rules or validated v6 shadow decision, and record a review.
             Ari does not take automatic control of customer traffic.
           </p>
         </div>

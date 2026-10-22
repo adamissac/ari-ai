@@ -1,6 +1,6 @@
 'use client';
 
-import type { AnalystReview, DefenseRecommendation, RLEvaluation, RLExplanation } from '@hackatl/frontend-transport';
+import type { AnalystReview, DefenseRecommendation, LivePolicyDecision, RLEvaluation, RLExplanation } from '@hackatl/frontend-transport';
 import Link from 'next/link';
 import { useState } from 'react';
 import { QRanking, SimulationCaveat, SourceTag } from '@/components/live-defense/common';
@@ -15,12 +15,14 @@ import type { Resource } from '@/lib/use-resource';
 export function Explainability({
   mode,
   recs,
+  decisions,
   evals,
   reviews,
   onReview,
 }: {
   mode: LiveDefenseMode;
   recs?: Resource<{ items: DefenseRecommendation[]; label: string }>;
+  decisions?: Resource<{ items: LivePolicyDecision[]; label: string }>;
   evals?: Resource<{ items: RLEvaluation[] }>;
   reviews?: Resource<{ items: AnalystReview[] }>;
   onReview?: () => void;
@@ -31,13 +33,33 @@ export function Explainability({
       <Panel title="Why a stored recommendation looks the way it does" actions={<SourceTag mode="live" />}>
         <SimulationCaveat />
         <p className="mt-3 text-sm text-muted">
-          Q-values and occlusion contributions come from the recommendation the backend already stored.
-          They explain a simulation-trained policy, not a live attack and not a confidence that something is happening now.
+          Simulation Q-values explain a stored Defense Lab recommendation, not a live attack.
+          Shadow decisions below are separate: Q-values appear only when frozen v6 inference actually ran.
           Missing fields are shown as unavailable. Held-out scores live in the <Link className="text-accent hover:underline" href="/lab">Defense Lab</Link>.
         </p>
-        <p className="mt-2 text-sm text-muted">There is no live policy-decision producer. These rows are recommendation-only and remain simulation-derived.</p>
       </Panel>
-      <Panel title="Stored recommendations">
+      <Panel title="Shadow decisions (authenticated ingest)">
+        {decisions ? (
+          <Async resource={decisions} label="shadow decisions">
+            {page => (
+              <>
+                <p className="mb-3 text-xs text-muted">Backend label: {page.label}</p>
+                {page.items.length === 0 ? <Empty>No shadow decision has been produced for this project.</Empty> : (
+                  <ul className="flex flex-col gap-3">{page.items.map(item => (
+                    <LiveShadowDecision
+                      key={item.id}
+                      decision={item}
+                      reviews={reviews?.status === 'ready' ? reviews.data.items.filter(entry => entry.live_policy_decision_id === item.id) : []}
+                      onReview={onReview}
+                    />
+                  ))}</ul>
+                )}
+              </>
+            )}
+          </Async>
+        ) : <Empty>Shadow decisions were not requested.</Empty>}
+      </Panel>
+      <Panel title="Stored simulation recommendations">
         {recs ? (
           <Async resource={recs} label="recommendations">
             {page => (
@@ -127,6 +149,38 @@ function LiveRecommendation({ rec, reviews, onReview }: { rec: DefenseRecommenda
         </div>
       )}
       <AnalystReviewForm recommendationId={rec.id} history={reviews} onSaved={onReview} />
+    </li>
+  );
+}
+
+function LiveShadowDecision({ decision, reviews, onReview }: { decision: LivePolicyDecision; reviews: AnalystReview[]; onReview?: () => void }) {
+  const ranked = decision.top_actions ? rankQValues(decision.top_actions) : [];
+  return (
+    <li id={decision.id} className="rounded-md border border-line bg-panel-2 p-3" data-testid={`live-defense-decision-${decision.id}`}>
+      <p className="flex flex-wrap items-center gap-2 text-sm text-ink">
+        <span className="font-semibold">{decision.action ? actionInWords(decision.action, decision.node) : 'Abstained'}</span>
+        {decision.node && <Tag>{decision.node}</Tag>}
+        <Tag tone="info">NOT EXECUTED</Tag>
+        <Tag>{decision.producer.replaceAll('_', ' ')}</Tag>
+        {decision.simulated ? <Tag tone="warn">simulated source</Tag> : <Tag tone="ok">authenticated</Tag>}
+      </p>
+      <dl className="mt-2 grid grid-cols-[minmax(8rem,auto)_1fr] gap-x-3 gap-y-1 text-xs text-ink">
+        <dt className="text-muted">Telemetry</dt><dd>{decision.telemetry_source}</dd>
+        <dt className="text-muted">Inference</dt><dd>{decision.inference_ran ? 'ran' : decision.inference_status.replaceAll('_', ' ')}</dd>
+        <dt className="text-muted">Authorization context</dt><dd>{decision.authorization_context}</dd>
+        <dt className="text-muted">Rules</dt><dd>{decision.rule_hits.length ? decision.rule_hits.join(', ') : 'none fired'}</dd>
+        <dt className="text-muted">Policy</dt><dd><Mono>{unavailable(decision.policy_version)}</Mono></dd>
+        <dt className="text-muted">Checkpoint</dt><dd><Mono>{decision.checkpoint_sha256 ? decision.checkpoint_sha256.slice(0, 16) : 'unavailable'}</Mono></dd>
+        <dt className="text-muted">Q-margin</dt><dd>{decision.q_margin === null ? 'unavailable (inference not run)' : `${num(decision.q_margin, 3)} (score gap, not a probability)`}</dd>
+        <dt className="text-muted">Created</dt><dd><Time iso={decision.created_at} /></dd>
+      </dl>
+      {decision.abstention_reason && <p className="mt-1 text-xs text-muted">{decision.abstention_reason}</p>}
+      <p className="mt-1 text-xs text-warn">{decision.caveat}</p>
+      <div className="mt-3">
+        <p className="label-mono mb-2 text-xs text-ink">Stored action scores (only if v6 ran)</p>
+        {ranked.length === 0 ? <p className="text-xs text-muted">Q-values were not synthesized because inference did not run.</p> : <QRanking actions={ranked} sample={false} />}
+      </div>
+      <AnalystReviewForm livePolicyDecisionId={decision.id} history={reviews} onSaved={onReview} />
     </li>
   );
 }
