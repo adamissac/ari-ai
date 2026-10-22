@@ -29,12 +29,14 @@ from rl_defense.research.proof import (
     bounded_gzip,
     check_semantic_inputs,
     check_source,
+    environment_packages,
     read_artifact,
     resolve_source,
     validate_raw_requests,
     validate_seed_selection,
     verify_deterministic_replay,
     verify_policy_actions,
+    verify_runtime_closure,
 )
 from rl_defense.research.records import ResearchTransition
 
@@ -242,6 +244,7 @@ def run(
                 p: importlib.metadata.version(p)
                 for p in ("numpy", "pydantic", "torch", "gymnasium", "fastapi", "httpx", "PyYAML")
             },
+            "environment_packages": environment_packages(),
             "code_sha256": {str(p.relative_to(ROOT)): digest(p.read_bytes()) for p in code_files()},
         }
         (output / "config.json").write_bytes(encoded(config))
@@ -357,6 +360,7 @@ def verify(output: Path) -> dict:
         "caller-supplied GitHub commit with matching tree",
     ):
         raise ValueError("evidence scope metadata mismatch")
+    verify_runtime_closure(ROOT, output, config)
     raw = bounded_gzip(artifacts["raw.jsonl.gz"])
     bounded_gzip(artifacts["transitions.jsonl.gz"])
     validate_raw_requests(raw, scenarios)
@@ -393,6 +397,10 @@ def verify(output: Path) -> dict:
         "transitions": len(rows),
         "episodes": len({(r.policy, r.scenario, r.seed) for r in rows}),
         "source_commit": config["source_commit"],
+        "original_dependency_closure_known": "environment_packages" in config,
+        "verification_source_commit": subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
+        ).strip(),
     }
 
 

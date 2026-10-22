@@ -32,3 +32,6 @@ Test commands/results and evidence limitations are recorded with the results/han
 
 Proposed next readiness work: [NEXT_GATE.md](NEXT_GATE.md), without execution
 authorization or invented safety thresholds.
+
+Supported historical readiness command: `python -m rl_defense.research.legacy`.
+The result-directory reader is frozen archival source, not the supported verifier.
