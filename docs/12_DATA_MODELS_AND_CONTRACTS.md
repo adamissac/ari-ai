@@ -31,6 +31,8 @@ Home once implemented: `shared/` (source of truth: Pydantic v2) →
 | `run_` | AgentRun | `evt_` | MonitoringEvent |
 | `tst_` | TestRun / GeneratedTest | `rec_` | DefenseRecommendation |
 | `ctx_` | ContextPack | `ckp_` | RLCheckpoint |
+| `app_` | ConnectedApplication | `arv_` | AnalystReview |
+| `itk_` | IngestToken | `inc_` | Incident |
 
 ## Core entities
 
