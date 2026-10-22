@@ -18,6 +18,14 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-22 — Cursor (agent, Alan) — Live Defense Phase 2 shadow pilot
+- Did: branch `feat/live-defense-pilot-phase2` from `origin/main` (PR #390 already merged). Extended Phase 1; did not rebuild it. Shared 0.16.0: `ConnectedApplication`, `IngestTokenView`, `DefenseHealth`, `ComponentGraph`, `AnalystReview`. Backend migration 0010 + `backend/api/live_defense.py`. Frontend wires existing APIs end-to-end and adds Staging apps + analyst review. `rl-defense/` untouched. Draft PR only; do not merge.
+- State of the code: analyst can register sandbox/owned_test apps, mint a token (shown once), inspect ingested evidence, read a stored recommendation, and record accept/reject/needs-investigation without executing a control. Health status is always `unknown`. No live policy-decision producer.
+- Commands run and results: recorded on the PR after this session's test pass.
+- Decisions: do not fake a live inference feed; do not infer healthy from HTTP 200; accept ≠ enforcement approval.
+- Next steps: customer shadow-pilot blockers listed on the PR (hosted ingest of a real staging app, live-inference producer if/when one exists, no autonomous enforcement).
+- Warnings: `/live-defense-pilot` remains sample layout. Do not begin autonomous enforcement.
+
 ### 2026-10-22 — Cursor (agent, Alan) — Live Defense Phase 1 UI
 - Did: branch `feat/live-defense-pilot-ui`. Customer dashboard at `/projects/{id}/live-defense` (Overview, Investigation, Explainability) plus isolated `/live-defense-pilot`. Live mode uses existing project/events/incidents/recommendation/explanation/evaluation APIs. Layout-preview fixtures in `frontend/lib/live-defense-preview.ts` are labelled SAMPLE LAYOUT and never mixed with records. No apply/isolate/rate-limit. `shared/`, `backend/`, `rl-defense/` untouched. Handoff for missing APIs: `docs/planning/LIVE_DEFENSE_FRONTEND_API.md`.
 - State of the code: frontend-only; draft PR #390. Navigation: Live Defense under More; Monitoring links in.
