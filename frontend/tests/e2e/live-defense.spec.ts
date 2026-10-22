@@ -91,9 +91,9 @@ test('Live Defense shadow pilot: staging app, ingest, unknown health, review wit
   if (events.length === 0) {
     await expect(page.getByTestId('incident-event-correlation')).toContainText('unknown');
   } else {
-    await expect(page.getByText(/GET \/payments/i).or(page.getByText(/log anomaly/i)).or(page.getByText(/runtime/i))).toBeVisible();
+    await expect(page.getByText('Authenticated runtime ingest log anomaly')).toBeVisible();
   }
-  await expect(page.getByRole('link', { name: /raise_monitoring|Watch more closely/i })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'raise_monitoring on payments' })).toBeVisible();
   await evidenceShot(page, 'live-defense-incident');
 
   await page.getByRole('link', { name: 'Explainability' }).click();
