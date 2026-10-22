@@ -284,3 +284,34 @@ def test_evidence_bundle_verifier_rejects_rehashed_summary_and_overlap(
         ev.verify(root)
     with pytest.raises(FileExistsError):
         ev.run(root, episodes=2)
+
+
+def test_source_fingerprint_allowlist_is_exact_and_does_not_skip_manifest():
+    import re
+    import tomllib
+
+    config = tomllib.loads((ROOT / ".gitleaks.toml").read_text())
+    rule = next(
+        a
+        for a in config["allowlists"]
+        if a["description"].startswith("Verified constrained-Phase1")
+    )
+    assert rule["condition"] == "AND" and rule["regexTarget"] == "line"
+    assert rule["paths"] == [r"^rl-defense/results/constrained-phase1/config\.json$"]
+    manifest = json.loads((ROOT / "rl-defense/results/constrained-phase1/config.json").read_text())
+    paths = (
+        "rl-defense/rl_defense/api.py",
+        "shared/shared/api.py",
+        "standards/standards/owasp_api.py",
+    )
+    assert len(rule["regexes"]) == len(paths)
+    for rel in paths:
+        # The allowlist belongs to the historical manifest, not future product code.
+        sha = manifest["code_sha256"][rel]
+        assert any(re.fullmatch(pattern, f'    "{rel}": "{sha}",') for pattern in rule["regexes"])
+        assert not any(
+            re.fullmatch(pattern, f'    "api_key": "{sha}",') for pattern in rule["regexes"]
+        )
+        assert not any(
+            re.fullmatch(pattern, f'    "{rel}": "{"a" * 64}",') for pattern in rule["regexes"]
+        )

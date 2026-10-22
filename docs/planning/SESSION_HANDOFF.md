@@ -1319,3 +1319,12 @@ Validation so far:20focused tests passed in9.53s, Ruff checks/format all87RL sou
 files pass, links518files/0problems. First full compatibility command had346passes and
 one subprocess import failure because relative PYTHONPATH did not survive cwd change;
 rerun uses absolute paths. Final full suite and PR review/CI pending at this entry.
+
+Phase1 compatibility rerun: **347passed in256.62s**, absolute PYTHONPATH. Full87-file
+RL lint/format and links518files/0problems pass. PR #388 published (head `ed74a11c`).
+CI secret scan found three false positives: SHA256 entries for api.py/owasp_api.py in
+the pinned code manifest. Added a path+exact-line+exact-value AND allowlist, not a file
+exclusion; local gitleaks8.30.1 history scan passes. A temporary Git fixture proves the
+manifest hashes pass while a synthetic credential-shaped api_key in that **same file**
+still fails. New regression checks the exception's scope and historical pins. Original
+execution evidence/source semantics remain unchanged; no result recollection/rewrite.
