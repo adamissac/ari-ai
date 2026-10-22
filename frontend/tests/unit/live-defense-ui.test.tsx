@@ -31,16 +31,16 @@ it('labels sample layout, lists missing APIs, and has no enforcement buttons', (
   expect(screen.getByTestId('live-defense').getAttribute('data-mode')).toBe('layout-preview');
   expect(screen.getByTestId('live-defense-preview-banner').textContent).toMatch(/Not live telemetry/);
   expect(screen.getByTestId('live-defense-no-enforcement').textContent).toMatch(/does not apply, isolate, rate-limit, or block/);
-  expect(screen.getByTestId('live-defense-api-coverage').textContent).toContain('Component health and topology');
+  expect(screen.getByTestId('live-defense-api-coverage').textContent).toContain('Live policy inference stream');
   expect(screen.getByTestId('defense-map').textContent).toMatch(/SAMPLE LAYOUT/);
   expect(screen.queryByRole('button', { name: /^(apply|isolate|rate-limit|block source)$/i })).toBeNull();
 });
 
-it('does not draw a live map when the health API is missing', () => {
+it('does not draw a live map or claim healthy without recorded checks', () => {
   render(<LiveOverview mode="live" projectId="prj_1" />);
   expect(screen.queryByTestId('defense-map')).toBeNull();
-  expect(screen.getByTestId('live-defense-summary').textContent).toContain('does not draw a live map');
-  expect(screen.getByTestId('live-defense-summary').textContent).not.toContain('healthy');
+  expect(screen.getByTestId('live-defense-health-unknown').textContent).toMatch(/unknown/);
+  expect(screen.getByTestId('live-defense-summary').textContent).not.toMatch(/\bhealthy\b/);
 });
 
 it('keeps the standalone pilot on sample layout with no live toggle', () => {

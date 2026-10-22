@@ -1,12 +1,13 @@
 'use client';
 
-import type { DefenseRecommendation, RLEvaluation, RLExplanation } from '@hackatl/frontend-transport';
+import type { AnalystReview, DefenseRecommendation, RLEvaluation, RLExplanation } from '@hackatl/frontend-transport';
 import Link from 'next/link';
 import { useState } from 'react';
 import { QRanking, SimulationCaveat, SourceTag } from '@/components/live-defense/common';
+import { AnalystReviewForm } from '@/components/live-defense/review';
 import { Async, Button, Empty, ErrorState, Loading, Mono, Panel, Tag, Time } from '@/components/ui';
 import { api } from '@/lib/api';
-import { actionInWords, rankQValues, SIMULATION_CAVEAT, type LiveDefenseMode } from '@/lib/live-defense';
+import { actionInWords, rankQValues, SIMULATION_CAVEAT, unavailable, type LiveDefenseMode } from '@/lib/live-defense';
 import { PREVIEW_RECOMMENDATIONS } from '@/lib/live-defense-preview';
 import { num } from '@/lib/format';
 import type { Resource } from '@/lib/use-resource';
@@ -15,10 +16,14 @@ export function Explainability({
   mode,
   recs,
   evals,
+  reviews,
+  onReview,
 }: {
   mode: LiveDefenseMode;
   recs?: Resource<{ items: DefenseRecommendation[]; label: string }>;
   evals?: Resource<{ items: RLEvaluation[] }>;
+  reviews?: Resource<{ items: AnalystReview[] }>;
+  onReview?: () => void;
 }) {
   if (mode === 'layout-preview') return <PreviewExplain />;
   return (
@@ -28,17 +33,25 @@ export function Explainability({
         <p className="mt-3 text-sm text-muted">
           Q-values and occlusion contributions come from the recommendation the backend already stored.
           They explain a simulation-trained policy, not a live attack and not a confidence that something is happening now.
-          Held-out scores live in the <Link className="text-accent hover:underline" href="/lab">Defense Lab</Link>.
+          Missing fields are shown as unavailable. Held-out scores live in the <Link className="text-accent hover:underline" href="/lab">Defense Lab</Link>.
         </p>
+        <p className="mt-2 text-sm text-muted">There is no live policy-decision producer. These rows are recommendation-only and remain simulation-derived.</p>
       </Panel>
       <Panel title="Stored recommendations">
         {recs ? (
           <Async resource={recs} label="recommendations">
             {page => (
               <>
-                <p className="mb-3 text-xs text-faint">Backend label: {page.label}</p>
+                <p className="mb-3 text-xs text-muted">Backend label: {page.label}</p>
                 {page.items.length === 0 ? <Empty>No recommendation has been requested for this project.</Empty> : (
-                  <ul className="flex flex-col gap-3">{page.items.map(rec => <LiveRecommendation key={rec.id} rec={rec} />)}</ul>
+                  <ul className="flex flex-col gap-3">{page.items.map(rec => (
+                    <LiveRecommendation
+                      key={rec.id}
+                      rec={rec}
+                      reviews={reviews?.status === 'ready' ? reviews.data.items.filter(item => item.recommendation_id === rec.id) : []}
+                      onReview={onReview}
+                    />
+                  ))}</ul>
                 )}
               </>
             )}
@@ -53,9 +66,9 @@ export function Explainability({
             ) : (
               <ul className="divide-y divide-line text-xs">
                 {page.items.map(item => (
-                  <li key={item.id} className="py-2">
+                  <li key={item.id} className="py-2 text-ink">
                     <Mono>{item.id}</Mono> · protocol {item.protocol_version} · {item.checkpoint_ids.length} checkpoints · summary sha256 <Mono>{item.summary_sha256.slice(0, 12)}</Mono> · <Time iso={item.created_at} />
-                    {item.simulation_derived && <Tag tone="warn" >simulation-derived</Tag>}
+                    {item.simulation_derived && <Tag tone="warn">simulation-derived</Tag>}
                   </li>
                 ))}
               </ul>
@@ -67,7 +80,7 @@ export function Explainability({
   );
 }
 
-function LiveRecommendation({ rec }: { rec: DefenseRecommendation }) {
+function LiveRecommendation({ rec, reviews, onReview }: { rec: DefenseRecommendation; reviews: AnalystReview[]; onReview?: () => void }) {
   const [exp, setExp] = useState<{ status: 'idle' } | { status: 'loading' } | { status: 'ready'; data: RLExplanation } | { status: 'error'; error: unknown }>({ status: 'idle' });
   const ranked = rankQValues(rec.top_actions);
   const explain = async () => {
@@ -76,34 +89,44 @@ function LiveRecommendation({ rec }: { rec: DefenseRecommendation }) {
     catch (error) { setExp({ status: 'error', error }); }
   };
   return (
-    <li className="rounded-md border border-line bg-panel-2 p-3" data-testid={`live-defense-rec-${rec.id}`}>
-      <p className="flex flex-wrap items-center gap-2 text-sm">
+    <li id={rec.id} className="rounded-md border border-line bg-panel-2 p-3" data-testid={`live-defense-rec-${rec.id}`}>
+      <p className="flex flex-wrap items-center gap-2 text-sm text-ink">
         <span className="font-semibold">{actionInWords(rec.action, rec.node)}</span>
         {rec.node && <Tag>{rec.node}</Tag>}
-        <span className="text-xs text-muted">Q-margin {num(rec.q_margin, 3)}</span>
+        <Tag tone="info">recommendation only</Tag>
+        <Tag tone="warn">{rec.simulation_derived ? 'simulation-derived' : 'unavailable provenance'}</Tag>
       </p>
-      <p className="mt-1 text-xs text-muted">policy <Mono>{rec.policy_version}</Mono> · checkpoint <Mono>{rec.checkpoint_sha256.slice(0, 12)}</Mono> · <Time iso={rec.created_at} /></p>
+      <dl className="mt-2 grid grid-cols-[minmax(7rem,auto)_1fr] gap-x-3 gap-y-1 text-xs text-ink">
+        <dt className="text-muted">Policy</dt><dd><Mono>{unavailable(rec.policy_version)}</Mono></dd>
+        <dt className="text-muted">Checkpoint</dt><dd><Mono>{rec.checkpoint_sha256 ? rec.checkpoint_sha256.slice(0, 16) : 'unavailable'}</Mono></dd>
+        <dt className="text-muted">Action / target</dt><dd>{rec.action} / {rec.node ?? 'unavailable'}</dd>
+        <dt className="text-muted">Q-margin</dt><dd>{num(rec.q_margin, 3)} (score gap, not a probability)</dd>
+        <dt className="text-muted">Created</dt><dd><Time iso={rec.created_at} /></dd>
+      </dl>
       <p className="mt-1 text-xs text-warn">{rec.caveat || SIMULATION_CAVEAT}</p>
       <div className="mt-3">
-        <p className="label-mono mb-2 text-xs">Stored action scores (not live confidence)</p>
+        <p className="label-mono mb-2 text-xs text-ink">Stored action scores and alternatives (not live confidence)</p>
         <QRanking actions={ranked} sample={false} />
       </div>
       {exp.status === 'idle' && <Button className="mt-3 !px-2 !py-0.5 text-xs" onClick={() => void explain()}>Load stored explanation</Button>}
       {exp.status === 'loading' && <Loading label="Loading explanation" />}
       {exp.status === 'error' && <ErrorState error={exp.error} onRetry={() => void explain()} context="Explanation" />}
       {exp.status === 'ready' && (
-        <div className="mt-3 text-xs">
-          <p className="text-muted">Method {exp.data.method} · runner-up {exp.data.runner_up ?? '—'} · margin {num(exp.data.margin, 3)}</p>
+        <div className="mt-3 text-xs text-ink">
+          <p className="text-muted">Method {unavailable(exp.data.method)} · runner-up {exp.data.runner_up ?? 'unavailable'} · margin {num(exp.data.margin, 3)}</p>
           <p className="mt-1 text-warn">{exp.data.caveat}</p>
-          <ul className="mt-2">
-            {exp.data.top_contributions.map((item, index) => (
-              <li key={`${item.feature}-${index}`} className={item.delta_margin > 0 ? 'text-ok' : 'text-bad'}>
-                {item.delta_margin > 0 ? 'supports' : 'opposes'} · <Mono>{item.node ? `${item.node}.` : ''}{item.feature}</Mono> = {num(item.value, 3)} (Δmargin {num(item.delta_margin, 3)}, {item.kind})
-              </li>
-            ))}
-          </ul>
+          {exp.data.top_contributions.length === 0 ? <p className="mt-2 text-muted">Occlusion contributions: unavailable</p> : (
+            <ul className="mt-2">
+              {exp.data.top_contributions.map((item, index) => (
+                <li key={`${item.feature}-${index}`} className={item.delta_margin > 0 ? 'text-ok' : 'text-bad'}>
+                  {item.delta_margin > 0 ? 'supports' : 'opposes'} · <Mono>{item.node ? `${item.node}.` : ''}{item.feature}</Mono> = {num(item.value, 3)} (Δmargin {num(item.delta_margin, 3)}, {item.kind})
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
+      <AnalystReviewForm recommendationId={rec.id} history={reviews} onSaved={onReview} />
     </li>
   );
 }
@@ -115,7 +138,7 @@ function PreviewExplain() {
     <div className="flex flex-col gap-4" data-testid="live-defense-preview-explain">
       <Panel title="Sample explainability chrome" actions={<SourceTag mode="layout-preview" />}>
         <SimulationCaveat text={rec.caveat} />
-        <p className="mt-3 text-sm">{actionInWords(rec.action, rec.node)}</p>
+        <p className="mt-3 text-sm text-ink">{actionInWords(rec.action, rec.node)}</p>
         <p className="mt-1 text-xs text-muted">policy <Mono>{rec.policy_version}</Mono> · sample Q-margin {num(rec.q_margin, 3)}</p>
         <div className="mt-3">
           <p className="label-mono mb-2 text-xs">Sample action scores (not a loaded policy)</p>

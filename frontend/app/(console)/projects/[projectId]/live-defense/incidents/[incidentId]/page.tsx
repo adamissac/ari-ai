@@ -13,5 +13,16 @@ export default function LiveDefenseIncidentDetailPage() {
   const mode = liveDefenseMode(useSearchParams().get('preview'));
   const live = mode === 'live';
   const detail = useResource(live ? `ld-incident:${incidentId}` : null, s => api().incident(incidentId, { signal: s }), 15000);
-  return <InvestigationDetail mode={mode} projectId={project.id} incidentId={incidentId} detail={live ? detail : undefined} />;
+  const events = useResource(live ? `ld-events:${project.id}` : null, s => api().monitoringEvents(project.id, { signal: s }), 10000);
+  const recs = useResource(live ? `ld-recs:${project.id}` : null, s => api().defenseRecommendations(project.id, { signal: s }));
+  return (
+    <InvestigationDetail
+      mode={mode}
+      projectId={project.id}
+      incidentId={incidentId}
+      detail={live ? detail : undefined}
+      events={live ? events : undefined}
+      recs={live ? recs : undefined}
+    />
+  );
 }

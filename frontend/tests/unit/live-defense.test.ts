@@ -30,14 +30,17 @@ describe('live defense mode', () => {
   it('builds console and standalone hrefs without mixing them', () => {
     expect(liveDefenseHref('prj_1', 'explain', 'live')).toBe('/projects/prj_1/live-defense/explain');
     expect(liveDefenseHref('prj_1', 'incidents', 'layout-preview')).toBe('/projects/prj_1/live-defense/incidents?preview=layout');
+    expect(liveDefenseHref('prj_1', 'apps')).toBe('/projects/prj_1/live-defense/apps');
     expect(liveDefenseHref(null, 'overview')).toBe('/live-defense-pilot');
     expect(liveDefenseHref(null, 'explain')).toBe('/live-defense-pilot/explain');
+    expect(liveDefenseHref(null, 'apps')).toBe('/live-defense-pilot/apps');
   });
 
   it('classifies tabs for both console and standalone routes', () => {
     expect(liveDefenseTab('/projects/p1/live-defense')).toBe('overview');
     expect(liveDefenseTab('/projects/p1/live-defense/incidents/abc')).toBe('incidents');
     expect(liveDefenseTab('/live-defense-pilot/explain')).toBe('explain');
+    expect(liveDefenseTab('/projects/p1/live-defense/apps')).toBe('apps');
   });
 });
 
@@ -52,14 +55,19 @@ describe('overview copy', () => {
     simulatedIncidentCount: 1,
     recommendationsKnown: true,
     recommendationCount: 3,
+    appsKnown: true,
+    appCount: 1,
+    healthKnown: true,
+    lastIngestAt: '2026-10-22T00:00:00Z',
   };
 
-  it('labels simulated events and never claims a live map', () => {
+  it('labels simulated events and does not claim a healthy verdict', () => {
     const text = liveDefenseOverviewCopy(base);
     expect(text).toContain('2 recorded events, 1 labelled simulated');
     expect(text).toContain('1 open incident, 1 labelled synthetic');
     expect(text).toContain('none is applied automatically');
-    expect(text).toContain('does not draw a live map');
+    expect(text).toContain('health stays unknown');
+    expect(text).not.toMatch(/\bhealthy\b/);
   });
 
   it('does not print counts that have not loaded', () => {
@@ -71,6 +79,10 @@ describe('overview copy', () => {
       eventCount: 99,
       openIncidentCount: 99,
       recommendationCount: 99,
+      appsKnown: false,
+      appCount: 99,
+      healthKnown: false,
+      lastIngestAt: null,
     });
     expect(text).toContain('have not loaded');
     expect(text).not.toContain('99');
@@ -118,7 +130,8 @@ describe('source isolation', () => {
 
   it('documents existing endpoints and the ones still missing', () => {
     expect(USED_LIVE_APIS.some(item => item.path.includes('/defense-recommendations'))).toBe(true);
-    expect(MISSING_LIVE_APIS.map(item => item.id)).toContain('component_health');
+    expect(USED_LIVE_APIS.some(item => item.path.includes('/applications'))).toBe(true);
     expect(MISSING_LIVE_APIS.map(item => item.id)).toContain('live_inference');
+    expect(MISSING_LIVE_APIS.map(item => item.id)).not.toContain('component_health');
   });
 });
