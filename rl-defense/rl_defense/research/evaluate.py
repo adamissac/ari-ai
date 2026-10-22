@@ -159,7 +159,13 @@ def records_from_raw(raw: bytes, scenarios: list[LiveScenario]) -> list[Research
     return rows
 
 
-def run(output: Path, episodes: int = 4) -> dict:
+def run(
+    output: Path,
+    episodes: int = 4,
+    *,
+    published_commit: str | None = None,
+    published_tree: str | None = None,
+) -> dict:
     if not 2 <= episodes <= 8:
         raise ValueError("bounded Phase 1 evaluation requires 2..8 episodes/scenario")
     revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
@@ -168,6 +174,18 @@ def run(output: Path, episodes: int = 4) -> dict:
     ).strip()
     if dirty:
         raise ValueError("commit research source/config before evaluation")
+    local_revision = revision
+    tree = subprocess.check_output(["git", "rev-parse", "HEAD^{tree}"], cwd=ROOT, text=True).strip()
+    if published_commit is not None:
+        if (
+            len(published_commit) != 40
+            or any(c not in "0123456789abcdef" for c in published_commit)
+            or published_tree != tree
+        ):
+            raise ValueError("published commit needs the exact matching execution source tree")
+        revision = published_commit
+    elif published_tree is not None:
+        raise ValueError("published tree needs a commit")
     output.mkdir(parents=True, exist_ok=False)
     ckpt = ROOT / "rl-defense/results/live-retrain-v6/candidate_online.pt"
     if digest(ckpt.read_bytes()) != V6_SHA:
@@ -182,6 +200,11 @@ def run(output: Path, episodes: int = 4) -> dict:
     config = {
         "schema": "constrained-lab-evaluation/1",
         "source_commit": revision,
+        "execution_local_commit": local_revision,
+        "source_tree": tree,
+        "publication": "caller-supplied GitHub commit with matching tree"
+        if published_commit
+        else "local Git commit",
         "environment": "owned payments-lite in-process lab; not production",
         "semantics": "all baselines share research capability mask; v6_shielded is NOT original v6 performance",
         "reward": "negative compromised attack read count",
@@ -225,7 +248,9 @@ def run(output: Path, episodes: int = 4) -> dict:
         if ckpt.read_bytes() != before:
             raise ValueError("checkpoint changed during evaluation")
         rows = records_from_raw((output / "raw.jsonl.gz").read_bytes(), scenarios)
-        (output / "transitions.jsonl").write_text("".join(r.model_dump_json() + "\n" for r in rows))
+        (output / "transitions.jsonl.gz").write_bytes(
+            gzip.compress("".join(r.model_dump_json() + "\n" for r in rows).encode(), mtime=0)
+        )
         result = report(
             rows,
             gamma=config["gamma"],
@@ -233,7 +258,7 @@ def run(output: Path, episodes: int = 4) -> dict:
             resamples=config["resamples"],
         )
         (output / "summary.json").write_bytes(encoded(result))
-        files = ("config.json", "raw.jsonl.gz", "transitions.jsonl", "summary.json")
+        files = ("config.json", "raw.jsonl.gz", "transitions.jsonl.gz", "summary.json")
         index = {
             "schema": "constrained-lab-evidence/1",
             "source_commit": revision,
@@ -253,7 +278,7 @@ def run(output: Path, episodes: int = 4) -> dict:
 
 def verify(output: Path) -> dict:
     index = json.loads((output / "EVIDENCE.json").read_bytes())
-    expected_files = {"config.json", "raw.jsonl.gz", "transitions.jsonl", "summary.json"}
+    expected_files = {"config.json", "raw.jsonl.gz", "transitions.jsonl.gz", "summary.json"}
     if set(index["files"]) != expected_files:
         raise ValueError("unexpected evidence files")
     for name, sha in index["files"].items():
@@ -267,10 +292,20 @@ def verify(output: Path) -> dict:
     scenarios = [LiveScenario.model_validate(d) for d in config["scenario_configs"]]
     if any(s.split != "train" for s in scenarios):
         raise ValueError("Phase 1 fresh evaluation cannot contain holdout/validation")
+    if index["source_commit"] != config["source_commit"]:
+        raise ValueError("source commit identity mismatch")
+    if {s.name: s.config_hash() for s in scenarios} != config["scenario_hashes"]:
+        raise ValueError("scenario hash mismatch")
+    if config["episode_seeds"] != {
+        s.name: s.seeds(config["episodes_per_scenario"]) for s in scenarios
+    }:
+        raise ValueError("scenario seed selection mismatch")
     rows = records_from_raw((output / "raw.jsonl.gz").read_bytes(), scenarios)
     saved = [
         ResearchTransition.model_validate_json(line)
-        for line in (output / "transitions.jsonl").read_text().splitlines()
+        for line in gzip.decompress((output / "transitions.jsonl.gz").read_bytes())
+        .decode()
+        .splitlines()
     ]
     if rows != saved or index["dataset_id"] != rows[0].dataset_id:
         raise ValueError("raw-derived transitions differ from saved records")
@@ -306,10 +341,19 @@ def main() -> None:
     parser.add_argument("operation", choices=("run", "verify"))
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--episodes", type=int, default=4)
+    parser.add_argument("--published-commit")
+    parser.add_argument("--published-tree")
     args = parser.parse_args()
     print(
         json.dumps(
-            run(args.output, args.episodes) if args.operation == "run" else verify(args.output)
+            run(
+                args.output,
+                args.episodes,
+                published_commit=args.published_commit,
+                published_tree=args.published_tree,
+            )
+            if args.operation == "run"
+            else verify(args.output)
         )
     )
 

@@ -1281,3 +1281,14 @@ GitHub connector. The temporary checkout `/private/tmp/rl-v10` still has earlier
 Git metadata and preserved files corresponding to remote fix `1e42f3e`; reconcile it
 with the remote before any cleanup or new work. The user's original dirty checkout
 was not overwritten. No study heartbeat was re-enabled or extra experiment scheduled.
+
+### 2026-10-22 — RL-CMDP-001 Phase 1 foundation
+
+Owner supplied explicit Phase 1 scope; no training/Phase 2 or serving changes.
+Dedicated independent checkout `/private/tmp/rl-cmdp-phase1`, branch
+`feat/alan/constrained-rl-phase1` from main `198eb3b`. Primary checkout has unrelated
+Devin UI edits/QA outputs and is untouched. Existing duration evidence is preserved.
+New internal research adapter reuses shared EvidenceRef; no public contract change.
+Initial18 tests passed; extended20 tests passed in9.53s. Freeze/publish fixed bounded
+baseline plan before execution. Shell network is unavailable; GitHub connector
+publishes equivalent source trees. Record both local and published commit identities.

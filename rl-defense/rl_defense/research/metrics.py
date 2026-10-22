@@ -63,9 +63,17 @@ def summary(
     samples: dict[str, list[float | None]] = {k: [] for k in point}
     if len(units) >= 2:
         rng = np.random.default_rng(bootstrap_seed)
-        keys = sorted(units)
+        # Stratify by scenario membership. Shared-seed scenario clusters stay intact;
+        # independent scenario seed bands retain their configured episode counts.
+        strata: dict[tuple[str, ...], list[int]] = defaultdict(list)
+        for key, block in sorted(units.items()):
+            strata[tuple(sorted({r.scenario for r in block}))].append(key)
         for _ in range(resamples):
-            selected = [units[keys[int(i)]] for i in rng.integers(0, len(keys), len(keys))]
+            selected = [
+                units[keys[int(i)]]
+                for keys in strata.values()
+                for i in rng.integers(0, len(keys), len(keys))
+            ]
             # Duplicate sampled clusters must retain their multiplicity in episode means.
             numerator = {k: 0.0 for k in ("interventions", "cost", "discounted", "reward")}
             sampled = [r for block in selected for r in block]

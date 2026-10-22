@@ -245,3 +245,42 @@ def test_evaluation_never_modifies_existing_registry_or_checkpoint(scenario):
     before = {p: p.read_bytes() for p in paths}
     collect_episode(scenario, scenario.seed_start, CostAwareRules())
     assert all(p.read_bytes() == raw for p, raw in before.items())
+
+
+def test_seed_clusters_cannot_inflate_confidence_by_repeating_scenarios(rows):
+    other = [r.model_copy(update={"scenario": "other"}) for r in rows]
+    s = summary(rows + other, resamples=10)
+    assert s["episodes"] == 2 and s["independent_seed_clusters"] == 1
+    assert s["ci95"]["mean_cumulative_cost"] is None
+
+
+def test_evidence_bundle_verifier_rejects_rehashed_summary_and_overlap(
+    tmp_path, scenario, monkeypatch
+):
+    import rl_defense.research.evaluate as ev
+
+    # Owned lab baseline smoke, five fixed policies, two small episodes; no training.
+    sc = scenario.model_copy(update={"horizon": 5, "episodes": 2})
+    monkeypatch.setattr(ev, "load_scenarios", lambda *a, **k: [sc])
+    original = ev.subprocess.check_output
+
+    def source_read(cmd, **kwargs):
+        if cmd[:3] == ["git", "status", "--porcelain"]:
+            return ""
+        return original(cmd, **kwargs)
+
+    monkeypatch.setattr(ev.subprocess, "check_output", source_read)
+    result = ev.run(tmp_path / "result", episodes=2)
+    assert result["verified"] and result["episodes"] == 10 and result["transitions"] == 50
+    root = tmp_path / "result"
+    path = root / "summary.json"
+    data = json.loads(path.read_text())
+    data["noop"]["pooled"]["metrics"]["mean_threat_reward"] += 1
+    path.write_bytes(ev.encoded(data))
+    index = json.loads((root / "EVIDENCE.json").read_text())
+    index["files"]["summary.json"] = digest(path.read_bytes())
+    (root / "EVIDENCE.json").write_bytes(ev.encoded(index))
+    with pytest.raises(ValueError, match="summary differs"):
+        ev.verify(root)
+    with pytest.raises(FileExistsError):
+        ev.run(root, episodes=2)
