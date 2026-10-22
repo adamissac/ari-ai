@@ -6,7 +6,7 @@ coordination/CONTRACTS.md.
 """
 
 SCHEMA_VERSION = (
-    "0.16.0"  # 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING;
+    "0.17.0"  # 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING;
     # 0.6 intelligence memory (PR #39); 0.7 security standards + incidents (PR #49);
     # 0.8 FindingDetail / AssessmentReport response DTOs (additive);
     # 0.9 CheckCategory enum (Probe ids + V0 fixture aliases);
@@ -23,4 +23,6 @@ SCHEMA_VERSION = (
     #      metadata, recorded defense health/graph, analyst recommendation reviews.
     #      Reviews never execute. Health status is always unknown without a recorded
     #      health-check producer (HTTP 200 is not a healthy verdict).
+    # 0.17 live-defense Phase 3 shadow runtime (additive): RuntimeSource "owned_staging";
+    #      LivePolicyDecision (NOT EXECUTED); AnalystReview may target a live decision.
 )

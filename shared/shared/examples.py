@@ -56,6 +56,7 @@ PAT = "pat_01JFIXTURE0000000000000PAT"
 APP = "app_01JFIXTURE0000000000000APP"
 ITK = "itk_01JFIXTURE0000000000000ITK"
 ARV = "arv_01JFIXTURE0000000000000ARV"
+LPD = "lpd_01JFIXTURE0000000000000LPD"
 REC = "rec_0123456789abcdef0123456789abcdef"
 
 
@@ -410,6 +411,36 @@ def build() -> dict[str, BaseModel]:
         "AnalystReviewCreate": live_defense.AnalystReviewCreate(
             decision=live_defense.AnalystReviewDecision.accept,
             reason="Recorded for the shadow pilot; does not execute.",
+        ),
+        "LivePolicyDecision": live_defense.LivePolicyDecision(
+            id=LPD,
+            project_id=PRJ,
+            application_id=APP,
+            created_at=T0,
+            window_end=T0,
+            telemetry_source="owned_staging",
+            simulated=False,
+            producer=live_defense.ShadowProducer.rules,
+            rules_ran=True,
+            inference_ran=False,
+            inference_status=live_defense.InferenceStatus.skipped_quiet_window,
+            action="noop",
+            node=None,
+            top_actions=None,
+            q_margin=None,
+            observation=None,
+            policy_version=None,
+            checkpoint_sha256=None,
+            abstention_reason="Quiet window: frozen v6 is not a trustworthy live decision.",
+            observation_complete=True,
+            feature_schema_ok=True,
+            action_mask_valid=True,
+            freshness_ok=True,
+            authorization_context=live_defense.AuthorizationContext.missing,
+            evidence_event_ids=[],
+            rule_hits=[],
+            principal_targets=[],
+            feature_mapping_note=None,
         ),
     }
 

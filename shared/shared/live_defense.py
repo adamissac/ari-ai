@@ -1,14 +1,15 @@
-"""Live Defense shadow-pilot contracts (Phase 2).
+"""Live Defense shadow-pilot contracts (Phase 2 + Phase 3 shadow runtime).
 
 These types describe recorded evidence for a customer shadow deployment:
 connected staging applications, ingest-token metadata, timestamps from the
-job worker and runtime ingest, a topology derived from those records, and
-analyst reviews of stored recommendations.
+job worker and runtime ingest, a topology derived from those records,
+analyst reviews, and genuine ``LivePolicyDecision`` rows produced only when
+deterministic rules or validated frozen-v6 inference actually ran.
 
 They do **not** describe autonomous enforcement. ``AnalystReview.executes`` is
-always false. ``DefenseHealth.status`` is always ``unknown``: HTTP 200 from
-this API is not a healthy verdict, and there is no live health-check producer.
-There is no live policy-decision producer on the control plane; stored
+always false. ``LivePolicyDecision.enforcement`` is always ``NOT_EXECUTED``.
+``DefenseHealth.status`` is always ``unknown``: HTTP 200 from this API is not
+a healthy verdict, and there is no live health-check producer. Stored
 ``DefenseRecommendation`` rows remain simulation-derived.
 """
 
@@ -17,17 +18,21 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
-from shared.base import ShortText, StrictModel, UtcDatetime
+from shared.base import Sha256Hex, ShortText, StrictModel, UtcDatetime
 from shared.ids import (
     AnalystReviewId,
     ConnectedApplicationId,
     IngestTokenId,
+    LivePolicyDecisionId,
+    MonitoringEventId,
     ProjectId,
     RecommendationId,
     UserId,
 )
+from shared.monitoring import PrincipalRef, RuntimeSource
+from shared.rl import ActionScore, DefenseActionName, NodeName
 
 
 class StagingEnvironment(StrEnum):
@@ -159,11 +164,15 @@ class AnalystReviewDecision(StrEnum):
 
 
 class AnalystReview(StrictModel):
-    """Human review of a stored recommendation. Accept does not execute anything."""
+    """Human review of a stored recommendation or live shadow decision.
+
+    Accept does not execute anything and is never converted into an RL label.
+    """
 
     id: AnalystReviewId
     project_id: ProjectId
-    recommendation_id: RecommendationId
+    recommendation_id: RecommendationId | None = None
+    live_policy_decision_id: LivePolicyDecisionId | None = None
     decision: AnalystReviewDecision
     reason: ShortText | None = None
     reviewed_by: UserId
@@ -171,7 +180,97 @@ class AnalystReview(StrictModel):
     executes: Literal[False] = False
     enforcement: Literal["none"] = "none"
 
+    @model_validator(mode="after")
+    def _exactly_one_subject(self) -> AnalystReview:
+        rec = self.recommendation_id is not None
+        live = self.live_policy_decision_id is not None
+        if rec == live:
+            raise ValueError(
+                "exactly one of recommendation_id or live_policy_decision_id is required"
+            )
+        return self
+
 
 class AnalystReviewCreate(StrictModel):
     decision: AnalystReviewDecision
     reason: ShortText | None = None
+
+
+class ShadowProducer(StrEnum):
+    """What actually produced the persisted shadow decision."""
+
+    rules = "rules"
+    v6_shadow = "v6_shadow"
+    abstention = "abstention"
+
+
+class AuthorizationContext(StrEnum):
+    """Whether the reporter supplied ownership classification with the window."""
+
+    verified = "verified"
+    unverified = "unverified"
+    missing = "missing"
+
+
+class InferenceStatus(StrEnum):
+    """Whether frozen v6 inference ran. Q-values exist only when ``ran``."""
+
+    ran = "ran"
+    skipped_quiet_window = "skipped_quiet_window"
+    skipped_incomplete = "skipped_incomplete"
+    skipped_stale = "skipped_stale"
+    skipped_source = "skipped_source"
+    skipped_unavailable = "skipped_unavailable"
+    skipped_schema = "skipped_schema"
+    skipped_mask = "skipped_mask"
+    skipped_authorization = "skipped_authorization"
+    skipped_target = "skipped_target"
+
+
+SHADOW_DECISION_CAVEAT = (
+    "Shadow recommendation from authenticated staging telemetry. Not executed. "
+    "Q-values appear only when frozen v6 inference actually ran."
+)
+
+
+class LivePolicyDecision(StrictModel):
+    """One shadow decision for one ingest window. Never an executed control."""
+
+    id: LivePolicyDecisionId
+    project_id: ProjectId
+    application_id: ConnectedApplicationId | None = None
+    created_at: UtcDatetime
+    window_end: UtcDatetime
+    telemetry_source: RuntimeSource
+    simulated: bool
+    producer: ShadowProducer
+    rules_ran: bool
+    inference_ran: bool
+    inference_status: InferenceStatus
+    action: DefenseActionName | None = None
+    node: NodeName | None = None
+    top_actions: list[ActionScore] | None = Field(
+        default=None,
+        description="Q ranking from frozen v6; null when inference did not run",
+    )
+    q_margin: float | None = Field(
+        default=None, description="Null when inference did not run; never synthesized"
+    )
+    observation: list[float] | None = Field(
+        default=None, description="Null when inference did not run; never synthesized"
+    )
+    policy_version: ShortText | None = None
+    checkpoint_sha256: Sha256Hex | None = None
+    abstention_reason: ShortText | None = None
+    observation_complete: bool
+    feature_schema_ok: bool
+    action_mask_valid: bool
+    freshness_ok: bool
+    authorization_context: AuthorizationContext
+    enforcement: Literal["NOT_EXECUTED"] = "NOT_EXECUTED"
+    executed: Literal[False] = False
+    evidence_event_ids: list[MonitoringEventId] = Field(default_factory=list)
+    rule_hits: list[ShortText] = Field(default_factory=list)
+    principal_targets: list[PrincipalRef] = Field(default_factory=list)
+    feature_mapping_note: ShortText | None = None
+    caveat: ShortText = SHADOW_DECISION_CAVEAT
