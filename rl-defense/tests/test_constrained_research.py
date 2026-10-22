@@ -605,3 +605,65 @@ def test_rehashed_source_cannot_claim_an_unrelated_commit(tmp_path):
     }
     with pytest.raises(ValueError, match="does not belong"):
         check_source(root, tmp_path, config, {"source.commit.txt"})
+
+
+@pytest.mark.parametrize("kind", ["mask", "label", "owner"])
+def test_deterministic_replay_rejects_forged_inputs_and_request_facts(scenario, kind):
+    from rl_defense.research.proof import verify_deterministic_replay
+
+    ep = json.loads(gzip.decompress(raw_episode(scenario)))
+    if kind == "mask":
+        ep["steps"][0]["current_mask"] = [False] * 25
+        ep["steps"][0]["current_mask"][0] = True
+    elif kind == "label":
+        ep["steps"][0]["requests"][0]["is_attack"] = not ep["steps"][0]["requests"][0]["is_attack"]
+    else:
+        ep["steps"][0]["requests"][0]["owner"] = "forged-owner"
+    with pytest.raises(ValueError, match="replay"):
+        verify_deterministic_replay(gzip.compress(json.dumps(ep).encode()), [scenario])
+
+
+def test_gzip_expansion_is_bounded(tmp_path):
+    from rl_defense.research.proof import bounded_gzip
+
+    p = tmp_path / "bomb.gz"
+    p.write_bytes(gzip.compress(b"x" * (64 * 1024 * 1024 + 1)))
+    with pytest.raises(ValueError, match="expanded evidence"):
+        bounded_gzip(p)
+
+
+def test_historical_non_python_semantics_are_pinned(monkeypatch):
+    from pathlib import Path
+
+    from rl_defense.research.proof import check_semantic_inputs
+
+    config = json.loads((ROOT / "rl-defense/results/constrained-phase1/config.json").read_text())
+    original = Path.read_bytes
+    monkeypatch.setattr(
+        Path, "read_bytes", lambda p: original(p) + b"\n" if p.suffix == ".yaml" else original(p)
+    )
+    with pytest.raises(ValueError, match="semantic inputs"):
+        check_semantic_inputs(ROOT, config)
+
+
+@pytest.mark.parametrize("change", ["runtime", "scope"])
+def test_runtime_and_scope_metadata_cannot_be_rehashed(tmp_path, change):
+    import shutil
+
+    import rl_defense.research.evaluate as ev
+
+    output = ROOT / "rl-defense/results/constrained-phase1"
+    shutil.copytree(output, tmp_path / "bundle")
+    bundle = tmp_path / "bundle"
+    config = json.loads((bundle / "config.json").read_text())
+    if change == "runtime":
+        config["dependencies"]["numpy"] = "999.0"
+    else:
+        config["environment"] = "production"
+    data = ev.encoded(config)
+    (bundle / "config.json").write_bytes(data)
+    index = json.loads((bundle / "EVIDENCE.json").read_text())
+    index["files"]["config.json"] = digest(data)
+    (bundle / "EVIDENCE.json").write_bytes(ev.encoded(index))
+    with pytest.raises(ValueError, match="runtime differs|scope metadata"):
+        ev.verify(bundle)

@@ -1,14 +1,15 @@
 # Phase 1 verification results
 
-The focused research suite passes **44 tests**, covering request and transition
+The focused research suite passes **51 tests**, covering request and transition
 validation, seed selection, source provenance, named policy decisions, checkpoint
 integrity, capability limits, deterministic accounting, and registry preservation.
 The previous published revision passed **354 RL tests** in CI. CI must rerun for
 this revision. Formatting, lint, and Markdown link checks passed locally.
 
 Read-only verification accepted all **140 episodes and 4,200 transitions** in the
-archived baseline study. This verification uses saved observations and fixed policy
-inference; it does not collect new HTTP episodes, train a policy, or replay holdout.
+archived baseline study. Verification reconstructs the deterministic owned in-process training fixture from
+saved seeds/actions and compares decision inputs and every recorded request outcome.
+It saves no replacement study data, trains no policy, and never replays holdout.
 Historical adapter verification covered 280 episodes and 8,400 transitions, retaining
 unknown initial masks, propensities, and delegated costs. No OPE claim is made.
 
@@ -41,3 +42,9 @@ Fourth review validation: all 44 focused research tests passed. Read-only verifi
 again accepted the original 140 episodes and 4,200 transitions. Source fingerprints
 now match recorded Git blobs, compromise labels are checked in both directions,
 and the root index must retain its Phase 1 flags.
+
+Fifth review: exact recorded Python/dependency versions are required. Non-Python
+scenario/rule inputs must match their source commit (or the immutable historical
+fingerprint). Compressed input is limited to 8 MiB, expanded input to 64 MiB, before
+JSON parsing. Scope metadata is fixed. Expected units are checked before replay.
+All 51 focused tests passed before the final ordering-only change.

@@ -20,3 +20,9 @@ are enforced. No original measurement is changed. All 44 focused tests passed; a
 
 Proposed next readiness work is recorded in NEXT_GATE.md. Its budgets and thresholds
 remain unset, and it authorizes no experiment or training.
+
+Fifth review adds deterministic in-memory training-fixture reconstruction, source-bound
+YAML/rule inputs, bounded gzip parsing, exact runtime checks and fixed scope metadata.
+51 focused tests passed. Owner subsequently authorized merge; wait for latest CI and
+review, and retain the existing production build-skip rule for research-only paths.
+No original measurement or v6 artifact is changed.

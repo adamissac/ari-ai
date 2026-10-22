@@ -223,3 +223,88 @@ def validate_raw_requests(raw: bytes, scenarios: list) -> None:
                     or (q["compromised"] != (reason is None and q["status"] == 200 and foreign))
                 ):
                     raise ValueError("contradictory raw request outcome")
+
+
+def check_semantic_inputs(root: Path, config: dict) -> None:
+    paths = sorted(
+        str(p.relative_to(root)) for p in (root / "rl-defense/configs/live/train_v8").glob("*.yaml")
+    )
+    paths += ["rl-defense/results/duration-screen/RUN.json"]
+    pins = {p: digest((root / p).read_bytes()) for p in paths}
+    if config["source_commit"] == HISTORICAL_SOURCE:
+        if (
+            digest(json.dumps(pins, sort_keys=True, separators=(",", ":")).encode())
+            != "4f24783253f56c2f0f72d48d652711f8d72531f1133c2ee46622a2ac3543a057"
+        ):
+            raise ValueError("historical semantic inputs changed")
+    else:
+        tracked = subprocess.check_output(
+            [
+                "git",
+                "ls-tree",
+                "-r",
+                "--name-only",
+                config["source_commit"],
+                "--",
+                "rl-defense/configs/live/train_v8",
+            ],
+            cwd=root,
+            text=True,
+        ).splitlines()
+        if set(tracked) != set(paths[:-1]):
+            raise ValueError("scenario input set differs from source commit")
+        for p, sha in pins.items():
+            committed = subprocess.check_output(
+                ["git", "show", f"{config['source_commit']}:{p}"], cwd=root
+            )
+            if digest(committed) != sha:
+                raise ValueError("semantic input does not belong to source commit")
+
+
+def bounded_gzip(path: Path) -> bytes:
+    """Bound both compressed and expanded memory before parsing untrusted JSON."""
+    import gzip
+    import io
+
+    if path.stat().st_size > 8 * 1024 * 1024:
+        raise ValueError("compressed evidence exceeds verification limit")
+    raw = path.read_bytes()
+    with gzip.GzipFile(fileobj=io.BytesIO(raw)) as stream:
+        expanded = stream.read(64 * 1024 * 1024 + 1)
+    if len(expanded) > 64 * 1024 * 1024:
+        raise ValueError("expanded evidence exceeds verification limit")
+    return raw
+
+
+def verify_deterministic_replay(raw: bytes, scenarios: list) -> None:
+    """Reconstruct decision inputs and HTTP outcomes; never save replacement evidence."""
+    import gzip
+
+    import numpy as np
+
+    from rl_defense.research.evaluate import collect_episode
+
+    by = {s.name: s for s in scenarios}
+    for line in gzip.decompress(raw).decode().splitlines():
+        ep = json.loads(line)
+        sc = by[ep["scenario"]]
+        if len(ep["steps"]) != sc.horizon:
+            raise ValueError("replay horizon mismatch")
+        index = 0
+
+        def recorded_action(obs, mask, steps=ep["steps"]):
+            nonlocal index
+            step = steps[index]
+            if (
+                not np.array_equal(obs, np.asarray(step["transition"]["obs"], dtype=np.float32))
+                or mask.tolist() != step["current_mask"]
+            ):
+                raise ValueError("recorded decision inputs differ from deterministic replay")
+            index += 1
+            return step["transition"]["action"]
+
+        actual = collect_episode(sc, ep["seed"], recorded_action)
+        if actual != {k: v for k, v in ep.items() if k != "policy"}:
+            raise ValueError(
+                "request labels/identities or outcomes differ from deterministic replay"
+            )
