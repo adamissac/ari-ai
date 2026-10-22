@@ -38,9 +38,10 @@ test('Live Defense shadow pilot: staging app, ingest, unknown health, review wit
   await page.getByLabel('Name').fill('payments-lite staging');
   await page.getByLabel('Environment').selectOption('owned_test');
   await page.getByRole('button', { name: 'Register app' }).click();
-  await expect(page.getByText('payments-lite staging')).toBeVisible();
-  await expect(page.getByText('owned test')).toBeVisible();
-  await page.getByRole('button', { name: 'Issue ingest token' }).click();
+  const appCard = page.locator('[data-testid^="live-defense-app-"]').filter({ hasText: 'payments-lite staging' });
+  await expect(appCard).toBeVisible();
+  await expect(appCard.getByText('owned test')).toBeVisible();
+  await appCard.getByRole('button', { name: 'Issue ingest token' }).click();
   const once = page.getByTestId('live-defense-token-once');
   await expect(once).toContainText('will not show it again');
   const token = await once.locator('code').innerText();
