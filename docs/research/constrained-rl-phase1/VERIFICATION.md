@@ -1,74 +1,74 @@
 # Phase 1 verification results
 
-The focused research suite passes **51 tests**, covering request and transition
-validation, seed selection, source provenance, named policy decisions, checkpoint
-integrity, capability limits, deterministic accounting, and registry preservation.
-The previous published revision passed **354 RL tests** in CI. CI must rerun for
-this revision. Formatting, lint, and Markdown link checks passed locally.
+The final focused research suite passed **69 tests** on the recorded reproduction
+runtime. The suite covers request/transition invariants, independent seed units,
+capability limits, source and checkpoint provenance, wrong-runtime rejection,
+immutable source snapshots, bounded captured artifact I/O, reporting preservation,
+and complete review-manifest drift checks. No existing test was removed or weakened.
 
-Read-only verification accepted all **140 episodes and 4,200 transitions** in the
-archived baseline study. Verification reconstructs the deterministic owned in-process training fixture from
-saved seeds/actions and compares decision inputs and every recorded request outcome.
-It saves no replacement study data, trains no policy, and never replays holdout.
-Historical adapter verification covered 280 episodes and 8,400 transitions, retaining
-unknown initial masks, propensities, and delegated costs. No OPE claim is made.
+The exact archived study verifies: **140 episodes / 4,200 transitions**, with every
+fixed-policy action, observation, mask, request label, identity, outcome and saved
+summary reproduced. The supported legacy reader reproduces the original readiness
+report exactly: **280 episodes / 8,400 transitions**. Neither check selects a policy,
+records replacement study data, trains a model, or executes holdout.
 
-## Evidence integrity
+## Supported commands
 
-The original execution and reporting artifacts remain byte-identical. The original
-evaluator and source commit proof are preserved separately. Historical verification
-requires the complete original source mapping and identical collection/adaptation
-function ASTs. Later verifier changes are recorded in a separate review index.
-Unknown schemas, incomplete source mappings, inconsistent request outcomes, false
-policy labels, and declared sample sizes larger than registered capacity are rejected.
-Checkpoint certification loads exactly the bytes whose digest was checked.
+Run from a reviewed repository revision with the recorded Python runtime, dependency
+profile, and package paths configured for RL, shared contracts, standards and the
+owned payments fixture:
 
-The source-manifest scanner exception remains restricted to exact paths, lines,
-and source digests. A synthetic credential added to the same manifest is detected.
-No secret-scanning file exclusion was introduced.
+```sh
+python -m pytest -q rl-defense/tests/test_constrained_research.py
+python -m rl_defense.research.evaluate verify --output rl-defense/results/constrained-phase1
+python -m rl_defense.research.legacy
+```
 
-## Handoff boundary
+Both public certification commands execute their replay/adaptation code from a
+private read-only checkout of committed source. They validate captured artifact
+bytes, source/semantic-input fingerprints and the recorded runtime before issuing
+a result. Linux CI tests these components with controlled fixtures; its interpreter
+is deliberately rejected for archived macOS certification. The production runtime
+gate was retained when correcting the portable snapshot-I/O unit test.
 
-PR #388 remains unmerged. No promotion, deployment, new control, research training,
-or Phase 2 implementation occurred. The v6 checkpoint and registry are unchanged.
-See DECISION.md for the no-go decision and conditions for future work.
+## Evidence integrity and limits
 
-Third review: scenario definitions must match the pinned training benchmark; statistical
-settings are fixed before bootstrap work starts; all post-creation setup exceptions
-produce a failure audit record without retry. The 39-test focused run and the added
-scenario-tampering regression both passed. Original measurements are preserved.
+Original measurements, execution configuration, trajectories, summaries, both
+original evidence indices and the v6 checkpoint/registry are unchanged. The original
+README is preserved byte-identically in `frozen/README.md`. Review schema v2 maps the
+unchanged reporting index's README pin to that frozen copy, and separately pins the
+active README with its corrected supported command. The old result-directory
+`read_legacy.py` remains immutable archival source and is not a supported verifier.
 
-Fourth review validation: all 44 focused research tests passed. Read-only verification
-again accepted the original 140 episodes and 4,200 transitions. Source fingerprints
-now match recorded Git blobs, compromise labels are checked in both directions,
-and the root index must retain its Phase 1 flags.
+The review manifest is anchored in Git before every listed code, document and
+artifact hash is checked. Historical execution/reporting roots are enforced;
+collection/adaptation ASTs and the original source fingerprints must match. New
+bundles resolve both publication and local execution revisions to the source tree.
+Captured scenario, topology, rule and checkpoint-sidecar inputs are source-bound.
+The sidecar must also match the manifest embedded in the pinned checkpoint bytes.
 
-Fifth review: exact recorded Python/dependency versions are required. Non-Python
-scenario/rule inputs must match their source commit (or the immutable historical
-fingerprint). Compressed input is limited to 8 MiB, expanded input to 64 MiB, before
-JSON parsing. Scope metadata is fixed. Expected units are checked before replay.
-All 51 focused tests passed before the final ordering-only change.
+New bundles record the complete installed dependency closure. The original study
+did not record its transitive closure; it remains explicitly unknown. A separately
+Git-anchored `REVIEW_RUNTIME.json` records the reproduction runtime. Successful
+baseline verification reports both the original study source and the verification
+source commit, rather than attributing later verifier code to the old execution.
 
-Seventh review: the review manifest is compared with its Git HEAD blob before its
-hashes are trusted. New bundles record the complete installed distribution closure.
-The original study did not capture that closure; it remains explicitly unknown.
-REVIEW_RUNTIME.json records the current reproduction environment separately and is
-Git-anchored. Successful verification reports its own source commit and this limit.
+Compressed artifacts are limited to 8 MiB and expanded artifacts to 64 MiB before
+JSON interpretation. Statistical settings, scenario/sample identity, scope metadata
+and Phase 1 flags are fixed before computation. Unknown schemas, unsupported inputs,
+false provenance, missing units and changed data fail verification. Setup failures
+produce an audit record without automatic retry.
 
-Use `python -m rl_defense.research.legacy` for anchored legacy readiness checks.
-The original result-directory read_legacy.py is frozen archival source, retained for
-REPORT_EVIDENCE.json integrity; it is superseded and must not be used to certify
-mutable bundles. The supported reader anchors the historical root index digest.
+The source-fingerprint secret-scan exception is restricted to exact paths, lines
+and digests. A synthetic credential in the same manifest is still detected; no
+file/history exclusion was added. Lint/format and 524 Markdown link checks pass.
+Current-head complete CI remains the merge gate; its final receipt is in PR #388.
 
-Public certification now repeats its checks and executes lazy replay/policy imports in
-a private read-only checkout cloned from Git, using bounded captured evidence copies.
-Changes in the caller checkout cannot become executed replay source. Historical
-reporting-index and reporting-file hashes are enforced alongside the execution index.
-New bundles must resolve their local execution revision to the recorded source tree.
+## Decision and owner boundary
 
-The standalone legacy reader now seals and validates its complete source/runtime
-closure before adapting captured data. Current reproduction instructions use the
-supported module command. The original README is retained byte-identically in
-frozen/README.md; unchanged reporting-index README pins resolve that frozen copy
-through an explicit schema-v2 review alias. Measurements and both original indices
-are unchanged. Current instructions are separately pinned by the review ledger.
+The owner explicitly authorized merge after Phase 1. The existing Vercel ignore
+commands return skip-build for these research-only paths against current main.
+No deployment command, promotion, new control, customer-facing action, new research
+training or Phase 2 implementation occurred. V6 remains unchanged. The architecture
+decision stays **no-go for constrained DDQN or CQL now**; NEXT_GATE.md records the
+proposed feasibility work and the owner decisions required before any new study.
