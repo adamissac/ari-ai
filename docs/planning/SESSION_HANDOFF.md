@@ -20,8 +20,13 @@ adds an entry before ending.
 
 ### 2026-10-22 — Cursor (agent, Alan) — Live Defense Phase 1 UI
 - Did: branch `feat/live-defense-pilot-ui`. Customer dashboard at `/projects/{id}/live-defense` (Overview, Investigation, Explainability) plus isolated `/live-defense-pilot`. Live mode uses existing project/events/incidents/recommendation/explanation/evaluation APIs. Layout-preview fixtures in `frontend/lib/live-defense-preview.ts` are labelled SAMPLE LAYOUT and never mixed with records. No apply/isolate/rate-limit. `shared/`, `backend/`, `rl-defense/` untouched. Handoff for missing APIs: `docs/planning/LIVE_DEFENSE_FRONTEND_API.md`.
-- State of the code: frontend-only; draft PR. Navigation: Live Defense under More; Monitoring links in.
-- Commands run and results: reported on the PR (lint, typecheck, vitest, `next build`).
+- State of the code: frontend-only; draft PR #390. Navigation: Live Defense under More; Monitoring links in.
+- Commands run and results (executed):
+  - `npm run lint --prefix frontend` — pass
+  - `npm run typecheck --prefix frontend` — pass (after query-helper split fix)
+  - `npm test --prefix frontend` — 323 passed / 77 files
+  - `npm run build --prefix frontend` — pass; routes include `/live-defense` and `/live-defense-pilot`
+  - Headed Chrome against `next start :3000` `/live-defense-pilot`: SAMPLE LAYOUT banner present; 0 apply/isolate/rate-limit buttons
 - Decisions: missing component-health API → no live map (docs/14: healthy only from a recorded check). NIST `Incident` is not overloaded with DETECTED→EXECUTING.
 - Next steps: backend/shared owner implements the handoff types; frontend then drops empty panels. Do not merge until review. Do not treat preview fixtures as live telemetry.
 - Warnings: `/live-defense-pilot` is public (no session) on purpose for layout review; it must keep the sample banner.
