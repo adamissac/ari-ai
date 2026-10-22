@@ -45,3 +45,7 @@ the original execution-index digest from the Git-anchored review manifest.
 
 The supported legacy reader also bounds index/run/trajectory reads and adapts private
 captured trajectory snapshots, preserving original artifact names and digests.
+
+Tenth review validates the local execution revision for new bundles, checks the
+anchored original reporting index/files, and certifies from private commit-owned
+read-only source so lazy Python imports cannot race caller-checkout edits.

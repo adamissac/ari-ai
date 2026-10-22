@@ -93,6 +93,16 @@ def check_source(
     else:
         raise ValueError("source commit object proof missing")
     verify_commit(raw, config["source_commit"], config["source_tree"])
+    if not old:
+        local = config["execution_local_commit"]
+        if config["publication"] == "local Git commit" and local != config["source_commit"]:
+            raise ValueError("local publication must identify its source commit")
+        if config["publication"] not in (
+            "local Git commit",
+            "Git-resolved commit with verified matching tree",
+        ):
+            raise ValueError("unsupported non-historical publication relationship")
+        resolve_source(root, local, config["source_tree"])
     if old and config["source_tree"] != HISTORICAL_TREE:
         raise ValueError("historical source tree mismatch")
     if old:
@@ -111,9 +121,26 @@ def check_source(
         )
         if digest(index_blob) != review["original_execution_index_sha256"]:
             raise ValueError("historical execution index differs from trusted review anchor")
+        report_blob = read_artifact(output / "REPORT_EVIDENCE.json")
+        if digest(report_blob) != review["original_reporting_index_sha256"]:
+            raise ValueError("historical reporting index differs from trusted review anchor")
+        report_index = json.loads(report_blob)
+        if report_index.get("schema") != "constrained-lab-report/1":
+            raise ValueError("unsupported historical reporting schema")
+        for name, sha in report_index["files"].items():
+            path = (output / name).resolve()
+            if not path.is_relative_to(output.resolve()):
+                raise ValueError("report path leaves evidence directory")
+            data = index_blob if name == "EVIDENCE.json" else read_artifact(path)
+            if digest(data) != sha:
+                raise ValueError("historical reporting artifact changed")
         # The historical exception allows exactly the separately recorded verifier,
         # not arbitrary future edits outside the two frozen collection functions.
-        for rel in (EVALUATOR_PATH, "rl-defense/rl_defense/research/proof.py"):
+        for rel in (
+            EVALUATOR_PATH,
+            "rl-defense/rl_defense/research/proof.py",
+            "rl-defense/rl_defense/research/snapshot.py",
+        ):
             if digest((root / rel).read_bytes()) != review["files"][rel]:
                 raise ValueError("post-review source changed; use recorded verification source")
     for rel, sha in config["code_sha256"].items():
