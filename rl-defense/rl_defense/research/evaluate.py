@@ -41,6 +41,7 @@ from rl_defense.research.proof import (
     verify_runtime_closure,
 )
 from rl_defense.research.records import ResearchTransition
+from rl_defense.research.snapshot import certify_snapshot
 
 ROOT = Path(__file__).resolve().parents[3]
 V6_SHA = "8113a37f4ff9360a9efed2e9f499c4b2ae36e97bfb78372436f97da106fc05f1"
@@ -301,6 +302,10 @@ def run(
 
 
 def verify(output: Path) -> dict:
+    return _verify(output, sealed=False)
+
+
+def _verify(output: Path, *, sealed: bool) -> dict:
     index_blob = read_artifact(output / "EVIDENCE.json")
     index = json.loads(index_blob)
     if index.get("schema") != "constrained-lab-evidence/1":
@@ -390,6 +395,8 @@ def verify(output: Path) -> dict:
         expected
     ):
         raise ValueError("missing, repeated or additional evaluation units")
+    if not sealed:
+        return certify_snapshot(ROOT, output, index_blob, artifacts)
     verify_deterministic_replay(raw, scenarios, topology_from_inputs(semantic_inputs))
     verify_policy_actions(ROOT, config, rows, semantic_inputs=semantic_inputs)
     actual = report(

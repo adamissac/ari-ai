@@ -277,6 +277,11 @@ def test_evidence_bundle_verifier_rejects_rehashed_summary_and_overlap(
     sc = scenario.model_copy(update={"horizon": 5, "episodes": 2})
     monkeypatch.setattr(ev, "load_scenarios", lambda *a, **k: [sc])
     monkeypatch.setattr(ev, "scenarios_from_inputs", lambda *a, **k: [sc])
+    monkeypatch.setattr(
+        ev,
+        "certify_snapshot",
+        lambda root, output, index, artifacts: ev._verify(output, sealed=True),
+    )
     original = ev.subprocess.check_output
 
     def source_read(cmd, **kwargs):
@@ -603,10 +608,18 @@ def test_rehashed_source_cannot_claim_an_unrelated_commit(tmp_path):
     p.write_text("original = False\n")
     config = {
         "source_commit": revision,
+        "execution_local_commit": revision,
+        "publication": "local Git commit",
         "source_tree": tree,
         "code_sha256": {str(p.relative_to(root)): digest(p.read_bytes())},
     }
     with pytest.raises(ValueError, match="does not belong"):
+        check_source(root, tmp_path, config, {"source.commit.txt"})
+    config["execution_local_commit"] = "not-a-commit"
+    with pytest.raises(ValueError, match="local publication"):
+        check_source(root, tmp_path, config, {"source.commit.txt"})
+    config["publication"] = "Git-resolved commit with verified matching tree"
+    with pytest.raises(ValueError, match="full Git commit"):
         check_source(root, tmp_path, config, {"source.commit.txt"})
 
 
@@ -814,3 +827,54 @@ def test_supported_legacy_reader_uses_private_captured_trajectories(monkeypatch)
     result = legacy.verify_legacy(source)
     assert sum(d["transitions"] for d in result["datasets"].values()) == 8400
     assert len(captured) == 5 and all(not p.exists() for p in captured)
+
+
+@pytest.mark.parametrize("kind", ["index", "artifact"])
+def test_historical_reporting_is_anchored(tmp_path, kind):
+    import shutil
+
+    from rl_defense.research.proof import check_source
+
+    original = ROOT / "rl-defense/results/constrained-phase1"
+    shutil.copytree(original, tmp_path / "bundle")
+    output = tmp_path / "bundle"
+    path = output / ("REPORT_EVIDENCE.json" if kind == "index" else "README.md")
+    path.write_bytes(path.read_bytes() + b"\nchanged")
+    config = json.loads((output / "config.json").read_text())
+    index = json.loads((output / "EVIDENCE.json").read_text())
+    with pytest.raises(ValueError, match="reporting"):
+        check_source(ROOT, output, config, set(index["files"]))
+
+
+def test_source_snapshot_uses_committed_code_not_mutable_checkout(tmp_path):
+    import subprocess
+
+    from rl_defense.research.snapshot import source_snapshot
+
+    source = tmp_path / "repo"
+    source.mkdir()
+    subprocess.run(["git", "init", "-q", str(source)], check=True)
+    (source / "module.py").write_text("value = 1\n")
+    subprocess.run(["git", "add", "."], cwd=source, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=Test",
+            "-c",
+            "user.email=test@example.invalid",
+            "commit",
+            "-qm",
+            "fixture",
+        ],
+        cwd=source,
+        check=True,
+    )
+    (source / "module.py").write_text("value = 999\n")
+    with source_snapshot(source) as snapshot:
+        captured = snapshot / "module.py"
+        assert captured.read_text() == "value = 1\n"
+        assert not captured.stat().st_mode & 0o222
+        (source / "module.py").write_text("value = 888\n")
+        assert captured.read_text() == "value = 1\n"
+    assert not snapshot.exists()

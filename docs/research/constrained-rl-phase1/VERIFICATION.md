@@ -59,3 +59,9 @@ Use `python -m rl_defense.research.legacy` for anchored legacy readiness checks.
 The original result-directory read_legacy.py is frozen archival source, retained for
 REPORT_EVIDENCE.json integrity; it is superseded and must not be used to certify
 mutable bundles. The supported reader anchors the historical root index digest.
+
+Public certification now repeats its checks and executes lazy replay/policy imports in
+a private read-only checkout cloned from Git, using bounded captured evidence copies.
+Changes in the caller checkout cannot become executed replay source. Historical
+reporting-index and reporting-file hashes are enforced alongside the execution index.
+New bundles must resolve their local execution revision to the recorded source tree.
