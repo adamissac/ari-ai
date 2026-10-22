@@ -21,8 +21,9 @@ export function liveDefenseMode(previewParam: string | null | undefined): LiveDe
 
 /** Keep the current path and swap only the layout-preview flag. */
 export function withLiveDefenseMode(href: string, mode: LiveDefenseMode): string {
-  const [path, query = ''] = href.split('?');
-  const params = new URLSearchParams(query);
+  const cut = href.indexOf('?');
+  const path = cut === -1 ? href : href.slice(0, cut);
+  const params = new URLSearchParams(cut === -1 ? '' : href.slice(cut + 1));
   if (mode === 'layout-preview') params.set(PREVIEW_QUERY, PREVIEW_VALUE);
   else params.delete(PREVIEW_QUERY);
   const qs = params.toString();
