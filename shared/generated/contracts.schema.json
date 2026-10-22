@@ -392,6 +392,123 @@
       "title": "AgentStepResult",
       "type": "object"
     },
+    "AnalystReview": {
+      "additionalProperties": false,
+      "description": "Human review of a stored recommendation. Accept does not execute anything.",
+      "properties": {
+        "decision": {
+          "$ref": "#/$defs/AnalystReviewDecision"
+        },
+        "enforcement": {
+          "const": "none",
+          "default": "none",
+          "title": "Enforcement",
+          "type": "string"
+        },
+        "executes": {
+          "const": false,
+          "default": false,
+          "title": "Executes",
+          "type": "boolean"
+        },
+        "id": {
+          "pattern": "^arv_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "recommendation_id": {
+          "pattern": "^rec_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Recommendation Id",
+          "type": "string"
+        },
+        "reviewed_at": {
+          "format": "date-time",
+          "title": "Reviewed At",
+          "type": "string"
+        },
+        "reviewed_by": {
+          "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Reviewed By",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "recommendation_id",
+        "decision",
+        "reason",
+        "reviewed_by",
+        "reviewed_at",
+        "executes",
+        "enforcement"
+      ],
+      "title": "AnalystReview",
+      "type": "object"
+    },
+    "AnalystReviewCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "$ref": "#/$defs/AnalystReviewDecision"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        }
+      },
+      "required": [
+        "decision",
+        "reason"
+      ],
+      "title": "AnalystReviewCreate",
+      "type": "object"
+    },
+    "AnalystReviewDecision": {
+      "enum": [
+        "accept",
+        "reject",
+        "needs_investigation"
+      ],
+      "title": "AnalystReviewDecision",
+      "type": "string"
+    },
+    "ApplicationVerification": {
+      "enum": [
+        "unverified",
+        "ingest_seen",
+        "token_revoked"
+      ],
+      "title": "ApplicationVerification",
+      "type": "string"
+    },
     "Approval": {
       "additionalProperties": false,
       "properties": {
@@ -2033,6 +2150,289 @@
       "title": "CommunicationRecord",
       "type": "object"
     },
+    "ComponentGraph": {
+      "additionalProperties": false,
+      "description": "Topology from registered apps and observed ingest routes. Missing checks stay unknown.",
+      "properties": {
+        "generated_at": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        },
+        "links": {
+          "items": {
+            "$ref": "#/$defs/ComponentLink"
+          },
+          "title": "Links",
+          "type": "array"
+        },
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/ComponentNode"
+          },
+          "title": "Nodes",
+          "type": "array"
+        },
+        "note": {
+          "default": "healthy is never inferred from HTTP 200. attention is only set when the latest recorded runtime score was anomalous; every other node is unknown.",
+          "maxLength": 500,
+          "title": "Note",
+          "type": "string"
+        },
+        "observations": {
+          "items": {
+            "$ref": "#/$defs/ComponentObservation"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "project_id": {
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Project Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "nodes",
+        "links",
+        "observations",
+        "generated_at",
+        "note"
+      ],
+      "title": "ComponentGraph",
+      "type": "object"
+    },
+    "ComponentHealthState": {
+      "enum": [
+        "unknown",
+        "checking",
+        "healthy",
+        "attention"
+      ],
+      "title": "ComponentHealthState",
+      "type": "string"
+    },
+    "ComponentLink": {
+      "additionalProperties": false,
+      "properties": {
+        "source_id": {
+          "maxLength": 500,
+          "title": "Source Id",
+          "type": "string"
+        },
+        "target_id": {
+          "maxLength": 500,
+          "title": "Target Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_id",
+        "target_id"
+      ],
+      "title": "ComponentLink",
+      "type": "object"
+    },
+    "ComponentNode": {
+      "additionalProperties": false,
+      "properties": {
+        "critical": {
+          "default": false,
+          "title": "Critical",
+          "type": "boolean"
+        },
+        "id": {
+          "maxLength": 500,
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ComponentNodeKind"
+        },
+        "label": {
+          "maxLength": 500,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "kind",
+        "critical"
+      ],
+      "title": "ComponentNode",
+      "type": "object"
+    },
+    "ComponentNodeKind": {
+      "enum": [
+        "application",
+        "route"
+      ],
+      "title": "ComponentNodeKind",
+      "type": "string"
+    },
+    "ComponentObservation": {
+      "additionalProperties": false,
+      "properties": {
+        "last_checked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Checked At"
+        },
+        "node_id": {
+          "maxLength": 500,
+          "title": "Node Id",
+          "type": "string"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "simulated": {
+          "title": "Simulated",
+          "type": "boolean"
+        },
+        "source": {
+          "$ref": "#/$defs/ComponentObservationSource"
+        },
+        "state": {
+          "$ref": "#/$defs/ComponentHealthState"
+        }
+      },
+      "required": [
+        "node_id",
+        "state",
+        "last_checked_at",
+        "source",
+        "simulated",
+        "note"
+      ],
+      "title": "ComponentObservation",
+      "type": "object"
+    },
+    "ComponentObservationSource": {
+      "enum": [
+        "ingest",
+        "github",
+        "none"
+      ],
+      "title": "ComponentObservationSource",
+      "type": "string"
+    },
+    "ConnectedApplication": {
+      "additionalProperties": false,
+      "description": "Owner-registered staging app under watch. Never includes secrets.",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Created By",
+          "type": "string"
+        },
+        "environment": {
+          "$ref": "#/$defs/StagingEnvironment"
+        },
+        "id": {
+          "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "ingest_configured": {
+          "description": "True when a non-revoked ingest token exists; the token itself is never returned",
+          "title": "Ingest Configured",
+          "type": "boolean"
+        },
+        "last_ingest_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Ingest At"
+        },
+        "name": {
+          "maxLength": 500,
+          "title": "Name",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "shadow_mode": {
+          "const": true,
+          "default": true,
+          "title": "Shadow Mode",
+          "type": "boolean"
+        },
+        "verification": {
+          "$ref": "#/$defs/ApplicationVerification"
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "name",
+        "environment",
+        "ingest_configured",
+        "last_ingest_at",
+        "verification",
+        "shadow_mode",
+        "created_by",
+        "created_at"
+      ],
+      "title": "ConnectedApplication",
+      "type": "object"
+    },
+    "ConnectedApplicationCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "environment": {
+          "$ref": "#/$defs/StagingEnvironment",
+          "default": "sandbox"
+        },
+        "name": {
+          "maxLength": 500,
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "environment"
+      ],
+      "title": "ConnectedApplicationCreate",
+      "type": "object"
+    },
     "ContextChunk": {
       "additionalProperties": false,
       "properties": {
@@ -2190,6 +2590,96 @@
       ],
       "title": "DataSensitivity",
       "type": "string"
+    },
+    "DefenseHealth": {
+      "additionalProperties": false,
+      "description": "Recorded timestamps for ingest and the job worker. Not a liveness verdict.",
+      "properties": {
+        "last_ingest_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Latest runtime_windows.window_end for this project",
+          "title": "Last Ingest At"
+        },
+        "last_runtime_event_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Latest monitoring event with source=runtime",
+          "title": "Last Runtime Event At"
+        },
+        "project_id": {
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "queue_depth": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Queued jobs; null if the queue was not readable",
+          "title": "Queue Depth"
+        },
+        "status": {
+          "const": "unknown",
+          "default": "unknown",
+          "title": "Status",
+          "type": "string"
+        },
+        "status_reason": {
+          "default": "No recorded health-check producer. Timestamps are evidence only; HTTP 200 is not a healthy verdict.",
+          "maxLength": 500,
+          "title": "Status Reason",
+          "type": "string"
+        },
+        "worker_seen_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Latest jobs.heartbeat_at; null if no worker has heartbeated",
+          "title": "Worker Seen At"
+        }
+      },
+      "required": [
+        "project_id",
+        "worker_seen_at",
+        "queue_depth",
+        "last_ingest_at",
+        "last_runtime_event_at",
+        "status",
+        "status_reason"
+      ],
+      "title": "DefenseHealth",
+      "type": "object"
     },
     "DefenseRecommendation": {
       "additionalProperties": false,
@@ -4537,6 +5027,76 @@
         "created_at"
       ],
       "title": "IngestTokenCreated",
+      "type": "object"
+    },
+    "IngestTokenView": {
+      "additionalProperties": false,
+      "description": "Metadata for an ingest token. The secret is never included after issuance.",
+      "properties": {
+        "application_id": {
+          "anyOf": [
+            {
+              "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Application Id"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^itk_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_used_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Used At"
+        },
+        "project_id": {
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "revoked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revoked At"
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "application_id",
+        "created_at",
+        "revoked_at",
+        "last_used_at"
+      ],
+      "title": "IngestTokenView",
       "type": "object"
     },
     "IntentClaim": {
@@ -6991,6 +7551,15 @@
       "title": "SourceSpan",
       "type": "object"
     },
+    "StagingEnvironment": {
+      "description": "Environments a shadow-pilot app may declare. Production is not allowed.",
+      "enum": [
+        "sandbox",
+        "owned_test"
+      ],
+      "title": "StagingEnvironment",
+      "type": "string"
+    },
     "StandardFramework": {
       "enum": [
         "attack",
@@ -7997,5 +8566,5 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "HackATL platform contracts",
-  "x-schema-version": "0.15.0"
+  "x-schema-version": "0.16.0"
 }

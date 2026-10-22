@@ -56,6 +56,8 @@ class IdPrefix(StrEnum):
     itk = "itk"
     rtw = "rtw"
     inc = "inc"
+    app = "app"
+    arv = "arv"
 
 
 def ulid() -> str:
@@ -110,3 +112,5 @@ JobId = Annotated[str, _pattern("job")]
 RequestId = Annotated[str, _pattern("req")]
 IngestTokenId = Annotated[str, _pattern("itk")]
 IncidentId = Annotated[str, _pattern("inc")]
+ConnectedApplicationId = Annotated[str, _pattern("app")]
+AnalystReviewId = Annotated[str, _pattern("arv")]

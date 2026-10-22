@@ -1,0 +1,8 @@
+{
+  "generated_at": "2026-10-17T01:00:00Z",
+  "links": [],
+  "nodes": [],
+  "note": "healthy is never inferred from HTTP 200. attention is only set when the latest recorded runtime score was anomalous; every other node is unknown.",
+  "observations": [],
+  "project_id": "prj_01JFIXTURE0000000000000PRJ"
+}
