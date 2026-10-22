@@ -10,6 +10,7 @@ it('leads with two workflows and retains secondary routes behind More', () => {
   expect(within(nav.querySelector('.project-tabs') as HTMLElement).getAllByRole('link').map(a => a.textContent)).toEqual(['Code review', '7 agents']);
   expect(screen.getByRole('link', { name: '7 agents' }).getAttribute('aria-current')).toBe('page');
   fireEvent.click(screen.getByText('More'));
+  expect(screen.getByRole('link', { name: 'Live Defense' }).getAttribute('href')).toBe('/projects/p1/live-defense');
   expect(screen.getByRole('link', { name: 'Authorized scopes' }).getAttribute('href')).toBe('/projects/p1/scopes');
   expect(screen.getByRole('link', { name: 'Approvals' }).getAttribute('href')).toBe('/projects/p1/approvals');
   fireEvent.keyDown(screen.getByText('More'), { key: 'Escape' });

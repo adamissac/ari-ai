@@ -36,7 +36,7 @@ export default function MonitoringPage() {
         <div>
           <p className="label-mono text-white/60">Continuous defense monitor</p>
           <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">What we have recorded for this project</h2>
-          <p className="mt-1 max-w-2xl text-sm text-white/70">Real events from your connected repository and runtime, plus re-checks they triggered. This is a record of what arrived, not a promise of round-the-clock protection.</p>
+          <p className="mt-1 max-w-2xl text-sm text-white/70">Real events from your connected repository and runtime, plus re-checks they triggered. This is a record of what arrived, not a promise of round-the-clock protection. The <Link className="text-white underline decoration-white/40 hover:decoration-white" href={`/projects/${project.id}/live-defense`}>Live Defense dashboard</Link> gathers the same records with investigation and explainability views.</p>
         </div>
         <div className="flex flex-col items-start gap-3 lg:items-end">
           <DefenseSwitch project={project} onChange={() => reloadProject()} tone="dark" />

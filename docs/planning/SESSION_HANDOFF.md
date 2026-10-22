@@ -18,6 +18,19 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-22 — Cursor (agent, Alan) — Live Defense Phase 1 UI
+- Did: branch `feat/live-defense-pilot-ui`. Customer dashboard at `/projects/{id}/live-defense` (Overview, Investigation, Explainability) plus isolated `/live-defense-pilot`. Live mode uses existing project/events/incidents/recommendation/explanation/evaluation APIs. Layout-preview fixtures in `frontend/lib/live-defense-preview.ts` are labelled SAMPLE LAYOUT and never mixed with records. No apply/isolate/rate-limit. `shared/`, `backend/`, `rl-defense/` untouched. Handoff for missing APIs: `docs/planning/LIVE_DEFENSE_FRONTEND_API.md`.
+- State of the code: frontend-only; draft PR #390. Navigation: Live Defense under More; Monitoring links in.
+- Commands run and results (executed):
+  - `npm run lint --prefix frontend` — pass
+  - `npm run typecheck --prefix frontend` — pass (after query-helper split fix)
+  - `npm test --prefix frontend` — 323 passed / 77 files
+  - `npm run build --prefix frontend` — pass; routes include `/live-defense` and `/live-defense-pilot`
+  - Headed Chrome against `next start :3000` `/live-defense-pilot`: SAMPLE LAYOUT banner present; 0 apply/isolate/rate-limit buttons
+- Decisions: missing component-health API → no live map (docs/14: healthy only from a recorded check). NIST `Incident` is not overloaded with DETECTED→EXECUTING.
+- Next steps: backend/shared owner implements the handoff types; frontend then drops empty panels. Do not merge until review. Do not treat preview fixtures as live telemetry.
+- Warnings: `/live-defense-pilot` is public (no session) on purpose for layout review; it must keep the sample banner.
+
 ### 2026-10-20 — Claude (agent, Alan) — live RL v8: low-intensity train mix — gate `recommend_promote`, hypothesis not supported
 - Did: branch `feat/alan/live-retrain-v8`. One change from v7: `--train-dir train_v8` (train_v3 copied unchanged plus `rare_delegate_runs` and `trickle_outsider_quiet`, low-intensity and mostly quiet). It was chosen from train-band evidence: on `rare_delegate_runs`, v7 scores −3.61 against noop's −3.14 (`results/live-retrain-v8/pre_run_evidence.json`). `--reference-checkpoint` is now repeatable as `NAME=PATH` (v6 and v7). There is a fresh `holdout_v8` (two of its three scenarios are low-intensity). Pre-registered and pushed as `15e25f9`. `promotion.yaml`, val_v4 and the selection rule are unchanged.
 - Result: the gate returns **`recommend_promote`**, 7/7 checks, +4.47 [3.14, 5.81] over deployed. **The hypothesis is not supported:** v8 trails v7 on both low-intensity holdout scenarios and overall (−0.46 [−0.96, −0.07]) and ties v6 (+0.08 [−0.40, 0.50]). It trails noop on the train scenario `rare_delegate_runs` (−4.01). It keeps the quiet-window fix: noop 178/178, block 102/102, lab/platform agreement 280/280 on train_v8 windows. holdout_v8 is easier than holdout_v7 for the per-scenario rule (v7's numbers clear deployed there too). Online learning moved val for the first time (−7.03 → −6.74 at 105k).
