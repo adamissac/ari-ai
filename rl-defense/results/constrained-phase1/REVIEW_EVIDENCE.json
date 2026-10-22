@@ -5,7 +5,7 @@
     "rl-defense/results/constrained-phase1/frozen/evaluate.py.txt": "8c0002a79444f367a3b34967c198d4b3b1a292d5573fc134553168d385452b2e",
     "rl-defense/results/constrained-phase1/frozen/source.commit.txt": "da36fac0ff64c56dcb8ec43328f76e558f2ba0c8676fd834113e6b51b2ed860a",
     "rl-defense/rl_defense/research/evaluate.py": "617be54a46441aeeb0f1ac738c0ec306212e62aedac8298d763a7163d42227f7",
-    "rl-defense/rl_defense/research/legacy.py": "ff11f3f201255a46acbfe91296b07588cf8dc27fcf488514e7d92fd6883fc704",
+    "rl-defense/rl_defense/research/legacy.py": "6ce6c24d5759cb12324f24129194e9f00fec1b778efef0191908ceb77db607ae",
     "rl-defense/rl_defense/research/proof.py": "a557f5d2dfe1499c9e2faaf36ebdf78b78b2841aea9b411fc9c43e329cbb1739"
   },
   "historical_measurements_unchanged": true,
