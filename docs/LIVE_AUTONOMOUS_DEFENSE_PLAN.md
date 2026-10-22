@@ -1,6 +1,6 @@
 # Live autonomous defense: audit and plan
 
-Status: implementation plan for the first vertical slice (branch `feat/alan/live-defense`). The capability report at the end says what is implemented, tested, partial or unsupported.
+Status: **plan for a later enforcement slice**, not what Phase 1/2 shipped. Phase 1 (PR #390) and Phase 2 (`feat/live-defense-pilot-phase2`) implement a **shadow-pilot dashboard**: staging-app onboarding, authenticated ingest, stored simulation-derived recommendations, and analyst review **without** adapters, DETECTED→EXECUTING, production grants, or automatic control of customer traffic. Do not treat the components in sections 2–7 as implemented.
 
 ## 1. What already exists (audited on main `8943622`)
 

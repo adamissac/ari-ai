@@ -13,5 +13,14 @@ export default function LiveDefenseExplainPage() {
   const live = mode === 'live';
   const recs = useResource(live ? `ld-recs:${project.id}` : null, s => api().defenseRecommendations(project.id, { signal: s }));
   const evals = useResource(live ? `ld-rle:${project.id}` : null, s => api().rlEvaluations(project.id, { signal: s }));
-  return <Explainability mode={mode} recs={live ? recs : undefined} evals={live ? evals : undefined} />;
+  const reviews = useResource(live ? `ld-reviews:${project.id}` : null, s => api().projectDefenseReviews(project.id, { signal: s }));
+  return (
+    <Explainability
+      mode={mode}
+      recs={live ? recs : undefined}
+      evals={live ? evals : undefined}
+      reviews={live ? reviews : undefined}
+      onReview={live ? reviews.reload : undefined}
+    />
+  );
 }

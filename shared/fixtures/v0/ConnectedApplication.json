@@ -1,0 +1,12 @@
+{
+  "created_at": "2026-10-17T01:00:00Z",
+  "created_by": "usr_01JFIXTURE0000000000000USR",
+  "environment": "owned_test",
+  "id": "app_01JFIXTURE0000000000000APP",
+  "ingest_configured": true,
+  "last_ingest_at": "2026-10-17T01:00:00Z",
+  "name": "payments-lite staging",
+  "project_id": "prj_01JFIXTURE0000000000000PRJ",
+  "shadow_mode": true,
+  "verification": "ingest_seen"
+}

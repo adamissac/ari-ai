@@ -15,6 +15,9 @@ export default function LiveDefenseOverviewPage() {
   const incidents = useResource(live ? `ld-incidents:${project.id}` : null, s => api().incidents(project.id, { signal: s }), 15000);
   const recs = useResource(live ? `ld-recs:${project.id}` : null, s => api().defenseRecommendations(project.id, { signal: s }));
   const reassess = useResource(live ? `ld-reassess:${project.id}` : null, s => api().reassessments(project.id, { signal: s }), 10000);
+  const health = useResource(live ? `ld-health:${project.id}` : null, s => api().defenseHealth(project.id, { signal: s }), 15000);
+  const graph = useResource(live ? `ld-graph:${project.id}` : null, s => api().defenseGraph(project.id, { signal: s }), 15000);
+  const apps = useResource(live ? `ld-apps:${project.id}` : null, s => api().connectedApplications(project.id, { signal: s }));
   return (
     <LiveOverview
       mode={mode}
@@ -25,6 +28,9 @@ export default function LiveDefenseOverviewPage() {
       incidents={live ? incidents : undefined}
       recs={live ? recs : undefined}
       reassess={live ? reassess : undefined}
+      health={live ? health : undefined}
+      graph={live ? graph : undefined}
+      apps={live ? apps : undefined}
     />
   );
 }

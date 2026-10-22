@@ -187,7 +187,7 @@ def main(argv: list[str]) -> int:
         # (REPOSITORY_BINDINGS_FILE is an operator registry, not a user-facing API).
         import httpx
 
-        from backend.db import memberships, transaction
+        from backend.db import defense_recommendations, memberships, transaction
 
         base = f"http://127.0.0.1:{api_port}/api/v1"
         alice = httpx.Client(base_url=base)
@@ -209,6 +209,43 @@ def main(argv: list[str]) -> int:
         ]))
         alice.close()
 
+        # Stored simulation-derived recommendation for Live Defense e2e (no live RL
+        # inference in this stack). Same persistence path the worker uses; labelled
+        # simulation_derived. Not mixed with layout-preview fixtures.
+        from shared import examples
+        from shared.ids import IdPrefix, new_id
+        from shared.rl import FeatureContribution, RLExplanation
+
+        rec0 = examples.build()["DefenseRecommendation"].model_dump(mode="json")
+        rec_id = new_id(IdPrefix.rec)
+        node_name = rec0.get("node") if rec0.get("node") in ("gateway", "api", "auth", "payments", "db") else None
+        explanation = RLExplanation(
+            recommendation_id=rec_id,
+            action=str(rec0["action"]),
+            runner_up="noop",
+            margin=float(rec0["q_margin"]),
+            method="occlusion",
+            top_contributions=[
+                FeatureContribution(
+                    node=node_name,
+                    feature="auth_failures",
+                    value=0.81,
+                    delta_margin=0.31,
+                    kind="signal",
+                )
+            ],
+            caveat="Occlusion of simulation-trained features; not real-world causality.",
+        ).model_dump(mode="json")
+        with transaction() as conn:
+            conn.execute(
+                sa.insert(defense_recommendations).values(
+                    id=rec_id,
+                    project_id=pid,
+                    doc={**rec0, "id": rec_id, "project_id": pid},
+                    explanation=explanation,
+                )
+            )
+
         web_port = _port()
         os.environ.setdefault("DEMO_ACCESS_CODE", "e2e-demo-access-code")  # demo account gate (proxy.ts)
         env = {**os.environ, "BACKEND_ORIGIN": f"http://127.0.0.1:{api_port}", "NEXT_PUBLIC_DEV_LOGIN": "1"}
@@ -223,7 +260,8 @@ def main(argv: list[str]) -> int:
             cwd=FRONTEND,
             env={**env, "E2E_BASE_URL": f"http://127.0.0.1:{web_port}", "E2E_API": base, "E2E_PROJECT_ID": pid,
                  "E2E_REPO_ID": rid, "E2E_REPO": REPO_NAME, "E2E_WORKSPACE_PROJECT_ID": workspace_pid,
-                 "E2E_WORKSPACE_REPO_ID": workspace_rid, "E2E_WORKSPACE_REPO": workspace_name, "E2E_COMMIT": sha, "E2E_WEBHOOK_SECRET": WEBHOOK_SECRET},
+                 "E2E_WORKSPACE_REPO_ID": workspace_rid, "E2E_WORKSPACE_REPO": workspace_name, "E2E_COMMIT": sha,
+                 "E2E_WEBHOOK_SECRET": WEBHOOK_SECRET, "E2E_REC_ID": rec_id},
             check=False,
         )
         return result.returncode

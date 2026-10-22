@@ -25,6 +25,7 @@ from shared import (
     evidence,
     findings,
     intelligence,
+    live_defense,
     monitoring,
     review,
     rl,
@@ -52,6 +53,10 @@ EXP = "exp_01JFIXTURE0000000000000EXP"
 ART = "art_01JFIXTURE0000000000000ART"
 RUN = "run_01JFIXTURE0000000000000RUN"
 PAT = "pat_01JFIXTURE0000000000000PAT"
+APP = "app_01JFIXTURE0000000000000APP"
+ITK = "itk_01JFIXTURE0000000000000ITK"
+ARV = "arv_01JFIXTURE0000000000000ARV"
+REC = "rec_0123456789abcdef0123456789abcdef"
 
 
 def _span_ref(path: str, start: int, end: int, provenance: str) -> evidence.EvidenceRef:
@@ -356,6 +361,56 @@ def build() -> dict[str, BaseModel]:
         ),
         "ErrorResponse": api_error(),
         "AssessmentCreate": api.AssessmentCreate(scope_id=SCP, repo_id=REP, commit_sha=HEAD),
+        "ConnectedApplication": live_defense.ConnectedApplication(
+            id=APP,
+            project_id=PRJ,
+            name="payments-lite staging",
+            environment=live_defense.StagingEnvironment.owned_test,
+            ingest_configured=True,
+            last_ingest_at=T0,
+            verification=live_defense.ApplicationVerification.ingest_seen,
+            created_by=USR,
+            created_at=T0,
+        ),
+        "ConnectedApplicationCreate": live_defense.ConnectedApplicationCreate(
+            name="payments-lite staging",
+            environment=live_defense.StagingEnvironment.sandbox,
+        ),
+        "IngestTokenView": live_defense.IngestTokenView(
+            id=ITK,
+            project_id=PRJ,
+            application_id=APP,
+            created_at=T0,
+            revoked_at=None,
+            last_used_at=T0,
+        ),
+        "DefenseHealth": live_defense.DefenseHealth(project_id=PRJ, queue_depth=0),
+        "ComponentNode": live_defense.ComponentNode(
+            id=APP, label="payments-lite staging", kind=live_defense.ComponentNodeKind.application
+        ),
+        "ComponentLink": live_defense.ComponentLink(source_id=APP, target_id="GET /health"),
+        "ComponentObservation": live_defense.ComponentObservation(
+            node_id="GET /health",
+            state=live_defense.ComponentHealthState.unknown,
+            last_checked_at=T0,
+            source=live_defense.ComponentObservationSource.ingest,
+            simulated=True,
+            note="Latest window was scored; not a health check.",
+        ),
+        "ComponentGraph": live_defense.ComponentGraph(project_id=PRJ, generated_at=T0),
+        "AnalystReview": live_defense.AnalystReview(
+            id=ARV,
+            project_id=PRJ,
+            recommendation_id=REC,
+            decision=live_defense.AnalystReviewDecision.needs_investigation,
+            reason="Need the linked runtime event before accepting.",
+            reviewed_by=USR,
+            reviewed_at=T0,
+        ),
+        "AnalystReviewCreate": live_defense.AnalystReviewCreate(
+            decision=live_defense.AnalystReviewDecision.accept,
+            reason="Recorded for the shadow pilot; does not execute.",
+        ),
     }
 
 

@@ -396,6 +396,21 @@ index_snapshots = sa.Table(
     _created(),
 )
 
+connected_applications = sa.Table(
+    "connected_applications",
+    metadata,
+    _id(),
+    sa.Column(
+        "project_id", sa.String(80), sa.ForeignKey("projects.id"), nullable=False, index=True
+    ),
+    sa.Column("name", sa.String(200), nullable=False),
+    sa.Column("environment", sa.String(20), nullable=False),
+    sa.Column("created_by", sa.String(80), sa.ForeignKey("users.id"), nullable=False),
+    sa.Column("doc", JSONB, nullable=False),
+    _created(),
+    sa.CheckConstraint("environment in ('sandbox','owned_test')", name="environment"),
+)
+
 ingest_tokens = sa.Table(
     "ingest_tokens",
     metadata,
@@ -406,6 +421,8 @@ ingest_tokens = sa.Table(
     sa.Column("token_sha256", sa.String(64), nullable=False, unique=True),
     sa.Column("created_by", sa.String(80), sa.ForeignKey("users.id"), nullable=False),
     sa.Column("revoked_at", TS),
+    sa.Column("last_used_at", TS),
+    sa.Column("application_id", sa.String(80), sa.ForeignKey("connected_applications.id")),
     _created(),
 )
 
@@ -420,6 +437,7 @@ runtime_windows = sa.Table(
     sa.Column("window_end", TS, nullable=False),
     sa.Column("counters", JSONB, nullable=False),
     sa.Column("score", JSONB, nullable=False),
+    sa.Column("application_id", sa.String(80), sa.ForeignKey("connected_applications.id")),
     _created(),
     sa.UniqueConstraint(
         "project_id", "source", "route", "window_end", name="uq_runtime_windows_key"
@@ -442,6 +460,27 @@ incidents = sa.Table(
     sa.Column("phase", sa.String(40), nullable=False),
     sa.Column("doc", JSONB, nullable=False),
     _created(),
+)
+
+analyst_reviews = sa.Table(
+    "analyst_reviews",
+    metadata,
+    _id(),
+    sa.Column(
+        "project_id", sa.String(80), sa.ForeignKey("projects.id"), nullable=False, index=True
+    ),
+    sa.Column(
+        "recommendation_id",
+        sa.String(80),
+        sa.ForeignKey("defense_recommendations.id"),
+        nullable=False,
+        index=True,
+    ),
+    sa.Column("decision", sa.String(40), nullable=False),
+    sa.Column("reviewed_by", sa.String(80), sa.ForeignKey("users.id"), nullable=False),
+    sa.Column("doc", JSONB, nullable=False),
+    _created(),
+    sa.CheckConstraint("decision in ('accept','reject','needs_investigation')", name="decision"),
 )
 
 
