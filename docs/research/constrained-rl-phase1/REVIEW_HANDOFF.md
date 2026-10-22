@@ -38,3 +38,7 @@ and supersedes the immutable legacy script with an anchored supported reader.
 Eighth review pins replay topology and the v6 sidecar to the source commit. The
 sidecar must also equal the manifest embedded in the hash-pinned checkpoint, with
 only the canonical filename added. No original artifact is changed.
+
+Ninth review captures scenario, topology, rule and sidecar bytes before parsing or
+reconstruction, passes captured topology into the verification-only loop, and enforces
+the original execution-index digest from the Git-anchored review manifest.

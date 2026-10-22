@@ -276,6 +276,7 @@ def test_evidence_bundle_verifier_rejects_rehashed_summary_and_overlap(
     # Owned lab baseline smoke, five fixed policies, two small episodes; no training.
     sc = scenario.model_copy(update={"horizon": 5, "episodes": 2})
     monkeypatch.setattr(ev, "load_scenarios", lambda *a, **k: [sc])
+    monkeypatch.setattr(ev, "scenarios_from_inputs", lambda *a, **k: [sc])
     original = ev.subprocess.check_output
 
     def source_read(cmd, **kwargs):
@@ -524,7 +525,7 @@ def test_verifier_rejects_self_declared_scenario_changes(tmp_path):
     index = json.loads((bundle / "EVIDENCE.json").read_text())
     index["files"]["config.json"] = digest(data)
     (bundle / "EVIDENCE.json").write_bytes(ev.encoded(index))
-    with pytest.raises(ValueError, match="pinned train_v8"):
+    with pytest.raises(ValueError, match="execution index|pinned train_v8"):
         ev.verify(bundle)
 
 
@@ -635,17 +636,17 @@ def test_gzip_expansion_is_bounded(tmp_path):
 
 
 def test_historical_non_python_semantics_are_pinned(monkeypatch):
-    from pathlib import Path
-
-    from rl_defense.research.proof import check_semantic_inputs
+    import rl_defense.research.proof as proof
 
     config = json.loads((ROOT / "rl-defense/results/constrained-phase1/config.json").read_text())
-    original = Path.read_bytes
+    original = proof.read_artifact
     monkeypatch.setattr(
-        Path, "read_bytes", lambda p: original(p) + b"\n" if p.suffix == ".yaml" else original(p)
+        proof,
+        "read_artifact",
+        lambda p: original(p) + b"\n" if p.suffix == ".yaml" else original(p),
     )
     with pytest.raises(ValueError, match="semantic inputs"):
-        check_semantic_inputs(ROOT, config)
+        proof.check_semantic_inputs(ROOT, config)
 
 
 @pytest.mark.parametrize("change", ["runtime", "scope"])
@@ -667,7 +668,7 @@ def test_runtime_and_scope_metadata_cannot_be_rehashed(tmp_path, change):
     index = json.loads((bundle / "EVIDENCE.json").read_text())
     index["files"]["config.json"] = digest(data)
     (bundle / "EVIDENCE.json").write_bytes(ev.encoded(index))
-    with pytest.raises(ValueError, match="runtime differs|scope metadata"):
+    with pytest.raises(ValueError, match="execution index|runtime differs|scope metadata"):
         ev.verify(bundle)
 
 
@@ -746,3 +747,42 @@ def test_checkpoint_sidecar_cannot_rewrite_embedded_lineage():
     validate_checkpoint_manifest(side, embedded, "candidate_online.pt")
     with pytest.raises(ValueError, match="sidecar lineage"):
         validate_checkpoint_manifest({**side, "seed": 99}, embedded, "candidate_online.pt")
+
+
+def test_historical_root_index_cannot_rehash_unchecked_metadata(tmp_path):
+    import shutil
+
+    import rl_defense.research.evaluate as ev
+
+    output = ROOT / "rl-defense/results/constrained-phase1"
+    shutil.copytree(output, tmp_path / "bundle")
+    bundle = tmp_path / "bundle"
+    config = json.loads((bundle / "config.json").read_text())
+    config["execution_local_commit"] = "0" * 40
+    data = ev.encoded(config)
+    (bundle / "config.json").write_bytes(data)
+    index = json.loads((bundle / "EVIDENCE.json").read_text())
+    index["files"]["config.json"] = digest(data)
+    (bundle / "EVIDENCE.json").write_bytes(ev.encoded(index))
+    with pytest.raises(ValueError, match="execution index"):
+        ev.verify(bundle)
+
+
+def test_reconstruction_uses_captured_topology_not_a_reopened_file(scenario, monkeypatch):
+    import rl_defense.live.loop as loop
+    from rl_defense.research.proof import (
+        check_semantic_inputs,
+        topology_from_inputs,
+        verify_deterministic_replay,
+    )
+
+    config = json.loads((ROOT / "rl-defense/results/constrained-phase1/config.json").read_text())
+    captured = check_semantic_inputs(ROOT, config)
+    topology = topology_from_inputs(captured)
+    raw = raw_episode(scenario)
+
+    def reject_reopen(*a, **kw):
+        raise AssertionError("topology file reopened after capture")
+
+    monkeypatch.setattr(loop, "load_topology", reject_reopen)
+    verify_deterministic_replay(raw, [scenario], topology)

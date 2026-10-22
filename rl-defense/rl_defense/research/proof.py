@@ -54,7 +54,13 @@ def verify_commit(raw: bytes, revision: str, tree: str) -> None:
 
 
 def check_source(
-    root: Path, output: Path, config: dict, files: set[str], *, commit_object: bytes | None = None
+    root: Path,
+    output: Path,
+    config: dict,
+    files: set[str],
+    *,
+    commit_object: bytes | None = None,
+    index_object: bytes | None = None,
 ) -> None:
     pins = config["code_sha256"]
     old = config["source_commit"] == HISTORICAL_SOURCE
@@ -100,6 +106,11 @@ def check_source(
         review = json.loads(review_blob)
         if review.get("schema") != "constrained-phase1-review-evidence/1":
             raise ValueError("unsupported review evidence schema")
+        index_blob = (
+            index_object if index_object is not None else read_artifact(output / "EVIDENCE.json")
+        )
+        if digest(index_blob) != review["original_execution_index_sha256"]:
+            raise ValueError("historical execution index differs from trusted review anchor")
         # The historical exception allows exactly the separately recorded verifier,
         # not arbitrary future edits outside the two frozen collection functions.
         for rel in (EVALUATOR_PATH, "rl-defense/rl_defense/research/proof.py"):
@@ -143,20 +154,35 @@ def check_source(
             raise ValueError("historical collection/adaptation semantics changed")
 
 
-def verify_policy_actions(root: Path, config: dict, rows: list[ResearchTransition]) -> None:
+def verify_policy_actions(
+    root: Path,
+    config: dict,
+    rows: list[ResearchTransition],
+    *,
+    semantic_inputs: dict[str, bytes] | None = None,
+) -> None:
     import numpy as np
 
     ckpt = root / "rl-defense/results/live-retrain-v6/candidate_online.pt"
-    blob = ckpt.read_bytes()
+    blob = read_artifact(ckpt)
     if digest(blob) != config["v6_checkpoint_sha256"]:
         raise ValueError("policy checkpoint pin mismatch")
-    manifest_blob = read_artifact(ckpt.with_suffix(".manifest.json"))
+    manifest_blob = (
+        semantic_inputs["rl-defense/results/live-retrain-v6/candidate_online.manifest.json"]
+        if semantic_inputs is not None
+        else read_artifact(ckpt.with_suffix(".manifest.json"))
+    )
     if digest(manifest_blob) != config["v6_manifest_sha256"]:
         raise ValueError("policy manifest pin mismatch")
     params_path = root / "rl-defense/results/duration-screen/RUN.json"
+    params_blob = (
+        semantic_inputs["rl-defense/results/duration-screen/RUN.json"]
+        if semantic_inputs is not None
+        else read_artifact(params_path)
+    )
     if (
-        digest(params_path.read_bytes()) != config["rules_source_sha256"]
-        or json.loads(params_path.read_bytes())["rules_params"] != config["rules_params"]
+        digest(params_blob) != config["rules_source_sha256"]
+        or json.loads(params_blob)["rules_params"] != config["rules_params"]
     ):
         raise ValueError("fixed rules provenance mismatch")
     agent, embedded = load_checkpoint(ckpt, blob=blob)
@@ -240,7 +266,7 @@ def validate_raw_requests(raw: bytes, scenarios: list) -> None:
                     raise ValueError("contradictory raw request outcome")
 
 
-def check_semantic_inputs(root: Path, config: dict) -> None:
+def check_semantic_inputs(root: Path, config: dict) -> dict[str, bytes]:
     paths = sorted(
         str(p.relative_to(root)) for p in (root / "rl-defense/configs/live/train_v8").glob("*.yaml")
     )
@@ -249,7 +275,8 @@ def check_semantic_inputs(root: Path, config: dict) -> None:
         "rl-defense/configs/topology/payments_lite.yaml",
         "rl-defense/results/live-retrain-v6/candidate_online.manifest.json",
     ]
-    pins = {p: digest((root / p).read_bytes()) for p in paths}
+    captured = {p: read_artifact(root / p) for p in paths}
+    pins = {p: digest(blob) for p, blob in captured.items()}
     if config["source_commit"] == HISTORICAL_SOURCE:
         if (
             digest(json.dumps(pins, sort_keys=True, separators=(",", ":")).encode())
@@ -279,6 +306,8 @@ def check_semantic_inputs(root: Path, config: dict) -> None:
             if digest(committed) != sha:
                 raise ValueError("semantic input does not belong to source commit")
 
+    return captured
+
 
 def bounded_gzip(source: Path | bytes) -> bytes:
     """Bound both compressed and expanded memory before parsing untrusted JSON."""
@@ -295,13 +324,11 @@ def bounded_gzip(source: Path | bytes) -> bytes:
     return raw
 
 
-def verify_deterministic_replay(raw: bytes, scenarios: list) -> None:
+def verify_deterministic_replay(raw: bytes, scenarios: list, topology=None) -> None:
     """Reconstruct decision inputs and HTTP outcomes; never save replacement evidence."""
     import gzip
 
     import numpy as np
-
-    from rl_defense.research.evaluate import collect_episode
 
     by = {s.name: s for s in scenarios}
     for line in gzip.decompress(raw).decode().splitlines():
@@ -322,7 +349,7 @@ def verify_deterministic_replay(raw: bytes, scenarios: list) -> None:
             index += 1
             return step["transition"]["action"]
 
-        actual = collect_episode(sc, ep["seed"], recorded_action)
+        actual = reconstruct_episode(sc, ep["seed"], recorded_action, topology)
         if actual != {k: v for k, v in ep.items() if k != "policy"}:
             raise ValueError(
                 "request labels/identities or outcomes differ from deterministic replay"
@@ -374,3 +401,84 @@ def validate_checkpoint_manifest(sidecar: dict, embedded: dict, name: str) -> No
     expected = {**embedded, "checkpoint_file": name}
     if sidecar != expected:
         raise ValueError("checkpoint sidecar lineage differs from pinned embedded manifest")
+
+
+def reconstruct_episode(sc, seed: int, choose, topology) -> dict:  # noqa: ANN001
+    from dataclasses import asdict
+
+    import numpy as np
+
+    from rl_defense.live.adversary import delegation_grants, live_app
+    from rl_defense.live.loop import LiveDefenseLoop, LoopConfig
+    from rl_defense.research.evaluate import OVERRIDES
+    from rl_defense.research.policies import capability_mask
+
+    if sc.split != "train" or seed not in sc.seeds():
+        raise ValueError("Phase 1 fresh evaluation is train-only")
+    cfg = LoopConfig(horizon=sc.horizon, action_space="live_v3", **OVERRIDES)
+    loop = LiveDefenseLoop(live_app, config=cfg, driver=sc.driver(), topology=topology)
+    steps = []
+    grants = delegation_grants(loop.driver.delegates)
+    try:
+        obs, base_mask = loop.reset(seed)
+        for _ in range(sc.horizon):
+            mask = capability_mask(base_mask)
+            action = int(choose(obs.copy(), mask.copy()))
+            if not 0 <= action < len(mask) or not mask[action]:
+                raise ValueError("baseline proposed unavailable action")
+            t = loop.step(action)
+            # Isolated read-only observation of existing lab instrumentation; never exposed
+            # to policy. Preserve records to independently verify cost and delegation.
+            requests = [asdict(r) for r in loop._gateway.records]
+            delegated_blocked = sum(
+                r["blocked_reason"] is not None
+                and not r["is_attack"]
+                and r["principal"] != r["owner"]
+                and r["owner"] in grants.get(r["principal"], ())
+                for r in requests
+            )
+            steps.append(
+                {
+                    "transition": t.model_dump(mode="json"),
+                    "current_mask": mask.tolist(),
+                    "next_research_mask": capability_mask(np.asarray(t.action_mask)).tolist(),
+                    "requests": requests,
+                    "delegated_blocked": delegated_blocked,
+                }
+            )
+            obs, base_mask = np.asarray(t.next_obs, dtype=np.float32), np.asarray(t.action_mask)
+            if t.done:
+                break
+    finally:
+        loop.close()
+    return {"scenario": sc.name, "seed": seed, "steps": steps}
+
+
+def scenarios_from_inputs(inputs: dict[str, bytes]) -> list:
+    import yaml
+
+    from rl_defense.live.scenarios import LiveScenario
+
+    return [
+        LiveScenario.model_validate(yaml.safe_load(blob))
+        for path, blob in sorted(inputs.items())
+        if path.startswith("rl-defense/configs/live/train_v8/")
+    ]
+
+
+def topology_from_inputs(inputs: dict[str, bytes]):
+    import yaml
+
+    from rl_defense.live.topology import NodeRoutes, RouteTopology
+
+    data = yaml.safe_load(inputs["rl-defense/configs/topology/payments_lite.yaml"])
+    nodes = [
+        NodeRoutes(
+            node=n["node"],
+            patterns=tuple(n.get("route_patterns", [])),
+            exposed=bool(n.get("exposed", False)),
+            criticality_floor=float(n.get("criticality_floor", 0.5)),
+        )
+        for n in data["nodes"]
+    ]
+    return RouteTopology(nodes, data.get("default_node", "api"))
