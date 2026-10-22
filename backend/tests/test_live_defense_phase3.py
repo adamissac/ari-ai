@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from datetime import timedelta
+from pathlib import Path
 
 import pytest
 import sqlalchemy as sa
@@ -264,6 +266,98 @@ def test_live_policy_decision_cursor_and_auth(env) -> None:
     got = alice.get(f"/api/v1/live-policy-decisions/{ids_made[0]}")
     assert got.status_code == 200
     assert got.json()["enforcement"] == "NOT_EXECUTED"
+
+
+def test_payments_lite_ground_truth_replay(env) -> None:
+    alice, _, _, ids, anon = env
+    fixture = json.loads(
+        (
+            Path(__file__).resolve().parents[2]
+            / "examples/payments-lite/live_defense_shadow/ground_truth.json"
+        ).read_text()
+    )
+    now = utcnow()
+    for window in fixture["windows"]:
+        end = now + timedelta(seconds=int(window["offset_s"]))
+        body = {
+            "source": "owned_staging",
+            "window_start": (end - timedelta(minutes=1)).isoformat(),
+            "window_end": end.isoformat(),
+            "routes": window["routes"],
+        }
+        ack = _ingest(anon, ids, body)
+        assert ack.status_code == 202, ack.text
+    worker.drain(kinds=["live_defense_shadow"])
+    items = alice.get(f"/api/v1/projects/{ids['project']}/live-policy-decisions").json()["items"]
+    assert len(items) >= 3
+    by_offset = {w["id"]: w["expect"] for w in fixture["windows"]}
+    authz = [d for d in items if "cross_tenant_with_ownership" in d["rule_hits"]]
+    assert authz, items
+    assert (
+        authz[0]["authorization_context"]
+        == by_offset["cross_tenant_owned"]["authorization_context"]
+    )
+    assert all(d["executed"] is False and d["enforcement"] == "NOT_EXECUTED" for d in items)
+    assert all(d["simulated"] is False for d in items)
+    benign = [
+        d
+        for d in items
+        if "cross_tenant_with_ownership" not in d["rule_hits"] and not d["rule_hits"]
+    ]
+    assert benign
+    assert all(d["producer"] in by_offset["benign"]["producer"] for d in benign)
+
+
+def test_duplicate_window_persists_one_shadow_decision(env) -> None:
+    alice, _, _, ids, anon = env
+    now = utcnow().replace(microsecond=0)
+    body = _batch(now, 20, e4=18, auth=18)
+    assert _ingest(anon, ids, body).status_code == 202
+    assert _ingest(anon, ids, body).status_code == 202
+    worker.drain(kinds=["live_defense_shadow"])
+    items = alice.get(f"/api/v1/projects/{ids['project']}/live-policy-decisions").json()["items"]
+    matching = [d for d in items if d["window_end"].startswith(now.isoformat()[:19])]
+    assert len(matching) == 1
+
+
+def test_replay_source_is_labelled_simulated_and_skips_shadow(env) -> None:
+    alice, _, _, ids, anon = env
+    project_token = alice.post(f"/api/v1/projects/{ids['project']}/ingest-tokens").json()["token"]
+    now = utcnow()
+    r = anon.post(
+        f"/api/v1/ingest/runtime/{ids['project']}",
+        json=_batch(now, 20, e4=18, auth=18, source="replay"),
+        headers={"Authorization": f"Bearer {project_token}"},
+    )
+    assert r.status_code == 202, r.text
+    worker.drain(kinds=["live_defense_shadow"])
+    events = alice.get(f"/api/v1/projects/{ids['project']}/events").json()["items"]
+    replay_events = [e for e in events if "replay" in (e.get("status_reason") or "").lower()]
+    assert replay_events
+    assert all(e["simulated"] is True for e in replay_events)
+    items = alice.get(f"/api/v1/projects/{ids['project']}/live-policy-decisions").json()["items"]
+    assert items == []
+
+
+def test_incident_from_owned_staging_events_is_not_labelled_replay(env) -> None:
+    alice, _, _, ids, anon = env
+    now = utcnow()
+    assert _ingest(anon, ids, _batch(now, 20, e4=18, auth=18)).status_code == 202
+    worker.drain(kinds=["live_defense_shadow"])
+    events = alice.get(f"/api/v1/projects/{ids['project']}/events").json()["items"]
+    assert events
+    assert all(item["simulated"] is False for item in events)
+    created = alice.post(
+        f"/api/v1/projects/{ids['project']}/incidents",
+        json={
+            "title": "Owned staging spike",
+            "note": "Opened from authenticated owned_staging counters only.",
+            "monitoring_event_ids": [events[0]["id"]],
+        },
+    )
+    assert created.status_code == 201, created.text
+    incident = created.json()
+    assert incident["simulated"] is False
 
 
 def test_no_browser_callable_enforcement_routes() -> None:

@@ -1,0 +1,72 @@
+{
+  "target": "examples/payments-lite",
+  "environment": "owned_test",
+  "source": "owned_staging",
+  "windows": [
+    {
+      "id": "benign",
+      "offset_s": 0,
+      "expect": {
+        "idor_finding": false,
+        "producer": ["rules", "abstention"],
+        "authorization_context": "unverified",
+        "executed": false
+      },
+      "routes": [
+        {
+          "route": "GET /payments/{payment_id}",
+          "requests": 20,
+          "status_4xx": 0,
+          "auth_failures": 0
+        }
+      ]
+    },
+    {
+      "id": "auth_failures",
+      "offset_s": 120,
+      "expect": {
+        "rule_hits_contains": ["repeated_auth_failures"],
+        "idor_finding": false,
+        "executed": false
+      },
+      "routes": [
+        {
+          "route": "GET /payments/{payment_id}",
+          "requests": 20,
+          "status_4xx": 18,
+          "auth_failures": 18
+        }
+      ]
+    },
+    {
+      "id": "cross_tenant_owned",
+      "offset_s": 240,
+      "expect": {
+        "rule_hits_contains": ["cross_tenant_with_ownership"],
+        "authorization_context": "verified",
+        "executed": false
+      },
+      "routes": [
+        {
+          "route": "GET /payments/{payment_id}",
+          "requests": 10,
+          "status_4xx": 0,
+          "auth_failures": 0,
+          "principals": [
+            {
+              "principal": "prn_cust01",
+              "cross_tenant": 4,
+              "own": 6
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "HTTP 200 without principals is not IDOR.",
+    "cross_tenant counts come from the reporter's ownership classification, not from status codes.",
+    "v6 inference runs only when serving assumptions hold; otherwise the decision records abstention and does not synthesize Q-values.",
+    "No window executes a network control."
+  ]
+}

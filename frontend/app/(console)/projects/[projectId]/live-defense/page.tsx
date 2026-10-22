@@ -14,6 +14,7 @@ export default function LiveDefenseOverviewPage() {
   const events = useResource(live ? `ld-events:${project.id}` : null, s => api().monitoringEvents(project.id, { signal: s }), 10000);
   const incidents = useResource(live ? `ld-incidents:${project.id}` : null, s => api().incidents(project.id, { signal: s }), 15000);
   const recs = useResource(live ? `ld-recs:${project.id}` : null, s => api().defenseRecommendations(project.id, { signal: s }));
+  const decisions = useResource(live ? `ld-lpd:${project.id}` : null, s => api().livePolicyDecisions(project.id, { signal: s }), 10000);
   const reassess = useResource(live ? `ld-reassess:${project.id}` : null, s => api().reassessments(project.id, { signal: s }), 10000);
   const health = useResource(live ? `ld-health:${project.id}` : null, s => api().defenseHealth(project.id, { signal: s }), 15000);
   const graph = useResource(live ? `ld-graph:${project.id}` : null, s => api().defenseGraph(project.id, { signal: s }), 15000);
@@ -27,6 +28,7 @@ export default function LiveDefenseOverviewPage() {
       events={live ? events : undefined}
       incidents={live ? incidents : undefined}
       recs={live ? recs : undefined}
+      decisions={live ? decisions : undefined}
       reassess={live ? reassess : undefined}
       health={live ? health : undefined}
       graph={live ? graph : undefined}

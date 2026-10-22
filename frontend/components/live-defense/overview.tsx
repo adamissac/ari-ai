@@ -6,6 +6,7 @@ import type {
   DefenseHealth,
   DefenseRecommendation,
   Incident,
+  LivePolicyDecision,
   MonitoringEvent,
   Project,
   ReassessmentRequest,
@@ -39,6 +40,7 @@ export function LiveOverview({
   events,
   incidents,
   recs,
+  decisions,
   reassess,
   health,
   graph,
@@ -51,6 +53,7 @@ export function LiveOverview({
   events?: Resource<{ items: MonitoringEvent[] }>;
   incidents?: Resource<{ items: Incident[] }>;
   recs?: Resource<{ items: DefenseRecommendation[]; label: string }>;
+  decisions?: Resource<{ items: LivePolicyDecision[]; label: string }>;
   reassess?: Resource<{ items: ReassessmentRequest[] }>;
   health?: Resource<DefenseHealth>;
   graph?: Resource<ComponentGraph>;
@@ -65,6 +68,7 @@ export function LiveOverview({
       events={events}
       incidents={incidents}
       recs={recs}
+      decisions={decisions}
       reassess={reassess}
       health={health}
       graph={graph}
@@ -74,7 +78,7 @@ export function LiveOverview({
 }
 
 function LiveOverviewRecords({
-  projectId, project, reloadProject, events, incidents, recs, reassess, health, graph, apps,
+  projectId, project, reloadProject, events, incidents, recs, decisions, reassess, health, graph, apps,
 }: {
   projectId: string | null;
   project?: Project;
@@ -82,6 +86,7 @@ function LiveOverviewRecords({
   events?: Resource<{ items: MonitoringEvent[] }>;
   incidents?: Resource<{ items: Incident[] }>;
   recs?: Resource<{ items: DefenseRecommendation[]; label: string }>;
+  decisions?: Resource<{ items: LivePolicyDecision[]; label: string }>;
   reassess?: Resource<{ items: ReassessmentRequest[] }>;
   health?: Resource<DefenseHealth>;
   graph?: Resource<ComponentGraph>;
@@ -90,6 +95,7 @@ function LiveOverviewRecords({
   const eventItems = events?.status === 'ready' ? events.data.items : [];
   const incidentItems = incidents?.status === 'ready' ? incidents.data.items : [];
   const recItems = recs?.status === 'ready' ? recs.data.items : [];
+  const decisionItems = decisions?.status === 'ready' ? decisions.data.items : [];
   const open = incidentItems.filter(item => isOpenIncidentState(item.state));
   const copy = liveDefenseOverviewCopy({
     monitoringEnabled: project?.settings.monitoring_policy.enabled ?? false,
@@ -105,6 +111,8 @@ function LiveOverviewRecords({
     appCount: apps?.status === 'ready' ? apps.data.items.length : 0,
     healthKnown: health?.status === 'ready',
     lastIngestAt: health?.status === 'ready' ? health.data.last_ingest_at : null,
+    shadowKnown: decisions?.status === 'ready',
+    shadowCount: decisionItems.length,
   });
   return (
     <div className="flex flex-col gap-4">
@@ -119,6 +127,7 @@ function LiveOverviewRecords({
         <li><span>Events</span> {events?.status === 'ready' ? eventItems.length : '…'}</li>
         <li><span>Open incidents</span> {incidents?.status === 'ready' ? open.length : '…'}</li>
         <li><span>Simulation recommendations</span> {recs?.status === 'ready' ? recItems.length : '…'}</li>
+        <li><span>Shadow decisions</span> {decisions?.status === 'ready' ? decisionItems.length : '…'}</li>
         <li><span>Re-checks</span> {reassess?.status === 'ready' ? reassess.data.items.length : '…'}</li>
         <li><span>Staging apps</span> {apps?.status === 'ready' ? apps.data.items.length : '…'}</li>
       </ul>
@@ -228,6 +237,36 @@ function LiveOverviewRecords({
           ) : <Empty>Incidents were not requested.</Empty>}
         </Panel>
       </div>
+      <Panel title="Shadow decisions" actions={<Link className="text-xs text-accent hover:underline" href={liveDefenseHref(projectId, 'explain')}>Explainability</Link>}>
+        <p className="text-sm text-muted">Produced only when rules or validated frozen-v6 inference actually ran. Enforcement is always NOT EXECUTED.</p>
+        {decisions ? (
+          <Async resource={decisions} label="shadow decisions">
+            {page => (
+              <>
+                <p className="my-2 text-xs text-muted">Backend label: {page.label}</p>
+                {page.items.length === 0 ? <Empty>No shadow decision yet. Authenticated owned-staging ingest is required.</Empty> : (
+                  <ul className="flex flex-col gap-2">
+                    {page.items.slice(0, 5).map(item => (
+                      <li key={item.id} className="rounded-md border border-line bg-panel-2 p-2.5 text-sm text-ink" data-testid={`live-defense-decision-${item.id}`}>
+                        <p className="font-medium">{item.action ? actionInWords(item.action, item.node) : 'Abstained'}</p>
+                        <p className="mt-1 flex flex-wrap gap-1 text-xs">
+                          <Tag>{item.producer.replaceAll('_', ' ')}</Tag>
+                          <Tag tone="info">NOT EXECUTED</Tag>
+                          {item.simulated ? <Tag tone="warn">simulated source</Tag> : <Tag tone="ok">authenticated</Tag>}
+                          {!item.inference_ran && <Tag>inference not run</Tag>}
+                        </p>
+                        <p className="mt-1 text-xs text-muted">
+                          {item.telemetry_source} · <Link className="text-accent hover:underline" href={`${liveDefenseHref(projectId, 'explain')}#${item.id}`}>Review</Link>
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
+          </Async>
+        ) : <Empty>Shadow decisions were not requested.</Empty>}
+      </Panel>
       <Panel title="Simulation recommendations" actions={<Link className="text-xs text-accent hover:underline" href={liveDefenseHref(projectId, 'explain')}>Explainability</Link>}>
         <SimulationCaveat />
         {recs ? (

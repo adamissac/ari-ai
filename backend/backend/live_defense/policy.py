@@ -69,7 +69,7 @@ def node_for_route(route: str) -> NodeName:
 
 def freshness_ok(window_end) -> bool:
     now = utcnow()
-    return window_end <= now + timedelta(seconds=5) and now - window_end <= FRESHNESS
+    return abs((now - window_end).total_seconds()) <= FRESHNESS.total_seconds()
 
 
 def flagged_principals(windows: list[WindowView]) -> list[str]:

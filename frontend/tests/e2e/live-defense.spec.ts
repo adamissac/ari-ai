@@ -6,7 +6,7 @@ const project = () => env('E2E_PROJECT_ID');
 function ingestBatch(offsetMs: number, extra: number) {
   const start = Date.now() + offsetMs;
   return {
-    source: 'runtime_demo',
+    source: 'owned_staging',
     window_start: new Date(start).toISOString(),
     window_end: new Date(start + 60_000).toISOString(),
     routes: [{
@@ -77,8 +77,15 @@ test('Live Defense shadow pilot: staging app, ingest, unknown health, review wit
   const incident = await incidentRes.json() as { id: string };
 
   await page.getByRole('link', { name: 'Overview' }).click();
+  await expect.poll(async () => {
+    const listed = await page.request.get(`${api}/projects/${pid}/live-policy-decisions`);
+    if (!listed.ok()) return 0;
+    return ((await listed.json()) as { items: unknown[] }).items.length;
+  }).toBeGreaterThan(0);
+  await page.reload();
   await expect(page.getByTestId('live-defense-summary')).toContainText('staging app');
   await expect(page.getByTestId('live-defense-summary')).toContainText('Authenticated ingest has been recorded');
+  await expect(page.getByTestId('live-defense-summary')).toContainText('none executed');
   await expect(page.getByTestId('live-defense-health')).toContainText('unknown');
   await expect(page.getByRole('button', { name: /^(apply|isolate|rate-limit|block)$/i })).toHaveCount(0);
   await expect(page.getByTestId('live-defense-graph')).toBeVisible();
@@ -109,6 +116,19 @@ test('Live Defense shadow pilot: staging app, ingest, unknown health, review wit
   await review.getByRole('button', { name: 'Record review' }).click();
   await expect(review).toContainText('accept');
   await expect(review).toContainText('did not execute');
+  const listed = await page.request.get(`${api}/projects/${pid}/live-policy-decisions`);
+  expect(listed.ok()).toBeTruthy();
+  const shadowItems = (await listed.json() as { items: { id: string }[] }).items;
+  const shadowId = shadowItems[0]?.id;
+  if (!shadowId) throw new Error('expected a persisted shadow decision');
+  const shadow = page.getByTestId(`live-defense-decision-${shadowId}`);
+  await expect(shadow).toContainText('NOT EXECUTED');
+  await expect(shadow).toContainText('authenticated');
+  const shadowReview = page.getByTestId(`live-defense-review-${shadowId}`);
+  await shadowReview.getByLabel('Decision').selectOption('accept');
+  await shadowReview.getByLabel('Reason (optional)').fill('Accept does not execute a control.');
+  await shadowReview.getByRole('button', { name: 'Record review' }).click();
+  await expect(shadowReview).toContainText('did not execute');
   await expect(page.getByRole('button', { name: /^(apply|isolate|rate-limit|block)$/i })).toHaveCount(0);
   await evidenceShot(page, 'live-defense-explain-review');
 });
