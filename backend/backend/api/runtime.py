@@ -154,15 +154,20 @@ def revoke_ingest_token(token_id: str, request: Request) -> None:
         )
 
 
-def _authenticate(conn: sa.Connection, project_id: str, header: str | None) -> str:
+def _authenticate(
+    conn: sa.Connection, project_id: str, header: str | None
+) -> tuple[str, str | None]:
     if not header or not header.startswith("Bearer "):
         raise ApiError(
             ErrorCode.UNAUTHENTICATED, "ingest token required (Authorization: Bearer ...)", 401
         )
     row = conn.execute(
-        sa.select(ingest_tokens.c.id, ingest_tokens.c.project_id, ingest_tokens.c.revoked_at).where(
-            ingest_tokens.c.token_sha256 == _sha(header[7:].strip())
-        )
+        sa.select(
+            ingest_tokens.c.id,
+            ingest_tokens.c.project_id,
+            ingest_tokens.c.revoked_at,
+            ingest_tokens.c.application_id,
+        ).where(ingest_tokens.c.token_sha256 == _sha(header[7:].strip()))
     ).first()
     if (
         row is None
@@ -170,7 +175,7 @@ def _authenticate(conn: sa.Connection, project_id: str, header: str | None) -> s
         or not secrets.compare_digest(row.project_id, project_id)
     ):
         raise ApiError(ErrorCode.UNAUTHENTICATED, "invalid or revoked ingest token", 401)
-    return row.id
+    return row.id, row.application_id
 
 
 def _open_findings_on(conn: sa.Connection, project_id: str, route: str) -> list[str]:
@@ -188,11 +193,18 @@ def _open_findings_on(conn: sa.Connection, project_id: str, route: str) -> list[
     return ids
 
 
-def ingest(project_id: str, token_id: str, batch: RuntimeSignalBatch) -> RuntimeIngestAck:
+def ingest(
+    project_id: str, token_id: str, batch: RuntimeSignalBatch, application_id: str | None = None
+) -> RuntimeIngestAck:
     window_s = (batch.window_end - batch.window_start).total_seconds()
     scores: list[RouteScore] = []
     event_ids: list[str] = []
     with transaction() as conn:
+        conn.execute(
+            sa.update(ingest_tokens)
+            .where(ingest_tokens.c.id == token_id)
+            .values(last_used_at=sa.func.now())
+        )
         if batch.repo_id is not None:
             owner = conn.execute(
                 sa.select(repositories.c.project_id).where(repositories.c.id == batch.repo_id)
@@ -248,6 +260,7 @@ def ingest(project_id: str, token_id: str, batch: RuntimeSignalBatch) -> Runtime
                     window_end=batch.window_end,
                     counters=window.model_dump(mode="json"),
                     score=sc.model_dump(mode="json"),
+                    application_id=application_id,
                 )
                 .on_conflict_do_nothing()
                 .returning(runtime_windows.c.id)
@@ -319,11 +332,11 @@ def ingest(project_id: str, token_id: str, batch: RuntimeSignalBatch) -> Runtime
 async def ingest_runtime(project_id: str, request: Request) -> JSONResponse:
     raw = await _read_bounded(request, MAX_BODY)
 
-    def _auth() -> str:
+    def _auth() -> tuple[str, str | None]:
         with transaction() as conn:
             return _authenticate(conn, project_id, request.headers.get("Authorization"))
 
-    token_id = await run_in_threadpool(_auth)
+    token_id, application_id = await run_in_threadpool(_auth)
     limiter.check(f"ingest:{token_id}", 60, 60)
     try:
         batch = RuntimeSignalBatch.model_validate_json(raw)
@@ -335,7 +348,7 @@ async def ingest_runtime(project_id: str, request: Request) -> JSONResponse:
             422,
             {"errors": json.loads(json.dumps(errors, default=str))[:20]},
         ) from e
-    ack = await run_in_threadpool(ingest, project_id, token_id, batch)
+    ack = await run_in_threadpool(ingest, project_id, token_id, batch, application_id)
     return JSONResponse(ack.model_dump(mode="json"), status_code=202)
 
 

@@ -12,7 +12,16 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from backend import jobs
-from backend.api import auth, github_repos, incidents, intelligence, routes, runtime, webhooks
+from backend.api import (
+    auth,
+    github_repos,
+    incidents,
+    intelligence,
+    live_defense,
+    routes,
+    runtime,
+    webhooks,
+)
 from backend.api.deps import ApiError
 from backend.db import get_engine
 from backend.llm import llm_mode
@@ -141,6 +150,7 @@ def create_app() -> FastAPI:
         runtime.router,
         intelligence.router,
         incidents.router,
+        live_defense.router,
     ):
         app.include_router(r, prefix="/api/v1")
     return app
