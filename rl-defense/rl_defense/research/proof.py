@@ -93,6 +93,17 @@ def check_source(root: Path, output: Path, config: dict, files: set[str]) -> Non
             if digest((root / rel).read_bytes()) != review["files"][rel]:
                 raise ValueError("post-review source changed; use recorded verification source")
     for rel, sha in config["code_sha256"].items():
+        if not old:
+            try:
+                committed = subprocess.check_output(
+                    ["git", "show", f"{config['source_commit']}:{rel}"],
+                    cwd=root,
+                    stderr=subprocess.PIPE,
+                )
+            except subprocess.CalledProcessError as exc:
+                raise ValueError("source Git object unavailable; fetch recorded source") from exc
+            if digest(committed) != sha:
+                raise ValueError(f"source fingerprint does not belong to recorded commit: {rel}")
         p = (root / rel).resolve()
         if not p.is_relative_to(root):
             raise ValueError("source path leaves checkout")
@@ -209,9 +220,6 @@ def validate_raw_requests(raw: bytes, scenarios: list) -> None:
                         and (reason not in statuses or q["status"] != statuses[reason])
                     )
                     or (reason == "principal_blocked" and principal is None)
-                    or (
-                        q["compromised"]
-                        and (reason is not None or q["status"] != 200 or not foreign)
-                    )
+                    or (q["compromised"] != (reason is None and q["status"] == 200 and foreign))
                 ):
                     raise ValueError("contradictory raw request outcome")

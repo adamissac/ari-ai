@@ -471,7 +471,14 @@ def test_verifier_rejects_altered_statistical_profile(tmp_path, field, value):
         (tmp_path / name).write_bytes(b"")
         files[name] = digest(b"")
     (tmp_path / "EVIDENCE.json").write_bytes(
-        ev.encoded({"schema": "constrained-lab-evidence/1", "files": files})
+        ev.encoded(
+            {
+                "schema": "constrained-lab-evidence/1",
+                "files": files,
+                "not_a_promotion_decision": True,
+                "phase2_started": False,
+            }
+        )
     )
     with pytest.raises(ValueError, match="profile semantics"):
         ev.verify(tmp_path)
@@ -517,3 +524,84 @@ def test_verifier_rejects_self_declared_scenario_changes(tmp_path):
     (bundle / "EVIDENCE.json").write_bytes(ev.encoded(index))
     with pytest.raises(ValueError, match="pinned train_v8"):
         ev.verify(bundle)
+
+
+@pytest.mark.parametrize(
+    "key,value", [("not_a_promotion_decision", False), ("phase2_started", True)]
+)
+def test_phase_boundary_cannot_be_relabelled(tmp_path, key, value):
+    import shutil
+
+    import rl_defense.research.evaluate as ev
+
+    output = ROOT / "rl-defense/results/constrained-phase1"
+    shutil.copytree(output, tmp_path / "bundle")
+    bundle = tmp_path / "bundle"
+    index = json.loads((bundle / "EVIDENCE.json").read_text())
+    index[key] = value
+    (bundle / "EVIDENCE.json").write_bytes(ev.encoded(index))
+    with pytest.raises(ValueError, match="Phase 1 boundary"):
+        ev.verify(bundle)
+
+
+def test_successful_foreign_read_cannot_omit_compromise():
+    from rl_defense.live.scenarios import LiveScenario
+    from rl_defense.research.proof import validate_raw_requests
+
+    output = ROOT / "rl-defense/results/constrained-phase1"
+    config = json.loads((output / "config.json").read_text())
+    scenarios = [LiveScenario.model_validate(d) for d in config["scenario_configs"]]
+    episodes = [
+        json.loads(line)
+        for line in gzip.decompress((output / "raw.jsonl.gz").read_bytes()).splitlines()
+    ]
+    ep = next(
+        ep
+        for ep in episodes
+        if any(q["compromised"] for step in ep["steps"] for q in step["requests"])
+    )
+    q = next(q for step in ep["steps"] for q in step["requests"] if q["compromised"])
+    q["compromised"] = False
+    with pytest.raises(ValueError, match="contradictory"):
+        validate_raw_requests(gzip.compress(json.dumps(ep).encode()), scenarios)
+
+
+def test_rehashed_source_cannot_claim_an_unrelated_commit(tmp_path):
+    import subprocess
+
+    from rl_defense.research.proof import check_source
+
+    root = tmp_path / "repo"
+    root.mkdir()
+    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    p = root / "rl-defense/rl_defense/metric.py"
+    p.parent.mkdir(parents=True)
+    p.write_text("original = True\n")
+    subprocess.run(["git", "add", "."], cwd=root, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=Test",
+            "-c",
+            "user.email=test@example.invalid",
+            "commit",
+            "-qm",
+            "fixture",
+        ],
+        cwd=root,
+        check=True,
+    )
+    revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+    tree = subprocess.check_output(["git", "rev-parse", "HEAD^{tree}"], cwd=root, text=True).strip()
+    (tmp_path / "source.commit.txt").write_bytes(
+        subprocess.check_output(["git", "cat-file", "commit", revision], cwd=root)
+    )
+    p.write_text("original = False\n")
+    config = {
+        "source_commit": revision,
+        "source_tree": tree,
+        "code_sha256": {str(p.relative_to(root)): digest(p.read_bytes())},
+    }
+    with pytest.raises(ValueError, match="does not belong"):
+        check_source(root, tmp_path, config, {"source.commit.txt"})
