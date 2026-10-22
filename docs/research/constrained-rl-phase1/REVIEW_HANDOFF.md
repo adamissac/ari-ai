@@ -53,3 +53,8 @@ read-only source so lazy Python imports cannot race caller-checkout edits.
 Review-manifest validation now covers every listed code, documentation and artifact
 path, including bundle copies, with bounded captured source reads. Regression cases
 cover independent drift of proof.py, the supported legacy reader and verification docs.
+
+Standalone legacy certification now uses the same private source snapshot and
+anchored source/runtime checks. The active results README invokes the supported
+reader; its original bytes are preserved under frozen/README.md and the unchanged
+reporting index resolves that known alias under review schema v2.

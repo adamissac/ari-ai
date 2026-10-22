@@ -65,3 +65,10 @@ a private read-only checkout cloned from Git, using bounded captured evidence co
 Changes in the caller checkout cannot become executed replay source. Historical
 reporting-index and reporting-file hashes are enforced alongside the execution index.
 New bundles must resolve their local execution revision to the recorded source tree.
+
+The standalone legacy reader now seals and validates its complete source/runtime
+closure before adapting captured data. Current reproduction instructions use the
+supported module command. The original README is retained byte-identically in
+frozen/README.md; unchanged reporting-index README pins resolve that frozen copy
+through an explicit schema-v2 review alias. Measurements and both original indices
+are unchanged. Current instructions are separately pinned by the review ledger.

@@ -832,7 +832,7 @@ def test_supported_legacy_reader_uses_private_captured_trajectories(monkeypatch)
         return original(path, **kwargs)
 
     monkeypatch.setattr(legacy, "load_legacy", verify_snapshot)
-    result = legacy.verify_legacy(source)
+    result = legacy._verify_legacy(source)
     assert sum(d["transitions"] for d in result["datasets"].values()) == 8400
     assert len(captured) == 5 and all(not p.exists() for p in captured)
 
@@ -846,7 +846,7 @@ def test_historical_reporting_is_anchored(tmp_path, kind):
     original = ROOT / "rl-defense/results/constrained-phase1"
     shutil.copytree(original, tmp_path / "bundle")
     output = tmp_path / "bundle"
-    path = output / ("REPORT_EVIDENCE.json" if kind == "index" else "README.md")
+    path = output / ("REPORT_EVIDENCE.json" if kind == "index" else "frozen/README.md")
     path.write_bytes(path.read_bytes() + b"\nchanged")
     config = json.loads((output / "config.json").read_text())
     index = json.loads((output / "EVIDENCE.json").read_text())
@@ -886,3 +886,38 @@ def test_source_snapshot_uses_committed_code_not_mutable_checkout(tmp_path):
         (source / "module.py").write_text("value = 888\n")
         assert captured.read_text() == "value = 1\n"
     assert not snapshot.exists()
+
+
+def test_standalone_legacy_refuses_unverified_adapter_source(monkeypatch):
+    import rl_defense.research.legacy as legacy
+
+    def changed_source(*a, **kw):
+        raise ValueError("source semantics changed")
+
+    monkeypatch.setattr(legacy, "check_source", changed_source)
+    with pytest.raises(ValueError, match="source semantics changed"):
+        legacy._verify_legacy(ROOT / "rl-defense/results/duration-screen")
+
+
+def test_standalone_legacy_seals_code_before_adapting(monkeypatch):
+    import rl_defense.research.legacy as legacy
+
+    calls = []
+
+    def sealed(root, captured):
+        calls.append(captured)
+        assert len(captured) == 7
+        return {"sealed": True}
+
+    monkeypatch.setattr(legacy, "certify_legacy_snapshot", sealed)
+    assert legacy.verify_legacy(ROOT / "rl-defense/results/duration-screen") == {"sealed": True}
+    assert len(calls) == 1
+
+
+def test_current_readme_uses_supported_reader_and_preserves_original():
+    evidence = ROOT / "rl-defense/results/constrained-phase1"
+    current = (evidence / "README.md").read_text()
+    index = json.loads((evidence / "REPORT_EVIDENCE.json").read_text())
+    assert "python -m rl_defense.research.legacy" in current
+    assert "python rl-defense/results/constrained-phase1/read_legacy.py" not in current
+    assert digest((evidence / "frozen/README.md").read_bytes()) == index["files"]["README.md"]
