@@ -1292,3 +1292,30 @@ New internal research adapter reuses shared EvidenceRef; no public contract chan
 Initial18 tests passed; extended20 tests passed in9.53s. Freeze/publish fixed bounded
 baseline plan before execution. Shell network is unavailable; GitHub connector
 publishes equivalent source trees. Record both local and published commit identities.
+
+### RL-CMDP-001 — completed Phase1 measurements and decision
+
+Published frozen execution source `9d6460487275d25cc31194d7b603196d436c4485`, exact tree
+`22c2f7f50c36e5fe5b7eb1d26c41b1b314438e4a` (local equivalent `43b7110`).140owned-lab
+baseline episodes /4,200scored windows completed; raw request→outcome→reward/cost→all
+pooled/per-scenario summary verification passes. All policies share an explicit
+capability shield; v6_shielded is not the original policy selection semantics.
+Cost-aware<=2short actions:99.504% benign availability but93.156% attack compromise.
+This is an unsuccessful defense, not evidence that a constrained neural policy works.
+
+Read-only legacy adaptation:280duration-screen train episodes /8,400transitions;
+all aggregate costs measurable,280initial current masks unknown, all propensities and
+delegated-denial attributions unknown. Preserve every historical artifact unchanged;
+do not pool overlapping train seeds. Full audit/CMDP/action matrix/readiness/four-paper
+architecture comparison is in docs/research/constrained-rl-phase1; ADR0019 raises the
+stale ADR0008/0014 vs implemented-lab discrepancy without silently ratifying it.
+
+**No-go now for constrained DDQN or discrete CQL.** Conditional preference: cost-aware
+DDQN after feasible controls, reviewed data/state/support and precommitted cost budgets.
+No Phase2 code, training study, holdout run, new action, promotion or serving change.
+Actual v6 registry before/after SHA256 stays c345593354856c50559ba16611853a0e4936a7efc11fa5704c224d3189271408.
+
+Validation so far:20focused tests passed in9.53s, Ruff checks/format all87RL source/test
+files pass, links518files/0problems. First full compatibility command had346passes and
+one subprocess import failure because relative PYTHONPATH did not survive cwd change;
+rerun uses absolute paths. Final full suite and PR review/CI pending at this entry.

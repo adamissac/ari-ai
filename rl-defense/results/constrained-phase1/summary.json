@@ -1,0 +1,2087 @@
+{
+  "cost_aware": {
+    "by_scenario": {
+      "always_on_delegated": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            0.85,
+            1.0
+          ],
+          "benign_availability": [
+            0.975,
+            1.0
+          ],
+          "expected_discounted_cost": [
+            0.0,
+            5.25
+          ],
+          "false_disruption": null,
+          "mean_cumulative_cost": [
+            0.0,
+            5.25
+          ],
+          "mean_interventions": [
+            0.0,
+            1.5
+          ],
+          "mean_threat_reward": [
+            -180.0,
+            -153.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 0.95,
+          "benign_availability": 0.9916666666666667,
+          "expected_discounted_cost": 1.75,
+          "false_disruption": null,
+          "mean_cumulative_cost": 1.75,
+          "mean_interventions": 0.5,
+          "mean_threat_reward": -171.0,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      },
+      "delegate_quiet": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            1.0,
+            1.0
+          ],
+          "benign_availability": [
+            1.0,
+            1.0
+          ],
+          "expected_discounted_cost": [
+            0.0,
+            0.0
+          ],
+          "false_disruption": [
+            0.0,
+            0.0
+          ],
+          "mean_cumulative_cost": [
+            0.0,
+            0.0
+          ],
+          "mean_interventions": [
+            0.0,
+            0.0
+          ],
+          "mean_threat_reward": [
+            -33.0,
+            -6.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 1.0,
+          "benign_availability": 1.0,
+          "expected_discounted_cost": 0.0,
+          "false_disruption": 0.0,
+          "mean_cumulative_cost": 0.0,
+          "mean_interventions": 0.0,
+          "mean_threat_reward": -18.0,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      },
+      "insider_delegate": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            0.6949152542372882,
+            1.0
+          ],
+          "benign_availability": [
+            0.975,
+            1.0
+          ],
+          "expected_discounted_cost": [
+            0.0,
+            6.0
+          ],
+          "false_disruption": [
+            0.0,
+            0.0
+          ],
+          "mean_cumulative_cost": [
+            0.0,
+            6.0
+          ],
+          "mean_interventions": [
+            0.0,
+            1.5
+          ],
+          "mean_threat_reward": [
+            -58.0,
+            -40.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 0.8867924528301887,
+          "benign_availability": 0.9916666666666667,
+          "expected_discounted_cost": 2.0,
+          "false_disruption": 0.0,
+          "mean_cumulative_cost": 2.0,
+          "mean_interventions": 0.5,
+          "mean_threat_reward": -47.0,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      },
+      "outsider_rotation": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            0.5714285714285714,
+            1.0
+          ],
+          "benign_availability": [
+            1.0,
+            1.0
+          ],
+          "expected_discounted_cost": [
+            0.0,
+            0.0
+          ],
+          "false_disruption": [
+            0.0,
+            0.0
+          ],
+          "mean_cumulative_cost": [
+            0.0,
+            0.0
+          ],
+          "mean_interventions": [
+            0.0,
+            1.5
+          ],
+          "mean_threat_reward": [
+            -81.0,
+            -24.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 0.8536585365853658,
+          "benign_availability": 1.0,
+          "expected_discounted_cost": 0.0,
+          "false_disruption": 0.0,
+          "mean_cumulative_cost": 0.0,
+          "mean_interventions": 0.5,
+          "mean_threat_reward": -52.5,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      },
+      "rare_delegate_runs": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            1.0,
+            1.0
+          ],
+          "benign_availability": [
+            0.9842767295597484,
+            1.0
+          ],
+          "expected_discounted_cost": [
+            0.0,
+            5.0
+          ],
+          "false_disruption": [
+            0.0,
+            0.016260162601626018
+          ],
+          "mean_cumulative_cost": [
+            0.0,
+            5.0
+          ],
+          "mean_interventions": [
+            0.0,
+            1.0
+          ],
+          "mean_threat_reward": [
+            -9.75,
+            -3.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 1.0,
+          "benign_availability": 0.9921568627450981,
+          "expected_discounted_cost": 2.5,
+          "false_disruption": 0.008271298593879239,
+          "mean_cumulative_cost": 2.5,
+          "mean_interventions": 0.5,
+          "mean_threat_reward": -5.25,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      },
+      "trickle_outsider_quiet": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            0.5714285714285714,
+            1.0
+          ],
+          "benign_availability": [
+            1.0,
+            1.0
+          ],
+          "expected_discounted_cost": [
+            0.0,
+            0.0
+          ],
+          "false_disruption": [
+            0.0,
+            0.0
+          ],
+          "mean_cumulative_cost": [
+            0.0,
+            0.0
+          ],
+          "mean_interventions": [
+            0.0,
+            0.75
+          ],
+          "mean_threat_reward": [
+            -9.5,
+            -2.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 0.9,
+          "benign_availability": 1.0,
+          "expected_discounted_cost": 0.0,
+          "false_disruption": 0.0,
+          "mean_cumulative_cost": 0.0,
+          "mean_interventions": 0.25,
+          "mean_threat_reward": -4.5,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      },
+      "two_identities_delegated": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            0.8852459016393442,
+            1.0
+          ],
+          "benign_availability": [
+            0.9833333333333333,
+            0.9958333333333333
+          ],
+          "expected_discounted_cost": [
+            1.0,
+            4.0
+          ],
+          "false_disruption": [
+            0.0,
+            0.02556818181818182
+          ],
+          "mean_cumulative_cost": [
+            1.0,
+            4.0
+          ],
+          "mean_interventions": [
+            0.5,
+            2.0
+          ],
+          "mean_threat_reward": [
+            -120.0,
+            -52.5
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 0.9583333333333334,
+          "benign_availability": 0.9895833333333334,
+          "expected_discounted_cost": 2.5,
+          "false_disruption": 0.013020833333333334,
+          "mean_cumulative_cost": 2.5,
+          "mean_interventions": 1.5,
+          "mean_threat_reward": -86.25,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      }
+    },
+    "pooled": {
+      "bootstrap_seed": 17,
+      "ci95": {
+        "attack_compromise": [
+          0.8627080688474621,
+          0.9857052932204815
+        ],
+        "benign_availability": [
+          0.9917528007964264,
+          0.9977461177786406
+        ],
+        "expected_discounted_cost": [
+          0.5705357142857143,
+          2.0714285714285716
+        ],
+        "false_disruption": [
+          0.0008790656871643595,
+          0.0057367495872599865
+        ],
+        "mean_cumulative_cost": [
+          0.5705357142857143,
+          2.0714285714285716
+        ],
+        "mean_interventions": [
+          0.2857142857142857,
+          0.8214285714285714
+        ],
+        "mean_threat_reward": [
+          -62.392857142857146,
+          -47.31964285714287
+        ],
+        "measured_cost_coverage": [
+          1.0,
+          1.0
+        ]
+      },
+      "episodes": 28,
+      "gamma": 1.0,
+      "independent_seed_clusters": 28,
+      "metrics": {
+        "attack_compromise": 0.931556632344034,
+        "benign_availability": 0.9950417906219011,
+        "expected_discounted_cost": 1.25,
+        "false_disruption": 0.0032355478861087143,
+        "mean_cumulative_cost": 1.25,
+        "mean_interventions": 0.5357142857142857,
+        "mean_threat_reward": -54.92857142857143,
+        "measured_cost_coverage": 1.0
+      },
+      "resamples": 2000,
+      "steps": 840
+    }
+  },
+  "fixed_short_block": {
+    "by_scenario": {
+      "always_on_delegated": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            0.0,
+            0.0
+          ],
+          "benign_availability": [
+            0.8452380952380952,
+            0.8690476190476191
+          ],
+          "expected_discounted_cost": [
+            27.5,
+            32.5
+          ],
+          "false_disruption": null,
+          "mean_cumulative_cost": [
+            27.5,
+            32.5
+          ],
+          "mean_interventions": [
+            10.0,
+            10.0
+          ],
+          "mean_threat_reward": [
+            0.0,
+            0.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 0.0,
+          "benign_availability": 0.8571428571428572,
+          "expected_discounted_cost": 30.0,
+          "false_disruption": null,
+          "mean_cumulative_cost": 30.0,
+          "mean_interventions": 10.0,
+          "mean_threat_reward": 0.0,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      },
+      "delegate_quiet": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            0.4,
+            1.0
+          ],
+          "benign_availability": [
+            0.9473081328751431,
+            0.9888143176733781
+          ],
+          "expected_discounted_cost": [
+            2.5,
+            11.5
+          ],
+          "false_disruption": [
+            0.00849514563106796,
+            0.043115438108484005
+          ],
+          "mean_cumulative_cost": [
+            2.5,
+            11.5
+          ],
+          "mean_interventions": [
+            1.0,
+            3.25
+          ],
+          "mean_threat_reward": [
+            -15.0,
+            -6.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 0.5,
+          "benign_availability": 0.9728813559322034,
+          "expected_discounted_cost": 6.0,
+          "false_disruption": 0.02247191011235955,
+          "mean_cumulative_cost": 6.0,
+          "mean_interventions": 1.75,
+          "mean_threat_reward": -9.0,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      },
+      "insider_delegate": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            0.07407407407407407,
+            0.17073170731707318
+          ],
+          "benign_availability": [
+            0.875,
+            0.9230468749999993
+          ],
+          "expected_discounted_cost": [
+            18.46875,
+            30.0
+          ],
+          "false_disruption": [
+            0.025632911392405065,
+            0.05357142857142857
+          ],
+          "mean_cumulative_cost": [
+            18.46875,
+            30.0
+          ],
+          "mean_interventions": [
+            4.0,
+            6.0
+          ],
+          "mean_threat_reward": [
+            -8.0,
+            -4.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 0.11320754716981132,
+          "benign_availability": 0.8989583333333333,
+          "expected_discounted_cost": 24.25,
+          "false_disruption": 0.03731343283582089,
+          "mean_cumulative_cost": 24.25,
+          "mean_interventions": 5.0,
+          "mean_threat_reward": -6.0,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      },
+      "outsider_rotation": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            0.07142857142857142,
+            0.3888888888888889
+          ],
+          "benign_availability": [
+            1.0,
+            1.0
+          ],
+          "expected_discounted_cost": [
+            0.0,
+            0.0
+          ],
+          "false_disruption": [
+            0.0,
+            0.0
+          ],
+          "mean_cumulative_cost": [
+            0.0,
+            0.0
+          ],
+          "mean_interventions": [
+            2.75,
+            5.0
+          ],
+          "mean_threat_reward": [
+            -12.0,
+            -6.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 0.14634146341463414,
+          "benign_availability": 1.0,
+          "expected_discounted_cost": 0.0,
+          "false_disruption": 0.0,
+          "mean_cumulative_cost": 0.0,
+          "mean_interventions": 4.0,
+          "mean_threat_reward": -9.0,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      },
+      "rare_delegate_runs": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            0.5384615384615384,
+            1.0
+          ],
+          "benign_availability": [
+            0.9569377990430622,
+            0.9842767295597484
+          ],
+          "expected_discounted_cost": [
+            5.0,
+            13.5
+          ],
+          "false_disruption": [
+            0.016260162601626018,
+            0.0395778364116095
+          ],
+          "mean_cumulative_cost": [
+            5.0,
+            13.5
+          ],
+          "mean_interventions": [
+            1.0,
+            1.75
+          ],
+          "mean_threat_reward": [
+            -5.25,
+            -3.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 0.7142857142857143,
+          "benign_availability": 0.971764705882353,
+          "expected_discounted_cost": 9.0,
+          "false_disruption": 0.02729528535980149,
+          "mean_cumulative_cost": 9.0,
+          "mean_interventions": 1.25,
+          "mean_threat_reward": -3.75,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      },
+      "trickle_outsider_quiet": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            0.3684210526315789,
+            1.0
+          ],
+          "benign_availability": [
+            1.0,
+            1.0
+          ],
+          "expected_discounted_cost": [
+            0.0,
+            0.0
+          ],
+          "false_disruption": [
+            0.0,
+            0.0
+          ],
+          "mean_cumulative_cost": [
+            0.0,
+            0.0
+          ],
+          "mean_interventions": [
+            1.0,
+            2.5
+          ],
+          "mean_threat_reward": [
+            -3.5,
+            -2.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 0.5,
+          "benign_availability": 1.0,
+          "expected_discounted_cost": 0.0,
+          "false_disruption": 0.0,
+          "mean_cumulative_cost": 0.0,
+          "mean_interventions": 1.5,
+          "mean_threat_reward": -2.5,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      },
+      "two_identities_delegated": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            0.5510204081632653,
+            0.6956521739130435
+          ],
+          "benign_availability": [
+            0.8333333333333334,
+            0.9145833333333333
+          ],
+          "expected_discounted_cost": [
+            20.5,
+            40.0
+          ],
+          "false_disruption": [
+            0.064795054200542,
+            0.07608695652173914
+          ],
+          "mean_cumulative_cost": [
+            20.5,
+            40.0
+          ],
+          "mean_interventions": [
+            8.0,
+            13.0
+          ],
+          "mean_threat_reward": [
+            -67.5,
+            -40.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 0.5972222222222222,
+          "benign_availability": 0.8739583333333334,
+          "expected_discounted_cost": 30.25,
+          "false_disruption": 0.0703125,
+          "mean_cumulative_cost": 30.25,
+          "mean_interventions": 10.5,
+          "mean_threat_reward": -53.75,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      }
+    },
+    "pooled": {
+      "bootstrap_seed": 17,
+      "ci95": {
+        "attack_compromise": [
+          0.17364382092953606,
+          0.23349953843848825
+        ],
+        "benign_availability": [
+          0.9361853325753269,
+          0.9518973348151312
+        ],
+        "expected_discounted_cost": [
+          12.141964285714286,
+          16.072321428571424
+        ],
+        "false_disruption": [
+          0.016231827235157086,
+          0.026124245230240945
+        ],
+        "mean_cumulative_cost": [
+          12.141964285714286,
+          16.072321428571424
+        ],
+        "mean_interventions": [
+          4.357142857142857,
+          5.321428571428571
+        ],
+        "mean_threat_reward": [
+          -14.321428571428571,
+          -9.784821428571433
+        ],
+        "measured_cost_coverage": [
+          1.0,
+          1.0
+        ]
+      },
+      "episodes": 28,
+      "gamma": 1.0,
+      "independent_seed_clusters": 28,
+      "metrics": {
+        "attack_compromise": 0.20351302241066022,
+        "benign_availability": 0.9436180762147613,
+        "expected_discounted_cost": 14.214285714285714,
+        "false_disruption": 0.02113891285591027,
+        "mean_cumulative_cost": 14.214285714285714,
+        "mean_interventions": 4.857142857142857,
+        "mean_threat_reward": -12.0,
+        "measured_cost_coverage": 1.0
+      },
+      "resamples": 2000,
+      "steps": 840
+    }
+  },
+  "noop": {
+    "by_scenario": {
+      "always_on_delegated": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            1.0,
+            1.0
+          ],
+          "benign_availability": [
+            1.0,
+            1.0
+          ],
+          "expected_discounted_cost": [
+            0.0,
+            0.0
+          ],
+          "false_disruption": null,
+          "mean_cumulative_cost": [
+            0.0,
+            0.0
+          ],
+          "mean_interventions": [
+            0.0,
+            0.0
+          ],
+          "mean_threat_reward": [
+            -180.0,
+            -180.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 1.0,
+          "benign_availability": 1.0,
+          "expected_discounted_cost": 0.0,
+          "false_disruption": null,
+          "mean_cumulative_cost": 0.0,
+          "mean_interventions": 0.0,
+          "mean_threat_reward": -180.0,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      },
+      "delegate_quiet": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            1.0,
+            1.0
+          ],
+          "benign_availability": [
+            1.0,
+            1.0
+          ],
+          "expected_discounted_cost": [
+            0.0,
+            0.0
+          ],
+          "false_disruption": [
+            0.0,
+            0.0
+          ],
+          "mean_cumulative_cost": [
+            0.0,
+            0.0
+          ],
+          "mean_interventions": [
+            0.0,
+            0.0
+          ],
+          "mean_threat_reward": [
+            -33.0,
+            -6.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 1.0,
+          "benign_availability": 1.0,
+          "expected_discounted_cost": 0.0,
+          "false_disruption": 0.0,
+          "mean_cumulative_cost": 0.0,
+          "mean_interventions": 0.0,
+          "mean_threat_reward": -18.0,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      },
+      "insider_delegate": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            1.0,
+            1.0
+          ],
+          "benign_availability": [
+            1.0,
+            1.0
+          ],
+          "expected_discounted_cost": [
+            0.0,
+            0.0
+          ],
+          "false_disruption": [
+            0.0,
+            0.0
+          ],
+          "mean_cumulative_cost": [
+            0.0,
+            0.0
+          ],
+          "mean_interventions": [
+            0.0,
+            0.0
+          ],
+          "mean_threat_reward": [
+            -64.0,
+            -41.975000000000136
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 1.0,
+          "benign_availability": 1.0,
+          "expected_discounted_cost": 0.0,
+          "false_disruption": 0.0,
+          "mean_cumulative_cost": 0.0,
+          "mean_interventions": 0.0,
+          "mean_threat_reward": -53.0,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      },
+      "outsider_rotation": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            1.0,
+            1.0
+          ],
+          "benign_availability": [
+            1.0,
+            1.0
+          ],
+          "expected_discounted_cost": [
+            0.0,
+            0.0
+          ],
+          "false_disruption": [
+            0.0,
+            0.0
+          ],
+          "mean_cumulative_cost": [
+            0.0,
+            0.0
+          ],
+          "mean_interventions": [
+            0.0,
+            0.0
+          ],
+          "mean_threat_reward": [
+            -88.5,
+            -27.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 1.0,
+          "benign_availability": 1.0,
+          "expected_discounted_cost": 0.0,
+          "false_disruption": 0.0,
+          "mean_cumulative_cost": 0.0,
+          "mean_interventions": 0.0,
+          "mean_threat_reward": -61.5,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      },
+      "rare_delegate_runs": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            1.0,
+            1.0
+          ],
+          "benign_availability": [
+            1.0,
+            1.0
+          ],
+          "expected_discounted_cost": [
+            0.0,
+            0.0
+          ],
+          "false_disruption": [
+            0.0,
+            0.0
+          ],
+          "mean_cumulative_cost": [
+            0.0,
+            0.0
+          ],
+          "mean_interventions": [
+            0.0,
+            0.0
+          ],
+          "mean_threat_reward": [
+            -9.75,
+            -3.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 1.0,
+          "benign_availability": 1.0,
+          "expected_discounted_cost": 0.0,
+          "false_disruption": 0.0,
+          "mean_cumulative_cost": 0.0,
+          "mean_interventions": 0.0,
+          "mean_threat_reward": -5.25,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      },
+      "trickle_outsider_quiet": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            1.0,
+            1.0
+          ],
+          "benign_availability": [
+            1.0,
+            1.0
+          ],
+          "expected_discounted_cost": [
+            0.0,
+            0.0
+          ],
+          "false_disruption": [
+            0.0,
+            0.0
+          ],
+          "mean_cumulative_cost": [
+            0.0,
+            0.0
+          ],
+          "mean_interventions": [
+            0.0,
+            0.0
+          ],
+          "mean_threat_reward": [
+            -9.5,
+            -2.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 1.0,
+          "benign_availability": 1.0,
+          "expected_discounted_cost": 0.0,
+          "false_disruption": 0.0,
+          "mean_cumulative_cost": 0.0,
+          "mean_interventions": 0.0,
+          "mean_threat_reward": -5.0,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      },
+      "two_identities_delegated": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            1.0,
+            1.0
+          ],
+          "benign_availability": [
+            1.0,
+            1.0
+          ],
+          "expected_discounted_cost": [
+            0.0,
+            0.0
+          ],
+          "false_disruption": [
+            0.0,
+            0.0
+          ],
+          "mean_cumulative_cost": [
+            0.0,
+            0.0
+          ],
+          "mean_interventions": [
+            0.0,
+            0.0
+          ],
+          "mean_threat_reward": [
+            -122.5,
+            -57.5
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 1.0,
+          "benign_availability": 1.0,
+          "expected_discounted_cost": 0.0,
+          "false_disruption": 0.0,
+          "mean_cumulative_cost": 0.0,
+          "mean_interventions": 0.0,
+          "mean_threat_reward": -90.0,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      }
+    },
+    "pooled": {
+      "bootstrap_seed": 17,
+      "ci95": {
+        "attack_compromise": [
+          1.0,
+          1.0
+        ],
+        "benign_availability": [
+          1.0,
+          1.0
+        ],
+        "expected_discounted_cost": [
+          0.0,
+          0.0
+        ],
+        "false_disruption": [
+          0.0,
+          0.0
+        ],
+        "mean_cumulative_cost": [
+          0.0,
+          0.0
+        ],
+        "mean_interventions": [
+          0.0,
+          0.0
+        ],
+        "mean_threat_reward": [
+          -65.46607142857142,
+          -51.785714285714285
+        ],
+        "measured_cost_coverage": [
+          1.0,
+          1.0
+        ]
+      },
+      "episodes": 28,
+      "gamma": 1.0,
+      "independent_seed_clusters": 28,
+      "metrics": {
+        "attack_compromise": 1.0,
+        "benign_availability": 1.0,
+        "expected_discounted_cost": 0.0,
+        "false_disruption": 0.0,
+        "mean_cumulative_cost": 0.0,
+        "mean_interventions": 0.0,
+        "mean_threat_reward": -58.964285714285715,
+        "measured_cost_coverage": 1.0
+      },
+      "resamples": 2000,
+      "steps": 840
+    }
+  },
+  "tuned_rules_shielded": {
+    "by_scenario": {
+      "always_on_delegated": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            0.0,
+            0.0
+          ],
+          "benign_availability": [
+            0.8452380952380952,
+            0.8690476190476191
+          ],
+          "expected_discounted_cost": [
+            27.5,
+            32.5
+          ],
+          "false_disruption": null,
+          "mean_cumulative_cost": [
+            27.5,
+            32.5
+          ],
+          "mean_interventions": [
+            6.0,
+            6.0
+          ],
+          "mean_threat_reward": [
+            0.0,
+            0.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 0.0,
+          "benign_availability": 0.8571428571428572,
+          "expected_discounted_cost": 30.0,
+          "false_disruption": null,
+          "mean_cumulative_cost": 30.0,
+          "mean_interventions": 6.0,
+          "mean_threat_reward": 0.0,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      },
+      "delegate_quiet": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            0.3,
+            1.0
+          ],
+          "benign_availability": [
+            0.936562860438293,
+            0.9819819819819819
+          ],
+          "expected_discounted_cost": [
+            4.0,
+            13.75
+          ],
+          "false_disruption": [
+            0.018604651162790697,
+            0.047685834502103785
+          ],
+          "mean_cumulative_cost": [
+            4.0,
+            13.75
+          ],
+          "mean_interventions": [
+            1.0,
+            2.5
+          ],
+          "mean_threat_reward": [
+            -10.5,
+            -6.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 0.4166666666666667,
+          "benign_availability": 0.9627118644067797,
+          "expected_discounted_cost": 8.25,
+          "false_disruption": 0.031210986267166042,
+          "mean_cumulative_cost": 8.25,
+          "mean_interventions": 1.75,
+          "mean_threat_reward": -7.5,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      },
+      "insider_delegate": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            0.06896551724137931,
+            0.11864406779661017
+          ],
+          "benign_availability": [
+            0.83125,
+            0.8698437499999997
+          ],
+          "expected_discounted_cost": [
+            31.2375,
+            40.5
+          ],
+          "false_disruption": [
+            0.1060126582278481,
+            0.14959016393442623
+          ],
+          "mean_cumulative_cost": [
+            31.2375,
+            40.5
+          ],
+          "mean_interventions": [
+            3.25,
+            4.0
+          ],
+          "mean_threat_reward": [
+            -7.0,
+            -4.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 0.09433962264150944,
+          "benign_availability": 0.8489583333333334,
+          "expected_discounted_cost": 36.25,
+          "false_disruption": 0.125,
+          "mean_cumulative_cost": 36.25,
+          "mean_interventions": 3.75,
+          "mean_threat_reward": -5.0,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      },
+      "outsider_rotation": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            0.06779661016949153,
+            0.3888888888888889
+          ],
+          "benign_availability": [
+            1.0,
+            1.0
+          ],
+          "expected_discounted_cost": [
+            0.0,
+            0.0
+          ],
+          "false_disruption": [
+            0.0,
+            0.0
+          ],
+          "mean_cumulative_cost": [
+            0.0,
+            0.0
+          ],
+          "mean_interventions": [
+            2.25,
+            3.75
+          ],
+          "mean_threat_reward": [
+            -10.5,
+            -6.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 0.12195121951219512,
+          "benign_availability": 1.0,
+          "expected_discounted_cost": 0.0,
+          "false_disruption": 0.0,
+          "mean_cumulative_cost": 0.0,
+          "mean_interventions": 3.0,
+          "mean_threat_reward": -7.5,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      },
+      "rare_delegate_runs": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            0.3076923076923077,
+            1.0
+          ],
+          "benign_availability": [
+            0.9258373205741627,
+            0.9842767295597484
+          ],
+          "expected_discounted_cost": [
+            5.0,
+            23.25
+          ],
+          "false_disruption": [
+            0.016260162601626018,
+            0.06596306068601583
+          ],
+          "mean_cumulative_cost": [
+            5.0,
+            23.25
+          ],
+          "mean_interventions": [
+            1.0,
+            1.75
+          ],
+          "mean_threat_reward": [
+            -3.0,
+            -3.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 0.5714285714285714,
+          "benign_availability": 0.9615686274509804,
+          "expected_discounted_cost": 12.25,
+          "false_disruption": 0.03556658395368073,
+          "mean_cumulative_cost": 12.25,
+          "mean_interventions": 1.25,
+          "mean_threat_reward": -3.0,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      },
+      "trickle_outsider_quiet": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            0.5,
+            1.0
+          ],
+          "benign_availability": [
+            1.0,
+            1.0
+          ],
+          "expected_discounted_cost": [
+            0.0,
+            0.0
+          ],
+          "false_disruption": [
+            0.0,
+            0.0
+          ],
+          "mean_cumulative_cost": [
+            0.0,
+            0.0
+          ],
+          "mean_interventions": [
+            1.0,
+            2.5
+          ],
+          "mean_threat_reward": [
+            -5.0,
+            -2.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 0.6,
+          "benign_availability": 1.0,
+          "expected_discounted_cost": 0.0,
+          "false_disruption": 0.0,
+          "mean_cumulative_cost": 0.0,
+          "mean_interventions": 1.75,
+          "mean_threat_reward": -3.0,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      },
+      "two_identities_delegated": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            0.08737864077669903,
+            0.23076923076923078
+          ],
+          "benign_availability": [
+            0.7708333333333334,
+            0.875
+          ],
+          "expected_discounted_cost": [
+            30.0,
+            55.0
+          ],
+          "false_disruption": [
+            0.1087962962962963,
+            0.17045454545454544
+          ],
+          "mean_cumulative_cost": [
+            30.0,
+            55.0
+          ],
+          "mean_interventions": [
+            6.0,
+            8.5
+          ],
+          "mean_threat_reward": [
+            -15.0,
+            -10.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 0.1388888888888889,
+          "benign_availability": 0.8229166666666666,
+          "expected_discounted_cost": 42.5,
+          "false_disruption": 0.125,
+          "mean_cumulative_cost": 42.5,
+          "mean_interventions": 7.25,
+          "mean_threat_reward": -12.5,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      }
+    },
+    "pooled": {
+      "bootstrap_seed": 17,
+      "ci95": {
+        "attack_compromise": [
+          0.0775215438559424,
+          0.11253252289057915
+        ],
+        "benign_availability": [
+          0.9164073107070645,
+          0.9374209674190843
+        ],
+        "expected_discounted_cost": [
+          15.821428571428571,
+          21.036607142857136
+        ],
+        "false_disruption": [
+          0.03186527125178782,
+          0.048317475830784405
+        ],
+        "mean_cumulative_cost": [
+          15.821428571428571,
+          21.036607142857136
+        ],
+        "mean_interventions": [
+          3.25,
+          3.8214285714285716
+        ],
+        "mean_threat_reward": [
+          -6.25,
+          -4.821428571428571
+        ],
+        "measured_cost_coverage": [
+          1.0,
+          1.0
+        ]
+      },
+      "episodes": 28,
+      "gamma": 1.0,
+      "independent_seed_clusters": 28,
+      "metrics": {
+        "attack_compromise": 0.09327680193821926,
+        "benign_availability": 0.9267601643292251,
+        "expected_discounted_cost": 18.464285714285715,
+        "false_disruption": 0.039473684210526314,
+        "mean_cumulative_cost": 18.464285714285715,
+        "mean_interventions": 3.5357142857142856,
+        "mean_threat_reward": -5.5,
+        "measured_cost_coverage": 1.0
+      },
+      "resamples": 2000,
+      "steps": 840
+    }
+  },
+  "v6_shielded": {
+    "by_scenario": {
+      "always_on_delegated": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            0.0,
+            0.0
+          ],
+          "benign_availability": [
+            0.8238095238095238,
+            0.8690476190476191
+          ],
+          "expected_discounted_cost": [
+            27.5,
+            37.0
+          ],
+          "false_disruption": null,
+          "mean_cumulative_cost": [
+            27.5,
+            37.0
+          ],
+          "mean_interventions": [
+            10.25,
+            23.0
+          ],
+          "mean_threat_reward": [
+            0.0,
+            0.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 0.0,
+          "benign_availability": 0.85,
+          "expected_discounted_cost": 31.5,
+          "false_disruption": null,
+          "mean_cumulative_cost": 31.5,
+          "mean_interventions": 18.5,
+          "mean_threat_reward": 0.0,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      },
+      "delegate_quiet": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            0.18181818181818182,
+            1.0
+          ],
+          "benign_availability": [
+            0.9166666666666666,
+            0.9664681867142716
+          ],
+          "expected_discounted_cost": [
+            7.49375,
+            18.5
+          ],
+          "false_disruption": [
+            0.03444589626237367,
+            0.08653846153846154
+          ],
+          "mean_cumulative_cost": [
+            7.49375,
+            18.5
+          ],
+          "mean_interventions": [
+            14.5,
+            19.0
+          ],
+          "mean_threat_reward": [
+            -6.0,
+            -6.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 0.3333333333333333,
+          "benign_availability": 0.9344632768361582,
+          "expected_discounted_cost": 14.5,
+          "false_disruption": 0.062421972534332085,
+          "mean_cumulative_cost": 14.5,
+          "mean_interventions": 16.5,
+          "mean_threat_reward": -6.0,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      },
+      "insider_delegate": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            0.07407407407407407,
+            0.17073170731707318
+          ],
+          "benign_availability": [
+            0.825,
+            0.884375
+          ],
+          "expected_discounted_cost": [
+            27.75,
+            42.0
+          ],
+          "false_disruption": [
+            0.07720588235294118,
+            0.16287878787878787
+          ],
+          "mean_cumulative_cost": [
+            27.75,
+            42.0
+          ],
+          "mean_interventions": [
+            7.0,
+            16.5
+          ],
+          "mean_threat_reward": [
+            -8.0,
+            -4.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 0.11320754716981132,
+          "benign_availability": 0.853125,
+          "expected_discounted_cost": 35.25,
+          "false_disruption": 0.11940298507462686,
+          "mean_cumulative_cost": 35.25,
+          "mean_interventions": 12.25,
+          "mean_threat_reward": -6.0,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      },
+      "outsider_rotation": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            0.06779661016949153,
+            0.3888888888888889
+          ],
+          "benign_availability": [
+            0.9641304347826087,
+            1.0
+          ],
+          "expected_discounted_cost": [
+            0.0,
+            8.25
+          ],
+          "false_disruption": [
+            0.0,
+            0.03524804177545692
+          ],
+          "mean_cumulative_cost": [
+            0.0,
+            8.25
+          ],
+          "mean_interventions": [
+            3.5,
+            13.012499999999932
+          ],
+          "mean_threat_reward": [
+            -10.5,
+            -6.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 0.12195121951219512,
+          "benign_availability": 0.9882478632478633,
+          "expected_discounted_cost": 2.75,
+          "false_disruption": 0.01487603305785124,
+          "mean_cumulative_cost": 2.75,
+          "mean_interventions": 8.25,
+          "mean_threat_reward": -7.5,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      },
+      "rare_delegate_runs": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            0.3076923076923077,
+            1.0
+          ],
+          "benign_availability": [
+            0.8716744913928013,
+            0.9638364779874213
+          ],
+          "expected_discounted_cost": [
+            11.5,
+            41.0
+          ],
+          "false_disruption": [
+            0.03739837398373984,
+            0.10942760942760943
+          ],
+          "mean_cumulative_cost": [
+            11.5,
+            41.0
+          ],
+          "mean_interventions": [
+            5.25,
+            18.5
+          ],
+          "mean_threat_reward": [
+            -3.0,
+            -3.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 0.5714285714285714,
+          "benign_availability": 0.9176470588235294,
+          "expected_discounted_cost": 26.25,
+          "false_disruption": 0.07278742762613731,
+          "mean_cumulative_cost": 26.25,
+          "mean_interventions": 13.25,
+          "mean_threat_reward": -3.0,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      },
+      "trickle_outsider_quiet": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            0.3684210526315789,
+            1.0
+          ],
+          "benign_availability": [
+            0.9363484087102177,
+            0.9867986798679867
+          ],
+          "expected_discounted_cost": [
+            4.0,
+            19.0
+          ],
+          "false_disruption": [
+            0.013192612137203167,
+            0.06044905008635579
+          ],
+          "mean_cumulative_cost": [
+            4.0,
+            19.0
+          ],
+          "mean_interventions": [
+            13.0,
+            18.0
+          ],
+          "mean_threat_reward": [
+            -3.5,
+            -2.0
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 0.5,
+          "benign_availability": 0.9617622610141313,
+          "expected_discounted_cost": 11.5,
+          "false_disruption": 0.03905540417801998,
+          "mean_cumulative_cost": 11.5,
+          "mean_interventions": 15.5,
+          "mean_threat_reward": -2.5,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      },
+      "two_identities_delegated": {
+        "bootstrap_seed": 17,
+        "ci95": {
+          "attack_compromise": [
+            0.15053763440860216,
+            0.21739130434782608
+          ],
+          "benign_availability": [
+            0.75,
+            0.871875
+          ],
+          "expected_discounted_cost": [
+            30.75,
+            60.0
+          ],
+          "false_disruption": [
+            0.10648148148148148,
+            0.1956521739130435
+          ],
+          "mean_cumulative_cost": [
+            30.75,
+            60.0
+          ],
+          "mean_interventions": [
+            16.75,
+            25.5
+          ],
+          "mean_threat_reward": [
+            -22.5,
+            -11.25
+          ],
+          "measured_cost_coverage": [
+            1.0,
+            1.0
+          ]
+        },
+        "episodes": 4,
+        "gamma": 1.0,
+        "independent_seed_clusters": 4,
+        "metrics": {
+          "attack_compromise": 0.18055555555555555,
+          "benign_availability": 0.803125,
+          "expected_discounted_cost": 47.25,
+          "false_disruption": 0.15104166666666666,
+          "mean_cumulative_cost": 47.25,
+          "mean_interventions": 21.25,
+          "mean_threat_reward": -16.25,
+          "measured_cost_coverage": 1.0
+        },
+        "resamples": 2000,
+        "steps": 120
+      }
+    },
+    "pooled": {
+      "bootstrap_seed": 17,
+      "ci95": {
+        "attack_compromise": [
+          0.0855399873651123,
+          0.11874209108050333
+        ],
+        "benign_availability": [
+          0.8899675091096446,
+          0.9191933324279912
+        ],
+        "expected_discounted_cost": [
+          20.42767857142857,
+          27.678571428571427
+        ],
+        "false_disruption": [
+          0.05150325144933501,
+          0.08183736268515757
+        ],
+        "mean_cumulative_cost": [
+          20.42767857142857,
+          27.678571428571427
+        ],
+        "mean_interventions": [
+          13.213392857142857,
+          16.892857142857142
+        ],
+        "mean_threat_reward": [
+          -6.786607142857143,
+          -5.071428571428571
+        ],
+        "measured_cost_coverage": [
+          1.0,
+          1.0
+        ]
+      },
+      "episodes": 28,
+      "gamma": 1.0,
+      "independent_seed_clusters": 28,
+      "metrics": {
+        "attack_compromise": 0.09993943064809206,
+        "benign_availability": 0.9042357274401474,
+        "expected_discounted_cost": 24.142857142857142,
+        "false_disruption": 0.06729939603106126,
+        "mean_cumulative_cost": 24.142857142857142,
+        "mean_interventions": 15.071428571428571,
+        "mean_threat_reward": -5.892857142857143,
+        "measured_cost_coverage": 1.0
+      },
+      "resamples": 2000,
+      "steps": 840
+    }
+  }
+}

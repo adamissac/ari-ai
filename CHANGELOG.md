@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Add isolated Phase1 constrained-RL research: audited action semantics, versioned measured reward/cost adapters, explicit unknown/provenance validation, capability masks and reproducible fixed-baseline evidence.140owned-lab episodes completed; Phase2 remains no-go. No new model training, promotion, customer execution or recommendation behavior change.
+
 - Add a bounded train/validation-only duration screen that reuses existing block policies and compares one fixed duration-aware heuristic with actual v6. Completed all520 episodes: validation availability gain was uncertain and failed the fixed screen; no v11 prepared or launched. No learned-policy, control or serving changes; no holdout execution.
 
 - Add per-repository Automatic runs ON/OFF and manual commit runs when OFF. Queue excess commits under project quotas, require authorized push sender plus commit attribution, and enforce Claude Haiku 5.5 in production. Contract 0.15.0 and migration 0009.
