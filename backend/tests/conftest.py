@@ -96,9 +96,11 @@ from backend.migrate import upgrade  # noqa: E402
 upgrade()
 
 _TABLES = [
+    "analyst_reviews",
     "incidents",
     "runtime_windows",
     "ingest_tokens",
+    "connected_applications",
     "index_payloads",
     "index_snapshots",
     "idempotency_keys",

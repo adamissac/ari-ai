@@ -4,7 +4,10 @@
  * mixed into a live list or labelled as telemetry.
  */
 
+import type { Incident, MonitoringEvent } from '@hackatl/frontend-transport';
+
 export type LiveDefenseMode = 'live' | 'layout-preview';
+export type LiveDefenseTab = 'overview' | 'incidents' | 'explain' | 'apps';
 
 export const PREVIEW_QUERY = 'preview';
 export const PREVIEW_VALUE = 'layout';
@@ -13,7 +16,13 @@ export const SIMULATION_CAVEAT =
   'Recommendation from a policy trained in an isolated test environment. Not applied automatically.';
 
 export const NO_ENFORCEMENT =
-  'This dashboard does not apply, isolate, rate-limit, or block anything. Recommendations stay recommendations until a person acts on the existing Incidents page.';
+  'This dashboard does not apply, isolate, rate-limit, or block anything. Analyst accept is a recorded opinion, not enforcement approval, and does not execute a control.';
+
+export const SHADOW_MODE_COPY =
+  'Shadow mode: Ari records ingest and recommendations for authorized staging apps. It does not grant production enforcement and never re-shows an ingest token after issuance.';
+
+export const HEALTH_UNKNOWN_COPY =
+  'Component and worker health stay unknown unless a recorded check exists. HTTP 200 from this page is not a healthy verdict.';
 
 export function liveDefenseMode(previewParam: string | null | undefined): LiveDefenseMode {
   return previewParam === PREVIEW_VALUE ? 'layout-preview' : 'live';
@@ -30,17 +39,17 @@ export function withLiveDefenseMode(href: string, mode: LiveDefenseMode): string
   return qs ? `${path}?${qs}` : path;
 }
 
-export function liveDefenseHref(projectId: string | null, tab: 'overview' | 'incidents' | 'explain' = 'overview', mode: LiveDefenseMode = 'live'): string {
+export function liveDefenseHref(projectId: string | null, tab: LiveDefenseTab = 'overview', mode: LiveDefenseMode = 'live'): string {
   const base = projectId === null ? '/live-defense-pilot' : `/projects/${projectId}/live-defense`;
-  const path = tab === 'overview' ? base : `${base}/${tab === 'incidents' ? 'incidents' : 'explain'}`;
+  const suffix = tab === 'overview' ? '' : tab === 'incidents' ? '/incidents' : tab === 'explain' ? '/explain' : '/apps';
+  const path = `${base}${suffix}`;
   return projectId === null ? path : withLiveDefenseMode(path, mode);
 }
-
-export type LiveDefenseTab = 'overview' | 'incidents' | 'explain';
 
 export function liveDefenseTab(pathname: string): LiveDefenseTab {
   if (/live-defense(?:-pilot)?\/explain(?:\/|$)/.test(pathname)) return 'explain';
   if (/live-defense(?:-pilot)?\/incidents(?:\/|$)/.test(pathname)) return 'incidents';
+  if (/live-defense(?:-pilot)?\/apps(?:\/|$)/.test(pathname)) return 'apps';
   return 'overview';
 }
 
@@ -55,20 +64,16 @@ export const USED_LIVE_APIS = [
   { method: 'GET', path: '/projects/{id}/defense-recommendations', use: 'simulation-derived policy suggestions' },
   { method: 'GET', path: '/defense-recommendations/{id}/explanation', use: 'occlusion explanation of one suggestion' },
   { method: 'GET', path: '/projects/{id}/rl-evaluations', use: 'imported held-out evaluation pointers' },
+  { method: 'GET/POST', path: '/projects/{id}/applications', use: 'staging-app identity (sandbox or owned_test)' },
+  { method: 'POST', path: '/applications/{id}/ingest-tokens', use: 'mint ingest token (shown once)' },
+  { method: 'GET', path: '/projects/{id}/ingest-tokens', use: 'token metadata; secret never returned' },
+  { method: 'GET', path: '/projects/{id}/defense-health', use: 'recorded worker/ingest timestamps; status always unknown' },
+  { method: 'GET', path: '/projects/{id}/defense-graph', use: 'recorded apps and ingest routes; missing checks stay unknown' },
+  { method: 'GET/POST', path: '/defense-recommendations/{id}/reviews', use: 'analyst accept/reject/needs-investigation; accept does not execute' },
 ] as const;
 
-/** Capabilities the dashboard needs next. Shown as missing — never filled with live-looking numbers. */
+/** Capabilities still missing. Shown as missing — never filled with live-looking numbers. */
 export const MISSING_LIVE_APIS = [
-  {
-    id: 'connected_apps',
-    title: 'Connected applications',
-    reason: 'No resource lists owner-registered apps, control URLs, grants, or ingest tokens.',
-  },
-  {
-    id: 'component_health',
-    title: 'Component health and topology',
-    reason: 'No per-node last-check, healthy/checking state, or dependency graph is served for a project.',
-  },
   {
     id: 'live_incidents',
     title: 'Live-defense incident machine',
@@ -77,12 +82,7 @@ export const MISSING_LIVE_APIS = [
   {
     id: 'live_inference',
     title: 'Live policy inference stream',
-    reason: 'Q-values on stored recommendations are simulation-derived snapshots, not a live confidence feed.',
-  },
-  {
-    id: 'worker_heartbeat',
-    title: 'Defense worker heartbeat',
-    reason: 'No liveness record for the live-defense job worker.',
+    reason: 'No live policy-decision producer exists. Q-values on stored recommendations are simulation-derived snapshots, not a live confidence feed.',
   },
 ] as const;
 
@@ -96,6 +96,10 @@ export interface OverviewCounts {
   simulatedIncidentCount: number;
   recommendationsKnown: boolean;
   recommendationCount: number;
+  appsKnown: boolean;
+  appCount: number;
+  healthKnown: boolean;
+  lastIngestAt: string | null;
 }
 
 export function liveDefenseOverviewCopy(counts: OverviewCounts): string {
@@ -117,7 +121,17 @@ export function liveDefenseOverviewCopy(counts: OverviewCounts): string {
     : counts.recommendationCount === 0
       ? 'No simulation recommendation is stored.'
       : `${counts.recommendationCount} simulation recommendation${counts.recommendationCount === 1 ? '' : 's'} listed; none is applied automatically.`;
-  return `${watch} ${events} ${incidents} ${recs} Component health is not in the API, so this page does not draw a live map.`;
+  const apps = !counts.appsKnown
+    ? 'Staging apps have not loaded.'
+    : counts.appCount === 0
+      ? 'No staging app is registered.'
+      : `${counts.appCount} staging app${counts.appCount === 1 ? '' : 's'} registered in shadow mode.`;
+  const ingest = !counts.healthKnown
+    ? 'Ingest timestamps have not loaded.'
+    : counts.lastIngestAt
+      ? 'Authenticated ingest has been recorded; health stays unknown without a health-check producer.'
+      : 'No ingest recorded; health is unknown.';
+  return `${watch} ${events} ${incidents} ${recs} ${apps} ${ingest}`;
 }
 
 export interface RankedAction {
@@ -172,4 +186,25 @@ export function assertSingleSource<T extends { source: LiveDefenseMode }>(items:
 
 export function isOpenIncidentState(state: string): boolean {
   return state !== 'closed' && state !== 'rejected';
+}
+
+export function eventIncidentIds(eventId: string, incidents: readonly Incident[]): string[] {
+  return incidents.filter(item => item.monitoring_event_ids.includes(eventId)).map(item => item.id);
+}
+
+export function provenanceLabel(event: Pick<MonitoringEvent, 'source' | 'simulated'>): string {
+  if (event.source === 'runtime' && !event.simulated) return 'Authenticated runtime ingest';
+  if (event.source === 'runtime' && event.simulated) return 'Runtime ingest (simulated / replay)';
+  if (event.source === 'github' && event.simulated) return 'GitHub delivery (replayed / fixture)';
+  if (event.source === 'github') return 'Signed GitHub delivery';
+  return event.simulated ? `${event.source} (simulated)` : event.source;
+}
+
+export function unavailable(value: string | number | null | undefined): string {
+  if (value === null || value === undefined || value === '') return 'unavailable';
+  return String(value);
+}
+
+export function ingestCurl(projectId: string): string {
+  return `curl -X POST "$ARI_API/api/v1/ingest/runtime/${projectId}" \\\n  -H "Authorization: Bearer $INGEST_TOKEN" \\\n  -H "Content-Type: application/json" \\\n  -d '{"source":"runtime_demo","window_start":"<utc>","window_end":"<utc>","routes":[{"route":"GET /health","requests":1}]}'`;
 }

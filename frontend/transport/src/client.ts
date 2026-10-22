@@ -241,6 +241,39 @@ export class ApiClient {
   recommendationExplanation(id: string, options?: RequestOptions): Promise<C.RLExplanation> {
     return this.request(`/defense-recommendations/${segment(id)}/explanation`, 'RLExplanation', options) as Promise<C.RLExplanation>;
   }
+  connectedApplications(projectId: string, options?: RequestOptions): Promise<Page<C.ConnectedApplication>> {
+    return this.list(`/projects/${segment(projectId)}/applications`, 'ConnectedApplication', options);
+  }
+  createConnectedApplication(projectId: string, body: C.ConnectedApplicationCreate, options?: RequestOptions): Promise<C.ConnectedApplication> {
+    return this.request(`/projects/${segment(projectId)}/applications`, 'ConnectedApplication', options, body) as Promise<C.ConnectedApplication>;
+  }
+  connectedApplication(id: string, options?: RequestOptions): Promise<C.ConnectedApplication> {
+    return this.request(`/applications/${segment(id)}`, 'ConnectedApplication', options) as Promise<C.ConnectedApplication>;
+  }
+  createApplicationIngestToken(appId: string, options?: RequestOptions): Promise<C.IngestTokenCreated> {
+    return this.request(`/applications/${segment(appId)}/ingest-tokens`, 'IngestTokenCreated', options, {}) as Promise<C.IngestTokenCreated>;
+  }
+  ingestTokens(projectId: string, options?: RequestOptions): Promise<Page<C.IngestTokenView>> {
+    return this.list(`/projects/${segment(projectId)}/ingest-tokens`, 'IngestTokenView', options);
+  }
+  revokeIngestToken(tokenId: string, options?: RequestOptions): Promise<void> {
+    return this.request(`/ingest-tokens/${segment(tokenId)}/revoke`, null, options, {}) as Promise<void>;
+  }
+  defenseHealth(projectId: string, options?: RequestOptions): Promise<C.DefenseHealth> {
+    return this.request(`/projects/${segment(projectId)}/defense-health`, 'DefenseHealth', options) as Promise<C.DefenseHealth>;
+  }
+  defenseGraph(projectId: string, options?: RequestOptions): Promise<C.ComponentGraph> {
+    return this.request(`/projects/${segment(projectId)}/defense-graph`, 'ComponentGraph', options) as Promise<C.ComponentGraph>;
+  }
+  recommendationReviews(id: string, options?: RequestOptions): Promise<Page<C.AnalystReview>> {
+    return this.list(`/defense-recommendations/${segment(id)}/reviews`, 'AnalystReview', options);
+  }
+  projectDefenseReviews(projectId: string, options?: RequestOptions): Promise<Page<C.AnalystReview>> {
+    return this.list(`/projects/${segment(projectId)}/defense-reviews`, 'AnalystReview', options);
+  }
+  createRecommendationReview(id: string, body: C.AnalystReviewCreate, options?: RequestOptions): Promise<C.AnalystReview> {
+    return this.request(`/defense-recommendations/${segment(id)}/reviews`, 'AnalystReview', options, body) as Promise<C.AnalystReview>;
+  }
   /** Repositories the user can connect through the GitHub App, and the App's install link. */
   async githubRepositories(options?: RequestOptions): Promise<AccessibleRepositories> {
     const record = object(await this.request('/github/repositories', RAW, options), 'repository list');

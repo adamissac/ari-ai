@@ -29,6 +29,39 @@ test('finding detail validates the finding and each typed evidence record', asyn
   }
 });
 
+test('live defense health and reviews validate shared types and never include a token secret', async () => {
+  const health = {
+    project_id: 'prj_12345678', worker_seen_at: null, queue_depth: 0, last_ingest_at: null,
+    last_runtime_event_at: null, status: 'unknown',
+    status_reason: 'No recorded health-check producer. Timestamps are evidence only; HTTP 200 is not a healthy verdict.',
+  };
+  const got = await client(() => json(health)).defenseHealth('prj_12345678');
+  assert.equal(got.status, 'unknown');
+  await assert.rejects(client(() => json({ ...health, status: 'healthy' })).defenseHealth('prj_12345678'), ProtocolError);
+  const tokens = await client(() => json({ items: [{
+    id: 'itk_12345678', project_id: 'prj_12345678', application_id: null,
+    created_at: '2026-10-17T03:00:00Z', revoked_at: null, last_used_at: null,
+  }], next_cursor: null })).ingestTokens('prj_12345678');
+  assert.equal(tokens.items[0].id, 'itk_12345678');
+  assert.equal('token' in tokens.items[0], false);
+  const review = {
+    id: 'arv_12345678', project_id: 'prj_12345678', recommendation_id: 'rec_12345678',
+    decision: 'accept', reason: null, reviewed_by: 'usr_12345678', reviewed_at: '2026-10-17T03:00:00Z',
+    executes: false, enforcement: 'none',
+  };
+  const api = client((url, init) => {
+    if (String(url).endsWith('/me')) return json(me);
+    assert.equal(JSON.parse(init.body).decision, 'accept');
+    return json(review, 201);
+  });
+  await api.session();
+  const saved = await api.createRecommendationReview('rec_12345678', { decision: 'accept', reason: null });
+  assert.equal(saved.executes, false);
+  const bad = client((url) => url.endsWith('/me') ? json(me) : json({ ...review, executes: true }, 201));
+  await bad.session();
+  await assert.rejects(bad.createRecommendationReview('rec_12345678', { decision: 'accept', reason: null }), ProtocolError);
+});
+
 test('recommendation list keeps the backend simulation label and rejects other envelopes', async () => {
   const page = await client(() => json({ items: [], next_cursor: null, label: 'simulation-derived' })).defenseRecommendations('prj_12345678');
   assert.equal(page.label, 'simulation-derived');

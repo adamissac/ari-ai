@@ -10,6 +10,7 @@ const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'incidents', label: 'Investigation' },
   { id: 'explain', label: 'Explainability' },
+  { id: 'apps', label: 'Staging apps' },
 ] as const;
 
 export function LiveDefenseShell({
@@ -36,11 +37,11 @@ export function LiveDefenseShell({
     <div className="flex flex-col gap-4" data-testid="live-defense" data-mode={mode}>
       <header className="monitor-head" data-testid="live-defense-head">
         <div>
-          <p className="label-mono text-white/60">Live Defense · phase 1</p>
-          <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">What is recorded, and what is still missing</h2>
-          <p className="mt-1 max-w-2xl text-sm text-white/70">
-            Customer view of continuous defense. Live mode shows control-plane records only.
-            There is no live component map, no autonomous enforcement, and no fabricated confidence score.
+          <p className="label-mono text-white/70">Ari Live Defense · phase 2 · shadow pilot</p>
+          <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">Recorded evidence, recommendations, and analyst review</h2>
+          <p className="mt-1 max-w-2xl text-sm text-white/80">
+            Connect an authorized staging app, inspect ingested evidence, understand a stored recommendation, and record a review.
+            Ari does not take automatic control of customer traffic.
           </p>
         </div>
         <div className="flex flex-col items-start gap-3 lg:items-end">
@@ -48,7 +49,7 @@ export function LiveDefenseShell({
           {!standalone && (
             <button
               type="button"
-              className="rounded-full border border-white/15 bg-white/5 px-3.5 py-2 text-sm text-white hover:bg-white/10"
+              className="rounded-full border border-white/25 bg-white/10 px-3.5 py-2 text-sm text-white hover:bg-white/20"
               data-testid="live-defense-preview-toggle"
               aria-pressed={mode === 'layout-preview'}
               onClick={toggle}
