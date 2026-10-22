@@ -49,3 +49,7 @@ captured trajectory snapshots, preserving original artifact names and digests.
 Tenth review validates the local execution revision for new bundles, checks the
 anchored original reporting index/files, and certifies from private commit-owned
 read-only source so lazy Python imports cannot race caller-checkout edits.
+
+Review-manifest validation now covers every listed code, documentation and artifact
+path, including bundle copies, with bounded captured source reads. Regression cases
+cover independent drift of proof.py, the supported legacy reader and verification docs.

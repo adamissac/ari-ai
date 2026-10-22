@@ -136,13 +136,16 @@ def check_source(
                 raise ValueError("historical reporting artifact changed")
         # The historical exception allows exactly the separately recorded verifier,
         # not arbitrary future edits outside the two frozen collection functions.
-        for rel in (
-            EVALUATOR_PATH,
-            "rl-defense/rl_defense/research/proof.py",
-            "rl-defense/rl_defense/research/snapshot.py",
-        ):
-            if digest((root / rel).read_bytes()) != review["files"][rel]:
+        for rel, expected_sha in review["files"].items():
+            path = (root / rel).resolve()
+            if not path.is_relative_to(root.resolve()):
+                raise ValueError("review path leaves trusted checkout")
+            if digest(read_artifact(path)) != expected_sha:
                 raise ValueError("post-review source changed; use recorded verification source")
+            prefix = "rl-defense/results/constrained-phase1/"
+            if rel.startswith(prefix):
+                if digest(read_artifact(output / rel.removeprefix(prefix))) != expected_sha:
+                    raise ValueError("post-review artifact differs from trusted manifest")
     for rel, sha in config["code_sha256"].items():
         if not old:
             try:
@@ -158,11 +161,12 @@ def check_source(
         p = (root / rel).resolve()
         if not p.is_relative_to(root):
             raise ValueError("source path leaves checkout")
-        if digest(p.read_bytes()) == sha:
+        source_blob = read_artifact(p)
+        if digest(source_blob) == sha:
             continue
         if not (old and rel == EVALUATOR_PATH and sha == HISTORICAL_EVALUATOR):
             raise ValueError(f"source semantics changed: {rel}; use recorded source commit")
-        original = (output / "frozen/evaluate.py.txt").read_bytes()
+        original = read_artifact(output / "frozen/evaluate.py.txt")
         if digest(original) != HISTORICAL_EVALUATOR:
             raise ValueError("archived original evaluator source mismatch")
 
@@ -177,7 +181,7 @@ def check_source(
                 and n.name in {"collect_episode", "records_from_raw"}
             }
 
-        if definitions(original) != definitions(p.read_bytes()):
+        if definitions(original) != definitions(source_blob):
             raise ValueError("historical collection/adaptation semantics changed")
 
 
