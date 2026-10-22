@@ -305,6 +305,11 @@ def verify(output: Path) -> dict:
     if config.get("schema") != "constrained-lab-evaluation/1":
         raise ValueError("unsupported configuration schema")
     if (
+        index.get("not_a_promotion_decision") is not True
+        or index.get("phase2_started") is not False
+    ):
+        raise ValueError("evidence violates Phase 1 boundary")
+    if (
         config["loop_overrides"] != OVERRIDES
         or config["policies"] != list(POLICIES)
         or config["v6_checkpoint_sha256"] != V6_SHA

@@ -13,3 +13,7 @@ Third review: scenario definitions must match the pinned training benchmark; sta
 settings are fixed before bootstrap work starts; all post-creation setup exceptions
 produce a failure audit record without retry. The 39-test focused run and the added
 scenario-tampering regression both passed. Original measurements are preserved.
+
+Fourth review: source fingerprints are checked against actual recorded Git blobs;
+successful foreign reads must retain their compromise flag; Phase 1 root flags
+are enforced. No original measurement is changed. Focused validation pending.
