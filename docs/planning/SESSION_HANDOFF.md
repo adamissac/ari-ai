@@ -18,8 +18,17 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-22 — Cursor (agent, Alan) — Live Defense Phase 2 CI: Alembic head pin
+- Did: GitHub `backend / test` failed on PR #391 because `test_repository_has_a_single_migration_head` still expected head `0009`. Phase 2 adds linear revision `0010` (`down_revision = 0009`). Updated the pin to `["0010"]`. Single-head rule unchanged. `rl-defense/` untouched. `origin/main` still `53bf03c` (no rebase needed).
+- Commands run and results:
+  - `uv run pytest -q backend/tests` — 170 passed, 7 skipped
+  - `backend/tests/test_parallel_migrations.py` + live-defense backend tests — 11 passed
+  - `make check` — pass; gitleaks on `origin/main..HEAD` — no leaks
+  - `npm run lint && typecheck` — pass; vitest 323/77; live-defense unit 18 passed; `npm run build` — pass
+- Next steps: push, wait for required CI green, mark #391 ready, merge if branch protection permits.
+
 ### 2026-10-22 — Cursor (agent, Alan) — Live Defense Phase 2 shadow pilot
-- Did: branch `feat/live-defense-pilot-phase2` from `origin/main` (PR #390 already merged). Extended Phase 1; did not rebuild it. Shared 0.16.0: `ConnectedApplication`, `IngestTokenView`, `DefenseHealth`, `ComponentGraph`, `AnalystReview`. Backend migration 0010 + `backend/api/live_defense.py`. Frontend wires existing APIs end-to-end and adds Staging apps + analyst review. `rl-defense/` untouched. Draft PR #391; do not merge.
+- Did: branch `feat/live-defense-pilot-phase2` from `origin/main` (PR #390 already merged). Extended Phase 1; did not rebuild it. Shared 0.16.0: `ConnectedApplication`, `IngestTokenView`, `DefenseHealth`, `ComponentGraph`, `AnalystReview`. Backend migration 0010 + `backend/api/live_defense.py`. Frontend wires existing APIs end-to-end and adds Staging apps + analyst review. `rl-defense/` untouched. Draft PR #391.
 - State of the code: analyst can register sandbox/owned_test apps, mint a token (shown once), inspect ingested evidence, read a stored recommendation, and record accept/reject/needs-investigation without executing a control. Health status is always `unknown`. No live policy-decision producer.
 - Commands run and results (executed):
   - `make check` — ruff pass (157 files formatted); `shared.export --check` 123 files; examples check pass
