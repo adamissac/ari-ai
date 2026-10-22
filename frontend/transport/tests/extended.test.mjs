@@ -46,6 +46,7 @@ test('live defense health and reviews validate shared types and never include a 
   assert.equal('token' in tokens.items[0], false);
   const review = {
     id: 'arv_12345678', project_id: 'prj_12345678', recommendation_id: 'rec_12345678',
+    live_policy_decision_id: null,
     decision: 'accept', reason: null, reviewed_by: 'usr_12345678', reviewed_at: '2026-10-17T03:00:00Z',
     executes: false, enforcement: 'none',
   };
@@ -60,6 +61,26 @@ test('live defense health and reviews validate shared types and never include a 
   const bad = client((url) => url.endsWith('/me') ? json(me) : json({ ...review, executes: true }, 201));
   await bad.session();
   await assert.rejects(bad.createRecommendationReview('rec_12345678', { decision: 'accept', reason: null }), ProtocolError);
+});
+
+test('live policy decisions require NOT_EXECUTED and reject synthesized envelopes', async () => {
+  const decision = {
+    id: 'lpd_12345678', project_id: 'prj_12345678', application_id: null,
+    created_at: '2026-10-17T03:00:00Z', window_end: '2026-10-17T03:00:00Z',
+    telemetry_source: 'owned_staging', simulated: false, producer: 'rules',
+    rules_ran: true, inference_ran: false, inference_status: 'skipped_quiet_window',
+    action: 'noop', node: null, top_actions: null, q_margin: null, observation: null,
+    policy_version: null, checkpoint_sha256: null, abstention_reason: 'quiet',
+    observation_complete: true, feature_schema_ok: true, action_mask_valid: true,
+    freshness_ok: true, authorization_context: 'missing', enforcement: 'NOT_EXECUTED',
+    executed: false, evidence_event_ids: [], rule_hits: [], principal_targets: [],
+    feature_mapping_note: null, caveat: 'Shadow recommendation from authenticated staging telemetry. Not executed. Q-values appear only when frozen v6 inference actually ran.',
+  };
+  const page = await client(() => json({ items: [decision], next_cursor: null, label: 'shadow' })).livePolicyDecisions('prj_12345678');
+  assert.equal(page.items[0].enforcement, 'NOT_EXECUTED');
+  assert.equal(page.items[0].top_actions, null);
+  await assert.rejects(client(() => json({ items: [{ ...decision, executed: true }], next_cursor: null, label: 'x' })).livePolicyDecisions('prj_12345678'), ProtocolError);
+  await assert.rejects(client(() => json({ items: [], next_cursor: null })).livePolicyDecisions('prj_12345678'), ProtocolError);
 });
 
 test('recommendation list keeps the backend simulation label and rejects other envelopes', async () => {

@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Extend Live Defense to Phase 3 shadow runtime: authenticated `owned_staging` ingest, deterministic rules, genuine `LivePolicyDecision` rows (NOT EXECUTED) from rules or validated frozen-v6 inference, and analyst review of those records. Q-values are persisted only when inference actually ran. Authenticated runtime events no longer force simulated incident labels. No autonomous enforcement. Contract schema 0.17.0.
+
 - Extend Live Defense to a shadow-pilot Phase 2: wire events, NIST incidents, stored recommendations, explanations and reassessment; add staging-app onboarding, ingest-token metadata (secret shown once), recorded health/topology (status always unknown), and analyst accept/reject/needs-investigation that does not execute. No live policy-decision producer, no production enforcement, no autonomous block/isolate/rate-limit. Contract schema 0.16.0.
 
 - Add a customer Live Defense dashboard (Overview, Investigation, Explainability) on `/projects/{id}/live-defense`, using existing monitoring, incident and simulation-recommendation APIs. Missing live-graph/inference endpoints stay empty. Isolated sample layout (`?preview=layout`, `/live-defense-pilot`) is labelled and never mixed with records. No apply/isolate/rate-limit actions.

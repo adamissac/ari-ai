@@ -274,6 +274,25 @@ export class ApiClient {
   createRecommendationReview(id: string, body: C.AnalystReviewCreate, options?: RequestOptions): Promise<C.AnalystReview> {
     return this.request(`/defense-recommendations/${segment(id)}/reviews`, 'AnalystReview', options, body) as Promise<C.AnalystReview>;
   }
+  /** Newest first. Pass `next_cursor` as `cursor` for older shadow decisions. */
+  async livePolicyDecisions(projectId: string, options?: RequestOptions & { cursor?: string }): Promise<LabeledPage<C.LivePolicyDecision>> {
+    const qs = options?.cursor ? `?cursor=${encodeURIComponent(options.cursor)}` : '';
+    const record = object(await this.request(`/projects/${segment(projectId)}/live-policy-decisions${qs}`, RAW, options), 'live policy decision list');
+    const cursor = record.next_cursor;
+    if (!Array.isArray(record.items) || (cursor !== null && (typeof cursor !== 'string' || cursor.length === 0 || cursor.length > 200)) || typeof record.label !== 'string' || Object.keys(record).length !== 3) {
+      throw new ProtocolError('Invalid live policy decision list');
+    }
+    return { items: record.items.map(i => decode<C.LivePolicyDecision>('LivePolicyDecision', i)), next_cursor: cursor, label: record.label };
+  }
+  livePolicyDecision(id: string, options?: RequestOptions): Promise<C.LivePolicyDecision> {
+    return this.request(`/live-policy-decisions/${segment(id)}`, 'LivePolicyDecision', options) as Promise<C.LivePolicyDecision>;
+  }
+  livePolicyDecisionReviews(id: string, options?: RequestOptions): Promise<Page<C.AnalystReview>> {
+    return this.list(`/live-policy-decisions/${segment(id)}/reviews`, 'AnalystReview', options);
+  }
+  createLivePolicyDecisionReview(id: string, body: C.AnalystReviewCreate, options?: RequestOptions): Promise<C.AnalystReview> {
+    return this.request(`/live-policy-decisions/${segment(id)}/reviews`, 'AnalystReview', options, body) as Promise<C.AnalystReview>;
+  }
   /** Repositories the user can connect through the GitHub App, and the App's install link. */
   async githubRepositories(options?: RequestOptions): Promise<AccessibleRepositories> {
     const record = object(await this.request('/github/repositories', RAW, options), 'repository list');

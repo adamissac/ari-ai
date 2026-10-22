@@ -18,6 +18,19 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-22 — Cursor (agent, Alan) — Live Defense Phase 3 shadow runtime
+- Did: branch `feat/live-defense-phase3-shadow-runtime` from `origin/main` (`6e98b23`, PR #391 merged). Extends Phase 1/2. Shared 0.17.0 `LivePolicyDecision` (NOT EXECUTED). Authenticated `owned_staging` ingest, deterministic rules, frozen-v6 only when serving assumptions hold (quiet window → abstain; no torch in this env → `skipped_unavailable`). Analyst review of shadow decisions does not execute. `rl-defense/` training/checkpoints/promotion untouched. No Phase 4 enforcement APIs.
+- State of the code: owned staging app → authenticated ingest → rules (or validated v6) → persisted shadow decision → dashboard → review → no automatic traffic control. Authenticated runtime events no longer force `Incident.simulated`.
+- Commands run and results (executed):
+  - `make check` — ruff pass; format 165 files; `shared.export --check` 124 files; examples check pass
+  - `uv run mypy` — Success: no issues found in 40 source files
+  - `uv run pytest -q backend/tests/test_live_defense_phase3.py backend/tests/test_runtime_ingest.py backend/tests/test_parallel_migrations.py backend/tests/test_live_defense_pilot.py backend/tests/test_rl_no_action_path.py monitoring/tests/test_detect.py shared/tests/test_contracts.py` — 85 passed, 2 skipped (`rl_defense` missing; TSC unset)
+  - `npm run lint && typecheck` — pass; `npm test --prefix frontend` — 325 passed / 77 files; `npm test --prefix frontend/transport` — 35 passed
+  - `npm run build --prefix frontend` — pass; routes include `/live-defense`, `/live-defense/explain`, `/live-defense/apps`
+- Decisions: v6 quiet-window → explicit abstention (ADR-0017); HTTP 200 without principals is unverified noop, not IDOR; accept ≠ execute; do not train or promote.
+- Next steps: gitleaks, e2e stack + screenshots, pilot eval report, draft PR, merge if protection allows.
+- Warnings: `/live-defense-pilot` remains sample layout. Do not begin autonomous enforcement. Frozen v6 inference is `skipped_unavailable` without `rl_defense`+torch; CI `rl-integration` job is the path that can run it.
+
 ### 2026-10-22 — Cursor (agent, Alan) — Live Defense Phase 2 CI: Alembic head pin
 - Did: GitHub `backend / test` failed on PR #391 because `test_repository_has_a_single_migration_head` still expected head `0009`. Phase 2 adds linear revision `0010` (`down_revision = 0009`). Updated the pin to `["0010"]`. Single-head rule unchanged. `rl-defense/` untouched. `origin/main` still `53bf03c` (no rebase needed).
 - Commands run and results:

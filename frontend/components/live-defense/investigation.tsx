@@ -42,7 +42,7 @@ export function InvestigationList({
       <p className="mb-3 text-sm text-muted">
         These are NIST SP 800-61 records from the control plane. Human actions (triage, two-person gates, closure) stay on the{' '}
         {projectId ? <Link className="text-accent hover:underline" href={`/projects/${projectId}/incidents`}>Incidents</Link> : 'Incidents'} page.
-        Analyst review of recommendations is separate and does not execute a control.
+        Shadow decisions from authenticated ingest live on Explainability and are always NOT EXECUTED. Analyst review does not apply a control.
       </p>
       <div className="mb-3 flex flex-wrap gap-2 text-sm">
         <label className="text-muted">State
