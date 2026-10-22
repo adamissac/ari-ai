@@ -223,7 +223,7 @@ Git metadata and preserved files corresponding to remote fix `1e42f3e`; reconcil
 with the remote before any cleanup or new work. The user's original dirty checkout
 was not overwritten. No study heartbeat was re-enabled or extra experiment scheduled.
 
-- IMPLEMENTED; final compatibility/CI review pending (2026-10-22): **RL-CMDP-001**, Alan (owner explicitly authorized),
+- IMPLEMENTED; research PR #388, intentionally unmerged / no Phase2 (2026-10-22): **RL-CMDP-001**, Alan (owner explicitly authorized),
   `feat/alan/constrained-rl-phase1`: audit and additive offline-first constrained-RL
   foundation. Separate measured reward/cost, provenance, capability shield and
   deterministic baseline evaluation. No Phase 2, training, holdout or serving changes.

@@ -155,7 +155,7 @@ The Phase1 CLI loads only train_v8; legacy adapter admits validation only with e
 analysis opt-in and always forbids holdout. It refuses incomplete or duplicate episodes.
 
 Checkpoint loader verifies manifest/hash; backend `pipeline.verify_rl_checkpoint` pins
-operator-trusted bytes before unpickling. `registry.PolicyRegistry.promote` requires a
+operator-trusted bytes before unpickling. `registry.Registry.promote` requires a
 human identity, hash-pinned passing report/checkpoint, durable online evidence, actual
 incumbent-bound baseline, nonempty passing checks and a servable layout. These are local
 workflow controls, not a cryptographic two-person production authorization system.

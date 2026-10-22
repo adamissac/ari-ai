@@ -1,0 +1,13 @@
+{
+  "files": {
+    "docs/research/constrained-rl-phase1/VERIFICATION.md": "3593554c3e5eb0b8825d745d23859f2aab7fc489eda4143aa66c8dafcdad8fa9",
+    "rl-defense/results/constrained-phase1/frozen/evaluate.py.txt": "8c0002a79444f367a3b34967c198d4b3b1a292d5573fc134553168d385452b2e",
+    "rl-defense/results/constrained-phase1/frozen/source.commit.txt": "da36fac0ff64c56dcb8ec43328f76e558f2ba0c8676fd834113e6b51b2ed860a",
+    "rl-defense/rl_defense/research/evaluate.py": "6e715e73ccff1ad72162b0a183261b4f05f8b82bd07a7c5008a5beaef2fe3627",
+    "rl-defense/rl_defense/research/proof.py": "a078ad6c2b6330e81a7b0bdf7d315b5bd85062970dcdce15b04fc4b4e33ee8fa"
+  },
+  "historical_measurements_unchanged": true,
+  "original_execution_index_sha256": "54e3af1c96b073c595f219cee025eaeb486bdcfc476e84ad91ea6665a7647506",
+  "original_reporting_index_sha256": "ad7fabd5f60fa4f29e0139f492d055385ad47afbdf442f17edfb41dd9ee0ef1c",
+  "schema": "constrained-phase1-review-evidence/1"
+}

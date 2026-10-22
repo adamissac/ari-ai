@@ -25,6 +25,7 @@ from rl_defense.live.scenarios import LiveScenario, load_scenarios
 from rl_defense.research.dataset import adapt, digest, evidence, validate_episodes
 from rl_defense.research.metrics import report
 from rl_defense.research.policies import CostAwareRules, capability_mask
+from rl_defense.research.proof import check_source, resolve_source, verify_policy_actions
 from rl_defense.research.records import ResearchTransition
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -186,7 +187,9 @@ def run(
         revision = published_commit
     elif published_tree is not None:
         raise ValueError("published tree needs a commit")
+    source_object = resolve_source(ROOT, revision, tree)
     output.mkdir(parents=True, exist_ok=False)
+    (output / "source.commit.txt").write_bytes(source_object)
     ckpt = ROOT / "rl-defense/results/live-retrain-v6/candidate_online.pt"
     if digest(ckpt.read_bytes()) != V6_SHA:
         raise ValueError("frozen v6 checkpoint mismatch")
@@ -202,7 +205,7 @@ def run(
         "source_commit": revision,
         "execution_local_commit": local_revision,
         "source_tree": tree,
-        "publication": "caller-supplied GitHub commit with matching tree"
+        "publication": "Git-resolved commit with verified matching tree"
         if published_commit
         else "local Git commit",
         "environment": "owned payments-lite in-process lab; not production",
@@ -258,7 +261,13 @@ def run(
             resamples=config["resamples"],
         )
         (output / "summary.json").write_bytes(encoded(result))
-        files = ("config.json", "raw.jsonl.gz", "transitions.jsonl.gz", "summary.json")
+        files = (
+            "config.json",
+            "raw.jsonl.gz",
+            "transitions.jsonl.gz",
+            "summary.json",
+            "source.commit.txt",
+        )
         index = {
             "schema": "constrained-lab-evidence/1",
             "source_commit": revision,
@@ -278,17 +287,25 @@ def run(
 
 def verify(output: Path) -> dict:
     index = json.loads((output / "EVIDENCE.json").read_bytes())
+    if index.get("schema") != "constrained-lab-evidence/1":
+        raise ValueError("unsupported evidence schema")
     expected_files = {"config.json", "raw.jsonl.gz", "transitions.jsonl.gz", "summary.json"}
-    if set(index["files"]) != expected_files:
+    if set(index["files"]) not in (expected_files, expected_files | {"source.commit.txt"}):
         raise ValueError("unexpected evidence files")
     for name, sha in index["files"].items():
         if digest((output / name).read_bytes()) != sha:
             raise ValueError(f"evidence hash mismatch: {name}")
     config = json.loads((output / "config.json").read_bytes())
-    for rel, sha in config["code_sha256"].items():
-        p = (ROOT / rel).resolve()
-        if not p.is_relative_to(ROOT) or digest(p.read_bytes()) != sha:
-            raise ValueError(f"source semantics changed: {rel}; use recorded source commit")
+    if config.get("schema") != "constrained-lab-evaluation/1":
+        raise ValueError("unsupported configuration schema")
+    if (
+        config["loop_overrides"] != OVERRIDES
+        or config["policies"] != list(POLICIES)
+        or config["v6_checkpoint_sha256"] != V6_SHA
+        or config["cost_aware_max_interventions"] != 2
+    ):
+        raise ValueError("unsupported baseline profile semantics")
+    check_source(ROOT, output, config, set(index["files"]))
     scenarios = [LiveScenario.model_validate(d) for d in config["scenario_configs"]]
     if any(s.split != "train" for s in scenarios):
         raise ValueError("Phase 1 fresh evaluation cannot contain holdout/validation")
@@ -320,6 +337,7 @@ def verify(output: Path) -> dict:
         expected
     ):
         raise ValueError("missing, repeated or additional evaluation units")
+    verify_policy_actions(ROOT, config, rows)
     actual = report(
         rows,
         gamma=config["gamma"],
