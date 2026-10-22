@@ -56,12 +56,21 @@ def certify_snapshot(
         "transition.schema.json",
         "frozen/evaluate.py.txt",
         "frozen/source.commit.txt",
+        "frozen/README.md",
     )
     captured = {"EVIDENCE.json": index_blob, **artifacts}
     for name in extra:
         path = output / name
         if path.exists():
             captured[name] = read_artifact(path)
+    return _certify_source(root, captured, "study")
+
+
+def certify_legacy_snapshot(root: Path, captured: dict[str, bytes]) -> dict:
+    return _certify_source(root, captured, "legacy")
+
+
+def _certify_source(root: Path, captured: dict[str, bytes], mode: str) -> dict:
     with TemporaryDirectory(prefix="rl-evidence-snapshot-") as private:
         bundle = Path(private) / "evidence"
         bundle.mkdir(mode=0o700)
@@ -71,10 +80,10 @@ def certify_snapshot(
             path.write_bytes(blob)
             path.chmod(0o400)
         with source_snapshot(root) as checkout:
-            if "source.commit.txt" in artifacts:
+            if "source.commit.txt" in captured:
                 subprocess.run(
                     ["git", "hash-object", "-t", "commit", "-w", "--stdin"],
-                    input=artifacts["source.commit.txt"],
+                    input=captured["source.commit.txt"],
                     cwd=checkout,
                     check=True,
                     capture_output=True,
@@ -92,6 +101,10 @@ def certify_snapshot(
             env["PYTHONDONTWRITEBYTECODE"] = "1"
             env["GIT_OPTIONAL_LOCKS"] = "0"
             command = "import json,sys; from pathlib import Path; from rl_defense.research.evaluate import _verify; print(json.dumps(_verify(Path(sys.argv[1]), sealed=True)))"
+            if mode == "legacy":
+                command = "import json,sys; from pathlib import Path; from rl_defense.research.legacy import _verify_legacy; print(json.dumps(_verify_legacy(Path(sys.argv[1]))))"
+            elif mode != "study":
+                raise ValueError("unknown source certification mode")
             result = subprocess.run(
                 [sys.executable, "-c", command, str(bundle)],
                 cwd=checkout,

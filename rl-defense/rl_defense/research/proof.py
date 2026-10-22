@@ -114,7 +114,7 @@ def check_source(
         if review_blob != committed_review:
             raise ValueError("review manifest differs from trusted checkout commit")
         review = json.loads(review_blob)
-        if review.get("schema") != "constrained-phase1-review-evidence/1":
+        if review.get("schema") != "constrained-phase1-review-evidence/2":
             raise ValueError("unsupported review evidence schema")
         index_blob = (
             index_object if index_object is not None else read_artifact(output / "EVIDENCE.json")
@@ -127,8 +127,11 @@ def check_source(
         report_index = json.loads(report_blob)
         if report_index.get("schema") != "constrained-lab-report/1":
             raise ValueError("unsupported historical reporting schema")
+        aliases = review.get("original_reporting_aliases")
+        if aliases != {"README.md": "frozen/README.md"}:
+            raise ValueError("unsupported reporting preservation aliases")
         for name, sha in report_index["files"].items():
-            path = (output / name).resolve()
+            path = (output / aliases.get(name, name)).resolve()
             if not path.is_relative_to(output.resolve()):
                 raise ValueError("report path leaves evidence directory")
             data = index_blob if name == "EVIDENCE.json" else read_artifact(path)
@@ -421,6 +424,8 @@ def verify_runtime_closure(root: Path, output: Path, config: dict) -> None:
         if blob != committed:
             raise ValueError("review runtime differs from trusted checkout commit")
         profile = json.loads(blob)
+        if profile.get("schema") != "constrained-review-runtime/1":
+            raise ValueError("unsupported review runtime schema")
         if profile["original_dependency_closure_known"] is not False:
             raise ValueError("historical dependency closure must remain unknown")
         expected = profile["environment_packages"]

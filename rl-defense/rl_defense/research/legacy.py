@@ -7,15 +7,51 @@ The original result-directory reader remains frozen archival source only.
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from rl_defense.live.scenarios import load_scenarios
 from rl_defense.research.dataset import digest, load_legacy
-from rl_defense.research.proof import bounded_gzip, read_artifact
+from rl_defense.research.proof import (
+    bounded_gzip,
+    check_semantic_inputs,
+    check_source,
+    read_artifact,
+    scenarios_from_inputs,
+    verify_runtime_closure,
+)
+from rl_defense.research.snapshot import certify_legacy_snapshot
+
+ROOT = Path(__file__).resolve().parents[3]
+POLICIES = ("short", "long", "duration", "v6", "tuned_rules")
 
 
 def verify_legacy(root: Path) -> dict:
+    blob = read_artifact(root / "EVIDENCE.json")
+    if digest(blob) != "ce9317baa7cad1c1a77dacf19736d0d8fb812e8c76af0b03fc3cc699c77291b6":
+        raise ValueError("historical evidence index trust anchor mismatch")
+    index = json.loads(blob)
+    captured = {"EVIDENCE.json": blob, "RUN.json": read_artifact(root / "RUN.json")}
+    if digest(captured["RUN.json"]) != index["files"]["RUN.json"]:
+        raise ValueError("historical run pin changed")
+    for policy in POLICIES:
+        rel = f"train/{policy}/trajectories.jsonl.gz"
+        raw = bounded_gzip(read_artifact(root / rel))
+        if digest(raw) != index["files"][rel]:
+            raise ValueError("historical trajectory pin changed")
+        captured[rel] = raw
+    return certify_legacy_snapshot(ROOT, captured)
+
+
+def _verify_legacy(root: Path) -> dict:
+    evidence = ROOT / "rl-defense/results/constrained-phase1"
+    config = json.loads(read_artifact(evidence / "config.json"))
+    index = json.loads(read_artifact(evidence / "EVIDENCE.json"))
+    check_source(ROOT, evidence, config, set(index["files"]))
+    semantic_inputs = check_semantic_inputs(ROOT, config)
+    if config["python"] != sys.version:
+        raise ValueError("legacy verification requires the recorded Python runtime")
+    verify_runtime_closure(ROOT, evidence, config)
     index_path = root / "EVIDENCE.json"
     index_blob = read_artifact(index_path)
     if digest(index_blob) != "ce9317baa7cad1c1a77dacf19736d0d8fb812e8c76af0b03fc3cc699c77291b6":
@@ -25,7 +61,7 @@ def verify_legacy(root: Path) -> dict:
     if digest(run_blob) != index["files"]["RUN.json"]:
         raise ValueError("historical run pin changed")
     run = json.loads(run_blob)
-    scenarios = load_scenarios("train", subdir="train_v8")
+    scenarios = scenarios_from_inputs(semantic_inputs)
     if {s.name: s.config_hash() for s in scenarios} != run["splits"]["train"]:
         raise ValueError("historical scenario definitions changed")
     result = {
@@ -38,7 +74,7 @@ def verify_legacy(root: Path) -> dict:
         "datasets": {},
     }
     with TemporaryDirectory(prefix="rl-legacy-snapshot-") as private_snapshot:
-        for policy in ("short", "long", "duration", "v6", "tuned_rules"):
+        for policy in POLICIES:
             rel = f"train/{policy}/trajectories.jsonl.gz"
             raw = bounded_gzip(read_artifact(root / rel))
             if digest(raw) != index["files"][rel]:

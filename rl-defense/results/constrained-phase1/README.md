@@ -56,13 +56,15 @@ Gymnasium1.4.0, FastAPI0.150.0, httpx0.28.1, PyYAML6.0.3). From repo root:
 ```sh
 export PYTHONPATH="$PWD/rl-defense:$PWD/shared:$PWD/standards:$PWD/examples/payments-lite/target"
 python -m rl_defense.research.evaluate verify --output rl-defense/results/constrained-phase1
-python rl-defense/results/constrained-phase1/read_legacy.py
+python -m rl_defense.research.legacy
 ```
 
 Verifier checks artifact hashes, exact source hashes, raw requests→outcomes→versioned
 r/c records, full seed/scenario sets, complete chains, bootstrap and every saved summary.
 If current product source changes, it **refuses** with the recorded-source instruction;
-use execution source `9d64604` plus these preserved artifacts in an isolated checkout.
+use a recorded verification revision from PR #388 with its matching review ledger.
+Its core execution semantics must match source `9d64604`; certification itself runs
+from a private commit-owned source snapshot.
 It never silently reinterprets these results under future source. `REPORT_EVIDENCE.json`
 additionally pins post-run documentation/readiness/registry proof; EVIDENCE.json retains
 the original execution-artifact pins unchanged. A pin requires a trusted Git/index root,
@@ -83,3 +85,7 @@ Decision: **no-go now** for constrained-DDQN/CQL; conditional preference for a s
 cost-aware DDQN ablation only after control feasibility, data/state support and a
 preregistered cost budget. Phase2 is not started. See the complete audit and decision
 under docs/research/constrained-rl-phase1.
+
+The original reproduction README is preserved byte-for-byte as `frozen/README.md`.
+The unchanged original reporting index resolves its README entry through that frozen
+copy. Current instructions are separately pinned by review evidence schema v2.
