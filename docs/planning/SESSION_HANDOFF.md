@@ -1350,3 +1350,11 @@ frontend/browser, docs, secrets). New fix CI will run on publication. Full local
 before added regressions347passed; shared60passed/1tsc skip then omitted test1passed
 separately with installed tsc. Full commands/limitations: Phase1 VERIFICATION.md.
 Research/checkpoint/registry guard unchanged. Stop here after review/CI; leave PR open.
+
+Historical compatibility exception additionally checks exact separately recorded
+post-review evaluator/proof hashes, so a future orchestration/import edit cannot
+silently reinterpret this run. Added drift regression;27focused tests pass in9.91s.
+Original scientific artifacts, execution/report indices, checkpoint and registry remain
+unchanged. Source tree/content published through connector; local branch metadata is
+an equivalent independent commit chain. Primary checkout and old experiment worktrees
+remain untouched. No merge: Phase1's deployment restriction governs this research PR.

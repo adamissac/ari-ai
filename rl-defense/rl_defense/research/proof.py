@@ -62,6 +62,17 @@ def check_source(root: Path, output: Path, config: dict, files: set[str]) -> Non
     verify_commit(raw, config["source_commit"], config["source_tree"])
     if old and config["source_tree"] != HISTORICAL_TREE:
         raise ValueError("historical source tree mismatch")
+    if old:
+        import json
+
+        review = json.loads((output / "REVIEW_EVIDENCE.json").read_bytes())
+        if review.get("schema") != "constrained-phase1-review-evidence/1":
+            raise ValueError("unsupported review evidence schema")
+        # The historical exception allows exactly the separately recorded verifier,
+        # not arbitrary future edits outside the two frozen collection functions.
+        for rel in (EVALUATOR_PATH, "rl-defense/rl_defense/research/proof.py"):
+            if digest((root / rel).read_bytes()) != review["files"][rel]:
+                raise ValueError("post-review source changed; use recorded verification source")
     for rel, sha in config["code_sha256"].items():
         p = (root / rel).resolve()
         if not p.is_relative_to(root):
