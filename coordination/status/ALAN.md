@@ -437,7 +437,7 @@ baseline episodes /4,200windows verified,8,400historical train transitions adapt
 read-only. Budgeted heuristic has99.50% availability but93.16% compromise, so **no-go
 now** for constrained-DDQN/CQL. No Phase2/training/promotion/serving change.
 
-26focused tests pass; original full347pass plus subsequent new regressions, shared
+27focused tests pass (9.91s); original full347pass plus subsequent new regressions, shared
 contracts60pass and skipped TypeScript check passed separately. All five CI workflows
 passed source184a61a; review-proof fixes pending current-head CI. Four review findings
 fixed with source Git-object proof, portable registry guard, policy-decision replay and

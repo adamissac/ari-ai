@@ -14,11 +14,11 @@ Executed results, in order of scope:
 
 - `"$RL_PY" -m pytest -q rl-defense/tests/test_constrained_research.py`:
   original20passed in9.53s; scanner correction21passed in9.65s; review fixes
-  **26passed in10.31s**. Includes measured cost/grants/collateral damage, unknowns,
+  **26passed in10.31s**, then **27passed in9.91s** with the historical-verifier drift regression. Includes measured cost/grants/collateral damage, unknowns,
   quiet/no-finding behavior, capabilities, provenance/splits/chains, deterministic
   episodes/bootstrap, policy-label checks, commit/tree/schema rejection and registry
   immutability with an always-present controlled fixture on every platform.
-- `"$RL_PY" -m pytest -q rl-defense/tests`: **347passed in256.62s** before the six
+- `"$RL_PY" -m pytest -q rl-defense/tests`: **347passed in256.62s** before the seven
   additional scanner/review regressions. An earlier relative-PYTHONPATH run had346passes
   and one subprocess import failure; absolute paths resolve that environment issue.
   No existing test was removed/weakened. Later complete current-head CI is linked in PR.

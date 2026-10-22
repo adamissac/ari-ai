@@ -385,3 +385,20 @@ def test_saved_original_source_and_commit_proof_are_immutable():
     with pytest.raises(ValueError, match="proof mismatch"):
         verify_commit(raw + b"tamper", config["source_commit"], config["source_tree"])
     assert digest((root / "frozen/evaluate.py.txt").read_bytes()) == HISTORICAL_EVALUATOR
+
+
+def test_historical_exception_refuses_unrecorded_future_verifier_changes(monkeypatch):
+    from pathlib import Path
+
+    from rl_defense.research.proof import check_source
+
+    root = ROOT / "rl-defense/results/constrained-phase1"
+    config = json.loads((root / "config.json").read_text())
+    index = json.loads((root / "EVIDENCE.json").read_text())
+    changed = ROOT / "rl-defense/rl_defense/research/proof.py"
+    original = Path.read_bytes
+    monkeypatch.setattr(
+        Path, "read_bytes", lambda p: b"future changed verifier" if p == changed else original(p)
+    )
+    with pytest.raises(ValueError, match="post-review source changed"):
+        check_source(ROOT, root, config, set(index["files"]))
