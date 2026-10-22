@@ -667,3 +667,35 @@ def test_runtime_and_scope_metadata_cannot_be_rehashed(tmp_path, change):
     (bundle / "EVIDENCE.json").write_bytes(ev.encoded(index))
     with pytest.raises(ValueError, match="runtime differs|scope metadata"):
         ev.verify(bundle)
+
+
+def test_verifier_captures_each_indexed_artifact_once(tmp_path, monkeypatch):
+    import shutil
+
+    import rl_defense.research.evaluate as ev
+
+    output = ROOT / "rl-defense/results/constrained-phase1"
+    shutil.copytree(output, tmp_path / "bundle")
+    bundle = tmp_path / "bundle"
+    original = ev.read_artifact
+    captured = {}
+
+    def read_once(path):
+        assert path.name not in captured, "artifact reopened after hash check"
+        blob = original(path)
+        captured[path.name] = blob
+        if path.name == "config.json":
+            path.write_bytes(b"swapped after capture")
+        return blob
+
+    monkeypatch.setattr(ev, "read_artifact", read_once)
+
+    # Stop before expensive reconstruction; success here proves config parsing used
+    # the captured hash-checked bytes despite the on-disk replacement.
+    def stop(*a, **kw):
+        raise RuntimeError("captured configuration reached provenance check")
+
+    monkeypatch.setattr(ev, "check_source", stop)
+    with pytest.raises(RuntimeError, match="captured configuration"):
+        ev.verify(bundle)
+    assert len(captured) == 5

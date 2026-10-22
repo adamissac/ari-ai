@@ -26,3 +26,7 @@ YAML/rule inputs, bounded gzip parsing, exact runtime checks and fixed scope met
 51 focused tests passed. Owner subsequently authorized merge; wait for latest CI and
 review, and retain the existing production build-skip rule for research-only paths.
 No original measurement or v6 artifact is changed.
+
+Sixth review: bounded artifact reads are captured once and reused for digest checks,
+metadata, decompression, adaptation, reconstruction, summary and source-commit proof.
+A swap-after-capture regression covers the race. Latest focused validation pending.

@@ -29,6 +29,7 @@ from rl_defense.research.proof import (
     bounded_gzip,
     check_semantic_inputs,
     check_source,
+    read_artifact,
     resolve_source,
     validate_raw_requests,
     validate_seed_selection,
@@ -295,18 +296,17 @@ def run(
 
 
 def verify(output: Path) -> dict:
-    index = json.loads((output / "EVIDENCE.json").read_bytes())
+    index = json.loads(read_artifact(output / "EVIDENCE.json"))
     if index.get("schema") != "constrained-lab-evidence/1":
         raise ValueError("unsupported evidence schema")
     expected_files = {"config.json", "raw.jsonl.gz", "transitions.jsonl.gz", "summary.json"}
     if set(index["files"]) not in (expected_files, expected_files | {"source.commit.txt"}):
         raise ValueError("unexpected evidence files")
+    artifacts = {name: read_artifact(output / name) for name in index["files"]}
     for name, sha in index["files"].items():
-        if (output / name).stat().st_size > 8 * 1024 * 1024:
-            raise ValueError("evidence file exceeds verification limit")
-        if digest((output / name).read_bytes()) != sha:
+        if digest(artifacts[name]) != sha:
             raise ValueError(f"evidence hash mismatch: {name}")
-    config = json.loads((output / "config.json").read_bytes())
+    config = json.loads(artifacts["config.json"])
     if config.get("schema") != "constrained-lab-evaluation/1":
         raise ValueError("unsupported configuration schema")
     if (
@@ -325,7 +325,9 @@ def verify(output: Path) -> dict:
         or config["gamma"] != 1.0
     ):
         raise ValueError("unsupported baseline profile semantics")
-    check_source(ROOT, output, config, set(index["files"]))
+    check_source(
+        ROOT, output, config, set(index["files"]), commit_object=artifacts.get("source.commit.txt")
+    )
     check_semantic_inputs(ROOT, config)
     scenarios = [LiveScenario.model_validate(d) for d in config["scenario_configs"]]
     if scenarios != load_scenarios("train", subdir="train_v8"):
@@ -355,15 +357,13 @@ def verify(output: Path) -> dict:
         "caller-supplied GitHub commit with matching tree",
     ):
         raise ValueError("evidence scope metadata mismatch")
-    raw = bounded_gzip(output / "raw.jsonl.gz")
-    bounded_gzip(output / "transitions.jsonl.gz")
+    raw = bounded_gzip(artifacts["raw.jsonl.gz"])
+    bounded_gzip(artifacts["transitions.jsonl.gz"])
     validate_raw_requests(raw, scenarios)
-    rows = records_from_raw((output / "raw.jsonl.gz").read_bytes(), scenarios)
+    rows = records_from_raw(raw, scenarios)
     saved = [
         ResearchTransition.model_validate_json(line)
-        for line in gzip.decompress((output / "transitions.jsonl.gz").read_bytes())
-        .decode()
-        .splitlines()
+        for line in gzip.decompress(artifacts["transitions.jsonl.gz"]).decode().splitlines()
     ]
     if rows != saved or index["dataset_id"] != rows[0].dataset_id:
         raise ValueError("raw-derived transitions differ from saved records")
@@ -386,7 +386,7 @@ def verify(output: Path) -> dict:
         bootstrap_seed=config["bootstrap_seed"],
         resamples=config["resamples"],
     )
-    if actual != json.loads((output / "summary.json").read_bytes()):
+    if actual != json.loads(artifacts["summary.json"]):
         raise ValueError("summary differs from raw evidence")
     return {
         "verified": True,

@@ -53,7 +53,9 @@ def verify_commit(raw: bytes, revision: str, tree: str) -> None:
         raise ValueError("source commit object/tree proof mismatch")
 
 
-def check_source(root: Path, output: Path, config: dict, files: set[str]) -> None:
+def check_source(
+    root: Path, output: Path, config: dict, files: set[str], *, commit_object: bytes | None = None
+) -> None:
     pins = config["code_sha256"]
     old = config["source_commit"] == HISTORICAL_SOURCE
     if old:
@@ -75,7 +77,11 @@ def check_source(root: Path, output: Path, config: dict, files: set[str]) -> Non
         if set(pins) != expected:
             raise ValueError("source manifest is incomplete or altered")
     if "source.commit.txt" in files:
-        raw = (output / "source.commit.txt").read_bytes()
+        raw = (
+            commit_object
+            if commit_object is not None
+            else (output / "source.commit.txt").read_bytes()
+        )
     elif old:
         raw = (output / "frozen/source.commit.txt").read_bytes()
     else:
@@ -261,14 +267,14 @@ def check_semantic_inputs(root: Path, config: dict) -> None:
                 raise ValueError("semantic input does not belong to source commit")
 
 
-def bounded_gzip(path: Path) -> bytes:
+def bounded_gzip(source: Path | bytes) -> bytes:
     """Bound both compressed and expanded memory before parsing untrusted JSON."""
     import gzip
     import io
 
-    if path.stat().st_size > 8 * 1024 * 1024:
+    raw = read_artifact(source) if isinstance(source, Path) else source
+    if len(raw) > 8 * 1024 * 1024:
         raise ValueError("compressed evidence exceeds verification limit")
-    raw = path.read_bytes()
     with gzip.GzipFile(fileobj=io.BytesIO(raw)) as stream:
         expanded = stream.read(64 * 1024 * 1024 + 1)
     if len(expanded) > 64 * 1024 * 1024:
@@ -308,3 +314,12 @@ def verify_deterministic_replay(raw: bytes, scenarios: list) -> None:
             raise ValueError(
                 "request labels/identities or outcomes differ from deterministic replay"
             )
+
+
+def read_artifact(path: Path) -> bytes:
+    """One bounded read supplies all subsequent hash/parse/replay operations."""
+    with path.open("rb") as stream:
+        blob = stream.read(8 * 1024 * 1024 + 1)
+    if len(blob) > 8 * 1024 * 1024:
+        raise ValueError("evidence file exceeds verification limit")
+    return blob
