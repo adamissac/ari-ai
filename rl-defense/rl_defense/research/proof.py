@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import hashlib
+import json
 import subprocess
 from pathlib import Path
 
@@ -16,6 +17,7 @@ from rl_defense.research.records import ResearchTransition
 HISTORICAL_SOURCE = "9d6460487275d25cc31194d7b603196d436c4485"
 HISTORICAL_TREE = "22c2f7f50c36e5fe5b7eb1d26c41b1b314438e4a"
 HISTORICAL_EVALUATOR = "8c0002a79444f367a3b34967c198d4b3b1a292d5573fc134553168d385452b2e"
+HISTORICAL_SOURCE_MAP = "2d00615c272bc2e16447b9069fd230ed43e21c96767f6996c2ea3a7e26b9d24d"
 EVALUATOR_PATH = "rl-defense/rl_defense/research/evaluate.py"
 
 
@@ -52,7 +54,26 @@ def verify_commit(raw: bytes, revision: str, tree: str) -> None:
 
 
 def check_source(root: Path, output: Path, config: dict, files: set[str]) -> None:
+    pins = config["code_sha256"]
     old = config["source_commit"] == HISTORICAL_SOURCE
+    if old:
+        if (
+            digest(json.dumps(pins, sort_keys=True, separators=(",", ":")).encode())
+            != HISTORICAL_SOURCE_MAP
+        ):
+            raise ValueError("historical source manifest is incomplete or altered")
+    else:
+        roots = (
+            "rl-defense/rl_defense",
+            "shared/shared",
+            "examples/payments-lite/target/payments_lite",
+            "standards/standards",
+        )
+        expected = {
+            str(p.relative_to(root)) for folder in roots for p in (root / folder).rglob("*.py")
+        }
+        if set(pins) != expected:
+            raise ValueError("source manifest is incomplete or altered")
     if "source.commit.txt" in files:
         raw = (output / "source.commit.txt").read_bytes()
     elif old:
@@ -63,8 +84,6 @@ def check_source(root: Path, output: Path, config: dict, files: set[str]) -> Non
     if old and config["source_tree"] != HISTORICAL_TREE:
         raise ValueError("historical source tree mismatch")
     if old:
-        import json
-
         review = json.loads((output / "REVIEW_EVIDENCE.json").read_bytes())
         if review.get("schema") != "constrained-phase1-review-evidence/1":
             raise ValueError("unsupported review evidence schema")
@@ -101,12 +120,11 @@ def check_source(root: Path, output: Path, config: dict, files: set[str]) -> Non
 
 
 def verify_policy_actions(root: Path, config: dict, rows: list[ResearchTransition]) -> None:
-    import json
-
     import numpy as np
 
     ckpt = root / "rl-defense/results/live-retrain-v6/candidate_online.pt"
-    if digest(ckpt.read_bytes()) != config["v6_checkpoint_sha256"]:
+    blob = ckpt.read_bytes()
+    if digest(blob) != config["v6_checkpoint_sha256"]:
         raise ValueError("policy checkpoint pin mismatch")
     if digest(ckpt.with_suffix(".manifest.json").read_bytes()) != config["v6_manifest_sha256"]:
         raise ValueError("policy manifest pin mismatch")
@@ -116,7 +134,7 @@ def verify_policy_actions(root: Path, config: dict, rows: list[ResearchTransitio
         or json.loads(params_path.read_bytes())["rules_params"] != config["rules_params"]
     ):
         raise ValueError("fixed rules provenance mismatch")
-    agent, _ = load_checkpoint(ckpt)
+    agent, _ = load_checkpoint(ckpt, blob=blob)
     choices = {
         "noop": lambda: noop_policy,
         "tuned_rules_shielded": lambda: rules_policy(config["rules_params"]),
@@ -141,3 +159,59 @@ def verify_policy_actions(root: Path, config: dict, rows: list[ResearchTransitio
                 raise ValueError(
                     f"action differs from claimed policy {policy}/{scenario}/{seed}/{r.t}"
                 )
+
+
+def validate_seed_selection(config: dict, scenarios: list) -> None:
+    n = config["episodes_per_scenario"]
+    if type(n) is not int or not 2 <= n <= 8:
+        raise ValueError("invalid declared episode count")
+    if any(s.episodes < n or len(s.seeds(n)) != n for s in scenarios):
+        raise ValueError("declared episode count exceeds registered seeds")
+    if config["episode_seeds"] != {s.name: s.seeds(n) for s in scenarios}:
+        raise ValueError("scenario seed selection mismatch")
+
+
+def validate_raw_requests(raw: bytes, scenarios: list) -> None:
+    """Validate recorded HTTP facts before deriving any outcome counts."""
+    import gzip
+    from dataclasses import fields
+
+    from rl_defense.live.adversary import delegation_grants
+    from rl_defense.live.gateway import RequestRecord
+
+    by = {s.name: s for s in scenarios}
+    names = {f.name for f in fields(RequestRecord)}
+    strings = {"node", "method", "path", "actor"}
+    nullable = {"blocked_reason", "principal", "owner"}
+    flags = {"is_attack", "compromised", "cross_tenant_attempt"}
+    statuses = {"isolated": 503, "principal_blocked": 403, "rate_limited": 429}
+    for line in gzip.decompress(raw).decode().splitlines():
+        ep = json.loads(line)
+        grants = delegation_grants(by[ep["scenario"]].driver().delegates)
+        for step in ep["steps"]:
+            for q in step["requests"]:
+                if (
+                    set(q) != names
+                    or any(type(q[k]) is not str for k in strings)
+                    or any(q[k] is not None and type(q[k]) is not str for k in nullable)
+                    or any(type(q[k]) is not bool for k in flags)
+                    or type(q["status"]) is not int
+                    or not 100 <= q["status"] <= 599
+                ):
+                    raise ValueError("invalid raw request shape")
+                principal, owner, reason = q["principal"], q["owner"], q["blocked_reason"]
+                foreign = principal is not None and owner is not None and principal != owner
+                cross = foreign and owner not in grants.get(principal, ())
+                if (
+                    q["cross_tenant_attempt"] != cross
+                    or (
+                        reason is not None
+                        and (reason not in statuses or q["status"] != statuses[reason])
+                    )
+                    or (reason == "principal_blocked" and principal is None)
+                    or (
+                        q["compromised"]
+                        and (reason is not None or q["status"] != 200 or not foreign)
+                    )
+                ):
+                    raise ValueError("contradictory raw request outcome")
