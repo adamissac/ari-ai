@@ -24,3 +24,11 @@ regexes = ['''fixture-token-(alice|bob)''', '''replace-me''']
 description = "Pinned upstream git commit SHAs in *_COMMIT constants"
 regexTarget = "line"
 regexes = ['''^\s*[A-Z][A-Z0-9_]*_COMMIT\s*=\s*"[0-9a-f]{40}"\s*$''']
+
+# Evidence JSON maps source paths to SHA-256 digests. generic-api-key fires when a
+# path contains "api.py" next to a 64-hex digest (not a credential). Keep this
+# narrower than "any 64-hex string" so real api_key / token assignments still fail.
+[[allowlists]]
+description = "SHA-256 file digests for *api.py paths in evidence JSON"
+regexTarget = "line"
+regexes = ['''"[^"]*api\.py":\s*"[0-9a-f]{64}"''']

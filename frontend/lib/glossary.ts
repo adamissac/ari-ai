@@ -11,6 +11,7 @@ export const GLOSSARY = {
   agent: 'An AI worker with one job and a limited set of tools. Each of the eight agents is a separate program.',
   approval: 'A decision a person makes before the system is allowed to do something with consequences.',
   monitoring: 'Watching the code repository for new changes, so each change can be checked again.',
+  'live defense': 'The customer view of recorded events, incidents and simulation-trained recommendations for a project. It does not apply controls on a live system.',
   simulation: 'A practice environment made of fake computers. Results from it say nothing certain about real networks.',
   policy: 'The decision rule a defender follows: for each situation, which action to take.',
   provider: 'Where the AI replies came from. "Live" means a real AI model answered; "scripted" means pre-written test replies were used.',
