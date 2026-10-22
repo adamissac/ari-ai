@@ -150,7 +150,8 @@ def verify_policy_actions(root: Path, config: dict, rows: list[ResearchTransitio
     blob = ckpt.read_bytes()
     if digest(blob) != config["v6_checkpoint_sha256"]:
         raise ValueError("policy checkpoint pin mismatch")
-    if digest(ckpt.with_suffix(".manifest.json").read_bytes()) != config["v6_manifest_sha256"]:
+    manifest_blob = read_artifact(ckpt.with_suffix(".manifest.json"))
+    if digest(manifest_blob) != config["v6_manifest_sha256"]:
         raise ValueError("policy manifest pin mismatch")
     params_path = root / "rl-defense/results/duration-screen/RUN.json"
     if (
@@ -158,7 +159,8 @@ def verify_policy_actions(root: Path, config: dict, rows: list[ResearchTransitio
         or json.loads(params_path.read_bytes())["rules_params"] != config["rules_params"]
     ):
         raise ValueError("fixed rules provenance mismatch")
-    agent, _ = load_checkpoint(ckpt, blob=blob)
+    agent, embedded = load_checkpoint(ckpt, blob=blob)
+    validate_checkpoint_manifest(json.loads(manifest_blob), embedded, ckpt.name)
     choices = {
         "noop": lambda: noop_policy,
         "tuned_rules_shielded": lambda: rules_policy(config["rules_params"]),
@@ -242,12 +244,16 @@ def check_semantic_inputs(root: Path, config: dict) -> None:
     paths = sorted(
         str(p.relative_to(root)) for p in (root / "rl-defense/configs/live/train_v8").glob("*.yaml")
     )
-    paths += ["rl-defense/results/duration-screen/RUN.json"]
+    paths += [
+        "rl-defense/results/duration-screen/RUN.json",
+        "rl-defense/configs/topology/payments_lite.yaml",
+        "rl-defense/results/live-retrain-v6/candidate_online.manifest.json",
+    ]
     pins = {p: digest((root / p).read_bytes()) for p in paths}
     if config["source_commit"] == HISTORICAL_SOURCE:
         if (
             digest(json.dumps(pins, sort_keys=True, separators=(",", ":")).encode())
-            != "4f24783253f56c2f0f72d48d652711f8d72531f1133c2ee46622a2ac3543a057"
+            != "f87fdf3c404f095c1deb5deceee75094764c1583cc0cfe33cd8aefba98682287"
         ):
             raise ValueError("historical semantic inputs changed")
     else:
@@ -264,7 +270,7 @@ def check_semantic_inputs(root: Path, config: dict) -> None:
             cwd=root,
             text=True,
         ).splitlines()
-        if set(tracked) != set(paths[:-1]):
+        if set(tracked) != set(paths[:-3]):
             raise ValueError("scenario input set differs from source commit")
         for p, sha in pins.items():
             committed = subprocess.check_output(
@@ -362,3 +368,9 @@ def verify_runtime_closure(root: Path, output: Path, config: dict) -> None:
         expected = profile["environment_packages"]
     if expected != environment_packages():
         raise ValueError("full dependency closure differs from recorded verification runtime")
+
+
+def validate_checkpoint_manifest(sidecar: dict, embedded: dict, name: str) -> None:
+    expected = {**embedded, "checkpoint_file": name}
+    if sidecar != expected:
+        raise ValueError("checkpoint sidecar lineage differs from pinned embedded manifest")
