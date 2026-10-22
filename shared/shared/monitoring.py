@@ -99,11 +99,22 @@ class ReassessmentRequest(StrictModel):
 
 # --------------------------------------------------------------- runtime signals (docs/10 "S")
 
-RuntimeSource = Literal["runtime_demo", "replay", "simulated", "drill"]
-"""Provenance label. There is NO production telemetry source in MVP: ``runtime_demo`` is
-the sandboxed demo target, ``replay``/``simulated`` are recorded or synthetic windows, and
-``drill`` is an attack drill's synthetic counters (backend.simulated_attack). Each source has
-its own scoring history, so a drill never becomes the baseline of a real reporter."""
+RuntimeSource = Literal["runtime_demo", "replay", "simulated", "drill", "owned_staging"]
+"""Provenance label. There is NO production telemetry source in MVP.
+
+* ``owned_staging`` — authenticated counters from an owner-registered sandbox/owned_test
+  app (Live Defense Phase 3). Simulated is false; never labelled as live replay.
+* ``runtime_demo`` — sandboxed demo target (also authenticated when ingested with a
+  valid token; kept for Phase 2 compatibility).
+* ``replay`` / ``simulated`` — recorded or synthetic windows.
+* ``drill`` — attack-drill synthetic counters (backend.simulated_attack).
+
+Each source has its own scoring history, so a drill never becomes the baseline of a
+real reporter.
+"""
+
+AUTHENTICATED_RUNTIME_SOURCES: frozenset[str] = frozenset({"owned_staging", "runtime_demo"})
+"""Sources whose ingest events are labelled authenticated (``simulated=False``)."""
 
 
 PrincipalRef = Annotated[

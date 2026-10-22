@@ -3,6 +3,7 @@
   "enforcement": "none",
   "executes": false,
   "id": "arv_01JFIXTURE0000000000000ARV",
+  "live_policy_decision_id": null,
   "project_id": "prj_01JFIXTURE0000000000000PRJ",
   "reason": "Need the linked runtime event before accepting.",
   "recommendation_id": "rec_0123456789abcdef0123456789abcdef",

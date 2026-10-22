@@ -11,7 +11,7 @@
     }
   },
   "additionalProperties": false,
-  "description": "Human review of a stored recommendation. Accept does not execute anything.",
+  "description": "Human review of a stored recommendation or live shadow decision.\n\nAccept does not execute anything and is never converted into an RL label.",
   "properties": {
     "decision": {
       "$ref": "#/$defs/AnalystReviewDecision"
@@ -33,6 +33,19 @@
       "title": "Id",
       "type": "string"
     },
+    "live_policy_decision_id": {
+      "anyOf": [
+        {
+          "pattern": "^lpd_[0-9A-Za-z_\\-]{8,64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Live Policy Decision Id"
+    },
     "project_id": {
       "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Project Id",
@@ -52,9 +65,17 @@
       "title": "Reason"
     },
     "recommendation_id": {
-      "pattern": "^rec_[0-9A-Za-z_\\-]{8,64}$",
-      "title": "Recommendation Id",
-      "type": "string"
+      "anyOf": [
+        {
+          "pattern": "^rec_[0-9A-Za-z_\\-]{8,64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Recommendation Id"
     },
     "reviewed_at": {
       "format": "date-time",
@@ -70,7 +91,6 @@
   "required": [
     "id",
     "project_id",
-    "recommendation_id",
     "decision",
     "reviewed_by",
     "reviewed_at"
