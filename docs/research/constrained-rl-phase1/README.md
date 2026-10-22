@@ -29,3 +29,6 @@ Adapted8,400old training transitions read-only: aggregate costs known;280initial
 all propensities and all delegated-denial attributions unknown. Familiar training seeds,
 shielded selection semantics and partial observation prevent broader effectiveness claims.
 Test commands/results and evidence limitations are recorded with the results/handoff.
+
+Proposed next readiness work: [NEXT_GATE.md](NEXT_GATE.md), without execution
+authorization or invented safety thresholds.
