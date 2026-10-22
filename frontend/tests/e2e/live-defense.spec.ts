@@ -76,13 +76,15 @@ test('Live Defense shadow pilot: staging app, ingest, unknown health, review wit
   expect(incidentRes.ok(), await incidentRes.text()).toBeTruthy();
   const incident = await incidentRes.json() as { id: string };
 
-  await page.getByRole('link', { name: 'Overview' }).click();
+  await page.getByRole('navigation', { name: 'Live Defense' }).getByRole('link', { name: 'Overview' }).click();
+  await expect(page).toHaveURL(new RegExp(`/projects/${pid}/live-defense/?$`));
   await expect.poll(async () => {
     const listed = await page.request.get(`${api}/projects/${pid}/live-policy-decisions`);
     if (!listed.ok()) return 0;
     return ((await listed.json()) as { items: unknown[] }).items.length;
   }).toBeGreaterThan(0);
   await page.reload();
+  await expect(page.getByTestId('live-defense')).toHaveAttribute('data-mode', 'live');
   await expect(page.getByTestId('live-defense-summary')).toContainText('staging app');
   await expect(page.getByTestId('live-defense-summary')).toContainText('Authenticated ingest has been recorded');
   await expect(page.getByTestId('live-defense-summary')).toContainText('none executed');
