@@ -1,6 +1,6 @@
 # Live autonomous defense: audit and plan
 
-Status: **plan for a later enforcement slice**, not what Phase 1/2 shipped. Phase 1 (PR #390) and Phase 2 (`feat/live-defense-pilot-phase2`) implement a **shadow-pilot dashboard**: staging-app onboarding, authenticated ingest, stored simulation-derived recommendations, and analyst review **without** adapters, DETECTED→EXECUTING, production grants, or automatic control of customer traffic. Do not treat the components in sections 2–7 as implemented.
+Status: **plan for a later enforcement slice (Phase 4+)**, not what Phase 1–3 shipped. Phase 1 (PR #390) and Phase 2 (PR #391) implement a **shadow-pilot dashboard**. Phase 3 (`feat/live-defense-phase3-shadow-runtime`) adds authenticated `owned_staging` ingest, deterministic rules, optional frozen-v6 **shadow** `LivePolicyDecision` rows (NOT EXECUTED), and analyst review of those records. Adapters, DETECTED→EXECUTING, production grants, and automatic control of customer traffic are still **not** implemented. Do not treat sections 4–7 (authorize, adapters, executing) as implemented.
 
 ## 1. What already exists (audited on main `8943622`)
 

@@ -132,7 +132,7 @@ installed Chrome instead of Playwright's Chromium, `E2E_SKIP_BUILD=1` to reuse `
 - GitHub links stay off when an assessment scope names more than one repository. Findings still do not carry a repo id.
 - Live-provider (`provider_mode=live`) runs have not been exercised through the UI.
 - The project journey cannot see a phase the latest assessment's event log did not record. Phase views follow the events log's `next_cursor` from `after=0`; they stop after 20 pages (10,000 events) and then say a later phase may be unmarked.
-- Live Defense still has no live-incident machine (DETECTED→EXECUTING) and no live policy-decision producer. Those stay labelled unimplemented. Staging apps, ingest metadata, recorded health/topology and analyst reviews are implemented; health is never inferred from HTTP 200. [LIVE_DEFENSE_FRONTEND_API.md](../docs/planning/LIVE_DEFENSE_FRONTEND_API.md).
+- Live Defense still has no live-incident machine (DETECTED→EXECUTING). Shadow `LivePolicyDecision` rows from authenticated staging ingest are implemented (NOT EXECUTED). Staging apps, ingest metadata, recorded health/topology and analyst reviews are implemented; health is never inferred from HTTP 200. [LIVE_DEFENSE_FRONTEND_API.md](../docs/planning/LIVE_DEFENSE_FRONTEND_API.md).
 
 Assessment start retries keep their key after network errors. An explicit
 IDEMPOTENCY_CONFLICT offers “Prepare a new assessment action”: it sends nothing

@@ -36,6 +36,7 @@ from backend.db import (
     runtime_windows,
     transaction,
 )
+from backend.live_defense.quarantine import secret_like_reason
 from backend.services import project_org
 from monitoring.api import ANOMALY_EVENT_THRESHOLD, score_window
 from shared.audit import ActorType
@@ -44,6 +45,7 @@ from shared.errors import ErrorCode
 from shared.findings import Finding, FindingKind, FindingStatus
 from shared.ids import IdPrefix, new_id
 from shared.monitoring import (
+    AUTHENTICATED_RUNTIME_SOURCES,
     EventSource,
     EventStatus,
     EventType,
@@ -283,7 +285,7 @@ def ingest(
                 dedupe_key=f"runtime:{batch.source}:{window.route}:{batch.window_end.isoformat()}"[
                     :500
                 ],
-                simulated=batch.source != "runtime_demo",
+                simulated=batch.source not in AUTHENTICATED_RUNTIME_SOURCES,
                 status=EventStatus.processed,
                 status_reason=f"[{batch.source}] {window.route} anomaly={sc.anomaly_score:.2f}: {reason}"[
                     :500
@@ -305,6 +307,21 @@ def ingest(
 
             correlate_anomaly(conn, ev, linked, window.route)
             event_ids.append(ev.id)
+        if batch.source in AUTHENTICATED_RUNTIME_SOURCES:
+            jobs.enqueue(
+                conn,
+                "live_defense_shadow",
+                {
+                    "project_id": project_id,
+                    "application_id": application_id,
+                    "window_end": batch.window_end.isoformat(),
+                    "source": batch.source,
+                },
+                dedupe_key=(
+                    f"live_defense_shadow:{project_id}:{application_id or '-'}"
+                    f":{batch.window_end.isoformat()}:{batch.source}"
+                ),
+            )
         audit.record(
             conn,
             org_id=project_org(conn, project_id),
@@ -318,6 +335,7 @@ def ingest(
                 "source": batch.source,
                 "routes": len(batch.routes),
                 "anomalies": len(event_ids),
+                "application_id": application_id,
             },
         )
     return RuntimeIngestAck(
@@ -339,7 +357,15 @@ async def ingest_runtime(project_id: str, request: Request) -> JSONResponse:
     token_id, application_id = await run_in_threadpool(_auth)
     limiter.check(f"ingest:{token_id}", 60, 60)
     try:
-        batch = RuntimeSignalBatch.model_validate_json(raw)
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as e:
+        raise ApiError(ErrorCode.VALIDATION_FAILED, "invalid JSON", 422) from e
+    secret_reason = secret_like_reason(parsed)
+    if secret_reason:
+        await run_in_threadpool(_record_quarantine, project_id, token_id, secret_reason)
+        raise ApiError(ErrorCode.VALIDATION_FAILED, secret_reason, 422)
+    try:
+        batch = RuntimeSignalBatch.model_validate(parsed)
     except ValidationError as e:
         errors: Any = e.errors(include_url=False)
         raise ApiError(
@@ -348,8 +374,54 @@ async def ingest_runtime(project_id: str, request: Request) -> JSONResponse:
             422,
             {"errors": json.loads(json.dumps(errors, default=str))[:20]},
         ) from e
+    if batch.source == "owned_staging" and application_id is None:
+        raise ApiError(
+            ErrorCode.VALIDATION_FAILED,
+            "owned_staging ingest requires an application-bound token",
+            422,
+        )
     ack = await run_in_threadpool(ingest, project_id, token_id, batch, application_id)
     return JSONResponse(ack.model_dump(mode="json"), status_code=202)
+
+
+def _record_quarantine(project_id: str, token_id: str, reason: str) -> None:
+    """Persist that a batch was dropped. Do not store the rejected payload."""
+    ev = MonitoringEvent(
+        id=new_id(IdPrefix.evt),
+        project_id=project_id,
+        source=EventSource.runtime,
+        type=EventType.log_anomaly,
+        occurred_at=utcnow(),
+        received_at=utcnow(),
+        dedupe_key=f"quarantine:{token_id}:{utcnow().isoformat()}"[:500],
+        simulated=False,
+        status=EventStatus.ignored,
+        status_reason=reason[:500],
+    )
+    with transaction() as conn:
+        conn.execute(
+            pg_insert(monitoring_events)
+            .values(
+                id=ev.id,
+                project_id=project_id,
+                repo_id=None,
+                dedupe_key=ev.dedupe_key,
+                status=ev.status.value,
+                doc=ev.model_dump(mode="json"),
+            )
+            .on_conflict_do_nothing()
+        )
+        audit.record(
+            conn,
+            org_id=project_org(conn, project_id),
+            project_id=project_id,
+            actor_type=ActorType.system,
+            actor_id=f"ingest:{token_id}",
+            action="runtime.quarantined",
+            subject_type="project",
+            subject_id=project_id,
+            details={"reason": reason, "payload_stored": False},
+        )
 
 
 def latest_route_detections(

@@ -59,6 +59,8 @@ describe('overview copy', () => {
     appCount: 1,
     healthKnown: true,
     lastIngestAt: '2026-10-22T00:00:00Z',
+    shadowKnown: true,
+    shadowCount: 2,
   };
 
   it('labels simulated events and does not claim a healthy verdict', () => {
@@ -66,6 +68,7 @@ describe('overview copy', () => {
     expect(text).toContain('2 recorded events, 1 labelled simulated');
     expect(text).toContain('1 open incident, 1 labelled synthetic');
     expect(text).toContain('none is applied automatically');
+    expect(text).toContain('2 shadow decisions recorded; none executed');
     expect(text).toContain('health stays unknown');
     expect(text).not.toMatch(/\bhealthy\b/);
   });
@@ -83,6 +86,8 @@ describe('overview copy', () => {
       appCount: 99,
       healthKnown: false,
       lastIngestAt: null,
+      shadowKnown: false,
+      shadowCount: 99,
     });
     expect(text).toContain('have not loaded');
     expect(text).not.toContain('99');
@@ -130,8 +135,10 @@ describe('source isolation', () => {
 
   it('documents existing endpoints and the ones still missing', () => {
     expect(USED_LIVE_APIS.some(item => item.path.includes('/defense-recommendations'))).toBe(true);
+    expect(USED_LIVE_APIS.some(item => item.path.includes('/live-policy-decisions'))).toBe(true);
     expect(USED_LIVE_APIS.some(item => item.path.includes('/applications'))).toBe(true);
-    expect(MISSING_LIVE_APIS.map(item => item.id)).toContain('live_inference');
+    expect(MISSING_LIVE_APIS.map(item => item.id)).toContain('live_incidents');
+    expect(MISSING_LIVE_APIS.map(item => item.id)).not.toContain('live_inference');
     expect(MISSING_LIVE_APIS.map(item => item.id)).not.toContain('component_health');
   });
 });

@@ -349,6 +349,24 @@ reassessment_requests = sa.Table(
     _created(),
 )
 
+live_policy_decisions = sa.Table(
+    "live_policy_decisions",
+    metadata,
+    _id(),
+    sa.Column(
+        "project_id", sa.String(80), sa.ForeignKey("projects.id"), nullable=False, index=True
+    ),
+    sa.Column("application_id", sa.String(80), sa.ForeignKey("connected_applications.id")),
+    sa.Column("window_end", TS, nullable=False),
+    sa.Column("source", sa.String(20), nullable=False),
+    sa.Column("producer", sa.String(20), nullable=False),
+    sa.Column("inference_ran", sa.Boolean(), nullable=False),
+    sa.Column("dedupe_key", sa.String(400), nullable=False, unique=True),
+    sa.Column("doc", JSONB, nullable=False),
+    _created(),
+    sa.CheckConstraint("producer in ('rules','v6_shadow','abstention')", name="producer"),
+)
+
 defense_recommendations = sa.Table(
     "defense_recommendations",
     metadata,
@@ -473,7 +491,14 @@ analyst_reviews = sa.Table(
         "recommendation_id",
         sa.String(80),
         sa.ForeignKey("defense_recommendations.id"),
-        nullable=False,
+        nullable=True,
+        index=True,
+    ),
+    sa.Column(
+        "live_policy_decision_id",
+        sa.String(80),
+        sa.ForeignKey("live_policy_decisions.id"),
+        nullable=True,
         index=True,
     ),
     sa.Column("decision", sa.String(40), nullable=False),
@@ -481,6 +506,11 @@ analyst_reviews = sa.Table(
     sa.Column("doc", JSONB, nullable=False),
     _created(),
     sa.CheckConstraint("decision in ('accept','reject','needs_investigation')", name="decision"),
+    sa.CheckConstraint(
+        "(recommendation_id IS NOT NULL AND live_policy_decision_id IS NULL) "
+        "OR (recommendation_id IS NULL AND live_policy_decision_id IS NOT NULL)",
+        name="review_subject",
+    ),
 )
 
 

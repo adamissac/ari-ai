@@ -9,13 +9,16 @@ const DECISIONS: AnalystReviewCreate['decision'][] = ['accept', 'reject', 'needs
 
 export function AnalystReviewForm({
   recommendationId,
+  livePolicyDecisionId,
   history,
   onSaved,
 }: {
-  recommendationId: string;
+  recommendationId?: string;
+  livePolicyDecisionId?: string;
   history: AnalystReview[];
   onSaved?: () => void;
 }) {
+  const subjectId = livePolicyDecisionId ?? recommendationId ?? 'unknown';
   const [decision, setDecision] = useState<AnalystReviewCreate['decision']>('needs_investigation');
   const [reason, setReason] = useState('');
   const [status, setStatus] = useState<'idle' | 'saving' | 'error'>('idle');
@@ -24,10 +27,10 @@ export function AnalystReviewForm({
     setStatus('saving');
     setError(null);
     try {
-      await api().createRecommendationReview(recommendationId, {
-        decision,
-        reason: reason.trim() ? reason.trim() : null,
-      });
+      const body = { decision, reason: reason.trim() ? reason.trim() : null };
+      if (livePolicyDecisionId) await api().createLivePolicyDecisionReview(livePolicyDecisionId, body);
+      else if (recommendationId) await api().createRecommendationReview(recommendationId, body);
+      else throw new Error('Review needs a recommendation or a live policy decision');
       setReason('');
       setStatus('idle');
       onSaved?.();
@@ -37,7 +40,7 @@ export function AnalystReviewForm({
     }
   };
   return (
-    <div className="mt-4 border-t border-line pt-3" data-testid={`live-defense-review-${recommendationId}`}>
+    <div className="mt-4 border-t border-line pt-3" data-testid={`live-defense-review-${subjectId}`}>
       <p className="text-sm font-medium text-ink">Analyst review</p>
       <p className="mt-1 text-xs text-muted">
         Accept records your opinion only. It does not apply a control, start an adapter, or replace a two-person incident approval.

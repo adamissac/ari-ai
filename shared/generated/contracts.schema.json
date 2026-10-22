@@ -394,7 +394,7 @@
     },
     "AnalystReview": {
       "additionalProperties": false,
-      "description": "Human review of a stored recommendation. Accept does not execute anything.",
+      "description": "Human review of a stored recommendation or live shadow decision.\n\nAccept does not execute anything and is never converted into an RL label.",
       "properties": {
         "decision": {
           "$ref": "#/$defs/AnalystReviewDecision"
@@ -416,6 +416,19 @@
           "title": "Id",
           "type": "string"
         },
+        "live_policy_decision_id": {
+          "anyOf": [
+            {
+              "pattern": "^lpd_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Live Policy Decision Id"
+        },
         "project_id": {
           "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Project Id",
@@ -435,9 +448,17 @@
           "title": "Reason"
         },
         "recommendation_id": {
-          "pattern": "^rec_[0-9A-Za-z_\\-]{8,64}$",
-          "title": "Recommendation Id",
-          "type": "string"
+          "anyOf": [
+            {
+              "pattern": "^rec_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recommendation Id"
         },
         "reviewed_at": {
           "format": "date-time",
@@ -454,6 +475,7 @@
         "id",
         "project_id",
         "recommendation_id",
+        "live_policy_decision_id",
         "decision",
         "reason",
         "reviewed_by",
@@ -1195,6 +1217,16 @@
       ],
       "title": "AuditEvent",
       "type": "object"
+    },
+    "AuthorizationContext": {
+      "description": "Whether the reporter supplied ownership classification with the window.",
+      "enum": [
+        "verified",
+        "unverified",
+        "missing"
+      ],
+      "title": "AuthorizationContext",
+      "type": "string"
     },
     "AuthorizedScope": {
       "additionalProperties": false,
@@ -4996,6 +5028,23 @@
       "title": "IncidentTimelineEntry",
       "type": "object"
     },
+    "InferenceStatus": {
+      "description": "Whether frozen v6 inference ran. Q-values exist only when ``ran``.",
+      "enum": [
+        "ran",
+        "skipped_quiet_window",
+        "skipped_incomplete",
+        "skipped_stale",
+        "skipped_source",
+        "skipped_unavailable",
+        "skipped_schema",
+        "skipped_mask",
+        "skipped_authorization",
+        "skipped_target"
+      ],
+      "title": "InferenceStatus",
+      "type": "string"
+    },
     "IngestTokenCreated": {
       "additionalProperties": false,
       "properties": {
@@ -5235,6 +5284,310 @@
         "imported_at"
       ],
       "title": "LegacyScore",
+      "type": "object"
+    },
+    "LivePolicyDecision": {
+      "additionalProperties": false,
+      "description": "One shadow decision for one ingest window. Never an executed control.",
+      "properties": {
+        "abstention_reason": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Abstention Reason"
+        },
+        "action": {
+          "anyOf": [
+            {
+              "enum": [
+                "noop",
+                "raise_monitoring",
+                "rate_limit",
+                "isolate",
+                "request_reassessment",
+                "escalate_to_human",
+                "block_principal",
+                "block_principal_long",
+                "block_top_principal_long"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Action"
+        },
+        "action_mask_valid": {
+          "title": "Action Mask Valid",
+          "type": "boolean"
+        },
+        "application_id": {
+          "anyOf": [
+            {
+              "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Application Id"
+        },
+        "authorization_context": {
+          "$ref": "#/$defs/AuthorizationContext"
+        },
+        "caveat": {
+          "default": "Shadow recommendation from authenticated staging telemetry. Not executed. Q-values appear only when frozen v6 inference actually ran.",
+          "maxLength": 500,
+          "title": "Caveat",
+          "type": "string"
+        },
+        "checkpoint_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Checkpoint Sha256"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "enforcement": {
+          "const": "NOT_EXECUTED",
+          "default": "NOT_EXECUTED",
+          "title": "Enforcement",
+          "type": "string"
+        },
+        "evidence_event_ids": {
+          "items": {
+            "pattern": "^evt_[0-9A-Za-z_\\-]{8,64}$",
+            "type": "string"
+          },
+          "title": "Evidence Event Ids",
+          "type": "array"
+        },
+        "executed": {
+          "const": false,
+          "default": false,
+          "title": "Executed",
+          "type": "boolean"
+        },
+        "feature_mapping_note": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Feature Mapping Note"
+        },
+        "feature_schema_ok": {
+          "title": "Feature Schema Ok",
+          "type": "boolean"
+        },
+        "freshness_ok": {
+          "title": "Freshness Ok",
+          "type": "boolean"
+        },
+        "id": {
+          "pattern": "^lpd_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "inference_ran": {
+          "title": "Inference Ran",
+          "type": "boolean"
+        },
+        "inference_status": {
+          "$ref": "#/$defs/InferenceStatus"
+        },
+        "node": {
+          "anyOf": [
+            {
+              "enum": [
+                "gateway",
+                "api",
+                "auth",
+                "payments",
+                "db"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Node"
+        },
+        "observation": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Null when inference did not run; never synthesized",
+          "title": "Observation"
+        },
+        "observation_complete": {
+          "title": "Observation Complete",
+          "type": "boolean"
+        },
+        "policy_version": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Policy Version"
+        },
+        "principal_targets": {
+          "items": {
+            "description": "Pseudonymous principal reference chosen by the reporter (e.g. an HMAC of its user id under a key the platform never sees); never an email or raw id",
+            "pattern": "^prn_[A-Za-z0-9_-]{4,64}$",
+            "type": "string"
+          },
+          "title": "Principal Targets",
+          "type": "array"
+        },
+        "producer": {
+          "$ref": "#/$defs/ShadowProducer"
+        },
+        "project_id": {
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "q_margin": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Null when inference did not run; never synthesized",
+          "title": "Q Margin"
+        },
+        "rule_hits": {
+          "items": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "title": "Rule Hits",
+          "type": "array"
+        },
+        "rules_ran": {
+          "title": "Rules Ran",
+          "type": "boolean"
+        },
+        "simulated": {
+          "title": "Simulated",
+          "type": "boolean"
+        },
+        "telemetry_source": {
+          "enum": [
+            "runtime_demo",
+            "replay",
+            "simulated",
+            "drill",
+            "owned_staging"
+          ],
+          "title": "Telemetry Source",
+          "type": "string"
+        },
+        "top_actions": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/ActionScore"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Q ranking from frozen v6; null when inference did not run",
+          "title": "Top Actions"
+        },
+        "window_end": {
+          "format": "date-time",
+          "title": "Window End",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "application_id",
+        "created_at",
+        "window_end",
+        "telemetry_source",
+        "simulated",
+        "producer",
+        "rules_ran",
+        "inference_ran",
+        "inference_status",
+        "action",
+        "node",
+        "top_actions",
+        "q_margin",
+        "observation",
+        "policy_version",
+        "checkpoint_sha256",
+        "abstention_reason",
+        "observation_complete",
+        "feature_schema_ok",
+        "action_mask_valid",
+        "freshness_ok",
+        "authorization_context",
+        "enforcement",
+        "executed",
+        "evidence_event_ids",
+        "rule_hits",
+        "principal_targets",
+        "feature_mapping_note",
+        "caveat"
+      ],
+      "title": "LivePolicyDecision",
       "type": "object"
     },
     "MappedVia": {
@@ -6937,7 +7290,8 @@
             "runtime_demo",
             "replay",
             "simulated",
-            "drill"
+            "drill",
+            "owned_staging"
           ],
           "title": "Source",
           "type": "string"
@@ -7086,7 +7440,8 @@
             "runtime_demo",
             "replay",
             "simulated",
-            "drill"
+            "drill",
+            "owned_staging"
           ],
           "title": "Source",
           "type": "string"
@@ -7303,6 +7658,16 @@
         "critical"
       ],
       "title": "SeverityLevel",
+      "type": "string"
+    },
+    "ShadowProducer": {
+      "description": "What actually produced the persisted shadow decision.",
+      "enum": [
+        "rules",
+        "v6_shadow",
+        "abstention"
+      ],
+      "title": "ShadowProducer",
       "type": "string"
     },
     "Snapshot": {
@@ -8566,5 +8931,5 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "HackATL platform contracts",
-  "x-schema-version": "0.16.0"
+  "x-schema-version": "0.17.0"
 }

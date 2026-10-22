@@ -97,6 +97,7 @@ upgrade()
 
 _TABLES = [
     "analyst_reviews",
+    "live_policy_decisions",
     "incidents",
     "runtime_windows",
     "ingest_tokens",
