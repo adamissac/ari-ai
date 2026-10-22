@@ -1328,3 +1328,25 @@ exclusion; local gitleaks8.30.1 history scan passes. A temporary Git fixture pro
 manifest hashes pass while a synthetic credential-shaped api_key in that **same file**
 still fails. New regression checks the exception's scope and historical pins. Original
 execution evidence/source semantics remain unchanged; no result recollection/rewrite.
+
+### RL-CMDP-001 — Phase1 review corrections; no merge/deployment
+
+PR388 remains deliberately on the dedicated research branch: latest owner Phase1
+request forbids production deployments; root vercel.json enables main deployments.
+This takes precedence over earlier general merge permission. No Phase2 work.
+
+Automated review's four P2s are addressed: resolve actual published commit/tree;
+portable always-present champion fixture plus canonical-registry absence/byte checks;
+verify every baseline action against actual pinned policy inputs on saved observations;
+reject unknown index/config schema versions.26focused tests pass in10.31s. Stronger
+verifier reproduces all140episodes /4,200transitions from the original artifacts,
+without new lab episodes or altering a measurement. No hypothesis or decision changed.
+The exact original evaluator and cryptographically verified original Git commit object
+are retained; collection/adaptation ASTs and all original reward/cost/policy/environment
+source hashes must remain identical. New verification source is separately identified.
+
+Main source before fixes `184a61a`: all five workflows green (RL, backend incl integration,
+frontend/browser, docs, secrets). New fix CI will run on publication. Full local suite
+before added regressions347passed; shared60passed/1tsc skip then omitted test1passed
+separately with installed tsc. Full commands/limitations: Phase1 VERIFICATION.md.
+Research/checkpoint/registry guard unchanged. Stop here after review/CI; leave PR open.

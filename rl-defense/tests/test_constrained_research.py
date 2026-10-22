@@ -5,7 +5,6 @@ from __future__ import annotations
 import ast
 import gzip
 import json
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -236,15 +235,30 @@ def test_no_production_import_path_or_registry_writer():
                 )
 
 
-def test_evaluation_never_modifies_existing_registry_or_checkpoint(scenario):
-    checkpoint = ROOT / "rl-defense/results/live-retrain-v6/candidate_online.pt"
-    registry = Path(
-        "/Users/alanmozhoor/Documents/hackatl-agentic-security/.claude/worktrees/mystifying-hofstadter-c5aaf7/rl-defense/runs/live/registry.json"
+def test_evaluation_never_modifies_existing_registry_or_checkpoint(scenario, tmp_path, monkeypatch):
+    import rl_defense.live.registry as registry
+
+    # Always present controlled champion fixture, on every OS/CI checkout.
+    controlled = tmp_path / "registry.json"
+    controlled.write_bytes(
+        (ROOT / "rl-defense/results/duration-screen/registry_snapshot.json").read_bytes()
     )
-    paths = [checkpoint, *([registry] if registry.exists() else [])]
-    before = {p: p.read_bytes() for p in paths}
+    canonical = registry.DEFAULT_REGISTRY
+    monkeypatch.setattr(registry, "DEFAULT_REGISTRY", controlled)
+
+    def denied_write(self):
+        raise AssertionError("research attempted a registry write")
+
+    monkeypatch.setattr(registry.Registry, "save", denied_write)
+    checkpoint = ROOT / "rl-defense/results/live-retrain-v6/candidate_online.pt"
+    paths = [checkpoint, controlled, canonical]
+
+    def snapshot(p):
+        return p.read_bytes() if p.exists() else None
+
+    before = {p: snapshot(p) for p in paths}
     collect_episode(scenario, scenario.seed_start, CostAwareRules())
-    assert all(p.read_bytes() == raw for p, raw in before.items())
+    assert all(snapshot(p) == raw for p, raw in before.items())
 
 
 def test_seed_clusters_cannot_inflate_confidence_by_repeating_scenarios(rows):
@@ -315,3 +329,59 @@ def test_source_fingerprint_allowlist_is_exact_and_does_not_skip_manifest():
         assert not any(
             re.fullmatch(pattern, f'    "{rel}": "{"a" * 64}",') for pattern in rule["regexes"]
         )
+
+
+def test_published_revision_must_resolve_to_its_actual_tree(tmp_path):
+    import subprocess
+
+    from rl_defense.research.proof import resolve_source
+
+    tree = subprocess.check_output(["git", "rev-parse", "HEAD^{tree}"], cwd=ROOT, text=True).strip()
+    head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    assert resolve_source(ROOT, head, tree).startswith(f"tree {tree}\n".encode())
+    with pytest.raises(ValueError, match="unavailable"):
+        resolve_source(ROOT, "0" * 40, tree)
+    with pytest.raises(ValueError, match="does not own"):
+        resolve_source(ROOT, head, "0" * 40)
+    with pytest.raises(ValueError, match="full Git commit"):
+        resolve_source(ROOT, "HEAD", tree)
+
+
+def test_wrong_baseline_label_is_rejected_without_new_traffic(rows):
+    from rl_defense.research.proof import verify_policy_actions
+
+    config = json.loads((ROOT / "rl-defense/results/constrained-phase1/config.json").read_text())
+    # Noop trajectory falsely attributed to v6. Metrics/labels alone can look valid.
+    wrong = [r.model_copy(update={"policy": "v6_shielded"}) for r in rows]
+    with pytest.raises(ValueError, match="differs from claimed policy"):
+        verify_policy_actions(ROOT, config, wrong)
+
+
+@pytest.mark.parametrize("which", ["index", "config"])
+def test_unknown_manifest_schema_is_rejected_before_semantic_loading(tmp_path, which):
+    import rl_defense.research.evaluate as ev
+
+    # Only tiny manifests needed: unknown version must stop before source/model/metrics.
+    config = {"schema": "constrained-lab-evaluation/999"}
+    index = {"schema": "constrained-lab-evidence/999", "files": {}}
+    if which == "config":
+        index["schema"] = "constrained-lab-evidence/1"
+        for name in ("config.json", "raw.jsonl.gz", "transitions.jsonl.gz", "summary.json"):
+            data = ev.encoded(config) if name == "config.json" else b""
+            (tmp_path / name).write_bytes(data)
+            index["files"][name] = digest(data)
+    (tmp_path / "EVIDENCE.json").write_bytes(ev.encoded(index))
+    with pytest.raises(ValueError, match="unsupported .* schema"):
+        ev.verify(tmp_path)
+
+
+def test_saved_original_source_and_commit_proof_are_immutable():
+    from rl_defense.research.proof import HISTORICAL_EVALUATOR, verify_commit
+
+    root = ROOT / "rl-defense/results/constrained-phase1"
+    config = json.loads((root / "config.json").read_text())
+    raw = (root / "frozen/source.commit.txt").read_bytes()
+    verify_commit(raw, config["source_commit"], config["source_tree"])
+    with pytest.raises(ValueError, match="proof mismatch"):
+        verify_commit(raw + b"tamper", config["source_commit"], config["source_tree"])
+    assert digest((root / "frozen/evaluate.py.txt").read_bytes()) == HISTORICAL_EVALUATOR

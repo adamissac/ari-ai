@@ -10,6 +10,7 @@ No training study, promotion, deployment or production recommendation change occ
 - [Action-capability / collateral-damage matrix and narrow-control prerequisites](ACTIONS.md)
 - [Offline dataset readiness and missing information](DATASET_READINESS.md)
 - [Architecture comparison, four papers and precise no-go gate](DECISION.md)
+- [Executed tests and review corrections](VERIFICATION.md)
 - [Fixed baseline execution plan](PLAN.md)
 - [Baseline results and reproducibility](../../../rl-defense/results/constrained-phase1/README.md)
 - [ADR0019 proposal and explicit earlier-ADR conflict](../../decisions/0019-constrained-rl-foundation.md)
