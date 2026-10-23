@@ -117,11 +117,7 @@ def _links(
             ).scalar()
             if doc is None:
                 raise not_found("incident linked record")
-            simulated = simulated or bool(
-                doc.get("simulated")
-                or doc.get("simulation_derived")
-                or (table is monitoring_events and doc.get("source") == "runtime")
-            )
+            simulated = simulated or bool(doc.get("simulated") or doc.get("simulation_derived"))
     for ident in verifications:
         row = conn.execute(
             sa.select(findings.c.id)
@@ -361,7 +357,7 @@ def correlate_anomaly(
                     "monitoring_event_ids": list(
                         dict.fromkeys([*existing.monitoring_event_ids, event.id])
                     ),
-                    "simulated": True,  # current runtime sources are demo/replay/simulation only
+                    "simulated": existing.simulated or bool(getattr(event, "simulated", True)),
                 }
             )
             updated = _entry(
@@ -380,7 +376,7 @@ def correlate_anomaly(
         event.project_id,
         IncidentCreate(
             title=f"Reported runtime anomaly: {route}"[:500],
-            simulated=True,  # no production runtime source exists in the MVP
+            simulated=bool(getattr(event, "simulated", True)),
             monitoring_event_ids=[event.id],
             finding_ids=linked,
             note="Threshold crossed with validated finding context; human triage required",

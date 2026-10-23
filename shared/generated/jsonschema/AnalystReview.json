@@ -1,0 +1,100 @@
+{
+  "$defs": {
+    "AnalystReviewDecision": {
+      "enum": [
+        "accept",
+        "reject",
+        "needs_investigation"
+      ],
+      "title": "AnalystReviewDecision",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Human review of a stored recommendation or live shadow decision.\n\nAccept does not execute anything and is never converted into an RL label.",
+  "properties": {
+    "decision": {
+      "$ref": "#/$defs/AnalystReviewDecision"
+    },
+    "enforcement": {
+      "const": "none",
+      "default": "none",
+      "title": "Enforcement",
+      "type": "string"
+    },
+    "executes": {
+      "const": false,
+      "default": false,
+      "title": "Executes",
+      "type": "boolean"
+    },
+    "id": {
+      "pattern": "^arv_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "live_policy_decision_id": {
+      "anyOf": [
+        {
+          "pattern": "^lpd_[0-9A-Za-z_\\-]{8,64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Live Policy Decision Id"
+    },
+    "project_id": {
+      "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reason"
+    },
+    "recommendation_id": {
+      "anyOf": [
+        {
+          "pattern": "^rec_[0-9A-Za-z_\\-]{8,64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Recommendation Id"
+    },
+    "reviewed_at": {
+      "format": "date-time",
+      "title": "Reviewed At",
+      "type": "string"
+    },
+    "reviewed_by": {
+      "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Reviewed By",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "project_id",
+    "decision",
+    "reviewed_by",
+    "reviewed_at"
+  ],
+  "title": "AnalystReview",
+  "type": "object"
+}

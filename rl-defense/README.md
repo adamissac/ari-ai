@@ -11,6 +11,17 @@
 > [architecture/rl-training-and-inference](../docs/architecture/rl-training-and-inference.md).
 > Owner: Adam ([coordination/OWNERSHIP](../coordination/OWNERSHIP.md)).
 
+## Constrained-RL Phase 1 research
+
+An isolated, separately invoked research adapter and fixed baseline evaluator now
+separate measured compromised-read reward from legitimate-denial cost, preserve
+unknown/provenance fields, mask ineffective lab actions and verify complete raw evidence.
+It has no training/serving imports in the existing product paths.140train-split baseline
+episodes completed; the budgeted rule preserves availability but misses most attacks.
+**No-go for Phase2 now; no model, champion or serving change.**
+[Audit, CMDP, capability matrix and decision](../docs/research/constrained-rl-phase1/README.md);
+[baseline evidence / verification commands](results/constrained-phase1/README.md).
+
 ## What exists
 
 | Piece | Module | Status |
@@ -232,9 +243,12 @@ V9 evidence tools and read-only verification: [postprocessing instructions](resu
 demonstrations and noop preference on saved flagged observations; causality is unproven.
 `online --balance-demo-actions` experimentally balances observed teacher action classes
 in demonstration batches only. Existing behavior stays uniform. [V10 preregistration](results/live-retrain-v10/PREREGISTRATION.md)
-defines a fresh two-arm, five-seed comparison; training/holdout evaluation has not run.
-Run `results/live-retrain-v10/run_study.py --registry PATH --workers 5` only from committed,
-pushed source with the existing workspace PYTHONPATH. Estimated compute about6hours.
+defines the completed two-arm, five-seed comparison. All ten runs completed; the primary
+hypothesis is unsupported and every candidate rejected. Balanced return improved over
+uniform by0.05919 (95% CI0.03335–0.08713), with worse availability/quiet disruption.
+See [full results and provenance](results/live-retrain-v10/PROVENANCE.md).
+The completed study took5h58m17s before final diagnostics. Its runner refuses existing
+outputs; do not restart it over exposed evaluation data.
 No policy promotion is automatic.
 
 V10's runner checks a digest of all tracked repository files before/after every job,
@@ -243,3 +257,30 @@ paired raw failure before claiming completion. `postprocess.py ROOT --verify-onl
 checks its final stored-file manifest and all ten seed evidence indices without
 executing policies. Sampling-arm comparison excludes intentional treatment and learned
 output differences while requiring identical training settings.
+
+## Post-v10 diagnosis: pause further training
+
+[Saved-data follow-up](results/v10-followup-diagnosis/README.md) finds all ten selected
+models already below the85% validation availability floor; principal-wide long blocks
+carry legitimate-traffic costs in rotation. `online --require-validation-availability`
+can reject a selected checkpoint before any holdout execution, retaining a
+`validation_screen.json` diagnostic. This opt-in screen cannot promote, does not change
+the default trainer/serving, and is not evidence of a better policy. No v11 launched.
+
+## Bounded duration screen (train/validation only)
+
+[Fixed plan](results/duration-screen/PLAN.md) compares short and long blocks with one
+existing outsider-duration rule and actual v6. This is a heuristic screen, not trained
+RL or serving logic. Source and success conditions are frozen before evaluation;
+no holdout is used. Only a passing availability/compromise screen can justify preparing
+one possible v11 preregistration. The completed screen failed its fixed availability
+confidence condition: +1.2373 points vs v6,95% CI[−0.0313,+2.5340]; compromise improved
+on validation but worsened on training. No v11 prepared or launched. See
+[results and limits](results/duration-screen/PROVENANCE.md). V6 remains deployed.
+
+Research-only deterministic payment-read guard and explicit finite-case HTTP comparison:
+[protocol and limitations](../docs/research/deterministic-feasibility/README.md).
+No serving hook, model training, promotion or customer action.
+
+Opt-in owned payments-lite request-context wrapper and concurrency checks:
+[application-context evidence and limits](../docs/research/deterministic-feasibility/APPLICATION_CONTEXT.md).

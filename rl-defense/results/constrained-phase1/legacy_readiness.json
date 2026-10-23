@@ -1,0 +1,55 @@
+{
+  "datasets": {
+    "duration": {
+      "episodes": 56,
+      "measured_cost_records": 1680,
+      "source_sha256": "cdebf783fe956e992872d00e6359b75942d8987a646177e7e774db0d3d418354",
+      "transitions": 1680,
+      "unknown_behavior_probabilities": 1680,
+      "unknown_current_masks": 56,
+      "unknown_delegated_costs": 1680
+    },
+    "long": {
+      "episodes": 56,
+      "measured_cost_records": 1680,
+      "source_sha256": "0289b555e3eb30b10e460ca8c9f1f6851d0d069e247de9db72a65c363a20b43b",
+      "transitions": 1680,
+      "unknown_behavior_probabilities": 1680,
+      "unknown_current_masks": 56,
+      "unknown_delegated_costs": 1680
+    },
+    "short": {
+      "episodes": 56,
+      "measured_cost_records": 1680,
+      "source_sha256": "13bc5d32038a5e15142536fa2d99d4bec7826db355e6f62ea5f69eefdfaea968",
+      "transitions": 1680,
+      "unknown_behavior_probabilities": 1680,
+      "unknown_current_masks": 56,
+      "unknown_delegated_costs": 1680
+    },
+    "tuned_rules": {
+      "episodes": 56,
+      "measured_cost_records": 1680,
+      "source_sha256": "631457387dcf97e60e9ea2ed71ced6a23cfdbccd244a566ee7675bec55946652",
+      "transitions": 1680,
+      "unknown_behavior_probabilities": 1680,
+      "unknown_current_masks": 56,
+      "unknown_delegated_costs": 1680
+    },
+    "v6": {
+      "episodes": 56,
+      "measured_cost_records": 1680,
+      "source_sha256": "6f253d33243a146c1f862dd763596c4e024da49dc61947fb424f0ac68cfe07a2",
+      "transitions": 1680,
+      "unknown_behavior_probabilities": 1680,
+      "unknown_current_masks": 56,
+      "unknown_delegated_costs": 1680
+    }
+  },
+  "evidence_index_sha256": "ce9317baa7cad1c1a77dacf19736d0d8fb812e8c76af0b03fc3cc699c77291b6",
+  "historical_semantics_unchanged": true,
+  "new_objective": "negative compromised read count; legitimate defense-denial count",
+  "not_counterfactual_evaluation": true,
+  "schema": "constrained-readiness/1",
+  "source_commit": "d985e69406fc7bcacabc1eea1b29f2c256c3803a"
+}

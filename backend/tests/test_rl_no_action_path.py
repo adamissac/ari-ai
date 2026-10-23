@@ -32,8 +32,11 @@ def test_recommendation_routes_are_read_only_except_the_enqueue() -> None:
         for method, path in operations
         if "defense-recommendation" in path and method not in {"GET", "HEAD", "OPTIONS"}
     )
-    # The only write asks the worker to compute a new recommendation; it changes no system.
-    assert writes == [("POST", "/api/v1/projects/{project_id}/defense-recommendations")]
+    # Writes record a recommendation or an analyst opinion. Neither applies a control.
+    assert writes == [
+        ("POST", "/api/v1/defense-recommendations/{rec_id}/reviews"),
+        ("POST", "/api/v1/projects/{project_id}/defense-recommendations"),
+    ]
 
 
 def test_no_route_applies_a_defensive_action() -> None:

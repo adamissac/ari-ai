@@ -1,0 +1,120 @@
+{
+  "additionalProperties": false,
+  "description": "Recorded timestamps for ingest and the job worker. Not a liveness verdict.",
+  "properties": {
+    "last_ingest_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Latest runtime_windows.window_end for this project",
+      "title": "Last Ingest At"
+    },
+    "last_runtime_event_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Latest monitoring event with source=runtime",
+      "title": "Last Runtime Event At"
+    },
+    "policy_status": {
+      "const": "unknown",
+      "default": "unknown",
+      "title": "Policy Status",
+      "type": "string"
+    },
+    "policy_status_reason": {
+      "default": "No live policy-health producer. Shadow decisions stay NOT_EXECUTED; HTTP 200 is not policy health.",
+      "maxLength": 500,
+      "title": "Policy Status Reason",
+      "type": "string"
+    },
+    "project_id": {
+      "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "queue_depth": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Queued jobs; null if the queue was not readable",
+      "title": "Queue Depth"
+    },
+    "status": {
+      "const": "unknown",
+      "default": "unknown",
+      "title": "Status",
+      "type": "string"
+    },
+    "status_reason": {
+      "default": "No recorded health-check producer. Timestamps are evidence only; HTTP 200 is not a healthy verdict.",
+      "maxLength": 500,
+      "title": "Status Reason",
+      "type": "string"
+    },
+    "telemetry_status": {
+      "const": "unknown",
+      "default": "unknown",
+      "title": "Telemetry Status",
+      "type": "string"
+    },
+    "telemetry_status_reason": {
+      "default": "Ingest timestamps are not a telemetry health verdict.",
+      "maxLength": 500,
+      "title": "Telemetry Status Reason",
+      "type": "string"
+    },
+    "worker_seen_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Latest jobs.heartbeat_at; null if no worker has heartbeated",
+      "title": "Worker Seen At"
+    },
+    "worker_status": {
+      "const": "unknown",
+      "default": "unknown",
+      "title": "Worker Status",
+      "type": "string"
+    },
+    "worker_status_reason": {
+      "default": "No worker liveness producer. Heartbeat timestamps are evidence only.",
+      "maxLength": 500,
+      "title": "Worker Status Reason",
+      "type": "string"
+    }
+  },
+  "required": [
+    "project_id"
+  ],
+  "title": "DefenseHealth",
+  "type": "object"
+}

@@ -1,0 +1,21 @@
+{
+  "files": {
+    "docs/research/constrained-rl-phase1/VERIFICATION.md": "d83ef023a10946b4663e7c1259884454f11110264edc7ead9005748ccc96aefc",
+    "rl-defense/results/constrained-phase1/README.md": "fb6975336066d004809ce0708df750e957569e263c79574ca25b6795987947e1",
+    "rl-defense/results/constrained-phase1/REVIEW_RUNTIME.json": "5a9893b7a60e2f31d1d95b42d942b46506c2b41ec1691d0d0e5aa53c7f0169fc",
+    "rl-defense/results/constrained-phase1/frozen/README.md": "245c670193fbfdf72467f8040c40f3658b2cbfe9c9e7aefd4e3099d49b476c59",
+    "rl-defense/results/constrained-phase1/frozen/evaluate.py.txt": "8c0002a79444f367a3b34967c198d4b3b1a292d5573fc134553168d385452b2e",
+    "rl-defense/results/constrained-phase1/frozen/source.commit.txt": "da36fac0ff64c56dcb8ec43328f76e558f2ba0c8676fd834113e6b51b2ed860a",
+    "rl-defense/rl_defense/research/evaluate.py": "0e7cddb7a68577bbb8876af060b0ea0bc571261e61685d39cb115284bbdf17ce",
+    "rl-defense/rl_defense/research/legacy.py": "9441d99308f51b9b70568fed5595cc4c441df29ffd096545b8c5c89b0159be39",
+    "rl-defense/rl_defense/research/proof.py": "cc8d8cc4a798624954e7ba54c1babf6eb19b3ea9f17fb5a67bd27bd06b280b49",
+    "rl-defense/rl_defense/research/snapshot.py": "2c9dd2d57ed6401a0516cbf3c721bfa1e924683bc4516e8287cd4335c9843bed"
+  },
+  "historical_measurements_unchanged": true,
+  "original_execution_index_sha256": "54e3af1c96b073c595f219cee025eaeb486bdcfc476e84ad91ea6665a7647506",
+  "original_reporting_aliases": {
+    "README.md": "frozen/README.md"
+  },
+  "original_reporting_index_sha256": "ad7fabd5f60fa4f29e0139f492d055385ad47afbdf442f17edfb41dd9ee0ef1c",
+  "schema": "constrained-phase1-review-evidence/2"
+}

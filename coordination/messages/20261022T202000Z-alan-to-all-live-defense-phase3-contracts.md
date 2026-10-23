@@ -1,0 +1,20 @@
+# MSG: Live Defense Phase 3 shadow-runtime contracts (0.17.0)
+- ID: `20261022T202000Z-alan-to-all-live-defense-phase3-contracts`
+- From: alan
+- To: all (adam, sarosh, sai, vihaan)
+- Kind: `contract-change`
+- Timestamp (UTC): 2026-10-22T20:20:00Z
+- Branch / commit / PR or issue link: `feat/live-defense-phase3-shadow-runtime`
+- Related subsystem(s): shared, backend, frontend (Live Defense). `rl-defense/` training, datasets, v6 weights, promotion registry, and Codex research files are not modified.
+- Summary (facts, not assumptions):
+  - Additive contract schema **0.17.0**.
+  - `RuntimeSource` gains `"owned_staging"` (authenticated owner-registered sandbox/owned_test app). Replay/simulated/drill stay simulated.
+  - New `LivePolicyDecision`: produced only when deterministic rules or validated frozen-v6 inference actually ran. `enforcement` is `Literal["NOT_EXECUTED"]`, `executed` is `Literal[False]`. `top_actions` / `q_margin` / `observation` are null when inference did not run — never synthesized.
+  - `AnalystReview` may target `live_policy_decision_id` instead of `recommendation_id` (exactly one). Accept still does not execute and is not converted into an RL label.
+  - No apply / isolate / rate-limit / block adapters. No DETECTED→EXECUTING machine.
+- Interface requested/proposed (field-level types/example payload): `shared/shared/live_defense.py` (`LivePolicyDecision`, `ShadowProducer`, `InferenceStatus`, `AuthorizationContext`); fixture `shared/fixtures/v0/LivePolicyDecision.json`.
+- Breaking change? Additive. `AnalystReview.recommendation_id` becomes optional (`string | null`) so a live-decision review can omit it. Existing Phase 2 payloads with `recommendation_id` still validate.
+- Action required by recipient: Vihaan — consume generated TS via `frontend/transport` (wired on this branch). Adam — no `rl-defense/` training/eval/checkpoint change. Reviewers: shadow-only; do not begin Phase 4 enforcement.
+- Response-by milestone (not invented clock time): this PR
+- Evidence: `make contracts` on this branch; shared contract tests.
+- In-Reply-To: `coordination/messages/20261022T165800Z-alan-to-all-live-defense-phase2.md`

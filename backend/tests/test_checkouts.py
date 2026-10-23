@@ -87,3 +87,38 @@ def test_bindings_are_added_and_updated_atomically(tmp_path: Path) -> None:
         "local_path": str(tmp_path / "repos" / "rep_1.git"),
         "subdir": ".",
     }
+
+
+def test_concurrent_connected_commit_fetches_share_a_locked_checkout(
+    tmp_path, remote, client_factory, settings_override
+):
+    from concurrent.futures import ThreadPoolExecutor
+
+    import sqlalchemy as sa
+    from helpers import setup_project
+
+    from backend.checkouts import ensure_checkout
+    from backend.db import repositories, transaction
+
+    web, shas = remote
+    ids = setup_project(client_factory("alice"), client_factory("bob"))
+    with transaction() as conn:
+        conn.execute(
+            sa.update(repositories)
+            .where(repositories.c.id == ids["repo"])
+            .values(full_name="acme/app", installation_id=99)
+        )
+    settings_override(
+        security_workdir=str(tmp_path / "workdir"),
+        repository_bindings_file=str(tmp_path / "bindings.json"),
+        github_web_url=web,
+    )
+
+    def fetch(sha):
+        return ensure_checkout(ids["repo"], sha, token_for=lambda installation: "fixture-token")
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        checkouts = list(pool.map(fetch, shas))
+    assert checkouts[0] == checkouts[1]
+    for sha in shas:
+        assert _git("cat-file", "-t", sha, cwd=checkouts[0]).strip() == "commit"

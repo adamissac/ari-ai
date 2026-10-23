@@ -25,7 +25,8 @@ agents use. Owner: **Srihith**. Spec: [docs/13](../docs/13_BACKEND_API_DESIGN.md
 | RL recommendations + explanations via `rl_defense` | `pipeline.py` | integrated and tested against `rl-defense` on main |
 | GitHub App installation tokens / compare API | `github.py` | implemented; **not exercised against a real App** |
 | Seven-agent orchestrator | — | **not here**: Alan's `security_agents`. Until it lands, assessments end `FAILED / SUBSYSTEM_UNAVAILABLE` |
-| Runtime signal ingestion: per-project ingest tokens, `/ingest/runtime/{project_id}`, explainable per-route scoring, labeled `log_anomaly` events, RL signal feed | `api/runtime.py` + `monitoring/runtime.py` | implemented; inputs are demo/replay/simulated only (no production telemetry) |
+| Runtime signal ingestion: per-project ingest tokens, `/ingest/runtime/{project_id}`, explainable per-route scoring, labeled `log_anomaly` events, RL signal feed | `api/runtime.py` + `monitoring/runtime.py` | implemented; `owned_staging` / `runtime_demo` are authenticated (`simulated=false`); replay/simulated/drill stay labelled simulated. No production telemetry source |
+| Live Defense shadow pilot: staging apps, ingest-token metadata, recorded health/graph, analyst reviews, shadow `LivePolicyDecision` | `api/live_defense.py` + `live_defense/` + migrations 0010–0011 | implemented; health status always unknown; accept does not execute; shadow decisions are NOT EXECUTED |
 | Code-intelligence PayloadStore (Postgres) | `intel_store.py` | implemented; integration-tested with Sarosh's IntelligenceService |
 | `POST /patches/{id}/pull-request`, `PATCH /expectations/{id}` | — | **not implemented** (MVP cut order / owned by intelligence) |
 
@@ -56,7 +57,7 @@ Set `TSC=/path/to/tsc` to run the generated-TypeScript compile test.
 
 Migration 0005 adds persisted incidents. Owner-authenticated incident create/actions use the shared contracts and canonical `standards.incident` rules, with database checks for project links, approval, independent Verify, and regression artifacts. Runtime anomalies correlated with validated findings create reports for human triage, not confirmed incidents. See [incident handling](../docs/security/NIST_INCIDENT_HANDLING.md). Reports include persisted classifications and hardening records. `AssessmentHost.record_standards` updates classifications without reverting finding status/history. Incident SSE provides finite durable replay, not a continuously held connection.
 
-Model-proposed CVSS metrics are explicit provisional assumptions, even when they cite an executed run. A run identifier supplies provenance but does not prove an impact. Such scores list every assumption and require human review; missing metrics remain unscored. Incident closure requires actual regression artifact IDs/hashes; eradication requires a succeeded independent Verify run. All currently supported runtime sources are demo/replay/simulation, so correlated incidents retain simulated labeling even for executed demo logs.
+Model-proposed CVSS metrics are explicit provisional assumptions, even when they cite an executed run. A run identifier supplies provenance but does not prove an impact. Such scores list every assumption and require human review; missing metrics remain unscored. Incident closure requires actual regression artifact IDs/hashes; eradication requires a succeeded independent Verify run. Authenticated `owned_staging` / `runtime_demo` events keep `simulated=false`; replay/simulated/drill and simulation-derived recommendations still force simulated incident labeling. There is still no production telemetry source.
 
 Migration revision `0005_incidents` deliberately differs from intelligence-memory PR #39’s `0005`. The runner upgrades all current Alembic heads, allowing independent additive branches to coexist. A real PostgreSQL scratch-database test upgrades both heads, downgrades to base, and upgrades again. Disposable databases from earlier unpublished iterations should be recreated; no production upgrade from an earlier incident prototype is claimed.
 
@@ -99,3 +100,50 @@ provider to initialize in the HTTP process. No request/response DTO changes.
 
 
 Scope activation policy (ADR-0016): an owner may explicitly approve their own nonempty sandbox-only scope. Owner membership, pending/unexpired state and audit recording remain mandatory. Other approval subjects retain independent-approver requirements.
+
+### Automatic commit rollout
+
+`GITHUB_AUTO_COMMIT_AUTHORS` enables a per-commit push queue for a comma-separated
+list of GitHub author logins (`*` allows any GitHub-linked author). The Railway
+entrypoint defaults to `adamissac`; other environments default to the existing
+monitoring policy when unset/empty. Eligibility requires both the signed push sender and GitHub API commit-author attribution to match the rollout; author metadata alone never authorizes paid work.
+
+Install the GitHub App with push events, connect the repository, enable project
+monitoring, and approve its sandbox scope once. Subsequent eligible pushes queue
+full assessments for every commit, including docs/tests-only changes and commits
+arriving during another assessment. Duplicate pushes do not create duplicate runs.
+Scope approval resumes commits previously blocked for lack of authorization.
+The existing commit page polls persisted assessments; opening it or clicking Run
+is not required. This applies to new pushes, not historical backfills.
+
+Full automatic assessments use the project’s normal `default_budget`, clamped to
+operator caps, rather than the legacy cheaper monitoring budget. Patch/Verify stages that depend
+on remediation approval still wait for that approval; automatic triggering does
+not fabricate a successful seven-agent run or approve proposed repairs. Identity
+API failures retry in the durable queue and eventually dead-letter visibly.
+Compare pagination handles truncated pushes; new-branch payloads at GitHub's 2048
+commit limit fail explicitly rather than silently dropping commits.
+
+
+### Automatic/manual repository mode and Haiku 5.5 (#380)
+
+Each connected repository has a persisted `automatic_assessments` switch, default
+ON. ON queues every eligible new commit in the background without a browser visit
+or Run click. OFF prevents unstarted automatic work and exposes manual Run on
+selected commits; active runs and history remain intact. GET/PATCH
+`/api/v1/repositories/{repo_id}` returns Repository; PATCH requires a project owner
+and is audited. Migration 0009 adds the flag; schema 0.15.0 adds RepositoryUpdate
+and regenerates JSON/TypeScript. Deploy the backend and frontend together.
+
+The rollout requires both the signed push sender and GitHub-attributed commit
+author to match `GITHUB_AUTO_COMMIT_AUTHORS` (initially adamissac). Attribution
+alone is email-derived, not authorization. Project start limits default to 5/hour
+and 20/day (`AUTOMATIC_ASSESSMENTS_PER_HOUR`, `AUTOMATIC_ASSESSMENTS_PER_DAY`). Excess
+commits are durably deferred, not dropped. Full runs use the normal project budget,
+clamped to operator caps. Monitoring and approved sandbox scope remain prerequisites;
+repair approvals remain required.
+
+Production/staging gateway, Railway startup and frontend quick reads enforce
+`claude-haiku-5-5` only, overriding stale production model choices. Errors are
+reported instead of substituting another model. Historical recordings retain
+the model that produced them. Live production run verification remains outstanding.

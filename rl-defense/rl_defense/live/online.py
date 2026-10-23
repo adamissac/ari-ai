@@ -44,7 +44,9 @@ import dataclasses
 import gzip
 import hashlib
 import json
+import math
 import shutil
+import tempfile
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
@@ -55,7 +57,7 @@ import torch
 import yaml
 
 from rl_defense.agents.ddqn import DDQNAgent, DDQNConfig, ReplayBuffer, cat_batches
-from rl_defense.checkpoint import git_sha, load_checkpoint, save_checkpoint
+from rl_defense.checkpoint import git_sha, load_checkpoint, save_checkpoint, sha256_file
 from rl_defense.envs import default_config_paths, load_configs
 from rl_defense.live import evaluate as ev
 from rl_defense.live.actions import ENV_IDS, dims
@@ -373,11 +375,126 @@ def train_online(
     )
 
 
+def validation_availability_screen(manifest: dict, minimum: float) -> dict:
+    """Screen a selected checkpoint before holdout; this cannot authorize promotion."""
+    if not math.isfinite(minimum) or not 0 <= minimum <= 1:
+        raise ValueError("validation availability minimum must be finite and within [0, 1]")
+    online = manifest["online"]
+    selected = [
+        row for row in online["selection_history"] if row["env_step"] == online["selected_env_step"]
+    ]
+    if len(selected) != 1:
+        raise ValueError("selected checkpoint must have exactly one validation history entry")
+    row = selected[0]
+    if row["noop_margin"] != online["selected_noop_margin"]:
+        raise ValueError("selected validation margin disagrees with checkpoint")
+    availability = row.get("val_availability")
+    valid = (
+        isinstance(availability, (int, float))
+        and not isinstance(availability, bool)
+        and math.isfinite(availability)
+        and 0 <= availability <= 1
+    )
+    eligible = valid and availability >= minimum
+    return {
+        "schema": "live-validation-screen/0.1",
+        "scope": "selected checkpoint validation only; not a promotion decision",
+        "selected_env_step": online["selected_env_step"],
+        "selected_noop_margin": online["selected_noop_margin"],
+        "checkpoint_sha256": manifest["checkpoint_sha256"],
+        "training_seed": manifest["seed"],
+        "git_sha": manifest["git_sha"],
+        "validation_scenarios": online["val_scenarios"],
+        "manifest_content_sha256": hashlib.sha256(
+            json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest(),
+        "minimum_availability": minimum,
+        "validation_availability": availability if valid else None,
+        "eligible_for_holdout": bool(eligible),
+        "reason": "availability_floor_met" if eligible else "missing_or_below_availability_floor",
+        "promotion_performed": False,
+    }
+
+
+def require_empty_output(path: Path) -> None:
+    """Preserve old evidence rather than associating it with a newly trained candidate."""
+    if path.exists() and (not path.is_dir() or any(path.iterdir())):
+        raise ValueError(f"validation-screened runs require an empty output directory: {path}")
+
+
+def export_validation_rejection(out: Path, destination: Path, manifest: dict) -> None:
+    """Atomically export a verified, restorable rejected bundle, without a promotion report."""
+    from rl_defense.live import evidence
+
+    require_empty_output(destination)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=destination.parent, prefix=".validation-rejected-") as tmp:
+        stage = Path(tmp)
+        artifacts = {}
+        for key, filename in (
+            ("checkpoint", "candidate_online.pt"),
+            ("manifest", "candidate_online.manifest.json"),
+            ("validation_screen", "validation_screen.json"),
+        ):
+            shutil.copyfile(out / filename, stage / filename)
+            artifacts[key] = {
+                "path": filename,
+                "stored_as": "file",
+                "sha256": sha256_file(stage / filename),
+            }
+        artifacts["checkpoint"]["sha256"] = manifest["checkpoint_sha256"]
+        experiment = manifest["online"]["experiment"]
+        exp_name = experiment["experience_file"]
+        selected_name = manifest["lineage"]["experience_file"]
+        if any(
+            not name or name in {".", ".."} or Path(name).name != name
+            for name in (exp_name, selected_name)
+        ):
+            raise ValueError("rejected experience paths must be filenames")
+        with (
+            (out / exp_name).open("rb") as source,
+            gzip.GzipFile(stage / (exp_name + ".gz"), "wb", mtime=0) as target,
+        ):
+            shutil.copyfileobj(source, target)
+        artifacts["experiment"] = {
+            "path": exp_name,
+            "stored_as": "gzip",
+            "stored_path": exp_name + ".gz",
+            "sha256": experiment["experience_sha256"],
+        }
+        artifacts["selected_experience"] = {
+            "path": selected_name,
+            "stored_as": "prefix",
+            "of": "experiment",
+            "lines": manifest["lineage"]["transitions"],
+            "sha256": manifest["lineage"]["experience_sha256"],
+        }
+        index = {
+            "schema": evidence.SCHEMA,
+            "scope": "validation rejection only",
+            "holdout_executed": False,
+            "promotion_performed": False,
+            "artifacts": artifacts,
+        }
+        evidence.verify(stage, index=index)
+        (stage / evidence.INDEX).write_text(json.dumps(index, indent=2))
+        stage.replace(destination)
+
+
 # ---------------------------------------------------------------------- the v6 run
 def run(args: argparse.Namespace) -> dict:
     from rl_defense.live.pipeline import render_markdown
 
     out = Path(args.out)
+    if getattr(args, "require_validation_availability", False):
+        require_empty_output(out)
+        if getattr(args, "evidence_dir", None):
+            destination = Path(args.evidence_dir)
+            if destination.resolve().is_relative_to(out.resolve()) or out.resolve().is_relative_to(
+                destination.resolve()
+            ):
+                raise ValueError("validation evidence and transient output must not overlap")
+            require_empty_output(destination)
     out.mkdir(parents=True, exist_ok=True)
     criteria = ev.PromotionCriteria(**yaml.safe_load(Path(args.criteria).read_text()))
     cfg = getattr(args, "online_config", None) or OnlineConfig(seed=args.seed)
@@ -438,7 +555,17 @@ def run(args: argparse.Namespace) -> dict:
     )
     cand_path = out / "candidate_online.pt"
     cand_agent, cand_m = load_checkpoint(cand_path)
-
+    screen = None
+    if getattr(args, "require_validation_availability", False):
+        screen = validation_availability_screen(cand_m, criteria.min_availability)
+        (out / "validation_screen.json").write_text(json.dumps(screen, indent=2))
+        if not screen["eligible_for_holdout"]:
+            if getattr(args, "evidence_dir", None):
+                export_validation_rejection(out, Path(args.evidence_dir), cand_m)
+            raise ValueError(
+                "selected checkpoint failed validation availability screen; holdout not executed; "
+                "see validation_screen.json"
+            )
     policies = {
         "deployed": ev.dqn_policy(deployed_agent),  # sim layout, as in v1-v5
         "candidate": ev.dqn_policy(cand_agent),
@@ -578,6 +705,8 @@ def run(args: argparse.Namespace) -> dict:
         "git_sha": git_sha(),
         "created_at": datetime.now(UTC).isoformat(),
     }
+    if screen is not None:
+        report["validation_screen"] = screen
     # Durable, hash-pinned locators alongside the report. Relative paths survive copying.
     report["artifacts"] = {
         "checkpoint": {"path": cand_path.name, "sha256": cand_m["checkpoint_sha256"]},
@@ -727,6 +856,11 @@ def main(argv: list[str] | None = None) -> int:
         "--balance-demo-actions",
         action="store_true",
         help="sample observed demonstration action classes uniformly (experimental)",
+    )
+    ap.add_argument(
+        "--require-validation-availability",
+        action="store_true",
+        help="stop before holdout if selected validation availability misses the criteria floor",
     )
     ap.add_argument("--random-baseline", action="store_true")
     ap.add_argument("--record-trajectories", action="store_true")
