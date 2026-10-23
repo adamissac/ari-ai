@@ -1469,3 +1469,8 @@ remain untouched. No merge: Phase1's deployment restriction governs this researc
 - Added an opt-in owned payments-lite read wrapper reusing the research guard. Private store supplies identity/ownership; trusted fixture updates share a request lock. No HTTP context or writes can authorize access.
 - Eight real-app integration tests pass: before/after BOLA, owner/delegated reads, resource/path/header binding, token/owner/grant updates and expiry/rollback races with buffered bodies.
 - No earlier study rerun, evidence rewrite, serving hook, training or promotion. Single-process private-store assumptions are explicit; full feasibility remains inconclusive.
+
+### 2026-10-23 — Alan / Codex — RL-CMDP-004
+- Reproduced a response-binding gap: authorized Alice pay_a1 request could release a downstream Bob pay_b1 response with HTTP 200.
+- Added strict existing PaymentOut schema/identity checks, duplicate-key and framing rejection, bounded message capture, fresh output headers and a post-validation freshness check. Customer key/record identity contradictions abstain.
+- Twenty real-app/controlled-downstream integration tests passed; lint passed. Private-store and single-worker assumptions remain. No prior comparison rerun, source evidence rewrite, shared contract, serving hook, training or promotion.

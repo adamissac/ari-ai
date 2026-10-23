@@ -32,11 +32,13 @@ Contexts expire after five integer fixture ticks. Both context freshness and gra
 validity are rechecked before releasing any buffered response. A clock rollback,
 expiry or unknown context returns explicit abstention (503). Downstream execution
 has a five-second timeout and a 64 KiB buffered-body limit. These are fixture bounds,
-not performance or production-safety claims.
+not performance or production-safety claims. Responses additionally have a
+1,024-message cap. Only the existing payment schema is emitted with fresh JSON
+headers; downstream cookies, redirects and arbitrary headers are not released.
 
 ## Executed verification
 
-Eight integration tests pass against the actual payments-lite application:
+Twenty integration tests pass against the actual payments-lite application:
 
 - Reproduce the original unauthorized HTTP 200, then reject it under the wrapper;
   preserve owner and exact-resource delegated reads and the second principal's
@@ -49,6 +51,11 @@ Eight integration tests pass against the actual payments-lite application:
   completes, then blocks the next request.
 - Unknown or contradictory store facts never forward; a downstream timeout or
   oversized body releases no data and leaves permission updates usable.
+- Bind the returned payment ID and owner to the authorized request using the
+  existing PaymentOut schema. Reject malformed/duplicate JSON, extra fields,
+  invalid framing, error payloads and contradictory customer records. Preserve
+  valid chunked responses, strip downstream headers and recheck freshness after
+  response validation.
 
 These are integration regressions, not a rerun of the preregistered comparison or
 new population evidence. Original timing compliance remains uncertifiable; the
@@ -59,3 +66,17 @@ Next: independently review this private-store/serialization assumption before an
 application adapter proposal. A real system needs canonical authorization facts,
 transactional consistency and permissions from its own authorization service;
 this in-memory fixture cannot establish those properties or justify RL training.
+
+## RL-CMDP-004: response identity integrity
+
+Manual review reproduced a concrete gap in the original wrapper: with an injected
+wrong downstream response, an authorized request for Alice's pay_a1 returned
+Bob's pay_b1 with HTTP 200. The wrapper now requires a complete successful response,
+validates the existing example PaymentOut schema, and checks both payment and owner
+against the captured authorization context before emitting a newly serialized body.
+Duplicate JSON keys and unexpected fields are rejected rather than reinterpreted.
+
+This binds declared response identity and shape. It does not prove the provenance
+of arbitrary financial fields if a downstream implementation forges matching IDs.
+All original private-store/single-worker assumptions and the prior timing-evidence
+limitation remain. No original comparison was rerun or modified.

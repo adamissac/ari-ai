@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import json
 import re
 import time
 from collections.abc import Callable
@@ -26,6 +27,19 @@ _PAYMENT_READ = re.compile(r"^/payments/([A-Za-z0-9_-]+)$")
 
 class _ResponseBudgetExceeded(RuntimeError):
     pass
+
+
+class _ResponseIntegrityError(RuntimeError):
+    pass
+
+
+def _unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate response JSON key")
+        result[key] = value
+    return result
 
 
 class PaymentReadLab:
@@ -95,12 +109,14 @@ class PaymentReadLab:
         async with self._lock:
             now = self._clock()
             principal = self._store.tokens.get(token)
-            if principal not in self._store.customers:
+            customer = self._store.customers.get(principal)
+            if customer is None or customer.id != principal:
                 principal = None
             resource = match.group(1)
             payment = self._store.payments.get(resource)
             owner = payment.customer_id if payment is not None else None
-            if owner not in self._store.customers:
+            owner_record = self._store.customers.get(owner)
+            if owner_record is None or owner_record.id != owner:
                 owner = None
             context = ReadContext(
                 principal,
@@ -122,8 +138,11 @@ class PaymentReadLab:
 
             async def capture(message: Message) -> None:
                 nonlocal size
-                size += len(message.get("body", b""))
-                if size > 65536:
+                body_bytes = message.get("body", b"")
+                if type(body_bytes) is not bytes:
+                    raise _ResponseIntegrityError("response body must be bytes")
+                size += len(body_bytes)
+                if size > 65536 or len(messages) >= 1024:
                     raise _ResponseBudgetExceeded("owned fixture response budget exceeded")
                 messages.append(message)
 
@@ -132,12 +151,46 @@ class PaymentReadLab:
                 await asyncio.wait_for(
                     self._app(scope, receive, capture), timeout=self._response_timeout_s
                 )
-            except (TimeoutError, _ResponseBudgetExceeded):
+            except (TimeoutError, _ResponseBudgetExceeded, _ResponseIntegrityError):
                 await JSONResponse({}, status_code=503)(scope, receive, send)
                 return
             # Buffering prevents a mid-request expiry from leaking an already-started body.
             if authorize_read(context, now=self._clock()).outcome != "allow":
                 await JSONResponse({}, status_code=503)(scope, receive, send)
                 return
-            for message in messages:
-                await send(message)
+            # Validate the existing example response contract before releasing any
+            # downstream body or headers. A valid request cannot bless a wrong object.
+            from payments_lite.app import PaymentOut
+
+            try:
+                if not messages or messages[0].get("type") != "http.response.start":
+                    raise _ResponseIntegrityError("missing response start")
+                if messages[0].get("status") != 200:
+                    raise _ResponseIntegrityError("downstream read did not succeed")
+                bodies = messages[1:]
+                if not bodies or any(m.get("type") != "http.response.body" for m in bodies):
+                    raise _ResponseIntegrityError("invalid response sequence")
+                if any(not m.get("more_body", False) for m in bodies[:-1]) or bodies[-1].get(
+                    "more_body", False
+                ):
+                    raise _ResponseIntegrityError("incomplete or repeated response body")
+                body = b"".join(m.get("body", b"") for m in bodies)
+                raw = json.loads(body, object_pairs_hook=_unique_object)
+                if not isinstance(raw, dict) or set(raw) != set(PaymentOut.model_fields):
+                    raise _ResponseIntegrityError("unexpected payment response fields")
+                payment_response = PaymentOut.model_validate_json(body, strict=True)
+                if (
+                    payment_response.id != context.resource
+                    or payment_response.customer_id != context.owner
+                ):
+                    raise _ResponseIntegrityError("response does not match authorized resource")
+            except (ValueError, _ResponseIntegrityError):
+                await JSONResponse({}, status_code=503)(scope, receive, send)
+                return
+            # Construct fresh headers from validated data, dropping cookies, redirects
+            # and other unexpected downstream header values.
+            response = JSONResponse(payment_response.model_dump(mode="json"))
+            if authorize_read(context, now=self._clock()).outcome != "allow":
+                await JSONResponse({}, status_code=503)(scope, receive, send)
+                return
+            await response(scope, receive, send)
