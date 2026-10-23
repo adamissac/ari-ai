@@ -30,6 +30,10 @@ test('organization → repository → commit keeps real agent work and replay in
   await expect(page.getByRole('tab')).toHaveCount(2);
   const panel = page.getByTestId('real-assessment-panel');
   await expect(panel).not.toContainText('Loading…');
+  const automation = panel.getByRole('switch', { name: 'Automatic runs' });
+  await expect(automation).toBeEnabled();
+  if (await automation.getAttribute('aria-checked') === 'true') await automation.click();
+  await expect(automation).toHaveAttribute('aria-checked', 'false');
   const request = panel.getByRole('button', { name: 'Request authorization', exact: true });
   if (await request.isVisible()) await request.click();
   const approve = panel.getByRole('button', { name: 'Approve sandbox authorization' });

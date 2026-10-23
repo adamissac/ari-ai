@@ -90,9 +90,10 @@ from expectations) and is always labeled with its inputs.
 
 ## Model usage
 
-All agents use the LLM gateway with model id from `ANTHROPIC_MODEL`
-(default `claude-haiku-5-5` since #340, [ADR-0015](decisions/0015-haiku-default-model.md); the initial target was
-`claude-opus-5-5`) or `AGENT_MODEL_OVERRIDES`. Structured outputs
+All production/staging ARI agents use `claude-haiku-5-5` only, per the owner’s
+2026-10-21 instruction ([ADR-0015](decisions/0015-haiku-default-model.md), #380).
+`ANTHROPIC_MODEL` and `AGENT_MODEL_OVERRIDES` apply only to development/test and
+standalone experiments; they cannot select another production model. Structured outputs
 are validated with Pydantic; invalid output = failed step with one retry
 including the validation error. Each agent has its own token budget slice
 ([08](08_AGENT_ORCHESTRATION.md) §Budgets).

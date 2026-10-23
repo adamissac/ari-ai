@@ -257,3 +257,17 @@ def test_default_model_is_haiku_5_5_and_live_requests_send_no_fallbacks() -> Non
 def test_server_fallback_is_kept_for_models_that_support_it() -> None:
     [(kind, kw)] = _live_transport_calls("claude-opus-5-5")
     assert kind == "beta" and kw["extra_body"] == {"fallbacks": "default"}
+
+
+def test_production_uses_only_haiku_despite_stale_environment_overrides():
+    settings = _settings(
+        app_env="production",
+        anthropic_model="claude-opus-5-5",
+        agent_model_overrides="scout=claude-sonnet-5-5,patch=claude-opus-5-5",
+    )
+    transport = FakeTransport(
+        [{"content": [{"type": "text", "text": "ok"}], "stop_reason": "end_turn"}] * 8
+    )
+    gw = build_gateway(settings=settings, transport=transport, charge=lambda usage: None)
+    for role in ("reviewer", "scout", "probe", "trace", "diagnose", "patch", "verify", "fortify"):
+        assert gw.model_for(role) == "claude-haiku-5-5"

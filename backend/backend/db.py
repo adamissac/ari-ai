@@ -105,6 +105,7 @@ projects = sa.Table(
 repositories = sa.Table(
     "repositories",
     metadata,
+    sa.Column("automatic_assessments", sa.Boolean, nullable=False, server_default=sa.true()),
     _id(),
     sa.Column(
         "project_id", sa.String(80), sa.ForeignKey("projects.id"), nullable=False, index=True
@@ -348,6 +349,24 @@ reassessment_requests = sa.Table(
     _created(),
 )
 
+live_policy_decisions = sa.Table(
+    "live_policy_decisions",
+    metadata,
+    _id(),
+    sa.Column(
+        "project_id", sa.String(80), sa.ForeignKey("projects.id"), nullable=False, index=True
+    ),
+    sa.Column("application_id", sa.String(80), sa.ForeignKey("connected_applications.id")),
+    sa.Column("window_end", TS, nullable=False),
+    sa.Column("source", sa.String(20), nullable=False),
+    sa.Column("producer", sa.String(20), nullable=False),
+    sa.Column("inference_ran", sa.Boolean(), nullable=False),
+    sa.Column("dedupe_key", sa.String(400), nullable=False, unique=True),
+    sa.Column("doc", JSONB, nullable=False),
+    _created(),
+    sa.CheckConstraint("producer in ('rules','v6_shadow','abstention')", name="producer"),
+)
+
 defense_recommendations = sa.Table(
     "defense_recommendations",
     metadata,
@@ -395,6 +414,21 @@ index_snapshots = sa.Table(
     _created(),
 )
 
+connected_applications = sa.Table(
+    "connected_applications",
+    metadata,
+    _id(),
+    sa.Column(
+        "project_id", sa.String(80), sa.ForeignKey("projects.id"), nullable=False, index=True
+    ),
+    sa.Column("name", sa.String(200), nullable=False),
+    sa.Column("environment", sa.String(20), nullable=False),
+    sa.Column("created_by", sa.String(80), sa.ForeignKey("users.id"), nullable=False),
+    sa.Column("doc", JSONB, nullable=False),
+    _created(),
+    sa.CheckConstraint("environment in ('sandbox','owned_test')", name="environment"),
+)
+
 ingest_tokens = sa.Table(
     "ingest_tokens",
     metadata,
@@ -405,6 +439,8 @@ ingest_tokens = sa.Table(
     sa.Column("token_sha256", sa.String(64), nullable=False, unique=True),
     sa.Column("created_by", sa.String(80), sa.ForeignKey("users.id"), nullable=False),
     sa.Column("revoked_at", TS),
+    sa.Column("last_used_at", TS),
+    sa.Column("application_id", sa.String(80), sa.ForeignKey("connected_applications.id")),
     _created(),
 )
 
@@ -419,6 +455,7 @@ runtime_windows = sa.Table(
     sa.Column("window_end", TS, nullable=False),
     sa.Column("counters", JSONB, nullable=False),
     sa.Column("score", JSONB, nullable=False),
+    sa.Column("application_id", sa.String(80), sa.ForeignKey("connected_applications.id")),
     _created(),
     sa.UniqueConstraint(
         "project_id", "source", "route", "window_end", name="uq_runtime_windows_key"
@@ -441,6 +478,39 @@ incidents = sa.Table(
     sa.Column("phase", sa.String(40), nullable=False),
     sa.Column("doc", JSONB, nullable=False),
     _created(),
+)
+
+analyst_reviews = sa.Table(
+    "analyst_reviews",
+    metadata,
+    _id(),
+    sa.Column(
+        "project_id", sa.String(80), sa.ForeignKey("projects.id"), nullable=False, index=True
+    ),
+    sa.Column(
+        "recommendation_id",
+        sa.String(80),
+        sa.ForeignKey("defense_recommendations.id"),
+        nullable=True,
+        index=True,
+    ),
+    sa.Column(
+        "live_policy_decision_id",
+        sa.String(80),
+        sa.ForeignKey("live_policy_decisions.id"),
+        nullable=True,
+        index=True,
+    ),
+    sa.Column("decision", sa.String(40), nullable=False),
+    sa.Column("reviewed_by", sa.String(80), sa.ForeignKey("users.id"), nullable=False),
+    sa.Column("doc", JSONB, nullable=False),
+    _created(),
+    sa.CheckConstraint("decision in ('accept','reject','needs_investigation')", name="decision"),
+    sa.CheckConstraint(
+        "(recommendation_id IS NOT NULL AND live_policy_decision_id IS NULL) "
+        "OR (recommendation_id IS NULL AND live_policy_decision_id IS NOT NULL)",
+        name="review_subject",
+    ),
 )
 
 

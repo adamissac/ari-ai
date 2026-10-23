@@ -1,9 +1,11 @@
 # frontend/
 
 Next.js 16 (App Router) + React 19 + strict TypeScript + Tailwind 4 dashboard for the
-whole product. Every screen reads the control-plane API (`/api/v1`) or, for the Defense
-Lab, a committed and schema-validated RL evaluation bundle. Nothing is generated or
-simulated in the browser. Spec: [docs/14](../docs/14_FRONTEND_UX_DESIGN.md).
+whole product. Console screens read the control-plane API (`/api/v1`) or, for the Defense
+Lab, a committed and schema-validated RL evaluation bundle. The Live Defense dashboard
+also has an isolated **layout-preview** (`?preview=layout` and `/live-defense-pilot`)
+whose fixtures are labelled sample layout and are never mixed with records.
+Spec: [docs/14](../docs/14_FRONTEND_UX_DESIGN.md).
 
 ## What is implemented
 
@@ -21,6 +23,8 @@ simulated in the browser. Spec: [docs/14](../docs/14_FRONTEND_UX_DESIGN.md).
 | `/projects/[id]/findings/[fnd]` evidence chain (expectation → Scout → Probe → Trace → Diagnose → Patch → Verify → Fortify), standards labels (CWE, CVSS, ATT&CK, D3FEND) from the persisted record, GitHub links at the exact SHA, line-numbered diff, Verify checks, status history, accept risk | `/findings/{id}`, `/findings/{id}/patches`, `/artifacts/{id}` (size-bounded, SHA-256 checked) |
 | `/projects/[id]/approvals` inbox with will / will-not summaries | `/projects/{id}/approvals`, `/approvals/{id}/decision` |
 | `/projects/[id]/monitoring` webhook/runtime event feed (simulated events labelled), impact sets, re-assessments, simulation-derived RL recommendations + explanations, imported RL evaluations, and an owner-only 24/7 defense switch | `/projects/{id}/events`, `/reassessments`, `/defense-recommendations`, `/rl-evaluations`, `PATCH /projects/{id}` |
+| `/projects/[id]/live-defense` customer Live Defense dashboard (Overview, Investigation, Explainability, Staging apps). Live mode is control-plane records: events, NIST incidents, simulation-derived recommendations, stored explanations, recorded health/topology, staging-app onboarding (issue/rotate/revoke/disconnect), analyst reviews, exportable pilot report. Health stays unknown without a recorded check. No apply/isolate/rate-limit; accept does not execute. `?preview=layout` swaps in labelled sample chrome | `/projects/{id}`, `/events`, `/reassessments`, `/incidents`, `/defense-recommendations`, `/explanation`, `/rl-evaluations`, `/applications`, `/ingest-tokens`, `/defense-health`, `/defense-graph`, `/pilot-report`, `/reviews` ([contracts](../docs/planning/LIVE_DEFENSE_FRONTEND_API.md)) |
+| `/live-defense-pilot` isolated sample layout of the same views, no session and no API calls, permanent SAMPLE LAYOUT banner | Nothing: `lib/live-defense-preview.ts` |
 | `/projects/[id]/expectations` snapshot picker (ready snapshots only), behavioral expectations with status filters, sources at file:line, confirm / conflicting / reject with a reason and `expected_revision` (409 on stale view), decision history | `/repositories/{id}/snapshots`, `/snapshots/{id}/expectations`, `PATCH /snapshots/{id}/expectations/{exp}`, `/decisions` |
 | `/projects/[id]/incidents` open (record-only note; simulated by default, labelled), NIST lifecycle rail, triage, assign owner, transitions, two-person approval gates (requester cannot decide), timeline with CSF refs; closure panel: link findings and accepted verifications, closure criteria satisfied with hash-pinned patch/regression artifacts, lessons learned (Fortify regression evidence), communications (RS.CO-02/03, RC.CO-03), closure readiness list | `/projects/{id}/incidents`, `/incidents/{id}`, `/incidents/{id}/actions` |
 | `/projects/[id]/settings` project name, languages, default + monitoring budgets, trigger policy (enabled, coalescing interval, record-only globs); validated client-side, owner-only on the backend; trigger policy is labelled 24/7 defense | `PATCH /projects/{id}` |
@@ -128,6 +132,7 @@ installed Chrome instead of Playwright's Chromium, `E2E_SKIP_BUILD=1` to reuse `
 - GitHub links stay off when an assessment scope names more than one repository. Findings still do not carry a repo id.
 - Live-provider (`provider_mode=live`) runs have not been exercised through the UI.
 - The project journey cannot see a phase the latest assessment's event log did not record. Phase views follow the events log's `next_cursor` from `after=0`; they stop after 20 pages (10,000 events) and then say a later phase may be unmarked.
+- Live Defense still has no live-incident machine (DETECTED→EXECUTING). Shadow `LivePolicyDecision` rows from authenticated staging ingest are implemented (NOT EXECUTED). Staging apps, ingest metadata, recorded health/topology and analyst reviews are implemented; health is never inferred from HTTP 200. [LIVE_DEFENSE_FRONTEND_API.md](../docs/planning/LIVE_DEFENSE_FRONTEND_API.md).
 
 Assessment start retries keep their key after network errors. An explicit
 IDEMPOTENCY_CONFLICT offers “Prepare a new assessment action”: it sends nothing
@@ -200,3 +205,6 @@ Add staggered proof-card/footer entrances and subtle button, workflow-chip, proc
 Simplify project navigation to Code review and 7 agents. Move settings, scopes, approvals and other records into More; lead with run/replay and starting a check; disclose findings, repositories and progress on demand. Keep all routes and approval requirements. Branch `feat/adam/project-simplify`; validation in PR.
 
 Keep organization/repository/commit navigation scoped to the selected repository and SHA. Real commit runs stay inline in a two-tab reviewer/seven-agent workspace with demo-style agent rail and recorded replay; no redirect to shared project history. Resolve the repository’s actual project, search older run pages, reject mismatched results and retain scoped remediation approvals. Optional narrated quick reads are explicitly requested and separate from executed records. Branch `fix/adam/commit-workspace`; validation in PR.
+
+
+Connected repo/commit pages expose a per-repository Automatic runs switch. ON shows background-run status; OFF exposes manual Run. The backend schedules independently of browser visits. Quick reads use Haiku 5.5 only. See backend README and issue #380 for prerequisites and quotas.

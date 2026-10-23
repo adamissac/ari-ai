@@ -118,7 +118,7 @@ def create_assessment(
 ) -> tuple[Assessment, str]:
     """Create an assessment in CREATED, emit its first event, audit, and enqueue the run job."""
     repo_project = conn.execute(
-        sa.select(repositories.c.project_id).where(repositories.c.id == repo_id)
+        sa.select(repositories.c.project_id).where(repositories.c.id == repo_id).with_for_update()
     ).scalar()
     if repo_project != project_id:
         raise DomainError(ErrorCode.NOT_FOUND, f"repository {repo_id} not found in project", 404)
@@ -132,6 +132,32 @@ def create_assessment(
         over = budget_over_cap(budget)
         if over:
             raise DomainError(ErrorCode.VALIDATION_FAILED, over, 422)
+    # Manual/API and automatic starts serialize on the repository row above. Reuse
+    # an in-flight assessment when either start is automatic, rather than spending twice.
+    reusable = conn.execute(
+        sa.select(assessments.c.doc)
+        .where(
+            assessments.c.repo_id == repo_id,
+            assessments.c.commit_sha == commit_sha,
+            assessments.c.scope_id == scope_id,
+            assessments.c.state.notin_([state.value for state in TERMINAL_STATES]),
+            sa.or_(
+                sa.literal(trigger is AssessmentTrigger.monitoring),
+                assessments.c.trigger == AssessmentTrigger.monitoring.value,
+            ),
+        )
+        .order_by(assessments.c.created_at.desc())
+        .limit(1)
+    ).scalar()
+    if reusable:
+        existing = Assessment.model_validate(reusable)
+        job_id, _ = jobs.enqueue(
+            conn,
+            "run_assessment",
+            {"assessment_id": existing.id},
+            dedupe_key=f"asm:{existing.id}:start",
+        )
+        return existing, job_id
     settings = project_settings(conn, project_id)
     # Project budgets are checked when saved; one saved before the operator lowered the
     # cap is clamped rather than failing every push-triggered run.

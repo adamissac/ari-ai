@@ -1,0 +1,14 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "automatic_assessments": {
+      "title": "Automatic Assessments",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "automatic_assessments"
+  ],
+  "title": "RepositoryUpdate",
+  "type": "object"
+}

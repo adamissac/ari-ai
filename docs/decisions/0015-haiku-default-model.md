@@ -15,7 +15,7 @@ asked for Claude Haiku 5.5 ($0.10 / $0.50 per million tokens for prompts up to 1
 ## Decision
 1. `claude-haiku-5-5` is the default in the backend gateway, the security-agents gateway and the
    frontend live analysis.
-2. `ANTHROPIC_MODEL` and `AGENT_MODEL_OVERRIDES` still override it per deployment or per agent; Opus
+2. **Updated by explicit repository-owner instruction on 2026-10-21 (#380):** production/staging ARI and the web quick read use Haiku 5.5 only. `ANTHROPIC_MODEL` and `AGENT_MODEL_OVERRIDES` are honored only in development/test and standalone experiments; Opus
    is one environment variable away (`ANTHROPIC_MODEL=claude-opus-5-5`).
 3. Haiku has no server-side refusal fallback, so the `fallbacks` parameter is not sent for
    `claude-haiku-*`. Nothing silently reroutes a request to a more expensive model.
@@ -29,3 +29,7 @@ asked for Claude Haiku 5.5 ($0.10 / $0.50 per million tokens for prompts up to 1
   measured on Opus 5.5; its results do not transfer to Haiku. Haiku is a smaller model, and agent
   success rates may differ. Re-run the comparison before making quality claims at the new default.
 - Specs that named Opus as the default (MASTER_BUILD_SPEC, docs/07, docs/18) now point here.
+
+## Production policy clarification (2026-10-21)
+
+The owner explicitly requested “Haiku 5.5 only.” This supersedes the previous production override permission. Railway startup pins the model and clears overrides; the production/staging gateway pins selection even if stale environment values remain. Optional web quick reads are pinned too. No fallback to another model. Test/development and standalone research tooling remain configurable; historical evidence keeps its actual model labels. This is a model-selection policy, not evidence of Haiku quality parity or a verified live provider run.

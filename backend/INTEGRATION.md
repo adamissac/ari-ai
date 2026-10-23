@@ -144,7 +144,14 @@ strings such as `"POST /payments/{id}/refunds"`. Imported evaluations:
 ## Runtime signals (monitoring, contracts 0.3.0)
 
 * Owner mints a token: `POST /api/v1/projects/{id}/ingest-tokens` → `IngestTokenCreated`
-  (token shown once). Revoke: `POST /api/v1/ingest-tokens/{token_id}/revoke`.
+  (token shown once). App-bound mint: `POST /api/v1/applications/{id}/ingest-tokens`.
+  Metadata (no secret): `GET /api/v1/projects/{id}/ingest-tokens`. Revoke:
+  `POST /api/v1/ingest-tokens/{token_id}/revoke`.
+* Staging apps (sandbox / owned_test only): `POST/GET /api/v1/projects/{id}/applications`.
+  Recorded health (`status` always `unknown`): `GET /api/v1/projects/{id}/defense-health`.
+  Recorded topology: `GET /api/v1/projects/{id}/defense-graph`.
+  Analyst review of a stored recommendation (accept does not execute):
+  `POST /api/v1/defense-recommendations/{id}/reviews`.
 * Senders (the sandboxed demo target's collector, or replay tooling) call
   `POST /api/v1/ingest/runtime/{project_id}` with `Authorization: Bearer <token>` and a
   `RuntimeSignalBatch` of per-route counters. The response is a `RuntimeIngestAck`

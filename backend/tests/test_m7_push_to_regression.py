@@ -34,20 +34,27 @@ def _drain_all() -> None:
         pass
 
 
-def test_signed_push_drives_the_full_chain_to_verified_regressions(unified) -> None:  # noqa: F811
+@pytest.mark.parametrize("automatic", [False, True])
+def test_signed_push_drives_the_full_chain_to_verified_regressions(
+    unified,  # noqa: F811
+    automatic,
+    settings_override,
+    monkeypatch,
+) -> None:
     h = unified
     alice, bob, pid = h["alice"], h["bob"], h["project"]
 
-    # The project owner sizes the monitoring budget for the full chain (review + 7 agents +
-    # functional repair) through the settings API; the 150k-token default is a cheaper scan.
-    settings = alice.get(f"/api/v1/projects/{pid}").json()["settings"]
-    settings["monitoring_policy"]["monitoring_budget"] = {
-        "max_tokens": 400_000,
-        "max_usd": 10.0,
-        "max_wall_clock_s": 1800,
-    }
-    r = alice.patch(f"/api/v1/projects/{pid}", json={"settings": settings})
-    assert r.status_code == 200, r.text
+    # Legacy monitoring requires an explicit full-chain budget; automatic commits
+    # use the normal project assessment budget without manual configuration.
+    if not automatic:
+        settings = alice.get(f"/api/v1/projects/{pid}").json()["settings"]
+        settings["monitoring_policy"]["monitoring_budget"] = {
+            "max_tokens": 400_000,
+            "max_usd": 10.0,
+            "max_wall_clock_s": 1800,
+        }
+        r = alice.patch(f"/api/v1/projects/{pid}", json={"settings": settings})
+        assert r.status_code == 200, r.text
 
     # A real second commit on the owned repo (behaviour-neutral), pushed and signed.
     repo = h["repo_path"]
@@ -56,6 +63,35 @@ def test_signed_push_drives_the_full_chain_to_verified_regressions(unified) -> N
     _git(repo, "commit", "-qam", "touch payments app")
     head = _git(repo, "rev-parse", "HEAD")
     payload = push_payload([APP], head=head, base=h["sha"])
+    if automatic:
+        import sqlalchemy as sa
+
+        from backend.db import repositories, transaction
+
+        settings_override(github_auto_commit_authors="adamissac")
+        with transaction() as conn:
+            conn.execute(
+                sa.update(repositories)
+                .where(repositories.c.project_id == pid)
+                .values(installation_id=99)
+            )
+
+        class GitHub:
+            def commit(self, installation, full_name, sha):
+                return {"sha": sha, "author": {"login": "adamissac"}}
+
+        monkeypatch.setattr("backend.auto_commits.GitHubApp", GitHub)
+
+        # External GitHub checkout is represented by the real owned fixture git repo.
+        # Intelligence and agents still ingest and execute the exact pushed SHA.
+        def owned_checkout(repo_id, commit_sha):
+            assert commit_sha == head
+            assert _git(repo, "rev-parse", commit_sha) == head
+            return repo
+
+        monkeypatch.setattr("backend.checkouts.ensure_checkout", owned_checkout)
+        payload["commits"][0]["id"] = head
+        payload["sender"] = {"login": "adamissac"}
     delivery = str(uuid.uuid4())
     assert post_webhook(alice, payload, delivery=delivery).status_code == 202
     assert post_webhook(alice, payload, delivery=delivery).status_code in (200, 202)  # redelivery

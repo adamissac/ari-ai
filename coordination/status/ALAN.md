@@ -1,9 +1,9 @@
 # Alan — implementation status
 
-Owner: Alan (`security-agents/`, SEC-001 … SEC-013)
-Branch: `fix/alan/main-health`
-Current task: keep security-agents claims accurate; M3 live run pending a key holder
-Last remote sync: 2026-10-17, `origin/main` @ `39186cb`
+Owner: Alan (`security-agents/`, SEC-001 … SEC-013; interim Live Defense UI)
+Branch: `feat/live-defense-phase5-pilot-readiness`
+Current task: Live Defense Phase 5 shadow-pilot readiness (no Phase 4 enforcement; do not merge #393)
+Last remote sync: 2026-10-23, `origin/main` @ `7adf509` (merged into Phase 5; PR #395)
 API/contract dependencies: `shared` 0.9.0 `CheckCategory`; `backend.host` checkpoints; `code_review.api` functional helpers
 Recent PR/commit: `feat/alan/verify-honesty-check-category` (do not push merged `host-finding-persistence` / `host-resume-hardening`)
 Blockers: live seven-agent run (issue #10, no key); Docker images (INFRA-005)
@@ -74,6 +74,11 @@ Updated 2026-10-17 after #100 to #125.
   claimed.
 
 ## Session entries
+
+### 2026-10-22 (Live Defense Phase 3 shadow runtime)
+
+- Branch `feat/live-defense-phase3-shadow-runtime` from `origin/main` `6e98b23`. Contracts 0.17.0. No `rl-defense/` training/checkpoint/promotion edits. No Phase 4 enforcement.
+- Executed: `make check`; `uv run mypy` 40 files clean; focused pytest 85 passed / 2 skipped; frontend lint/typecheck; vitest 325; transport 35; `next build` ok.
 
 ### 2026-10-17 (verify honesty + CheckCategory)
 
@@ -290,3 +295,163 @@ Use committed/pushed clean source and the real existing v6 registry with
 and its documented workspace PYTHONPATH. Source-byte/reference/registry guards,
 complete primary/secondary reporting and failure evidence are implemented; no
 automatic model choice, approval or promotion. This requested task ends at preparation.
+
+### 2026-10-21 — V10 execution authorized
+
+IN_PROGRESS on `feat/alan/live-retrain-v10`: owner requested continuation after
+merged preregistration. Launch the unchanged two-arm/five-seed study with five CPU
+workers, fresh validation/holdout, actual read-only v6 registry and all ten runs
+retained. Expected compute roughly six hours. Freeze launch commit and tracked
+source until parent runner exits; no automatic retries, policy selection or promotion.
+Prior source validation: merged #378 CI,282 RL tests and20k-step reload smoke passed.
+This entry records authorization/preparation, not a successful experiment.
+
+### 2026-10-21 — RL-V10-001 completed, no promotion
+
+Completed uniform/balanced seeds0–4 from frozen source `a98899d` in5h58m17s
+(before final diagnostics), no execution errors;33,000 held-out episodes retained.
+Balanced-minus-uniform return +0.05919 (95% training-seed CI +0.03335 to +0.08713;
+Holm p0.0895); balanced-minus-v6 +0.29080 (CI +0.27056 to +0.31045). Primary
+hypothesis unsupported: all ten candidates reject; every balanced seed has a scenario
+regression, four fail availability, three fail static-rules comparison. Compromise
+improves but availability/quiet disruption worsen. Train-only diagnostics pass for
+all ten; all saved evidence verifies and checkpoints reload. Worst saved failure:
+uniform seed2 persistent43203,84/84 compromised vs v6 0/84. No holdout reruns,
+retries or promotion. Real registry digest remains c3455933…; v6 stays deployed.
+Results/provenance: `rl-defense/results/live-retrain-v10/PROVENANCE.md`.
+Future experiments need fresh preregistration/holdout; no follow-up run launched.
+
+### 2026-10-21 — RL-DIAG-001: targeted v10 diagnosis (Alan, owner authorized)
+
+IN_PROGRESS `feat/alan/rl-targeted-diagnosis`. All ten selected checkpoints already
+miss85% validation availability; rotation exposes principal-block collateral cost,
+not token-rotation bypass. Added saved-data/input-pinned diagnostics and opt-in
+`--require-validation-availability` rejection before any holdout policy execution.
+Targeted gateway regressions preserve own/delegated access assertions and prove the
+current broad-control tradeoff. No new training/holdout replay or promotion. V6 stays
+deployed. No v11 launch: process guard is not proof of a better learned policy.
+
+Focused verification: 22 tests passed in 22.51s, including the unchanged complete v10
+evidence bundle. Ruff lint/format and diff checks pass. No new policy execution or
+training performed by this diagnosis. Full CI and review pending.
+
+PR #383 review follow-up: refuse stale output/evidence directories before training,
+bind validation diagnostics to checkpoint/seed/source/config/manifest provenance, and
+atomically export verified/restorable rejection evidence before exiting. No synthetic
+promotion report; original run files remain intact. Added stale-directory, durable
+restore, corrupt-input rollback and complete rejection-path regression tests.
+
+### 2026-10-21 — RL-DIAG-001 complete; pause further training
+
+Merged PR #383 at `79a21e8` (final source `d9ad43b`). Diagnosed exposed v10 data
+without policy replay: all ten selected models already miss validation availability;
+principal-wide long controls impose documented own/delegated-traffic costs during
+rotation. Added opt-in validation screening, candidate/source/config provenance, empty
+output preflight and atomic verified/restorable rejection export. All three automated
+review findings are fixed and resolved. Existing trainer defaults, serving and v10
+evidence are preserved.
+
+Final CI: **310 RL tests passed in 389.33s**, plus successful 20k-step gradient/reload
+smoke, full backend suite, backend-to-RL integration, frontend unit/build and browser
+checks, link checks and secret scan. Local focused verification: **28 passed in 22.73s**.
+No full research training, fresh/exposed holdout replay, registration or promotion.
+Registry SHA-256 remains `c345593354856c50559ba16611853a0e4936a7efc11fa5704c224d3189271408`;
+v6 remains deployed. The earlier v10 study monitor remains paused.
+
+Owner requested at most one justified follow-up experiment. **No v11 launched**: the
+process guard is proven, but no learned-policy improvement is established. Next research
+requires a specific objective/control or validation-selection intervention with
+train/validation proof, then at most one preregistered fresh-holdout experiment. If it
+fails, reconsider the approach before spending more CPU. Diagnosis and preserved paired
+traces: `rl-defense/results/v10-followup-diagnosis/README.md` and `diagnostics.json`.
+
+### 2026-10-21 — RL-DURATION-001 (Alan, owner authorized)
+
+IN_PROGRESS `feat/alan/rl-duration-study`. Bounded train/validation-only comparison of
+short/long controls and one fixed existing outsider-duration rule, with actual v6 and
+fixed tuned-rules references. Reuse existing implementation; no new control/action,
+serving fallback, learned policy or holdout execution. Plan frozen before execution in
+`rl-defense/results/duration-screen/PLAN.md`. Only prepare one possible v11 study if
+validation improves availability without worse compromise under the fixed screen.
+
+### 2026-10-21 — RL-DURATION-001 screen complete; v11 not justified
+
+Source `d985e69`, fixed/pushed plan before execution; all five heuristic/reference
+policies completed 280 train and240 validation episodes,15,600 windows, no errors or
+retries. Duration-aware vs actual v6 on validation: availability +1.2373 percentage
+points,95% CI [−0.0313,+2.5340]; compromise −4.1464 points, CI [−7.4197,−1.1465].
+Availability CI includes zero, failing the precommitted strict screen. Other validation
+conditions pass, but training compromise also worsens vs v6 (16.3863% vs15.2552%).
+Do not relax the test, add samples/candidates or prepare/launch v11. Reconsider the
+objective/control design first. This is a deterministic heuristic, not trained RL.
+
+All520 saved metrics exactly reproduce from complete raw trajectories; initial35
+artifact pins and frozen source/actual registry verify. Expanded evidence additionally
+pins post-run report/verifier. 13 focused tests passed in0.97s; Ruff lint/format and
+diff checks pass. No holdout replay, new checkpoint, registration, serving change or
+promotion. V6 registry unchanged. Results in `rl-defense/results/duration-screen`.
+PR #386 holds the complete source/results; final review and CI pending.
+
+### Duration screen review correction — historical interpretation
+
+PR #386's two review findings are addressed locally: both commands now reproduce
+training and training-by-scenario aggregates, not only validation; raw verification
+uses hash-pinned historical metric/schema/decision definitions from frozen source
+`d985e69`, independently of current product imports. Exact prior execution/verifier
+source and the earlier index are retained for audit; original measurements, plan,
+traces, registry and failed screen decision are unchanged. Recorded Python/NumPy/
+Pydantic versions are required. 17 focused tests pass in3.91s, including corrupt/re-pinned
+training summaries and incompatible current-product imports. No policy replay or new
+candidate/training. Shell permission approval timed out twice; GitHub connector is
+used to publish the authorized changes. The temp worktree Git metadata may remain
+at its earlier head; modified local files are preserved and match the remote fix.
+
+### 2026-10-21 — RL-DURATION-001 complete; no v11
+
+Merged PR #386 at `9926d14` (final review-fix commit `1e42f3e`). The one fixed
+heuristic duration comparison completed all520 train/validation episodes and15,600
+windows from source `d985e69`, without errors, retries, holdout execution or model
+training. Validation availability +1.2373 percentage points versus v6 had95% CI
+[−0.0313,+2.5340], failing the precommitted strictly-positive lower bound. Compromise
+improved on validation but worsened on training. Do not relax the condition, add
+samples/candidates, or prepare/launch v11 from this screen. Reconsider objective/control
+design before further research. V6 and its original registry remain unchanged.
+
+Both review findings are fixed and resolved: complete training/validation aggregate
+reproduction, plus hash-pinned historical metric/schema/decision semantics and recorded
+Python/NumPy/Pydantic versions. Original execution/verifier sources and prior index are
+retained; all original measurements, raw traces, plan and decision are unchanged.
+Final CI: **327 RL tests passed in394.40s**, plus successful20k-step gradient/reload
+smoke, frontend unit/build and browser tests, links and secret scanning. Local focused
+verification17 passed (latest2.32s); all520 raw episode metrics reproduce. Full result:
+`rl-defense/results/duration-screen/PROVENANCE.md`; historical verification details:
+`rl-defense/results/duration-screen/VERIFICATION.md`.
+
+Shell permission review timed out; changes were committed/pushed/merged through the
+GitHub connector. The temporary checkout `/private/tmp/rl-v10` still has earlier local
+Git metadata and preserved files corresponding to remote fix `1e42f3e`; reconcile it
+with the remote before any cleanup or new work. The user's original dirty checkout
+was not overwritten. No study heartbeat was re-enabled or extra experiment scheduled.
+
+### 2026-10-22 — owner-authorized RL-CMDP-001 Phase1
+
+Research implementation/evidence in PR #388, `feat/alan/constrained-rl-phase1`.
+Keep unmerged under the latest no-production-deployment restriction (main deploys).
+Audit/CMDP/action matrix/offline readiness/four-paper decision delivered.140fixed
+baseline episodes /4,200windows verified,8,400historical train transitions adapted
+read-only. Budgeted heuristic has99.50% availability but93.16% compromise, so **no-go
+now** for constrained-DDQN/CQL. No Phase2/training/promotion/serving change.
+
+27focused tests pass (9.91s); original full347pass plus subsequent new regressions, shared
+contracts60pass and skipped TypeScript check passed separately. All five CI workflows
+passed source184a61a; review-proof fixes pending current-head CI. Four review findings
+fixed with source Git-object proof, portable registry guard, policy-decision replay and
+schema discriminators. See docs/research/constrained-rl-phase1/VERIFICATION.md.
+
+## RL research continuation — 2026-10-23
+
+RL-CMDP-003 on `feat/alan/read-context-integration`: opt-in owned payments-lite
+read wrapper, store-derived context, serialized permission updates and buffered
+freshness checks. Eight focused integration tests pass. No serving hook, model
+training or operational-control integration; historical evidence remains unchanged.
+Details: `docs/research/deterministic-feasibility/APPLICATION_CONTEXT.md`.
