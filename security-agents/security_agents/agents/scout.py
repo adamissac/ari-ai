@@ -15,6 +15,7 @@ from ..contracts import (
     Confidence,
     EvidenceRef,
     Hypothesis,
+    PlatformError,
     ShortText,
     SourceSpan,
     StrictModel,
@@ -167,8 +168,29 @@ SPEC = AgentSpec(
 )
 
 
+def _recipe_include(intel: CodeIntel) -> tuple[str, ...]:
+    import json
+
+    from ..tools.services import sandbox_setup
+
+    path = intel.snapshot.root / "build_recipe.json"
+    try:
+        return sandbox_setup(json.loads(path.read_text(encoding="utf-8")))["include"]
+    except (OSError, ValueError, PlatformError):
+        return ()
+
+
+def _in_target(path: str, include: tuple[str, ...]) -> bool:
+    return any(path == p or path.startswith(p.rstrip("/") + "/") for p in include)
+
+
 def build_prompt(data: ScoutInput, intel: CodeIntel) -> str:
     entries = intel.entry_points()
+    # Only the code the recipe uploads can be validated; other apps in a monorepo (examples,
+    # tooling) would produce hypotheses Probe can never run.
+    include = _recipe_include(intel)
+    if include:
+        entries = [e for e in entries if _in_target(e.path, include)] or entries
     if data.entry_point_ids:
         wanted = set(data.entry_point_ids)
         entries = [e for e in entries if e.id in wanted] or entries
