@@ -179,7 +179,8 @@ test('Live Defense Phase 5: rotate, revoke, disconnect, restart ingest, export r
   await evidenceShot(page, 'live-defense-phase5-report');
 
   await appCard.getByRole('button', { name: 'Disconnect app' }).click();
-  await expect(appCard.getByText('disconnected')).toBeVisible();
+  await expect(appCard.getByText('disconnected', { exact: true })).toBeVisible();
+  await expect(appCard.getByTestId('live-defense-app-disconnected')).toBeVisible();
   const disabled = await request.post(`${api}/ingest/runtime/${pid}`, {
     headers: { Authorization: `Bearer ${rotated}` },
     data: ingestBatch(120_000, 0),

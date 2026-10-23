@@ -18,6 +18,10 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-23 — Cursor (agent, Alan) — Live Defense Phase 5 e2e locator + main merge
+- Did: merged `origin/main` `cb40ca6` (PR #394 Codex RL-CMDP-002) into `feat/live-defense-phase5-pilot-readiness`. Kept both Unreleased changelog bullets. Did **not** edit Codex research files, train, or promote. Playwright Phase 5 disconnect locator now uses exact badge + `live-defense-app-disconnected` (strict-mode matched badge and note). PR #393 still open; Phase 4 enforcement is not on this branch.
+- Next: re-run Playwright; merge Phase 5 only if CI green, no required-review gap, no conflicts, no executable enforcement. Do not merge #393.
+
 ### 2026-10-23 — Cursor (agent, Alan) — Live Defense Phase 5 shadow-pilot readiness
 - Did: branch `feat/live-defense-phase5-pilot-readiness` from `origin/main` (`09e8cab`). Does **not** include Phase 4 enforcement (PR #393 stays open). Adds rotate/disconnect/shadow-verify/pilot-report. Health worker/telemetry/policy stay unknown. Codex/`rl-defense/` untouched.
 - Next: run full check/test suite; merge Phase 5 only if CI green, no enforcement, no trust-boundary expansion, protection allows. Do not merge #393.

@@ -185,7 +185,11 @@ function AppCard({
           <Button className="!px-2 !py-0.5 text-xs" onClick={() => void disconnect()}>Disconnect app</Button>
         )}
       </div>
-      {disconnected && <p className="mt-2 text-xs text-muted">Disconnected. Ingest is rejected. This is not a production block or isolate.</p>}
+      {disconnected && (
+        <p className="mt-2 text-xs text-muted" data-testid="live-defense-app-disconnected">
+          Disconnected. Ingest is rejected. This is not a production block or isolate.
+        </p>
+      )}
       {error !== null && <div className="mt-2"><ErrorState error={error} /></div>}
       {issued && (
         <div className="mt-3 rounded-md border border-warn/50 bg-warn/10 p-2 text-xs" data-testid="live-defense-token-once">
