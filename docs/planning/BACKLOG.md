@@ -229,3 +229,5 @@ was not overwritten. No study heartbeat was re-enabled or extra experiment sched
   deterministic baseline evaluation. No Phase 2, training, holdout or serving changes.
 
 - IMPLEMENTED / finite fixture passed; integration pending (2026-10-23), **RL-CMDP-002**, Alan, `feat/alan/deterministic-feasibility`: owner-authorized finite-case deterministic authorization feasibility; owner limits zero unauthorized successes / zero valid owner/delegated denials. Protocol and isolated guard in `docs/research/deterministic-feasibility/`. No training or production integration.
+
+- IMPLEMENTED / CI and review pending (2026-10-23), **RL-CMDP-003**, Alan, `feat/alan/read-context-integration`: owner-authorized owned-app context binding, freshness and serialized revocation tests. No serving registration or training.
