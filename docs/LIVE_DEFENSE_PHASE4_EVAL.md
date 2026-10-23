@@ -5,8 +5,12 @@ This is **not** customer-production evidence and **not** a claim that
 Gym/simulator metrics transferred to live control. There is no untreated
 production arm. Controls ran only against a repo-owned loopback fixture.
 
-Base: `origin/main` `5be62de` (Phase 3 PR #392).
-Codex owns RL research: `rl-defense/` was not modified, trained, or promoted.
+Base: `origin/main` `5be62de` (Phase 3 PR #392), later merged `09e8cab`
+(Codex constrained-RL Phase 1). Authorization decision is **ADR-0020**
+(ADR-0019 on main is Codex's RL foundation).
+Codex owns RL research: this branch does not train, promote, or edit v6
+weights, datasets, or the promotion registry. RL files on this branch exist
+only via merge of `origin/main`.
 
 ## What was exercised
 
