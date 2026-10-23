@@ -1429,3 +1429,8 @@ remain untouched. No merge: Phase1's deployment restriction governs this researc
 - Added a post-response compute-limit check and a regression that overruns on request 54; retains all 54 partial rows in FAILURE.json without retry or successful result.
 - Original comparison evidence remains byte-identical. Its runner lacked the final post-response clock check and elapsed timing record; strict budget compliance is therefore not certifiable from those original artifacts. Numerical finite-case results are retained, not replaced.
 - Recorded execution commit is a direct ancestor of this branch; merge-commit method preserves it durably.
+
+### 2026-10-23 — Alan / Codex — RL-CMDP-003
+- Added an opt-in owned payments-lite read wrapper reusing the research guard. Private store supplies identity/ownership; trusted fixture updates share a request lock. No HTTP context or writes can authorize access.
+- Eight real-app integration tests pass: before/after BOLA, owner/delegated reads, resource/path/header binding, token/owner/grant updates and expiry/rollback races with buffered bodies.
+- No earlier study rerun, evidence rewrite, serving hook, training or promotion. Single-process private-store assumptions are explicit; full feasibility remains inconclusive.

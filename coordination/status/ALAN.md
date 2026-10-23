@@ -447,3 +447,11 @@ contracts60pass and skipped TypeScript check passed separately. All five CI work
 passed source184a61a; review-proof fixes pending current-head CI. Four review findings
 fixed with source Git-object proof, portable registry guard, policy-decision replay and
 schema discriminators. See docs/research/constrained-rl-phase1/VERIFICATION.md.
+
+## RL research continuation — 2026-10-23
+
+RL-CMDP-003 on `feat/alan/read-context-integration`: opt-in owned payments-lite
+read wrapper, store-derived context, serialized permission updates and buffered
+freshness checks. Eight focused integration tests pass. No serving hook, model
+training or operational-control integration; historical evidence remains unchanged.
+Details: `docs/research/deterministic-feasibility/APPLICATION_CONTEXT.md`.
