@@ -72,6 +72,14 @@ class WriteFileArgs(StrictModel):
     content: str = Field(max_length=60_000, description="Full new file content.")
 
 
+class EditFileArgs(StrictModel):
+    path: str = Field(description="Worktree-relative path of an existing file.")
+    old_string: str = Field(
+        min_length=1, max_length=20_000, description="Exact text to replace; must occur once."
+    )
+    new_string: str = Field(max_length=20_000, description="Replacement text.")
+
+
 class DiffArgs(StrictModel):
     pass
 
@@ -315,6 +323,11 @@ def h_write_file(ctx: ToolContext, args: WriteFileArgs) -> dict[str, Any]:
     return worktree.write_file(args.path, args.content)
 
 
+def h_edit_file(ctx: ToolContext, args: EditFileArgs) -> dict[str, Any]:
+    worktree = ctx.service("worktree")
+    return worktree.edit_file(args.path, args.old_string, args.new_string)
+
+
 def h_diff(ctx: ToolContext, args: DiffArgs) -> dict[str, Any]:
     worktree = ctx.service("worktree")
     return worktree.diff()
@@ -422,6 +435,18 @@ CATALOG: dict[str, ToolDef] = {
         side_effects="worktree_write",
         requires_scope=False,
         handler=h_write_file,
+    ),
+    "worktree.edit_file": ToolDef(
+        name="worktree.edit_file",
+        version="1",
+        description=(
+            "Replace one exact, unique span of an existing file in the isolated patch worktree. "
+            "Use this for existing files; it sends only the change, so large files work."
+        ),
+        args_model=EditFileArgs,
+        side_effects="worktree_write",
+        requires_scope=False,
+        handler=h_edit_file,
     ),
     "worktree.diff": ToolDef(
         name="worktree.diff",

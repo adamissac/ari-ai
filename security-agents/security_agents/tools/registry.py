@@ -76,6 +76,7 @@ AGENT_TOOL_ALLOWLIST: dict[AgentName, frozenset[str]] = {
             "graph.neighbors",
             "expectations.for_subject",
             "worktree.write_file",
+            "worktree.edit_file",
             "worktree.diff",
             "tests.run",
         }

@@ -16,28 +16,57 @@ from .conftest import TARGET_ID, make_ctx, make_scope
 EXPECTED_MATRIX: dict[str, dict[AgentName, bool]] = {
     "code.read_span": dict.fromkeys(AgentName, True),
     "code.search": {
-        AgentName.SCOUT: True, AgentName.PROBE: False, AgentName.TRACE: True,
-        AgentName.DIAGNOSE: True, AgentName.PATCH: True, AgentName.FORTIFY: True,
+        AgentName.SCOUT: True,
+        AgentName.PROBE: False,
+        AgentName.TRACE: True,
+        AgentName.DIAGNOSE: True,
+        AgentName.PATCH: True,
+        AgentName.FORTIFY: True,
         AgentName.VERIFY: False,
     },
     "checks.run_template": {
-        AgentName.SCOUT: False, AgentName.PROBE: True, AgentName.TRACE: False,
-        AgentName.DIAGNOSE: False, AgentName.PATCH: False, AgentName.FORTIFY: False,
+        AgentName.SCOUT: False,
+        AgentName.PROBE: True,
+        AgentName.TRACE: False,
+        AgentName.DIAGNOSE: False,
+        AgentName.PATCH: False,
+        AgentName.FORTIFY: False,
         AgentName.VERIFY: True,
     },
     "worktree.write_file": {
-        AgentName.SCOUT: False, AgentName.PROBE: False, AgentName.TRACE: False,
-        AgentName.DIAGNOSE: False, AgentName.PATCH: True, AgentName.FORTIFY: False,
+        AgentName.SCOUT: False,
+        AgentName.PROBE: False,
+        AgentName.TRACE: False,
+        AgentName.DIAGNOSE: False,
+        AgentName.PATCH: True,
+        AgentName.FORTIFY: False,
+        AgentName.VERIFY: False,
+    },
+    "worktree.edit_file": {
+        AgentName.SCOUT: False,
+        AgentName.PROBE: False,
+        AgentName.TRACE: False,
+        AgentName.DIAGNOSE: False,
+        AgentName.PATCH: True,
+        AgentName.FORTIFY: False,
         AgentName.VERIFY: False,
     },
     "tests.run": {
-        AgentName.SCOUT: False, AgentName.PROBE: False, AgentName.TRACE: False,
-        AgentName.DIAGNOSE: False, AgentName.PATCH: True, AgentName.FORTIFY: False,
+        AgentName.SCOUT: False,
+        AgentName.PROBE: False,
+        AgentName.TRACE: False,
+        AgentName.DIAGNOSE: False,
+        AgentName.PATCH: True,
+        AgentName.FORTIFY: False,
         AgentName.VERIFY: True,
     },
     "patch.apply_fresh": {
-        AgentName.SCOUT: False, AgentName.PROBE: False, AgentName.TRACE: False,
-        AgentName.DIAGNOSE: False, AgentName.PATCH: False, AgentName.FORTIFY: False,
+        AgentName.SCOUT: False,
+        AgentName.PROBE: False,
+        AgentName.TRACE: False,
+        AgentName.DIAGNOSE: False,
+        AgentName.PATCH: False,
+        AgentName.FORTIFY: False,
         AgentName.VERIFY: True,
     },
 }
@@ -52,12 +81,22 @@ def test_allowlist_matches_specified_capability_matrix(tool, row):
 # Documented permission profile per role (docs/07 capability matrix + agent contracts).
 EXPECTED_PROFILE: dict[AgentName, dict[str, object]] = {
     AgentName.SCOUT: {"sandbox": "none", "network": "none", "write": "none", "may_execute": False},
-    AgentName.PROBE: {"sandbox": "check-runner", "network": "target-only", "write": "out_dir", "may_execute": True},
+    AgentName.PROBE: {
+        "sandbox": "check-runner",
+        "network": "target-only",
+        "write": "out_dir",
+        "may_execute": True,
+    },
     AgentName.TRACE: {"sandbox": "none", "network": "none", "write": "none", "may_execute": False},
     AgentName.DIAGNOSE: {"sandbox": "none", "network": "none", "write": "none", "may_execute": False},
     AgentName.PATCH: {"sandbox": "test-runner", "network": "none", "write": "worktree", "may_execute": True},
     AgentName.FORTIFY: {"sandbox": "none", "network": "none", "write": "none", "may_execute": False},
-    AgentName.VERIFY: {"sandbox": "check-runner", "network": "target-only", "write": "none", "may_execute": True},
+    AgentName.VERIFY: {
+        "sandbox": "check-runner",
+        "network": "target-only",
+        "write": "none",
+        "may_execute": True,
+    },
 }
 
 EXECUTION_TOOLS = frozenset({"checks.run_template", "tests.run", "patch.apply_fresh", "worktree.write_file"})
@@ -103,8 +142,7 @@ def test_every_role_has_a_distinct_prompt_and_schema_pair():
 
 def test_execution_capable_roles_are_exactly_probe_patch_verify(registry):
     executors = {
-        a for a in AgentName
-        if frozenset(registry.allowed_names(a, ALL_SPECS[a].tools)) & EXECUTION_TOOLS
+        a for a in AgentName if frozenset(registry.allowed_names(a, ALL_SPECS[a].tools)) & EXECUTION_TOOLS
     }
     assert executors == {AgentName.PROBE, AgentName.PATCH, AgentName.VERIFY}
 
@@ -151,7 +189,9 @@ def test_step_allowlist_narrows_agent_allowlist(registry, intel):
 def test_kill_switch_blocks_every_tool(registry, intel):
     ctx = make_ctx(AgentName.SCOUT, intel=intel, kill_switch=lambda: True)
     with pytest.raises(PlatformError) as exc:
-        registry.invoke(ctx, wire_name("code.read_span"), {"path": "payments_lite/app.py", "start_line": 1, "end_line": 5})
+        registry.invoke(
+            ctx, wire_name("code.read_span"), {"path": "payments_lite/app.py", "start_line": 1, "end_line": 5}
+        )
     assert ErrorCode.KILL_SWITCH.value in str(exc.value)
 
 
@@ -164,9 +204,7 @@ def test_schema_invalid_args_return_error_result_not_exception(registry, intel):
 
 def test_extra_argument_is_rejected(registry, intel):
     ctx = make_ctx(AgentName.SCOUT, intel=intel)
-    result = registry.invoke(
-        ctx, wire_name("code.search"), {"pattern": "def ", "sudo": True}
-    )
+    result = registry.invoke(ctx, wire_name("code.search"), {"pattern": "def ", "sudo": True})
     assert not result.ok and result.payload["error"] == ErrorCode.SCHEMA_INVALID.value
 
 
@@ -202,7 +240,9 @@ def test_path_escape_is_refused(bad, registry, intel):
         return
     assert not result.ok, bad
     assert result.payload["error"] in (
-        ErrorCode.SANDBOX_POLICY_VIOLATION.value, "TOOL_ERROR", ErrorCode.SCHEMA_INVALID.value
+        ErrorCode.SANDBOX_POLICY_VIOLATION.value,
+        "TOOL_ERROR",
+        ErrorCode.SCHEMA_INVALID.value,
     )
 
 
@@ -211,7 +251,8 @@ def test_read_span_returns_cited_content(registry, intel):
     handler = intel.find_symbol("get_payment")
     assert handler is not None
     result = registry.invoke(
-        ctx, wire_name("code.read_span"),
+        ctx,
+        wire_name("code.read_span"),
         {"path": handler.path, "start_line": handler.start_line, "end_line": handler.end_line},
     )
     assert result.ok
@@ -226,9 +267,7 @@ def test_graph_neighbors_exposes_sibling_difference(registry, intel):
     ctx = make_ctx(AgentName.SCOUT, intel=intel)
     weak = registry.invoke(ctx, wire_name("graph.neighbors"), {"symbol": "get_payment"}).payload
     for sibling_name in ("get_customer", "get_refund", "create_refund"):
-        sibling = registry.invoke(
-            ctx, wire_name("graph.neighbors"), {"symbol": sibling_name}
-        ).payload
+        sibling = registry.invoke(ctx, wire_name("graph.neighbors"), {"symbol": sibling_name}).payload
         assert any("require_owner" in c for c in sibling["callees"]), sibling_name
     assert not any("require_owner" in c for c in weak["callees"])
 
@@ -247,17 +286,21 @@ def test_tool_call_cap_enforced(registry, intel):
 @pytest.mark.boundary
 def test_check_run_against_out_of_scope_target_denied(registry, intel, library):
     """SB-01: a check against a target not in scope is denied before any sandbox exists."""
+
     class ExplodingRunner:
         def run(self, *a, **k):  # pragma: no cover - must never be reached
             raise AssertionError("check runner must not be reached when scope denies")
 
     ctx = make_ctx(
-        AgentName.PROBE, intel=intel, scope=make_scope(),
+        AgentName.PROBE,
+        intel=intel,
+        scope=make_scope(),
         services={"check_runner": ExplodingRunner(), "checks": library},
     )
     with pytest.raises(PlatformError) as exc:
         registry.invoke(
-            ctx, wire_name("checks.run_template"),
+            ctx,
+            wire_name("checks.run_template"),
             {"template_ref": "access_control.ownership@1", "target_id": "tgt_not_mine", "parameters": {}},
         )
     assert ErrorCode.SCOPE_DENIED.value in str(exc.value)
@@ -267,11 +310,16 @@ def test_check_run_against_out_of_scope_target_denied(registry, intel, library):
 @pytest.mark.boundary
 @pytest.mark.parametrize("status", [ScopeStatus.PENDING, ScopeStatus.EXPIRED, ScopeStatus.REVOKED])
 def test_check_run_with_inactive_scope_denied(status, registry, intel, library):
-    ctx = make_ctx(AgentName.PROBE, intel=intel, scope=make_scope(status=status),
-                   services={"check_runner": object(), "checks": library})
+    ctx = make_ctx(
+        AgentName.PROBE,
+        intel=intel,
+        scope=make_scope(status=status),
+        services={"check_runner": object(), "checks": library},
+    )
     with pytest.raises(PlatformError) as exc:
         registry.invoke(
-            ctx, wire_name("checks.run_template"),
+            ctx,
+            wire_name("checks.run_template"),
             {"template_ref": "access_control.ownership@1", "target_id": TARGET_ID, "parameters": {}},
         )
     assert ErrorCode.SCOPE_DENIED.value in str(exc.value)
@@ -280,24 +328,28 @@ def test_check_run_with_inactive_scope_denied(status, registry, intel, library):
 @pytest.mark.boundary
 def test_check_run_with_category_outside_scope_denied(registry, intel, library):
     ctx = make_ctx(
-        AgentName.PROBE, intel=intel,
+        AgentName.PROBE,
+        intel=intel,
         scope=make_scope(categories=["input_validation.bounds"]),
         services={"check_runner": object(), "checks": library},
     )
     with pytest.raises(PlatformError) as exc:
         registry.invoke(
-            ctx, wire_name("checks.run_template"),
+            ctx,
+            wire_name("checks.run_template"),
             {"template_ref": "access_control.ownership@1", "target_id": TARGET_ID, "parameters": {}},
         )
     assert ErrorCode.SCOPE_DENIED.value in str(exc.value)
 
 
 def test_no_scope_at_all_denies_check_run(registry, intel, library):
-    ctx = make_ctx(AgentName.PROBE, intel=intel, scope=None,
-                   services={"check_runner": object(), "checks": library})
+    ctx = make_ctx(
+        AgentName.PROBE, intel=intel, scope=None, services={"check_runner": object(), "checks": library}
+    )
     with pytest.raises(PlatformError) as exc:
         registry.invoke(
-            ctx, wire_name("checks.run_template"),
+            ctx,
+            wire_name("checks.run_template"),
             {"template_ref": "access_control.ownership@1", "target_id": TARGET_ID, "parameters": {}},
         )
     assert ErrorCode.SCOPE_DENIED.value in str(exc.value)
