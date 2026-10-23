@@ -2,7 +2,7 @@
 
 Status: **Phase 4 owned-test enforcement is implemented** on
 `feat/live-defense-phase4-controlled-enforcement` (plan:
-[LIVE_DEFENSE_PHASE4_PLAN](planning/LIVE_DEFENSE_PHASE4_PLAN.md), ADR-0019).
+[LIVE_DEFENSE_PHASE4_PLAN](planning/LIVE_DEFENSE_PHASE4_PLAN.md), ADR-0020).
 Phase 1–3 remain: shadow dashboard, authenticated ingest, `LivePolicyDecision`
 NOT EXECUTED, analyst accept does not execute. Phase 4 adds a **separate**
 `LiveControl` lifecycle and a deterministic authorization gate that can apply

@@ -50,7 +50,7 @@ RL / rules may **propose**; they cannot authorize or execute.
 
 | Step | Scope |
 |---|---|
-| 4.0 | This plan + contracts 0.18.0 (additive) + ADR-0019 |
+| 4.0 | This plan + contracts 0.18.0 (additive) + ADR-0020 |
 | 4.1 | `LiveControl` lifecycle, validated transitions, row locks, audit |
 | 4.2 | `authorize.check` — 15 deterministic checks, fail closed |
 | 4.3 | Allowlisted kinds A–D only; abstain+escalate otherwise |

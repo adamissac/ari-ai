@@ -1,11 +1,11 @@
-# ADR-0019: Independent authorization gate is the final authority for live controls
+# ADR-0020: Independent authorization gate is the final authority for live controls
 
 | Field | Value |
 |---|---|
 | Status | Accepted |
 | Date | 2026-10-23 |
 | Deciders | Alan (interim `shared/` / live-defense owner) |
-| Related | [ADR-0008](0008-offline-double-dqn.md), [ADR-0016](0016-owner-sandbox-approval.md), [ADR-0017](0017-runtime-principal-detection.md), [LIVE_DEFENSE_PHASE4_PLAN](../planning/LIVE_DEFENSE_PHASE4_PLAN.md), docs/15 |
+| Related | [ADR-0008](0008-offline-double-dqn.md), [ADR-0016](0016-owner-sandbox-approval.md), [ADR-0017](0017-runtime-principal-detection.md), [ADR-0019](0019-constrained-rl-foundation.md) (Codex; unrelated numbering), [LIVE_DEFENSE_PHASE4_PLAN](../planning/LIVE_DEFENSE_PHASE4_PLAN.md), docs/15 |
 
 ## Context
 
@@ -14,6 +14,9 @@ assumptions hold) frozen v6. Those rows are explicitly `NOT_EXECUTED`. Phase 4
 introduces **executable** actions against a registered owned-test application.
 If a model, neural net, or typed `usr_*` string could approve those actions, the
 authorization trust boundary would collapse.
+
+ADR-0019 on `main` is Codex's constrained-RL foundation. This decision is numbered
+**0020** so the two ADRs do not collide.
 
 ## Decision
 
