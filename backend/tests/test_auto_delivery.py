@@ -138,10 +138,12 @@ class FakeApp:
 
     def __init__(self, settings=None) -> None: ...
 
-    def installation_token(self, installation_id: int, *, write: bool = False) -> str:
+    def installation_token(
+        self, installation_id: int, *, write: bool = False, repository: str | None = None
+    ) -> str:
         if FakeApp.token_error:
             raise FakeApp.token_error
-        assert write
+        assert write and repository == "payments-lite"
         return "tok"
 
     def open_pull_request(self, installation_id, full_name, **kw) -> str:
@@ -217,6 +219,74 @@ def test_switching_to_manual_skips_queued_delivery(wired, client_factory) -> Non
     assert "delivery.skipped" in _actions() and FakeApp.calls == []
 
 
+def test_a_transient_github_failure_is_retried_not_stranded(wired) -> None:
+    FakeApp.token_error = httpx.ReadTimeout("slow")
+    wired("auto")
+    worker.drain(kinds=["deliver_verified_patch"])
+    assert "delivery.failed" not in _actions()
+    with transaction() as conn:
+        status = conn.execute(
+            sa.select(jobs.c.status).where(jobs.c.kind == "deliver_verified_patch")
+        ).scalar_one()
+    assert status == "queued"  # back on the queue for a retry, not dead
+
+
+def test_a_diff_that_is_not_the_verified_bytes_is_never_delivered(wired) -> None:
+    wired("auto")
+    with transaction() as conn:
+        from backend.db import patch_candidates
+
+        for pid, doc in conn.execute(
+            sa.select(patch_candidates.c.id, patch_candidates.c.doc)
+        ).all():
+            conn.execute(
+                sa.update(patch_candidates)
+                .where(patch_candidates.c.id == pid)
+                .values(doc=doc | {"diff_sha256": "0" * 64})
+            )
+    worker.drain(kinds=["deliver_verified_patch"])
+    assert FakeApp.calls == [] and "delivery.failed" in _actions()
+
+
+def test_switching_on_unblocks_runs_of_a_legacy_project(client_factory, reference) -> None:
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+    asm_id = _run_push(alice, ids["project"])
+    from backend.db import projects
+
+    with transaction() as conn:  # a project from before delivery modes: default mode, no authorizer
+        raw = conn.execute(sa.select(projects.c.settings)).scalar_one()
+        raw.pop("delivery_authorized_by", None)
+        raw.pop("delivery_mode", None)
+        conn.execute(sa.update(projects).values(settings=raw))
+    assert _set_mode(alice, ids["project"], "auto").status_code == 200
+    worker.drain(kinds=["run_assessment"])
+    assert alice.get(f"/api/v1/assessments/{asm_id}").json()["assessment"]["state"] == "COMPLETED"
+
+
+def test_write_token_is_scoped_to_one_repository(settings_override, monkeypatch) -> None:
+    import json
+
+    from backend.github import GitHubApp
+
+    settings_override(github_app_id="1", github_app_private_key="x")
+    seen: list[dict] = []
+
+    def answer(req: httpx.Request) -> httpx.Response:
+        seen.append(json.loads(req.content))
+        return httpx.Response(201, json={"token": "t"})
+
+    app = GitHubApp(
+        client=httpx.Client(
+            base_url="https://api.github.com", transport=httpx.MockTransport(answer)
+        )
+    )
+    monkeypatch.setattr(app, "_app_jwt", lambda: "jwt")
+    app.installation_token(1, write=True, repository="payments-lite")
+    app.installation_token(1)
+    assert seen[0]["repositories"] == ["payments-lite"] and "repositories" not in seen[1]
+
+
 def _git(*args: str, cwd: Path) -> str:
     return subprocess.run(
         ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],
@@ -282,6 +352,13 @@ def test_push_patch_to_a_new_branch_leaves_main_alone(tmp_path: Path) -> None:
                github_web_url=f"file://{root}")  # fmt: skip
     assert _git("rev-parse", "main", cwd=remote).strip() == base
     assert "return a == b" in _git("show", "ari/fix-1:app.py", cwd=remote)
+
+
+def test_publishing_the_pr_branch_twice_reuses_the_first_commit(tmp_path: Path) -> None:
+    root, _, base = _remote(tmp_path)
+    args = (tmp_path / "local.git", "acme/app", base, DIFF, "t", "fix", "ari/fix-9")
+    first = push_patch(*args, github_web_url=f"file://{root}")
+    assert push_patch(*args, github_web_url=f"file://{root}") == first
 
 
 def test_push_patch_rejects_a_patch_that_does_not_apply(tmp_path: Path) -> None:

@@ -179,6 +179,8 @@ def push_patch(
         )  # fmt: skip
         if _git("-C", str(repo_dir), "rev-parse", tip_ref).strip() != base_sha:
             raise BranchMoved(f"{branch} moved since the assessed commit")
+    elif published := _git("ls-remote", url, f"refs/heads/{branch}", extra_env=env).split():
+        return published[0]  # an earlier attempt of this job already published the branch
     with tempfile.TemporaryDirectory(prefix="ari-delivery-") as tmp:
         wt = Path(tmp) / "wt"
         patch_file = Path(tmp) / "fix.diff"
@@ -215,6 +217,43 @@ def _record(
         subject_id=str(details["patch_id"]),
         details=details,
     )
+
+
+def _transient(exc: Exception) -> bool:
+    """Timeouts, resets, rate limits and GitHub 5xx are worth a queue retry."""
+    if isinstance(exc, httpx.HTTPStatusError):
+        r = exc.response
+        return r.status_code == 429 or r.status_code >= 500 or "rate limit" in r.text.lower()
+    return isinstance(exc, httpx.TransportError)
+
+
+def _unverified_bytes(
+    conn: Connection, verification: VerificationResult, patch: Any, diff: bytes
+) -> str | None:
+    """Why ``diff`` is not the exact byte string Verify executed, or None when it is.
+
+    The stored artifact may be a redacted copy; Verify binds the executed bytes' hash to it
+    as evidence on diff_scope_ok. Delivery refuses anything that cannot be tied to that hash."""
+    import hashlib
+    import json
+
+    got = hashlib.sha256(diff).hexdigest()
+    verified = patch.diff_sha256
+    for check in verification.checks:
+        if check.name.value != "diff_scope_ok":
+            continue
+        for ev in check.evidence:
+            if not ev.artifact_id:
+                continue
+            try:
+                doc = json.loads(ArtifactStore().get(conn, ev.artifact_id)[1])
+            except (KeyError, OSError, ValueError):
+                continue
+            if isinstance(doc, dict) and doc.get("patch_id") == patch.id and "redacted" in doc:
+                if doc["redacted"]:
+                    return "the stored diff was redacted; Verify tested different bytes"
+                verified = doc.get("verified_diff_sha256")
+    return None if got == verified else "stored diff does not match the bytes Verify accepted"
 
 
 def _reason(exc: Exception) -> str:
@@ -271,9 +310,10 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
             .first()
         )
         connected = repo is not None and repo["installation_id"] is not None
-        diff = (
-            ArtifactStore().get(conn, patch.diff_artifact_id)[1] if granted and connected else b""
-        )
+        diff, mismatch = b"", None
+        if granted and connected:
+            diff = ArtifactStore().get(conn, patch.diff_artifact_id)[1]
+            mismatch = _unverified_bytes(conn, verification, patch, diff)
 
     def finish(action: str, **more: Any) -> None:
         with transaction() as conn:  # own transaction: a raise afterwards must not roll it back
@@ -287,6 +327,10 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
         raise PermanentJobError(
             ErrorCode.SUBSYSTEM_UNAVAILABLE, "repository is not connected through the GitHub App"
         )
+
+    if mismatch:
+        finish("delivery.failed", reason=mismatch)
+        raise PermanentJobError(ErrorCode.CONFLICT_STATE, mismatch)
 
     from backend.github import GitHubApp
 
@@ -304,7 +348,7 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
     fallback: str | None = None
     try:
         app = GitHubApp(settings=s)
-        token = app.installation_token(iid, write=True)
+        token = app.installation_token(iid, write=True, repository=full_name.split("/", 1)[1])
         with _locked(repo_dir):
             fetch_commit(repo_dir, full_name, base, token, github_web_url=web)
             if mode is DeliveryMode.auto:
@@ -331,6 +375,8 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
             f"verification `{verification.id}`). Review and merge to apply.",
         )
     except (CheckoutError, httpx.HTTPError) as exc:
+        if isinstance(exc, httpx.HTTPError) and _transient(exc):
+            raise  # the queue retries with backoff; the branch and PR steps are idempotent
         finish("delivery.failed", reason=_reason(exc), fallback_from=fallback)
         raise PermanentJobError(ErrorCode.CONFLICT_STATE, _reason(exc)) from exc
     finish("delivery.pr_opened", commit_sha=sha, branch=branch, url=url, fallback_from=fallback)
