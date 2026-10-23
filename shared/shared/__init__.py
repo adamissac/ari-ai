@@ -31,6 +31,6 @@ SCHEMA_VERSION = (
     #      (#393) also used 0.18.0 for LiveControl — rebase must renumber if both merge.
     # 0.18.1 automation opt-in: Repository.automatic_assessments and TriggerPolicy.enabled
     #      default to false (owner must explicitly enable; PR #385).
-    # 0.19 ProjectSettings.delivery_mode (review | auto) and server-set
-    #      auto_delivery_enabled_by (additive; default review keeps human approval, ADR-0020).
+    # 0.19 ProjectSettings.delivery_mode (auto | pull_request | manual, default auto) and
+    #      server-set delivery_authorized_by (additive, ADR-0020).
 )

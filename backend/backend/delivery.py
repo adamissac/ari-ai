@@ -1,26 +1,33 @@
-"""Auto delivery (ADR-0020): pre-approved remediation and push of Verify-accepted patches.
+"""Fix delivery (ADR-0020): pre-approved remediation and delivery of Verify-accepted patches.
 
-In ``review`` mode (the default) nothing here acts: a human approves each remediation and
-no code reaches the repository. In ``auto`` mode the owner who switched it on is the
-recorded approver of every remediation approval of that project, and a patch whose
-independent Verify verdict is ``accepted`` is committed onto the repository's default
-branch. Nothing else is pushed: a rejected, inconclusive or unverified patch never leaves
-the sandbox, and a patch that no longer applies to the branch tip is reported, not forced.
+``ProjectSettings.delivery_mode``:
+
+* ``auto`` (default): remediation approvals are approved in the name of the owner who
+  authorized delivery, and each patch whose independent Verify verdict is ``accepted`` is
+  committed onto the default branch. If the branch moved since the assessed commit, or the
+  push is refused (branch protection), Ari opens a pull request instead.
+* ``pull_request``: same pre-approval, but the fix always arrives as a PR for the team.
+* ``manual``: nothing here acts; a human approves each remediation and nothing is pushed.
+
+Nothing is ever force-pushed, and a rejected, inconclusive or unverified patch never leaves
+the sandbox. A project that predates delivery modes has no recorded authorizer, so it stays
+manual until an owner saves its settings.
 """
 
 from __future__ import annotations
 
-import base64
 import re
 import tempfile
 from pathlib import Path
 from typing import Any
 
+import httpx
 import sqlalchemy as sa
+from sqlalchemy.engine import Connection
 
 from backend import audit, jobs
 from backend.artifacts import ArtifactStore
-from backend.checkouts import FULL_NAME_RE, CheckoutError, _git, _locked, fetch_commit
+from backend.checkouts import FULL_NAME_RE, CheckoutError, _git, _locked, auth_env, fetch_commit
 from backend.db import (
     approvals,
     assessments,
@@ -37,29 +44,42 @@ from shared.base import utcnow
 from shared.errors import ErrorCode
 from shared.findings import PatchCandidate, VerificationResult
 from shared.scope import Approval, ApprovalStatus, ApprovalSubject
-from shared.tenancy import DeliveryMode
+from shared.tenancy import DeliveryMode, MemberRole
 
-BRANCH_RE = r"^[A-Za-z0-9._/\-]+$"
+BRANCH_RE = re.compile(r"^[A-Za-z0-9._/\-]+$")
 COMMIT_AUTHOR = ("Ari", "ari@users.noreply.github.com")
 
 
-def auto_approver(conn: Any, project_id: str) -> str | None:
-    """The owner who authorized auto delivery, or None in review mode."""
+class BranchMoved(CheckoutError):
+    """The branch no longer points at the commit that was assessed and verified."""
+
+
+def authority(conn: Connection, project_id: str) -> tuple[DeliveryMode, str] | None:
+    """(mode, authorizing owner) when delivery is automatic, else None.
+
+    The authorizer must still be an owner of the project's organization: a removed or
+    demoted owner's standing authorization ends with their access."""
+    from backend.api.deps import org_role
+
     s = project_settings(conn, project_id)
-    if s.delivery_mode is DeliveryMode.auto and s.auto_delivery_enabled_by:
-        return s.auto_delivery_enabled_by
-    return None
+    if s.delivery_mode is DeliveryMode.manual or not s.delivery_authorized_by:
+        return None
+    role = org_role(conn, s.delivery_authorized_by, project_org(conn, project_id))
+    if role is not MemberRole.owner:
+        return None
+    return s.delivery_mode, s.delivery_authorized_by
 
 
-def auto_approve_pending(assessment_id: str, project_id: str) -> list[str]:
+def auto_approve_pending(conn: Connection, assessment_id: str, project_id: str) -> list[str]:
     """Approve this assessment's pending remediation approvals on the authorizing owner's
-    behalf and enqueue the resume. Returns the approval ids (empty in review mode)."""
-    with transaction() as conn:
-        approver = auto_approver(conn, project_id)
-        if approver is None:
-            return []
-        rows = conn.execute(
-            sa.select(approvals.c.id, approvals.c.doc)
+    behalf and enqueue the resume. Returns the approval ids (empty when manual)."""
+    granted = authority(conn, project_id)
+    if granted is None:
+        return []
+    approver = granted[1]
+    rows = (
+        conn.execute(
+            sa.select(approvals.c.doc)
             .where(
                 approvals.c.assessment_id == assessment_id,
                 approvals.c.subject_type == ApprovalSubject.remediation.value,
@@ -67,94 +87,123 @@ def auto_approve_pending(assessment_id: str, project_id: str) -> list[str]:
             )
             .order_by(approvals.c.created_at)
             .with_for_update()
-        ).all()
-        ids = []
-        org_id = project_org(conn, project_id)
-        for row in rows:
-            ap = Approval.model_validate(row.doc).model_copy(
-                update={
-                    "status": ApprovalStatus.approved,
-                    "decided_by": approver,
-                    "decided_at": utcnow(),
-                    "reason": "auto delivery: pre-approved by the project owner",
-                }
+        )
+        .scalars()
+        .all()
+    )
+    org_id = project_org(conn, project_id)
+    ids = []
+    for doc in rows:
+        ap = Approval.model_validate(doc).model_copy(
+            update={
+                "status": ApprovalStatus.approved,
+                "decided_by": approver,
+                "decided_at": utcnow(),
+                "reason": "auto delivery: pre-approved by the project owner",
+            }
+        )
+        conn.execute(
+            sa.update(approvals)
+            .where(approvals.c.id == ap.id)
+            .values(status=ap.status.value, doc=ap.model_dump(mode="json"))
+        )
+        audit.record(
+            conn,
+            org_id=org_id,
+            project_id=project_id,
+            actor_type=ActorType.system,
+            actor_id="auto-delivery",
+            action="approval.auto_approved",
+            subject_type="approval",
+            subject_id=ap.id,
+            details={"on_behalf_of": approver, "subject_id": ap.subject_id},
+        )
+        ids.append(ap.id)
+    if ids:
+        jobs.enqueue(
+            conn,
+            "run_assessment",
+            {"assessment_id": assessment_id},
+            dedupe_key=f"asm:{assessment_id}:resume:auto:{ids[-1]}",
+        )
+    return ids
+
+
+def approve_waiting_runs(conn: Connection, project_id: str) -> None:
+    """Called when delivery is switched on: unblock runs already waiting for approval."""
+    waiting = (
+        conn.execute(
+            sa.select(approvals.c.assessment_id)
+            .where(
+                approvals.c.project_id == project_id,
+                approvals.c.subject_type == ApprovalSubject.remediation.value,
+                approvals.c.status == ApprovalStatus.pending.value,
+                approvals.c.assessment_id.is_not(None),
             )
-            conn.execute(
-                sa.update(approvals)
-                .where(approvals.c.id == ap.id)
-                .values(status=ap.status.value, doc=ap.model_dump(mode="json"))
-            )
-            audit.record(
-                conn,
-                org_id=org_id,
-                project_id=project_id,
-                actor_type=ActorType.system,
-                actor_id="auto-delivery",
-                action="approval.auto_approved",
-                subject_type="approval",
-                subject_id=ap.id,
-                details={"on_behalf_of": approver, "subject_id": ap.subject_id},
-            )
-            ids.append(ap.id)
-        if ids:
-            jobs.enqueue(
-                conn,
-                "run_assessment",
-                {"assessment_id": assessment_id},
-                dedupe_key=f"asm:{assessment_id}:resume:auto:{ids[-1]}",
-            )
-        return ids
+            .distinct()
+        )
+        .scalars()
+        .all()
+    )
+    for assessment_id in waiting:
+        auto_approve_pending(conn, assessment_id, project_id)
 
 
 def push_patch(
     repo_dir: Path,
     full_name: str,
-    branch: str,
+    base_sha: str,
     diff: bytes,
     token: str,
     message: str,
+    branch: str,
     *,
+    require_tip: bool = False,
     github_web_url: str = "https://github.com",
 ) -> str:
-    """Apply ``diff`` onto the current tip of ``branch`` and push it (never forced).
+    """Commit ``diff`` on ``base_sha`` and push it to ``refs/heads/branch``, never forced.
 
-    Returns the new commit SHA. Raises CheckoutError when the patch does not apply or the
-    branch moved during the push."""
+    ``require_tip``: the branch must still point at ``base_sha`` (a direct push to the default
+    branch ships exactly the tested tree). Returns the new commit SHA."""
     if not FULL_NAME_RE.match(full_name):
         raise CheckoutError(f"invalid repository name {full_name!r}")
-    if not re.match(BRANCH_RE, branch) or ".." in branch:
+    if not BRANCH_RE.match(branch) or ".." in branch:
         raise CheckoutError(f"invalid branch name {branch!r}")
     url = f"{github_web_url.rstrip('/')}/{full_name}.git"
-    auth = base64.b64encode(f"x-access-token:{token}".encode()).decode()
-    header = f"http.extraHeader=Authorization: Basic {auth}"
-    tip_ref = "refs/ari/delivery-tip"
-    _git(
-        "-C", str(repo_dir), "-c", header, "fetch", "--quiet", "--depth=1", "--no-tags",
-        url, f"+refs/heads/{branch}:{tip_ref}",
-    )  # fmt: skip
+    env = auth_env(token)
+    if require_tip:
+        tip_ref = "refs/ari/delivery-tip"
+        _git(
+            "-C", str(repo_dir), "fetch", "--quiet", "--depth=1", "--no-tags",
+            url, f"+refs/heads/{branch}:{tip_ref}", extra_env=env,
+        )  # fmt: skip
+        if _git("-C", str(repo_dir), "rev-parse", tip_ref).strip() != base_sha:
+            raise BranchMoved(f"{branch} moved since the assessed commit")
     with tempfile.TemporaryDirectory(prefix="ari-delivery-") as tmp:
         wt = Path(tmp) / "wt"
         patch_file = Path(tmp) / "fix.diff"
         patch_file.write_bytes(diff)
-        _git("-C", str(repo_dir), "worktree", "add", "--quiet", "--detach", str(wt), tip_ref)
+        _git("-C", str(repo_dir), "worktree", "add", "--quiet", "--detach", str(wt), base_sha)
         try:
             try:
                 _git("-C", str(wt), "apply", "--index", str(patch_file))
             except CheckoutError as exc:
-                raise CheckoutError(f"patch no longer applies to {branch}: {exc}") from exc
+                raise CheckoutError(f"patch does not apply to {base_sha[:12]}: {exc}") from exc
             name, email = COMMIT_AUTHOR
             _git(
                 "-C", str(wt), "-c", f"user.name={name}", "-c", f"user.email={email}",
                 "commit", "--quiet", "--no-verify", "-m", message,
             )  # fmt: skip
             sha = _git("-C", str(wt), "rev-parse", "HEAD").strip()
-            _git("-C", str(wt), "-c", header, "push", "--quiet", url, f"HEAD:refs/heads/{branch}")
+            _git("-C", str(wt), "push", "--quiet", url, f"HEAD:refs/heads/{branch}", extra_env=env)
         finally:
             _git("-C", str(repo_dir), "worktree", "remove", "--force", str(wt))
     return sha
 
 
-def _record(conn: Any, org_id: str, project_id: str, action: str, details: dict[str, Any]) -> None:
+def _record(
+    conn: Connection, org_id: str, project_id: str, action: str, details: dict[str, Any]
+) -> None:
     audit.record(
         conn,
         org_id=org_id,
@@ -168,19 +217,30 @@ def _record(conn: Any, org_id: str, project_id: str, action: str, details: dict[
     )
 
 
+def _reason(exc: Exception) -> str:
+    if isinstance(exc, httpx.HTTPStatusError):
+        code = exc.response.status_code
+        hint = " (grant the GitHub App Contents and Pull requests: Read & write)"
+        return f"GitHub answered {code}{hint if code in (403, 404) else ''}"
+    return str(exc)[:300]
+
+
 @handler("deliver_verified_patch")
 def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
     ctx.check_cancelled()
     s = get_settings()
     with transaction() as conn:
-        vdoc = conn.execute(
-            sa.select(verification_results.c.doc).where(
-                verification_results.c.id == ctx.job.payload["verification_id"]
-            )
-        ).scalar_one()
-        verification = VerificationResult.model_validate(vdoc)
+        verification = VerificationResult.model_validate(
+            conn.execute(
+                sa.select(verification_results.c.doc).where(
+                    verification_results.c.id == ctx.job.payload["verification_id"]
+                )
+            ).scalar_one()
+        )
         if verification.verdict.value != "accepted":
-            raise PermanentJobError(ErrorCode.FORBIDDEN, "only Verify-accepted patches are pushed")
+            raise PermanentJobError(
+                ErrorCode.FORBIDDEN, "only Verify-accepted patches are delivered"
+            )
         patch = PatchCandidate.model_validate(
             conn.execute(
                 sa.select(patch_candidates.c.doc).where(
@@ -204,63 +264,74 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
             "verification_id": verification.id,
             "finding_id": patch.finding_id,
         }
-        if auto_approver(conn, project_id) is None:
-            _record(conn, org_id, project_id, "delivery.skipped", details)
-            return {"status": "skipped", "reason": "delivery mode is review"}
+        granted = authority(conn, project_id)
         repo = (
             conn.execute(sa.select(repositories).where(repositories.c.id == asm["repo_id"]))
             .mappings()
             .first()
         )
         connected = repo is not None and repo["installation_id"] is not None
-        if connected:
-            _, diff = ArtifactStore().get(conn, patch.diff_artifact_id)
-    if not connected:
-        with transaction() as conn:  # own transaction: the raise below must not roll it back
-            _record(conn, org_id, project_id, "delivery.failed", details | {"reason": "no app"})
+        diff = (
+            ArtifactStore().get(conn, patch.diff_artifact_id)[1] if granted and connected else b""
+        )
+
+    def finish(action: str, **more: Any) -> None:
+        with transaction() as conn:  # own transaction: a raise afterwards must not roll it back
+            _record(conn, org_id, project_id, action, details | more)
+
+    if granted is None:  # switched to manual (or authorizer lost ownership) since queueing
+        finish("delivery.skipped")
+        return {"status": "skipped", "reason": "delivery is manual"}
+    if not connected or repo is None or s.security_workdir is None:
+        finish("delivery.failed", reason="repository is not connected through the GitHub App")
         raise PermanentJobError(
             ErrorCode.SUBSYSTEM_UNAVAILABLE, "repository is not connected through the GitHub App"
         )
-    assert repo is not None
-    if s.security_workdir is None:
-        raise PermanentJobError(ErrorCode.SUBSYSTEM_UNAVAILABLE, "SECURITY_WORKDIR is not set")
+
     from backend.github import GitHubApp
 
-    token = GitHubApp(settings=s).installation_token(int(repo["installation_id"]), write=True)
+    mode = granted[0]
+    full_name, default_branch = str(repo["full_name"]), str(repo["default_branch"])
+    iid = int(repo["installation_id"])
     repo_dir = s.security_workdir / "repos" / f"{repo['id']}.git"
+    base = patch.base_commit_sha
+    web = s.github_web_url
     message = (
         f"fix: {patch.rationale}\n\n"
-        f"Applied by Ari auto delivery. Finding {patch.finding_id}, patch {patch.id},\n"
+        f"Applied by Ari. Finding {patch.finding_id}, patch {patch.id},\n"
         f"independently verified by {verification.id}."
     )
+    fallback: str | None = None
     try:
+        app = GitHubApp(settings=s)
+        token = app.installation_token(iid, write=True)
         with _locked(repo_dir):
-            fetch_commit(
-                repo_dir,
-                str(repo["full_name"]),
-                patch.base_commit_sha,
-                token,
-                github_web_url=s.github_web_url,
-            )
+            fetch_commit(repo_dir, full_name, base, token, github_web_url=web)
+            if mode is DeliveryMode.auto:
+                try:
+                    sha = push_patch(
+                        repo_dir, full_name, base, diff, token, message, default_branch,
+                        require_tip=True, github_web_url=web,
+                    )  # fmt: skip
+                    finish("delivery.pushed", commit_sha=sha, branch=default_branch)
+                    return {"status": "pushed", "commit_sha": sha, "branch": default_branch}
+                except CheckoutError as exc:  # branch moved, or push refused (protection)
+                    fallback = _reason(exc)
+            branch = f"ari/fix-{patch.id}"
             sha = push_patch(
-                repo_dir,
-                str(repo["full_name"]),
-                str(repo["default_branch"]),
-                diff,
-                token,
-                message,
-                github_web_url=s.github_web_url,
+                repo_dir, full_name, base, diff, token, message, branch, github_web_url=web
             )
-    except CheckoutError as exc:
-        with transaction() as conn:
-            _record(conn, org_id, project_id, "delivery.failed", details | {"reason": str(exc)})
-        raise PermanentJobError(ErrorCode.CONFLICT_STATE, str(exc)) from exc
-    with transaction() as conn:
-        _record(
-            conn,
-            org_id,
-            project_id,
-            "delivery.pushed",
-            details | {"commit_sha": sha, "branch": repo["default_branch"]},
+        url = app.open_pull_request(
+            iid,
+            full_name,
+            head=branch,
+            base=default_branch,
+            title=f"fix: {patch.rationale}"[:120],
+            body=f"Verified fix from Ari for finding `{patch.finding_id}` (patch `{patch.id}`, "
+            f"verification `{verification.id}`). Review and merge to apply.",
         )
-    return {"status": "pushed", "commit_sha": sha, "branch": repo["default_branch"]}
+    except (CheckoutError, httpx.HTTPError) as exc:
+        finish("delivery.failed", reason=_reason(exc), fallback_from=fallback)
+        raise PermanentJobError(ErrorCode.CONFLICT_STATE, _reason(exc)) from exc
+    finish("delivery.pr_opened", commit_sha=sha, branch=branch, url=url, fallback_from=fallback)
+    return {"status": "pr_opened", "url": url, "branch": branch}

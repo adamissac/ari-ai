@@ -183,3 +183,32 @@ def test_sdk_box_locks_egress_before_staging_and_destroys_snapshots(monkeypatch)
     assert calls[2] == ("policy", NetworkPolicy.deny_all().mode)
     assert all(c[0] == "mkdir" for c in calls[3:6])
     assert calls[-2:] == [("stop",), ("destroy", True)]
+
+
+def test_sdk_box_destroys_itself_when_boot_fails(monkeypatch) -> None:
+    from types import SimpleNamespace
+
+    from vercel.sandbox import sync as vsandbox
+
+    from security_agents.sandbox import vercel_driver
+
+    calls: list[str] = []
+
+    class Box:
+        def run_process(self, *a, **kw):
+            raise RuntimeError("pip failed")
+
+        def update_network_policy(self, policy):
+            calls.append(policy.mode)
+
+        def stop(self):
+            calls.append("stop")
+
+        def destroy(self, *, delete_orphan_snapshots=False):
+            calls.append(f"destroy:{delete_orphan_snapshots}")
+
+    monkeypatch.setattr(vsandbox, "create_sandbox", lambda **kw: Box())
+    spec = SimpleNamespace(limits=SimpleNamespace(timeout_s=60), labels={})
+    with pytest.raises(RuntimeError):
+        vercel_driver._VercelSdkBox(spec, "r1")
+    assert calls == ["deny-all", "stop", "destroy:True"]

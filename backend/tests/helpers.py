@@ -27,7 +27,11 @@ def setup_project(alice: Any, bob: Any, *, approve: bool = True) -> dict[str, st
     add_member(org_id, bob.me["user"]["id"])
     p = alice.post(
         "/api/v1/projects",
-        json={"name": "payments-lite", "settings": {"monitoring_policy": {"enabled": True}}},
+        json={
+            "name": "payments-lite",
+            # manual: tests drive the human approval gate; delivery modes have their own tests
+            "settings": {"monitoring_policy": {"enabled": True}, "delivery_mode": "manual"},
+        },
     )
     assert p.status_code == 201, p.text
     pid = p.json()["id"]

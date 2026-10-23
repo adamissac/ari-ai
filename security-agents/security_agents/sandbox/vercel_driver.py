@@ -230,26 +230,30 @@ class _VercelSdkBox:  # pragma: no cover - requires live Vercel credentials
             persistent=False,
             destroy=False,
         )
-        try:
-            self._box.run_process(
-                "python",
-                [
-                    "-m",
-                    "pip",
-                    "install",
-                    "-q",
-                    "--root-user-action=ignore",
-                    "--only-binary=:all:",
-                    *list(RUNNER_WHEELS),
-                ],
-                sudo=True,  # system site-packages: the entry runs `python -I`, which skips user site
-                check=True,
-                capture_output=True,
-            )
-        finally:
-            self._box.update_network_policy(NetworkPolicy.deny_all())
-        for d in (WORKDIR, TARGETDIR, "/tmp/out"):
-            self._box.fs.mkdir(d, recursive=True)
+        try:  # the driver stops only boxes it received, so a failed boot destroys itself
+            try:
+                self._box.run_process(
+                    "python",
+                    [
+                        "-m",
+                        "pip",
+                        "install",
+                        "-q",
+                        "--root-user-action=ignore",
+                        "--only-binary=:all:",
+                        *RUNNER_WHEELS,
+                    ],
+                    sudo=True,  # system site-packages: the entry runs `python -I`, which skips user site
+                    check=True,
+                    capture_output=True,
+                )
+            finally:
+                self._box.update_network_policy(NetworkPolicy.deny_all())
+            for d in (WORKDIR, TARGETDIR, "/tmp/out"):
+                self._box.fs.mkdir(d, recursive=True)
+        except BaseException:
+            self.stop()
+            raise
 
     def put_archive(self, tar_bytes: bytes, dest: str) -> None:
         self._box.fs.write_bytes("/tmp/stage.tar", tar_bytes)

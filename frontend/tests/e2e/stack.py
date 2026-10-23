@@ -196,11 +196,11 @@ def main(argv: list[str]) -> int:
         with transaction() as conn:
             conn.execute(sa.insert(memberships).values(org_id=me["memberships"][0]["organization"]["id"], user_id=bob["user"]["id"], role="owner"))
         alice.headers["X-CSRF-Token"] = me["csrf_token"]
-        pid = alice.post("/projects", json={"name": "payments-lite (e2e)"}).raise_for_status().json()["id"]
+        pid = alice.post("/projects", json={"name": "payments-lite (e2e)", "settings": {"delivery_mode": "manual"}}).raise_for_status().json()["id"]
         rid = alice.post(f"/projects/{pid}/repositories", json={"full_name": REPO_NAME}).raise_for_status().json()["id"]
         # The commit-workspace journey completes its own runs. Keep its findings/approvals
         # separate from the original journey's exact-count assertions.
-        workspace_pid = alice.post("/projects", json={"name": "commit-workspace (e2e)"}).raise_for_status().json()["id"]
+        workspace_pid = alice.post("/projects", json={"name": "commit-workspace (e2e)", "settings": {"delivery_mode": "manual"}}).raise_for_status().json()["id"]
         workspace_name = "acme/commit-workspace"
         workspace_rid = alice.post(f"/projects/{workspace_pid}/repositories", json={"full_name": workspace_name}).raise_for_status().json()["id"]
         bindings.write_text(json.dumps([
