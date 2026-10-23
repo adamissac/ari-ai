@@ -53,6 +53,9 @@ def test_fetches_the_exact_commit_and_archives_it(tmp_path: Path, remote) -> Non
     # A later commit is fetched into the same bare repository.
     fetch_commit(repo, "acme/app", second, "tok", github_web_url=web)
     assert "VERSION = 2" in _git("show", f"{second}:app.py", cwd=repo)
+    # Fetched commits stay reachable so later fetches negotiate a delta.
+    assert _git("rev-parse", f"refs/ari/{first}", cwd=repo) == first
+    assert "VERSION = 1" in _git("show", f"{first}:app.py", cwd=repo)
 
 
 def test_token_is_never_written_to_git_config(tmp_path: Path, remote) -> None:

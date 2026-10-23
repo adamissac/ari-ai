@@ -134,7 +134,7 @@ or Run click. OFF prevents unstarted automatic work and exposes manual Run on
 selected commits; active runs and history remain intact. GET/PATCH
 `/api/v1/repositories/{repo_id}` returns Repository; PATCH requires a project owner
 and is audited. Migration 0009 adds the flag; schema 0.15.0 adds RepositoryUpdate
-and regenerates JSON/TypeScript. Migration 0013 resets existing repository switches and project monitoring to OFF once, requests cancellation of unfinished automatic assessments, and wakes deferred work to finalize as skipped. Schema 0.18.1 makes both defaults OFF. Owners must explicitly enable project defense and repository automatic runs; manual runs remain available. Deploy the backend and frontend together.
+and regenerates JSON/TypeScript. Migration 0014 resets existing repository switches and project monitoring to OFF once, requests cancellation of unfinished automatic assessments, and wakes deferred work to finalize as skipped. Schema 0.18.1 makes both defaults OFF. Owners must explicitly enable project defense and repository automatic runs; manual runs remain available. Deploy the backend and frontend together.
 
 The rollout requires both the signed push sender and GitHub-attributed commit
 author to match `GITHUB_AUTO_COMMIT_AUTHORS` (initially adamissac). Attribution
