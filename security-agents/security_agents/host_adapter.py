@@ -1350,7 +1350,6 @@ def _verify_functional_patch(host: AssessmentHostLike, orchestrator: Orchestrato
 
     from .agents import verify as verify_agent
     from .sandbox.workspace import apply_diff, diff_paths, fresh_checkout
-    from .tools.services import TestRunner
 
     try:
         from code_review import api as review_api
@@ -1397,11 +1396,7 @@ def _verify_functional_patch(host: AssessmentHostLike, orchestrator: Orchestrato
         )
         ctx.run_id = run_id
         ctx.artifacts["tests_added"] = tests_added
-        runner = TestRunner(
-            driver=orchestrator.driver,
-            workspace_provider=lambda _ctx: root,
-            test_command_args=orchestrator.config.test_command_args,
-        )
+        runner = orchestrator._test_runner(lambda _ctx: root)
         unpatched = runner.run(ctx, "added_tests", tests_added) if tests_added else None
         ok, err = apply_diff(root, snapshot_diff)
         touched = [_snapshot_rel(p, prefix) for p in diff_paths(diff_text)]
