@@ -284,3 +284,6 @@ No serving hook, model training, promotion or customer action.
 
 Opt-in owned payments-lite request-context wrapper and concurrency checks:
 [application-context evidence and limits](../docs/research/deterministic-feasibility/APPLICATION_CONTEXT.md).
+
+Read-only finite-fixture readiness audit: `python -m rl_defense.research.readiness`.
+[Trust anchors, unknowns and no-go semantics](../docs/research/deterministic-feasibility/READINESS_AUDIT.md).
