@@ -229,3 +229,51 @@ def test_check_category_aliases_match_probe_library_ids() -> None:
         BY_NAME["AuthorizedScope"].model_validate(
             {**scope.model_dump(mode="json"), "allowed_check_categories": ["made.up.category"]}
         )
+
+
+def test_live_defense_reviews_cannot_execute_and_health_cannot_be_healthy() -> None:
+    from shared.live_defense import StagingEnvironment
+
+    health = BY_NAME["DefenseHealth"].model_validate(
+        examples.build()["DefenseHealth"].model_dump(mode="json")
+    )
+    assert health.status == "unknown"
+    with pytest.raises(ValidationError):
+        BY_NAME["DefenseHealth"].model_validate(
+            {**health.model_dump(mode="json"), "status": "healthy"}
+        )
+    review = examples.build()["AnalystReview"]
+    assert review.executes is False
+    with pytest.raises(ValidationError):
+        BY_NAME["AnalystReview"].model_validate(
+            {**review.model_dump(mode="json"), "executes": True}
+        )
+    with pytest.raises(ValueError):
+        StagingEnvironment("production")
+
+
+def test_live_policy_decision_is_never_executed_and_does_not_require_q_values() -> None:
+    decision = examples.build()["LivePolicyDecision"]
+    assert decision.executed is False
+    assert decision.enforcement == "NOT_EXECUTED"
+    assert decision.inference_ran is False
+    assert decision.top_actions is None
+    assert decision.q_margin is None
+    assert decision.observation is None
+    with pytest.raises(ValidationError):
+        BY_NAME["LivePolicyDecision"].model_validate(
+            {**decision.model_dump(mode="json"), "executed": True}
+        )
+    with pytest.raises(ValidationError):
+        BY_NAME["LivePolicyDecision"].model_validate(
+            {**decision.model_dump(mode="json"), "enforcement": "executed"}
+        )
+    review = examples.build()["AnalystReview"]
+    with pytest.raises(ValidationError):
+        BY_NAME["AnalystReview"].model_validate(
+            {
+                **review.model_dump(mode="json"),
+                "recommendation_id": None,
+                "live_policy_decision_id": None,
+            }
+        )

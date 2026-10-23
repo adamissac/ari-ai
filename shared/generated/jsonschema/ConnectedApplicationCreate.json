@@ -1,0 +1,30 @@
+{
+  "$defs": {
+    "StagingEnvironment": {
+      "description": "Environments a shadow-pilot app may declare. Production is not allowed.",
+      "enum": [
+        "sandbox",
+        "owned_test"
+      ],
+      "title": "StagingEnvironment",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "environment": {
+      "$ref": "#/$defs/StagingEnvironment",
+      "default": "sandbox"
+    },
+    "name": {
+      "maxLength": 500,
+      "title": "Name",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "title": "ConnectedApplicationCreate",
+  "type": "object"
+}

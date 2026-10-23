@@ -1,0 +1,9 @@
+{
+  "last_ingest_at": null,
+  "last_runtime_event_at": null,
+  "project_id": "prj_01JFIXTURE0000000000000PRJ",
+  "queue_depth": 0,
+  "status": "unknown",
+  "status_reason": "No recorded health-check producer. Timestamps are evidence only; HTTP 200 is not a healthy verdict.",
+  "worker_seen_at": null
+}

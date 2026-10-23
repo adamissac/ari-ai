@@ -1,0 +1,40 @@
+{
+  "$defs": {
+    "ComponentNodeKind": {
+      "enum": [
+        "application",
+        "route"
+      ],
+      "title": "ComponentNodeKind",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "critical": {
+      "default": false,
+      "title": "Critical",
+      "type": "boolean"
+    },
+    "id": {
+      "maxLength": 500,
+      "title": "Id",
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/$defs/ComponentNodeKind"
+    },
+    "label": {
+      "maxLength": 500,
+      "title": "Label",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "label",
+    "kind"
+  ],
+  "title": "ComponentNode",
+  "type": "object"
+}

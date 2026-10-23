@@ -69,3 +69,8 @@ Final snapshot review: both public entry points capture the verifier commit befo
 checking artifacts. The private clone skips checkout until that exact commit is
 selected in detached mode, and verifies its identity before imports. The regression
 moves the source branch during cloning and confirms only the captured code executes.
+
+Integration with main preserves its Live Defense changes. Archived certification
+uses published revision `31ab052941ebf1b3678a2610e5c4374d83606aa0`, because the
+later shared-contract source differs from the original study closure. Historical
+source checks remain strict; no evidence pins or measurements are relaxed.

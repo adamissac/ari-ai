@@ -1,0 +1,8 @@
+{
+  "last_checked_at": "2026-10-17T01:00:00Z",
+  "node_id": "GET /health",
+  "note": "Latest window was scored; not a health check.",
+  "simulated": true,
+  "source": "ingest",
+  "state": "unknown"
+}

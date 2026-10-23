@@ -18,6 +18,60 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-22 — Cursor (agent, Alan) — Live Defense Phase 3 shadow runtime
+- Did: branch `feat/live-defense-phase3-shadow-runtime` from `origin/main` (`6e98b23`, PR #391 merged). Extends Phase 1/2. Shared 0.17.0 `LivePolicyDecision` (NOT EXECUTED). Authenticated `owned_staging` ingest, deterministic rules, frozen-v6 only when serving assumptions hold (quiet window → abstain; no torch in this env → `skipped_unavailable`). Analyst review of shadow decisions does not execute. `rl-defense/` training/checkpoints/promotion untouched. No Phase 4 enforcement APIs.
+- State of the code: owned staging app → authenticated ingest → rules (or validated v6) → persisted shadow decision → dashboard → review → no automatic traffic control. Authenticated runtime events no longer force `Incident.simulated`.
+- Commands run and results (executed):
+  - `make check` — ruff pass; format 165 files; `shared.export --check` 124 files; examples check pass
+  - `uv run mypy` — Success: no issues found in 40 source files
+  - `uv run pytest -q backend/tests monitoring/tests/test_detect.py shared/tests/test_contracts.py` — 239 passed, 8 skipped (`rl_defense` missing; Docker/live LLM opt-in; TSC unset)
+  - `npm run lint && typecheck` — pass; `npm test --prefix frontend` — 325 passed / 77 files; `npm test --prefix frontend/transport` — 35 passed
+  - `npm run build --prefix frontend` — pass; routes include `/live-defense`, `/live-defense/explain`, `/live-defense/apps`
+  - `cd frontend && ../.venv/bin/python tests/e2e/stack.py tests/e2e/live-defense.spec.ts` — 1 passed (6.6s)
+  - `gitleaks git --log-opts='origin/main..HEAD'` — 3 commits, no leaks
+- Decisions: v6 quiet-window → explicit abstention (ADR-0017); HTTP 200 without principals is unverified noop, not IDOR; accept ≠ execute; do not train or promote.
+- Eval: `docs/LIVE_DEFENSE_PHASE3_PILOT_EVAL.md`. Draft PR #392. Merge only if CI is green and the slice stays shadow-only.
+- Warnings: `/live-defense-pilot` remains sample layout. Do not begin autonomous enforcement. Frozen v6 inference is `skipped_unavailable` without `rl_defense`+torch; CI `rl-integration` job is the path that can run it.
+
+### 2026-10-22 — Cursor (agent, Alan) — Live Defense Phase 2 CI: Alembic head pin
+- Did: GitHub `backend / test` failed on PR #391 because `test_repository_has_a_single_migration_head` still expected head `0009`. Phase 2 adds linear revision `0010` (`down_revision = 0009`). Updated the pin to `["0010"]`. Single-head rule unchanged. `rl-defense/` untouched. `origin/main` still `53bf03c` (no rebase needed).
+- Commands run and results:
+  - `uv run pytest -q backend/tests` — 170 passed, 7 skipped
+  - `backend/tests/test_parallel_migrations.py` + live-defense backend tests — 11 passed
+  - `make check` — pass; gitleaks on `origin/main..HEAD` — no leaks
+  - `npm run lint && typecheck` — pass; vitest 323/77; live-defense unit 18 passed; `npm run build` — pass
+- Next steps: push, wait for required CI green, mark #391 ready, merge if branch protection permits.
+
+### 2026-10-22 — Cursor (agent, Alan) — Live Defense Phase 2 shadow pilot
+- Did: branch `feat/live-defense-pilot-phase2` from `origin/main` (PR #390 already merged). Extended Phase 1; did not rebuild it. Shared 0.16.0: `ConnectedApplication`, `IngestTokenView`, `DefenseHealth`, `ComponentGraph`, `AnalystReview`. Backend migration 0010 + `backend/api/live_defense.py`. Frontend wires existing APIs end-to-end and adds Staging apps + analyst review. `rl-defense/` untouched. Draft PR #391.
+- State of the code: analyst can register sandbox/owned_test apps, mint a token (shown once), inspect ingested evidence, read a stored recommendation, and record accept/reject/needs-investigation without executing a control. Health status is always `unknown`. No live policy-decision producer.
+- Commands run and results (executed):
+  - `make check` — ruff pass (157 files formatted); `shared.export --check` 123 files; examples check pass
+  - `uv run pytest -q shared/tests/test_contracts.py backend/tests/test_live_defense_pilot.py backend/tests/test_rl_no_action_path.py backend/tests/test_runtime_ingest.py` — 64 passed, 2 skipped (TSC missing; rl_defense not installed)
+  - `npm run lint --prefix frontend` — pass
+  - `npm run typecheck --prefix frontend` — pass
+  - `npm test --prefix frontend` — 323 passed / 77 files
+  - `npm test --prefix frontend/transport` — 34 passed
+  - `npm run build --prefix frontend` — pass; routes include `/live-defense`, `/live-defense/apps`, `/live-defense-pilot/apps`
+  - `E2E_SKIP_BUILD=1 ../.venv/bin/python tests/e2e/stack.py tests/e2e/live-defense.spec.ts` — 1 passed (4.0s)
+  - `gitleaks git --log-opts='origin/main..HEAD'` — no leaks found (4 commits). Full-history 5 hits are pre-existing `api.py` digest / `*_COMMIT` SHA false positives, not this PR.
+- Decisions: do not fake a live inference feed; do not infer healthy from HTTP 200; accept ≠ enforcement approval.
+- Next steps: customer shadow-pilot blockers listed on PR #391 (hosted ingest of a real staging app, live-inference producer if/when one exists, no autonomous enforcement).
+- Warnings: `/live-defense-pilot` remains sample layout. Do not begin autonomous enforcement.
+
+### 2026-10-22 — Cursor (agent, Alan) — Live Defense Phase 1 UI
+- Did: branch `feat/live-defense-pilot-ui`. Customer dashboard at `/projects/{id}/live-defense` (Overview, Investigation, Explainability) plus isolated `/live-defense-pilot`. Live mode uses existing project/events/incidents/recommendation/explanation/evaluation APIs. Layout-preview fixtures in `frontend/lib/live-defense-preview.ts` are labelled SAMPLE LAYOUT and never mixed with records. No apply/isolate/rate-limit. `shared/`, `backend/`, `rl-defense/` untouched. Handoff for missing APIs: `docs/planning/LIVE_DEFENSE_FRONTEND_API.md`.
+- State of the code: frontend-only; draft PR #390. Navigation: Live Defense under More; Monitoring links in.
+- Commands run and results (executed):
+  - `npm run lint --prefix frontend` — pass
+  - `npm run typecheck --prefix frontend` — pass (after query-helper split fix)
+  - `npm test --prefix frontend` — 323 passed / 77 files
+  - `npm run build --prefix frontend` — pass; routes include `/live-defense` and `/live-defense-pilot`
+  - Headed Chrome against `next start :3000` `/live-defense-pilot`: SAMPLE LAYOUT banner present; 0 apply/isolate/rate-limit buttons
+- Decisions: missing component-health API → no live map (docs/14: healthy only from a recorded check). NIST `Incident` is not overloaded with DETECTED→EXECUTING.
+- Next steps: backend/shared owner implements the handoff types; frontend then drops empty panels. Do not merge until review. Do not treat preview fixtures as live telemetry.
+- Warnings: `/live-defense-pilot` is public (no session) on purpose for layout review; it must keep the sample banner.
+
 ### 2026-10-20 — Claude (agent, Alan) — live RL v8: low-intensity train mix — gate `recommend_promote`, hypothesis not supported
 - Did: branch `feat/alan/live-retrain-v8`. One change from v7: `--train-dir train_v8` (train_v3 copied unchanged plus `rare_delegate_runs` and `trickle_outsider_quiet`, low-intensity and mostly quiet). It was chosen from train-band evidence: on `rare_delegate_runs`, v7 scores −3.61 against noop's −3.14 (`results/live-retrain-v8/pre_run_evidence.json`). `--reference-checkpoint` is now repeatable as `NAME=PATH` (v6 and v7). There is a fresh `holdout_v8` (two of its three scenarios are low-intensity). Pre-registered and pushed as `15e25f9`. `promotion.yaml`, val_v4 and the selection rule are unchanged.
 - Result: the gate returns **`recommend_promote`**, 7/7 checks, +4.47 [3.14, 5.81] over deployed. **The hypothesis is not supported:** v8 trails v7 on both low-intensity holdout scenarios and overall (−0.46 [−0.96, −0.07]) and ties v6 (+0.08 [−0.40, 0.50]). It trails noop on the train scenario `rare_delegate_runs` (−4.01). It keeps the quiet-window fix: noop 178/178, block 102/102, lab/platform agreement 280/280 on train_v8 windows. holdout_v8 is easier than holdout_v7 for the per-scenario rule (v7's numbers clear deployed there too). Online learning moved val for the first time (−7.03 → −6.74 at 105k).

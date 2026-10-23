@@ -392,6 +392,145 @@
       "title": "AgentStepResult",
       "type": "object"
     },
+    "AnalystReview": {
+      "additionalProperties": false,
+      "description": "Human review of a stored recommendation or live shadow decision.\n\nAccept does not execute anything and is never converted into an RL label.",
+      "properties": {
+        "decision": {
+          "$ref": "#/$defs/AnalystReviewDecision"
+        },
+        "enforcement": {
+          "const": "none",
+          "default": "none",
+          "title": "Enforcement",
+          "type": "string"
+        },
+        "executes": {
+          "const": false,
+          "default": false,
+          "title": "Executes",
+          "type": "boolean"
+        },
+        "id": {
+          "pattern": "^arv_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "live_policy_decision_id": {
+          "anyOf": [
+            {
+              "pattern": "^lpd_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Live Policy Decision Id"
+        },
+        "project_id": {
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "recommendation_id": {
+          "anyOf": [
+            {
+              "pattern": "^rec_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recommendation Id"
+        },
+        "reviewed_at": {
+          "format": "date-time",
+          "title": "Reviewed At",
+          "type": "string"
+        },
+        "reviewed_by": {
+          "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Reviewed By",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "recommendation_id",
+        "live_policy_decision_id",
+        "decision",
+        "reason",
+        "reviewed_by",
+        "reviewed_at",
+        "executes",
+        "enforcement"
+      ],
+      "title": "AnalystReview",
+      "type": "object"
+    },
+    "AnalystReviewCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "$ref": "#/$defs/AnalystReviewDecision"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        }
+      },
+      "required": [
+        "decision",
+        "reason"
+      ],
+      "title": "AnalystReviewCreate",
+      "type": "object"
+    },
+    "AnalystReviewDecision": {
+      "enum": [
+        "accept",
+        "reject",
+        "needs_investigation"
+      ],
+      "title": "AnalystReviewDecision",
+      "type": "string"
+    },
+    "ApplicationVerification": {
+      "enum": [
+        "unverified",
+        "ingest_seen",
+        "token_revoked"
+      ],
+      "title": "ApplicationVerification",
+      "type": "string"
+    },
     "Approval": {
       "additionalProperties": false,
       "properties": {
@@ -1078,6 +1217,16 @@
       ],
       "title": "AuditEvent",
       "type": "object"
+    },
+    "AuthorizationContext": {
+      "description": "Whether the reporter supplied ownership classification with the window.",
+      "enum": [
+        "verified",
+        "unverified",
+        "missing"
+      ],
+      "title": "AuthorizationContext",
+      "type": "string"
     },
     "AuthorizedScope": {
       "additionalProperties": false,
@@ -2033,6 +2182,289 @@
       "title": "CommunicationRecord",
       "type": "object"
     },
+    "ComponentGraph": {
+      "additionalProperties": false,
+      "description": "Topology from registered apps and observed ingest routes. Missing checks stay unknown.",
+      "properties": {
+        "generated_at": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        },
+        "links": {
+          "items": {
+            "$ref": "#/$defs/ComponentLink"
+          },
+          "title": "Links",
+          "type": "array"
+        },
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/ComponentNode"
+          },
+          "title": "Nodes",
+          "type": "array"
+        },
+        "note": {
+          "default": "healthy is never inferred from HTTP 200. attention is only set when the latest recorded runtime score was anomalous; every other node is unknown.",
+          "maxLength": 500,
+          "title": "Note",
+          "type": "string"
+        },
+        "observations": {
+          "items": {
+            "$ref": "#/$defs/ComponentObservation"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "project_id": {
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Project Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "nodes",
+        "links",
+        "observations",
+        "generated_at",
+        "note"
+      ],
+      "title": "ComponentGraph",
+      "type": "object"
+    },
+    "ComponentHealthState": {
+      "enum": [
+        "unknown",
+        "checking",
+        "healthy",
+        "attention"
+      ],
+      "title": "ComponentHealthState",
+      "type": "string"
+    },
+    "ComponentLink": {
+      "additionalProperties": false,
+      "properties": {
+        "source_id": {
+          "maxLength": 500,
+          "title": "Source Id",
+          "type": "string"
+        },
+        "target_id": {
+          "maxLength": 500,
+          "title": "Target Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_id",
+        "target_id"
+      ],
+      "title": "ComponentLink",
+      "type": "object"
+    },
+    "ComponentNode": {
+      "additionalProperties": false,
+      "properties": {
+        "critical": {
+          "default": false,
+          "title": "Critical",
+          "type": "boolean"
+        },
+        "id": {
+          "maxLength": 500,
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ComponentNodeKind"
+        },
+        "label": {
+          "maxLength": 500,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "kind",
+        "critical"
+      ],
+      "title": "ComponentNode",
+      "type": "object"
+    },
+    "ComponentNodeKind": {
+      "enum": [
+        "application",
+        "route"
+      ],
+      "title": "ComponentNodeKind",
+      "type": "string"
+    },
+    "ComponentObservation": {
+      "additionalProperties": false,
+      "properties": {
+        "last_checked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Checked At"
+        },
+        "node_id": {
+          "maxLength": 500,
+          "title": "Node Id",
+          "type": "string"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "simulated": {
+          "title": "Simulated",
+          "type": "boolean"
+        },
+        "source": {
+          "$ref": "#/$defs/ComponentObservationSource"
+        },
+        "state": {
+          "$ref": "#/$defs/ComponentHealthState"
+        }
+      },
+      "required": [
+        "node_id",
+        "state",
+        "last_checked_at",
+        "source",
+        "simulated",
+        "note"
+      ],
+      "title": "ComponentObservation",
+      "type": "object"
+    },
+    "ComponentObservationSource": {
+      "enum": [
+        "ingest",
+        "github",
+        "none"
+      ],
+      "title": "ComponentObservationSource",
+      "type": "string"
+    },
+    "ConnectedApplication": {
+      "additionalProperties": false,
+      "description": "Owner-registered staging app under watch. Never includes secrets.",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Created By",
+          "type": "string"
+        },
+        "environment": {
+          "$ref": "#/$defs/StagingEnvironment"
+        },
+        "id": {
+          "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "ingest_configured": {
+          "description": "True when a non-revoked ingest token exists; the token itself is never returned",
+          "title": "Ingest Configured",
+          "type": "boolean"
+        },
+        "last_ingest_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Ingest At"
+        },
+        "name": {
+          "maxLength": 500,
+          "title": "Name",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "shadow_mode": {
+          "const": true,
+          "default": true,
+          "title": "Shadow Mode",
+          "type": "boolean"
+        },
+        "verification": {
+          "$ref": "#/$defs/ApplicationVerification"
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "name",
+        "environment",
+        "ingest_configured",
+        "last_ingest_at",
+        "verification",
+        "shadow_mode",
+        "created_by",
+        "created_at"
+      ],
+      "title": "ConnectedApplication",
+      "type": "object"
+    },
+    "ConnectedApplicationCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "environment": {
+          "$ref": "#/$defs/StagingEnvironment",
+          "default": "sandbox"
+        },
+        "name": {
+          "maxLength": 500,
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "environment"
+      ],
+      "title": "ConnectedApplicationCreate",
+      "type": "object"
+    },
     "ContextChunk": {
       "additionalProperties": false,
       "properties": {
@@ -2190,6 +2622,96 @@
       ],
       "title": "DataSensitivity",
       "type": "string"
+    },
+    "DefenseHealth": {
+      "additionalProperties": false,
+      "description": "Recorded timestamps for ingest and the job worker. Not a liveness verdict.",
+      "properties": {
+        "last_ingest_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Latest runtime_windows.window_end for this project",
+          "title": "Last Ingest At"
+        },
+        "last_runtime_event_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Latest monitoring event with source=runtime",
+          "title": "Last Runtime Event At"
+        },
+        "project_id": {
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "queue_depth": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Queued jobs; null if the queue was not readable",
+          "title": "Queue Depth"
+        },
+        "status": {
+          "const": "unknown",
+          "default": "unknown",
+          "title": "Status",
+          "type": "string"
+        },
+        "status_reason": {
+          "default": "No recorded health-check producer. Timestamps are evidence only; HTTP 200 is not a healthy verdict.",
+          "maxLength": 500,
+          "title": "Status Reason",
+          "type": "string"
+        },
+        "worker_seen_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Latest jobs.heartbeat_at; null if no worker has heartbeated",
+          "title": "Worker Seen At"
+        }
+      },
+      "required": [
+        "project_id",
+        "worker_seen_at",
+        "queue_depth",
+        "last_ingest_at",
+        "last_runtime_event_at",
+        "status",
+        "status_reason"
+      ],
+      "title": "DefenseHealth",
+      "type": "object"
     },
     "DefenseRecommendation": {
       "additionalProperties": false,
@@ -4506,6 +5028,23 @@
       "title": "IncidentTimelineEntry",
       "type": "object"
     },
+    "InferenceStatus": {
+      "description": "Whether frozen v6 inference ran. Q-values exist only when ``ran``.",
+      "enum": [
+        "ran",
+        "skipped_quiet_window",
+        "skipped_incomplete",
+        "skipped_stale",
+        "skipped_source",
+        "skipped_unavailable",
+        "skipped_schema",
+        "skipped_mask",
+        "skipped_authorization",
+        "skipped_target"
+      ],
+      "title": "InferenceStatus",
+      "type": "string"
+    },
     "IngestTokenCreated": {
       "additionalProperties": false,
       "properties": {
@@ -4537,6 +5076,76 @@
         "created_at"
       ],
       "title": "IngestTokenCreated",
+      "type": "object"
+    },
+    "IngestTokenView": {
+      "additionalProperties": false,
+      "description": "Metadata for an ingest token. The secret is never included after issuance.",
+      "properties": {
+        "application_id": {
+          "anyOf": [
+            {
+              "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Application Id"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^itk_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_used_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Used At"
+        },
+        "project_id": {
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "revoked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revoked At"
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "application_id",
+        "created_at",
+        "revoked_at",
+        "last_used_at"
+      ],
+      "title": "IngestTokenView",
       "type": "object"
     },
     "IntentClaim": {
@@ -4675,6 +5284,310 @@
         "imported_at"
       ],
       "title": "LegacyScore",
+      "type": "object"
+    },
+    "LivePolicyDecision": {
+      "additionalProperties": false,
+      "description": "One shadow decision for one ingest window. Never an executed control.",
+      "properties": {
+        "abstention_reason": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Abstention Reason"
+        },
+        "action": {
+          "anyOf": [
+            {
+              "enum": [
+                "noop",
+                "raise_monitoring",
+                "rate_limit",
+                "isolate",
+                "request_reassessment",
+                "escalate_to_human",
+                "block_principal",
+                "block_principal_long",
+                "block_top_principal_long"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Action"
+        },
+        "action_mask_valid": {
+          "title": "Action Mask Valid",
+          "type": "boolean"
+        },
+        "application_id": {
+          "anyOf": [
+            {
+              "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Application Id"
+        },
+        "authorization_context": {
+          "$ref": "#/$defs/AuthorizationContext"
+        },
+        "caveat": {
+          "default": "Shadow recommendation from authenticated staging telemetry. Not executed. Q-values appear only when frozen v6 inference actually ran.",
+          "maxLength": 500,
+          "title": "Caveat",
+          "type": "string"
+        },
+        "checkpoint_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Checkpoint Sha256"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "enforcement": {
+          "const": "NOT_EXECUTED",
+          "default": "NOT_EXECUTED",
+          "title": "Enforcement",
+          "type": "string"
+        },
+        "evidence_event_ids": {
+          "items": {
+            "pattern": "^evt_[0-9A-Za-z_\\-]{8,64}$",
+            "type": "string"
+          },
+          "title": "Evidence Event Ids",
+          "type": "array"
+        },
+        "executed": {
+          "const": false,
+          "default": false,
+          "title": "Executed",
+          "type": "boolean"
+        },
+        "feature_mapping_note": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Feature Mapping Note"
+        },
+        "feature_schema_ok": {
+          "title": "Feature Schema Ok",
+          "type": "boolean"
+        },
+        "freshness_ok": {
+          "title": "Freshness Ok",
+          "type": "boolean"
+        },
+        "id": {
+          "pattern": "^lpd_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "inference_ran": {
+          "title": "Inference Ran",
+          "type": "boolean"
+        },
+        "inference_status": {
+          "$ref": "#/$defs/InferenceStatus"
+        },
+        "node": {
+          "anyOf": [
+            {
+              "enum": [
+                "gateway",
+                "api",
+                "auth",
+                "payments",
+                "db"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Node"
+        },
+        "observation": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Null when inference did not run; never synthesized",
+          "title": "Observation"
+        },
+        "observation_complete": {
+          "title": "Observation Complete",
+          "type": "boolean"
+        },
+        "policy_version": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Policy Version"
+        },
+        "principal_targets": {
+          "items": {
+            "description": "Pseudonymous principal reference chosen by the reporter (e.g. an HMAC of its user id under a key the platform never sees); never an email or raw id",
+            "pattern": "^prn_[A-Za-z0-9_-]{4,64}$",
+            "type": "string"
+          },
+          "title": "Principal Targets",
+          "type": "array"
+        },
+        "producer": {
+          "$ref": "#/$defs/ShadowProducer"
+        },
+        "project_id": {
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "q_margin": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Null when inference did not run; never synthesized",
+          "title": "Q Margin"
+        },
+        "rule_hits": {
+          "items": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "title": "Rule Hits",
+          "type": "array"
+        },
+        "rules_ran": {
+          "title": "Rules Ran",
+          "type": "boolean"
+        },
+        "simulated": {
+          "title": "Simulated",
+          "type": "boolean"
+        },
+        "telemetry_source": {
+          "enum": [
+            "runtime_demo",
+            "replay",
+            "simulated",
+            "drill",
+            "owned_staging"
+          ],
+          "title": "Telemetry Source",
+          "type": "string"
+        },
+        "top_actions": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/ActionScore"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Q ranking from frozen v6; null when inference did not run",
+          "title": "Top Actions"
+        },
+        "window_end": {
+          "format": "date-time",
+          "title": "Window End",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "application_id",
+        "created_at",
+        "window_end",
+        "telemetry_source",
+        "simulated",
+        "producer",
+        "rules_ran",
+        "inference_ran",
+        "inference_status",
+        "action",
+        "node",
+        "top_actions",
+        "q_margin",
+        "observation",
+        "policy_version",
+        "checkpoint_sha256",
+        "abstention_reason",
+        "observation_complete",
+        "feature_schema_ok",
+        "action_mask_valid",
+        "freshness_ok",
+        "authorization_context",
+        "enforcement",
+        "executed",
+        "evidence_event_ids",
+        "rule_hits",
+        "principal_targets",
+        "feature_mapping_note",
+        "caveat"
+      ],
+      "title": "LivePolicyDecision",
       "type": "object"
     },
     "MappedVia": {
@@ -6377,7 +7290,8 @@
             "runtime_demo",
             "replay",
             "simulated",
-            "drill"
+            "drill",
+            "owned_staging"
           ],
           "title": "Source",
           "type": "string"
@@ -6526,7 +7440,8 @@
             "runtime_demo",
             "replay",
             "simulated",
-            "drill"
+            "drill",
+            "owned_staging"
           ],
           "title": "Source",
           "type": "string"
@@ -6743,6 +7658,16 @@
         "critical"
       ],
       "title": "SeverityLevel",
+      "type": "string"
+    },
+    "ShadowProducer": {
+      "description": "What actually produced the persisted shadow decision.",
+      "enum": [
+        "rules",
+        "v6_shadow",
+        "abstention"
+      ],
+      "title": "ShadowProducer",
       "type": "string"
     },
     "Snapshot": {
@@ -6990,6 +7915,15 @@
       ],
       "title": "SourceSpan",
       "type": "object"
+    },
+    "StagingEnvironment": {
+      "description": "Environments a shadow-pilot app may declare. Production is not allowed.",
+      "enum": [
+        "sandbox",
+        "owned_test"
+      ],
+      "title": "StagingEnvironment",
+      "type": "string"
     },
     "StandardFramework": {
       "enum": [
@@ -7997,5 +8931,5 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "HackATL platform contracts",
-  "x-schema-version": "0.15.0"
+  "x-schema-version": "0.17.0"
 }
