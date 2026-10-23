@@ -1,8 +1,9 @@
 # Live Defense Phase 5 plan — customer shadow-pilot readiness
 
 Status: **implemented** on `feat/live-defense-phase5-pilot-readiness` from
-`origin/main` (`09e8cab`). This is **not** Phase 4 owned-test enforcement and
-does **not** include executable controls from PR #393.
+`origin/main` (originally `09e8cab`; later merged `cb40ca6`). This is **not**
+Phase 4 owned-test enforcement and does **not** include executable controls
+from PR #393.
 
 Codex owns RL research. This work does not train, promote, or edit v6 weights,
 datasets, or the promotion registry.

@@ -157,7 +157,8 @@ test('Live Defense Phase 5: rotate, revoke, disconnect, restart ingest, export r
   expect(baseline.ok(), await baseline.text()).toBeTruthy();
 
   await appCard.getByRole('button', { name: 'Rotate credential' }).click();
-  const rotated = await once.locator('code').innerText();
+  await expect(once.locator('code')).not.toHaveText(firstToken);
+  const rotated = (await once.locator('code').innerText()).trim();
   expect(rotated.startsWith('hkt_ing_')).toBeTruthy();
   expect(rotated).not.toEqual(firstToken);
 
