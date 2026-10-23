@@ -11,6 +11,17 @@
 > [architecture/rl-training-and-inference](../docs/architecture/rl-training-and-inference.md).
 > Owner: Adam ([coordination/OWNERSHIP](../coordination/OWNERSHIP.md)).
 
+## Constrained-RL Phase 1 research
+
+An isolated, separately invoked research adapter and fixed baseline evaluator now
+separate measured compromised-read reward from legitimate-denial cost, preserve
+unknown/provenance fields, mask ineffective lab actions and verify complete raw evidence.
+It has no training/serving imports in the existing product paths.140train-split baseline
+episodes completed; the budgeted rule preserves availability but misses most attacks.
+**No-go for Phase2 now; no model, champion or serving change.**
+[Audit, CMDP, capability matrix and decision](../docs/research/constrained-rl-phase1/README.md);
+[baseline evidence / verification commands](results/constrained-phase1/README.md).
+
 ## What exists
 
 | Piece | Module | Status |

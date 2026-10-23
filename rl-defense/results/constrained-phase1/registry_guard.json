@@ -1,0 +1,9 @@
+{
+  "after_sha256": "c345593354856c50559ba16611853a0e4936a7efc11fa5704c224d3189271408",
+  "before_sha256": "c345593354856c50559ba16611853a0e4936a7efc11fa5704c224d3189271408",
+  "checkpoint_sha256": "8113a37f4ff9360a9efed2e9f499c4b2ae36e97bfb78372436f97da106fc05f1",
+  "deployed": "pol_8113a37f4ff9360a",
+  "phase2_started": false,
+  "registry_path": "/Users/alanmozhoor/Documents/hackatl-agentic-security/.claude/worktrees/mystifying-hofstadter-c5aaf7/rl-defense/runs/live/registry.json",
+  "research_registry_write_path": false
+}
