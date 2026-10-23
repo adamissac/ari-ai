@@ -22,18 +22,28 @@ export LLM_SERVER_FALLBACKS=false
 
 hackatl-migrate
 
-hackatl-worker &
-worker=$!
+# Several workers so one long assessment does not hold up every other commit; jobs are
+# claimed with SKIP LOCKED, so they never run the same job twice.
+pids=""
+i=0
+while [ "$i" -lt "${WORKER_PROCESSES:-3}" ]; do
+  hackatl-worker &
+  pids="$pids $!"
+  i=$((i + 1))
+done
 hackatl-api &
-api=$!
+pids="$pids $!"
 
-trap 'kill "$worker" "$api" 2>/dev/null || true' TERM INT
+trap 'kill $pids 2>/dev/null || true' TERM INT
 
-while kill -0 "$worker" 2>/dev/null && kill -0 "$api" 2>/dev/null; do
+alive() {
+  for p in $pids; do kill -0 "$p" 2>/dev/null || return 1; done
+}
+while alive; do
   sleep 2
 done
 
 echo "a process exited; stopping the service so Railway restarts it" >&2
-kill "$worker" "$api" 2>/dev/null || true
+kill $pids 2>/dev/null || true
 wait || true
 exit 1
