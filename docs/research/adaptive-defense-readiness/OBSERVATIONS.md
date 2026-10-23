@@ -22,14 +22,15 @@ identity before supplying a successful payment event; arbitrary HTTP 200 is insu
 This is an internal precondition, not a network DTO or implemented collector guarantee.
 No credential is retained. Authority is payments-lite-owned-research and clock domains
 must match. Duplicate visible events and incompatible clocks/authority are rejected.
-The window is completion-based [window_start, cutoff], available by cutoff. Late
-arrivals never rewrite frozen vectors. Permission classification uses the immutable
+The window is knowledge-arrival-based [window_start, cutoff], with completion no
+later than arrival. Disjoint integer windows start at the previous cutoff +1. Late
+arrivals enter the later arrival window and never rewrite frozen vectors. Permission classification uses the immutable
 request-start snapshot; later expiry/revocation cannot relabel a historical read.
 Unknown age/coverage stays explicit; revocation at a later time is a later event.
 
 Feature-level source / producer / status (all availability and trust rules above apply):
 
-0. `request_count` — count of completed available events, not total offered traffic. Producer/source: event collector. Coverage/missing: implemented for supplied trusted events; legacy raw requests/outcomes, no arrival stamps. Available only after its stated producer record arrives; otherwise null.
+0. `request_count` — count of completed events arriving in this window, not total offered traffic. Producer/source: event collector. Coverage/missing: implemented for supplied trusted events; legacy raw requests/outcomes, no arrival stamps. Available only after its stated producer record arrives; otherwise null.
 
 1. `auth_failure_count` — authenticated failure reasons, not all 503s. Producer/source: application authentication recorder. Coverage/missing: unknown; status alone cannot attribute missing identity vs provider/response failure. Available only after its stated producer record arrives; otherwise null.
 

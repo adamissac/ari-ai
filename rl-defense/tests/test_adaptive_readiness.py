@@ -172,3 +172,18 @@ def test_observation_contract_rejects_widened_capabilities_or_invalid_values():
     ):
         with pytest.raises(ValueError, match="invalid candidate"):
             replace(obs, **changes)
+
+
+def test_late_arrival_enters_a_later_window_without_backfilling_prior_window():
+    late = replace(event(name="late"), available_tick=10)
+    prior = build((late,), cutoff=3)
+    later = observation((late,), window_start=4, cutoff=10, clock_domain="test")
+    assert values(prior)["request_count"] == 0
+    assert values(later)["request_count"] == 1
+    assert values(later)["observation_age"] == 8
+    assert prior == build((late,), cutoff=3)
+
+
+def test_generator_labels_are_not_part_of_the_ingest_contract():
+    with pytest.raises(TypeError, match="is_attack"):
+        ObservedRead("forbidden", 1, 2, 2, event().snapshot, 200, False, REF, is_attack=True)

@@ -154,9 +154,7 @@ def observation(
     ):
         raise ValueError("valid trusted clock and cutoff required")
     # Filter first: even malformed/duplicate future records cannot affect a prefix.
-    visible = tuple(
-        e for e in events if e.available_tick <= cutoff and window_start <= e.completed_tick
-    )
+    visible = tuple(e for e in events if window_start <= e.available_tick <= cutoff)
     if len({e.event_id for e in visible}) != len(visible):
         raise ValueError("duplicate visible event")
     if any(e.snapshot.authority != "payments-lite-owned-research" for e in visible):
