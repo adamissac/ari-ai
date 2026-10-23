@@ -240,3 +240,41 @@ def test_host_checkpoints_are_scoped_durable_and_integrity_checked(client_factor
     with pytest.raises(HostError) as missing:
         AssessmentHost(first).claim_checkpoint("never-saved.v1")
     assert missing.value.code.value == "CONFLICT_STATE"
+
+
+def test_a_claim_held_by_a_job_that_stopped_running_can_be_reclaimed(client_factory):
+    """An aborted resume (worker died, deploy restart) must not strand the assessment."""
+    from types import SimpleNamespace
+
+    import sqlalchemy as sa
+
+    from backend import jobs as jobq
+    from backend.db import assessments, jobs, transaction
+    from backend.host import AssessmentHost
+
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+    first = alice.post(
+        f"/api/v1/projects/{ids['project']}/assessments",
+        json={"scope_id": ids["scope"], "repo_id": ids["repo"], "commit_sha": "f" * 40},
+    ).json()["assessment"]["id"]
+    with transaction() as conn:
+        conn.execute(
+            sa.update(assessments)
+            .where(assessments.c.id == first)
+            .values(state="AWAITING_APPROVAL")
+        )
+        job_id, _ = jobq.enqueue(conn, "run_assessment", {"assessment_id": first})
+        conn.execute(sa.update(jobs).where(jobs.c.id == job_id).values(status="running"))
+    holder = SimpleNamespace(job=SimpleNamespace(id=job_id), check_cancelled=lambda: None)
+    AssessmentHost(first).save_checkpoint("lease.v1", {"lease_test": 1})
+    assert AssessmentHost(first, job_ctx=holder).claim_checkpoint("lease.v1") == {"lease_test": 1}
+    assert AssessmentHost(first).claim_checkpoint("lease.v1") is None  # holder still running
+    with transaction() as conn:
+        conn.execute(sa.update(jobs).where(jobs.c.id == job_id).values(status="succeeded"))
+    assert AssessmentHost(first).claim_checkpoint("lease.v1") == {"lease_test": 1}  # lapsed claim
+    with transaction() as conn:  # once the resume moved the assessment on, never replay it
+        conn.execute(
+            sa.update(assessments).where(assessments.c.id == first).values(state="REMEDIATION")
+        )
+    assert AssessmentHost(first, job_ctx=holder).claim_checkpoint("lease.v1") is None
