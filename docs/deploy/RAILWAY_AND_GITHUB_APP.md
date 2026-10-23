@@ -113,3 +113,5 @@ mirrors, and the paths uploaded; Scout only surveys routes under those paths.
 The image ships CPU-only torch and the retrained protocol-v1 policy
 (`rl-defense/results/protocol-v1-retrain/`); `start.sh` pins its path, topology and sha256.
 `POST /api/v1/projects/{id}/defense-recommendations` enqueues `rl_recommend`.
+
+<!-- concurrency check -->
