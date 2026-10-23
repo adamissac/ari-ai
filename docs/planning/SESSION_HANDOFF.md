@@ -1545,3 +1545,13 @@ passed in0.96s; two new modules pass scoped strict mypy. NO-GO/Option C unchange
 Exact commands and the pre-commit provenance rejection are retained in
 docs/research/adaptive-defense-readiness/VERIFICATION.md. Final CI/review/merge state
 is recorded on PR422; no new study may start without separate owner approval.
+
+## Resource-exhaustion research foundation — RL-CMDP-008
+
+Explicit owner attachment authorizes finite-worker/queue research implementation,
+baselines and bounded unit instrumentation; no formal comparison before sample,
+compute and safety approval, and no model training. Branch
+research/rl-resource-exhaustion-feasibility from7c127a2b. Core service/Gym model,
+causal observations, route/source quotas and deterministic baseline rules implemented.
+23 core instrumentation tests pass. Stage2 infrastructure, docs and final checks
+remain in progress. No empirical study or customer enforcement was run/modified.
