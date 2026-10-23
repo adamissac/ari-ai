@@ -232,3 +232,5 @@ Owner requested AI automation and Defense Lab OFF until explicitly enabled. Bran
 - IMPLEMENTED / CI and review pending (2026-10-23), **RL-CMDP-005**, Alan, `feat/alan/feasibility-readiness-audit`: read-only anchored original-fixture audit, independent numerical checks and explicit inconclusive training/promotion readiness. No new study or serving integration.
 
 - IMPLEMENTED / review and CI pending (2026-10-23), **RL-CMDP-006**, Alan, `feat/alan/authorization-context-provider`: owner-authorized internal versioned provider proposal and payments-lite adapter, four authorization states, fixture clock/revision semantics and future causal RL observation requirements. No external provider, shared public contract, training or evidence changes.
+
+- IMPLEMENTED / review and CI pending (2026-10-23), **RL-CMDP-007**, research owner Codex, `research/rl-adaptive-defense-readiness`: owner-requested adaptive-task CMDP/observation/action/objective/dataset/baseline audit and blocked preregistration. Pure causal adapter and fixed train-only inventory; NO-GO for new training, no collection/environment/control execution.

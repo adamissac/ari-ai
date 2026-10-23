@@ -1515,3 +1515,25 @@ completed observed windows, context available before cutoff, unknown coverage,
 no hidden labels, future requests or later permission backfill. Cross-system
 publication remains proposed and requires shared models/codegen/consumer review.
 Review and CI pending.
+
+## 2026-10-23 — RL-CMDP-007 adaptive-defense research readiness
+
+Owner supplied the next-phase scope after #414. Branch
+`research/rl-adaptive-defense-readiness`, audited base `3d540d90`; concurrent main
+#421 inspected before publication. New docs/research/adaptive-defense-readiness
+covers all requested formulation, feature-level coverage, actions/costs/baselines,
+blocked preregistration and formal NO-GO. Implemented pure prefix-only provider
+snapshot observation adapter (32 values +32 known bits +5 feasibility bits), noop-only
+hard mask/rejection, separate descriptive cost outputs with unmeasurable reward null,
+and hash-anchored fixed train-only inventory. No trainable environment: measured
+residual benefit/dynamics unsupported after deterministic authorization. No new
+training, experiment collection, checkpoint, promotion, customer control adapter or
+historical artifact changes. Do not launch a study from the draft preregistration.
+
+54 focused adapter/provider/owned-app tests passed in1.35s; links572 files/0 problems.
+Read-only inventory: Phase1 140 episodes/4200 transitions, all current masks but zero
+recorded behavior probabilities; duration train280 episodes/8400 transitions with
+280 missing initial current masks. No retrospective candidate facts reconstructed.
+Review/full CI and broader regression/type checks pending. Next owner decision is
+whether to fund a separately scoped residual-task instrumentation/efficacy design,
+then approve numerical constraints/protocol before any collection or training.
