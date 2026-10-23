@@ -18,6 +18,21 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-23 — Cursor (agent, Alan) — Live Defense Phase 4 controlled enforcement
+- Did: branch `feat/live-defense-phase4-controlled-enforcement` from `origin/main` (`5be62de`, PR #392 merged). Extends Phase 1–3. Shared 0.18.0 `LiveControl` lifecycle + 15-check `authorize.check` (ADR-0019). HMAC loopback adapter to owned-test fixture; verify uses real HTTP probes; app-local TTL; emergency stop. Controls UI with a **separate** authorize endpoint. Analyst accept still does not execute. `rl-defense/` untouched. No Phase 5 / production / autonomous.
+- State of the code: owner grant + loopback channel → authorize (not review) → worker execute → verify with probes → dashboard labelled OWNED TEST ENVIRONMENT → rollback / TTL / kill switch. Recommendation cannot jump to EXECUTING.
+- Commands run and results (executed):
+  - `make check` — ruff pass; format 175 files; `shared.export --check` 137 files; examples check pass
+  - `uv run mypy` — Success: no issues found in 40 source files
+  - `uv run pytest -q backend/tests/test_parallel_migrations.py shared/tests/test_contracts.py backend/tests/test_live_defense_phase4.py backend/tests/test_live_defense_authorize.py` — 100 passed, 1 skipped (TSC unset)
+  - `uv run pytest -q backend/tests/test_live_defense_phase3.py backend/tests/test_live_defense_phase4.py backend/tests/test_live_defense_authorize.py` — 44 passed
+  - `npm run lint && typecheck` — pass; `npm test --prefix frontend` — 327 passed / 77 files; `npm test --prefix frontend/transport` — 35 passed
+  - `npm run build --prefix frontend` — pass; routes include `/live-defense/controls`
+  - `cd frontend && E2E_SKIP_BUILD=1 E2E_BROWSER_CHANNEL=chrome ../.venv/bin/python tests/e2e/stack.py tests/e2e/live-defense.spec.ts tests/e2e/live-defense-phase4.spec.ts` — 2 passed (14.4s)
+- Decisions: independent gate is final authority (ADR-0019); do not overload NIST statuses; HTTP 200 ≠ effectiveness; do not train or promote.
+- Eval: `docs/LIVE_DEFENSE_PHASE4_EVAL.md`. Ready-for-review PR. **Do not auto-merge** (executable-action trust boundary).
+- Warnings: `/live-defense-pilot` remains sample layout. Do not begin autonomous enforcement or production grants.
+
 ### 2026-10-22 — Cursor (agent, Alan) — Live Defense Phase 3 shadow runtime
 - Did: branch `feat/live-defense-phase3-shadow-runtime` from `origin/main` (`6e98b23`, PR #391 merged). Extends Phase 1/2. Shared 0.17.0 `LivePolicyDecision` (NOT EXECUTED). Authenticated `owned_staging` ingest, deterministic rules, frozen-v6 only when serving assumptions hold (quiet window → abstain; no torch in this env → `skipped_unavailable`). Analyst review of shadow decisions does not execute. `rl-defense/` training/checkpoints/promotion untouched. No Phase 4 enforcement APIs.
 - State of the code: owned staging app → authenticated ingest → rules (or validated v6) → persisted shadow decision → dashboard → review → no automatic traffic control. Authenticated runtime events no longer force `Incident.simulated`.

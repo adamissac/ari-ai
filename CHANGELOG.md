@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Extend Live Defense to Phase 4 controlled enforcement on an **owned test environment** only: separate `LiveControl` lifecycle (not NIST incident statuses), 15-check deterministic authorization gate, HMAC loopback adapter for four minimal actions (request-scoped rate limit, exact-source block, increase logging, escalate to human), verification with real HTTP probes, app-local TTL, emergency stop, and a Controls dashboard. Analyst accept remains non-executing. RL cannot execute without independent authorization. Production, isolation, and autonomous enforcement are out of scope. Contract schema 0.18.0. Eval: `docs/LIVE_DEFENSE_PHASE4_EVAL.md`.
+
 - Extend Live Defense to Phase 3 shadow runtime: authenticated `owned_staging` ingest, deterministic rules, genuine `LivePolicyDecision` rows (NOT EXECUTED) from rules or validated frozen-v6 inference, and analyst review of those records. Q-values are persisted only when inference actually ran. Authenticated runtime events no longer force simulated incident labels. No autonomous enforcement. Contract schema 0.17.0. Pilot eval: `docs/LIVE_DEFENSE_PHASE3_PILOT_EVAL.md`.
 
 - Extend Live Defense to a shadow-pilot Phase 2: wire events, NIST incidents, stored recommendations, explanations and reassessment; add staging-app onboarding, ingest-token metadata (secret shown once), recorded health/topology (status always unknown), and analyst accept/reject/needs-investigation that does not execute. No live policy-decision producer, no production enforcement, no autonomous block/isolate/rate-limit. Contract schema 0.16.0.

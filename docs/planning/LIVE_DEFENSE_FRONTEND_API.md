@@ -1,10 +1,11 @@
-# Live Defense frontend — API contracts (Phase 3)
+# Live Defense frontend — API contracts (Phase 4)
 
-Status: **Phase 3 shadow runtime** on `feat/live-defense-phase3-shadow-runtime`.
+Status: **Phase 4 owned-test enforcement** on `feat/live-defense-phase4-controlled-enforcement`.
 Consumer: `frontend/` Live Defense dashboard. Producer: control plane (`backend/`,
-`shared/` 0.17.0). Phase 1 (PR #390) and Phase 2 (PR #391) are extended, not rebuilt:
-live mode still refuses to mix layout-preview fixtures with records, and no route
-applies a control.
+`shared/` 0.18.0). Phases 1–3 are extended, not rebuilt: live mode still refuses
+to mix layout-preview fixtures with records; Phase 2/3 accept remains
+non-executing; isolate is never offered. Authorization uses a **separate**
+endpoint. Controls are labelled **OWNED TEST ENVIRONMENT**.
 
 Canonical types: `shared/shared/monitoring.py`, `shared/shared/incident.py`,
 `shared/shared/rl.py`, `shared/shared/live_defense.py`, generated TS via
@@ -35,7 +36,7 @@ Unknown correlations (event not on any incident, incident with no recommendation
 1. Telemetry is never invented. `MonitoringEvent.simulated` / `Incident.simulated` stay accurate.
 2. `DefenseRecommendation.simulation_derived` is `Literal[True]`. Genuine shadow rows are `LivePolicyDecision` (`enforcement: "NOT_EXECUTED"`). Q-values on a live decision are null unless frozen v6 inference actually ran.
 3. Q-values are stored scores, not a probability that an attack is happening now.
-4. No endpoint applies, isolates, rate-limits, or blocks. `AnalystReview.accept` sets `executes: false` and `enforcement: "none"`. It is not the NIST two-person incident approval and is not converted into an RL label.
+4. `AnalystReview.accept` still sets `executes: false` and `enforcement: "none"`. It is not the NIST two-person incident approval and is not converted into an RL label. Browser-callable `/apply`, `/isolate`, `/rate-limit`, and `/block` do not exist. Owned-test rate-limit and exact-source block go through `POST /applications/{id}/control-authorizations` and the deterministic gate.
 5. `DefenseHealth.status` is always `"unknown"`. HTTP 200 is not a healthy verdict.
 
 ## Phase 2 resources (implemented)
@@ -69,10 +70,19 @@ Unknown correlations (event not on any incident, incident with no recommendation
 - Authenticated ingest source `owned_staging` (application-bound token)
 - Deterministic rules in `monitoring/detect.py`; frozen v6 only when serving assumptions hold
 
+## Phase 4 resources (implemented, owned-test only)
+
+- `POST/GET /projects/{id}/control-grants`, `POST /control-grants/{id}/revoke`
+- `POST/GET /applications/{id}/control-channel` (HMAC shown once; loopback port only)
+- `POST /applications/{id}/control-authorizations` — separate from review; gate is final authority
+- `GET /projects/{id}/live-controls`, `GET /live-controls/{id}`
+- `POST /live-controls/{id}/rollback` — success only after verify
+- `GET/POST /projects/{id}/emergency-stop`, `POST /emergency-stop/{id}/clear`
+
 ## Still missing (do not fake)
 
-- Live-defense incident machine (DETECTED → … → EXECUTING)
-- Autonomous block / isolate / rate-limit
+- Live-defense incident machine (DETECTED → … → EXECUTING on NIST incidents)
+- Autonomous enforcement (no human authorization)
 - Production enforcement grants
 
 ## Authorization
