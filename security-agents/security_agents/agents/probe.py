@@ -125,7 +125,7 @@ SPEC = AgentSpec(
     prompt_ref="prompts/probe/v0.1.0.md",
     system_prompt=SYSTEM,
     max_calls_per_tool={"checks.run_template": 3},
-    max_output_tokens=4000,
+    max_output_tokens=16000,  # thinking counts toward this; 4-8k ran out on real repos
 )
 
 

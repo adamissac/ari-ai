@@ -179,7 +179,7 @@ SPEC = AgentSpec(
     max_turns=12,
     prompt_ref="prompts/trace/v0.3.0.md",
     system_prompt=SYSTEM,
-    max_output_tokens=6000,
+    max_output_tokens=16000,  # thinking counts toward this; 4-8k ran out on real repos
 )
 
 SENSITIVITY_ORDER = ("none", "internal", "personal", "financial")
