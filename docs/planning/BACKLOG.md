@@ -227,3 +227,5 @@ was not overwritten. No study heartbeat was re-enabled or extra experiment sched
   `feat/alan/constrained-rl-phase1`: audit and additive offline-first constrained-RL
   foundation. Separate measured reward/cost, provenance, capability shield and
   deterministic baseline evaluation. No Phase 2, training, holdout or serving changes.
+
+- IMPLEMENTED / finite fixture passed; integration pending (2026-10-23), **RL-CMDP-002**, Alan, `feat/alan/deterministic-feasibility`: owner-authorized finite-case deterministic authorization feasibility; owner limits zero unauthorized successes / zero valid owner/delegated denials. Protocol and isolated guard in `docs/research/deterministic-feasibility/`. No training or production integration.

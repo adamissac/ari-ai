@@ -1412,3 +1412,20 @@ Original scientific artifacts, execution/report indices, checkpoint and registry
 unchanged. Source tree/content published through connector; local branch metadata is
 an equivalent independent commit chain. Primary checkout and old experiment worktrees
 remain untouched. No merge: Phase1's deployment restriction governs this research PR.
+
+### 2026-10-23 — Alan / Codex — RL-CMDP-002 preregistration
+- Owner authorized deterministic feasibility and explicitly selected zero successful unauthorized reads and zero valid owner/delegated denials in every case.
+- Added an isolated exact-resource guard, independent negative/positive tests and a fixed 18-case / three-policy / 54-request HTTP protocol. No training, holdout or serving integration.
+- Before comparison: 21 guard tests passed; fixed-policy harness test added. Comparison must execute once from committed protocol/source and retain all outcomes; no automatic retry or tuning.
+- Parallel PR #393 owns operational controls; this research fixture does not duplicate or import that lifecycle.
+
+### 2026-10-23 — Alan / Codex — RL-CMDP-002 result
+- Preregistered protocol/source committed and pushed before the single 54-request comparison. Exact-resource guard passed zero unauthorized / zero legitimate-denial owner limits; six unknown cases all abstained without forwarding.
+- Unguarded allowed seven unauthorized reads; blanket denial denied two owner and three delegate reads. All rows and source/protocol/runtime identities retained in `rl-defense/results/deterministic-feasibility-001/`. No retries, training, historical replay or promotion.
+- Focused guard/harness tests: 22 passed. Lint and 533 Markdown files checked. This is one authored synthetic HTTP resource, not real-application context integration or production evidence.
+- Next: independently verify application-context extraction, freshness, request binding and revocation races. RL remains no-go.
+
+### 2026-10-23 — Alan / Codex — RL-CMDP-002 review correction
+- Added a post-response compute-limit check and a regression that overruns on request 54; retains all 54 partial rows in FAILURE.json without retry or successful result.
+- Original comparison evidence remains byte-identical. Its runner lacked the final post-response clock check and elapsed timing record; strict budget compliance is therefore not certifiable from those original artifacts. Numerical finite-case results are retained, not replaced.
+- Recorded execution commit is a direct ancestor of this branch; merge-commit method preserves it durably.

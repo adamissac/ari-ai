@@ -277,3 +277,7 @@ one possible v11 preregistration. The completed screen failed its fixed availabi
 confidence condition: +1.2373 points vs v6,95% CI[−0.0313,+2.5340]; compromise improved
 on validation but worsened on training. No v11 prepared or launched. See
 [results and limits](results/duration-screen/PROVENANCE.md). V6 remains deployed.
+
+Research-only deterministic payment-read guard and explicit finite-case HTTP comparison:
+[protocol and limitations](../docs/research/deterministic-feasibility/README.md).
+No serving hook, model training, promotion or customer action.
