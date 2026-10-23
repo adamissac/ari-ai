@@ -42,3 +42,15 @@ to this stateless fixture; it has no RL action or expiring principal block. Unkn
 cases must all remain unforwarded, independently of the two numerical owner limits.
 A fixture pass alone cannot reverse Phase 1's no-go: telemetry/state coverage,
 independent integration and future evaluation criteria still need review.
+
+## Executed outcome
+
+The single preregistered comparison completed all 54 requests. Exact-resource guard:
+zero unauthorized successes, zero owner/delegated denials, all six unknown cases
+unforwarded. Unguarded access failed seven unauthorized cases; blanket denial failed
+five legitimate cases. [Retained evidence](../../../rl-defense/results/deterministic-feasibility-001/README.md).
+
+Next: independently specify and verify extraction/freshness of actual application
+ownership and grant context, revocation races and request binding. The current
+synthetic single-resource fixture cannot establish those properties. No-go for new
+RL training remains; prefer a deterministic application repair if sufficient.

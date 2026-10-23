@@ -1,0 +1,601 @@
+{
+  "environment_packages": {
+    "annotated-doc": "0.0.5",
+    "annotated-types": "0.8.0",
+    "anyio": "4.15.1",
+    "certifi": "2026.10.18",
+    "cloudpickle": "3.1.2",
+    "farama-notifications": "0.0.6",
+    "fastapi": "0.150.0",
+    "filelock": "3.32.3",
+    "fsspec": "2026.7.0",
+    "gymnasium": "1.4.0",
+    "h11": "0.16.0",
+    "hackatl-shared": "0.1.0",
+    "hackatl-standards": "0.1.0",
+    "httpcore": "1.0.9",
+    "httpx": "0.28.1",
+    "idna": "3.20",
+    "iniconfig": "2.3.1",
+    "jinja2": "3.1.6",
+    "markupsafe": "3.0.3",
+    "mpmath": "1.3.0",
+    "networkx": "3.6.1",
+    "numpy": "2.5.4",
+    "opentelemetry-api": "1.45.1",
+    "packaging": "26.3",
+    "pluggy": "1.7.0",
+    "pydantic": "2.14.1",
+    "pydantic-core": "2.50.1",
+    "pygments": "2.21.0",
+    "pytest": "9.1.1",
+    "pyyaml": "6.0.3",
+    "rl-defense": "0.1.0",
+    "ruff": "0.17.1",
+    "scipy": "1.18.1",
+    "setuptools": "78.1.0",
+    "starlette": "1.9.0",
+    "sympy": "1.14.0",
+    "torch": "2.14.1",
+    "typing-extensions": "4.16.0",
+    "typing-inspection": "0.4.4"
+  },
+  "finite_fixture_only": true,
+  "model_training": false,
+  "production_safety_established": false,
+  "protocol_sha256": "2a194354f5d8c5cb2fe3d058cc654d0180469de34336ec22795b812640dc68e5",
+  "requests": [
+    {
+      "case": "foreign-without-grant",
+      "forwarded": true,
+      "label": "unauthorized",
+      "policy": "unguarded",
+      "status": 200
+    },
+    {
+      "case": "foreign-without-grant",
+      "forwarded": false,
+      "label": "unauthorized",
+      "policy": "blanket_deny",
+      "status": 404
+    },
+    {
+      "case": "foreign-without-grant",
+      "forwarded": false,
+      "label": "unauthorized",
+      "policy": "exact_resource_guard",
+      "status": 404
+    },
+    {
+      "case": "owner-read",
+      "forwarded": true,
+      "label": "owner",
+      "policy": "unguarded",
+      "status": 200
+    },
+    {
+      "case": "owner-read",
+      "forwarded": false,
+      "label": "owner",
+      "policy": "blanket_deny",
+      "status": 404
+    },
+    {
+      "case": "owner-read",
+      "forwarded": true,
+      "label": "owner",
+      "policy": "exact_resource_guard",
+      "status": 200
+    },
+    {
+      "case": "valid-delegate",
+      "forwarded": true,
+      "label": "delegate",
+      "policy": "unguarded",
+      "status": 200
+    },
+    {
+      "case": "valid-delegate",
+      "forwarded": false,
+      "label": "delegate",
+      "policy": "blanket_deny",
+      "status": 404
+    },
+    {
+      "case": "valid-delegate",
+      "forwarded": true,
+      "label": "delegate",
+      "policy": "exact_resource_guard",
+      "status": 200
+    },
+    {
+      "case": "delegation-start-boundary",
+      "forwarded": true,
+      "label": "delegate",
+      "policy": "unguarded",
+      "status": 200
+    },
+    {
+      "case": "delegation-start-boundary",
+      "forwarded": false,
+      "label": "delegate",
+      "policy": "blanket_deny",
+      "status": 404
+    },
+    {
+      "case": "delegation-start-boundary",
+      "forwarded": true,
+      "label": "delegate",
+      "policy": "exact_resource_guard",
+      "status": 200
+    },
+    {
+      "case": "delegation-last-valid-tick",
+      "forwarded": true,
+      "label": "delegate",
+      "policy": "unguarded",
+      "status": 200
+    },
+    {
+      "case": "delegation-last-valid-tick",
+      "forwarded": false,
+      "label": "delegate",
+      "policy": "blanket_deny",
+      "status": 404
+    },
+    {
+      "case": "delegation-last-valid-tick",
+      "forwarded": true,
+      "label": "delegate",
+      "policy": "exact_resource_guard",
+      "status": 200
+    },
+    {
+      "case": "expired-delegation",
+      "forwarded": true,
+      "label": "unauthorized",
+      "policy": "unguarded",
+      "status": 200
+    },
+    {
+      "case": "expired-delegation",
+      "forwarded": false,
+      "label": "unauthorized",
+      "policy": "blanket_deny",
+      "status": 404
+    },
+    {
+      "case": "expired-delegation",
+      "forwarded": false,
+      "label": "unauthorized",
+      "policy": "exact_resource_guard",
+      "status": 404
+    },
+    {
+      "case": "future-delegation",
+      "forwarded": true,
+      "label": "unauthorized",
+      "policy": "unguarded",
+      "status": 200
+    },
+    {
+      "case": "future-delegation",
+      "forwarded": false,
+      "label": "unauthorized",
+      "policy": "blanket_deny",
+      "status": 404
+    },
+    {
+      "case": "future-delegation",
+      "forwarded": false,
+      "label": "unauthorized",
+      "policy": "exact_resource_guard",
+      "status": 404
+    },
+    {
+      "case": "revoked-delegation",
+      "forwarded": true,
+      "label": "unauthorized",
+      "policy": "unguarded",
+      "status": 200
+    },
+    {
+      "case": "revoked-delegation",
+      "forwarded": false,
+      "label": "unauthorized",
+      "policy": "blanket_deny",
+      "status": 404
+    },
+    {
+      "case": "revoked-delegation",
+      "forwarded": false,
+      "label": "unauthorized",
+      "policy": "exact_resource_guard",
+      "status": 404
+    },
+    {
+      "case": "other-resource-grant",
+      "forwarded": true,
+      "label": "unauthorized",
+      "policy": "unguarded",
+      "status": 200
+    },
+    {
+      "case": "other-resource-grant",
+      "forwarded": false,
+      "label": "unauthorized",
+      "policy": "blanket_deny",
+      "status": 404
+    },
+    {
+      "case": "other-resource-grant",
+      "forwarded": false,
+      "label": "unauthorized",
+      "policy": "exact_resource_guard",
+      "status": 404
+    },
+    {
+      "case": "other-owner-grant",
+      "forwarded": true,
+      "label": "unauthorized",
+      "policy": "unguarded",
+      "status": 200
+    },
+    {
+      "case": "other-owner-grant",
+      "forwarded": false,
+      "label": "unauthorized",
+      "policy": "blanket_deny",
+      "status": 404
+    },
+    {
+      "case": "other-owner-grant",
+      "forwarded": false,
+      "label": "unauthorized",
+      "policy": "exact_resource_guard",
+      "status": 404
+    },
+    {
+      "case": "other-principal-grant",
+      "forwarded": true,
+      "label": "unauthorized",
+      "policy": "unguarded",
+      "status": 200
+    },
+    {
+      "case": "other-principal-grant",
+      "forwarded": false,
+      "label": "unauthorized",
+      "policy": "blanket_deny",
+      "status": 404
+    },
+    {
+      "case": "other-principal-grant",
+      "forwarded": false,
+      "label": "unauthorized",
+      "policy": "exact_resource_guard",
+      "status": 404
+    },
+    {
+      "case": "owner-with-expired-delegation",
+      "forwarded": true,
+      "label": "owner",
+      "policy": "unguarded",
+      "status": 200
+    },
+    {
+      "case": "owner-with-expired-delegation",
+      "forwarded": false,
+      "label": "owner",
+      "policy": "blanket_deny",
+      "status": 404
+    },
+    {
+      "case": "owner-with-expired-delegation",
+      "forwarded": true,
+      "label": "owner",
+      "policy": "exact_resource_guard",
+      "status": 200
+    },
+    {
+      "case": "missing-principal",
+      "forwarded": true,
+      "label": "unknown",
+      "policy": "unguarded",
+      "status": 200
+    },
+    {
+      "case": "missing-principal",
+      "forwarded": false,
+      "label": "unknown",
+      "policy": "blanket_deny",
+      "status": 404
+    },
+    {
+      "case": "missing-principal",
+      "forwarded": false,
+      "label": "unknown",
+      "policy": "exact_resource_guard",
+      "status": 503
+    },
+    {
+      "case": "missing-owner",
+      "forwarded": true,
+      "label": "unknown",
+      "policy": "unguarded",
+      "status": 200
+    },
+    {
+      "case": "missing-owner",
+      "forwarded": false,
+      "label": "unknown",
+      "policy": "blanket_deny",
+      "status": 404
+    },
+    {
+      "case": "missing-owner",
+      "forwarded": false,
+      "label": "unknown",
+      "policy": "exact_resource_guard",
+      "status": 503
+    },
+    {
+      "case": "missing-permissions",
+      "forwarded": true,
+      "label": "unknown",
+      "policy": "unguarded",
+      "status": 200
+    },
+    {
+      "case": "missing-permissions",
+      "forwarded": false,
+      "label": "unknown",
+      "policy": "blanket_deny",
+      "status": 404
+    },
+    {
+      "case": "missing-permissions",
+      "forwarded": false,
+      "label": "unknown",
+      "policy": "exact_resource_guard",
+      "status": 503
+    },
+    {
+      "case": "contradictory-context",
+      "forwarded": true,
+      "label": "unknown",
+      "policy": "unguarded",
+      "status": 200
+    },
+    {
+      "case": "contradictory-context",
+      "forwarded": false,
+      "label": "unknown",
+      "policy": "blanket_deny",
+      "status": 404
+    },
+    {
+      "case": "contradictory-context",
+      "forwarded": false,
+      "label": "unknown",
+      "policy": "exact_resource_guard",
+      "status": 503
+    },
+    {
+      "case": "future-context",
+      "forwarded": true,
+      "label": "unknown",
+      "policy": "unguarded",
+      "status": 200
+    },
+    {
+      "case": "future-context",
+      "forwarded": false,
+      "label": "unknown",
+      "policy": "blanket_deny",
+      "status": 404
+    },
+    {
+      "case": "future-context",
+      "forwarded": false,
+      "label": "unknown",
+      "policy": "exact_resource_guard",
+      "status": 503
+    },
+    {
+      "case": "stale-context",
+      "forwarded": true,
+      "label": "unknown",
+      "policy": "unguarded",
+      "status": 200
+    },
+    {
+      "case": "stale-context",
+      "forwarded": false,
+      "label": "unknown",
+      "policy": "blanket_deny",
+      "status": 404
+    },
+    {
+      "case": "stale-context",
+      "forwarded": false,
+      "label": "unknown",
+      "policy": "exact_resource_guard",
+      "status": 503
+    }
+  ],
+  "schema": "deterministic-read-feasibility-evidence/1",
+  "source_commit": "73f42092a6d73f29d3b846b3aa170605ebce4fbd",
+  "summary": {
+    "blanket_deny": {
+      "delegated_denials": 3,
+      "known_case_failures": [
+        "owner-read",
+        "valid-delegate",
+        "delegation-start-boundary",
+        "delegation-last-valid-tick",
+        "owner-with-expired-delegation"
+      ],
+      "owner_denials": 2,
+      "passes_owner_limits": false,
+      "successful_unauthorized_reads": 0,
+      "unknown_cases": [
+        {
+          "case": "missing-principal",
+          "forwarded": false,
+          "label": "unknown",
+          "policy": "blanket_deny",
+          "status": 404
+        },
+        {
+          "case": "missing-owner",
+          "forwarded": false,
+          "label": "unknown",
+          "policy": "blanket_deny",
+          "status": 404
+        },
+        {
+          "case": "missing-permissions",
+          "forwarded": false,
+          "label": "unknown",
+          "policy": "blanket_deny",
+          "status": 404
+        },
+        {
+          "case": "contradictory-context",
+          "forwarded": false,
+          "label": "unknown",
+          "policy": "blanket_deny",
+          "status": 404
+        },
+        {
+          "case": "future-context",
+          "forwarded": false,
+          "label": "unknown",
+          "policy": "blanket_deny",
+          "status": 404
+        },
+        {
+          "case": "stale-context",
+          "forwarded": false,
+          "label": "unknown",
+          "policy": "blanket_deny",
+          "status": 404
+        }
+      ],
+      "unknowns_all_not_forwarded": true
+    },
+    "exact_resource_guard": {
+      "delegated_denials": 0,
+      "known_case_failures": [],
+      "owner_denials": 0,
+      "passes_owner_limits": true,
+      "successful_unauthorized_reads": 0,
+      "unknown_cases": [
+        {
+          "case": "missing-principal",
+          "forwarded": false,
+          "label": "unknown",
+          "policy": "exact_resource_guard",
+          "status": 503
+        },
+        {
+          "case": "missing-owner",
+          "forwarded": false,
+          "label": "unknown",
+          "policy": "exact_resource_guard",
+          "status": 503
+        },
+        {
+          "case": "missing-permissions",
+          "forwarded": false,
+          "label": "unknown",
+          "policy": "exact_resource_guard",
+          "status": 503
+        },
+        {
+          "case": "contradictory-context",
+          "forwarded": false,
+          "label": "unknown",
+          "policy": "exact_resource_guard",
+          "status": 503
+        },
+        {
+          "case": "future-context",
+          "forwarded": false,
+          "label": "unknown",
+          "policy": "exact_resource_guard",
+          "status": 503
+        },
+        {
+          "case": "stale-context",
+          "forwarded": false,
+          "label": "unknown",
+          "policy": "exact_resource_guard",
+          "status": 503
+        }
+      ],
+      "unknowns_all_not_forwarded": true
+    },
+    "unguarded": {
+      "delegated_denials": 0,
+      "known_case_failures": [
+        "foreign-without-grant",
+        "expired-delegation",
+        "future-delegation",
+        "revoked-delegation",
+        "other-resource-grant",
+        "other-owner-grant",
+        "other-principal-grant"
+      ],
+      "owner_denials": 0,
+      "passes_owner_limits": false,
+      "successful_unauthorized_reads": 7,
+      "unknown_cases": [
+        {
+          "case": "missing-principal",
+          "forwarded": true,
+          "label": "unknown",
+          "policy": "unguarded",
+          "status": 200
+        },
+        {
+          "case": "missing-owner",
+          "forwarded": true,
+          "label": "unknown",
+          "policy": "unguarded",
+          "status": 200
+        },
+        {
+          "case": "missing-permissions",
+          "forwarded": true,
+          "label": "unknown",
+          "policy": "unguarded",
+          "status": 200
+        },
+        {
+          "case": "contradictory-context",
+          "forwarded": true,
+          "label": "unknown",
+          "policy": "unguarded",
+          "status": 200
+        },
+        {
+          "case": "future-context",
+          "forwarded": true,
+          "label": "unknown",
+          "policy": "unguarded",
+          "status": 200
+        },
+        {
+          "case": "stale-context",
+          "forwarded": true,
+          "label": "unknown",
+          "policy": "unguarded",
+          "status": 200
+        }
+      ],
+      "unknowns_all_not_forwarded": false
+    }
+  }
+}
