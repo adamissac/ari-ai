@@ -3,7 +3,7 @@
 Owner: Alan (`security-agents/`, SEC-001 … SEC-013; interim Live Defense UI)
 Branch: `feat/live-defense-phase5-pilot-readiness`
 Current task: Live Defense Phase 5 shadow-pilot readiness (no Phase 4 enforcement; do not merge #393)
-Last remote sync: 2026-10-23, `origin/main` @ `cb40ca6` (merged into Phase 5; PR #395)
+Last remote sync: 2026-10-23, `origin/main` @ `7adf509` (merged into Phase 5; PR #395)
 API/contract dependencies: `shared` 0.9.0 `CheckCategory`; `backend.host` checkpoints; `code_review.api` functional helpers
 Recent PR/commit: `feat/alan/verify-honesty-check-category` (do not push merged `host-finding-persistence` / `host-resume-hardening`)
 Blockers: live seven-agent run (issue #10, no key); Docker images (INFRA-005)
@@ -447,3 +447,11 @@ contracts60pass and skipped TypeScript check passed separately. All five CI work
 passed source184a61a; review-proof fixes pending current-head CI. Four review findings
 fixed with source Git-object proof, portable registry guard, policy-decision replay and
 schema discriminators. See docs/research/constrained-rl-phase1/VERIFICATION.md.
+
+## RL research continuation — 2026-10-23
+
+RL-CMDP-003 on `feat/alan/read-context-integration`: opt-in owned payments-lite
+read wrapper, store-derived context, serialized permission updates and buffered
+freshness checks. Eight focused integration tests pass. No serving hook, model
+training or operational-control integration; historical evidence remains unchanged.
+Details: `docs/research/deterministic-feasibility/APPLICATION_CONTEXT.md`.
