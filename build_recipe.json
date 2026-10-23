@@ -1,0 +1,96 @@
+{
+  "_comment": [
+    "Sandbox build recipe for this repository, read by the security agents when an approved",
+    "scope targets it. The target is the real backend API (deploy/sandbox_target.py) on a",
+    "throwaway PostgreSQL inside the Vercel Sandbox microVM, with two unrelated fixture",
+    "users. Probe and Verify may only name the identities, resources and routes below.",
+    "`sandbox` lists what the microVM installs before egress closes and what it uploads."
+  ],
+  "recipe_version": 1,
+  "kind": "python_asgi",
+  "app_factory": "deploy.sandbox_target:create_app",
+  "test_command": [
+    "-q",
+    "backend/tests/test_api_core.py"
+  ],
+  "sandbox": {
+    "apt": [
+      "postgresql"
+    ],
+    "pip": [
+      "sqlalchemy==2.1.5",
+      "alembic==1.20.0",
+      "psycopg[binary]==3.3.6",
+      "pydantic-settings==2.16.0",
+      "anthropic==1.15.0",
+      "pyjwt[crypto]==2.15.1"
+    ],
+    "include": [
+      "backend",
+      "shared",
+      "monitoring",
+      "standards",
+      "code-intelligence",
+      "deploy/sandbox_target.py",
+      "pyproject.toml"
+    ]
+  },
+  "identities": {
+    "alice": {
+      "auth_header": "Bearer sbx-alice-session"
+    },
+    "bob": {
+      "auth_header": "Bearer sbx-bob-session"
+    }
+  },
+  "resources": {
+    "project": {
+      "alice": {
+        "id": "prj_sbxalice0000000000000000a"
+      },
+      "bob": {
+        "id": "prj_sbxbob000000000000000000b"
+      }
+    },
+    "repository": {
+      "alice": {
+        "id": "rep_sbxalice0000000000000000a"
+      },
+      "bob": {
+        "id": "rep_sbxbob000000000000000000b"
+      }
+    }
+  },
+  "routes": [
+    {
+      "id": "project_detail",
+      "method": "GET",
+      "path_template": "/api/v1/projects/{project_id}",
+      "resource": "project"
+    },
+    {
+      "id": "project_repositories",
+      "method": "GET",
+      "path_template": "/api/v1/projects/{project_id}/repositories",
+      "resource": "project"
+    },
+    {
+      "id": "project_scopes",
+      "method": "GET",
+      "path_template": "/api/v1/projects/{project_id}/scopes",
+      "resource": "project"
+    },
+    {
+      "id": "project_assessments",
+      "method": "GET",
+      "path_template": "/api/v1/projects/{project_id}/assessments",
+      "resource": "project"
+    },
+    {
+      "id": "repository_detail",
+      "method": "GET",
+      "path_template": "/api/v1/repositories/{repo_id}",
+      "resource": "repository"
+    }
+  ]
+}
