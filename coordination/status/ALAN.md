@@ -7,7 +7,7 @@ Last remote sync: 2026-10-23, `origin/main` @ `02ab34de` (PRs #393 and #395 merg
 API/contract dependencies: `shared` 0.9.0 `CheckCategory`; `backend.host` checkpoints; `code_review.api` functional helpers
 Recent PR/commit: `feat/live-defense-phase6-pilot-audit` (Phase 6 audit; no Phase 7)
 Blockers: live seven-agent run (issue #10, no key); Docker images (INFRA-005); Phase 6 merge needs CI + human review
-Next action: review/merge Phase 6 if CI green and no enforcement expansion; do not start Phase 7
+Next action: wait for CI on the Codex P1/P2 head of #411; merge only if MERGEABLE + reviews satisfied + no enforcement expansion; do not start Phase 7
 
 ## What runs today
 
@@ -77,7 +77,7 @@ Updated 2026-10-17 after #100 to #125.
 
 ### 2026-10-23 (Live Defense Phase 6 post-merge audit)
 
-- Branch `feat/live-defense-phase6-pilot-audit` from `origin/main` `02ab34de`. PRs #393 (`57e0326`) and #395 (`8bbc01e`) confirmed merged. Schema 0.19.0, Alembic `0014`. Shadow cannot execute with grant+channel present; disconnect blocks leftover execute; queue depth project-scoped. **CONDITIONAL GO** for recommendation-only shadow-pilot. No Phase 7 / no RL edits.
+- Branch `feat/live-defense-phase6-pilot-audit` from `origin/main` `02ab34de`. PRs #393 (`57e0326`) and #395 (`8bbc01e`) confirmed merged. Schema 0.19.0, Alembic `0014`. Shadow cannot execute with grant+channel present; disconnect blocks leftover execute and serializes on the application row; queue depth includes assessment-bound jobs; recovered failures stay on the trail. **CONDITIONAL GO** for recommendation-only shadow-pilot. No Phase 7 / no RL edits.
 - Executed: `make check`; `uv run mypy` 40 files; focused live-defense pytest 149 passed / 1 skipped; frontend lint/typecheck; vitest 330; transport 35.
 
 ### 2026-10-22 (Live Defense Phase 3 shadow runtime)

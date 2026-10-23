@@ -23,6 +23,7 @@ from backend import audit
 from backend.api.deps import ApiError, not_found, require_project, require_user
 from backend.db import (
     analyst_reviews,
+    assessments,
     audit_events,
     connected_applications,
     control_channels,
@@ -427,6 +428,11 @@ def disconnect_application(app_id: str, request: Request) -> ConnectedApplicatio
     """Revoke ingest credentials and stop accepting telemetry. Not production enforcement."""
     with transaction() as conn:
         user = require_user(conn, request)
+        conn.execute(
+            sa.select(connected_applications.c.id)
+            .where(connected_applications.c.id == app_id)
+            .with_for_update()
+        )
         app = _load_application(conn, app_id)
         org_id, _ = require_project(conn, user, app.project_id, MemberRole.owner)
         now = utcnow()
@@ -523,13 +529,22 @@ _LIVE_DEFENSE_JOB_KINDS = (
 
 
 def _project_queue_depth(conn: sa.Connection, project_id: str) -> int | None:
-    """Queued jobs bound to this project. Other tenants' work is not counted."""
+    """Queued jobs bound to this project. Other tenants' work is not counted.
+
+    ``run_assessment`` jobs carry only ``assessment_id``; those rows are included
+    through the assessment. Remaining kinds without either key stay uncounted
+    rather than guessed.
+    """
+    project_assessments = sa.select(assessments.c.id).where(assessments.c.project_id == project_id)
     queued = conn.execute(
         sa.select(sa.func.count())
         .select_from(jobs)
         .where(
             jobs.c.status == "queued",
-            jobs.c.payload["project_id"].astext == project_id,
+            sa.or_(
+                jobs.c.payload["project_id"].astext == project_id,
+                jobs.c.payload["assessment_id"].astext.in_(project_assessments),
+            ),
         )
     ).scalar()
     return int(queued) if queued is not None else None
@@ -561,14 +576,17 @@ def _defense_health(conn: sa.Connection, project_id: str) -> DefenseHealth:
 
 
 def _failed_job_trail(conn: sa.Connection, project_id: str) -> list[PilotTrailEntry]:
-    """Measured worker failures for this project. Not a health verdict."""
+    """Measured worker failures for this project. Not a health verdict.
+
+    ``jobs.complete`` leaves ``last_error`` on a later success; those rows stay
+    visible as recovered failures rather than disappearing from the trail.
+    """
     rows = (
         conn.execute(
             sa.select(jobs)
             .where(
                 jobs.c.kind.in_(_LIVE_DEFENSE_JOB_KINDS),
                 jobs.c.payload["project_id"].astext == project_id,
-                jobs.c.status != "succeeded",
                 jobs.c.last_error.is_not(None),
             )
             .order_by(jobs.c.updated_at.desc())
@@ -581,13 +599,18 @@ def _failed_job_trail(conn: sa.Connection, project_id: str) -> list[PilotTrailEn
     for row in rows:
         error = row["last_error"] or {}
         code = str(error.get("code") or "unknown")
+        recovered = row["status"] == "succeeded"
         trail.append(
             PilotTrailEntry(
                 at=_aware(row["updated_at"]) or utcnow(),
-                action=f"job.{row['status']}",
+                action="job.recovered" if recovered else f"job.{row['status']}",
                 subject_type="job",
                 subject_id=row["id"],
-                detail=f"{row['kind']} last_error={code}",
+                detail=(
+                    f"{row['kind']} recovered last_error={code}"
+                    if recovered
+                    else f"{row['kind']} last_error={code}"
+                ),
             )
         )
     return trail

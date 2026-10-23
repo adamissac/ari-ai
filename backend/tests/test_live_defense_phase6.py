@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import hashlib
 import socket
+import threading
+import time
 from datetime import timedelta
 
 import pytest
@@ -17,12 +19,28 @@ from helpers import setup_project
 
 from backend import jobs as jobq
 from backend import worker
-from backend.db import ingest_tokens, jobs, live_controls, live_policy_decisions, transaction
+from backend.db import (
+    assessments,
+    ingest_tokens,
+    jobs,
+    live_controls,
+    live_policy_decisions,
+    transaction,
+)
+from backend.live_defense.controls import gate_for
 from backend.live_defense.owned_test_app import create_app, serve_in_thread
 from backend.live_defense.policy import decide_inference
 from monitoring.detect import WindowView, detect
 from shared.base import utcnow
-from shared.live_defense import PILOT_UNSUPPORTED_CLAIMS, AuthorizationContext, InferenceStatus
+from shared.ids import IdPrefix, new_id
+from shared.live_defense import (
+    PILOT_UNSUPPORTED_CLAIMS,
+    AuthorizationContext,
+    ControlTarget,
+    InferenceStatus,
+    LiveControlKind,
+    LiveControlTargetType,
+)
 from shared.monitoring import PrincipalCounts
 
 ROUTE = "GET /payments/{payment_id}"
@@ -302,6 +320,48 @@ def test_disconnect_after_authorize_blocks_execute_toctou(env) -> None:
         stop()
 
 
+def test_disconnect_serializes_behind_execute_application_lock(env) -> None:
+    alice, _, _, ids, _ = env
+    started = threading.Event()
+    released = threading.Event()
+    seen: dict[str, object] = {}
+
+    def hold_lock() -> None:
+        with transaction() as conn:
+            gate_for(
+                conn,
+                session_user_id=alice.me["user"]["id"],
+                claimed_actor_id=None,
+                project_id=ids["project"],
+                application_id=ids["app"],
+                kind=LiveControlKind.escalate,
+                target=ControlTarget(type=LiveControlTargetType.none, value=""),
+                duration_s=60,
+                max_requests=None,
+            )
+            started.set()
+            released.wait(timeout=5)
+
+    holder = threading.Thread(target=hold_lock)
+    holder.start()
+    assert started.wait(timeout=5)
+
+    def do_disconnect() -> None:
+        res = alice.post(f"/api/v1/applications/{ids['app']}/disconnect")
+        seen["code"] = res.status_code
+        seen["released"] = released.is_set()
+
+    waiter = threading.Thread(target=do_disconnect)
+    waiter.start()
+    time.sleep(0.4)
+    assert "code" not in seen
+    released.set()
+    holder.join(timeout=5)
+    waiter.join(timeout=5)
+    assert seen.get("code") == 200
+    assert seen.get("released") is True
+
+
 def test_tenant_isolation_and_credentials_are_hashes_not_secrets(env, fixture_server) -> None:
     alice, _, outsider, ids, _ = env
     pid = ids["project"]
@@ -394,6 +454,61 @@ def test_queue_depth_is_project_scoped_not_other_tenants(env) -> None:
     health = alice.get(f"/api/v1/projects/{ids['project']}/defense-health").json()
     assert health["status"] == "unknown"
     assert health["queue_depth"] == 0
+
+
+def test_queue_depth_counts_assessment_jobs_without_project_id(env) -> None:
+    alice, _, _, ids, _ = env
+    aid = new_id(IdPrefix.asm)
+    with transaction() as conn:
+        conn.execute(
+            sa.insert(assessments).values(
+                id=aid,
+                project_id=ids["project"],
+                repo_id=ids["repo"],
+                scope_id=ids["scope"],
+                commit_sha="b" * 40,
+                trigger="manual",
+                state="CREATED",
+                doc={"id": aid, "project_id": ids["project"]},
+            )
+        )
+        jobq.enqueue(
+            conn,
+            "run_assessment",
+            {"assessment_id": aid},
+            dedupe_key=f"phase6-asm-queue:{aid}",
+        )
+    health = alice.get(f"/api/v1/projects/{ids['project']}/defense-health").json()
+    assert health["status"] == "unknown"
+    assert health["queue_depth"] == 1
+
+
+def test_recovered_job_failure_stays_on_pilot_trail(env) -> None:
+    alice, _, _, ids, _ = env
+    pid = ids["project"]
+    with transaction() as conn:
+        jid, _ = jobq.enqueue(
+            conn,
+            "live_defense_shadow",
+            {"project_id": pid},
+            dedupe_key=f"phase6-recovered-shadow:{pid}",
+        )
+        conn.execute(
+            sa.update(jobs)
+            .where(jobs.c.id == jid)
+            .values(
+                status="succeeded",
+                last_error={"code": "INTERNAL", "message": "transient worker error"},
+            )
+        )
+    report = alice.get(f"/api/v1/projects/{pid}/pilot-report").json()
+    assert report["health"]["status"] == "unknown"
+    assert any(
+        item["subject_id"] == jid
+        and item["action"] == "job.recovered"
+        and "recovered last_error=INTERNAL" in (item.get("detail") or "")
+        for item in report["investigation_trail"]
+    )
 
 
 def test_frozen_v6_hash_mismatch_refuses_load(tmp_path, monkeypatch) -> None:
