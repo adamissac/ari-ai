@@ -481,3 +481,11 @@ version 0.1.0 internal provider and payments-lite trusted-record adapter. 57 foc
 tests pass; review/CI pending. Four authorization states, scoped clock/revision
 metadata and documented future causal observation boundary. No new external
 service, shared public API, RL observation modification, training or promotion.
+
+## Adaptive-defense readiness — 2026-10-23
+
+RL-CMDP-007, `research/rl-adaptive-defense-readiness`: user-requested research
+assessment after #414; NO-GO/Option C, no new training. Pure cutoff observation
+adapter and read-only training-archive inventory only. 54 focused tests pass;
+review/full CI pending. See docs/research/adaptive-defense-readiness/README.md.
+No new shared public contract, environment dynamics, collection or enforcement.

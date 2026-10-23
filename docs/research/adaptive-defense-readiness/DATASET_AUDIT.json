@@ -1,0 +1,252 @@
+{
+  "candidate_observation": "adaptive-context/0.1",
+  "collection_authorized": false,
+  "duration_train": {
+    "behavior_probabilities_known": 0,
+    "delegated_cost_known": 0,
+    "episodes": 280,
+    "first_current_masks_missing": 280,
+    "transitions": 8400
+  },
+  "evidence": [
+    {
+      "artifact_id": "art_0e7f0fac8228f512580f4e778b",
+      "commit_sha": null,
+      "kind": "artifact",
+      "note": "constrained-phase1/transitions.jsonl.gz#all training rows",
+      "path": null,
+      "provenance": "rl_defense.research@1",
+      "sha256": "0e7f0fac8228f512580f4e778b85e7fa0a1d523b09f058491655cdb7e0c821b9",
+      "span": null,
+      "symbol": null
+    },
+    {
+      "artifact_id": "art_13bc5d32038a5e15142536fa2d",
+      "commit_sha": null,
+      "kind": "artifact",
+      "note": "duration-screen/train/short/trajectories.jsonl.gz#all training episodes",
+      "path": null,
+      "provenance": "rl_defense.research@1",
+      "sha256": "13bc5d32038a5e15142536fa2d99d4bec7826db355e6f62ea5f69eefdfaea968",
+      "span": null,
+      "symbol": null
+    },
+    {
+      "artifact_id": "art_0289b555e3eb30b10e460ca8c9",
+      "commit_sha": null,
+      "kind": "artifact",
+      "note": "duration-screen/train/long/trajectories.jsonl.gz#all training episodes",
+      "path": null,
+      "provenance": "rl_defense.research@1",
+      "sha256": "0289b555e3eb30b10e460ca8c9f1f6851d0d069e247de9db72a65c363a20b43b",
+      "span": null,
+      "symbol": null
+    },
+    {
+      "artifact_id": "art_cdebf783fe956e992872d00e63",
+      "commit_sha": null,
+      "kind": "artifact",
+      "note": "duration-screen/train/duration/trajectories.jsonl.gz#all training episodes",
+      "path": null,
+      "provenance": "rl_defense.research@1",
+      "sha256": "cdebf783fe956e992872d00e6359b75942d8987a646177e7e774db0d3d418354",
+      "span": null,
+      "symbol": null
+    },
+    {
+      "artifact_id": "art_6f253d33243a146c1f862dd763",
+      "commit_sha": null,
+      "kind": "artifact",
+      "note": "duration-screen/train/v6/trajectories.jsonl.gz#all training episodes",
+      "path": null,
+      "provenance": "rl_defense.research@1",
+      "sha256": "6f253d33243a146c1f862dd763596c4e024da49dc61947fb424f0ac68cfe07a2",
+      "span": null,
+      "symbol": null
+    },
+    {
+      "artifact_id": "art_631457387dcf97e60e9ea2ed71",
+      "commit_sha": null,
+      "kind": "artifact",
+      "note": "duration-screen/train/tuned_rules/trajectories.jsonl.gz#all training episodes",
+      "path": null,
+      "provenance": "rl_defense.research@1",
+      "sha256": "631457387dcf97e60e9ea2ed71ced6a23cfdbccd244a566ee7675bec55946652",
+      "span": null,
+      "symbol": null
+    }
+  ],
+  "failed_conditions": [
+    "no demonstrated adaptive residual benefit beyond deterministic authorization",
+    "no measured narrow control effect or action-dependent traffic dynamics",
+    "candidate decision-time telemetry and complete cost coverage missing",
+    "no candidate baseline gap on eligible comparable scenarios",
+    "constraints/sample size/compute/seed registry and owner approvals unset"
+  ],
+  "feature_coverage": {
+    "active_control_count": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "adapter_available": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "auth_failure_count": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "authorization_denial_count": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "context_age_max": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "control_available": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "control_remaining_max": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "cooldown_remaining": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "cumulative_disruption": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "delegated_adaptive_denial_count": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "delegated_completed_count": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "delegated_count": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "distinct_resource_count": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "elapsed_ticks": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "intervention_budget_remaining": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "intervention_count": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "missing_context_fraction": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "observation_age": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "observed_disruption_count": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "owner_adaptive_denial_count": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "owner_completed_count": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "owner_count": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "remaining_ticks": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "repeat_attempt_count": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "request_count": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "request_count_delta": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "revocation_observed_count": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "supported_action_count": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "unauthorized_attempt_count": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "unauthorized_count": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "unknown_context_count": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    },
+    "valid_target_count": {
+      "candidate_decision_time_coverage": "unavailable",
+      "reason": "no versioned provider snapshot/knowledge-arrival contract in these archives"
+    }
+  },
+  "fresh_evaluation": false,
+  "historical_execution_reverified": false,
+  "off_policy_evaluation": false,
+  "offline_rl_ready": false,
+  "online_rl_ready": false,
+  "overlap": "shared familiar train_v8 scenario/seed identities; never pool as independent units",
+  "phase1": {
+    "action_indices_observed": [
+      0,
+      5,
+      6,
+      13,
+      22,
+      23,
+      24
+    ],
+    "aggregate_cost_known": 4200,
+    "behavior_probabilities_known": 0,
+    "candidate_provider_snapshots": 0,
+    "current_masks_known": 4200,
+    "delegated_cost_known": 4200,
+    "episodes": 140,
+    "transitions": 4200
+  },
+  "schema": "adaptive-readiness/0.1",
+  "scope": "fixed Phase1 training adapter and duration-screen training archives only",
+  "supervised": "descriptive legacy on-policy outcomes only; no candidate-state causal model",
+  "supported_action_mask": [
+    true,
+    false,
+    false,
+    false,
+    false
+  ],
+  "training_authorized": false,
+  "verdict": "NO-GO"
+}
