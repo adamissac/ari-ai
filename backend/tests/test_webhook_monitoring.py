@@ -179,3 +179,13 @@ def test_unknown_repo_and_ping_are_ignored(client_factory) -> None:
         results = [r for r in conn.execute(sa.select(jobs_t.c.result)).scalars()]
     assert {"ignored": "repository someone/else is not connected"} in results
     assert {"ignored": "ping"} in results
+
+
+def test_a_burst_of_signed_deliveries_is_never_rejected(client_factory):
+    """GitHub does not retry a 429, so a rate limit here would silently lose commits."""
+    from helpers import post_webhook, push_payload
+
+    c = client_factory()
+    payload = push_payload(["app.py"])
+    codes = {post_webhook(c, payload).status_code for _ in range(150)}
+    assert codes == {202}
