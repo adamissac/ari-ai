@@ -247,7 +247,9 @@ class LLMGateway:
             "model": self.model_for(agent),
             "max_tokens": max_tokens,
             "system": redact(system),
-            "messages": redact(messages),
+            # The model's own turns go back byte-identical: thinking blocks are signed, and
+            # redacting e.g. a token-like string inside one makes the provider reject it.
+            "messages": [m if m.get("role") == "assistant" else redact(m) for m in messages],
             "thinking": {"type": "adaptive"},
             "output_config": {"effort": self.settings.anthropic_effort},
         }
