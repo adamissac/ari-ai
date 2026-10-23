@@ -111,7 +111,7 @@ SPEC = AgentSpec(
     prompt_ref="prompts/verify/v0.1.0.md",
     system_prompt=SYSTEM,
     max_calls_per_tool={"patch.apply_fresh": 2, "checks.run_template": 3, "tests.run": 4},
-    max_output_tokens=4000,
+    max_output_tokens=16000,  # thinking counts toward this; 4-8k ran out on real repos
 )
 
 
