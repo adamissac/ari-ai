@@ -76,3 +76,16 @@ def test_scanning_pattern_needs_several_noisy_routes() -> None:
     views = [_view(route=f"GET /missing/{i}", requests=10, e4=10) for i in range(4)]
     hits = detect(views)
     assert any(h.rule_id == "scanning_pattern" for h in hits)
+
+
+def test_one_route_without_ownership_context_keeps_the_batch_unverified() -> None:
+    from monitoring.detect import authorization_context
+
+    classified = _view(
+        route="GET /a/{id}",
+        requests=10,
+        principals=[PrincipalCounts(principal="prn_alice01", cross_tenant=0, own=10)],
+    )
+    unclassified = _view(route="GET /b/{id}", requests=10)
+    assert authorization_context([classified]) is AuthorizationContext.verified
+    assert authorization_context([classified, unclassified]) is AuthorizationContext.unverified

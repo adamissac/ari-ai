@@ -87,7 +87,7 @@ test('Live Defense shadow pilot: staging app, ingest, unknown health, review wit
   await page.reload();
   await expect(page.getByTestId('live-defense')).toHaveAttribute('data-mode', 'live');
   await expect(page.getByTestId('live-defense-summary')).toContainText('staging app');
-  await expect(page.getByTestId('live-defense-summary')).toContainText('Authenticated ingest has been recorded');
+  await expect(page.getByTestId('live-defense-summary')).toContainText('Runtime ingest has been recorded');
   await expect(page.getByTestId('live-defense-summary')).toContainText('none executed');
   await expect(page.getByTestId('live-defense-health')).toContainText('unknown');
   await expect(page.getByRole('button', { name: /^(apply|isolate|rate-limit|block)$/i })).toHaveCount(0);
