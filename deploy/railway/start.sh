@@ -22,11 +22,11 @@ export LLM_SERVER_FALLBACKS=false
 
 hackatl-migrate
 
-# Several workers so one long assessment does not hold up every other commit; jobs are
+# Twelve workers (~80 MB each) so concurrent commits each get their own run at once; jobs are
 # claimed with SKIP LOCKED, so they never run the same job twice.
 pids=""
 i=0
-while [ "$i" -lt "${WORKER_PROCESSES:-3}" ]; do
+while [ "$i" -lt "${WORKER_PROCESSES:-12}" ]; do
   hackatl-worker &
   pids="$pids $!"
   i=$((i + 1))

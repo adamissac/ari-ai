@@ -308,9 +308,15 @@ def test_quota_defers_excess_commits_without_dropping_them(
             .one()
         )
         assert delayed["status"] == "queued" and delayed["run_after"] > utcnow()
-        # Advance the quota window without waiting an hour/day.
+        # Advance the quota window without waiting an hour/day; the push itself is now old,
+        # which must not make the deferred commit look like a stale backlog.
         conn.execute(sa.update(assessments).values(created_at=utcnow() - timedelta(days=2)))
-        conn.execute(sa.update(jobs).where(jobs.c.id == delayed["id"]).values(run_after=utcnow()))
+        old = (utcnow() - timedelta(days=2)).isoformat()
+        conn.execute(
+            sa.update(jobs)
+            .where(jobs.c.id == delayed["id"])
+            .values(run_after=utcnow(), payload={**delayed["payload"], "received_at": old})
+        )
     worker.drain(kinds=["assess_github_commit"])
     assert sorted(records()) == [HEAD, "c" * 40, "d" * 40]
 
@@ -428,23 +434,23 @@ def test_wildcard_runs_any_pusher_and_unlinked_author(automatic, settings_overri
     assert records() == [HEAD]
 
 
-def test_stale_commit_is_skipped(automatic):
+def test_global_daily_spend_ceiling_defers_new_runs(automatic, settings_override):
     alice, bob, ids, _ = automatic
+    settings_override(automatic_usd_per_day="1")
     bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
-    p = push_payload(["README.md"], head=HEAD)
-    p["sender"] = {"login": "adamissac"}
-    p["commits"] = [{"id": HEAD, "modified": ["README.md"]}]
-    post_webhook(alice, p)
-    worker.drain(kinds=["process_github_delivery"])
-    with transaction() as conn:  # the push sat in the queue for over an hour
-        for jid, payload in conn.execute(
-            sa.select(jobs.c.id, jobs.c.payload).where(jobs.c.kind == "assess_github_commit")
-        ).all():
-            old = "2000-01-01T00:00:00+00:00"
-            conn.execute(
-                sa.update(jobs)
-                .where(jobs.c.id == jid)
-                .values(payload={**payload, "received_at": old})
+    push(alice, HEAD)
+    with transaction() as conn:  # the first run already spent the whole day's ceiling
+        conn.execute(
+            sa.update(assessments).values(
+                doc=assessments.c.doc.op("||")(
+                    sa.cast({"usage": {"usd": 1.5}}, sa.dialects.postgresql.JSONB)
+                )
             )
-    worker.drain(kinds=["assess_github_commit"])
-    assert records() == []
+        )
+    push(alice, "c" * 40)
+    assert records() == [HEAD]
+    with transaction() as conn:
+        delayed = conn.execute(
+            sa.select(jobs.c.payload).where(jobs.c.dedupe_key.like("github:deferred:%"))
+        ).scalar_one()
+    assert delayed["sha"] == "c" * 40
