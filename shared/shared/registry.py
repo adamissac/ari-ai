@@ -122,6 +122,9 @@ MODELS: tuple[type[BaseModel], ...] = (
     live_defense.EmergencyStop,
     live_defense.EmergencyStopCreate,
     live_defense.LiveControlRollbackCreate,
+    live_defense.IngestTokenRotated,
+    live_defense.PilotTrailEntry,
+    live_defense.PilotReport,
     # rl
     rl.NodeSignals,
     rl.PlatformFacts,

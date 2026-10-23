@@ -1,0 +1,366 @@
+{
+  "$defs": {
+    "ApplicationVerification": {
+      "enum": [
+        "unverified",
+        "ingest_seen",
+        "token_revoked",
+        "disconnected"
+      ],
+      "title": "ApplicationVerification",
+      "type": "string"
+    },
+    "ConnectedApplication": {
+      "additionalProperties": false,
+      "description": "Owner-registered staging app under watch. Never includes secrets.",
+      "properties": {
+        "control_channel_configured": {
+          "default": false,
+          "description": "True when a control channel exists; the HMAC secret is never returned",
+          "title": "Control Channel Configured",
+          "type": "boolean"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Created By",
+          "type": "string"
+        },
+        "disconnected_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Disconnected At"
+        },
+        "environment": {
+          "$ref": "#/$defs/StagingEnvironment"
+        },
+        "id": {
+          "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "ingest_configured": {
+          "description": "True when a non-revoked ingest token exists; the token itself is never returned",
+          "title": "Ingest Configured",
+          "type": "boolean"
+        },
+        "last_ingest_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Ingest At"
+        },
+        "name": {
+          "maxLength": 500,
+          "title": "Name",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "shadow_mode": {
+          "const": true,
+          "default": true,
+          "title": "Shadow Mode",
+          "type": "boolean"
+        },
+        "verification": {
+          "$ref": "#/$defs/ApplicationVerification"
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "name",
+        "environment",
+        "ingest_configured",
+        "verification",
+        "created_by",
+        "created_at"
+      ],
+      "title": "ConnectedApplication",
+      "type": "object"
+    },
+    "DefenseHealth": {
+      "additionalProperties": false,
+      "description": "Recorded timestamps for ingest and the job worker. Not a liveness verdict.",
+      "properties": {
+        "last_ingest_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Latest runtime_windows.window_end for this project",
+          "title": "Last Ingest At"
+        },
+        "last_runtime_event_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Latest monitoring event with source=runtime",
+          "title": "Last Runtime Event At"
+        },
+        "policy_status": {
+          "const": "unknown",
+          "default": "unknown",
+          "title": "Policy Status",
+          "type": "string"
+        },
+        "policy_status_reason": {
+          "default": "No live policy-health producer. Shadow decisions stay NOT_EXECUTED; HTTP 200 is not policy health.",
+          "maxLength": 500,
+          "title": "Policy Status Reason",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "queue_depth": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Queued jobs; null if the queue was not readable",
+          "title": "Queue Depth"
+        },
+        "status": {
+          "const": "unknown",
+          "default": "unknown",
+          "title": "Status",
+          "type": "string"
+        },
+        "status_reason": {
+          "default": "No recorded health-check producer. Timestamps are evidence only; HTTP 200 is not a healthy verdict.",
+          "maxLength": 500,
+          "title": "Status Reason",
+          "type": "string"
+        },
+        "telemetry_status": {
+          "const": "unknown",
+          "default": "unknown",
+          "title": "Telemetry Status",
+          "type": "string"
+        },
+        "telemetry_status_reason": {
+          "default": "Ingest timestamps are not a telemetry health verdict.",
+          "maxLength": 500,
+          "title": "Telemetry Status Reason",
+          "type": "string"
+        },
+        "worker_seen_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Latest jobs.heartbeat_at; null if no worker has heartbeated",
+          "title": "Worker Seen At"
+        },
+        "worker_status": {
+          "const": "unknown",
+          "default": "unknown",
+          "title": "Worker Status",
+          "type": "string"
+        },
+        "worker_status_reason": {
+          "default": "No worker liveness producer. Heartbeat timestamps are evidence only.",
+          "maxLength": 500,
+          "title": "Worker Status Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id"
+      ],
+      "title": "DefenseHealth",
+      "type": "object"
+    },
+    "PilotTrailEntry": {
+      "additionalProperties": false,
+      "description": "One recorded audit or ingest fact. Labels are not invented.",
+      "properties": {
+        "action": {
+          "maxLength": 500,
+          "title": "Action",
+          "type": "string"
+        },
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detail"
+        },
+        "subject_id": {
+          "maxLength": 500,
+          "title": "Subject Id",
+          "type": "string"
+        },
+        "subject_type": {
+          "maxLength": 500,
+          "title": "Subject Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "at",
+        "action",
+        "subject_type",
+        "subject_id"
+      ],
+      "title": "PilotTrailEntry",
+      "type": "object"
+    },
+    "StagingEnvironment": {
+      "description": "Environments a shadow-pilot app may declare. Production is not allowed.",
+      "enum": [
+        "sandbox",
+        "owned_test"
+      ],
+      "title": "StagingEnvironment",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Exportable shadow-pilot snapshot. Not an effectiveness claim.",
+  "properties": {
+    "applications": {
+      "items": {
+        "$ref": "#/$defs/ConnectedApplication"
+      },
+      "title": "Applications",
+      "type": "array"
+    },
+    "caveats": {
+      "items": {
+        "maxLength": 500,
+        "type": "string"
+      },
+      "title": "Caveats",
+      "type": "array"
+    },
+    "generated_at": {
+      "format": "date-time",
+      "title": "Generated At",
+      "type": "string"
+    },
+    "health": {
+      "$ref": "#/$defs/DefenseHealth"
+    },
+    "incidents": {
+      "minimum": 0,
+      "title": "Incidents",
+      "type": "integer"
+    },
+    "ingest_windows": {
+      "minimum": 0,
+      "title": "Ingest Windows",
+      "type": "integer"
+    },
+    "investigation_trail": {
+      "items": {
+        "$ref": "#/$defs/PilotTrailEntry"
+      },
+      "title": "Investigation Trail",
+      "type": "array"
+    },
+    "project_id": {
+      "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "reviews": {
+      "minimum": 0,
+      "title": "Reviews",
+      "type": "integer"
+    },
+    "shadow_decisions": {
+      "minimum": 0,
+      "title": "Shadow Decisions",
+      "type": "integer"
+    },
+    "shadow_mode": {
+      "const": true,
+      "default": true,
+      "title": "Shadow Mode",
+      "type": "boolean"
+    },
+    "unsupported_claims": {
+      "items": {
+        "maxLength": 500,
+        "type": "string"
+      },
+      "title": "Unsupported Claims",
+      "type": "array"
+    }
+  },
+  "required": [
+    "project_id",
+    "generated_at",
+    "ingest_windows",
+    "shadow_decisions",
+    "reviews",
+    "incidents",
+    "health"
+  ],
+  "title": "PilotReport",
+  "type": "object"
+}

@@ -199,6 +199,7 @@ it('labels verified owned-test controls and does not offer isolate', () => {
             verification: 'unverified',
             shadow_mode: true,
             control_channel_configured: true,
+            disconnected_at: null,
             created_by: 'usr_12345678',
             created_at: '2026-10-23T00:00:00Z',
           }],

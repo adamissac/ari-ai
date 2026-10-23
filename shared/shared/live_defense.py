@@ -54,6 +54,7 @@ class ApplicationVerification(StrEnum):
     unverified = "unverified"
     ingest_seen = "ingest_seen"
     token_revoked = "token_revoked"
+    disconnected = "disconnected"
 
 
 class ConnectedApplication(StrictModel):
@@ -73,6 +74,7 @@ class ConnectedApplication(StrictModel):
         default=False,
         description="True when a control channel exists; the HMAC secret is never returned",
     )
+    disconnected_at: UtcDatetime | None = None
     created_by: UserId
     created_at: UtcDatetime
 
@@ -113,6 +115,17 @@ class DefenseHealth(StrictModel):
     status_reason: ShortText = (
         "No recorded health-check producer. Timestamps are evidence only; "
         "HTTP 200 is not a healthy verdict."
+    )
+    worker_status: Literal["unknown"] = "unknown"
+    worker_status_reason: ShortText = (
+        "No worker liveness producer. Heartbeat timestamps are evidence only."
+    )
+    telemetry_status: Literal["unknown"] = "unknown"
+    telemetry_status_reason: ShortText = "Ingest timestamps are not a telemetry health verdict."
+    policy_status: Literal["unknown"] = "unknown"
+    policy_status_reason: ShortText = (
+        "No live policy-health producer. Shadow decisions stay NOT_EXECUTED; "
+        "HTTP 200 is not policy health."
     )
 
 
@@ -522,3 +535,61 @@ class EmergencyStopCreate(StrictModel):
 
 class LiveControlRollbackCreate(StrictModel):
     reason: ShortText | None = None
+
+
+# Phase 5 — customer shadow-pilot readiness (no enforcement)
+# ---------------------------------------------------------------------------
+
+PILOT_REPORT_CAVEATS: tuple[str, ...] = (
+    "Shadow mode records ingest and recommendations. It does not execute controls.",
+    "HTTP 200 from this API is not attack success and is not a healthy verdict.",
+    "This report does not claim that shadow mode prevented breaches.",
+    "Q-values are stored scores, not a probability that an attack is happening now.",
+    "Analyst accept is a recorded opinion and does not execute.",
+)
+
+PILOT_UNSUPPORTED_CLAIMS: tuple[str, ...] = (
+    "shadow prevented breaches",
+    "HTTP 200 means the attack succeeded",
+    "health is healthy because this endpoint returned 200",
+)
+
+
+class IngestTokenRotated(StrictModel):
+    """New ingest secret shown once, with ids of tokens revoked in the same rotation."""
+
+    id: IngestTokenId
+    project_id: ProjectId
+    application_id: ConnectedApplicationId
+    token: str = Field(description="Shown once; only its SHA-256 is stored")
+    created_at: UtcDatetime
+    revoked_ids: list[IngestTokenId] = Field(default_factory=list)
+
+
+class PilotTrailEntry(StrictModel):
+    """One recorded audit or ingest fact. Labels are not invented."""
+
+    at: UtcDatetime
+    action: ShortText
+    subject_type: ShortText
+    subject_id: ShortText
+    detail: ShortText | None = None
+
+
+class PilotReport(StrictModel):
+    """Exportable shadow-pilot snapshot. Not an effectiveness claim."""
+
+    project_id: ProjectId
+    generated_at: UtcDatetime
+    shadow_mode: Literal[True] = True
+    applications: list[ConnectedApplication] = Field(default_factory=list)
+    ingest_windows: int = Field(ge=0)
+    shadow_decisions: int = Field(ge=0)
+    reviews: int = Field(ge=0)
+    incidents: int = Field(ge=0)
+    health: DefenseHealth
+    investigation_trail: list[PilotTrailEntry] = Field(default_factory=list)
+    caveats: list[ShortText] = Field(default_factory=lambda: list(PILOT_REPORT_CAVEATS))
+    unsupported_claims: list[ShortText] = Field(
+        default_factory=lambda: list(PILOT_UNSUPPORTED_CLAIMS)
+    )

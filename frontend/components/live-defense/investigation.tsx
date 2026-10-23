@@ -43,6 +43,7 @@ export function InvestigationList({
         These are NIST SP 800-61 records from the control plane. Human actions (triage, two-person gates, closure) stay on the{' '}
         {projectId ? <Link className="text-accent hover:underline" href={`/projects/${projectId}/incidents`}>Incidents</Link> : 'Incidents'} page.
         Shadow decisions from authenticated ingest live on Explainability and are always NOT EXECUTED. Analyst review does not apply a control.
+        The exportable pilot report on Staging apps lists this trail from recorded audit events; it does not invent labels or claim that shadow mode prevented breaches.
       </p>
       <div className="mb-3 flex flex-wrap gap-2 text-sm">
         <label className="text-muted">State

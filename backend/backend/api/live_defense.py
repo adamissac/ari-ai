@@ -1,10 +1,11 @@
-"""Live Defense shadow-pilot API (Phase 2 + Phase 3 shadow runtime).
+"""Live Defense shadow-pilot API (Phase 2, 3, and 5 readiness).
 
-Connected staging apps, ingest-token metadata, recorded health/topology,
-analyst reviews, and genuine ``LivePolicyDecision`` rows. Nothing here
-applies, isolates, rate-limits, or blocks. ``AnalystReview.accept`` is a
-recorded opinion. ``LivePolicyDecision.enforcement`` is always NOT_EXECUTED.
-``DefenseHealth.status`` is always ``unknown``.
+Connected staging apps, ingest-token issue/rotate/revoke, disconnect,
+recorded health/topology, analyst reviews, genuine ``LivePolicyDecision``
+rows, and exportable pilot reports. Nothing here applies, isolates,
+rate-limits, or blocks. ``AnalystReview.accept`` is a recorded opinion.
+``LivePolicyDecision.enforcement`` is always NOT_EXECUTED.
+``DefenseHealth.status`` (and worker/telemetry/policy) is always ``unknown``.
 """
 
 from __future__ import annotations
@@ -16,14 +17,17 @@ from typing import Any
 
 import sqlalchemy as sa
 from fastapi import APIRouter, Query, Request
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from backend import audit
 from backend.api.deps import ApiError, not_found, require_project, require_user
 from backend.db import (
     analyst_reviews,
+    audit_events,
     connected_applications,
     control_channels,
     defense_recommendations,
+    incidents,
     ingest_tokens,
     jobs,
     live_policy_decisions,
@@ -37,6 +41,8 @@ from shared.base import utcnow
 from shared.errors import ErrorCode
 from shared.ids import IdPrefix, new_id
 from shared.live_defense import (
+    PILOT_REPORT_CAVEATS,
+    PILOT_UNSUPPORTED_CLAIMS,
     AnalystReview,
     AnalystReviewCreate,
     ApplicationVerification,
@@ -50,11 +56,21 @@ from shared.live_defense import (
     ConnectedApplication,
     ConnectedApplicationCreate,
     DefenseHealth,
+    IngestTokenRotated,
     IngestTokenView,
     LivePolicyDecision,
+    PilotReport,
+    PilotTrailEntry,
     StagingEnvironment,
 )
-from shared.monitoring import AUTHENTICATED_RUNTIME_SOURCES, IngestTokenCreated
+from shared.monitoring import (
+    AUTHENTICATED_RUNTIME_SOURCES,
+    EventSource,
+    EventStatus,
+    EventType,
+    IngestTokenCreated,
+    MonitoringEvent,
+)
 from shared.tenancy import MemberRole
 
 router = APIRouter(tags=["live-defense"])
@@ -89,23 +105,73 @@ def _application_from_rows(
 ) -> ConnectedApplication:
     active = [t for t in tokens if t["revoked_at"] is None]
     had_any = bool(tokens)
-    if last_ingest_at is not None:
+    disconnected_at = (app_row["doc"] or {}).get("disconnected_at")
+    if disconnected_at is not None:
+        verification = ApplicationVerification.disconnected
+        ingest_configured = False
+    elif last_ingest_at is not None:
         verification = ApplicationVerification.ingest_seen
+        ingest_configured = bool(active)
     elif had_any and not active:
         verification = ApplicationVerification.token_revoked
+        ingest_configured = False
     else:
         verification = ApplicationVerification.unverified
+        ingest_configured = bool(active)
     return ConnectedApplication(
         id=app_row["id"],
         project_id=app_row["project_id"],
         name=app_row["name"],
         environment=StagingEnvironment(app_row["environment"]),
-        ingest_configured=bool(active),
+        ingest_configured=ingest_configured,
         last_ingest_at=_aware(last_ingest_at),
         verification=verification,
         control_channel_configured=control_channel_configured,
+        disconnected_at=disconnected_at,
         created_by=app_row["created_by"],
         created_at=_aware(app_row["created_at"]) or utcnow(),
+    )
+
+
+def _persist_application(conn: sa.Connection, app: ConnectedApplication) -> None:
+    conn.execute(
+        sa.update(connected_applications)
+        .where(connected_applications.c.id == app.id)
+        .values(doc=app.model_dump(mode="json"))
+    )
+
+
+def _emit_advisory(
+    conn: sa.Connection,
+    *,
+    project_id: str,
+    application_id: str,
+    action: str,
+    reason: str,
+) -> None:
+    ev = MonitoringEvent(
+        id=new_id(IdPrefix.evt),
+        project_id=project_id,
+        source=EventSource.internal,
+        type=EventType.advisory,
+        occurred_at=utcnow(),
+        received_at=utcnow(),
+        dedupe_key=f"live-defense:{action}:{application_id}:{utcnow().isoformat()}",
+        simulated=False,
+        status=EventStatus.processed,
+        status_reason=reason[:500],
+    )
+    conn.execute(
+        pg_insert(monitoring_events)
+        .values(
+            id=ev.id,
+            project_id=project_id,
+            repo_id=None,
+            dedupe_key=ev.dedupe_key,
+            status=ev.status.value,
+            doc=ev.model_dump(mode="json"),
+        )
+        .on_conflict_do_nothing()
     )
 
 
@@ -254,6 +320,8 @@ def create_application_ingest_token(app_id: str, request: Request) -> IngestToke
         user = require_user(conn, request)
         app = _load_application(conn, app_id)
         org_id, _ = require_project(conn, user, app.project_id, MemberRole.owner)
+        if app.disconnected_at is not None:
+            raise ApiError(ErrorCode.CONFLICT_STATE, "application is disconnected", 409)
         token = "hkt_ing_" + secrets.token_urlsafe(32)
         tid = new_id(IdPrefix.itk)
         now = utcnow()
@@ -278,6 +346,145 @@ def create_application_ingest_token(app_id: str, request: Request) -> IngestToke
             details={"application_id": app_id, "shown_once": True},
         )
         return IngestTokenCreated(id=tid, project_id=app.project_id, token=token, created_at=now)
+
+
+@router.post(
+    "/applications/{app_id}/ingest-tokens/rotate",
+    status_code=201,
+    response_model=IngestTokenRotated,
+)
+def rotate_application_ingest_token(app_id: str, request: Request) -> IngestTokenRotated:
+    """Issue a new secret and revoke prior active tokens. Secret shown once."""
+    with transaction() as conn:
+        user = require_user(conn, request)
+        app = _load_application(conn, app_id)
+        org_id, _ = require_project(conn, user, app.project_id, MemberRole.owner)
+        if app.disconnected_at is not None:
+            raise ApiError(ErrorCode.CONFLICT_STATE, "application is disconnected", 409)
+        active = (
+            conn.execute(
+                sa.select(ingest_tokens.c.id).where(
+                    ingest_tokens.c.application_id == app_id,
+                    ingest_tokens.c.revoked_at.is_(None),
+                )
+            )
+            .scalars()
+            .all()
+        )
+        if active:
+            conn.execute(
+                sa.update(ingest_tokens)
+                .where(ingest_tokens.c.id.in_(list(active)))
+                .values(revoked_at=sa.func.now())
+            )
+        token = "hkt_ing_" + secrets.token_urlsafe(32)
+        tid = new_id(IdPrefix.itk)
+        now = utcnow()
+        conn.execute(
+            sa.insert(ingest_tokens).values(
+                id=tid,
+                project_id=app.project_id,
+                token_sha256=_sha(token),
+                created_by=user.id,
+                application_id=app_id,
+            )
+        )
+        audit.record(
+            conn,
+            org_id=org_id,
+            project_id=app.project_id,
+            actor_type=ActorType.user,
+            actor_id=user.id,
+            action="ingest_token.rotated",
+            subject_type="ingest_token",
+            subject_id=tid,
+            details={"application_id": app_id, "revoked_ids": list(active), "shown_once": True},
+        )
+        _emit_advisory(
+            conn,
+            project_id=app.project_id,
+            application_id=app_id,
+            action="ingest_token.rotated",
+            reason=f"Ingest credential rotated for staging app {app_id}; prior tokens revoked.",
+        )
+        return IngestTokenRotated(
+            id=tid,
+            project_id=app.project_id,
+            application_id=app_id,
+            token=token,
+            created_at=now,
+            revoked_ids=list(active),
+        )
+
+
+@router.post("/applications/{app_id}/disconnect", response_model=ConnectedApplication)
+def disconnect_application(app_id: str, request: Request) -> ConnectedApplication:
+    """Revoke ingest credentials and stop accepting telemetry. Not production enforcement."""
+    with transaction() as conn:
+        user = require_user(conn, request)
+        app = _load_application(conn, app_id)
+        org_id, _ = require_project(conn, user, app.project_id, MemberRole.owner)
+        now = utcnow()
+        conn.execute(
+            sa.update(ingest_tokens)
+            .where(
+                ingest_tokens.c.application_id == app_id,
+                ingest_tokens.c.revoked_at.is_(None),
+            )
+            .values(revoked_at=sa.func.now())
+        )
+        app = app.model_copy(
+            update={
+                "disconnected_at": now,
+                "ingest_configured": False,
+                "verification": ApplicationVerification.disconnected,
+            }
+        )
+        _persist_application(conn, app)
+        audit.record(
+            conn,
+            org_id=org_id,
+            project_id=app.project_id,
+            actor_type=ActorType.user,
+            actor_id=user.id,
+            action="live_defense.application.disconnected",
+            subject_type="connected_application",
+            subject_id=app_id,
+            details={"shadow_mode": True, "enforcement": "none"},
+        )
+        _emit_advisory(
+            conn,
+            project_id=app.project_id,
+            application_id=app_id,
+            action="application.disconnected",
+            reason=f"Staging app {app_id} disconnected; ingest tokens revoked.",
+        )
+        return app
+
+
+@router.post("/applications/{app_id}/shadow-verify", response_model=ConnectedApplication)
+def shadow_verify_application(app_id: str, request: Request) -> ConnectedApplication:
+    """Recompute verification from recorded ingest. Never a healthy or executed verdict."""
+    with transaction() as conn:
+        user = require_user(conn, request)
+        app = _load_application(conn, app_id)
+        org_id, _ = require_project(conn, user, app.project_id, MemberRole.owner)
+        audit.record(
+            conn,
+            org_id=org_id,
+            project_id=app.project_id,
+            actor_type=ActorType.user,
+            actor_id=user.id,
+            action="live_defense.application.verified",
+            subject_type="connected_application",
+            subject_id=app_id,
+            details={
+                "verification": app.verification.value,
+                "health": "unknown",
+                "executes": False,
+            },
+        )
+        return app
 
 
 @router.get("/projects/{project_id}/ingest-tokens")
@@ -324,6 +531,141 @@ def defense_health(project_id: str, request: Request) -> DefenseHealth:
             queue_depth=int(queued) if queued is not None else None,
             last_ingest_at=_aware(last_ingest),
             last_runtime_event_at=_aware(last_event),
+            worker_status="unknown",
+            telemetry_status="unknown",
+            policy_status="unknown",
+        )
+
+
+@router.get("/projects/{project_id}/pilot-report", response_model=PilotReport)
+def pilot_report(project_id: str, request: Request) -> PilotReport:
+    """Exportable shadow-pilot snapshot. HTTP 200 is not attack success."""
+    with transaction() as conn:
+        require_project(conn, require_user(conn, request), project_id)
+        app_rows = (
+            conn.execute(
+                sa.select(connected_applications)
+                .where(connected_applications.c.project_id == project_id)
+                .order_by(connected_applications.c.created_at.desc())
+            )
+            .mappings()
+            .all()
+        )
+        tokens = (
+            conn.execute(sa.select(ingest_tokens).where(ingest_tokens.c.project_id == project_id))
+            .mappings()
+            .all()
+        )
+        last_by_app = dict(
+            conn.execute(
+                sa.select(
+                    runtime_windows.c.application_id, sa.func.max(runtime_windows.c.window_end)
+                )
+                .where(
+                    runtime_windows.c.project_id == project_id,
+                    runtime_windows.c.application_id.is_not(None),
+                )
+                .group_by(runtime_windows.c.application_id)
+            ).all()
+        )
+        by_app: dict[str, list[sa.RowMapping]] = {}
+        for token in tokens:
+            if token["application_id"]:
+                by_app.setdefault(token["application_id"], []).append(token)
+        apps = [
+            _application_from_rows(row, by_app.get(row["id"], []), last_by_app.get(row["id"]))
+            for row in app_rows
+        ]
+        ingest_windows = int(
+            conn.execute(
+                sa.select(sa.func.count())
+                .select_from(runtime_windows)
+                .where(runtime_windows.c.project_id == project_id)
+            ).scalar()
+            or 0
+        )
+        shadow_n = int(
+            conn.execute(
+                sa.select(sa.func.count())
+                .select_from(live_policy_decisions)
+                .where(live_policy_decisions.c.project_id == project_id)
+            ).scalar()
+            or 0
+        )
+        review_n = int(
+            conn.execute(
+                sa.select(sa.func.count())
+                .select_from(analyst_reviews)
+                .where(analyst_reviews.c.project_id == project_id)
+            ).scalar()
+            or 0
+        )
+        incident_n = int(
+            conn.execute(
+                sa.select(sa.func.count())
+                .select_from(incidents)
+                .where(incidents.c.project_id == project_id)
+            ).scalar()
+            or 0
+        )
+        worker_seen = conn.execute(sa.select(sa.func.max(jobs.c.heartbeat_at))).scalar()
+        queued = conn.execute(
+            sa.select(sa.func.count()).select_from(jobs).where(jobs.c.status == "queued")
+        ).scalar()
+        last_ingest = conn.execute(
+            sa.select(sa.func.max(runtime_windows.c.window_end)).where(
+                runtime_windows.c.project_id == project_id
+            )
+        ).scalar()
+        last_event = conn.execute(
+            sa.select(sa.func.max(monitoring_events.c.created_at)).where(
+                monitoring_events.c.project_id == project_id,
+                monitoring_events.c.doc["source"].astext == "runtime",
+            )
+        ).scalar()
+        health = DefenseHealth(
+            project_id=project_id,
+            worker_seen_at=_aware(worker_seen),
+            queue_depth=int(queued) if queued is not None else None,
+            last_ingest_at=_aware(last_ingest),
+            last_runtime_event_at=_aware(last_event),
+        )
+        trail_rows = (
+            conn.execute(
+                sa.select(audit_events.c.doc)
+                .where(audit_events.c.project_id == project_id)
+                .order_by(audit_events.c.seq.desc())
+                .limit(50)
+            )
+            .scalars()
+            .all()
+        )
+        trail: list[PilotTrailEntry] = []
+        for doc in trail_rows:
+            action = str(doc.get("action") or "")
+            if not (action.startswith("live_defense.") or action.startswith("ingest_token.")):
+                continue
+            trail.append(
+                PilotTrailEntry(
+                    at=doc["at"],
+                    action=action,
+                    subject_type=str(doc.get("subject_type") or ""),
+                    subject_id=str(doc.get("subject_id") or ""),
+                    detail=None,
+                )
+            )
+        return PilotReport(
+            project_id=project_id,
+            generated_at=utcnow(),
+            applications=apps,
+            ingest_windows=ingest_windows,
+            shadow_decisions=shadow_n,
+            reviews=review_n,
+            incidents=incident_n,
+            health=health,
+            investigation_trail=trail,
+            caveats=list(PILOT_REPORT_CAVEATS),
+            unsupported_claims=list(PILOT_UNSUPPORTED_CLAIMS),
         )
 
 

@@ -1,6 +1,9 @@
 # Live Defense frontend — API contracts (Phase 4)
 
 Status: **Phase 4 owned-test enforcement** on `feat/live-defense-phase4-controlled-enforcement`.
+Status: **Phase 5 shadow-pilot readiness** on `feat/live-defense-phase5-pilot-readiness`
+(extends Phase 2/3 on `origin/main`). Phase 4 enforcement (PR #393) is **not**
+included.
 Consumer: `frontend/` Live Defense dashboard. Producer: control plane (`backend/`,
 `shared/` 0.18.0). Phases 1–3 are extended, not rebuilt: live mode still refuses
 to mix layout-preview fixtures with records; Phase 2/3 accept remains
@@ -49,7 +52,11 @@ Unknown correlations (event not on any incident, incident with no recommendation
 - `GET /projects/{id}/applications`
 - `GET /applications/{id}`
 - `POST /applications/{id}/ingest-tokens` → `IngestTokenCreated` (token shown once)
+- `POST /applications/{id}/ingest-tokens/rotate` → `IngestTokenRotated` (new secret shown once; prior ids listed)
+- `POST /applications/{id}/disconnect` → `ConnectedApplication` (`verification=disconnected`)
+- `POST /applications/{id}/shadow-verify` → `ConnectedApplication` from recorded ingest (not a healthy verdict)
 - `GET /projects/{id}/ingest-tokens` → page of `IngestTokenView` (owner; no secret)
+- `GET /projects/{id}/pilot-report` → `PilotReport` (HTTP 200 is not attack success; never claims shadow prevented breaches)
 
 ### Recorded health and topology
 
