@@ -18,6 +18,10 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-23 — Cursor (agent, Alan) — Live Defense Phase 5 e2e green after main merge
+- Did: merged `origin/main` `cb40ca6` into `feat/live-defense-phase5-pilot-readiness` (kept both Unreleased changelog bullets; did not edit Codex research files). Playwright 2 passed (9.6s) after waiting for rotated token text. `make check` 166 files; mypy 40 files; pytest 274 passed / 8 skipped; vitest 325/77; transport 35; gitleaks no leaks. PR #395. **Do not merge #393.**
+- Next: merge Phase 5 only if GitHub Actions are green, no required-review gap, no conflicts, no executable enforcement. Else leave #395 open.
+
 ### 2026-10-23 — Cursor (agent, Alan) — Live Defense Phase 5 e2e locator + main merge
 - Did: merged `origin/main` `cb40ca6` (PR #394 Codex RL-CMDP-002) into `feat/live-defense-phase5-pilot-readiness`. Kept both Unreleased changelog bullets. Did **not** edit Codex research files, train, or promote. Playwright Phase 5 disconnect locator now uses exact badge + `live-defense-app-disconnected` (strict-mode matched badge and note). PR #393 still open; Phase 4 enforcement is not on this branch.
 - Next: re-run Playwright; merge Phase 5 only if CI green, no required-review gap, no conflicts, no executable enforcement. Do not merge #393.
