@@ -54,7 +54,7 @@ def test_pause_migration_resets_existing_switches_and_preserves_manual_runs(clie
             created_by=alice.me["user"]["id"],
         )
         with Operations.context(MigrationContext.configure(conn)):
-            importlib.import_module("backend.migrations.versions.0013_automation_opt_in").upgrade()
+            importlib.import_module("backend.migrations.versions.0014_automation_opt_in").upgrade()
         assert conn.execute(sa.select(repositories.c.automatic_assessments)).scalar_one() is False
         settings = conn.execute(sa.select(projects.c.settings)).scalar_one()
         assert settings["monitoring_policy"]["enabled"] is False

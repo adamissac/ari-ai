@@ -368,3 +368,46 @@ def test_no_browser_callable_enforcement_routes() -> None:
     for path in post_paths:
         for token in forbidden:
             assert token not in path, path
+
+
+def test_same_window_from_two_applications_is_not_a_replay(env) -> None:
+    alice, _, _, ids, anon = env
+    app2 = alice.post(
+        f"/api/v1/projects/{ids['project']}/applications",
+        json={"name": "second staging", "environment": "owned_test"},
+    ).json()
+    token2 = alice.post(f"/api/v1/applications/{app2['id']}/ingest-tokens").json()["token"]
+    end = utcnow().replace(second=0, microsecond=0)
+    body = _batch(end, 20, e4=18, auth=18)
+    assert _ingest(anon, ids, body).status_code == 202
+    second = anon.post(
+        f"/api/v1/ingest/runtime/{ids['project']}",
+        json=body,
+        headers={"Authorization": f"Bearer {token2}"},
+    )
+    assert second.status_code == 202, second.text
+    with transaction() as conn:
+        from backend.db import runtime_windows
+
+        apps = conn.execute(sa.select(runtime_windows.c.application_id)).scalars().all()
+    assert sorted(apps) == sorted([ids["app"], app2["id"]])
+    # A real replay by the same application is still idempotent.
+    assert _ingest(anon, ids, body).status_code == 202
+    with transaction() as conn:
+        assert conn.execute(sa.select(sa.func.count()).select_from(runtime_windows)).scalar() == 2
+    worker.drain(kinds=["live_defense_shadow"])
+    with transaction() as conn:
+        ev = conn.execute(
+            sa.select(live_policy_decisions.c.application_id, live_policy_decisions.c.doc)
+        ).all()
+    by_app = {r.application_id: r.doc["evidence_event_ids"] for r in ev}
+    assert set(by_app) == {ids["app"], app2["id"]}
+    assert by_app[ids["app"]] and by_app[app2["id"]]
+    assert not set(by_app[ids["app"]]) & set(by_app[app2["id"]])
+
+
+def test_pilot_trail_keeps_runtime_ingest_events(env) -> None:
+    alice, _, _, ids, anon = env
+    assert _ingest(anon, ids, _batch(utcnow(), 20, e4=18, auth=18)).status_code == 202
+    report = alice.get(f"/api/v1/projects/{ids['project']}/pilot-report").json()
+    assert "runtime.ingested" in [e["action"] for e in report["investigation_trail"]]

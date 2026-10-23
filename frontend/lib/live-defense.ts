@@ -160,7 +160,7 @@ export function liveDefenseOverviewCopy(counts: OverviewCounts): string {
   const ingest = !counts.healthKnown
     ? 'Ingest timestamps have not loaded.'
     : counts.lastIngestAt
-      ? 'Authenticated ingest has been recorded; health stays unknown without a health-check producer.'
+      ? 'Runtime ingest has been recorded (it may include replay or simulated windows); health stays unknown without a health-check producer.'
       : 'No ingest recorded; health is unknown.';
   return `${watch} ${events} ${incidents} ${recs} ${shadow} ${apps} ${ingest}`;
 }

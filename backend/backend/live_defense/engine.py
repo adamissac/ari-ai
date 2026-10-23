@@ -17,6 +17,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from backend import audit
 from backend.db import live_policy_decisions, monitoring_events, runtime_windows, transaction
 from backend.live_defense.policy import decide_inference, freshness_ok, pick_rule_action
+from backend.runtime_keys import runtime_event_key
 from backend.services import project_org
 from backend.worker import JobContext, handler
 from monitoring.detect import WindowView, authorization_context, detect, view_from_window
@@ -66,9 +67,7 @@ def process_shadow(
                     runtime_windows.c.project_id == project_id,
                     runtime_windows.c.window_end == window_end,
                     runtime_windows.c.source == source,
-                    runtime_windows.c.application_id.is_(application_id)
-                    if application_id is None
-                    else runtime_windows.c.application_id == application_id,
+                    runtime_windows.c.application_id.is_not_distinct_from(application_id),
                 )
                 .order_by(runtime_windows.c.route)
             )
@@ -76,15 +75,16 @@ def process_shadow(
             .all()
         )
         windows = [_window_view(row) for row in rows]
-        event_ids = [
-            row
-            for row in conn.execute(
+        # The exact anomaly events these windows produced, not whatever shares a timestamp.
+        keys = [runtime_event_key(source, application_id, r["route"], window_end) for r in rows]
+        event_ids = list(
+            conn.execute(
                 sa.select(monitoring_events.c.id).where(
                     monitoring_events.c.project_id == project_id,
-                    monitoring_events.c.doc["occurred_at"].astext == window_end.isoformat(),
+                    monitoring_events.c.dedupe_key.in_(keys),
                 )
             ).scalars()
-        ]
+        )
         hits = detect(windows)
         auth = authorization_context(windows)
         inference = decide_inference(
