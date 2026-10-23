@@ -1,0 +1,47 @@
+{
+  "additionalProperties": false,
+  "description": "One recorded audit or ingest fact. Labels are not invented.",
+  "properties": {
+    "action": {
+      "maxLength": 500,
+      "title": "Action",
+      "type": "string"
+    },
+    "at": {
+      "format": "date-time",
+      "title": "At",
+      "type": "string"
+    },
+    "detail": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Detail"
+    },
+    "subject_id": {
+      "maxLength": 500,
+      "title": "Subject Id",
+      "type": "string"
+    },
+    "subject_type": {
+      "maxLength": 500,
+      "title": "Subject Type",
+      "type": "string"
+    }
+  },
+  "required": [
+    "at",
+    "action",
+    "subject_type",
+    "subject_id"
+  ],
+  "title": "PilotTrailEntry",
+  "type": "object"
+}

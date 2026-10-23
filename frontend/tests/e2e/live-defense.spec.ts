@@ -134,3 +134,59 @@ test('Live Defense shadow pilot: staging app, ingest, unknown health, review wit
   await expect(page.getByRole('button', { name: /^(apply|isolate|rate-limit|block)$/i })).toHaveCount(0);
   await evidenceShot(page, 'live-defense-explain-review');
 });
+
+test('Live Defense Phase 5: rotate, revoke, disconnect, restart ingest, export report', async ({ browser, request }) => {
+  const page = await newUser(browser, 'e2e-alice');
+  const pid = project();
+  const api = env('E2E_API');
+
+  await page.goto(`/projects/${pid}/live-defense/apps`);
+  await page.getByLabel('Name').fill('phase5 rehearsal app');
+  await page.getByLabel('Environment').selectOption('owned_test');
+  await page.getByRole('button', { name: 'Register app' }).click();
+  const appCard = page.locator('[data-testid^="live-defense-app-"]').filter({ hasText: 'phase5 rehearsal app' });
+  await expect(appCard).toBeVisible();
+  await appCard.getByRole('button', { name: 'Issue ingest token' }).click();
+  const once = page.getByTestId('live-defense-token-once');
+  const firstToken = await once.locator('code').innerText();
+
+  const baseline = await request.post(`${api}/ingest/runtime/${pid}`, {
+    headers: { Authorization: `Bearer ${firstToken}` },
+    data: ingestBatch(0, 0),
+  });
+  expect(baseline.ok(), await baseline.text()).toBeTruthy();
+
+  await appCard.getByRole('button', { name: 'Rotate credential' }).click();
+  await expect(once.locator('code')).not.toHaveText(firstToken);
+  const rotated = (await once.locator('code').innerText()).trim();
+  expect(rotated.startsWith('hkt_ing_')).toBeTruthy();
+  expect(rotated).not.toEqual(firstToken);
+
+  const stale = await request.post(`${api}/ingest/runtime/${pid}`, {
+    headers: { Authorization: `Bearer ${firstToken}` },
+    data: ingestBatch(60_000, 0),
+  });
+  expect(stale.status()).toBe(401);
+  const restarted = await request.post(`${api}/ingest/runtime/${pid}`, {
+    headers: { Authorization: `Bearer ${rotated}` },
+    data: ingestBatch(60_000, 0),
+  });
+  expect(restarted.ok(), await restarted.text()).toBeTruthy();
+
+  await appCard.getByRole('button', { name: 'Verify from ingest records' }).click();
+  await expect(appCard.getByText('ingest seen')).toBeVisible();
+  await page.getByRole('button', { name: 'Download pilot report' }).click();
+  await expect(page.getByTestId('live-defense-pilot-report-saved')).toBeVisible();
+  await evidenceShot(page, 'live-defense-phase5-report');
+
+  await appCard.getByRole('button', { name: 'Disconnect app' }).click();
+  await expect(appCard.getByText('disconnected', { exact: true })).toBeVisible();
+  await expect(appCard.getByTestId('live-defense-app-disconnected')).toBeVisible();
+  const disabled = await request.post(`${api}/ingest/runtime/${pid}`, {
+    headers: { Authorization: `Bearer ${rotated}` },
+    data: ingestBatch(120_000, 0),
+  });
+  expect(disabled.status()).toBe(401);
+  await expect(page.getByRole('button', { name: /^(apply|isolate|rate-limit|block)$/i })).toHaveCount(0);
+  await evidenceShot(page, 'live-defense-phase5-disconnect');
+});

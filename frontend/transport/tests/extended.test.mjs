@@ -34,6 +34,12 @@ test('live defense health and reviews validate shared types and never include a 
     project_id: 'prj_12345678', worker_seen_at: null, queue_depth: 0, last_ingest_at: null,
     last_runtime_event_at: null, status: 'unknown',
     status_reason: 'No recorded health-check producer. Timestamps are evidence only; HTTP 200 is not a healthy verdict.',
+    worker_status: 'unknown',
+    worker_status_reason: 'No worker liveness producer. Heartbeat timestamps are evidence only.',
+    telemetry_status: 'unknown',
+    telemetry_status_reason: 'Ingest timestamps are not a telemetry health verdict.',
+    policy_status: 'unknown',
+    policy_status_reason: 'No live policy-health producer. Shadow decisions stay NOT_EXECUTED; HTTP 200 is not policy health.',
   };
   const got = await client(() => json(health)).defenseHealth('prj_12345678');
   assert.equal(got.status, 'unknown');

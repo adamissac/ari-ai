@@ -109,6 +109,9 @@ MODELS: tuple[type[BaseModel], ...] = (
     live_defense.AnalystReview,
     live_defense.AnalystReviewCreate,
     live_defense.LivePolicyDecision,
+    live_defense.IngestTokenRotated,
+    live_defense.PilotTrailEntry,
+    live_defense.PilotReport,
     # rl
     rl.NodeSignals,
     rl.PlatformFacts,
