@@ -23,7 +23,7 @@ class Config(BaseModel):
     duration: int = Field(default=2, ge=1, le=8)
     delay: int = Field(default=1, ge=1, le=4)
     cooldown: int = Field(default=2, ge=0, le=8)
-    route_quota: int = Field(default=8, ge=1, le=32)
+    route_quota: int = Field(default=2, ge=1, le=32)
     source_quota: int = Field(default=3, ge=1, le=32)
     apply_overhead: int = Field(default=1, ge=0, le=1)
 
@@ -183,6 +183,7 @@ class Service:
                     j.started = self.now
                 j.remaining -= 1
                 j.consumed += 1
+                self.event("work", j)
                 result.work += 1
                 result.source_work[j.arrival.source] += 1
                 result.route_work[j.arrival.route] += 1
@@ -203,6 +204,9 @@ class Service:
                 j.outcome, j.finished = "timeout", self.now
                 result.timeouts += 1
                 self.event("timeout", j)
+        if self.pressure_start is not None and len(self.pending) <= c.workers:
+            self.recoveries.append(self.now - self.pressure_start)
+            self.pressure_start = None
         self.assert_accounting()
         if result.work + result.overhead > c.workers * c.window_ticks:
             raise AssertionError("resource capacity exceeded")

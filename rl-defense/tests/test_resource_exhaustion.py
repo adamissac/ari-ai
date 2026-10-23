@@ -200,3 +200,21 @@ def test_gymnasium_environment_contract_with_mask_aware_sampling(monkeypatch):
         env.action_space, "sample", lambda: sample(mask=env.action_masks().astype(np.int8))
     )
     check_env(env, skip_render_check=True)
+
+
+def test_source_feasibility_includes_measured_backlog_work_without_new_arrivals():
+    config = Config(workers=1, window_ticks=2, horizon=4)
+    env = ResourceEnv(config, script=((job(source=1, work=16),), (), (), ()))
+    env.reset(seed=0)
+    env.step(0)
+    env.step(0)
+    assert env.last.offered == 0 and env.last.source_work[1] == 2
+    assert env._source_target() == 1 and env.action_masks()[2]
+
+
+def test_expiry_recovery_is_accounted_at_the_observation_boundary():
+    service = Service(Config(workers=1, queue_capacity=1, window_ticks=2, deadline_ticks=2))
+    service.advance((job(work=4), job(work=4)))
+    assert service.metrics()["recovery_count"] == 1
+    assert service.metrics()["recovery_ticks_sum"] == 2
+    assert service.metrics()["recovery_pending"] == 0
