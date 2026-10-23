@@ -1791,3 +1791,20 @@ body:has(.commit-stage) main { color: #fff; }
 @media (prefers-reduced-motion: reduce) {
   .ambient-grain, .btn[data-variant="primary"]::after { animation: none; }
 }
+
+/* ARI twist: one scanner sweep across the hero headline on load, then it settles.
+   Transform only; skipped for prefers-reduced-motion. */
+@keyframes scan-sweep {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(110%); }
+}
+.hero-headline .hero-line { position: relative; }
+.hero-headline .hero-line::after {
+  content: ""; position: absolute; inset: 0 -6%; pointer-events: none;
+  background: linear-gradient(90deg, transparent 30%, rgb(255 138 117 / 0.55) 50%, transparent 70%);
+  mix-blend-mode: screen; transform: translateX(-110%);
+}
+.hero-stage[data-fx="on"] .hero-headline .hero-line::after { animation: scan-sweep 1.4s var(--ease-smooth) 0.6s both; }
+@media (prefers-reduced-motion: reduce) {
+  .hero-stage[data-fx="on"] .hero-headline .hero-line::after { animation: none; }
+}
