@@ -62,6 +62,16 @@ def test_all_fifteen_checks_run_and_happy_path_allows() -> None:
     assert all(c.passed for c in decision.checks)
 
 
+def test_disconnected_application_is_denied_without_new_check() -> None:
+    decision = check(_inp(application_disconnected=True))
+    assert not decision.allowed
+    assert [c.name for c in decision.checks] == list(AUTHORIZATION_CHECKS)
+    assert any(
+        c.name == "application_registered" and not c.passed and "disconnected" in c.reason
+        for c in decision.checks
+    )
+
+
 def test_typed_usr_in_claimed_actor_is_not_identity() -> None:
     decision = check(_inp(claimed_actor_id=USER))
     assert not decision.allowed

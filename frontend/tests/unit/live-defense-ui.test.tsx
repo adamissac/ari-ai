@@ -33,6 +33,7 @@ it('labels sample layout, lists missing APIs, and has no enforcement buttons', (
   expect(screen.getByTestId('live-defense').getAttribute('data-mode')).toBe('layout-preview');
   expect(screen.getByTestId('live-defense-preview-banner').textContent).toMatch(/Not live telemetry/);
   expect(screen.getByTestId('live-defense-no-enforcement').textContent).toMatch(/does not apply, isolate, rate-limit, or block/);
+  expect(screen.getByTestId('live-defense-shadow-vs-controls').textContent).toMatch(/never execute a control/);
   expect(screen.getByTestId('live-defense-api-coverage').textContent).toContain('Live-defense incident machine');
   expect(screen.getByTestId('live-defense-api-coverage').textContent).toContain('/projects/{id}/live-policy-decisions');
   expect(screen.getByTestId('live-defense-api-coverage').textContent).toContain('/control-authorizations');

@@ -84,6 +84,7 @@ class AuthorizationInput:
     unresolved_control: bool
     actions_last_hour: int
     now: datetime
+    application_disconnected: bool = False
 
 
 @dataclass(frozen=True)
@@ -149,6 +150,8 @@ def _allowlist(inp: AuthorizationInput) -> AuthorizationCheckResult:
 
 
 def _app_registered(inp: AuthorizationInput) -> AuthorizationCheckResult:
+    if inp.application_disconnected:
+        return _ok("application_registered", False, "Application is disconnected.")
     if not inp.application_id or not inp.application_exists:
         return _ok("application_registered", False, "Application is not registered.")
     return _ok("application_registered", True, "Application is registered in the project.")
