@@ -12,9 +12,9 @@ from __future__ import annotations
 import argparse
 import logging
 import os
+import signal
 import socket
 import threading
-import time
 import traceback
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -173,9 +173,15 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     owner = worker_id()
     log.info("worker %s started", owner)
-    while True:
+    # On SIGTERM (a deploy) finish the job in hand, then exit: killing it mid-run would lose
+    # the agents' in-memory state and fail the assessment.
+    stopping = threading.Event()
+    signal.signal(signal.SIGTERM, lambda *_: stopping.set())
+    while not stopping.is_set():
         if run_one(owner) is None:
-            time.sleep(get_settings().worker_poll_interval_s)
+            stopping.wait(get_settings().worker_poll_interval_s)
+    log.info("worker %s stopped after finishing its job", owner)
+    return 0
 
 
 if __name__ == "__main__":

@@ -454,3 +454,22 @@ def test_global_daily_spend_ceiling_defers_new_runs(automatic, settings_override
             sa.select(jobs.c.payload).where(jobs.c.dedupe_key.like("github:deferred:%"))
         ).scalar_one()
     assert delayed["sha"] == "c" * 40
+
+
+def test_commit_event_records_its_parent_so_the_reviewer_sees_the_diff(automatic, monkeypatch):
+    from backend.db import monitoring_events
+
+    alice, bob, ids, _ = automatic
+    parent = "e" * 40
+
+    class GitHub:
+        def commit(self, installation, repo, sha):
+            return {"sha": sha, "author": {"login": "adamissac"}, "parents": [{"sha": parent}]}
+
+    monkeypatch.setattr("backend.auto_commits.GitHubApp", GitHub)
+    monkeypatch.setattr("backend.auto_commits._CLIENT", None)
+    bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
+    push(alice, HEAD)
+    with transaction() as conn:
+        doc = conn.execute(sa.select(monitoring_events.c.doc)).scalars().all()[-1]
+    assert doc["commit_range"] == {"base_sha": parent, "head_sha": HEAD}

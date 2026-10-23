@@ -103,7 +103,7 @@ def fetch_commit(
         str(repo_dir),
         "fetch",
         "--quiet",
-        "--depth=1",
+        "--depth=2",  # with the parent, so the reviewer can diff exactly what the commit changed
         "--no-tags",
         f"{github_web_url.rstrip('/')}/{full_name}.git",
         # A ref keeps the commit reachable, so later fetches send it as a "have" and
