@@ -465,3 +465,9 @@ RL-CMDP-004: `feat/alan/read-response-integrity` closes a reproduced wrong-payme
 response leak in the opt-in wrapper. Existing PaymentOut schema and expected
 resource/owner must match before releasing buffered JSON. Twenty integration
 tests pass; CI/review pending. No serving or model changes.
+
+## RL readiness audit — 2026-10-23
+
+RL-CMDP-005 on `feat/alan/feasibility-readiness-audit`: read-only original-fixture
+audit with fixed source/index trust anchors and explicit inconclusive readiness.
+Eighteen tests pass; no study rerun, training or serving integration.
