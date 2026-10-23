@@ -1412,3 +1412,9 @@ Original scientific artifacts, execution/report indices, checkpoint and registry
 unchanged. Source tree/content published through connector; local branch metadata is
 an equivalent independent commit chain. Primary checkout and old experiment worktrees
 remain untouched. No merge: Phase1's deployment restriction governs this research PR.
+
+### 2026-10-23 — Alan / Codex — RL-CMDP-002 preregistration
+- Owner authorized deterministic feasibility and explicitly selected zero successful unauthorized reads and zero valid owner/delegated denials in every case.
+- Added an isolated exact-resource guard, independent negative/positive tests and a fixed 18-case / three-policy / 54-request HTTP protocol. No training, holdout or serving integration.
+- Before comparison: 21 guard tests passed; fixed-policy harness test added. Comparison must execute once from committed protocol/source and retain all outcomes; no automatic retry or tuning.
+- Parallel PR #393 owns operational controls; this research fixture does not duplicate or import that lifecycle.
