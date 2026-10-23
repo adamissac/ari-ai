@@ -33,10 +33,10 @@ export function Tag({ children, tone = 'neutral' }: { children: ReactNode; tone?
 export function Panel({ title, actions, children, className = '', id }: { title?: ReactNode; actions?: ReactNode; children: ReactNode; className?: string; id?: string }) {
   const ref = useRevealOnScroll<HTMLElement>();
   return (
-    <section ref={ref} id={id} className={`panel rounded-2xl border border-line bg-panel shadow-[0_1px_2px_rgba(28,18,16,0.04)] ${className}`} aria-label={typeof title === 'string' ? title : undefined}>
+    <section ref={ref} id={id} className={`panel rounded-lg border border-line bg-panel ${className}`} aria-label={typeof title === 'string' ? title : undefined}>
       {(title || actions) && (
-        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-2.5">
-          {title && <h2 className="label-mono text-ink">{title}</h2>}
+        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-panel-2/60 px-4 py-2.5">
+          {title && <h2 className="label-mono flex items-center gap-2 text-ink"><span aria-hidden="true" className="h-3 w-0.5 rounded-full bg-brand" />{title}</h2>}
           {actions && <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">{actions}</div>}
         </header>
       )}
@@ -91,7 +91,7 @@ export function ErrorState({ error, onRetry, context }: { error: unknown; onRetr
 }
 
 export function Empty({ children }: { children: ReactNode }) {
-  return <p className="empty-state rounded-xl border border-dashed border-line bg-panel-2/50 px-4 py-8 text-center text-sm text-muted">{children}</p>;
+  return <p className="empty-state rounded-lg border border-dashed border-control/60 bg-panel-2/40 px-4 py-8 text-center text-sm text-muted">{children}</p>;
 }
 
 export function Loading({ label = 'Loading' }: { label?: string }) {
@@ -132,9 +132,9 @@ export const inputClass = 'max-w-full rounded-md border border-control bg-bg px-
 
 export function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: string }) {
   return (
-    <div className="rounded-xl border border-line bg-panel px-4 py-3.5 shadow-sm hover:shadow-md transition-shadow duration-300">
+    <div className="rounded-lg border border-line border-t-2 border-t-brand/70 bg-panel px-4 py-3.5">
       <p className="label-mono text-faint">{label}</p>
-      <p className="mt-2 font-display text-2xl font-semibold tracking-tight text-ink">{value}</p>
+      <p className="mt-2 font-display text-2xl font-semibold tabular-nums tracking-tight text-ink">{value}</p>
       {hint && <p className="text-xs text-muted">{hint}</p>}
     </div>
   );
