@@ -230,3 +230,5 @@ Owner requested AI automation and Defense Lab OFF until explicitly enabled. Bran
 - IMPLEMENTED / CI and review pending (2026-10-23), **RL-CMDP-004**, Alan, `feat/alan/read-response-integrity`: bind buffered payment responses to the authorized resource/owner and existing schema; reject malformed/error payloads and contradictory customer identities. Twenty owned-app tests pass; no serving or training changes.
 
 - IMPLEMENTED / CI and review pending (2026-10-23), **RL-CMDP-005**, Alan, `feat/alan/feasibility-readiness-audit`: read-only anchored original-fixture audit, independent numerical checks and explicit inconclusive training/promotion readiness. No new study or serving integration.
+
+- IMPLEMENTED / review and CI pending (2026-10-23), **RL-CMDP-006**, Alan, `feat/alan/authorization-context-provider`: owner-authorized internal versioned provider proposal and payments-lite adapter, four authorization states, fixture clock/revision semantics and future causal RL observation requirements. No external provider, shared public contract, training or evidence changes.
