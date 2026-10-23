@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Add an offline, read-only audit of retained finite-fixture evidence that distinguishes verified numerical counts from unknown timing/authority and explicitly keeps training/promotion readiness false.
+
 - Harden the opt-in research payment-read wrapper against wrong-object responses, malformed/error payloads and contradictory fixture identities; emit only validated payment JSON. No serving registration or model change.
 
 - Document the boundary of live policy enforcement (isolated lab only; platform inference stays recommendations-only) and the known live-loop gaps in ADR-0022 (proposed, RL owner review); no behaviour change.
