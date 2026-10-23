@@ -31,6 +31,13 @@ Review, authorization, execution, and verification stay distinct operations.
 |---|---|---|---|
 | s01 request-scoped rate limit | n=1 owned fixture | `verified`; probes include 429 | `test_s01_rate_limit_authorized_enforced_and_verified` |
 | s02 exact-source block (198.51.100.66 only) | n=1 | `verified`; probes include 403 | `test_s02_exact_source_block_fixture_ip` |
+| Overnight A public/malformed block | public `8.8.8.8`, TEST-NET-3, CIDR, spaces, IPv4-mapped | denied by gate **and** adapter | `test_public_private_malformed_and_protected_sources_denied`, `test_public_unicast_block_rejected_by_authz_and_adapter` |
+| Overnight B idempotent integrity | same-id retry mutated kind/rate | HTTP 409, original binding kept; concurrent same payload 1 apply + 7 idempotent | `test_idempotent_retry_conflict_does_not_mutate`, `test_concurrent_same_payload_stays_single_control`, `test_stale_retry_with_mutated_binding_is_conflict` |
+| Overnight C logging restore | expiry/rollback/kill-switch/restart/overlap | prior `info` restored; overlap stays debug until last | `test_increase_logging_expiry_rollback_and_kill_switch_restore_prior`, `test_logging_ttl_without_worker_restores_prior` |
+| Overnight D `x-ari-source` | spoofed public / tenant label | ignored unless owned-test probe IP | `test_x_ari_source_is_fixture_probe_header_not_production_identity` |
+| Grant revoke TOCTOU | authorize then revoke then execute | control `rejected` | `test_grant_revoke_blocks_execute_toctou` |
+| Hourly budget + grant lock | budget=1, two escalate | second HTTP 403 | `test_hourly_budget_serializes_under_grant_lock` |
+| HMAC body+id | tampered JSON, original signature | HTTP 401 | `test_hmac_covers_body_digest_and_control_id` |
 | s03 increase logging | n=1 | `verified` | `test_s03_increase_logging` |
 | s04 escalate to human (no adapter) | n=1 | `verified`; method `recorded_escalation` | `test_s04_escalate_records_without_adapter` |
 | s05 Phase 3 accept still non-executing | n=1 accept on real `LivePolicyDecision` | `executes=false`; live-control count unchanged | `test_s05_phase3_accept_still_does_not_execute` |
@@ -123,7 +130,13 @@ OWNED_TEST_HMAC_SECRET=hkt_ctl_... uv run python -m backend.live_defense.owned_t
 ## Limitations
 
 - Fixture is loopback-only. Browser-supplied destinations are rejected.
-- Exact-source block allows one RFC 5737 TEST-NET-2 address (`198.51.100.66`).
+- Exact-source block allows **only** RFC 5737 TEST-NET-2 `198.51.100.66`.
+  Public unicast is denied (overnight fix; previously `address_policy` treated
+  globally-routable unicast as allowed).
+- `x-ari-source` is a fixture probe header, not production attribution.
+- Idempotent apply refuses binding changes (kind/target/duration/expiry/rate).
+- `increase_logging` restores the prior log level on expiry, rollback,
+  kill-switch, and fixture restart.
 - Worker must be running to apply/verify; TTL still expires on the app if the worker dies.
 - Emergency stop records the attempt and does not claim success until verified.
 

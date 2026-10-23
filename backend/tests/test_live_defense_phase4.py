@@ -467,6 +467,129 @@ def test_tenant_isolation_on_controls(wired) -> None:
     assert outsider.get(f"/api/v1/projects/{ids['project']}/control-grants").status_code == 404
 
 
+def test_public_unicast_block_rejected_by_authz_and_adapter(wired) -> None:
+    alice, ids = wired["alice"], wired["ids"]
+    res = _authorize(alice, ids, "block_source", {"type": "source_ip", "value": "8.8.8.8"})
+    assert res.status_code == 403
+    url = f"http://127.0.0.1:{wired['port']}/live-defense/control"
+    with pytest.raises(AdapterDenied):
+        call(
+            url,
+            wired["secret"],
+            {
+                "op": "apply",
+                "control_id": "lct_01JPUBLIC00000000000TEST",
+                "kind": "block_source",
+                "target_type": "source_ip",
+                "target_value": "8.8.8.8",
+                "expires_at_unix": utcnow().timestamp() + 60,
+            },
+        )
+
+
+def test_idempotent_retry_conflict_does_not_mutate(fixture_server) -> None:
+    url = f"http://127.0.0.1:{fixture_server['port']}/live-defense/control"
+    payload = {
+        "op": "apply",
+        "control_id": "lct_01JCONFLICT000000000TEST",
+        "kind": "rate_limit",
+        "target_type": "route",
+        "target_value": ROUTE,
+        "max_requests": 1,
+        "expires_at_unix": utcnow().timestamp() + 120,
+    }
+    first = call(url, fixture_server["secret"], payload)
+    assert first.ok and first.body.get("idempotent") is False
+    mutated = {
+        **payload,
+        "max_requests": 99,
+        "kind": "increase_logging",
+        "target_type": "application",
+    }
+    conflict = call(url, fixture_server["secret"], mutated)
+    assert conflict.ok is False
+    assert conflict.http_status == 409
+    assert conflict.body.get("conflict") is True
+    inspect = call(
+        url, fixture_server["secret"], {"op": "inspect", "control_id": payload["control_id"]}
+    )
+    assert inspect.body["control"]["kind"] == "rate_limit"
+    assert inspect.body["control"]["max_requests"] == 1
+
+
+def test_hmac_covers_body_digest_and_control_id(fixture_server) -> None:
+    import hashlib
+    import hmac
+    import json
+    import time
+
+    import httpx
+
+    url = f"http://127.0.0.1:{fixture_server['port']}/live-defense/control"
+    payload = {"op": "inspect", "control_id": "lct_01JBODYHMAC00000000TEST"}
+    body = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode()
+    ts = str(time.time())
+    nonce = "body-hmac-nonce"
+    digest = hashlib.sha256(body).hexdigest()
+    sig = hmac.new(
+        fixture_server["secret"].encode(),
+        f"{ts}.{nonce}.{payload['control_id']}.{digest}".encode(),
+        hashlib.sha256,
+    ).hexdigest()
+    tampered = json.dumps(
+        {**payload, "op": "remove"}, separators=(",", ":"), sort_keys=True
+    ).encode()
+    headers = {
+        "Content-Type": "application/json",
+        "X-Ari-Timestamp": ts,
+        "X-Ari-Nonce": nonce,
+        "X-Ari-Control-Id": payload["control_id"],
+        "X-Ari-Signature": sig,
+    }
+    with httpx.Client(timeout=2.0, follow_redirects=False) as client:
+        res = client.post(url, content=tampered, headers=headers)
+    assert res.status_code == 401
+
+
+def test_grant_revoke_blocks_execute_toctou(wired) -> None:
+    alice, ids = wired["alice"], wired["ids"]
+    grant = alice.get(f"/api/v1/projects/{ids['project']}/control-grants").json()["items"][0]
+    res = _authorize(
+        alice,
+        ids,
+        "rate_limit",
+        {"type": "route", "value": ROUTE},
+        max_requests=1,
+    )
+    assert res.status_code == 201
+    revoked = alice.post(f"/api/v1/control-grants/{grant['id']}/revoke")
+    assert revoked.status_code == 200
+    _drain()
+    got = alice.get(f"/api/v1/live-controls/{res.json()['id']}").json()
+    assert got["status"] == "rejected"
+
+
+def test_hourly_budget_serializes_under_grant_lock(wired) -> None:
+    alice, ids = wired["alice"], wired["ids"]
+    grants = alice.get(f"/api/v1/projects/{ids['project']}/control-grants").json()["items"]
+    for item in grants:
+        alice.post(f"/api/v1/control-grants/{item['id']}/revoke")
+    tight = alice.post(
+        f"/api/v1/projects/{ids['project']}/control-grants",
+        json={
+            "application_id": ids["app"],
+            "allowed_kinds": ["escalate"],
+            "max_duration_s": 60,
+            "hourly_budget": 1,
+        },
+    )
+    assert tight.status_code == 201, tight.text
+    first = _authorize(alice, ids, "escalate", {"type": "none", "value": ""})
+    second = _authorize(alice, ids, "escalate", {"type": "none", "value": ""})
+    assert first.status_code == 201
+    assert second.status_code == 403
+
+
 def test_member_cannot_authorize(wired) -> None:
     bob, ids = wired["bob"], wired["ids"]
     import sqlalchemy as sa

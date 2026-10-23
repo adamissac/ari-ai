@@ -8,7 +8,13 @@ import httpx
 
 from backend.live_defense.adapters import AdapterResult, assert_ssrf_safe, call
 from shared.base import utcnow
-from shared.live_defense import ISOLATED_FIXTURE_SOURCE, LiveControlKind, LiveControlVerification
+from shared.live_defense import (
+    FIXTURE_SOURCE_HEADER,
+    ISOLATED_FIXTURE_SOURCE,
+    OWNED_TEST_OTHER_PROBE_SOURCE,
+    LiveControlKind,
+    LiveControlVerification,
+)
 
 FIXTURE_PATH = "/payments/pay_fixture"
 
@@ -25,7 +31,8 @@ def _probe_base(control_url: str) -> str:
 
 
 def _get(url: str, source: str | None = None) -> int:
-    headers = {"X-Ari-Source": source} if source else {}
+    # Fixture-only probe header; never production identity (see FIXTURE_SOURCE_HEADER).
+    headers = {FIXTURE_SOURCE_HEADER: source} if source else {}
     with httpx.Client(timeout=2.0, follow_redirects=False, trust_env=False) as client:
         response = client.get(url, headers=headers)
         return int(response.status_code)
@@ -77,7 +84,7 @@ def verify_control(
     elif kind is LiveControlKind.block_source:
         url = _probe_base(control_url) + FIXTURE_PATH
         blocked = _get(url, source=target_value)
-        allowed = _get(url, source="203.0.113.50")
+        allowed = _get(url, source=OWNED_TEST_OTHER_PROBE_SOURCE)
         statuses = [blocked, allowed]
         observed = blocked == 403 and allowed == 200
         detail = f"Source {target_value} -> {blocked}; other source -> {allowed}."
@@ -130,6 +137,11 @@ def verify_removed(
         statuses = [blocked]
         observed = observed and blocked == 200
         detail = f"{detail}; former source -> {blocked}"
+    elif kind is LiveControlKind.increase_logging:
+        level = inspect.body.get("log_level")
+        detail = (
+            f"{detail}; log_level={level} (prior config restored when no logging controls remain)"
+        )
     elif kind is LiveControlKind.escalate:
         observed = True
         detail = "Escalate had no adapter state to remove."

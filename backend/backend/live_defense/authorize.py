@@ -7,7 +7,6 @@ allowlisted and rules-originated action goes through :func:`check`. Fail closed.
 from __future__ import annotations
 
 import hashlib
-import ipaddress
 import re
 from dataclasses import dataclass
 from datetime import datetime
@@ -23,6 +22,7 @@ from shared.live_defense import (
     LiveControlKind,
     LiveControlTargetType,
     StagingEnvironment,
+    is_owned_test_block_source,
 )
 
 _USER_ID = re.compile(r"^usr_[0-9A-Za-z_-]{8,64}$")
@@ -107,8 +107,14 @@ def binding_hash(
     duration_s: int,
     application_id: str,
     project_id: str,
+    max_requests: int | None = None,
+    grant_id: str = "",
 ) -> str:
-    material = f"{kind}|{target_type}|{target_value}|{duration_s}|{application_id}|{project_id}"
+    rate = "" if max_requests is None else str(max_requests)
+    material = (
+        f"{kind}|{target_type}|{target_value}|{duration_s}|{rate}|"
+        f"{application_id}|{project_id}|{grant_id}"
+    )
     return hashlib.sha256(material.encode()).hexdigest()
 
 
@@ -253,31 +259,19 @@ def _blast(inp: AuthorizationInput) -> AuthorizationCheckResult:
 def _address(inp: AuthorizationInput) -> AuthorizationCheckResult:
     if inp.kind != LiveControlKind.block_source.value:
         return _ok("address_policy", True, "Not a source block.")
-    raw = inp.target_value.strip()
-    if raw == ISOLATED_FIXTURE_SOURCE:
-        return _ok("address_policy", True, "Isolated fixture source.")
-    try:
-        addr = ipaddress.ip_address(raw)
-    except ValueError:
-        return _ok("address_policy", False, "Target is not an exact IP address.")
-    denied = (
-        addr.is_loopback
-        or addr.is_link_local
-        or addr.is_multicast
-        or addr.is_unspecified
-        or addr.is_reserved
-        or addr.is_private
-        or (addr.version == 4 and addr.is_unspecified)
-    )
-    if addr.version == 4 and int(addr) == int(ipaddress.IPv4Address("255.255.255.255")):
-        denied = True
-    if denied:
+    if is_owned_test_block_source(inp.target_value):
         return _ok(
             "address_policy",
-            False,
-            "Loopback, link-local, private, multicast, unspecified, and broadcast are denied.",
+            True,
+            f"Owned-test fixture source {ISOLATED_FIXTURE_SOURCE}.",
         )
-    return _ok("address_policy", True, "Exact globally-routable unicast address.")
+    return _ok(
+        "address_policy",
+        False,
+        "Only the owned-test fixture IP is allowed; public, private, "
+        "loopback, link-local, CIDR, ranges, malformed, and protected "
+        "addresses are denied.",
+    )
 
 
 def _channel(inp: AuthorizationInput) -> AuthorizationCheckResult:
@@ -376,6 +370,8 @@ def check(inp: AuthorizationInput) -> GateDecision:
         duration_s=inp.duration_s,
         application_id=inp.application_id or "",
         project_id=inp.project_id,
+        max_requests=inp.max_requests,
+        grant_id="" if inp.grant is None else inp.grant.id,
     )
     reason = (
         "authorized"

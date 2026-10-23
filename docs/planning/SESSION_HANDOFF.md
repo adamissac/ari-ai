@@ -18,6 +18,11 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-23 — Cursor (agent, Alan) — Phase 4 overnight hardening (do not merge #393)
+- Did: confirmed and fixed A–D on `feat/live-defense-phase4-controlled-enforcement`. Exact-source allowlist is only `198.51.100.66` in authz+adapter+fixture; idempotent apply 409s on binding mismatch; `increase_logging` restores prior log level; `x-ari-source` confined to owned-test probe IPs. Grant revoke TOCTOU re-gate, grant-row FOR UPDATE for budget, HMAC body+id regression. ADR-0020 and eval updated. **Do not merge PR #393** (executable controls; human security review).
+- Codex/`rl-defense/` untouched (no training, promotion, v6, or research-file edits).
+- Next: Phase 5 shadow-pilot from `origin/main`, not this branch.
+
 ### 2026-10-23 — Cursor (agent, Alan) — Live Defense Phase 4 controlled enforcement
 - Did: branch `feat/live-defense-phase4-controlled-enforcement` from `origin/main` (`5be62de`, PR #392 merged); later merged `09e8cab` (constrained-RL Phase 1, Codex ADR-0019). Extends Phase 1–3. Shared 0.18.0 `LiveControl` lifecycle + 15-check `authorize.check` (ADR-0020). HMAC loopback adapter to owned-test fixture; verify uses real HTTP probes; app-local TTL; emergency stop. Controls UI with a **separate** authorize endpoint. Analyst accept still does not execute. `rl-defense/` untouched. No Phase 5 / production / autonomous.
 - State of the code: owner grant + loopback channel → authorize (not review) → worker execute → verify with probes → dashboard labelled OWNED TEST ENVIRONMENT → rollback / TTL / kill switch. Recommendation cannot jump to EXECUTING.

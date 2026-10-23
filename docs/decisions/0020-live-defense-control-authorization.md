@@ -27,15 +27,32 @@ ADR-0019 on `main` is Codex's constrained-RL foundation. This decision is number
 2. Analyst **review** (accept/reject) remains a recorded opinion and never
    transitions a control to `executing`.
 3. Approvals are bound to the exact tuple `(kind, target_type, target_value,
-   duration_s, application_id)`. Changing any field is a different request.
+   duration_s, max_requests, application_id, grant_id)`. Changing any field is a
+   different request. The owned-test fixture treats a retry of the same
+   `control_id` with a different binding as a **409 conflict**; it does not
+   overwrite kind, target, duration/expiry, rate, or logging level. Conflicts
+   are audited. Concurrent same-payload retries are idempotent.
 4. The actor is the authenticated session. A body field matching `usr_*` is not
    identity. Extra actor fields are rejected (`extra="forbid"`).
 5. Rules-originated and v6-originated proposals take the same gate. There is no
    fast path.
 6. Fail closed: missing grant, missing channel, kill switch, unresolved failed
-   control, or any raised exception is a denial.
+   control, or any raised exception is a denial. Execute re-runs the gate
+   (grant expiry/revocation, budget, kill switch) under `SELECT … FOR UPDATE`
+   on the control and grant rows.
 7. The adapter talks only to a server-registered loopback URL. Browsers cannot
-   supply the destination.
+   supply the destination. HMAC-SHA256 covers `timestamp.nonce.control_id.body_sha256`.
+8. `block_source` allowlist is **only** the owned-test fixture IP
+   `198.51.100.66` (`is_owned_test_block_source`). Public unicast, private,
+   loopback, link-local, CIDR, ranges, malformed, and protected addresses are
+   denied in **both** `authorize.check` and the adapter; the fixture will not
+   install or enforce a non-allowlisted block.
+9. `increase_logging` is a stack: expiry, rollback, process restart, and
+   kill-switch restore the prior log level. Overlapping logging controls keep
+   debug until the last one ends.
+10. `x-ari-source` is a fixture-only probe header. It is spoofable and is not
+    production identity, tenant attribution, or an authorization input. The
+    fixture honors it only for `OWNED_TEST_PROBE_SOURCES`.
 
 ## Options considered
 
@@ -52,6 +69,11 @@ ADR-0019 on `main` is Codex's constrained-RL foundation. This decision is number
 - Customer production remains ungated because no production environment exists
   in `StagingEnvironment`.
 - Phase 5 must not weaken this ADR. Autonomous execution would be a new ADR.
+- Overnight hardening (2026-10-23) closed a gap where globally-routable unicast
+  would have passed `address_policy`, an idempotent apply that overwritten
+  bindings, logging that did not restore on expiry, and an undocumented
+  spoofable `x-ari-source` header. Human security review of executable
+  controls is still required; this ADR is not a merge authorization.
 
 ## Revisit when
 

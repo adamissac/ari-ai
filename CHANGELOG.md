@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Harden Live Defense Phase 4 owned-test enforcement: exact-source block allowlist is only `198.51.100.66` in both the authorization gate and the adapter; idempotent control retries cannot change kind/target/duration/rate; `increase_logging` restores the prior log level on expiry, rollback, kill-switch, and restart; `x-ari-source` is documented as a fixture-only probe header, not production attribution. Still owned-test only. PR #393 remains open for human security review.
+
 - Extend Live Defense to Phase 4 controlled enforcement on an **owned test environment** only: separate `LiveControl` lifecycle (not NIST incident statuses), 15-check deterministic authorization gate, HMAC loopback adapter for four minimal actions (request-scoped rate limit, exact-source block, increase logging, escalate to human), verification with real HTTP probes, app-local TTL, emergency stop, and a Controls dashboard. Analyst accept remains non-executing. RL cannot execute without independent authorization. Production, isolation, and autonomous enforcement are out of scope. Contract schema 0.18.0. Eval: `docs/LIVE_DEFENSE_PHASE4_EVAL.md`.
 
 - Add isolated Phase1 constrained-RL research: audited action semantics, versioned measured reward/cost adapters, explicit unknown/provenance validation, capability masks and reproducible fixed-baseline evidence.140owned-lab episodes completed; Phase2 remains no-go. No new model training, promotion, customer execution or recommendation behavior change.

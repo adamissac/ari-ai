@@ -293,12 +293,32 @@ class LivePolicyDecision(StrictModel):
 # ---------------------------------------------------------------------------
 
 ISOLATED_FIXTURE_SOURCE = "198.51.100.66"
-"""The only special-use address the gate accepts as a block_source target.
+"""The only address the gate and adapter accept as a ``block_source`` target.
 
-RFC 5737 TEST-NET-2. Loopback, link-local, multicast, unspecified, broadcast,
-and RFC1918 addresses are rejected. This address is the narrowly defined
-isolated fixture used by ``examples/payments-lite/live_defense_control``.
+RFC 5737 TEST-NET-2. Exact string match only — no CIDR, ranges, parsing, or
+public/private/loopback/link-local unicast. Authz and the HMAC adapter share
+:func:`is_owned_test_block_source`. This is the isolated owned-test fixture,
+not a production attribution identity.
 """
+
+OWNED_TEST_OTHER_PROBE_SOURCE = "203.0.113.50"
+"""RFC 5737 TEST-NET-3. Fixture-only *other-source* probe, never a block target."""
+
+OWNED_TEST_BLOCK_SOURCES = frozenset({ISOLATED_FIXTURE_SOURCE})
+OWNED_TEST_PROBE_SOURCES = frozenset({ISOLATED_FIXTURE_SOURCE, OWNED_TEST_OTHER_PROBE_SOURCE})
+FIXTURE_SOURCE_HEADER = "x-ari-source"
+"""Owned-test probe header. Spoofable; never production identity or auth."""
+
+
+def is_owned_test_block_source(value: str) -> bool:
+    """Exact allowlist membership. Authz, adapter, and fixture must all use this."""
+    return value in OWNED_TEST_BLOCK_SOURCES
+
+
+def is_owned_test_probe_source(value: str) -> bool:
+    """Whether ``x-ari-source`` may be honored on the owned-test fixture."""
+    return value in OWNED_TEST_PROBE_SOURCES
+
 
 CONTROL_PATH: Literal["/live-defense/control"] = "/live-defense/control"
 MIN_CONTROL_DURATION_S = 5

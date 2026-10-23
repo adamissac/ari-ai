@@ -256,13 +256,19 @@ def test_live_control_is_separate_from_shadow_decision_and_nist() -> None:
     from shared.live_defense import (
         AUTHORIZATION_CHECKS,
         ISOLATED_FIXTURE_SOURCE,
+        OWNED_TEST_BLOCK_SOURCES,
         LiveControlKind,
         LiveControlStatus,
         StagingEnvironment,
+        is_owned_test_block_source,
     )
 
     assert len(AUTHORIZATION_CHECKS) == 15
     assert ISOLATED_FIXTURE_SOURCE == "198.51.100.66"
+    assert OWNED_TEST_BLOCK_SOURCES == frozenset({ISOLATED_FIXTURE_SOURCE})
+    assert is_owned_test_block_source(ISOLATED_FIXTURE_SOURCE)
+    assert not is_owned_test_block_source("8.8.8.8")
+    assert not is_owned_test_block_source("127.0.0.1")
     control = examples.build()["LiveControl"]
     assert control.environment_label == "OWNED TEST ENVIRONMENT"
     assert control.simulated is False
