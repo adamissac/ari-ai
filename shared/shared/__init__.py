@@ -25,4 +25,8 @@ SCHEMA_VERSION = (
     #      health-check producer (HTTP 200 is not a healthy verdict).
     # 0.17 live-defense Phase 3 shadow runtime (additive): RuntimeSource "owned_staging";
     #      LivePolicyDecision (NOT EXECUTED); AnalystReview may target a live decision.
+    # 0.18 live-defense Phase 5 shadow-pilot readiness (additive): disconnect,
+    #      ingest-token rotate, worker/telemetry/policy health remain unknown,
+    #      exportable PilotReport. No executable enforcement. Unmerged Phase 4
+    #      (#393) also used 0.18.0 for LiveControl — rebase must renumber if both merge.
 )

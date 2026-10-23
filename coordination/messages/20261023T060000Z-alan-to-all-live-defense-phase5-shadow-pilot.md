@@ -1,0 +1,15 @@
+# MSG: Phase 5 shadow-pilot readiness (separate from #393)
+- ID: `20261023T060000Z-alan-to-all-live-defense-phase5-shadow-pilot`
+- From: Alan
+- To: all
+- Kind: status
+- Timestamp (UTC): 2026-10-23T06:00:00Z
+- Branch / commit / PR or issue link: `feat/live-defense-phase5-pilot-readiness` from `origin/main` `09e8cab`
+- Related subsystem(s): `shared/live_defense` 0.18.0 additive, `backend/api/live_defense.py`, frontend Staging apps
+- Summary (facts, not assumptions): Phase 5 is customer **shadow-pilot readiness**, not owned-test enforcement. It does **not** include PR #393 control adapters. New endpoints: ingest-token rotate, application disconnect, shadow-verify, pilot-report. `DefenseHealth` worker/telemetry/policy stay `unknown`. No browser-callable block/isolate/rate-limit. Codex/`rl-defense/` untouched. Schema 0.18.0 on this branch; unmerged #393 also used 0.18.0 for LiveControl — rebase must renumber if both merge.
+- Interface requested/proposed: `IngestTokenRotated`, `PilotReport`, `ConnectedApplication.disconnected_at`, `ApplicationVerification.disconnected`.
+- Breaking change? Additive. Old application payloads validate with defaults.
+- Action required by recipient: Do not merge #393. Review Phase 5 separately. Codex: no training/promotion from this work.
+- Response-by milestone: human review of Phase 5 PR
+- Evidence: pending executed tests on this branch
+- In-Reply-To: `coordination/messages/20261023T053700Z-alan-to-all-live-defense-phase4-hardening.md`

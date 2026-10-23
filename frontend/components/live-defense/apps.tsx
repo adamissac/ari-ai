@@ -1,6 +1,6 @@
 'use client';
 
-import type { ConnectedApplication, DefenseHealth, IngestTokenCreated, IngestTokenView } from '@hackatl/frontend-transport';
+import type { ConnectedApplication, DefenseHealth, IngestTokenCreated, IngestTokenRotated, IngestTokenView } from '@hackatl/frontend-transport';
 import { useState } from 'react';
 import { ShadowModeNote, SourceTag } from '@/components/live-defense/common';
 import { Async, Button, Empty, ErrorState, Field, inputClass, Mono, Panel, Tag, Time } from '@/components/ui';
@@ -50,6 +50,7 @@ export function StagingApps({
           </Async>
         ) : <Empty>Apps were not requested.</Empty>}
       </Panel>
+      <PilotReportPanel projectId={projectId} />
       <Panel title="Ingest guidance">
         <p className="text-sm text-ink">Send aggregated per-route counters to the existing ingest endpoint. Never put raw logs, payloads, or secrets in the batch.</p>
         <pre className="mt-3 overflow-x-auto rounded-md border border-line bg-panel-2 p-3 text-xs text-ink">{ingestCurl(projectId)}</pre>
@@ -118,12 +119,40 @@ function AppCard({
   tokens?: Resource<{ items: IngestTokenView[] }>;
   onChange?: () => void;
 }) {
-  const [issued, setIssued] = useState<IngestTokenCreated | null>(null);
+  const [issued, setIssued] = useState<IngestTokenCreated | IngestTokenRotated | null>(null);
   const [error, setError] = useState<unknown>(null);
+  const disconnected = app.verification === 'disconnected' || app.disconnected_at !== null;
   const mint = async () => {
     setError(null);
     try {
       setIssued(await api().createApplicationIngestToken(app.id));
+      onChange?.();
+    } catch (err) {
+      setError(err);
+    }
+  };
+  const rotate = async () => {
+    setError(null);
+    try {
+      setIssued(await api().rotateApplicationIngestToken(app.id));
+      onChange?.();
+    } catch (err) {
+      setError(err);
+    }
+  };
+  const disconnect = async () => {
+    setError(null);
+    try {
+      await api().disconnectConnectedApplication(app.id);
+      onChange?.();
+    } catch (err) {
+      setError(err);
+    }
+  };
+  const verify = async () => {
+    setError(null);
+    try {
+      await api().shadowVerifyConnectedApplication(app.id);
       onChange?.();
     } catch (err) {
       setError(err);
@@ -144,7 +173,23 @@ function AppCard({
         Ingest configured: {app.ingest_configured ? 'yes' : 'no'} · last seen {app.last_ingest_at ? <Time iso={app.last_ingest_at} /> : 'unavailable'}
       </p>
       <p className="mt-2 text-xs text-muted">POST {`/api/v1/ingest/runtime/${projectId}`} with Bearer token. Token secret is not stored in recoverable form.</p>
-      <Button className="mt-3 !px-2 !py-0.5 text-xs" onClick={() => void mint()}>Issue ingest token</Button>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {!disconnected && (
+          <>
+            <Button className="!px-2 !py-0.5 text-xs" onClick={() => void mint()}>Issue ingest token</Button>
+            <Button className="!px-2 !py-0.5 text-xs" onClick={() => void rotate()}>Rotate credential</Button>
+          </>
+        )}
+        <Button className="!px-2 !py-0.5 text-xs" onClick={() => void verify()}>Verify from ingest records</Button>
+        {!disconnected && (
+          <Button className="!px-2 !py-0.5 text-xs" onClick={() => void disconnect()}>Disconnect app</Button>
+        )}
+      </div>
+      {disconnected && (
+        <p className="mt-2 text-xs text-muted" data-testid="live-defense-app-disconnected">
+          Disconnected. Ingest is rejected. This is not a production block or isolate.
+        </p>
+      )}
       {error !== null && <div className="mt-2"><ErrorState error={error} /></div>}
       {issued && (
         <div className="mt-3 rounded-md border border-warn/50 bg-warn/10 p-2 text-xs" data-testid="live-defense-token-once">
@@ -169,5 +214,41 @@ function AppCard({
         </ul>
       )}
     </li>
+  );
+}
+
+function PilotReportPanel({ projectId }: { projectId: string }) {
+  const [error, setError] = useState<unknown>(null);
+  const [status, setStatus] = useState<'idle' | 'saving' | 'ok'>('idle');
+  const download = async () => {
+    setError(null);
+    setStatus('saving');
+    try {
+      const report = await api().pilotReport(projectId);
+      const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `live-defense-pilot-report-${projectId}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      setStatus('ok');
+    } catch (err) {
+      setError(err);
+      setStatus('idle');
+    }
+  };
+  return (
+    <Panel title="Exportable pilot report">
+      <p className="text-sm text-ink">
+        Downloads recorded staging-app, ingest, shadow-decision, and review counts.
+        HTTP 200 is not attack success. This report never claims that shadow mode prevented breaches.
+      </p>
+      <Button className="mt-3" variant="primary" disabled={status === 'saving'} onClick={() => void download()}>
+        Download pilot report
+      </Button>
+      {status === 'ok' && <p className="mt-2 text-xs text-muted" data-testid="live-defense-pilot-report-saved">Report downloaded from recorded control-plane data.</p>}
+      {error !== null && <div className="mt-2"><ErrorState error={error} /></div>}
+    </Panel>
   );
 }

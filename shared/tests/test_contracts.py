@@ -250,6 +250,18 @@ def test_live_defense_reviews_cannot_execute_and_health_cannot_be_healthy() -> N
         )
     with pytest.raises(ValueError):
         StagingEnvironment("production")
+    report = examples.build()["PilotReport"]
+    assert report.shadow_mode is True
+    assert report.health.status == "unknown"
+    assert report.health.worker_status == "unknown"
+    assert "shadow prevented breaches" in report.unsupported_claims
+    with pytest.raises(ValidationError):
+        BY_NAME["PilotReport"].model_validate(
+            {
+                **report.model_dump(mode="json"),
+                "health": {**report.health.model_dump(mode="json"), "status": "healthy"},
+            }
+        )
 
 
 def test_live_policy_decision_is_never_executed_and_does_not_require_q_values() -> None:
