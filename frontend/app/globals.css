@@ -111,7 +111,6 @@ body { background: linear-gradient(180deg, var(--color-bg) 0%, color-mix(in srgb
 }
 .status-badge:hover {
   box-shadow: 0 2px 8px rgba(28, 18, 16, 0.12);
-  transform: translateY(-0.5px);
 }
 
 /* Custom scrollbar for webkit browsers */
@@ -244,6 +243,7 @@ button.label-mono, a.label-mono, nav.label-mono, nav .label-mono {
 
 @media (prefers-reduced-motion: reduce) {
   .animate-pulse { animation: none; }
+  .btn:hover:not(:disabled), .btn:active:not(:disabled) { transform: none; }
   .hero-orb, .hero-stage .hero-in { animation: none; }
   .hero-content, .hero-orbs { transform: none; opacity: 1; }
   .hero-full { position: relative; }
