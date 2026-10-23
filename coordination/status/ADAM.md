@@ -251,3 +251,8 @@ Finalized deferred requests as skipped when repository/rollout policy disables t
 ### 2026-10-21 — automation opt-in reset
 
 Owner requested AI automation and Defense Lab OFF until explicitly enabled. Branch `fix/adam/automation-opt-in`: schema 0.15.1 changes Repository.automatic_assessments and TriggerPolicy.enabled defaults to false; migration 0010 resets stored switches, requests cancellation of unfinished automatic assessments, and wakes deferred jobs. Worker checks cancellation before checkout. Manual runs and historical results remain intact. Focused PostgreSQL/monitoring checks: 36 passed. Full tests pending. Railway plugin is installed but no callable Railway tools/credentials are exposed in this conversation; live deployment/settings verification remains blocked on access. Alan review requested for default semantics and backend migration.
+
+### 2026-10-23 — scheduled cloud health run (2)
+- Synced origin/main (2280b7e5). No new messages addressed to Adam (newer Alan notes are all-hands live-defense phase 4/5). Shared contracts gained LiveControl models; rl-defense still passes against them.
+- Health: rl-defense 427 passed (20m46s); payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 545 files, 0 problems. No live-LLM tests, no training/eval. `gh` not authenticated (GH_TOKEN rejected); used git/MCP only.
+- No code changes. Open: none.
