@@ -7,6 +7,7 @@ from the template's deterministic `matches_expectation`, not from model text.
 
 from __future__ import annotations
 
+import re
 from typing import Any, Literal
 
 from pydantic import Field, field_validator
@@ -208,6 +209,22 @@ def build_prompt(data: ProbeInput, intel: CodeIntel) -> str:
     )
 
 
+_PARAM = re.compile(r"\{[^}/]*\}")
+
+
+def same_route(a: str, b: str) -> bool:
+    """`GET /repositories/{repo_id}` (as the handler declares it) is the recipe's
+    `GET /api/v1/repositories/{id}`: same method, and one path ends the other on a segment
+    boundary (a router mounted under a prefix); parameter names do not matter."""
+    ma, _, pa = a.partition(" ")
+    mb, _, pb = b.partition(" ")
+    if ma.upper() != mb.upper():
+        return False
+    sa_, sb = (_PARAM.sub("{}", p).strip("/").split("/") for p in (pa, pb))
+    short, long_ = sorted((sa_, sb), key=len)
+    return len(short) > 1 and long_[len(long_) - len(short) :] == short
+
+
 def to_validation_result(
     out: ProbeOutput, data: ProbeInput, record: StepRecord, check_runs: list[dict[str, Any]]
 ) -> ValidationResult:
@@ -227,8 +244,11 @@ def to_validation_result(
             return None
         return f"{route.get('method', 'GET')} {route['path_template']}"
 
-    relevant = [r for r in successful if not subject or route_key(r) is None or route_key(r) in subject]
-    outside = sorted({k for r in successful if (k := route_key(r)) and subject and k not in subject})
+    def in_subject(key: str | None) -> bool:
+        return key is None or any(same_route(key, s) for s in subject)
+
+    relevant = [r for r in successful if not subject or in_subject(route_key(r))]
+    outside = sorted({k for r in successful if (k := route_key(r)) and subject and not in_subject(k)})
     violating = [r for r in relevant if r.get("matches_expectation") is False]
     holding = [r for r in relevant if r.get("matches_expectation") is True]
     note = ""
