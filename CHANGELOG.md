@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Add a research-only deterministic payment-read guard and preregistered finite-case feasibility comparison with owner-selected zero unauthorized-read / zero legitimate-denial limits. No serving integration or model training.
+
 - Add isolated Phase1 constrained-RL research: audited action semantics, versioned measured reward/cost adapters, explicit unknown/provenance validation, capability masks and reproducible fixed-baseline evidence.140owned-lab episodes completed; Phase2 remains no-go. No new model training, promotion, customer execution or recommendation behavior change.
 - Extend Live Defense to Phase 3 shadow runtime: authenticated `owned_staging` ingest, deterministic rules, genuine `LivePolicyDecision` rows (NOT EXECUTED) from rules or validated frozen-v6 inference, and analyst review of those records. Q-values are persisted only when inference actually ran. Authenticated runtime events no longer force simulated incident labels. No autonomous enforcement. Contract schema 0.17.0. Pilot eval: `docs/LIVE_DEFENSE_PHASE3_PILOT_EVAL.md`.
 
