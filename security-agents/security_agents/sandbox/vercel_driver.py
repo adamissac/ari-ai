@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 import subprocess
 import tempfile
 import time
@@ -40,6 +41,11 @@ TARGETDIR = "/vercel/sandbox/target"
 # The microVM image ships bare Python; Probe/Verify checks need these to run and serve
 # ASGI targets. Fixed and pinned: never derived from the repository under test.
 PYPI_DOMAINS = ("pypi.org", "files.pythonhosted.org")
+UBUNTU_DOMAINS = ("archive.ubuntu.com", "security.ubuntu.com")
+APT_HTTPS = (
+    "sed -i s,http://,https://,g /etc/apt/sources.list.d/ubuntu.sources && "
+    "find /etc/apt/sources.list.d -type f ! -name ubuntu.sources -delete"
+)
 RUNNER_WHEELS = (
     "pytest==8.4.2",
     "httpx==0.28.1",
@@ -155,8 +161,14 @@ class VercelSandboxDriver:
             _rmtree(root)
 
 
+# macOS tar otherwise adds AppleDouble `._*` files, which Python then fails to import.
+_TAR_ENV = {**os.environ, "COPYFILE_DISABLE": "1"}
+
+
 def _tar(ws: Path) -> bytes:
-    return subprocess.run(["tar", "-c", "-C", str(ws), "."], capture_output=True, check=True).stdout
+    return subprocess.run(
+        ["tar", "-c", "-C", str(ws), "."], capture_output=True, check=True, env=_TAR_ENV
+    ).stdout
 
 
 def _tar_target(spec: SandboxSpec) -> bytes:
@@ -165,6 +177,7 @@ def _tar_target(spec: SandboxSpec) -> bytes:
         ["tar", "-c", "-C", str(spec.target_workspace), "--exclude", ".sandbox", "."],
         capture_output=True,
         check=True,
+        env=_TAR_ENV,
     ).stdout
 
 
@@ -220,18 +233,36 @@ class _VercelSdkBox:  # pragma: no cover - requires live Vercel credentials
         from vercel.sandbox import NetworkPolicy
         from vercel.sandbox import sync as vsandbox
 
-        # Egress reaches only PyPI while the fixed runner wheels install; it is deny-all
-        # before any repository code is staged or run.
+        # Egress reaches only PyPI (and the Ubuntu mirrors when the recipe needs system
+        # packages) while fixed runner wheels and the recipe's pinned packages install; it is
+        # deny-all before any repository code is staged or run.
+        domains = PYPI_DOMAINS + (UBUNTU_DOMAINS if spec.apt else ())
         self._box = vsandbox.create_sandbox(
             name=f"ari-{run_id}",
             execution_time_limit=int(spec.limits.timeout_s) + 240,
-            network_policy=NetworkPolicy.custom(dict.fromkeys(PYPI_DOMAINS, ())),
+            network_policy=NetworkPolicy.custom(dict.fromkeys(domains, ())),
             tags={k[:63]: v[:200] for k, v in spec.labels.items()},
             persistent=False,
             destroy=False,
         )
         try:  # the driver stops only boxes it received, so a failed boot destroys itself
             try:
+                if spec.apt:
+                    env = {"DEBIAN_FRONTEND": "noninteractive"}
+                    # The egress allowlist passes TLS only: use the HTTPS Ubuntu mirrors and
+                    # drop third-party lists (e.g. cli.github.com) that are not allowed.
+                    self._box.run_process("sh", ["-c", APT_HTTPS], sudo=True, check=True, capture_output=True)
+                    self._box.run_process(
+                        "apt-get", ["update", "-qq"], sudo=True, env=env, check=True, capture_output=True
+                    )
+                    self._box.run_process(
+                        "apt-get",
+                        ["install", "-y", "-qq", "--no-install-recommends", *spec.apt],
+                        sudo=True,
+                        env=env,
+                        check=True,
+                        capture_output=True,
+                    )
                 self._box.run_process(
                     "python",
                     [
@@ -242,6 +273,7 @@ class _VercelSdkBox:  # pragma: no cover - requires live Vercel credentials
                         "--root-user-action=ignore",
                         "--only-binary=:all:",
                         *RUNNER_WHEELS,
+                        *spec.pip,
                     ],
                     sudo=True,  # system site-packages: the entry runs `python -I`, which skips user site
                     check=True,

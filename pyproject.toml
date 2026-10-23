@@ -41,6 +41,8 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["shared/tests", "monitoring/tests", "backend/tests", "code-review/tests", "standards/tests", "tests/security", "specialists/tests"]
 addopts = "-ra"
+# Lets the suites import the workspace packages where they are not installed (agent sandboxes).
+pythonpath = ["backend", "shared", "monitoring", "standards", "code-intelligence"]
 markers = [
   "live_llm: real Anthropic provider call; requires RUN_LIVE_LLM_EVAL=1 and a key",
   "db: needs PostgreSQL",

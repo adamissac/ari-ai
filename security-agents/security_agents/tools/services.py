@@ -212,6 +212,7 @@ class TestRunner:
     workspace_provider: Any  # callable(ctx) -> Path
     test_command_args: tuple[str, ...] = ("-q", "tests")
     limits: SandboxLimits = field(default_factory=SandboxLimits)
+    setup: dict[str, tuple[str, ...]] = field(default_factory=dict)  # recipe `sandbox` block
 
     def run(self, ctx: ToolContext, selection: str, node_ids: list[str]) -> dict[str, Any]:
         workspace = self.workspace_provider(ctx)
@@ -240,6 +241,7 @@ class TestRunner:
             args=args,
             labels={"assessment_id": ctx.assessment_id, "step_key": ctx.step_key, "agent": ctx.agent.value},
             limits=self.limits,
+            **self.setup,
         )
         res = self.driver.run(spec)
         summary = parse_pytest(res.stdout)
@@ -309,6 +311,10 @@ class CheckRunner:
         except PlatformError as exc:
             return {"error": exc.code.value, "detail": exc.message, "matches_expectation": None}
 
+        try:
+            setup = sandbox_setup(recipe)
+        except PlatformError as exc:
+            return {"error": exc.code.value, "detail": exc.message, "matches_expectation": None}
         check_file = "test_generated_check.py"
         spec = SandboxSpec(
             profile=SandboxProfile.CHECK_RUNNER,
@@ -330,6 +336,7 @@ class CheckRunner:
             if self.transport == "http"
             else None,
             target_app=str(recipe.get("app_factory") or "") or None if self.transport == "http" else None,
+            **setup,
         )
         res = self.driver.run(spec)
         summary = parse_pytest(res.stdout)
@@ -475,6 +482,31 @@ def _route_of(recipe: dict[str, Any], route_id: Any) -> dict[str, Any] | None:
                 "path_template": route.get("path_template"),
             }
     return None
+
+
+_PIP_REQ = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*(\[[A-Za-z0-9,._-]+\])?==[A-Za-z0-9.+!_-]+$")
+_APT_PKG = re.compile(r"^[a-z0-9][a-z0-9+.-]{0,62}$")
+
+
+def sandbox_setup(recipe: dict[str, Any]) -> dict[str, tuple[str, ...]]:
+    """`pip`, `apt` and `include` from the recipe's optional `sandbox` block. The recipe is
+    repository content, so only exact-pinned wheels, plain package names and safe relative
+    paths pass; anything else is refused rather than dropped."""
+    raw = recipe.get("sandbox") or {}
+    if not isinstance(raw, dict):
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "recipe sandbox must be an object")
+    out: dict[str, tuple[str, ...]] = {}
+    for key, check in (("pip", _PIP_REQ.match), ("apt", _APT_PKG.match), ("include", safe_rel_path)):
+        items = raw.get(key) or []
+        if not isinstance(items, list) or len(items) > 60 or not all(isinstance(i, str) for i in items):
+            raise PlatformError(ErrorCode.SCHEMA_INVALID, f"recipe sandbox.{key} must be a list of strings")
+        for item in items:
+            if not check(item):
+                raise PlatformError(
+                    ErrorCode.SCHEMA_INVALID, f"recipe sandbox.{key} entry {item!r} is not allowed"
+                )
+        out[key] = tuple(safe_rel_path(i) for i in items) if key == "include" else tuple(items)
+    return out
 
 
 def recipe_from_snapshot(intel: CodeIntel) -> Any:
