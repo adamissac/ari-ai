@@ -214,7 +214,7 @@ def test_repository_switch_persists_is_scoped_and_manual_runs_still_work(automat
         alice.patch(endpoint, json={"automatic_assessments": False}).json()["automatic_assessments"]
         is False
     )
-    assert alice.get(f"/api/v1/repositories/{other['id']}").json()["automatic_assessments"] is True
+    assert alice.get(f"/api/v1/repositories/{other['id']}").json()["automatic_assessments"] is False
     push(alice, HEAD)
     assert records() == []
     response = alice.post(

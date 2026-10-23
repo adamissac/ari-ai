@@ -25,11 +25,39 @@
       "title": "Budget",
       "type": "object"
     },
+    "DeliveryMode": {
+      "description": "How verified repairs reach the repository (ADR-0021).",
+      "enum": [
+        "auto",
+        "pull_request",
+        "manual"
+      ],
+      "title": "DeliveryMode",
+      "type": "string"
+    },
     "ProjectSettings": {
       "additionalProperties": false,
       "properties": {
         "default_budget": {
           "$ref": "#/$defs/Budget"
+        },
+        "delivery_authorized_by": {
+          "anyOf": [
+            {
+              "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Owner on whose standing authorization Ari approves and delivers fixes; set by the server, never the client. Null on projects that predate delivery modes: they stay manual until an owner saves settings.",
+          "title": "Delivery Authorized By"
+        },
+        "delivery_mode": {
+          "$ref": "#/$defs/DeliveryMode",
+          "default": "auto"
         },
         "languages": {
           "items": {
@@ -51,7 +79,7 @@
       "description": "Monitoring trigger policy (docs/10). Defaults match the MVP table.",
       "properties": {
         "enabled": {
-          "default": true,
+          "default": false,
           "title": "Enabled",
           "type": "boolean"
         },

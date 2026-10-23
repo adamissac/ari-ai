@@ -98,7 +98,7 @@ from shared.scope import (
     AuthorizedScope,
     ScopeStatus,
 )
-from shared.tenancy import MemberRole, Project, ProjectSettings, Repository
+from shared.tenancy import DeliveryMode, MemberRole, Project, ProjectSettings, Repository
 
 router = APIRouter()
 
@@ -223,6 +223,9 @@ def create_project(
             return replay
         pid = new_id(IdPrefix.prj)
         settings = body.settings or ProjectSettings()
+        if role is not MemberRole.owner:  # only owners may authorize Ari to deliver code
+            settings = settings.model_copy(update={"delivery_mode": DeliveryMode.manual})
+        settings = _stamp_delivery(settings, ProjectSettings(), user.id)
         _check_budgets(settings, ProjectSettings())
         conn.execute(
             sa.insert(projects).values(
@@ -257,19 +260,49 @@ def _check_budgets(settings: ProjectSettings, before: ProjectSettings) -> None:
             raise ApiError(ErrorCode.VALIDATION_FAILED, over, 422)
 
 
+def _stamp_delivery(
+    settings: ProjectSettings, before: ProjectSettings, user_id: str
+) -> ProjectSettings:
+    """The server alone records who authorized delivery; a client value is ignored. The
+    authorizer is kept while the mode is unchanged, and is the saving owner otherwise."""
+    same = before.delivery_mode is settings.delivery_mode
+    kept = before.delivery_authorized_by if same else None
+    return settings.model_copy(update={"delivery_authorized_by": kept or user_id})
+
+
 @router.patch("/projects/{project_id}", response_model=Project)
 def update_project(project_id: str, body: ProjectUpdate, request: Request) -> Project:
     with transaction() as conn:
         user = _user(conn, request)
         org_id, _ = require_project(conn, user, project_id, MemberRole.owner)
         values: dict[str, Any] = {}
+        changed_delivery = False
         if body.name is not None:
             values["name"] = body.name
         if body.settings is not None:
-            _check_budgets(body.settings, project_settings(conn, project_id))
-            values["settings"] = body.settings.model_dump(mode="json")
+            before = project_settings(conn, project_id)
+            _check_budgets(body.settings, before)
+            settings = _stamp_delivery(body.settings, before, user.id)
+            values["settings"] = settings.model_dump(mode="json")
+            if not before.delivery_authorized_by and settings.delivery_authorized_by:
+                changed_delivery = True  # legacy project: authority just became effective
+            if settings.delivery_mode is not before.delivery_mode:
+                changed_delivery = True
+                _audit(
+                    conn,
+                    org_id,
+                    project_id,
+                    user,
+                    f"delivery.{settings.delivery_mode.value}",
+                    "project",
+                    project_id,
+                )
         if values:
             conn.execute(sa.update(projects).where(projects.c.id == project_id).values(**values))
+            if changed_delivery:  # runs already waiting must not stay stuck behind the old mode
+                from backend.delivery import approve_waiting_runs
+
+                approve_waiting_runs(conn, project_id)
             _audit(
                 conn,
                 org_id,

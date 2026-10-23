@@ -240,7 +240,7 @@ def main(argv: list[str]) -> int:
             )
         alice.headers["X-CSRF-Token"] = me["csrf_token"]
         pid = (
-            alice.post("/projects", json={"name": "payments-lite (e2e)"})
+            alice.post("/projects", json={"name": "payments-lite (e2e)", "settings": {"delivery_mode": "manual"}})
             .raise_for_status()
             .json()["id"]
         )
@@ -252,7 +252,7 @@ def main(argv: list[str]) -> int:
         # The commit-workspace journey completes its own runs. Keep its findings/approvals
         # separate from the original journey's exact-count assertions.
         workspace_pid = (
-            alice.post("/projects", json={"name": "commit-workspace (e2e)"})
+            alice.post("/projects", json={"name": "commit-workspace (e2e)", "settings": {"delivery_mode": "manual"}})
             .raise_for_status()
             .json()["id"]
         )

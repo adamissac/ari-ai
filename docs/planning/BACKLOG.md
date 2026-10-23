@@ -169,14 +169,8 @@ train/validation proof, then at most one preregistered fresh-holdout experiment.
 fails, reconsider the approach before spending more CPU. Diagnosis and preserved paired
 traces: `rl-defense/results/v10-followup-diagnosis/README.md` and `diagnostics.json`.
 
-### 2026-10-21 — RL-DURATION-001 (Alan, owner authorized)
 
-DONE in PR #386 (`9926d14`) on `feat/alan/rl-duration-study`. Bounded train/validation-only comparison of
-short/long controls and one fixed existing outsider-duration rule, with actual v6 and
-fixed tuned-rules references. Reuse existing implementation; no new control/action,
-serving fallback, learned policy or holdout execution. Plan frozen before execution in
-`rl-defense/results/duration-screen/PLAN.md`. Only prepare one possible v11 study if
-validation improves availability without worse compromise under the fixed screen.
+### 2026-10-21 — automation opt-in reset
 
 ### 2026-10-21 — RL-DURATION-001 screen complete; v11 not justified
 
@@ -231,3 +225,4 @@ was not overwritten. No study heartbeat was re-enabled or extra experiment sched
 - IMPLEMENTED / finite fixture passed; integration pending (2026-10-23), **RL-CMDP-002**, Alan, `feat/alan/deterministic-feasibility`: owner-authorized finite-case deterministic authorization feasibility; owner limits zero unauthorized successes / zero valid owner/delegated denials. Protocol and isolated guard in `docs/research/deterministic-feasibility/`. No training or production integration.
 
 - IMPLEMENTED / CI and review pending (2026-10-23), **RL-CMDP-003**, Alan, `feat/alan/read-context-integration`: owner-authorized owned-app context binding, freshness and serialized revocation tests. No serving registration or training.
+Owner requested AI automation and Defense Lab OFF until explicitly enabled. Branch `fix/adam/automation-opt-in`: schema 0.15.1 changes Repository.automatic_assessments and TriggerPolicy.enabled defaults to false; migration 0010 resets stored switches, requests cancellation of unfinished automatic assessments, and wakes deferred jobs. Worker checks cancellation before checkout. Manual runs and historical results remain intact. Focused PostgreSQL/monitoring checks: 36 passed. Full tests pending. Railway plugin is installed but no callable Railway tools/credentials are exposed in this conversation; live deployment/settings verification remains blocked on access. Alan review requested for default semantics and backend migration.

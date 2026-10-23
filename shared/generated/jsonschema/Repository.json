@@ -11,7 +11,7 @@
   "additionalProperties": false,
   "properties": {
     "automatic_assessments": {
-      "default": true,
+      "default": false,
       "title": "Automatic Assessments",
       "type": "boolean"
     },

@@ -72,7 +72,7 @@ def handler(kind: str) -> Callable[[Handler], Handler]:
 
 def _load_handlers() -> None:
     # Importing registers handlers via @handler.
-    from backend import pipeline, simulated_attack  # noqa: F401
+    from backend import delivery, pipeline, simulated_attack  # noqa: F401
     from backend.live_defense import engine as _live_defense_engine  # noqa: F401
 
 

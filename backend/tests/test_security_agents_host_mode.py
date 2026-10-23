@@ -46,7 +46,9 @@ def test_host_mode_full_flow_against_real_backend(
     llm.TRANSPORT_OVERRIDE = lambda: bridge
     alice, bob = client_factory("alice"), client_factory("bob")
     add_member(alice.me["memberships"][0]["organization"]["id"], bob.me["user"]["id"])
-    pid = alice.post("/api/v1/projects", json={"name": "p"}).json()["id"]
+    pid = alice.post(
+        "/api/v1/projects", json={"name": "p", "settings": {"delivery_mode": "manual"}}
+    ).json()["id"]
     rid = alice.post(
         f"/api/v1/projects/{pid}/repositories", json={"full_name": "acme/payments-lite"}
     ).json()["id"]

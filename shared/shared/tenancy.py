@@ -35,7 +35,7 @@ class Usage(StrictModel):
 class TriggerPolicy(StrictModel):
     """Monitoring trigger policy (docs/10). Defaults match the MVP table."""
 
-    enabled: bool = True
+    enabled: bool = False
     min_interval_s: int = Field(default=600, ge=0, description="Coalescing window per repo")
     ignore_paths_only: list[ShortText] = Field(
         default_factory=lambda: ["tests/**", "docs/**", "**/*.md"],
@@ -51,10 +51,25 @@ class TriggerPolicy(StrictModel):
     )
 
 
+class DeliveryMode(StrEnum):
+    """How verified repairs reach the repository (ADR-0021)."""
+
+    auto = "auto"  # commit straight to the default branch (falls back to a PR)
+    pull_request = "pull_request"  # open a PR for the team to review and merge
+    manual = "manual"  # a human approves each remediation; nothing is pushed
+
+
 class ProjectSettings(StrictModel):
     default_budget: Budget = Field(default_factory=Budget)
     monitoring_policy: TriggerPolicy = Field(default_factory=TriggerPolicy)
     languages: list[ShortText] = Field(default_factory=lambda: ["python"])
+    delivery_mode: DeliveryMode = DeliveryMode.auto
+    delivery_authorized_by: UserId | None = Field(
+        default=None,
+        description="Owner on whose standing authorization Ari approves and delivers fixes; "
+        "set by the server, never the client. Null on projects that predate delivery modes: "
+        "they stay manual until an owner saves settings.",
+    )
 
 
 class Organization(StrictModel):
@@ -89,7 +104,7 @@ class RepoProvider(StrEnum):
 
 
 class Repository(StrictModel):
-    automatic_assessments: bool = True
+    automatic_assessments: bool = False
     id: RepositoryId
     project_id: ProjectId
     provider: RepoProvider = RepoProvider.github

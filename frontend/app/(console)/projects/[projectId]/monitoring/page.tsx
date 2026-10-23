@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { AttackDrill } from '@/components/attack-drill';
 import { DefenseSwitch } from '@/components/defense-switch';
+import { DeliverySwitch } from '@/components/delivery-switch';
 import { useProject } from '@/components/project';
 import { Async, Badge, Button, Empty, ErrorState, Loading, Mono, Panel, Tag, Time } from '@/components/ui';
 import { api } from '@/lib/api';
@@ -39,7 +40,10 @@ export default function MonitoringPage() {
           <p className="mt-1 max-w-2xl text-sm text-white/70">Real events from your connected repository and runtime, plus re-checks they triggered. This is a record of what arrived, not a promise of round-the-clock protection. The <Link className="text-white underline decoration-white/40 hover:decoration-white" href={`/projects/${project.id}/live-defense`}>Live Defense dashboard</Link> gathers the same records with investigation and explainability views.</p>
         </div>
         <div className="flex flex-col items-start gap-3 lg:items-end">
-          <DefenseSwitch project={project} onChange={() => reloadProject()} tone="dark" />
+          <div className="flex flex-wrap gap-3">
+            <DefenseSwitch project={project} onChange={() => reloadProject()} tone="dark" />
+            <DeliverySwitch project={project} onChange={() => reloadProject()} tone="dark" />
+          </div>
           <ul className="monitor-chips" aria-label="Monitoring activity">
             <li><span className="text-white/50">Events</span> {events.status === 'ready' ? `${events.data.items.length}${events.data.items.length >= 50 ? '+' : ''}` : '…'}</li>
             <li><span className="text-white/50">Synthetic events</span> {events.status === 'ready' ? events.data.items.filter(e => e.simulated).length : '…'}</li>
