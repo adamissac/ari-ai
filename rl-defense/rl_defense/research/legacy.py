@@ -20,13 +20,14 @@ from rl_defense.research.proof import (
     scenarios_from_inputs,
     verify_runtime_closure,
 )
-from rl_defense.research.snapshot import certify_legacy_snapshot
+from rl_defense.research.snapshot import certify_legacy_snapshot, verification_commit
 
 ROOT = Path(__file__).resolve().parents[3]
 POLICIES = ("short", "long", "duration", "v6", "tuned_rules")
 
 
 def verify_legacy(root: Path) -> dict:
+    commit = verification_commit(ROOT)
     blob = read_artifact(root / "EVIDENCE.json")
     if digest(blob) != "ce9317baa7cad1c1a77dacf19736d0d8fb812e8c76af0b03fc3cc699c77291b6":
         raise ValueError("historical evidence index trust anchor mismatch")
@@ -40,7 +41,7 @@ def verify_legacy(root: Path) -> dict:
         if digest(raw) != index["files"][rel]:
             raise ValueError("historical trajectory pin changed")
         captured[rel] = raw
-    return certify_legacy_snapshot(ROOT, captured)
+    return certify_legacy_snapshot(ROOT, captured, commit)
 
 
 def _verify_legacy(root: Path) -> dict:

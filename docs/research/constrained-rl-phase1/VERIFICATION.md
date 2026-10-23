@@ -25,7 +25,8 @@ python -m rl_defense.research.legacy
 ```
 
 Both public certification commands execute their replay/adaptation code from a
-private read-only checkout of committed source. They validate captured artifact
+private read-only checkout pinned to the exact verifier commit captured before
+provenance checks. Moving the source branch during cloning cannot select newer code. They validate captured artifact
 bytes, source/semantic-input fingerprints and the recorded runtime before issuing
 a result. Linux CI tests these components with controlled fixtures; its interpreter
 is deliberately rejected for archived macOS certification. The production runtime
