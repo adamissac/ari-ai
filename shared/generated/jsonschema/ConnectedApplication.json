@@ -4,7 +4,8 @@
       "enum": [
         "unverified",
         "ingest_seen",
-        "token_revoked"
+        "token_revoked",
+        "disconnected"
       ],
       "title": "ApplicationVerification",
       "type": "string"
@@ -31,6 +32,19 @@
       "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Created By",
       "type": "string"
+    },
+    "disconnected_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Disconnected At"
     },
     "environment": {
       "$ref": "#/$defs/StagingEnvironment"

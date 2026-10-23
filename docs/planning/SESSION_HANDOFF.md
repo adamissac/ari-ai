@@ -18,6 +18,10 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-23 — Cursor (agent, Alan) — Live Defense Phase 5 shadow-pilot readiness
+- Did: branch `feat/live-defense-phase5-pilot-readiness` from `origin/main` (`09e8cab`). Does **not** include Phase 4 enforcement (PR #393 stays open). Adds rotate/disconnect/shadow-verify/pilot-report. Health worker/telemetry/policy stay unknown. Codex/`rl-defense/` untouched.
+- Next: run full check/test suite; merge Phase 5 only if CI green, no enforcement, no trust-boundary expansion, protection allows. Do not merge #393.
+
 ### 2026-10-22 — Cursor (agent, Alan) — Live Defense Phase 3 shadow runtime
 - Did: branch `feat/live-defense-phase3-shadow-runtime` from `origin/main` (`6e98b23`, PR #391 merged). Extends Phase 1/2. Shared 0.17.0 `LivePolicyDecision` (NOT EXECUTED). Authenticated `owned_staging` ingest, deterministic rules, frozen-v6 only when serving assumptions hold (quiet window → abstain; no torch in this env → `skipped_unavailable`). Analyst review of shadow decisions does not execute. `rl-defense/` training/checkpoints/promotion untouched. No Phase 4 enforcement APIs.
 - State of the code: owned staging app → authenticated ingest → rules (or validated v6) → persisted shadow decision → dashboard → review → no automatic traffic control. Authenticated runtime events no longer force `Incident.simulated`.
