@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any
 
 import sqlalchemy as sa
@@ -45,7 +45,6 @@ from shared.monitoring import (
 )
 
 _CLIENT: tuple[Any, Any, Any] | None = None
-STALE_AFTER = timedelta(hours=1)
 
 
 def github_client() -> GitHubApp:
@@ -183,9 +182,6 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
     sender = p.get("sender", "").lower()
     if not sender or ("*" not in allowed and sender not in allowed):
         return policy_exit(p, "push sender is outside the automatic rollout")
-    # Only fresh pushes run; a backlog (quota deferrals, re-enabled repos) is skipped.
-    if utcnow() - datetime.fromisoformat(p["received_at"]) > STALE_AFTER:
-        return policy_exit(p, "commit was pushed more than an hour ago")
     with transaction() as conn:
         repo = (
             conn.execute(sa.select(repositories).where(repositories.c.id == p["repo_id"]))
@@ -300,6 +296,20 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
                     delay_s = max(
                         delay_s, (oldest + timedelta(seconds=seconds + 1) - now).total_seconds()
                     )
+            # One ceiling over every project: outside users' repos cannot run up unbounded spend.
+            # shortcut: in-flight runs are not counted, so it can overshoot by a few runs.
+            spent = conn.execute(
+                sa.select(
+                    sa.func.coalesce(
+                        sa.func.sum(assessments.c.doc["usage"]["usd"].astext.cast(sa.Numeric)), 0
+                    )
+                ).where(
+                    assessments.c.trigger == AssessmentTrigger.monitoring.value,
+                    assessments.c.created_at > now - timedelta(days=1),
+                )
+            ).scalar_one()
+            if float(spent) >= limits.automatic_usd_per_day:
+                delay_s = max(delay_s, 3600.0)
         if scope and delay_s:
             reason = "queued: waiting for project automatic-run capacity"
             rrq = rrq.model_copy(update={"status": ReassessmentStatus.queued, "reason": reason})

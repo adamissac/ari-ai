@@ -16,12 +16,11 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 from backend import jobs
-from backend.api.deps import ApiError, limiter
+from backend.api.deps import ApiError
 from backend.artifacts import ArtifactStore
 from backend.db import transaction, webhook_deliveries
 from backend.github import verify_signature
 from backend.settings import get_settings
-from monitoring.api import repo_full_name
 from shared.api import WebhookAck
 from shared.errors import ErrorCode
 from shared.evidence import ArtifactKind
@@ -66,14 +65,8 @@ async def github_webhook(request: Request) -> JSONResponse:
             raise ValueError("payload must be a JSON object")
     except ValueError as e:
         raise ApiError(ErrorCode.VALIDATION_FAILED, f"invalid JSON payload: {e}"[:200], 400) from e
-    inst = (
-        payload.get("installation", {}).get("id")
-        if isinstance(payload.get("installation"), dict)
-        else None
-    )
-    limiter.check(
-        f"webhook:{inst or repo_full_name(payload) or 'unknown'}", s.webhooks_per_minute, 60
-    )
+    # No rate limit: the HMAC already proves GitHub sent it, the queue absorbs bursts, and
+    # GitHub never retries a 429, so limiting here would silently lose commits.
 
     def _persist() -> WebhookAck:
         with transaction() as conn:
