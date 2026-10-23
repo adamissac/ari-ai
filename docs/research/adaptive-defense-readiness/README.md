@@ -16,6 +16,7 @@ merged PR #414. Branch: `research/rl-adaptive-defense-readiness`, RL-CMDP-007.
 - [Deterministic baseline design](BASELINES.md)
 - [Blocked future preregistration](PREREGISTRATION.md)
 - [Formal decision and required owner choices](DECISION.md)
+- [Exact executed checks and regression scope](VERIFICATION.md)
 
 Implemented: an internal versioned pure observation adapter using trusted provider
 snapshots, explicit unknown channels, prefix-only cutoff construction, five-slot
