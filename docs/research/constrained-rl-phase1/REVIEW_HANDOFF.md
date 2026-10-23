@@ -64,3 +64,8 @@ macOS runtime certification on Linux. The test now targets only the captured-I/O
 component; a dedicated wrong-runtime rejection test retains the strict public gate.
 The production source/runtime checks are unchanged. Prior CI: 394 passed, 1 fixture
 failure; latest revision requires CI before merge.
+
+Final snapshot review: both public entry points capture the verifier commit before
+checking artifacts. The private clone skips checkout until that exact commit is
+selected in detached mode, and verifies its identity before imports. The regression
+moves the source branch during cloning and confirms only the captured code executes.

@@ -11,17 +11,42 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 
+def verification_commit(root: Path) -> str:
+    """Capture the verifier revision before any provenance checks."""
+    return subprocess.check_output(
+        ["git", "rev-parse", "HEAD^{commit}"], cwd=root, text=True
+    ).strip()
+
+
 @contextmanager
-def source_snapshot(root: Path):
+def source_snapshot(root: Path, commit: str):
     """Never execute later imports from the caller's mutable working checkout."""
     with TemporaryDirectory(prefix="rl-source-snapshot-") as private:
         checkout = Path(private) / "source"
         subprocess.run(
-            ["git", "clone", "--quiet", "--no-local", "--no-hardlinks", str(root), str(checkout)],
+            [
+                "git",
+                "clone",
+                "--quiet",
+                "--no-checkout",
+                "--no-local",
+                "--no-hardlinks",
+                str(root),
+                str(checkout),
+            ],
             check=True,
             capture_output=True,
             timeout=120,
         )
+        subprocess.run(
+            ["git", "checkout", "--quiet", "--detach", commit],
+            cwd=checkout,
+            check=True,
+            capture_output=True,
+            timeout=120,
+        )
+        if verification_commit(checkout) != commit:
+            raise ValueError("verification snapshot revision changed")
         for directory, folders, files in os.walk(checkout):
             folders[:] = [d for d in folders if d != ".git"]
             for name in files:
@@ -40,7 +65,7 @@ def source_snapshot(root: Path):
 
 
 def certify_snapshot(
-    root: Path, output: Path, index_blob: bytes, artifacts: dict[str, bytes]
+    root: Path, output: Path, index_blob: bytes, artifacts: dict[str, bytes], commit: str
 ) -> dict:
     from rl_defense.research.proof import read_artifact
 
@@ -63,14 +88,14 @@ def certify_snapshot(
         path = output / name
         if path.exists():
             captured[name] = read_artifact(path)
-    return _certify_source(root, captured, "study")
+    return _certify_source(root, captured, "study", commit)
 
 
-def certify_legacy_snapshot(root: Path, captured: dict[str, bytes]) -> dict:
-    return _certify_source(root, captured, "legacy")
+def certify_legacy_snapshot(root: Path, captured: dict[str, bytes], commit: str) -> dict:
+    return _certify_source(root, captured, "legacy", commit)
 
 
-def _certify_source(root: Path, captured: dict[str, bytes], mode: str) -> dict:
+def _certify_source(root: Path, captured: dict[str, bytes], mode: str, commit: str) -> dict:
     with TemporaryDirectory(prefix="rl-evidence-snapshot-") as private:
         bundle = Path(private) / "evidence"
         bundle.mkdir(mode=0o700)
@@ -79,7 +104,7 @@ def _certify_source(root: Path, captured: dict[str, bytes], mode: str) -> dict:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(blob)
             path.chmod(0o400)
-        with source_snapshot(root) as checkout:
+        with source_snapshot(root, commit) as checkout:
             if "source.commit.txt" in captured:
                 subprocess.run(
                     ["git", "hash-object", "-t", "commit", "-w", "--stdin"],

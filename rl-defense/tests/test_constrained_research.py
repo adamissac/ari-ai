@@ -280,7 +280,7 @@ def test_evidence_bundle_verifier_rejects_rehashed_summary_and_overlap(
     monkeypatch.setattr(
         ev,
         "certify_snapshot",
-        lambda root, output, index, artifacts: ev._verify(output, sealed=True),
+        lambda root, output, index, artifacts, commit: ev._verify(output, sealed=True),
     )
     original = ev.subprocess.check_output
 
@@ -854,10 +854,10 @@ def test_historical_reporting_is_anchored(tmp_path, kind):
         check_source(ROOT, output, config, set(index["files"]))
 
 
-def test_source_snapshot_uses_committed_code_not_mutable_checkout(tmp_path):
+def test_source_snapshot_uses_committed_code_not_mutable_checkout(tmp_path, monkeypatch):
     import subprocess
 
-    from rl_defense.research.snapshot import source_snapshot
+    from rl_defense.research.snapshot import source_snapshot, verification_commit
 
     source = tmp_path / "repo"
     source.mkdir()
@@ -879,7 +879,33 @@ def test_source_snapshot_uses_committed_code_not_mutable_checkout(tmp_path):
         check=True,
     )
     (source / "module.py").write_text("value = 999\n")
-    with source_snapshot(source) as snapshot:
+    commit = verification_commit(source)
+    original_run = subprocess.run
+
+    def move_head_during_clone(command, **kwargs):
+        if command[:2] == ["git", "clone"]:
+            (source / "module.py").write_text("value = 777\n")
+            original_run(["git", "add", "."], cwd=source, check=True)
+            original_run(
+                [
+                    "git",
+                    "-c",
+                    "user.name=Test",
+                    "-c",
+                    "user.email=test@example.invalid",
+                    "commit",
+                    "-qm",
+                    "moved",
+                ],
+                cwd=source,
+                check=True,
+            )
+            assert verification_commit(source) != commit
+        return original_run(command, **kwargs)
+
+    monkeypatch.setattr(subprocess, "run", move_head_during_clone)
+    with source_snapshot(source, commit) as snapshot:
+        assert verification_commit(snapshot) == commit
         captured = snapshot / "module.py"
         assert captured.read_text() == "value = 1\n"
         assert not captured.stat().st_mode & 0o222
@@ -904,7 +930,8 @@ def test_standalone_legacy_seals_code_before_adapting(monkeypatch):
 
     calls = []
 
-    def sealed(root, captured):
+    def sealed(root, captured, commit):
+        assert len(commit) == 40
         calls.append(captured)
         assert len(captured) == 7
         return {"sealed": True}
