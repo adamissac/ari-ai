@@ -39,3 +39,4 @@ before Phase 1 implementation relies on them.
 
 - [ADR-0018: five-seed isolated live-lab evaluation (proposed)](0018-live-lab-five-seed-evaluation.md)
 - [ADR-0019: isolated constrained-RL foundation (proposed)](0019-constrained-rl-foundation.md)
+- [ADR-0020: independent authorization gate for live controls (accepted)](0020-live-defense-control-authorization.md)

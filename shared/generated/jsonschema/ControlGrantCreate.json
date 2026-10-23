@@ -1,0 +1,64 @@
+{
+  "$defs": {
+    "LiveControlKind": {
+      "description": "The only actions that have an adapter or a recorded human escalation.",
+      "enum": [
+        "rate_limit",
+        "block_source",
+        "increase_logging",
+        "escalate"
+      ],
+      "title": "LiveControlKind",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "allowed_kinds": {
+      "items": {
+        "$ref": "#/$defs/LiveControlKind"
+      },
+      "minItems": 1,
+      "title": "Allowed Kinds",
+      "type": "array"
+    },
+    "application_id": {
+      "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Application Id",
+      "type": "string"
+    },
+    "expires_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Expires At"
+    },
+    "hourly_budget": {
+      "default": 5,
+      "maximum": 20,
+      "minimum": 1,
+      "title": "Hourly Budget",
+      "type": "integer"
+    },
+    "max_duration_s": {
+      "default": 300,
+      "maximum": 3600,
+      "minimum": 5,
+      "title": "Max Duration S",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "application_id",
+    "allowed_kinds"
+  ],
+  "title": "ControlGrantCreate",
+  "type": "object"
+}

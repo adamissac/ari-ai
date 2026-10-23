@@ -1,6 +1,16 @@
 # Live autonomous defense: audit and plan
 
-Status: **plan for a later enforcement slice (Phase 4+)**, not what Phase 1–3 shipped. Phase 1 (PR #390) and Phase 2 (PR #391) implement a **shadow-pilot dashboard**. Phase 3 (`feat/live-defense-phase3-shadow-runtime`) adds authenticated `owned_staging` ingest, deterministic rules, optional frozen-v6 **shadow** `LivePolicyDecision` rows (NOT EXECUTED), and analyst review of those records. Adapters, DETECTED→EXECUTING, production grants, and automatic control of customer traffic are still **not** implemented. Do not treat sections 4–7 (authorize, adapters, executing) as implemented.
+Status: **Phase 4 owned-test enforcement is implemented** on
+`feat/live-defense-phase4-controlled-enforcement` (plan:
+[LIVE_DEFENSE_PHASE4_PLAN](planning/LIVE_DEFENSE_PHASE4_PLAN.md), ADR-0020).
+Phase 1–3 remain: shadow dashboard, authenticated ingest, `LivePolicyDecision`
+NOT EXECUTED, analyst accept does not execute. Phase 4 adds a **separate**
+`LiveControl` lifecycle and a deterministic authorization gate that can apply
+four minimal actions only on a registered loopback owned-test app. Production
+grants, isolation, autonomous (no-human) enforcement, and customer traffic
+control are still **not** implemented. Do not treat the original sections 4–7
+below as the Phase 4 code path — they mixed NIST incident statuses with
+execution; Phase 4 does not.
 
 ## 1. What already exists (audited on main `8943622`)
 

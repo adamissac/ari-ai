@@ -293,6 +293,11 @@ function LiveOverviewRecords({
           </Async>
         ) : <Empty>Recommendations were not requested.</Empty>}
       </Panel>
+      <Panel title="Owned-test controls" actions={<Link className="text-xs text-accent hover:underline" href={liveDefenseHref(projectId, 'controls')}>Authorize</Link>}>
+        <p className="text-sm text-muted">
+          Shadow decisions on this page stay NOT EXECUTED. Temporary rate-limit, exact-source block, logging, or human escalation run only after a separate authorization on the Controls tab.
+        </p>
+      </Panel>
       <Panel title="Staging apps" actions={<Link className="text-xs text-accent hover:underline" href={liveDefenseHref(projectId, 'apps')}>Onboard</Link>}>
         {apps ? (
           <Async resource={apps} label="staging apps">
