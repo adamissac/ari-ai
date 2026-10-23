@@ -1491,3 +1491,8 @@ remain untouched. No merge: Phase1's deployment restriction governs this researc
 - Reproduced a response-binding gap: authorized Alice pay_a1 request could release a downstream Bob pay_b1 response with HTTP 200.
 - Added strict existing PaymentOut schema/identity checks, duplicate-key and framing rejection, bounded message capture, fresh output headers and a post-validation freshness check. Customer key/record identity contradictions abstain.
 - Twenty real-app/controlled-downstream integration tests passed; lint passed. Private-store and single-worker assumptions remain. No prior comparison rerun, source evidence rewrite, shared contract, serving hook, training or promotion.
+
+### 2026-10-23 — Alan / Codex — RL-CMDP-005
+- Added read-only original-fixture evidence audit: fixed trust anchor, execution Git object/protocol, 54 ordered units and independently recomputed summaries. Canonical EvidenceRef; current auditor identity is separate from unrecorded original interpreter/timing.
+- Eighteen focused tests passed. Supported CLI runs from private read-only captured-commit source. Readiness remains inconclusive; training/promotion flags false.
+- No collector/app execution, comparison rerun, modified evidence, new fact authority or serving hook. Real payment authorization producer/transaction semantics still need a reviewed contract proposal.

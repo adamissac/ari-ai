@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Add an offline, read-only audit of retained finite-fixture evidence that distinguishes verified numerical counts from unknown timing/authority and explicitly keeps training/promotion readiness false.
 - Audit Live Defense Phase 4+5 on current main (PRs #393 and #395 merged): prove recommendation-only shadow ingest/decision/review/report cannot execute even with an owned-test grant and loopback channel present; deny authorize/execute after disconnect; serialize disconnect behind the execute application-row lock; count assessment-bound jobs in project queue depth; keep recovered `last_error` rows on the pilot trail without calling them healthy. No Phase 7, no production grants, no RL training. Eval: `docs/LIVE_DEFENSE_PHASE6_READINESS.md`. Customer procedure: `docs/LIVE_DEFENSE_SHADOW_PILOT.md`.
 
 - Harden the opt-in research payment-read wrapper against wrong-object responses, malformed/error payloads and contradictory fixture identities; emit only validated payment JSON. No serving registration or model change.

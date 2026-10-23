@@ -1,0 +1,9 @@
+{
+  "audit_sha256": "fd0ed5d59a673af723401f662d7a9af6d63707b8f8c130ae62997294fb8044aa",
+  "auditor_commit": "98976cf57e1a22bca45fac53932eb1a719954f1c",
+  "new_experiment": false,
+  "original_execution_commit": "73f42092a6d73f29d3b846b3aa170605ebce4fbd",
+  "original_index_sha256": "fcc6298c432134269fc5f87d111be8347f149e1d0cced81c0352c096a57a8b6e",
+  "readiness": "inconclusive",
+  "schema": "readiness-audit-receipt/1"
+}
