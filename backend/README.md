@@ -29,6 +29,7 @@ agents use. Owner: **Srihith**. Spec: [docs/13](../docs/13_BACKEND_API_DESIGN.md
 | Live Defense shadow pilot: staging apps, ingest-token metadata, recorded health/graph, analyst reviews, shadow `LivePolicyDecision` | `api/live_defense.py` + `live_defense/` + migrations 0010–0011 | implemented; health status always unknown; accept does not execute; shadow decisions are NOT EXECUTED |
 | Live Defense Phase 4 owned-test controls | `api/live_defense_controls.py` + `live_defense/{authorize,adapters,controls,verify,owned_test_app}.py` + migration 0012 | implemented; 15-check fail-closed gate; HMAC loopback adapter; verify uses real probes; HTTP 200 ≠ effectiveness; production not granted; disconnected apps cannot authorize/execute |
 | Live Defense Phase 6 shadow vs enforcement audit | `tests/test_live_defense_phase6.py` | shadow ingest/decision/review/report does not enqueue execute even with grant+channel; queue depth is project-scoped; failed jobs appear on the pilot trail |
+| Live Defense Phase 6.5 RL-gated pilot infra | `live_defense/{readiness,serving,pilot_guard}.py` + `tests/test_live_defense_phase6_5.py` | categories A–J BLOCKED/NOT VERIFIED; `ready` false; gated apps refuse grant/channel/authorize/leftover execute; v6 not claimed to pass new hosted criteria |
 | Code-intelligence PayloadStore (Postgres) | `intel_store.py` | implemented; integration-tested with Sarosh's IntelligenceService |
 | `POST /patches/{id}/pull-request`, `PATCH /expectations/{id}` | — | **not implemented** (MVP cut order / owned by intelligence) |
 

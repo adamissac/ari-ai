@@ -675,6 +675,10 @@ class RlEvaluationMetricSpec(StrictModel):
     threshold_status: Literal["pending_rl_owner_approval"] = "pending_rl_owner_approval"
 
 
+def _default_eval_baselines() -> list[Literal["rules", "fixed_block", "v6"]]:
+    return ["rules", "fixed_block", "v6"]
+
+
 class RlEvaluationPlan(StrictModel):
     """Required evaluation dimensions. Pass-by-total-reward is forbidden."""
 
@@ -682,7 +686,7 @@ class RlEvaluationPlan(StrictModel):
     holdout_required: Literal[True] = True
     independent_seeds_required: Literal[True] = True
     baselines: list[Literal["rules", "fixed_block", "v6"]] = Field(
-        default_factory=lambda: ["rules", "fixed_block", "v6"]
+        default_factory=_default_eval_baselines
     )
     metrics: list[RlEvaluationMetricSpec]
     per_scenario_required: Literal[True] = True
