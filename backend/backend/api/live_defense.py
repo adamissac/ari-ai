@@ -512,37 +512,92 @@ def list_ingest_tokens(project_id: str, request: Request) -> dict[str, Any]:
 
 
 _TRAIL_PREFIXES = ("live_defense.", "ingest_token.", "runtime.")
+_LIVE_DEFENSE_JOB_KINDS = (
+    "live_defense_shadow",
+    "live_defense_execute",
+    "live_defense_verify",
+    "live_defense_rollback",
+    "live_defense_expire",
+    "live_defense_emergency_stop",
+)
+
+
+def _project_queue_depth(conn: sa.Connection, project_id: str) -> int | None:
+    """Queued jobs bound to this project. Other tenants' work is not counted."""
+    queued = conn.execute(
+        sa.select(sa.func.count())
+        .select_from(jobs)
+        .where(
+            jobs.c.status == "queued",
+            jobs.c.payload["project_id"].astext == project_id,
+        )
+    ).scalar()
+    return int(queued) if queued is not None else None
+
+
+def _defense_health(conn: sa.Connection, project_id: str) -> DefenseHealth:
+    worker_seen = conn.execute(sa.select(sa.func.max(jobs.c.heartbeat_at))).scalar()
+    last_ingest = conn.execute(
+        sa.select(sa.func.max(runtime_windows.c.window_end)).where(
+            runtime_windows.c.project_id == project_id
+        )
+    ).scalar()
+    last_event = conn.execute(
+        sa.select(sa.func.max(monitoring_events.c.created_at)).where(
+            monitoring_events.c.project_id == project_id,
+            monitoring_events.c.doc["source"].astext == "runtime",
+        )
+    ).scalar()
+    return DefenseHealth(
+        project_id=project_id,
+        worker_seen_at=_aware(worker_seen),
+        queue_depth=_project_queue_depth(conn, project_id),
+        last_ingest_at=_aware(last_ingest),
+        last_runtime_event_at=_aware(last_event),
+        worker_status="unknown",
+        telemetry_status="unknown",
+        policy_status="unknown",
+    )
+
+
+def _failed_job_trail(conn: sa.Connection, project_id: str) -> list[PilotTrailEntry]:
+    """Measured worker failures for this project. Not a health verdict."""
+    rows = (
+        conn.execute(
+            sa.select(jobs)
+            .where(
+                jobs.c.kind.in_(_LIVE_DEFENSE_JOB_KINDS),
+                jobs.c.payload["project_id"].astext == project_id,
+                jobs.c.status != "succeeded",
+                jobs.c.last_error.is_not(None),
+            )
+            .order_by(jobs.c.updated_at.desc())
+            .limit(20)
+        )
+        .mappings()
+        .all()
+    )
+    trail: list[PilotTrailEntry] = []
+    for row in rows:
+        error = row["last_error"] or {}
+        code = str(error.get("code") or "unknown")
+        trail.append(
+            PilotTrailEntry(
+                at=_aware(row["updated_at"]) or utcnow(),
+                action=f"job.{row['status']}",
+                subject_type="job",
+                subject_id=row["id"],
+                detail=f"{row['kind']} last_error={code}",
+            )
+        )
+    return trail
 
 
 @router.get("/projects/{project_id}/defense-health", response_model=DefenseHealth)
 def defense_health(project_id: str, request: Request) -> DefenseHealth:
     with transaction() as conn:
         require_project(conn, require_user(conn, request), project_id)
-        worker_seen = conn.execute(sa.select(sa.func.max(jobs.c.heartbeat_at))).scalar()
-        queued = conn.execute(
-            sa.select(sa.func.count()).select_from(jobs).where(jobs.c.status == "queued")
-        ).scalar()
-        last_ingest = conn.execute(
-            sa.select(sa.func.max(runtime_windows.c.window_end)).where(
-                runtime_windows.c.project_id == project_id
-            )
-        ).scalar()
-        last_event = conn.execute(
-            sa.select(sa.func.max(monitoring_events.c.created_at)).where(
-                monitoring_events.c.project_id == project_id,
-                monitoring_events.c.doc["source"].astext == "runtime",
-            )
-        ).scalar()
-        return DefenseHealth(
-            project_id=project_id,
-            worker_seen_at=_aware(worker_seen),
-            queue_depth=int(queued) if queued is not None else None,
-            last_ingest_at=_aware(last_ingest),
-            last_runtime_event_at=_aware(last_event),
-            worker_status="unknown",
-            telemetry_status="unknown",
-            policy_status="unknown",
-        )
+        return _defense_health(conn, project_id)
 
 
 @router.get("/projects/{project_id}/pilot-report", response_model=PilotReport)
@@ -616,28 +671,7 @@ def pilot_report(project_id: str, request: Request) -> PilotReport:
             ).scalar()
             or 0
         )
-        worker_seen = conn.execute(sa.select(sa.func.max(jobs.c.heartbeat_at))).scalar()
-        queued = conn.execute(
-            sa.select(sa.func.count()).select_from(jobs).where(jobs.c.status == "queued")
-        ).scalar()
-        last_ingest = conn.execute(
-            sa.select(sa.func.max(runtime_windows.c.window_end)).where(
-                runtime_windows.c.project_id == project_id
-            )
-        ).scalar()
-        last_event = conn.execute(
-            sa.select(sa.func.max(monitoring_events.c.created_at)).where(
-                monitoring_events.c.project_id == project_id,
-                monitoring_events.c.doc["source"].astext == "runtime",
-            )
-        ).scalar()
-        health = DefenseHealth(
-            project_id=project_id,
-            worker_seen_at=_aware(worker_seen),
-            queue_depth=int(queued) if queued is not None else None,
-            last_ingest_at=_aware(last_ingest),
-            last_runtime_event_at=_aware(last_event),
-        )
+        health = _defense_health(conn, project_id)
         trail_rows = (
             conn.execute(
                 sa.select(audit_events.c.doc)
@@ -668,6 +702,8 @@ def pilot_report(project_id: str, request: Request) -> PilotReport:
                     detail=None,
                 )
             )
+        trail.extend(_failed_job_trail(conn, project_id))
+        trail.sort(key=lambda item: item.at, reverse=True)
         return PilotReport(
             project_id=project_id,
             generated_at=utcnow(),

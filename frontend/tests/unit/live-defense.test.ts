@@ -9,6 +9,7 @@ import {
   liveDefenseTab,
   MISSING_LIVE_APIS,
   rankQValues,
+  SHADOW_VS_CONTROLS_COPY,
   USED_LIVE_APIS,
   withLiveDefenseMode,
 } from '@/lib/live-defense';
@@ -147,5 +148,7 @@ describe('source isolation', () => {
     expect(MISSING_LIVE_APIS.map(item => item.id)).toContain('production_grants');
     expect(MISSING_LIVE_APIS.map(item => item.id)).not.toContain('live_inference');
     expect(MISSING_LIVE_APIS.map(item => item.id)).not.toContain('component_health');
+    expect(SHADOW_VS_CONTROLS_COPY).toMatch(/never execute a control/);
+    expect(MISSING_LIVE_APIS.find(item => item.id === 'autonomous')?.reason).toMatch(/Phase 7 is not started/);
   });
 });

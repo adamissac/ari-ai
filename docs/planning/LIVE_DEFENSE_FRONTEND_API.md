@@ -1,14 +1,13 @@
-# Live Defense frontend — API contracts (Phase 4)
+# Live Defense frontend — API contracts (Phase 6)
 
-Status: **Phase 4 owned-test enforcement** on `feat/live-defense-phase4-controlled-enforcement`.
-Status: **Phase 5 shadow-pilot readiness** on `feat/live-defense-phase5-pilot-readiness`
-(extends Phase 2/3 on `origin/main`). Phase 4 enforcement (PR #393) is **not**
-included.
-Consumer: `frontend/` Live Defense dashboard. Producer: control plane (`backend/`,
-`shared/` 0.18.0). Phases 1–3 are extended, not rebuilt: live mode still refuses
-to mix layout-preview fixtures with records; Phase 2/3 accept remains
-non-executing; isolate is never offered. Authorization uses a **separate**
-endpoint. Controls are labelled **OWNED TEST ENVIRONMENT**.
+Status: **Phase 6 post-merge audit** on `feat/live-defense-phase6-pilot-audit`
+from `origin/main` (PRs #393 and #395 both merged). Shadow-pilot is
+recommendation-only. Owned-test controls remain a **separate** authorization
+path. Producer: control plane (`backend/`, `shared/` 0.19.0). Phases 1–5 are
+extended, not rebuilt: live mode still refuses to mix layout-preview fixtures
+with records; Phase 2/3 accept remains non-executing; isolate is never offered.
+Authorization uses a **separate** endpoint. Controls are labelled **OWNED TEST
+ENVIRONMENT**. Do not use Controls during a customer shadow-pilot.
 
 Canonical types: `shared/shared/monitoring.py`, `shared/shared/incident.py`,
 `shared/shared/rl.py`, `shared/shared/live_defense.py`, generated TS via
