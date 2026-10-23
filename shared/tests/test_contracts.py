@@ -252,6 +252,44 @@ def test_live_defense_reviews_cannot_execute_and_health_cannot_be_healthy() -> N
         StagingEnvironment("production")
 
 
+def test_live_control_is_separate_from_shadow_decision_and_nist() -> None:
+    from shared.live_defense import (
+        AUTHORIZATION_CHECKS,
+        ISOLATED_FIXTURE_SOURCE,
+        LiveControlKind,
+        LiveControlStatus,
+        StagingEnvironment,
+    )
+
+    assert len(AUTHORIZATION_CHECKS) == 15
+    assert ISOLATED_FIXTURE_SOURCE == "198.51.100.66"
+    control = examples.build()["LiveControl"]
+    assert control.environment_label == "OWNED TEST ENVIRONMENT"
+    assert control.simulated is False
+    assert (
+        control.verification is None or control.verification.adapter_http_200_is_not_effectiveness
+    )
+    with pytest.raises(ValidationError):
+        BY_NAME["LiveControl"].model_validate(
+            {**control.model_dump(mode="json"), "status": "contained"}
+        )
+    with pytest.raises(ValueError):
+        LiveControlKind("isolate")
+    with pytest.raises(ValueError):
+        LiveControlStatus("detected")
+    with pytest.raises(ValueError):
+        StagingEnvironment("production")
+    created = examples.build()["ControlChannelCreated"]
+    view = examples.build()["ControlChannelView"]
+    assert "hmac_secret" not in view.model_dump()
+    assert created.host == "127.0.0.1"
+    auth = examples.build()["ControlAuthorizationCreate"]
+    with pytest.raises(ValidationError):
+        BY_NAME["ControlAuthorizationCreate"].model_validate(
+            {**auth.model_dump(mode="json"), "actor_id": "usr_01JFIXTURE0000000000000USR"}
+        )
+
+
 def test_live_policy_decision_is_never_executed_and_does_not_require_q_values() -> None:
     decision = examples.build()["LivePolicyDecision"]
     assert decision.executed is False

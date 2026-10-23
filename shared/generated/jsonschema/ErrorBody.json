@@ -28,7 +28,8 @@
         "CANCELLED",
         "JOB_LEASE_EXPIRED",
         "INTERNAL",
-        "KILL_SWITCH"
+        "KILL_SWITCH",
+        "LIVE_CONTROL_DENIED"
       ],
       "title": "ErrorCode",
       "type": "string"

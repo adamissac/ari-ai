@@ -57,7 +57,12 @@ APP = "app_01JFIXTURE0000000000000APP"
 ITK = "itk_01JFIXTURE0000000000000ITK"
 ARV = "arv_01JFIXTURE0000000000000ARV"
 LPD = "lpd_01JFIXTURE0000000000000LPD"
+LCT = "lct_01JFIXTURE0000000000000LCT"
+CGR = "cgr_01JFIXTURE0000000000000CGR"
+CCH = "cch_01JFIXTURE0000000000000CCH"
+EST = "est_01JFIXTURE0000000000000EST"
 REC = "rec_0123456789abcdef0123456789abcdef"
+BIND = "a" * 64
 
 
 def _span_ref(path: str, start: int, end: int, provenance: str) -> evidence.EvidenceRef:
@@ -441,6 +446,121 @@ def build() -> dict[str, BaseModel]:
             rule_hits=[],
             principal_targets=[],
             feature_mapping_note=None,
+        ),
+        "AuthorizationCheckResult": live_defense.AuthorizationCheckResult(
+            name="authenticated_session",
+            passed=True,
+            reason="Actor is the authenticated session.",
+        ),
+        "ControlTarget": live_defense.ControlTarget(
+            type=live_defense.LiveControlTargetType.route,
+            value="GET /payments/{payment_id}",
+        ),
+        "ControlGrant": live_defense.ControlGrant(
+            id=CGR,
+            project_id=PRJ,
+            application_id=APP,
+            allowed_kinds=[
+                live_defense.LiveControlKind.rate_limit,
+                live_defense.LiveControlKind.block_source,
+                live_defense.LiveControlKind.increase_logging,
+                live_defense.LiveControlKind.escalate,
+            ],
+            max_duration_s=300,
+            hourly_budget=5,
+            created_by=USR,
+            created_at=T0,
+        ),
+        "ControlGrantCreate": live_defense.ControlGrantCreate(
+            application_id=APP,
+            allowed_kinds=[live_defense.LiveControlKind.rate_limit],
+            max_duration_s=300,
+            hourly_budget=5,
+        ),
+        "ControlChannelView": live_defense.ControlChannelView(
+            id=CCH,
+            project_id=PRJ,
+            application_id=APP,
+            host="127.0.0.1",
+            port=18080,
+            created_at=T0,
+        ),
+        "ControlChannelCreate": live_defense.ControlChannelCreate(port=18080),
+        "ControlChannelCreated": live_defense.ControlChannelCreated(
+            id=CCH,
+            project_id=PRJ,
+            application_id=APP,
+            host="127.0.0.1",
+            port=18080,
+            created_at=T0,
+            hmac_secret="hkt_ctl_exampleonly_notsecret",
+        ),
+        "ControlAuthorizationCreate": live_defense.ControlAuthorizationCreate(
+            kind=live_defense.LiveControlKind.rate_limit,
+            target=live_defense.ControlTarget(
+                type=live_defense.LiveControlTargetType.route,
+                value="GET /payments/{payment_id}",
+            ),
+            duration_s=60,
+            rationale="Owned-test rate limit after a staged finding.",
+            live_policy_decision_id=LPD,
+            max_requests=2,
+        ),
+        "LiveControlVerification": live_defense.LiveControlVerification(
+            observed_effect=True,
+            adapter_http_status=200,
+            probe_http_statuses=[200, 429],
+            method="real_http_probes",
+            detail="Second fixture request was 429 after a 1-request rate limit.",
+            verified_at=T0,
+        ),
+        "LiveControl": live_defense.LiveControl(
+            id=LCT,
+            project_id=PRJ,
+            application_id=APP,
+            live_policy_decision_id=LPD,
+            grant_id=CGR,
+            kind=live_defense.LiveControlKind.rate_limit,
+            target=live_defense.ControlTarget(
+                type=live_defense.LiveControlTargetType.route,
+                value="GET /payments/{payment_id}",
+            ),
+            duration_s=60,
+            status=live_defense.LiveControlStatus.verified,
+            origin=live_defense.LiveControlOrigin.analyst,
+            binding_sha256=BIND,
+            requested_by=USR,
+            requested_at=T0,
+            authorized_at=T0,
+            executing_at=T0,
+            verified_at=T0,
+            expires_at=T0,
+            checks=[
+                live_defense.AuthorizationCheckResult(
+                    name="authenticated_session",
+                    passed=True,
+                    reason="Actor is the authenticated session.",
+                )
+            ],
+            max_requests=2,
+            rationale="Owned-test rate limit after a staged finding.",
+        ),
+        "EmergencyStop": live_defense.EmergencyStop(
+            id=EST,
+            project_id=PRJ,
+            application_id=APP,
+            active=True,
+            requested_by=USR,
+            requested_at=T0,
+            verified_cleared=False,
+            note="Kill switch for the owned-test app.",
+        ),
+        "EmergencyStopCreate": live_defense.EmergencyStopCreate(
+            application_id=APP,
+            note="Kill switch for the owned-test app.",
+        ),
+        "LiveControlRollbackCreate": live_defense.LiveControlRollbackCreate(
+            reason="Analyst requested rollback after verification.",
         ),
     }
 

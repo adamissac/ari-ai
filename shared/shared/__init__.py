@@ -6,7 +6,7 @@ coordination/CONTRACTS.md.
 """
 
 SCHEMA_VERSION = (
-    "0.17.0"  # 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING;
+    "0.18.0"  # 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING;
     # 0.6 intelligence memory (PR #39); 0.7 security standards + incidents (PR #49);
     # 0.8 FindingDetail / AssessmentReport response DTOs (additive);
     # 0.9 CheckCategory enum (Probe ids + V0 fixture aliases);
@@ -25,4 +25,8 @@ SCHEMA_VERSION = (
     #      health-check producer (HTTP 200 is not a healthy verdict).
     # 0.17 live-defense Phase 3 shadow runtime (additive): RuntimeSource "owned_staging";
     #      LivePolicyDecision (NOT EXECUTED); AnalystReview may target a live decision.
+    # 0.18 live-defense Phase 4 controlled enforcement (additive): LiveControl lifecycle,
+    #      ControlGrant, ControlChannel, authorization DTO, verification records.
+    #      AnalystReview and LivePolicyDecision stay non-executing. Production is still
+    #      not a StagingEnvironment value.
 )
