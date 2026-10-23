@@ -537,7 +537,7 @@ export interface DefensiveMapping {
 }
 
 /** How verified repairs reach the repository (ADR-0020). */
-export type DeliveryMode = "review" | "auto";
+export type DeliveryMode = "auto" | "pull_request" | "manual";
 
 export interface DevLoginRequest {
   github_login: string;
@@ -1117,8 +1117,8 @@ export interface ProjectSettings {
   monitoring_policy: TriggerPolicy;
   languages: Array<string>;
   delivery_mode: DeliveryMode;
-  /** Owner who switched delivery to auto; set by the server, never the client */
-  auto_delivery_enabled_by: string | null;
+  /** Owner on whose standing authorization Ari approves and delivers fixes; set by the server, never the client. Null on projects that predate delivery modes: they stay manual until an owner saves settings. */
+  delivery_authorized_by: string | null;
 }
 
 export interface ProjectUpdate {

@@ -87,12 +87,32 @@ class GitHubApp:
                 "Authorization": f"Bearer {self._app_jwt()}",
                 "Accept": "application/vnd.github+json",
             },
-            json={"permissions": {"contents": "write" if write else "read", "metadata": "read"}},
+            json={
+                "permissions": {"contents": "write", "pull_requests": "write", "metadata": "read"}
+                if write
+                else {"contents": "read", "metadata": "read"}
+            },
         )
         r.raise_for_status()
         data = r.json()
         self._tokens[key] = _Token(data["token"], time.time() + 3000)
         return data["token"]
+
+    def open_pull_request(
+        self, installation_id: int, full_name: str, *, head: str, base: str, title: str, body: str
+    ) -> str:
+        """Open a PR (ADR-0020) and return its URL. Needs the App's pull_requests: write."""
+        r = self._client.post(
+            f"/repos/{full_name}/pulls",
+            headers={
+                "Authorization": f"Bearer {self.installation_token(installation_id, write=True)}",
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+            json={"title": title, "head": head, "base": base, "body": body},
+        )
+        r.raise_for_status()
+        return str(r.json()["html_url"])
 
     def _get(self, installation_id: int, path: str, **params: Any) -> Any:
         r = self._client.get(

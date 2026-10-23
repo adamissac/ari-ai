@@ -58,7 +58,10 @@ export function parseSettings(d: Draft): { settings: ProjectSettings } | { error
       monitoring_policy: { enabled: d.enabled, min_interval_s: interval, ignore_paths_only: split(d.ignore, /\n/), monitoring_budget: mon },
       languages,
       delivery_mode: d.deliveryMode,
-      auto_delivery_enabled_by: null, // the server records who enabled auto delivery
+      delivery_authorized_by: null, // the server records who enabled auto delivery
     },
   };
 }
+
+export const AUTO_WARNING =
+  'Ari will commit verified fixes straight to your default branch with no human review (it opens a pull request instead if the branch moved or is protected). Continue?';

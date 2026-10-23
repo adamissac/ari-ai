@@ -54,18 +54,21 @@ class TriggerPolicy(StrictModel):
 class DeliveryMode(StrEnum):
     """How verified repairs reach the repository (ADR-0020)."""
 
-    review = "review"  # a human approves each remediation; nothing is pushed
-    auto = "auto"  # remediation is pre-approved by the owner; Verify-accepted patches are pushed
+    auto = "auto"  # commit straight to the default branch (falls back to a PR)
+    pull_request = "pull_request"  # open a PR for the team to review and merge
+    manual = "manual"  # a human approves each remediation; nothing is pushed
 
 
 class ProjectSettings(StrictModel):
     default_budget: Budget = Field(default_factory=Budget)
     monitoring_policy: TriggerPolicy = Field(default_factory=TriggerPolicy)
     languages: list[ShortText] = Field(default_factory=lambda: ["python"])
-    delivery_mode: DeliveryMode = DeliveryMode.review
-    auto_delivery_enabled_by: UserId | None = Field(
+    delivery_mode: DeliveryMode = DeliveryMode.auto
+    delivery_authorized_by: UserId | None = Field(
         default=None,
-        description="Owner who switched delivery to auto; set by the server, never the client",
+        description="Owner on whose standing authorization Ari approves and delivers fixes; "
+        "set by the server, never the client. Null on projects that predate delivery modes: "
+        "they stay manual until an owner saves settings.",
     )
 
 

@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Fix delivery modes (ADR-0020): verified fixes are auto-committed to the default branch by default (falls back to a PR if the branch moved or is protected); `pull_request` mode opens a PR for the team; `manual` keeps human approval. Needs GitHub App Contents and Pull requests: Read & write.
+
 - Default repository AI automation and project 24/7 defense OFF; migration 0012 pauses existing automatic work until explicit owner opt-in. Manual runs and historical results remain available.
 - Add Live Defense Phase 5 customer **shadow-pilot readiness**: staging-app disconnect, ingest-token rotate, shadow-verify from recorded ingest, worker/telemetry/policy health stay unknown without evidence, exportable pilot report (HTTP 200 ≠ attack success; no “shadow prevented breaches”). No customer production enforcement, no autonomous RL, no browser-callable block/isolate/rate-limit. Contract schema 0.18.0 additive. Eval: `docs/LIVE_DEFENSE_PHASE5_EVAL.md`.
 - Add an opt-in research wrapper over owned payments-lite reads with store-derived identity/ownership, exact request binding, serialized permission changes and buffered freshness checks. No production or RL integration.

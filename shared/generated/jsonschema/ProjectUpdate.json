@@ -28,8 +28,9 @@
     "DeliveryMode": {
       "description": "How verified repairs reach the repository (ADR-0020).",
       "enum": [
-        "review",
-        "auto"
+        "auto",
+        "pull_request",
+        "manual"
       ],
       "title": "DeliveryMode",
       "type": "string"
@@ -37,7 +38,10 @@
     "ProjectSettings": {
       "additionalProperties": false,
       "properties": {
-        "auto_delivery_enabled_by": {
+        "default_budget": {
+          "$ref": "#/$defs/Budget"
+        },
+        "delivery_authorized_by": {
           "anyOf": [
             {
               "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
@@ -48,15 +52,12 @@
             }
           ],
           "default": null,
-          "description": "Owner who switched delivery to auto; set by the server, never the client",
-          "title": "Auto Delivery Enabled By"
-        },
-        "default_budget": {
-          "$ref": "#/$defs/Budget"
+          "description": "Owner on whose standing authorization Ari approves and delivers fixes; set by the server, never the client. Null on projects that predate delivery modes: they stay manual until an owner saves settings.",
+          "title": "Delivery Authorized By"
         },
         "delivery_mode": {
           "$ref": "#/$defs/DeliveryMode",
-          "default": "review"
+          "default": "auto"
         },
         "languages": {
           "items": {

@@ -98,7 +98,7 @@ from shared.scope import (
     AuthorizedScope,
     ScopeStatus,
 )
-from shared.tenancy import DeliveryMode, MemberRole, Project, ProjectSettings, Repository
+from shared.tenancy import MemberRole, Project, ProjectSettings, Repository
 
 router = APIRouter()
 
@@ -260,14 +260,11 @@ def _check_budgets(settings: ProjectSettings, before: ProjectSettings) -> None:
 def _stamp_delivery(
     settings: ProjectSettings, before: ProjectSettings, user_id: str
 ) -> ProjectSettings:
-    """The server alone records who authorized auto delivery; a client value is ignored."""
-    if settings.delivery_mode is DeliveryMode.review:
-        enabled_by = None
-    elif before.delivery_mode is DeliveryMode.auto and before.auto_delivery_enabled_by:
-        enabled_by = before.auto_delivery_enabled_by
-    else:
-        enabled_by = user_id
-    return settings.model_copy(update={"auto_delivery_enabled_by": enabled_by})
+    """The server alone records who authorized delivery; a client value is ignored. The
+    authorizer is kept while the mode is unchanged, and is the saving owner otherwise."""
+    same = before.delivery_mode is settings.delivery_mode
+    kept = before.delivery_authorized_by if same else None
+    return settings.model_copy(update={"delivery_authorized_by": kept or user_id})
 
 
 @router.patch("/projects/{project_id}", response_model=Project)
@@ -276,6 +273,7 @@ def update_project(project_id: str, body: ProjectUpdate, request: Request) -> Pr
         user = _user(conn, request)
         org_id, _ = require_project(conn, user, project_id, MemberRole.owner)
         values: dict[str, Any] = {}
+        changed_delivery = False
         if body.name is not None:
             values["name"] = body.name
         if body.settings is not None:
@@ -284,6 +282,7 @@ def update_project(project_id: str, body: ProjectUpdate, request: Request) -> Pr
             settings = _stamp_delivery(body.settings, before, user.id)
             values["settings"] = settings.model_dump(mode="json")
             if settings.delivery_mode is not before.delivery_mode:
+                changed_delivery = True
                 _audit(
                     conn,
                     org_id,
@@ -295,6 +294,10 @@ def update_project(project_id: str, body: ProjectUpdate, request: Request) -> Pr
                 )
         if values:
             conn.execute(sa.update(projects).where(projects.c.id == project_id).values(**values))
+            if changed_delivery:  # runs already waiting must not stay stuck behind the old mode
+                from backend.delivery import approve_waiting_runs
+
+                approve_waiting_runs(conn, project_id)
             _audit(
                 conn,
                 org_id,

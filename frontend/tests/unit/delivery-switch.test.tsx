@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import { ApiClient, type MeResponse, type Project, type ProjectSettings } from '@hackatl/frontend-transport';
 import { DeliverySwitch } from '@/components/delivery-switch';
 import { setApiClient } from '@/lib/api';
@@ -13,8 +13,8 @@ const settings: ProjectSettings = {
     monitoring_budget: { max_tokens: 150_000, max_usd: 3, max_wall_clock_s: 900 },
   },
   languages: ['python'],
-  delivery_mode: 'review',
-  auto_delivery_enabled_by: null,
+  delivery_mode: 'pull_request',
+  delivery_authorized_by: null,
 };
 const project: Project = { id: 'prj_12345678', org_id: 'org_12345678', name: 'Payments', settings, created_at: '2026-10-23T00:00:00Z' };
 const session: MeResponse = {
@@ -28,11 +28,11 @@ afterEach(() => {
   setApiClient(undefined);
 });
 
-it('shows Review by default', () => {
+it('shows PR when fixes arrive as pull requests', () => {
   render(<DeliverySwitch project={project} />);
   const toggle = screen.getByRole('switch', { name: 'Auto-commit fixes' });
   expect(toggle.getAttribute('aria-checked')).toBe('false');
-  expect(toggle.textContent).toContain('Review');
+  expect(toggle.textContent).toContain('PR');
 });
 
 it('PATCHes delivery_mode auto and keeps the rest of the settings', async () => {
@@ -42,17 +42,26 @@ it('PATCHes delivery_mode auto and keeps the rest of the settings', async () => 
     requests.push({ url, init });
     if (url.endsWith('/me')) return Response.json(session);
     const body = JSON.parse(init?.body as string) as { settings: ProjectSettings };
-    return Response.json({ ...project, settings: { ...body.settings, auto_delivery_enabled_by: 'usr_12345678' } });
+    return Response.json({ ...project, settings: { ...body.settings, delivery_authorized_by: 'usr_12345678' } });
   };
   const client = new ApiClient({ baseUrl: 'http://localhost/api/v1', fetch: fetcher });
   setApiClient(client);
   await client.session();
 
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
   render(<DeliverySwitch project={project} />);
   fireEvent.click(screen.getByRole('switch', { name: 'Auto-commit fixes' }));
+  expect(confirm).toHaveBeenCalledOnce();
 
   await waitFor(() => expect(screen.getByRole('switch', { name: 'Auto-commit fixes' }).getAttribute('aria-checked')).toBe('true'));
   const patch = requests.find(request => request.init?.method === 'PATCH');
   const body = JSON.parse(patch?.init?.body as string) as { settings: ProjectSettings };
   expect(body.settings).toEqual({ ...settings, delivery_mode: 'auto' });
+});
+
+it('does nothing when the owner declines the auto-commit warning', () => {
+  vi.spyOn(window, 'confirm').mockReturnValue(false);
+  render(<DeliverySwitch project={project} />);
+  fireEvent.click(screen.getByRole('switch', { name: 'Auto-commit fixes' }));
+  expect(screen.getByRole('switch', { name: 'Auto-commit fixes' }).getAttribute('aria-checked')).toBe('false');
 });

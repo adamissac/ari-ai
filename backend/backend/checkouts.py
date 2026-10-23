@@ -43,9 +43,26 @@ class CheckoutError(RuntimeError):
 TokenFor = Callable[[int], str]
 
 
-def _git(*args: str, cwd: Path | None = None, timeout: float = 300) -> str:
+def auth_env(token: str) -> dict[str, str]:
+    """Hand git the token as an HTTP header through the environment, not argv (argv is
+    visible to every process on the host via ps)."""
+    auth = base64.b64encode(f"x-access-token:{token}".encode()).decode()
+    return {
+        "GIT_CONFIG_COUNT": "1",
+        "GIT_CONFIG_KEY_0": "http.extraHeader",
+        "GIT_CONFIG_VALUE_0": f"Authorization: Basic {auth}",
+    }
+
+
+def _git(
+    *args: str,
+    cwd: Path | None = None,
+    timeout: float = 300,
+    extra_env: dict[str, str] | None = None,
+) -> str:
     env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
     env["GIT_TERMINAL_PROMPT"] = "0"
+    env.update(extra_env or {})
     proc = subprocess.run(
         ["git", *args], cwd=cwd, env=env, capture_output=True, text=True, timeout=timeout
     )
@@ -81,18 +98,16 @@ def fetch_commit(
         _git("init", "--bare", "--quiet", str(repo_dir))
     if _has_commit(repo_dir, sha):
         return repo_dir
-    auth = base64.b64encode(f"x-access-token:{token}".encode()).decode()
     _git(
         "-C",
         str(repo_dir),
-        "-c",
-        f"http.extraHeader=Authorization: Basic {auth}",
         "fetch",
         "--quiet",
         "--depth=1",
         "--no-tags",
         f"{github_web_url.rstrip('/')}/{full_name}.git",
         sha,
+        extra_env=auth_env(token),
     )
     if not _has_commit(repo_dir, sha):
         raise CheckoutError(f"{full_name} has no commit {sha}")

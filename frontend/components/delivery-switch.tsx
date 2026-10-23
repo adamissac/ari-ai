@@ -4,6 +4,7 @@ import type { Project } from '@hackatl/frontend-transport';
 import { useState } from 'react';
 import { ErrorState } from '@/components/ui';
 import { api } from '@/lib/api';
+import { AUTO_WARNING } from '@/lib/settings';
 
 export function DeliverySwitch({
   project,
@@ -16,6 +17,7 @@ export function DeliverySwitch({
 }) {
   const dark = tone === 'dark';
   const projectEnabled = project.settings.delivery_mode === 'auto';
+  const manual = project.settings.delivery_mode === 'manual';
   const [toggleState, setToggleState] = useState({
     projectId: project.id,
     projectEnabled,
@@ -37,13 +39,14 @@ export function DeliverySwitch({
   const toggle = async () => {
     const previous = on;
     const enabled = !previous;
+    if (enabled && !window.confirm(AUTO_WARNING)) return;
     setToggleState(current => ({ ...current, enabled }));
     setBusy(true);
     setError(null);
     try {
       const next = await api().updateProject(project.id, {
         name: project.name,
-        settings: { ...project.settings, delivery_mode: enabled ? 'auto' : 'review' },
+        settings: { ...project.settings, delivery_mode: enabled ? 'auto' : 'pull_request' },
       });
       setToggleState(current => ({ ...current, enabled: next.settings.delivery_mode === 'auto' }));
       onChange?.(next);
@@ -70,11 +73,11 @@ export function DeliverySwitch({
         <span>Auto-commit fixes</span>
         <span className={`inline-flex items-center gap-1.5 text-xs ${statusTone}`}>
           <span aria-hidden="true" className={`h-2 w-2 rounded-full ${on ? 'bg-emerald-400' : offDotTone}`} />
-          {on ? 'Auto' : 'Review'}
+          {on ? 'Auto' : manual ? 'Manual' : 'PR'}
         </span>
       </button>
       <p className={`text-xs ${hintTone}`}>
-        {on ? 'Verified fixes are committed to your default branch with no human check.' : 'You review the code review and the 7 agents, and approve each fix.'}
+        {on ? 'Verified fixes are committed to your default branch with no human check.' : manual ? 'Nothing is pushed. You approve each fix yourself.' : 'Verified fixes arrive as a pull request for your team to review.'}
       </p>
       {error !== null && <ErrorState error={error} context="Could not change fix delivery (only project owners can)" />}
     </div>
