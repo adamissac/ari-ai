@@ -12,6 +12,7 @@ const TABS = [
   { id: 'explain', label: 'Explainability' },
   { id: 'apps', label: 'Staging apps' },
   { id: 'controls', label: 'Controls' },
+  { id: 'readiness', label: 'Readiness' },
 ] as const;
 
 export function LiveDefenseShell({

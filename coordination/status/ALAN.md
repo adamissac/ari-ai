@@ -1,13 +1,14 @@
 # Alan — implementation status
 
 Owner: Alan (`security-agents/`, SEC-001 … SEC-013; interim Live Defense UI)
-Branch: `feat/live-defense-phase6-pilot-audit`
-Current task: Phase 6 post-merge integration audit and shadow-pilot readiness (no Phase 7)
-Last remote sync: 2026-10-23, `origin/main` @ `02ab34de` (PRs #393 and #395 merged on main)
-API/contract dependencies: `shared` 0.9.0 `CheckCategory`; `backend.host` checkpoints; `code_review.api` functional helpers
-Recent PR/commit: `feat/live-defense-phase6-pilot-audit` (Phase 6 audit; no Phase 7)
-Blockers: live seven-agent run (issue #10, no key); Docker images (INFRA-005); Phase 6 merge needs CI + human review
-Next action: wait for CI on the Codex P1/P2 head of #411; merge only if MERGEABLE + reviews satisfied + no enforcement expansion; do not start Phase 7
+Branch: `feat/live-defense-phase6-5-rl-gated-pilot`
+Current task: Phase 6.5 RL-gated pilot infrastructure (verdict stays RL BLOCKED; no Phase 7)
+Last remote sync: 2026-10-23, `origin/main` @ `74a0a3c2` (PRs #411 and #410 merged on main)
+API/contract dependencies: `shared` 0.20.0 live-defense RL-gated models; backend `GET /rl-readiness`
+Recent PR/commit: `feat/live-defense-phase6-5-rl-gated-pilot` (Phase 6.5 infra; Codex research untouched)
+Verified this session: pytest 25 (phase6_5+authorize); frontend lint/typecheck; vitest 331/78; transport 35. Playwright e2e stack not run.
+Blockers: RL evidence A–J missing; owner-only pilot authorization; live seven-agent run (issue #10); Docker images (INFRA-005)
+Next action: leave PR open for human review of authz tightening; do not start Phase 7; do not provision customer infra
 
 ## What runs today
 
@@ -74,6 +75,11 @@ Updated 2026-10-17 after #100 to #125.
   claimed.
 
 ## Session entries
+
+### 2026-10-23 (Live Defense Phase 6.5 RL-gated pilot infrastructure)
+
+- Branch `feat/live-defense-phase6-5-rl-gated-pilot` from live `origin/main` `74a0a3c2`. Additive shared 0.20.0. Server-enforced shadow-only for `rl_gated_pilot`. Backend `GET /rl-readiness` is source of truth; `ready` stays false. Codex/`rl-defense/` untouched. **INFRASTRUCTURE READY — RL BLOCKED.** Distinct from Phase 6 CONDITIONAL GO. No Phase 7 / no customer infra.
+- Executed: pytest 25 (phase6_5+authorize); frontend lint/typecheck; vitest 331/78; transport 35. Playwright e2e stack not run.
 
 ### 2026-10-23 (Live Defense Phase 6 post-merge audit)
 
