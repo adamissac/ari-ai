@@ -3,7 +3,7 @@
 Owner: Alan (`security-agents/`, SEC-001 … SEC-013; interim Live Defense UI)
 Branch: `feat/live-defense-phase4-controlled-enforcement`
 Current task: Live Defense Phase 4 owned-test controlled enforcement (separate LiveControl lifecycle + authorize gate)
-Last remote sync: 2026-10-23, `origin/main` @ `5be62de` (PR #392 merged)
+Last remote sync: 2026-10-23, `origin/main` @ `09e8cab` (PR #392 and #388 merged on main)
 API/contract dependencies: `shared` 0.9.0 `CheckCategory`; `backend.host` checkpoints; `code_review.api` functional helpers
 Recent PR/commit: `feat/alan/verify-honesty-check-category` (do not push merged `host-finding-persistence` / `host-resume-hardening`)
 Blockers: live seven-agent run (issue #10, no key); Docker images (INFRA-005)
@@ -432,3 +432,18 @@ GitHub connector. The temporary checkout `/private/tmp/rl-v10` still has earlier
 Git metadata and preserved files corresponding to remote fix `1e42f3e`; reconcile it
 with the remote before any cleanup or new work. The user's original dirty checkout
 was not overwritten. No study heartbeat was re-enabled or extra experiment scheduled.
+
+### 2026-10-22 — owner-authorized RL-CMDP-001 Phase1
+
+Research implementation/evidence in PR #388, `feat/alan/constrained-rl-phase1`.
+Keep unmerged under the latest no-production-deployment restriction (main deploys).
+Audit/CMDP/action matrix/offline readiness/four-paper decision delivered.140fixed
+baseline episodes /4,200windows verified,8,400historical train transitions adapted
+read-only. Budgeted heuristic has99.50% availability but93.16% compromise, so **no-go
+now** for constrained-DDQN/CQL. No Phase2/training/promotion/serving change.
+
+27focused tests pass (9.91s); original full347pass plus subsequent new regressions, shared
+contracts60pass and skipped TypeScript check passed separately. All five CI workflows
+passed source184a61a; review-proof fixes pending current-head CI. Four review findings
+fixed with source Git-object proof, portable registry guard, policy-decision replay and
+schema discriminators. See docs/research/constrained-rl-phase1/VERIFICATION.md.
