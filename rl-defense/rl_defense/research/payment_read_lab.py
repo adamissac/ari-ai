@@ -11,13 +11,15 @@ import copy
 import json
 import re
 import time
+import uuid
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from rl_defense.research.authorization import ReadContext, ReadGrant, authorize_read
+from rl_defense.research.authorization import ReadGrant
+from rl_defense.research.authorization_provider import PaymentsLiteAuthorizationProvider
 
 if TYPE_CHECKING:
     from payments_lite.store import Store
@@ -63,11 +65,14 @@ class PaymentReadLab:
         self._grants = grants
         self._clock = clock
         self._lock = asyncio.Lock()
+        self._clock_domain = f"payments-lite:{uuid.uuid4()}"
+        self._revision = 0
         self.forwarded = 0
 
     async def replace_grants(self, grants: tuple[ReadGrant, ...] | None) -> None:
         async with self._lock:
             self._grants = grants
+            self._revision += 1
 
     async def bind_token(self, token: str, principal: str | None) -> None:
         async with self._lock:
@@ -77,12 +82,14 @@ class PaymentReadLab:
                 if principal not in self._store.customers:
                     raise ValueError("unknown fixture principal")
                 self._store.tokens[token] = principal
+            self._revision += 1
 
     async def transfer_payment(self, resource: str, owner: str) -> None:
         async with self._lock:
             if owner not in self._store.customers:
                 raise ValueError("unknown fixture owner")
             self._store.payments[resource].customer_id = owner
+            self._revision += 1
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
@@ -108,30 +115,19 @@ class PaymentReadLab:
             return
         async with self._lock:
             now = self._clock()
-            principal = self._store.tokens.get(token)
-            customer = self._store.customers.get(principal)
-            if customer is None or customer.id != principal:
-                principal = None
-            resource = match.group(1)
-            payment = self._store.payments.get(resource)
-            owner = payment.customer_id if payment is not None else None
-            owner_record = self._store.customers.get(owner)
-            if owner_record is None or owner_record.id != owner:
-                owner = None
-            context = ReadContext(
-                principal,
-                owner,
-                resource,
+            provider = PaymentsLiteAuthorizationProvider(
+                self._store,
                 self._grants,
-                now,
-                now + 5,
-                contradictory=payment is not None and payment.id != resource,
+                clock_domain=self._clock_domain,
+                revision=self._revision,
             )
-            decision = authorize_read(context, now=now)
-            if decision.outcome != "allow":
-                await JSONResponse({}, status_code=404 if decision.outcome == "deny" else 503)(
-                    scope, receive, send
-                )
+            snapshot = provider.capture(credential=token, resource=match.group(1), tick=now)
+            context = snapshot.context
+            classification = snapshot.classify(tick=now)
+            if classification not in ("owner", "delegated"):
+                await JSONResponse(
+                    {}, status_code=404 if classification == "unauthorized" else 503
+                )(scope, receive, send)
                 return
             messages: list[Message] = []
             size = 0
@@ -155,7 +151,7 @@ class PaymentReadLab:
                 await JSONResponse({}, status_code=503)(scope, receive, send)
                 return
             # Buffering prevents a mid-request expiry from leaking an already-started body.
-            if authorize_read(context, now=self._clock()).outcome != "allow":
+            if snapshot.classify(tick=self._clock()) not in ("owner", "delegated"):
                 await JSONResponse({}, status_code=503)(scope, receive, send)
                 return
             # Validate the existing example response contract before releasing any
@@ -190,7 +186,7 @@ class PaymentReadLab:
             # Construct fresh headers from validated data, dropping cookies, redirects
             # and other unexpected downstream header values.
             response = JSONResponse(payment_response.model_dump(mode="json"))
-            if authorize_read(context, now=self._clock()).outcome != "allow":
+            if snapshot.classify(tick=self._clock()) not in ("owner", "delegated"):
                 await JSONResponse({}, status_code=503)(scope, receive, send)
                 return
             await response(scope, receive, send)
