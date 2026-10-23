@@ -473,3 +473,11 @@ tests pass; CI/review pending. No serving or model changes.
 RL-CMDP-005 on `feat/alan/feasibility-readiness-audit`: read-only original-fixture
 audit with fixed source/index trust anchors and explicit inconclusive readiness.
 Eighteen tests pass; no study rerun, training or serving integration.
+
+## RL authorization-context provider — 2026-10-23
+
+RL-CMDP-006, branch `feat/alan/authorization-context-provider`: owner-authorized
+version 0.1.0 internal provider and payments-lite trusted-record adapter. 57 focused
+tests pass; review/CI pending. Four authorization states, scoped clock/revision
+metadata and documented future causal observation boundary. No new external
+service, shared public API, RL observation modification, training or promotion.

@@ -1496,3 +1496,22 @@ remain untouched. No merge: Phase1's deployment restriction governs this researc
 - Added read-only original-fixture evidence audit: fixed trust anchor, execution Git object/protocol, 54 ordered units and independently recomputed summaries. Canonical EvidenceRef; current auditor identity is separate from unrecorded original interpreter/timing.
 - Eighteen focused tests passed. Supported CLI runs from private read-only captured-commit source. Readiness remains inconclusive; training/promotion flags false.
 - No collector/app execution, comparison rerun, modified evidence, new fact authority or serving hook. Real payment authorization producer/transaction semantics still need a reviewed contract proposal.
+
+## 2026-10-23 — RL-CMDP-006 authorization provider
+
+Branch `feat/alan/authorization-context-provider`. User designated payments-lite
+trusted records and existing lab delegation records as research authority; no
+external customer system exists. Documented version 0.1.0 interface first, then
+extracted trusted lookup behind internal AuthorizationContextProvider and reused
+the deterministic kernel. Owner/delegated/unauthorized/unknown classifications;
+fixture clock domain and serialized revision metadata; no retained credentials.
+The wrapper still holds its lock through release and checks freshness after
+downstream execution/serialization. No external writer guarantees are claimed.
+
+57 focused provider/kernel/owned-app tests pass (1.65s). Existing historical
+evidence is untouched. No RL observation wiring/training or ControlGrant changes.
+Future causal input requirements in docs/research/authorization-context/README.md:
+completed observed windows, context available before cutoff, unknown coverage,
+no hidden labels, future requests or later permission backfill. Cross-system
+publication remains proposed and requires shared models/codegen/consumer review.
+Review and CI pending.

@@ -287,3 +287,8 @@ Opt-in owned payments-lite request-context wrapper and concurrency checks:
 
 Read-only finite-fixture readiness audit: `python -m rl_defense.research.readiness`.
 [Trust anchors, unknowns and no-go semantics](../docs/research/deterministic-feasibility/READINESS_AUDIT.md).
+
+Versioned research authorization-context provider and decision-time RL input rules:
+[interface and security assumptions](../docs/research/authorization-context/README.md).
+Payments-lite private records and existing trusted lab grants only; no external
+provider, observation-layout change or new evaluation.
