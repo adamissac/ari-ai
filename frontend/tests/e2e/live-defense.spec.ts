@@ -28,6 +28,7 @@ test('Live Defense shadow pilot: staging app, ingest, unknown health, review wit
   await expect(page.getByTestId('live-defense')).toHaveAttribute('data-mode', 'live');
   await expect(page.getByTestId('live-defense-preview-banner')).toHaveCount(0);
   await expect(page.getByTestId('live-defense-no-enforcement')).toContainText('does not apply, isolate, rate-limit, or block');
+  await expect(page.getByTestId('live-defense-shadow-vs-controls')).toContainText('never execute a control');
   await expect(page.getByTestId('live-defense-health-unknown')).toContainText('unknown');
   await expect(page.getByTestId('defense-map')).toHaveCount(0);
   await expect(page.getByRole('button', { name: /^(apply|isolate|rate-limit|block source)$/i })).toHaveCount(0);

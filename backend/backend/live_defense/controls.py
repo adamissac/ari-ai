@@ -178,11 +178,16 @@ def gate_for(
 ) -> tuple[GateDecision, ControlGrant | None, tuple[ControlChannelView, str] | None]:
     app = (
         conn.execute(
-            sa.select(connected_applications).where(connected_applications.c.id == application_id)
+            sa.select(connected_applications)
+            .where(connected_applications.c.id == application_id)
+            .with_for_update()
         )
         .mappings()
         .first()
     )
+    disconnected = False
+    if app is not None:
+        disconnected = (app["doc"] or {}).get("disconnected_at") is not None
     grant = load_grant(conn, application_id, for_update=True)
     channel = load_channel(conn, application_id)
     inp = AuthorizationInput(
@@ -191,6 +196,7 @@ def gate_for(
         project_id=project_id,
         application_id=application_id,
         application_exists=app is not None and app["project_id"] == project_id,
+        application_disconnected=disconnected,
         application_environment=None if app is None else app["environment"],
         kind=kind.value,
         target_type=target.type.value,

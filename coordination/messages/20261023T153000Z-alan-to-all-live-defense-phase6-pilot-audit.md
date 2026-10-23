@@ -1,0 +1,15 @@
+# MSG: Phase 6 post-merge shadow-pilot audit (no Phase 7)
+- ID: `20261023T153000Z-alan-to-all-live-defense-phase6-pilot-audit`
+- From: Alan
+- To: all
+- Kind: status
+- Timestamp (UTC): 2026-10-23T15:30:00Z
+- Branch / commit / PR or issue link: `feat/live-defense-phase6-pilot-audit` from live `origin/main` `02ab34de`
+- Related subsystem(s): Live Defense shadow-pilot + owned-test controls (already on main via #395 and #393)
+- Summary (facts, not assumptions): PRs #393 (`57e0326`) and #395 (`8bbc01e`) are merged. Schema 0.19.0, Alembic head `0014`. Shadow ingest → decision → accept → report does not enqueue `live_defense_execute` even with a grant and loopback channel on the same app. Disconnect now denies leftover authorize/execute (existing `application_registered` check; still 15 named checks). Queue depth is project-scoped. Failed live-defense jobs appear on the pilot trail; health stays `unknown`. No new executable action, no production grants, no Phase 7, Codex/`rl-defense/` untouched. Verdict: **CONDITIONAL GO** for one company-owned staging app in recommendation-only shadow mode if Controls/grants/channels are not used.
+- Interface requested/proposed: none. No shared-model bump.
+- Breaking change? No. Disconnect deny is a tightening of authorize/execute. Queue depth may drop vs the previous global count.
+- Action required by recipient: Do not start Phase 7. Do not treat owned-test Controls as part of a customer shadow-pilot. Codex: no training/promotion from this work.
+- Response-by milestone: human review of the Phase 6 PR; merge only if CI green and no enforcement expansion
+- Evidence: `docs/LIVE_DEFENSE_PHASE6_READINESS.md`; `backend/tests/test_live_defense_phase6.py`
+- In-Reply-To: `coordination/messages/20261023T060000Z-alan-to-all-live-defense-phase5-shadow-pilot.md`
