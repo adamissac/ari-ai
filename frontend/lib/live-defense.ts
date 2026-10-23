@@ -7,7 +7,7 @@
 import type { Incident, MonitoringEvent } from '@hackatl/frontend-transport';
 
 export type LiveDefenseMode = 'live' | 'layout-preview';
-export type LiveDefenseTab = 'overview' | 'incidents' | 'explain' | 'apps' | 'controls';
+export type LiveDefenseTab = 'overview' | 'incidents' | 'explain' | 'apps' | 'controls' | 'readiness';
 
 export const PREVIEW_QUERY = 'preview';
 export const PREVIEW_VALUE = 'layout';
@@ -27,7 +27,13 @@ export const SHADOW_MODE_COPY =
   'Shadow mode: Ari records ingest and recommendations for authorized staging apps. It does not grant production enforcement and never re-shows an ingest token after issuance.';
 
 export const SHADOW_VS_CONTROLS_COPY =
-  'Recommendation-only shadow path: ingest, LivePolicyDecision, analyst review, and the pilot report never execute a control. The Controls tab is a separate owned-test authorization. Do not register a grant or control channel for a customer shadow-pilot.';
+  'Recommendation-only shadow path: ingest, LivePolicyDecision, analyst review, and the pilot report never execute a control. The Controls tab is a separate owned-test authorization. RL-gated pilot apps are server-enforced shadow-only: no grant, channel, or execute.';
+
+export const RL_GATED_COPY =
+  'RL-gated shadow-only. Server refuses grants, control channels, authorization, and leftover execute. Analyst accept is still a recorded opinion. This is not customer deployment.';
+
+export const RL_BLOCKED_COPY =
+  'Phase 6 CONDITIONAL GO is rules-based shadow only. The RL-gated pilot stays blocked until the RL owner supplies evidence. Merged research PRs, unit tests, and docs are not model readiness.';
 
 export const HEALTH_UNKNOWN_COPY =
   'Worker, telemetry, and policy stay unknown. Heartbeat and queue depth are measured timestamps or counts, not a healthy verdict. Missing values are unavailable — never guessed. HTTP 200 from this page is not health.';
@@ -49,7 +55,7 @@ export function withLiveDefenseMode(href: string, mode: LiveDefenseMode): string
 
 export function liveDefenseHref(projectId: string | null, tab: LiveDefenseTab = 'overview', mode: LiveDefenseMode = 'live'): string {
   const base = projectId === null ? '/live-defense-pilot' : `/projects/${projectId}/live-defense`;
-  const suffix = tab === 'overview' ? '' : tab === 'incidents' ? '/incidents' : tab === 'explain' ? '/explain' : tab === 'controls' ? '/controls' : '/apps';
+  const suffix = tab === 'overview' ? '' : tab === 'incidents' ? '/incidents' : tab === 'explain' ? '/explain' : tab === 'controls' ? '/controls' : tab === 'readiness' ? '/readiness' : '/apps';
   const path = `${base}${suffix}`;
   return projectId === null ? path : withLiveDefenseMode(path, mode);
 }
@@ -58,6 +64,7 @@ export function liveDefenseTab(pathname: string): LiveDefenseTab {
   if (/live-defense(?:-pilot)?\/explain(?:\/|$)/.test(pathname)) return 'explain';
   if (/live-defense(?:-pilot)?\/incidents(?:\/|$)/.test(pathname)) return 'incidents';
   if (/live-defense(?:-pilot)?\/controls(?:\/|$)/.test(pathname)) return 'controls';
+  if (/live-defense(?:-pilot)?\/readiness(?:\/|$)/.test(pathname)) return 'readiness';
   if (/live-defense(?:-pilot)?\/apps(?:\/|$)/.test(pathname)) return 'apps';
   return 'overview';
 }
@@ -82,6 +89,8 @@ export const USED_LIVE_APIS = [
   { method: 'GET', path: '/projects/{id}/ingest-tokens', use: 'token metadata; secret never returned' },
   { method: 'GET', path: '/projects/{id}/defense-health', use: 'recorded worker/ingest timestamps; worker/telemetry/policy stay unknown' },
   { method: 'GET', path: '/projects/{id}/pilot-report', use: 'exportable shadow-pilot snapshot; HTTP 200 is not attack success' },
+  { method: 'GET', path: '/projects/{id}/rl-readiness', use: 'backend RL-gated readiness; ready=true only if every mandatory category is PASS' },
+  { method: 'POST', path: '/applications/{id}/enable-rl-gated-pilot', use: 'server-enforced shadow-only; fails closed if leftover controls remain' },
   { method: 'GET', path: '/projects/{id}/defense-graph', use: 'recorded apps and ingest routes; missing checks stay unknown' },
   { method: 'GET/POST', path: '/defense-recommendations/{id}/reviews', use: 'analyst accept/reject/needs-investigation; accept does not execute' },
   { method: 'GET', path: '/projects/{id}/live-policy-decisions', use: 'shadow decisions from rules or validated v6; NOT EXECUTED' },

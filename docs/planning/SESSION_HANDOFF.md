@@ -18,6 +18,19 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-23 — Cursor (agent, Alan) — Phase 6.5 RL-gated pilot infrastructure
+- Did: branch `feat/live-defense-phase6-5-rl-gated-pilot` from live `origin/main` `74a0a3c2` (PR #410 merged after #411 `5d1e7b91`). Additive `shared` 0.20.0: `rl_gated_pilot`, `RlReadinessAssessment` A–J, evaluation plan with null thresholds, `PolicyServingOutput`, hosted-inference config. Server-enforced shadow-only (API + worker + existing 15-check `application_registered` tightening). Backend `GET /rl-readiness` is the dashboard source of truth; `ready` stays false. Codex/`rl-defense/` training, datasets, holdout, v6 weights, historical evals **not edited**. No Phase 7, no customer infra.
+- Live GitHub: #411 MERGED `5d1e7b91`; Codex #388/#394/#396/#407/#410 MERGED. #410 is explicit inconclusive readiness — not model readiness.
+- Commands (executed):
+  - `uv run pytest -q backend/tests/test_live_defense_phase6_5.py backend/tests/test_live_defense_authorize.py` — 25 passed
+  - `npm run lint --prefix frontend` — pass; `npm run typecheck --prefix frontend` — pass
+  - `npm test --prefix frontend` — 331 passed / 78 files
+  - `npm test --prefix frontend/transport` — 35 passed
+  - Playwright e2e stack: **not run** (honest skip). Spec added for the Readiness tab.
+- Decisions: **INFRASTRUCTURE READY — RL BLOCKED**. Distinct from Phase 6 CONDITIONAL GO. Authz tightening left for human review; do not treat infrastructure completeness as customer deployment.
+- PR: https://github.com/adamissac/ari-ai/pull/412 — **left open** (authz tightening; no unapproved serving).
+- Next: human review of #412; RL owner must supply A–J evidence before any later owner-approval verdict. Do not start Phase 7.
+
 ### 2026-10-23 — Cursor (agent, Alan) — Phase 6 Codex P1/P2 before merge
 - Did: on `feat/live-defense-phase6-pilot-audit` (PR #411), locked the application row in `gate_for` and disconnect so leftover execute cannot race a concurrent disconnect; counted `run_assessment` jobs via `assessment_id`; kept recovered `last_error` on the pilot trail as `job.recovered`. Tightening only; `AUTHORIZATION_CHECKS` still 15. No Phase 7.
 - Commands: `uv run pytest -q backend/tests/test_live_defense_phase6.py backend/tests/test_live_defense_authorize.py` — 26 passed.

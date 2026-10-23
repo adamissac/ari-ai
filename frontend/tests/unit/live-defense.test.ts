@@ -33,10 +33,12 @@ describe('live defense mode', () => {
     expect(liveDefenseHref('prj_1', 'incidents', 'layout-preview')).toBe('/projects/prj_1/live-defense/incidents?preview=layout');
     expect(liveDefenseHref('prj_1', 'apps')).toBe('/projects/prj_1/live-defense/apps');
     expect(liveDefenseHref('prj_1', 'controls')).toBe('/projects/prj_1/live-defense/controls');
+    expect(liveDefenseHref('prj_1', 'readiness')).toBe('/projects/prj_1/live-defense/readiness');
     expect(liveDefenseHref(null, 'overview')).toBe('/live-defense-pilot');
     expect(liveDefenseHref(null, 'explain')).toBe('/live-defense-pilot/explain');
     expect(liveDefenseHref(null, 'apps')).toBe('/live-defense-pilot/apps');
     expect(liveDefenseHref(null, 'controls')).toBe('/live-defense-pilot/controls');
+    expect(liveDefenseHref(null, 'readiness')).toBe('/live-defense-pilot/readiness');
   });
 
   it('classifies tabs for both console and standalone routes', () => {
@@ -45,6 +47,7 @@ describe('live defense mode', () => {
     expect(liveDefenseTab('/live-defense-pilot/explain')).toBe('explain');
     expect(liveDefenseTab('/projects/p1/live-defense/apps')).toBe('apps');
     expect(liveDefenseTab('/projects/p1/live-defense/controls')).toBe('controls');
+    expect(liveDefenseTab('/projects/p1/live-defense/readiness')).toBe('readiness');
   });
 });
 
@@ -143,6 +146,7 @@ describe('source isolation', () => {
     expect(USED_LIVE_APIS.some(item => item.path.includes('/applications'))).toBe(true);
     expect(USED_LIVE_APIS.some(item => item.path.includes('/control-authorizations'))).toBe(true);
     expect(USED_LIVE_APIS.some(item => item.path.includes('/live-controls'))).toBe(true);
+    expect(USED_LIVE_APIS.some(item => item.path.includes('/rl-readiness'))).toBe(true);
     expect(MISSING_LIVE_APIS.map(item => item.id)).toContain('live_incidents');
     expect(MISSING_LIVE_APIS.map(item => item.id)).toContain('autonomous');
     expect(MISSING_LIVE_APIS.map(item => item.id)).toContain('production_grants');
