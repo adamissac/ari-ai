@@ -52,7 +52,7 @@ class TriggerPolicy(StrictModel):
 
 
 class DeliveryMode(StrEnum):
-    """How verified repairs reach the repository (ADR-0020)."""
+    """How verified repairs reach the repository (ADR-0021)."""
 
     auto = "auto"  # commit straight to the default branch (falls back to a PR)
     pull_request = "pull_request"  # open a PR for the team to review and merge

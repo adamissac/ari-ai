@@ -76,7 +76,7 @@ class GitHubApp:
         )
 
     def installation_token(self, installation_id: int, *, write: bool = False) -> str:
-        # Write tokens exist only for auto delivery (ADR-0020); every other use reads.
+        # Write tokens exist only for auto delivery (ADR-0021); every other use reads.
         key = (installation_id, write)
         cached = self._tokens.get(key)
         if cached and cached.expires_at - time.time() > 120:
@@ -101,7 +101,7 @@ class GitHubApp:
     def open_pull_request(
         self, installation_id: int, full_name: str, *, head: str, base: str, title: str, body: str
     ) -> str:
-        """Open a PR (ADR-0020) and return its URL. Needs the App's pull_requests: write."""
+        """Open a PR (ADR-0021) and return its URL. Needs the App's pull_requests: write."""
         r = self._client.post(
             f"/repos/{full_name}/pulls",
             headers={

@@ -7,7 +7,7 @@
 import type { Incident, MonitoringEvent } from '@hackatl/frontend-transport';
 
 export type LiveDefenseMode = 'live' | 'layout-preview';
-export type LiveDefenseTab = 'overview' | 'incidents' | 'explain' | 'apps';
+export type LiveDefenseTab = 'overview' | 'incidents' | 'explain' | 'apps' | 'controls';
 
 export const PREVIEW_QUERY = 'preview';
 export const PREVIEW_VALUE = 'layout';
@@ -16,7 +16,12 @@ export const SIMULATION_CAVEAT =
   'Recommendation from a policy trained in an isolated test environment. Not applied automatically.';
 
 export const NO_ENFORCEMENT =
-  'This dashboard does not apply, isolate, rate-limit, or block anything. Analyst accept is a recorded opinion, not enforcement approval, and does not execute a control.';
+  'Analyst accept is a recorded opinion, not enforcement approval, and does not execute a control. This dashboard does not apply, isolate, rate-limit, or block anything from a review or sample layout. Isolate is never offered. Owned-test rate-limit and exact-source block require a separate authorization endpoint after the deterministic gate. Adapter HTTP 200 is not effectiveness.';
+
+export const OWNED_TEST_LABEL = 'OWNED TEST ENVIRONMENT';
+
+export const OWNED_TEST_AUTHORIZE_COPY =
+  'Authorization is a separate owner action from analyst review. It can apply a temporary control only on a registered owned-test loopback app after the deterministic gate. Production is not granted. Adapter HTTP 200 is not effectiveness. RL and rules cannot execute without that authorization.';
 
 export const SHADOW_MODE_COPY =
   'Shadow mode: Ari records ingest and recommendations for authorized staging apps. It does not grant production enforcement and never re-shows an ingest token after issuance.';
@@ -41,7 +46,7 @@ export function withLiveDefenseMode(href: string, mode: LiveDefenseMode): string
 
 export function liveDefenseHref(projectId: string | null, tab: LiveDefenseTab = 'overview', mode: LiveDefenseMode = 'live'): string {
   const base = projectId === null ? '/live-defense-pilot' : `/projects/${projectId}/live-defense`;
-  const suffix = tab === 'overview' ? '' : tab === 'incidents' ? '/incidents' : tab === 'explain' ? '/explain' : '/apps';
+  const suffix = tab === 'overview' ? '' : tab === 'incidents' ? '/incidents' : tab === 'explain' ? '/explain' : tab === 'controls' ? '/controls' : '/apps';
   const path = `${base}${suffix}`;
   return projectId === null ? path : withLiveDefenseMode(path, mode);
 }
@@ -49,6 +54,7 @@ export function liveDefenseHref(projectId: string | null, tab: LiveDefenseTab = 
 export function liveDefenseTab(pathname: string): LiveDefenseTab {
   if (/live-defense(?:-pilot)?\/explain(?:\/|$)/.test(pathname)) return 'explain';
   if (/live-defense(?:-pilot)?\/incidents(?:\/|$)/.test(pathname)) return 'incidents';
+  if (/live-defense(?:-pilot)?\/controls(?:\/|$)/.test(pathname)) return 'controls';
   if (/live-defense(?:-pilot)?\/apps(?:\/|$)/.test(pathname)) return 'apps';
   return 'overview';
 }
@@ -77,6 +83,12 @@ export const USED_LIVE_APIS = [
   { method: 'GET/POST', path: '/defense-recommendations/{id}/reviews', use: 'analyst accept/reject/needs-investigation; accept does not execute' },
   { method: 'GET', path: '/projects/{id}/live-policy-decisions', use: 'shadow decisions from rules or validated v6; NOT EXECUTED' },
   { method: 'GET/POST', path: '/live-policy-decisions/{id}/reviews', use: 'analyst review of a shadow decision; accept does not execute' },
+  { method: 'GET/POST', path: '/projects/{id}/control-grants', use: 'owner grant for exact kinds on one owned-test app' },
+  { method: 'POST', path: '/applications/{id}/control-channel', use: 'register loopback control port; HMAC secret shown once' },
+  { method: 'POST', path: '/applications/{id}/control-authorizations', use: 'separate authorization endpoint; gate is final authority' },
+  { method: 'GET', path: '/projects/{id}/live-controls', use: 'pending/active owned-test controls; not NIST incidents' },
+  { method: 'POST', path: '/live-controls/{id}/rollback', use: 'request rollback; success only after verify' },
+  { method: 'POST', path: '/projects/{id}/emergency-stop', use: 'kill switch; does not claim success until verified' },
 ] as const;
 
 /** Capabilities still missing. Shown as missing — never filled with live-looking numbers. */
@@ -84,7 +96,17 @@ export const MISSING_LIVE_APIS = [
   {
     id: 'live_incidents',
     title: 'Live-defense incident machine',
-    reason: 'DETECTED → TRIAGED → RECOMMENDED → AUTHORIZED → EXECUTING → VERIFYING is not an API. Existing incidents stay on the NIST human lifecycle.',
+    reason: 'DETECTED → TRIAGED → RECOMMENDED → AUTHORIZED → EXECUTING → VERIFYING is not an API. Existing incidents stay on the NIST human lifecycle. Phase 4 uses a separate LiveControl lifecycle.',
+  },
+  {
+    id: 'autonomous',
+    title: 'Autonomous enforcement',
+    reason: 'Phase 5. RL and rules still cannot execute without independent owner authorization.',
+  },
+  {
+    id: 'production_grants',
+    title: 'Production environment grants',
+    reason: 'StagingEnvironment still rejects production. Controls are owned-test/sandbox only.',
   },
 ] as const;
 
@@ -212,6 +234,51 @@ export function provenanceLabel(event: Pick<MonitoringEvent, 'source' | 'simulat
 export function unavailable(value: string | number | null | undefined): string {
   if (value === null || value === undefined || value === '') return 'unavailable';
   return String(value);
+}
+
+/** The only source IP authz and the adapter accept for block_source (RFC 5737 TEST-NET-2). */
+export const ISOLATED_FIXTURE_SOURCE = '198.51.100.66';
+
+/**
+ * Owned-test probe header. Spoofable; never production identity or attribution.
+ * Honored only on the loopback fixture for allowlisted probe IPs.
+ */
+export const FIXTURE_SOURCE_HEADER = 'x-ari-source';
+
+export const PENDING_CONTROL_STATUSES = [
+  'pending_authorization',
+  'authorized',
+  'executing',
+  'verifying',
+] as const;
+
+export const ACTIVE_CONTROL_STATUSES = ['verified'] as const;
+
+export function isPendingControl(status: string): boolean {
+  return (PENDING_CONTROL_STATUSES as readonly string[]).includes(status);
+}
+
+export function isActiveControl(status: string): boolean {
+  return (ACTIVE_CONTROL_STATUSES as readonly string[]).includes(status);
+}
+
+export function controlKindLabel(kind: string): string {
+  switch (kind) {
+    case 'rate_limit': return 'Request-scoped rate limit';
+    case 'block_source': return 'Exact-source block';
+    case 'increase_logging': return 'Increase logging';
+    case 'escalate': return 'Escalate to human';
+    default: return kind.replaceAll('_', ' ');
+  }
+}
+
+export function ttlRemaining(expiresAt: string | null, nowMs = Date.now()): string {
+  if (!expiresAt) return 'unavailable';
+  const remaining = Date.parse(expiresAt) - nowMs;
+  if (Number.isNaN(remaining)) return 'unavailable';
+  if (remaining <= 0) return 'expired on the app (TTL is local to the fixture)';
+  const seconds = Math.round(remaining / 1000);
+  return `${seconds}s remaining (app-local TTL is independent of this worker)`;
 }
 
 export function ingestCurl(projectId: string): string {

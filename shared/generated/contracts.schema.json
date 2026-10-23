@@ -1219,6 +1219,32 @@
       "title": "AuditEvent",
       "type": "object"
     },
+    "AuthorizationCheckResult": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 500,
+          "title": "Name",
+          "type": "string"
+        },
+        "passed": {
+          "title": "Passed",
+          "type": "boolean"
+        },
+        "reason": {
+          "maxLength": 500,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "passed",
+        "reason"
+      ],
+      "title": "AuthorizationCheckResult",
+      "type": "object"
+    },
     "AuthorizationContext": {
       "description": "Whether the reporter supplied ownership classification with the window.",
       "enum": [
@@ -2375,6 +2401,12 @@
       "additionalProperties": false,
       "description": "Owner-registered staging app under watch. Never includes secrets.",
       "properties": {
+        "control_channel_configured": {
+          "default": false,
+          "description": "True when a control channel exists; the HMAC secret is never returned",
+          "title": "Control Channel Configured",
+          "type": "boolean"
+        },
         "created_at": {
           "format": "date-time",
           "title": "Created At",
@@ -2453,6 +2485,7 @@
         "last_ingest_at",
         "verification",
         "shadow_mode",
+        "control_channel_configured",
         "disconnected_at",
         "created_by",
         "created_at"
@@ -2619,6 +2652,379 @@
       "title": "ContextPurpose",
       "type": "string"
     },
+    "ControlAuthorizationCreate": {
+      "additionalProperties": false,
+      "description": "Analyst authorization request. Actor identity is the session, not this body.",
+      "properties": {
+        "duration_s": {
+          "maximum": 3600,
+          "minimum": 5,
+          "title": "Duration S",
+          "type": "integer"
+        },
+        "kind": {
+          "$ref": "#/$defs/LiveControlKind"
+        },
+        "live_policy_decision_id": {
+          "anyOf": [
+            {
+              "pattern": "^lpd_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Live Policy Decision Id"
+        },
+        "max_requests": {
+          "anyOf": [
+            {
+              "maximum": 10000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Required for rate_limit; ignored otherwise",
+          "title": "Max Requests"
+        },
+        "rationale": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rationale"
+        },
+        "target": {
+          "$ref": "#/$defs/ControlTarget"
+        }
+      },
+      "required": [
+        "kind",
+        "target",
+        "duration_s",
+        "rationale",
+        "live_policy_decision_id",
+        "max_requests"
+      ],
+      "title": "ControlAuthorizationCreate",
+      "type": "object"
+    },
+    "ControlChannelCreate": {
+      "additionalProperties": false,
+      "description": "Owner registers a loopback port. Arbitrary URLs are rejected by construction.",
+      "properties": {
+        "port": {
+          "maximum": 65535,
+          "minimum": 1024,
+          "title": "Port",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "port"
+      ],
+      "title": "ControlChannelCreate",
+      "type": "object"
+    },
+    "ControlChannelCreated": {
+      "additionalProperties": false,
+      "properties": {
+        "application_id": {
+          "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Application Id",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "hmac_secret": {
+          "description": "Shown once; never re-returned",
+          "maxLength": 500,
+          "title": "Hmac Secret",
+          "type": "string"
+        },
+        "host": {
+          "const": "127.0.0.1",
+          "title": "Host",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^cch_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "path": {
+          "const": "/live-defense/control",
+          "default": "/live-defense/control",
+          "title": "Path",
+          "type": "string"
+        },
+        "port": {
+          "maximum": 65535,
+          "minimum": 1024,
+          "title": "Port",
+          "type": "integer"
+        },
+        "project_id": {
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "revoked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revoked At"
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "application_id",
+        "host",
+        "port",
+        "path",
+        "created_at",
+        "revoked_at",
+        "hmac_secret"
+      ],
+      "title": "ControlChannelCreated",
+      "type": "object"
+    },
+    "ControlChannelView": {
+      "additionalProperties": false,
+      "description": "Registered adapter destination. Secret is never included after issuance.",
+      "properties": {
+        "application_id": {
+          "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Application Id",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "host": {
+          "const": "127.0.0.1",
+          "title": "Host",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^cch_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "path": {
+          "const": "/live-defense/control",
+          "default": "/live-defense/control",
+          "title": "Path",
+          "type": "string"
+        },
+        "port": {
+          "maximum": 65535,
+          "minimum": 1024,
+          "title": "Port",
+          "type": "integer"
+        },
+        "project_id": {
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "revoked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revoked At"
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "application_id",
+        "host",
+        "port",
+        "path",
+        "created_at",
+        "revoked_at"
+      ],
+      "title": "ControlChannelView",
+      "type": "object"
+    },
+    "ControlGrant": {
+      "additionalProperties": false,
+      "description": "Owner grant for exact kinds on one owned-test/sandbox application.",
+      "properties": {
+        "allowed_kinds": {
+          "items": {
+            "$ref": "#/$defs/LiveControlKind"
+          },
+          "minItems": 1,
+          "title": "Allowed Kinds",
+          "type": "array"
+        },
+        "application_id": {
+          "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Application Id",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Created By",
+          "type": "string"
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expires At"
+        },
+        "hourly_budget": {
+          "maximum": 20,
+          "minimum": 1,
+          "title": "Hourly Budget",
+          "type": "integer"
+        },
+        "id": {
+          "pattern": "^cgr_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "max_duration_s": {
+          "maximum": 3600,
+          "minimum": 5,
+          "title": "Max Duration S",
+          "type": "integer"
+        },
+        "project_id": {
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "revoked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revoked At"
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "application_id",
+        "allowed_kinds",
+        "max_duration_s",
+        "hourly_budget",
+        "created_by",
+        "created_at",
+        "expires_at",
+        "revoked_at"
+      ],
+      "title": "ControlGrant",
+      "type": "object"
+    },
+    "ControlGrantCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_kinds": {
+          "items": {
+            "$ref": "#/$defs/LiveControlKind"
+          },
+          "minItems": 1,
+          "title": "Allowed Kinds",
+          "type": "array"
+        },
+        "application_id": {
+          "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Application Id",
+          "type": "string"
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expires At"
+        },
+        "hourly_budget": {
+          "default": 5,
+          "maximum": 20,
+          "minimum": 1,
+          "title": "Hourly Budget",
+          "type": "integer"
+        },
+        "max_duration_s": {
+          "default": 300,
+          "maximum": 3600,
+          "minimum": 5,
+          "title": "Max Duration S",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "application_id",
+        "allowed_kinds",
+        "max_duration_s",
+        "hourly_budget",
+        "expires_at"
+      ],
+      "title": "ControlGrantCreate",
+      "type": "object"
+    },
     "ControlStatus": {
       "enum": [
         "proposed",
@@ -2627,6 +3033,26 @@
       ],
       "title": "ControlStatus",
       "type": "string"
+    },
+    "ControlTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/LiveControlTargetType"
+        },
+        "value": {
+          "default": "",
+          "maxLength": 500,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "title": "ControlTarget",
+      "type": "object"
     },
     "DataSensitivity": {
       "enum": [
@@ -3063,7 +3489,7 @@
       "type": "object"
     },
     "DeliveryMode": {
-      "description": "How verified repairs reach the repository (ADR-0020).",
+      "description": "How verified repairs reach the repository (ADR-0021).",
       "enum": [
         "auto",
         "pull_request",
@@ -3099,6 +3525,129 @@
         "display_name"
       ],
       "title": "DevLoginRequest",
+      "type": "object"
+    },
+    "EmergencyStop": {
+      "additionalProperties": false,
+      "properties": {
+        "active": {
+          "title": "Active",
+          "type": "boolean"
+        },
+        "application_id": {
+          "anyOf": [
+            {
+              "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Application Id"
+        },
+        "cleared_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cleared At"
+        },
+        "id": {
+          "pattern": "^est_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "project_id": {
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "requested_at": {
+          "format": "date-time",
+          "title": "Requested At",
+          "type": "string"
+        },
+        "requested_by": {
+          "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Requested By",
+          "type": "string"
+        },
+        "verified_cleared": {
+          "default": false,
+          "title": "Verified Cleared",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "application_id",
+        "active",
+        "requested_by",
+        "requested_at",
+        "cleared_at",
+        "verified_cleared",
+        "note"
+      ],
+      "title": "EmergencyStop",
+      "type": "object"
+    },
+    "EmergencyStopCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "application_id": {
+          "anyOf": [
+            {
+              "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Application Id"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        }
+      },
+      "required": [
+        "application_id",
+        "note"
+      ],
+      "title": "EmergencyStopCreate",
       "type": "object"
     },
     "EntryPoint": {
@@ -3244,7 +3793,8 @@
         "CANCELLED",
         "JOB_LEASE_EXPIRED",
         "INTERNAL",
-        "KILL_SWITCH"
+        "KILL_SWITCH",
+        "LIVE_CONTROL_DENIED"
       ],
       "title": "ErrorCode",
       "type": "string"
@@ -5400,6 +5950,393 @@
         "imported_at"
       ],
       "title": "LegacyScore",
+      "type": "object"
+    },
+    "LiveControl": {
+      "additionalProperties": false,
+      "description": "One authorized (or denied) owned-test control. Not a NIST incident.",
+      "properties": {
+        "application_id": {
+          "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Application Id",
+          "type": "string"
+        },
+        "authorized_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Authorized At"
+        },
+        "binding_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Binding Sha256",
+          "type": "string"
+        },
+        "caveat": {
+          "default": "Owned-test control. Not customer production. Adapter HTTP 200 is not effectiveness. Shadow recommendations stay NOT_EXECUTED.",
+          "maxLength": 500,
+          "title": "Caveat",
+          "type": "string"
+        },
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/AuthorizationCheckResult"
+          },
+          "title": "Checks",
+          "type": "array"
+        },
+        "denial_reason": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Denial Reason"
+        },
+        "duration_s": {
+          "maximum": 3600,
+          "minimum": 5,
+          "title": "Duration S",
+          "type": "integer"
+        },
+        "ended_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ended At"
+        },
+        "environment_label": {
+          "const": "OWNED TEST ENVIRONMENT",
+          "default": "OWNED TEST ENVIRONMENT",
+          "title": "Environment Label",
+          "type": "string"
+        },
+        "executing_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Executing At"
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expires At"
+        },
+        "grant_id": {
+          "anyOf": [
+            {
+              "pattern": "^cgr_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Grant Id"
+        },
+        "id": {
+          "pattern": "^lct_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/LiveControlKind"
+        },
+        "live_policy_decision_id": {
+          "anyOf": [
+            {
+              "pattern": "^lpd_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Live Policy Decision Id"
+        },
+        "max_requests": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Requests"
+        },
+        "origin": {
+          "$ref": "#/$defs/LiveControlOrigin"
+        },
+        "project_id": {
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "rationale": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rationale"
+        },
+        "requested_at": {
+          "format": "date-time",
+          "title": "Requested At",
+          "type": "string"
+        },
+        "requested_by": {
+          "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Requested By",
+          "type": "string"
+        },
+        "simulated": {
+          "const": false,
+          "default": false,
+          "title": "Simulated",
+          "type": "boolean"
+        },
+        "status": {
+          "$ref": "#/$defs/LiveControlStatus"
+        },
+        "target": {
+          "$ref": "#/$defs/ControlTarget"
+        },
+        "unresolved": {
+          "default": false,
+          "title": "Unresolved",
+          "type": "boolean"
+        },
+        "verification": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LiveControlVerification"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "verified_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Verified At"
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "application_id",
+        "live_policy_decision_id",
+        "grant_id",
+        "kind",
+        "target",
+        "duration_s",
+        "status",
+        "origin",
+        "binding_sha256",
+        "requested_by",
+        "requested_at",
+        "authorized_at",
+        "executing_at",
+        "verified_at",
+        "expires_at",
+        "ended_at",
+        "checks",
+        "verification",
+        "unresolved",
+        "simulated",
+        "environment_label",
+        "caveat",
+        "max_requests",
+        "rationale",
+        "denial_reason"
+      ],
+      "title": "LiveControl",
+      "type": "object"
+    },
+    "LiveControlKind": {
+      "description": "The only actions that have an adapter or a recorded human escalation.",
+      "enum": [
+        "rate_limit",
+        "block_source",
+        "increase_logging",
+        "escalate"
+      ],
+      "title": "LiveControlKind",
+      "type": "string"
+    },
+    "LiveControlOrigin": {
+      "description": "Who proposed the action. Origin never bypasses the gate.",
+      "enum": [
+        "analyst",
+        "rules",
+        "v6_shadow"
+      ],
+      "title": "LiveControlOrigin",
+      "type": "string"
+    },
+    "LiveControlRollbackCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        }
+      },
+      "required": [
+        "reason"
+      ],
+      "title": "LiveControlRollbackCreate",
+      "type": "object"
+    },
+    "LiveControlStatus": {
+      "description": "Control lifecycle. Distinct from NIST SP 800-61r3 incident phases.",
+      "enum": [
+        "pending_authorization",
+        "authorized",
+        "executing",
+        "verifying",
+        "verified",
+        "failed",
+        "expired",
+        "rolled_back",
+        "escalated",
+        "rejected",
+        "emergency_stopped"
+      ],
+      "title": "LiveControlStatus",
+      "type": "string"
+    },
+    "LiveControlTargetType": {
+      "enum": [
+        "route",
+        "source_ip",
+        "application",
+        "none"
+      ],
+      "title": "LiveControlTargetType",
+      "type": "string"
+    },
+    "LiveControlVerification": {
+      "additionalProperties": false,
+      "properties": {
+        "adapter_http_200_is_not_effectiveness": {
+          "const": true,
+          "default": true,
+          "title": "Adapter Http 200 Is Not Effectiveness",
+          "type": "boolean"
+        },
+        "adapter_http_status": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Adapter Http Status"
+        },
+        "detail": {
+          "maxLength": 500,
+          "title": "Detail",
+          "type": "string"
+        },
+        "method": {
+          "maxLength": 500,
+          "title": "Method",
+          "type": "string"
+        },
+        "observed_effect": {
+          "title": "Observed Effect",
+          "type": "boolean"
+        },
+        "probe_http_statuses": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Probe Http Statuses",
+          "type": "array"
+        },
+        "verified_at": {
+          "format": "date-time",
+          "title": "Verified At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "observed_effect",
+        "adapter_http_status",
+        "probe_http_statuses",
+        "method",
+        "detail",
+        "verified_at",
+        "adapter_http_200_is_not_effectiveness"
+      ],
+      "title": "LiveControlVerification",
       "type": "object"
     },
     "LivePolicyDecision": {

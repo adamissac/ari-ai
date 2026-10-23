@@ -1,4 +1,4 @@
-"""Fix delivery (ADR-0020): pre-approved remediation and delivery of Verify-accepted patches.
+"""Fix delivery (ADR-0021): pre-approved remediation and delivery of Verify-accepted patches.
 
 ``ProjectSettings.delivery_mode``:
 

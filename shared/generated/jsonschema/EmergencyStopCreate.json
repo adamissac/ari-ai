@@ -1,0 +1,33 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "application_id": {
+      "anyOf": [
+        {
+          "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Application Id"
+    },
+    "note": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Note"
+    }
+  },
+  "title": "EmergencyStopCreate",
+  "type": "object"
+}

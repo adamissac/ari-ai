@@ -1,0 +1,11 @@
+{
+  "duration_s": 60,
+  "kind": "rate_limit",
+  "live_policy_decision_id": "lpd_01JFIXTURE0000000000000LPD",
+  "max_requests": 2,
+  "rationale": "Owned-test rate limit after a staged finding.",
+  "target": {
+    "type": "route",
+    "value": "GET /payments/{payment_id}"
+  }
+}

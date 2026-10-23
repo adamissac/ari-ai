@@ -25,6 +25,10 @@ SCHEMA_VERSION = (
     #      health-check producer (HTTP 200 is not a healthy verdict).
     # 0.17 live-defense Phase 3 shadow runtime (additive): RuntimeSource "owned_staging";
     #      LivePolicyDecision (NOT EXECUTED); AnalystReview may target a live decision.
+    # 0.18 live-defense Phase 4 controlled enforcement (additive): LiveControl lifecycle,
+    #      ControlGrant, ControlChannel, authorization DTO, verification records.
+    #      AnalystReview and LivePolicyDecision stay non-executing. Production is still
+    #      not a StagingEnvironment value.
     # 0.18 live-defense Phase 5 shadow-pilot readiness (additive): disconnect,
     #      ingest-token rotate, worker/telemetry/policy health remain unknown,
     #      exportable PilotReport. No executable enforcement. Unmerged Phase 4
@@ -32,5 +36,5 @@ SCHEMA_VERSION = (
     # 0.18.1 automation opt-in: Repository.automatic_assessments and TriggerPolicy.enabled
     #      default to false (owner must explicitly enable; PR #385).
     # 0.19 ProjectSettings.delivery_mode (auto | pull_request | manual, default auto) and
-    #      server-set delivery_authorized_by (additive, ADR-0020).
+    #      server-set delivery_authorized_by (additive, ADR-0021).
 )

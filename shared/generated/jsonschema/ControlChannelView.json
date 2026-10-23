@@ -1,0 +1,66 @@
+{
+  "additionalProperties": false,
+  "description": "Registered adapter destination. Secret is never included after issuance.",
+  "properties": {
+    "application_id": {
+      "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Application Id",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "host": {
+      "const": "127.0.0.1",
+      "title": "Host",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^cch_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "path": {
+      "const": "/live-defense/control",
+      "default": "/live-defense/control",
+      "title": "Path",
+      "type": "string"
+    },
+    "port": {
+      "maximum": 65535,
+      "minimum": 1024,
+      "title": "Port",
+      "type": "integer"
+    },
+    "project_id": {
+      "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "revoked_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Revoked At"
+    }
+  },
+  "required": [
+    "id",
+    "project_id",
+    "application_id",
+    "host",
+    "port",
+    "created_at"
+  ],
+  "title": "ControlChannelView",
+  "type": "object"
+}

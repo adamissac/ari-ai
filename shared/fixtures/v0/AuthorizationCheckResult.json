@@ -1,0 +1,5 @@
+{
+  "name": "authenticated_session",
+  "passed": true,
+  "reason": "Actor is the authenticated session."
+}
