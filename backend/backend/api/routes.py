@@ -98,7 +98,7 @@ from shared.scope import (
     AuthorizedScope,
     ScopeStatus,
 )
-from shared.tenancy import MemberRole, Project, ProjectSettings, Repository
+from shared.tenancy import DeliveryMode, MemberRole, Project, ProjectSettings, Repository
 
 router = APIRouter()
 
@@ -222,7 +222,10 @@ def create_project(
         if replay := idempotent_replay(conn, user.id, idempotency_key, retry):
             return replay
         pid = new_id(IdPrefix.prj)
-        settings = _stamp_delivery(body.settings or ProjectSettings(), ProjectSettings(), user.id)
+        settings = body.settings or ProjectSettings()
+        if role is not MemberRole.owner:  # only owners may authorize Ari to deliver code
+            settings = settings.model_copy(update={"delivery_mode": DeliveryMode.manual})
+        settings = _stamp_delivery(settings, ProjectSettings(), user.id)
         _check_budgets(settings, ProjectSettings())
         conn.execute(
             sa.insert(projects).values(
