@@ -458,3 +458,10 @@ read wrapper, store-derived context, serialized permission updates and buffered
 freshness checks. Eight focused integration tests pass. No serving hook, model
 training or operational-control integration; historical evidence remains unchanged.
 Details: `docs/research/deterministic-feasibility/APPLICATION_CONTEXT.md`.
+
+## RL response integrity — 2026-10-23
+
+RL-CMDP-004: `feat/alan/read-response-integrity` closes a reproduced wrong-payment
+response leak in the opt-in wrapper. Existing PaymentOut schema and expected
+resource/owner must match before releasing buffered JSON. Twenty integration
+tests pass; CI/review pending. No serving or model changes.
