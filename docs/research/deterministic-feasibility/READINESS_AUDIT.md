@@ -56,3 +56,7 @@ this utility does not invent a payment authority or activate a new data source.
 No original comparison is rerun or repaired. A separately authorized/preregistered
 bounded comparison with complete timing records would be new evidence, not a
 replacement for this retained inconclusive result. The RL no-go remains.
+
+[Recorded derived receipt](../../../rl-defense/results/feasibility-readiness-audit/README.md)
+verifies 54 retained units, remains inconclusive, and records its own auditor
+identity separately. Combined focused suite: 130 passed in 37.39 seconds.
