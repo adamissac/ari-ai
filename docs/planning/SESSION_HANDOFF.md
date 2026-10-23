@@ -18,6 +18,23 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-23 — Cursor (agent, Alan) — Phase 6 Codex P1/P2 before merge
+- Did: on `feat/live-defense-phase6-pilot-audit` (PR #411), locked the application row in `gate_for` and disconnect so leftover execute cannot race a concurrent disconnect; counted `run_assessment` jobs via `assessment_id`; kept recovered `last_error` on the pilot trail as `job.recovered`. Tightening only; `AUTHORIZATION_CHECKS` still 15. No Phase 7.
+- Commands: `uv run pytest -q backend/tests/test_live_defense_phase6.py backend/tests/test_live_defense_authorize.py` — 26 passed.
+- Next: wait for CI on the new head of #411; merge only if MERGEABLE, required reviews satisfied, no enforcement expansion.
+
+### 2026-10-23 — Cursor (agent, Alan) — Live Defense Phase 6 post-merge audit
+- Did: branch `feat/live-defense-phase6-pilot-audit` from live `origin/main` `02ab34de`. Confirmed PR #393 merged `57e0326` and PR #395 merged `8bbc01e`. Schema 0.19.0, Alembic head `0014`. Proved shadow cannot execute with grant+channel present; denied leftover authorize/execute after disconnect; scoped queue depth; failed jobs on pilot trail. UI copy splits shadow vs Controls. No Phase 7, no v6/dataset/Codex edits, no production grants.
+- State of the code: recommendation-only shadow path on main stays non-executing; owned-test execute remains a separate owner POST. Disconnect now fails the existing `application_registered` check.
+- Commands run and results (executed):
+  - `make check` — ruff pass; format 184 files; `shared.export --check` 140 files
+  - `uv run mypy` — Success: no issues found in 40 source files
+  - live-defense + authorize + contracts + migrations pytest — 149 passed, 1 skipped (TSC unset)
+  - frontend lint + typecheck pass; vitest 330 passed / 78 files; transport 35 passed
+- Decisions: **CONDITIONAL GO** for one company-owned staging app in recommendation-only shadow mode if the owner does not create grants/channels or use Controls. Eval: `docs/LIVE_DEFENSE_PHASE6_READINESS.md`.
+- Next: hosted ingest of one company-owned staging app; do not start Phase 7.
+- Warnings: Playwright e2e and gitleaks were not run in this environment. v6 inference is `skipped_unavailable` without `rl_defense`/torch here; hash-mismatch refuse-to-load was tested.
+
 ### 2026-10-23 — Cursor (agent, Alan) — Phase 4 overnight hardening (do not merge #393)
 - Did: confirmed and fixed A–D on `feat/live-defense-phase4-controlled-enforcement`. Exact-source allowlist is only `198.51.100.66` in authz+adapter+fixture; idempotent apply 409s on binding mismatch; `increase_logging` restores prior log level; `x-ari-source` confined to owned-test probe IPs. Grant revoke TOCTOU re-gate, grant-row FOR UPDATE for budget, HMAC body+id regression. ADR-0020 and eval updated. **Do not merge PR #393** (executable controls; human security review).
 - Codex/`rl-defense/` untouched (no training, promotion, v6, or research-file edits).
