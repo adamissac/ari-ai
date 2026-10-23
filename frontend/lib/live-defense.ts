@@ -231,8 +231,14 @@ export function unavailable(value: string | number | null | undefined): string {
   return String(value);
 }
 
-/** The only source IP the gate accepts for block_source (RFC 5737 TEST-NET-2 fixture). */
+/** The only source IP authz and the adapter accept for block_source (RFC 5737 TEST-NET-2). */
 export const ISOLATED_FIXTURE_SOURCE = '198.51.100.66';
+
+/**
+ * Owned-test probe header. Spoofable; never production identity or attribution.
+ * Honored only on the loopback fixture for allowlisted probe IPs.
+ */
+export const FIXTURE_SOURCE_HEADER = 'x-ari-source';
 
 export const PENDING_CONTROL_STATUSES = [
   'pending_authorization',

@@ -95,6 +95,82 @@ def test_cidr_and_loopback_and_link_local_denied() -> None:
         assert not decision.allowed, value
 
 
+def test_public_private_malformed_and_protected_sources_denied() -> None:
+    for value in (
+        "8.8.8.8",
+        "1.1.1.1",
+        "192.0.2.1",
+        "203.0.113.50",
+        "255.255.255.255",
+        "198.51.100.66/32",
+        "198.51.100.66-198.51.100.70",
+        " 198.51.100.66",
+        "198.51.100.66 ",
+        "198.51.100.66\n",
+        "not-an-ip",
+        "::ffff:198.51.100.66",
+        "169.254.169.254",
+        "0.0.0.0/0",
+        "*",
+    ):
+        decision = check(
+            _inp(
+                kind="block_source",
+                target_type="source_ip",
+                target_value=value,
+                max_requests=None,
+            )
+        )
+        assert not decision.allowed, value
+        assert any(c.name == "address_policy" and not c.passed for c in decision.checks), value
+
+
+def test_binding_hash_includes_rate_and_grant() -> None:
+    a = check(_inp(max_requests=1))
+    b = check(_inp(max_requests=9))
+    assert a.binding_sha256 != b.binding_sha256
+    other_grant = GrantView(
+        id="cgr_01JOTHER000000000000000CGR",
+        application_id=APP,
+        allowed_kinds=("rate_limit", "block_source", "increase_logging", "escalate"),
+        max_duration_s=300,
+        hourly_budget=5,
+        revoked_at=None,
+        expires_at=None,
+    )
+    c = check(_inp(grant=other_grant, max_requests=1))
+    assert a.binding_sha256 != c.binding_sha256
+
+
+def test_expired_and_revoked_grants_denied() -> None:
+    expired = GrantView(
+        id="cgr_01JEXPIRED0000000000000CGR",
+        application_id=APP,
+        allowed_kinds=("rate_limit", "block_source", "increase_logging", "escalate"),
+        max_duration_s=300,
+        hourly_budget=5,
+        revoked_at=None,
+        expires_at=NOW,
+    )
+    revoked = GrantView(
+        id="cgr_01JREVOKED0000000000000CGR",
+        application_id=APP,
+        allowed_kinds=("rate_limit", "block_source", "increase_logging", "escalate"),
+        max_duration_s=300,
+        hourly_budget=5,
+        revoked_at=NOW,
+        expires_at=None,
+    )
+    assert not check(_inp(grant=expired)).allowed
+    assert not check(_inp(grant=revoked)).allowed
+
+
+def test_hourly_budget_exhausted_denied() -> None:
+    decision = check(_inp(actions_last_hour=5))
+    assert not decision.allowed
+    assert any(c.name == "hourly_budget" and not c.passed for c in decision.checks)
+
+
 def test_isolated_fixture_source_is_allowed() -> None:
     decision = check(
         _inp(

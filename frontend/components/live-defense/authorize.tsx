@@ -53,7 +53,11 @@ export function AuthorizeControlForm({
     setDenial(null);
     setCreated(null);
     const target = defaultTarget(kind, selectedAppId);
-    target.value = kind === 'escalate' ? '' : targetValue.trim();
+    if (kind === 'block_source') {
+      target.value = ISOLATED_FIXTURE_SOURCE;
+    } else {
+      target.value = kind === 'escalate' ? '' : targetValue.trim();
+    }
     const body: ControlAuthorizationCreate = {
       kind,
       target,
@@ -105,7 +109,13 @@ export function AuthorizeControlForm({
         </Field>
         {kind !== 'escalate' && (
           <Field label={kind === 'block_source' ? 'Exact source IP' : kind === 'rate_limit' ? 'Exact route' : 'Application id'}>
-            <input className={inputClass} value={targetValue} onChange={e => setTargetValue(e.target.value)} maxLength={500} />
+            <input
+              className={inputClass}
+              value={kind === 'block_source' ? ISOLATED_FIXTURE_SOURCE : targetValue}
+              onChange={e => setTargetValue(e.target.value)}
+              maxLength={500}
+              readOnly={kind === 'block_source'}
+            />
           </Field>
         )}
         <Field label="Duration (seconds)">
@@ -125,7 +135,9 @@ export function AuthorizeControlForm({
       </div>
       {kind === 'block_source' && (
         <p className="text-xs text-muted">
-          CIDRs, loopback, link-local, and unspecified addresses are rejected. The isolated fixture source is {ISOLATED_FIXTURE_SOURCE}.
+          Only the owned-test fixture IP {ISOLATED_FIXTURE_SOURCE} is allowed.
+          Public, private, loopback, link-local, CIDR, ranges, malformed, and
+          protected addresses are rejected. Authz and the adapter share this allowlist.
         </p>
       )}
       <Button

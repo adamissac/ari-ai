@@ -2,7 +2,7 @@
 
 Owner: Alan (`security-agents/`, SEC-001 … SEC-013; interim Live Defense UI)
 Branch: `feat/live-defense-phase4-controlled-enforcement`
-Current task: Live Defense Phase 4 owned-test controlled enforcement (separate LiveControl lifecycle + authorize gate)
+Current task: Phase 4 overnight hardening on PR #393 (do **not** merge); then Phase 5 shadow-pilot from origin/main
 Last remote sync: 2026-10-23, `origin/main` @ `09e8cab` (PR #392 and #388 merged on main)
 API/contract dependencies: `shared` 0.9.0 `CheckCategory`; `backend.host` checkpoints; `code_review.api` functional helpers
 Recent PR/commit: `feat/alan/verify-honesty-check-category` (do not push merged `host-finding-persistence` / `host-resume-hardening`)

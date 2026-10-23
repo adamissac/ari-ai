@@ -77,19 +77,20 @@ def load_control(conn: Connection, control_id: str, *, for_update: bool = False)
     return LiveControl.model_validate(row["doc"])
 
 
-def load_grant(conn: Connection, application_id: str) -> ControlGrant | None:
-    row = (
-        conn.execute(
-            sa.select(control_grants)
-            .where(
-                control_grants.c.application_id == application_id,
-                control_grants.c.revoked_at.is_(None),
-            )
-            .order_by(control_grants.c.created_at.desc())
+def load_grant(
+    conn: Connection, application_id: str, *, for_update: bool = False
+) -> ControlGrant | None:
+    stmt = (
+        sa.select(control_grants)
+        .where(
+            control_grants.c.application_id == application_id,
+            control_grants.c.revoked_at.is_(None),
         )
-        .mappings()
-        .first()
+        .order_by(control_grants.c.created_at.desc())
     )
+    if for_update:
+        stmt = stmt.with_for_update()
+    row = conn.execute(stmt).mappings().first()
     return ControlGrant.model_validate(row["doc"]) if row else None
 
 
@@ -182,7 +183,7 @@ def gate_for(
         .mappings()
         .first()
     )
-    grant = load_grant(conn, application_id)
+    grant = load_grant(conn, application_id, for_update=True)
     channel = load_channel(conn, application_id)
     inp = AuthorizationInput(
         session_user_id=session_user_id,
@@ -406,20 +407,71 @@ def execute_control(conn: Connection, control_id: str) -> dict[str, Any]:
         return {"control_id": control.id, "status": "failed", "error": str(exc)}
     control = advance(conn, control, LiveControlStatus.executing, "live_defense.execute")
     expires_unix = (control.expires_at or utcnow()).timestamp()
-    result = call(
-        url,
-        secret,
-        {
-            "op": "apply",
+    try:
+        result = call(
+            url,
+            secret,
+            {
+                "op": "apply",
+                "control_id": control.id,
+                "kind": control.kind.value,
+                "target_type": control.target.type.value,
+                "target_value": control.target.value,
+                "max_requests": control.max_requests,
+                "log_level": "debug",
+                "expires_at_unix": expires_unix,
+            },
+        )
+    except AdapterDenied as exc:
+        _audit(
+            conn,
+            control,
+            "live_defense.control.adapter_denied",
+            "live_defense.execute",
+            extra={"error": str(exc)},
+        )
+        control = control.model_copy(update={"denial_reason": str(exc), "unresolved": True})
+        persist(conn, control)
+        control = advance(conn, control, LiveControlStatus.failed, "live_defense.execute")
+        return {
             "control_id": control.id,
-            "kind": control.kind.value,
-            "target_type": control.target.type.value,
-            "target_value": control.target.value,
-            "max_requests": control.max_requests,
-            "log_level": "debug",
-            "expires_at_unix": expires_unix,
-        },
-    )
+            "status": control.status.value,
+            "error": str(exc),
+        }
+    if not result.ok:
+        conflict = result.http_status == 409 or bool(result.body.get("conflict"))
+        _audit(
+            conn,
+            control,
+            "live_defense.control.adapter_conflict"
+            if conflict
+            else "live_defense.control.adapter_failed",
+            "live_defense.execute",
+            extra={
+                "adapter_http_status": result.http_status,
+                "error": result.error or result.body.get("error"),
+                "conflict": conflict,
+            },
+        )
+        control = control.model_copy(
+            update={
+                "denial_reason": str(result.body.get("error") or result.error or "adapter failed"),
+                "unresolved": True,
+            }
+        )
+        persist(conn, control)
+        control = advance(conn, control, LiveControlStatus.failed, "live_defense.execute")
+        # A binding conflict means the fixture still holds the original control.
+        # Do not roll it back from this failed retry.
+        if not conflict:
+            enqueue_rollback(conn, control.id, control.project_id)
+        return {
+            "control_id": control.id,
+            "status": control.status.value,
+            "adapter_http_status": result.http_status,
+            "adapter_ok": False,
+            "conflict": conflict,
+        }
     control = control.model_copy(update={"verification": None, "denial_reason": result.error})
     persist(conn, control)
     control = advance(conn, control, LiveControlStatus.verifying, "live_defense.execute")

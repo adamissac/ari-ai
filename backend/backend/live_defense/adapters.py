@@ -13,7 +13,7 @@ from urllib.parse import urlparse
 
 import httpx
 
-from shared.live_defense import CONTROL_PATH
+from shared.live_defense import CONTROL_PATH, LiveControlKind, is_owned_test_block_source
 
 ALLOWED_HOSTS = frozenset({"127.0.0.1"})
 CONNECT_TIMEOUT_S = 2.0
@@ -78,6 +78,12 @@ def call(
     control_id = str(payload.get("control_id") or "")
     if not control_id:
         raise AdapterDenied("control_id is required")
+    if (
+        payload.get("op") == "apply"
+        and str(payload.get("kind") or "") == LiveControlKind.block_source.value
+        and not is_owned_test_block_source(str(payload.get("target_value") or ""))
+    ):
+        raise AdapterDenied("block_source target is not an owned-test fixture IP")
     body = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode()
     timestamp = str(time.time())
     nonce = secrets.token_urlsafe(REPLAY_NONCE_BYTES)
