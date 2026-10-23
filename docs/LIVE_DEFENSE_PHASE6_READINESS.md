@@ -66,7 +66,7 @@ into `executing`. v6 and rules may propose; they cannot skip the gate.
 | Analyst accept on a live decision | Opinion only | HTTP 201, `executes=false`, control count unchanged | Proven held (Phase 3/4/6) |
 | Worker retry of the same window | Idempotent shadow | Second `live_defense_shadow` job, still 1 decision, 0 controls | Proven held |
 | Pilot report export | No execute | Report `shadow_mode=true`; unsupported claims listed; no execute jobs | Proven held |
-| Disconnect then authorize leftover grant | Must not apply | Gate denies `application_registered` ("Application is disconnected."); execute TOCTOU rejects an already-authorized control | **P1 found and fixed** |
+| Disconnect then authorize leftover grant | Must not apply | Gate denies `application_registered` ("Application is disconnected."); execute TOCTOU rejects an already-authorized control; `FOR UPDATE` serializes disconnect vs in-flight execute | **P1 found and fixed** |
 | Controls tab in the same UI | Separate owned-test path | Still present; labelled separate. Shadow-pilot procedure forbids using it | Residual operational P1 |
 | `x-ari-source` | Fixture probe header, not production identity | Unchanged; not used on the shadow path | Owned-test residual |
 | HMAC secret in `control_channels` | Shown once on create | List/audit omit it; column remains plaintext (owned-test only) | Residual P2 if a customer registers a channel |
@@ -84,8 +84,9 @@ into `executing`. v6 and rules may propose; they cannot skip the gate.
 | Rules producer | Suggests; does not execute | producer in `{rules, v6_shadow, abstention}` | API | phase3/6 | — | — |
 | Analyst accept | `executes=false` | 201; no execute jobs | API/DB | phase3 s05, phase6 | — | — |
 | Pilot report | Honest caveats | `unsupported_claims` include “shadow prevented breaches” | API | phase5/6 | — | — |
-| Worker retries | Shadow idempotent; failures visible | retry keeps 1 decision; poison job `last_error` on `GET /jobs/{id}` and report trail; health stays `unknown` | API/DB/worker | phase6 | no project-wide failed-job list besides the trail | P2 |
-| Queue depth | Measured, tenant-scoped, not a verdict | counted only for `payload.project_id`; other tenant queued jobs are 0 | API | `test_queue_depth_is_project_scoped_not_other_tenants` | `worker_seen_at` remains process-global heartbeat | P2 |
+| Worker retries | Shadow idempotent; failures visible | retry keeps 1 decision; poison job `last_error` on `GET /jobs/{id}` and report trail; recovered successes keep `last_error` as `job.recovered`; health stays `unknown` | API/DB/worker | phase6 including `test_recovered_job_failure_stays_on_pilot_trail` | no project-wide failed-job list besides the trail | P2 |
+| Queue depth | Measured, tenant-scoped, not a verdict | `payload.project_id` plus `run_assessment` jobs joined through `assessment_id`; other tenants stay 0 | API | `test_queue_depth_is_project_scoped_not_other_tenants`, `test_queue_depth_counts_assessment_jobs_without_project_id` | `worker_seen_at` remains process-global heartbeat | P2 |
+| Disconnect vs execute | Disconnect leftover execute is denied | `application_registered` deny plus `FOR UPDATE` on the application row in `gate_for` and disconnect, held through the adapter call | API/DB | `test_disconnect_after_authorize_blocks_execute_toctou`, `test_disconnect_serializes_behind_execute_application_lock` | tightening only; leftover execute is still the owned-test path | — |
 | Health / graph | Never optimistic healthy | `status/worker/telemetry/policy = unknown`; graph never `healthy` | API | phase5/6 | no health-check producer | — |
 | Owned-test enforcement | Loopback fixture only | 15 checks, allowlist, grant, TTL, kill switch, SSRF, HMAC, TOCTOU, concurrency, revocation, idempotency re-validated | API + fixture HTTP | phase4 + authorize + owned_test_app | production still denied | — |
 | Customer-staging (non-fixture) | Likely none | **none exercised**; third-party hosts forbidden | — | — | one real company app not connected in this session | condition |
@@ -131,13 +132,20 @@ Observed:
    rejects and does not call the adapter
    (`test_disconnected_app_cannot_authorize_or_execute_leftover_grant`,
    `test_disconnect_after_authorize_blocks_execute_toctou`).
-2. **P1 queue-depth tenant mix.** `DefenseHealth.queue_depth` counts queued jobs
-   whose `payload.project_id` matches; other tenants' work is not shown as this
-   project's depth.
-3. **P2 worker-failure visibility.** Failed/dead/errored live-defense jobs for
-   the project appear on the pilot-report investigation trail; `GET /jobs/{id}`
-   returns `last_error` (no trace) to the owning tenant; health stays `unknown`.
-4. **Copy.** Dashboard states recommendation-only shadow vs the separate
+2. **P1 disconnect/execute race.** `gate_for` and disconnect take `FOR UPDATE` on
+   the application row. Execute holds that lock through the adapter HTTP call, so
+   disconnect cannot commit while an in-flight execute still sees a live app
+   (`test_disconnect_serializes_behind_execute_application_lock`).
+3. **P1 queue-depth tenant mix.** `DefenseHealth.queue_depth` counts queued jobs
+   whose `payload.project_id` matches, plus `run_assessment` jobs that carry only
+   `assessment_id` for this project's assessments. Other tenants' work is not
+   shown as this project's depth.
+4. **P2 worker-failure visibility.** Failed/dead/errored live-defense jobs for
+   the project appear on the pilot-report investigation trail; `jobs.complete`
+   leaving `last_error` on a later success stays visible as `job.recovered`;
+   `GET /jobs/{id}` returns `last_error` (no trace) to the owning tenant; health
+   stays `unknown`.
+5. **Copy.** Dashboard states recommendation-only shadow vs the separate
    Controls path. Queue depth is labelled “this project”.
 
 No new executable action. No production grant. No autonomous RL. No Phase 7.
@@ -179,7 +187,11 @@ uv run pytest -q backend/tests/test_live_defense_phase6.py \
   backend/tests/test_owned_test_app.py \
   shared/tests/test_contracts.py \
   backend/tests/test_parallel_migrations.py
-  149 passed, 1 skipped (TSC unset) in 26.32s
+  (first pass) 149 passed, 1 skipped (TSC unset) in 26.32s
+  Codex P1/P2 follow-up:
+  uv run pytest -q backend/tests/test_live_defense_phase6.py \
+    backend/tests/test_live_defense_authorize.py
+  26 passed, 1 warning in 6.02s
 
 npm run lint --prefix frontend        pass
 npm run typecheck --prefix frontend   pass (after transport build)

@@ -178,7 +178,9 @@ def gate_for(
 ) -> tuple[GateDecision, ControlGrant | None, tuple[ControlChannelView, str] | None]:
     app = (
         conn.execute(
-            sa.select(connected_applications).where(connected_applications.c.id == application_id)
+            sa.select(connected_applications)
+            .where(connected_applications.c.id == application_id)
+            .with_for_update()
         )
         .mappings()
         .first()

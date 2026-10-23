@@ -18,6 +18,11 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-23 — Cursor (agent, Alan) — Phase 6 Codex P1/P2 before merge
+- Did: on `feat/live-defense-phase6-pilot-audit` (PR #411), locked the application row in `gate_for` and disconnect so leftover execute cannot race a concurrent disconnect; counted `run_assessment` jobs via `assessment_id`; kept recovered `last_error` on the pilot trail as `job.recovered`. Tightening only; `AUTHORIZATION_CHECKS` still 15. No Phase 7.
+- Commands: `uv run pytest -q backend/tests/test_live_defense_phase6.py backend/tests/test_live_defense_authorize.py` — 26 passed.
+- Next: wait for CI on the new head of #411; merge only if MERGEABLE, required reviews satisfied, no enforcement expansion.
+
 ### 2026-10-23 — Cursor (agent, Alan) — Live Defense Phase 6 post-merge audit
 - Did: branch `feat/live-defense-phase6-pilot-audit` from live `origin/main` `02ab34de`. Confirmed PR #393 merged `57e0326` and PR #395 merged `8bbc01e`. Schema 0.19.0, Alembic head `0014`. Proved shadow cannot execute with grant+channel present; denied leftover authorize/execute after disconnect; scoped queue depth; failed jobs on pilot trail. UI copy splits shadow vs Controls. No Phase 7, no v6/dataset/Codex edits, no production grants.
 - State of the code: recommendation-only shadow path on main stays non-executing; owned-test execute remains a separate owner POST. Disconnect now fails the existing `application_registered` check.
