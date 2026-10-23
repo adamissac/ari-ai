@@ -1,10 +1,12 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
+import { ControlsDashboard } from '@/components/live-defense/controls';
 import { Explainability } from '@/components/live-defense/explain';
 import { InvestigationList } from '@/components/live-defense/investigation';
 import { LiveOverview } from '@/components/live-defense/overview';
 import { LiveDefenseShell } from '@/components/live-defense/shell';
 import { PREVIEW_INCIDENTS } from '@/lib/live-defense-preview';
+import { OWNED_TEST_LABEL } from '@/lib/live-defense';
 
 const route = vi.hoisted(() => ({ path: '/projects/prj_1/live-defense', preview: null as string | null, replaced: '' }));
 vi.mock('next/navigation', () => ({
@@ -33,6 +35,8 @@ it('labels sample layout, lists missing APIs, and has no enforcement buttons', (
   expect(screen.getByTestId('live-defense-no-enforcement').textContent).toMatch(/does not apply, isolate, rate-limit, or block/);
   expect(screen.getByTestId('live-defense-api-coverage').textContent).toContain('Live-defense incident machine');
   expect(screen.getByTestId('live-defense-api-coverage').textContent).toContain('/projects/{id}/live-policy-decisions');
+  expect(screen.getByTestId('live-defense-api-coverage').textContent).toContain('/control-authorizations');
+  expect(screen.getByRole('link', { name: 'Controls' }).getAttribute('href')).toContain('/live-defense/controls');
   expect(screen.getByTestId('defense-map').textContent).toMatch(/SAMPLE LAYOUT/);
   expect(screen.queryByRole('button', { name: /^(apply|isolate|rate-limit|block source)$/i })).toBeNull();
 });
@@ -123,6 +127,101 @@ it('shows authenticated shadow decisions as NOT EXECUTED, not sample layout', ()
   expect(card.textContent).toMatch(/authenticated/);
   expect(card.textContent).not.toMatch(/SAMPLE LAYOUT/i);
   expect(screen.queryByRole('button', { name: /^(apply|isolate|rate-limit|block)$/i })).toBeNull();
+});
+
+it('keeps sample controls distinct from owned-test enforcement', () => {
+  route.path = '/projects/prj_1/live-defense/controls';
+  route.preview = 'layout';
+  render(
+    <LiveDefenseShell projectId="prj_1">
+      <ControlsDashboard mode="layout-preview" projectId="prj_1" />
+    </LiveDefenseShell>,
+  );
+  expect(screen.getByTestId('live-defense-preview-controls').textContent).toMatch(/SAMPLE LAYOUT/);
+  expect(screen.queryByTestId('live-defense-authorize')).toBeNull();
+  expect(screen.queryByRole('button', { name: /^(apply|isolate|rate-limit|block source)$/i })).toBeNull();
+});
+
+const LIVE_CONTROL = {
+  id: 'lct_12345678',
+  project_id: 'prj_12345678',
+  application_id: 'app_12345678',
+  live_policy_decision_id: null,
+  grant_id: 'cgr_12345678',
+  kind: 'rate_limit' as const,
+  target: { type: 'route' as const, value: 'GET /payments/pay_fixture' },
+  duration_s: 60,
+  status: 'verified' as const,
+  origin: 'analyst' as const,
+  binding_sha256: 'a'.repeat(64),
+  requested_by: 'usr_12345678',
+  requested_at: '2026-10-23T00:00:00Z',
+  authorized_at: '2026-10-23T00:00:01Z',
+  executing_at: '2026-10-23T00:00:02Z',
+  verified_at: '2026-10-23T00:00:03Z',
+  expires_at: '2026-10-23T00:01:03Z',
+  ended_at: null,
+  checks: [],
+  verification: {
+    observed_effect: true,
+    adapter_http_status: 200,
+    probe_http_statuses: [200, 429],
+    method: 'http_probe',
+    detail: 'fixture returned 429 after apply',
+    verified_at: '2026-10-23T00:00:03Z',
+    adapter_http_200_is_not_effectiveness: true as const,
+  },
+  unresolved: false,
+  simulated: false as const,
+  environment_label: 'OWNED TEST ENVIRONMENT' as const,
+  caveat: 'Owned-test control. Not customer production.',
+  max_requests: 1,
+  rationale: 'fixture',
+  denial_reason: null,
+};
+
+it('labels verified owned-test controls and does not offer isolate', () => {
+  route.path = '/projects/prj_1/live-defense/controls';
+  render(
+    <ControlsDashboard
+      mode="live"
+      projectId="prj_1"
+      apps={{
+        status: 'ready',
+        data: {
+          items: [{
+            id: 'app_12345678',
+            project_id: 'prj_12345678',
+            name: 'payments-lite owned test',
+            environment: 'owned_test',
+            ingest_configured: true,
+            last_ingest_at: null,
+            verification: 'unverified',
+            shadow_mode: true,
+            control_channel_configured: true,
+            disconnected_at: null,
+            created_by: 'usr_12345678',
+            created_at: '2026-10-23T00:00:00Z',
+          }],
+        },
+        error: undefined,
+        reload: () => {},
+      }}
+      controls={{
+        status: 'ready',
+        data: { items: [LIVE_CONTROL], label: 'OWNED TEST ENVIRONMENT controls' },
+        error: undefined,
+        reload: () => {},
+      }}
+    />,
+  );
+  const card = screen.getByTestId('live-defense-control-lct_12345678');
+  expect(card.textContent).toContain(OWNED_TEST_LABEL);
+  expect(card.textContent).toMatch(/HTTP 200 is not effectiveness/);
+  expect(card.textContent).not.toMatch(/SAMPLE LAYOUT/i);
+  expect(screen.getByTestId('live-defense-authorize').textContent).toMatch(/control-authorizations/);
+  expect(screen.queryByRole('button', { name: /^(apply|isolate|rate-limit|block)$/i })).toBeNull();
+  expect(screen.getByRole('button', { name: 'Authorize owned-test control' })).toBeTruthy();
 });
 
 it('explains a live shadow decision without synthesizing Q-values', () => {

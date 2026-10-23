@@ -513,6 +513,124 @@ analyst_reviews = sa.Table(
     ),
 )
 
+control_grants = sa.Table(
+    "control_grants",
+    metadata,
+    _id(),
+    sa.Column(
+        "project_id", sa.String(80), sa.ForeignKey("projects.id"), nullable=False, index=True
+    ),
+    sa.Column(
+        "application_id",
+        sa.String(80),
+        sa.ForeignKey("connected_applications.id"),
+        nullable=False,
+        index=True,
+    ),
+    sa.Column("revoked_at", TS),
+    sa.Column("expires_at", TS),
+    sa.Column("created_by", sa.String(80), sa.ForeignKey("users.id"), nullable=False),
+    sa.Column("doc", JSONB, nullable=False),
+    _created(),
+)
+
+control_channels = sa.Table(
+    "control_channels",
+    metadata,
+    _id(),
+    sa.Column(
+        "project_id", sa.String(80), sa.ForeignKey("projects.id"), nullable=False, index=True
+    ),
+    sa.Column(
+        "application_id",
+        sa.String(80),
+        sa.ForeignKey("connected_applications.id"),
+        nullable=False,
+        index=True,
+    ),
+    sa.Column("host", sa.String(16), nullable=False),
+    sa.Column("port", sa.Integer, nullable=False),
+    sa.Column("hmac_secret", sa.String(200), nullable=False),
+    sa.Column("revoked_at", TS),
+    sa.Column("created_by", sa.String(80), sa.ForeignKey("users.id"), nullable=False),
+    sa.Column("doc", JSONB, nullable=False),
+    _created(),
+    sa.CheckConstraint("host = '127.0.0.1'", name="control_channel_host"),
+    sa.CheckConstraint("port >= 1024 AND port <= 65535", name="control_channel_port"),
+)
+sa.Index(
+    "uq_control_channels_active_app",
+    control_channels.c.application_id,
+    unique=True,
+    postgresql_where=control_channels.c.revoked_at.is_(None),
+)
+
+live_controls = sa.Table(
+    "live_controls",
+    metadata,
+    _id(),
+    sa.Column(
+        "project_id", sa.String(80), sa.ForeignKey("projects.id"), nullable=False, index=True
+    ),
+    sa.Column(
+        "application_id",
+        sa.String(80),
+        sa.ForeignKey("connected_applications.id"),
+        nullable=False,
+        index=True,
+    ),
+    sa.Column(
+        "live_policy_decision_id",
+        sa.String(80),
+        sa.ForeignKey("live_policy_decisions.id"),
+        nullable=True,
+    ),
+    sa.Column("kind", sa.String(40), nullable=False),
+    sa.Column("status", sa.String(40), nullable=False, index=True),
+    sa.Column("unresolved", sa.Boolean, nullable=False, server_default=sa.false()),
+    sa.Column("expires_at", TS),
+    sa.Column("binding_sha256", sa.String(64), nullable=False),
+    sa.Column("doc", JSONB, nullable=False),
+    _created(),
+    sa.CheckConstraint(
+        "kind in ('rate_limit','block_source','increase_logging','escalate')",
+        name="live_control_kind",
+    ),
+    sa.CheckConstraint(
+        "status in ('pending_authorization','authorized','executing','verifying',"
+        "'verified','failed','expired','rolled_back','escalated','rejected',"
+        "'emergency_stopped')",
+        name="live_control_status",
+    ),
+)
+
+emergency_stops = sa.Table(
+    "emergency_stops",
+    metadata,
+    _id(),
+    sa.Column(
+        "project_id", sa.String(80), sa.ForeignKey("projects.id"), nullable=False, index=True
+    ),
+    sa.Column(
+        "application_id",
+        sa.String(80),
+        sa.ForeignKey("connected_applications.id"),
+        nullable=True,
+    ),
+    sa.Column("active", sa.Boolean, nullable=False),
+    sa.Column("requested_by", sa.String(80), sa.ForeignKey("users.id"), nullable=False),
+    sa.Column("doc", JSONB, nullable=False),
+    _created(),
+)
+sa.Index(
+    "uq_emergency_stops_active_project",
+    emergency_stops.c.project_id,
+    unique=True,
+    postgresql_where=sa.and_(
+        emergency_stops.c.active.is_(True), emergency_stops.c.application_id.is_(None)
+    ),
+)
+
 
 idempotency_keys = sa.Table(
     "idempotency_keys",

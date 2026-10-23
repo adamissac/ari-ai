@@ -363,11 +363,7 @@ def test_incident_from_owned_staging_events_is_not_labelled_replay(env) -> None:
 def test_no_browser_callable_enforcement_routes() -> None:
     from backend.main import app
 
-    post_paths = [
-        (getattr(r, "path", "") or "").lower()
-        for r in app.routes
-        if getattr(r, "methods", None) and "POST" in r.methods
-    ]
+    post_paths = [p.lower() for p, ops in app.openapi()["paths"].items() if "post" in ops]
     forbidden = ("/apply", "/isolate", "/rate-limit", "/block-source", "/block_source")
     for path in post_paths:
         for token in forbidden:

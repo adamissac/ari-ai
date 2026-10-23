@@ -33,7 +33,9 @@ Home once implemented: `shared/` (source of truth: Pydantic v2) →
 | `ctx_` | ContextPack | `ckp_` | RLCheckpoint |
 | `app_` | ConnectedApplication | `arv_` | AnalystReview |
 | `itk_` | IngestToken | `inc_` | Incident |
-| `lpd_` | LivePolicyDecision | | |
+| `lpd_` | LivePolicyDecision | `lct_` | LiveControl |
+| `cgr_` | ControlGrant | `cch_` | ControlChannel |
+| `est_` | EmergencyStop | | |
 
 ## Core entities
 
@@ -145,6 +147,17 @@ DefenseRecommendation { id, project_id, policy_version, action, node, q_margin,
 RLCheckpoint { id, env_id, env_version, config_hash, seed, git_sha, steps, artifact_uri, eval_summary_uri }
 ```
 
+### Live Defense Phase 4 (owned-test controls)
+```
+LiveControl { id, project_id, application_id, kind: rate_limit|block_source|increase_logging|escalate,
+              target, duration_s, status, origin, checks[], verification?, unresolved,
+              environment_label: "OWNED TEST ENVIRONMENT", simulated: false }
+ControlGrant { id, project_id, application_id, allowed_kinds, max_duration_s, hourly_budget }
+ControlChannel { host: 127.0.0.1, port, path: /live-defense/control }  # HMAC shown once
+```
+LiveControl statuses are not NIST incident phases. AnalystReview.accept never
+transitions a control to executing. `usr_*` in a request body is not identity.
+
 ### Audit
 ```
 AuditEvent { id, org_id, project_id?, actor: user|system|agent, actor_id,
@@ -167,6 +180,7 @@ evidence; append-only at the DB permission level.
 | `WEBHOOK_SIGNATURE_INVALID` | Ingestion auth failure |
 | `LLM_UNAVAILABLE` | Upstream model error after retries |
 | `CONFLICT_STATE` | Illegal state transition requested |
+| `LIVE_CONTROL_DENIED` | Deterministic authorization gate refused an owned-test control |
 
 ## Agent I/O schemas
 

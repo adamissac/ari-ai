@@ -18,6 +18,25 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-23 — Cursor (agent, Alan) — Phase 4 overnight hardening (do not merge #393)
+- Did: confirmed and fixed A–D on `feat/live-defense-phase4-controlled-enforcement`. Exact-source allowlist is only `198.51.100.66` in authz+adapter+fixture; idempotent apply 409s on binding mismatch; `increase_logging` restores prior log level; `x-ari-source` confined to owned-test probe IPs. Grant revoke TOCTOU re-gate, grant-row FOR UPDATE for budget, HMAC body+id regression. ADR-0020 and eval updated. **Do not merge PR #393** (executable controls; human security review).
+- Codex/`rl-defense/` untouched (no training, promotion, v6, or research-file edits).
+- Next: Phase 5 shadow-pilot from `origin/main`, not this branch.
+
+### 2026-10-23 — Cursor (agent, Alan) — Live Defense Phase 4 controlled enforcement
+- Did: branch `feat/live-defense-phase4-controlled-enforcement` from `origin/main` (`5be62de`, PR #392 merged); later merged `09e8cab` (constrained-RL Phase 1, Codex ADR-0019). Extends Phase 1–3. Shared 0.18.0 `LiveControl` lifecycle + 15-check `authorize.check` (ADR-0020). HMAC loopback adapter to owned-test fixture; verify uses real HTTP probes; app-local TTL; emergency stop. Controls UI with a **separate** authorize endpoint. Analyst accept still does not execute. `rl-defense/` untouched. No Phase 5 / production / autonomous.
+- State of the code: owner grant + loopback channel → authorize (not review) → worker execute → verify with probes → dashboard labelled OWNED TEST ENVIRONMENT → rollback / TTL / kill switch. Recommendation cannot jump to EXECUTING.
+- Commands run and results (executed):
+  - `make check` — ruff pass; format 175 files; `shared.export --check` 137 files; examples check pass
+  - `uv run mypy` — Success: no issues found in 40 source files
+  - `uv run pytest -q backend/tests/test_parallel_migrations.py shared/tests/test_contracts.py backend/tests/test_live_defense_phase4.py backend/tests/test_live_defense_authorize.py` — 100 passed, 1 skipped (TSC unset)
+  - `uv run pytest -q backend/tests/test_live_defense_phase3.py backend/tests/test_live_defense_phase4.py backend/tests/test_live_defense_authorize.py` — 44 passed
+  - `npm run lint && typecheck` — pass; `npm test --prefix frontend` — 327 passed / 77 files; `npm test --prefix frontend/transport` — 35 passed
+  - `npm run build --prefix frontend` — pass; routes include `/live-defense/controls`
+  - `cd frontend && E2E_SKIP_BUILD=1 E2E_BROWSER_CHANNEL=chrome ../.venv/bin/python tests/e2e/stack.py tests/e2e/live-defense.spec.ts tests/e2e/live-defense-phase4.spec.ts` — 2 passed (14.4s)
+- Decisions: independent gate is final authority (ADR-0020); do not overload NIST statuses; HTTP 200 ≠ effectiveness; do not train or promote. Numbered 0020 because Codex used 0019 on main.
+- Eval: `docs/LIVE_DEFENSE_PHASE4_EVAL.md`. Ready-for-review PR. **Do not auto-merge** (executable-action trust boundary).
+- Warnings: `/live-defense-pilot` remains sample layout. Do not begin autonomous enforcement or production grants.
 ### 2026-10-23 — Cursor (agent, Alan) — Phase 5 rebased onto main after PR #396
 - Did: merged `origin/main` `7adf509` (owned payment-read context checks) into `feat/live-defense-phase5-pilot-readiness`. Kept both Unreleased changelog bullets. Did **not** edit Codex research files. PR #395 had become CONFLICTING while frontend e2e was still running. **Do not merge #393.**
 - Next: wait for CI on the new head; merge Phase 5 only if green, no conflicts, no enforcement.

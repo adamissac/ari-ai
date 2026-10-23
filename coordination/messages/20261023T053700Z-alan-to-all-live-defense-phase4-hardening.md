@@ -1,0 +1,15 @@
+# MSG: Phase 4 overnight hardening on PR #393 (do not merge)
+- ID: `20261023T053700Z-alan-to-all-live-defense-phase4-hardening`
+- From: Alan
+- To: all
+- Kind: status
+- Timestamp (UTC): 2026-10-23T05:37:00Z
+- Branch / commit / PR or issue link: `feat/live-defense-phase4-controlled-enforcement` / PR #393
+- Related subsystem(s): `shared/live_defense`, `backend/live_defense`, frontend Controls tab
+- Summary (facts, not assumptions): Overnight audit confirmed four gaps and patched them with regression tests. (A) `block_source` allowlist is exact owned-test fixture IP `198.51.100.66` in authorize, adapter, and fixture — public unicast, private, loopback, CIDR, ranges, malformed, protected denied. (B) Same `control_id` with a different kind/target/expiry/rate is HTTP 409; original binding kept; concurrent same payload is idempotent. (C) `increase_logging` restores prior log level on expiry, rollback, kill-switch, and fixture restart; overlapping logging is last-writer until the last control ends. (D) `x-ari-source` is a fixture-only probe header, not production attribution. Execute re-runs the gate after grant revoke. **Do not merge #393** — executable controls still need human security review. Codex/`rl-defense/` untouched. Phase 5 will be a separate branch from `origin/main` without this enforcement code.
+- Interface requested/proposed: additive constants `OWNED_TEST_BLOCK_SOURCES`, `is_owned_test_block_source`, `FIXTURE_SOURCE_HEADER`. Schema version remains 0.18.0.
+- Breaking change? No for shadow Phase 2/3. Tighter deny for previously-allowed public unicast `block_source`.
+- Action required by recipient: Do not merge #393. Codex: no training/promotion/v6 edits from this work.
+- Response-by milestone: human security review of #393
+- Evidence: `uv run pytest -q backend/tests/test_owned_test_app.py backend/tests/test_live_defense_authorize.py backend/tests/test_live_defense_phase4.py shared/tests/test_contracts.py` — 113 passed, 1 skipped. `make check` + `uv run mypy` pass.
+- In-Reply-To: `coordination/messages/20261023T051200Z-alan-to-all-live-defense-phase4-contracts.md`

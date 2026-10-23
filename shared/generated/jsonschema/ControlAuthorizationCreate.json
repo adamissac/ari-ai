@@ -1,0 +1,108 @@
+{
+  "$defs": {
+    "ControlTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/LiveControlTargetType"
+        },
+        "value": {
+          "default": "",
+          "maxLength": 500,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "ControlTarget",
+      "type": "object"
+    },
+    "LiveControlKind": {
+      "description": "The only actions that have an adapter or a recorded human escalation.",
+      "enum": [
+        "rate_limit",
+        "block_source",
+        "increase_logging",
+        "escalate"
+      ],
+      "title": "LiveControlKind",
+      "type": "string"
+    },
+    "LiveControlTargetType": {
+      "enum": [
+        "route",
+        "source_ip",
+        "application",
+        "none"
+      ],
+      "title": "LiveControlTargetType",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Analyst authorization request. Actor identity is the session, not this body.",
+  "properties": {
+    "duration_s": {
+      "maximum": 3600,
+      "minimum": 5,
+      "title": "Duration S",
+      "type": "integer"
+    },
+    "kind": {
+      "$ref": "#/$defs/LiveControlKind"
+    },
+    "live_policy_decision_id": {
+      "anyOf": [
+        {
+          "pattern": "^lpd_[0-9A-Za-z_\\-]{8,64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Live Policy Decision Id"
+    },
+    "max_requests": {
+      "anyOf": [
+        {
+          "maximum": 10000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Required for rate_limit; ignored otherwise",
+      "title": "Max Requests"
+    },
+    "rationale": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rationale"
+    },
+    "target": {
+      "$ref": "#/$defs/ControlTarget"
+    }
+  },
+  "required": [
+    "kind",
+    "target",
+    "duration_s"
+  ],
+  "title": "ControlAuthorizationCreate",
+  "type": "object"
+}

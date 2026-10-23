@@ -1,4 +1,5 @@
-"""Live Defense Phase 3 shadow runtime: rules + optional frozen-v6 inference.
+"""Live Defense: Phase 3 shadow runtime plus Phase 4 owned-test controls.
 
-Nothing in this package applies, isolates, rate-limits, or blocks traffic.
+Shadow decisions stay NOT_EXECUTED. Executable actions exist only after the
+deterministic authorization gate, only against a registered loopback fixture.
 """

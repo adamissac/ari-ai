@@ -1,0 +1,31 @@
+{
+  "$defs": {
+    "LiveControlTargetType": {
+      "enum": [
+        "route",
+        "source_ip",
+        "application",
+        "none"
+      ],
+      "title": "LiveControlTargetType",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "type": {
+      "$ref": "#/$defs/LiveControlTargetType"
+    },
+    "value": {
+      "default": "",
+      "maxLength": 500,
+      "title": "Value",
+      "type": "string"
+    }
+  },
+  "required": [
+    "type"
+  ],
+  "title": "ControlTarget",
+  "type": "object"
+}

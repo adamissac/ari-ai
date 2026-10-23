@@ -46,16 +46,34 @@ def _port() -> int:
 
 def _git(repo: Path, *args: str) -> str:
     return subprocess.check_output(
-        ["git", "-C", str(repo), "-c", "user.name=e2e", "-c", "user.email=e2e@example.invalid",
-         "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", *args],
+        [
+            "git",
+            "-C",
+            str(repo),
+            "-c",
+            "user.name=e2e",
+            "-c",
+            "user.email=e2e@example.invalid",
+            "-c",
+            "commit.gpgsign=false",
+            "-c",
+            "core.hooksPath=/dev/null",
+            *args,
+        ],
         text=True,
     ).strip()
 
 
 def _owned_repo(tmp: Path) -> tuple[Path, str]:
     repo = tmp / "owned-repo"
-    shutil.copytree(PAYMENTS, repo, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache", "*.egg-info", ".venv"))
-    (repo / "labels.yaml").unlink(missing_ok=True)  # the answer key never ships with the assessed repo
+    shutil.copytree(
+        PAYMENTS,
+        repo,
+        ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache", "*.egg-info", ".venv"),
+    )
+    (repo / "labels.yaml").unlink(
+        missing_ok=True
+    )  # the answer key never ships with the assessed repo
     _git(repo, "init", "-q")
     _git(repo, "add", ".")
     _git(repo, "commit", "-qm", "payments-lite")
@@ -65,7 +83,11 @@ def _owned_repo(tmp: Path) -> tuple[Path, str]:
 def _admin_url() -> str:
     url = os.environ.get("TEST_DATABASE_URL")
     if url:
-        return url if not url.startswith("postgresql://") else "postgresql+psycopg://" + url[len("postgresql://"):]
+        return (
+            url
+            if not url.startswith("postgresql://")
+            else "postgresql+psycopg://" + url[len("postgresql://") :]
+        )
     from backend.devdb import start
 
     return start(ROOT / ".dev" / "pgtest", database="postgres")
@@ -91,7 +113,8 @@ def main(argv: list[str]) -> int:
     with admin.connect() as c:
         c.execute(sa.text(f'CREATE DATABASE "{name}"'))
     tmp = Path(tempfile.mkdtemp(prefix="hackatl-e2e-"))
-    server = thread = worker_thread = next_proc = None
+    server = thread = worker_thread = next_proc = helper = None
+    fixture_stop: list[Any] = []
     stop = threading.Event()
     try:
         repo, sha = _owned_repo(tmp)
@@ -100,7 +123,9 @@ def main(argv: list[str]) -> int:
         api_port = _port()
         os.environ.update(
             APP_ENV="test",
-            DATABASE_URL=sa.engine.make_url(admin_url).set(database=name).render_as_string(hide_password=False),
+            DATABASE_URL=sa.engine.make_url(admin_url)
+            .set(database=name)
+            .render_as_string(hide_password=False),
             ARTIFACT_STORE_URI=(tmp / "artifacts").as_uri(),
             AUTH_DEV_LOGIN_ENABLED="true",
             ANTHROPIC_API_KEY="",
@@ -123,7 +148,10 @@ def main(argv: list[str]) -> int:
         # TEST-ONLY scripted model transport (see module docstring).
         import code_review
 
-        sys.path[:0] = [str(Path(code_review.__file__).resolve().parents[1] / "tests"), str(ROOT / "backend" / "tests")]
+        sys.path[:0] = [
+            str(Path(code_review.__file__).resolve().parents[1] / "tests"),
+            str(ROOT / "backend" / "tests"),
+        ]
         from cr_fakes import fake  # type: ignore[import-not-found]
         from sa_bridge import AlanScriptTransport  # type: ignore[import-not-found]
         from test_reviewer_agent import (  # type: ignore[import-not-found]
@@ -191,22 +219,59 @@ def main(argv: list[str]) -> int:
 
         base = f"http://127.0.0.1:{api_port}/api/v1"
         alice = httpx.Client(base_url=base)
-        me = alice.post("/auth/dev/login", json={"github_login": "e2e-alice"}).raise_for_status().json()
-        bob = httpx.Client(base_url=base).post("/auth/dev/login", json={"github_login": "e2e-bob"}).raise_for_status().json()
+        me = (
+            alice.post("/auth/dev/login", json={"github_login": "e2e-alice"})
+            .raise_for_status()
+            .json()
+        )
+        bob = (
+            httpx.Client(base_url=base)
+            .post("/auth/dev/login", json={"github_login": "e2e-bob"})
+            .raise_for_status()
+            .json()
+        )
         with transaction() as conn:
-            conn.execute(sa.insert(memberships).values(org_id=me["memberships"][0]["organization"]["id"], user_id=bob["user"]["id"], role="owner"))
+            conn.execute(
+                sa.insert(memberships).values(
+                    org_id=me["memberships"][0]["organization"]["id"],
+                    user_id=bob["user"]["id"],
+                    role="owner",
+                )
+            )
         alice.headers["X-CSRF-Token"] = me["csrf_token"]
-        pid = alice.post("/projects", json={"name": "payments-lite (e2e)"}).raise_for_status().json()["id"]
-        rid = alice.post(f"/projects/{pid}/repositories", json={"full_name": REPO_NAME}).raise_for_status().json()["id"]
+        pid = (
+            alice.post("/projects", json={"name": "payments-lite (e2e)"})
+            .raise_for_status()
+            .json()["id"]
+        )
+        rid = (
+            alice.post(f"/projects/{pid}/repositories", json={"full_name": REPO_NAME})
+            .raise_for_status()
+            .json()["id"]
+        )
         # The commit-workspace journey completes its own runs. Keep its findings/approvals
         # separate from the original journey's exact-count assertions.
-        workspace_pid = alice.post("/projects", json={"name": "commit-workspace (e2e)"}).raise_for_status().json()["id"]
+        workspace_pid = (
+            alice.post("/projects", json={"name": "commit-workspace (e2e)"})
+            .raise_for_status()
+            .json()["id"]
+        )
         workspace_name = "acme/commit-workspace"
-        workspace_rid = alice.post(f"/projects/{workspace_pid}/repositories", json={"full_name": workspace_name}).raise_for_status().json()["id"]
-        bindings.write_text(json.dumps([
-            {"repo_id": rid, "local_path": str(repo), "subdir": "."},
-            {"repo_id": workspace_rid, "local_path": str(repo), "subdir": "."},
-        ]))
+        workspace_rid = (
+            alice.post(
+                f"/projects/{workspace_pid}/repositories", json={"full_name": workspace_name}
+            )
+            .raise_for_status()
+            .json()["id"]
+        )
+        bindings.write_text(
+            json.dumps(
+                [
+                    {"repo_id": rid, "local_path": str(repo), "subdir": "."},
+                    {"repo_id": workspace_rid, "local_path": str(repo), "subdir": "."},
+                ]
+            )
+        )
         alice.close()
 
         # Stored simulation-derived recommendation for Live Defense e2e (no live RL
@@ -218,7 +283,11 @@ def main(argv: list[str]) -> int:
 
         rec0 = examples.build()["DefenseRecommendation"].model_dump(mode="json")
         rec_id = new_id(IdPrefix.rec)
-        node_name = rec0.get("node") if rec0.get("node") in ("gateway", "api", "auth", "payments", "db") else None
+        node_name = (
+            rec0.get("node")
+            if rec0.get("node") in ("gateway", "api", "auth", "payments", "db")
+            else None
+        )
         explanation = RLExplanation(
             recommendation_id=rec_id,
             action=str(rec0["action"]),
@@ -246,27 +315,94 @@ def main(argv: list[str]) -> int:
                 )
             )
 
+        owned_test_port = _port()
+        helper_port = _port()
+
+        from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+        class OwnedTestHelper(BaseHTTPRequestHandler):
+            def do_POST(self) -> None:  # noqa: N802
+                if self.path != "/start":
+                    self.send_response(404)
+                    self.end_headers()
+                    return
+                length = int(self.headers.get("Content-Length", "0"))
+                body = json.loads(self.rfile.read(length) or b"{}")
+                secret = str(body.get("secret") or "")
+                if not secret.startswith("hkt_ctl_"):
+                    self.send_response(400)
+                    self.end_headers()
+                    return
+                from backend.live_defense.owned_test_app import create_app, serve_in_thread
+
+                while fixture_stop:
+                    fixture_stop.pop()()
+                _app = create_app(secret)
+                bound, stop = serve_in_thread(_app, port=owned_test_port)
+                fixture_stop.append(stop)
+                payload = json.dumps(
+                    {"port": bound, "environment": "OWNED TEST ENVIRONMENT"}
+                ).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
+
+            def log_message(self, format: str, *args: Any) -> None:  # noqa: A003
+                return
+
+        helper = ThreadingHTTPServer(("127.0.0.1", helper_port), OwnedTestHelper)
+        helper_thread = threading.Thread(target=helper.serve_forever, daemon=True)
+        helper_thread.start()
+
         web_port = _port()
-        os.environ.setdefault("DEMO_ACCESS_CODE", "e2e-demo-access-code")  # demo account gate (proxy.ts)
-        env = {**os.environ, "BACKEND_ORIGIN": f"http://127.0.0.1:{api_port}", "NEXT_PUBLIC_DEV_LOGIN": "1"}
+        os.environ.setdefault(
+            "DEMO_ACCESS_CODE", "e2e-demo-access-code"
+        )  # demo account gate (proxy.ts)
+        env = {
+            **os.environ,
+            "BACKEND_ORIGIN": f"http://127.0.0.1:{api_port}",
+            "NEXT_PUBLIC_DEV_LOGIN": "1",
+        }
         env.pop("NODE_OPTIONS", None)
         if os.environ.get("E2E_SKIP_BUILD") != "1":
             subprocess.run(["npx", "next", "build"], cwd=FRONTEND, env=env, check=True)
-        next_proc = subprocess.Popen(["npx", "next", "start", "--port", str(web_port), "--hostname", "127.0.0.1"], cwd=FRONTEND, env=env)
+        next_proc = subprocess.Popen(
+            ["npx", "next", "start", "--port", str(web_port), "--hostname", "127.0.0.1"],
+            cwd=FRONTEND,
+            env=env,
+        )
         _wait(f"http://127.0.0.1:{web_port}/lab/bundles")
 
         result = subprocess.run(
             ["npx", "playwright", "test", *argv],
             cwd=FRONTEND,
-            env={**env, "E2E_BASE_URL": f"http://127.0.0.1:{web_port}", "E2E_API": base, "E2E_PROJECT_ID": pid,
-                 "E2E_REPO_ID": rid, "E2E_REPO": REPO_NAME, "E2E_WORKSPACE_PROJECT_ID": workspace_pid,
-                 "E2E_WORKSPACE_REPO_ID": workspace_rid, "E2E_WORKSPACE_REPO": workspace_name, "E2E_COMMIT": sha,
-                 "E2E_WEBHOOK_SECRET": WEBHOOK_SECRET, "E2E_REC_ID": rec_id},
+            env={
+                **env,
+                "E2E_BASE_URL": f"http://127.0.0.1:{web_port}",
+                "E2E_API": base,
+                "E2E_PROJECT_ID": pid,
+                "E2E_REPO_ID": rid,
+                "E2E_REPO": REPO_NAME,
+                "E2E_WORKSPACE_PROJECT_ID": workspace_pid,
+                "E2E_WORKSPACE_REPO_ID": workspace_rid,
+                "E2E_WORKSPACE_REPO": workspace_name,
+                "E2E_COMMIT": sha,
+                "E2E_WEBHOOK_SECRET": WEBHOOK_SECRET,
+                "E2E_REC_ID": rec_id,
+                "E2E_OWNED_TEST_PORT": str(owned_test_port),
+                "E2E_OWNED_TEST_HELPER": f"http://127.0.0.1:{helper_port}",
+            },
             check=False,
         )
         return result.returncode
     finally:
         stop.set()
+        if helper is not None:
+            helper.shutdown()
+        while fixture_stop:
+            fixture_stop.pop()()
         if next_proc:
             next_proc.terminate()
             try:
