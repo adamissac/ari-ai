@@ -14,7 +14,13 @@ records replacement study data, trains a model, or executes holdout.
 
 ## Supported commands
 
-Run from a reviewed repository revision with the recorded Python runtime, dependency
+The archived reconstruction revision is `31ab052941ebf1b3678a2610e5c4374d83606aa0`.
+Use a separate checkout of that commit for historical certification. Main subsequently
+changed shared-contract source; the verifier correctly rejects that changed closure
+rather than certifying the archived study under new semantics. Regression tests on
+current main remain separate from archived certification.
+
+Run from that pinned revision with the recorded Python runtime, dependency
 profile, and package paths configured for RL, shared contracts, standards and the
 owned payments fixture:
 

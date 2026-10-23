@@ -119,7 +119,8 @@
         "runtime_demo",
         "replay",
         "simulated",
-        "drill"
+        "drill",
+        "owned_staging"
       ],
       "title": "Source",
       "type": "string"

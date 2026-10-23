@@ -87,6 +87,15 @@ by FastAPI is the source for frontend client generation.
 | POST | `/ingest/runtime/{project_id}` | Runtime events (ingest token) |
 | GET | `/projects/{id}/events?limit=&cursor=` | Monitoring feed, newest first; `next_cursor` when older events exist |
 | GET | `/projects/{id}/defense-recommendations?limit=&cursor=` | RL recommendations (labeled), newest first; `next_cursor` when older exist |
+| POST | `/projects/{id}/applications` | Register a sandbox or owned-test staging app (owner; shadow mode) |
+| GET | `/projects/{id}/applications` | Connected staging apps (no secrets) |
+| POST | `/applications/{id}/ingest-tokens` | Mint an ingest token bound to that app (shown once) |
+| GET | `/projects/{id}/ingest-tokens` | Ingest-token metadata (owner; secret never returned) |
+| GET | `/projects/{id}/defense-health` | Recorded worker/ingest timestamps; `status` always `unknown` |
+| GET | `/projects/{id}/defense-graph` | Recorded apps and ingest routes; missing checks stay unknown |
+| POST | `/defense-recommendations/{id}/reviews` | Analyst accept/reject/needs-investigation (does not execute) |
+| GET | `/defense-recommendations/{id}/reviews` | Review history for one stored recommendation |
+| GET | `/projects/{id}/defense-reviews` | Review history for the project |
 
 ### Ops
 | Method | Path | Purpose |
@@ -112,3 +121,4 @@ installation. Implemented in-process (no Redis) for MVP.
 - No endpoint executes arbitrary commands or accepts code to run.
 - No endpoint adds a scope target that is not a sandbox build (MVP).
 - No endpoint merges or deploys.
+- No endpoint applies, isolates, rate-limits, or blocks a customer system. Analyst `accept` of a recommendation is a recorded opinion.

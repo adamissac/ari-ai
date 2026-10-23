@@ -38,3 +38,10 @@ regexes = [
   '''^\s*"shared/shared/api\.py": "52dc1f49e7c599dce72eed330137dbc8229d6367ff6aa8ff18ad046549491a1c",?\s*$''',
   '''^\s*"standards/standards/owasp_api\.py": "e0103a6e7f9cf8bde9e9a3ded0cf2e30c4006d072e00d9ab01f3eb74fa3e0440",?\s*$''',
 ]
+# Evidence JSON maps source paths to SHA-256 digests. generic-api-key fires when a
+# path contains "api.py" next to a 64-hex digest (not a credential). Keep this
+# narrower than "any 64-hex string" so real api_key / token assignments still fail.
+[[allowlists]]
+description = "SHA-256 file digests for *api.py paths in evidence JSON"
+regexTarget = "line"
+regexes = ['''"[^"]*api\.py":\s*"[0-9a-f]{64}"''']

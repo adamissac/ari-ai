@@ -29,6 +29,7 @@ const PRIMARY = [
   { href: '', label: '7 agents' },
 ];
 const TOOLS = [
+  { href: '/live-defense', label: 'Live Defense' },
   { href: '/findings', label: 'Findings' },
   { href: '/approvals', label: 'Approvals' },
   { href: '/monitoring', label: 'Monitoring' },
