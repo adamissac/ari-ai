@@ -65,10 +65,13 @@ def view_from_window(
 
 
 def authorization_context(windows: Sequence[WindowView]) -> AuthorizationContext:
+    succeeded = [w for w in windows if w.successes > 0]
+    if succeeded:  # one route without ownership context keeps the whole batch unverified
+        if all(w.principals for w in succeeded):
+            return AuthorizationContext.verified
+        return AuthorizationContext.unverified
     if any(w.principals for w in windows):
         return AuthorizationContext.verified
-    if any(w.successes > 0 for w in windows):
-        return AuthorizationContext.unverified
     return AuthorizationContext.missing
 
 
