@@ -22,6 +22,7 @@ from backend.api.deps import ApiError, not_found, require_project, require_user
 from backend.db import (
     analyst_reviews,
     connected_applications,
+    control_channels,
     defense_recommendations,
     ingest_tokens,
     jobs,
@@ -84,6 +85,7 @@ def _application_from_rows(
     app_row: sa.RowMapping,
     tokens: list[sa.RowMapping],
     last_ingest_at: datetime | None,
+    control_channel_configured: bool = False,
 ) -> ConnectedApplication:
     active = [t for t in tokens if t["revoked_at"] is None]
     had_any = bool(tokens)
@@ -101,6 +103,7 @@ def _application_from_rows(
         ingest_configured=bool(active),
         last_ingest_at=_aware(last_ingest_at),
         verification=verification,
+        control_channel_configured=control_channel_configured,
         created_by=app_row["created_by"],
         created_at=_aware(app_row["created_at"]) or utcnow(),
     )
@@ -124,7 +127,13 @@ def _load_application(conn: sa.Connection, app_id: str) -> ConnectedApplication:
             runtime_windows.c.application_id == app_id
         )
     ).scalar()
-    return _application_from_rows(row, list(tokens), last_ingest)
+    channel = conn.execute(
+        sa.select(control_channels.c.id).where(
+            control_channels.c.application_id == app_id,
+            control_channels.c.revoked_at.is_(None),
+        )
+    ).scalar()
+    return _application_from_rows(row, list(tokens), last_ingest, bool(channel))
 
 
 @router.post(
@@ -207,9 +216,21 @@ def list_applications(project_id: str, request: Request) -> dict[str, Any]:
         for token in tokens:
             if token["application_id"]:
                 by_app.setdefault(token["application_id"], []).append(token)
+        channel_apps = {
+            row_id
+            for (row_id,) in conn.execute(
+                sa.select(control_channels.c.application_id).where(
+                    control_channels.c.project_id == project_id,
+                    control_channels.c.revoked_at.is_(None),
+                )
+            ).all()
+        }
         items = [
             _application_from_rows(
-                row, by_app.get(row["id"], []), last_by_app.get(row["id"])
+                row,
+                by_app.get(row["id"], []),
+                last_by_app.get(row["id"]),
+                row["id"] in channel_apps,
             ).model_dump(mode="json")
             for row in rows
         ]
