@@ -322,6 +322,13 @@ class LLMGateway:
         total = Usage()
         invalid = 0
         for turn in range(1, max_turns + 1):
+            if turn == max_turns and turn > 1:  # forced tool_choice is unavailable; ask instead
+                last = messages[-1]
+                note = f"This is your final turn: call `{submit}` now with your best result."
+                if isinstance(last["content"], str):
+                    last["content"] += "\n\n" + note
+                else:
+                    last["content"] = [*last["content"], {"type": "text", "text": note}]
             resp = self.create_message(
                 agent=agent, system=system, messages=messages, tools=defs, max_tokens=max_tokens
             )

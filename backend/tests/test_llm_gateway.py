@@ -3,6 +3,7 @@ Tier 3 (opt-in): one real provider tool-loop smoke when RUN_LIVE_LLM_EVAL=1 and 
 
 from __future__ import annotations
 
+import json
 import os
 
 import pytest
@@ -174,6 +175,9 @@ def test_turn_limit_is_enforced() -> None:
             tools=[Tool("read_file", "r", ReadFile, lambda i: "x")],
             output_model=Verdict,
         )
+    # Only the final turn asks the model to submit now.
+    notes = ["final turn" in json.dumps(r["messages"][-1]) for r in transport.requests]
+    assert notes == [False, False, True]
 
 
 @pytest.mark.live_llm
