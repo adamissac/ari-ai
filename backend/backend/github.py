@@ -63,7 +63,7 @@ class GitHubApp:
             )
         self._key = key
         self._client = client or httpx.Client(base_url=self.settings.github_api_url, timeout=20.0)
-        self._tokens: dict[int, _Token] = {}
+        self._tokens: dict[tuple[int, bool, str | None], _Token] = {}
 
     def _app_jwt(self) -> str:
         import jwt
@@ -75,8 +75,13 @@ class GitHubApp:
             algorithm="RS256",
         )
 
-    def installation_token(self, installation_id: int) -> str:
-        cached = self._tokens.get(installation_id)
+    def installation_token(
+        self, installation_id: int, *, write: bool = False, repository: str | None = None
+    ) -> str:
+        # Write tokens exist only for fix delivery (ADR-0021) and are limited to the one
+        # repository being delivered; every other use reads.
+        key = (installation_id, write, repository)
+        cached = self._tokens.get(key)
         if cached and cached.expires_at - time.time() > 120:
             return cached.value
         r = self._client.post(
@@ -85,12 +90,47 @@ class GitHubApp:
                 "Authorization": f"Bearer {self._app_jwt()}",
                 "Accept": "application/vnd.github+json",
             },
-            json={"permissions": {"contents": "read", "metadata": "read"}},
+            json={
+                "permissions": {"contents": "write", "pull_requests": "write", "metadata": "read"}
+                if write
+                else {"contents": "read", "metadata": "read"}
+            }
+            | ({"repositories": [repository]} if repository else {}),
         )
         r.raise_for_status()
         data = r.json()
-        self._tokens[installation_id] = _Token(data["token"], time.time() + 3000)
+        self._tokens[key] = _Token(data["token"], time.time() + 3000)
         return data["token"]
+
+    def open_pull_request(
+        self, installation_id: int, full_name: str, *, head: str, base: str, title: str, body: str
+    ) -> str:
+        """Open a PR (ADR-0021) and return its URL. Needs the App's pull_requests: write."""
+        token = self.installation_token(
+            installation_id, write=True, repository=full_name.split("/", 1)[1]
+        )
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        }
+        r = self._client.post(
+            f"/repos/{full_name}/pulls",
+            headers=headers,
+            json={"title": title, "head": head, "base": base, "body": body},
+        )
+        if r.status_code == 422 and "already exists" in r.text:  # a retried job: reuse the PR
+            owner = full_name.split("/", 1)[0]
+            found = self._client.get(
+                f"/repos/{full_name}/pulls",
+                params={"head": f"{owner}:{head}", "state": "all"},
+                headers=headers,
+            )
+            found.raise_for_status()
+            if found.json():
+                return str(found.json()[0]["html_url"])
+        r.raise_for_status()
+        return str(r.json()["html_url"])
 
     def _get(self, installation_id: int, path: str, **params: Any) -> Any:
         r = self._client.get(

@@ -5,7 +5,7 @@ import { useState, type FormEvent } from 'react';
 import { useProject } from '@/components/project';
 import { Button, ErrorState, Field, inputClass, Panel } from '@/components/ui';
 import { api } from '@/lib/api';
-import { draftOf, parseSettings, type Draft } from '@/lib/settings';
+import { AUTO_WARNING, draftOf, parseSettings, type Draft } from '@/lib/settings';
 
 export default function SettingsPage() {
   const { project, reloadProject } = useProject();
@@ -74,6 +74,20 @@ export default function SettingsPage() {
           <Field label="Max USD"><input className={inputClass} inputMode="decimal" value={draft.monUsd} onChange={e => set('monUsd')(e.target.value)} /></Field>
           <Field label="Wall clock (s)"><input className={inputClass} inputMode="numeric" value={draft.monWall} onChange={e => set('monWall')(e.target.value)} /></Field>
         </div>
+      </Panel>
+      <Panel title="Fix delivery" className="lg:col-span-2">
+        <p className="mb-3 text-sm text-muted">How verified fixes from the code reviewer and the seven agents reach your repository. Needs the GitHub App&apos;s Contents and Pull requests: Read &amp; write permissions.</p>
+        {([
+          ['auto', 'Auto-commit', 'Ari commits every fix the Verify agent accepts straight to your default branch, no human check. If the branch moved or is protected, it opens a pull request instead.'],
+          ['pull_request', 'Pull request', 'Every verified fix arrives as a pull request. Your team reviews and merges.'],
+          ['manual', 'Manual', 'Nothing is pushed. You approve each fix in ARI yourself.'],
+        ] as const).map(([value, label, hint]) => (
+          <label key={value} className="mb-2 flex items-start gap-2 text-sm">
+            <input type="radio" name="delivery" checked={draft.deliveryMode === value}
+              onChange={() => { if (value !== 'auto' || window.confirm(AUTO_WARNING)) set('deliveryMode')(value); }} />
+            <span><strong>{label}</strong>: {hint}</span>
+          </label>
+        ))}
       </Panel>
       <div className="flex flex-wrap items-center gap-3 lg:col-span-2">
         <Button type="submit" variant="primary" disabled={busy || !dirty || 'error' in parsed}>Save settings</Button>

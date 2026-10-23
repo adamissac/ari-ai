@@ -3488,6 +3488,16 @@
       "title": "DefensiveMapping",
       "type": "object"
     },
+    "DeliveryMode": {
+      "description": "How verified repairs reach the repository (ADR-0021).",
+      "enum": [
+        "auto",
+        "pull_request",
+        "manual"
+      ],
+      "title": "DeliveryMode",
+      "type": "string"
+    },
     "DevLoginRequest": {
       "additionalProperties": false,
       "properties": {
@@ -7583,6 +7593,24 @@
         "default_budget": {
           "$ref": "#/$defs/Budget"
         },
+        "delivery_authorized_by": {
+          "anyOf": [
+            {
+              "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Owner on whose standing authorization Ari approves and delivers fixes; set by the server, never the client. Null on projects that predate delivery modes: they stay manual until an owner saves settings.",
+          "title": "Delivery Authorized By"
+        },
+        "delivery_mode": {
+          "$ref": "#/$defs/DeliveryMode",
+          "default": "auto"
+        },
         "languages": {
           "items": {
             "maxLength": 500,
@@ -7598,7 +7626,9 @@
       "required": [
         "default_budget",
         "monitoring_policy",
-        "languages"
+        "languages",
+        "delivery_mode",
+        "delivery_authorized_by"
       ],
       "title": "ProjectSettings",
       "type": "object"
@@ -8135,7 +8165,7 @@
       "additionalProperties": false,
       "properties": {
         "automatic_assessments": {
-          "default": true,
+          "default": false,
           "title": "Automatic Assessments",
           "type": "boolean"
         },
@@ -9644,7 +9674,7 @@
       "description": "Monitoring trigger policy (docs/10). Defaults match the MVP table.",
       "properties": {
         "enabled": {
-          "default": true,
+          "default": false,
           "title": "Enabled",
           "type": "boolean"
         },
@@ -10113,5 +10143,5 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "HackATL platform contracts",
-  "x-schema-version": "0.18.1"
+  "x-schema-version": "0.19.0"
 }

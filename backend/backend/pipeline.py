@@ -301,6 +301,7 @@ def run_assessment(ctx: JobContext) -> dict[str, Any]:
     if a.state in TERMINAL_STATES:
         return {"state": a.state.value, "noop": True}
     try:
+        host.check_cancelled()
         resuming = a.state is not AssessmentState.CREATED
         if not resuming and a.trigger is AssessmentTrigger.monitoring:
             with transaction() as conn:
@@ -364,6 +365,11 @@ def run_assessment(ctx: JobContext) -> dict[str, Any]:
             host.terminate(state, code, message)
         raise PermanentJobError(code, str(exc)) from exc
     final = host.assessment.state
+    if final is AssessmentState.AWAITING_APPROVAL:
+        from backend.delivery import auto_approve_pending
+
+        with transaction() as conn:
+            auto_approve_pending(conn, asm_id, host.project_id)
     if final not in TERMINAL_STATES and final is not AssessmentState.AWAITING_APPROVAL:
         host.terminate(
             AssessmentState.FAILED,

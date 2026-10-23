@@ -47,6 +47,8 @@ MonitoringEvent {
 
 ## Trigger policy (MVP defaults, per project config)
 
+Monitoring starts **OFF**. Owners opt in with the project’s 24/7 defense switch (also available in Defense Lab). Repository automatic assessments also start OFF and require their own explicit opt-in. Migration 0012 resets existing switches once, per the owner’s 2026-10-21 request. Historical Lab replays remain viewable and do not execute live agents.
+
 | Condition | Action |
 |---|---|
 | Diff touches a symbol with a `verified` finding | Re-run that finding's regression test + Verify check (cheap path) |
