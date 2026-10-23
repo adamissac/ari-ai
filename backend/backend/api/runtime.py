@@ -29,6 +29,7 @@ from backend import audit, jobs
 from backend.api.deps import ApiError, limiter, not_found, require_project, require_user
 from backend.api.webhooks import _read_bounded
 from backend.db import (
+    connected_applications,
     findings,
     ingest_tokens,
     monitoring_events,
@@ -177,6 +178,18 @@ def _authenticate(
         or not secrets.compare_digest(row.project_id, project_id)
     ):
         raise ApiError(ErrorCode.UNAUTHENTICATED, "invalid or revoked ingest token", 401)
+    if row.application_id:
+        app = (
+            conn.execute(
+                sa.select(connected_applications.c.doc).where(
+                    connected_applications.c.id == row.application_id
+                )
+            )
+            .mappings()
+            .first()
+        )
+        if app is not None and (app["doc"] or {}).get("disconnected_at"):
+            raise ApiError(ErrorCode.UNAUTHENTICATED, "invalid or revoked ingest token", 401)
     return row.id, row.application_id
 
 

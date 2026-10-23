@@ -259,6 +259,18 @@ export class ApiClient {
   revokeIngestToken(tokenId: string, options?: RequestOptions): Promise<void> {
     return this.request(`/ingest-tokens/${segment(tokenId)}/revoke`, null, options, {}) as Promise<void>;
   }
+  rotateApplicationIngestToken(appId: string, options?: RequestOptions): Promise<C.IngestTokenRotated> {
+    return this.request(`/applications/${segment(appId)}/ingest-tokens/rotate`, 'IngestTokenRotated', options, {}) as Promise<C.IngestTokenRotated>;
+  }
+  disconnectConnectedApplication(appId: string, options?: RequestOptions): Promise<C.ConnectedApplication> {
+    return this.request(`/applications/${segment(appId)}/disconnect`, 'ConnectedApplication', options, {}) as Promise<C.ConnectedApplication>;
+  }
+  shadowVerifyConnectedApplication(appId: string, options?: RequestOptions): Promise<C.ConnectedApplication> {
+    return this.request(`/applications/${segment(appId)}/shadow-verify`, 'ConnectedApplication', options, {}) as Promise<C.ConnectedApplication>;
+  }
+  pilotReport(projectId: string, options?: RequestOptions): Promise<C.PilotReport> {
+    return this.request(`/projects/${segment(projectId)}/pilot-report`, 'PilotReport', options) as Promise<C.PilotReport>;
+  }
   defenseHealth(projectId: string, options?: RequestOptions): Promise<C.DefenseHealth> {
     return this.request(`/projects/${segment(projectId)}/defense-health`, 'DefenseHealth', options) as Promise<C.DefenseHealth>;
   }

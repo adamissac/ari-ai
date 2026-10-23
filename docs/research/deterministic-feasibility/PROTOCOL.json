@@ -1,0 +1,370 @@
+{
+  "cases": [
+    {
+      "context": {
+        "contradictory": false,
+        "fresh_until": 100,
+        "grants": [],
+        "observed_at": 0,
+        "owner": "owner",
+        "principal": "reader",
+        "resource": "payment-1"
+      },
+      "label": "unauthorized",
+      "name": "foreign-without-grant",
+      "now": 1
+    },
+    {
+      "context": {
+        "contradictory": false,
+        "fresh_until": 100,
+        "grants": [],
+        "observed_at": 0,
+        "owner": "owner",
+        "principal": "owner",
+        "resource": "payment-1"
+      },
+      "label": "owner",
+      "name": "owner-read",
+      "now": 1
+    },
+    {
+      "context": {
+        "contradictory": false,
+        "fresh_until": 100,
+        "grants": [
+          {
+            "expires_at": 10,
+            "owner": "owner",
+            "principal": "reader",
+            "resource": "payment-1",
+            "revoked": false,
+            "valid_from": 0
+          }
+        ],
+        "observed_at": 0,
+        "owner": "owner",
+        "principal": "reader",
+        "resource": "payment-1"
+      },
+      "label": "delegate",
+      "name": "valid-delegate",
+      "now": 1
+    },
+    {
+      "context": {
+        "contradictory": false,
+        "fresh_until": 100,
+        "grants": [
+          {
+            "expires_at": 10,
+            "owner": "owner",
+            "principal": "reader",
+            "resource": "payment-1",
+            "revoked": false,
+            "valid_from": 0
+          }
+        ],
+        "observed_at": 0,
+        "owner": "owner",
+        "principal": "reader",
+        "resource": "payment-1"
+      },
+      "label": "delegate",
+      "name": "delegation-start-boundary",
+      "now": 0
+    },
+    {
+      "context": {
+        "contradictory": false,
+        "fresh_until": 100,
+        "grants": [
+          {
+            "expires_at": 10,
+            "owner": "owner",
+            "principal": "reader",
+            "resource": "payment-1",
+            "revoked": false,
+            "valid_from": 0
+          }
+        ],
+        "observed_at": 0,
+        "owner": "owner",
+        "principal": "reader",
+        "resource": "payment-1"
+      },
+      "label": "delegate",
+      "name": "delegation-last-valid-tick",
+      "now": 9
+    },
+    {
+      "context": {
+        "contradictory": false,
+        "fresh_until": 100,
+        "grants": [
+          {
+            "expires_at": 10,
+            "owner": "owner",
+            "principal": "reader",
+            "resource": "payment-1",
+            "revoked": false,
+            "valid_from": 0
+          }
+        ],
+        "observed_at": 0,
+        "owner": "owner",
+        "principal": "reader",
+        "resource": "payment-1"
+      },
+      "label": "unauthorized",
+      "name": "expired-delegation",
+      "now": 10
+    },
+    {
+      "context": {
+        "contradictory": false,
+        "fresh_until": 100,
+        "grants": [
+          {
+            "expires_at": 10,
+            "owner": "owner",
+            "principal": "reader",
+            "resource": "payment-1",
+            "revoked": false,
+            "valid_from": 2
+          }
+        ],
+        "observed_at": 0,
+        "owner": "owner",
+        "principal": "reader",
+        "resource": "payment-1"
+      },
+      "label": "unauthorized",
+      "name": "future-delegation",
+      "now": 1
+    },
+    {
+      "context": {
+        "contradictory": false,
+        "fresh_until": 100,
+        "grants": [
+          {
+            "expires_at": 10,
+            "owner": "owner",
+            "principal": "reader",
+            "resource": "payment-1",
+            "revoked": true,
+            "valid_from": 0
+          }
+        ],
+        "observed_at": 0,
+        "owner": "owner",
+        "principal": "reader",
+        "resource": "payment-1"
+      },
+      "label": "unauthorized",
+      "name": "revoked-delegation",
+      "now": 1
+    },
+    {
+      "context": {
+        "contradictory": false,
+        "fresh_until": 100,
+        "grants": [
+          {
+            "expires_at": 10,
+            "owner": "owner",
+            "principal": "reader",
+            "resource": "payment-2",
+            "revoked": false,
+            "valid_from": 0
+          }
+        ],
+        "observed_at": 0,
+        "owner": "owner",
+        "principal": "reader",
+        "resource": "payment-1"
+      },
+      "label": "unauthorized",
+      "name": "other-resource-grant",
+      "now": 1
+    },
+    {
+      "context": {
+        "contradictory": false,
+        "fresh_until": 100,
+        "grants": [
+          {
+            "expires_at": 10,
+            "owner": "other-owner",
+            "principal": "reader",
+            "resource": "payment-1",
+            "revoked": false,
+            "valid_from": 0
+          }
+        ],
+        "observed_at": 0,
+        "owner": "owner",
+        "principal": "reader",
+        "resource": "payment-1"
+      },
+      "label": "unauthorized",
+      "name": "other-owner-grant",
+      "now": 1
+    },
+    {
+      "context": {
+        "contradictory": false,
+        "fresh_until": 100,
+        "grants": [
+          {
+            "expires_at": 10,
+            "owner": "owner",
+            "principal": "reader",
+            "resource": "payment-1",
+            "revoked": false,
+            "valid_from": 0
+          }
+        ],
+        "observed_at": 0,
+        "owner": "owner",
+        "principal": "second-reader",
+        "resource": "payment-1"
+      },
+      "label": "unauthorized",
+      "name": "other-principal-grant",
+      "now": 1
+    },
+    {
+      "context": {
+        "contradictory": false,
+        "fresh_until": 100,
+        "grants": [
+          {
+            "expires_at": 10,
+            "owner": "owner",
+            "principal": "reader",
+            "resource": "payment-1",
+            "revoked": false,
+            "valid_from": 0
+          }
+        ],
+        "observed_at": 0,
+        "owner": "owner",
+        "principal": "owner",
+        "resource": "payment-1"
+      },
+      "label": "owner",
+      "name": "owner-with-expired-delegation",
+      "now": 10
+    },
+    {
+      "context": {
+        "contradictory": false,
+        "fresh_until": 100,
+        "grants": [],
+        "observed_at": 0,
+        "owner": "owner",
+        "principal": null,
+        "resource": "payment-1"
+      },
+      "label": "unknown",
+      "name": "missing-principal",
+      "now": 1
+    },
+    {
+      "context": {
+        "contradictory": false,
+        "fresh_until": 100,
+        "grants": [],
+        "observed_at": 0,
+        "owner": null,
+        "principal": "reader",
+        "resource": "payment-1"
+      },
+      "label": "unknown",
+      "name": "missing-owner",
+      "now": 1
+    },
+    {
+      "context": {
+        "contradictory": false,
+        "fresh_until": 100,
+        "grants": null,
+        "observed_at": 0,
+        "owner": "owner",
+        "principal": "reader",
+        "resource": "payment-1"
+      },
+      "label": "unknown",
+      "name": "missing-permissions",
+      "now": 1
+    },
+    {
+      "context": {
+        "contradictory": true,
+        "fresh_until": 100,
+        "grants": [],
+        "observed_at": 0,
+        "owner": "owner",
+        "principal": "reader",
+        "resource": "payment-1"
+      },
+      "label": "unknown",
+      "name": "contradictory-context",
+      "now": 1
+    },
+    {
+      "context": {
+        "contradictory": false,
+        "fresh_until": 100,
+        "grants": [],
+        "observed_at": 2,
+        "owner": "owner",
+        "principal": "reader",
+        "resource": "payment-1"
+      },
+      "label": "unknown",
+      "name": "future-context",
+      "now": 1
+    },
+    {
+      "context": {
+        "contradictory": false,
+        "fresh_until": 1,
+        "grants": [],
+        "observed_at": 0,
+        "owner": "owner",
+        "principal": "reader",
+        "resource": "payment-1"
+      },
+      "label": "unknown",
+      "name": "stale-context",
+      "now": 1
+    }
+  ],
+  "compute_limit_seconds": 60,
+  "confidence": "exhaustive finite-case checks only; no population confidence interval or generalization claim",
+  "holdout": false,
+  "interim_tuning": false,
+  "intervention_budget": "not applicable: fixed stateless per-read guard; no RL actions or control timers",
+  "max_requests": 54,
+  "owner_approved_limits": {
+    "aggregation": "each authored case and each known label separately",
+    "legitimate_denials": 0,
+    "successful_unauthorized_reads": 0,
+    "unknown": "separate; never treated as legitimate success or zero cost"
+  },
+  "policies": [
+    "unguarded",
+    "blanket_deny",
+    "exact_resource_guard"
+  ],
+  "replacement_cases": false,
+  "retries": 0,
+  "schema": "deterministic-read-feasibility/1",
+  "scope": "authored in-process HTTP fixture only; not payments-lite training scenarios, customer traffic or production",
+  "status": "preregistered-before-comparison",
+  "stopping_rule": "one pass over all declared cases/policies; any exception retains FAILURE.json and stops; candidate violation is no-go",
+  "training": false
+}

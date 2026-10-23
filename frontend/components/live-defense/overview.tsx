@@ -139,6 +139,9 @@ function LiveOverviewRecords({
               <dl className="mt-3 grid grid-cols-[minmax(8rem,auto)_1fr] gap-x-3 gap-y-1 text-sm text-ink" data-testid="live-defense-health">
                 <dt className="text-muted">Status</dt><dd>{item.status}</dd>
                 <dt className="text-muted">Reason</dt><dd>{item.status_reason}</dd>
+                <dt className="text-muted">Worker</dt><dd>{item.worker_status} — {item.worker_status_reason}</dd>
+                <dt className="text-muted">Telemetry</dt><dd>{item.telemetry_status} — {item.telemetry_status_reason}</dd>
+                <dt className="text-muted">Policy</dt><dd>{item.policy_status} — {item.policy_status_reason}</dd>
                 <dt className="text-muted">Worker last heartbeat</dt><dd>{item.worker_seen_at ? <Time iso={item.worker_seen_at} /> : 'unavailable'}</dd>
                 <dt className="text-muted">Queue depth</dt><dd>{item.queue_depth ?? 'unavailable'}</dd>
                 <dt className="text-muted">Last ingest window</dt><dd>{item.last_ingest_at ? <Time iso={item.last_ingest_at} /> : 'unavailable'}</dd>

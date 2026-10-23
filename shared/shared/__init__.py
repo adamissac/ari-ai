@@ -6,7 +6,7 @@ coordination/CONTRACTS.md.
 """
 
 SCHEMA_VERSION = (
-    "0.18.0"  # 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING;
+    "0.18.1"  # 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING;
     # 0.6 intelligence memory (PR #39); 0.7 security standards + incidents (PR #49);
     # 0.8 FindingDetail / AssessmentReport response DTOs (additive);
     # 0.9 CheckCategory enum (Probe ids + V0 fixture aliases);
@@ -29,4 +29,8 @@ SCHEMA_VERSION = (
     #      ControlGrant, ControlChannel, authorization DTO, verification records.
     #      AnalystReview and LivePolicyDecision stay non-executing. Production is still
     #      not a StagingEnvironment value.
+    # 0.18 live-defense Phase 5 shadow-pilot readiness (additive): disconnect,
+    #      ingest-token rotate, worker/telemetry/policy health remain unknown,
+    #      exportable PilotReport. No executable enforcement. Unmerged Phase 4
+    #      (#393) also used 0.18.0 for LiveControl — rebase must renumber if both merge.
 )
