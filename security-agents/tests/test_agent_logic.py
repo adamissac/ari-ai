@@ -920,3 +920,24 @@ def test_scout_surveys_only_recipe_included_code(tmp_path):
     assert not scout._in_target("backend2/x.py", ("backend",))
     (tmp_path / "build_recipe.json").write_text("{not json")
     assert scout._recipe_include(intel) == ()
+
+
+def test_patch_can_edit_a_span_of_a_large_file_without_rewriting_it(intel, tmp_path):
+    from security_agents.tools.services import PatchWorktree
+
+    wt = PatchWorktree.create(intel, tmp_path / "wt3", ["payments_lite/app.py"])
+    src = (wt.root / "payments_lite/app.py").read_text()
+    anchor = "def get_payment("
+    assert src.count(anchor) == 1
+    out = wt.edit_file("payments_lite/app.py", anchor, "def get_payment_checked(")
+    assert out["action"] == "edited" and "payments_lite/app.py" in wt.changed()
+    assert "def get_payment_checked(" in (wt.root / "payments_lite/app.py").read_text()
+    # ambiguous or missing spans are refused without writing
+    assert wt.edit_file("payments_lite/app.py", "def ", "x")["error"] == "NO_UNIQUE_MATCH"
+    assert wt.edit_file("payments_lite/app.py", "no such text", "x")["error"] == "NO_UNIQUE_MATCH"
+    assert wt.edit_file("payments_lite/missing.py", "a", "b")["error"] in ("NOT_FOUND", "PATH_NOT_ALLOWED")
+    # outside the approved plan: refused, file untouched
+    other = next(p for p in ("payments_lite/store.py", "payments_lite/models.py") if (wt.root / p).is_file())
+    before = (wt.root / other).read_text()
+    assert wt.edit_file(other, before[:20], "x")["error"] == "PATH_NOT_ALLOWED"
+    assert (wt.root / other).read_text() == before

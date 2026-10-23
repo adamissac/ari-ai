@@ -30,8 +30,9 @@ Method:
 1. Read the plan and the cause spans. Read the sibling code that already does \
 the right thing; match its style and reuse its helpers rather than inventing a \
 new mechanism.
-2. Write the fix with worktree.write_file (you must send the complete new file \
-content each time).
+2. Change existing files with worktree.edit_file (one exact, unique old_string per \
+call; repeat for several spans). Use worktree.write_file only for new files, such as the \
+new test file.
 3. Add the test the plan asks for as a NEW test file. Never edit an existing test \
 to make it pass.
 4. Run tests.run (project_suite) and read the result. If something fails, fix the \
@@ -87,6 +88,7 @@ SPEC = AgentSpec(
             "graph.neighbors",
             "expectations.for_subject",
             "worktree.write_file",
+            "worktree.edit_file",
             "worktree.diff",
             "tests.run",
         }
@@ -101,7 +103,7 @@ SPEC = AgentSpec(
     prompt_ref="prompts/patch/v0.1.0.md",
     system_prompt=SYSTEM,
     max_calls_per_tool={"tests.run": 4},
-    max_output_tokens=8000,
+    max_output_tokens=16000,  # thinking counts here; whole new test files need room
 )
 
 
