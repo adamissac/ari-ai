@@ -277,3 +277,29 @@ def test_production_uses_only_haiku_despite_stale_environment_overrides():
     gw = build_gateway(settings=settings, transport=transport, charge=lambda usage: None)
     for role in ("reviewer", "scout", "probe", "trace", "diagnose", "patch", "verify", "fortify"):
         assert gw.model_for(role) == "claude-haiku-5-5"
+
+
+def test_signed_assistant_turns_are_sent_back_unchanged() -> None:
+    """A thinking block is signed: rewriting a token-like string inside it makes the
+    provider reject the request ("Invalid `signature` in `thinking` block")."""
+    transport = FakeTransport(
+        [{"content": [{"type": "text", "text": "ok"}], "stop_reason": "end_turn"}]
+    )
+    gw = build_gateway(settings=_settings(), transport=transport)
+    thinking = {
+        "type": "thinking",
+        "thinking": "the recipe sends Authorization: Bearer sbx-alice-session-token",
+        "signature": "sig-abc",
+    }
+    gw.create_message(
+        agent="reviewer",
+        system="s",
+        messages=[
+            {"role": "user", "content": "read build_recipe.json (Bearer sbx-alice-session-token)"},
+            {"role": "assistant", "content": [thinking]},
+            {"role": "user", "content": "continue"},
+        ],
+    )
+    sent = transport.requests[0]["messages"]
+    assert sent[1]["content"][0] == thinking
+    assert "sbx-alice-session-token" not in str(sent[0])  # user content is still redacted

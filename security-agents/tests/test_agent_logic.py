@@ -884,3 +884,23 @@ def test_verify_later_suite_run_does_not_mask_collection_errors():
     verdict, _, reasons = verify_agent.compute_verdict(evidence(test_runs=runs))
     assert verdict == "rejected"
     assert any("collection errors" in r for r in reasons)
+
+
+def test_check_on_a_prefix_mounted_route_decides_the_hypothesis():
+    """Scout cites the handler's own path; the recipe names the mounted API path."""
+    data = probe_input().model_copy(update={"subject_routes": ["GET /repositories/{repo_id}"]})
+    run = check_run(False, route={"method": "GET", "path_template": "/api/v1/repositories/{id}"})
+    r = probe_agent.to_validation_result(probe_out("confirmed"), data, record(), [run])
+    assert r.outcome.value == "confirmed"
+    other = check_run(False, route={"method": "GET", "path_template": "/api/v1/projects/{project_id}"})
+    r = probe_agent.to_validation_result(probe_out("confirmed"), data, record(), [other])
+    assert r.outcome.value == "inconclusive"
+
+
+def test_same_route_matching():
+    same = probe_agent.same_route
+    assert same("GET /repositories/{repo_id}", "GET /api/v1/repositories/{id}")
+    assert same("get /payments/{payment_id}", "GET /payments/{id}/")
+    assert not same("POST /repositories/{repo_id}", "GET /api/v1/repositories/{id}")
+    assert not same("GET /{id}", "GET /api/v1/repositories/{id}")  # a bare parameter matches nothing
+    assert not same("GET /tories/{id}", "GET /api/v1/repositories/{id}")  # segment boundary
