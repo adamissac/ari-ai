@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 import sqlalchemy as sa
@@ -45,6 +45,7 @@ from shared.monitoring import (
 )
 
 _CLIENT: tuple[Any, Any, Any] | None = None
+STALE_AFTER = timedelta(hours=1)
 
 
 def github_client() -> GitHubApp:
@@ -182,6 +183,9 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
     sender = p.get("sender", "").lower()
     if not sender or ("*" not in allowed and sender not in allowed):
         return policy_exit(p, "push sender is outside the automatic rollout")
+    # Only fresh pushes run; a backlog (quota deferrals, re-enabled repos) is skipped.
+    if utcnow() - datetime.fromisoformat(p["received_at"]) > STALE_AFTER:
+        return policy_exit(p, "commit was pushed more than an hour ago")
     with transaction() as conn:
         repo = (
             conn.execute(sa.select(repositories).where(repositories.c.id == p["repo_id"]))
@@ -194,7 +198,8 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
     if commit.get("sha") != p["sha"]:
         raise ValueError("GitHub returned a different commit")
     login = (commit.get("author") or {}).get("login", "").lower()
-    if not login or ("*" not in allowed and login not in allowed):
+    # "*" admits any author, including commits whose email maps to no GitHub account.
+    if "*" not in allowed and (not login or login not in allowed):
         return policy_exit(p, "commit author is outside the automatic rollout")
     ctx.check_cancelled()
     with transaction() as conn:

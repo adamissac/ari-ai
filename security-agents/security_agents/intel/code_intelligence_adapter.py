@@ -16,10 +16,13 @@ Two facts shape the adapter:
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
 from typing import Any
+
+from code_intelligence.privacy import redact
 
 from ..contracts import (
     BehavioralExpectation,
@@ -140,6 +143,8 @@ class CodeIntelligenceAdapter:
         end = max(start, int(end_line))
         if end - start + 1 > MAX_SPAN_LINES:
             end = start + MAX_SPAN_LINES - 1
+        # Clamp to the file so "read to the end" works; a start past the end is still refused.
+        end = min(end, max(start, self._line_counts.get(self._to_index(rel), end)))
         try:
             content = self.service.read_span(self.ref, self._to_index(rel), start, end)
         except Exception as exc:
@@ -150,24 +155,33 @@ class CodeIntelligenceAdapter:
         return Span(path=rel, start_line=start, end_line=end, content=numbered)
 
     def search(self, pattern: str, *, max_results: int = 20) -> list[dict[str, Any]]:
-        """Literal search. NOTE: the service matches case-insensitive substrings,
-        not regular expressions, so a regex from an agent is used as text."""
+        """Regular-expression search over the pinned index (the tool promises a regex; the
+        service only matches substrings). An invalid regex falls back to a literal match."""
+        if not pattern.strip() or len(pattern) > 500:
+            raise ValueError("search requires a nonempty pattern of at most 500 characters")
         try:
-            chunks = self.service.search(self.ref, pattern, limit=max(1, min(max_results, 50)))
-        except Exception as exc:
-            raise ValueError(f"search failed: {exc}"[:200]) from exc
+            rx = re.compile(pattern, re.IGNORECASE)
+        except re.error:
+            rx = re.compile(re.escape(pattern), re.IGNORECASE)
+        limit = max(1, min(max_results, 50))
         hits: list[dict[str, Any]] = []
-        for chunk in chunks:
-            provenance = getattr(chunk, "provenance", None)
-            span = getattr(provenance, "span", None)
-            hits.append(
-                {
-                    "path": self._to_workspace(str(getattr(provenance, "path", ""))),
-                    "line": int(getattr(span, "start_line", 0) or 0),
-                    "text": _strip_delimiters(str(getattr(chunk, "content", "")))[:300],
-                }
-            )
+        for file in self._index.files:
+            for number, line in enumerate(file.content.splitlines(), 1):
+                if rx.search(line):
+                    hits.append(
+                        {
+                            "path": self._to_workspace(file.path),
+                            "line": number,
+                            "text": redact(line.strip())[:300],
+                        }
+                    )
+                    if len(hits) == limit:
+                        return hits
         return hits
+
+    @cached_property
+    def _line_counts(self) -> dict[str, int]:
+        return {f.path: len(f.content.splitlines()) for f in self._index.files}
 
     # ------------------------------------------------------------------ structure
 
@@ -402,13 +416,3 @@ def _params_from_signature(signature: Any) -> list[str]:
         if name and name not in ("self", "cls"):
             out.append(name)
     return out
-
-
-def _strip_delimiters(text: str) -> str:
-    """Drop the service's untrusted-data wrapper so a search hit reads as a line."""
-    lines = [
-        line
-        for line in text.splitlines()
-        if not line.startswith(("<untrusted", "</untrusted", "<data", "</data"))
-    ]
-    return " ".join(line.strip() for line in lines if line.strip())

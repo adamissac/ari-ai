@@ -352,6 +352,13 @@ def test_resolve_repo_registries_and_build_recipe(tmp_path: Path, monkeypatch) -
         assert resolve_repo("rep_bound00001").subdir == ""
         assert resolve_repo("rep_bound00001", commit_sha=sha).subdir == "billing"
         assert resolve_repo("rep_bound00001", commit_sha=sc.head_sha).subdir == ""  # no recipe then
+        # the backend's bare clone (no .git) is reviewable too
+        bare = tmp_path / "rep_bound00001.git"
+        _sp.run(["git", "clone", "-q", "--bare", str(sc.repo), str(bare)], check=True, env=env)
+        bindings.write_text(
+            _json.dumps([{"repo_id": "rep_bound00001", "local_path": str(bare), "subdir": "."}])
+        )
+        assert resolve_repo("rep_bound00001", commit_sha=sha).subdir == "billing"
     finally:
         monkeypatch.delenv("REPOSITORY_BINDINGS_FILE")
         get_settings.cache_clear()
