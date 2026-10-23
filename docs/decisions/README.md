@@ -38,3 +38,4 @@ before Phase 1 implementation relies on them.
 4. Update specs that the decision changes in the same PR.
 
 - [ADR-0018: five-seed isolated live-lab evaluation (proposed)](0018-live-lab-five-seed-evaluation.md)
+- [ADR-0019: independent authorization gate for live controls (accepted)](0019-live-defense-control-authorization.md)
