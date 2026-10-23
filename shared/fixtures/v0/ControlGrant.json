@@ -1,0 +1,17 @@
+{
+  "allowed_kinds": [
+    "rate_limit",
+    "block_source",
+    "increase_logging",
+    "escalate"
+  ],
+  "application_id": "app_01JFIXTURE0000000000000APP",
+  "created_at": "2026-10-17T01:00:00Z",
+  "created_by": "usr_01JFIXTURE0000000000000USR",
+  "expires_at": null,
+  "hourly_budget": 5,
+  "id": "cgr_01JFIXTURE0000000000000CGR",
+  "max_duration_s": 300,
+  "project_id": "prj_01JFIXTURE0000000000000PRJ",
+  "revoked_at": null
+}

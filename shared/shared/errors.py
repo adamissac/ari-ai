@@ -40,6 +40,8 @@ class ErrorCode(StrEnum):
     INTERNAL = "INTERNAL"
     # Agent-domain halt raised when the kill switch pauses assessments.
     KILL_SWITCH = "KILL_SWITCH"
+    # Live Defense Phase 4: authorization gate denied a control (fail closed).
+    LIVE_CONTROL_DENIED = "LIVE_CONTROL_DENIED"
 
 
 class ErrorBody(StrictModel):

@@ -1,0 +1,102 @@
+{
+  "$defs": {
+    "LiveControlKind": {
+      "description": "The only actions that have an adapter or a recorded human escalation.",
+      "enum": [
+        "rate_limit",
+        "block_source",
+        "increase_logging",
+        "escalate"
+      ],
+      "title": "LiveControlKind",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Owner grant for exact kinds on one owned-test/sandbox application.",
+  "properties": {
+    "allowed_kinds": {
+      "items": {
+        "$ref": "#/$defs/LiveControlKind"
+      },
+      "minItems": 1,
+      "title": "Allowed Kinds",
+      "type": "array"
+    },
+    "application_id": {
+      "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Application Id",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "created_by": {
+      "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Created By",
+      "type": "string"
+    },
+    "expires_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Expires At"
+    },
+    "hourly_budget": {
+      "maximum": 20,
+      "minimum": 1,
+      "title": "Hourly Budget",
+      "type": "integer"
+    },
+    "id": {
+      "pattern": "^cgr_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "max_duration_s": {
+      "maximum": 3600,
+      "minimum": 5,
+      "title": "Max Duration S",
+      "type": "integer"
+    },
+    "project_id": {
+      "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "revoked_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Revoked At"
+    }
+  },
+  "required": [
+    "id",
+    "project_id",
+    "application_id",
+    "allowed_kinds",
+    "max_duration_s",
+    "hourly_budget",
+    "created_by",
+    "created_at"
+  ],
+  "title": "ControlGrant",
+  "type": "object"
+}

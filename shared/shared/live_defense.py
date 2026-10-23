@@ -1,16 +1,20 @@
-"""Live Defense shadow-pilot contracts (Phase 2 + Phase 3 shadow runtime).
+"""Live Defense contracts (Phase 2–4).
 
-These types describe recorded evidence for a customer shadow deployment:
+Phase 2/3 types describe recorded evidence for a customer shadow deployment:
 connected staging applications, ingest-token metadata, timestamps from the
 job worker and runtime ingest, a topology derived from those records,
 analyst reviews, and genuine ``LivePolicyDecision`` rows produced only when
 deterministic rules or validated frozen-v6 inference actually ran.
 
-They do **not** describe autonomous enforcement. ``AnalystReview.executes`` is
-always false. ``LivePolicyDecision.enforcement`` is always ``NOT_EXECUTED``.
-``DefenseHealth.status`` is always ``unknown``: HTTP 200 from this API is not
-a healthy verdict, and there is no live health-check producer. Stored
-``DefenseRecommendation`` rows remain simulation-derived.
+``AnalystReview.executes`` is always false. ``LivePolicyDecision.enforcement``
+is always ``NOT_EXECUTED``. Those rows never become a live control.
+
+Phase 4 adds a **separate** control lifecycle (``LiveControl``) and a
+deterministic authorization DTO. Executable actions exist only after
+``authorize.check``, only against a registered owned-test/sandbox app, and
+only for the four allowlisted kinds. Production is still not a
+``StagingEnvironment`` value. ``DefenseHealth.status`` is always ``unknown``:
+HTTP 200 from this API is not a healthy verdict.
 """
 
 from __future__ import annotations
@@ -24,7 +28,11 @@ from shared.base import Sha256Hex, ShortText, StrictModel, UtcDatetime
 from shared.ids import (
     AnalystReviewId,
     ConnectedApplicationId,
+    ControlChannelId,
+    ControlGrantId,
+    EmergencyStopId,
     IngestTokenId,
+    LiveControlId,
     LivePolicyDecisionId,
     MonitoringEventId,
     ProjectId,
@@ -61,6 +69,10 @@ class ConnectedApplication(StrictModel):
     last_ingest_at: UtcDatetime | None = None
     verification: ApplicationVerification
     shadow_mode: Literal[True] = True
+    control_channel_configured: bool = Field(
+        default=False,
+        description="True when a control channel exists; the HMAC secret is never returned",
+    )
     created_by: UserId
     created_at: UtcDatetime
 
@@ -274,3 +286,219 @@ class LivePolicyDecision(StrictModel):
     principal_targets: list[PrincipalRef] = Field(default_factory=list)
     feature_mapping_note: ShortText | None = None
     caveat: ShortText = SHADOW_DECISION_CAVEAT
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 — controlled enforcement (owned test only)
+# ---------------------------------------------------------------------------
+
+ISOLATED_FIXTURE_SOURCE = "198.51.100.66"
+"""The only special-use address the gate accepts as a block_source target.
+
+RFC 5737 TEST-NET-2. Loopback, link-local, multicast, unspecified, broadcast,
+and RFC1918 addresses are rejected. This address is the narrowly defined
+isolated fixture used by ``examples/payments-lite/live_defense_control``.
+"""
+
+CONTROL_PATH: Literal["/live-defense/control"] = "/live-defense/control"
+MIN_CONTROL_DURATION_S = 5
+MAX_CONTROL_DURATION_S = 3600
+RATE_LIMIT_MIN_REQUESTS = 1
+AUTHORIZATION_CHECKS: tuple[str, ...] = (
+    "authenticated_session",
+    "action_allowlist",
+    "application_registered",
+    "environment_owned_test",
+    "owner_grant_exact_kind",
+    "owner_grant_exact_app",
+    "grant_active",
+    "duration_within_grant",
+    "hourly_budget",
+    "approval_binding",
+    "blast_radius",
+    "address_policy",
+    "control_channel_allowlist",
+    "kill_switch_clear",
+    "no_unresolved_control",
+)
+
+CONTROL_LIFECYCLE_CAVEAT = (
+    "Owned-test control. Not customer production. Adapter HTTP 200 is not "
+    "effectiveness. Shadow recommendations stay NOT_EXECUTED."
+)
+
+
+class LiveControlKind(StrEnum):
+    """The only actions that have an adapter or a recorded human escalation."""
+
+    rate_limit = "rate_limit"
+    block_source = "block_source"
+    increase_logging = "increase_logging"
+    escalate = "escalate"
+
+
+class LiveControlTargetType(StrEnum):
+    route = "route"
+    source_ip = "source_ip"
+    application = "application"
+    none = "none"
+
+
+class LiveControlStatus(StrEnum):
+    """Control lifecycle. Distinct from NIST SP 800-61r3 incident phases."""
+
+    pending_authorization = "pending_authorization"
+    authorized = "authorized"
+    executing = "executing"
+    verifying = "verifying"
+    verified = "verified"
+    failed = "failed"
+    expired = "expired"
+    rolled_back = "rolled_back"
+    escalated = "escalated"
+    rejected = "rejected"
+    emergency_stopped = "emergency_stopped"
+
+
+class LiveControlOrigin(StrEnum):
+    """Who proposed the action. Origin never bypasses the gate."""
+
+    analyst = "analyst"
+    rules = "rules"
+    v6_shadow = "v6_shadow"
+
+
+class AuthorizationCheckResult(StrictModel):
+    name: ShortText
+    passed: bool
+    reason: ShortText
+
+
+class ControlTarget(StrictModel):
+    type: LiveControlTargetType
+    value: ShortText = ""
+
+
+class ControlGrant(StrictModel):
+    """Owner grant for exact kinds on one owned-test/sandbox application."""
+
+    id: ControlGrantId
+    project_id: ProjectId
+    application_id: ConnectedApplicationId
+    allowed_kinds: list[LiveControlKind] = Field(min_length=1)
+    max_duration_s: int = Field(ge=MIN_CONTROL_DURATION_S, le=MAX_CONTROL_DURATION_S)
+    hourly_budget: int = Field(ge=1, le=20)
+    created_by: UserId
+    created_at: UtcDatetime
+    expires_at: UtcDatetime | None = None
+    revoked_at: UtcDatetime | None = None
+
+
+class ControlGrantCreate(StrictModel):
+    application_id: ConnectedApplicationId
+    allowed_kinds: list[LiveControlKind] = Field(min_length=1)
+    max_duration_s: int = Field(default=300, ge=MIN_CONTROL_DURATION_S, le=MAX_CONTROL_DURATION_S)
+    hourly_budget: int = Field(default=5, ge=1, le=20)
+    expires_at: UtcDatetime | None = None
+
+
+class ControlChannelView(StrictModel):
+    """Registered adapter destination. Secret is never included after issuance."""
+
+    id: ControlChannelId
+    project_id: ProjectId
+    application_id: ConnectedApplicationId
+    host: Literal["127.0.0.1"]
+    port: int = Field(ge=1024, le=65535)
+    path: Literal["/live-defense/control"] = CONTROL_PATH
+    created_at: UtcDatetime
+    revoked_at: UtcDatetime | None = None
+
+
+class ControlChannelCreate(StrictModel):
+    """Owner registers a loopback port. Arbitrary URLs are rejected by construction."""
+
+    port: int = Field(ge=1024, le=65535)
+
+
+class ControlChannelCreated(ControlChannelView):
+    hmac_secret: ShortText = Field(description="Shown once; never re-returned")
+
+
+class ControlAuthorizationCreate(StrictModel):
+    """Analyst authorization request. Actor identity is the session, not this body."""
+
+    kind: LiveControlKind
+    target: ControlTarget
+    duration_s: int = Field(ge=MIN_CONTROL_DURATION_S, le=MAX_CONTROL_DURATION_S)
+    rationale: ShortText | None = None
+    live_policy_decision_id: LivePolicyDecisionId | None = None
+    max_requests: int | None = Field(
+        default=None,
+        ge=RATE_LIMIT_MIN_REQUESTS,
+        le=10_000,
+        description="Required for rate_limit; ignored otherwise",
+    )
+
+
+class LiveControlVerification(StrictModel):
+    observed_effect: bool
+    adapter_http_status: int | None = None
+    probe_http_statuses: list[int] = Field(default_factory=list)
+    method: ShortText
+    detail: ShortText
+    verified_at: UtcDatetime
+    adapter_http_200_is_not_effectiveness: Literal[True] = True
+
+
+class LiveControl(StrictModel):
+    """One authorized (or denied) owned-test control. Not a NIST incident."""
+
+    id: LiveControlId
+    project_id: ProjectId
+    application_id: ConnectedApplicationId
+    live_policy_decision_id: LivePolicyDecisionId | None = None
+    grant_id: ControlGrantId | None = None
+    kind: LiveControlKind
+    target: ControlTarget
+    duration_s: int = Field(ge=MIN_CONTROL_DURATION_S, le=MAX_CONTROL_DURATION_S)
+    status: LiveControlStatus
+    origin: LiveControlOrigin
+    binding_sha256: Sha256Hex
+    requested_by: UserId
+    requested_at: UtcDatetime
+    authorized_at: UtcDatetime | None = None
+    executing_at: UtcDatetime | None = None
+    verified_at: UtcDatetime | None = None
+    expires_at: UtcDatetime | None = None
+    ended_at: UtcDatetime | None = None
+    checks: list[AuthorizationCheckResult] = Field(default_factory=list)
+    verification: LiveControlVerification | None = None
+    unresolved: bool = False
+    simulated: Literal[False] = False
+    environment_label: Literal["OWNED TEST ENVIRONMENT"] = "OWNED TEST ENVIRONMENT"
+    caveat: ShortText = CONTROL_LIFECYCLE_CAVEAT
+    max_requests: int | None = None
+    rationale: ShortText | None = None
+    denial_reason: ShortText | None = None
+
+
+class EmergencyStop(StrictModel):
+    id: EmergencyStopId
+    project_id: ProjectId
+    application_id: ConnectedApplicationId | None = None
+    active: bool
+    requested_by: UserId
+    requested_at: UtcDatetime
+    cleared_at: UtcDatetime | None = None
+    verified_cleared: bool = False
+    note: ShortText | None = None
+
+
+class EmergencyStopCreate(StrictModel):
+    application_id: ConnectedApplicationId | None = None
+    note: ShortText | None = None
+
+
+class LiveControlRollbackCreate(StrictModel):
+    reason: ShortText | None = None
