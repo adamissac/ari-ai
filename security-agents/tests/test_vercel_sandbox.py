@@ -140,3 +140,46 @@ def test_rejects_a_workspace_at_a_forbidden_root() -> None:
         _driver().run(spec)
     assert exc.value.code == ErrorCode.SANDBOX_POLICY_VIOLATION
     assert FakeBox.instances == []  # never created a sandbox
+
+
+def test_sdk_box_locks_egress_before_staging_and_destroys_snapshots(monkeypatch) -> None:
+    """Runner wheels install with PyPI-only egress; deny-all lands before any repo code."""
+    from types import SimpleNamespace
+
+    from vercel.sandbox import NetworkPolicy
+    from vercel.sandbox import sync as vsandbox
+
+    from security_agents.sandbox import vercel_driver
+
+    calls: list[tuple] = []
+
+    class Box:
+        fs = SimpleNamespace(mkdir=lambda d, **kw: calls.append(("mkdir", d)))
+
+        def run_process(self, cmd, args, **kw):
+            calls.append(("run", cmd, tuple(args), kw.get("sudo")))
+
+        def update_network_policy(self, policy):
+            calls.append(("policy", policy.mode))
+
+        def stop(self):
+            calls.append(("stop",))
+
+        def destroy(self, *, delete_orphan_snapshots=False):
+            calls.append(("destroy", delete_orphan_snapshots))
+
+    def create(**kw):
+        calls.append(("create", kw["network_policy"].mode, kw["persistent"]))
+        assert set(kw["network_policy"].allow) == set(vercel_driver.PYPI_DOMAINS)
+        return Box()
+
+    monkeypatch.setattr(vsandbox, "create_sandbox", create)
+    spec = SimpleNamespace(limits=SimpleNamespace(timeout_s=60), labels={})
+    box = vercel_driver._VercelSdkBox(spec, "r1")
+    box.stop()
+
+    assert calls[0] == ("create", "custom", False)
+    assert calls[1][:2] == ("run", "python") and calls[1][3] is True
+    assert calls[2] == ("policy", NetworkPolicy.deny_all().mode)
+    assert all(c[0] == "mkdir" for c in calls[3:6])
+    assert calls[-2:] == [("stop",), ("destroy", True)]

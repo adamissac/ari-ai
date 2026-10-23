@@ -1,0 +1,423 @@
+{
+  "bootstrap_seed": 17,
+  "code_sha256": {
+    "examples/payments-lite/target/payments_lite/__init__.py": "ccc543b70f006737dd5133a808cddf1e1d467e3a1db1d6a406ecc0c66a382c07",
+    "examples/payments-lite/target/payments_lite/app.py": "9762884fddf5a8c3df9a21422682b2cae92e7db792bd4c81f2b13407ca7b708a",
+    "examples/payments-lite/target/payments_lite/store.py": "36cd3213734013302a3aec44235fd7c1553146b029aa1dbd47bf5f347bf29309",
+    "rl-defense/rl_defense/__init__.py": "7f62870d1f23c0004595446cd7de5e84d793285c7edfd57bb693b973ab1ea4dc",
+    "rl-defense/rl_defense/agents/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "rl-defense/rl_defense/agents/ddqn.py": "04f50ce3924f71b090f882e18e715b05aeb499cb22db4a87223246bc48ef40ba",
+    "rl-defense/rl_defense/analysis.py": "0f69502405d40a0bce819bd1ef0114d45f99b7888376b702cf8a6de27a025e5d",
+    "rl-defense/rl_defense/api.py": "629bc9d1f1eef5318eaa705e37fdc78c443bdc52a7f436e4199f99f34396f48a",
+    "rl-defense/rl_defense/baselines/__init__.py": "e7318e224d728d75b4a26cc6510ddbd22661e409e50ec49cc17d5674b8ef6b1d",
+    "rl-defense/rl_defense/baselines/policies.py": "1b16bed804a02cce4c07ab06b8773b9edb3487da469a23692cfc252d953e84ed",
+    "rl-defense/rl_defense/checkpoint.py": "a94a421fda03efa3971fd004540e2f58665bc668310e4c0b8b92df0b0d1c8de0",
+    "rl-defense/rl_defense/contracts.py": "dedb4b306e2ac20ac1a1382825f9905666f8244487c79721d4b48b35e0c32c04",
+    "rl-defense/rl_defense/envs/__init__.py": "93457769ae6063c4d1363836c8a197e52e6eb02b05ec9c3209109a209577e4a1",
+    "rl-defense/rl_defense/envs/config.py": "55041985e5c44a405a7bd947b7ff19923022a76283215eceb494b462c6a7cae4",
+    "rl-defense/rl_defense/envs/defense_sim.py": "be4e01379160f492c84ad19a25024d2c48e5d896d8928bdf0ccd754663c64dee",
+    "rl-defense/rl_defense/evaluate.py": "e43746cebedd58d7ef278006e29a8dea06717b6718212115eeb8a870f6b6d089",
+    "rl-defense/rl_defense/explain.py": "20b6f53ad9541e8a649eed72ed1becdd24eaaaa93f620abc4734b36124fdfbe8",
+    "rl-defense/rl_defense/inference.py": "864c81a5507d2bbffbd722b84ef87e4ca2c3dacf6508065ca973b3dc0adc1b63",
+    "rl-defense/rl_defense/lab_export.py": "dad47c03b8933d3ca94ef1626c4e7686707b5fec3e4bf674e29211bc539926b3",
+    "rl-defense/rl_defense/layouts.py": "047a27601546287090ab8edd5bd5018d44e2c82cd3a9ce3f267d611e03d0c357",
+    "rl-defense/rl_defense/live/__init__.py": "9d230eb5a47c83c2ef554ba9c1b7f9e4516b6e4bdd4d3d550ca66911624d507b",
+    "rl-defense/rl_defense/live/actions.py": "9f517b82f45a7a52eb00a50c916bfdda6f6235c98b8f224dfc94b51a60e3c824",
+    "rl-defense/rl_defense/live/adversary.py": "5f8f0a30061dc8414c50c91a74a1c05d4c74aa5e461aacc2e841dc154a9268a2",
+    "rl-defense/rl_defense/live/contracts.py": "f0fae211d0c739a8e335a18d489700ffa69a18b82918d069ed4baa80f2d7a474",
+    "rl-defense/rl_defense/live/evaluate.py": "13135d5b70ab1c8af2aa58e92a890276d8f24d1025d3e56cfba300d80b28184d",
+    "rl-defense/rl_defense/live/evidence.py": "d257d03270a3594d1aeeade864b5764cbcea8272bdde2c4cc2e73615ce67f900",
+    "rl-defense/rl_defense/live/experience.py": "82db48bc6c2f8edbbf6749d7404d781edfcaf24034d4abab544fb2bbc6278712",
+    "rl-defense/rl_defense/live/gateway.py": "372c557d31072b64c131974080acaefcbe79658fa59df196475d45917eb07997",
+    "rl-defense/rl_defense/live/loop.py": "983c10f14676cb57ddaf254b5fadb470af6aee5021044c5402b121635ece7830",
+    "rl-defense/rl_defense/live/online.py": "1dad2ac6ae3a6059e593078aded72b8b7bb8056812e034ef26e7d769301695f4",
+    "rl-defense/rl_defense/live/pipeline.py": "a82b1ccf2de189fe1f52a4705f62fcccbf07eb0ef79b83e4ba35878b54b397c7",
+    "rl-defense/rl_defense/live/platform_check.py": "acb26553dbfe76af84371527b2b66c941037091a29df562a3d6a9b1f84a79d9d",
+    "rl-defense/rl_defense/live/registry.py": "8b981ec177879df8566c28d43199b310e8304dbdb336635b1ebaa8f013c2ade6",
+    "rl-defense/rl_defense/live/report.py": "0cbdb0daf94b28fc4f231ae9703b0249bcd70ad4f793686ac8035c5eceff544f",
+    "rl-defense/rl_defense/live/retrain.py": "a9bf19afe8b2b19b37c967ad6031620388d403b8f781cf4a85f7e4e00516b3b6",
+    "rl-defense/rl_defense/live/run.py": "e777c5f9c17833f93cc1fbc2990ddd83644d1925bb04dd9b3de7c435e3217df5",
+    "rl-defense/rl_defense/live/scenarios.py": "64d72641635d7aac0a0107d0426499b2a315ac56189b6ea5bebebe22caee0abc",
+    "rl-defense/rl_defense/live/study.py": "b71ffb5f9ec58343c2bbad1429e068cd3add5834d3c485e3942ce891ee1776fa",
+    "rl-defense/rl_defense/live/telemetry.py": "017220388e9582365f65d1629b010621b0d63fad05c10ded027bb819b2cf6c88",
+    "rl-defense/rl_defense/live/topology.py": "3585bc00012a447927bba0517ac3d0cd4ae66451145e1c94f382532be1c3e68f",
+    "rl-defense/rl_defense/observations.py": "3b66621c09e7e286861b4d2bf42f4a2ac6843d2c7dee13372a149e986116af82",
+    "rl-defense/rl_defense/platform_mapping.py": "3f3de860d99ba160370c6ff327a9f1947ad5c06862d9f5e7a279231465165fcc",
+    "rl-defense/rl_defense/research/__init__.py": "5c2ca9a71627c61b5f4d94e05ffa9c00f8adec36512fd20ffcaf716c9eeb7235",
+    "rl-defense/rl_defense/research/dataset.py": "6dd1d15b92d4224bb46dc899deebff01f92671a107a3b062fad5c6d7c1e0bead",
+    "rl-defense/rl_defense/research/evaluate.py": "8c0002a79444f367a3b34967c198d4b3b1a292d5573fc134553168d385452b2e",
+    "rl-defense/rl_defense/research/metrics.py": "779e82e8950f276b2be49f6911f7b3951834c3f33e2effb72de517433be3177a",
+    "rl-defense/rl_defense/research/policies.py": "6f088d7d451bacc59508df72118620c8cde61bfdb6831b81c01640a48fdaecfa",
+    "rl-defense/rl_defense/research/records.py": "47b17f5bccb98e32fa644dd9d27a4727cc09fddf88cb1a4903b9692c74468c12",
+    "rl-defense/rl_defense/standards.py": "805eb4873be0277a13fe03cf8246aa13f769bf7585c604f4053de6584f034658",
+    "rl-defense/rl_defense/stress.py": "a7ee8f92d2b59acbb76a18b2b8093e037319cd55d7b2d69f92aadc39eb9051d9",
+    "rl-defense/rl_defense/train.py": "a64d852bd2c6efd7f7e2b762f448bc6325191f2f9585699bffc678c75f18bb37",
+    "shared/shared/__init__.py": "7ac60fa53116139e5ef96dd69bcc21db2dc077aa678655816c42e0137892ed62",
+    "shared/shared/api.py": "52dc1f49e7c599dce72eed330137dbc8229d6367ff6aa8ff18ad046549491a1c",
+    "shared/shared/assessment.py": "37eb9429257479b710b08c1e0f47fb74fc249f965eac3cb33b7639dbcfee4dfd",
+    "shared/shared/audit.py": "f399efa8757b09729ace67fac70099fe47c13c9a2f9e05162f1dac2d4478dc91",
+    "shared/shared/base.py": "f207f5b46f96a90c7e1be9c7a93d6bae9db6ce8b80dbfa219d896c850d3abf62",
+    "shared/shared/errors.py": "a7da88d559ce53b0a073725d811b5623bfe22295db3f9112c9b557bb44b2d581",
+    "shared/shared/events.py": "0d5956cc347b713929bb277c4444319a32dcb5bf72b2882861c80810db03edcf",
+    "shared/shared/evidence.py": "2c5814c5c7c912ccc4823bcdc491756772ad78031211ce355d637ec72d2f4687",
+    "shared/shared/examples.py": "f148fdc86a3c009a58d4fc79584db537fda80ebd2e742393e2e34a977ec52723",
+    "shared/shared/export.py": "17263127d5ecd620ea691dca62d6e82781d57838879e37e0cc0a1ffde15163c1",
+    "shared/shared/findings.py": "39243927f69ca22716a05d40ba77dbd2f9fde0095264a03fe16868b61d02c47d",
+    "shared/shared/ids.py": "3efb79fff8d50a9df8aabbb8be6cb3e037c08bf073bde4c0b85f09590edc7949",
+    "shared/shared/incident.py": "11714275b9810695b3c5f2d47e0947f92f9868c1f93d699a045848fabb3b9a0e",
+    "shared/shared/intelligence.py": "7c37d820390d027ac9ff06283ea5d7063a4e54935406a4814c458bab9a9c7c30",
+    "shared/shared/intelligence_memory.py": "24e0121e6045335821455140d9800de428f75cea3eb30cbbf3b7c51fc9eb37f0",
+    "shared/shared/monitoring.py": "bc7790d33832a817b72d45f87be118690b35534d5e33f8dbebe2fe442029b99c",
+    "shared/shared/registry.py": "ee95c6bb1a0223497e239edb8d5a9a0b5ff4f1421df7f339377ecad054bc2565",
+    "shared/shared/review.py": "03d709f0e261042bb9def9644ae4d3e1311f95b60834d05d489e1ca5a9b83d8a",
+    "shared/shared/rl.py": "863acacb628e80862b59f43ddd7c703c015661a202cde1bb99d16a05efbe2ac3",
+    "shared/shared/scope.py": "68b5438d73aa28b56ef60056783829fbd053acc2f38743d8af2624362a28bd9e",
+    "shared/shared/standards.py": "ae8a571a87f4da24fb09de9c149c79fe3843341a6a7fb087cc6a4154fb46ef7e",
+    "shared/shared/tenancy.py": "a96a35892be98822b943abaf7cad103387d317b27e143a2ad1f6878c2b0f4b91",
+    "standards/standards/__init__.py": "89a92c7f20e544644e0893e7d2125eec4ea45d8ded59b6b431cf4e899743a9bd",
+    "standards/standards/catalog.py": "9091b30d78bf289b801f62cd21c8474b8b8532757c3cb4013712885bb51b2e1f",
+    "standards/standards/cvss.py": "46eb56eeb06d320eb5196e01ef86bb7894447eb3f8a4ecc73989b3c73e28e65b",
+    "standards/standards/cvss31.py": "0f20012e6702ef686f36a518143d06571104f660e98316351219fb795516d96c",
+    "standards/standards/cvss4.py": "c768f273645db47b6e070d61339ccb2f25b655a72d31ac8c488676a6143bb008",
+    "standards/standards/cvss_assess.py": "b565a35e83be1a7562f8ebbc840f31c8de598414260c08c847db48cf6b75a679",
+    "standards/standards/incident.py": "ae1c48a77d8a03823e9bba9998042c58db058077ca88a66e73cc917d06199ec0",
+    "standards/standards/mapping.py": "1dde403b2d49da016dca1d2470654079ad71bebc1e8b5a1c423dae0e833cf671",
+    "standards/standards/owasp_api.py": "e0103a6e7f9cf8bde9e9a3ded0cf2e30c4006d072e00d9ab01f3eb74fa3e0440",
+    "standards/standards/owasp_llm.py": "5ecc2cb10dd43d9c74a7c8ea47a2da1c1a0cee73bf2d623710408268898bce63"
+  },
+  "cost": "blocked legitimate request count",
+  "cost_aware_max_interventions": 2,
+  "dependencies": {
+    "PyYAML": "6.0.3",
+    "fastapi": "0.150.0",
+    "gymnasium": "1.4.0",
+    "httpx": "0.28.1",
+    "numpy": "2.5.4",
+    "pydantic": "2.14.1",
+    "torch": "2.14.1"
+  },
+  "environment": "owned payments-lite in-process lab; not production",
+  "episode_seeds": {
+    "always_on_delegated": [
+      7000,
+      7001,
+      7002,
+      7003
+    ],
+    "delegate_quiet": [
+      5000,
+      5001,
+      5002,
+      5003
+    ],
+    "insider_delegate": [
+      6500,
+      6501,
+      6502,
+      6503
+    ],
+    "outsider_rotation": [
+      6000,
+      6001,
+      6002,
+      6003
+    ],
+    "rare_delegate_runs": [
+      8000,
+      8001,
+      8002,
+      8003
+    ],
+    "trickle_outsider_quiet": [
+      8500,
+      8501,
+      8502,
+      8503
+    ],
+    "two_identities_delegated": [
+      5500,
+      5501,
+      5502,
+      5503
+    ]
+  },
+  "episodes_per_scenario": 4,
+  "execution_local_commit": "43b71108ba5828fe7732fae97ffa7c76f80c17cd",
+  "gamma": 1.0,
+  "loop_overrides": {
+    "c_disrupt": 1.0,
+    "delegation_aware_detector": true,
+    "finding_severity_context": "platform"
+  },
+  "policies": [
+    "noop",
+    "tuned_rules_shielded",
+    "fixed_short_block",
+    "v6_shielded",
+    "cost_aware"
+  ],
+  "publication": "caller-supplied GitHub commit with matching tree",
+  "python": "3.12.14 (main, Sep 24 2026, 17:46:32) [Clang 22.1.3 ]",
+  "resamples": 2000,
+  "reward": "negative compromised attack read count",
+  "rules_params": {
+    "block_anomaly": 0.1,
+    "block_min_volume": 0.0,
+    "isolate_anomaly": 0.45,
+    "long_mode": "repeat",
+    "long_target": "all",
+    "monitor_anomaly": 1.1,
+    "rate_limit_alerts": 1.1
+  },
+  "rules_source_sha256": "0f615261e1ccbe0e4ecf5e81142f2d858e6519ac4518ec8e0452f1ae465c384c",
+  "scenario_configs": [
+    {
+      "attack_per_step": 6,
+      "attacker_switch": "per_window",
+      "attackers": [
+        "bob"
+      ],
+      "benign": [
+        "alice",
+        "bob",
+        "dave"
+      ],
+      "benign_per_step": 6,
+      "delegate_burst_p": 0.0,
+      "delegate_burst_size": 0,
+      "delegate_per_step": 1,
+      "delegations": [
+        "dave:alice"
+      ],
+      "episodes": 14,
+      "horizon": 30,
+      "name": "always_on_delegated",
+      "p_start": 0.2,
+      "p_stop": 0.2,
+      "rotate_tokens": false,
+      "schedule": "always",
+      "seed_start": 7000,
+      "split": "train",
+      "start_active": false,
+      "victims": [
+        "alice"
+      ]
+    },
+    {
+      "attack_per_step": 6,
+      "attacker_switch": "per_window",
+      "attackers": [
+        "bob"
+      ],
+      "benign": [
+        "alice",
+        "bob",
+        "dave"
+      ],
+      "benign_per_step": 6,
+      "delegate_burst_p": 0.15,
+      "delegate_burst_size": 3,
+      "delegate_per_step": 1,
+      "delegations": [
+        "dave:alice"
+      ],
+      "episodes": 14,
+      "horizon": 30,
+      "name": "delegate_quiet",
+      "p_start": 0.08,
+      "p_stop": 0.4,
+      "rotate_tokens": false,
+      "schedule": "bursty",
+      "seed_start": 5000,
+      "split": "train",
+      "start_active": false,
+      "victims": [
+        "alice"
+      ]
+    },
+    {
+      "attack_per_step": 4,
+      "attacker_switch": "per_window",
+      "attackers": [
+        "dave"
+      ],
+      "benign": [
+        "alice",
+        "carol",
+        "dave",
+        "erin"
+      ],
+      "benign_per_step": 6,
+      "delegate_burst_p": 0.0,
+      "delegate_burst_size": 0,
+      "delegate_per_step": 1,
+      "delegations": [
+        "dave:alice",
+        "erin:carol"
+      ],
+      "episodes": 14,
+      "horizon": 30,
+      "name": "insider_delegate",
+      "p_start": 0.15,
+      "p_stop": 0.25,
+      "rotate_tokens": false,
+      "schedule": "bursty",
+      "seed_start": 6500,
+      "split": "train",
+      "start_active": false,
+      "victims": [
+        "carol"
+      ]
+    },
+    {
+      "attack_per_step": 6,
+      "attacker_switch": "per_window",
+      "attackers": [
+        "mallory"
+      ],
+      "benign": [
+        "alice",
+        "carol",
+        "dave"
+      ],
+      "benign_per_step": 6,
+      "delegate_burst_p": 0.25,
+      "delegate_burst_size": 4,
+      "delegate_per_step": 1,
+      "delegations": [
+        "dave:alice"
+      ],
+      "episodes": 14,
+      "horizon": 30,
+      "name": "outsider_rotation",
+      "p_start": 0.15,
+      "p_stop": 0.2,
+      "rotate_tokens": true,
+      "schedule": "bursty",
+      "seed_start": 6000,
+      "split": "train",
+      "start_active": false,
+      "victims": [
+        "alice",
+        "carol"
+      ]
+    },
+    {
+      "attack_per_step": 3,
+      "attacker_switch": "per_window",
+      "attackers": [
+        "carol"
+      ],
+      "benign": [
+        "alice",
+        "bob",
+        "carol",
+        "dave",
+        "erin"
+      ],
+      "benign_per_step": 7,
+      "delegate_burst_p": 0.25,
+      "delegate_burst_size": 3,
+      "delegate_per_step": 1,
+      "delegations": [
+        "carol:bob",
+        "dave:alice"
+      ],
+      "episodes": 14,
+      "horizon": 30,
+      "name": "rare_delegate_runs",
+      "p_start": 0.06,
+      "p_stop": 0.45,
+      "rotate_tokens": false,
+      "schedule": "bursty",
+      "seed_start": 8000,
+      "split": "train",
+      "start_active": false,
+      "victims": [
+        "erin"
+      ]
+    },
+    {
+      "attack_per_step": 2,
+      "attacker_switch": "per_window",
+      "attackers": [
+        "mallory"
+      ],
+      "benign": [
+        "alice",
+        "bob",
+        "carol",
+        "erin"
+      ],
+      "benign_per_step": 8,
+      "delegate_burst_p": 0.3,
+      "delegate_burst_size": 3,
+      "delegate_per_step": 1,
+      "delegations": [
+        "erin:carol"
+      ],
+      "episodes": 14,
+      "horizon": 30,
+      "name": "trickle_outsider_quiet",
+      "p_start": 0.05,
+      "p_stop": 0.5,
+      "rotate_tokens": true,
+      "schedule": "bursty",
+      "seed_start": 8500,
+      "split": "train",
+      "start_active": false,
+      "victims": [
+        "alice"
+      ]
+    },
+    {
+      "attack_per_step": 5,
+      "attacker_switch": "per_window",
+      "attackers": [
+        "bob",
+        "carol"
+      ],
+      "benign": [
+        "alice",
+        "bob",
+        "carol",
+        "erin"
+      ],
+      "benign_per_step": 7,
+      "delegate_burst_p": 0.0,
+      "delegate_burst_size": 0,
+      "delegate_per_step": 1,
+      "delegations": [
+        "erin:carol"
+      ],
+      "episodes": 14,
+      "horizon": 30,
+      "name": "two_identities_delegated",
+      "p_start": 0.2,
+      "p_stop": 0.15,
+      "rotate_tokens": false,
+      "schedule": "bursty",
+      "seed_start": 5500,
+      "split": "train",
+      "start_active": false,
+      "victims": [
+        "alice"
+      ]
+    }
+  ],
+  "scenario_hashes": {
+    "always_on_delegated": "0ca4eb74ff30686e",
+    "delegate_quiet": "d885e2af92ffa274",
+    "insider_delegate": "e5d5ce05dd734a54",
+    "outsider_rotation": "b487792f970fe9dd",
+    "rare_delegate_runs": "836eceb5ff7469b9",
+    "trickle_outsider_quiet": "d159b2af9d857750",
+    "two_identities_delegated": "b3743ace0117b909"
+  },
+  "schema": "constrained-lab-evaluation/1",
+  "semantics": "all baselines share research capability mask; v6_shielded is NOT original v6 performance",
+  "source_commit": "9d6460487275d25cc31194d7b603196d436c4485",
+  "source_tree": "22c2f7f50c36e5fe5b7eb1d26c41b1b314438e4a",
+  "v6_checkpoint_sha256": "8113a37f4ff9360a9efed2e9f499c4b2ae36e97bfb78372436f97da106fc05f1",
+  "v6_manifest_sha256": "72ec32fb83624e003a45672b13159a14998005babb978cec5653e2c19e2027d2"
+}

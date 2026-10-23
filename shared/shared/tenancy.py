@@ -51,10 +51,22 @@ class TriggerPolicy(StrictModel):
     )
 
 
+class DeliveryMode(StrEnum):
+    """How verified repairs reach the repository (ADR-0020)."""
+
+    review = "review"  # a human approves each remediation; nothing is pushed
+    auto = "auto"  # remediation is pre-approved by the owner; Verify-accepted patches are pushed
+
+
 class ProjectSettings(StrictModel):
     default_budget: Budget = Field(default_factory=Budget)
     monitoring_policy: TriggerPolicy = Field(default_factory=TriggerPolicy)
     languages: list[ShortText] = Field(default_factory=lambda: ["python"])
+    delivery_mode: DeliveryMode = DeliveryMode.review
+    auto_delivery_enabled_by: UserId | None = Field(
+        default=None,
+        description="Owner who switched delivery to auto; set by the server, never the client",
+    )
 
 
 class Organization(StrictModel):

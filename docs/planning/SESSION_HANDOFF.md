@@ -18,6 +18,76 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-23 — Cursor (agent, Alan) — Phase 5 rebased onto main after PR #396
+- Did: merged `origin/main` `7adf509` (owned payment-read context checks) into `feat/live-defense-phase5-pilot-readiness`. Kept both Unreleased changelog bullets. Did **not** edit Codex research files. PR #395 had become CONFLICTING while frontend e2e was still running. **Do not merge #393.**
+- Next: wait for CI on the new head; merge Phase 5 only if green, no conflicts, no enforcement.
+
+### 2026-10-23 — Cursor (agent, Alan) — Live Defense Phase 5 e2e green after main merge
+- Did: merged `origin/main` `cb40ca6` into `feat/live-defense-phase5-pilot-readiness` (kept both Unreleased changelog bullets; did not edit Codex research files). Playwright 2 passed (9.6s) after waiting for rotated token text. `make check` 166 files; mypy 40 files; pytest 274 passed / 8 skipped; vitest 325/77; transport 35; gitleaks no leaks. PR #395. **Do not merge #393.**
+- Next: merge Phase 5 only if GitHub Actions are green, no required-review gap, no conflicts, no executable enforcement. Else leave #395 open.
+
+### 2026-10-23 — Cursor (agent, Alan) — Live Defense Phase 5 e2e locator + main merge
+- Did: merged `origin/main` `cb40ca6` (PR #394 Codex RL-CMDP-002) into `feat/live-defense-phase5-pilot-readiness`. Kept both Unreleased changelog bullets. Did **not** edit Codex research files, train, or promote. Playwright Phase 5 disconnect locator now uses exact badge + `live-defense-app-disconnected` (strict-mode matched badge and note). PR #393 still open; Phase 4 enforcement is not on this branch.
+- Next: re-run Playwright; merge Phase 5 only if CI green, no required-review gap, no conflicts, no executable enforcement. Do not merge #393.
+
+### 2026-10-23 — Cursor (agent, Alan) — Live Defense Phase 5 shadow-pilot readiness
+- Did: branch `feat/live-defense-phase5-pilot-readiness` from `origin/main` (`09e8cab`). Does **not** include Phase 4 enforcement (PR #393 stays open). Adds rotate/disconnect/shadow-verify/pilot-report. Health worker/telemetry/policy stay unknown. Codex/`rl-defense/` untouched.
+- Next: run full check/test suite; merge Phase 5 only if CI green, no enforcement, no trust-boundary expansion, protection allows. Do not merge #393.
+
+### 2026-10-22 — Cursor (agent, Alan) — Live Defense Phase 3 shadow runtime
+- Did: branch `feat/live-defense-phase3-shadow-runtime` from `origin/main` (`6e98b23`, PR #391 merged). Extends Phase 1/2. Shared 0.17.0 `LivePolicyDecision` (NOT EXECUTED). Authenticated `owned_staging` ingest, deterministic rules, frozen-v6 only when serving assumptions hold (quiet window → abstain; no torch in this env → `skipped_unavailable`). Analyst review of shadow decisions does not execute. `rl-defense/` training/checkpoints/promotion untouched. No Phase 4 enforcement APIs.
+- State of the code: owned staging app → authenticated ingest → rules (or validated v6) → persisted shadow decision → dashboard → review → no automatic traffic control. Authenticated runtime events no longer force `Incident.simulated`.
+- Commands run and results (executed):
+  - `make check` — ruff pass; format 165 files; `shared.export --check` 124 files; examples check pass
+  - `uv run mypy` — Success: no issues found in 40 source files
+  - `uv run pytest -q backend/tests monitoring/tests/test_detect.py shared/tests/test_contracts.py` — 239 passed, 8 skipped (`rl_defense` missing; Docker/live LLM opt-in; TSC unset)
+  - `npm run lint && typecheck` — pass; `npm test --prefix frontend` — 325 passed / 77 files; `npm test --prefix frontend/transport` — 35 passed
+  - `npm run build --prefix frontend` — pass; routes include `/live-defense`, `/live-defense/explain`, `/live-defense/apps`
+  - `cd frontend && ../.venv/bin/python tests/e2e/stack.py tests/e2e/live-defense.spec.ts` — 1 passed (6.6s)
+  - `gitleaks git --log-opts='origin/main..HEAD'` — 3 commits, no leaks
+- Decisions: v6 quiet-window → explicit abstention (ADR-0017); HTTP 200 without principals is unverified noop, not IDOR; accept ≠ execute; do not train or promote.
+- Eval: `docs/LIVE_DEFENSE_PHASE3_PILOT_EVAL.md`. Draft PR #392. Merge only if CI is green and the slice stays shadow-only.
+- Warnings: `/live-defense-pilot` remains sample layout. Do not begin autonomous enforcement. Frozen v6 inference is `skipped_unavailable` without `rl_defense`+torch; CI `rl-integration` job is the path that can run it.
+
+### 2026-10-22 — Cursor (agent, Alan) — Live Defense Phase 2 CI: Alembic head pin
+- Did: GitHub `backend / test` failed on PR #391 because `test_repository_has_a_single_migration_head` still expected head `0009`. Phase 2 adds linear revision `0010` (`down_revision = 0009`). Updated the pin to `["0010"]`. Single-head rule unchanged. `rl-defense/` untouched. `origin/main` still `53bf03c` (no rebase needed).
+- Commands run and results:
+  - `uv run pytest -q backend/tests` — 170 passed, 7 skipped
+  - `backend/tests/test_parallel_migrations.py` + live-defense backend tests — 11 passed
+  - `make check` — pass; gitleaks on `origin/main..HEAD` — no leaks
+  - `npm run lint && typecheck` — pass; vitest 323/77; live-defense unit 18 passed; `npm run build` — pass
+- Next steps: push, wait for required CI green, mark #391 ready, merge if branch protection permits.
+
+### 2026-10-22 — Cursor (agent, Alan) — Live Defense Phase 2 shadow pilot
+- Did: branch `feat/live-defense-pilot-phase2` from `origin/main` (PR #390 already merged). Extended Phase 1; did not rebuild it. Shared 0.16.0: `ConnectedApplication`, `IngestTokenView`, `DefenseHealth`, `ComponentGraph`, `AnalystReview`. Backend migration 0010 + `backend/api/live_defense.py`. Frontend wires existing APIs end-to-end and adds Staging apps + analyst review. `rl-defense/` untouched. Draft PR #391.
+- State of the code: analyst can register sandbox/owned_test apps, mint a token (shown once), inspect ingested evidence, read a stored recommendation, and record accept/reject/needs-investigation without executing a control. Health status is always `unknown`. No live policy-decision producer.
+- Commands run and results (executed):
+  - `make check` — ruff pass (157 files formatted); `shared.export --check` 123 files; examples check pass
+  - `uv run pytest -q shared/tests/test_contracts.py backend/tests/test_live_defense_pilot.py backend/tests/test_rl_no_action_path.py backend/tests/test_runtime_ingest.py` — 64 passed, 2 skipped (TSC missing; rl_defense not installed)
+  - `npm run lint --prefix frontend` — pass
+  - `npm run typecheck --prefix frontend` — pass
+  - `npm test --prefix frontend` — 323 passed / 77 files
+  - `npm test --prefix frontend/transport` — 34 passed
+  - `npm run build --prefix frontend` — pass; routes include `/live-defense`, `/live-defense/apps`, `/live-defense-pilot/apps`
+  - `E2E_SKIP_BUILD=1 ../.venv/bin/python tests/e2e/stack.py tests/e2e/live-defense.spec.ts` — 1 passed (4.0s)
+  - `gitleaks git --log-opts='origin/main..HEAD'` — no leaks found (4 commits). Full-history 5 hits are pre-existing `api.py` digest / `*_COMMIT` SHA false positives, not this PR.
+- Decisions: do not fake a live inference feed; do not infer healthy from HTTP 200; accept ≠ enforcement approval.
+- Next steps: customer shadow-pilot blockers listed on PR #391 (hosted ingest of a real staging app, live-inference producer if/when one exists, no autonomous enforcement).
+- Warnings: `/live-defense-pilot` remains sample layout. Do not begin autonomous enforcement.
+
+### 2026-10-22 — Cursor (agent, Alan) — Live Defense Phase 1 UI
+- Did: branch `feat/live-defense-pilot-ui`. Customer dashboard at `/projects/{id}/live-defense` (Overview, Investigation, Explainability) plus isolated `/live-defense-pilot`. Live mode uses existing project/events/incidents/recommendation/explanation/evaluation APIs. Layout-preview fixtures in `frontend/lib/live-defense-preview.ts` are labelled SAMPLE LAYOUT and never mixed with records. No apply/isolate/rate-limit. `shared/`, `backend/`, `rl-defense/` untouched. Handoff for missing APIs: `docs/planning/LIVE_DEFENSE_FRONTEND_API.md`.
+- State of the code: frontend-only; draft PR #390. Navigation: Live Defense under More; Monitoring links in.
+- Commands run and results (executed):
+  - `npm run lint --prefix frontend` — pass
+  - `npm run typecheck --prefix frontend` — pass (after query-helper split fix)
+  - `npm test --prefix frontend` — 323 passed / 77 files
+  - `npm run build --prefix frontend` — pass; routes include `/live-defense` and `/live-defense-pilot`
+  - Headed Chrome against `next start :3000` `/live-defense-pilot`: SAMPLE LAYOUT banner present; 0 apply/isolate/rate-limit buttons
+- Decisions: missing component-health API → no live map (docs/14: healthy only from a recorded check). NIST `Incident` is not overloaded with DETECTED→EXECUTING.
+- Next steps: backend/shared owner implements the handoff types; frontend then drops empty panels. Do not merge until review. Do not treat preview fixtures as live telemetry.
+- Warnings: `/live-defense-pilot` is public (no session) on purpose for layout review; it must keep the sample banner.
+
 ### 2026-10-20 — Claude (agent, Alan) — live RL v8: low-intensity train mix — gate `recommend_promote`, hypothesis not supported
 - Did: branch `feat/alan/live-retrain-v8`. One change from v7: `--train-dir train_v8` (train_v3 copied unchanged plus `rare_delegate_runs` and `trickle_outsider_quiet`, low-intensity and mostly quiet). It was chosen from train-band evidence: on `rare_delegate_runs`, v7 scores −3.61 against noop's −3.14 (`results/live-retrain-v8/pre_run_evidence.json`). `--reference-checkpoint` is now repeatable as `NAME=PATH` (v6 and v7). There is a fresh `holdout_v8` (two of its three scenarios are low-intensity). Pre-registered and pushed as `15e25f9`. `promotion.yaml`, val_v4 and the selection rule are unchanged.
 - Result: the gate returns **`recommend_promote`**, 7/7 checks, +4.47 [3.14, 5.81] over deployed. **The hypothesis is not supported:** v8 trails v7 on both low-intensity holdout scenarios and overall (−0.46 [−0.96, −0.07]) and ties v6 (+0.08 [−0.40, 0.50]). It trails noop on the train scenario `rare_delegate_runs` (−4.01). It keeps the quiet-window fix: noop 178/178, block 102/102, lab/platform agreement 280/280 on train_v8 windows. holdout_v8 is easier than holdout_v7 for the per-scenario rule (v7's numbers clear deployed there too). Online learning moved val for the first time (−7.03 → −6.74 at 105k).
@@ -1281,3 +1351,102 @@ GitHub connector. The temporary checkout `/private/tmp/rl-v10` still has earlier
 Git metadata and preserved files corresponding to remote fix `1e42f3e`; reconcile it
 with the remote before any cleanup or new work. The user's original dirty checkout
 was not overwritten. No study heartbeat was re-enabled or extra experiment scheduled.
+
+### 2026-10-22 — RL-CMDP-001 Phase 1 foundation
+
+Owner supplied explicit Phase 1 scope; no training/Phase 2 or serving changes.
+Dedicated independent checkout `/private/tmp/rl-cmdp-phase1`, branch
+`feat/alan/constrained-rl-phase1` from main `198eb3b`. Primary checkout has unrelated
+Devin UI edits/QA outputs and is untouched. Existing duration evidence is preserved.
+New internal research adapter reuses shared EvidenceRef; no public contract change.
+Initial18 tests passed; extended20 tests passed in9.53s. Freeze/publish fixed bounded
+baseline plan before execution. Shell network is unavailable; GitHub connector
+publishes equivalent source trees. Record both local and published commit identities.
+
+### RL-CMDP-001 — completed Phase1 measurements and decision
+
+Published frozen execution source `9d6460487275d25cc31194d7b603196d436c4485`, exact tree
+`22c2f7f50c36e5fe5b7eb1d26c41b1b314438e4a` (local equivalent `43b7110`).140owned-lab
+baseline episodes /4,200scored windows completed; raw request→outcome→reward/cost→all
+pooled/per-scenario summary verification passes. All policies share an explicit
+capability shield; v6_shielded is not the original policy selection semantics.
+Cost-aware<=2short actions:99.504% benign availability but93.156% attack compromise.
+This is an unsuccessful defense, not evidence that a constrained neural policy works.
+
+Read-only legacy adaptation:280duration-screen train episodes /8,400transitions;
+all aggregate costs measurable,280initial current masks unknown, all propensities and
+delegated-denial attributions unknown. Preserve every historical artifact unchanged;
+do not pool overlapping train seeds. Full audit/CMDP/action matrix/readiness/four-paper
+architecture comparison is in docs/research/constrained-rl-phase1; ADR0019 raises the
+stale ADR0008/0014 vs implemented-lab discrepancy without silently ratifying it.
+
+**No-go now for constrained DDQN or discrete CQL.** Conditional preference: cost-aware
+DDQN after feasible controls, reviewed data/state/support and precommitted cost budgets.
+No Phase2 code, training study, holdout run, new action, promotion or serving change.
+Actual v6 registry before/after SHA256 stays c345593354856c50559ba16611853a0e4936a7efc11fa5704c224d3189271408.
+
+Validation so far:20focused tests passed in9.53s, Ruff checks/format all87RL source/test
+files pass, links518files/0problems. First full compatibility command had346passes and
+one subprocess import failure because relative PYTHONPATH did not survive cwd change;
+rerun uses absolute paths. Final full suite and PR review/CI pending at this entry.
+
+Phase1 compatibility rerun: **347passed in256.62s**, absolute PYTHONPATH. Full87-file
+RL lint/format and links518files/0problems pass. PR #388 published (head `ed74a11c`).
+CI secret scan found three false positives: SHA256 entries for api.py/owasp_api.py in
+the pinned code manifest. Added a path+exact-line+exact-value AND allowlist, not a file
+exclusion; local gitleaks8.30.1 history scan passes. A temporary Git fixture proves the
+manifest hashes pass while a synthetic credential-shaped api_key in that **same file**
+still fails. New regression checks the exception's scope and historical pins. Original
+execution evidence/source semantics remain unchanged; no result recollection/rewrite.
+
+### RL-CMDP-001 — Phase1 review corrections; no merge/deployment
+
+PR388 remains deliberately on the dedicated research branch: latest owner Phase1
+request forbids production deployments; root vercel.json enables main deployments.
+This takes precedence over earlier general merge permission. No Phase2 work.
+
+Automated review's four P2s are addressed: resolve actual published commit/tree;
+portable always-present champion fixture plus canonical-registry absence/byte checks;
+verify every baseline action against actual pinned policy inputs on saved observations;
+reject unknown index/config schema versions.26focused tests pass in10.31s. Stronger
+verifier reproduces all140episodes /4,200transitions from the original artifacts,
+without new lab episodes or altering a measurement. No hypothesis or decision changed.
+The exact original evaluator and cryptographically verified original Git commit object
+are retained; collection/adaptation ASTs and all original reward/cost/policy/environment
+source hashes must remain identical. New verification source is separately identified.
+
+Main source before fixes `184a61a`: all five workflows green (RL, backend incl integration,
+frontend/browser, docs, secrets). New fix CI will run on publication. Full local suite
+before added regressions347passed; shared60passed/1tsc skip then omitted test1passed
+separately with installed tsc. Full commands/limitations: Phase1 VERIFICATION.md.
+Research/checkpoint/registry guard unchanged. Stop here after review/CI; leave PR open.
+
+Historical compatibility exception additionally checks exact separately recorded
+post-review evaluator/proof hashes, so a future orchestration/import edit cannot
+silently reinterpret this run. Added drift regression;27focused tests pass in9.91s.
+Original scientific artifacts, execution/report indices, checkpoint and registry remain
+unchanged. Source tree/content published through connector; local branch metadata is
+an equivalent independent commit chain. Primary checkout and old experiment worktrees
+remain untouched. No merge: Phase1's deployment restriction governs this research PR.
+
+### 2026-10-23 — Alan / Codex — RL-CMDP-002 preregistration
+- Owner authorized deterministic feasibility and explicitly selected zero successful unauthorized reads and zero valid owner/delegated denials in every case.
+- Added an isolated exact-resource guard, independent negative/positive tests and a fixed 18-case / three-policy / 54-request HTTP protocol. No training, holdout or serving integration.
+- Before comparison: 21 guard tests passed; fixed-policy harness test added. Comparison must execute once from committed protocol/source and retain all outcomes; no automatic retry or tuning.
+- Parallel PR #393 owns operational controls; this research fixture does not duplicate or import that lifecycle.
+
+### 2026-10-23 — Alan / Codex — RL-CMDP-002 result
+- Preregistered protocol/source committed and pushed before the single 54-request comparison. Exact-resource guard passed zero unauthorized / zero legitimate-denial owner limits; six unknown cases all abstained without forwarding.
+- Unguarded allowed seven unauthorized reads; blanket denial denied two owner and three delegate reads. All rows and source/protocol/runtime identities retained in `rl-defense/results/deterministic-feasibility-001/`. No retries, training, historical replay or promotion.
+- Focused guard/harness tests: 22 passed. Lint and 533 Markdown files checked. This is one authored synthetic HTTP resource, not real-application context integration or production evidence.
+- Next: independently verify application-context extraction, freshness, request binding and revocation races. RL remains no-go.
+
+### 2026-10-23 — Alan / Codex — RL-CMDP-002 review correction
+- Added a post-response compute-limit check and a regression that overruns on request 54; retains all 54 partial rows in FAILURE.json without retry or successful result.
+- Original comparison evidence remains byte-identical. Its runner lacked the final post-response clock check and elapsed timing record; strict budget compliance is therefore not certifiable from those original artifacts. Numerical finite-case results are retained, not replaced.
+- Recorded execution commit is a direct ancestor of this branch; merge-commit method preserves it durably.
+
+### 2026-10-23 — Alan / Codex — RL-CMDP-003
+- Added an opt-in owned payments-lite read wrapper reusing the research guard. Private store supplies identity/ownership; trusted fixture updates share a request lock. No HTTP context or writes can authorize access.
+- Eight real-app integration tests pass: before/after BOLA, owner/delegated reads, resource/path/header binding, token/owner/grant updates and expiry/rollback races with buffered bodies.
+- No earlier study rerun, evidence rewrite, serving hook, training or promotion. Single-process private-store assumptions are explicit; full feasibility remains inconclusive.

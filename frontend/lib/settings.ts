@@ -1,10 +1,11 @@
-import type { Budget, Project, ProjectSettings } from '@hackatl/frontend-transport';
+import type { Budget, DeliveryMode, Project, ProjectSettings } from '@hackatl/frontend-transport';
 
 export interface Draft {
   name: string; languages: string;
   maxTokens: string; maxUsd: string; maxWall: string;
   enabled: boolean; interval: string; ignore: string;
   monTokens: string; monUsd: string; monWall: string;
+  deliveryMode: DeliveryMode;
 }
 
 export function draftOf(p: Project): Draft {
@@ -22,6 +23,7 @@ export function draftOf(p: Project): Draft {
     monTokens: String(m.monitoring_budget.max_tokens),
     monUsd: String(m.monitoring_budget.max_usd),
     monWall: String(m.monitoring_budget.max_wall_clock_s),
+    deliveryMode: s.delivery_mode,
   };
 }
 
@@ -55,6 +57,8 @@ export function parseSettings(d: Draft): { settings: ProjectSettings } | { error
       default_budget: def,
       monitoring_policy: { enabled: d.enabled, min_interval_s: interval, ignore_paths_only: split(d.ignore, /\n/), monitoring_budget: mon },
       languages,
+      delivery_mode: d.deliveryMode,
+      auto_delivery_enabled_by: null, // the server records who enabled auto delivery
     },
   };
 }

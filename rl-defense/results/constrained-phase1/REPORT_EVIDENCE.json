@@ -1,0 +1,16 @@
+{
+  "execution_index_unchanged": true,
+  "files": {
+    "EVIDENCE.json": "54e3af1c96b073c595f219cee025eaeb486bdcfc476e84ad91ea6665a7647506",
+    "README.md": "245c670193fbfdf72467f8040c40f3658b2cbfe9c9e7aefd4e3099d49b476c59",
+    "config.json": "65479bc56d4f2a9c587cfab5a428a827befb45009c8a891b07587af895f0ca72",
+    "legacy_readiness.json": "848c3ff844529591d2dee557976ce9094a5bddb7153aa1cab9ad5957ae41c89e",
+    "raw.jsonl.gz": "4449df9df140c6be695fb691df363bd21da098bfdaec431eeedc04332e8dafd0",
+    "read_legacy.py": "7faa6ff859177e2c5b56f1444f97b287b5df5ed81854abe02deaefbacdf08b65",
+    "registry_guard.json": "3933e1a7160fe40e75a8d734e8d6361a9bf439b89e2d5b1b0ac6d688b2918dbd",
+    "summary.json": "fd4acb6b1fe38fbf3429e38b4416fec01a0b7ce88c51fcb6e6058e95fde50a48",
+    "transition.schema.json": "f604c8dce26d427a88b2af4683c58b0a1bc708c1e27d8aa25af0d78bcde72b37",
+    "transitions.jsonl.gz": "0e7f0fac8228f512580f4e778b85e7fa0a1d523b09f058491655cdb7e0c821b9"
+  },
+  "schema": "constrained-lab-report/1"
+}

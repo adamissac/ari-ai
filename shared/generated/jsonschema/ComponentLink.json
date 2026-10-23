@@ -1,0 +1,21 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "source_id": {
+      "maxLength": 500,
+      "title": "Source Id",
+      "type": "string"
+    },
+    "target_id": {
+      "maxLength": 500,
+      "title": "Target Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "source_id",
+    "target_id"
+  ],
+  "title": "ComponentLink",
+  "type": "object"
+}

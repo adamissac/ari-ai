@@ -925,6 +925,15 @@ class AssessmentHost:
                     },
                     dedupe_key=f"regression:{result.id}",
                 )
+                from backend.delivery import auto_approver
+
+                if auto_approver(conn, self.project_id):
+                    jobs.enqueue(
+                        conn,
+                        "deliver_verified_patch",
+                        {"assessment_id": self.assessment_id, "verification_id": result.id},
+                        dedupe_key=f"deliver:{result.id}",
+                    )
         return result
 
     # --------------------------------------------------------------- approvals

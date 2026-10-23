@@ -13,6 +13,8 @@ const settings: ProjectSettings = {
     monitoring_budget: { max_tokens: 150_000, max_usd: 3, max_wall_clock_s: 900 },
   },
   languages: ['python', 'typescript'],
+  delivery_mode: 'review',
+  auto_delivery_enabled_by: null,
 };
 
 const project: Project = {

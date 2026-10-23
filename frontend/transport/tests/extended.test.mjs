@@ -29,6 +29,66 @@ test('finding detail validates the finding and each typed evidence record', asyn
   }
 });
 
+test('live defense health and reviews validate shared types and never include a token secret', async () => {
+  const health = {
+    project_id: 'prj_12345678', worker_seen_at: null, queue_depth: 0, last_ingest_at: null,
+    last_runtime_event_at: null, status: 'unknown',
+    status_reason: 'No recorded health-check producer. Timestamps are evidence only; HTTP 200 is not a healthy verdict.',
+    worker_status: 'unknown',
+    worker_status_reason: 'No worker liveness producer. Heartbeat timestamps are evidence only.',
+    telemetry_status: 'unknown',
+    telemetry_status_reason: 'Ingest timestamps are not a telemetry health verdict.',
+    policy_status: 'unknown',
+    policy_status_reason: 'No live policy-health producer. Shadow decisions stay NOT_EXECUTED; HTTP 200 is not policy health.',
+  };
+  const got = await client(() => json(health)).defenseHealth('prj_12345678');
+  assert.equal(got.status, 'unknown');
+  await assert.rejects(client(() => json({ ...health, status: 'healthy' })).defenseHealth('prj_12345678'), ProtocolError);
+  const tokens = await client(() => json({ items: [{
+    id: 'itk_12345678', project_id: 'prj_12345678', application_id: null,
+    created_at: '2026-10-17T03:00:00Z', revoked_at: null, last_used_at: null,
+  }], next_cursor: null })).ingestTokens('prj_12345678');
+  assert.equal(tokens.items[0].id, 'itk_12345678');
+  assert.equal('token' in tokens.items[0], false);
+  const review = {
+    id: 'arv_12345678', project_id: 'prj_12345678', recommendation_id: 'rec_12345678',
+    live_policy_decision_id: null,
+    decision: 'accept', reason: null, reviewed_by: 'usr_12345678', reviewed_at: '2026-10-17T03:00:00Z',
+    executes: false, enforcement: 'none',
+  };
+  const api = client((url, init) => {
+    if (String(url).endsWith('/me')) return json(me);
+    assert.equal(JSON.parse(init.body).decision, 'accept');
+    return json(review, 201);
+  });
+  await api.session();
+  const saved = await api.createRecommendationReview('rec_12345678', { decision: 'accept', reason: null });
+  assert.equal(saved.executes, false);
+  const bad = client((url) => url.endsWith('/me') ? json(me) : json({ ...review, executes: true }, 201));
+  await bad.session();
+  await assert.rejects(bad.createRecommendationReview('rec_12345678', { decision: 'accept', reason: null }), ProtocolError);
+});
+
+test('live policy decisions require NOT_EXECUTED and reject synthesized envelopes', async () => {
+  const decision = {
+    id: 'lpd_12345678', project_id: 'prj_12345678', application_id: null,
+    created_at: '2026-10-17T03:00:00Z', window_end: '2026-10-17T03:00:00Z',
+    telemetry_source: 'owned_staging', simulated: false, producer: 'rules',
+    rules_ran: true, inference_ran: false, inference_status: 'skipped_quiet_window',
+    action: 'noop', node: null, top_actions: null, q_margin: null, observation: null,
+    policy_version: null, checkpoint_sha256: null, abstention_reason: 'quiet',
+    observation_complete: true, feature_schema_ok: true, action_mask_valid: true,
+    freshness_ok: true, authorization_context: 'missing', enforcement: 'NOT_EXECUTED',
+    executed: false, evidence_event_ids: [], rule_hits: [], principal_targets: [],
+    feature_mapping_note: null, caveat: 'Shadow recommendation from authenticated staging telemetry. Not executed. Q-values appear only when frozen v6 inference actually ran.',
+  };
+  const page = await client(() => json({ items: [decision], next_cursor: null, label: 'shadow' })).livePolicyDecisions('prj_12345678');
+  assert.equal(page.items[0].enforcement, 'NOT_EXECUTED');
+  assert.equal(page.items[0].top_actions, null);
+  await assert.rejects(client(() => json({ items: [{ ...decision, executed: true }], next_cursor: null, label: 'x' })).livePolicyDecisions('prj_12345678'), ProtocolError);
+  await assert.rejects(client(() => json({ items: [], next_cursor: null })).livePolicyDecisions('prj_12345678'), ProtocolError);
+});
+
 test('recommendation list keeps the backend simulation label and rejects other envelopes', async () => {
   const page = await client(() => json({ items: [], next_cursor: null, label: 'simulation-derived' })).defenseRecommendations('prj_12345678');
   assert.equal(page.label, 'simulation-derived');

@@ -1,0 +1,38 @@
+{
+  "applications": [],
+  "caveats": [
+    "Shadow mode records ingest and recommendations. It does not execute controls.",
+    "HTTP 200 from this API is not attack success and is not a healthy verdict.",
+    "This report does not claim that shadow mode prevented breaches.",
+    "Q-values are stored scores, not a probability that an attack is happening now.",
+    "Analyst accept is a recorded opinion and does not execute."
+  ],
+  "generated_at": "2026-10-17T01:00:00Z",
+  "health": {
+    "last_ingest_at": null,
+    "last_runtime_event_at": null,
+    "policy_status": "unknown",
+    "policy_status_reason": "No live policy-health producer. Shadow decisions stay NOT_EXECUTED; HTTP 200 is not policy health.",
+    "project_id": "prj_01JFIXTURE0000000000000PRJ",
+    "queue_depth": 0,
+    "status": "unknown",
+    "status_reason": "No recorded health-check producer. Timestamps are evidence only; HTTP 200 is not a healthy verdict.",
+    "telemetry_status": "unknown",
+    "telemetry_status_reason": "Ingest timestamps are not a telemetry health verdict.",
+    "worker_seen_at": null,
+    "worker_status": "unknown",
+    "worker_status_reason": "No worker liveness producer. Heartbeat timestamps are evidence only."
+  },
+  "incidents": 0,
+  "ingest_windows": 0,
+  "investigation_trail": [],
+  "project_id": "prj_01JFIXTURE0000000000000PRJ",
+  "reviews": 0,
+  "shadow_decisions": 0,
+  "shadow_mode": true,
+  "unsupported_claims": [
+    "shadow prevented breaches",
+    "HTTP 200 means the attack succeeded",
+    "health is healthy because this endpoint returned 200"
+  ]
+}

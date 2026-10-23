@@ -1,0 +1,37 @@
+{
+  "$defs": {
+    "AnalystReviewDecision": {
+      "enum": [
+        "accept",
+        "reject",
+        "needs_investigation"
+      ],
+      "title": "AnalystReviewDecision",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "decision": {
+      "$ref": "#/$defs/AnalystReviewDecision"
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reason"
+    }
+  },
+  "required": [
+    "decision"
+  ],
+  "title": "AnalystReviewCreate",
+  "type": "object"
+}

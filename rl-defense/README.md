@@ -11,6 +11,17 @@
 > [architecture/rl-training-and-inference](../docs/architecture/rl-training-and-inference.md).
 > Owner: Adam ([coordination/OWNERSHIP](../coordination/OWNERSHIP.md)).
 
+## Constrained-RL Phase 1 research
+
+An isolated, separately invoked research adapter and fixed baseline evaluator now
+separate measured compromised-read reward from legitimate-denial cost, preserve
+unknown/provenance fields, mask ineffective lab actions and verify complete raw evidence.
+It has no training/serving imports in the existing product paths.140train-split baseline
+episodes completed; the budgeted rule preserves availability but misses most attacks.
+**No-go for Phase2 now; no model, champion or serving change.**
+[Audit, CMDP, capability matrix and decision](../docs/research/constrained-rl-phase1/README.md);
+[baseline evidence / verification commands](results/constrained-phase1/README.md).
+
 ## What exists
 
 | Piece | Module | Status |
@@ -266,3 +277,10 @@ one possible v11 preregistration. The completed screen failed its fixed availabi
 confidence condition: +1.2373 points vs v6,95% CI[−0.0313,+2.5340]; compromise improved
 on validation but worsened on training. No v11 prepared or launched. See
 [results and limits](results/duration-screen/PROVENANCE.md). V6 remains deployed.
+
+Research-only deterministic payment-read guard and explicit finite-case HTTP comparison:
+[protocol and limitations](../docs/research/deterministic-feasibility/README.md).
+No serving hook, model training, promotion or customer action.
+
+Opt-in owned payments-lite request-context wrapper and concurrency checks:
+[application-context evidence and limits](../docs/research/deterministic-feasibility/APPLICATION_CONTEXT.md).
