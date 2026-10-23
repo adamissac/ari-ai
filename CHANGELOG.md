@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Add an adaptive-defense research readiness assessment, causal observation prototype and read-only training-archive coverage inventory. Verdict: no new RL training; no measured residual adaptive task or control benefit is established.
+
 - Add a research-only versioned payment authorization provider with explicit owner/delegated/unauthorized/unknown states, trusted payments-lite lookup and documented causal RL observation rules.
 
 - Add an offline, read-only audit of retained finite-fixture evidence that distinguishes verified numerical counts from unknown timing/authority and explicitly keeps training/promotion readiness false.
