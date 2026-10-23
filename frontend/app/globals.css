@@ -1765,3 +1765,29 @@ body:has(.commit-stage) main { color: #fff; }
   .commit-recorded-workspace .amap-agent { min-height: 58px; }
   .commit-recorded-workspace .commit-recording-map { min-height: 280px; }
 }
+
+/* ARI motion layer. Transform and opacity only, so nothing repaints while scrolling.
+   Disabled for prefers-reduced-motion. */
+@keyframes grain-drift {
+  0% { transform: translate3d(0, 0, 0); }
+  25% { transform: translate3d(-3%, 2%, 0); }
+  50% { transform: translate3d(2%, -3%, 0); }
+  75% { transform: translate3d(-2%, -1%, 0); }
+  100% { transform: translate3d(0, 0, 0); }
+}
+@keyframes btn-sheen {
+  from { transform: translateX(-120%) skewX(-18deg); }
+  to { transform: translateX(260%) skewX(-18deg); }
+}
+.ambient-grain { will-change: transform; animation: grain-drift 9s steps(4, end) infinite; }
+.btn[data-variant="primary"] { position: relative; overflow: hidden; isolation: isolate; }
+.btn[data-variant="primary"]::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; width: 40%; pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.28), transparent);
+  transform: translateX(-120%) skewX(-18deg); opacity: 0;
+}
+.btn[data-variant="primary"]:not(:disabled):hover::after { opacity: 1; animation: btn-sheen 700ms var(--ease-smooth) both; }
+.hero-stage[data-fx="on"] .hero-headline .hero-line { will-change: transform, opacity; }
+@media (prefers-reduced-motion: reduce) {
+  .ambient-grain, .btn[data-variant="primary"]::after { animation: none; }
+}
