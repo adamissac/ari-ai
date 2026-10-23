@@ -413,3 +413,38 @@ def test_deferred_commit_is_finalized_when_automation_is_off(automatic, settings
         assert row["status"] == "skipped"
         assert "disabled" in row["reason"]
     assert records() == [HEAD]
+
+
+def test_wildcard_runs_any_pusher_and_unlinked_author(automatic, settings_override):
+    alice, bob, ids, identity = automatic
+    identity["login"] = ""  # commit email maps to no GitHub account
+    settings_override(github_auto_commit_authors="*")
+    bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
+    p = push_payload(["app.py"])
+    p["commits"][0]["id"] = HEAD
+    p["sender"] = {"login": "teammate"}
+    post_webhook(alice, p)
+    worker.drain(kinds=["process_github_delivery", "assess_github_commit"])
+    assert records() == [HEAD]
+
+
+def test_stale_commit_is_skipped(automatic):
+    alice, bob, ids, _ = automatic
+    bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
+    p = push_payload(["README.md"], head=HEAD)
+    p["sender"] = {"login": "adamissac"}
+    p["commits"] = [{"id": HEAD, "modified": ["README.md"]}]
+    post_webhook(alice, p)
+    worker.drain(kinds=["process_github_delivery"])
+    with transaction() as conn:  # the push sat in the queue for over an hour
+        for jid, payload in conn.execute(
+            sa.select(jobs.c.id, jobs.c.payload).where(jobs.c.kind == "assess_github_commit")
+        ).all():
+            old = "2000-01-01T00:00:00+00:00"
+            conn.execute(
+                sa.update(jobs)
+                .where(jobs.c.id == jid)
+                .values(payload={**payload, "received_at": old})
+            )
+    worker.drain(kinds=["assess_github_commit"])
+    assert records() == []
