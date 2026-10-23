@@ -52,6 +52,10 @@ def _value(obj: Any, default: str = "") -> str:
     return str(getattr(obj, "value", obj) if obj is not None else default)
 
 
+_NESTED_REPEAT = re.compile(r"\([^()]*(?:[+*}|])[^()]*\)\s*[+*{]")
+MAX_SEARCH_LINE = 2000  # minified bundles; nothing an agent reads line by line
+
+
 @dataclass
 class CodeIntelligenceAdapter:
     """`CodeIntel` over an indexed snapshot.
@@ -160,14 +164,17 @@ class CodeIntelligenceAdapter:
         if not pattern.strip() or len(pattern) > 500:
             raise ValueError("search requires a nonempty pattern of at most 500 characters")
         try:
-            rx = re.compile(pattern, re.IGNORECASE)
+            # A repeated group holding a quantifier or alternation, e.g. (\w+\s?)+, can
+            # backtrack for hours on one line and the job's heartbeat keeps it alive: match those
+            # (and invalid patterns) literally.
+            rx = re.compile(re.escape(pattern) if _NESTED_REPEAT.search(pattern) else pattern, re.IGNORECASE)
         except re.error:
             rx = re.compile(re.escape(pattern), re.IGNORECASE)
         limit = max(1, min(max_results, 50))
         hits: list[dict[str, Any]] = []
         for file in self._index.files:
             for number, line in enumerate(file.content.splitlines(), 1):
-                if rx.search(line):
+                if len(line) <= MAX_SEARCH_LINE and rx.search(line):
                     hits.append(
                         {
                             "path": self._to_workspace(file.path),

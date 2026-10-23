@@ -227,3 +227,17 @@ def test_scout_runs_end_to_end_against_the_real_index(adapter):
     assert hypotheses, "citations should validate against the real snapshot"
     assert hypotheses[0].cited_spans[0].sha == adapter.snapshot.commit_sha
     assert hypotheses[0].weakness_class == "CWE-639"
+
+
+def test_search_cannot_be_frozen_by_a_backtracking_pattern(adapter):
+    import time
+
+    from security_agents.intel.code_intelligence_adapter import _NESTED_REPEAT
+
+    for evil in (r"(a+)+$", r"(\w+\s?)+\(", r"(a|a)*b", r"(x{1,9})+y"):
+        assert _NESTED_REPEAT.search(evil), evil
+    for fine in (r"def (get_payment|list_payments)\b", r"require_\w+", r"def _authenticate"):
+        assert not _NESTED_REPEAT.search(fine), fine
+    started = time.monotonic()
+    adapter.search(r"(\w+\s?)+\(")
+    assert time.monotonic() - started < 2

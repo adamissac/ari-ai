@@ -904,3 +904,19 @@ def test_same_route_matching():
     assert not same("POST /repositories/{repo_id}", "GET /api/v1/repositories/{id}")
     assert not same("GET /{id}", "GET /api/v1/repositories/{id}")  # a bare parameter matches nothing
     assert not same("GET /tories/{id}", "GET /api/v1/repositories/{id}")  # segment boundary
+
+
+def test_scout_surveys_only_recipe_included_code(tmp_path):
+    import json
+    from types import SimpleNamespace
+
+    from security_agents.agents import scout
+
+    (tmp_path / "build_recipe.json").write_text(json.dumps({"sandbox": {"include": ["backend"]}}))
+    intel = SimpleNamespace(snapshot=SimpleNamespace(root=tmp_path))
+    assert scout._recipe_include(intel) == ("backend",)
+    assert scout._in_target("backend/backend/api/routes.py", ("backend",))
+    assert not scout._in_target("examples/payments-lite/target/app.py", ("backend",))
+    assert not scout._in_target("backend2/x.py", ("backend",))
+    (tmp_path / "build_recipe.json").write_text("{not json")
+    assert scout._recipe_include(intel) == ()

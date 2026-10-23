@@ -54,18 +54,25 @@ throwaway Vercel Sandbox microVM (see `security-agents` Vercel Sandbox driver).
 
 ### Per-commit automatic assessments
 
-The Railway entrypoint defaults `GITHUB_AUTO_COMMIT_AUTHORS` to `adamissac` when
-unset. Set a comma-separated list of GitHub logins to expand the rollout, or `*`
-for all GitHub-linked authors. Explicit empty uses the legacy impact/coalescing
-policy. The allowlist requires both the signed sender and GitHub commit-author attribution.
-An installed App, connected repository, enabled monitoring and approved repository
-scope remain prerequisites. Approving a scope wakes blocked automatic commits.
+The Railway entrypoint defaults `GITHUB_AUTO_COMMIT_AUTHORS` to `*`: every pusher and
+every commit author, including commits whose email maps to no GitHub account. Set a
+comma-separated list of GitHub logins to narrow it; explicit empty uses the legacy
+impact/coalescing policy. An installed App, connected repository, enabled monitoring and
+approved repository scope remain prerequisites. Approving a scope wakes blocked commits.
+
+Every pushed commit gets its own full run; none is skipped. Commits over a project's
+limits (`AUTOMATIC_ASSESSMENTS_PER_HOUR`, `AUTOMATIC_ASSESSMENTS_PER_DAY`) or over the
+all-project daily spend ceiling (`AUTOMATIC_USD_PER_DAY`, default $50) are deferred and
+run later. `WORKER_PROCESSES` (default 12, ~80 MB each) runs that many commits at once;
+jobs are claimed with `SKIP LOCKED`. Signed webhooks are never rate limited: GitHub does
+not retry a 429, and the durable queue absorbs bursts.
 Opening the commit page is unnecessary; it polls the persisted run when visited.
 Check worker logs for `assess_github_commit` and the commit's monitoring assessment
 before claiming live execution: `/readyz` only checks configuration and storage.
 
 Full automatic assessments use the project’s normal assessment budget, clamped to
-operator limits (default ceiling: 400k tokens / $10 per assessment). The legacy
+operator limits (`LLM_MAX_TOKENS_PER_ASSESSMENT`, `LLM_MAX_USD_PER_ASSESSMENT`; production
+sets 4M tokens / $10). The legacy
 monitoring budget remains for the impact-policy path when this rollout is disabled.
 
 
@@ -91,3 +98,18 @@ Production/staging gateway, Railway startup and frontend quick reads enforce
 `claude-haiku-5-5` only, overriding stale production model choices. Errors are
 reported instead of substituting another model. Historical recordings retain
 the model that produced them. Live production run verification remains outstanding.
+
+### Security agents against this repository
+
+`build_recipe.json` makes the real backend the sandbox target: `deploy/sandbox_target.py`
+starts PostgreSQL in the Vercel microVM, applies migrations and seeds two unrelated
+fixture users, so Probe/Verify can call the real API as either user and Patch/Verify can
+run `backend/tests/test_api_core.py`. The recipe's `sandbox` block lists the apt packages
+and exact-pinned wheels installed while egress allows only PyPI and the HTTPS Ubuntu
+mirrors, and the paths uploaded; Scout only surveys routes under those paths.
+
+### RL defense policy
+
+The image ships CPU-only torch and the retrained protocol-v1 policy
+(`rl-defense/results/protocol-v1-retrain/`); `start.sh` pins its path, topology and sha256.
+`POST /api/v1/projects/{id}/defense-recommendations` enqueues `rl_recommend`.
