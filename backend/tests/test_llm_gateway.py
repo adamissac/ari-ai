@@ -178,6 +178,8 @@ def test_turn_limit_is_enforced() -> None:
     # Only the final turn asks the model to submit now.
     notes = ["final turn" in json.dumps(r["messages"][-1]) for r in transport.requests]
     assert notes == [False, False, True]
+    assert [len(r["tools"]) for r in transport.requests] == [2, 2, 1]
+    assert transport.requests[-1]["tools"][0]["name"] == "submit_result"
 
 
 @pytest.mark.live_llm
