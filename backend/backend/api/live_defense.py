@@ -361,6 +361,11 @@ def rotate_application_ingest_token(app_id: str, request: Request) -> IngestToke
         org_id, _ = require_project(conn, user, app.project_id, MemberRole.owner)
         if app.disconnected_at is not None:
             raise ApiError(ErrorCode.CONFLICT_STATE, "application is disconnected", 409)
+        conn.execute(  # serialize concurrent rotations of the same application
+            sa.select(connected_applications.c.id)
+            .where(connected_applications.c.id == app_id)
+            .with_for_update()
+        )
         active = (
             conn.execute(
                 sa.select(ingest_tokens.c.id).where(
@@ -506,6 +511,9 @@ def list_ingest_tokens(project_id: str, request: Request) -> dict[str, Any]:
         }
 
 
+_TRAIL_PREFIXES = ("live_defense.", "ingest_token.", "runtime.")
+
+
 @router.get("/projects/{project_id}/defense-health", response_model=DefenseHealth)
 def defense_health(project_id: str, request: Request) -> DefenseHealth:
     with transaction() as conn:
@@ -633,7 +641,15 @@ def pilot_report(project_id: str, request: Request) -> PilotReport:
         trail_rows = (
             conn.execute(
                 sa.select(audit_events.c.doc)
-                .where(audit_events.c.project_id == project_id)
+                .where(
+                    audit_events.c.project_id == project_id,
+                    sa.or_(
+                        *(
+                            audit_events.c.doc["action"].astext.like(f"{prefix}%")
+                            for prefix in _TRAIL_PREFIXES
+                        )
+                    ),
+                )
                 .order_by(audit_events.c.seq.desc())
                 .limit(50)
             )
@@ -643,8 +659,6 @@ def pilot_report(project_id: str, request: Request) -> PilotReport:
         trail: list[PilotTrailEntry] = []
         for doc in trail_rows:
             action = str(doc.get("action") or "")
-            if not (action.startswith("live_defense.") or action.startswith("ingest_token.")):
-                continue
             trail.append(
                 PilotTrailEntry(
                     at=doc["at"],

@@ -38,6 +38,7 @@ from backend.db import (
     transaction,
 )
 from backend.live_defense.quarantine import secret_like_reason
+from backend.runtime_keys import runtime_event_key
 from backend.services import project_org
 from monitoring.api import ANOMALY_EVENT_THRESHOLD, score_window
 from shared.audit import ActorType
@@ -233,6 +234,7 @@ def ingest(
                     runtime_windows.c.source == batch.source,
                     runtime_windows.c.route == window.route,
                     runtime_windows.c.window_end == batch.window_end,
+                    runtime_windows.c.application_id.is_not_distinct_from(application_id),
                 )
             ).scalar()
             if existing is not None:  # replayed window: idempotent, no new event
@@ -250,6 +252,7 @@ def ingest(
                     runtime_windows.c.route == window.route,
                     runtime_windows.c.window_end < batch.window_end,
                     runtime_windows.c.window_end > batch.window_end - timedelta(hours=24),
+                    runtime_windows.c.application_id.is_not_distinct_from(application_id),
                 )
                 .order_by(runtime_windows.c.window_end.desc())
                 .limit(HISTORY_WINDOWS)
@@ -295,9 +298,9 @@ def ingest(
                 type=EventType.log_anomaly,
                 occurred_at=batch.window_end,
                 received_at=utcnow(),
-                dedupe_key=f"runtime:{batch.source}:{window.route}:{batch.window_end.isoformat()}"[
-                    :500
-                ],
+                dedupe_key=runtime_event_key(
+                    batch.source, application_id, window.route, batch.window_end
+                ),
                 simulated=batch.source not in AUTHENTICATED_RUNTIME_SOURCES,
                 status=EventStatus.processed,
                 status_reason=f"[{batch.source}] {window.route} anomaly={sc.anomaly_score:.2f}: {reason}"[
