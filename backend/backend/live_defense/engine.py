@@ -1,8 +1,10 @@
 """Shadow-runtime job: rules + optional frozen v6, persist LivePolicyDecision.
 
 The handler is idempotent on (project, application, window_end, source). It never
-enqueues adapters, never opens a DETECTED→EXECUTING machine, and never writes
-RL training labels.
+enqueues adapters or ``live_defense_execute`` jobs, never opens a
+DETECTED→EXECUTING machine, never writes a ``LiveControl``, and never writes
+RL training labels. A grant or control channel on the same application does
+not change that.
 """
 
 from __future__ import annotations

@@ -31,8 +31,8 @@ SCHEMA_VERSION = (
     #      not a StagingEnvironment value.
     # 0.18 live-defense Phase 5 shadow-pilot readiness (additive): disconnect,
     #      ingest-token rotate, worker/telemetry/policy health remain unknown,
-    #      exportable PilotReport. No executable enforcement. Unmerged Phase 4
-    #      (#393) also used 0.18.0 for LiveControl — rebase must renumber if both merge.
+    #      exportable PilotReport. No executable enforcement. Phase 4 (#393) and
+    #      Phase 5 (#395) both merged; later delivery-mode work is 0.19.0.
     # 0.18.1 automation opt-in: Repository.automatic_assessments and TriggerPolicy.enabled
     #      default to false (owner must explicitly enable; PR #385).
     # 0.19 ProjectSettings.delivery_mode (auto | pull_request | manual, default auto) and

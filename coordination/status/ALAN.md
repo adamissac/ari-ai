@@ -1,16 +1,13 @@
 # Alan — implementation status
 
 Owner: Alan (`security-agents/`, SEC-001 … SEC-013; interim Live Defense UI)
-Branch: `feat/live-defense-phase4-controlled-enforcement`
-Current task: Phase 4 overnight hardening on PR #393 (do **not** merge); then Phase 5 shadow-pilot from origin/main
-Last remote sync: 2026-10-23, `origin/main` @ `09e8cab` (PR #392 and #388 merged on main)
-Branch: `feat/live-defense-phase5-pilot-readiness`
-Current task: Live Defense Phase 5 shadow-pilot readiness (no Phase 4 enforcement; do not merge #393)
-Last remote sync: 2026-10-23, `origin/main` @ `7adf509` (merged into Phase 5; PR #395)
+Branch: `feat/live-defense-phase6-pilot-audit`
+Current task: Phase 6 post-merge integration audit and shadow-pilot readiness (no Phase 7)
+Last remote sync: 2026-10-23, `origin/main` @ `02ab34de` (PRs #393 and #395 merged on main)
 API/contract dependencies: `shared` 0.9.0 `CheckCategory`; `backend.host` checkpoints; `code_review.api` functional helpers
-Recent PR/commit: `feat/alan/verify-honesty-check-category` (do not push merged `host-finding-persistence` / `host-resume-hardening`)
-Blockers: live seven-agent run (issue #10, no key); Docker images (INFRA-005)
-Next action: live seven-role run by a key holder (M3); human sign-off on the two check templates
+Recent PR/commit: `feat/live-defense-phase6-pilot-audit` (Phase 6 audit; no Phase 7)
+Blockers: live seven-agent run (issue #10, no key); Docker images (INFRA-005); Phase 6 merge needs CI + human review
+Next action: wait for CI on the Codex P1/P2 head of #411; merge only if MERGEABLE + reviews satisfied + no enforcement expansion; do not start Phase 7
 
 ## What runs today
 
@@ -77,6 +74,11 @@ Updated 2026-10-17 after #100 to #125.
   claimed.
 
 ## Session entries
+
+### 2026-10-23 (Live Defense Phase 6 post-merge audit)
+
+- Branch `feat/live-defense-phase6-pilot-audit` from `origin/main` `02ab34de`. PRs #393 (`57e0326`) and #395 (`8bbc01e`) confirmed merged. Schema 0.19.0, Alembic `0014`. Shadow cannot execute with grant+channel present; disconnect blocks leftover execute and serializes on the application row; queue depth includes assessment-bound jobs; recovered failures stay on the trail. **CONDITIONAL GO** for recommendation-only shadow-pilot. No Phase 7 / no RL edits.
+- Executed: `make check`; `uv run mypy` 40 files; focused live-defense pytest 149 passed / 1 skipped; frontend lint/typecheck; vitest 330; transport 35.
 
 ### 2026-10-22 (Live Defense Phase 3 shadow runtime)
 
