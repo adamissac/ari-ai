@@ -39,3 +39,11 @@ Required CI/backend integration and review status must be read on PR422; this fi
 does not fabricate results before those jobs finish. Documentation-only descendants
 may update handoff/status without changing the tested code fingerprint. No dedicated
 independent research approval or residual-task approval is implied by green checks.
+
+Final boundary follow-up: the adapter now uses a strict availability cutoff and
+half-open arrival windows. Evidence stamped exactly at the action cutoff belongs
+to the next window, preventing same-tick lookahead with coarse timestamps.
+The new targeted suite is23 tests, all passed in1.18s; scoped strict mypy passes.
+This is a source change after6c833795, so that earlier166-test receipt is historical;
+read PR422 for final-head regression/CI results rather than treating it as unchanged
+code. No additional research data or policy evaluation is involved.

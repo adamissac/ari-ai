@@ -56,7 +56,7 @@ def test_prefix_invariance_future_requests_outcomes_and_permissions():
     assert build(prefix) == build((*prefix, changed, changed))
     late = replace(event(name="late"), available_tick=10)
     assert build(prefix) == build((*prefix, late))
-    assert values(build((*prefix, late), cutoff=10))["request_count"] == 2
+    assert values(build((*prefix, late), cutoff=11))["request_count"] == 2
 
 
 def test_capture_classification_is_not_recomputed_from_later_state():
@@ -69,7 +69,7 @@ def test_capture_classification_is_not_recomputed_from_later_state():
     expired = event(
         tick=3, available=4, grants=(grant,), credential="fixture-token-bob", name="expired"
     )
-    assert values(build((revoked, expired), cutoff=4))["unauthorized_count"] == 2
+    assert values(build((revoked, expired), cutoff=5))["unauthorized_count"] == 2
     assert values(build((delegated,), cutoff=20))["context_age_max"] == 19
 
 
@@ -177,13 +177,20 @@ def test_observation_contract_rejects_widened_capabilities_or_invalid_values():
 def test_late_arrival_enters_a_later_window_without_backfilling_prior_window():
     late = replace(event(name="late"), available_tick=10)
     prior = build((late,), cutoff=3)
-    later = observation((late,), window_start=4, cutoff=10, clock_domain="test")
+    later = observation((late,), window_start=4, cutoff=11, clock_domain="test")
     assert values(prior)["request_count"] == 0
     assert values(later)["request_count"] == 1
-    assert values(later)["observation_age"] == 8
+    assert values(later)["observation_age"] == 9
     assert prior == build((late,), cutoff=3)
 
 
 def test_generator_labels_are_not_part_of_the_ingest_contract():
     with pytest.raises(TypeError, match="is_attack"):
         ObservedRead("forbidden", 1, 2, 2, event().snapshot, 200, False, REF, is_attack=True)
+
+
+def test_evidence_at_cutoff_is_excluded_until_next_window():
+    e = event(available=3)
+    assert values(build((e,), cutoff=3))["request_count"] == 0
+    next_window = observation((e,), window_start=3, cutoff=4, clock_domain="test")
+    assert values(next_window)["request_count"] == 1

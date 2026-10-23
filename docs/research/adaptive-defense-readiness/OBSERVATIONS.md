@@ -8,7 +8,7 @@ Existing 48/49/55 layouts remain unchanged and cannot consume this vector.
 
 Each entry below inherits schema version 0.1 and this availability/trust contract:
 only trusted operator/app/provider/ledger records whose occurrence AND knowledge
-arrival are no later than cutoff. Client ownership/delegation claims, LLM statements,
+arrival are strictly before cutoff. Client ownership/delegation claims, LLM statements,
 generator labels, future schedules, future outcomes and current-state backfills are
 forbidden. All missing/unsupported fields are null with known bit false. Encoded zero
 is only a storage filler paired with that false bit; it is never an observed zero.
@@ -22,8 +22,9 @@ identity before supplying a successful payment event; arbitrary HTTP 200 is insu
 This is an internal precondition, not a network DTO or implemented collector guarantee.
 No credential is retained. Authority is payments-lite-owned-research and clock domains
 must match. Duplicate visible events and incompatible clocks/authority are rejected.
-The window is knowledge-arrival-based [window_start, cutoff], with completion no
-later than arrival. Disjoint integer windows start at the previous cutoff +1. Late
+The window is knowledge-arrival-based [window_start, cutoff), with completion no
+later than arrival. Disjoint windows start at the previous cutoff; events stamped exactly at the
+cutoff wait for the next window. This avoids same-tick boundary lookahead. Late
 arrivals enter the later arrival window and never rewrite frozen vectors. Permission classification uses the immutable
 request-start snapshot; later expiry/revocation cannot relabel a historical read.
 Unknown age/coverage stays explicit; revocation at a later time is a later event.
