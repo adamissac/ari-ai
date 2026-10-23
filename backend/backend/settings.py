@@ -55,6 +55,7 @@ class Settings(BaseSettings):
     github_auto_commit_authors: str = ""
     automatic_assessments_per_hour: int = Field(default=5, ge=1)
     automatic_assessments_per_day: int = Field(default=20, ge=1)
+    automatic_usd_per_day: float = Field(default=50.0, gt=0)  # all projects together
     webhook_max_bytes: int = 1_048_576
 
     # Workers
@@ -84,7 +85,6 @@ class Settings(BaseSettings):
     # Rate limits (in-process, docs/13)
     rate_limit_per_minute: int = 60
     assessment_starts_per_hour: int = 5
-    webhooks_per_minute: int = 100
 
     @field_validator(
         "anthropic_api_key",
