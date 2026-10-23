@@ -174,7 +174,7 @@ def test_sdk_box_locks_egress_before_staging_and_destroys_snapshots(monkeypatch)
         return Box()
 
     monkeypatch.setattr(vsandbox, "create_sandbox", create)
-    spec = SimpleNamespace(limits=SimpleNamespace(timeout_s=60), labels={})
+    spec = SimpleNamespace(limits=SimpleNamespace(timeout_s=60), labels={}, apt=(), pip=())
     box = vercel_driver._VercelSdkBox(spec, "r1")
     box.stop()
 
@@ -208,7 +208,7 @@ def test_sdk_box_destroys_itself_when_boot_fails(monkeypatch) -> None:
             calls.append(f"destroy:{delete_orphan_snapshots}")
 
     monkeypatch.setattr(vsandbox, "create_sandbox", lambda **kw: Box())
-    spec = SimpleNamespace(limits=SimpleNamespace(timeout_s=60), labels={})
+    spec = SimpleNamespace(limits=SimpleNamespace(timeout_s=60), labels={}, apt=(), pip=())
     with pytest.raises(RuntimeError):
         vercel_driver._VercelSdkBox(spec, "r1")
     assert calls == ["deny-all", "stop", "destroy:True"]

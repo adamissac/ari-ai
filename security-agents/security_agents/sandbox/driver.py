@@ -73,6 +73,11 @@ class SandboxSpec:
     scope_decision: Decision | None = None  # must be an allowed attach_network decision for target-only
     target_workspace: Path | None = None
     target_app: str | None = None
+    # From the target's build recipe (validated by `sandbox_setup`): packages the microVM
+    # installs before egress closes, and the workspace subpaths to upload (all when empty).
+    pip: tuple[str, ...] = ()
+    apt: tuple[str, ...] = ()
+    include: tuple[str, ...] = ()
 
 
 @dataclass
@@ -172,7 +177,22 @@ def validate_spec(spec: SandboxSpec) -> None:
 
 def _stage_workspace(spec: SandboxSpec, root: Path) -> Path:
     ws = root / "ws"
-    copy_tree(spec.workspace, ws)
+    if spec.include:
+        ws.mkdir()
+        base = spec.workspace.resolve()
+        for rel in spec.include:
+            src = spec.workspace / rel
+            if not src.resolve().is_relative_to(base):  # a symlink must not pull in host files
+                raise PlatformError(
+                    ErrorCode.SANDBOX_POLICY_VIOLATION, f"include {rel!r} escapes the workspace"
+                )
+            if src.is_dir():
+                copy_tree(src, ws / rel)
+            elif src.is_file():
+                (ws / rel).parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, ws / rel)
+    else:
+        copy_tree(spec.workspace, ws)
     sb = ws / ".sandbox"
     sb.mkdir()
     shutil.copy2(ENTRY_SRC, sb / "entry.py")
