@@ -64,6 +64,17 @@ def test_new_projects_default_to_auto_and_server_stamps_the_authorizer(client_fa
     assert s["delivery_authorized_by"] == bob.me["user"]["id"]
 
 
+def test_a_member_cannot_create_a_project_that_delivers_code(client_factory) -> None:
+    alice, bob = client_factory("alice"), client_factory("bob")
+    from helpers import add_member
+
+    org_id = alice.me["memberships"][0]["organization"]["id"]
+    add_member(org_id, bob.me["user"]["id"], "member")
+    r = bob.post("/api/v1/projects", json={"name": "m", "org_id": org_id})
+    assert r.status_code == 201, r.text
+    assert r.json()["settings"]["delivery_mode"] == "manual"
+
+
 def test_manual_mode_keeps_the_human_gate(client_factory, reference) -> None:
     alice, bob = client_factory("alice"), client_factory("bob")
     ids = setup_project(alice, bob)
