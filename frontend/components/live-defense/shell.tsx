@@ -11,6 +11,7 @@ const TABS = [
   { id: 'incidents', label: 'Investigation' },
   { id: 'explain', label: 'Explainability' },
   { id: 'apps', label: 'Staging apps' },
+  { id: 'controls', label: 'Controls' },
 ] as const;
 
 export function LiveDefenseShell({
@@ -37,11 +38,11 @@ export function LiveDefenseShell({
     <div className="flex flex-col gap-4" data-testid="live-defense" data-mode={mode}>
       <header className="monitor-head" data-testid="live-defense-head">
         <div>
-          <p className="label-mono text-white/70">Ari Live Defense · phase 3 · shadow runtime</p>
-          <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">Authenticated ingest, shadow decisions, and analyst review</h2>
+          <p className="label-mono text-white/70">Ari Live Defense · phase 4 · owned-test enforcement</p>
+          <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">Review, authorize, execute, and verify as distinct operations</h2>
           <p className="mt-1 max-w-2xl text-sm text-white/80">
-            Connect an authorized staging app, inspect ingested evidence, read a rules or validated v6 shadow decision, and record a review.
-            Ari does not take automatic control of customer traffic.
+            Shadow recommendations stay NOT EXECUTED. A separate owner authorization can apply a temporary control only on a registered owned-test loopback app after the deterministic gate.
+            Production is not granted. RL cannot execute without that authorization.
           </p>
         </div>
         <div className="flex flex-col items-start gap-3 lg:items-end">
