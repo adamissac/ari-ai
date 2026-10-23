@@ -292,3 +292,5 @@ Versioned research authorization-context provider and decision-time RL input rul
 [interface and security assumptions](../docs/research/authorization-context/README.md).
 Payments-lite private records and existing trusted lab grants only; no external
 provider, observation-layout change or new evaluation.
+
+Adaptive-defense research readiness: [assessment and NO-GO decision](../docs/research/adaptive-defense-readiness/README.md). Internal 69-channel causal observation prototype and fixed train-only archive inventory; no trainable environment, experimental collection, new training or promotion.

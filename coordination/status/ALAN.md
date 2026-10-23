@@ -481,3 +481,19 @@ version 0.1.0 internal provider and payments-lite trusted-record adapter. 57 foc
 tests pass; review/CI pending. Four authorization states, scoped clock/revision
 metadata and documented future causal observation boundary. No new external
 service, shared public API, RL observation modification, training or promotion.
+
+## Adaptive-defense readiness — 2026-10-23
+
+RL-CMDP-007, `research/rl-adaptive-defense-readiness`: user-requested research
+assessment after #414; NO-GO/Option C, no new training. Pure cutoff observation
+adapter and read-only training-archive inventory only. 54 focused tests pass;
+review/full CI pending. See docs/research/adaptive-defense-readiness/README.md.
+No new shared public contract, environment dynamics, collection or enforcement.
+
+RL-CMDP-007 publication update: PR #422, tested code6c833795. Late arrivals enter
+their knowledge-arrival window without rewriting earlier observations. Local166
+research regressions passed in19.80s;91 shared contract tests including TypeScript
+passed in0.96s; two new modules pass scoped strict mypy. NO-GO/Option C unchanged.
+Exact commands and the pre-commit provenance rejection are retained in
+docs/research/adaptive-defense-readiness/VERIFICATION.md. Final CI/review/merge state
+is recorded on PR422; no new study may start without separate owner approval.
