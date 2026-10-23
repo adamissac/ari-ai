@@ -25,6 +25,19 @@ description = "Pinned upstream git commit SHAs in *_COMMIT constants"
 regexTarget = "line"
 regexes = ['''^\s*[A-Z][A-Z0-9_]*_COMMIT\s*=\s*"[0-9a-f]{40}"\s*$''']
 
+# Phase1's pinned code manifest names api.py files. The generic API-key detector
+# mistakes these three verified source SHA256 values for credentials. Match only
+# these exact path/hash entries, inside this one manifest; never skip the file.
+[[allowlists]]
+description = "Verified constrained-Phase1 source fingerprints, not API credentials"
+condition = "AND"
+paths = ['''^rl-defense/results/constrained-phase1/config\.json$''']
+regexTarget = "line"
+regexes = [
+  '''^\s*"rl-defense/rl_defense/api\.py": "629bc9d1f1eef5318eaa705e37fdc78c443bdc52a7f436e4199f99f34396f48a",?\s*$''',
+  '''^\s*"shared/shared/api\.py": "52dc1f49e7c599dce72eed330137dbc8229d6367ff6aa8ff18ad046549491a1c",?\s*$''',
+  '''^\s*"standards/standards/owasp_api\.py": "e0103a6e7f9cf8bde9e9a3ded0cf2e30c4006d072e00d9ab01f3eb74fa3e0440",?\s*$''',
+]
 # Evidence JSON maps source paths to SHA-256 digests. generic-api-key fires when a
 # path contains "api.py" next to a 64-hex digest (not a credential). Keep this
 # narrower than "any 64-hex string" so real api_key / token assignments still fail.

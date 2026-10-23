@@ -1335,3 +1335,80 @@ GitHub connector. The temporary checkout `/private/tmp/rl-v10` still has earlier
 Git metadata and preserved files corresponding to remote fix `1e42f3e`; reconcile it
 with the remote before any cleanup or new work. The user's original dirty checkout
 was not overwritten. No study heartbeat was re-enabled or extra experiment scheduled.
+
+### 2026-10-22 — RL-CMDP-001 Phase 1 foundation
+
+Owner supplied explicit Phase 1 scope; no training/Phase 2 or serving changes.
+Dedicated independent checkout `/private/tmp/rl-cmdp-phase1`, branch
+`feat/alan/constrained-rl-phase1` from main `198eb3b`. Primary checkout has unrelated
+Devin UI edits/QA outputs and is untouched. Existing duration evidence is preserved.
+New internal research adapter reuses shared EvidenceRef; no public contract change.
+Initial18 tests passed; extended20 tests passed in9.53s. Freeze/publish fixed bounded
+baseline plan before execution. Shell network is unavailable; GitHub connector
+publishes equivalent source trees. Record both local and published commit identities.
+
+### RL-CMDP-001 — completed Phase1 measurements and decision
+
+Published frozen execution source `9d6460487275d25cc31194d7b603196d436c4485`, exact tree
+`22c2f7f50c36e5fe5b7eb1d26c41b1b314438e4a` (local equivalent `43b7110`).140owned-lab
+baseline episodes /4,200scored windows completed; raw request→outcome→reward/cost→all
+pooled/per-scenario summary verification passes. All policies share an explicit
+capability shield; v6_shielded is not the original policy selection semantics.
+Cost-aware<=2short actions:99.504% benign availability but93.156% attack compromise.
+This is an unsuccessful defense, not evidence that a constrained neural policy works.
+
+Read-only legacy adaptation:280duration-screen train episodes /8,400transitions;
+all aggregate costs measurable,280initial current masks unknown, all propensities and
+delegated-denial attributions unknown. Preserve every historical artifact unchanged;
+do not pool overlapping train seeds. Full audit/CMDP/action matrix/readiness/four-paper
+architecture comparison is in docs/research/constrained-rl-phase1; ADR0019 raises the
+stale ADR0008/0014 vs implemented-lab discrepancy without silently ratifying it.
+
+**No-go now for constrained DDQN or discrete CQL.** Conditional preference: cost-aware
+DDQN after feasible controls, reviewed data/state/support and precommitted cost budgets.
+No Phase2 code, training study, holdout run, new action, promotion or serving change.
+Actual v6 registry before/after SHA256 stays c345593354856c50559ba16611853a0e4936a7efc11fa5704c224d3189271408.
+
+Validation so far:20focused tests passed in9.53s, Ruff checks/format all87RL source/test
+files pass, links518files/0problems. First full compatibility command had346passes and
+one subprocess import failure because relative PYTHONPATH did not survive cwd change;
+rerun uses absolute paths. Final full suite and PR review/CI pending at this entry.
+
+Phase1 compatibility rerun: **347passed in256.62s**, absolute PYTHONPATH. Full87-file
+RL lint/format and links518files/0problems pass. PR #388 published (head `ed74a11c`).
+CI secret scan found three false positives: SHA256 entries for api.py/owasp_api.py in
+the pinned code manifest. Added a path+exact-line+exact-value AND allowlist, not a file
+exclusion; local gitleaks8.30.1 history scan passes. A temporary Git fixture proves the
+manifest hashes pass while a synthetic credential-shaped api_key in that **same file**
+still fails. New regression checks the exception's scope and historical pins. Original
+execution evidence/source semantics remain unchanged; no result recollection/rewrite.
+
+### RL-CMDP-001 — Phase1 review corrections; no merge/deployment
+
+PR388 remains deliberately on the dedicated research branch: latest owner Phase1
+request forbids production deployments; root vercel.json enables main deployments.
+This takes precedence over earlier general merge permission. No Phase2 work.
+
+Automated review's four P2s are addressed: resolve actual published commit/tree;
+portable always-present champion fixture plus canonical-registry absence/byte checks;
+verify every baseline action against actual pinned policy inputs on saved observations;
+reject unknown index/config schema versions.26focused tests pass in10.31s. Stronger
+verifier reproduces all140episodes /4,200transitions from the original artifacts,
+without new lab episodes or altering a measurement. No hypothesis or decision changed.
+The exact original evaluator and cryptographically verified original Git commit object
+are retained; collection/adaptation ASTs and all original reward/cost/policy/environment
+source hashes must remain identical. New verification source is separately identified.
+
+Main source before fixes `184a61a`: all five workflows green (RL, backend incl integration,
+frontend/browser, docs, secrets). New fix CI will run on publication. Full local suite
+before added regressions347passed; shared60passed/1tsc skip then omitted test1passed
+separately with installed tsc. Full commands/limitations: Phase1 VERIFICATION.md.
+Research/checkpoint/registry guard unchanged. Stop here after review/CI; leave PR open.
+
+Historical compatibility exception additionally checks exact separately recorded
+post-review evaluator/proof hashes, so a future orchestration/import edit cannot
+silently reinterpret this run. Added drift regression;27focused tests pass in9.91s.
+Original scientific artifacts, execution/report indices, checkpoint and registry remain
+unchanged. Source tree/content published through connector; local branch metadata is
+an equivalent independent commit chain. Primary checkout and old experiment worktrees
+remain untouched. No merge: Phase1's deployment restriction governs this research PR.

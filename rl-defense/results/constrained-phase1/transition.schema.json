@@ -1,0 +1,410 @@
+{
+  "$defs": {
+    "EvidenceKind": {
+      "enum": [
+        "source_span",
+        "test_run",
+        "sandbox_run",
+        "tool_output",
+        "artifact",
+        "human_input",
+        "doc",
+        "change_intent",
+        "monitoring_event"
+      ],
+      "title": "EvidenceKind",
+      "type": "string"
+    },
+    "EvidenceRef": {
+      "additionalProperties": false,
+      "description": "Pointer to a piece of evidence pinned to an exact code version.\n\n``source_span`` evidence must carry ``path`` + ``commit_sha`` + ``span``;\nartifact-backed kinds must carry ``artifact_id`` + ``sha256``.",
+      "properties": {
+        "artifact_id": {
+          "anyOf": [
+            {
+              "pattern": "^art_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Artifact Id"
+        },
+        "commit_sha": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{40}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Commit Sha"
+        },
+        "kind": {
+          "$ref": "#/$defs/EvidenceKind"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "path": {
+          "anyOf": [
+            {
+              "maxLength": 1024,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Path"
+        },
+        "provenance": {
+          "description": "Producer and version, e.g. 'code_intelligence.indexer@0.1' or 'agent:probe'",
+          "maxLength": 500,
+          "title": "Provenance",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        },
+        "span": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SourceSpan"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "symbol": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Qualified symbol name or sym_ id",
+          "title": "Symbol"
+        }
+      },
+      "required": [
+        "kind",
+        "provenance"
+      ],
+      "title": "EvidenceRef",
+      "type": "object"
+    },
+    "Measurement": {
+      "additionalProperties": false,
+      "properties": {
+        "definition": {
+          "minLength": 1,
+          "title": "Definition",
+          "type": "string"
+        },
+        "evidence": {
+          "$ref": "#/$defs/EvidenceRef"
+        },
+        "unknown_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unknown Reason"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        }
+      },
+      "required": [
+        "value",
+        "evidence",
+        "definition"
+      ],
+      "title": "Measurement",
+      "type": "object"
+    },
+    "SourceSpan": {
+      "additionalProperties": false,
+      "properties": {
+        "end_col": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End Col"
+        },
+        "end_line": {
+          "minimum": 1,
+          "title": "End Line",
+          "type": "integer"
+        },
+        "start_col": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start Col"
+        },
+        "start_line": {
+          "minimum": 1,
+          "title": "Start Line",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "start_line",
+        "end_line"
+      ],
+      "title": "SourceSpan",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "action": {
+      "minimum": 0,
+      "title": "Action",
+      "type": "integer"
+    },
+    "action_space": {
+      "enum": [
+        "sim",
+        "live_v2",
+        "live_v3"
+      ],
+      "title": "Action Space",
+      "type": "string"
+    },
+    "attack_active": {
+      "title": "Attack Active",
+      "type": "boolean"
+    },
+    "attack_requests": {
+      "minimum": 0,
+      "title": "Attack Requests",
+      "type": "integer"
+    },
+    "behavior_probability": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Behavior Probability"
+    },
+    "benign_blocked": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Benign Blocked"
+    },
+    "benign_cost": {
+      "$ref": "#/$defs/Measurement"
+    },
+    "benign_requests": {
+      "minimum": 0,
+      "title": "Benign Requests",
+      "type": "integer"
+    },
+    "compromised_reads": {
+      "minimum": 0,
+      "title": "Compromised Reads",
+      "type": "integer"
+    },
+    "current_mask": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "boolean"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Current Mask"
+    },
+    "dataset_id": {
+      "title": "Dataset Id",
+      "type": "string"
+    },
+    "delegated_blocked": {
+      "$ref": "#/$defs/Measurement"
+    },
+    "legacy_reward": {
+      "$ref": "#/$defs/Measurement"
+    },
+    "next_mask": {
+      "items": {
+        "type": "boolean"
+      },
+      "title": "Next Mask",
+      "type": "array"
+    },
+    "next_obs": {
+      "items": {
+        "type": "number"
+      },
+      "title": "Next Obs",
+      "type": "array"
+    },
+    "obs": {
+      "items": {
+        "type": "number"
+      },
+      "title": "Obs",
+      "type": "array"
+    },
+    "outcome_evidence": {
+      "$ref": "#/$defs/EvidenceRef"
+    },
+    "policy": {
+      "title": "Policy",
+      "type": "string"
+    },
+    "scenario": {
+      "title": "Scenario",
+      "type": "string"
+    },
+    "scenario_hash": {
+      "title": "Scenario Hash",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "constrained-lab/1",
+      "default": "constrained-lab/1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "seed": {
+      "minimum": 0,
+      "title": "Seed",
+      "type": "integer"
+    },
+    "split": {
+      "enum": [
+        "train",
+        "val"
+      ],
+      "title": "Split",
+      "type": "string"
+    },
+    "t": {
+      "minimum": 0,
+      "title": "T",
+      "type": "integer"
+    },
+    "terminated": {
+      "title": "Terminated",
+      "type": "boolean"
+    },
+    "threat_reward": {
+      "$ref": "#/$defs/Measurement"
+    },
+    "truncated": {
+      "title": "Truncated",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "dataset_id",
+    "policy",
+    "scenario",
+    "scenario_hash",
+    "split",
+    "seed",
+    "t",
+    "action_space",
+    "obs",
+    "action",
+    "current_mask",
+    "next_obs",
+    "next_mask",
+    "terminated",
+    "truncated",
+    "attack_active",
+    "attack_requests",
+    "compromised_reads",
+    "benign_requests",
+    "benign_blocked",
+    "threat_reward",
+    "benign_cost",
+    "legacy_reward",
+    "delegated_blocked",
+    "outcome_evidence"
+  ],
+  "title": "ResearchTransition",
+  "type": "object"
+}
