@@ -1,0 +1,57 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "adapter_http_200_is_not_effectiveness": {
+      "const": true,
+      "default": true,
+      "title": "Adapter Http 200 Is Not Effectiveness",
+      "type": "boolean"
+    },
+    "adapter_http_status": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Adapter Http Status"
+    },
+    "detail": {
+      "maxLength": 500,
+      "title": "Detail",
+      "type": "string"
+    },
+    "method": {
+      "maxLength": 500,
+      "title": "Method",
+      "type": "string"
+    },
+    "observed_effect": {
+      "title": "Observed Effect",
+      "type": "boolean"
+    },
+    "probe_http_statuses": {
+      "items": {
+        "type": "integer"
+      },
+      "title": "Probe Http Statuses",
+      "type": "array"
+    },
+    "verified_at": {
+      "format": "date-time",
+      "title": "Verified At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "observed_effect",
+    "method",
+    "detail",
+    "verified_at"
+  ],
+  "title": "LiveControlVerification",
+  "type": "object"
+}

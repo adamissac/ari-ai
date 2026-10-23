@@ -1,0 +1,12 @@
+{
+  "adapter_http_200_is_not_effectiveness": true,
+  "adapter_http_status": 200,
+  "detail": "Second fixture request was 429 after a 1-request rate limit.",
+  "method": "real_http_probes",
+  "observed_effect": true,
+  "probe_http_statuses": [
+    200,
+    429
+  ],
+  "verified_at": "2026-10-17T01:00:00Z"
+}

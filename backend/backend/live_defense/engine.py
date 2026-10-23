@@ -242,3 +242,47 @@ def live_defense_shadow(ctx: JobContext) -> dict[str, Any]:
         window_end=window_end,
         source=payload["source"],
     )
+
+
+@handler("live_defense_execute")
+def live_defense_execute(ctx: JobContext) -> dict[str, Any]:
+    from backend.live_defense.controls import execute_control
+
+    with transaction() as conn:
+        return execute_control(conn, ctx.job.payload["control_id"])
+
+
+@handler("live_defense_verify")
+def live_defense_verify(ctx: JobContext) -> dict[str, Any]:
+    from backend.live_defense.controls import verify_job
+
+    with transaction() as conn:
+        return verify_job(conn, ctx.job.payload["control_id"])
+
+
+@handler("live_defense_expire")
+def live_defense_expire(ctx: JobContext) -> dict[str, Any]:
+    from backend.live_defense.controls import expire_job
+
+    with transaction() as conn:
+        return expire_job(conn, ctx.job.payload["control_id"])
+
+
+@handler("live_defense_rollback")
+def live_defense_rollback(ctx: JobContext) -> dict[str, Any]:
+    from backend.live_defense.controls import rollback_job
+
+    with transaction() as conn:
+        return rollback_job(conn, ctx.job.payload["control_id"])
+
+
+@handler("live_defense_emergency_stop")
+def live_defense_emergency_stop(ctx: JobContext) -> dict[str, Any]:
+    from backend.live_defense.controls import emergency_stop_job
+
+    with transaction() as conn:
+        return emergency_stop_job(
+            conn,
+            ctx.job.payload["project_id"],
+            ctx.job.payload.get("application_id"),
+        )
