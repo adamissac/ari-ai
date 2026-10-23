@@ -51,6 +51,9 @@ def supports_server_fallback(model: str) -> bool:
     return not model.split(":", 1)[-1].startswith("claude-haiku-")
 
 
+FINAL_TURN_GRACE = 2  # extra turns to submit after max_turns before the run fails
+
+
 class LLMError(Exception):
     def __init__(self, code: ErrorCode, message: str, *, retryable: bool = False) -> None:
         super().__init__(message)
@@ -323,21 +326,19 @@ class LLMGateway:
         records: list[ToolCallRecord] = []
         total = Usage()
         invalid = 0
-        for turn in range(1, max_turns + 1):
-            final_turn = turn == max_turns and turn > 1
-            if final_turn:  # forced tool_choice is unavailable; offer only submit and ask
-                last = messages[-1]
+        # Up to FINAL_TURN_GRACE extra turns past max_turns, each asking for the result. The
+        # conversation stays append-only: tools and earlier turns never change, because thinking
+        # blocks are bound to the exact prefix and any edit makes the provider reject them.
+        for turn in range(1, max_turns + 1 + FINAL_TURN_GRACE):
+            if turn >= max_turns and turn > 1:  # forced tool_choice is unavailable; ask instead
+                last = messages[-1]  # the newest message, not yet sent
                 note = f"This is your final turn: call `{submit}` now with your best result."
                 if isinstance(last["content"], str):
                     last["content"] += "\n\n" + note
                 else:
                     last["content"] = [*last["content"], {"type": "text", "text": note}]
             resp = self.create_message(
-                agent=agent,
-                system=system,
-                messages=messages,
-                tools=defs[-1:] if final_turn else defs,
-                max_tokens=max_tokens,
+                agent=agent, system=system, messages=messages, tools=defs, max_tokens=max_tokens
             )
             total = _add(total, Usage.model_validate(resp.usage["_usage"]))
             messages.append({"role": "assistant", "content": resp.content})

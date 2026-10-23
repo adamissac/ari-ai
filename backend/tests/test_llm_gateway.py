@@ -163,8 +163,8 @@ def test_budget_gate_runs_before_each_call() -> None:
     assert e.value.code is ErrorCode.BUDGET_EXHAUSTED and len(transport.requests) == 1
 
 
-def test_turn_limit_is_enforced() -> None:
-    transport = FakeTransport([_tool_use("read_file", {"path": "a"}, f"t{i}") for i in range(3)])
+def test_turn_limit_is_enforced_append_only_with_final_turn_grace() -> None:
+    transport = FakeTransport([_tool_use("read_file", {"path": "a"}, f"t{i}") for i in range(5)])
     gw = build_gateway(settings=_settings(), transport=transport)
     with pytest.raises(LLMError, match="no valid result within 3 turns"):
         gw.run_tool_loop(
@@ -175,11 +175,15 @@ def test_turn_limit_is_enforced() -> None:
             tools=[Tool("read_file", "r", ReadFile, lambda i: "x")],
             output_model=Verdict,
         )
-    # Only the final turn asks the model to submit now.
-    notes = ["final turn" in json.dumps(r["messages"][-1]) for r in transport.requests]
-    assert notes == [False, False, True]
-    assert [len(r["tools"]) for r in transport.requests] == [2, 2, 1]
-    assert transport.requests[-1]["tools"][0]["name"] == "submit_result"
+    reqs = transport.requests
+    # max_turns plus FINAL_TURN_GRACE; the final turns ask the model to submit now.
+    assert len(reqs) == 5
+    assert ["final turn" in json.dumps(r["messages"][-1]) for r in reqs] == [False] * 2 + [True] * 3
+    # Thinking blocks are bound to the exact prefix: tools never change and every request
+    # only appends to the previous one.
+    assert all(r["tools"] == reqs[0]["tools"] for r in reqs)
+    for prev, cur in zip(reqs, reqs[1:], strict=False):
+        assert json.dumps(cur["messages"][: len(prev["messages"])]) == json.dumps(prev["messages"])
 
 
 @pytest.mark.live_llm
