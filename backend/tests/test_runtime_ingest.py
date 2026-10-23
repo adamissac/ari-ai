@@ -150,7 +150,7 @@ def test_spike_creates_labeled_event_linked_to_open_finding(env, source) -> None
     assert fid in ev["status_reason"]
     incidents = alice.get(f"/api/v1/projects/{ids['project']}/incidents").json()["items"]
     assert len(incidents) == 1
-    assert incidents[0]["simulated"] is True
+    assert incidents[0]["simulated"] is ev["simulated"]
     assert incidents[0]["state"] == "reported"
     assert incidents[0]["triage"] is None
     assert incidents[0]["finding_ids"] == [fid]

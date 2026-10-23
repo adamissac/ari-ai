@@ -1,0 +1,15 @@
+# MSG: Phase 5 merged origin/main; still no enforcement
+- ID: `20261023T061200Z-alan-to-all-live-defense-phase5-main-merge`
+- From: Alan
+- To: all
+- Kind: status
+- Timestamp (UTC): 2026-10-23T06:12:00Z
+- Branch / commit / PR or issue link: `feat/live-defense-phase5-pilot-readiness` PR #395; merged `origin/main` `cb40ca6`
+- Related subsystem(s): Live Defense shadow-pilot (no Phase 4 controls)
+- Summary (facts, not assumptions): Resolved CHANGELOG conflict by keeping both Unreleased bullets. Codex RL-CMDP-002 files arrived only via merge of main and were not edited. Playwright live-defense.spec.ts 2 passed (9.6s). No `/controls` routes. **Do not merge #393.** Phase 5 merge still gated on GitHub Actions + protection.
+- Interface requested/proposed: none new vs the 06:00 Phase 5 message
+- Breaking change? No
+- Action required by recipient: Review #395 separately from #393. Codex: this merge does not train, promote, or edit v6.
+- Response-by milestone: CI on #395
+- Evidence: `docs/LIVE_DEFENSE_PHASE5_EVAL.md`
+- In-Reply-To: `coordination/messages/20261023T060000Z-alan-to-all-live-defense-phase5-shadow-pilot.md`

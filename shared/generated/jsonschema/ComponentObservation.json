@@ -1,0 +1,75 @@
+{
+  "$defs": {
+    "ComponentHealthState": {
+      "enum": [
+        "unknown",
+        "checking",
+        "healthy",
+        "attention"
+      ],
+      "title": "ComponentHealthState",
+      "type": "string"
+    },
+    "ComponentObservationSource": {
+      "enum": [
+        "ingest",
+        "github",
+        "none"
+      ],
+      "title": "ComponentObservationSource",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "last_checked_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Last Checked At"
+    },
+    "node_id": {
+      "maxLength": 500,
+      "title": "Node Id",
+      "type": "string"
+    },
+    "note": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Note"
+    },
+    "simulated": {
+      "title": "Simulated",
+      "type": "boolean"
+    },
+    "source": {
+      "$ref": "#/$defs/ComponentObservationSource"
+    },
+    "state": {
+      "$ref": "#/$defs/ComponentHealthState"
+    }
+  },
+  "required": [
+    "node_id",
+    "state",
+    "source",
+    "simulated"
+  ],
+  "title": "ComponentObservation",
+  "type": "object"
+}

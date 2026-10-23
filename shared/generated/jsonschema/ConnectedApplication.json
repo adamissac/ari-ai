@@ -1,0 +1,107 @@
+{
+  "$defs": {
+    "ApplicationVerification": {
+      "enum": [
+        "unverified",
+        "ingest_seen",
+        "token_revoked",
+        "disconnected"
+      ],
+      "title": "ApplicationVerification",
+      "type": "string"
+    },
+    "StagingEnvironment": {
+      "description": "Environments a shadow-pilot app may declare. Production is not allowed.",
+      "enum": [
+        "sandbox",
+        "owned_test"
+      ],
+      "title": "StagingEnvironment",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Owner-registered staging app under watch. Never includes secrets.",
+  "properties": {
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "created_by": {
+      "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Created By",
+      "type": "string"
+    },
+    "disconnected_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Disconnected At"
+    },
+    "environment": {
+      "$ref": "#/$defs/StagingEnvironment"
+    },
+    "id": {
+      "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "ingest_configured": {
+      "description": "True when a non-revoked ingest token exists; the token itself is never returned",
+      "title": "Ingest Configured",
+      "type": "boolean"
+    },
+    "last_ingest_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Last Ingest At"
+    },
+    "name": {
+      "maxLength": 500,
+      "title": "Name",
+      "type": "string"
+    },
+    "project_id": {
+      "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "shadow_mode": {
+      "const": true,
+      "default": true,
+      "title": "Shadow Mode",
+      "type": "boolean"
+    },
+    "verification": {
+      "$ref": "#/$defs/ApplicationVerification"
+    }
+  },
+  "required": [
+    "id",
+    "project_id",
+    "name",
+    "environment",
+    "ingest_configured",
+    "verification",
+    "created_by",
+    "created_at"
+  ],
+  "title": "ConnectedApplication",
+  "type": "object"
+}

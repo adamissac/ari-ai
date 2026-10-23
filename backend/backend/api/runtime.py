@@ -29,6 +29,7 @@ from backend import audit, jobs
 from backend.api.deps import ApiError, limiter, not_found, require_project, require_user
 from backend.api.webhooks import _read_bounded
 from backend.db import (
+    connected_applications,
     findings,
     ingest_tokens,
     monitoring_events,
@@ -36,6 +37,7 @@ from backend.db import (
     runtime_windows,
     transaction,
 )
+from backend.live_defense.quarantine import secret_like_reason
 from backend.services import project_org
 from monitoring.api import ANOMALY_EVENT_THRESHOLD, score_window
 from shared.audit import ActorType
@@ -44,6 +46,7 @@ from shared.errors import ErrorCode
 from shared.findings import Finding, FindingKind, FindingStatus
 from shared.ids import IdPrefix, new_id
 from shared.monitoring import (
+    AUTHENTICATED_RUNTIME_SOURCES,
     EventSource,
     EventStatus,
     EventType,
@@ -154,15 +157,20 @@ def revoke_ingest_token(token_id: str, request: Request) -> None:
         )
 
 
-def _authenticate(conn: sa.Connection, project_id: str, header: str | None) -> str:
+def _authenticate(
+    conn: sa.Connection, project_id: str, header: str | None
+) -> tuple[str, str | None]:
     if not header or not header.startswith("Bearer "):
         raise ApiError(
             ErrorCode.UNAUTHENTICATED, "ingest token required (Authorization: Bearer ...)", 401
         )
     row = conn.execute(
-        sa.select(ingest_tokens.c.id, ingest_tokens.c.project_id, ingest_tokens.c.revoked_at).where(
-            ingest_tokens.c.token_sha256 == _sha(header[7:].strip())
-        )
+        sa.select(
+            ingest_tokens.c.id,
+            ingest_tokens.c.project_id,
+            ingest_tokens.c.revoked_at,
+            ingest_tokens.c.application_id,
+        ).where(ingest_tokens.c.token_sha256 == _sha(header[7:].strip()))
     ).first()
     if (
         row is None
@@ -170,7 +178,19 @@ def _authenticate(conn: sa.Connection, project_id: str, header: str | None) -> s
         or not secrets.compare_digest(row.project_id, project_id)
     ):
         raise ApiError(ErrorCode.UNAUTHENTICATED, "invalid or revoked ingest token", 401)
-    return row.id
+    if row.application_id:
+        app = (
+            conn.execute(
+                sa.select(connected_applications.c.doc).where(
+                    connected_applications.c.id == row.application_id
+                )
+            )
+            .mappings()
+            .first()
+        )
+        if app is not None and (app["doc"] or {}).get("disconnected_at"):
+            raise ApiError(ErrorCode.UNAUTHENTICATED, "invalid or revoked ingest token", 401)
+    return row.id, row.application_id
 
 
 def _open_findings_on(conn: sa.Connection, project_id: str, route: str) -> list[str]:
@@ -188,11 +208,18 @@ def _open_findings_on(conn: sa.Connection, project_id: str, route: str) -> list[
     return ids
 
 
-def ingest(project_id: str, token_id: str, batch: RuntimeSignalBatch) -> RuntimeIngestAck:
+def ingest(
+    project_id: str, token_id: str, batch: RuntimeSignalBatch, application_id: str | None = None
+) -> RuntimeIngestAck:
     window_s = (batch.window_end - batch.window_start).total_seconds()
     scores: list[RouteScore] = []
     event_ids: list[str] = []
     with transaction() as conn:
+        conn.execute(
+            sa.update(ingest_tokens)
+            .where(ingest_tokens.c.id == token_id)
+            .values(last_used_at=sa.func.now())
+        )
         if batch.repo_id is not None:
             owner = conn.execute(
                 sa.select(repositories.c.project_id).where(repositories.c.id == batch.repo_id)
@@ -248,6 +275,7 @@ def ingest(project_id: str, token_id: str, batch: RuntimeSignalBatch) -> Runtime
                     window_end=batch.window_end,
                     counters=window.model_dump(mode="json"),
                     score=sc.model_dump(mode="json"),
+                    application_id=application_id,
                 )
                 .on_conflict_do_nothing()
                 .returning(runtime_windows.c.id)
@@ -270,7 +298,7 @@ def ingest(project_id: str, token_id: str, batch: RuntimeSignalBatch) -> Runtime
                 dedupe_key=f"runtime:{batch.source}:{window.route}:{batch.window_end.isoformat()}"[
                     :500
                 ],
-                simulated=batch.source != "runtime_demo",
+                simulated=batch.source not in AUTHENTICATED_RUNTIME_SOURCES,
                 status=EventStatus.processed,
                 status_reason=f"[{batch.source}] {window.route} anomaly={sc.anomaly_score:.2f}: {reason}"[
                     :500
@@ -292,6 +320,21 @@ def ingest(project_id: str, token_id: str, batch: RuntimeSignalBatch) -> Runtime
 
             correlate_anomaly(conn, ev, linked, window.route)
             event_ids.append(ev.id)
+        if batch.source in AUTHENTICATED_RUNTIME_SOURCES:
+            jobs.enqueue(
+                conn,
+                "live_defense_shadow",
+                {
+                    "project_id": project_id,
+                    "application_id": application_id,
+                    "window_end": batch.window_end.isoformat(),
+                    "source": batch.source,
+                },
+                dedupe_key=(
+                    f"live_defense_shadow:{project_id}:{application_id or '-'}"
+                    f":{batch.window_end.isoformat()}:{batch.source}"
+                ),
+            )
         audit.record(
             conn,
             org_id=project_org(conn, project_id),
@@ -305,6 +348,7 @@ def ingest(project_id: str, token_id: str, batch: RuntimeSignalBatch) -> Runtime
                 "source": batch.source,
                 "routes": len(batch.routes),
                 "anomalies": len(event_ids),
+                "application_id": application_id,
             },
         )
     return RuntimeIngestAck(
@@ -319,14 +363,22 @@ def ingest(project_id: str, token_id: str, batch: RuntimeSignalBatch) -> Runtime
 async def ingest_runtime(project_id: str, request: Request) -> JSONResponse:
     raw = await _read_bounded(request, MAX_BODY)
 
-    def _auth() -> str:
+    def _auth() -> tuple[str, str | None]:
         with transaction() as conn:
             return _authenticate(conn, project_id, request.headers.get("Authorization"))
 
-    token_id = await run_in_threadpool(_auth)
+    token_id, application_id = await run_in_threadpool(_auth)
     limiter.check(f"ingest:{token_id}", 60, 60)
     try:
-        batch = RuntimeSignalBatch.model_validate_json(raw)
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as e:
+        raise ApiError(ErrorCode.VALIDATION_FAILED, "invalid JSON", 422) from e
+    secret_reason = secret_like_reason(parsed)
+    if secret_reason:
+        await run_in_threadpool(_record_quarantine, project_id, token_id, secret_reason)
+        raise ApiError(ErrorCode.VALIDATION_FAILED, secret_reason, 422)
+    try:
+        batch = RuntimeSignalBatch.model_validate(parsed)
     except ValidationError as e:
         errors: Any = e.errors(include_url=False)
         raise ApiError(
@@ -335,8 +387,54 @@ async def ingest_runtime(project_id: str, request: Request) -> JSONResponse:
             422,
             {"errors": json.loads(json.dumps(errors, default=str))[:20]},
         ) from e
-    ack = await run_in_threadpool(ingest, project_id, token_id, batch)
+    if batch.source == "owned_staging" and application_id is None:
+        raise ApiError(
+            ErrorCode.VALIDATION_FAILED,
+            "owned_staging ingest requires an application-bound token",
+            422,
+        )
+    ack = await run_in_threadpool(ingest, project_id, token_id, batch, application_id)
     return JSONResponse(ack.model_dump(mode="json"), status_code=202)
+
+
+def _record_quarantine(project_id: str, token_id: str, reason: str) -> None:
+    """Persist that a batch was dropped. Do not store the rejected payload."""
+    ev = MonitoringEvent(
+        id=new_id(IdPrefix.evt),
+        project_id=project_id,
+        source=EventSource.runtime,
+        type=EventType.log_anomaly,
+        occurred_at=utcnow(),
+        received_at=utcnow(),
+        dedupe_key=f"quarantine:{token_id}:{utcnow().isoformat()}"[:500],
+        simulated=False,
+        status=EventStatus.ignored,
+        status_reason=reason[:500],
+    )
+    with transaction() as conn:
+        conn.execute(
+            pg_insert(monitoring_events)
+            .values(
+                id=ev.id,
+                project_id=project_id,
+                repo_id=None,
+                dedupe_key=ev.dedupe_key,
+                status=ev.status.value,
+                doc=ev.model_dump(mode="json"),
+            )
+            .on_conflict_do_nothing()
+        )
+        audit.record(
+            conn,
+            org_id=project_org(conn, project_id),
+            project_id=project_id,
+            actor_type=ActorType.system,
+            actor_id=f"ingest:{token_id}",
+            action="runtime.quarantined",
+            subject_type="project",
+            subject_id=project_id,
+            details={"reason": reason, "payload_stored": False},
+        )
 
 
 def latest_route_detections(
