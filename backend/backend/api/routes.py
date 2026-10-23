@@ -284,6 +284,8 @@ def update_project(project_id: str, body: ProjectUpdate, request: Request) -> Pr
             _check_budgets(body.settings, before)
             settings = _stamp_delivery(body.settings, before, user.id)
             values["settings"] = settings.model_dump(mode="json")
+            if not before.delivery_authorized_by and settings.delivery_authorized_by:
+                changed_delivery = True  # legacy project: authority just became effective
             if settings.delivery_mode is not before.delivery_mode:
                 changed_delivery = True
                 _audit(
