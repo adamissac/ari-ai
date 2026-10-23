@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Harden the opt-in research payment-read wrapper against wrong-object responses, malformed/error payloads and contradictory fixture identities; emit only validated payment JSON. No serving registration or model change.
+
 - Document the boundary of live policy enforcement (isolated lab only; platform inference stays recommendations-only) and the known live-loop gaps in ADR-0022 (proposed, RL owner review); no behaviour change.
 - Harden Live Defense Phase 4 owned-test enforcement: exact-source block allowlist is only `198.51.100.66` in both the authorization gate and the adapter; idempotent control retries cannot change kind/target/duration/rate; `increase_logging` restores the prior log level on expiry, rollback, kill-switch, and restart; `x-ari-source` is documented as a fixture-only probe header, not production attribution. Still owned-test only. PR #393 remains open for human security review.
 

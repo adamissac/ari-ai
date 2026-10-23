@@ -165,3 +165,164 @@ def test_unknown_and_contradictory_store_facts_never_forward():
         assert lab.forwarded == 0
 
     asyncio.run(check())
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"id": "pay_b1"},
+        {"customer_id": "cus_bob"},
+        {"unexpected": "foreign data"},
+        {"amount": "not-a-number"},
+    ],
+)
+def test_wrong_or_malformed_response_never_releases_foreign_data(change):
+    async def check():
+        from starlette.responses import JSONResponse
+
+        lab = PaymentReadLab(seeded_store(), grants=(), clock=lambda: 1)
+        body = {
+            "id": "pay_a1",
+            "customer_id": "cus_alice",
+            "amount": "120.00",
+            "currency": "USD",
+            "description": "fixture",
+            "refunded": "0",
+        }
+
+        async def wrong(scope, receive, send):
+            await JSONResponse(
+                {**body, **change}, headers={"X-Foreign-Data": "secret", "Set-Cookie": "unexpected"}
+            )(scope, receive, send)
+
+        lab._app = wrong
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=lab), base_url="http://fixture"
+        ) as client:
+            response = await client.get("/payments/pay_a1", headers=ALICE)
+            assert response.status_code == 503 and response.json() == {}
+            assert "x-foreign-data" not in response.headers and "set-cookie" not in response.headers
+
+    asyncio.run(check())
+
+
+@pytest.mark.parametrize(
+    "kind", ["incomplete", "repeated", "duplicate_json", "error", "message_budget", "nonbytes"]
+)
+def test_invalid_response_framing_and_error_payloads_are_not_forwarded(kind):
+    async def check():
+        import json
+
+        lab = PaymentReadLab(seeded_store(), grants=(), clock=lambda: 1)
+        body = json.dumps(
+            dict(
+                id="pay_a1",
+                customer_id="cus_alice",
+                amount="120.00",
+                currency="USD",
+                description="fixture",
+                refunded="0",
+            )
+        ).encode()
+        if kind == "duplicate_json":
+            body = body[:-1] + b',"customer_id":"cus_bob"}'
+
+        async def malformed(scope, receive, send):
+            await send(
+                {
+                    "type": "http.response.start",
+                    "status": 500 if kind == "error" else 200,
+                    "headers": [],
+                }
+            )
+            if kind == "message_budget":
+                for _ in range(1024):
+                    await send({"type": "http.response.body", "body": b"", "more_body": True})
+            await send(
+                {
+                    "type": "http.response.body",
+                    "body": "invalid bytes" if kind == "nonbytes" else body,
+                    "more_body": kind == "incomplete",
+                }
+            )
+            if kind == "repeated":
+                await send({"type": "http.response.body", "body": b"foreign"})
+
+        lab._app = malformed
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=lab), base_url="http://fixture"
+        ) as client:
+            response = await client.get("/payments/pay_a1", headers=ALICE)
+            assert response.status_code == 503 and response.json() == {}
+
+    asyncio.run(check())
+
+
+def test_consistent_store_identity_and_valid_chunked_response():
+    async def check():
+        import json
+
+        source = seeded_store()
+        source.customers["cus_alice"].id = "cus_bob"
+        bad = PaymentReadLab(source, grants=(), clock=lambda: 1)
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=bad), base_url="http://fixture"
+        ) as client:
+            assert (await client.get("/payments/pay_a1", headers=ALICE)).status_code == 503
+        assert bad.forwarded == 0
+        lab = PaymentReadLab(seeded_store(), grants=(), clock=lambda: 1)
+        body = json.dumps(
+            dict(
+                id="pay_a1",
+                customer_id="cus_alice",
+                amount="120.00",
+                currency="USD",
+                description="fixture",
+                refunded="0",
+            )
+        ).encode()
+
+        async def chunked(scope, receive, send):
+            await send(
+                {
+                    "type": "http.response.start",
+                    "status": 200,
+                    "headers": [(b"set-cookie", b"unexpected")],
+                }
+            )
+            await send({"type": "http.response.body", "body": body[:20], "more_body": True})
+            await send({"type": "http.response.body", "body": body[20:]})
+
+        lab._app = chunked
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=lab), base_url="http://fixture"
+        ) as client:
+            response = await client.get("/payments/pay_a1", headers=ALICE)
+            assert response.status_code == 200 and response.json()["id"] == "pay_a1"
+            assert "set-cookie" not in response.headers
+
+    asyncio.run(check())
+
+
+def test_freshness_is_checked_after_response_validation(monkeypatch):
+    from payments_lite.app import PaymentOut
+
+    tick = [1]
+    original = PaymentOut.model_validate_json
+
+    def validation(*args, **kwargs):
+        result = original(*args, **kwargs)
+        tick[0] = 10
+        return result
+
+    monkeypatch.setattr(PaymentOut, "model_validate_json", validation)
+
+    async def check():
+        lab = PaymentReadLab(seeded_store(), grants=(), clock=lambda: tick[0])
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=lab), base_url="http://fixture"
+        ) as client:
+            response = await client.get("/payments/pay_a1", headers=ALICE)
+            assert response.status_code == 503 and response.json() == {}
+
+    asyncio.run(check())
