@@ -18,6 +18,10 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-23 — Cursor (agent, Alan) — Phase 5 rebased onto main after PR #396
+- Did: merged `origin/main` `7adf509` (owned payment-read context checks) into `feat/live-defense-phase5-pilot-readiness`. Kept both Unreleased changelog bullets. Did **not** edit Codex research files. PR #395 had become CONFLICTING while frontend e2e was still running. **Do not merge #393.**
+- Next: wait for CI on the new head; merge Phase 5 only if green, no conflicts, no enforcement.
+
 ### 2026-10-23 — Cursor (agent, Alan) — Live Defense Phase 5 e2e green after main merge
 - Did: merged `origin/main` `cb40ca6` into `feat/live-defense-phase5-pilot-readiness` (kept both Unreleased changelog bullets; did not edit Codex research files). Playwright 2 passed (9.6s) after waiting for rotated token text. `make check` 166 files; mypy 40 files; pytest 274 passed / 8 skipped; vitest 325/77; transport 35; gitleaks no leaks. PR #395. **Do not merge #393.**
 - Next: merge Phase 5 only if GitHub Actions are green, no required-review gap, no conflicts, no executable enforcement. Else leave #395 open.
@@ -1441,3 +1445,8 @@ remain untouched. No merge: Phase1's deployment restriction governs this researc
 - Added a post-response compute-limit check and a regression that overruns on request 54; retains all 54 partial rows in FAILURE.json without retry or successful result.
 - Original comparison evidence remains byte-identical. Its runner lacked the final post-response clock check and elapsed timing record; strict budget compliance is therefore not certifiable from those original artifacts. Numerical finite-case results are retained, not replaced.
 - Recorded execution commit is a direct ancestor of this branch; merge-commit method preserves it durably.
+
+### 2026-10-23 — Alan / Codex — RL-CMDP-003
+- Added an opt-in owned payments-lite read wrapper reusing the research guard. Private store supplies identity/ownership; trusted fixture updates share a request lock. No HTTP context or writes can authorize access.
+- Eight real-app integration tests pass: before/after BOLA, owner/delegated reads, resource/path/header binding, token/owner/grant updates and expiry/rollback races with buffered bodies.
+- No earlier study rerun, evidence rewrite, serving hook, training or promotion. Single-process private-store assumptions are explicit; full feasibility remains inconclusive.

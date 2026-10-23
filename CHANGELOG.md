@@ -7,6 +7,7 @@ All notable changes are documented here. Format follows
 ## [Unreleased]
 
 - Add Live Defense Phase 5 customer **shadow-pilot readiness**: staging-app disconnect, ingest-token rotate, shadow-verify from recorded ingest, worker/telemetry/policy health stay unknown without evidence, exportable pilot report (HTTP 200 ≠ attack success; no “shadow prevented breaches”). No customer production enforcement, no autonomous RL, no browser-callable block/isolate/rate-limit. Contract schema 0.18.0 additive. Eval: `docs/LIVE_DEFENSE_PHASE5_EVAL.md`.
+- Add an opt-in research wrapper over owned payments-lite reads with store-derived identity/ownership, exact request binding, serialized permission changes and buffered freshness checks. No production or RL integration.
 - Add a research-only deterministic payment-read guard and preregistered finite-case feasibility comparison with owner-selected zero unauthorized-read / zero legitimate-denial limits. No serving integration or model training.
 
 - Add isolated Phase1 constrained-RL research: audited action semantics, versioned measured reward/cost adapters, explicit unknown/provenance validation, capability masks and reproducible fixed-baseline evidence.140owned-lab episodes completed; Phase2 remains no-go. No new model training, promotion, customer execution or recommendation behavior change.
