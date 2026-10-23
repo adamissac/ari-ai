@@ -457,9 +457,15 @@ runtime_windows = sa.Table(
     sa.Column("score", JSONB, nullable=False),
     sa.Column("application_id", sa.String(80), sa.ForeignKey("connected_applications.id")),
     _created(),
-    sa.UniqueConstraint(
-        "project_id", "source", "route", "window_end", name="uq_runtime_windows_key"
-    ),
+)
+sa.Index(
+    "uq_runtime_windows_key",
+    runtime_windows.c.project_id,
+    runtime_windows.c.source,
+    runtime_windows.c.route,
+    runtime_windows.c.window_end,
+    sa.func.coalesce(runtime_windows.c.application_id, ""),
+    unique=True,
 )
 sa.Index(
     "ix_runtime_windows_lookup",
