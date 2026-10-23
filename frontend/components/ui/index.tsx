@@ -128,7 +128,7 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
   );
 }
 
-export const inputClass = 'max-w-full rounded-md border border-control bg-bg px-2.5 py-1.5 text-sm text-ink placeholder:text-faint transition-[border-color,box-shadow,transform] duration-200 focus:border-brand focus:shadow-[0_0_0_3px_rgba(194,69,45,0.15)] focus:outline-none focus:-translate-y-0.5 hover:border-control/80';
+export const inputClass = 'max-w-full rounded-md border border-control bg-bg px-2.5 py-1.5 text-sm text-ink placeholder:text-faint transition-[border-color,box-shadow] duration-200 focus:border-brand focus:shadow-[0_0_0_3px_rgba(194,69,45,0.15)] focus:outline-none';
 
 export function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: string }) {
   return (
