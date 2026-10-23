@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Avatar, GitHubMark } from '@/components/demo/ui';
 import { BRAND_NAME } from '@/components/brand';
-import { ErrorState, Loading } from '@/components/ui';
+import { ErrorState, Loading, Panel } from '@/components/ui';
 import { RefreshFromGitHub } from '@/components/refresh-from-github';
 import { api } from '@/lib/api';
 import { groupByOrg } from '@/lib/github-orgs';
@@ -28,12 +28,10 @@ export default function ConnectOrgsPage() {
         return (
           <>
             {orgs.length === 0 ? (
-              <div className="rounded-2xl border border-line bg-panel p-8 text-center" data-testid="connect-empty">
-                <GitHubMark className="mx-auto h-8 w-8 text-ink" />
-                <h2 className="mt-3 text-lg font-semibold">No repositories yet</h2>
-                <p className="mx-auto mt-1.5 max-w-md text-sm text-muted">Install the {BRAND_NAME} GitHub App on an organization or your account.</p>
-                {install && <a href={install} className="mt-5 inline-flex h-10 items-center gap-2 rounded-lg bg-[#1c1210] px-4 text-sm font-medium text-white hover:bg-brand"><GitHubMark />Install the GitHub App</a>}
-              </div>
+              <Panel title="No repositories yet" className="text-center" >
+                <p data-testid="connect-empty" className="mx-auto max-w-md text-sm text-muted">Install the {BRAND_NAME} GitHub App on an organization or your account.</p>
+                {install && <a href={install} className="mt-5 inline-flex h-9 items-center gap-2 rounded-md bg-ink px-3.5 text-sm font-medium text-on-brand hover:bg-brand"><GitHubMark />Install the GitHub App</a>}
+              </Panel>
             ) : (
               <ul className="grid gap-3 md:grid-cols-3">
                 {orgs.map((org, i) => (
