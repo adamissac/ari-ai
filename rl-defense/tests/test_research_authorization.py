@@ -109,3 +109,40 @@ def test_comparison_fixture_baselines_and_closed_unknown_policy():
     )
     with pytest.raises(ValueError, match="unsupported fixed policy"):
         execute_request(context(), now=1, policy="renamed")
+
+
+def test_final_request_overrun_retains_failure_without_retry(tmp_path, monkeypatch):
+    import hashlib
+    import json
+
+    import rl_defense.research.feasibility as feasibility
+
+    blob = (feasibility.ROOT / feasibility.PROTOCOL).read_bytes()
+
+    def git(command, **kwargs):
+        if command[:3] == ["git", "status", "--porcelain"]:
+            return b""
+        if command[:2] == ["git", "rev-parse"]:
+            return "a" * 40
+        return blob
+
+    monkeypatch.setattr(feasibility.subprocess, "check_output", git)
+    tick = [0.0]
+    monkeypatch.setattr(feasibility.time, "monotonic", lambda: tick[0])
+    calls = []
+
+    def request(*args, **kwargs):
+        calls.append(kwargs["policy"])
+        if len(calls) == 54:
+            tick[0] = 61.0
+        return 200, True
+
+    monkeypatch.setattr(feasibility, "execute_request", request)
+    output = tmp_path / "overrun"
+    with pytest.raises(TimeoutError, match="after request"):
+        feasibility.run(output, expected_protocol_sha256=hashlib.sha256(blob).hexdigest())
+    failure = json.loads((output / "FAILURE.json").read_text())
+    assert len(failure["completed_requests"]) == 54
+    assert failure["automatic_retry"] is False
+    assert len(calls) == 54
+    assert not (output / "RESULT.json").exists()

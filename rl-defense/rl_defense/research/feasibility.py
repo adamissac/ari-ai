@@ -89,6 +89,8 @@ def run(output: Path, *, expected_protocol_sha256: str) -> dict:
                         forwarded=forwarded,
                     )
                 )
+                if time.monotonic() - started > protocol["compute_limit_seconds"]:
+                    raise TimeoutError("preregistered compute limit exceeded after request")
                 if len(rows) > protocol["max_requests"]:
                     raise ValueError("request budget exceeded")
         if len(rows) != protocol["max_requests"]:

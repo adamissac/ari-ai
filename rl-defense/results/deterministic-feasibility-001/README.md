@@ -27,3 +27,10 @@ model training, checkpoint promotion or customer traffic is claimed.
 Decision: proceed to independently specified application-context integration checks
 before any broader feasibility claim. A deterministic authorization repair remains
 preferable if it solves the target problem. The no-go for constrained DDQN/CQL remains.
+
+Review limitation: the original runner checked elapsed time before each request but
+not after the final response. It did not record an elapsed duration, so strict
+post-response compute-limit compliance cannot be certified from these artifacts.
+A later runner revision checks after every response and has an explicit final-request
+overrun regression. This original comparison was not rerun or replaced; its numerical
+finite-case results and source/protocol identities remain unchanged.
