@@ -386,6 +386,30 @@ def build() -> dict[str, BaseModel]:
             last_used_at=T0,
         ),
         "DefenseHealth": live_defense.DefenseHealth(project_id=PRJ, queue_depth=0),
+        "IngestTokenRotated": live_defense.IngestTokenRotated(
+            id=ITK,
+            project_id=PRJ,
+            application_id=APP,
+            token="hkt_ing_fixture_shown_once",
+            created_at=T0,
+            revoked_ids=[],
+        ),
+        "PilotTrailEntry": live_defense.PilotTrailEntry(
+            at=T0,
+            action="ingest_token.created",
+            subject_type="ingest_token",
+            subject_id=ITK,
+            detail="shown_once",
+        ),
+        "PilotReport": live_defense.PilotReport(
+            project_id=PRJ,
+            generated_at=T0,
+            ingest_windows=0,
+            shadow_decisions=0,
+            reviews=0,
+            incidents=0,
+            health=live_defense.DefenseHealth(project_id=PRJ, queue_depth=0),
+        ),
         "ComponentNode": live_defense.ComponentNode(
             id=APP, label="payments-lite staging", kind=live_defense.ComponentNodeKind.application
         ),

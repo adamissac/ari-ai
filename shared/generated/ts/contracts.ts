@@ -91,7 +91,7 @@ export interface AnalystReviewCreate {
 
 export type AnalystReviewDecision = "accept" | "reject" | "needs_investigation";
 
-export type ApplicationVerification = "unverified" | "ingest_seen" | "token_revoked";
+export type ApplicationVerification = "unverified" | "ingest_seen" | "token_revoked" | "disconnected";
 
 export interface Approval {
   id: string;
@@ -427,6 +427,7 @@ export interface ConnectedApplication {
   last_ingest_at: string | null;
   verification: ApplicationVerification;
   shadow_mode: true;
+  disconnected_at: string | null;
   created_by: string;
   created_at: string;
 }
@@ -481,6 +482,12 @@ export interface DefenseHealth {
   last_runtime_event_at: string | null;
   status: "unknown";
   status_reason: string;
+  worker_status: "unknown";
+  worker_status_reason: string;
+  telemetry_status: "unknown";
+  telemetry_status_reason: string;
+  policy_status: "unknown";
+  policy_status_reason: string;
 }
 
 export interface DefenseRecommendation {
@@ -840,6 +847,17 @@ export interface IngestTokenCreated {
   created_at: string;
 }
 
+/** New ingest secret shown once, with ids of tokens revoked in the same rotation. */
+export interface IngestTokenRotated {
+  id: string;
+  project_id: string;
+  application_id: string;
+  /** Shown once; only its SHA-256 is stored */
+  token: string;
+  created_at: string;
+  revoked_ids: Array<string>;
+}
+
 /** Metadata for an ingest token. The secret is never included after issuance. */
 export interface IngestTokenView {
   id: string;
@@ -1007,6 +1025,31 @@ export interface PathStep {
   symbol_ref: string | null;
   verified: boolean;
   evidence: Array<EvidenceRef>;
+}
+
+/** Exportable shadow-pilot snapshot. Not an effectiveness claim. */
+export interface PilotReport {
+  project_id: string;
+  generated_at: string;
+  shadow_mode: true;
+  applications: Array<ConnectedApplication>;
+  ingest_windows: number;
+  shadow_decisions: number;
+  reviews: number;
+  incidents: number;
+  health: DefenseHealth;
+  investigation_trail: Array<PilotTrailEntry>;
+  caveats: Array<string>;
+  unsupported_claims: Array<string>;
+}
+
+/** One recorded audit or ingest fact. Labels are not invented. */
+export interface PilotTrailEntry {
+  at: string;
+  action: string;
+  subject_type: string;
+  subject_id: string;
+  detail: string | null;
 }
 
 export interface PlatformFacts {

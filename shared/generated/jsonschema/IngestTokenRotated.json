@@ -1,0 +1,48 @@
+{
+  "additionalProperties": false,
+  "description": "New ingest secret shown once, with ids of tokens revoked in the same rotation.",
+  "properties": {
+    "application_id": {
+      "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Application Id",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^itk_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "project_id": {
+      "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "revoked_ids": {
+      "items": {
+        "pattern": "^itk_[0-9A-Za-z_\\-]{8,64}$",
+        "type": "string"
+      },
+      "title": "Revoked Ids",
+      "type": "array"
+    },
+    "token": {
+      "description": "Shown once; only its SHA-256 is stored",
+      "title": "Token",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "project_id",
+    "application_id",
+    "token",
+    "created_at"
+  ],
+  "title": "IngestTokenRotated",
+  "type": "object"
+}
