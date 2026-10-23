@@ -92,7 +92,9 @@ def fetch_commit(
         "--depth=1",
         "--no-tags",
         f"{github_web_url.rstrip('/')}/{full_name}.git",
-        sha,
+        # A ref keeps the commit reachable, so later fetches send it as a "have" and
+        # download only the delta instead of the full tree again (~190 MB for ari-ai).
+        f"{sha}:refs/ari/{sha}",
     )
     if not _has_commit(repo_dir, sha):
         raise CheckoutError(f"{full_name} has no commit {sha}")
