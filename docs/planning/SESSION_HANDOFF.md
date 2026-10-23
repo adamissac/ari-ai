@@ -1418,3 +1418,9 @@ remain untouched. No merge: Phase1's deployment restriction governs this researc
 - Added an isolated exact-resource guard, independent negative/positive tests and a fixed 18-case / three-policy / 54-request HTTP protocol. No training, holdout or serving integration.
 - Before comparison: 21 guard tests passed; fixed-policy harness test added. Comparison must execute once from committed protocol/source and retain all outcomes; no automatic retry or tuning.
 - Parallel PR #393 owns operational controls; this research fixture does not duplicate or import that lifecycle.
+
+### 2026-10-23 — Alan / Codex — RL-CMDP-002 result
+- Preregistered protocol/source committed and pushed before the single 54-request comparison. Exact-resource guard passed zero unauthorized / zero legitimate-denial owner limits; six unknown cases all abstained without forwarding.
+- Unguarded allowed seven unauthorized reads; blanket denial denied two owner and three delegate reads. All rows and source/protocol/runtime identities retained in `rl-defense/results/deterministic-feasibility-001/`. No retries, training, historical replay or promotion.
+- Focused guard/harness tests: 22 passed. Lint and 533 Markdown files checked. This is one authored synthetic HTTP resource, not real-application context integration or production evidence.
+- Next: independently verify application-context extraction, freshness, request binding and revocation races. RL remains no-go.
