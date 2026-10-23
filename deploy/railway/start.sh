@@ -4,8 +4,8 @@
 # then run both; if either exits, exit too so Railway restarts the container.
 set -eu
 
-# Initial rollout; set a comma-separated list or * to expand to other GitHub authors.
-export GITHUB_AUTO_COMMIT_AUTHORS="${GITHUB_AUTO_COMMIT_AUTHORS-adamissac}"
+# Every pusher and author by default; set a comma-separated list of logins to narrow it.
+export GITHUB_AUTO_COMMIT_AUTHORS="${GITHUB_AUTO_COMMIT_AUTHORS-*}"
 
 # Product model policy: Haiku 5.5 only, including every agent and fast path.
 export ANTHROPIC_MODEL=claude-haiku-5-5
