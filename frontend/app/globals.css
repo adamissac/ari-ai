@@ -28,10 +28,12 @@
   --font-display: var(--font-space-grotesk), "Space Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   --ease-quad: cubic-bezier(0.455, 0.03, 0.515, 0.955);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 html { color-scheme: light; }
-body { background: var(--color-bg); color: var(--color-ink); font-family: var(--font-sans); }
+body { background: linear-gradient(180deg, var(--color-bg) 0%, color-mix(in srgb, var(--color-panel-2) 30%, var(--color-bg)) 100%); color: var(--color-ink); font-family: var(--font-sans); }
 
 /* Typography roles. In the base layer so explicit utility classes (font-semibold, …) still win. */
 @layer base {
@@ -53,6 +55,79 @@ body { background: var(--color-bg); color: var(--color-ink); font-family: var(--
 }
 :focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
 ::selection { background: color-mix(in srgb, var(--color-brand) 22%, transparent); }
+
+/* Enhanced button hover states and transitions */
+.btn {
+  transition: background-color 250ms var(--ease-smooth), color 250ms var(--ease-smooth), 
+              box-shadow 250ms var(--ease-smooth), transform 200ms var(--ease-smooth);
+}
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+.btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.97);
+}
+.btn:disabled {
+  transform: none;
+  cursor: not-allowed;
+}
+
+/* Enhanced panel hover states */
+.panel {
+  transition: box-shadow 300ms var(--ease-smooth), border-color 300ms var(--ease-smooth);
+}
+.panel:hover {
+  box-shadow: 0 4px 12px rgba(28, 18, 16, 0.08);
+  border-color: color-mix(in srgb, var(--color-line) 60%, var(--color-brand) 20%);
+}
+
+/* Enhanced loading dot animation */
+.loading-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--color-brand);
+  animation: loading-pulse 1.4s ease-in-out infinite;
+}
+@keyframes loading-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+/* Enhanced empty state */
+.empty-state {
+  transition: background-color 300ms var(--ease-smooth), border-color 300ms var(--ease-smooth);
+}
+.empty-state:hover {
+  background: color-mix(in srgb, var(--color-panel-2) 80%, var(--color-bg));
+  border-color: var(--color-muted);
+}
+
+/* Enhanced badge with subtle shadow */
+.status-badge {
+  transition: box-shadow 250ms var(--ease-smooth), transform 200ms var(--ease-smooth);
+}
+.status-badge:hover {
+  box-shadow: 0 2px 8px rgba(28, 18, 16, 0.12);
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-panel-2);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-control);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted);
+}
 
 /* Small uppercase mono label used for eyebrows, nav and buttons. */
 .label-mono {
@@ -154,15 +229,21 @@ button.label-mono, a.label-mono, nav.label-mono, nav .label-mono {
 .hero-ink :is(a, button).bg-white span { color: inherit; }
 
 /* Staggered entrance: blur + rise, ordered by --i. */
-.hero-stage[data-fx="on"] .hero-in { animation: hero-in 900ms var(--ease-quad) both; animation-delay: calc(var(--i, 0) * 110ms); }
+.hero-stage[data-fx="on"] .hero-in { animation: hero-in 1000ms var(--ease-smooth) both; animation-delay: calc(var(--i, 0) * 120ms); }
 .hero-line { display: inline-block; }
 @keyframes hero-in { from { opacity: 0; filter: blur(10px); transform: translateY(14px); } }
 
 /* Live dot + running-pipeline highlight on the loop chips. */
-.hero-step[data-active] { background: color-mix(in srgb, var(--color-brand) 55%, transparent); color: #fff; }
+.hero-step[data-active] { 
+  background: color-mix(in srgb, var(--color-brand) 55%, transparent); 
+  color: #fff;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-brand) 30%, transparent);
+  transition: background-color 300ms var(--ease-smooth), box-shadow 300ms var(--ease-smooth);
+}
 
 @media (prefers-reduced-motion: reduce) {
   .animate-pulse { animation: none; }
+  .btn:hover:not(:disabled), .btn:active:not(:disabled) { transform: none; }
   .hero-orb, .hero-stage .hero-in { animation: none; }
   .hero-content, .hero-orbs { transform: none; opacity: 1; }
   .hero-full { position: relative; }
@@ -378,15 +459,26 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 @media (prefers-reduced-motion: reduce) { .graph-edge[data-flow], .graph-truth { animation: none; } }
 
 /* App pages: project header + underline tabs (components/project.tsx), calmer panels. */
-.project-head { min-height: 0; }
+.project-head { 
+  min-height: 0;
+  box-shadow: 0 4px 16px -8px rgba(28, 18, 16, 0.12);
+  transition: box-shadow 300ms var(--ease-smooth);
+}
 .project-tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--color-line); scrollbar-width: none; }
 .project-tabs::-webkit-scrollbar { display: none; }
-.project-tab { position: relative; flex: none; padding: 14px 12px 12px; color: var(--color-muted); transition: color 200ms; }
-.project-tab:hover { color: var(--color-ink); }
-.project-tab::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: -1px; height: 2px; border-radius: 2px; background: var(--color-brand); transform: scaleX(0); transition: transform 250ms var(--ease-quad); }
+.project-tab { position: relative; flex: none; padding: 14px 12px 12px; color: var(--color-muted); transition: color 200ms, background-color 200ms var(--ease-smooth); }
+.project-tab:hover { color: var(--color-ink); background: color-mix(in srgb, var(--color-panel-2) 50%, transparent); }
+.project-tab::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: -1px; height: 2px; border-radius: 2px; background: var(--color-brand); transform: scaleX(0); transition: transform 250ms var(--ease-smooth); }
 .project-tab[aria-current="page"] { color: var(--color-ink); }
 .project-tab[aria-current="page"]::after, .project-tab:hover::after { transform: scaleX(1); }
 .project-tab:hover:not([aria-current="page"])::after { background: var(--color-line); }
+.panel { 
+  transition: box-shadow 300ms var(--ease-smooth), border-color 300ms var(--ease-smooth);
+}
+.panel:hover {
+  box-shadow: 0 4px 12px rgba(28, 18, 16, 0.08);
+  border-color: color-mix(in srgb, var(--color-line) 60%, var(--color-brand) 20%);
+}
 .panel > header { background: color-mix(in srgb, var(--color-panel-2) 55%, transparent); border-top-left-radius: inherit; border-top-right-radius: inherit; }
 
 /* Ari mark: the bare ant (components/brand.tsx), filled with the current text colour. */

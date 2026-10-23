@@ -1,4 +1,4 @@
-# ADR-0020: Per-project fix delivery mode (auto, pull request, manual)
+# ADR-0021: Per-project fix delivery mode (auto, pull request, manual)
 
 - Status: Accepted
 - Date: 2026-10-23

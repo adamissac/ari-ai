@@ -23,6 +23,12 @@
   "additionalProperties": false,
   "description": "Owner-registered staging app under watch. Never includes secrets.",
   "properties": {
+    "control_channel_configured": {
+      "default": false,
+      "description": "True when a control channel exists; the HMAC secret is never returned",
+      "title": "Control Channel Configured",
+      "type": "boolean"
+    },
     "created_at": {
       "format": "date-time",
       "title": "Created At",

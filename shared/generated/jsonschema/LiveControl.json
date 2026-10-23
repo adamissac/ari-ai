@@ -1,0 +1,392 @@
+{
+  "$defs": {
+    "AuthorizationCheckResult": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 500,
+          "title": "Name",
+          "type": "string"
+        },
+        "passed": {
+          "title": "Passed",
+          "type": "boolean"
+        },
+        "reason": {
+          "maxLength": 500,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "passed",
+        "reason"
+      ],
+      "title": "AuthorizationCheckResult",
+      "type": "object"
+    },
+    "ControlTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/LiveControlTargetType"
+        },
+        "value": {
+          "default": "",
+          "maxLength": 500,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "ControlTarget",
+      "type": "object"
+    },
+    "LiveControlKind": {
+      "description": "The only actions that have an adapter or a recorded human escalation.",
+      "enum": [
+        "rate_limit",
+        "block_source",
+        "increase_logging",
+        "escalate"
+      ],
+      "title": "LiveControlKind",
+      "type": "string"
+    },
+    "LiveControlOrigin": {
+      "description": "Who proposed the action. Origin never bypasses the gate.",
+      "enum": [
+        "analyst",
+        "rules",
+        "v6_shadow"
+      ],
+      "title": "LiveControlOrigin",
+      "type": "string"
+    },
+    "LiveControlStatus": {
+      "description": "Control lifecycle. Distinct from NIST SP 800-61r3 incident phases.",
+      "enum": [
+        "pending_authorization",
+        "authorized",
+        "executing",
+        "verifying",
+        "verified",
+        "failed",
+        "expired",
+        "rolled_back",
+        "escalated",
+        "rejected",
+        "emergency_stopped"
+      ],
+      "title": "LiveControlStatus",
+      "type": "string"
+    },
+    "LiveControlTargetType": {
+      "enum": [
+        "route",
+        "source_ip",
+        "application",
+        "none"
+      ],
+      "title": "LiveControlTargetType",
+      "type": "string"
+    },
+    "LiveControlVerification": {
+      "additionalProperties": false,
+      "properties": {
+        "adapter_http_200_is_not_effectiveness": {
+          "const": true,
+          "default": true,
+          "title": "Adapter Http 200 Is Not Effectiveness",
+          "type": "boolean"
+        },
+        "adapter_http_status": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Adapter Http Status"
+        },
+        "detail": {
+          "maxLength": 500,
+          "title": "Detail",
+          "type": "string"
+        },
+        "method": {
+          "maxLength": 500,
+          "title": "Method",
+          "type": "string"
+        },
+        "observed_effect": {
+          "title": "Observed Effect",
+          "type": "boolean"
+        },
+        "probe_http_statuses": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Probe Http Statuses",
+          "type": "array"
+        },
+        "verified_at": {
+          "format": "date-time",
+          "title": "Verified At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "observed_effect",
+        "method",
+        "detail",
+        "verified_at"
+      ],
+      "title": "LiveControlVerification",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "One authorized (or denied) owned-test control. Not a NIST incident.",
+  "properties": {
+    "application_id": {
+      "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Application Id",
+      "type": "string"
+    },
+    "authorized_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Authorized At"
+    },
+    "binding_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Binding Sha256",
+      "type": "string"
+    },
+    "caveat": {
+      "default": "Owned-test control. Not customer production. Adapter HTTP 200 is not effectiveness. Shadow recommendations stay NOT_EXECUTED.",
+      "maxLength": 500,
+      "title": "Caveat",
+      "type": "string"
+    },
+    "checks": {
+      "items": {
+        "$ref": "#/$defs/AuthorizationCheckResult"
+      },
+      "title": "Checks",
+      "type": "array"
+    },
+    "denial_reason": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Denial Reason"
+    },
+    "duration_s": {
+      "maximum": 3600,
+      "minimum": 5,
+      "title": "Duration S",
+      "type": "integer"
+    },
+    "ended_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Ended At"
+    },
+    "environment_label": {
+      "const": "OWNED TEST ENVIRONMENT",
+      "default": "OWNED TEST ENVIRONMENT",
+      "title": "Environment Label",
+      "type": "string"
+    },
+    "executing_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Executing At"
+    },
+    "expires_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Expires At"
+    },
+    "grant_id": {
+      "anyOf": [
+        {
+          "pattern": "^cgr_[0-9A-Za-z_\\-]{8,64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Grant Id"
+    },
+    "id": {
+      "pattern": "^lct_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/$defs/LiveControlKind"
+    },
+    "live_policy_decision_id": {
+      "anyOf": [
+        {
+          "pattern": "^lpd_[0-9A-Za-z_\\-]{8,64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Live Policy Decision Id"
+    },
+    "max_requests": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Max Requests"
+    },
+    "origin": {
+      "$ref": "#/$defs/LiveControlOrigin"
+    },
+    "project_id": {
+      "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "rationale": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rationale"
+    },
+    "requested_at": {
+      "format": "date-time",
+      "title": "Requested At",
+      "type": "string"
+    },
+    "requested_by": {
+      "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Requested By",
+      "type": "string"
+    },
+    "simulated": {
+      "const": false,
+      "default": false,
+      "title": "Simulated",
+      "type": "boolean"
+    },
+    "status": {
+      "$ref": "#/$defs/LiveControlStatus"
+    },
+    "target": {
+      "$ref": "#/$defs/ControlTarget"
+    },
+    "unresolved": {
+      "default": false,
+      "title": "Unresolved",
+      "type": "boolean"
+    },
+    "verification": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LiveControlVerification"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "verified_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Verified At"
+    }
+  },
+  "required": [
+    "id",
+    "project_id",
+    "application_id",
+    "kind",
+    "target",
+    "duration_s",
+    "status",
+    "origin",
+    "binding_sha256",
+    "requested_by",
+    "requested_at"
+  ],
+  "title": "LiveControl",
+  "type": "object"
+}

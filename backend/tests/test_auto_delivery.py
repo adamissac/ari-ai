@@ -1,4 +1,4 @@
-"""Fix delivery (ADR-0020): owner-stamped pre-approval, push, PR fallback.
+"""Fix delivery (ADR-0021): owner-stamped pre-approval, push, PR fallback.
 
 The orchestrator is the TEST DOUBLE in reference_orchestrator.py. push_patch runs real git
 against a local bare repository standing in for GitHub; the delivery job's GitHub calls are

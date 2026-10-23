@@ -1,0 +1,38 @@
+{
+  "application_id": "app_01JFIXTURE0000000000000APP",
+  "authorized_at": "2026-10-17T01:00:00Z",
+  "binding_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "caveat": "Owned-test control. Not customer production. Adapter HTTP 200 is not effectiveness. Shadow recommendations stay NOT_EXECUTED.",
+  "checks": [
+    {
+      "name": "authenticated_session",
+      "passed": true,
+      "reason": "Actor is the authenticated session."
+    }
+  ],
+  "denial_reason": null,
+  "duration_s": 60,
+  "ended_at": null,
+  "environment_label": "OWNED TEST ENVIRONMENT",
+  "executing_at": "2026-10-17T01:00:00Z",
+  "expires_at": "2026-10-17T01:00:00Z",
+  "grant_id": "cgr_01JFIXTURE0000000000000CGR",
+  "id": "lct_01JFIXTURE0000000000000LCT",
+  "kind": "rate_limit",
+  "live_policy_decision_id": "lpd_01JFIXTURE0000000000000LPD",
+  "max_requests": 2,
+  "origin": "analyst",
+  "project_id": "prj_01JFIXTURE0000000000000PRJ",
+  "rationale": "Owned-test rate limit after a staged finding.",
+  "requested_at": "2026-10-17T01:00:00Z",
+  "requested_by": "usr_01JFIXTURE0000000000000USR",
+  "simulated": false,
+  "status": "verified",
+  "target": {
+    "type": "route",
+    "value": "GET /payments/{payment_id}"
+  },
+  "unresolved": false,
+  "verification": null,
+  "verified_at": "2026-10-17T01:00:00Z"
+}

@@ -27,6 +27,7 @@ agents use. Owner: **Srihith**. Spec: [docs/13](../docs/13_BACKEND_API_DESIGN.md
 | Seven-agent orchestrator | — | **not here**: Alan's `security_agents`. Until it lands, assessments end `FAILED / SUBSYSTEM_UNAVAILABLE` |
 | Runtime signal ingestion: per-project ingest tokens, `/ingest/runtime/{project_id}`, explainable per-route scoring, labeled `log_anomaly` events, RL signal feed | `api/runtime.py` + `monitoring/runtime.py` | implemented; `owned_staging` / `runtime_demo` are authenticated (`simulated=false`); replay/simulated/drill stay labelled simulated. No production telemetry source |
 | Live Defense shadow pilot: staging apps, ingest-token metadata, recorded health/graph, analyst reviews, shadow `LivePolicyDecision` | `api/live_defense.py` + `live_defense/` + migrations 0010–0011 | implemented; health status always unknown; accept does not execute; shadow decisions are NOT EXECUTED |
+| Live Defense Phase 4 owned-test controls | `api/live_defense_controls.py` + `live_defense/{authorize,adapters,controls,verify,owned_test_app}.py` + migration 0012 | implemented; 15-check fail-closed gate; HMAC loopback adapter; verify uses real probes; HTTP 200 ≠ effectiveness; production not granted |
 | Code-intelligence PayloadStore (Postgres) | `intel_store.py` | implemented; integration-tested with Sarosh's IntelligenceService |
 | `POST /patches/{id}/pull-request`, `PATCH /expectations/{id}` | — | **not implemented** (MVP cut order / owned by intelligence) |
 
@@ -133,7 +134,7 @@ or Run click. OFF prevents unstarted automatic work and exposes manual Run on
 selected commits; active runs and history remain intact. GET/PATCH
 `/api/v1/repositories/{repo_id}` returns Repository; PATCH requires a project owner
 and is audited. Migration 0009 adds the flag; schema 0.15.0 adds RepositoryUpdate
-and regenerates JSON/TypeScript. Migration 0012 resets existing repository switches and project monitoring to OFF once, requests cancellation of unfinished automatic assessments, and wakes deferred work to finalize as skipped. Schema 0.18.1 makes both defaults OFF. Owners must explicitly enable project defense and repository automatic runs; manual runs remain available. Deploy the backend and frontend together.
+and regenerates JSON/TypeScript. Migration 0013 resets existing repository switches and project monitoring to OFF once, requests cancellation of unfinished automatic assessments, and wakes deferred work to finalize as skipped. Schema 0.18.1 makes both defaults OFF. Owners must explicitly enable project defense and repository automatic runs; manual runs remain available. Deploy the backend and frontend together.
 
 The rollout requires both the signed push sender and GitHub-attributed commit
 author to match `GITHUB_AUTO_COMMIT_AUTHORS` (initially adamissac). Attribution

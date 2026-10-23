@@ -26,7 +26,7 @@
       "type": "object"
     },
     "DeliveryMode": {
-      "description": "How verified repairs reach the repository (ADR-0020).",
+      "description": "How verified repairs reach the repository (ADR-0021).",
       "enum": [
         "auto",
         "pull_request",
