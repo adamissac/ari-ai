@@ -49,6 +49,7 @@ from backend.db import (
     authorized_scopes,
     finding_records,
     findings,
+    jobs,
     patch_candidates,
     projects,
     transaction,
@@ -456,9 +457,10 @@ class AssessmentHost:
             event = self._latest_checkpoint_event(conn, namespace)
             if event is None:
                 raise HostError(ErrorCode.CONFLICT_STATE, "no checkpoint to claim")
-            if event.get("data", {}).get("checkpoint_consumed"):
+            data = event.get("data", {})
+            if data.get("checkpoint_consumed") and self._claim_still_held(conn, data):
                 return None
-            artifact_id = event["data"]["checkpoint_artifact_id"]
+            artifact_id = data["checkpoint_artifact_id"]
             row, content = self.store.get(conn, artifact_id)
             if row["project_id"] != self.project_id:
                 raise HostError(ErrorCode.VALIDATION_FAILED, "checkpoint project mismatch")
@@ -474,9 +476,32 @@ class AssessmentHost:
                     "checkpoint_namespace": namespace,
                     "checkpoint_artifact_id": artifact_id,
                     "checkpoint_consumed": True,
+                    "claimed_by_job": getattr(getattr(self._job_ctx, "job", None), "id", None),
                 },
             )
             return payload
+
+    def _claim_still_held(self, conn: Connection, data: dict[str, Any]) -> bool:
+        """A claim lapses when its job is no longer running (it finished without resuming,
+        died, or lost its lease) while the assessment still waits at the approval gate;
+        otherwise one aborted resume strands the assessment. A resume that moved the
+        assessment on can never be replayed."""
+        job_id = data.get("claimed_by_job")
+        if not job_id:
+            return True  # claims recorded before claimers were tracked stay as they were
+        state = conn.execute(
+            sa.select(assessments.c.state).where(assessments.c.id == self.assessment_id)
+        ).scalar()
+        if state != AssessmentState.AWAITING_APPROVAL.value:
+            return True
+        row = conn.execute(
+            sa.select(jobs.c.status, jobs.c.lease_expires_at).where(jobs.c.id == job_id)
+        ).first()
+        return bool(
+            row is not None
+            and row.status == "running"
+            and (row.lease_expires_at is None or row.lease_expires_at > utcnow())
+        )
 
     def _latest_checkpoint_event(self, conn: Connection, namespace: str) -> dict[str, Any] | None:
         event = conn.execute(
