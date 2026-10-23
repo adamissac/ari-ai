@@ -184,6 +184,30 @@ class PatchWorktree:
             "lines": len(content.splitlines()),
         }
 
+    def edit_file(self, path: str, old_string: str, new_string: str) -> dict[str, Any]:
+        """Replace one exact, unique span of an existing file. Large files cannot be rewritten
+        whole within the model's output limit; this sends only the change."""
+        rel = safe_rel_path(path)
+        if not self.may_write(rel):
+            return self.write_file(path, "")  # same PATH_NOT_ALLOWED answer, nothing written
+        target = resolve_under(self.root, rel)
+        if not target.is_file():
+            return {"error": "NOT_FOUND", "detail": f"{rel} does not exist; use worktree.write_file"}
+        text = target.read_text(encoding="utf-8")
+        count = text.count(old_string) if old_string else 0
+        if count != 1:
+            return {
+                "error": "NO_UNIQUE_MATCH",
+                "detail": f"old_string occurs {count} times in {rel}; include more surrounding lines",
+            }
+        target.write_text(text.replace(old_string, new_string, 1), encoding="utf-8")
+        self.writes.append(rel)
+        return {
+            "path": rel,
+            "action": "edited",
+            "lines": len(target.read_text(encoding="utf-8").splitlines()),
+        }
+
     def changed(self) -> list[str]:
         return changed_paths(self.snapshot_root, self.root)
 
