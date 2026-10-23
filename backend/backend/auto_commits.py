@@ -250,7 +250,11 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
                 received_at=p["received_at"],
                 dedupe_key=key,
                 payload_artifact_id=p["payload_artifact_id"],
-                commit_range=CommitRange(head_sha=p["sha"]),
+                # First parent as base: the reviewer reviews this commit's diff, not the repo.
+                commit_range=CommitRange(
+                    base_sha=next(iter(commit.get("parents") or []), {}).get("sha"),
+                    head_sha=p["sha"],
+                ),
                 ref=p["ref"],
                 status=EventStatus.processed,
                 status_reason=reason,
