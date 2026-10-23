@@ -1555,3 +1555,13 @@ research/rl-resource-exhaustion-feasibility from7c127a2b. Core service/Gym model
 causal observations, route/source quotas and deterministic baseline rules implemented.
 23 core instrumentation tests pass. Stage2 infrastructure, docs and final checks
 remain in progress. No empirical study or customer enforcement was run/modified.
+
+RL-CMDP-008 Stage2 preparation implemented: versioned experience/config/profile/
+cutoff schema, separate reward/cost arrays, bounded unit-only replay, fixed unit
+receipt writer/verifier with raw work/control/cost accounting, failure retention,
+and deadline-bounded settlement. No optimizer, checkpoint writer or study runner.
+Stochastic private phases/tie ordering avoid clock or label-priority shortcuts.
+Proposed study now600 episodes/18,000 decisions plus bounded settlement, with
+unapproved safety/sample/compute values. Training NO-GO pending approved formal
+feasibility, safe baseline headroom, terminal-cost collector/learner review and
+explicit training authorization. No historical evidence or customer control edits.

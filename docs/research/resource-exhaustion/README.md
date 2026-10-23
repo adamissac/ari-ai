@@ -1,6 +1,7 @@
 # Resource-exhaustion defense — isolated research only
 
-Stage1 environment/instrumentation implemented; Stage2 preparation in progress.
+Stage1 mechanism/instrumentation and Stage2 data/protocol preparation implemented.
+**Training NO-GO**; formal comparative study awaits explicit numerical approval.
 No formal comparison, new trained policy, holdout, promotion or customer integration.
 [Blocked preregistration](PREREGISTRATION.md) proposes numbers for owner approval.
 
@@ -37,7 +38,7 @@ information/completion effect justifies them.
 Application costs one modeled worker-tick immediately. Activation is delayed one
 window, duration2 windows, cooldown2 windows; only one pending/active control at a
 time. Four applications is a unit-fixture engineering cap, not an approved safety
-budget. Quotas reset each window (route8/source3 matching offered attempts). Quota
+budget. Quotas reset each window (route2/source3 matching offered attempts). Quota
 is consumed before backend admission, including requests later capacity-rejected.
 Independent masks/step checks reject unavailable choices; no silent noop replacement.
 Controls expire and episode/reset cleanup prevents residual execution.
@@ -74,3 +75,9 @@ Blocking all work causes legitimate damage, not success. All ratios retain their
 counts; absent completion denominators remain undefined. Pending jobs at episode
 end are right-censored, not fabricated failures/completions. Queue-pressure recovery
 can occur through expiry and is not by itself evidence of healthy availability.
+
+[Detailed threat/accounting/observations](DESIGN.md) · [Stage2 readiness and approvals](TRAINING_PREPARATION.md).
+
+Core Gym contract check uses a feasibility-mask-aware action sampler because the
+generic Gym checker does not consume masks. Invalid actions remain independently
+rejected; full route/source action effects are exercised in the unit tests.

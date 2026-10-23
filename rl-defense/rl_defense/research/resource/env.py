@@ -3,17 +3,17 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from typing import Any
+from typing import Any, Literal
 
 import gymnasium as gym
 import numpy as np
 from numpy.typing import NDArray
 
 from rl_defense.research.resource.service import Arrival, Config, Service, Window
-from rl_defense.research.resource.workload import FAMILIES, Family, window
+from rl_defense.research.resource.workload import FAMILIES, Family, TrafficState, window
 
-OBS_VERSION = "resource-observation/0.1"
-ACTION_VERSION = "resource-actions/0.1"
+OBS_VERSION: Literal["resource-observation/0.1"] = "resource-observation/0.1"
+ACTION_VERSION: Literal["resource-actions/0.1"] = "resource-actions/0.1"
 ACTIONS = ("noop", "rate_limit_route", "rate_limit_source")
 BASE_FEATURES = (
     "arrivals",
@@ -94,6 +94,7 @@ class ResourceEnv(gym.Env[NDArray[np.float32], np.int64]):
         self.ledger: list[dict[str, Any]] = []
         self.attempts: list[dict[str, Any]] = []
         self.last: Window | None = None
+        self._traffic = TrafficState()
         self.cutoff = 0
         self._ready = False
         self._ended = False
@@ -103,7 +104,11 @@ class ResourceEnv(gym.Env[NDArray[np.float32], np.int64]):
         return control if control is not None and self.index < control.end else None
 
     def _source_target(self) -> int | None:
-        if self.last is None or not self.telemetry or not self.last.offered:
+        if (
+            self.last is None
+            or not self.telemetry
+            or not (any(self.last.source_work) or any(self.last.source_arrivals))
+        ):
             return None
         # Work actually consumed in the completed window; tie-break lowest slot.
         counts = self.last.source_work if any(self.last.source_work) else self.last.source_arrivals
@@ -217,6 +222,7 @@ class ResourceEnv(gym.Env[NDArray[np.float32], np.int64]):
         self.control = None
         self.ledger, self.attempts = [], []
         self.last = None
+        self._traffic = TrafficState()
         self._ready, self._ended = True, False
         self.cutoff = 0
         if self.fixed_static:
@@ -271,7 +277,7 @@ class ResourceEnv(gym.Env[NDArray[np.float32], np.int64]):
         offered = (
             self._script[self.index]
             if self._script is not None
-            else window(self.np_random, self.config, self.family, self.index)
+            else window(self.np_random, self.config, self.family, self.index, self._traffic)
         )
         self.last = self.service.advance(
             offered,
@@ -309,6 +315,8 @@ class ResourceEnv(gym.Env[NDArray[np.float32], np.int64]):
             self.ledger.append(
                 {"event": "episode_stop", "window": self.index, **asdict(self.control)}
             )
+            self.control = None
+        if self._ended:
             self.control = None
         self.service.sequence += 1
         self.cutoff = self.service.sequence
