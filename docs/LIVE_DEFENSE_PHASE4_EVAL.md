@@ -65,14 +65,18 @@ Gym / held-out RL scores were **not** reused as live-control proof.
 
 ```
 make check
-  ruff pass; format 175 files; shared.export --check 137 files; examples check pass
+  ruff pass; format 176 files; shared.export --check 137 files; examples check pass
 
 uv run mypy
   Success: no issues found in 40 source files
 
+uv run pytest -q backend/tests/test_owned_test_app.py backend/tests/test_live_defense_authorize.py \
+  backend/tests/test_live_defense_phase4.py shared/tests/test_contracts.py
+  113 passed, 1 skipped (TSC unset)  # overnight A–D + TOCTOU/budget/HMAC
+
 uv run pytest -q backend/tests/test_parallel_migrations.py shared/tests/test_contracts.py \
   backend/tests/test_live_defense_phase4.py backend/tests/test_live_defense_authorize.py
-  100 passed, 1 skipped (TSC unset)
+  100 passed, 1 skipped (TSC unset)  # earlier Phase 4 slice, before overnight tests
 
 uv run pytest -q backend/tests/test_live_defense_phase4.py backend/tests/test_live_defense_authorize.py \
   backend/tests/test_live_defense_phase3.py
@@ -103,7 +107,7 @@ write, no promotion.
 | Claim | Why unavailable |
 |---|---|
 | Production compromise reduced | No customer production grant; no production environment value |
-| Autonomous enforcement | Phase 5; gate still requires owner session |
+| Autonomous enforcement | Not implemented; gate still requires owner session |
 | Frozen-v6 as executor | v6 may propose via shadow origin; it cannot skip the gate |
 | Isolation / credential rotation / prod firewall / code deploy / DB mutation / auto-patch | No adapters |
 | Time-to-contain on a customer staging fleet | Only the owned loopback fixture |
