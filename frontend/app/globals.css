@@ -77,7 +77,6 @@ body { background: linear-gradient(180deg, var(--color-bg) 0%, color-mix(in srgb
   transition: box-shadow 300ms var(--ease-smooth), border-color 300ms var(--ease-smooth);
 }
 .panel:hover {
-  box-shadow: 0 4px 12px rgba(28, 18, 16, 0.08);
   border-color: color-mix(in srgb, var(--color-line) 60%, var(--color-brand) 20%);
 }
 
@@ -476,7 +475,6 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
   transition: box-shadow 300ms var(--ease-smooth), border-color 300ms var(--ease-smooth);
 }
 .panel:hover {
-  box-shadow: 0 4px 12px rgba(28, 18, 16, 0.08);
   border-color: color-mix(in srgb, var(--color-line) 60%, var(--color-brand) 20%);
 }
 .panel > header { background: color-mix(in srgb, var(--color-panel-2) 55%, transparent); border-top-left-radius: inherit; border-top-right-radius: inherit; }
