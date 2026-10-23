@@ -293,6 +293,51 @@ export class ApiClient {
   createLivePolicyDecisionReview(id: string, body: C.AnalystReviewCreate, options?: RequestOptions): Promise<C.AnalystReview> {
     return this.request(`/live-policy-decisions/${segment(id)}/reviews`, 'AnalystReview', options, body) as Promise<C.AnalystReview>;
   }
+  controlGrants(projectId: string, options?: RequestOptions): Promise<Page<C.ControlGrant>> {
+    return this.list(`/projects/${segment(projectId)}/control-grants`, 'ControlGrant', options);
+  }
+  createControlGrant(projectId: string, body: C.ControlGrantCreate, options?: RequestOptions): Promise<C.ControlGrant> {
+    return this.request(`/projects/${segment(projectId)}/control-grants`, 'ControlGrant', options, body) as Promise<C.ControlGrant>;
+  }
+  revokeControlGrant(id: string, options?: RequestOptions): Promise<C.ControlGrant> {
+    return this.request(`/control-grants/${segment(id)}/revoke`, 'ControlGrant', options, {}) as Promise<C.ControlGrant>;
+  }
+  createControlChannel(appId: string, body: C.ControlChannelCreate, options?: RequestOptions): Promise<C.ControlChannelCreated> {
+    return this.request(`/applications/${segment(appId)}/control-channel`, 'ControlChannelCreated', options, body) as Promise<C.ControlChannelCreated>;
+  }
+  controlChannel(appId: string, options?: RequestOptions): Promise<C.ControlChannelView> {
+    return this.request(`/applications/${segment(appId)}/control-channel`, 'ControlChannelView', options) as Promise<C.ControlChannelView>;
+  }
+  authorizeControl(appId: string, body: C.ControlAuthorizationCreate, options?: RequestOptions): Promise<C.LiveControl> {
+    return this.request(`/applications/${segment(appId)}/control-authorizations`, 'LiveControl', options, body) as Promise<C.LiveControl>;
+  }
+  async liveControls(projectId: string, options?: RequestOptions): Promise<LabeledPage<C.LiveControl>> {
+    const record = object(await this.request(`/projects/${segment(projectId)}/live-controls`, RAW, options), 'live control list');
+    const cursor = record.next_cursor;
+    if (!Array.isArray(record.items) || (cursor !== null && (typeof cursor !== 'string' || cursor.length === 0 || cursor.length > 200)) || typeof record.label !== 'string' || Object.keys(record).length !== 3) {
+      throw new ProtocolError('Invalid live control list');
+    }
+    return { items: record.items.map(i => decode<C.LiveControl>('LiveControl', i)), next_cursor: cursor, label: record.label };
+  }
+  liveControl(id: string, options?: RequestOptions): Promise<C.LiveControl> {
+    return this.request(`/live-controls/${segment(id)}`, 'LiveControl', options) as Promise<C.LiveControl>;
+  }
+  rollbackLiveControl(id: string, body: C.LiveControlRollbackCreate, options?: RequestOptions): Promise<C.LiveControl> {
+    return this.request(`/live-controls/${segment(id)}/rollback`, 'LiveControl', options, body) as Promise<C.LiveControl>;
+  }
+  async emergencyStop(projectId: string, options?: RequestOptions): Promise<{ items: C.EmergencyStop[]; next_cursor: string | null; active: boolean }> {
+    const record = object(await this.request(`/projects/${segment(projectId)}/emergency-stop`, RAW, options), 'emergency stop');
+    if (!Array.isArray(record.items) || record.next_cursor !== null && (typeof record.next_cursor !== 'string') || typeof record.active !== 'boolean' || Object.keys(record).length !== 3) {
+      throw new ProtocolError('Invalid emergency stop list');
+    }
+    return { items: record.items.map(i => decode<C.EmergencyStop>('EmergencyStop', i)), next_cursor: record.next_cursor as string | null, active: record.active };
+  }
+  createEmergencyStop(projectId: string, body: C.EmergencyStopCreate, options?: RequestOptions): Promise<C.EmergencyStop> {
+    return this.request(`/projects/${segment(projectId)}/emergency-stop`, 'EmergencyStop', options, body) as Promise<C.EmergencyStop>;
+  }
+  clearEmergencyStop(id: string, options?: RequestOptions): Promise<C.EmergencyStop> {
+    return this.request(`/emergency-stop/${segment(id)}/clear`, 'EmergencyStop', options, {}) as Promise<C.EmergencyStop>;
+  }
   /** Repositories the user can connect through the GitHub App, and the App's install link. */
   async githubRepositories(options?: RequestOptions): Promise<AccessibleRepositories> {
     const record = object(await this.request('/github/repositories', RAW, options), 'repository list');

@@ -1,11 +1,19 @@
 'use client';
 
-import type { ConnectedApplication, DefenseHealth, IngestTokenCreated, IngestTokenView } from '@hackatl/frontend-transport';
+import type {
+  ConnectedApplication,
+  ControlChannelCreated,
+  ControlGrant,
+  DefenseHealth,
+  IngestTokenCreated,
+  IngestTokenView,
+  LiveControlKind,
+} from '@hackatl/frontend-transport';
 import { useState } from 'react';
-import { ShadowModeNote, SourceTag } from '@/components/live-defense/common';
+import { OwnedTestBanner, ShadowModeNote, SourceTag } from '@/components/live-defense/common';
 import { Async, Button, Empty, ErrorState, Field, inputClass, Mono, Panel, Tag, Time } from '@/components/ui';
 import { api } from '@/lib/api';
-import { ingestCurl, type LiveDefenseMode } from '@/lib/live-defense';
+import { controlKindLabel, ingestCurl, OWNED_TEST_LABEL, type LiveDefenseMode } from '@/lib/live-defense';
 import type { Resource } from '@/lib/use-resource';
 
 export function StagingApps({
@@ -14,6 +22,7 @@ export function StagingApps({
   apps,
   tokens,
   health,
+  grants,
   onChange,
 }: {
   mode: LiveDefenseMode;
@@ -21,6 +30,7 @@ export function StagingApps({
   apps?: Resource<{ items: ConnectedApplication[] }>;
   tokens?: Resource<{ items: IngestTokenView[] }>;
   health?: Resource<DefenseHealth>;
+  grants?: Resource<{ items: ControlGrant[] }>;
   onChange?: () => void;
 }) {
   if (mode === 'layout-preview') {
@@ -33,8 +43,10 @@ export function StagingApps({
   if (!projectId) return <Empty>Choose a project to register a staging app.</Empty>;
   return (
     <div className="flex flex-col gap-4" data-testid="live-defense-apps">
+      <OwnedTestBanner />
       <ShadowModeNote />
       <RegisterApp projectId={projectId} onChange={onChange} />
+      <GrantForm projectId={projectId} apps={apps} grants={grants} onChange={onChange} />
       <Panel title="Registered staging apps" actions={<SourceTag mode="live" />}>
         {apps ? (
           <Async resource={apps} label="staging apps">
@@ -136,8 +148,10 @@ function AppCard({
         <p className="font-medium">{app.name}</p>
         <span className="flex flex-wrap gap-1">
           <Tag>{app.environment.replaceAll('_', ' ')}</Tag>
-          <Tag tone="info">shadow mode</Tag>
+          {(app.environment === 'owned_test' || app.environment === 'sandbox') && <Tag tone="ok">{OWNED_TEST_LABEL}</Tag>}
+          <Tag tone="info">shadow ingest</Tag>
           <Tag>{app.verification.replaceAll('_', ' ')}</Tag>
+          {app.control_channel_configured ? <Tag>control channel registered</Tag> : <Tag>no control channel</Tag>}
         </span>
       </div>
       <p className="mt-1 text-xs text-muted">
@@ -152,6 +166,7 @@ function AppCard({
           <Mono className="mt-1 block break-all text-ink">{issued.token}</Mono>
         </div>
       )}
+      <ControlChannelForm app={app} onChange={onChange} />
       {appTokens.length > 0 && (
         <ul className="mt-3 text-xs text-muted">
           {appTokens.map(token => (
@@ -169,5 +184,129 @@ function AppCard({
         </ul>
       )}
     </li>
+  );
+}
+
+const GRANT_KINDS: LiveControlKind[] = ['rate_limit', 'block_source', 'increase_logging', 'escalate'];
+
+function GrantForm({
+  projectId,
+  apps,
+  grants,
+  onChange,
+}: {
+  projectId: string;
+  apps?: Resource<{ items: ConnectedApplication[] }>;
+  grants?: Resource<{ items: ControlGrant[] }>;
+  onChange?: () => void;
+}) {
+  const appItems = apps?.status === 'ready' ? apps.data.items : [];
+  const [appId, setAppId] = useState('');
+  const selectedAppId = appId || appItems[0]?.id || '';
+  const [kinds, setKinds] = useState<LiveControlKind[]>([...GRANT_KINDS]);
+  const [maxDuration, setMaxDuration] = useState('300');
+  const [error, setError] = useState<unknown>(null);
+  const toggle = (kind: LiveControlKind) => {
+    setKinds(current => current.includes(kind) ? current.filter(item => item !== kind) : [...current, kind]);
+  };
+  const submit = async () => {
+    setError(null);
+    try {
+      await api().createControlGrant(projectId, {
+        application_id: selectedAppId,
+        allowed_kinds: kinds,
+        max_duration_s: Number(maxDuration),
+        hourly_budget: 5,
+        expires_at: null,
+      });
+      onChange?.();
+    } catch (err) {
+      setError(err);
+    }
+  };
+  return (
+    <Panel title="Owner grant (exact kinds on one app)">
+      <p className="mb-3 text-sm text-muted">Grants do not execute. They bound later authorizations to this app, these kinds, and this duration ceiling.</p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+        <Field label="Application">
+          <select className={inputClass} value={selectedAppId} onChange={e => setAppId(e.target.value)}>
+            {appItems.map(app => <option key={app.id} value={app.id}>{app.name}</option>)}
+          </select>
+        </Field>
+        <Field label="Max duration (seconds)">
+          <input className={inputClass} type="number" min={5} max={300} value={maxDuration} onChange={e => setMaxDuration(e.target.value)} />
+        </Field>
+        <Button variant="primary" disabled={selectedAppId.length === 0 || kinds.length === 0} onClick={() => void submit()}>Create grant</Button>
+      </div>
+      <fieldset className="mt-3">
+        <legend className="text-xs text-muted">Allowed kinds</legend>
+        <div className="mt-1 flex flex-wrap gap-3 text-sm text-ink">
+          {GRANT_KINDS.map(kind => (
+            <label key={kind} className="flex items-center gap-1">
+              <input type="checkbox" checked={kinds.includes(kind)} onChange={() => toggle(kind)} />
+              {controlKindLabel(kind)}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      {error !== null && <div className="mt-2"><ErrorState error={error} /></div>}
+      {grants ? (
+        <Async resource={grants} label="control grants">
+          {page => page.items.length === 0 ? <p className="mt-3 text-xs text-muted">No grant yet.</p> : (
+            <ul className="mt-3 text-xs text-muted">
+              {page.items.map(grant => (
+                <li key={grant.id} className="flex flex-wrap items-center gap-2 py-1">
+                  <Mono>{grant.id}</Mono>
+                  {grant.allowed_kinds.map(kind => <Tag key={kind}>{kind}</Tag>)}
+                  {grant.revoked_at ? <Tag tone="warn">revoked</Tag> : <Tag tone="ok">active</Tag>}
+                  {!grant.revoked_at && (
+                    <Button className="!h-6 !px-2 !py-0 text-[11px]" onClick={() => { void api().revokeControlGrant(grant.id).then(() => onChange?.()); }}>
+                      Revoke grant
+                    </Button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Async>
+      ) : null}
+    </Panel>
+  );
+}
+
+function ControlChannelForm({ app, onChange }: { app: ConnectedApplication; onChange?: () => void }) {
+  const [port, setPort] = useState('8099');
+  const [issued, setIssued] = useState<ControlChannelCreated | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const submit = async () => {
+    setError(null);
+    try {
+      setIssued(await api().createControlChannel(app.id, { port: Number(port) }));
+      onChange?.();
+    } catch (err) {
+      setError(err);
+    }
+  };
+  return (
+    <div className="mt-3 border-t border-line pt-3" data-testid={`live-defense-channel-${app.id}`}>
+      <p className="text-xs text-muted">
+        Register a loopback control port only. Arbitrary URLs, scripts, and browser-supplied destinations are rejected.
+        HMAC secret is shown once.
+      </p>
+      <div className="mt-2 flex flex-wrap items-end gap-2">
+        <Field label="Loopback port">
+          <input className={inputClass} type="number" min={1024} max={65535} value={port} onChange={e => setPort(e.target.value)} />
+        </Field>
+        <Button className="!px-2 !py-0.5 text-xs" onClick={() => void submit()}>Register control channel</Button>
+      </div>
+      {error !== null && <div className="mt-2"><ErrorState error={error} /></div>}
+      {issued && (
+        <div className="mt-3 rounded-md border border-warn/50 bg-warn/10 p-2 text-xs" data-testid="live-defense-hmac-once">
+          <p className="font-medium text-warn">Copy this HMAC secret now. Ari will not show it again.</p>
+          <Mono className="mt-1 block break-all text-ink">{issued.hmac_secret}</Mono>
+          <p className="mt-1 text-muted">Adapter: http://127.0.0.1:{issued.port}{issued.path}</p>
+        </div>
+      )}
+    </div>
   );
 }

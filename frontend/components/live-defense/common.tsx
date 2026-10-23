@@ -1,7 +1,7 @@
 'use client';
 
 import type { LiveDefenseMode, RankedAction } from '@/lib/live-defense';
-import { actionInWords, HEALTH_UNKNOWN_COPY, NO_ENFORCEMENT, SHADOW_MODE_COPY, SIMULATION_CAVEAT } from '@/lib/live-defense';
+import { actionInWords, HEALTH_UNKNOWN_COPY, NO_ENFORCEMENT, OWNED_TEST_AUTHORIZE_COPY, OWNED_TEST_LABEL, SHADOW_MODE_COPY, SIMULATION_CAVEAT } from '@/lib/live-defense';
 import { PREVIEW_BANNER } from '@/lib/live-defense-preview';
 import { num } from '@/lib/format';
 import { Mono, Tag } from '@/components/ui';
@@ -40,6 +40,14 @@ export function HealthUnknownNote() {
   return (
     <p data-testid="live-defense-health-unknown" className="text-sm text-ink">
       {HEALTH_UNKNOWN_COPY}
+    </p>
+  );
+}
+
+export function OwnedTestBanner() {
+  return (
+    <p data-testid="live-defense-owned-test" className="rounded-xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm text-ink">
+      <span className="font-semibold">{OWNED_TEST_LABEL}.</span> {OWNED_TEST_AUTHORIZE_COPY}
     </p>
   );
 }

@@ -40,7 +40,8 @@ test('Live Defense shadow pilot: staging app, ingest, unknown health, review wit
   await page.getByRole('button', { name: 'Register app' }).click();
   const appCard = page.locator('[data-testid^="live-defense-app-"]').filter({ hasText: 'payments-lite staging' });
   await expect(appCard).toBeVisible();
-  await expect(appCard.getByText('owned test')).toBeVisible();
+  await expect(appCard.getByText('owned test', { exact: true })).toBeVisible();
+  await expect(appCard.getByText('OWNED TEST ENVIRONMENT', { exact: true })).toBeVisible();
   await appCard.getByRole('button', { name: 'Issue ingest token' }).click();
   const once = page.getByTestId('live-defense-token-once');
   await expect(once).toContainText('will not show it again');

@@ -14,10 +14,12 @@ export default function LiveDefenseAppsPage() {
   const apps = useResource(live ? `ld-apps:${project.id}` : null, s => api().connectedApplications(project.id, { signal: s }));
   const tokens = useResource(live ? `ld-tokens:${project.id}` : null, s => api().ingestTokens(project.id, { signal: s }));
   const health = useResource(live ? `ld-health:${project.id}` : null, s => api().defenseHealth(project.id, { signal: s }), 15000);
+  const grants = useResource(live ? `ld-grants:${project.id}` : null, s => api().controlGrants(project.id, { signal: s }));
   const reload = () => {
     apps.reload();
     tokens.reload();
     health.reload();
+    grants.reload();
   };
   return (
     <StagingApps
@@ -26,6 +28,7 @@ export default function LiveDefenseAppsPage() {
       apps={live ? apps : undefined}
       tokens={live ? tokens : undefined}
       health={live ? health : undefined}
+      grants={live ? grants : undefined}
       onChange={live ? reload : undefined}
     />
   );
