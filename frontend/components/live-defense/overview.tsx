@@ -143,7 +143,7 @@ function LiveOverviewRecords({
                 <dt className="text-muted">Telemetry</dt><dd>{item.telemetry_status} — {item.telemetry_status_reason}</dd>
                 <dt className="text-muted">Policy</dt><dd>{item.policy_status} — {item.policy_status_reason}</dd>
                 <dt className="text-muted">Worker last heartbeat</dt><dd>{item.worker_seen_at ? <Time iso={item.worker_seen_at} /> : 'unavailable'}</dd>
-                <dt className="text-muted">Queue depth</dt><dd>{item.queue_depth ?? 'unavailable'}</dd>
+                <dt className="text-muted">Queue depth (this project)</dt><dd>{item.queue_depth ?? 'unavailable'}</dd>
                 <dt className="text-muted">Last ingest window</dt><dd>{item.last_ingest_at ? <Time iso={item.last_ingest_at} /> : 'unavailable'}</dd>
                 <dt className="text-muted">Last runtime event</dt><dd>{item.last_runtime_event_at ? <Time iso={item.last_runtime_event_at} /> : 'unavailable'}</dd>
               </dl>

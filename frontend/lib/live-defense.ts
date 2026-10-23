@@ -26,8 +26,11 @@ export const OWNED_TEST_AUTHORIZE_COPY =
 export const SHADOW_MODE_COPY =
   'Shadow mode: Ari records ingest and recommendations for authorized staging apps. It does not grant production enforcement and never re-shows an ingest token after issuance.';
 
+export const SHADOW_VS_CONTROLS_COPY =
+  'Recommendation-only shadow path: ingest, LivePolicyDecision, analyst review, and the pilot report never execute a control. The Controls tab is a separate owned-test authorization. Do not register a grant or control channel for a customer shadow-pilot.';
+
 export const HEALTH_UNKNOWN_COPY =
-  'Component and worker health stay unknown unless a recorded check exists. HTTP 200 from this page is not a healthy verdict.';
+  'Worker, telemetry, and policy stay unknown. Heartbeat and queue depth are measured timestamps or counts, not a healthy verdict. Missing values are unavailable — never guessed. HTTP 200 from this page is not health.';
 
 export function liveDefenseMode(previewParam: string | null | undefined): LiveDefenseMode {
   return previewParam === PREVIEW_VALUE ? 'layout-preview' : 'live';
@@ -101,7 +104,7 @@ export const MISSING_LIVE_APIS = [
   {
     id: 'autonomous',
     title: 'Autonomous enforcement',
-    reason: 'Phase 5. RL and rules still cannot execute without independent owner authorization.',
+    reason: 'Phase 7 is not started. RL and rules still cannot execute without independent owner authorization. Shadow-pilot stays recommendation-only.',
   },
   {
     id: 'production_grants',
