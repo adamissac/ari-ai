@@ -281,3 +281,6 @@ on validation but worsened on training. No v11 prepared or launched. See
 Research-only deterministic payment-read guard and explicit finite-case HTTP comparison:
 [protocol and limitations](../docs/research/deterministic-feasibility/README.md).
 No serving hook, model training, promotion or customer action.
+
+Opt-in owned payments-lite request-context wrapper and concurrency checks:
+[application-context evidence and limits](../docs/research/deterministic-feasibility/APPLICATION_CONTEXT.md).
