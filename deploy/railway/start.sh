@@ -34,15 +34,22 @@ done
 hackatl-api &
 pids="$pids $!"
 
-trap 'kill $pids 2>/dev/null || true' TERM INT
+# A deploy sends TERM: workers finish the job in hand and exit (Railway keeps this container
+# for RAILWAY_DEPLOYMENT_DRAINING_SECONDS), so in-flight assessments are not cut off.
+draining=""
+trap 'draining=1; kill -TERM $pids 2>/dev/null || true' TERM INT
 
 alive() {
   for p in $pids; do kill -0 "$p" 2>/dev/null || return 1; done
 }
-while alive; do
+while [ -z "$draining" ] && alive; do
   sleep 2
 done
 
+if [ -n "$draining" ]; then
+  wait || true
+  exit 0
+fi
 echo "a process exited; stopping the service so Railway restarts it" >&2
 kill $pids 2>/dev/null || true
 wait || true
