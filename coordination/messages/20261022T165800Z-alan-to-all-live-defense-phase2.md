@@ -1,0 +1,16 @@
+# MSG: Live Defense Phase 2 shadow-pilot contracts (0.16.0)
+- ID: `20261022T165800Z-alan-to-all-live-defense-phase2`
+- From: alan
+- To: all (adam, sarosh, sai, vihaan)
+- Kind: `contract-change`
+- Timestamp (UTC): 2026-10-22T16:58:00Z
+- Branch / commit / PR or issue link: `feat/live-defense-pilot-phase2`
+- Related subsystem(s): shared, backend, frontend (Live Defense). `rl-defense/` is not modified.
+- Summary (facts, not assumptions):
+  - Additive contract schema **0.16.0**: `ConnectedApplication`, `ConnectedApplicationCreate`, `IngestTokenView`, `DefenseHealth`, `ComponentGraph` (+ node/link/observation), `AnalystReview`, `AnalystReviewCreate`.
+  - `DefenseHealth.status` is `Literal["unknown"]`. HTTP 200 is not a healthy verdict.
+  - `AnalystReview.executes` is `Literal[False]`; accept is not enforcement approval and does not enqueue jobs.
+  - No `LivePolicyDecision` type: there is still no live inference producer. Stored `DefenseRecommendation` rows remain `simulation_derived: true`.
+  - Staging environment enum is `sandbox` | `owned_test` only (production rejected).
+- Interface requested/proposed (field-level types/example payload): see `shared/fixtures/v0/ConnectedApplication.json`, `DefenseHealth.json`, `AnalystReview.json` and `docs/planning/LIVE_DEFENSE_FRONTEND_API.md`.
+- Action required by recipient: Vihaan — consume generated TS via `frontend/transport` (already wired on this branch). Adam — no `rl-defense/` change in this PR. Reviewers: draft PR only; do not merge; do not begin autonomous enforcement.

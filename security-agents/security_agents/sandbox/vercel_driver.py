@@ -37,6 +37,16 @@ from .driver import (
 
 WORKDIR = "/vercel/sandbox/work"
 TARGETDIR = "/vercel/sandbox/target"
+# The microVM image ships bare Python; Probe/Verify checks need these to run and serve
+# ASGI targets. Fixed and pinned: never derived from the repository under test.
+PYPI_DOMAINS = ("pypi.org", "files.pythonhosted.org")
+RUNNER_WHEELS = (
+    "pytest==8.4.2",
+    "httpx==0.28.1",
+    "fastapi==0.143.3",
+    "uvicorn==0.54.0",
+    "pydantic==2.14.1",
+)
 OUT_MARKER = "\n@@SANDBOX_OUT@@"
 
 
@@ -201,21 +211,45 @@ def _rmtree(path: Path) -> None:
 
 
 class _VercelSdkBox:  # pragma: no cover - requires live Vercel credentials
-    """Real Vercel Sandbox, created with deny-all egress. Destroyed by `stop()`."""
+    """Real Vercel Sandbox, created with deny-all egress. Destroyed by `stop()`.
+
+    Named sandboxes snapshot on stop; without destroy those snapshots leak and exhaust
+    the account's snapshot storage (HTTP 402), so `stop()` destroys them too."""
 
     def __init__(self, spec: SandboxSpec, run_id: str) -> None:
         from vercel.sandbox import NetworkPolicy
         from vercel.sandbox import sync as vsandbox
 
+        # Egress reaches only PyPI while the fixed runner wheels install; it is deny-all
+        # before any repository code is staged or run.
         self._box = vsandbox.create_sandbox(
             name=f"ari-{run_id}",
-            execution_time_limit=int(spec.limits.timeout_s) + 120,
-            network_policy=NetworkPolicy.deny_all(),
+            execution_time_limit=int(spec.limits.timeout_s) + 240,
+            network_policy=NetworkPolicy.custom(dict.fromkeys(PYPI_DOMAINS, ())),
             tags={k[:63]: v[:200] for k, v in spec.labels.items()},
+            persistent=False,
             destroy=False,
         )
+        try:
+            self._box.run_process(
+                "python",
+                [
+                    "-m",
+                    "pip",
+                    "install",
+                    "-q",
+                    "--root-user-action=ignore",
+                    "--only-binary=:all:",
+                    *list(RUNNER_WHEELS),
+                ],
+                sudo=True,  # system site-packages: the entry runs `python -I`, which skips user site
+                check=True,
+                capture_output=True,
+            )
+        finally:
+            self._box.update_network_policy(NetworkPolicy.deny_all())
         for d in (WORKDIR, TARGETDIR, "/tmp/out"):
-            self._box.fs.mkdir(d, parents=True, exist_ok=True)
+            self._box.fs.mkdir(d, recursive=True)
 
     def put_archive(self, tar_bytes: bytes, dest: str) -> None:
         self._box.fs.write_bytes("/tmp/stage.tar", tar_bytes)
@@ -232,7 +266,7 @@ class _VercelSdkBox:  # pragma: no cover - requires live Vercel credentials
             )
         except SandboxTimeoutError:
             return None, "", "timeout", True
-        return cp.exit_code, cp.stdout or "", cp.stderr or "", False
+        return cp.returncode, cp.stdout or "", cp.stderr or "", False
 
     def start(self, argv: list[str], *, cwd: str, env: dict[str, str]) -> None:
         self._box.create_process(argv[0], argv[1:], cwd=cwd, env=env)
@@ -241,4 +275,7 @@ class _VercelSdkBox:  # pragma: no cover - requires live Vercel credentials
         return ""
 
     def stop(self) -> None:
-        self._box.stop()
+        try:
+            self._box.stop()
+        finally:
+            self._box.destroy(delete_orphan_snapshots=True)

@@ -9,6 +9,8 @@ const project = {
     default_budget: { max_tokens: 400000, max_usd: 10, max_wall_clock_s: 1800 },
     monitoring_policy: { enabled: true, min_interval_s: 600, ignore_paths_only: ['tests/**', 'docs/**'], monitoring_budget: { max_tokens: 150000, max_usd: 3, max_wall_clock_s: 900 } },
     languages: ['python'],
+    delivery_mode: 'auto',
+    auto_delivery_enabled_by: null, // server-owned; the form always sends null
   },
 } as unknown as Project;
 

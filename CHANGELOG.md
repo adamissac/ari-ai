@@ -6,7 +6,19 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
-- Default repository AI automation and project 24/7 defense OFF; migration 0010 pauses existing automatic work until explicit owner opt-in. Manual runs and historical results remain available.
+- Default repository AI automation and project 24/7 defense OFF; migration 0012 pauses existing automatic work until explicit owner opt-in. Manual runs and historical results remain available.
+- Add Live Defense Phase 5 customer **shadow-pilot readiness**: staging-app disconnect, ingest-token rotate, shadow-verify from recorded ingest, worker/telemetry/policy health stay unknown without evidence, exportable pilot report (HTTP 200 ≠ attack success; no “shadow prevented breaches”). No customer production enforcement, no autonomous RL, no browser-callable block/isolate/rate-limit. Contract schema 0.18.0 additive. Eval: `docs/LIVE_DEFENSE_PHASE5_EVAL.md`.
+- Add an opt-in research wrapper over owned payments-lite reads with store-derived identity/ownership, exact request binding, serialized permission changes and buffered freshness checks. No production or RL integration.
+- Add a research-only deterministic payment-read guard and preregistered finite-case feasibility comparison with owner-selected zero unauthorized-read / zero legitimate-denial limits. No serving integration or model training.
+
+- Add isolated Phase1 constrained-RL research: audited action semantics, versioned measured reward/cost adapters, explicit unknown/provenance validation, capability masks and reproducible fixed-baseline evidence.140owned-lab episodes completed; Phase2 remains no-go. No new model training, promotion, customer execution or recommendation behavior change.
+- Extend Live Defense to Phase 3 shadow runtime: authenticated `owned_staging` ingest, deterministic rules, genuine `LivePolicyDecision` rows (NOT EXECUTED) from rules or validated frozen-v6 inference, and analyst review of those records. Q-values are persisted only when inference actually ran. Authenticated runtime events no longer force simulated incident labels. No autonomous enforcement. Contract schema 0.17.0. Pilot eval: `docs/LIVE_DEFENSE_PHASE3_PILOT_EVAL.md`.
+
+- Extend Live Defense to a shadow-pilot Phase 2: wire events, NIST incidents, stored recommendations, explanations and reassessment; add staging-app onboarding, ingest-token metadata (secret shown once), recorded health/topology (status always unknown), and analyst accept/reject/needs-investigation that does not execute. No live policy-decision producer, no production enforcement, no autonomous block/isolate/rate-limit. Contract schema 0.16.0.
+
+- Add a customer Live Defense dashboard (Overview, Investigation, Explainability) on `/projects/{id}/live-defense`, using existing monitoring, incident and simulation-recommendation APIs. Missing live-graph/inference endpoints stay empty. Isolated sample layout (`?preview=layout`, `/live-defense-pilot`) is labelled and never mixed with records. No apply/isolate/rate-limit actions.
+
+- Add a bounded train/validation-only duration screen that reuses existing block policies and compares one fixed duration-aware heuristic with actual v6. Completed all520 episodes: validation availability gain was uncertain and failed the fixed screen; no v11 prepared or launched. No learned-policy, control or serving changes; no holdout execution.
 
 - Add per-repository Automatic runs ON/OFF and manual commit runs when OFF. Queue excess commits under project quotas, require authorized push sender plus commit attribution, and enforce Claude Haiku 5.5 in production. Contract 0.15.0 and migration 0009.
 

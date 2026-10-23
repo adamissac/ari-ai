@@ -1,9 +1,9 @@
 # Alan — implementation status
 
-Owner: Alan (`security-agents/`, SEC-001 … SEC-013)
-Branch: `fix/alan/main-health`
-Current task: keep security-agents claims accurate; M3 live run pending a key holder
-Last remote sync: 2026-10-17, `origin/main` @ `39186cb`
+Owner: Alan (`security-agents/`, SEC-001 … SEC-013; interim Live Defense UI)
+Branch: `feat/live-defense-phase5-pilot-readiness`
+Current task: Live Defense Phase 5 shadow-pilot readiness (no Phase 4 enforcement; do not merge #393)
+Last remote sync: 2026-10-23, `origin/main` @ `7adf509` (merged into Phase 5; PR #395)
 API/contract dependencies: `shared` 0.9.0 `CheckCategory`; `backend.host` checkpoints; `code_review.api` functional helpers
 Recent PR/commit: `feat/alan/verify-honesty-check-category` (do not push merged `host-finding-persistence` / `host-resume-hardening`)
 Blockers: live seven-agent run (issue #10, no key); Docker images (INFRA-005)
@@ -74,6 +74,11 @@ Updated 2026-10-17 after #100 to #125.
   claimed.
 
 ## Session entries
+
+### 2026-10-22 (Live Defense Phase 3 shadow runtime)
+
+- Branch `feat/live-defense-phase3-shadow-runtime` from `origin/main` `6e98b23`. Contracts 0.17.0. No `rl-defense/` training/checkpoint/promotion edits. No Phase 4 enforcement.
+- Executed: `make check`; `uv run mypy` 40 files clean; focused pytest 85 passed / 2 skipped; frontend lint/typecheck; vitest 325; transport 35; `next build` ok.
 
 ### 2026-10-17 (verify honesty + CheckCategory)
 
@@ -427,3 +432,26 @@ GitHub connector. The temporary checkout `/private/tmp/rl-v10` still has earlier
 Git metadata and preserved files corresponding to remote fix `1e42f3e`; reconcile it
 with the remote before any cleanup or new work. The user's original dirty checkout
 was not overwritten. No study heartbeat was re-enabled or extra experiment scheduled.
+
+### 2026-10-22 — owner-authorized RL-CMDP-001 Phase1
+
+Research implementation/evidence in PR #388, `feat/alan/constrained-rl-phase1`.
+Keep unmerged under the latest no-production-deployment restriction (main deploys).
+Audit/CMDP/action matrix/offline readiness/four-paper decision delivered.140fixed
+baseline episodes /4,200windows verified,8,400historical train transitions adapted
+read-only. Budgeted heuristic has99.50% availability but93.16% compromise, so **no-go
+now** for constrained-DDQN/CQL. No Phase2/training/promotion/serving change.
+
+27focused tests pass (9.91s); original full347pass plus subsequent new regressions, shared
+contracts60pass and skipped TypeScript check passed separately. All five CI workflows
+passed source184a61a; review-proof fixes pending current-head CI. Four review findings
+fixed with source Git-object proof, portable registry guard, policy-decision replay and
+schema discriminators. See docs/research/constrained-rl-phase1/VERIFICATION.md.
+
+## RL research continuation — 2026-10-23
+
+RL-CMDP-003 on `feat/alan/read-context-integration`: opt-in owned payments-lite
+read wrapper, store-derived context, serialized permission updates and buffered
+freshness checks. Eight focused integration tests pass. No serving hook, model
+training or operational-control integration; historical evidence remains unchanged.
+Details: `docs/research/deterministic-feasibility/APPLICATION_CONTEXT.md`.

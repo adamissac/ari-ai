@@ -1,0 +1,13 @@
+{
+  "dataset_id": "lab_4449df9df140c6be695fb691df363bd21da098bfdaec431eeedc04332e8dafd0",
+  "files": {
+    "config.json": "65479bc56d4f2a9c587cfab5a428a827befb45009c8a891b07587af895f0ca72",
+    "raw.jsonl.gz": "4449df9df140c6be695fb691df363bd21da098bfdaec431eeedc04332e8dafd0",
+    "summary.json": "fd4acb6b1fe38fbf3429e38b4416fec01a0b7ce88c51fcb6e6058e95fde50a48",
+    "transitions.jsonl.gz": "0e7f0fac8228f512580f4e778b85e7fa0a1d523b09f058491655cdb7e0c821b9"
+  },
+  "not_a_promotion_decision": true,
+  "phase2_started": false,
+  "schema": "constrained-lab-evidence/1",
+  "source_commit": "9d6460487275d25cc31194d7b603196d436c4485"
+}

@@ -6,8 +6,8 @@ Downgrade restores only the old column default, never resumes paid activity.
 import sqlalchemy as sa
 from alembic import op
 
-revision = "0010"
-down_revision = "0009"
+revision = "0012"
+down_revision = "0011"
 branch_labels = None
 depends_on = None
 

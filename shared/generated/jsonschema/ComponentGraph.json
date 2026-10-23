@@ -1,0 +1,183 @@
+{
+  "$defs": {
+    "ComponentHealthState": {
+      "enum": [
+        "unknown",
+        "checking",
+        "healthy",
+        "attention"
+      ],
+      "title": "ComponentHealthState",
+      "type": "string"
+    },
+    "ComponentLink": {
+      "additionalProperties": false,
+      "properties": {
+        "source_id": {
+          "maxLength": 500,
+          "title": "Source Id",
+          "type": "string"
+        },
+        "target_id": {
+          "maxLength": 500,
+          "title": "Target Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_id",
+        "target_id"
+      ],
+      "title": "ComponentLink",
+      "type": "object"
+    },
+    "ComponentNode": {
+      "additionalProperties": false,
+      "properties": {
+        "critical": {
+          "default": false,
+          "title": "Critical",
+          "type": "boolean"
+        },
+        "id": {
+          "maxLength": 500,
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ComponentNodeKind"
+        },
+        "label": {
+          "maxLength": 500,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "kind"
+      ],
+      "title": "ComponentNode",
+      "type": "object"
+    },
+    "ComponentNodeKind": {
+      "enum": [
+        "application",
+        "route"
+      ],
+      "title": "ComponentNodeKind",
+      "type": "string"
+    },
+    "ComponentObservation": {
+      "additionalProperties": false,
+      "properties": {
+        "last_checked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Checked At"
+        },
+        "node_id": {
+          "maxLength": 500,
+          "title": "Node Id",
+          "type": "string"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "simulated": {
+          "title": "Simulated",
+          "type": "boolean"
+        },
+        "source": {
+          "$ref": "#/$defs/ComponentObservationSource"
+        },
+        "state": {
+          "$ref": "#/$defs/ComponentHealthState"
+        }
+      },
+      "required": [
+        "node_id",
+        "state",
+        "source",
+        "simulated"
+      ],
+      "title": "ComponentObservation",
+      "type": "object"
+    },
+    "ComponentObservationSource": {
+      "enum": [
+        "ingest",
+        "github",
+        "none"
+      ],
+      "title": "ComponentObservationSource",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Topology from registered apps and observed ingest routes. Missing checks stay unknown.",
+  "properties": {
+    "generated_at": {
+      "format": "date-time",
+      "title": "Generated At",
+      "type": "string"
+    },
+    "links": {
+      "items": {
+        "$ref": "#/$defs/ComponentLink"
+      },
+      "title": "Links",
+      "type": "array"
+    },
+    "nodes": {
+      "items": {
+        "$ref": "#/$defs/ComponentNode"
+      },
+      "title": "Nodes",
+      "type": "array"
+    },
+    "note": {
+      "default": "healthy is never inferred from HTTP 200. attention is only set when the latest recorded runtime score was anomalous; every other node is unknown.",
+      "maxLength": 500,
+      "title": "Note",
+      "type": "string"
+    },
+    "observations": {
+      "items": {
+        "$ref": "#/$defs/ComponentObservation"
+      },
+      "title": "Observations",
+      "type": "array"
+    },
+    "project_id": {
+      "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Project Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "project_id",
+    "generated_at"
+  ],
+  "title": "ComponentGraph",
+  "type": "object"
+}

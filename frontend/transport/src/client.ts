@@ -241,6 +241,70 @@ export class ApiClient {
   recommendationExplanation(id: string, options?: RequestOptions): Promise<C.RLExplanation> {
     return this.request(`/defense-recommendations/${segment(id)}/explanation`, 'RLExplanation', options) as Promise<C.RLExplanation>;
   }
+  connectedApplications(projectId: string, options?: RequestOptions): Promise<Page<C.ConnectedApplication>> {
+    return this.list(`/projects/${segment(projectId)}/applications`, 'ConnectedApplication', options);
+  }
+  createConnectedApplication(projectId: string, body: C.ConnectedApplicationCreate, options?: RequestOptions): Promise<C.ConnectedApplication> {
+    return this.request(`/projects/${segment(projectId)}/applications`, 'ConnectedApplication', options, body) as Promise<C.ConnectedApplication>;
+  }
+  connectedApplication(id: string, options?: RequestOptions): Promise<C.ConnectedApplication> {
+    return this.request(`/applications/${segment(id)}`, 'ConnectedApplication', options) as Promise<C.ConnectedApplication>;
+  }
+  createApplicationIngestToken(appId: string, options?: RequestOptions): Promise<C.IngestTokenCreated> {
+    return this.request(`/applications/${segment(appId)}/ingest-tokens`, 'IngestTokenCreated', options, {}) as Promise<C.IngestTokenCreated>;
+  }
+  ingestTokens(projectId: string, options?: RequestOptions): Promise<Page<C.IngestTokenView>> {
+    return this.list(`/projects/${segment(projectId)}/ingest-tokens`, 'IngestTokenView', options);
+  }
+  revokeIngestToken(tokenId: string, options?: RequestOptions): Promise<void> {
+    return this.request(`/ingest-tokens/${segment(tokenId)}/revoke`, null, options, {}) as Promise<void>;
+  }
+  rotateApplicationIngestToken(appId: string, options?: RequestOptions): Promise<C.IngestTokenRotated> {
+    return this.request(`/applications/${segment(appId)}/ingest-tokens/rotate`, 'IngestTokenRotated', options, {}) as Promise<C.IngestTokenRotated>;
+  }
+  disconnectConnectedApplication(appId: string, options?: RequestOptions): Promise<C.ConnectedApplication> {
+    return this.request(`/applications/${segment(appId)}/disconnect`, 'ConnectedApplication', options, {}) as Promise<C.ConnectedApplication>;
+  }
+  shadowVerifyConnectedApplication(appId: string, options?: RequestOptions): Promise<C.ConnectedApplication> {
+    return this.request(`/applications/${segment(appId)}/shadow-verify`, 'ConnectedApplication', options, {}) as Promise<C.ConnectedApplication>;
+  }
+  pilotReport(projectId: string, options?: RequestOptions): Promise<C.PilotReport> {
+    return this.request(`/projects/${segment(projectId)}/pilot-report`, 'PilotReport', options) as Promise<C.PilotReport>;
+  }
+  defenseHealth(projectId: string, options?: RequestOptions): Promise<C.DefenseHealth> {
+    return this.request(`/projects/${segment(projectId)}/defense-health`, 'DefenseHealth', options) as Promise<C.DefenseHealth>;
+  }
+  defenseGraph(projectId: string, options?: RequestOptions): Promise<C.ComponentGraph> {
+    return this.request(`/projects/${segment(projectId)}/defense-graph`, 'ComponentGraph', options) as Promise<C.ComponentGraph>;
+  }
+  recommendationReviews(id: string, options?: RequestOptions): Promise<Page<C.AnalystReview>> {
+    return this.list(`/defense-recommendations/${segment(id)}/reviews`, 'AnalystReview', options);
+  }
+  projectDefenseReviews(projectId: string, options?: RequestOptions): Promise<Page<C.AnalystReview>> {
+    return this.list(`/projects/${segment(projectId)}/defense-reviews`, 'AnalystReview', options);
+  }
+  createRecommendationReview(id: string, body: C.AnalystReviewCreate, options?: RequestOptions): Promise<C.AnalystReview> {
+    return this.request(`/defense-recommendations/${segment(id)}/reviews`, 'AnalystReview', options, body) as Promise<C.AnalystReview>;
+  }
+  /** Newest first. Pass `next_cursor` as `cursor` for older shadow decisions. */
+  async livePolicyDecisions(projectId: string, options?: RequestOptions & { cursor?: string }): Promise<LabeledPage<C.LivePolicyDecision>> {
+    const qs = options?.cursor ? `?cursor=${encodeURIComponent(options.cursor)}` : '';
+    const record = object(await this.request(`/projects/${segment(projectId)}/live-policy-decisions${qs}`, RAW, options), 'live policy decision list');
+    const cursor = record.next_cursor;
+    if (!Array.isArray(record.items) || (cursor !== null && (typeof cursor !== 'string' || cursor.length === 0 || cursor.length > 200)) || typeof record.label !== 'string' || Object.keys(record).length !== 3) {
+      throw new ProtocolError('Invalid live policy decision list');
+    }
+    return { items: record.items.map(i => decode<C.LivePolicyDecision>('LivePolicyDecision', i)), next_cursor: cursor, label: record.label };
+  }
+  livePolicyDecision(id: string, options?: RequestOptions): Promise<C.LivePolicyDecision> {
+    return this.request(`/live-policy-decisions/${segment(id)}`, 'LivePolicyDecision', options) as Promise<C.LivePolicyDecision>;
+  }
+  livePolicyDecisionReviews(id: string, options?: RequestOptions): Promise<Page<C.AnalystReview>> {
+    return this.list(`/live-policy-decisions/${segment(id)}/reviews`, 'AnalystReview', options);
+  }
+  createLivePolicyDecisionReview(id: string, body: C.AnalystReviewCreate, options?: RequestOptions): Promise<C.AnalystReview> {
+    return this.request(`/live-policy-decisions/${segment(id)}/reviews`, 'AnalystReview', options, body) as Promise<C.AnalystReview>;
+  }
   /** Repositories the user can connect through the GitHub App, and the App's install link. */
   async githubRepositories(options?: RequestOptions): Promise<AccessibleRepositories> {
     const record = object(await this.request('/github/repositories', RAW, options), 'repository list');

@@ -98,7 +98,7 @@ from shared.scope import (
     AuthorizedScope,
     ScopeStatus,
 )
-from shared.tenancy import MemberRole, Project, ProjectSettings, Repository
+from shared.tenancy import DeliveryMode, MemberRole, Project, ProjectSettings, Repository
 
 router = APIRouter()
 
@@ -222,7 +222,7 @@ def create_project(
         if replay := idempotent_replay(conn, user.id, idempotency_key, retry):
             return replay
         pid = new_id(IdPrefix.prj)
-        settings = body.settings or ProjectSettings()
+        settings = _stamp_delivery(body.settings or ProjectSettings(), ProjectSettings(), user.id)
         _check_budgets(settings, ProjectSettings())
         conn.execute(
             sa.insert(projects).values(
@@ -257,6 +257,19 @@ def _check_budgets(settings: ProjectSettings, before: ProjectSettings) -> None:
             raise ApiError(ErrorCode.VALIDATION_FAILED, over, 422)
 
 
+def _stamp_delivery(
+    settings: ProjectSettings, before: ProjectSettings, user_id: str
+) -> ProjectSettings:
+    """The server alone records who authorized auto delivery; a client value is ignored."""
+    if settings.delivery_mode is DeliveryMode.review:
+        enabled_by = None
+    elif before.delivery_mode is DeliveryMode.auto and before.auto_delivery_enabled_by:
+        enabled_by = before.auto_delivery_enabled_by
+    else:
+        enabled_by = user_id
+    return settings.model_copy(update={"auto_delivery_enabled_by": enabled_by})
+
+
 @router.patch("/projects/{project_id}", response_model=Project)
 def update_project(project_id: str, body: ProjectUpdate, request: Request) -> Project:
     with transaction() as conn:
@@ -266,8 +279,20 @@ def update_project(project_id: str, body: ProjectUpdate, request: Request) -> Pr
         if body.name is not None:
             values["name"] = body.name
         if body.settings is not None:
-            _check_budgets(body.settings, project_settings(conn, project_id))
-            values["settings"] = body.settings.model_dump(mode="json")
+            before = project_settings(conn, project_id)
+            _check_budgets(body.settings, before)
+            settings = _stamp_delivery(body.settings, before, user.id)
+            values["settings"] = settings.model_dump(mode="json")
+            if settings.delivery_mode is not before.delivery_mode:
+                _audit(
+                    conn,
+                    org_id,
+                    project_id,
+                    user,
+                    f"delivery.{settings.delivery_mode.value}",
+                    "project",
+                    project_id,
+                )
         if values:
             conn.execute(sa.update(projects).where(projects.c.id == project_id).values(**values))
             _audit(

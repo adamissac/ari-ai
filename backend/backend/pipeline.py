@@ -365,6 +365,10 @@ def run_assessment(ctx: JobContext) -> dict[str, Any]:
             host.terminate(state, code, message)
         raise PermanentJobError(code, str(exc)) from exc
     final = host.assessment.state
+    if final is AssessmentState.AWAITING_APPROVAL:
+        from backend.delivery import auto_approve_pending
+
+        auto_approve_pending(asm_id, host.project_id)
     if final not in TERMINAL_STATES and final is not AssessmentState.AWAITING_APPROVAL:
         host.terminate(
             AssessmentState.FAILED,

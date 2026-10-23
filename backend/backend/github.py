@@ -63,7 +63,7 @@ class GitHubApp:
             )
         self._key = key
         self._client = client or httpx.Client(base_url=self.settings.github_api_url, timeout=20.0)
-        self._tokens: dict[int, _Token] = {}
+        self._tokens: dict[tuple[int, bool], _Token] = {}
 
     def _app_jwt(self) -> str:
         import jwt
@@ -75,8 +75,10 @@ class GitHubApp:
             algorithm="RS256",
         )
 
-    def installation_token(self, installation_id: int) -> str:
-        cached = self._tokens.get(installation_id)
+    def installation_token(self, installation_id: int, *, write: bool = False) -> str:
+        # Write tokens exist only for auto delivery (ADR-0020); every other use reads.
+        key = (installation_id, write)
+        cached = self._tokens.get(key)
         if cached and cached.expires_at - time.time() > 120:
             return cached.value
         r = self._client.post(
@@ -85,11 +87,11 @@ class GitHubApp:
                 "Authorization": f"Bearer {self._app_jwt()}",
                 "Accept": "application/vnd.github+json",
             },
-            json={"permissions": {"contents": "read", "metadata": "read"}},
+            json={"permissions": {"contents": "write" if write else "read", "metadata": "read"}},
         )
         r.raise_for_status()
         data = r.json()
-        self._tokens[installation_id] = _Token(data["token"], time.time() + 3000)
+        self._tokens[key] = _Token(data["token"], time.time() + 3000)
         return data["token"]
 
     def _get(self, installation_id: int, path: str, **params: Any) -> Any:
