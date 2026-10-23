@@ -28,7 +28,8 @@ adds an entry before ending.
   - `npm test --prefix frontend/transport` — 35 passed
   - Playwright e2e stack: **not run** (honest skip). Spec added for the Readiness tab.
 - Decisions: **INFRASTRUCTURE READY — RL BLOCKED**. Distinct from Phase 6 CONDITIONAL GO. Authz tightening left for human review; do not treat infrastructure completeness as customer deployment.
-- Next: human review of this PR; RL owner must supply A–J evidence before any later owner-approval verdict. Do not start Phase 7.
+- PR: https://github.com/adamissac/ari-ai/pull/412 — **left open** (authz tightening; no unapproved serving).
+- Next: human review of #412; RL owner must supply A–J evidence before any later owner-approval verdict. Do not start Phase 7.
 
 ### 2026-10-23 — Cursor (agent, Alan) — Phase 6 Codex P1/P2 before merge
 - Did: on `feat/live-defense-phase6-pilot-audit` (PR #411), locked the application row in `gate_for` and disconnect so leftover execute cannot race a concurrent disconnect; counted `run_assessment` jobs via `assessment_id`; kept recovered `last_error` on the pilot trail as `job.recovered`. Tightening only; `AUTHORIZATION_CHECKS` still 15. No Phase 7.

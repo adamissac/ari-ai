@@ -1,6 +1,6 @@
 # Live Defense Phase 6.5 — RL-gated pilot engineering
 
-Status: **observed on `feat/live-defense-phase6-5-rl-gated-pilot` from live `origin/main`**.
+Status: **observed on `feat/live-defense-phase6-5-rl-gated-pilot` from live `origin/main`**. PR [#412](https://github.com/adamissac/ari-ai/pull/412) is **open** for human review (authz tightening). Do not treat this as merge authorization.
 This is surrounding product infrastructure. It is not customer-production
 evidence, not RL validation, and not authorization to start Phase 7 or contact
 a customer.

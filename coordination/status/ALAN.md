@@ -5,7 +5,7 @@ Branch: `feat/live-defense-phase6-5-rl-gated-pilot`
 Current task: Phase 6.5 RL-gated pilot infrastructure (verdict stays RL BLOCKED; no Phase 7)
 Last remote sync: 2026-10-23, `origin/main` @ `74a0a3c2` (PRs #411 and #410 merged on main)
 API/contract dependencies: `shared` 0.20.0 live-defense RL-gated models; backend `GET /rl-readiness`
-Recent PR/commit: `feat/live-defense-phase6-5-rl-gated-pilot` (Phase 6.5 infra; Codex research untouched)
+Recent PR/commit: https://github.com/adamissac/ari-ai/pull/412 on `feat/live-defense-phase6-5-rl-gated-pilot` (left open; Codex research untouched)
 Verified this session: pytest 25 (phase6_5+authorize); frontend lint/typecheck; vitest 331/78; transport 35. Playwright e2e stack not run.
 Blockers: RL evidence A–J missing; owner-only pilot authorization; live seven-agent run (issue #10); Docker images (INFRA-005)
 Next action: leave PR open for human review of authz tightening; do not start Phase 7; do not provision customer infra
