@@ -6,7 +6,7 @@ coordination/CONTRACTS.md.
 """
 
 SCHEMA_VERSION = (
-    "0.22.0"  # 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING;
+    "0.23.0"  # 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING;
     # 0.6 intelligence memory (PR #39); 0.7 security standards + incidents (PR #49);
     # 0.8 FindingDetail / AssessmentReport response DTOs (additive);
     # 0.9 CheckCategory enum (Probe ids + V0 fixture aliases);
@@ -54,7 +54,9 @@ SCHEMA_VERSION = (
     #      first-responder agent-loop records (cost, latency, transcript,
     #      typed output, execution integrity). predicted_probability stays
     #      null. executed investigative output is not threat confirmation.
-    #      Probe/Patch/Verify privileges are not expanded. Open PR #412 keeps
-    #      0.20.0; this branch does not collide that number. Alembic stays 0015
+    #      Probe/Patch/Verify privileges are not expanded. Alembic stays 0015
     #      (execution lives in existing invocation JSONB).
+    # 0.23 first-responder observability (additive, read-only): investigation
+    #      timeline/summary DTOs, invocation view with queue state, execution
+    #      view mirroring the 7C record (all fields optional), diagnostics.
 )

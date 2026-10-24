@@ -149,6 +149,17 @@ MODELS: tuple[type[BaseModel], ...] = (
     live_defense.PilotLeftoverInventory,
     live_defense.PilotEnablement,
     live_defense.RlReadinessAssessment,
+    # first-responder observability (0.23.0)
+    live_defense.AgentExecutionView,
+    live_defense.InvocationJobView,
+    live_defense.FirstResponderInvocationView,
+    live_defense.InvestigationSnapshotView,
+    live_defense.InvestigationTimeline,
+    live_defense.InvestigationSummary,
+    live_defense.InvestigationJobError,
+    live_defense.JobLatencyStats,
+    live_defense.WaitingJobView,
+    live_defense.FirstResponderDiagnostics,
     # rl
     rl.NodeSignals,
     rl.PlatformFacts,
