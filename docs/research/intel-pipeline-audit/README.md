@@ -111,8 +111,12 @@ recall degrades with corpus size and shared vocabulary.
 ## 7. Tenant/privacy protections
 
 - Source is redacted **before** parse and storage (`ingest.py` — PEM, known
-  token formats, assigned secrets, Bearer, URL credentials). The corpus diff
-  found no un-redacted literal secrets post-#441.
+  token formats, assigned secrets, Bearer, URL credentials), so stored
+  payloads and context packs only ever contain redacted content. The corpus
+  diff found no un-redacted literal secrets post-#441, and the mid-line
+  bare-token residual (`f(password=x)`/`dict(password=x)`/collection
+  closers) is now redacted too — verified leak-free and parse-safe across
+  all 584 tracked `.py` files.
 - Context packs escape content into `<untrusted_repository_data>` blocks,
   mark every chunk `trust="untrusted"`, and never grant permissions
   (`test_context_privacy` suite).
@@ -120,20 +124,26 @@ recall degrades with corpus size and shared vocabulary.
   ready-gating; tenant cross-reads raise `PermissionError`
   (`test_versions_and_tenants_are_isolated`).
 
-## 8. Limitations (explicit)
+## 8. Limitations (explicit — read as "not supported", not "done")
 
 - **Language support: Python only.** Tree-sitter gate + `ast` extraction;
   no JavaScript/TypeScript indexing exists or is claimed here.
 - **Non-literal route decorators are not indexed** (now honestly flagged via
   `IndexIssue`, previously silent).
-- **Mid-line secret expressions**: `f(password=hunter2, user=x)` redacts the
-  bare token only to `,`/`;`/comment/EOL boundaries the new regex handles;
-  secrets *inside* multi-argument expressions remain a documented residual —
-  a regex cannot see call boundaries safely.
-- **71.8% of call edges unresolved** at repo scale — dynamic dispatch,
-  attribute calls, and shadowed names stay honest but limit graph reach.
-- **Secondary-evidence recall** degrades at scale (see §4); ranking favors
-  vocabulary-dense test/contract files over the implementing symbol.
+- **71.8% of call edges are unresolved** at repo scale — dynamic dispatch,
+  attribute calls, and shadowed names are labeled `unresolved`, not guessed.
+  Treat the call graph as a partial map: absence of an edge is not evidence
+  a call does not happen.
+- **Retrieval recall degrades at scale** (§4): primary evidence is recalled;
+  secondary evidence loses to BM25 competition (82%→63%). Packs do not mark
+  expected-but-absent evidence — treat "not in the pack" as "not retrieved",
+  not "not in the repo".
+- **Mid-line secret redaction residual** (fixed for digit-bearing literals):
+  `f(password=hunter2, ...)` / `dict(password=hunter2)` / `{"password":
+  hunter2}` are now redacted. Still unreachable: mid-line bare tokens with no
+  digit (`f(password=hunter)`) and non-first branches of inline
+  conditionals (`password="x" if c else "y"`) — a regex cannot see call or
+  conditional boundaries safely.
 - Indexing is **whole-tree, not incremental**: ari-ai costs ~92s and ~617MB
   heap; fine for pilot repos, a limit for monorepo-scale trees.
 
@@ -141,8 +151,11 @@ recall degrades with corpus size and shared vocabulary.
 
 - `code-intelligence/code_intelligence/extract.py` — `IndexIssue` for
   non-literal/overlong/missing route paths.
+- `code-intelligence/code_intelligence/privacy.py` — mid-line/closer-bound
+  bare secret tokens (digit-bearing) now redacted; identifiers untouched.
 - `code-intelligence/tests/test_ingest_extract.py` —
-  `test_non_literal_route_paths_are_flagged_not_silently_dropped`.
+  `test_non_literal_route_paths_are_flagged_not_silently_dropped` +
+  `test_mid_line_secret_values_are_redacted_without_breaking_parse`.
 - `code-intelligence/tests/test_retrieval_quality.py` — labeled-question
   retrieval eval with a measured regression floor.
 - `code-intelligence/evidence/index_benchmark.py` — reproducible coverage +

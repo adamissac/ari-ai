@@ -191,3 +191,36 @@ def test_non_literal_route_paths_are_flagged_not_silently_dropped(
     }
     assert "app.dynamic_routes.remove" in handlers
     assert not any(h.endswith(("pay_fixture", "control", "no_path")) for h in handlers)
+
+
+def test_mid_line_secret_values_are_redacted_without_breaking_parse(
+    repository: tuple[Path, str],
+) -> None:
+    path, _ = repository
+    secret = "hunter2" + "z" * 12
+    (path / "app/midline.py").write_text(
+        f"def build(s):\n    return dict(password={secret}, user=s.user)\n"
+    )
+    (path / "app/closers.py").write_text(f"def make():\n    return f(password={secret})\n")
+    (path / "app/still_code.py").write_text(
+        "def sig(secret: bytes, x: int) -> bool:\n"
+        "    return webhook_secret_configured and bool(secret)\n"
+    )
+    sha = commit(path)
+    files = GitReader(path).read(sha)[1]
+    assert secret not in "".join(f.content for f in files)
+    midline = next(f for f in files if f.path == "app/midline.py")
+    closers = next(f for f in files if f.path == "app/closers.py")
+    still = next(f for f in files if f.path == "app/still_code.py")
+    assert "password=[REDACTED], user=s.user" in midline.content
+    assert "password=[REDACTED])" in closers.content
+    # Identifiers that merely look secret-keyed keep their references.
+    assert "secret: bytes" in still.content
+    assert "bool(secret)" in still.content
+    parser = PythonExtractor(ref(sha), files)
+    parser.extract()
+    assert not [
+        i
+        for i in parser.issues
+        if i.path in {"app/midline.py", "app/closers.py", "app/still_code.py"}
+    ]
