@@ -30,9 +30,19 @@ agents use. Owner: **Srihith**. Spec: [docs/13](../docs/13_BACKEND_API_DESIGN.md
 | Live Defense shadow pilot: staging apps, ingest-token metadata, recorded health/graph, analyst reviews, shadow `LivePolicyDecision` | `api/live_defense.py` + `live_defense/` + migrations 0010–0011 | implemented; health status always unknown; accept does not execute; shadow decisions are NOT EXECUTED |
 | Live Defense Phase 4 owned-test controls | `api/live_defense_controls.py` + `live_defense/{authorize,adapters,controls,verify,owned_test_app}.py` + migration 0012 | implemented; 15-check fail-closed gate; HMAC loopback adapter; verify uses real probes; HTTP 200 ≠ effectiveness; production not granted; disconnected apps cannot authorize/execute |
 | Live Defense Phase 6 shadow vs enforcement audit | `tests/test_live_defense_phase6.py` | shadow ingest/decision/review/report does not enqueue execute even with grant+channel; queue depth is project-scoped; failed jobs appear on the pilot trail |
+||||||| merged common ancestors
+<<<<<<<<< Temporary merge branch 1
+| Live Defense Phase 6.5 RL-gated pilot infra | `live_defense/{readiness,serving,pilot_guard}.py` + `tests/test_live_defense_phase6_5.py` | categories A–J BLOCKED/NOT VERIFIED; `ready` false; gated apps refuse grant/channel/authorize/leftover execute; v6 not claimed to pass new hosted criteria |
+||||||||| 74a0a3c2
+=========
+=======
+| Live Defense Phase 6.5 RL-gated pilot infra | `live_defense/{readiness,serving,pilot_guard}.py` + `tests/test_live_defense_phase6_5.py` | categories A–J BLOCKED/NOT VERIFIED; `ready` false; gated apps refuse grant/channel/authorize/leftover execute; v6 not claimed to pass new hosted criteria |
 | Live Defense Phase 7A first-responder | `api/live_defense_first_responder.py` + `live_defense/{modes,orchestrator,capabilities,first_responder}.py` + migration 0015 | server-enforced OFF / MONITOR\|SHADOW / ASSISTED RESPONSE; AUTO-EXECUTE rejected; seven-agent registry from real AgentSpecs; OFF cancels FR jobs only; Patch worktree-only; Probe needs AuthorizedScope; handoff delivered only after provider ack |
 | Live Defense Phase 6.5 RL-gated pilot infra | `live_defense/{readiness,serving,pilot_guard}.py` + `tests/test_live_defense_phase6_5.py` | categories A–J BLOCKED/NOT VERIFIED; `ready` false; gated apps refuse grant/channel/authorize/leftover execute; v6 not claimed to pass new hosted criteria |
 | Live Defense Phase 7C agent execution | `live_defense/agent_execution.py` + first-responder worker | Scout/Diagnose run `security_agents.runtime.run_agent` against a mapped snapshot; Probe/Patch not expanded; execution records persist cost/latency/transcript; confirmation stays unverified; schema 0.22.0, Alembic stays 0015 |
+||||||| merged common ancestors
+>>>>>>>>> Temporary merge branch 2
+=======
 | Code-intelligence PayloadStore (Postgres) | `intel_store.py` | implemented; integration-tested with Sarosh's IntelligenceService |
 | Build-recipe generator: on connect (and on `installation`/`installation_repositories` for already-connected repos) drafts `build_recipe.json` (+ `deploy/sandbox_target.py` when needed) from the code-intelligence index, Claude (`recipe` agent) only for identities/routes/harness, validated deterministically, delivered as a PR on `ari/build-recipe` | `recipes.py` | implemented; real git against a file:// remote in tests, GitHub App and Claude faked; live Claude draft not yet exercised |
 | `POST /patches/{id}/pull-request`, `PATCH /expectations/{id}` | — | **not implemented** (MVP cut order / owned by intelligence) |
