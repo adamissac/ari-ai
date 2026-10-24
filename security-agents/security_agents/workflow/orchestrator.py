@@ -11,7 +11,9 @@ from __future__ import annotations
 import contextlib
 import hashlib
 import json
+import threading
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -323,6 +325,7 @@ class Orchestrator:
         self._patch_artifacts: dict[str, dict[str, Any]] = {}
         self._completed_steps: dict[str, StepOutcome] = {}
         self._audit_prev_hash = "0" * 64
+        self._audit_lock = threading.Lock()
         self._baseline_failing: list[str] = []
         self.roe: Any = None
         self.workdir.mkdir(parents=True, exist_ok=True)
@@ -359,15 +362,16 @@ class Orchestrator:
             "at": self.now(),
             "details": details,
         }
-        body = json.dumps(
-            {**payload, "at": payload["at"].isoformat(), "prev_hash": self._audit_prev_hash},
-            sort_keys=True,
-            default=str,
-        )
-        digest = hashlib.sha256(body.encode()).hexdigest()
-        event = AuditEvent(**payload, prev_hash=self._audit_prev_hash, hash=digest)  # type: ignore[arg-type]
-        self._audit_prev_hash = digest
-        self.result.audit.append(event)
+        with self._audit_lock:  # Fortify's step audits from its own thread
+            body = json.dumps(
+                {**payload, "at": payload["at"].isoformat(), "prev_hash": self._audit_prev_hash},
+                sort_keys=True,
+                default=str,
+            )
+            digest = hashlib.sha256(body.encode()).hexdigest()
+            event = AuditEvent(**payload, prev_hash=self._audit_prev_hash, hash=digest)  # type: ignore[arg-type]
+            self._audit_prev_hash = digest
+            self.result.audit.append(event)
         return event
 
     def _budget_left(self) -> bool:
@@ -642,19 +646,29 @@ class Orchestrator:
             self._goto(AssessmentState.REPORTING, "no approved remediation")
             return self._finish()
 
-        # ---- REMEDIATION (Patch <-> Verify sub-machine)
-        self._goto(AssessmentState.REMEDIATION)
-        for finding in approved:
-            self._run_remediation(finding)
-
-        # ---- HARDENING (Fortify) for verified findings
-        self._goto(AssessmentState.HARDENING)
-        for finding in approved:
-            if finding.status == "verified":
-                self._run_fortify(finding)
-
+        self.remediate_and_harden(approved)
         self._goto(AssessmentState.REPORTING)
         return self._finish()
+
+    def remediate_and_harden(
+        self, approved: list[FindingRecord], after_remediation: Callable[[], None] | None = None
+    ) -> None:
+        """REMEDIATION (Patch <-> Verify) then HARDENING (Fortify) for verified findings.
+
+        Fortify's model step reads only the diagnosis, so it runs alongside remediation; its
+        records apply only to a finding Verify accepted."""
+        self._goto(AssessmentState.REMEDIATION)
+        with ThreadPoolExecutor(max_workers=max(1, len(approved))) as pool:
+            advice = {f.finding_id: pool.submit(self._fortify_step, f) for f in approved}
+            for finding in approved:
+                self._run_remediation(finding)
+            if after_remediation is not None:
+                after_remediation()
+            self._goto(AssessmentState.HARDENING)
+            for finding in approved:
+                data, outcome = advice[finding.finding_id].result()
+                if finding.status == "verified":
+                    self._apply_fortify(finding, data, outcome)
 
     def _wait_external(self) -> bool:
         return bool(self.external_pending and self.external_pending())
@@ -1304,23 +1318,18 @@ class Orchestrator:
                 finding.notes.append(f"regression artifact unavailable: {exc}")
         return result
 
-    def _run_fortify(self, finding: FindingRecord) -> None:
-        candidate = finding.candidates[-1] if finding.candidates else None
-        verification = finding.verifications[-1] if finding.verifications else None
-        if candidate is None or verification is None:
-            return
+    def _fortify_step(self, finding: FindingRecord) -> tuple[fortify_agent.FortifyInput, StepOutcome]:
         data = fortify_agent.FortifyInput(
             check_category=finding.hypothesis.suggested_check_category,
             assessment_id=self.config.assessment_id,
             finding_id=finding.finding_id,
-            verification_result_id=verification.id,
+            verification_result_id="pending",  # set from Verify in _apply_fortify
             root_cause_summary=finding.root_cause.summary if finding.root_cause else finding.hypothesis.title,
             cause_class=finding.root_cause.cause_class.value if finding.root_cause else "unknown",
             cause_paths=[
                 s.path for s in (finding.root_cause.cause_spans if finding.root_cause else []) if s.path
             ],
             related_sites=[r.symbol or "" for r in finding.related_sites][:10],
-            tests_added=list(candidate.tests_added),
             affected_symbol=self._handler_symbol(finding),
             weakness_class=finding.hypothesis.weakness_class,
         )
@@ -1341,6 +1350,18 @@ class Orchestrator:
                 "Recommend only what fits this codebase; mappings stay proposed until a human accepts them.",
             ),
             input_ref=f"fortify:{finding.finding_id}",
+        )
+        return data, outcome
+
+    def _apply_fortify(
+        self, finding: FindingRecord, data: fortify_agent.FortifyInput, outcome: StepOutcome
+    ) -> None:
+        candidate = finding.candidates[-1] if finding.candidates else None
+        verification = finding.verifications[-1] if finding.verifications else None
+        if candidate is None or verification is None:
+            return
+        data = data.model_copy(
+            update={"verification_result_id": verification.id, "tests_added": list(candidate.tests_added)}
         )
         if not isinstance(outcome.output, fortify_agent.FortifyOutput):
             finding.notes.append(f"fortify failed: {outcome.run.error_code}")

@@ -7,7 +7,7 @@ from security_agents.workflow import AssessmentState
 
 from . import fake_agents
 from .fake_agents import _last_json, _target_id
-from .test_e2e_replay import EXPECTED_AGENT_ORDER, build
+from .test_e2e_replay import assert_agent_order, build
 
 OWNERSHIP = "access_control.ownership"
 
@@ -80,7 +80,7 @@ def test_a_probe_that_only_uses_tool_output_reaches_all_seven_roles(intel, drive
     assert finding.validation.outcome is ValidationOutcome.CONFIRMED, finding.validation.observations
     assert finding.validation.parameters["route_id"] == "payment_detail"
     assert res.state is AssessmentState.COMPLETED, res.error_detail
-    assert [r.agent.value for r in res.runs] == EXPECTED_AGENT_ORDER
+    assert_agent_order([r.agent.value for r in res.runs])
 
 
 def _probe_ctx(intel, scope):

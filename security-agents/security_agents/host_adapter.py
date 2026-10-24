@@ -979,14 +979,7 @@ class HostOrchestrator:
             orchestrator._finish()
             self._settle(orchestrator)
             return
-        orchestrator._goto(AssessmentState.REMEDIATION)
-        for finding in approved:
-            orchestrator._run_remediation(finding)
-        _repair_functional(host, orchestrator)
-        orchestrator._goto(AssessmentState.HARDENING)
-        for finding in approved:
-            if finding.status == "verified":
-                orchestrator._run_fortify(finding)
+        orchestrator.remediate_and_harden(approved, lambda: _repair_functional(host, orchestrator))
         orchestrator._goto(AssessmentState.REPORTING)
         orchestrator._finish()
         self._settle(orchestrator)
