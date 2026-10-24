@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Pilot security hardening for external design-partner readiness: anchor user identity on immutable `github_id` so a freed GitHub login cannot take over an existing account (fixes an account-takeover path); require a GitHub App installation for repository connects outside dev/test (name-only connects squatted globally-unique repo names with no proof of access); add owner `POST /repositories/{id}/disconnect` + `/reconnect` (migration `0016`) that stops snapshots, assessments, push automation, and live commit reads; move the per-user rate limit into `require_user` so every authed route is covered plus dedicated budgets for snapshot/RL/connect enqueues; re-check membership every 15 s on the assessment SSE stream; fix `ArtifactStore.put_bytes` claiming `redacted=True` without redacting; gate `/api/openapi.json` to dev; audit `auth.login` events. Findings and gate: `docs/PILOT_SECURITY_CHECKLIST.md`.
+
 - Scout specialist now trains on the labelled commit-eval set (each case's planted edit vs. its original code as a minimal positive/negative pair) and was promoted after beating the static-pattern baseline (macro F1 0.349 vs 0.084); new checkpoint committed under `specialists/checkpoints/scout/`.
 
 - Assessment UI: agents the orchestrator skipped now stay visible as 'Not needed' with the recorded reason (e.g. 'no confirmed findings'); on failed/cancelled runs they show 'Not reached'. Replaces the ambiguous 'not run' label on the relay and team list.
