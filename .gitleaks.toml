@@ -45,3 +45,10 @@ regexes = [
 description = "SHA-256 file digests for *api.py paths in evidence JSON"
 regexTarget = "line"
 regexes = ['''"[^"]*api\.py":\s*"[0-9a-f]{64}"''']
+
+# rehearsal/ledgerlite-v2 history: one commit's README showed curl examples with
+# dummy fixture tokens (Bearer tok-alice / tok-bob). Already removed at that
+# branch's HEAD (f25d1fb3); the blob survives only in the scanned history.
+[[allowlists]]
+description = "Rehearsal-branch fixture token curl example, removed at HEAD"
+commits = ['''839737fc3863e6a7dd137188bb85ba59d450a16c''']
