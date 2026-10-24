@@ -980,3 +980,27 @@ def test_patch_prompt_carries_the_cause_code_and_recipe_test_roots(intel):
     assert "def refunds_for(self, payment_id: str)" in prompt
     assert "cause_spans" not in prompt.split("cause_code")[0]  # not duplicated in the plan
     assert "snapshot_files" not in prompt
+
+
+def test_added_tests_can_run_against_the_unpatched_code(intel, tmp_path, driver):
+    from security_agents.agents import AgentName
+    from security_agents.tools import PatchWorktree
+    from security_agents.tools.services import TestRunner
+
+    from .conftest import make_ctx
+
+    wt = PatchWorktree.create(intel, tmp_path / "wt", ["payments_lite/app.py"])
+    app = "payments_lite/app.py"
+    wt.write_file(app, (intel.snapshot.root / app).read_text() + "\n# fixed\n")
+    wt.write_file(
+        "tests/test_marker.py",
+        "import payments_lite.app as m\n\n\ndef test_fixed():\n"
+        "    assert '# fixed' in open(m.__file__).read()\n",
+    )
+    runner = TestRunner(driver=driver, workspace_provider=lambda _ctx: wt)
+    ctx = make_ctx(AgentName.PATCH, intel=intel)
+    patched = runner.run(ctx, "added_tests", [])
+    unpatched = runner.run(ctx, "added_tests_unpatched", [])
+    assert patched["passed"] == 1 and not patched["failing_tests"], patched
+    assert unpatched["failing_tests"] == ["tests/test_marker.py::test_fixed"], unpatched
+    assert not list(tmp_path.glob("unpatched-*"))  # the temporary copy is removed
