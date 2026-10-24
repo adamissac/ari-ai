@@ -64,7 +64,7 @@
 .rail-branch { color: var(--color-faint); }
 .rail-nav { display: flex; flex-direction: column; gap: 18px; }
 .rail-group { display: flex; flex-direction: column; gap: 2px; }
-.rail-group-label { font-family: var(--font-mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--color-faint); padding: 0 10px; margin-bottom: 4px; }
+.rail-group-label { font-family: var(--font-mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--color-faint); padding: 0 10px; margin-bottom: 4px; white-space: nowrap; }
 .rail-link { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 6px;
   font-size: 13px; line-height: 1.35; color: var(--color-muted); text-decoration: none;
   transition: background-color 180ms var(--ease-smooth), color 180ms var(--ease-smooth); }
@@ -86,6 +86,10 @@
 :root:not(:has(.hero-full)) .rail-branch { color: rgb(255 247 242 / 35%); }
 :root:not(:has(.hero-full)) .rail-group-label { color: rgb(255 247 242 / 30%); }
 :root:not(:has(.hero-full)) .rail-foot { border-top-color: var(--ui-edge); }
+
+/* commit-stage is a full-bleed viewport breakout for the demo pages; inside the
+   sidebar layout it would overlap the rail, so contain it to the content column. */
+.project-layout .commit-stage { margin-inline: 0; padding-inline: 28px; border-radius: 18px; }
 
 @media (max-width: 1023px) {
   .project-layout { grid-template-columns: minmax(0, 1fr); gap: 20px; }
