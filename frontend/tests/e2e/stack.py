@@ -284,12 +284,28 @@ def main(argv: list[str]) -> int:
             .raise_for_status()
             .json()["id"]
         )
+        # The onboarding journey asserts test_event is not done before its own
+        # event — other specs ingest owned_staging windows into E2E_PROJECT_ID,
+        # so it needs its own pristine project+repo binding.
+        onb_pid = (
+            alice.post("/projects", json={"name": "onboarding (e2e)", "settings": {"delivery_mode": "manual"}})
+            .raise_for_status()
+            .json()["id"]
+        )
+        onb_rid = (
+            alice.post(
+                f"/projects/{onb_pid}/repositories", json={"full_name": "acme/onboarding-e2e"}
+            )
+            .raise_for_status()
+            .json()["id"]
+        )
         bindings.write_text(
             json.dumps(
                 [
                     {"repo_id": rid, "local_path": str(repo), "subdir": "."},
                     {"repo_id": workspace_rid, "local_path": str(repo), "subdir": "."},
                     {"repo_id": ld_rid, "local_path": str(repo), "subdir": "."},
+                    {"repo_id": onb_rid, "local_path": str(repo), "subdir": "."},
                 ]
             )
         )
@@ -441,6 +457,8 @@ def main(argv: list[str]) -> int:
                 "E2E_WORKSPACE_PROJECT_ID": workspace_pid,
                 "E2E_WORKSPACE_REPO_ID": workspace_rid,
                 "E2E_WORKSPACE_REPO": workspace_name,
+                "E2E_ONBOARDING_PROJECT_ID": onb_pid,
+                "E2E_ONBOARDING_REPO_ID": onb_rid,
                 "E2E_COMMIT": sha,
                 "E2E_WEBHOOK_SECRET": WEBHOOK_SECRET,
                 "E2E_REC_ID": rec_id,
