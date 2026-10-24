@@ -53,10 +53,12 @@ scripted turns are identifiable in stored data, matching the "labelled" contract
 
 ## Leg 3 — Operator deletion procedure
 
-`test_operator_deletion_procedure`. **Finding:** foreign keys have **no cascades**
-— there is no single-row delete. The canonical operator entry point is
-`purge_project` (`backend/privacy.py`, landed via PR #535 +
-[docs/security/TENANT_DATA_PROTECTION.md](https://github.com/adamissac/ari-ai/pull/535) (lands with PR #535)),
+`test_operator_deletion_procedure` (direct-SQL teardown) + PR #535's own
+`test_purge_project_deletes_every_surface` (all 17 adversarial tests pass —
+verified by re-running them on the PR's code). **Finding:** foreign keys have
+**no cascades** — there is no single-row delete. The canonical operator entry
+point is `purge_project` (`backend/privacy.py`, PR #535 +
+[TENANT_DATA_PROTECTION](https://github.com/adamissac/ari-ai/pull/535)),
 which performs the org-scoped teardown below:
 
 1. Delete org-scoped rows across every table having `organization_id` (enumerated
@@ -105,18 +107,31 @@ merge before indexing pilot customer code.**
 
 ## Leg 7 — Production journey (LIVE)
 
-**Status: blocked pending two inputs** (requested from owner 2026-10-24):
+**Status: blocked pending owner setup** (requested 2026-10-24; session-cookie
+sharing declined by owner — replaced with the authenticated-browser path below).
 
-1. `adamissac/pilot-rehearsal-target` — empty private repo + GitHub App installed.
-   Prepared target: `ledgerlite` FastAPI service with a planted access-control
-   defect (`GET /accounts/{id}` lacks the ownership check) so the
-   `access_control.ownership` template can validate end-to-end; 6 unit tests pass
-   locally.
-2. `ARI_PROD_SESSION` — `hackatl_session` cookie for the Vercel deployment.
+Prepared target (ready to push): `ledgerlite` FastAPI service with a planted
+access-control defect (`GET /accounts/{id}` lacks the ownership check) so the
+`access_control.ownership` template can validate end-to-end; 6 unit tests pass
+locally at `/Users/devin/repos/pilot-rehearsal-target`.
 
-Once unblocked: connect repo → snapshot/index → manual assessment (live Claude,
-bounded by the 400k/$10 cap) → findings → approval → PR delivery → verify →
-results retrieval → revoke.
+**Owner setup actions:**
+1. Create GitHub repo `adamissac/pilot-rehearsal-target` — private, empty (no
+   README/license).
+2. Install the Ari GitHub App on it (or confirm the install already covers it).
+   Minimum permissions for the full journey: **Contents read+write** (indexing +
+   fix-PR delivery), **Pull requests read+write** (fix PR), **Metadata read**.
+   A read-only install (Contents read + Metadata read) supports only the
+   index/assess legs — the fix-PR leg would be skipped and reported untested.
+3. Authenticate the rehearsal browser: open this session's **Desktop tab** and
+   click SIGN IN → GitHub OAuth on the live VM browser. The session cookie
+   stays inside the browser; it is never typed, extracted, or stored as text.
+   (Alternative: an approved test-user GitHub login, same flow.)
+4. Then the rehearsal drives the real UI journey in-browser — connect repo →
+   index → live assessment → findings → approval → fix PR → verify → results.
+   API-level probes (cancel, cross-ID checks) run via in-page `fetch` so the
+   cookie never leaves the browser. Org-B probes on prod need a second GitHub
+   login; without one, cross-tenant evidence remains the local leg's.
 
 ## Open findings for the launch decision
 
@@ -125,9 +140,15 @@ results retrieval → revoke.
    store needs refcounting before per-tenant unlink. Drill verified the data is
    gone afterward (uniform 404). No self-serve delete or TTL.
 2. **Only 3 executable Probe check templates** — other CWEs are flagged-not-validated; must be reflected in customer-facing claims (done in FEATURE_MATRIX).
-3. **Isolation = membership checks + RLS on source-content tables** — RLS now
-   guards `index_payloads`/`artifacts` (PR #535); membership checks remain the
-   primary boundary elsewhere and are covered by the ID-substitution drill.
+3. **Isolation = membership checks + RLS on source-content tables** — PR #535
+   adds FORCE RLS on `index_payloads`/`index_snapshots` via a transaction-local
+   `ari.project_id` GUC (verified firsthand: 17/17 adversarial tests pass on the
+   branch, including `test_rls_blocks_reads_without_tenant_context`). Membership
+   checks remain the primary boundary elsewhere and are covered by the
+   ID-substitution drill.
 4. **Assistant-role turns are re-sent unredacted** to the provider (thinking-block
    signature constraint) — disclosed; mitigated by inbound redaction.
 5. **Prod leg not yet executed** — this report is CONDITIONAL until Leg 7 lands.
+6. **PR #535 (RLS + `purge_project`) is verified on its branch but NOT deployed**
+   — prod runs `main`; merge it before relying on RLS/`purge_project` in prod,
+   and re-check `readyz` + a tenant drill after deploy.
