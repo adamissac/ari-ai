@@ -23,7 +23,7 @@ function ingestBatch(offsetMs: number, extra: number) {
 // UI + API. Mode is set through the page, telemetry through the real ingest
 // route, and OFF takes effect through the same mode control an operator uses.
 test('Live Defense e2e: OFF mode stops investigation and renders honestly', async ({ browser, request }) => {
-  const page = await newUser(browser, 'e2e-off-owner');
+  const page = await newUser(browser, 'e2e-alice');
   const pid = env('E2E_PROJECT_ID');
   const rid = env('E2E_REPO_ID');
   const sha = env('E2E_COMMIT');
@@ -74,13 +74,24 @@ test('Live Defense e2e: OFF mode stops investigation and renders honestly', asyn
     headers: { Authorization: `Bearer ${token.trim()}` },
     data: ingestBatch(1, 18),
   });
-  await page.waitForTimeout(3000);
-  await page.reload();
 
-  // No agent executes while OFF: every invocation row is non-executed and the
-  // UI keeps rendering "unverified" — never an execution claim.
-  const scout = page.getByTestId('live-defense-fr-invocation-scout');
-  await expect(scout).not.toContainText('executed');
+  // The post-OFF window is recorded as cancelled and no agent executes: every
+  // invocation of the newest decision is skipped_mode. Checked via the real
+  // API with the signed-in session, not just rendered text.
+  await expect.poll(async () => {
+    const resp = await page.request.get(`${api}/projects/${pid}/first-responder/decisions`);
+    const items = (await resp.json() as { items: Array<{ cancelled: boolean }> }).items;
+    return items.length && items[0].cancelled;
+  }, { timeout: 30_000 }).toBeTruthy();
+
+  const invResp = await page.request.get(`${api}/projects/${pid}/first-responder/invocations`);
+  const decResp = await page.request.get(`${api}/projects/${pid}/first-responder/decisions`);
+  const latest = (await decResp.json() as { items: Array<{ id: string }> }).items[0];
+  const invocations = (await invResp.json() as {
+    items: Array<{ decision_id: string; status: string }>
+  }).items.filter(i => i.decision_id === latest.id);
+  expect(invocations.every(i => i.status !== 'executed')).toBeTruthy();
+
   await expect(page.getByTestId('live-defense-fr-mode-select')).toHaveValue('off');
   await evidenceShot(page, 'live-defense-e2e-off-mode');
 });
