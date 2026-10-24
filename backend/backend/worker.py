@@ -32,6 +32,14 @@ class JobCancelled(Exception):
     pass
 
 
+class JobDeferred(Exception):
+    """Handler is waiting on a prerequisite. Do not consume a failure attempt."""
+
+    def __init__(self, delay_s: float = 2.0, message: str = "prerequisite not ready") -> None:
+        super().__init__(message)
+        self.delay_s = delay_s
+
+
 class PermanentJobError(Exception):
     """Non-retryable failure (bad input, policy denial). Recorded, not retried."""
 
@@ -119,6 +127,10 @@ def run_one(owner: str, kinds: list[str] | None = None) -> str | None:
             if not jobs.complete(conn, job.id, owner, result):
                 raise JobCancelled(f"{job.id}: cancelled or lease lost before complete")
         log.info("job %s (%s) succeeded", job.id, job.kind)
+    except JobDeferred as exc:
+        with transaction() as conn:
+            jobs.defer(conn, job.id, owner, delay_s=exc.delay_s)
+        log.info("job %s (%s) deferred: %s", job.id, job.kind, exc)
     except JobCancelled as exc:
         with transaction() as conn:
             jobs.fail(

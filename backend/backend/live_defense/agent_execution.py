@@ -25,6 +25,7 @@ from backend.artifacts import ArtifactStore
 from backend.settings import get_settings
 from shared.assessment import AgentName
 from shared.base import utcnow
+from shared.errors import ErrorCode as SharedErrorCode
 from shared.evidence import ArtifactKind
 from shared.live_defense import (
     FIRST_RESPONDER_DEADLINE_S,
@@ -42,10 +43,12 @@ log = logging.getLogger("backend.live_defense.agent_execution")
 GATEWAY_OVERRIDE: Any | None = None
 
 INVESTIGATIVE_LIVE = frozenset({AgentName.scout, AgentName.diagnose})
+MIN_PROVIDER_START_S = 1.0
+FIXTURE_LABELS_ENV = "SECURITY_AGENTS_LABELS"
 
 
 class PrerequisiteNotReady(RuntimeError):
-    """Diagnose ran before Scout finished. Worker retries this."""
+    """Diagnose ran before Scout finished. Worker retries this without burning attempts."""
 
 
 @dataclass(frozen=True)
@@ -73,38 +76,94 @@ def _fake_gateway(snapshot_root: Path) -> Any:
     return ProviderGateway(FakeLLM(all_scripts(_fake_scripts_root(snapshot_root))))
 
 
+def _sa_error_code(code: Any) -> Any:
+    from security_agents.contracts import ErrorCode
+
+    name = getattr(code, "value", str(code or ""))
+    mapping = {
+        SharedErrorCode.LLM_UNAVAILABLE.value: ErrorCode.LLM_UNAVAILABLE,
+        SharedErrorCode.LLM_REFUSAL.value: ErrorCode.LLM_UNAVAILABLE,
+        SharedErrorCode.LLM_OUTPUT_TRUNCATED.value: ErrorCode.SCHEMA_INVALID,
+        SharedErrorCode.BUDGET_EXHAUSTED.value: ErrorCode.BUDGET_EXHAUSTED,
+        SharedErrorCode.CANCELLED.value: ErrorCode.CANCELLED,
+        SharedErrorCode.SCHEMA_INVALID.value: ErrorCode.SCHEMA_INVALID,
+        SharedErrorCode.SNAPSHOT_NOT_READY.value: ErrorCode.SNAPSHOT_NOT_READY,
+    }
+    if name in mapping:
+        return mapping[name]
+    try:
+        return ErrorCode(name)
+    except ValueError:
+        return ErrorCode.LLM_UNAVAILABLE
+
+
 class _BackendGateway:
     """Adapter so first-responder live calls go through ``backend.llm`` (ADR-0007)."""
 
-    def __init__(self, inner: Any) -> None:
+    def __init__(self, inner: Any, *, cancelled: Any | None = None) -> None:
         self._inner = inner
-        self.mode = str(inner.provider_mode)
+        self.mode = str(getattr(inner, "provider_mode", None) or getattr(inner, "mode", "live"))
+        self._cancelled = cancelled
+        if cancelled is not None:
+            inner.check_cancelled = self._raise_if_cancelled
+
+    def _raise_if_cancelled(self) -> None:
+        from backend.llm import LLMError
+
+        if self._cancelled and self._cancelled():
+            raise LLMError(SharedErrorCode.CANCELLED, "first-responder cancelled or OFF")
 
     def model_for(self, agent: Any) -> str:
         name = getattr(agent, "value", agent)
         return str(self._inner.model_for(str(name)))
 
     def complete(self, request: Any) -> Any:
-        from security_agents.llm.types import LLMResponse, LLMUsage
+        from backend.llm import LLMError
+        from security_agents.contracts import ErrorCode
+        from security_agents.llm.types import LLMResponse, LLMUnavailable
 
-        resp = self._inner.create_message(
-            agent=getattr(request.agent, "value", str(request.agent)),
-            system=request.system,
-            messages=request.messages,
-            tools=request.tools,
-            max_tokens=request.max_tokens,
-        )
-        usage = resp.usage or {}
+        try:
+            self._raise_if_cancelled()
+        except LLMError as exc:
+            raise LLMUnavailable(str(exc), code=_sa_error_code(exc.code)) from exc
+        remaining = float(getattr(request, "timeout_s", 0.0) or 0.0)
+        if remaining < MIN_PROVIDER_START_S:
+            raise LLMUnavailable(
+                "DEADLINE_EXCEEDED: not enough time to start a provider request",
+                code=ErrorCode.BUDGET_EXHAUSTED,
+            )
+        deadline = time.monotonic() + remaining
+        try:
+            resp = self._inner.create_message(
+                agent=getattr(request.agent, "value", str(request.agent)),
+                system=request.system,
+                messages=request.messages,
+                tools=request.tools,
+                max_tokens=request.max_tokens,
+                timeout_s=remaining,
+                deadline_monotonic=deadline,
+            )
+        except LLMError as exc:
+            raise LLMUnavailable(str(exc), code=_sa_error_code(exc.code)) from exc
+        usage = dict(resp.usage or {})
+        if self.mode == "live" and not _usage_is_billable(usage):
+            raise LLMUnavailable(
+                "BUDGET_EXHAUSTED: live provider returned no required usage; refusing silent $0",
+                code=ErrorCode.BUDGET_EXHAUSTED,
+            )
+        try:
+            parsed = _llm_usage(usage)
+        except (TypeError, ValueError) as exc:
+            raise LLMUnavailable(
+                "BUDGET_EXHAUSTED: malformed live usage; refusing silent $0",
+                code=ErrorCode.BUDGET_EXHAUSTED,
+            ) from exc
         return LLMResponse(
             content=list(resp.content),
             stop_reason=str(resp.stop_reason or "end_turn"),
-            usage=LLMUsage(
-                input_tokens=int(usage.get("input_tokens") or 0),
-                output_tokens=int(usage.get("output_tokens") or 0),
-                cache_read_input_tokens=int(usage.get("cache_read_input_tokens") or 0),
-            ),
+            usage=parsed,
             model=str(resp.model),
-            provider_mode=self.mode,  # type: ignore[arg-type]
+            provider_mode=self.mode if self.mode in {"fake", "live", "replay"} else "live",
             response_id=resp.id,
             stop_details=resp.stop_details,
         )
@@ -112,25 +171,53 @@ class _BackendGateway:
     def cost_usd(self, model: str, usage: Any) -> float:
         from backend.llm import cost_usd
 
-        return cost_usd(
-            model,
-            {
-                "input_tokens": getattr(usage, "input_tokens", 0),
-                "output_tokens": getattr(usage, "output_tokens", 0),
-                "cache_read_input_tokens": getattr(usage, "cache_read_input_tokens", 0),
-            },
+        payload = {
+            "input_tokens": int(getattr(usage, "input_tokens", 0) or 0),
+            "output_tokens": int(getattr(usage, "output_tokens", 0) or 0),
+            "cache_read_input_tokens": int(getattr(usage, "cache_read_input_tokens", 0) or 0),
+            "cache_creation_input_tokens": int(
+                getattr(usage, "cache_creation_input_tokens", 0) or 0
+            ),
+        }
+        return cost_usd(model, payload)
+
+
+def _usage_is_billable(usage: dict[str, Any]) -> bool:
+    return any(
+        key in usage and usage[key] is not None
+        for key in (
+            "input_tokens",
+            "output_tokens",
+            "cache_read_input_tokens",
+            "cache_creation_input_tokens",
         )
+    )
 
 
-def build_gateway(snapshot_root: Path) -> Any:
+def _llm_usage(usage: dict[str, Any]) -> Any:
+    from security_agents.llm.types import LLMUsage
+
+    return LLMUsage(
+        input_tokens=int(usage.get("input_tokens") or 0),
+        output_tokens=int(usage.get("output_tokens") or 0),
+        cache_read_input_tokens=int(usage.get("cache_read_input_tokens") or 0),
+        cache_creation_input_tokens=int(usage.get("cache_creation_input_tokens") or 0),
+    )
+
+
+def build_gateway(snapshot_root: Path, *, cancelled: Any | None = None) -> Any:
     if GATEWAY_OVERRIDE is not None:
-        return GATEWAY_OVERRIDE()
+        override = GATEWAY_OVERRIDE()
+        if cancelled is not None and hasattr(override, "_cancelled"):
+            override._cancelled = cancelled
+        return override
     from backend import llm
 
     if llm.TRANSPORT_OVERRIDE is not None:
         return _fake_gateway(snapshot_root)
     if llm.llm_mode() == "live":
-        return _BackendGateway(llm.build_gateway())
+        inner = llm.build_gateway()
+        return _BackendGateway(inner, cancelled=cancelled)
     raise RuntimeError("LLM_UNAVAILABLE: no first-responder provider (no key, not fake)")
 
 
@@ -186,16 +273,12 @@ def pin_snapshot(*, repo_id: str, commit_sha: str, snapshot_id: str, dest: Path)
     )
 
 
-def _labels_path(snapshot: Any) -> Path | None:
-    env = os.environ.get("SECURITY_AGENTS_LABELS")
-    if env:
-        path = Path(env)
-        return path if path.is_file() else None
-    candidate = snapshot.root / "labels.yaml"
-    if candidate.is_file():
-        return candidate
-    parent = snapshot.root.parent / "labels.yaml"
-    return parent if parent.is_file() else None
+def _explicit_fixture_labels() -> Path | None:
+    env = os.environ.get(FIXTURE_LABELS_ENV)
+    if not env:
+        return None
+    path = Path(env)
+    return path if path.is_file() else None
 
 
 def _recipe_strip_prefix(snapshot: Any) -> str | None:
@@ -213,11 +296,32 @@ def _recipe_strip_prefix(snapshot: Any) -> str | None:
     return f"{target_dir}/"
 
 
-def load_intel(snapshot: Any) -> Any:
+def _assert_authorized_tree(
+    snapshot: Any, *, repo_id: str, commit_sha: str, snapshot_id: str
+) -> None:
+    if (
+        str(snapshot.repo_id) != repo_id
+        or str(snapshot.commit_sha) != commit_sha
+        or str(snapshot.snapshot_id) != snapshot_id
+    ):
+        raise RuntimeError("SNAPSHOT_NOT_READY: pinned tree does not match the authorized snapshot")
+
+
+def load_intel(
+    snapshot: Any,
+    *,
+    project_id: str,
+    repo_id: str,
+    commit_sha: str,
+    snapshot_id: str,
+) -> Any:
+    """Canonical intelligence for indexed repos. LocalIntel is fixture/test only."""
     from security_agents.intel import LocalIntel, load_expectations
 
-    labels = _labels_path(snapshot)
-    expectations = None
+    _assert_authorized_tree(
+        snapshot, repo_id=repo_id, commit_sha=commit_sha, snapshot_id=snapshot_id
+    )
+    labels = _explicit_fixture_labels()
     if labels is not None:
         expectations = load_expectations(
             labels,
@@ -225,7 +329,64 @@ def load_intel(snapshot: Any) -> Any:
             commit_sha=snapshot.commit_sha,
             strip_prefix=_recipe_strip_prefix(snapshot),
         )
-    return LocalIntel(snapshot, expectations=expectations)
+        return LocalIntel(snapshot, expectations=expectations)
+    return _canonical_intel(
+        snapshot,
+        project_id=project_id,
+        repo_id=repo_id,
+        commit_sha=commit_sha,
+        snapshot_id=snapshot_id,
+    )
+
+
+def _canonical_intel(
+    snapshot: Any,
+    *,
+    project_id: str,
+    repo_id: str,
+    commit_sha: str,
+    snapshot_id: str,
+) -> Any:
+    from backend.intelligence import repository_service, snapshot_ref
+    from security_agents.contracts import PlatformError
+    from security_agents.intel.code_intelligence_adapter import CodeIntelligenceAdapter
+
+    try:
+        ref = snapshot_ref(snapshot_id)
+    except (KeyError, ValueError) as exc:
+        raise RuntimeError("SNAPSHOT_NOT_READY: authoritative snapshot context is missing") from exc
+    if (
+        ref.project_id != project_id
+        or ref.repo_id != repo_id
+        or ref.commit_sha != commit_sha
+        or ref.snapshot_id != snapshot_id
+    ):
+        raise RuntimeError(
+            "SNAPSHOT_NOT_READY: snapshot is not bound to the authorized project/repo/commit"
+        )
+    binding = _binding_for(repo_id) or {}
+    prefix = str(binding.get("subdir") or "").strip("/")
+    if prefix == ".":
+        prefix = ""
+    recipe_prefix = _recipe_strip_prefix(snapshot)
+    if recipe_prefix:
+        prefix = "/".join(p for p in (prefix, recipe_prefix.strip("/")) if p)
+    try:
+        service = repository_service(project_id, repo_id, include_prefix=prefix)
+        adapter = CodeIntelligenceAdapter(
+            service=service, ref=ref, workspace=snapshot.root, path_prefix=prefix
+        )
+        adapter.verify_workspace()
+        adapter.symbols()
+    except PlatformError as exc:
+        raise RuntimeError(f"{exc.code.value}: {exc.message}") from exc
+    except Exception as exc:
+        raise RuntimeError(
+            "SNAPSHOT_NOT_READY: canonical intelligence is missing for this snapshot"
+        ) from exc
+    if adapter.snapshot.repo_id != repo_id or adapter.snapshot.commit_sha != commit_sha:
+        raise RuntimeError("SNAPSHOT_NOT_READY: intelligence adapter drifted from the mapping")
+    return adapter
 
 
 def _sa_name(agent: AgentName) -> Any:
@@ -272,8 +433,9 @@ def _record(
     hypothesis_count: int | None,
     integrity: ExecutionIntegrity,
 ) -> AgentExecutionRecord:
+    mode = provider_mode if provider_mode in {"fake", "live", "none"} else "none"
     return AgentExecutionRecord(
-        provider_mode=provider_mode if provider_mode in {"fake", "live", "none"} else "none",
+        provider_mode=mode,
         model_id=model_id,
         cost_usd=cost_usd,
         latency_ms=latency_ms,
@@ -288,6 +450,12 @@ def _record(
         hypothesis_count=hypothesis_count,
         execution_integrity=integrity,
     )
+
+
+def _normalize_provider_mode(mode: str | None, *, processed: bool) -> str:
+    if mode in {"fake", "live"}:
+        return mode
+    return "none" if not processed else "live"
 
 
 def _scout_input(decision: FirstResponderDecision, intel: Any) -> Any:
@@ -330,6 +498,44 @@ def _diagnose_input(decision: FirstResponderDecision, scout_output: dict[str, An
     )
 
 
+def _persist_loop_artifacts(
+    *,
+    project_id: str,
+    agent: AgentName,
+    outcome: Any,
+    scout_data: Any,
+    integrity: ExecutionIntegrity,
+    hypotheses: list[dict[str, Any]],
+) -> tuple[str, str]:
+    from backend.db import transaction as db_transaction
+
+    with db_transaction() as persist:
+        transcript_id = _persist_json(
+            persist,
+            project_id,
+            outcome.record.to_json(),
+            ArtifactKind.llm_transcript,
+        )
+    payload = {
+        "agent": agent.value,
+        "ok": outcome.ok,
+        "typed_output": outcome.output is not None,
+        "output": outcome.output.model_dump(mode="json") if outcome.output is not None else None,
+        "hypotheses": hypotheses,
+        "execution_integrity": integrity.value,
+        "llm_prose_is_not_confirmation": True,
+        "predicted_probability": None,
+        "error_code": outcome.run.error_code.value if outcome.run.error_code else None,
+        "error_detail": outcome.run.error_detail,
+        "provider_mode": outcome.record.provider_mode,
+        "model": outcome.record.model,
+        "usage": outcome.record.usage.model_dump(mode="json") if outcome.record.usage else None,
+    }
+    with db_transaction() as persist:
+        output_id = _persist_json(persist, project_id, payload, ArtifactKind.tool_output)
+    return transcript_id, output_id
+
+
 def run_investigative(
     *,
     agent: AgentName,
@@ -345,12 +551,21 @@ def run_investigative(
     started = utcnow()
     t0 = time.monotonic()
     work = Path(tempfile.mkdtemp(prefix=f"fr-{agent.value}-"))
+    provider_mode = "none"
+    processed = False
     try:
         snapshot = pin_snapshot(
             repo_id=repo_id, commit_sha=commit_sha, snapshot_id=snapshot_id, dest=work
         )
-        intel = load_intel(snapshot)
-        gateway = build_gateway(snapshot.root)
+        intel = load_intel(
+            snapshot,
+            project_id=decision.project_id,
+            repo_id=repo_id,
+            commit_sha=commit_sha,
+            snapshot_id=snapshot_id,
+        )
+        gateway = build_gateway(snapshot.root, cancelled=cancelled)
+        provider_mode = _normalize_provider_mode(getattr(gateway, "mode", None), processed=False)
         from security_agents.agents import ALL_SPECS
         from security_agents.agents import diagnose as diagnose_agent
         from security_agents.agents import scout as scout_agent
@@ -394,18 +609,10 @@ def run_investigative(
             input_ref=f"first-responder:{decision.id}:{agent.value}",
             cancelled=cancelled,
         )
+        processed = True
         latency_ms = int((time.monotonic() - t0) * 1000)
-        provider_mode = str(outcome.record.provider_mode)
+        provider_mode = _normalize_provider_mode(str(outcome.record.provider_mode), processed=True)
         usage = outcome.record.usage
-        from backend.db import transaction as db_transaction
-
-        with db_transaction() as persist:
-            transcript_id = _persist_json(
-                persist,
-                decision.project_id,
-                outcome.record.to_json(),
-                ArtifactKind.llm_transcript,
-            )
         hypotheses: list[dict[str, Any]] = []
         integrity = ExecutionIntegrity.failed
         typed = outcome.output is not None
@@ -419,29 +626,20 @@ def run_investigative(
                 integrity = ExecutionIntegrity.checked if _plan[2] else ExecutionIntegrity.failed
             except Exception:
                 integrity = ExecutionIntegrity.failed
-        payload = {
-            "agent": agent.value,
-            "ok": outcome.ok,
-            "typed_output": typed,
-            "output": outcome.output.model_dump(mode="json")
-            if outcome.output is not None
-            else None,
-            "hypotheses": hypotheses,
-            "execution_integrity": integrity.value,
-            "llm_prose_is_not_confirmation": True,
-            "predicted_probability": None,
-            "error_code": outcome.run.error_code.value if outcome.run.error_code else None,
-            "error_detail": outcome.run.error_detail,
-        }
-        with db_transaction() as persist:
-            output_id = _persist_json(
-                persist, decision.project_id, payload, ArtifactKind.tool_output
-            )
+        transcript_id, output_id = _persist_loop_artifacts(
+            project_id=decision.project_id,
+            agent=agent,
+            outcome=outcome,
+            scout_data=data,
+            integrity=integrity,
+            hypotheses=hypotheses,
+        )
         error_code = outcome.run.error_code.value if outcome.run.error_code else None
+        usd = float(usage.usd) if usage else None
         execution = _record(
             provider_mode=provider_mode,
             model_id=outcome.record.model,
-            cost_usd=float(usage.usd) if usage else 0.0,
+            cost_usd=usd,
             latency_ms=latency_ms,
             llm_turns=outcome.run.llm_turns,
             tool_call_count=outcome.run.tool_calls,
@@ -455,13 +653,18 @@ def run_investigative(
             integrity=integrity,
         )
         if not outcome.ok:
+            status = (
+                AgentInvocationStatus.cancelled
+                if error_code in {"CANCELLED", "KILL_SWITCH"}
+                else AgentInvocationStatus.failed
+            )
             return ExecutionOutcome(
-                status=AgentInvocationStatus.failed,
+                status=status,
                 reason=(
                     f"{agent.value} agent loop failed ({error_code or 'unknown'}). "
                     "Not a confirmed threat."
                 )[:2000],
-                provider_mode=provider_mode if provider_mode in {"fake", "live"} else "none",
+                provider_mode=provider_mode,
                 execution=execution,
             )
         reason = (
@@ -472,19 +675,38 @@ def run_investigative(
         return ExecutionOutcome(
             status=AgentInvocationStatus.executed,
             reason=reason[:2000],
-            provider_mode=provider_mode if provider_mode in {"fake", "live"} else "none",
+            provider_mode=provider_mode,
             execution=execution,
         )
     except PrerequisiteNotReady:
         raise
     except Exception as exc:
         latency_ms = int((time.monotonic() - t0) * 1000)
-        code = "LLM_UNAVAILABLE" if "LLM_UNAVAILABLE" in str(exc) else type(exc).__name__
+        message = str(exc)
+        if "SNAPSHOT_NOT_READY" in message:
+            code = "SNAPSHOT_NOT_READY"
+        elif "LLM_UNAVAILABLE" in message:
+            code = "LLM_UNAVAILABLE"
+        elif "DEADLINE_EXCEEDED" in message:
+            code = "BUDGET_EXHAUSTED"
+        else:
+            code = type(exc).__name__
+            for catalog in (
+                "LLM_UNAVAILABLE",
+                "BUDGET_EXHAUSTED",
+                "CANCELLED",
+                "SCHEMA_INVALID",
+                "SNAPSHOT_NOT_READY",
+            ):
+                if catalog in message:
+                    code = catalog
+                    break
         log.exception("first-responder %s execution failed", agent.value)
+        provider_mode = _normalize_provider_mode(provider_mode, processed=processed)
         execution = _record(
-            provider_mode="none",
+            provider_mode=provider_mode,
             model_id=None,
-            cost_usd=None,
+            cost_usd=None if not processed else 0.0,
             latency_ms=latency_ms,
             llm_turns=None,
             tool_call_count=None,
@@ -497,10 +719,15 @@ def run_investigative(
             hypothesis_count=None,
             integrity=ExecutionIntegrity.failed,
         )
+        status = (
+            AgentInvocationStatus.cancelled
+            if code in {"CANCELLED", "KILL_SWITCH"}
+            else AgentInvocationStatus.failed
+        )
         return ExecutionOutcome(
-            status=AgentInvocationStatus.failed,
-            reason=f"{agent.value} did not execute: {str(exc)[:400]}",
-            provider_mode="none",
+            status=status,
+            reason=f"{agent.value} did not execute: {message[:400]}",
+            provider_mode=provider_mode,
             execution=execution,
         )
     finally:
