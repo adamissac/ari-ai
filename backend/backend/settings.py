@@ -6,7 +6,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import AliasChoices, Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -58,9 +58,21 @@ class Settings(BaseSettings):
     automatic_usd_per_day: float = Field(default=50.0, gt=0)  # all projects together
     webhook_max_bytes: int = 1_048_576
 
+    # Deployment identity (set by the platform, reported by /healthz, /readyz, /diagnostics).
+    # Railway injects RAILWAY_GIT_COMMIT_SHA; DEPLOYED_GIT_SHA works anywhere else.
+    deployed_git_sha: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("DEPLOYED_GIT_SHA", "RAILWAY_GIT_COMMIT_SHA", "GIT_SHA"),
+    )
+
     # Workers
     worker_lease_s: int = 60
     worker_poll_interval_s: float = 1.0
+    # Worker liveness for /readyz: each worker upserts a heartbeat row; a heartbeat older
+    # than this is stale. None → require a live worker only in production/staging.
+    worker_heartbeat_interval_s: float = 5.0
+    worker_liveness_s: float = 30.0
+    readyz_require_workers: bool | None = None
     orchestrator_factory: str = Field(
         default="security_agents.api:build_orchestrator",
         description="module:callable returning an Orchestrator; see backend/host.py",

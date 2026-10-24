@@ -173,6 +173,7 @@ MODELS: tuple[type[BaseModel], ...] = (
     # api DTOs
     api.HealthStatus,
     api.ReadinessStatus,
+    api.DiagnosticsReport,
     api.MembershipView,
     api.MeResponse,
     api.DevLoginRequest,
