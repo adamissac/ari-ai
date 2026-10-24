@@ -36,6 +36,7 @@ from backend.db import (
     audit_events,
     authorized_scopes,
     defense_recommendations,
+    deploy_commit_mappings,
     finding_records,
     findings,
     monitoring_events,
@@ -427,6 +428,54 @@ def update_repository(repo_id: str, body: RepositoryUpdate, request: Request) ->
             repo_id,
             automatic_assessments=body.automatic_assessments,
         )
+        return _repo(
+            conn.execute(sa.select(repositories).where(repositories.c.id == repo_id))
+            .mappings()
+            .one()
+        )
+
+
+@router.post("/repositories/{repo_id}/disconnect", response_model=Repository)
+def disconnect_repository(repo_id: str, request: Request) -> Repository:
+    """Revoke Ari's mediated access to a connected repository (owner only).
+
+    Clears the GitHub App installation link and turns automatic assessments off:
+    push webhooks no longer match this repository and commits can no longer be
+    read through the App. The repository record, its snapshots and history stay
+    readable; owner-attested deploy mappings that point at it are revoked.
+    Revoking the App itself on the GitHub side is a separate customer action.
+    """
+    with transaction() as conn:
+        user = _user(conn, request)
+        repo = _repo_access(conn, user, repo_id, MemberRole.owner)
+        already = repo["installation_id"] is None and not repo["automatic_assessments"]
+        if not already:
+            conn.execute(
+                sa.update(repositories)
+                .where(repositories.c.id == repo_id)
+                .values(installation_id=None, automatic_assessments=False)
+            )
+        now = utcnow()
+        revoked = conn.execute(
+            sa.update(deploy_commit_mappings)
+            .where(
+                deploy_commit_mappings.c.repo_id == repo_id,
+                deploy_commit_mappings.c.revoked_at.is_(None),
+            )
+            .values(revoked_at=now)
+        ).rowcount
+        if not already or revoked:
+            _audit(
+                conn,
+                project_org(conn, repo["project_id"]),
+                repo["project_id"],
+                user,
+                "repository.disconnected",
+                "repository",
+                repo_id,
+                installation_cleared=not already,
+                deploy_mappings_revoked=revoked,
+            )
         return _repo(
             conn.execute(sa.select(repositories).where(repositories.c.id == repo_id))
             .mappings()
