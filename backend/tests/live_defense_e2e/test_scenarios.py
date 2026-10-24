@@ -23,6 +23,7 @@ from helpers import add_member
 from backend import llm
 from backend.live_defense import first_responder
 from security_agents.contracts import AgentName as RuntimeAgentName
+from security_agents.llm.providers import FakeTurn
 from shared.base import utcnow
 from shared.live_defense import (
     AgentInvocationStatus,
@@ -39,8 +40,6 @@ from .transports import (
     fake_provider,
     gateway_factory,
 )
-
-from security_agents.llm.providers import FakeTurn
 
 pytest.importorskip("security_agents")
 
@@ -651,8 +650,7 @@ def test_j_queue_redelivery(staging, report):
     scout_job = next(
         j
         for j in staging.job_rows("live_defense_agent_step")
-        if j["status"] == "succeeded"
-        and json.dumps(j["payload"]).find(inv["scout"]["id"]) >= 0
+        if j["status"] == "succeeded" and json.dumps(j["payload"]).find(inv["scout"]["id"]) >= 0
     )
     staging.revive_job(scout_job["id"])
     staging.drain()
