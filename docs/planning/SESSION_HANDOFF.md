@@ -1571,3 +1571,26 @@ Resource evidence closure: anchored four-window unit receipt committed from sour
 213 broader selected research tests, 91 shared tests, scoped strict mypy (7 files),
 Ruff/format and 580 Markdown link checks passed. Formal feasibility and training
 remain unapproved; PR review/CI required before merge. See resource VERIFICATION.md.
+
+## Resource feasibility001 — owner-approved execution preparation
+
+Owner approved the previously proposed600 episodes/18,000 decisions, safety limits,
+2000 paired whole-seed bootstrap draws and one-process512MiB/600-second budget.
+Acceptance failures continue and remain reported/ineligible; integrity failures stop.
+Persistent-static remains240 active ticks, explicitly ineligible at64-tick cap.
+Environment/generator/baseline source unchanged. New isolated study collector pins
+source/config/runtime, retains gzip raw episode traces and stops without retries.
+50 resource/study unit tests pass; strict mypy and Ruff pass for the runner.
+No formal outcome has been observed at this preregistration commit.
+
+Feasibility001 completed once atbed44ff27897225f3194c6afd118eee35f7516d2:
+600 episodes/18,000 decisions,9.178132s,79,462,400-byte peak RSS. All30 family/policy
+results retained. No eligible policy in any attack family; persistent-static
+240 active ticks explicitly violates64. Training NO-GO, no further execution.
+Sealed index931fbd6737f963a1fe661ab029d08b7f4a26fe09e42805c291c9d1a1a2a0246c;
+read-only600-episode audit passed. Report/evidence under resource-exhaustion/feasibility-001.
+
+PR433 first RL CI:544 passed,1 fault-injection fixture failed because prior torch
+tests raised process-lifetime peak RSS above the study limit. Test fixture now
+isolates RSS for the invalid-action fault and separately tests memory-limit
+rejection. No collector/protocol/evidence changes, no formal study rerun.
