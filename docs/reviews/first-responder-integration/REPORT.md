@@ -23,7 +23,9 @@ Upstream main: see evidence/UPSTREAM_MAIN.txt (35e8b32c at capture).
 - C: m-alan08/ari-ai #2, **e187e9a20f5c9792da8d17371c0ef57c2573609b**.
 - D: m-alan08/ari-ai #3, **b44b28aad69fb7775b6e9e0c5225b899a7446af1**.
 
-Full captured diffs, review discussions and CI summaries are in evidence/pr-*. All
+Full captured diffs, review discussions and CI summaries are in evidence/pr-*.
+DIFF_MANIFEST.json distinguishes exact original PR-base comparisons from composite
+upstream-merge-base comparisons; the A review-thread snapshot retains resolution status. All
 listed checks on the four captured heads were successful; C's live-provider job
 was skipped. These are individual-head checks, not combined-branch CI. The review
 branch has local integration evidence; remote full integration CI is not asserted.

@@ -1,0 +1,2220 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index d21f9da0..2904df37 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -6,8 +6,9 @@ All notable changes are documented here. Format follows
+ 
+ ## [Unreleased]
+ 
+-- Scout specialist now trains on the labelled commit-eval set (each case's planted edit vs. its original code as a minimal positive/negative pair) and was promoted after beating the static-pattern baseline (macro F1 0.349 vs 0.084); new checkpoint committed under `specialists/checkpoints/scout/`.
++- Live Defense Executions tab: read-only investigation observability for the first responder — a bounded investigations list, a per-decision timeline (trigger events → application/deploy mapping/commit → decision → agent invocations → artifacts → analyst handoff → final state), per-invocation execution details (queue state, attempts, optional model/cost/tool-call record), and an operational diagnostics panel (stalled leases, failures by agent, missing prerequisites, waiting jobs, redacted recent errors, job wall-clock latency). Missing fields render as unavailable, never estimated; investigative execution is never presented as confirmed compromise or executed enforcement. New read-only API: `GET /projects/{id}/first-responder/investigations`, `GET /first-responder/investigations/{decision_id}`, `GET /first-responder/invocations/{invocation_id}`, `GET /projects/{id}/first-responder/diagnostics`. Contract schema 0.23.0 additive (0.20.0 stays reserved for open #412, 0.22.0 for open #458; execution fields populate automatically once Phase 7C records exist).
+ 
++- Scout specialist now trains on the labelled commit-eval set (each case's planted edit vs. its original code as a minimal positive/negative pair) and was promoted after beating the static-pattern baseline (macro F1 0.349 vs 0.084); new checkpoint committed under `specialists/checkpoints/scout/`.
+ - Assessment UI: agents the orchestrator skipped now stay visible as 'Not needed' with the recorded reason (e.g. 'no confirmed findings'); on failed/cancelled runs they show 'Not reached'. Replaces the ambiguous 'not run' label on the relay and team list.
+ 
+ - Fix the periodic stale-sandbox sweep to delete the orphaned stop-snapshots of leaked `ari-sbx-*` run boxes, freeing the Vercel Sandbox snapshot quota that caused HTTP 402 assessment failures; the shared base snapshot is unaffected.
+diff --git a/backend/backend/api/live_defense_investigations.py b/backend/backend/api/live_defense_investigations.py
+new file mode 100644
+index 00000000..ff616c85
+--- /dev/null
++++ b/backend/backend/api/live_defense_investigations.py
+@@ -0,0 +1,590 @@
++"""First-responder observability: read-only investigation timeline, invocation
++detail, evidence chain, and operational diagnostics.
++
++Every endpoint is project-scoped and read-only. Data comes only from persisted
++rows (decisions, invocations, jobs, handoffs, mappings, snapshots, monitoring
++events). Missing fields are reported as unavailable — never estimated. The
++``execution`` payload inside an invocation doc (Phase 7C) is surfaced verbatim
++when present; its absence means no agent loop ran, not failure.
++
++Artifact *contents* are never inlined here: consumers fetch them through the
++bounded ``GET /artifacts/{id}`` endpoint, which re-checks the SHA-256 digest.
++"""
++
++from __future__ import annotations
++
++from datetime import UTC, datetime
++from typing import Any
++
++import sqlalchemy as sa
++from fastapi import APIRouter, Query, Request
++
++from backend.api.deps import not_found, require_project, require_user
++from backend.api.routes import _keyset_page, _keyset_where
++from backend.db import (
++    analyst_handoffs,
++    connected_applications,
++    deploy_commit_mappings,
++    first_responder_decisions,
++    first_responder_invocations,
++    jobs,
++    monitoring_events,
++    snapshots,
++    transaction,
++)
++from backend.redaction import redact_text
++from shared.live_defense import (
++    FIRST_RESPONDER_JOB_KINDS,
++    AgentExecutionView,
++    AnalystHandoff,
++    DeployCommitMapping,
++    FirstResponderDecision,
++    FirstResponderDiagnostics,
++    FirstResponderInvocation,
++    FirstResponderInvocationView,
++    InvestigationJobError,
++    InvestigationSnapshotView,
++    InvestigationSummary,
++    InvestigationTimeline,
++    InvocationJobView,
++    JobLatencyStats,
++    WaitingJobView,
++)
++from shared.monitoring import MonitoringEvent
++
++router = APIRouter(tags=["live-defense-investigations"])
++
++SKIPPED_STATUSES = {
++    "skipped_no_mapping",
++    "skipped_no_snapshot",
++    "skipped_mode",
++    "skipped_no_scope",
++    "skipped_no_approval",
++    "skipped_no_patch",
++    "skipped_no_prerequisite",
++    "blocked",
++}
++COMPLETED_STATUSES = {"completed_unverified", "executed"}
++ACTIVE_STATUSES = {"eligible", "queued"}
++
++MAX_RECENT_ERRORS = 20
++MAX_WAITING_JOBS = 20
++
++
++def _job_view(row: sa.RowMapping, *, now: datetime) -> InvocationJobView:
++    last_error = row["last_error"] or {}
++    lease_expires = row["lease_expires_at"]
++    stalled = (
++        row["status"] == "running"
++        and lease_expires is not None
++        and lease_expires.replace(tzinfo=UTC) < now
++    )
++    finished = row["status"] in {"succeeded", "failed", "cancelled", "dead"}
++    wall_ms = None
++    if finished and row["created_at"] and row["updated_at"]:
++        wall_ms = max(
++            0,
++            int(
++                (
++                    row["updated_at"].replace(tzinfo=UTC) - row["created_at"].replace(tzinfo=UTC)
++                ).total_seconds()
++                * 1000
++            ),
++        )
++    message = last_error.get("message")
++    return InvocationJobView(
++        job_id=row["id"],
++        kind=row["kind"],
++        status=row["status"],
++        attempts=row["attempts"],
++        max_attempts=row["max_attempts"],
++        run_after=row["run_after"],
++        heartbeat_at=row["heartbeat_at"],
++        cancel_requested=bool(row["cancel_requested"]),
++        error_code=last_error.get("code"),
++        error_message=redact_text(str(message))[:500] if message is not None else None,
++        enqueued_at=row["created_at"],
++        updated_at=row["updated_at"],
++        stalled=stalled,
++        wall_time_ms=wall_ms,
++    )
++
++
++def _invocation_view(
++    conn: sa.Connection, row: sa.RowMapping, *, now: datetime
++) -> FirstResponderInvocationView:
++    doc = dict(row["doc"])
++    raw_execution = doc.pop("execution", None)
++    execution: AgentExecutionView | None = None
++    if isinstance(raw_execution, dict):
++        try:
++            execution = AgentExecutionView.model_validate(raw_execution)
++        except Exception:  # forward-compatible: unknown shapes stay unavailable
++            execution = None
++    invocation = FirstResponderInvocation.model_validate(doc)
++    job_view: InvocationJobView | None = None
++    if invocation.job_id:
++        job_row = (
++            conn.execute(sa.select(jobs).where(jobs.c.id == invocation.job_id)).mappings().first()
++        )
++        if job_row is not None:
++            job_view = _job_view(job_row, now=now)
++    return FirstResponderInvocationView(
++        invocation=invocation,
++        job=job_view,
++        execution=execution,
++        execution_recorded=execution is not None,
++    )
++
++
++def _final_state(
++    decision: FirstResponderDecision,
++    invocations: list[FirstResponderInvocationView],
++    handoff: AnalystHandoff | None,
++) -> str:
++    if decision.cancelled:
++        return "cancelled"
++    statuses = {v.invocation.status.value for v in invocations}
++    if "failed" in statuses or (decision.action.value == "cancel_run"):
++        return "failed"
++    if statuses & ACTIVE_STATUSES:
++        return "in_progress"
++    if handoff is not None:
++        return f"handoff_{handoff.state.value}"
++    if statuses & COMPLETED_STATUSES:
++        return "completed_unverified"
++    if statuses and statuses <= SKIPPED_STATUSES:
++        return "skipped"
++    return decision.evidence_state.value
++
++
++def _load_timeline(conn: sa.Connection, decision_id: str) -> InvestigationTimeline:
++    decision_row = (
++        conn.execute(
++            sa.select(first_responder_decisions).where(
++                first_responder_decisions.c.id == decision_id
++            )
++        )
++        .mappings()
++        .first()
++    )
++    if decision_row is None:
++        raise not_found("investigation")
++    decision = FirstResponderDecision.model_validate(decision_row["doc"])
++
++    trigger_rows: list[Any] = []
++    if decision.trigger_event_ids:
++        trigger_rows = list(
++            conn.execute(
++                sa.select(monitoring_events.c.doc).where(
++                    monitoring_events.c.id.in_(decision.trigger_event_ids),
++                    monitoring_events.c.project_id == decision.project_id,
++                )
++            )
++            .scalars()
++            .all()
++        )
++    events = [MonitoringEvent.model_validate(doc) for doc in trigger_rows]
++
++    application = None
++    if decision.application_id:
++        app_row = (
++            conn.execute(
++                sa.select(connected_applications.c.doc).where(
++                    connected_applications.c.id == decision.application_id,
++                    connected_applications.c.project_id == decision.project_id,
++                )
++            )
++            .scalars()
++            .first()
++        )
++        if app_row:
++            from shared.live_defense import ConnectedApplication
++
++            application = ConnectedApplication.model_validate(app_row)
++
++    mapping = None
++    if decision.correlation.mapping_id:
++        map_row = (
++            conn.execute(
++                sa.select(deploy_commit_mappings.c.doc).where(
++                    deploy_commit_mappings.c.id == decision.correlation.mapping_id,
++                    deploy_commit_mappings.c.project_id == decision.project_id,
++                )
++            )
++            .scalars()
++            .first()
++        )
++        if map_row:
++            mapping = DeployCommitMapping.model_validate(map_row)
++
++    snapshot: InvestigationSnapshotView | None = None
++    repo_id = mapping.repo_id if mapping else None
++    commit_sha = decision.correlation.commit_sha or (mapping.commit_sha if mapping else None)
++    if commit_sha or repo_id:
++        snap_id = None
++        if repo_id and commit_sha:
++            snap_id = conn.execute(
++                sa.select(snapshots.c.id).where(
++                    snapshots.c.repo_id == repo_id,
++                    snapshots.c.commit_sha == commit_sha,
++                )
++            ).scalar()
++        snapshot = InvestigationSnapshotView(
++            repo_id=repo_id,
++            commit_sha=commit_sha,
++            mapping_id=decision.correlation.mapping_id,
++            snapshot_id=snap_id,
++            resolved=snap_id is not None,
++            note=(
++                "Indexed snapshot resolved for the mapped commit"
++                if snap_id
++                else "No indexed snapshot at the mapped commit; snapshot resolution unavailable"
++            ),
++        )
++
++    inv_rows = (
++        conn.execute(
++            sa.select(first_responder_invocations)
++            .where(first_responder_invocations.c.decision_id == decision.id)
++            .order_by(first_responder_invocations.c.created_at.asc())
++        )
++        .mappings()
++        .all()
++    )
++    now = datetime.now(UTC)
++    views = [_invocation_view(conn, row, now=now) for row in inv_rows]
++
++    handoff = None
++    handoff_row = (
++        conn.execute(
++            sa.select(analyst_handoffs.c.doc).where(
++                analyst_handoffs.c.decision_id == decision.id,
++                analyst_handoffs.c.project_id == decision.project_id,
++            )
++        )
++        .scalars()
++        .first()
++    )
++    if handoff_row:
++        handoff = AnalystHandoff.model_validate(handoff_row)
++
++    return InvestigationTimeline(
++        decision=decision,
++        trigger_events=events,
++        application=application,
++        mapping=mapping,
++        snapshot=snapshot,
++        invocations=views,
++        handoff=handoff,
++        final_state=_final_state(decision, views, handoff),
++    )
++
++
++@router.get("/projects/{project_id}/first-responder/investigations")
++def list_investigations(
++    project_id: str,
++    request: Request,
++    limit: int = Query(50, ge=1, le=200),
++    cursor: str | None = None,
++) -> dict[str, Any]:
++    """Newest first. `next_cursor` pages older investigations (bounded)."""
++    t = first_responder_decisions
++    with transaction() as conn:
++        require_project(conn, require_user(conn, request), project_id)
++        rows = conn.execute(
++            sa.select(t.c.created_at, t.c.id, t.c.doc)
++            .where(t.c.project_id == project_id, *_keyset_where(t, cursor))
++            .order_by(t.c.created_at.desc(), t.c.id.desc())
++            .limit(limit + 1)
++        ).all()
++        docs, nxt = _keyset_page(list(rows), limit)
++        decision_ids = [doc["id"] for doc in docs]
++
++        inv_counts: dict[str, dict[str, int]] = {}
++        if decision_ids:
++            for row in conn.execute(
++                sa.select(
++                    first_responder_invocations.c.decision_id,
++                    first_responder_invocations.c.status,
++                    sa.func.count(),
++                )
++                .where(first_responder_invocations.c.decision_id.in_(decision_ids))
++                .group_by(
++                    first_responder_invocations.c.decision_id,
++                    first_responder_invocations.c.status,
++                )
++            ):
++                inv_counts.setdefault(row[0], {})[row[1]] = row[2]
++
++        handoff_states: dict[str, str] = {}
++        if decision_ids:
++            for row in conn.execute(
++                sa.select(analyst_handoffs.c.decision_id, analyst_handoffs.c.state).where(
++                    analyst_handoffs.c.decision_id.in_(decision_ids),
++                    analyst_handoffs.c.project_id == project_id,
++                )
++            ):
++                handoff_states[row[0]] = row[1]
++
++        items = []
++        for doc in docs:
++            decision = FirstResponderDecision.model_validate(doc)
++            counts = inv_counts.get(decision.id, {})
++            total = sum(counts.values())
++            items.append(
++                InvestigationSummary(
++                    decision_id=decision.id,
++                    created_at=decision.created_at,
++                    action=decision.action.value,
++                    evidence_state=decision.evidence_state.value,
++                    confirmation=decision.confirmation.value,
++                    application_id=decision.application_id,
++                    simulated=decision.simulated,
++                    cancelled=decision.cancelled,
++                    trigger_event_count=len(decision.trigger_event_ids),
++                    invocations_total=total,
++                    invocations_queued_or_running=sum(counts.get(s, 0) for s in ACTIVE_STATUSES),
++                    invocations_completed=sum(counts.get(s, 0) for s in COMPLETED_STATUSES),
++                    invocations_failed=counts.get("failed", 0),
++                    invocations_skipped=sum(counts.get(s, 0) for s in SKIPPED_STATUSES),
++                    invocations_cancelled=counts.get("cancelled", 0),
++                    handoff_state=handoff_states.get(decision.id),
++                ).model_dump(mode="json")
++            )
++        return {"items": items, "next_cursor": nxt}
++
++
++@router.get("/first-responder/investigations/{decision_id}")
++def investigation_timeline(decision_id: str, request: Request) -> dict[str, Any]:
++    with transaction() as conn:
++        require_user(conn, request)
++        row = conn.execute(
++            sa.select(first_responder_decisions.c.project_id).where(
++                first_responder_decisions.c.id == decision_id
++            )
++        ).scalar()
++        if row is None:
++            raise not_found("investigation")
++        user = require_user(conn, request)
++        require_project(conn, user, row)
++        return _load_timeline(conn, decision_id).model_dump(mode="json")
++
++
++@router.get("/first-responder/invocations/{invocation_id}")
++def invocation_detail(invocation_id: str, request: Request) -> dict[str, Any]:
++    with transaction() as conn:
++        row = (
++            conn.execute(
++                sa.select(first_responder_invocations).where(
++                    first_responder_invocations.c.id == invocation_id
++                )
++            )
++            .mappings()
++            .first()
++        )
++        if row is None:
++            raise not_found("invocation")
++        require_project(conn, require_user(conn, request), row["project_id"])
++        view = _invocation_view(conn, row, now=datetime.now(UTC))
++        return view.model_dump(mode="json")
++
++
++@router.get("/projects/{project_id}/first-responder/diagnostics")
++def diagnostics(project_id: str, request: Request) -> dict[str, Any]:
++    with transaction() as conn:
++        require_project(conn, require_user(conn, request), project_id)
++        now = datetime.now(UTC)
++
++        investigations_total = conn.execute(
++            sa.select(sa.func.count())
++            .select_from(first_responder_decisions)
++            .where(first_responder_decisions.c.project_id == project_id)
++        ).scalar_one()
++
++        decision_docs = (
++            conn.execute(
++                sa.select(first_responder_decisions.c.doc).where(
++                    first_responder_decisions.c.project_id == project_id
++                )
++            )
++            .scalars()
++            .all()
++        )
++        decisions_cancelled = sum(1 for d in decision_docs if d.get("cancelled"))
++
++        status_rows = conn.execute(
++            sa.select(first_responder_invocations.c.status, sa.func.count())
++            .where(first_responder_invocations.c.project_id == project_id)
++            .group_by(first_responder_invocations.c.status)
++        ).all()
++        invocations_by_status = {row[0]: row[1] for row in status_rows}
++
++        failure_rows = conn.execute(
++            sa.select(first_responder_invocations.c.agent, sa.func.count())
++            .where(
++                first_responder_invocations.c.project_id == project_id,
++                first_responder_invocations.c.status == "failed",
++            )
++            .group_by(first_responder_invocations.c.agent)
++        ).all()
++        failures_by_agent = {row[0]: row[1] for row in failure_rows}
++
++        missing_prerequisites = {
++            status: count
++            for status, count in invocations_by_status.items()
++            if status.startswith("skipped_")
++        }
++
++        fr_kinds = list(FIRST_RESPONDER_JOB_KINDS)
++        job_status_rows = conn.execute(
++            sa.select(jobs.c.status, sa.func.count())
++            .select_from(jobs)
++            .where(
++                jobs.c.kind.in_(fr_kinds),
++                jobs.c.payload["project_id"].astext == project_id,
++            )
++            .group_by(jobs.c.status)
++        ).all()
++        job_counts = {row[0]: row[1] for row in job_status_rows}
++
++        stalled = conn.execute(
++            sa.select(sa.func.count())
++            .select_from(jobs)
++            .where(
++                jobs.c.kind.in_(fr_kinds),
++                jobs.c.payload["project_id"].astext == project_id,
++                jobs.c.status == "running",
++                jobs.c.lease_expires_at < now,
++            )
++        ).scalar_one()
++
++        waiting_rows = (
++            conn.execute(
++                sa.select(
++                    jobs.c.id, jobs.c.kind, jobs.c.run_after, jobs.c.created_at, jobs.c.attempts
++                )
++                .where(
++                    jobs.c.kind.in_(fr_kinds),
++                    jobs.c.payload["project_id"].astext == project_id,
++                    jobs.c.status == "queued",
++                )
++                .order_by(jobs.c.run_after.asc())
++                .limit(MAX_WAITING_JOBS)
++            )
++            .mappings()
++            .all()
++        )
++        waiting = [
++            WaitingJobView(
++                job_id=r["id"],
++                kind=r["kind"],
++                run_after=r["run_after"],
++                enqueued_at=r["created_at"],
++                attempts=r["attempts"],
++            )
++            for r in waiting_rows
++        ]
++
++        error_rows = (
++            conn.execute(
++                sa.select(
++                    jobs.c.id,
++                    jobs.c.kind,
++                    jobs.c.payload,
++                    jobs.c.last_error,
++                    jobs.c.updated_at,
++                )
++                .where(
++                    jobs.c.kind.in_(fr_kinds),
++                    jobs.c.payload["project_id"].astext == project_id,
++                    jobs.c.last_error.is_not(None),
++                )
++                .order_by(jobs.c.updated_at.desc())
++                .limit(MAX_RECENT_ERRORS)
++            )
++            .mappings()
++            .all()
++        )
++        recent_errors = []
++        for r in error_rows:
++            err = r["last_error"] or {}
++            payload = r["payload"] or {}
++            message = err.get("message")
++            recent_errors.append(
++                InvestigationJobError(
++                    job_id=r["id"],
++                    kind=r["kind"],
++                    decision_id=payload.get("decision_id"),
++                    invocation_id=payload.get("invocation_id"),
++                    agent=payload.get("agent"),
++                    code=err.get("code"),
++                    message=redact_text(str(message))[:500] if message is not None else None,
++                    at=r["updated_at"],
++                )
++            )
++
++        latency_rows = conn.execute(
++            sa.select(jobs.c.created_at, jobs.c.updated_at).where(
++                jobs.c.kind == "live_defense_agent_step",
++                jobs.c.payload["project_id"].astext == project_id,
++                jobs.c.status.in_(["succeeded", "failed", "cancelled", "dead"]),
++            )
++        ).all()
++        durations = [
++            max(
++                0,
++                int((r[1].replace(tzinfo=UTC) - r[0].replace(tzinfo=UTC)).total_seconds() * 1000),
++            )
++            for r in latency_rows
++            if r[0] and r[1]
++        ]
++        latency = None
++        if durations:
++            latency = JobLatencyStats(
++                samples=len(durations),
++                avg_ms=sum(durations) // len(durations),
++                max_ms=max(durations),
++            )
++
++        cost_total: float | None = None
++        cost_seen = False
++        for doc in conn.execute(
++            sa.select(first_responder_invocations.c.doc).where(
++                first_responder_invocations.c.project_id == project_id
++            )
++        ).scalars():
++            execution = (doc or {}).get("execution")
++            if isinstance(execution, dict) and execution.get("cost_usd") is not None:
++                cost_seen = True
++                cost_total = (cost_total or 0.0) + float(execution["cost_usd"])
++
++        notes = [
++            "Stalled = running job whose lease expired (reclaimable by another worker).",
++            "Latency is job wall time (queue + run), not model latency.",
++        ]
++        if not cost_seen:
++            notes.append(
++                "No persisted execution records: cost, model, tokens and transcript "
++                "references are unavailable until Phase 7C lands."
++            )
++
++        return FirstResponderDiagnostics(
++            generated_at=now,
++            investigations_total=investigations_total,
++            decisions_cancelled=decisions_cancelled,
++            invocations_by_status=invocations_by_status,
++            failures_by_agent=failures_by_agent,
++            missing_prerequisites=missing_prerequisites,
++            jobs_queued=job_counts.get("queued", 0),
++            jobs_running=job_counts.get("running", 0),
++            jobs_stalled=stalled,
++            jobs_succeeded=job_counts.get("succeeded", 0),
++            jobs_failed=job_counts.get("failed", 0),
++            jobs_cancelled=job_counts.get("cancelled", 0),
++            jobs_dead=job_counts.get("dead", 0),
++            waiting_jobs=waiting,
++            recent_errors=recent_errors,
++            agent_step_latency=latency,
++            cost_usd_total=cost_total,
++        ).model_dump(mode="json")
+diff --git a/backend/backend/main.py b/backend/backend/main.py
+index af9b3ea1..c1801164 100644
+--- a/backend/backend/main.py
++++ b/backend/backend/main.py
+@@ -20,6 +20,7 @@ from backend.api import (
+     live_defense,
+     live_defense_controls,
+     live_defense_first_responder,
++    live_defense_investigations,
+     routes,
+     runtime,
+     webhooks,
+@@ -155,6 +156,7 @@ def create_app() -> FastAPI:
+         live_defense.router,
+         live_defense_controls.router,
+         live_defense_first_responder.router,
++        live_defense_investigations.router,
+     ):
+         app.include_router(r, prefix="/api/v1")
+     return app
+diff --git a/backend/tests/test_live_defense_investigations.py b/backend/tests/test_live_defense_investigations.py
+new file mode 100644
+index 00000000..5b991476
+--- /dev/null
++++ b/backend/tests/test_live_defense_investigations.py
+@@ -0,0 +1,281 @@
++"""Live Defense observability: investigation list/timeline, invocation detail,
++diagnostics. Read-only, project-scoped, bounded."""
++
++from __future__ import annotations
++
++import sqlalchemy as sa
++from helpers import setup_project
++
++from backend import jobs as jobq
++from backend.db import (
++    first_responder_decisions,
++    first_responder_invocations,
++    jobs,
++    transaction,
++)
++from shared.assessment import AgentName
++from shared.base import utcnow
++from shared.ids import IdPrefix, new_id
++from shared.live_defense import (
++    AgentCapabilityClass,
++    AgentInvocationStatus,
++    ConfirmationState,
++    CorrelationConfidence,
++    EvidenceLifecycleState,
++    FirstResponderDecision,
++    FirstResponderIntent,
++    FirstResponderInvocation,
++    OrchestratorAction,
++    RuntimeCodeCorrelation,
++)
++
++
++def _decision(project_id: str, *, cancelled: bool = False) -> FirstResponderDecision:
++    return FirstResponderDecision(
++        id=new_id(IdPrefix.frd),
++        project_id=project_id,
++        created_at=utcnow(),
++        intent_mode=FirstResponderIntent.monitor,
++        effective_mode=FirstResponderIntent.monitor,
++        action=OrchestratorAction.investigate,
++        evidence_state=EvidenceLifecycleState.suspected,
++        trigger_event_ids=[],
++        selected_agents=[AgentName.scout, AgentName.diagnose],
++        blocked_agents=[],
++        correlation=RuntimeCodeCorrelation(
++            confidence=CorrelationConfidence.unknown,
++            note="test",
++        ),
++        confirmation=ConfirmationState.unverified,
++        transition="test",
++        cancelled=cancelled,
++        cancel_reason="mode_off" if cancelled else None,
++    )
++
++
++def _invocation(
++    decision: FirstResponderDecision,
++    *,
++    status: AgentInvocationStatus,
++    job_id: str | None = None,
++    execution: dict | None = None,
++    inv_id: str | None = None,
++) -> FirstResponderInvocation:
++    inv = FirstResponderInvocation(
++        id=inv_id or new_id(IdPrefix.fri),
++        decision_id=decision.id,
++        project_id=decision.project_id,
++        agent=AgentName.scout,
++        capability_class=AgentCapabilityClass.investigative_readonly,
++        status=status,
++        job_id=job_id,
++        created_at=utcnow(),
++    )
++    if execution is not None:
++        doc = inv.model_dump(mode="json")
++        doc["execution"] = execution
++        return doc  # caller inserts raw doc
++    return inv
++
++
++def _insert_decision(conn, decision: FirstResponderDecision) -> None:
++    conn.execute(
++        sa.insert(first_responder_decisions).values(
++            id=decision.id,
++            project_id=decision.project_id,
++            application_id=decision.application_id,
++            dedupe_key=f"inv-test-{decision.id}",
++            action=decision.action.value,
++            doc=decision.model_dump(mode="json"),
++        )
++    )
++
++
++def _insert_invocation(conn, inv) -> None:
++    doc = inv if isinstance(inv, dict) else inv.model_dump(mode="json")
++    conn.execute(
++        sa.insert(first_responder_invocations).values(
++            id=doc["id"],
++            decision_id=doc["decision_id"],
++            project_id=doc["project_id"],
++            agent=doc["agent"],
++            status=doc["status"],
++            doc=doc,
++        )
++    )
++
++
++def _seed(client_factory, *, status=AgentInvocationStatus.queued, with_job=True):
++    alice, bob = client_factory("alice"), client_factory("bob")
++    ids = setup_project(alice, bob)
++    pid = ids["project"]
++    decision = _decision(pid)
++    with transaction() as conn:
++        _insert_decision(conn, decision)
++        job_id = None
++        inv_id = new_id(IdPrefix.fri)
++        if with_job:
++            job_id, _ = jobq.enqueue(
++                conn,
++                "live_defense_agent_step",
++                {
++                    "project_id": pid,
++                    "decision_id": decision.id,
++                    "invocation_id": inv_id,
++                    "agent": "scout",
++                    "capability_class": "investigative_readonly",
++                },
++                dedupe_key=f"fr-agent-{new_id(IdPrefix.fri)}",
++            )
++        inv = _invocation(decision, status=status, job_id=job_id, inv_id=inv_id)
++        _insert_invocation(conn, inv)
++    return alice, pid, decision, inv
++
++
++def test_investigations_requires_auth(client_factory) -> None:
++    alice, bob = client_factory("alice"), client_factory("bob")
++    ids = setup_project(alice, bob)
++    pid = ids["project"]
++    anon = client_factory("carol")
++    r = anon.get(f"/api/v1/projects/{pid}/first-responder/investigations")
++    assert r.status_code in (403, 404), r.text
++
++
++def test_investigations_cross_project_denied(client_factory) -> None:
++    alice, pid, decision, _ = _seed(client_factory)
++    other = client_factory("other")
++    r = other.get(f"/api/v1/projects/{pid}/first-responder/investigations")
++    assert r.status_code in (403, 404)
++    r2 = other.get(f"/api/v1/first-responder/investigations/{decision.id}")
++    assert r2.status_code in (403, 404)
++
++
++def test_investigations_list_and_timeline(client_factory) -> None:
++    alice, pid, decision, inv = _seed(client_factory)
++    r = alice.get(f"/api/v1/projects/{pid}/first-responder/investigations")
++    assert r.status_code == 200, r.text
++    items = r.json()["items"]
++    assert len(items) == 1
++    assert items[0]["decision_id"] == decision.id
++    assert items[0]["invocations_total"] == 1
++    assert items[0]["invocations_queued_or_running"] == 1
++
++    t = alice.get(f"/api/v1/first-responder/investigations/{decision.id}")
++    assert t.status_code == 200, t.text
++    body = t.json()
++    assert body["decision"]["id"] == decision.id
++    assert body["invocations"][0]["invocation"]["id"] == inv.id
++    assert body["invocations"][0]["job"]["job_id"] is not None
++    assert body["invocations"][0]["execution"] is None
++    assert "not a confirmed compromise" in body["caveat"]
++
++
++def test_investigation_missing_and_invalid_refs(client_factory) -> None:
++    alice, bob = client_factory("alice"), client_factory("bob")
++    ids = setup_project(alice, bob)
++    pid = ids["project"]
++    r = alice.get("/api/v1/first-responder/investigations/frd_doesnotexist")
++    assert r.status_code == 404
++    r2 = alice.get("/api/v1/first-responder/invocations/fri_doesnotexist")
++    assert r2.status_code == 404
++    r3 = alice.get(f"/api/v1/projects/{pid}/first-responder/investigations?cursor=not-a-cursor")
++    assert r3.status_code in (400, 422)
++
++
++def test_investigations_pagination_bounded(client_factory) -> None:
++    alice, bob = client_factory("alice"), client_factory("bob")
++    ids = setup_project(alice, bob)
++    pid = ids["project"]
++    with transaction() as conn:
++        for _ in range(5):
++            _insert_decision(conn, _decision(pid))
++    page1 = alice.get(f"/api/v1/projects/{pid}/first-responder/investigations?limit=2").json()
++    assert len(page1["items"]) == 2
++    assert page1["next_cursor"]
++    page2 = alice.get(
++        f"/api/v1/projects/{pid}/first-responder/investigations",
++        params={"limit": 2, "cursor": page1["next_cursor"]},
++    ).json()
++    assert len(page2["items"]) == 2
++    ids1 = {i["decision_id"] for i in page1["items"]}
++    ids2 = {i["decision_id"] for i in page2["items"]}
++    assert not ids1 & ids2
++
++
++def test_invocation_detail_joins_job_and_execution(client_factory) -> None:
++    alice, pid, decision, _ = _seed(client_factory)
++    with transaction() as conn:
++        inv2 = _invocation(
++            decision,
++            status=AgentInvocationStatus.completed_unverified,
++            execution={
++                "provider_mode": "fake",
++                "model_id": "claude-haiku-5-5",
++                "cost_usd": 0.0042,
++                "latency_ms": 1200,
++                "llm_turns": 2,
++                "tool_call_count": 3,
++                "error_code": None,
++            },
++        )
++        _insert_invocation(conn, inv2)
++    r = alice.get(f"/api/v1/first-responder/invocations/{inv2['id']}")
++    assert r.status_code == 200, r.text
++    body = r.json()
++    assert body["execution_recorded"] is True
++    assert body["execution"]["cost_usd"] == 0.0042
++    assert body["execution"]["execution_is_not_confirmation"] is True
++    assert body["token_usage_available"] is False
++
++
++def test_diagnostics_counts_and_no_fabrication(client_factory) -> None:
++    alice, pid, decision, inv = _seed(
++        client_factory, status=AgentInvocationStatus.skipped_no_snapshot
++    )
++    with transaction() as conn:
++        cancelled = _decision(pid, cancelled=True)
++        _insert_decision(conn, cancelled)
++    r = alice.get(f"/api/v1/projects/{pid}/first-responder/diagnostics")
++    assert r.status_code == 200, r.text
++    d = r.json()
++    assert d["investigations_total"] >= 2
++    assert d["decisions_cancelled"] == 1
++    assert d["invocations_by_status"].get("skipped_no_snapshot") == 1
++    assert d["missing_prerequisites"].get("skipped_no_snapshot") == 1
++    assert d["cost_usd_total"] is None
++    assert "Phase 7C" in d["cost_note"] or "execution records" in d["cost_note"]
++    assert d["jobs_stalled"] == 0
++
++
++def test_diagnostics_stalled_and_recent_error_redacted(client_factory) -> None:
++    alice, pid, decision, inv = _seed(client_factory)
++    with transaction() as conn:
++        conn.execute(
++            sa.update(jobs)
++            .where(jobs.c.id == inv.job_id)
++            .values(
++                status="running",
++                lease_owner="w1",
++                last_error={"code": "E", "message": "failed with sk-ant-abcdef1234567890"},
++            )
++        )
++    with transaction() as conn:
++        conn.execute(
++            sa.update(jobs)
++            .where(jobs.c.id == inv.job_id)
++            .values(lease_expires_at=sa.text("now() - interval '1 hour'"))
++        )
++    d = alice.get(f"/api/v1/projects/{pid}/first-responder/diagnostics").json()
++    assert d["jobs_stalled"] == 1
++    assert len(d["recent_errors"]) == 1
++    assert "sk-ant-abcdef1234567890" not in str(d["recent_errors"])
++    assert "REDACTED" in str(d["recent_errors"])
++
++
++def test_timeline_final_state_cancelled(client_factory) -> None:
++    alice, pid, _, _ = _seed(client_factory)
++    with transaction() as conn:
++        cancelled = _decision(pid, cancelled=True)
++        _insert_decision(conn, cancelled)
++    t = alice.get(f"/api/v1/first-responder/investigations/{cancelled.id}")
++    assert t.json()["final_state"] == "cancelled"
+diff --git a/coordination/messages/20261024T182202Z-devin-to-all-live-defense-observability-schema-0-23.md b/coordination/messages/20261024T182202Z-devin-to-all-live-defense-observability-schema-0-23.md
+new file mode 100644
+index 00000000..0c832c43
+--- /dev/null
++++ b/coordination/messages/20261024T182202Z-devin-to-all-live-defense-observability-schema-0-23.md
+@@ -0,0 +1,16 @@
++# MSG: First-responder observability claims schema 0.23.0; adds read-only investigation APIs
++
++- ID: `20261024T182202Z-devin-to-all-live-defense-observability-schema-0-23`
++- From: Devin (workstream: Agent Execution Observability and Investigation UI)
++- To: all
++- Kind: contract-proposal
++- Timestamp (UTC): 2026-10-24T18:22:02Z
++- Branch / commit / PR or issue link: `feat/devin-investigation-observability` on `m-alan08/ari-ai` (PR to follow on `adamissac/ari-ai`)
++- Related subsystem(s): Live Defense first-responder; `shared/` 0.23.0; backend API; frontend transport + Live Defense dashboard. Depends on Phase 7A persisted records (main) and reads the Phase 7C `invocation.doc["execution"]` record opportunistically — it does NOT depend on PR #458 merging.
++- Summary (facts, not assumptions): Additive read-only observability for first-responder investigations. New `GET` endpoints only: `GET /projects/{id}/first-responder/investigations` (keyset-paginated, limit<=200), `GET /first-responder/investigations/{decision_id}` (timeline: trigger events, application, deploy mapping, snapshot resolution, invocations with joined queue state, analyst handoff, final state), `GET /first-responder/invocations/{invocation_id}`, `GET /projects/{id}/first-responder/diagnostics` (job lifecycle counts incl. stalled leases, invocation status distribution, missing prerequisites, waiting jobs, redacted recent errors, wall-clock latency, cost rollup). New Live Defense "Executions" tab renders these; no mutation endpoints were added and no first-responder engine code changed.
++- Interface requested/proposed: new shared DTOs in `shared/live_defense.py` — `AgentExecutionView` (all-optional mirror of the 7C `AgentExecutionRecord`), `InvocationJobView`, `FirstResponderInvocationView`, `InvestigationSnapshotView`, `InvestigationTimeline`, `InvestigationSummary`, `InvestigationJobError`, `JobLatencyStats`, `WaitingJobView`, `FirstResponderDiagnostics`. All additive; persisted `doc` JSONB untouched.
++- Breaking change? No. Additive 0.23.0. 0.20.0 remains reserved for open #412; 0.22.0 remains reserved for open #458. If either lands first this PR stays 0.23.0. `AgentExecutionView` fields are all optional and the API tolerates the 7C record being absent or malformed — PR #458 not required. When #458 lands, invocations that ran real agent loops surface execution fields automatically through the same shape.
++- Action required by recipient: #458 owner — keep 0.22.0; `AgentExecutionRecord` keys this view mirrors: `provider_mode, model_id, cost_usd, latency_ms, llm_turns, tool_call_count, started_at, ended_at, transcript_artifact_id, output_artifact_id, error_code, typed_output, hypothesis_count, execution_integrity, independent_verification_id, evidence_verified, confirmation`. If your record's key names change, ping this thread. Codex/RL — diagnostics counters are queue truth, not RL labels.
++- Response-by milestone: PR review; leave open (do not merge from this agent)
++- Evidence: `backend/tests/test_live_defense_investigations.py` (9 tests); `frontend/tests/unit/live-defense-executions.test.tsx` (7 tests); `frontend/tests/e2e/live-defense-investigations.spec.ts`; `backend/backend/api/live_defense_investigations.py`; `frontend/components/live-defense/executions.tsx`
++- In-Reply-To: `coordination/messages/20261024T050000Z-alan-to-all-live-defense-phase7a-schema-0-21.md`
+diff --git a/coordination/status/DEVIN.md b/coordination/status/DEVIN.md
+new file mode 100644
+index 00000000..eab4ed54
+--- /dev/null
++++ b/coordination/status/DEVIN.md
+@@ -0,0 +1,20 @@
++# Devin — implementation status
++
++Owner: Devin session (workstream: Agent Execution Observability and Investigation UI)
++Branch: `feat/devin-investigation-observability` (pushed to `m-alan08/ari-ai` fork; upstream push denied)
++Current task: Read-only first-responder investigation timeline, agent execution detail, evidence navigation, operational diagnostics
++Last remote sync: 2026-10-24, `origin/main` @ 0.21.0 Phase 7A
++API/contract dependencies: `shared` 0.23.0 observability DTOs (additive; 0.20.0 reserved for #412, 0.22.0 reserved for #458); Phase 7A persisted decisions/invocations/jobs/handoffs on main; optional Phase 7C `invocation.doc["execution"]` mirror — works without PR #458
++Recent PR/commit: branch pushed to fork; PR to `adamissac/ari-ai` opened from `m-alan08:feat/devin-investigation-observability`
++Blockers: none known; PR review pending (do not merge)
++Next action: keep PR open; if #458 lands, execution fields populate through `AgentExecutionView` with no UI changes
++
++## What exists now
++
++| Piece | What exists | Evidence |
++|---|---|---|
++| Contracts | `AgentExecutionView`, `InvocationJobView`, `FirstResponderInvocationView`, `InvestigationSnapshotView`, `InvestigationTimeline`, `InvestigationSummary`, `InvestigationJobError`, `JobLatencyStats`, `WaitingJobView`, `FirstResponderDiagnostics` in `shared/live_defense.py` | schema 0.23.0, generated JSON Schema + TS |
++| Read APIs | 4 GET endpoints in `backend/api/live_defense_investigations.py`, project-scoped, keyset-bounded, redacted | `test_live_defense_investigations.py` (9 tests) |
++| Frontend | `Executions` tab: investigations list, timeline, invocation detail, diagnostics panel | `live-defense-executions.test.tsx` (7 tests) |
++| Transport | `firstResponderInvestigations/Investigation/InvocationDetail/Diagnostics` | transport build + 35 node tests |
++| E2E | `live-defense-investigations.spec.ts` against the real stack | Playwright spec |
+diff --git a/docs/planning/SESSION_HANDOFF.md b/docs/planning/SESSION_HANDOFF.md
+index 302938b3..d08f3a8a 100644
+--- a/docs/planning/SESSION_HANDOFF.md
++++ b/docs/planning/SESSION_HANDOFF.md
+@@ -1697,6 +1697,16 @@ ancestry retained and v6 registry hash unchanged (see verification report).
+ - Branch `feat/adam/agent-visibility-not-needed`: relay/team list now label skipped agents 'Not needed' (with the recorded skip note) or 'Not reached' on failed/cancelled runs. `earlyEndNote` in `frontend/lib/relay.ts` reads the reason from persisted `state_changed` events.
+ - Next: expand `security-agents/evals/commits/cases.json` toward ~40 cases, add check templates to lift `vuln validated` off 0/7 (only ownership + bounds templates exist).
+ 
++## 2026-10-24 — Devin: first-responder observability (Executions tab, schema 0.23.0)
++
++- Branch `feat/devin-investigation-observability` (on `m-alan08/ari-ai` fork; upstream push denied): read-only investigation observability over Phase 7A persisted records.
++- New shared DTOs in `shared/live_defense.py` at schema 0.23.0 — 0.20.0 stays reserved for open #412, 0.22.0 for open #458. `AgentExecutionView` mirrors the 7C `AgentExecutionRecord` with all fields optional: works today, populates automatically when #458 lands.
++- New read-only API (`backend/api/live_defense_investigations.py`): bounded investigations list (keyset, limit<=200), decision timeline (events, application, deploy mapping, snapshot resolution, invocations + joined job state, handoff, final state), invocation detail, project diagnostics (stalled leases, status distribution, missing prerequisites, waiting jobs, redacted recent errors, wall-clock latency, cost rollup = unavailable until 7C).
++- New Live Defense "Executions" tab: list + timeline + diagnostics; every missing field renders "unavailable"; no mutation controls.
++- Evidence: `backend/tests/test_live_defense_investigations.py` (9 pass), `frontend/tests/unit/live-defense-executions.test.tsx` (7 pass), `frontend/tests/e2e/live-defense-investigations.spec.ts`, transport methods + node tests.
++- Coordination: `coordination/messages/20261024T182202Z-devin-to-all-live-defense-observability-schema-0-23.md`; status `coordination/status/DEVIN.md`.
++- Next: PR review/merge by a human; do not merge from the agent.
++
+ ## 2026-10-24 — Devin (Adam): specialist eval-brain + live eval harness
+ 
+ - `specialists/data/evalcommits.py`: eval cases become minimal pairs (planted edit = CWE/vuln_other positive, original = hard negative), splits pinned by case id; `scout()` merges the 60 rows.
+diff --git a/frontend/app/(console)/projects/[projectId]/live-defense/executions/page.tsx b/frontend/app/(console)/projects/[projectId]/live-defense/executions/page.tsx
+new file mode 100644
+index 00000000..a6d97546
+--- /dev/null
++++ b/frontend/app/(console)/projects/[projectId]/live-defense/executions/page.tsx
+@@ -0,0 +1,20 @@
++'use client';
++
++import { useSearchParams } from 'next/navigation';
++import { Executions } from '@/components/live-defense/executions';
++import { useProject } from '@/components/project';
++import { api } from '@/lib/api';
++import { liveDefenseMode } from '@/lib/live-defense';
++import { useResource } from '@/lib/use-resource';
++
++export default function LiveDefenseExecutionsPage() {
++  const { project } = useProject();
++  const mode = liveDefenseMode(useSearchParams().get('preview'));
++  const live = mode === 'live';
++  const diagnostics = useResource(
++    live ? `ld-diag:${project.id}` : null,
++    s => api().firstResponderDiagnostics(project.id, { signal: s }),
++    15000,
++  );
++  return <Executions mode={mode} projectId={project.id} diagnostics={live ? diagnostics : undefined} />;
++}
+diff --git a/frontend/components/live-defense/executions.tsx b/frontend/components/live-defense/executions.tsx
+new file mode 100644
+index 00000000..32066a7d
+--- /dev/null
++++ b/frontend/components/live-defense/executions.tsx
+@@ -0,0 +1,497 @@
++'use client';
++
++import type {
++  FirstResponderDiagnostics,
++  FirstResponderInvocationView,
++  InvestigationSummary,
++  InvestigationTimeline,
++} from '@hackatl/frontend-transport';
++import { useCallback, useState } from 'react';
++import { ArtifactPeek } from '@/components/evidence';
++import { SourceTag } from '@/components/live-defense/common';
++import { Async, Button, Empty, ErrorState, Mono, Panel, Tag } from '@/components/ui';
++import { api } from '@/lib/api';
++import { formatTime, relativeTime } from '@/lib/format';
++import type { LiveDefenseMode } from '@/lib/live-defense';
++import type { Resource } from '@/lib/use-resource';
++import { useResource } from '@/lib/use-resource';
++import type { Tone } from '@/lib/status';
++
++/**
++ * First-responder execution observability. Persisted records only: an agent
++ * step that never ran is skipped, never faked as success; investigative
++ * execution is not a confirmed compromise and not executed enforcement.
++ * Missing fields render as "unavailable", never estimated.
++ */
++
++function statusTone(status: string): Tone {
++  if (status === 'failed' || status === 'dead') return 'bad';
++  if (status === 'cancelled') return 'neutral';
++  if (status.startsWith('skipped_') || status === 'blocked') return 'warn';
++  if (status === 'completed_unverified' || status === 'executed' || status === 'succeeded') return 'ok';
++  if (status === 'queued' || status === 'eligible' || status === 'running') return 'info';
++  return 'neutral';
++}
++
++const UNAVAILABLE = <span className="text-faint">unavailable</span>;
++
++function Cell({ label, children }: { label: string; children: React.ReactNode }) {
++  return (
++    <div className="min-w-0">
++      <p className="text-faint">{label}</p>
++      <p className="truncate text-ink">{children ?? UNAVAILABLE}</p>
++    </div>
++  );
++}
++
++function Ms({ ms }: { ms: number | null | undefined }) {
++  if (ms === null || ms === undefined) return UNAVAILABLE;
++  return <>{ms >= 1000 ? `${(ms / 1000).toFixed(1)} s` : `${ms} ms`}</>;
++}
++
++function Timestamp({ iso }: { iso: string | null | undefined }) {
++  if (!iso) return UNAVAILABLE;
++  return <span title={iso}>{formatTime(iso)}</span>;
++}
++
++export function Executions({
++  mode,
++  projectId,
++  diagnostics,
++}: {
++  mode: LiveDefenseMode;
++  projectId: string | null;
++  diagnostics?: Resource<FirstResponderDiagnostics>;
++  onRefresh?: () => void;
++}) {
++  const [selected, setSelected] = useState<string | null>(null);
++  if (mode === 'layout-preview') {
++    return (
++      <Panel title="Sample executions chrome" actions={<SourceTag mode="layout-preview" />}>
++        <p className="text-sm text-ink">Sample layout only. No investigation data is loaded here.</p>
++      </Panel>
++    );
++  }
++  if (!projectId) return <Empty>Choose a project to inspect first-responder executions.</Empty>;
++  return (
++    <div className="flex flex-col gap-4" data-testid="live-defense-executions">
++      <p data-testid="live-defense-executions-copy" className="rounded-xl border border-line bg-panel-2 px-4 py-3 text-sm text-ink">
++        Persisted first-responder records only. Investigative execution is not a confirmed compromise and not executed
++        enforcement. Values the backend has not persisted render as unavailable — never estimated.
++      </p>
++      <DiagnosticsPanel diagnostics={diagnostics} />
++      <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
++        <InvestigationList projectId={projectId} selected={selected} onSelect={setSelected} />
++        <InvestigationDetail decisionId={selected} />
++      </div>
++    </div>
++  );
++}
++
++function InvestigationList({
++  projectId,
++  selected,
++  onSelect,
++}: {
++  projectId: string;
++  selected: string | null;
++  onSelect: (id: string) => void;
++}) {
++  const first = useResource(
++    `ld-inv-list:${projectId}`,
++    s => api().firstResponderInvestigations(projectId, { signal: s, limit: 50 }),
++    15000,
++  );
++  const [extra, setExtra] = useState<InvestigationSummary[]>([]);
++  const [extraCursor, setExtraCursor] = useState<string | null>(null);
++  const [moreError, setMoreError] = useState<unknown>(null);
++  const [loadingMore, setLoadingMore] = useState(false);
++
++  const cursor = extraCursor ?? (first.status === 'ready' ? first.data.next_cursor : null);
++
++  const loadMore = useCallback(async () => {
++    if (!cursor) return;
++    setLoadingMore(true);
++    setMoreError(null);
++    try {
++      const page = await api().firstResponderInvestigations(projectId, { cursor, limit: 50 });
++      setExtra(prev => {
++        const seen = new Set(prev.map(i => i.decision_id));
++        return [...prev, ...page.items.filter(i => !seen.has(i.decision_id))];
++      });
++      setExtraCursor(page.next_cursor);
++    } catch (error) {
++      setMoreError(error);
++    } finally {
++      setLoadingMore(false);
++    }
++  }, [cursor, projectId]);
++
++  const firstIds = new Set(first.status === 'ready' ? first.data.items.map(i => i.decision_id) : []);
++  const items: InvestigationSummary[] = [
++    ...(first.status === 'ready' ? first.data.items : []),
++    ...extra.filter(i => !firstIds.has(i.decision_id)),
++  ];
++
++  return (
++    <Panel
++      title="Investigations"
++      actions={
++        <Button
++          className="!px-2 !py-0.5 text-xs"
++          onClick={() => {
++            setExtra([]);
++            setExtraCursor(null);
++            first.reload();
++          }}
++          data-testid="ld-inv-refresh"
++        >
++          Refresh
++        </Button>
++      }
++    >
++      <Async resource={first} label="investigations">
++        {() =>
++          items.length === 0 ? (
++            <Empty>No first-responder decisions recorded yet. Investigations appear here after a decision persists.</Empty>
++          ) : (
++            <ul className="flex flex-col gap-2" data-testid="ld-inv-list">
++              {items.map(item => (
++                <li key={item.decision_id}>
++                  <button
++                    type="button"
++                    onClick={() => onSelect(item.decision_id)}
++                    data-testid={`ld-inv-row-${item.decision_id}`}
++                    aria-pressed={selected === item.decision_id}
++                    className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${
++                      selected === item.decision_id ? 'border-brand bg-panel-2' : 'border-line hover:border-muted'
++                    }`}
++                  >
++                    <div className="flex flex-wrap items-center gap-2">
++                      <Mono className="text-xs">{item.decision_id}</Mono>
++                      <Tag tone={item.cancelled ? 'neutral' : statusTone(item.invocations_failed > 0 ? 'failed' : item.evidence_state)}>
++                        {item.cancelled ? 'cancelled' : item.action}
++                      </Tag>
++                      {item.simulated && <Tag tone="accent">simulated</Tag>}
++                      <span className="text-faint text-xs">{relativeTime(item.created_at)}</span>
++                    </div>
++                    <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted">
++                      <span>{item.invocations_total} invocations</span>
++                      {item.invocations_queued_or_running > 0 && <span className="text-info">{item.invocations_queued_or_running} queued/running</span>}
++                      {item.invocations_completed > 0 && <span className="text-ok">{item.invocations_completed} completed</span>}
++                      {item.invocations_failed > 0 && <span className="text-bad">{item.invocations_failed} failed</span>}
++                      {item.invocations_skipped > 0 && <span className="text-warn">{item.invocations_skipped} skipped</span>}
++                      {item.invocations_cancelled > 0 && <span className="text-muted">{item.invocations_cancelled} cancelled</span>}
++                      {item.handoff_state && <span>handoff {item.handoff_state}</span>}
++                    </div>
++                  </button>
++                </li>
++              ))}
++            </ul>
++          )
++        }
++      </Async>
++      {moreError !== null && <ErrorState error={moreError} context="Load more" onRetry={() => void loadMore()} />}
++      {cursor && (
++        <Button className="mt-2 !px-2 !py-0.5 text-xs" disabled={loadingMore} onClick={() => void loadMore()} data-testid="ld-inv-more">
++          {loadingMore ? 'Loading…' : 'Load more'}
++        </Button>
++      )}
++    </Panel>
++  );
++}
++
++function Section({ title, children, testId }: { title: string; children: React.ReactNode; testId?: string }) {
++  return (
++    <section data-testid={testId} className="rounded-lg border border-line bg-panel-2 px-3 py-2">
++      <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">{title}</h3>
++      <div className="mt-2">{children}</div>
++    </section>
++  );
++}
++
++function InvocationRow({ view }: { view: FirstResponderInvocationView }) {
++  const inv = view.invocation;
++  const job = view.job;
++  const exec = view.execution;
++  return (
++    <details data-testid={`ld-inv-detail-${inv.id}`} className="rounded-md border border-line bg-bg px-3 py-2">
++      <summary className="flex cursor-pointer flex-wrap items-center gap-2 text-sm">
++        <span className="font-medium text-ink">{inv.agent}</span>
++        <Tag tone={statusTone(inv.status)}>{inv.status}</Tag>
++        {inv.provider_mode !== 'none' && <Tag tone="accent">{inv.provider_mode} provider</Tag>}
++        {job?.stalled && <Tag tone="bad">stalled lease</Tag>}
++        {inv.reason && <span className="text-faint text-xs">{inv.reason}</span>}
++      </summary>
++      <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-xs md:grid-cols-3">
++        <Cell label="Invocation"><Mono>{inv.id}</Mono></Cell>
++        <Cell label="Queued at"><Timestamp iso={inv.created_at} /></Cell>
++        <Cell label="Capability"><Mono>{inv.capability_class}</Mono></Cell>
++        <Cell label="Execution record">{view.execution_recorded ? <Tag tone="ok">recorded</Tag> : UNAVAILABLE}</Cell>
++        <Cell label="Model">{exec?.model_id ?? null}</Cell>
++        <Cell label="Provider">{exec?.provider_mode ?? null}</Cell>
++        <Cell label="Started"><Timestamp iso={exec?.started_at} /></Cell>
++        <Cell label="Ended"><Timestamp iso={exec?.ended_at} /></Cell>
++        <Cell label="Duration"><Ms ms={exec?.latency_ms ?? job?.wall_time_ms ?? null} /></Cell>
++        <Cell label="LLM turns">{exec?.llm_turns ?? null}</Cell>
++        <Cell label="Tool calls">{exec?.tool_call_count ?? null}</Cell>
++        <Cell label="Cost (USD)">{exec?.cost_usd != null ? `$${exec.cost_usd.toFixed(4)}` : UNAVAILABLE}</Cell>
++        <Cell label="Tokens">{view.token_usage_note}</Cell>
++        <Cell label="Error code">{exec?.error_code ?? job?.error_code ?? null}</Cell>
++        <Cell label="Retries">{job ? `${job.attempts}/${job.max_attempts} attempts` : 'no job'}</Cell>
++        <Cell label="Integrity">{exec?.execution_integrity ?? null}</Cell>
++        <Cell label="Evidence verified">{exec?.evidence_verified === null || exec?.evidence_verified === undefined ? UNAVAILABLE : exec.evidence_verified ? 'verified' : 'not verified'}</Cell>
++        <Cell label="Confirmation">{exec?.confirmation ?? null}</Cell>
++      </div>
++      {job && (
++        <p className="mt-2 text-xs text-muted">
++          Job <Mono>{job.job_id}</Mono> · status <Tag tone={statusTone(job.status)}>{job.status}</Tag>
++          {job.error_message && <span className="text-bad"> · {job.error_message}</span>}
++        </p>
++      )}
++      {exec?.transcript_artifact_id && <ArtifactPeek id={exec.transcript_artifact_id} label="transcript" />}
++      {exec?.output_artifact_id && <ArtifactPeek id={exec.output_artifact_id} label="output" />}
++      {!exec && (
++        <p className="mt-2 text-xs text-faint">
++          No execution record persisted — this step never ran an agent loop (or ran before execution recording landed).
++        </p>
++      )}
++    </details>
++  );
++}
++
++function Timeline({ t }: { t: InvestigationTimeline }) {
++  return (
++    <div className="flex flex-col gap-3" data-testid="ld-inv-timeline">
++      <Section title="Final state" testId="ld-tl-final">
++        <div className="flex flex-wrap items-center gap-2">
++          <Tag tone={statusTone(t.final_state)}>{t.final_state}</Tag>
++          <Tag tone="info">evidence: {t.decision.evidence_state}</Tag>
++          <Tag tone={t.decision.confirmation === 'confirmed' ? 'ok' : 'neutral'}>confirmation: {t.decision.confirmation}</Tag>
++          {t.decision.simulated && <Tag tone="accent">simulated</Tag>}
++          {t.decision.cancelled && <Tag tone="neutral">cancelled{t.decision.cancel_reason ? `: ${t.decision.cancel_reason}` : ''}</Tag>}
++        </div>
++        <p className="mt-1 text-xs text-faint">{t.caveat}</p>
++      </Section>
++
++      <Section title="1 · Triggering security events" testId="ld-tl-events">
++        {t.trigger_events.length === 0 ? (
++          <p className="text-xs text-faint">{t.decision.trigger_event_ids.length === 0 ? 'No trigger events recorded on the decision.' : 'Trigger event records unavailable (referenced but not found).'}</p>
++        ) : (
++          <ul className="flex flex-col gap-1">
++            {t.trigger_events.map(e => (
++              <li key={e.id} className="flex flex-wrap items-center gap-2 text-xs" data-testid={`ld-tl-event-${e.id}`}>
++                <Mono>{e.id}</Mono>
++                <Tag tone="neutral">{e.type}</Tag>
++                <Tag tone={statusTone(e.status)}>{e.status}</Tag>
++                {e.simulated && <Tag tone="accent">simulated</Tag>}
++                <span className="text-faint">{formatTime(e.occurred_at)}</span>
++                {e.payload_artifact_id && <Mono className="text-faint">payload {e.payload_artifact_id}</Mono>}
++              </li>
++            ))}
++          </ul>
++        )}
++      </Section>
++
++      <Section title="2 · Application, deploy mapping, commit" testId="ld-tl-mapping">
++        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs md:grid-cols-3">
++          <Cell label="Application">{t.application ? `${t.application.name} (${t.application.environment})` : t.decision.application_id ?? 'no application'}</Cell>
++          <Cell label="Mapping">{t.mapping ? <Mono>{t.mapping.id}</Mono> : t.decision.correlation.mapping_id ?? 'no mapping'}</Cell>
++          <Cell label="Commit">{t.snapshot?.commit_sha ? <Mono>{t.snapshot.commit_sha.slice(0, 12)}</Mono> : 'unresolved'}</Cell>
++          <Cell label="Snapshot">{t.snapshot ? (t.snapshot.resolved ? <Mono>{t.snapshot.snapshot_id}</Mono> : <Tag tone="warn">unresolved</Tag>) : UNAVAILABLE}</Cell>
++          <Cell label="Repo">{t.snapshot?.repo_id ? <Mono>{t.snapshot.repo_id}</Mono> : UNAVAILABLE}</Cell>
++          <Cell label="Correlation confidence">{t.decision.correlation.confidence}</Cell>
++        </div>
++        {t.snapshot && <p className="mt-1 text-xs text-faint">{t.snapshot.note}</p>}
++      </Section>
++
++      <Section title="3 · First-responder decision" testId="ld-tl-decision">
++        <div className="flex flex-wrap items-center gap-2 text-xs">
++          <Mono>{t.decision.id}</Mono>
++          <Tag tone="info">{t.decision.action}</Tag>
++          <span className="text-faint">{t.decision.orchestrator_version} · {formatTime(t.decision.created_at)}</span>
++          {t.decision.executed === false && <Tag tone="neutral">executed=false</Tag>}
++        </div>
++        <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-xs md:grid-cols-3">
++          <Cell label="Selected agents">{t.decision.selected_agents.join(', ') || 'none'}</Cell>
++          <Cell label="Blocked agents">{t.decision.blocked_agents.length ? t.decision.blocked_agents.map(b => `${b.name}`).join(', ') : 'none'}</Cell>
++          <Cell label="Retries / loops">{t.decision.retry_count} / {t.decision.loop_count}</Cell>
++        </div>
++        {t.decision.blocked_agents.length > 0 && (
++          <ul className="mt-2 flex flex-col gap-1">
++            {t.decision.blocked_agents.map(b => (
++              <li key={b.name} className="text-xs text-warn" data-testid={`ld-tl-blocked-${b.name}`}>
++                {b.name}: {b.reason}
++              </li>
++            ))}
++          </ul>
++        )}
++      </Section>
++
++      <Section title="4 · Agent invocations" testId="ld-tl-invocations">
++        {t.invocations.length === 0 ? (
++          <p className="text-xs text-faint">No invocation records on this decision.</p>
++        ) : (
++          <ul className="flex flex-col gap-2">
++            {t.invocations.map(v => (
++              <li key={v.invocation.id}>
++                <InvocationRow view={v} />
++              </li>
++            ))}
++          </ul>
++        )}
++      </Section>
++
++      <Section title="5 · Analyst handoff" testId="ld-tl-handoff">
++        {t.handoff === null ? (
++          <p className="text-xs text-faint">No analyst handoff recorded.</p>
++        ) : (
++          <div className="text-xs">
++            <div className="flex flex-wrap items-center gap-2">
++              <Mono>{t.handoff.id}</Mono>
++              <Tag tone={t.handoff.state === 'delivered' ? 'ok' : 'info'}>{t.handoff.state}</Tag>
++              <Tag tone="neutral">confirmation: {t.handoff.confirmation}</Tag>
++              {t.handoff.threat_confirmed && <Tag tone="bad">threat confirmed</Tag>}
++            </div>
++            <p className="mt-1 text-ink">{t.handoff.title}</p>
++            {t.handoff.evidence_event_ids.length > 0 && (
++              <p className="mt-1 text-faint">evidence events: {t.handoff.evidence_event_ids.join(', ')}</p>
++            )}
++          </div>
++        )}
++      </Section>
++    </div>
++  );
++}
++
++function InvestigationDetail({ decisionId }: { decisionId: string | null }) {
++  const timeline = useResource(
++    decisionId ? `ld-inv-tl:${decisionId}` : null,
++    s => api().firstResponderInvestigation(decisionId!, { signal: s }),
++    8000,
++  );
++  return (
++    <Panel title="Investigation timeline" id="ld-investigation-detail">
++      {decisionId === null ? (
++        <Empty>Select an investigation to trace Event → Decision → Invocation → Artifact → Handoff.</Empty>
++      ) : (
++        <Async resource={timeline} label="timeline">
++          {t => <Timeline t={t} />}
++        </Async>
++      )}
++    </Panel>
++  );
++}
++
++function Stat({ label, value, tone = 'neutral' }: { label: string; value: React.ReactNode; tone?: Tone }) {
++  return (
++    <div className="rounded-lg border border-line bg-bg px-3 py-2">
++      <p className="text-faint text-xs">{label}</p>
++      <p className={`text-lg font-semibold ${tone === 'bad' ? 'text-bad' : tone === 'warn' ? 'text-warn' : tone === 'ok' ? 'text-ok' : tone === 'info' ? 'text-info' : 'text-ink'}`}>{value}</p>
++    </div>
++  );
++}
++
++function DiagnosticsPanel({ diagnostics }: { diagnostics?: Resource<FirstResponderDiagnostics> }) {
++  if (!diagnostics) return null;
++  return (
++    <Panel title="Operational diagnostics" actions={diagnostics.status === 'ready' ? <span className="text-faint text-xs">as of {formatTime(diagnostics.data.generated_at)}</span> : undefined}>
++      <Async resource={diagnostics} label="diagnostics">
++        {d => (
++          <div className="flex flex-col gap-3" data-testid="ld-diagnostics">
++            <div className="grid grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-6">
++              <Stat label="Investigations" value={d.investigations_total} />
++              <Stat label="Running jobs" value={d.jobs_running} tone={d.jobs_running ? 'info' : 'neutral'} />
++              <Stat label="Stalled (lease expired)" value={d.jobs_stalled} tone={d.jobs_stalled ? 'bad' : 'neutral'} />
++              <Stat label="Waiting in queue" value={d.jobs_queued} tone={d.jobs_queued ? 'info' : 'neutral'} />
++              <Stat label="Failed jobs" value={d.jobs_failed + d.jobs_dead} tone={d.jobs_failed + d.jobs_dead ? 'bad' : 'neutral'} />
++              <Stat label="Cancelled" value={d.jobs_cancelled + d.decisions_cancelled} />
++            </div>
++            <div className="grid gap-3 md:grid-cols-2">
++              <div>
++                <h4 className="text-xs font-semibold uppercase tracking-wide text-faint">Invocations by status</h4>
++                {Object.keys(d.invocations_by_status).length === 0 ? (
++                  <p className="mt-1 text-xs text-faint">No invocations persisted.</p>
++                ) : (
++                  <ul className="mt-1 flex flex-wrap gap-1.5" data-testid="ld-diag-status">
++                    {Object.entries(d.invocations_by_status).map(([status, n]) => (
++                      <li key={status}><Tag tone={statusTone(status)}>{status}: {n}</Tag></li>
++                    ))}
++                  </ul>
++                )}
++                {Object.keys(d.missing_prerequisites).length > 0 && (
++                  <>
++                    <h4 className="mt-2 text-xs font-semibold uppercase tracking-wide text-faint">Missing prerequisites</h4>
++                    <ul className="mt-1 flex flex-wrap gap-1.5" data-testid="ld-diag-prereqs">
++                      {Object.entries(d.missing_prerequisites).map(([k, n]) => (
++                        <li key={k}><Tag tone="warn">{k.replace(/^skipped_/, '').replace(/_/g, ' ')}: {n}</Tag></li>
++                      ))}
++                    </ul>
++                  </>
++                )}
++                {Object.keys(d.failures_by_agent).length > 0 && (
++                  <>
++                    <h4 className="mt-2 text-xs font-semibold uppercase tracking-wide text-faint">Failures by agent</h4>
++                    <ul className="mt-1 flex flex-wrap gap-1.5" data-testid="ld-diag-agent-failures">
++                      {Object.entries(d.failures_by_agent).map(([agent, n]) => (
++                        <li key={agent}><Tag tone="bad">{agent}: {n}</Tag></li>
++                      ))}
++                    </ul>
++                  </>
++                )}
++              </div>
++              <div>
++                <h4 className="text-xs font-semibold uppercase tracking-wide text-faint">Latency (job wall time)</h4>
++                {d.agent_step_latency ? (
++                  <p className="mt-1 text-xs text-muted" data-testid="ld-diag-latency">
++                    agent steps: {d.agent_step_latency.samples} samples · avg <Ms ms={d.agent_step_latency.avg_ms} /> · max <Ms ms={d.agent_step_latency.max_ms} />
++                  </p>
++                ) : (
++                  <p className="mt-1 text-xs text-faint">No finished agent-step jobs to measure.</p>
++                )}
++                <h4 className="mt-2 text-xs font-semibold uppercase tracking-wide text-faint">Cost</h4>
++                <p className="mt-1 text-xs text-muted" data-testid="ld-diag-cost">
++                  {d.cost_usd_total !== null ? `$${d.cost_usd_total.toFixed(4)}` : UNAVAILABLE}
++                </p>
++                <p className="text-xs text-faint">{d.cost_note}</p>
++                {d.waiting_jobs.length > 0 && (
++                  <>
++                    <h4 className="mt-2 text-xs font-semibold uppercase tracking-wide text-faint">Waiting jobs</h4>
++                    <ul className="mt-1 flex flex-col gap-1" data-testid="ld-diag-waiting">
++                      {d.waiting_jobs.map(w => (
++                        <li key={w.job_id} className="text-xs text-muted">
++                          <Mono>{w.job_id}</Mono> · {w.kind} · attempts {w.attempts} · runs {w.run_after ? relativeTime(w.run_after) : 'when claimed'}
++                        </li>
++                      ))}
++                    </ul>
++                  </>
++                )}
++              </div>
++            </div>
++            {d.recent_errors.length > 0 && (
++              <div>
++                <h4 className="text-xs font-semibold uppercase tracking-wide text-faint">Recent errors</h4>
++                <ul className="mt-1 flex flex-col gap-1" data-testid="ld-diag-errors">
++                  {d.recent_errors.map(e => (
++                    <li key={e.job_id} className="rounded border border-line bg-bg px-2 py-1 text-xs">
++                      <Mono>{e.job_id}</Mono> · {e.kind}
++                      {e.agent && <> · {e.agent}</>}
++                      {e.code && <> · <span className="text-bad">{e.code}</span></>}
++                      {e.message && <span className="text-muted"> · {e.message}</span>}
++                      {e.at && <span className="text-faint"> · {relativeTime(e.at)}</span>}
++                    </li>
++                  ))}
++                </ul>
++              </div>
++            )}
++            <ul className="flex flex-col gap-0.5">
++              {d.notes.map((n, i) => (
++                <li key={i} className="text-xs text-faint">{n}</li>
++              ))}
++            </ul>
++          </div>
++        )}
++      </Async>
++    </Panel>
++  );
++}
+diff --git a/frontend/components/live-defense/shell.tsx b/frontend/components/live-defense/shell.tsx
+index 02a6e12a..4ce5e2ae 100644
+--- a/frontend/components/live-defense/shell.tsx
++++ b/frontend/components/live-defense/shell.tsx
+@@ -13,6 +13,7 @@ const TABS = [
+   { id: 'apps', label: 'Staging apps' },
+   { id: 'controls', label: 'Controls' },
+   { id: 'first-responder', label: 'First responder' },
++  { id: 'executions', label: 'Executions' },
+ ] as const;
+ 
+ export function LiveDefenseShell({
+diff --git a/frontend/lib/live-defense.ts b/frontend/lib/live-defense.ts
+index b1b4f3a6..199c5be6 100644
+--- a/frontend/lib/live-defense.ts
++++ b/frontend/lib/live-defense.ts
+@@ -7,7 +7,7 @@
+ import type { Incident, MonitoringEvent } from '@hackatl/frontend-transport';
+ 
+ export type LiveDefenseMode = 'live' | 'layout-preview';
+-export type LiveDefenseTab = 'overview' | 'incidents' | 'explain' | 'apps' | 'controls' | 'first-responder';
++export type LiveDefenseTab = 'overview' | 'incidents' | 'explain' | 'apps' | 'controls' | 'first-responder' | 'executions';
+ 
+ export const PREVIEW_QUERY = 'preview';
+ export const PREVIEW_VALUE = 'layout';
+@@ -54,7 +54,7 @@ export function withLiveDefenseMode(href: string, mode: LiveDefenseMode): string
+ 
+ export function liveDefenseHref(projectId: string | null, tab: LiveDefenseTab = 'overview', mode: LiveDefenseMode = 'live'): string {
+   const base = projectId === null ? '/live-defense-pilot' : `/projects/${projectId}/live-defense`;
+-  const suffix = tab === 'overview' ? '' : tab === 'incidents' ? '/incidents' : tab === 'explain' ? '/explain' : tab === 'controls' ? '/controls' : tab === 'first-responder' ? '/first-responder' : '/apps';
++  const suffix = tab === 'overview' ? '' : tab === 'incidents' ? '/incidents' : tab === 'explain' ? '/explain' : tab === 'controls' ? '/controls' : tab === 'first-responder' ? '/first-responder' : tab === 'executions' ? '/executions' : '/apps';
+   const path = `${base}${suffix}`;
+   return projectId === null ? path : withLiveDefenseMode(path, mode);
+ }
+@@ -64,6 +64,7 @@ export function liveDefenseTab(pathname: string): LiveDefenseTab {
+   if (/live-defense(?:-pilot)?\/incidents(?:\/|$)/.test(pathname)) return 'incidents';
+   if (/live-defense(?:-pilot)?\/controls(?:\/|$)/.test(pathname)) return 'controls';
+   if (/live-defense(?:-pilot)?\/first-responder(?:\/|$)/.test(pathname)) return 'first-responder';
++  if (/live-defense(?:-pilot)?\/executions(?:\/|$)/.test(pathname)) return 'executions';
+   if (/live-defense(?:-pilot)?\/apps(?:\/|$)/.test(pathname)) return 'apps';
+   return 'overview';
+ }
+@@ -73,6 +74,10 @@ export const USED_LIVE_APIS = [
+   { method: 'GET', path: '/projects/{id}', use: '24/7 defense switch and project name' },
+   { method: 'PATCH', path: '/projects/{id}', use: 'owner toggle of monitoring_policy.enabled' },
+   { method: 'GET', path: '/projects/{id}/events', use: 'recorded webhook and runtime events' },
++  { method: 'GET', path: '/projects/{id}/first-responder/investigations', use: 'bounded investigation list (Executions tab)' },
++  { method: 'GET', path: '/first-responder/investigations/{decisionId}', use: 'investigation timeline: events, mapping, snapshot, invocations, handoff' },
++  { method: 'GET', path: '/first-responder/invocations/{invocationId}', use: 'agent execution detail: queue state + optional execution record' },
++  { method: 'GET', path: '/projects/{id}/first-responder/diagnostics', use: 'operational diagnostics: stalled jobs, failures, waiting queue, redacted errors' },
+   { method: 'GET', path: '/projects/{id}/reassessments', use: 're-checks those events requested' },
+   { method: 'GET', path: '/projects/{id}/incidents', use: 'NIST incident list' },
+   { method: 'GET', path: '/incidents/{id}', use: 'incident timeline and linked evidence' },
+diff --git a/frontend/tests/e2e/live-defense-investigations.spec.ts b/frontend/tests/e2e/live-defense-investigations.spec.ts
+new file mode 100644
+index 00000000..ddc8ee46
+--- /dev/null
++++ b/frontend/tests/e2e/live-defense-investigations.spec.ts
+@@ -0,0 +1,116 @@
++import { expect, test } from '@playwright/test';
++import { env, evidenceShot, expectNoSideScroll, newUser } from './helpers';
++
++const api = () => env('E2E_API');
++const project = () => env('E2E_PROJECT_ID');
++const repo = () => env('E2E_REPO_ID');
++const sha = () => env('E2E_COMMIT');
++
++function ingestBatch(offsetMs: number, extra: number) {
++  const start = Date.now() + offsetMs;
++  return {
++    source: 'owned_staging',
++    window_start: new Date(start).toISOString(),
++    window_end: new Date(start + 60_000).toISOString(),
++    routes: [{
++      route: 'GET /payments/{payment_id}',
++      requests: 20,
++      status_4xx: extra,
++      auth_failures: extra,
++    }],
++  };
++}
++
++test('Executions: investigation timeline, agent states, diagnostics', async ({ browser, request }) => {
++  const page = await newUser(browser, 'e2e-alice');
++  const pid = project();
++  const base = api();
++
++  // MONITOR mode so runtime ingest drives a real first-responder decision.
++  await page.goto(`/projects/${pid}/live-defense/first-responder`);
++  await page.getByTestId('live-defense-fr-mode-select').selectOption('monitor');
++  await page.getByRole('button', { name: 'Set mode' }).click();
++  await expect(page.getByTestId('live-defense-fr-intent')).toContainText('monitor');
++
++  // Register an owned-test app and issue an ingest token through the real UI.
++  await page.getByRole('navigation', { name: 'Live Defense' }).getByRole('link', { name: 'Staging apps' }).click();
++  await page.getByLabel('Name').fill('payments obs staging');
++  await page.getByLabel('Environment').selectOption('owned_test');
++  await page.getByRole('button', { name: 'Register app' }).click();
++  const appCard = page.locator('[data-testid^="live-defense-app-"]').filter({ hasText: 'payments obs staging' });
++  await expect(appCard).toBeVisible();
++  await appCard.getByRole('button', { name: 'Issue ingest token' }).click();
++  const token = await page.getByTestId('live-defense-token-once').locator('code').innerText();
++
++  const appId = (await appCard.getAttribute('data-testid'))!.replace('live-defense-app-', '');
++  const me = await page.request.get(`${base}/me`);
++  const csrf = (await me.json() as { csrf_token: string }).csrf_token;
++  const mapping = await page.request.post(`${base}/applications/${appId}/deploy-mappings`, {
++    headers: { 'X-CSRF-Token': csrf },
++    data: { repo_id: repo(), commit_sha: sha(), deployed_at: new Date().toISOString(), source: 'owner_attested' },
++  });
++  expect(mapping.ok(), await mapping.text()).toBeTruthy();
++
++  const spike = await request.post(`${base}/ingest/runtime/${pid}`, {
++    headers: { Authorization: `Bearer ${token}` },
++    data: ingestBatch(0, 18),
++  });
++  expect(spike.ok(), await spike.text()).toBeTruthy();
++
++  // The e2e worker drains continuously; the decision persists after the spike.
++  let decisionId = '';
++  await expect.poll(async () => {
++    const listed = await page.request.get(`${base}/projects/${pid}/first-responder/investigations`);
++    if (!listed.ok()) return 0;
++    const items = ((await listed.json()) as { items: { decision_id: string }[] }).items;
++    decisionId = items[0]?.decision_id ?? '';
++    return items.length;
++  }, { timeout: 60_000 }).toBeGreaterThan(0);
++
++  await page.goto(`/projects/${pid}/live-defense/executions`);
++  await expect(page.getByTestId('live-defense-executions')).toBeVisible();
++  await expect(page.getByTestId('live-defense-executions-copy')).toContainText('not a confirmed compromise');
++  await expect(page.getByTestId('ld-diagnostics')).toBeVisible();
++  await expectNoSideScroll(page);
++
++  const row = page.getByTestId(`ld-inv-row-${decisionId}`);
++  await expect(row).toBeVisible();
++  await row.click();
++
++  const timeline = page.getByTestId('ld-inv-timeline');
++  await expect(timeline).toBeVisible();
++  await expect(page.getByTestId('ld-tl-events')).toBeVisible();
++  await expect(page.getByTestId('ld-tl-decision')).toContainText(decisionId);
++  await expect(page.getByTestId('ld-tl-invocations')).toBeVisible();
++  await expect(page.getByTestId('ld-tl-handoff')).toBeVisible();
++  await evidenceShot(page, 'live-defense-executions-timeline');
++
++  // Agent step jobs are drained by the e2e worker; invocations resolve to a
++  // real persisted state — never fabricated as executed.
++  await expect.poll(async () => {
++    const t = await page.request.get(`${base}/first-responder/investigations/${decisionId}`);
++    const body = await t.json() as { invocations: { invocation: { status: string } }[] };
++    return body.invocations.length;
++  }, { timeout: 60_000 }).toBeGreaterThan(0);
++  const t = await page.request.get(`${base}/first-responder/investigations/${decisionId}`);
++  const body = await t.json() as { invocations: { invocation: { status: string } }[] };
++  const known = /^(eligible|blocked|queued|skipped_\w+|completed_unverified|executed|failed|cancelled)$/;
++  for (const v of body.invocations) expect(v.invocation.status).toMatch(known);
++
++  await page.reload();
++  await page.getByTestId(`ld-inv-row-${decisionId}`).click();
++  const firstDetail = page.locator('[data-testid^="ld-inv-detail-"]').first();
++  await firstDetail.locator('summary').click();
++  await expect(firstDetail).toContainText('unavailable');
++  await expect(firstDetail).not.toContainText('tokens used');
++  await evidenceShot(page, 'live-defense-executions-detail');
++
++  // Diagnostics reflect real queue state and never invent cost.
++  const diag = await page.request.get(`${base}/projects/${pid}/first-responder/diagnostics`);
++  expect(diag.ok()).toBeTruthy();
++  const d = await diag.json() as { cost_usd_total: number | null; investigations_total: number };
++  expect(d.investigations_total).toBeGreaterThan(0);
++
++  // Read-only surface: no mutation controls on this tab.
++  await expect(page.getByRole('button', { name: /^(apply|isolate|rate-limit|block source|auto-execute|set mode)$/i })).toHaveCount(0);
++});
+diff --git a/frontend/tests/unit/live-defense-executions.test.tsx b/frontend/tests/unit/live-defense-executions.test.tsx
+new file mode 100644
+index 00000000..303d83cd
+--- /dev/null
++++ b/frontend/tests/unit/live-defense-executions.test.tsx
+@@ -0,0 +1,203 @@
++import { cleanup, fireEvent, render, screen } from '@testing-library/react';
++import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
++import { Executions } from '@/components/live-defense/executions';
++import type {
++  FirstResponderDecision,
++  FirstResponderDiagnostics,
++  FirstResponderInvocationView,
++  InvestigationSummary,
++  InvestigationTimeline,
++} from '@hackatl/frontend-transport';
++
++const resources = vi.hoisted(() => ({
++  list: { status: 'ready' as const, data: { items: [] as InvestigationSummary[], next_cursor: null }, error: undefined, reload: vi.fn() },
++  timeline: { status: 'ready' as const, data: null as InvestigationTimeline | null, error: undefined, reload: vi.fn() },
++  diagnostics: { status: 'ready' as const, data: null as unknown as FirstResponderDiagnostics, error: undefined, reload: vi.fn() },
++}));
++
++vi.mock('@/lib/use-resource', () => ({
++  useResource: (key: string | null) => {
++    if (key === null) return { status: 'loading', data: undefined, error: undefined, reload: vi.fn() };
++    if (key.startsWith('ld-inv-list:')) return resources.list;
++    if (key.startsWith('ld-inv-tl:')) return resources.timeline;
++    return { status: 'loading', data: undefined, error: undefined, reload: vi.fn() };
++  },
++}));
++
++vi.mock('@/lib/api', () => ({
++  api: () => ({
++    firstResponderInvestigations: vi.fn(),
++    firstResponderInvestigation: vi.fn(),
++    firstResponderDiagnostics: vi.fn(),
++    artifactText: vi.fn(),
++  }),
++}));
++
++const DECISION: FirstResponderDecision = {
++  id: 'frd_aaaaaaaaaaaaaaaa', project_id: 'prj_1', application_id: 'app_1',
++  created_at: '2026-10-24T10:00:00Z', orchestrator_version: '7a.1.1',
++  intent_mode: 'monitor', effective_mode: 'monitor', action: 'investigate',
++  evidence_state: 'suspected', trigger_event_ids: ['evt_aaaaaaaaaaaaaaaa'],
++  live_policy_decision_id: null, incident_id: null,
++  selected_agents: ['scout', 'diagnose'],
++  blocked_agents: [{ name: 'patch', reason: 'no candidate patch', capability_class: 'code_changing' }],
++  correlation: { application_id: 'app_1', mapping_id: null, commit_sha: null, confidence: 'unknown', finding_ids_at_commit: [], finding_is_not_proof_of_this_request: true, note: 'n' },
++  confirmation: 'unverified', llm_prose_is_not_confirmation: true,
++  recommended_control: null, recommended_is_not_executed: true, executed: false,
++  auto_execute: false, simulated: false, budget_usd_remaining: 3.0, deadline_at: null,
++  retry_count: 0, loop_count: 0, cancelled: false, cancel_reason: null,
++  transition: 'test', outcome_label: null, predicted_probability: null, q_values: null,
++  caveat: 'test caveat',
++};
++
++function invocation(overrides: Partial<FirstResponderInvocationView> & { status?: string } = {}): FirstResponderInvocationView {
++  const { status = 'queued', ...rest } = overrides;
++  return {
++    invocation: {
++      id: 'fri_aaaaaaaaaaaaaaaa', decision_id: DECISION.id, project_id: 'prj_1',
++      agent: 'scout', capability_class: 'investigative_readonly',
++      status: status as FirstResponderInvocationView['invocation']['status'],
++      provider_mode: 'none', independent_of_patch: false, worktree_only: false,
++      silent_deploy: false, authorized_scope_id: null, job_id: null, reason: null,
++      created_at: '2026-10-24T10:00:01Z',
++    },
++    job: null, execution: null, execution_recorded: false,
++    token_usage_available: false, token_usage_note: 'Per-invocation token usage is not persisted yet',
++    ...rest,
++  } as FirstResponderInvocationView;
++}
++
++const TIMELINE: InvestigationTimeline = {
++  decision: DECISION,
++  trigger_events: [{
++    id: 'evt_aaaaaaaaaaaaaaaa', project_id: 'prj_1', repo_id: null, source: 'runtime',
++    type: 'log_anomaly', occurred_at: '2026-10-24T09:59:00Z', received_at: '2026-10-24T09:59:05Z',
++    dedupe_key: 'dk', payload_artifact_id: null, commit_range: null, ref: null, pr_number: null,
++    simulated: false, status: 'processed', status_reason: null, impact: null,
++  }],
++  application: null, mapping: null, snapshot: null,
++  invocations: [
++    invocation({ status: 'skipped_no_snapshot' }),
++    invocation({ status: 'failed', invocation: { ...invocation().invocation, id: 'fri_bbbbbbbbbbbbbbbb', agent: 'diagnose', status: 'failed' } }),
++  ],
++  handoff: null,
++  final_state: 'failed',
++  caveat: 'Persisted records only.',
++};
++
++const DIAGNOSTICS: FirstResponderDiagnostics = {
++  generated_at: '2026-10-24T10:05:00Z', investigations_total: 3, decisions_cancelled: 1,
++  invocations_by_status: { queued: 2, skipped_no_snapshot: 1, failed: 1 },
++  failures_by_agent: { scout: 1 },
++  missing_prerequisites: { skipped_no_snapshot: 1 },
++  jobs_queued: 2, jobs_running: 0, jobs_stalled: 1, jobs_succeeded: 3, jobs_failed: 1,
++  jobs_cancelled: 1, jobs_dead: 0,
++  waiting_jobs: [{ job_id: 'job_aaaaaaaaaaaaaaaa', kind: 'live_defense_agent_step', run_after: null, enqueued_at: null, attempts: 1 }],
++  recent_errors: [{ job_id: 'job_bbbbbbbbbbbbbbbb', kind: 'live_defense_agent_step', decision_id: DECISION.id, invocation_id: null, agent: 'scout', code: 'TIMEOUT', message: 'worker timed out', at: '2026-10-24T10:04:00Z' }],
++  agent_step_latency: { samples: 4, avg_ms: 1200, max_ms: 4000 },
++  cost_usd_total: null,
++  cost_note: 'Per-invocation cost requires persisted execution records (Phase 7C).',
++  notes: ['Stalled = running job whose lease expired.'],
++};
++
++const SUMMARY: InvestigationSummary = {
++  decision_id: DECISION.id, created_at: DECISION.created_at, action: 'investigate',
++  evidence_state: 'suspected', confirmation: 'unverified', application_id: 'app_1',
++  simulated: false, cancelled: false, trigger_event_count: 1, invocations_total: 2,
++  invocations_queued_or_running: 0, invocations_completed: 0, invocations_failed: 1,
++  invocations_skipped: 1, invocations_cancelled: 0, handoff_state: null,
++};
++
++beforeEach(() => {
++  resources.list = { status: 'ready', data: { items: [], next_cursor: null }, error: undefined, reload: vi.fn() };
++  resources.timeline = { status: 'ready', data: TIMELINE, error: undefined, reload: vi.fn() };
++  resources.diagnostics = { status: 'ready', data: DIAGNOSTICS, error: undefined, reload: vi.fn() };
++});
++
++afterEach(() => cleanup());
++
++describe('Executions observability UI', () => {
++  it('renders diagnostics with failed, skipped and stalled states, and explicit unavailable cost', () => {
++    render(<Executions mode="live" projectId="prj_1" diagnostics={resources.diagnostics} />);
++    const d = screen.getByTestId('ld-diagnostics');
++    expect(d.textContent).toContain('skipped_no_snapshot: 1');
++    expect(d.textContent).toContain('failed: 1');
++    expect(d.textContent).toContain('scout: 1');
++    expect(screen.getByTestId('ld-diag-cost').textContent).toContain('unavailable');
++    expect(d.textContent).toContain('Phase 7C');
++    expect(screen.getByTestId('ld-diag-errors').textContent).toContain('TIMEOUT');
++    expect(screen.getByTestId('ld-diag-waiting').textContent).toContain('live_defense_agent_step');
++  });
++
++  it('lists investigations and renders the timeline with failed and skipped execution states', () => {
++    resources.list = { status: 'ready', data: { items: [SUMMARY], next_cursor: null }, error: undefined, reload: vi.fn() };
++    render(<Executions mode="live" projectId="prj_1" diagnostics={resources.diagnostics} />);
++    fireEvent.click(screen.getByTestId(`ld-inv-row-${DECISION.id}`));
++    const tl = screen.getByTestId('ld-inv-timeline');
++    expect(tl.textContent).toContain('failed');
++    expect(screen.getByTestId('ld-tl-events').textContent).toContain('evt_aaaaaaaaaaaaaaaa');
++    expect(screen.getByTestId('ld-tl-blocked-patch').textContent).toContain('no candidate patch');
++    const detail = screen.getByTestId('ld-inv-detail-fri_aaaaaaaaaaaaaaaa');
++    expect(detail.textContent).toContain('skipped_no_snapshot');
++    expect(detail.textContent).toContain('No execution record persisted');
++  });
++
++  it('renders unknown execution fields explicitly as unavailable, never fabricated', () => {
++    resources.list = { status: 'ready', data: { items: [SUMMARY], next_cursor: null }, error: undefined, reload: vi.fn() };
++    render(<Executions mode="live" projectId="prj_1" diagnostics={resources.diagnostics} />);
++    fireEvent.click(screen.getByTestId(`ld-inv-row-${DECISION.id}`));
++    const detail = screen.getByTestId('ld-inv-detail-fri_bbbbbbbbbbbbbbbb');
++    expect(detail.textContent).toContain('unavailable');
++    expect(detail.textContent).not.toContain('tokens used');
++  });
++
++  it('surfaces recorded execution fields and artifact navigation when the record exists', () => {
++    const withExec = invocation({
++      status: 'executed',
++      execution_recorded: true,
++      execution: {
++        provider_mode: 'fake', model_id: 'claude-haiku-5-5', cost_usd: 0.0042,
++        latency_ms: 1500, llm_turns: 2, tool_call_count: 3,
++        started_at: '2026-10-24T10:00:02Z', ended_at: '2026-10-24T10:00:04Z',
++        transcript_artifact_id: 'art_aaaaaaaaaaaaaaaa', output_artifact_id: 'art_bbbbbbbbbbbbbbbb',
++        error_code: null, typed_output: true, hypothesis_count: 2,
++        execution_integrity: 'verified', independent_verification_id: null,
++        evidence_verified: true, confirmation: 'unverified', predicted_probability: null,
++        execution_is_not_confirmation: true,
++      },
++    });
++    resources.timeline = { status: 'ready', data: { ...TIMELINE, invocations: [withExec] }, error: undefined, reload: vi.fn() };
++    resources.list = { status: 'ready', data: { items: [SUMMARY], next_cursor: null }, error: undefined, reload: vi.fn() };
++    render(<Executions mode="live" projectId="prj_1" diagnostics={resources.diagnostics} />);
++    fireEvent.click(screen.getByTestId(`ld-inv-row-${DECISION.id}`));
++    const detail = screen.getByTestId('ld-inv-detail-fri_aaaaaaaaaaaaaaaa');
++    expect(detail.textContent).toContain('claude-haiku-5-5');
++    expect(detail.textContent).toContain('$0.0042');
++    expect(detail.textContent).toContain('recorded');
++    expect(detail.textContent).toContain('art_aaaaaaaaaaaaaaaa');
++    expect(detail.textContent).toContain('art_bbbbbbbbbbbbbbbb');
++  });
++
++  it('renders cancelled investigations distinctly', () => {
++    const cancelledSummary: InvestigationSummary = { ...SUMMARY, decision_id: 'frd_cccccccccccccccc', cancelled: true, invocations_cancelled: 2 };
++    resources.list = { status: 'ready', data: { items: [cancelledSummary], next_cursor: null }, error: undefined, reload: vi.fn() };
++    resources.timeline = { status: 'ready', data: { ...TIMELINE, final_state: 'cancelled', decision: { ...DECISION, cancelled: true, cancel_reason: 'mode_off' } }, error: undefined, reload: vi.fn() };
++    render(<Executions mode="live" projectId="prj_1" diagnostics={resources.diagnostics} />);
++    expect(screen.getByTestId('ld-inv-row-frd_cccccccccccccccc').textContent).toContain('cancelled');
++    fireEvent.click(screen.getByTestId('ld-inv-row-frd_cccccccccccccccc'));
++    expect(screen.getByTestId('ld-tl-final').textContent).toContain('cancelled');
++    expect(screen.getByTestId('ld-tl-final').textContent).toContain('mode_off');
++  });
++
++  it('shows the error state and keeps the empty prompt when the timeline fails', () => {
++    resources.timeline = { status: 'error', data: undefined, error: new Error('boom'), reload: vi.fn() } as never;
++    render(<Executions mode="live" projectId="prj_1" diagnostics={resources.diagnostics} />);
++    expect(screen.getByText(/Select an investigation/)).toBeTruthy();
++  });
++
++  it('layout-preview mode renders sample chrome without loading', () => {
++    render(<Executions mode="layout-preview" projectId="prj_1" />);
++    expect(screen.getByText(/Sample layout only/)).toBeTruthy();
++    expect(screen.queryByTestId('ld-inv-timeline')).toBeNull();
++  });
++});
+diff --git a/frontend/transport/src/client.ts b/frontend/transport/src/client.ts
+index bc1e1964..29be5f11 100644
+--- a/frontend/transport/src/client.ts
++++ b/frontend/transport/src/client.ts
+@@ -376,6 +376,22 @@ export class ApiClient {
+   firstResponderHandoffs(projectId: string, options?: RequestOptions): Promise<Page<C.AnalystHandoff>> {
+     return this.list(`/projects/${segment(projectId)}/first-responder/handoffs`, 'AnalystHandoff', options);
+   }
++  firstResponderInvestigations(projectId: string, options?: RequestOptions & { cursor?: string; limit?: number }): Promise<Page<C.InvestigationSummary>> {
++    const qs = new URLSearchParams();
++    if (options?.cursor) qs.set('cursor', options.cursor);
++    if (options?.limit) qs.set('limit', String(options.limit));
++    const suffix = qs.size ? `?${qs}` : '';
++    return this.list(`/projects/${segment(projectId)}/first-responder/investigations${suffix}`, 'InvestigationSummary', options?.signal ? { signal: options.signal } : undefined);
++  }
++  firstResponderInvestigation(decisionId: string, options?: RequestOptions): Promise<C.InvestigationTimeline> {
++    return this.request(`/first-responder/investigations/${segment(decisionId)}`, 'InvestigationTimeline', options) as Promise<C.InvestigationTimeline>;
++  }
++  firstResponderInvocationDetail(invocationId: string, options?: RequestOptions): Promise<C.FirstResponderInvocationView> {
++    return this.request(`/first-responder/invocations/${segment(invocationId)}`, 'FirstResponderInvocationView', options) as Promise<C.FirstResponderInvocationView>;
++  }
++  firstResponderDiagnostics(projectId: string, options?: RequestOptions): Promise<C.FirstResponderDiagnostics> {
++    return this.request(`/projects/${segment(projectId)}/first-responder/diagnostics`, 'FirstResponderDiagnostics', options) as Promise<C.FirstResponderDiagnostics>;
++  }
+   createDeployCommitMapping(appId: string, body: C.DeployCommitMappingCreate, options?: RequestOptions): Promise<C.DeployCommitMapping> {
+     return this.request(`/applications/${segment(appId)}/deploy-mappings`, 'DeployCommitMapping', options, body) as Promise<C.DeployCommitMapping>;
+   }
+diff --git a/shared/generated/contracts.schema.json b/shared/generated/contracts.schema.json
+index 46e3ffb2..949ed6a4 100644
+Binary files a/shared/generated/contracts.schema.json and b/shared/generated/contracts.schema.json differ
+diff --git a/shared/generated/jsonschema/AgentExecutionView.json b/shared/generated/jsonschema/AgentExecutionView.json
+new file mode 100644
+index 00000000..7a220790
+Binary files /dev/null and b/shared/generated/jsonschema/AgentExecutionView.json differ
+diff --git a/shared/generated/jsonschema/FirstResponderDiagnostics.json b/shared/generated/jsonschema/FirstResponderDiagnostics.json
+new file mode 100644
+index 00000000..54e12332
+Binary files /dev/null and b/shared/generated/jsonschema/FirstResponderDiagnostics.json differ
+diff --git a/shared/generated/jsonschema/FirstResponderInvocationView.json b/shared/generated/jsonschema/FirstResponderInvocationView.json
+new file mode 100644
+index 00000000..e3b82589
+Binary files /dev/null and b/shared/generated/jsonschema/FirstResponderInvocationView.json differ
+diff --git a/shared/generated/jsonschema/InvestigationJobError.json b/shared/generated/jsonschema/InvestigationJobError.json
+new file mode 100644
+index 00000000..ea6fbc25
+Binary files /dev/null and b/shared/generated/jsonschema/InvestigationJobError.json differ
+diff --git a/shared/generated/jsonschema/InvestigationSnapshotView.json b/shared/generated/jsonschema/InvestigationSnapshotView.json
+new file mode 100644
+index 00000000..bf4ef3b6
+Binary files /dev/null and b/shared/generated/jsonschema/InvestigationSnapshotView.json differ
+diff --git a/shared/generated/jsonschema/InvestigationSummary.json b/shared/generated/jsonschema/InvestigationSummary.json
+new file mode 100644
+index 00000000..1adcae3e
+Binary files /dev/null and b/shared/generated/jsonschema/InvestigationSummary.json differ
+diff --git a/shared/generated/jsonschema/InvestigationTimeline.json b/shared/generated/jsonschema/InvestigationTimeline.json
+new file mode 100644
+index 00000000..4bda9ac9
+Binary files /dev/null and b/shared/generated/jsonschema/InvestigationTimeline.json differ
+diff --git a/shared/generated/jsonschema/InvocationJobView.json b/shared/generated/jsonschema/InvocationJobView.json
+new file mode 100644
+index 00000000..9c02b087
+Binary files /dev/null and b/shared/generated/jsonschema/InvocationJobView.json differ
+diff --git a/shared/generated/jsonschema/JobLatencyStats.json b/shared/generated/jsonschema/JobLatencyStats.json
+new file mode 100644
+index 00000000..f6ba11ad
+Binary files /dev/null and b/shared/generated/jsonschema/JobLatencyStats.json differ
+diff --git a/shared/generated/jsonschema/WaitingJobView.json b/shared/generated/jsonschema/WaitingJobView.json
+new file mode 100644
+index 00000000..0ba46462
+Binary files /dev/null and b/shared/generated/jsonschema/WaitingJobView.json differ
+diff --git a/shared/generated/ts/contracts.ts b/shared/generated/ts/contracts.ts
+index 606b627c..5cce5648 100644
+Binary files a/shared/generated/ts/contracts.ts and b/shared/generated/ts/contracts.ts differ
+diff --git a/shared/shared/__init__.py b/shared/shared/__init__.py
+index 7de861b6..30e853b4 100644
+--- a/shared/shared/__init__.py
++++ b/shared/shared/__init__.py
+@@ -6,7 +6,7 @@ coordination/CONTRACTS.md.
+ """
+ 
+ SCHEMA_VERSION = (
+-    "0.21.0"  # 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING;
++    "0.23.0"  # 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING;
+     # 0.6 intelligence memory (PR #39); 0.7 security standards + incidents (PR #49);
+     # 0.8 FindingDetail / AssessmentReport response DTOs (additive);
+     # 0.9 CheckCategory enum (Probe ids + V0 fixture aliases);
+@@ -46,4 +46,8 @@ SCHEMA_VERSION = (
+     #      No AUTO-EXECUTE. LLM prose is never proof of a confirmed threat.
+     #      evidence_state=verified requires independently executed verification
+     #      evidence, not Verify eligibility.
++    # 0.22 reserved by open PR #458 (Phase 7C agent execution). Not claimed here.
++    # 0.23 first-responder observability (additive, read-only): investigation
++    #      timeline/summary DTOs, invocation view with queue state, execution
++    #      view mirroring the 7C record (all fields optional), diagnostics.
+ )
+diff --git a/shared/shared/live_defense.py b/shared/shared/live_defense.py
+index c51bced5..9324bb2b 100644
+--- a/shared/shared/live_defense.py
++++ b/shared/shared/live_defense.py
+@@ -29,6 +29,7 @@ from shared.base import CommitSha, Sha256Hex, ShortText, StrictModel, UtcDatetim
+ from shared.ids import (
+     AnalystHandoffId,
+     AnalystReviewId,
++    ArtifactId,
+     ConnectedApplicationId,
+     ControlChannelId,
+     ControlGrantId,
+@@ -48,7 +49,7 @@ from shared.ids import (
+     RepositoryId,
+     UserId,
+ )
+-from shared.monitoring import PrincipalRef, RuntimeSource
++from shared.monitoring import MonitoringEvent, PrincipalRef, RuntimeSource
+ from shared.rl import ActionScore, DefenseActionName, NodeName
+ 
+ 
+@@ -978,3 +979,181 @@ class AnalystHandoff(StrictModel):
+         if self.threat_confirmed and self.confirmation is not ConfirmationState.confirmed:
+             raise ValueError("threat_confirmed requires confirmation=confirmed")
+         return self
++
++
++# ---------------------------------------------------------------------------
++# Phase 7 observability — read-only investigation views (additive, no mutation)
++# ---------------------------------------------------------------------------
++#
++# These DTOs are assembled by read endpoints from persisted records only.
++# ``AgentExecutionView`` mirrors the Phase 7C ``AgentExecutionRecord`` payload
++# stored inside ``FirstResponderInvocation.execution``; every field is optional
++# so missing values render as "unavailable" rather than being fabricated.
++
++
++class AgentExecutionView(StrictModel):
++    """Recorded agent-loop outcome. Absent fields stay unknown; never invented."""
++
++    provider_mode: Literal["fake", "live", "none"] | None = None
++    model_id: ShortText | None = None
++    cost_usd: float | None = Field(default=None, ge=0)
++    latency_ms: int | None = Field(default=None, ge=0)
++    llm_turns: int | None = Field(default=None, ge=0)
++    tool_call_count: int | None = Field(default=None, ge=0)
++    started_at: UtcDatetime | None = None
++    ended_at: UtcDatetime | None = None
++    transcript_artifact_id: ArtifactId | None = None
++    output_artifact_id: ArtifactId | None = None
++    error_code: ShortText | None = None
++    typed_output: bool | None = None
++    hypothesis_count: int | None = Field(default=None, ge=0)
++    execution_integrity: ShortText | None = None
++    independent_verification_id: ShortText | None = None
++    evidence_verified: bool | None = None
++    confirmation: ShortText | None = None
++    predicted_probability: None = None
++    execution_is_not_confirmation: Literal[True] = True
++
++
++class InvocationJobView(StrictModel):
++    """Durable queue state joined onto one invocation. Retry = attempts > 1."""
++
++    job_id: JobId
++    kind: ShortText
++    status: ShortText
++    attempts: int = Field(ge=0)
++    max_attempts: int = Field(ge=0)
++    run_after: UtcDatetime | None = None
++    heartbeat_at: UtcDatetime | None = None
++    cancel_requested: bool = False
++    error_code: ShortText | None = None
++    error_message: ShortText | None = None
++    enqueued_at: UtcDatetime | None = None
++    updated_at: UtcDatetime | None = None
++    stalled: bool = False
++    wall_time_ms: int | None = Field(default=None, ge=0)
++
++
++class FirstResponderInvocationView(StrictModel):
++    """One invocation plus its queue state and optional execution record."""
++
++    invocation: FirstResponderInvocation
++    job: InvocationJobView | None = None
++    execution: AgentExecutionView | None = None
++    execution_recorded: bool = False
++    token_usage_available: Literal[False] = False
++    token_usage_note: ShortText = (
++        "Per-invocation token usage is not persisted yet; shown as unavailable, not estimated."
++    )
++
++
++class InvestigationSnapshotView(StrictModel):
++    """Whether the decision's mapped commit resolved to an indexed snapshot."""
++
++    repo_id: RepositoryId | None = None
++    commit_sha: CommitSha | None = None
++    mapping_id: DeployCommitMappingId | None = None
++    snapshot_id: ShortText | None = None
++    resolved: bool = False
++    note: ShortText
++
++
++class InvestigationTimeline(StrictModel):
++    """Event → decision → invocations → artifacts → handoff, from persisted rows."""
++
++    decision: FirstResponderDecision
++    trigger_events: list[MonitoringEvent] = Field(default_factory=list)
++    application: ConnectedApplication | None = None
++    mapping: DeployCommitMapping | None = None
++    snapshot: InvestigationSnapshotView | None = None
++    invocations: list[FirstResponderInvocationView] = Field(default_factory=list)
++    handoff: AnalystHandoff | None = None
++    final_state: ShortText
++    caveat: ShortText = (
++        "Persisted first-responder records only. Investigative execution is not "
++        "a confirmed compromise and not executed enforcement. Missing fields are "
++        "unavailable, never estimated."
++    )
++
++
++class InvestigationSummary(StrictModel):
++    """One row of the bounded investigations list."""
++
++    decision_id: FirstResponderDecisionId
++    created_at: UtcDatetime
++    action: ShortText
++    evidence_state: ShortText
++    confirmation: ShortText
++    application_id: ConnectedApplicationId | None = None
++    simulated: bool = False
++    cancelled: bool = False
++    trigger_event_count: int = Field(default=0, ge=0)
++    invocations_total: int = Field(default=0, ge=0)
++    invocations_queued_or_running: int = Field(default=0, ge=0)
++    invocations_completed: int = Field(default=0, ge=0)
++    invocations_failed: int = Field(default=0, ge=0)
++    invocations_skipped: int = Field(default=0, ge=0)
++    invocations_cancelled: int = Field(default=0, ge=0)
++    handoff_state: ShortText | None = None
++
++
++class InvestigationJobError(StrictModel):
++    """A recent persisted job error, redacted before it leaves the API."""
++
++    job_id: JobId
++    kind: ShortText
++    decision_id: FirstResponderDecisionId | None = None
++    invocation_id: FirstResponderInvocationId | None = None
++    agent: ShortText | None = None
++    code: ShortText | None = None
++    message: ShortText | None = None
++    at: UtcDatetime | None = None
++
++
++class JobLatencyStats(StrictModel):
++    """Wall-clock job durations (queue + run). Not model latency."""
++
++    samples: int = Field(ge=0)
++    avg_ms: int | None = Field(default=None, ge=0)
++    max_ms: int | None = Field(default=None, ge=0)
++
++
++class WaitingJobView(StrictModel):
++    """A queued first-responder job still waiting on its backoff window."""
++
++    job_id: JobId
++    kind: ShortText
++    run_after: UtcDatetime | None = None
++    enqueued_at: UtcDatetime | None = None
++    attempts: int = Field(default=0, ge=0)
++
++
++class FirstResponderDiagnostics(StrictModel):
++    """Operational aggregate over persisted first-responder jobs and invocations.
++
++    ``stalled`` means a running job whose lease expired (another worker may
++    reclaim it). Cost is unavailable until execution records exist (Phase 7C).
++    """
++
++    generated_at: UtcDatetime
++    investigations_total: int = Field(ge=0)
++    decisions_cancelled: int = Field(ge=0)
++    invocations_by_status: dict[str, int] = Field(default_factory=dict)
++    failures_by_agent: dict[str, int] = Field(default_factory=dict)
++    missing_prerequisites: dict[str, int] = Field(default_factory=dict)
++    jobs_queued: int = Field(ge=0)
++    jobs_running: int = Field(ge=0)
++    jobs_stalled: int = Field(ge=0)
++    jobs_succeeded: int = Field(ge=0)
++    jobs_failed: int = Field(ge=0)
++    jobs_cancelled: int = Field(ge=0)
++    jobs_dead: int = Field(ge=0)
++    waiting_jobs: list[WaitingJobView] = Field(default_factory=list)
++    recent_errors: list[InvestigationJobError] = Field(default_factory=list)
++    agent_step_latency: JobLatencyStats | None = None
++    cost_usd_total: float | None = Field(default=None, ge=0)
++    cost_note: ShortText = (
++        "Per-invocation cost requires persisted execution records (Phase 7C). "
++        "Unavailable is reported, not estimated."
++    )
++    notes: list[ShortText] = Field(default_factory=list)
+diff --git a/shared/shared/registry.py b/shared/shared/registry.py
+index 3624b49a..50003d11 100644
+--- a/shared/shared/registry.py
++++ b/shared/shared/registry.py
+@@ -139,6 +139,17 @@ MODELS: tuple[type[BaseModel], ...] = (
+     live_defense.AnalystHandoffCreate,
+     live_defense.AnalystHandoffDeliveryAck,
+     live_defense.AnalystHandoff,
++    # first-responder observability (0.23.0)
++    live_defense.AgentExecutionView,
++    live_defense.InvocationJobView,
++    live_defense.FirstResponderInvocationView,
++    live_defense.InvestigationSnapshotView,
++    live_defense.InvestigationTimeline,
++    live_defense.InvestigationSummary,
++    live_defense.InvestigationJobError,
++    live_defense.JobLatencyStats,
++    live_defense.WaitingJobView,
++    live_defense.FirstResponderDiagnostics,
+     # rl
+     rl.NodeSignals,
+     rl.PlatformFacts,

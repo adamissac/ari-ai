@@ -1,0 +1,26 @@
+{
+  "a": {
+    "comparison_to_upstream_merge_base": "pr-a.diff",
+    "exact_pr_base_to_head": "pr-a-exact-base.diff",
+    "base": "d1864e9a32b297af7c52f2be33d6c92e4e1281f2",
+    "head": "89a3debab24f27da8672a1f2b22239d916079b04"
+  },
+  "b": {
+    "comparison_to_upstream_merge_base": "pr-b.diff",
+    "exact_pr_base_to_head": "pr-b-exact-base.diff",
+    "base": "58fc015a1e48d31f9b96d3777588d39b6305fa80",
+    "head": "17c3ded021a48165bbdb03af014fb494133376c7"
+  },
+  "c": {
+    "comparison_to_upstream_merge_base": "pr-c.diff",
+    "exact_pr_base_to_head": "pr-c-exact-base.diff",
+    "base": "db0a631d3c3bbe9ee473565f2f977b5392720e44",
+    "head": "e187e9a20f5c9792da8d17371c0ef57c2573609b"
+  },
+  "d": {
+    "comparison_to_upstream_merge_base": "pr-d.diff",
+    "exact_pr_base_to_head": "pr-d-exact-base.diff",
+    "base": "d1864e9a32b297af7c52f2be33d6c92e4e1281f2",
+    "head": "b44b28aad69fb7775b6e9e0c5225b899a7446af1"
+  }
+}
