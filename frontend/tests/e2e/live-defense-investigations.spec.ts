@@ -22,7 +22,7 @@ function ingestBatch(offsetMs: number, extra: number) {
 }
 
 test('Executions: investigation timeline, agent states, diagnostics', async ({ browser, request }) => {
-  const page = await newUser(browser, 'e2e-obs');
+  const page = await newUser(browser, 'e2e-alice');
   const pid = project();
   const base = api();
 
