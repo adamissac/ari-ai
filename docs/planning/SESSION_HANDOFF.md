@@ -1703,3 +1703,12 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - Scout retrained and **promoted**: macro_f1 0.349 vs best deterministic baseline 0.084 (static_analyze_patterns). Checkpoint + `results/scout.json`/REPORT.md committed. Other specialists have no field-compatible eval rows — their tuning signal is the live eval scores, not training data.
 - Eval harness: `run.py` cleanup survives missing `gh` auth; `score_api.py` accepts the bare-list assessments response. All 35 cases pushed as `eval/20261024-110115/*` branches; assessments accumulate live pending a fresh `hackatl_session` for scoring + scope widening (`access_control.authentication` category).
 - Test scope fixture (`make_scope` default) now grants all three check categories — required for the f2 listing invariant after the authentication template landed.
+
+## 2026-10-24 — Devin (Adam): first live 45-case eval + baseline
+
+- Scored the full 45-case run live over the REST API: **idor 8/8 flagged→validated→fixed; vuln 23/24 flagged, 5 functionally validated (functional reviewer, not Probe); 1 transient FAILED** (worker restart mid-VALIDATION). Median 153s, ~$0.028/run.
+- Scorer fixes in `score_api.py`: derive finding paths from `source_span` evidence (list endpoint returns doc only, no `paths` column) and report `validated_any`/`fixed_any` next to the security-only verdicts.
+- `benign_artifact_sha512` was a mislabeled case — sha512 digests violate the `String(64)` sha256 column contract; ARI's "false positive" was a real catch. Case replaced with a genuine no-op refactor.
+- Known gap the eval exposes: Probe only has 3 executable check templates (ownership, bounds, authentication) so most non-authz CWEs end `inconclusive`. `access_control.authentication` scope now approved (`scp_01M5QVPJWE266EJGDHYW73VA59`, all 3 categories, expires 2026-12-23).
+- Cleanup done: 12 eval fix PRs (#499–511) closed, 45 `eval/20261024-110115/*` branches deleted.
+- Transport lesson: `GET /projects/{id}/findings` items are AJV-validated against `Finding` (`additionalProperties: false`) — extra keys in the response break the console. Keep list items contract-shaped.
