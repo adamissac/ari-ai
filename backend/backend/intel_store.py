@@ -81,6 +81,17 @@ class PostgresPayloadStore:
         return PostgresMemoryStore(self.engine)
 
     # -------------------------------------------------------------- helpers
+    def _scope_tenant(self, conn: sa.Connection, project_id: str) -> None:
+        """Scope this transaction to one tenant for row-level security.
+
+        index_payloads/index_snapshots carry FORCE RLS: without this GUC the
+        tables read as empty and writes are rejected. Transaction-local only —
+        it reverts at commit and never leaks into pooled connections.
+        """
+        conn.execute(
+            sa.text("SELECT set_config('ari.project_id', :pid, true)"), {"pid": project_id}
+        )
+
     def _validate_ref(self, conn: sa.Connection, ref: SnapshotRef) -> None:
         ref = SnapshotRef.model_validate(ref.model_dump())
         owner = conn.execute(
@@ -90,6 +101,7 @@ class PostgresPayloadStore:
             raise PermissionError(f"repository {ref.repo_id} is not connected")
         if owner != ref.project_id:
             raise PermissionError("repository does not belong to the SnapshotRef project")
+        self._scope_tenant(conn, ref.project_id)
 
     def _ready_row(self, conn: sa.Connection, ref: SnapshotRef) -> Any:
         return conn.execute(
@@ -269,6 +281,7 @@ class PostgresPayloadStore:
         self, project_id: str, repo_id: str, commit_sha: str, index_version: str
     ) -> SnapshotRef:
         with self.engine.begin() as conn:
+            self._scope_tenant(conn, project_id)
             row = conn.execute(
                 sa.select(index_snapshots.c.snapshot_id).where(
                     index_snapshots.c.project_id == project_id,
