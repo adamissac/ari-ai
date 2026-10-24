@@ -37,6 +37,7 @@ from backend.db import (
     audit_events,
     authorized_scopes,
     defense_recommendations,
+    deploy_commit_mappings,
     finding_records,
     findings,
     monitoring_events,
@@ -49,6 +50,9 @@ from backend.db import (
     transaction,
     users,
     verification_results,
+)
+from backend.db import (
+    jobs as jobs_table,
 )
 from backend.integrations import load_factory
 from backend.services import (
@@ -328,6 +332,7 @@ def _repo(r: Any) -> Repository:
         default_branch=r["default_branch"],
         installation_id=r["installation_id"],
         automatic_assessments=r["automatic_assessments"],
+        disconnected_at=r["disconnected_at"],
         created_at=r["created_at"],
     )
 
@@ -462,18 +467,65 @@ def _owner_repo(conn: Any, user: CurrentUser, repo_id: str) -> dict[str, Any]:
 
 @router.post("/repositories/{repo_id}/disconnect")
 def disconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
-    """Owner kill-switch: stop all repo-driven work (snapshots, assessments, push
-    automation, live commit reads). The row stays so the name cannot be squatted;
-    GitHub-side revocation happens by uninstalling/limiting the App installation."""
+    """Canonical owner kill-switch. ``repositories.disconnected_at`` is the single
+    source of truth: it gates every new repo read (snapshots, assessments, live
+    commit fetches) and all push automation. On disconnect we also revoke the
+    app's owner-attested deploy→commit mappings, cancel queued repo-driven jobs,
+    mark wedged pending/indexing snapshots failed, and cooperatively cancel
+    in-flight assessments. ``installation_id`` is kept — it is the audit record
+    of which grant provided access, not the revocation signal. The App itself is
+    NOT uninstalled on GitHub's side (we cannot); the customer does that."""
     with transaction() as conn:
         user = _user(conn, request)
         repo = _owner_repo(conn, user, repo_id)
         if repo["disconnected_at"] is None:
+            now = utcnow()
             conn.execute(
                 sa.update(repositories)
                 .where(repositories.c.id == repo_id)
-                .values(disconnected_at=utcnow(), automatic_assessments=False)
+                .values(disconnected_at=now, automatic_assessments=False)
             )
+            mappings_revoked = conn.execute(
+                sa.update(deploy_commit_mappings)
+                .where(
+                    deploy_commit_mappings.c.repo_id == repo_id,
+                    deploy_commit_mappings.c.revoked_at.is_(None),
+                )
+                .values(revoked_at=now)
+            ).rowcount
+            repo_snapshot_ids = sa.select(snapshots.c.id).where(snapshots.c.repo_id == repo_id)
+            jobs_cancelled = conn.execute(
+                sa.update(jobs_table)
+                .where(
+                    jobs_table.c.status == "queued",
+                    sa.or_(
+                        jobs_table.c.payload["repo_id"].astext == repo_id,
+                        sa.and_(
+                            jobs_table.c.kind == "index_snapshot",
+                            jobs_table.c.payload["snapshot_id"].astext.in_(repo_snapshot_ids),
+                        ),
+                    ),
+                )
+                .values(status="cancelled", updated_at=sa.func.now())
+            ).rowcount
+            snapshots_failed = conn.execute(
+                sa.update(snapshots)
+                .where(
+                    snapshots.c.repo_id == repo_id,
+                    snapshots.c.status.in_(["pending", "indexing"]),
+                )
+                .values(status="failed")
+            ).rowcount
+            assessments_cancelled = 0
+            for asm_id in conn.execute(
+                sa.select(assessments.c.id).where(
+                    assessments.c.repo_id == repo_id,
+                    assessments.c.state.notin_([s.value for s in TERMINAL_STATES]),
+                )
+            ).scalars():
+                if not cancel_queued_assessment(conn, asm_id):
+                    request_assessment_cancel(conn, asm_id)
+                assessments_cancelled += 1
             _audit(
                 conn,
                 project_org(conn, repo["project_id"]),
@@ -483,14 +535,22 @@ def disconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
                 "repository",
                 repo_id,
                 full_name=repo["full_name"],
+                installation_id=repo["installation_id"],
+                deploy_mappings_revoked=mappings_revoked,
+                queued_jobs_cancelled=jobs_cancelled,
+                snapshots_failed=snapshots_failed,
+                assessments_cancelled=assessments_cancelled,
             )
         return {"id": repo_id, "disconnected": True}
 
 
 @router.post("/repositories/{repo_id}/reconnect")
 def reconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
-    """Re-enable a disconnected repository. When the row is App-connected, the owner
-    must still hold access through that installation."""
+    """Re-enable a disconnected repository — only after renewed authorization.
+    App-connected rows require the owner to still hold access through the recorded
+    installation (re-verified, fresh). Reconnect does NOT restore
+    ``automatic_assessments`` or revoked deploy mappings: the owner opts back in
+    explicitly."""
     with transaction() as conn:
         user = _user(conn, request)
         repo = _owner_repo(conn, user, repo_id)
