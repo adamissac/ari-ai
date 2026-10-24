@@ -31,13 +31,20 @@ while [ "$i" -lt "${WORKER_PROCESSES:-12}" ]; do
   pids="$pids $!"
   i=$((i + 1))
 done
+workers="$pids"
 hackatl-api &
-pids="$pids $!"
+api=$!
+pids="$pids $api"
+
+# GitHub never retries a failed webhook: ask it to redeliver what this service missed while
+# it was down (a deploy swaps containers). Harmless when nothing was missed.
+python -m backend.redeliver &
 
 # A deploy sends TERM: workers finish the job in hand and exit (Railway keeps this container
-# for RAILWAY_DEPLOYMENT_DRAINING_SECONDS), so in-flight assessments are not cut off.
+# for RAILWAY_DEPLOYMENT_DRAINING_SECONDS), so in-flight assessments are not cut off. The API
+# keeps accepting webhooks into the queue until they are done, then stops.
 draining=""
-trap 'draining=1; kill -TERM $pids 2>/dev/null || true' TERM INT
+trap 'draining=1; kill -TERM $workers 2>/dev/null || true' TERM INT
 
 alive() {
   for p in $pids; do kill -0 "$p" 2>/dev/null || return 1; done
@@ -47,7 +54,9 @@ while [ -z "$draining" ] && alive; do
 done
 
 if [ -n "$draining" ]; then
-  wait || true
+  for p in $workers; do wait "$p" || true; done
+  kill -TERM "$api" 2>/dev/null || true
+  wait "$api" || true
   exit 0
 fi
 echo "a process exited; stopping the service so Railway restarts it" >&2
