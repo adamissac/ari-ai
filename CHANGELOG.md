@@ -6,10 +6,15 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+HEAD
 - Add `access_control.role` check template: Probe can now prove role-bypass on mutating routes — a restricted fixture identity must be denied (401/403/404) while a permitted one keeps access. Recipe surface expanded (assessment/finding/scope routes, role-differentiated sandbox identities carol=viewer/dave=member of alice's org); new recipe body placeholders `{expires_in_days:N}` and `{resource:KIND}`. Aliases `authorization.role`, `access_control.mutation`, `access_control.rbac` map to the new category.
 
 - Eval scorer now reports `validated_any`/`fixed_any` across every finding kind next to the security-only verdicts, and derives finding paths from `source_span` evidence; `benign_artifact_sha512` relabeled — the sha512 swap was a real defect (String(64) sha256 column), not a false positive.
 
+||||||| parent of 660cdaf0 (docs(deploy): pilot operations runbook, checklist and evidence record)
+- Readiness/diagnostics split infra liveness from assessment capability: `/readyz` now reports `status=ready|degraded|not_ready` (503 unless ready) with per-capability checks for live model, GitHub App (configured; `GET /app`-verified), Vercel Sandbox env, artifact-store writability and worker heartbeats; new `/diagnostics` adds migration drift, queue counts and worker rows; `/healthz` gains `git_sha` + `schema_version`. Contract schema 0.22.0. Frontend adds `/api/frontend-version` + `deploy/verify_pair.sh` to detect Vercel/Railway schema skew before it breaks users. Worker liveness is heartbeat-backed (`worker_heartbeats`, migration 0016; `READYZ_REQUIRE_WORKERS` requires ≥1 in staging/production).
+
+660cdaf0 (docs(deploy): pilot operations runbook, checklist and evidence record)
 - Scout specialist now trains on the labelled commit-eval set (each case's planted edit vs. its original code as a minimal positive/negative pair) and was promoted after beating the static-pattern baseline (macro F1 0.349 vs 0.084); new checkpoint committed under `specialists/checkpoints/scout/`.
 
 - Assessment UI: agents the orchestrator skipped now stay visible as 'Not needed' with the recorded reason (e.g. 'no confirmed findings'); on failed/cancelled runs they show 'Not reached'. Replaces the ambiguous 'not run' label on the relay and team list.
