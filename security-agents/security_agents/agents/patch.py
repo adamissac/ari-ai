@@ -34,8 +34,9 @@ worktree.write_file, reusing the existing fixtures. Run it with tests.run \
 (added_tests): it must FAIL on the unpatched code. Never edit an existing test.
 3. Fix the root cause with worktree.edit_file (one exact, unique old_string per call). \
 Read the sibling code that already does the right thing and reuse its helpers.
-4. Run tests.run (added_tests, then project_suite). If something fails, fix the cause \
-and run again, within your budget.
+4. Run tests.run for added_tests AND project_suite in the same turn (two calls in \
+one response run side by side). If something fails, fix the cause and run again, \
+within your budget.
 5. Call worktree.diff and submit the result, listing any deviation from the plan.
 
 Rules:

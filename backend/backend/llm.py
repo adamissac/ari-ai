@@ -22,6 +22,7 @@ import json
 import random
 import time
 from collections.abc import Callable, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -198,6 +199,9 @@ class Tool[InT: BaseModel]:
     description: str
     input_model: type[InT]
     handler: Callable[[InT], Any]
+    # True when the handler neither writes shared state nor depends on another call in the
+    # same turn; a turn made only of such calls runs them concurrently.
+    parallel_safe: bool = False
 
     def definition(self) -> dict[str, Any]:
         schema = self.input_model.model_json_schema()
@@ -329,9 +333,58 @@ class LLMGateway:
         records: list[ToolCallRecord] = []
         total = Usage()
         invalid = 0
+
         # The last FINAL_TURNS turns each ask for the result; max_turns stays a hard cap. The
         # conversation stays append-only: tools and earlier turns never change, because thinking
         # blocks are bound to the exact prefix and any edit makes the provider reject them.
+        def run_one(block: dict[str, Any], turn: int) -> tuple[dict[str, Any], ToolCallRecord]:
+            """Execute one non-submit tool call; failures become error results for the model."""
+            name, raw_input, tid = block["name"], block.get("input") or {}, block["id"]
+            digest = hashlib.sha256(
+                json.dumps(raw_input, sort_keys=True, default=str).encode()
+            ).hexdigest()
+            started = time.monotonic()
+
+            def error(
+                content: str, outcome: ToolCallOutcome, code: ErrorCode
+            ) -> tuple[dict[str, Any], ToolCallRecord]:
+                result = {
+                    "type": "tool_result",
+                    "tool_use_id": tid,
+                    "is_error": True,
+                    "content": content,
+                }
+                return result, _rec(turn, name, digest, outcome, code, started)
+
+            tool = registry.get(name)
+            if tool is None:
+                return error(
+                    f"TOOL_NOT_ALLOWED: '{name}' is not available to {agent}",
+                    ToolCallOutcome.denied,
+                    ErrorCode.TOOL_NOT_ALLOWED,
+                )
+            try:
+                parsed = tool.input_model.model_validate(raw_input)
+                out = tool.handler(parsed)
+            except ValidationError as e:
+                return error(
+                    f"INVALID_INPUT: {e.errors(include_url=False)}"[:4000],
+                    ToolCallOutcome.error,
+                    ErrorCode.SCHEMA_INVALID,
+                )
+            except LLMError:
+                raise
+            except Exception as e:  # tool failure is reported to the model, not fatal
+                code = getattr(e, "code", ErrorCode.INTERNAL)
+                return error(
+                    f"{getattr(code, 'value', code)}: {e}"[:4000],
+                    ToolCallOutcome.error,
+                    code if isinstance(code, ErrorCode) else ErrorCode.INTERNAL,
+                )
+            text = out if isinstance(out, str) else json.dumps(out, default=str)
+            result = {"type": "tool_result", "tool_use_id": tid, "content": redact(text)[:50_000]}
+            return result, _rec(turn, name, digest, ToolCallOutcome.ok, None, started)
+
         for turn in range(1, max_turns + 1):
             if turn > max(1, max_turns - FINAL_TURNS):  # forced tool_choice is unavailable; ask
                 last = messages[-1]  # the newest message, not yet sent
@@ -355,85 +408,42 @@ class LLMGateway:
                 continue
             results: list[dict[str, Any]] = []
             final: OutT | None = None
-            for block in uses:
+            parallel = len(uses) > 1 and all(
+                b["name"] != submit and getattr(registry.get(b["name"]), "parallel_safe", False)
+                for b in uses
+            )
+            if parallel:
+                # Independent read/test calls (e.g. two sandbox test runs): run side by side,
+                # report in the model's order.
+                with ThreadPoolExecutor(max_workers=len(uses)) as pool:
+                    for result, record in pool.map(run_one, uses, [turn] * len(uses)):
+                        results.append(result)
+                        records.append(record)
+            for block in () if parallel else uses:
+                if block["name"] != submit:
+                    result, record = run_one(block, turn)
+                    results.append(result)
+                    records.append(record)
+                    continue
                 name, raw_input, tid = block["name"], block.get("input") or {}, block["id"]
                 digest = hashlib.sha256(
                     json.dumps(raw_input, sort_keys=True, default=str).encode()
                 ).hexdigest()
                 started = time.monotonic()
-                if name == submit:
-                    try:
-                        final = output_model.model_validate(raw_input)
-                        results.append(
-                            {"type": "tool_result", "tool_use_id": tid, "content": "accepted"}
-                        )
-                        records.append(_rec(turn, name, digest, ToolCallOutcome.ok, None, started))
-                    except ValidationError as e:
-                        invalid += 1
-                        results.append(
-                            {
-                                "type": "tool_result",
-                                "tool_use_id": tid,
-                                "is_error": True,
-                                "content": f"SCHEMA_INVALID: {e.errors(include_url=False)}"[:4000],
-                            }
-                        )
-                        records.append(
-                            _rec(
-                                turn,
-                                name,
-                                digest,
-                                ToolCallOutcome.error,
-                                ErrorCode.SCHEMA_INVALID,
-                                started,
-                            )
-                        )
-                        if invalid > max_invalid_outputs:
-                            raise LLMError(
-                                ErrorCode.SCHEMA_INVALID,
-                                f"{agent}: final output failed validation {invalid} times",
-                            ) from e
-                    continue
-                tool = registry.get(name)
-                if tool is None:
-                    results.append(
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": tid,
-                            "is_error": True,
-                            "content": f"TOOL_NOT_ALLOWED: '{name}' is not available to {agent}",
-                        }
-                    )
-                    records.append(
-                        _rec(
-                            turn,
-                            name,
-                            digest,
-                            ToolCallOutcome.denied,
-                            ErrorCode.TOOL_NOT_ALLOWED,
-                            started,
-                        )
-                    )
-                    continue
                 try:
-                    parsed = tool.input_model.model_validate(raw_input)
-                    out = tool.handler(parsed)
-                    text = out if isinstance(out, str) else json.dumps(out, default=str)
+                    final = output_model.model_validate(raw_input)
                     results.append(
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": tid,
-                            "content": redact(text)[:50_000],
-                        }
+                        {"type": "tool_result", "tool_use_id": tid, "content": "accepted"}
                     )
                     records.append(_rec(turn, name, digest, ToolCallOutcome.ok, None, started))
                 except ValidationError as e:
+                    invalid += 1
                     results.append(
                         {
                             "type": "tool_result",
                             "tool_use_id": tid,
                             "is_error": True,
-                            "content": f"INVALID_INPUT: {e.errors(include_url=False)}"[:4000],
+                            "content": f"SCHEMA_INVALID: {e.errors(include_url=False)}"[:4000],
                         }
                     )
                     records.append(
@@ -446,28 +456,11 @@ class LLMGateway:
                             started,
                         )
                     )
-                except LLMError:
-                    raise
-                except Exception as e:  # tool failure is reported to the model, not fatal
-                    code = getattr(e, "code", ErrorCode.INTERNAL)
-                    results.append(
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": tid,
-                            "is_error": True,
-                            "content": f"{getattr(code, 'value', code)}: {e}"[:4000],
-                        }
-                    )
-                    records.append(
-                        _rec(
-                            turn,
-                            name,
-                            digest,
-                            ToolCallOutcome.error,
-                            code if isinstance(code, ErrorCode) else ErrorCode.INTERNAL,
-                            started,
-                        )
-                    )
+                    if invalid > max_invalid_outputs:
+                        raise LLMError(
+                            ErrorCode.SCHEMA_INVALID,
+                            f"{agent}: final output failed validation {invalid} times",
+                        ) from e
             messages.append({"role": "user", "content": results})
             if final is not None:
                 total = total.model_copy(update={"tool_calls": len(records)})
