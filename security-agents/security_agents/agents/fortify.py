@@ -159,7 +159,7 @@ SPEC = AgentSpec(
     max_turns=10,
     prompt_ref="prompts/fortify/v0.1.1.md",
     system_prompt=SYSTEM,
-    max_output_tokens=8000,
+    max_output_tokens=16000,  # thinking counts toward this; 4-8k ran out on real repos
     max_schema_repairs=2,
 )
 
