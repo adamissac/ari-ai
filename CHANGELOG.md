@@ -20,6 +20,8 @@ All notable changes are documented here. Format follows
   preview of the quick read when no run exists. Failed runs are marked on the agent rail; the
   organization page's repository rows are fully clickable.
 
+- Tenant data protection: two-tenant adversarial suite (17 tests) covering every project-scoped read/write/SSE/artifact/job/audit surface plus forged-ID and storage-accessor claims; FORCE row-level security on `index_payloads`/`index_snapshots` scoped by a per-transaction tenant GUC (migration 0016); `backend/privacy.py::purge_project` — the documented full-tenant deletion workflow (all project rows, RLS-scoped source payloads, refcount-aware artifact objects, bare clones); `docs/security/TENANT_DATA_PROTECTION.md` — threat model, private-code data-flow inventory, verified controls matrix, GitHub-token posture, Anthropic processing posture, retention gaps, and the enterprise isolation future option.
+
 - Add `access_control.role` check template: Probe can now prove role-bypass on mutating routes — a restricted fixture identity must be denied (401/403/404) while a permitted one keeps access. Recipe surface expanded (assessment/finding/scope routes, role-differentiated sandbox identities carol=viewer/dave=member of alice's org); new recipe body placeholders `{expires_in_days:N}` and `{resource:KIND}`. Aliases `authorization.role`, `access_control.mutation`, `access_control.rbac` map to the new category.
 
 - Eval scorer now reports `validated_any`/`fixed_any` across every finding kind next to the security-only verdicts, and derives finding paths from `source_span` evidence; `benign_artifact_sha512` relabeled — the sha512 swap was a real defect (String(64) sha256 column), not a false positive.
