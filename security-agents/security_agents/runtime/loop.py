@@ -340,7 +340,9 @@ def run_agent(
         if not tool_uses:
             if response.stop_reason == "max_tokens":
                 if repairs_left <= 0:
-                    return finish("failed", ErrorCode.SCHEMA_INVALID, "response hit max_tokens with no submit")
+                    return finish(
+                        "failed", ErrorCode.SCHEMA_INVALID, "response hit max_tokens with no submit"
+                    )
                 repairs_left -= 1
                 messages.append({"role": "assistant", "content": response.content})
                 messages.append(

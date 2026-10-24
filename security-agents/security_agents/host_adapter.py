@@ -49,7 +49,7 @@ from .redact import redact
 from .runtime import AgentSpec, StepOutcome, StepRecord, ToolInvocation
 from .runtime.loop import DATA_BLOCK_NOTE, result_summary
 from .sandbox.driver import LocalProcessDriver, SandboxDriver
-from .sandbox.workspace import SnapshotHandle, copy_tree
+from .sandbox.workspace import SnapshotHandle, copy_tree, recipe_test_roots, under_test_roots
 from .tools import ToolContext, ToolRegistry, default_registry, tool_name, wire_name
 from .workflow import (
     ApprovalPending,
@@ -1401,7 +1401,8 @@ def _verify_functional_patch(host: AssessmentHostLike, orchestrator: Orchestrato
         ok, err = apply_diff(root, snapshot_diff)
         touched = [_snapshot_rel(p, prefix) for p in diff_paths(diff_text)]
         plan_files = [_snapshot_rel(str(p), prefix) for p in (patch.files_changed or [])]
-        out_of_scope = [p for p in touched if p not in plan_files and not p.startswith("tests/")]
+        roots = recipe_test_roots(root)
+        out_of_scope = [p for p in touched if p not in plan_files and not under_test_roots(p, roots)]
         from .regressions import RegressionEvidenceUnavailable, read_sources, verified_bundle
 
         try:

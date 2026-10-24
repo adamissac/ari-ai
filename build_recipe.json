@@ -13,6 +13,10 @@
     "-q",
     "backend/tests/test_api_core.py"
   ],
+  "test_roots": [
+    "backend/tests",
+    "tests"
+  ],
   "sandbox": {
     "apt": [
       "postgresql"
