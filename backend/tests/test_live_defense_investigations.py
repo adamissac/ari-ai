@@ -3,6 +3,7 @@ diagnostics. Read-only, project-scoped, bounded."""
 
 from __future__ import annotations
 
+import pytest
 import sqlalchemy as sa
 from helpers import setup_project
 
@@ -279,3 +280,150 @@ def test_timeline_final_state_cancelled(client_factory) -> None:
         _insert_decision(conn, cancelled)
     t = alice.get(f"/api/v1/first-responder/investigations/{cancelled.id}")
     assert t.json()["final_state"] == "cancelled"
+
+
+def _set_job_status(conn, inv, status: str) -> None:
+    conn.execute(sa.update(jobs).where(jobs.c.id == inv.job_id).values(status=status))
+
+
+# Upstream main's ck_jobs_status predates the execution-reliability states
+# ('waiting', 'timed_out', 'recovery_required'); the reliability branch widens
+# it in migration 0016. Tests widen it the same way, then restore it, so they
+# exercise the forward-compatible paths against the constraint that will exist
+# after that branch merges.
+@pytest.fixture
+def reliability_job_statuses():
+    old = "status in ('queued','running','succeeded','failed','cancelled','dead')"
+    new = (
+        "status in ('queued','waiting','running','succeeded','failed','cancelled','dead',"
+        "'timed_out','recovery_required')"
+    )
+    with transaction() as conn:
+        conn.execute(sa.text("ALTER TABLE jobs DROP CONSTRAINT ck_jobs_status"))
+        conn.execute(sa.text(f"ALTER TABLE jobs ADD CONSTRAINT ck_jobs_status CHECK ({new})"))
+    try:
+        yield
+    finally:
+        with transaction() as conn:
+            conn.execute(sa.text("ALTER TABLE jobs DROP CONSTRAINT ck_jobs_status"))
+            conn.execute(
+                sa.text(
+                    "UPDATE jobs SET status='failed' "
+                    "WHERE status in ('waiting','timed_out','recovery_required')"
+                )
+            )
+            conn.execute(sa.text(f"ALTER TABLE jobs ADD CONSTRAINT ck_jobs_status CHECK ({old})"))
+
+
+@pytest.mark.usefixtures("reliability_job_statuses")
+def test_timeline_effective_state_timed_out_and_recovery_required(client_factory) -> None:
+    """A queued invocation whose job stopped is never reported as in progress."""
+    alice, pid, decision, inv = _seed(client_factory)
+    for job_status in ("timed_out", "recovery_required"):
+        with transaction() as conn:
+            _set_job_status(conn, inv, job_status)
+        t = alice.get(f"/api/v1/first-responder/investigations/{decision.id}")
+        assert t.status_code == 200, t.text
+        row = t.json()["invocations"][0]
+        assert row["invocation"]["status"] == "queued"  # persisted state is honest
+        assert row["effective_state"] == job_status
+        assert t.json()["final_state"] == job_status
+
+
+@pytest.mark.usefixtures("reliability_job_statuses")
+def test_timeline_effective_state_precedence(client_factory) -> None:
+    """Job row wins for non-terminal invocations; dead maps to failed."""
+    alice, pid, decision, inv = _seed(client_factory)
+    cases = {
+        "failed": ("failed", "failed"),
+        "cancelled": ("cancelled", "cancelled"),
+        "dead": ("failed", "failed"),
+        "waiting": ("waiting", "waiting"),
+        "running": ("running", "in_progress"),
+        "queued": ("queued", "queued"),
+        "succeeded": ("succeeded", "suspected"),  # falls through to evidence_state
+    }
+    for job_status, (eff, final) in cases.items():
+        with transaction() as conn:
+            _set_job_status(conn, inv, job_status)
+        t = alice.get(f"/api/v1/first-responder/investigations/{decision.id}").json()
+        assert t["invocations"][0]["effective_state"] == eff, job_status
+        assert t["final_state"] == final, job_status
+
+
+def test_timeline_terminal_invocation_beats_job(client_factory) -> None:
+    """A terminal invocation status stays authoritative over the job row."""
+    alice, pid, decision, _ = _seed(
+        client_factory, status=AgentInvocationStatus.completed_unverified
+    )
+    inv = None
+    with transaction() as conn:
+        row = conn.execute(
+            sa.select(first_responder_invocations.c.doc).where(
+                first_responder_invocations.c.decision_id == decision.id
+            )
+        ).scalar_one()
+        inv = FirstResponderInvocation.model_validate(row)
+        _set_job_status(conn, inv, "failed")
+    t = alice.get(f"/api/v1/first-responder/investigations/{decision.id}").json()
+    assert t["invocations"][0]["effective_state"] == "completed_unverified"
+    assert t["final_state"] == "completed_unverified"
+
+
+@pytest.mark.usefixtures("reliability_job_statuses")
+def test_timeline_partial_failure_and_recovery_overrides(client_factory) -> None:
+    """Partial failure outranks running; recovery_required outranks everything."""
+    alice, pid, decision, inv = _seed(client_factory)
+    with transaction() as conn:
+        done = _invocation(decision, status=AgentInvocationStatus.completed_unverified)
+        _insert_invocation(conn, done)
+        _set_job_status(conn, inv, "failed")
+    t = alice.get(f"/api/v1/first-responder/investigations/{decision.id}").json()
+    assert t["final_state"] == "failed"
+    with transaction() as conn:
+        _set_job_status(conn, inv, "recovery_required")
+    t = alice.get(f"/api/v1/first-responder/investigations/{decision.id}").json()
+    assert t["final_state"] == "recovery_required"
+    with transaction() as conn:
+        _set_job_status(conn, inv, "timed_out")
+    t = alice.get(f"/api/v1/first-responder/investigations/{decision.id}").json()
+    assert t["final_state"] == "timed_out"
+
+
+@pytest.mark.usefixtures("reliability_job_statuses")
+def test_investigations_list_job_statuses_rollup(client_factory) -> None:
+    alice, pid, decision, inv = _seed(client_factory)
+    with transaction() as conn:
+        _set_job_status(conn, inv, "timed_out")
+    items = alice.get(f"/api/v1/projects/{pid}/first-responder/investigations").json()["items"]
+    item = next(i for i in items if i["decision_id"] == decision.id)
+    assert item["job_statuses"] == {"timed_out": 1}
+
+
+@pytest.mark.usefixtures("reliability_job_statuses")
+def test_diagnostics_new_job_states(client_factory) -> None:
+    alice, pid, decision, inv = _seed(client_factory)
+    waiting_inv = _invocation(decision, status=AgentInvocationStatus.queued)
+    with transaction() as conn:
+        wait_job, _ = jobq.enqueue(
+            conn,
+            "live_defense_agent_step",
+            {
+                "project_id": pid,
+                "decision_id": decision.id,
+                "invocation_id": waiting_inv.id,
+                "agent": "diagnose",
+                "capability_class": "investigative_readonly",
+            },
+            dedupe_key=f"fr-agent-{new_id(IdPrefix.fri)}",
+        )
+        waiting_inv.job_id = wait_job
+        _insert_invocation(conn, waiting_inv)
+        _set_job_status(conn, inv, "recovery_required")
+        conn.execute(sa.update(jobs).where(jobs.c.id == wait_job).values(status="waiting"))
+    d = alice.get(f"/api/v1/projects/{pid}/first-responder/diagnostics").json()
+    assert d["jobs_recovery_required"] == 1
+    assert d["jobs_waiting"] == 1
+    assert d["jobs_queued"] == 0
+    waiting = [w for w in d["waiting_jobs"] if w["job_id"] == wait_job]
+    assert waiting and waiting[0]["status"] == "waiting"

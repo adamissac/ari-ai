@@ -1295,12 +1295,19 @@ class InvocationJobView(StrictModel):
 
 
 class FirstResponderInvocationView(StrictModel):
-    """One invocation plus its queue state and optional execution record."""
+    """One invocation plus its queue state and optional execution record.
+
+    ``effective_state`` is the canonical combined state: a terminal invocation
+    status is authoritative; while the invocation is non-terminal the joined
+    job row — which records what actually ran — wins, so a timed-out,
+    recovery-required, waiting or cancelled job is never shown as in-progress.
+    """
 
     invocation: FirstResponderInvocation
     job: InvocationJobView | None = None
     execution: AgentExecutionView | None = None
     execution_recorded: bool = False
+    effective_state: ShortText = "eligible"
     token_usage_available: Literal[False] = False
     token_usage_note: ShortText = (
         "Per-invocation token usage is not persisted yet; shown as unavailable, not estimated."
@@ -1355,6 +1362,9 @@ class InvestigationSummary(StrictModel):
     invocations_skipped: int = Field(default=0, ge=0)
     invocations_cancelled: int = Field(default=0, ge=0)
     handoff_state: ShortText | None = None
+    # Persisted queue-state rollup for this decision's jobs (e.g. timed_out,
+    # recovery_required) so stopped/recovery work is visible in the list.
+    job_statuses: dict[str, int] = Field(default_factory=dict)
 
 
 class InvestigationJobError(StrictModel):
@@ -1379,10 +1389,12 @@ class JobLatencyStats(StrictModel):
 
 
 class WaitingJobView(StrictModel):
-    """A queued first-responder job still waiting on its backoff window."""
+    """A first-responder job still waiting: queued on its backoff window or
+    parked on a prerequisite (``waiting``, execution-reliability)."""
 
     job_id: JobId
     kind: ShortText
+    status: ShortText = "queued"
     run_after: UtcDatetime | None = None
     enqueued_at: UtcDatetime | None = None
     attempts: int = Field(default=0, ge=0)
@@ -1402,12 +1414,15 @@ class FirstResponderDiagnostics(StrictModel):
     failures_by_agent: dict[str, int] = Field(default_factory=dict)
     missing_prerequisites: dict[str, int] = Field(default_factory=dict)
     jobs_queued: int = Field(ge=0)
+    jobs_waiting: int = Field(default=0, ge=0)
     jobs_running: int = Field(ge=0)
     jobs_stalled: int = Field(ge=0)
     jobs_succeeded: int = Field(ge=0)
     jobs_failed: int = Field(ge=0)
     jobs_cancelled: int = Field(ge=0)
     jobs_dead: int = Field(ge=0)
+    jobs_timed_out: int = Field(default=0, ge=0)
+    jobs_recovery_required: int = Field(default=0, ge=0)
     waiting_jobs: list[WaitingJobView] = Field(default_factory=list)
     recent_errors: list[InvestigationJobError] = Field(default_factory=list)
     agent_step_latency: JobLatencyStats | None = None

@@ -773,8 +773,14 @@
     }
   },
   "additionalProperties": false,
-  "description": "One invocation plus its queue state and optional execution record.",
+  "description": "One invocation plus its queue state and optional execution record.\n\n``effective_state`` is the canonical combined state: a terminal invocation\nstatus is authoritative; while the invocation is non-terminal the joined\njob row \u2014 which records what actually ran \u2014 wins, so a timed-out,\nrecovery-required, waiting or cancelled job is never shown as in-progress.",
   "properties": {
+    "effective_state": {
+      "default": "eligible",
+      "maxLength": 500,
+      "title": "Effective State",
+      "type": "string"
+    },
     "execution": {
       "anyOf": [
         {
