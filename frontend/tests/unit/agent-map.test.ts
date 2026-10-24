@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { affected, componentStates, coreComponent, isRedTeam, issueComponent, issueComponents, plainStep, redTeamEnd, refutedComponents, stepComponent, ticks } from '@/lib/demo/agent-map';
+import { affected, componentStates, coreComponent, isRedTeam, issueComponent, issueComponents, plainStep, plainToolName, redTeamEnd, refutedComponents, stepComponent, ticks } from '@/lib/demo/agent-map';
 import { DEMO_REPOS } from '@/lib/demo/data';
 import { analyze } from '@/lib/demo/scenarios';
 
@@ -100,5 +100,12 @@ describe('agent map', () => {
     expect(plainStep({ tool: 'checks__run_template', input: '', result: '', ms: 1, outcome: 'ok' })).toBe('Ran a check in the sandbox');
     expect(plainStep({ tool: 'submit_result', input: '', result: '', ms: 1, outcome: 'ok' })).toBe('Reported its result');
     expect(stepComponent({ tool: 'worktree__write_file', input: 'x', result: '', ms: 1, outcome: 'ok' }, repo)).toBe(coreComponent(repo));
+  });
+
+  it('plain-speaks persisted tool names in the recorded tool calls disclosure', () => {
+    expect(plainToolName('read_file')).toBe('Read the code');
+    expect(plainToolName('submit_result')).toBe('Reported its result');
+    expect(plainToolName('sandbox__run_tests')).toBe('Ran the tests');
+    expect(plainToolName('some.internal_tool')).toBe('some.internal_tool');
   });
 });

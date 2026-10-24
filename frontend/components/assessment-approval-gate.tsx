@@ -66,7 +66,7 @@ export function ApprovalGate({ projectId, events, findings = [], onDecided }: {
       {approvals?.length === 0 && <Empty>No pending approval found for this run.</Empty>}
       {approvals?.map((ap) => {
         const subject = findings.find(f => f.id === ap.subject_id) ?? planSubjects[ap.id];
-        const subjectPath = subject?.evidence.find(e => e.path)?.path ?? subject?.subject_refs[0];
+        const subjectPath = (subject?.evidence.find(e => e.path)?.path ?? subject?.subject_refs[0])?.replace(/^target\//, '');
         const severity = subject?.severity?.level ? SEVERITY[subject.severity.level] : null;
         return (
         <div key={ap.id} className="mt-3 rounded-lg border border-line p-3 text-sm">
