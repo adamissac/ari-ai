@@ -7,6 +7,7 @@ Org A = alice (owner) + bob (co-owner approver). Org B = eve alone (owner of her
 own auto-created personal org). Eve must get 404 — never a leak — for every
 Org-A resource ID she substitutes, whether or not the resource exists.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -123,9 +124,11 @@ def test_two_org_isolation_by_id_substitution(client_factory, reference) -> None
     assert r_pack.status_code in (403, 404, 422), r_pack.text[:200]
 
     # Fake-but-valid-shaped IDs must behave identically (no existence leak).
-    for url in (f"/api/v1/findings/fnd_{uuid.uuid4().hex[:20]}",
-                f"/api/v1/assessments/asm_{uuid.uuid4().hex[:20]}",
-                f"/api/v1/artifacts/art_{uuid.uuid4().hex[:20]}"):
+    for url in (
+        f"/api/v1/findings/fnd_{uuid.uuid4().hex[:20]}",
+        f"/api/v1/assessments/asm_{uuid.uuid4().hex[:20]}",
+        f"/api/v1/artifacts/art_{uuid.uuid4().hex[:20]}",
+    ):
         assert eve.get(url).status_code == 404, url
 
 
@@ -149,9 +152,7 @@ def test_cancel_optout_and_reoptin_drills(client_factory, reference) -> None:
     )
     assert post_webhook(alice, push_payload(["app/x.py"])).status_code == 202
     worker.drain(kinds=["process_github_delivery"])
-    assert (
-        alice.get(f"/api/v1/projects/{ids['project']}/reassessments").json()["items"] == []
-    )
+    assert alice.get(f"/api/v1/projects/{ids['project']}/reassessments").json()["items"] == []
 
     # Re-opt-in -> push produces a reassessment again.
     alice.patch(f"/api/v1/repositories/{ids['repo']}", json={"automatic_assessments": True})
@@ -175,12 +176,16 @@ def test_operator_deletion_procedure(client_factory, reference) -> None:
         # files + $SECURITY_WORKDIR/repos/{repo_id}.git bare clone).
         conn.execute(sa.text("SET LOCAL session_replication_role = 'replica'"))
         org_id = ids["org"]
-        tables = conn.execute(
-            sa.text(
-                "SELECT table_name FROM information_schema.columns "
-                "WHERE column_name = 'organization_id' AND table_schema = 'public'"
+        tables = (
+            conn.execute(
+                sa.text(
+                    "SELECT table_name FROM information_schema.columns "
+                    "WHERE column_name = 'organization_id' AND table_schema = 'public'"
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         for t in tables:
             conn.execute(sa.text(f'DELETE FROM "{t}" WHERE organization_id = :o'), {"o": org_id})
         conn.execute(sa.delete(repositories).where(repositories.c.id == ids["repo"]))
