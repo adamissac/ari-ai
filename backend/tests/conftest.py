@@ -155,6 +155,7 @@ _TABLES = [
 @pytest.fixture(autouse=True)
 def clean_db() -> Iterator[None]:
     from backend import llm
+    from backend.api.deps import limiter
     from backend.db import get_engine
 
     yield
@@ -162,6 +163,7 @@ def clean_db() -> Iterator[None]:
     from backend.live_defense import agent_execution
 
     pipeline._ORCHESTRATORS.clear()
+    limiter._hits.clear()
     llm.TRANSPORT_OVERRIDE = None
     agent_execution.GATEWAY_OVERRIDE = None
     get_settings.cache_clear()
