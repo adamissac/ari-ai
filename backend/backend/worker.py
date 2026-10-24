@@ -27,7 +27,7 @@ from typing import Any
 import httpx
 from sqlalchemy import exc as sa_exc
 
-from backend import alerts, execution, jobs
+from backend import execution, jobs
 from backend.db import transaction
 from backend.jobs import ErrorCategory
 from backend.settings import get_settings

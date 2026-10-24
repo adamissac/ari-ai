@@ -18,7 +18,7 @@ import json
 import os
 import sys
 import urllib.request
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 TERMINAL = {"COMPLETED", "FAILED", "CANCELLED", "BUDGET_EXHAUSTED"}
 VALIDATED = {
@@ -45,7 +45,7 @@ def _get(path: str) -> dict:
 def _ts(value: str | None) -> float:
     if not value:
         return 0.0
-    return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc).timestamp()
+    return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(UTC).timestamp()
 
 
 def main() -> int:
@@ -97,15 +97,9 @@ def main() -> int:
             continue
         files = set(case["files"])
         sec_on_files = [
-            f
-            for f in by_assessment.get(a["id"], [])
-            if f["kind"] == "security" and files & _finding_paths(f)
+            f for f in by_assessment.get(a["id"], []) if f["kind"] == "security" and files & _finding_paths(f)
         ]
-        any_on_files = [
-            f
-            for f in by_assessment.get(a["id"], [])
-            if files & _finding_paths(f)
-        ]
+        any_on_files = [f for f in by_assessment.get(a["id"], []) if files & _finding_paths(f)]
         seconds = round(_ts(a.get("completed_at") or a.get("updated_at")) - _ts(a["created_at"]))
         results.append(
             {
