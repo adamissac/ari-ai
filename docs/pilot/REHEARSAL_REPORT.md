@@ -169,9 +169,12 @@ locally at `/Users/devin/repos/pilot-rehearsal-target`.
 4. **Assistant-role turns are re-sent unredacted** to the provider (thinking-block
    signature constraint) — disclosed; mitigated by inbound redaction.
 5. **Prod leg not yet executed** — this report is CONDITIONAL until Leg 7 lands.
-6. **PR #535 (RLS + `purge_project`) is verified on its branch but NOT deployed**
-   — prod runs `main`; merge it before relying on RLS/`purge_project` in prod,
-   and re-check `readyz` + a tenant drill after deploy. (CI: gitleaks false
-   positive on the deleted fixture README's synthetic fixture bearers
-   fixed via targeted allowlist; awaits authorized review — it is a
-   trust-boundary change.)
+6. **PR #535 (RLS + `purge_project`) MERGED to `main` (08114692)** — RLS +
+   `purge_project` are now on `main`; verify the Railway deploy picked up
+   migration 0016 (`readyz` + a tenant drill post-deploy) before relying on
+   them in prod.
+7. **`jobs.last_error.message` leaks raw exception text to project members**
+   (Agent-2 finding): `f"{type(exc).__name__}: {exc}"[:500]` is served via
+   `GET /projects/{id}/jobs` — could carry secret fragments. The #530 agent is
+   landing storage-boundary sanitization in `backend/redaction.py`; pilot
+   condition until merged.
