@@ -8,9 +8,12 @@ switch) is evaluated here in code — never inside an agent.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
+import threading
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -57,7 +60,13 @@ from ..intel import CodeIntel, FindingsHistory, hypothesis_key
 from ..llm import LLMGateway
 from ..runtime import AgentSpec, StepOutcome, StepRecord, run_agent
 from ..sandbox.driver import SandboxDriver
-from ..sandbox.workspace import fresh_checkout, resolve_under, tree_digest
+from ..sandbox.workspace import (
+    fresh_checkout,
+    recipe_test_roots,
+    resolve_under,
+    tree_digest,
+    under_test_roots,
+)
 from ..scope_guard import ActionRequest
 from ..scope_guard import check as scope_check
 from ..tools import (
@@ -71,6 +80,7 @@ from ..tools import (
     default_registry,
     recipe_from_snapshot,
 )
+from ..tools.services import sandbox_setup
 from .states import (
     AssessmentState,
     RemediationState,
@@ -258,6 +268,9 @@ class OrchestratorConfig:
     test_command_args: tuple[str, ...] = ("-q", "tests")
     probe_check_transport: str = "inprocess"
     verify_check_transport: str = "inprocess"
+    # The commit under review: Scout starts from what changed instead of the whole app.
+    change_paths: tuple[str, ...] = ()
+    change_diff: str = ""
 
 
 class Orchestrator:
@@ -312,7 +325,9 @@ class Orchestrator:
         self._patch_artifacts: dict[str, dict[str, Any]] = {}
         self._completed_steps: dict[str, StepOutcome] = {}
         self._audit_prev_hash = "0" * 64
-        self._baseline_failing: list[str] = []
+        self._audit_lock = threading.Lock()
+        self._baseline_job: Any = None
+        self._baseline_value: list[str] = []
         self.roe: Any = None
         self.workdir.mkdir(parents=True, exist_ok=True)
 
@@ -348,15 +363,16 @@ class Orchestrator:
             "at": self.now(),
             "details": details,
         }
-        body = json.dumps(
-            {**payload, "at": payload["at"].isoformat(), "prev_hash": self._audit_prev_hash},
-            sort_keys=True,
-            default=str,
-        )
-        digest = hashlib.sha256(body.encode()).hexdigest()
-        event = AuditEvent(**payload, prev_hash=self._audit_prev_hash, hash=digest)  # type: ignore[arg-type]
-        self._audit_prev_hash = digest
-        self.result.audit.append(event)
+        with self._audit_lock:  # Fortify's step audits from its own thread
+            body = json.dumps(
+                {**payload, "at": payload["at"].isoformat(), "prev_hash": self._audit_prev_hash},
+                sort_keys=True,
+                default=str,
+            )
+            digest = hashlib.sha256(body.encode()).hexdigest()
+            event = AuditEvent(**payload, prev_hash=self._audit_prev_hash, hash=digest)  # type: ignore[arg-type]
+            self._audit_prev_hash = digest
+            self.result.audit.append(event)
         return event
 
     def _budget_left(self) -> bool:
@@ -481,8 +497,14 @@ class Orchestrator:
     def _advise(self, subject_type: str, subject_id: str, advice: Any) -> Any:
         """Audit one specialist inference (persisted with the assessment's audit chain)."""
         if advice is not None:
-            self._audit("specialist.inference", subject_type, subject_id, actor="agent", actor_id=f"specialist:{advice.agent}",
-                        **specialist_bridge.audit_fields(advice))
+            self._audit(
+                "specialist.inference",
+                subject_type,
+                subject_id,
+                actor="agent",
+                actor_id=f"specialist:{advice.agent}",
+                **specialist_bridge.audit_fields(advice),
+            )
         return advice
 
     def _fail(self, code: ErrorCode, detail: str) -> AssessmentResult:
@@ -541,7 +563,10 @@ class Orchestrator:
 
         # ---- FUNCTIONAL_REVIEW is Sai's pillar; we record the baseline it needs.
         self._goto(AssessmentState.FUNCTIONAL_REVIEW, "baseline test run (code_review pillar pending)")
-        self._baseline_failing = self._baseline_test_failures()
+        # Only Verify (and the approval checkpoint) need the baseline: run it beside Scout.
+        pool = ThreadPoolExecutor(max_workers=1)
+        self._baseline_job = pool.submit(self._baseline_test_failures)
+        pool.shutdown(wait=False)
 
         # ---- RECON (Scout)
         self._goto(AssessmentState.RECON)
@@ -555,18 +580,21 @@ class Orchestrator:
         if not confirmed:
             return self._report_or_wait("no confirmed findings")
 
-        # ---- ANALYSIS (Trace)
+        # ---- ANALYSIS (Trace). Diagnose's step needs only the validated finding, so it runs
+        # alongside; its plan applies only to a finding Trace could analyse.
         self._goto(AssessmentState.ANALYSIS)
-        for finding in confirmed:
-            self._run_trace(finding)
-        traced = [f for f in confirmed if f.attack_path is not None]
-        if not traced:
-            return self._report_or_wait("impact analysis failed for all findings")
+        with ThreadPoolExecutor(max_workers=len(confirmed)) as pool:
+            plans = {f.finding_id: pool.submit(self._diagnose_step, f) for f in confirmed}
+            for finding in confirmed:
+                self._run_trace(finding)
+            traced = [f for f in confirmed if f.attack_path is not None]
+            if not traced:
+                return self._report_or_wait("impact analysis failed for all findings")
 
-        # ---- DIAGNOSIS (Diagnose)
-        self._goto(AssessmentState.DIAGNOSIS)
-        for finding in traced:
-            self._run_diagnose(finding)
+            # ---- DIAGNOSIS (Diagnose)
+            self._goto(AssessmentState.DIAGNOSIS)
+            for finding in traced:
+                self._apply_diagnose(finding, *plans[finding.finding_id].result())
         diagnosed = [f for f in traced if f.plan is not None]
         if not diagnosed:
             return self._report_or_wait("no remediation plan produced")
@@ -625,19 +653,31 @@ class Orchestrator:
             self._goto(AssessmentState.REPORTING, "no approved remediation")
             return self._finish()
 
-        # ---- REMEDIATION (Patch <-> Verify sub-machine)
-        self._goto(AssessmentState.REMEDIATION)
-        for finding in approved:
-            self._run_remediation(finding)
+        self.remediate_and_harden(approved)
+        self._goto(AssessmentState.REPORTING)
+        return self._finish()
 
-        # ---- HARDENING (Fortify) for verified findings
+    def remediate_and_harden(
+        self, approved: list[FindingRecord], after_remediation: Callable[[], None] | None = None
+    ) -> None:
+        """REMEDIATION (Patch <-> Verify) then HARDENING (Fortify) for verified findings.
+
+        Fortify's model step reads only the diagnosis, so it runs alongside remediation; its
+        records apply only to a finding Verify accepted."""
+        self._goto(AssessmentState.REMEDIATION)
+        with ThreadPoolExecutor(max_workers=max(1, len(approved))) as pool:
+            advice = {f.finding_id: pool.submit(self._fortify_step, f) for f in approved}
+            for finding in approved:
+                self._run_remediation(finding)
+            # Wait for Fortify's step before the functional repair, so the repair never shares
+            # the host with another thread (it usually finished during Patch -> Verify).
+            steps = {f.finding_id: advice[f.finding_id].result() for f in approved}
+        if after_remediation is not None:
+            after_remediation()
         self._goto(AssessmentState.HARDENING)
         for finding in approved:
             if finding.status == "verified":
-                self._run_fortify(finding)
-
-        self._goto(AssessmentState.REPORTING)
-        return self._finish()
+                self._apply_fortify(finding, *steps[finding.finding_id])
 
     def _wait_external(self) -> bool:
         return bool(self.external_pending and self.external_pending())
@@ -663,6 +703,7 @@ class Orchestrator:
         return self.result
 
     def _finish(self) -> AssessmentResult:
+        self._baseline_failing  # noqa: B018 - waits for the background baseline and counts its sandbox time
         self._goto(AssessmentState.COMPLETED)
         self._audit(
             "assessment.completed",
@@ -674,15 +715,17 @@ class Orchestrator:
 
     # ------------------------------------------------------------------ steps
 
-    def _added_tests_on_unpatched(self, candidate: Any, verify_ctx: ToolContext, attempt: int) -> list[dict[str, Any]]:
+    def _added_tests_on_unpatched(
+        self, candidate: Any, patched: Path | None, attempt: int
+    ) -> list[dict[str, Any]]:
         """Run the candidate's added tests on a fresh UNPATCHED checkout (platform-run, no model).
 
         Only the added test files are copied in from Verify's patched workspace; the code under
         test is the pinned snapshot. Verify requires at least one of them to fail here.
         Returns [] when nothing could be run (Verify then fails closed).
         """
-        patched = verify_ctx.artifacts.get("verify_workspace")
-        tests = [t for t in candidate.tests_added if isinstance(t, str) and t.startswith("tests/")]
+        roots = recipe_test_roots(self.intel.snapshot.root)
+        tests = [t for t in candidate.tests_added if isinstance(t, str) and under_test_roots(t, roots)]
         if not patched or not tests:
             return []
         dest = self.workdir / f"unpatched-{candidate.id}-{attempt}"
@@ -697,13 +740,11 @@ class Orchestrator:
                 target.write_bytes(src.read_bytes())
         except (OSError, PlatformError, ValueError):
             return []
-        ctx = self._context(AgentName.VERIFY, f"remediation:{candidate.finding_id}:unpatched-tests", services={})
-        ctx.artifacts["tests_added"] = tests
-        runner = TestRunner(
-            driver=self.driver,
-            workspace_provider=lambda _ctx: root,
-            test_command_args=self.config.test_command_args,
+        ctx = self._context(
+            AgentName.VERIFY, f"remediation:{candidate.finding_id}:unpatched-tests", services={}
         )
+        ctx.artifacts["tests_added"] = tests
+        runner = self._test_runner(lambda _ctx: root)
         result = runner.run(ctx, "added_tests", [])
         self._audit(
             "tests.added_on_unpatched",
@@ -715,14 +756,44 @@ class Orchestrator:
         )
         return [result]
 
-    def _baseline_test_failures(self) -> list[str]:
+    def _test_runner(self, workspace_provider: Any) -> TestRunner:
+        """Tests run with the target recipe's `test_command` and `sandbox` setup when it has them."""
+        recipe: dict[str, Any] = {}
+        path = self.intel.snapshot.root / "build_recipe.json"
+        if path.is_file():
+            with contextlib.suppress(ValueError, OSError):
+                recipe = json.loads(path.read_text(encoding="utf-8"))
+        command = recipe.get("test_command")
+        valid = isinstance(command, list) and all(isinstance(a, str) for a in command) and command
+        setup: dict[str, tuple[str, ...]] = {}
+        with contextlib.suppress(PlatformError):  # Probe reports an invalid block; tests run bare
+            setup = sandbox_setup(recipe)
+        return TestRunner(
+            driver=self.driver,
+            workspace_provider=workspace_provider,
+            test_command_args=tuple(command) if valid else self.config.test_command_args,
+            setup=setup,
+        )
+
+    @property
+    def _baseline_failing(self) -> list[str]:
+        """Tests already failing on the unpatched snapshot; waits for the background run."""
+        if self._baseline_job is not None:
+            failing, seconds = self._baseline_job.result()
+            self._baseline_job = None
+            self._baseline_value = failing
+            self.result.usage.sandbox_seconds += seconds
+        return self._baseline_value
+
+    @_baseline_failing.setter
+    def _baseline_failing(self, value: list[str]) -> None:
+        self._baseline_job = None
+        self._baseline_value = value
+
+    def _baseline_test_failures(self) -> tuple[list[str], float]:
         """Record which tests already fail on the unpatched snapshot (Verify needs this)."""
         ctx = self._context(AgentName.VERIFY, "baseline", services={})
-        runner = TestRunner(
-            driver=self.driver,
-            workspace_provider=lambda _ctx: self.intel.snapshot.root,
-            test_command_args=self.config.test_command_args,
-        )
+        runner = self._test_runner(lambda _ctx: self.intel.snapshot.root)
         result = runner.run(ctx, "project_suite", [])
         self._audit(
             "tests.baseline",
@@ -732,8 +803,7 @@ class Orchestrator:
             passed=result.get("passed"),
             sandbox_run_id=result.get("sandbox_run_id"),
         )
-        self.result.usage.sandbox_seconds += float(result.get("duration_s") or 0)
-        return list(result.get("failing_tests") or [])
+        return list(result.get("failing_tests") or []), float(result.get("duration_s") or 0)
 
     def _run_scout(self) -> list[Hypothesis]:
         data = scout_agent.ScoutInput(
@@ -742,6 +812,8 @@ class Orchestrator:
             commit_sha=self.intel.snapshot.commit_sha,
             expectation_ids=[e.id for e in self.intel.expectations()],
             refuted_keys=self.history.refuted_keys(),
+            changed_paths=list(self.config.change_paths),
+            change_diff=self.config.change_diff,
             max_hypotheses=self.config.max_hypotheses,
             available_check_categories=sorted(
                 c
@@ -754,14 +826,25 @@ class Orchestrator:
         if self.specialists is not None:
             rows, advices = specialist_bridge.scout_survey(self.specialists, self.intel)
             model_id = next((a.model_id for a in advices if a.source == "model"), None)
-            self._audit("specialist.inference", "snapshot", self.intel.snapshot.snapshot_id, actor="agent",
-                        actor_id="specialist:scout", agent="scout", model=model_id,
-                        source="model" if rows else (advices[0].source if advices else "unavailable"),
-                        spans_scored=len(advices), top=json.dumps(rows[:5]),
-                        reason=None if rows else (advices[0].reason if advices else "no entry points"))
+            self._audit(
+                "specialist.inference",
+                "snapshot",
+                self.intel.snapshot.snapshot_id,
+                actor="agent",
+                actor_id="specialist:scout",
+                agent="scout",
+                model=model_id,
+                source="model" if rows else (advices[0].source if advices else "unavailable"),
+                spans_scored=len(advices),
+                top=json.dumps(rows[:5]),
+                reason=None if rows else (advices[0].reason if advices else "no entry points"),
+            )
             survey_block = specialist_bridge.scout_block(rows, model_id)
         outcome = self._run_step(
-            scout_agent.SPEC, ctx, scout_agent.build_prompt(data, self.intel) + survey_block, input_ref="scout:input"
+            scout_agent.SPEC,
+            ctx,
+            scout_agent.build_prompt(data, self.intel) + survey_block,
+            input_ref="scout:input",
         )
         if not outcome.ok or not isinstance(outcome.output, scout_agent.ScoutOutput):
             self._audit("recon.failed", "assessment", self.config.assessment_id, error=outcome.run.error_code)
@@ -781,8 +864,15 @@ class Orchestrator:
                     suspicion[h.id] = 1.0 - (a.score("safe") or 0.0)
             reranked = specialist_bridge.blended_rank(hypotheses, ranked, suspicion)
             if [h.id for h in reranked] != [h.id for h in ranked]:
-                self._audit("specialist.rerank", "assessment", self.config.assessment_id, actor="agent",
-                            actor_id="specialist:scout", before=[h.id for h in ranked], after=[h.id for h in reranked])
+                self._audit(
+                    "specialist.rerank",
+                    "assessment",
+                    self.config.assessment_id,
+                    actor="agent",
+                    actor_id="specialist:scout",
+                    before=[h.id for h in ranked],
+                    after=[h.id for h in reranked],
+                )
             ranked = reranked
         for signal in outcome.output.suspicious_instructions:
             self._audit(
@@ -831,15 +921,23 @@ class Orchestrator:
             ctx = self._context(AgentName.PROBE, f"validation:{index}", services=services)
             try:
                 advice = (
-                    self._advise("finding", finding.finding_id, specialist_bridge.probe_advice(self.specialists, hypothesis))
-                    if self.specialists is not None else None
+                    self._advise(
+                        "finding",
+                        finding.finding_id,
+                        specialist_bridge.probe_advice(self.specialists, hypothesis),
+                    )
+                    if self.specialists is not None
+                    else None
                 )
                 outcome = self._run_step(
                     probe_agent.SPEC,
                     ctx,
-                    probe_agent.build_prompt(data, self.intel) + specialist_bridge.block(
-                        advice, "Ranked OWASP WSTG validation strategies from a trained model. Choose a reviewed check "
-                        "template yourself; the executed template's result decides the outcome, not this ranking."),
+                    probe_agent.build_prompt(data, self.intel)
+                    + specialist_bridge.block(
+                        advice,
+                        "Ranked OWASP WSTG validation strategies from a trained model. Choose a reviewed check "
+                        "template yourself; the executed template's result decides the outcome, not this ranking.",
+                    ),
                     input_ref=f"probe:{hypothesis.id}",
                 )
             except PlatformError as exc:
@@ -911,11 +1009,18 @@ class Orchestrator:
         outcome = self._run_step(
             trace_agent.SPEC,
             ctx,
-            trace_agent.build_prompt(data, self.intel) + specialist_bridge.block(
-                self._advise("finding", finding.finding_id, specialist_bridge.trace_advice(self.specialists, finding.hypothesis))
-                if self.specialists is not None else None,
+            trace_agent.build_prompt(data, self.intel)
+            + specialist_bridge.block(
+                self._advise(
+                    "finding",
+                    finding.finding_id,
+                    specialist_bridge.trace_advice(self.specialists, finding.hypothesis),
+                )
+                if self.specialists is not None
+                else None,
                 "MITRE ATT&CK tactics a trained model associates with this weakness (via CAPEC). Use them to decide "
-                "which paths to follow. Severity is computed by deterministic rules from verified steps, not from this."),
+                "which paths to follow. Severity is computed by deterministic rules from verified steps, not from this.",
+            ),
             input_ref=f"trace:{finding.finding_id}",
         )
         if not isinstance(outcome.output, trace_agent.TraceOutput):
@@ -937,15 +1042,17 @@ class Orchestrator:
         )
         self._classify(finding)
 
-    def _run_diagnose(self, finding: FindingRecord) -> None:
-        assert finding.severity is not None and finding.attack_path is not None
+    def _diagnose_step(self, finding: FindingRecord) -> tuple[diagnose_agent.DiagnoseInput, StepOutcome]:
+        # Starts before Trace finishes: severity and impact are filled in when Trace already has them.
         data = diagnose_agent.DiagnoseInput(
             assessment_id=self.config.assessment_id,
             finding_id=finding.finding_id,
             weakness_class=finding.hypothesis.weakness_class,
             hypothesis_title=finding.hypothesis.title,
-            severity_level=finding.severity.level.value,
-            impact_summary=finding.attack_path.impact_summary,
+            severity_level=finding.severity.level.value if finding.severity else "pending impact analysis",
+            impact_summary=(
+                finding.attack_path.impact_summary if finding.attack_path else finding.hypothesis.title
+            ),
             validation_observations=dict(finding.validation.observations) if finding.validation else {},
             affected_symbol=self._handler_symbol(finding),
             affected_paths=[s.path for s in finding.hypothesis.cited_spans if s.path],
@@ -957,13 +1064,25 @@ class Orchestrator:
         outcome = self._run_step(
             diagnose_agent.SPEC,
             ctx,
-            diagnose_agent.build_prompt(data, self.intel) + specialist_bridge.block(
-                self._advise("finding", finding.finding_id, specialist_bridge.diagnose_advice(self.specialists, self.intel, finding))
-                if self.specialists is not None else None,
+            diagnose_agent.build_prompt(data, self.intel)
+            + specialist_bridge.block(
+                self._advise(
+                    "finding",
+                    finding.finding_id,
+                    specialist_bridge.diagnose_advice(self.specialists, self.intel, finding),
+                )
+                if self.specialists is not None
+                else None,
                 "Likely root-cause class from a trained model or its baseline (see source). Confirm it against the "
-                "code and the validation evidence; cite the cause span yourself."),
+                "code and the validation evidence; cite the cause span yourself.",
+            ),
             input_ref=f"diagnose:{finding.finding_id}",
         )
+        return data, outcome
+
+    def _apply_diagnose(
+        self, finding: FindingRecord, data: diagnose_agent.DiagnoseInput, outcome: StepOutcome
+    ) -> None:
         if not isinstance(outcome.output, diagnose_agent.DiagnoseOutput):
             finding.notes.append(f"diagnose failed: {outcome.run.error_code}")
             return
@@ -995,7 +1114,7 @@ class Orchestrator:
         reasons: list[str] = []
         while True:
             if sub_state is RemediationState.PATCHING:
-                candidate, _worktree = self._run_patch(finding, attempt, reasons)
+                candidate, worktree = self._run_patch(finding, attempt, reasons)
                 patch_failed = candidate is None
                 sub_state = next_remediation_state(
                     sub_state, verdict=None, attempt=attempt, patch_failed=patch_failed
@@ -1007,7 +1126,7 @@ class Orchestrator:
                 finding.status = "patch_proposed"
                 continue
             if sub_state is RemediationState.VERIFYING:
-                verification = self._run_verify(finding, attempt)
+                verification = self._run_verify(finding, attempt, worktree)
                 verdict = verification.verdict if verification else "rejected"
                 if verification:
                     finding.verifications.append(verification)
@@ -1044,6 +1163,7 @@ class Orchestrator:
             self.intel,
             self.workdir / f"worktree-{finding.finding_id}-{attempt}",
             allowed_paths=list(finding.plan.files_expected),
+            test_roots=recipe_test_roots(self.intel.snapshot.root),
         )
         data = patch_agent.input_from_plan(
             finding.plan,
@@ -1053,16 +1173,17 @@ class Orchestrator:
             cause_paths=[
                 s.path for s in (finding.root_cause.cause_spans if finding.root_cause else []) if s.path
             ],
+            cause_spans=[
+                (s.path, s.span.start_line, s.span.end_line)
+                for s in (finding.root_cause.cause_spans if finding.root_cause else [])
+                if s.path and s.span
+            ],
             prior_reasons=reasons,
         )
         services = {
             **self._read_services(),
             "worktree": worktree,
-            "test_runner": TestRunner(
-                driver=self.driver,
-                workspace_provider=lambda _ctx, wt=worktree: wt,
-                test_command_args=self.config.test_command_args,
-            ),
+            "test_runner": self._test_runner(lambda _ctx, wt=worktree: wt),
         }
         ctx = self._context(
             AgentName.PATCH,
@@ -1073,11 +1194,18 @@ class Orchestrator:
         outcome = self._run_step(
             patch_agent.SPEC,
             ctx,
-            patch_agent.build_prompt(data, self.intel) + specialist_bridge.block(
-                self._advise("finding", finding.finding_id, specialist_bridge.patch_advice(self.specialists, self.intel, finding))
-                if attempt == 1 and self.specialists is not None else None,
+            patch_agent.build_prompt(data, self.intel)
+            + specialist_bridge.block(
+                self._advise(
+                    "finding",
+                    finding.finding_id,
+                    specialist_bridge.patch_advice(self.specialists, self.intel, finding),
+                )
+                if attempt == 1 and self.specialists is not None
+                else None,
                 "Suggested minimal remediation strategy (trained model or its baseline; see source). Keep the change "
-                "inside the approved files and preserve existing tests. Verify decides acceptance from executed checks."),
+                "inside the approved files and preserve existing tests. Verify decides acceptance from executed checks.",
+            ),
             input_ref=f"patch:{finding.plan.id}",
             attempt=attempt,
         )
@@ -1115,7 +1243,9 @@ class Orchestrator:
         )
         return candidate, worktree
 
-    def _run_verify(self, finding: FindingRecord, attempt: int) -> VerificationResult | None:
+    def _run_verify(
+        self, finding: FindingRecord, attempt: int, worktree: PatchWorktree | None = None
+    ) -> VerificationResult | None:
         candidate = finding.candidates[-1]
         assert finding.plan is not None
         data = verify_agent.input_from_candidate(
@@ -1137,11 +1267,7 @@ class Orchestrator:
         services = {
             **self._read_services(),
             "patch_applier": applier,
-            "test_runner": TestRunner(
-                driver=self.driver,
-                workspace_provider=verify_workspace,
-                test_command_args=self.config.test_command_args,
-            ),
+            "test_runner": self._test_runner(verify_workspace),
             "check_runner": CheckRunner(
                 driver=self.driver,
                 library=self.library,
@@ -1152,18 +1278,24 @@ class Orchestrator:
         }
         ctx = self._context(AgentName.VERIFY, f"remediation:{finding.finding_id}:verify", services=services)
         ctx.artifacts["tests_added"] = list(candidate.tests_added)
-        outcome = self._run_step(
-            verify_agent.SPEC,
-            ctx,
-            verify_agent.build_prompt(data, self.intel),
-            input_ref=f"verify:{candidate.id}",
-            attempt=attempt,
-        )
+        # The added tests on unpatched code need no model: run them while Verify works. The
+        # test files come from Patch's worktree, the same bytes the diff carries.
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            unpatched = pool.submit(
+                self._added_tests_on_unpatched, candidate, worktree.root if worktree else None, attempt
+            )
+            outcome = self._run_step(
+                verify_agent.SPEC,
+                ctx,
+                verify_agent.build_prompt(data, self.intel),
+                input_ref=f"verify:{candidate.id}",
+                attempt=attempt,
+            )
+            unpatched_added_runs = unpatched.result()
         check_runs = list(ctx.artifacts.get("check_runs") or [])
         test_runs = list(ctx.artifacts.get("test_runs") or [])
         for run in check_runs + test_runs:
             self.result.usage.sandbox_seconds += float(run.get("duration_s") or 0)
-        unpatched_added_runs = self._added_tests_on_unpatched(candidate, ctx, attempt)
         for run in unpatched_added_runs:
             self.result.usage.sandbox_seconds += float(run.get("duration_s") or 0)
         evidence = verify_agent.VerifyEvidence(
@@ -1191,13 +1323,24 @@ class Orchestrator:
         )
         if self.specialists is not None:
             diff = str(self._patch_artifacts.get(candidate.id, {}).get("diff") or "")
-            advice = self._advise("patch", candidate.id, specialist_bridge.verify_advice(
-                self.specialists, diff, test_runs, unpatched_added_runs))
+            advice = self._advise(
+                "patch",
+                candidate.id,
+                specialist_bridge.verify_advice(self.specialists, diff, test_runs, unpatched_added_runs),
+            )
             # Advisory only: the verdict above came from executed checks and stays as computed.
-            if advice is not None and advice.source == "model" and result.verdict == "accepted" and advice.top != "adequate":
+            if (
+                advice is not None
+                and advice.source == "model"
+                and result.verdict == "accepted"
+                and advice.top != "adequate"
+            ):
                 finding.notes.append(
                     f"verify specialist ({advice.model_id}) rates the evidence '{advice.top}' "
-                    f"({advice.predictions[0]['score']:.2f}); verdict unchanged, human review recommended"[:300])
+                    f"({advice.predictions[0]['score']:.2f}); verdict unchanged, human review recommended"[
+                        :300
+                    ]
+                )
         from ..regressions import RegressionEvidenceUnavailable, verified_bundle
 
         finding.verify_http_evidence = verify_agent.http_recheck_evidence(evidence, result.verdict)
@@ -1213,23 +1356,18 @@ class Orchestrator:
                 finding.notes.append(f"regression artifact unavailable: {exc}")
         return result
 
-    def _run_fortify(self, finding: FindingRecord) -> None:
-        candidate = finding.candidates[-1] if finding.candidates else None
-        verification = finding.verifications[-1] if finding.verifications else None
-        if candidate is None or verification is None:
-            return
+    def _fortify_step(self, finding: FindingRecord) -> tuple[fortify_agent.FortifyInput, StepOutcome]:
         data = fortify_agent.FortifyInput(
             check_category=finding.hypothesis.suggested_check_category,
             assessment_id=self.config.assessment_id,
             finding_id=finding.finding_id,
-            verification_result_id=verification.id,
+            verification_result_id="pending",  # set from Verify in _apply_fortify
             root_cause_summary=finding.root_cause.summary if finding.root_cause else finding.hypothesis.title,
             cause_class=finding.root_cause.cause_class.value if finding.root_cause else "unknown",
             cause_paths=[
                 s.path for s in (finding.root_cause.cause_spans if finding.root_cause else []) if s.path
             ],
             related_sites=[r.symbol or "" for r in finding.related_sites][:10],
-            tests_added=list(candidate.tests_added),
             affected_symbol=self._handler_symbol(finding),
             weakness_class=finding.hypothesis.weakness_class,
         )
@@ -1239,12 +1377,29 @@ class Orchestrator:
         outcome = self._run_step(
             fortify_agent.SPEC,
             ctx,
-            fortify_agent.build_prompt(data, self.intel) + specialist_bridge.block(
-                self._advise("finding", finding.finding_id, specialist_bridge.fortify_advice(self.specialists, finding))
-                if self.specialists is not None else None,
+            fortify_agent.build_prompt(data, self.intel)
+            + specialist_bridge.block(
+                self._advise(
+                    "finding", finding.finding_id, specialist_bridge.fortify_advice(self.specialists, finding)
+                )
+                if self.specialists is not None
+                else None,
                 "MITRE D3FEND countermeasures a trained model ranks for the ATT&CK technique this finding maps to. "
-                "Recommend only what fits this codebase; mappings stay proposed until a human accepts them."),
+                "Recommend only what fits this codebase; mappings stay proposed until a human accepts them.",
+            ),
             input_ref=f"fortify:{finding.finding_id}",
+        )
+        return data, outcome
+
+    def _apply_fortify(
+        self, finding: FindingRecord, data: fortify_agent.FortifyInput, outcome: StepOutcome
+    ) -> None:
+        candidate = finding.candidates[-1] if finding.candidates else None
+        verification = finding.verifications[-1] if finding.verifications else None
+        if candidate is None or verification is None:
+            return
+        data = data.model_copy(
+            update={"verification_result_id": verification.id, "tests_added": list(candidate.tests_added)}
         )
         if not isinstance(outcome.output, fortify_agent.FortifyOutput):
             finding.notes.append(f"fortify failed: {outcome.run.error_code}")
@@ -1310,6 +1465,6 @@ class Orchestrator:
             if expectation.status != "confirmed":
                 continue
             for source in expectation.sources:
-                if source.path and source.path.startswith("tests/"):
+                if source.path and under_test_roots(source.path, recipe_test_roots(self.intel.snapshot.root)):
                     protected.add(source.path)
         return sorted(protected)

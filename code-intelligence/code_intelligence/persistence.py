@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import hashlib
+import threading
+from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -44,6 +46,14 @@ class PayloadStore(Protocol):
     ) -> SnapshotRef: ...
 
 
+# Index payloads are immutable per SnapshotRef, and every agent tool call reads one (~1.5 s
+# to fetch and parse), so keep the last few in memory per process.
+# shortcut: up to _CACHE_SIZE whole indexes per worker; bound by bytes if repos grow large.
+_CACHE_SIZE = 2
+_cache: OrderedDict[str, StoredIndex] = OrderedDict()
+_cache_lock = threading.Lock()
+
+
 class PayloadIndexStore:
     """Adapts shared immutable artifact persistence to the engine's IndexStore port."""
 
@@ -58,6 +68,19 @@ class PayloadIndexStore:
         self.payloads.mark_ready(index.ref, index.snapshot.stats)
 
     def get(self, ref: SnapshotRef) -> StoredIndex:
+        key = ref.model_dump_json()
+        with _cache_lock:
+            if key in _cache:
+                _cache.move_to_end(key)
+                return _cache[key]
+        index = self._load(ref)
+        with _cache_lock:
+            _cache[key] = index
+            while len(_cache) > _CACHE_SIZE:
+                _cache.popitem(last=False)
+        return index
+
+    def _load(self, ref: SnapshotRef) -> StoredIndex:
         try:
             payload = self.payloads.get_payload(ref, "intelligence_index", "index.json")
         except KeyError as exc:

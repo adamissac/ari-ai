@@ -94,6 +94,12 @@ def process_github_delivery(ctx: JobContext) -> dict[str, Any]:
             return {"monitoring_event_id": done.id, "idempotent_replay": True}
         _, raw = store.get(conn, d["payload_artifact_id"])
     payload = json.loads(raw)
+    if d["event_name"] in ("installation", "installation_repositories"):
+        from backend.recipes import enqueue_for_installation
+
+        with transaction() as conn:
+            queued = enqueue_for_installation(conn, d["event_name"], payload, delivery_id)
+        return {"build_recipes_for": queued}
     change = normalize_github(d["event_name"], payload)
     if isinstance(change, Ignored):
         return {"ignored": change.reason}
@@ -333,7 +339,9 @@ def run_assessment(ctx: JobContext) -> dict[str, Any]:
                 f"security-agents orchestrator unavailable: {loaded.reason}",
             )
             return {"state": "FAILED", "reason": loaded.reason}
-        loaded.obj.run(host)
+        if loaded.obj.run(host) == "claimed_elsewhere":
+            # Another worker resumed this run in-process and still drives it.
+            return {"state": host.assessment.state.value, "noop": True}
     except (HostError, LLMError) as exc:
         state = {
             ErrorCode.CANCELLED: AssessmentState.CANCELLED,
@@ -369,7 +377,12 @@ def run_assessment(ctx: JobContext) -> dict[str, Any]:
         from backend.delivery import auto_approve_pending
 
         with transaction() as conn:
-            auto_approve_pending(conn, asm_id, host.project_id)
+            approved = auto_approve_pending(conn, asm_id, host.project_id)
+        if approved:
+            # Continue here: this worker still holds the paused orchestrator in memory, so
+            # Patch starts at once instead of a queued job re-pinning the snapshot (~100 s).
+            # The queued resume then finds the checkpoint claimed and does nothing.
+            return run_assessment(ctx)
     if final not in TERMINAL_STATES and final is not AssessmentState.AWAITING_APPROVAL:
         host.terminate(
             AssessmentState.FAILED,

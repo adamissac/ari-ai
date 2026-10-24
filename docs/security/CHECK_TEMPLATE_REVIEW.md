@@ -131,3 +131,56 @@ def test_bound_is_enforced_across_requests():
         f"invariant broken: accumulated {accumulated} exceeds the bound {BOUND}"
     )
 ```
+
+## access_control.authentication@1
+
+- category: `access_control.authentication`; side effects: `read_only`
+- current reviewed_by: `security-owner:pending-human-signoff`
+- parameters: route_id, identity
+- renderer_sha256: `9260427543bad9e7f895c8b47c88d159db882d4244332bff0d8d75d2840e7f33`
+- sample parameters: `{"identity": "alice", "route_id": "payment_detail"}`
+- rendered_sha256 (sample): `bed134ce73c11942471130cb2ccecdd8a469de24632016b3cce53b070ac87132`
+- imports: decimal, fastapi, json, payments_lite (within allowlist: True)
+- forbidden tokens in code: none
+
+```python
+"""Generated check: access_control.authentication@1
+Rendered by security_agents.checks.library from reviewed template parameters.
+Target is driven in-process through its own app factory; no sockets are opened.
+"""
+
+import json
+from decimal import Decimal
+
+from fastapi.testclient import TestClient
+
+from payments_lite.app import create_app
+
+RESULT = {}
+
+
+def _client():
+    return TestClient(create_app())
+
+
+PATH = '/payments/pay_a1'
+AUTH_HEADERS = {"Authorization": 'Bearer fixture-token-alice'}
+DENIED = [401, 403]
+
+
+def test_unauthenticated_request_is_denied():
+    resp = _client().get(PATH)
+    RESULT["anon_status"] = resp.status_code
+    RESULT["anon_leaked_body"] = resp.status_code == 200
+    assert resp.status_code in DENIED, (
+        f"expected one of {DENIED} for an unauthenticated request, observed {resp.status_code}"
+    )
+
+
+def test_authenticated_identity_retains_access():
+    resp = _client().get(PATH, headers=AUTH_HEADERS)
+    RESULT["identity_status"] = resp.status_code
+    assert resp.status_code < 400, (
+        f"authenticated identity lost legitimate access: {resp.status_code}"
+    )
+```

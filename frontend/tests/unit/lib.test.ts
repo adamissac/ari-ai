@@ -302,7 +302,7 @@ describe('status vocabulary', () => {
 
 describe('scope check categories', () => {
   it('offers Probe library ids that satisfy ScopeCreate.allowed_check_categories', () => {
-    expect([...SCOPE_CHECK_CATEGORIES]).toEqual(['access_control.ownership', 'input_validation.bounds']);
+    expect([...SCOPE_CHECK_CATEGORIES]).toEqual(['access_control.ownership', 'access_control.authentication', 'input_validation.bounds']);
     const aliases: CheckCategory[] = ['authorization.ownership', 'input.bounds'];
     const body: ScopeCreate = {
       name: 'sandbox',
@@ -318,7 +318,7 @@ describe('scope check categories', () => {
       expires_at: '2026-11-17T00:00:00Z',
       notes: null,
     };
-    expect(body.allowed_check_categories).toHaveLength(4);
+    expect(body.allowed_check_categories).toHaveLength(5);
   });
 });
 

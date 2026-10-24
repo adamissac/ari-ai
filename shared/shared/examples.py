@@ -61,6 +61,12 @@ LCT = "lct_01JFIXTURE0000000000000LCT"
 CGR = "cgr_01JFIXTURE0000000000000CGR"
 CCH = "cch_01JFIXTURE0000000000000CCH"
 EST = "est_01JFIXTURE0000000000000EST"
+FRD = "frd_01JFIXTURE0000000000000FRD"
+AHL = "ahl_01JFIXTURE0000000000000AHL"
+DCM = "dcm_01JFIXTURE0000000000000DCM"
+FRI = "fri_01JFIXTURE0000000000000FRI"
+JOB = "job_01JFIXTURE0000000000000JOB"
+INC = "inc_01JFIXTURE0000000000000INC"
 REC = "rec_0123456789abcdef0123456789abcdef"
 BIND = "a" * 64
 
@@ -680,6 +686,117 @@ def build() -> dict[str, BaseModel]:
         ),
         "LiveControlRollbackCreate": live_defense.LiveControlRollbackCreate(
             reason="Analyst requested rollback after verification.",
+        ),
+        "FirstResponderModeUpdate": live_defense.FirstResponderModeUpdate(intent="monitor"),
+        "FirstResponderEffectivePermissions": live_defense.FirstResponderEffectivePermissions(
+            intent=live_defense.FirstResponderIntent.assisted_response,
+            effective=live_defense.FirstResponderIntent.monitor,
+            application_connected=True,
+            monitoring_active=True,
+            enforcement_active=False,
+            kill_switch_active=False,
+            authorized_scope_active=False,
+            trusted_mapping=False,
+            reasons=["no owner-attested deploy-to-commit mapping"],
+        ),
+        "FirstResponderModeView": live_defense.FirstResponderModeView(
+            project_id=PRJ,
+            intent=live_defense.FirstResponderIntent.off,
+            updated_by=USR,
+            updated_at=T0,
+            previous_intent=live_defense.FirstResponderIntent.monitor,
+            stop_kind=live_defense.StopKind.stop_monitoring,
+        ),
+        "AgentCapability": live_defense.AgentCapability(
+            name=assessment.AgentName.scout,
+            spec_version="0.1.0",
+            capability_class=live_defense.AgentCapabilityClass.investigative_readonly,
+            tools=["code.read_span"],
+            sandbox_profile="none",
+            network="none",
+            write_access="none",
+            notes="Read-only reconnaissance. Output is hypotheses, not confirmation.",
+        ),
+        "AgentCapabilityRegistry": live_defense.AgentCapabilityRegistry(
+            complete=False,
+            agents=[],
+            missing_names=["scout"],
+        ),
+        "DeployCommitMappingCreate": live_defense.DeployCommitMappingCreate(
+            repo_id=REP,
+            commit_sha=HEAD,
+            deployed_at=T0,
+        ),
+        "DeployCommitMapping": live_defense.DeployCommitMapping(
+            id=DCM,
+            project_id=PRJ,
+            application_id=APP,
+            repo_id=REP,
+            commit_sha=HEAD,
+            deployed_at=T0,
+            created_by=USR,
+            created_at=T0,
+        ),
+        "RuntimeCodeCorrelation": live_defense.RuntimeCodeCorrelation(
+            application_id=APP,
+            mapping_id=None,
+            commit_sha=None,
+            confidence=live_defense.CorrelationConfidence.unknown,
+            note="No owner-attested deploy-to-commit mapping. Correlation is UNKNOWN.",
+        ),
+        "BlockedAgent": live_defense.BlockedAgent(
+            name=assessment.AgentName.probe,
+            reason="AuthorizedScope is not active",
+            capability_class=live_defense.AgentCapabilityClass.disruptive_scoped,
+        ),
+        "FirstResponderDecision": live_defense.FirstResponderDecision(
+            id=FRD,
+            project_id=PRJ,
+            application_id=APP,
+            created_at=T0,
+            intent_mode=live_defense.FirstResponderIntent.monitor,
+            effective_mode=live_defense.FirstResponderIntent.monitor,
+            action=live_defense.OrchestratorAction.investigate,
+            evidence_state=live_defense.EvidenceLifecycleState.observed,
+            live_policy_decision_id=LPD,
+            selected_agents=[assessment.AgentName.scout],
+            correlation=live_defense.RuntimeCodeCorrelation(
+                application_id=APP,
+                confidence=live_defense.CorrelationConfidence.unknown,
+                note="No owner-attested deploy-to-commit mapping.",
+            ),
+            transition="ingest→observe",
+            simulated=False,
+        ),
+        "FirstResponderInvocation": live_defense.FirstResponderInvocation(
+            id=FRI,
+            decision_id=FRD,
+            project_id=PRJ,
+            agent=assessment.AgentName.scout,
+            capability_class=live_defense.AgentCapabilityClass.investigative_readonly,
+            status=live_defense.AgentInvocationStatus.skipped_no_mapping,
+            reason="No trusted deploy-to-commit mapping",
+            created_at=T0,
+        ),
+        "AnalystHandoffCreate": live_defense.AnalystHandoffCreate(
+            title="Owned-test ingest spike",
+            summary="First-responder recorded an observation. Not a confirmed threat.",
+        ),
+        "AnalystHandoffDeliveryAck": live_defense.AnalystHandoffDeliveryAck(
+            provider="owned_test_inbox",
+            provider_message_id="msg_fixture_1",
+            received_at=T0,
+        ),
+        "AnalystHandoff": live_defense.AnalystHandoff(
+            id=AHL,
+            project_id=PRJ,
+            application_id=APP,
+            decision_id=FRD,
+            state=live_defense.AnalystHandoffState.delivery_pending,
+            title="Owned-test ingest spike",
+            summary="First-responder recorded an observation. Not a confirmed threat.",
+            created_by=USR,
+            created_at=T0,
         ),
     }
 

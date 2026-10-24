@@ -1,0 +1,39 @@
+{
+  "$defs": {
+    "FirstResponderIntent": {
+      "description": "Server-enforced modes. MONITOR and SHADOW are the same mode.\n\nThere is no AUTO-EXECUTE value. Unknown or auto-execute input fails closed.",
+      "enum": [
+        "off",
+        "monitor",
+        "assisted_response"
+      ],
+      "title": "FirstResponderIntent",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Owner-attributable mode change. AUTO-EXECUTE is rejected by parse.",
+  "properties": {
+    "intent": {
+      "$ref": "#/$defs/FirstResponderIntent"
+    },
+    "note": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Note"
+    }
+  },
+  "required": [
+    "intent"
+  ],
+  "title": "FirstResponderModeUpdate",
+  "type": "object"
+}

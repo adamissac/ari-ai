@@ -105,7 +105,7 @@ REMEDIATION_EDGES: dict[RemediationState, frozenset[RemediationState]] = {
     ),
 }
 
-MAX_PATCH_ATTEMPTS = 2
+MAX_PATCH_ATTEMPTS = 4  # Verify rejects with reasons; Patch retries on them
 
 
 def next_remediation_state(

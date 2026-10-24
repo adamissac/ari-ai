@@ -1,0 +1,13 @@
+{
+  "capability_class": "investigative_readonly",
+  "name": "scout",
+  "network": "none",
+  "notes": "Read-only reconnaissance. Output is hypotheses, not confirmation.",
+  "sandbox_profile": "none",
+  "silent_customer_deploy": false,
+  "spec_version": "0.1.0",
+  "tools": [
+    "code.read_span"
+  ],
+  "write_access": "none"
+}

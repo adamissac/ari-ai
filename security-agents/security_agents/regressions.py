@@ -11,7 +11,7 @@ import stat
 from pathlib import Path
 from typing import Any
 
-from .sandbox.workspace import resolve_under, safe_rel_path
+from .sandbox.workspace import recipe_test_roots, resolve_under, safe_rel_path, under_test_roots
 
 MAX_SOURCE_BYTES = 256 * 1024
 MAX_TEST_FILES = 32
@@ -33,11 +33,12 @@ def read_sources(root: Path, paths: list[str]) -> dict[str, str]:
         raise RegressionEvidenceUnavailable("no bounded, unique regression source list")
     sources: dict[str, str] = {}
     total = 0
+    roots = recipe_test_roots(root)
     for raw in sorted(paths):
         try:
             rel = safe_rel_path(raw)
-            if not rel.startswith("tests/"):
-                raise RegressionEvidenceUnavailable("regression must be under tests/")
+            if not under_test_roots(rel, roots):
+                raise RegressionEvidenceUnavailable(f"regression must be under {list(roots)}")
             target = resolve_under(root, rel)
             current = root
             for part in Path(rel).parts:

@@ -308,9 +308,15 @@ def test_quota_defers_excess_commits_without_dropping_them(
             .one()
         )
         assert delayed["status"] == "queued" and delayed["run_after"] > utcnow()
-        # Advance the quota window without waiting an hour/day.
+        # Advance the quota window without waiting an hour/day; the push itself is now old,
+        # which must not make the deferred commit look like a stale backlog.
         conn.execute(sa.update(assessments).values(created_at=utcnow() - timedelta(days=2)))
-        conn.execute(sa.update(jobs).where(jobs.c.id == delayed["id"]).values(run_after=utcnow()))
+        old = (utcnow() - timedelta(days=2)).isoformat()
+        conn.execute(
+            sa.update(jobs)
+            .where(jobs.c.id == delayed["id"])
+            .values(run_after=utcnow(), payload={**delayed["payload"], "received_at": old})
+        )
     worker.drain(kinds=["assess_github_commit"])
     assert sorted(records()) == [HEAD, "c" * 40, "d" * 40]
 
@@ -413,3 +419,57 @@ def test_deferred_commit_is_finalized_when_automation_is_off(automatic, settings
         assert row["status"] == "skipped"
         assert "disabled" in row["reason"]
     assert records() == [HEAD]
+
+
+def test_wildcard_runs_any_pusher_and_unlinked_author(automatic, settings_override):
+    alice, bob, ids, identity = automatic
+    identity["login"] = ""  # commit email maps to no GitHub account
+    settings_override(github_auto_commit_authors="*")
+    bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
+    p = push_payload(["app.py"])
+    p["commits"][0]["id"] = HEAD
+    p["sender"] = {"login": "teammate"}
+    post_webhook(alice, p)
+    worker.drain(kinds=["process_github_delivery", "assess_github_commit"])
+    assert records() == [HEAD]
+
+
+def test_global_daily_spend_ceiling_defers_new_runs(automatic, settings_override):
+    alice, bob, ids, _ = automatic
+    settings_override(automatic_usd_per_day="1")
+    bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
+    push(alice, HEAD)
+    with transaction() as conn:  # the first run already spent the whole day's ceiling
+        conn.execute(
+            sa.update(assessments).values(
+                doc=assessments.c.doc.op("||")(
+                    sa.cast({"usage": {"usd": 1.5}}, sa.dialects.postgresql.JSONB)
+                )
+            )
+        )
+    push(alice, "c" * 40)
+    assert records() == [HEAD]
+    with transaction() as conn:
+        delayed = conn.execute(
+            sa.select(jobs.c.payload).where(jobs.c.dedupe_key.like("github:deferred:%"))
+        ).scalar_one()
+    assert delayed["sha"] == "c" * 40
+
+
+def test_commit_event_records_its_parent_so_the_reviewer_sees_the_diff(automatic, monkeypatch):
+    from backend.db import monitoring_events
+
+    alice, bob, ids, _ = automatic
+    parent = "e" * 40
+
+    class GitHub:
+        def commit(self, installation, repo, sha):
+            return {"sha": sha, "author": {"login": "adamissac"}, "parents": [{"sha": parent}]}
+
+    monkeypatch.setattr("backend.auto_commits.GitHubApp", GitHub)
+    monkeypatch.setattr("backend.auto_commits._CLIENT", None)
+    bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
+    push(alice, HEAD)
+    with transaction() as conn:
+        doc = conn.execute(sa.select(monitoring_events.c.doc)).scalars().all()[-1]
+    assert doc["commit_range"] == {"base_sha": parent, "head_sha": HEAD}

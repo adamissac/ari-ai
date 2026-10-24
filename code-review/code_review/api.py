@@ -106,7 +106,11 @@ def resolve_repo(
     local, subdir = found
     subdir = subdir.strip().strip("/")
     subdir = "" if subdir in ("", ".") else subdir
-    if not local.is_absolute() or not (local / ".git").exists():
+    # The backend keeps each connected repository as a bare clone (HEAD + objects, no .git).
+    is_git = (local / ".git").exists() or (
+        (local / "HEAD").is_file() and (local / "objects").is_dir()
+    )
+    if not local.is_absolute() or not is_git:
         raise ReviewError(ErrorCode.SUBSYSTEM_UNAVAILABLE, f"{repo_id} is not a local git repo")
     if commit_sha:
         target = _recipe_target_dir(local, subdir, commit_sha)

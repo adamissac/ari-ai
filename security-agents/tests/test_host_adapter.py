@@ -435,7 +435,7 @@ def test_every_agent_turn_goes_through_the_host_gateway(host_and_orchestrator):
     host, orchestrator, gateway = host_and_orchestrator
     orchestrator.run(host)
     agents = [c["agent"] for c in gateway.calls]
-    assert agents == ["scout", "probe", "trace", "diagnose"]
+    assert agents[:2] == ["scout", "probe"] and sorted(agents[2:]) == ["diagnose", "trace"], agents
     # each role sends its own system instruction
     assert len({c["system"] for c in gateway.calls}) == 4
     # and its own tool list, built from the registry allowlist
@@ -452,7 +452,8 @@ def test_every_agent_turn_goes_through_the_host_gateway(host_and_orchestrator):
 def test_agent_runs_are_persisted_through_the_host(host_and_orchestrator):
     host, orchestrator, gateway = host_and_orchestrator
     orchestrator.run(host)
-    assert [r["agent"] for r in host.runs] == ["scout", "probe", "trace", "diagnose"]
+    order = [r["agent"] for r in host.runs]
+    assert order[:2] == ["scout", "probe"] and sorted(order[2:]) == ["diagnose", "trace"], order
     assert all(r["provider_mode"] == "fake" for r in host.runs)
     assert all(r["model_id"] == "claude-opus-5-5" for r in host.runs)
     assert all(r["prompt_version"] == ALL_SPECS[AgentName(r["agent"])].version for r in host.runs)
@@ -489,15 +490,9 @@ def test_resume_after_approval_completes_remediation_and_hardening(host_and_orch
     orchestrator.run(host)
 
     assert host.states[-4:] == ["REMEDIATION", "HARDENING", "REPORTING", "COMPLETED"]
-    assert [r["agent"] for r in host.runs] == [
-        "scout",
-        "probe",
-        "trace",
-        "diagnose",
-        "patch",
-        "verify",
-        "fortify",
-    ]
+    from .test_e2e_replay import assert_agent_order
+
+    assert_agent_order([r["agent"] for r in host.runs])
     assert len(host.patches) == 1
     patch = host.patches[0]
     assert isinstance(patch, shared_findings.PatchCandidate)
@@ -909,6 +904,28 @@ def test_second_worker_noops_after_checkpoint_is_claimed(host_and_orchestrator, 
     assert any("already claimed" in message for message in host.progress_messages)
 
 
+def test_queued_resume_noops_after_in_process_resume_moved_on(host_and_orchestrator, tmp_path):
+    """Prod race: the approving worker resumed in-process and reached REMEDIATION before the
+    queued resume job ran; that job must leave the run alone, not fail it."""
+    from security_agents.host_adapter import CLAIMED_ELSEWHERE
+
+    host, first, _ = host_and_orchestrator
+    first.run(host)
+    host.approve_all()
+    assert host.claim_checkpoint("security_agents.approval.v1") is not None
+    host.states.append("REMEDIATION")
+    first._resumable.clear()
+    replacement = build_orchestrator(
+        target_dir=first.target_dir,
+        labels_path=first.labels_path,
+        workdir=tmp_path / "other-worker",
+        driver=first.driver,
+    )
+    assert replacement.run(host) == CLAIMED_ELSEWHERE
+    assert not host.patches
+    assert host.states[-1] == "REMEDIATION"
+
+
 def test_empty_scout_pauses_when_functional_is_already_approved(host_and_orchestrator):
     """Codex r4302039275: approved functional work is outstanding, not only pending decisions."""
     from shared.scope import ApprovalStatus, ApprovalSubject
@@ -954,7 +971,8 @@ def test_hosts_without_record_roe_still_run(host_and_orchestrator):
     host, orchestrator, gateway = host_and_orchestrator
     assert not hasattr(host, "record_roe")
     orchestrator.run(host)
-    assert [r["agent"] for r in host.runs] == ["scout", "probe", "trace", "diagnose"]
+    order = [r["agent"] for r in host.runs]
+    assert order[:2] == ["scout", "probe"] and sorted(order[2:]) == ["diagnose", "trace"], order
 
 
 def test_hosted_run_stores_a_valid_sarif_log_and_the_rules_of_engagement(host_and_orchestrator):
@@ -971,3 +989,23 @@ def test_hosted_run_stores_a_valid_sarif_log_and_the_rules_of_engagement(host_an
     jsonschema.Draft4Validator(schema()).validate(sarif_logs[-1])
     assert sarif_logs[-1]["runs"][0]["properties"]["run_mode"] == "hosted"
     assert any(m.startswith("standards artifacts stored") for m in host.progress_messages)
+
+
+def test_only_read_and_sandboxed_run_tools_may_run_concurrently(intel, registry):
+    from security_agents.agents import patch as patch_agent
+    from security_agents.agents import verify as verify_agent
+    from security_agents.host_adapter import build_tools
+    from security_agents.runtime.loop import StepRecord
+
+    from .conftest import make_ctx
+
+    flags = {}
+    for spec in (patch_agent.SPEC, verify_agent.SPEC):
+        ctx = make_ctx(spec.name, intel=intel)
+        record = StepRecord(
+            run_id="run_t", agent=spec.name, spec_version="0", model="m", provider_mode="fake"
+        )
+        flags.update({t.name: t.parallel_safe for t in build_tools(spec, ctx, registry, record)})
+    assert flags["tests__run"] and flags["code__read_span"] and flags["worktree__diff"]
+    assert not flags["worktree__edit_file"] and not flags["worktree__write_file"]
+    assert not flags["patch__apply_fresh"]

@@ -142,73 +142,92 @@ def test_rejects_a_workspace_at_a_forbidden_root() -> None:
     assert FakeBox.instances == []  # never created a sandbox
 
 
-def test_sdk_box_locks_egress_before_staging_and_destroys_snapshots(monkeypatch) -> None:
-    """Runner wheels install with PyPI-only egress; deny-all lands before any repo code."""
+def _fake_vercel(monkeypatch, tmp_path):
+    """Record every SDK call the box and the base builder make."""
     from types import SimpleNamespace
 
-    from vercel.sandbox import NetworkPolicy
     from vercel.sandbox import sync as vsandbox
 
     from security_agents.sandbox import vercel_driver
 
     calls: list[tuple] = []
+    monkeypatch.setenv("SECURITY_WORKDIR", str(tmp_path))
+    monkeypatch.setattr(vercel_driver, "_SWEPT_AT", 1e18)  # no sweeping in unit tests
 
     class Box:
-        fs = SimpleNamespace(mkdir=lambda d, **kw: calls.append(("mkdir", d)))
+        def __init__(self, kw):
+            self.kw = kw
+            self.fs = SimpleNamespace(write_bytes=lambda *a, **k: None)
 
         def run_process(self, cmd, args, **kw):
             calls.append(("run", cmd, tuple(args), kw.get("sudo")))
 
-        def update_network_policy(self, policy):
-            calls.append(("policy", policy.mode))
+        def snapshot(self, expiration=None):
+            calls.append(("snapshot", expiration))
+            return SimpleNamespace(id="snap_base1")
 
         def stop(self):
-            calls.append(("stop",))
+            calls.append(("stop", self.kw["name"]))
 
         def destroy(self, *, delete_orphan_snapshots=False):
-            calls.append(("destroy", delete_orphan_snapshots))
+            calls.append(("destroy", self.kw["name"], delete_orphan_snapshots))
 
     def create(**kw):
-        calls.append(("create", kw["network_policy"].mode, kw["persistent"]))
-        assert set(kw["network_policy"].allow) == set(vercel_driver.PYPI_DOMAINS)
-        return Box()
+        policy = kw["network_policy"]
+        source = getattr(kw.get("source"), "snapshot_id", None)
+        calls.append(("create", kw["name"], policy.mode, sorted(policy.allow), source, kw["persistent"]))
+        return Box(kw)
 
     monkeypatch.setattr(vsandbox, "create_sandbox", create)
-    spec = SimpleNamespace(limits=SimpleNamespace(timeout_s=60), labels={})
-    box = vercel_driver._VercelSdkBox(spec, "r1")
-    box.stop()
-
-    assert calls[0] == ("create", "custom", False)
-    assert calls[1][:2] == ("run", "python") and calls[1][3] is True
-    assert calls[2] == ("policy", NetworkPolicy.deny_all().mode)
-    assert all(c[0] == "mkdir" for c in calls[3:6])
-    assert calls[-2:] == [("stop",), ("destroy", True)]
+    spec = SimpleNamespace(
+        limits=SimpleNamespace(timeout_s=60), labels={}, apt=("postgresql",), pip=("sqlalchemy==2.1.5",)
+    )
+    return calls, spec, vercel_driver
 
 
-def test_sdk_box_destroys_itself_when_boot_fails(monkeypatch) -> None:
+def test_base_is_built_once_with_package_egress_and_run_boxes_boot_deny_all(monkeypatch, tmp_path) -> None:
+    calls, spec, vd = _fake_vercel(monkeypatch, tmp_path)
+    for name in ("r1", "r2"):
+        box = vd._VercelSdkBox(spec, name)
+        box.stop()
+        box._teardown.join(5)  # teardown runs off the critical path
+
+    builds = [c for c in calls if c[0] == "create" and c[1].startswith("ari-base-")]
+    runs = [c for c in calls if c[0] == "create" and not c[1].startswith("ari-base-")]
+    assert len(builds) == 1  # the base is reused by the second box
+    assert builds[0][2] == "custom" and set(builds[0][3]) == set(vd.PYPI_DOMAINS + vd.UBUNTU_DOMAINS)
+    assert any(c[0] == "run" and c[1] == "python" and c[3] is True for c in calls)  # installs in the builder
+    assert ("snapshot", vd.BASE_SNAPSHOT_TTL) in calls
+    assert all(r[2] == "deny-all" and r[4] == "snap_base1" and r[5] is False for r in runs)
+    # no repository code is ever in the builder; every sandbox is destroyed, the base kept
+    assert all(c[2] is False for c in calls if c[0] == "destroy")
+    assert {c[1] for c in calls if c[0] == "destroy"} == {builds[0][1], "ari-r1", "ari-r2"}
+
+
+def test_sweep_destroys_stale_run_boxes_with_their_orphan_snapshots(monkeypatch) -> None:
+    import time
     from types import SimpleNamespace
 
     from vercel.sandbox import sync as vsandbox
 
-    from security_agents.sandbox import vercel_driver
+    from security_agents.sandbox import vercel_driver as vd
 
-    calls: list[str] = []
-
-    class Box:
-        def run_process(self, *a, **kw):
-            raise RuntimeError("pip failed")
-
-        def update_network_policy(self, policy):
-            calls.append(policy.mode)
-
-        def stop(self):
-            calls.append("stop")
-
-        def destroy(self, *, delete_orphan_snapshots=False):
-            calls.append(f"destroy:{delete_orphan_snapshots}")
-
-    monkeypatch.setattr(vsandbox, "create_sandbox", lambda **kw: Box())
-    spec = SimpleNamespace(limits=SimpleNamespace(timeout_s=60), labels={})
-    with pytest.raises(RuntimeError):
-        vercel_driver._VercelSdkBox(spec, "r1")
-    assert calls == ["deny-all", "stop", "destroy:True"]
+    now_ms = time.time() * 1000
+    listed = [
+        SimpleNamespace(name="ari-sbx-old", status="running", created_at=0),  # over the 3h cap
+        SimpleNamespace(name="ari-sbx-done", status="stopped", created_at=now_ms),  # stopped
+        SimpleNamespace(name="ari-sbx-live", status="running", created_at=now_ms),  # fresh: keep
+        SimpleNamespace(name="ari-base-x", status="stopped", created_at=0),  # not a run box: keep
+    ]
+    destroyed: list[tuple[str, bool]] = []
+    monkeypatch.setattr(vsandbox, "query_sandboxes", lambda: listed)
+    monkeypatch.setattr(
+        vsandbox,
+        "get_sandbox",
+        lambda *, name: SimpleNamespace(
+            destroy=lambda *, delete_orphan_snapshots: destroyed.append((name, delete_orphan_snapshots))
+        ),
+    )
+    monkeypatch.setattr(vd, "_SWEPT_AT", 0.0)
+    vd._sweep_stale()
+    assert destroyed == [("ari-sbx-old", True), ("ari-sbx-done", True)]

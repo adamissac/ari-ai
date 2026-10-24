@@ -81,6 +81,67 @@ def test_tool_loop_executes_allowed_tools_denies_others_and_validates_output() -
     )
 
 
+def _turn(*uses: tuple[str, dict, str]) -> dict:
+    return {
+        "content": [{"type": "tool_use", "id": t, "name": n, "input": i} for n, i, t in uses],
+        "stop_reason": "tool_use",
+        "usage": {"input_tokens": 1000, "output_tokens": 200},
+    }
+
+
+def test_turn_of_parallel_safe_calls_runs_concurrently_in_model_order() -> None:
+    import threading
+
+    meet = threading.Barrier(2, timeout=5)  # both calls must be in flight at once
+    order: list[str] = []
+
+    def run(i: ReadFile) -> str:
+        meet.wait()
+        order.append(i.path)
+        return f"ran {i.path}"
+
+    def edit(i: ReadFile) -> str:
+        order.append(f"edit {i.path}")
+        return "edited"
+
+    transport = FakeTransport(
+        [
+            _turn(("run_tests", {"path": "a"}, "t1"), ("run_tests", {"path": "b"}, "t2")),
+            # a write in the turn keeps it sequential: the edit lands before the run reads it
+            _turn(("edit", {"path": "c"}, "t3"), ("read", {"path": "c"}, "t4")),
+            _tool_use("submit_result", {"vulnerable": False, "reason": "ok"}, "t5"),
+        ]
+    )
+    gw = build_gateway(settings=_settings(), transport=transport)
+    result = gw.run_tool_loop(
+        agent="verify",
+        system="You are Verify.",
+        user_content="check",
+        tools=[
+            Tool("run_tests", "Run tests", ReadFile, run, parallel_safe=True),
+            Tool(
+                "read",
+                "Read",
+                ReadFile,
+                lambda i: order.append(i.path) or "read",
+                parallel_safe=True,
+            ),
+            Tool("edit", "Edit", ReadFile, edit),
+        ],
+        output_model=Verdict,
+    )
+    assert result.final == Verdict(vulnerable=False, reason="ok")
+    first = transport.requests[1]["messages"][-1]["content"]
+    assert [r["tool_use_id"] for r in first] == ["t1", "t2"]
+    assert [r["content"] for r in first] == ["ran a", "ran b"]
+    assert order[2:] == ["edit c", "c"]
+    assert [r.tool_name for r in result.tool_calls] == ["run_tests"] * 2 + [
+        "edit",
+        "read",
+        "submit_result",
+    ]
+
+
 def test_request_shape_targets_haiku_5_5_and_redacts_secrets() -> None:
     transport = FakeTransport(
         [{"content": [{"type": "text", "text": "ok"}], "stop_reason": "end_turn"}]
@@ -163,23 +224,27 @@ def test_budget_gate_runs_before_each_call() -> None:
     assert e.value.code is ErrorCode.BUDGET_EXHAUSTED and len(transport.requests) == 1
 
 
-def test_turn_limit_is_enforced() -> None:
-    transport = FakeTransport([_tool_use("read_file", {"path": "a"}, f"t{i}") for i in range(3)])
+def test_turn_limit_is_enforced_append_only_with_final_turn_note() -> None:
+    transport = FakeTransport([_tool_use("read_file", {"path": "a"}, f"t{i}") for i in range(5)])
     gw = build_gateway(settings=_settings(), transport=transport)
-    with pytest.raises(LLMError, match="no valid result within 3 turns"):
+    with pytest.raises(LLMError, match="no valid result within 5 turns"):
         gw.run_tool_loop(
             agent="scout",
             system="s",
             user_content="u",
-            max_turns=3,
+            max_turns=5,
             tools=[Tool("read_file", "r", ReadFile, lambda i: "x")],
             output_model=Verdict,
         )
-    # Only the final turn asks the model to submit now.
-    notes = ["final turn" in json.dumps(r["messages"][-1]) for r in transport.requests]
-    assert notes == [False, False, True]
-    assert [len(r["tools"]) for r in transport.requests] == [2, 2, 1]
-    assert transport.requests[-1]["tools"][0]["name"] == "submit_result"
+    reqs = transport.requests
+    # max_turns is a hard cap; the last three turns ask the model to submit now.
+    assert len(reqs) == 5
+    assert ["final turn" in json.dumps(r["messages"][-1]) for r in reqs] == [False] * 2 + [True] * 3
+    # Thinking blocks are bound to the exact prefix: tools never change and every request
+    # only appends to the previous one.
+    assert all(r["tools"] == reqs[0]["tools"] for r in reqs)
+    for prev, cur in zip(reqs, reqs[1:], strict=False):
+        assert json.dumps(cur["messages"][: len(prev["messages"])]) == json.dumps(prev["messages"])
 
 
 @pytest.mark.live_llm
@@ -277,3 +342,70 @@ def test_production_uses_only_haiku_despite_stale_environment_overrides():
     gw = build_gateway(settings=settings, transport=transport, charge=lambda usage: None)
     for role in ("reviewer", "scout", "probe", "trace", "diagnose", "patch", "verify", "fortify"):
         assert gw.model_for(role) == "claude-haiku-5-5"
+
+
+def test_signed_assistant_turns_are_sent_back_unchanged() -> None:
+    """A thinking block is signed: rewriting a token-like string inside it makes the
+    provider reject the request ("Invalid `signature` in `thinking` block")."""
+    transport = FakeTransport(
+        [{"content": [{"type": "text", "text": "ok"}], "stop_reason": "end_turn"}]
+    )
+    gw = build_gateway(settings=_settings(), transport=transport)
+    thinking = {
+        "type": "thinking",
+        "thinking": "the recipe sends Authorization: Bearer sbx-alice-session-token",
+        "signature": "sig-abc",
+    }
+    gw.create_message(
+        agent="reviewer",
+        system="s",
+        messages=[
+            {"role": "user", "content": "read build_recipe.json (Bearer sbx-alice-session-token)"},
+            {"role": "assistant", "content": [thinking]},
+            {"role": "user", "content": "continue"},
+        ],
+    )
+    sent = transport.requests[0]["messages"]
+    assert sent[1]["content"][0] == thinking
+    assert "sbx-alice-session-token" not in str(sent[0])  # user content is still redacted
+
+
+def test_reads_after_a_write_run_side_by_side_once_the_write_is_done() -> None:
+    import threading
+
+    meet = threading.Barrier(2, timeout=5)
+    order: list[str] = []
+
+    def edit(i: ReadFile) -> str:
+        order.append("edit")
+        return "edited"
+
+    def run(i: ReadFile) -> str:
+        assert order == ["edit"] or order[0] == "edit"  # the write finished first
+        meet.wait()  # both runs are in flight at once
+        order.append(i.path)
+        return f"ran {i.path}"
+
+    transport = FakeTransport(
+        [
+            _turn(
+                ("edit", {"path": "x"}, "t1"),
+                ("run", {"path": "a"}, "t2"),
+                ("run", {"path": "b"}, "t3"),
+            ),
+            _tool_use("submit_result", {"vulnerable": False, "reason": "ok"}, "t4"),
+        ]
+    )
+    result = build_gateway(settings=_settings(), transport=transport).run_tool_loop(
+        agent="patch",
+        system="You are Patch.",
+        user_content="fix",
+        tools=[
+            Tool("edit", "Edit", ReadFile, edit),
+            Tool("run", "Run", ReadFile, run, parallel_safe=True),
+        ],
+        output_model=Verdict,
+    )
+    assert result.final is not None and order[0] == "edit" and sorted(order[1:]) == ["a", "b"]
+    first = transport.requests[1]["messages"][-1]["content"]
+    assert [r["tool_use_id"] for r in first] == ["t1", "t2", "t3"]

@@ -6,6 +6,7 @@ import hashlib
 import hmac
 import time
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
@@ -131,6 +132,35 @@ class GitHubApp:
                 return str(found.json()[0]["html_url"])
         r.raise_for_status()
         return str(r.json()["html_url"])
+
+    def _app_headers(self) -> dict[str, str]:
+        return {
+            "Authorization": f"Bearer {self._app_jwt()}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        }
+
+    def hook_deliveries(self, *, since: datetime) -> list[dict[str, Any]]:
+        """The App's webhook deliveries (newest first) back to ``since``."""
+        cutoff = since.strftime("%Y-%m-%dT%H:%M:%SZ")  # GitHub's delivered_at format
+        out: list[dict[str, Any]] = []
+        params: dict[str, Any] = {"per_page": 100}
+        for _ in range(50):  # 5000 deliveries at most
+            r = self._client.get("/app/hook/deliveries", params=params, headers=self._app_headers())
+            r.raise_for_status()
+            page = r.json()
+            out.extend(page)
+            cursor = r.links.get("next", {}).get("url")
+            if not page or not cursor or page[-1]["delivered_at"] < cutoff:
+                break
+            params = {"per_page": 100, "cursor": httpx.URL(cursor).params.get("cursor")}
+        return [d for d in out if d["delivered_at"] >= cutoff]
+
+    def redeliver(self, delivery_id: int) -> None:
+        r = self._client.post(
+            f"/app/hook/deliveries/{delivery_id}/attempts", headers=self._app_headers()
+        )
+        r.raise_for_status()
 
     def _get(self, installation_id: int, path: str, **params: Any) -> Any:
         r = self._client.get(

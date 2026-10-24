@@ -230,3 +230,15 @@ Owner requested AI automation and Defense Lab OFF until explicitly enabled. Bran
 - IMPLEMENTED / CI and review pending (2026-10-23), **RL-CMDP-004**, Alan, `feat/alan/read-response-integrity`: bind buffered payment responses to the authorized resource/owner and existing schema; reject malformed/error payloads and contradictory customer identities. Twenty owned-app tests pass; no serving or training changes.
 
 - IMPLEMENTED / CI and review pending (2026-10-23), **RL-CMDP-005**, Alan, `feat/alan/feasibility-readiness-audit`: read-only anchored original-fixture audit, independent numerical checks and explicit inconclusive training/promotion readiness. No new study or serving integration.
+
+- IMPLEMENTED / review and CI pending (2026-10-23), **RL-CMDP-006**, Alan, `feat/alan/authorization-context-provider`: owner-authorized internal versioned provider proposal and payments-lite adapter, four authorization states, fixture clock/revision semantics and future causal RL observation requirements. No external provider, shared public contract, training or evidence changes.
+
+- IMPLEMENTED / training NO-GO; PR #422 holds final CI/review status (2026-10-23), **RL-CMDP-007**, research owner Codex, `research/rl-adaptive-defense-readiness`: owner-requested adaptive-task CMDP/observation/action/objective/dataset/baseline audit and blocked preregistration. Pure causal adapter and fixed train-only inventory; NO-GO for new training, no collection/environment/control execution.
+
+- IMPLEMENTED / review and CI pending; training NO-GO (2026-10-23), **RL-CMDP-008**, research owner Codex, `research/rl-resource-exhaustion-feasibility`: owner-authorized finite-resource service model and instrumentation, fixed baselines, Stage2 preparation. Formal comparison/numerical thresholds/training require separate approvals. No customer controls or promotion.
+
+- IMPLEMENTED / PR review and CI pending **RL-CMDP-009** (Codex), `research/rl-resource-feasibility-001`: owner-approved single600-episode deterministic comparison, frozen acceptance/execution clarification; no training. Runner, analysis and integrity-unit checks implemented; formal launch pending committed source.
+
+- IMPLEMENTED / review and CI pending **RL-CMDP-010** (Codex), `research/rl-feasibility-and-product-thesis`: authorized read-only capacity/oracle bounds, control expressiveness and product architecture assessment. No new workloads, policy execution or training. Preserve feasibility001 and v6.
+
+- DONE (research specification; PR #437 merge gated on review/CI) **RL-CMDP-011** (Codex), `research/rl-first-responder-orchestration`: Phase7B fixture-only observations/proposals, agent capability/data audit, future evaluation and Grok integration contract proposal. No collection/training/customer enforcement; no production shared/worker/incident changes.

@@ -13,6 +13,7 @@ const TABS = [
   { id: 'apps', label: 'Staging apps' },
   { id: 'controls', label: 'Controls' },
   { id: 'readiness', label: 'Readiness' },
+  { id: 'first-responder', label: 'First responder' },
 ] as const;
 
 export function LiveDefenseShell({

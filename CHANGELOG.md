@@ -6,7 +6,27 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
-- Add Live Defense Phase 6.5 **RL-gated pilot infrastructure**: machine-readable categories A–J, evaluation plan with unset thresholds, server-enforced shadow-only for `rl_gated_pilot` apps (no grant/channel/authorize; leftover execute fail-closed), stable serving contract (Q is not probability; missing fields stay missing), hosted-inference readiness config that does not auto-serve unapproved checkpoints, and a backend readiness dashboard whose `ready` flag stays false while RL evidence is blocked. Verdict: **INFRASTRUCTURE READY — RL BLOCKED**. Distinct from Phase 6 CONDITIONAL GO (rules-based shadow). No Codex training, no v6 edits, no customer credentials, no Phase 7. Contract schema 0.20.0. Eval: `docs/LIVE_DEFENSE_PHASE6_5_RL_GATED_PILOT.md`.
+- Add Live Defense Phase 6.5 **RL-gated pilot infrastructure**: machine-readable categories A–J, evaluation plan with unset thresholds, server-enforced shadow-only for `rl_gated_pilot` apps (no grant/channel/authorize; leftover execute fail-closed), stable serving contract (Q is not probability; missing fields stay missing), hosted-inference readiness config that does not auto-serve unapproved checkpoints, and a backend readiness dashboard whose `ready` flag stays false while RL evidence is blocked. Verdict: **INFRASTRUCTURE READY — RL BLOCKED**. Distinct from Phase 6 CONDITIONAL GO (rules-based shadow). No Codex training, no v6 edits, no customer credentials, no Phase 7. Contract schema 0.21.0 (merged with Phase 7A; originally 0.20.0). Eval: `docs/LIVE_DEFENSE_PHASE6_5_RL_GATED_PILOT.md`.
+
+- Scout specialist now trains on the labelled commit-eval set (each case's planted edit vs. its original code as a minimal positive/negative pair) and was promoted after beating the static-pattern baseline (macro F1 0.349 vs 0.084); new checkpoint committed under `specialists/checkpoints/scout/`.
+
+- Assessment UI: agents the orchestrator skipped now stay visible as 'Not needed' with the recorded reason (e.g. 'no confirmed findings'); on failed/cancelled runs they show 'Not reached'. Replaces the ambiguous 'not run' label on the relay and team list.
+
+- Fix the periodic stale-sandbox sweep to delete the orphaned stop-snapshots of leaked `ari-sbx-*` run boxes, freeing the Vercel Sandbox snapshot quota that caused HTTP 402 assessment failures; the shared base snapshot is unaffected.
+- Add Live Defense Phase 7A deterministic first-responder orchestration: server-enforced OFF / MONITOR|SHADOW / ASSISTED RESPONSE (no AUTO-EXECUTE), seven-agent capability registry from real AgentSpecs, runtime↔code correlation only with an owner-attested deploy mapping, analyst handoff that is not delivered without provider confirmation, and versioned decision records for future RL. Patch stays worktree-only; Probe still requires AuthorizedScope; independently authorized controls keep their own expiry/rollback/kill-switch when first-responder is switched OFF. Contract schema 0.21.0 (0.20.0 left for open PR #412). Evidence is never `verified` from Verify eligibility; deploy mappings are resolved against the telemetry window; OFF serializes with dispatch and cancels in-flight first-responder steps. Eval: `docs/LIVE_DEFENSE_PHASE7A_FIRST_RESPONDER.md`.
+
+- Add fixture-only first-responder research observations, proposal masks, source
+  inventory and evaluation-readiness specification; no learning or production integration.
+
+- Added read-only capacity/oracle and product-thesis assessment: current evidence does not justify RL as a primary near-term dependency; no training or control changes.
+
+- Completed owner-approved resource-exhaustion feasibility001 (600 episodes), retaining all violations and raw evidence; training remains NO-GO.
+
+- Add an isolated finite-resource service research model with observable queue/work accounting, bounded route/source controls and deterministic baseline rules; formal study and training remain approval-gated.
+
+- Add an adaptive-defense research readiness assessment, causal observation prototype and read-only training-archive coverage inventory. Verdict: no new RL training; no measured residual adaptive task or control benefit is established.
+
+- Add a research-only versioned payment authorization provider with explicit owner/delegated/unauthorized/unknown states, trusted payments-lite lookup and documented causal RL observation rules.
 
 - Add an offline, read-only audit of retained finite-fixture evidence that distinguishes verified numerical counts from unknown timing/authority and explicitly keeps training/promotion readiness false.
 - Audit Live Defense Phase 4+5 on current main (PRs #393 and #395 merged): prove recommendation-only shadow ingest/decision/review/report cannot execute even with an owned-test grant and loopback channel present; deny authorize/execute after disconnect; serialize disconnect behind the execute application-row lock; count assessment-bound jobs in project queue depth; keep recovered `last_error` rows on the pilot trail without calling them healthy. No Phase 7, no production grants, no RL training. Eval: `docs/LIVE_DEFENSE_PHASE6_READINESS.md`. Customer procedure: `docs/LIVE_DEFENSE_SHADOW_PILOT.md`.

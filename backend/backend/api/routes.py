@@ -382,6 +382,10 @@ def connect_repository(project_id: str, body: RepositoryConnect, request: Reques
             rid,
             full_name=body.full_name,
         )
+        if body.installation_id is not None:  # propose a build_recipe.json PR (backend.recipes)
+            from backend.recipes import enqueue
+
+            enqueue(conn, rid, "connected")
         return _repo(
             conn.execute(sa.select(repositories).where(repositories.c.id == rid)).mappings().one()
         )

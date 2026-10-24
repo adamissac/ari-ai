@@ -1,0 +1,15 @@
+{
+  "application_connected": true,
+  "authorized_scope_active": false,
+  "auto_execute": false,
+  "effective": "monitor",
+  "enforcement_active": false,
+  "intent": "assisted_response",
+  "kill_switch_active": false,
+  "monitoring_active": true,
+  "org_intent_is_not_app_permissions": true,
+  "reasons": [
+    "no owner-attested deploy-to-commit mapping"
+  ],
+  "trusted_mapping": false
+}

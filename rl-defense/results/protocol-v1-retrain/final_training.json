@@ -1,0 +1,42 @@
+[
+  {
+    "seed": 0,
+    "steps": 1000000,
+    "gradient_updates": 999000,
+    "wall_clock_s": 507.7,
+    "checkpoint_sha256": "666145e00d4ee3b9a1839179d9d9aca5a245c20fe7a173e2cb960e34e0393fe8",
+    "selected_step": 500000
+  },
+  {
+    "seed": 1,
+    "steps": 1000000,
+    "gradient_updates": 999000,
+    "wall_clock_s": 505.8,
+    "checkpoint_sha256": "e8f96c7ec27a01933dfd83568edc3e7183bd7908df6ab5133e70515010e8feb6",
+    "selected_step": 700000
+  },
+  {
+    "seed": 2,
+    "steps": 1000000,
+    "gradient_updates": 999000,
+    "wall_clock_s": 507.2,
+    "checkpoint_sha256": "c4b5f44fda086a8b0db7ea196ee590bdf9c4ed50c53b3a82e17829af766dc297",
+    "selected_step": 950000
+  },
+  {
+    "seed": 3,
+    "steps": 1000000,
+    "gradient_updates": 999000,
+    "wall_clock_s": 509.6,
+    "checkpoint_sha256": "15a5490d032efec16f454516badc95ad36c45d555e41b5c57de4657c4f0b344b",
+    "selected_step": 650000
+  },
+  {
+    "seed": 4,
+    "steps": 1000000,
+    "gradient_updates": 999000,
+    "wall_clock_s": 507.3,
+    "checkpoint_sha256": "9052dbe385736dbaea0fe851ceb6b57b20aca1d95cc660e8eeec6722fe4dcd97",
+    "selected_step": 950000
+  }
+]

@@ -1,0 +1,154 @@
+{
+  "$defs": {
+    "AgentCapabilityClass": {
+      "enum": [
+        "investigative_readonly",
+        "code_changing",
+        "disruptive_scoped"
+      ],
+      "title": "AgentCapabilityClass",
+      "type": "string"
+    },
+    "AgentInvocationStatus": {
+      "enum": [
+        "eligible",
+        "blocked",
+        "queued",
+        "skipped_no_mapping",
+        "skipped_no_snapshot",
+        "skipped_mode",
+        "skipped_no_scope",
+        "skipped_no_approval",
+        "skipped_no_patch",
+        "completed_unverified",
+        "failed",
+        "cancelled"
+      ],
+      "title": "AgentInvocationStatus",
+      "type": "string"
+    },
+    "AgentName": {
+      "enum": [
+        "scout",
+        "probe",
+        "trace",
+        "diagnose",
+        "patch",
+        "fortify",
+        "verify",
+        "reviewer"
+      ],
+      "title": "AgentName",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "One attempted agent step. Missing execution is skipped, never faked as success.",
+  "properties": {
+    "agent": {
+      "$ref": "#/$defs/AgentName"
+    },
+    "authorized_scope_id": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Authorized Scope Id"
+    },
+    "capability_class": {
+      "$ref": "#/$defs/AgentCapabilityClass"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "decision_id": {
+      "pattern": "^frd_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Decision Id",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^fri_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "independent_of_patch": {
+      "default": false,
+      "title": "Independent Of Patch",
+      "type": "boolean"
+    },
+    "job_id": {
+      "anyOf": [
+        {
+          "pattern": "^job_[0-9A-Za-z_\\-]{8,64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Job Id"
+    },
+    "project_id": {
+      "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "provider_mode": {
+      "default": "none",
+      "enum": [
+        "fake",
+        "live",
+        "none"
+      ],
+      "title": "Provider Mode",
+      "type": "string"
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reason"
+    },
+    "silent_deploy": {
+      "const": false,
+      "default": false,
+      "title": "Silent Deploy",
+      "type": "boolean"
+    },
+    "status": {
+      "$ref": "#/$defs/AgentInvocationStatus"
+    },
+    "worktree_only": {
+      "default": false,
+      "title": "Worktree Only",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "id",
+    "decision_id",
+    "project_id",
+    "agent",
+    "capability_class",
+    "status",
+    "created_at"
+  ],
+  "title": "FirstResponderInvocation",
+  "type": "object"
+}
