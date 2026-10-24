@@ -23,8 +23,8 @@ test('onboarding wizard drives the full customer journey', async ({ browser }) =
   await expect(step(alice, 'repository')).toHaveAttribute('data-state', 'done');
   await expect(step(alice, 'github_access')).toHaveAttribute('data-state', 'todo');
   await expect(step(alice, 'snapshot')).not.toHaveAttribute('data-state', 'blocked');
-  await expect(step(alice, 'application')).toHaveAttribute('data-state', 'todo');
-  await expect(step(alice, 'test_event')).toHaveAttribute('data-state', 'blocked');
+  // No owned_staging window has arrived yet, whatever apps the stack seeded.
+  await expect(step(alice, 'test_event')).not.toHaveAttribute('data-state', 'done');
 
   // Permission explanations are explicit before any grant.
   await expect(alice.getByTestId('permission-list')).toContainText('contents:read');

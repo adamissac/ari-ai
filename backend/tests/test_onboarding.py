@@ -203,6 +203,24 @@ def test_test_event_requires_app_and_token(project) -> None:
     assert ok.status_code == 202, ok.text
 
 
+def test_test_event_picks_tokened_app_among_several(project) -> None:
+    alice, pid = project
+    _app(alice, pid, token=False)
+    tokened = _app(alice, pid)
+    event = alice.post(f"/api/v1/projects/{pid}/onboarding/test-event", json={})
+    assert event.status_code == 202, event.text
+    assert event.json()["application_id"] == tokened["id"]
+
+    _app(alice, pid)  # a second app with a live token makes the choice ambiguous
+    denied = alice.post(f"/api/v1/projects/{pid}/onboarding/test-event", json={})
+    assert denied.status_code == 422, denied.text
+    explicit = alice.post(
+        f"/api/v1/projects/{pid}/onboarding/test-event",
+        json={"application_id": tokened["id"]},
+    )
+    assert explicit.status_code == 202, explicit.text
+
+
 def test_test_event_owner_only(client_factory) -> None:
     alice, viewer = client_factory("alice"), client_factory("vera")
     pid = alice.post("/api/v1/projects", json={"name": "acme"}).json()["id"]
