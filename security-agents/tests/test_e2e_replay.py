@@ -25,8 +25,9 @@ EXPECTED_AGENT_ORDER = ["scout", "probe", "trace", "diagnose", "patch", "verify"
 
 
 def assert_agent_order(order: list[str]) -> None:
-    """Detection runs in sequence; Fortify's step runs alongside Patch -> Verify."""
-    assert order[:4] == EXPECTED_AGENT_ORDER[:4], order
+    """Scout then Probe; Diagnose runs alongside Trace, Fortify alongside Patch -> Verify."""
+    assert order[:2] == EXPECTED_AGENT_ORDER[:2], order
+    assert sorted(order[2:4]) == ["diagnose", "trace"], order
     rest = order[4:]
     assert sorted(rest) == sorted(EXPECTED_AGENT_ORDER[4:]), order
     assert rest.index("patch") < rest.index("verify"), order
@@ -526,7 +527,8 @@ def test_declined_remediation_stops_before_patching(intel, driver, library, tmp_
     orch, _ = build(intel, driver, library, tmp_path, approve=False)
     res = orch.run()
     assert res.state is AssessmentState.COMPLETED
-    assert [r.agent.value for r in res.runs] == ["scout", "probe", "trace", "diagnose"]
+    order = [r.agent.value for r in res.runs]
+    assert order[:2] == ["scout", "probe"] and sorted(order[2:]) == ["diagnose", "trace"], order
     finding = res.findings[0]
     assert finding.status == "diagnosed"
     assert not finding.candidates

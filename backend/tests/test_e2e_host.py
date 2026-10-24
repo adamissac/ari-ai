@@ -37,7 +37,8 @@ def test_full_loop_with_approval_gate(client_factory, reference) -> None:
     detail = alice.get(f"/api/v1/assessments/{asm_id}").json()
     assert detail["assessment"]["state"] == "AWAITING_APPROVAL"
     agents = [r["agent"] for r in detail["agent_runs"]]
-    assert agents == ["reviewer", "scout", "probe", "trace", "diagnose"]
+    assert agents[:3] == ["reviewer", "scout", "probe"], agents
+    assert sorted(agents[3:]) == ["diagnose", "trace"], agents
     assert all(
         r["status"] == "succeeded" and r["provider_mode"] == "fake" for r in detail["agent_runs"]
     )
