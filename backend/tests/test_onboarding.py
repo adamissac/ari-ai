@@ -11,6 +11,7 @@ import pytest
 import sqlalchemy as sa
 
 from backend.db import (
+    audit_events,
     deploy_commit_mappings,
     monitoring_events,
     repositories,
@@ -185,6 +186,7 @@ def test_application_mapping_and_test_event(project) -> None:
         )
     assert ev, "test event must leave a monitoring event"
     assert ev[0]["simulated"] is False  # real authenticated ingest channel
+    assert ev[0]["test_event"] is True  # still unmistakably labelled as a test
 
 
 def test_test_event_requires_app_and_token(project) -> None:
@@ -221,6 +223,16 @@ def test_test_event_picks_tokened_app_among_several(project) -> None:
     assert explicit.status_code == 202, explicit.text
 
 
+def test_test_event_rate_limit_is_per_project(project) -> None:
+    alice, pid = project
+    _app(alice, pid)
+    for _ in range(20):
+        ok = alice.post(f"/api/v1/projects/{pid}/onboarding/test-event", json={})
+        assert ok.status_code == 202, ok.text
+    limited = alice.post(f"/api/v1/projects/{pid}/onboarding/test-event", json={})
+    assert limited.status_code == 429, limited.text
+
+
 def test_test_event_owner_only(client_factory) -> None:
     alice, viewer = client_factory("alice"), client_factory("vera")
     pid = alice.post("/api/v1/projects", json={"name": "acme"}).json()["id"]
@@ -251,9 +263,14 @@ def test_repository_disconnect(project) -> None:
 
     out = alice.post(f"/api/v1/repositories/{rid}/disconnect")
     assert out.status_code == 200, out.text
-    body = out.json()
-    assert body["installation_id"] is None
-    assert body["automatic_assessments"] is False
+    assert out.json() == {"id": rid, "disconnected": True}
+
+    # Canonical (security-hardening) semantics: the row is parked, not deleted;
+    # the recorded installation stays because revoking the App grant is the
+    # customer's GitHub-side action — the API must not claim to do it.
+    repo = alice.get(f"/api/v1/repositories/{rid}").json()
+    assert repo["installation_id"] == 55
+    assert repo["automatic_assessments"] is False
 
     with transaction() as conn:
         mapping = conn.execute(
@@ -263,19 +280,38 @@ def test_repository_disconnect(project) -> None:
         ).scalar_one()
         assert mapping is not None
 
-    # Commits can no longer be read through the App; the record stays readable.
-    repo = alice.get(f"/api/v1/repositories/{rid}").json()
-    assert repo["installation_id"] is None
-    commits = alice.get(f"/api/v1/repositories/{rid}/commits")
-    assert commits.status_code == 200
-    assert commits.json()["available"] is False
-
-    # Disconnect is idempotent.
+    # Disconnect is idempotent: no second audit event when nothing changes.
+    disconnect_audits = sa.func.count().label("n")
+    with transaction() as conn:
+        audits_before = conn.execute(
+            sa.select(disconnect_audits)
+            .select_from(audit_events)
+            .where(
+                audit_events.c.project_id == pid,
+                audit_events.c.doc["action"].astext == "repository.disconnected",
+            )
+        ).scalar_one()
+    assert audits_before == 1
     again = alice.post(f"/api/v1/repositories/{rid}/disconnect")
     assert again.status_code == 200
+    assert again.json() == {"id": rid, "disconnected": True}
+    with transaction() as conn:
+        assert (
+            conn.execute(
+                sa.select(disconnect_audits)
+                .select_from(audit_events)
+                .where(
+                    audit_events.c.project_id == pid,
+                    audit_events.c.doc["action"].astext == "repository.disconnected",
+                )
+            ).scalar_one()
+            == audits_before
+        )
 
+    # The repo record stays readable; deploy-mapping onboarding step re-opens.
     status = alice.get(f"/api/v1/projects/{pid}/onboarding").json()
-    assert _step(status, "github_access")["state"] == "todo"
+    assert _step(status, "deploy_mapping")["state"] == "todo"
+    assert _step(status, "repository")["state"] == "done"
 
 
 def test_repository_disconnect_authz(client_factory) -> None:

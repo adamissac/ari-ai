@@ -130,18 +130,15 @@ def _snapshot_step(conn: sa.Connection, repo_ids: list[str]) -> OnboardingStep:
 def _status(
     conn: sa.Connection, project_id: str, org_id: str, project_name: str
 ) -> OnboardingStatus:
+    # Full rows so repositories.disconnected_at (security-hardening PR #4's canonical
+    # park flag) is honored automatically once it lands: a disconnected repository
+    # drops out of every "connected" step below without further code changes.
     repos = (
-        conn.execute(
-            sa.select(
-                repositories.c.id,
-                repositories.c.full_name,
-                repositories.c.installation_id,
-                repositories.c.automatic_assessments,
-            ).where(repositories.c.project_id == project_id)
-        )
+        conn.execute(sa.select(repositories).where(repositories.c.project_id == project_id))
         .mappings()
         .all()
     )
+    repos = [r for r in repos if r.get("disconnected_at") is None]
     scope_docs = (
         conn.execute(
             sa.select(authorized_scopes.c.doc).where(authorized_scopes.c.project_id == project_id)
@@ -487,7 +484,9 @@ def onboarding_test_event(
             )
         ],
     )
-    ack = ingest(project_id, token_id, batch, app_id)
+    # test_event marks the produced monitoring event unmistakably as an authorized
+    # test in customer-facing views while it traverses the real authenticated channel.
+    ack = ingest(project_id, token_id, batch, app_id, test_event=True)
     with transaction() as conn:
         audit.record(
             conn,
