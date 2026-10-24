@@ -202,3 +202,32 @@ def test_base_is_built_once_with_package_egress_and_run_boxes_boot_deny_all(monk
     # no repository code is ever in the builder; every sandbox is destroyed, the base kept
     assert all(c[2] is False for c in calls if c[0] == "destroy")
     assert {c[1] for c in calls if c[0] == "destroy"} == {builds[0][1], "ari-r1", "ari-r2"}
+
+
+def test_sweep_destroys_stale_run_boxes_with_their_orphan_snapshots(monkeypatch) -> None:
+    import time
+    from types import SimpleNamespace
+
+    from vercel.sandbox import sync as vsandbox
+
+    from security_agents.sandbox import vercel_driver as vd
+
+    now_ms = time.time() * 1000
+    listed = [
+        SimpleNamespace(name="ari-sbx-old", status="running", created_at=0),  # over the 3h cap
+        SimpleNamespace(name="ari-sbx-done", status="stopped", created_at=now_ms),  # stopped
+        SimpleNamespace(name="ari-sbx-live", status="running", created_at=now_ms),  # fresh: keep
+        SimpleNamespace(name="ari-base-x", status="stopped", created_at=0),  # not a run box: keep
+    ]
+    destroyed: list[tuple[str, bool]] = []
+    monkeypatch.setattr(vsandbox, "query_sandboxes", lambda: listed)
+    monkeypatch.setattr(
+        vsandbox,
+        "get_sandbox",
+        lambda *, name: SimpleNamespace(
+            destroy=lambda *, delete_orphan_snapshots: destroyed.append((name, delete_orphan_snapshots))
+        ),
+    )
+    monkeypatch.setattr(vd, "_SWEPT_AT", 0.0)
+    vd._sweep_stale()
+    assert destroyed == [("ari-sbx-old", True), ("ari-sbx-done", True)]
