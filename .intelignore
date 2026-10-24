@@ -1,0 +1,11 @@
+# Not code or intent the agents reason about; indexing it slowed every commit.
+docs/research/
+coordination/
+rl-defense/results/
+rl-defense/experiments/
+shared/generated/
+shared/fixtures/
+frontend/
+code-review/eval/
+*.jsonl
+*.jsonl.gz

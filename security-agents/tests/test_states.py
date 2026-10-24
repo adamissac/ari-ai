@@ -21,8 +21,18 @@ from security_agents.workflow import (
 from security_agents.workflow.states import HAPPY_PATH, TERMINAL
 
 HAPPY_SEQUENCE = [
-    S.CREATED, S.SCOPE_CHECK, S.INDEXING, S.FUNCTIONAL_REVIEW, S.RECON, S.VALIDATION,
-    S.ANALYSIS, S.DIAGNOSIS, S.AWAITING_APPROVAL, S.REMEDIATION, S.HARDENING, S.REPORTING,
+    S.CREATED,
+    S.SCOPE_CHECK,
+    S.INDEXING,
+    S.FUNCTIONAL_REVIEW,
+    S.RECON,
+    S.VALIDATION,
+    S.ANALYSIS,
+    S.DIAGNOSIS,
+    S.AWAITING_APPROVAL,
+    S.REMEDIATION,
+    S.HARDENING,
+    S.REPORTING,
     S.COMPLETED,
 ]
 
@@ -54,7 +64,7 @@ def test_terminal_states_accept_nothing(state):
         (S.SCOPE_CHECK, S.VALIDATION),
         (S.RECON, S.DIAGNOSIS),
         (S.VALIDATION, S.REMEDIATION),
-        (S.DIAGNOSIS, S.REMEDIATION),       # approval gate cannot be skipped
+        (S.DIAGNOSIS, S.REMEDIATION),  # approval gate cannot be skipped
         (S.AWAITING_APPROVAL, S.HARDENING),
         (S.REPORTING, S.RECON),
         (S.COMPLETED, S.REPORTING),
@@ -105,9 +115,10 @@ def test_rejected_first_attempt_retries_patch():
     assert next_remediation_state(R.VERIFYING, verdict="rejected", attempt=1) is R.PATCHING
 
 
-def test_rejected_second_attempt_is_unresolved():
-    assert next_remediation_state(R.VERIFYING, verdict="rejected", attempt=2) is R.UNRESOLVED
-    assert MAX_PATCH_ATTEMPTS == 2
+def test_rejected_final_attempt_is_unresolved():
+    assert next_remediation_state(R.VERIFYING, verdict="rejected", attempt=2) is R.PATCHING
+    assert next_remediation_state(R.VERIFYING, verdict="rejected", attempt=MAX_PATCH_ATTEMPTS) is R.UNRESOLVED
+    assert MAX_PATCH_ATTEMPTS == 4
 
 
 def test_patch_failure_is_unresolved_without_verification():
@@ -115,7 +126,7 @@ def test_patch_failure_is_unresolved_without_verification():
 
 
 def test_no_verdict_is_treated_as_rejection():
-    assert next_remediation_state(R.VERIFYING, verdict=None, attempt=2) is R.UNRESOLVED
+    assert next_remediation_state(R.VERIFYING, verdict=None, attempt=MAX_PATCH_ATTEMPTS) is R.UNRESOLVED
 
 
 @pytest.mark.parametrize("terminal", [R.ACCEPTED, R.UNRESOLVED])
@@ -125,7 +136,7 @@ def test_remediation_terminal_states_do_not_continue(terminal):
 
 
 def test_remediation_loop_is_bounded():
-    """Two patch attempts at most, whatever the verdicts are."""
+    """MAX_PATCH_ATTEMPTS patch attempts at most, whatever the verdicts are."""
     attempts = 0
     state = R.PATCHING
     while state in (R.PATCHING, R.VERIFYING):

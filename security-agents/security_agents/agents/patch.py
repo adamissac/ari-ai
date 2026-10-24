@@ -53,7 +53,7 @@ class PatchInput(StrictModel):
     finding_id: str
     remediation_plan_id: str
     approval_id: str
-    attempt: int = Field(ge=1, le=2)
+    attempt: int = Field(ge=1, le=4)
     strategy: str = Field(max_length=4000)
     constraints: list[ShortText] = Field(default_factory=list)
     files_expected: list[str] = Field(default_factory=list)
