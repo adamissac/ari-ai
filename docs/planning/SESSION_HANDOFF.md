@@ -18,6 +18,58 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-24 — Cursor (agent, Alan) — Phase 7C MERGEABLE + Devin compatibility review (do not merge #458)
+- Did: Six security-review findings remain intact on conflict-free #458. Merged `origin/main` through `d1864e9a` (#513 eval cases). **Did not cherry-pick or merge** Devin fork work (`m-alan08/ari-ai` PRs 1–3). **Did not start Phase 7D.** Schema still **0.22.0**; open #412 keeps **0.20.0**; Alembic stays **0015**. Probe/Patch not expanded. No AUTO-EXECUTE.
+- Devin review (read-only, not merged):
+  - PR1 execution reliability (`feat/devin-execution-reliability`, 0016): complementary job lifecycle (`waiting`/`timed_out`/`recovery_required`, `ctx.effect()`, `deadline_s`). Does not contain 7C `JobDeferred` / `jobs.defer`. Do not wrap Scout/Diagnose LLM in `ctx.effect()` — that would block crash-in-progress rerun that finding 6 requires. Diagnose `depends_on` could later replace defer polling after 7C lands.
+  - PR2 live-defense E2E: stacked on six-fix head `db0a631d`, test-only. Scenarios A–H would exercise latest 7C (partial transcript, crash CAS, OFF, no AUTO-EXECUTE) after a rebase onto this MERGEABLE head. Does not cover canonical intel, cache-creation USD, or Diagnose defer attempts.
+  - PR3 investigation observability (schema **0.23.0**): read-only Executions tab can consume 7C `AgentExecutionRecord` JSONB via looser `AgentExecutionView`. UI must keep `evidence_verified=false` / `confirmation=unverified` from 7C writes; the view type allows a bool and could display “verified” if a record were tampered.
+- Commands run and results (executed on 7C+main `15aa6cf8`, eval-cases merge is JSON-only): `make check` pass (schema 0.22.0, 155 files); `uv run mypy` 40 files; focused 7A+7C+review+jobs+llm **72 passed**, 1 skipped (live smoke); prior broader on this merge: pytest **812 passed**, 14 skipped; security-agents **593 passed**, 23 skipped; frontend vitest **337 passed** / 79 files; transport **35 passed**. FakeLLM, not live Anthropic.
+- Next: independent security re-review of #458. Leave open. Do not merge.
+- Warnings: **leave the PR open**. Merge NO-GO until Alan’s security approval. Live Anthropic UNVERIFIED (issue #10). Do not merge Devin branches into #458.
+
+### 2026-10-24 — Cursor (agent, Alan) — merge origin/main into #458 (do not merge the PR)
+- Did: PR #458 was **DIRTY** vs `origin/main`, so GitHub Actions never queued on `db0a631d`. Merged `origin/main` (`be8fe67a`) into `feat/alan/live-defense-phase7c-agent-execution`. Kept both Unreleased changelog bullets and both 2026-10-24 handoff entries. Six security-review fixes preserved (canonical intel, partial evidence, deadlines, cache-creation cost, Diagnose defer, idempotent redelivery). Schema still **0.22.0**; open #412 keeps **0.20.0**. Generated contracts auto-merged and `shared.export --check` was clean (155 files). **Did not merge #458. Did not open a replacement PR.** Probe/Patch not expanded. No AUTO-EXECUTE.
+- Commands run and results (executed): `make check` pass (schema 0.22.0); `uv run mypy` 40 files; focused 7C+review+jobs+llm **51 passed**, 1 skipped; `uv run pytest -q` **812 passed**, 14 skipped; security-agents **593 passed**, 23 skipped; frontend lint/typecheck; vitest **337 passed** / 79 files; transport **35 passed**.
+- Next: push existing branch; confirm mergeability and whether Actions auto-start. Independent security re-review. Leave #458 open.
+- Warnings: **leave the PR open**. Merge NO-GO until independent re-review. Live Anthropic still UNVERIFIED (issue #10).
+
+### 2026-10-24 — Cursor (agent, Alan) — Phase 7C security-review NO-GO fixes (do not merge #458)
+- Did: Alan security review of PR #458 was **NO-GO**. Fixed all six findings on the existing branch (`feat/alan/live-defense-phase7c-agent-execution`, reviewed head was `c4dcfa40`). Canonical intel via `CodeIntelligenceAdapter` (LocalIntel only with explicit `SECURITY_AGENTS_LABELS`); `LLMError` → structured `LLMUnavailable` with persisted partial transcripts; remaining deadline + bounded retries; cache-creation in `backend.llm.cost_usd`; Diagnose enqueued only after Scout terminal (`jobs.defer` does not burn attempts); idempotent redelivery with executed-sticky CAS. **Did not merge. Did not open a replacement PR.** Schema still **0.22.0**; #412 keeps **0.20.0**. Probe/Patch not expanded. No AUTO-EXECUTE.
+- Commands run and results (executed):
+  - `make check` — ruff pass; format 198 files; `shared.export --check` 155 files; examples check pass; schema 0.22.0
+  - `uv run mypy` — Success: no issues found in 40 source files
+  - `uv run pytest -q` — **806 passed**, 15 skipped (opt-in live LLM, Docker, RL package, TSC, specialists cache)
+  - focused 7C + review + jobs + llm gateway — **50 passed**, 1 skipped (live smoke)
+  - `cd security-agents && /workspace/.venv/bin/python -m pytest tests -q` — **592 passed**, 23 skipped
+  - `npm run lint/typecheck --prefix frontend` — pass
+  - `npm test --prefix frontend` — **330 passed** / 78 files
+  - `npm test --prefix frontend/transport` — **35 passed**
+  - Playwright 7A+7C via `frontend/tests/e2e/stack.py` — **2 passed** (15.4s); FakeLLM labelled, not live Anthropic
+- Next: independent security re-review. Leave #458 open.
+- Warnings: **leave the PR open**. Live Anthropic still UNVERIFIED (issue #10). Re-review GO, merge NO-GO until independent review accepts.
+
+### 2026-10-24 — Cursor (agent, Alan) — Phase 7C CI e2e harness (do not merge #458)
+- Did: required GitHub `e2e` on `c56480da` (PR #458) failed; `backend / test` **passed**. Harness-only fix: e2e snapshot `doc` is a valid `Snapshot` with status **indexing** (not ready) so `list_snapshots` no longer 500s and pages.spec still shows "No indexed snapshot"; 7C mapping created via signed-in CSRF `POST /applications/{id}/deploy-mappings` because Playwright `selectOption` left Attest disabled in the full suite. **Did not** expand Probe/Patch, bump schema, or collide with #412's 0.20.0 (still 0.22.0 / Alembic 0015). **Did not merge #458.**
+- Commands run and results (executed): ruff on `frontend/tests/e2e/stack.py` pass; Snapshot.model_validate of the new indexing doc pass. GitHub CI on the follow-up SHA is the remaining proof.
+- Next: wait for required checks on the new head; leave #458 open for Alan's security review if they pass.
+- Warnings: **leave the PR open**. Execution trust-boundary expansion. No AUTO-EXECUTE. No Probe/Patch expansion.
+
+### 2026-10-24 — Cursor (agent, Alan) — Live Defense Phase 7C agent execution
+- Did: PR https://github.com/adamissac/ari-ai/pull/458 on `feat/alan/live-defense-phase7c-agent-execution` from live `origin/main` `04c562a9` (PR #439 Phase 7A merged). **Left open.** Wired first-responder `live_defense_agent_step` to `security_agents.runtime.run_agent` for **Scout** (mapping+snapshot) and **Diagnose** (after Scout hypotheses). Probe/Patch/Verify privileges not expanded. Trace `skipped_no_prerequisite` until confirmed Probe. Fortify `skipped_no_prerequisite` without independently executed `verification_results`. Persisted `AgentExecutionRecord` (cost, latency, tools, transcript, integrity). `predicted_probability` stays null. Decision `executed` stays false. Schema **0.22.0** additive; Alembic stays **0015**. Open #412 keeps **0.20.0**. Orchestrator `7c.1.0`. Message: `coordination/messages/20261024T064500Z-alan-to-all-live-defense-phase7c-contracts.md`. Eval: `docs/LIVE_DEFENSE_PHASE7C_AGENT_EXECUTION.md`. **Leave PR open** — execution trust-boundary expansion; do not merge from this agent. Did **not** train RL, enable AUTO-EXECUTE, expand Probe/Patch, or grant production.
+- Commands run and results (executed):
+  - `make check` — ruff pass; format 197 files; `shared.export --check` 155 files; examples check pass; schema 0.22.0
+  - `uv run mypy` — Success: no issues found in 40 source files
+  - `uv run pytest -q` — **781 passed**, 15 skipped (opt-in live LLM, Docker, RL package, TSC, specialists cache)
+  - focused 7A+7C+jobs+no-action — 38 passed
+  - live-defense phase4/5/6 + authorize + tests/security — 79 passed
+  - `security-agents` pytest — **592 passed**, 23 skipped
+  - `npm run lint/typecheck` — pass; `npm test --prefix frontend` — **330 passed** / 78 files; transport **35 passed**
+  - Playwright `stack.py` live-defense-phase7a + phase7c — **2 passed** (16.6s). 7C: Scout/Diagnose executed (fake), integrity checked, Fortify/Trace skipped, AUTO-EXECUTE absent
+- Decisions: do not merge. Security review required because first-responder now runs real agent loops. #412 rebases to 0.23.0+ if this lands first. Live Anthropic remains opt-in (issue #10); this e2e used FakeLLM.
+- Next: human/security review of the PR. Do not train RL from these records yet.
+- Warnings: **leave the PR open**. This is not Probe expansion, not AUTO-EXECUTE, not customer production, not Codex Phase 7B.
+
 ### 2026-10-24 — Devin (agent, Adam) — leaked Vercel snapshot cleanup, push→agents verification
 - Did: verified the named-sandbox snapshot-leak fix already on main (`persistent: False` on run boxes + `destroy` in teardown + `_sweep_stale`); opened PR #495 making the sweep also delete stale run boxes' orphan snapshots so leaked quota is actually freed. Confirmed `delete_orphan_snapshots` only removes snapshots created *by* the destroyed sandbox — the shared `ari-base-*` snapshot can never be an orphan of a run box. Verified on main: security-agents suite 581 passed / 24 skipped, frontend typecheck + 330 vitest + lint clean, standards smoke (CWE/OWASP/CVSS/ATT&CK/D3FEND/SARIF/SP 800-115) passes. Confirmed agents are standards-grounded in code: Scout CWE/OWASP, Probe CWE, Trace ATT&CK/CVSS, Diagnose D3FEND, Fortify CWE/D3FEND; Patch/Verify get standards context via the tagged finding + remediation plan, not prompts.
 - State of the code: push→agents path gates are code-verified (`pipeline.process_github_delivery` → `auto_commits.schedule` → `assess_github_commit`): `repositories.automatic_assessments` (per-repo opt-in, UI switch exists), `GITHUB_AUTO_COMMIT_AUTHORS` (Railway entrypoint defaults `*`), `monitoring_policy.enabled` (project setting, UI switch), active `AuthorizedScope`. All four must be on for pushes to spawn runs — they are product gates, not bugs.

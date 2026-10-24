@@ -32,6 +32,8 @@ from backend.db import (
     transaction,
     verification_results,
 )
+from backend.db import jobs as jobs_t
+from backend.live_defense.agent_execution import load_scout_output, run_investigative
 from backend.live_defense.capabilities import load_registry
 from backend.live_defense.modes import (
     acquire_first_responder_lock,
@@ -43,7 +45,7 @@ from backend.live_defense.modes import (
 )
 from backend.live_defense.orchestrator import OrchestratorFacts, decide
 from backend.services import active_scope_for_repo, project_org
-from backend.worker import JobCancelled, JobContext, handler
+from backend.worker import JobCancelled, JobContext, JobDeferred, handler
 from shared.assessment import AgentName
 from shared.audit import ActorType
 from shared.base import utcnow
@@ -51,12 +53,14 @@ from shared.ids import IdPrefix, new_id
 from shared.live_defense import (
     ORCHESTRATOR_VERSION,
     AgentCapabilityClass,
+    AgentExecutionRecord,
     AgentInvocationStatus,
     AnalystHandoff,
     AnalystHandoffState,
     ApplicationVerification,
     ConfirmationState,
     ConnectedApplication,
+    ExecutionIntegrity,
     FirstResponderDecision,
     FirstResponderIntent,
     FirstResponderInvocation,
@@ -198,30 +202,17 @@ def _independent_verification(conn: Connection, project_id: str) -> str | None:
 
 
 def _mark_invocation_cancelled(conn: Connection, invocation_id: str, reason: str) -> None:
-    row = (
-        conn.execute(
-            sa.select(first_responder_invocations).where(
-                first_responder_invocations.c.id == invocation_id
-            )
-        )
-        .mappings()
-        .first()
-    )
-    if row is None:
+    inv = _load_invocation_for_update(conn, invocation_id)
+    if inv is None or inv.status is AgentInvocationStatus.executed:
         return
-    inv = FirstResponderInvocation.model_validate(row["doc"])
     updated = inv.model_copy(
         update={
             "status": AgentInvocationStatus.cancelled,
             "reason": reason,
-            "provider_mode": "none",
+            "provider_mode": inv.provider_mode,
         }
     )
-    conn.execute(
-        sa.update(first_responder_invocations)
-        .where(first_responder_invocations.c.id == invocation_id)
-        .values(status=AgentInvocationStatus.cancelled.value, doc=updated.model_dump(mode="json"))
-    )
+    _commit_invocation(conn, updated, status=AgentInvocationStatus.cancelled)
 
 
 def _abort_if_off_or_cancelled(
@@ -279,17 +270,18 @@ def _patch_candidate(conn: Connection, project_id: str) -> str | None:
     ).scalar()
 
 
-def _snapshot_exists(conn: Connection, repo_id: str | None, commit_sha: str | None) -> bool:
+def _snapshot_id(conn: Connection, repo_id: str | None, commit_sha: str | None) -> str | None:
     if not repo_id or not commit_sha:
-        return False
-    return (
-        conn.execute(
-            sa.select(snapshots.c.id).where(
-                snapshots.c.repo_id == repo_id, snapshots.c.commit_sha == commit_sha
-            )
-        ).scalar()
-        is not None
-    )
+        return None
+    return conn.execute(
+        sa.select(snapshots.c.id).where(
+            snapshots.c.repo_id == repo_id, snapshots.c.commit_sha == commit_sha
+        )
+    ).scalar()
+
+
+def _snapshot_exists(conn: Connection, repo_id: str | None, commit_sha: str | None) -> bool:
+    return _snapshot_id(conn, repo_id, commit_sha) is not None
 
 
 def maybe_enqueue(
@@ -384,6 +376,8 @@ def _invocation_status(
             return AgentInvocationStatus.skipped_no_mapping
         if "OFF" in reason or "ASSISTED" in reason:
             return AgentInvocationStatus.skipped_mode
+        if "Trace follows" in reason or "prerequisite" in reason.lower():
+            return AgentInvocationStatus.skipped_no_prerequisite
         return AgentInvocationStatus.blocked
     if agent in {AgentName.scout, AgentName.diagnose, AgentName.fortify, AgentName.trace}:
         if decision.correlation.confidence.value in {"unknown", "none"}:
@@ -449,7 +443,7 @@ def _record_invocations(
                 doc=inv.model_dump(mode="json"),
             )
         )
-        if status is AgentInvocationStatus.queued:
+        if status is AgentInvocationStatus.queued and agent is not AgentName.diagnose:
             job_id, _ = jobq.enqueue(
                 conn,
                 "live_defense_agent_step",
@@ -461,7 +455,7 @@ def _record_invocations(
                     "capability_class": cap.capability_class.value,
                 },
                 dedupe_key=f"live_defense_agent_step:{decision.id}:{agent.value}",
-                priority=90,
+                priority=70 if agent is AgentName.scout else 90,
             )
             inv = inv.model_copy(update={"job_id": job_id})
             conn.execute(
@@ -648,18 +642,206 @@ def live_defense_first_responder(ctx: JobContext) -> dict[str, Any]:
     )
 
 
+_TERMINAL_INVOCATION = frozenset(
+    {
+        AgentInvocationStatus.executed,
+        AgentInvocationStatus.failed,
+        AgentInvocationStatus.cancelled,
+        AgentInvocationStatus.blocked,
+        AgentInvocationStatus.eligible,
+        AgentInvocationStatus.completed_unverified,
+        AgentInvocationStatus.skipped_no_mapping,
+        AgentInvocationStatus.skipped_no_snapshot,
+        AgentInvocationStatus.skipped_mode,
+        AgentInvocationStatus.skipped_no_scope,
+        AgentInvocationStatus.skipped_no_approval,
+        AgentInvocationStatus.skipped_no_patch,
+        AgentInvocationStatus.skipped_no_prerequisite,
+    }
+)
+
+
+def _agent_for_decision(
+    conn: Connection, decision_id: str, agent: AgentName
+) -> FirstResponderInvocation | None:
+    row = (
+        conn.execute(
+            sa.select(first_responder_invocations)
+            .where(
+                first_responder_invocations.c.decision_id == decision_id,
+                first_responder_invocations.c.agent == agent.value,
+            )
+            .order_by(first_responder_invocations.c.created_at.desc())
+            .limit(1)
+        )
+        .mappings()
+        .first()
+    )
+    if row is None:
+        return None
+    return FirstResponderInvocation.model_validate(row["doc"])
+
+
+def _scout_for_decision(conn: Connection, decision_id: str) -> FirstResponderInvocation | None:
+    return _agent_for_decision(conn, decision_id, AgentName.scout)
+
+
+def _load_invocation_for_update(
+    conn: Connection, invocation_id: str
+) -> FirstResponderInvocation | None:
+    row = (
+        conn.execute(
+            sa.select(first_responder_invocations)
+            .where(first_responder_invocations.c.id == invocation_id)
+            .with_for_update()
+        )
+        .mappings()
+        .first()
+    )
+    if row is None:
+        return None
+    return FirstResponderInvocation.model_validate(row["doc"])
+
+
+def _write_invocation(
+    conn: Connection, inv: FirstResponderInvocation, *, status: AgentInvocationStatus
+) -> None:
+    conn.execute(
+        sa.update(first_responder_invocations)
+        .where(first_responder_invocations.c.id == inv.id)
+        .values(status=status.value, doc=inv.model_dump(mode="json"))
+    )
+
+
+def _other_active_agent_claim(conn: Connection, invocation_id: str, owner: str) -> bool:
+    """True when another worker still holds a valid lease for this invocation."""
+    row = conn.execute(
+        sa.select(jobs_t.c.id)
+        .where(
+            jobs_t.c.kind == "live_defense_agent_step",
+            jobs_t.c.status == "running",
+            jobs_t.c.lease_owner.is_not(None),
+            jobs_t.c.lease_owner != owner,
+            jobs_t.c.lease_expires_at > utcnow(),
+            jobs_t.c.payload["invocation_id"].astext == invocation_id,
+        )
+        .limit(1)
+    ).first()
+    return row is not None
+
+
+def _commit_invocation(
+    conn: Connection, inv: FirstResponderInvocation, *, status: AgentInvocationStatus
+) -> FirstResponderInvocation:
+    """Persist an invocation without replacing a successful result."""
+    current = _load_invocation_for_update(conn, inv.id)
+    if current is None:
+        _write_invocation(conn, inv, status=status)
+        return inv
+    if current.status is AgentInvocationStatus.executed:
+        return current
+    if current.status in _TERMINAL_INVOCATION and status is not AgentInvocationStatus.executed:
+        return current
+    updated = inv.model_copy(update={"status": status})
+    _write_invocation(conn, updated, status=status)
+    return updated
+
+
+def _invocation_result(inv: FirstResponderInvocation) -> dict[str, Any]:
+    execution = inv.execution
+    return {
+        "status": inv.status.value,
+        "agent": inv.agent.value,
+        "confirmed": False,
+        "execution_integrity": (
+            execution.execution_integrity.value if execution is not None else None
+        ),
+        "predicted_probability": None,
+        "idempotent_replay": inv.status in _TERMINAL_INVOCATION,
+    }
+
+
+def _enqueue_agent_step(
+    conn: Connection,
+    *,
+    decision: FirstResponderDecision,
+    inv: FirstResponderInvocation,
+    agent: AgentName,
+    capability_class: AgentCapabilityClass,
+) -> FirstResponderInvocation:
+    job_id, _ = jobq.enqueue(
+        conn,
+        "live_defense_agent_step",
+        {
+            "project_id": decision.project_id,
+            "decision_id": decision.id,
+            "invocation_id": inv.id,
+            "agent": agent.value,
+            "capability_class": capability_class.value,
+        },
+        dedupe_key=f"live_defense_agent_step:{decision.id}:{agent.value}",
+        priority=90 if agent is AgentName.diagnose else 70,
+    )
+    updated = inv.model_copy(update={"job_id": job_id})
+    conn.execute(
+        sa.update(first_responder_invocations)
+        .where(first_responder_invocations.c.id == inv.id)
+        .values(doc=updated.model_dump(mode="json"))
+    )
+    return updated
+
+
+def _schedule_diagnose_after_scout(
+    conn: Connection, decision: FirstResponderDecision, scout: FirstResponderInvocation
+) -> None:
+    diagnose = _agent_for_decision(conn, decision.id, AgentName.diagnose)
+    if diagnose is None or diagnose.status in _TERMINAL_INVOCATION:
+        return
+    hypotheses = None
+    if scout.status is AgentInvocationStatus.executed and scout.execution:
+        hypotheses = load_scout_output(conn, scout.execution.output_artifact_id)
+    if scout.status is not AgentInvocationStatus.executed or not (
+        hypotheses and hypotheses.get("hypotheses")
+    ):
+        skipped = diagnose.model_copy(
+            update={
+                "status": AgentInvocationStatus.skipped_no_prerequisite,
+                "reason": "Diagnose skipped: Scout did not produce executed hypotheses",
+                "provider_mode": "none",
+            }
+        )
+        _commit_invocation(conn, skipped, status=AgentInvocationStatus.skipped_no_prerequisite)
+        return
+    registry = {item.name: item for item in load_registry().agents}
+    cap = registry.get(AgentName.diagnose)
+    if cap is None:
+        return
+    _enqueue_agent_step(
+        conn,
+        decision=decision,
+        inv=diagnose,
+        agent=AgentName.diagnose,
+        capability_class=cap.capability_class,
+    )
+
+
 @handler("live_defense_agent_step")
 def live_defense_agent_step(ctx: JobContext) -> dict[str, Any]:
     """Run a gated agent step without faking success or deploying Patch.
 
-    Investigative agents need a trusted mapping and a snapshot. Probe still
-    requires AuthorizedScope at execution time. Patch never deploys. Verify
-    refuses to share Patch state. This handler records honest skip/fail
-    outcomes; it does not invent a confirmed threat from model text.
+    Scout (and Diagnose after Scout) execute the real security-agent loop when a
+    trusted mapping and snapshot exist. Probe still requires AuthorizedScope and
+    is not auto-run. Patch never deploys. Verify eligibility is not verification.
+    Trace waits for confirmed Probe evidence. LLM prose cannot confirm a threat.
     """
     ctx.check_cancelled()
     payload = ctx.job.payload
     agent = AgentName(payload["agent"])
+    run_live = False
+    repo_id: str | None = None
+    commit_sha: str | None = None
+    snapshot_id: str | None = None
+    scout_output: dict[str, Any] | None = None
     with transaction() as conn:
         acquire_first_responder_lock(conn, payload["project_id"])
         _abort_if_off_or_cancelled(
@@ -668,18 +850,23 @@ def live_defense_agent_step(ctx: JobContext) -> dict[str, Any]:
             project_id=payload["project_id"],
             invocation_id=payload["invocation_id"],
         )
-        row = (
-            conn.execute(
-                sa.select(first_responder_invocations).where(
-                    first_responder_invocations.c.id == payload["invocation_id"]
-                )
-            )
-            .mappings()
-            .first()
-        )
-        if row is None:
+        inv = _load_invocation_for_update(conn, payload["invocation_id"])
+        if inv is None:
             return {"status": "missing_invocation"}
-        inv = FirstResponderInvocation.model_validate(row["doc"])
+        if inv.status in _TERMINAL_INVOCATION:
+            return _invocation_result(inv)
+        if _other_active_agent_claim(conn, inv.id, ctx.owner):
+            raise JobDeferred(delay_s=2.0, message="another worker holds the agent-step lease")
+        decision_doc = conn.execute(
+            sa.select(first_responder_decisions.c.doc).where(
+                first_responder_decisions.c.id == payload["decision_id"]
+            )
+        ).scalar()
+        decision = FirstResponderDecision.model_validate(decision_doc) if decision_doc else None
+        status: AgentInvocationStatus
+        reason: str
+        provider_mode = "none"
+        execution = inv.execution
         if agent is AgentName.patch:
             status = AgentInvocationStatus.skipped_no_approval
             reason = "Patch remains worktree-only after human approval; silent deploy is refused"
@@ -687,23 +874,17 @@ def live_defense_agent_step(ctx: JobContext) -> dict[str, Any]:
                 status = AgentInvocationStatus.blocked
                 reason = "silent customer deploy is refused"
         elif agent is AgentName.probe:
-            decision_doc = conn.execute(
-                sa.select(first_responder_decisions.c.doc).where(
-                    first_responder_decisions.c.id == payload["decision_id"]
-                )
-            ).scalar()
-            decision = FirstResponderDecision.model_validate(decision_doc)
-            mapping = _mapping_by_id(conn, decision.correlation.mapping_id)
+            mapping = _mapping_by_id(conn, decision.correlation.mapping_id) if decision else None
             repo_id = mapping["repo_id"] if mapping else None
-            scope = active_scope_for_repo(conn, decision.project_id, repo_id) if repo_id else None
+            scope = active_scope_for_repo(conn, payload["project_id"], repo_id) if repo_id else None
             if scope is None:
                 status = AgentInvocationStatus.skipped_no_scope
                 reason = "Probe denied: no active AuthorizedScope (no external probes)"
             else:
                 status = AgentInvocationStatus.completed_unverified
                 reason = (
-                    "Probe eligible under AuthorizedScope; confirmation stays unverified "
-                    "until executed template evidence exists"
+                    "Probe eligible under AuthorizedScope; Phase 7C does not expand Probe "
+                    "execution. Confirmation stays unverified until executed template evidence exists."
                 )
         elif agent is AgentName.verify:
             status = AgentInvocationStatus.completed_unverified
@@ -720,27 +901,134 @@ def live_defense_agent_step(ctx: JobContext) -> dict[str, Any]:
                     "Verify ran without independently executed verification evidence; "
                     "evidence_state stays unverified"
                 )
+        elif agent is AgentName.trace:
+            status = AgentInvocationStatus.skipped_no_prerequisite
+            reason = "Trace follows a confirmed Probe result with executed template evidence; none exists"
+        elif agent is AgentName.fortify:
+            status = AgentInvocationStatus.skipped_no_prerequisite
+            reason = (
+                "Fortify requires independently executed verification_results. "
+                "Scout hypotheses are not a verified fix."
+            )
+        elif agent in {AgentName.scout, AgentName.diagnose} and decision is not None:
+            mapping = _mapping_by_id(conn, decision.correlation.mapping_id)
+            repo_id = mapping["repo_id"] if mapping else None
+            commit_sha = mapping["commit_sha"] if mapping else None
+            snapshot_id = _snapshot_id(conn, repo_id, commit_sha)
+            if not mapping or not commit_sha:
+                status = AgentInvocationStatus.skipped_no_mapping
+                reason = "no trusted deploy-to-commit mapping"
+            elif snapshot_id is None:
+                status = AgentInvocationStatus.skipped_no_snapshot
+                reason = "no snapshot for the mapped commit"
+            elif agent is AgentName.diagnose:
+                scout = _scout_for_decision(conn, decision.id)
+                if scout is None or scout.status is AgentInvocationStatus.queued:
+                    raise JobDeferred(delay_s=2.0, message="Diagnose waiting for Scout to finish")
+                if scout.status is not AgentInvocationStatus.executed:
+                    status = AgentInvocationStatus.skipped_no_prerequisite
+                    reason = "Diagnose skipped: Scout did not produce executed hypotheses"
+                else:
+                    scout_output = load_scout_output(
+                        conn,
+                        scout.execution.output_artifact_id if scout.execution else None,
+                    )
+                    if not scout_output or not scout_output.get("hypotheses"):
+                        status = AgentInvocationStatus.skipped_no_prerequisite
+                        reason = "Diagnose skipped: Scout produced no validated hypotheses"
+                    else:
+                        run_live = True
+                        status = AgentInvocationStatus.queued
+                        reason = "running"
+            else:
+                run_live = True
+                status = AgentInvocationStatus.queued
+                reason = "running"
         else:
             status = AgentInvocationStatus.completed_unverified
             reason = (
                 f"{agent.value} investigative step recorded as unverified. "
                 "LLM prose is not confirmation."
             )
-        _abort_if_off_or_cancelled(
-            conn,
-            ctx,
-            project_id=payload["project_id"],
-            invocation_id=inv.id,
+        if not run_live:
+            _abort_if_off_or_cancelled(
+                conn,
+                ctx,
+                project_id=payload["project_id"],
+                invocation_id=inv.id,
+            )
+            updated = inv.model_copy(
+                update={
+                    "status": status,
+                    "reason": reason,
+                    "provider_mode": provider_mode,
+                    "execution": execution,
+                }
+            )
+            committed = _commit_invocation(conn, updated, status=status)
+            if agent is AgentName.scout and decision is not None:
+                _schedule_diagnose_after_scout(conn, decision, committed)
+            return _invocation_result(committed)
+
+        started = inv.model_copy(
+            update={
+                "reason": "running",
+                "execution": AgentExecutionRecord(
+                    started_at=utcnow(),
+                    execution_integrity=ExecutionIntegrity.not_run,
+                ),
+            }
         )
+        _write_invocation(conn, started, status=AgentInvocationStatus.queued)
+        inv = started
+
+    def _cancelled() -> bool:
+        try:
+            ctx.check_cancelled()
+        except JobCancelled:
+            return True
+        with transaction() as check:
+            if load_intent(check, payload["project_id"]).intent is FirstResponderIntent.off:
+                return True
+            if jobq.is_cancel_requested(check, ctx.job.id):
+                return True
+        return False
+
+    assert decision is not None and repo_id and commit_sha and snapshot_id
+    result = run_investigative(
+        agent=agent,
+        decision=decision,
+        invocation=inv,
+        repo_id=repo_id,
+        commit_sha=commit_sha,
+        snapshot_id=snapshot_id,
+        scout_output=scout_output,
+        cancelled=_cancelled,
+    )
+    with transaction() as conn:
+        acquire_first_responder_lock(conn, payload["project_id"])
         updated = inv.model_copy(
-            update={"status": status, "reason": reason, "provider_mode": "none"}
+            update={
+                "status": result.status,
+                "reason": result.reason,
+                "provider_mode": result.provider_mode,  # type: ignore[arg-type]
+                "execution": result.execution,
+            }
         )
-        conn.execute(
-            sa.update(first_responder_invocations)
-            .where(first_responder_invocations.c.id == inv.id)
-            .values(status=status.value, doc=updated.model_dump(mode="json"))
-        )
-        return {"status": status.value, "agent": agent.value, "confirmed": False}
+        committed = _commit_invocation(conn, updated, status=result.status)
+        if committed.agent is AgentName.scout and decision is not None:
+            _schedule_diagnose_after_scout(conn, decision, committed)
+        if (
+            load_intent(conn, payload["project_id"]).intent is FirstResponderIntent.off
+            and committed.status is not AgentInvocationStatus.executed
+        ):
+            _abort_if_off_or_cancelled(
+                conn,
+                ctx,
+                project_id=payload["project_id"],
+                invocation_id=inv.id,
+            )
+        return _invocation_result(committed)
 
 
 def reconcile_off(conn: Connection, project_id: str) -> dict[str, int]:
