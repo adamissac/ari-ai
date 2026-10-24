@@ -164,7 +164,7 @@ SPEC = AgentSpec(
     max_turns=16,
     prompt_ref="prompts/scout/v0.1.0.md",
     system_prompt=SYSTEM,
-    max_output_tokens=8000,
+    max_output_tokens=16000,  # thinking counts toward this; 4-8k ran out on real repos
 )
 
 
