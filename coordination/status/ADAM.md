@@ -2,7 +2,7 @@
 
 Owner: Adam
 Branch: all work merged to `main` (last: PR #13 shared contracts, PR #18 recipe check)
-Current task: RL training improvements (worker branch `feat/adam/rl-training-v1`, merging to main every round)
+Current task: seven-agent security workflow evidence (branch `feat/adam/seven-agent-live-evidence`); RL training improvements ongoing
 Last remote sync: 2026-10-17 — origin/main at `945afc9`; no other branches, PRs or issues yet
 API/contract dependencies: `DefenseRecommendation`, `PlatformFacts`, `RLCheckpointRef`, `RLEvaluation` proposed to Srihith in `coordination/messages/20261017T001311Z-adam-to-srihith-rl-recommendation-contract.md`; local adapter in `rl-defense/rl_defense/contracts.py` until `shared/` V0 merges
 Verified tests: `cd rl-defense && .venv/bin/python -m pytest -q` → 52 passed (CPU, macOS arm64, Python 3.12, torch 2.14.1, gymnasium 1.4.0); ruff check + format clean
@@ -11,6 +11,13 @@ Blockers: none for RL; backend endpoint and Defense Lab UI need `shared/` V0 and
 Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablations (vanilla DQN vs DDQN, feature and reward sensitivity)
 
 ## Session entries
+
+### 2026-10-24 — seven-agent workflow: live run + inspection evidence
+- Audited every AgentSpec/allowlist/contract/state transition and the registry enforcement chain.
+- Live run: `RUN_LIVE_LLM_EVAL=1 LIVE_SEVEN_MAX_USD=8 pytest -q -m live tests/test_live_provider.py -s` → 4 passed, assessment `asm_01M5QXE06VSZYP7297NN5SN1EH` completed; CWE-639 confirmed→patched→independently verified→hardened; $0.0354 / 267k tokens / `claude-haiku-5-5`.
+- Offline suite: 582 passed / 24 skipped (covers timeouts, cancel, kill switch, schema repair, provider outage, resume-after-restart, worktree/check refusals, specialist cannot-override).
+- Evidence: `security-agents/tests/artifacts/live/20261024T213713Z-MANIFEST.md` + report/tool-trace artifacts + recording JSONL.
+- Blockers: none. Next: PR review; keep `tests/artifacts/live/` naming convention.
 
 ### 2026-10-17 (cloud) — simulated demo + Lab command center + events-log cursor
 - `feat/adam/event-log-cursor-follow`: phase views follow `next_cursor` (cap 10,000 events).
