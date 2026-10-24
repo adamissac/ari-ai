@@ -87,8 +87,9 @@ def test_host_mode_full_flow_against_real_backend(
     assert detail["assessment"]["state"] == "COMPLETED", detail["assessment"]
     runs = detail["agent_runs"]
     order = [r["agent"] for r in runs]
-    # Detection is sequential; Fortify's step runs alongside Patch -> Verify.
-    assert order[:4] == ["scout", "probe", "trace", "diagnose"], order
+    # Scout then Probe; Diagnose runs alongside Trace, Fortify alongside Patch -> Verify.
+    assert order[:2] == ["scout", "probe"], order
+    assert sorted(order[2:4]) == ["diagnose", "trace"], order
     assert sorted(order[4:]) == ["fortify", "patch", "verify"], order
     assert all(r["usage"]["llm_calls"] > 0 and r["tool_calls"] for r in runs), (
         "per-run usage/tool calls recorded"

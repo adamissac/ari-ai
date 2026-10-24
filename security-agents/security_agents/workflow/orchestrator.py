@@ -326,7 +326,8 @@ class Orchestrator:
         self._completed_steps: dict[str, StepOutcome] = {}
         self._audit_prev_hash = "0" * 64
         self._audit_lock = threading.Lock()
-        self._baseline_failing: list[str] = []
+        self._baseline_job: Any = None
+        self._baseline_value: list[str] = []
         self.roe: Any = None
         self.workdir.mkdir(parents=True, exist_ok=True)
 
@@ -562,7 +563,10 @@ class Orchestrator:
 
         # ---- FUNCTIONAL_REVIEW is Sai's pillar; we record the baseline it needs.
         self._goto(AssessmentState.FUNCTIONAL_REVIEW, "baseline test run (code_review pillar pending)")
-        self._baseline_failing = self._baseline_test_failures()
+        # Only Verify (and the approval checkpoint) need the baseline: run it beside Scout.
+        pool = ThreadPoolExecutor(max_workers=1)
+        self._baseline_job = pool.submit(self._baseline_test_failures)
+        pool.shutdown(wait=False)
 
         # ---- RECON (Scout)
         self._goto(AssessmentState.RECON)
@@ -576,18 +580,21 @@ class Orchestrator:
         if not confirmed:
             return self._report_or_wait("no confirmed findings")
 
-        # ---- ANALYSIS (Trace)
+        # ---- ANALYSIS (Trace). Diagnose's step needs only the validated finding, so it runs
+        # alongside; its plan applies only to a finding Trace could analyse.
         self._goto(AssessmentState.ANALYSIS)
-        for finding in confirmed:
-            self._run_trace(finding)
-        traced = [f for f in confirmed if f.attack_path is not None]
-        if not traced:
-            return self._report_or_wait("impact analysis failed for all findings")
+        with ThreadPoolExecutor(max_workers=len(confirmed)) as pool:
+            plans = {f.finding_id: pool.submit(self._diagnose_step, f) for f in confirmed}
+            for finding in confirmed:
+                self._run_trace(finding)
+            traced = [f for f in confirmed if f.attack_path is not None]
+            if not traced:
+                return self._report_or_wait("impact analysis failed for all findings")
 
-        # ---- DIAGNOSIS (Diagnose)
-        self._goto(AssessmentState.DIAGNOSIS)
-        for finding in traced:
-            self._run_diagnose(finding)
+            # ---- DIAGNOSIS (Diagnose)
+            self._goto(AssessmentState.DIAGNOSIS)
+            for finding in traced:
+                self._apply_diagnose(finding, *plans[finding.finding_id].result())
         diagnosed = [f for f in traced if f.plan is not None]
         if not diagnosed:
             return self._report_or_wait("no remediation plan produced")
@@ -694,6 +701,7 @@ class Orchestrator:
         return self.result
 
     def _finish(self) -> AssessmentResult:
+        self._baseline_failing  # noqa: B018 - waits for the background baseline and counts its sandbox time
         self._goto(AssessmentState.COMPLETED)
         self._audit(
             "assessment.completed",
@@ -706,7 +714,7 @@ class Orchestrator:
     # ------------------------------------------------------------------ steps
 
     def _added_tests_on_unpatched(
-        self, candidate: Any, verify_ctx: ToolContext, attempt: int
+        self, candidate: Any, patched: Path | None, attempt: int
     ) -> list[dict[str, Any]]:
         """Run the candidate's added tests on a fresh UNPATCHED checkout (platform-run, no model).
 
@@ -714,7 +722,6 @@ class Orchestrator:
         test is the pinned snapshot. Verify requires at least one of them to fail here.
         Returns [] when nothing could be run (Verify then fails closed).
         """
-        patched = verify_ctx.artifacts.get("verify_workspace")
         roots = recipe_test_roots(self.intel.snapshot.root)
         tests = [t for t in candidate.tests_added if isinstance(t, str) and under_test_roots(t, roots)]
         if not patched or not tests:
@@ -766,7 +773,22 @@ class Orchestrator:
             setup=setup,
         )
 
-    def _baseline_test_failures(self) -> list[str]:
+    @property
+    def _baseline_failing(self) -> list[str]:
+        """Tests already failing on the unpatched snapshot; waits for the background run."""
+        if self._baseline_job is not None:
+            failing, seconds = self._baseline_job.result()
+            self._baseline_job = None
+            self._baseline_value = failing
+            self.result.usage.sandbox_seconds += seconds
+        return self._baseline_value
+
+    @_baseline_failing.setter
+    def _baseline_failing(self, value: list[str]) -> None:
+        self._baseline_job = None
+        self._baseline_value = value
+
+    def _baseline_test_failures(self) -> tuple[list[str], float]:
         """Record which tests already fail on the unpatched snapshot (Verify needs this)."""
         ctx = self._context(AgentName.VERIFY, "baseline", services={})
         runner = self._test_runner(lambda _ctx: self.intel.snapshot.root)
@@ -779,8 +801,7 @@ class Orchestrator:
             passed=result.get("passed"),
             sandbox_run_id=result.get("sandbox_run_id"),
         )
-        self.result.usage.sandbox_seconds += float(result.get("duration_s") or 0)
-        return list(result.get("failing_tests") or [])
+        return list(result.get("failing_tests") or []), float(result.get("duration_s") or 0)
 
     def _run_scout(self) -> list[Hypothesis]:
         data = scout_agent.ScoutInput(
@@ -1019,15 +1040,17 @@ class Orchestrator:
         )
         self._classify(finding)
 
-    def _run_diagnose(self, finding: FindingRecord) -> None:
-        assert finding.severity is not None and finding.attack_path is not None
+    def _diagnose_step(self, finding: FindingRecord) -> tuple[diagnose_agent.DiagnoseInput, StepOutcome]:
+        # Starts before Trace finishes: severity and impact are filled in when Trace already has them.
         data = diagnose_agent.DiagnoseInput(
             assessment_id=self.config.assessment_id,
             finding_id=finding.finding_id,
             weakness_class=finding.hypothesis.weakness_class,
             hypothesis_title=finding.hypothesis.title,
-            severity_level=finding.severity.level.value,
-            impact_summary=finding.attack_path.impact_summary,
+            severity_level=finding.severity.level.value if finding.severity else "pending impact analysis",
+            impact_summary=(
+                finding.attack_path.impact_summary if finding.attack_path else finding.hypothesis.title
+            ),
             validation_observations=dict(finding.validation.observations) if finding.validation else {},
             affected_symbol=self._handler_symbol(finding),
             affected_paths=[s.path for s in finding.hypothesis.cited_spans if s.path],
@@ -1053,6 +1076,11 @@ class Orchestrator:
             ),
             input_ref=f"diagnose:{finding.finding_id}",
         )
+        return data, outcome
+
+    def _apply_diagnose(
+        self, finding: FindingRecord, data: diagnose_agent.DiagnoseInput, outcome: StepOutcome
+    ) -> None:
         if not isinstance(outcome.output, diagnose_agent.DiagnoseOutput):
             finding.notes.append(f"diagnose failed: {outcome.run.error_code}")
             return
@@ -1084,7 +1112,7 @@ class Orchestrator:
         reasons: list[str] = []
         while True:
             if sub_state is RemediationState.PATCHING:
-                candidate, _worktree = self._run_patch(finding, attempt, reasons)
+                candidate, worktree = self._run_patch(finding, attempt, reasons)
                 patch_failed = candidate is None
                 sub_state = next_remediation_state(
                     sub_state, verdict=None, attempt=attempt, patch_failed=patch_failed
@@ -1096,7 +1124,7 @@ class Orchestrator:
                 finding.status = "patch_proposed"
                 continue
             if sub_state is RemediationState.VERIFYING:
-                verification = self._run_verify(finding, attempt)
+                verification = self._run_verify(finding, attempt, worktree)
                 verdict = verification.verdict if verification else "rejected"
                 if verification:
                     finding.verifications.append(verification)
@@ -1213,7 +1241,9 @@ class Orchestrator:
         )
         return candidate, worktree
 
-    def _run_verify(self, finding: FindingRecord, attempt: int) -> VerificationResult | None:
+    def _run_verify(
+        self, finding: FindingRecord, attempt: int, worktree: PatchWorktree | None = None
+    ) -> VerificationResult | None:
         candidate = finding.candidates[-1]
         assert finding.plan is not None
         data = verify_agent.input_from_candidate(
@@ -1246,18 +1276,24 @@ class Orchestrator:
         }
         ctx = self._context(AgentName.VERIFY, f"remediation:{finding.finding_id}:verify", services=services)
         ctx.artifacts["tests_added"] = list(candidate.tests_added)
-        outcome = self._run_step(
-            verify_agent.SPEC,
-            ctx,
-            verify_agent.build_prompt(data, self.intel),
-            input_ref=f"verify:{candidate.id}",
-            attempt=attempt,
-        )
+        # The added tests on unpatched code need no model: run them while Verify works. The
+        # test files come from Patch's worktree, the same bytes the diff carries.
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            unpatched = pool.submit(
+                self._added_tests_on_unpatched, candidate, worktree.root if worktree else None, attempt
+            )
+            outcome = self._run_step(
+                verify_agent.SPEC,
+                ctx,
+                verify_agent.build_prompt(data, self.intel),
+                input_ref=f"verify:{candidate.id}",
+                attempt=attempt,
+            )
+            unpatched_added_runs = unpatched.result()
         check_runs = list(ctx.artifacts.get("check_runs") or [])
         test_runs = list(ctx.artifacts.get("test_runs") or [])
         for run in check_runs + test_runs:
             self.result.usage.sandbox_seconds += float(run.get("duration_s") or 0)
-        unpatched_added_runs = self._added_tests_on_unpatched(candidate, ctx, attempt)
         for run in unpatched_added_runs:
             self.result.usage.sandbox_seconds += float(run.get("duration_s") or 0)
         evidence = verify_agent.VerifyEvidence(
