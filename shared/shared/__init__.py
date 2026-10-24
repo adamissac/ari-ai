@@ -51,9 +51,9 @@ SCHEMA_VERSION = (
     #      typed output, execution integrity). predicted_probability stays
     #      null. executed investigative output is not threat confirmation.
     #      Probe/Patch/Verify privileges are not expanded. Open PR #412 keeps
-    #      0.20.0; this branch does not collide that number. Alembic stays 0015
-    #      (execution lives in existing invocation JSONB). Additive 7C
-    #      follow-up: ProviderAttempt ledger + invocation.deadline_at (optional
-    #      fields; old 0.22.0 payloads still validate). Devin Reliability
-    #      keeps Alembic 0016.
+    #      0.20.0; this branch does not collide that number. Execution lives in
+    #      existing invocation JSONB (no 7C migration). Additive 7C follow-up:
+    #      ProviderAttempt ledger + invocation.deadline_at (optional fields;
+    #      old 0.22.0 payloads still validate). This PR inherits main's Alembic
+    #      0016 tenant RLS and does not add a competing migration.
 )

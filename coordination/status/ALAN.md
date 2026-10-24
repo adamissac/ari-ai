@@ -3,13 +3,19 @@
 Owner: Alan (`security-agents/`, SEC-001 … SEC-013; interim Live Defense UI)
 Branch: `feat/alan/live-defense-phase7c-agent-execution`
 Current task: Phase 7C live authorized first-responder agent execution (not Codex Phase 7B; no RL training; no AUTO-EXECUTE)
-Last remote sync: 2026-10-24, `origin/main` merged into this branch after F1/F7/F8; #412 still OPEN; do not merge #458
-API/contract dependencies: `shared` 0.22.0 first-responder execution records (0.21.0 is merged 7A; 0.20.0 reserved for open #412); Alembic stays 0015; seven AgentSpecs
+Last remote sync: 2026-10-24, `origin/main` `ad282cf4` merged into this branch so GitHub Actions can queue (PR was DIRTY on `96ac5cfb`); #412 still OPEN; do not merge #458
+API/contract dependencies: `shared` 0.22.0 first-responder execution records (0.21.0 is merged 7A; 0.20.0 reserved for open #412); inherits main Alembic 0016 tenant RLS (no competing 7C migration); seven AgentSpecs
 Recent PR/commit: https://github.com/adamissac/ari-ai/pull/458 on `feat/alan/live-defense-phase7c-agent-execution` (leave open for security review of execution trust boundary)
 Blockers: live Anthropic Scout/Diagnose (issue #10, key optional); human/security approval of the Phase 7C PR (do not merge from this agent); Probe still needs AuthorizedScope and is not expanded
-Next action: independent re-review of Codex F1/F7/F8 on #458; leave PR open; do not merge; do not train RL; do not expand Probe/Patch; do not merge Devin fork PRs into #458
+Next action: wait for required GitHub checks including `backend / test`; leave PR open; do not merge; do not train RL; do not expand Probe/Patch; do not merge Devin Reliability into #458
 
 ## Session entries
+
+### 2026-10-24 (merge origin/main so Actions can run; do not merge #458)
+
+- `96ac5cfb` never got GitHub Actions: #458 was DIRTY vs `origin/main` `ad282cf4`. Merged main (tenant RLS 0016, inventory-lite, ledgerlite, #551). Conflicts only changelog + handoff; kept both. Schema **0.22.0**; inherit 0016; #412 keeps **0.20.0**. Probe/Patch not expanded.
+- Executed: `make check` pass (156 files); focused 7A+7C+tenant **96 passed** / 1 skipped; `uv run pytest -q` **833 passed** / 15 skipped. FakeLLM ≠ live Anthropic.
+- Leave #458 **open**. Merge NO-GO.
 
 ### 2026-10-24 (backend test after main merge; do not merge #458)
 
