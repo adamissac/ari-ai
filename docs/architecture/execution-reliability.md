@@ -143,6 +143,16 @@ and control authorization re-checks are untouched; control jobs are exempt from
 backpressure so emergency stop cannot be refused. Project-scoped endpoints use
 `require_project`; non-members get 404.
 
+## Operator notes for control jobs
+
+Resolving a control job `applied` marks the **job** succeeded; the `LiveControl`
+record itself is advanced inside the handler's transaction, which was rolled back
+when the worker died — so it can still show `authorized` until its expiry. Check
+the adapter state when deciding, then reconcile the control record separately.
+`ctx.effect` is per external call; do not nest it. Once any effect is recorded
+`settled`, every later failure of that job ends `recovery_required`, because a
+replay could re-apply it — keep effect-adjacent handlers idempotent anyway.
+
 ## Limitations
 
 * At-least-once, not exactly-once. Handlers that do external work without
