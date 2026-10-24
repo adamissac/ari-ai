@@ -15,7 +15,7 @@ keywords = ["sk-ant-"]
 [[allowlists]]
 description = "Documented placeholders and synthetic fixtures"
 paths = ['''\.env\.example$''']
-regexes = ['''fixture-token-(alice|bob)''', '''replace-me''', '''tok-(alice|bob)''']
+regexes = ['''fixture-token-(alice|bob)''', '''replace-me''']
 
 # Pinned upstream revisions are 40-hex git commit SHAs, not credentials; the generic
 # API-key rule fires on names like OWASP_API_COMMIT. Narrow: only ALL_CAPS *_COMMIT
