@@ -1605,3 +1605,10 @@ generate/replay workloads, execute a policy, train or modify prior artifacts.
 Methodology frozen before calculation; exact existing-action optimum remains
 uncomputed unless a rigorous bound resolves it. Do not equate rule failure with
 fundamental infeasibility or optimistic upper bounds with achievable performance.
+
+Bounds assessment completed on120 existing workloads (source0074562,0.7621s,
+recorded peak RSS30,900,224 bytes). No completion upper bound below90%, no feasible
+oracle/schedule certificate. Existing-action optimum unresolved. Primary product
+recommendation C:deprioritize RL; non-RL assurance evidence packet proposed only.
+Research, training permission and pilot readiness remain separate. See
+docs/research/rl-product-thesis/README.md; all original study bytes unchanged.

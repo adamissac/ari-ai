@@ -239,4 +239,4 @@ Owner requested AI automation and Defense Lab OFF until explicitly enabled. Bran
 
 - IMPLEMENTED / PR review and CI pending **RL-CMDP-009** (Codex), `research/rl-resource-feasibility-001`: owner-approved single600-episode deterministic comparison, frozen acceptance/execution clarification; no training. Runner, analysis and integrity-unit checks implemented; formal launch pending committed source.
 
-- IN_PROGRESS **RL-CMDP-010** (Codex), `research/rl-feasibility-and-product-thesis`: authorized read-only capacity/oracle bounds, control expressiveness and product architecture assessment. No new workloads, policy execution or training. Preserve feasibility001 and v6.
+- IMPLEMENTED / review and CI pending **RL-CMDP-010** (Codex), `research/rl-feasibility-and-product-thesis`: authorized read-only capacity/oracle bounds, control expressiveness and product architecture assessment. No new workloads, policy execution or training. Preserve feasibility001 and v6.

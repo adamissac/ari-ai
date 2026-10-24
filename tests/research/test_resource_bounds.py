@@ -58,3 +58,48 @@ def test_interval_bound_never_excludes_exact_tiny_single_worker_solution():
                 else:
                     optimum = max(optimum, size)
         assert module.completion_upper(list(jobs), workers=1)["completed_upper"] >= optimum
+
+
+def test_retained_bounds_and_original_archive_remain_anchored():
+    import gzip
+    import hashlib
+    import json
+    import subprocess
+
+    root = SCRIPT.parents[2]
+    path = root / "docs/research/rl-product-thesis/bounds/BOUNDS.json"
+    assert (
+        hashlib.sha256(path.read_bytes()).hexdigest()
+        == "5e3fbd649031054e2c85815edd9b168d52cd737fa9204e644c1c9a54ea8f0262"
+    )
+    bounds = json.loads(path.read_text())
+    original = root / module.STUDY
+    index = (original / "STUDY_EVIDENCE.json").read_bytes()
+    assert hashlib.sha256(index).hexdigest() == module.ANCHOR
+    for name, expected in json.loads(index)["files"].items():
+        assert hashlib.sha256((original / name).read_bytes()).hexdigest() == expected
+    assert len(bounds["records"]) == 120
+    for row in bounds["records"]:
+        trace = json.loads(
+            gzip.decompress(
+                (original / f"{row['family']}-{row['seed']:02}-noop.json.gz").read_bytes()
+            )
+        )
+        jobs = [j["arrival"] for j in trace["requests"]]
+        legit = [(j["tick"], j["tick"] + 24, j["work"]) for j in jobs if not j["adversarial"]]
+        assert module.completion_upper(legit)["completed_upper"] == row["completed_upper"]
+        assert (
+            module.coverage(jobs)["offered_work_removable_upper"]
+            == row["offered_work_removable_upper"]
+        )
+        assert (
+            row["observed_completion_lower_B"]
+            <= row["observed_completion_lower_A"]
+            <= row["completed_upper"]
+            <= row["legitimate_jobs"]
+        )
+    # Original analytical source is retained independently of later documentation.
+    raw = subprocess.check_output(
+        ["git", "show", f"{bounds['source_commit']}:scripts/research/resource_bounds.py"], cwd=root
+    )
+    assert hashlib.sha256(raw).hexdigest() == bounds["source_sha256"]

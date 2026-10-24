@@ -9,3 +9,7 @@
 
 Use the [research task issue template](../../.github/ISSUE_TEMPLATE/research_task.md)
 to start a research task. Findings are appended to the relevant RQ entry.
+
+[Read-only RL feasibility and product-thesis assessment](rl-product-thesis/README.md):
+capacity/oracle bounds, control expressiveness, evidence matrix and recommendation
+to deprioritize RL as a near-term dependency. No new experiment or customer control.
