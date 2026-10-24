@@ -18,6 +18,27 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-24 — Cursor (agent, Alan) — Phase 7C CI e2e harness (do not merge #458)
+- Did: required GitHub `e2e` on `c56480da` (PR #458) failed; `backend / test` **passed**. Harness-only fix: e2e snapshot `doc` is a valid `Snapshot` with status **indexing** (not ready) so `list_snapshots` no longer 500s and pages.spec still shows "No indexed snapshot"; 7C mapping created via signed-in CSRF `POST /applications/{id}/deploy-mappings` because Playwright `selectOption` left Attest disabled in the full suite. **Did not** expand Probe/Patch, bump schema, or collide with #412's 0.20.0 (still 0.22.0 / Alembic 0015). **Did not merge #458.**
+- Commands run and results (executed): ruff on `frontend/tests/e2e/stack.py` pass; Snapshot.model_validate of the new indexing doc pass. GitHub CI on the follow-up SHA is the remaining proof.
+- Next: wait for required checks on the new head; leave #458 open for Alan's security review if they pass.
+- Warnings: **leave the PR open**. Execution trust-boundary expansion. No AUTO-EXECUTE. No Probe/Patch expansion.
+
+### 2026-10-24 — Cursor (agent, Alan) — Live Defense Phase 7C agent execution
+- Did: PR https://github.com/adamissac/ari-ai/pull/458 on `feat/alan/live-defense-phase7c-agent-execution` from live `origin/main` `04c562a9` (PR #439 Phase 7A merged). **Left open.** Wired first-responder `live_defense_agent_step` to `security_agents.runtime.run_agent` for **Scout** (mapping+snapshot) and **Diagnose** (after Scout hypotheses). Probe/Patch/Verify privileges not expanded. Trace `skipped_no_prerequisite` until confirmed Probe. Fortify `skipped_no_prerequisite` without independently executed `verification_results`. Persisted `AgentExecutionRecord` (cost, latency, tools, transcript, integrity). `predicted_probability` stays null. Decision `executed` stays false. Schema **0.22.0** additive; Alembic stays **0015**. Open #412 keeps **0.20.0**. Orchestrator `7c.1.0`. Message: `coordination/messages/20261024T064500Z-alan-to-all-live-defense-phase7c-contracts.md`. Eval: `docs/LIVE_DEFENSE_PHASE7C_AGENT_EXECUTION.md`. **Leave PR open** — execution trust-boundary expansion; do not merge from this agent. Did **not** train RL, enable AUTO-EXECUTE, expand Probe/Patch, or grant production.
+- Commands run and results (executed):
+  - `make check` — ruff pass; format 197 files; `shared.export --check` 155 files; examples check pass; schema 0.22.0
+  - `uv run mypy` — Success: no issues found in 40 source files
+  - `uv run pytest -q` — **781 passed**, 15 skipped (opt-in live LLM, Docker, RL package, TSC, specialists cache)
+  - focused 7A+7C+jobs+no-action — 38 passed
+  - live-defense phase4/5/6 + authorize + tests/security — 79 passed
+  - `security-agents` pytest — **592 passed**, 23 skipped
+  - `npm run lint/typecheck` — pass; `npm test --prefix frontend` — **330 passed** / 78 files; transport **35 passed**
+  - Playwright `stack.py` live-defense-phase7a + phase7c — **2 passed** (16.6s). 7C: Scout/Diagnose executed (fake), integrity checked, Fortify/Trace skipped, AUTO-EXECUTE absent
+- Decisions: do not merge. Security review required because first-responder now runs real agent loops. #412 rebases to 0.23.0+ if this lands first. Live Anthropic remains opt-in (issue #10); this e2e used FakeLLM.
+- Next: human/security review of the PR. Do not train RL from these records yet.
+- Warnings: **leave the PR open**. This is not Probe expansion, not AUTO-EXECUTE, not customer production, not Codex Phase 7B.
+
 ### 2026-10-24 — Cursor (agent, Alan) — rebase #439 onto main (docs conflicts)
 - Did: left PR #439 **open** (no merge, no Phase 7B, no RL training, no customer enforcement). GitHub had blocked required checks with **Checks awaiting conflict resolution** on only `CHANGELOG.md` and `docs/planning/SESSION_HANDOFF.md`. Fetched `origin/main` `c5c2b47d` (PR #453) and rebased `cursor/live-defense-first-responder-0044`. Resolved those two files by keeping **both** sides: main’s Unreleased fixture-only research bullet and Adam 2026-10-23 build-recipe handoff, plus this PR’s Phase 7A 0.21.0 Unreleased bullet and Alan 2026-10-24 Codex/Phase 7A handoff entries. Did **not** drop the four Codex security fixes (verified evidence, genuine provider acks, telemetry-window mapping, OFF-mode race). Schema still **0.21.0**; Alembic still `0015`. Main remains 0.19.0 / `0014`. Open #412 still **0.20.0** with no Alembic — no collision, no bump.
 - Commands run and results (executed):

@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Add Live Defense Phase 7C authorized investigative agent execution on the deterministic first-responder: Scout and Diagnose run the real security-agent loop against an owner-attested mapped snapshot; Probe/Patch/Verify privileges are not expanded; Trace still waits for confirmed Probe; Fortify still waits for independently executed verification evidence. Genuine cost/latency/transcript records are persisted; `predicted_probability` stays null; executed investigative output is not threat confirmation. Contract schema 0.22.0 additive (0.20.0 left for open PR #412; Alembic stays 0015). Eval: `docs/LIVE_DEFENSE_PHASE7C_AGENT_EXECUTION.md`. This is an execution trust-boundary expansion and stays open for security review.
+
 - Add Live Defense Phase 7A deterministic first-responder orchestration: server-enforced OFF / MONITOR|SHADOW / ASSISTED RESPONSE (no AUTO-EXECUTE), seven-agent capability registry from real AgentSpecs, runtime↔code correlation only with an owner-attested deploy mapping, analyst handoff that is not delivered without provider confirmation, and versioned decision records for future RL. Patch stays worktree-only; Probe still requires AuthorizedScope; independently authorized controls keep their own expiry/rollback/kill-switch when first-responder is switched OFF. Contract schema 0.21.0 (0.20.0 left for open PR #412). Evidence is never `verified` from Verify eligibility; deploy mappings are resolved against the telemetry window; OFF serializes with dispatch and cancels in-flight first-responder steps. Eval: `docs/LIVE_DEFENSE_PHASE7A_FIRST_RESPONDER.md`.
 
 - Add fixture-only first-responder research observations, proposal masks, source
