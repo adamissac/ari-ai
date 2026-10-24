@@ -525,3 +525,7 @@ RL-CMDP-010 read-only product-thesis audit: archived capacity bounds do not sett
 physical or existing-action safe feasibility. Recommend deprioritize RL as near-term
 product dependency; non-RL evidence-to-regression milestone proposed, not built.
 No old evidence, weights, shared contracts or customer controls changed.
+
+Phase7B research-only first responder: fixture adapter/proposal boundary and Grok
+contract proposal in research/rl-first-responder-orchestration. No production
+interfaces, incidents, workers, controls or checkpoints changed; agreement pending.
