@@ -75,6 +75,156 @@
       "title": "ActorType",
       "type": "string"
     },
+    "AgentCapability": {
+      "additionalProperties": false,
+      "description": "One runtime agent, derived from the real AgentSpec \u2014 not a prompt persona.",
+      "properties": {
+        "capability_class": {
+          "$ref": "#/$defs/AgentCapabilityClass"
+        },
+        "name": {
+          "$ref": "#/$defs/AgentName"
+        },
+        "network": {
+          "enum": [
+            "none",
+            "target-only"
+          ],
+          "title": "Network",
+          "type": "string"
+        },
+        "notes": {
+          "maxLength": 500,
+          "title": "Notes",
+          "type": "string"
+        },
+        "sandbox_profile": {
+          "maxLength": 500,
+          "title": "Sandbox Profile",
+          "type": "string"
+        },
+        "silent_customer_deploy": {
+          "const": false,
+          "default": false,
+          "title": "Silent Customer Deploy",
+          "type": "boolean"
+        },
+        "spec_version": {
+          "maxLength": 500,
+          "title": "Spec Version",
+          "type": "string"
+        },
+        "tools": {
+          "items": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "title": "Tools",
+          "type": "array"
+        },
+        "write_access": {
+          "enum": [
+            "none",
+            "out_dir",
+            "worktree"
+          ],
+          "title": "Write Access",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "spec_version",
+        "capability_class",
+        "tools",
+        "sandbox_profile",
+        "network",
+        "write_access",
+        "silent_customer_deploy",
+        "notes"
+      ],
+      "title": "AgentCapability",
+      "type": "object"
+    },
+    "AgentCapabilityClass": {
+      "enum": [
+        "investigative_readonly",
+        "code_changing",
+        "disruptive_scoped"
+      ],
+      "title": "AgentCapabilityClass",
+      "type": "string"
+    },
+    "AgentCapabilityRegistry": {
+      "additionalProperties": false,
+      "properties": {
+        "agents": {
+          "items": {
+            "$ref": "#/$defs/AgentCapability"
+          },
+          "title": "Agents",
+          "type": "array"
+        },
+        "auto_execute": {
+          "const": false,
+          "default": false,
+          "title": "Auto Execute",
+          "type": "boolean"
+        },
+        "complete": {
+          "title": "Complete",
+          "type": "boolean"
+        },
+        "missing_names": {
+          "items": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "title": "Missing Names",
+          "type": "array"
+        },
+        "orchestrator_version": {
+          "default": "7a.1.0",
+          "maxLength": 500,
+          "title": "Orchestrator Version",
+          "type": "string"
+        },
+        "source": {
+          "default": "security_agents.agents.ALL_SPECS",
+          "maxLength": 500,
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "orchestrator_version",
+        "complete",
+        "agents",
+        "missing_names",
+        "source",
+        "auto_execute"
+      ],
+      "title": "AgentCapabilityRegistry",
+      "type": "object"
+    },
+    "AgentInvocationStatus": {
+      "enum": [
+        "eligible",
+        "blocked",
+        "queued",
+        "skipped_no_mapping",
+        "skipped_no_snapshot",
+        "skipped_mode",
+        "skipped_no_scope",
+        "skipped_no_approval",
+        "skipped_no_patch",
+        "completed_unverified",
+        "failed",
+        "cancelled"
+      ],
+      "title": "AgentInvocationStatus",
+      "type": "string"
+    },
     "AgentName": {
       "enum": [
         "scout",
@@ -391,6 +541,261 @@
       ],
       "title": "AgentStepResult",
       "type": "object"
+    },
+    "AnalystHandoff": {
+      "additionalProperties": false,
+      "properties": {
+        "application_id": {
+          "anyOf": [
+            {
+              "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Application Id"
+        },
+        "assigned_to": {
+          "anyOf": [
+            {
+              "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Assigned To"
+        },
+        "caveat": {
+          "default": "An alert is not delivered until the provider confirms receipt. Confirmed and unverified remain distinct. LLM prose cannot confirm a threat.",
+          "maxLength": 500,
+          "title": "Caveat",
+          "type": "string"
+        },
+        "confirmation": {
+          "$ref": "#/$defs/ConfirmationState",
+          "default": "unverified"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Created By",
+          "type": "string"
+        },
+        "decision_id": {
+          "pattern": "^frd_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Decision Id",
+          "type": "string"
+        },
+        "delivery_attempted_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Delivery Attempted At"
+        },
+        "delivery_confirmed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Delivery Confirmed At"
+        },
+        "delivery_provider": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Delivery Provider"
+        },
+        "delivery_provider_message_id": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Delivery Provider Message Id"
+        },
+        "evidence_event_ids": {
+          "items": {
+            "pattern": "^evt_[0-9A-Za-z_\\-]{8,64}$",
+            "type": "string"
+          },
+          "title": "Evidence Event Ids",
+          "type": "array"
+        },
+        "id": {
+          "pattern": "^ahl_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "recommended_actions": {
+          "items": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "title": "Recommended Actions",
+          "type": "array"
+        },
+        "state": {
+          "$ref": "#/$defs/AnalystHandoffState"
+        },
+        "summary": {
+          "maxLength": 500,
+          "title": "Summary",
+          "type": "string"
+        },
+        "threat_confirmed": {
+          "default": false,
+          "title": "Threat Confirmed",
+          "type": "boolean"
+        },
+        "title": {
+          "maxLength": 500,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "application_id",
+        "decision_id",
+        "state",
+        "confirmation",
+        "title",
+        "summary",
+        "evidence_event_ids",
+        "recommended_actions",
+        "threat_confirmed",
+        "delivery_provider",
+        "delivery_provider_message_id",
+        "delivery_attempted_at",
+        "delivery_confirmed_at",
+        "created_by",
+        "created_at",
+        "assigned_to",
+        "caveat"
+      ],
+      "title": "AnalystHandoff",
+      "type": "object"
+    },
+    "AnalystHandoffCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "assigned_to": {
+          "anyOf": [
+            {
+              "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Assigned To"
+        },
+        "summary": {
+          "maxLength": 500,
+          "title": "Summary",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 500,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "summary",
+        "assigned_to"
+      ],
+      "title": "AnalystHandoffCreate",
+      "type": "object"
+    },
+    "AnalystHandoffDeliveryAck": {
+      "additionalProperties": false,
+      "description": "Provider confirmation that an alert was received. Required before state=delivered.",
+      "properties": {
+        "provider": {
+          "maxLength": 500,
+          "title": "Provider",
+          "type": "string"
+        },
+        "provider_message_id": {
+          "maxLength": 500,
+          "title": "Provider Message Id",
+          "type": "string"
+        },
+        "received_at": {
+          "format": "date-time",
+          "title": "Received At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "provider",
+        "provider_message_id",
+        "received_at"
+      ],
+      "title": "AnalystHandoffDeliveryAck",
+      "type": "object"
+    },
+    "AnalystHandoffState": {
+      "enum": [
+        "draft",
+        "queued",
+        "delivery_pending",
+        "delivered",
+        "delivery_failed",
+        "acknowledged",
+        "investigating",
+        "confirmed",
+        "unverified",
+        "resolved",
+        "cancelled"
+      ],
+      "title": "AnalystHandoffState",
+      "type": "string"
     },
     "AnalystReview": {
       "additionalProperties": false,
@@ -1432,6 +1837,29 @@
       "title": "BehavioralExpectation",
       "type": "object"
     },
+    "BlockedAgent": {
+      "additionalProperties": false,
+      "properties": {
+        "capability_class": {
+          "$ref": "#/$defs/AgentCapabilityClass"
+        },
+        "name": {
+          "$ref": "#/$defs/AgentName"
+        },
+        "reason": {
+          "maxLength": 500,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "reason",
+        "capability_class"
+      ],
+      "title": "BlockedAgent",
+      "type": "object"
+    },
     "Budget": {
       "additionalProperties": false,
       "properties": {
@@ -2397,6 +2825,15 @@
       "title": "ComponentObservationSource",
       "type": "string"
     },
+    "ConfirmationState": {
+      "description": "Confirmed vs unverified stay distinct. LLM prose cannot set confirmed.",
+      "enum": [
+        "unverified",
+        "confirmed"
+      ],
+      "title": "ConfirmationState",
+      "type": "string"
+    },
     "ConnectedApplication": {
       "additionalProperties": false,
       "description": "Owner-registered staging app under watch. Never includes secrets.",
@@ -3054,6 +3491,17 @@
       "title": "ControlTarget",
       "type": "object"
     },
+    "CorrelationConfidence": {
+      "description": "Explicit correlation confidence. Never a probability. UNKNOWN without a mapping.",
+      "enum": [
+        "unknown",
+        "none",
+        "low",
+        "medium"
+      ],
+      "title": "CorrelationConfidence",
+      "type": "string"
+    },
     "DataSensitivity": {
       "enum": [
         "none",
@@ -3498,6 +3946,119 @@
       "title": "DeliveryMode",
       "type": "string"
     },
+    "DeployCommitMapping": {
+      "additionalProperties": false,
+      "properties": {
+        "application_id": {
+          "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Application Id",
+          "type": "string"
+        },
+        "commit_sha": {
+          "pattern": "^[0-9a-f]{40}$",
+          "title": "Commit Sha",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Created By",
+          "type": "string"
+        },
+        "deployed_at": {
+          "format": "date-time",
+          "title": "Deployed At",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^dcm_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "repo_id": {
+          "pattern": "^rep_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Repo Id",
+          "type": "string"
+        },
+        "revoked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revoked At"
+        },
+        "source": {
+          "const": "owner_attested",
+          "default": "owner_attested",
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "application_id",
+        "repo_id",
+        "commit_sha",
+        "deployed_at",
+        "source",
+        "created_by",
+        "created_at",
+        "revoked_at"
+      ],
+      "title": "DeployCommitMapping",
+      "type": "object"
+    },
+    "DeployCommitMappingCreate": {
+      "additionalProperties": false,
+      "description": "Owner-attested deploy-to-commit mapping. Unsigned CI guesses are rejected.",
+      "properties": {
+        "commit_sha": {
+          "pattern": "^[0-9a-f]{40}$",
+          "title": "Commit Sha",
+          "type": "string"
+        },
+        "deployed_at": {
+          "format": "date-time",
+          "title": "Deployed At",
+          "type": "string"
+        },
+        "repo_id": {
+          "pattern": "^rep_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Repo Id",
+          "type": "string"
+        },
+        "source": {
+          "const": "owner_attested",
+          "default": "owner_attested",
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "repo_id",
+        "commit_sha",
+        "deployed_at",
+        "source"
+      ],
+      "title": "DeployCommitMappingCreate",
+      "type": "object"
+    },
     "DevLoginRequest": {
       "additionalProperties": false,
       "properties": {
@@ -3857,6 +4418,21 @@
         "monitoring_event"
       ],
       "title": "EvidenceKind",
+      "type": "string"
+    },
+    "EvidenceLifecycleState": {
+      "description": "UI case states. Recommended is not executed. RL rec is never Executed.",
+      "enum": [
+        "observed",
+        "suspected",
+        "verified",
+        "recommended",
+        "authorized",
+        "executed",
+        "failed",
+        "rolled_back"
+      ],
+      "title": "EvidenceLifecycleState",
       "type": "string"
     },
     "EvidenceRef": {
@@ -4495,6 +5071,643 @@
       ],
       "title": "FindingStatus",
       "type": "string"
+    },
+    "FirstResponderDecision": {
+      "additionalProperties": false,
+      "description": "Versioned decision record. Future RL must beat this baseline. No invented probabilities.",
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/OrchestratorAction"
+        },
+        "application_id": {
+          "anyOf": [
+            {
+              "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Application Id"
+        },
+        "auto_execute": {
+          "const": false,
+          "default": false,
+          "title": "Auto Execute",
+          "type": "boolean"
+        },
+        "blocked_agents": {
+          "items": {
+            "$ref": "#/$defs/BlockedAgent"
+          },
+          "title": "Blocked Agents",
+          "type": "array"
+        },
+        "budget_usd_remaining": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Budget Usd Remaining"
+        },
+        "cancel_reason": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cancel Reason"
+        },
+        "cancelled": {
+          "default": false,
+          "title": "Cancelled",
+          "type": "boolean"
+        },
+        "caveat": {
+          "default": "Deterministic first-responder decision. LLM prose is never proof of a confirmed threat. RL recommendations are not executed defense. AUTO-EXECUTE does not exist.",
+          "maxLength": 500,
+          "title": "Caveat",
+          "type": "string"
+        },
+        "confirmation": {
+          "$ref": "#/$defs/ConfirmationState",
+          "default": "unverified"
+        },
+        "correlation": {
+          "$ref": "#/$defs/RuntimeCodeCorrelation"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "deadline_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Deadline At"
+        },
+        "effective_mode": {
+          "$ref": "#/$defs/FirstResponderIntent"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/EvidenceLifecycleState"
+        },
+        "executed": {
+          "const": false,
+          "default": false,
+          "title": "Executed",
+          "type": "boolean"
+        },
+        "id": {
+          "pattern": "^frd_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "incident_id": {
+          "anyOf": [
+            {
+              "pattern": "^inc_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Incident Id"
+        },
+        "intent_mode": {
+          "$ref": "#/$defs/FirstResponderIntent"
+        },
+        "live_policy_decision_id": {
+          "anyOf": [
+            {
+              "pattern": "^lpd_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Live Policy Decision Id"
+        },
+        "llm_prose_is_not_confirmation": {
+          "const": true,
+          "default": true,
+          "title": "Llm Prose Is Not Confirmation",
+          "type": "boolean"
+        },
+        "loop_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Loop Count",
+          "type": "integer"
+        },
+        "orchestrator_version": {
+          "default": "7a.1.0",
+          "maxLength": 500,
+          "title": "Orchestrator Version",
+          "type": "string"
+        },
+        "outcome_label": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Human later; never auto-assigned as an RL label",
+          "title": "Outcome Label"
+        },
+        "predicted_probability": {
+          "default": null,
+          "title": "Predicted Probability",
+          "type": "null"
+        },
+        "project_id": {
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "q_values": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/ActionScore"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Copied only when frozen v6 inference actually ran",
+          "title": "Q Values"
+        },
+        "recommended_control": {
+          "anyOf": [
+            {
+              "enum": [
+                "noop",
+                "raise_monitoring",
+                "rate_limit",
+                "isolate",
+                "request_reassessment",
+                "escalate_to_human",
+                "block_principal",
+                "block_principal_long",
+                "block_top_principal_long"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recommended Control"
+        },
+        "recommended_is_not_executed": {
+          "const": true,
+          "default": true,
+          "title": "Recommended Is Not Executed",
+          "type": "boolean"
+        },
+        "retry_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Retry Count",
+          "type": "integer"
+        },
+        "selected_agents": {
+          "items": {
+            "$ref": "#/$defs/AgentName"
+          },
+          "title": "Selected Agents",
+          "type": "array"
+        },
+        "simulated": {
+          "default": false,
+          "title": "Simulated",
+          "type": "boolean"
+        },
+        "transition": {
+          "maxLength": 500,
+          "title": "Transition",
+          "type": "string"
+        },
+        "trigger_event_ids": {
+          "items": {
+            "pattern": "^evt_[0-9A-Za-z_\\-]{8,64}$",
+            "type": "string"
+          },
+          "title": "Trigger Event Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "application_id",
+        "created_at",
+        "orchestrator_version",
+        "intent_mode",
+        "effective_mode",
+        "action",
+        "evidence_state",
+        "trigger_event_ids",
+        "live_policy_decision_id",
+        "incident_id",
+        "selected_agents",
+        "blocked_agents",
+        "correlation",
+        "confirmation",
+        "llm_prose_is_not_confirmation",
+        "recommended_control",
+        "recommended_is_not_executed",
+        "executed",
+        "auto_execute",
+        "simulated",
+        "budget_usd_remaining",
+        "deadline_at",
+        "retry_count",
+        "loop_count",
+        "cancelled",
+        "cancel_reason",
+        "transition",
+        "outcome_label",
+        "predicted_probability",
+        "q_values",
+        "caveat"
+      ],
+      "title": "FirstResponderDecision",
+      "type": "object"
+    },
+    "FirstResponderEffectivePermissions": {
+      "additionalProperties": false,
+      "description": "Computed app permissions. Org intent is never copied as effective rights.",
+      "properties": {
+        "application_connected": {
+          "title": "Application Connected",
+          "type": "boolean"
+        },
+        "authorized_scope_active": {
+          "title": "Authorized Scope Active",
+          "type": "boolean"
+        },
+        "auto_execute": {
+          "const": false,
+          "default": false,
+          "title": "Auto Execute",
+          "type": "boolean"
+        },
+        "effective": {
+          "$ref": "#/$defs/FirstResponderIntent"
+        },
+        "enforcement_active": {
+          "title": "Enforcement Active",
+          "type": "boolean"
+        },
+        "intent": {
+          "$ref": "#/$defs/FirstResponderIntent"
+        },
+        "kill_switch_active": {
+          "title": "Kill Switch Active",
+          "type": "boolean"
+        },
+        "monitoring_active": {
+          "title": "Monitoring Active",
+          "type": "boolean"
+        },
+        "org_intent_is_not_app_permissions": {
+          "const": true,
+          "default": true,
+          "title": "Org Intent Is Not App Permissions",
+          "type": "boolean"
+        },
+        "reasons": {
+          "items": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "trusted_mapping": {
+          "title": "Trusted Mapping",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "intent",
+        "effective",
+        "application_connected",
+        "monitoring_active",
+        "enforcement_active",
+        "kill_switch_active",
+        "authorized_scope_active",
+        "trusted_mapping",
+        "reasons",
+        "org_intent_is_not_app_permissions",
+        "auto_execute"
+      ],
+      "title": "FirstResponderEffectivePermissions",
+      "type": "object"
+    },
+    "FirstResponderIntent": {
+      "description": "Server-enforced modes. MONITOR and SHADOW are the same mode.\n\nThere is no AUTO-EXECUTE value. Unknown or auto-execute input fails closed.",
+      "enum": [
+        "off",
+        "monitor",
+        "assisted_response"
+      ],
+      "title": "FirstResponderIntent",
+      "type": "string"
+    },
+    "FirstResponderInvocation": {
+      "additionalProperties": false,
+      "description": "One attempted agent step. Missing execution is skipped, never faked as success.",
+      "properties": {
+        "agent": {
+          "$ref": "#/$defs/AgentName"
+        },
+        "authorized_scope_id": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Authorized Scope Id"
+        },
+        "capability_class": {
+          "$ref": "#/$defs/AgentCapabilityClass"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "decision_id": {
+          "pattern": "^frd_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Decision Id",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^fri_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "independent_of_patch": {
+          "default": false,
+          "title": "Independent Of Patch",
+          "type": "boolean"
+        },
+        "job_id": {
+          "anyOf": [
+            {
+              "pattern": "^job_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Job Id"
+        },
+        "project_id": {
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "provider_mode": {
+          "default": "none",
+          "enum": [
+            "fake",
+            "live",
+            "none"
+          ],
+          "title": "Provider Mode",
+          "type": "string"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "silent_deploy": {
+          "const": false,
+          "default": false,
+          "title": "Silent Deploy",
+          "type": "boolean"
+        },
+        "status": {
+          "$ref": "#/$defs/AgentInvocationStatus"
+        },
+        "worktree_only": {
+          "default": false,
+          "title": "Worktree Only",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "decision_id",
+        "project_id",
+        "agent",
+        "capability_class",
+        "status",
+        "provider_mode",
+        "independent_of_patch",
+        "worktree_only",
+        "silent_deploy",
+        "authorized_scope_id",
+        "job_id",
+        "reason",
+        "created_at"
+      ],
+      "title": "FirstResponderInvocation",
+      "type": "object"
+    },
+    "FirstResponderModeUpdate": {
+      "additionalProperties": false,
+      "description": "Owner-attributable mode change. AUTO-EXECUTE is rejected by parse.",
+      "properties": {
+        "intent": {
+          "$ref": "#/$defs/FirstResponderIntent"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        }
+      },
+      "required": [
+        "intent",
+        "note"
+      ],
+      "title": "FirstResponderModeUpdate",
+      "type": "object"
+    },
+    "FirstResponderModeView": {
+      "additionalProperties": false,
+      "properties": {
+        "auto_execute": {
+          "const": false,
+          "default": false,
+          "title": "Auto Execute",
+          "type": "boolean"
+        },
+        "cancelled_first_responder_jobs": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cancelled First Responder Jobs"
+        },
+        "caveat": {
+          "default": "OFF cancels first-responder jobs only. Independently authorized owned-test controls keep their own expiry, rollback, and kill-switch.",
+          "maxLength": 500,
+          "title": "Caveat",
+          "type": "string"
+        },
+        "independently_authorized_control_jobs": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Independently Authorized Control Jobs"
+        },
+        "intent": {
+          "$ref": "#/$defs/FirstResponderIntent"
+        },
+        "previous_intent": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FirstResponderIntent"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "project_id": {
+          "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "retention_policy_unchanged": {
+          "const": true,
+          "default": true,
+          "title": "Retention Policy Unchanged",
+          "type": "boolean"
+        },
+        "stop_kind": {
+          "$ref": "#/$defs/StopKind",
+          "default": "none"
+        },
+        "updated_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Updated At"
+        },
+        "updated_by": {
+          "anyOf": [
+            {
+              "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Updated By"
+        }
+      },
+      "required": [
+        "project_id",
+        "intent",
+        "updated_by",
+        "updated_at",
+        "previous_intent",
+        "stop_kind",
+        "cancelled_first_responder_jobs",
+        "independently_authorized_control_jobs",
+        "retention_policy_unchanged",
+        "auto_execute",
+        "caveat"
+      ],
+      "title": "FirstResponderModeView",
+      "type": "object"
     },
     "GeneratedTest": {
       "additionalProperties": false,
@@ -6979,6 +8192,25 @@
       "title": "Observation",
       "type": "string"
     },
+    "OrchestratorAction": {
+      "description": "Deterministic first-responder actions. None of these execute a LiveControl.",
+      "enum": [
+        "ignore",
+        "record_observation",
+        "correlate",
+        "investigate",
+        "confirm_with_probe",
+        "propose_worktree_patch",
+        "verify_independently",
+        "recommend_control",
+        "escalate_to_analyst",
+        "defer_budget",
+        "cancel_run",
+        "reject_auto_execute"
+      ],
+      "title": "OrchestratorAction",
+      "type": "string"
+    },
     "Organization": {
       "additionalProperties": false,
       "properties": {
@@ -8586,6 +9818,83 @@
       "title": "RouteWindow",
       "type": "object"
     },
+    "RuntimeCodeCorrelation": {
+      "additionalProperties": false,
+      "properties": {
+        "application_id": {
+          "anyOf": [
+            {
+              "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Application Id"
+        },
+        "commit_sha": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{40}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Commit Sha"
+        },
+        "confidence": {
+          "$ref": "#/$defs/CorrelationConfidence"
+        },
+        "finding_ids_at_commit": {
+          "items": {
+            "pattern": "^fnd_[0-9A-Za-z_\\-]{8,64}$",
+            "type": "string"
+          },
+          "title": "Finding Ids At Commit",
+          "type": "array"
+        },
+        "finding_is_not_proof_of_this_request": {
+          "const": true,
+          "default": true,
+          "title": "Finding Is Not Proof Of This Request",
+          "type": "boolean"
+        },
+        "mapping_id": {
+          "anyOf": [
+            {
+              "pattern": "^dcm_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mapping Id"
+        },
+        "note": {
+          "maxLength": 500,
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "application_id",
+        "mapping_id",
+        "commit_sha",
+        "confidence",
+        "finding_ids_at_commit",
+        "finding_is_not_proof_of_this_request",
+        "note"
+      ],
+      "title": "RuntimeCodeCorrelation",
+      "type": "object"
+    },
     "RuntimeIngestAck": {
       "additionalProperties": false,
       "properties": {
@@ -9321,6 +10630,16 @@
       ],
       "title": "StatusChange",
       "type": "object"
+    },
+    "StopKind": {
+      "description": "OFF is stop-monitoring. Kill-switch is stop-enforcement. They are not the same.",
+      "enum": [
+        "stop_monitoring",
+        "stop_enforcement",
+        "none"
+      ],
+      "title": "StopKind",
+      "type": "string"
     },
     "StreamEvent": {
       "additionalProperties": false,
@@ -10143,5 +11462,5 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "HackATL platform contracts",
-  "x-schema-version": "0.19.0"
+  "x-schema-version": "0.20.0"
 }

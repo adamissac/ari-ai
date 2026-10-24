@@ -109,6 +109,11 @@ from backend.migrate import upgrade  # noqa: E402
 upgrade()
 
 _TABLES = [
+    "analyst_handoffs",
+    "first_responder_invocations",
+    "first_responder_decisions",
+    "deploy_commit_mappings",
+    "first_responder_modes",
     "analyst_reviews",
     "live_policy_decisions",
     "incidents",

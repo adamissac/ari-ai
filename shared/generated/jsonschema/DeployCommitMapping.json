@@ -1,0 +1,76 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "application_id": {
+      "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Application Id",
+      "type": "string"
+    },
+    "commit_sha": {
+      "pattern": "^[0-9a-f]{40}$",
+      "title": "Commit Sha",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "created_by": {
+      "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Created By",
+      "type": "string"
+    },
+    "deployed_at": {
+      "format": "date-time",
+      "title": "Deployed At",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^dcm_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "project_id": {
+      "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "repo_id": {
+      "pattern": "^rep_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Repo Id",
+      "type": "string"
+    },
+    "revoked_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Revoked At"
+    },
+    "source": {
+      "const": "owner_attested",
+      "default": "owner_attested",
+      "title": "Source",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "project_id",
+    "application_id",
+    "repo_id",
+    "commit_sha",
+    "deployed_at",
+    "created_by",
+    "created_at"
+  ],
+  "title": "DeployCommitMapping",
+  "type": "object"
+}

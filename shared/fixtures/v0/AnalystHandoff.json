@@ -1,0 +1,21 @@
+{
+  "application_id": "app_01JFIXTURE0000000000000APP",
+  "assigned_to": null,
+  "caveat": "An alert is not delivered until the provider confirms receipt. Confirmed and unverified remain distinct. LLM prose cannot confirm a threat.",
+  "confirmation": "unverified",
+  "created_at": "2026-10-17T01:00:00Z",
+  "created_by": "usr_01JFIXTURE0000000000000USR",
+  "decision_id": "frd_01JFIXTURE0000000000000FRD",
+  "delivery_attempted_at": null,
+  "delivery_confirmed_at": null,
+  "delivery_provider": null,
+  "delivery_provider_message_id": null,
+  "evidence_event_ids": [],
+  "id": "ahl_01JFIXTURE0000000000000AHL",
+  "project_id": "prj_01JFIXTURE0000000000000PRJ",
+  "recommended_actions": [],
+  "state": "delivery_pending",
+  "summary": "First-responder recorded an observation. Not a confirmed threat.",
+  "threat_confirmed": false,
+  "title": "Owned-test ingest spike"
+}
