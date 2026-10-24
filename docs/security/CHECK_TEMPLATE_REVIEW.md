@@ -44,9 +44,9 @@ def _client():
     return TestClient(create_app())
 
 
-PATH = "/payments/pay_a1"
-OWNER_HEADERS = {"Authorization": "Bearer fixture-token-alice"}
-OTHER_HEADERS = {"Authorization": "Bearer fixture-token-bob"}
+PATH = '/payments/pay_a1'
+OWNER_HEADERS = {"Authorization": 'Bearer fixture-token-alice'}
+OTHER_HEADERS = {"Authorization": 'Bearer fixture-token-bob'}
 DENIED = [403, 404]
 
 
@@ -96,13 +96,13 @@ def _client():
     return TestClient(create_app())
 
 
-CREATE_PATH = "/refunds"
-READ_PATH = "/payments/pay_a1"
-HEADERS = {"Authorization": "Bearer fixture-token-alice"}
-BOUND = Decimal("120.00")
-ACCUMULATED_FIELD = "refunded"
-FULL_BODY = {"payment_id": "pay_a1", "amount": "120.00"}
-EXTRA_BODY = {"payment_id": "pay_a1", "amount": "1.00"}
+CREATE_PATH = '/refunds'
+READ_PATH = '/payments/pay_a1'
+HEADERS = {"Authorization": 'Bearer fixture-token-alice'}
+BOUND = Decimal('120.00')
+ACCUMULATED_FIELD = 'refunded'
+FULL_BODY = {'payment_id': 'pay_a1', 'amount': '120.00'}
+EXTRA_BODY = {'payment_id': 'pay_a1', 'amount': '1.00'}
 
 
 def test_in_bounds_request_is_accepted():
@@ -163,8 +163,8 @@ def _client():
     return TestClient(create_app())
 
 
-PATH = "/payments/pay_a1"
-AUTH_HEADERS = {"Authorization": "Bearer fixture-token-alice"}
+PATH = '/payments/pay_a1'
+AUTH_HEADERS = {"Authorization": 'Bearer fixture-token-alice'}
 DENIED = [401, 403]
 
 
@@ -216,11 +216,11 @@ def _client():
     return TestClient(create_app())
 
 
-PATH = "/refunds"
-METHOD = "post"
-BODY = {"payment_id": "pay_a1", "amount": "120.00"}
-RESTRICTED_HEADERS = {"Authorization": "Bearer fixture-token-bob"}
-PERMITTED_HEADERS = {"Authorization": "Bearer fixture-token-alice"}
+PATH = '/refunds'
+METHOD = 'post'
+BODY = {'payment_id': 'pay_a1', 'amount': '120.00'}
+RESTRICTED_HEADERS = {"Authorization": 'Bearer fixture-token-bob'}
+PERMITTED_HEADERS = {"Authorization": 'Bearer fixture-token-alice'}
 DENIED = [401, 403, 404]
 
 
@@ -229,12 +229,15 @@ def test_restricted_identity_is_denied():
     RESULT["restricted_status"] = resp.status_code
     RESULT["restricted_leaked_or_mutated"] = resp.status_code < 400
     assert resp.status_code in DENIED, (
-        f"expected one of {DENIED} for a lower-privileged identity, observed {resp.status_code}"
+        f"expected one of {DENIED} for a lower-privileged identity, "
+        f"observed {resp.status_code}"
     )
 
 
 def test_permitted_identity_retains_access():
     resp = _client().request(METHOD, PATH, json=BODY, headers=PERMITTED_HEADERS)
     RESULT["permitted_status"] = resp.status_code
-    assert resp.status_code < 400, f"permitted identity lost legitimate access: {resp.status_code}"
+    assert resp.status_code < 400, (
+        f"permitted identity lost legitimate access: {resp.status_code}"
+    )
 ```
