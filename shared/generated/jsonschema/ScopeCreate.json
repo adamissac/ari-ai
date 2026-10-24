@@ -4,6 +4,7 @@
       "description": "Probe template-library categories (SEC-005) plus published V0 fixture aliases.\n\nCanonical ids are the Probe library values. The two fixture strings are the\nsame categories and canonicalize onto them; they remain valid stored values\nso published ``AuthorizedScope`` fixtures round-trip unchanged.",
       "enum": [
         "access_control.ownership",
+        "access_control.authentication",
         "input_validation.bounds",
         "authorization.ownership",
         "input.bounds"

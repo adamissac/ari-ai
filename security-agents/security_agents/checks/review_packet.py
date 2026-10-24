@@ -21,6 +21,10 @@ SAMPLES: dict[str, dict[str, Any]] = {
         "owner_identity": "alice",
         "other_identity": "bob",
     },
+    "access_control.authentication@1": {
+        "route_id": "payment_detail",
+        "identity": "alice",
+    },
     "input_validation.bounds@1": {
         "route_id": "create_refund",
         "read_route_id": "payment_detail",

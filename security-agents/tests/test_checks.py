@@ -9,7 +9,13 @@ from __future__ import annotations
 
 import pytest
 
-from security_agents.checks.library import BOUNDS, OWNERSHIP, default_library, empty_library
+from security_agents.checks.library import (
+    AUTHENTICATION,
+    BOUNDS,
+    OWNERSHIP,
+    default_library,
+    empty_library,
+)
 from security_agents.contracts import AgentName, ErrorCode, PlatformError
 from security_agents.scope_guard import Decision
 from security_agents.tools import CheckRunner, recipe_from_snapshot
@@ -39,9 +45,13 @@ def probe_ctx(intel, scope=None):
 
 def test_library_lists_runnable_templates(library):
     refs = {t["ref"] for t in library.list_public()}
-    assert refs == {OWNERSHIP.ref, BOUNDS.ref}
+    assert refs == {OWNERSHIP.ref, BOUNDS.ref, AUTHENTICATION.ref}
     assert all(t["runnable"] for t in library.list_public())
-    assert library.categories() == {"access_control.ownership", "input_validation.bounds"}
+    assert library.categories() == {
+        "access_control.ownership",
+        "access_control.authentication",
+        "input_validation.bounds",
+    }
 
 
 def test_unreviewed_library_is_not_runnable():

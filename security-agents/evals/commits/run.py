@@ -47,12 +47,24 @@ def push_case(case: dict, run_tag: str) -> str:
 
 
 def score(cases: list[dict], shas: dict[str, str]) -> dict:
+    payload = json.dumps({"cases": cases, "shas": shas})
+    if os.environ.get("ARI_API_BASE"):
+        proc = subprocess.run(
+            [sys.executable, str(HERE / "score_api.py")],
+            input=payload,
+            capture_output=True,
+            text=True,
+        )
+        line = next((ln for ln in proc.stdout.splitlines() if ln.startswith('{"results"')), None)
+        if line:
+            return json.loads(line)
+        raise SystemExit(f"API scorer failed: {proc.stderr[-400:]}")
     ssh = shlex.split(os.environ["ARI_EVAL_SSH"])
     script = (
         "cat > /tmp/ari_eval_score.py <<'PY'\n"
         + (HERE / "score.py").read_text()
         + "\nPY\npython /tmp/ari_eval_score.py <<'JSON'\n"
-        + json.dumps({"cases": cases, "shas": shas})
+        + payload
         + "\nJSON\n"
     )
     proc = None
