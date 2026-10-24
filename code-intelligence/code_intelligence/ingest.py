@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import os
 import re
 import selectors
 import subprocess
+import threading
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path, PurePosixPath
@@ -78,7 +80,7 @@ class GitReader:
         prefix = normalise_prefix(include_prefix)
         self.prefix = prefix + "/" if prefix else ""
 
-    def run(self, *args: str, limit: int | None = None) -> bytes:
+    def run(self, *args: str, limit: int | None = None, stdin: bytes | None = None) -> bytes:
         # Never inherit Git tracing, object replacement, alternate worktrees or caller config.
         env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
         env.update(
@@ -106,8 +108,24 @@ class GitReader:
         maximum = limit or self.limits.max_tree_bytes
         deadline = time.monotonic() + self.limits.git_timeout_seconds
         data = bytearray()
-        with subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as proc:
+        with subprocess.Popen(
+            cmd,
+            env=env,
+            stdin=subprocess.PIPE if stdin is not None else None,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        ) as proc:
             assert proc.stdout is not None and proc.stderr is not None
+            if stdin is not None:
+                assert proc.stdin is not None
+                feed = proc.stdin
+
+                def write() -> None:  # a thread, so a full stdout pipe cannot deadlock us
+                    with contextlib.suppress(BrokenPipeError):
+                        feed.write(stdin)
+                    feed.close()
+
+                threading.Thread(target=write, daemon=True).start()
             try:
                 with selectors.DefaultSelector() as selector:
                     selector.register(proc.stdout, selectors.EVENT_READ, True)
@@ -197,6 +215,8 @@ class GitReader:
         rules.sort(key=lambda x: (len(x[0]), x[0]))
         files: list[SourceFile] = []
         total = 0
+        # Decisions in tree order (an issue, or a blob to read), so issues keep their order.
+        plan: list[IndexIssue | tuple[str, str, PurePosixPath]] = []
         for path, oid, _, size in entries:
             pure = PurePosixPath(path)
             reason = None
@@ -233,15 +253,23 @@ class GitReader:
                 if result.include is not None:
                     ignored = result.include
             if reason or ignored:
-                issues.append(IndexIssue(path=path, reason=reason or "ignored at pinned SHA"))
+                plan.append(IndexIssue(path=path, reason=reason or "ignored at pinned SHA"))
                 continue
             if pure.suffix not in {".py", ".md", ".rst", ".txt", ".toml", ".json", ".yaml", ".yml"}:
-                issues.append(IndexIssue(path=path, reason="unsupported format"))
+                plan.append(IndexIssue(path=path, reason="unsupported format"))
                 continue
             total += size
             if total > self.limits.max_total_bytes:
                 raise IntelligenceError("Repository exceeds max_total_bytes")
-            raw = self.run("cat-file", "blob", oid, limit=self.limits.max_file_bytes)
+            plan.append((path, oid, pure))
+        # One `git cat-file --batch` for every selected blob instead of a process per file.
+        blobs = self._blobs([item[1] for item in plan if not isinstance(item, IndexIssue)], total)
+        for item in plan:
+            if isinstance(item, IndexIssue):
+                issues.append(item)
+                continue
+            path, oid, pure = item
+            raw = blobs[oid]
             try:
                 content = raw.decode("utf-8")
             except UnicodeDecodeError:
@@ -272,3 +300,24 @@ class GitReader:
                 )
             )
         return tree, files, issues
+
+    def _blobs(self, oids: list[str], total: int) -> dict[str, bytes]:
+        if not oids:
+            return {}
+        out = self.run(
+            "cat-file",
+            "--batch",
+            stdin="".join(f"{oid}\n" for oid in oids).encode(),
+            limit=total + 128 * len(oids),
+        )
+        blobs: dict[str, bytes] = {}
+        pos = 0
+        for oid in oids:
+            end = out.index(b"\n", pos)
+            header = out[pos:end].split()
+            if len(header) != 3 or header[0].decode() != oid or header[1] != b"blob":
+                raise IntelligenceError("Git blob read failed")
+            size = int(header[2])
+            blobs[oid] = out[end + 1 : end + 1 + size]
+            pos = end + 1 + size + 1  # content, then a newline
+        return blobs
