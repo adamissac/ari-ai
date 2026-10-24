@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import json
 import os
+import threading
+from datetime import timedelta
 
 import pytest
 from helpers import add_member
@@ -37,6 +39,8 @@ from .transports import (
     fake_provider,
     gateway_factory,
 )
+
+from security_agents.llm.providers import FakeTurn
 
 pytest.importorskip("security_agents")
 
@@ -554,6 +558,396 @@ def test_h_agent_output_manipulation(staging, report):
 
 
 # ---------------------------------------------------------------------------
+# Scenario I — concurrent workers: two workers draining the same queue must
+# claim each step exactly once (SKIP LOCKED), never double-execute an agent.
+# ---------------------------------------------------------------------------
+
+
+def test_i_concurrent_workers(staging, report):
+    alice, bob = staging.login("alice"), staging.login("bob")
+    app = staging.create_project(alice, bob)
+    repo, sha = staging.checkout_owned_repo("repo-i")
+    staging.bind_repo(app, repo)
+    staging.index_snapshot(app.repo_id, sha)
+    staging.register_app(app)
+    staging.issue_token(app)
+    staging.attest_mapping(app, commit_sha=sha)
+    staging.set_mode(alice, app.project_id, "assisted_response")
+
+    scripts = all_role_scripts(repo / "target")
+    fake = fake_provider(repo / "target", scripts=scripts)
+    staging.use_gateway(gateway_factory(fake))
+
+    assert staging.ingest(alice, app).status_code == 202
+
+    errors: list[BaseException] = []
+
+    def run() -> None:
+        try:
+            staging.drain(max_jobs=60)
+        except BaseException as exc:  # noqa: BLE001 - surfaced by assertion below
+            errors.append(exc)
+
+    threads = [threading.Thread(target=run) for _ in range(2)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=120)
+    assert all(not t.is_alive() for t in threads), "a worker thread hung"
+    assert not errors, f"concurrent drains raised: {errors}"
+
+    decisions = staging.decisions(alice, app.project_id)
+    assert len(decisions) == 1
+    inv = staging.by_agent(staging.invocations(alice, app.project_id))
+    assert inv["scout"]["status"] == INV.executed.value
+    assert inv["diagnose"]["status"] == INV.executed.value
+    # Exactly one invocation row per agent and exactly the scripted number of
+    # provider calls per role — no worker re-ran a claimed step.
+    assert sum(1 for i in inv.values() if i["agent"] == "scout") == 1
+    assert sum(1 for i in inv.values() if i["agent"] == "diagnose") == 1
+    scout_calls = sum(1 for c in fake.calls if c.agent.value == "scout")
+    diag_calls = sum(1 for c in fake.calls if c.agent.value == "diagnose")
+    assert scout_calls == len(scripts[RuntimeAgentName.SCOUT])
+    assert diag_calls == len(scripts[RuntimeAgentName.DIAGNOSE])
+    report.check(
+        "concurrent drains: single execution",
+        (len(scripts[RuntimeAgentName.SCOUT]), len(scripts[RuntimeAgentName.DIAGNOSE])),
+        (scout_calls, diag_calls),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Scenario J — queue redelivery after a persisted result: re-claiming a
+# finished agent-step job must be an idempotent no-op, not a second execution.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.live_defense_fault
+def test_j_queue_redelivery(staging, report):
+    alice, bob = staging.login("alice"), staging.login("bob")
+    app = staging.create_project(alice, bob)
+    repo, sha = staging.checkout_owned_repo("repo-j")
+    staging.bind_repo(app, repo)
+    staging.index_snapshot(app.repo_id, sha)
+    staging.register_app(app)
+    staging.issue_token(app)
+    staging.attest_mapping(app, commit_sha=sha)
+    staging.set_mode(alice, app.project_id, "monitor")
+
+    scripts = all_role_scripts(repo / "target")
+    fake = fake_provider(repo / "target", scripts=scripts)
+    staging.use_gateway(gateway_factory(fake))
+
+    assert staging.ingest(alice, app).status_code == 202
+    staging.drain()
+
+    inv = staging.by_agent(staging.invocations(alice, app.project_id))
+    assert inv["scout"]["status"] == INV.executed.value
+    transcripts_before = len(staging.artifact_rows(app.project_id, kind="llm_transcript"))
+    calls_before = len(fake.calls)
+
+    # Force the succeeded scout step job back onto the queue (at-least-once
+    # redelivery after a worker/network failure that lost the ack).
+    scout_job = next(
+        j
+        for j in staging.job_rows("live_defense_agent_step")
+        if j["status"] == "succeeded"
+        and json.dumps(j["payload"]).find(inv["scout"]["id"]) >= 0
+    )
+    staging.revive_job(scout_job["id"])
+    staging.drain()
+
+    inv = staging.by_agent(staging.invocations(alice, app.project_id))
+    assert inv["scout"]["status"] == INV.executed.value
+    assert len(staging.decisions(alice, app.project_id)) == 1
+    # No second model call, no second transcript: the replay was detected.
+    assert len(fake.calls) == calls_before
+    assert len(staging.artifact_rows(app.project_id, kind="llm_transcript")) == transcripts_before
+    report.check(
+        "redelivered step idempotent",
+        "no new calls/artifacts",
+        (len(fake.calls) - calls_before, 0),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Scenario K — provider failure after partial model output: a truncated turn
+# followed by provider death fails honestly with the partial turn retained.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.live_defense_fault
+def test_k_provider_failure_after_partial_output(staging, report):
+    alice, bob = staging.login("alice"), staging.login("bob")
+    app = staging.create_project(alice, bob)
+    repo, sha = staging.checkout_owned_repo("repo-k")
+    staging.bind_repo(app, repo)
+    staging.index_snapshot(app.repo_id, sha)
+    staging.register_app(app)
+    staging.issue_token(app)
+    staging.attest_mapping(app, commit_sha=sha)
+    staging.set_mode(alice, app.project_id, "monitor")
+
+    scripts = all_role_scripts(repo / "target")
+    # Scout's first turn is a truncated, non-submitting partial response; the
+    # provider then dies on the follow-up call.
+    scripts[RuntimeAgentName.SCOUT] = [
+        lambda _req: FakeTurn(
+            text='{"hypotheses": [{"title": "ownership check missing on paym',
+            stop_reason="max_tokens",
+        ),
+        *scripts[RuntimeAgentName.SCOUT],
+    ]
+    flaky = FailAfterCalls(
+        fake_provider(repo / "target", scripts=scripts), agents={"scout"}, succeed=1
+    )
+    staging.use_gateway(gateway_factory(flaky))
+
+    assert staging.ingest(alice, app).status_code == 202
+    staging.drain()
+
+    inv = staging.by_agent(staging.invocations(alice, app.project_id))
+    scout = inv["scout"]
+    assert scout["status"] == INV.failed.value
+    assert scout["execution"]["error_code"] == "LLM_UNAVAILABLE"
+    assert scout["execution"]["evidence_verified"] is False
+    assert scout["execution"]["confirmation"] == "unverified"
+    # The partial turn was persisted in the transcript, not silently dropped.
+    _, transcript = staging.artifact_json(scout["execution"]["transcript_artifact_id"])
+    assert "paym" in json.dumps(transcript)
+    # Downstream agents are honestly skipped, never fabricated as executed.
+    assert inv["diagnose"]["status"] == INV.skipped_no_prerequisite.value
+    report.check(
+        "partial output + provider failure", "LLM_UNAVAILABLE", scout["execution"]["error_code"]
+    )
+
+
+# ---------------------------------------------------------------------------
+# Scenario L — OFF during an active provider call: the operator flips OFF
+# inside Diagnose's in-flight call; completed evidence is retained and nothing
+# further executes.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.live_defense_fault
+def test_l_off_during_active_provider_call(staging, report):
+    alice, bob = staging.login("alice"), staging.login("bob")
+    app = staging.create_project(alice, bob)
+    repo, sha = staging.checkout_owned_repo("repo-l")
+    staging.bind_repo(app, repo)
+    staging.index_snapshot(app.repo_id, sha)
+    staging.register_app(app)
+    staging.issue_token(app)
+    staging.attest_mapping(app, commit_sha=sha)
+    staging.set_mode(alice, app.project_id, "monitor")
+
+    scripts = all_role_scripts(repo / "target")
+    fake = fake_provider(repo / "target", scripts=scripts)
+    scout_turns = len(scripts[RuntimeAgentName.SCOUT])
+    hooked = HookProvider(
+        fake,
+        when=scout_turns + 1,  # first Diagnose call — mid-investigation
+        on_call=lambda _req: staging.set_mode(alice, app.project_id, "off"),
+    )
+    staging.use_gateway(gateway_factory(hooked))
+
+    assert staging.ingest(alice, app).status_code == 202
+    staging.drain()
+
+    inv = staging.by_agent(staging.invocations(alice, app.project_id))
+    # Scout completed before OFF; its evidence is retained.
+    assert inv["scout"]["status"] == INV.executed.value
+    assert inv["scout"]["execution"]["transcript_artifact_id"]
+    # Diagnose was interrupted mid-call or never permitted to continue.
+    assert inv["diagnose"]["status"] in {INV.cancelled.value, INV.failed.value, INV.queued.value}
+    assert inv["diagnose"]["status"] != INV.executed.value
+    # No control/execution jobs were created after OFF.
+    assert not any(j["kind"].startswith("live_defense_execute") for j in staging.job_rows())
+    report.check(
+        "OFF during active call",
+        "scout retained / diagnose not executed",
+        (inv["scout"]["status"], inv["diagnose"]["status"]),
+        ok=inv["diagnose"]["status"] != INV.executed.value,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Scenario M — stale deployment mapping: telemetry from a window that predates
+# the only trusted mapping must not be attributed to that mapping's commit.
+# ---------------------------------------------------------------------------
+
+
+def test_m_stale_deployment_mapping(staging, report):
+    alice, bob = staging.login("alice"), staging.login("bob")
+    app = staging.create_project(alice, bob)
+    repo, sha = staging.checkout_owned_repo("repo-m")
+    staging.bind_repo(app, repo)
+    staging.index_snapshot(app.repo_id, sha)
+    staging.register_app(app)
+    staging.issue_token(app)
+    # The mapping was deployed only minutes ago; the telemetry window is hours old.
+    staging.attest_mapping(app, commit_sha=sha, deployed_at=utcnow() - timedelta(minutes=5))
+    staging.set_mode(alice, app.project_id, "monitor")
+
+    old_batch = staging.telemetry_batch(utcnow() - timedelta(hours=2))
+    resp = staging.ingest(alice, app, old_batch)
+    assert resp.status_code == 202, resp.text
+    staging.drain()
+
+    decisions = staging.decisions(alice, app.project_id)
+    assert decisions and decisions[0]["correlation"]["confidence"] == "unknown"
+    inv = staging.by_agent(staging.invocations(alice, app.project_id))
+    # Not attributed to sha: no agent may read code for a window the mapping
+    # does not cover.
+    for agent in ("scout", "diagnose"):
+        assert inv[agent]["status"] == INV.skipped_no_mapping.value
+    assert not staging.artifact_rows(app.project_id, kind="llm_transcript")
+    report.check(
+        "pre-mapping window not investigated",
+        INV.skipped_no_mapping.value,
+        inv["scout"]["status"],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Scenario N — artifact corruption / missing artifact: the content-addressed
+# store must refuse corrupted or missing bytes instead of serving them.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.live_defense_fault
+def test_n_artifact_corruption_and_missing(staging, report):
+    alice, bob = staging.login("alice"), staging.login("bob")
+    app = staging.create_project(alice, bob)
+    repo, sha = staging.checkout_owned_repo("repo-n")
+    staging.bind_repo(app, repo)
+    staging.index_snapshot(app.repo_id, sha)
+    staging.register_app(app)
+    staging.issue_token(app)
+    staging.attest_mapping(app, commit_sha=sha)
+    staging.set_mode(alice, app.project_id, "monitor")
+    assert staging.ingest(alice, app).status_code == 202
+    staging.drain()
+
+    inv = staging.by_agent(staging.invocations(alice, app.project_id))
+    art_id = inv["scout"]["execution"]["transcript_artifact_id"]
+    path = staging.artifact_path(art_id)
+    original = path.read_bytes()
+
+    # Corrupted bytes fail the sha256 integrity check.
+    path.write_bytes(b"tampered-bytes")
+    with pytest.raises(OSError, match="integrity"):
+        staging.artifact_json(art_id)
+    report.check("corrupt artifact refused", "integrity error", "OSError raised")
+
+    # Missing bytes fail loudly as well.
+    path.unlink()
+    with pytest.raises(FileNotFoundError):
+        staging.artifact_json(art_id)
+    report.check("missing artifact refused", "FileNotFoundError", "FileNotFoundError raised")
+
+    path.write_bytes(original)
+    meta, _data = staging.artifact_json(art_id)  # store recovers cleanly
+    assert meta["sha256"]
+
+
+# ---------------------------------------------------------------------------
+# Scenario O — cross-project artifact access: another tenant cannot read this
+# project's execution artifacts over the API.
+# ---------------------------------------------------------------------------
+
+
+def test_o_cross_project_artifact_access(staging, report):
+    alice, bob = staging.login("alice"), staging.login("bob")
+    carol = staging.login("carol")
+    app = staging.create_project(alice, bob)
+    repo, sha = staging.checkout_owned_repo("repo-o")
+    staging.bind_repo(app, repo)
+    staging.index_snapshot(app.repo_id, sha)
+    staging.register_app(app)
+    staging.issue_token(app)
+    staging.attest_mapping(app, commit_sha=sha)
+    staging.set_mode(alice, app.project_id, "monitor")
+    assert staging.ingest(alice, app).status_code == 202
+    staging.drain()
+
+    inv = staging.by_agent(staging.invocations(alice, app.project_id))
+    art_id = inv["scout"]["execution"]["transcript_artifact_id"]
+    assert alice.get(f"/api/v1/artifacts/{art_id}").status_code == 200
+    denied = carol.get(f"/api/v1/artifacts/{art_id}")
+    assert denied.status_code == 404
+    report.check("cross-tenant artifact read", 404, denied.status_code)
+
+
+# ---------------------------------------------------------------------------
+# Scenario P — duplicate telemetry ingestion: replaying the same window is
+# idempotent — one window row, one event, one shadow job, one decision.
+# ---------------------------------------------------------------------------
+
+
+def test_p_duplicate_telemetry(staging, report):
+    alice, bob = staging.login("alice"), staging.login("bob")
+    app = staging.create_project(alice, bob)
+    repo, sha = staging.checkout_owned_repo("repo-p")
+    staging.bind_repo(app, repo)
+    staging.index_snapshot(app.repo_id, sha)
+    staging.register_app(app)
+    staging.issue_token(app)
+    staging.attest_mapping(app, commit_sha=sha)
+    staging.set_mode(alice, app.project_id, "monitor")
+
+    batch = staging.telemetry_batch(utcnow())
+    assert staging.ingest(alice, app, batch).status_code == 202
+    staging.drain()
+    windows_after_first = staging.table_count(staging.T.runtime_windows, app.project_id)
+    events_after_first = staging.table_count(staging.T.monitoring_events, app.project_id)
+    replay = staging.ingest(alice, app, batch)
+    assert replay.status_code == 202
+    staging.drain()
+
+    # The replayed window is deduped: no new window, no new monitoring events.
+    assert staging.table_count(staging.T.runtime_windows, app.project_id) == windows_after_first
+    assert staging.table_count(staging.T.monitoring_events, app.project_id) == events_after_first
+    assert len(staging.decisions(alice, app.project_id)) == 1
+    inv = staging.by_agent(staging.invocations(alice, app.project_id))
+    assert inv["scout"]["status"] == INV.executed.value
+    # One transcript per executed agent — the replay spawned no second run.
+    transcripts = staging.artifact_rows(app.project_id, kind="llm_transcript")
+    executed = [i for i in inv.values() if i["status"] == INV.executed.value]
+    assert len(transcripts) == len(executed)
+    report.check("duplicate window deduped", "1 window/1 decision/1 run", "deduped")
+
+
+# ---------------------------------------------------------------------------
+# Scenario Q — invalid authorization scope: an expired scope is no scope.
+# Probe must be refused while read-only agents still run.
+# ---------------------------------------------------------------------------
+
+
+def test_q_invalid_authorization_scope(staging, report):
+    alice, bob = staging.login("alice"), staging.login("bob")
+    app = staging.create_project(alice, bob, approve_scope=True)
+    repo, sha = staging.checkout_owned_repo("repo-q")
+    staging.bind_repo(app, repo)
+    staging.index_snapshot(app.repo_id, sha)
+    staging.register_app(app)
+    staging.issue_token(app)
+    staging.attest_mapping(app, commit_sha=sha)
+    staging.set_mode(alice, app.project_id, "assisted_response")
+
+    assert staging.expire_scopes(app.project_id) == 1
+    assert staging.ingest(alice, app).status_code == 202
+    staging.drain()
+
+    inv = staging.by_agent(staging.invocations(alice, app.project_id))
+    assert inv["scout"]["status"] == INV.executed.value
+    assert inv["probe"]["status"] == INV.skipped_no_scope.value
+    report.check(
+        "expired scope -> probe refused", INV.skipped_no_scope.value, inv["probe"]["status"]
+    )
+
+
+# ---------------------------------------------------------------------------
 # Opt-in live-provider check. NOT part of the deterministic suite; requires
 # RUN_LIVE_LLM_EVAL=1 and a real key (HACKATL_LIVE_ANTHROPIC_API_KEY), and it
 # costs money. Never run in default CI.
@@ -588,3 +982,68 @@ def test_live_provider_scout_executes(staging, settings_override, report):
     assert scout["status"] == INV.executed.value
     assert scout["provider_mode"] == "live"
     report.check("live scout provider_mode", "live", scout["provider_mode"])
+
+
+# ---------------------------------------------------------------------------
+# Scenario R — OFF suppresses dispatch: an anomalous window ingested while the
+# mode is OFF must not start an investigation (no executed agent work).
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.live_defense_fault
+def test_r_off_suppresses_dispatch(staging, report):
+    alice, bob = staging.login("alice"), staging.login("bob")
+    app = staging.create_project(alice, bob)
+    repo, sha = staging.checkout_owned_repo("repo-r")
+    staging.bind_repo(app, repo)
+    staging.index_snapshot(app.repo_id, sha)
+    staging.register_app(app)
+    staging.issue_token(app)
+    staging.attest_mapping(app, commit_sha=sha)
+    staging.set_mode(alice, app.project_id, "monitor")
+    fake = fake_provider(repo / "target")
+    staging.use_gateway(gateway_factory(fake))
+    assert staging.ingest(alice, app).status_code == 202
+    staging.drain()
+    first_ids = {d["id"] for d in staging.decisions(alice, app.project_id)}
+    calls_before = len(fake.calls)
+
+    staging.set_mode(alice, app.project_id, "off")
+    end = utcnow()
+    batch = {
+        "source": "owned_staging",
+        "window_start": (end - timedelta(minutes=1)).isoformat(),
+        "window_end": end.isoformat(),
+        "routes": [
+            {
+                "route": "GET /admin/users",
+                "requests": 20,
+                "status_4xx": 19,
+                "auth_failures": 19,
+            }
+        ],
+    }
+    r = staging.ingest(alice, app, batch)
+    assert r.status_code == 202 and r.json()["anomalies"] >= 1
+    staging.drain()
+
+    new_decisions = [
+        d for d in staging.decisions(alice, app.project_id) if d["id"] not in first_ids
+    ]
+    # Dispatch is suppressed: either no decision is recorded at all, or any new
+    # decision is cancelled. No agent step may execute for it either way.
+    assert all(d["cancelled"] for d in new_decisions)
+    new_decision_ids = {d["id"] for d in new_decisions}
+    post_off = [
+        i
+        for i in staging.invocations(alice, app.project_id)
+        if i["decision_id"] in new_decision_ids
+    ]
+    assert all(i["status"] != INV.executed.value for i in post_off)
+    # No model call ran after OFF.
+    assert len(fake.calls) == calls_before
+    report.check(
+        "post-OFF window suppressed",
+        "no executed work",
+        (len(new_decisions), len(fake.calls) - calls_before),
+    )

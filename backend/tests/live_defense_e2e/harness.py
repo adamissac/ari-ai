@@ -31,6 +31,7 @@ from backend.db import (
     analyst_handoffs,
     artifacts,
     audit_events,
+    authorized_scopes,
     first_responder_decisions,
     first_responder_invocations,
     jobs,
@@ -398,6 +399,36 @@ class OwnedStaging:
         """Make a backoff-queued job claimable immediately (failure-injection tests)."""
         with transaction() as conn:
             conn.execute(sa.update(jobs).where(jobs.c.id == job_id).values(run_after=sa.func.now()))
+
+    @staticmethod
+    def revive_job(job_id: str) -> None:
+        """Re-deliver an already-finished job (redelivery / at-least-once tests)."""
+        with transaction() as conn:
+            conn.execute(
+                sa.update(jobs)
+                .where(jobs.c.id == job_id)
+                .values(status="queued", run_after=sa.func.now(), attempts=0)
+            )
+
+    @staticmethod
+    def expire_scopes(project_id: str) -> int:
+        """Expire every AuthorizedScope of a project (invalid-authorization tests)."""
+        with transaction() as conn:
+            res = conn.execute(
+                sa.update(authorized_scopes)
+                .where(authorized_scopes.c.project_id == project_id)
+                .values(expires_at=utcnow() - timedelta(hours=1))
+            )
+            return int(res.rowcount or 0)
+
+    @staticmethod
+    def artifact_path(artifact_id: str) -> Path:
+        """Filesystem path of the artifact's stored bytes (integrity tests)."""
+        with transaction() as conn:
+            key = conn.execute(
+                sa.select(artifacts.c.storage_key).where(artifacts.c.id == artifact_id)
+            ).scalar_one()
+        return ArtifactStore().root / key
 
     @staticmethod
     def audit_actions(project_id: str) -> list[str]:
