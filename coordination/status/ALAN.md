@@ -16,6 +16,43 @@ Recent PR/commit: https://github.com/adamissac/ari-ai/pull/412 on `feat/live-def
 Verified this session: pytest 25 (phase6_5+authorize); frontend lint/typecheck; vitest 331/78; transport 35. Playwright e2e stack not run.
 Blockers: RL evidence A–J missing; owner-only pilot authorization; live seven-agent run (issue #10); Docker images (INFRA-005)
 Next action: leave PR open for human review of authz tightening; do not start Phase 7; do not provision customer infra
+Branch: `feat/alan/live-defense-phase7c-agent-execution`
+Current task: Phase 7C live authorized first-responder agent execution (not Codex Phase 7B; no RL training; no AUTO-EXECUTE)
+Last remote sync: 2026-10-24, `origin/main` @ `d1864e9a` (merged into this branch; #412 still OPEN; do not merge #458)
+API/contract dependencies: `shared` 0.22.0 first-responder execution records (0.21.0 is merged 7A; 0.20.0 reserved for open #412); Alembic stays 0015; seven AgentSpecs
+Recent PR/commit: https://github.com/adamissac/ari-ai/pull/458 on `feat/alan/live-defense-phase7c-agent-execution` (leave open for security review of execution trust boundary)
+Blockers: live Anthropic Scout/Diagnose (issue #10, key optional); human/security approval of the Phase 7C PR (do not merge from this agent); Probe still needs AuthorizedScope and is not expanded
+Next action: independent security re-review of MERGEABLE #458 (six findings intact); leave PR open; do not merge; do not train RL; do not expand Probe/Patch; do not merge Devin fork PRs into #458
+
+## Session entries
+
+### 2026-10-24 (MERGEABLE head + Devin compatibility review; do not merge #458)
+
+- Six findings intact. Merged main through `d1864e9a`. Schema **0.22.0**; #412 keeps **0.20.0**. Reviewed (did not merge) m-alan08 PRs 1–3. Do not wrap 7C LLM in `ctx.effect()`. E2E scenarios would exercise latest 7C after rebase. Observability 0.23.0 can read 7C execution JSONB.
+- Executed: `make check` pass; focused 7A+7C **72 passed** / 1 skipped; prior broader pytest **812 / 14 skipped**; security-agents **593 / 23 skipped**; vitest **337**; transport **35**. FakeLLM ≠ live Anthropic.
+- Leave #458 **open**. Re-review GO. Merge NO-GO.
+
+### 2026-10-24 (merge origin/main into #458 so Actions can run; do not merge the PR)
+
+- PR was DIRTY vs main; GitHub Actions never queued on `db0a631d`. Merged `origin/main` `be8fe67a`. Kept both changelog/handoff sides. Schema still **0.22.0**; #412 keeps **0.20.0**. Six review fixes preserved. Probe/Patch not expanded.
+- Executed: `make check` pass; mypy 40 files; focused 7C **51 passed**; pytest **812 passed / 14 skipped**; security-agents **593 passed / 23 skipped**; frontend lint/typecheck; vitest **337**; transport **35**.
+- Leave #458 **open**. Merge NO-GO until independent re-review.
+
+### 2026-10-24 (Phase 7C security-review six findings; do not merge)
+
+- Reviewed head was `c4dcfa40`. Fixed all six NO-GO findings on the existing #458 branch. Schema still **0.22.0**; #412 keeps **0.20.0**. Probe/Patch not expanded. No AUTO-EXECUTE.
+- Executed: `make check` pass; `uv run mypy` 40 files; `uv run pytest -q` **806 passed / 15 skipped**; security-agents **592 passed / 23 skipped**; frontend lint/typecheck; vitest **330**; transport **35**; Playwright 7A+7C **2 passed** (FakeLLM). Live Anthropic not run.
+- Leave #458 **open** for independent security re-review. Merge NO-GO from this agent.
+
+### 2026-10-24 (Phase 7C required e2e CI fix; do not merge)
+
+- `c56480da` GitHub: `backend / test` PASS; `e2e` FAIL (snapshot `doc={}` 500 on list_snapshots / pages.spec; 7C Attest mapping stayed disabled). Harness-only: valid indexing Snapshot JSONB; CSRF deploy-mapping POST. Schema still **0.22.0**; #412 keeps **0.20.0**. Leave #458 open.
+
+### 2026-10-24 (Phase 7C live authorized agent execution)
+
+- Branch `feat/alan/live-defense-phase7c-agent-execution` from live `origin/main` `04c562a9` (PR #439 merged). Scout/Diagnose execute `security_agents.runtime.run_agent` against an owner-attested mapped snapshot. Probe/Patch/Verify not expanded. Trace/Fortify skipped without prerequisites. Schema **0.22.0** / orchestrator `7c.1.0` / Alembic `0015`. #412 keeps 0.20.0. Message: `20261024T064500Z-alan-to-all-live-defense-phase7c-contracts.md`.
+- Leave PR **open** for security review of the execution trust-boundary expansion. No RL training. No AUTO-EXECUTE. No production grants.
+- Executed: `make check` pass (schema 0.22.0, 155 files); `uv run mypy` 40 files; `uv run pytest -q` **781 passed / 15 skipped**; 7A+7C+jobs 38 passed; live-defense+security 79 passed; security-agents **592 passed / 23 skipped**; frontend lint/typecheck; vitest **330**; transport **35**; Playwright 7A+7C **2 passed** (Scout/Diagnose fake loops, integrity checked).
 
 ## What runs today
 

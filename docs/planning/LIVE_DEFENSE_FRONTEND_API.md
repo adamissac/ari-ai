@@ -1,6 +1,6 @@
 # Live Defense frontend — API contracts (Phases 1–7A, incl. 6.5 RL-gated infra)
 
-Status: **Phase 7A first-responder + Phase 6.5 RL-gated infrastructure** integrated on `integration/2026-11-02-release`. Shadow-pilot stays recommendation-only; RL-gated apps are **server-enforced** shadow-only. Owned-test controls remain a **separate** authorization path. First-responder modes are OFF / MONITOR|SHADOW / ASSISTED RESPONSE; AUTO-EXECUTE is rejected. Producer: control plane (`backend/`, `shared/` 0.21.0+). Phases 1–6 are extended, not rebuilt. Readiness verdict stays **INFRASTRUCTURE READY — RL BLOCKED**. An RL recommendation is not executed defense. Do not use Controls during a customer shadow-pilot. Isolate is never offered.
+Status: **Phase 7C live authorized agent execution + Phase 6.5 RL-gated infrastructure** integrated on `integration/2026-11-02-release`. Shadow-pilot stays recommendation-only; RL-gated apps are **server-enforced** shadow-only. Owned-test controls remain a **separate** authorization path. First-responder modes are OFF / MONITOR|SHADOW / ASSISTED RESPONSE; AUTO-EXECUTE is rejected. Scout and Diagnose may execute a real authorized agent loop; that is not confirmation. Producer: control plane (`backend/`, `shared/` 0.22.0+). Phases 1–6 are extended, not rebuilt. Readiness verdict stays **INFRASTRUCTURE READY — RL BLOCKED**. An RL recommendation is not executed defense. Do not use Controls during a customer shadow-pilot. Isolate is never offered.
 
 Canonical types: `shared/shared/monitoring.py`, `shared/shared/incident.py`,
 `shared/shared/rl.py`, `shared/shared/live_defense.py`, generated TS via
@@ -79,6 +79,12 @@ Unknown correlations (event not on any incident, incident with no recommendation
 - `GET /projects/{id}/live-controls`, `GET /live-controls/{id}`
 - `POST /live-controls/{id}/rollback` — success only after verify
 - `GET/POST /projects/{id}/emergency-stop`, `POST /emergency-stop/{id}/clear`
+
+## Phase 7C resources (implemented, investigative only)
+
+- `GET /projects/{id}/first-responder/invocations` includes `execution` when Scout/Diagnose actually ran (`cost_usd`, `latency_ms`, `tool_call_count`, `execution_integrity`). Missing execution is a skip, never a faked success.
+- `executed` on a `FirstResponderDecision` remains false (no LiveControl). Invocation status `executed` is an agent loop, not enforcement.
+- Probe/Patch/Verify/Trace/Fortify are still gated; the UI must not label them confirmed.
 
 ## Still missing (do not fake)
 

@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Add Live Defense Phase 7C authorized investigative agent execution on the deterministic first-responder: Scout and Diagnose run the real security-agent loop against an owner-attested mapped snapshot; Probe/Patch/Verify privileges are not expanded; Trace still waits for confirmed Probe; Fortify still waits for independently executed verification evidence. Genuine cost/latency/transcript records are persisted; `predicted_probability` stays null; executed investigative output is not threat confirmation. Security-review follow-up on PR #458: canonical intelligence (LocalIntel only for explicit fixture labels), partial live transcripts with structured error codes, remaining-deadline provider calls, cache-creation in USD cost, Diagnose scheduled after Scout without burning retries, and idempotent redelivery that cannot replace a successful result. Contract schema 0.22.0 additive (0.20.0 left for open PR #412; Alembic stays 0015). Eval: `docs/LIVE_DEFENSE_PHASE7C_AGENT_EXECUTION.md`. This is an execution trust-boundary expansion and stays open for security review.
+
 - Scout specialist now trains on the labelled commit-eval set (each case's planted edit vs. its original code as a minimal positive/negative pair) and was promoted after beating the static-pattern baseline (macro F1 0.349 vs 0.084); new checkpoint committed under `specialists/checkpoints/scout/`.
 
 - Assessment UI: agents the orchestrator skipped now stay visible as 'Not needed' with the recorded reason (e.g. 'no confirmed findings'); on failed/cancelled runs they show 'Not reached'. Replaces the ambiguous 'not run' label on the relay and team list.

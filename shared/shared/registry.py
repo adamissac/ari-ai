@@ -134,6 +134,7 @@ MODELS: tuple[type[BaseModel], ...] = (
     live_defense.DeployCommitMapping,
     live_defense.RuntimeCodeCorrelation,
     live_defense.BlockedAgent,
+    live_defense.AgentExecutionRecord,
     live_defense.FirstResponderDecision,
     live_defense.FirstResponderInvocation,
     live_defense.AnalystHandoffCreate,
