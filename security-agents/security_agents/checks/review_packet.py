@@ -13,7 +13,7 @@ from . import library as lib
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 RECIPE = PACKAGE_ROOT.parent / "examples" / "payments-lite" / "build_recipe.json"
-ALLOWED_IMPORTS = frozenset({"json", "decimal", "fastapi"})  # + the recipe's app_factory package
+ALLOWED_IMPORTS = frozenset({"json", "decimal", "fastapi", "datetime"})  # + the recipe's app_factory package
 FORBIDDEN_TOKENS = ("subprocess", "socket", "http://", "https://", "requests.", "os.system", "eval(", "exec(")
 SAMPLES: dict[str, dict[str, Any]] = {
     "access_control.ownership@1": {
@@ -25,6 +25,11 @@ SAMPLES: dict[str, dict[str, Any]] = {
         "route_id": "payment_detail",
         "identity": "alice",
     },
+    "access_control.role@1": {
+        "route_id": "create_refund",
+        "restricted_identity": "bob",
+        "permitted_identity": "alice",
+    },
     "input_validation.bounds@1": {
         "route_id": "create_refund",
         "read_route_id": "payment_detail",
@@ -33,7 +38,7 @@ SAMPLES: dict[str, dict[str, Any]] = {
     },
 }
 CHECKLIST = (
-    "The rendered module imports only json, decimal, fastapi and the package named by the recipe's app_factory (validated as package.module:callable).",
+    "The rendered module imports only json, decimal, datetime, fastapi and the package named by the recipe's app_factory (validated as package.module:callable).",
     "It uses only fixture identities and resource ids declared in the build recipe.",
     "It opens no sockets, spawns no processes and reads no environment or files outside the workspace.",
     "Its assertions state the expectation, so a failure means the expectation did not hold.",
