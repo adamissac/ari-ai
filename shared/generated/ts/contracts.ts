@@ -1026,6 +1026,7 @@ export interface FirstResponderInvocation {
   job_id: string | null;
   reason: string | null;
   execution: AgentExecutionRecord | null;
+  deadline_at: string | null;
   created_at: string;
 }
 
@@ -1761,6 +1762,26 @@ export interface ProjectUpdate {
   name: string | null;
   settings: ProjectSettings | null;
 }
+
+/** One billable provider request. Read-only intel queries are not recorded here. */
+export interface ProviderAttempt {
+  id: string;
+  idempotency_key: string;
+  status: ProviderAttemptState;
+  reserved_at: string;
+  sent_at: string | null;
+  settled_at: string | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  cache_creation_input_tokens: number | null;
+  response_id: string | null;
+  effect_key: string | null;
+  provider_attempts: Array<ProviderAttempt>;
+  uncertain_provider_outcome: boolean;
+}
+
+/** Durable billable-request ledger. Unknown outcomes are never auto-replayed. */
+export type ProviderAttemptState = "reserved" | "in_flight" | "settled" | "uncertain" | "cancelled";
 
 export interface RLCheckpointRef {
   id: string;

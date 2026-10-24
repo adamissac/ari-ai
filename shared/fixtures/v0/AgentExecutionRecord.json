@@ -12,9 +12,11 @@
   "model_id": "claude-haiku-5-5",
   "output_artifact_id": null,
   "predicted_probability": null,
+  "provider_attempts": [],
   "provider_mode": "fake",
   "started_at": "2026-10-17T01:00:00Z",
   "tool_call_count": 3,
   "transcript_artifact_id": null,
-  "typed_output": true
+  "typed_output": true,
+  "uncertain_provider_outcome": false
 }

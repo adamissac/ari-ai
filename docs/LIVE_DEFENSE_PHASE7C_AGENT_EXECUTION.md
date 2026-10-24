@@ -49,7 +49,6 @@ FIRST RESPONDER (Phase 7A decide + Phase 7C execute)
 ENFORCEMENT (existing Phase 4; not started by first-responder)
   authorize.check → LiveControl → live_defense_execute
   OFF does not cancel these jobs
-```
 
 LLM calls run **outside** the first-responder advisory lock. Artifacts persist
 in short transactions. OFF / cancel is re-checked before the loop and before
@@ -92,7 +91,6 @@ faked success. Missing snapshot → honest `skipped_no_snapshot`.
 ## Schema vs open #412
 
 | Branch | SCHEMA_VERSION | Alembic |
-|---|---|---|
 | main after #439 | 0.21.0 | 0015 |
 | this PR (Phase 7C) | **0.22.0** additive | **0015** (no 0016) |
 | open #412 | 0.20.0 reserved | none |
@@ -113,7 +111,6 @@ and `error_code`. `predicted_probability` is always null.
 FakeLLM/FakeTransport only. Not live Anthropic proof.
 
 | Suite | Result |
-|---|---|
 | `make check` | pass (schema 0.22.0, 155 files) |
 | `uv run mypy` | 40 files, no issues |
 | `uv run pytest -q` | **806 passed**, 15 skipped |
@@ -129,3 +126,39 @@ Independent security **re-review** of PR #458. Do not merge from the implementin
 agent. Do not enable autonomous containment, production controls, or unrestricted
 probing. Live Anthropic Scout/Diagnose remains opt-in (issue #10). Re-review
 **GO**, merge **NO-GO** until that review accepts.
+
+
+
+
+
+
+
+
+
+
+
+6. **Idempotent redelivery.** Terminal invocations return the persisted result. Successful `executed` rows cannot be overwritten by a later failed retry. Crash-in-progress without a billable send is `queued` + `execution.started_at` without a transcript.
+
+Codex combined-release follow-up (existing branch, not merged; six findings above preserved):
+
+- **F1 unknown billable outcome.** Each provider `complete()` reserves a durable `ProviderAttempt` (`in_flight`) before send. Crash after send marks `uncertain`. Recovery never starts a second billable request while the previous result is unknown. In-flight concurrent claims `JobDeferred`. Anthropic `Idempotency-Key` is sent when the live transport is used. Read-only intel queries are not ledgered. Partial usage stays on the invocation JSONB.
+- **F7 overall deadline.** `FirstResponderDecision.deadline_at` is the single overall deadline (now + `FIRST_RESPONDER_DEADLINE_S`). Copied onto each invocation and agent-step payload. Worker retry does not reset it. Expired deadline refuses another provider call (`BUDGET_EXHAUSTED` / `DEADLINE_EXCEEDED`), distinct from cancel and from provider failure. Stored in JSONB + payload; Alembic 0016 (`jobs.deadline_at`) remains Devin Reliability's.
+- **F8 cancel precedence.** OFF and `cancel_requested` are rechecked after the agent loop and immediately before committing finals. That commit is not rolled back by the subsequent `JobCancelled`. Cancelled invocations keep partial transcripts/costs and cannot become `executed`.
+- **F4/F5.** This branch does not rewrite `jobs.py` / worker lifecycle. Diagnose still uses `JobDeferred` / `jobs.defer`. Devin Reliability owns generic `waiting` / `depends_on` / `ctx.effect()`.
+
+
+
+
+
+
+
+
+
+
+
+
+
+| `make check` | pass (schema 0.22.0, 156 files) |
+| focused 7A+7C+review+jobs+llm | **76 passed**, 1 skipped (opt-in live smoke) |
+
+
