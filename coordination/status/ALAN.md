@@ -8,9 +8,6 @@ API/contract dependencies: `shared` 0.21.0 first-responder contracts (0.20.0 res
 Recent PR/commit: https://github.com/adamissac/ari-ai/pull/439 on `cursor/live-defense-first-responder-0044`; rebased onto main; leave open for security review
 Blockers: live seven-agent Claude run (issue #10, no key); human/security approval of #439 (do not merge); GitHub Actions may not queue from this App token
 Next action: leave Phase 7A PR open; do not start Phase 7B; Codex must not train from these records yet
-||||||| merged common ancestors
-<<<<<<<<< Temporary merge branch 1
-=======
 Branch: `feat/live-defense-phase6-5-rl-gated-pilot`
 Current task: Phase 6.5 RL-gated pilot infrastructure (verdict stays RL BLOCKED; no Phase 7 work on this branch; Phase 7A already on main)
 Last remote sync: 2026-10-24, `origin/main` merged in (PRs #411/#410/#439-era 7A on main; #412 still OPEN)
@@ -56,9 +53,6 @@ Next action: independent security re-review of MERGEABLE #458 (six findings inta
 - Branch `feat/alan/live-defense-phase7c-agent-execution` from live `origin/main` `04c562a9` (PR #439 merged). Scout/Diagnose execute `security_agents.runtime.run_agent` against an owner-attested mapped snapshot. Probe/Patch/Verify not expanded. Trace/Fortify skipped without prerequisites. Schema **0.22.0** / orchestrator `7c.1.0` / Alembic `0015`. #412 keeps 0.20.0. Message: `20261024T064500Z-alan-to-all-live-defense-phase7c-contracts.md`.
 - Leave PR **open** for security review of the execution trust-boundary expansion. No RL training. No AUTO-EXECUTE. No production grants.
 - Executed: `make check` pass (schema 0.22.0, 155 files); `uv run mypy` 40 files; `uv run pytest -q` **781 passed / 15 skipped**; 7A+7C+jobs 38 passed; live-defense+security 79 passed; security-agents **592 passed / 23 skipped**; frontend lint/typecheck; vitest **330**; transport **35**; Playwright 7A+7C **2 passed** (Scout/Diagnose fake loops, integrity checked).
-||||||| merged common ancestors
-Next action: leave PR open for human review of authz tightening; do not start Phase 7; do not provision customer infra
-||||||||| 74a0a3c2
 Branch: `feat/live-defense-phase6-pilot-audit`
 Current task: Phase 6 post-merge integration audit and shadow-pilot readiness (no Phase 7)
 Last remote sync: 2026-10-23, `origin/main` @ `02ab34de` (PRs #393 and #395 merged on main)
@@ -66,16 +60,6 @@ API/contract dependencies: `shared` 0.9.0 `CheckCategory`; `backend.host` checkp
 Recent PR/commit: `feat/live-defense-phase6-pilot-audit` (Phase 6 audit; no Phase 7)
 Blockers: live seven-agent run (issue #10, no key); Docker images (INFRA-005); Phase 6 merge needs CI + human review
 Next action: wait for CI on the Codex P1/P2 head of #411; merge only if MERGEABLE + reviews satisfied + no enforcement expansion; do not start Phase 7
-=========
-Branch: `cursor/live-defense-first-responder-0044`
-Current task: Phase 7A deterministic first-responder orchestration (no Phase 7B, no AUTO-EXECUTE)
-Last remote sync: 2026-10-24, `origin/main` @ `c5c2b47d` (PR #453 merged; #412 still OPEN)
-API/contract dependencies: `shared` 0.21.0 first-responder contracts (0.20.0 reserved for open #412); seven AgentSpecs; backend host checkpoints
-Recent PR/commit: https://github.com/adamissac/ari-ai/pull/439 on `cursor/live-defense-first-responder-0044`; rebased onto main; leave open for security review
-Blockers: live seven-agent Claude run (issue #10, no key); human/security approval of #439 (do not merge); GitHub Actions may not queue from this App token
-Next action: leave Phase 7A PR open; do not start Phase 7B; Codex must not train from these records yet
->>>>>>>>> Temporary merge branch 2
-=======
 Next action: leave PR open for human review of authz tightening; do not start Phase 7 work here; do not provision customer infra
 
 ## What runs today
@@ -103,7 +87,6 @@ cd security-agents && .venv/bin/python -m pytest tests -q
 451 passed, 18 skipped in 82.57s
 uv run pytest -q          # repo root testpaths (shared, monitoring, backend, code-review, standards, tests/security)
 415 passed, 9 skipped in 75.46s
-```
 
 Skips: opt-in live-provider tests, and Docker tests that run only in the CI
 `docker-sandbox` / `docker-reviewer` jobs (6 passed there on `719ce98`).
@@ -142,7 +125,6 @@ Updated 2026-10-17 after #100 to #125.
   only ids and titles. Everything is "mapped to" or "aligned with"; no certification is
   claimed.
 
-## Session entries
 
 ### 2026-10-24 (rebase #439 onto main — docs conflicts)
 
@@ -245,17 +227,14 @@ Updated 2026-10-17 after #100 to #125.
 ## Standards addendum (P0) on `feat/alan/standards-roe-wiring`
 
 | Item | What exists | Evidence (offline) |
-|---|---|---|
 | Pinned indexes | CWE 4.20, ATT&CK Enterprise 20.0, D3FEND 1.6.0, OWASP API 2023, OWASP LLM 2026, CVSS v3.1 and v4.0, NIST SP 800-115; sha256 in `standards/standards/data/MANIFEST.json` | `standards/tests` 189 passed |
 | CVSS v3.1 | `standards/standards/cvss31.py`, 34 NVD vectors plus property tests; level derives from the computed rating (ADR-0012) | `standards/tests/test_cvss31.py` |
 | Rules of engagement | `security_agents/standards/roe.py`; registry gate fails closed with SCOPE_DENIED and `tool.roe_denied` | `tests/standards/test_rules_of_engagement.py`, `tests/standards/test_negative.py` |
 | Agent wiring | Scout CWE plus OWASP API tag from code; Trace v3.1 metrics with evidence or unverified, optional ATT&CK; Diagnose and Fortify optional D3FEND | `tests/test_agent_logic.py`, `tests/test_e2e_replay.py` |
 
-```
 cd security-agents && .venv/bin/python -m pytest tests -q        # 441 passed, 10 skipped
 .venv/bin/python -m security_agents.standards.report            # 217 standards tests, 0 failed, UNVERIFIED: NVD licence terms
 .venv/bin/python -m security_agents.standards.smoke             # writes standards-smoke-output/{finding.tagged.json,rules_of_engagement.json,sp800115_coverage.json}
-```
 
 UNVERIFIED: NVD terms page (Cloudflare challenge). All runs above are replay or offline; no live Claude call.
 
