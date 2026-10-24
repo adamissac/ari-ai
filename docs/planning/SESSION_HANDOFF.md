@@ -1719,3 +1719,5 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - Fixed a real gap in PR #5: `.env.staging.example` was referenced by `PILOT_OPERATIONS.md` and the handoff but silently swallowed by the `.env.*` gitignore rule — added `!.env.staging.example` and committed the file.
 - Docs: `PILOT_OPERATIONS.md` §13 (readiness rehearsal) + checklist row 12.
 - Not yet done: re-run GO report post-fix, real-stack Playwright e2e (build verified; `idempotent-retry.spec.ts` in flight), full re-run when the integration session publishes `integration/*`.
+
+- Integration-branch run (`integration/2026-11-02-release` @ 4f845f4f, Alembic head 0017): found a real cross-workstream defect — PR #4 hardening gates `/api/openapi.json` to dev-only while PR #5's `smoke_staging.sh` expected 200 and `release_check.py`'s estop-surface check silently SKIPPED. Fixed: smoke passes on 200-or-404, release_check probes the real routes unauthenticated (401/403 = mounted). After the fix: **GO — 25/25 PASS** on the integrated tree. Report: `deploy/reports/release-readiness-20261024T215621+0000.md`.
