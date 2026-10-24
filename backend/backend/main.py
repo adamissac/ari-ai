@@ -22,6 +22,7 @@ from backend.api import (
     live_defense_controls,
     live_defense_first_responder,
     live_defense_investigations,
+    ops,
     routes,
     runtime,
     webhooks,
@@ -170,6 +171,7 @@ def create_app() -> FastAPI:
         live_defense_first_responder.router,
         execution.router,
         live_defense_investigations.router,
+        ops.router,
     ):
         app.include_router(r, prefix="/api/v1")
     return app
