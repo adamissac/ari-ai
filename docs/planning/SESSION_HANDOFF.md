@@ -27,7 +27,7 @@ adds an entry before ending.
   - `uv run pytest -q shared/tests/test_contracts.py backend/tests/test_live_defense_phase7a.py` — 95 passed, 1 skipped (TSC unset)
   - frontend lint + typecheck pass; vitest 330 passed / 78 files; transport 35 passed
   - Playwright `tests/e2e/live-defense-phase7a.spec.ts` via `stack.py` + Chrome — 1 passed (2.5s); screenshots in store `media/live-defense-phase7a/`
-- Decisions: **ENGINEERING GO FOR OWNED STAGING**. Leave the PR open for human security review (mode / privilege / trust-boundary expansion). Eval: `docs/LIVE_DEFENSE_PHASE7A_FIRST_RESPONDER.md`.
+- Decisions: **ENGINEERING GO FOR OWNED STAGING**. PR https://github.com/adamissac/ari-ai/pull/439 left open for human security review (mode / privilege / trust-boundary expansion). Eval: `docs/LIVE_DEFENSE_PHASE7A_FIRST_RESPONDER.md`.
 - Warnings: **leave the PR open**. #412 also claimed 0.20.0; rebase that branch to 0.21.0 if both land. Do not start Phase 7B. Live seven-agent Claude loop is still UNVERIFIED.
 
 ### 2026-10-23 — Claude Code (Adam) — build-recipe PR for connected repositories

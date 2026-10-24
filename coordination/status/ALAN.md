@@ -5,7 +5,7 @@ Branch: `cursor/live-defense-first-responder-0044`
 Current task: Phase 7A deterministic first-responder orchestration (no Phase 7B, no AUTO-EXECUTE)
 Last remote sync: 2026-10-24, `origin/main` @ `a97820f1` (PR #438 merged; #412 still OPEN)
 API/contract dependencies: `shared` 0.20.0 first-responder contracts; seven AgentSpecs; backend host checkpoints
-Recent PR/commit: `cursor/live-defense-first-responder-0044` (Phase 7A; leave open for security review)
+Recent PR/commit: https://github.com/adamissac/ari-ai/pull/439 (`77f01207` on `cursor/live-defense-first-responder-0044`; leave open for security review)
 Blockers: live seven-agent Claude run (issue #10, no key); human security review of mode/privilege expansion
 Next action: leave Phase 7A PR open; do not start Phase 7B; Codex must not train from these records yet
 
