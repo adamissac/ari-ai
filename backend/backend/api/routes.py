@@ -924,7 +924,7 @@ def list_assessments(
     cursor: str | None = None,
 ) -> dict[str, Any]:
     with transaction() as conn:
-        require_project(conn, _user(conn, request), project_id)
+        _user(conn, request)
         q = sa.select(assessments.c.id, assessments.c.doc).where(
             assessments.c.project_id == project_id
         )
