@@ -26,6 +26,7 @@ from __future__ import annotations
 import contextlib
 import importlib
 import os
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
@@ -402,6 +403,16 @@ def _handler(ctx: ToolContext, registry: ToolRegistry, record: StepRecord, name:
 # --------------------------------------------------------------------------- sink
 
 
+_REVIEW_JOIN_STATES = (
+    AssessmentState.AWAITING_APPROVAL,
+    AssessmentState.REPORTING,
+    AssessmentState.COMPLETED,
+    AssessmentState.FAILED,
+    AssessmentState.CANCELLED,
+    AssessmentState.BUDGET_EXHAUSTED,
+)
+
+
 @dataclass
 class HostSink(AssessmentSink):
     """Mirrors every orchestration step into the host's store."""
@@ -415,13 +426,34 @@ class HostSink(AssessmentSink):
     stored_diffs: dict[str, tuple[str, str | None, str]] = field(default_factory=dict)
     regression_artifact_ids: dict[str, str] = field(default_factory=dict)
     result: Any = None
+    # The functional reviewer runs beside Scout/Probe (they share nothing) and is joined
+    # before the run waits for approval or finishes, so its findings and approvals land first.
+    _review: threading.Thread | None = None
+    _review_error: BaseException | None = None
+
+    def _run_review(self) -> None:
+        try:
+            _functional_review(self.host)
+        except BaseException as exc:  # re-raised on the orchestrator thread at the join
+            self._review_error = exc
+
+    def join_review(self) -> None:
+        if self._review is not None:
+            self._review.join()
+            self._review = None
+        if self._review_error is not None:
+            error, self._review_error = self._review_error, None
+            raise error
 
     def on_transition(self, src: AssessmentState, dst: AssessmentState, note: str) -> None:
+        if dst in _REVIEW_JOIN_STATES:
+            self.join_review()
         if self.result is not None and dst in (AssessmentState.COMPLETED, AssessmentState.AWAITING_APPROVAL):
             _store_standards_artifacts(self, self.result)
         self.host.transition(_host_state(dst), note)
         if dst is AssessmentState.FUNCTIONAL_REVIEW:
-            _functional_review(self.host)
+            self._review = threading.Thread(target=self._run_review, name="functional-review", daemon=True)
+            self._review.start()
 
     def set_status(self, finding_id: str, status: str, reason: str | None = None) -> None:
         """Persist a lifecycle change through the host, which checks the edge and the evidence.
@@ -438,6 +470,7 @@ class HostSink(AssessmentSink):
 
     def settle(self, findings: list[FindingRecord], sandbox_seconds: float) -> None:
         """End of a run segment: final statuses, and sandbox time into the usage ledger."""
+        self.join_review()
         for finding in findings:
             self.set_status(finding.finding_id, finding.status)
         delta = round(float(sandbox_seconds) - self.sandbox_charged, 3)

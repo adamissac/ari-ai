@@ -375,7 +375,12 @@ def run_assessment(ctx: JobContext) -> dict[str, Any]:
         from backend.delivery import auto_approve_pending
 
         with transaction() as conn:
-            auto_approve_pending(conn, asm_id, host.project_id)
+            approved = auto_approve_pending(conn, asm_id, host.project_id)
+        if approved:
+            # Continue here: this worker still holds the paused orchestrator in memory, so
+            # Patch starts at once instead of a queued job re-pinning the snapshot (~100 s).
+            # The queued resume then finds the checkpoint claimed and does nothing.
+            return run_assessment(ctx)
     if final not in TERMINAL_STATES and final is not AssessmentState.AWAITING_APPROVAL:
         host.terminate(
             AssessmentState.FAILED,

@@ -255,6 +255,9 @@ class LLMGateway:
             "messages": [m if m.get("role") == "assistant" else redact(m) for m in messages],
             "thinking": {"type": "adaptive"},
             "output_config": {"effort": self.settings.anthropic_effort},
+            # Agent loops resend their whole history each turn; caching it makes later turns
+            # fast and ~10x cheaper. The conversation is append-only, so the prefix stays valid.
+            "cache_control": {"type": "ephemeral"},
         }
         if tools:
             request["tools"] = tools
