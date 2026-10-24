@@ -7,7 +7,7 @@
   "type": "mlp-relu"
  },
  "dataset": {
-  "sha256": "3fd8fa7ee359f3e4688078b40524250a6c77b9617c29787d1d0f085b10d6f2a8",
+  "sha256": "c4f7a66125227c949e65dd6930cda2b64d4e7b2bc6bc1feff1616851d5fb3956",
   "sizes": {
    "test": 1305,
    "train": 5084,
@@ -81,7 +81,7 @@
   "numpy": "2.5.4",
   "patience": 6,
   "python": "3.12.15",
-  "seconds": 8.4,
+  "seconds": 8.42,
   "seed": 7,
   "weight_decay": 1e-05
  },

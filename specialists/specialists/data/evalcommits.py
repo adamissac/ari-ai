@@ -52,7 +52,7 @@ def scout_rows() -> list[dict[str, Any]]:
             if case["kind"] == "benign":
                 rows.append(
                     {
-                        "family": "eval_commit",
+                        "family": f"eval_commit:{case['id']}",
                         "framework": "python",
                         "code": edit["new"],
                         "label": "safe",
@@ -62,7 +62,7 @@ def scout_rows() -> list[dict[str, Any]]:
             else:
                 rows.append(
                     {
-                        "family": "eval_commit",
+                        "family": f"eval_commit:{case['id']}",
                         "framework": "python",
                         "code": edit["new"],
                         "label": positive,
@@ -71,7 +71,7 @@ def scout_rows() -> list[dict[str, Any]]:
                 )
                 rows.append(
                     {
-                        "family": "eval_commit",
+                        "family": f"eval_commit:{case['id']}",
                         "framework": "python",
                         "code": edit["old"],
                         "label": "safe",
