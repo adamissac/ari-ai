@@ -3,10 +3,10 @@
 Owner: Alan (`security-agents/`, SEC-001 … SEC-013; interim Live Defense UI)
 Branch: `cursor/live-defense-first-responder-0044`
 Current task: Phase 7A deterministic first-responder orchestration (no Phase 7B, no AUTO-EXECUTE)
-Last remote sync: 2026-10-24, `origin/main` @ `a97820f1` (PR #438 merged; #412 still OPEN)
+Last remote sync: 2026-10-24, `origin/main` @ `c5c2b47d` (PR #453 merged; #412 still OPEN)
 API/contract dependencies: `shared` 0.21.0 first-responder contracts (0.20.0 reserved for open #412); seven AgentSpecs; backend host checkpoints
-Recent PR/commit: https://github.com/adamissac/ari-ai/pull/439 on `cursor/live-defense-first-responder-0044`; leave open for security review
-Blockers: live seven-agent Claude run (issue #10, no key); human/security approval of #439 (do not merge)
+Recent PR/commit: https://github.com/adamissac/ari-ai/pull/439 on `cursor/live-defense-first-responder-0044`; rebased onto main; leave open for security review
+Blockers: live seven-agent Claude run (issue #10, no key); human/security approval of #439 (do not merge); GitHub Actions may not queue from this App token
 Next action: leave Phase 7A PR open; do not start Phase 7B; Codex must not train from these records yet
 
 ## What runs today
@@ -74,6 +74,11 @@ Updated 2026-10-17 after #100 to #125.
   claimed.
 
 ## Session entries
+
+### 2026-10-24 (rebase #439 onto main — docs conflicts)
+
+- GitHub showed **Checks awaiting conflict resolution** on `CHANGELOG.md` and `SESSION_HANDOFF.md` only. Rebased onto `origin/main` `c5c2b47d`. Kept both Unreleased/handoff sides plus the four Codex fixes. Schema still 0.21.0 / Alembic `0015`. #412 still 0.20.0, no Alembic.
+- Executed: ruff pass; export 154 files; pytest phase7a + jobs + no-action — 33 passed. PR left **open**.
 
 ### 2026-10-24 (Phase 7A Codex review + schema 0.21.0)
 

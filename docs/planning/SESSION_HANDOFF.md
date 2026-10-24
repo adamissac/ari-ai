@@ -18,6 +18,17 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-24 — Cursor (agent, Alan) — rebase #439 onto main (docs conflicts)
+- Did: left PR #439 **open** (no merge, no Phase 7B, no RL training, no customer enforcement). GitHub had blocked required checks with **Checks awaiting conflict resolution** on only `CHANGELOG.md` and `docs/planning/SESSION_HANDOFF.md`. Fetched `origin/main` `c5c2b47d` (PR #453) and rebased `cursor/live-defense-first-responder-0044`. Resolved those two files by keeping **both** sides: main’s Unreleased fixture-only research bullet and Adam 2026-10-23 build-recipe handoff, plus this PR’s Phase 7A 0.21.0 Unreleased bullet and Alan 2026-10-24 Codex/Phase 7A handoff entries. Did **not** drop the four Codex security fixes (verified evidence, genuine provider acks, telemetry-window mapping, OFF-mode race). Schema still **0.21.0**; Alembic still `0015`. Main remains 0.19.0 / `0014`. Open #412 still **0.20.0** with no Alembic — no collision, no bump.
+- Commands run and results (executed):
+  - `git fetch origin --prune`; rebase onto `origin/main` `c5c2b47d`
+  - `uv run ruff check` / `ruff format --check` — pass (195 files formatted)
+  - `uv run python -m shared.export --check` — 154 files, schema 0.21.0
+  - `uv run pytest -q backend/tests/test_live_defense_phase7a.py backend/tests/test_jobs_queue.py backend/tests/test_rl_no_action_path.py` — 33 passed
+- Decisions: do not merge #439. Owner/security approval remains separate.
+- Next: push the rebased branch; check whether GitHub Actions automatically starts (especially `backend / test`). If Actions still never queues, report that separately — do not fake a pass.
+- Warnings: **leave the PR open**. No Phase 7B. Live seven-agent Claude loop still UNVERIFIED.
+
 ### 2026-10-24 — Cursor (agent, Alan) — Phase 7A Codex review fixes on #439
 - Did: left PR #439 **open** (no merge, no Phase 7B, no RL training, no customer enforcement). Fixed Backend/test CI (`test_rl_no_action_path`: removed `/first-responder/auto-execute`; absence is the control, 404). Fixed four Codex findings with regressions: (1) `evidence_state=verified` only with independently executed `verification_results`; (2) no fabricated handoff receipts — UI does not invent acks; synthetic provider ack tests are labeled; (3) deploy mapping resolved against telemetry window, else UNKNOWN; (4) OFF serialized with dispatch (`pg_advisory_xact_lock`), claim skips `cancel_requested`, handlers `check_cancelled` and abort when OFF is effective. Schema **0.21.0** (0.20.0 reserved for open #412); Alembic stays `0015`. Orchestrator `7a.1.1`.
 - Commands run and results (executed):
