@@ -108,13 +108,16 @@ def test_check_migrations_passes_when_migrated() -> None:
 
 def test_check_migrations_flags_unmigrated_database() -> None:
     with get_engine().begin() as conn:
+        current = conn.execute(sa.text("SELECT version_num FROM alembic_version")).scalar_one()
         conn.execute(sa.text("DROP TABLE alembic_version"))
         conn.execute(sa.text("CREATE TABLE alembic_version (version_num varchar(32) NOT NULL)"))
         conn.execute(sa.text("INSERT INTO alembic_version VALUES ('0000')"))
         st = migration_status(conn)
         conn.execute(sa.text("DROP TABLE alembic_version"))
         conn.execute(sa.text("CREATE TABLE alembic_version (version_num varchar(32) NOT NULL)"))
-        conn.execute(sa.text("INSERT INTO alembic_version VALUES ('0015')"))
+        # Restore the real head, not a pinned revision: other tests share this
+        # database and a stale stamp replays migrations over a migrated schema.
+        conn.execute(sa.text("INSERT INTO alembic_version VALUES (:v)"), {"v": current})
     assert st.pending
 
 

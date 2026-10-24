@@ -29,6 +29,8 @@ Existing e2e scenarios needing review when the branch merges:
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 import pytest
 import sqlalchemy as sa
 
@@ -102,7 +104,13 @@ def test_compat_execution_deadline_times_out(settings_override):
     with transaction() as conn:
         jid = _enqueue(conn, "deadline", pid, deadline_s=30)
         # Move the deadline into the past, then reconcile.
-        conn.execute(sa.update(jobs_t).where(jobs_t.c.id == jid).values(deadline_at=utcnow()))
+        # Deadline must predate the txn start: reconcile compares against
+        # now(), which is the transaction timestamp, not wall-clock time.
+        conn.execute(
+            sa.update(jobs_t)
+            .where(jobs_t.c.id == jid)
+            .values(deadline_at=utcnow() - timedelta(minutes=1))
+        )
         execution.reconcile(conn)
         status = conn.execute(sa.select(jobs_t.c.status).where(jobs_t.c.id == jid)).scalar_one()
         assert status == "timed_out"
