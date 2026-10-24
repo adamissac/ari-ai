@@ -70,28 +70,52 @@ test('Live Defense e2e: OFF mode stops investigation and renders honestly', asyn
   await page.getByRole('button', { name: 'Set mode' }).click();
   await expect(page.getByTestId('live-defense-fr-intent')).toContainText('off');
 
+  const knownIds = new Set(
+    (await (await page.request.get(`${api}/projects/${pid}/first-responder/decisions`)).json() as {
+      items: Array<{ id: string }>
+    }).items.map(d => d.id),
+  );
+
+  // Post a window on a NEW route so it is anomalous against history — while
+  // OFF. Dispatch must be suppressed: either no new decision is recorded, or
+  // any new decision is cancelled and no agent executes for it.
+  const offBatch = ingestBatch(1, 19);
+  offBatch.routes[0]!.route = 'GET /admin/users';
   await request.post(`${api}/ingest/runtime/${pid}`, {
     headers: { Authorization: `Bearer ${token.trim()}` },
-    data: ingestBatch(1, 18),
+    data: offBatch,
   });
 
-  // The post-OFF window is recorded as cancelled and no agent executes: every
-  // invocation of the newest decision is skipped_mode. Checked via the real
-  // API with the signed-in session, not just rendered text.
-  await expect.poll(async () => {
-    const resp = await page.request.get(`${api}/projects/${pid}/first-responder/decisions`);
-    const items = (await resp.json() as { items: Array<{ cancelled: boolean }> }).items;
-    return items.length && items[0].cancelled;
-  }, { timeout: 30_000 }).toBeTruthy();
-
+  await page.waitForTimeout(10_000); // give the shadow job a full drain window
+  const decisions = (await (await page.request.get(
+    `${api}/projects/${pid}/first-responder/decisions`,
+  )).json() as { items: Array<{ id: string; cancelled: boolean }> }).items;
+  const newDecisions = decisions.filter(d => !knownIds.has(d.id));
+  for (const d of newDecisions) {
+    expect(d.cancelled, `post-OFF decision ${d.id} must be cancelled`).toBeTruthy();
+  }
   const invResp = await page.request.get(`${api}/projects/${pid}/first-responder/invocations`);
-  const decResp = await page.request.get(`${api}/projects/${pid}/first-responder/decisions`);
-  const latest = (await decResp.json() as { items: Array<{ id: string }> }).items[0];
-  const invocations = (await invResp.json() as {
+  const postOffInvocations = (await invResp.json() as {
     items: Array<{ decision_id: string; status: string }>
-  }).items.filter(i => i.decision_id === latest.id);
-  expect(invocations.every(i => i.status !== 'executed')).toBeTruthy();
+  }).items.filter(i => newDecisions.some(d => d.id === i.decision_id));
+  expect(postOffInvocations.every(i => i.status !== 'executed')).toBeTruthy();
 
   await expect(page.getByTestId('live-defense-fr-mode-select')).toHaveValue('off');
   await evidenceShot(page, 'live-defense-e2e-off-mode');
+
+  // Re-arm: a fresh anomalous window resumes the pipeline — OFF was a pause,
+  // not a destructive teardown.
+  await page.getByTestId('live-defense-fr-mode-select').selectOption('monitor');
+  await page.getByRole('button', { name: 'Set mode' }).click();
+  const resumeBatch = ingestBatch(2, 18);
+  resumeBatch.routes[0]!.route = 'GET /admin/audit';
+  await request.post(`${api}/ingest/runtime/${pid}`, {
+    headers: { Authorization: `Bearer ${token.trim()}` },
+    data: resumeBatch,
+  });
+  await expect.poll(async () => {
+    const resp = await page.request.get(`${api}/projects/${pid}/first-responder/decisions`);
+    const items = (await resp.json() as { items: Array<{ id: string; cancelled: boolean }> }).items;
+    return items.some(d => !knownIds.has(d.id) && !d.cancelled);
+  }, { timeout: 60_000 }).toBeTruthy();
 });
