@@ -25,6 +25,10 @@ _NEW_STATUSES = (
 def upgrade() -> None:
     op.add_column("jobs", sa.Column("project_id", sa.String(length=80), nullable=True))
     op.add_column("jobs", sa.Column("depends_on", sa.String(length=80), nullable=True))
+    op.add_column(
+        "jobs",
+        sa.Column("defer_count", sa.Integer(), nullable=False, server_default="0"),
+    )
     op.add_column("jobs", sa.Column("deadline_at", sa.DateTime(timezone=True), nullable=True))
     op.add_column("jobs", sa.Column("started_at", sa.DateTime(timezone=True), nullable=True))
     op.add_column("jobs", sa.Column("first_started_at", sa.DateTime(timezone=True), nullable=True))
@@ -127,6 +131,7 @@ def downgrade() -> None:
         "first_started_at",
         "started_at",
         "deadline_at",
+        "defer_count",
         "depends_on",
         "project_id",
     ):
