@@ -1,7 +1,9 @@
-"""Workstream 1 (execution reliability) compatibility tests — skip-gated.
+"""Execution-reliability (workstream B) compatibility tests — live, ungated.
 
-The separate ``feat/devin-execution-reliability`` branch adds durable job
-lifecycle contracts the Live Defense e2e suite will rely on once it merges:
+This branch is stacked on a composition of the approved A and B heads
+(A ``89a3deba`` Phase 7C + B ``17c3ded0`` execution reliability), so the
+reliability queue is present and these tests execute against it directly —
+no skip gate. They pin the queue contracts this suite relies on:
 
 - new ``JobStatus`` values: ``waiting``, ``timed_out``, ``recovery_required``
 - ``jobs.enqueue(..., deadline_s=, depends_on=, project_id=)``
@@ -10,26 +12,20 @@ lifecycle contracts the Live Defense e2e suite will rely on once it merges:
   ``recovery_required`` for uncertain side effects
 - ``execution.reconcile`` for stale workers and expired deadlines
 
-Every test here is skipped until that branch lands (detected by the presence
-of ``jobs.JobStatus.recovery_required``). They pin the queue contracts this
-suite assumes, so integration regressions surface as test failures rather
-than silent behavior drift.
+Deadline assertions use the database clock (``now()`` inside the same
+transaction), never Python ``utcnow()`` — the transaction's ``now()`` is
+fixed earlier than wall clock, so a Python timestamp can read as future to
+the reconciler's SQL predicate (review finding F10).
 
-Existing e2e scenarios needing review when the branch merges:
-- ``test_e_worker_failure`` — requeue/backoff assertions still hold, but a
-  step job that declared an effect would land in ``recovery_required`` instead
-  of being retried (agent steps currently declare no effects).
-- ``test_j_queue_redelivery`` — the terminal-invocation early return is
-  unchanged, but ``revive_job`` bypasses the WS1 state machine; a real
-  redelivery path is ``lease_expires_at`` expiry + re-claim, which is what the
-  compat test below exercises instead of raw status rewriting.
-- ``test_i_concurrent_workers`` — claims serialize on an advisory lock once
-  per-project limits are enabled; expected single-execution semantics hold.
+``xfail(strict=True)`` marks integration defects confirmed by the
+independent review (F1, F7, F8): the tests assert the required contract and
+are expected to fail until the owning workstream fixes it; a fix turns them
+into XPASS failures, which is the signal to drop the marker.
 """
 
 from __future__ import annotations
 
-from datetime import timedelta
+import json
 
 import pytest
 import sqlalchemy as sa
@@ -37,20 +33,13 @@ import sqlalchemy as sa
 from backend import jobs, worker
 from backend.db import jobs as jobs_t
 from backend.db import transaction
-from shared.base import utcnow
+from security_agents.contracts import AgentName as RuntimeAgentName
 from shared.ids import IdPrefix, new_id
+from shared.live_defense import AgentInvocationStatus as INV
 
 pytest.importorskip("security_agents")
 
-_HAS_EXEC_RELIABILITY = hasattr(jobs, "JobStatus") and hasattr(jobs.JobStatus, "recovery_required")
-
-pytestmark = [
-    pytest.mark.live_defense_e2e,
-    pytest.mark.skipif(
-        not _HAS_EXEC_RELIABILITY,
-        reason="execution-reliability branch not merged: jobs.JobStatus has no new states",
-    ),
-]
+pytestmark = pytest.mark.live_defense_e2e
 
 _ORDER: list[str] = []
 _KIND = "live_defense_e2e_compat_noop"
@@ -103,13 +92,13 @@ def test_compat_execution_deadline_times_out(settings_override):
     pid = f"prj_compat_{new_id(IdPrefix.prj)[:12]}"
     with transaction() as conn:
         jid = _enqueue(conn, "deadline", pid, deadline_s=30)
-        # Move the deadline into the past, then reconcile.
-        # Deadline must predate the txn start: reconcile compares against
-        # now(), which is the transaction timestamp, not wall-clock time.
+        # Backdate the deadline using the database clock — now() inside this
+        # same transaction — so reconcile's SQL predicate unequivocally sees
+        # it as past (F10: a Python utcnow() can read as future here).
         conn.execute(
             sa.update(jobs_t)
             .where(jobs_t.c.id == jid)
-            .values(deadline_at=utcnow() - timedelta(minutes=1))
+            .values(deadline_at=sa.func.now() - sa.text("interval '1 hour'"))
         )
         execution.reconcile(conn)
         status = conn.execute(sa.select(jobs_t.c.status).where(jobs_t.c.id == jid)).scalar_one()
@@ -135,3 +124,181 @@ def test_compat_uncertain_effect_needs_operator():
         assert status == "recovery_required"
         # A job with an uncertain effect is never auto-re-claimed.
         assert jobs.claim(conn, "compat-w2", 60, [_KIND]) is None
+
+
+# ---------------------------------------------------------------------------
+# Durable deadlines through queue waiting and worker recovery (F7 regression)
+# ---------------------------------------------------------------------------
+
+
+def test_deadline_survives_requeue_and_recovery():
+    """A durable deadline is set once at enqueue and never reset by recovery."""
+    from backend import execution
+
+    pid = f"prj_compat_{new_id(IdPrefix.prj)[:12]}"
+    with transaction() as conn:
+        jid = _enqueue(conn, "durable", pid, deadline_s=3600)
+        job = jobs.claim(conn, "compat-w", 60, [_KIND])
+        assert job is not None and job.id == jid
+        deadline_at = conn.execute(
+            sa.select(jobs_t.c.deadline_at).where(jobs_t.c.id == jid)
+        ).scalar_one()
+        assert deadline_at is not None
+        # Worker lost mid-run: expire the lease with the DB clock, reconcile.
+        conn.execute(
+            sa.update(jobs_t)
+            .where(jobs_t.c.id == jid)
+            .values(lease_expires_at=sa.func.now() - sa.text("interval '1 hour'"))
+        )
+        execution.reconcile(conn)
+        row = conn.execute(
+            sa.select(jobs_t.c.status, jobs_t.c.deadline_at).where(jobs_t.c.id == jid)
+        ).mappings().one()
+        # Recovered as re-claimable work (or already timed out by policy), and
+        # the deadline is the same absolute instant — never reset on redelivery.
+        assert row["status"] in ("queued", "timed_out")
+        assert row["deadline_at"] == deadline_at
+
+
+# ---------------------------------------------------------------------------
+# Review-confirmed defects: asserted contracts, expected to fail until the
+# owning workstreams land the fixes. xfail(strict) — an XPASS means drop the
+# marker and keep the regression.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "F1: after crash-after-send/before-response, reconcile requeues the job "
+        "and a new worker replays the billable provider call automatically"
+    ),
+)
+def test_crash_after_send_requires_recovery_before_replay(staging):
+    """No automatic second billable call while an attempt is unresolved (F1).
+
+    The provider sends the request, then the worker dies before the response
+    is recorded. Required: the job lands in ``recovery_required`` (or an
+    equivalent uncertain-effect state) and NO physical provider call repeats
+    until an operator resolves it. Today the job is requeued and replayed.
+    """
+    from backend import execution
+
+    from .transports import CrashAfterSend, fake_provider, gateway_factory
+
+    alice, bob = staging.login("alice"), staging.login("bob")
+    app = staging.create_project(alice, bob)
+    repo, sha = staging.checkout_owned_repo("repo-compat-f1")
+    staging.bind_repo(app, repo)
+    staging.index_snapshot(app.repo_id, sha)
+    staging.register_app(app)
+    staging.issue_token(app)
+    staging.attest_mapping(app, commit_sha=sha)
+    staging.set_mode(alice, app.project_id, "monitor")
+
+    fake = fake_provider(repo / "target")
+    crashing = CrashAfterSend(fake, agents={"scout"}, crashes=1)
+    staging.use_gateway(gateway_factory(crashing))
+
+    assert staging.ingest(alice, app).status_code == 202
+    # The injected death is a BaseException so it escapes the worker's
+    # `except Exception` path — the job is left running mid-attempt.
+    with pytest.raises(BaseException, match="worker death after provider send"):
+        staging.drain()
+
+    # Exactly one physical billable call left the process — and no response
+    # was recorded, so its outcome is uncertain.
+    calls_at_crash = len(fake.calls)
+    assert calls_at_crash == 1
+    step = next(
+        j
+        for j in staging.job_rows("live_defense_agent_step")
+        if '"scout"' in json.dumps(j["payload"])
+    )
+    assert step["status"] == "running"
+
+    # Worker is gone: expire the lease on the DB clock and reconcile.
+    staging.expire_lease(step["id"])
+    with transaction() as conn:
+        execution.reconcile(conn)
+        status = conn.execute(
+            sa.select(jobs_t.c.status).where(jobs_t.c.id == step["id"])
+        ).scalar_one()
+
+    # Required contract: uncertain billable outcome needs operator recovery,
+    # not an automatic replay.
+    assert status == "recovery_required"
+    staging.drain()
+    assert len(fake.calls) == calls_at_crash
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "F8: OFF set while the provider returns the final submit is overwritten "
+        "— the cancelled invocation is upgraded to executed"
+    ),
+)
+def test_off_during_final_submit_stays_cancelled(staging):
+    """OFF during final-submit persistence must not upgrade to executed (F8).
+
+    Flipping OFF through the real mode API while Scout's submit response is in
+    flight must leave the invocation cancelled (or skipped) — a stale
+    completion must not erase the revocation.
+    """
+    from .transports import HookProvider, all_role_scripts, fake_provider, gateway_factory
+
+    alice, bob = staging.login("alice"), staging.login("bob")
+    app = staging.create_project(alice, bob)
+    repo, sha = staging.checkout_owned_repo("repo-compat-f8")
+    staging.bind_repo(app, repo)
+    staging.index_snapshot(app.repo_id, sha)
+    staging.register_app(app)
+    staging.issue_token(app)
+    staging.attest_mapping(app, commit_sha=sha)
+    staging.set_mode(alice, app.project_id, "monitor")
+
+    scripts = all_role_scripts(repo / "target")
+    fake = fake_provider(repo / "target", scripts=scripts)
+    # Fire during Scout's last (submit) turn — the response comes back to a
+    # loop that should no longer be authorized to persist an execution.
+    hook = HookProvider(
+        fake,
+        when=len(scripts[RuntimeAgentName.SCOUT]),
+        on_call=lambda _req: staging.set_mode(alice, app.project_id, "off"),
+    )
+    staging.use_gateway(gateway_factory(hook))
+
+    assert staging.ingest(alice, app).status_code == 202
+    staging.drain()
+
+    inv = staging.by_agent(staging.invocations(alice, app.project_id))
+    # Required contract: revocation wins over the in-flight completion.
+    assert inv["scout"]["status"] != INV.executed.value
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="F7: live_defense_agent_step jobs carry no durable queue deadline",
+)
+def test_agent_step_jobs_have_durable_deadline(staging):
+    """First-responder step jobs must carry the incident deadline (F7)."""
+    from .transports import fake_provider, gateway_factory
+
+    alice, bob = staging.login("alice"), staging.login("bob")
+    app = staging.create_project(alice, bob)
+    repo, sha = staging.checkout_owned_repo("repo-compat-f7")
+    staging.bind_repo(app, repo)
+    staging.index_snapshot(app.repo_id, sha)
+    staging.register_app(app)
+    staging.issue_token(app)
+    staging.attest_mapping(app, commit_sha=sha)
+    staging.set_mode(alice, app.project_id, "monitor")
+    staging.use_gateway(gateway_factory(fake_provider(repo / "target")))
+
+    assert staging.ingest(alice, app).status_code == 202
+    staging.drain()
+
+    steps = staging.job_rows("live_defense_agent_step")
+    assert steps, "expected agent-step jobs after a monitor-mode investigation"
+    assert all(j["deadline_at"] is not None for j in steps)

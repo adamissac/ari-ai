@@ -91,6 +91,3 @@ rl-defense/results/*/*/seed*/holdout_trajectories.jsonl
 
 # Live Defense e2e machine-readable reports
 test-results/
-
-# Database backup dumps (local restore drills)
-backups/
