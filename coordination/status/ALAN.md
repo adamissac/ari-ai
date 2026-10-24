@@ -561,3 +561,14 @@ staging profile: preflight PASS, smoke 15/15, release check 18/0 fail, backup→
 drill parity at head 0015, job_dead alert delivered redacted. Integration branch:
 #441+#458 merge + 348 tests pass; #412/#496 conflict — needs owner resolution.
 No migrations added, no first_responder.py or security-hardening files touched.
+
+## Release readiness harness — feat/devin/release-validation
+
+Automated pilot release-readiness rehearsal, stacked on `feat/alan/pilot-deployment-ops`.
+`deploy/release_readiness.py` boots the real staging-profile stack on a scratch DB
+and proves 24 checks end-to-end (preflight gates, boot/drain, smoke, job exec,
+alert+redaction, SIGKILL crash recovery, backup→restore parity, authz/CSRF/estop
+gates, off-mode default, artifacts, release_check). First run: GO — 23 PASS /
+1 WARN (harness poll, fixed) / 0 FAIL. Also fixed `.gitignore` hiding
+`.env.staging.example`. Playwright real-stack: build verified, spec run in flight.
+Will re-run everything against the integration branch when it lands.
