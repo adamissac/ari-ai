@@ -28,7 +28,7 @@ export default function FindingsPage() {
     <Panel title="Findings">
       <p className="mb-1 text-sm text-muted">What these words mean: <Term t="finding">finding</Term>, <Term t="hypothesis">hypothesis</Term>, <Term t="validated">validated</Term>, <Term t="verification">verified</Term>.</p>
       <p className="mb-3 text-sm text-muted" data-testid="finding-group-note">{FINDING_GROUP_NOTE}</p>
-      <div role="tablist" aria-label="Finding groups" className="mb-3 flex gap-1">
+      <div role="tablist" aria-label="Finding groups" className="mb-3 flex flex-wrap gap-1">
         {TABS.map(([t, label]) => (
           <button key={t} role="tab" type="button" aria-selected={tab === t} onClick={() => setTab(t)}
             className={`rounded-md px-3 py-1.5 text-sm ${tab === t ? 'bg-panel-2 text-ink ring-1 ring-accent/50' : 'text-muted hover:text-ink'}`}>{label}</button>

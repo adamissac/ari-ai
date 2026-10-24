@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Reveal } from '@/components/reveal';
 import { BRAND_NAME } from '@/components/brand';
-import { Letters, LetterScope } from '@/components/letters';
 
 /*
  * Scroll-told landing chapters (pattern study of kairo.security, own implementation).
@@ -156,7 +155,7 @@ export function HowItWorks() {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_1fr] lg:items-end">
           <div>
             <p className="kicker kicker-ghost">How it works</p>
-            <h2 id="how-title" className="display mt-3 text-3xl font-semibold md:text-5xl"><LetterScope><Letters text="Assurance that runs" /></LetterScope><br /><span className="text-white/60"><LetterScope><Letters text="on every change." /></LetterScope></span></h2>
+            <h2 id="how-title" className="display mt-3 text-3xl font-semibold md:text-5xl">Assurance that runs<br /><span className="text-white/60">on every change.</span></h2>
           </div>
           <p className="max-w-md text-sm text-white/70">
             {BRAND_NAME} learns how the software is meant to behave, tests that behaviour safely, repairs only with approval,
@@ -216,7 +215,7 @@ export function Walkthrough() {
       <section aria-labelledby="walk-title" className="story-stage grid content-center gap-10 py-16 lg:grid-cols-[1fr_1.3fr] lg:items-center">
         <div>
           <p className="kicker">One finding, start to proof</p>
-          <h2 id="walk-title" className="display mt-3 text-3xl font-semibold md:text-4xl"><LetterScope><Letters text="Four harmless steps." /></LetterScope><br /><span className="text-muted"><LetterScope><Letters text="One verified fix." /></LetterScope></span></h2>
+          <h2 id="walk-title" className="display mt-3 text-3xl font-semibold md:text-4xl">Four harmless steps.<br /><span className="text-muted">One verified fix.</span></h2>
           <ol className="mt-8 space-y-1">
             {WALK.map((s, n) => (
               <li key={s.title} className="story-step" data-active={step === n || undefined} data-done={n < step || undefined}>
@@ -298,7 +297,7 @@ export function ProofStats(): ReactNode {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_1fr] lg:items-end">
         <div>
           <p className="kicker kicker-ghost">Proof, not promises</p>
-          <h2 id="proof-title" className="display mt-3 text-3xl font-semibold md:text-5xl"><LetterScope><Letters text="The record is checkable." /></LetterScope></h2>
+          <h2 id="proof-title" className="display mt-3 text-3xl font-semibold md:text-5xl">The record is checkable.</h2>
         </div>
         <p className="max-w-md text-sm text-white/70">No model output counts as proof, including ours. In the console, every status comes from saved records.</p>
       </div>

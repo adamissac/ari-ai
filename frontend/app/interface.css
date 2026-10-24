@@ -88,7 +88,7 @@
 :root:not(:has(.hero-full)) .rail-foot { border-top-color: var(--ui-edge); }
 
 @media (max-width: 1023px) {
-  .project-layout { grid-template-columns: 1fr; gap: 20px; }
+  .project-layout { grid-template-columns: minmax(0, 1fr); gap: 20px; }
   .project-rail { position: static; max-height: none; overflow: visible; }
   .rail-nav { flex-direction: row; flex-wrap: nowrap; gap: 20px; overflow-x: auto; padding-bottom: 8px; scrollbar-width: none; }
   .rail-nav::-webkit-scrollbar { display: none; }

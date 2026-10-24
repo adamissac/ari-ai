@@ -10,6 +10,8 @@ HEAD
 HEAD
 - Add `access_control.role` check template: Probe can now prove role-bypass on mutating routes — a restricted fixture identity must be denied (401/403/404) while a permitted one keeps access. Recipe surface expanded (assessment/finding/scope routes, role-differentiated sandbox identities carol=viewer/dave=member of alice's org); new recipe body placeholders `{expires_in_days:N}` and `{resource:KIND}`. Aliases `authorization.role`, `access_control.mutation`, `access_control.rbac` map to the new category.
 
+- Homepage dialed back per owner review: footer trimmed to a hairline + identity/links + copyright (giant ghosted wordmark, agent marquee and patrol ant removed), and the per-letter text-appear animations removed in favor of plain headings with scroll-driven reveals (`components/letters.tsx` deleted; the spotlight-gradient hero headline is restored). Console mobile QA fixes: sidebar rail grid collapses cleanly under 1024px (no horizontal page overflow), findings tab row wraps on narrow screens, and a duplicate React `key` on the Live Defense "In use" API list (GET and PATCH `/projects/{id}`) is disambiguated by method.
+
 - Eval scorer now reports `validated_any`/`fixed_any` across every finding kind next to the security-only verdicts, and derives finding paths from `source_span` evidence; `benign_artifact_sha512` relabeled — the sha512 swap was a real defect (String(64) sha256 column), not a false positive.
 
 ||||||| parent of 5e34408c (docs(landing): changelog + handoff for homepage rework)

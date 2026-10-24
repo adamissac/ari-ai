@@ -1695,7 +1695,6 @@ body:has(.commit-stage) main { color: #fff; }
 .footer-links h2 { margin-bottom: 16px; font: 10px var(--font-mono); text-transform: uppercase; letter-spacing: .08em; color: #d2b9ac; }
 .footer-links a { display: block; width: fit-content; padding-block: 8px; color: #fff7f2; font-size: 13px; line-height: 1.5; }
 .footer-links a:hover { text-decoration: underline; text-underline-offset: 4px; }
-.footer-horizon { position: absolute; z-index: 0; pointer-events: none; inset: 0; background: radial-gradient(ellipse at 15% 120%, #c2452d22, transparent 65%); }
 .footer-bottom { position: relative; z-index: 1; margin-top: 36px; padding-top: 18px; border-top: 1px solid #e2b79e26; display: flex; align-items: center; justify-content: space-between; gap: 24px; color: #d2b9ac; font: 10px var(--font-mono); }
 .footer-top-link { display: inline-flex; align-items: center; gap: 12px; min-height: 36px; }
 @media (max-width: 767px) {
@@ -1811,35 +1810,8 @@ body:has(.commit-stage) main { color: #fff; }
 
 /* ================= Home landing polish (.home-deep) =================
    Kairo-inspired restraint on the homepage only, in ARI's own warm palette:
-   per-letter blur reveals, pixel-face numbers, blurred inactive steps, a
-   patrol ant on the footer rail, the seven-agent marquee, a scroll hint,
-   and a ghosted pixel wordmark. The console is untouched. */
-
-/* Letters can't blur inside a gradient-clipped headline: a filtered child breaks
-   background-clip:text. Flatten the headline to the warm ink whites instead. */
-.home-deep .hero-stage[data-fx="on"] .hero-headline .hero-line,
-.home-deep .hero-stage[data-fx="on"] .hero-headline .hero-line-dim {
-  background: none;
-  -webkit-text-fill-color: currentColor;
-}
-.home-deep .hero-stage[data-fx="on"] .hero-headline .hero-line { color: #fff7f2; }
-.home-deep .hero-stage[data-fx="on"] .hero-headline .hero-line-dim { color: #ffd9c4; }
-/* .hero-ink span paints every letter white; the dim line must reach the .lt spans. */
-.home-deep .hero-ink .hero-line-dim .lt { color: #ffd9c4; }
-
-/* Per-letter reveal (components/letters.tsx). "idle" renders normally; JS marks
-   scopes "off" (below fold) then "on" to play once. */
-.lts .lt-word { display: inline-block; white-space: nowrap; }
-.lts .lt { display: inline-block; will-change: transform, filter, opacity; }
-[data-lt="off"] .lt { opacity: 0; }
-[data-lt="on"] .lt { animation: lt-in 850ms var(--ease-smooth) both; animation-delay: calc(var(--l) * 40ms); }
-.hero-stage[data-fx="on"] .lt { animation: lt-in 900ms var(--ease-smooth) both; animation-delay: calc(var(--l) * 58ms); }
-@keyframes lt-in {
-  from { opacity: 0; filter: blur(9px); transform: translateY(0.35em) scale(1.04); }
-}
-@media (prefers-reduced-motion: reduce) {
-  [data-lt] .lt { animation: none; opacity: 1; }
-}
+   pixel-face numbers, kicker eyebrows, blurred inactive steps — everything
+   scroll-driven. The console is untouched. */
 
 /* Mono eyebrow marker — square dot + tracked caps. */
 .kicker { display: inline-flex; align-items: center; gap: 9px; font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.22em; color: var(--color-brand-deep); }
@@ -1848,10 +1820,9 @@ body:has(.commit-stage) main { color: #fff; }
 .kicker-dark { color: #ffb89d; }
 .hero-ink .kicker-dark { color: #ffb89d; }
 
-/* Pixel-face figures (Sixtyfour, OFL) — card numbers, stats, footer wordmark. */
+/* Pixel-face figures (Sixtyfour, OFL) — card numbers and stats. */
 .home-deep .story-card-num { font-family: var(--font-sixtyfour), var(--font-mono), monospace; font-weight: 400; letter-spacing: 0.04em; color: rgba(255, 150, 120, 0.30); }
 .home-deep .stat-num { font-family: var(--font-sixtyfour), var(--font-mono), monospace; font-weight: 400; letter-spacing: 0.02em; color: #fff0e6; }
-.footer-word { margin: 3.5rem 0 0; text-align: center; font-family: var(--font-sixtyfour), var(--font-mono), monospace; font-size: clamp(5rem, 24vw, 20rem); line-height: 0.78; letter-spacing: 0.05em; color: color-mix(in srgb, var(--color-brand) 14%, transparent); user-select: none; }
 
 /* Inactive steps soften to a blur while the walkthrough stage is pinned. */
 @media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
@@ -1860,25 +1831,5 @@ body:has(.commit-stage) main { color: #fff; }
   .home-deep .story-step[data-done] { filter: blur(0.6px); opacity: 0.8; }
 }
 
-/* Pheromone patrol: a tiny ant walks the footer rail. */
-.home-deep .footer-ruler::after {
-  content: ""; position: absolute; top: -7px; left: 0; width: 18px; height: 13px;
-  background: color-mix(in srgb, var(--color-brand) 80%, #fff7f2);
-  -webkit-mask: url("/brand/ari-ant-mark.png") center / contain no-repeat;
-  mask: url("/brand/ari-ant-mark.png") center / contain no-repeat;
-  animation: footer-patrol 20s linear infinite;
-}
-@keyframes footer-patrol { from { transform: translateX(-24px); } to { transform: translateX(100vw); } }
-@media (prefers-reduced-motion: reduce) { .home-deep .footer-ruler::after { animation: none; display: none; } }
-
-/* Seven-agent marquee — the roster scrolling past, mono and quiet. */
-.footer-marquee { position: relative; z-index: 1; margin-top: 52px; overflow: hidden; border-block: 1px solid rgba(226, 183, 158, 0.14); padding-block: 11px;
-  -webkit-mask: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
-  mask: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
-.footer-marquee-track { display: flex; width: max-content; animation: footer-marquee 30s linear infinite; }
-.footer-marquee-track > span { white-space: nowrap; padding-right: 0.4em; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.34em; color: rgba(255, 247, 242, 0.32); }
-.footer-marquee-track > span i { font-style: normal; color: rgba(194, 69, 45, 0.85); }
-@keyframes footer-marquee { to { transform: translateX(-50%); } }
-@media (prefers-reduced-motion: reduce) { .footer-marquee-track { animation: none; } }
 
 
