@@ -1,0 +1,12 @@
+{
+  "application_id": "app_01JFIXTURE0000000000000APP",
+  "commit_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "created_at": "2026-10-17T01:00:00Z",
+  "created_by": "usr_01JFIXTURE0000000000000USR",
+  "deployed_at": "2026-10-17T01:00:00Z",
+  "id": "dcm_01JFIXTURE0000000000000DCM",
+  "project_id": "prj_01JFIXTURE0000000000000PRJ",
+  "repo_id": "rep_01JFIXTURE0000000000000REP",
+  "revoked_at": null,
+  "source": "owner_attested"
+}

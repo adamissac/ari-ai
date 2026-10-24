@@ -1,0 +1,9 @@
+{
+  "application_id": "app_01JFIXTURE0000000000000APP",
+  "commit_sha": null,
+  "confidence": "unknown",
+  "finding_ids_at_commit": [],
+  "finding_is_not_proof_of_this_request": true,
+  "mapping_id": null,
+  "note": "No owner-attested deploy-to-commit mapping. Correlation is UNKNOWN."
+}

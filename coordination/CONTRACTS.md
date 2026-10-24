@@ -22,4 +22,6 @@ Publish V0 early (M0), then minimize field/enum churn. Use adapters rather than 
 
 | Date (UTC) | Version | Change | Status |
 |---|---|---|---|
+| 2026-10-24 | 0.21.0 | Live Defense Phase 7A first-responder (additive): modes, orchestrator decisions, seven-agent capability registry, window-scoped deploy mapping, analyst handoff, versioned RL-ready decision records. No AUTO-EXECUTE. `evidence_state=verified` requires independently executed verification evidence. `20261024T050000Z-alan-to-all-live-defense-phase7a-schema-0-21`. Open PR #412 keeps 0.20.0 (no Alembic). This PR uses Alembic `0015`. If #439 merges first, #412 rebases to 0.22.0. | Proposed on `cursor/live-defense-first-responder-0044` / PR #439; in force after merge + owner acks |
+| 2026-10-24 | 0.20.0 | Reserved by open PR #412 (Phase 6.5 RL-gated pilot). Not used by Phase 7A. | Proposed on #412; do not overwrite from #439 |
 | 2026-10-17 | 0.1.0 (V0) | Initial `shared/` contracts, generated JSON Schema/TS, fixtures (`20261017T010331Z-srihith-to-all-contracts-v0`). RL types adopted from Adam's proposal (#2). | Proposed in Srihith PR; in force after merge + owner acks |
