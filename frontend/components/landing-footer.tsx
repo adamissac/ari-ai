@@ -21,6 +21,7 @@ export function LandingFooter() {
         </nav>
       </Reveal>
       <div className="footer-horizon" aria-hidden="true"><div /><div /></div>
+      <p className="footer-word" aria-hidden="true">ARI</p>
       <Reveal className="footer-bottom" delay={100}>
         <span>© {new Date().getUTCFullYear()} ARI</span>
         <a href="#main" className="footer-top-link">Back to top <span aria-hidden="true">↑</span></a>
