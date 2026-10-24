@@ -17,12 +17,6 @@ description = "Documented placeholders and synthetic fixtures"
 paths = ['''\.env\.example$''']
 regexes = ['''fixture-token-(alice|bob)''', '''replace-me''']
 
-# The owned ledgerlite rehearsal target uses synthetic per-user tokens; they are
-# not credentials. Match only these two literals, anywhere they appear.
-[[allowlists]]
-description = "Synthetic rehearsal fixture tokens (tok-alice/tok-bob)"
-regexes = ['''tok-(alice|bob)''']
-
 # Pinned upstream revisions are 40-hex git commit SHAs, not credentials; the generic
 # API-key rule fires on names like OWASP_API_COMMIT. Narrow: only ALL_CAPS *_COMMIT
 # constants assigned exactly one 40-char lowercase hex string on their own line.
