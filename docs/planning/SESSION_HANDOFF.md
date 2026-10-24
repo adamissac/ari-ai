@@ -1589,3 +1589,8 @@ results retained. No eligible policy in any attack family; persistent-static
 240 active ticks explicitly violates64. Training NO-GO, no further execution.
 Sealed index931fbd6737f963a1fe661ab029d08b7f4a26fe09e42805c291c9d1a1a2a0246c;
 read-only600-episode audit passed. Report/evidence under resource-exhaustion/feasibility-001.
+
+PR433 first RL CI:544 passed,1 fault-injection fixture failed because prior torch
+tests raised process-lifetime peak RSS above the study limit. Test fixture now
+isolates RSS for the invalid-action fault and separately tests memory-limit
+rejection. No collector/protocol/evidence changes, no formal study rerun.

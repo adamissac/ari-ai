@@ -66,6 +66,9 @@ def test_integrity_failure_retains_partial_evidence_and_never_seals(tmp_path, mo
         ["git", "commit", "-m", "unit source"],
     ):
         subprocess.run(command, cwd=root, check=True, capture_output=True)
+    # Fault injection must not inherit peak RSS from earlier unrelated torch tests.
+    # The real memory guard is exercised separately below; production is unchanged.
+    monkeypatch.setattr(study, "rss", lambda: 0)
     monkeypatch.setattr(study, "action", lambda policy, obs: 99)
     output = tmp_path / "failed"
     with pytest.raises(IndexError):
@@ -92,3 +95,11 @@ def test_retained_formal_study_is_complete_and_accounted():
     }
     with pytest.raises(ValueError, match="anchor"):
         verify(evidence, "0" * 64)
+
+
+def test_memory_budget_is_execution_failure(monkeypatch):
+    import rl_defense.research.resource.study as study
+
+    monkeypatch.setattr(study, "rss", lambda: 512 * 1024**2 + 1)
+    with pytest.raises(RuntimeError, match="budget"):
+        study.check_budget(time.monotonic())
