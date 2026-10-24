@@ -283,3 +283,19 @@ def test_payload_index_store_reads_each_snapshot_once(
     other = index.model_copy(update={"project_id": "prj_fixture01"})
     with pytest.raises(IntelligenceError, match="mismatched"):
         store.get(other)  # another tenant's ref never hits the cache
+
+
+def test_batched_blob_reads_refuse_a_missing_object(repository: tuple[Path, str]) -> None:
+    from code_intelligence.ingest import GitReader
+
+    root, sha = repository
+    _, files, _ = GitReader(root).read(sha)
+    import subprocess
+
+    for f in files:  # the batched read returns exactly each blob
+        shown = subprocess.run(
+            ["git", "-C", str(root), "show", f"{sha}:{f.path}"], capture_output=True, check=True
+        ).stdout.decode()
+        assert f.content == shown, f.path
+    with pytest.raises(IntelligenceError, match="blob read failed"):
+        GitReader(root)._blobs(["0" * 40], 0)
