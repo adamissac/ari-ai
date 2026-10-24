@@ -22,6 +22,7 @@ HEAD
 HEAD
 HEAD
 HEAD
+HEAD
 ### 2026-10-24 — Devin (agent, Adam) — leaked Vercel snapshot cleanup, push→agents verification
 - Did: verified the named-sandbox snapshot-leak fix already on main (`persistent: False` on run boxes + `destroy` in teardown + `_sweep_stale`); opened PR #495 making the sweep also delete stale run boxes' orphan snapshots so leaked quota is actually freed. Confirmed `delete_orphan_snapshots` only removes snapshots created *by* the destroyed sandbox — the shared `ari-base-*` snapshot can never be an orphan of a run box. Verified on main: security-agents suite 581 passed / 24 skipped, frontend typecheck + 330 vitest + lint clean, standards smoke (CWE/OWASP/CVSS/ATT&CK/D3FEND/SARIF/SP 800-115) passes. Confirmed agents are standards-grounded in code: Scout CWE/OWASP, Probe CWE, Trace ATT&CK/CVSS, Diagnose D3FEND, Fortify CWE/D3FEND; Patch/Verify get standards context via the tagged finding + remediation plan, not prompts.
 - State of the code: push→agents path gates are code-verified (`pipeline.process_github_delivery` → `auto_commits.schedule` → `assess_github_commit`): `repositories.automatic_assessments` (per-repo opt-in, UI switch exists), `GITHUB_AUTO_COMMIT_AUTHORS` (Railway entrypoint defaults `*`), `monitoring_policy.enabled` (project setting, UI switch), active `AuthorizedScope`. All four must be on for pushes to spawn runs — they are product gates, not bugs.
@@ -33,6 +34,17 @@ HEAD
 - Commands run and results (executed): `make check` pass (schema 0.22.0); `uv run mypy` 40 files; focused 7C+review+jobs+llm **51 passed**, 1 skipped; `uv run pytest -q` **812 passed**, 14 skipped; security-agents **593 passed**, 23 skipped; frontend lint/typecheck; vitest **337 passed** / 79 files; transport **35 passed**.
 - Next: push existing branch; confirm mergeability and whether Actions auto-start. Independent security re-review. Leave #458 open.
 - Warnings: **leave the PR open**. Merge NO-GO until independent re-review. Live Anthropic still UNVERIFIED (issue #10).
+||||||| parent of f28a8496 (fix(live-defense): refuse unknown provider replay and honor cancel/deadline)
+### 2026-10-24 — Cursor (agent, Alan) — Codex F1/F7/F8 on #458 (do not merge)
+- Did: Implemented Codex combined-release findings F1/F7/F8 on existing `feat/alan/live-defense-phase7c-agent-execution`. Six original Phase 7C security fixes preserved. **Did not merge #458. Did not start Phase 7D. Did not expand Probe/Patch/Verify/Trace/Fortify. Did not rewrite `jobs.py`. Did not take Alembic 0016.** Schema still **0.22.0**; open #412 keeps **0.20.0**.
+- F1: `ProviderAttempt` ledger on invocation JSONB; reserve before `complete()`; crash → `uncertain`; no automatic second billable request; in-flight → `JobDeferred`; Anthropic `Idempotency-Key`; intel reads not ledgered.
+- F7: one overall `deadline_at` on decision, invocation, and agent-step payload; not reset on worker retry; expired refuses another provider call; distinct from cancel/provider failure.
+- F8: recheck OFF/`cancel_requested` immediately before persist; commit cancelled **before** raising `JobCancelled` so the transaction is not rolled back; partial transcript/cost kept; cancelled cannot become executed.
+- Commands run and results (executed): `make check` pass (schema 0.22.0, 156 files); `uv run mypy` 40 files; focused 7A+7C+review+jobs+llm **76 passed**, 1 skipped (live smoke). FakeLLM, not live Anthropic. e2e skipped (UI unchanged).
+- Next: independent re-review of F1/F7/F8. Leave #458 open. Coordinate queue lifecycle with Devin Reliability (`ctx.effect` around billable `complete()` only).
+- Warnings: **leave the PR open**. Merge NO-GO. Do not merge Devin branches. Do not wrap all read-only ops in effect guards.
+
+f28a8496 (fix(live-defense): refuse unknown provider replay and honor cancel/deadline)
 ### 2026-10-24 — Cursor (agent, Alan) — Phase 7C MERGEABLE + Devin compatibility review (do not merge #458)
 - Did: Six security-review findings remain intact on conflict-free #458. Merged `origin/main` through `d1864e9a` (#513 eval cases). **Did not cherry-pick or merge** Devin fork work (`m-alan08/ari-ai` PRs 1–3). **Did not start Phase 7D.** Schema still **0.22.0**; open #412 keeps **0.20.0**; Alembic stays **0015**. Probe/Patch not expanded. No AUTO-EXECUTE.
 - Devin review (read-only, not merged):

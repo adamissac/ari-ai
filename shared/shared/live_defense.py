@@ -739,6 +739,35 @@ class ExecutionIntegrity(StrEnum):
     failed = "failed"
 
 
+class ProviderAttemptState(StrEnum):
+    """Durable billable-request ledger. Unknown outcomes are never auto-replayed."""
+
+    reserved = "reserved"
+    in_flight = "in_flight"
+    settled = "settled"
+    uncertain = "uncertain"
+    cancelled = "cancelled"
+
+
+class ProviderAttempt(StrictModel):
+    """One billable provider request. Read-only intel queries are not recorded here."""
+
+    id: ShortText
+    idempotency_key: ShortText
+    status: ProviderAttemptState
+    reserved_at: UtcDatetime
+    sent_at: UtcDatetime | None = None
+    settled_at: UtcDatetime | None = None
+    model_id: ShortText | None = None
+    cost_usd: float | None = Field(default=None, ge=0)
+    input_tokens: int | None = Field(default=None, ge=0)
+    output_tokens: int | None = Field(default=None, ge=0)
+    cache_creation_input_tokens: int | None = Field(default=None, ge=0)
+    response_id: ShortText | None = None
+    error_code: ShortText | None = None
+    effect_key: ShortText | None = None
+
+
 class AgentExecutionRecord(StrictModel):
     """Genuine agent-loop outcome for future RL research. Not a confirmed threat."""
 
@@ -760,6 +789,8 @@ class AgentExecutionRecord(StrictModel):
     evidence_verified: Literal[False] = False
     confirmation: Literal["unverified"] = "unverified"
     predicted_probability: None = None
+    provider_attempts: list[ProviderAttempt] = Field(default_factory=list)
+    uncertain_provider_outcome: bool = False
 
 
 class AnalystHandoffState(StrEnum):
@@ -963,6 +994,7 @@ class FirstResponderInvocation(StrictModel):
     job_id: JobId | None = None
     reason: ShortText | None = None
     execution: AgentExecutionRecord | None = None
+    deadline_at: UtcDatetime | None = None
     created_at: UtcDatetime
 
 
