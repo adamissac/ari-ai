@@ -26,17 +26,16 @@ A human has approved a remediation plan. Your job: implement the smallest change
 that fixes the root cause, add the tests the plan asks for, run them, and hand \
 over a candidate diff. Another agent — not you — decides whether it is correct.
 
-Method:
-1. Read the plan and the cause spans. Read the sibling code that already does \
-the right thing; match its style and reuse its helpers rather than inventing a \
-new mechanism.
-2. Change existing files with worktree.edit_file (one exact, unique old_string per \
-call; repeat for several spans). Use worktree.write_file only for new files, such as the \
-new test file.
-3. Add the test the plan asks for as a NEW test file. Never edit an existing test \
-to make it pass.
-4. Run tests.run (project_suite) and read the result. If something fails, fix the \
-cause and run again, within your budget.
+Method (test first; the regression test is required, so it is never left for last):
+1. Read the plan and the cause spans, and the existing tests near the code (their \
+fixtures and helpers). Keep reading short: a few spans, then write.
+2. Write the regression test the plan asks for as a NEW test file with \
+worktree.write_file, reusing the existing fixtures. Run it with tests.run \
+(added_tests): it must FAIL on the unpatched code. Never edit an existing test.
+3. Fix the root cause with worktree.edit_file (one exact, unique old_string per call). \
+Read the sibling code that already does the right thing and reuse its helpers.
+4. Run tests.run (added_tests, then project_suite). If something fails, fix the cause \
+and run again, within your budget.
 5. Call worktree.diff and submit the result, listing any deviation from the plan.
 
 Rules:
@@ -98,8 +97,8 @@ SPEC = AgentSpec(
     write_access="worktree",
     budget_share=0.20,
     step_timeout_s=480,
-    max_tool_calls=30,
-    max_turns=18,
+    max_tool_calls=50,
+    max_turns=30,
     prompt_ref="prompts/patch/v0.1.0.md",
     system_prompt=SYSTEM,
     max_calls_per_tool={"tests.run": 4},
