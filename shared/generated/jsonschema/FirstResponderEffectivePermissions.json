@@ -1,0 +1,80 @@
+{
+  "$defs": {
+    "FirstResponderIntent": {
+      "description": "Server-enforced modes. MONITOR and SHADOW are the same mode.\n\nThere is no AUTO-EXECUTE value. Unknown or auto-execute input fails closed.",
+      "enum": [
+        "off",
+        "monitor",
+        "assisted_response"
+      ],
+      "title": "FirstResponderIntent",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Computed app permissions. Org intent is never copied as effective rights.",
+  "properties": {
+    "application_connected": {
+      "title": "Application Connected",
+      "type": "boolean"
+    },
+    "authorized_scope_active": {
+      "title": "Authorized Scope Active",
+      "type": "boolean"
+    },
+    "auto_execute": {
+      "const": false,
+      "default": false,
+      "title": "Auto Execute",
+      "type": "boolean"
+    },
+    "effective": {
+      "$ref": "#/$defs/FirstResponderIntent"
+    },
+    "enforcement_active": {
+      "title": "Enforcement Active",
+      "type": "boolean"
+    },
+    "intent": {
+      "$ref": "#/$defs/FirstResponderIntent"
+    },
+    "kill_switch_active": {
+      "title": "Kill Switch Active",
+      "type": "boolean"
+    },
+    "monitoring_active": {
+      "title": "Monitoring Active",
+      "type": "boolean"
+    },
+    "org_intent_is_not_app_permissions": {
+      "const": true,
+      "default": true,
+      "title": "Org Intent Is Not App Permissions",
+      "type": "boolean"
+    },
+    "reasons": {
+      "items": {
+        "maxLength": 500,
+        "type": "string"
+      },
+      "title": "Reasons",
+      "type": "array"
+    },
+    "trusted_mapping": {
+      "title": "Trusted Mapping",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "intent",
+    "effective",
+    "application_connected",
+    "monitoring_active",
+    "enforcement_active",
+    "kill_switch_active",
+    "authorized_scope_active",
+    "trusted_mapping"
+  ],
+  "title": "FirstResponderEffectivePermissions",
+  "type": "object"
+}

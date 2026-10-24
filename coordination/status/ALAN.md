@@ -2,13 +2,13 @@
 
 Owner: Alan (`security-agents/`, SEC-001 … SEC-013; interim Live Defense UI)
 Branch: `feat/live-defense-phase6-5-rl-gated-pilot`
-Current task: Phase 6.5 RL-gated pilot infrastructure (verdict stays RL BLOCKED; no Phase 7)
-Last remote sync: 2026-10-23, `origin/main` @ `74a0a3c2` (PRs #411 and #410 merged on main)
-API/contract dependencies: `shared` 0.20.0 live-defense RL-gated models; backend `GET /rl-readiness`
+Current task: Phase 6.5 RL-gated pilot infrastructure (verdict stays RL BLOCKED; no Phase 7 work on this branch; Phase 7A already on main)
+Last remote sync: 2026-10-24, `origin/main` merged in (PRs #411/#410/#439-era 7A on main; #412 still OPEN)
+API/contract dependencies: `shared` 0.21.0 carrying the Phase 6.5 additive set; backend `GET /rl-readiness`
 Recent PR/commit: https://github.com/adamissac/ari-ai/pull/412 on `feat/live-defense-phase6-5-rl-gated-pilot` (left open; Codex research untouched)
 Verified this session: pytest 25 (phase6_5+authorize); frontend lint/typecheck; vitest 331/78; transport 35. Playwright e2e stack not run.
 Blockers: RL evidence A–J missing; owner-only pilot authorization; live seven-agent run (issue #10); Docker images (INFRA-005)
-Next action: leave PR open for human review of authz tightening; do not start Phase 7; do not provision customer infra
+Next action: leave PR open for human review of authz tightening; do not start Phase 7 work here; do not provision customer infra
 
 ## What runs today
 
@@ -75,6 +75,16 @@ Updated 2026-10-17 after #100 to #125.
   claimed.
 
 ## Session entries
+
+### 2026-10-24 (rebase #439 onto main — docs conflicts)
+
+- GitHub showed **Checks awaiting conflict resolution** on `CHANGELOG.md` and `SESSION_HANDOFF.md` only. Rebased onto `origin/main` `c5c2b47d`. Kept both Unreleased/handoff sides plus the four Codex fixes. Schema still 0.21.0 / Alembic `0015`. #412 still 0.20.0, no Alembic.
+- Executed: ruff pass; export 154 files; pytest phase7a + jobs + no-action — 33 passed. PR left **open**.
+
+### 2026-10-24 (Phase 7A Codex review + schema 0.21.0)
+
+- PR #439 left **open**. Backend/test CI: removed AUTO-EXECUTE route so `test_no_route_applies_a_defensive_action` passes (404, not a path containing `execute`). Four Codex findings fixed with regressions. Shared **0.21.0** / orchestrator `7a.1.1` / Alembic `0015`. #412 keeps 0.20.0. Message: `20261024T050000Z-alan-to-all-live-defense-phase7a-schema-0-21.md`.
+- Executed: `pytest` phase7a + jobs + rl_no_action_path — 33 passed. Contract export 0.21.0. No merge, no Phase 7B, no RL training.
 
 ### 2026-10-23 (Live Defense Phase 6.5 RL-gated pilot infrastructure)
 
@@ -479,3 +489,68 @@ tests pass; CI/review pending. No serving or model changes.
 RL-CMDP-005 on `feat/alan/feasibility-readiness-audit`: read-only original-fixture
 audit with fixed source/index trust anchors and explicit inconclusive readiness.
 Eighteen tests pass; no study rerun, training or serving integration.
+
+## RL authorization-context provider — 2026-10-23
+
+RL-CMDP-006, branch `feat/alan/authorization-context-provider`: owner-authorized
+version 0.1.0 internal provider and payments-lite trusted-record adapter. 57 focused
+tests pass; review/CI pending. Four authorization states, scoped clock/revision
+metadata and documented future causal observation boundary. No new external
+service, shared public API, RL observation modification, training or promotion.
+
+## Adaptive-defense readiness — 2026-10-23
+
+RL-CMDP-007, `research/rl-adaptive-defense-readiness`: user-requested research
+assessment after #414; NO-GO/Option C, no new training. Pure cutoff observation
+adapter and read-only training-archive inventory only. 54 focused tests pass;
+review/full CI pending. See docs/research/adaptive-defense-readiness/README.md.
+No new shared public contract, environment dynamics, collection or enforcement.
+
+RL-CMDP-007 publication update: PR #422, tested code6c833795. Late arrivals enter
+their knowledge-arrival window without rewriting earlier observations. Local166
+research regressions passed in19.80s;91 shared contract tests including TypeScript
+passed in0.96s; two new modules pass scoped strict mypy. NO-GO/Option C unchanged.
+Exact commands and the pre-commit provenance rejection are retained in
+docs/research/adaptive-defense-readiness/VERIFICATION.md. Final CI/review/merge state
+is recorded on PR422; no new study may start without separate owner approval.
+
+## Resource-exhaustion research — RL-CMDP-008
+
+research/rl-resource-exhaustion-feasibility: owner-authorized finite-capacity model,
+fixed baselines and causal observations. Core23 unit tests pass; Stage2 preparation
+and final CI pending. No formal comparative study or model training authorized.
+
+RL-CMDP-008 Stage2 preparation implemented: versioned experience/config/profile/
+cutoff schema, separate reward/cost arrays, bounded unit-only replay, fixed unit
+receipt writer/verifier with raw work/control/cost accounting, failure retention,
+and deadline-bounded settlement. No optimizer, checkpoint writer or study runner.
+Stochastic private phases/tie ordering avoid clock or label-priority shortcuts.
+Proposed study now600 episodes/18,000 decisions plus bounded settlement, with
+unapproved safety/sample/compute values. Training NO-GO pending approved formal
+feasibility, safe baseline headroom, terminal-cost collector/learner review and
+explicit training authorization. No historical evidence or customer control edits.
+
+Resource feasibility001: owner approved one deterministic study with acceptance
+failures retained and execution failures stopping. Freeze on research/rl-resource-feasibility-001;
+no environment/baseline tuning, training, holdout, promotion or customer enforcement.
+
+Feasibility001 completed600/18,000 within budget atbed44ff2, sealed evidence retained.
+No eligible attack-family arm; training NO-GO. Final PR CI/review pending.
+
+RL-CMDP-010 read-only product-thesis audit: archived capacity bounds do not settle
+physical or existing-action safe feasibility. Recommend deprioritize RL as near-term
+product dependency; non-RL evidence-to-regression milestone proposed, not built.
+No old evidence, weights, shared contracts or customer controls changed.
+
+Phase7B research-only first responder: fixture adapter/proposal boundary and Grok
+contract proposal in research/rl-first-responder-orchestration. No production
+interfaces, incidents, workers, controls or checkpoints changed; agreement pending.
+
+Phase 7B PR #437: 242 research regressions, 91 shared tests, strict adapter mypy
+and scoped Ruff pass. Verdict CONDITIONAL GO; no learning yet. Grok/shared-owner
+contract agreement remains pending; no production integration. CI/review pending.
+
+Phase 7B specification delivered in PR #437. CI at 157be64: 569 RL plus existing
+20k smoke/reload, 724 backend /14 skips, 4 integration, docs/secrets passed. Three
+CodeRabbit documentation clarifications addressed; no adapter semantics changed.
+Final head must pass review/CI before research-only merge; then stop.

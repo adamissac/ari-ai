@@ -159,14 +159,14 @@ SPEC = AgentSpec(
     max_turns=10,
     prompt_ref="prompts/fortify/v0.1.1.md",
     system_prompt=SYSTEM,
-    max_output_tokens=8000,
+    max_output_tokens=16000,  # thinking counts toward this; 4-8k ran out on real repos
     max_schema_repairs=2,
 )
 
 
 def build_prompt(data: FortifyInput, intel: CodeIntel) -> str:
     return (
-        "A fix for this finding has been independently verified. Propose prevention.\n\n"
+        "A fix for this finding is being written and independently verified. Propose prevention.\n\n"
         f"{data_block('verified_finding', data.model_dump(mode='json'), provenance='verify_output')}\n\n"
         f"{data_block('expectations', [e.model_dump(mode='json') for e in intel.expectations()], provenance='code_intelligence')}\n\n"
         "Look at the sibling call sites before recommending anything structural."

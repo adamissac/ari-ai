@@ -18,6 +18,50 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-24 — Devin (agent, Adam) — leaked Vercel snapshot cleanup, push→agents verification
+- Did: verified the named-sandbox snapshot-leak fix already on main (`persistent: False` on run boxes + `destroy` in teardown + `_sweep_stale`); opened PR #495 making the sweep also delete stale run boxes' orphan snapshots so leaked quota is actually freed. Confirmed `delete_orphan_snapshots` only removes snapshots created *by* the destroyed sandbox — the shared `ari-base-*` snapshot can never be an orphan of a run box. Verified on main: security-agents suite 581 passed / 24 skipped, frontend typecheck + 330 vitest + lint clean, standards smoke (CWE/OWASP/CVSS/ATT&CK/D3FEND/SARIF/SP 800-115) passes. Confirmed agents are standards-grounded in code: Scout CWE/OWASP, Probe CWE, Trace ATT&CK/CVSS, Diagnose D3FEND, Fortify CWE/D3FEND; Patch/Verify get standards context via the tagged finding + remediation plan, not prompts.
+- State of the code: push→agents path gates are code-verified (`pipeline.process_github_delivery` → `auto_commits.schedule` → `assess_github_commit`): `repositories.automatic_assessments` (per-repo opt-in, UI switch exists), `GITHUB_AUTO_COMMIT_AUTHORS` (Railway entrypoint defaults `*`), `monitoring_policy.enabled` (project setting, UI switch), active `AuthorizedScope`. All four must be on for pushes to spawn runs — they are product gates, not bugs.
+- Commands run and results (executed): `pytest security-agents/tests -q` (581 passed), `pytest tests/test_vercel_sandbox.py` (5 passed incl. new sweep test), `npm run typecheck/lint/test --prefix frontend` (clean, 330 passed), `python -m security_agents.standards.smoke` (validated).
+- Warnings for the next session: prod-side flags still need flipping per repo (Automatic runs ON, monitoring enabled, scope approved) — DB/config, not code. Already-orphaned snapshots (sandbox deleted without orphan cleanup) can't be reached by the sweep; they expire on their TTL or need `sandbox snapshots delete` with Vercel creds.
+
+### 2026-10-24 — Cursor (agent, Alan) — rebase #439 onto main (docs conflicts)
+- Did: left PR #439 **open** (no merge, no Phase 7B, no RL training, no customer enforcement). GitHub had blocked required checks with **Checks awaiting conflict resolution** on only `CHANGELOG.md` and `docs/planning/SESSION_HANDOFF.md`. Fetched `origin/main` `c5c2b47d` (PR #453) and rebased `cursor/live-defense-first-responder-0044`. Resolved those two files by keeping **both** sides: main’s Unreleased fixture-only research bullet and Adam 2026-10-23 build-recipe handoff, plus this PR’s Phase 7A 0.21.0 Unreleased bullet and Alan 2026-10-24 Codex/Phase 7A handoff entries. Did **not** drop the four Codex security fixes (verified evidence, genuine provider acks, telemetry-window mapping, OFF-mode race). Schema still **0.21.0**; Alembic still `0015`. Main remains 0.19.0 / `0014`. Open #412 still **0.20.0** with no Alembic — no collision, no bump.
+- Commands run and results (executed):
+  - `git fetch origin --prune`; rebase onto `origin/main` `c5c2b47d`
+  - `uv run ruff check` / `ruff format --check` — pass (195 files formatted)
+  - `uv run python -m shared.export --check` — 154 files, schema 0.21.0
+  - `uv run pytest -q backend/tests/test_live_defense_phase7a.py backend/tests/test_jobs_queue.py backend/tests/test_rl_no_action_path.py` — 33 passed
+- Decisions: do not merge #439. Owner/security approval remains separate.
+- Next: push the rebased branch; check whether GitHub Actions automatically starts (especially `backend / test`). If Actions still never queues, report that separately — do not fake a pass.
+- Warnings: **leave the PR open**. No Phase 7B. Live seven-agent Claude loop still UNVERIFIED.
+
+### 2026-10-24 — Cursor (agent, Alan) — Phase 7A Codex review fixes on #439
+- Did: left PR #439 **open** (no merge, no Phase 7B, no RL training, no customer enforcement). Fixed Backend/test CI (`test_rl_no_action_path`: removed `/first-responder/auto-execute`; absence is the control, 404). Fixed four Codex findings with regressions: (1) `evidence_state=verified` only with independently executed `verification_results`; (2) no fabricated handoff receipts — UI does not invent acks; synthetic provider ack tests are labeled; (3) deploy mapping resolved against telemetry window, else UNKNOWN; (4) OFF serialized with dispatch (`pg_advisory_xact_lock`), claim skips `cancel_requested`, handlers `check_cancelled` and abort when OFF is effective. Schema **0.21.0** (0.20.0 reserved for open #412); Alembic stays `0015`. Orchestrator `7a.1.1`.
+- Commands run and results (executed):
+  - `uv run pytest -q backend/tests/test_live_defense_phase7a.py backend/tests/test_jobs_queue.py backend/tests/test_rl_no_action_path.py` — 33 passed
+  - `make check` inputs: ruff pass; `shared.export --check` 154 files; fixtures regenerated for 0.21.0 / 7a.1.1
+- Decisions: do not merge #439. Schema plan vs #412: this branch 0.21.0 + 0015; #412 keeps 0.20.0 and no 0015. If #439 lands first, #412 rebases to 0.22.0.
+- Next: re-run required GitHub checks on the final head; resolve the four Codex threads only after those tests; owner/security approval still required.
+- Warnings: **leave the PR open**. No Phase 7B. Live seven-agent Claude loop still UNVERIFIED.
+
+### 2026-10-24 — Cursor (agent, Alan) — Live Defense Phase 7A first-responder
+- Did: branch `cursor/live-defense-first-responder-0044` from live `origin/main` (fast-forwarded through `211c2b24` / PR #435 to `a97820f1` / PR #438). Confirmed PRs #411 MERGED, #412 OPEN, #422/#430/#433/#435 MERGED, #438 MERGED (Adam status only). Schema 0.20.0, Alembic `0015`. Added fail-closed modes OFF/MONITOR|SHADOW/ASSISTED RESPONSE (no AUTO-EXECUTE), deterministic orchestrator `7a.1.0`, capability registry from real seven AgentSpecs, owner-attested deploy mapping, analyst handoff with provider-ack delivery, First responder UI tab. Did **not** train RL, edit Codex/v6/holdout, create AUTO-EXECUTE, expand production enforcement, or start Phase 7B.
+- Commands run and results (executed):
+  - `make check` — ruff pass; format 193 files; `shared.export --check` 154 files; examples check pass
+  - `uv run mypy` — Success: no issues found in 40 source files
+  - `uv run pytest -q backend/tests/test_live_defense_phase7a.py backend/tests/test_parallel_migrations.py backend/tests/test_live_defense_authorize.py backend/tests/test_live_defense_phase5.py backend/tests/test_live_defense_phase6.py` — 43 passed
+  - `uv run pytest -q shared/tests/test_contracts.py backend/tests/test_live_defense_phase7a.py` — 95 passed, 1 skipped (TSC unset)
+  - frontend lint + typecheck pass; vitest 330 passed / 78 files; transport 35 passed
+  - Playwright `tests/e2e/live-defense-phase7a.spec.ts` via `stack.py` + Chrome — 1 passed (2.5s); screenshots in store `media/live-defense-phase7a/`
+- Decisions: **ENGINEERING GO FOR OWNED STAGING**. PR https://github.com/adamissac/ari-ai/pull/439 left open for human security review (mode / privilege / trust-boundary expansion). Eval: `docs/LIVE_DEFENSE_PHASE7A_FIRST_RESPONDER.md`.
+- Warnings: **leave the PR open**. #412 also claimed 0.20.0; rebase that branch to 0.21.0 if both land. Do not start Phase 7B. Live seven-agent Claude loop is still UNVERIFIED.
+
+### 2026-10-23 — Claude Code (Adam) — build-recipe PR for connected repositories
+- Did: `backend/backend/recipes.py`. Connecting a repo with an `installation_id` (and `installation` / `installation_repositories` webhooks for repos already connected) queues `propose_build_recipe`: fetch the default-branch tip into the bare checkout, skip if `build_recipe.json` exists, index with code intelligence, draft the recipe (FastAPI app/factory, mount prefixes, single-param GET routes, test roots, exact pins from `uv.lock`/`poetry.lock`/`==` requirements minus the sandbox runner wheels), let the `recipe` agent (Haiku 5.5 in production) add identities, resources, routes and a `deploy/sandbox_target.py` harness, validate deterministically (`sandbox_setup`, `app_factory`, routes in the index, every identity owns every route's resource, fixture values literal in the harness, harness parses), push `ari/build-recipe` with `push_patch` and open a PR. Audit: `recipe.pr_opened|skipped|unsupported|invalid|failed`.
+- State: tests in `backend/tests/test_build_recipes.py` (real git over a file:// remote, real Postgres, GitHub App and Claude faked). Dry run `uv run python -m backend.recipes <checkout>` on ari-ai with its recipe removed reproduces the hand-written `app_factory` choice (`backend.main:create_app` behind a harness), `/api/v1` prefixes and the same six pip pins; on payments-lite it reproduces `payments_lite.app:create_app` and `-q tests`.
+- Not verified: a live Claude draft (no key locally) and a real GitHub PR; the first connect in production is the first live run.
+- Warnings: code-intelligence redaction can turn valid Python into a syntax error (e.g. `backend/backend/main.py` line 137, `webhook_secret_configured=bool(` becomes `[REDACTED]`), so the index silently drops those files; the generator parses the raw blob locally for app/prefix discovery, but routes in such files are missing from the index and so never proposed.
+
 ### 2026-10-23 — Cursor (agent, Alan) — Phase 6.5 RL-gated pilot infrastructure
 - Did: branch `feat/live-defense-phase6-5-rl-gated-pilot` from live `origin/main` `74a0a3c2` (PR #410 merged after #411 `5d1e7b91`). Additive `shared` 0.20.0: `rl_gated_pilot`, `RlReadinessAssessment` A–J, evaluation plan with null thresholds, `PolicyServingOutput`, hosted-inference config. Server-enforced shadow-only (API + worker + existing 15-check `application_registered` tightening). Backend `GET /rl-readiness` is the dashboard source of truth; `ready` stays false. Codex/`rl-defense/` training, datasets, holdout, v6 weights, historical evals **not edited**. No Phase 7, no customer infra.
 - Live GitHub: #411 MERGED `5d1e7b91`; Codex #388/#394/#396/#407/#410 MERGED. #410 is explicit inconclusive readiness — not model readiness.
@@ -1509,3 +1553,166 @@ remain untouched. No merge: Phase1's deployment restriction governs this researc
 - Added read-only original-fixture evidence audit: fixed trust anchor, execution Git object/protocol, 54 ordered units and independently recomputed summaries. Canonical EvidenceRef; current auditor identity is separate from unrecorded original interpreter/timing.
 - Eighteen focused tests passed. Supported CLI runs from private read-only captured-commit source. Readiness remains inconclusive; training/promotion flags false.
 - No collector/app execution, comparison rerun, modified evidence, new fact authority or serving hook. Real payment authorization producer/transaction semantics still need a reviewed contract proposal.
+
+## 2026-10-23 — RL-CMDP-006 authorization provider
+
+Branch `feat/alan/authorization-context-provider`. User designated payments-lite
+trusted records and existing lab delegation records as research authority; no
+external customer system exists. Documented version 0.1.0 interface first, then
+extracted trusted lookup behind internal AuthorizationContextProvider and reused
+the deterministic kernel. Owner/delegated/unauthorized/unknown classifications;
+fixture clock domain and serialized revision metadata; no retained credentials.
+The wrapper still holds its lock through release and checks freshness after
+downstream execution/serialization. No external writer guarantees are claimed.
+
+57 focused provider/kernel/owned-app tests pass (1.65s). Existing historical
+evidence is untouched. No RL observation wiring/training or ControlGrant changes.
+Future causal input requirements in docs/research/authorization-context/README.md:
+completed observed windows, context available before cutoff, unknown coverage,
+no hidden labels, future requests or later permission backfill. Cross-system
+publication remains proposed and requires shared models/codegen/consumer review.
+Review and CI pending.
+
+## 2026-10-23 — RL-CMDP-007 adaptive-defense research readiness
+
+Owner supplied the next-phase scope after #414. Branch
+`research/rl-adaptive-defense-readiness`, audited base `3d540d90`; concurrent main
+#421 inspected before publication. New docs/research/adaptive-defense-readiness
+covers all requested formulation, feature-level coverage, actions/costs/baselines,
+blocked preregistration and formal NO-GO. Implemented pure prefix-only provider
+snapshot observation adapter (32 values +32 known bits +5 feasibility bits), noop-only
+hard mask/rejection, separate descriptive cost outputs with unmeasurable reward null,
+and hash-anchored fixed train-only inventory. No trainable environment: measured
+residual benefit/dynamics unsupported after deterministic authorization. No new
+training, experiment collection, checkpoint, promotion, customer control adapter or
+historical artifact changes. Do not launch a study from the draft preregistration.
+
+54 focused adapter/provider/owned-app tests passed in1.35s; links572 files/0 problems.
+Read-only inventory: Phase1 140 episodes/4200 transitions, all current masks but zero
+recorded behavior probabilities; duration train280 episodes/8400 transitions with
+280 missing initial current masks. No retrospective candidate facts reconstructed.
+Review/full CI and broader regression/type checks pending. Next owner decision is
+whether to fund a separately scoped residual-task instrumentation/efficacy design,
+then approve numerical constraints/protocol before any collection or training.
+
+RL-CMDP-007 publication update: PR #422, tested code6c833795. Late arrivals enter
+their knowledge-arrival window without rewriting earlier observations. Local166
+research regressions passed in19.80s;91 shared contract tests including TypeScript
+passed in0.96s; two new modules pass scoped strict mypy. NO-GO/Option C unchanged.
+Exact commands and the pre-commit provenance rejection are retained in
+docs/research/adaptive-defense-readiness/VERIFICATION.md. Final CI/review/merge state
+is recorded on PR422; no new study may start without separate owner approval.
+
+## Resource-exhaustion research foundation — RL-CMDP-008
+
+Explicit owner attachment authorizes finite-worker/queue research implementation,
+baselines and bounded unit instrumentation; no formal comparison before sample,
+compute and safety approval, and no model training. Branch
+research/rl-resource-exhaustion-feasibility from7c127a2b. Core service/Gym model,
+causal observations, route/source quotas and deterministic baseline rules implemented.
+23 core instrumentation tests pass. Stage2 infrastructure, docs and final checks
+remain in progress. No empirical study or customer enforcement was run/modified.
+
+RL-CMDP-008 Stage2 preparation implemented: versioned experience/config/profile/
+cutoff schema, separate reward/cost arrays, bounded unit-only replay, fixed unit
+receipt writer/verifier with raw work/control/cost accounting, failure retention,
+and deadline-bounded settlement. No optimizer, checkpoint writer or study runner.
+Stochastic private phases/tie ordering avoid clock or label-priority shortcuts.
+Proposed study now600 episodes/18,000 decisions plus bounded settlement, with
+unapproved safety/sample/compute values. Training NO-GO pending approved formal
+feasibility, safe baseline headroom, terminal-cost collector/learner review and
+explicit training authorization. No historical evidence or customer control edits.
+
+Resource evidence closure: anchored four-window unit receipt committed from source
+1b5516c808602c91152c18b7460fe9aaa9cd8404. Local checks: 46 resource tests,
+213 broader selected research tests, 91 shared tests, scoped strict mypy (7 files),
+Ruff/format and 580 Markdown link checks passed. Formal feasibility and training
+remain unapproved; PR review/CI required before merge. See resource VERIFICATION.md.
+
+## Resource feasibility001 — owner-approved execution preparation
+
+Owner approved the previously proposed600 episodes/18,000 decisions, safety limits,
+2000 paired whole-seed bootstrap draws and one-process512MiB/600-second budget.
+Acceptance failures continue and remain reported/ineligible; integrity failures stop.
+Persistent-static remains240 active ticks, explicitly ineligible at64-tick cap.
+Environment/generator/baseline source unchanged. New isolated study collector pins
+source/config/runtime, retains gzip raw episode traces and stops without retries.
+50 resource/study unit tests pass; strict mypy and Ruff pass for the runner.
+No formal outcome has been observed at this preregistration commit.
+
+Feasibility001 completed once atbed44ff27897225f3194c6afd118eee35f7516d2:
+600 episodes/18,000 decisions,9.178132s,79,462,400-byte peak RSS. All30 family/policy
+results retained. No eligible policy in any attack family; persistent-static
+240 active ticks explicitly violates64. Training NO-GO, no further execution.
+Sealed index931fbd6737f963a1fe661ab029d08b7f4a26fe09e42805c291c9d1a1a2a0246c;
+read-only600-episode audit passed. Report/evidence under resource-exhaustion/feasibility-001.
+
+PR433 first RL CI:544 passed,1 fault-injection fixture failed because prior torch
+tests raised process-lifetime peak RSS above the study limit. Test fixture now
+isolates RSS for the invalid-action fault and separately tests memory-limit
+rejection. No collector/protocol/evidence changes, no formal study rerun.
+
+## RL-CMDP-010 read-only research/product assessment
+
+Owner requested mathematical capacity feasibility, oracle limitations, control
+expressiveness and product-thesis decision after433. New stdlib-only analytical
+tool reads sealed archived requests, computes necessary interval-completion bounds
+and relaxed offered-work actuation coverage. It does not import the service/env,
+generate/replay workloads, execute a policy, train or modify prior artifacts.
+Methodology frozen before calculation; exact existing-action optimum remains
+uncomputed unless a rigorous bound resolves it. Do not equate rule failure with
+fundamental infeasibility or optimistic upper bounds with achievable performance.
+
+Bounds assessment completed on120 existing workloads (source0074562,0.7621s,
+recorded peak RSS30,900,224 bytes). No completion upper bound below90%, no feasible
+oracle/schedule certificate. Existing-action optimum unresolved. Primary product
+recommendation C:deprioritize RL; non-RL assurance evidence packet proposed only.
+Research, training permission and pilot readiness remain separate. See
+docs/research/rl-product-thesis/README.md; all original study bytes unchanged.
+
+## Phase7B / RL-CMDP-011 research-only first responder
+
+Owner confirms Grok's proposed feat/live-defense-first-responder may not be pushed;
+continue independently, use existing shared contracts, do not change production
+schemas/incidents/agent APIs/workers. Fixture-only adapter and strict proposed
+record models reuse canonical SnapshotRef/EvidenceRef/AgentRun/AgentStepResult/
+AuthorizedScope. No dispatcher/environment/reward/collector/trainer. Default masks
+allow only local abstain/monitor; hypothetical fixture agreement cannot authorize
+execution.15 tests pass; source inventory and full research docs pending. See
+first-responder INTEGRATION_PROPOSAL and immutable message to Grok/shared owner.
+
+
+### Phase 7B specification and invariant verification
+
+Research report: docs/research/first-responder/README.md. CONDITIONAL GO for
+research; no learning yet. Grok's actual contract remains pending exact reference.
+Seven-agent source inventory pins 71118928866d6974ba0ec9532420a9fc71187318.
+23 fixture/provenance tests pass; scoped Ruff and strict adapter mypy pass.
+No collection, agent calls, training, checkpoint promotion or enforcement.
+Remaining: broader regressions, PR review/CI and authorized research-only merge.
+
+
+### Phase 7B research PR #437 — specification delivered
+
+Report: docs/research/first-responder/README.md. CONDITIONAL GO, no learning yet.
+CI at 157be64: 569 RL tests plus existing 20k smoke/reload; 724 backend /14 skips;
+4 integration; docs/secrets pass. Local 242 research and 91 shared tests pass.
+CodeRabbit's three documentation findings addressed; adapter code unchanged.
+Grok integration remains fixture-only pending exact reference and contract review.
+No collection, first-responder training, promotion or enforcement follows merge.
+Remaining merge gate: final documentation head review/CI. Future numerical protocol
+and any collection require separate explicit owner approval. Historical source
+ancestry retained and v6 registry hash unchanged (see verification report).
+
+## 2026-10-24 — Devin (Adam): agent-visibility UI + prod automation enabled
+
+- Prod: enabled `automatic_assessments` on adamissac/mypypath (ari-ai already on), enabled `monitoring_policy` on the `derv` project, approved mypypath's sandbox scope (active to 2026-11-18), stamped delivery authorization on both projects. Push→agents chain verified live: monitoring assessments COMPLETED within ~1-2 min of each push.
+- Branch `feat/adam/agent-visibility-not-needed`: relay/team list now label skipped agents 'Not needed' (with the recorded skip note) or 'Not reached' on failed/cancelled runs. `earlyEndNote` in `frontend/lib/relay.ts` reads the reason from persisted `state_changed` events.
+- Next: expand `security-agents/evals/commits/cases.json` toward ~40 cases, add check templates to lift `vuln validated` off 0/7 (only ownership + bounds templates exist).
+
+## 2026-10-24 — Devin (Adam): specialist eval-brain + live eval harness
+
+- `specialists/data/evalcommits.py`: eval cases become minimal pairs (planted edit = CWE/vuln_other positive, original = hard negative), splits pinned by case id; `scout()` merges the 60 rows.
+- Scout retrained and **promoted**: macro_f1 0.349 vs best deterministic baseline 0.084 (static_analyze_patterns). Checkpoint + `results/scout.json`/REPORT.md committed. Other specialists have no field-compatible eval rows — their tuning signal is the live eval scores, not training data.
+- Eval harness: `run.py` cleanup survives missing `gh` auth; `score_api.py` accepts the bare-list assessments response. All 35 cases pushed as `eval/20261024-110115/*` branches; assessments accumulate live pending a fresh `hackatl_session` for scoring + scope widening (`access_control.authentication` category).
+- Test scope fixture (`make_scope` default) now grants all three check categories — required for the f2 listing invariant after the authentication template landed.

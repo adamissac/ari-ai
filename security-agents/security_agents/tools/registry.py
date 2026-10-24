@@ -14,7 +14,9 @@ catalog code and is audited.
 from __future__ import annotations
 
 import json
+import threading
 from collections.abc import Callable
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -76,6 +78,7 @@ AGENT_TOOL_ALLOWLIST: dict[AgentName, frozenset[str]] = {
             "graph.neighbors",
             "expectations.for_subject",
             "worktree.write_file",
+            "worktree.edit_file",
             "worktree.diff",
             "tests.run",
         }
@@ -146,6 +149,9 @@ class ToolContext:
     counters: dict[str, int] = field(default_factory=dict)
     artifacts: dict[str, Any] = field(default_factory=dict)
     roe: Any = None
+    # The gateway may run a turn's independent calls concurrently: counters and the scope
+    # decision a scoped handler re-reads from `artifacts` are guarded per step.
+    lock: Any = field(default_factory=threading.RLock, repr=False, compare=False)
 
     def service(self, name: str) -> Any:
         svc = self.services.get(name)
@@ -268,6 +274,12 @@ class ToolRegistry:
                 payload={"error": ErrorCode.SCHEMA_INVALID.value, "detail": _compact_errors(exc)},
             )
 
+        # A scoped handler re-reads the decision from ctx.artifacts, so concurrent scoped
+        # calls in one step take turns from the decision through the handler.
+        with ctx.lock if tool.requires_scope else nullcontext():
+            return self._execute(ctx, tool, name, args)
+
+    def _execute(self, ctx: ToolContext, tool: ToolDef, name: str, args: StrictModel) -> ToolResult:
         if tool.requires_scope:
             decision = self._scope_decision(ctx, tool, args)
             if not decision.allowed:
@@ -301,15 +313,19 @@ class ToolRegistry:
             ctx.artifacts["last_roe_decision"] = roe_decision
             ctx.artifacts["last_scope_decision"] = decision
 
-        used = ctx.counters.get(name, 0)
-        cap = ctx.max_calls_per_tool.get(name)
-        if cap is not None and used >= cap:
-            return ToolResult(
-                name=name,
-                ok=False,
-                payload={"error": "TOOL_CALL_LIMIT", "detail": f"{name} may be called at most {cap} times"},
-            )
-        ctx.counters[name] = used + 1
+        with ctx.lock:
+            used = ctx.counters.get(name, 0)
+            cap = ctx.max_calls_per_tool.get(name)
+            if cap is not None and used >= cap:
+                return ToolResult(
+                    name=name,
+                    ok=False,
+                    payload={
+                        "error": "TOOL_CALL_LIMIT",
+                        "detail": f"{name} may be called at most {cap} times",
+                    },
+                )
+            ctx.counters[name] = used + 1
 
         try:
             payload = tool.handler(ctx, args)

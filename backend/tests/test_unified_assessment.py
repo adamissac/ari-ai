@@ -186,7 +186,7 @@ def test_review_then_seven_agents_in_one_assessment(unified) -> None:
     assert a["commit_sha"] == h["sha"]
     runs = detail["agent_runs"]
     agents = [r["agent"] for r in runs]
-    assert agents[0] == "reviewer"
+    assert "reviewer" in agents  # the functional reviewer runs beside Scout (#442)
     for role in EXPECTED:
         assert role in agents, role
     model_runs = [

@@ -20,9 +20,7 @@ from security_agents.tools import default_registry, wire_name
 
 from .conftest import PAYMENTS_LITE_DIR, make_ctx, make_scope
 
-code_intelligence = pytest.importorskip(
-    "code_intelligence.api", reason="code_intelligence not importable"
-)
+code_intelligence = pytest.importorskip("code_intelligence.api", reason="code_intelligence not importable")
 from code_intelligence.api import IntelligenceService, RepositoryBinding  # noqa: E402
 from code_intelligence.store import SQLiteIndexStore  # noqa: E402
 
@@ -38,8 +36,10 @@ def indexed(tmp_path_factory):
     repo.mkdir()
     env = {
         "PATH": "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin",
-        "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.test",
-        "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.test",
+        "GIT_AUTHOR_NAME": "t",
+        "GIT_AUTHOR_EMAIL": "t@example.test",
+        "GIT_COMMITTER_NAME": "t",
+        "GIT_COMMITTER_EMAIL": "t@example.test",
     }
     from security_agents.sandbox.workspace import copy_tree
 
@@ -56,8 +56,11 @@ def indexed(tmp_path_factory):
         store,
         repositories=[
             RepositoryBinding(
-                project_id=PROJECT_ID, repo_id=REPO_ID, full_name="owner/payments-lite",
-                local_path=repo, include_prefix="target",
+                project_id=PROJECT_ID,
+                repo_id=REPO_ID,
+                full_name="owner/payments-lite",
+                local_path=repo,
+                include_prefix="target",
             )
         ],
     )
@@ -129,6 +132,17 @@ def test_read_span_is_numbered_and_bounded(adapter):
 
     with pytest.raises(PlatformError):
         adapter.read_span(handler.path, 99_000, 99_010)
+    # a span that runs past the end is clamped to the file
+    tail = adapter.read_span(handler.path, handler.start_line, 99_000)
+    assert "def get_payment" in tail.content and tail.end_line < 99_000
+
+
+def test_search_is_a_regex_and_returns_source_lines(adapter):
+    hits = adapter.search(r"def (get_payment|list_payments)\b")
+    texts = [h["text"] for h in hits]
+    assert any(t.startswith("def get_payment") for t in texts), texts
+    assert not any("&quot;" in t or "source_span" in t for t in texts)
+    assert adapter.search("get_payment(")  # invalid regex falls back to a literal match
 
 
 def test_expectations_come_from_the_index_when_derived(adapter):
@@ -149,7 +163,8 @@ def test_registry_tools_work_against_the_real_index(adapter):
     ctx = make_ctx(AgentName.SCOUT, intel=adapter, scope=make_scope())
     handler = adapter.find_symbol("get_payment")
     read = registry.invoke(
-        ctx, wire_name("code.read_span"),
+        ctx,
+        wire_name("code.read_span"),
         {"path": handler.path, "start_line": handler.start_line, "end_line": handler.end_line},
     )
     assert read.ok and "get_payment" in read.payload["content"]
@@ -162,9 +177,7 @@ def test_registry_tools_work_against_the_real_index(adapter):
     assert search.ok and search.payload["count"] >= 1
     assert all(hit["path"] for hit in search.payload["hits"])
 
-    analyze = registry.invoke(
-        ctx, wire_name("static.analyze"), {"path": "payments_lite/app.py"}
-    )
+    analyze = registry.invoke(ctx, wire_name("static.analyze"), {"path": "payments_lite/app.py"})
     assert analyze.ok and analyze.payload["functions"]
 
 
@@ -176,9 +189,7 @@ def test_workspace_must_match_the_indexed_snapshot(adapter, tmp_path):
     adapter.verify_workspace()  # the real workspace passes
     empty = tmp_path / "empty"
     empty.mkdir()
-    mismatched = CodeIntelligenceAdapter(
-        service=adapter.service, ref=adapter.ref, workspace=empty
-    )
+    mismatched = CodeIntelligenceAdapter(service=adapter.service, ref=adapter.ref, workspace=empty)
     with pytest.raises(PlatformError) as exc:
         mismatched.verify_workspace()
     assert exc.value.code is ErrorCode.SNAPSHOT_NOT_READY
@@ -216,3 +227,17 @@ def test_scout_runs_end_to_end_against_the_real_index(adapter):
     assert hypotheses, "citations should validate against the real snapshot"
     assert hypotheses[0].cited_spans[0].sha == adapter.snapshot.commit_sha
     assert hypotheses[0].weakness_class == "CWE-639"
+
+
+def test_search_cannot_be_frozen_by_a_backtracking_pattern(adapter):
+    import time
+
+    from security_agents.intel.code_intelligence_adapter import _NESTED_REPEAT
+
+    for evil in (r"(a+)+$", r"(\w+\s?)+\(", r"(a|a)*b", r"(x{1,9})+y"):
+        assert _NESTED_REPEAT.search(evil), evil
+    for fine in (r"def (get_payment|list_payments)\b", r"require_\w+", r"def _authenticate"):
+        assert not _NESTED_REPEAT.search(fine), fine
+    started = time.monotonic()
+    adapter.search(r"(\w+\s?)+\(")
+    assert time.monotonic() - started < 2

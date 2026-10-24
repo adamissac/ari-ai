@@ -15,6 +15,7 @@ from ..contracts import (
     Confidence,
     EvidenceRef,
     Hypothesis,
+    PlatformError,
     ShortText,
     SourceSpan,
     StrictModel,
@@ -70,6 +71,8 @@ class ScoutInput(StrictModel):
     entry_point_ids: list[str] = Field(default_factory=list)
     expectation_ids: list[str] = Field(default_factory=list)
     refuted_keys: list[str] = Field(default_factory=list)
+    changed_paths: list[str] = Field(default_factory=list)
+    change_diff: str = Field(default="", max_length=20_000)
     max_hypotheses: int = 5
     available_check_categories: list[str] = Field(default_factory=list)
 
@@ -163,12 +166,33 @@ SPEC = AgentSpec(
     max_turns=16,
     prompt_ref="prompts/scout/v0.1.0.md",
     system_prompt=SYSTEM,
-    max_output_tokens=8000,
+    max_output_tokens=16000,  # thinking counts toward this; 4-8k ran out on real repos
 )
+
+
+def _recipe_include(intel: CodeIntel) -> tuple[str, ...]:
+    import json
+
+    from ..tools.services import sandbox_setup
+
+    path = intel.snapshot.root / "build_recipe.json"
+    try:
+        return sandbox_setup(json.loads(path.read_text(encoding="utf-8")))["include"]
+    except (OSError, ValueError, PlatformError):
+        return ()
+
+
+def _in_target(path: str, include: tuple[str, ...]) -> bool:
+    return any(path == p or path.startswith(p.rstrip("/") + "/") for p in include)
 
 
 def build_prompt(data: ScoutInput, intel: CodeIntel) -> str:
     entries = intel.entry_points()
+    # Only the code the recipe uploads can be validated; other apps in a monorepo (examples,
+    # tooling) would produce hypotheses Probe can never run.
+    include = _recipe_include(intel)
+    if include:
+        entries = [e for e in entries if _in_target(e.path, include)] or entries
     if data.entry_point_ids:
         wanted = set(data.entry_point_ids)
         entries = [e for e in entries if e.id in wanted] or entries
@@ -176,6 +200,9 @@ def build_prompt(data: ScoutInput, intel: CodeIntel) -> str:
     if data.expectation_ids:
         wanted_exp = set(data.expectation_ids)
         expectations = [e for e in expectations if e.id in wanted_exp] or expectations
+    # Changed handlers first: a per-commit review is about what this commit did.
+    changed = set(data.changed_paths)
+    entries = sorted(entries, key=lambda e: e.path not in changed)
     entry_rows = [
         {
             "id": e.id,
@@ -200,9 +227,18 @@ def build_prompt(data: ScoutInput, intel: CodeIntel) -> str:
         }
         for e in expectations
     ]
+    change_block = (
+        "This assessment reviews one commit. Start from the change below: check every entry "
+        "point whose handler it touches, and anything that calls code it changed, before "
+        "surveying anything else.\n"
+        f"{data_block('commit_change', {'changed_paths': data.changed_paths, 'diff': data.change_diff}, provenance='git')}\n\n"
+        if data.changed_paths
+        else ""
+    )
     return (
         f"Survey snapshot {data.snapshot_id} at commit {data.commit_sha} "
         f"(assessment {data.assessment_id}).\n\n"
+        f"{change_block}"
         f"{data_block('entry_points', entry_rows, provenance='code_intelligence')}\n\n"
         f"{data_block('expectations', expectation_rows, provenance='code_intelligence')}\n\n"
         f"{data_block('index_provenance', intel.provenance(), provenance='platform')}\n\n"

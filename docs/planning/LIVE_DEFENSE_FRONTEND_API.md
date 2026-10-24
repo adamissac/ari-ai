@@ -1,10 +1,13 @@
-# Live Defense frontend — API contracts (Phase 6.5)
+# Live Defense frontend — API contracts (Phase 7A + 6.5)
 
-Status: **Phase 6.5 RL-gated infrastructure** on
-`feat/live-defense-phase6-5-rl-gated-pilot` from `origin/main` `74a0a3c2`.
+Status: **Phase 7A first-responder + Phase 6.5 RL-gated infrastructure** merged
+on `feat/live-defense-phase6-5-rl-gated-pilot` from live `origin/main`.
 Shadow-pilot is recommendation-only. RL-gated apps are **server-enforced**
 shadow-only. Owned-test controls remain a **separate** authorization path.
-Producer: control plane (`backend/`, `shared/` 0.20.0). Verdict stays
+First-responder modes are OFF / MONITOR|SHADOW / ASSISTED RESPONSE.
+AUTO-EXECUTE is rejected. Producer: control plane (`backend/`, `shared/`
+0.21.0 carrying the Phase 6.5 additive set). Phases 1–6 are extended, not
+rebuilt. An RL recommendation is not executed defense. Verdict stays
 **INFRASTRUCTURE READY — RL BLOCKED**. Do not use Controls during a customer
 shadow-pilot. Isolate is never offered.
 

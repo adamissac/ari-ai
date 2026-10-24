@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import re
 import shutil
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -25,12 +26,15 @@ from ..intel import CodeIntel
 from ..sandbox.driver import SandboxDriver, SandboxLimits, SandboxProfile, SandboxResult, SandboxSpec
 from ..sandbox.workspace import (
     changed_paths,
+    copy_tree,
     diff_paths,
     fresh_checkout,
+    recipe_test_roots,
     resolve_under,
     safe_rel_path,
     sha256_text,
     tree_digest,
+    under_test_roots,
     unified_diff,
 )
 from .registry import ToolContext
@@ -184,6 +188,30 @@ class PatchWorktree:
             "lines": len(content.splitlines()),
         }
 
+    def edit_file(self, path: str, old_string: str, new_string: str) -> dict[str, Any]:
+        """Replace one exact, unique span of an existing file. Large files cannot be rewritten
+        whole within the model's output limit; this sends only the change."""
+        rel = safe_rel_path(path)
+        if not self.may_write(rel):
+            return self.write_file(path, "")  # same PATH_NOT_ALLOWED answer, nothing written
+        target = resolve_under(self.root, rel)
+        if not target.is_file():
+            return {"error": "NOT_FOUND", "detail": f"{rel} does not exist; use worktree.write_file"}
+        text = target.read_text(encoding="utf-8")
+        count = text.count(old_string) if old_string else 0
+        if count != 1:
+            return {
+                "error": "NO_UNIQUE_MATCH",
+                "detail": f"old_string occurs {count} times in {rel}; include more surrounding lines",
+            }
+        target.write_text(text.replace(old_string, new_string, 1), encoding="utf-8")
+        self.writes.append(rel)
+        return {
+            "path": rel,
+            "action": "edited",
+            "lines": len(target.read_text(encoding="utf-8").splitlines()),
+        }
+
     def changed(self) -> list[str]:
         return changed_paths(self.snapshot_root, self.root)
 
@@ -192,7 +220,7 @@ class PatchWorktree:
 
     def diff(self) -> dict[str, Any]:
         changed = self.changed()
-        text = self.diff_text()
+        text = unified_diff(self.snapshot_root, self.root, changed)
         return {
             "files_changed": changed,
             "diff_sha256": sha256_text(text),
@@ -212,6 +240,7 @@ class TestRunner:
     workspace_provider: Any  # callable(ctx) -> Path
     test_command_args: tuple[str, ...] = ("-q", "tests")
     limits: SandboxLimits = field(default_factory=SandboxLimits)
+    setup: dict[str, tuple[str, ...]] = field(default_factory=dict)  # recipe `sandbox` block
 
     def run(self, ctx: ToolContext, selection: str, node_ids: list[str]) -> dict[str, Any]:
         workspace = self.workspace_provider(ctx)
@@ -223,8 +252,9 @@ class TestRunner:
                 if not NODEID.match(raw):
                     return {"error": "BAD_NODE_ID", "detail": f"{raw!r} is not a valid pytest node id"}
                 args.append(raw)
-        elif selection == "added_tests":
-            added = [p for p in getattr(workspace, "writes", []) if p.startswith("tests/")]
+        elif selection in ("added_tests", "added_tests_unpatched"):
+            roots = getattr(workspace, "test_roots", ("tests/",))
+            added = [p for p in getattr(workspace, "writes", []) if under_test_roots(p, roots)]
             added = added or [p for p in ctx.artifacts.get("tests_added", []) if isinstance(p, str)]
             if not added:
                 return {"error": "NO_ADDED_TESTS", "detail": "no new test files were written in this step"}
@@ -232,6 +262,22 @@ class TestRunner:
         else:
             args = list(self.test_command_args)
         ws_path = workspace_path(workspace)
+        unpatched: Path | None = None
+        if selection == "added_tests_unpatched":
+            snapshot_root = getattr(workspace, "snapshot_root", None)
+            if snapshot_root is None:
+                return {
+                    "error": "UNPATCHED_UNAVAILABLE",
+                    "detail": "only a patch worktree has unpatched code",
+                }
+            # The pinned snapshot plus only the new test files: does the test catch the bug?
+            unpatched = Path(tempfile.mkdtemp(prefix="unpatched-", dir=Path(ws_path).parent))
+            copy_tree(Path(snapshot_root), unpatched / "ws")
+            for rel in sorted({a.split("::", 1)[0] for a in args[1:]}):
+                target = resolve_under(unpatched / "ws", rel)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(resolve_under(Path(ws_path), rel), target)
+            ws_path = unpatched / "ws"
         spec = SandboxSpec(
             profile=SandboxProfile.TEST_RUNNER,
             network="none",
@@ -240,8 +286,13 @@ class TestRunner:
             args=args,
             labels={"assessment_id": ctx.assessment_id, "step_key": ctx.step_key, "agent": ctx.agent.value},
             limits=self.limits,
+            **self.setup,
         )
-        res = self.driver.run(spec)
+        try:
+            res = self.driver.run(spec)
+        finally:
+            if unpatched is not None:
+                shutil.rmtree(unpatched, ignore_errors=True)
         summary = parse_pytest(res.stdout)
         ctx.audit.emit(
             "sandbox.tests_run",
@@ -309,6 +360,10 @@ class CheckRunner:
         except PlatformError as exc:
             return {"error": exc.code.value, "detail": exc.message, "matches_expectation": None}
 
+        try:
+            setup = sandbox_setup(recipe)
+        except PlatformError as exc:
+            return {"error": exc.code.value, "detail": exc.message, "matches_expectation": None}
         check_file = "test_generated_check.py"
         spec = SandboxSpec(
             profile=SandboxProfile.CHECK_RUNNER,
@@ -330,6 +385,7 @@ class CheckRunner:
             if self.transport == "http"
             else None,
             target_app=str(recipe.get("app_factory") or "") or None if self.transport == "http" else None,
+            **setup,
         )
         res = self.driver.run(spec)
         summary = parse_pytest(res.stdout)
@@ -406,7 +462,8 @@ class PatchApplier:
         ok, err = apply_diff(root, diff_text)
         touched = diff_paths(diff_text)
         plan_files = [safe_rel_path(p) for p in record.get("plan_files", [])]
-        new_tests = [p for p in touched if p.startswith("tests/") and not self.intel.snapshot.exists(p)]
+        roots = recipe_test_roots(self.intel.snapshot.root)
+        new_tests = [p for p in touched if under_test_roots(p, roots) and not self.intel.snapshot.exists(p)]
         out_of_scope = [p for p in touched if p not in plan_files and p not in new_tests]
         tampered = self._tampered_tests(diff_text, record.get("protected_tests", []))
         ctx.artifacts["verify_workspace"] = root
@@ -475,6 +532,31 @@ def _route_of(recipe: dict[str, Any], route_id: Any) -> dict[str, Any] | None:
                 "path_template": route.get("path_template"),
             }
     return None
+
+
+_PIP_REQ = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*(\[[A-Za-z0-9,._-]+\])?==[A-Za-z0-9.+!_-]+$")
+_APT_PKG = re.compile(r"^[a-z0-9][a-z0-9+.-]{0,62}$")
+
+
+def sandbox_setup(recipe: dict[str, Any]) -> dict[str, tuple[str, ...]]:
+    """`pip`, `apt` and `include` from the recipe's optional `sandbox` block. The recipe is
+    repository content, so only exact-pinned wheels, plain package names and safe relative
+    paths pass; anything else is refused rather than dropped."""
+    raw = recipe.get("sandbox") or {}
+    if not isinstance(raw, dict):
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "recipe sandbox must be an object")
+    out: dict[str, tuple[str, ...]] = {}
+    for key, check in (("pip", _PIP_REQ.match), ("apt", _APT_PKG.match), ("include", safe_rel_path)):
+        items = raw.get(key) or []
+        if not isinstance(items, list) or len(items) > 60 or not all(isinstance(i, str) for i in items):
+            raise PlatformError(ErrorCode.SCHEMA_INVALID, f"recipe sandbox.{key} must be a list of strings")
+        for item in items:
+            if not check(item):
+                raise PlatformError(
+                    ErrorCode.SCHEMA_INVALID, f"recipe sandbox.{key} entry {item!r} is not allowed"
+                )
+        out[key] = tuple(safe_rel_path(i) for i in items) if key == "include" else tuple(items)
+    return out
 
 
 def recipe_from_snapshot(intel: CodeIntel) -> Any:

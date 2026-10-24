@@ -81,6 +81,7 @@ _CLAIM_SQL = sa.text(
       SELECT id FROM jobs
       WHERE ((status = 'queued' AND run_after <= now())
           OR (status = 'running' AND lease_expires_at < now()))
+        AND cancel_requested IS NOT TRUE
         AND (:kinds_empty OR kind = ANY(:kinds))
       ORDER BY priority, run_after
       FOR UPDATE SKIP LOCKED
@@ -138,12 +139,23 @@ def heartbeat(conn: Connection, job_id: str, owner: str, lease_s: int) -> bool:
 def complete(
     conn: Connection, job_id: str, owner: str, result: dict[str, Any] | None = None
 ) -> bool:
+    """Succeed only while this worker still holds a running, not-cancelled lease."""
     res = conn.execute(
         sa.update(jobs)
-        .where(jobs.c.id == job_id, jobs.c.lease_owner == owner, jobs.c.status == "running")
+        .where(
+            jobs.c.id == job_id,
+            jobs.c.lease_owner == owner,
+            jobs.c.status == "running",
+            jobs.c.cancel_requested.is_not(True),
+        )
         .values(status="succeeded", result=result or {}, lease_owner=None, updated_at=sa.func.now())
     )
     return res.rowcount == 1
+
+
+def is_cancel_requested(conn: Connection, job_id: str) -> bool:
+    row = conn.execute(sa.select(jobs.c.cancel_requested).where(jobs.c.id == job_id)).first()
+    return bool(row and row[0])
 
 
 def fail(

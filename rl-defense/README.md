@@ -22,6 +22,13 @@ episodes completed; the budgeted rule preserves availability but misses most att
 [Audit, CMDP, capability matrix and decision](../docs/research/constrained-rl-phase1/README.md);
 [baseline evidence / verification commands](results/constrained-phase1/README.md).
 
+## First-responder research (Phase 7B)
+
+Fixture-only decision-time observations and candidate proposals are specified in
+[the research report](../docs/research/first-responder/README.md). Verdict:
+CONDITIONAL GO for research, no learning yet. No production adapter, dispatcher,
+collection study, training or enforcement is implemented or authorized.
+
 ## What exists
 
 | Piece | Module | Status |
@@ -287,3 +294,12 @@ Opt-in owned payments-lite request-context wrapper and concurrency checks:
 
 Read-only finite-fixture readiness audit: `python -m rl_defense.research.readiness`.
 [Trust anchors, unknowns and no-go semantics](../docs/research/deterministic-feasibility/READINESS_AUDIT.md).
+
+Versioned research authorization-context provider and decision-time RL input rules:
+[interface and security assumptions](../docs/research/authorization-context/README.md).
+Payments-lite private records and existing trusted lab grants only; no external
+provider, observation-layout change or new evaluation.
+
+Adaptive-defense research readiness: [assessment and NO-GO decision](../docs/research/adaptive-defense-readiness/README.md). Internal 69-channel causal observation prototype and fixed train-only archive inventory; no trainable environment, experimental collection, new training or promotion.
+
+[Resource-exhaustion research](../docs/research/resource-exhaustion/README.md): isolated finite-worker queue model and unit instrumentation, not calibrated production CPU/latency evidence or a trained defense.

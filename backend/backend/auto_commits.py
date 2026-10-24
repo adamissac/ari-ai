@@ -194,7 +194,8 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
     if commit.get("sha") != p["sha"]:
         raise ValueError("GitHub returned a different commit")
     login = (commit.get("author") or {}).get("login", "").lower()
-    if not login or ("*" not in allowed and login not in allowed):
+    # "*" admits any author, including commits whose email maps to no GitHub account.
+    if "*" not in allowed and (not login or login not in allowed):
         return policy_exit(p, "commit author is outside the automatic rollout")
     ctx.check_cancelled()
     with transaction() as conn:
@@ -249,7 +250,11 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
                 received_at=p["received_at"],
                 dedupe_key=key,
                 payload_artifact_id=p["payload_artifact_id"],
-                commit_range=CommitRange(head_sha=p["sha"]),
+                # First parent as base: the reviewer reviews this commit's diff, not the repo.
+                commit_range=CommitRange(
+                    base_sha=next(iter(commit.get("parents") or []), {}).get("sha"),
+                    head_sha=p["sha"],
+                ),
                 ref=p["ref"],
                 status=EventStatus.processed,
                 status_reason=reason,
@@ -295,6 +300,20 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
                     delay_s = max(
                         delay_s, (oldest + timedelta(seconds=seconds + 1) - now).total_seconds()
                     )
+            # One ceiling over every project: outside users' repos cannot run up unbounded spend.
+            # shortcut: in-flight runs are not counted, so it can overshoot by a few runs.
+            spent = conn.execute(
+                sa.select(
+                    sa.func.coalesce(
+                        sa.func.sum(assessments.c.doc["usage"]["usd"].astext.cast(sa.Numeric)), 0
+                    )
+                ).where(
+                    assessments.c.trigger == AssessmentTrigger.monitoring.value,
+                    assessments.c.created_at > now - timedelta(days=1),
+                )
+            ).scalar_one()
+            if float(spent) >= limits.automatic_usd_per_day:
+                delay_s = max(delay_s, 3600.0)
         if scope and delay_s:
             reason = "queued: waiting for project automatic-run capacity"
             rrq = rrq.model_copy(update={"status": ReassessmentStatus.queued, "reason": reason})

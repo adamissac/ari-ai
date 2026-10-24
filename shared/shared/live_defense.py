@@ -1,4 +1,4 @@
-"""Live Defense contracts (Phase 2–6.5).
+"""Live Defense contracts (Phase 2–7A).
 
 Phase 2/3 types describe recorded evidence for a customer shadow deployment:
 connected staging applications, ingest-token metadata, timestamps from the
@@ -20,23 +20,32 @@ HTTP 200 from this API is not a healthy verdict.
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import Field, model_validator
+from pydantic import BeforeValidator, Field, field_validator, model_validator
 
-from shared.base import Sha256Hex, ShortText, StrictModel, UtcDatetime
+from shared.assessment import AgentName
+from shared.base import CommitSha, Sha256Hex, ShortText, StrictModel, UtcDatetime
 from shared.ids import (
+    AnalystHandoffId,
     AnalystReviewId,
     ConnectedApplicationId,
     ControlChannelId,
     ControlGrantId,
+    DeployCommitMappingId,
     EmergencyStopId,
+    FindingId,
+    FirstResponderDecisionId,
+    FirstResponderInvocationId,
+    IncidentId,
     IngestTokenId,
+    JobId,
     LiveControlId,
     LivePolicyDecisionId,
     MonitoringEventId,
     ProjectId,
     RecommendationId,
+    RepositoryId,
     UserId,
 )
 from shared.monitoring import PrincipalRef, RuntimeSource
@@ -795,3 +804,379 @@ class RlReadinessAssessment(StrictModel):
     phase7_started: Literal[False] = False
     gated_application_count: int = Field(ge=0, default=0)
     caveat: ShortText = RL_GATED_PILOT_CAVEAT
+
+
+# ---------------------------------------------------------------------------
+# Phase 7A — deterministic first-responder orchestration (no AUTO-EXECUTE)
+# ---------------------------------------------------------------------------
+
+ORCHESTRATOR_VERSION = "7a.1.1"
+FIRST_RESPONDER_JOB_KINDS: tuple[str, ...] = (
+    "live_defense_first_responder",
+    "live_defense_agent_step",
+)
+CONTROL_JOB_KINDS: tuple[str, ...] = (
+    "live_defense_execute",
+    "live_defense_verify",
+    "live_defense_rollback",
+    "live_defense_expire",
+    "live_defense_emergency_stop",
+)
+SEVEN_AGENT_NAMES: tuple[AgentName, ...] = (
+    AgentName.scout,
+    AgentName.probe,
+    AgentName.trace,
+    AgentName.diagnose,
+    AgentName.patch,
+    AgentName.fortify,
+    AgentName.verify,
+)
+MAX_FIRST_RESPONDER_LOOPS = 1
+FIRST_RESPONDER_DEADLINE_S = 900
+FIRST_RESPONDER_MAX_USD = 3.0
+
+FIRST_RESPONDER_CAVEAT = (
+    "Deterministic first-responder decision. LLM prose is never proof of a "
+    "confirmed threat. RL recommendations are not executed defense. "
+    "AUTO-EXECUTE does not exist."
+)
+
+
+class FirstResponderIntent(StrEnum):
+    """Server-enforced modes. MONITOR and SHADOW are the same mode.
+
+    There is no AUTO-EXECUTE value. Unknown or auto-execute input fails closed.
+    """
+
+    off = "off"
+    monitor = "monitor"
+    assisted_response = "assisted_response"
+
+
+def parse_first_responder_intent(value: object) -> FirstResponderIntent:
+    """Normalize client aliases. AUTO-EXECUTE and unknown values are rejected."""
+    if isinstance(value, FirstResponderIntent):
+        return value
+    if not isinstance(value, str):
+        raise ValueError("first-responder intent must be a string")
+    key = value.strip().lower().replace("-", "_").replace(" ", "_")
+    if key in {"auto_execute", "autoexecute", "auto"}:
+        raise ValueError("AUTO-EXECUTE is not a permitted first-responder mode")
+    if key in {"off", "disabled", "none"}:
+        return FirstResponderIntent.off
+    if key in {"monitor", "monitoring", "shadow"}:
+        return FirstResponderIntent.monitor
+    if key in {"assisted_response", "assisted"}:
+        return FirstResponderIntent.assisted_response
+    raise ValueError(f"unknown first-responder intent {value!r}")
+
+
+IntentField = Annotated[FirstResponderIntent, BeforeValidator(parse_first_responder_intent)]
+
+
+class StopKind(StrEnum):
+    """OFF is stop-monitoring. Kill-switch is stop-enforcement. They are not the same."""
+
+    stop_monitoring = "stop_monitoring"
+    stop_enforcement = "stop_enforcement"
+    none = "none"
+
+
+class OrchestratorAction(StrEnum):
+    """Deterministic first-responder actions. None of these execute a LiveControl."""
+
+    ignore = "ignore"
+    record_observation = "record_observation"
+    correlate = "correlate"
+    investigate = "investigate"
+    confirm_with_probe = "confirm_with_probe"
+    propose_worktree_patch = "propose_worktree_patch"
+    verify_independently = "verify_independently"
+    recommend_control = "recommend_control"
+    escalate_to_analyst = "escalate_to_analyst"
+    defer_budget = "defer_budget"
+    cancel_run = "cancel_run"
+    reject_auto_execute = "reject_auto_execute"
+
+
+class CorrelationConfidence(StrEnum):
+    """Explicit correlation confidence. Never a probability. UNKNOWN without a mapping."""
+
+    unknown = "unknown"
+    none = "none"
+    low = "low"
+    medium = "medium"
+
+
+class AgentCapabilityClass(StrEnum):
+    investigative_readonly = "investigative_readonly"
+    code_changing = "code_changing"
+    disruptive_scoped = "disruptive_scoped"
+
+
+class AgentInvocationStatus(StrEnum):
+    eligible = "eligible"
+    blocked = "blocked"
+    queued = "queued"
+    skipped_no_mapping = "skipped_no_mapping"
+    skipped_no_snapshot = "skipped_no_snapshot"
+    skipped_mode = "skipped_mode"
+    skipped_no_scope = "skipped_no_scope"
+    skipped_no_approval = "skipped_no_approval"
+    skipped_no_patch = "skipped_no_patch"
+    completed_unverified = "completed_unverified"
+    failed = "failed"
+    cancelled = "cancelled"
+
+
+class AnalystHandoffState(StrEnum):
+    draft = "draft"
+    queued = "queued"
+    delivery_pending = "delivery_pending"
+    delivered = "delivered"
+    delivery_failed = "delivery_failed"
+    acknowledged = "acknowledged"
+    investigating = "investigating"
+    confirmed = "confirmed"
+    unverified = "unverified"
+    resolved = "resolved"
+    cancelled = "cancelled"
+
+
+class EvidenceLifecycleState(StrEnum):
+    """UI case states. Recommended is not executed. RL rec is never Executed."""
+
+    observed = "observed"
+    suspected = "suspected"
+    verified = "verified"
+    recommended = "recommended"
+    authorized = "authorized"
+    executed = "executed"
+    failed = "failed"
+    rolled_back = "rolled_back"
+
+
+class ConfirmationState(StrEnum):
+    """Confirmed vs unverified stay distinct. LLM prose cannot set confirmed."""
+
+    unverified = "unverified"
+    confirmed = "confirmed"
+
+
+class FirstResponderModeUpdate(StrictModel):
+    """Owner-attributable mode change. AUTO-EXECUTE is rejected by parse."""
+
+    intent: IntentField
+    note: ShortText | None = None
+
+
+class FirstResponderEffectivePermissions(StrictModel):
+    """Computed app permissions. Org intent is never copied as effective rights."""
+
+    intent: FirstResponderIntent
+    effective: FirstResponderIntent
+    application_connected: bool
+    monitoring_active: bool
+    enforcement_active: bool
+    kill_switch_active: bool
+    authorized_scope_active: bool
+    trusted_mapping: bool
+    reasons: list[ShortText] = Field(default_factory=list)
+    org_intent_is_not_app_permissions: Literal[True] = True
+    auto_execute: Literal[False] = False
+
+
+class FirstResponderModeView(StrictModel):
+    project_id: ProjectId
+    intent: FirstResponderIntent
+    updated_by: UserId | None = None
+    updated_at: UtcDatetime | None = None
+    previous_intent: FirstResponderIntent | None = None
+    stop_kind: StopKind = StopKind.none
+    cancelled_first_responder_jobs: int | None = Field(default=None, ge=0)
+    independently_authorized_control_jobs: int | None = Field(default=None, ge=0)
+    retention_policy_unchanged: Literal[True] = True
+    auto_execute: Literal[False] = False
+    caveat: ShortText = (
+        "OFF cancels first-responder jobs only. Independently authorized "
+        "owned-test controls keep their own expiry, rollback, and kill-switch."
+    )
+
+
+class AgentCapability(StrictModel):
+    """One runtime agent, derived from the real AgentSpec — not a prompt persona."""
+
+    name: AgentName
+    spec_version: ShortText
+    capability_class: AgentCapabilityClass
+    tools: list[ShortText] = Field(default_factory=list)
+    sandbox_profile: ShortText
+    network: Literal["none", "target-only"]
+    write_access: Literal["none", "out_dir", "worktree"]
+    silent_customer_deploy: Literal[False] = False
+    notes: ShortText
+
+    @field_validator("name")
+    @classmethod
+    def _seven_only(cls, value: AgentName) -> AgentName:
+        if value not in SEVEN_AGENT_NAMES:
+            raise ValueError("first-responder registry covers the seven security agents only")
+        return value
+
+
+class AgentCapabilityRegistry(StrictModel):
+    orchestrator_version: ShortText = ORCHESTRATOR_VERSION
+    complete: bool
+    agents: list[AgentCapability] = Field(default_factory=list)
+    missing_names: list[ShortText] = Field(default_factory=list)
+    source: ShortText = "security_agents.agents.ALL_SPECS"
+    auto_execute: Literal[False] = False
+
+
+class DeployCommitMappingCreate(StrictModel):
+    """Owner-attested deploy-to-commit mapping. Unsigned CI guesses are rejected."""
+
+    repo_id: RepositoryId
+    commit_sha: CommitSha
+    deployed_at: UtcDatetime
+    source: Literal["owner_attested"] = "owner_attested"
+
+
+class DeployCommitMapping(StrictModel):
+    id: DeployCommitMappingId
+    project_id: ProjectId
+    application_id: ConnectedApplicationId
+    repo_id: RepositoryId
+    commit_sha: CommitSha
+    deployed_at: UtcDatetime
+    source: Literal["owner_attested"] = "owner_attested"
+    created_by: UserId
+    created_at: UtcDatetime
+    revoked_at: UtcDatetime | None = None
+
+
+class RuntimeCodeCorrelation(StrictModel):
+    application_id: ConnectedApplicationId | None = None
+    mapping_id: DeployCommitMappingId | None = None
+    commit_sha: CommitSha | None = None
+    confidence: CorrelationConfidence
+    finding_ids_at_commit: list[FindingId] = Field(default_factory=list)
+    finding_is_not_proof_of_this_request: Literal[True] = True
+    note: ShortText
+
+
+class BlockedAgent(StrictModel):
+    name: AgentName
+    reason: ShortText
+    capability_class: AgentCapabilityClass
+
+
+class FirstResponderDecision(StrictModel):
+    """Versioned decision record. Future RL must beat this baseline. No invented probabilities."""
+
+    id: FirstResponderDecisionId
+    project_id: ProjectId
+    application_id: ConnectedApplicationId | None = None
+    created_at: UtcDatetime
+    orchestrator_version: ShortText = ORCHESTRATOR_VERSION
+    intent_mode: FirstResponderIntent
+    effective_mode: FirstResponderIntent
+    action: OrchestratorAction
+    evidence_state: EvidenceLifecycleState
+    trigger_event_ids: list[MonitoringEventId] = Field(default_factory=list)
+    live_policy_decision_id: LivePolicyDecisionId | None = None
+    incident_id: IncidentId | None = None
+    selected_agents: list[AgentName] = Field(default_factory=list)
+    blocked_agents: list[BlockedAgent] = Field(default_factory=list)
+    correlation: RuntimeCodeCorrelation
+    confirmation: ConfirmationState = ConfirmationState.unverified
+    llm_prose_is_not_confirmation: Literal[True] = True
+    recommended_control: DefenseActionName | None = None
+    recommended_is_not_executed: Literal[True] = True
+    executed: Literal[False] = False
+    auto_execute: Literal[False] = False
+    simulated: bool = False
+    budget_usd_remaining: float | None = None
+    deadline_at: UtcDatetime | None = None
+    retry_count: int = Field(default=0, ge=0)
+    loop_count: int = Field(default=0, ge=0)
+    cancelled: bool = False
+    cancel_reason: ShortText | None = None
+    transition: ShortText
+    outcome_label: ShortText | None = Field(
+        default=None, description="Human later; never auto-assigned as an RL label"
+    )
+    predicted_probability: None = None
+    q_values: list[ActionScore] | None = Field(
+        default=None, description="Copied only when frozen v6 inference actually ran"
+    )
+    caveat: ShortText = FIRST_RESPONDER_CAVEAT
+
+
+class FirstResponderInvocation(StrictModel):
+    """One attempted agent step. Missing execution is skipped, never faked as success."""
+
+    id: FirstResponderInvocationId
+    decision_id: FirstResponderDecisionId
+    project_id: ProjectId
+    agent: AgentName
+    capability_class: AgentCapabilityClass
+    status: AgentInvocationStatus
+    provider_mode: Literal["fake", "live", "none"] = "none"
+    independent_of_patch: bool = False
+    worktree_only: bool = False
+    silent_deploy: Literal[False] = False
+    authorized_scope_id: ShortText | None = None
+    job_id: JobId | None = None
+    reason: ShortText | None = None
+    created_at: UtcDatetime
+
+
+class AnalystHandoffCreate(StrictModel):
+    title: ShortText
+    summary: ShortText
+    assigned_to: UserId | None = None
+
+
+class AnalystHandoffDeliveryAck(StrictModel):
+    """Provider confirmation that an alert was received. Required before state=delivered."""
+
+    provider: ShortText
+    provider_message_id: ShortText
+    received_at: UtcDatetime
+
+
+class AnalystHandoff(StrictModel):
+    id: AnalystHandoffId
+    project_id: ProjectId
+    application_id: ConnectedApplicationId | None = None
+    decision_id: FirstResponderDecisionId
+    state: AnalystHandoffState
+    confirmation: ConfirmationState = ConfirmationState.unverified
+    title: ShortText
+    summary: ShortText
+    evidence_event_ids: list[MonitoringEventId] = Field(default_factory=list)
+    recommended_actions: list[ShortText] = Field(default_factory=list)
+    threat_confirmed: bool = False
+    delivery_provider: ShortText | None = None
+    delivery_provider_message_id: ShortText | None = None
+    delivery_attempted_at: UtcDatetime | None = None
+    delivery_confirmed_at: UtcDatetime | None = None
+    created_by: UserId
+    created_at: UtcDatetime
+    assigned_to: UserId | None = None
+    caveat: ShortText = (
+        "An alert is not delivered until the provider confirms receipt. "
+        "Confirmed and unverified remain distinct. LLM prose cannot confirm a threat."
+    )
+
+    @model_validator(mode="after")
+    def _delivery_requires_provider(self) -> AnalystHandoff:
+        if self.state is AnalystHandoffState.delivered:
+            if self.delivery_confirmed_at is None or not self.delivery_provider:
+                raise ValueError("delivered requires provider confirmation")
+        if self.confirmation is ConfirmationState.confirmed and not self.threat_confirmed:
+            raise ValueError("confirmed requires executed Probe evidence, not LLM prose")
+        if self.threat_confirmed and self.confirmation is not ConfirmationState.confirmed:
+            raise ValueError("threat_confirmed requires confirmation=confirmed")
+        return self

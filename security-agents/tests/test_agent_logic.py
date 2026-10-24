@@ -884,3 +884,123 @@ def test_verify_later_suite_run_does_not_mask_collection_errors():
     verdict, _, reasons = verify_agent.compute_verdict(evidence(test_runs=runs))
     assert verdict == "rejected"
     assert any("collection errors" in r for r in reasons)
+
+
+def test_check_on_a_prefix_mounted_route_decides_the_hypothesis():
+    """Scout cites the handler's own path; the recipe names the mounted API path."""
+    data = probe_input().model_copy(update={"subject_routes": ["GET /repositories/{repo_id}"]})
+    run = check_run(False, route={"method": "GET", "path_template": "/api/v1/repositories/{id}"})
+    r = probe_agent.to_validation_result(probe_out("confirmed"), data, record(), [run])
+    assert r.outcome.value == "confirmed"
+    other = check_run(False, route={"method": "GET", "path_template": "/api/v1/projects/{project_id}"})
+    r = probe_agent.to_validation_result(probe_out("confirmed"), data, record(), [other])
+    assert r.outcome.value == "inconclusive"
+
+
+def test_same_route_matching():
+    same = probe_agent.same_route
+    assert same("GET /repositories/{repo_id}", "GET /api/v1/repositories/{id}")
+    assert same("get /payments/{payment_id}", "GET /payments/{id}/")
+    assert not same("POST /repositories/{repo_id}", "GET /api/v1/repositories/{id}")
+    assert not same("GET /{id}", "GET /api/v1/repositories/{id}")  # a bare parameter matches nothing
+    assert not same("GET /tories/{id}", "GET /api/v1/repositories/{id}")  # segment boundary
+
+
+def test_scout_surveys_only_recipe_included_code(tmp_path):
+    import json
+    from types import SimpleNamespace
+
+    from security_agents.agents import scout
+
+    (tmp_path / "build_recipe.json").write_text(json.dumps({"sandbox": {"include": ["backend"]}}))
+    intel = SimpleNamespace(snapshot=SimpleNamespace(root=tmp_path))
+    assert scout._recipe_include(intel) == ("backend",)
+    assert scout._in_target("backend/backend/api/routes.py", ("backend",))
+    assert not scout._in_target("examples/payments-lite/target/app.py", ("backend",))
+    assert not scout._in_target("backend2/x.py", ("backend",))
+    (tmp_path / "build_recipe.json").write_text("{not json")
+    assert scout._recipe_include(intel) == ()
+
+
+def test_patch_can_edit_a_span_of_a_large_file_without_rewriting_it(intel, tmp_path):
+    from security_agents.tools.services import PatchWorktree
+
+    wt = PatchWorktree.create(intel, tmp_path / "wt3", ["payments_lite/app.py"])
+    src = (wt.root / "payments_lite/app.py").read_text()
+    anchor = "def get_payment("
+    assert src.count(anchor) == 1
+    out = wt.edit_file("payments_lite/app.py", anchor, "def get_payment_checked(")
+    assert out["action"] == "edited" and "payments_lite/app.py" in wt.changed()
+    assert "def get_payment_checked(" in (wt.root / "payments_lite/app.py").read_text()
+    # ambiguous or missing spans are refused without writing
+    assert wt.edit_file("payments_lite/app.py", "def ", "x")["error"] == "NO_UNIQUE_MATCH"
+    assert wt.edit_file("payments_lite/app.py", "no such text", "x")["error"] == "NO_UNIQUE_MATCH"
+    assert wt.edit_file("payments_lite/missing.py", "a", "b")["error"] in ("NOT_FOUND", "PATH_NOT_ALLOWED")
+    # outside the approved plan: refused, file untouched
+    other = next(p for p in ("payments_lite/store.py", "payments_lite/models.py") if (wt.root / p).is_file())
+    before = (wt.root / other).read_text()
+    assert wt.edit_file(other, before[:20], "x")["error"] == "PATH_NOT_ALLOWED"
+    assert (wt.root / other).read_text() == before
+
+
+def test_scout_prompt_starts_from_the_commit_change(intel):
+    from security_agents.agents import scout
+
+    entries = intel.entry_points()
+    changed = entries[-1].path
+    data = scout.ScoutInput(
+        assessment_id="asm",
+        snapshot_id="snp",
+        commit_sha="a" * 40,
+        changed_paths=[changed],
+        change_diff=f"--- a/{changed}\n+++ b/{changed}\n-old\n+new\n",
+    )
+    prompt = scout.build_prompt(data, intel)
+    assert "reviews one commit" in prompt and "+new" in prompt
+    first_entry = prompt.index('"file":')
+    assert prompt[first_entry : first_entry + 200].count(changed) == 1  # changed handler listed first
+    plain = scout.build_prompt(
+        scout.ScoutInput(assessment_id="asm", snapshot_id="snp", commit_sha="a" * 40), intel
+    )
+    assert "reviews one commit" not in plain
+
+
+def test_patch_prompt_carries_the_cause_code_and_recipe_test_roots(intel):
+    data = patch_agent.PatchInput(
+        assessment_id="asm_t",
+        finding_id="fnd_t",
+        remediation_plan_id="rmp_t",
+        approval_id="apv_t",
+        attempt=1,
+        strategy="Filter refunds by owner.",
+        files_expected=["payments_lite/store.py"],
+        cause_spans=[("payments_lite/store.py", 46, 48)],
+    )
+    prompt = patch_agent.build_prompt(data, intel)
+    assert "def refunds_for(self, payment_id: str)" in prompt
+    assert "cause_spans" not in prompt.split("cause_code")[0]  # not duplicated in the plan
+    assert "snapshot_files" not in prompt
+
+
+def test_added_tests_can_run_against_the_unpatched_code(intel, tmp_path, driver):
+    from security_agents.agents import AgentName
+    from security_agents.tools import PatchWorktree
+    from security_agents.tools.services import TestRunner
+
+    from .conftest import make_ctx
+
+    wt = PatchWorktree.create(intel, tmp_path / "wt", ["payments_lite/app.py"])
+    app = "payments_lite/app.py"
+    wt.write_file(app, (intel.snapshot.root / app).read_text() + "\n# fixed\n")
+    wt.write_file(
+        "tests/test_marker.py",
+        "import payments_lite.app as m\n\n\ndef test_fixed():\n"
+        "    assert '# fixed' in open(m.__file__).read()\n",
+    )
+    runner = TestRunner(driver=driver, workspace_provider=lambda _ctx: wt)
+    ctx = make_ctx(AgentName.PATCH, intel=intel)
+    patched = runner.run(ctx, "added_tests", [])
+    unpatched = runner.run(ctx, "added_tests_unpatched", [])
+    assert patched["passed"] == 1 and not patched["failing_tests"], patched
+    assert unpatched["failing_tests"] == ["tests/test_marker.py::test_fixed"], unpatched
+    assert not list(tmp_path.glob("unpatched-*"))  # the temporary copy is removed

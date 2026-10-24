@@ -1,0 +1,48 @@
+{
+  "actions": "resource-actions/0.1",
+  "checkpoint": null,
+  "dependencies": {
+    "gymnasium": "1.4.0",
+    "numpy": "2.5.4",
+    "pydantic": "2.14.1"
+  },
+  "environment": {
+    "application_budget": 4,
+    "apply_overhead": 1,
+    "cooldown": 2,
+    "deadline_ticks": 24,
+    "delay": 1,
+    "duration": 2,
+    "horizon": 4,
+    "queue_capacity": 12,
+    "route_quota": 2,
+    "source_quota": 3,
+    "version": "resource-queue/0.1",
+    "window_ticks": 8,
+    "workers": 2
+  },
+  "family": "mixed",
+  "gradients_applied": false,
+  "observation": "resource-observation/0.1",
+  "platform": "macOS-26.5-arm64-arm-64bit",
+  "policy": "threshold",
+  "protocol_sha256": "d6dbecee87fc73ef6b02e1e784d0cba74421a05988ec2414940d64e5f8557f5f",
+  "purpose": "unit_instrumentation",
+  "python": "3.12.14 (main, Sep 24 2026, 17:46:32) [Clang 22.1.3 ]",
+  "schema": "resource-unit-bundle/0.1",
+  "seed": 0,
+  "source_commit": "1b5516c808602c91152c18b7460fe9aaa9cd8404",
+  "source_files": {
+    "rl-defense/rl_defense/research/resource/__init__.py": "443bfcd89386455338021eb112a5c97b7194fe66acb349a3fa34158c845908cf",
+    "rl-defense/rl_defense/research/resource/__main__.py": "46de676a3f1a6c0738b39df135902b2040914a5c37017239cf46481ae44c3d61",
+    "rl-defense/rl_defense/research/resource/baselines.py": "2d74cb93b7b4503d2a12e9c3ee3a921c5b1c5b89bc41d7a2c372d7d6f31e85e5",
+    "rl-defense/rl_defense/research/resource/env.py": "495ba04cbaf9a2ed895d54e2f9b096490d8888a64325408afa4a373a9d87bb41",
+    "rl-defense/rl_defense/research/resource/preparation.py": "7eb78fee292f45359dbbdfe52ae1c38d1745fb0ea4342f0e4001648292f4386e",
+    "rl-defense/rl_defense/research/resource/service.py": "aebb897ab0173a37dcaa249e2b2c14923179ac2c081fbc1e4e732bb09ddecac0",
+    "rl-defense/rl_defense/research/resource/workload.py": "9ef6ed09ce12f07b402c7608aa4137daa4f3ac594b14005f4704b944143293f2"
+  },
+  "started_at": "2026-10-23T23:59:03.902305+00:00",
+  "study_approved": false,
+  "train_eligible": false,
+  "training_authorized": false
+}

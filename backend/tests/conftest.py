@@ -32,13 +32,26 @@ def _admin_engine() -> sa.Engine:
     return sa.create_engine(url, isolation_level="AUTOCOMMIT")
 
 
+def _sandbox_target():  # type: ignore[no-untyped-def]
+    import importlib.util
+
+    path = Path(__file__).resolve().parents[2] / "deploy" / "sandbox_target.py"
+    spec = importlib.util.spec_from_file_location("sandbox_target", path)
+    mod = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    return mod
+
+
 def _database_url() -> str:
     global _ADMIN_URL
     _ADMIN_URL = os.environ.get("TEST_DATABASE_URL")
     if not _ADMIN_URL:
-        from backend.devdb import start
+        try:
+            from backend.devdb import start
 
-        _ADMIN_URL = start(_PGTEST_DIR, database="postgres")
+            _ADMIN_URL = start(_PGTEST_DIR, database="postgres")
+        except ImportError:  # agent sandbox: no pgserver wheel; use the system PostgreSQL
+            _ADMIN_URL = _sandbox_target()._postgres_url()
     admin = _admin_engine()
     with admin.connect() as c:
         c.execute(sa.text(f'CREATE DATABASE "{_DB_NAME}"'))
@@ -96,6 +109,11 @@ from backend.migrate import upgrade  # noqa: E402
 upgrade()
 
 _TABLES = [
+    "analyst_handoffs",
+    "first_responder_invocations",
+    "first_responder_decisions",
+    "deploy_commit_mappings",
+    "first_responder_modes",
     "analyst_reviews",
     "live_policy_decisions",
     "incidents",

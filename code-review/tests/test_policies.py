@@ -352,6 +352,13 @@ def test_resolve_repo_registries_and_build_recipe(tmp_path: Path, monkeypatch) -
         assert resolve_repo("rep_bound00001").subdir == ""
         assert resolve_repo("rep_bound00001", commit_sha=sha).subdir == "billing"
         assert resolve_repo("rep_bound00001", commit_sha=sc.head_sha).subdir == ""  # no recipe then
+        # the backend's bare clone (no .git) is reviewable too
+        bare = tmp_path / "rep_bound00001.git"
+        _sp.run(["git", "clone", "-q", "--bare", str(sc.repo), str(bare)], check=True, env=env)
+        bindings.write_text(
+            _json.dumps([{"repo_id": "rep_bound00001", "local_path": str(bare), "subdir": "."}])
+        )
+        assert resolve_repo("rep_bound00001", commit_sha=sha).subdir == "billing"
     finally:
         monkeypatch.delenv("REPOSITORY_BINDINGS_FILE")
         get_settings.cache_clear()
@@ -416,3 +423,50 @@ def test_human_expectation_decisions_drive_claim_status(tmp_path: Path) -> None:
         )
     finally:
         ws.close()
+
+
+def test_search_skips_data_dumps_and_says_so(billing) -> None:
+    from code_review.tools import SEARCH_MAX_FILE_BYTES, SearchIn
+
+    _, ws = billing
+    ws.write("data/dump.jsonl", "apply_discount\n" * (SEARCH_MAX_FILE_BYTES // 10))
+    out = _toolbox(ws).search_code(SearchIn(pattern="apply_discount", path_prefix=""))
+    assert "billing/invoice.py" in out and "data/dump.jsonl" not in out
+    assert "skipped 1 file(s)" in out
+
+
+def test_speculative_repeat_is_only_charged_when_the_head_run_fails(billing) -> None:
+    sc, ws = billing
+    base = Workspace.export(RepoSource(sc.repo), sc.base_sha)
+    try:
+        tb = ReviewerToolbox(
+            host=InMemoryHost(fake([])),
+            head=ws,
+            base=base,
+            sandbox=LocalProcessSandbox(),
+            budget=ReviewBudget(max_test_runs=10),
+        )
+        ok_msg = tb.write_test(
+            WriteTestIn(
+                name="holds",
+                content="def test_ok():\n    assert True\n",
+                claim_key="c",
+                rationale="r",
+            )
+        )
+        bad_msg = tb.write_test(
+            WriteTestIn(
+                name="broken",
+                content="def test_bad():\n    assert False\n",
+                claim_key="c",
+                rationale="r",
+            )
+        )
+        passing = tb.run_generated(ok_msg.split("test_id=")[1].split(".")[0])
+        assert len(passing.head_runs) == 1 and passing.outcome_on_base == "passed"
+        assert tb.test_runs == 2  # head + base; the unused repeat is free
+        failing = tb.run_generated(bad_msg.split("test_id=")[1].split(".")[0])
+        assert len(failing.head_runs) == 2 and failing.reproducible
+        assert tb.test_runs == 5  # head + repeat + base
+    finally:
+        base.close()

@@ -1,0 +1,15 @@
+# MSG: Phase 7A first-responder contracts (schema 0.20.0)
+- ID: `20261024T023000Z-alan-to-all-live-defense-phase7a-contracts`
+- From: Alan
+- To: all
+- Kind: contract-proposal
+- Timestamp (UTC): 2026-10-24T02:30:00Z
+- Branch / commit / PR or issue link: `cursor/live-defense-first-responder-0044` from live `origin/main` `211c2b24`
+- Related subsystem(s): Live Defense first-responder; `shared/` 0.20.0; seven security agents (reuse, not rebuild); Codex RL records (consume later, do not train)
+- Summary (facts, not assumptions): Additive contracts for OFF/MONITOR|SHADOW/ASSISTED RESPONSE (AUTO-EXECUTE rejected), `FirstResponderDecision` (no invented probabilities), `AgentCapabilityRegistry` from real AgentSpecs, `DeployCommitMapping`, `AnalystHandoff` (delivered only with provider confirmation). Alembic `0015`. Independently authorized LiveControls are not cancelled on OFF. Codex/v6/holdout untouched. Phase 7B not started.
+- Interface requested/proposed: see `shared/shared/live_defense.py` Phase 7A section and fixtures `shared/fixtures/v0/FirstResponderDecision.json`, `AnalystHandoff.json`, `AgentCapabilityRegistry.json`.
+- Breaking change? No. Additive 0.20.0. Note: open PR #412 also numbered 0.20.0 for Phase 6.5; if both merge, rebase #412 to 0.21.0.
+- Action required by recipient: Codex — do not train; consume decision records later. Srihith — interim shared ack. Do not treat this as AUTO-EXECUTE or production enforcement.
+- Response-by milestone: human security review of the Phase 7A PR; leave open (authz/mode/privilege expansion)
+- Evidence: `docs/LIVE_DEFENSE_PHASE7A_FIRST_RESPONDER.md`; `backend/tests/test_live_defense_phase7a.py`
+- In-Reply-To: `coordination/messages/20261023T153000Z-alan-to-all-live-defense-phase6-pilot-audit.md`

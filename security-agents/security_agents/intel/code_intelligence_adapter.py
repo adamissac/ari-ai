@@ -16,10 +16,13 @@ Two facts shape the adapter:
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
 from typing import Any
+
+from code_intelligence.privacy import redact
 
 from ..contracts import (
     BehavioralExpectation,
@@ -47,6 +50,10 @@ _CRITICALITY = {"financial": "high", "personal": "high", "internal": "medium", "
 
 def _value(obj: Any, default: str = "") -> str:
     return str(getattr(obj, "value", obj) if obj is not None else default)
+
+
+_NESTED_REPEAT = re.compile(r"\([^()]*(?:[+*}|])[^()]*\)\s*[+*{]")
+MAX_SEARCH_LINE = 2000  # minified bundles; nothing an agent reads line by line
 
 
 @dataclass
@@ -140,6 +147,8 @@ class CodeIntelligenceAdapter:
         end = max(start, int(end_line))
         if end - start + 1 > MAX_SPAN_LINES:
             end = start + MAX_SPAN_LINES - 1
+        # Clamp to the file so "read to the end" works; a start past the end is still refused.
+        end = min(end, max(start, self._line_counts.get(self._to_index(rel), end)))
         try:
             content = self.service.read_span(self.ref, self._to_index(rel), start, end)
         except Exception as exc:
@@ -150,24 +159,36 @@ class CodeIntelligenceAdapter:
         return Span(path=rel, start_line=start, end_line=end, content=numbered)
 
     def search(self, pattern: str, *, max_results: int = 20) -> list[dict[str, Any]]:
-        """Literal search. NOTE: the service matches case-insensitive substrings,
-        not regular expressions, so a regex from an agent is used as text."""
+        """Regular-expression search over the pinned index (the tool promises a regex; the
+        service only matches substrings). An invalid regex falls back to a literal match."""
+        if not pattern.strip() or len(pattern) > 500:
+            raise ValueError("search requires a nonempty pattern of at most 500 characters")
         try:
-            chunks = self.service.search(self.ref, pattern, limit=max(1, min(max_results, 50)))
-        except Exception as exc:
-            raise ValueError(f"search failed: {exc}"[:200]) from exc
+            # A repeated group holding a quantifier or alternation, e.g. (\w+\s?)+, can
+            # backtrack for hours on one line and the job's heartbeat keeps it alive: match those
+            # (and invalid patterns) literally.
+            rx = re.compile(re.escape(pattern) if _NESTED_REPEAT.search(pattern) else pattern, re.IGNORECASE)
+        except re.error:
+            rx = re.compile(re.escape(pattern), re.IGNORECASE)
+        limit = max(1, min(max_results, 50))
         hits: list[dict[str, Any]] = []
-        for chunk in chunks:
-            provenance = getattr(chunk, "provenance", None)
-            span = getattr(provenance, "span", None)
-            hits.append(
-                {
-                    "path": self._to_workspace(str(getattr(provenance, "path", ""))),
-                    "line": int(getattr(span, "start_line", 0) or 0),
-                    "text": _strip_delimiters(str(getattr(chunk, "content", "")))[:300],
-                }
-            )
+        for file in self._index.files:
+            for number, line in enumerate(file.content.splitlines(), 1):
+                if len(line) <= MAX_SEARCH_LINE and rx.search(line):
+                    hits.append(
+                        {
+                            "path": self._to_workspace(file.path),
+                            "line": number,
+                            "text": redact(line.strip())[:300],
+                        }
+                    )
+                    if len(hits) == limit:
+                        return hits
         return hits
+
+    @cached_property
+    def _line_counts(self) -> dict[str, int]:
+        return {f.path: len(f.content.splitlines()) for f in self._index.files}
 
     # ------------------------------------------------------------------ structure
 
@@ -195,7 +216,12 @@ class CodeIntelligenceAdapter:
             offset += len(page)
 
     def symbols(self) -> list[SymbolInfo]:
-        return [
+        return list(self._symbol_infos)
+
+    @cached_property
+    def _symbol_infos(self) -> tuple[SymbolInfo, ...]:
+        # Built once: the snapshot is immutable and this took ~9 s per call on a real repo.
+        return tuple(
             SymbolInfo(
                 qualified_name=str(getattr(symbol, "qualified_name", "")),
                 kind=_value(getattr(symbol, "kind", "function")),
@@ -207,7 +233,7 @@ class CodeIntelligenceAdapter:
                 params=tuple(_params_from_signature(getattr(symbol, "signature", None))),
             )
             for symbol in self._symbols
-        ]
+        )
 
     def find_symbol(self, name: str) -> SymbolInfo | None:
         candidates = self.symbols()
@@ -226,18 +252,30 @@ class CodeIntelligenceAdapter:
                 return str(getattr(symbol, "id", ""))
         return None
 
-    def _name_of(self, symbol_id: str) -> str:
+    @cached_property
+    def _names(self) -> dict[str, str]:
+        names: dict[str, str] = {}
         for symbol in self._symbols:
-            if str(getattr(symbol, "id", "")) == symbol_id:
-                return str(getattr(symbol, "qualified_name", symbol_id))
-        return symbol_id
+            names.setdefault(str(getattr(symbol, "id", "")), str(getattr(symbol, "qualified_name", "")))
+        return names
+
+    @cached_property
+    def _edges(self) -> tuple[dict[str, list[Any]], dict[str, list[Any]]]:
+        """Call edges by caller id and by callee id (one pass instead of one per lookup)."""
+        by_caller: dict[str, list[Any]] = {}
+        by_callee: dict[str, list[Any]] = {}
+        for edge in getattr(self._index, "calls", ()) or ():
+            by_caller.setdefault(str(getattr(edge, "caller_id", "")), []).append(edge)
+            by_callee.setdefault(str(getattr(edge, "callee_id", "")), []).append(edge)
+        return by_caller, by_callee
+
+    def _name_of(self, symbol_id: str) -> str:
+        return self._names.get(symbol_id) or symbol_id
 
     def _callees_of(self, symbol_id: str) -> list[str]:
         """Directed callees, each labelled with the index's resolution quality."""
         out: list[str] = []
-        for edge in getattr(self._index, "calls", ()) or ():
-            if str(getattr(edge, "caller_id", "")) != symbol_id:
-                continue
+        for edge in self._edges[0].get(symbol_id, ()):
             resolution = _value(getattr(edge, "resolution", "unresolved"), "unresolved")
             callee_id = getattr(edge, "callee_id", None)
             name = self._name_of(str(callee_id)) if callee_id else str(getattr(edge, "callee_name", ""))
@@ -246,9 +284,7 @@ class CodeIntelligenceAdapter:
 
     def _callers_of(self, symbol_id: str) -> list[str]:
         out = {
-            self._name_of(str(getattr(edge, "caller_id", "")))
-            for edge in getattr(self._index, "calls", ()) or ()
-            if str(getattr(edge, "callee_id", "")) == symbol_id
+            self._name_of(str(getattr(edge, "caller_id", ""))) for edge in self._edges[1].get(symbol_id, ())
         }
         return sorted(out)
 
@@ -402,13 +438,3 @@ def _params_from_signature(signature: Any) -> list[str]:
         if name and name not in ("self", "cls"):
             out.append(name)
     return out
-
-
-def _strip_delimiters(text: str) -> str:
-    """Drop the service's untrusted-data wrapper so a search hit reads as a line."""
-    lines = [
-        line
-        for line in text.splitlines()
-        if not line.startswith(("<untrusted", "</untrusted", "<data", "</data"))
-    ]
-    return " ".join(line.strip() for line in lines if line.strip())
