@@ -339,7 +339,9 @@ def run_assessment(ctx: JobContext) -> dict[str, Any]:
                 f"security-agents orchestrator unavailable: {loaded.reason}",
             )
             return {"state": "FAILED", "reason": loaded.reason}
-        loaded.obj.run(host)
+        if loaded.obj.run(host) == "claimed_elsewhere":
+            # Another worker resumed this run in-process and still drives it.
+            return {"state": host.assessment.state.value, "noop": True}
     except (HostError, LLMError) as exc:
         state = {
             ErrorCode.CANCELLED: AssessmentState.CANCELLED,
