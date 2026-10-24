@@ -40,6 +40,7 @@ def test_roe_is_built_from_the_active_scope():
     assert roe.permitted_check_templates == [
         "access_control.authentication@1",
         "access_control.ownership@1",
+        "access_control.role@1",
         "input_validation.bounds@1",
     ]
     assert set(roe.permitted_agents) == {AgentName.PROBE, AgentName.VERIFY}

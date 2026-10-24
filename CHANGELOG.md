@@ -8,6 +8,7 @@ All notable changes are documented here. Format follows
 
 - Seven-agent live evidence: a budgeted real-Claude run of the full security workflow on the payments-lite fixture completed end to end (Probe executed the ownership check, Verify independently re-ran it on a fresh checkout and accepted the patch); manifest + per-agent tool traces, costs, specialist provenance and limitations archived under `security-agents/tests/artifacts/live/20261024T213713Z-*`.
 
+- Add `access_control.role` check template: Probe can now prove role-bypass on mutating routes — a restricted fixture identity must be denied (401/403/404) while a permitted one keeps access. Recipe surface expanded (assessment/finding/scope routes, role-differentiated sandbox identities carol=viewer/dave=member of alice's org); new recipe body placeholders `{expires_in_days:N}` and `{resource:KIND}`. Aliases `authorization.role`, `access_control.mutation`, `access_control.rbac` map to the new category.
 - Eval scorer now reports `validated_any`/`fixed_any` across every finding kind next to the security-only verdicts, and derives finding paths from `source_span` evidence; `benign_artifact_sha512` relabeled — the sha512 swap was a real defect (String(64) sha256 column), not a false positive.
 
 - Scout specialist now trains on the labelled commit-eval set (each case's planted edit vs. its original code as a minimal positive/negative pair) and was promoted after beating the static-pattern baseline (macro F1 0.349 vs 0.084); new checkpoint committed under `specialists/checkpoints/scout/`.
