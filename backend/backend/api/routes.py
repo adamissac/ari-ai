@@ -1209,18 +1209,13 @@ def list_findings(
 ) -> dict[str, Any]:
     with transaction() as conn:
         require_project(conn, _user(conn, request), project_id)
-        q = sa.select(findings.c.doc, findings.c.paths).where(
-            findings.c.project_id == project_id
-        )
+        q = sa.select(findings.c.doc).where(findings.c.project_id == project_id)
         if status:
             q = q.where(findings.c.status == status.value)
         if kind:
             q = q.where(findings.c.kind == kind)
         return {
-            "items": [
-                {**doc, "paths": paths}
-                for doc, paths in conn.execute(q.order_by(findings.c.created_at.desc()))
-            ],
+            "items": list(conn.execute(q.order_by(findings.c.created_at.desc())).scalars()),
             "next_cursor": None,
         }
 
