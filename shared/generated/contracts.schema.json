@@ -2498,8 +2498,12 @@
       "enum": [
         "access_control.ownership",
         "access_control.authentication",
+        "access_control.role",
         "input_validation.bounds",
         "authorization.ownership",
+        "authorization.role",
+        "access_control.mutation",
+        "access_control.rbac",
         "input.bounds"
       ],
       "title": "CheckCategory",
