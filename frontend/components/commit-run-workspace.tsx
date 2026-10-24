@@ -127,7 +127,7 @@ function RecordedSectorMap({ detail, sha, fullName, liveView }: { detail: Assess
     <div data-testid="commit-agent-map">
       <p className="label-mono mb-3 text-white/45" title="Every step below is a persisted tool call from the recorded run.">
         Recorded run · {ASSESSMENT_STATE[detail.assessment.state].label}
-        {detail.agent_runs.some(r => r.provider_mode !== 'live') ? ` · ${providerLabel(detail.agent_runs.find(r => r.provider_mode !== 'live')!.provider_mode).label}` : ' · live provider'}
+        {detail.agent_runs.some(r => r.provider_mode !== 'live') ? ` · ${providerLabel(detail.agent_runs.find(r => r.provider_mode !== 'live')!.provider_mode).label}` : detail.agent_runs.length === 0 ? ' · no runs yet' : ' · live provider'}
       </p>
       <AgentMap repo={repo} commitSha={sha} analysis={analysis} statuses={statuses} played={replay.position} started playback={replay} accepted={accepted} offset={0} />
       {security.length > 0 && (
