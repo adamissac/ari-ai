@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import type { Repository } from '@hackatl/frontend-transport';
+import type { AssessmentState, Repository } from '@hackatl/frontend-transport';
 import { useProject } from '@/components/project';
 import { AgentTeam } from '@/components/agent-team';
 import { RepoCommits } from '@/components/repo-commits';
@@ -40,7 +40,7 @@ function RepositoryHistory({ repo, projectId }: { repo: Repository; projectId: s
       {sha && records.status === 'error' && <ErrorState error={records.error} onRetry={records.reload} />}
       {sha && records.status === 'ready' && <>
         {runs.map(run => <Link key={run.id} className="commit-run" href={`/projects/${projectId}/assessments/${run.id}`}><span>Open reviewer & agent journey<small><Mono>{run.id}</Mono></small></span><Badge view={ASSESSMENT_STATE[run.state]} /><span aria-hidden="true">↗</span></Link>)}
-        {runs[0] && <details className="project-detail"><summary>Agent activity</summary><RecordedTeam key={runs[0].id} assessmentId={runs[0].id} /></details>}
+        {runs[0] && <details className="project-detail"><summary>Agent activity</summary><RecordedTeam key={runs[0].id} assessmentId={runs[0].id} state={runs[0].state} /></details>}
         {!runs.length && <p className="text-sm text-muted">No matching run in the loaded history. Start an authorized analysis to create one.</p>}
         {(records.data.snapshots.next_cursor || records.data.assessments.next_cursor) && <p className="text-xs text-muted">Showing up to 100 recent snapshots and the latest assessment page; older runs may not appear here.</p>}
         {records.refreshError !== undefined && <p role="status" className="text-xs text-warn">Could not refresh. These are the last loaded records.</p>}
@@ -50,9 +50,9 @@ function RepositoryHistory({ repo, projectId }: { repo: Repository; projectId: s
   </section>;
 }
 
-function RecordedTeam({ assessmentId }: { assessmentId: string }) {
+function RecordedTeam({ assessmentId, state }: { assessmentId: string; state: AssessmentState }) {
   const runs = useResource(`commit-run:${assessmentId}`, signal => api().agentRuns(assessmentId, { signal }), 10000);
   if (runs.status === 'loading') return <Loading label="Opening the recorded agent work" />;
   if (runs.status === 'error') return <ErrorState error={runs.error} onRetry={runs.reload} />;
-  return <div className="commit-recorded-team"><p className="network-eyebrow">LATEST MATCHING RUN · RECORDED WORK</p><h4>See what each agent did.</h4><p className="text-xs text-muted">Select a worker to inspect its recorded tools and handoff. A worker with no run is shown as not run.</p>{runs.refreshError !== undefined && <p role="status" className="text-xs text-warn">Refresh failed; showing the last loaded agent records.</p>}<AgentTeam runs={runs.data.items} /></div>;
+  return <div className="commit-recorded-team"><p className="network-eyebrow">LATEST MATCHING RUN · RECORDED WORK</p><h4>See what each agent did.</h4><p className="text-xs text-muted">Select a worker to inspect its recorded tools and handoff. A worker with no run is shown as not needed or not reached.</p>{runs.refreshError !== undefined && <p role="status" className="text-xs text-warn">Refresh failed; showing the last loaded agent records.</p>}<AgentTeam runs={runs.data.items} state={state} /></div>;
 }

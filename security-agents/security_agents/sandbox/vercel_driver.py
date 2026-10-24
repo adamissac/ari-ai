@@ -242,7 +242,10 @@ _SWEPT_AT = 0.0
 
 def _sweep_stale() -> None:  # pragma: no cover - live
     """Best effort, at most every 10 minutes per process: destroy run sandboxes a killed
-    worker left behind (stopped, or older than any run may last)."""
+    worker left behind (stopped, or older than any run may last). Orphan snapshots of
+    those sandboxes go with them: named boxes snapshot on stop, and leaked snapshots
+    exhaust the account's snapshot storage (HTTP 402). Snapshots the run box did not
+    create — including the shared base — are never "orphans" of it, so they survive."""
     global _SWEPT_AT
     if time.time() - _SWEPT_AT < 600:
         return
@@ -258,7 +261,7 @@ def _sweep_stale() -> None:  # pragma: no cover - live
             )
             if name.startswith("ari-sbx-") and stale:
                 with _suppress():
-                    vsandbox.get_sandbox(name=name).destroy(delete_orphan_snapshots=False)
+                    vsandbox.get_sandbox(name=name).destroy(delete_orphan_snapshots=True)
 
 
 def _base_snapshot(spec: SandboxSpec, *, rebuild: bool = False) -> str:  # pragma: no cover - live
