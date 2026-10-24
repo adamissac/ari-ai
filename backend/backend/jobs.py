@@ -829,16 +829,30 @@ def begin_effect(conn: Connection, job_id: str, owner: str, effect_key: str) -> 
 
 def end_effect(conn: Connection, job_id: str, owner: str, *, applied: bool) -> None:
     """Record the observed outcome. ``applied=False`` asserts the effect definitely did
-    not happen, which makes the job safely retryable again."""
+    not happen, which makes the job safely retryable again — unless an earlier effect
+    for this job was already applied, in which case a replay is still unsafe and the
+    job keeps its ``settled`` marker (failures then end ``recovery_required``)."""
     row = _locked(
         conn, job_id, jobs.c.lease_owner == owner, jobs.c.status == JobStatus.running.value
     )
     if row is None:
         return
+    if applied:
+        effect_state: str | None = "settled"
+    else:
+        prior_applied = conn.execute(
+            sa.select(sa.func.count())
+            .select_from(job_events)
+            .where(
+                job_events.c.job_id == job_id,
+                job_events.c.reason == "external effect settled",
+            )
+        ).scalar_one()
+        effect_state = "settled" if prior_applied else None
     conn.execute(
         sa.update(jobs)
         .where(jobs.c.id == job_id)
-        .values(effect_state="settled" if applied else None, updated_at=sa.func.now())
+        .values(effect_state=effect_state, updated_at=sa.func.now())
     )
     record_event(
         conn,
