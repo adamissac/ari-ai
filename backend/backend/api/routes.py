@@ -546,8 +546,8 @@ def disconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
         return {"id": repo_id, "disconnected": True}
 
 
-@router.post("/repositories/{repo_id}/reconnect")
-def reconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
+@router.post("/repositories/{repo_id}/reconnect", response_model=Repository)
+def reconnect_repository(repo_id: str, request: Request) -> Repository:
     """Re-enable a disconnected repository — only after renewed authorization.
     App-connected rows require the owner to still hold access through the recorded
     installation (re-verified, fresh). Reconnect does NOT restore

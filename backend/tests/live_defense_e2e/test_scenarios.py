@@ -350,10 +350,11 @@ def test_e_worker_failure(staging, monkeypatch, report):
     assert staging.ingest(alice, app).status_code == 202
     staging.drain()
 
-    # The step's artifacts persisted before the crash; the invocation is still
-    # queued and the job was requeued with backoff.
+    # Post-F1 crash contract: the step's artifacts persisted before the crash,
+    # but the invocation is committed ``failed`` — a crash during a billable step
+    # refuses automatic replay rather than re-running uncertain provider work.
     inv = staging.by_agent(staging.invocations(alice, app.project_id))
-    assert inv["scout"]["status"] == INV.queued.value
+    assert inv["scout"]["status"] == INV.failed.value
     step_jobs = [j for j in staging.job_rows() if j["kind"] == "live_defense_agent_step"]
     crashed = next(
         (j for j in step_jobs if "simulated worker crash" in json.dumps(j.get("last_error") or {})),
@@ -372,26 +373,21 @@ def test_e_worker_failure(staging, monkeypatch, report):
     staging.drain()
 
     inv = staging.by_agent(staging.invocations(alice, app.project_id))
-    assert inv["scout"]["status"] == INV.executed.value
-    # Both attempts' transcripts were retained — nothing was lost or deduplicated away.
-    transcripts = staging.artifact_rows(app.project_id, kind="llm_transcript")
-    assert len(transcripts) >= 2
-    # Exactly one decision, one scout invocation — recovery did not double-record.
+    assert inv["scout"]["status"] == INV.failed.value
+    # Exactly one decision, one scout invocation — crash + redelivery did not
+    # double-record.
     assert len(staging.decisions(alice, app.project_id)) == 1
     assert sum(1 for i in inv.values() if i["agent"] == "scout") == 1
-    # Honest accounting (F1): the re-delivered step re-ran the WHOLE physical
-    # provider loop — scout calls doubled even though the logical invocation
-    # stayed one. Single logical invocation is not duplicate-prevention for
-    # billable work; the desired contract (no replay of an uncertain call) is
-    # pinned by the F1 xfail test in test_exec_reliability_compat.py.
+    # Post-F1 contract: redelivery did NOT re-run the physical provider loop —
+    # uncertain billable outcomes are never replayed automatically.
     scout_physical_after = sum(1 for c in fake.calls if c.agent.value == "scout")
-    assert scout_physical_after == 2 * scout_physical_before
+    assert scout_physical_after == scout_physical_before
     report.check(
         "physical provider calls (scout)",
-        "replayed on redelivery",
+        "not replayed on redelivery (F1)",
         f"{scout_physical_before} -> {scout_physical_after}",
     )
-    report.check("recovery outcome", INV.executed.value, inv["scout"]["status"])
+    report.check("recovery outcome", INV.failed.value, inv["scout"]["status"])
 
 
 # ---------------------------------------------------------------------------
