@@ -23,6 +23,7 @@ from ..contracts import (
 )
 from ..intel import CodeIntel
 from ..runtime import AgentSpec, data_block
+from ..sandbox.workspace import recipe_test_roots, under_test_roots
 from ..standards.fields import d3fend_entry, optional_d3fend_field
 
 SYSTEM = """You are Diagnose, the root-cause analyst of an automated security review platform.
@@ -181,7 +182,8 @@ def to_plan(
         cause_class=CauseClass(out.cause_class),
     )
     # Enforced: planned files must exist in the snapshot, or be new test files.
-    files = [p for p in out.files_expected if intel.snapshot.exists(p) or p.startswith("tests/")]
+    roots = recipe_test_roots(intel.snapshot.root)
+    files = [p for p in out.files_expected if intel.snapshot.exists(p) or under_test_roots(p, roots)]
     if not files:
         files = [spans[0].path or data.affected_paths[0]]
     countermeasure = d3fend_entry(out.d3fend_technique) if out.d3fend_technique else None
