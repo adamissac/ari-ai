@@ -6,8 +6,14 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
-- Add `access_control.role` check template: Probe can now prove role-bypass on mutating routes — a restricted fixture identity must be denied (401/403/404) while a permitted one keeps access. Recipe surface expanded (assessment/finding/scope routes, role-differentiated sandbox identities carol=viewer/dave=member of alice's org); new recipe body placeholders `{expires_in_days:N}` and `{resource:KIND}`. Aliases `authorization.role`, `access_control.mutation`, `access_control.rbac` map to the new category.
+### CI / release gate (2026-10-24)
+- Workflows run on every push/PR with per-job RUN/SKIP path gates (`scripts/ci/path_gate.py`); job ids made unique for required checks.
+- New manual `pilot-verify.yml` pipeline (static/unit, real DB, real sandbox, browser E2E, authorized live-model, hosted smoke, load/recovery).
+- New `GET /projects/{id}/jobs?status=` endpoint for dead-letter/failed-job visibility; `last_error` secret-scrubbed at write time, owners get sanitized detail, other members get `{code, category}`.
+- Eval harness: unscored cases no longer counted as misses (`scored:false` + reason).
+- `scripts/ci/load_probe.py` bounded queue concurrency/crash-recovery probe.
 
+- Add `access_control.role` check template: Probe can now prove role-bypass on mutating routes — a restricted fixture identity must be denied (401/403/404) while a permitted one keeps access. Recipe surface expanded (assessment/finding/scope routes, role-differentiated sandbox identities carol=viewer/dave=member of alice's org); new recipe body placeholders `{expires_in_days:N}` and `{resource:KIND}`. Aliases `authorization.role`, `access_control.mutation`, `access_control.rbac` map to the new category.
 - Eval scorer now reports `validated_any`/`fixed_any` across every finding kind next to the security-only verdicts, and derives finding paths from `source_span` evidence; `benign_artifact_sha512` relabeled — the sha512 swap was a real defect (String(64) sha256 column), not a false positive.
 
 - Scout specialist now trains on the labelled commit-eval set (each case's planted edit vs. its original code as a minimal positive/negative pair) and was promoted after beating the static-pattern baseline (macro F1 0.349 vs 0.084); new checkpoint committed under `specialists/checkpoints/scout/`.

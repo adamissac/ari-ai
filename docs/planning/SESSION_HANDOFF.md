@@ -18,6 +18,14 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-24 — Adam (Devin) — release gate / test infrastructure
+- Did: rebuilt all CI workflows around always-on jobs + `scripts/ci/path_gate.py` (visible RUN/SKIP); renamed colliding `test` job ids; added `pilot-verify.yml` (7 labelled env categories); added `GET /projects/{id}/jobs?status=` for dead-letter visibility; hardened the 45-case eval scorer (`scored:false` + `unscored_reason`, rates over scored only, case validation); added `scripts/ci/load_probe.py`.
+- State of the code: `feat/adam/release-gate` pushed; pytest `test_job_status_api`+`test_jobs_queue`+`test_parallel_migrations` → 12 passed; ruff clean; load probe all invariants green (~1.5k jobs/s enqueue+drain, embedded PG).
+- Decisions: path gating inside jobs (not triggers) so required checks never hang at Expected; skip = visible verdict.
+- Warnings: `main` still has NO branch protection — admin must set required checks (list in `docs/release/RELEASE_GATE_2026-10-24.md`). New jobs endpoint is shared backend surface — needs owner review.
+- Next: branch-protection config by repo admin; run `pilot-verify.yml` on the merge SHA.
+
+
 ### 2026-10-24 — Devin (agent, Adam) — leaked Vercel snapshot cleanup, push→agents verification
 - Did: verified the named-sandbox snapshot-leak fix already on main (`persistent: False` on run boxes + `destroy` in teardown + `_sweep_stale`); opened PR #495 making the sweep also delete stale run boxes' orphan snapshots so leaked quota is actually freed. Confirmed `delete_orphan_snapshots` only removes snapshots created *by* the destroyed sandbox — the shared `ari-base-*` snapshot can never be an orphan of a run box. Verified on main: security-agents suite 581 passed / 24 skipped, frontend typecheck + 330 vitest + lint clean, standards smoke (CWE/OWASP/CVSS/ATT&CK/D3FEND/SARIF/SP 800-115) passes. Confirmed agents are standards-grounded in code: Scout CWE/OWASP, Probe CWE, Trace ATT&CK/CVSS, Diagnose D3FEND, Fortify CWE/D3FEND; Patch/Verify get standards context via the tagged finding + remediation plan, not prompts.
 - State of the code: push→agents path gates are code-verified (`pipeline.process_github_delivery` → `auto_commits.schedule` → `assess_github_commit`): `repositories.automatic_assessments` (per-repo opt-in, UI switch exists), `GITHUB_AUTO_COMMIT_AUTHORS` (Railway entrypoint defaults `*`), `monitoring_policy.enabled` (project setting, UI switch), active `AuthorizedScope`. All four must be on for pushes to spawn runs — they are product gates, not bugs.

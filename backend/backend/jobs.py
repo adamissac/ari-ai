@@ -16,6 +16,7 @@ import sqlalchemy as sa
 from sqlalchemy.engine import Connection
 
 from backend.db import jobs
+from backend.redaction import redact
 from shared.base import utcnow
 from shared.errors import ErrorCode
 from shared.ids import IdPrefix, new_id
@@ -112,10 +113,12 @@ def claim(conn: Connection, owner: str, lease_s: int, kinds: list[str] | None = 
                 status="dead",
                 lease_owner=None,
                 updated_at=sa.func.now(),
-                last_error={
-                    "code": ErrorCode.JOB_LEASE_EXPIRED.value,
-                    "message": "attempts exhausted (lease expired or repeated failure)",
-                },
+                last_error=redact(
+                    {
+                        "code": ErrorCode.JOB_LEASE_EXPIRED.value,
+                        "message": "attempts exhausted (lease expired or repeated failure)",
+                    }
+                ),
             )
         )
         return None
@@ -182,7 +185,7 @@ def fail(
         .values(
             status=status,
             run_after=run_after,
-            last_error=error,
+            last_error=redact(error),
             lease_owner=None,
             lease_expires_at=None,
             updated_at=sa.func.now(),
