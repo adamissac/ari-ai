@@ -74,3 +74,21 @@ def test_integrity_failure_retains_partial_evidence_and_never_seals(tmp_path, mo
     assert not (output / "STUDY_EVIDENCE.json").exists()
     with pytest.raises(FileExistsError):
         study.run(root, output)
+
+
+def test_retained_formal_study_is_complete_and_accounted():
+    from pathlib import Path
+
+    from rl_defense.research.resource.verify_study import verify
+
+    evidence = (
+        Path(__file__).resolve().parents[2]
+        / "docs/research/resource-exhaustion/feasibility-001/evidence"
+    )
+    assert verify(evidence, "931fbd6737f963a1fe661ab029d08b7f4a26fe09e42805c291c9d1a1a2a0246c") == {
+        "episodes": 600,
+        "decisions": 18000,
+        "paired_workloads": 120,
+    }
+    with pytest.raises(ValueError, match="anchor"):
+        verify(evidence, "0" * 64)

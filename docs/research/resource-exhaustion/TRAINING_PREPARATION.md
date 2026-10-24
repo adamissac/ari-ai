@@ -1,3 +1,10 @@
+Update after feasibility001: the owner approved and the single deterministic study
+completed. [Formal results](feasibility-001/REPORT.md): no policy met all constraints
+in any attack family. **Training NO-GO remains.** Feasibility approvals do not
+authorize the future training budgets below. The original preparation text below
+records the pre-study gate; its unapproved-feasibility statements are historical,
+superseded by the frozen approved preregistration and report.
+
 # Stage2 preparation and final gate
 
 **Training NO-GO.** A sequential queue/control mechanism is now implemented and unit

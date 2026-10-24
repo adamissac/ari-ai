@@ -1582,3 +1582,10 @@ Environment/generator/baseline source unchanged. New isolated study collector pi
 source/config/runtime, retains gzip raw episode traces and stops without retries.
 50 resource/study unit tests pass; strict mypy and Ruff pass for the runner.
 No formal outcome has been observed at this preregistration commit.
+
+Feasibility001 completed once atbed44ff27897225f3194c6afd118eee35f7516d2:
+600 episodes/18,000 decisions,9.178132s,79,462,400-byte peak RSS. All30 family/policy
+results retained. No eligible policy in any attack family; persistent-static
+240 active ticks explicitly violates64. Training NO-GO, no further execution.
+Sealed index931fbd6737f963a1fe661ab029d08b7f4a26fe09e42805c291c9d1a1a2a0246c;
+read-only600-episode audit passed. Report/evidence under resource-exhaustion/feasibility-001.
