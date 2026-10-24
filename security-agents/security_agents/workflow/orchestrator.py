@@ -669,13 +669,15 @@ class Orchestrator:
             advice = {f.finding_id: pool.submit(self._fortify_step, f) for f in approved}
             for finding in approved:
                 self._run_remediation(finding)
-            if after_remediation is not None:
-                after_remediation()
-            self._goto(AssessmentState.HARDENING)
-            for finding in approved:
-                data, outcome = advice[finding.finding_id].result()
-                if finding.status == "verified":
-                    self._apply_fortify(finding, data, outcome)
+            # Wait for Fortify's step before the functional repair, so the repair never shares
+            # the host with another thread (it usually finished during Patch -> Verify).
+            steps = {f.finding_id: advice[f.finding_id].result() for f in approved}
+        if after_remediation is not None:
+            after_remediation()
+        self._goto(AssessmentState.HARDENING)
+        for finding in approved:
+            if finding.status == "verified":
+                self._apply_fortify(finding, *steps[finding.finding_id])
 
     def _wait_external(self) -> bool:
         return bool(self.external_pending and self.external_pending())
