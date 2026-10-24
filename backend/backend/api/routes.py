@@ -555,7 +555,7 @@ def get_snapshot(snapshot_id: str, request: Request) -> Snapshot:
 @router.get("/projects/{project_id}/scopes")
 def list_scopes(project_id: str, request: Request) -> dict[str, Any]:
     with transaction() as conn:
-        _user(conn, request)
+        require_project(conn, _user(conn, request), project_id)
         docs = conn.execute(
             sa.select(authorized_scopes.c.doc)
             .where(authorized_scopes.c.project_id == project_id)
