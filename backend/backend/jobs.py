@@ -326,8 +326,7 @@ def enqueue(
             payload=payload,
             status=status.value,
             priority=priority,
-            # Server clock: a job enqueued and claimed in one transaction is runnable.
-            run_after=sa.func.now() + timedelta(seconds=delay_s),
+            run_after=now + timedelta(seconds=delay_s),
             max_attempts=max_attempts,
             dedupe_key=dedupe_key,
             project_id=project_id,
@@ -404,7 +403,7 @@ _CLAIM_SQL = sa.text(
       SELECT j.id, j.status AS prev_status, j.lease_owner AS prev_owner,
              j.lease_expires_at AS prev_lease_expires_at
       FROM jobs j LEFT JOIN running r ON r.project_id = j.project_id
-      WHERE ((j.status = 'queued' AND j.run_after <= now())
+      WHERE ((j.status = 'queued' AND j.run_after <= clock_timestamp())
           OR (j.status = 'running' AND j.lease_expires_at < now() AND j.effect_state IS NULL))
         AND j.cancel_requested IS NOT TRUE
         AND (j.deadline_at IS NULL OR j.deadline_at > now())
