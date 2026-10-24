@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useProject } from '@/components/project';
 import { Term } from '@/components/term';
-import { Async, Badge, Empty, Mono, Panel, Tag, Time } from '@/components/ui';
+import { Async, Badge, Empty, Mono, PageTitle, Panel, Tag, Time } from '@/components/ui';
 import { api } from '@/lib/api';
 import { FINDING_GROUP_NOTE, findingGroup, type FindingGroup } from '@/lib/findings';
 import { shortSha } from '@/lib/format';
@@ -23,6 +23,8 @@ export default function FindingsPage() {
   const findings = useResource(`findings:${project.id}`, s => api().findings(project.id, { signal: s }));
   const [tab, setTab] = useState<FindingGroup>('open');
   return (
+    <>
+      <PageTitle eyebrow="Review" title="Findings" subtitle="Security and correctness findings from assessments, deduplicated by state." />
     <Panel title="Findings">
       <p className="mb-1 text-sm text-muted">What these words mean: <Term t="finding">finding</Term>, <Term t="hypothesis">hypothesis</Term>, <Term t="validated">validated</Term>, <Term t="verification">verified</Term>.</p>
       <p className="mb-3 text-sm text-muted" data-testid="finding-group-note">{FINDING_GROUP_NOTE}</p>
@@ -60,5 +62,6 @@ export default function FindingsPage() {
         }}
       </Async>
     </Panel>
+    </>
   );
 }

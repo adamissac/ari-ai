@@ -5,7 +5,7 @@ import { useState, type FormEvent } from 'react';
 import { useProject } from '@/components/project';
 import { Term } from '@/components/term';
 import { useSession } from '@/components/session';
-import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, Panel, Time } from '@/components/ui';
+import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, PageTitle, Panel, Time } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useActionKeys } from '@/lib/action-key';
 import { REQUEST_SCOPE_NOTE, SCOPE_CHECK_CATEGORIES } from '@/lib/scope';
@@ -17,6 +17,8 @@ export default function ScopesPage() {
   const { project } = useProject();
   const scopes = useResource(`scopes:${project.id}`, s => api().scopes(project.id, { signal: s }));
   return (
+    <>
+      <PageTitle eyebrow="Defend" title="Authorized scopes" subtitle="The only sandbox targets agents may test — nothing runs outside an approved scope." />
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[3fr_2fr]">
       <Panel title="Authorized test scopes">
         <p className="mb-3 text-sm text-muted">
@@ -31,6 +33,7 @@ export default function ScopesPage() {
       </Panel>
       <RequestScope onCreated={scopes.reload} />
     </div>
+    </>
   );
 }
 
