@@ -86,15 +86,11 @@ def test_host_mode_full_flow_against_real_backend(
     detail = alice.get(f"/api/v1/assessments/{asm}").json()
     assert detail["assessment"]["state"] == "COMPLETED", detail["assessment"]
     runs = detail["agent_runs"]
-    assert [r["agent"] for r in runs] == [
-        "scout",
-        "probe",
-        "trace",
-        "diagnose",
-        "patch",
-        "verify",
-        "fortify",
-    ]
+    order = [r["agent"] for r in runs]
+    # Scout then Probe; Diagnose runs alongside Trace, Fortify alongside Patch -> Verify.
+    assert order[:2] == ["scout", "probe"], order
+    assert sorted(order[2:4]) == ["diagnose", "trace"], order
+    assert sorted(order[4:]) == ["fortify", "patch", "verify"], order
     assert all(r["usage"]["llm_calls"] > 0 and r["tool_calls"] for r in runs), (
         "per-run usage/tool calls recorded"
     )

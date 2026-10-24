@@ -22,6 +22,7 @@ import json
 import os
 import subprocess
 import tempfile
+import threading
 import time
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -241,7 +242,10 @@ _SWEPT_AT = 0.0
 
 def _sweep_stale() -> None:  # pragma: no cover - live
     """Best effort, at most every 10 minutes per process: destroy run sandboxes a killed
-    worker left behind (stopped, or older than any run may last)."""
+    worker left behind (stopped, or older than any run may last). Orphan snapshots of
+    those sandboxes go with them: named boxes snapshot on stop, and leaked snapshots
+    exhaust the account's snapshot storage (HTTP 402). Snapshots the run box did not
+    create — including the shared base — are never "orphans" of it, so they survive."""
     global _SWEPT_AT
     if time.time() - _SWEPT_AT < 600:
         return
@@ -257,7 +261,7 @@ def _sweep_stale() -> None:  # pragma: no cover - live
             )
             if name.startswith("ari-sbx-") and stale:
                 with _suppress():
-                    vsandbox.get_sandbox(name=name).destroy(delete_orphan_snapshots=False)
+                    vsandbox.get_sandbox(name=name).destroy(delete_orphan_snapshots=True)
 
 
 def _base_snapshot(spec: SandboxSpec, *, rebuild: bool = False) -> str:  # pragma: no cover - live
@@ -362,16 +366,16 @@ class _VercelSdkBox:  # pragma: no cover - requires live Vercel credentials
                 network_policy=NetworkPolicy.deny_all(),
                 **common,
             )
-        try:  # the driver stops only boxes it received, so a failed boot destroys itself
-            for d in (WORKDIR, TARGETDIR, "/tmp/out"):
-                self._box.fs.mkdir(d, recursive=True)
-        except BaseException:
-            self.stop()
-            raise
+        self._teardown: threading.Thread | None = None
 
     def put_archive(self, tar_bytes: bytes, dest: str) -> None:
         self._box.fs.write_bytes("/tmp/stage.tar", tar_bytes)
-        self._box.run_process("tar", ["-xf", "/tmp/stage.tar", "-C", dest], check=True)
+        # Directories are made in the same process as the unpack: one round trip, not four.
+        self._box.run_process(
+            "sh",
+            ["-c", 'mkdir -p "$1" /tmp/out && tar -xf /tmp/stage.tar -C "$1"', "sh", dest],
+            check=True,
+        )
 
     def run(
         self, argv: list[str], *, cwd: str, env: dict[str, str], timeout: float
@@ -393,8 +397,15 @@ class _VercelSdkBox:  # pragma: no cover - requires live Vercel credentials
         return ""
 
     def stop(self) -> None:
+        # Teardown is off the critical path; a box this process does not finish is swept later.
+        self._teardown = threading.Thread(target=self._destroy, daemon=True)
+        self._teardown.start()
+
+    def _destroy(self) -> None:
         try:
-            self._box.stop()
+            with _suppress():
+                self._box.stop()
         finally:
             # The shared base snapshot must survive; non-persistent boxes make none of their own.
-            self._box.destroy(delete_orphan_snapshots=False)
+            with _suppress():
+                self._box.destroy(delete_orphan_snapshots=False)

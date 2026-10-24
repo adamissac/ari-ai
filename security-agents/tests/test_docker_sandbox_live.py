@@ -238,14 +238,14 @@ def test_seven_agent_run_probes_the_docker_target_over_http_and_persists_the_evi
     from security_agents.contracts import ValidationOutcome
     from security_agents.workflow import AssessmentState
 
-    from .test_e2e_replay import EXPECTED_AGENT_ORDER, build
+    from .test_e2e_replay import assert_agent_order, build
 
     orch, _ = build(intel, DockerSandboxDriver(), library, tmp_path)
     orch.config.probe_check_transport = "http"
     res = orch.run()
 
     assert res.state is AssessmentState.COMPLETED, res.error_detail
-    assert [r.agent.value for r in res.runs] == EXPECTED_AGENT_ORDER
+    assert_agent_order([r.agent.value for r in res.runs])
     assert "probe.transport" in res.report()["audit_actions"]
     finding = next(f for f in res.findings if f.validation is not None)
     validation = finding.validation
@@ -297,7 +297,7 @@ def test_verify_reruns_the_http_check_against_the_patched_workspace(intel, libra
     from security_agents.sandbox.workspace import tree_digest
     from security_agents.workflow import AssessmentState
 
-    from .test_e2e_replay import EXPECTED_AGENT_ORDER, build
+    from .test_e2e_replay import assert_agent_order, build
 
     original_tree = tree_digest(intel.snapshot.root)
     orch, _ = build(intel, DockerSandboxDriver(), library, tmp_path)
@@ -306,7 +306,7 @@ def test_verify_reruns_the_http_check_against_the_patched_workspace(intel, libra
     res = orch.run()
 
     assert res.state is AssessmentState.COMPLETED, res.error_detail
-    assert [r.agent.value for r in res.runs] == EXPECTED_AGENT_ORDER
+    assert_agent_order([r.agent.value for r in res.runs])
     assert {"probe.transport", "verify.transport"} <= set(res.report()["audit_actions"])
     finding = next(f for f in res.findings if f.validation is not None)
 

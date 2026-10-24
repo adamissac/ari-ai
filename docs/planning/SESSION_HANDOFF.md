@@ -18,6 +18,12 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-24 — Cursor (agent, Alan) — merge origin/main into #458 (do not merge the PR)
+- Did: PR #458 was **DIRTY** vs `origin/main`, so GitHub Actions never queued on `db0a631d`. Merged `origin/main` (`be8fe67a`) into `feat/alan/live-defense-phase7c-agent-execution`. Kept both Unreleased changelog bullets and both 2026-10-24 handoff entries. Six security-review fixes preserved (canonical intel, partial evidence, deadlines, cache-creation cost, Diagnose defer, idempotent redelivery). Schema still **0.22.0**; open #412 keeps **0.20.0**. Generated contracts auto-merged and `shared.export --check` was clean (155 files). **Did not merge #458. Did not open a replacement PR.** Probe/Patch not expanded. No AUTO-EXECUTE.
+- Commands run and results (executed): `make check` pass (schema 0.22.0); `uv run mypy` 40 files; focused 7C+review+jobs+llm **51 passed**, 1 skipped; `uv run pytest -q` **812 passed**, 14 skipped; security-agents **593 passed**, 23 skipped; frontend lint/typecheck; vitest **337 passed** / 79 files; transport **35 passed**.
+- Next: push existing branch; confirm mergeability and whether Actions auto-start. Independent security re-review. Leave #458 open.
+- Warnings: **leave the PR open**. Merge NO-GO until independent re-review. Live Anthropic still UNVERIFIED (issue #10).
+
 ### 2026-10-24 — Cursor (agent, Alan) — Phase 7C security-review NO-GO fixes (do not merge #458)
 - Did: Alan security review of PR #458 was **NO-GO**. Fixed all six findings on the existing branch (`feat/alan/live-defense-phase7c-agent-execution`, reviewed head was `c4dcfa40`). Canonical intel via `CodeIntelligenceAdapter` (LocalIntel only with explicit `SECURITY_AGENTS_LABELS`); `LLMError` → structured `LLMUnavailable` with persisted partial transcripts; remaining deadline + bounded retries; cache-creation in `backend.llm.cost_usd`; Diagnose enqueued only after Scout terminal (`jobs.defer` does not burn attempts); idempotent redelivery with executed-sticky CAS. **Did not merge. Did not open a replacement PR.** Schema still **0.22.0**; #412 keeps **0.20.0**. Probe/Patch not expanded. No AUTO-EXECUTE.
 - Commands run and results (executed):
@@ -53,6 +59,12 @@ adds an entry before ending.
 - Decisions: do not merge. Security review required because first-responder now runs real agent loops. #412 rebases to 0.23.0+ if this lands first. Live Anthropic remains opt-in (issue #10); this e2e used FakeLLM.
 - Next: human/security review of the PR. Do not train RL from these records yet.
 - Warnings: **leave the PR open**. This is not Probe expansion, not AUTO-EXECUTE, not customer production, not Codex Phase 7B.
+
+### 2026-10-24 — Devin (agent, Adam) — leaked Vercel snapshot cleanup, push→agents verification
+- Did: verified the named-sandbox snapshot-leak fix already on main (`persistent: False` on run boxes + `destroy` in teardown + `_sweep_stale`); opened PR #495 making the sweep also delete stale run boxes' orphan snapshots so leaked quota is actually freed. Confirmed `delete_orphan_snapshots` only removes snapshots created *by* the destroyed sandbox — the shared `ari-base-*` snapshot can never be an orphan of a run box. Verified on main: security-agents suite 581 passed / 24 skipped, frontend typecheck + 330 vitest + lint clean, standards smoke (CWE/OWASP/CVSS/ATT&CK/D3FEND/SARIF/SP 800-115) passes. Confirmed agents are standards-grounded in code: Scout CWE/OWASP, Probe CWE, Trace ATT&CK/CVSS, Diagnose D3FEND, Fortify CWE/D3FEND; Patch/Verify get standards context via the tagged finding + remediation plan, not prompts.
+- State of the code: push→agents path gates are code-verified (`pipeline.process_github_delivery` → `auto_commits.schedule` → `assess_github_commit`): `repositories.automatic_assessments` (per-repo opt-in, UI switch exists), `GITHUB_AUTO_COMMIT_AUTHORS` (Railway entrypoint defaults `*`), `monitoring_policy.enabled` (project setting, UI switch), active `AuthorizedScope`. All four must be on for pushes to spawn runs — they are product gates, not bugs.
+- Commands run and results (executed): `pytest security-agents/tests -q` (581 passed), `pytest tests/test_vercel_sandbox.py` (5 passed incl. new sweep test), `npm run typecheck/lint/test --prefix frontend` (clean, 330 passed), `python -m security_agents.standards.smoke` (validated).
+- Warnings for the next session: prod-side flags still need flipping per repo (Automatic runs ON, monitoring enabled, scope approved) — DB/config, not code. Already-orphaned snapshots (sandbox deleted without orphan cleanup) can't be reached by the sweep; they expire on their TTL or need `sandbox snapshots delete` with Vercel creds.
 
 ### 2026-10-24 — Cursor (agent, Alan) — rebase #439 onto main (docs conflicts)
 - Did: left PR #439 **open** (no merge, no Phase 7B, no RL training, no customer enforcement). GitHub had blocked required checks with **Checks awaiting conflict resolution** on only `CHANGELOG.md` and `docs/planning/SESSION_HANDOFF.md`. Fetched `origin/main` `c5c2b47d` (PR #453) and rebased `cursor/live-defense-first-responder-0044`. Resolved those two files by keeping **both** sides: main’s Unreleased fixture-only research bullet and Adam 2026-10-23 build-recipe handoff, plus this PR’s Phase 7A 0.21.0 Unreleased bullet and Alan 2026-10-24 Codex/Phase 7A handoff entries. Did **not** drop the four Codex security fixes (verified evidence, genuine provider acks, telemetry-window mapping, OFF-mode race). Schema still **0.21.0**; Alembic still `0015`. Main remains 0.19.0 / `0014`. Open #412 still **0.20.0** with no Alembic — no collision, no bump.
@@ -1720,3 +1732,16 @@ No collection, first-responder training, promotion or enforcement follows merge.
 Remaining merge gate: final documentation head review/CI. Future numerical protocol
 and any collection require separate explicit owner approval. Historical source
 ancestry retained and v6 registry hash unchanged (see verification report).
+
+## 2026-10-24 — Devin (Adam): agent-visibility UI + prod automation enabled
+
+- Prod: enabled `automatic_assessments` on adamissac/mypypath (ari-ai already on), enabled `monitoring_policy` on the `derv` project, approved mypypath's sandbox scope (active to 2026-11-18), stamped delivery authorization on both projects. Push→agents chain verified live: monitoring assessments COMPLETED within ~1-2 min of each push.
+- Branch `feat/adam/agent-visibility-not-needed`: relay/team list now label skipped agents 'Not needed' (with the recorded skip note) or 'Not reached' on failed/cancelled runs. `earlyEndNote` in `frontend/lib/relay.ts` reads the reason from persisted `state_changed` events.
+- Next: expand `security-agents/evals/commits/cases.json` toward ~40 cases, add check templates to lift `vuln validated` off 0/7 (only ownership + bounds templates exist).
+
+## 2026-10-24 — Devin (Adam): specialist eval-brain + live eval harness
+
+- `specialists/data/evalcommits.py`: eval cases become minimal pairs (planted edit = CWE/vuln_other positive, original = hard negative), splits pinned by case id; `scout()` merges the 60 rows.
+- Scout retrained and **promoted**: macro_f1 0.349 vs best deterministic baseline 0.084 (static_analyze_patterns). Checkpoint + `results/scout.json`/REPORT.md committed. Other specialists have no field-compatible eval rows — their tuning signal is the live eval scores, not training data.
+- Eval harness: `run.py` cleanup survives missing `gh` auth; `score_api.py` accepts the bare-list assessments response. All 35 cases pushed as `eval/20261024-110115/*` branches; assessments accumulate live pending a fresh `hackatl_session` for scoring + scope widening (`access_control.authentication` category).
+- Test scope fixture (`make_scope` default) now grants all three check categories — required for the f2 listing invariant after the authentication template landed.
