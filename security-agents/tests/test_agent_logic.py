@@ -941,3 +941,66 @@ def test_patch_can_edit_a_span_of_a_large_file_without_rewriting_it(intel, tmp_p
     before = (wt.root / other).read_text()
     assert wt.edit_file(other, before[:20], "x")["error"] == "PATH_NOT_ALLOWED"
     assert (wt.root / other).read_text() == before
+
+
+def test_scout_prompt_starts_from_the_commit_change(intel):
+    from security_agents.agents import scout
+
+    entries = intel.entry_points()
+    changed = entries[-1].path
+    data = scout.ScoutInput(
+        assessment_id="asm",
+        snapshot_id="snp",
+        commit_sha="a" * 40,
+        changed_paths=[changed],
+        change_diff=f"--- a/{changed}\n+++ b/{changed}\n-old\n+new\n",
+    )
+    prompt = scout.build_prompt(data, intel)
+    assert "reviews one commit" in prompt and "+new" in prompt
+    first_entry = prompt.index('"file":')
+    assert prompt[first_entry : first_entry + 200].count(changed) == 1  # changed handler listed first
+    plain = scout.build_prompt(
+        scout.ScoutInput(assessment_id="asm", snapshot_id="snp", commit_sha="a" * 40), intel
+    )
+    assert "reviews one commit" not in plain
+
+
+def test_patch_prompt_carries_the_cause_code_and_recipe_test_roots(intel):
+    data = patch_agent.PatchInput(
+        assessment_id="asm_t",
+        finding_id="fnd_t",
+        remediation_plan_id="rmp_t",
+        approval_id="apv_t",
+        attempt=1,
+        strategy="Filter refunds by owner.",
+        files_expected=["payments_lite/store.py"],
+        cause_spans=[("payments_lite/store.py", 46, 48)],
+    )
+    prompt = patch_agent.build_prompt(data, intel)
+    assert "def refunds_for(self, payment_id: str)" in prompt
+    assert "cause_spans" not in prompt.split("cause_code")[0]  # not duplicated in the plan
+    assert "snapshot_files" not in prompt
+
+
+def test_added_tests_can_run_against_the_unpatched_code(intel, tmp_path, driver):
+    from security_agents.agents import AgentName
+    from security_agents.tools import PatchWorktree
+    from security_agents.tools.services import TestRunner
+
+    from .conftest import make_ctx
+
+    wt = PatchWorktree.create(intel, tmp_path / "wt", ["payments_lite/app.py"])
+    app = "payments_lite/app.py"
+    wt.write_file(app, (intel.snapshot.root / app).read_text() + "\n# fixed\n")
+    wt.write_file(
+        "tests/test_marker.py",
+        "import payments_lite.app as m\n\n\ndef test_fixed():\n"
+        "    assert '# fixed' in open(m.__file__).read()\n",
+    )
+    runner = TestRunner(driver=driver, workspace_provider=lambda _ctx: wt)
+    ctx = make_ctx(AgentName.PATCH, intel=intel)
+    patched = runner.run(ctx, "added_tests", [])
+    unpatched = runner.run(ctx, "added_tests_unpatched", [])
+    assert patched["passed"] == 1 and not patched["failing_tests"], patched
+    assert unpatched["failing_tests"] == ["tests/test_marker.py::test_fixed"], unpatched
+    assert not list(tmp_path.glob("unpatched-*"))  # the temporary copy is removed

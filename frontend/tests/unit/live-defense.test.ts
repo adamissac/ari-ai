@@ -1,7 +1,11 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   actionInWords,
   assertSingleSource,
+  EVIDENCE_STATES,
+  FIRST_RESPONDER_COPY,
   isOpenIncidentState,
   liveDefenseHref,
   liveDefenseMode,
@@ -33,10 +37,12 @@ describe('live defense mode', () => {
     expect(liveDefenseHref('prj_1', 'incidents', 'layout-preview')).toBe('/projects/prj_1/live-defense/incidents?preview=layout');
     expect(liveDefenseHref('prj_1', 'apps')).toBe('/projects/prj_1/live-defense/apps');
     expect(liveDefenseHref('prj_1', 'controls')).toBe('/projects/prj_1/live-defense/controls');
+    expect(liveDefenseHref('prj_1', 'first-responder')).toBe('/projects/prj_1/live-defense/first-responder');
     expect(liveDefenseHref(null, 'overview')).toBe('/live-defense-pilot');
     expect(liveDefenseHref(null, 'explain')).toBe('/live-defense-pilot/explain');
     expect(liveDefenseHref(null, 'apps')).toBe('/live-defense-pilot/apps');
     expect(liveDefenseHref(null, 'controls')).toBe('/live-defense-pilot/controls');
+    expect(liveDefenseHref(null, 'first-responder')).toBe('/live-defense-pilot/first-responder');
   });
 
   it('classifies tabs for both console and standalone routes', () => {
@@ -45,6 +51,7 @@ describe('live defense mode', () => {
     expect(liveDefenseTab('/live-defense-pilot/explain')).toBe('explain');
     expect(liveDefenseTab('/projects/p1/live-defense/apps')).toBe('apps');
     expect(liveDefenseTab('/projects/p1/live-defense/controls')).toBe('controls');
+    expect(liveDefenseTab('/projects/p1/live-defense/first-responder')).toBe('first-responder');
   });
 });
 
@@ -143,12 +150,29 @@ describe('source isolation', () => {
     expect(USED_LIVE_APIS.some(item => item.path.includes('/applications'))).toBe(true);
     expect(USED_LIVE_APIS.some(item => item.path.includes('/control-authorizations'))).toBe(true);
     expect(USED_LIVE_APIS.some(item => item.path.includes('/live-controls'))).toBe(true);
+    expect(USED_LIVE_APIS.some(item => item.path.includes('/first-responder/mode'))).toBe(true);
     expect(MISSING_LIVE_APIS.map(item => item.id)).toContain('live_incidents');
     expect(MISSING_LIVE_APIS.map(item => item.id)).toContain('autonomous');
     expect(MISSING_LIVE_APIS.map(item => item.id)).toContain('production_grants');
     expect(MISSING_LIVE_APIS.map(item => item.id)).not.toContain('live_inference');
     expect(MISSING_LIVE_APIS.map(item => item.id)).not.toContain('component_health');
     expect(SHADOW_VS_CONTROLS_COPY).toMatch(/never execute a control/);
-    expect(MISSING_LIVE_APIS.find(item => item.id === 'autonomous')?.reason).toMatch(/Phase 7 is not started/);
+    expect(MISSING_LIVE_APIS.find(item => item.id === 'autonomous')?.reason).toMatch(/Phase 7B is not started/);
+    expect(FIRST_RESPONDER_COPY).toMatch(/AUTO-EXECUTE does not exist/);
+    expect(FIRST_RESPONDER_COPY).toMatch(/RL recommendation is not executed defense/);
+    const frUi = readFileSync(path.join(process.cwd(), 'components/live-defense/first-responder.tsx'), 'utf8');
+    expect(frUi).not.toMatch(/AckButton/);
+    expect(frUi).not.toMatch(/Mark delivered/);
+    expect(frUi).toMatch(/does not invent a receipt/);
+    expect([...EVIDENCE_STATES]).toEqual([
+      'Observed',
+      'Suspected',
+      'Verified',
+      'Recommended',
+      'Authorized',
+      'Executed',
+      'Failed',
+      'Rolled back',
+    ]);
   });
 });

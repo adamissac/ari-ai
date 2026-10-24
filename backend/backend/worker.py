@@ -72,8 +72,9 @@ def handler(kind: str) -> Callable[[Handler], Handler]:
 
 def _load_handlers() -> None:
     # Importing registers handlers via @handler.
-    from backend import delivery, pipeline, simulated_attack  # noqa: F401
+    from backend import delivery, pipeline, recipes, simulated_attack  # noqa: F401
     from backend.live_defense import engine as _live_defense_engine  # noqa: F401
+    from backend.live_defense import first_responder as _live_defense_fr  # noqa: F401
 
 
 def _heartbeat_loop(ctx: JobContext, lease_s: int, stop: threading.Event) -> None:
@@ -88,6 +89,11 @@ def _heartbeat_loop(ctx: JobContext, lease_s: int, stop: threading.Event) -> Non
             log.exception("heartbeat failed for %s", ctx.job.id)
 
 
+# Set while a claimed job runs. SIGTERM waits only for that; an idle worker (polling, or stuck
+# in a claim) exits at once, so it cannot hold a deploy until the platform's SIGKILL.
+_BUSY = threading.Event()
+
+
 def run_one(owner: str, kinds: list[str] | None = None) -> str | None:
     """Claim and execute at most one job. Returns the job id or None if queue empty."""
     _load_handlers()
@@ -96,6 +102,7 @@ def run_one(owner: str, kinds: list[str] | None = None) -> str | None:
         job = jobs.claim(conn, owner, settings.worker_lease_s, kinds)
     if job is None:
         return None
+    _BUSY.set()
     ctx = JobContext(job=job, owner=owner)
     stop = threading.Event()
     hb = threading.Thread(
@@ -107,8 +114,10 @@ def run_one(owner: str, kinds: list[str] | None = None) -> str | None:
         if fn is None:
             raise PermanentJobError(ErrorCode.INTERNAL, f"no handler for job kind {job.kind!r}")
         result = fn(ctx)
+        ctx.check_cancelled()
         with transaction() as conn:
-            jobs.complete(conn, job.id, owner, result)
+            if not jobs.complete(conn, job.id, owner, result):
+                raise JobCancelled(f"{job.id}: cancelled or lease lost before complete")
         log.info("job %s (%s) succeeded", job.id, job.kind)
     except JobCancelled as exc:
         with transaction() as conn:
@@ -142,6 +151,7 @@ def run_one(owner: str, kinds: list[str] | None = None) -> str | None:
     finally:
         stop.set()
         hb.join(timeout=5)
+        _BUSY.clear()
     return job.id
 
 
@@ -176,7 +186,15 @@ def main(argv: list[str] | None = None) -> int:
     # On SIGTERM (a deploy) finish the job in hand, then exit: killing it mid-run would lose
     # the agents' in-memory state and fail the assessment.
     stopping = threading.Event()
-    signal.signal(signal.SIGTERM, lambda *_: stopping.set())
+
+    def on_term(*_: object) -> None:
+        stopping.set()
+        if not _BUSY.is_set():
+            log.info("worker %s stopped while idle", owner)
+            logging.shutdown()
+            os._exit(0)  # a claim interrupted here rolls back with the connection
+
+    signal.signal(signal.SIGTERM, on_term)
     while not stopping.is_set():
         if run_one(owner) is None:
             stopping.wait(get_settings().worker_poll_interval_s)

@@ -1,0 +1,34 @@
+{
+  "additionalProperties": false,
+  "description": "Owner-attested deploy-to-commit mapping. Unsigned CI guesses are rejected.",
+  "properties": {
+    "commit_sha": {
+      "pattern": "^[0-9a-f]{40}$",
+      "title": "Commit Sha",
+      "type": "string"
+    },
+    "deployed_at": {
+      "format": "date-time",
+      "title": "Deployed At",
+      "type": "string"
+    },
+    "repo_id": {
+      "pattern": "^rep_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Repo Id",
+      "type": "string"
+    },
+    "source": {
+      "const": "owner_attested",
+      "default": "owner_attested",
+      "title": "Source",
+      "type": "string"
+    }
+  },
+  "required": [
+    "repo_id",
+    "commit_sha",
+    "deployed_at"
+  ],
+  "title": "DeployCommitMappingCreate",
+  "type": "object"
+}

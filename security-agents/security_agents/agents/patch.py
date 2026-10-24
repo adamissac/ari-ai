@@ -12,12 +12,14 @@ from pydantic import Field
 from ..contracts import (
     AgentName,
     PatchCandidate,
+    PlatformError,
     RemediationPlan,
     ShortText,
     StrictModel,
 )
 from ..intel import CodeIntel
 from ..runtime import AgentSpec, data_block
+from ..sandbox.workspace import recipe_test_roots
 from ..tools.services import PatchWorktree
 
 SYSTEM = """You are Patch, the remediation agent of an automated security review platform.
@@ -30,12 +32,13 @@ Method (test first; the regression test is required, so it is never left for las
 1. Read the plan and the cause spans, and the existing tests near the code (their \
 fixtures and helpers). Keep reading short: a few spans, then write.
 2. Write the regression test the plan asks for as a NEW test file with \
-worktree.write_file, reusing the existing fixtures. Run it with tests.run \
-(added_tests): it must FAIL on the unpatched code. Never edit an existing test.
+worktree.write_file, reusing the existing fixtures. Never edit an existing test.
 3. Fix the root cause with worktree.edit_file (one exact, unique old_string per call). \
 Read the sibling code that already does the right thing and reuse its helpers.
-4. Run tests.run (added_tests, then project_suite). If something fails, fix the cause \
-and run again, within your budget.
+4. In ONE response call tests.run three times; they run side by side: \
+added_tests_unpatched (your test must FAIL on the original code), added_tests (it must \
+PASS on your fix) and project_suite. If something is wrong, fix the cause and run again, \
+within your budget.
 5. Call worktree.diff and submit the result, listing any deviation from the plan.
 
 Rules:
@@ -53,13 +56,15 @@ class PatchInput(StrictModel):
     finding_id: str
     remediation_plan_id: str
     approval_id: str
-    attempt: int = Field(ge=1, le=2)
+    attempt: int = Field(ge=1, le=4)
     strategy: str = Field(max_length=4000)
     constraints: list[ShortText] = Field(default_factory=list)
     files_expected: list[str] = Field(default_factory=list)
     tests_must_fail_before: list[ShortText] = Field(default_factory=list)
     tests_must_pass_after: list[ShortText] = Field(default_factory=list)
     cause_paths: list[str] = Field(default_factory=list)
+    # (path, start_line, end_line) of the diagnosed cause, shown with context in the prompt.
+    cause_spans: list[tuple[str, int, int]] = Field(default_factory=list, max_length=5)
     prior_rejection_reasons: list[ShortText] = Field(default_factory=list)
 
 
@@ -101,7 +106,7 @@ SPEC = AgentSpec(
     max_turns=30,
     prompt_ref="prompts/patch/v0.1.0.md",
     system_prompt=SYSTEM,
-    max_calls_per_tool={"tests.run": 4},
+    max_calls_per_tool={"tests.run": 6},
     max_output_tokens=16000,  # thinking counts here; whole new test files need room
 )
 
@@ -113,6 +118,7 @@ def input_from_plan(
     approval_id: str,
     attempt: int,
     cause_paths: list[str],
+    cause_spans: list[tuple[str, int, int]] | None = None,
     prior_reasons: list[str] | None = None,
 ) -> PatchInput:
     return PatchInput(
@@ -127,8 +133,12 @@ def input_from_plan(
         tests_must_fail_before=list(plan.test_plan.must_fail_before),
         tests_must_pass_after=list(plan.test_plan.must_pass_after),
         cause_paths=cause_paths,
+        cause_spans=list(cause_spans or [])[:5],
         prior_rejection_reasons=[r[:2000] for r in (prior_reasons or [])][:6],
     )
+
+
+CAUSE_CONTEXT_LINES = 25
 
 
 def build_prompt(data: PatchInput, intel: CodeIntel) -> str:
@@ -140,11 +150,24 @@ def build_prompt(data: PatchInput, intel: CodeIntel) -> str:
             f"{data_block('rejection_reasons', data.prior_rejection_reasons, provenance='verify_output')}\n"
             "Address each reason. You have not been given the previous candidate's transcript."
         )
+    # The diagnosed cause with surrounding code, so Patch starts editing instead of searching.
+    cause_code = []
+    for path, start, end in data.cause_spans:
+        try:
+            span = intel.read_span(path, max(1, start - CAUSE_CONTEXT_LINES), end + CAUSE_CONTEXT_LINES)
+        except (PlatformError, OSError, ValueError):
+            continue
+        cause_code.append({"path": span.path, "start_line": span.start_line, "code": span.content})
+    roots = recipe_test_roots(intel.snapshot.root)
     return (
         "Implement this approved remediation plan in the isolated worktree.\n\n"
-        f"{data_block('approved_plan', data.model_dump(mode='json'), provenance='diagnose_output+human_approval')}\n\n"
-        f"{data_block('snapshot_files', intel.snapshot.files()[:60], provenance='code_intelligence')}\n\n"
-        f"Writable paths: {data.files_expected} plus new files under tests/.{retry}"
+        f"{data_block('approved_plan', data.model_dump(mode='json', exclude={'cause_spans'}), provenance='diagnose_output+human_approval')}\n\n"
+        + (
+            f"{data_block('cause_code', cause_code, provenance='code_intelligence')}\n\n"
+            if cause_code
+            else ""
+        )
+        + f"Writable paths: {data.files_expected} plus new test files under {list(roots)}.{retry}"
     )
 
 

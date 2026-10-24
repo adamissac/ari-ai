@@ -17,10 +17,12 @@ depth. Commands are never model-authored (fixed `entry.py` modes).
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import os
 import subprocess
 import tempfile
+import threading
 import time
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -42,6 +44,7 @@ TARGETDIR = "/vercel/sandbox/target"
 # ASGI targets. Fixed and pinned: never derived from the repository under test.
 PYPI_DOMAINS = ("pypi.org", "files.pythonhosted.org")
 UBUNTU_DOMAINS = ("archive.ubuntu.com", "security.ubuntu.com")
+BASE_SNAPSHOT_TTL = 7 * 24 * 3600  # rebuilt on first use after expiry
 APT_HTTPS = (
     "sed -i s,http://,https://,g /etc/apt/sources.list.d/ubuntu.sources && "
     "find /etc/apt/sources.list.d -type f ! -name ubuntu.sources -delete"
@@ -223,6 +226,115 @@ def _rmtree(path: Path) -> None:
     shutil.rmtree(path, ignore_errors=True)
 
 
+def _base_key(spec: SandboxSpec) -> str:
+    material = json.dumps([RUNNER_WHEELS, sorted(spec.pip), sorted(spec.apt), APT_HTTPS])
+    return hashlib.sha256(material.encode()).hexdigest()[:24]
+
+
+def _base_index() -> Path:
+    root = Path(os.environ.get("SECURITY_WORKDIR") or tempfile.gettempdir())
+    root.mkdir(parents=True, exist_ok=True)
+    return root / "sandbox-bases.json"
+
+
+_SWEPT_AT = 0.0
+
+
+def _sweep_stale() -> None:  # pragma: no cover - live
+    """Best effort, at most every 10 minutes per process: destroy run sandboxes a killed
+    worker left behind (stopped, or older than any run may last). Orphan snapshots of
+    those sandboxes go with them: named boxes snapshot on stop, and leaked snapshots
+    exhaust the account's snapshot storage (HTTP 402). Snapshots the run box did not
+    create — including the shared base — are never "orphans" of it, so they survive."""
+    global _SWEPT_AT
+    if time.time() - _SWEPT_AT < 600:
+        return
+    _SWEPT_AT = time.time()
+    from vercel.sandbox import sync as vsandbox
+
+    with _suppress():
+        cutoff_ms = (time.time() - 3 * 3600) * 1000
+        for sb in vsandbox.query_sandboxes():
+            name = sb.name or ""
+            stale = (
+                str(getattr(sb.status, "value", sb.status)) == "stopped" or (sb.created_at or 0) < cutoff_ms
+            )
+            if name.startswith("ari-sbx-") and stale:
+                with _suppress():
+                    vsandbox.get_sandbox(name=name).destroy(delete_orphan_snapshots=True)
+
+
+def _base_snapshot(spec: SandboxSpec, *, rebuild: bool = False) -> str:  # pragma: no cover - live
+    """Snapshot id of a sandbox with this spec's packages installed, built once per package
+    set and shared by every worker in the container (file lock)."""
+    import fcntl
+
+    _sweep_stale()
+    key, index = _base_key(spec), _base_index()
+    with open(index.with_suffix(".lock"), "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        known = json.loads(index.read_text()) if index.is_file() else {}
+        if key in known and not rebuild:
+            return str(known[key])
+        known[key] = _build_base(spec, key)
+        index.write_text(json.dumps(known))
+        return str(known[key])
+
+
+def _build_base(spec: SandboxSpec, key: str) -> str:  # pragma: no cover - live
+    """Install packages in a throwaway builder with egress limited to PyPI (and the HTTPS
+    Ubuntu mirrors when apt is needed), snapshot it, destroy the builder. No repository code
+    is ever present in it."""
+    from vercel.sandbox import NetworkPolicy
+    from vercel.sandbox import sync as vsandbox
+
+    domains = PYPI_DOMAINS + (UBUNTU_DOMAINS if spec.apt else ())
+    box = vsandbox.create_sandbox(
+        name=f"ari-base-{key}-{int(time.time())}",
+        execution_time_limit=900,
+        network_policy=NetworkPolicy.custom(dict.fromkeys(domains, ())),
+        persistent=False,
+        destroy=False,
+    )
+    try:
+        if spec.apt:
+            env = {"DEBIAN_FRONTEND": "noninteractive"}
+            # The egress allowlist passes TLS only: use the HTTPS Ubuntu mirrors and drop
+            # third-party lists (e.g. cli.github.com) that are not allowed.
+            box.run_process("sh", ["-c", APT_HTTPS], sudo=True, check=True, capture_output=True)
+            box.run_process("apt-get", ["update", "-qq"], sudo=True, env=env, check=True, capture_output=True)
+            box.run_process(
+                "apt-get",
+                ["install", "-y", "-qq", "--no-install-recommends", *spec.apt],
+                sudo=True,
+                env=env,
+                check=True,
+                capture_output=True,
+            )
+        box.run_process(
+            "python",
+            [
+                "-m",
+                "pip",
+                "install",
+                "-q",
+                "--root-user-action=ignore",
+                "--only-binary=:all:",
+                *RUNNER_WHEELS,
+                *spec.pip,
+            ],
+            sudo=True,  # system site-packages: the entry runs `python -I`, which skips user site
+            check=True,
+            capture_output=True,
+        )
+        return str(box.snapshot(expiration=BASE_SNAPSHOT_TTL).id)
+    finally:
+        with _suppress():
+            box.stop()
+        with _suppress():
+            box.destroy(delete_orphan_snapshots=False)
+
+
 class _VercelSdkBox:  # pragma: no cover - requires live Vercel credentials
     """Real Vercel Sandbox, created with deny-all egress. Destroyed by `stop()`.
 
@@ -230,66 +342,40 @@ class _VercelSdkBox:  # pragma: no cover - requires live Vercel credentials
     the account's snapshot storage (HTTP 402), so `stop()` destroys them too."""
 
     def __init__(self, spec: SandboxSpec, run_id: str) -> None:
-        from vercel.sandbox import NetworkPolicy
+        from vercel.sandbox import NetworkPolicy, SnapshotSource
         from vercel.sandbox import sync as vsandbox
 
-        # Egress reaches only PyPI (and the Ubuntu mirrors when the recipe needs system
-        # packages) while fixed runner wheels and the recipe's pinned packages install; it is
-        # deny-all before any repository code is staged or run.
-        domains = PYPI_DOMAINS + (UBUNTU_DOMAINS if spec.apt else ())
-        self._box = vsandbox.create_sandbox(
-            name=f"ari-{run_id}",
-            execution_time_limit=int(spec.limits.timeout_s) + 240,
-            network_policy=NetworkPolicy.custom(dict.fromkeys(domains, ())),
-            tags={k[:63]: v[:200] for k, v in spec.labels.items()},
-            persistent=False,
-            destroy=False,
-        )
-        try:  # the driver stops only boxes it received, so a failed boot destroys itself
-            try:
-                if spec.apt:
-                    env = {"DEBIAN_FRONTEND": "noninteractive"}
-                    # The egress allowlist passes TLS only: use the HTTPS Ubuntu mirrors and
-                    # drop third-party lists (e.g. cli.github.com) that are not allowed.
-                    self._box.run_process("sh", ["-c", APT_HTTPS], sudo=True, check=True, capture_output=True)
-                    self._box.run_process(
-                        "apt-get", ["update", "-qq"], sudo=True, env=env, check=True, capture_output=True
-                    )
-                    self._box.run_process(
-                        "apt-get",
-                        ["install", "-y", "-qq", "--no-install-recommends", *spec.apt],
-                        sudo=True,
-                        env=env,
-                        check=True,
-                        capture_output=True,
-                    )
-                self._box.run_process(
-                    "python",
-                    [
-                        "-m",
-                        "pip",
-                        "install",
-                        "-q",
-                        "--root-user-action=ignore",
-                        "--only-binary=:all:",
-                        *RUNNER_WHEELS,
-                        *spec.pip,
-                    ],
-                    sudo=True,  # system site-packages: the entry runs `python -I`, which skips user site
-                    check=True,
-                    capture_output=True,
-                )
-            finally:
-                self._box.update_network_policy(NetworkPolicy.deny_all())
-            for d in (WORKDIR, TARGETDIR, "/tmp/out"):
-                self._box.fs.mkdir(d, recursive=True)
-        except BaseException:
-            self.stop()
-            raise
+        common = {
+            "name": f"ari-{run_id}",
+            "execution_time_limit": int(spec.limits.timeout_s) + 240,
+            "tags": {k[:63]: v[:200] for k, v in spec.labels.items()},
+            "persistent": False,
+            "destroy": False,
+        }
+        # Boot from a snapshot that already holds the runner wheels and the recipe's
+        # packages: no install window, and deny-all egress from the first instant.
+        try:
+            self._box = vsandbox.create_sandbox(
+                source=SnapshotSource(snapshot_id=_base_snapshot(spec)),
+                network_policy=NetworkPolicy.deny_all(),
+                **common,
+            )
+        except Exception:  # the base expired or was removed: build a new one, once
+            self._box = vsandbox.create_sandbox(
+                source=SnapshotSource(snapshot_id=_base_snapshot(spec, rebuild=True)),
+                network_policy=NetworkPolicy.deny_all(),
+                **common,
+            )
+        self._teardown: threading.Thread | None = None
 
     def put_archive(self, tar_bytes: bytes, dest: str) -> None:
         self._box.fs.write_bytes("/tmp/stage.tar", tar_bytes)
-        self._box.run_process("tar", ["-xf", "/tmp/stage.tar", "-C", dest], check=True)
+        # Directories are made in the same process as the unpack: one round trip, not four.
+        self._box.run_process(
+            "sh",
+            ["-c", 'mkdir -p "$1" /tmp/out && tar -xf /tmp/stage.tar -C "$1"', "sh", dest],
+            check=True,
+        )
 
     def run(
         self, argv: list[str], *, cwd: str, env: dict[str, str], timeout: float
@@ -311,7 +397,15 @@ class _VercelSdkBox:  # pragma: no cover - requires live Vercel credentials
         return ""
 
     def stop(self) -> None:
+        # Teardown is off the critical path; a box this process does not finish is swept later.
+        self._teardown = threading.Thread(target=self._destroy, daemon=True)
+        self._teardown.start()
+
+    def _destroy(self) -> None:
         try:
-            self._box.stop()
+            with _suppress():
+                self._box.stop()
         finally:
-            self._box.destroy(delete_orphan_snapshots=True)
+            # The shared base snapshot must survive; non-persistent boxes make none of their own.
+            with _suppress():
+                self._box.destroy(delete_orphan_snapshots=False)

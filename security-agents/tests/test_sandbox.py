@@ -37,8 +37,12 @@ DENIED = Decision(allowed=False, reason_code="TARGET_NOT_IN_SCOPE", scope_id="sc
 
 def spec_for(snapshot, **kw) -> SandboxSpec:
     base = dict(
-        profile=SandboxProfile.TEST_RUNNER, network="none", workspace=snapshot.root,
-        mode="pytest", args=["-q", "tests"], labels={"assessment_id": "asm", "step_key": "s"},
+        profile=SandboxProfile.TEST_RUNNER,
+        network="none",
+        workspace=snapshot.root,
+        mode="pytest",
+        args=["-q", "tests"],
+        labels={"assessment_id": "asm", "step_key": "s"},
     )
     base.update(kw)
     return SandboxSpec(**base)
@@ -94,13 +98,19 @@ def test_snapshot_from_git_pins_a_real_commit(tmp_path):
     repo = tmp_path / "repo"
     (repo / "pkg").mkdir(parents=True)
     (repo / "pkg" / "m.py").write_text("x = 1\n")
-    env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@e",
-           "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@e"}
+    env = {
+        **os.environ,
+        "GIT_AUTHOR_NAME": "t",
+        "GIT_AUTHOR_EMAIL": "t@e",
+        "GIT_COMMITTER_NAME": "t",
+        "GIT_COMMITTER_EMAIL": "t@e",
+    }
     subprocess.run(["git", "init", "-q"], cwd=repo, check=True, env=env)
     subprocess.run(["git", "add", "-A"], cwd=repo, check=True, env=env)
     subprocess.run(["git", "commit", "-qm", "init"], cwd=repo, check=True, env=env)
-    sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True,
-                         check=True, env=env).stdout.strip()
+    sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True, check=True, env=env
+    ).stdout.strip()
     from security_agents.sandbox.workspace import SnapshotHandle
 
     snap = SnapshotHandle.from_git(repo, sha, "pkg", tmp_path / "out", snapshot_id="snp", repo_id="rep")
@@ -149,7 +159,9 @@ def test_apply_diff_rejects_paths_outside_root(tmp_path):
 
 def test_bad_diff_does_not_apply(snapshot, tmp_path):
     fresh = fresh_checkout(snapshot, tmp_path / "f")
-    ok, err = apply_diff(fresh, "diff --git a/payments_lite/app.py b/payments_lite/app.py\n@@ -1,1 +1,1 @@\n-nope\n+yes\n")
+    ok, err = apply_diff(
+        fresh, "diff --git a/payments_lite/app.py b/payments_lite/app.py\n@@ -1,1 +1,1 @@\n-nope\n+yes\n"
+    )
     assert not ok and err
 
 
@@ -304,14 +316,22 @@ def test_docker_hardening_flags_present(snapshot):
 def test_docker_target_only_network_is_internal_and_scope_gated(snapshot):
     drv = DockerSandboxDriver(image=IMAGE, runner=FakeDocker())
     spec = spec_for(
-        snapshot, profile=SandboxProfile.CHECK_RUNNER, network="target-only",
-        target_id="tgt", scope_decision=ALLOWED, mode="pytest", args=["-q"],
+        snapshot,
+        profile=SandboxProfile.CHECK_RUNNER,
+        network="target-only",
+        target_id="tgt",
+        scope_decision=ALLOWED,
+        mode="pytest",
+        args=["-q"],
     )
     argv = drv.build_run_argv(spec, "run2", "net-run2")
     assert "--network" in argv and argv[argv.index("--network") + 1] == "net-run2"
     denied = spec_for(
-        snapshot, profile=SandboxProfile.CHECK_RUNNER, network="target-only",
-        target_id="tgt", scope_decision=DENIED,
+        snapshot,
+        profile=SandboxProfile.CHECK_RUNNER,
+        network="target-only",
+        target_id="tgt",
+        scope_decision=DENIED,
     )
     with pytest.raises(PlatformError):
         validate_spec(denied)
@@ -320,9 +340,9 @@ def test_docker_target_only_network_is_internal_and_scope_gated(snapshot):
 def test_docker_reaper_removes_only_expired_containers():
     now = 1_000_000.0
     rows = (
-        f"sbx-old\t{now - 1000}\t300\n"      # age 1000 > 2*300 -> reap
-        f"sbx-young\t{now - 100}\t300\n"      # age 100 < 600 -> keep
-        f"sbx-bad\tnot-a-number\t300\n"       # malformed -> keep
+        f"sbx-old\t{now - 1000}\t300\n"  # age 1000 > 2*300 -> reap
+        f"sbx-young\t{now - 100}\t300\n"  # age 100 < 600 -> keep
+        f"sbx-bad\tnot-a-number\t300\n"  # malformed -> keep
     ).encode()
     fake = FakeDocker(ps_output=rows)
     drv = DockerSandboxDriver(image=IMAGE, runner=fake)

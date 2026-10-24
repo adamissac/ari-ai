@@ -520,6 +520,8 @@ def list_ingest_tokens(project_id: str, request: Request) -> dict[str, Any]:
 _TRAIL_PREFIXES = ("live_defense.", "ingest_token.", "runtime.")
 _LIVE_DEFENSE_JOB_KINDS = (
     "live_defense_shadow",
+    "live_defense_first_responder",
+    "live_defense_agent_step",
     "live_defense_execute",
     "live_defense_verify",
     "live_defense_rollback",

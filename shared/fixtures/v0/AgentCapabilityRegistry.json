@@ -1,0 +1,10 @@
+{
+  "agents": [],
+  "auto_execute": false,
+  "complete": false,
+  "missing_names": [
+    "scout"
+  ],
+  "orchestrator_version": "7a.1.1",
+  "source": "security_agents.agents.ALL_SPECS"
+}

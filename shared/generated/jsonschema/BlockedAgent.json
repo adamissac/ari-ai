@@ -1,0 +1,48 @@
+{
+  "$defs": {
+    "AgentCapabilityClass": {
+      "enum": [
+        "investigative_readonly",
+        "code_changing",
+        "disruptive_scoped"
+      ],
+      "title": "AgentCapabilityClass",
+      "type": "string"
+    },
+    "AgentName": {
+      "enum": [
+        "scout",
+        "probe",
+        "trace",
+        "diagnose",
+        "patch",
+        "fortify",
+        "verify",
+        "reviewer"
+      ],
+      "title": "AgentName",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "capability_class": {
+      "$ref": "#/$defs/AgentCapabilityClass"
+    },
+    "name": {
+      "$ref": "#/$defs/AgentName"
+    },
+    "reason": {
+      "maxLength": 500,
+      "title": "Reason",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "reason",
+    "capability_class"
+  ],
+  "title": "BlockedAgent",
+  "type": "object"
+}

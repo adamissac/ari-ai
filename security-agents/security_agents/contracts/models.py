@@ -287,7 +287,7 @@ class RemediationPlan(StrictModel):
 class PatchCandidate(StrictModel):
     id: str = Field(default_factory=lambda: new_id("pat"))
     finding_id: str
-    attempt: int = Field(ge=1, le=2)
+    attempt: int = Field(ge=1, le=4)
     diff_uri: str
     diff_sha256: str
     worktree_ref: str

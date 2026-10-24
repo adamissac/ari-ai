@@ -8,6 +8,18 @@ All notable changes are documented here. Format follows
 
 - Audit the code-intelligence pipeline end to end: land the parse-safe secret redaction from PR #441, flag non-literal route paths as IndexIssue findings instead of silently dropping them, add a labeled-question retrieval evaluation and a reproducible index benchmark, and record executed coverage/recall/isolation numbers in `code-intelligence/evidence/m2-index-retrieval-audit.json` with the full report in `docs/research/intel-pipeline-audit/`.
 
+- Eval scorer now reports `validated_any`/`fixed_any` across every finding kind next to the security-only verdicts, and derives finding paths from `source_span` evidence; `benign_artifact_sha512` relabeled — the sha512 swap was a real defect (String(64) sha256 column), not a false positive.
+
+- Scout specialist now trains on the labelled commit-eval set (each case's planted edit vs. its original code as a minimal positive/negative pair) and was promoted after beating the static-pattern baseline (macro F1 0.349 vs 0.084); new checkpoint committed under `specialists/checkpoints/scout/`.
+
+- Assessment UI: agents the orchestrator skipped now stay visible as 'Not needed' with the recorded reason (e.g. 'no confirmed findings'); on failed/cancelled runs they show 'Not reached'. Replaces the ambiguous 'not run' label on the relay and team list.
+
+- Fix the periodic stale-sandbox sweep to delete the orphaned stop-snapshots of leaked `ari-sbx-*` run boxes, freeing the Vercel Sandbox snapshot quota that caused HTTP 402 assessment failures; the shared base snapshot is unaffected.
+- Add Live Defense Phase 7A deterministic first-responder orchestration: server-enforced OFF / MONITOR|SHADOW / ASSISTED RESPONSE (no AUTO-EXECUTE), seven-agent capability registry from real AgentSpecs, runtime↔code correlation only with an owner-attested deploy mapping, analyst handoff that is not delivered without provider confirmation, and versioned decision records for future RL. Patch stays worktree-only; Probe still requires AuthorizedScope; independently authorized controls keep their own expiry/rollback/kill-switch when first-responder is switched OFF. Contract schema 0.21.0 (0.20.0 left for open PR #412). Evidence is never `verified` from Verify eligibility; deploy mappings are resolved against the telemetry window; OFF serializes with dispatch and cancels in-flight first-responder steps. Eval: `docs/LIVE_DEFENSE_PHASE7A_FIRST_RESPONDER.md`.
+
+- Add fixture-only first-responder research observations, proposal masks, source
+  inventory and evaluation-readiness specification; no learning or production integration.
+
 - Added read-only capacity/oracle and product-thesis assessment: current evidence does not justify RL as a primary near-term dependency; no training or control changes.
 
 - Completed owner-approved resource-exhaustion feasibility001 (600 episodes), retaining all violations and raw evidence; training remains NO-GO.

@@ -1,0 +1,94 @@
+{
+  "$defs": {
+    "AgentCapabilityClass": {
+      "enum": [
+        "investigative_readonly",
+        "code_changing",
+        "disruptive_scoped"
+      ],
+      "title": "AgentCapabilityClass",
+      "type": "string"
+    },
+    "AgentName": {
+      "enum": [
+        "scout",
+        "probe",
+        "trace",
+        "diagnose",
+        "patch",
+        "fortify",
+        "verify",
+        "reviewer"
+      ],
+      "title": "AgentName",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "One runtime agent, derived from the real AgentSpec \u2014 not a prompt persona.",
+  "properties": {
+    "capability_class": {
+      "$ref": "#/$defs/AgentCapabilityClass"
+    },
+    "name": {
+      "$ref": "#/$defs/AgentName"
+    },
+    "network": {
+      "enum": [
+        "none",
+        "target-only"
+      ],
+      "title": "Network",
+      "type": "string"
+    },
+    "notes": {
+      "maxLength": 500,
+      "title": "Notes",
+      "type": "string"
+    },
+    "sandbox_profile": {
+      "maxLength": 500,
+      "title": "Sandbox Profile",
+      "type": "string"
+    },
+    "silent_customer_deploy": {
+      "const": false,
+      "default": false,
+      "title": "Silent Customer Deploy",
+      "type": "boolean"
+    },
+    "spec_version": {
+      "maxLength": 500,
+      "title": "Spec Version",
+      "type": "string"
+    },
+    "tools": {
+      "items": {
+        "maxLength": 500,
+        "type": "string"
+      },
+      "title": "Tools",
+      "type": "array"
+    },
+    "write_access": {
+      "enum": [
+        "none",
+        "out_dir",
+        "worktree"
+      ],
+      "title": "Write Access",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "spec_version",
+    "capability_class",
+    "sandbox_profile",
+    "network",
+    "write_access",
+    "notes"
+  ],
+  "title": "AgentCapability",
+  "type": "object"
+}

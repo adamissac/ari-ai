@@ -63,6 +63,10 @@ class IdPrefix(StrEnum):
     cgr = "cgr"
     cch = "cch"
     est = "est"
+    frd = "frd"
+    ahl = "ahl"
+    dcm = "dcm"
+    fri = "fri"
 
 
 def ulid() -> str:
@@ -124,3 +128,7 @@ LiveControlId = Annotated[str, _pattern("lct")]
 ControlGrantId = Annotated[str, _pattern("cgr")]
 ControlChannelId = Annotated[str, _pattern("cch")]
 EmergencyStopId = Annotated[str, _pattern("est")]
+FirstResponderDecisionId = Annotated[str, _pattern("frd")]
+AnalystHandoffId = Annotated[str, _pattern("ahl")]
+DeployCommitMappingId = Annotated[str, _pattern("dcm")]
+FirstResponderInvocationId = Annotated[str, _pattern("fri")]

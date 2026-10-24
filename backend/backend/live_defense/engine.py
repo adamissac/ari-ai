@@ -175,6 +175,18 @@ def process_shadow(
                     "executed": False,
                 },
             )
+        if inserted:
+            from backend.live_defense.first_responder import maybe_enqueue
+
+            maybe_enqueue(
+                conn,
+                project_id=project_id,
+                application_id=application_id,
+                window_end=window_end,
+                source=source,
+                live_policy_decision_id=inserted,
+                event_ids=evidence,
+            )
         return {"decision_id": stored_id, "created": inserted is not None}
 
 

@@ -81,6 +81,67 @@ def test_tool_loop_executes_allowed_tools_denies_others_and_validates_output() -
     )
 
 
+def _turn(*uses: tuple[str, dict, str]) -> dict:
+    return {
+        "content": [{"type": "tool_use", "id": t, "name": n, "input": i} for n, i, t in uses],
+        "stop_reason": "tool_use",
+        "usage": {"input_tokens": 1000, "output_tokens": 200},
+    }
+
+
+def test_turn_of_parallel_safe_calls_runs_concurrently_in_model_order() -> None:
+    import threading
+
+    meet = threading.Barrier(2, timeout=5)  # both calls must be in flight at once
+    order: list[str] = []
+
+    def run(i: ReadFile) -> str:
+        meet.wait()
+        order.append(i.path)
+        return f"ran {i.path}"
+
+    def edit(i: ReadFile) -> str:
+        order.append(f"edit {i.path}")
+        return "edited"
+
+    transport = FakeTransport(
+        [
+            _turn(("run_tests", {"path": "a"}, "t1"), ("run_tests", {"path": "b"}, "t2")),
+            # a write in the turn keeps it sequential: the edit lands before the run reads it
+            _turn(("edit", {"path": "c"}, "t3"), ("read", {"path": "c"}, "t4")),
+            _tool_use("submit_result", {"vulnerable": False, "reason": "ok"}, "t5"),
+        ]
+    )
+    gw = build_gateway(settings=_settings(), transport=transport)
+    result = gw.run_tool_loop(
+        agent="verify",
+        system="You are Verify.",
+        user_content="check",
+        tools=[
+            Tool("run_tests", "Run tests", ReadFile, run, parallel_safe=True),
+            Tool(
+                "read",
+                "Read",
+                ReadFile,
+                lambda i: order.append(i.path) or "read",
+                parallel_safe=True,
+            ),
+            Tool("edit", "Edit", ReadFile, edit),
+        ],
+        output_model=Verdict,
+    )
+    assert result.final == Verdict(vulnerable=False, reason="ok")
+    first = transport.requests[1]["messages"][-1]["content"]
+    assert [r["tool_use_id"] for r in first] == ["t1", "t2"]
+    assert [r["content"] for r in first] == ["ran a", "ran b"]
+    assert order[2:] == ["edit c", "c"]
+    assert [r.tool_name for r in result.tool_calls] == ["run_tests"] * 2 + [
+        "edit",
+        "read",
+        "submit_result",
+    ]
+
+
 def test_request_shape_targets_haiku_5_5_and_redacts_secrets() -> None:
     transport = FakeTransport(
         [{"content": [{"type": "text", "text": "ok"}], "stop_reason": "end_turn"}]
@@ -307,3 +368,44 @@ def test_signed_assistant_turns_are_sent_back_unchanged() -> None:
     sent = transport.requests[0]["messages"]
     assert sent[1]["content"][0] == thinking
     assert "sbx-alice-session-token" not in str(sent[0])  # user content is still redacted
+
+
+def test_reads_after_a_write_run_side_by_side_once_the_write_is_done() -> None:
+    import threading
+
+    meet = threading.Barrier(2, timeout=5)
+    order: list[str] = []
+
+    def edit(i: ReadFile) -> str:
+        order.append("edit")
+        return "edited"
+
+    def run(i: ReadFile) -> str:
+        assert order == ["edit"] or order[0] == "edit"  # the write finished first
+        meet.wait()  # both runs are in flight at once
+        order.append(i.path)
+        return f"ran {i.path}"
+
+    transport = FakeTransport(
+        [
+            _turn(
+                ("edit", {"path": "x"}, "t1"),
+                ("run", {"path": "a"}, "t2"),
+                ("run", {"path": "b"}, "t3"),
+            ),
+            _tool_use("submit_result", {"vulnerable": False, "reason": "ok"}, "t4"),
+        ]
+    )
+    result = build_gateway(settings=_settings(), transport=transport).run_tool_loop(
+        agent="patch",
+        system="You are Patch.",
+        user_content="fix",
+        tools=[
+            Tool("edit", "Edit", ReadFile, edit),
+            Tool("run", "Run", ReadFile, run, parallel_safe=True),
+        ],
+        output_model=Verdict,
+    )
+    assert result.final is not None and order[0] == "edit" and sorted(order[1:]) == ["a", "b"]
+    first = transport.requests[1]["messages"][-1]["content"]
+    assert [r["tool_use_id"] for r in first] == ["t1", "t2", "t3"]

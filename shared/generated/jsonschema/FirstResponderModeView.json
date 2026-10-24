@@ -1,0 +1,126 @@
+{
+  "$defs": {
+    "FirstResponderIntent": {
+      "description": "Server-enforced modes. MONITOR and SHADOW are the same mode.\n\nThere is no AUTO-EXECUTE value. Unknown or auto-execute input fails closed.",
+      "enum": [
+        "off",
+        "monitor",
+        "assisted_response"
+      ],
+      "title": "FirstResponderIntent",
+      "type": "string"
+    },
+    "StopKind": {
+      "description": "OFF is stop-monitoring. Kill-switch is stop-enforcement. They are not the same.",
+      "enum": [
+        "stop_monitoring",
+        "stop_enforcement",
+        "none"
+      ],
+      "title": "StopKind",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "auto_execute": {
+      "const": false,
+      "default": false,
+      "title": "Auto Execute",
+      "type": "boolean"
+    },
+    "cancelled_first_responder_jobs": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Cancelled First Responder Jobs"
+    },
+    "caveat": {
+      "default": "OFF cancels first-responder jobs only. Independently authorized owned-test controls keep their own expiry, rollback, and kill-switch.",
+      "maxLength": 500,
+      "title": "Caveat",
+      "type": "string"
+    },
+    "independently_authorized_control_jobs": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Independently Authorized Control Jobs"
+    },
+    "intent": {
+      "$ref": "#/$defs/FirstResponderIntent"
+    },
+    "previous_intent": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/FirstResponderIntent"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "project_id": {
+      "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "retention_policy_unchanged": {
+      "const": true,
+      "default": true,
+      "title": "Retention Policy Unchanged",
+      "type": "boolean"
+    },
+    "stop_kind": {
+      "$ref": "#/$defs/StopKind",
+      "default": "none"
+    },
+    "updated_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Updated At"
+    },
+    "updated_by": {
+      "anyOf": [
+        {
+          "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Updated By"
+    }
+  },
+  "required": [
+    "project_id",
+    "intent"
+  ],
+  "title": "FirstResponderModeView",
+  "type": "object"
+}

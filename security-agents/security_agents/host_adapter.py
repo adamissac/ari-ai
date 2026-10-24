@@ -26,6 +26,8 @@ from __future__ import annotations
 import contextlib
 import importlib
 import os
+import subprocess
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
@@ -81,6 +83,8 @@ HOST_STATE_NAMES: dict[AssessmentState, str] = {
 }
 
 CHECKPOINT_NS = "security_agents.approval.v1"
+# Returned by run() when another worker owns this assessment; the caller must not touch it.
+CLAIMED_ELSEWHERE = "claimed_elsewhere"
 _CHECKPOINT_CLAIMED_ELSEWHERE = object()
 
 
@@ -332,6 +336,7 @@ class HostTool:
     description: str
     input_model: type[Any]
     handler: Any
+    parallel_safe: bool = False
 
     def definition(self) -> dict[str, Any]:
         return {
@@ -350,6 +355,11 @@ def _tool_class() -> type[Any]:
         return HostTool
 
 
+# Sandboxed runs that only read the step's workspace. Worktree writes and patch.apply_fresh
+# change state, so a turn containing one stays sequential.
+_PARALLEL_EXEC = frozenset({"tests.run", "checks.run_template"})
+
+
 def build_tools(spec: AgentSpec, ctx: ToolContext, registry: ToolRegistry, record: StepRecord) -> list[Any]:
     """Wrap each allowlisted tool for the host gateway, keeping enforcement here."""
     tool_cls = _tool_class()
@@ -364,6 +374,7 @@ def build_tools(spec: AgentSpec, ctx: ToolContext, registry: ToolRegistry, recor
                 description=definition.description,
                 input_model=definition.args_model,
                 handler=_handler(ctx, registry, record, name),
+                parallel_safe=definition.side_effects == "none" or name in _PARALLEL_EXEC,
             )
         )
     return tools
@@ -402,6 +413,16 @@ def _handler(ctx: ToolContext, registry: ToolRegistry, record: StepRecord, name:
 # --------------------------------------------------------------------------- sink
 
 
+_REVIEW_JOIN_STATES = (
+    AssessmentState.AWAITING_APPROVAL,
+    AssessmentState.REPORTING,
+    AssessmentState.COMPLETED,
+    AssessmentState.FAILED,
+    AssessmentState.CANCELLED,
+    AssessmentState.BUDGET_EXHAUSTED,
+)
+
+
 @dataclass
 class HostSink(AssessmentSink):
     """Mirrors every orchestration step into the host's store."""
@@ -415,13 +436,34 @@ class HostSink(AssessmentSink):
     stored_diffs: dict[str, tuple[str, str | None, str]] = field(default_factory=dict)
     regression_artifact_ids: dict[str, str] = field(default_factory=dict)
     result: Any = None
+    # The functional reviewer runs beside Scout/Probe (they share nothing) and is joined
+    # before the run waits for approval or finishes, so its findings and approvals land first.
+    _review: threading.Thread | None = None
+    _review_error: BaseException | None = None
+
+    def _run_review(self) -> None:
+        try:
+            _functional_review(self.host)
+        except BaseException as exc:  # re-raised on the orchestrator thread at the join
+            self._review_error = exc
+
+    def join_review(self) -> None:
+        if self._review is not None:
+            self._review.join()
+            self._review = None
+        if self._review_error is not None:
+            error, self._review_error = self._review_error, None
+            raise error
 
     def on_transition(self, src: AssessmentState, dst: AssessmentState, note: str) -> None:
+        if dst in _REVIEW_JOIN_STATES:
+            self.join_review()
         if self.result is not None and dst in (AssessmentState.COMPLETED, AssessmentState.AWAITING_APPROVAL):
             _store_standards_artifacts(self, self.result)
         self.host.transition(_host_state(dst), note)
         if dst is AssessmentState.FUNCTIONAL_REVIEW:
-            _functional_review(self.host)
+            self._review = threading.Thread(target=self._run_review, name="functional-review", daemon=True)
+            self._review.start()
 
     def set_status(self, finding_id: str, status: str, reason: str | None = None) -> None:
         """Persist a lifecycle change through the host, which checks the edge and the evidence.
@@ -438,6 +480,7 @@ class HostSink(AssessmentSink):
 
     def settle(self, findings: list[FindingRecord], sandbox_seconds: float) -> None:
         """End of a run segment: final statuses, and sandbox time into the usage ledger."""
+        self.join_review()
         for finding in findings:
             self.set_status(finding.finding_id, finding.status)
         delta = round(float(sandbox_seconds) - self.sandbox_charged, 3)
@@ -769,7 +812,7 @@ class HostOrchestrator:
     validate_count: int = 2
     _resumable: dict[str, Orchestrator] = field(default_factory=dict)
 
-    def run(self, host: AssessmentHostLike) -> None:
+    def run(self, host: AssessmentHostLike) -> str | None:
         target = self.target_dir or _env_path("SECURITY_AGENTS_TARGET_DIR")
         existing = self._resumable.pop(host.assessment_id, None)
         state = _state_name(getattr(_val(host, "assessment"), "state", None))
@@ -778,7 +821,7 @@ class HostOrchestrator:
             claimed = _claim_checkpoint(host)
             if claimed is _CHECKPOINT_CLAIMED_ELSEWHERE:
                 host.progress("approval resume already claimed by another worker")
-                return
+                return CLAIMED_ELSEWHERE
             if existing is not None:
                 self._resume(existing, host)
                 return
@@ -802,6 +845,10 @@ class HostOrchestrator:
             self._resume_from_checkpoint(host, claimed, target)
             return
         if state not in start_states:
+            if checkpoint is None and _claim_checkpoint(host) is _CHECKPOINT_CLAIMED_ELSEWHERE:
+                # The approving worker already resumed in-process and moved the run on.
+                host.progress("approval resume already claimed by another worker")
+                return CLAIMED_ELSEWHERE
             raise PlatformError(
                 ErrorCode.CONFLICT_STATE,
                 f"cannot resume from {state}: paused orchestrator state was lost "
@@ -859,6 +906,7 @@ class HostOrchestrator:
             max_hypotheses_to_validate=self.validate_count,
             probe_check_transport=os.environ.get("SECURITY_AGENTS_PROBE_TRANSPORT", "inprocess"),
             verify_check_transport=os.environ.get("SECURITY_AGENTS_VERIFY_TRANSPORT", "inprocess"),
+            **_commit_change(host),
         )
         registry = self.registry or default_registry()
         sink = HostSink(host=host, commit_sha=intel.snapshot.commit_sha)
@@ -931,14 +979,7 @@ class HostOrchestrator:
             orchestrator._finish()
             self._settle(orchestrator)
             return
-        orchestrator._goto(AssessmentState.REMEDIATION)
-        for finding in approved:
-            orchestrator._run_remediation(finding)
-        _repair_functional(host, orchestrator)
-        orchestrator._goto(AssessmentState.HARDENING)
-        for finding in approved:
-            if finding.status == "verified":
-                orchestrator._run_fortify(finding)
+        orchestrator.remediate_and_harden(approved, lambda: _repair_functional(host, orchestrator))
         orchestrator._goto(AssessmentState.REPORTING)
         orchestrator._finish()
         self._settle(orchestrator)
@@ -1578,6 +1619,28 @@ def _default_intent(a: Any) -> Any:
     return ChangeIntent(
         source=ChangeIntentSource.manual, title=f"assessment of {a.commit_sha[:12]}", head_sha=a.commit_sha
     )
+
+
+def _commit_change(host: Any) -> dict[str, Any]:
+    """Changed paths and diff of the commit under review (empty when unknown)."""
+    intent = _change_intent(host)
+    base = getattr(intent, "base_sha", None)
+    binding = next((b for b in _bindings() if b.get("repo_id") == getattr(host, "repo_id", None)), None)
+    if not base or binding is None:
+        return {}
+    repo, head = str(Path(binding["local_path"]).expanduser()), str(_val(host, "assessment").commit_sha)
+
+    def git(*args: str) -> str:
+        return subprocess.run(
+            ["git", "-C", repo, *args], capture_output=True, text=True, timeout=30, check=True
+        ).stdout
+
+    try:
+        paths = tuple(p for p in git("diff", "--name-only", base, head).splitlines() if p)
+        diff = git("diff", "--no-color", "-U5", base, head)
+    except (OSError, subprocess.SubprocessError):
+        return {}
+    return {"change_paths": paths[:200], "change_diff": diff[:20_000]}
 
 
 def _change_intent(host: Any) -> Any:

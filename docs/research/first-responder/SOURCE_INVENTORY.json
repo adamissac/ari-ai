@@ -1,0 +1,326 @@
+{
+  "agent_invocations": 0,
+  "grok_contract": "not_supplied_or_agreed",
+  "provider_calls": 0,
+  "purpose": "read_only_static_audit_not_execution",
+  "roles": {
+    "diagnose": {
+      "declarative_spec": {
+        "budget_share": "0.1",
+        "input_model": "DiagnoseInput",
+        "max_output_tokens": "16000",
+        "max_tool_calls": "25",
+        "max_turns": "12",
+        "name": "AgentName.DIAGNOSE",
+        "network": "'none'",
+        "output_model": "DiagnoseOutput",
+        "prompt_ref": "'prompts/diagnose/v0.1.0.md'",
+        "sandbox_profile": "'none'",
+        "step_timeout_s": "180",
+        "system_prompt": "SYSTEM",
+        "tools": "frozenset({'code.read_span', 'code.search', 'graph.neighbors', 'expectations.for_subject', 'findings.history', 'static.analyze'})",
+        "version": "'0.1.0'",
+        "write_access": "'none'"
+      },
+      "path": "security-agents/security_agents/agents/diagnose.py",
+      "schema_field_names": {
+        "DiagnoseInput": [
+          "assessment_id",
+          "finding_id",
+          "weakness_class",
+          "hypothesis_title",
+          "severity_level",
+          "impact_summary",
+          "validation_observations",
+          "affected_symbol",
+          "affected_paths",
+          "violated_expectation_ids"
+        ],
+        "DiagnoseOutput": [
+          "root_cause_summary",
+          "cause_class",
+          "cause_paths",
+          "cause_start_lines",
+          "cause_end_lines",
+          "cause_symbol",
+          "violated_expectation_ids",
+          "strategy",
+          "constraints",
+          "files_expected",
+          "tests_must_fail_before",
+          "tests_must_pass_after",
+          "related_sites",
+          "d3fend_technique"
+        ]
+      },
+      "sha256": "5f29d5628a54c97a1146162511f33ccb7d5125627818cac8b8ac9ba9fb01fdaa"
+    },
+    "fortify": {
+      "declarative_spec": {
+        "budget_share": "0.1",
+        "input_model": "FortifyInput",
+        "max_output_tokens": "16000",
+        "max_schema_repairs": "2",
+        "max_tool_calls": "20",
+        "max_turns": "10",
+        "name": "AgentName.FORTIFY",
+        "network": "'none'",
+        "output_model": "FortifyOutput",
+        "prompt_ref": "'prompts/fortify/v0.1.1.md'",
+        "sandbox_profile": "'none'",
+        "step_timeout_s": "180",
+        "system_prompt": "SYSTEM",
+        "tools": "frozenset({'code.read_span', 'code.search', 'graph.neighbors', 'expectations.for_subject', 'findings.history', 'static.analyze'})",
+        "version": "'0.1.1'",
+        "write_access": "'none'"
+      },
+      "path": "security-agents/security_agents/agents/fortify.py",
+      "schema_field_names": {
+        "FortifyInput": [
+          "check_category",
+          "assessment_id",
+          "finding_id",
+          "verification_result_id",
+          "root_cause_summary",
+          "cause_class",
+          "cause_paths",
+          "related_sites",
+          "tests_added",
+          "affected_symbol",
+          "weakness_class"
+        ],
+        "FortifyOutput": [
+          "recommendations",
+          "future_hypotheses",
+          "monitoring_hints",
+          "regression_test_names"
+        ]
+      },
+      "sha256": "4590023cabb8d0ae574a5aa8702e075ac869c1abc88160cbcafd63a10d9c3e42"
+    },
+    "patch": {
+      "declarative_spec": {
+        "budget_share": "0.2",
+        "input_model": "PatchInput",
+        "max_calls_per_tool": "{'tests.run': 4}",
+        "max_output_tokens": "16000",
+        "max_tool_calls": "50",
+        "max_turns": "30",
+        "name": "AgentName.PATCH",
+        "network": "'none'",
+        "output_model": "PatchOutput",
+        "prompt_ref": "'prompts/patch/v0.1.0.md'",
+        "sandbox_profile": "'test-runner'",
+        "step_timeout_s": "480",
+        "system_prompt": "SYSTEM",
+        "tools": "frozenset({'code.read_span', 'code.search', 'graph.neighbors', 'expectations.for_subject', 'worktree.write_file', 'worktree.edit_file', 'worktree.diff', 'tests.run'})",
+        "version": "'0.1.0'",
+        "write_access": "'worktree'"
+      },
+      "path": "security-agents/security_agents/agents/patch.py",
+      "schema_field_names": {
+        "PatchInput": [
+          "assessment_id",
+          "finding_id",
+          "remediation_plan_id",
+          "approval_id",
+          "attempt",
+          "strategy",
+          "constraints",
+          "files_expected",
+          "tests_must_fail_before",
+          "tests_must_pass_after",
+          "cause_paths",
+          "prior_rejection_reasons"
+        ],
+        "PatchOutput": [
+          "explanation",
+          "files_changed",
+          "tests_added",
+          "local_tests_passed",
+          "local_test_run_id",
+          "deviations_from_plan",
+          "blocked_reason"
+        ]
+      },
+      "sha256": "753a6faf98e92dbe4d307bcf1948c71f38cd01a56f85d831299b8bc647675df5"
+    },
+    "probe": {
+      "declarative_spec": {
+        "budget_share": "0.2",
+        "input_model": "ProbeInput",
+        "max_calls_per_tool": "{'checks.run_template': 3}",
+        "max_output_tokens": "16000",
+        "max_tool_calls": "12",
+        "max_turns": "10",
+        "name": "AgentName.PROBE",
+        "network": "'target-only'",
+        "output_model": "ProbeOutput",
+        "prompt_ref": "'prompts/probe/v0.1.0.md'",
+        "sandbox_profile": "'check-runner'",
+        "step_timeout_s": "180",
+        "system_prompt": "SYSTEM",
+        "tools": "frozenset({'code.read_span', 'expectations.for_subject', 'checks.list_templates', 'checks.run_template'})",
+        "version": "'0.1.0'",
+        "write_access": "'out_dir'"
+      },
+      "path": "security-agents/security_agents/agents/probe.py",
+      "schema_field_names": {
+        "ProbeInput": [
+          "assessment_id",
+          "hypothesis_id",
+          "scope_id",
+          "target_id",
+          "hypothesis_title",
+          "weakness_class",
+          "expected_invariant",
+          "suggested_check_category",
+          "cited_paths",
+          "expectation_ids",
+          "subject_routes"
+        ],
+        "ProbeOutput": [
+          "outcome",
+          "check_template_ref",
+          "sandbox_run_id",
+          "observations",
+          "interpretation",
+          "missing_capability"
+        ]
+      },
+      "sha256": "572f99765906e22ec2f800b9a0e1e33f1767f3bf76585f5bd0df6ba6ac2e3679"
+    },
+    "scout": {
+      "declarative_spec": {
+        "budget_share": "0.2",
+        "input_model": "ScoutInput",
+        "max_output_tokens": "16000",
+        "max_tool_calls": "40",
+        "max_turns": "16",
+        "name": "AgentName.SCOUT",
+        "network": "'none'",
+        "output_model": "ScoutOutput",
+        "prompt_ref": "'prompts/scout/v0.1.0.md'",
+        "sandbox_profile": "'none'",
+        "step_timeout_s": "300",
+        "system_prompt": "SYSTEM",
+        "tools": "frozenset({'code.read_span', 'code.search', 'graph.neighbors', 'expectations.for_subject', 'findings.history', 'static.analyze'})",
+        "version": "'0.1.0'",
+        "write_access": "'none'"
+      },
+      "path": "security-agents/security_agents/agents/scout.py",
+      "schema_field_names": {
+        "ScoutInput": [
+          "assessment_id",
+          "snapshot_id",
+          "commit_sha",
+          "entry_point_ids",
+          "expectation_ids",
+          "refuted_keys",
+          "max_hypotheses",
+          "available_check_categories"
+        ],
+        "ScoutOutput": [
+          "hypotheses",
+          "coverage",
+          "suspicious_instructions"
+        ]
+      },
+      "sha256": "4d940d9875a9b1541b8197dd26f49f296e7d156e587ac35b3904a4f218c3e2c5"
+    },
+    "trace": {
+      "declarative_spec": {
+        "budget_share": "0.1",
+        "input_model": "TraceInput",
+        "max_output_tokens": "16000",
+        "max_tool_calls": "25",
+        "max_turns": "12",
+        "name": "AgentName.TRACE",
+        "network": "'none'",
+        "output_model": "TraceOutput",
+        "prompt_ref": "'prompts/trace/v0.3.0.md'",
+        "sandbox_profile": "'none'",
+        "step_timeout_s": "180",
+        "system_prompt": "SYSTEM",
+        "tools": "frozenset({'code.read_span', 'code.search', 'graph.neighbors', 'expectations.for_subject', 'findings.history'})",
+        "version": "'0.3.0'",
+        "write_access": "'none'"
+      },
+      "path": "security-agents/security_agents/agents/trace.py",
+      "schema_field_names": {
+        "TraceInput": [
+          "check_category",
+          "assessment_id",
+          "finding_id",
+          "validation_result_id",
+          "sandbox_run_id",
+          "hypothesis_title",
+          "weakness_class",
+          "confirmed_outcome",
+          "validation_observations",
+          "affected_paths",
+          "affected_symbol",
+          "expectation_ids"
+        ],
+        "TraceOutput": [
+          "cvss_metrics",
+          "cvss_metric_artifacts",
+          "steps",
+          "preconditions",
+          "impact_summary",
+          "cvss_base_metrics",
+          "severity_rationale",
+          "followup_validation_suggestions"
+        ]
+      },
+      "sha256": "714d064c27a8f3186479e5558cec2cae9d1b62dc376be29690aac00182364120"
+    },
+    "verify": {
+      "declarative_spec": {
+        "budget_share": "0.1",
+        "input_model": "VerifyInput",
+        "max_calls_per_tool": "{'patch.apply_fresh': 2, 'checks.run_template': 3, 'tests.run': 4}",
+        "max_output_tokens": "16000",
+        "max_tool_calls": "20",
+        "max_turns": "14",
+        "name": "AgentName.VERIFY",
+        "network": "'target-only'",
+        "output_model": "VerifyOutput",
+        "prompt_ref": "'prompts/verify/v0.1.0.md'",
+        "sandbox_profile": "'check-runner'",
+        "step_timeout_s": "480",
+        "system_prompt": "SYSTEM",
+        "tools": "frozenset({'code.read_span', 'expectations.for_subject', 'static.analyze', 'checks.list_templates', 'checks.run_template', 'tests.run', 'patch.apply_fresh'})",
+        "version": "'0.1.0'",
+        "write_access": "'none'"
+      },
+      "path": "security-agents/security_agents/agents/verify.py",
+      "schema_field_names": {
+        "VerifyInput": [
+          "assessment_id",
+          "patch_id",
+          "finding_id",
+          "validation_result_id",
+          "remediation_plan_id",
+          "scope_id",
+          "target_id",
+          "original_check_template_ref",
+          "original_check_parameters",
+          "plan_files",
+          "baseline_failing_tests",
+          "diff_summary",
+          "tests_added"
+        ],
+        "VerifyOutput": [
+          "summary",
+          "observed_original_check_ref",
+          "concerns"
+        ]
+      },
+      "sha256": "216a5e2e34fb946ae7c9928941c34e47d0a553b8f0bbf088b7292592834d4903"
+    }
+  },
+  "schema": "first-responder-source-inventory/0.1",
+  "source_commit": "71118928866d6974ba0ec9532420a9fc71187318",
+  "training_authorized": false
+}

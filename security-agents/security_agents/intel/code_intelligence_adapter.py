@@ -216,7 +216,12 @@ class CodeIntelligenceAdapter:
             offset += len(page)
 
     def symbols(self) -> list[SymbolInfo]:
-        return [
+        return list(self._symbol_infos)
+
+    @cached_property
+    def _symbol_infos(self) -> tuple[SymbolInfo, ...]:
+        # Built once: the snapshot is immutable and this took ~9 s per call on a real repo.
+        return tuple(
             SymbolInfo(
                 qualified_name=str(getattr(symbol, "qualified_name", "")),
                 kind=_value(getattr(symbol, "kind", "function")),
@@ -228,7 +233,7 @@ class CodeIntelligenceAdapter:
                 params=tuple(_params_from_signature(getattr(symbol, "signature", None))),
             )
             for symbol in self._symbols
-        ]
+        )
 
     def find_symbol(self, name: str) -> SymbolInfo | None:
         candidates = self.symbols()
@@ -247,18 +252,30 @@ class CodeIntelligenceAdapter:
                 return str(getattr(symbol, "id", ""))
         return None
 
-    def _name_of(self, symbol_id: str) -> str:
+    @cached_property
+    def _names(self) -> dict[str, str]:
+        names: dict[str, str] = {}
         for symbol in self._symbols:
-            if str(getattr(symbol, "id", "")) == symbol_id:
-                return str(getattr(symbol, "qualified_name", symbol_id))
-        return symbol_id
+            names.setdefault(str(getattr(symbol, "id", "")), str(getattr(symbol, "qualified_name", "")))
+        return names
+
+    @cached_property
+    def _edges(self) -> tuple[dict[str, list[Any]], dict[str, list[Any]]]:
+        """Call edges by caller id and by callee id (one pass instead of one per lookup)."""
+        by_caller: dict[str, list[Any]] = {}
+        by_callee: dict[str, list[Any]] = {}
+        for edge in getattr(self._index, "calls", ()) or ():
+            by_caller.setdefault(str(getattr(edge, "caller_id", "")), []).append(edge)
+            by_callee.setdefault(str(getattr(edge, "callee_id", "")), []).append(edge)
+        return by_caller, by_callee
+
+    def _name_of(self, symbol_id: str) -> str:
+        return self._names.get(symbol_id) or symbol_id
 
     def _callees_of(self, symbol_id: str) -> list[str]:
         """Directed callees, each labelled with the index's resolution quality."""
         out: list[str] = []
-        for edge in getattr(self._index, "calls", ()) or ():
-            if str(getattr(edge, "caller_id", "")) != symbol_id:
-                continue
+        for edge in self._edges[0].get(symbol_id, ()):
             resolution = _value(getattr(edge, "resolution", "unresolved"), "unresolved")
             callee_id = getattr(edge, "callee_id", None)
             name = self._name_of(str(callee_id)) if callee_id else str(getattr(edge, "callee_name", ""))
@@ -267,9 +284,7 @@ class CodeIntelligenceAdapter:
 
     def _callers_of(self, symbol_id: str) -> list[str]:
         out = {
-            self._name_of(str(getattr(edge, "caller_id", "")))
-            for edge in getattr(self._index, "calls", ()) or ()
-            if str(getattr(edge, "callee_id", "")) == symbol_id
+            self._name_of(str(getattr(edge, "caller_id", ""))) for edge in self._edges[1].get(symbol_id, ())
         }
         return sorted(out)
 

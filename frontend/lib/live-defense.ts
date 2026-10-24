@@ -7,7 +7,7 @@
 import type { Incident, MonitoringEvent } from '@hackatl/frontend-transport';
 
 export type LiveDefenseMode = 'live' | 'layout-preview';
-export type LiveDefenseTab = 'overview' | 'incidents' | 'explain' | 'apps' | 'controls';
+export type LiveDefenseTab = 'overview' | 'incidents' | 'explain' | 'apps' | 'controls' | 'first-responder';
 
 export const PREVIEW_QUERY = 'preview';
 export const PREVIEW_VALUE = 'layout';
@@ -25,6 +25,11 @@ export const OWNED_TEST_AUTHORIZE_COPY =
 
 export const SHADOW_MODE_COPY =
   'Shadow mode: Ari records ingest and recommendations for authorized staging apps. It does not grant production enforcement and never re-shows an ingest token after issuance.';
+
+export const FIRST_RESPONDER_COPY =
+  'First-responder modes are server-enforced: OFF, MONITOR (alias SHADOW), and ASSISTED RESPONSE. AUTO-EXECUTE does not exist. LLM prose is never proof of a confirmed threat. An RL recommendation is not executed defense.';
+
+export const EVIDENCE_STATES = ['Observed', 'Suspected', 'Verified', 'Recommended', 'Authorized', 'Executed', 'Failed', 'Rolled back'] as const;
 
 export const SHADOW_VS_CONTROLS_COPY =
   'Recommendation-only shadow path: ingest, LivePolicyDecision, analyst review, and the pilot report never execute a control. The Controls tab is a separate owned-test authorization. Do not register a grant or control channel for a customer shadow-pilot.';
@@ -49,7 +54,7 @@ export function withLiveDefenseMode(href: string, mode: LiveDefenseMode): string
 
 export function liveDefenseHref(projectId: string | null, tab: LiveDefenseTab = 'overview', mode: LiveDefenseMode = 'live'): string {
   const base = projectId === null ? '/live-defense-pilot' : `/projects/${projectId}/live-defense`;
-  const suffix = tab === 'overview' ? '' : tab === 'incidents' ? '/incidents' : tab === 'explain' ? '/explain' : tab === 'controls' ? '/controls' : '/apps';
+  const suffix = tab === 'overview' ? '' : tab === 'incidents' ? '/incidents' : tab === 'explain' ? '/explain' : tab === 'controls' ? '/controls' : tab === 'first-responder' ? '/first-responder' : '/apps';
   const path = `${base}${suffix}`;
   return projectId === null ? path : withLiveDefenseMode(path, mode);
 }
@@ -58,6 +63,7 @@ export function liveDefenseTab(pathname: string): LiveDefenseTab {
   if (/live-defense(?:-pilot)?\/explain(?:\/|$)/.test(pathname)) return 'explain';
   if (/live-defense(?:-pilot)?\/incidents(?:\/|$)/.test(pathname)) return 'incidents';
   if (/live-defense(?:-pilot)?\/controls(?:\/|$)/.test(pathname)) return 'controls';
+  if (/live-defense(?:-pilot)?\/first-responder(?:\/|$)/.test(pathname)) return 'first-responder';
   if (/live-defense(?:-pilot)?\/apps(?:\/|$)/.test(pathname)) return 'apps';
   return 'overview';
 }
@@ -92,6 +98,10 @@ export const USED_LIVE_APIS = [
   { method: 'GET', path: '/projects/{id}/live-controls', use: 'pending/active owned-test controls; not NIST incidents' },
   { method: 'POST', path: '/live-controls/{id}/rollback', use: 'request rollback; success only after verify' },
   { method: 'POST', path: '/projects/{id}/emergency-stop', use: 'kill switch; does not claim success until verified' },
+  { method: 'GET/POST', path: '/projects/{id}/first-responder/mode', use: 'owner-attributable OFF / MONITOR|SHADOW / ASSISTED RESPONSE; AUTO-EXECUTE rejected' },
+  { method: 'GET', path: '/projects/{id}/first-responder/decisions', use: 'versioned deterministic first-responder records; not executed; no invented probabilities' },
+  { method: 'GET', path: '/projects/{id}/first-responder/handoffs', use: 'analyst handoff; delivered only after provider confirmation' },
+  { method: 'GET', path: '/projects/{id}/first-responder/capabilities', use: 'seven-agent registry from real AgentSpecs' },
 ] as const;
 
 /** Capabilities still missing. Shown as missing — never filled with live-looking numbers. */
@@ -103,8 +113,8 @@ export const MISSING_LIVE_APIS = [
   },
   {
     id: 'autonomous',
-    title: 'Autonomous enforcement',
-    reason: 'Phase 7 is not started. RL and rules still cannot execute without independent owner authorization. Shadow-pilot stays recommendation-only.',
+    title: 'Autonomous enforcement / AUTO-EXECUTE',
+    reason: 'Phase 7A is first-responder only: OFF / MONITOR|SHADOW / ASSISTED RESPONSE. AUTO-EXECUTE does not exist. RL recommendations are not executed defense. Phase 7B is not started.',
   },
   {
     id: 'production_grants',

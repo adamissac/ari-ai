@@ -1,0 +1,85 @@
+{
+  "$defs": {
+    "CorrelationConfidence": {
+      "description": "Explicit correlation confidence. Never a probability. UNKNOWN without a mapping.",
+      "enum": [
+        "unknown",
+        "none",
+        "low",
+        "medium"
+      ],
+      "title": "CorrelationConfidence",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "application_id": {
+      "anyOf": [
+        {
+          "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Application Id"
+    },
+    "commit_sha": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{40}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Commit Sha"
+    },
+    "confidence": {
+      "$ref": "#/$defs/CorrelationConfidence"
+    },
+    "finding_ids_at_commit": {
+      "items": {
+        "pattern": "^fnd_[0-9A-Za-z_\\-]{8,64}$",
+        "type": "string"
+      },
+      "title": "Finding Ids At Commit",
+      "type": "array"
+    },
+    "finding_is_not_proof_of_this_request": {
+      "const": true,
+      "default": true,
+      "title": "Finding Is Not Proof Of This Request",
+      "type": "boolean"
+    },
+    "mapping_id": {
+      "anyOf": [
+        {
+          "pattern": "^dcm_[0-9A-Za-z_\\-]{8,64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Mapping Id"
+    },
+    "note": {
+      "maxLength": 500,
+      "title": "Note",
+      "type": "string"
+    }
+  },
+  "required": [
+    "confidence",
+    "note"
+  ],
+  "title": "RuntimeCodeCorrelation",
+  "type": "object"
+}

@@ -28,6 +28,7 @@ class CheckCategory(StrEnum):
     """
 
     access_control_ownership = "access_control.ownership"
+    access_control_authentication = "access_control.authentication"
     input_validation_bounds = "input_validation.bounds"
     authorization_ownership = "authorization.ownership"
     input_bounds = "input.bounds"
@@ -35,6 +36,7 @@ class CheckCategory(StrEnum):
 
 _CHECK_CATEGORY_CANONICAL: dict[CheckCategory, CheckCategory] = {
     CheckCategory.access_control_ownership: CheckCategory.access_control_ownership,
+    CheckCategory.access_control_authentication: CheckCategory.access_control_authentication,
     CheckCategory.authorization_ownership: CheckCategory.access_control_ownership,
     CheckCategory.input_validation_bounds: CheckCategory.input_validation_bounds,
     CheckCategory.input_bounds: CheckCategory.input_validation_bounds,
