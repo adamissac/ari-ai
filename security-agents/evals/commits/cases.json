@@ -534,17 +534,22 @@
       "files": [
         "backend/backend/artifacts.py"
       ],
-      "message": "perf(artifacts): move content addressing to sha512",
+      "message": "refactor(artifacts): share content digest helper",
       "edits": [
         {
           "path": "backend/backend/artifacts.py",
+          "old": "class ArtifactStore:",
+          "new": "def _content_digest(data: bytes) -> str:\n    return hashlib.sha256(data).hexdigest()\n\n\nclass ArtifactStore:"
+        },
+        {
+          "path": "backend/backend/artifacts.py",
           "old": "        sha = hashlib.sha256(data).hexdigest()",
-          "new": "        sha = hashlib.sha512(data).hexdigest()"
+          "new": "        sha = _content_digest(data)"
         },
         {
           "path": "backend/backend/artifacts.py",
           "old": "        if hashlib.sha256(data).hexdigest() != row[\"sha256\"]:",
-          "new": "        if hashlib.sha512(data).hexdigest() != row[\"sha256\"]:"
+          "new": "        if _content_digest(data) != row[\"sha256\"]:"
         }
       ]
     },
