@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- fix(pilot): two-org rehearsal runs end-to-end — real API shapes (repo connect + file binding, scope targets/approve, real commit_sha), target app gets factory + seed + build_recipe; 13/13 steps pass against real Anthropic + Vercel sandbox with genuine findings and proven org isolation.
+
 - Tenant data protection: two-tenant adversarial suite (17 tests) covering every project-scoped read/write/SSE/artifact/job/audit surface plus forged-ID and storage-accessor claims; FORCE row-level security on `index_payloads`/`index_snapshots` scoped by a per-transaction tenant GUC (migration 0016); `backend/privacy.py::purge_project` — the documented full-tenant deletion workflow (all project rows, RLS-scoped source payloads, refcount-aware artifact objects, bare clones); `docs/security/TENANT_DATA_PROTECTION.md` — threat model, private-code data-flow inventory, verified controls matrix, GitHub-token posture, Anthropic processing posture, retention gaps, and the enterprise isolation future option.
 
 - Add `access_control.role` check template: Probe can now prove role-bypass on mutating routes — a restricted fixture identity must be denied (401/403/404) while a permitted one keeps access. Recipe surface expanded (assessment/finding/scope routes, role-differentiated sandbox identities carol=viewer/dave=member of alice's org); new recipe body placeholders `{expires_in_days:N}` and `{resource:KIND}`. Aliases `authorization.role`, `access_control.mutation`, `access_control.rbac` map to the new category.
