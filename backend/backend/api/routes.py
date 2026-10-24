@@ -348,7 +348,7 @@ def connect_repository(project_id: str, body: RepositoryConnect, request: Reques
         # The worker fetches App-connected repositories with an installation token, so the
         # caller must have reached this exact repository through that installation at sign-in.
         if body.installation_id is not None:
-            from backend.api.github_repos import can_connect
+            from backend.api.github_repos import can_connect, verify_installation_access
 
             if not can_connect(conn, user.id, body.full_name, body.installation_id):
                 raise ApiError(
@@ -356,6 +356,10 @@ def connect_repository(project_id: str, body: RepositoryConnect, request: Reques
                     "this GitHub App installation does not give you access to that repository",
                     403,
                 )
+            # The sign-in snapshot can be stale (installation deleted/re-scoped since
+            # sign-in); confirm live before recording a repository every GitHub read
+            # would fail for.
+            verify_installation_access(body.full_name, body.installation_id)
         if conn.execute(
             sa.select(repositories.c.id).where(repositories.c.full_name == body.full_name)
         ).scalar():
