@@ -9,12 +9,12 @@ Cost is bounded by the manual-assessment budget (400k tok / $10 / 1800s).
 Every agent run is asserted provider_mode == "live" — nothing scripted is
 claimed here.
 """
+
 from __future__ import annotations
 
 import json
 import os
 import subprocess
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -23,7 +23,7 @@ pytestmark = pytest.mark.skipif(
     not os.environ.get("REHEARSAL_LIVE"), reason="live rehearsal; set REHEARSAL_LIVE=1"
 )
 
-from helpers import HEAD, setup_project  # noqa: E402
+from helpers import setup_project  # noqa: E402
 
 from backend import worker  # noqa: E402
 from backend.checkouts import register_binding  # noqa: E402
@@ -63,7 +63,7 @@ def test_live_provider_assessment_two_orgs(client_factory, live) -> None:
     assert r.status_code == 202, r.text
     asm_id = r.json()["assessment"]["id"]
 
-    done = worker.drain(kinds=["run_assessment"])
+    worker.drain(kinds=["run_assessment"])
     detail = alice.get(f"/api/v1/assessments/{asm_id}").json()
     state = detail["assessment"]["state"]
     runs = detail["agent_runs"]

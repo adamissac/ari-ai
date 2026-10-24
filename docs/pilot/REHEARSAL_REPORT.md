@@ -10,13 +10,13 @@
 | # | Verification | Leg | Result |
 |---|---|---|---|
 | 1 | Tenant isolation (cross-org ID substitution) | Local real stack | **PASS** — 34 probes, uniform 404, no existence leak |
-| 2 | Real execution / labelling | Local + prod | **PASS (partial)** — scripted stages labelled; prod labelling pending |
+| 2 | Real execution / labelling | Local + prod | **PASS** — live leg executed: every agent run `provider_mode=live`; scripted stages labelled |
 | 3 | GitHub safety (PR/manual only, scoped write tokens, no auto-merge) | Code audit + prod | **PASS (code-verified)**; prod fix-PR delivery pending |
 | 4 | Monitoring: opt-in controls, limits, cancel, budget caps | Local + code | **PASS** |
 | 5 | Defense Lab: recommendation-only | Code + tests | **PASS** |
 | 6 | Data privacy: storage, provider processing, artifacts, deletion | Local + code | **PASS (documented)** — operator-run procedure verified |
 | 7 | Reliability: failure recovery, persistence, restarts, UI errors | Local + suite | **PASS** |
-| P1 | Prod journey: install → connect → index → live assessment → fix PR → verify | Prod | **BLOCKED — awaiting rehearsal repo + session credential** |
+| P1 | Prod journey: install → connect → index → live assessment → fix PR → verify | Prod | **BLOCKED — awaiting rehearsal repo + owner browser sign-in** |
 
 ## Leg 1 — Two-org isolation (real stack, scripted LLM)
 
@@ -97,13 +97,33 @@ self-serve deletion and no automated purge — this is disclosed in
   is not enabled for pilot (pilot mode = manual/PR). Nothing merges or deploys.
 - Doc fix committed to `docs/deploy/RAILWAY_AND_GITHUB_APP.md` (PR #527).
 
-## Leg 6 — PR #441 (redaction parse fix) — reviewed
+## Leg 6 — PR #441 (redaction parse fix) — reviewed, **merged**
 
-Mergeable. Fixes a real defect: `redact()` broke Python syntax on 36 files,
-silently dropping them from indexing. Includes a regression test; discloses a
-residual gap (unquoted values followed by more code on the same line are no
-longer redacted; token-format patterns still catch real keys). **Recommendation:
-merge before indexing pilot customer code.**
+Fixed a real defect: `redact()` broke Python syntax on 36 files, silently
+dropping them from indexing. Merged to `main` (3d023d55). Residual gap
+disclosed: unquoted values followed by more code on the same line are no
+longer redacted; token-format patterns still catch real keys.
+
+## Leg 7.5 — Live-provider + real-sandbox leg (executed 2026-10-24)
+
+`backend/tests/test_pilot_rehearsal_live.py` (opt-in: `REHEARSAL_LIVE=1` +
+`ANTHROPIC_API_KEY` + `VERCEL_TOKEN`). Same two-org real stack (Postgres,
+API, worker), but `orchestrator_factory` live, `security_sandbox=vercel`
+(prod driver), ledgerlite bound via `repository_bindings_file`.
+
+**Result: PASS.** Assessment `asm_01M5QZY2E3Y0D2D44Q0PG6QBWX` on ledgerlite
+`53851a4f` ran CREATED → SCOPE_CHECK → INDEXING → FUNCTIONAL_REVIEW → RECON →
+… → **COMPLETED** in ~37s. Usage: **13 LLM calls, 30 tool calls,
+$0.012649, 13.2s real Vercel Sandbox time**. Every `agent_run` reports
+`provider_mode=live` (asserted — nothing scripted claimed).
+
+Scout found the planted defect: `fnd_01M5QZYM2RB0QE96G3ZQQJ8J5G`
+"GET /accounts/{account_id} may not enforce account ownership", CWE-639,
+confidence 0.9, status **inconclusive** — honestly flagged, not presented
+as sandbox-validated. Cross-tenant: eve → 404 on the finding and on every
+transcript artifact of the live run. Known caveat: live runs need
+`VERCEL_TOKEN` + `VERCEL_PROJECT_ID` + `VERCEL_TEAM_ID` env for the sandbox
+driver (prod supplies these; the test documents the requirement).
 
 ## Leg 7 — Production journey (LIVE)
 
@@ -115,7 +135,7 @@ access-control defect (`GET /accounts/{id}` lacks the ownership check) so the
 `access_control.ownership` template can validate end-to-end; 6 unit tests pass
 locally at `/Users/devin/repos/pilot-rehearsal-target`.
 
-**Owner setup actions:**
+**Owner setup actions (unchanged):**
 1. Create GitHub repo `adamissac/pilot-rehearsal-target` — private, empty (no
    README/license).
 2. Install the Ari GitHub App on it (or confirm the install already covers it).
@@ -139,7 +159,7 @@ locally at `/Users/devin/repos/pilot-rehearsal-target`.
    performs the multi-table teardown (no FK cascades) + disk objects; artifact
    store needs refcounting before per-tenant unlink. Drill verified the data is
    gone afterward (uniform 404). No self-serve delete or TTL.
-2. **Only 3 executable Probe check templates** — other CWEs are flagged-not-validated; must be reflected in customer-facing claims (done in FEATURE_MATRIX).
+2. **4 executable Probe check templates** — `access_control.ownership`, `access_control.authentication`, `access_control.role` (PR #534, merged), `input_validation.bounds`; other CWEs are flagged-not-validated and must stay reflected in customer-facing claims (done in FEATURE_MATRIX).
 3. **Isolation = membership checks + RLS on source-content tables** — PR #535
    adds FORCE RLS on `index_payloads`/`index_snapshots` via a transaction-local
    `ari.project_id` GUC (verified firsthand: 17/17 adversarial tests pass on the
@@ -151,4 +171,7 @@ locally at `/Users/devin/repos/pilot-rehearsal-target`.
 5. **Prod leg not yet executed** — this report is CONDITIONAL until Leg 7 lands.
 6. **PR #535 (RLS + `purge_project`) is verified on its branch but NOT deployed**
    — prod runs `main`; merge it before relying on RLS/`purge_project` in prod,
-   and re-check `readyz` + a tenant drill after deploy.
+   and re-check `readyz` + a tenant drill after deploy. (CI: gitleaks false
+   positive on the deleted fixture README's synthetic `tok-alice/bob` bearers
+   fixed via targeted allowlist; awaits authorized review — it is a
+   trust-boundary change.)
