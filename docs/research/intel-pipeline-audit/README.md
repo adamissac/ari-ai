@@ -143,7 +143,11 @@ recall degrades with corpus size and shared vocabulary.
   hunter2}` are now redacted. Still unreachable: mid-line bare tokens with no
   digit (`f(password=hunter)`) and non-first branches of inline
   conditionals (`password="x" if c else "y"`) — a regex cannot see call or
-  conditional boundaries safely.
+  conditional boundaries safely. Honest consequence: a secret matching a
+  residual pattern could still reach `index_payloads` and LLM context packs;
+  tenant RLS + `purge_project` (#535) is the second layer, not a substitute —
+  disclose this to pilot customers before onboarding code that may carry
+  such secrets.
 - Indexing is **whole-tree, not incremental**: ari-ai costs ~92s and ~617MB
   heap; fine for pilot repos, a limit for monorepo-scale trees.
 
