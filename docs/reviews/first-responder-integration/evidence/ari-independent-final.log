@@ -1,0 +1,246 @@
+FFFF.FFFFF                                                               [100%]
+=================================== FAILURES ===================================
+_________ test_emergency_stop_is_claimable_when_project_slots_are_full _________
+
+settings_override = <function settings_override.<locals>.apply at 0x10befafc0>
+
+    def test_emergency_stop_is_claimable_when_project_slots_are_full(settings_override):
+        settings_override(job_max_running_per_project="1")
+        enqueue()
+        with transaction() as conn:
+            assert jobs.claim(conn, "busy-worker", 60, ["review_noop"]) is not None
+        stop = enqueue("live_defense_emergency_stop", priority=0)
+        with transaction() as conn:
+            claim = jobs.claim(conn, "stop-worker", 60, ["live_defense_emergency_stop"])
+>       assert claim is not None and claim.id == stop, "emergency rollback must bypass ordinary slots"
+E       AssertionError: emergency rollback must bypass ordinary slots
+E       assert (None is not None)
+
+backend/tests/live_defense_e2e/test_independent_integration.py:52: AssertionError
+______ test_complete_rejects_expired_lease_without_waiting_for_reconciler ______
+
+    def test_complete_rejects_expired_lease_without_waiting_for_reconciler():
+        jid = enqueue()
+        with transaction() as conn:
+            assert jobs.claim(conn, "expired-worker", 60, ["review_noop"]) is not None
+            conn.execute(
+                sa.update(jobs_t)
+                .where(jobs_t.c.id == jid)
+                .values(lease_expires_at=sa.func.now() - sa.text("interval '1 second'"))
+            )
+        with transaction() as conn:
+>           assert jobs.complete(conn, jid, "expired-worker", {}) is False
+E           AssertionError: assert True is False
+E            +  where True = <function complete at 0x10b8089a0>(<sqlalchemy.engine.base.Connection object at 0x10bff02f0>, 'job_01M5QR36YVCE9FKYB3TWNVH4KJ', 'expired-worker', {})
+E            +    where <function complete at 0x10b8089a0> = jobs.complete
+
+backend/tests/live_defense_e2e/test_independent_integration.py:65: AssertionError
+__________ test_dependency_deferral_is_recorded_in_lifecycle_history ___________
+
+    def test_dependency_deferral_is_recorded_in_lifecycle_history():
+        jid = enqueue()
+        with transaction() as conn:
+            assert jobs.claim(conn, "defer-worker", 60, ["review_noop"]) is not None
+            assert jobs.defer(conn, jid, "defer-worker", delay_s=1)
+>           assert execution.history(conn, jid)[-1]["to_status"] == "queued"
+E           AssertionError: assert 'running' == 'queued'
+E             
+E             - queued
+E             + running
+
+backend/tests/live_defense_e2e/test_independent_integration.py:73: AssertionError
+____________ test_off_marks_waiting_first_responder_jobs_cancelled _____________
+
+client_factory = <function client_factory.<locals>.make at 0x10bff6d40>
+
+    def test_off_marks_waiting_first_responder_jobs_cancelled(client_factory):
+        alice, bob = client_factory("alice"), client_factory("bob")
+        pid = setup_project(alice, bob)["project"]
+        parent = enqueue(project=pid)
+        child = enqueue("live_defense_agent_step", project=pid, depends_on=parent)
+        with transaction() as conn:
+            modes.cancel_first_responder_jobs(conn, pid)
+>       assert jobrow(child)["status"] == "cancelled"
+E       AssertionError: assert 'waiting' == 'cancelled'
+E         
+E         - cancelled
+E         + waiting
+
+backend/tests/live_defense_e2e/test_independent_integration.py:83: AssertionError
+____ test_observability_marks_nonrunning_jobs_as_not_in_progress[timed_out] ____
+
+client_factory = <function client_factory.<locals>.make at 0x10c490860>
+state = 'timed_out'
+
+    @pytest.mark.parametrize("state", ["timed_out", "recovery_required"])
+    def test_observability_marks_nonrunning_jobs_as_not_in_progress(client_factory, state):
+        from test_live_defense_investigations import _seed
+    
+        from backend.api.live_defense_investigations import _invocation_view
+    
+        _alice, _pid, decision, invocation = _seed(client_factory)
+        jid = invocation.job_id
+        with transaction() as conn:
+            conn.execute(sa.update(jobs_t).where(jobs_t.c.id == jid).values(status=state))
+            from backend.db import first_responder_invocations
+    
+            row = (
+                conn.execute(
+                    sa.select(first_responder_invocations).where(
+                        first_responder_invocations.c.id == invocation.id
+                    )
+                )
+                .mappings()
+                .one()
+            )
+            view = _invocation_view(conn, row, now=utcnow())
+>           assert _final_state(decision, [view], None) != "in_progress"
+E           AssertionError: assert 'in_progress' != 'in_progress'
+E            +  where 'in_progress' = _final_state(FirstResponderDecision(id='frd_01M5QR378DTH5HV5FXT6C79VDH', project_id='prj_01M5QR377RFFTTXX46ZRJ7PRGJ', application_i...tive agent is not independent verification. RL recommendations are not executed defense. AUTO-EXECUTE does not exist.'), [FirstResponderInvocationView(invocation=FirstResponderInvocation(id='fri_01M5QR378ETMRHKGCK7W4QVH81', decision_id='fr...lable=False, token_usage_note='Per-invocation token usage is not persisted yet; shown as unavailable, not estimated.')], None)
+
+backend/tests/live_defense_e2e/test_independent_integration.py:124: AssertionError
+_ test_observability_marks_nonrunning_jobs_as_not_in_progress[recovery_required] _
+
+client_factory = <function client_factory.<locals>.make at 0x10c572660>
+state = 'recovery_required'
+
+    @pytest.mark.parametrize("state", ["timed_out", "recovery_required"])
+    def test_observability_marks_nonrunning_jobs_as_not_in_progress(client_factory, state):
+        from test_live_defense_investigations import _seed
+    
+        from backend.api.live_defense_investigations import _invocation_view
+    
+        _alice, _pid, decision, invocation = _seed(client_factory)
+        jid = invocation.job_id
+        with transaction() as conn:
+            conn.execute(sa.update(jobs_t).where(jobs_t.c.id == jid).values(status=state))
+            from backend.db import first_responder_invocations
+    
+            row = (
+                conn.execute(
+                    sa.select(first_responder_invocations).where(
+                        first_responder_invocations.c.id == invocation.id
+                    )
+                )
+                .mappings()
+                .one()
+            )
+            view = _invocation_view(conn, row, now=utcnow())
+>           assert _final_state(decision, [view], None) != "in_progress"
+E           AssertionError: assert 'in_progress' != 'in_progress'
+E            +  where 'in_progress' = _final_state(FirstResponderDecision(id='frd_01M5QR37AXYEW584W579CQYTJV', project_id='prj_01M5QR37A90Q85WC5ZFT1N89WX', application_i...tive agent is not independent verification. RL recommendations are not executed defense. AUTO-EXECUTE does not exist.'), [FirstResponderInvocationView(invocation=FirstResponderInvocation(id='fri_01M5QR37AXD2C3Y7821C4KQE8M', decision_id='fr...lable=False, token_usage_note='Per-invocation token usage is not persisted yet; shown as unavailable, not estimated.')], None)
+
+backend/tests/live_defense_e2e/test_independent_integration.py:124: AssertionError
+______ test_crash_during_provider_request_requires_recovery_before_replay ______
+
+staging = <live_defense_e2e.harness.OwnedStaging object at 0x10c605580>
+
+    def test_crash_during_provider_request_requires_recovery_before_replay(staging):
+        alice, app, repo = prepare(staging)
+        fake = fake_provider(repo / "target")
+    
+        class WorkerCrash(BaseException):
+            pass
+    
+        class CrashAfterSending:
+            mode = "fake"
+            calls = 0
+    
+            def complete(self, request):
+                self.calls += 1
+                if self.calls == 1:
+                    raise WorkerCrash("request sent; provider outcome is unknown")
+                return fake.complete(request)
+    
+        provider = CrashAfterSending()
+        staging.use_gateway(gateway_factory(provider))
+        assert staging.ingest(alice, app).status_code == 202
+        with pytest.raises(WorkerCrash):
+            staging.drain()
+        step = next(j for j in staging.job_rows("live_defense_agent_step") if j["status"] == "running")
+        with transaction() as conn:
+            conn.execute(
+                sa.update(jobs_t)
+                .where(jobs_t.c.id == step["id"])
+                .values(lease_expires_at=sa.func.now() - sa.text("interval '1 second'"))
+            )
+            execution.reconcile(conn)
+>       assert jobrow(step["id"])["status"] == "recovery_required", (
+            "paid request uncertainty must survive worker death"
+        )
+E       AssertionError: paid request uncertainty must survive worker death
+E       assert 'queued' == 'recovery_required'
+E         
+E         - recovery_required
+E         + queued
+
+backend/tests/live_defense_e2e/test_independent_integration.py:158: AssertionError
+____________ test_first_responder_step_has_a_durable_queue_deadline ____________
+
+staging = <live_defense_e2e.harness.OwnedStaging object at 0x10c6a92e0>
+
+    def test_first_responder_step_has_a_durable_queue_deadline(staging):
+        alice, app, _repo = prepare(staging)
+        assert staging.ingest(alice, app).status_code == 202
+        staging.drain(kinds=["live_defense_shadow", "live_defense_first_responder"])
+        steps = staging.job_rows("live_defense_agent_step")
+        assert steps
+>       assert all(step["deadline_at"] is not None for step in steps), (
+            "queue time and redeliveries must share the original first-responder deadline"
+        )
+E       AssertionError: queue time and redeliveries must share the original first-responder deadline
+E       assert False
+E        +  where False = all(<generator object test_first_responder_step_has_a_durable_queue_deadline.<locals>.<genexpr> at 0x10c22f2a0>)
+
+backend/tests/live_defense_e2e/test_independent_integration.py:171: AssertionError
+_______ test_off_during_final_submit_cannot_upgrade_cancelled_invocation _______
+
+staging = <live_defense_e2e.harness.OwnedStaging object at 0x10c6ba960>
+
+    def test_off_during_final_submit_cannot_upgrade_cancelled_invocation(staging):
+        from security_agents.agents.scout import SPEC
+    
+        alice, app, repo = prepare(staging)
+        fake = fake_provider(repo / "target")
+    
+        class OffOnSubmit:
+            mode = "fake"
+            flipped = False
+    
+            def complete(self, request):
+                response = fake.complete(request)
+                if request.agent.value == "scout" and any(
+                    block.get("name") == SPEC.submit_tool_name() for block in response.tool_uses()
+                ):
+                    assert staging.set_mode(alice, app.project_id, "off").status_code == 200
+                    self.flipped = True
+                return response
+    
+        provider = OffOnSubmit()
+        staging.use_gateway(gateway_factory(provider))
+        assert staging.ingest(alice, app).status_code == 202
+        staging.drain()
+        assert provider.flipped
+        inv = staging.by_agent(staging.invocations(alice, app.project_id))
+>       assert inv["scout"]["status"] == "cancelled", (
+            "late successful output must not erase OFF cancellation"
+        )
+E       AssertionError: late successful output must not erase OFF cancellation
+E       assert 'executed' == 'cancelled'
+E         
+E         - cancelled
+E         + executed
+
+backend/tests/live_defense_e2e/test_independent_integration.py:201: AssertionError
+-------------- generated xml file: /tmp/ari-independent-final.xml --------------
+=========================== short test summary info ============================
+FAILED backend/tests/live_defense_e2e/test_independent_integration.py::test_emergency_stop_is_claimable_when_project_slots_are_full
+FAILED backend/tests/live_defense_e2e/test_independent_integration.py::test_complete_rejects_expired_lease_without_waiting_for_reconciler
+FAILED backend/tests/live_defense_e2e/test_independent_integration.py::test_dependency_deferral_is_recorded_in_lifecycle_history
+FAILED backend/tests/live_defense_e2e/test_independent_integration.py::test_off_marks_waiting_first_responder_jobs_cancelled
+FAILED backend/tests/live_defense_e2e/test_independent_integration.py::test_observability_marks_nonrunning_jobs_as_not_in_progress[timed_out]
+FAILED backend/tests/live_defense_e2e/test_independent_integration.py::test_observability_marks_nonrunning_jobs_as_not_in_progress[recovery_required]
+FAILED backend/tests/live_defense_e2e/test_independent_integration.py::test_crash_during_provider_request_requires_recovery_before_replay
+FAILED backend/tests/live_defense_e2e/test_independent_integration.py::test_first_responder_step_has_a_durable_queue_deadline
+FAILED backend/tests/live_defense_e2e/test_independent_integration.py::test_off_during_final_submit_cannot_upgrade_cancelled_invocation
+9 failed, 1 passed in 1.64s

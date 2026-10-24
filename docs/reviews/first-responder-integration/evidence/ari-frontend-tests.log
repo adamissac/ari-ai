@@ -1,0 +1,18 @@
+
+> @hackatl/frontend@0.1.0 test
+> vitest run
+
+
+ RUN  v5.0.5 /private/tmp/ari-security-integration-review/frontend
+
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+ Test Files  80 passed (80)
+      Tests  344 passed (344)
+   Start at  15:53:03
+   Duration  16.34s (environment 69%, tests 13%, import 11%, transform 6%, worker 1%)
+
+Environment  jsdom was created 80 times · 91.99s total, 69% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+

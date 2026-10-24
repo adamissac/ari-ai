@@ -578,3 +578,15 @@ Phase 7B specification delivered in PR #437. CI at 157be64: 569 RL plus existing
 20k smoke/reload, 724 backend /14 skips, 4 integration, docs/secrets passed. Three
 CodeRabbit documentation clarifications addressed; no adapter semantics changed.
 Final head must pass review/CI before research-only merge; then stop.
+
+
+### Independent integration review — 2026-10-24
+
+Dedicated codex/first-responder-integration-review branch only. Pinned #458 and
+fork #1/#2/#3 composed without modifying their branches or PRs. All original six
+#458 remedies independently exercised; additional combined defects retained in
+regression tests. Report: docs/reviews/first-responder-integration/REPORT.md.
+Combined NO-GO, two P1/eight P2. No paid provider calls or customer enforcement.
+Follow-up owners: Grok/Cursor paid-request/deadline/cancellation; Devin reliability
+emergency/fencing/history/cancellation; Devin E2E clock/crash assertions; Devin
+observability all new queue states. Original PRs remain OPEN.

@@ -1,0 +1,577 @@
+{
+  "a": {
+    "headRefOid": "89a3debab24f27da8672a1f2b22239d916079b04",
+    "state": "OPEN",
+    "statusCheckRollup": [
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:53:22Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/adamissac/ari-ai/actions/runs/40122384755/job/120956546628",
+        "name": "test",
+        "startedAt": "2026-10-24T18:48:23Z",
+        "status": "COMPLETED",
+        "workflowName": "backend"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:49:13Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/adamissac/ari-ai/actions/runs/40122384745/job/120956546659",
+        "name": "test",
+        "startedAt": "2026-10-24T18:48:23Z",
+        "status": "COMPLETED",
+        "workflowName": "code-intelligence"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:50:27Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/adamissac/ari-ai/actions/runs/40122384754/job/120956546638",
+        "name": "test",
+        "startedAt": "2026-10-24T18:48:24Z",
+        "status": "COMPLETED",
+        "workflowName": "code-review"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:49:38Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/adamissac/ari-ai/actions/runs/40122384749/job/120956546548",
+        "name": "backend-image",
+        "startedAt": "2026-10-24T18:48:23Z",
+        "status": "COMPLETED",
+        "workflowName": "containers"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:48:32Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/adamissac/ari-ai/actions/runs/40122384724/job/120956546411",
+        "name": "links",
+        "startedAt": "2026-10-24T18:48:23Z",
+        "status": "COMPLETED",
+        "workflowName": "docs"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:49:41Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/adamissac/ari-ai/actions/runs/40122384729/job/120956546461",
+        "name": "static-and-unit",
+        "startedAt": "2026-10-24T18:48:23Z",
+        "status": "COMPLETED",
+        "workflowName": "frontend"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:48:36Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/adamissac/ari-ai/actions/runs/40122384728/job/120956546476",
+        "name": "gitleaks",
+        "startedAt": "2026-10-24T18:48:22Z",
+        "status": "COMPLETED",
+        "workflowName": "secrets"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:52:45Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/adamissac/ari-ai/actions/runs/40122384757/job/120956546855",
+        "name": "test",
+        "startedAt": "2026-10-24T18:48:23Z",
+        "status": "COMPLETED",
+        "workflowName": "security-agents"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:49:15Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/adamissac/ari-ai/actions/runs/40122384755/job/120956546765",
+        "name": "rl-integration",
+        "startedAt": "2026-10-24T18:48:23Z",
+        "status": "COMPLETED",
+        "workflowName": "backend"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:49:01Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/adamissac/ari-ai/actions/runs/40122384754/job/120956546492",
+        "name": "docker-reviewer",
+        "startedAt": "2026-10-24T18:48:23Z",
+        "status": "COMPLETED",
+        "workflowName": "code-review"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:49:59Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/adamissac/ari-ai/actions/runs/40122384749/job/120956546704",
+        "name": "compose-stack",
+        "startedAt": "2026-10-24T18:48:23Z",
+        "status": "COMPLETED",
+        "workflowName": "containers"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:59:26Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/adamissac/ari-ai/actions/runs/40122384729/job/120956546660",
+        "name": "e2e",
+        "startedAt": "2026-10-24T18:48:23Z",
+        "status": "COMPLETED",
+        "workflowName": "frontend"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:49:48Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/adamissac/ari-ai/actions/runs/40122384757/job/120956546697",
+        "name": "docker-sandbox",
+        "startedAt": "2026-10-24T18:48:23Z",
+        "status": "COMPLETED",
+        "workflowName": "security-agents"
+      },
+      {
+        "__typename": "StatusContext",
+        "context": "CodeRabbit",
+        "startedAt": "2026-10-24T18:48:27Z",
+        "state": "SUCCESS",
+        "targetUrl": ""
+      }
+    ],
+    "matches_reviewed_head": true
+  },
+  "b": {
+    "headRefOid": "17c3ded021a48165bbdb03af014fb494133376c7",
+    "state": "OPEN",
+    "statusCheckRollup": [
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:35:27Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40120984003/job/120952251710",
+        "name": "test",
+        "startedAt": "2026-10-24T18:30:10Z",
+        "status": "COMPLETED",
+        "workflowName": "backend"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:30:58Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40120984309/job/120952252474",
+        "name": "test",
+        "startedAt": "2026-10-24T18:30:10Z",
+        "status": "COMPLETED",
+        "workflowName": "code-intelligence"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:32:13Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40120984014/job/120952251630",
+        "name": "test",
+        "startedAt": "2026-10-24T18:30:09Z",
+        "status": "COMPLETED",
+        "workflowName": "code-review"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:31:26Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40120983992/job/120952251735",
+        "name": "backend-image",
+        "startedAt": "2026-10-24T18:30:09Z",
+        "status": "COMPLETED",
+        "workflowName": "containers"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:30:20Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40120984081/job/120952251665",
+        "name": "links",
+        "startedAt": "2026-10-24T18:30:10Z",
+        "status": "COMPLETED",
+        "workflowName": "docs"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:31:41Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40120984141/job/120952251925",
+        "name": "static-and-unit",
+        "startedAt": "2026-10-24T18:30:10Z",
+        "status": "COMPLETED",
+        "workflowName": "frontend"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:30:22Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40120983979/job/120952251340",
+        "name": "gitleaks",
+        "startedAt": "2026-10-24T18:30:09Z",
+        "status": "COMPLETED",
+        "workflowName": "secrets"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:31:10Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40120984003/job/120952251524",
+        "name": "rl-integration",
+        "startedAt": "2026-10-24T18:30:10Z",
+        "status": "COMPLETED",
+        "workflowName": "backend"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:30:46Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40120984014/job/120952251389",
+        "name": "docker-reviewer",
+        "startedAt": "2026-10-24T18:30:10Z",
+        "status": "COMPLETED",
+        "workflowName": "code-review"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:31:39Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40120983992/job/120952251614",
+        "name": "compose-stack",
+        "startedAt": "2026-10-24T18:30:09Z",
+        "status": "COMPLETED",
+        "workflowName": "containers"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:39:38Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40120984141/job/120952252194",
+        "name": "e2e",
+        "startedAt": "2026-10-24T18:30:10Z",
+        "status": "COMPLETED",
+        "workflowName": "frontend"
+      }
+    ],
+    "matches_reviewed_head": true
+  },
+  "c": {
+    "headRefOid": "e187e9a20f5c9792da8d17371c0ef57c2573609b",
+    "state": "OPEN",
+    "statusCheckRollup": [
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T19:19:44Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40124289535/job/120962274923",
+        "name": "test",
+        "startedAt": "2026-10-24T19:13:16Z",
+        "status": "COMPLETED",
+        "workflowName": "backend"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T19:14:01Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40124289632/job/120962275165",
+        "name": "test",
+        "startedAt": "2026-10-24T19:13:16Z",
+        "status": "COMPLETED",
+        "workflowName": "code-intelligence"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T19:15:03Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40124289662/job/120962275557",
+        "name": "test",
+        "startedAt": "2026-10-24T19:13:16Z",
+        "status": "COMPLETED",
+        "workflowName": "code-review"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T19:14:29Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40124289565/job/120962275096",
+        "name": "backend-image",
+        "startedAt": "2026-10-24T19:13:16Z",
+        "status": "COMPLETED",
+        "workflowName": "containers"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T19:13:22Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40124289543/job/120962274660",
+        "name": "links",
+        "startedAt": "2026-10-24T19:13:15Z",
+        "status": "COMPLETED",
+        "workflowName": "docs"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T19:14:33Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40124289591/job/120962275065",
+        "name": "static-and-unit",
+        "startedAt": "2026-10-24T19:13:16Z",
+        "status": "COMPLETED",
+        "workflowName": "frontend"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T19:13:58Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40124289630/job/120962275079",
+        "name": "smoke",
+        "startedAt": "2026-10-24T19:13:16Z",
+        "status": "COMPLETED",
+        "workflowName": "live-defense-e2e"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T19:13:29Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40124289629/job/120962274959",
+        "name": "gitleaks",
+        "startedAt": "2026-10-24T19:13:16Z",
+        "status": "COMPLETED",
+        "workflowName": "secrets"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T19:19:09Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40124289561/job/120962274669",
+        "name": "test",
+        "startedAt": "2026-10-24T19:13:16Z",
+        "status": "COMPLETED",
+        "workflowName": "security-agents"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T19:14:09Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40124289535/job/120962274684",
+        "name": "rl-integration",
+        "startedAt": "2026-10-24T19:13:15Z",
+        "status": "COMPLETED",
+        "workflowName": "backend"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T19:13:48Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40124289662/job/120962275244",
+        "name": "docker-reviewer",
+        "startedAt": "2026-10-24T19:13:16Z",
+        "status": "COMPLETED",
+        "workflowName": "code-review"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T19:14:34Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40124289565/job/120962274878",
+        "name": "compose-stack",
+        "startedAt": "2026-10-24T19:13:16Z",
+        "status": "COMPLETED",
+        "workflowName": "containers"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T19:22:55Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40124289591/job/120962274847",
+        "name": "e2e",
+        "startedAt": "2026-10-24T19:13:16Z",
+        "status": "COMPLETED",
+        "workflowName": "frontend"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T19:13:55Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40124289630/job/120962275237",
+        "name": "full",
+        "startedAt": "2026-10-24T19:13:16Z",
+        "status": "COMPLETED",
+        "workflowName": "live-defense-e2e"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T19:14:31Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40124289561/job/120962274919",
+        "name": "docker-sandbox",
+        "startedAt": "2026-10-24T19:13:16Z",
+        "status": "COMPLETED",
+        "workflowName": "security-agents"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T19:13:53Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40124289630/job/120962275220",
+        "name": "fault",
+        "startedAt": "2026-10-24T19:13:15Z",
+        "status": "COMPLETED",
+        "workflowName": "live-defense-e2e"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T19:13:14Z",
+        "conclusion": "SKIPPED",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40124289630/job/120962276602",
+        "name": "live",
+        "startedAt": "2026-10-24T19:13:14Z",
+        "status": "COMPLETED",
+        "workflowName": "live-defense-e2e"
+      }
+    ],
+    "matches_reviewed_head": true
+  },
+  "d": {
+    "headRefOid": "b44b28aad69fb7775b6e9e0c5225b899a7446af1",
+    "state": "OPEN",
+    "statusCheckRollup": [
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:51:40Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40122191146/job/120955963466",
+        "name": "test",
+        "startedAt": "2026-10-24T18:46:03Z",
+        "status": "COMPLETED",
+        "workflowName": "backend"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:46:33Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40122191108/job/120955962833",
+        "name": "test",
+        "startedAt": "2026-10-24T18:45:52Z",
+        "status": "COMPLETED",
+        "workflowName": "code-intelligence"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:47:50Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40122191127/job/120955962829",
+        "name": "test",
+        "startedAt": "2026-10-24T18:45:49Z",
+        "status": "COMPLETED",
+        "workflowName": "code-review"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:47:03Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40122191043/job/120955962666",
+        "name": "backend-image",
+        "startedAt": "2026-10-24T18:45:49Z",
+        "status": "COMPLETED",
+        "workflowName": "containers"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:45:59Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40122191089/job/120955962587",
+        "name": "links",
+        "startedAt": "2026-10-24T18:45:49Z",
+        "status": "COMPLETED",
+        "workflowName": "docs"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:47:56Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40122191172/job/120955963097",
+        "name": "static-and-unit",
+        "startedAt": "2026-10-24T18:46:10Z",
+        "status": "COMPLETED",
+        "workflowName": "frontend"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:46:16Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40122191442/job/120955964419",
+        "name": "gitleaks",
+        "startedAt": "2026-10-24T18:46:01Z",
+        "status": "COMPLETED",
+        "workflowName": "secrets"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:49:36Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40122191071/job/120955962731",
+        "name": "test",
+        "startedAt": "2026-10-24T18:45:48Z",
+        "status": "COMPLETED",
+        "workflowName": "security-agents"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:46:47Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40122191146/job/120955963195",
+        "name": "rl-integration",
+        "startedAt": "2026-10-24T18:45:53Z",
+        "status": "COMPLETED",
+        "workflowName": "backend"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:46:23Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40122191127/job/120955962629",
+        "name": "docker-reviewer",
+        "startedAt": "2026-10-24T18:45:48Z",
+        "status": "COMPLETED",
+        "workflowName": "code-review"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:47:11Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40122191043/job/120955962472",
+        "name": "compose-stack",
+        "startedAt": "2026-10-24T18:45:48Z",
+        "status": "COMPLETED",
+        "workflowName": "containers"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:57:27Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40122191172/job/120955963030",
+        "name": "e2e",
+        "startedAt": "2026-10-24T18:46:13Z",
+        "status": "COMPLETED",
+        "workflowName": "frontend"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-24T18:47:05Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40122191071/job/120955962800",
+        "name": "docker-sandbox",
+        "startedAt": "2026-10-24T18:45:49Z",
+        "status": "COMPLETED",
+        "workflowName": "security-agents"
+      }
+    ],
+    "matches_reviewed_head": true
+  }
+}

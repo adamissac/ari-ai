@@ -1,0 +1,74 @@
+
+> @hackatl/frontend@0.1.0 build
+> next build
+
+▲ Next.js 16.4.2 (Turbopack)
+✓ Running next.config.ts took 55ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 2.3s
+  Running TypeScript ...
+  Finished TypeScript in 4.7s ...
+  Collecting page data using 9 workers ...
+  Generating static pages using 9 workers (0/17) ...
+  Generating static pages using 9 workers (4/17) 
+  Generating static pages using 9 workers (8/17) 
+  Generating static pages using 9 workers (12/17) 
+✓ Generating static pages using 9 workers (17/17) in 200ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /access
+├ ƒ /api/analyze
+├ ƒ /api/demo-session
+├ ƒ /api/v1/[...path]
+├ ○ /connect
+├ ƒ /connect/[org]
+├ ƒ /connect/[org]/[repo]
+├ ƒ /connect/[org]/[repo]/commit/[sha]
+├ ○ /demo
+├ ƒ /demo/[org]
+├ ƒ /demo/[org]/[repo]
+├ ƒ /demo/[org]/[repo]/commit/[sha]
+├ ○ /icon.png
+├ ○ /lab
+├ ƒ /lab/bundles
+├ ƒ /lab/bundles/[protocol]
+├ ○ /live-defense-pilot
+├ ○ /live-defense-pilot/apps
+├ ○ /live-defense-pilot/controls
+├ ○ /live-defense-pilot/explain
+├ ○ /live-defense-pilot/first-responder
+├ ○ /live-defense-pilot/incidents
+├ ƒ /live-defense-pilot/incidents/[incidentId]
+├ ○ /pricing
+├ ○ /projects
+├ ƒ /projects/[projectId]
+├ ƒ /projects/[projectId]/approvals
+├ ƒ /projects/[projectId]/assessments/[assessmentId]
+├ ƒ /projects/[projectId]/commits
+├ ƒ /projects/[projectId]/expectations
+├ ƒ /projects/[projectId]/findings
+├ ƒ /projects/[projectId]/findings/[findingId]
+├ ƒ /projects/[projectId]/incidents
+├ ƒ /projects/[projectId]/live-defense
+├ ƒ /projects/[projectId]/live-defense/apps
+├ ƒ /projects/[projectId]/live-defense/controls
+├ ƒ /projects/[projectId]/live-defense/executions
+├ ƒ /projects/[projectId]/live-defense/explain
+├ ƒ /projects/[projectId]/live-defense/first-responder
+├ ƒ /projects/[projectId]/live-defense/incidents
+├ ƒ /projects/[projectId]/live-defense/incidents/[incidentId]
+├ ƒ /projects/[projectId]/monitoring
+├ ƒ /projects/[projectId]/scopes
+├ ƒ /projects/[projectId]/settings
+└ ƒ /projects/[projectId]/simulate
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

@@ -154,3 +154,11 @@ Production/staging gateway, Railway startup and frontend quick reads enforce
 `claude-haiku-5-5` only, overriding stale production model choices. Errors are
 reported instead of substituting another model. Historical recordings retain
 the model that produced them. Live production run verification remains outstanding.
+
+
+### Independent integration review (dedicated review branch)
+
+The [four-workstream audit](../docs/reviews/first-responder-integration/REPORT.md)
+records pinned candidates, mechanical integration resolutions, executed checks
+and deliberately failing cross-workstream regressions. Its combined verdict is
+NO-GO; this is review evidence, not an approved production rollout.

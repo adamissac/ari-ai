@@ -160,3 +160,44 @@ def test_crash_during_provider_request_requires_recovery_before_replay(staging):
     )
     staging.drain()
     assert provider.calls == 1
+
+
+def test_first_responder_step_has_a_durable_queue_deadline(staging):
+    alice, app, _repo = prepare(staging)
+    assert staging.ingest(alice, app).status_code == 202
+    staging.drain(kinds=["live_defense_shadow", "live_defense_first_responder"])
+    steps = staging.job_rows("live_defense_agent_step")
+    assert steps
+    assert all(step["deadline_at"] is not None for step in steps), (
+        "queue time and redeliveries must share the original first-responder deadline"
+    )
+
+
+def test_off_during_final_submit_cannot_upgrade_cancelled_invocation(staging):
+    from security_agents.agents.scout import SPEC
+
+    alice, app, repo = prepare(staging)
+    fake = fake_provider(repo / "target")
+
+    class OffOnSubmit:
+        mode = "fake"
+        flipped = False
+
+        def complete(self, request):
+            response = fake.complete(request)
+            if request.agent.value == "scout" and any(
+                block.get("name") == SPEC.submit_tool_name() for block in response.tool_uses()
+            ):
+                assert staging.set_mode(alice, app.project_id, "off").status_code == 200
+                self.flipped = True
+            return response
+
+    provider = OffOnSubmit()
+    staging.use_gateway(gateway_factory(provider))
+    assert staging.ingest(alice, app).status_code == 202
+    staging.drain()
+    assert provider.flipped
+    inv = staging.by_agent(staging.invocations(alice, app.project_id))
+    assert inv["scout"]["status"] == "cancelled", (
+        "late successful output must not erase OFF cancellation"
+    )

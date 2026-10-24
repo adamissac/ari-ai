@@ -1,0 +1,66 @@
+..F..................s.................................................. [ 17%]
+........................................................................ [ 34%]
+.........................................ss............................. [ 52%]
+........................................................................ [ 69%]
+..........................F.........................................s... [ 86%]
+...........................s..........................                   [100%]
+=================================== FAILURES ===================================
+___________________ test_compat_execution_deadline_times_out ___________________
+
+settings_override = <function settings_override.<locals>.apply at 0x10d5dc900>
+
+    def test_compat_execution_deadline_times_out(settings_override):
+        from backend import execution
+    
+        pid = f"prj_compat_{new_id(IdPrefix.prj)[:12]}"
+        with transaction() as conn:
+            jid = _enqueue(conn, "deadline", pid, deadline_s=30)
+            # Move the deadline into the past, then reconcile.
+            conn.execute(sa.update(jobs_t).where(jobs_t.c.id == jid).values(deadline_at=utcnow()))
+            execution.reconcile(conn)
+            status = conn.execute(sa.select(jobs_t.c.status).where(jobs_t.c.id == jid)).scalar_one()
+>           assert status == "timed_out"
+E           AssertionError: assert 'queued' == 'timed_out'
+E             
+E             - timed_out
+E             + queued
+
+backend/tests/live_defense_e2e/test_exec_reliability_compat.py:108: AssertionError
+_________________ test_schema_keeps_0_22_without_claiming_0_20 _________________
+
+    def test_schema_keeps_0_22_without_claiming_0_20() -> None:
+        from shared import SCHEMA_VERSION
+        from shared.live_defense import ORCHESTRATOR_VERSION
+    
+>       assert SCHEMA_VERSION == "0.22.0"
+E       AssertionError: assert '0.23.0' == '0.22.0'
+E         
+E         - 0.22.0
+E         ?    ^
+E         + 0.23.0
+E         ?    ^
+
+backend/tests/test_live_defense_phase7c.py:130: AssertionError
+=============================== warnings summary ===============================
+backend/tests/live_defense_e2e/test_exec_reliability_compat.py::test_compat_per_project_concurrency_is_fair
+  /private/tmp/ari-security-integration-review/backend/tests/conftest.py:178: PytestWarning: Value of environment variable JOB_MAX_RUNNING_PER_PROJECT type should be str, but got 1 (type: int); converted to str implicitly
+    monkeypatch.setenv(k.upper(), v)
+
+backend/tests/test_assessment_repo_id.py::test_assessment_carries_its_repository_and_old_docs_are_backfilled
+  /private/tmp/ari-security-integration-review/backend/tests/test_assessment_repo_id.py:30: SADeprecationWarning: Type object <class 'sqlalchemy.dialects.postgresql.json.JSONB'> does not include operator 'sub' in its operator classes.  Using built-in operators (not including custom or overridden operators) outside of a type's stated operator classes is deprecated and will raise InvalidRequestError in a future release
+    .values(doc=assessments.c.doc - "repo_id")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+------------------- generated xml file: /tmp/ari-backend.xml -------------------
+=========================== short test summary info ============================
+SKIPPED [1] backend/tests/test_rl_expectations.py:15: could not import 'rl_defense.platform_mapping': No module named 'rl_defense'
+SKIPPED [1] backend/tests/test_rl_expectations_real_index.py:15: could not import 'rl_defense.platform_mapping': No module named 'rl_defense'
+SKIPPED [1] backend/tests/test_rl_integration.py:15: could not import 'rl_defense': No module named 'rl_defense'
+SKIPPED [1] backend/tests/live_defense_e2e/test_scenarios.py:955: live provider eval is opt-in: set RUN_LIVE_LLM_EVAL=1 and provide a key
+SKIPPED [1] backend/tests/test_host_http_probe_docker.py:17: needs RUN_DOCKER_SANDBOX=1 and SANDBOX_IMAGE
+SKIPPED [1] backend/tests/test_host_http_probe_docker.py:56: needs RUN_DOCKER_SANDBOX=1 and SANDBOX_IMAGE
+SKIPPED [1] backend/tests/test_llm_gateway.py:294: live provider smoke is opt-in: RUN_LIVE_LLM_EVAL=1 and ANTHROPIC_API_KEY (shell or .env)
+SKIPPED [1] backend/tests/test_runtime_ingest.py:165: could not import 'rl_defense.platform_mapping': No module named 'rl_defense'
+FAILED backend/tests/live_defense_e2e/test_exec_reliability_compat.py::test_compat_execution_deadline_times_out
+FAILED backend/tests/test_live_defense_phase7c.py::test_schema_keeps_0_22_without_claiming_0_20
+2 failed, 407 passed, 8 skipped, 2 warnings in 152.33s (0:02:32)

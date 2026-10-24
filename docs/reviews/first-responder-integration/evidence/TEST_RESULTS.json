@@ -1,0 +1,74 @@
+{
+  "ari-backend": [
+    {
+      "errors": "0",
+      "failures": "2",
+      "skipped": "8",
+      "tests": "417",
+      "time": "151.993"
+    }
+  ],
+  "ari-security-agents-complete": [
+    {
+      "errors": "0",
+      "failures": "0",
+      "skipped": "23",
+      "tests": "616",
+      "time": "99.074"
+    }
+  ],
+  "ari-shared": [
+    {
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "106",
+      "time": "2.398"
+    }
+  ],
+  "ari-rl-integration-complete": [
+    {
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "8",
+      "time": "5.505"
+    }
+  ],
+  "ari-migrations": [
+    {
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "3",
+      "time": "0.863"
+    }
+  ],
+  "ari-e2e-smoke": [
+    {
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "2",
+      "time": "1.107"
+    }
+  ],
+  "ari-e2e-fault": [
+    {
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "8",
+      "time": "2.656"
+    }
+  ],
+  "ari-independent-final": [
+    {
+      "errors": "0",
+      "failures": "9",
+      "skipped": "0",
+      "tests": "10",
+      "time": "1.532"
+    }
+  ]
+}

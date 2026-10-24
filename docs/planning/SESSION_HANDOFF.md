@@ -1774,3 +1774,20 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - Note: `CHANGELOG.md` on upstream main contains a leftover `|||||||` merge marker under Unreleased (pre-existing, not touched).
 
 - Follow-up review: `end_effect(applied=False)` now keeps a `settled` marker when an earlier effect was already applied (prevents replay of an applied effect); `end_effect` regression test added; control-doc caveat documented.
+
+
+## 2026-10-24 — Codex independent four-workstream security review
+
+Integration only: codex/first-responder-integration-review; pins A89a3deba,
+B17c3ded0, Ce187e9a2, Db44b28aa. Original PRs remain OPEN and unchanged.
+Report: docs/reviews/first-responder-integration/REPORT.md; complete source/CI
+snapshots, raw logs and XML retained. NO-GO for combined merge: two P1/eight P2.
+Critical: provider unknown-outcome requeue and emergency cleanup blocked by normal
+concurrency limits. Also final-submit OFF race, waiting cancellation, missing durable
+deadline, state/history/observability and test/schema compatibility defects.
+Evidence: backend407 pass/2fail/8skip; security593/23skip; shared106; migrations3;
+frontend344; transport35; Playwright3; relevantRL8; smoke2/fault8. Independent
+regressions9fail/1pass intentionally retained. No paid live tests, production
+migration, customer enforcement or new RL experiment. Owner fixes belong on their
+workstreams; suggested post-fix sequence B→A→C→D, with fresh combined review/CI.
+No merge is authorized for this review branch.
