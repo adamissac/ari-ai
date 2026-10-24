@@ -326,7 +326,8 @@ def enqueue(
             payload=payload,
             status=status.value,
             priority=priority,
-            run_after=now + timedelta(seconds=delay_s),
+            # Server clock: a job enqueued and claimed in one transaction is runnable.
+            run_after=sa.func.now() + timedelta(seconds=delay_s),
             max_attempts=max_attempts,
             dedupe_key=dedupe_key,
             project_id=project_id,
