@@ -18,6 +18,14 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-24 — security/privacy lead (Devin session 94914ecc)
+- Did: Audited private-code data flows end-to-end and wrote `docs/security/TENANT_DATA_PROTECTION.md`; added `backend/tests/test_tenant_isolation_adversarial.py` (17 tests: 28-path read denial, write denial, SSE, artifacts incl. NULL-project, jobs trace-strip, forged scope/repo/context-pack claims, ingest-token binding, viewer floor, forged-ref payload/memory stores, RLS probe-role verify, store GUC smoke, full purge); implemented FORCE RLS on index_payloads/index_snapshots (migration 0016 + `set_config('ari.project_id')` in `_validate_ref`, `find_snapshot`, `PostgresMemoryStore._validate`, purge); implemented `backend/privacy.py::purge_project` (FK-safe full tenant delete + refcount-aware artifact objects + bare-clone removal; audit_events retained by design).
+- State of the code: all 334 backend tests pass incl. 17 new adversarial tests; ruff clean on touched files; no isolation hole found at app layer (require_project uniform).
+- Decisions: RLS scoped to the two source-content tables only (documented in doc §6); purge is operator-invoked, no TTL scheduler (documented gap).
+- Open: extend RLS fleet-wide needs per-request tenant GUC resolution — deferred; backups retention is deployment-level (documented).
+- Warnings: `test_repository_has_a_single_migration_head` expects head 0016 — next migration must update it to 0017.
+
+
 ### 2026-10-24 — Devin (agent, Adam) — pilot launch package + CONDITIONAL GO
 - Did: audited `main` (`d0131167`) and the hosted deployment (`readyz`: llm live, GitHub App + webhook configured) for pilot readiness; coordinated with the privacy workstream session for verified private-code data-flow facts; wrote the full pilot launch package under `docs/pilot/` (scope+exclusions, feature matrix, onboarding+revocation checklist, DATA_HANDLING draft, operations, metrics/health report, risk register, rehearsal+first-five plan, LAUNCH_DECISION).
 - State of the code (verified): no DELETE endpoints or retention jobs exist — deletion is operator-run only; GitHub App holds Contents+PR write at app level with least-privilege per-call tokens (deploy doc's "read-only" line is stale — flagged R-11); Probe has exactly 3 executable check categories; `readyz` live-configured; quotas 400k tok/$10/1800s manual, 150k/$3/900s monitoring, 5/h-20/d auto, $50/day global.
