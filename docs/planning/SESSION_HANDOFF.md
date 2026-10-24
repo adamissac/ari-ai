@@ -1684,3 +1684,21 @@ No collection, first-responder training, promotion or enforcement follows merge.
 Remaining merge gate: final documentation head review/CI. Future numerical protocol
 and any collection require separate explicit owner approval. Historical source
 ancestry retained and v6 registry hash unchanged (see verification report).
+
+
+### Connect navigation redesign — commit review + recorded agent replay (feat/adam/commit-review-navigation)
+
+The commit page (`/connect/[org]/[repo]/commit/[sha]`) auto-runs the `/api/analyze`
+quick read on arrival (one Claude call over the real GitHub diff, server-cached per
+commit) and renders it under a "Code review" tab via the shared `CommitAnalysis`
+review body. The "7 agents" tab renders the shared `AgentMap` sector map: when a
+recorded assessment exists for this exact repo+commit, `lib/recorded-analysis.ts`
+synthesizes an `Analysis` from persisted `agent_runs`/`findings` (real tool names,
+outcomes, durations; `step_key`→finding→evidence path pins each step to the sector
+it touched; `kindForPath` maps file paths to component kinds) and plays it back with
+real per-agent statuses including a new `failed` rail state. With no run, the quick
+read's reasoning replays as a labelled preview; with neither, an honest empty state.
+Approval gate, cancel button, mismatch isolation and `RealAssessmentPanel` unchanged.
+Org page repo rows are fully clickable; commit list rows already linked. Checks:
+`npm run lint`, `typecheck`, `test`, `build` all pass on this branch. Follow-ups:
+the auto quick read spends one cached Claude call per commit page view.
