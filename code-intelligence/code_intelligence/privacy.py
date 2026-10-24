@@ -27,6 +27,8 @@ def _assigned(match: re.Match[str]) -> str:
         return match[1] + "[REDACTED]"
     quote = literal[:3] if literal[:3] in ('"""', "'''") else literal[0]
     return match[1] + match[2] + quote + "[REDACTED]" + "\n" * literal.count("\n") + quote
+
+
 _BEARER = re.compile(r"(?i)\bBearer[ \t]+[A-Za-z0-9._~+/=-]+")
 _URL_CREDENTIAL = re.compile(r"(https?://)[^/\s:@]+:[^/\s@]+@")
 
