@@ -48,6 +48,7 @@ class SharedSandboxAdapter:
 
         args = ["-q", "-p", "cr_pytest_report", *validate_targets(targets)]
         spec = SandboxSpec(
+            **_recipe_setup(project_dir, args[3:]),
             profile=SandboxProfile.TEST_RUNNER,
             network="none",
             workspace=project_dir,
@@ -73,6 +74,27 @@ class SharedSandboxAdapter:
             driver=f"{self.name}#{r.run_id}",
             isolation_level=r.isolation_level,
         )
+
+
+def _recipe_setup(project_dir: Path, targets: Sequence[str]) -> dict[str, tuple[str, ...]]:
+    """The recipe's `sandbox` block, as the security agents' test runs use it: its packages
+    come preinstalled in the base snapshot and only `include` paths are uploaded, plus the
+    top directory of each test target (e.g. generated tests)."""
+    recipe = project_dir / "build_recipe.json"
+    if not recipe.is_file():
+        return {}
+    from security_agents.tools.services import sandbox_setup  # type: ignore[import-not-found,unused-ignore]
+
+    setup: dict[str, tuple[str, ...]] = sandbox_setup(
+        json.loads(recipe.read_text(encoding="utf-8"))
+    )
+    include = setup.get("include", ())
+    if include:
+        # A target's top directory, so its conftest.py and helpers come along.
+        tops = (t.split("::", 1)[0].split("/", 1)[0] for t in targets)
+        extra = [f for f in tops if not any(f == i or f.startswith(f"{i}/") for i in include)]
+        setup["include"] = (*include, *dict.fromkeys(extra))
+    return setup
 
 
 _HOST_PROCESS = ("local", "shared-local")

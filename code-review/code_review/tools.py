@@ -60,6 +60,7 @@ _FORBIDDEN_IMPORTS = {
 _FORBIDDEN_CALLS = {"system", "popen", "exec", "eval", "fork", "unlink", "rmtree", "__import__"}
 
 _BUDGET_LOCK = threading.Lock()
+SEARCH_MAX_FILE_BYTES = 512_000
 
 
 class ToolDenied(Exception):
@@ -199,19 +200,29 @@ class ReviewerToolbox:
         except re.error as e:
             raise ToolDenied(f"invalid regex: {e}") from e
         hits: list[str] = []
+        skipped = 0
         for rel in self.head.files():
             if not rel.startswith(a.path_prefix) or is_denied_read(rel):
                 continue
             try:
+                # Data dumps and logs, not code: reading them made each search take seconds.
+                if self.head.path(rel).stat().st_size > SEARCH_MAX_FILE_BYTES:
+                    skipped += 1
+                    continue
                 text = self.head.read(rel)
-            except WorkspaceError:
+            except (WorkspaceError, OSError):
                 continue
             for n, line in enumerate(text.splitlines(), 1):
                 if rx.search(line):
                     hits.append(f"{rel}:{n}: {line.strip()[:200]}")
                     if len(hits) >= 200:
                         return "\n".join(hits) + "\n(truncated at 200 matches)"
-        return "\n".join(hits) or "(no matches)"
+        note = (
+            f"\n(skipped {skipped} file(s) over {SEARCH_MAX_FILE_BYTES // 1000} KB)"
+            if skipped
+            else ""
+        )
+        return ("\n".join(hits) or "(no matches)") + note
 
     def get_change_diff(self, _: EmptyIn) -> str:
         if not self.change_diff:
