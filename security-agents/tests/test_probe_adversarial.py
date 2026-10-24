@@ -15,7 +15,7 @@ from security_agents.workflow import AssessmentState
 from . import fake_agents
 from .conftest import TARGET_ID, make_ctx, make_scope
 from .fake_agents import _last_json, _target_id
-from .test_e2e_replay import EXPECTED_AGENT_ORDER, build
+from .test_e2e_replay import assert_agent_order, build
 from .test_host_adapter import host_and_orchestrator  # noqa: F401
 
 OWNERSHIP = "access_control.ownership@1"
@@ -157,9 +157,8 @@ def test_protected_route_first_then_retry_on_the_subject_route_reaches_seven_rol
     assert finding.validation.outcome is ValidationOutcome.CONFIRMED
     assert finding.validation.parameters["route_id"] == "payment_detail"
     assert finding.validation.observations["disagreement"].startswith("agent claimed refuted")
-    assert (
-        res.state is AssessmentState.COMPLETED and [r.agent.value for r in res.runs] == EXPECTED_AGENT_ORDER
-    )
+    assert res.state is AssessmentState.COMPLETED
+    assert_agent_order([r.agent.value for r in res.runs])
     verify = finding.verifications[-1]
     assert verify.verdict == "accepted"
 
