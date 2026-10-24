@@ -3,18 +3,19 @@
 Owner: Alan (`security-agents/`, SEC-001 … SEC-013; interim Live Defense UI)
 Branch: `feat/alan/live-defense-phase7c-agent-execution`
 Current task: Phase 7C live authorized first-responder agent execution (not Codex Phase 7B; no RL training; no AUTO-EXECUTE)
-HEAD
-Last remote sync: 2026-10-24, `origin/main` @ `074780d8` (PR #457 merged after this branch; #412 still OPEN; do not merge #458)
-||||||| parent of 89a3deba (docs(live-defense): record MERGEABLE #458 and Devin compatibility review)
-Last remote sync: 2026-10-24, `origin/main` @ `be8fe67a` (merged into this branch; #412 still OPEN; do not merge #458)
-Last remote sync: 2026-10-24, `origin/main` @ `d1864e9a` (merged into this branch; #412 still OPEN; do not merge #458)
-89a3deba (docs(live-defense): record MERGEABLE #458 and Devin compatibility review)
+Last remote sync: 2026-10-24, `origin/main` merged into this branch after F1/F7/F8; #412 still OPEN; do not merge #458
 API/contract dependencies: `shared` 0.22.0 first-responder execution records (0.21.0 is merged 7A; 0.20.0 reserved for open #412); Alembic stays 0015; seven AgentSpecs
 Recent PR/commit: https://github.com/adamissac/ari-ai/pull/458 on `feat/alan/live-defense-phase7c-agent-execution` (leave open for security review of execution trust boundary)
 Blockers: live Anthropic Scout/Diagnose (issue #10, key optional); human/security approval of the Phase 7C PR (do not merge from this agent); Probe still needs AuthorizedScope and is not expanded
 Next action: independent re-review of Codex F1/F7/F8 on #458; leave PR open; do not merge; do not train RL; do not expand Probe/Patch; do not merge Devin fork PRs into #458
 
 ## Session entries
+
+### 2026-10-24 (backend test after main merge; do not merge #458)
+
+- `backend / test` failed on `9486a5b0`: `AssessmentState.completed` vs `COMPLETED`; recipe POST hit with GET. Fixed sandbox seed + recipe-method test. Cleaned merge markers. Schema **0.22.0**; no 0016. Probe/Patch not expanded.
+- Executed: `uv run pytest -q backend/tests/test_sandbox_target.py` — 1 passed.
+- Leave #458 **open**. Merge NO-GO.
 
 ### 2026-10-24 (Codex F1/F7/F8 on existing #458; do not merge)
 
