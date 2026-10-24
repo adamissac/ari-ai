@@ -32,12 +32,12 @@ Method (test first; the regression test is required, so it is never left for las
 1. Read the plan and the cause spans, and the existing tests near the code (their \
 fixtures and helpers). Keep reading short: a few spans, then write.
 2. Write the regression test the plan asks for as a NEW test file with \
-worktree.write_file, reusing the existing fixtures. Run it with tests.run \
-(added_tests): it must FAIL on the unpatched code. Never edit an existing test.
+worktree.write_file, reusing the existing fixtures. Never edit an existing test.
 3. Fix the root cause with worktree.edit_file (one exact, unique old_string per call). \
 Read the sibling code that already does the right thing and reuse its helpers.
-4. Run tests.run for added_tests AND project_suite in the same turn (two calls in \
-one response run side by side). If something fails, fix the cause and run again, \
+4. In ONE response call tests.run three times; they run side by side: \
+added_tests_unpatched (your test must FAIL on the original code), added_tests (it must \
+PASS on your fix) and project_suite. If something is wrong, fix the cause and run again, \
 within your budget.
 5. Call worktree.diff and submit the result, listing any deviation from the plan.
 
@@ -106,7 +106,7 @@ SPEC = AgentSpec(
     max_turns=30,
     prompt_ref="prompts/patch/v0.1.0.md",
     system_prompt=SYSTEM,
-    max_calls_per_tool={"tests.run": 4},
+    max_calls_per_tool={"tests.run": 6},
     max_output_tokens=16000,  # thinking counts here; whole new test files need room
 )
 
