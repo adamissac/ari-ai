@@ -427,6 +427,31 @@ def main() -> int:
             },
         )
 
+        # -------------------------------------- S7 safe retry after honest failure
+        # S2's assessment is terminally FAILED by design (CONFLICT_STATE). The safe
+        # retry path is a NEW assessment on the same repo+scope: prove the system
+        # still accepts work and reaches the approval pause after the kills above.
+        aid7, jid7 = start_assessment()
+        w7 = Proc(worker_env, "w7")
+        w7.start()
+        procs.append(w7)
+        _poll(
+            lambda: asm_state(aid7),
+            lambda s: s == "AWAITING_APPROVAL",
+            timeout=args.timeout / 3,
+        )
+        results.record(
+            "S7_post_crash_new_assessment",
+            bool(asm_state(aid7) == "AWAITING_APPROVAL"),
+            {
+                "prior_failure_state": asm_state(aid2),
+                "new_assessment_state": asm_state(aid7),
+                "new_job_status": (job_row(jid7) or {}).get("status"),
+                "checkpoint_artifact": bool(checkpoint_artifact(aid7)),
+            },
+        )
+        w7.stop()
+
         # ------------------------------------------------ S4 exactly-once drain
         # Stop leftover workers first: anything still alive would claim the probe
         # jobs and fail them for lack of the evidence handler.

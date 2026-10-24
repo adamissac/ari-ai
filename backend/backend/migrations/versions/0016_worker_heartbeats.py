@@ -22,6 +22,9 @@ def upgrade() -> None:
         sa.Column(
             "heartbeat_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
         ),
+        sa.Column(
+            "last_poll_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.Column("current_job_id", sa.String(length=80), nullable=True),
         sa.PrimaryKeyConstraint("worker_id", name=op.f("pk_worker_heartbeats")),
     )

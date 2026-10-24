@@ -23,7 +23,7 @@ from backend.api import (
     runtime,
     webhooks,
 )
-from backend.api.deps import ApiError
+from backend.api.deps import ApiError, require_user
 from backend.settings import get_settings
 from shared import SCHEMA_VERSION
 from shared.api import DiagnosticsReport, HealthStatus, ReadinessStatus
@@ -132,9 +132,28 @@ def create_app() -> FastAPI:
         )
 
     @app.get("/diagnostics", response_model=DiagnosticsReport, tags=["ops"])
-    def diagnostics() -> DiagnosticsReport:
+    def diagnostics(request: Request) -> DiagnosticsReport:
         """/readyz plus live verification: GitHub App JWT check, sandbox SDK import,
-        migration head vs code, queue counts, worker rows. Metadata only, no secrets."""
+        migration head vs code, queue counts, worker rows. Owner-only: worker ids,
+        env-var names and migration state are internal infrastructure metadata."""
+        import sqlalchemy as sa
+
+        from backend.db import get_engine, memberships
+
+        with get_engine().begin() as conn:
+            user = require_user(conn, request)
+            owner = conn.execute(
+                sa.select(memberships.c.user_id)
+                .where(memberships.c.user_id == user.id)
+                .where(memberships.c.role == "owner")
+                .limit(1)
+            ).first()
+        if owner is None:
+            raise ApiError(
+                ErrorCode.FORBIDDEN,
+                "diagnostics requires an org owner",
+                403,
+            )
         return DiagnosticsReport.model_validate(ops.diagnostics(get_settings()))
 
     for r in (

@@ -5,7 +5,7 @@
     "worker_exit": 0,
     "job_status": "succeeded",
     "assessment_state": "AWAITING_APPROVAL",
-    "checkpoint_artifact": "art_01M5QYHYJZXPS81CVPG7Z9X4JD",
+    "checkpoint_artifact": "art_01M5QZQHF34MSFTT7S44AG1EC1",
     "artifact_file_on_disk": true,
     "job_attempts": 1
   },
@@ -26,6 +26,14 @@
     "artifact_store_objects": 49
   },
   {
+    "scenario": "S7_post_crash_new_assessment",
+    "ok": true,
+    "prior_failure_state": "FAILED",
+    "new_assessment_state": "AWAITING_APPROVAL",
+    "new_job_status": "succeeded",
+    "checkpoint_artifact": true
+  },
+  {
     "scenario": "S4_exactly_once_drain",
     "ok": true,
     "probe_jobs_succeeded": 11,
@@ -43,15 +51,15 @@
     "scenario": "S6_backup_restore",
     "ok": true,
     "restored_counts": {
-      "assessments": 2,
-      "jobs": 17,
-      "assessment_events": 75,
+      "assessments": 3,
+      "jobs": 18,
+      "assessment_events": 110,
       "worker_heartbeats": 0
     },
     "source_counts": {
-      "assessments": 2,
-      "jobs": 17,
-      "assessment_events": 75,
+      "assessments": 3,
+      "jobs": 18,
+      "assessment_events": 110,
       "worker_heartbeats": 0
     }
   }

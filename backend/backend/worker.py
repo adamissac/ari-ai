@@ -104,7 +104,7 @@ def run_one(owner: str, kinds: list[str] | None = None) -> str | None:
     settings = get_settings()
     with transaction() as conn:
         job = jobs.claim(conn, owner, settings.worker_lease_s, kinds)
-        jobs.worker_heartbeat(conn, owner, job_id=job.id if job else None)
+        jobs.worker_heartbeat(conn, owner, job_id=job.id if job else None, poll=True)
     if job is None:
         return None
     _BUSY.set()
