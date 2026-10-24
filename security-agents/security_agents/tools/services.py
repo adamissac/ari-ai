@@ -27,10 +27,12 @@ from ..sandbox.workspace import (
     changed_paths,
     diff_paths,
     fresh_checkout,
+    recipe_test_roots,
     resolve_under,
     safe_rel_path,
     sha256_text,
     tree_digest,
+    under_test_roots,
     unified_diff,
 )
 from .registry import ToolContext
@@ -249,7 +251,8 @@ class TestRunner:
                     return {"error": "BAD_NODE_ID", "detail": f"{raw!r} is not a valid pytest node id"}
                 args.append(raw)
         elif selection == "added_tests":
-            added = [p for p in getattr(workspace, "writes", []) if p.startswith("tests/")]
+            roots = getattr(workspace, "test_roots", ("tests/",))
+            added = [p for p in getattr(workspace, "writes", []) if under_test_roots(p, roots)]
             added = added or [p for p in ctx.artifacts.get("tests_added", []) if isinstance(p, str)]
             if not added:
                 return {"error": "NO_ADDED_TESTS", "detail": "no new test files were written in this step"}
@@ -437,7 +440,8 @@ class PatchApplier:
         ok, err = apply_diff(root, diff_text)
         touched = diff_paths(diff_text)
         plan_files = [safe_rel_path(p) for p in record.get("plan_files", [])]
-        new_tests = [p for p in touched if p.startswith("tests/") and not self.intel.snapshot.exists(p)]
+        roots = recipe_test_roots(self.intel.snapshot.root)
+        new_tests = [p for p in touched if under_test_roots(p, roots) and not self.intel.snapshot.exists(p)]
         out_of_scope = [p for p in touched if p not in plan_files and p not in new_tests]
         tampered = self._tampered_tests(diff_text, record.get("protected_tests", []))
         ctx.artifacts["verify_workspace"] = root
