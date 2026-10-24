@@ -19,6 +19,7 @@ adds an entry before ending.
 ---
 
 HEAD
+HEAD
 ### 2026-10-24 — Devin (agent, Adam) — leaked Vercel snapshot cleanup, push→agents verification
 - Did: verified the named-sandbox snapshot-leak fix already on main (`persistent: False` on run boxes + `destroy` in teardown + `_sweep_stale`); opened PR #495 making the sweep also delete stale run boxes' orphan snapshots so leaked quota is actually freed. Confirmed `delete_orphan_snapshots` only removes snapshots created *by* the destroyed sandbox — the shared `ari-base-*` snapshot can never be an orphan of a run box. Verified on main: security-agents suite 581 passed / 24 skipped, frontend typecheck + 330 vitest + lint clean, standards smoke (CWE/OWASP/CVSS/ATT&CK/D3FEND/SARIF/SP 800-115) passes. Confirmed agents are standards-grounded in code: Scout CWE/OWASP, Probe CWE, Trace ATT&CK/CVSS, Diagnose D3FEND, Fortify CWE/D3FEND; Patch/Verify get standards context via the tagged finding + remediation plan, not prompts.
 - State of the code: push→agents path gates are code-verified (`pipeline.process_github_delivery` → `auto_commits.schedule` → `assess_github_commit`): `repositories.automatic_assessments` (per-repo opt-in, UI switch exists), `GITHUB_AUTO_COMMIT_AUTHORS` (Railway entrypoint defaults `*`), `monitoring_policy.enabled` (project setting, UI switch), active `AuthorizedScope`. All four must be on for pushes to spawn runs — they are product gates, not bugs.
@@ -26,6 +27,14 @@ HEAD
 - Warnings for the next session: prod-side flags still need flipping per repo (Automatic runs ON, monitoring enabled, scope approved) — DB/config, not code. Already-orphaned snapshots (sandbox deleted without orphan cleanup) can't be reached by the sweep; they expire on their TTL or need `sandbox snapshots delete` with Vercel creds.
 
 ||||||| parent of ee7414f0 (feat(live-defense): execute authorized Scout/Diagnose loops (Phase 7C))
+||||||| parent of c4dcfa40 (test(live-defense): fix Phase 7C e2e snapshot and mapping)
+### 2026-10-24 — Cursor (agent, Alan) — Phase 7C CI e2e harness (do not merge #458)
+- Did: required GitHub `e2e` on `c56480da` (PR #458) failed; `backend / test` **passed**. Harness-only fix: e2e snapshot `doc` is a valid `Snapshot` with status **indexing** (not ready) so `list_snapshots` no longer 500s and pages.spec still shows "No indexed snapshot"; 7C mapping created via signed-in CSRF `POST /applications/{id}/deploy-mappings` because Playwright `selectOption` left Attest disabled in the full suite. **Did not** expand Probe/Patch, bump schema, or collide with #412's 0.20.0 (still 0.22.0 / Alembic 0015). **Did not merge #458.**
+- Commands run and results (executed): ruff on `frontend/tests/e2e/stack.py` pass; Snapshot.model_validate of the new indexing doc pass. GitHub CI on the follow-up SHA is the remaining proof.
+- Next: wait for required checks on the new head; leave #458 open for Alan's security review if they pass.
+- Warnings: **leave the PR open**. Execution trust-boundary expansion. No AUTO-EXECUTE. No Probe/Patch expansion.
+
+c4dcfa40 (test(live-defense): fix Phase 7C e2e snapshot and mapping)
 ### 2026-10-24 — Cursor (agent, Alan) — Live Defense Phase 7C agent execution
 - Did: PR https://github.com/adamissac/ari-ai/pull/458 on `feat/alan/live-defense-phase7c-agent-execution` from live `origin/main` `04c562a9` (PR #439 Phase 7A merged). **Left open.** Wired first-responder `live_defense_agent_step` to `security_agents.runtime.run_agent` for **Scout** (mapping+snapshot) and **Diagnose** (after Scout hypotheses). Probe/Patch/Verify privileges not expanded. Trace `skipped_no_prerequisite` until confirmed Probe. Fortify `skipped_no_prerequisite` without independently executed `verification_results`. Persisted `AgentExecutionRecord` (cost, latency, tools, transcript, integrity). `predicted_probability` stays null. Decision `executed` stays false. Schema **0.22.0** additive; Alembic stays **0015**. Open #412 keeps **0.20.0**. Orchestrator `7c.1.0`. Message: `coordination/messages/20261024T064500Z-alan-to-all-live-defense-phase7c-contracts.md`. Eval: `docs/LIVE_DEFENSE_PHASE7C_AGENT_EXECUTION.md`. **Leave PR open** — execution trust-boundary expansion; do not merge from this agent. Did **not** train RL, enable AUTO-EXECUTE, expand Probe/Patch, or grant production.
 - Commands run and results (executed):
