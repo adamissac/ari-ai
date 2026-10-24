@@ -58,10 +58,10 @@ test('one real assessment from scope approval to verified patch', async ({ brows
   await expect(gate.getByText('Will:', { exact: false }).first()).toBeVisible();
   await expect(gate.getByText(/Will not:/).first()).toBeVisible();
   await gate.getByRole('button', { name: 'Approve remediation' }).first().click();
-  await expect(gate.getByText('Confirm approval')).toBeVisible();
-  await expect(gate.getByText(/never merges or deploys/)).toBeVisible();
+  await expect(gate.getByRole('alert')).toContainText('Confirm approval');
+  await expect(gate.getByRole('alert')).toContainText(/never merges or deploys/);
   await gate.getByRole('button', { name: 'Back' }).click();
-  await expect(gate.getByText('Confirm approval')).toHaveCount(0);
+  await expect(gate.getByRole('alert')).toHaveCount(0);
 
   // Bob approves remediation from his inbox (with the will / will-not summary): one for the
   // security fix and one for the reviewer's functional repair. The run resumes when both are decided.
@@ -71,6 +71,8 @@ test('one real assessment from scope approval to verified patch', async ({ brows
   await expect(pending.first().getByText('Merge, push, deploy, or change the repository.')).toBeVisible();
   for (let i = 0; i < 2; i++) {
     await pending.first().getByRole('button', { name: 'Approve remediation' }).click();
+    // The inbox requires the same second explicit click as the on-page gate.
+    await pending.first().getByRole('button', { name: 'Confirm approval' }).click();
     await expect(pending).toHaveCount(1 - i);
   }
   await expect(bob.locator('[data-testid^="approval-"]').filter({ hasText: 'remediation approval' }).getByText('Approved')).toHaveCount(2);

@@ -40,9 +40,10 @@ labelled `Test provider (scripted)` in the UI) on 2026-10-24.
 | Approval was a single ambiguous click | High | Fixed (#538): two-step confirm with Will/Will-not copy, Back cancels |
 | Agent replay showed internal tool ids (`ns__tool`) | Medium | Fixed (#538): plain-English step names |
 | Quick-read failure dumped a raw server error | Medium | Fixed (#538): friendly message + "Technical detail" disclosure + Try again |
-| "Recorded tool calls" disclosure still shows raw ids (`read_file · ok`) | Low | Open — cosmetic, inconsistent with the plain-English replay |
-| Finding paths inconsistently prefixed (`payments_lite/app.py` vs `target/payments_lite/app.py`) | Low | Open — unify path display |
+| "Recorded tool calls" disclosure still shows raw ids (`read_file · ok`) | Low | Fixed (#538): shares the replay's plain-English names |
+| Finding paths inconsistently prefixed (`payments_lite/app.py` vs `target/payments_lite/app.py`) | Low | Fixed (#538): paths display repo-relative |
 | Decline is one-click (asymmetric with two-step Approve) | Low | Open — consider confirm for destructive declines |
+| Approval inbox (`/approvals`) approved in one click; only the on-page gate had the two-step confirm | Medium | Fixed (#538): inbox Approve opens the same confirm + Back |
 | No video artifact this pass (`recording_stop` post-processing failed twice) | — | Screenshots captured instead; re-record in a fresh session if needed |
 
 ## Verified assertions
