@@ -117,3 +117,34 @@ def via_typed_parameter(service: Service):
     assert any(e.callee_name == "helper" and e.resolution == "unresolved" for e in parser.calls)
     assert any(e.callee_name == "self.other" and e.resolution == "likely" for e in parser.calls)
     assert any(e.callee_name == "service.other" and e.resolution == "likely" for e in parser.calls)
+
+
+def test_redaction_keeps_python_parseable_and_routes_indexed(
+    repository: tuple[Path, str],
+) -> None:
+    path, _ = repository
+    secret = "hunter2-" + "z" * 12
+    (path / "app/health.py").write_text(
+        "from fastapi import FastAPI\n"
+        "app = FastAPI()\n"
+        f'WEBHOOK_SECRET = "{secret}"\n'
+        "@app.get('/health/ready')\n"
+        "def ready(s):\n"
+        "    return dict(\n"
+        "        webhook_secret_configured=bool(\n"
+        "            s.github_webhook_secret\n"
+        "            and s.github_webhook_secret.get_secret_value() not in ('', 'replace-me')\n"
+        "        ),\n"
+        "    )\n"
+    )
+    (path / "app/settings.txt").write_text(f"DB_PASSWORD={secret} with spaces\n")
+    sha = commit(path)
+    files = GitReader(path).read(sha)[1]
+    health = next(f for f in files if f.path == "app/health.py")
+    assert secret not in "".join(f.content for f in files)
+    assert 'WEBHOOK_SECRET = "[REDACTED]"' in health.content
+    assert "webhook_secret_configured=bool(\n" in health.content
+    parser = PythonExtractor(ref(sha), files)
+    parser.extract()
+    assert not [i for i in parser.issues if i.path == "app/health.py"]
+    assert ("GET", "/health/ready") in {(e.method, e.path_template) for e in parser.entries}
