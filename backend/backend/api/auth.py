@@ -177,7 +177,7 @@ def dev_login(body: DevLoginRequest, request: Request, response: Response) -> Me
     s = get_settings()
     if not (s.is_dev and s.auth_dev_login_enabled):
         raise ApiError(ErrorCode.FORBIDDEN, "dev login is disabled", 403)
-    limiter.check(f"login:{_client_ip(request)}", 20, 300)
+    limiter.check(f"login:{_client_ip(request)}", s.auth_dev_login_burst, 300)
     with transaction() as conn:
         user_id = upsert_user(conn, body.github_login, body.display_name, None)
         token, csrf = create_session(conn, user_id)

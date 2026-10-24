@@ -128,6 +128,7 @@ def main(argv: list[str]) -> int:
             .render_as_string(hide_password=False),
             ARTIFACT_STORE_URI=(tmp / "artifacts").as_uri(),
             AUTH_DEV_LOGIN_ENABLED="true",
+            AUTH_DEV_LOGIN_BURST="500",
             ANTHROPIC_API_KEY="",
             GITHUB_WEBHOOK_SECRET=WEBHOOK_SECRET,
             RATE_LIMIT_PER_MINUTE="100000",
