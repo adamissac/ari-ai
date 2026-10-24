@@ -310,6 +310,18 @@ jobs = sa.Table(
 )
 sa.Index("ix_jobs_claim", jobs.c.status, jobs.c.priority, jobs.c.run_after)
 
+# One row per live worker process: upserted while polling and while running a job, so
+# /readyz can tell "the API is up" from "a worker is actually draining the queue". Rows of
+# dead workers age out by heartbeat_at; workers prune their own row on a clean exit.
+worker_heartbeats = sa.Table(
+    "worker_heartbeats",
+    metadata,
+    sa.Column("worker_id", sa.String(120), primary_key=True),
+    sa.Column("started_at", TS, nullable=False, server_default=sa.func.now()),
+    sa.Column("heartbeat_at", TS, nullable=False, server_default=sa.func.now()),
+    sa.Column("current_job_id", sa.String(80)),
+)
+
 webhook_deliveries = sa.Table(
     "webhook_deliveries",
     metadata,

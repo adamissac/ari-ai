@@ -15,7 +15,7 @@ from typing import Any
 import sqlalchemy as sa
 from sqlalchemy.engine import Connection
 
-from backend.db import jobs
+from backend.db import jobs, worker_heartbeats
 from shared.base import utcnow
 from shared.errors import ErrorCode
 from shared.ids import IdPrefix, new_id
@@ -207,3 +207,54 @@ def request_cancel(conn: Connection, job_id: str) -> None:
 def queue_reachable(conn: Connection) -> bool:
     conn.execute(sa.select(sa.func.count()).select_from(jobs).where(jobs.c.status == "queued"))
     return True
+
+
+# --------------------------------------------------------------- worker liveness
+
+
+def worker_heartbeat(conn: Connection, worker_id: str, job_id: str | None = None) -> None:
+    """Upsert this worker's liveness row. Called each poll iteration while idle and from
+    the lease-heartbeat thread while a job runs, so a hung main loop AND a dead process
+    both go stale."""
+    conn.execute(
+        sa.dialects.postgresql.insert(worker_heartbeats)
+        .values(worker_id=worker_id, heartbeat_at=sa.func.now(), current_job_id=job_id)
+        .on_conflict_do_update(
+            index_elements=[worker_heartbeats.c.worker_id],
+            set_={"heartbeat_at": sa.func.now(), "current_job_id": job_id},
+        )
+    )
+
+
+def worker_stopped(conn: Connection, worker_id: str) -> None:
+    conn.execute(sa.delete(worker_heartbeats).where(worker_heartbeats.c.worker_id == worker_id))
+
+
+def live_workers(conn: Connection, liveness_s: float) -> list[dict[str, Any]]:
+    """Workers whose heartbeat is fresher than ``liveness_s`` seconds, oldest first."""
+    rows = (
+        conn.execute(
+            sa.select(worker_heartbeats)
+            .where(worker_heartbeats.c.heartbeat_at > utcnow() - timedelta(seconds=liveness_s))
+            .order_by(worker_heartbeats.c.heartbeat_at)
+        )
+        .mappings()
+        .all()
+    )
+    return [dict(r) for r in rows]
+
+
+def prune_worker_heartbeats(conn: Connection, older_than_s: float = 86400.0) -> None:
+    conn.execute(
+        sa.delete(worker_heartbeats).where(
+            worker_heartbeats.c.heartbeat_at < utcnow() - timedelta(seconds=older_than_s)
+        )
+    )
+
+
+def queue_counts(conn: Connection) -> dict[str, int]:
+    """Job counts by coarse status for diagnostics (exact, the queue is small)."""
+    rows = conn.execute(sa.select(jobs.c.status, sa.func.count()).group_by(jobs.c.status)).all()
+    counts = {s: 0 for s in ("queued", "running", "succeeded", "failed", "cancelled", "dead")}
+    counts.update({s: n for s, n in rows})
+    return counts
