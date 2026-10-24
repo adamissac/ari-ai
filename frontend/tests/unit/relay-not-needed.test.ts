@@ -37,7 +37,7 @@ describe('relay not-needed / not-reached states', () => {
 });
 
 describe('earlyEndNote', () => {
-  const ev = (state: string | null, message: string) => ({ type: 'assessment.state_changed', state, message, seq: 0 });
+  const ev = (state: string | null, message: string) => ({ type: 'assessment.state_changed', state, message });
   it('reads the recorded early-end reason from the reporting transition', () => {
     expect(earlyEndNote([ev('RECON', ''), ev('REPORTING', 'no hypotheses')])).toBe('no hypotheses');
   });
@@ -47,6 +47,6 @@ describe('earlyEndNote', () => {
   });
   it('is null for a full-chain run and for non-transition events', () => {
     expect(earlyEndNote([ev('REPORTING', '')])).toBeNull();
-    expect(earlyEndNote([{ type: 'agent_run.finished', message: 'done', seq: 0 }])).toBeNull();
+    expect(earlyEndNote([{ type: 'agent_run.finished', message: 'done' }])).toBeNull();
   });
 });

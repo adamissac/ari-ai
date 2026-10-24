@@ -58,9 +58,9 @@ const SETTLED_STATES: ReadonlySet<AssessmentState> = new Set(['COMPLETED', 'FAIL
 export function earlyEndNote(events: readonly { type: string; state?: string | null; message: string }[]): string | null {
   for (let i = events.length - 1; i >= 0; i--) {
     const e = events[i];
-    if (e.type !== 'assessment.state_changed') continue;
+    if (!e || e.type !== 'assessment.state_changed') continue;
     const skipped = e.message.match(/^skipped \((.+)\);/);
-    if (skipped) return skipped[1];
+    if (skipped?.[1]) return skipped[1];
     if (e.state === 'REPORTING' && e.message) return e.message;
   }
   return null;
