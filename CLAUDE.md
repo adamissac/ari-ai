@@ -82,6 +82,7 @@ make test                       # pytest; real PostgreSQL (embedded pgserver unl
 make contracts                  # regenerate shared/generated (JSON Schema + TS) and fixtures
 make dev                        # migrate + API (:8000) + worker on embedded PostgreSQL
 make smoke-live                 # opt-in real Claude call (RUN_LIVE_LLM_EVAL=1 + key; costs money)
+uv run python -m backend.recipes <git checkout>   # dry run of the build-recipe PR Ari opens on connect (--live: Claude drafts routes)
 ```
 
 Reviewer (`code-review/`, details in [code-review/README.md](code-review/README.md)):

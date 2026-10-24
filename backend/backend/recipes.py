@@ -814,6 +814,7 @@ def propose_build_recipe(ctx: JobContext) -> dict[str, Any]:
         return {"status": action.split(".", 1)[1], **details}
 
     from backend.github import GitHubApp
+    from code_intelligence.models import IntelligenceError
 
     full_name, branch, iid = (
         str(repo["full_name"]),
@@ -838,15 +839,16 @@ def propose_build_recipe(ctx: JobContext) -> dict[str, Any]:
                 return finish(
                     "recipe.unsupported", reason=f"{HARNESS_PATH} already exists", commit_sha=sha
                 )
-            d = draft(facts, gateway_or_none())
-            if errors := problems(d.recipe, d.harness, facts):  # never propose an invalid recipe
-                return finish("recipe.invalid", reasons=errors[:10], commit_sha=sha)
-            write = app.installation_token(iid, write=True, repository=full_name.split("/", 1)[1])
-            from backend.delivery import push_patch
+        d = draft(facts, gateway_or_none())  # outside the lock: Claude may take a minute
+        if errors := problems(d.recipe, d.harness, facts):  # never propose an invalid recipe
+            return finish("recipe.invalid", reasons=errors[:10], commit_sha=sha)
+        from backend.delivery import push_patch
 
-            message = (
-                "chore: add Ari sandbox build recipe\n\nDrafted by Ari from the repository's code."
-            )
+        write = app.installation_token(iid, write=True, repository=full_name.split("/", 1)[1])
+        message = (
+            "chore: add Ari sandbox build recipe\n\nDrafted by Ari from the repository's code."
+        )
+        with _locked(repo_dir):
             push_patch(
                 repo_dir, full_name, sha, new_file_diff(d.files()), write, message, BRANCH,
                 github_web_url=s.github_web_url,
@@ -855,9 +857,11 @@ def propose_build_recipe(ctx: JobContext) -> dict[str, Any]:
             iid, full_name, head=BRANCH, base=branch,
             title="Add Ari sandbox build recipe", body=pr_body(d, facts),
         )  # fmt: skip
-    except (CheckoutError, httpx.HTTPError) as exc:
-        if isinstance(exc, httpx.HTTPError) and not isinstance(exc, httpx.HTTPStatusError):
-            raise  # transport trouble: the queue retries; branch and PR steps are idempotent
+    except (CheckoutError, IntelligenceError, httpx.HTTPError) as exc:  # too big, refused, gone
+        from backend.delivery import _transient
+
+        if isinstance(exc, httpx.HTTPError) and _transient(exc):
+            raise  # the queue retries with backoff; the branch and PR steps are idempotent
         return finish("recipe.failed", reason=str(exc)[:300])
     return finish(
         "recipe.pr_opened", url=url, branch=BRANCH, commit_sha=sha, author=d.author,
