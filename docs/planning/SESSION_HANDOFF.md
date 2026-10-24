@@ -1706,3 +1706,11 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - Evidence: `backend/tests/test_live_defense_investigations.py` (9 pass), `frontend/tests/unit/live-defense-executions.test.tsx` (7 pass), `frontend/tests/e2e/live-defense-investigations.spec.ts`, transport methods + node tests.
 - Coordination: `coordination/messages/20261024T182202Z-devin-to-all-live-defense-observability-schema-0-23.md`; status `coordination/status/DEVIN.md`.
 - Next: PR review/merge by a human; do not merge from the agent.
+
+## 2026-10-24 — Devin (Adam): specialist eval-brain + live eval harness
+
+- `specialists/data/evalcommits.py`: eval cases become minimal pairs (planted edit = CWE/vuln_other positive, original = hard negative), splits pinned by case id; `scout()` merges the 60 rows.
+- Scout retrained and **promoted**: macro_f1 0.349 vs best deterministic baseline 0.084 (static_analyze_patterns). Checkpoint + `results/scout.json`/REPORT.md committed. Other specialists have no field-compatible eval rows — their tuning signal is the live eval scores, not training data.
+- Eval harness: `run.py` cleanup survives missing `gh` auth; `score_api.py` accepts the bare-list assessments response. All 35 cases pushed as `eval/20261024-110115/*` branches; assessments accumulate live pending a fresh `hackatl_session` for scoring + scope widening (`access_control.authentication` category).
+- Test scope fixture (`make_scope` default) now grants all three check categories — required for the f2 listing invariant after the authentication template landed.
+>>>>>>> origin/main
