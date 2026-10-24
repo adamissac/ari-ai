@@ -1824,6 +1824,8 @@ body:has(.commit-stage) main { color: #fff; }
 }
 .home-deep .hero-stage[data-fx="on"] .hero-headline .hero-line { color: #fff7f2; }
 .home-deep .hero-stage[data-fx="on"] .hero-headline .hero-line-dim { color: #ffd9c4; }
+/* .hero-ink span paints every letter white; the dim line must reach the .lt spans. */
+.home-deep .hero-ink .hero-line-dim .lt { color: #ffd9c4; }
 
 /* Per-letter reveal (components/letters.tsx). "idle" renders normally; JS marks
    scopes "off" (below fold) then "on" to play once. */
@@ -1860,8 +1862,8 @@ body:has(.commit-stage) main { color: #fff; }
 
 /* Pheromone patrol: a tiny ant walks the footer rail. */
 .home-deep .footer-ruler::after {
-  content: ""; position: absolute; top: -5px; left: 0; width: 13px; height: 10px;
-  background: color-mix(in srgb, var(--color-brand) 70%, #fff7f2);
+  content: ""; position: absolute; top: -7px; left: 0; width: 18px; height: 13px;
+  background: color-mix(in srgb, var(--color-brand) 80%, #fff7f2);
   -webkit-mask: url("/brand/ari-ant-mark.png") center / contain no-repeat;
   mask: url("/brand/ari-ant-mark.png") center / contain no-repeat;
   animation: footer-patrol 20s linear infinite;
