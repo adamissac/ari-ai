@@ -520,3 +520,8 @@ no environment/baseline tuning, training, holdout, promotion or customer enforce
 
 Feasibility001 completed600/18,000 within budget atbed44ff2, sealed evidence retained.
 No eligible attack-family arm; training NO-GO. Final PR CI/review pending.
+
+RL-CMDP-010 read-only product-thesis audit: archived capacity bounds do not settle
+physical or existing-action safe feasibility. Recommend deprioritize RL as near-term
+product dependency; non-RL evidence-to-regression milestone proposed, not built.
+No old evidence, weights, shared contracts or customer controls changed.
