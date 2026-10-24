@@ -144,7 +144,7 @@
     },
     "WaitingJobView": {
       "additionalProperties": false,
-      "description": "A queued first-responder job still waiting on its backoff window.",
+      "description": "A first-responder job still waiting: queued on its backoff window or\nparked on a prerequisite (``waiting``, execution-reliability).",
       "properties": {
         "attempts": {
           "default": 0,
@@ -187,6 +187,12 @@
           ],
           "default": null,
           "title": "Run After"
+        },
+        "status": {
+          "default": "queued",
+          "maxLength": 500,
+          "title": "Status",
+          "type": "string"
         }
       },
       "required": [
@@ -279,6 +285,12 @@
       "title": "Jobs Queued",
       "type": "integer"
     },
+    "jobs_recovery_required": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Jobs Recovery Required",
+      "type": "integer"
+    },
     "jobs_running": {
       "minimum": 0,
       "title": "Jobs Running",
@@ -292,6 +304,18 @@
     "jobs_succeeded": {
       "minimum": 0,
       "title": "Jobs Succeeded",
+      "type": "integer"
+    },
+    "jobs_timed_out": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Jobs Timed Out",
+      "type": "integer"
+    },
+    "jobs_waiting": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Jobs Waiting",
       "type": "integer"
     },
     "missing_prerequisites": {

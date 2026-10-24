@@ -1727,6 +1727,16 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - Branch `feat/adam/agent-visibility-not-needed`: relay/team list now label skipped agents 'Not needed' (with the recorded skip note) or 'Not reached' on failed/cancelled runs. `earlyEndNote` in `frontend/lib/relay.ts` reads the reason from persisted `state_changed` events.
 - Next: expand `security-agents/evals/commits/cases.json` toward ~40 cases, add check templates to lift `vuln validated` off 0/7 (only ownership + bounds templates exist).
 
+## 2026-10-24 — Devin: F6 canonical state precedence + F9 schema coordination
+
+- Codex review (`docs/reviews/first-responder-integration/REPORT.md` @ `6e882045`) findings owned: F6 implemented on `feat/devin-investigation-observability`, F9 coordinated via `coordination/messages/20261024T230000Z-devin-to-all-f6-state-precedence-f9-schema-compat.md`.
+- F6: `FirstResponderInvocationView.effective_state` is the canonical combined state — terminal invocation statuses are authoritative; non-terminal invocations inherit the joined job row (`dead`→`failed`; `waiting`/`timed_out`/`recovery_required`/`cancelled` pass through). `final_state` precedence: cancelled decision → recovery_required → timed_out → failed → cancelled → in_progress → waiting → queued → completed/skipped → evidence_state. Unresolved effects are never shown as success.
+- List API: `InvestigationSummary.job_statuses` rollup from `jobs` (batched GROUP BY). Diagnostics: `jobs_waiting`/`jobs_timed_out`/`jobs_recovery_required`, `WaitingJobView.status`, waiting list covers queued+waiting, latency spans all finished states. Executions UI renders effective_state with job-state notes and new stat cards/badges.
+- Forward-compatible with the execution-reliability branch: new statuses aren't writeable on main (`ck_jobs_status` has the 6-state list); tests widen the constraint exactly like migration 0016 and restore it, exercising the read paths against real persisted rows.
+- F9: #458's `test_live_defense_phase7c.py:130` pins `SCHEMA_VERSION == "0.22.0"` — asked Grok via the message above to change it to a capability/`>=` check; contracts stay 0.23.0, no downgrade. JSON Schema + TS exports verified (`make contracts`, `shared.export --check`, 35/35 transport tests).
+- Evidence: backend 15/15 (precedence matrix, timed_out, recovery_required, waiting, cancelled, partial failure, job_statuses rollup, diagnostics counters), frontend unit 9/9 + full vitest 346/346, transport 35/35, `make check` + `mypy` clean.
+- Next: PR https://github.com/m-alan08/ari-ai/pull/3 stays open; do not merge from the agent.
+
 ## 2026-10-24 — Devin: first-responder observability (Executions tab, schema 0.23.0)
 
 - Branch `feat/devin-investigation-observability` (on `m-alan08/ari-ai` fork; upstream push denied): read-only investigation observability over Phase 7A persisted records.
