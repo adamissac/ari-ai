@@ -37,8 +37,12 @@ SCHEMA_VERSION = (
     #      default to false (owner must explicitly enable; PR #385).
     # 0.19 ProjectSettings.delivery_mode (auto | pull_request | manual, default auto) and
     #      server-set delivery_authorized_by (additive, ADR-0021).
-    # 0.20 reserved by open PR #412 (Phase 6.5 RL-gated pilot). This branch does
-    #      not claim 0.20.0 so both PRs can land independently.
+    # 0.20 live-defense Phase 6.5 RL-gated pilot infrastructure (additive):
+    #      ConnectedApplication.rl_gated_pilot; RL readiness categories A–J;
+    #      evaluation plan with unset thresholds; policy serving contract;
+    #      hosted-inference readiness config. ready=true only if every mandatory
+    #      category is PASS. Merged research PRs / unit tests / docs are not
+    #      model readiness. No new executable action.
     # 0.21 live-defense Phase 7A first-responder (additive): OFF/MONITOR|SHADOW/
     #      ASSISTED RESPONSE modes, deterministic orchestrator decisions,
     #      seven-agent capability registry, runtime↔code correlation,

@@ -1,11 +1,6 @@
-# Live Defense frontend — API contracts (Phase 7A)
+# Live Defense frontend — API contracts (Phases 1–7A, incl. 6.5 RL-gated infra)
 
-Status: **Phase 7A first-responder** on `cursor/live-defense-first-responder-0044`
-from live `origin/main`. Shadow-pilot stays recommendation-only. Owned-test
-controls remain a **separate** authorization path. First-responder modes are
-OFF / MONITOR|SHADOW / ASSISTED RESPONSE. AUTO-EXECUTE is rejected. Producer:
-control plane (`backend/`, `shared/` 0.21.0; 0.20.0 reserved for open #412). Phases 1–6 are extended, not
-rebuilt. An RL recommendation is not executed defense.
+Status: **Phase 7A first-responder + Phase 6.5 RL-gated infrastructure** integrated on `integration/2026-11-02-release`. Shadow-pilot stays recommendation-only; RL-gated apps are **server-enforced** shadow-only. Owned-test controls remain a **separate** authorization path. First-responder modes are OFF / MONITOR|SHADOW / ASSISTED RESPONSE; AUTO-EXECUTE is rejected. Producer: control plane (`backend/`, `shared/` 0.21.0+). Phases 1–6 are extended, not rebuilt. Readiness verdict stays **INFRASTRUCTURE READY — RL BLOCKED**. An RL recommendation is not executed defense. Do not use Controls during a customer shadow-pilot. Isolate is never offered.
 
 Canonical types: `shared/shared/monitoring.py`, `shared/shared/incident.py`,
 `shared/shared/rl.py`, `shared/shared/live_defense.py`, generated TS via
@@ -54,6 +49,8 @@ Unknown correlations (event not on any incident, incident with no recommendation
 - `POST /applications/{id}/shadow-verify` → `ConnectedApplication` from recorded ingest (not a healthy verdict)
 - `GET /projects/{id}/ingest-tokens` → page of `IngestTokenView` (owner; no secret)
 - `GET /projects/{id}/pilot-report` → `PilotReport` (HTTP 200 is not attack success; never claims shadow prevented breaches)
+- `GET /projects/{id}/rl-readiness` → `RlReadinessAssessment` (backend PASS/FAIL/BLOCKED/NOT VERIFIED; `ready` true only if every mandatory category is PASS)
+- `POST /applications/{id}/enable-rl-gated-pilot` → `PilotEnablement` (409 if leftover grants/channels/controls remain)
 
 ### Recorded health and topology
 
