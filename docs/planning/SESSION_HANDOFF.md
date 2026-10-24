@@ -14,7 +14,6 @@ adds an entry before ending.
 - Assumptions / open questions (RQ links):
 - Next steps:
 - Warnings for the next session:
-```
 
 ---
 
@@ -57,9 +56,7 @@ adds an entry before ending.
 
 ### 2026-10-24 — Cursor (agent, Alan) — Live Defense Phase 7C agent execution
 - Did: PR https://github.com/adamissac/ari-ai/pull/458 on `feat/alan/live-defense-phase7c-agent-execution` from live `origin/main` `04c562a9` (PR #439 Phase 7A merged). **Left open.** Wired first-responder `live_defense_agent_step` to `security_agents.runtime.run_agent` for **Scout** (mapping+snapshot) and **Diagnose** (after Scout hypotheses). Probe/Patch/Verify privileges not expanded. Trace `skipped_no_prerequisite` until confirmed Probe. Fortify `skipped_no_prerequisite` without independently executed `verification_results`. Persisted `AgentExecutionRecord` (cost, latency, tools, transcript, integrity). `predicted_probability` stays null. Decision `executed` stays false. Schema **0.22.0** additive; Alembic stays **0015**. Open #412 keeps **0.20.0**. Orchestrator `7c.1.0`. Message: `coordination/messages/20261024T064500Z-alan-to-all-live-defense-phase7c-contracts.md`. Eval: `docs/LIVE_DEFENSE_PHASE7C_AGENT_EXECUTION.md`. **Leave PR open** — execution trust-boundary expansion; do not merge from this agent. Did **not** train RL, enable AUTO-EXECUTE, expand Probe/Patch, or grant production.
-- Commands run and results (executed):
   - `make check` — ruff pass; format 197 files; `shared.export --check` 155 files; examples check pass; schema 0.22.0
-  - `uv run mypy` — Success: no issues found in 40 source files
   - `uv run pytest -q` — **781 passed**, 15 skipped (opt-in live LLM, Docker, RL package, TSC, specialists cache)
   - focused 7A+7C+jobs+no-action — 38 passed
   - live-defense phase4/5/6 + authorize + tests/security — 79 passed
@@ -91,8 +88,6 @@ adds an entry before ending.
 - Next steps: open PR to upstream main (do not merge). Remaining blockers for a real external customer: GitHub App install needs real installation_id (can_connect call is live); snapshot indexing needs the worker + reachable repo; non-sandbox scope approval needs a second org owner by design (sandbox-only scopes self-approve).
 - Warnings for the next session: do not merge this PR or the four in-flight workstreams (#458, fork #1-3); 0.24.0 is claimed by this branch — next schema bump is 0.25.0; Alembic head stays 0015 (#412 reserves nothing new, fork PR #1 adds 0016).
 
-||||||| merged common ancestors
-<<<<<<<<< Temporary merge branch 1
 ### 2026-10-23 — Cursor (agent, Alan) — Phase 6.5 RL-gated pilot infrastructure
 - Did: branch `feat/live-defense-phase6-5-rl-gated-pilot` from live `origin/main` `74a0a3c2` (PR #410 merged after #411 `5d1e7b91`). Additive `shared` 0.20.0: `rl_gated_pilot`, `RlReadinessAssessment` A–J, evaluation plan with null thresholds, `PolicyServingOutput`, hosted-inference config. Server-enforced shadow-only (API + worker + existing 15-check `application_registered` tightening). Backend `GET /rl-readiness` is the dashboard source of truth; `ready` stays false. Codex/`rl-defense/` training, datasets, holdout, v6 weights, historical evals **not edited**. No Phase 7, no customer infra.
 - Live GitHub: #411 MERGED `5d1e7b91`; Codex #388/#394/#396/#407/#410 MERGED. #410 is explicit inconclusive readiness — not model readiness.
@@ -106,9 +101,6 @@ adds an entry before ending.
 - PR: https://github.com/adamissac/ari-ai/pull/412 — **left open** (authz tightening; no unapproved serving).
 - Next: human review of #412; RL owner must supply A–J evidence before any later owner-approval verdict. Do not start Phase 7.
 
-||||||||| 74a0a3c2
-=========
-=======
 ### 2026-10-24 — Devin (agent, Adam) — leaked Vercel snapshot cleanup, push→agents verification
 - Did: verified the named-sandbox snapshot-leak fix already on main (`persistent: False` on run boxes + `destroy` in teardown + `_sweep_stale`); opened PR #495 making the sweep also delete stale run boxes' orphan snapshots so leaked quota is actually freed. Confirmed `delete_orphan_snapshots` only removes snapshots created *by* the destroyed sandbox — the shared `ari-base-*` snapshot can never be an orphan of a run box. Verified on main: security-agents suite 581 passed / 24 skipped, frontend typecheck + 330 vitest + lint clean, standards smoke (CWE/OWASP/CVSS/ATT&CK/D3FEND/SARIF/SP 800-115) passes. Confirmed agents are standards-grounded in code: Scout CWE/OWASP, Probe CWE, Trace ATT&CK/CVSS, Diagnose D3FEND, Fortify CWE/D3FEND; Patch/Verify get standards context via the tagged finding + remediation plan, not prompts.
 - State of the code: push→agents path gates are code-verified (`pipeline.process_github_delivery` → `auto_commits.schedule` → `assess_github_commit`): `repositories.automatic_assessments` (per-repo opt-in, UI switch exists), `GITHUB_AUTO_COMMIT_AUTHORS` (Railway entrypoint defaults `*`), `monitoring_policy.enabled` (project setting, UI switch), active `AuthorizedScope`. All four must be on for pushes to spawn runs — they are product gates, not bugs.
@@ -117,7 +109,6 @@ adds an entry before ending.
 
 ### 2026-10-24 — Cursor (agent, Alan) — rebase #439 onto main (docs conflicts)
 - Did: left PR #439 **open** (no merge, no Phase 7B, no RL training, no customer enforcement). GitHub had blocked required checks with **Checks awaiting conflict resolution** on only `CHANGELOG.md` and `docs/planning/SESSION_HANDOFF.md`. Fetched `origin/main` `c5c2b47d` (PR #453) and rebased `cursor/live-defense-first-responder-0044`. Resolved those two files by keeping **both** sides: main’s Unreleased fixture-only research bullet and Adam 2026-10-23 build-recipe handoff, plus this PR’s Phase 7A 0.21.0 Unreleased bullet and Alan 2026-10-24 Codex/Phase 7A handoff entries. Did **not** drop the four Codex security fixes (verified evidence, genuine provider acks, telemetry-window mapping, OFF-mode race). Schema still **0.21.0**; Alembic still `0015`. Main remains 0.19.0 / `0014`. Open #412 still **0.20.0** with no Alembic — no collision, no bump.
-- Commands run and results (executed):
   - `git fetch origin --prune`; rebase onto `origin/main` `c5c2b47d`
   - `uv run ruff check` / `ruff format --check` — pass (195 files formatted)
   - `uv run python -m shared.export --check` — 154 files, schema 0.21.0
@@ -128,18 +119,13 @@ adds an entry before ending.
 
 ### 2026-10-24 — Cursor (agent, Alan) — Phase 7A Codex review fixes on #439
 - Did: left PR #439 **open** (no merge, no Phase 7B, no RL training, no customer enforcement). Fixed Backend/test CI (`test_rl_no_action_path`: removed `/first-responder/auto-execute`; absence is the control, 404). Fixed four Codex findings with regressions: (1) `evidence_state=verified` only with independently executed `verification_results`; (2) no fabricated handoff receipts — UI does not invent acks; synthetic provider ack tests are labeled; (3) deploy mapping resolved against telemetry window, else UNKNOWN; (4) OFF serialized with dispatch (`pg_advisory_xact_lock`), claim skips `cancel_requested`, handlers `check_cancelled` and abort when OFF is effective. Schema **0.21.0** (0.20.0 reserved for open #412); Alembic stays `0015`. Orchestrator `7a.1.1`.
-- Commands run and results (executed):
-  - `uv run pytest -q backend/tests/test_live_defense_phase7a.py backend/tests/test_jobs_queue.py backend/tests/test_rl_no_action_path.py` — 33 passed
   - `make check` inputs: ruff pass; `shared.export --check` 154 files; fixtures regenerated for 0.21.0 / 7a.1.1
 - Decisions: do not merge #439. Schema plan vs #412: this branch 0.21.0 + 0015; #412 keeps 0.20.0 and no 0015. If #439 lands first, #412 rebases to 0.22.0.
 - Next: re-run required GitHub checks on the final head; resolve the four Codex threads only after those tests; owner/security approval still required.
-- Warnings: **leave the PR open**. No Phase 7B. Live seven-agent Claude loop still UNVERIFIED.
 
 ### 2026-10-24 — Cursor (agent, Alan) — Live Defense Phase 7A first-responder
 - Did: branch `cursor/live-defense-first-responder-0044` from live `origin/main` (fast-forwarded through `211c2b24` / PR #435 to `a97820f1` / PR #438). Confirmed PRs #411 MERGED, #412 OPEN, #422/#430/#433/#435 MERGED, #438 MERGED (Adam status only). Schema 0.20.0, Alembic `0015`. Added fail-closed modes OFF/MONITOR|SHADOW/ASSISTED RESPONSE (no AUTO-EXECUTE), deterministic orchestrator `7a.1.0`, capability registry from real seven AgentSpecs, owner-attested deploy mapping, analyst handoff with provider-ack delivery, First responder UI tab. Did **not** train RL, edit Codex/v6/holdout, create AUTO-EXECUTE, expand production enforcement, or start Phase 7B.
-- Commands run and results (executed):
   - `make check` — ruff pass; format 193 files; `shared.export --check` 154 files; examples check pass
-  - `uv run mypy` — Success: no issues found in 40 source files
   - `uv run pytest -q backend/tests/test_live_defense_phase7a.py backend/tests/test_parallel_migrations.py backend/tests/test_live_defense_authorize.py backend/tests/test_live_defense_phase5.py backend/tests/test_live_defense_phase6.py` — 43 passed
   - `uv run pytest -q shared/tests/test_contracts.py backend/tests/test_live_defense_phase7a.py` — 95 passed, 1 skipped (TSC unset)
   - frontend lint + typecheck pass; vitest 330 passed / 78 files; transport 35 passed
@@ -153,18 +139,6 @@ adds an entry before ending.
 - Not verified: a live Claude draft (no key locally) and a real GitHub PR; the first connect in production is the first live run.
 - Warnings: code-intelligence redaction can turn valid Python into a syntax error (e.g. `backend/backend/main.py` line 137, `webhook_secret_configured=bool(` becomes `[REDACTED]`), so the index silently drops those files; the generator parses the raw blob locally for app/prefix discovery, but routes in such files are missing from the index and so never proposed.
 
-### 2026-10-23 — Cursor (agent, Alan) — Phase 6.5 RL-gated pilot infrastructure
-- Did: branch `feat/live-defense-phase6-5-rl-gated-pilot` from live `origin/main` `74a0a3c2` (PR #410 merged after #411 `5d1e7b91`). Additive `shared` 0.20.0: `rl_gated_pilot`, `RlReadinessAssessment` A–J, evaluation plan with null thresholds, `PolicyServingOutput`, hosted-inference config. Server-enforced shadow-only (API + worker + existing 15-check `application_registered` tightening). Backend `GET /rl-readiness` is the dashboard source of truth; `ready` stays false. Codex/`rl-defense/` training, datasets, holdout, v6 weights, historical evals **not edited**. No Phase 7, no customer infra.
-- Live GitHub: #411 MERGED `5d1e7b91`; Codex #388/#394/#396/#407/#410 MERGED. #410 is explicit inconclusive readiness — not model readiness.
-- Commands (executed):
-  - `uv run pytest -q backend/tests/test_live_defense_phase6_5.py backend/tests/test_live_defense_authorize.py` — 25 passed
-  - `npm run lint --prefix frontend` — pass; `npm run typecheck --prefix frontend` — pass
-  - `npm test --prefix frontend` — 331 passed / 78 files
-  - `npm test --prefix frontend/transport` — 35 passed
-  - Playwright e2e stack: **not run** (honest skip). Spec added for the Readiness tab.
-- Decisions: **INFRASTRUCTURE READY — RL BLOCKED**. Distinct from Phase 6 CONDITIONAL GO. Authz tightening left for human review; do not treat infrastructure completeness as customer deployment.
-- PR: https://github.com/adamissac/ari-ai/pull/412 — **left open** (authz tightening; no unapproved serving).
-- Next: human review of #412; RL owner must supply A–J evidence before any later owner-approval verdict. Do not start Phase 7.
 
 ### 2026-10-23 — Cursor (agent, Alan) — Phase 6 Codex P1/P2 before merge
 - Did: on `feat/live-defense-phase6-pilot-audit` (PR #411), locked the application row in `gate_for` and disconnect so leftover execute cannot race a concurrent disconnect; counted `run_assessment` jobs via `assessment_id`; kept recovered `last_error` on the pilot trail as `job.recovered`. Tightening only; `AUTHORIZATION_CHECKS` still 15. No Phase 7.
@@ -174,11 +148,8 @@ adds an entry before ending.
 ### 2026-10-23 — Cursor (agent, Alan) — Live Defense Phase 6 post-merge audit
 - Did: branch `feat/live-defense-phase6-pilot-audit` from live `origin/main` `02ab34de`. Confirmed PR #393 merged `57e0326` and PR #395 merged `8bbc01e`. Schema 0.19.0, Alembic head `0014`. Proved shadow cannot execute with grant+channel present; denied leftover authorize/execute after disconnect; scoped queue depth; failed jobs on pilot trail. UI copy splits shadow vs Controls. No Phase 7, no v6/dataset/Codex edits, no production grants.
 - State of the code: recommendation-only shadow path on main stays non-executing; owned-test execute remains a separate owner POST. Disconnect now fails the existing `application_registered` check.
-- Commands run and results (executed):
   - `make check` — ruff pass; format 184 files; `shared.export --check` 140 files
-  - `uv run mypy` — Success: no issues found in 40 source files
   - live-defense + authorize + contracts + migrations pytest — 149 passed, 1 skipped (TSC unset)
-  - frontend lint + typecheck pass; vitest 330 passed / 78 files; transport 35 passed
 - Decisions: **CONDITIONAL GO** for one company-owned staging app in recommendation-only shadow mode if the owner does not create grants/channels or use Controls. Eval: `docs/LIVE_DEFENSE_PHASE6_READINESS.md`.
 - Next: hosted ingest of one company-owned staging app; do not start Phase 7.
 - Warnings: Playwright e2e and gitleaks were not run in this environment. v6 inference is `skipped_unavailable` without `rl_defense`/torch here; hash-mismatch refuse-to-load was tested.
@@ -191,9 +162,7 @@ adds an entry before ending.
 ### 2026-10-23 — Cursor (agent, Alan) — Live Defense Phase 4 controlled enforcement
 - Did: branch `feat/live-defense-phase4-controlled-enforcement` from `origin/main` (`5be62de`, PR #392 merged); later merged `09e8cab` (constrained-RL Phase 1, Codex ADR-0019). Extends Phase 1–3. Shared 0.18.0 `LiveControl` lifecycle + 15-check `authorize.check` (ADR-0020). HMAC loopback adapter to owned-test fixture; verify uses real HTTP probes; app-local TTL; emergency stop. Controls UI with a **separate** authorize endpoint. Analyst accept still does not execute. `rl-defense/` untouched. No Phase 5 / production / autonomous.
 - State of the code: owner grant + loopback channel → authorize (not review) → worker execute → verify with probes → dashboard labelled OWNED TEST ENVIRONMENT → rollback / TTL / kill switch. Recommendation cannot jump to EXECUTING.
-- Commands run and results (executed):
   - `make check` — ruff pass; format 175 files; `shared.export --check` 137 files; examples check pass
-  - `uv run mypy` — Success: no issues found in 40 source files
   - `uv run pytest -q backend/tests/test_parallel_migrations.py shared/tests/test_contracts.py backend/tests/test_live_defense_phase4.py backend/tests/test_live_defense_authorize.py` — 100 passed, 1 skipped (TSC unset)
   - `uv run pytest -q backend/tests/test_live_defense_phase3.py backend/tests/test_live_defense_phase4.py backend/tests/test_live_defense_authorize.py` — 44 passed
   - `npm run lint && typecheck` — pass; `npm test --prefix frontend` — 327 passed / 77 files; `npm test --prefix frontend/transport` — 35 passed
@@ -221,9 +190,7 @@ adds an entry before ending.
 ### 2026-10-22 — Cursor (agent, Alan) — Live Defense Phase 3 shadow runtime
 - Did: branch `feat/live-defense-phase3-shadow-runtime` from `origin/main` (`6e98b23`, PR #391 merged). Extends Phase 1/2. Shared 0.17.0 `LivePolicyDecision` (NOT EXECUTED). Authenticated `owned_staging` ingest, deterministic rules, frozen-v6 only when serving assumptions hold (quiet window → abstain; no torch in this env → `skipped_unavailable`). Analyst review of shadow decisions does not execute. `rl-defense/` training/checkpoints/promotion untouched. No Phase 4 enforcement APIs.
 - State of the code: owned staging app → authenticated ingest → rules (or validated v6) → persisted shadow decision → dashboard → review → no automatic traffic control. Authenticated runtime events no longer force `Incident.simulated`.
-- Commands run and results (executed):
   - `make check` — ruff pass; format 165 files; `shared.export --check` 124 files; examples check pass
-  - `uv run mypy` — Success: no issues found in 40 source files
   - `uv run pytest -q backend/tests monitoring/tests/test_detect.py shared/tests/test_contracts.py` — 239 passed, 8 skipped (`rl_defense` missing; Docker/live LLM opt-in; TSC unset)
   - `npm run lint && typecheck` — pass; `npm test --prefix frontend` — 325 passed / 77 files; `npm test --prefix frontend/transport` — 35 passed
   - `npm run build --prefix frontend` — pass; routes include `/live-defense`, `/live-defense/explain`, `/live-defense/apps`
@@ -235,7 +202,6 @@ adds an entry before ending.
 
 ### 2026-10-22 — Cursor (agent, Alan) — Live Defense Phase 2 CI: Alembic head pin
 - Did: GitHub `backend / test` failed on PR #391 because `test_repository_has_a_single_migration_head` still expected head `0009`. Phase 2 adds linear revision `0010` (`down_revision = 0009`). Updated the pin to `["0010"]`. Single-head rule unchanged. `rl-defense/` untouched. `origin/main` still `53bf03c` (no rebase needed).
-- Commands run and results:
   - `uv run pytest -q backend/tests` — 170 passed, 7 skipped
   - `backend/tests/test_parallel_migrations.py` + live-defense backend tests — 11 passed
   - `make check` — pass; gitleaks on `origin/main..HEAD` — no leaks
@@ -245,7 +211,6 @@ adds an entry before ending.
 ### 2026-10-22 — Cursor (agent, Alan) — Live Defense Phase 2 shadow pilot
 - Did: branch `feat/live-defense-pilot-phase2` from `origin/main` (PR #390 already merged). Extended Phase 1; did not rebuild it. Shared 0.16.0: `ConnectedApplication`, `IngestTokenView`, `DefenseHealth`, `ComponentGraph`, `AnalystReview`. Backend migration 0010 + `backend/api/live_defense.py`. Frontend wires existing APIs end-to-end and adds Staging apps + analyst review. `rl-defense/` untouched. Draft PR #391.
 - State of the code: analyst can register sandbox/owned_test apps, mint a token (shown once), inspect ingested evidence, read a stored recommendation, and record accept/reject/needs-investigation without executing a control. Health status is always `unknown`. No live policy-decision producer.
-- Commands run and results (executed):
   - `make check` — ruff pass (157 files formatted); `shared.export --check` 123 files; examples check pass
   - `uv run pytest -q shared/tests/test_contracts.py backend/tests/test_live_defense_pilot.py backend/tests/test_rl_no_action_path.py backend/tests/test_runtime_ingest.py` — 64 passed, 2 skipped (TSC missing; rl_defense not installed)
   - `npm run lint --prefix frontend` — pass
@@ -262,10 +227,7 @@ adds an entry before ending.
 ### 2026-10-22 — Cursor (agent, Alan) — Live Defense Phase 1 UI
 - Did: branch `feat/live-defense-pilot-ui`. Customer dashboard at `/projects/{id}/live-defense` (Overview, Investigation, Explainability) plus isolated `/live-defense-pilot`. Live mode uses existing project/events/incidents/recommendation/explanation/evaluation APIs. Layout-preview fixtures in `frontend/lib/live-defense-preview.ts` are labelled SAMPLE LAYOUT and never mixed with records. No apply/isolate/rate-limit. `shared/`, `backend/`, `rl-defense/` untouched. Handoff for missing APIs: `docs/planning/LIVE_DEFENSE_FRONTEND_API.md`.
 - State of the code: frontend-only; draft PR #390. Navigation: Live Defense under More; Monitoring links in.
-- Commands run and results (executed):
-  - `npm run lint --prefix frontend` — pass
   - `npm run typecheck --prefix frontend` — pass (after query-helper split fix)
-  - `npm test --prefix frontend` — 323 passed / 77 files
   - `npm run build --prefix frontend` — pass; routes include `/live-defense` and `/live-defense-pilot`
   - Headed Chrome against `next start :3000` `/live-defense-pilot`: SAMPLE LAYOUT banner present; 0 apply/isolate/rate-limit buttons
 - Decisions: missing component-health API → no live map (docs/14: healthy only from a recorded check). NIST `Incident` is not overloaded with DETECTED→EXECUTING.
@@ -411,7 +373,6 @@ adds an entry before ending.
 - Did: The open-incident form states it records a title and report. It does not contain systems, notify outsiders, or attach findings/events until linked. Default simulated drill stays labelled.
 - State of the code: branch `feat/adam/create-incident-note`.
 - Commands run and results: `npm test -- --run tests/unit/create-incident.test.ts` 1 passed; `npm run typecheck` clean; `npm run lint` clean. Browser was not run..
-- Decisions made (ADR links): none.
 - Assumptions / open questions (RQ links): none.
 - Next steps: open the PR.
 - Warnings for the next session: if createIncident starts linking evidence or notifying, change the note.
@@ -419,35 +380,24 @@ adds an entry before ending.
 - Did: The request-scope form states it records a pending authorization. Activation needs a different member's approval; it does not start a check or open access outside the listed targets.
 - State of the code: branch `feat/adam/request-scope-note`.
 - Commands run and results: `npm test -- --run tests/unit/scope-note.test.ts` 1 passed; `npm run typecheck` clean; `npm run lint` clean. Browser was not run.
-- Decisions made (ADR links): none.
-- Assumptions / open questions (RQ links): none.
-- Next steps: open the PR.
 - Warnings for the next session: if createScope activates immediately, change the note.
 ### 2026-10-17 — Adam — start assessment note
 - Did: The start-assessment form states that it enqueues work for the selected repo, approved scope, and commit. It does not merge, deploy, or prove the app is secure. Stacked on event-log + cancel notes.
 - State of the code: branch `feat/adam/start-assessment-note`.
 - Commands run and results: `npm test -- --run tests/unit/start-assessment.test.ts` 1 passed; `npm run typecheck` clean; `npm run lint` clean. Browser was not run.
-- Decisions made (ADR links): none.
-- Assumptions / open questions (RQ links): none.
-- Next steps: open the PR.
 - Warnings for the next session: if start begins merging or deploying, change the note.
 
 ### 2026-10-17 — Adam — event log page note
 - Did: Journey/assessment phases treat a full first `events/log` page (500) as truncated. Skipped-phase copy and a visible note say a later page may still hold the missing state. Merged cancel-assessment note (#191) under this branch so the assessment page carries both.
 - State of the code: branch `feat/adam/event-log-page-note`.
 - Commands run and results: `npm test -- --run tests/unit/lib.test.ts tests/unit/assessment-phases.test.ts` 41 passed; `npm run typecheck` clean; `npm run lint` clean. Browser was not run.
-- Decisions made (ADR links): none.
 - Assumptions / open questions (RQ links): backend still returns `next_cursor: null` even when truncated.
-- Next steps: open the PR.
 - Warnings for the next session: if events/log gains a real cursor, wire pagination instead of the full-page heuristic.
 
 ### 2026-10-17 — Adam — cancel assessment note
 - Did: Assessment cancel copy matches POST /assessments/{id}/cancel: queued stops now; running gets a stop request; findings and recorded work stay. The UI shows the API's immediate vs requested outcome.
 - State of the code: branch `feat/adam/cancel-assessment-note`.
 - Commands run and results: `npm test -- --run tests/unit/cancel-assessment.test.ts` 2 passed; `npm run typecheck` clean; `npm run lint` clean. Browser was not run.
-- Decisions made (ADR links): none.
-- Assumptions / open questions (RQ links): none.
-- Next steps: open the PR.
 - Warnings for the next session: if cancel starts deleting findings, change the note.
 
 ### 2026-10-17 - Alan (Claude) - status accuracy, template review packet
@@ -460,89 +410,61 @@ adds an entry before ending.
 - Did: The repository list says indexing records symbols, calls, entry points, and expectations. The button enqueues `index_snapshot` only.
 - State of the code: branch `feat/adam/index-note`.
 - Commands run and results: `npm test -- --run tests/unit/index-commit.test.ts` 1 passed; `npm run typecheck` clean; `npm run lint` clean. Browser was not run.
-- Decisions made (ADR links): none.
-- Assumptions / open questions (RQ links): none.
-- Next steps: open the PR.
 - Warnings for the next session: if indexing starts an assessment, change the note.
 
----
 
 ### 2026-10-17 — Adam — create project note
 - Did: The new-project form states that it records a name. The form sends `settings: null`, so monitoring uses the default enabled policy. It does not connect a repository or start a check.
 - State of the code: branch `feat/adam/create-project-note`.
 - Commands run and results: `npm test -- --run tests/unit/create-project.test.ts` 1 passed; `npm run typecheck` clean; `npm run lint` clean. Browser was not run.
-- Decisions made (ADR links): none.
-- Assumptions / open questions (RQ links): none.
-- Next steps: open the PR.
 - Warnings for the next session: if the form starts sending settings, update the monitoring sentence.
 
----
 
 ### 2026-10-17 — Adam — honest headline
 - Did: Replaced "Every fix proven" and "Ship fast. Prove every change." A fix counts only when independent, executed tests agree.
 - State of the code: branch `feat/adam/honest-headline`.
 - Commands run and results: `npm test -- --run tests/unit/brand.test.ts` 1 passed; `npm run typecheck` clean; `npm run lint` clean. Browser was not run.
-- Decisions made (ADR links): none.
-- Assumptions / open questions (RQ links): none.
-- Next steps: open the PR.
 - Warnings for the next session: do not put a ship or deploy claim back into the tagline.
 
----
 
 ### 2026-10-17 — Adam — connect repository note
 - Did: The repository form states that it records a name and default branch. The form sends `installation_id: null`.
 - State of the code: branch `feat/adam/connect-note`.
 - Commands run and results: `npm test -- --run tests/unit/connect.test.ts` 1 passed; `npm run typecheck` clean; `npm run lint` clean. Browser was not run.
-- Decisions made (ADR links): none.
-- Assumptions / open questions (RQ links): none.
-- Next steps: open the PR.
 - Warnings for the next session: if the form starts sending a real installation id, change the note.
 
----
 
 ### 2026-10-17 — Adam — monitoring summary
 - Did: The monitoring page leads with recorded-event and simulation-recommendation counts. Unloaded lists are not counted. The sentence says this page is not the Defense Lab.
 - State of the code: branch `feat/adam/monitoring-summary`.
 - Commands run and results: `npm test -- --run tests/unit/monitoring.test.ts` 3 passed; `npm run typecheck` clean; `npm run lint` clean. Browser was not run.
 - Decisions made (ADR links): none. A full page of 50 events is described as the newest page because the API does not return a cursor.
-- Assumptions / open questions (RQ links): none.
-- Next steps: open the PR.
 - Warnings for the next session: do not describe monitoring events as a live network defense.
 
----
 
 ### 2026-10-17 — Adam — assessment phase list
 - Did: The assessment page lists Understand, Review, Security test, Repair, and Verify from that check's event log. A missing log stays unmarked. Verify still needs a finding verdict. Monitor is not shown here.
 - State of the code: branch `feat/adam/assessment-phases`.
 - Commands run and results: `npm test -- --run tests/unit/assessment-phases.test.ts` 3 passed; `npm run typecheck` clean; `npm run lint` clean. Browser was not run.
-- Decisions made (ADR links): none.
 - Assumptions / open questions (RQ links): while the check is running, the phase list polls the event log every 5 seconds. It is not painted from the partial stream buffer.
-- Next steps: open the PR.
 - Warnings for the next session: do not add Monitor to this list unless the project monitoring feed was actually loaded.
 
----
 
 ### 2026-10-17 — Adam — finding list groups
 - Did: The findings list open tab is no longer labelled "Validated and beyond." Open means not a hypothesis and not refuted, accepted, or closed.
 - State of the code: branch `feat/adam/finding-groups`.
 - Commands run and results: `npm test -- --run tests/unit/findings.test.ts` 1 passed; `npm run typecheck` clean; `npm run lint` clean. Browser was not run.
-- Decisions made (ADR links): none.
 - Assumptions / open questions (RQ links): verified and hardened stay on the open tab so a finished fix remains visible.
-- Next steps: open the PR.
 - Warnings for the next session: do not describe the open tab as confirmed exploits.
 
----
 
 ### 2026-10-17 — Adam — assessment phase sentence
 - Did: The assessment page states its recorded state in one sentence. Completed does not mean the application is secure. Approval does not mean a merge.
 - State of the code: branch `feat/adam/assessment-phase`.
 - Commands run and results: `npm test -- --run tests/unit/phase.test.ts` 2 passed; `npm run typecheck` clean; `npm run lint` clean. Browser was not run.
 - Decisions made (ADR links): none. The sentence uses only `assessment.state`.
-- Assumptions / open questions (RQ links): none.
-- Next steps: open the PR.
 - Warnings for the next session: do not add phases the event log did not enter to this sentence.
 
----
 
 ### 2026-10-17 — Adam — lab step observation
 - Did: Defense Lab replay adds a sentence for the current recorded step: highest alert rate and the recorded action. Hidden attacker stage is not rendered.
@@ -550,10 +472,8 @@ adds an entry before ending.
 - Commands run and results: `npm test -- --run tests/unit/lib.test.ts` 26 passed; `npm run typecheck` clean; `npm run lint` clean. Browser replay was not run.
 - Decisions made (ADR links): none. Alert rate is the observable used because the episode step records it and does not record an action mask.
 - Assumptions / open questions (RQ links): a tie lists every node at that rate, in recorded order.
-- Next steps: open the PR.
 - Warnings for the next session: do not describe hidden_stage_ground_truth as something the defender saw.
 
----
 
 ### 2026-10-17 - Alan (Claude) - P1 SARIF and OWASP LLM agent evidence
 - **Did:** #108 (shared 0.10.0 `cvss_v31`, worker `host.record_roe`) was merged by Adam at an older head. #112 reverted the Trace data-sensitivity fallback (main had been fixed by #107 instead). #109 updated the SEC task board. #114: SARIF 2.1.0 export validated against the pinned OASIS schema. #116: OWASP LLM 2026 matrix rows gain security-agents controls and root tests.
@@ -567,12 +487,10 @@ adds an entry before ending.
 - Did: Project page shows Understand, Review, Security test, Repair, Verify, and Monitor from the latest assessment's event log and the finding list. A phase the log did not enter stays skipped or not started. Verification is completed only when a loaded finding is verified or hardened.
 - State of the code: branch `feat/adam/project-journey`. Frontend unit tests, typecheck, and lint passed locally (34 unit tests). Browser e2e was not run.
 - Commands run and results: `npm test -- --run tests/unit/lib.test.ts` 34 passed; `npm run typecheck` clean; `npm run lint` clean.
-- Decisions made (ADR links): none.
 - Assumptions / open questions (RQ links): the event log read is one page of 500. A longer log can leave a later phase unmarked; the README says so.
 - Next steps: open the PR. Do not treat a simulated monitoring event as a live check.
 - Warnings for the next session: the branch was created tracking `origin/main`. Push with an explicit refspec.
 
----
 
 ### 2026-10-17 - Alan (Claude) - standards addendum P0, SEC-002, SEC-006, SEC-008, M3
 - **Did:** Codex had moved the standards catalogs to `standards/` (#74). New branch `feat/alan/standards-roe-wiring` off main carried only the agent side. It was merged as #100 (`831edfa`). Changes: a rules-of-engagement gate in `ToolRegistry.invoke` (SCOPE_DENIED plus `tool.roe_denied`); the RoE is issued at SCOPE_CHECK and re-issued on host resume. Scout validates the CWE and takes its OWASP API tag from code. Trace proposes the eight CVSS v3.1 metrics with evidence; code computes the level (ADR-0012). Trace carries an optional validated ATT&CK id, and Diagnose and Fortify an optional D3FEND id. Added the offline report and smoke commands. Follow-up PR #103 adds an opt-in live seven-role smoke and partial M3 evidence.
@@ -768,9 +686,7 @@ Branch `devin/1792226026-frontend-gaps` (merged `origin/main` at efc0e55). Front
 - Commands/results: root pytest 324 passed/6 optional skips; security pytest 379 passed/11 optional skips; focused authorization/evidence guards36 passed; PostgreSQL subset11 passed; browser8 passed; Ruff/format/mypy pass.
 - No live-model call, hardened Docker execution, deployment or always-on operation was performed.
 
-## 2026-10-17 — frontend expectations / incidents / settings pages (Devin for Adam)
 
-Branch `devin/1792226026-frontend-gaps` (merged `origin/main` at efc0e55). Frontend owner idle; these routes were specified in docs/14 with backend APIs already on main. Added transport `expectations`, `decideExpectation`, `expectationDecisions`, `updateProject` (PATCH; additive, no contract change) and pages `/projects/[id]/expectations`, `/incidents`, `/settings`. Executed: transport 27 passed; app ESLint, tsc, Vitest 29 passed, Next build; browser e2e via `tests/e2e/stack.py` 11 passed (3 new) against real FastAPI + PostgreSQL + worker with scripted (non-live) model transports. Not done: incident closure/lessons-learned/evidence-link UI, functional-remediation pause/resume (Alan #73), live provider, Docker sandbox proof.
 
 ## 2026-10-17 — incident closure UI (Devin for Adam)
 
@@ -966,9 +882,7 @@ The checkout had no separate mobile menu, so added a compact phone Menu disclosu
 with Escape/focus restoration; crossing the threshold closes it. No hero/content,
 headline, font, background, workflow, CTA, backend or API changes.
 
-Executed: `npm run lint --prefix frontend`; `npm run typecheck --prefix frontend`;
 `npm test --prefix frontend -- --maxWorkers=2` (51 files, 219 passed);
-`NEXT_PUBLIC_DEMO_ONLY=1 npm run build --prefix frontend` (passed);
 `E2E_BASE_URL=http://127.0.0.1:3015 E2E_DEMO_ONLY=1 E2E_BROWSER_CHANNEL=chrome ARI_LANDING_SCREENSHOTS=/tmp/ari-reveal-screens npm run e2e --prefix frontend -- tests/e2e/landing.spec.ts --reporter=list`
 (5 passed, 36.6s, 1440/1024/390/320px and reduced motion). Browser assertions prove
 0/99 hidden, 100 shown, decreasing above threshold shown, returning to zero hidden,
@@ -1078,7 +992,6 @@ Branch `claude/wizardly-mccarthy-hni97r`, pushed to `main` at the user's request
   - **Defense Lab:** warm-ink map instead of teal. Node markers sit inside cards, so stacked nodes no longer overlap. Calmer player and story panel.
   - **Agent relay:** hairline tiles with a status dot.
   - **Landing test:** the stale Pricing assertion is aligned with #290 (main fixed the same line in #291).
-- **Verified:**
   - Lint, typecheck and unit tests: 257 passed, including new tests for replay order and the transition rule.
   - Production build passes.
   - `tests/e2e/stack.py`: 27 passed and 4 failed, all at the stale `landing.spec.ts:73` assertion; after the fix the landing spec passes 5/5.
@@ -1093,7 +1006,6 @@ Branch `claude/wizardly-mccarthy-hni97r`, pushed to `main` at the user's request
 
 Pushed to `main` at the user's request. Frontend only. The landing is still untouched: pixel-identical below the header; the header differs only by #290's nav link.
 
-- **Did:**
   - **Defense Lab map:** service cards (pattern study of Omen's network view, own implementation). Each card has a name, a status dot with plain words and a signal bar. Colours:
     - red: attacker present (ground truth);
     - green: attacker cut off;
@@ -1106,7 +1018,6 @@ Pushed to `main` at the user's request. Frontend only. The landing is still unto
   - **Agent map:** a false-alarm (yellow) state, an on-node tag for the agent working there, and a colour legend.
   - **Commit page:** it no longer paints its own band under the header (that was the seam).
   - **White sections:** paper bands (`.paper`) in the Lab (intro and scoreboard) and on pricing (FAQ).
-- **Verified:**
   - Lint, typecheck and unit tests: 258 passed. New tests cover the Lab colour rules and the false-alarm state.
   - Landing pixel parity re-checked.
   - Screenshots of the map at contained and false-alarm steps.
@@ -1117,7 +1028,6 @@ Pushed to `main` at the user's request. Frontend only. The landing is still unto
 
 Pushed to `main` at the user's request. Frontend only, no contract or backend change. Merged with #293 (Sai's hero ant colony).
 
-- **Did:**
   - **Demo replay:** authz now has two confirmed issues (red) and one false alarm (yellow, "False alarm": suspected, checked, nothing there). Injection has one false alarm. The blue team never acts on false-alarm or checked parts.
   - **Agent-map replay bar:** it spans the agents' steps only. Before, it began at about 12% (the read/review ticks) and snapped back there when dragged to the start.
   - **Defense Lab:**
@@ -1128,7 +1038,6 @@ Pushed to `main` at the user's request. Frontend only, no contract or backend ch
   - **Lab scoreboard:** a plain summary, with the technical detail under "How these scores work".
   - **Landing:** no glow on "FIND THE FLAW. PROVE THE FIX." (the owner asked). The spotlight repaints only on pointer move. `HeaderContrast` skips the hit-test over the home hero. Momentum scroll and all animations are unchanged.
   - **Pricing FAQ:** a titled left column and soft rounded open rows.
-- **Verified:**
   - `npm run lint` and `npm run typecheck` are clean. `npm test`: 64 files, 261 passed. `npm run build` OK.
   - Hero scroll on the production build with the colony (headless Chromium, 3 runs, 934 frames): mean frame 16.8 ms, p95 16.7 ms, 0 frames over 50 ms.
   - Before the glow and spotlight change: mean 38.2 ms, p95 116.6 ms, 246 frames over 50 ms.
@@ -1171,13 +1080,11 @@ Removed the homepage Your next move section at owner request, including both act
 
 ## 2026-10-19T05:27Z — Adam — refresh GitHub repository picker from personal installations
 
-- **Did:**
   - On `fix/GH-repo-list-refresh`, the repository-list API refreshes only a trusted personal GitHub App installation before reading the snapshot. It replaces rows for that installation only; organization-installation repositories remain from the sign-in snapshot. App configuration and HTTP failures fall back to stored rows.
   - Added App-JWT personal-installation lookup and paginated installation-repository listing (100 per page, at most 10 pages).
   - Added the GitHub sign-in refresh link on the connect page and repo picker. `useResource` fetches on mount and has no cross-navigation cache.
   - Added backend regression coverage for additions, removals, rejected installations/identities, failures, preserving other installations, and dev-login skipping; added frontend link tests on both surfaces.
   - Dev-login sessions are gated when the dev login setting is enabled and the stored GitHub ID is absent. The database stores the supplied dev-login name in `github_login`, so this avoids treating that unverified name as a real GitHub identity; case-insensitive login matching remains available when dev login is disabled.
-- **Verified:**
   - `uv run ruff check backend` passed; `uv run ruff format --check backend`: 92 files already formatted.
   - `uv run pytest -q backend/tests -k "github or repo or auth"`: 39 passed, 106 deselected, one SQLAlchemy deprecation warning.
   - Full touched backend tests: 24 passed.

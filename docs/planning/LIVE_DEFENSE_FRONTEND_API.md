@@ -1,18 +1,10 @@
 # Live Defense frontend — API contracts (Phases 1–7A, incl. 6.5 RL-gated infra)
-||||||| merged common ancestors
-<<<<<<<<< Temporary merge branch 1
 # Live Defense frontend — API contracts (Phase 6.5)
-||||||||| 74a0a3c2
 # Live Defense frontend — API contracts (Phase 6)
-=========
 # Live Defense frontend — API contracts (Phase 7A)
->>>>>>>>> Temporary merge branch 2
-=======
 # Live Defense frontend — API contracts (Phase 7A + 6.5)
 
 Status: **Phase 7C live authorized agent execution + Phase 6.5 RL-gated infrastructure** integrated on `integration/2026-11-02-release`. Shadow-pilot stays recommendation-only; RL-gated apps are **server-enforced** shadow-only. Owned-test controls remain a **separate** authorization path. First-responder modes are OFF / MONITOR|SHADOW / ASSISTED RESPONSE; AUTO-EXECUTE is rejected. Scout and Diagnose may execute a real authorized agent loop; that is not confirmation. Producer: control plane (`backend/`, `shared/` 0.22.0+). Phases 1–6 are extended, not rebuilt. Readiness verdict stays **INFRASTRUCTURE READY — RL BLOCKED**. An RL recommendation is not executed defense. Do not use Controls during a customer shadow-pilot. Isolate is never offered.
-||||||| merged common ancestors
-<<<<<<<<< Temporary merge branch 1
 Status: **Phase 6.5 RL-gated infrastructure** on
 `feat/live-defense-phase6-5-rl-gated-pilot` from `origin/main` `74a0a3c2`.
 Shadow-pilot is recommendation-only. RL-gated apps are **server-enforced**
@@ -20,7 +12,6 @@ shadow-only. Owned-test controls remain a **separate** authorization path.
 Producer: control plane (`backend/`, `shared/` 0.20.0). Verdict stays
 **INFRASTRUCTURE READY — RL BLOCKED**. Do not use Controls during a customer
 shadow-pilot. Isolate is never offered.
-||||||||| 74a0a3c2
 Status: **Phase 6 post-merge audit** on `feat/live-defense-phase6-pilot-audit`
 from `origin/main` (PRs #393 and #395 both merged). Shadow-pilot is
 recommendation-only. Owned-test controls remain a **separate** authorization
@@ -29,25 +20,18 @@ extended, not rebuilt: live mode still refuses to mix layout-preview fixtures
 with records; Phase 2/3 accept remains non-executing; isolate is never offered.
 Authorization uses a **separate** endpoint. Controls are labelled **OWNED TEST
 ENVIRONMENT**. Do not use Controls during a customer shadow-pilot.
-=========
 Status: **Phase 7A first-responder** on `cursor/live-defense-first-responder-0044`
 from live `origin/main`. Shadow-pilot stays recommendation-only. Owned-test
 controls remain a **separate** authorization path. First-responder modes are
 OFF / MONITOR|SHADOW / ASSISTED RESPONSE. AUTO-EXECUTE is rejected. Producer:
 control plane (`backend/`, `shared/` 0.21.0; 0.20.0 reserved for open #412). Phases 1–6 are extended, not
 rebuilt. An RL recommendation is not executed defense.
->>>>>>>>> Temporary merge branch 2
-=======
 Status: **Phase 7A first-responder + Phase 6.5 RL-gated infrastructure** merged
 on `feat/live-defense-phase6-5-rl-gated-pilot` from live `origin/main`.
-Shadow-pilot is recommendation-only. RL-gated apps are **server-enforced**
-shadow-only. Owned-test controls remain a **separate** authorization path.
 First-responder modes are OFF / MONITOR|SHADOW / ASSISTED RESPONSE.
 AUTO-EXECUTE is rejected. Producer: control plane (`backend/`, `shared/`
 0.21.0 carrying the Phase 6.5 additive set). Phases 1–6 are extended, not
 rebuilt. An RL recommendation is not executed defense. Verdict stays
-**INFRASTRUCTURE READY — RL BLOCKED**. Do not use Controls during a customer
-shadow-pilot. Isolate is never offered.
 
 Canonical types: `shared/shared/monitoring.py`, `shared/shared/incident.py`,
 `shared/shared/rl.py`, `shared/shared/live_defense.py`, generated TS via
