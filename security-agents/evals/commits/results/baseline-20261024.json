@@ -1,0 +1,581 @@
+{
+  "summary": {
+    "idor_validated": "8/8",
+    "idor_fixed": "8/8",
+    "vuln_flagged": "6/7",
+    "vuln_validated": "0/7",
+    "benign_false_positive": "0/8",
+    "max_seconds": 259,
+    "median_seconds": 74,
+    "over_180s": 5,
+    "total_usd": 0.8
+  },
+  "results": [
+    {
+      "case_id": "idor_repository_detail",
+      "kind": "idor",
+      "cwe": "CWE-639",
+      "assessment_id": "asm_01M5Q116BRTX3W666QKA6X4Z1B",
+      "state": "COMPLETED",
+      "seconds": 259,
+      "usd": 0.06880200000000003,
+      "flagged": true,
+      "validated": true,
+      "fixed": true,
+      "findings": [
+        {
+          "kind": "security",
+          "status": "hardened",
+          "title": "GET /repositories/{repo_id} may return repository records to signed-in users who are not members of the owning project",
+          "cwe": "CWE-639"
+        },
+        {
+          "kind": "functional",
+          "status": "hypothesis",
+          "title": "GET /repositories/{repo_id} returns any repository to any signed-in user (membership check removed)",
+          "cwe": "CWE-639"
+        },
+        {
+          "kind": "security",
+          "status": "hypothesis",
+          "title": "[CWE-639] Missing object-level authorization on repository detail read (IDOR)",
+          "cwe": "CWE-639"
+        }
+      ]
+    },
+    {
+      "case_id": "idor_project_detail",
+      "kind": "idor",
+      "cwe": "CWE-639",
+      "assessment_id": "asm_01M5Q117EQEW3D3W8P2SAF1Q8B",
+      "state": "COMPLETED",
+      "seconds": 193,
+      "usd": 0.063831,
+      "flagged": true,
+      "validated": true,
+      "fixed": true,
+      "findings": [
+        {
+          "kind": "security",
+          "status": "hypothesis",
+          "title": "[authorization] GET /projects/{id} no longer checks org membership (IDOR)",
+          "cwe": "CWE-639"
+        },
+        {
+          "kind": "security",
+          "status": "hardened",
+          "title": "GET /projects/{project_id} may return any project's record and settings to any authenticated user, since the membership ",
+          "cwe": "CWE-639"
+        },
+        {
+          "kind": "security",
+          "status": "hypothesis",
+          "title": "[CWE-639] Missing object-level authorization on project read (IDOR)",
+          "cwe": "CWE-639"
+        }
+      ]
+    },
+    {
+      "case_id": "idor_project_repositories",
+      "kind": "idor",
+      "cwe": "CWE-639",
+      "assessment_id": "asm_01M5Q119M94T0Q7CYC9PFCXAAH",
+      "state": "COMPLETED",
+      "seconds": 188,
+      "usd": 0.06084899999999999,
+      "flagged": true,
+      "validated": true,
+      "fixed": true,
+      "findings": [
+        {
+          "kind": "security",
+          "status": "hardened",
+          "title": "list_repositories now returns a project's repositories to any authenticated user without a project membership check",
+          "cwe": "CWE-862"
+        },
+        {
+          "kind": "security",
+          "status": "hypothesis",
+          "title": "[CWE-639] Missing object-level authorization on project repository listing",
+          "cwe": "CWE-639"
+        }
+      ]
+    },
+    {
+      "case_id": "idor_project_scopes",
+      "kind": "idor",
+      "cwe": "CWE-639",
+      "assessment_id": "asm_01M5Q11AH0N4FNXVVAYQBB6PSK",
+      "state": "COMPLETED",
+      "seconds": 160,
+      "usd": 0.066712,
+      "flagged": true,
+      "validated": true,
+      "fixed": true,
+      "findings": [
+        {
+          "kind": "security",
+          "status": "hardened",
+          "title": "list_scopes returns a project's authorized scopes to any authenticated user, with no project membership check, after thi",
+          "cwe": "CWE-862"
+        }
+      ]
+    },
+    {
+      "case_id": "idor_project_assessments",
+      "kind": "idor",
+      "cwe": "CWE-639",
+      "assessment_id": "asm_01M5Q19Y0ZWX8BDS95BXPQRNK9",
+      "state": "COMPLETED",
+      "seconds": 184,
+      "usd": 0.06667200000000002,
+      "flagged": true,
+      "validated": true,
+      "fixed": true,
+      "findings": [
+        {
+          "kind": "security",
+          "status": "hypothesis",
+          "title": "[authorization] list_assessments no longer checks project membership (cross-tenant IDOR)",
+          "cwe": "CWE-639"
+        },
+        {
+          "kind": "security",
+          "status": "hardened",
+          "title": "list_assessments no longer checks project membership, so any authenticated user can list every project's assessments (ID",
+          "cwe": "CWE-639"
+        }
+      ]
+    },
+    {
+      "case_id": "idor_require_project_default_role",
+      "kind": "idor",
+      "cwe": "CWE-863",
+      "assessment_id": "asm_01M5Q19YKWRYZQ22MQHF6P11AH",
+      "state": "COMPLETED",
+      "seconds": 222,
+      "usd": 0.06845199999999999,
+      "flagged": true,
+      "validated": true,
+      "fixed": true,
+      "findings": [
+        {
+          "kind": "security",
+          "status": "hardened",
+          "title": "require_project maps non-members to viewer, so project-scoped routes may serve non-member principals instead of returnin",
+          "cwe": "CWE-639"
+        },
+        {
+          "kind": "security",
+          "status": "inconclusive",
+          "title": "Owner-gated approve_scope relies on require_project to reject non-members; the change lets non-members reach the rank ch",
+          "cwe": "CWE-862"
+        },
+        {
+          "kind": "security",
+          "status": "hypothesis",
+          "title": "[authorization] Non-members of an org receive viewer access to its projects via require_project",
+          "cwe": "CWE-863"
+        },
+        {
+          "kind": "security",
+          "status": "hypothesis",
+          "title": "[CWE-639] Broken object-level authorization: non-member can pass viewer-level project checks (IDOR)",
+          "cwe": "CWE-639"
+        }
+      ]
+    },
+    {
+      "case_id": "idor_repo_access_helper",
+      "kind": "idor",
+      "cwe": "CWE-862",
+      "assessment_id": "asm_01M5Q1A0DWY7GK3FW96HNM1MN2",
+      "state": "COMPLETED",
+      "seconds": 175,
+      "usd": 0.077152,
+      "flagged": true,
+      "validated": true,
+      "fixed": true,
+      "findings": [
+        {
+          "kind": "security",
+          "status": "hardened",
+          "title": "Viewer-role repository reads skip the project membership check in _repo_access, so any authenticated user may read any r",
+          "cwe": "CWE-639"
+        },
+        {
+          "kind": "security",
+          "status": "hypothesis",
+          "title": "[authorization] Repository and snapshot reads skip project membership check (cross-tenant read)",
+          "cwe": "CWE-639"
+        },
+        {
+          "kind": "security",
+          "status": "hypothesis",
+          "title": "[CWE-639] Missing authorization on repository/snapshot read endpoints",
+          "cwe": "CWE-639"
+        }
+      ]
+    },
+    {
+      "case_id": "idor_project_cache_before_auth",
+      "kind": "idor",
+      "cwe": "CWE-639",
+      "assessment_id": "asm_01M5Q1A1FBQJW2XCPP9CXEAD3E",
+      "state": "COMPLETED",
+      "seconds": 156,
+      "usd": 0.06730199999999997,
+      "flagged": true,
+      "validated": true,
+      "fixed": true,
+      "findings": [
+        {
+          "kind": "security",
+          "status": "hypothesis",
+          "title": "[authorization] Project GET serves a process-global cache before the membership check (tenant isolation bypass)",
+          "cwe": "CWE-639"
+        },
+        {
+          "kind": "security",
+          "status": "hypothesis",
+          "title": "[CWE-639] Authorization bypassed on cache hit in GET /projects/{project_id}",
+          "cwe": "CWE-639"
+        },
+        {
+          "kind": "security",
+          "status": "hypothesis",
+          "title": "[unclassified] Unbounded module-level cache shared across tenants with no invalidation",
+          "cwe": null
+        },
+        {
+          "kind": "security",
+          "status": "hardened",
+          "title": "GET /projects/{project_id} serves cached project records before authentication and membership checks",
+          "cwe": "CWE-639"
+        }
+      ]
+    },
+    {
+      "case_id": "vuln_signature_timing",
+      "kind": "vuln",
+      "cwe": "CWE-208",
+      "assessment_id": "asm_01M5Q1K7T7T96E517FPWH0J8JC",
+      "state": "COMPLETED",
+      "seconds": 52,
+      "usd": 0.018559,
+      "flagged": true,
+      "validated": false,
+      "fixed": false,
+      "findings": [
+        {
+          "kind": "security",
+          "status": "inconclusive",
+          "title": "Webhook HMAC check in verify_signature may leak signature bytes via timing after compare_digest was replaced with ==",
+          "cwe": "CWE-208"
+        },
+        {
+          "kind": "functional",
+          "status": "hypothesis",
+          "title": "Signature comparison is no longer constant-time",
+          "cwe": "CWE-208"
+        },
+        {
+          "kind": "security",
+          "status": "hypothesis",
+          "title": "[CWE-208] Non-constant-time HMAC comparison on webhook signature",
+          "cwe": "CWE-208"
+        }
+      ]
+    },
+    {
+      "case_id": "vuln_signature_missing_header",
+      "kind": "vuln",
+      "cwe": "CWE-347",
+      "assessment_id": "asm_01M5Q1K96SPQZZW4DWZRZHTCWN",
+      "state": "COMPLETED",
+      "seconds": 55,
+      "usd": 0.020069,
+      "flagged": true,
+      "validated": false,
+      "fixed": false,
+      "findings": [
+        {
+          "kind": "security",
+          "status": "inconclusive",
+          "title": "verify_signature returns True when X-Hub-Signature-256 is absent, so the GitHub webhook accepts unsigned requests",
+          "cwe": "CWE-347"
+        },
+        {
+          "kind": "functional",
+          "status": "validated",
+          "title": "Missing webhook signature header now accepted (auth bypass)",
+          "cwe": "CWE-347"
+        },
+        {
+          "kind": "security",
+          "status": "hypothesis",
+          "title": "[unclassified] Webhook authentication bypass when X-Hub-Signature-256 is absent",
+          "cwe": null
+        }
+      ]
+    },
+    {
+      "case_id": "vuln_sql_injection_cursor",
+      "kind": "vuln",
+      "cwe": "CWE-89",
+      "assessment_id": "asm_01M5Q1KB0RGSE5PF240Z86YZEQ",
+      "state": "COMPLETED",
+      "seconds": 53,
+      "usd": 0.015929000000000002,
+      "flagged": true,
+      "validated": false,
+      "fixed": false,
+      "findings": [
+        {
+          "kind": "security",
+          "status": "inconclusive",
+          "title": "Cursor query parameter is interpolated into raw SQL in list_assessments, enabling SQL injection by any project member",
+          "cwe": "CWE-89"
+        },
+        {
+          "kind": "functional",
+          "status": "hypothesis",
+          "title": "SQL injection via cursor parameter in list_assessments",
+          "cwe": "CWE-89"
+        },
+        {
+          "kind": "security",
+          "status": "hypothesis",
+          "title": "[CWE-89] Raw SQL built from request query parameter in cursor pagination",
+          "cwe": "CWE-89"
+        }
+      ]
+    },
+    {
+      "case_id": "vuln_artifact_path_traversal",
+      "kind": "vuln",
+      "cwe": "CWE-22",
+      "assessment_id": "asm_01M5Q1KCJQ39SVVZB8TQ52NTVX",
+      "state": "COMPLETED",
+      "seconds": 60,
+      "usd": 0.012451,
+      "flagged": false,
+      "validated": false,
+      "fixed": false,
+      "findings": []
+    },
+    {
+      "case_id": "vuln_git_command_injection",
+      "kind": "vuln",
+      "cwe": "CWE-78",
+      "assessment_id": "asm_01M5Q1NHW69ECFGJHJG18PTX9X",
+      "state": "COMPLETED",
+      "seconds": 85,
+      "usd": 0.026613,
+      "flagged": true,
+      "validated": false,
+      "fixed": false,
+      "findings": [
+        {
+          "kind": "functional",
+          "status": "inconclusive",
+          "title": "_git runs git through the shell; metacharacters in arguments are executed",
+          "cwe": "CWE-78"
+        },
+        {
+          "kind": "functional",
+          "status": "inconclusive",
+          "title": "Arguments containing spaces are split into multiple words",
+          "cwe": "CWE-88"
+        },
+        {
+          "kind": "security",
+          "status": "hypothesis",
+          "title": "[CWE-78] Shell command built by string concatenation from argument list (command injection sink)",
+          "cwe": "CWE-78"
+        },
+        {
+          "kind": "security",
+          "status": "inconclusive",
+          "title": "Commit message and branch reach an unquoted shell string in push_patch via _git (shell=True), which may allow OS command",
+          "cwe": "CWE-78"
+        },
+        {
+          "kind": "security",
+          "status": "inconclusive",
+          "title": "Repository-controlled file paths reach an unquoted shell string in recipes._blob via _git (shell=True), which may allow ",
+          "cwe": "CWE-78"
+        }
+      ]
+    },
+    {
+      "case_id": "vuln_oauth_state_skipped",
+      "kind": "vuln",
+      "cwe": "CWE-352",
+      "assessment_id": "asm_01M5Q1NK53ET811GCNDPM7SP2V",
+      "state": "COMPLETED",
+      "seconds": 79,
+      "usd": 0.017234999999999997,
+      "flagged": true,
+      "validated": false,
+      "fixed": false,
+      "findings": [
+        {
+          "kind": "security",
+          "status": "inconclusive",
+          "title": "GitHub OAuth callback skips state validation when the state cookie is absent (login CSRF), in github_callback",
+          "cwe": "CWE-352"
+        },
+        {
+          "kind": "functional",
+          "status": "validated",
+          "title": "OAuth callback accepts any state when no state cookie is present (login CSRF)",
+          "cwe": "CWE-352"
+        },
+        {
+          "kind": "security",
+          "status": "hypothesis",
+          "title": "[CWE-352] Missing OAuth state validation on GitHub callback enables login CSRF / session fixation",
+          "cwe": "CWE-352"
+        }
+      ]
+    },
+    {
+      "case_id": "vuln_fetch_name_check_removed",
+      "kind": "vuln",
+      "cwe": "CWE-88",
+      "assessment_id": "asm_01M5Q1NMCVSCPS373Q11RFSM3D",
+      "state": "COMPLETED",
+      "seconds": 87,
+      "usd": 0.027810000000000005,
+      "flagged": true,
+      "validated": false,
+      "fixed": false,
+      "findings": [
+        {
+          "kind": "security",
+          "status": "inconclusive",
+          "title": "fetch_commit no longer validates full_name before building the upstream git URL and argv; enforcement now depends on cal",
+          "cwe": "CWE-1286"
+        },
+        {
+          "kind": "security",
+          "status": "hypothesis",
+          "title": "[unclassified] Unvalidated repository name is interpolated into the authenticated git fetch URL",
+          "cwe": null
+        }
+      ]
+    },
+    {
+      "case_id": "benign_repository_helper",
+      "kind": "benign",
+      "cwe": null,
+      "assessment_id": "asm_01M5Q1NNKJBHF9RDCVDHWK2ZDE",
+      "state": "COMPLETED",
+      "seconds": 50,
+      "usd": 0.010903999999999999,
+      "flagged": false,
+      "validated": false,
+      "fixed": false,
+      "findings": []
+    },
+    {
+      "case_id": "benign_scopes_docstring",
+      "kind": "benign",
+      "cwe": null,
+      "assessment_id": "asm_01M5Q1RJT8YPNZ5K3184RK8XX9",
+      "state": "COMPLETED",
+      "seconds": 54,
+      "usd": 0.016877000000000003,
+      "flagged": false,
+      "validated": false,
+      "fixed": false,
+      "findings": []
+    },
+    {
+      "case_id": "benign_assessments_page_cap",
+      "kind": "benign",
+      "cwe": null,
+      "assessment_id": "asm_01M5Q1RKXGRA2SW04E8PMXQ2CF",
+      "state": "COMPLETED",
+      "seconds": 66,
+      "usd": 0.016760999999999998,
+      "flagged": false,
+      "validated": false,
+      "fixed": false,
+      "findings": []
+    },
+    {
+      "case_id": "benign_project_not_found_message",
+      "kind": "benign",
+      "cwe": null,
+      "assessment_id": "asm_01M5Q1RN2F67G4DNGRHWRXQG4V",
+      "state": "COMPLETED",
+      "seconds": 74,
+      "usd": 0.02441,
+      "flagged": true,
+      "validated": false,
+      "fixed": false,
+      "findings": [
+        {
+          "kind": "security",
+          "status": "inconclusive",
+          "title": "Incident detail and events look up the incident before authenticating, so unauthenticated callers can tell which inciden",
+          "cwe": "CWE-204"
+        }
+      ]
+    },
+    {
+      "case_id": "benign_signature_strip",
+      "kind": "benign",
+      "cwe": null,
+      "assessment_id": "asm_01M5Q1RPDZ98B2698QTHZ653NH",
+      "state": "COMPLETED",
+      "seconds": 53,
+      "usd": 0.010983,
+      "flagged": false,
+      "validated": false,
+      "fixed": false,
+      "findings": []
+    },
+    {
+      "case_id": "benign_checkout_timeout",
+      "kind": "benign",
+      "cwe": null,
+      "assessment_id": "asm_01M5Q1VGPFMMV4VBH3SHHAKXHF",
+      "state": "COMPLETED",
+      "seconds": 61,
+      "usd": 0.014857,
+      "flagged": false,
+      "validated": false,
+      "fixed": false,
+      "findings": []
+    },
+    {
+      "case_id": "benign_repositories_order",
+      "kind": "benign",
+      "cwe": null,
+      "assessment_id": "asm_01M5Q1VJ26SPABRX6CCGTTMF1A",
+      "state": "COMPLETED",
+      "seconds": 68,
+      "usd": 0.014492,
+      "flagged": false,
+      "validated": false,
+      "fixed": false,
+      "findings": []
+    },
+    {
+      "case_id": "benign_project_detail_variable",
+      "kind": "benign",
+      "cwe": null,
+      "assessment_id": "asm_01M5Q1VK1ZRQQ7D4ZERE9G2EGW",
+      "state": "COMPLETED",
+      "seconds": 47,
+      "usd": 0.012738,
+      "flagged": false,
+      "validated": false,
+      "fixed": false,
+      "findings": []
+    }
+  ]
+}
