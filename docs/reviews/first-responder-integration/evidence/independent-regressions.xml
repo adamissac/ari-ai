@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="7" skipped="0" tests="8" time="0.952" timestamp="2026-10-24T15:51:25.375231-04:00" hostname="Alans-MacBook-Pro-2.local"><testcase classname="backend.tests.live_defense_e2e.test_independent_integration" name="test_emergency_stop_is_claimable_when_project_slots_are_full" time="0.045"><failure message="AssertionError: emergency rollback must bypass ordinary slots&#10;assert (None is not None)">settings_override = &lt;function settings_override.&lt;locals&gt;.apply at 0x10cba4f40&gt;
+
+    def test_emergency_stop_is_claimable_when_project_slots_are_full(settings_override):
+        settings_override(job_max_running_per_project="1")
+        enqueue()
+        with transaction() as conn:
+            assert jobs.claim(conn, "busy-worker", 60, ["review_noop"]) is not None
+        stop = enqueue("live_defense_emergency_stop", priority=0)
+        with transaction() as conn:
+            claim = jobs.claim(conn, "stop-worker", 60, ["live_defense_emergency_stop"])
+&gt;       assert claim is not None and claim.id == stop, "emergency rollback must bypass ordinary slots"
+E       AssertionError: emergency rollback must bypass ordinary slots
+E       assert (None is not None)
+
+backend/tests/live_defense_e2e/test_independent_integration.py:54: AssertionError</failure></testcase><testcase classname="backend.tests.live_defense_e2e.test_independent_integration" name="test_complete_rejects_expired_lease_without_waiting_for_reconciler" time="0.037"><failure message="AssertionError: assert True is False&#10; +  where True = &lt;function complete at 0x10c235260&gt;(&lt;sqlalchemy.engine.base.Connection object at 0x10cc22a20&gt;, 'job_01M5QQFM3VG137MT0AP7HMTJ8A', 'expired-worker', {})&#10; +    where &lt;function complete at 0x10c235260&gt; = jobs.complete">def test_complete_rejects_expired_lease_without_waiting_for_reconciler():
+        jid = enqueue()
+        with transaction() as conn:
+            assert jobs.claim(conn, "expired-worker", 60, ["review_noop"]) is not None
+            conn.execute(
+                sa.update(jobs_t)
+                .where(jobs_t.c.id == jid)
+                .values(lease_expires_at=sa.func.now() - sa.text("interval '1 second'"))
+            )
+        with transaction() as conn:
+&gt;           assert jobs.complete(conn, jid, "expired-worker", {}) is False
+E           AssertionError: assert True is False
+E            +  where True = &lt;function complete at 0x10c235260&gt;(&lt;sqlalchemy.engine.base.Connection object at 0x10cc22a20&gt;, 'job_01M5QQFM3VG137MT0AP7HMTJ8A', 'expired-worker', {})
+E            +    where &lt;function complete at 0x10c235260&gt; = jobs.complete
+
+backend/tests/live_defense_e2e/test_independent_integration.py:67: AssertionError</failure></testcase><testcase classname="backend.tests.live_defense_e2e.test_independent_integration" name="test_dependency_deferral_is_recorded_in_lifecycle_history" time="0.036"><failure message="AssertionError: assert 'running' == 'queued'&#10;  &#10;  - queued&#10;  + running">def test_dependency_deferral_is_recorded_in_lifecycle_history():
+        jid = enqueue()
+        with transaction() as conn:
+            assert jobs.claim(conn, "defer-worker", 60, ["review_noop"]) is not None
+            assert jobs.defer(conn, jid, "defer-worker", delay_s=1)
+&gt;           assert execution.history(conn, jid)[-1]["to_status"] == "queued"
+E           AssertionError: assert 'running' == 'queued'
+E             
+E             - queued
+E             + running
+
+backend/tests/live_defense_e2e/test_independent_integration.py:75: AssertionError</failure></testcase><testcase classname="backend.tests.live_defense_e2e.test_independent_integration" name="test_off_marks_waiting_first_responder_jobs_cancelled" time="0.146"><failure message="AssertionError: assert 'waiting' == 'cancelled'&#10;  &#10;  - cancelled&#10;  + waiting">client_factory = &lt;function client_factory.&lt;locals&gt;.make at 0x10cc5af20&gt;
+
+    def test_off_marks_waiting_first_responder_jobs_cancelled(client_factory):
+        alice, bob = client_factory("alice"), client_factory("bob")
+        pid = setup_project(alice, bob)["project"]
+        parent = enqueue(project=pid)
+        child = enqueue("live_defense_agent_step", project=pid, depends_on=parent)
+        with transaction() as conn:
+            modes.cancel_first_responder_jobs(conn, pid)
+&gt;       assert jobrow(child)["status"] == "cancelled"
+E       AssertionError: assert 'waiting' == 'cancelled'
+E         
+E         - cancelled
+E         + waiting
+
+backend/tests/live_defense_e2e/test_independent_integration.py:85: AssertionError</failure></testcase><testcase classname="backend.tests.live_defense_e2e.test_independent_integration" name="test_deadline_compatibility_with_database_clock" time="0.038" /><testcase classname="backend.tests.live_defense_e2e.test_independent_integration" name="test_observability_marks_nonrunning_jobs_as_not_in_progress[timed_out]" time="0.087"><failure message="AssertionError: assert 'in_progress' != 'in_progress'&#10; +  where 'in_progress' = _final_state(FirstResponderDecision(id='frd_01M5QQFMDBCTCHM0RHTZVW149K', project_id='prj_01M5QQFMCMF4AC3RPXC4F9WJAS', application_i...tive agent is not independent verification. RL recommendations are not executed defense. AUTO-EXECUTE does not exist.'), [FirstResponderInvocationView(invocation=FirstResponderInvocation(id='fri_01M5QQFMDCYF6MHGF6MDT0QGQ8', decision_id='fr...lable=False, token_usage_note='Per-invocation token usage is not persisted yet; shown as unavailable, not estimated.')], None)">client_factory = &lt;function client_factory.&lt;locals&gt;.make at 0x10d0bc360&gt;
+state = 'timed_out'
+
+    @pytest.mark.parametrize("state", ["timed_out", "recovery_required"])
+    def test_observability_marks_nonrunning_jobs_as_not_in_progress(client_factory, state):
+        from test_live_defense_investigations import _seed
+        from backend.api.live_defense_investigations import _invocation_view
+    
+        _alice, _pid, decision, invocation = _seed(client_factory)
+        jid = invocation.job_id
+        with transaction() as conn:
+            conn.execute(sa.update(jobs_t).where(jobs_t.c.id == jid).values(status=state))
+            from backend.db import first_responder_invocations
+    
+            row = (
+                conn.execute(
+                    sa.select(first_responder_invocations).where(
+                        first_responder_invocations.c.id == invocation.id
+                    )
+                )
+                .mappings()
+                .one()
+            )
+            view = _invocation_view(conn, row, now=utcnow())
+&gt;           assert _final_state(decision, [view], None) != "in_progress"
+E           AssertionError: assert 'in_progress' != 'in_progress'
+E            +  where 'in_progress' = _final_state(FirstResponderDecision(id='frd_01M5QQFMDBCTCHM0RHTZVW149K', project_id='prj_01M5QQFMCMF4AC3RPXC4F9WJAS', application_i...tive agent is not independent verification. RL recommendations are not executed defense. AUTO-EXECUTE does not exist.'), [FirstResponderInvocationView(invocation=FirstResponderInvocation(id='fri_01M5QQFMDCYF6MHGF6MDT0QGQ8', decision_id='fr...lable=False, token_usage_note='Per-invocation token usage is not persisted yet; shown as unavailable, not estimated.')], None)
+
+backend/tests/live_defense_e2e/test_independent_integration.py:125: AssertionError</failure></testcase><testcase classname="backend.tests.live_defense_e2e.test_independent_integration" name="test_observability_marks_nonrunning_jobs_as_not_in_progress[recovery_required]" time="0.079"><failure message="AssertionError: assert 'in_progress' != 'in_progress'&#10; +  where 'in_progress' = _final_state(FirstResponderDecision(id='frd_01M5QQFMFWDFBPEERNKZACTY5D', project_id='prj_01M5QQFMF9AWFMXW0CE0SXTSV5', application_i...tive agent is not independent verification. RL recommendations are not executed defense. AUTO-EXECUTE does not exist.'), [FirstResponderInvocationView(invocation=FirstResponderInvocation(id='fri_01M5QQFMFXKXH6BGEYW2FCPRQ9', decision_id='fr...lable=False, token_usage_note='Per-invocation token usage is not persisted yet; shown as unavailable, not estimated.')], None)">client_factory = &lt;function client_factory.&lt;locals&gt;.make at 0x10d2085e0&gt;
+state = 'recovery_required'
+
+    @pytest.mark.parametrize("state", ["timed_out", "recovery_required"])
+    def test_observability_marks_nonrunning_jobs_as_not_in_progress(client_factory, state):
+        from test_live_defense_investigations import _seed
+        from backend.api.live_defense_investigations import _invocation_view
+    
+        _alice, _pid, decision, invocation = _seed(client_factory)
+        jid = invocation.job_id
+        with transaction() as conn:
+            conn.execute(sa.update(jobs_t).where(jobs_t.c.id == jid).values(status=state))
+            from backend.db import first_responder_invocations
+    
+            row = (
+                conn.execute(
+                    sa.select(first_responder_invocations).where(
+                        first_responder_invocations.c.id == invocation.id
+                    )
+                )
+                .mappings()
+                .one()
+            )
+            view = _invocation_view(conn, row, now=utcnow())
+&gt;           assert _final_state(decision, [view], None) != "in_progress"
+E           AssertionError: assert 'in_progress' != 'in_progress'
+E            +  where 'in_progress' = _final_state(FirstResponderDecision(id='frd_01M5QQFMFWDFBPEERNKZACTY5D', project_id='prj_01M5QQFMF9AWFMXW0CE0SXTSV5', application_i...tive agent is not independent verification. RL recommendations are not executed defense. AUTO-EXECUTE does not exist.'), [FirstResponderInvocationView(invocation=FirstResponderInvocation(id='fri_01M5QQFMFXKXH6BGEYW2FCPRQ9', decision_id='fr...lable=False, token_usage_note='Per-invocation token usage is not persisted yet; shown as unavailable, not estimated.')], None)
+
+backend/tests/live_defense_e2e/test_independent_integration.py:125: AssertionError</failure></testcase><testcase classname="backend.tests.live_defense_e2e.test_independent_integration" name="test_crash_during_provider_request_requires_recovery_before_replay" time="0.331"><failure message="AssertionError: paid request uncertainty must survive worker death&#10;assert 'queued' == 'recovery_required'&#10;  &#10;  - recovery_required&#10;  + queued">staging = &lt;live_defense_e2e.harness.OwnedStaging object at 0x10d248170&gt;
+
+    def test_crash_during_provider_request_requires_recovery_before_replay(staging):
+        alice, app, repo = prepare(staging)
+        fake = fake_provider(repo / "target")
+    
+        class WorkerCrash(BaseException):
+            pass
+    
+        class CrashAfterSending:
+            mode = "fake"
+            calls = 0
+    
+            def complete(self, request):
+                self.calls += 1
+                if self.calls == 1:
+                    raise WorkerCrash("request sent; provider outcome is unknown")
+                return fake.complete(request)
+    
+        provider = CrashAfterSending()
+        staging.use_gateway(gateway_factory(provider))
+        assert staging.ingest(alice, app).status_code == 202
+        with pytest.raises(WorkerCrash):
+            staging.drain()
+        step = next(j for j in staging.job_rows("live_defense_agent_step") if j["status"] == "running")
+        with transaction() as conn:
+            conn.execute(
+                sa.update(jobs_t)
+                .where(jobs_t.c.id == step["id"])
+                .values(lease_expires_at=sa.func.now() - sa.text("interval '1 second'"))
+            )
+            execution.reconcile(conn)
+&gt;       assert jobrow(step["id"])["status"] == "recovery_required", (
+            "paid request uncertainty must survive worker death"
+        )
+E       AssertionError: paid request uncertainty must survive worker death
+E       assert 'queued' == 'recovery_required'
+E         
+E         - recovery_required
+E         + queued
+
+backend/tests/live_defense_e2e/test_independent_integration.py:159: AssertionError</failure></testcase></testsuite></testsuites>

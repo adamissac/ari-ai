@@ -1,0 +1,148 @@
+{
+  "baseRefName": "main",
+  "baseRefOid": "d1864e9a32b297af7c52f2be33d6c92e4e1281f2",
+  "headRefName": "feat/alan/live-defense-phase7c-agent-execution",
+  "headRefOid": "89a3debab24f27da8672a1f2b22239d916079b04",
+  "number": 458,
+  "state": "OPEN",
+  "statusCheckRollup": [
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-24T18:53:22Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/adamissac/ari-ai/actions/runs/40122384755/job/120956546628",
+      "name": "test",
+      "startedAt": "2026-10-24T18:48:23Z",
+      "status": "COMPLETED",
+      "workflowName": "backend"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-24T18:49:13Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/adamissac/ari-ai/actions/runs/40122384745/job/120956546659",
+      "name": "test",
+      "startedAt": "2026-10-24T18:48:23Z",
+      "status": "COMPLETED",
+      "workflowName": "code-intelligence"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-24T18:50:27Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/adamissac/ari-ai/actions/runs/40122384754/job/120956546638",
+      "name": "test",
+      "startedAt": "2026-10-24T18:48:24Z",
+      "status": "COMPLETED",
+      "workflowName": "code-review"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-24T18:49:38Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/adamissac/ari-ai/actions/runs/40122384749/job/120956546548",
+      "name": "backend-image",
+      "startedAt": "2026-10-24T18:48:23Z",
+      "status": "COMPLETED",
+      "workflowName": "containers"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-24T18:48:32Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/adamissac/ari-ai/actions/runs/40122384724/job/120956546411",
+      "name": "links",
+      "startedAt": "2026-10-24T18:48:23Z",
+      "status": "COMPLETED",
+      "workflowName": "docs"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-24T18:49:41Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/adamissac/ari-ai/actions/runs/40122384729/job/120956546461",
+      "name": "static-and-unit",
+      "startedAt": "2026-10-24T18:48:23Z",
+      "status": "COMPLETED",
+      "workflowName": "frontend"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-24T18:48:36Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/adamissac/ari-ai/actions/runs/40122384728/job/120956546476",
+      "name": "gitleaks",
+      "startedAt": "2026-10-24T18:48:22Z",
+      "status": "COMPLETED",
+      "workflowName": "secrets"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-24T18:52:45Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/adamissac/ari-ai/actions/runs/40122384757/job/120956546855",
+      "name": "test",
+      "startedAt": "2026-10-24T18:48:23Z",
+      "status": "COMPLETED",
+      "workflowName": "security-agents"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-24T18:49:15Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/adamissac/ari-ai/actions/runs/40122384755/job/120956546765",
+      "name": "rl-integration",
+      "startedAt": "2026-10-24T18:48:23Z",
+      "status": "COMPLETED",
+      "workflowName": "backend"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-24T18:49:01Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/adamissac/ari-ai/actions/runs/40122384754/job/120956546492",
+      "name": "docker-reviewer",
+      "startedAt": "2026-10-24T18:48:23Z",
+      "status": "COMPLETED",
+      "workflowName": "code-review"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-24T18:49:59Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/adamissac/ari-ai/actions/runs/40122384749/job/120956546704",
+      "name": "compose-stack",
+      "startedAt": "2026-10-24T18:48:23Z",
+      "status": "COMPLETED",
+      "workflowName": "containers"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-24T18:59:26Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/adamissac/ari-ai/actions/runs/40122384729/job/120956546660",
+      "name": "e2e",
+      "startedAt": "2026-10-24T18:48:23Z",
+      "status": "COMPLETED",
+      "workflowName": "frontend"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-24T18:49:48Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/adamissac/ari-ai/actions/runs/40122384757/job/120956546697",
+      "name": "docker-sandbox",
+      "startedAt": "2026-10-24T18:48:23Z",
+      "status": "COMPLETED",
+      "workflowName": "security-agents"
+    },
+    {
+      "__typename": "StatusContext",
+      "context": "CodeRabbit",
+      "startedAt": "2026-10-24T18:48:27Z",
+      "state": "SUCCESS",
+      "targetUrl": ""
+    }
+  ],
+  "title": "feat(live-defense): Phase 7C authorized Scout/Diagnose execution"
+}

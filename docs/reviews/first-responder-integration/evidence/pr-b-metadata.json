@@ -1,0 +1,121 @@
+{
+  "baseRefName": "base/upstream-main-58fc015a",
+  "baseRefOid": "58fc015a1e48d31f9b96d3777588d39b6305fa80",
+  "headRefName": "feat/devin-execution-reliability",
+  "headRefOid": "17c3ded021a48165bbdb03af014fb494133376c7",
+  "number": 1,
+  "state": "OPEN",
+  "statusCheckRollup": [
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-24T18:35:27Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40120984003/job/120952251710",
+      "name": "test",
+      "startedAt": "2026-10-24T18:30:10Z",
+      "status": "COMPLETED",
+      "workflowName": "backend"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-24T18:30:58Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40120984309/job/120952252474",
+      "name": "test",
+      "startedAt": "2026-10-24T18:30:10Z",
+      "status": "COMPLETED",
+      "workflowName": "code-intelligence"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-24T18:32:13Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40120984014/job/120952251630",
+      "name": "test",
+      "startedAt": "2026-10-24T18:30:09Z",
+      "status": "COMPLETED",
+      "workflowName": "code-review"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-24T18:31:26Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40120983992/job/120952251735",
+      "name": "backend-image",
+      "startedAt": "2026-10-24T18:30:09Z",
+      "status": "COMPLETED",
+      "workflowName": "containers"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-24T18:30:20Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40120984081/job/120952251665",
+      "name": "links",
+      "startedAt": "2026-10-24T18:30:10Z",
+      "status": "COMPLETED",
+      "workflowName": "docs"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-24T18:31:41Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40120984141/job/120952251925",
+      "name": "static-and-unit",
+      "startedAt": "2026-10-24T18:30:10Z",
+      "status": "COMPLETED",
+      "workflowName": "frontend"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-24T18:30:22Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40120983979/job/120952251340",
+      "name": "gitleaks",
+      "startedAt": "2026-10-24T18:30:09Z",
+      "status": "COMPLETED",
+      "workflowName": "secrets"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-24T18:31:10Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40120984003/job/120952251524",
+      "name": "rl-integration",
+      "startedAt": "2026-10-24T18:30:10Z",
+      "status": "COMPLETED",
+      "workflowName": "backend"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-24T18:30:46Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40120984014/job/120952251389",
+      "name": "docker-reviewer",
+      "startedAt": "2026-10-24T18:30:10Z",
+      "status": "COMPLETED",
+      "workflowName": "code-review"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-24T18:31:39Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40120983992/job/120952251614",
+      "name": "compose-stack",
+      "startedAt": "2026-10-24T18:30:09Z",
+      "status": "COMPLETED",
+      "workflowName": "containers"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-24T18:39:38Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/m-alan08/ari-ai/actions/runs/40120984141/job/120952252194",
+      "name": "e2e",
+      "startedAt": "2026-10-24T18:30:10Z",
+      "status": "COMPLETED",
+      "workflowName": "frontend"
+    }
+  ],
+  "title": "feat(jobs): durable execution lifecycle, uncertain-effect recovery and fair per-project limits"
+}
