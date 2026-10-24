@@ -18,6 +18,12 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-23 — Claude Code (Adam) — build-recipe PR for connected repositories
+- Did: `backend/backend/recipes.py`. Connecting a repo with an `installation_id` (and `installation` / `installation_repositories` webhooks for repos already connected) queues `propose_build_recipe`: fetch the default-branch tip into the bare checkout, skip if `build_recipe.json` exists, index with code intelligence, draft the recipe (FastAPI app/factory, mount prefixes, single-param GET routes, test roots, exact pins from `uv.lock`/`poetry.lock`/`==` requirements minus the sandbox runner wheels), let the `recipe` agent (Haiku 5.5 in production) add identities, resources, routes and a `deploy/sandbox_target.py` harness, validate deterministically (`sandbox_setup`, `app_factory`, routes in the index, every identity owns every route's resource, fixture values literal in the harness, harness parses), push `ari/build-recipe` with `push_patch` and open a PR. Audit: `recipe.pr_opened|skipped|unsupported|invalid|failed`.
+- State: tests in `backend/tests/test_build_recipes.py` (real git over a file:// remote, real Postgres, GitHub App and Claude faked). Dry run `uv run python -m backend.recipes <checkout>` on ari-ai with its recipe removed reproduces the hand-written `app_factory` choice (`backend.main:create_app` behind a harness), `/api/v1` prefixes and the same six pip pins; on payments-lite it reproduces `payments_lite.app:create_app` and `-q tests`.
+- Not verified: a live Claude draft (no key locally) and a real GitHub PR; the first connect in production is the first live run.
+- Warnings: code-intelligence redaction can turn valid Python into a syntax error (e.g. `backend/backend/main.py` line 137, `webhook_secret_configured=bool(` becomes `[REDACTED]`), so the index silently drops those files; the generator parses the raw blob locally for app/prefix discovery, but routes in such files are missing from the index and so never proposed.
+
 ### 2026-10-23 — Cursor (agent, Alan) — Phase 6 Codex P1/P2 before merge
 - Did: on `feat/live-defense-phase6-pilot-audit` (PR #411), locked the application row in `gate_for` and disconnect so leftover execute cannot race a concurrent disconnect; counted `run_assessment` jobs via `assessment_id`; kept recovered `last_error` on the pilot trail as `job.recovered`. Tightening only; `AUTHORIZATION_CHECKS` still 15. No Phase 7.
 - Commands: `uv run pytest -q backend/tests/test_live_defense_phase6.py backend/tests/test_live_defense_authorize.py` — 26 passed.
