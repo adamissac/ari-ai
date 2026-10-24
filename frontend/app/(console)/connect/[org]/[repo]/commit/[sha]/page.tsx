@@ -47,7 +47,8 @@ function SelectedCommit({ org, name, sha, repo, onConnected }: {
       .then(async res => {
         const body = await res.json().catch(() => null);
         if (!res.ok) throw new Error(body?.error?.message ?? `Quick read failed (${res.status}).`);
-        if (body.commit.sha !== fullSha) throw new Error('The response does not match this commit.');
+        // fullSha may be a short prefix from the URL before the commit list resolves it.
+        if (!body.commit.sha.startsWith(fullSha)) throw new Error('The response does not match this commit.');
         if (!ctrl.signal.aborted) setQuick({ key: identity, data: body as LiveResult });
       }).catch((err: unknown) => { if (!ctrl.signal.aborted) setQuick({ key: identity, error: err instanceof Error ? err.message : 'Quick read failed.' }); });
     return () => ctrl.abort();

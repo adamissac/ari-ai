@@ -30,7 +30,7 @@ export default function ConnectReposPage() {
   };
 
 
-  const org = list.status === 'ready' ? groupByOrg(list.data.items).find(o => o.login === login) : undefined;
+  const org = list.status === 'ready' ? groupByOrg(list.data.items).find(o => o.login.toLowerCase() === login.toLowerCase()) : undefined;
 
   return (
     <div className="workspace-index mx-auto max-w-5xl px-4 py-8" data-testid="connect-repos">
