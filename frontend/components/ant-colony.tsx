@@ -78,8 +78,8 @@ export const spawnGap = (count: number, max: number): number => 2.2 - 1.75 * Mat
 
 interface Ant { trail: number; start: number; d: number; speed: number; dir: 1 | -1; lane: number; push: number; phase: number; seed: number; age: number; scout: boolean }
 
-const ANT = 'rgba(214, 248, 236, 0.85)';
-const SCOUT = 'rgba(121, 240, 196, 0.95)';
+const ANT = 'rgba(255, 238, 228, 0.82)';
+const SCOUT = 'rgba(255, 150, 120, 0.95)';
 
 function drawAnt(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number, scale: number, gait: number, alpha: number, scout: boolean) {
   ctx.save();
@@ -201,7 +201,7 @@ export function AntColony({ play = true }: { play?: boolean }) {
       ctx.lineWidth = 1.2;
       ctx.setLineDash([1.5, 7]);
       ctx.lineDashOffset = -t * 18;
-      ctx.strokeStyle = 'rgba(94, 224, 174, 0.38)';
+      ctx.strokeStyle = 'rgba(224, 104, 74, 0.5)';
       ctx.beginPath();
       laid.forEach((bins, i) => {
         const pts = binPts[i]!;
@@ -220,8 +220,8 @@ export function AntColony({ play = true }: { play?: boolean }) {
         if (!trail) return;
         const { p } = along(trail, nestAt(i));
         const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 24);
-        g.addColorStop(0, 'rgba(79, 224, 174, 0.32)');
-        g.addColorStop(1, 'rgba(79, 224, 174, 0)');
+        g.addColorStop(0, 'rgba(214, 92, 64, 0.35)');
+        g.addColorStop(1, 'rgba(214, 92, 64, 0)');
         ctx.fillStyle = g;
         ctx.beginPath(); ctx.arc(p.x, p.y, 24, 0, Math.PI * 2); ctx.fill();
       });
