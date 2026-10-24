@@ -5,10 +5,9 @@ Status: **implemented** on `feat/alan/live-defense-phase7c-agent-execution` from
 research, **not** RL training, **not** AUTO-EXECUTE, and **not** customer
 production enforcement.
 
-**Verdict for one company-owned staging app: ENGINEERING GO FOR AUTHORIZED
-INVESTIGATIVE EXECUTION.** Leave the PR open for explicit security review of
-the execution trust-boundary expansion (the first-responder now runs real
-Scout/Diagnose agent loops). Do not merge from this agent.
+**Verdict for re-review: ENGINEERING GO FOR SECURITY RE-REVIEW, MERGE NO-GO
+until independent review accepts the six fixes.** Leave the PR open. Do not
+merge from this agent. This is still an execution trust-boundary expansion.
 
 ## Return fields
 
@@ -56,6 +55,15 @@ LLM calls run **outside** the first-responder advisory lock. Artifacts persist
 in short transactions. OFF / cancel is re-checked before the loop and before
 writing the invocation. A running loop sees `cancelled()` / `kill_switch`.
 
+Security-review fixes (six findings, existing branch, not merged):
+
+1. **Canonical intelligence.** Indexed repos use `snapshot_ref` + `CodeIntelligenceAdapter` bound to the authorized project/repo/commit. `LocalIntel` only when `SECURITY_AGENTS_LABELS` is an explicit fixture. Missing authoritative context fails closed (`SNAPSHOT_NOT_READY`).
+2. **Partial evidence.** `backend.llm.LLMError` is normalized to `security_agents` `LLMUnavailable` with a catalog code. Successful prior turns, usage, cost, model and `provider_mode` persist. Live calls never record `provider_mode=none`.
+3. **Deadlines.** Remaining wall-clock is passed as `timeout_s`. Provider retries stop when a retry would miss the deadline. Cancel, deadline (`BUDGET_EXHAUSTED` / `DEADLINE_EXCEEDED`) and provider failure stay distinct. OFF remains authoritative.
+4. **Cost.** Adapter USD uses `backend.llm.cost_usd` including input, output, cache-read and **cache-creation**. Missing live usage fails closed rather than silent `$0`.
+5. **Diagnose scheduling.** Diagnose is not enqueued until Scout is terminal. Waiting uses `jobs.defer` (does not burn failure attempts). Failed/cancelled Scout skips Diagnose.
+6. **Idempotent redelivery.** Terminal invocations return the persisted result. Successful `executed` rows cannot be overwritten by a later failed retry. Crash-in-progress is `queued` + `execution.started_at` without a transcript.
+
 ## What executed vs skipped
 
 | Agent | Phase 7C path | Confirmation |
@@ -100,8 +108,24 @@ overwrite 0.22.0. This PR does not claim 0.20.0.
 and `error_code`. `predicted_probability` is always null.
 `evidence_verified` is always false. **Do not train.**
 
+## Tests actually run (security-review follow-up)
+
+FakeLLM/FakeTransport only. Not live Anthropic proof.
+
+| Suite | Result |
+|---|---|
+| `make check` | pass (schema 0.22.0, 155 files) |
+| `uv run mypy` | 40 files, no issues |
+| `uv run pytest -q` | **806 passed**, 15 skipped |
+| `security-agents` pytest | **592 passed**, 23 skipped |
+| frontend lint + typecheck | pass |
+| frontend vitest | **330 passed** / 78 files |
+| transport | **35 passed** |
+| Playwright 7A+7C | **2 passed** (15.4s) |
+
 ## Next
 
-Human/security review of this PR. Do not merge from the implementing agent.
-Do not enable autonomous containment, production controls, or unrestricted
-probing. Live Anthropic Scout/Diagnose remains opt-in (issue #10).
+Independent security **re-review** of PR #458. Do not merge from the implementing
+agent. Do not enable autonomous containment, production controls, or unrestricted
+probing. Live Anthropic Scout/Diagnose remains opt-in (issue #10). Re-review
+**GO**, merge **NO-GO** until that review accepts.
