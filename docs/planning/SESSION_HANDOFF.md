@@ -1727,3 +1727,12 @@ the quick read accepts a URL sha prefix (`startsWith` guard) so short shas no
 longer fail the response-match check; repo/org lookups match case-insensitively
 (GitHub names are); and the tabs no longer flash a Preview/empty state while a
 selected run is still loading.
+
+## 2026-10-24 — Devin (Adam): first live 45-case eval + baseline
+
+- Scored the full 45-case run live over the REST API: **idor 8/8 flagged→validated→fixed; vuln 23/24 flagged, 5 functionally validated (functional reviewer, not Probe); 1 transient FAILED** (worker restart mid-VALIDATION). Median 153s, ~$0.028/run.
+- Scorer fixes in `score_api.py`: derive finding paths from `source_span` evidence (list endpoint returns doc only, no `paths` column) and report `validated_any`/`fixed_any` next to the security-only verdicts.
+- `benign_artifact_sha512` was a mislabeled case — sha512 digests violate the `String(64)` sha256 column contract; ARI's "false positive" was a real catch. Case replaced with a genuine no-op refactor.
+- Known gap the eval exposes: Probe only has 3 executable check templates (ownership, bounds, authentication) so most non-authz CWEs end `inconclusive`. `access_control.authentication` scope now approved (`scp_01M5QVPJWE266EJGDHYW73VA59`, all 3 categories, expires 2026-12-23).
+- Cleanup done: 12 eval fix PRs (#499–511) closed, 45 `eval/20261024-110115/*` branches deleted.
+- Transport lesson: `GET /projects/{id}/findings` items are AJV-validated against `Finding` (`additionalProperties: false`) — extra keys in the response break the console. Keep list items contract-shaped.
