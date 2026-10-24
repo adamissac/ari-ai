@@ -256,3 +256,30 @@ def test_backend_adapter_reports_invalid_commit_as_terminal_failure(
     assert failed.error_message.startswith("INDEX_FAILED")
     with pytest.raises(IntelligenceError, match="SNAPSHOT_NOT_READY"):
         engine.store.find("prj_fixture00", "rep_fixture00", pending.commit_sha, INDEX_VERSION)
+
+
+def test_payload_index_store_reads_each_snapshot_once(
+    repository: tuple[Path, str], tmp_path: Path
+) -> None:
+    from code_intelligence.persistence import PayloadIndexStore
+
+    root, sha = repository
+    index = service(root, tmp_path / "index.sqlite").index_repository(
+        "prj_fixture00", "rep_fixture00", sha
+    )
+    stored = service(root, tmp_path / "index.sqlite").store.get(index)
+
+    class Payloads:
+        reads = 0
+
+        def get_payload(self, ref: object, kind: str, key: str) -> bytes:
+            Payloads.reads += 1
+            return stored.model_dump_json().encode()
+
+    store = PayloadIndexStore(Payloads())  # type: ignore[arg-type]
+    assert store.get(index) == store.get(index) == stored
+    assert PayloadIndexStore(Payloads()).get(index) == stored  # shared across instances
+    assert Payloads.reads == 1
+    other = index.model_copy(update={"project_id": "prj_fixture01"})
+    with pytest.raises(IntelligenceError, match="mismatched"):
+        store.get(other)  # another tenant's ref never hits the cache
