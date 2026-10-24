@@ -54,3 +54,24 @@ regexes = [
 description = "SHA-256 file digests for *api.py paths in evidence JSON"
 regexTarget = "line"
 regexes = ['''"[^"]*api\.py":\s*"[0-9a-f]{64}"''']
+
+# frontend/app/fonts/SOURCES.json is a vendored-font manifest: sha256 file digests
+# and sha512 tarball integrity strings, not credentials. Scope to that file only.
+[[allowlists]]
+description = "Vendored font package fingerprints in the font manifest"
+condition = "AND"
+paths = ['''^frontend/app/fonts/SOURCES\.json$''']
+regexTarget = "line"
+regexes = [
+  '''^\s*"sha256":\s*"[0-9a-f]{64}",?\s*$''',
+  '''^\s*"tarball_integrity":\s*"sha512-[A-Za-z0-9+/=]{80,}",?\s*$''',
+]
+
+# rehearsal/ fixture docs show curl examples against the owned ledgerlite fixture
+# using literal demo bearer tokens (tok-alice / tok-bob). Not credentials.
+[[allowlists]]
+description = "Demo bearer tokens in rehearsal fixture docs"
+condition = "AND"
+paths = ['''^rehearsal/.*''']
+regexTarget = "line"
+regexes = ['''Bearer\s+tok-[a-z0-9_-]+''']
