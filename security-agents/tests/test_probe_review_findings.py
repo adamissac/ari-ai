@@ -17,7 +17,7 @@ from security_agents.workflow import AssessmentState
 from . import fake_agents
 from .conftest import TARGET_ID, make_ctx, make_scope
 from .fake_agents import _last_json, _target_id
-from .test_e2e_replay import EXPECTED_AGENT_ORDER, build
+from .test_e2e_replay import assert_agent_order, build
 
 OWNERSHIP = "access_control.ownership@1"
 
@@ -80,7 +80,7 @@ def test_f1_a_later_check_on_a_protected_route_cannot_refute_the_hypothesis(inte
     assert finding.validation.outcome is ValidationOutcome.CONFIRMED, finding.validation.observations
     assert finding.validation.parameters["route_id"] == "payment_detail"
     assert res.state is AssessmentState.COMPLETED
-    assert [r.agent.value for r in res.runs] == EXPECTED_AGENT_ORDER
+    assert_agent_order([r.agent.value for r in res.runs])
 
 
 def test_f1_a_check_only_on_an_unrelated_route_is_inconclusive_not_refuted(intel, driver, library, tmp_path):
