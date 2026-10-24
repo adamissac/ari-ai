@@ -14,7 +14,7 @@ import { CancelButton } from '@/components/assessment-cancel';
 import { shortSha, usd } from '@/lib/format';
 import { assessmentPhases, EVENT_LOG_PAGE_NOTE, fullEventLog, JOURNEY_STATUS } from '@/lib/journey';
 import { currentPhaseSentence } from '@/lib/phase';
-import { agentRelay, providerNote } from '@/lib/relay';
+import { agentRelay, earlyEndNote, providerNote } from '@/lib/relay';
 import { useResource } from '@/lib/use-resource';
 import {
   agentRole, ASSESSMENT_STATE, FINDING_STATUS, providerLabel,
@@ -109,8 +109,10 @@ export default function AssessmentPage() {
   }, [running, loadDetail]);
 
   const eventApprovalIds = new Set<string>();
-  for (const e of [...events, ...(phaseLog.status === 'ready' ? phaseLog.data.items : [])]) if (e.approval_id) eventApprovalIds.add(e.approval_id);
+  const allEvents = [...events, ...(phaseLog.status === 'ready' ? phaseLog.data.items : [])].sort((a, b) => a.seq - b.seq);
+  for (const e of allEvents) if (e.approval_id) eventApprovalIds.add(e.approval_id);
   const relayApprovals = approvals === null ? null : approvals.filter(ap => eventApprovalIds.has(ap.id));
+  const skipNote = earlyEndNote(allEvents);
 
   if (detailError && !detail) return <ErrorState error={detailError} onRetry={() => loadDetail()} context="Could not load assessment" />;
   if (!detail) return <Loading label="Loading assessment" />;
@@ -136,7 +138,7 @@ export default function AssessmentPage() {
       {a.state === 'AWAITING_APPROVAL' && <ApprovalGate projectId={project.id} events={events} onDecided={() => loadDetail()} />}
       <div className="mt-4 rounded-xl border border-line bg-panel p-5">
         <AgentRelay
-          items={agentRelay({ runs: detail.agent_runs, findings: detail.findings, state: a.state, approvals: relayApprovals })}
+          items={agentRelay({ runs: detail.agent_runs, findings: detail.findings, state: a.state, approvals: relayApprovals, skipNote })}
           selected={selectedAgent ?? detail.agent_runs[0]?.agent ?? 'reviewer'}
           onSelect={setSelectedAgent}
         />
@@ -172,7 +174,7 @@ export default function AssessmentPage() {
       </div>
       <div className="mt-4">
         <h2 className="mb-2 text-sm font-semibold">What the selected agent did, step by step</h2>
-        <AgentTeam runs={detail.agent_runs} selected={selectedAgent ?? detail.agent_runs[0]?.agent ?? 'reviewer'} onSelect={setSelectedAgent} hideList />
+        <AgentTeam runs={detail.agent_runs} selected={selectedAgent ?? detail.agent_runs[0]?.agent ?? 'reviewer'} onSelect={setSelectedAgent} hideList state={a.state} skipNote={skipNote} />
       </div>
       <details className="group mt-4 rounded-xl border border-line bg-panel" data-testid="technical-details" open={technicalOpen} onToggle={e => setTechnicalOpen((e.currentTarget as HTMLDetailsElement).open)}>
         <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold marker:hidden">
