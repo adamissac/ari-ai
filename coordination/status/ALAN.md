@@ -572,3 +572,9 @@ gates, off-mode default, artifacts, release_check). First run: GO — 23 PASS /
 1 WARN (harness poll, fixed) / 0 FAIL. Also fixed `.gitignore` hiding
 `.env.staging.example`. Playwright real-stack: build verified, spec run in flight.
 Will re-run everything against the integration branch when it lands.
+
+Integration branch validated: `integration/2026-11-02-release` @ 4f845f4f passes
+the full readiness suite — GO, 25/25 (migrations to 0017, smoke 15/15, crash
+recovery, restore parity, authz/estop, alert redaction). One cross-PR defect
+found+fixed on my branch (openapi dev-gate vs smoke/release_check). My verdict
+matches theirs: infra GO; deploy stays NO-GO until Codex P1s F1/F2 land.
