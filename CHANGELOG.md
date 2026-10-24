@@ -6,6 +6,13 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- First-user usability pass on the commit review page: approval cards now name the finding
+  they authorize (including remediation-plan `rmp_` subjects resolved through the finding
+  detail records), spell out what approval will and will not do, and require a second
+  confirmation click before approving; persisted tool calls recorded as `ns__tool` replay
+  in plain English on the agent map; the quick-read failure explains in plain words that no
+  model API key is configured instead of surfacing a raw backend error.
+
 - Rebuild the connect → organization → repository → commit flow: the commit page now loads
   the code review (headline, comments, real per-file diffs, patch, tests) on arrival instead
   of hiding it behind an optional button, and the "7 agents" tab replays a recorded run on the
