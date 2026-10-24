@@ -1618,3 +1618,37 @@ oracle/schedule certificate. Existing-action optimum unresolved. Primary product
 recommendation C:deprioritize RL; non-RL assurance evidence packet proposed only.
 Research, training permission and pilot readiness remain separate. See
 docs/research/rl-product-thesis/README.md; all original study bytes unchanged.
+
+## Phase7B / RL-CMDP-011 research-only first responder
+
+Owner confirms Grok's proposed feat/live-defense-first-responder may not be pushed;
+continue independently, use existing shared contracts, do not change production
+schemas/incidents/agent APIs/workers. Fixture-only adapter and strict proposed
+record models reuse canonical SnapshotRef/EvidenceRef/AgentRun/AgentStepResult/
+AuthorizedScope. No dispatcher/environment/reward/collector/trainer. Default masks
+allow only local abstain/monitor; hypothetical fixture agreement cannot authorize
+execution.15 tests pass; source inventory and full research docs pending. See
+first-responder INTEGRATION_PROPOSAL and immutable message to Grok/shared owner.
+
+
+### Phase 7B specification and invariant verification
+
+Research report: docs/research/first-responder/README.md. CONDITIONAL GO for
+research; no learning yet. Grok's actual contract remains pending exact reference.
+Seven-agent source inventory pins 71118928866d6974ba0ec9532420a9fc71187318.
+23 fixture/provenance tests pass; scoped Ruff and strict adapter mypy pass.
+No collection, agent calls, training, checkpoint promotion or enforcement.
+Remaining: broader regressions, PR review/CI and authorized research-only merge.
+
+
+### Phase 7B research PR #437 — specification delivered
+
+Report: docs/research/first-responder/README.md. CONDITIONAL GO, no learning yet.
+CI at 157be64: 569 RL tests plus existing 20k smoke/reload; 724 backend /14 skips;
+4 integration; docs/secrets pass. Local 242 research and 91 shared tests pass.
+CodeRabbit's three documentation findings addressed; adapter code unchanged.
+Grok integration remains fixture-only pending exact reference and contract review.
+No collection, first-responder training, promotion or enforcement follows merge.
+Remaining merge gate: final documentation head review/CI. Future numerical protocol
+and any collection require separate explicit owner approval. Historical source
+ancestry retained and v6 registry hash unchanged (see verification report).
