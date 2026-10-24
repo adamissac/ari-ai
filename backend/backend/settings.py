@@ -75,6 +75,9 @@ class Settings(BaseSettings):
     job_max_running_per_project: int = 4
     job_max_running_global: int = 0
     job_max_pending_per_project: int = 1000
+    # Reserved running slots for emergency-class jobs (estop/rollback/expiry) so
+    # ordinary work cannot starve them (F2).
+    job_max_running_emergency: int = 2
     worker_reconcile_interval_s: float = 30.0
     worker_stale_s: int = 120
     job_stuck_pending_s: int = 900
