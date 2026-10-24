@@ -1565,3 +1565,9 @@ Proposed study now600 episodes/18,000 decisions plus bounded settlement, with
 unapproved safety/sample/compute values. Training NO-GO pending approved formal
 feasibility, safe baseline headroom, terminal-cost collector/learner review and
 explicit training authorization. No historical evidence or customer control edits.
+
+Resource evidence closure: anchored four-window unit receipt committed from source
+1b5516c808602c91152c18b7460fe9aaa9cd8404. Local checks: 46 resource tests,
+213 broader selected research tests, 91 shared tests, scoped strict mypy (7 files),
+Ruff/format and 580 Markdown link checks passed. Formal feasibility and training
+remain unapproved; PR review/CI required before merge. See resource VERIFICATION.md.
