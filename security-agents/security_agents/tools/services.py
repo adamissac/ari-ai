@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import re
 import shutil
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -25,6 +26,7 @@ from ..intel import CodeIntel
 from ..sandbox.driver import SandboxDriver, SandboxLimits, SandboxProfile, SandboxResult, SandboxSpec
 from ..sandbox.workspace import (
     changed_paths,
+    copy_tree,
     diff_paths,
     fresh_checkout,
     recipe_test_roots,
@@ -250,7 +252,7 @@ class TestRunner:
                 if not NODEID.match(raw):
                     return {"error": "BAD_NODE_ID", "detail": f"{raw!r} is not a valid pytest node id"}
                 args.append(raw)
-        elif selection == "added_tests":
+        elif selection in ("added_tests", "added_tests_unpatched"):
             roots = getattr(workspace, "test_roots", ("tests/",))
             added = [p for p in getattr(workspace, "writes", []) if under_test_roots(p, roots)]
             added = added or [p for p in ctx.artifacts.get("tests_added", []) if isinstance(p, str)]
@@ -260,6 +262,22 @@ class TestRunner:
         else:
             args = list(self.test_command_args)
         ws_path = workspace_path(workspace)
+        unpatched: Path | None = None
+        if selection == "added_tests_unpatched":
+            snapshot_root = getattr(workspace, "snapshot_root", None)
+            if snapshot_root is None:
+                return {
+                    "error": "UNPATCHED_UNAVAILABLE",
+                    "detail": "only a patch worktree has unpatched code",
+                }
+            # The pinned snapshot plus only the new test files: does the test catch the bug?
+            unpatched = Path(tempfile.mkdtemp(prefix="unpatched-", dir=Path(ws_path).parent))
+            copy_tree(Path(snapshot_root), unpatched / "ws")
+            for rel in sorted({a.split("::", 1)[0] for a in args[1:]}):
+                target = resolve_under(unpatched / "ws", rel)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(resolve_under(Path(ws_path), rel), target)
+            ws_path = unpatched / "ws"
         spec = SandboxSpec(
             profile=SandboxProfile.TEST_RUNNER,
             network="none",
@@ -270,7 +288,11 @@ class TestRunner:
             limits=self.limits,
             **self.setup,
         )
-        res = self.driver.run(spec)
+        try:
+            res = self.driver.run(spec)
+        finally:
+            if unpatched is not None:
+                shutil.rmtree(unpatched, ignore_errors=True)
         summary = parse_pytest(res.stdout)
         ctx.audit.emit(
             "sandbox.tests_run",
