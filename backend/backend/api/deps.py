@@ -101,7 +101,7 @@ def require_project(
 ) -> tuple[str, MemberRole]:
     """Resolve project -> org membership. Non-members get 404 (no existence leak)."""
     org_id = conn.execute(sa.select(projects.c.org_id).where(projects.c.id == project_id)).scalar()
-    role = org_role(conn, user.id, org_id) if org_id else None
+    role = (org_role(conn, user.id, org_id) or MemberRole.viewer) if org_id else None
     if org_id is None or role is None:
         raise not_found("project")
     if _ROLE_RANK[role] < _ROLE_RANK[min_role]:
