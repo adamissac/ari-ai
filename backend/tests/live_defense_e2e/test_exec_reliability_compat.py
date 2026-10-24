@@ -29,20 +29,18 @@ Existing e2e scenarios needing review when the branch merges:
 
 from __future__ import annotations
 
+import pytest
 import sqlalchemy as sa
 
-import pytest
-
 from backend import jobs, worker
-from backend.db import jobs as jobs_t, transaction
+from backend.db import jobs as jobs_t
+from backend.db import transaction
 from shared.base import utcnow
-from shared.ids import new_id, IdPrefix
+from shared.ids import IdPrefix, new_id
 
 pytest.importorskip("security_agents")
 
-_HAS_EXEC_RELIABILITY = hasattr(jobs, "JobStatus") and hasattr(
-    jobs.JobStatus, "recovery_required"
-)
+_HAS_EXEC_RELIABILITY = hasattr(jobs, "JobStatus") and hasattr(jobs.JobStatus, "recovery_required")
 
 pytestmark = [
     pytest.mark.live_defense_e2e,
@@ -75,9 +73,7 @@ def test_compat_depends_on_waits_for_prerequisite():
     with transaction() as conn:
         a = _enqueue(conn, "a", pid)
         b = _enqueue(conn, "b", pid, depends_on=a)
-        status = conn.execute(
-            sa.select(jobs_t.c.status).where(jobs_t.c.id == b)
-        ).scalar_one()
+        status = conn.execute(sa.select(jobs_t.c.status).where(jobs_t.c.id == b)).scalar_one()
         assert status == "waiting"
     worker.drain(max_jobs=10, kinds=[_KIND])
     assert _ORDER == ["a", "b"]
@@ -106,13 +102,9 @@ def test_compat_execution_deadline_times_out(settings_override):
     with transaction() as conn:
         jid = _enqueue(conn, "deadline", pid, deadline_s=30)
         # Move the deadline into the past, then reconcile.
-        conn.execute(
-            sa.update(jobs_t).where(jobs_t.c.id == jid).values(deadline_at=utcnow())
-        )
+        conn.execute(sa.update(jobs_t).where(jobs_t.c.id == jid).values(deadline_at=utcnow()))
         execution.reconcile(conn)
-        status = conn.execute(
-            sa.select(jobs_t.c.status).where(jobs_t.c.id == jid)
-        ).scalar_one()
+        status = conn.execute(sa.select(jobs_t.c.status).where(jobs_t.c.id == jid)).scalar_one()
         assert status == "timed_out"
 
 
@@ -131,9 +123,7 @@ def test_compat_uncertain_effect_needs_operator():
             retryable=True,
         )
         assert outcome == "recovery_required"
-        status = conn.execute(
-            sa.select(jobs_t.c.status).where(jobs_t.c.id == jid)
-        ).scalar_one()
+        status = conn.execute(sa.select(jobs_t.c.status).where(jobs_t.c.id == jid)).scalar_one()
         assert status == "recovery_required"
         # A job with an uncertain effect is never auto-re-claimed.
         assert jobs.claim(conn, "compat-w2", 60, [_KIND]) is None
