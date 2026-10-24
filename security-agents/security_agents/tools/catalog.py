@@ -85,8 +85,10 @@ class DiffArgs(StrictModel):
 
 
 class TestsRunArgs(StrictModel):
-    selection: Literal["project_suite", "added_tests"] = Field(
-        default="project_suite", description="Which tests to run in the sandbox."
+    selection: Literal["project_suite", "added_tests", "added_tests_unpatched"] = Field(
+        default="project_suite",
+        description="Which tests to run in the sandbox. added_tests_unpatched runs the new test files "
+        "against the original, unpatched code (Patch only), so a test that cannot fail there is caught.",
     )
     node_ids: list[str] = Field(
         default_factory=list,
