@@ -56,7 +56,7 @@ scripted turns are identifiable in stored data, matching the "labelled" contract
 `test_operator_deletion_procedure`. **Finding:** foreign keys have **no cascades**
 — there is no single-row delete. The canonical operator entry point is
 `purge_project` (`backend/privacy.py`, landed via PR #535 +
-[docs/security/TENANT_DATA_PROTECTION.md](../security/TENANT_DATA_PROTECTION.md)),
+[docs/security/TENANT_DATA_PROTECTION.md](https://github.com/adamissac/ari-ai/pull/535) (lands with PR #535)),
 which performs the org-scoped teardown below:
 
 1. Delete org-scoped rows across every table having `organization_id` (enumerated

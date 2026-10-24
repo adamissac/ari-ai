@@ -34,7 +34,7 @@ Ari stores your source code, not just metadata:
 - **Deletion is operator-invoked, not self-serve.** Your request triggers
   the operator-run `purge_project` procedure over database rows, artifact
   files and bare clones (see
-  [TENANT_DATA_PROTECTION](../security/TENANT_DATA_PROTECTION.md)). Target:
+  [TENANT_DATA_PROTECTION](https://github.com/adamissac/ari-ai/pull/535) (lands with PR #535)). Target:
   within **30 days** of a verified request. Content-addressed artifact
   sharing means per-customer artifact deletion currently needs manual care —
   we disclose this rather than pretend it is atomic.
@@ -65,7 +65,7 @@ Ari stores your source code, not just metadata:
   every project-scoped route resolves org membership in application code
   (the primary boundary), and Postgres RLS additionally guards the tables
   holding your source content. See RISK_REGISTER R-02 and
-  [TENANT_DATA_PROTECTION](../security/TENANT_DATA_PROTECTION.md).
+  [TENANT_DATA_PROTECTION](https://github.com/adamissac/ari-ai/pull/535) (lands with PR #535).
 - **Operator access**: the Ari team can access the Railway volume, database
   and logs for operation and support. Access is hash-chain-audited
   (per-org `audit_events`, owner-readable). There is no customer-visible
