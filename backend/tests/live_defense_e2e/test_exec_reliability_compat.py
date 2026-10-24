@@ -17,7 +17,7 @@ transaction), never Python ``utcnow()`` — the transaction's ``now()`` is
 fixed earlier than wall clock, so a Python timestamp can read as future to
 the reconciler's SQL predicate (review finding F10).
 
-``xfail(strict=True)`` marks integration defects confirmed by the
+Owner fixes landed; these run as strict assertions. Previously, a
 independent review (F1, F7, F8): the tests assert the required contract and
 are expected to fail until the owning workstream fixes it; a fix turns them
 into XPASS failures, which is the signal to drop the marker.
@@ -163,19 +163,11 @@ def test_deadline_survives_requeue_and_recovery():
 
 
 # ---------------------------------------------------------------------------
-# Review-confirmed defects: asserted contracts, expected to fail until the
-# owning workstreams land the fixes. xfail(strict) — an XPASS means drop the
-# marker and keep the regression.
+# Review-confirmed defects: owner fixes landed (F1 ledger, F7 deadline,
+# F8 cancel-race). These now run as strict assertions.
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "F1: after crash-after-send/before-response, reconcile requeues the job "
-        "and a new worker replays the billable provider call automatically"
-    ),
-)
 def test_crash_after_send_requires_recovery_before_replay(staging):
     """No automatic second billable call while an attempt is unresolved (F1).
 
@@ -234,13 +226,6 @@ def test_crash_after_send_requires_recovery_before_replay(staging):
     assert len(fake.calls) == calls_at_crash
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "F8: OFF set while the provider returns the final submit is overwritten "
-        "— the cancelled invocation is upgraded to executed"
-    ),
-)
 def test_off_during_final_submit_stays_cancelled(staging):
     """OFF during final-submit persistence must not upgrade to executed (F8).
 
@@ -279,10 +264,6 @@ def test_off_during_final_submit_stays_cancelled(staging):
     assert inv["scout"]["status"] != INV.executed.value
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="F7: live_defense_agent_step jobs carry no durable queue deadline",
-)
 def test_agent_step_jobs_have_durable_deadline(staging):
     """First-responder step jobs must carry the incident deadline (F7)."""
     from .transports import fake_provider, gateway_factory
