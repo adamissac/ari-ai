@@ -24,8 +24,12 @@ function ingestBatch(offsetMs: number, extra: number) {
 // route, and OFF takes effect through the same mode control an operator uses.
 test('Live Defense e2e: OFF mode stops investigation and renders honestly', async ({ browser, request }) => {
   const page = await newUser(browser, 'e2e-alice');
-  const pid = env('E2E_PROJECT_ID');
-  const rid = env('E2E_REPO_ID');
+  // Dedicated project: this spec runs Scout, and the first-responder page
+  // renders one live-defense-fr-invocation-* row per invocation across the
+  // whole project — sharing E2E_PROJECT_ID would collide with the Phase 7C
+  // spec's single-element assertions.
+  const pid = env('E2E_LD_PROJECT_ID');
+  const rid = env('E2E_LD_REPO_ID');
   const sha = env('E2E_COMMIT');
   const api = env('E2E_API');
 
