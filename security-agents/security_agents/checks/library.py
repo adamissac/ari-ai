@@ -345,7 +345,77 @@ BOUNDS = CheckTemplateMeta(
     reviewed_by="security-owner:pending-human-signoff",
 )
 
-_RENDERERS = {OWNERSHIP.ref: _render_ownership, BOUNDS.ref: _render_bounds}
+def _render_authentication(recipe: dict[str, Any], params: dict[str, Any]) -> str:
+    """A protected route denies an unauthenticated request while a valid fixture
+    identity retains access. Covers missing-authn/missing-authz changes."""
+    route = _route(recipe, str(params["route_id"]))
+    identity = str(params["identity"])
+    method = str(route.get("method", "GET")).lower()
+    if method != "get":
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "authentication template covers read routes only")
+    path_template = str(route["path_template"])
+    path_params = _PATH_PARAM.findall(path_template)
+    if path_params:
+        if len(path_params) != 1:
+            raise PlatformError(
+                ErrorCode.SCHEMA_INVALID, "route must have at most one path parameter"
+            )
+        kind = str(route.get("resource") or "")
+        if not kind:
+            raise PlatformError(
+                ErrorCode.SCHEMA_INVALID, "path-parametrized route has no resource kind"
+            )
+        path = _fill_path(path_template, _resource_id(recipe, kind, identity))
+    else:
+        path = path_template
+    denied = [int(c) for c in params.get("expected_denied_status", [401, 403])]
+    return (
+        _inprocess_preamble(str(params["_ref"]), recipe)
+        + f"""
+
+PATH = {path!r}
+AUTH_HEADERS = {{"Authorization": {_identity(recipe, identity)!r}}}
+DENIED = {denied!r}
+
+
+def test_unauthenticated_request_is_denied():
+    resp = _client().get(PATH)
+    RESULT["anon_status"] = resp.status_code
+    RESULT["anon_leaked_body"] = resp.status_code == 200
+    assert resp.status_code in DENIED, (
+        f"expected one of {{DENIED}} for an unauthenticated request, observed {{resp.status_code}}"
+    )
+
+
+def test_authenticated_identity_retains_access():
+    resp = _client().get(PATH, headers=AUTH_HEADERS)
+    RESULT["identity_status"] = resp.status_code
+    assert resp.status_code < 400, (
+        f"authenticated identity lost legitimate access: {{resp.status_code}}"
+    )
+"""
+    )
+
+
+AUTHENTICATION = CheckTemplateMeta(
+    template_id="access_control.authentication",
+    version="1",
+    category="access_control.authentication",
+    description=(
+        "Confirm a protected route denies an unauthenticated request (401/403) while a valid "
+        "fixture identity retains access. Parameters: route_id, identity."
+    ),
+    side_effect_class="read_only",
+    expectation_kinds=("access_control", "authentication"),
+    parameters=("route_id", "identity"),
+    reviewed_by="security-owner:pending-human-signoff",
+)
+
+_RENDERERS = {
+    OWNERSHIP.ref: _render_ownership,
+    BOUNDS.ref: _render_bounds,
+    AUTHENTICATION.ref: _render_authentication,
+}
 
 
 @dataclass
@@ -425,8 +495,15 @@ class CheckLibrary:
         identities = sorted(recipe.get("identities", {}))
         values: dict[str, Any] = {}
         for name in meta.parameters:
-            if name in ("owner_identity", "other_identity"):
+            if name in ("owner_identity", "other_identity", "identity"):
                 values[name] = identities
+            elif name == "route_id" and meta.template_id == AUTHENTICATION.template_id:
+                values[name] = [
+                    describe(r)
+                    for r in routes
+                    if str(r.get("method", "GET")).upper() == "GET"
+                    and len(_PATH_PARAM.findall(str(r.get("path_template", "")))) <= 1
+                ]
             elif name == "read_route_id" or (
                 name == "route_id" and meta.template_id == OWNERSHIP.template_id
             ):
@@ -452,6 +529,7 @@ def default_library() -> CheckLibrary:
     lib = CheckLibrary()
     lib.register(OWNERSHIP)
     lib.register(BOUNDS)
+    lib.register(AUTHENTICATION)
     return lib
 
 
