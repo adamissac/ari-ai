@@ -993,3 +993,23 @@ def test_hosted_run_stores_a_valid_sarif_log_and_the_rules_of_engagement(host_an
     jsonschema.Draft4Validator(schema()).validate(sarif_logs[-1])
     assert sarif_logs[-1]["runs"][0]["properties"]["run_mode"] == "hosted"
     assert any(m.startswith("standards artifacts stored") for m in host.progress_messages)
+
+
+def test_only_read_and_sandboxed_run_tools_may_run_concurrently(intel, registry):
+    from security_agents.agents import patch as patch_agent
+    from security_agents.agents import verify as verify_agent
+    from security_agents.host_adapter import build_tools
+    from security_agents.runtime.loop import StepRecord
+
+    from .conftest import make_ctx
+
+    flags = {}
+    for spec in (patch_agent.SPEC, verify_agent.SPEC):
+        ctx = make_ctx(spec.name, intel=intel)
+        record = StepRecord(
+            run_id="run_t", agent=spec.name, spec_version="0", model="m", provider_mode="fake"
+        )
+        flags.update({t.name: t.parallel_safe for t in build_tools(spec, ctx, registry, record)})
+    assert flags["tests__run"] and flags["code__read_span"] and flags["worktree__diff"]
+    assert not flags["worktree__edit_file"] and not flags["worktree__write_file"]
+    assert not flags["patch__apply_fresh"]

@@ -218,7 +218,7 @@ class PatchWorktree:
 
     def diff(self) -> dict[str, Any]:
         changed = self.changed()
-        text = self.diff_text()
+        text = unified_diff(self.snapshot_root, self.root, changed)
         return {
             "files_changed": changed,
             "diff_sha256": sha256_text(text),
