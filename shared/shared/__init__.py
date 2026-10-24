@@ -61,5 +61,6 @@ SCHEMA_VERSION = (
     #      view mirroring the 7C record (all fields optional), diagnostics.
     # 0.24 customer onboarding (additive): computed OnboardingStatus steps and
     #      the owner-triggered OnboardingTestEvent (real owned_staging ingest).
-    #      Integration adds Repository.disconnected/disconnected_at (additive).
+    #      Integration adds Repository.disconnected/disconnected_at and
+    #      MonitoringEvent.test_event (additive).
 )

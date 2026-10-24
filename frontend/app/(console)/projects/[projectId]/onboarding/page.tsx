@@ -306,17 +306,27 @@ function DisconnectPanel({
 }) {
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const base = `/projects/${projectId}`;
   return (
     <Panel title="Revoke access" actions={<Tag tone="warn">takes effect immediately</Tag>}>
       <p className="text-sm text-muted">
-        Disconnecting the repository revokes the GitHub App grant, stops push-triggered monitoring,
-        and revokes deployment-to-commit mappings. Disconnecting an application revokes its ingest
-        tokens and stops telemetry. History is kept; access is removed.
+        Disconnecting the repository stops Ari&apos;s mediated access — push-triggered monitoring
+        ends and every deploy-to-commit mapping is revoked. It does not remove the GitHub App
+        grant: uninstalling or limiting the Ari App on GitHub is your action and is not claimed
+        here. Disconnecting an application revokes its ingest tokens and stops telemetry.
+        History is kept; access is removed.
       </p>
+      {done ? (
+        <p className="mt-3 text-sm" data-testid="onb-disconnect-repo-done">
+          Repository disconnected: Ari&apos;s mediated access stopped and deploy mappings were
+          revoked. The GitHub App grant still stands — uninstall or limit the Ari App on GitHub
+          to remove it.
+        </p>
+      ) : null}
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        {repoId ? (
+        {repoId && !done ? (
           confirm ? (
             <>
               <Button
@@ -330,6 +340,7 @@ function DisconnectPanel({
                     .disconnectRepository(repoId)
                     .then(() => {
                       setConfirm(false);
+                      setDone(true);
                       onChanged();
                     }, e => setError(errorText(e)))
                     .finally(() => setBusy(false));
