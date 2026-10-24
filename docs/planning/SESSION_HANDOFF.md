@@ -18,6 +18,16 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-24 — Cursor (agent, Alan) — Phase 7C MERGEABLE + Devin compatibility review (do not merge #458)
+- Did: Six security-review findings remain intact on conflict-free #458. Merged `origin/main` through `d1864e9a` (#513 eval cases). **Did not cherry-pick or merge** Devin fork work (`m-alan08/ari-ai` PRs 1–3). **Did not start Phase 7D.** Schema still **0.22.0**; open #412 keeps **0.20.0**; Alembic stays **0015**. Probe/Patch not expanded. No AUTO-EXECUTE.
+- Devin review (read-only, not merged):
+  - PR1 execution reliability (`feat/devin-execution-reliability`, 0016): complementary job lifecycle (`waiting`/`timed_out`/`recovery_required`, `ctx.effect()`, `deadline_s`). Does not contain 7C `JobDeferred` / `jobs.defer`. Do not wrap Scout/Diagnose LLM in `ctx.effect()` — that would block crash-in-progress rerun that finding 6 requires. Diagnose `depends_on` could later replace defer polling after 7C lands.
+  - PR2 live-defense E2E: stacked on six-fix head `db0a631d`, test-only. Scenarios A–H would exercise latest 7C (partial transcript, crash CAS, OFF, no AUTO-EXECUTE) after a rebase onto this MERGEABLE head. Does not cover canonical intel, cache-creation USD, or Diagnose defer attempts.
+  - PR3 investigation observability (schema **0.23.0**): read-only Executions tab can consume 7C `AgentExecutionRecord` JSONB via looser `AgentExecutionView`. UI must keep `evidence_verified=false` / `confirmation=unverified` from 7C writes; the view type allows a bool and could display “verified” if a record were tampered.
+- Commands run and results (executed on 7C+main `15aa6cf8`, eval-cases merge is JSON-only): `make check` pass (schema 0.22.0, 155 files); `uv run mypy` 40 files; focused 7A+7C+review+jobs+llm **72 passed**, 1 skipped (live smoke); prior broader on this merge: pytest **812 passed**, 14 skipped; security-agents **593 passed**, 23 skipped; frontend vitest **337 passed** / 79 files; transport **35 passed**. FakeLLM, not live Anthropic.
+- Next: independent security re-review of #458. Leave open. Do not merge.
+- Warnings: **leave the PR open**. Merge NO-GO until Alan’s security approval. Live Anthropic UNVERIFIED (issue #10). Do not merge Devin branches into #458.
+
 ### 2026-10-24 — Cursor (agent, Alan) — merge origin/main into #458 (do not merge the PR)
 - Did: PR #458 was **DIRTY** vs `origin/main`, so GitHub Actions never queued on `db0a631d`. Merged `origin/main` (`be8fe67a`) into `feat/alan/live-defense-phase7c-agent-execution`. Kept both Unreleased changelog bullets and both 2026-10-24 handoff entries. Six security-review fixes preserved (canonical intel, partial evidence, deadlines, cache-creation cost, Diagnose defer, idempotent redelivery). Schema still **0.22.0**; open #412 keeps **0.20.0**. Generated contracts auto-merged and `shared.export --check` was clean (155 files). **Did not merge #458. Did not open a replacement PR.** Probe/Patch not expanded. No AUTO-EXECUTE.
 - Commands run and results (executed): `make check` pass (schema 0.22.0); `uv run mypy` 40 files; focused 7C+review+jobs+llm **51 passed**, 1 skipped; `uv run pytest -q` **812 passed**, 14 skipped; security-agents **593 passed**, 23 skipped; frontend lint/typecheck; vitest **337 passed** / 79 files; transport **35 passed**.
