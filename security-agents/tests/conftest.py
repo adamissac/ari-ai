@@ -9,7 +9,14 @@ from pathlib import Path
 
 import pytest
 
-from security_agents.checks.library import AUTHENTICATION, BOUNDS, OWNERSHIP, CheckLibrary, default_library
+from security_agents.checks.library import (
+    AUTHENTICATION,
+    BOUNDS,
+    OWNERSHIP,
+    ROLE,
+    CheckLibrary,
+    default_library,
+)
 from security_agents.contracts import (
     AuthorizedScope,
     Budget,
@@ -111,7 +118,7 @@ def make_scope(
         ],
         allowed_check_categories=categories
         if categories is not None
-        else [OWNERSHIP.category, BOUNDS.category, AUTHENTICATION.category],
+        else [OWNERSHIP.category, BOUNDS.category, AUTHENTICATION.category, ROLE.category],
         status=status,
         requested_by=requested_by,
         approved_by=approved_by,
