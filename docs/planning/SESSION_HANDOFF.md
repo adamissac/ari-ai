@@ -1545,3 +1545,29 @@ passed in0.96s; two new modules pass scoped strict mypy. NO-GO/Option C unchange
 Exact commands and the pre-commit provenance rejection are retained in
 docs/research/adaptive-defense-readiness/VERIFICATION.md. Final CI/review/merge state
 is recorded on PR422; no new study may start without separate owner approval.
+
+## Resource-exhaustion research foundation — RL-CMDP-008
+
+Explicit owner attachment authorizes finite-worker/queue research implementation,
+baselines and bounded unit instrumentation; no formal comparison before sample,
+compute and safety approval, and no model training. Branch
+research/rl-resource-exhaustion-feasibility from7c127a2b. Core service/Gym model,
+causal observations, route/source quotas and deterministic baseline rules implemented.
+23 core instrumentation tests pass. Stage2 infrastructure, docs and final checks
+remain in progress. No empirical study or customer enforcement was run/modified.
+
+RL-CMDP-008 Stage2 preparation implemented: versioned experience/config/profile/
+cutoff schema, separate reward/cost arrays, bounded unit-only replay, fixed unit
+receipt writer/verifier with raw work/control/cost accounting, failure retention,
+and deadline-bounded settlement. No optimizer, checkpoint writer or study runner.
+Stochastic private phases/tie ordering avoid clock or label-priority shortcuts.
+Proposed study now600 episodes/18,000 decisions plus bounded settlement, with
+unapproved safety/sample/compute values. Training NO-GO pending approved formal
+feasibility, safe baseline headroom, terminal-cost collector/learner review and
+explicit training authorization. No historical evidence or customer control edits.
+
+Resource evidence closure: anchored four-window unit receipt committed from source
+1b5516c808602c91152c18b7460fe9aaa9cd8404. Local checks: 46 resource tests,
+213 broader selected research tests, 91 shared tests, scoped strict mypy (7 files),
+Ruff/format and 580 Markdown link checks passed. Formal feasibility and training
+remain unapproved; PR review/CI required before merge. See resource VERIFICATION.md.

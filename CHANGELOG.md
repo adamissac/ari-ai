@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Add an isolated finite-resource service research model with observable queue/work accounting, bounded route/source controls and deterministic baseline rules; formal study and training remain approval-gated.
+
 - Add an adaptive-defense research readiness assessment, causal observation prototype and read-only training-archive coverage inventory. Verdict: no new RL training; no measured residual adaptive task or control benefit is established.
 
 - Add a research-only versioned payment authorization provider with explicit owner/delegated/unauthorized/unknown states, trusted payments-lite lookup and documented causal RL observation rules.
