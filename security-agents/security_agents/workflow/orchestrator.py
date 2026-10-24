@@ -709,7 +709,7 @@ class Orchestrator:
     # ------------------------------------------------------------------ steps
 
     def _added_tests_on_unpatched(
-        self, candidate: Any, verify_ctx: ToolContext, attempt: int
+        self, candidate: Any, patched: Path | None, attempt: int
     ) -> list[dict[str, Any]]:
         """Run the candidate's added tests on a fresh UNPATCHED checkout (platform-run, no model).
 
@@ -717,7 +717,6 @@ class Orchestrator:
         test is the pinned snapshot. Verify requires at least one of them to fail here.
         Returns [] when nothing could be run (Verify then fails closed).
         """
-        patched = verify_ctx.artifacts.get("verify_workspace")
         roots = recipe_test_roots(self.intel.snapshot.root)
         tests = [t for t in candidate.tests_added if isinstance(t, str) and under_test_roots(t, roots)]
         if not patched or not tests:
@@ -1094,7 +1093,7 @@ class Orchestrator:
         reasons: list[str] = []
         while True:
             if sub_state is RemediationState.PATCHING:
-                candidate, _worktree = self._run_patch(finding, attempt, reasons)
+                candidate, worktree = self._run_patch(finding, attempt, reasons)
                 patch_failed = candidate is None
                 sub_state = next_remediation_state(
                     sub_state, verdict=None, attempt=attempt, patch_failed=patch_failed
@@ -1106,7 +1105,7 @@ class Orchestrator:
                 finding.status = "patch_proposed"
                 continue
             if sub_state is RemediationState.VERIFYING:
-                verification = self._run_verify(finding, attempt)
+                verification = self._run_verify(finding, attempt, worktree)
                 verdict = verification.verdict if verification else "rejected"
                 if verification:
                     finding.verifications.append(verification)
@@ -1223,7 +1222,9 @@ class Orchestrator:
         )
         return candidate, worktree
 
-    def _run_verify(self, finding: FindingRecord, attempt: int) -> VerificationResult | None:
+    def _run_verify(
+        self, finding: FindingRecord, attempt: int, worktree: PatchWorktree | None = None
+    ) -> VerificationResult | None:
         candidate = finding.candidates[-1]
         assert finding.plan is not None
         data = verify_agent.input_from_candidate(
@@ -1256,18 +1257,24 @@ class Orchestrator:
         }
         ctx = self._context(AgentName.VERIFY, f"remediation:{finding.finding_id}:verify", services=services)
         ctx.artifacts["tests_added"] = list(candidate.tests_added)
-        outcome = self._run_step(
-            verify_agent.SPEC,
-            ctx,
-            verify_agent.build_prompt(data, self.intel),
-            input_ref=f"verify:{candidate.id}",
-            attempt=attempt,
-        )
+        # The added tests on unpatched code need no model: run them while Verify works. The
+        # test files come from Patch's worktree, the same bytes the diff carries.
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            unpatched = pool.submit(
+                self._added_tests_on_unpatched, candidate, worktree.root if worktree else None, attempt
+            )
+            outcome = self._run_step(
+                verify_agent.SPEC,
+                ctx,
+                verify_agent.build_prompt(data, self.intel),
+                input_ref=f"verify:{candidate.id}",
+                attempt=attempt,
+            )
+            unpatched_added_runs = unpatched.result()
         check_runs = list(ctx.artifacts.get("check_runs") or [])
         test_runs = list(ctx.artifacts.get("test_runs") or [])
         for run in check_runs + test_runs:
             self.result.usage.sandbox_seconds += float(run.get("duration_s") or 0)
-        unpatched_added_runs = self._added_tests_on_unpatched(candidate, ctx, attempt)
         for run in unpatched_added_runs:
             self.result.usage.sandbox_seconds += float(run.get("duration_s") or 0)
         evidence = verify_agent.VerifyEvidence(
