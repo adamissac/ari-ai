@@ -1744,6 +1744,9 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - Eval harness: `run.py` cleanup survives missing `gh` auth; `score_api.py` accepts the bare-list assessments response. All 35 cases pushed as `eval/20261024-110115/*` branches; assessments accumulate live pending a fresh `hackatl_session` for scoring + scope widening (`access_control.authentication` category).
 - Test scope fixture (`make_scope` default) now grants all three check categories — required for the f2 listing invariant after the authentication template landed.
 
+
+
+
 ## 2026-10-24 — Devin (Alan): execution reliability workstream
 
 - Branch `feat/devin-execution-reliability` (from upstream/main 58fc015a). Migration `0016` (head pin bumped); no shared contract or `SCHEMA_VERSION` change, so no conflict with #412/#458 schema claims. If another PR lands a `0016` first, renumber this revision's `revision`/`down_revision`.
@@ -1780,3 +1783,18 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - Review packet regenerated with the role sample; its import allowlist now includes `datetime` (needed by `{expires_in_days}` renders).
 - **Incident:** `chore/agent-commit-cadence` was accidentally cut from `eval/20261024-142809/idor_project_cache_before_auth` and carried the planted `_PROJECT_CACHE` vuln — PR e2e caught it correctly (`toHaveValue('900')` got stale `600`). Rebased it off; the vuln stays only on its eval branch. Lesson: always `git checkout -b <branch> origin/main`, never off the current checkout.
 - Eval run 2 (tag `20261024-142809`, 45 cases) in flight with specialist Scout live: mid-run shows vuln flagged 20/24, benign FP 0/13, median 69s (~2× faster than the 153s baseline).
+## 2026-10-24 — Codex independent four-workstream security review
+
+Integration only: codex/first-responder-integration-review; pins A89a3deba,
+B17c3ded0, Ce187e9a2, Db44b28aa. Original PRs remain OPEN and unchanged.
+Report: docs/reviews/first-responder-integration/REPORT.md; complete source/CI
+snapshots, raw logs and XML retained. NO-GO for combined merge: two P1/eight P2.
+Critical: provider unknown-outcome requeue and emergency cleanup blocked by normal
+concurrency limits. Also final-submit OFF race, waiting cancellation, missing durable
+deadline, state/history/observability and test/schema compatibility defects.
+Evidence: backend407 pass/2fail/8skip; security593/23skip; shared106; migrations3;
+frontend344; transport35; Playwright3; relevantRL8; smoke2/fault8. Independent
+regressions9fail/1pass intentionally retained. No paid live tests, production
+migration, customer enforcement or new RL experiment. Owner fixes belong on their
+workstreams; suggested post-fix sequence B→A→C→D, with fresh combined review/CI.
+No merge is authorized for this review branch.

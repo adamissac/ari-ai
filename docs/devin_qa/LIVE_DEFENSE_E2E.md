@@ -46,20 +46,39 @@ CI: `.github/workflows/live-defense-e2e.yml`. Machine-readable results land in
 
 ## Workstream 1 (execution reliability) compatibility
 
-`test_exec_reliability_compat.py` pins the queue contracts this suite relies
-on once `feat/devin-execution-reliability` merges (new `JobStatus` values,
+`test_exec_reliability_compat.py` runs **live against the reliability queue**
+— this branch is rebased on the composition of the approved heads
+`89a3deba` (PR #458, Phase 7C) + `17c3ded0` (execution reliability), so the
+contract tests execute for real, never skipped. They pin
 `depends_on`/`deadline_s`/`project_id` on `enqueue`, fair project-limited
-`claim`, `begin_effect`/`recovery_required`, `execution.reconcile`). Every
-test skips until `jobs.JobStatus.recovery_required` exists.
+`claim`, `begin_effect`/`recovery_required`, `execution.reconcile`, and
+deadline timestamps expressed on the **database clock**
+(`sa.func.now() - interval`), never Python `utcnow()` — review finding F10.
 
-Scenarios to review at merge time:
+Three tests carry `xfail(strict=True)`: each reproduces a review-confirmed
+integration defect (F1, F7, F8) against the desired contract, so CI stays
+green while the defect stays visible; when the owning workstream lands the
+fix the test turns XPASS and the marker is dropped.
 
-- `test_e_worker_failure`: backoff/requeue assertions still hold, but a step
-  job that declares an effect lands in `recovery_required` instead of retry.
-- `test_j_queue_redelivery`: `revive_job` bypasses the WS1 state machine; the
-  compat suite covers real re-claim after lease expiry instead.
-- `test_i_concurrent_workers`: claims serialize on an advisory lock when
-  per-project limits are on; single-execution semantics hold.
+- **F1** — crash-after-send/before-response: reconcile requeues the
+  uncertain attempt and a worker replays the billable provider call
+  automatically. Required: `recovery_required`, no second physical call
+  until an operator resolves it.
+- **F7** — `live_defense_agent_step` jobs are enqueued with
+  `deadline_at=NULL` (no durable deadline).
+- **F8** — OFF flipped while the final submit response is in flight is
+  overwritten: the cancelled invocation is persisted as `executed`.
+
+Passing coverage on the same file: dependency ordering, per-project claim
+fairness, deadline `timed_out` on the DB clock, uncertain effect →
+`recovery_required`, and deadline durability through claim → lease expiry →
+reconcile → requeue (the stored `deadline_at` is never reset).
+
+Physical vs logical accounting: `fake.calls` counts physical provider calls;
+invocation rows count logical attempts. `test_e_worker_failure` asserts the
+honest observed contract — a re-delivered step re-runs the whole physical
+loop (scout calls double) even though the logical invocation stays one — and
+does not claim that as duplicate-prevention.
 
 ## Coordination notes
 

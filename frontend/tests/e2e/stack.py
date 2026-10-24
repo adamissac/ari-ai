@@ -266,11 +266,30 @@ def main(argv: list[str]) -> int:
             .raise_for_status()
             .json()["id"]
         )
+        # A dedicated project for the Workstream-2 live-defense lifecycle spec:
+        # it runs Scout, and the first-responder page renders one
+        # live-defense-fr-invocation-* row per invocation across the whole
+        # project, so sharing E2E_PROJECT_ID would collide with the Phase 7C
+        # spec's single-element assertions.
+        ld_pid = (
+            alice.post("/projects", json={"name": "live-defense-e2e (e2e)", "settings": {"delivery_mode": "manual"}})
+            .raise_for_status()
+            .json()["id"]
+        )
+        ld_name = "acme/live-defense-e2e"
+        ld_rid = (
+            alice.post(
+                f"/projects/{ld_pid}/repositories", json={"full_name": ld_name}
+            )
+            .raise_for_status()
+            .json()["id"]
+        )
         bindings.write_text(
             json.dumps(
                 [
                     {"repo_id": rid, "local_path": str(repo), "subdir": "."},
                     {"repo_id": workspace_rid, "local_path": str(repo), "subdir": "."},
+                    {"repo_id": ld_rid, "local_path": str(repo), "subdir": "."},
                 ]
             )
         )
@@ -290,17 +309,19 @@ def main(argv: list[str]) -> int:
             index_version="e2e-phase7c",
             created_at=utcnow(),
         )
+        snap_ld = snap.model_copy(update={"id": new_id(IdPrefix.snp), "repo_id": ld_rid})
         with transaction() as conn:
-            conn.execute(
-                sa.insert(snapshots).values(
-                    id=snap.id,
-                    repo_id=rid,
-                    commit_sha=sha,
-                    index_version=snap.index_version,
-                    status=snap.status.value,
-                    doc=snap.model_dump(mode="json"),
+            for s in (snap, snap_ld):
+                conn.execute(
+                    sa.insert(snapshots).values(
+                        id=s.id,
+                        repo_id=s.repo_id,
+                        commit_sha=s.commit_sha,
+                        index_version=s.index_version,
+                        status=s.status.value,
+                        doc=s.model_dump(mode="json"),
+                    )
                 )
-            )
         alice.close()
 
         # Stored simulation-derived recommendation for Live Defense e2e (no live RL
@@ -414,6 +435,9 @@ def main(argv: list[str]) -> int:
                 "E2E_PROJECT_ID": pid,
                 "E2E_REPO_ID": rid,
                 "E2E_REPO": REPO_NAME,
+                "E2E_LD_PROJECT_ID": ld_pid,
+                "E2E_LD_REPO_ID": ld_rid,
+                "E2E_LD_REPO": ld_name,
                 "E2E_WORKSPACE_PROJECT_ID": workspace_pid,
                 "E2E_WORKSPACE_REPO_ID": workspace_rid,
                 "E2E_WORKSPACE_REPO": workspace_name,
