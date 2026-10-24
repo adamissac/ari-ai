@@ -18,6 +18,15 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-24 — Devin (agent, Adam) — code-intelligence pipeline audit
+- Did: on `feat/adam/intel-pipeline-audit`, audited ingest→extract→store→retrieve→memory for pilot readiness. Reproduced the PR #441 redaction/parser regression on main (38/582 tracked .py unparseable post-redact + 2 line-count shifts); verified the fix (0 broken, 0 line shifts, 0 leaked literal secrets across the same corpus). Indexed payments-lite, `backend/` prefix, and the whole repo; ran a labeled-question retrieval eval; benchmarked latency/memory. Found a silent coverage gap — `@app.get(FIXTURE_ROUTE)`-style non-literal route paths were dropped with no IndexIssue — and fixed it so they are flagged. Carries `7a5b329f` verbatim, so merging this branch lands PR #441's fix.
+- State of the code (verified how): `code-intelligence/tests` 57 passed 1 skipped; `backend/tests/test_intel_store.py test_intelligence_memory_api.py test_intelligence_ingestion_profile.py test_payload_store_intel_integration.py` 9 passed on real Postgres; new retrieval eval + route-diagnostic tests pass; benchmark harness executed on payments-lite.
+- Commands run and results: `PYTHONPATH=code-intelligence:shared .venv/bin/python -m pytest code-intelligence/tests` (57 passed, 1 skipped); backend intel subset (9 passed); index runs 0.16s/8 files, 4.11s/127 files, 92.4s/1,798 files.
+- Report: `docs/research/intel-pipeline-audit/README.md`; measured numbers: `code-intelligence/evidence/m2-index-retrieval-audit.json`; benchmark: `code-intelligence/evidence/index_benchmark.py`.
+- Assumptions/open questions: secondary-evidence Recall@K degrades at scale (82% on payments-lite, 63% on ari-ai) — packs do not mark absent expected evidence; mid-line bare-secret expressions (`f(password=x, user=y)`) are a documented redaction residual; JS/TS extraction is unimplemented and unclaimed.
+- Next steps: merge after review; consider BM25 tie-breaking toward implementation symbols if reviewers need secondary evidence.
+- Warnings: none.
+
 ### 2026-10-23 — Cursor (agent, Alan) — Phase 6 Codex P1/P2 before merge
 - Did: on `feat/live-defense-phase6-pilot-audit` (PR #411), locked the application row in `gate_for` and disconnect so leftover execute cannot race a concurrent disconnect; counted `run_assessment` jobs via `assessment_id`; kept recovered `last_error` on the pilot trail as `job.recovered`. Tightening only; `AUTHORIZATION_CHECKS` still 15. No Phase 7.
 - Commands: `uv run pytest -q backend/tests/test_live_defense_phase6.py backend/tests/test_live_defense_authorize.py` — 26 passed.

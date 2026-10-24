@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Audit the code-intelligence pipeline end to end: land the parse-safe secret redaction from PR #441, flag non-literal route paths as IndexIssue findings instead of silently dropping them, add a labeled-question retrieval evaluation and a reproducible index benchmark, and record executed coverage/recall/isolation numbers in `code-intelligence/evidence/m2-index-retrieval-audit.json` with the full report in `docs/research/intel-pipeline-audit/`.
+
 - Added read-only capacity/oracle and product-thesis assessment: current evidence does not justify RL as a primary near-term dependency; no training or control changes.
 
 - Completed owner-approved resource-exhaustion feasibility001 (600 episodes), retaining all violations and raw evidence; training remains NO-GO.
