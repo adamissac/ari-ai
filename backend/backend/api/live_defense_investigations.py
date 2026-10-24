@@ -66,6 +66,20 @@ SKIPPED_STATUSES = {
 }
 COMPLETED_STATUSES = {"completed_unverified", "executed"}
 ACTIVE_STATUSES = {"eligible", "queued"}
+# Terminal invocation statuses: the invocation row is the authoritative record
+# once the agent step is settled (completed, skipped, failed or cancelled).
+TERMINAL_INVOCATION_STATUSES = SKIPPED_STATUSES | COMPLETED_STATUSES | {"failed", "cancelled"}
+# Job states that mean the work is stopped but unresolved — never in-progress.
+UNRESOLVED_JOB_STATES = {"timed_out", "recovery_required"}
+# Job states with a real wall-clock duration (created -> final update).
+JOB_FINISHED_STATES = {
+    "succeeded",
+    "failed",
+    "cancelled",
+    "dead",
+    "timed_out",
+    "recovery_required",
+}
 
 MAX_RECENT_ERRORS = 20
 MAX_WAITING_JOBS = 20
@@ -79,7 +93,7 @@ def _job_view(row: sa.RowMapping, *, now: datetime) -> InvocationJobView:
         and lease_expires is not None
         and lease_expires.replace(tzinfo=UTC) < now
     )
-    finished = row["status"] in {"succeeded", "failed", "cancelled", "dead"}
+    finished = row["status"] in JOB_FINISHED_STATES
     wall_ms = None
     if finished and row["created_at"] and row["updated_at"]:
         wall_ms = max(
@@ -134,7 +148,28 @@ def _invocation_view(
         job=job_view,
         execution=execution,
         execution_recorded=execution is not None,
+        effective_state=_effective_state(invocation.status.value, job_view),
     )
+
+
+def _effective_state(inv_status: str, job: InvocationJobView | None) -> str:
+    """Canonical precedence between the invocation record and its queue job.
+
+    A terminal invocation status (completed, skipped, failed, cancelled) is
+    authoritative. While the invocation is non-terminal, the joined job row —
+    which records what actually ran — wins: queued, waiting, running,
+    succeeded, failed, cancelled, timed_out and recovery_required pass through
+    (``dead`` maps to ``failed``). A stopped or unresolved job is therefore
+    never displayed as in-progress, and an unresolved effect is never
+    displayed as successful execution.
+    """
+    if inv_status in TERMINAL_INVOCATION_STATUSES:
+        return inv_status
+    if job is None:
+        return inv_status
+    if job.status == "dead":
+        return "failed"
+    return job.status
 
 
 def _final_state(
@@ -142,18 +177,34 @@ def _final_state(
     invocations: list[FirstResponderInvocationView],
     handoff: AnalystHandoff | None,
 ) -> str:
+    """Whole-investigation state from per-invocation effective states.
+
+    Precedence: cancelled decision, then the worst unresolved job outcome
+    (recovery_required > timed_out > failed > cancelled), then work still
+    moving (running > waiting > queued), then handoff, then settled states.
+    """
     if decision.cancelled:
         return "cancelled"
-    statuses = {v.invocation.status.value for v in invocations}
-    if "failed" in statuses or (decision.action.value == "cancel_run"):
+    states = {v.effective_state for v in invocations}
+    if "recovery_required" in states:
+        return "recovery_required"
+    if "timed_out" in states:
+        return "timed_out"
+    if "failed" in states or (decision.action.value == "cancel_run"):
         return "failed"
-    if statuses & ACTIVE_STATUSES:
+    if "cancelled" in states:
+        return "cancelled"
+    if "running" in states:
         return "in_progress"
+    if "waiting" in states:
+        return "waiting"
+    if states & ACTIVE_STATUSES:
+        return "queued"
     if handoff is not None:
         return f"handoff_{handoff.state.value}"
-    if statuses & COMPLETED_STATUSES:
+    if states & COMPLETED_STATUSES:
         return "completed_unverified"
-    if statuses and statuses <= SKIPPED_STATUSES:
+    if states and states <= SKIPPED_STATUSES:
         return "skipped"
     return decision.evidence_state.value
 
@@ -327,6 +378,32 @@ def list_investigations(
             ):
                 handoff_states[row[0]] = row[1]
 
+        # Queue-state rollup per decision: invocation rows only say "queued"
+        # while work is in flight, so job rows are the source of truth for
+        # stopped (timed_out, recovery_required, failed) and waiting states.
+        fr_kinds = list(FIRST_RESPONDER_JOB_KINDS)
+        job_statuses: dict[str, dict[str, int]] = {}
+        if decision_ids:
+            fr_jobs = (
+                sa.select(
+                    jobs.c.payload["decision_id"].astext.label("decision_id"),
+                    jobs.c.status,
+                )
+                .select_from(jobs)
+                .where(
+                    jobs.c.kind.in_(fr_kinds),
+                    jobs.c.payload["decision_id"].astext.in_(decision_ids),
+                )
+                .subquery()
+            )
+            for row in conn.execute(
+                sa.select(fr_jobs.c.decision_id, fr_jobs.c.status, sa.func.count()).group_by(
+                    fr_jobs.c.decision_id, fr_jobs.c.status
+                )
+            ):
+                if row[0] is not None:
+                    job_statuses.setdefault(row[0], {})[row[1]] = row[2]
+
         items = []
         for doc in docs:
             decision = FirstResponderDecision.model_validate(doc)
@@ -350,6 +427,7 @@ def list_investigations(
                     invocations_skipped=sum(counts.get(s, 0) for s in SKIPPED_STATUSES),
                     invocations_cancelled=counts.get("cancelled", 0),
                     handoff_state=handoff_states.get(decision.id),
+                    job_statuses=job_statuses.get(decision.id, {}),
                 ).model_dump(mode="json")
             )
         return {"items": items, "next_cursor": nxt}
@@ -462,12 +540,17 @@ def diagnostics(project_id: str, request: Request) -> dict[str, Any]:
         waiting_rows = (
             conn.execute(
                 sa.select(
-                    jobs.c.id, jobs.c.kind, jobs.c.run_after, jobs.c.created_at, jobs.c.attempts
+                    jobs.c.id,
+                    jobs.c.kind,
+                    jobs.c.status,
+                    jobs.c.run_after,
+                    jobs.c.created_at,
+                    jobs.c.attempts,
                 )
                 .where(
                     jobs.c.kind.in_(fr_kinds),
                     jobs.c.payload["project_id"].astext == project_id,
-                    jobs.c.status == "queued",
+                    jobs.c.status.in_(["queued", "waiting"]),
                 )
                 .order_by(jobs.c.run_after.asc())
                 .limit(MAX_WAITING_JOBS)
@@ -479,6 +562,7 @@ def diagnostics(project_id: str, request: Request) -> dict[str, Any]:
             WaitingJobView(
                 job_id=r["id"],
                 kind=r["kind"],
+                status=r["status"],
                 run_after=r["run_after"],
                 enqueued_at=r["created_at"],
                 attempts=r["attempts"],
@@ -528,7 +612,7 @@ def diagnostics(project_id: str, request: Request) -> dict[str, Any]:
             sa.select(jobs.c.created_at, jobs.c.updated_at).where(
                 jobs.c.kind == "live_defense_agent_step",
                 jobs.c.payload["project_id"].astext == project_id,
-                jobs.c.status.in_(["succeeded", "failed", "cancelled", "dead"]),
+                jobs.c.status.in_(JOB_FINISHED_STATES),
             )
         ).all()
         durations = [
@@ -562,6 +646,9 @@ def diagnostics(project_id: str, request: Request) -> dict[str, Any]:
         notes = [
             "Stalled = running job whose lease expired (reclaimable by another worker).",
             "Latency is job wall time (queue + run), not model latency.",
+            "timed_out = execution deadline passed; recovery_required = uncertain "
+            "external effect awaiting an operator decision. Neither is successful "
+            "execution and neither clears on its own.",
         ]
         if not cost_seen:
             notes.append(
@@ -577,14 +664,18 @@ def diagnostics(project_id: str, request: Request) -> dict[str, Any]:
             failures_by_agent=failures_by_agent,
             missing_prerequisites=missing_prerequisites,
             jobs_queued=job_counts.get("queued", 0),
+            jobs_waiting=job_counts.get("waiting", 0),
             jobs_running=job_counts.get("running", 0),
             jobs_stalled=stalled,
             jobs_succeeded=job_counts.get("succeeded", 0),
             jobs_failed=job_counts.get("failed", 0),
             jobs_cancelled=job_counts.get("cancelled", 0),
             jobs_dead=job_counts.get("dead", 0),
+            jobs_timed_out=job_counts.get("timed_out", 0),
+            jobs_recovery_required=job_counts.get("recovery_required", 0),
             waiting_jobs=waiting,
             recent_errors=recent_errors,
             agent_step_latency=latency,
             cost_usd_total=cost_total,
+            notes=notes,
         ).model_dump(mode="json")
