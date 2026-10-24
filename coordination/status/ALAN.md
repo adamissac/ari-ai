@@ -12,9 +12,15 @@ Last remote sync: 2026-10-24, `origin/main` @ `d1864e9a` (merged into this branc
 API/contract dependencies: `shared` 0.22.0 first-responder execution records (0.21.0 is merged 7A; 0.20.0 reserved for open #412); Alembic stays 0015; seven AgentSpecs
 Recent PR/commit: https://github.com/adamissac/ari-ai/pull/458 on `feat/alan/live-defense-phase7c-agent-execution` (leave open for security review of execution trust boundary)
 Blockers: live Anthropic Scout/Diagnose (issue #10, key optional); human/security approval of the Phase 7C PR (do not merge from this agent); Probe still needs AuthorizedScope and is not expanded
-Next action: independent security re-review of MERGEABLE #458 (six findings intact); leave PR open; do not merge; do not train RL; do not expand Probe/Patch; do not merge Devin fork PRs into #458
+Next action: independent re-review of Codex F1/F7/F8 on #458; leave PR open; do not merge; do not train RL; do not expand Probe/Patch; do not merge Devin fork PRs into #458
 
 ## Session entries
+
+### 2026-10-24 (Codex F1/F7/F8 on existing #458; do not merge)
+
+- Durable provider-attempt ledger; overall `deadline_at` not reset on retry; OFF/job-cancel persist committed before `JobCancelled`. Six original findings preserved. Schema **0.22.0**; #412 keeps **0.20.0**; Alembic **0015**; Devin keeps **0016**. Did not rewrite `jobs.py`.
+- Executed: `make check` pass (156 files); mypy 40 files; focused 7A+7C+review+jobs+llm **76 passed** / 1 skipped. FakeLLM ≠ live Anthropic.
+- Leave #458 **open**. Re-review GO for F1/F7/F8 + six findings. Merge NO-GO.
 
 ### 2026-10-24 (MERGEABLE head + Devin compatibility review; do not merge #458)
 

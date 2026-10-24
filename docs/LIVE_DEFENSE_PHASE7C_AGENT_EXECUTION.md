@@ -62,7 +62,14 @@ Security-review fixes (six findings, existing branch, not merged):
 3. **Deadlines.** Remaining wall-clock is passed as `timeout_s`. Provider retries stop when a retry would miss the deadline. Cancel, deadline (`BUDGET_EXHAUSTED` / `DEADLINE_EXCEEDED`) and provider failure stay distinct. OFF remains authoritative.
 4. **Cost.** Adapter USD uses `backend.llm.cost_usd` including input, output, cache-read and **cache-creation**. Missing live usage fails closed rather than silent `$0`.
 5. **Diagnose scheduling.** Diagnose is not enqueued until Scout is terminal. Waiting uses `jobs.defer` (does not burn failure attempts). Failed/cancelled Scout skips Diagnose.
-6. **Idempotent redelivery.** Terminal invocations return the persisted result. Successful `executed` rows cannot be overwritten by a later failed retry. Crash-in-progress is `queued` + `execution.started_at` without a transcript.
+6. **Idempotent redelivery.** Terminal invocations return the persisted result. Successful `executed` rows cannot be overwritten by a later failed retry. Crash-in-progress without a billable send is `queued` + `execution.started_at` without a transcript.
+
+Codex combined-release follow-up (existing branch, not merged; six findings above preserved):
+
+- **F1 unknown billable outcome.** Each provider `complete()` reserves a durable `ProviderAttempt` (`in_flight`) before send. Crash after send marks `uncertain`. Recovery never starts a second billable request while the previous result is unknown. In-flight concurrent claims `JobDeferred`. Anthropic `Idempotency-Key` is sent when the live transport is used. Read-only intel queries are not ledgered. Partial usage stays on the invocation JSONB.
+- **F7 overall deadline.** `FirstResponderDecision.deadline_at` is the single overall deadline (now + `FIRST_RESPONDER_DEADLINE_S`). Copied onto each invocation and agent-step payload. Worker retry does not reset it. Expired deadline refuses another provider call (`BUDGET_EXHAUSTED` / `DEADLINE_EXCEEDED`), distinct from cancel and from provider failure. Stored in JSONB + payload; Alembic 0016 (`jobs.deadline_at`) remains Devin Reliability's.
+- **F8 cancel precedence.** OFF and `cancel_requested` are rechecked after the agent loop and immediately before committing finals. That commit is not rolled back by the subsequent `JobCancelled`. Cancelled invocations keep partial transcripts/costs and cannot become `executed`.
+- **F4/F5.** This branch does not rewrite `jobs.py` / worker lifecycle. Diagnose still uses `JobDeferred` / `jobs.defer`. Devin Reliability owns generic `waiting` / `depends_on` / `ctx.effect()`.
 
 ## What executed vs skipped
 
@@ -114,9 +121,9 @@ FakeLLM/FakeTransport only. Not live Anthropic proof.
 
 | Suite | Result |
 |---|---|
-| `make check` | pass (schema 0.22.0, 155 files) |
+| `make check` | pass (schema 0.22.0, 156 files) |
 | `uv run mypy` | 40 files, no issues |
-| `uv run pytest -q` | **806 passed**, 15 skipped |
+| focused 7A+7C+review+jobs+llm | **76 passed**, 1 skipped (opt-in live smoke) |
 | `security-agents` pytest | **592 passed**, 23 skipped |
 | frontend lint + typecheck | pass |
 | frontend vitest | **330 passed** / 78 files |

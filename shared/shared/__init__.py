@@ -52,5 +52,8 @@ SCHEMA_VERSION = (
     #      null. executed investigative output is not threat confirmation.
     #      Probe/Patch/Verify privileges are not expanded. Open PR #412 keeps
     #      0.20.0; this branch does not collide that number. Alembic stays 0015
-    #      (execution lives in existing invocation JSONB).
+    #      (execution lives in existing invocation JSONB). Additive 7C
+    #      follow-up: ProviderAttempt ledger + invocation.deadline_at (optional
+    #      fields; old 0.22.0 payloads still validate). Devin Reliability
+    #      keeps Alembic 0016.
 )

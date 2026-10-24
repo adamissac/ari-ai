@@ -60,6 +60,8 @@ export interface AgentExecutionRecord {
   evidence_verified: false;
   confirmation: "unverified";
   predicted_probability: null;
+  provider_attempts: Array<ProviderAttempt>;
+  uncertain_provider_outcome: boolean;
 }
 
 export type AgentInvocationStatus = "eligible" | "blocked" | "queued" | "skipped_no_mapping" | "skipped_no_snapshot" | "skipped_mode" | "skipped_no_scope" | "skipped_no_approval" | "skipped_no_patch" | "skipped_no_prerequisite" | "executed" | "completed_unverified" | "failed" | "cancelled";
@@ -970,6 +972,7 @@ export interface FirstResponderInvocation {
   job_id: string | null;
   reason: string | null;
   execution: AgentExecutionRecord | null;
+  deadline_at: string | null;
   created_at: string;
 }
 
@@ -1499,6 +1502,27 @@ export interface ProjectUpdate {
   name: string | null;
   settings: ProjectSettings | null;
 }
+
+/** One billable provider request. Read-only intel queries are not recorded here. */
+export interface ProviderAttempt {
+  id: string;
+  idempotency_key: string;
+  status: ProviderAttemptState;
+  reserved_at: string;
+  sent_at: string | null;
+  settled_at: string | null;
+  model_id: string | null;
+  cost_usd: number | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  cache_creation_input_tokens: number | null;
+  response_id: string | null;
+  error_code: string | null;
+  effect_key: string | null;
+}
+
+/** Durable billable-request ledger. Unknown outcomes are never auto-replayed. */
+export type ProviderAttemptState = "reserved" | "in_flight" | "settled" | "uncertain" | "cancelled";
 
 export interface RLCheckpointRef {
   id: string;

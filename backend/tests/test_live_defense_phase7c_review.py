@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import threading
-from datetime import timedelta
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
@@ -1296,6 +1296,256 @@ def test_concurrent_workers_keep_first_executed(
     )
     assert scout["status"] == AgentInvocationStatus.executed.value
     assert scout["execution"]["confirmation"] == "unverified"
+    assert scout["execution"]["evidence_verified"] is False
+    decisions = alice.get(f"/api/v1/projects/{pid}/first-responder/decisions").json()["items"]
+    assert decisions[0]["executed"] is False
+
+
+class _WorkerCrash(BaseException):
+    """Models process death after send, before a response is recorded."""
+
+
+def test_crash_during_provider_request_requires_recovery_before_replay(
+    client_factory, settings_override, monkeypatch, tmp_path
+) -> None:
+    repo, sha = _owned_repo(tmp_path)
+    inner = _scripted_gateway(repo)
+    provider = {"calls": 0}
+
+    class CrashAfterSending:
+        mode = "fake"
+
+        def model_for(self, agent):  # type: ignore[no-untyped-def]
+            return inner.model_for(agent)
+
+        def complete(self, request):  # type: ignore[no-untyped-def]
+            provider["calls"] += 1
+            if provider["calls"] == 1:
+                raise _WorkerCrash("request sent; provider outcome is unknown")
+            return inner.complete(request)
+
+        def cost_usd(self, model, usage):  # type: ignore[no-untyped-def]
+            return inner.cost_usd(model, usage)
+
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+    pid, rid = ids["project"], ids["repo"]
+    _bind_and_fake(tmp_path, repo, rid, settings_override, monkeypatch)
+    monkeypatch.setattr(agent_execution, "GATEWAY_OVERRIDE", lambda: CrashAfterSending())
+    _ready_snapshot(rid, sha)
+    app = _register(alice, pid)
+    _arm_first_responder(alice, pid, rid, sha, app["id"])
+    with pytest.raises(_WorkerCrash):
+        worker.drain(max_jobs=40, kinds=["live_defense_shadow", *FIRST_RESPONDER_JOB_KINDS])
+    with transaction() as conn:
+        conn.execute(
+            sa.update(jobs_t)
+            .where(jobs_t.c.kind == "live_defense_agent_step")
+            .values(lease_expires_at=sa.func.now() - sa.text("interval '1 second'"))
+        )
+    worker.drain(max_jobs=40, kinds=["live_defense_agent_step"])
+    assert provider["calls"] == 1
+    scout = next(
+        item
+        for item in alice.get(f"/api/v1/projects/{pid}/first-responder/invocations").json()["items"]
+        if item["agent"] == "scout"
+    )
+    assert scout["status"] == AgentInvocationStatus.failed.value
+    assert scout["execution"]["uncertain_provider_outcome"] is True
+    assert scout["execution"]["error_code"] == "UNCERTAIN_PROVIDER_OUTCOME"
+    assert scout["execution"]["provider_attempts"]
+    assert scout["execution"]["provider_attempts"][0]["status"] == "uncertain"
+    assert scout["execution"]["evidence_verified"] is False
+    decisions = alice.get(f"/api/v1/projects/{pid}/first-responder/decisions").json()["items"]
+    assert decisions[0]["executed"] is False
+
+
+def test_first_responder_step_has_a_durable_queue_deadline(
+    client_factory, settings_override, monkeypatch, tmp_path
+) -> None:
+    repo, sha = _owned_repo(tmp_path)
+    inner = _scripted_gateway(repo)
+    calls = {"n": 0}
+
+    class Counting:
+        mode = "fake"
+
+        def model_for(self, agent):  # type: ignore[no-untyped-def]
+            return inner.model_for(agent)
+
+        def complete(self, request):  # type: ignore[no-untyped-def]
+            calls["n"] += 1
+            return inner.complete(request)
+
+        def cost_usd(self, model, usage):  # type: ignore[no-untyped-def]
+            return inner.cost_usd(model, usage)
+
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+    pid, rid = ids["project"], ids["repo"]
+    _bind_and_fake(tmp_path, repo, rid, settings_override, monkeypatch)
+    monkeypatch.setattr(agent_execution, "GATEWAY_OVERRIDE", lambda: Counting())
+    _ready_snapshot(rid, sha)
+    app = _register(alice, pid)
+    _arm_first_responder(alice, pid, rid, sha, app["id"])
+    worker.drain(max_jobs=20, kinds=["live_defense_shadow", "live_defense_first_responder"])
+    decisions = alice.get(f"/api/v1/projects/{pid}/first-responder/decisions").json()["items"]
+    assert decisions and decisions[0]["deadline_at"]
+    original = decisions[0]["deadline_at"]
+    invocations = alice.get(f"/api/v1/projects/{pid}/first-responder/invocations").json()["items"]
+    scouts = [item for item in invocations if item["agent"] == "scout"]
+    assert scouts and scouts[0]["deadline_at"] == original
+    with transaction() as conn:
+        steps = list(
+            conn.execute(sa.select(jobs_t).where(jobs_t.c.kind == "live_defense_agent_step"))
+            .mappings()
+            .all()
+        )
+        assert steps
+        assert all((row["payload"] or {}).get("deadline_at") for row in steps)
+        scout_row = (
+            conn.execute(
+                sa.select(first_responder_invocations).where(
+                    first_responder_invocations.c.agent == "scout"
+                )
+            )
+            .mappings()
+            .one()
+        )
+        doc = dict(scout_row["doc"])
+        expired = (utcnow() - timedelta(seconds=2)).isoformat()
+        doc["deadline_at"] = expired
+        conn.execute(
+            sa.update(first_responder_invocations)
+            .where(first_responder_invocations.c.id == scout_row["id"])
+            .values(doc=doc)
+        )
+        for row in steps:
+            payload = dict(row["payload"] or {})
+            payload["deadline_at"] = expired
+            conn.execute(sa.update(jobs_t).where(jobs_t.c.id == row["id"]).values(payload=payload))
+    worker.drain(max_jobs=40, kinds=["live_defense_agent_step"])
+    assert calls["n"] == 0
+    scout = next(
+        item
+        for item in alice.get(f"/api/v1/projects/{pid}/first-responder/invocations").json()["items"]
+        if item["agent"] == "scout"
+    )
+    assert scout["status"] == AgentInvocationStatus.failed.value
+    assert scout["execution"]["error_code"] == "BUDGET_EXHAUSTED"
+    persisted = datetime.fromisoformat(str(scout["deadline_at"]).replace("Z", "+00:00"))
+    assert persisted < utcnow(), "worker retry must not reset the overall investigation deadline"
+
+
+def test_off_during_final_submit_cannot_upgrade_cancelled_invocation(
+    client_factory, settings_override, monkeypatch, tmp_path
+) -> None:
+    from security_agents.agents.scout import SPEC
+
+    repo, sha = _owned_repo(tmp_path)
+    inner = _scripted_gateway(repo)
+    flipped = {"ok": False}
+
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+    pid, rid = ids["project"], ids["repo"]
+
+    class OffOnSubmit:
+        mode = "fake"
+
+        def model_for(self, agent):  # type: ignore[no-untyped-def]
+            return inner.model_for(agent)
+
+        def complete(self, request):  # type: ignore[no-untyped-def]
+            response = inner.complete(request)
+            agent = getattr(getattr(request, "agent", None), "value", request.agent)
+            uses = response.tool_uses() if hasattr(response, "tool_uses") else []
+            if agent == "scout" and any(
+                block.get("name") == SPEC.submit_tool_name() for block in uses
+            ):
+                assert (
+                    alice.post(
+                        f"/api/v1/projects/{pid}/first-responder/mode", json={"intent": "off"}
+                    ).status_code
+                    == 200
+                )
+                flipped["ok"] = True
+            return response
+
+        def cost_usd(self, model, usage):  # type: ignore[no-untyped-def]
+            return inner.cost_usd(model, usage)
+
+    _bind_and_fake(tmp_path, repo, rid, settings_override, monkeypatch)
+    monkeypatch.setattr(agent_execution, "GATEWAY_OVERRIDE", lambda: OffOnSubmit())
+    _ready_snapshot(rid, sha)
+    app = _register(alice, pid)
+    _arm_first_responder(alice, pid, rid, sha, app["id"])
+    worker.drain(max_jobs=40, kinds=["live_defense_shadow", *FIRST_RESPONDER_JOB_KINDS])
+    assert flipped["ok"]
+    scout = next(
+        item
+        for item in alice.get(f"/api/v1/projects/{pid}/first-responder/invocations").json()["items"]
+        if item["agent"] == "scout"
+    )
+    assert scout["status"] == AgentInvocationStatus.cancelled.value
+    assert scout["execution"]
+    assert scout["execution"]["evidence_verified"] is False
+    assert scout["execution"]["confirmation"] == "unverified"
+    decisions = alice.get(f"/api/v1/projects/{pid}/first-responder/decisions").json()["items"]
+    assert decisions[0]["executed"] is False
+
+
+def test_job_cancel_during_final_submit_cannot_upgrade_cancelled_invocation(
+    client_factory, settings_override, monkeypatch, tmp_path
+) -> None:
+    from security_agents.agents.scout import SPEC
+
+    repo, sha = _owned_repo(tmp_path)
+    inner = _scripted_gateway(repo)
+    cancelled_job = {"ok": False}
+
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+    pid, rid = ids["project"], ids["repo"]
+
+    class CancelOnSubmit:
+        mode = "fake"
+
+        def model_for(self, agent):  # type: ignore[no-untyped-def]
+            return inner.model_for(agent)
+
+        def complete(self, request):  # type: ignore[no-untyped-def]
+            response = inner.complete(request)
+            uses = response.tool_uses() if hasattr(response, "tool_uses") else []
+            agent = getattr(getattr(request, "agent", None), "value", request.agent)
+            if agent == "scout" and any(
+                block.get("name") == SPEC.submit_tool_name() for block in uses
+            ):
+                with transaction() as conn:
+                    conn.execute(
+                        sa.update(jobs_t)
+                        .where(jobs_t.c.kind == "live_defense_agent_step")
+                        .values(cancel_requested=True)
+                    )
+                cancelled_job["ok"] = True
+            return response
+
+        def cost_usd(self, model, usage):  # type: ignore[no-untyped-def]
+            return inner.cost_usd(model, usage)
+
+    _bind_and_fake(tmp_path, repo, rid, settings_override, monkeypatch)
+    monkeypatch.setattr(agent_execution, "GATEWAY_OVERRIDE", lambda: CancelOnSubmit())
+    _ready_snapshot(rid, sha)
+    app = _register(alice, pid)
+    _arm_first_responder(alice, pid, rid, sha, app["id"])
+    worker.drain(max_jobs=40, kinds=["live_defense_shadow", *FIRST_RESPONDER_JOB_KINDS])
+    assert cancelled_job["ok"]
+    scout = next(
+        item
+        for item in alice.get(f"/api/v1/projects/{pid}/first-responder/invocations").json()["items"]
+        if item["agent"] == "scout"
+    )
+    assert scout["status"] == AgentInvocationStatus.cancelled.value
     assert scout["execution"]["evidence_verified"] is False
     decisions = alice.get(f"/api/v1/projects/{pid}/first-responder/decisions").json()["items"]
     assert decisions[0]["executed"] is False
