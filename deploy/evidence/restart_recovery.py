@@ -17,7 +17,7 @@ Scenarios (each prints RESULT and appends to evidence.json):
                        resumes from checkpoint → COMPLETED, artifacts intact
   S4 exactly-once:     2 racing workers on N probe jobs → all succeed, attempts==1;
                        duplicate dedupe_key → single job row
-  S5 migration-rollback: downgrade 0016→0015 (heartbeats gone) → re-upgrade
+  S5 migration-rollback: downgrade 0017→0016 (heartbeats gone, RLS kept) → re-upgrade
   S6 backup-restore:   pg_dump → new DB → psql restore → row counts identical
 
 Exit 0 only if every scenario passes. Prints nothing secret.
@@ -497,7 +497,7 @@ def main() -> int:
             },
         )
         # Stop the probe workers before the migration/backup scenarios: their
-        # heartbeats would otherwise race the 0016 downgrade and the pg_dump.
+        # heartbeats would otherwise race the 0017 downgrade and the pg_dump.
         w5.stop()
         w6.stop()
 
@@ -520,7 +520,7 @@ def main() -> int:
             finally:
                 eng.dispose()
 
-        downgrade("0015")
+        downgrade("0016")
         gone = not has_table("worker_heartbeats")
         upgrade()
         back = has_table("worker_heartbeats")
@@ -529,7 +529,7 @@ def main() -> int:
         results.record(
             "S5_migration_rollback",
             bool(gone and back),
-            {"table_dropped_at_0015": gone, "table_back_at_head": back},
+            {"table_dropped_at_0016": gone, "table_back_at_head": back},
         )
 
         # ------------------------------------------------ S6 backup + restore
