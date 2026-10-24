@@ -2,8 +2,8 @@
 
 Owner: Adam
 Branch: all work merged to `main` (last: PR #13 shared contracts, PR #18 recipe check)
-Current task: seven-agent security workflow evidence (branch `feat/adam/seven-agent-live-evidence`); RL training improvements ongoing
-Last remote sync: 2026-10-17 — origin/main at `945afc9`; no other branches, PRs or issues yet
+Current task: pilot readiness — merge-order coordination + staging-rehearsal prep (branch `feat/adam/seven-agent-live-evidence`, PR #528)
+Last remote sync: 2026-10-24 — fleet merge order per `coordination/messages/20261024T231500Z-adam-to-all-pilot-merge-order-and-gitleaks-unblock.md`
 API/contract dependencies: `DefenseRecommendation`, `PlatformFacts`, `RLCheckpointRef`, `RLEvaluation` proposed to Srihith in `coordination/messages/20261017T001311Z-adam-to-srihith-rl-recommendation-contract.md`; local adapter in `rl-defense/rl_defense/contracts.py` until `shared/` V0 merges
 Verified tests: `cd rl-defense && .venv/bin/python -m pytest -q` → 52 passed (CPU, macOS arm64, Python 3.12, torch 2.14.1, gymnasium 1.4.0); ruff check + format clean
 Recent PR/commit: PR #1 https://github.com/adamissac/hackatl-agentic-security/pull/1 (code `1182773`); contract issue #2
@@ -11,6 +11,14 @@ Blockers: none for RL; backend endpoint and Defense Lab UI need `shared/` V0 and
 Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablations (vanilla DQN vs DDQN, feature and reward sensitivity)
 
 ## Session entries
+
+### 2026-10-24 — pilot readiness: merge-order coordination + rehearsal verification
+- **gitleaks root cause found:** not my diff — `Bearer tok-alice` in commit `839737fc` reachable via `rehearsal/ledgerlite-v2` + font fingerprints via #536; CI's `fetch-depth: 0` scans every ref. Fixed repo-wide by #544 (path+line allowlists); verified locally 0 leaks across 1920 commits incl. all 529 PR refs.
+- **Rehearsal target verification (executed):** rendered `access_control.ownership@1` against `rehearsal/build_recipe.json` (ledgerlite) and ran it on the app — owner 200, non-owner leaked 200 → planted CWE-639 detected. Rehearsal step 3's mechanism proven.
+- **Flagged on #550 (ledgerlite PR):** stale branch deletes #535 files (migration 0016, privacy.py, adversarial tests, TENANT_DATA_PROTECTION.md) + `python.test_command` is a string/ignored (runner needs a list per `orchestrator.py:766`) + no `tests/` dir (fallback `-q tests` exits 5). Comment posted.
+- **Fleet merge order** (per #549 record): #535 + #531 → #530 → #527/#528/#529 → #533 (migration renumber to 0017) → #536/#537/#538/#540/#496 → #532/#541. #537 (inventory-lite fixture, well-formed recipe) + #549 already merged.
+- **Parked:** local `rehearsal-ticketdesk` fixture (planted IDOR + mass-assignment, suite green) — redundant now that inventory-lite (#537) and ledgerlite (#550) exist; kept on box only.
+- **Outstanding:** #528 awaits its merge wave + Alan review per Adam's gate; rehearsal live-leg needs owner's `gh repo create` + App install (per #549).
 
 ### 2026-10-24 — seven-agent workflow: live run + inspection evidence
 - Audited every AgentSpec/allowlist/contract/state transition and the registry enforcement chain.
