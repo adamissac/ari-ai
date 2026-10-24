@@ -17,6 +17,15 @@ description = "Documented placeholders and synthetic fixtures"
 paths = ['''\.env\.example$''']
 regexes = ['''fixture-token-(alice|bob)''', '''replace-me''']
 
+# rehearsal/README.md (history-only fixture doc on rehearsal/ledgerlite) shows the
+# planted-defect demo with fake per-identity bearer tokens tok-alice/tok-bob.
+[[allowlists]]
+description = "Synthetic rehearsal bearer tokens in the deleted fixture README"
+condition = "AND"
+paths = ['''rehearsal/README\.md''']
+regexTarget = "line"
+regexes = ['''Bearer tok-(alice|bob)''']
+
 # Pinned upstream revisions are 40-hex git commit SHAs, not credentials; the generic
 # API-key rule fires on names like OWASP_API_COMMIT. Narrow: only ALL_CAPS *_COMMIT
 # constants assigned exactly one 40-char lowercase hex string on their own line.
