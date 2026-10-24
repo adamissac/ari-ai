@@ -1809,58 +1809,21 @@ body:has(.commit-stage) main { color: #fff; }
   .hero-stage[data-fx="on"] .hero-headline .hero-line::after { animation: none; }
 }
 
-/* ================= Deep-sea landing scope (.home-deep) =================
-   Kairo-inspired rework of the homepage only: deep teal + pale mist surfaces,
-   a bioluminescent mint accent (the colony's glow), pixel-face numbers, film
-   grain + rain texture, and per-letter blur reveals. Everything is scoped so
-   the console keeps the original palette. */
+/* ================= Home landing polish (.home-deep) =================
+   Kairo-inspired restraint on the homepage only, in ARI's own warm palette:
+   per-letter blur reveals, pixel-face numbers, blurred inactive steps, a
+   patrol ant on the footer rail, the seven-agent marquee, a scroll hint,
+   and a ghosted pixel wordmark. The console is untouched. */
 
-.home-deep {
-  --color-brand: #4fe0ae;
-  --color-brand-deep: #2b9d7a;
-  --color-brand-soft: #123c34;
-  --color-accent: #4fe0ae;
-  --color-on-brand: #06231d;
-  --color-ink: #08222a;
-  --color-ink-2: #0d3138;
-  --color-night: #071a1e;
-  --color-bg: #edf4f1;
-  --color-panel-2: #e2eeea;
-  --color-line: #c7dcd6;
-  --color-muted: #4f6f6a;
-  --color-faint: #7d9892;
-  --color-control: #7d9892;
-  --color-ok: #1f8a64;
-  --color-warn: #96690a;
-  --color-bad: #b4422f;
-  --color-info: #2a6d90;
-}
-
-/* Deep teal hero with a misted mint horizon; grain comes from .hero-ink::after. */
-.home-deep .hero-ink {
-  background:
-    radial-gradient(80% 62% at 50% 112%, #134f46 0%, color-mix(in srgb, #134f46 55%, transparent) 40%, transparent 72%),
-    radial-gradient(55% 42% at 88% -4%, color-mix(in srgb, #4fe0ae 16%, transparent) 0%, transparent 70%),
-    radial-gradient(40% 30% at 12% 8%, color-mix(in srgb, #9fe8d0 10%, transparent) 0%, transparent 70%),
-    linear-gradient(180deg, #0a2226 0%, #071a1e 100%);
-}
-.home-deep .hero-ink::after { opacity: 0.22; }
-
-/* Cool-white headline spotlight (overrides the warm variants above). */
-.home-deep .hero-headline .hero-line { color: #eef8f4; }
-.home-deep .hero-headline .hero-line-dim { color: #d9efe5; }
-.home-deep .hero-stage[data-fx="on"] .hero-headline .hero-line {
-  --dim: #dcf0e9;
-  background-image: radial-gradient(260px circle at var(--tx) var(--ty), #ffffff 0%, #f0fbf6 30%, var(--dim) 100%);
-}
+/* Letters can't blur inside a gradient-clipped headline: a filtered child breaks
+   background-clip:text. Flatten the headline to the warm ink whites instead. */
+.home-deep .hero-stage[data-fx="on"] .hero-headline .hero-line,
 .home-deep .hero-stage[data-fx="on"] .hero-headline .hero-line-dim {
-  --dim: #c8e4d9;
-  background-image: radial-gradient(260px circle at var(--tx) var(--ty), #f3fbf7 0%, #e4f5ec 30%, var(--dim) 100%);
+  background: none;
+  -webkit-text-fill-color: currentColor;
 }
-/* Mint scanner sweep (was warm). */
-.home-deep .hero-headline .hero-line::after {
-  background: linear-gradient(90deg, transparent 30%, rgb(111 240 196 / 0.5) 50%, transparent 70%);
-}
+.home-deep .hero-stage[data-fx="on"] .hero-headline .hero-line { color: #fff7f2; }
+.home-deep .hero-stage[data-fx="on"] .hero-headline .hero-line-dim { color: #ffd9c4; }
 
 /* Per-letter reveal (components/letters.tsx). "idle" renders normally; JS marks
    scopes "off" (below fold) then "on" to play once. */
@@ -1879,52 +1842,41 @@ body:has(.commit-stage) main { color: #fff; }
 /* Mono eyebrow marker — square dot + tracked caps. */
 .kicker { display: inline-flex; align-items: center; gap: 9px; font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.22em; color: var(--color-brand-deep); }
 .kicker::before { content: ""; width: 6px; height: 6px; background: var(--color-brand); box-shadow: 0 0 10px color-mix(in srgb, var(--color-brand) 80%, transparent); }
-.kicker-ghost { color: var(--color-brand); }
-.kicker-dark { color: #9df0d2; }
-.hero-ink .kicker-dark { color: #9df0d2; }
+.kicker-ghost { color: #ff9b78; }
+.kicker-dark { color: #ffb89d; }
+.hero-ink .kicker-dark { color: #ffb89d; }
 
 /* Pixel-face figures (Sixtyfour, OFL) — card numbers, stats, footer wordmark. */
-.home-deep .story-card-num { font-family: var(--font-sixtyfour), var(--font-mono), monospace; font-weight: 400; letter-spacing: 0.04em; color: color-mix(in srgb, #4fe0ae 34%, transparent); }
-.home-deep .stat-num { font-family: var(--font-sixtyfour), var(--font-mono), monospace; font-weight: 400; letter-spacing: 0.02em; color: #cdf3e4; }
-.footer-word { margin: 3.5rem 0 0; text-align: center; font-family: var(--font-sixtyfour), var(--font-mono), monospace; font-size: clamp(5rem, 24vw, 20rem); line-height: 0.78; letter-spacing: 0.05em; color: color-mix(in srgb, #4fe0ae 15%, transparent); user-select: none; }
+.home-deep .story-card-num { font-family: var(--font-sixtyfour), var(--font-mono), monospace; font-weight: 400; letter-spacing: 0.04em; color: rgba(255, 150, 120, 0.30); }
+.home-deep .stat-num { font-family: var(--font-sixtyfour), var(--font-mono), monospace; font-weight: 400; letter-spacing: 0.02em; color: #fff0e6; }
+.footer-word { margin: 3.5rem 0 0; text-align: center; font-family: var(--font-sixtyfour), var(--font-mono), monospace; font-size: clamp(5rem, 24vw, 20rem); line-height: 0.78; letter-spacing: 0.05em; color: color-mix(in srgb, var(--color-brand) 14%, transparent); user-select: none; }
 
-/* Rain texture reads mint on the deep teal chapters. */
-.home-deep .story-rain::before {
-  opacity: 0.5;
-  background-image: repeating-linear-gradient(90deg, transparent 0 22px, rgba(202, 226, 228, 0.055) 22px 23px), linear-gradient(180deg, transparent, rgba(79, 224, 174, 0.15) 50%, transparent);
-}
-/* Attack-path art follows the accent. */
-.home-deep .story-svg-root { fill: #6ff0c4; }
-.home-deep .story-panel[data-step="2"] .story-svg-node[data-root] { stroke: #6ff0c4; }
-.home-deep .story-svg-ok, .home-deep .story-panel[data-step="3"] .story-svg-node { stroke: #7ef0c8; }
-.home-deep .story-panel[data-step="3"] .story-svg-path { stroke: #7ef0c8; }
-.home-deep .story-panel[data-step="3"] .story-svg-ok { fill: #7ef0c8; }
-
-/* Kairo stepper: inactive steps soften to a blur while the stage is pinned. */
+/* Inactive steps soften to a blur while the walkthrough stage is pinned. */
 @media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
   .home-deep .story-step { filter: blur(1.6px); opacity: 0.55; transition: color 300ms, border-color 300ms, filter 450ms var(--ease-quad), opacity 450ms; }
   .home-deep .story-step[data-active] { filter: none; opacity: 1; }
   .home-deep .story-step[data-done] { filter: blur(0.6px); opacity: 0.8; }
 }
 
-/* Video glow turns mint. */
-.home-deep .explainer-frame { box-shadow: 0 30px 120px -40px rgba(79, 224, 174, 0.42), 0 0 0 1px rgba(8, 34, 42, 0.12); }
-
-/* Footer: deep teal field, mint horizon, ghosted pixel wordmark. */
-.home-deep .landing-footer { color: #dff0ea; }
-.home-deep .footer-ruler { background: rgba(79, 224, 174, 0.22); }
-.home-deep .footer-horizon { background: radial-gradient(ellipse at 15% 120%, rgba(79, 224, 174, 0.14), transparent 65%); }
-.home-deep .footer-identity > p { color: #93bfb2; }
-.home-deep .footer-links h2 { color: #93bfb2; }
-.home-deep .footer-links a { color: #dff0ea; }
-.home-deep .footer-bottom { border-top-color: rgba(79, 224, 174, 0.16); color: #93bfb2; }
-
-/* Letters can't blur inside a gradient-clipped headline: a filtered child breaks
-   background-clip:text. Flatten the headline to cool white + mist instead. */
-.home-deep .hero-stage[data-fx="on"] .hero-headline .hero-line,
-.home-deep .hero-stage[data-fx="on"] .hero-headline .hero-line-dim {
-  background: none;
-  -webkit-text-fill-color: currentColor;
+/* Pheromone patrol: a tiny ant walks the footer rail. */
+.home-deep .footer-ruler::after {
+  content: ""; position: absolute; top: -5px; left: 0; width: 13px; height: 10px;
+  background: color-mix(in srgb, var(--color-brand) 70%, #fff7f2);
+  -webkit-mask: url("/brand/ari-ant-mark.png") center / contain no-repeat;
+  mask: url("/brand/ari-ant-mark.png") center / contain no-repeat;
+  animation: footer-patrol 20s linear infinite;
 }
-.home-deep .hero-stage[data-fx="on"] .hero-headline .hero-line { color: #eef8f4; }
-.home-deep .hero-stage[data-fx="on"] .hero-headline .hero-line-dim { color: #bfe8d8; }
+@keyframes footer-patrol { from { transform: translateX(-24px); } to { transform: translateX(100vw); } }
+@media (prefers-reduced-motion: reduce) { .home-deep .footer-ruler::after { animation: none; display: none; } }
+
+/* Seven-agent marquee — the roster scrolling past, mono and quiet. */
+.footer-marquee { position: relative; z-index: 1; margin-top: 52px; overflow: hidden; border-block: 1px solid rgba(226, 183, 158, 0.14); padding-block: 11px;
+  -webkit-mask: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  mask: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+.footer-marquee-track { display: flex; width: max-content; animation: footer-marquee 30s linear infinite; }
+.footer-marquee-track > span { white-space: nowrap; padding-right: 0.4em; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.34em; color: rgba(255, 247, 242, 0.32); }
+.footer-marquee-track > span i { font-style: normal; color: rgba(194, 69, 45, 0.85); }
+@keyframes footer-marquee { to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .footer-marquee-track { animation: none; } }
+
+
