@@ -127,9 +127,9 @@ export class ApiClient {
   updateRepository(repoId: string, body: C.RepositoryUpdate, options?: RequestOptions): Promise<C.Repository> {
     return this.request(`/repositories/${segment(repoId)}`, 'Repository', options, body, undefined, undefined, false, 'PATCH') as Promise<C.Repository>;
   }
-  /** Revokes the GitHub App grant, stops push monitoring, revokes deploy mappings. Idempotent. */
-  disconnectRepository(repoId: string, options?: RequestOptions): Promise<C.Repository> {
-    return this.request(`/repositories/${segment(repoId)}/disconnect`, 'Repository', options, {}) as Promise<C.Repository>;
+  /** Owner kill-switch: parks the repository server-side; the GitHub App grant stays until uninstalled. */
+  disconnectRepository(repoId: string, options?: RequestOptions): Promise<{ id: string; disconnected: boolean }> {
+    return this.request(`/repositories/${segment(repoId)}/disconnect`, RAW, options, {}) as Promise<{ id: string; disconnected: boolean }>;
   }
   onboardingStatus(projectId: string, options?: RequestOptions): Promise<C.OnboardingStatus> {
     return this.request(`/projects/${segment(projectId)}/onboarding`, 'OnboardingStatus', options) as Promise<C.OnboardingStatus>;
