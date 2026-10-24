@@ -11,7 +11,7 @@ Leave the PR open for human security review (authz / mode / privilege surface).
 
 | Item | Status |
 |---|---|
-| PR | opened from `cursor/live-defense-first-responder-0044` (exact requested name was `feat/live-defense-first-responder`; Cloud Agent branch rule required `cursor/…-0044`) |
+| PR | https://github.com/adamissac/ari-ai/pull/439 on `cursor/live-defense-first-responder-0044` (requested name was `feat/live-defense-first-responder`; Cloud Agent branch rule required `cursor/…-0044`) |
 | Merge | **left open** for human security review (mode + privilege + trust-boundary expansion) |
 | Modes | OFF / MONITOR\|SHADOW / ASSISTED RESPONSE; AUTO-EXECUTE rejected; fail closed |
 | Seven agents | All seven in the capability registry from real `AgentSpec`s. Live dispatch is gated; Probe/Patch/Verify do not auto-run disruptively |
