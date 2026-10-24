@@ -305,11 +305,16 @@ class ReviewerToolbox:
         return False
 
     # ------------------------------------------------------- execution
-    def _exec(self, ws: Workspace, targets: list[str]) -> ExecResult:
-        with _BUDGET_LOCK:  # run_generated calls this from two threads at once
+    def _charge_test_run(self) -> None:
+        with _BUDGET_LOCK:  # run_generated and parallel run_tests calls charge from threads
             if self.test_runs >= self.budget.max_test_runs:
                 raise ToolDenied(f"test-run budget exhausted ({self.budget.max_test_runs} runs)")
             self.test_runs += 1
+
+    def _exec(self, ws: Workspace, targets: list[str], *, speculative: bool = False) -> ExecResult:
+        # A speculative run is charged only when its result is used (see run_generated).
+        if not speculative:
+            self._charge_test_run()
         try:
             return self.sandbox.run_pytest(
                 ws.project_dir, targets, timeout_s=self.budget.test_timeout_s
@@ -345,25 +350,33 @@ class ReviewerToolbox:
         if wt is None:
             raise ToolDenied(f"unknown test_id {test_id}; write it with write_test first")
         target = [self.head.project_rel(wt.path)]
-        first = self._exec(self.head, target)
-        runs = [first]
-        outcome = classify(first)
-        reproducible = True
-        # The repeat run and the base run are independent sandboxes: run them side by side.
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            repeat = pool.submit(self._exec, self.head, target) if outcome == "failed" else None
+        # Head, its repeat and the base run are independent sandboxes: start all three at
+        # once and keep the repeat/base only when the head outcome calls for them.
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            head = pool.submit(self._exec, self.head, target)
+            repeat = pool.submit(self._exec, self.head, target, speculative=True)
             on_base = (
-                pool.submit(self._exec, self.base, target)
-                if self.base is not None and outcome in ("failed", "passed")
+                pool.submit(self._exec, self.base, target, speculative=True)
+                if self.base is not None
                 else None
             )
-            if repeat is not None:  # a failure only counts if it reproduces identically
-                second = repeat.result()
+            first = head.result()
+            runs = [first]
+            outcome = classify(first)
+            reproducible = True
+            second = repeat.result()
+            if outcome == "failed":  # a failure only counts if it reproduces identically
+                self._charge_test_run()
                 runs.append(second)
                 reproducible = classify(second) == "failed" and {
                     (c.nodeid, c.outcome) for c in second.cases
                 } == {(c.nodeid, c.outcome) for c in first.cases}
-            base_run = on_base.result() if on_base is not None else None
+            base_run = None
+            if on_base is not None:
+                speculative_base = on_base.result()
+                if outcome in ("failed", "passed"):
+                    self._charge_test_run()
+                    base_run = speculative_base
         report = self._store_run(f"generated:{test_id}@head", self.head, runs)
         ex = TestExecution(test_id, wt.path, outcome, reproducible, report, runs)
         if base_run is not None and self.base is not None:
@@ -479,30 +492,35 @@ class ReviewerToolbox:
                 "List repository files at the pinned commit.",
                 ListFilesIn,
                 self.list_files,
+                parallel_safe=True,
             ),
             Tool(
                 "read_file",
                 "Read a file at the pinned commit with line numbers (cite these line numbers).",
                 ReadFileIn,
                 self.read_file,
+                parallel_safe=True,
             ),
             Tool(
                 "search_code",
                 "Regex search over the pinned repository.",
                 SearchIn,
                 self.search_code,
+                parallel_safe=True,
             ),
             Tool(
                 "list_expectations",
                 "Behavioral expectations from the code-intelligence index for this snapshot.",
                 EmptyIn,
                 self.list_expectations,
+                parallel_safe=True,
             ),
             Tool(
                 "get_context_pack",
                 "Retrieve a SHA-pinned context pack (callers, callees, tests) for symbols/paths.",
                 ContextPackIn,
                 self.get_context_pack,
+                parallel_safe=True,
             ),
         ]
 
@@ -514,6 +532,7 @@ class ReviewerToolbox:
                 "The unified diff of the change under review (base..head).",
                 EmptyIn,
                 self.get_change_diff,
+                parallel_safe=True,
             ),
             Tool(
                 "write_test",
@@ -528,6 +547,7 @@ class ReviewerToolbox:
                 "failure; error = harness/tooling problem).",
                 RunTestsIn,
                 lambda a: self.run_tests(a),
+                parallel_safe=True,  # each run is its own sandbox; writes stay sequential
             ),
         ]
 
