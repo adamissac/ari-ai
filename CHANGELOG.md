@@ -6,8 +6,11 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Assessment UI: agents the orchestrator skipped now stay visible as 'Not needed' with the recorded reason (e.g. 'no confirmed findings'); on failed/cancelled runs they show 'Not reached'. Replaces the ambiguous 'not run' label on the relay and team list.
+
 - Fix the periodic stale-sandbox sweep to delete the orphaned stop-snapshots of leaked `ari-sbx-*` run boxes, freeing the Vercel Sandbox snapshot quota that caused HTTP 402 assessment failures; the shared base snapshot is unaffected.
 
+||||||| parent of e901e77d (docs: changelog + handoff for agent-visibility labels)
 - Add Live Defense Phase 7A deterministic first-responder orchestration: server-enforced OFF / MONITOR|SHADOW / ASSISTED RESPONSE (no AUTO-EXECUTE), seven-agent capability registry from real AgentSpecs, runtime↔code correlation only with an owner-attested deploy mapping, analyst handoff that is not delivered without provider confirmation, and versioned decision records for future RL. Patch stays worktree-only; Probe still requires AuthorizedScope; independently authorized controls keep their own expiry/rollback/kill-switch when first-responder is switched OFF. Contract schema 0.21.0 (0.20.0 left for open PR #412). Evidence is never `verified` from Verify eligibility; deploy mappings are resolved against the telemetry window; OFF serializes with dispatch and cancels in-flight first-responder steps. Eval: `docs/LIVE_DEFENSE_PHASE7A_FIRST_RESPONDER.md`.
 
 - Add fixture-only first-responder research observations, proposal masks, source

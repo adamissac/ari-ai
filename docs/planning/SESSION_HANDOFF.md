@@ -1690,3 +1690,9 @@ No collection, first-responder training, promotion or enforcement follows merge.
 Remaining merge gate: final documentation head review/CI. Future numerical protocol
 and any collection require separate explicit owner approval. Historical source
 ancestry retained and v6 registry hash unchanged (see verification report).
+
+## 2026-10-24 — Devin (Adam): agent-visibility UI + prod automation enabled
+
+- Prod: enabled `automatic_assessments` on adamissac/mypypath (ari-ai already on), enabled `monitoring_policy` on the `derv` project, approved mypypath's sandbox scope (active to 2026-11-18), stamped delivery authorization on both projects. Push→agents chain verified live: monitoring assessments COMPLETED within ~1-2 min of each push.
+- Branch `feat/adam/agent-visibility-not-needed`: relay/team list now label skipped agents 'Not needed' (with the recorded skip note) or 'Not reached' on failed/cancelled runs. `earlyEndNote` in `frontend/lib/relay.ts` reads the reason from persisted `state_changed` events.
+- Next: expand `security-agents/evals/commits/cases.json` toward ~40 cases, add check templates to lift `vuln validated` off 0/7 (only ownership + bounds templates exist).
