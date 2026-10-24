@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { env, evidenceShot, expectNoSideScroll, newUser } from './helpers';
 
-const project = () => env('E2E_ONBOARDING_PROJECT_ID');
+const project = () => env('E2E_PROJECT_ID');
 
 const step = (page: import('@playwright/test').Page, id: string) =>
   page.getByTestId(`onboarding-step-${id}`);
@@ -14,25 +14,35 @@ const step = (page: import('@playwright/test').Page, id: string) =>
  */
 test('onboarding wizard drives the full customer journey', async ({ browser }) => {
   const alice = await newUser(browser, 'e2e-alice');
+  const api = env('E2E_API');
+  const csrf = ((await (await alice.request.get(`${api}/me`)).json()) as { csrf_token: string })
+    .csrf_token;
+  const post = (path: string, data: unknown) =>
+    alice.request.post(`${api}${path}`, { data: data ?? {}, headers: { 'X-CSRF-Token': csrf } });
 
-  await alice.goto(`/projects/${project()}/onboarding`);
+  // Own project + repo so suite-mates cannot pre-seed apps, tokens or events
+  // into the shared demo project and make step states nondeterministic.
+  const own = await (await post('/projects', { name: 'alice onboarding (e2e)' })).json();
+  const repo = await (
+    await post(`/projects/${own.id}/repositories`, { full_name: 'acme/alice-staging' })
+  ).json();
+
+  await alice.goto(`/projects/${own.id}/onboarding`);
   await expect(alice.getByTestId('onboarding-title')).toBeVisible();
   await expect(step(alice, 'sign_in')).toHaveAttribute('data-state', 'done');
   await expect(step(alice, 'organization')).toHaveAttribute('data-state', 'done');
-  // The seeded repository is connected by name only — the App grant is honestly open.
+  // The repository is connected by name only — the App grant is honestly open.
   await expect(step(alice, 'repository')).toHaveAttribute('data-state', 'done');
   await expect(step(alice, 'github_access')).toHaveAttribute('data-state', 'todo');
-  await expect(step(alice, 'snapshot')).not.toHaveAttribute('data-state', 'blocked');
-  // test_event pre-state is suite-dependent: a prior spec may already have
-  // ingested an owned_staging event into this shared seeded project, in which
-  // case the step is honestly done. The click below proves the flow regardless.
+  await expect(step(alice, 'snapshot')).toHaveAttribute('data-state', 'todo');
+  await expect(step(alice, 'test_event')).toHaveAttribute('data-state', 'blocked');
 
   // Permission explanations are explicit before any grant.
   await expect(alice.getByTestId('permission-list')).toContainText('contents:read');
   await expect(alice.getByTestId('permission-list')).toContainText('No autonomous remediation');
 
   // Register a staging app and mint its ingest token through the real UI.
-  await alice.goto(`/projects/${project()}/live-defense/apps`);
+  await alice.goto(`/projects/${own.id}/live-defense/apps`);
   await alice.getByLabel('Name').fill('onboarding-staging');
   await alice.getByLabel('Environment').selectOption('owned_test');
   await alice.getByRole('button', { name: 'Register app' }).click();
@@ -41,23 +51,21 @@ test('onboarding wizard drives the full customer journey', async ({ browser }) =
   await appCard.getByRole('button', { name: 'Issue ingest token' }).click();
   await expect(appCard.getByTestId('live-defense-token-once')).toBeVisible();
 
-  // Attest the deployment-to-commit mapping for the seeded repo.
-  await alice.goto(`/projects/${project()}/live-defense/first-responder`);
+  // Attest the deployment-to-commit mapping for the connected repo.
+  await alice.goto(`/projects/${own.id}/live-defense/first-responder`);
   const mapping = alice.locator('section[aria-label="Owner-attested deploy-to-commit mapping"]');
   await mapping.getByLabel('Application').selectOption({ label: 'onboarding-staging' });
-  await mapping.getByLabel('Repository id').fill(env('E2E_ONBOARDING_REPO_ID'));
+  await mapping.getByLabel('Repository id').fill(repo.id);
   await mapping.getByLabel('Commit SHA').fill(env('E2E_COMMIT'));
   await mapping.getByRole('button', { name: 'Attest mapping' }).click();
   await expect(mapping.getByRole('button', { name: 'Attest mapping' })).toBeEnabled();
 
   // Back on the wizard the computed steps moved; the test event is now allowed.
-  await alice.goto(`/projects/${project()}/onboarding`);
+  await alice.goto(`/projects/${own.id}/onboarding`);
   await expect(step(alice, 'application')).toHaveAttribute('data-state', 'done');
   await expect(step(alice, 'deploy_mapping')).toHaveAttribute('data-state', 'done');
   await expect(step(alice, 'monitoring')).toHaveAttribute('data-state', 'done');
-  // todo when no event was ingested yet, done when a suite-mate already proved
-  // the channel — either way the button is offered and the event is real.
-  await expect(step(alice, 'test_event')).not.toHaveAttribute('data-state', 'blocked');
+  await expect(step(alice, 'test_event')).toHaveAttribute('data-state', 'todo');
 
   await alice.getByTestId('onb-test-event').click();
   await expect(alice.getByTestId('onb-test-event-result')).toBeVisible({ timeout: 30_000 });
@@ -77,8 +85,6 @@ test('onboarding wizard drives the full customer journey', async ({ browser }) =
 
   await expectNoSideScroll(alice);
 });
-
-// Isolation uses the shared seeded project; no windows-dependence there.
 
 /**
  * A brand-new synthetic customer: first sign-in creates a fresh organization, then a
@@ -179,11 +185,10 @@ test('a fresh customer org completes onboarding through real routes', async ({ b
 });
 
 test('onboarding progress is project-isolated', async ({ browser }) => {
-  const shared = () => env('E2E_PROJECT_ID');
   const alice = await newUser(browser, 'e2e-alice');
   const mallory = await newUser(browser, 'e2e-onboard-outsider');
-  await mallory.goto(`/projects/${shared()}/onboarding`);
+  await mallory.goto(`/projects/${project()}/onboarding`);
   await expect(mallory.getByText('Could not load project')).toBeVisible({ timeout: 15_000 });
-  await alice.goto(`/projects/${shared()}/onboarding`);
+  await alice.goto(`/projects/${project()}/onboarding`);
   await expect(alice.getByTestId('onboarding-title')).toBeVisible();
 });
