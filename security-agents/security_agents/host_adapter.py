@@ -26,6 +26,7 @@ from __future__ import annotations
 import contextlib
 import importlib
 import os
+import subprocess
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -892,6 +893,7 @@ class HostOrchestrator:
             max_hypotheses_to_validate=self.validate_count,
             probe_check_transport=os.environ.get("SECURITY_AGENTS_PROBE_TRANSPORT", "inprocess"),
             verify_check_transport=os.environ.get("SECURITY_AGENTS_VERIFY_TRANSPORT", "inprocess"),
+            **_commit_change(host),
         )
         registry = self.registry or default_registry()
         sink = HostSink(host=host, commit_sha=intel.snapshot.commit_sha)
@@ -1611,6 +1613,28 @@ def _default_intent(a: Any) -> Any:
     return ChangeIntent(
         source=ChangeIntentSource.manual, title=f"assessment of {a.commit_sha[:12]}", head_sha=a.commit_sha
     )
+
+
+def _commit_change(host: Any) -> dict[str, Any]:
+    """Changed paths and diff of the commit under review (empty when unknown)."""
+    intent = _change_intent(host)
+    base = getattr(intent, "base_sha", None)
+    binding = next((b for b in _bindings() if b.get("repo_id") == getattr(host, "repo_id", None)), None)
+    if not base or binding is None:
+        return {}
+    repo, head = str(Path(binding["local_path"]).expanduser()), str(_val(host, "assessment").commit_sha)
+
+    def git(*args: str) -> str:
+        return subprocess.run(
+            ["git", "-C", repo, *args], capture_output=True, text=True, timeout=30, check=True
+        ).stdout
+
+    try:
+        paths = tuple(p for p in git("diff", "--name-only", base, head).splitlines() if p)
+        diff = git("diff", "--no-color", "-U5", base, head)
+    except (OSError, subprocess.SubprocessError):
+        return {}
+    return {"change_paths": paths[:200], "change_diff": diff[:20_000]}
 
 
 def _change_intent(host: Any) -> Any:
