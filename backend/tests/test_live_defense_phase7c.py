@@ -123,11 +123,13 @@ def _bind_and_fake(
     llm.TRANSPORT_OVERRIDE = lambda: AlanScriptTransport(repo / "target")
 
 
-def test_schema_keeps_0_22_without_claiming_0_20() -> None:
+def test_schema_is_the_integrated_composition_version() -> None:
     from shared import SCHEMA_VERSION
     from shared.live_defense import ORCHESTRATOR_VERSION
 
-    assert SCHEMA_VERSION == "0.22.0"
+    # Integration branch claims every reserved version: 0.20 (6.5), 0.21 (7A),
+    # 0.22 (7C), 0.23 (observability), 0.24 (onboarding).
+    assert SCHEMA_VERSION == "0.24.0"
     assert ORCHESTRATOR_VERSION == "7c.1.0"
 
 
