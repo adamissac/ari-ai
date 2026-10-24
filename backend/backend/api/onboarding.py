@@ -441,11 +441,23 @@ def onboarding_test_event(
                 409,
             )
         else:
-            raise ApiError(
-                ErrorCode.VALIDATION_FAILED,
-                "application_id is required when several applications are registered",
-                422,
-            )
+            # Several apps: the test event can only travel a channel that exists,
+            # so prefer the (usually just-onboarded) app that has a live token.
+            eligible = [a for a in apps if _app_tokens(conn, a["id"])]
+            if len(eligible) == 1:
+                app = eligible[0]
+            elif not eligible:
+                raise ApiError(
+                    ErrorCode.CONFLICT_STATE,
+                    "mint an ingest token for the application before sending a test event",
+                    409,
+                )
+            else:
+                raise ApiError(
+                    ErrorCode.VALIDATION_FAILED,
+                    "application_id is required when several applications have ingest tokens",
+                    422,
+                )
         token_id = next(iter(_app_tokens(conn, app["id"])), None)
         if token_id is None:
             raise ApiError(
