@@ -962,6 +962,8 @@ class AgentExecutionRecord(StrictModel):
     evidence_verified: Literal[False] = False
     confirmation: Literal["unverified"] = "unverified"
     predicted_probability: None = None
+    provider_attempts: list["ProviderAttempt"] = Field(default_factory=list)
+    uncertain_provider_outcome: bool = False
 
 
 class ProviderAttemptState(StrEnum):
@@ -984,8 +986,6 @@ class ProviderAttempt(StrictModel):
     cache_creation_input_tokens: int | None = Field(default=None, ge=0)
     response_id: ShortText | None = None
     effect_key: ShortText | None = None
-    provider_attempts: list[ProviderAttempt] = Field(default_factory=list)
-    uncertain_provider_outcome: bool = False
 class AnalystHandoffState(StrEnum):
     draft = "draft"
     queued = "queued"
