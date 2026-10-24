@@ -909,6 +909,28 @@ def test_second_worker_noops_after_checkpoint_is_claimed(host_and_orchestrator, 
     assert any("already claimed" in message for message in host.progress_messages)
 
 
+def test_queued_resume_noops_after_in_process_resume_moved_on(host_and_orchestrator, tmp_path):
+    """Prod race: the approving worker resumed in-process and reached REMEDIATION before the
+    queued resume job ran; that job must leave the run alone, not fail it."""
+    from security_agents.host_adapter import CLAIMED_ELSEWHERE
+
+    host, first, _ = host_and_orchestrator
+    first.run(host)
+    host.approve_all()
+    assert host.claim_checkpoint("security_agents.approval.v1") is not None
+    host.states.append("REMEDIATION")
+    first._resumable.clear()
+    replacement = build_orchestrator(
+        target_dir=first.target_dir,
+        labels_path=first.labels_path,
+        workdir=tmp_path / "other-worker",
+        driver=first.driver,
+    )
+    assert replacement.run(host) == CLAIMED_ELSEWHERE
+    assert not host.patches
+    assert host.states[-1] == "REMEDIATION"
+
+
 def test_empty_scout_pauses_when_functional_is_already_approved(host_and_orchestrator):
     """Codex r4302039275: approved functional work is outstanding, not only pending decisions."""
     from shared.scope import ApprovalStatus, ApprovalSubject
