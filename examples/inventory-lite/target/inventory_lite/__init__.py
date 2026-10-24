@@ -1,0 +1,1 @@
+"""inventory-lite fixture package."""
