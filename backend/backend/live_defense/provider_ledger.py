@@ -13,7 +13,7 @@ from typing import Any
 import sqlalchemy as sa
 from sqlalchemy.engine import Connection
 
-from backend.db import first_responder_invocations, transaction
+from backend.db import first_responder_invocations, jobs as jobs_table, transaction
 from shared.base import utcnow
 from shared.live_defense import (
     AgentExecutionRecord,
@@ -185,6 +185,24 @@ def mark_attempt_uncertain(invocation_id: str, attempt_id: str, *, error_code: s
         settled_at=utcnow(),
         error_code=error_code,
     )
+    # Bridge to the reliability recovery path (Alembic 0016): the worker may die
+    # before this commit is visible to its run loop, so flag the owning job row
+    # too. Reconcile then parks it ``recovery_required`` — the uncertain billable
+    # outcome survives the crash and is never silently requeued for replay.
+    with transaction() as conn:
+        conn.execute(
+            sa.update(jobs_table)
+            .where(
+                jobs_table.c.payload["invocation_id"].as_string() == invocation_id,
+                jobs_table.c.status == "running",
+                jobs_table.c.effect_state.is_(None),
+            )
+            .values(
+                effect_state="in_flight",
+                effect_key=attempt_id,
+                updated_at=sa.func.now(),
+            )
+        )
 
 
 def mark_attempt_cancelled(invocation_id: str, attempt_id: str) -> None:

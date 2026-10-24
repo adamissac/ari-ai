@@ -1,7 +1,9 @@
 """Independent cross-workstream regressions; scripted providers, no live calls.
 
-Assertions describe required behavior. Failures are retained as review evidence,
-xfailed (strict) on the integration branch pending owner fixes; unmark as each lands.
+Assertions describe required behavior. Owner fixes for the Codex review findings
+landed (F1 ledger/effect bridge, F2 emergency slots, F3 lease expiry, F4 defer history,
+F5 waiting-cancel, F6 observability, F7 durable deadline, F8 final-submit race, F9 schema
+pin, F10 DB clock); these now run as strict assertions.
 """
 
 import pytest
@@ -41,9 +43,6 @@ def prepare(staging):
     return alice, app, repo
 
 
-@pytest.mark.xfail(
-    strict=True, reason="Codex review F2: tracked defect, owner fix pending; unmark when it passes."
-)
 def test_emergency_stop_is_claimable_when_project_slots_are_full(settings_override):
     settings_override(job_max_running_per_project="1")
     enqueue()
@@ -55,9 +54,6 @@ def test_emergency_stop_is_claimable_when_project_slots_are_full(settings_overri
     assert claim is not None and claim.id == stop, "emergency rollback must bypass ordinary slots"
 
 
-@pytest.mark.xfail(
-    strict=True, reason="Codex review F3: tracked defect, owner fix pending; unmark when it passes."
-)
 def test_complete_rejects_expired_lease_without_waiting_for_reconciler():
     jid = enqueue()
     with transaction() as conn:
@@ -71,9 +67,6 @@ def test_complete_rejects_expired_lease_without_waiting_for_reconciler():
         assert jobs.complete(conn, jid, "expired-worker", {}) is False
 
 
-@pytest.mark.xfail(
-    strict=True, reason="Codex review F4: tracked defect, owner fix pending; unmark when it passes."
-)
 def test_dependency_deferral_is_recorded_in_lifecycle_history():
     jid = enqueue()
     with transaction() as conn:
@@ -82,9 +75,6 @@ def test_dependency_deferral_is_recorded_in_lifecycle_history():
         assert execution.history(conn, jid)[-1]["to_status"] == "queued"
 
 
-@pytest.mark.xfail(
-    strict=True, reason="Codex review F5: tracked defect, owner fix pending; unmark when it passes."
-)
 def test_off_marks_waiting_first_responder_jobs_cancelled(client_factory):
     alice, bob = client_factory("alice"), client_factory("bob")
     pid = setup_project(alice, bob)["project"]
@@ -112,9 +102,6 @@ def test_deadline_compatibility_with_database_clock():
 
 
 @pytest.mark.parametrize("state", ["timed_out", "recovery_required"])
-@pytest.mark.xfail(
-    strict=True, reason="Codex review F6: tracked defect, owner fix pending; unmark when it passes."
-)
 def test_observability_marks_nonrunning_jobs_as_not_in_progress(client_factory, state):
     from test_live_defense_investigations import _seed
 
@@ -140,9 +127,6 @@ def test_observability_marks_nonrunning_jobs_as_not_in_progress(client_factory, 
         assert view.job.status == state
 
 
-@pytest.mark.xfail(
-    strict=True, reason="Codex review F1: tracked defect, owner fix pending; unmark when it passes."
-)
 def test_crash_during_provider_request_requires_recovery_before_replay(staging):
     alice, app, repo = prepare(staging)
     fake = fake_provider(repo / "target")
@@ -180,9 +164,6 @@ def test_crash_during_provider_request_requires_recovery_before_replay(staging):
     assert provider.calls == 1
 
 
-@pytest.mark.xfail(
-    strict=True, reason="Codex review F7: tracked defect, owner fix pending; unmark when it passes."
-)
 def test_first_responder_step_has_a_durable_queue_deadline(staging):
     alice, app, _repo = prepare(staging)
     assert staging.ingest(alice, app).status_code == 202
@@ -194,9 +175,6 @@ def test_first_responder_step_has_a_durable_queue_deadline(staging):
     )
 
 
-@pytest.mark.xfail(
-    strict=True, reason="Codex review F8: tracked defect, owner fix pending; unmark when it passes."
-)
 def test_off_during_final_submit_cannot_upgrade_cancelled_invocation(staging):
     from security_agents.agents.scout import SPEC
 

@@ -981,11 +981,16 @@ class ProviderAttempt(StrictModel):
     reserved_at: UtcDatetime
     sent_at: UtcDatetime | None = None
     settled_at: UtcDatetime | None = None
+    model_id: ShortText | None = None
+    cost_usd: float | None = Field(default=None, ge=0)
     input_tokens: int | None = Field(default=None, ge=0)
     output_tokens: int | None = Field(default=None, ge=0)
     cache_creation_input_tokens: int | None = Field(default=None, ge=0)
     response_id: ShortText | None = None
+    error_code: ShortText | None = None
     effect_key: ShortText | None = None
+
+
 class AnalystHandoffState(StrEnum):
     draft = "draft"
     queued = "queued"
