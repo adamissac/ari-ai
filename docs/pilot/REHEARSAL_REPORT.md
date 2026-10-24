@@ -172,6 +172,6 @@ locally at `/Users/devin/repos/pilot-rehearsal-target`.
 6. **PR #535 (RLS + `purge_project`) is verified on its branch but NOT deployed**
    — prod runs `main`; merge it before relying on RLS/`purge_project` in prod,
    and re-check `readyz` + a tenant drill after deploy. (CI: gitleaks false
-   positive on the deleted fixture README's synthetic `tok-alice/bob` bearers
+   positive on the deleted fixture README's synthetic `$ALICE_TOKEN/bob` bearers
    fixed via targeted allowlist; awaits authorized review — it is a
    trust-boundary change.)
