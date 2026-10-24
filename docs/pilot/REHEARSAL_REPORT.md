@@ -172,7 +172,9 @@ locally at `/Users/devin/repos/pilot-rehearsal-target`.
 6. **PR #535 (RLS + `purge_project`) MERGED to `main` (08114692)** — RLS +
    `purge_project` are now on `main`; verify the Railway deploy picked up
    migration 0016 (`readyz` + a tenant drill post-deploy) before relying on
-   them in prod.
+   them in prod. Post-deploy drill note: RLS verification needs a
+   **non-superuser** DB role — superusers bypass FORCE policies;
+   `test_rls_blocks_reads_without_tenant_context` is the probe-role pattern.
 7. **`jobs.last_error.message` leaks raw exception text to project members**
    (Agent-2 finding): `f"{type(exc).__name__}: {exc}"[:500]` is served via
    `GET /projects/{id}/jobs` — could carry secret fragments. The #530 agent is
