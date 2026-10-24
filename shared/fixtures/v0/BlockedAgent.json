@@ -1,0 +1,5 @@
+{
+  "capability_class": "disruptive_scoped",
+  "name": "probe",
+  "reason": "AuthorizedScope is not active"
+}

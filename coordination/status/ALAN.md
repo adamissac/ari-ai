@@ -1,13 +1,13 @@
 # Alan — implementation status
 
 Owner: Alan (`security-agents/`, SEC-001 … SEC-013; interim Live Defense UI)
-Branch: `feat/live-defense-phase6-pilot-audit`
-Current task: Phase 6 post-merge integration audit and shadow-pilot readiness (no Phase 7)
-Last remote sync: 2026-10-23, `origin/main` @ `02ab34de` (PRs #393 and #395 merged on main)
-API/contract dependencies: `shared` 0.9.0 `CheckCategory`; `backend.host` checkpoints; `code_review.api` functional helpers
-Recent PR/commit: `feat/live-defense-phase6-pilot-audit` (Phase 6 audit; no Phase 7)
-Blockers: live seven-agent run (issue #10, no key); Docker images (INFRA-005); Phase 6 merge needs CI + human review
-Next action: wait for CI on the Codex P1/P2 head of #411; merge only if MERGEABLE + reviews satisfied + no enforcement expansion; do not start Phase 7
+Branch: `cursor/live-defense-first-responder-0044`
+Current task: Phase 7A deterministic first-responder orchestration (no Phase 7B, no AUTO-EXECUTE)
+Last remote sync: 2026-10-24, `origin/main` @ `c5c2b47d` (PR #453 merged; #412 still OPEN)
+API/contract dependencies: `shared` 0.21.0 first-responder contracts (0.20.0 reserved for open #412); seven AgentSpecs; backend host checkpoints
+Recent PR/commit: https://github.com/adamissac/ari-ai/pull/439 on `cursor/live-defense-first-responder-0044`; rebased onto main; leave open for security review
+Blockers: live seven-agent Claude run (issue #10, no key); human/security approval of #439 (do not merge); GitHub Actions may not queue from this App token
+Next action: leave Phase 7A PR open; do not start Phase 7B; Codex must not train from these records yet
 
 ## What runs today
 
@@ -74,6 +74,16 @@ Updated 2026-10-17 after #100 to #125.
   claimed.
 
 ## Session entries
+
+### 2026-10-24 (rebase #439 onto main — docs conflicts)
+
+- GitHub showed **Checks awaiting conflict resolution** on `CHANGELOG.md` and `SESSION_HANDOFF.md` only. Rebased onto `origin/main` `c5c2b47d`. Kept both Unreleased/handoff sides plus the four Codex fixes. Schema still 0.21.0 / Alembic `0015`. #412 still 0.20.0, no Alembic.
+- Executed: ruff pass; export 154 files; pytest phase7a + jobs + no-action — 33 passed. PR left **open**.
+
+### 2026-10-24 (Phase 7A Codex review + schema 0.21.0)
+
+- PR #439 left **open**. Backend/test CI: removed AUTO-EXECUTE route so `test_no_route_applies_a_defensive_action` passes (404, not a path containing `execute`). Four Codex findings fixed with regressions. Shared **0.21.0** / orchestrator `7a.1.1` / Alembic `0015`. #412 keeps 0.20.0. Message: `20261024T050000Z-alan-to-all-live-defense-phase7a-schema-0-21.md`.
+- Executed: `pytest` phase7a + jobs + rl_no_action_path — 33 passed. Contract export 0.21.0. No merge, no Phase 7B, no RL training.
 
 ### 2026-10-23 (Live Defense Phase 6 post-merge audit)
 

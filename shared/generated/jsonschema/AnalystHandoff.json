@@ -1,0 +1,192 @@
+{
+  "$defs": {
+    "AnalystHandoffState": {
+      "enum": [
+        "draft",
+        "queued",
+        "delivery_pending",
+        "delivered",
+        "delivery_failed",
+        "acknowledged",
+        "investigating",
+        "confirmed",
+        "unverified",
+        "resolved",
+        "cancelled"
+      ],
+      "title": "AnalystHandoffState",
+      "type": "string"
+    },
+    "ConfirmationState": {
+      "description": "Confirmed vs unverified stay distinct. LLM prose cannot set confirmed.",
+      "enum": [
+        "unverified",
+        "confirmed"
+      ],
+      "title": "ConfirmationState",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "application_id": {
+      "anyOf": [
+        {
+          "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Application Id"
+    },
+    "assigned_to": {
+      "anyOf": [
+        {
+          "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Assigned To"
+    },
+    "caveat": {
+      "default": "An alert is not delivered until the provider confirms receipt. Confirmed and unverified remain distinct. LLM prose cannot confirm a threat.",
+      "maxLength": 500,
+      "title": "Caveat",
+      "type": "string"
+    },
+    "confirmation": {
+      "$ref": "#/$defs/ConfirmationState",
+      "default": "unverified"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "created_by": {
+      "pattern": "^usr_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Created By",
+      "type": "string"
+    },
+    "decision_id": {
+      "pattern": "^frd_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Decision Id",
+      "type": "string"
+    },
+    "delivery_attempted_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Delivery Attempted At"
+    },
+    "delivery_confirmed_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Delivery Confirmed At"
+    },
+    "delivery_provider": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Delivery Provider"
+    },
+    "delivery_provider_message_id": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Delivery Provider Message Id"
+    },
+    "evidence_event_ids": {
+      "items": {
+        "pattern": "^evt_[0-9A-Za-z_\\-]{8,64}$",
+        "type": "string"
+      },
+      "title": "Evidence Event Ids",
+      "type": "array"
+    },
+    "id": {
+      "pattern": "^ahl_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "project_id": {
+      "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "recommended_actions": {
+      "items": {
+        "maxLength": 500,
+        "type": "string"
+      },
+      "title": "Recommended Actions",
+      "type": "array"
+    },
+    "state": {
+      "$ref": "#/$defs/AnalystHandoffState"
+    },
+    "summary": {
+      "maxLength": 500,
+      "title": "Summary",
+      "type": "string"
+    },
+    "threat_confirmed": {
+      "default": false,
+      "title": "Threat Confirmed",
+      "type": "boolean"
+    },
+    "title": {
+      "maxLength": 500,
+      "title": "Title",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "project_id",
+    "decision_id",
+    "state",
+    "title",
+    "summary",
+    "created_by",
+    "created_at"
+  ],
+  "title": "AnalystHandoff",
+  "type": "object"
+}

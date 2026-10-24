@@ -1,0 +1,13 @@
+{
+  "auto_execute": false,
+  "cancelled_first_responder_jobs": null,
+  "caveat": "OFF cancels first-responder jobs only. Independently authorized owned-test controls keep their own expiry, rollback, and kill-switch.",
+  "independently_authorized_control_jobs": null,
+  "intent": "off",
+  "previous_intent": "monitor",
+  "project_id": "prj_01JFIXTURE0000000000000PRJ",
+  "retention_policy_unchanged": true,
+  "stop_kind": "stop_monitoring",
+  "updated_at": "2026-10-17T01:00:00Z",
+  "updated_by": "usr_01JFIXTURE0000000000000USR"
+}

@@ -74,6 +74,7 @@ def _load_handlers() -> None:
     # Importing registers handlers via @handler.
     from backend import delivery, pipeline, recipes, simulated_attack  # noqa: F401
     from backend.live_defense import engine as _live_defense_engine  # noqa: F401
+    from backend.live_defense import first_responder as _live_defense_fr  # noqa: F401
 
 
 def _heartbeat_loop(ctx: JobContext, lease_s: int, stop: threading.Event) -> None:
@@ -107,8 +108,10 @@ def run_one(owner: str, kinds: list[str] | None = None) -> str | None:
         if fn is None:
             raise PermanentJobError(ErrorCode.INTERNAL, f"no handler for job kind {job.kind!r}")
         result = fn(ctx)
+        ctx.check_cancelled()
         with transaction() as conn:
-            jobs.complete(conn, job.id, owner, result)
+            if not jobs.complete(conn, job.id, owner, result):
+                raise JobCancelled(f"{job.id}: cancelled or lease lost before complete")
         log.info("job %s (%s) succeeded", job.id, job.kind)
     except JobCancelled as exc:
         with transaction() as conn:

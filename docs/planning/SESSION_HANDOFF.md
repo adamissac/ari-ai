@@ -18,6 +18,38 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-24 — Cursor (agent, Alan) — rebase #439 onto main (docs conflicts)
+- Did: left PR #439 **open** (no merge, no Phase 7B, no RL training, no customer enforcement). GitHub had blocked required checks with **Checks awaiting conflict resolution** on only `CHANGELOG.md` and `docs/planning/SESSION_HANDOFF.md`. Fetched `origin/main` `c5c2b47d` (PR #453) and rebased `cursor/live-defense-first-responder-0044`. Resolved those two files by keeping **both** sides: main’s Unreleased fixture-only research bullet and Adam 2026-10-23 build-recipe handoff, plus this PR’s Phase 7A 0.21.0 Unreleased bullet and Alan 2026-10-24 Codex/Phase 7A handoff entries. Did **not** drop the four Codex security fixes (verified evidence, genuine provider acks, telemetry-window mapping, OFF-mode race). Schema still **0.21.0**; Alembic still `0015`. Main remains 0.19.0 / `0014`. Open #412 still **0.20.0** with no Alembic — no collision, no bump.
+- Commands run and results (executed):
+  - `git fetch origin --prune`; rebase onto `origin/main` `c5c2b47d`
+  - `uv run ruff check` / `ruff format --check` — pass (195 files formatted)
+  - `uv run python -m shared.export --check` — 154 files, schema 0.21.0
+  - `uv run pytest -q backend/tests/test_live_defense_phase7a.py backend/tests/test_jobs_queue.py backend/tests/test_rl_no_action_path.py` — 33 passed
+- Decisions: do not merge #439. Owner/security approval remains separate.
+- Next: push the rebased branch; check whether GitHub Actions automatically starts (especially `backend / test`). If Actions still never queues, report that separately — do not fake a pass.
+- Warnings: **leave the PR open**. No Phase 7B. Live seven-agent Claude loop still UNVERIFIED.
+
+### 2026-10-24 — Cursor (agent, Alan) — Phase 7A Codex review fixes on #439
+- Did: left PR #439 **open** (no merge, no Phase 7B, no RL training, no customer enforcement). Fixed Backend/test CI (`test_rl_no_action_path`: removed `/first-responder/auto-execute`; absence is the control, 404). Fixed four Codex findings with regressions: (1) `evidence_state=verified` only with independently executed `verification_results`; (2) no fabricated handoff receipts — UI does not invent acks; synthetic provider ack tests are labeled; (3) deploy mapping resolved against telemetry window, else UNKNOWN; (4) OFF serialized with dispatch (`pg_advisory_xact_lock`), claim skips `cancel_requested`, handlers `check_cancelled` and abort when OFF is effective. Schema **0.21.0** (0.20.0 reserved for open #412); Alembic stays `0015`. Orchestrator `7a.1.1`.
+- Commands run and results (executed):
+  - `uv run pytest -q backend/tests/test_live_defense_phase7a.py backend/tests/test_jobs_queue.py backend/tests/test_rl_no_action_path.py` — 33 passed
+  - `make check` inputs: ruff pass; `shared.export --check` 154 files; fixtures regenerated for 0.21.0 / 7a.1.1
+- Decisions: do not merge #439. Schema plan vs #412: this branch 0.21.0 + 0015; #412 keeps 0.20.0 and no 0015. If #439 lands first, #412 rebases to 0.22.0.
+- Next: re-run required GitHub checks on the final head; resolve the four Codex threads only after those tests; owner/security approval still required.
+- Warnings: **leave the PR open**. No Phase 7B. Live seven-agent Claude loop still UNVERIFIED.
+
+### 2026-10-24 — Cursor (agent, Alan) — Live Defense Phase 7A first-responder
+- Did: branch `cursor/live-defense-first-responder-0044` from live `origin/main` (fast-forwarded through `211c2b24` / PR #435 to `a97820f1` / PR #438). Confirmed PRs #411 MERGED, #412 OPEN, #422/#430/#433/#435 MERGED, #438 MERGED (Adam status only). Schema 0.20.0, Alembic `0015`. Added fail-closed modes OFF/MONITOR|SHADOW/ASSISTED RESPONSE (no AUTO-EXECUTE), deterministic orchestrator `7a.1.0`, capability registry from real seven AgentSpecs, owner-attested deploy mapping, analyst handoff with provider-ack delivery, First responder UI tab. Did **not** train RL, edit Codex/v6/holdout, create AUTO-EXECUTE, expand production enforcement, or start Phase 7B.
+- Commands run and results (executed):
+  - `make check` — ruff pass; format 193 files; `shared.export --check` 154 files; examples check pass
+  - `uv run mypy` — Success: no issues found in 40 source files
+  - `uv run pytest -q backend/tests/test_live_defense_phase7a.py backend/tests/test_parallel_migrations.py backend/tests/test_live_defense_authorize.py backend/tests/test_live_defense_phase5.py backend/tests/test_live_defense_phase6.py` — 43 passed
+  - `uv run pytest -q shared/tests/test_contracts.py backend/tests/test_live_defense_phase7a.py` — 95 passed, 1 skipped (TSC unset)
+  - frontend lint + typecheck pass; vitest 330 passed / 78 files; transport 35 passed
+  - Playwright `tests/e2e/live-defense-phase7a.spec.ts` via `stack.py` + Chrome — 1 passed (2.5s); screenshots in store `media/live-defense-phase7a/`
+- Decisions: **ENGINEERING GO FOR OWNED STAGING**. PR https://github.com/adamissac/ari-ai/pull/439 left open for human security review (mode / privilege / trust-boundary expansion). Eval: `docs/LIVE_DEFENSE_PHASE7A_FIRST_RESPONDER.md`.
+- Warnings: **leave the PR open**. #412 also claimed 0.20.0; rebase that branch to 0.21.0 if both land. Do not start Phase 7B. Live seven-agent Claude loop is still UNVERIFIED.
+
 ### 2026-10-23 — Claude Code (Adam) — build-recipe PR for connected repositories
 - Did: `backend/backend/recipes.py`. Connecting a repo with an `installation_id` (and `installation` / `installation_repositories` webhooks for repos already connected) queues `propose_build_recipe`: fetch the default-branch tip into the bare checkout, skip if `build_recipe.json` exists, index with code intelligence, draft the recipe (FastAPI app/factory, mount prefixes, single-param GET routes, test roots, exact pins from `uv.lock`/`poetry.lock`/`==` requirements minus the sandbox runner wheels), let the `recipe` agent (Haiku 5.5 in production) add identities, resources, routes and a `deploy/sandbox_target.py` harness, validate deterministically (`sandbox_setup`, `app_factory`, routes in the index, every identity owns every route's resource, fixture values literal in the harness, harness parses), push `ari/build-recipe` with `push_patch` and open a PR. Audit: `recipe.pr_opened|skipped|unsupported|invalid|failed`.
 - State: tests in `backend/tests/test_build_recipes.py` (real git over a file:// remote, real Postgres, GitHub App and Claude faked). Dry run `uv run python -m backend.recipes <checkout>` on ari-ai with its recipe removed reproduces the hand-written `app_factory` choice (`backend.main:create_app` behind a harness), `/api/v1` prefixes and the same six pip pins; on payments-lite it reproduces `payments_lite.app:create_app` and `-q tests`.
