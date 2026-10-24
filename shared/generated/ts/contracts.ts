@@ -944,12 +944,15 @@ export interface FirstResponderDiagnostics {
   failures_by_agent: Record<string, number>;
   missing_prerequisites: Record<string, number>;
   jobs_queued: number;
+  jobs_waiting: number;
   jobs_running: number;
   jobs_stalled: number;
   jobs_succeeded: number;
   jobs_failed: number;
   jobs_cancelled: number;
   jobs_dead: number;
+  jobs_timed_out: number;
+  jobs_recovery_required: number;
   waiting_jobs: Array<WaitingJobView>;
   recent_errors: Array<InvestigationJobError>;
   agent_step_latency: JobLatencyStats | null;
@@ -996,12 +999,18 @@ export interface FirstResponderInvocation {
   created_at: string;
 }
 
-/** One invocation plus its queue state and optional execution record. */
+/** One invocation plus its queue state and optional execution record.
+ * 
+ * ``effective_state`` is the canonical combined state: a terminal invocation
+ * status is authoritative; while the invocation is non-terminal the joined
+ * job row — which records what actually ran — wins, so a timed-out,
+ * recovery-required, waiting or cancelled job is never shown as in-progress. */
 export interface FirstResponderInvocationView {
   invocation: FirstResponderInvocation;
   job: InvocationJobView | null;
   execution: AgentExecutionView | null;
   execution_recorded: boolean;
+  effective_state: string;
   token_usage_available: false;
   token_usage_note: string;
 }
@@ -1274,6 +1283,7 @@ export interface InvestigationSummary {
   invocations_skipped: number;
   invocations_cancelled: number;
   handoff_state: string | null;
+  job_statuses: Record<string, number>;
 }
 
 /** Event → decision → invocations → artifacts → handoff, from persisted rows. */
@@ -2071,10 +2081,12 @@ export interface VerifiedRegression {
   created_at: string;
 }
 
-/** A queued first-responder job still waiting on its backoff window. */
+/** A first-responder job still waiting: queued on its backoff window or
+ * parked on a prerequisite (``waiting``, execution-reliability). */
 export interface WaitingJobView {
   job_id: string;
   kind: string;
+  status: string;
   run_after: string | null;
   enqueued_at: string | null;
   attempts: number;

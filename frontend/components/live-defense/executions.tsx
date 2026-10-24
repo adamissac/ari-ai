@@ -25,13 +25,19 @@ import type { Tone } from '@/lib/status';
  */
 
 function statusTone(status: string): Tone {
-  if (status === 'failed' || status === 'dead') return 'bad';
+  if (status === 'failed' || status === 'dead' || status === 'timed_out' || status === 'recovery_required') return 'bad';
   if (status === 'cancelled') return 'neutral';
   if (status.startsWith('skipped_') || status === 'blocked') return 'warn';
   if (status === 'completed_unverified' || status === 'executed' || status === 'succeeded') return 'ok';
-  if (status === 'queued' || status === 'eligible' || status === 'running') return 'info';
+  if (status === 'queued' || status === 'eligible' || status === 'running' || status === 'waiting' || status === 'in_progress') return 'info';
   return 'neutral';
 }
+
+const JOB_STATE_NOTES: Record<string, string> = {
+  timed_out: 'Execution deadline passed — stopped, not successful execution.',
+  recovery_required: 'Uncertain external effect — an operator must decide recovery; this never clears on its own.',
+  waiting: 'Parked on a prerequisite job.',
+};
 
 const UNAVAILABLE = <span className="text-faint">unavailable</span>;
 
@@ -177,6 +183,9 @@ function InvestigationList({
                     </div>
                     <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted">
                       <span>{item.invocations_total} invocations</span>
+                      {(item.job_statuses?.recovery_required ?? 0) > 0 && <span className="text-bad">{item.job_statuses.recovery_required} recovery required</span>}
+                      {(item.job_statuses?.timed_out ?? 0) > 0 && <span className="text-bad">{item.job_statuses.timed_out} timed out</span>}
+                      {(item.job_statuses?.waiting ?? 0) > 0 && <span className="text-info">{item.job_statuses.waiting} waiting</span>}
                       {item.invocations_queued_or_running > 0 && <span className="text-info">{item.invocations_queued_or_running} queued/running</span>}
                       {item.invocations_completed > 0 && <span className="text-ok">{item.invocations_completed} completed</span>}
                       {item.invocations_failed > 0 && <span className="text-bad">{item.invocations_failed} failed</span>}
@@ -218,7 +227,8 @@ function InvocationRow({ view }: { view: FirstResponderInvocationView }) {
     <details data-testid={`ld-inv-detail-${inv.id}`} className="rounded-md border border-line bg-bg px-3 py-2">
       <summary className="flex cursor-pointer flex-wrap items-center gap-2 text-sm">
         <span className="font-medium text-ink">{inv.agent}</span>
-        <Tag tone={statusTone(inv.status)}>{inv.status}</Tag>
+        <Tag tone={statusTone(view.effective_state)}>{view.effective_state}</Tag>
+        {view.effective_state !== inv.status && <Tag tone="neutral">invocation: {inv.status}</Tag>}
         {inv.provider_mode !== 'none' && <Tag tone="accent">{inv.provider_mode} provider</Tag>}
         {job?.stalled && <Tag tone="bad">stalled lease</Tag>}
         {inv.reason && <span className="text-faint text-xs">{inv.reason}</span>}
@@ -243,9 +253,16 @@ function InvocationRow({ view }: { view: FirstResponderInvocationView }) {
         <Cell label="Evidence verified">{exec?.evidence_verified === null || exec?.evidence_verified === undefined ? UNAVAILABLE : exec.evidence_verified ? 'verified' : 'not verified'}</Cell>
         <Cell label="Confirmation">{exec?.confirmation ?? null}</Cell>
       </div>
+      {JOB_STATE_NOTES[view.effective_state] && (
+        <p className={`mt-2 text-xs ${statusTone(view.effective_state) === 'bad' ? 'text-bad' : 'text-info'}`}>
+          {JOB_STATE_NOTES[view.effective_state]}
+        </p>
+      )}
       {job && (
         <p className="mt-2 text-xs text-muted">
           Job <Mono>{job.job_id}</Mono> · status <Tag tone={statusTone(job.status)}>{job.status}</Tag>
+          {job.cancel_requested && <Tag tone="neutral">cancel requested</Tag>}
+          {job.error_code && <span className="text-bad"> · {job.error_code}</span>}
           {job.error_message && <span className="text-bad"> · {job.error_message}</span>}
         </p>
       )}
@@ -403,9 +420,11 @@ function DiagnosticsPanel({ diagnostics }: { diagnostics?: Resource<FirstRespond
               <Stat label="Investigations" value={d.investigations_total} />
               <Stat label="Running jobs" value={d.jobs_running} tone={d.jobs_running ? 'info' : 'neutral'} />
               <Stat label="Stalled (lease expired)" value={d.jobs_stalled} tone={d.jobs_stalled ? 'bad' : 'neutral'} />
-              <Stat label="Waiting in queue" value={d.jobs_queued} tone={d.jobs_queued ? 'info' : 'neutral'} />
+              <Stat label="Waiting in queue" value={d.jobs_queued + (d.jobs_waiting ?? 0)} tone={d.jobs_queued + (d.jobs_waiting ?? 0) ? 'info' : 'neutral'} />
               <Stat label="Failed jobs" value={d.jobs_failed + d.jobs_dead} tone={d.jobs_failed + d.jobs_dead ? 'bad' : 'neutral'} />
               <Stat label="Cancelled" value={d.jobs_cancelled + d.decisions_cancelled} />
+              <Stat label="Timed out" value={d.jobs_timed_out ?? 0} tone={(d.jobs_timed_out ?? 0) ? 'bad' : 'neutral'} />
+              <Stat label="Recovery required" value={d.jobs_recovery_required ?? 0} tone={(d.jobs_recovery_required ?? 0) ? 'bad' : 'neutral'} />
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               <div>
