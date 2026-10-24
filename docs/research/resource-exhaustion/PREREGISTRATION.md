@@ -1,9 +1,8 @@
-# Resource-exhaustion feasibility 001 — BLOCKED DRAFT
+# Resource-exhaustion feasibility 001 — OWNER APPROVED
 
-Status: proposed, not approved for comparative execution or training. Owner
-explicitly authorized implementation and bounded unit instrumentation only when
-numeric study constraints/sample/compute values remain unapproved. No formal
-comparison is run. These proposed values precede instrumentation results.
+Status: approved for one deterministic comparison by the owner, including the
+acceptance/execution distinction below, before formal execution. Training remains
+unauthorized. Numerical design was specified before comparative outcomes.
 
 Question: can finite-budget adaptive rate limiting improve the availability/resource
 tradeoff over strong conventional policies in a bounded finite-worker service?
@@ -29,7 +28,7 @@ Proposed feasibility sample:20 independent workload seeds per family, four fixed
 baseline policies plus the always-on conventional reference,30 decision windows per episode;600 episodes/18,000 decisions.
 Proposed compute cap: one CPU process,512MiB measured process RSS,600 wall seconds;
 stop/incomplete if exceeded, not silently extend or replace seeds. These numbers
-and all safety thresholds/sample/compute details require explicit owner approval.
+and safety thresholds/sample/compute details are approved for this single study.
 Seed identities proposed0..19 are feasibility-only; do not later call them fresh.
 No final holdout is authored, generated or read in this phase.
 
@@ -64,16 +63,15 @@ work versus the strongest safe fixed baseline; no claim if its denominator is ze
 Proposed per-family safety requirements: legitimate completion lower bound >=90%,
 rate+capacity denial fraction <=5%, timeout fraction <=5%, completed mean latency
 <=16 virtual ticks, <=4 applications, <=64 active-control ticks and <=4 overhead
-worker-ticks. All are UNAPPROVED proposals, not selected to pass observed results.
+worker-ticks. All are owner-approved research criteria, not selected to pass observed results.
 Pending requests/right-censoring and zero denominators cannot certify a pass.
 The full-horizon reference exceeds64 active ticks by design; report its complete
-cost separately, and ask whether the operational constraint itself is defensible
-rather than manufacturing a learning advantage. Owner may reject these values;
-freeze the accepted values before any formal comparison, never relax after results.
+cost and explicit ineligibility separately. It is an unconstrained diagnostic.
+Never relax the accepted values after results.
 
 Stop and retain failures/partial records for invalid action/mask, inconsistent
 resource/request accounting, cutoff/label leakage, deadline/control cleanup bug,
-missing required telemetry, safety threshold violation or compute cap. One fixed
+missing required telemetry or compute cap. One fixed
 launch only after approvals; no unfavorable-only reruns, replacement seeds, sweeps,
 or interim tuning. A separately approved new registration is required for any retry.
 Archive source/versions/config hash, seeds/family/split, complete job traces and
@@ -95,5 +93,36 @@ claiming saved resource simply because work was deferred beyond the horizon.
 Decision count remains18,000; maximum physical windows19,800. Any pending work after
 the deadline-bound drain is an accounting failure, not a successful censored result.
 The helper is unit-tested but no formal study or drain-based comparison is run.
-Nonzero denial allowances here would require fresh explicit acceptance for this
-resource-service task and cannot weaken prior zero-violation payment-read limits.
+The owner explicitly accepted these resource-service denial allowances; they
+cannot weaken prior zero-violation payment-read limits.
+
+## Frozen owner clarification — before execution
+
+Acceptance failures do not stop collection: finish all registered arms/seeds and
+report every threshold violation. Ineligible policies remain in all outcome tables.
+Execution failures stop the entire study and preserve completed and partial evidence:
+invalid actions/masks, accounting inconsistency, information leakage, unresolved
+settlement, resource budget exhaustion or other integrity failure. No retries.
+Persistent-static remains unchanged:240 active ticks, full operational costs,
+explicit violation of the64-tick cap; unconstrained diagnostic only, never an
+eligible safe reference. Prior thresholds, families, seeds0..19, baselines,2000
+paired whole-seed bootstrap resamples,95% intervals, one process,512MiB RSS and
+600 wall seconds are approved unchanged. No training or promotion permission.
+
+Analysis specification frozen before execution: family availability fractions are
+ratios of summed full-lifecycle counts; latency is sum/count, undefined without
+completions. Operational caps must hold in every episode. Report decision-phase
+and settlement separately, all family arms, and equal-family aggregate summaries.
+Percentile bootstrap uses fixed analysis seed20261024, resampling whole workload
+seed indices jointly across policies within each family (independently by family
+for aggregate estimates),2000 draws. Report point estimates and95% intervals;
+acceptance uses the registered point thresholds with uncertainty alongside them,
+not a new significance threshold. Undefined denominators cannot certify safety.
+Rank only eligible policies by adversarial work, deterministic identity tie break.
+Report all paired candidate/reference effects, including relative reductions
+(null when reference work is zero). Absence of a safe static/adaptive reference
+makes that comparison unavailable; never substitute an unsafe arm. Selection
+uses these same development data, so intervals are descriptive, not independent
+post-selection confirmation. Recovery remains queue-pressure recovery, not health.
+Budget covers collection, settlement, serialization, bootstrap and sealing;
+source checks precede the timed single launch. No preflight campaign is permitted.
