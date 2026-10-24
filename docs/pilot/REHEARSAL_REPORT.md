@@ -54,7 +54,10 @@ scripted turns are identifiable in stored data, matching the "labelled" contract
 ## Leg 3 — Operator deletion procedure
 
 `test_operator_deletion_procedure`. **Finding:** foreign keys have **no cascades**
-— there is no single-row delete. The runbook procedure is:
+— there is no single-row delete. The canonical operator entry point is
+`purge_project` (`backend/privacy.py`, landed via PR #535 +
+[docs/security/TENANT_DATA_PROTECTION.md](../security/TENANT_DATA_PROTECTION.md)),
+which performs the org-scoped teardown below:
 
 1. Delete org-scoped rows across every table having `organization_id` (enumerated
    via `information_schema`), child tables first (FK-safe order or a maintenance
@@ -117,12 +120,14 @@ results retrieval → revoke.
 
 ## Open findings for the launch decision
 
-1. **No FK cascades / no automated retention** — deletion is manual multi-step
-   across all org-scoped tables + disk objects; artifact store needs refcounting
-   before per-tenant unlink. Documented procedure works (drill above).
+1. **No automated retention; deletion is operator-invoked** — `purge_project`
+   performs the multi-table teardown (no FK cascades) + disk objects; artifact
+   store needs refcounting before per-tenant unlink. Drill verified the data is
+   gone afterward (uniform 404). No self-serve delete or TTL.
 2. **Only 3 executable Probe check templates** — other CWEs are flagged-not-validated; must be reflected in customer-facing claims (done in FEATURE_MATRIX).
-3. **No Postgres RLS** — isolation is application-layer membership checks (now
-   covered by the ID-substitution drill) — recommend keeping R-11 on the register.
+3. **Isolation = membership checks + RLS on source-content tables** — RLS now
+   guards `index_payloads`/`artifacts` (PR #535); membership checks remain the
+   primary boundary elsewhere and are covered by the ID-substitution drill.
 4. **Assistant-role turns are re-sent unredacted** to the provider (thinking-block
    signature constraint) — disclosed; mitigated by inbound redaction.
 5. **Prod leg not yet executed** — this report is CONDITIONAL until Leg 7 lands.

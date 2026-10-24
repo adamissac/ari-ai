@@ -31,11 +31,13 @@ Ari stores your source code, not just metadata:
 - **Nothing expires automatically.** There are no retention jobs and no
   self-serve delete. Sessions time out; everything else persists until an
   operator removes it.
-- **Deletion today is an operator-run procedure** over database rows,
-  artifact files and bare clones, initiated by your request. Target: within
-  **30 days** of a verified request. Content-addressed artifact sharing means
-  per-customer artifact deletion currently needs manual care — we disclose
-  this rather than pretend it is atomic.
+- **Deletion is operator-invoked, not self-serve.** Your request triggers
+  the operator-run `purge_project` procedure over database rows, artifact
+  files and bare clones (see
+  [TENANT_DATA_PROTECTION](../security/TENANT_DATA_PROTECTION.md)). Target:
+  within **30 days** of a verified request. Content-addressed artifact
+  sharing means per-customer artifact deletion currently needs manual care —
+  we disclose this rather than pretend it is atomic.
 - **Backups/copies**: Railway/Postgres backups are provider-managed; deleted
   data may persist in backups per the provider's rotation.
 
@@ -59,9 +61,11 @@ Ari stores your source code, not just metadata:
 - **Application-level tenant isolation**: every project-scoped route resolves
   org membership; non-members get 404 (no existence leak). Same enforcement
   on storage accessors and the intelligence memory layer.
-- **No Postgres row-level security yet** — isolation is enforced in
-  application code, not the database engine. Flagged for defense-in-depth
-  hardening (see RISK_REGISTER R-02).
+- **Membership isolation + row-level security on source-content tables** —
+  every project-scoped route resolves org membership in application code
+  (the primary boundary), and Postgres RLS additionally guards the tables
+  holding your source content. See RISK_REGISTER R-02 and
+  [TENANT_DATA_PROTECTION](../security/TENANT_DATA_PROTECTION.md).
 - **Operator access**: the Ari team can access the Railway volume, database
   and logs for operation and support. Access is hash-chain-audited
   (per-org `audit_events`, owner-readable). There is no customer-visible
