@@ -142,7 +142,7 @@ def test_rejects_a_workspace_at_a_forbidden_root() -> None:
     assert FakeBox.instances == []  # never created a sandbox
 
 
-def _fake_vercel(monkeypatch, tmp_path, *, fail_mkdir=False):
+def _fake_vercel(monkeypatch, tmp_path):
     """Record every SDK call the box and the base builder make."""
     from types import SimpleNamespace
 
@@ -157,12 +157,7 @@ def _fake_vercel(monkeypatch, tmp_path, *, fail_mkdir=False):
     class Box:
         def __init__(self, kw):
             self.kw = kw
-            self.fs = SimpleNamespace(mkdir=self._mkdir)
-
-        def _mkdir(self, d, **kw):
-            if fail_mkdir:
-                raise RuntimeError("mkdir failed")
-            calls.append(("mkdir", d))
+            self.fs = SimpleNamespace(write_bytes=lambda *a, **k: None)
 
         def run_process(self, cmd, args, **kw):
             calls.append(("run", cmd, tuple(args), kw.get("sudo")))
@@ -192,9 +187,10 @@ def _fake_vercel(monkeypatch, tmp_path, *, fail_mkdir=False):
 
 def test_base_is_built_once_with_package_egress_and_run_boxes_boot_deny_all(monkeypatch, tmp_path) -> None:
     calls, spec, vd = _fake_vercel(monkeypatch, tmp_path)
-    box = vd._VercelSdkBox(spec, "r1")
-    box.stop()
-    vd._VercelSdkBox(spec, "r2").stop()
+    for name in ("r1", "r2"):
+        box = vd._VercelSdkBox(spec, name)
+        box.stop()
+        box._teardown.join(5)  # teardown runs off the critical path
 
     builds = [c for c in calls if c[0] == "create" and c[1].startswith("ari-base-")]
     runs = [c for c in calls if c[0] == "create" and not c[1].startswith("ari-base-")]
@@ -208,8 +204,30 @@ def test_base_is_built_once_with_package_egress_and_run_boxes_boot_deny_all(monk
     assert {c[1] for c in calls if c[0] == "destroy"} == {builds[0][1], "ari-r1", "ari-r2"}
 
 
-def test_sdk_box_destroys_itself_when_boot_fails(monkeypatch, tmp_path) -> None:
-    calls, spec, vd = _fake_vercel(monkeypatch, tmp_path, fail_mkdir=True)
-    with pytest.raises(RuntimeError):
-        vd._VercelSdkBox(spec, "r1")
-    assert ("destroy", "ari-r1", False) in calls
+def test_sweep_destroys_stale_run_boxes_with_their_orphan_snapshots(monkeypatch) -> None:
+    import time
+    from types import SimpleNamespace
+
+    from vercel.sandbox import sync as vsandbox
+
+    from security_agents.sandbox import vercel_driver as vd
+
+    now_ms = time.time() * 1000
+    listed = [
+        SimpleNamespace(name="ari-sbx-old", status="running", created_at=0),  # over the 3h cap
+        SimpleNamespace(name="ari-sbx-done", status="stopped", created_at=now_ms),  # stopped
+        SimpleNamespace(name="ari-sbx-live", status="running", created_at=now_ms),  # fresh: keep
+        SimpleNamespace(name="ari-base-x", status="stopped", created_at=0),  # not a run box: keep
+    ]
+    destroyed: list[tuple[str, bool]] = []
+    monkeypatch.setattr(vsandbox, "query_sandboxes", lambda: listed)
+    monkeypatch.setattr(
+        vsandbox,
+        "get_sandbox",
+        lambda *, name: SimpleNamespace(
+            destroy=lambda *, delete_orphan_snapshots: destroyed.append((name, delete_orphan_snapshots))
+        ),
+    )
+    monkeypatch.setattr(vd, "_SWEPT_AT", 0.0)
+    vd._sweep_stale()
+    assert destroyed == [("ari-sbx-old", True), ("ari-sbx-done", True)]

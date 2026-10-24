@@ -435,7 +435,7 @@ def test_every_agent_turn_goes_through_the_host_gateway(host_and_orchestrator):
     host, orchestrator, gateway = host_and_orchestrator
     orchestrator.run(host)
     agents = [c["agent"] for c in gateway.calls]
-    assert agents == ["scout", "probe", "trace", "diagnose"]
+    assert agents[:2] == ["scout", "probe"] and sorted(agents[2:]) == ["diagnose", "trace"], agents
     # each role sends its own system instruction
     assert len({c["system"] for c in gateway.calls}) == 4
     # and its own tool list, built from the registry allowlist
@@ -452,7 +452,8 @@ def test_every_agent_turn_goes_through_the_host_gateway(host_and_orchestrator):
 def test_agent_runs_are_persisted_through_the_host(host_and_orchestrator):
     host, orchestrator, gateway = host_and_orchestrator
     orchestrator.run(host)
-    assert [r["agent"] for r in host.runs] == ["scout", "probe", "trace", "diagnose"]
+    order = [r["agent"] for r in host.runs]
+    assert order[:2] == ["scout", "probe"] and sorted(order[2:]) == ["diagnose", "trace"], order
     assert all(r["provider_mode"] == "fake" for r in host.runs)
     assert all(r["model_id"] == "claude-opus-5-5" for r in host.runs)
     assert all(r["prompt_version"] == ALL_SPECS[AgentName(r["agent"])].version for r in host.runs)
@@ -489,15 +490,9 @@ def test_resume_after_approval_completes_remediation_and_hardening(host_and_orch
     orchestrator.run(host)
 
     assert host.states[-4:] == ["REMEDIATION", "HARDENING", "REPORTING", "COMPLETED"]
-    assert [r["agent"] for r in host.runs] == [
-        "scout",
-        "probe",
-        "trace",
-        "diagnose",
-        "patch",
-        "verify",
-        "fortify",
-    ]
+    from .test_e2e_replay import assert_agent_order
+
+    assert_agent_order([r["agent"] for r in host.runs])
     assert len(host.patches) == 1
     patch = host.patches[0]
     assert isinstance(patch, shared_findings.PatchCandidate)
@@ -976,7 +971,8 @@ def test_hosts_without_record_roe_still_run(host_and_orchestrator):
     host, orchestrator, gateway = host_and_orchestrator
     assert not hasattr(host, "record_roe")
     orchestrator.run(host)
-    assert [r["agent"] for r in host.runs] == ["scout", "probe", "trace", "diagnose"]
+    order = [r["agent"] for r in host.runs]
+    assert order[:2] == ["scout", "probe"] and sorted(order[2:]) == ["diagnose", "trace"], order
 
 
 def test_hosted_run_stores_a_valid_sarif_log_and_the_rules_of_engagement(host_and_orchestrator):

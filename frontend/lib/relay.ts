@@ -6,7 +6,7 @@ import { agentRole } from '@/lib/status';
  * gate where the orchestrator pauses. Status and handoff text come only from the
  * persisted runs and findings passed in.
  */
-export type RelayStatus = 'not_run' | 'queued' | 'running' | 'done' | 'failed' | 'cancelled';
+export type RelayStatus = 'not_run' | 'not_needed' | 'not_reached' | 'queued' | 'running' | 'done' | 'failed' | 'cancelled';
 
 export interface RelayTile {
   kind: 'agent';
@@ -39,6 +39,8 @@ const ORDER: readonly { agent: AgentName; stage: string; job: string }[] = [
 
 const STATUS_TEXT: Record<RelayStatus, string> = {
   not_run: 'Has not run',
+  not_needed: 'Not needed',
+  not_reached: 'Not reached',
   queued: 'Waiting to start',
   running: 'Working now',
   done: 'Finished',
@@ -46,20 +48,49 @@ const STATUS_TEXT: Record<RelayStatus, string> = {
   cancelled: 'Cancelled',
 };
 
+const SETTLED_STATES: ReadonlySet<AssessmentState> = new Set(['COMPLETED', 'FAILED', 'CANCELLED', 'BUDGET_EXHAUSTED']);
+
+/**
+ * The reason the orchestrator recorded for ending the chain early, from its persisted
+ * state_changed events (e.g. "no confirmed findings"). The run pauses on skipped phases
+ * only while it still owes a functional approval, so either form may appear.
+ */
+export function earlyEndNote(events: readonly { type: string; state?: string | null; message: string }[]): string | null {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i];
+    if (!e || e.type !== 'assessment.state_changed') continue;
+    const skipped = e.message.match(/^skipped \((.+)\);/);
+    if (skipped?.[1]) return skipped[1];
+    if (e.state === 'REPORTING' && e.message) return e.message;
+  }
+  return null;
+}
+
 /** Statuses that only exist after a test confirmed the weakness. Closed, accepted-risk, stale and inconclusive are not on this list. */
 const CONFIRMED_STATUSES: ReadonlySet<string> = new Set(['validated', 'diagnosed', 'patch_proposed', 'verified', 'patch_rejected', 'unresolved', 'hardened']);
 
 const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`;
 
-function statusOf(runs: readonly RunFacts[]): RelayStatus {
+function statusOf(runs: readonly RunFacts[], state: AssessmentState): RelayStatus {
   const latest = runs[runs.length - 1];
-  if (!latest) return 'not_run';
+  if (!latest) {
+    // A completed assessment means the chain legitimately ended before this agent's
+    // step (recorded as a skip note). Any other terminal state means the run stopped
+    // first — neither is a silent gap.
+    if (state === 'COMPLETED') return 'not_needed';
+    if (SETTLED_STATES.has(state)) return 'not_reached';
+    return 'not_run';
+  }
   if (latest.status === 'succeeded') return 'done';
   if (latest.status === 'failed' || latest.status === 'cancelled' || latest.status === 'queued' || latest.status === 'running') return latest.status;
   return 'not_run';
 }
 
-function handoff(agent: AgentName, status: RelayStatus, findings: readonly FindingFacts[]): string {
+function handoff(agent: AgentName, status: RelayStatus, findings: readonly FindingFacts[], skipNote: string | null): string {
+  if (status === 'not_needed') {
+    return skipNote ? `Not needed — the run ended early: ${skipNote}.` : 'Not needed — the run ended before this step had work.';
+  }
+  if (status === 'not_reached') return 'The run ended before this step was reached.';
   if (status === 'not_run') return 'Nothing handed on yet.';
   if (status === 'failed') return 'Stopped with an error, so nothing was handed on.';
   if (status === 'cancelled') return 'Cancelled before handing anything on.';
@@ -96,15 +127,16 @@ function handoff(agent: AgentName, status: RelayStatus, findings: readonly Findi
   }
 }
 
-export function agentRelay(input: { runs: readonly RunFacts[]; findings: readonly FindingFacts[]; state: AssessmentState; approvals?: readonly ApprovalFacts[] | null }): RelayItem[] {
+export function agentRelay(input: { runs: readonly RunFacts[]; findings: readonly FindingFacts[]; state: AssessmentState; approvals?: readonly ApprovalFacts[] | null; skipNote?: string | null }): RelayItem[] {
+  const skipNote = input.skipNote ?? null;
   const items: RelayItem[] = [];
   for (const step of ORDER) {
     if (step.agent === 'patch') items.push(gate(input));
     const runs = input.runs.filter(r => r.agent === step.agent);
-    const status = statusOf(runs);
+    const status = statusOf(runs, input.state);
     items.push({
       kind: 'agent', agent: step.agent, label: agentRole(step.agent).label, stage: step.stage, job: step.job,
-      status, statusText: STATUS_TEXT[status], handoff: handoff(step.agent, status, input.findings),
+      status, statusText: STATUS_TEXT[status], handoff: handoff(step.agent, status, input.findings, skipNote),
     });
   }
   return items;

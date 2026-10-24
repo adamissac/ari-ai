@@ -24,6 +24,15 @@ from .conftest import TARGET_ID, live_scope
 EXPECTED_AGENT_ORDER = ["scout", "probe", "trace", "diagnose", "patch", "verify", "fortify"]
 
 
+def assert_agent_order(order: list[str]) -> None:
+    """Scout then Probe; Diagnose runs alongside Trace, Fortify alongside Patch -> Verify."""
+    assert order[:2] == EXPECTED_AGENT_ORDER[:2], order
+    assert sorted(order[2:4]) == ["diagnose", "trace"], order
+    rest = order[4:]
+    assert sorted(rest) == sorted(EXPECTED_AGENT_ORDER[4:]), order
+    assert rest.index("patch") < rest.index("verify"), order
+
+
 def build(intel, driver, library, tmp_path: Path, *, scripts=None, approve=True, **patch_kw):
     scripts = scripts or fake_agents.all_scripts(intel.snapshot.root, **patch_kw)
     gateway = ProviderGateway(FakeLLM(scripts), default_model="claude-opus-5-5")
@@ -95,7 +104,7 @@ def test_assessment_completes_through_every_state(result):
 def test_all_seven_agents_ran_as_separate_runs(result):
     res, _ = result
     order = [r.agent.value for r in res.runs]
-    assert order == EXPECTED_AGENT_ORDER, order
+    assert_agent_order(order)
     assert len({r.id for r in res.runs}) == 7, "each agent step is its own AgentRun"
     assert all(r.status == "succeeded" for r in res.runs), [
         (r.agent.value, r.error_code) for r in res.runs if r.status != "succeeded"
@@ -359,8 +368,8 @@ def test_ineffective_in_scope_patch_is_rejected_and_retried_then_unresolved(inte
     recheck = next(c for c in first.checks if c.name.value == "original_check_now_fails_to_reproduce")
     assert not recheck.passed
     assert "remediation.exhausted" in [e.action for e in res.audit]
-    # Fortify never runs for an unresolved finding.
-    assert not any(r.agent is AgentName.FORTIFY for r in res.runs)
+    # Fortify's step runs alongside remediation, but an unresolved finding is never hardened.
+    assert finding.status != "hardened" and not finding.recommendations
 
 
 @pytest.mark.boundary
@@ -518,7 +527,8 @@ def test_declined_remediation_stops_before_patching(intel, driver, library, tmp_
     orch, _ = build(intel, driver, library, tmp_path, approve=False)
     res = orch.run()
     assert res.state is AssessmentState.COMPLETED
-    assert [r.agent.value for r in res.runs] == ["scout", "probe", "trace", "diagnose"]
+    order = [r.agent.value for r in res.runs]
+    assert order[:2] == ["scout", "probe"] and sorted(order[2:]) == ["diagnose", "trace"], order
     finding = res.findings[0]
     assert finding.status == "diagnosed"
     assert not finding.candidates

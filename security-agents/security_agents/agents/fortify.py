@@ -166,7 +166,7 @@ SPEC = AgentSpec(
 
 def build_prompt(data: FortifyInput, intel: CodeIntel) -> str:
     return (
-        "A fix for this finding has been independently verified. Propose prevention.\n\n"
+        "A fix for this finding is being written and independently verified. Propose prevention.\n\n"
         f"{data_block('verified_finding', data.model_dump(mode='json'), provenance='verify_output')}\n\n"
         f"{data_block('expectations', [e.model_dump(mode='json') for e in intel.expectations()], provenance='code_intelligence')}\n\n"
         "Look at the sibling call sites before recommending anything structural."
