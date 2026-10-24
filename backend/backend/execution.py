@@ -368,16 +368,13 @@ def stats(conn: Connection, project_id: str | None = None, window_s: int = 86400
             .group_by(job_events.c.category)
         )
     }
+    res_expr = job_events.c.details.op("->>")(sa.literal_column("'resolution'"))
     resolved = {
         res: n
         for res, n in conn.execute(
-            sa.select(job_events.c.details["resolution"].astext, sa.func.count())
-            .where(
-                *ev_scope,
-                job_events.c.created_at >= since,
-                job_events.c.details["resolution"].astext.is_not(None),
-            )
-            .group_by(job_events.c.details["resolution"].astext)
+            sa.select(res_expr, sa.func.count())
+            .where(*ev_scope, job_events.c.created_at >= since, res_expr.is_not(None))
+            .group_by(res_expr)
         )
     }
     stuck = stuck_jobs(conn, project_id, limit=10_000)
