@@ -336,6 +336,7 @@ class HostTool:
     description: str
     input_model: type[Any]
     handler: Any
+    parallel_safe: bool = False
 
     def definition(self) -> dict[str, Any]:
         return {
@@ -354,6 +355,11 @@ def _tool_class() -> type[Any]:
         return HostTool
 
 
+# Sandboxed runs that only read the step's workspace. Worktree writes and patch.apply_fresh
+# change state, so a turn containing one stays sequential.
+_PARALLEL_EXEC = frozenset({"tests.run", "checks.run_template"})
+
+
 def build_tools(spec: AgentSpec, ctx: ToolContext, registry: ToolRegistry, record: StepRecord) -> list[Any]:
     """Wrap each allowlisted tool for the host gateway, keeping enforcement here."""
     tool_cls = _tool_class()
@@ -368,6 +374,7 @@ def build_tools(spec: AgentSpec, ctx: ToolContext, registry: ToolRegistry, recor
                 description=definition.description,
                 input_model=definition.args_model,
                 handler=_handler(ctx, registry, record, name),
+                parallel_safe=definition.side_effects == "none" or name in _PARALLEL_EXEC,
             )
         )
     return tools

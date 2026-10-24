@@ -46,6 +46,8 @@ confirmed the finding, now against the patched code.
 3. tests.run (project_suite) — run the project's suite and compare failures with \
 the baseline you are given.
 4. tests.run with the added tests, if the diff added any.
+Steps 2-4 are independent: request all of them in ONE response after step 1, and \
+they run side by side.
 
 Then write a short factual summary of what the runs showed.
 
