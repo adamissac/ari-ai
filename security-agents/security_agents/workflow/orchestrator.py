@@ -576,18 +576,21 @@ class Orchestrator:
         if not confirmed:
             return self._report_or_wait("no confirmed findings")
 
-        # ---- ANALYSIS (Trace)
+        # ---- ANALYSIS (Trace). Diagnose's step needs only the validated finding, so it runs
+        # alongside; its plan applies only to a finding Trace could analyse.
         self._goto(AssessmentState.ANALYSIS)
-        for finding in confirmed:
-            self._run_trace(finding)
-        traced = [f for f in confirmed if f.attack_path is not None]
-        if not traced:
-            return self._report_or_wait("impact analysis failed for all findings")
+        with ThreadPoolExecutor(max_workers=len(confirmed)) as pool:
+            plans = {f.finding_id: pool.submit(self._diagnose_step, f) for f in confirmed}
+            for finding in confirmed:
+                self._run_trace(finding)
+            traced = [f for f in confirmed if f.attack_path is not None]
+            if not traced:
+                return self._report_or_wait("impact analysis failed for all findings")
 
-        # ---- DIAGNOSIS (Diagnose)
-        self._goto(AssessmentState.DIAGNOSIS)
-        for finding in traced:
-            self._run_diagnose(finding)
+            # ---- DIAGNOSIS (Diagnose)
+            self._goto(AssessmentState.DIAGNOSIS)
+            for finding in traced:
+                self._apply_diagnose(finding, *plans[finding.finding_id].result())
         diagnosed = [f for f in traced if f.plan is not None]
         if not diagnosed:
             return self._report_or_wait("no remediation plan produced")
@@ -1019,15 +1022,17 @@ class Orchestrator:
         )
         self._classify(finding)
 
-    def _run_diagnose(self, finding: FindingRecord) -> None:
-        assert finding.severity is not None and finding.attack_path is not None
+    def _diagnose_step(self, finding: FindingRecord) -> tuple[diagnose_agent.DiagnoseInput, StepOutcome]:
+        # Starts before Trace finishes: severity and impact are filled in when Trace already has them.
         data = diagnose_agent.DiagnoseInput(
             assessment_id=self.config.assessment_id,
             finding_id=finding.finding_id,
             weakness_class=finding.hypothesis.weakness_class,
             hypothesis_title=finding.hypothesis.title,
-            severity_level=finding.severity.level.value,
-            impact_summary=finding.attack_path.impact_summary,
+            severity_level=finding.severity.level.value if finding.severity else "pending impact analysis",
+            impact_summary=(
+                finding.attack_path.impact_summary if finding.attack_path else finding.hypothesis.title
+            ),
             validation_observations=dict(finding.validation.observations) if finding.validation else {},
             affected_symbol=self._handler_symbol(finding),
             affected_paths=[s.path for s in finding.hypothesis.cited_spans if s.path],
@@ -1053,6 +1058,11 @@ class Orchestrator:
             ),
             input_ref=f"diagnose:{finding.finding_id}",
         )
+        return data, outcome
+
+    def _apply_diagnose(
+        self, finding: FindingRecord, data: diagnose_agent.DiagnoseInput, outcome: StepOutcome
+    ) -> None:
         if not isinstance(outcome.output, diagnose_agent.DiagnoseOutput):
             finding.notes.append(f"diagnose failed: {outcome.run.error_code}")
             return
