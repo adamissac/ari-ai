@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Add customer onboarding: `GET /projects/{id}/onboarding` computes the eleven-step journey (sign-in → repo connect → GitHub App grant → snapshot → scope → staging app → deploy mapping → read-only monitoring → authorized test event → evidence) from the tables the product already writes, so the new `/projects/{id}/onboarding` wizard cannot claim progress that did not happen. `POST /projects/{id}/onboarding/test-event` lets a project owner inject a synthetic auth-failure spike through the registered app's real `owned_staging` ingest channel — scored, recorded, and shadow-decided, never executed. `POST /repositories/{id}/disconnect` revokes the App grant, stops push monitoring, and revokes live deploy-commit mappings (idempotent). The wizard explains every requested permission inline and links each open step to the screen that completes it. Contract schema 0.24.0 (additive; 0.22/0.23 reserved by in-flight workstreams); no migration.
+
 - Scout specialist now trains on the labelled commit-eval set (each case's planted edit vs. its original code as a minimal positive/negative pair) and was promoted after beating the static-pattern baseline (macro F1 0.349 vs 0.084); new checkpoint committed under `specialists/checkpoints/scout/`.
 
 - Assessment UI: agents the orchestrator skipped now stay visible as 'Not needed' with the recorded reason (e.g. 'no confirmed findings'); on failed/cancelled runs they show 'Not reached'. Replaces the ambiguous 'not run' label on the relay and team list.
