@@ -64,6 +64,7 @@ class OrchestratorFacts:
     shadow_action: DefenseActionName | None = None
     q_values: tuple[ActionScore, ...] | None = None
     auto_execute_requested: bool = False
+    independent_verification_id: str | None = None
 
 
 def _correlation(facts: OrchestratorFacts) -> RuntimeCodeCorrelation:
@@ -323,10 +324,16 @@ def decide(facts: OrchestratorFacts) -> FirstResponderDecision:
             transition="assisted_patch_worktree",
         )
     if AgentName.verify in selected:
+        if facts.independent_verification_id:
+            return build(
+                OrchestratorAction.verify_independently,
+                state=EvidenceLifecycleState.verified,
+                transition="independent_verification_executed",
+            )
         return build(
             OrchestratorAction.verify_independently,
-            state=EvidenceLifecycleState.verified,
-            transition="assisted_verify_independent",
+            state=EvidenceLifecycleState.recommended,
+            transition="verify_eligible_not_executed",
         )
     if selected:
         return build(

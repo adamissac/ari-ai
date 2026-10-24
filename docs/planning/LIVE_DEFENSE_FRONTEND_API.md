@@ -4,7 +4,7 @@ Status: **Phase 7A first-responder** on `cursor/live-defense-first-responder-004
 from live `origin/main`. Shadow-pilot stays recommendation-only. Owned-test
 controls remain a **separate** authorization path. First-responder modes are
 OFF / MONITOR|SHADOW / ASSISTED RESPONSE. AUTO-EXECUTE is rejected. Producer:
-control plane (`backend/`, `shared/` 0.20.0). Phases 1–6 are extended, not
+control plane (`backend/`, `shared/` 0.21.0; 0.20.0 reserved for open #412). Phases 1–6 are extended, not
 rebuilt. An RL recommendation is not executed defense.
 
 Canonical types: `shared/shared/monitoring.py`, `shared/shared/incident.py`,

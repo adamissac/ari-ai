@@ -7,7 +7,7 @@ test('Live Defense Phase 7A: first-responder modes, states, no auto-execute', as
 
   await page.goto(`/projects/${pid}/live-defense`);
   await expect(page.getByTestId('live-defense')).toHaveAttribute('data-mode', 'live');
-  await expect(page.getByRole('button', { name: /^(apply|isolate|rate-limit|block source|auto-execute)$/i })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^(apply|isolate|rate-limit|block source|auto-execute|mark delivered)$/i })).toHaveCount(0);
 
   await page.getByRole('navigation', { name: 'Live Defense' }).getByRole('link', { name: 'First responder' }).click();
   await expect(page).toHaveURL(new RegExp(`/projects/${pid}/live-defense/first-responder`));

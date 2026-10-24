@@ -316,12 +316,5 @@ def confirm_handoff(handoff_id: str, request: Request) -> dict[str, Any]:
         )
 
 
-@router.post("/projects/{project_id}/first-responder/auto-execute")
-def reject_auto_execute(project_id: str, request: Request) -> None:
-    with transaction() as conn:
-        require_project(conn, require_user(conn, request), project_id, MemberRole.owner)
-        raise ApiError(
-            ErrorCode.VALIDATION_FAILED,
-            "AUTO-EXECUTE is not a permitted first-responder mode",
-            400,
-        )
+# AUTO-EXECUTE is not a route. Absence is the control: OpenAPI must not list
+# apply/execute/isolate paths (backend/tests/test_rl_no_action_path.py).

@@ -7,7 +7,7 @@ AuthorizedScope. Verify is independent of Patch. LLM prose cannot confirm a thre
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 import sqlalchemy as sa
@@ -30,9 +30,11 @@ from backend.db import (
     runtime_windows,
     snapshots,
     transaction,
+    verification_results,
 )
 from backend.live_defense.capabilities import load_registry
 from backend.live_defense.modes import (
+    acquire_first_responder_lock,
     cancel_first_responder_jobs,
     effective_permissions,
     load_intent,
@@ -41,7 +43,7 @@ from backend.live_defense.modes import (
 )
 from backend.live_defense.orchestrator import OrchestratorFacts, decide
 from backend.services import active_scope_for_repo, project_org
-from backend.worker import JobContext, handler
+from backend.worker import JobCancelled, JobContext, handler
 from shared.assessment import AgentName
 from shared.audit import ActorType
 from shared.base import utcnow
@@ -108,23 +110,142 @@ def _application(conn: Connection, app_id: str | None) -> ConnectedApplication |
     )
 
 
-def _trusted_mapping(conn: Connection, application_id: str | None) -> dict[str, Any] | None:
-    if not application_id:
+def _as_aware(value: datetime | str | None) -> datetime | None:
+    if value is None:
         return None
-    row = (
+    parsed: datetime
+    if isinstance(value, str):
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    else:
+        parsed = value
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed
+
+
+def _mapping_deployed_at(mapping: dict[str, Any]) -> datetime | None:
+    return _as_aware((mapping.get("doc") or {}).get("deployed_at"))
+
+
+def _trusted_mapping(
+    conn: Connection,
+    application_id: str | None,
+    *,
+    window_end: datetime | None = None,
+) -> dict[str, Any] | None:
+    """Owner-attested mapping that covers ``window_end``, not the newest row.
+
+    Attribution is UNKNOWN when no non-revoked mapping has ``deployed_at`` at or
+    before the telemetry event window. A later deploy cannot explain earlier traffic.
+    """
+    if not application_id or window_end is None:
+        return None
+    window = _as_aware(window_end)
+    if window is None:
+        return None
+    rows = (
         conn.execute(
-            sa.select(deploy_commit_mappings)
-            .where(
+            sa.select(deploy_commit_mappings).where(
                 deploy_commit_mappings.c.application_id == application_id,
                 deploy_commit_mappings.c.revoked_at.is_(None),
             )
-            .order_by(deploy_commit_mappings.c.created_at.desc())
-            .limit(1)
+        )
+        .mappings()
+        .all()
+    )
+    eligible: list[tuple[datetime, dict[str, Any]]] = []
+    for row in rows:
+        mapping = dict(row)
+        deployed = _mapping_deployed_at(mapping)
+        if deployed is None or deployed > window:
+            continue
+        eligible.append((deployed, mapping))
+    if not eligible:
+        return None
+    eligible.sort(key=lambda item: item[0], reverse=True)
+    return eligible[0][1]
+
+
+def _mapping_by_id(conn: Connection, mapping_id: str | None) -> dict[str, Any] | None:
+    if not mapping_id:
+        return None
+    row = (
+        conn.execute(
+            sa.select(deploy_commit_mappings).where(
+                deploy_commit_mappings.c.id == mapping_id,
+                deploy_commit_mappings.c.revoked_at.is_(None),
+            )
         )
         .mappings()
         .first()
     )
     return dict(row) if row else None
+
+
+def _independent_verification(conn: Connection, project_id: str) -> str | None:
+    """Return an executed VerificationResult id, not Verify eligibility."""
+    return conn.execute(
+        sa.select(verification_results.c.id)
+        .select_from(
+            verification_results.join(
+                patch_candidates, patch_candidates.c.id == verification_results.c.patch_id
+            ).join(findings, findings.c.id == patch_candidates.c.finding_id)
+        )
+        .where(findings.c.project_id == project_id)
+        .order_by(verification_results.c.created_at.desc())
+        .limit(1)
+    ).scalar()
+
+
+def _mark_invocation_cancelled(conn: Connection, invocation_id: str, reason: str) -> None:
+    row = (
+        conn.execute(
+            sa.select(first_responder_invocations).where(
+                first_responder_invocations.c.id == invocation_id
+            )
+        )
+        .mappings()
+        .first()
+    )
+    if row is None:
+        return
+    inv = FirstResponderInvocation.model_validate(row["doc"])
+    updated = inv.model_copy(
+        update={
+            "status": AgentInvocationStatus.cancelled,
+            "reason": reason,
+            "provider_mode": "none",
+        }
+    )
+    conn.execute(
+        sa.update(first_responder_invocations)
+        .where(first_responder_invocations.c.id == invocation_id)
+        .values(status=AgentInvocationStatus.cancelled.value, doc=updated.model_dump(mode="json"))
+    )
+
+
+def _abort_if_off_or_cancelled(
+    conn: Connection,
+    ctx: JobContext,
+    *,
+    project_id: str,
+    invocation_id: str | None = None,
+) -> None:
+    ctx.check_cancelled()
+    if jobq.is_cancel_requested(conn, ctx.job.id):
+        if invocation_id:
+            _mark_invocation_cancelled(
+                conn, invocation_id, "job cancelled; first-responder OFF or cancel requested"
+            )
+        raise JobCancelled(ctx.job.id)
+    if load_intent(conn, project_id).intent is FirstResponderIntent.off:
+        if invocation_id:
+            _mark_invocation_cancelled(
+                conn,
+                invocation_id,
+                "first-responder OFF is effective; agent step must not continue",
+            )
+        raise JobCancelled(f"{ctx.job.id}: first-responder OFF")
 
 
 def _findings_at(conn: Connection, project_id: str, commit_sha: str | None) -> list[str]:
@@ -182,8 +303,9 @@ def maybe_enqueue(
     event_ids: list[str],
 ) -> tuple[str, bool] | None:
     """Enqueue a first-responder job when effective mode is not OFF. Isolated queue."""
+    acquire_first_responder_lock(conn, project_id)
     app = _application(conn, application_id)
-    mapping = _trusted_mapping(conn, application_id)
+    mapping = _trusted_mapping(conn, application_id, window_end=window_end)
     perms = effective_permissions(
         conn,
         project_id=project_id,
@@ -417,16 +539,20 @@ def process_first_responder(
     source: str,
     live_policy_decision_id: str | None,
     event_ids: list[str],
+    job_ctx: JobContext | None = None,
 ) -> dict[str, Any]:
     dedupe = f"{project_id}:{application_id or '-'}:{window_end.isoformat()}:{source}"
     with transaction() as conn:
+        acquire_first_responder_lock(conn, project_id)
+        if job_ctx is not None:
+            _abort_if_off_or_cancelled(conn, job_ctx, project_id=project_id)
         existing = conn.execute(
             sa.select(first_responder_decisions.c.id).where(
                 first_responder_decisions.c.dedupe_key == dedupe
             )
         ).scalar()
         app = _application(conn, application_id)
-        mapping = _trusted_mapping(conn, application_id)
+        mapping = _trusted_mapping(conn, application_id, window_end=window_end)
         repo_id = mapping["repo_id"] if mapping else None
         perms = effective_permissions(
             conn,
@@ -444,9 +570,7 @@ def process_first_responder(
             ).scalar()
             shadow = doc
         mapped_commit = mapping["commit_sha"] if mapping else None
-        deployed_at = (mapping["doc"] or {}).get("deployed_at") if mapping else None
-        if isinstance(deployed_at, str):
-            deployed_at = datetime.fromisoformat(deployed_at)
+        deployed_at = _mapping_deployed_at(mapping) if mapping else None
         facts = OrchestratorFacts(
             project_id=project_id,
             application_id=application_id,
@@ -474,6 +598,7 @@ def process_first_responder(
             finding_ids_at_commit=tuple(_findings_at(conn, project_id, mapped_commit)),
             shadow_action=(shadow or {}).get("action"),
             q_values=None,
+            independent_verification_id=_independent_verification(conn, project_id),
         )
         decision = decide(facts)
         stored, created = _persist_decision(conn, decision, dedupe)
@@ -510,6 +635,7 @@ def process_first_responder(
 @handler("live_defense_first_responder")
 def live_defense_first_responder(ctx: JobContext) -> dict[str, Any]:
     payload = ctx.job.payload
+    ctx.check_cancelled()
     window_end = datetime.fromisoformat(payload["window_end"])
     return process_first_responder(
         payload["project_id"],
@@ -518,6 +644,7 @@ def live_defense_first_responder(ctx: JobContext) -> dict[str, Any]:
         source=payload["source"],
         live_policy_decision_id=payload.get("live_policy_decision_id"),
         event_ids=list(payload.get("event_ids") or []),
+        job_ctx=ctx,
     )
 
 
@@ -530,9 +657,17 @@ def live_defense_agent_step(ctx: JobContext) -> dict[str, Any]:
     refuses to share Patch state. This handler records honest skip/fail
     outcomes; it does not invent a confirmed threat from model text.
     """
+    ctx.check_cancelled()
     payload = ctx.job.payload
     agent = AgentName(payload["agent"])
     with transaction() as conn:
+        acquire_first_responder_lock(conn, payload["project_id"])
+        _abort_if_off_or_cancelled(
+            conn,
+            ctx,
+            project_id=payload["project_id"],
+            invocation_id=payload["invocation_id"],
+        )
         row = (
             conn.execute(
                 sa.select(first_responder_invocations).where(
@@ -558,7 +693,7 @@ def live_defense_agent_step(ctx: JobContext) -> dict[str, Any]:
                 )
             ).scalar()
             decision = FirstResponderDecision.model_validate(decision_doc)
-            mapping = _trusted_mapping(conn, decision.application_id)
+            mapping = _mapping_by_id(conn, decision.correlation.mapping_id)
             repo_id = mapping["repo_id"] if mapping else None
             scope = active_scope_for_repo(conn, decision.project_id, repo_id) if repo_id else None
             if scope is None:
@@ -572,16 +707,31 @@ def live_defense_agent_step(ctx: JobContext) -> dict[str, Any]:
                 )
         elif agent is AgentName.verify:
             status = AgentInvocationStatus.completed_unverified
-            reason = "Verify is independent of Patch; no Patch transcript or worktree was shared"
+            reason = (
+                "Verify eligibility is not verification. Independently executed "
+                "verification evidence is required; this invocation stays unverified."
+            )
             if not _patch_candidate(conn, payload["project_id"]):
                 status = AgentInvocationStatus.skipped_no_patch
                 reason = "Verify skipped: no PatchCandidate"
+            elif not _independent_verification(conn, payload["project_id"]):
+                status = AgentInvocationStatus.completed_unverified
+                reason = (
+                    "Verify ran without independently executed verification evidence; "
+                    "evidence_state stays unverified"
+                )
         else:
             status = AgentInvocationStatus.completed_unverified
             reason = (
                 f"{agent.value} investigative step recorded as unverified. "
                 "LLM prose is not confirmation."
             )
+        _abort_if_off_or_cancelled(
+            conn,
+            ctx,
+            project_id=payload["project_id"],
+            invocation_id=inv.id,
+        )
         updated = inv.model_copy(
             update={"status": status, "reason": reason, "provider_mode": "none"}
         )
@@ -595,4 +745,20 @@ def live_defense_agent_step(ctx: JobContext) -> dict[str, Any]:
 
 def reconcile_off(conn: Connection, project_id: str) -> dict[str, int]:
     cancelled = cancel_first_responder_jobs(conn, project_id)
+    queued = (
+        conn.execute(
+            sa.select(first_responder_invocations.c.id).where(
+                first_responder_invocations.c.project_id == project_id,
+                first_responder_invocations.c.status == AgentInvocationStatus.queued.value,
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for invocation_id in queued:
+        _mark_invocation_cancelled(
+            conn,
+            invocation_id,
+            "first-responder OFF is effective; queued step will not run",
+        )
     return {"cancelled_first_responder_jobs": cancelled}
