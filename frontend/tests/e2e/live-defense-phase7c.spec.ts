@@ -40,15 +40,28 @@ test('Live Defense Phase 7C: Scout executes, Probe is not expanded, no AUTO-EXEC
   await page.getByRole('button', { name: 'Register app' }).click();
   const appCard = page.locator('[data-testid^="live-defense-app-"]').filter({ hasText: 'phase7c staging' });
   await expect(appCard).toBeVisible();
+  const appId = (await appCard.getAttribute('data-testid'))!.replace('live-defense-app-', '');
   await appCard.getByRole('button', { name: 'Issue ingest token' }).click();
   const once = page.getByTestId('live-defense-token-once');
   const token = await once.locator('code').innerText();
 
+  // Owner-attested mapping via the same CSRF API the UI uses. Playwright's
+  // selectOption on the controlled Application <select> did not enable Attest
+  // in the full CI suite (button stayed disabled for 240s).
+  const me = await page.request.get(`${api}/me`);
+  const csrf = (await me.json() as { csrf_token: string }).csrf_token;
+  const mapping = await page.request.post(`${api}/applications/${appId}/deploy-mappings`, {
+    headers: { 'X-CSRF-Token': csrf },
+    data: {
+      repo_id: rid,
+      commit_sha: sha,
+      deployed_at: new Date(Date.now() - 5 * 60_000).toISOString(),
+      source: 'owner_attested',
+    },
+  });
+  expect(mapping.ok(), await mapping.text()).toBeTruthy();
+
   await page.getByRole('navigation', { name: 'Live Defense' }).getByRole('link', { name: 'First responder' }).click();
-  await page.getByLabel('Application').selectOption({ label: 'phase7c staging' });
-  await page.getByLabel('Repository id').fill(rid);
-  await page.getByLabel('Commit SHA').fill(sha);
-  await page.getByRole('button', { name: 'Attest mapping' }).click();
 
   await request.post(`${api}/ingest/runtime/${pid}`, {
     headers: { Authorization: `Bearer ${token.trim()}` },
