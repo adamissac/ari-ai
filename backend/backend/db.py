@@ -638,6 +638,98 @@ sa.Index(
 )
 
 
+first_responder_modes = sa.Table(
+    "first_responder_modes",
+    metadata,
+    sa.Column("project_id", sa.String(80), sa.ForeignKey("projects.id"), primary_key=True),
+    sa.Column("intent", sa.String(40), nullable=False),
+    sa.Column("updated_by", sa.String(80), sa.ForeignKey("users.id"), nullable=False),
+    sa.Column("updated_at", TS, nullable=False),
+    sa.Column("doc", JSONB, nullable=False),
+    sa.CheckConstraint(
+        "intent in ('off','monitor','assisted_response')", name="first_responder_intent"
+    ),
+)
+
+deploy_commit_mappings = sa.Table(
+    "deploy_commit_mappings",
+    metadata,
+    _id(),
+    sa.Column(
+        "project_id", sa.String(80), sa.ForeignKey("projects.id"), nullable=False, index=True
+    ),
+    sa.Column(
+        "application_id",
+        sa.String(80),
+        sa.ForeignKey("connected_applications.id"),
+        nullable=False,
+        index=True,
+    ),
+    sa.Column("repo_id", sa.String(80), sa.ForeignKey("repositories.id"), nullable=False),
+    sa.Column("commit_sha", sa.String(40), nullable=False),
+    sa.Column("revoked_at", TS),
+    sa.Column("created_by", sa.String(80), sa.ForeignKey("users.id"), nullable=False),
+    sa.Column("doc", JSONB, nullable=False),
+    _created(),
+)
+
+first_responder_decisions = sa.Table(
+    "first_responder_decisions",
+    metadata,
+    _id(),
+    sa.Column(
+        "project_id", sa.String(80), sa.ForeignKey("projects.id"), nullable=False, index=True
+    ),
+    sa.Column("application_id", sa.String(80), sa.ForeignKey("connected_applications.id")),
+    sa.Column("dedupe_key", sa.String(400), nullable=False, unique=True),
+    sa.Column("action", sa.String(40), nullable=False),
+    sa.Column("doc", JSONB, nullable=False),
+    _created(),
+)
+
+first_responder_invocations = sa.Table(
+    "first_responder_invocations",
+    metadata,
+    _id(),
+    sa.Column(
+        "decision_id",
+        sa.String(80),
+        sa.ForeignKey("first_responder_decisions.id"),
+        nullable=False,
+        index=True,
+    ),
+    sa.Column(
+        "project_id", sa.String(80), sa.ForeignKey("projects.id"), nullable=False, index=True
+    ),
+    sa.Column("agent", sa.String(20), nullable=False),
+    sa.Column("status", sa.String(40), nullable=False),
+    sa.Column("doc", JSONB, nullable=False),
+    _created(),
+)
+
+analyst_handoffs = sa.Table(
+    "analyst_handoffs",
+    metadata,
+    _id(),
+    sa.Column(
+        "project_id", sa.String(80), sa.ForeignKey("projects.id"), nullable=False, index=True
+    ),
+    sa.Column("application_id", sa.String(80), sa.ForeignKey("connected_applications.id")),
+    sa.Column(
+        "decision_id",
+        sa.String(80),
+        sa.ForeignKey("first_responder_decisions.id"),
+        nullable=False,
+        index=True,
+    ),
+    sa.Column("state", sa.String(40), nullable=False),
+    sa.Column("confirmation", sa.String(20), nullable=False),
+    sa.Column("created_by", sa.String(80), sa.ForeignKey("users.id"), nullable=False),
+    sa.Column("doc", JSONB, nullable=False),
+    _created(),
+)
+
+
 idempotency_keys = sa.Table(
     "idempotency_keys",
     metadata,

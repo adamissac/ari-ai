@@ -1,0 +1,506 @@
+{
+  "$defs": {
+    "ActionScore": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "enum": [
+            "noop",
+            "raise_monitoring",
+            "rate_limit",
+            "isolate",
+            "request_reassessment",
+            "escalate_to_human",
+            "block_principal",
+            "block_principal_long",
+            "block_top_principal_long"
+          ],
+          "title": "Action",
+          "type": "string"
+        },
+        "node": {
+          "anyOf": [
+            {
+              "enum": [
+                "gateway",
+                "api",
+                "auth",
+                "payments",
+                "db"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Node"
+        },
+        "q_value": {
+          "title": "Q Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "action",
+        "node",
+        "q_value"
+      ],
+      "title": "ActionScore",
+      "type": "object"
+    },
+    "AgentCapabilityClass": {
+      "enum": [
+        "investigative_readonly",
+        "code_changing",
+        "disruptive_scoped"
+      ],
+      "title": "AgentCapabilityClass",
+      "type": "string"
+    },
+    "AgentName": {
+      "enum": [
+        "scout",
+        "probe",
+        "trace",
+        "diagnose",
+        "patch",
+        "fortify",
+        "verify",
+        "reviewer"
+      ],
+      "title": "AgentName",
+      "type": "string"
+    },
+    "BlockedAgent": {
+      "additionalProperties": false,
+      "properties": {
+        "capability_class": {
+          "$ref": "#/$defs/AgentCapabilityClass"
+        },
+        "name": {
+          "$ref": "#/$defs/AgentName"
+        },
+        "reason": {
+          "maxLength": 500,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "reason",
+        "capability_class"
+      ],
+      "title": "BlockedAgent",
+      "type": "object"
+    },
+    "ConfirmationState": {
+      "description": "Confirmed vs unverified stay distinct. LLM prose cannot set confirmed.",
+      "enum": [
+        "unverified",
+        "confirmed"
+      ],
+      "title": "ConfirmationState",
+      "type": "string"
+    },
+    "CorrelationConfidence": {
+      "description": "Explicit correlation confidence. Never a probability. UNKNOWN without a mapping.",
+      "enum": [
+        "unknown",
+        "none",
+        "low",
+        "medium"
+      ],
+      "title": "CorrelationConfidence",
+      "type": "string"
+    },
+    "EvidenceLifecycleState": {
+      "description": "UI case states. Recommended is not executed. RL rec is never Executed.",
+      "enum": [
+        "observed",
+        "suspected",
+        "verified",
+        "recommended",
+        "authorized",
+        "executed",
+        "failed",
+        "rolled_back"
+      ],
+      "title": "EvidenceLifecycleState",
+      "type": "string"
+    },
+    "FirstResponderIntent": {
+      "description": "Server-enforced modes. MONITOR and SHADOW are the same mode.\n\nThere is no AUTO-EXECUTE value. Unknown or auto-execute input fails closed.",
+      "enum": [
+        "off",
+        "monitor",
+        "assisted_response"
+      ],
+      "title": "FirstResponderIntent",
+      "type": "string"
+    },
+    "OrchestratorAction": {
+      "description": "Deterministic first-responder actions. None of these execute a LiveControl.",
+      "enum": [
+        "ignore",
+        "record_observation",
+        "correlate",
+        "investigate",
+        "confirm_with_probe",
+        "propose_worktree_patch",
+        "verify_independently",
+        "recommend_control",
+        "escalate_to_analyst",
+        "defer_budget",
+        "cancel_run",
+        "reject_auto_execute"
+      ],
+      "title": "OrchestratorAction",
+      "type": "string"
+    },
+    "RuntimeCodeCorrelation": {
+      "additionalProperties": false,
+      "properties": {
+        "application_id": {
+          "anyOf": [
+            {
+              "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Application Id"
+        },
+        "commit_sha": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{40}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Commit Sha"
+        },
+        "confidence": {
+          "$ref": "#/$defs/CorrelationConfidence"
+        },
+        "finding_ids_at_commit": {
+          "items": {
+            "pattern": "^fnd_[0-9A-Za-z_\\-]{8,64}$",
+            "type": "string"
+          },
+          "title": "Finding Ids At Commit",
+          "type": "array"
+        },
+        "finding_is_not_proof_of_this_request": {
+          "const": true,
+          "default": true,
+          "title": "Finding Is Not Proof Of This Request",
+          "type": "boolean"
+        },
+        "mapping_id": {
+          "anyOf": [
+            {
+              "pattern": "^dcm_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mapping Id"
+        },
+        "note": {
+          "maxLength": 500,
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "confidence",
+        "note"
+      ],
+      "title": "RuntimeCodeCorrelation",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Versioned decision record. Future RL must beat this baseline. No invented probabilities.",
+  "properties": {
+    "action": {
+      "$ref": "#/$defs/OrchestratorAction"
+    },
+    "application_id": {
+      "anyOf": [
+        {
+          "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Application Id"
+    },
+    "auto_execute": {
+      "const": false,
+      "default": false,
+      "title": "Auto Execute",
+      "type": "boolean"
+    },
+    "blocked_agents": {
+      "items": {
+        "$ref": "#/$defs/BlockedAgent"
+      },
+      "title": "Blocked Agents",
+      "type": "array"
+    },
+    "budget_usd_remaining": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Budget Usd Remaining"
+    },
+    "cancel_reason": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Cancel Reason"
+    },
+    "cancelled": {
+      "default": false,
+      "title": "Cancelled",
+      "type": "boolean"
+    },
+    "caveat": {
+      "default": "Deterministic first-responder decision. LLM prose is never proof of a confirmed threat. RL recommendations are not executed defense. AUTO-EXECUTE does not exist.",
+      "maxLength": 500,
+      "title": "Caveat",
+      "type": "string"
+    },
+    "confirmation": {
+      "$ref": "#/$defs/ConfirmationState",
+      "default": "unverified"
+    },
+    "correlation": {
+      "$ref": "#/$defs/RuntimeCodeCorrelation"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "deadline_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Deadline At"
+    },
+    "effective_mode": {
+      "$ref": "#/$defs/FirstResponderIntent"
+    },
+    "evidence_state": {
+      "$ref": "#/$defs/EvidenceLifecycleState"
+    },
+    "executed": {
+      "const": false,
+      "default": false,
+      "title": "Executed",
+      "type": "boolean"
+    },
+    "id": {
+      "pattern": "^frd_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "incident_id": {
+      "anyOf": [
+        {
+          "pattern": "^inc_[0-9A-Za-z_\\-]{8,64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Incident Id"
+    },
+    "intent_mode": {
+      "$ref": "#/$defs/FirstResponderIntent"
+    },
+    "live_policy_decision_id": {
+      "anyOf": [
+        {
+          "pattern": "^lpd_[0-9A-Za-z_\\-]{8,64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Live Policy Decision Id"
+    },
+    "llm_prose_is_not_confirmation": {
+      "const": true,
+      "default": true,
+      "title": "Llm Prose Is Not Confirmation",
+      "type": "boolean"
+    },
+    "loop_count": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Loop Count",
+      "type": "integer"
+    },
+    "orchestrator_version": {
+      "default": "7a.1.0",
+      "maxLength": 500,
+      "title": "Orchestrator Version",
+      "type": "string"
+    },
+    "outcome_label": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Human later; never auto-assigned as an RL label",
+      "title": "Outcome Label"
+    },
+    "predicted_probability": {
+      "default": null,
+      "title": "Predicted Probability",
+      "type": "null"
+    },
+    "project_id": {
+      "pattern": "^prj_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "q_values": {
+      "anyOf": [
+        {
+          "items": {
+            "$ref": "#/$defs/ActionScore"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Copied only when frozen v6 inference actually ran",
+      "title": "Q Values"
+    },
+    "recommended_control": {
+      "anyOf": [
+        {
+          "enum": [
+            "noop",
+            "raise_monitoring",
+            "rate_limit",
+            "isolate",
+            "request_reassessment",
+            "escalate_to_human",
+            "block_principal",
+            "block_principal_long",
+            "block_top_principal_long"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Recommended Control"
+    },
+    "recommended_is_not_executed": {
+      "const": true,
+      "default": true,
+      "title": "Recommended Is Not Executed",
+      "type": "boolean"
+    },
+    "retry_count": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Retry Count",
+      "type": "integer"
+    },
+    "selected_agents": {
+      "items": {
+        "$ref": "#/$defs/AgentName"
+      },
+      "title": "Selected Agents",
+      "type": "array"
+    },
+    "simulated": {
+      "default": false,
+      "title": "Simulated",
+      "type": "boolean"
+    },
+    "transition": {
+      "maxLength": 500,
+      "title": "Transition",
+      "type": "string"
+    },
+    "trigger_event_ids": {
+      "items": {
+        "pattern": "^evt_[0-9A-Za-z_\\-]{8,64}$",
+        "type": "string"
+      },
+      "title": "Trigger Event Ids",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "project_id",
+    "created_at",
+    "intent_mode",
+    "effective_mode",
+    "action",
+    "evidence_state",
+    "correlation",
+    "transition"
+  ],
+  "title": "FirstResponderDecision",
+  "type": "object"
+}

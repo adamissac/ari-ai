@@ -350,6 +350,38 @@ export class ApiClient {
   clearEmergencyStop(id: string, options?: RequestOptions): Promise<C.EmergencyStop> {
     return this.request(`/emergency-stop/${segment(id)}/clear`, 'EmergencyStop', options, {}) as Promise<C.EmergencyStop>;
   }
+  firstResponderMode(projectId: string, options?: RequestOptions): Promise<C.FirstResponderModeView> {
+    return this.request(`/projects/${segment(projectId)}/first-responder/mode`, 'FirstResponderModeView', options) as Promise<C.FirstResponderModeView>;
+  }
+  setFirstResponderMode(projectId: string, body: C.FirstResponderModeUpdate, options?: RequestOptions): Promise<C.FirstResponderModeView> {
+    return this.request(`/projects/${segment(projectId)}/first-responder/mode`, 'FirstResponderModeView', options, body) as Promise<C.FirstResponderModeView>;
+  }
+  firstResponderPermissions(appId: string, options?: RequestOptions): Promise<C.FirstResponderEffectivePermissions> {
+    return this.request(`/applications/${segment(appId)}/first-responder/permissions`, 'FirstResponderEffectivePermissions', options) as Promise<C.FirstResponderEffectivePermissions>;
+  }
+  firstResponderCapabilities(projectId: string, options?: RequestOptions): Promise<C.AgentCapabilityRegistry> {
+    return this.request(`/projects/${segment(projectId)}/first-responder/capabilities`, 'AgentCapabilityRegistry', options) as Promise<C.AgentCapabilityRegistry>;
+  }
+  async firstResponderDecisions(projectId: string, options?: RequestOptions): Promise<LabeledPage<C.FirstResponderDecision>> {
+    const record = object(await this.request(`/projects/${segment(projectId)}/first-responder/decisions`, RAW, options), 'first-responder decision list');
+    const cursor = record.next_cursor;
+    if (!Array.isArray(record.items) || (cursor !== null && (typeof cursor !== 'string' || cursor.length === 0 || cursor.length > 200)) || typeof record.label !== 'string' || Object.keys(record).length !== 3) {
+      throw new ProtocolError('Invalid first-responder decision list');
+    }
+    return { items: record.items.map(i => decode<C.FirstResponderDecision>('FirstResponderDecision', i)), next_cursor: cursor, label: record.label };
+  }
+  firstResponderInvocations(projectId: string, options?: RequestOptions): Promise<Page<C.FirstResponderInvocation>> {
+    return this.list(`/projects/${segment(projectId)}/first-responder/invocations`, 'FirstResponderInvocation', options);
+  }
+  firstResponderHandoffs(projectId: string, options?: RequestOptions): Promise<Page<C.AnalystHandoff>> {
+    return this.list(`/projects/${segment(projectId)}/first-responder/handoffs`, 'AnalystHandoff', options);
+  }
+  createDeployCommitMapping(appId: string, body: C.DeployCommitMappingCreate, options?: RequestOptions): Promise<C.DeployCommitMapping> {
+    return this.request(`/applications/${segment(appId)}/deploy-mappings`, 'DeployCommitMapping', options, body) as Promise<C.DeployCommitMapping>;
+  }
+  ackHandoffDelivery(id: string, body: C.AnalystHandoffDeliveryAck, options?: RequestOptions): Promise<C.AnalystHandoff> {
+    return this.request(`/first-responder/handoffs/${segment(id)}/delivery-ack`, 'AnalystHandoff', options, body) as Promise<C.AnalystHandoff>;
+  }
   /** Repositories the user can connect through the GitHub App, and the App's install link. */
   async githubRepositories(options?: RequestOptions): Promise<AccessibleRepositories> {
     const record = object(await this.request('/github/repositories', RAW, options), 'repository list');

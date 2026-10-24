@@ -22,4 +22,5 @@ Publish V0 early (M0), then minimize field/enum churn. Use adapters rather than 
 
 | Date (UTC) | Version | Change | Status |
 |---|---|---|---|
+| 2026-10-24 | 0.20.0 | Live Defense Phase 7A first-responder (additive): modes, orchestrator decisions, seven-agent capability registry, deploy mapping, analyst handoff, versioned RL-ready decision records. No AUTO-EXECUTE. `20261024T023000Z-alan-to-all-live-defense-phase7a-contracts`. Open PR #412 also used 0.20.0 for Phase 6.5 — rebase #412 to 0.21.0 if both merge. | Proposed on `cursor/live-defense-first-responder-0044`; in force after merge + owner acks |
 | 2026-10-17 | 0.1.0 (V0) | Initial `shared/` contracts, generated JSON Schema/TS, fixtures (`20261017T010331Z-srihith-to-all-contracts-v0`). RL types adopted from Adam's proposal (#2). | Proposed in Srihith PR; in force after merge + owner acks |

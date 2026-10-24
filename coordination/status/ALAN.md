@@ -1,13 +1,13 @@
 # Alan — implementation status
 
 Owner: Alan (`security-agents/`, SEC-001 … SEC-013; interim Live Defense UI)
-Branch: `feat/live-defense-phase6-pilot-audit`
-Current task: Phase 6 post-merge integration audit and shadow-pilot readiness (no Phase 7)
-Last remote sync: 2026-10-23, `origin/main` @ `02ab34de` (PRs #393 and #395 merged on main)
-API/contract dependencies: `shared` 0.9.0 `CheckCategory`; `backend.host` checkpoints; `code_review.api` functional helpers
-Recent PR/commit: `feat/live-defense-phase6-pilot-audit` (Phase 6 audit; no Phase 7)
-Blockers: live seven-agent run (issue #10, no key); Docker images (INFRA-005); Phase 6 merge needs CI + human review
-Next action: wait for CI on the Codex P1/P2 head of #411; merge only if MERGEABLE + reviews satisfied + no enforcement expansion; do not start Phase 7
+Branch: `cursor/live-defense-first-responder-0044`
+Current task: Phase 7A deterministic first-responder orchestration (no Phase 7B, no AUTO-EXECUTE)
+Last remote sync: 2026-10-24, `origin/main` @ `a97820f1` (PR #438 merged; #412 still OPEN)
+API/contract dependencies: `shared` 0.20.0 first-responder contracts; seven AgentSpecs; backend host checkpoints
+Recent PR/commit: `cursor/live-defense-first-responder-0044` (Phase 7A; leave open for security review)
+Blockers: live seven-agent Claude run (issue #10, no key); human security review of mode/privilege expansion
+Next action: leave Phase 7A PR open; do not start Phase 7B; Codex must not train from these records yet
 
 ## What runs today
 

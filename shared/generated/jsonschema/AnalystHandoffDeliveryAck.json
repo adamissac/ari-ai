@@ -1,0 +1,28 @@
+{
+  "additionalProperties": false,
+  "description": "Provider confirmation that an alert was received. Required before state=delivered.",
+  "properties": {
+    "provider": {
+      "maxLength": 500,
+      "title": "Provider",
+      "type": "string"
+    },
+    "provider_message_id": {
+      "maxLength": 500,
+      "title": "Provider Message Id",
+      "type": "string"
+    },
+    "received_at": {
+      "format": "date-time",
+      "title": "Received At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "provider",
+    "provider_message_id",
+    "received_at"
+  ],
+  "title": "AnalystHandoffDeliveryAck",
+  "type": "object"
+}

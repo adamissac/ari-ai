@@ -18,6 +18,18 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-24 — Cursor (agent, Alan) — Live Defense Phase 7A first-responder
+- Did: branch `cursor/live-defense-first-responder-0044` from live `origin/main` (fast-forwarded through `211c2b24` / PR #435 to `a97820f1` / PR #438). Confirmed PRs #411 MERGED, #412 OPEN, #422/#430/#433/#435 MERGED, #438 MERGED (Adam status only). Schema 0.20.0, Alembic `0015`. Added fail-closed modes OFF/MONITOR|SHADOW/ASSISTED RESPONSE (no AUTO-EXECUTE), deterministic orchestrator `7a.1.0`, capability registry from real seven AgentSpecs, owner-attested deploy mapping, analyst handoff with provider-ack delivery, First responder UI tab. Did **not** train RL, edit Codex/v6/holdout, create AUTO-EXECUTE, expand production enforcement, or start Phase 7B.
+- Commands run and results (executed):
+  - `make check` — ruff pass; format 193 files; `shared.export --check` 154 files; examples check pass
+  - `uv run mypy` — Success: no issues found in 40 source files
+  - `uv run pytest -q backend/tests/test_live_defense_phase7a.py backend/tests/test_parallel_migrations.py backend/tests/test_live_defense_authorize.py backend/tests/test_live_defense_phase5.py backend/tests/test_live_defense_phase6.py` — 43 passed
+  - `uv run pytest -q shared/tests/test_contracts.py backend/tests/test_live_defense_phase7a.py` — 95 passed, 1 skipped (TSC unset)
+  - frontend lint + typecheck pass; vitest 330 passed / 78 files; transport 35 passed
+  - Playwright `tests/e2e/live-defense-phase7a.spec.ts` via `stack.py` + Chrome — 1 passed (2.5s); screenshots in store `media/live-defense-phase7a/`
+- Decisions: **ENGINEERING GO FOR OWNED STAGING**. Leave the PR open for human security review (mode / privilege / trust-boundary expansion). Eval: `docs/LIVE_DEFENSE_PHASE7A_FIRST_RESPONDER.md`.
+- Warnings: **leave the PR open**. #412 also claimed 0.20.0; rebase that branch to 0.21.0 if both land. Do not start Phase 7B. Live seven-agent Claude loop is still UNVERIFIED.
+
 ### 2026-10-23 — Claude Code (Adam) — build-recipe PR for connected repositories
 - Did: `backend/backend/recipes.py`. Connecting a repo with an `installation_id` (and `installation` / `installation_repositories` webhooks for repos already connected) queues `propose_build_recipe`: fetch the default-branch tip into the bare checkout, skip if `build_recipe.json` exists, index with code intelligence, draft the recipe (FastAPI app/factory, mount prefixes, single-param GET routes, test roots, exact pins from `uv.lock`/`poetry.lock`/`==` requirements minus the sandbox runner wheels), let the `recipe` agent (Haiku 5.5 in production) add identities, resources, routes and a `deploy/sandbox_target.py` harness, validate deterministically (`sandbox_setup`, `app_factory`, routes in the index, every identity owns every route's resource, fixture values literal in the harness, harness parses), push `ari/build-recipe` with `push_patch` and open a PR. Audit: `recipe.pr_opened|skipped|unsupported|invalid|failed`.
 - State: tests in `backend/tests/test_build_recipes.py` (real git over a file:// remote, real Postgres, GitHub App and Claude faked). Dry run `uv run python -m backend.recipes <checkout>` on ari-ai with its recipe removed reproduces the hand-written `app_factory` choice (`backend.main:create_app` behind a harness), `/api/v1` prefixes and the same six pip pins; on payments-lite it reproduces `payments_lite.app:create_app` and `-q tests`.
