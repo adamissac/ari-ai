@@ -963,3 +963,20 @@ def test_scout_prompt_starts_from_the_commit_change(intel):
         scout.ScoutInput(assessment_id="asm", snapshot_id="snp", commit_sha="a" * 40), intel
     )
     assert "reviews one commit" not in plain
+
+
+def test_patch_prompt_carries_the_cause_code_and_recipe_test_roots(intel):
+    data = patch_agent.PatchInput(
+        assessment_id="asm_t",
+        finding_id="fnd_t",
+        remediation_plan_id="rmp_t",
+        approval_id="apv_t",
+        attempt=1,
+        strategy="Filter refunds by owner.",
+        files_expected=["payments_lite/store.py"],
+        cause_spans=[("payments_lite/store.py", 46, 48)],
+    )
+    prompt = patch_agent.build_prompt(data, intel)
+    assert "def refunds_for(self, payment_id: str)" in prompt
+    assert "cause_spans" not in prompt.split("cause_code")[0]  # not duplicated in the plan
+    assert "snapshot_files" not in prompt
