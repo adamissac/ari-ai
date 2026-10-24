@@ -64,18 +64,7 @@ def test_live_provider_assessment_two_orgs(client_factory, live) -> None:
     asm_id = r.json()["assessment"]["id"]
 
     done = worker.drain(kinds=["run_assessment"])
-    import sqlalchemy as sa
-
-    from backend.db import get_engine, jobs
-    with get_engine().begin() as conn:
-        rows = conn.execute(
-            sa.select(jobs.c.id, jobs.c.kind, jobs.c.status, jobs.c.last_error, jobs.c.attempts)
-        ).all()
-    print("JOBS", [(r.kind, r.status, (r.last_error or "")[:300]) for r in rows])
     detail = alice.get(f"/api/v1/assessments/{asm_id}").json()
-    print("ASM-STATE", detail["assessment"]["state"], detail["assessment"].get("error"))
-    ev = alice.get(f"/api/v1/assessments/{asm_id}/events/log").json()
-    print("EVENTS", json.dumps(ev)[:2000])
     state = detail["assessment"]["state"]
     runs = detail["agent_runs"]
     assert runs, "no agent steps ran"
