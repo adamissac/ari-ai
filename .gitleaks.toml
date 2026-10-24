@@ -57,3 +57,11 @@ regexes = [
   '''^\s*"sha256":\s*"[0-9a-f]{64}",?\s*$''',
   '''^\s*"tarball_integrity":\s*"sha512-[A-Za-z0-9+/=]{80,}",?\s*$''',
 ]
+
+# rehearsal/ ledgerlite fixture tokens are synthetic identities for the owned
+# pilot target, not credentials. Scoped to the rehearsal tree only.
+[[allowlists]]
+description = "LedgerLite pilot fixture tokens (synthetic identities, owned target)"
+condition = "AND"
+paths = ['''^rehearsal/''']
+regexes = ['''tok-(alice|bob)''']
