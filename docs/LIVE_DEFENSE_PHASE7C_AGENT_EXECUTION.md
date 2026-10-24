@@ -14,6 +14,8 @@ Scout/Diagnose agent loops). Do not merge from this agent.
 
 | Item | Status |
 |---|---|
+| PR | https://github.com/adamissac/ari-ai/pull/458 on `feat/alan/live-defense-phase7c-agent-execution` |
+| Merge | **left open** — execution trust-boundary expansion; explicit security review required |
 | Branch | `feat/alan/live-defense-phase7c-agent-execution` |
 | Modes | OFF / MONITOR\|SHADOW / ASSISTED RESPONSE; AUTO-EXECUTE rejected; fail closed |
 | What executed for real | Scout and Diagnose run `security_agents.runtime.run_agent` against an owner-attested mapped snapshot when FakeLLM (tests/e2e) or a live Anthropic key is present |
