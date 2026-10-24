@@ -10,9 +10,9 @@ import type {
 } from '@hackatl/frontend-transport';
 
 const resources = vi.hoisted(() => ({
-  list: { status: 'ready' as const, data: { items: [] as InvestigationSummary[], next_cursor: null }, reload: vi.fn() },
-  timeline: { status: 'ready' as const, data: null as InvestigationTimeline | null, reload: vi.fn() },
-  diagnostics: { status: 'ready' as const, data: null as unknown, reload: vi.fn() },
+  list: { status: 'ready' as const, data: { items: [] as InvestigationSummary[], next_cursor: null }, error: undefined, reload: vi.fn() },
+  timeline: { status: 'ready' as const, data: null as InvestigationTimeline | null, error: undefined, reload: vi.fn() },
+  diagnostics: { status: 'ready' as const, data: null as unknown as FirstResponderDiagnostics, error: undefined, reload: vi.fn() },
 }));
 
 vi.mock('@/lib/use-resource', () => ({
@@ -109,9 +109,9 @@ const SUMMARY: InvestigationSummary = {
 };
 
 beforeEach(() => {
-  resources.list = { status: 'ready', data: { items: [], next_cursor: null }, reload: vi.fn() };
-  resources.timeline = { status: 'ready', data: TIMELINE, reload: vi.fn() };
-  resources.diagnostics = { status: 'ready', data: DIAGNOSTICS, reload: vi.fn() };
+  resources.list = { status: 'ready', data: { items: [], next_cursor: null }, error: undefined, reload: vi.fn() };
+  resources.timeline = { status: 'ready', data: TIMELINE, error: undefined, reload: vi.fn() };
+  resources.diagnostics = { status: 'ready', data: DIAGNOSTICS, error: undefined, reload: vi.fn() };
 });
 
 afterEach(() => cleanup());
@@ -130,7 +130,7 @@ describe('Executions observability UI', () => {
   });
 
   it('lists investigations and renders the timeline with failed and skipped execution states', () => {
-    resources.list = { status: 'ready', data: { items: [SUMMARY], next_cursor: null }, reload: vi.fn() };
+    resources.list = { status: 'ready', data: { items: [SUMMARY], next_cursor: null }, error: undefined, reload: vi.fn() };
     render(<Executions mode="live" projectId="prj_1" diagnostics={resources.diagnostics} />);
     fireEvent.click(screen.getByTestId(`ld-inv-row-${DECISION.id}`));
     const tl = screen.getByTestId('ld-inv-timeline');
@@ -143,7 +143,7 @@ describe('Executions observability UI', () => {
   });
 
   it('renders unknown execution fields explicitly as unavailable, never fabricated', () => {
-    resources.list = { status: 'ready', data: { items: [SUMMARY], next_cursor: null }, reload: vi.fn() };
+    resources.list = { status: 'ready', data: { items: [SUMMARY], next_cursor: null }, error: undefined, reload: vi.fn() };
     render(<Executions mode="live" projectId="prj_1" diagnostics={resources.diagnostics} />);
     fireEvent.click(screen.getByTestId(`ld-inv-row-${DECISION.id}`));
     const detail = screen.getByTestId('ld-inv-detail-fri_bbbbbbbbbbbbbbbb');
@@ -166,8 +166,8 @@ describe('Executions observability UI', () => {
         execution_is_not_confirmation: true,
       },
     });
-    resources.timeline = { status: 'ready', data: { ...TIMELINE, invocations: [withExec] }, reload: vi.fn() };
-    resources.list = { status: 'ready', data: { items: [SUMMARY], next_cursor: null }, reload: vi.fn() };
+    resources.timeline = { status: 'ready', data: { ...TIMELINE, invocations: [withExec] }, error: undefined, reload: vi.fn() };
+    resources.list = { status: 'ready', data: { items: [SUMMARY], next_cursor: null }, error: undefined, reload: vi.fn() };
     render(<Executions mode="live" projectId="prj_1" diagnostics={resources.diagnostics} />);
     fireEvent.click(screen.getByTestId(`ld-inv-row-${DECISION.id}`));
     const detail = screen.getByTestId('ld-inv-detail-fri_aaaaaaaaaaaaaaaa');
@@ -180,8 +180,8 @@ describe('Executions observability UI', () => {
 
   it('renders cancelled investigations distinctly', () => {
     const cancelledSummary: InvestigationSummary = { ...SUMMARY, decision_id: 'frd_cccccccccccccccc', cancelled: true, invocations_cancelled: 2 };
-    resources.list = { status: 'ready', data: { items: [cancelledSummary], next_cursor: null }, reload: vi.fn() };
-    resources.timeline = { status: 'ready', data: { ...TIMELINE, final_state: 'cancelled', decision: { ...DECISION, cancelled: true, cancel_reason: 'mode_off' } }, reload: vi.fn() };
+    resources.list = { status: 'ready', data: { items: [cancelledSummary], next_cursor: null }, error: undefined, reload: vi.fn() };
+    resources.timeline = { status: 'ready', data: { ...TIMELINE, final_state: 'cancelled', decision: { ...DECISION, cancelled: true, cancel_reason: 'mode_off' } }, error: undefined, reload: vi.fn() };
     render(<Executions mode="live" projectId="prj_1" diagnostics={resources.diagnostics} />);
     expect(screen.getByTestId('ld-inv-row-frd_cccccccccccccccc').textContent).toContain('cancelled');
     fireEvent.click(screen.getByTestId('ld-inv-row-frd_cccccccccccccccc'));
