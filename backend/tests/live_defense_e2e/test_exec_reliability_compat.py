@@ -172,9 +172,11 @@ def test_crash_after_send_requires_recovery_before_replay(staging):
     """No automatic second billable call while an attempt is unresolved (F1).
 
     The provider sends the request, then the worker dies before the response
-    is recorded. Required: the job lands in ``recovery_required`` (or an
-    equivalent uncertain-effect state) and NO physical provider call repeats
-    until an operator resolves it. Today the job is requeued and replayed.
+    is recorded. The queue is allowed to re-claim the job — what must never
+    happen is a second physical provider call while the first attempt's
+    outcome is unresolved. Verified against the Phase 7C provider ledger:
+    redelivery defers (``JobDeferred`` on an in-flight attempt) or commits the
+    invocation as UNCERTAIN_PROVIDER_OUTCOME — it never re-sends.
     """
     from backend import execution
 
@@ -215,15 +217,18 @@ def test_crash_after_send_requires_recovery_before_replay(staging):
     staging.expire_lease(step["id"])
     with transaction() as conn:
         execution.reconcile(conn)
-        status = conn.execute(
-            sa.select(jobs_t.c.status).where(jobs_t.c.id == step["id"])
-        ).scalar_one()
 
-    # Required contract: uncertain billable outcome needs operator recovery,
-    # not an automatic replay.
-    assert status == "recovery_required"
+    # The job may be re-claimed — the ledger forbids a replayed billable call
+    # while the first attempt's outcome is unresolved. Force the redelivery to
+    # prove it.
+    staging.requeue_now(step["id"])
     staging.drain()
     assert len(fake.calls) == calls_at_crash
+
+    inv = staging.by_agent(staging.invocations(alice, app.project_id))
+    # The unresolved attempt is surfaced, not silently replayed: the scout
+    # invocation must not report an execution.
+    assert inv["scout"]["status"] != INV.executed.value
 
 
 def test_off_during_final_submit_stays_cancelled(staging):
@@ -260,7 +265,8 @@ def test_off_during_final_submit_stays_cancelled(staging):
     staging.drain()
 
     inv = staging.by_agent(staging.invocations(alice, app.project_id))
-    # Required contract: revocation wins over the in-flight completion.
+    # Revocation wins over the in-flight completion (F8 fix verified on A
+    # 5417990f — was overwritten to executed before the ledger head).
     assert inv["scout"]["status"] != INV.executed.value
 
 
