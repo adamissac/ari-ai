@@ -51,6 +51,18 @@ test('one real assessment from scope approval to verified patch', async ({ brows
   await expect(alice.getByTestId('relay-diagnose')).toHaveAttribute('data-status', 'done');
   await evidenceShot(alice, 'assessment-awaiting-approval');
 
+  // The on-page gate names each finding, spells out what approving will and will not do,
+  // and requires a second explicit click — an accidental tap cannot approve a security action.
+  const gate = alice.locator('div').filter({ has: alice.getByRole('heading', { name: 'Human approval required' }) }).last();
+  await expect(gate.getByText(/Fix request ·/).first()).toBeVisible();
+  await expect(gate.getByText('Will:', { exact: false }).first()).toBeVisible();
+  await expect(gate.getByText(/Will not:/).first()).toBeVisible();
+  await gate.getByRole('button', { name: 'Approve remediation' }).first().click();
+  await expect(gate.getByText('Confirm approval')).toBeVisible();
+  await expect(gate.getByText(/never merges or deploys/)).toBeVisible();
+  await gate.getByRole('button', { name: 'Back' }).click();
+  await expect(gate.getByText('Confirm approval')).toHaveCount(0);
+
   // Bob approves remediation from his inbox (with the will / will-not summary): one for the
   // security fix and one for the reviewer's functional repair. The run resumes when both are decided.
   await bob.goto(`/projects/${project()}/approvals`);

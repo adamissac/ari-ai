@@ -63,9 +63,14 @@ const PLAIN: [RegExp, string][] = [
   [/^patch\.apply_fresh/, 'Re-applied the fix on a clean copy'],
   [/^build_recipe\./, 'Read the build recipe'],
   [/^specialist\.inference/, 'Consulted a specialist model'],
+  [/^submit_result$/, 'Reported its result'],
 ];
+
+/** Persisted pipeline names use `ns__tool`; demo names use `ns.tool`. Normalize for matching. */
+const toolName = (tool: string) => tool.replace(/__/g, '.');
+
 export function plainStep(step: ToolStep): string {
-  return PLAIN.find(([re]) => re.test(step.tool))?.[1] ?? step.tool;
+  return PLAIN.find(([re]) => re.test(toolName(step.tool)))?.[1] ?? step.tool;
 }
 
 const KIND_HINTS: [RegExp, DemoComponent['kind'][]][] = [
@@ -95,16 +100,18 @@ export function stepComponent(step: ToolStep, repo: DemoRepo, previous?: string)
   const core = coreComponent(repo);
   if (step.on) return partOfKind(repo, step.on);
   if (step.outcome === 'denied' && /https?:\/\//.test(step.input)) return byKind(repo, ['edge']) ?? core;
-  if (/^fixture\.identities/.test(step.tool)) return byKind(repo, ['identity']) ?? core;
+  const tool = toolName(step.tool);
+  if (/^fixture\.identities/.test(tool)) return byKind(repo, ['identity']) ?? core;
   // A request inside the sandbox hits the changed service's endpoint, whoever it is sent as.
-  if (/^http\.request/.test(step.tool)) return core;
-  if (/^(policy\.suggest_rule|rl\.recommend)/.test(step.tool)) return byKind(repo, ['edge']) ?? core;
-  if (/^(record|review)\./.test(step.tool)) return previous ?? core;
-  if (/^(sandbox|worktree|fs|tests|git)\./.test(step.tool)) return core;
+  if (/^http\.request/.test(tool)) return core;
+  if (/^(policy\.suggest_rule|rl\.recommend)/.test(tool)) return byKind(repo, ['edge']) ?? core;
+  if (/^(record|review)\./.test(tool)) return previous ?? core;
+  if (/^(sandbox|worktree|fs|tests|git)\./.test(tool)) return core;
   // Real pipeline tools: edits and sandboxed checks happen inside the changed service; pure
   // reads keep the sector the agent was last on.
-  if (/^(patch\.apply_fresh|worktree\.|checks\.|specialist\.inference)/.test(step.tool)) return core;
-  if (/^(code|graph|expectations|findings|static|build_recipe)\./.test(step.tool)) return previous ?? core;
+  if (/^(patch\.apply_fresh|worktree\.|checks\.|specialist\.inference)/.test(tool)) return core;
+  if (/^(code|graph|expectations|findings|static|build_recipe)\./.test(tool)) return previous ?? core;
+  if (/^submit_result$/.test(tool)) return previous ?? core;
   const text = `${step.input} ${step.result}`;
   for (const [re, kinds] of KIND_HINTS) {
     const hit = byKind(repo, kinds);

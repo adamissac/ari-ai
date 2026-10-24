@@ -93,4 +93,12 @@ describe('agent map', () => {
     expect(plainStep({ tool: 'http.request', input: '', result: '', ms: 1, outcome: 'ok' })).toBe('Sent a test request');
     expect(plainStep({ tool: 'unknown.tool', input: '', result: '', ms: 1, outcome: 'ok' })).toBe('unknown.tool');
   });
+
+  it('plain-speaks persisted tool names recorded with ns__tool separators', () => {
+    expect(plainStep({ tool: 'code__read_span', input: '', result: '', ms: 1, outcome: 'ok' })).toBe('Read the code');
+    expect(plainStep({ tool: 'worktree__write_file', input: '', result: '', ms: 1, outcome: 'ok' })).toBe('Edited a scratch copy');
+    expect(plainStep({ tool: 'checks__run_template', input: '', result: '', ms: 1, outcome: 'ok' })).toBe('Ran a check in the sandbox');
+    expect(plainStep({ tool: 'submit_result', input: '', result: '', ms: 1, outcome: 'ok' })).toBe('Reported its result');
+    expect(stepComponent({ tool: 'worktree__write_file', input: 'x', result: '', ms: 1, outcome: 'ok' }, repo)).toBe(coreComponent(repo));
+  });
 });

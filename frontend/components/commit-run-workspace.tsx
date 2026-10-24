@@ -44,7 +44,7 @@ export function CommitRunWorkspace({ assessmentId, repoId, sha, fullName, liveVi
   const mismatch = run.status === 'ready' && !detail;
   return <>
     {detail && !TERMINAL_STATES.has(detail.assessment.state) && <div className="mt-4 flex justify-end"><CancelButton compact id={detail.assessment.id} onDone={run.reload} /></div>}
-    {detail?.assessment.state === 'AWAITING_APPROVAL' && <CommitApproval assessmentId={detail.assessment.id} projectId={detail.assessment.project_id} onDecided={run.reload} />}
+    {detail?.assessment.state === 'AWAITING_APPROVAL' && <CommitApproval assessmentId={detail.assessment.id} projectId={detail.assessment.project_id} findings={detail.findings} onDecided={run.reload} />}
     <div role="tablist" aria-label="Commit analysis" className="demo-tabs mt-6">
       {TABS.map(key => <button type="button" role="tab" key={key.id} id={`commit-tab-${key.id}`} aria-controls="commit-work-panel" aria-selected={tab === key.id} className="demo-tab" onClick={() => setTab(key.id)}>{key.label}</button>)}
     </div>
@@ -74,8 +74,16 @@ function ReviewPanel({ detail, liveView, liveState }: { detail: AssessmentDetail
     </section>}
     {liveState?.status === 'loading' && <section className="glass p-6"><Loading label="Reading the real diff" /></section>}
     {liveState?.status === 'error' && (
-      <section className="glass p-6">
-        <p role="alert" className="text-sm">{liveState.error}</p>
+      <section className="glass p-6" data-testid="commit-quick-read-error">
+        <p className="label-mono text-white/55">Quick read</p>
+        {/anthropic_api_key|not configured/i.test(liveState.error ?? '') ? (
+          <>
+            <p role="alert" className="mt-2 text-sm">The instant AI read is not available — the server has no model API key configured. Everything else on this page still works: an authorized run below records the full review and the seven agents.</p>
+            <details className="mt-2 text-xs text-white/45"><summary>Technical detail</summary><p className="mt-1 break-all">{liveState.error}</p></details>
+          </>
+        ) : (
+          <p role="alert" className="mt-2 text-sm">{liveState.error}</p>
+        )}
         <button type="button" className="mt-3 rounded-full bg-white/10 px-4 py-2 text-sm" onClick={liveState.retry}>Try again</button>
       </section>
     )}
@@ -182,10 +190,10 @@ function WorkerEvidence({ runs }: { runs: AgentRun[] }) {
   </div>)}</>;
 }
 
-function CommitApproval({ assessmentId, projectId, onDecided }: { assessmentId: string; projectId: string; onDecided: () => void }) {
+function CommitApproval({ assessmentId, projectId, findings, onDecided }: { assessmentId: string; projectId: string; findings: AssessmentDetail['findings']; onDecided: () => void }) {
   const events = useResource(`commit-approval:${assessmentId}`, signal => fullEventLog(after => api().eventsLog(assessmentId, after, { signal })), 5000);
   if (events.status === 'loading') return <Loading label="Loading this run’s approval request" />;
   if (events.status === 'error') return <ErrorState error={events.error} onRetry={events.reload} />;
   if (events.data.truncated) return <p role="alert">The run’s approval log is incomplete. Reload to check the approval request.</p>;
-  return <ApprovalGate projectId={projectId} events={events.data.items} onDecided={onDecided} />;
+  return <ApprovalGate projectId={projectId} events={events.data.items} findings={findings} onDecided={onDecided} />;
 }
