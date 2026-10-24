@@ -66,8 +66,9 @@ def _queue_snapshot(conn: sa.Connection) -> dict:
             }
         )
     oldest_queued = conn.execute(
-        sa.select(sa.func.min(jobs.c.run_after))
-        .where(jobs.c.status == "queued", jobs.c.run_after <= sa.func.now())
+        sa.select(sa.func.min(jobs.c.run_after)).where(
+            jobs.c.status == "queued", jobs.c.run_after <= sa.func.now()
+        )
     ).scalar()
     next_due = conn.execute(
         sa.select(sa.func.min(jobs.c.run_after)).where(jobs.c.status == "queued")
@@ -88,9 +89,7 @@ def _queue_snapshot(conn: sa.Connection) -> dict:
         "oldest_queued_age_s": (
             round((now - oldest_queued).total_seconds(), 1) if oldest_queued and now else None
         ),
-        "next_due_in_s": (
-            round((next_due - now).total_seconds(), 1) if next_due and now else None
-        ),
+        "next_due_in_s": (round((next_due - now).total_seconds(), 1) if next_due and now else None),
         "running": running,
         # A worker heartbeats only while it owns a job; an idle worker leaves no trace.
         # This is the honest bound on "worker visibility" without a registry table.
