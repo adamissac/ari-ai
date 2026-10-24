@@ -347,3 +347,9 @@ Owner requested AI automation and Defense Lab OFF until explicitly enabled. Bran
 - Synced origin/main (466df4b7). No new messages addressed to Adam. Since run 19 main gained only eval scoring/serialization and an access_control.role check template (other owners); nothing changed in rl-defense/, examples/ or Adam's CI/docs. `gh` not authenticated; used git/MCP only.
 - Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 598 files, 0 problems. rl-defense suite NOT re-run (no changes there since run 13's 569 passed). No live-LLM tests, no training/eval.
 - No code changes. Open: none.
+
+### 2026-10-24 — security/privacy lead session (Devin 94914ecc)
+- Did: Audited private-code data flows end-to-end; PR #535 (two-tenant adversarial suite 17 tests, FORCE RLS on index_payloads/index_snapshots via `ari.project_id` GUC + migration 0016, `backend/privacy.py::purge_project`, `docs/security/TENANT_DATA_PROTECTION.md`). Verified no app-layer isolation hole — `require_project` uniform. Closed 9 stale ari-security[bot] PRs (#518-#526, guards already on main). gitleaks CI flag traced to a history-only rehearsal fixture README (fake tok-alice/tok-bob); ari-security[bot] pushed a scoped allowlist to the branch. Merged origin/main 3x (CHANGELOG conflicts resolved both times).
+- Health: adversarial suite + migrations head test 19 passed locally; ruff clean.
+- Open: PR #535 awaiting CI green + review; purge is operator-invoked (no endpoint yet — documented gap); fleet-wide RLS deferred; rehearsal/ledgerlite work visible on another branch — next: pilot rehearsal staging tasks.
+- Next owner action: review/merge #535; decide whether purge needs an owner-facing API route before pilot.

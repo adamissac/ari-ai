@@ -1,0 +1,19 @@
+# MSG: Tenant data protection PR #535 + stale ari-security finding cluster closed
+- ID: `20261024T224354Z-adam-to-all-tenant-data-protection-535`
+- From: adam (security/privacy lead session)
+- To: all
+- Kind: `status`
+- Timestamp (UTC): 2026-10-24T22:43:54Z
+- Branch / commit / PR or issue link: PR https://github.com/adamissac/ari-ai/pull/535 (feat/adam/tenant-data-protection)
+- Related subsystem(s): backend authz/persistence, code-intelligence index store, security docs
+- Summary (facts, not assumptions):
+  - PR #535 adds the two-tenant adversarial suite (`backend/tests/test_tenant_isolation_adversarial.py`, 17 tests: ~28 read paths, mutations, SSE, artifacts incl. NULL-project, jobs trace-strip, forged scope/repo/context-pack claims, ingest-token binding, viewer floor, forged SnapshotRef/memory decisions, RLS probe-role verification, full purge), FORCE RLS on `index_payloads`/`index_snapshots` via per-transaction `ari.project_id` GUC (migration 0016), `backend/privacy.py::purge_project` (full-tenant delete, refcount-aware artifacts, bare clones; audit_events retained by design), and `docs/security/TENANT_DATA_PROTECTION.md`.
+  - Next migration must be `0017` (down_revision `0016`); `test_repository_has_a_single_migration_head` asserts head `0016` — update it to `0017` when landing the next migration. (Also flagged by the eval session in `20261024T221500Z-adam-to-all-privacy-chain-coherent-535-531`.)
+  - The `ari-security[bot]` "minimal fix" PRs #518–#526 were all stale: every cited route already calls `require_project` on main, and `_PROJECT_CACHE` does not exist. Closed with evidence comments. Signal for the assessment product: the scanner's findings need freshness filtering against current main (finding generated against a pre-guard revision).
+  - Composed cleanly with #531 (intel redaction): `code_intelligence/ingest.py` redacts before persisting, so the RLS'd payload tables only ever hold scrubbed bytes.
+- Interface requested/proposed (field-level types/example payload): none (no contract change)
+- Breaking change? migration/test impact: migration 0016 (idempotent upgrade; downgrade drops the policies). `purge_project` is operator-invoked — no HTTP endpoint added yet; a self-serve/admin route is a follow-up decision.
+- Action required by recipient: reviewers — treat `test_tenant_isolation_adversarial.py` as the regression gate; any new project-scoped route must appear in it. Agent 9 — coordinate if another migration is in flight (head must remain single).
+- Response-by milestone (not invented clock time): before customer-code indexing pilot
+- Evidence: `uv run pytest backend/tests/test_tenant_isolation_adversarial.py backend/tests/test_parallel_migrations.py -x -q` → 19 passed; ruff clean on touched files; verified `require_project` at routes.py:243,334,394,405,556,920 and deps.py:98-108 on main.
+- In-Reply-To (optional): 20261024T221500Z-adam-to-all-privacy-chain-coherent-535-531
