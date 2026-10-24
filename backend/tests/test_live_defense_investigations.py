@@ -178,9 +178,7 @@ def test_investigation_missing_and_invalid_refs(client_factory) -> None:
     assert r.status_code == 404
     r2 = alice.get("/api/v1/first-responder/invocations/fri_doesnotexist")
     assert r2.status_code == 404
-    r3 = alice.get(
-        f"/api/v1/projects/{pid}/first-responder/investigations?cursor=not-a-cursor"
-    )
+    r3 = alice.get(f"/api/v1/projects/{pid}/first-responder/investigations?cursor=not-a-cursor")
     assert r3.status_code in (400, 422)
 
 
@@ -191,9 +189,7 @@ def test_investigations_pagination_bounded(client_factory) -> None:
     with transaction() as conn:
         for _ in range(5):
             _insert_decision(conn, _decision(pid))
-    page1 = alice.get(
-        f"/api/v1/projects/{pid}/first-responder/investigations?limit=2"
-    ).json()
+    page1 = alice.get(f"/api/v1/projects/{pid}/first-responder/investigations?limit=2").json()
     assert len(page1["items"]) == 2
     assert page1["next_cursor"]
     page2 = alice.get(

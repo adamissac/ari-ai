@@ -172,9 +172,9 @@ def _load_timeline(conn: sa.Connection, decision_id: str) -> InvestigationTimeli
         raise not_found("investigation")
     decision = FirstResponderDecision.model_validate(decision_row["doc"])
 
-    trigger_rows = []
+    trigger_rows: list[Any] = []
     if decision.trigger_event_ids:
-        trigger_rows = (
+        trigger_rows = list(
             conn.execute(
                 sa.select(monitoring_events.c.doc).where(
                     monitoring_events.c.id.in_(decision.trigger_event_ids),
@@ -298,7 +298,7 @@ def list_investigations(
             .order_by(t.c.created_at.desc(), t.c.id.desc())
             .limit(limit + 1)
         ).all()
-        docs, nxt = _keyset_page(rows, limit)
+        docs, nxt = _keyset_page(list(rows), limit)
         decision_ids = [doc["id"] for doc in docs]
 
         inv_counts: dict[str, dict[str, int]] = {}
