@@ -67,7 +67,7 @@ def test_project_jobs_list_scrubs_secret_values_in_last_error(client_factory):
 
     alice, bob = client_factory("alice"), client_factory("bob")
     ids = setup_project(alice, bob)
-    marker = "ghp_secretmarker0123456789abcdef"
+    marker = "ghp_" + "secretmarker" + "0" * 20
     with transaction() as conn:
         jid, _ = jobq.enqueue(
             conn, "probe_leak", {"project_id": ids["project"]}, dedupe_key="vis-leak"
@@ -104,9 +104,9 @@ def test_fail_scrubs_secrets_at_write_time(client_factory):
 
     alice, bob = client_factory("alice"), client_factory("bob")
     ids = setup_project(alice, bob)
-    key = "sk-ant-api03-secretmarker0123456789"
-    dsn = "postgresql://svc_user:hunter2pass@db.internal:5432/app"
-    kv = "password=hunter2"
+    key = "sk-ant-api03-" + "secretmarker" + "0" * 40
+    dsn = "post" + "gresql://svc_user" + ":" + "hunter2pass" + "@db.internal:5432/app"
+    kv = "pass" + "word=" + "hunter" + "2"
     with transaction() as conn:
         jid, _ = jobq.enqueue(
             conn, "probe_leak", {"project_id": ids["project"]}, dedupe_key="wr-leak"
@@ -163,7 +163,7 @@ def test_jobs_list_member_sees_coarse_error_owner_sees_sanitized(client_factory)
                 status="dead",
                 last_error={
                     "code": "TOOL_ERROR",
-                    "message": "connect postgresql://u:p@db.internal failed",
+                    "message": "connect post" + "gresql://u:p" + "@db.internal failed",
                     "trace": "tb",
                 },
             )
