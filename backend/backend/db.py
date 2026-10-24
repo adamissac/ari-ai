@@ -307,6 +307,7 @@ jobs = sa.Table(
     # 0016 execution reliability (docs/architecture/execution-reliability.md)
     sa.Column("project_id", sa.String(80)),
     sa.Column("depends_on", sa.String(80)),
+    sa.Column("defer_count", sa.Integer, nullable=False, server_default="0"),
     sa.Column("deadline_at", TS),
     sa.Column("started_at", TS),
     sa.Column("first_started_at", TS),

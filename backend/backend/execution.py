@@ -152,7 +152,7 @@ def reconcile(conn: Connection) -> dict[str, Any]:
                 lease_expires_at=None,
             )
             report["timed_out"] += 1
-        elif row["attempts"] >= row["max_attempts"]:
+        elif row["attempts"] - row["defer_count"] >= row["max_attempts"]:
             jobq.transition(
                 conn,
                 row,

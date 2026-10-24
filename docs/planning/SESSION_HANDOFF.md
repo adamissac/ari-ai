@@ -1865,6 +1865,16 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - Branch `feat/adam/agent-visibility-not-needed`: relay/team list now label skipped agents 'Not needed' (with the recorded skip note) or 'Not reached' on failed/cancelled runs. `earlyEndNote` in `frontend/lib/relay.ts` reads the reason from persisted `state_changed` events.
 - Next: expand `security-agents/evals/commits/cases.json` toward ~40 cases, add check templates to lift `vuln validated` off 0/7 (only ownership + bounds templates exist).
 
+## 2026-10-24 — Devin (Alan): execution reliability — Codex review fixes (F2–F5, F1/F7 contract)
+
+- Codex review `codex/first-responder-integration-review` (NO-GO) assigned queue defects F2–F5 to this branch; all fixed.
+- F2: `EMERGENCY_JOB_KINDS` (emergency_stop/rollback/expire) claim under a bounded reserve `JOB_MAX_RUNNING_EMERGENCY` (default 2), exempt from project/global caps and not consuming ordinary slots; `live_defense_execute`/`verify` remain limited.
+- F3: `jobs.complete`/`jobs.fail` fence on a live lease (DB clock); expired workers cannot report outcomes; original owner's late `recovery_required` completion stays the audited exception.
+- F4: `jobs.defer(delay_s=|depends_on=)` — validated transition + `job_events`, `defer_count` makes it neutral on the retry budget, cancel/deadline precedence, refused after uncertain effects. For Grok's Diagnose scheduling.
+- F5: `modes.cancel_first_responder_jobs` now covers `waiting` (→ cancelled) and flags `recovery_required` `cancel_requested` without erasing effect evidence.
+- F1/F7 contract sent to Grok: `ctx.effect("provider:<job_id>:<attempt>:<seq>")` for billable requests (no replay of unknown outcomes); `enqueue(deadline_at=)` propagates the absolute FR deadline. See `coordination/messages/20261024T233000Z-devin-to-grok-f1-f7-queue-contract.md`.
+- Migration `0016` gained `jobs.defer_count` (additive, same revision).
+
 ## 2026-10-24 — Devin (Adam): specialist eval-brain + live eval harness
 
 - `specialists/data/evalcommits.py`: eval cases become minimal pairs (planted edit = CWE/vuln_other positive, original = hard negative), splits pinned by case id; `scout()` merges the 60 rows.
@@ -1975,3 +1985,12 @@ selected run is still loading.
 - Merge waves belong to the integration lead; wave 2 includes my #542/#543.
 - Prod queue depth (~88 items) makes 45-case live eval slow — some cases may return `pending`/NOT_STARTED; rerun stragglers or extend deadlines.
 - Second-org real-provider leg needs owner's private repo + second GitHub org (account actions).
+
+
+## 2026-10-24 — Devin (Alan): execution reliability workstream
+
+- Branch `feat/devin-execution-reliability` (from upstream/main 58fc015a). Migration `0016` (head pin bumped); no shared contract or `SCHEMA_VERSION` change, so no conflict with #412/#458 schema claims. If another PR lands a `0016` first, renumber this revision's `revision`/`down_revision`.
+- Extends `jobs.py`/`worker.py`: transition table + `job_events`, `ctx.effect` uncertain-effect guard (wired into `live_defense_execute`), reconciliation, fair claims + per-project limits, backpressure, deadlines, retry policies, worker registry; new `backend/backend/execution.py` and `backend/backend/api/execution.py`.
+- Did not touch `live_defense/first_responder.py` (#458). After #458 merges: wrap its provider calls with `ctx.effect` and pass `deadline_s` on `live_defense_agent_step` enqueue.
+- Behaviour change: a cancel-requested job whose lease expired is now `cancelled` (was stuck `running`); `test_jobs_queue.py` updated accordingly.
+- Note: `CHANGELOG.md` on upstream main contains a leftover `|||||||` merge marker under Unreleased (pre-existing, not touched).
