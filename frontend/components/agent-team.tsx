@@ -1,13 +1,20 @@
 'use client';
 
-import type { AgentName, AgentRun } from '@hackatl/frontend-transport';
+import type { AgentName, AgentRun, AssessmentState } from '@hackatl/frontend-transport';
 import { useState } from 'react';
 import { Badge, Empty, Mono, Panel, Tag } from '@/components/ui';
 import { duration, usd } from '@/lib/format';
-import { AGENTS, AGENT_RUN_STATUS, agentRole, agentRunSummary, handoffNote, providerLabel } from '@/lib/status';
+import { AGENTS, AGENT_RUN_STATUS, agentRole, agentRunSummary, handoffNote, providerLabel, TERMINAL_STATES } from '@/lib/status';
+
+/** Label for an agent with no recorded run, from the assessment's final state. */
+function absentLabel(state: AssessmentState | undefined): { short: string; detail: string } {
+  if (state === 'COMPLETED') return { short: 'not needed', detail: 'Not needed this run — the assessment ended before this step had work' };
+  if (state && TERMINAL_STATES.has(state)) return { short: 'not reached', detail: 'Not reached — the run ended before this step' };
+  return { short: 'not run', detail: 'No persisted run' };
+}
 
 /** Selectable team view. Every row, outcome, and tool line comes from persisted runs. */
-export function AgentTeam({ runs, selected: controlled, onSelect, hideList = false }: { runs: AgentRun[]; selected?: AgentName; onSelect?: (agent: AgentName) => void; hideList?: boolean }) {
+export function AgentTeam({ runs, selected: controlled, onSelect, hideList = false, state, skipNote }: { runs: AgentRun[]; selected?: AgentName; onSelect?: (agent: AgentName) => void; hideList?: boolean; state?: AssessmentState; skipNote?: string | null }) {
   const withRuns = AGENTS.filter(role => runs.some(run => run.agent === role.name));
   const [own, setOwn] = useState<AgentName>(withRuns[0]?.name ?? 'scout');
   const selected = controlled ?? own;
@@ -36,7 +43,7 @@ export function AgentTeam({ runs, selected: controlled, onSelect, hideList = fal
               >
                 <span className="flex items-center justify-between gap-2">
                   <span className="font-semibold">{item.label}</span>
-                  <span className="text-xs text-faint">{latest ? AGENT_RUN_STATUS[latest.status].label : 'not run'}</span>
+                  <span className="text-xs text-faint">{latest ? AGENT_RUN_STATUS[latest.status].label : absentLabel(state).short}</span>
                 </span>
                 <span className="mt-0.5 block text-xs text-muted">{item.job}</span>
               </button>
@@ -47,7 +54,7 @@ export function AgentTeam({ runs, selected: controlled, onSelect, hideList = fal
       <Panel title={role.label} actions={<span className="text-xs text-muted">{role.team}</span>}>
         <p className="text-sm">{role.job}</p>
         <p className="mt-2 text-sm text-muted" data-testid="agent-outcome">{agentRunSummary(mine)}</p>
-        {mine.length === 0 ? <Empty>No persisted run for {role.label}. Nothing is shown until the orchestrator records one.</Empty> : mine.map(run => <RunDetail key={run.id} run={run} />)}
+        {mine.length === 0 ? <Empty>{absentLabel(state).detail} for {role.label}.{skipNote ? ` The run recorded: ${skipNote}.` : ''}</Empty> : mine.map(run => <RunDetail key={run.id} run={run} />)}
       </Panel>
       <Panel title="Handoff">
         <p className="text-sm">{role.handsTo}</p>
