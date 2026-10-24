@@ -9,6 +9,206 @@
       "title": "AgentCapabilityClass",
       "type": "string"
     },
+    "AgentExecutionRecord": {
+      "additionalProperties": false,
+      "description": "Genuine agent-loop outcome for future RL research. Not a confirmed threat.",
+      "properties": {
+        "confirmation": {
+          "const": "unverified",
+          "default": "unverified",
+          "title": "Confirmation",
+          "type": "string"
+        },
+        "cost_usd": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cost Usd"
+        },
+        "ended_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ended At"
+        },
+        "error_code": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error Code"
+        },
+        "evidence_verified": {
+          "const": false,
+          "default": false,
+          "title": "Evidence Verified",
+          "type": "boolean"
+        },
+        "execution_integrity": {
+          "$ref": "#/$defs/ExecutionIntegrity",
+          "default": "not_run"
+        },
+        "hypothesis_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hypothesis Count"
+        },
+        "independent_verification_id": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Independent Verification Id"
+        },
+        "latency_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latency Ms"
+        },
+        "llm_turns": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Llm Turns"
+        },
+        "model_id": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Id"
+        },
+        "output_artifact_id": {
+          "anyOf": [
+            {
+              "pattern": "^art_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Output Artifact Id"
+        },
+        "predicted_probability": {
+          "default": null,
+          "title": "Predicted Probability",
+          "type": "null"
+        },
+        "provider_mode": {
+          "default": "none",
+          "enum": [
+            "fake",
+            "live",
+            "none"
+          ],
+          "title": "Provider Mode",
+          "type": "string"
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Started At"
+        },
+        "tool_call_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tool Call Count"
+        },
+        "transcript_artifact_id": {
+          "anyOf": [
+            {
+              "pattern": "^art_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Transcript Artifact Id"
+        },
+        "typed_output": {
+          "default": false,
+          "title": "Typed Output",
+          "type": "boolean"
+        }
+      },
+      "title": "AgentExecutionRecord",
+      "type": "object"
+    },
     "AgentInvocationStatus": {
       "enum": [
         "eligible",
@@ -20,6 +220,8 @@
         "skipped_no_scope",
         "skipped_no_approval",
         "skipped_no_patch",
+        "skipped_no_prerequisite",
+        "executed",
         "completed_unverified",
         "failed",
         "cancelled"
@@ -39,6 +241,16 @@
         "reviewer"
       ],
       "title": "AgentName",
+      "type": "string"
+    },
+    "ExecutionIntegrity": {
+      "description": "Whether typed output cited real snapshot spans. Not threat confirmation.",
+      "enum": [
+        "not_run",
+        "checked",
+        "failed"
+      ],
+      "title": "ExecutionIntegrity",
       "type": "string"
     }
   },
@@ -73,6 +285,17 @@
       "pattern": "^frd_[0-9A-Za-z_\\-]{8,64}$",
       "title": "Decision Id",
       "type": "string"
+    },
+    "execution": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AgentExecutionRecord"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     },
     "id": {
       "pattern": "^fri_[0-9A-Za-z_\\-]{8,64}$",
