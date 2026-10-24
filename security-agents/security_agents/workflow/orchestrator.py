@@ -326,7 +326,8 @@ class Orchestrator:
         self._completed_steps: dict[str, StepOutcome] = {}
         self._audit_prev_hash = "0" * 64
         self._audit_lock = threading.Lock()
-        self._baseline_failing: list[str] = []
+        self._baseline_job: Any = None
+        self._baseline_value: list[str] = []
         self.roe: Any = None
         self.workdir.mkdir(parents=True, exist_ok=True)
 
@@ -562,7 +563,10 @@ class Orchestrator:
 
         # ---- FUNCTIONAL_REVIEW is Sai's pillar; we record the baseline it needs.
         self._goto(AssessmentState.FUNCTIONAL_REVIEW, "baseline test run (code_review pillar pending)")
-        self._baseline_failing = self._baseline_test_failures()
+        # Only Verify (and the approval checkpoint) need the baseline: run it beside Scout.
+        pool = ThreadPoolExecutor(max_workers=1)
+        self._baseline_job = pool.submit(self._baseline_test_failures)
+        pool.shutdown(wait=False)
 
         # ---- RECON (Scout)
         self._goto(AssessmentState.RECON)
@@ -697,6 +701,7 @@ class Orchestrator:
         return self.result
 
     def _finish(self) -> AssessmentResult:
+        self._baseline_failing  # noqa: B018 - waits for the background baseline and counts its sandbox time
         self._goto(AssessmentState.COMPLETED)
         self._audit(
             "assessment.completed",
@@ -768,7 +773,22 @@ class Orchestrator:
             setup=setup,
         )
 
-    def _baseline_test_failures(self) -> list[str]:
+    @property
+    def _baseline_failing(self) -> list[str]:
+        """Tests already failing on the unpatched snapshot; waits for the background run."""
+        if self._baseline_job is not None:
+            failing, seconds = self._baseline_job.result()
+            self._baseline_job = None
+            self._baseline_value = failing
+            self.result.usage.sandbox_seconds += seconds
+        return self._baseline_value
+
+    @_baseline_failing.setter
+    def _baseline_failing(self, value: list[str]) -> None:
+        self._baseline_job = None
+        self._baseline_value = value
+
+    def _baseline_test_failures(self) -> tuple[list[str], float]:
         """Record which tests already fail on the unpatched snapshot (Verify needs this)."""
         ctx = self._context(AgentName.VERIFY, "baseline", services={})
         runner = self._test_runner(lambda _ctx: self.intel.snapshot.root)
@@ -781,8 +801,7 @@ class Orchestrator:
             passed=result.get("passed"),
             sandbox_run_id=result.get("sandbox_run_id"),
         )
-        self.result.usage.sandbox_seconds += float(result.get("duration_s") or 0)
-        return list(result.get("failing_tests") or [])
+        return list(result.get("failing_tests") or []), float(result.get("duration_s") or 0)
 
     def _run_scout(self) -> list[Hypothesis]:
         data = scout_agent.ScoutInput(
