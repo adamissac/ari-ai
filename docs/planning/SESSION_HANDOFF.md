@@ -18,6 +18,34 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-24 — Devin (agent, Alan) — canonical repo disconnect + migration rebase + e2e fix
+- Did: resolved the three blockers on PR #4 (feat/devin-pilot-security-hardening):
+  1. Migration collision: execution-reliability (fork PR #1) owns revision `0016`; its
+     `0016_execution_reliability.py` is vendored verbatim on this branch and disconnect moved
+     to `0017` (down_revision `0016`, linear chain, head pin `"0017"` in test_parallel_migrations).
+  2. Disconnect canonical model (replaces fork PR #6's `installation_id IS NULL` semantics):
+     `repositories.disconnected_at` is the single gate for snapshots/assessments/push automation/
+     live commit reads; disconnect additionally revokes `deploy_commit_mappings`, cancels queued
+     repo jobs (repo_id payload + index_snapshot via snapshot), fails pending/indexing snapshots,
+     and cooperatively cancels non-terminal assessments. `installation_id` is KEPT as the access
+     record — nulling it is neither the revocation signal nor history-preserving. Reconnect still
+     re-verifies `can_connect`; it does not restore `automatic_assessments` or revoked mappings.
+     State surfaced on the typed contract: `Repository.disconnected_at`, schema 0.25.0 additive
+     (0.22=#458, 0.23=fork #3, 0.24=fork #6 reserved).
+  3. GitHub E2E failure root-caused: my dev-login rate limit (20/5min/IP) starved the parallel
+     Playwright suite — both failures were the shared `signIn` helper timing out. Raised to
+     120/5min/IP (endpoint stays dev-gated by AUTH_DEV_LOGIN_ENABLED).
+- PR #6 must update to stay compatible: drop its own `disconnect_repository` (installation_id
+  NULL + mapping revoke) — the canonical endpoint here already revokes mappings; its onboarding
+  step logic must treat `disconnected_at IS NOT NULL` as disconnected (its `installed` filter on
+  `installation_id is not None` is wrong under the canonical model); keep the frontend/transport
+  call shape (same route, JSON response still `{"id","disconnected"}`).
+- Tests: 19/19 in test_customer_security_hardening.py (new: mapping revoked, 3 queued job kinds
+  cancelled, pending snapshot failed, in-flight assessment CANCELLED, audit counts, installation_id
+  retained, reconnect denied without access grant, disconnected_at in contract); full suite
+  337 passed / 7 env-gated skips; ruff+format+contract freshness clean; mypy 7 errors all
+  pre-existing on base (verified via stash).
+
 ### 2026-10-24 — Devin (agent, Alan) — pilot security hardening (customer-facing boundaries)
 - Did: audited customer-facing security boundaries for the first design-partner pilot and implemented the highest-severity independently fixable gaps on branch `feat/devin-pilot-security-hardening` (PR target: fork `m-alan08/ari-ai`). Findings + gate doc: `docs/PILOT_SECURITY_CHECKLIST.md`.
 - State of the code (verified by `backend/tests/test_customer_security_hardening.py`, 17 tests):
