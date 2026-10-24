@@ -295,9 +295,7 @@ def test_latest_revoked_scope_wins_but_future_revocation_does_not_backfill():
         update={"stamp": stamp("revoked", available_seq=3)}
     )
     assert not observe(enabled(scopes=(active, revoked))).mask[ACTIONS.index(Action.scout)]
-    future = revoked.model_copy(
-        update={"stamp": stamp("later-revoked", available_seq=20)}
-    )
+    future = revoked.model_copy(update={"stamp": stamp("later-revoked", available_seq=20)})
     assert observe(enabled(scopes=(active, future))) == observe(enabled(scopes=(active,)))
 
 
@@ -329,12 +327,18 @@ def test_inventory_pins_all_seven_committed_sources():
         (root / "docs/research/first-responder/SOURCE_INVENTORY.json").read_text()
     )
     assert set(inventory["roles"]) == {
-        "scout", "probe", "trace", "diagnose", "patch", "fortify", "verify"
+        "scout",
+        "probe",
+        "trace",
+        "diagnose",
+        "patch",
+        "fortify",
+        "verify",
     }
     assert inventory["provider_calls"] == inventory["agent_invocations"] == 0
     assert inventory["training_authorized"] is False
     for role in inventory["roles"].values():
         source = subprocess.check_output(
-            ["git", "show", f'{inventory["source_commit"]}:{role["path"]}'], cwd=root
+            ["git", "show", f"{inventory['source_commit']}:{role['path']}"], cwd=root
         )
         assert hashlib.sha256(source).hexdigest() == role["sha256"]
