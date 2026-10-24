@@ -105,7 +105,7 @@ class Settings(BaseSettings):
     assessment_starts_per_hour: int = 5
     # Dev-login burst allowance per IP per 5-minute window. E2E stacks sign in
     # many distinct synthetic users from one address.
-    auth_dev_login_burst: int = 20
+    auth_dev_login_burst: int = 120
 
     @field_validator(
         "anthropic_api_key",
