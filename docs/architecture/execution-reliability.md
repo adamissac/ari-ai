@@ -173,6 +173,16 @@ untouched; control jobs are exempt from
 backpressure so emergency stop cannot be refused. Project-scoped endpoints use
 `require_project`; non-members get 404.
 
+## Operator notes for control jobs
+
+Resolving a control job `applied` marks the **job** succeeded; the `LiveControl`
+record itself is advanced inside the handler's transaction, which was rolled back
+when the worker died — so it can still show `authorized` until its expiry. Check
+the adapter state when deciding, then reconcile the control record separately.
+`ctx.effect` is per external call; do not nest it. Once any effect is recorded
+`settled`, every later failure of that job ends `recovery_required`, because a
+replay could re-apply it — keep effect-adjacent handlers idempotent anyway.
+
 ## Limitations
 
 * At-least-once, not exactly-once. Handlers that do external work without
@@ -209,3 +219,18 @@ work does not edit that file. The agreed interface for the F1/F7 findings:
   rechecks mode/cancellation — `ctx.check_cancelled()` already reads the live
   row; OFF-cancellation must not be overwritten by a late submit (F8, Grok
   side, but the queue recheck primitive is `heartbeat_state`/`check_cancelled`).
+* `FirstResponderInvocation.job_id` already links invocations to `jobs`, so
+  `/jobs/{id}/history` and the project execution figures cover them without
+  schema changes.
+
+## Evidence (measured on this branch)
+
+* Starvation: 200 queued jobs from one project, then 5 from another, 4 workers.
+  Before (FIFO ordering, no project limit) the quiet project's jobs were claimed at
+  positions 201–205; after (fair ordering, limit 4) at 2, 4, 6, 8, 10.
+* Cancel after worker death: before, a cancel-requested job with an expired lease
+  stayed `running` indefinitely; after, the first reconcile marks it `cancelled`
+  (`test_reconcile_never_runs_handlers_or_bypasses_cancellation`).
+* Crash during control `apply`: before, the next claim re-ran the adapter call;
+  after, the job is `recovery_required` and never re-claimed
+  (`test_worker_death_during_effect_is_never_reclaimed_automatically`).
