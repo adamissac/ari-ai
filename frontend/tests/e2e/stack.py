@@ -275,17 +275,30 @@ def main(argv: list[str]) -> int:
             )
         )
         from backend.db import snapshots
+        from shared.base import utcnow
         from shared.ids import IdPrefix, new_id
+        from shared.intelligence import Snapshot, SnapshotStatus
 
+        # Valid Snapshot JSONB so GET /repositories/{id}/snapshots can
+        # model_validate. Status stays indexing (not ready) so pages.spec still
+        # sees "No indexed snapshot"; first-responder only needs the row.
+        snap = Snapshot(
+            id=new_id(IdPrefix.snp),
+            repo_id=rid,
+            commit_sha=sha,
+            status=SnapshotStatus.indexing,
+            index_version="e2e-phase7c",
+            created_at=utcnow(),
+        )
         with transaction() as conn:
             conn.execute(
                 sa.insert(snapshots).values(
-                    id=new_id(IdPrefix.snp),
+                    id=snap.id,
                     repo_id=rid,
                     commit_sha=sha,
-                    index_version="e2e-phase7c",
-                    status="ready",
-                    doc={},
+                    index_version=snap.index_version,
+                    status=snap.status.value,
+                    doc=snap.model_dump(mode="json"),
                 )
             )
         alice.close()
