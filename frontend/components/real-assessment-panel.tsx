@@ -71,7 +71,7 @@ export function RealAssessmentPanel({
       api().repository(repoId, { signal }),
     ]);
     return { projectId, scopes: scopes.items, assessments, automatic: repository.automatic_assessments };
-  }, 10000);
+  }, 10000, d => !TERMINAL_STATES.has(d.assessments[0]?.state ?? ''));
   const data: DataState = resource.status === 'ready'
     ? { status: 'ready', ...resource.data }
     : resource.status === 'error' ? { status: 'error', error: resource.error } : { status: 'loading' };
