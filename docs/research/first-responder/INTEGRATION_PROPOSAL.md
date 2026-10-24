@@ -4,7 +4,9 @@ Grok owns telemetry, incidents, agent invocation, deterministic orchestration,
 escalation, workers, dashboard and integration. Research owns observation/proposal
 semantics, evaluation and readiness. Owner confirms proposed engineering branch
 `feat/live-defense-first-responder` may not yet be pushed; exact reference will be
-provided later. Its absence does not block this fixture-only work. No unfinished
+provided later. A final fetch discovered candidate engineering PR #439; see
+[the pinned reconciliation](ENGINEERING_RECONCILIATION.md). It is not an agreed
+integration or completed security review. This does not block fixture-only work. No unfinished
 engineering code is treated as a producer, and no shared production schema changes
 or worker hooks are made here. Agreement and canonical shared-owner review precede
 any integration. Existing SnapshotRef, EvidenceRef, AgentRun, AgentStepResult and

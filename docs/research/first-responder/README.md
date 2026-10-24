@@ -20,8 +20,9 @@ actions, unknown bits, capability masks, proposal binding and a policy Protocol.
 Not implemented: a first-responder producer, dispatcher, environment dynamics,
 reward function, policy, learner, outcome adjudicator or production adapter.
 Fixture `integration_agreed=true` illustrates a hypothetical contract only.
-Grok's proposed feat/live-defense-first-responder branch is unconfirmed; owner will
-provide the exact reference. [Integration proposal](INTEGRATION_PROPOSAL.md) records
+The initial audit had no confirmed engineering reference. Final review discovered
+open PR #439; [read-only reconciliation](ENGINEERING_RECONCILIATION.md) pins that
+candidate. Owner confirmation and contract/security review remain pending. [Integration proposal](INTEGRATION_PROPOSAL.md) records
 required fields and review boundaries without blocking this research specification.
 
 Main's live-defense shadow path records NOT_EXECUTED; it is not first-responder

@@ -1,7 +1,8 @@
 # Algorithm choice and customer-specific adaptation
 
 **Recommendation now: no learning yet.** Use the actual deterministic Grok orchestrator
-as the future reference. Rules and budget-aware scheduling provide reproducible,
+as the future reference only after the exact engineering branch/PR is confirmed
+and contract-owner review completes. Rules and budget-aware scheduling provide reproducible,
 auditable decisions with known prerequisites. Planning/model-predictive orchestration
 is worth evaluating when tool effects and delays can be estimated reliably; inventing
 those effects would invalidate the comparison.

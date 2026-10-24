@@ -7,7 +7,8 @@ any collection; no threshold can be chosen from comparative outcomes.
 
 ## Next proposed experiment
 
-An owned isolated instrumentation and agent-effect feasibility comparison: freeze
+An owned isolated instrumentation and agent-effect feasibility comparison: after
+the exact Grok branch/PR reference and contract-owner review are confirmed, freeze
 Grok's actual deterministic first responder as primary reference and compare a
 budget-aware deterministic heuristic using the same permitted read-only capabilities.
 First establish whether agent results change later actionable decisions and whether
