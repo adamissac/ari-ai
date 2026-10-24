@@ -1612,3 +1612,14 @@ oracle/schedule certificate. Existing-action optimum unresolved. Primary product
 recommendation C:deprioritize RL; non-RL assurance evidence packet proposed only.
 Research, training permission and pilot readiness remain separate. See
 docs/research/rl-product-thesis/README.md; all original study bytes unchanged.
+
+## Phase7B / RL-CMDP-011 research-only first responder
+
+Owner confirms Grok's proposed feat/live-defense-first-responder may not be pushed;
+continue independently, use existing shared contracts, do not change production
+schemas/incidents/agent APIs/workers. Fixture-only adapter and strict proposed
+record models reuse canonical SnapshotRef/EvidenceRef/AgentRun/AgentStepResult/
+AuthorizedScope. No dispatcher/environment/reward/collector/trainer. Default masks
+allow only local abstain/monitor; hypothetical fixture agreement cannot authorize
+execution.15 tests pass; source inventory and full research docs pending. See
+first-responder INTEGRATION_PROPOSAL and immutable message to Grok/shared owner.
