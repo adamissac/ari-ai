@@ -53,7 +53,7 @@ test('one real assessment from scope approval to verified patch', async ({ brows
 
   // The on-page gate names each finding, spells out what approving will and will not do,
   // and requires a second explicit click — an accidental tap cannot approve a security action.
-  const gate = alice.locator('div').filter({ has: alice.getByRole('heading', { name: 'Human approval required' }) }).last();
+  const gate = alice.getByRole('region', { name: 'Human approval required' });
   await expect(gate.getByText(/Fix request ·/).first()).toBeVisible();
   await expect(gate.getByText('Will:', { exact: false }).first()).toBeVisible();
   await expect(gate.getByText(/Will not:/).first()).toBeVisible();
