@@ -1571,3 +1571,14 @@ Resource evidence closure: anchored four-window unit receipt committed from sour
 213 broader selected research tests, 91 shared tests, scoped strict mypy (7 files),
 Ruff/format and 580 Markdown link checks passed. Formal feasibility and training
 remain unapproved; PR review/CI required before merge. See resource VERIFICATION.md.
+
+## Resource feasibility001 — owner-approved execution preparation
+
+Owner approved the previously proposed600 episodes/18,000 decisions, safety limits,
+2000 paired whole-seed bootstrap draws and one-process512MiB/600-second budget.
+Acceptance failures continue and remain reported/ineligible; integrity failures stop.
+Persistent-static remains240 active ticks, explicitly ineligible at64-tick cap.
+Environment/generator/baseline source unchanged. New isolated study collector pins
+source/config/runtime, retains gzip raw episode traces and stops without retries.
+50 resource/study unit tests pass; strict mypy and Ruff pass for the runner.
+No formal outcome has been observed at this preregistration commit.
