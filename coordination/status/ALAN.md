@@ -497,3 +497,19 @@ passed in0.96s; two new modules pass scoped strict mypy. NO-GO/Option C unchange
 Exact commands and the pre-commit provenance rejection are retained in
 docs/research/adaptive-defense-readiness/VERIFICATION.md. Final CI/review/merge state
 is recorded on PR422; no new study may start without separate owner approval.
+
+## Resource-exhaustion research — RL-CMDP-008
+
+research/rl-resource-exhaustion-feasibility: owner-authorized finite-capacity model,
+fixed baselines and causal observations. Core23 unit tests pass; Stage2 preparation
+and final CI pending. No formal comparative study or model training authorized.
+
+RL-CMDP-008 Stage2 preparation implemented: versioned experience/config/profile/
+cutoff schema, separate reward/cost arrays, bounded unit-only replay, fixed unit
+receipt writer/verifier with raw work/control/cost accounting, failure retention,
+and deadline-bounded settlement. No optimizer, checkpoint writer or study runner.
+Stochastic private phases/tie ordering avoid clock or label-priority shortcuts.
+Proposed study now600 episodes/18,000 decisions plus bounded settlement, with
+unapproved safety/sample/compute values. Training NO-GO pending approved formal
+feasibility, safe baseline headroom, terminal-cost collector/learner review and
+explicit training authorization. No historical evidence or customer control edits.
