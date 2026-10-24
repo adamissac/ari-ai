@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -47,6 +48,7 @@ from backend.db import (
     rl_evaluations,
     snapshots,
     transaction,
+    users,
     verification_results,
 )
 from backend.integrations import load_factory
@@ -110,9 +112,9 @@ class Page(StrictModel):
 
 
 def _user(conn: Any, request: Request) -> CurrentUser:
-    user = require_user(conn, request)
-    limiter.check(f"user:{user.id}", get_settings().rate_limit_per_minute, 60)
-    return user
+    # Session auth, CSRF, and the per-user rate limit all live in require_user so
+    # every authenticated route — on every router — is covered, not just this file.
+    return require_user(conn, request)
 
 
 def _audit(
@@ -346,11 +348,31 @@ def connect_repository(project_id: str, body: RepositoryConnect, request: Reques
     with transaction() as conn:
         user = _user(conn, request)
         org_id, _ = require_project(conn, user, project_id, MemberRole.owner)
+        limiter.check(f"connect:{user.id}", 20, 3600)
+        if body.installation_id is None and not get_settings().is_dev:
+            # A name-only row carries zero proof of access and globally squats the
+            # repo name (uq provider+full_name), blocking the real owner. Dev/test
+            # still allow it for local fixtures where no GitHub App exists.
+            raise ApiError(
+                ErrorCode.VALIDATION_FAILED,
+                "connecting a repository requires a GitHub App installation",
+                422,
+            )
         # The worker fetches App-connected repositories with an installation token, so the
         # caller must have reached this exact repository through that installation at sign-in.
         if body.installation_id is not None:
-            from backend.api.github_repos import can_connect
+            from backend.api.github_repos import (
+                _refresh_personal_installation_repositories,
+                can_connect,
+            )
 
+            # Access snapshots are captured at sign-in; refresh the user's personal
+            # installation before trusting them so revoked access fails now.
+            gh = conn.execute(
+                sa.select(users.c.github_login, users.c.github_id).where(users.c.id == user.id)
+            ).first()
+            if gh is not None:
+                _refresh_personal_installation_repositories(user.id, gh.github_login, gh.github_id)
             if not can_connect(conn, user.id, body.full_name, body.installation_id):
                 raise ApiError(
                     ErrorCode.FORBIDDEN,
@@ -435,11 +457,88 @@ def update_repository(repo_id: str, body: RepositoryUpdate, request: Request) ->
         )
 
 
+def _owner_repo(conn: Any, user: CurrentUser, repo_id: str) -> dict[str, Any]:
+    return _repo_access(conn, user, repo_id, MemberRole.owner)
+
+
+@router.post("/repositories/{repo_id}/disconnect")
+def disconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
+    """Owner kill-switch: stop all repo-driven work (snapshots, assessments, push
+    automation, live commit reads). The row stays so the name cannot be squatted;
+    GitHub-side revocation happens by uninstalling/limiting the App installation."""
+    with transaction() as conn:
+        user = _user(conn, request)
+        repo = _owner_repo(conn, user, repo_id)
+        if repo["disconnected_at"] is None:
+            conn.execute(
+                sa.update(repositories)
+                .where(repositories.c.id == repo_id)
+                .values(disconnected_at=utcnow(), automatic_assessments=False)
+            )
+            _audit(
+                conn,
+                project_org(conn, repo["project_id"]),
+                repo["project_id"],
+                user,
+                "repository.disconnected",
+                "repository",
+                repo_id,
+                full_name=repo["full_name"],
+            )
+        return {"id": repo_id, "disconnected": True}
+
+
+@router.post("/repositories/{repo_id}/reconnect")
+def reconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
+    """Re-enable a disconnected repository. When the row is App-connected, the owner
+    must still hold access through that installation."""
+    with transaction() as conn:
+        user = _user(conn, request)
+        repo = _owner_repo(conn, user, repo_id)
+        if repo["installation_id"] is not None:
+            from backend.api.github_repos import (
+                _refresh_personal_installation_repositories,
+                can_connect,
+            )
+
+            gh = conn.execute(
+                sa.select(users.c.github_login, users.c.github_id).where(users.c.id == user.id)
+            ).first()
+            if gh is not None:
+                _refresh_personal_installation_repositories(user.id, gh.github_login, gh.github_id)
+            if not can_connect(conn, user.id, repo["full_name"], repo["installation_id"]):
+                raise ApiError(
+                    ErrorCode.FORBIDDEN,
+                    "you no longer have access to this repository through its installation",
+                    403,
+                )
+        if repo["disconnected_at"] is not None:
+            conn.execute(
+                sa.update(repositories)
+                .where(repositories.c.id == repo_id)
+                .values(disconnected_at=None)
+            )
+            _audit(
+                conn,
+                project_org(conn, repo["project_id"]),
+                repo["project_id"],
+                user,
+                "repository.reconnected",
+                "repository",
+                repo_id,
+                full_name=repo["full_name"],
+            )
+        return {"id": repo_id, "disconnected": False}
+
+
 @router.post("/repositories/{repo_id}/snapshots", status_code=202, response_model=Snapshot)
 def request_snapshot(repo_id: str, body: SnapshotCreate, request: Request) -> Snapshot:
     with transaction() as conn:
         user = _user(conn, request)
         repo = _repo_access(conn, user, repo_id, MemberRole.member)
+        if repo["disconnected_at"] is not None:
+            raise ApiError(ErrorCode.CONFLICT_STATE, "repository is disconnected", 409)
+        limiter.check(f"snapshots:{user.id}", 30, 3600)
         existing = conn.execute(
             sa.select(snapshots.c.doc)
             .where(
@@ -1048,10 +1147,19 @@ async def stream_events(
     async def gen():  # type: ignore[no-untyped-def]
         nonlocal cursor
         idle = 0.0
+        auth_checked_at = time.monotonic()
         yield "retry: 2000\n\n"
         while True:
             if await request.is_disconnected():
                 return
+            if time.monotonic() - auth_checked_at >= 15:
+                # Membership/role is live state: a revoked viewer must not keep
+                # streaming for the rest of the session TTL.
+                try:
+                    await run_in_threadpool(_check)
+                except ApiError:
+                    return
+                auth_checked_at = time.monotonic()
             batch = await run_in_threadpool(_events_after, assessment_id, cursor)
             for doc in batch:
                 ev = StreamEvent.model_validate(doc)
@@ -1435,6 +1543,7 @@ def request_recommendation(
     with transaction() as conn:
         user = _user(conn, request)
         require_project(conn, user, project_id, MemberRole.member)
+        limiter.check(f"rl_recommend:{user.id}", 20, 3600)
         job_id, _ = jobs.enqueue(
             conn,
             "rl_recommend",
