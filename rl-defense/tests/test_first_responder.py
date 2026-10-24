@@ -281,3 +281,60 @@ def test_duplicate_result_receipts_are_not_double_counted():
     second = first.model_copy(update={"stamp": stamp("duplicate-run", available_seq=3)})
     with pytest.raises(ValueError, match="duplicate terminal"):
         observe(frame(results=(first, second)))
+
+
+@pytest.mark.parametrize("gate", ["enabled", "input_ready", "budget_ready", "host_gate_ready"])
+def test_each_independent_gate_blocks_otherwise_ready_request(gate):
+    cap = capability().model_copy(update={gate: False})
+    assert not observe(enabled(capabilities=(cap,))).mask[ACTIONS.index(Action.scout)]
+
+
+def test_latest_revoked_scope_wins_but_future_revocation_does_not_backfill():
+    active = scope()
+    revoked = scope(ScopeStatus.revoked).model_copy(
+        update={"stamp": stamp("revoked", available_seq=3)}
+    )
+    assert not observe(enabled(scopes=(active, revoked))).mask[ACTIONS.index(Action.scout)]
+    future = revoked.model_copy(
+        update={"stamp": stamp("later-revoked", available_seq=20)}
+    )
+    assert observe(enabled(scopes=(active, future))) == observe(enabled(scopes=(active,)))
+
+
+def test_same_sequence_revision_ambiguity_fails_closed():
+    cap = capability()
+    duplicate = cap.model_copy(update={"stamp": stamp("ambiguous")})
+    with pytest.raises(ValueError, match="ambiguous capability"):
+        observe(enabled(capabilities=(cap, duplicate)))
+
+
+def test_expired_deployment_and_scope_do_not_enable_requests():
+    expired = stamp("expired-deployment").model_copy(
+        update={"valid_until": T + timedelta(seconds=30)}
+    )
+    assert not observe(enabled(deployment_binding=expired)).mask[ACTIONS.index(Action.scout)]
+    old_scope = scope()
+    old_scope.scope.expires_at = T + timedelta(seconds=30)
+    assert not observe(enabled(scopes=(old_scope,))).mask[ACTIONS.index(Action.scout)]
+
+
+def test_inventory_pins_all_seven_committed_sources():
+    import hashlib
+    import json
+    import subprocess
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2]
+    inventory = json.loads(
+        (root / "docs/research/first-responder/SOURCE_INVENTORY.json").read_text()
+    )
+    assert set(inventory["roles"]) == {
+        "scout", "probe", "trace", "diagnose", "patch", "fortify", "verify"
+    }
+    assert inventory["provider_calls"] == inventory["agent_invocations"] == 0
+    assert inventory["training_authorized"] is False
+    for role in inventory["roles"].values():
+        source = subprocess.check_output(
+            ["git", "show", f'{inventory["source_commit"]}:{role["path"]}'], cwd=root
+        )
+        assert hashlib.sha256(source).hexdigest() == role["sha256"]

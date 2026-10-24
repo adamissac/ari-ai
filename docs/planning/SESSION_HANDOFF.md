@@ -1623,3 +1623,13 @@ AuthorizedScope. No dispatcher/environment/reward/collector/trainer. Default mas
 allow only local abstain/monitor; hypothetical fixture agreement cannot authorize
 execution.15 tests pass; source inventory and full research docs pending. See
 first-responder INTEGRATION_PROPOSAL and immutable message to Grok/shared owner.
+
+
+### Phase 7B specification and invariant verification
+
+Research report: docs/research/first-responder/README.md. CONDITIONAL GO for
+research; no learning yet. Grok's actual contract remains pending exact reference.
+Seven-agent source inventory pins 71118928866d6974ba0ec9532420a9fc71187318.
+23 fixture/provenance tests pass; scoped Ruff and strict adapter mypy pass.
+No collection, agent calls, training, checkpoint promotion or enforcement.
+Remaining: broader regressions, PR review/CI and authorized research-only merge.

@@ -22,6 +22,13 @@ episodes completed; the budgeted rule preserves availability but misses most att
 [Audit, CMDP, capability matrix and decision](../docs/research/constrained-rl-phase1/README.md);
 [baseline evidence / verification commands](results/constrained-phase1/README.md).
 
+## First-responder research (Phase 7B)
+
+Fixture-only decision-time observations and candidate proposals are specified in
+[the research report](../docs/research/first-responder/README.md). Verdict:
+CONDITIONAL GO for research, no learning yet. No production adapter, dispatcher,
+collection study, training or enforcement is implemented or authorized.
+
 ## What exists
 
 | Piece | Module | Status |
