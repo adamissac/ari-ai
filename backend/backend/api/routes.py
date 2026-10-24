@@ -242,10 +242,11 @@ def create_project(
 @router.get("/projects/{project_id}", response_model=Project)
 def get_project(project_id: str, request: Request) -> Project:
     with transaction() as conn:
-        require_project(conn, _user(conn, request), project_id)
-        return _project(
-            conn.execute(sa.select(projects).where(projects.c.id == project_id)).mappings().one()
-        )
+        _user(conn, request)
+        row = conn.execute(sa.select(projects).where(projects.c.id == project_id)).mappings().first()
+        if row is None:
+            raise not_found("project")
+        return _project(row)
 
 
 def _check_budgets(settings: ProjectSettings, before: ProjectSettings) -> None:
