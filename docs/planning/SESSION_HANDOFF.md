@@ -1703,3 +1703,19 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - Scout retrained and **promoted**: macro_f1 0.349 vs best deterministic baseline 0.084 (static_analyze_patterns). Checkpoint + `results/scout.json`/REPORT.md committed. Other specialists have no field-compatible eval rows — their tuning signal is the live eval scores, not training data.
 - Eval harness: `run.py` cleanup survives missing `gh` auth; `score_api.py` accepts the bare-list assessments response. All 35 cases pushed as `eval/20261024-110115/*` branches; assessments accumulate live pending a fresh `hackatl_session` for scoring + scope widening (`access_control.authentication` category).
 - Test scope fixture (`make_scope` default) now grants all three check categories — required for the f2 listing invariant after the authentication template landed.
+
+## 2026-10-24 — Devin (Adam): inventory-lite rehearsal fixture
+
+- `examples/inventory-lite`: second owned fixture — a FastAPI inventory service authored
+  after the scripted fixtures were fixed, so no agent script or canned turn is shaped
+  around it. Planted CWE-639-class defect on `GET /items/{item_id}` (missing
+  `require_owner`); `labels.yaml` answer key, `label_checks/` guard it, `build_recipe.json`
+  and Dockerfile mirror payments-lite.
+- `security-agents/tests/test_inventory_lite_rehearsal.py` (3 passed): drives the real
+  `checks.run_template` path — `item_detail` CONFIRMED by execution (bob gets 200),
+  `warehouse_detail` refuted. Evidence doc: `docs/rehearsal/2026-10-24-inventory-lite.md`.
+- `examples.yml` gained an `inventory-lite` job (install, lint, target tests, label
+  checks, Docker build).
+- Outstanding: the full seven-agent *live-provider* assessment on this fixture needs
+  `ANTHROPIC_API_KEY` (`RUN_LIVE_LLM_EVAL=1`); scripted transports cannot honestly
+  produce novel findings on it by design.
