@@ -16,12 +16,14 @@ import sys
 import tempfile
 import time
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from sqlalchemy.engine import Connection
 
 from backend.artifacts import ArtifactStore
+from backend.live_defense import provider_ledger
 from backend.settings import get_settings
 from shared.assessment import AgentName
 from shared.base import utcnow
@@ -133,6 +135,7 @@ class _BackendGateway:
                 code=ErrorCode.BUDGET_EXHAUSTED,
             )
         deadline = time.monotonic() + remaining
+        key = (getattr(request, "metadata", None) or {}).get("idempotency_key")
         try:
             resp = self._inner.create_message(
                 agent=getattr(request.agent, "value", str(request.agent)),
@@ -142,6 +145,7 @@ class _BackendGateway:
                 max_tokens=request.max_tokens,
                 timeout_s=remaining,
                 deadline_monotonic=deadline,
+                idempotency_key=key if isinstance(key, str) and key else None,
             )
         except LLMError as exc:
             raise LLMUnavailable(str(exc), code=_sa_error_code(exc.code)) from exc
@@ -205,20 +209,160 @@ def _llm_usage(usage: dict[str, Any]) -> Any:
     )
 
 
-def build_gateway(snapshot_root: Path, *, cancelled: Any | None = None) -> Any:
-    if GATEWAY_OVERRIDE is not None:
-        override = GATEWAY_OVERRIDE()
-        if cancelled is not None and hasattr(override, "_cancelled"):
-            override._cancelled = cancelled
-        return override
-    from backend import llm
+class BillableGateway:
+    """Reserve each provider complete() before send. Does not wrap intel reads."""
 
-    if llm.TRANSPORT_OVERRIDE is not None:
-        return _fake_gateway(snapshot_root)
-    if llm.llm_mode() == "live":
-        inner = llm.build_gateway()
-        return _BackendGateway(inner, cancelled=cancelled)
-    raise RuntimeError("LLM_UNAVAILABLE: no first-responder provider (no key, not fake)")
+    def __init__(
+        self,
+        inner: Any,
+        *,
+        invocation_id: str,
+        deadline_at: Any | None,
+        cancelled: Any | None,
+    ) -> None:
+        self._inner = inner
+        self._invocation_id = invocation_id
+        self._deadline_at = deadline_at
+        self._cancelled = cancelled
+        self.mode = str(getattr(inner, "mode", None) or getattr(inner, "provider_mode", "fake"))
+        if cancelled is not None and hasattr(inner, "_cancelled"):
+            inner._cancelled = cancelled
+
+    def model_for(self, agent: Any) -> str:
+        return str(self._inner.model_for(agent))
+
+    def cost_usd(self, model: str, usage: Any) -> float:
+        if hasattr(self._inner, "cost_usd"):
+            return float(self._inner.cost_usd(model, usage))
+        from backend.llm import cost_usd as priced
+
+        payload = {
+            "input_tokens": int(getattr(usage, "input_tokens", 0) or 0),
+            "output_tokens": int(getattr(usage, "output_tokens", 0) or 0),
+            "cache_read_input_tokens": int(getattr(usage, "cache_read_input_tokens", 0) or 0),
+            "cache_creation_input_tokens": int(
+                getattr(usage, "cache_creation_input_tokens", 0) or 0
+            ),
+        }
+        return priced(model, payload)
+
+    def _raise_if_cancelled(self) -> None:
+        from security_agents.contracts import ErrorCode
+        from security_agents.llm.types import LLMUnavailable
+
+        if self._cancelled and self._cancelled():
+            raise LLMUnavailable("first-responder cancelled or OFF", code=ErrorCode.CANCELLED)
+
+    def _raise_if_deadline(self) -> None:
+        from security_agents.contracts import ErrorCode
+        from security_agents.llm.types import LLMUnavailable
+
+        remain = remaining_deadline_s(self._deadline_at)
+        if remain is not None and remain < MIN_PROVIDER_START_S:
+            raise LLMUnavailable(
+                "DEADLINE_EXCEEDED: overall investigation deadline refuses another provider call",
+                code=ErrorCode.BUDGET_EXHAUSTED,
+            )
+
+    def complete(self, request: Any) -> Any:
+        from dataclasses import replace
+
+        from security_agents.contracts import ErrorCode
+        from security_agents.llm.types import LLMUnavailable
+
+        self._raise_if_cancelled()
+        self._raise_if_deadline()
+        model_id = str(getattr(request, "model", None) or self.model_for(request.agent))
+        try:
+            attempt = provider_ledger.reserve_attempt(self._invocation_id, model_id=model_id)
+        except RuntimeError as exc:
+            raise LLMUnavailable(str(exc), code=ErrorCode.LLM_UNAVAILABLE) from exc
+        wrapped = request
+        try:
+            meta = dict(getattr(request, "metadata", None) or {})
+            meta["idempotency_key"] = attempt.idempotency_key
+            wrapped = replace(request, metadata=meta)
+        except (TypeError, ValueError):
+            wrapped = request
+        try:
+            resp = self._inner.complete(wrapped)
+        except LLMUnavailable as exc:
+            code = str(getattr(exc.code, "value", exc.code) or "")
+            if code in {"CANCELLED", "KILL_SWITCH"}:
+                provider_ledger.mark_attempt_cancelled(self._invocation_id, attempt.id)
+            else:
+                provider_ledger.mark_attempt_uncertain(
+                    self._invocation_id, attempt.id, error_code=code or "LLM_UNAVAILABLE"
+                )
+            raise
+        except BaseException:
+            provider_ledger.mark_attempt_uncertain(
+                self._invocation_id, attempt.id, error_code="UNCERTAIN_PROVIDER_OUTCOME"
+            )
+            raise
+        usage = getattr(resp, "usage", None)
+        cost = None
+        try:
+            if usage is not None:
+                cost = float(self.cost_usd(str(getattr(resp, "model", None) or model_id), usage))
+        except (TypeError, ValueError):
+            cost = None
+        # Known response: settle before any cancel/OFF check so costs are not lost.
+        # The persist path refuses to upgrade a cancelled invocation to executed.
+        provider_ledger.settle_attempt(
+            self._invocation_id,
+            attempt.id,
+            response_id=getattr(resp, "response_id", None),
+            model_id=str(getattr(resp, "model", None) or model_id),
+            usage=usage,
+            cost_usd=cost,
+        )
+        return resp
+
+
+def remaining_deadline_s(deadline_at: Any | None) -> float | None:
+    if deadline_at is None:
+        return None
+    instant: datetime
+    if isinstance(deadline_at, str):
+        instant = datetime.fromisoformat(deadline_at.replace("Z", "+00:00"))
+    elif isinstance(deadline_at, datetime):
+        instant = deadline_at
+    else:
+        return None
+    if instant.tzinfo is None:
+        instant = instant.replace(tzinfo=UTC)
+    return (instant - utcnow()).total_seconds()
+
+
+def build_gateway(
+    snapshot_root: Path,
+    *,
+    cancelled: Any | None = None,
+    invocation_id: str | None = None,
+    deadline_at: Any | None = None,
+) -> Any:
+    if GATEWAY_OVERRIDE is not None:
+        inner = GATEWAY_OVERRIDE()
+        if cancelled is not None and hasattr(inner, "_cancelled"):
+            inner._cancelled = cancelled
+    else:
+        from backend import llm
+
+        if llm.TRANSPORT_OVERRIDE is not None:
+            inner = _fake_gateway(snapshot_root)
+        elif llm.llm_mode() == "live":
+            inner = _BackendGateway(llm.build_gateway(), cancelled=cancelled)
+        else:
+            raise RuntimeError("LLM_UNAVAILABLE: no first-responder provider (no key, not fake)")
+    if invocation_id is None:
+        return inner
+    return BillableGateway(
+        inner,
+        invocation_id=invocation_id,
+        deadline_at=deadline_at,
+        cancelled=cancelled,
+    )
 
 
 def _binding_for(repo_id: str) -> dict[str, Any] | None:
@@ -452,6 +596,38 @@ def _record(
     )
 
 
+def _wall_clock_s(step_timeout_s: float, remain: float | None) -> float:
+    wall = float(min(FIRST_RESPONDER_DEADLINE_S, step_timeout_s))
+    if remain is not None:
+        return max(0.0, min(wall, remain))
+    return wall
+
+
+def _with_ledger(invocation_id: str, execution: AgentExecutionRecord) -> AgentExecutionRecord:
+    import sqlalchemy as sa
+
+    from backend.db import first_responder_invocations
+    from backend.db import transaction as db_transaction
+
+    with db_transaction() as conn:
+        doc = conn.execute(
+            sa.select(first_responder_invocations.c.doc).where(
+                first_responder_invocations.c.id == invocation_id
+            )
+        ).scalar()
+    if not doc:
+        return execution
+    current = FirstResponderInvocation.model_validate(doc)
+    if current.execution is None:
+        return execution
+    return execution.model_copy(
+        update={
+            "provider_attempts": current.execution.provider_attempts,
+            "uncertain_provider_outcome": current.execution.uncertain_provider_outcome,
+        }
+    )
+
+
 def _normalize_provider_mode(mode: str | None, *, processed: bool) -> str:
     if mode in {"fake", "live"}:
         return mode
@@ -564,7 +740,18 @@ def run_investigative(
             commit_sha=commit_sha,
             snapshot_id=snapshot_id,
         )
-        gateway = build_gateway(snapshot.root, cancelled=cancelled)
+        deadline_at = invocation.deadline_at or decision.deadline_at
+        remain = remaining_deadline_s(deadline_at)
+        if remain is not None and remain < MIN_PROVIDER_START_S:
+            raise RuntimeError(
+                "DEADLINE_EXCEEDED: overall investigation deadline refuses another provider call"
+            )
+        gateway = build_gateway(
+            snapshot.root,
+            cancelled=cancelled,
+            invocation_id=invocation.id,
+            deadline_at=deadline_at,
+        )
         provider_mode = _normalize_provider_mode(getattr(gateway, "mode", None), processed=False)
         from security_agents.agents import ALL_SPECS
         from security_agents.agents import diagnose as diagnose_agent
@@ -604,7 +791,7 @@ def run_investigative(
             budget=Budget(
                 max_tokens=80_000,
                 max_usd=min(FIRST_RESPONDER_MAX_USD, 1.5),
-                max_wall_clock_s=float(min(FIRST_RESPONDER_DEADLINE_S, spec.step_timeout_s)),
+                max_wall_clock_s=_wall_clock_s(spec.step_timeout_s, remain),
             ),
             input_ref=f"first-responder:{decision.id}:{agent.value}",
             cancelled=cancelled,
@@ -636,21 +823,24 @@ def run_investigative(
         )
         error_code = outcome.run.error_code.value if outcome.run.error_code else None
         usd = float(usage.usd) if usage else None
-        execution = _record(
-            provider_mode=provider_mode,
-            model_id=outcome.record.model,
-            cost_usd=usd,
-            latency_ms=latency_ms,
-            llm_turns=outcome.run.llm_turns,
-            tool_call_count=outcome.run.tool_calls,
-            started_at=started,
-            ended_at=utcnow(),
-            transcript_id=transcript_id,
-            output_id=output_id,
-            error_code=error_code,
-            typed_output=typed,
-            hypothesis_count=len(hypotheses) if agent is AgentName.scout else None,
-            integrity=integrity,
+        execution = _with_ledger(
+            invocation.id,
+            _record(
+                provider_mode=provider_mode,
+                model_id=outcome.record.model,
+                cost_usd=usd,
+                latency_ms=latency_ms,
+                llm_turns=outcome.run.llm_turns,
+                tool_call_count=outcome.run.tool_calls,
+                started_at=started,
+                ended_at=utcnow(),
+                transcript_id=transcript_id,
+                output_id=output_id,
+                error_code=error_code,
+                typed_output=typed,
+                hypothesis_count=len(hypotheses) if agent is AgentName.scout else None,
+                integrity=integrity,
+            ),
         )
         if not outcome.ok:
             status = (
@@ -703,21 +893,24 @@ def run_investigative(
                     break
         log.exception("first-responder %s execution failed", agent.value)
         provider_mode = _normalize_provider_mode(provider_mode, processed=processed)
-        execution = _record(
-            provider_mode=provider_mode,
-            model_id=None,
-            cost_usd=None if not processed else 0.0,
-            latency_ms=latency_ms,
-            llm_turns=None,
-            tool_call_count=None,
-            started_at=started,
-            ended_at=utcnow(),
-            transcript_id=None,
-            output_id=None,
-            error_code=code[:200],
-            typed_output=False,
-            hypothesis_count=None,
-            integrity=ExecutionIntegrity.failed,
+        execution = _with_ledger(
+            invocation.id,
+            _record(
+                provider_mode=provider_mode,
+                model_id=None,
+                cost_usd=None if not processed else 0.0,
+                latency_ms=latency_ms,
+                llm_turns=None,
+                tool_call_count=None,
+                started_at=started,
+                ended_at=utcnow(),
+                transcript_id=None,
+                output_id=None,
+                error_code=code[:200],
+                typed_output=False,
+                hypothesis_count=None,
+                integrity=ExecutionIntegrity.failed,
+            ),
         )
         status = (
             AgentInvocationStatus.cancelled

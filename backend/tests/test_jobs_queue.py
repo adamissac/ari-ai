@@ -169,6 +169,28 @@ def test_defer_does_not_consume_failure_attempts() -> None:
     assert CALLS == ["wait-1", "wait-1"]
 
 
+def test_defer_does_not_consume_failure_attempts() -> None:
+    CALLS.clear()
+    with transaction() as conn:
+        jid, _ = jobs.enqueue(conn, "test_wait", {"ready": False}, max_attempts=2)
+    assert worker.drain(max_jobs=1, kinds=["test_wait"]) == [jid]
+    row = _job(jid)
+    assert row["status"] == "queued"
+    assert row["attempts"] == 0
+    assert CALLS == ["wait-1"]
+    with transaction() as conn:
+        conn.execute(
+            sa.update(jobs_t)
+            .where(jobs_t.c.id == jid)
+            .values(payload={"ready": True}, run_after=sa.func.now())
+        )
+    worker.drain(max_jobs=1, kinds=["test_wait"])
+    row = _job(jid)
+    assert row["status"] == "succeeded"
+    assert row["attempts"] == 1
+    assert CALLS == ["wait-1", "wait-1"]
+
+
 def test_unknown_kind_fails_permanently() -> None:
     with transaction() as conn:
         jid, _ = jobs.enqueue(conn, "no_such_kind", {})

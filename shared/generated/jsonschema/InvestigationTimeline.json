@@ -1338,6 +1338,19 @@
           "title": "Created At",
           "type": "string"
         },
+        "deadline_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Deadline At"
+        },
         "decision_id": {
           "pattern": "^frd_[0-9A-Za-z_\\-]{8,64}$",
           "title": "Decision Id",

@@ -33,7 +33,14 @@ from backend.db import (
     verification_results,
 )
 from backend.db import jobs as jobs_t
-from backend.live_defense.agent_execution import load_scout_output, run_investigative
+from backend.live_defense import provider_ledger
+from backend.live_defense.agent_execution import (
+    MIN_PROVIDER_START_S,
+    ExecutionOutcome,
+    load_scout_output,
+    remaining_deadline_s,
+    run_investigative,
+)
 from backend.live_defense.capabilities import load_registry
 from backend.live_defense.modes import (
     acquire_first_responder_lock,
@@ -431,6 +438,7 @@ def _record_invocations(
             reason=next(
                 (b.reason for b in decision.blocked_agents if b.name is agent), status.value
             ),
+            deadline_at=decision.deadline_at,
             created_at=utcnow(),
         )
         conn.execute(
@@ -453,6 +461,9 @@ def _record_invocations(
                     "invocation_id": inv.id,
                     "agent": agent.value,
                     "capability_class": cap.capability_class.value,
+                    "deadline_at": (
+                        decision.deadline_at.isoformat() if decision.deadline_at else None
+                    ),
                 },
                 dedupe_key=f"live_defense_agent_step:{decision.id}:{agent.value}",
                 priority=70 if agent is AgentName.scout else 90,
@@ -730,16 +741,88 @@ def _other_active_agent_claim(conn: Connection, invocation_id: str, owner: str) 
     return row is not None
 
 
+def _uncertain_outcome(inv: FirstResponderInvocation) -> FirstResponderInvocation:
+    execution = inv.execution or AgentExecutionRecord(started_at=utcnow())
+    return inv.model_copy(
+        update={
+            "status": AgentInvocationStatus.failed,
+            "reason": (
+                "UNCERTAIN_PROVIDER_OUTCOME: previous billable request has no recorded "
+                "response; refusing automatic replay"
+            ),
+            "execution": execution.model_copy(
+                update={
+                    "error_code": "UNCERTAIN_PROVIDER_OUTCOME",
+                    "uncertain_provider_outcome": True,
+                    "ended_at": utcnow(),
+                    "execution_integrity": ExecutionIntegrity.failed,
+                }
+            ),
+        }
+    )
+
+
+def _deadline_outcome(inv: FirstResponderInvocation) -> FirstResponderInvocation:
+    execution = inv.execution or AgentExecutionRecord(started_at=utcnow())
+    return inv.model_copy(
+        update={
+            "status": AgentInvocationStatus.failed,
+            "reason": (
+                "DEADLINE_EXCEEDED: overall investigation deadline refuses another provider call"
+            ),
+            "execution": execution.model_copy(
+                update={
+                    "error_code": "BUDGET_EXHAUSTED",
+                    "ended_at": utcnow(),
+                    "execution_integrity": ExecutionIntegrity.failed,
+                }
+            ),
+        }
+    )
+
+
+def _merge_cancelled_evidence(
+    current: FirstResponderInvocation, incoming: FirstResponderInvocation
+) -> FirstResponderInvocation:
+    """Keep a cancelled invocation cancelled, but persist later transcript/cost."""
+    incoming_exec = incoming.execution
+    if incoming_exec is None:
+        return current
+    current_exec = current.execution
+    richer = (
+        current_exec is None
+        or (
+            incoming_exec.transcript_artifact_id
+            and not (current_exec.transcript_artifact_id if current_exec else None)
+        )
+        or bool(incoming_exec.provider_attempts)
+    )
+    if not richer:
+        return current
+    merged = current.model_copy(
+        update={
+            "execution": incoming_exec,
+            "provider_mode": incoming.provider_mode or current.provider_mode,
+        }
+    )
+    return merged
+
+
 def _commit_invocation(
     conn: Connection, inv: FirstResponderInvocation, *, status: AgentInvocationStatus
 ) -> FirstResponderInvocation:
-    """Persist an invocation without replacing a successful result."""
+    """Persist an invocation without replacing a successful or cancelled result."""
     current = _load_invocation_for_update(conn, inv.id)
     if current is None:
         _write_invocation(conn, inv, status=status)
         return inv
     if current.status is AgentInvocationStatus.executed:
         return current
+    if current.status is AgentInvocationStatus.cancelled:
+        merged = _merge_cancelled_evidence(current, inv)
+        if merged is not current:
+            _write_invocation(conn, merged, status=AgentInvocationStatus.cancelled)
+        return merged
     if current.status in _TERMINAL_INVOCATION and status is not AgentInvocationStatus.executed:
         return current
     updated = inv.model_copy(update={"status": status})
@@ -778,6 +861,7 @@ def _enqueue_agent_step(
             "invocation_id": inv.id,
             "agent": agent.value,
             "capability_class": capability_class.value,
+            "deadline_at": decision.deadline_at.isoformat() if decision.deadline_at else None,
         },
         dedupe_key=f"live_defense_agent_step:{decision.id}:{agent.value}",
         priority=90 if agent is AgentName.diagnose else 70,
@@ -855,6 +939,22 @@ def live_defense_agent_step(ctx: JobContext) -> dict[str, Any]:
             return {"status": "missing_invocation"}
         if inv.status in _TERMINAL_INVOCATION:
             return _invocation_result(inv)
+        if provider_ledger.should_refuse_replay(inv):
+            failed = _uncertain_outcome(inv)
+            committed = _commit_invocation(conn, failed, status=AgentInvocationStatus.failed)
+            return _invocation_result(committed)
+        if provider_ledger.has_in_flight_attempt(inv):
+            raise JobDeferred(
+                delay_s=2.0,
+                message="billable request in flight; refusing automatic replay",
+            )
+        remain = remaining_deadline_s(inv.deadline_at)
+        if remain is None:
+            remain = remaining_deadline_s(payload.get("deadline_at"))
+        if remain is not None and remain < MIN_PROVIDER_START_S:
+            expired = _deadline_outcome(inv)
+            committed = _commit_invocation(conn, expired, status=AgentInvocationStatus.failed)
+            return _invocation_result(committed)
         if _other_active_agent_claim(conn, inv.id, ctx.owner):
             raise JobDeferred(delay_s=2.0, message="another worker holds the agent-step lease")
         decision_doc = conn.execute(
@@ -973,9 +1073,11 @@ def live_defense_agent_step(ctx: JobContext) -> dict[str, Any]:
         started = inv.model_copy(
             update={
                 "reason": "running",
+                "deadline_at": inv.deadline_at or (decision.deadline_at if decision else None),
                 "execution": AgentExecutionRecord(
                     started_at=utcnow(),
                     execution_integrity=ExecutionIntegrity.not_run,
+                    provider_attempts=(inv.execution.provider_attempts if inv.execution else []),
                 ),
             }
         )
@@ -995,40 +1097,94 @@ def live_defense_agent_step(ctx: JobContext) -> dict[str, Any]:
         return False
 
     assert decision is not None and repo_id and commit_sha and snapshot_id
-    result = run_investigative(
-        agent=agent,
-        decision=decision,
-        invocation=inv,
-        repo_id=repo_id,
-        commit_sha=commit_sha,
-        snapshot_id=snapshot_id,
-        scout_output=scout_output,
-        cancelled=_cancelled,
-    )
+    result: ExecutionOutcome | None = None
+    run_error: BaseException | None = None
+    try:
+        result = run_investigative(
+            agent=agent,
+            decision=decision,
+            invocation=inv,
+            repo_id=repo_id,
+            commit_sha=commit_sha,
+            snapshot_id=snapshot_id,
+            scout_output=scout_output,
+            cancelled=_cancelled,
+        )
+    except JobCancelled:
+        result = ExecutionOutcome(
+            status=AgentInvocationStatus.cancelled,
+            reason="job cancelled during agent loop; late output is not executed",
+            provider_mode=inv.provider_mode or "none",
+            execution=inv.execution or AgentExecutionRecord(started_at=utcnow()),
+        )
+    except BaseException as exc:
+        run_error = exc
+        result = ExecutionOutcome(
+            status=AgentInvocationStatus.failed,
+            reason=f"{agent.value} interrupted: {exc}"[:2000],
+            provider_mode=inv.provider_mode or "none",
+            execution=inv.execution or AgentExecutionRecord(started_at=utcnow()),
+        )
     with transaction() as conn:
         acquire_first_responder_lock(conn, payload["project_id"])
+        current = _load_invocation_for_update(conn, inv.id)
+        execution = result.execution if result is not None else None
+        if current is not None and current.execution is not None and execution is not None:
+            execution = execution.model_copy(
+                update={
+                    "provider_attempts": current.execution.provider_attempts,
+                    "uncertain_provider_outcome": current.execution.uncertain_provider_outcome,
+                }
+            )
+        elif current is not None and current.execution is not None:
+            execution = current.execution
+        status = result.status if result is not None else AgentInvocationStatus.failed
+        reason = result.reason if result is not None else "agent step did not persist a result"
+        if execution is not None and (
+            execution.uncertain_provider_outcome
+            or any(item.status.value == "uncertain" for item in execution.provider_attempts)
+        ):
+            if status is AgentInvocationStatus.executed:
+                status = AgentInvocationStatus.failed
+                reason = (
+                    "UNCERTAIN_PROVIDER_OUTCOME: previous billable request has no recorded "
+                    "response; refusing automatic replay"
+                )
+            if not execution.error_code:
+                execution = execution.model_copy(
+                    update={
+                        "error_code": "UNCERTAIN_PROVIDER_OUTCOME",
+                        "uncertain_provider_outcome": True,
+                        "ended_at": execution.ended_at or utcnow(),
+                        "execution_integrity": ExecutionIntegrity.failed,
+                    }
+                )
+        if jobq.is_cancel_requested(conn, ctx.job.id):
+            status = AgentInvocationStatus.cancelled
+            reason = "job cancellation requested before final persist; late output is not executed"
+        if load_intent(conn, payload["project_id"]).intent is FirstResponderIntent.off:
+            status = AgentInvocationStatus.cancelled
+            reason = "first-responder OFF is effective; late output is not executed"
         updated = inv.model_copy(
             update={
-                "status": result.status,
-                "reason": result.reason,
-                "provider_mode": result.provider_mode,  # type: ignore[arg-type]
-                "execution": result.execution,
+                "status": status,
+                "reason": reason,
+                "provider_mode": (
+                    result.provider_mode if result is not None else inv.provider_mode
+                ),
+                "execution": execution,
             }
         )
-        committed = _commit_invocation(conn, updated, status=result.status)
+        committed = _commit_invocation(conn, updated, status=status)
         if committed.agent is AgentName.scout and decision is not None:
             _schedule_diagnose_after_scout(conn, decision, committed)
-        if (
-            load_intent(conn, payload["project_id"]).intent is FirstResponderIntent.off
-            and committed.status is not AgentInvocationStatus.executed
-        ):
-            _abort_if_off_or_cancelled(
-                conn,
-                ctx,
-                project_id=payload["project_id"],
-                invocation_id=inv.id,
-            )
-        return _invocation_result(committed)
+        payload_out = _invocation_result(committed)
+        persist_cancelled = committed.status is AgentInvocationStatus.cancelled
+    if persist_cancelled:
+        raise JobCancelled(f"{ctx.job.id}: cancelled before final persist")
+    if run_error is not None:
+        raise run_error
+    return payload_out
 
 
 def reconcile_off(conn: Connection, project_id: str) -> dict[str, int]:

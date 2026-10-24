@@ -55,12 +55,17 @@ SCHEMA_VERSION = (
     #      typed output, execution integrity). predicted_probability stays
     #      null. executed investigative output is not threat confirmation.
     #      Probe/Patch/Verify privileges are not expanded. Alembic stays 0015
-    #      (execution lives in existing invocation JSONB).
+    #      (execution lives in existing invocation JSONB). Refreshed head adds
+    #      the durable billable ProviderAttempt ledger, invocation deadline_at
+    #      and idempotent provider redelivery (unknown outcomes never replay).
     # 0.23 first-responder observability (additive, read-only): investigation
     #      timeline/summary DTOs, invocation view with queue state, execution
     #      view mirroring the 7C record (all fields optional), diagnostics.
     # 0.24 customer onboarding (additive): computed OnboardingStatus steps and
     #      the owner-triggered OnboardingTestEvent (real owned_staging ingest).
     #      Integration adds Repository.disconnected/disconnected_at and
-    #      MonitoringEvent.test_event (additive).
+    #      MonitoringEvent.test_event (additive). Refreshed 7C adds the
+    #      ProviderAttempt ledger + invocation.deadline_at (optional fields;
+    #      old 0.22.0 payloads still validate). Devin Reliability keeps
+    #      Alembic 0016.
 )

@@ -101,12 +101,31 @@ adds an entry before ending.
 - PR: https://github.com/adamissac/ari-ai/pull/412 — **left open** (authz tightening; no unapproved serving).
 - Next: human review of #412; RL owner must supply A–J evidence before any later owner-approval verdict. Do not start Phase 7.
 
+HEAD
 ### 2026-10-24 — Devin (agent, Adam) — leaked Vercel snapshot cleanup, push→agents verification
 - Did: verified the named-sandbox snapshot-leak fix already on main (`persistent: False` on run boxes + `destroy` in teardown + `_sweep_stale`); opened PR #495 making the sweep also delete stale run boxes' orphan snapshots so leaked quota is actually freed. Confirmed `delete_orphan_snapshots` only removes snapshots created *by* the destroyed sandbox — the shared `ari-base-*` snapshot can never be an orphan of a run box. Verified on main: security-agents suite 581 passed / 24 skipped, frontend typecheck + 330 vitest + lint clean, standards smoke (CWE/OWASP/CVSS/ATT&CK/D3FEND/SARIF/SP 800-115) passes. Confirmed agents are standards-grounded in code: Scout CWE/OWASP, Probe CWE, Trace ATT&CK/CVSS, Diagnose D3FEND, Fortify CWE/D3FEND; Patch/Verify get standards context via the tagged finding + remediation plan, not prompts.
 - State of the code: push→agents path gates are code-verified (`pipeline.process_github_delivery` → `auto_commits.schedule` → `assess_github_commit`): `repositories.automatic_assessments` (per-repo opt-in, UI switch exists), `GITHUB_AUTO_COMMIT_AUTHORS` (Railway entrypoint defaults `*`), `monitoring_policy.enabled` (project setting, UI switch), active `AuthorizedScope`. All four must be on for pushes to spawn runs — they are product gates, not bugs.
 - Commands run and results (executed): `pytest security-agents/tests -q` (581 passed), `pytest tests/test_vercel_sandbox.py` (5 passed incl. new sweep test), `npm run typecheck/lint/test --prefix frontend` (clean, 330 passed), `python -m security_agents.standards.smoke` (validated).
 - Warnings for the next session: prod-side flags still need flipping per repo (Automatic runs ON, monitoring enabled, scope approved) — DB/config, not code. Already-orphaned snapshots (sandbox deleted without orphan cleanup) can't be reached by the sweep; they expire on their TTL or need `sandbox snapshots delete` with Vercel creds.
+### 2026-10-24 — Cursor (agent, Alan) — Codex F1/F7/F8 on #458 (do not merge)
+- Did: Implemented Codex combined-release findings F1/F7/F8 on existing `feat/alan/live-defense-phase7c-agent-execution`. Six original Phase 7C security fixes preserved. **Did not merge #458. Did not start Phase 7D. Did not expand Probe/Patch/Verify/Trace/Fortify. Did not rewrite `jobs.py`. Did not take Alembic 0016.** Schema still **0.22.0**; open #412 keeps **0.20.0**.
+- F1: `ProviderAttempt` ledger on invocation JSONB; reserve before `complete()`; crash → `uncertain`; no automatic second billable request; in-flight → `JobDeferred`; Anthropic `Idempotency-Key`; intel reads not ledgered.
+- F7: one overall `deadline_at` on decision, invocation, and agent-step payload; not reset on worker retry; expired refuses another provider call; distinct from cancel/provider failure.
+- F8: recheck OFF/`cancel_requested` immediately before persist; commit cancelled **before** raising `JobCancelled` so the transaction is not rolled back; partial transcript/cost kept; cancelled cannot become executed.
+- Commands run and results (executed): `make check` pass (schema 0.22.0, 156 files); `uv run mypy` 40 files; focused 7A+7C+review+jobs+llm **76 passed**, 1 skipped (live smoke). FakeLLM, not live Anthropic. e2e skipped (UI unchanged).
+- Next: independent re-review of F1/F7/F8. Leave #458 open. Coordinate queue lifecycle with Devin Reliability (`ctx.effect` around billable `complete()` only).
+- Warnings: **leave the PR open**. Merge NO-GO. Do not merge Devin branches. Do not wrap all read-only ops in effect guards.
 
+f28a8496 (fix(live-defense): refuse unknown provider replay and honor cancel/deadline)
+
+89a3deba (docs(live-defense): record MERGEABLE #458 and Devin compatibility review)
+
+
+db0a631d (fix(live-defense): resolve Phase 7C security-review findings)
+
+c4dcfa40 (test(live-defense): fix Phase 7C e2e snapshot and mapping)
+
+ee7414f0 (feat(live-defense): execute authorized Scout/Diagnose loops (Phase 7C))
 ### 2026-10-24 — Cursor (agent, Alan) — rebase #439 onto main (docs conflicts)
 - Did: left PR #439 **open** (no merge, no Phase 7B, no RL training, no customer enforcement). GitHub had blocked required checks with **Checks awaiting conflict resolution** on only `CHANGELOG.md` and `docs/planning/SESSION_HANDOFF.md`. Fetched `origin/main` `c5c2b47d` (PR #453) and rebased `cursor/live-defense-first-responder-0044`. Resolved those two files by keeping **both** sides: main’s Unreleased fixture-only research bullet and Adam 2026-10-23 build-recipe handoff, plus this PR’s Phase 7A 0.21.0 Unreleased bullet and Alan 2026-10-24 Codex/Phase 7A handoff entries. Did **not** drop the four Codex security fixes (verified evidence, genuine provider acks, telemetry-window mapping, OFF-mode race). Schema still **0.21.0**; Alembic still `0015`. Main remains 0.19.0 / `0014`. Open #412 still **0.20.0** with no Alembic — no collision, no bump.
   - `git fetch origin --prune`; rebase onto `origin/main` `c5c2b47d`

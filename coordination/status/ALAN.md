@@ -61,6 +61,28 @@ Recent PR/commit: `feat/live-defense-phase6-pilot-audit` (Phase 6 audit; no Phas
 Blockers: live seven-agent run (issue #10, no key); Docker images (INFRA-005); Phase 6 merge needs CI + human review
 Next action: wait for CI on the Codex P1/P2 head of #411; merge only if MERGEABLE + reviews satisfied + no enforcement expansion; do not start Phase 7
 Next action: leave PR open for human review of authz tightening; do not start Phase 7 work here; do not provision customer infra
+HEAD
+Last remote sync: 2026-10-24, `origin/main` @ `074780d8` (PR #457 merged after this branch; #412 still OPEN; do not merge #458)
+Last remote sync: 2026-10-24, `origin/main` @ `be8fe67a` (merged into this branch; #412 still OPEN; do not merge #458)
+89a3deba (docs(live-defense): record MERGEABLE #458 and Devin compatibility review)
+Next action: independent re-review of Codex F1/F7/F8 on #458; leave PR open; do not merge; do not train RL; do not expand Probe/Patch; do not merge Devin fork PRs into #458
+
+
+### 2026-10-24 (Codex F1/F7/F8 on existing #458; do not merge)
+
+- Durable provider-attempt ledger; overall `deadline_at` not reset on retry; OFF/job-cancel persist committed before `JobCancelled`. Six original findings preserved. Schema **0.22.0**; #412 keeps **0.20.0**; Alembic **0015**; Devin keeps **0016**. Did not rewrite `jobs.py`.
+- Executed: `make check` pass (156 files); mypy 40 files; focused 7A+7C+review+jobs+llm **76 passed** / 1 skipped. FakeLLM ≠ live Anthropic.
+- Leave #458 **open**. Re-review GO for F1/F7/F8 + six findings. Merge NO-GO.
+
+
+
+
+
+
+
+
+
+
 
 ## What runs today
 

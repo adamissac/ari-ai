@@ -113,16 +113,23 @@ class AnthropicTransport:
 
     def create(self, request: dict[str, Any]) -> ProviderResponse:
         a = self._anthropic
-        payload = {k: v for k, v in request.items() if k != "_timeout_s"}
+        payload = {k: v for k, v in request.items() if k not in {"_timeout_s", "_idempotency_key"}}
         timeout = request.get("_timeout_s")
+        extra_headers = None
+        key = request.get("_idempotency_key")
+        if isinstance(key, str) and key:
+            extra_headers = {"Idempotency-Key": key}
         client = self._client.with_options(timeout=timeout) if timeout is not None else self._client
         try:
             if self._fallbacks and supports_server_fallback(str(payload.get("model", ""))):
                 resp = client.beta.messages.create(
-                    **payload, betas=[FALLBACK_BETA], extra_body={"fallbacks": "default"}
+                    **payload,
+                    betas=[FALLBACK_BETA],
+                    extra_body={"fallbacks": "default"},
+                    extra_headers=extra_headers,
                 )
             else:
-                resp = client.messages.create(**payload)
+                resp = client.messages.create(**payload, extra_headers=extra_headers)
         except a.RateLimitError as e:
             raise LLMError(
                 ErrorCode.LLM_UNAVAILABLE, f"rate limited: {e.message}", retryable=True
@@ -250,6 +257,7 @@ class LLMGateway:
         max_tokens: int = 16_000,
         timeout_s: float | None = None,
         deadline_monotonic: float | None = None,
+        idempotency_key: str | None = None,
     ) -> ProviderResponse:
         if self.check_cancelled:
             self.check_cancelled()
@@ -271,6 +279,8 @@ class LLMGateway:
         if tools:
             request["tools"] = tools
             request["tool_choice"] = {"type": "auto"}  # forced tool_choice is rejected on Opus 5.5
+        if idempotency_key:
+            request["_idempotency_key"] = idempotency_key
         if deadline_monotonic is None and timeout_s is not None:
             deadline_monotonic = time.monotonic() + float(timeout_s)
         min_start_s = 1.0
