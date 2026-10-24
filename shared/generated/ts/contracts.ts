@@ -1317,6 +1317,8 @@ export interface MonitoringEvent {
   pr_number: number | null;
   /** True for replayed/fixture events; UI must label them */
   simulated: boolean;
+  /** True for owner-authorized onboarding test events. They traverse the real authenticated ingest channel (simulated stays False) but customer-facing views must label them unmistakably as tests. */
+  test_event: boolean;
   status: EventStatus;
   status_reason: string | null;
   impact: ImpactSet | null;
