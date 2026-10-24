@@ -231,7 +231,7 @@ def _seed() -> dict[str, str]:
                 scope_id=ids["scope"],
                 commit_sha=SEED_COMMIT,
                 trigger=AssessmentTrigger.monitoring,
-                state=AssessmentState.completed,
+                state=AssessmentState.COMPLETED,
                 budget=Budget(),
                 created_by=ids["user"],
                 created_at=now,
