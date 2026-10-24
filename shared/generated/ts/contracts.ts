@@ -430,7 +430,7 @@ export type ChangeIntentSource = "pull_request" | "push" | "manual";
  * Canonical ids are the Probe library values. The two fixture strings are the
  * same categories and canonicalize onto them; they remain valid stored values
  * so published ``AuthorizedScope`` fixtures round-trip unchanged. */
-export type CheckCategory = "access_control.ownership" | "access_control.authentication" | "input_validation.bounds" | "authorization.ownership" | "input.bounds";
+export type CheckCategory = "access_control.ownership" | "access_control.authentication" | "access_control.role" | "input_validation.bounds" | "authorization.ownership" | "authorization.role" | "access_control.mutation" | "access_control.rbac" | "input.bounds";
 
 export interface ClosureCriterion {
   key: string;
