@@ -397,8 +397,7 @@ def _repo_access(
     r = conn.execute(sa.select(repositories).where(repositories.c.id == repo_id)).mappings().first()
     if r is None:
         raise not_found("repository")
-    if role is not MemberRole.viewer:  # writes still need the project role
-        require_project(conn, user, r["project_id"], role)
+    require_project(conn, user, r["project_id"], role)
     return dict(r)
 
 
