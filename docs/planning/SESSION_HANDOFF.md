@@ -18,6 +18,15 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-24 — Devin (agent, Adam) — Postgres volume 80% investigation + retention
+- Did: mapped every storage consumer (index_payloads immutable per-commit payloads are the dominant growth driver alongside terminal jobs; /data volume accumulates artifact CAS + refs/ari/* clone refs); added `backend/maintenance.py` (report/apply/loop + storage_report + run_retention), `backend/api/ops.py` (OPS_API_TOKEN-gated storage + prometheus + maintenance endpoints), hourly sidecar in `deploy/railway/start.sh`, runbook `docs/deploy/POSTGRES_STORAGE.md`, 14 tests in `test_maintenance.py`.
+- State of the code: `RETENTION_DRY_RUN=true` ships report-only; all deletes batch inside short txs with `ctid` LIMIT pattern; RLS honored via per-project `set_config('ari.project_id')`; audit row per prune; no schema migration (0017 is already taken by PR #533 heartbeats; `test_parallel_migrations` still expects head 0016).
+- Commands run and results: `pytest backend/tests/test_maintenance.py` 14/14 pass; regression subset (intel_store, jobs_queue, api_core, tenant_isolation_adversarial, parallel_migrations, env_example, worker_drain, idempotent_mutations) 50/50 pass; ruff + ruff format clean; `sh -n start.sh` clean.
+- Decisions: zero-migration retention; dry-run default; ops surface returns 404 unless OPS_API_TOKEN set; maintenance loop deliberately outside start.sh `pids` so it can never restart the service.
+- Open: actual production table sizes unknown — needs `railway run` + `DATABASE_URL` (not held by this session); whether Railway's alert covers the Postgres service volume or the app /data volume.
+- Next steps: Adam sets OPS_API_TOKEN/POSTGRES_VOLUME_BYTES, reviews first dry-run report, flips RETENTION_DRY_RUN=false; re-measure after a cycle; size volume bump decision from real growth data.
+- Warnings: deleting rows does NOT shrink the Railway-reported volume (frees internal pages); `VACUUM FULL`/repack only after verified backup. Coordination note: `coordination/messages/20261024T235500Z-devin-to-all-postgres-storage-retention.md`.
+
 ### 2026-10-24 — security/privacy lead (Devin session 94914ecc)
 - Did: Audited private-code data flows end-to-end and wrote `docs/security/TENANT_DATA_PROTECTION.md`; added `backend/tests/test_tenant_isolation_adversarial.py` (17 tests: 28-path read denial, write denial, SSE, artifacts incl. NULL-project, jobs trace-strip, forged scope/repo/context-pack claims, ingest-token binding, viewer floor, forged-ref payload/memory stores, RLS probe-role verify, store GUC smoke, full purge); implemented FORCE RLS on index_payloads/index_snapshots (migration 0016 + `set_config('ari.project_id')` in `_validate_ref`, `find_snapshot`, `PostgresMemoryStore._validate`, purge); implemented `backend/privacy.py::purge_project` (FK-safe full tenant delete + refcount-aware artifact objects + bare-clone removal; audit_events retained by design).
 - State of the code: all 334 backend tests pass incl. 17 new adversarial tests; ruff clean on touched files; no isolation hole found at app layer (require_project uniform).
