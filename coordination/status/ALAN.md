@@ -643,3 +643,20 @@ existing tables; POST .../onboarding/test-event sends a synthetic spike through
 the app's real owned_staging ingest (owner, rate-limited, never executes);
 POST /repositories/{id}/disconnect revokes App grant + mappings, idempotent.
 Wizard page + transport methods + 10 backend tests + 2 Playwright specs.
+
+## Release readiness harness — feat/devin/release-validation
+
+Automated pilot release-readiness rehearsal, stacked on `feat/alan/pilot-deployment-ops`.
+`deploy/release_readiness.py` boots the real staging-profile stack on a scratch DB
+and proves 24 checks end-to-end (preflight gates, boot/drain, smoke, job exec,
+alert+redaction, SIGKILL crash recovery, backup→restore parity, authz/CSRF/estop
+gates, off-mode default, artifacts, release_check). First run: GO — 23 PASS /
+1 WARN (harness poll, fixed) / 0 FAIL. Also fixed `.gitignore` hiding
+`.env.staging.example`. Playwright real-stack: build verified, spec run in flight.
+Will re-run everything against the integration branch when it lands.
+
+Integration branch validated: `integration/2026-11-02-release` @ 4f845f4f passes
+the full readiness suite — GO, 25/25 (migrations to 0017, smoke 15/15, crash
+recovery, restore parity, authz/estop, alert redaction). One cross-PR defect
+found+fixed on my branch (openapi dev-gate vs smoke/release_check). My verdict
+matches theirs: infra GO; deploy stays NO-GO until Codex P1s F1/F2 land.

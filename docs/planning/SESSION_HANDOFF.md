@@ -1850,3 +1850,13 @@ No merge is authorized for this review branch.
 
 
 
+
+## 2026-10-24 — Devin (Alan): automated release-readiness harness
+
+- Branch `feat/devin/release-validation` (stacked on `feat/alan/pilot-deployment-ops`). New: `deploy/release_readiness.py` — one-command full-stack rehearsal that boots the real stack (embedded Postgres scratch DB, `APP_ENV=staging`, real API+worker+migrations+local alert webhook sink) and emits a GO/NO-GO report to `deploy/reports/release-readiness-<ts>.{json,md}` (gitignored). `deploy/readiness_worker.py` registers three probe job kinds (`release_probe_success/fail/sleep`) then runs the real `backend.cli.worker` entrypoint.
+- Executed verification (first full run): **GO — 24 checks, 23 PASS, 1 WARN (harness poll bug, fixed), 0 FAIL**. Proves: negative+positive staging preflight, migrations to head, API+worker boot+SIGTERM drain, smoke 15/15 via `smoke_staging.sh`, probe job success, `job_failed_permanent` alert POSTed redacted, JSON log format, SIGKILL→lease-expiry→reclaim crash recovery (attempts=2), real pg_dump/pg_restore into sibling DB at head with row parity, CSRF + non-member 404 + owner-only emergency-stop gates, emergency-stop job reaching terminal status, off-mode default in ops/status, artifact round-trip, `release_check.py` 0-fail.
+- Fixed a real gap in PR #5: `.env.staging.example` was referenced by `PILOT_OPERATIONS.md` and the handoff but silently swallowed by the `.env.*` gitignore rule — added `!.env.staging.example` and committed the file.
+- Docs: `PILOT_OPERATIONS.md` §13 (readiness rehearsal) + checklist row 12.
+- Not yet done: re-run GO report post-fix, real-stack Playwright e2e (build verified; `idempotent-retry.spec.ts` in flight), full re-run when the integration session publishes `integration/*`.
+
+- Integration-branch run (`integration/2026-11-02-release` @ 4f845f4f, Alembic head 0017): found a real cross-workstream defect — PR #4 hardening gates `/api/openapi.json` to dev-only while PR #5's `smoke_staging.sh` expected 200 and `release_check.py`'s estop-surface check silently SKIPPED. Fixed: smoke passes on 200-or-404, release_check probes the real routes unauthenticated (401/403 = mounted). After the fix: **GO — 25/25 PASS** on the integrated tree. Report: `deploy/reports/release-readiness-20261024T215621+0000.md`.
