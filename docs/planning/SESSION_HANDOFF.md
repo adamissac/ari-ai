@@ -1741,6 +1741,11 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - Gaps left honest: 45-case per-case scored JSON still not committed (only handoff
   prose + the earlier 23-case baseline file); live `test_live_corpus.py` not run
   (opt-in, paid, no key on this box); Probe template count still binds `validated`.
+- Follow-up (same session): PR #530 (`feat/adam/release-gate`) edits the same
+  `score_api.py` region and keeps `_finding_paths` nested inside `main()` —
+  whichever PR merges second must rebase that hunk. Resolution: keep #529's
+  module-level function (the new test imports it) + take #530's
+  `scored`/`unscored_reason`/`TERMINAL` additions. Comment left on PR #529.
 
 ## 2026-10-24 — Devin (Adam): access_control.role check template
 
