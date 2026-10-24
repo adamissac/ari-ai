@@ -17,6 +17,7 @@ from shared import (
     intelligence_memory,
     live_defense,
     monitoring,
+    onboarding,
     review,
     rl,
     scope,
@@ -160,6 +161,11 @@ MODELS: tuple[type[BaseModel], ...] = (
     live_defense.JobLatencyStats,
     live_defense.WaitingJobView,
     live_defense.FirstResponderDiagnostics,
+    # customer onboarding (0.24.0)
+    onboarding.OnboardingStep,
+    onboarding.OnboardingStatus,
+    onboarding.OnboardingTestEventCreate,
+    onboarding.OnboardingTestEventResult,
     # rl
     rl.NodeSignals,
     rl.PlatformFacts,

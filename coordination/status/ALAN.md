@@ -611,3 +611,10 @@ staging profile: preflight PASS, smoke 15/15, release check 18/0 fail, backup→
 drill parity at head 0015, job_dead alert delivered redacted. Integration branch:
 #441+#458 merge + 348 tests pass; #412/#496 conflict — needs owner resolution.
 No migrations added, no first_responder.py or security-hardening files touched.
+
+Customer onboarding (feat/alan/customer-onboarding, contracts 0.24.0 additive,
+no migration): GET /projects/{id}/onboarding computes the 11-step journey from
+existing tables; POST .../onboarding/test-event sends a synthetic spike through
+the app's real owned_staging ingest (owner, rate-limited, never executes);
+POST /repositories/{id}/disconnect revokes App grant + mappings, idempotent.
+Wizard page + transport methods + 10 backend tests + 2 Playwright specs.
