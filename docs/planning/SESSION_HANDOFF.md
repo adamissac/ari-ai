@@ -1704,6 +1704,25 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - Eval harness: `run.py` cleanup survives missing `gh` auth; `score_api.py` accepts the bare-list assessments response. All 35 cases pushed as `eval/20261024-110115/*` branches; assessments accumulate live pending a fresh `hackatl_session` for scoring + scope widening (`access_control.authentication` category).
 - Test scope fixture (`make_scope` default) now grants all three check categories — required for the f2 listing invariant after the authentication template landed.
 
+
+## 2026-10-24 — Devin (Adam): first live 45-case eval + baseline
+
+- Scored the full 45-case run live over the REST API: **idor 8/8 flagged→validated→fixed; vuln 23/24 flagged, 5 functionally validated (functional reviewer, not Probe); 1 transient FAILED** (worker restart mid-VALIDATION). Median 153s, ~$0.028/run.
+- Scorer fixes in `score_api.py`: derive finding paths from `source_span` evidence (list endpoint returns doc only, no `paths` column) and report `validated_any`/`fixed_any` next to the security-only verdicts.
+- `benign_artifact_sha512` was a mislabeled case — sha512 digests violate the `String(64)` sha256 column contract; ARI's "false positive" was a real catch. Case replaced with a genuine no-op refactor.
+- Known gap the eval exposes: Probe only has 3 executable check templates (ownership, bounds, authentication) so most non-authz CWEs end `inconclusive`. `access_control.authentication` scope now approved (`scp_01M5QVPJWE266EJGDHYW73VA59`, all 3 categories, expires 2026-12-23).
+- Cleanup done: 12 eval fix PRs (#499–511) closed, 45 `eval/20261024-110115/*` branches deleted.
+- Transport lesson: `GET /projects/{id}/findings` items are AJV-validated against `Finding` (`additionalProperties: false`) — extra keys in the response break the console. Keep list items contract-shaped.
+
+## 2026-10-24 — Devin (Adam): access_control.role check template
+
+- Probe's 4th template: `access_control.role@1` — restricted fixture identity must be denied on a mutating route while a permitted one keeps access. Covers viewer→member and member→owner holes with one renderer.
+- `CheckCategory` gained `access_control.role` (+ aliases `authorization.role`, `access_control.mutation`, `access_control.rbac`); contracts regenerated (`make contracts`).
+- `deploy/sandbox_target.py` fixtures: carol (viewer of alice's org) + dave (member); seeded authorized_scope/assessment/finding rows per owner so recipe routes have resources to hit. `build_recipe.json` grew to 14 routes incl. `scope_create` (POST) and `finding_accept_risk` (POST); new body placeholders `{expires_in_days:N}` → runtime `_expires()` helper, `{resource:KIND}` → cross-resource id, `{amount}` → declared decimal.
+- Review packet regenerated with the role sample; its import allowlist now includes `datetime` (needed by `{expires_in_days}` renders).
+- **Incident:** `chore/agent-commit-cadence` was accidentally cut from `eval/20261024-142809/idor_project_cache_before_auth` and carried the planted `_PROJECT_CACHE` vuln — PR e2e caught it correctly (`toHaveValue('900')` got stale `600`). Rebased it off; the vuln stays only on its eval branch. Lesson: always `git checkout -b <branch> origin/main`, never off the current checkout.
+- Eval run 2 (tag `20261024-142809`, 45 cases) in flight with specialist Scout live: mid-run shows vuln flagged 20/24, benign FP 0/13, median 69s (~2× faster than the 153s baseline).
+
 ## 2026-10-24 — Devin (Adam): inventory-lite rehearsal fixture
 
 - `examples/inventory-lite`: second owned fixture — a FastAPI inventory service authored
@@ -1719,3 +1738,4 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - Outstanding: the full seven-agent *live-provider* assessment on this fixture needs
   `ANTHROPIC_API_KEY` (`RUN_LIVE_LLM_EVAL=1`); scripted transports cannot honestly
   produce novel findings on it by design.
+
