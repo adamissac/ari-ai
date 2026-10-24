@@ -37,7 +37,8 @@ export function CommitRunWorkspace({ assessmentId, repoId, sha, fullName, liveVi
 }) {
   const [tab, setTab] = useState<Tab>('review');
   const run = useResource(assessmentId ? `commit-run:${repoId}:${sha}:${assessmentId}` : null,
-    signal => api().assessment(assessmentId!, { signal }), 5000);
+    signal => api().assessment(assessmentId!, { signal }), 5000,
+    d => !TERMINAL_STATES.has(d.assessment.state));
   const matching = run.status === 'ready' && repoId && belongsToCommit(run.data, repoId, sha) ? run.data : null;
   const detail = matching ? { ...matching, agent_runs: matching.agent_runs.filter(r => r.assessment_id === matching.assessment.id), findings: matching.findings.filter(f => f.assessment_id === matching.assessment.id && f.commit_sha === sha) } : null;
   const mismatch = run.status === 'ready' && !detail;
@@ -52,8 +53,9 @@ export function CommitRunWorkspace({ assessmentId, repoId, sha, fullName, liveVi
       {run.status === 'error' && <ErrorState error={run.error} onRetry={run.reload} />}
       {run.refreshError !== undefined && <p role="status">Could not refresh. Showing the last loaded records.</p>}
       {mismatch && <p role="alert">This run belongs to another repository or commit. Its records are not shown here.</p>}
-      {!mismatch && tab === 'review' && <ReviewPanel detail={detail} liveView={liveView} liveState={liveState} />}
-      {!mismatch && tab === 'agents' && <AgentsPanel detail={detail} sha={sha} fullName={fullName} liveView={liveView} />}
+      {/* No preview flash while a selected run is still loading. */}
+      {!mismatch && !(assessmentId && run.status === 'loading') && tab === 'review' && <ReviewPanel detail={detail} liveView={liveView} liveState={liveState} />}
+      {!mismatch && !(assessmentId && run.status === 'loading') && tab === 'agents' && <AgentsPanel detail={detail} sha={sha} fullName={fullName} liveView={liveView} />}
     </div>
   </>;
 }

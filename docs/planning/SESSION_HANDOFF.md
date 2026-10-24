@@ -1714,3 +1714,9 @@ Approval gate, cancel button, mismatch isolation and `RealAssessmentPanel` uncha
 Org page repo rows are fully clickable; commit list rows already linked. Checks:
 `npm run lint`, `typecheck`, `test`, `build` all pass on this branch. Follow-ups:
 the auto quick read spends one cached Claude call per commit page view.
+Second-pass fixes on the same branch: `useResource` gained an optional
+`shouldPoll(data)` so `commit-run` polling stops at a terminal assessment state;
+the quick read accepts a URL sha prefix (`startsWith` guard) so short shas no
+longer fail the response-match check; repo/org lookups match case-insensitively
+(GitHub names are); and the tabs no longer flash a Preview/empty state while a
+selected run is still loading.
