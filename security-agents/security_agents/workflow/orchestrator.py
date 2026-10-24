@@ -266,6 +266,9 @@ class OrchestratorConfig:
     test_command_args: tuple[str, ...] = ("-q", "tests")
     probe_check_transport: str = "inprocess"
     verify_check_transport: str = "inprocess"
+    # The commit under review: Scout starts from what changed instead of the whole app.
+    change_paths: tuple[str, ...] = ()
+    change_diff: str = ""
 
 
 class Orchestrator:
@@ -772,6 +775,8 @@ class Orchestrator:
             commit_sha=self.intel.snapshot.commit_sha,
             expectation_ids=[e.id for e in self.intel.expectations()],
             refuted_keys=self.history.refuted_keys(),
+            changed_paths=list(self.config.change_paths),
+            change_diff=self.config.change_diff,
             max_hypotheses=self.config.max_hypotheses,
             available_check_categories=sorted(
                 c

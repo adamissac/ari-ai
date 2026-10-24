@@ -6,6 +6,7 @@ import ast
 import tomllib
 from collections import defaultdict
 from collections.abc import Iterator
+from functools import cached_property
 from pathlib import PurePosixPath
 
 import tree_sitter_python
@@ -241,6 +242,14 @@ class PythonExtractor:
 
         visit(tree, self.owners[id(tree)])
 
+    @cached_property
+    def _imports_in(self) -> dict[tuple[str, str], list[ImportRecord]]:
+        """Imports by (scope, path); built on first resolve, after _walk_uses collected them all."""
+        index: dict[tuple[str, str], list[ImportRecord]] = {}
+        for i in self.imports:
+            index.setdefault((i.scope, i.path), []).append(i)
+        return index
+
     def resolve(self, name: str, owner: Symbol) -> tuple[Symbol | None, str]:
         parts = name.split(".")
         if parts[0] in {"self", "cls"} and len(parts) == 2:
@@ -269,10 +278,8 @@ class PythonExtractor:
                 return candidates[0], "exact"
             bindings = [
                 i
-                for i in self.imports
-                if i.scope == scope
-                and i.path == owner.path
-                and (i.alias or i.name or i.module.split(".")[0]) == parts[0]
+                for i in self._imports_in.get((scope, owner.path), ())
+                if (i.alias or i.name or i.module.split(".")[0]) == parts[0]
             ]
             if len(bindings) == 1:
                 imp = bindings[0]
@@ -591,7 +598,14 @@ class PythonExtractor:
     def _document_expectations(self) -> None:
         """Declared intent from docs remains unverified and source-cited."""
         import re
+        from itertools import islice
 
+        # Hoisted out of the per-line loop: docs lines x symbols dominated indexing time.
+        named = [
+            (s, s.qualified_name.lower())
+            for s in self.symbols
+            if s.kind.value in {"module", "function", "method"}
+        ]
         for file in self.files:
             if PurePosixPath(file.path).suffix not in {".md", ".rst"}:
                 continue
@@ -608,13 +622,9 @@ class PythonExtractor:
                     "that",
                     "this",
                 }
-                candidates = [
-                    s
-                    for s in self.symbols
-                    if s.kind.value in {"module", "function", "method"}
-                    and any(w.rstrip("s") in s.qualified_name.lower() for w in words)
-                ]
-                for subject in candidates[:3]:
+                stems = {w.rstrip("s") for w in words}
+                matches = (s for s, name in named if any(w in name for w in stems))
+                for subject in islice(matches, 3):
                     evidence = EvidenceRef(
                         kind=EvidenceKind.source_span,
                         path=file.path,

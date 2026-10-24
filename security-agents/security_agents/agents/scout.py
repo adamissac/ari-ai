@@ -71,6 +71,8 @@ class ScoutInput(StrictModel):
     entry_point_ids: list[str] = Field(default_factory=list)
     expectation_ids: list[str] = Field(default_factory=list)
     refuted_keys: list[str] = Field(default_factory=list)
+    changed_paths: list[str] = Field(default_factory=list)
+    change_diff: str = Field(default="", max_length=20_000)
     max_hypotheses: int = 5
     available_check_categories: list[str] = Field(default_factory=list)
 
@@ -198,6 +200,9 @@ def build_prompt(data: ScoutInput, intel: CodeIntel) -> str:
     if data.expectation_ids:
         wanted_exp = set(data.expectation_ids)
         expectations = [e for e in expectations if e.id in wanted_exp] or expectations
+    # Changed handlers first: a per-commit review is about what this commit did.
+    changed = set(data.changed_paths)
+    entries = sorted(entries, key=lambda e: e.path not in changed)
     entry_rows = [
         {
             "id": e.id,
@@ -222,9 +227,18 @@ def build_prompt(data: ScoutInput, intel: CodeIntel) -> str:
         }
         for e in expectations
     ]
+    change_block = (
+        "This assessment reviews one commit. Start from the change below: check every entry "
+        "point whose handler it touches, and anything that calls code it changed, before "
+        "surveying anything else.\n"
+        f"{data_block('commit_change', {'changed_paths': data.changed_paths, 'diff': data.change_diff}, provenance='git')}\n\n"
+        if data.changed_paths
+        else ""
+    )
     return (
         f"Survey snapshot {data.snapshot_id} at commit {data.commit_sha} "
         f"(assessment {data.assessment_id}).\n\n"
+        f"{change_block}"
         f"{data_block('entry_points', entry_rows, provenance='code_intelligence')}\n\n"
         f"{data_block('expectations', expectation_rows, provenance='code_intelligence')}\n\n"
         f"{data_block('index_provenance', intel.provenance(), provenance='platform')}\n\n"
