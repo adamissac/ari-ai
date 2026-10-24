@@ -33,7 +33,11 @@ VALID_OUTPUT = {
             "suggested_check_category": "access_control.ownership",
         }
     ],
-    "coverage": {"entry_points_reviewed": ["ent_get_payments_payment_id"], "looks_correct": [], "skipped_with_reason": []},
+    "coverage": {
+        "entry_points_reviewed": ["ent_get_payments_payment_id"],
+        "looks_correct": [],
+        "skipped_with_reason": [],
+    },
     "suspicious_instructions": [],
 }
 
@@ -60,7 +64,11 @@ def run(script: list, *, intel, budget=None, ctx=None, cancelled=lambda: False):
 
 def test_happy_path_tool_call_then_typed_output(intel):
     script = [
-        FakeTurn(tool_calls=[("code__read_span", {"path": "payments_lite/app.py", "start_line": 52, "end_line": 60})]),
+        FakeTurn(
+            tool_calls=[
+                ("code__read_span", {"path": "payments_lite/app.py", "start_line": 52, "end_line": 60})
+            ]
+        ),
         FakeTurn(tool_calls=[(SUBMIT, VALID_OUTPUT)]),
     ]
     outcome, _ = run(script, intel=intel)
@@ -85,7 +93,9 @@ def test_model_sees_tool_results_and_can_adapt(intel):
         return FakeTurn(tool_calls=[(SUBMIT, VALID_OUTPUT)])
 
     script = [
-        FakeTurn(tool_calls=[("code__read_span", {"path": "payments_lite/app.py", "start_line": 1, "end_line": 5})]),
+        FakeTurn(
+            tool_calls=[("code__read_span", {"path": "payments_lite/app.py", "start_line": 1, "end_line": 5})]
+        ),
         second_turn,
     ]
     outcome, _ = run(script, intel=intel)
@@ -95,7 +105,9 @@ def test_model_sees_tool_results_and_can_adapt(intel):
 
 def test_denied_tool_is_reported_to_model_and_loop_continues(intel):
     script = [
-        FakeTurn(tool_calls=[("checks__run_template", {"template_ref": "x@1", "target_id": "t", "parameters": {}})]),
+        FakeTurn(
+            tool_calls=[("checks__run_template", {"template_ref": "x@1", "target_id": "t", "parameters": {}})]
+        ),
         FakeTurn(tool_calls=[(SUBMIT, VALID_OUTPUT)]),
     ]
     outcome, _ = run(script, intel=intel)
@@ -129,9 +141,7 @@ def test_schema_invalid_twice_fails_the_step(intel):
 
 def test_token_budget_stops_the_step(intel):
     script = [FakeTurn(text="thinking out loud " * 200) for _ in range(10)]
-    outcome, _ = run(
-        script, intel=intel, budget=Budget(max_tokens=200, max_usd=5.0, max_wall_clock_s=60.0)
-    )
+    outcome, _ = run(script, intel=intel, budget=Budget(max_tokens=200, max_usd=5.0, max_wall_clock_s=60.0))
     assert not outcome.ok
     assert outcome.run.error_code is ErrorCode.BUDGET_EXHAUSTED
 
@@ -159,9 +169,12 @@ def test_cancellation_ends_the_step(intel):
     # cancellation is checked before each turn; with cancel always true nothing runs
     gw = gateway_for(script)
     outcome = run_agent(
-        SPEC, gateway=gw, registry=default_registry(),
+        SPEC,
+        gateway=gw,
+        registry=default_registry(),
         ctx=make_ctx(AgentName.SCOUT, intel=intel, scope=make_scope()),
-        task_prompt="x", budget=Budget(max_tokens=1000, max_usd=1.0, max_wall_clock_s=60.0),
+        task_prompt="x",
+        budget=Budget(max_tokens=1000, max_usd=1.0, max_wall_clock_s=60.0),
         cancelled=lambda: True,
     )
     assert outcome.run.error_code is ErrorCode.CANCELLED
@@ -182,9 +195,12 @@ def test_provider_failure_maps_to_llm_unavailable(intel):
             raise LLMUnavailable("provider down")
 
     outcome = run_agent(
-        SPEC, gateway=ProviderGateway(Broken()), registry=default_registry(),
+        SPEC,
+        gateway=ProviderGateway(Broken()),
+        registry=default_registry(),
         ctx=make_ctx(AgentName.SCOUT, intel=intel, scope=make_scope()),
-        task_prompt="x", budget=Budget(max_tokens=1000, max_usd=1.0, max_wall_clock_s=60.0),
+        task_prompt="x",
+        budget=Budget(max_tokens=1000, max_usd=1.0, max_wall_clock_s=60.0),
     )
     assert outcome.run.error_code is ErrorCode.LLM_UNAVAILABLE
 
@@ -193,9 +209,12 @@ def test_usage_is_accumulated_into_the_assessment(intel):
     total = Usage()
     gw = gateway_for([FakeTurn(tool_calls=[(SUBMIT, VALID_OUTPUT)])])
     outcome = run_agent(
-        SPEC, gateway=gw, registry=default_registry(),
+        SPEC,
+        gateway=gw,
+        registry=default_registry(),
         ctx=make_ctx(AgentName.SCOUT, intel=intel, scope=make_scope()),
-        task_prompt="x", budget=Budget(max_tokens=100_000, max_usd=1.0, max_wall_clock_s=60.0),
+        task_prompt="x",
+        budget=Budget(max_tokens=100_000, max_usd=1.0, max_wall_clock_s=60.0),
         assessment_usage=total,
     )
     assert outcome.run.usage.total_tokens > 0
@@ -216,9 +235,12 @@ def test_tool_call_cap_prompts_submission(intel):
     spec = type(SPEC)(**{**vars(SPEC), "max_tool_calls": 2, "max_turns": 6})
     gw = ProviderGateway(FakeLLM({AgentName.SCOUT: [step] * 6}))
     outcome = run_agent(
-        spec, gateway=gw, registry=default_registry(),
+        spec,
+        gateway=gw,
+        registry=default_registry(),
         ctx=make_ctx(AgentName.SCOUT, intel=intel, scope=make_scope()),
-        task_prompt="x", budget=Budget(max_tokens=200_000, max_usd=5.0, max_wall_clock_s=60.0),
+        task_prompt="x",
+        budget=Budget(max_tokens=200_000, max_usd=5.0, max_wall_clock_s=60.0),
     )
     prompts = [m for c in gw.provider.calls for m in c.messages if m["role"] == "user"]
     assert any("Tool-call budget reached" in str(m["content"]) for m in prompts)
@@ -227,9 +249,12 @@ def test_tool_call_cap_prompts_submission(intel):
 def test_system_prompt_carries_role_tools_and_untrusted_data_rule(intel):
     gw = gateway_for([FakeTurn(tool_calls=[(SUBMIT, VALID_OUTPUT)])])
     run_agent(
-        SPEC, gateway=gw, registry=default_registry(),
+        SPEC,
+        gateway=gw,
+        registry=default_registry(),
         ctx=make_ctx(AgentName.SCOUT, intel=intel, scope=make_scope()),
-        task_prompt="x", budget=Budget(max_tokens=10_000, max_usd=1.0, max_wall_clock_s=60.0),
+        task_prompt="x",
+        budget=Budget(max_tokens=10_000, max_usd=1.0, max_wall_clock_s=60.0),
     )
     system = gw.provider.calls[0].system
     assert "You are Scout" in system
@@ -262,10 +287,16 @@ def test_assistant_turn_counter_drives_fake_script(intel):
     from security_agents.llm.types import LLMRequest
 
     req = LLMRequest(
-        agent=AgentName.SCOUT, model="m", system="s",
-        messages=[{"role": "user", "content": "a"}, {"role": "assistant", "content": []},
-                  {"role": "user", "content": []}],
-        tools=[], max_tokens=10,
+        agent=AgentName.SCOUT,
+        model="m",
+        system="s",
+        messages=[
+            {"role": "user", "content": "a"},
+            {"role": "assistant", "content": []},
+            {"role": "user", "content": []},
+        ],
+        tools=[],
+        max_tokens=10,
     )
     assert assistant_turns(req) == 1
 
@@ -288,6 +319,7 @@ def test_default_model_is_haiku_5_5_and_no_server_fallback_is_sent(monkeypatch):
         def create(**kw):
             calls.append((kind, kw))
             raise RuntimeError("stop after recording")
+
         return SimpleNamespace(create=create)
 
     client = SimpleNamespace(messages=recorder("messages"), beta=SimpleNamespace(messages=recorder("beta")))

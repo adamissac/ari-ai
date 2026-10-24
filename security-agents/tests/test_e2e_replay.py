@@ -16,6 +16,7 @@ import pytest
 from security_agents.contracts import AgentName, Approval, Budget, ValidationOutcome
 from security_agents.llm import FakeLLM, ProviderGateway
 from security_agents.workflow import AssessmentState, FindingRecord, Orchestrator, OrchestratorConfig
+from security_agents.workflow.states import MAX_PATCH_ATTEMPTS
 
 from . import fake_agents
 from .conftest import TARGET_ID, live_scope
@@ -347,11 +348,13 @@ def test_ineffective_in_scope_patch_is_rejected_and_retried_then_unresolved(inte
     res = orch.run()
     patch_runs = [r for r in res.runs if r.agent is AgentName.PATCH]
     verify_runs = [r for r in res.runs if r.agent is AgentName.VERIFY]
-    assert [r.attempt for r in patch_runs] == [1, 2], [r.attempt for r in patch_runs]
-    assert len(verify_runs) == 2
+    assert [r.attempt for r in patch_runs] == list(range(1, MAX_PATCH_ATTEMPTS + 1)), [
+        r.attempt for r in patch_runs
+    ]
+    assert len(verify_runs) == MAX_PATCH_ATTEMPTS
     finding = res.findings[0]
     assert finding.status == "patch_rejected"
-    assert [v.verdict for v in finding.verifications] == ["rejected", "rejected"]
+    assert [v.verdict for v in finding.verifications] == ["rejected"] * MAX_PATCH_ATTEMPTS
     first = finding.verifications[0]
     recheck = next(c for c in first.checks if c.name.value == "original_check_now_fails_to_reproduce")
     assert not recheck.passed

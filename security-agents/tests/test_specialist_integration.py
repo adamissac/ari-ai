@@ -15,6 +15,7 @@ from specialists.runtime import Advice, Specialists
 from security_agents.contracts import Approval, Budget
 from security_agents.llm import FakeLLM, ProviderGateway
 from security_agents.workflow import FindingRecord, Orchestrator, OrchestratorConfig
+from security_agents.workflow.states import MAX_PATCH_ATTEMPTS
 
 from . import fake_agents
 from .conftest import TARGET_ID, live_scope
@@ -28,17 +29,35 @@ def run(intel, driver, library, tmp_path: Path, specialists, **patch_kw):
     def approver(finding: FindingRecord) -> Approval | None:
         if finding.plan is None:
             return None
-        return Approval(project_id="prj_test", subject_type="remediation", subject_id=finding.plan.id,
-                        decision="approved", decided_by="usr_human_reviewer", reason="plan reviewed in test")
+        return Approval(
+            project_id="prj_test",
+            subject_type="remediation",
+            subject_id=finding.plan.id,
+            decision="approved",
+            decided_by="usr_human_reviewer",
+            reason="plan reviewed in test",
+        )
 
     config = OrchestratorConfig(
-        assessment_id="asm_spec", project_id="prj_test", org_id="org_test", scope=live_scope(), target_id=TARGET_ID,
-        requested_by="usr_requester", budget=Budget(max_tokens=2_000_000, max_usd=50.0, max_wall_clock_s=900.0),
+        assessment_id="asm_spec",
+        project_id="prj_test",
+        org_id="org_test",
+        scope=live_scope(),
+        target_id=TARGET_ID,
+        requested_by="usr_requester",
+        budget=Budget(max_tokens=2_000_000, max_usd=50.0, max_wall_clock_s=900.0),
         max_hypotheses_to_validate=2,
     )
-    orch = Orchestrator(config, intel=intel, gateway=ProviderGateway(fake, default_model="claude-opus-5-5"),
-                        driver=driver, library=library, workdir=tmp_path / "work", approve_remediation=approver,
-                        specialists=specialists)
+    orch = Orchestrator(
+        config,
+        intel=intel,
+        gateway=ProviderGateway(fake, default_model="claude-opus-5-5"),
+        driver=driver,
+        library=library,
+        workdir=tmp_path / "work",
+        approve_remediation=approver,
+        specialists=specialists,
+    )
     return orch.run(), fake
 
 
@@ -103,7 +122,7 @@ class Hostile(Specialists):
 def test_a_model_cannot_accept_an_ineffective_patch(intel, driver, library, tmp_path):
     res, _ = run(intel, driver, library, tmp_path, Hostile("adequate"), ineffective=True)
     finding = res.findings[0]
-    assert [v.verdict for v in finding.verifications] == ["rejected", "rejected"]
+    assert [v.verdict for v in finding.verifications] == ["rejected"] * MAX_PATCH_ATTEMPTS
     assert finding.status == "patch_rejected"
 
 
