@@ -43,3 +43,17 @@ Branch: `integration/2026-11-02-release` on m-alan08/ari-ai (base: upstream/main
 F1/F7/F8 (Grok), F2/F3/F4/F5 (Devin Reliability), F6/F9 (Devin Observability).
 Each xfail flips to XPASS (a strict failure, forcing an unmark commit) when an
 owner fix lands on a recomposed head.
+
+## Recomposition 2 (onboarding @ cb085ed0)
+Second merge of feat/alan/customer-onboarding (merge b5bfd3d0): owner converged
+disconnect on `disconnected_at` flag + keep `installation_id` + revoke
+`deploy_commit_mappings` + dict response `{"id", "disconnected": true}` — adopted
+verbatim over the earlier union (their test asserts installation_id is kept).
+Found + fixed during re-verify: owner's `_status` dropped the parked row from
+the `repository` step (their own test asserts it stays `done`); the step now
+uses unfiltered rows while every *connected* step (github_access, snapshot,
+deploy_mapping, test_event) honors `disconnected_at`. Also: hardening's
+`login:{ip}` burst (20/300s) starved the real-stack suite (~50 dev logins);
+new `auth_dev_login_burst` setting (default 20) is set to 500 by e2e stack.py.
+release-validation: `!.env.staging.example` negation from PR #7 will be
+preserved when it merges.
