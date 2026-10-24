@@ -12,6 +12,8 @@ from __future__ import annotations
 import ast
 import hashlib
 import re
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
@@ -56,6 +58,8 @@ _FORBIDDEN_IMPORTS = {
     "asyncio.subprocess",
 }
 _FORBIDDEN_CALLS = {"system", "popen", "exec", "eval", "fork", "unlink", "rmtree", "__import__"}
+
+_BUDGET_LOCK = threading.Lock()
 
 
 class ToolDenied(Exception):
@@ -291,9 +295,10 @@ class ReviewerToolbox:
 
     # ------------------------------------------------------- execution
     def _exec(self, ws: Workspace, targets: list[str]) -> ExecResult:
-        if self.test_runs >= self.budget.max_test_runs:
-            raise ToolDenied(f"test-run budget exhausted ({self.budget.max_test_runs} runs)")
-        self.test_runs += 1
+        with _BUDGET_LOCK:  # run_generated calls this from two threads at once
+            if self.test_runs >= self.budget.max_test_runs:
+                raise ToolDenied(f"test-run budget exhausted ({self.budget.max_test_runs} runs)")
+            self.test_runs += 1
         try:
             return self.sandbox.run_pytest(
                 ws.project_dir, targets, timeout_s=self.budget.test_timeout_s
@@ -333,16 +338,24 @@ class ReviewerToolbox:
         runs = [first]
         outcome = classify(first)
         reproducible = True
-        if outcome == "failed":  # a failure only counts if it reproduces identically
-            second = self._exec(self.head, target)
-            runs.append(second)
-            reproducible = classify(second) == "failed" and {
-                (c.nodeid, c.outcome) for c in second.cases
-            } == {(c.nodeid, c.outcome) for c in first.cases}
+        # The repeat run and the base run are independent sandboxes: run them side by side.
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            repeat = pool.submit(self._exec, self.head, target) if outcome == "failed" else None
+            on_base = (
+                pool.submit(self._exec, self.base, target)
+                if self.base is not None and outcome in ("failed", "passed")
+                else None
+            )
+            if repeat is not None:  # a failure only counts if it reproduces identically
+                second = repeat.result()
+                runs.append(second)
+                reproducible = classify(second) == "failed" and {
+                    (c.nodeid, c.outcome) for c in second.cases
+                } == {(c.nodeid, c.outcome) for c in first.cases}
+            base_run = on_base.result() if on_base is not None else None
         report = self._store_run(f"generated:{test_id}@head", self.head, runs)
         ex = TestExecution(test_id, wt.path, outcome, reproducible, report, runs)
-        if self.base is not None and outcome in ("failed", "passed"):
-            base_run = self._exec(self.base, target)
+        if base_run is not None and self.base is not None:
             ex.outcome_on_base = classify(base_run)
             ex.base_report = self._store_run(f"generated:{test_id}@base", self.base, [base_run])
         self.executions[test_id] = ex
