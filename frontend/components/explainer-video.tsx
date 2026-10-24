@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { BRAND_NAME } from '@/components/brand';
-import { Letters, LetterScope } from '@/components/letters';
 import { useTrack } from '@/components/story';
 
 /**
@@ -57,7 +56,7 @@ export function ExplainerVideo() {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_1fr] lg:items-end">
           <div>
             <p className="kicker">Watch</p>
-            <h2 id="explainer-title" className="display mt-3 text-3xl font-semibold md:text-5xl"><LetterScope><Letters text={`See ${BRAND_NAME} in action.`} /></LetterScope><br /><span className="text-muted"><LetterScope><Letters text="What it is, and how it works." /></LetterScope></span></h2>
+            <h2 id="explainer-title" className="display mt-3 text-3xl font-semibold md:text-5xl">See {BRAND_NAME} in action.<br /><span className="text-muted">What it is, and how it works.</span></h2>
           </div>
           <p className="max-w-md text-sm text-muted">
             A walkthrough of the product: connecting a repository, the code review, the seven security agents and

@@ -10,7 +10,6 @@ import { ASSESSMENT_LOOP, HeroStage, useLoopCursor } from '@/components/hero';
 import { IntroLoader } from '@/components/intro-loader';
 import { OptionalUserBar } from '@/components/user-bar';
 import { ExplainerVideo } from '@/components/explainer-video';
-import { Letters } from '@/components/letters';
 import { DEMO_ONLY } from '@/lib/deployment';
 import { RollText } from '@/components/ui';
 
@@ -31,9 +30,9 @@ export default function HomePage() {
       <HeroStage className="hero-full px-6 pb-14 pt-44 md:px-12 md:pt-32" labelledBy="hero-title" play={revealed} colony>
         <div className="mx-auto w-full max-w-7xl text-center">
           <p className="kicker kicker-dark hero-in mx-auto" style={i(0)}>Seven agents · one shared brain</p>
-          <h1 id="hero-title" className="hero-headline display mt-7 font-bold">
-            <span data-spotlight className="hero-line"><Letters text={BRAND_HEADLINE} /></span><br />
-            <span data-spotlight className="hero-line hero-line-dim"><Letters text={BRAND_HEADLINE_REST} from={14} /></span>
+          <h1 id="hero-title" className="hero-headline display mt-7 font-bold hero-in" style={i(1)}>
+            <span data-spotlight className="hero-line">{BRAND_HEADLINE}</span><br />
+            <span data-spotlight className="hero-line hero-line-dim">{BRAND_HEADLINE_REST}</span>
           </h1>
           <p className="hero-in mx-auto mt-7 max-w-md text-sm text-white/75 md:text-base" style={i(2)}>{BRAND_TAGLINE}</p>
           <div className="hero-in mt-9 flex flex-wrap justify-center gap-3" style={i(3)}>
