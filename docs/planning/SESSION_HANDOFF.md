@@ -1712,3 +1712,12 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - Known gap the eval exposes: Probe only has 3 executable check templates (ownership, bounds, authentication) so most non-authz CWEs end `inconclusive`. `access_control.authentication` scope now approved (`scp_01M5QVPJWE266EJGDHYW73VA59`, all 3 categories, expires 2026-12-23).
 - Cleanup done: 12 eval fix PRs (#499–511) closed, 45 `eval/20261024-110115/*` branches deleted.
 - Transport lesson: `GET /projects/{id}/findings` items are AJV-validated against `Finding` (`additionalProperties: false`) — extra keys in the response break the console. Keep list items contract-shaped.
+
+## 2026-10-24 — Devin (Adam): access_control.role check template
+
+- Probe's 4th template: `access_control.role@1` — restricted fixture identity must be denied on a mutating route while a permitted one keeps access. Covers viewer→member and member→owner holes with one renderer.
+- `CheckCategory` gained `access_control.role` (+ aliases `authorization.role`, `access_control.mutation`, `access_control.rbac`); contracts regenerated (`make contracts`).
+- `deploy/sandbox_target.py` fixtures: carol (viewer of alice's org) + dave (member); seeded authorized_scope/assessment/finding rows per owner so recipe routes have resources to hit. `build_recipe.json` grew to 14 routes incl. `scope_create` (POST) and `finding_accept_risk` (POST); new body placeholders `{expires_in_days:N}` → runtime `_expires()` helper, `{resource:KIND}` → cross-resource id, `{amount}` → declared decimal.
+- Review packet regenerated with the role sample; its import allowlist now includes `datetime` (needed by `{expires_in_days}` renders).
+- **Incident:** `chore/agent-commit-cadence` was accidentally cut from `eval/20261024-142809/idor_project_cache_before_auth` and carried the planted `_PROJECT_CACHE` vuln — PR e2e caught it correctly (`toHaveValue('900')` got stale `600`). Rebased it off; the vuln stays only on its eval branch. Lesson: always `git checkout -b <branch> origin/main`, never off the current checkout.
+- Eval run 2 (tag `20261024-142809`, 45 cases) in flight with specialist Scout live: mid-run shows vuln flagged 20/24, benign FP 0/13, median 69s (~2× faster than the 153s baseline).
