@@ -162,3 +162,15 @@ adds in `ctx.effect("agent:<invocation_id>:<agent>")` and pass `deadline_s` when
 enqueues `live_defense_agent_step`. `FirstResponderInvocation.job_id` already links
 invocations to `jobs`, so `/jobs/{id}/history` and the project execution figures
 cover them without schema changes.
+
+## Evidence (measured on this branch)
+
+* Starvation: 200 queued jobs from one project, then 5 from another, 4 workers.
+  Before (FIFO ordering, no project limit) the quiet project's jobs were claimed at
+  positions 201–205; after (fair ordering, limit 4) at 2, 4, 6, 8, 10.
+* Cancel after worker death: before, a cancel-requested job with an expired lease
+  stayed `running` indefinitely; after, the first reconcile marks it `cancelled`
+  (`test_reconcile_never_runs_handlers_or_bypasses_cancellation`).
+* Crash during control `apply`: before, the next claim re-ran the adapter call;
+  after, the job is `recovery_required` and never re-claimed
+  (`test_worker_death_during_effect_is_never_reclaimed_automatically`).
