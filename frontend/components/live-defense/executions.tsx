@@ -109,11 +109,12 @@ function InvestigationList({
     15000,
   );
   const [extra, setExtra] = useState<InvestigationSummary[]>([]);
-  const [extraCursor, setExtraCursor] = useState<string | null>(null);
+  // `undefined` = not yet paged (use first page's cursor); `null` = exhausted.
+  const [extraCursor, setExtraCursor] = useState<string | null | undefined>(undefined);
   const [moreError, setMoreError] = useState<unknown>(null);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  const cursor = extraCursor ?? (first.status === 'ready' ? first.data.next_cursor : null);
+  const cursor = extraCursor !== undefined ? extraCursor : first.status === 'ready' ? first.data.next_cursor : null;
 
   const loadMore = useCallback(async () => {
     if (!cursor) return;
