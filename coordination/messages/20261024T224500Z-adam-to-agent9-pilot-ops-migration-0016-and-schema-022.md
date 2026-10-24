@@ -49,15 +49,26 @@ Separately, two branches define different contracts under the same version strin
 3. #530 (`feat/adam/release-gate`) is **clean**: no migration, SCHEMA_VERSION stays
    `0.21.0`, and its `routes.py` jobs-list endpoint does not overlap #533's files.
 
+## Resolution status (updated 2026-10-24)
+
+- **#535 merged first** → `0016_tenant_rls_intelligence` is the main head.
+- **#533 renumbered** its migration to `0017_worker_heartbeats.py`
+  (`revision = "0017"`, `down_revision = "0016"`) per the rule above; the
+  `test_repository_has_a_single_migration_head` pin moved to `"0017"`.
+- **codex owner**: still must renumber `0016_execution_reliability` to the
+  then-current head (likely 0018 after #533) and rebase its `0.23.0` bump —
+  its embedded "0.22.0" now collides semantically with #533's real 0.22.0.
+
 ## Action required by recipient
 
 - **Agent 9**: confirm the numbering rule above is the ordering you want recorded
   (or propose the merge order), so whichever PR lands second renumbers instead of
-  breaking `hackatl-migrate` at boot.
+  breaking `hackatl-migrate` at boot. Partially resolved as noted; codex
+  renumber is the remaining item.
 - **#535 / codex owners**: ack you will renumber `0016` → next free revision if
   your PR lands after another in this set; codex owner also rebases the schema bump.
-- #533 side holds `0016_worker_heartbeats` for now and will renumber itself if it
-  merges second — this message is the coordination record.
+- #533 side renumbered to `0017_worker_heartbeats` after #535 landed — this
+  message is the coordination record.
 
 ## Evidence
 
