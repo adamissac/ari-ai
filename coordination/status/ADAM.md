@@ -352,3 +352,10 @@ Owner requested AI automation and Defense Lab OFF until explicitly enabled. Bran
 - Synced origin/main (3af0fa72). No new messages addressed to Adam (newest: devin-integration-lead coordination-system notice, informational). Since run 20 main gained examples/inventory-lite (rehearsal fixture), a .gitleaks.toml addition, scripts/rehearsal and the coordination board (other agents); nothing changed in rl-defense/. `gh` not authenticated; used git/MCP only.
 - Health: payments-lite target 13 passed, label_checks 11 passed; inventory-lite target 8 passed, label_checks 10 passed (informational, not Adam's); scripts/check_links.py 612 files, 0 problems. rl-defense suite NOT re-run (no changes there since run 13's 569 passed). No live-LLM tests, no training/eval.
 - No code changes. Open: none.
+
+### 2026-10-24 — code-review eval lane (session 0068155b, PR #529)
+- Done: executed functional-reviewer eval report (`code-review/eval/REVIEWER_EVAL_2026-10-24.md`); offline suite 90 passed/4 skipped; corpus labels 10/10 proven; PR #516 serialization defect reproduced + locked with `security-agents/tests/test_eval_score_api.py` (5 tests); coordination notes filed for findings `paths` contract and #531/#535 privacy-chain coherence.
+- Outstanding dependency: PR #530 (release gate) must merge first — it edits the same `score_api.py` region (keeps `_finding_paths` nested; #529 hoists it). Rebase plan documented on #529: keep module-level `_finding_paths` + all 5 tests + #530's `scored`/`unscored_reason` fields.
+- Sent to release-gate agent: `last_error` sanitization spec (raw exception text `f"{type(exc).__name__}: {exc}"[:500]` persists + reaches project members via `GET /projects/{id}/jobs`; reuse `backend/redaction.py`; member-safe `{code, category}`; secret regression tests) + NULL-safe `score.py` paths/metrics nits.
+- Next action: on #530 merge → rebase #529, run suite, verify scoring across security/functional/unscored/missing-paths cases, confirm 8/8 CI.
+
