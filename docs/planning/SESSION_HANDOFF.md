@@ -1737,6 +1737,16 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - Coordination: `coordination/messages/20261024T182202Z-devin-to-all-live-defense-observability-schema-0-23.md`; status `coordination/status/DEVIN.md`.
 - Next: PR review/merge by a human; do not merge from the agent.
 
+## 2026-10-24 — Devin (Alan): execution reliability — Codex review fixes (F2–F5, F1/F7 contract)
+
+- Codex review `codex/first-responder-integration-review` (NO-GO) assigned queue defects F2–F5 to this branch; all fixed.
+- F2: `EMERGENCY_JOB_KINDS` (emergency_stop/rollback/expire) claim under a bounded reserve `JOB_MAX_RUNNING_EMERGENCY` (default 2), exempt from project/global caps and not consuming ordinary slots; `live_defense_execute`/`verify` remain limited.
+- F3: `jobs.complete`/`jobs.fail` fence on a live lease (DB clock); expired workers cannot report outcomes; original owner's late `recovery_required` completion stays the audited exception.
+- F4: `jobs.defer(delay_s=|depends_on=)` — validated transition + `job_events`, `defer_count` makes it neutral on the retry budget, cancel/deadline precedence, refused after uncertain effects. For Grok's Diagnose scheduling.
+- F5: `modes.cancel_first_responder_jobs` now covers `waiting` (→ cancelled) and flags `recovery_required` `cancel_requested` without erasing effect evidence.
+- F1/F7 contract sent to Grok: `ctx.effect("provider:<job_id>:<attempt>:<seq>")` for billable requests (no replay of unknown outcomes); `enqueue(deadline_at=)` propagates the absolute FR deadline. See `coordination/messages/20261024T233000Z-devin-to-grok-f1-f7-queue-contract.md`.
+- Migration `0016` gained `jobs.defer_count` (additive, same revision).
+
 ## 2026-10-24 — Devin (Adam): specialist eval-brain + live eval harness
 
 - `specialists/data/evalcommits.py`: eval cases become minimal pairs (planted edit = CWE/vuln_other positive, original = hard negative), splits pinned by case id; `scout()` merges the 60 rows.
@@ -1798,3 +1808,7 @@ regressions9fail/1pass intentionally retained. No paid live tests, production
 migration, customer enforcement or new RL experiment. Owner fixes belong on their
 workstreams; suggested post-fix sequence B→A→C→D, with fresh combined review/CI.
 No merge is authorized for this review branch.
+
+
+
+
