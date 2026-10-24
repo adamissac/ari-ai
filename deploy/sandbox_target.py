@@ -26,14 +26,40 @@ FIXTURES = {
         "org": "org_sbxalice0000000000000000a",
         "project": "prj_sbxalice0000000000000000a",
         "repo": "rep_sbxalice0000000000000000a",
+        "scope": "scp_sbxalice0000000000000000a",
+        "assessment": "asm_sbxalice000000000000000a",
+        "finding": "fnd_sbxalice0000000000000000a",
     },
     "bob": {
         "user": "usr_sbxbob000000000000000000b",
         "org": "org_sbxbob000000000000000000b",
         "project": "prj_sbxbob000000000000000000b",
         "repo": "rep_sbxbob000000000000000000b",
+        "scope": "scp_sbxbob00000000000000000b",
+        "assessment": "asm_sbxbob000000000000000b",
+        "finding": "fnd_sbxbob00000000000000000b",
+    },
+    # Role-differentiated identities: their own orgs plus a cross-membership in
+    # alice's org so role-gated routes can be probed (viewer vs member vs owner).
+    "carol": {
+        "user": "usr_sbxcarol0000000000000000c",
+        "org": "org_sbxcarol0000000000000000c",
+        "project": "prj_sbxcarol0000000000000000c",
+        "repo": "rep_sbxcarol0000000000000000c",
+    },
+    "dave": {
+        "user": "usr_sbxdave00000000000000000d",
+        "org": "org_sbxdave00000000000000000d",
+        "project": "prj_sbxdave00000000000000000d",
+        "repo": "rep_sbxdave00000000000000000d",
     },
 }
+# name -> (org whose project they can reach, role in that org)
+EXTRA_MEMBERSHIPS = {
+    "carol": ("alice", "viewer"),
+    "dave": ("alice", "member"),
+}
+SEED_COMMIT = "4f3d2c1b5a6978091a2b3c4d5e6f708192a3b4c5"
 _APP = None
 
 
@@ -77,10 +103,15 @@ def _postgres_url() -> str:
 
 
 def _seed() -> dict[str, str]:
+    from datetime import timedelta
+
     import sqlalchemy as sa
 
     from backend.api.deps import _hash
     from backend.db import (
+        assessments,
+        authorized_scopes,
+        findings,
         memberships,
         organizations,
         projects,
@@ -89,7 +120,17 @@ def _seed() -> dict[str, str]:
         transaction,
         users,
     )
-    from shared.tenancy import MemberRole, ProjectSettings
+    from shared.assessment import Assessment, AssessmentState, AssessmentTrigger
+    from shared.base import utcnow
+    from shared.evidence import EvidenceKind, EvidenceRef, SourceSpan
+    from shared.findings import Finding, FindingKind, FindingStatus
+    from shared.scope import (
+        AuthorizedScope,
+        CheckCategory,
+        ScopeStatus,
+        ScopeTarget,
+    )
+    from shared.tenancy import Budget, MemberRole, ProjectSettings
 
     tokens = {}
     with transaction() as conn:
@@ -131,6 +172,112 @@ def _seed() -> dict[str, str]:
                     user_id=ids["user"],
                     csrf_token=f"sbx-{name}-csrf",
                     expires_at=sa.func.now() + sa.text("interval '1 day'"),
+                )
+            )
+        for name, (owner, role) in EXTRA_MEMBERSHIPS.items():
+            if not conn.execute(
+                sa.select(memberships.c.user_id).where(
+                    memberships.c.org_id == FIXTURES[owner]["org"],
+                    memberships.c.user_id == FIXTURES[name]["user"],
+                )
+            ).first():
+                conn.execute(
+                    sa.insert(memberships).values(
+                        org_id=FIXTURES[owner]["org"],
+                        user_id=FIXTURES[name]["user"],
+                        role=role,
+                    )
+                )
+        now = utcnow()
+        for name in ("alice", "bob"):
+            ids = FIXTURES[name]
+            if conn.execute(
+                sa.select(assessments.c.id).where(assessments.c.id == ids["assessment"])
+            ).first():
+                continue
+            scope = AuthorizedScope(
+                id=ids["scope"],
+                project_id=ids["project"],
+                name="sbx authorized sandbox",
+                targets=[ScopeTarget(repo_id=ids["repo"], build_recipe_ref="build_recipe.json")],
+                allowed_check_categories=[
+                    c.value
+                    for c in (
+                        CheckCategory.access_control_ownership,
+                        CheckCategory.access_control_authentication,
+                        CheckCategory.access_control_role,
+                        CheckCategory.input_validation_bounds,
+                    )
+                ],
+                status=ScopeStatus.active,
+                requested_by=ids["user"],
+                approved_by=ids["user"],
+                approved_at=now,
+                expires_at=now + timedelta(days=30),
+            )
+            conn.execute(
+                sa.insert(authorized_scopes).values(
+                    id=scope.id,
+                    project_id=ids["project"],
+                    status=scope.status.value,
+                    expires_at=scope.expires_at,
+                    doc=scope.model_dump(mode="json"),
+                )
+            )
+            asm = Assessment(
+                id=ids["assessment"],
+                project_id=ids["project"],
+                repo_id=ids["repo"],
+                scope_id=ids["scope"],
+                commit_sha=SEED_COMMIT,
+                trigger=AssessmentTrigger.monitoring,
+                state=AssessmentState.completed,
+                budget=Budget(),
+                created_by=ids["user"],
+                created_at=now,
+                updated_at=now,
+                completed_at=now,
+            )
+            conn.execute(
+                sa.insert(assessments).values(
+                    id=asm.id,
+                    project_id=ids["project"],
+                    repo_id=ids["repo"],
+                    scope_id=ids["scope"],
+                    commit_sha=SEED_COMMIT,
+                    trigger=asm.trigger.value,
+                    state=asm.state.value,
+                    doc=asm.model_dump(mode="json"),
+                )
+            )
+            fnd = Finding(
+                id=ids["finding"],
+                assessment_id=ids["assessment"],
+                commit_sha=SEED_COMMIT,
+                kind=FindingKind.security,
+                title="[CWE-862] sandbox fixture finding for authorization checks",
+                status=FindingStatus.hardened,
+                evidence=[
+                    EvidenceRef(
+                        kind=EvidenceKind.source_span,
+                        path="backend/backend/api/routes.py",
+                        commit_sha=SEED_COMMIT,
+                        span=SourceSpan(start_line=1, end_line=2),
+                        provenance="sandbox_target.seed",
+                    )
+                ],
+                confidence=0.9,
+                created_at=now,
+                updated_at=now,
+            )
+            conn.execute(
+                sa.insert(findings).values(
+                    id=fnd.id,
+                    project_id=ids["project"],
+                    assessment_id=ids["assessment"],
+                    kind=fnd.kind.value,
+                    status=fnd.status.value,
+                    doc=fnd.model_dump(mode="json"),
                 )
             )
     return tokens
