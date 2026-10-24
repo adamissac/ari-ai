@@ -94,6 +94,12 @@ def process_github_delivery(ctx: JobContext) -> dict[str, Any]:
             return {"monitoring_event_id": done.id, "idempotent_replay": True}
         _, raw = store.get(conn, d["payload_artifact_id"])
     payload = json.loads(raw)
+    if d["event_name"] in ("installation", "installation_repositories"):
+        from backend.recipes import enqueue_for_installation
+
+        with transaction() as conn:
+            queued = enqueue_for_installation(conn, d["event_name"], payload, delivery_id)
+        return {"build_recipes_for": queued}
     change = normalize_github(d["event_name"], payload)
     if isinstance(change, Ignored):
         return {"ignored": change.reason}
