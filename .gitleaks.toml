@@ -46,9 +46,23 @@ description = "SHA-256 file digests for *api.py paths in evidence JSON"
 regexTarget = "line"
 regexes = ['''"[^"]*api\.py":\s*"[0-9a-f]{64}"''']
 
-# rehearsal/ledgerlite-v2 history: one commit's README showed curl examples with
-# dummy fixture tokens (Bearer tok-alice / tok-bob). Already removed at that
-# branch's HEAD (f25d1fb3); the blob survives only in the scanned history.
+# frontend/app/fonts/SOURCES.json is a vendored-font manifest: sha256 file digests
+# and sha512 tarball integrity strings, not credentials. Scope to that file only.
 [[allowlists]]
-description = "Rehearsal-branch fixture token curl example, removed at HEAD"
-commits = ['''839737fc3863e6a7dd137188bb85ba59d450a16c''']
+description = "Vendored font package fingerprints in the font manifest"
+condition = "AND"
+paths = ['''^frontend/app/fonts/SOURCES\.json$''']
+regexTarget = "line"
+regexes = [
+  '''^\s*"sha256":\s*"[0-9a-f]{64}",?\s*$''',
+  '''^\s*"tarball_integrity":\s*"sha512-[A-Za-z0-9+/=]{80,}",?\s*$''',
+]
+
+# rehearsal/ fixture docs show curl examples against the owned ledgerlite fixture
+# using literal demo bearer tokens (tok-alice / tok-bob). Not credentials.
+[[allowlists]]
+description = "Demo bearer tokens in rehearsal fixture docs"
+condition = "AND"
+paths = ['''^rehearsal/.*''']
+regexTarget = "line"
+regexes = ['''Bearer\s+tok-[a-z0-9_-]+''']
