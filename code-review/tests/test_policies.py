@@ -423,3 +423,13 @@ def test_human_expectation_decisions_drive_claim_status(tmp_path: Path) -> None:
         )
     finally:
         ws.close()
+
+
+def test_search_skips_data_dumps_and_says_so(billing) -> None:
+    from code_review.tools import SEARCH_MAX_FILE_BYTES, SearchIn
+
+    _, ws = billing
+    ws.write("data/dump.jsonl", "apply_discount\n" * (SEARCH_MAX_FILE_BYTES // 10))
+    out = _toolbox(ws).search_code(SearchIn(pattern="apply_discount", path_prefix=""))
+    assert "billing/invoice.py" in out and "data/dump.jsonl" not in out
+    assert "skipped 1 file(s)" in out
