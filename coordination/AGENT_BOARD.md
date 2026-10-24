@@ -3,7 +3,7 @@
 
 # Agent board — live coordination dashboard
 
-Regenerated <built-in method strftime of datetime.datetime object at 0x1080880f0>. Comms channel: [issue #559](https://github.com/adamissac/ari-ai/issues/559). Protocol: `coordination/PROTOCOL.md`.
+Regenerated <built-in method strftime of datetime.datetime object at 0x10526a250>. Comms channel: [issue #559](https://github.com/adamissac/ari-ai/issues/559). Protocol: `coordination/PROTOCOL.md`.
 
 ## Active agents
 
@@ -17,27 +17,27 @@ Regenerated <built-in method strftime of datetime.datetime object at 0x1080880f0
 
 | PR | Title | Branch | Head | Owned by | Merge position |
 | --- | --- | --- | --- | --- | --- |
-| #412 | ? | ? | ? | alan-live-defense | 1 |
-| #458 | ? | ? | ? | alan-live-defense | 0 |
-| #496 | ? | ? | ? | integration-lead | 19 |
-| #527 | ? | ? | ? | integration-lead | 10 |
-| #528 | ? | ? | ? | integration-lead | 11 |
-| #529 | ? | ? | ? | integration-lead | 12 |
-| #530 | ? | ? | ? | integration-lead | 14 |
-| #531 | ? | ? | ? | integration-lead | 13 |
-| #532 | ? | ? | ? | integration-lead | 17 |
-| #533 | ? | ? | ? | integration-lead | 16 |
-| #536 | ? | ? | ? | integration-lead | 18 |
-| #538 | ? | ? | ? | integration-lead | 20 |
-| #540 | ? | ? | ? | integration-lead | 15 |
-| #542 | ? | ? | ? | devin-pipeline-fixer | 2 |
-| #543 | ? | ? | ? | devin-pipeline-fixer | 3 |
-| #546 | ? | ? | ? | devin-pipeline-fixer | 4 |
-| #554 | ? | ? | ? | devin-pipeline-fixer | 5 |
-| #555 | ? | ? | ? | devin-pipeline-fixer | 6 |
-| #556 | ? | ? | ? | devin-pipeline-fixer | 7 |
-| #557 | ? | ? | ? | integration-lead | 9 |
-| #558 | ? | ? | ? | devin-pipeline-fixer | 8 |
+| #412 | feat(live-defense): Phase 6.5 RL-gated pilot infrastructure (RL BLOCKED) | feat/live-defense-phase6-5-rl-gated-pilot | 4ecd7558 | alan-live-defense | 1 |
+| #458 | feat(live-defense): Phase 7C authorized Scout/Diagnose execution | feat/alan/live-defense-phase7c-agent-execution | 96ac5cfb | alan-live-defense | 0 |
+| #496 | feat(frontend): rebuild connect navigation into review + recorded agent replay | feat/adam/commit-review-navigation | 7c08dda5 | integration-lead | 19 |
+| #527 | docs(pilot): pilot launch package with conditional go decision | docs/adam/pilot-launch | a7359899 | integration-lead | 10 |
+| #528 | test(security-agents): live seven-agent assessment evidence + run manifest | feat/adam/seven-agent-live-evidence | 2652020c | integration-lead | 11 |
+| #529 | docs(code-review): executed functional-reviewer eval report + scorer path-fallback regression tests | docs/reviewer-eval-report | 6f674adf | integration-lead | 12 |
+| #530 | ci(release-gate): always-on checks, pilot-verify pipeline, dead-letter jobs list, scored-only evals | feat/adam/release-gate | e61fbc3c | integration-lead | 14 |
+| #531 | test(intel): pipeline audit — parse-safe redaction, honest route gaps, retrieval eval + benchmarks | feat/adam/intel-pipeline-audit | d33a5604 | integration-lead | 13 |
+| #532 | test(live-defense): Defense Lab pilot safety suite + quarantine credential-value fix | feat/adam/defense-lab-pilot-audit | 6d91fbd9 | integration-lead | 17 |
+| #533 | feat(infra): capability-aware readiness, worker heartbeats, deploy pairing gate + restart/rollback evidence | feat/adam/pilot-readiness-ops | 5edcfa34 | integration-lead | 16 |
+| #536 | feat(ui): landing rework + SaaS sidebar console revamp | feat/adam/home-deep-sea-landing | bbf77147 | integration-lead | 18 |
+| #538 | feat(ui): first-user usability — named approvals, plain-English replay, honest quick-read errors | feat/adam/first-user-usability | 660a342e | integration-lead | 20 |
+| #540 | fix(backend): harden GitHub onboarding + continuous assessment across installation lifecycle | fix/adam/github-onboarding-hardening | 182ec9c8 | integration-lead | 15 |
+| #542 | fix(intel-store): let not-ready index payloads be rewritten on retry | fix/intel-store-orphan-retry | 3f56e7dd | devin-pipeline-fixer | 2 |
+| #543 | test(evals): retry transient scorer failures instead of aborting the run | fix/eval-runner-retry | 759fe638 | devin-pipeline-fixer | 3 |
+| #546 | fix: Remove the pre-authorization cache short-circuit in get_project. Resolve the user and call require_project(conn, us | ari/fix-pat_01M5R13A056A25J7ZXWHHDZ9SN | 11e6863c | devin-pipeline-fixer | 4 |
+| #554 | docs(planning): handoff — pilot rehearsal results, defects, branch state | docs/devin-pilot-handoff | 4c8db52e | devin-pipeline-fixer | 5 |
+| #555 | docs(rehearsal): live seven-agent run evidence on inventory-lite | docs/adam/live-inventory-rehearsal-evidence | 8fadcbaf | devin-pipeline-fixer | 6 |
+| #556 | fix(pilot): run two-org rehearsal end-to-end — real API shapes + executed 13/13 evidence | feat/adam/pilot-rehearsal-v2 | 13bbec9a | devin-pipeline-fixer | 7 |
+| #557 | test(backend): honor recipe method + body_template in sandbox-target authz sweep | fix/test-sandbox-target-method | ae7b6ff8 | integration-lead | 9 |
+| #558 | feat(ops): Postgres storage report, bounded retention, and 70/80/90 volume alerts | fix/adam/postgres-storage-retention | 7d7849e8 | devin-pipeline-fixer | 8 |
 
 ## File / subsystem claims
 
