@@ -117,11 +117,19 @@ def create_assessment(
     reassessment_request_id: str | None = None,
 ) -> tuple[Assessment, str]:
     """Create an assessment in CREATED, emit its first event, audit, and enqueue the run job."""
-    repo_project = conn.execute(
-        sa.select(repositories.c.project_id).where(repositories.c.id == repo_id).with_for_update()
-    ).scalar()
-    if repo_project != project_id:
+    repo_row = (
+        conn.execute(
+            sa.select(repositories.c.project_id, repositories.c.disconnected_at)
+            .where(repositories.c.id == repo_id)
+            .with_for_update()
+        )
+        .mappings()
+        .first()
+    )
+    if repo_row is None or repo_row["project_id"] != project_id:
         raise DomainError(ErrorCode.NOT_FOUND, f"repository {repo_id} not found in project", 404)
+    if repo_row["disconnected_at"] is not None:
+        raise DomainError(ErrorCode.CONFLICT_STATE, "repository is disconnected", 409)
     scope = load_scope(conn, scope_id)
     if scope is None or scope.project_id != project_id:
         raise DomainError(ErrorCode.NOT_FOUND, f"scope {scope_id} not found in project", 404)
