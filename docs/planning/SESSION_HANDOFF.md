@@ -1749,9 +1749,45 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - Branch `feat/adam/agent-visibility-not-needed`: relay/team list now label skipped agents 'Not needed' (with the recorded skip note) or 'Not reached' on failed/cancelled runs. `earlyEndNote` in `frontend/lib/relay.ts` reads the reason from persisted `state_changed` events.
 - Next: expand `security-agents/evals/commits/cases.json` toward ~40 cases, add check templates to lift `vuln validated` off 0/7 (only ownership + bounds templates exist).
 
+## 2026-10-24 — Devin: first-responder observability (Executions tab, schema 0.23.0)
+
+- Branch `feat/devin-investigation-observability` (on `m-alan08/ari-ai` fork; upstream push denied): read-only investigation observability over Phase 7A persisted records.
+- New shared DTOs in `shared/live_defense.py` at schema 0.23.0 — 0.20.0 stays reserved for open #412, 0.22.0 for open #458. `AgentExecutionView` mirrors the 7C `AgentExecutionRecord` with all fields optional: works today, populates automatically when #458 lands.
+- New read-only API (`backend/api/live_defense_investigations.py`): bounded investigations list (keyset, limit<=200), decision timeline (events, application, deploy mapping, snapshot resolution, invocations + joined job state, handoff, final state), invocation detail, project diagnostics (stalled leases, status distribution, missing prerequisites, waiting jobs, redacted recent errors, wall-clock latency, cost rollup = unavailable until 7C).
+- New Live Defense "Executions" tab: list + timeline + diagnostics; every missing field renders "unavailable"; no mutation controls.
+- Evidence: `backend/tests/test_live_defense_investigations.py` (9 pass), `frontend/tests/unit/live-defense-executions.test.tsx` (7 pass), `frontend/tests/e2e/live-defense-investigations.spec.ts`, transport methods + node tests.
+- Coordination: `coordination/messages/20261024T182202Z-devin-to-all-live-defense-observability-schema-0-23.md`; status `coordination/status/DEVIN.md`.
+- Next: PR review/merge by a human; do not merge from the agent.
+
 ## 2026-10-24 — Devin (Adam): specialist eval-brain + live eval harness
 
 - `specialists/data/evalcommits.py`: eval cases become minimal pairs (planted edit = CWE/vuln_other positive, original = hard negative), splits pinned by case id; `scout()` merges the 60 rows.
 - Scout retrained and **promoted**: macro_f1 0.349 vs best deterministic baseline 0.084 (static_analyze_patterns). Checkpoint + `results/scout.json`/REPORT.md committed. Other specialists have no field-compatible eval rows — their tuning signal is the live eval scores, not training data.
 - Eval harness: `run.py` cleanup survives missing `gh` auth; `score_api.py` accepts the bare-list assessments response. All 35 cases pushed as `eval/20261024-110115/*` branches; assessments accumulate live pending a fresh `hackatl_session` for scoring + scope widening (`access_control.authentication` category).
 - Test scope fixture (`make_scope` default) now grants all three check categories — required for the f2 listing invariant after the authentication template landed.
+## 2026-10-24 — Devin (Alan): execution reliability workstream
+
+- Branch `feat/devin-execution-reliability` (from upstream/main 58fc015a). Migration `0016` (head pin bumped); no shared contract or `SCHEMA_VERSION` change, so no conflict with #412/#458 schema claims. If another PR lands a `0016` first, renumber this revision's `revision`/`down_revision`.
+- Extends `jobs.py`/`worker.py`: transition table + `job_events`, `ctx.effect` uncertain-effect guard (wired into `live_defense_execute`), reconciliation, fair claims + per-project limits, backpressure, deadlines, retry policies, worker registry; new `backend/backend/execution.py` and `backend/backend/api/execution.py`.
+- Did not touch `live_defense/first_responder.py` (#458). After #458 merges: wrap its provider calls with `ctx.effect` and pass `deadline_s` on `live_defense_agent_step` enqueue.
+- Behaviour change: a cancel-requested job whose lease expired is now `cancelled` (was stuck `running`); `test_jobs_queue.py` updated accordingly.
+- Note: `CHANGELOG.md` on upstream main contains a leftover `|||||||` merge marker under Unreleased (pre-existing, not touched).
+
+- Follow-up review: `end_effect(applied=False)` now keeps a `settled` marker when an earlier effect was already applied (prevents replay of an applied effect); `end_effect` regression test added; control-doc caveat documented.
+
+
+## 2026-10-24 — Codex independent four-workstream security review
+
+Integration only: codex/first-responder-integration-review; pins A89a3deba,
+B17c3ded0, Ce187e9a2, Db44b28aa. Original PRs remain OPEN and unchanged.
+Report: docs/reviews/first-responder-integration/REPORT.md; complete source/CI
+snapshots, raw logs and XML retained. NO-GO for combined merge: two P1/eight P2.
+Critical: provider unknown-outcome requeue and emergency cleanup blocked by normal
+concurrency limits. Also final-submit OFF race, waiting cancellation, missing durable
+deadline, state/history/observability and test/schema compatibility defects.
+Evidence: backend407 pass/2fail/8skip; security593/23skip; shared106; migrations3;
+frontend344; transport35; Playwright3; relevantRL8; smoke2/fault8. Independent
+regressions9fail/1pass intentionally retained. No paid live tests, production
+migration, customer enforcement or new RL experiment. Owner fixes belong on their
+workstreams; suggested post-fix sequence B→A→C→D, with fresh combined review/CI.
+No merge is authorized for this review branch.
