@@ -941,3 +941,25 @@ def test_patch_can_edit_a_span_of_a_large_file_without_rewriting_it(intel, tmp_p
     before = (wt.root / other).read_text()
     assert wt.edit_file(other, before[:20], "x")["error"] == "PATH_NOT_ALLOWED"
     assert (wt.root / other).read_text() == before
+
+
+def test_scout_prompt_starts_from_the_commit_change(intel):
+    from security_agents.agents import scout
+
+    entries = intel.entry_points()
+    changed = entries[-1].path
+    data = scout.ScoutInput(
+        assessment_id="asm",
+        snapshot_id="snp",
+        commit_sha="a" * 40,
+        changed_paths=[changed],
+        change_diff=f"--- a/{changed}\n+++ b/{changed}\n-old\n+new\n",
+    )
+    prompt = scout.build_prompt(data, intel)
+    assert "reviews one commit" in prompt and "+new" in prompt
+    first_entry = prompt.index('"file":')
+    assert prompt[first_entry : first_entry + 200].count(changed) == 1  # changed handler listed first
+    plain = scout.build_prompt(
+        scout.ScoutInput(assessment_id="asm", snapshot_id="snp", commit_sha="a" * 40), intel
+    )
+    assert "reviews one commit" not in plain
