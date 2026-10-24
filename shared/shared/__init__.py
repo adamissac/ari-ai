@@ -6,7 +6,7 @@ coordination/CONTRACTS.md.
 """
 
 SCHEMA_VERSION = (
-    "0.21.0"  # 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING;
+    "0.22.0"  # 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING;
     # 0.6 intelligence memory (PR #39); 0.7 security standards + incidents (PR #49);
     # 0.8 FindingDetail / AssessmentReport response DTOs (additive);
     # 0.9 CheckCategory enum (Probe ids + V0 fixture aliases);
@@ -46,4 +46,11 @@ SCHEMA_VERSION = (
     #      No AUTO-EXECUTE. LLM prose is never proof of a confirmed threat.
     #      evidence_state=verified requires independently executed verification
     #      evidence, not Verify eligibility.
+    # 0.22 live-defense Phase 7C live agent execution (additive): genuine
+    #      first-responder agent-loop records (cost, latency, transcript,
+    #      typed output, execution integrity). predicted_probability stays
+    #      null. executed investigative output is not threat confirmation.
+    #      Probe/Patch/Verify privileges are not expanded. Open PR #412 keeps
+    #      0.20.0; this branch does not collide that number. Alembic stays 0015
+    #      (execution lives in existing invocation JSONB).
 )

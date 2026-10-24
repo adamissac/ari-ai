@@ -27,7 +27,7 @@ export const SHADOW_MODE_COPY =
   'Shadow mode: Ari records ingest and recommendations for authorized staging apps. It does not grant production enforcement and never re-shows an ingest token after issuance.';
 
 export const FIRST_RESPONDER_COPY =
-  'First-responder modes are server-enforced: OFF, MONITOR (alias SHADOW), and ASSISTED RESPONSE. AUTO-EXECUTE does not exist. LLM prose is never proof of a confirmed threat. An RL recommendation is not executed defense.';
+  'First-responder modes are server-enforced: OFF, MONITOR (alias SHADOW), and ASSISTED RESPONSE. AUTO-EXECUTE does not exist. Scout and Diagnose may execute a real authorized agent loop when a mapping and snapshot exist. That execution is not independent verification and not a confirmed threat. Probe still needs AuthorizedScope; Patch stays worktree-only. An RL recommendation is not executed defense.';
 
 export const EVIDENCE_STATES = ['Observed', 'Suspected', 'Verified', 'Recommended', 'Authorized', 'Executed', 'Failed', 'Rolled back'] as const;
 
@@ -102,6 +102,7 @@ export const USED_LIVE_APIS = [
   { method: 'GET', path: '/projects/{id}/first-responder/decisions', use: 'versioned deterministic first-responder records; not executed; no invented probabilities' },
   { method: 'GET', path: '/projects/{id}/first-responder/handoffs', use: 'analyst handoff; delivered only after provider confirmation' },
   { method: 'GET', path: '/projects/{id}/first-responder/capabilities', use: 'seven-agent registry from real AgentSpecs' },
+  { method: 'GET', path: '/projects/{id}/first-responder/invocations', use: 'genuine agent-loop outcomes: executed vs skipped vs unverified; cost and latency when a loop ran' },
 ] as const;
 
 /** Capabilities still missing. Shown as missing — never filled with live-looking numbers. */
@@ -114,7 +115,7 @@ export const MISSING_LIVE_APIS = [
   {
     id: 'autonomous',
     title: 'Autonomous enforcement / AUTO-EXECUTE',
-    reason: 'Phase 7A is first-responder only: OFF / MONITOR|SHADOW / ASSISTED RESPONSE. AUTO-EXECUTE does not exist. RL recommendations are not executed defense. Phase 7B is not started.',
+    reason: 'Phase 7C executes authorized investigative agents (Scout/Diagnose) only. AUTO-EXECUTE does not exist. Probe/Patch privileges are not expanded. RL recommendations are not executed defense. Phase 7B RL training is not this work.',
   },
   {
     id: 'production_grants',
