@@ -1,0 +1,2056 @@
+{
+  "attempts": [
+    {
+      "accepted": true,
+      "proposal": 0,
+      "window": 0
+    },
+    {
+      "accepted": true,
+      "proposal": 1,
+      "window": 1
+    },
+    {
+      "accepted": true,
+      "proposal": 0,
+      "window": 2
+    },
+    {
+      "accepted": true,
+      "proposal": 0,
+      "window": 3
+    }
+  ],
+  "control_ledger": [
+    {
+      "action_seq": 49,
+      "cooldown_until": 6,
+      "end": 4,
+      "event": "scheduled",
+      "issued": 1,
+      "kind": "route",
+      "start": 2,
+      "target": 1
+    },
+    {
+      "cooldown_until": 6,
+      "end": 4,
+      "event": "active",
+      "issued": 1,
+      "kind": "route",
+      "start": 2,
+      "target": 1,
+      "window": 2
+    },
+    {
+      "cooldown_until": 6,
+      "end": 4,
+      "event": "active",
+      "issued": 1,
+      "kind": "route",
+      "start": 2,
+      "target": 1,
+      "window": 3
+    },
+    {
+      "cooldown_until": 6,
+      "end": 4,
+      "event": "expired",
+      "issued": 1,
+      "kind": "route",
+      "start": 2,
+      "target": 1,
+      "window": 4
+    }
+  ],
+  "events": [
+    {
+      "available_seq": 2,
+      "job": 0,
+      "kind": "offered",
+      "tick": 0
+    },
+    {
+      "available_seq": 3,
+      "job": 0,
+      "kind": "pending",
+      "tick": 0
+    },
+    {
+      "available_seq": 4,
+      "job": 0,
+      "kind": "work",
+      "tick": 0
+    },
+    {
+      "available_seq": 5,
+      "job": 1,
+      "kind": "offered",
+      "tick": 1
+    },
+    {
+      "available_seq": 6,
+      "job": 1,
+      "kind": "pending",
+      "tick": 1
+    },
+    {
+      "available_seq": 7,
+      "job": 0,
+      "kind": "work",
+      "tick": 1
+    },
+    {
+      "available_seq": 8,
+      "job": 1,
+      "kind": "work",
+      "tick": 1
+    },
+    {
+      "available_seq": 9,
+      "job": 2,
+      "kind": "offered",
+      "tick": 2
+    },
+    {
+      "available_seq": 10,
+      "job": 2,
+      "kind": "pending",
+      "tick": 2
+    },
+    {
+      "available_seq": 11,
+      "job": 0,
+      "kind": "work",
+      "tick": 2
+    },
+    {
+      "available_seq": 12,
+      "job": 1,
+      "kind": "work",
+      "tick": 2
+    },
+    {
+      "available_seq": 13,
+      "job": 3,
+      "kind": "offered",
+      "tick": 3
+    },
+    {
+      "available_seq": 14,
+      "job": 3,
+      "kind": "pending",
+      "tick": 3
+    },
+    {
+      "available_seq": 15,
+      "job": 4,
+      "kind": "offered",
+      "tick": 3
+    },
+    {
+      "available_seq": 16,
+      "job": 4,
+      "kind": "pending",
+      "tick": 3
+    },
+    {
+      "available_seq": 17,
+      "job": 5,
+      "kind": "offered",
+      "tick": 3
+    },
+    {
+      "available_seq": 18,
+      "job": 5,
+      "kind": "pending",
+      "tick": 3
+    },
+    {
+      "available_seq": 19,
+      "job": 0,
+      "kind": "work",
+      "tick": 3
+    },
+    {
+      "available_seq": 20,
+      "job": 1,
+      "kind": "work",
+      "tick": 3
+    },
+    {
+      "available_seq": 21,
+      "job": 6,
+      "kind": "offered",
+      "tick": 4
+    },
+    {
+      "available_seq": 22,
+      "job": 6,
+      "kind": "pending",
+      "tick": 4
+    },
+    {
+      "available_seq": 23,
+      "job": 7,
+      "kind": "offered",
+      "tick": 4
+    },
+    {
+      "available_seq": 24,
+      "job": 7,
+      "kind": "pending",
+      "tick": 4
+    },
+    {
+      "available_seq": 25,
+      "job": 8,
+      "kind": "offered",
+      "tick": 4
+    },
+    {
+      "available_seq": 26,
+      "job": 8,
+      "kind": "pending",
+      "tick": 4
+    },
+    {
+      "available_seq": 27,
+      "job": 0,
+      "kind": "work",
+      "tick": 4
+    },
+    {
+      "available_seq": 28,
+      "job": 0,
+      "kind": "completed",
+      "tick": 5
+    },
+    {
+      "available_seq": 29,
+      "job": 1,
+      "kind": "work",
+      "tick": 4
+    },
+    {
+      "available_seq": 30,
+      "job": 9,
+      "kind": "offered",
+      "tick": 5
+    },
+    {
+      "available_seq": 31,
+      "job": 9,
+      "kind": "pending",
+      "tick": 5
+    },
+    {
+      "available_seq": 32,
+      "job": 10,
+      "kind": "offered",
+      "tick": 5
+    },
+    {
+      "available_seq": 33,
+      "job": 10,
+      "kind": "pending",
+      "tick": 5
+    },
+    {
+      "available_seq": 34,
+      "job": 11,
+      "kind": "offered",
+      "tick": 5
+    },
+    {
+      "available_seq": 35,
+      "job": 11,
+      "kind": "pending",
+      "tick": 5
+    },
+    {
+      "available_seq": 36,
+      "job": 12,
+      "kind": "offered",
+      "tick": 5
+    },
+    {
+      "available_seq": 37,
+      "job": 12,
+      "kind": "pending",
+      "tick": 5
+    },
+    {
+      "available_seq": 38,
+      "job": 1,
+      "kind": "work",
+      "tick": 5
+    },
+    {
+      "available_seq": 39,
+      "job": 2,
+      "kind": "work",
+      "tick": 5
+    },
+    {
+      "available_seq": 40,
+      "job": 1,
+      "kind": "work",
+      "tick": 6
+    },
+    {
+      "available_seq": 41,
+      "job": 1,
+      "kind": "completed",
+      "tick": 7
+    },
+    {
+      "available_seq": 42,
+      "job": 2,
+      "kind": "work",
+      "tick": 6
+    },
+    {
+      "available_seq": 43,
+      "job": 2,
+      "kind": "completed",
+      "tick": 7
+    },
+    {
+      "available_seq": 44,
+      "job": 13,
+      "kind": "offered",
+      "tick": 7
+    },
+    {
+      "available_seq": 45,
+      "job": 13,
+      "kind": "pending",
+      "tick": 7
+    },
+    {
+      "available_seq": 46,
+      "job": 3,
+      "kind": "work",
+      "tick": 7
+    },
+    {
+      "available_seq": 47,
+      "job": 4,
+      "kind": "work",
+      "tick": 7
+    },
+    {
+      "available_seq": 50,
+      "job": 14,
+      "kind": "offered",
+      "tick": 8
+    },
+    {
+      "available_seq": 51,
+      "job": 14,
+      "kind": "pending",
+      "tick": 8
+    },
+    {
+      "available_seq": 52,
+      "job": 15,
+      "kind": "offered",
+      "tick": 8
+    },
+    {
+      "available_seq": 53,
+      "job": 15,
+      "kind": "pending",
+      "tick": 8
+    },
+    {
+      "available_seq": 54,
+      "job": 3,
+      "kind": "work",
+      "tick": 8
+    },
+    {
+      "available_seq": 55,
+      "job": 16,
+      "kind": "offered",
+      "tick": 9
+    },
+    {
+      "available_seq": 56,
+      "job": 16,
+      "kind": "pending",
+      "tick": 9
+    },
+    {
+      "available_seq": 57,
+      "job": 17,
+      "kind": "offered",
+      "tick": 9
+    },
+    {
+      "available_seq": 58,
+      "job": 17,
+      "kind": "capacity_rejected",
+      "tick": 9
+    },
+    {
+      "available_seq": 59,
+      "job": 3,
+      "kind": "work",
+      "tick": 9
+    },
+    {
+      "available_seq": 60,
+      "job": 4,
+      "kind": "work",
+      "tick": 9
+    },
+    {
+      "available_seq": 61,
+      "job": 4,
+      "kind": "completed",
+      "tick": 10
+    },
+    {
+      "available_seq": 62,
+      "job": 18,
+      "kind": "offered",
+      "tick": 10
+    },
+    {
+      "available_seq": 63,
+      "job": 18,
+      "kind": "pending",
+      "tick": 10
+    },
+    {
+      "available_seq": 64,
+      "job": 3,
+      "kind": "work",
+      "tick": 10
+    },
+    {
+      "available_seq": 65,
+      "job": 5,
+      "kind": "work",
+      "tick": 10
+    },
+    {
+      "available_seq": 66,
+      "job": 19,
+      "kind": "offered",
+      "tick": 11
+    },
+    {
+      "available_seq": 67,
+      "job": 19,
+      "kind": "capacity_rejected",
+      "tick": 11
+    },
+    {
+      "available_seq": 68,
+      "job": 3,
+      "kind": "work",
+      "tick": 11
+    },
+    {
+      "available_seq": 69,
+      "job": 5,
+      "kind": "work",
+      "tick": 11
+    },
+    {
+      "available_seq": 70,
+      "job": 20,
+      "kind": "offered",
+      "tick": 12
+    },
+    {
+      "available_seq": 71,
+      "job": 20,
+      "kind": "capacity_rejected",
+      "tick": 12
+    },
+    {
+      "available_seq": 72,
+      "job": 21,
+      "kind": "offered",
+      "tick": 12
+    },
+    {
+      "available_seq": 73,
+      "job": 21,
+      "kind": "capacity_rejected",
+      "tick": 12
+    },
+    {
+      "available_seq": 74,
+      "job": 22,
+      "kind": "offered",
+      "tick": 12
+    },
+    {
+      "available_seq": 75,
+      "job": 22,
+      "kind": "capacity_rejected",
+      "tick": 12
+    },
+    {
+      "available_seq": 76,
+      "job": 3,
+      "kind": "work",
+      "tick": 12
+    },
+    {
+      "available_seq": 77,
+      "job": 3,
+      "kind": "completed",
+      "tick": 13
+    },
+    {
+      "available_seq": 78,
+      "job": 5,
+      "kind": "work",
+      "tick": 12
+    },
+    {
+      "available_seq": 79,
+      "job": 23,
+      "kind": "offered",
+      "tick": 13
+    },
+    {
+      "available_seq": 80,
+      "job": 23,
+      "kind": "pending",
+      "tick": 13
+    },
+    {
+      "available_seq": 81,
+      "job": 24,
+      "kind": "offered",
+      "tick": 13
+    },
+    {
+      "available_seq": 82,
+      "job": 24,
+      "kind": "capacity_rejected",
+      "tick": 13
+    },
+    {
+      "available_seq": 83,
+      "job": 25,
+      "kind": "offered",
+      "tick": 13
+    },
+    {
+      "available_seq": 84,
+      "job": 25,
+      "kind": "capacity_rejected",
+      "tick": 13
+    },
+    {
+      "available_seq": 85,
+      "job": 5,
+      "kind": "work",
+      "tick": 13
+    },
+    {
+      "available_seq": 86,
+      "job": 6,
+      "kind": "work",
+      "tick": 13
+    },
+    {
+      "available_seq": 87,
+      "job": 6,
+      "kind": "completed",
+      "tick": 14
+    },
+    {
+      "available_seq": 88,
+      "job": 5,
+      "kind": "work",
+      "tick": 14
+    },
+    {
+      "available_seq": 89,
+      "job": 7,
+      "kind": "work",
+      "tick": 14
+    },
+    {
+      "available_seq": 90,
+      "job": 26,
+      "kind": "offered",
+      "tick": 15
+    },
+    {
+      "available_seq": 91,
+      "job": 26,
+      "kind": "pending",
+      "tick": 15
+    },
+    {
+      "available_seq": 92,
+      "job": 27,
+      "kind": "offered",
+      "tick": 15
+    },
+    {
+      "available_seq": 93,
+      "job": 27,
+      "kind": "capacity_rejected",
+      "tick": 15
+    },
+    {
+      "available_seq": 94,
+      "job": 5,
+      "kind": "work",
+      "tick": 15
+    },
+    {
+      "available_seq": 95,
+      "job": 5,
+      "kind": "completed",
+      "tick": 16
+    },
+    {
+      "available_seq": 96,
+      "job": 7,
+      "kind": "work",
+      "tick": 15
+    },
+    {
+      "available_seq": 97,
+      "job": 7,
+      "kind": "completed",
+      "tick": 16
+    },
+    {
+      "available_seq": 100,
+      "job": 28,
+      "kind": "offered",
+      "tick": 16
+    },
+    {
+      "available_seq": 101,
+      "job": 28,
+      "kind": "pending",
+      "tick": 16
+    },
+    {
+      "available_seq": 102,
+      "job": 29,
+      "kind": "offered",
+      "tick": 16
+    },
+    {
+      "available_seq": 103,
+      "job": 29,
+      "kind": "pending",
+      "tick": 16
+    },
+    {
+      "available_seq": 104,
+      "job": 8,
+      "kind": "work",
+      "tick": 16
+    },
+    {
+      "available_seq": 105,
+      "job": 9,
+      "kind": "work",
+      "tick": 16
+    },
+    {
+      "available_seq": 106,
+      "job": 30,
+      "kind": "offered",
+      "tick": 17
+    },
+    {
+      "available_seq": 107,
+      "job": 30,
+      "kind": "capacity_rejected",
+      "tick": 17
+    },
+    {
+      "available_seq": 108,
+      "job": 31,
+      "kind": "offered",
+      "tick": 17
+    },
+    {
+      "available_seq": 109,
+      "job": 31,
+      "kind": "capacity_rejected",
+      "tick": 17
+    },
+    {
+      "available_seq": 110,
+      "job": 8,
+      "kind": "work",
+      "tick": 17
+    },
+    {
+      "available_seq": 111,
+      "job": 9,
+      "kind": "work",
+      "tick": 17
+    },
+    {
+      "available_seq": 112,
+      "job": 32,
+      "kind": "offered",
+      "tick": 18
+    },
+    {
+      "available_seq": 113,
+      "job": 32,
+      "kind": "capacity_rejected",
+      "tick": 18
+    },
+    {
+      "available_seq": 114,
+      "job": 33,
+      "kind": "offered",
+      "tick": 18
+    },
+    {
+      "available_seq": 115,
+      "job": 33,
+      "kind": "capacity_rejected",
+      "tick": 18
+    },
+    {
+      "available_seq": 116,
+      "job": 34,
+      "kind": "offered",
+      "tick": 18
+    },
+    {
+      "available_seq": 117,
+      "job": 34,
+      "kind": "capacity_rejected",
+      "tick": 18
+    },
+    {
+      "available_seq": 118,
+      "job": 35,
+      "kind": "offered",
+      "tick": 18
+    },
+    {
+      "available_seq": 119,
+      "job": 35,
+      "kind": "capacity_rejected",
+      "tick": 18
+    },
+    {
+      "available_seq": 120,
+      "job": 8,
+      "kind": "work",
+      "tick": 18
+    },
+    {
+      "available_seq": 121,
+      "job": 8,
+      "kind": "completed",
+      "tick": 19
+    },
+    {
+      "available_seq": 122,
+      "job": 9,
+      "kind": "work",
+      "tick": 18
+    },
+    {
+      "available_seq": 123,
+      "job": 36,
+      "kind": "offered",
+      "tick": 19
+    },
+    {
+      "available_seq": 124,
+      "job": 36,
+      "kind": "pending",
+      "tick": 19
+    },
+    {
+      "available_seq": 125,
+      "job": 9,
+      "kind": "work",
+      "tick": 19
+    },
+    {
+      "available_seq": 126,
+      "job": 10,
+      "kind": "work",
+      "tick": 19
+    },
+    {
+      "available_seq": 127,
+      "job": 9,
+      "kind": "work",
+      "tick": 20
+    },
+    {
+      "available_seq": 128,
+      "job": 10,
+      "kind": "work",
+      "tick": 20
+    },
+    {
+      "available_seq": 129,
+      "job": 37,
+      "kind": "offered",
+      "tick": 21
+    },
+    {
+      "available_seq": 130,
+      "job": 37,
+      "kind": "rate_limited",
+      "tick": 21
+    },
+    {
+      "available_seq": 131,
+      "job": 38,
+      "kind": "offered",
+      "tick": 21
+    },
+    {
+      "available_seq": 132,
+      "job": 38,
+      "kind": "capacity_rejected",
+      "tick": 21
+    },
+    {
+      "available_seq": 133,
+      "job": 9,
+      "kind": "work",
+      "tick": 21
+    },
+    {
+      "available_seq": 134,
+      "job": 9,
+      "kind": "completed",
+      "tick": 22
+    },
+    {
+      "available_seq": 135,
+      "job": 10,
+      "kind": "work",
+      "tick": 21
+    },
+    {
+      "available_seq": 136,
+      "job": 39,
+      "kind": "offered",
+      "tick": 22
+    },
+    {
+      "available_seq": 137,
+      "job": 39,
+      "kind": "rate_limited",
+      "tick": 22
+    },
+    {
+      "available_seq": 138,
+      "job": 40,
+      "kind": "offered",
+      "tick": 22
+    },
+    {
+      "available_seq": 139,
+      "job": 40,
+      "kind": "rate_limited",
+      "tick": 22
+    },
+    {
+      "available_seq": 140,
+      "job": 10,
+      "kind": "work",
+      "tick": 22
+    },
+    {
+      "available_seq": 141,
+      "job": 11,
+      "kind": "work",
+      "tick": 22
+    },
+    {
+      "available_seq": 142,
+      "job": 41,
+      "kind": "offered",
+      "tick": 23
+    },
+    {
+      "available_seq": 143,
+      "job": 41,
+      "kind": "rate_limited",
+      "tick": 23
+    },
+    {
+      "available_seq": 144,
+      "job": 10,
+      "kind": "work",
+      "tick": 23
+    },
+    {
+      "available_seq": 145,
+      "job": 11,
+      "kind": "work",
+      "tick": 23
+    },
+    {
+      "available_seq": 148,
+      "job": 42,
+      "kind": "offered",
+      "tick": 24
+    },
+    {
+      "available_seq": 149,
+      "job": 42,
+      "kind": "pending",
+      "tick": 24
+    },
+    {
+      "available_seq": 150,
+      "job": 43,
+      "kind": "offered",
+      "tick": 24
+    },
+    {
+      "available_seq": 151,
+      "job": 43,
+      "kind": "capacity_rejected",
+      "tick": 24
+    },
+    {
+      "available_seq": 152,
+      "job": 10,
+      "kind": "work",
+      "tick": 24
+    },
+    {
+      "available_seq": 153,
+      "job": 10,
+      "kind": "completed",
+      "tick": 25
+    },
+    {
+      "available_seq": 154,
+      "job": 11,
+      "kind": "work",
+      "tick": 24
+    },
+    {
+      "available_seq": 155,
+      "job": 44,
+      "kind": "offered",
+      "tick": 25
+    },
+    {
+      "available_seq": 156,
+      "job": 44,
+      "kind": "pending",
+      "tick": 25
+    },
+    {
+      "available_seq": 157,
+      "job": 11,
+      "kind": "work",
+      "tick": 25
+    },
+    {
+      "available_seq": 158,
+      "job": 12,
+      "kind": "work",
+      "tick": 25
+    },
+    {
+      "available_seq": 159,
+      "job": 12,
+      "kind": "completed",
+      "tick": 26
+    },
+    {
+      "available_seq": 160,
+      "job": 45,
+      "kind": "offered",
+      "tick": 26
+    },
+    {
+      "available_seq": 161,
+      "job": 45,
+      "kind": "pending",
+      "tick": 26
+    },
+    {
+      "available_seq": 162,
+      "job": 11,
+      "kind": "work",
+      "tick": 26
+    },
+    {
+      "available_seq": 163,
+      "job": 13,
+      "kind": "work",
+      "tick": 26
+    },
+    {
+      "available_seq": 164,
+      "job": 13,
+      "kind": "completed",
+      "tick": 27
+    },
+    {
+      "available_seq": 165,
+      "job": 46,
+      "kind": "offered",
+      "tick": 27
+    },
+    {
+      "available_seq": 166,
+      "job": 46,
+      "kind": "rate_limited",
+      "tick": 27
+    },
+    {
+      "available_seq": 167,
+      "job": 11,
+      "kind": "work",
+      "tick": 27
+    },
+    {
+      "available_seq": 168,
+      "job": 11,
+      "kind": "completed",
+      "tick": 28
+    },
+    {
+      "available_seq": 169,
+      "job": 14,
+      "kind": "work",
+      "tick": 27
+    },
+    {
+      "available_seq": 170,
+      "job": 47,
+      "kind": "offered",
+      "tick": 28
+    },
+    {
+      "available_seq": 171,
+      "job": 47,
+      "kind": "rate_limited",
+      "tick": 28
+    },
+    {
+      "available_seq": 172,
+      "job": 14,
+      "kind": "work",
+      "tick": 28
+    },
+    {
+      "available_seq": 173,
+      "job": 15,
+      "kind": "work",
+      "tick": 28
+    },
+    {
+      "available_seq": 174,
+      "job": 14,
+      "kind": "work",
+      "tick": 29
+    },
+    {
+      "available_seq": 175,
+      "job": 15,
+      "kind": "work",
+      "tick": 29
+    },
+    {
+      "available_seq": 176,
+      "job": 15,
+      "kind": "completed",
+      "tick": 30
+    },
+    {
+      "available_seq": 177,
+      "job": 48,
+      "kind": "offered",
+      "tick": 30
+    },
+    {
+      "available_seq": 178,
+      "job": 48,
+      "kind": "pending",
+      "tick": 30
+    },
+    {
+      "available_seq": 179,
+      "job": 14,
+      "kind": "work",
+      "tick": 30
+    },
+    {
+      "available_seq": 180,
+      "job": 16,
+      "kind": "work",
+      "tick": 30
+    },
+    {
+      "available_seq": 181,
+      "job": 16,
+      "kind": "completed",
+      "tick": 31
+    },
+    {
+      "available_seq": 182,
+      "job": 49,
+      "kind": "offered",
+      "tick": 31
+    },
+    {
+      "available_seq": 183,
+      "job": 49,
+      "kind": "rate_limited",
+      "tick": 31
+    },
+    {
+      "available_seq": 184,
+      "job": 50,
+      "kind": "offered",
+      "tick": 31
+    },
+    {
+      "available_seq": 185,
+      "job": 50,
+      "kind": "rate_limited",
+      "tick": 31
+    },
+    {
+      "available_seq": 186,
+      "job": 51,
+      "kind": "offered",
+      "tick": 31
+    },
+    {
+      "available_seq": 187,
+      "job": 51,
+      "kind": "pending",
+      "tick": 31
+    },
+    {
+      "available_seq": 188,
+      "job": 52,
+      "kind": "offered",
+      "tick": 31
+    },
+    {
+      "available_seq": 189,
+      "job": 52,
+      "kind": "rate_limited",
+      "tick": 31
+    },
+    {
+      "available_seq": 190,
+      "job": 53,
+      "kind": "offered",
+      "tick": 31
+    },
+    {
+      "available_seq": 191,
+      "job": 53,
+      "kind": "pending",
+      "tick": 31
+    },
+    {
+      "available_seq": 192,
+      "job": 54,
+      "kind": "offered",
+      "tick": 31
+    },
+    {
+      "available_seq": 193,
+      "job": 54,
+      "kind": "pending",
+      "tick": 31
+    },
+    {
+      "available_seq": 194,
+      "job": 55,
+      "kind": "offered",
+      "tick": 31
+    },
+    {
+      "available_seq": 195,
+      "job": 55,
+      "kind": "capacity_rejected",
+      "tick": 31
+    },
+    {
+      "available_seq": 196,
+      "job": 14,
+      "kind": "work",
+      "tick": 31
+    },
+    {
+      "available_seq": 197,
+      "job": 18,
+      "kind": "work",
+      "tick": 31
+    },
+    {
+      "available_seq": 198,
+      "job": 14,
+      "kind": "timeout",
+      "tick": 32
+    }
+  ],
+  "metrics_only_requests": [
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 1,
+        "source": 1,
+        "tick": 0,
+        "work": 5
+      },
+      "consumed": 5,
+      "finished": 5,
+      "identifier": 0,
+      "outcome": "completed",
+      "remaining": 0,
+      "started": 0
+    },
+    {
+      "arrival": {
+        "adversarial": false,
+        "route": 1,
+        "source": 3,
+        "tick": 1,
+        "work": 6
+      },
+      "consumed": 6,
+      "finished": 7,
+      "identifier": 1,
+      "outcome": "completed",
+      "remaining": 0,
+      "started": 1
+    },
+    {
+      "arrival": {
+        "adversarial": false,
+        "route": 0,
+        "source": 3,
+        "tick": 2,
+        "work": 2
+      },
+      "consumed": 2,
+      "finished": 7,
+      "identifier": 2,
+      "outcome": "completed",
+      "remaining": 0,
+      "started": 5
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 1,
+        "source": 1,
+        "tick": 3,
+        "work": 6
+      },
+      "consumed": 6,
+      "finished": 13,
+      "identifier": 3,
+      "outcome": "completed",
+      "remaining": 0,
+      "started": 7
+    },
+    {
+      "arrival": {
+        "adversarial": false,
+        "route": 0,
+        "source": 3,
+        "tick": 3,
+        "work": 2
+      },
+      "consumed": 2,
+      "finished": 10,
+      "identifier": 4,
+      "outcome": "completed",
+      "remaining": 0,
+      "started": 7
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 1,
+        "source": 3,
+        "tick": 3,
+        "work": 6
+      },
+      "consumed": 6,
+      "finished": 16,
+      "identifier": 5,
+      "outcome": "completed",
+      "remaining": 0,
+      "started": 10
+    },
+    {
+      "arrival": {
+        "adversarial": false,
+        "route": 0,
+        "source": 3,
+        "tick": 4,
+        "work": 1
+      },
+      "consumed": 1,
+      "finished": 14,
+      "identifier": 6,
+      "outcome": "completed",
+      "remaining": 0,
+      "started": 13
+    },
+    {
+      "arrival": {
+        "adversarial": false,
+        "route": 0,
+        "source": 3,
+        "tick": 4,
+        "work": 2
+      },
+      "consumed": 2,
+      "finished": 16,
+      "identifier": 7,
+      "outcome": "completed",
+      "remaining": 0,
+      "started": 14
+    },
+    {
+      "arrival": {
+        "adversarial": false,
+        "route": 1,
+        "source": 3,
+        "tick": 4,
+        "work": 3
+      },
+      "consumed": 3,
+      "finished": 19,
+      "identifier": 8,
+      "outcome": "completed",
+      "remaining": 0,
+      "started": 16
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 1,
+        "source": 0,
+        "tick": 5,
+        "work": 6
+      },
+      "consumed": 6,
+      "finished": 22,
+      "identifier": 9,
+      "outcome": "completed",
+      "remaining": 0,
+      "started": 16
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 1,
+        "source": 1,
+        "tick": 5,
+        "work": 6
+      },
+      "consumed": 6,
+      "finished": 25,
+      "identifier": 10,
+      "outcome": "completed",
+      "remaining": 0,
+      "started": 19
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 1,
+        "source": 3,
+        "tick": 5,
+        "work": 6
+      },
+      "consumed": 6,
+      "finished": 28,
+      "identifier": 11,
+      "outcome": "completed",
+      "remaining": 0,
+      "started": 22
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 0,
+        "source": 3,
+        "tick": 5,
+        "work": 1
+      },
+      "consumed": 1,
+      "finished": 26,
+      "identifier": 12,
+      "outcome": "completed",
+      "remaining": 0,
+      "started": 25
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 0,
+        "source": 1,
+        "tick": 7,
+        "work": 1
+      },
+      "consumed": 1,
+      "finished": 27,
+      "identifier": 13,
+      "outcome": "completed",
+      "remaining": 0,
+      "started": 26
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 1,
+        "source": 1,
+        "tick": 8,
+        "work": 6
+      },
+      "consumed": 5,
+      "finished": 32,
+      "identifier": 14,
+      "outcome": "timeout",
+      "remaining": 1,
+      "started": 27
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 0,
+        "source": 1,
+        "tick": 8,
+        "work": 2
+      },
+      "consumed": 2,
+      "finished": 30,
+      "identifier": 15,
+      "outcome": "completed",
+      "remaining": 0,
+      "started": 28
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 0,
+        "source": 1,
+        "tick": 9,
+        "work": 1
+      },
+      "consumed": 1,
+      "finished": 31,
+      "identifier": 16,
+      "outcome": "completed",
+      "remaining": 0,
+      "started": 30
+    },
+    {
+      "arrival": {
+        "adversarial": false,
+        "route": 1,
+        "source": 3,
+        "tick": 9,
+        "work": 5
+      },
+      "consumed": 0,
+      "finished": 9,
+      "identifier": 17,
+      "outcome": "capacity_rejected",
+      "remaining": 5,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": false,
+        "route": 1,
+        "source": 3,
+        "tick": 10,
+        "work": 4
+      },
+      "consumed": 1,
+      "finished": null,
+      "identifier": 18,
+      "outcome": "pending",
+      "remaining": 3,
+      "started": 31
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 1,
+        "source": 1,
+        "tick": 11,
+        "work": 5
+      },
+      "consumed": 0,
+      "finished": 11,
+      "identifier": 19,
+      "outcome": "capacity_rejected",
+      "remaining": 5,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": false,
+        "route": 1,
+        "source": 3,
+        "tick": 12,
+        "work": 4
+      },
+      "consumed": 0,
+      "finished": 12,
+      "identifier": 20,
+      "outcome": "capacity_rejected",
+      "remaining": 4,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": false,
+        "route": 1,
+        "source": 3,
+        "tick": 12,
+        "work": 6
+      },
+      "consumed": 0,
+      "finished": 12,
+      "identifier": 21,
+      "outcome": "capacity_rejected",
+      "remaining": 6,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 1,
+        "source": 1,
+        "tick": 12,
+        "work": 8
+      },
+      "consumed": 0,
+      "finished": 12,
+      "identifier": 22,
+      "outcome": "capacity_rejected",
+      "remaining": 8,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 1,
+        "source": 1,
+        "tick": 13,
+        "work": 7
+      },
+      "consumed": 0,
+      "finished": null,
+      "identifier": 23,
+      "outcome": "pending",
+      "remaining": 7,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": false,
+        "route": 0,
+        "source": 3,
+        "tick": 13,
+        "work": 1
+      },
+      "consumed": 0,
+      "finished": 13,
+      "identifier": 24,
+      "outcome": "capacity_rejected",
+      "remaining": 1,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 1,
+        "source": 3,
+        "tick": 13,
+        "work": 8
+      },
+      "consumed": 0,
+      "finished": 13,
+      "identifier": 25,
+      "outcome": "capacity_rejected",
+      "remaining": 8,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 1,
+        "source": 0,
+        "tick": 15,
+        "work": 7
+      },
+      "consumed": 0,
+      "finished": null,
+      "identifier": 26,
+      "outcome": "pending",
+      "remaining": 7,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": false,
+        "route": 1,
+        "source": 3,
+        "tick": 15,
+        "work": 4
+      },
+      "consumed": 0,
+      "finished": 15,
+      "identifier": 27,
+      "outcome": "capacity_rejected",
+      "remaining": 4,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": false,
+        "route": 0,
+        "source": 2,
+        "tick": 16,
+        "work": 1
+      },
+      "consumed": 0,
+      "finished": null,
+      "identifier": 28,
+      "outcome": "pending",
+      "remaining": 1,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 0,
+        "source": 2,
+        "tick": 16,
+        "work": 1
+      },
+      "consumed": 0,
+      "finished": null,
+      "identifier": 29,
+      "outcome": "pending",
+      "remaining": 1,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 0,
+        "source": 0,
+        "tick": 17,
+        "work": 1
+      },
+      "consumed": 0,
+      "finished": 17,
+      "identifier": 30,
+      "outcome": "capacity_rejected",
+      "remaining": 1,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": false,
+        "route": 0,
+        "source": 0,
+        "tick": 17,
+        "work": 1
+      },
+      "consumed": 0,
+      "finished": 17,
+      "identifier": 31,
+      "outcome": "capacity_rejected",
+      "remaining": 1,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 1,
+        "source": 0,
+        "tick": 18,
+        "work": 6
+      },
+      "consumed": 0,
+      "finished": 18,
+      "identifier": 32,
+      "outcome": "capacity_rejected",
+      "remaining": 6,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": false,
+        "route": 0,
+        "source": 3,
+        "tick": 18,
+        "work": 2
+      },
+      "consumed": 0,
+      "finished": 18,
+      "identifier": 33,
+      "outcome": "capacity_rejected",
+      "remaining": 2,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": false,
+        "route": 0,
+        "source": 3,
+        "tick": 18,
+        "work": 1
+      },
+      "consumed": 0,
+      "finished": 18,
+      "identifier": 34,
+      "outcome": "capacity_rejected",
+      "remaining": 1,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": false,
+        "route": 0,
+        "source": 0,
+        "tick": 18,
+        "work": 1
+      },
+      "consumed": 0,
+      "finished": 18,
+      "identifier": 35,
+      "outcome": "capacity_rejected",
+      "remaining": 1,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 1,
+        "source": 0,
+        "tick": 19,
+        "work": 6
+      },
+      "consumed": 0,
+      "finished": null,
+      "identifier": 36,
+      "outcome": "pending",
+      "remaining": 6,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 1,
+        "source": 1,
+        "tick": 21,
+        "work": 8
+      },
+      "consumed": 0,
+      "finished": 21,
+      "identifier": 37,
+      "outcome": "rate_limited",
+      "remaining": 8,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": false,
+        "route": 0,
+        "source": 1,
+        "tick": 21,
+        "work": 2
+      },
+      "consumed": 0,
+      "finished": 21,
+      "identifier": 38,
+      "outcome": "capacity_rejected",
+      "remaining": 2,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 1,
+        "source": 0,
+        "tick": 22,
+        "work": 3
+      },
+      "consumed": 0,
+      "finished": 22,
+      "identifier": 39,
+      "outcome": "rate_limited",
+      "remaining": 3,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 1,
+        "source": 2,
+        "tick": 22,
+        "work": 7
+      },
+      "consumed": 0,
+      "finished": 22,
+      "identifier": 40,
+      "outcome": "rate_limited",
+      "remaining": 7,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 1,
+        "source": 1,
+        "tick": 23,
+        "work": 8
+      },
+      "consumed": 0,
+      "finished": 23,
+      "identifier": 41,
+      "outcome": "rate_limited",
+      "remaining": 8,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": false,
+        "route": 1,
+        "source": 3,
+        "tick": 24,
+        "work": 6
+      },
+      "consumed": 0,
+      "finished": null,
+      "identifier": 42,
+      "outcome": "pending",
+      "remaining": 6,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": false,
+        "route": 0,
+        "source": 3,
+        "tick": 24,
+        "work": 2
+      },
+      "consumed": 0,
+      "finished": 24,
+      "identifier": 43,
+      "outcome": "capacity_rejected",
+      "remaining": 2,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 1,
+        "source": 3,
+        "tick": 25,
+        "work": 3
+      },
+      "consumed": 0,
+      "finished": null,
+      "identifier": 44,
+      "outcome": "pending",
+      "remaining": 3,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 0,
+        "source": 1,
+        "tick": 26,
+        "work": 2
+      },
+      "consumed": 0,
+      "finished": null,
+      "identifier": 45,
+      "outcome": "pending",
+      "remaining": 2,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": false,
+        "route": 1,
+        "source": 3,
+        "tick": 27,
+        "work": 6
+      },
+      "consumed": 0,
+      "finished": 27,
+      "identifier": 46,
+      "outcome": "rate_limited",
+      "remaining": 6,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 1,
+        "source": 0,
+        "tick": 28,
+        "work": 6
+      },
+      "consumed": 0,
+      "finished": 28,
+      "identifier": 47,
+      "outcome": "rate_limited",
+      "remaining": 6,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": false,
+        "route": 0,
+        "source": 3,
+        "tick": 30,
+        "work": 1
+      },
+      "consumed": 0,
+      "finished": null,
+      "identifier": 48,
+      "outcome": "pending",
+      "remaining": 1,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 1,
+        "source": 2,
+        "tick": 31,
+        "work": 7
+      },
+      "consumed": 0,
+      "finished": 31,
+      "identifier": 49,
+      "outcome": "rate_limited",
+      "remaining": 7,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": false,
+        "route": 1,
+        "source": 1,
+        "tick": 31,
+        "work": 6
+      },
+      "consumed": 0,
+      "finished": 31,
+      "identifier": 50,
+      "outcome": "rate_limited",
+      "remaining": 6,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": false,
+        "route": 0,
+        "source": 3,
+        "tick": 31,
+        "work": 1
+      },
+      "consumed": 0,
+      "finished": null,
+      "identifier": 51,
+      "outcome": "pending",
+      "remaining": 1,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 1,
+        "source": 1,
+        "tick": 31,
+        "work": 5
+      },
+      "consumed": 0,
+      "finished": 31,
+      "identifier": 52,
+      "outcome": "rate_limited",
+      "remaining": 5,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 0,
+        "source": 3,
+        "tick": 31,
+        "work": 2
+      },
+      "consumed": 0,
+      "finished": null,
+      "identifier": 53,
+      "outcome": "pending",
+      "remaining": 2,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 0,
+        "source": 1,
+        "tick": 31,
+        "work": 2
+      },
+      "consumed": 0,
+      "finished": null,
+      "identifier": 54,
+      "outcome": "pending",
+      "remaining": 2,
+      "started": null
+    },
+    {
+      "arrival": {
+        "adversarial": true,
+        "route": 0,
+        "source": 2,
+        "tick": 31,
+        "work": 2
+      },
+      "consumed": 0,
+      "finished": 31,
+      "identifier": 55,
+      "outcome": "capacity_rejected",
+      "remaining": 2,
+      "started": null
+    }
+  ]
+}

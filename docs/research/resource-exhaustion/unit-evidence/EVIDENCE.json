@@ -1,0 +1,43 @@
+{
+  "evidence": [
+    {
+      "artifact_id": "art_1371d008fd55a6651092199cf0",
+      "commit_sha": null,
+      "kind": "artifact",
+      "note": "manifest.json",
+      "path": null,
+      "provenance": "resource-unit/0.1",
+      "sha256": "1371d008fd55a6651092199cf0c03d6ff7278e9f2027a0c895ea9f93c05c2d24",
+      "span": null,
+      "symbol": null
+    },
+    {
+      "artifact_id": "art_71f37d00e663b722229c28653d",
+      "commit_sha": null,
+      "kind": "artifact",
+      "note": "trajectory.jsonl",
+      "path": null,
+      "provenance": "resource-unit/0.1",
+      "sha256": "71f37d00e663b722229c28653da8f2e1f1c968567af5efced8b81e05419ee3bb",
+      "span": null,
+      "symbol": null
+    },
+    {
+      "artifact_id": "art_833de285f4726ae7d04ac8823d",
+      "commit_sha": null,
+      "kind": "artifact",
+      "note": "requests.json",
+      "path": null,
+      "provenance": "resource-unit/0.1",
+      "sha256": "833de285f4726ae7d04ac8823d62a3ed359bce39668f5a063c6f8878f4ce00f7",
+      "span": null,
+      "symbol": null
+    }
+  ],
+  "files": {
+    "manifest.json": "1371d008fd55a6651092199cf0c03d6ff7278e9f2027a0c895ea9f93c05c2d24",
+    "requests.json": "833de285f4726ae7d04ac8823d62a3ed359bce39668f5a063c6f8878f4ce00f7",
+    "trajectory.jsonl": "71f37d00e663b722229c28653da8f2e1f1c968567af5efced8b81e05419ee3bb"
+  },
+  "schema": "resource-unit-evidence/0.1"
+}

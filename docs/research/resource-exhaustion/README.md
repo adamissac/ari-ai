@@ -81,3 +81,7 @@ can occur through expiry and is not by itself evidence of healthy availability.
 Core Gym contract check uses a feasibility-mask-aware action sampler because the
 generic Gym checker does not consume masks. Invalid actions remain independently
 rejected; full route/source action effects are exercised in the unit tests.
+
+[Verification and fixed unit evidence](VERIFICATION.md) records executed checks,
+source provenance and the explicit boundary between unit receipts and an
+unapproved comparative experiment.

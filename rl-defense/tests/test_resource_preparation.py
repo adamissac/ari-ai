@@ -206,3 +206,29 @@ def test_settlement_removes_right_censoring_without_rewriting_policy_history():
     assert encoded == tuple(r.model_dump_json() for r in history)
     with pytest.raises(RuntimeError):
         env.step(0)
+
+
+def test_committed_unit_receipt_has_external_anchor_and_original_source():
+    bundle = ROOT / "docs/research/resource-exhaustion/unit-evidence"
+    rows = verify_unit_bundle(
+        bundle,
+        expected_index_sha256="b5f69ebc503647bebb2d42ef8cf7865eed1f5f42c16b60ececd84f09e5dcd86c",
+    )
+    manifest = json.loads((bundle / "manifest.json").read_text())
+    assert len(rows) == 4
+    assert manifest["source_commit"] == "1b5516c808602c91152c18b7460fe9aaa9cd8404"
+    # Current checkouts may be shallow in CI; the committed receipt is independently
+    # anchored above. When history is present, also check the original source bytes.
+    original = manifest["source_commit"]
+    present = subprocess.run(
+        ["git", "cat-file", "-e", original], cwd=ROOT, capture_output=True, check=False
+    )
+    if present.returncode == 0:
+        for name, expected in manifest["source_files"].items():
+            raw = subprocess.check_output(["git", "show", f"{original}:{name}"], cwd=ROOT)
+            assert digest(raw) == expected
+        protocol = subprocess.check_output(
+            ["git", "show", f"{original}:docs/research/resource-exhaustion/PREREGISTRATION.md"],
+            cwd=ROOT,
+        )
+        assert digest(protocol) == manifest["protocol_sha256"]
