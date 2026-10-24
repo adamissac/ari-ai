@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { env, evidenceShot, expectNoSideScroll, newUser } from './helpers';
 
-const project = () => env('E2E_PROJECT_ID');
+const project = () => env('E2E_ONBOARDING_PROJECT_ID');
 
 const step = (page: import('@playwright/test').Page, id: string) =>
   page.getByTestId(`onboarding-step-${id}`);
@@ -44,7 +44,7 @@ test('onboarding wizard drives the full customer journey', async ({ browser }) =
   await alice.goto(`/projects/${project()}/live-defense/first-responder`);
   const mapping = alice.locator('section[aria-label="Owner-attested deploy-to-commit mapping"]');
   await mapping.getByLabel('Application').selectOption({ label: 'onboarding-staging' });
-  await mapping.getByLabel('Repository id').fill(env('E2E_REPO_ID'));
+  await mapping.getByLabel('Repository id').fill(env('E2E_ONBOARDING_REPO_ID'));
   await mapping.getByLabel('Commit SHA').fill(env('E2E_COMMIT'));
   await mapping.getByRole('button', { name: 'Attest mapping' }).click();
   await expect(mapping.getByRole('button', { name: 'Attest mapping' })).toBeEnabled();
@@ -72,11 +72,13 @@ test('onboarding wizard drives the full customer journey', async ({ browser }) =
   await expectNoSideScroll(alice);
 });
 
+// Isolation uses the shared seeded project; no windows-dependence there.
 test('onboarding progress is project-isolated', async ({ browser }) => {
+  const shared = () => env('E2E_PROJECT_ID');
   const alice = await newUser(browser, 'e2e-alice');
   const mallory = await newUser(browser, 'e2e-onboard-outsider');
-  await mallory.goto(`/projects/${project()}/onboarding`);
+  await mallory.goto(`/projects/${shared()}/onboarding`);
   await expect(mallory.getByText('Could not load project')).toBeVisible({ timeout: 15_000 });
-  await alice.goto(`/projects/${project()}/onboarding`);
+  await alice.goto(`/projects/${shared()}/onboarding`);
   await expect(alice.getByTestId('onboarding-title')).toBeVisible();
 });
