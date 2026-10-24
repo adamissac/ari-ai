@@ -1720,6 +1720,7 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - Eval harness: `run.py` cleanup survives missing `gh` auth; `score_api.py` accepts the bare-list assessments response. All 35 cases pushed as `eval/20261024-110115/*` branches; assessments accumulate live pending a fresh `hackatl_session` for scoring + scope widening (`access_control.authentication` category).
 - Test scope fixture (`make_scope` default) now grants all three check categories — required for the f2 listing invariant after the authentication template landed.
 
+
 ## 2026-10-24 — Devin (Adam): first live 45-case eval + baseline
 
 - Scored the full 45-case run live over the REST API: **idor 8/8 flagged→validated→fixed; vuln 23/24 flagged, 5 functionally validated (functional reviewer, not Probe); 1 transient FAILED** (worker restart mid-VALIDATION). Median 153s, ~$0.028/run.
@@ -1744,3 +1745,20 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - Two gotchas for live runs inside pytest: conftest blanks `ANTHROPIC_API_KEY` (restore via `HACKATL_LIVE_ANTHROPIC_API_KEY` through `settings_override`), and the vercel driver needs `VERCEL_TOKEN`+`VERCEL_PROJECT_ID`+`VERCEL_TEAM_ID` in env (project/team IDs fetchable via `GET /v9/projects` with the token).
 - PR #441 merged (3d023d55). PR #535: gitleaks false-positive fixed — commit 839737fc's `rehearsal/README.md` (history-only, fake fixture bearers) tripped `curl-auth-header`; targeted `.gitleaks.toml` allowlist pushed (083dd40f). NOTE: that rehearsal commit also carried a `Co-Authored-By: Devin AI` trailer — attribution-rule violation already in merged history; can't fix without rewriting.
 - Rehearsal target staged at `/Users/devin/repos/pilot-rehearsal-target` (ledgerlite, planted CWE-639 IDOR, 6 tests). Still needed from Adam: `adamissac/pilot-rehearsal-target` GitHub repo (App install: Contents RW + PR RW + Metadata read) + browser OAuth sign-in on the session Desktop for the prod leg.
+
+## 2026-10-24 — Devin (Adam): inventory-lite rehearsal fixture
+
+- `examples/inventory-lite`: second owned fixture — a FastAPI inventory service authored
+  after the scripted fixtures were fixed, so no agent script or canned turn is shaped
+  around it. Planted CWE-639-class defect on `GET /items/{item_id}` (missing
+  `require_owner`); `labels.yaml` answer key, `label_checks/` guard it, `build_recipe.json`
+  and Dockerfile mirror payments-lite.
+- `security-agents/tests/test_inventory_lite_rehearsal.py` (3 passed): drives the real
+  `checks.run_template` path — `item_detail` CONFIRMED by execution (bob gets 200),
+  `warehouse_detail` refuted. Evidence doc: `docs/rehearsal/2026-10-24-inventory-lite.md`.
+- `examples.yml` gained an `inventory-lite` job (install, lint, target tests, label
+  checks, Docker build).
+- Outstanding: the full seven-agent *live-provider* assessment on this fixture needs
+  `ANTHROPIC_API_KEY` (`RUN_LIVE_LLM_EVAL=1`); scripted transports cannot honestly
+  produce novel findings on it by design.
+
