@@ -14252,5 +14252,5 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "HackATL platform contracts",
-  "x-schema-version": "0.24.0"
+  "x-schema-version": "0.25.0"
 }

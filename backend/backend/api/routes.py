@@ -52,6 +52,9 @@ from backend.db import (
     users,
     verification_results,
 )
+from backend.db import (
+    jobs as jobs_table,
+)
 from backend.integrations import load_factory
 from backend.services import (
     DomainError,
@@ -466,42 +469,65 @@ def _owner_repo(conn: Any, user: CurrentUser, repo_id: str) -> dict[str, Any]:
 
 @router.post("/repositories/{repo_id}/disconnect")
 def disconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
-    """Owner kill-switch: stop repo-driven work (push automation, snapshots,
-    assessments, live commit reads) and revoke every owner-attested
-    deploy-to-commit mapping that points at this repository.
-
-    Canonical model (security-hardening PR): a ``disconnected_at`` park flag plus
-    snapshot/assessment/live-read gates. The row stays so the name cannot be
-    squatted, and the recorded installation_id stays: revoking the App grant
-    itself is the customer's GitHub-side action (uninstall or limit the App
-    installation), it is not something this API can or should claim to do.
-    """
+    """Canonical owner kill-switch. ``repositories.disconnected_at`` is the single
+    source of truth: it gates every new repo read (snapshots, assessments, live
+    commit fetches) and all push automation. On disconnect we also revoke the
+    app's owner-attested deploy→commit mappings, cancel queued repo-driven jobs,
+    mark wedged pending/indexing snapshots failed, and cooperatively cancel
+    in-flight assessments. ``installation_id`` is kept — it is the audit record
+    of which grant provided access, not the revocation signal. The App itself is
+    NOT uninstalled on GitHub's side (we cannot); the customer does that."""
     with transaction() as conn:
         user = _user(conn, request)
-        repo = _repo_access(conn, user, repo_id, MemberRole.owner)
-        already = (
-            repo["disconnected_at"] is not None
-            if "disconnected_at" in repo
-            else not repo["automatic_assessments"]
-        )
-        if not already:
-            updates: dict[str, Any] = {"automatic_assessments": False}
-            if "disconnected_at" in repo:
-                updates["disconnected_at"] = utcnow()
+        repo = _owner_repo(conn, user, repo_id)
+        if repo["disconnected_at"] is None:
+            now = utcnow()
             conn.execute(
-                sa.update(repositories).where(repositories.c.id == repo_id).values(**updates)
+                sa.update(repositories)
+                .where(repositories.c.id == repo_id)
+                .values(disconnected_at=now, automatic_assessments=False)
             )
-        # Trusted deploy-to-commit links must die with the connection; runtime
-        # events must not resolve to a commit through a repo the owner parked.
-        revoked = conn.execute(
-            sa.update(deploy_commit_mappings)
-            .where(
-                deploy_commit_mappings.c.repo_id == repo_id,
-                deploy_commit_mappings.c.revoked_at.is_(None),
-            )
-            .values(revoked_at=utcnow())
-        ).rowcount
-        if not already or revoked:
+            mappings_revoked = conn.execute(
+                sa.update(deploy_commit_mappings)
+                .where(
+                    deploy_commit_mappings.c.repo_id == repo_id,
+                    deploy_commit_mappings.c.revoked_at.is_(None),
+                )
+                .values(revoked_at=now)
+            ).rowcount
+            repo_snapshot_ids = sa.select(snapshots.c.id).where(snapshots.c.repo_id == repo_id)
+            jobs_cancelled = conn.execute(
+                sa.update(jobs_table)
+                .where(
+                    jobs_table.c.status == "queued",
+                    sa.or_(
+                        jobs_table.c.payload["repo_id"].astext == repo_id,
+                        sa.and_(
+                            jobs_table.c.kind == "index_snapshot",
+                            jobs_table.c.payload["snapshot_id"].astext.in_(repo_snapshot_ids),
+                        ),
+                    ),
+                )
+                .values(status="cancelled", updated_at=sa.func.now())
+            ).rowcount
+            snapshots_failed = conn.execute(
+                sa.update(snapshots)
+                .where(
+                    snapshots.c.repo_id == repo_id,
+                    snapshots.c.status.in_(["pending", "indexing"]),
+                )
+                .values(status="failed")
+            ).rowcount
+            assessments_cancelled = 0
+            for asm_id in conn.execute(
+                sa.select(assessments.c.id).where(
+                    assessments.c.repo_id == repo_id,
+                    assessments.c.state.notin_([s.value for s in TERMINAL_STATES]),
+                )
+            ).scalars():
+                if not cancel_queued_assessment(conn, asm_id):
+                    request_assessment_cancel(conn, asm_id)
+                assessments_cancelled += 1
             _audit(
                 conn,
                 project_org(conn, repo["project_id"]),
@@ -511,16 +537,22 @@ def disconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
                 "repository",
                 repo_id,
                 full_name=repo["full_name"],
-                deploy_mappings_revoked=revoked,
+                installation_id=repo["installation_id"],
+                deploy_mappings_revoked=mappings_revoked,
+                queued_jobs_cancelled=jobs_cancelled,
+                snapshots_failed=snapshots_failed,
+                assessments_cancelled=assessments_cancelled,
             )
         return {"id": repo_id, "disconnected": True}
 
 
-@router.post("/repositories/{repo_id}/reconnect", response_model=Repository)
-def reconnect_repository(repo_id: str, request: Request) -> Repository:
-    """Lift the disconnect off-switch. When the row still carries an App
-    installation link (rows disconnected before the link was also cleared),
-    the owner must still hold access through that installation."""
+@router.post("/repositories/{repo_id}/reconnect")
+def reconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
+    """Re-enable a disconnected repository — only after renewed authorization.
+    App-connected rows require the owner to still hold access through the recorded
+    installation (re-verified, fresh). Reconnect does NOT restore
+    ``automatic_assessments`` or revoked deploy mappings: the owner opts back in
+    explicitly."""
     with transaction() as conn:
         user = _user(conn, request)
         repo = _owner_repo(conn, user, repo_id)
