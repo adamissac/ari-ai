@@ -40,6 +40,16 @@ def _db_down(ctx: JobContext) -> None:
     raise sa_exc.OperationalError("SELECT 1", {}, Exception("connection refused"))
 
 
+@handler("rel_effect_two")
+def _effect_two(ctx: JobContext) -> dict:
+    with ctx.effect("first"):
+        EFFECTS.append("first")
+    with ctx.effect("second"):
+        EFFECTS.append("second")
+        raise EffectNotApplied("rejected before acting")
+    return {}
+
+
 @handler("rel_slow")
 def _slow(ctx: JobContext) -> dict:
     time.sleep(float(ctx.job.payload.get("sleep", 1.2)))
@@ -476,6 +486,17 @@ def test_effect_definitely_not_applied_stays_retryable() -> None:
     worker.drain(kinds=["rel_effect"], max_jobs=1)
     row = _job(jid)
     assert row["status"] == "queued" and row["effect_state"] is None
+
+
+def test_applied_earlier_effect_keeps_job_uncertain_when_later_one_is_rejected() -> None:
+    jobs.register_retry_policy("rel_effect_two", RetryPolicy(base_s=0, jitter=0))
+    jid = _enqueue("rel_effect_two")
+    worker.drain(kinds=["rel_effect_two"], max_jobs=1)
+    row = _job(jid)
+    # The first effect was applied; replaying the handler could apply it again, so the
+    # second effect's clean rejection must NOT make the job retryable.
+    assert row["status"] == "recovery_required" and row["effect_state"] == "settled"
+    assert EFFECTS == ["first", "second"]
 
 
 def test_effect_is_refused_once_cancelled() -> None:
