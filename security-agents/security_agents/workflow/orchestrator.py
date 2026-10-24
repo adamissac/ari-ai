@@ -1129,6 +1129,11 @@ class Orchestrator:
             cause_paths=[
                 s.path for s in (finding.root_cause.cause_spans if finding.root_cause else []) if s.path
             ],
+            cause_spans=[
+                (s.path, s.span.start_line, s.span.end_line)
+                for s in (finding.root_cause.cause_spans if finding.root_cause else [])
+                if s.path and s.span
+            ],
             prior_reasons=reasons,
         )
         services = {
