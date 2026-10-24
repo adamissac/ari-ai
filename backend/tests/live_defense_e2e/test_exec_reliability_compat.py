@@ -151,9 +151,11 @@ def test_deadline_survives_requeue_and_recovery():
             .values(lease_expires_at=sa.func.now() - sa.text("interval '1 hour'"))
         )
         execution.reconcile(conn)
-        row = conn.execute(
-            sa.select(jobs_t.c.status, jobs_t.c.deadline_at).where(jobs_t.c.id == jid)
-        ).mappings().one()
+        row = (
+            conn.execute(sa.select(jobs_t.c.status, jobs_t.c.deadline_at).where(jobs_t.c.id == jid))
+            .mappings()
+            .one()
+        )
         # Recovered as re-claimable work (or already timed out by policy), and
         # the deadline is the same absolute instant — never reset on redelivery.
         assert row["status"] in ("queued", "timed_out")

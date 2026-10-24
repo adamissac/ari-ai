@@ -242,7 +242,10 @@ def main(argv: list[str]) -> int:
             )
         alice.headers["X-CSRF-Token"] = me["csrf_token"]
         pid = (
-            alice.post("/projects", json={"name": "payments-lite (e2e)", "settings": {"delivery_mode": "manual"}})
+            alice.post(
+                "/projects",
+                json={"name": "payments-lite (e2e)", "settings": {"delivery_mode": "manual"}},
+            )
             .raise_for_status()
             .json()["id"]
         )
@@ -254,7 +257,10 @@ def main(argv: list[str]) -> int:
         # The commit-workspace journey completes its own runs. Keep its findings/approvals
         # separate from the original journey's exact-count assertions.
         workspace_pid = (
-            alice.post("/projects", json={"name": "commit-workspace (e2e)", "settings": {"delivery_mode": "manual"}})
+            alice.post(
+                "/projects",
+                json={"name": "commit-workspace (e2e)", "settings": {"delivery_mode": "manual"}},
+            )
             .raise_for_status()
             .json()["id"]
         )
@@ -272,15 +278,16 @@ def main(argv: list[str]) -> int:
         # project, so sharing E2E_PROJECT_ID would collide with the Phase 7C
         # spec's single-element assertions.
         ld_pid = (
-            alice.post("/projects", json={"name": "live-defense-e2e (e2e)", "settings": {"delivery_mode": "manual"}})
+            alice.post(
+                "/projects",
+                json={"name": "live-defense-e2e (e2e)", "settings": {"delivery_mode": "manual"}},
+            )
             .raise_for_status()
             .json()["id"]
         )
         ld_name = "acme/live-defense-e2e"
         ld_rid = (
-            alice.post(
-                f"/projects/{ld_pid}/repositories", json={"full_name": ld_name}
-            )
+            alice.post(f"/projects/{ld_pid}/repositories", json={"full_name": ld_name})
             .raise_for_status()
             .json()["id"]
         )

@@ -13,7 +13,8 @@ from typing import Any
 import sqlalchemy as sa
 from sqlalchemy.engine import Connection
 
-from backend.db import first_responder_invocations, jobs as jobs_table, transaction
+from backend.db import first_responder_invocations, transaction
+from backend.db import jobs as jobs_table
 from shared.base import utcnow
 from shared.live_defense import (
     AgentExecutionRecord,

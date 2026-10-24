@@ -349,6 +349,13 @@
           "title": "Predicted Probability",
           "type": "null"
         },
+        "provider_attempts": {
+          "items": {
+            "$ref": "#/$defs/ProviderAttempt"
+          },
+          "title": "Provider Attempts",
+          "type": "array"
+        },
         "provider_mode": {
           "default": "none",
           "enum": [
@@ -402,6 +409,11 @@
           "default": false,
           "title": "Typed Output",
           "type": "boolean"
+        },
+        "uncertain_provider_outcome": {
+          "default": false,
+          "title": "Uncertain Provider Outcome",
+          "type": "boolean"
         }
       },
       "required": [
@@ -422,7 +434,9 @@
         "independent_verification_id",
         "evidence_verified",
         "confirmation",
-        "predicted_probability"
+        "predicted_probability",
+        "provider_attempts",
+        "uncertain_provider_outcome"
       ],
       "title": "AgentExecutionRecord",
       "type": "object"
@@ -11112,6 +11126,19 @@
           "default": null,
           "title": "Cache Creation Input Tokens"
         },
+        "cost_usd": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cost Usd"
+        },
         "effect_key": {
           "anyOf": [
             {
@@ -11124,6 +11151,19 @@
           ],
           "default": null,
           "title": "Effect Key"
+        },
+        "error_code": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error Code"
         },
         "id": {
           "maxLength": 500,
@@ -11148,6 +11188,19 @@
           "default": null,
           "title": "Input Tokens"
         },
+        "model_id": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Id"
+        },
         "output_tokens": {
           "anyOf": [
             {
@@ -11160,13 +11213,6 @@
           ],
           "default": null,
           "title": "Output Tokens"
-        },
-        "provider_attempts": {
-          "items": {
-            "$ref": "#/$defs/ProviderAttempt"
-          },
-          "title": "Provider Attempts",
-          "type": "array"
         },
         "reserved_at": {
           "format": "date-time",
@@ -11214,11 +11260,6 @@
         },
         "status": {
           "$ref": "#/$defs/ProviderAttemptState"
-        },
-        "uncertain_provider_outcome": {
-          "default": false,
-          "title": "Uncertain Provider Outcome",
-          "type": "boolean"
         }
       },
       "required": [
@@ -11228,13 +11269,14 @@
         "reserved_at",
         "sent_at",
         "settled_at",
+        "model_id",
+        "cost_usd",
         "input_tokens",
         "output_tokens",
         "cache_creation_input_tokens",
         "response_id",
-        "effect_key",
-        "provider_attempts",
-        "uncertain_provider_outcome"
+        "error_code",
+        "effect_key"
       ],
       "title": "ProviderAttempt",
       "type": "object"

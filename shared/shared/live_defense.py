@@ -962,19 +962,23 @@ class AgentExecutionRecord(StrictModel):
     evidence_verified: Literal[False] = False
     confirmation: Literal["unverified"] = "unverified"
     predicted_probability: None = None
-    provider_attempts: list["ProviderAttempt"] = Field(default_factory=list)
+    provider_attempts: list[ProviderAttempt] = Field(default_factory=list)
     uncertain_provider_outcome: bool = False
 
 
 class ProviderAttemptState(StrEnum):
     """Durable billable-request ledger. Unknown outcomes are never auto-replayed."""
+
     reserved = "reserved"
     in_flight = "in_flight"
     settled = "settled"
     uncertain = "uncertain"
     cancelled = "cancelled"
+
+
 class ProviderAttempt(StrictModel):
     """One billable provider request. Read-only intel queries are not recorded here."""
+
     id: ShortText
     idempotency_key: ShortText
     status: ProviderAttemptState

@@ -770,6 +770,7 @@ def build() -> dict[str, BaseModel]:
             sent_at=T0,
             settled_at=T0,
             effect_key="provider:att_fixture_1",
+        ),
         "FirstResponderDecision": live_defense.FirstResponderDecision(
             id=FRD,
             project_id=PRJ,
