@@ -47,27 +47,34 @@ CI: `.github/workflows/live-defense-e2e.yml`. Machine-readable results land in
 ## Workstream 1 (execution reliability) compatibility
 
 `test_exec_reliability_compat.py` runs **live against the reliability queue**
-— this branch is rebased on the composition of the approved heads
-`89a3deba` (PR #458, Phase 7C) + `17c3ded0` (execution reliability), so the
-contract tests execute for real, never skipped. They pin
-`depends_on`/`deadline_s`/`project_id` on `enqueue`, fair project-limited
-`claim`, `begin_effect`/`recovery_required`, `execution.reconcile`, and
-deadline timestamps expressed on the **database clock**
-(`sa.func.now() - interval`), never Python `utcnow()` — review finding F10.
+— this branch is rebased on the composition of the corrected heads
+`5417990f` (Phase 7C, provider ledger) + `f2d911d7` (execution reliability,
+emergency claim capacity), so the contract tests execute for real, never
+skipped. They pin `depends_on`/`deadline_s`/`project_id` on `enqueue`, fair
+project-limited `claim`, `begin_effect`/`recovery_required`,
+`execution.reconcile`, and deadline timestamps expressed on the **database
+clock** (`sa.func.now() - interval`), never Python `utcnow()` — review
+finding F10.
 
-Three tests carry `xfail(strict=True)`: each reproduces a review-confirmed
-integration defect (F1, F7, F8) against the desired contract, so CI stays
-green while the defect stays visible; when the owning workstream lands the
-fix the test turns XPASS and the marker is dropped.
+F1 and F8 are **fixed on the corrected Phase 7C head** (`5417990f`) and are
+now real passing regressions, not xfails:
 
-- **F1** — crash-after-send/before-response: reconcile requeues the
-  uncertain attempt and a worker replays the billable provider call
-  automatically. Required: `recovery_required`, no second physical call
-  until an operator resolves it.
-- **F7** — `live_defense_agent_step` jobs are enqueued with
-  `deadline_at=NULL` (no durable deadline).
-- **F8** — OFF flipped while the final submit response is in flight is
-  overwritten: the cancelled invocation is persisted as `executed`.
+- **F1** — `test_crash_after_send_never_replays_billable_call`: after a
+  crash between the billable send and the recorded response, forced
+  redelivery never sends a second physical provider call — the ledger's
+  in-flight attempt makes the step defer (`JobDeferred`) or commit the
+  invocation `UNCERTAIN_PROVIDER_OUTCOME`. The job may be re-claimed; the
+  billable call is never replayed.
+- **F8** — `test_off_during_final_submit_stays_cancelled`: OFF flipped
+  while the final submit response is in flight wins over the late
+  completion — the invocation stays cancelled, never upgraded to `executed`.
+
+One defect remains pinned as `xfail(strict=True)` — an XPASS fails the
+suite until the marker is dropped:
+
+- **F7** — `deadline_at` is propagated on the decision, invocation and
+  agent-step payload, but the `jobs.deadline_at` column is still `NULL`, so
+  the queue itself cannot time the job out.
 
 Passing coverage on the same file: dependency ordering, per-project claim
 fairness, deadline `timed_out` on the DB clock, uncertain effect →
@@ -76,9 +83,10 @@ reconcile → requeue (the stored `deadline_at` is never reset).
 
 Physical vs logical accounting: `fake.calls` counts physical provider calls;
 invocation rows count logical attempts. `test_e_worker_failure` asserts the
-honest observed contract — a re-delivered step re-runs the whole physical
-loop (scout calls double) even though the logical invocation stays one — and
-does not claim that as duplicate-prevention.
+new observed contract — a crash after the loop commits the invocation
+`failed` honestly (not `queued`), the re-delivered step is a terminal no-op,
+and physical scout calls do NOT double — duplicate-prevention is proven by
+physical-call counting, not by logical-invocation count.
 
 ## Coordination notes
 
