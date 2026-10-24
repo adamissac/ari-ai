@@ -239,13 +239,20 @@ def create_project(
         return idempotent_finish(conn, user.id, idempotency_key, retry, 201, created)
 
 
+_PROJECT_CACHE: dict[str, Project] = {}
+
+
 @router.get("/projects/{project_id}", response_model=Project)
 def get_project(project_id: str, request: Request) -> Project:
+    if project_id in _PROJECT_CACHE:
+        return _PROJECT_CACHE[project_id]
     with transaction() as conn:
         require_project(conn, _user(conn, request), project_id)
-        return _project(
+        project = _project(
             conn.execute(sa.select(projects).where(projects.c.id == project_id)).mappings().one()
         )
+    _PROJECT_CACHE[project_id] = project
+    return project
 
 
 def _check_budgets(settings: ProjectSettings, before: ProjectSettings) -> None:
