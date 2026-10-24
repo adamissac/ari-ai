@@ -319,6 +319,11 @@ worker_heartbeats = sa.Table(
     sa.Column("worker_id", sa.String(120), primary_key=True),
     sa.Column("started_at", TS, nullable=False, server_default=sa.func.now()),
     sa.Column("heartbeat_at", TS, nullable=False, server_default=sa.func.now()),
+    # Written only by the worker's main claim loop (never the lease-heartbeat
+    # thread): a process whose claim loop stopped still beats via the lease thread
+    # while it holds a job, but last_poll_at goes stale — the "stopped processing"
+    # signal.
+    sa.Column("last_poll_at", TS, nullable=False, server_default=sa.func.now()),
     sa.Column("current_job_id", sa.String(80)),
 )
 

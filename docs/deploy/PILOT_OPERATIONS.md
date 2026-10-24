@@ -58,14 +58,25 @@ callback + API proxy work.
 | Liveness | `GET /healthz` | `status=ok` + `git_sha` + `schema_version` |
 | Infra ready | `GET /readyz` | HTTP 200; `status=ready|degraded|not_ready`; 503 on `not_ready`/`degraded` |
 | Assessment-capable | `/readyz` → `capabilities_ready` | `llm.live`, `github.app_configured`, `sandbox.configured`, `artifact_store.writable`, `workers.alive≥1` — each named separately |
-| Deep verify | `GET /diagnostics` | `github.verified=true` (real `GET /app`), `sandbox.sdk_importable`, `migrations.pending=[]`, queue counts, worker rows |
+| Deep verify | `GET /diagnostics` (**owner-signed-in only** — worker ids, env-var names, queue counts, migration state) | `github.verified=true` (real `GET /app`), `sandbox.sdk_importable`, `migrations.pending=[]`, queue counts, worker rows |
 | Deploy pairing | `deploy/verify_pair.sh <frontend> [backend]` | exit 0 — schema versions equal (`/api/frontend-version` on Vercel vs `schema_version` on Railway) |
 
 `/readyz` deliberately separates **can serve traffic** (HTTP status) from
 **can run an assessment** (`capabilities_ready`): a live service missing
 `VERCEL_TOKEN` returns `status=ready` with `capabilities_ready=false` and
-`capabilities.sandbox.detail="missing env: VERCEL_TOKEN"` — config errors are
-visible, not silent.
+`capabilities.sandbox.configured=false` — config errors are visible, not silent.
+The public body returns booleans only; the `detail` strings (which name env vars
+and filesystem errors) appear only in owner-authenticated `/diagnostics`.
+
+Worker liveness is not a bare heartbeat: a row counts only when `heartbeat_at`
+is fresh AND the worker is verifiably processing — `last_poll_at` fresh (written
+solely by the main claim loop) or it holds a claimed job. A process that is
+alive but whose claim loop stopped does **not** count; a worker genuinely inside
+a long handler stays counted via its held job and reports `last_poll_age_s` in
+`/diagnostics` (the "how long on this job" surface). Residual, honest: a handler
+deadlocked mid-job still renews its lease — that is a *stuck job*, visible via
+`worker_rows[].last_poll_age_s` and the job's own stale-progress, not something
+a heartbeat can distinguish from a legitimately long run.
 
 ## Recovery runbook
 
@@ -75,6 +86,7 @@ visible, not silent.
 | Worker crash mid-run | Job lease expires → reclaimed → no mid-run checkpoint → `CONFLICT_STATE` → assessment **FAILED**, job `failed`, visible error — never fabricated success (S2) | start a new assessment from the UI; the dead worker's job does not strand |
 | Run paused for approval | `AWAITING_APPROVAL` writes a hashed checkpoint artifact; a fresh worker `claim_checkpoint`s it (row lock, exactly one claimant) and resumes to `COMPLETED` (S3) | approve the pending remediation approval; resume is automatic |
 | Two workers race | SKIP LOCKED claim + unique `dedupe_key` → exactly-once (S4) | none |
+| New work after a crash | A brand-new assessment on the same repo+scope reaches `AWAITING_APPROVAL` post-kill — the supported retry path is a new run, never a hidden re-run (S7) | start a new assessment from the UI |
 | Migration mistake | `hackatl-migrate` is alembic; `downgrade`/`upgrade` round-trips verified (S5) | fix the bad migration, redeploy (migrations run at boot) |
 | Backup/restore | `pg_dump --file` → `psql -f` reproduces identical row counts (S6) | nightly dump is Railway's job; restore procedure verified |
 

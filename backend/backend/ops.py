@@ -87,8 +87,13 @@ def _llm_capability(s: Settings) -> dict[str, Any]:
     }
 
 
-def capabilities(s: Settings, *, artifact_probe: bool = True) -> dict[str, Any]:
-    """The full capability block, all local checks (no outbound calls)."""
+def capabilities(
+    s: Settings, *, artifact_probe: bool = True, include_details: bool = True
+) -> dict[str, Any]:
+    """The full capability block, all local checks (no outbound calls).
+
+    ``include_details=False`` scrubs the free-text ``detail`` fields (they name internal
+    env vars and filesystem errors) — that is the shape the public /readyz returns."""
     key = s.anthropic_api_key.get_secret_value() if s.anthropic_api_key else ""
     github_ok = bool(
         s.github_app_id and (s.github_app_private_key_path or s.github_app_private_key)
@@ -98,7 +103,7 @@ def capabilities(s: Settings, *, artifact_probe: bool = True) -> dict[str, Any]:
         and s.github_webhook_secret.get_secret_value() not in ("", "replace-me")
     )
     writable, detail = (True, "probe skipped") if not artifact_probe else _artifact_writable()
-    return {
+    caps = {
         "llm": _llm_capability(s),
         "github": {
             "app_configured": github_ok,
@@ -109,6 +114,11 @@ def capabilities(s: Settings, *, artifact_probe: bool = True) -> dict[str, Any]:
         "artifact_store": {"writable": writable, "detail": detail},
         "anthropic_key_configured": bool(key and key != "replace-me"),
     }
+    if not include_details:
+        for cap in caps.values():
+            if isinstance(cap, dict) and "detail" in cap:
+                cap["detail"] = ""
+    return caps
 
 
 def require_workers(s: Settings) -> bool:
@@ -136,8 +146,11 @@ def workers_status(s: Settings, conn: sa.engine.Connection) -> dict[str, Any]:
     }
 
 
-def readiness(s: Settings) -> tuple[dict[str, Any], int]:
-    """Body for /readyz. HTTP 503 only when the service cannot hold traffic at all."""
+def readiness(s: Settings, *, include_details: bool = False) -> tuple[dict[str, Any], int]:
+    """Body for /readyz. HTTP 503 only when the service cannot hold traffic at all.
+
+    ``include_details=True`` (the authenticated /diagnostics path) keeps capability
+    ``detail`` strings; the public healthcheck gets booleans only."""
     db_ok = queue_ok = False
     workers: dict[str, Any] = {
         "alive": 0,
@@ -155,7 +168,7 @@ def readiness(s: Settings) -> tuple[dict[str, Any], int]:
             db_ok = True
             queue_ok = jobs.queue_reachable(conn)
             workers = workers_status(s, conn)
-        caps = capabilities(s)
+        caps = capabilities(s, include_details=include_details)
     except Exception:
         import logging
 
@@ -179,6 +192,10 @@ def readiness(s: Settings) -> tuple[dict[str, Any], int]:
             "artifact_store": {"writable": False, "detail": "unchecked (db down)"},
             "anthropic_key_configured": False,
         }
+        if not include_details:
+            for cap in caps.values():
+                if isinstance(cap, dict) and "detail" in cap:
+                    cap["detail"] = ""
     workers_ok = workers["alive"] >= 1 if workers["required"] else True
     ready = db_ok and queue_ok and workers_ok
     caps_ready = bool(caps) and all(
@@ -275,8 +292,11 @@ def _migration_state() -> dict[str, Any]:
 
 
 def diagnostics(s: Settings) -> dict[str, Any]:
-    """Body for GET /diagnostics: everything /readyz reports plus live verification."""
-    body, _ = readiness(s)
+    """Body for GET /diagnostics: everything /readyz reports plus live verification.
+
+    Authenticated owners only (main.py gates it): worker ids, queue counts, migration
+    state and capability details are internal infrastructure metadata."""
+    body, _ = readiness(s, include_details=True)
     try:
         with get_engine().begin() as conn:
             job_counts = jobs.queue_counts(conn)
@@ -284,6 +304,7 @@ def diagnostics(s: Settings) -> dict[str, Any]:
     except Exception:
         job_counts, workers = {}, []
     body["capabilities"]["github"]["verified"] = _verify_github_app(s)
+    # /diagnostics keeps the capability detail strings /readyz scrubs.
     sandbox = dict(body["capabilities"]["sandbox"])
     if s.security_sandbox == "vercel":
         try:
@@ -306,11 +327,18 @@ def diagnostics(s: Settings) -> dict[str, Any]:
     body["capabilities"]["sandbox"] = sandbox
     body["migrations"] = _migration_state()
     body["jobs"] = job_counts
+    now = utcnow()
     body["worker_rows"] = [
         {
             "worker_id": w["worker_id"],
             "heartbeat_at": w["heartbeat_at"].isoformat(),
             "current_job_id": w["current_job_id"],
+            # Seconds since the worker's main claim loop last polled. A large age while
+            # current_job_id is set means the handler has been running that long — the
+            # "stopped processing" surface a bare heartbeat cannot show.
+            "last_poll_age_s": round(max(0.0, (now - w["last_poll_at"]).total_seconds()), 1)
+            if w.get("last_poll_at")
+            else None,
         }
         for w in workers
     ]
