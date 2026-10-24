@@ -1743,6 +1743,7 @@ longer fail the response-match check; repo/org lookups match case-insensitively
 (GitHub names are); and the tabs no longer flash a Preview/empty state while a
 selected run is still loading.
 
+
 ## 2026-10-24 — Devin (Adam): first live 45-case eval + baseline
 
 - Scored the full 45-case run live over the REST API: **idor 8/8 flagged→validated→fixed; vuln 23/24 flagged, 5 functionally validated (functional reviewer, not Probe); 1 transient FAILED** (worker restart mid-VALIDATION). Median 153s, ~$0.028/run.
@@ -1760,3 +1761,20 @@ selected run is still loading.
 - Review packet regenerated with the role sample; its import allowlist now includes `datetime` (needed by `{expires_in_days}` renders).
 - **Incident:** `chore/agent-commit-cadence` was accidentally cut from `eval/20261024-142809/idor_project_cache_before_auth` and carried the planted `_PROJECT_CACHE` vuln — PR e2e caught it correctly (`toHaveValue('900')` got stale `600`). Rebased it off; the vuln stays only on its eval branch. Lesson: always `git checkout -b <branch> origin/main`, never off the current checkout.
 - Eval run 2 (tag `20261024-142809`, 45 cases) in flight with specialist Scout live: mid-run shows vuln flagged 20/24, benign FP 0/13, median 69s (~2× faster than the 153s baseline).
+
+## 2026-10-24 — Devin (Adam): inventory-lite rehearsal fixture
+
+- `examples/inventory-lite`: second owned fixture — a FastAPI inventory service authored
+  after the scripted fixtures were fixed, so no agent script or canned turn is shaped
+  around it. Planted CWE-639-class defect on `GET /items/{item_id}` (missing
+  `require_owner`); `labels.yaml` answer key, `label_checks/` guard it, `build_recipe.json`
+  and Dockerfile mirror payments-lite.
+- `security-agents/tests/test_inventory_lite_rehearsal.py` (3 passed): drives the real
+  `checks.run_template` path — `item_detail` CONFIRMED by execution (bob gets 200),
+  `warehouse_detail` refuted. Evidence doc: `docs/rehearsal/2026-10-24-inventory-lite.md`.
+- `examples.yml` gained an `inventory-lite` job (install, lint, target tests, label
+  checks, Docker build).
+- Outstanding: the full seven-agent *live-provider* assessment on this fixture needs
+  `ANTHROPIC_API_KEY` (`RUN_LIVE_LLM_EVAL=1`); scripted transports cannot honestly
+  produce novel findings on it by design.
+
