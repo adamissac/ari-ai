@@ -513,3 +513,7 @@ Proposed study now600 episodes/18,000 decisions plus bounded settlement, with
 unapproved safety/sample/compute values. Training NO-GO pending approved formal
 feasibility, safe baseline headroom, terminal-cost collector/learner review and
 explicit training authorization. No historical evidence or customer control edits.
+
+Resource feasibility001: owner approved one deterministic study with acceptance
+failures retained and execution failures stopping. Freeze on research/rl-resource-feasibility-001;
+no environment/baseline tuning, training, holdout, promotion or customer enforcement.
