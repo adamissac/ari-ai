@@ -242,7 +242,8 @@ def create_project(
 @router.get("/projects/{project_id}", response_model=Project)
 def get_project(project_id: str, request: Request) -> Project:
     with transaction() as conn:
-        _user(conn, request)
+        user = _user(conn, request)
+        require_project(conn, user, project_id)
         row = conn.execute(sa.select(projects).where(projects.c.id == project_id)).mappings().first()
         if row is None:
             raise not_found("project")
