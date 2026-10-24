@@ -25,6 +25,14 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-24 — security/privacy lead (Devin session 94914ecc)
+- Did: Audited private-code data flows end-to-end and wrote `docs/security/TENANT_DATA_PROTECTION.md`; added `backend/tests/test_tenant_isolation_adversarial.py` (17 tests: 28-path read denial, write denial, SSE, artifacts incl. NULL-project, jobs trace-strip, forged scope/repo/context-pack claims, ingest-token binding, viewer floor, forged-ref payload/memory stores, RLS probe-role verify, store GUC smoke, full purge); implemented FORCE RLS on index_payloads/index_snapshots (migration 0016 + `set_config('ari.project_id')` in `_validate_ref`, `find_snapshot`, `PostgresMemoryStore._validate`, purge); implemented `backend/privacy.py::purge_project` (FK-safe full tenant delete + refcount-aware artifact objects + bare-clone removal; audit_events retained by design).
+- State of the code: all 334 backend tests pass incl. 17 new adversarial tests; ruff clean on touched files; no isolation hole found at app layer (require_project uniform).
+- Decisions: RLS scoped to the two source-content tables only (documented in doc §6); purge is operator-invoked, no TTL scheduler (documented gap).
+- Open: extend RLS fleet-wide needs per-request tenant GUC resolution — deferred; backups retention is deployment-level (documented).
+- Warnings: `test_repository_has_a_single_migration_head` expects head 0016 — next migration must update it to 0017.
+
+
 ### 2026-10-24 — Devin (agent, Adam) — leaked Vercel snapshot cleanup, push→agents verification
 - Did: verified the named-sandbox snapshot-leak fix already on main (`persistent: False` on run boxes + `destroy` in teardown + `_sweep_stale`); opened PR #495 making the sweep also delete stale run boxes' orphan snapshots so leaked quota is actually freed. Confirmed `delete_orphan_snapshots` only removes snapshots created *by* the destroyed sandbox — the shared `ari-base-*` snapshot can never be an orphan of a run box. Verified on main: security-agents suite 581 passed / 24 skipped, frontend typecheck + 330 vitest + lint clean, standards smoke (CWE/OWASP/CVSS/ATT&CK/D3FEND/SARIF/SP 800-115) passes. Confirmed agents are standards-grounded in code: Scout CWE/OWASP, Probe CWE, Trace ATT&CK/CVSS, Diagnose D3FEND, Fortify CWE/D3FEND; Patch/Verify get standards context via the tagged finding + remediation plan, not prompts.
 - State of the code: push→agents path gates are code-verified (`pipeline.process_github_delivery` → `auto_commits.schedule` → `assess_github_commit`): `repositories.automatic_assessments` (per-repo opt-in, UI switch exists), `GITHUB_AUTO_COMMIT_AUTHORS` (Railway entrypoint defaults `*`), `monitoring_policy.enabled` (project setting, UI switch), active `AuthorizedScope`. All four must be on for pushes to spawn runs — they are product gates, not bugs.
