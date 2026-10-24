@@ -467,6 +467,7 @@ def _record_invocations(
                 },
                 dedupe_key=f"live_defense_agent_step:{decision.id}:{agent.value}",
                 priority=70 if agent is AgentName.scout else 90,
+                deadline_at=decision.deadline_at,
             )
             inv = inv.model_copy(update={"job_id": job_id})
             conn.execute(
@@ -865,6 +866,7 @@ def _enqueue_agent_step(
         },
         dedupe_key=f"live_defense_agent_step:{decision.id}:{agent.value}",
         priority=90 if agent is AgentName.diagnose else 70,
+        deadline_at=decision.deadline_at,
     )
     updated = inv.model_copy(update={"job_id": job_id})
     conn.execute(
