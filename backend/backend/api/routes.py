@@ -435,34 +435,43 @@ def update_repository(repo_id: str, body: RepositoryUpdate, request: Request) ->
         )
 
 
-@router.post("/repositories/{repo_id}/disconnect", response_model=Repository)
-def disconnect_repository(repo_id: str, request: Request) -> Repository:
-    """Revoke Ari's mediated access to a connected repository (owner only).
+@router.post("/repositories/{repo_id}/disconnect")
+def disconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
+    """Owner kill-switch: stop repo-driven work (push automation, and every
+    owner-attested deploy-to-commit mapping that points at this repository).
 
-    Clears the GitHub App installation link and turns automatic assessments off:
-    push webhooks no longer match this repository and commits can no longer be
-    read through the App. The repository record, its snapshots and history stay
-    readable; owner-attested deploy mappings that point at it are revoked.
-    Revoking the App itself on the GitHub side is a separate customer action.
+    Canonical model (security-hardening PR): a `disconnected_at` park flag plus
+    snapshot/assessment/live-read gates; this implements the same semantics minus
+    the flag column so merging either order collapses to theirs + the mapping
+    revocation below. The row stays so the name cannot be squatted, and the
+    recorded installation_id stays: revoking the App grant itself is the
+    customer's GitHub-side action (uninstall or limit the App installation), it
+    is not something this API can or should claim to do.
     """
     with transaction() as conn:
         user = _user(conn, request)
         repo = _repo_access(conn, user, repo_id, MemberRole.owner)
-        already = repo["installation_id"] is None and not repo["automatic_assessments"]
+        already = (
+            repo["disconnected_at"] is not None
+            if "disconnected_at" in repo
+            else not repo["automatic_assessments"]
+        )
         if not already:
+            updates: dict[str, Any] = {"automatic_assessments": False}
+            if "disconnected_at" in repo:
+                updates["disconnected_at"] = utcnow()
             conn.execute(
-                sa.update(repositories)
-                .where(repositories.c.id == repo_id)
-                .values(installation_id=None, automatic_assessments=False)
+                sa.update(repositories).where(repositories.c.id == repo_id).values(**updates)
             )
-        now = utcnow()
+        # Trusted deploy-to-commit links must die with the connection; runtime
+        # events must not resolve to a commit through a repo the owner parked.
         revoked = conn.execute(
             sa.update(deploy_commit_mappings)
             .where(
                 deploy_commit_mappings.c.repo_id == repo_id,
                 deploy_commit_mappings.c.revoked_at.is_(None),
             )
-            .values(revoked_at=now)
+            .values(revoked_at=utcnow())
         ).rowcount
         if not already or revoked:
             _audit(
@@ -473,14 +482,10 @@ def disconnect_repository(repo_id: str, request: Request) -> Repository:
                 "repository.disconnected",
                 "repository",
                 repo_id,
-                installation_cleared=not already,
+                full_name=repo["full_name"],
                 deploy_mappings_revoked=revoked,
             )
-        return _repo(
-            conn.execute(sa.select(repositories).where(repositories.c.id == repo_id))
-            .mappings()
-            .one()
-        )
+        return {"id": repo_id, "disconnected": True}
 
 
 @router.post("/repositories/{repo_id}/snapshots", status_code=202, response_model=Snapshot)
