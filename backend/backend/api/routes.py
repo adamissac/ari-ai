@@ -404,11 +404,15 @@ def _repo_access(
 @router.get("/repositories/{repo_id}", response_model=Repository)
 def get_repository(repo_id: str, request: Request) -> Repository:
     with transaction() as conn:
-        _user(conn, request)  # signed-in users only; skip the membership join on this hot path
-        r = conn.execute(sa.select(repositories).where(repositories.c.id == repo_id)).mappings().first()
-        if r is None:
-            raise not_found("repository")
-        return _repo(dict(r))
+        user = _user(conn, request)
+        try:
+            r = _repo_access(conn, user, repo_id)
+        except ApiError as e:
+            # Non-members get the same error as a missing repo (no existence leak).
+            if e.status != 404:
+                raise
+            raise not_found("repository") from e
+        return _repo(r)
 
 
 @router.patch("/repositories/{repo_id}", response_model=Repository)
