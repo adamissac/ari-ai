@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Live Defense Executions tab: read-only investigation observability for the first responder — a bounded investigations list, a per-decision timeline (trigger events → application/deploy mapping/commit → decision → agent invocations → artifacts → analyst handoff → final state), per-invocation execution details (queue state, attempts, optional model/cost/tool-call record), and an operational diagnostics panel (stalled leases, failures by agent, missing prerequisites, waiting jobs, redacted recent errors, job wall-clock latency). Missing fields render as unavailable, never estimated; investigative execution is never presented as confirmed compromise or executed enforcement. New read-only API: `GET /projects/{id}/first-responder/investigations`, `GET /first-responder/investigations/{decision_id}`, `GET /first-responder/invocations/{invocation_id}`, `GET /projects/{id}/first-responder/diagnostics`. Contract schema 0.23.0 additive (0.20.0 stays reserved for open #412, 0.22.0 for open #458; execution fields populate automatically once Phase 7C records exist).
+
 - Assessment UI: agents the orchestrator skipped now stay visible as 'Not needed' with the recorded reason (e.g. 'no confirmed findings'); on failed/cancelled runs they show 'Not reached'. Replaces the ambiguous 'not run' label on the relay and team list.
 
 - Fix the periodic stale-sandbox sweep to delete the orphaned stop-snapshots of leaked `ari-sbx-*` run boxes, freeing the Vercel Sandbox snapshot quota that caused HTTP 402 assessment failures; the shared base snapshot is unaffected.
