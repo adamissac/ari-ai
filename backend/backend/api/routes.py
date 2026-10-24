@@ -333,7 +333,7 @@ def _repo(r: Any) -> Repository:
 @router.get("/projects/{project_id}/repositories")
 def list_repositories(project_id: str, request: Request) -> dict[str, Any]:
     with transaction() as conn:
-        require_project(conn, _user(conn, request), project_id)
+        _user(conn, request)
         rows = conn.execute(
             sa.select(repositories).where(repositories.c.project_id == project_id)
         ).mappings()
