@@ -73,7 +73,7 @@ const TIMELINE: InvestigationTimeline = {
     id: 'evt_aaaaaaaaaaaaaaaa', project_id: 'prj_1', repo_id: null, source: 'runtime',
     type: 'log_anomaly', occurred_at: '2026-10-24T09:59:00Z', received_at: '2026-10-24T09:59:05Z',
     dedupe_key: 'dk', payload_artifact_id: null, commit_range: null, ref: null, pr_number: null,
-    simulated: false, status: 'processed', status_reason: null, impact: null,
+    simulated: false, test_event: false, status: 'processed', status_reason: null, impact: null,
   }],
   application: null, mapping: null, snapshot: null,
   invocations: [
