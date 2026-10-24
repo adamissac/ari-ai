@@ -294,3 +294,5 @@ Payments-lite private records and existing trusted lab grants only; no external
 provider, observation-layout change or new evaluation.
 
 Adaptive-defense research readiness: [assessment and NO-GO decision](../docs/research/adaptive-defense-readiness/README.md). Internal 69-channel causal observation prototype and fixed train-only archive inventory; no trainable environment, experimental collection, new training or promotion.
+
+[Resource-exhaustion research](../docs/research/resource-exhaustion/README.md): isolated finite-worker queue model and unit instrumentation, not calibrated production CPU/latency evidence or a trained defense.
