@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Completed owner-approved resource-exhaustion feasibility001 (600 episodes), retaining all violations and raw evidence; training remains NO-GO.
+
 - Add an isolated finite-resource service research model with observable queue/work accounting, bounded route/source controls and deterministic baseline rules; formal study and training remain approval-gated.
 
 - Add an adaptive-defense research readiness assessment, causal observation prototype and read-only training-archive coverage inventory. Verdict: no new RL training; no measured residual adaptive task or control benefit is established.

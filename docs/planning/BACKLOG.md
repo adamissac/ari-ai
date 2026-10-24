@@ -237,4 +237,4 @@ Owner requested AI automation and Defense Lab OFF until explicitly enabled. Bran
 
 - IMPLEMENTED / review and CI pending; training NO-GO (2026-10-23), **RL-CMDP-008**, research owner Codex, `research/rl-resource-exhaustion-feasibility`: owner-authorized finite-resource service model and instrumentation, fixed baselines, Stage2 preparation. Formal comparison/numerical thresholds/training require separate approvals. No customer controls or promotion.
 
-- IN_PROGRESS **RL-CMDP-009** (Codex), `research/rl-resource-feasibility-001`: owner-approved single600-episode deterministic comparison, frozen acceptance/execution clarification; no training. Runner, analysis and integrity-unit checks implemented; formal launch pending committed source.
+- IMPLEMENTED / PR review and CI pending **RL-CMDP-009** (Codex), `research/rl-resource-feasibility-001`: owner-approved single600-episode deterministic comparison, frozen acceptance/execution clarification; no training. Runner, analysis and integrity-unit checks implemented; formal launch pending committed source.

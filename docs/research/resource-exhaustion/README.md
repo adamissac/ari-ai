@@ -1,9 +1,11 @@
 # Resource-exhaustion defense — isolated research only
 
 Stage1 mechanism/instrumentation and Stage2 data/protocol preparation implemented.
-**Training NO-GO**; formal comparative study awaits explicit numerical approval.
-No formal comparison, new trained policy, holdout, promotion or customer integration.
-[Blocked preregistration](PREREGISTRATION.md) proposes numbers for owner approval.
+**Training NO-GO** after the [completed feasibility001 comparison](feasibility-001/REPORT.md).
+One owner-approved600-episode/18,000-decision study completed within budget; all
+attack-family arms violated acceptance criteria. No new research-trained policy,
+holdout, promotion or customer integration. [Approved preregistration](PREREGISTRATION.md)
+retains the frozen design and acceptance/execution clarification.
 
 PR422 was NO-GO because deterministic authorization addressed the modeled BOLA
 endpoint and no measured residual resource/diagnostic task or candidate dataset
