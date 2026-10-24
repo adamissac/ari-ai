@@ -1633,3 +1633,16 @@ Seven-agent source inventory pins 71118928866d6974ba0ec9532420a9fc71187318.
 23 fixture/provenance tests pass; scoped Ruff and strict adapter mypy pass.
 No collection, agent calls, training, checkpoint promotion or enforcement.
 Remaining: broader regressions, PR review/CI and authorized research-only merge.
+
+
+### Phase 7B research PR #437 — specification delivered
+
+Report: docs/research/first-responder/README.md. CONDITIONAL GO, no learning yet.
+CI at 157be64: 569 RL tests plus existing 20k smoke/reload; 724 backend /14 skips;
+4 integration; docs/secrets pass. Local 242 research and 91 shared tests pass.
+CodeRabbit's three documentation findings addressed; adapter code unchanged.
+Grok integration remains fixture-only pending exact reference and contract review.
+No collection, first-responder training, promotion or enforcement follows merge.
+Remaining merge gate: final documentation head review/CI. Future numerical protocol
+and any collection require separate explicit owner approval. Historical source
+ancestry retained and v6 registry hash unchanged (see verification report).

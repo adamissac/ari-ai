@@ -11,7 +11,8 @@ artifacts, tool count and Usage. Existing role runners validate specialized outp
 Usage defaults are not measured zero; sandbox seconds are not detection-to-escalation
 latency. These records do not alone establish complete predecision masks, behavior
 probabilities, contemporaneous incident context or independent downstream usefulness.
-Replay/fake/live must be retained and never pooled as equivalent measured evidence.
+Provider modes live, replay, fake and none (deterministic/no-model execution) must
+be retained separately and never pooled as equivalent measured evidence.
 
 Historical findings and independent verification support code vulnerability/fix
 claims at pinned versions. A vulnerability is not proof of a live attack or a useful
@@ -26,7 +27,9 @@ and recommendation provenance when actually captured. Shadow NOT_EXECUTED record
 cannot prove containment. Analyst accept/dismiss can inform feedback but not replace
 independent ground truth. Incident persistence and approval models do not establish
 that new Grok records, capability masks or outcome producers already exist.
-Grok's actual first-responder contract remains pending exact branch/PR and review.
+Candidate PR #439 became available during final review; its proposed contract is
+compared in ENGINEERING_RECONCILIATION.md. Owner confirmation and contract/security
+review remain pending; its none/completed_unverified records are not agent effects.
 
 ## Required trajectory separation
 

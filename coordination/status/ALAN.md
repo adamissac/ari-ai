@@ -533,3 +533,8 @@ interfaces, incidents, workers, controls or checkpoints changed; agreement pendi
 Phase 7B PR #437: 242 research regressions, 91 shared tests, strict adapter mypy
 and scoped Ruff pass. Verdict CONDITIONAL GO; no learning yet. Grok/shared-owner
 contract agreement remains pending; no production integration. CI/review pending.
+
+Phase 7B specification delivered in PR #437. CI at 157be64: 569 RL plus existing
+20k smoke/reload, 724 backend /14 skips, 4 integration, docs/secrets passed. Three
+CodeRabbit documentation clarifications addressed; no adapter semantics changed.
+Final head must pass review/CI before research-only merge; then stop.
