@@ -1,13 +1,21 @@
 # Alan — implementation status
 
 Owner: Alan (`security-agents/`, SEC-001 … SEC-013; interim Live Defense UI)
-Branch: `cursor/live-defense-first-responder-0044`
-Current task: Phase 7A deterministic first-responder orchestration (no Phase 7B, no AUTO-EXECUTE)
-Last remote sync: 2026-10-24, `origin/main` @ `c5c2b47d` (PR #453 merged; #412 still OPEN)
-API/contract dependencies: `shared` 0.21.0 first-responder contracts (0.20.0 reserved for open #412); seven AgentSpecs; backend host checkpoints
-Recent PR/commit: https://github.com/adamissac/ari-ai/pull/439 on `cursor/live-defense-first-responder-0044`; rebased onto main; leave open for security review
-Blockers: live seven-agent Claude run (issue #10, no key); human/security approval of #439 (do not merge); GitHub Actions may not queue from this App token
-Next action: leave Phase 7A PR open; do not start Phase 7B; Codex must not train from these records yet
+Branch: `feat/alan/live-defense-phase7c-agent-execution`
+Current task: Phase 7C live authorized first-responder agent execution (not Codex Phase 7B; no RL training; no AUTO-EXECUTE)
+Last remote sync: 2026-10-24, `origin/main` @ `04c562a9` (PR #439 Phase 7A merged; #456 merged; #412 still OPEN)
+API/contract dependencies: `shared` 0.22.0 first-responder execution records (0.21.0 is merged 7A; 0.20.0 reserved for open #412); Alembic stays 0015; seven AgentSpecs
+Recent PR/commit: Phase 7C on `feat/alan/live-defense-phase7c-agent-execution` (leave open for security review of execution trust boundary)
+Blockers: live Anthropic Scout/Diagnose (issue #10, key optional); human/security approval of the Phase 7C PR (do not merge from this agent); Probe still needs AuthorizedScope and is not expanded
+Next action: leave Phase 7C PR open; do not train RL; do not expand Probe/Patch
+
+## Session entries
+
+### 2026-10-24 (Phase 7C live authorized agent execution)
+
+- Branch `feat/alan/live-defense-phase7c-agent-execution` from live `origin/main` `04c562a9` (PR #439 merged). Scout/Diagnose execute `security_agents.runtime.run_agent` against an owner-attested mapped snapshot. Probe/Patch/Verify not expanded. Trace/Fortify skipped without prerequisites. Schema **0.22.0** / orchestrator `7c.1.0` / Alembic `0015`. #412 keeps 0.20.0. Message: `20261024T064500Z-alan-to-all-live-defense-phase7c-contracts.md`.
+- Leave PR **open** for security review of the execution trust-boundary expansion. No RL training. No AUTO-EXECUTE. No production grants.
+- Executed: `make check` pass (schema 0.22.0, 155 files); `uv run mypy` 40 files; `uv run pytest -q` **781 passed / 15 skipped**; 7A+7C+jobs 38 passed; live-defense+security 79 passed; security-agents **592 passed / 23 skipped**; frontend lint/typecheck; vitest **330**; transport **35**; Playwright 7A+7C **2 passed** (Scout/Diagnose fake loops, integrity checked).
 
 ## What runs today
 
