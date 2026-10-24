@@ -489,15 +489,9 @@ def test_resume_after_approval_completes_remediation_and_hardening(host_and_orch
     orchestrator.run(host)
 
     assert host.states[-4:] == ["REMEDIATION", "HARDENING", "REPORTING", "COMPLETED"]
-    assert [r["agent"] for r in host.runs] == [
-        "scout",
-        "probe",
-        "trace",
-        "diagnose",
-        "patch",
-        "verify",
-        "fortify",
-    ]
+    from .test_e2e_replay import assert_agent_order
+
+    assert_agent_order([r["agent"] for r in host.runs])
     assert len(host.patches) == 1
     patch = host.patches[0]
     assert isinstance(patch, shared_findings.PatchCandidate)
