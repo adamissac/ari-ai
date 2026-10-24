@@ -5,7 +5,7 @@ import type { RelayItem, RelayStatus } from '@/lib/relay';
 import { Term } from '@/components/term';
 
 /** Status reads as a small mark and a word; the tile itself stays calm (globals.css `.relay-tile`). */
-const STATUS_MARK: Record<RelayStatus, string> = { done: 'done', running: 'running', queued: 'queued', failed: 'failed', cancelled: 'queued', not_run: 'idle' };
+const STATUS_MARK: Record<RelayStatus, string> = { done: 'done', running: 'running', queued: 'queued', failed: 'failed', cancelled: 'queued', not_run: 'idle', not_needed: 'idle', not_reached: 'idle' };
 
 /**
  * The eight agents as a relay, in the order the orchestrator runs them, with the
