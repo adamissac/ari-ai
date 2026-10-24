@@ -184,7 +184,7 @@
           "type": "array"
         },
         "orchestrator_version": {
-          "default": "7a.1.0",
+          "default": "7a.1.1",
           "maxLength": 500,
           "title": "Orchestrator Version",
           "type": "string"
@@ -5225,7 +5225,7 @@
           "type": "integer"
         },
         "orchestrator_version": {
-          "default": "7a.1.0",
+          "default": "7a.1.1",
           "maxLength": 500,
           "title": "Orchestrator Version",
           "type": "string"
@@ -11462,5 +11462,5 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "HackATL platform contracts",
-  "x-schema-version": "0.20.0"
+  "x-schema-version": "0.21.0"
 }

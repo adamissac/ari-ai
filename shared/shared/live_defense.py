@@ -608,7 +608,7 @@ class PilotReport(StrictModel):
 # Phase 7A — deterministic first-responder orchestration (no AUTO-EXECUTE)
 # ---------------------------------------------------------------------------
 
-ORCHESTRATOR_VERSION = "7a.1.0"
+ORCHESTRATOR_VERSION = "7a.1.1"
 FIRST_RESPONDER_JOB_KINDS: tuple[str, ...] = (
     "live_defense_first_responder",
     "live_defense_agent_step",

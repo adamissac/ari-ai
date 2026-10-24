@@ -16,7 +16,7 @@ INGEST (existing)
 
 FIRST RESPONDER (this phase; isolated job kinds)
   POST /projects/{id}/first-responder/mode   owner, audited
-  job live_defense_first_responder           deterministic orchestrator 7a.1.0
+  job live_defense_first_responder           deterministic orchestrator 7a.1.1
       → FirstResponderDecision (versioned record, no invented probabilities)
       → FirstResponderInvocation (honest skip/queue; never fake success)
       → AnalystHandoff (delivered only after provider ack)

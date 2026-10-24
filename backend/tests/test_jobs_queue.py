@@ -115,6 +115,28 @@ def test_cancel_queued_job() -> None:
     assert _job(jid)["status"] == "cancelled"
 
 
+def test_claim_skips_cancel_requested_running_job_even_after_lease_expiry() -> None:
+    CALLS.clear()
+    with transaction() as conn:
+        jid, _ = jobs.enqueue(conn, "test_counter", {"n": "off-race"})
+        claimed = jobs.claim(conn, "worker-off", lease_s=30)
+        assert claimed is not None and claimed.id == jid
+        jobs.request_cancel(conn, jid)
+        conn.execute(
+            sa.update(jobs_t)
+            .where(jobs_t.c.id == jid)
+            .values(lease_expires_at=sa.func.now() - sa.text("interval '1 second'"))
+        )
+    with transaction() as conn:
+        assert jobs.claim(conn, "worker-retry", lease_s=30, kinds=["test_counter"]) is None
+        assert jobs.complete(conn, jid, "worker-off", {"ok": True}) is False
+    assert worker.drain(kinds=["test_counter"]) == []
+    assert CALLS == []
+    row = _job(jid)
+    assert row["cancel_requested"] is True
+    assert row["status"] == "running"
+
+
 def test_unknown_kind_fails_permanently() -> None:
     with transaction() as conn:
         jid, _ = jobs.enqueue(conn, "no_such_kind", {})

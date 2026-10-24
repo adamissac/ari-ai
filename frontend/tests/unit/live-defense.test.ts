@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   actionInWords,
@@ -158,6 +160,10 @@ describe('source isolation', () => {
     expect(MISSING_LIVE_APIS.find(item => item.id === 'autonomous')?.reason).toMatch(/Phase 7B is not started/);
     expect(FIRST_RESPONDER_COPY).toMatch(/AUTO-EXECUTE does not exist/);
     expect(FIRST_RESPONDER_COPY).toMatch(/RL recommendation is not executed defense/);
+    const frUi = readFileSync(path.join(process.cwd(), 'components/live-defense/first-responder.tsx'), 'utf8');
+    expect(frUi).not.toMatch(/AckButton/);
+    expect(frUi).not.toMatch(/Mark delivered/);
+    expect(frUi).toMatch(/does not invent a receipt/);
     expect([...EVIDENCE_STATES]).toEqual([
       'Observed',
       'Suspected',

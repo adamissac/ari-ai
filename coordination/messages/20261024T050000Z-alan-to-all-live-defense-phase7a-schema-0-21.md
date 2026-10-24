@@ -1,0 +1,15 @@
+# MSG: Phase 7A contracts renumbered to schema 0.21.0 (leave 0.20.0 for #412)
+- ID: `20261024T050000Z-alan-to-all-live-defense-phase7a-schema-0-21`
+- From: Alan
+- To: all
+- Kind: contract-proposal
+- Timestamp (UTC): 2026-10-24T05:00:00Z
+- Branch / commit / PR or issue link: `cursor/live-defense-first-responder-0044` / PR #439
+- Related subsystem(s): Live Defense first-responder; `shared/` 0.21.0; Alembic `0015`; seven security agents (reuse); Codex RL records (consume later, do not train)
+- Summary (facts, not assumptions): Phase 7A shared contracts move from the colliding 0.20.0 number to **0.21.0**. Open PR #412 (Phase 6.5 RL-gated pilot) keeps **0.20.0** and has no Alembic `0015`. This PR keeps Alembic `0015` (main head is `0014`). Features are not merged and neither side silently overwrites the other. `evidence_state=verified` requires an independently executed `verification_results` row; Verify eligibility and `completed_unverified` do not. Deploy-commit attribution is resolved against the telemetry event window. Handoff `delivered` requires a genuine provider ack. OFF serializes with first-responder dispatch via `pg_advisory_xact_lock(hashtextextended(project_id, 7919))` and cancels queued/running FR steps at worker execution boundaries.
+- Interface requested/proposed: same Phase 7A models as `20261024T023000Z-alan-to-all-live-defense-phase7a-contracts`, versioned 0.21.0. Orchestrator `7a.1.1`.
+- Breaking change? No. Additive 0.21.0. Independent landing: if #412 merges first, main is 0.20.0 and this PR remains 0.21.0. If #439 merges first, #412 must rebase to 0.22.0 instead of writing 0.20.0 over a newer main. Do not take 0.20.0 on this branch.
+- Action required by recipient: Codex — do not train; consume decision records later. Srihith — interim shared ack. #412 owner — keep 0.20.0; rebase to 0.22.0 only if #439 lands first. Do not treat this as AUTO-EXECUTE, Phase 7B, or production enforcement.
+- Response-by milestone: human/security approval of PR #439; leave open (do not merge from this agent)
+- Evidence: `backend/tests/test_live_defense_phase7a.py`; `docs/LIVE_DEFENSE_PHASE7A_FIRST_RESPONDER.md`
+- In-Reply-To: `coordination/messages/20261024T023000Z-alan-to-all-live-defense-phase7a-contracts.md`

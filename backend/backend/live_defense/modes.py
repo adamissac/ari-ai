@@ -30,6 +30,17 @@ from shared.live_defense import (
 )
 from shared.tenancy import ProjectSettings
 
+# Distinct from other advisory locks. Serializes mode transitions with FR dispatch.
+_FIRST_RESPONDER_LOCK_CLASS = 7919
+
+
+def acquire_first_responder_lock(conn: Connection, project_id: str) -> None:
+    """Hold for the rest of this transaction. Mode writes and FR dispatch share it."""
+    conn.execute(
+        sa.text("SELECT pg_advisory_xact_lock(hashtextextended(:project_id, :klass))"),
+        {"project_id": project_id, "klass": _FIRST_RESPONDER_LOCK_CLASS},
+    )
+
 
 def load_intent(conn: Connection, project_id: str) -> FirstResponderModeView:
     row = (
@@ -55,6 +66,7 @@ def save_intent(
 ) -> FirstResponderModeView:
     from sqlalchemy.dialects.postgresql import insert as pg_insert
 
+    acquire_first_responder_lock(conn, project_id)
     previous = load_intent(conn, project_id)
     now = utcnow()
     stop = StopKind.stop_monitoring if intent is FirstResponderIntent.off else StopKind.none

@@ -27,13 +27,13 @@ Checked with live PR pages and `git fetch origin main` during this session.
 |---|---|
 | `origin/main` SHA | `a97820f1` (merge of PR #438, Adam status). Session started on `211c2b24` (PR #435); fast-forwarded before commit |
 | PR [#411](https://github.com/adamissac/ari-ai/pull/411) | MERGED as `5d1e7b91` — Phase 6 CONDITIONAL GO |
-| PR [#412](https://github.com/adamissac/ari-ai/pull/412) | **OPEN** — Phase 6.5 RL-gated pilot; SCHEMA_VERSION 0.20.0 on that branch. This PR also uses 0.20.0 from main; #412 must rebase to 0.21.0 if both land |
+| PR [#412](https://github.com/adamissac/ari-ai/pull/412) | **OPEN** — Phase 6.5 RL-gated pilot; SCHEMA_VERSION **0.20.0** on that branch (no Alembic). This PR is **0.21.0** + Alembic `0015` so both can land independently |
 | PR [#422](https://github.com/adamissac/ari-ai/pull/422) | MERGED |
 | PR [#430](https://github.com/adamissac/ari-ai/pull/430) | MERGED |
 | PR [#433](https://github.com/adamissac/ari-ai/pull/433) | MERGED |
 | PR [#435](https://github.com/adamissac/ari-ai/pull/435) | MERGED as `211c2b24` |
 | PR [#438](https://github.com/adamissac/ari-ai/pull/438) | MERGED as `a97820f1` (docs/status only; not in the original checklist) |
-| `SCHEMA_VERSION` | `0.20.0` additive |
+| `SCHEMA_VERSION` | `0.21.0` additive (0.20.0 reserved for open #412) |
 | Alembic | `0015` |
 | Codex / v6 / datasets | not trained, promoted, or edited |
 
@@ -46,7 +46,7 @@ INGEST (existing)
 
 FIRST RESPONDER (this phase; isolated job kinds)
   POST /projects/{id}/first-responder/mode   owner, audited
-  job live_defense_first_responder           deterministic orchestrator 7a.1.0
+  job live_defense_first_responder           deterministic orchestrator 7a.1.1
       → FirstResponderDecision (versioned record, no invented probabilities)
       → FirstResponderInvocation (honest skip/queue; never fake success)
       → AnalystHandoff (delivered only after provider ack)
@@ -150,11 +150,30 @@ Not ready: customer production, autonomous execution, live seven-agent Claude.
 
 ## RL-data readiness
 
-Versioned `FirstResponderDecision` rows exist (`orchestrator_version=7a.1.0`,
+Versioned `FirstResponderDecision` rows exist (`orchestrator_version=7a.1.1`,
 `predicted_probability=null`, `executed=false`, `outcome_label` unset). Codex
 may later consume them via `shared` contracts. **Do not train.** No invented
-probabilities. Schema 0.20.0 collides with open #412 — rebase #412 to 0.21.0
-if both land.
+probabilities. Schema **0.21.0** on this branch; open #412 keeps **0.20.0**.
+If #439 merges first, #412 must rebase to 0.22.0 rather than writing 0.20.0
+over a newer main.
+
+## Security-review summary (Codex follow-up)
+
+Authorization, mode transitions, agent permissions, deployment mapping, and
+execution boundaries after the four Codex findings. Full write-up is in the
+agent store report. Highlights:
+
+- Owner-only authenticated mode changes; AUTO-EXECUTE is not a route.
+- `evidence_state=verified` requires an independently executed
+  `verification_results` row. Verify eligibility and `completed_unverified`
+  stay recommended/unverified.
+- Handoff `delivered` only after a genuine provider ack. The UI does not
+  invent receipts.
+- Deploy-commit attribution uses mappings with `deployed_at <= window_end`.
+  Otherwise correlation is UNKNOWN.
+- OFF takes `pg_advisory_xact_lock` with dispatch; claim skips
+  `cancel_requested`; handlers `check_cancelled` and abort when OFF is
+  effective. Independently authorized control jobs are not cancelled.
 
 ## Next milestone
 

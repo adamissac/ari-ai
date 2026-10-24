@@ -193,7 +193,9 @@ function HandoffsPanel({
                   <p className="mt-1 text-ink">{item.summary}</p>
                   <p className="mt-1 text-muted">{item.caveat}</p>
                   {item.state === 'delivery_pending' ? (
-                    <AckButton id={item.id} onChange={onChange} />
+                    <p className="mt-1 text-muted" data-testid="live-defense-handoff-pending">
+                      Delivery pending. Waiting for a genuine provider acknowledgement. This UI does not invent a receipt.
+                    </p>
                   ) : null}
                 </li>
               ))}
@@ -202,27 +204,6 @@ function HandoffsPanel({
         </Async>
       ) : <Empty>Handoffs were not requested.</Empty>}
     </Panel>
-  );
-}
-
-function AckButton({ id, onChange }: { id: string; onChange?: () => void }) {
-  const [status, setStatus] = useState<'idle' | 'saving' | 'error'>('idle');
-  const submit = async () => {
-    setStatus('saving');
-    try {
-      await api().ackHandoffDelivery(id, {
-        provider: 'owned_test_inbox',
-        provider_message_id: `ui-${id}`,
-        received_at: new Date().toISOString(),
-      });
-      setStatus('idle');
-      onChange?.();
-    } catch {
-      setStatus('error');
-    }
-  };
-  return (
-    <Button className="mt-2" disabled={status === 'saving'} onClick={() => void submit()}>Record provider confirmation</Button>
   );
 }
 

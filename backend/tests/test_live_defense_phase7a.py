@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 import pytest
+import sqlalchemy as sa
 from helpers import setup_project
 from pydantic import ValidationError
 
@@ -15,14 +16,17 @@ from backend.live_defense.capabilities import classify, load_registry
 from backend.live_defense.orchestrator import OrchestratorFacts, decide
 from shared.assessment import AgentName
 from shared.base import utcnow
+from shared.ids import IdPrefix, new_id
 from shared.live_defense import (
     CONTROL_JOB_KINDS,
     FIRST_RESPONDER_JOB_KINDS,
     SEVEN_AGENT_NAMES,
     AgentCapabilityClass,
+    AgentInvocationStatus,
     AnalystHandoff,
     ConfirmationState,
     CorrelationConfidence,
+    EvidenceLifecycleState,
     FirstResponderIntent,
     FirstResponderModeUpdate,
     OrchestratorAction,
@@ -240,7 +244,7 @@ def test_mode_defaults_off_and_rejects_auto_execute(client_factory) -> None:
     )
     assert denied.status_code in {400, 422}, denied.text
     rejected = alice.post(f"/api/v1/projects/{pid}/first-responder/auto-execute")
-    assert rejected.status_code == 400
+    assert rejected.status_code == 404
     outsider = client_factory("mallory")
     outsider.post("/api/v1/projects", json={"name": "other"})
     assert (
@@ -367,7 +371,8 @@ def test_ingest_does_not_auto_execute_in_assisted_mode(client_factory) -> None:
     assert {a["name"] for a in caps["agents"]} == {n.value for n in SEVEN_AGENT_NAMES}
 
 
-def test_mapping_and_handoff_delivery_ack(client_factory) -> None:
+def test_mapping_and_handoff_delivery_ack_labeled_synthetic_provider(client_factory) -> None:
+    """SYNTHETIC PROVIDER ACK (test-only). Production delivery stays pending until a genuine provider receipt."""
     alice, bob = client_factory("alice"), client_factory("bob")
     ids = setup_project(alice, bob)
     pid = ids["project"]
@@ -408,14 +413,14 @@ def test_mapping_and_handoff_delivery_ack(client_factory) -> None:
     ack = alice.post(
         f"/api/v1/first-responder/handoffs/{item['id']}/delivery-ack",
         json={
-            "provider": "owned_test_inbox",
-            "provider_message_id": "msg_1",
+            "provider": "labeled-synthetic-test-inbox",
+            "provider_message_id": "synthetic-msg-1",
             "received_at": utcnow().isoformat(),
         },
     )
     assert ack.status_code == 200, ack.text
     assert ack.json()["state"] == "delivered"
-    assert ack.json()["delivery_provider"] == "owned_test_inbox"
+    assert ack.json()["delivery_provider"] == "labeled-synthetic-test-inbox"
     invocations = alice.get(f"/api/v1/projects/{pid}/first-responder/invocations").json()["items"]
     probe = [i for i in invocations if i["agent"] == "probe"]
     assert probe
@@ -435,3 +440,376 @@ def test_no_unrestricted_shell_or_prod_env_in_registry() -> None:
             assert item.network == "target-only"
         if item.name is AgentName.patch:
             assert item.write_access == "worktree"
+
+
+def test_verify_eligibility_is_not_verified_evidence() -> None:
+    eligible = decide(
+        _facts(
+            intent=FirstResponderIntent.assisted_response,
+            effective=FirstResponderIntent.assisted_response,
+            trusted_mapping=True,
+            mapped_commit="b" * 40,
+            mapping_id="dcm_01JFIXTURE0000000000000DCM",
+            mapping_fresh=True,
+            patch_candidate_id="pat_01JFIXTURE0000000000000PAT",
+        )
+    )
+    assert AgentName.verify in eligible.selected_agents
+    assert eligible.action is OrchestratorAction.verify_independently
+    assert eligible.evidence_state is EvidenceLifecycleState.recommended
+    assert eligible.transition == "verify_eligible_not_executed"
+    executed = decide(
+        _facts(
+            intent=FirstResponderIntent.assisted_response,
+            effective=FirstResponderIntent.assisted_response,
+            trusted_mapping=True,
+            mapped_commit="b" * 40,
+            mapping_id="dcm_01JFIXTURE0000000000000DCM",
+            mapping_fresh=True,
+            patch_candidate_id="pat_01JFIXTURE0000000000000PAT",
+            independent_verification_id="ver_01JFIXTURE0000000000000VER",
+        )
+    )
+    assert executed.evidence_state is EvidenceLifecycleState.verified
+    assert executed.transition == "independent_verification_executed"
+
+
+def test_independent_verification_lookup_ignores_patch_eligibility(client_factory) -> None:
+    from backend.db import assessments, findings, patch_candidates, verification_results
+    from backend.live_defense.first_responder import _independent_verification
+
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+    pid = ids["project"]
+    asm = new_id(IdPrefix.asm)
+    fnd = new_id(IdPrefix.fnd)
+    pat = new_id(IdPrefix.pat)
+    ver = new_id(IdPrefix.ver)
+    with transaction() as conn:
+        assert _independent_verification(conn, pid) is None
+        conn.execute(
+            sa.insert(assessments).values(
+                id=asm,
+                project_id=pid,
+                repo_id=ids["repo"],
+                scope_id=ids["scope"],
+                commit_sha="b" * 40,
+                trigger="manual",
+                state="CREATED",
+                doc={"id": asm},
+            )
+        )
+        conn.execute(
+            sa.insert(findings).values(
+                id=fnd,
+                project_id=pid,
+                assessment_id=asm,
+                kind="security",
+                status="open",
+                paths=[],
+                doc={"id": fnd},
+            )
+        )
+        conn.execute(sa.insert(patch_candidates).values(id=pat, finding_id=fnd, doc={"id": pat}))
+        assert _independent_verification(conn, pid) is None
+        conn.execute(
+            sa.insert(verification_results).values(
+                id=ver,
+                patch_id=pat,
+                verdict="accepted",
+                doc={"id": ver, "verdict": "accepted"},
+            )
+        )
+        assert _independent_verification(conn, pid) == ver
+
+
+def test_completed_unverified_verify_does_not_mark_evidence_verified(client_factory) -> None:
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+    pid = ids["project"]
+    app = _register(alice, pid)
+    alice.post(
+        f"/api/v1/projects/{pid}/first-responder/mode",
+        json={"intent": "assisted_response"},
+    )
+    assert (
+        alice.post(
+            f"/api/v1/applications/{app['id']}/deploy-mappings",
+            json={
+                "repo_id": ids["repo"],
+                "commit_sha": "b" * 40,
+                "deployed_at": utcnow().isoformat(),
+                "source": "owner_attested",
+            },
+        ).status_code
+        == 201
+    )
+    token = alice.post(f"/api/v1/applications/{app['id']}/ingest-tokens").json()["token"]
+    now = utcnow()
+    assert (
+        alice.post(
+            f"/api/v1/ingest/runtime/{pid}",
+            json=_batch(now),
+            headers={"Authorization": f"Bearer {token}"},
+        ).status_code
+        == 202
+    )
+    worker.drain(max_jobs=40, kinds=["live_defense_shadow", *FIRST_RESPONDER_JOB_KINDS])
+    decisions = alice.get(f"/api/v1/projects/{pid}/first-responder/decisions").json()["items"]
+    assert decisions
+    assert all(row["evidence_state"] != "verified" for row in decisions)
+    invocations = alice.get(f"/api/v1/projects/{pid}/first-responder/invocations").json()["items"]
+    verify_rows = [item for item in invocations if item["agent"] == "verify"]
+    for item in verify_rows:
+        assert item["status"] != "verified"
+        assert item["status"] in {
+            "queued",
+            "skipped_no_patch",
+            "completed_unverified",
+            "blocked",
+            "skipped_mode",
+            "cancelled",
+        }
+
+
+def test_handoff_stays_pending_without_genuine_provider_ack(client_factory) -> None:
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+    pid = ids["project"]
+    app = _register(alice, pid)
+    alice.post(
+        f"/api/v1/projects/{pid}/first-responder/mode",
+        json={"intent": "assisted_response"},
+    )
+    token = alice.post(f"/api/v1/applications/{app['id']}/ingest-tokens").json()["token"]
+    now = utcnow()
+    assert (
+        alice.post(
+            f"/api/v1/ingest/runtime/{pid}",
+            json=_batch(now),
+            headers={"Authorization": f"Bearer {token}"},
+        ).status_code
+        == 202
+    )
+    worker.drain(max_jobs=30, kinds=["live_defense_shadow", *FIRST_RESPONDER_JOB_KINDS])
+    handoffs = alice.get(f"/api/v1/projects/{pid}/first-responder/handoffs").json()["items"]
+    assert handoffs
+    item = handoffs[0]
+    assert item["state"] == "delivery_pending"
+    assert item["delivery_provider"] is None
+    assert item["delivery_confirmed_at"] is None
+    assert item["confirmation"] == "unverified"
+
+
+def test_mapping_uses_telemetry_window_not_newest(client_factory) -> None:
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+    pid = ids["project"]
+    app = _register(alice, pid)
+    alice.post(f"/api/v1/projects/{pid}/first-responder/mode", json={"intent": "monitor"})
+    now = utcnow()
+    older = alice.post(
+        f"/api/v1/applications/{app['id']}/deploy-mappings",
+        json={
+            "repo_id": ids["repo"],
+            "commit_sha": "a" * 40,
+            "deployed_at": (now - timedelta(hours=3)).isoformat(),
+            "source": "owner_attested",
+        },
+    )
+    newer = alice.post(
+        f"/api/v1/applications/{app['id']}/deploy-mappings",
+        json={
+            "repo_id": ids["repo"],
+            "commit_sha": "c" * 40,
+            "deployed_at": now.isoformat(),
+            "source": "owner_attested",
+        },
+    )
+    assert older.status_code == 201 and newer.status_code == 201, (older.text, newer.text)
+    token = alice.post(f"/api/v1/applications/{app['id']}/ingest-tokens").json()["token"]
+    window = now - timedelta(hours=1)
+    assert (
+        alice.post(
+            f"/api/v1/ingest/runtime/{pid}",
+            json=_batch(window),
+            headers={"Authorization": f"Bearer {token}"},
+        ).status_code
+        == 202
+    )
+    worker.drain(max_jobs=30, kinds=["live_defense_shadow", *FIRST_RESPONDER_JOB_KINDS])
+    row = alice.get(f"/api/v1/projects/{pid}/first-responder/decisions").json()["items"][0]
+    assert row["correlation"]["commit_sha"] == "a" * 40
+    assert row["correlation"]["confidence"] != "unknown"
+    assert row["correlation"]["mapping_id"] == older.json()["id"]
+
+
+def test_mapping_after_window_is_unknown(client_factory) -> None:
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+    pid = ids["project"]
+    app = _register(alice, pid)
+    alice.post(f"/api/v1/projects/{pid}/first-responder/mode", json={"intent": "monitor"})
+    now = utcnow()
+    assert (
+        alice.post(
+            f"/api/v1/applications/{app['id']}/deploy-mappings",
+            json={
+                "repo_id": ids["repo"],
+                "commit_sha": "d" * 40,
+                "deployed_at": now.isoformat(),
+                "source": "owner_attested",
+            },
+        ).status_code
+        == 201
+    )
+    token = alice.post(f"/api/v1/applications/{app['id']}/ingest-tokens").json()["token"]
+    assert (
+        alice.post(
+            f"/api/v1/ingest/runtime/{pid}",
+            json=_batch(now - timedelta(hours=2)),
+            headers={"Authorization": f"Bearer {token}"},
+        ).status_code
+        == 202
+    )
+    worker.drain(max_jobs=30, kinds=["live_defense_shadow", *FIRST_RESPONDER_JOB_KINDS])
+    row = alice.get(f"/api/v1/projects/{pid}/first-responder/decisions").json()["items"][0]
+    assert row["correlation"]["confidence"] == "unknown"
+    assert row["correlation"]["commit_sha"] is None
+    assert row["correlation"]["mapping_id"] is None
+
+
+def test_off_cancels_queued_agent_steps_and_skips_claim(client_factory) -> None:
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+    pid = ids["project"]
+    alice.post(f"/api/v1/projects/{pid}/first-responder/mode", json={"intent": "monitor"})
+    with transaction() as conn:
+        jobq.enqueue(
+            conn,
+            "live_defense_agent_step",
+            {
+                "project_id": pid,
+                "decision_id": "frd_queued",
+                "invocation_id": "fri_queued",
+                "agent": "scout",
+                "capability_class": "investigative_readonly",
+            },
+            dedupe_key=f"fr-agent-queued-{pid}",
+        )
+    stopped = alice.post(f"/api/v1/projects/{pid}/first-responder/mode", json={"intent": "off"})
+    assert stopped.status_code == 200, stopped.text
+    drained = worker.drain(max_jobs=10, kinds=["live_defense_agent_step"])
+    assert drained == []
+    with transaction() as conn:
+        rows = conn.execute(sa_select_jobs()).mappings().all()
+    by_kind = {row["kind"]: row for row in rows if row["kind"] == "live_defense_agent_step"}
+    assert by_kind["live_defense_agent_step"]["status"] == "cancelled"
+    assert by_kind["live_defense_agent_step"]["cancel_requested"] is True
+
+
+def test_off_aborts_running_agent_step_at_execution_boundary(client_factory) -> None:
+    from backend.db import first_responder_decisions, first_responder_invocations
+    from backend.live_defense.first_responder import live_defense_agent_step
+    from backend.worker import JobCancelled, JobContext
+    from shared.live_defense import FirstResponderInvocation
+
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+    pid = ids["project"]
+    alice.post(f"/api/v1/projects/{pid}/first-responder/mode", json={"intent": "monitor"})
+    decision = decide(_facts(project_id=pid, application_id=None))
+    inv = FirstResponderInvocation(
+        id=new_id(IdPrefix.fri),
+        decision_id=decision.id,
+        project_id=pid,
+        agent=AgentName.scout,
+        capability_class=AgentCapabilityClass.investigative_readonly,
+        status=AgentInvocationStatus.queued,
+        created_at=utcnow(),
+    )
+    with transaction() as conn:
+        conn.execute(
+            sa.insert(first_responder_decisions).values(
+                id=decision.id,
+                project_id=pid,
+                application_id=None,
+                dedupe_key=f"off-race-{pid}",
+                action=decision.action.value,
+                doc=decision.model_dump(mode="json"),
+            )
+        )
+        conn.execute(sa_insert_invocation(inv))
+        job_id, _ = jobq.enqueue(
+            conn,
+            "live_defense_agent_step",
+            {
+                "project_id": pid,
+                "decision_id": inv.decision_id,
+                "invocation_id": inv.id,
+                "agent": "scout",
+                "capability_class": "investigative_readonly",
+            },
+            dedupe_key=f"fr-agent-running-{pid}",
+        )
+    with transaction() as conn:
+        conn.execute(sa.update(jobs).where(jobs.c.id == job_id).values(run_after=sa.func.now()))
+        claimed = jobq.claim(conn, "fr-test-worker", 30, kinds=["live_defense_agent_step"])
+    assert claimed is not None and claimed.id == job_id
+    stopped = alice.post(f"/api/v1/projects/{pid}/first-responder/mode", json={"intent": "off"})
+    assert stopped.status_code == 200, stopped.text
+    ctx = JobContext(job=claimed, owner="fr-test-worker")
+    with pytest.raises(JobCancelled):
+        live_defense_agent_step(ctx)
+    with transaction() as conn:
+        row = (
+            conn.execute(
+                sa.select(first_responder_invocations).where(
+                    first_responder_invocations.c.id == inv.id
+                )
+            )
+            .mappings()
+            .one()
+        )
+    body = FirstResponderInvocation.model_validate(row["doc"])
+    assert body.status is AgentInvocationStatus.cancelled
+    assert row["status"] == "cancelled"
+
+
+def test_process_after_off_does_not_enqueue_new_agent_steps(client_factory) -> None:
+    from backend.live_defense.first_responder import process_first_responder
+
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+    pid = ids["project"]
+    app = _register(alice, pid)
+    alice.post(f"/api/v1/projects/{pid}/first-responder/mode", json={"intent": "off"})
+    result = process_first_responder(
+        pid,
+        application_id=app["id"],
+        window_end=utcnow(),
+        source="owned_staging",
+        live_policy_decision_id=None,
+        event_ids=[],
+    )
+    assert result["action"] == "cancel_run"
+    with transaction() as conn:
+        kinds = list(
+            conn.execute(
+                sa.select(jobs.c.kind).where(jobs.c.kind == "live_defense_agent_step")
+            ).scalars()
+        )
+    assert kinds == []
+
+
+def sa_insert_invocation(inv):
+    from backend.db import first_responder_invocations
+
+    return sa.insert(first_responder_invocations).values(
+        id=inv.id,
+        decision_id=inv.decision_id,
+        project_id=inv.project_id,
+        agent=inv.agent.value,
+        status=inv.status.value,
+        doc=inv.model_dump(mode="json"),
+    )
