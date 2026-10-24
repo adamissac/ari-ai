@@ -404,11 +404,8 @@ def _repo_access(
 @router.get("/repositories/{repo_id}", response_model=Repository)
 def get_repository(repo_id: str, request: Request) -> Repository:
     with transaction() as conn:
-        _user(conn, request)  # signed-in users only; skip the membership join on this hot path
-        r = conn.execute(sa.select(repositories).where(repositories.c.id == repo_id)).mappings().first()
-        if r is None:
-            raise not_found("repository")
-        return _repo(dict(r))
+        user = _user(conn, request)  # signed-in users; _repo_access enforces project membership
+        return _repo(_repo_access(conn, user, repo_id))
 
 
 @router.patch("/repositories/{repo_id}", response_model=Repository)
