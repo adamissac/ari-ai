@@ -38,6 +38,7 @@ from backend.db import (
     audit_events,
     authorized_scopes,
     defense_recommendations,
+    deploy_commit_mappings,
     finding_records,
     findings,
     monitoring_events,
@@ -329,6 +330,8 @@ def _repo(r: Any) -> Repository:
         default_branch=r["default_branch"],
         installation_id=r["installation_id"],
         automatic_assessments=r["automatic_assessments"],
+        disconnected_at=r["disconnected_at"],
+        disconnected=r["disconnected_at"] is not None,
         created_at=r["created_at"],
     )
 
@@ -461,20 +464,37 @@ def _owner_repo(conn: Any, user: CurrentUser, repo_id: str) -> dict[str, Any]:
     return _repo_access(conn, user, repo_id, MemberRole.owner)
 
 
-@router.post("/repositories/{repo_id}/disconnect")
-def disconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
+@router.post("/repositories/{repo_id}/disconnect", response_model=Repository)
+def disconnect_repository(repo_id: str, request: Request) -> Repository:
     """Owner kill-switch: stop all repo-driven work (snapshots, assessments, push
-    automation, live commit reads). The row stays so the name cannot be squatted;
-    GitHub-side revocation happens by uninstalling/limiting the App installation."""
+    automation, live commit reads) and revoke Ari's mediated GitHub access.
+
+    Sets ``disconnected_at`` so every repo-scoped path refuses work, clears the
+    App installation link and automatic assessments, and revokes owner-attested
+    deploy mappings. The row stays so the name cannot be squatted; revoking the
+    App itself on the GitHub side is a separate customer action."""
     with transaction() as conn:
         user = _user(conn, request)
         repo = _owner_repo(conn, user, repo_id)
         if repo["disconnected_at"] is None:
+            now = utcnow()
             conn.execute(
                 sa.update(repositories)
                 .where(repositories.c.id == repo_id)
-                .values(disconnected_at=utcnow(), automatic_assessments=False)
+                .values(
+                    disconnected_at=now,
+                    installation_id=None,
+                    automatic_assessments=False,
+                )
             )
+            revoked = conn.execute(
+                sa.update(deploy_commit_mappings)
+                .where(
+                    deploy_commit_mappings.c.repo_id == repo_id,
+                    deploy_commit_mappings.c.revoked_at.is_(None),
+                )
+                .values(revoked_at=now)
+            ).rowcount
             _audit(
                 conn,
                 project_org(conn, repo["project_id"]),
@@ -484,14 +504,21 @@ def disconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
                 "repository",
                 repo_id,
                 full_name=repo["full_name"],
+                installation_cleared=repo["installation_id"] is not None,
+                deploy_mappings_revoked=revoked,
             )
-        return {"id": repo_id, "disconnected": True}
+        return _repo(
+            conn.execute(sa.select(repositories).where(repositories.c.id == repo_id))
+            .mappings()
+            .one()
+        )
 
 
-@router.post("/repositories/{repo_id}/reconnect")
-def reconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
-    """Re-enable a disconnected repository. When the row is App-connected, the owner
-    must still hold access through that installation."""
+@router.post("/repositories/{repo_id}/reconnect", response_model=Repository)
+def reconnect_repository(repo_id: str, request: Request) -> Repository:
+    """Lift the disconnect off-switch. When the row still carries an App
+    installation link (rows disconnected before the link was also cleared),
+    the owner must still hold access through that installation."""
     with transaction() as conn:
         user = _user(conn, request)
         repo = _owner_repo(conn, user, repo_id)
@@ -528,7 +555,11 @@ def reconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
                 repo_id,
                 full_name=repo["full_name"],
             )
-        return {"id": repo_id, "disconnected": False}
+        return _repo(
+            conn.execute(sa.select(repositories).where(repositories.c.id == repo_id))
+            .mappings()
+            .one()
+        )
 
 
 @router.post("/repositories/{repo_id}/snapshots", status_code=202, response_model=Snapshot)
