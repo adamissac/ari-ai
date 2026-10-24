@@ -194,7 +194,9 @@ function actionFor(
         return <Link className="text-sm text-brand underline" href={`${base}/monitoring`}>Open monitoring</Link>;
       return null;
     case 'test_event':
-      if (step.state === 'todo')
+      // Keep mounted when done so the recorded result survives the status refetch;
+      // owners may also send further authorized test events.
+      if (step.state === 'todo' || step.state === 'done')
         return <TestEventButton projectId={projectId} onDone={onChanged} />;
       return null;
     case 'evidence':
