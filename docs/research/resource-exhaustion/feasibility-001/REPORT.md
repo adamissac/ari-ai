@@ -102,3 +102,22 @@ the retained directory with the external index digest above. Dependency versions
 Python build and platform are in the sealed manifest. Source/protocol identity
 checks ran before launch and again before completion; a history-preserving merge
 is required to retain the execution commit.
+
+## Verification qualification
+
+The same numeric seed IDs are reused across families. The registered aggregate
+bootstrap resamples family strata independently; it does not estimate cross-family
+shared-seed dependence. Treat aggregate intervals as descriptive under that
+assumption, rather than calibrated simultaneous coverage. Per-family point
+acceptance failures and the NO-GO conclusion do not depend on aggregate intervals.
+The analysis was not rerun or changed after this observation.
+
+`exhausted_ticks` in analysis.json counts the30 decision windows; settlement window
+exhaustion/work counters are retained separately in each receipt. Availability,
+latency and adversarial-work comparison totals use full-lifecycle outcomes.
+
+The first full software CI run had544 passing tests and one fault-injection fixture
+failure: process-lifetime peak RSS inherited from earlier torch tests triggered the
+real study guard before the intended injected invalid action. The fixture isolates
+that host reading and separately tests memory-limit rejection. The collector,
+protocol and sealed study remain unchanged; no formal execution was repeated.
