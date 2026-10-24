@@ -1817,3 +1817,22 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - Docs: `docs/deploy/PILOT_OPERATIONS.md` (staging bring-up, secrets, rollback, backup/restore, alerting, flags), `docs/deploy/RELEASE_CHECKLIST.md`. Env templates: `.env.example` gained `OPS_TOKEN`/`ALERT_WEBHOOK_URL`/`LOG_FORMAT`/`FEATURE_FLAGS`; new `.env.staging.example`.
 - Executed verification (local embedded Postgres, APP_ENV=staging): `hackatl-preflight` PASS with 4 expected warnings; API+worker live on real stack; smoke 15/15 PASS; release check 18 checks, 0 failed; alert webhook received `[CRITICAL] ... job_dead` with `ghp_` redacted; backup 116K → restored into fresh DB, identical row counts and head `['0015']`; `ops/status` reports deferred job via `next_due_in_s`; negative preflight blocks start on unset secrets. Integration branch `integration/pilot-20261024`: #441 + #458 merge cleanly and 348 backend tests pass; #412 conflicts (superseded by #458) and #496 conflicts on CHANGELOG only — reported, not force-resolved.
 - 19 new tests (preflight, ops status, alerts, ops logging) pass; mypy clean on touched files (7 pre-existing errors on main in live_defense/host/auto_commits/pipeline/routes). Not run: frontend Playwright e2e, CI (gh unauthenticated locally), real-Railway deploy.
+
+
+## 2026-10-24 — Devin (Adam): first live 45-case eval + baseline
+
+- Scored the full 45-case run live over the REST API: **idor 8/8 flagged→validated→fixed; vuln 23/24 flagged, 5 functionally validated (functional reviewer, not Probe); 1 transient FAILED** (worker restart mid-VALIDATION). Median 153s, ~$0.028/run.
+- Scorer fixes in `score_api.py`: derive finding paths from `source_span` evidence (list endpoint returns doc only, no `paths` column) and report `validated_any`/`fixed_any` next to the security-only verdicts.
+- `benign_artifact_sha512` was a mislabeled case — sha512 digests violate the `String(64)` sha256 column contract; ARI's "false positive" was a real catch. Case replaced with a genuine no-op refactor.
+- Known gap the eval exposes: Probe only has 3 executable check templates (ownership, bounds, authentication) so most non-authz CWEs end `inconclusive`. `access_control.authentication` scope now approved (`scp_01M5QVPJWE266EJGDHYW73VA59`, all 3 categories, expires 2026-12-23).
+- Cleanup done: 12 eval fix PRs (#499–511) closed, 45 `eval/20261024-110115/*` branches deleted.
+- Transport lesson: `GET /projects/{id}/findings` items are AJV-validated against `Finding` (`additionalProperties: false`) — extra keys in the response break the console. Keep list items contract-shaped.
+
+## 2026-10-24 — Devin (Adam): access_control.role check template
+
+- Probe's 4th template: `access_control.role@1` — restricted fixture identity must be denied on a mutating route while a permitted one keeps access. Covers viewer→member and member→owner holes with one renderer.
+- `CheckCategory` gained `access_control.role` (+ aliases `authorization.role`, `access_control.mutation`, `access_control.rbac`); contracts regenerated (`make contracts`).
+- `deploy/sandbox_target.py` fixtures: carol (viewer of alice's org) + dave (member); seeded authorized_scope/assessment/finding rows per owner so recipe routes have resources to hit. `build_recipe.json` grew to 14 routes incl. `scope_create` (POST) and `finding_accept_risk` (POST); new body placeholders `{expires_in_days:N}` → runtime `_expires()` helper, `{resource:KIND}` → cross-resource id, `{amount}` → declared decimal.
+- Review packet regenerated with the role sample; its import allowlist now includes `datetime` (needed by `{expires_in_days}` renders).
+- **Incident:** `chore/agent-commit-cadence` was accidentally cut from `eval/20261024-142809/idor_project_cache_before_auth` and carried the planted `_PROJECT_CACHE` vuln — PR e2e caught it correctly (`toHaveValue('900')` got stale `600`). Rebased it off; the vuln stays only on its eval branch. Lesson: always `git checkout -b <branch> origin/main`, never off the current checkout.
+- Eval run 2 (tag `20261024-142809`, 45 cases) in flight with specialist Scout live: mid-run shows vuln flagged 20/24, benign FP 0/13, median 69s (~2× faster than the 153s baseline).
