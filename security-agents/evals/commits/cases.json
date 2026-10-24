@@ -1,0 +1,373 @@
+{
+  "_comment": "Labelled commit eval for the seven agents (+ reviewer). Each case is applied to origin/main as one commit and pushed to its own branch; the production pipeline assesses it like any push. kind: idor = the ownership check template can prove it end to end; vuln = a real weakness outside the current check templates (scored on detection only); benign = no weakness (any validated finding or fix is a false positive). Commit messages are ordinary and never name the defect. Do not add cases that put secrets in the tree.",
+  "cases": [
+    {
+      "id": "idor_repository_detail",
+      "kind": "idor",
+      "cwe": "CWE-639",
+      "route_id": "repository_detail",
+      "files": [
+        "backend/backend/api/routes.py"
+      ],
+      "message": "perf(api): skip the membership join when reading a repository",
+      "edits": [
+        {
+          "path": "backend/backend/api/routes.py",
+          "old": "        return _repo(_repo_access(conn, _user(conn, request), repo_id))\n\n\n@router.patch(\"/repositories/{repo_id}\"",
+          "new": "        _user(conn, request)  # signed-in users only; skip the membership join on this hot path\n        r = conn.execute(sa.select(repositories).where(repositories.c.id == repo_id)).mappings().first()\n        if r is None:\n            raise not_found(\"repository\")\n        return _repo(dict(r))\n\n\n@router.patch(\"/repositories/{repo_id}\""
+        }
+      ]
+    },
+    {
+      "id": "idor_project_detail",
+      "kind": "idor",
+      "cwe": "CWE-639",
+      "route_id": "project_detail",
+      "files": [
+        "backend/backend/api/routes.py"
+      ],
+      "message": "refactor(api): load the project row directly in get_project",
+      "edits": [
+        {
+          "path": "backend/backend/api/routes.py",
+          "old": "    with transaction() as conn:\n        require_project(conn, _user(conn, request), project_id)\n        return _project(\n            conn.execute(sa.select(projects).where(projects.c.id == project_id)).mappings().one()\n        )",
+          "new": "    with transaction() as conn:\n        _user(conn, request)\n        row = conn.execute(sa.select(projects).where(projects.c.id == project_id)).mappings().first()\n        if row is None:\n            raise not_found(\"project\")\n        return _project(row)"
+        }
+      ]
+    },
+    {
+      "id": "idor_project_repositories",
+      "kind": "idor",
+      "cwe": "CWE-639",
+      "route_id": "project_repositories",
+      "files": [
+        "backend/backend/api/routes.py"
+      ],
+      "message": "perf(api): list repositories with a single query",
+      "edits": [
+        {
+          "path": "backend/backend/api/routes.py",
+          "old": "    with transaction() as conn:\n        require_project(conn, _user(conn, request), project_id)\n        rows = conn.execute(\n            sa.select(repositories).where(repositories.c.project_id == project_id)\n        ).mappings()",
+          "new": "    with transaction() as conn:\n        _user(conn, request)\n        rows = conn.execute(\n            sa.select(repositories).where(repositories.c.project_id == project_id)\n        ).mappings()"
+        }
+      ]
+    },
+    {
+      "id": "idor_project_scopes",
+      "kind": "idor",
+      "cwe": "CWE-639",
+      "route_id": "project_scopes",
+      "files": [
+        "backend/backend/api/routes.py"
+      ],
+      "message": "refactor(api): simplify the scope listing query",
+      "edits": [
+        {
+          "path": "backend/backend/api/routes.py",
+          "old": "    with transaction() as conn:\n        require_project(conn, _user(conn, request), project_id)\n        docs = conn.execute(\n            sa.select(authorized_scopes.c.doc)\n            .where(authorized_scopes.c.project_id == project_id)",
+          "new": "    with transaction() as conn:\n        _user(conn, request)\n        docs = conn.execute(\n            sa.select(authorized_scopes.c.doc)\n            .where(authorized_scopes.c.project_id == project_id)"
+        }
+      ]
+    },
+    {
+      "id": "idor_project_assessments",
+      "kind": "idor",
+      "cwe": "CWE-639",
+      "route_id": "project_assessments",
+      "files": [
+        "backend/backend/api/routes.py"
+      ],
+      "message": "perf(api): page assessments without the extra project lookup",
+      "edits": [
+        {
+          "path": "backend/backend/api/routes.py",
+          "old": "    with transaction() as conn:\n        require_project(conn, _user(conn, request), project_id)\n        q = sa.select(assessments.c.id, assessments.c.doc).where(",
+          "new": "    with transaction() as conn:\n        _user(conn, request)\n        q = sa.select(assessments.c.id, assessments.c.doc).where("
+        }
+      ]
+    },
+    {
+      "id": "idor_require_project_default_role",
+      "kind": "idor",
+      "cwe": "CWE-863",
+      "route_id": "project_detail",
+      "files": [
+        "backend/backend/api/deps.py"
+      ],
+      "message": "fix(api): treat users without an explicit role as viewers",
+      "edits": [
+        {
+          "path": "backend/backend/api/deps.py",
+          "old": "    role = org_role(conn, user.id, org_id) if org_id else None\n    if org_id is None or role is None:\n        raise not_found(\"project\")",
+          "new": "    role = (org_role(conn, user.id, org_id) or MemberRole.viewer) if org_id else None\n    if org_id is None or role is None:\n        raise not_found(\"project\")"
+        }
+      ]
+    },
+    {
+      "id": "idor_repo_access_helper",
+      "kind": "idor",
+      "cwe": "CWE-862",
+      "route_id": "repository_detail",
+      "files": [
+        "backend/backend/api/routes.py"
+      ],
+      "message": "refactor(api): _repo_access only resolves the repository row",
+      "edits": [
+        {
+          "path": "backend/backend/api/routes.py",
+          "old": "    if r is None:\n        raise not_found(\"repository\")\n    require_project(conn, user, r[\"project_id\"], role)\n    return dict(r)",
+          "new": "    if r is None:\n        raise not_found(\"repository\")\n    if role is not MemberRole.viewer:  # writes still need the project role\n        require_project(conn, user, r[\"project_id\"], role)\n    return dict(r)"
+        }
+      ]
+    },
+    {
+      "id": "idor_project_cache_before_auth",
+      "kind": "idor",
+      "cwe": "CWE-639",
+      "route_id": "project_detail",
+      "files": [
+        "backend/backend/api/routes.py"
+      ],
+      "message": "perf(api): cache project reads",
+      "edits": [
+        {
+          "path": "backend/backend/api/routes.py",
+          "old": "@router.get(\"/projects/{project_id}\", response_model=Project)\ndef get_project(project_id: str, request: Request) -> Project:\n    with transaction() as conn:\n        require_project(conn, _user(conn, request), project_id)\n        return _project(\n            conn.execute(sa.select(projects).where(projects.c.id == project_id)).mappings().one()\n        )",
+          "new": "_PROJECT_CACHE: dict[str, Project] = {}\n\n\n@router.get(\"/projects/{project_id}\", response_model=Project)\ndef get_project(project_id: str, request: Request) -> Project:\n    if project_id in _PROJECT_CACHE:\n        return _PROJECT_CACHE[project_id]\n    with transaction() as conn:\n        require_project(conn, _user(conn, request), project_id)\n        project = _project(\n            conn.execute(sa.select(projects).where(projects.c.id == project_id)).mappings().one()\n        )\n    _PROJECT_CACHE[project_id] = project\n    return project"
+        }
+      ]
+    },
+    {
+      "id": "vuln_signature_timing",
+      "kind": "vuln",
+      "cwe": "CWE-208",
+      "files": [
+        "backend/backend/github.py"
+      ],
+      "message": "refactor(github): simplify the signature comparison",
+      "edits": [
+        {
+          "path": "backend/backend/github.py",
+          "old": "    return hmac.compare_digest(expected.encode(), header.strip().encode())",
+          "new": "    return expected == header.strip()"
+        }
+      ]
+    },
+    {
+      "id": "vuln_signature_missing_header",
+      "kind": "vuln",
+      "cwe": "CWE-347",
+      "files": [
+        "backend/backend/github.py"
+      ],
+      "message": "fix(github): accept deliveries from proxies that strip the signature header",
+      "edits": [
+        {
+          "path": "backend/backend/github.py",
+          "old": "    if not secret or not header or not header.startswith(\"sha256=\"):\n        return False",
+          "new": "    if not header:\n        return True  # some proxies drop X-Hub-Signature-256; the payload is still from GitHub\n    if not secret or not header.startswith(\"sha256=\"):\n        return False"
+        }
+      ]
+    },
+    {
+      "id": "vuln_sql_injection_cursor",
+      "kind": "vuln",
+      "cwe": "CWE-89",
+      "files": [
+        "backend/backend/api/routes.py"
+      ],
+      "message": "perf(api): use a raw cursor predicate for assessment paging",
+      "edits": [
+        {
+          "path": "backend/backend/api/routes.py",
+          "old": "        if cursor:\n            q = q.where(assessments.c.id < cursor)",
+          "new": "        if cursor:\n            q = q.where(sa.text(f\"assessments.id < '{cursor}'\"))"
+        }
+      ]
+    },
+    {
+      "id": "vuln_artifact_path_traversal",
+      "kind": "vuln",
+      "cwe": "CWE-22",
+      "files": [
+        "backend/backend/artifacts.py"
+      ],
+      "message": "refactor(artifacts): keep artifacts under their plain digest name",
+      "edits": [
+        {
+          "path": "backend/backend/artifacts.py",
+          "old": "    def _path(self, sha: str) -> Path:\n        return self.root / \"sha256\" / sha[:2] / sha",
+          "new": "    def _path(self, sha: str) -> Path:\n        return Path(f\"{self.root}/sha256/{sha[:2]}/{sha}\")"
+        }
+      ]
+    },
+    {
+      "id": "vuln_git_command_injection",
+      "kind": "vuln",
+      "cwe": "CWE-78",
+      "files": [
+        "backend/backend/checkouts.py"
+      ],
+      "message": "fix(checkouts): run git through the shell so proxies in GIT_SSH_COMMAND apply",
+      "edits": [
+        {
+          "path": "backend/backend/checkouts.py",
+          "old": "    proc = subprocess.run(\n        [\"git\", *args], cwd=cwd, env=env, capture_output=True, text=True, timeout=timeout\n    )",
+          "new": "    proc = subprocess.run(\n        \"git \" + \" \".join(args), shell=True, cwd=cwd, env=env, capture_output=True, text=True, timeout=timeout\n    )"
+        }
+      ]
+    },
+    {
+      "id": "vuln_oauth_state_skipped",
+      "kind": "vuln",
+      "cwe": "CWE-352",
+      "files": [
+        "backend/backend/api/auth.py"
+      ],
+      "message": "fix(auth): tolerate a missing state cookie after the cross-domain bounce",
+      "edits": [
+        {
+          "path": "backend/backend/api/auth.py",
+          "old": "    if not code or not state or not secrets.compare_digest(state.encode(), expected.encode()):",
+          "new": "    if not code or (expected and not secrets.compare_digest(state.encode(), expected.encode())):"
+        }
+      ]
+    },
+    {
+      "id": "vuln_fetch_name_check_removed",
+      "kind": "vuln",
+      "cwe": "CWE-88",
+      "files": [
+        "backend/backend/checkouts.py"
+      ],
+      "message": "refactor(checkouts): drop the redundant repository name check",
+      "edits": [
+        {
+          "path": "backend/backend/checkouts.py",
+          "old": "    if not FULL_NAME_RE.match(full_name):\n        raise CheckoutError(f\"invalid repository name {full_name!r}\")\n    if not SHA_RE.match(sha):",
+          "new": "    if not SHA_RE.match(sha):"
+        }
+      ]
+    },
+    {
+      "id": "benign_repository_helper",
+      "kind": "benign",
+      "files": [
+        "backend/backend/api/routes.py"
+      ],
+      "message": "refactor(api): name the repository read helper",
+      "edits": [
+        {
+          "path": "backend/backend/api/routes.py",
+          "old": "    with transaction() as conn:\n        return _repo(_repo_access(conn, _user(conn, request), repo_id))\n\n\n@router.patch(\"/repositories/{repo_id}\"",
+          "new": "    with transaction() as conn:\n        user = _user(conn, request)\n        row = _repo_access(conn, user, repo_id)\n        return _repo(row)\n\n\n@router.patch(\"/repositories/{repo_id}\""
+        }
+      ]
+    },
+    {
+      "id": "benign_scopes_docstring",
+      "kind": "benign",
+      "files": [
+        "backend/backend/api/routes.py"
+      ],
+      "message": "docs(api): describe the scope listing",
+      "edits": [
+        {
+          "path": "backend/backend/api/routes.py",
+          "old": "def list_scopes(project_id: str, request: Request) -> dict[str, Any]:\n    with transaction() as conn:",
+          "new": "def list_scopes(project_id: str, request: Request) -> dict[str, Any]:\n    \"\"\"Scopes of a project the caller can read, newest first.\"\"\"\n    with transaction() as conn:"
+        }
+      ]
+    },
+    {
+      "id": "benign_assessments_page_cap",
+      "kind": "benign",
+      "files": [
+        "backend/backend/api/routes.py"
+      ],
+      "message": "perf(api): smaller default page for assessment lists",
+      "edits": [
+        {
+          "path": "backend/backend/api/routes.py",
+          "old": "    limit: int = Query(50, ge=1, le=200),\n    cursor: str | None = None,\n) -> dict[str, Any]:\n    with transaction() as conn:\n        require_project(conn, _user(conn, request), project_id)\n        q = sa.select(assessments.c.id, assessments.c.doc)",
+          "new": "    limit: int = Query(25, ge=1, le=200),\n    cursor: str | None = None,\n) -> dict[str, Any]:\n    with transaction() as conn:\n        require_project(conn, _user(conn, request), project_id)\n        q = sa.select(assessments.c.id, assessments.c.doc)"
+        }
+      ]
+    },
+    {
+      "id": "benign_project_not_found_message",
+      "kind": "benign",
+      "files": [
+        "backend/backend/api/deps.py"
+      ],
+      "message": "docs(api): explain why non-members get 404",
+      "edits": [
+        {
+          "path": "backend/backend/api/deps.py",
+          "old": "    \"\"\"Resolve project -> org membership. Non-members get 404 (no existence leak).\"\"\"",
+          "new": "    \"\"\"Resolve project -> org membership.\n\n    Non-members get 404, not 403, so a caller cannot learn that a project id exists.\n    \"\"\""
+        }
+      ]
+    },
+    {
+      "id": "benign_signature_strip",
+      "kind": "benign",
+      "files": [
+        "backend/backend/github.py"
+      ],
+      "message": "refactor(github): compute the expected signature once",
+      "edits": [
+        {
+          "path": "backend/backend/github.py",
+          "old": "    expected = \"sha256=\" + hmac.new(secret, raw_body, hashlib.sha256).hexdigest()\n    return hmac.compare_digest(expected.encode(), header.strip().encode())",
+          "new": "    digest = hmac.new(secret, raw_body, hashlib.sha256).hexdigest()\n    expected = f\"sha256={digest}\".encode()\n    return hmac.compare_digest(expected, header.strip().encode())"
+        }
+      ]
+    },
+    {
+      "id": "benign_checkout_timeout",
+      "kind": "benign",
+      "files": [
+        "backend/backend/checkouts.py"
+      ],
+      "message": "fix(checkouts): allow slower git fetches",
+      "edits": [
+        {
+          "path": "backend/backend/checkouts.py",
+          "old": "    timeout: float = 300,\n    extra_env: dict[str, str] | None = None,\n) -> str:",
+          "new": "    timeout: float = 600,\n    extra_env: dict[str, str] | None = None,\n) -> str:"
+        }
+      ]
+    },
+    {
+      "id": "benign_repositories_order",
+      "kind": "benign",
+      "files": [
+        "backend/backend/api/routes.py"
+      ],
+      "message": "feat(api): list a project's repositories in name order",
+      "edits": [
+        {
+          "path": "backend/backend/api/routes.py",
+          "old": "        rows = conn.execute(\n            sa.select(repositories).where(repositories.c.project_id == project_id)\n        ).mappings()",
+          "new": "        rows = conn.execute(\n            sa.select(repositories)\n            .where(repositories.c.project_id == project_id)\n            .order_by(repositories.c.full_name)\n        ).mappings()"
+        }
+      ]
+    },
+    {
+      "id": "benign_project_detail_variable",
+      "kind": "benign",
+      "files": [
+        "backend/backend/api/routes.py"
+      ],
+      "message": "refactor(api): name the project row in get_project",
+      "edits": [
+        {
+          "path": "backend/backend/api/routes.py",
+          "old": "    with transaction() as conn:\n        require_project(conn, _user(conn, request), project_id)\n        return _project(\n            conn.execute(sa.select(projects).where(projects.c.id == project_id)).mappings().one()\n        )",
+          "new": "    with transaction() as conn:\n        require_project(conn, _user(conn, request), project_id)\n        row = conn.execute(sa.select(projects).where(projects.c.id == project_id)).mappings().one()\n        return _project(row)"
+        }
+      ]
+    }
+  ]
+}
