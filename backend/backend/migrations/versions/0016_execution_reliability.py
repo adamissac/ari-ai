@@ -33,6 +33,10 @@ def upgrade() -> None:
     op.add_column("jobs", sa.Column("effect_key", sa.String(length=200), nullable=True))
     op.add_column("jobs", sa.Column("error_category", sa.String(length=40), nullable=True))
     op.add_column("jobs", sa.Column("recovery", JSONB(), nullable=True))
+    op.add_column(
+        "jobs",
+        sa.Column("defer_count", sa.Integer(), nullable=False, server_default="0"),
+    )
     op.drop_constraint(op.f("ck_jobs_status"), "jobs", type_="check")
     op.create_check_constraint(op.f("ck_jobs_status"), "jobs", _NEW_STATUSES)
     op.create_check_constraint(
@@ -119,6 +123,7 @@ def downgrade() -> None:
     op.drop_constraint(op.f("ck_jobs_status"), "jobs", type_="check")
     op.create_check_constraint(op.f("ck_jobs_status"), "jobs", _OLD_STATUSES)
     for col in (
+        "defer_count",
         "recovery",
         "error_category",
         "effect_key",

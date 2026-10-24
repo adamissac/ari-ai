@@ -66,6 +66,7 @@ TRANSITIONS: dict[JobStatus, frozenset[JobStatus]] = {
         {
             JobStatus.running,
             JobStatus.queued,
+            JobStatus.waiting,
             JobStatus.succeeded,
             JobStatus.failed,
             JobStatus.cancelled,
@@ -149,6 +150,14 @@ def retry_policy_for(kind: str) -> RetryPolicy:
 # Control jobs (including emergency stop) are never refused by backpressure.
 BACKPRESSURE_EXEMPT_KINDS = frozenset(CONTROL_JOB_KINDS)
 
+# Emergency/cleanup operations get their own bounded claim capacity so they stay
+# claimable when ordinary per-project and global limits are saturated. New apply
+# operations (``live_defense_execute``) and verification deliberately do NOT get
+# this exemption — they consume ordinary capacity like any other job.
+EMERGENCY_JOB_KINDS = frozenset(
+    {"live_defense_emergency_stop", "live_defense_rollback", "live_defense_expire"}
+)
+
 # Advisory lock keys (two-int keyspace; does not collide with modes.py's bigint keys).
 CLAIM_LOCK = (7920, 1)
 RECONCILE_LOCK = (7920, 2)
@@ -161,6 +170,7 @@ class Job:
     payload: dict[str, Any]
     attempts: int
     max_attempts: int
+    defer_count: int
     lease_owner: str
     lease_expires_at: datetime
     project_id: str | None = None
@@ -182,6 +192,7 @@ _ROW_COLS = (
     jobs.c.lease_expires_at,
     jobs.c.heartbeat_at,
     jobs.c.depends_on,
+    jobs.c.defer_count,
 )
 
 
@@ -288,14 +299,17 @@ def enqueue(
     max_attempts: int = 5,
     project_id: str | None = None,
     deadline_s: float | None = None,
+    deadline_at: datetime | None = None,
     depends_on: str | None = None,
 ) -> tuple[str, bool]:
     """Insert a job; returns (job_id, created). An existing dedupe_key returns that job.
 
     ``project_id`` defaults to the payload's project (or its assessment's). It scopes
     per-project concurrency, backpressure and observability. ``deadline_s`` bounds the
-    whole execution including retries; ``depends_on`` parks the job in ``waiting``
-    until that job succeeds (and fails it if the prerequisite ends unsuccessfully).
+    whole execution including retries; pass ``deadline_at`` instead to propagate an
+    existing absolute deadline across follow-on enqueues (it is never extended by
+    redelivery). ``depends_on`` parks the job in ``waiting`` until that job succeeds
+    (and fails it if the prerequisite ends unsuccessfully).
     """
     if dedupe_key is not None:
         existing = conn.execute(
@@ -326,13 +340,14 @@ def enqueue(
             payload=payload,
             status=status.value,
             priority=priority,
-            # Server clock: a job enqueued and claimed in one transaction is runnable.
-            run_after=sa.func.now() + timedelta(seconds=delay_s),
+            run_after=now + timedelta(seconds=delay_s),
             max_attempts=max_attempts,
             dedupe_key=dedupe_key,
             project_id=project_id,
             depends_on=depends_on,
-            deadline_at=now + timedelta(seconds=deadline_s) if deadline_s is not None else None,
+            deadline_at=deadline_at
+            if deadline_at is not None
+            else (now + timedelta(seconds=deadline_s) if deadline_s is not None else None),
         )
         .on_conflict_do_nothing(index_elements=[jobs.c.dedupe_key])
         .returning(jobs.c.id)
@@ -398,20 +413,34 @@ _CLAIM_SQL = sa.text(
     WITH running AS (
       SELECT project_id, count(*) AS n FROM jobs
       WHERE status = 'running' AND lease_expires_at >= now()
+        AND kind <> ALL(:emergency_kinds)
       GROUP BY project_id
+    ),
+    emergency_running AS (
+      SELECT count(*) AS n FROM jobs
+      WHERE status = 'running' AND lease_expires_at >= now()
+        AND kind = ANY(:emergency_kinds)
     ),
     picked AS (
       SELECT j.id, j.status AS prev_status, j.lease_owner AS prev_owner,
              j.lease_expires_at AS prev_lease_expires_at
       FROM jobs j LEFT JOIN running r ON r.project_id = j.project_id
-      WHERE ((j.status = 'queued' AND j.run_after <= now())
+      WHERE ((j.status = 'queued' AND j.run_after <= clock_timestamp())
           OR (j.status = 'running' AND j.lease_expires_at < now() AND j.effect_state IS NULL))
         AND j.cancel_requested IS NOT TRUE
         AND (j.deadline_at IS NULL OR j.deadline_at > now())
         AND (:kinds_empty OR j.kind = ANY(:kinds))
-        AND (j.project_id IS NULL OR :project_limit <= 0 OR coalesce(r.n, 0) < :project_limit)
-        AND (:global_limit <= 0
-             OR (SELECT coalesce(sum(n), 0) FROM running) < :global_limit)
+        AND (
+          -- Emergency/cleanup kinds: own bounded capacity, exempt from ordinary limits.
+          (j.kind = ANY(:emergency_kinds) AND :emergency_limit > 0
+            AND (SELECT n FROM emergency_running) < :emergency_limit)
+          OR
+          -- Ordinary jobs (and emergency kinds when no reserve is configured).
+          ((j.kind <> ALL(:emergency_kinds) OR :emergency_limit <= 0)
+            AND (j.project_id IS NULL OR :project_limit <= 0 OR coalesce(r.n, 0) < :project_limit)
+            AND (:global_limit <= 0
+                 OR (SELECT coalesce(sum(n), 0) FROM running) < :global_limit))
+        )
       ORDER BY j.priority, coalesce(r.n, 0), j.run_after, j.id
       FOR UPDATE OF j SKIP LOCKED
       LIMIT 1
@@ -428,7 +457,8 @@ _CLAIM_SQL = sa.text(
     FROM picked
     WHERE jobs.id = picked.id
     RETURNING jobs.id, jobs.kind, jobs.payload, jobs.attempts, jobs.max_attempts,
-              jobs.lease_owner, jobs.lease_expires_at, jobs.project_id, jobs.deadline_at,
+              jobs.defer_count, jobs.lease_owner, jobs.lease_expires_at, jobs.project_id,
+              jobs.deadline_at,
               picked.prev_status, picked.prev_owner, picked.prev_lease_expires_at
     """
 )
@@ -445,7 +475,8 @@ def claim(conn: Connection, owner: str, lease_s: int, kinds: list[str] | None = 
     settings = get_settings()
     project_limit = settings.job_max_running_per_project
     global_limit = settings.job_max_running_global
-    if project_limit > 0 or global_limit > 0:
+    emergency_limit = get_settings().job_max_running_emergency
+    if project_limit > 0 or global_limit > 0 or emergency_limit > 0:
         conn.execute(
             sa.text("SELECT pg_advisory_xact_lock(:a, :b)"),
             {"a": CLAIM_LOCK[0], "b": CLAIM_LOCK[1]},
@@ -460,6 +491,8 @@ def claim(conn: Connection, owner: str, lease_s: int, kinds: list[str] | None = 
                 "kinds_empty": not kinds,
                 "project_limit": project_limit,
                 "global_limit": global_limit,
+                "emergency_limit": emergency_limit,
+                "emergency_kinds": sorted(EMERGENCY_JOB_KINDS),
             },
         )
         .mappings()
@@ -490,7 +523,7 @@ def claim(conn: Connection, owner: str, lease_s: int, kinds: list[str] | None = 
             else None
         ),
     )
-    if job.attempts > job.max_attempts:
+    if job.attempts - job.defer_count > job.max_attempts:
         locked = _locked(conn, job.id)
         transition(
             conn,
@@ -551,8 +584,20 @@ def complete(
     if row is None:
         return False
     late = row["status"] == JobStatus.recovery_required and row["effect_state"] is not None
-    if not late and (row["status"] != JobStatus.running or row["cancel_requested"]):
-        return False
+    if not late:
+        # Fencing: ordinary completion requires a currently valid lease. A worker
+        # whose lease expired (even before reconciliation notices) cannot report
+        # success — its attempt is recovered through the lease-expiry path.
+        fenced = conn.execute(
+            sa.select(jobs.c.id).where(
+                jobs.c.id == job_id,
+                jobs.c.status == JobStatus.running.value,
+                jobs.c.cancel_requested.is_not(True),
+                jobs.c.lease_expires_at > sa.func.now(),
+            )
+        ).scalar_one_or_none()
+        if fenced is None:
+            return False
     transition(
         conn,
         row,
@@ -567,6 +612,80 @@ def complete(
         effect_state="settled" if row["effect_state"] else None,
     )
     return True
+
+
+def defer(
+    conn: Connection,
+    job_id: str,
+    owner: str,
+    *,
+    delay_s: float = 0,
+    depends_on: str | None = None,
+    note: str | None = None,
+) -> str | None:
+    """Return a claimed job to the queue without consuming an execution attempt.
+
+    The transition is validated and recorded in ``job_events`` like every other
+    lifecycle change, and ``defer_count`` makes the claim/defer pair neutral on the
+    retry budget. With ``depends_on`` the job parks in ``waiting`` until that job
+    settles. Returns the new status, or ``None`` when deferral is refused: the
+    lease was lost, or an external effect is in flight (an uncertain effect must
+    never be replayed — the job stays ``running`` for the recovery path).
+    Cancellation and an elapsed deadline take precedence over the deferral.
+    """
+    row = _locked(conn, job_id, jobs.c.lease_owner == owner)
+    if row is None or row["status"] != JobStatus.running:
+        return None
+    if row["effect_state"] is not None:
+        return None
+    common: dict[str, Any] = {"lease_owner": None, "lease_expires_at": None}
+    if row["cancel_requested"]:
+        transition(
+            conn,
+            row,
+            JobStatus.cancelled,
+            worker=owner,
+            category=ErrorCategory.cancelled,
+            reason="cancelled while deferring",
+            **common,
+        )
+        return JobStatus.cancelled.value
+    overdue = conn.execute(
+        sa.select(jobs.c.deadline_at <= sa.func.now()).where(jobs.c.id == job_id)
+    ).scalar_one()
+    if overdue:
+        transition(
+            conn,
+            row,
+            JobStatus.timed_out,
+            worker=owner,
+            category=ErrorCategory.deadline_exceeded,
+            reason="deadline passed while deferring",
+            **common,
+        )
+        return JobStatus.timed_out.value
+    # DB clock, consistent with claim's run_after comparison and reconciliation.
+    run_after = sa.func.now() + timedelta(seconds=delay_s)
+    if depends_on is not None:
+        dep = conn.execute(sa.select(jobs.c.status).where(jobs.c.id == depends_on)).scalar()
+        if dep is None:
+            raise ValueError(f"unknown prerequisite job {depends_on!r}")
+        to_status = JobStatus.waiting if dep != JobStatus.succeeded else JobStatus.queued
+    else:
+        to_status = JobStatus.queued
+    transition(
+        conn,
+        row,
+        to_status,
+        worker=owner,
+        reason=note or ("deferred onto prerequisite" if depends_on else "deferred"),
+        details={"delay_s": delay_s, "depends_on": depends_on},
+        run_after=run_after,
+        depends_on=depends_on if depends_on is not None else row["depends_on"],
+        defer_count=row["defer_count"] + 1,
+        **common,
+    )
+    return to_status.value
 
 
 def is_cancel_requested(conn: Connection, job_id: str) -> bool:
@@ -594,6 +713,13 @@ def fail(
         return "lost"
     if row["status"] != JobStatus.running:
         return str(row["status"])
+    # Fencing: an expired lease cannot record ordinary outcomes either — the
+    # expired-lease path in reconciliation owns that recovery.
+    fenced = conn.execute(
+        sa.select(jobs.c.id).where(jobs.c.id == job_id, jobs.c.lease_expires_at > sa.func.now())
+    ).scalar_one_or_none()
+    if fenced is None:
+        return "lost"
     if category is None:
         if error.get("code") == ErrorCode.CANCELLED.value:
             category = ErrorCategory.cancelled
@@ -632,7 +758,7 @@ def fail(
         status, category = JobStatus.cancelled, ErrorCategory.cancelled
     elif overdue or category is ErrorCategory.deadline_exceeded:
         status, category = JobStatus.timed_out, ErrorCategory.deadline_exceeded
-    elif retryable and row["attempts"] < row["max_attempts"]:
+    elif retryable and row["attempts"] - row["defer_count"] < row["max_attempts"]:
         run_after = now + timedelta(seconds=retry_policy_for(row["kind"]).delay_s(row["attempts"]))
         if row["deadline_at"] is not None and run_after >= row["deadline_at"]:
             status, category = JobStatus.timed_out, ErrorCategory.deadline_exceeded
@@ -741,7 +867,10 @@ def request_cancel(conn: Connection, job_id: str) -> None:
             category=ErrorCategory.cancelled,
             reason="cancelled before start",
         )
-    elif row["status"] == JobStatus.running and not row["cancel_requested"]:
+    elif (
+        row["status"] in (JobStatus.running, JobStatus.recovery_required)
+        and not row["cancel_requested"]
+    ):
         record_event(conn, row, row["status"], reason="cancel requested")
 
 
