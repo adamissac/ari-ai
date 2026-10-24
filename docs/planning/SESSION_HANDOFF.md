@@ -1594,3 +1594,21 @@ PR433 first RL CI:544 passed,1 fault-injection fixture failed because prior torc
 tests raised process-lifetime peak RSS above the study limit. Test fixture now
 isolates RSS for the invalid-action fault and separately tests memory-limit
 rejection. No collector/protocol/evidence changes, no formal study rerun.
+
+## RL-CMDP-010 read-only research/product assessment
+
+Owner requested mathematical capacity feasibility, oracle limitations, control
+expressiveness and product-thesis decision after433. New stdlib-only analytical
+tool reads sealed archived requests, computes necessary interval-completion bounds
+and relaxed offered-work actuation coverage. It does not import the service/env,
+generate/replay workloads, execute a policy, train or modify prior artifacts.
+Methodology frozen before calculation; exact existing-action optimum remains
+uncomputed unless a rigorous bound resolves it. Do not equate rule failure with
+fundamental infeasibility or optimistic upper bounds with achievable performance.
+
+Bounds assessment completed on120 existing workloads (source0074562,0.7621s,
+recorded peak RSS30,900,224 bytes). No completion upper bound below90%, no feasible
+oracle/schedule certificate. Existing-action optimum unresolved. Primary product
+recommendation C:deprioritize RL; non-RL assurance evidence packet proposed only.
+Research, training permission and pilot readiness remain separate. See
+docs/research/rl-product-thesis/README.md; all original study bytes unchanged.

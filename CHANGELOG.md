@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Added read-only capacity/oracle and product-thesis assessment: current evidence does not justify RL as a primary near-term dependency; no training or control changes.
+
 - Completed owner-approved resource-exhaustion feasibility001 (600 episodes), retaining all violations and raw evidence; training remains NO-GO.
 
 - Add an isolated finite-resource service research model with observable queue/work accounting, bounded route/source controls and deterministic baseline rules; formal study and training remain approval-gated.
