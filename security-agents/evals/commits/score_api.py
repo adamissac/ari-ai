@@ -3,10 +3,13 @@
 Env: ARI_API_BASE (e.g. https://ari-ai-lake.vercel.app/api/v1), ARI_SESSION
      (the hackatl_session cookie value), ARI_EVAL_PROJECT (project id).
 stdin: {"cases": [...cases.json entries...], "shas": {case_id: commit_sha}}
-stdout: {"results": [{case_id, state, seconds, usd, flagged, validated, fixed, findings}], "pending": n}
+stdout: {"results": [{case_id, state, seconds, usd, flagged, validated, fixed,
+validated_any, fixed_any, findings}], "pending": n}
 
 Same verdict rules as score.py: flagged = any security finding on a changed file;
-validated = Probe proved it; fixed = Verify accepted the fix.
+validated = Probe proved it; fixed = Verify accepted the fix. validated_any /
+fixed_any are the same verdicts counted across every finding kind (security +
+functional), so the functional reviewer's proofs still show up in the report.
 """
 
 from __future__ import annotations
@@ -72,6 +75,18 @@ def main() -> int:
     for f in findings:
         by_assessment.setdefault(f.get("assessment_id") or "", []).append(f)
 
+    def _finding_paths(f: dict) -> set[str]:
+        paths = f.get("paths")
+        if paths is None:
+            # the findings list endpoint returns the finding doc without the
+            # denormalized `paths` column; fall back to its source_span evidence
+            paths = [
+                e.get("path")
+                for e in (f.get("evidence") or [])
+                if e.get("kind") == "source_span" and e.get("path")
+            ]
+        return {p.split(":")[0] for p in paths}
+
     results, pending = [], 0
     for case in request["cases"]:
         out = {"case_id": case["id"], "kind": case["kind"], "cwe": case.get("cwe")}
@@ -81,10 +96,15 @@ def main() -> int:
             pending += 1
             continue
         files = set(case["files"])
-        on_files = [
+        sec_on_files = [
             f
             for f in by_assessment.get(a["id"], [])
-            if f["kind"] == "security" and files & {p.split(":")[0] for p in (f.get("paths") or [])}
+            if f["kind"] == "security" and files & _finding_paths(f)
+        ]
+        any_on_files = [
+            f
+            for f in by_assessment.get(a["id"], [])
+            if files & _finding_paths(f)
         ]
         seconds = round(_ts(a.get("completed_at") or a.get("updated_at")) - _ts(a["created_at"]))
         results.append(
@@ -94,9 +114,11 @@ def main() -> int:
                 "state": a["state"],
                 "seconds": seconds,
                 "usd": float((a.get("usage") or {}).get("usd") or 0),
-                "flagged": bool(on_files),
-                "validated": any(f["status"] in VALIDATED for f in on_files),
-                "fixed": any(f["status"] in FIXED for f in on_files),
+                "flagged": bool(sec_on_files),
+                "validated": any(f["status"] in VALIDATED for f in sec_on_files),
+                "fixed": any(f["status"] in FIXED for f in sec_on_files),
+                "validated_any": any(f["status"] in VALIDATED for f in any_on_files),
+                "fixed_any": any(f["status"] in FIXED for f in any_on_files),
                 "findings": [
                     {
                         "kind": f["kind"],
