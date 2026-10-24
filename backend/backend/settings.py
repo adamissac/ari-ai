@@ -103,6 +103,9 @@ class Settings(BaseSettings):
     # Rate limits (in-process, docs/13)
     rate_limit_per_minute: int = 60
     assessment_starts_per_hour: int = 5
+    # Dev-login burst allowance per IP per 5-minute window. E2E stacks sign in
+    # many distinct synthetic users from one address.
+    auth_dev_login_burst: int = 20
 
     @field_validator(
         "anthropic_api_key",

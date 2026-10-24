@@ -138,6 +138,7 @@ def _status(
         .mappings()
         .all()
     )
+    all_repos = repos
     repos = [r for r in repos if r.get("disconnected_at") is None]
     scope_docs = (
         conn.execute(
@@ -203,18 +204,20 @@ def _status(
         ),
     ]
 
-    repo_done = bool(repos)
+    # A disconnected (parked) repository still counts for the repository step —
+    # the row exists and stays readable — but drops out of every connected step.
+    repo_done = bool(all_repos)
     installed = [r for r in repos if r["installation_id"] is not None]
     steps.append(
         OnboardingStep(
             id=OnboardingStepId.repository,
             state=OnboardingStepState.done if repo_done else OnboardingStepState.todo,
             detail=(
-                f"{repos[0]['full_name']} is connected."
+                f"{all_repos[0]['full_name']} is connected."
                 if repo_done
                 else "Connect a repository you are allowed to give Ari access to."
             ),
-            subject_id=repos[0]["id"] if repos else None,
+            subject_id=all_repos[0]["id"] if all_repos else None,
         )
     )
 
