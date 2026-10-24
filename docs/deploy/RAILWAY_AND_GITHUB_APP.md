@@ -68,7 +68,11 @@ jobs are claimed with `SKIP LOCKED`. Signed webhooks are never rate limited: Git
 not retry a 429, and the durable queue absorbs bursts.
 Opening the commit page is unnecessary; it polls the persisted run when visited.
 Check worker logs for `assess_github_commit` and the commit's monitoring assessment
-before claiming live execution: `/readyz` only checks configuration and storage.
+before claiming live execution. `/readyz` now reports worker heartbeats plus a
+per-capability `capabilities_ready` block (live model, GitHub App configured +
+`GET /app`-verified via `/diagnostics`, Vercel-Sandbox env presence, artifact-store
+writability); see `docs/deploy/PILOT_OPERATIONS.md` for the operator checklist and
+the restart/rollback/backup evidence harness (`deploy/evidence/`).
 
 Full automatic assessments use the project’s normal assessment budget, clamped to
 operator limits (`LLM_MAX_TOKENS_PER_ASSESSMENT`, `LLM_MAX_USD_PER_ASSESSMENT`; production
