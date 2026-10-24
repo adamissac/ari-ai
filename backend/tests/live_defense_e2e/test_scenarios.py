@@ -330,6 +330,11 @@ def test_e_worker_failure(staging, monkeypatch, report):
     staging.attest_mapping(app, commit_sha=sha)
     staging.set_mode(alice, app.project_id, "monitor")
 
+    # Count physical provider calls separately from logical invocations —
+    # a single logical invocation row does NOT prove a billable loop ran once.
+    fake = fake_provider(repo / "target")
+    staging.use_gateway(gateway_factory(fake))
+
     calls = {"scout": 0}
     orig = first_responder.run_investigative
 
@@ -360,6 +365,7 @@ def test_e_worker_failure(staging, monkeypatch, report):
         "crash recorded",
         json.dumps(crashed.get("last_error") or {})[:120],
     )
+    scout_physical_before = sum(1 for c in fake.calls if c.agent.value == "scout")
 
     # Recovery: make the requeued job claimable and drain again.
     staging.requeue_now(crashed["id"])
@@ -370,9 +376,21 @@ def test_e_worker_failure(staging, monkeypatch, report):
     # Both attempts' transcripts were retained — nothing was lost or deduplicated away.
     transcripts = staging.artifact_rows(app.project_id, kind="llm_transcript")
     assert len(transcripts) >= 2
-    # Exactly one decision, one scout invocation — recovery did not double-execute.
+    # Exactly one decision, one scout invocation — recovery did not double-record.
     assert len(staging.decisions(alice, app.project_id)) == 1
     assert sum(1 for i in inv.values() if i["agent"] == "scout") == 1
+    # Honest accounting (F1): the re-delivered step re-ran the WHOLE physical
+    # provider loop — scout calls doubled even though the logical invocation
+    # stayed one. Single logical invocation is not duplicate-prevention for
+    # billable work; the desired contract (no replay of an uncertain call) is
+    # pinned by the F1 xfail test in test_exec_reliability_compat.py.
+    scout_physical_after = sum(1 for c in fake.calls if c.agent.value == "scout")
+    assert scout_physical_after == 2 * scout_physical_before
+    report.check(
+        "physical provider calls (scout)",
+        "replayed on redelivery",
+        f"{scout_physical_before} -> {scout_physical_after}",
+    )
     report.check("recovery outcome", INV.executed.value, inv["scout"]["status"])
 
 

@@ -411,6 +411,21 @@ class OwnedStaging:
             )
 
     @staticmethod
+    def expire_lease(job_id: str) -> None:
+        """Expire a running job's lease using the database clock (recovery tests).
+
+        The reconciler compares ``lease_expires_at`` against ``now()`` inside the
+        transaction — backdating with the DB's own clock (not Python utcnow())
+        makes expiry unequivocal (review finding F10).
+        """
+        with transaction() as conn:
+            conn.execute(
+                sa.update(jobs)
+                .where(jobs.c.id == job_id)
+                .values(lease_expires_at=sa.func.now() - sa.text("interval '1 hour'"))
+            )
+
+    @staticmethod
     def expire_scopes(project_id: str) -> int:
         """Expire every AuthorizedScope of a project (invalid-authorization tests)."""
         with transaction() as conn:

@@ -91,6 +91,34 @@ class HookProvider:
         return self.inner.complete(request)
 
 
+class CrashAfterSend:
+    """Dies mid-request: the billable call is sent, no response recorded.
+
+    Records every request on the *inner* provider's ``calls`` (the physical
+    call counter) BEFORE raising ``BaseException``, modelling a worker process
+    that crashed after dispatching a provider request and before the response
+    could be persisted (review finding F1). Once ``crashes`` are spent the
+    inner provider answers normally, so a replayed attempt is directly
+    observable as a second physical call.
+    """
+
+    mode = "fake"
+
+    def __init__(self, inner: Any, *, agents: set[str], crashes: int = 1) -> None:
+        self.inner = inner
+        self.agents = set(agents)
+        self.crashes = crashes
+        self.calls: list[LLMRequest] = []
+
+    def complete(self, request: LLMRequest) -> Any:
+        self.calls.append(request)
+        self.inner.calls.append(request)
+        if request.agent.value in self.agents and self.crashes > 0:
+            self.crashes -= 1
+            raise BaseException("simulated worker death after provider send, before response")
+        return self.inner.complete(request)
+
+
 def adversarial_scout_script() -> list:
     """Scout script that tries to overstep (Scenario H).
 
