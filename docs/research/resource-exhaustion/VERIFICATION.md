@@ -28,11 +28,14 @@ Do not overwrite or regenerate this receipt after source changes.
 ## Executed local checks
 
 - Resource environment and preparation suites: **46 passed** (1.25 seconds).
-- Scoped strict mypy on the seven resource source modules: passed before receipt
-  addition; the receipt adds no source changes.
-- Resource Ruff checks and formatting, broader research regression tests,
-  shared contract tests and final CI are checked during PR completion. Results
-  not yet recorded here are not claims of passing execution.
+- Broader resource/adaptive-readiness/authorization/payment/constrained research
+  regression selection: **213 passed** (21.40 seconds).
+- Shared contract suite: **91 passed** (0.92 seconds).
+- Scoped strict mypy: **7 source files**, no issues.
+- Resource Ruff checks and formatting: passed. Markdown links: **580 files**,
+  zero problems. Git whitespace check: passed.
+- Final full-suite CI and independent PR review remain merge requirements; local
+  selections are not substitutes for those checks.
 
 Unit coverage includes finite capacity and work conservation, deadlines and
 partial work, delayed controls and cleanup, collateral damage, valid masks,
