@@ -58,7 +58,13 @@ from ..intel import CodeIntel, FindingsHistory, hypothesis_key
 from ..llm import LLMGateway
 from ..runtime import AgentSpec, StepOutcome, StepRecord, run_agent
 from ..sandbox.driver import SandboxDriver
-from ..sandbox.workspace import fresh_checkout, resolve_under, tree_digest
+from ..sandbox.workspace import (
+    fresh_checkout,
+    recipe_test_roots,
+    resolve_under,
+    tree_digest,
+    under_test_roots,
+)
 from ..scope_guard import ActionRequest
 from ..scope_guard import check as scope_check
 from ..tools import (
@@ -692,7 +698,8 @@ class Orchestrator:
         Returns [] when nothing could be run (Verify then fails closed).
         """
         patched = verify_ctx.artifacts.get("verify_workspace")
-        tests = [t for t in candidate.tests_added if isinstance(t, str) and t.startswith("tests/")]
+        roots = recipe_test_roots(self.intel.snapshot.root)
+        tests = [t for t in candidate.tests_added if isinstance(t, str) and under_test_roots(t, roots)]
         if not patched or not tests:
             return []
         dest = self.workdir / f"unpatched-{candidate.id}-{attempt}"
@@ -1107,6 +1114,7 @@ class Orchestrator:
             self.intel,
             self.workdir / f"worktree-{finding.finding_id}-{attempt}",
             allowed_paths=list(finding.plan.files_expected),
+            test_roots=recipe_test_roots(self.intel.snapshot.root),
         )
         data = patch_agent.input_from_plan(
             finding.plan,
@@ -1388,6 +1396,6 @@ class Orchestrator:
             if expectation.status != "confirmed":
                 continue
             for source in expectation.sources:
-                if source.path and source.path.startswith("tests/"):
+                if source.path and under_test_roots(source.path, recipe_test_roots(self.intel.snapshot.root)):
                     protected.add(source.path)
         return sorted(protected)

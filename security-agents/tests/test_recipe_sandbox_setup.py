@@ -84,3 +84,19 @@ def test_include_symlink_cannot_escape_the_workspace(tmp_path: Path) -> None:
     )
     with pytest.raises(PlatformError):
         _stage_workspace(spec, tmp_path)
+
+
+def test_recipe_test_roots_default_and_override(tmp_path: Path) -> None:
+    import json
+
+    from security_agents.sandbox.workspace import recipe_test_roots, under_test_roots
+
+    assert recipe_test_roots(tmp_path) == ("tests/",)  # no recipe
+    (tmp_path / "build_recipe.json").write_text(json.dumps({"test_roots": ["backend/tests", "tests"]}))
+    roots = recipe_test_roots(tmp_path)
+    assert roots == ("backend/tests/", "tests/")
+    assert under_test_roots("backend/tests/test_x.py", roots)
+    assert not under_test_roots("backend/backend/api/routes.py", roots)
+    assert not under_test_roots("backend/tests2/x.py", roots)
+    (tmp_path / "build_recipe.json").write_text(json.dumps({"test_roots": ["../etc"]}))
+    assert recipe_test_roots(tmp_path) == ("tests/",)  # unsafe entries fall back

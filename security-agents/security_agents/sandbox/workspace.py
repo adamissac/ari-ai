@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import difflib
 import hashlib
+import json
 import shutil
 import subprocess
 import tarfile
@@ -21,6 +22,22 @@ from ..contracts import ErrorCode, PlatformError
 IGNORED_DIRS = frozenset(
     {".git", "__pycache__", ".venv", ".pytest_cache", ".mypy_cache", ".ruff_cache", "node_modules"}
 )
+
+
+def recipe_test_roots(root: Path) -> tuple[str, ...]:
+    """Where new test files may go: the build recipe's `test_roots` (e.g. backend/tests for a
+    monorepo), else `tests/`. Invalid entries fall back to the default."""
+    try:
+        roots = json.loads((root / "build_recipe.json").read_text(encoding="utf-8")).get("test_roots")
+        if isinstance(roots, list) and roots and all(isinstance(r, str) for r in roots):
+            return tuple(safe_rel_path(r) + "/" for r in roots)
+    except (OSError, ValueError, AttributeError, TypeError, PlatformError):
+        pass
+    return ("tests/",)
+
+
+def under_test_roots(rel: str, roots: tuple[str, ...]) -> bool:
+    return any(rel.startswith(r) for r in roots)
 
 
 def safe_rel_path(raw: str) -> str:
