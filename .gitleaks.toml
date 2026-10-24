@@ -45,3 +45,12 @@ regexes = [
 description = "SHA-256 file digests for *api.py paths in evidence JSON"
 regexTarget = "line"
 regexes = ['''"[^"]*api\.py":\s*"[0-9a-f]{64}"''']
+
+# Rehearsal fixtures plant tok-alice / tok-bob as deliberately weak credentials in the
+# intentionally-vulnerable ledgerlite target (and its README/build_recipe). Allow only
+# those two placeholder secrets, only under rehearsal/, so real bearer tokens still fail.
+[[allowlists]]
+description = "Planted weak credentials in the rehearsal fixture"
+condition = "AND"
+paths = ['''^rehearsal/''']
+regexes = ['''^tok-(alice|bob)$''']
