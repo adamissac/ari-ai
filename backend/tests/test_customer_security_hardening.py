@@ -285,3 +285,141 @@ class TestDataHandling:
     def test_unauthenticated_requests_rejected(self, client_factory):
         c = client_factory()
         assert c.get("/api/v1/projects").status_code == 401
+
+
+class TestDisconnectLifecycle:
+    """Canonical disconnect model: unambiguous state, revoked app-side access,
+    cancelled pending work, cooperative cancel of in-flight investigations,
+    audit history preserved, and reconnect only after renewed authorization."""
+
+    def test_disconnect_revokes_app_access_cancels_jobs_and_inflight(self, client_factory):
+        from backend.db import (
+            assessments,
+            audit_events,
+            connected_applications,
+            deploy_commit_mappings,
+            snapshots,
+        )
+
+        alice, bob = client_factory("alice"), client_factory("bob")
+        ids = setup_project(alice, bob)
+        rid, pid = ids["repo"], ids["project"]
+        uid = alice.me["user"]["id"]
+
+        with transaction() as conn:
+            conn.execute(
+                sa.insert(connected_applications).values(
+                    id="app-disconnect-1",
+                    project_id=pid,
+                    name="staging",
+                    environment="owned_test",
+                    created_by=uid,
+                    doc={},
+                )
+            )
+            conn.execute(
+                sa.insert(deploy_commit_mappings).values(
+                    id="map-disconnect-1",
+                    project_id=pid,
+                    application_id="app-disconnect-1",
+                    repo_id=rid,
+                    commit_sha="a" * 40,
+                    created_by=uid,
+                    doc={},
+                )
+            )
+            conn.execute(
+                sa.insert(snapshots).values(
+                    id="snap-disconnect-1",
+                    repo_id=rid,
+                    commit_sha="b" * 40,
+                    index_version="v1",
+                    status="pending",
+                    doc={},
+                )
+            )
+            jobmod.enqueue(conn, "propose_build_recipe", {"repo_id": rid}, dedupe_key="t:recipe")
+            jobmod.enqueue(
+                conn,
+                "index_snapshot",
+                {"snapshot_id": "snap-disconnect-1"},
+                dedupe_key="t:index",
+            )
+            jobmod.enqueue(
+                conn,
+                "assess_github_commit",
+                {"repo_id": rid, "sha": "c" * 40},
+                dedupe_key="t:assess",
+            )
+
+        a = alice.post(
+            f"/api/v1/projects/{pid}/assessments",
+            json={"repo_id": rid, "scope_id": ids["scope"], "commit_sha": "c" * 40},
+        )
+        assert a.status_code == 202, a.text
+        asm_id = a.json()["assessment"]["id"]
+
+        d = alice.post(f"/api/v1/repositories/{rid}/disconnect")
+        assert d.status_code == 200
+
+        with transaction() as conn:
+            row = conn.execute(
+                sa.select(
+                    deploy_commit_mappings.c.revoked_at,
+                    deploy_commit_mappings.c.id,
+                ).where(deploy_commit_mappings.c.id == "map-disconnect-1")
+            ).one()
+            assert row.revoked_at is not None
+
+            for kind in ("propose_build_recipe", "index_snapshot", "assess_github_commit"):
+                status = conn.execute(
+                    sa.select(jobs.c.status).where(jobs.c.kind == kind)
+                ).scalar_one()
+                assert status == "cancelled", f"{kind} was {status}"
+
+            snap_status = conn.execute(
+                sa.select(snapshots.c.status).where(snapshots.c.id == "snap-disconnect-1")
+            ).scalar_one()
+            assert snap_status == "failed"
+
+            asm_state = conn.execute(
+                sa.select(assessments.c.state).where(assessments.c.id == asm_id)
+            ).scalar_one()
+            assert asm_state == "CANCELLED"
+
+            event = conn.execute(
+                sa.select(audit_events.c.doc).where(
+                    audit_events.c.doc["action"].astext == "repository.disconnected",
+                    audit_events.c.doc["subject_id"].astext == rid,
+                )
+            ).scalar_one()
+            details = event["details"]
+            assert details["queued_jobs_cancelled"] == 3
+            assert details["deploy_mappings_revoked"] == 1
+            assert details["assessments_cancelled"] == 1
+
+        # Unambiguous state is visible through the typed Repository contract.
+        repo = alice.get(f"/api/v1/repositories/{rid}").json()
+        assert repo["disconnected_at"] is not None
+
+    def test_installation_id_survives_disconnect_as_access_record(self, client_factory):
+        alice, bob = client_factory("alice"), client_factory("bob")
+        ids = setup_project(alice, bob)
+        rid = ids["repo"]
+        with transaction() as conn:
+            conn.execute(
+                sa.update(repositories).where(repositories.c.id == rid).values(installation_id=42)
+            )
+        alice.post(f"/api/v1/repositories/{rid}/disconnect")
+        with transaction() as conn:
+            kept = conn.execute(
+                sa.select(repositories.c.installation_id).where(repositories.c.id == rid)
+            ).scalar_one()
+        assert kept == 42
+
+        # Reconnect requires renewed authorization: without an access grant on
+        # installation 42 the owner is denied (and stays disconnected).
+        r = alice.post(f"/api/v1/repositories/{rid}/reconnect")
+        assert r.status_code == 403
+        repo = alice.get(f"/api/v1/repositories/{rid}").json()
+        assert repo["disconnected_at"] is not None

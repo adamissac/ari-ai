@@ -6,7 +6,7 @@ coordination/CONTRACTS.md.
 """
 
 SCHEMA_VERSION = (
-    "0.22.0"  # 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING;
+    "0.26.0"  # 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING;
     # 0.22 ops readiness (additive): ReadinessStatus gains workers/capabilities/
     #      capabilities_ready/git_sha/schema_version; HealthStatus gains
     #      git_sha/schema_version; new DiagnosticsReport. /readyz consumers only.
@@ -49,4 +49,8 @@ SCHEMA_VERSION = (
     #      No AUTO-EXECUTE. LLM prose is never proof of a confirmed threat.
     #      evidence_state=verified requires independently executed verification
     #      evidence, not Verify eligibility.
+    # 0.23 reserved by upstream PR #458 (Phase 7C); 0.24 reserved by fork PR #3
+    #      (observability); 0.25 reserved by fork PR #6 (customer onboarding).
+    # 0.26 Repository.disconnected_at (additive): canonical disconnect state for
+    #      the repository kill-switch; installation_id is kept as the access record.
 )
