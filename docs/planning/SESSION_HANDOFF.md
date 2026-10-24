@@ -18,6 +18,11 @@ adds an entry before ending.
 
 ---
 
+
+### 2026-10-24 — Devin (Adam lane) — pilot rehearsal live leg
+- Did: ran `security_agents.cli --target examples/inventory-lite --mode live --i-have-authorization --auto-approve --validate 2 --max-usd 8` with `secret:org:ANTHROPIC_API_KEY`; committed the report JSON + updated `docs/rehearsal/2026-10-24-inventory-lite.md` (branch `docs/adam/live-inventory-rehearsal-evidence`).
+- State: all 7 roles `provider_mode=live` succeeded; planted IDOR confirmed+accepted+hardened; CWE-362 transfer-race hypothesis inconclusive. Live leg of the two-org real-provider rehearsal is now closed.
+- Also: merged #441 (C7), #535 (tenant protection + 0016), #517; #537 landed. Merge order tracked in coordination/messages/20261024T224500Z.
 ### 2026-10-24 — security/privacy lead (Devin session 94914ecc)
 - Did: Audited private-code data flows end-to-end and wrote `docs/security/TENANT_DATA_PROTECTION.md`; added `backend/tests/test_tenant_isolation_adversarial.py` (17 tests: 28-path read denial, write denial, SSE, artifacts incl. NULL-project, jobs trace-strip, forged scope/repo/context-pack claims, ingest-token binding, viewer floor, forged-ref payload/memory stores, RLS probe-role verify, store GUC smoke, full purge); implemented FORCE RLS on index_payloads/index_snapshots (migration 0016 + `set_config('ari.project_id')` in `_validate_ref`, `find_snapshot`, `PostgresMemoryStore._validate`, purge); implemented `backend/privacy.py::purge_project` (FK-safe full tenant delete + refcount-aware artifact objects + bare-clone removal; audit_events retained by design).
 - State of the code: all 334 backend tests pass incl. 17 new adversarial tests; ruff clean on touched files; no isolation hole found at app layer (require_project uniform).
