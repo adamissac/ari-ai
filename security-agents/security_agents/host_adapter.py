@@ -83,6 +83,8 @@ HOST_STATE_NAMES: dict[AssessmentState, str] = {
 }
 
 CHECKPOINT_NS = "security_agents.approval.v1"
+# Returned by run() when another worker owns this assessment; the caller must not touch it.
+CLAIMED_ELSEWHERE = "claimed_elsewhere"
 _CHECKPOINT_CLAIMED_ELSEWHERE = object()
 
 
@@ -803,7 +805,7 @@ class HostOrchestrator:
     validate_count: int = 2
     _resumable: dict[str, Orchestrator] = field(default_factory=dict)
 
-    def run(self, host: AssessmentHostLike) -> None:
+    def run(self, host: AssessmentHostLike) -> str | None:
         target = self.target_dir or _env_path("SECURITY_AGENTS_TARGET_DIR")
         existing = self._resumable.pop(host.assessment_id, None)
         state = _state_name(getattr(_val(host, "assessment"), "state", None))
@@ -812,7 +814,7 @@ class HostOrchestrator:
             claimed = _claim_checkpoint(host)
             if claimed is _CHECKPOINT_CLAIMED_ELSEWHERE:
                 host.progress("approval resume already claimed by another worker")
-                return
+                return CLAIMED_ELSEWHERE
             if existing is not None:
                 self._resume(existing, host)
                 return
@@ -836,6 +838,10 @@ class HostOrchestrator:
             self._resume_from_checkpoint(host, claimed, target)
             return
         if state not in start_states:
+            if checkpoint is None and _claim_checkpoint(host) is _CHECKPOINT_CLAIMED_ELSEWHERE:
+                # The approving worker already resumed in-process and moved the run on.
+                host.progress("approval resume already claimed by another worker")
+                return CLAIMED_ELSEWHERE
             raise PlatformError(
                 ErrorCode.CONFLICT_STATE,
                 f"cannot resume from {state}: paused orchestrator state was lost "
