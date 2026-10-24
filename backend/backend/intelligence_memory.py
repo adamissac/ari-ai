@@ -55,6 +55,9 @@ class PostgresMemoryStore:
         self.engine = engine or get_engine()
 
     def _validate(self, conn: sa.Connection, ref: SnapshotRef) -> None:
+        conn.execute(
+            sa.text("SELECT set_config('ari.project_id', :pid, true)"), {"pid": ref.project_id}
+        )
         ready = conn.execute(
             sa.select(index_snapshots.c.snapshot_id)
             .join(
