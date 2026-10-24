@@ -184,3 +184,97 @@ cover them without schema changes.
 * Crash during control `apply`: before, the next claim re-ran the adapter call;
   after, the job is `recovery_required` and never re-claimed
   (`test_worker_death_during_effect_is_never_reclaimed_automatically`).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+* `JOB_MAX_RUNNING_EMERGENCY` (default 2): reserved claim capacity for the
+  emergency/cleanup kinds `live_defense_emergency_stop`, `live_defense_rollback`
+  and `live_defense_expire`. These bypass `JOB_MAX_RUNNING_PER_PROJECT` and
+  `JOB_MAX_RUNNING_GLOBAL` so emergency-stop/rollback/expiry remain claimable
+  under ordinary saturation, while staying bounded by their own limit and not
+  consuming ordinary slots. New apply operations (`live_defense_execute`) and
+  `live_defense_verify` deliberately do NOT get this exemption. Setting it to 0
+  folds emergency kinds back under the ordinary limits (not recommended).
+* Deadlines: `enqueue(..., deadline_s=)` bounds the whole execution, or
+  `deadline_at=` to propagate an existing absolute deadline across follow-on
+  enqueues (never extended by redelivery). Expired jobs are not claimed;
+  heartbeats surface the deadline to the handler (`JobDeadlineExceeded`); a retry
+  whose backoff would land past the deadline ends `timed_out`.
+  Deferrals (`defer_count`) do not consume the budget — the effective attempt
+  count is `attempts - defer_count` in `claim`, `fail` and reconciliation.
+* Deferral: `jobs.defer(conn, job_id, owner, delay_s=|depends_on=)` returns a
+  claimed job to `queued` (or `waiting` onto a durable prerequisite) through the
+  validated transition path with a `job_events` record. It refuses after an
+  uncertain effect (`effect_state` set — never replay an unknown outcome), and
+  cancellation/deadline take precedence (`cancelled`/`timed_out`). This is the
+  supported contract for handlers that must re-emit themselves (e.g. Diagnose
+  scheduling in PR #458).
+
+## Completion fencing
+
+Ordinary `complete()` and `fail()` require the caller's lease to still be valid
+(`lease_expires_at > now()` on the database clock) — a worker whose lease
+expired, even before reconciliation notices, cannot report success or record
+failure outcomes; the lease-expiry path owns that recovery. The single audited
+exception is the original owner's late completion of a `recovery_required` job
+(its settled uncertain effect, still attributed to that owner).
+
+
+
+
+
+
+
+
+covers `queued`, `waiting` and `running` first-responder jobs and flags
+`recovery_required` ones `cancel_requested` without erasing their effect
+evidence (operator `retry` is then refused); control authorization re-checks are
+untouched; control jobs are exempt from
+
+
+
+
+
+## Integration after PR #458 (F1/F7 contract with Grok)
+
+work does not edit that file. The agreed interface for the F1/F7 findings:
+
+* **Effect reservations (F1):** every billable provider request runs inside
+  `ctx.effect(key)` with a durable, unique key —
+  `provider:<job_id>:<attempt>:<request_seq>` (`job_id`+`attempt` is already
+  durable via the `job_events` claim record). The reservation commits *before*
+  the call; a worker loss or crash between send and response leaves
+  `recovery_required`, never an automatic replay of an unknown billable
+  outcome. Resolve via the existing recovery API, keeping the per-request
+  attempt evidence in `job_events`/`recovery`. Guard billable calls only —
+  canonical-intelligence reads are not effects.
+* **Durable overall deadline (F7):** the first-responder deadline is computed
+  once at invocation creation and passed to every `live_defense_agent_step`
+  enqueue as `deadline_at=` (new enqueue parameter — propagating an absolute
+  deadline is a queue contract, not a handler concern). Pending waits,
+  redeliveries and retries share it; provider calls get the remaining slice.
+* **Deferral (F4):** Diagnose scheduling uses `jobs.defer(depends_on=)` rather
+  than rewriting status, so the deferral is audited and never burns attempts.
+* **Finalization:** before committing a terminal invocation result, the handler
+  rechecks mode/cancellation — `ctx.check_cancelled()` already reads the live
+  row; OFF-cancellation must not be overwritten by a late submit (F8, Grok
+  side, but the queue recheck primitive is `heartbeat_state`/`check_cancelled`).
+* `FirstResponderInvocation.job_id` already links invocations to `jobs`, so
+  `/jobs/{id}/history` and the project execution figures cover them without
+  schema changes.
+
+

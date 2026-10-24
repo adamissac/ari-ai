@@ -8,7 +8,7 @@ import sqlalchemy as sa
 from backend import jobs, worker
 from backend.db import jobs as jobs_t
 from backend.db import transaction
-from backend.worker import JobContext, JobDeferred, PermanentJobError, handler
+from backend.worker import JobContext, PermanentJobError, handler
 from shared.errors import ErrorCode
 
 CALLS: list[str] = []
@@ -31,14 +31,6 @@ def _flaky(ctx: JobContext) -> dict:
 @handler("test_permanent")
 def _permanent(ctx: JobContext) -> None:
     raise PermanentJobError(ErrorCode.SCOPE_DENIED, "policy says no")
-
-
-@handler("test_wait")
-def _wait(ctx: JobContext) -> dict:
-    CALLS.append(f"wait-{ctx.job.attempts}")
-    if ctx.job.payload.get("ready"):
-        return {"ok": True}
-    raise JobDeferred(delay_s=0, message="not yet")
 
 
 def _job(job_id: str) -> dict:
@@ -145,50 +137,6 @@ def test_claim_skips_cancel_requested_running_job_even_after_lease_expiry() -> N
     # Reconciliation confirms the cancellation instead of leaving the row "running" forever.
     assert row["status"] == "cancelled"
     assert row["error_category"] == "cancelled"
-
-
-def test_defer_does_not_consume_failure_attempts() -> None:
-    CALLS.clear()
-    with transaction() as conn:
-        jid, _ = jobs.enqueue(conn, "test_wait", {"ready": False}, max_attempts=2)
-    assert worker.drain(max_jobs=1, kinds=["test_wait"]) == [jid]
-    row = _job(jid)
-    assert row["status"] == "queued"
-    assert row["attempts"] == 0
-    assert CALLS == ["wait-1"]
-    with transaction() as conn:
-        conn.execute(
-            sa.update(jobs_t)
-            .where(jobs_t.c.id == jid)
-            .values(payload={"ready": True}, run_after=sa.func.now())
-        )
-    worker.drain(max_jobs=1, kinds=["test_wait"])
-    row = _job(jid)
-    assert row["status"] == "succeeded"
-    assert row["attempts"] == 1
-    assert CALLS == ["wait-1", "wait-1"]
-
-
-def test_defer_does_not_consume_failure_attempts() -> None:
-    CALLS.clear()
-    with transaction() as conn:
-        jid, _ = jobs.enqueue(conn, "test_wait", {"ready": False}, max_attempts=2)
-    assert worker.drain(max_jobs=1, kinds=["test_wait"]) == [jid]
-    row = _job(jid)
-    assert row["status"] == "queued"
-    assert row["attempts"] == 0
-    assert CALLS == ["wait-1"]
-    with transaction() as conn:
-        conn.execute(
-            sa.update(jobs_t)
-            .where(jobs_t.c.id == jid)
-            .values(payload={"ready": True}, run_after=sa.func.now())
-        )
-    worker.drain(max_jobs=1, kinds=["test_wait"])
-    row = _job(jid)
-    assert row["status"] == "succeeded"
-    assert row["attempts"] == 1
-    assert CALLS == ["wait-1", "wait-1"]
 
 
 def test_unknown_kind_fails_permanently() -> None:

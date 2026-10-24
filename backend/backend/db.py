@@ -114,7 +114,6 @@ repositories = sa.Table(
     sa.Column("full_name", sa.String(200), nullable=False),
     sa.Column("default_branch", sa.String(200), nullable=False),
     sa.Column("installation_id", sa.BigInteger),
-    sa.Column("disconnected_at", sa.DateTime(timezone=True)),
     _created(),
     sa.UniqueConstraint("provider", "full_name", name="uq_repositories_provider_full_name"),
 )
@@ -308,6 +307,7 @@ jobs = sa.Table(
     # 0016 execution reliability (docs/architecture/execution-reliability.md)
     sa.Column("project_id", sa.String(80)),
     sa.Column("depends_on", sa.String(80)),
+    sa.Column("defer_count", sa.Integer, nullable=False, server_default="0"),
     sa.Column("deadline_at", TS),
     sa.Column("started_at", TS),
     sa.Column("first_started_at", TS),
