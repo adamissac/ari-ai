@@ -9,7 +9,7 @@ import { CommitAnalysis, agentStatus, timeline, type LiveRun } from '@/component
 import { fullEventLog } from '@/lib/journey';
 import { ErrorState, Loading } from '@/components/ui';
 import { api } from '@/lib/api';
-import { ticks } from '@/lib/demo/agent-map';
+import { plainToolName, ticks } from '@/lib/demo/agent-map';
 import type { DemoCommit, DemoRepo } from '@/lib/demo/data';
 import { useReplay } from '@/lib/demo/replay';
 import type { Analysis } from '@/lib/demo/scenarios';
@@ -171,7 +171,7 @@ function PreviewSectorMap({ view }: { view: LiveCommitView }) {
 function FindingCard({ finding }: { finding: AssessmentDetail['findings'][number] }) {
   const status = FINDING_STATUS[finding.status];
   const severity = finding.severity?.level ? SEVERITY[finding.severity.level] : null;
-  const where = finding.evidence.find(e => e.path)?.path ?? finding.subject_refs[0];
+  const where = (finding.evidence.find(e => e.path)?.path ?? finding.subject_refs[0])?.replace(/^target\//, '');
   return <article className="mt-4 border-t border-white/10 pt-4" data-testid="commit-finding">
     <p className="flex flex-wrap items-center gap-2">
       {severity && <span className={`demo-chip ${severity.tone === 'bad' ? 'demo-chip-bad' : severity.tone === 'warn' ? 'demo-chip-warn' : 'demo-chip-info'}`}>{severity.label}</span>}
@@ -186,7 +186,7 @@ function WorkerEvidence({ runs }: { runs: AgentRun[] }) {
   return <>{runs.map(run => <div key={run.id} className="mt-4 text-sm">
     <p className="text-white/55">{AGENT_RUN_STATUS[run.status].label} · {providerLabel(run.provider_mode).label}</p>
     {run.error && <p role="alert" className="mt-2">{run.error.message}</p>}
-    <details className="mt-3"><summary>Recorded tool calls ({run.tool_calls.length})</summary><ol className="mt-2 space-y-2">{run.tool_calls.map((call, i) => <li key={i} className="break-words text-xs text-white/65">{call.tool_name} · {call.outcome}{call.error_code ? ` · ${call.error_code}` : ''}</li>)}</ol></details>
+    <details className="mt-3"><summary>Recorded tool calls ({run.tool_calls.length})</summary><ol className="mt-2 space-y-2">{run.tool_calls.map((call, i) => <li key={i} className="break-words text-xs text-white/65">{plainToolName(call.tool_name)} · {call.outcome}{call.error_code ? ` · ${call.error_code}` : ''}</li>)}</ol></details>
   </div>)}</>;
 }
 

@@ -47,6 +47,7 @@ const PLAIN: [RegExp, string][] = [
   [/^record\.(patch_candidate|remediation_plan)/, 'Saved the proposed fix'],
   [/^record\.(check|verification)/, 'Saved the result'],
   // Real pipeline tool names (security-agents tools/catalog).
+  [/^read_file/, 'Read the code'],
   [/^code\.read_span/, 'Read the code'],
   [/^code\.search/, 'Searched the code'],
   [/^graph\.neighbors/, 'Followed the call graph'],
@@ -71,6 +72,12 @@ const toolName = (tool: string) => tool.replace(/__/g, '.');
 
 export function plainStep(step: ToolStep): string {
   return PLAIN.find(([re]) => re.test(toolName(step.tool)))?.[1] ?? step.tool;
+}
+
+/** Plain-language name for a persisted tool id (ns__tool or ns.tool), for non-technical readers. */
+export function plainToolName(tool: string): string {
+  const normalized = toolName(tool);
+  return PLAIN.find(([re]) => re.test(normalized))?.[1] ?? normalized;
 }
 
 const KIND_HINTS: [RegExp, DemoComponent['kind'][]][] = [
