@@ -1,0 +1,63 @@
+{
+  "_comment": [
+    "Sandbox build recipe for the inventory-lite rehearsal target, consumed by",
+    "security_agents (ScopeTarget.build_recipe_ref). Operator-provided config an",
+    "AuthorizedScope approves: entry points, synthetic fixture identities, and",
+    "fixture resources a reviewed check template may reference. Not an answer key."
+  ],
+  "recipe_version": 1,
+  "kind": "python_asgi",
+  "target_dir": "target",
+  "app_factory": "inventory_lite.app:create_app",
+  "test_command": ["-q", "tests"],
+  "identities": {
+    "alice": {
+      "auth_header": "Bearer fixture-token-alice",
+      "workspace_id": "wsp_alice"
+    },
+    "bob": {
+      "auth_header": "Bearer fixture-token-bob",
+      "workspace_id": "wsp_bob"
+    }
+  },
+  "resources": {
+    "item": {
+      "alice": {"id": "item_a1", "quantity": "40", "quantity_field": "quantity"},
+      "bob": {"id": "item_b1", "quantity": "7", "quantity_field": "quantity"}
+    },
+    "workspace": {
+      "alice": {"id": "wsp_alice"},
+      "bob": {"id": "wsp_bob"}
+    }
+  },
+  "routes": [
+    {
+      "id": "item_detail",
+      "method": "GET",
+      "path_template": "/items/{item_id}",
+      "resource": "item"
+    },
+    {
+      "id": "warehouse_detail",
+      "method": "GET",
+      "path_template": "/warehouses/{workspace_id}",
+      "resource": "workspace"
+    },
+    {
+      "id": "item_list",
+      "method": "GET",
+      "path_template": "/items",
+      "resource": "item"
+    },
+    {
+      "id": "create_transfer",
+      "method": "POST",
+      "path_template": "/transfers",
+      "resource": "item",
+      "body_template": {"item_id": "{resource_id}", "quantity": "{quantity}"},
+      "quantity_field": "quantity",
+      "bound_source": {"route": "item_detail", "field": "quantity"},
+      "accumulated_field": "transferred"
+    }
+  ]
+}

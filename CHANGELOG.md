@@ -14,6 +14,10 @@ All notable changes are documented here. Format follows
 
 - Eval scorer now reports `validated_any`/`fixed_any` across every finding kind next to the security-only verdicts, and derives finding paths from `source_span` evidence; `benign_artifact_sha512` relabeled — the sha512 swap was a real defect (String(64) sha256 column), not a false positive.
 
+- Add `examples/inventory-lite`, a second owned evaluation/rehearsal fixture with a
+  planted CWE-639-class ownership defect, plus a committed check-level rehearsal
+  (`security-agents/tests/test_inventory_lite_rehearsal.py`) that confirms the defect
+  by execution and refutes the guarded sibling route; new `inventory-lite` CI job.
 - Scout specialist now trains on the labelled commit-eval set (each case's planted edit vs. its original code as a minimal positive/negative pair) and was promoted after beating the static-pattern baseline (macro F1 0.349 vs 0.084); new checkpoint committed under `specialists/checkpoints/scout/`.
 
 - Assessment UI: agents the orchestrator skipped now stay visible as 'Not needed' with the recorded reason (e.g. 'no confirmed findings'); on failed/cancelled runs they show 'Not reached'. Replaces the ambiguous 'not run' label on the relay and team list.
