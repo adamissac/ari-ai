@@ -462,7 +462,8 @@ class LLMGateway:
                     if invalid > max_invalid_outputs:
                         raise LLMError(
                             ErrorCode.SCHEMA_INVALID,
-                            f"{agent}: final output failed validation {invalid} times",
+                            f"{agent}: final output failed validation {invalid} times; last: "
+                            f"{e.errors(include_url=False)[:2]}"[:1000],
                         ) from e
             messages.append({"role": "user", "content": results})
             if final is not None:
