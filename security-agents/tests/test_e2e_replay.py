@@ -1914,6 +1914,11 @@ def test_unmappable_pinned_pytest_config_path_fails_closed(
             id="hook-name-tuple-target",
         ),
         pytest.param(
+            "a, pytest_runtest_setup = (_drop, None)\n",
+            True,
+            id="pytest-hook-name-in-tuple-target",
+        ),
+        pytest.param(
             "import importlib\nimportlib.import_module('_pytest.main')\n",
             True,
             id="dynamic-pytest-import",
@@ -1922,6 +1927,21 @@ def test_unmappable_pinned_pytest_config_path_fails_closed(
             "import importlib\nimportlib.import_module('pluggy.manager')\n",
             True,
             id="dynamic-pluggy-import",
+        ),
+        pytest.param(
+            "import importlib\nimportlib.import_module('pluggy')\n",
+            True,
+            id="dynamic-exact-pluggy-import",
+        ),
+        pytest.param(
+            "import importlib\nimportlib.import_module('pluggy_helpers')\n",
+            False,
+            id="dynamic-pluggy-helper-import",
+        ),
+        pytest.param(
+            "import importlib\nimportlib.import_module('_pytest_support')\n",
+            False,
+            id="dynamic-pytest-support-import",
         ),
         pytest.param("runner = __import__('pluggy')\n", True, id="builtin-pluggy-import"),
         pytest.param("ordinary = 2\n", False, id="ordinary-assignment"),
@@ -2103,11 +2123,15 @@ def test_new_pytest_hook_constructs_in_app_modules_are_flagged(
     [
         ("VALUE = 1\n", "VALUE = 2\n"),
         (
+            "settings[pytest_key] = 1\n",
+            "settings[pytest_key] = 2\n",
+        ),
+        (
             "def pytest_collection_modifyitems(items):\n    return None\n\nVALUE = 1\n",
             "def pytest_collection_modifyitems(items):\n    return None\n\nVALUE = 2\n",
         ),
     ],
-    ids=["ordinary-app-edit", "unchanged-existing-hook"],
+    ids=["ordinary-app-edit", "subscript-target-read", "unchanged-existing-hook"],
 )
 def test_generic_hook_scan_allows_unrelated_app_edits(
     pinned_text: str,

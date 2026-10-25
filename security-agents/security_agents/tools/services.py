@@ -161,20 +161,30 @@ def _pytest_sensitive_constructs(source: str) -> Counter[tuple[str, str, str]]:
         segment = ast.get_source_segment(source, node) or ast.dump(node, include_attributes=False)
         constructs[(kind, name, segment)] += 1
 
+    def assigned_names(targets: list[ast.expr]) -> set[str]:
+        names: set[str] = set()
+
+        def add_target(target: ast.expr) -> None:
+            if isinstance(target, ast.Name):
+                names.add(target.id)
+            elif isinstance(target, (ast.Tuple, ast.List)):
+                for element in target.elts:
+                    add_target(element)
+            elif isinstance(target, ast.Starred):
+                add_target(target.value)
+
+        for target in targets:
+            add_target(target)
+        return names
+
     def assigns_pytest_plugins(targets: list[ast.expr]) -> bool:
-        return any(
-            isinstance(child, ast.Name) and child.id == "pytest_plugins"
-            for target in targets
-            for child in ast.walk(target)
-        )
+        return "pytest_plugins" in assigned_names(targets)
 
     def pytest_assignment_names(targets: list[ast.expr]) -> set[str]:
-        return {
-            child.id
-            for target in targets
-            for child in ast.walk(target)
-            if isinstance(child, ast.Name) and child.id.startswith("pytest_")
-        }
+        return {name for name in assigned_names(targets) if name.startswith("pytest_")}
+
+    def is_runner_module(name: str) -> bool:
+        return any(name == prefix or name.startswith(f"{prefix}.") for prefix in ("_pytest", "pluggy"))
 
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("pytest_"):
@@ -196,21 +206,11 @@ def _pytest_sensitive_constructs(source: str) -> Counter[tuple[str, str, str]]:
 
         if isinstance(node, ast.Import):
             for alias in node.names:
-                if (
-                    alias.name == "_pytest"
-                    or alias.name.startswith("_pytest.")
-                    or alias.name == "pluggy"
-                    or alias.name.startswith("pluggy.")
-                ):
+                if is_runner_module(alias.name):
                     record("runner-import", alias.name, node)
         elif isinstance(node, ast.ImportFrom):
             module = node.module or ""
-            if (
-                module == "_pytest"
-                or module.startswith("_pytest.")
-                or module == "pluggy"
-                or module.startswith("pluggy.")
-            ):
+            if is_runner_module(module):
                 record("runner-import", module, node)
         elif isinstance(node, ast.Call) and node.args:
             function = node.func
@@ -226,7 +226,7 @@ def _pytest_sensitive_constructs(source: str) -> Counter[tuple[str, str, str]]:
                 (is_importlib or is_builtin_import)
                 and isinstance(first_arg, ast.Constant)
                 and isinstance(first_arg.value, str)
-                and first_arg.value.startswith(("_pytest", "pluggy"))
+                and is_runner_module(first_arg.value)
             ):
                 record("runner-import", first_arg.value, node)
 
