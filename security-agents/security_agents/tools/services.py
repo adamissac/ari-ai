@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import re
+import shlex
 import shutil
 import tempfile
 from dataclasses import dataclass, field
@@ -465,7 +466,11 @@ class PatchApplier:
         roots = recipe_test_roots(self.intel.snapshot.root)
         new_tests = [p for p in touched if under_test_roots(p, roots) and not self.intel.snapshot.exists(p)]
         out_of_scope = [p for p in touched if p not in plan_files and p not in new_tests]
-        tampered = self._tampered_tests(diff_text, record.get("protected_tests", []))
+        protected_tests = record.get("protected_tests", [])
+        tampered = set(self._tampered_tests(diff_text, protected_tests))
+        if ok:
+            tampered.update(self._tampered_test_contents(self.intel.snapshot.root, root, protected_tests))
+        tampered_tests = sorted(tampered)
         ctx.artifacts["verify_workspace"] = root
         from ..regressions import RegressionEvidenceUnavailable, read_sources
 
@@ -480,7 +485,7 @@ class PatchApplier:
             "files_touched": touched,
             "out_of_scope": out_of_scope,
             "new_tests": new_tests,
-            "tampered_protected_tests": tampered,
+            "tampered_protected_tests": tampered_tests,
             "diff_sha256": sha256_text(diff_text),
         }
         ctx.audit.emit(
@@ -490,7 +495,7 @@ class PatchApplier:
             patch_id=patch_id,
             applied=ok,
             out_of_scope=out_of_scope,
-            tampered=tampered,
+            tampered=tampered_tests,
         )
         return {
             "patch_id": patch_id,
@@ -502,25 +507,135 @@ class PatchApplier:
             "files_in_plan": plan_files,
             "out_of_scope_files": out_of_scope,
             "new_test_files": new_tests,
-            "tampered_protected_tests": tampered,
+            "tampered_protected_tests": tampered_tests,
         }
 
     @staticmethod
     def _tampered_tests(diff_text: str, protected: list[str]) -> list[str]:
-        """Protected test files that the diff modifies or deletes (not merely adds)."""
+        """Protected tests touched by changed hunks or file metadata in a diff."""
         protected_set = {safe_rel_path(p) for p in protected}
-        touched: list[str] = []
-        current: str | None = None
+        touched: set[str] = set()
+        section_paths: set[str] = set()
+        git_section = False
+        new_file = False
+        in_hunk = False
+        old_remaining = 0
+        new_remaining = 0
+
+        def path_from_header(raw: str, *, strip_diff_prefix: bool = True) -> str | None:
+            try:
+                token = shlex.split(raw)[0]
+            except (IndexError, PlatformError, ValueError):
+                return None
+            if token == "/dev/null":
+                return None
+            if strip_diff_prefix and token.startswith(("a/", "b/")):
+                token = token[2:]
+            try:
+                return safe_rel_path(token)
+            except PlatformError:
+                return None
+
+        def mark_section() -> None:
+            if not new_file:
+                touched.update(section_paths & protected_set)
+
         for line in diff_text.splitlines():
             if line.startswith("diff --git "):
-                parts = line.split(" ")
-                current = safe_rel_path(parts[3][2:]) if len(parts) > 3 else None
-            elif line.startswith("new file mode") and current in protected_set:
-                current = None  # a newly added file cannot tamper with an existing one
-            elif current in protected_set and (line.startswith("-") and not line.startswith("---")):
-                touched.append(current)
-                current = None
-        return sorted(set(touched))
+                section_paths = set()
+                git_section = True
+                new_file = False
+                in_hunk = False
+                old_remaining = new_remaining = 0
+                try:
+                    header_paths = shlex.split(line)[2:4]
+                except ValueError:
+                    header_paths = []
+                for token in header_paths:
+                    if token.startswith(("a/", "b/")):
+                        try:
+                            section_paths.add(safe_rel_path(token[2:]))
+                        except PlatformError:
+                            continue
+                continue
+
+            if in_hunk:
+                if line.startswith(" "):
+                    old_remaining -= 1
+                    new_remaining -= 1
+                elif line.startswith("\\"):
+                    continue
+                elif line.startswith("-"):
+                    old_remaining -= 1
+                    mark_section()
+                elif line.startswith("+"):
+                    new_remaining -= 1
+                    mark_section()
+                if line.startswith((" ", "+", "-")):
+                    if old_remaining <= 0 and new_remaining <= 0:
+                        in_hunk = False
+                    continue
+                else:
+                    in_hunk = False
+
+            if line.startswith("--- "):
+                if not git_section:
+                    section_paths = set()
+                    new_file = False
+                path = path_from_header(line[4:].split("\t", 1)[0].strip())
+                if path is not None:
+                    section_paths.add(path)
+                continue
+            if line.startswith("+++ "):
+                path = path_from_header(line[4:].split("\t", 1)[0].strip())
+                if path is not None:
+                    section_paths.add(path)
+                continue
+            if line.startswith("new file mode "):
+                new_file = True
+                continue
+            if line.startswith("deleted file mode "):
+                mark_section()
+                continue
+            if line.startswith(("rename from ", "rename to ", "copy from ", "copy to ")):
+                path = path_from_header(line.split(" ", 2)[2], strip_diff_prefix=False)
+                if path is not None:
+                    section_paths.add(path)
+                mark_section()
+                continue
+            if line.startswith(("Binary files ", "GIT binary patch")):
+                mark_section()
+                continue
+            if line.startswith("@@ "):
+                hunk = re.match(r"^@@ -\d+(?:,(\d+))? \+\d+(?:,(\d+))? @@", line)
+                if hunk is not None:
+                    old_remaining = int(hunk.group(1) or 1)
+                    new_remaining = int(hunk.group(2) or 1)
+                    in_hunk = old_remaining > 0 or new_remaining > 0
+                continue
+        return sorted(touched)
+
+    @staticmethod
+    def _tampered_test_contents(snapshot_root: Path, patched_root: Path, protected: list[str]) -> list[str]:
+        """Protected tests whose pinned and successfully patched bytes differ."""
+        tampered: set[str] = set()
+        for raw_path in protected:
+            path = safe_rel_path(raw_path)
+            try:
+                original = resolve_under(snapshot_root, path)
+                original_bytes = original.read_bytes() if original.is_file() else None
+            except (OSError, PlatformError):
+                tampered.add(path)
+                continue
+            try:
+                patched = resolve_under(patched_root, path)
+                patched_bytes = patched.read_bytes() if patched.is_file() else None
+            except (OSError, PlatformError):
+                tampered.add(path)
+                continue
+            if original_bytes != patched_bytes:
+                tampered.add(path)
+        return sorted(tampered)
 
 
 def _route_of(recipe: dict[str, Any], route_id: Any) -> dict[str, Any] | None:

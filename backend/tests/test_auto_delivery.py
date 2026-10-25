@@ -16,10 +16,19 @@ import sqlalchemy as sa
 from helpers import post_webhook, push_payload, setup_project
 from reference_orchestrator import scripted_transport
 
-from backend import delivery, llm, worker
+from backend import audit, delivery, llm, worker
 from backend.checkouts import CheckoutError, fetch_commit
-from backend.db import audit_events, jobs, memberships, patch_candidates, repositories, transaction
+from backend.db import (
+    audit_events,
+    findings,
+    jobs,
+    memberships,
+    patch_candidates,
+    repositories,
+    transaction,
+)
 from backend.delivery import BranchMoved, authority, push_patch
+from shared.audit import ActorType
 
 
 @pytest.fixture
@@ -45,6 +54,22 @@ def _run_push(client, pid: str) -> str:
     worker.drain(kinds=["process_github_delivery"])
     worker.drain(kinds=["run_assessment"])
     return client.get(f"/api/v1/projects/{pid}/reassessments").json()["items"][0]["assessment_id"]
+
+
+def _patch_view_for_assessment(client, assessment_id: str) -> dict:
+    with transaction() as conn:
+        row = conn.execute(
+            sa.select(patch_candidates.c.finding_id, patch_candidates.c.id)
+            .select_from(
+                patch_candidates.join(findings, findings.c.id == patch_candidates.c.finding_id)
+            )
+            .where(findings.c.assessment_id == assessment_id)
+            .order_by(patch_candidates.c.created_at.desc())
+            .limit(1)
+        ).one()
+    response = client.get(f"/api/v1/findings/{row.finding_id}/patches")
+    assert response.status_code == 200, response.text
+    return next(item for item in response.json()["items"] if item["patch"]["id"] == row.id)
 
 
 def test_new_projects_default_to_pull_request_and_server_stamps_the_authorizer(
@@ -173,17 +198,82 @@ def wired(client_factory, reference, settings_override, tmp_path, monkeypatch):
     FakeApp.moved = False
     monkeypatch.setattr(delivery, "push_patch", push)
 
-    def start(mode: str | None, *, delivery_mode: str | None = "manual"):
+    def start(
+        mode: str | None,
+        *,
+        connected: bool = True,
+        delivery_mode: str | None = "manual",
+    ):
         alice, bob = client_factory("alice"), client_factory("bob")
         ids = setup_project(alice, bob, delivery_mode=delivery_mode)
         if mode is not None:
             _set_mode(alice, ids["project"], mode)
-        asm_id = _run_push(alice, ids["project"])
-        with transaction() as conn:
-            conn.execute(sa.update(repositories).values(installation_id=7))
-        return alice, ids, asm_id
+        assessment_id = _run_push(alice, ids["project"])
+        if connected:
+            with transaction() as conn:
+                conn.execute(
+                    sa.update(repositories)
+                    .where(repositories.c.id == ids["repo"])
+                    .values(installation_id=7)
+                )
+        return alice, ids, assessment_id
 
     return start
+
+
+def test_disconnected_delivery_failure_is_visible_on_the_patch(wired) -> None:
+    alice, _, assessment_id = wired("auto", connected=False)
+    worker.drain(kinds=["deliver_verified_patch"])
+
+    delivery_status = _patch_view_for_assessment(alice, assessment_id)["delivery"]
+    assert delivery_status["status"] == "failed"
+    assert delivery_status["reason"] == "repository is not connected through the GitHub App"
+    assert delivery_status["at"]
+
+
+def test_opened_pull_request_details_are_visible_on_the_patch(wired) -> None:
+    alice, _, assessment_id = wired("pull_request")
+    worker.drain(kinds=["deliver_verified_patch"])
+
+    delivery_status = _patch_view_for_assessment(alice, assessment_id)["delivery"]
+    assert delivery_status["status"] == "pr_opened"
+    assert delivery_status["url"] == "https://github.com/acme/payments-lite/pull/1"
+    assert delivery_status["branch"].startswith("ari/fix-")
+    assert delivery_status["commit_sha"] == "c" * 40
+    assert delivery_status["at"]
+
+
+def test_queued_delivery_job_is_reported_as_pending(wired) -> None:
+    alice, _, assessment_id = wired("auto")
+
+    delivery_status = _patch_view_for_assessment(alice, assessment_id)["delivery"]
+    assert delivery_status == {
+        "status": "pending",
+        "reason": None,
+        "url": None,
+        "branch": None,
+        "commit_sha": None,
+        "at": None,
+    }
+
+
+def test_project_delivery_setting_event_is_not_patch_delivery(wired) -> None:
+    alice, ids, assessment_id = wired("auto")
+    project_id = ids["project"]
+    with transaction() as conn:
+        audit.record(
+            conn,
+            org_id=alice.me["memberships"][0]["organization"]["id"],
+            project_id=project_id,
+            actor_type=ActorType.system,
+            actor_id="test",
+            action="delivery.auto",
+            subject_type="project",
+            subject_id=project_id,
+        )
+
+    delivery_status = _patch_view_for_assessment(alice, assessment_id)["delivery"]
+    assert delivery_status["status"] == "pending"
 
 
 def test_auto_pushes_to_the_default_branch(wired) -> None:
