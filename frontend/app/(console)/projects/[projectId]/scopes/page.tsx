@@ -10,7 +10,7 @@ import { api } from '@/lib/api';
 import { useActionKeys } from '@/lib/action-key';
 import { REQUEST_SCOPE_NOTE, SCOPE_CHECK_CATEGORIES, SCOPE_SANDBOX_EXPLANATION } from '@/lib/scope';
 import { isSandboxOnlyScope, scopeBody } from '@/lib/real-assessment';
-import { SCOPE_STATUS } from '@/lib/status';
+import { effectiveScopeStatus, SCOPE_STATUS } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
 
 export default function ScopesPage() {
@@ -50,11 +50,12 @@ function ScopeRow({ scope, onChange }: { scope: AuthorizedScope; onChange: () =>
   };
   const mine = scope.requested_by === me.user.id;
   const needsOtherOwner = mine && !isSandboxOnlyScope(scope);
+  const status = effectiveScopeStatus(scope);
   return (
     <li className="rounded-md border border-line bg-panel-2 p-3" data-testid={`scope-${scope.id}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="font-medium">{scope.name}</span>
-        <Badge view={SCOPE_STATUS[scope.status]} />
+        <Badge view={SCOPE_STATUS[status]} />
       </div>
       <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs text-muted">
         <dt>Targets</dt>
@@ -66,15 +67,15 @@ function ScopeRow({ scope, onChange }: { scope: AuthorizedScope; onChange: () =>
         {scope.notes && <><dt>Notes</dt><dd>{scope.notes}</dd></>}
       </dl>
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        {scope.status === 'pending' && (
+        {status === 'pending' && (
           <Button variant="primary" disabled={busy || needsOtherOwner} onClick={() => act(() => api().approveScope(scope.id))} title={needsOtherOwner ? 'This scope requires a different owner' : undefined}>
             Approve scope
           </Button>
         )}
-        {(scope.status === 'pending' || scope.status === 'active') && (
+        {(status === 'pending' || status === 'active') && (
           <Button variant="danger" disabled={busy} onClick={() => act(() => api().revokeScope(scope.id))}>Revoke</Button>
         )}
-        {scope.status === 'pending' && needsOtherOwner && <span className="text-xs text-warn">Waiting for another member to approve.</span>}
+        {status === 'pending' && needsOtherOwner && <span className="text-xs text-warn">Waiting for another member to approve.</span>}
       </div>
       {error !== null && <div className="mt-2"><ErrorState error={error} context="Scope action failed" /></div>}
     </li>
