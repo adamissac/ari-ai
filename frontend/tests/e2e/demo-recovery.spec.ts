@@ -46,7 +46,12 @@ test('project navigation leads with the workflows and keeps tools reachable', as
     await expect(page.getByTestId('project-title')).toHaveCSS('opacity', '1');
     await page.screenshot({ path: `/tmp/ari-project-${width}.png`, fullPage: true });
   }
+  const projectDisclosure = page.locator('button[aria-controls="project-navigation"]');
+  await expect(projectDisclosure).toBeVisible();
+  await projectDisclosure.click();
+  await expect(projectDisclosure).toHaveAttribute('aria-expanded', 'true');
   await expect(nav.getByRole('link', { name: 'Approvals', exact: true })).toBeVisible();
+  await page.setViewportSize({ width: 1440, height: 900 });
   await nav.getByRole('link', { name: 'Authorized scopes', exact: true }).click();
   await expect(page).toHaveURL(`${base}/scopes`);
   await nav.getByRole('link', { name: 'Code review', exact: true }).click();

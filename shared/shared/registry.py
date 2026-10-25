@@ -36,6 +36,7 @@ MODELS: tuple[type[BaseModel], ...] = (
     tenancy.Budget,
     tenancy.Usage,
     tenancy.TriggerPolicy,
+    tenancy.ReviewerSettings,
     tenancy.ProjectSettings,
     tenancy.Organization,
     tenancy.User,

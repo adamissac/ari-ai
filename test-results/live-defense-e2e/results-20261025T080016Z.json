@@ -1,0 +1,138 @@
+{
+  "suite": "live-defense-e2e",
+  "environment": {
+    "git_sha": "61cadb82c270779ccf88ee6a8e873de9e8b13eda",
+    "git_branch": "HEAD",
+    "schema_version": "0.26.0",
+    "orchestrator_version": "7c.1.0",
+    "provider_mode": "fake",
+    "python": "3.12.15",
+    "host": "ip-172-16-4-2.us-west-2.compute.internal",
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "captured_at": "2026-10-25T08:00:16.689667+00:00"
+  },
+  "scenarios": [
+    {
+      "scenario": "?",
+      "nodeid": "backend/tests/live_defense_e2e/test_rc2_independent.py::test_abrupt_process_death_during_provider_send_requires_recovery",
+      "outcome": "passed",
+      "duration_s": 0.603,
+      "failure_stage": null,
+      "checks": [],
+      "artifacts": [],
+      "notes": [],
+      "markers": []
+    },
+    {
+      "scenario": "?",
+      "nodeid": "backend/tests/live_defense_e2e/test_rc2_independent.py::test_repo_picker_does_not_disclose_other_tenant_connection",
+      "outcome": "passed",
+      "duration_s": 0.089,
+      "failure_stage": null,
+      "checks": [],
+      "artifacts": [],
+      "notes": [],
+      "markers": []
+    },
+    {
+      "scenario": "?",
+      "nodeid": "backend/tests/live_defense_e2e/test_rc2_independent.py::test_reconnect_refuses_stale_access_when_fresh_check_fails",
+      "outcome": "passed",
+      "duration_s": 0.069,
+      "failure_stage": null,
+      "checks": [],
+      "artifacts": [],
+      "notes": [],
+      "markers": []
+    },
+    {
+      "scenario": "?",
+      "nodeid": "backend/tests/live_defense_e2e/test_rc2_independent.py::test_repository_disconnect_stops_next_provider_turn",
+      "outcome": "passed",
+      "duration_s": 0.527,
+      "failure_stage": null,
+      "checks": [],
+      "artifacts": [],
+      "notes": [],
+      "markers": []
+    },
+    {
+      "scenario": "?",
+      "nodeid": "backend/tests/live_defense_e2e/test_rc2_independent.py::test_job_api_does_not_expose_infrastructure_credentials",
+      "outcome": "passed",
+      "duration_s": 0.15,
+      "failure_stage": null,
+      "checks": [],
+      "artifacts": [],
+      "notes": [],
+      "markers": []
+    },
+    {
+      "scenario": "?",
+      "nodeid": "backend/tests/live_defense_e2e/test_rc2_independent.py::test_disconnect_after_final_revocation_read_prevents_success",
+      "outcome": "passed",
+      "duration_s": 0.621,
+      "failure_stage": null,
+      "checks": [],
+      "artifacts": [],
+      "notes": [],
+      "markers": []
+    },
+    {
+      "scenario": "?",
+      "nodeid": "backend/tests/live_defense_e2e/test_rc2_independent.py::test_org_reconnect_checks_target_installation_even_with_personal_refresh",
+      "outcome": "passed",
+      "duration_s": 0.059,
+      "failure_stage": null,
+      "checks": [],
+      "artifacts": [],
+      "notes": [],
+      "markers": []
+    },
+    {
+      "scenario": "?",
+      "nodeid": "backend/tests/live_defense_e2e/test_rc2_independent.py::test_operator_confirmed_retry_resolves_provider_ledger",
+      "outcome": "passed",
+      "duration_s": 0.648,
+      "failure_stage": null,
+      "checks": [],
+      "artifacts": [],
+      "notes": [],
+      "markers": []
+    },
+    {
+      "scenario": "?",
+      "nodeid": "backend/tests/live_defense_e2e/test_rc2_independent.py::test_viewer_history_does_not_bypass_job_error_redaction",
+      "outcome": "passed",
+      "duration_s": 0.211,
+      "failure_stage": null,
+      "checks": [],
+      "artifacts": [],
+      "notes": [],
+      "markers": []
+    },
+    {
+      "scenario": "?",
+      "nodeid": "backend/tests/live_defense_e2e/test_rc2_independent.py::test_disconnect_after_response_keeps_settled_attempt_evidence",
+      "outcome": "passed",
+      "duration_s": 0.406,
+      "failure_stage": null,
+      "checks": [],
+      "artifacts": [],
+      "notes": [],
+      "markers": []
+    },
+    {
+      "scenario": "?",
+      "nodeid": "backend/tests/live_defense_e2e/test_rc2_independent.py::test_fast_reclaim_cannot_hide_unresolved_provider_from_reconciler",
+      "outcome": "passed",
+      "duration_s": 0.38,
+      "failure_stage": null,
+      "checks": [],
+      "artifacts": [],
+      "notes": [],
+      "markers": []
+    }
+  ],
+  "provider_evidence_note": "All scenarios run through scripted providers (FakeLLM) unless the test is marked live_llm. FakeLLM results do not validate real Anthropic execution."
+}
