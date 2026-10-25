@@ -128,6 +128,7 @@ _TABLES = [
     "reassessment_requests",
     "monitoring_events",
     "webhook_deliveries",
+    "worker_heartbeats",
     "jobs",
     "verification_results",
     "patch_candidates",
