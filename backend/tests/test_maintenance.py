@@ -365,6 +365,105 @@ def test_storage_report_smoke(client_factory) -> None:
     assert "reclaimable" in report
 
 
+def test_storage_report_includes_data_volume_alert(client_factory, tmp_path) -> None:
+    client_factory()
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "artifact").write_bytes(b"x" * 80)
+
+    report = maintenance.storage_report(
+        s=_settings(data_volume_path=data_dir, data_volume_bytes=100)
+    )
+
+    assert report["data_volume"] == {
+        "path": str(data_dir),
+        "limit_bytes": 100,
+        "used_bytes": 80,
+        "pct_used": 80.0,
+    }
+    assert any("data volume usage at 80.0%" in alert for alert in report["alerts"])
+
+
+def test_storage_report_skips_data_volume_alert_when_unconfigured(client_factory, tmp_path) -> None:
+    client_factory()
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "artifact").write_bytes(b"x" * 80)
+
+    report = maintenance.storage_report(s=_settings(data_volume_path=data_dir, data_volume_bytes=0))
+
+    assert report["data_volume"]["limit_bytes"] is None
+    assert report["data_volume"]["used_bytes"] == 80
+    assert report["data_volume"]["pct_used"] is None
+    assert not any("data volume usage at" in alert for alert in report["alerts"])
+
+
+def test_storage_report_handles_missing_data_volume_path(client_factory, tmp_path) -> None:
+    client_factory()
+
+    report = maintenance.storage_report(
+        s=_settings(data_volume_path=tmp_path / "missing", data_volume_bytes=100)
+    )
+
+    assert report["data_volume"]["used_bytes"] is None
+    assert report["data_volume"]["pct_used"] is None
+    assert not any("data volume usage at" in alert for alert in report["alerts"])
+
+
+def test_run_once_posts_data_volume_alert_independently(
+    client_factory, monkeypatch, tmp_path
+) -> None:
+    client_factory()
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "artifact").write_bytes(b"x" * 80)
+    posted = []
+    monkeypatch.setattr(maintenance, "_post_alert", lambda _url, payload: posted.append(payload))
+
+    report = maintenance.run_once(
+        s=_settings(
+            data_volume_path=data_dir,
+            data_volume_bytes=100,
+            postgres_volume_bytes=10_000_000_000,
+            security_workdir=tmp_path / "work",
+            ops_alert_webhook_url="https://alerts.invalid",
+        )
+    )
+
+    assert [payload["kind"] for payload in posted] == ["data_volume_storage"]
+    assert posted[0]["path"] == str(data_dir)
+    assert posted[0]["pct_used"] == 80.0
+    assert posted[0]["used_bytes"] == 80
+    assert posted[0]["limit_bytes"] == 100
+    assert posted[0]["level"] == 80
+    assert "checkouts" not in posted[0]["filesystem"]
+    assert "data_volume" in report
+
+
+def test_ops_prometheus_includes_data_volume_percentage(
+    client_factory, settings_override, tmp_path
+) -> None:
+    client = client_factory()
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "artifact").write_bytes(b"x" * 80)
+    settings_override(
+        OPS_API_TOKEN="test-ops-token",
+        DATA_VOLUME_PATH=str(data_dir),
+        DATA_VOLUME_BYTES="100",
+    )
+
+    response = client.get(
+        "/api/v1/ops/storage/prometheus",
+        headers={"Authorization": "Bearer test-ops-token"},
+    )
+
+    assert response.status_code == 200
+    assert "# HELP ari_data_volume_pct" in response.text
+    assert "# TYPE ari_data_volume_pct gauge" in response.text
+    assert "ari_data_volume_pct 80.0" in response.text
+
+
 def test_ops_endpoint(client_factory, settings_override) -> None:
     client = client_factory()
     # Disabled surface: 404 whether or not an auth header is sent.

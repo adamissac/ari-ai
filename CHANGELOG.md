@@ -7,6 +7,7 @@ All notable changes are documented here. Format follows
 ## [Unreleased]
 
 - Verify now honors repository-declared `protected_tests` from `build_recipe.json` in its no-tampering check.
+- Added independent 70/80/90% storage alerts and Prometheus gauges for the app data volume mounted at `/data`.
 - Quota reset timestamps now reflect when an over-limit rolling hour or day window actually falls below its limit.
 - Railway now defaults `GITHUB_AUTO_COMMIT_AUTHORS` to empty, disabling per-commit full runs while enabled repositories fall back to the legacy impact-gated, coalesced monitoring policy; `*` or a comma-separated GitHub login list opts into per-commit full runs. Strictly manual operation requires `automatic_assessments` OFF per repository (or project monitoring disabled); manual Run remains available.
 - Shared assessment quotas now apply per project across every trigger (10 per rolling hour, 50 per rolling day), with a global $50 rolling-day spend cap. Manual starts receive a 429 with the quota reset time; automatic requests over quota are recorded as skipped and are not requeued.
