@@ -16,6 +16,15 @@ adds an entry before ending.
 - Warnings for the next session:
 ```
 
+### 2026-10-25 — Devin (agent, Adam) — app data-volume storage alerts
+- Did: added independent 70/80/90% reporting, webhook alerts, and Prometheus gauges for the app data volume; documented `DATA_VOLUME_BYTES` / `DATA_VOLUME_PATH` and Railway's decimal `sizeMB` conversion.
+- State of the code: data-volume sizing defaults to disabled (`DATA_VOLUME_BYTES=0`) while usage is reported if the configured path exists; the path defaults to `/data`.
+- Commands run and results: focused test, Ruff, and type-check results are included in the implementation handoff report.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): none.
+- Next steps: open a PR and handle CI separately.
+- Warnings for the next session: Railway `sizeMB` is decimal; 10,000 MB = 10,000,000,000 bytes and 5,000 MB = 5,000,000,000 bytes.
+
 ### 2026-10-25 — Devin (agent, Adam) — live-analysis via App token, settings save UX, deploy overlap
 - Did: (1) `POST /api/analyze` no longer calls `api.github.com` from Vercel — it now reads the commit diff through the new backend route `GET /api/v1/github/commit?repo=owner/name&sha=`, which resolves the caller's own `github_repo_access` installation token (401 unauthenticated, 403 when the repo is not reachable through the caller's installations, 404 when GitHub has no such commit). The `GITHUB_TOKEN` requirement on Vercel is gone; `frontend/.env.example` updated. (2) Project Settings renders the Save/Discard action row at the top of the form too — the "Default assessment budget" save button no longer sits only below the fold. (3) Prod deploy hardening: `serviceInstanceUpdate` set `overlapSeconds=30` on the ari-ai service (was null); `healthcheckPath=/readyz`, `healthcheckTimeout=300`, `drainingSeconds=600`, `ON_FAILURE`×10 were already configured and verified via the Railway GraphQL API.
 - State of the code: new route in `backend/backend/api/github_repos.py`; `frontend/lib/live-analysis.ts` `fetchCommit` maps the trimmed backend payload into the existing `GitHubCommit` shape (consumer code unchanged); `liveAnalysis(fullName, sha, cookie)` takes the caller's session cookie.
