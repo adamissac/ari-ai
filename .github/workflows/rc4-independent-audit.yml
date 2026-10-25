@@ -2,7 +2,7 @@ name: RC4 independent isolated regressions
 on:
   push:
     branches: [codex/rc4-independent-audit]
-    paths: [.github/workflows/rc4-independent-audit.yml, docs/reviews/rc4-independent/pin.json]
+    paths: [.github/workflows/rc4-independent-audit.yml, docs/reviews/rc4-independent/**]
 permissions:
   contents: read
 jobs:
@@ -26,7 +26,7 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/rc4-evidence"
           cp docs/reviews/rc4-independent/pin.json "$RUNNER_TEMP/rc4-evidence/pin.json"
-          python3 -m scripts.ari_review.ci --candidate ../candidate --directory "$RUNNER_TEMP/rc4-evidence"
+          PYTHONPATH=. python3 docs/reviews/rc4-independent/run.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
