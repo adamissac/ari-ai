@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import logging
 import re
+import subprocess
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -220,39 +221,54 @@ def default_tip_state(
     github_web_url: str,
 ) -> tuple[str, str]:
     """Classify whether the verified diff applies to the latest default-branch tip."""
-    if not FULL_NAME_RE.match(full_name):
-        raise CheckoutError(f"invalid repository name {full_name!r}")
-    if not BRANCH_RE.match(branch) or ".." in branch:
-        raise CheckoutError(f"invalid branch name {branch!r}")
+    try:
+        if not FULL_NAME_RE.match(full_name):
+            raise CheckoutError(f"invalid repository name {full_name!r}")
+        if not BRANCH_RE.match(branch) or ".." in branch:
+            raise CheckoutError(f"invalid branch name {branch!r}")
 
-    url = f"{github_web_url.rstrip('/')}/{full_name}.git"
-    env = auth_env(token)
-    tip_ref = f"refs/ari/tip/{branch}"
-    _git(
-        "-C", str(repo_dir), "fetch", "--quiet", "--depth=1", "--no-tags",
-        url, f"+refs/heads/{branch}:{tip_ref}", extra_env=env,
-    )  # fmt: skip
-    tip = _git("-C", str(repo_dir), "rev-parse", tip_ref).strip()
-    if tip == base_sha:
-        return tip, "same"
+        url = f"{github_web_url.rstrip('/')}/{full_name}.git"
+        env = auth_env(token)
+        tip_ref = f"refs/ari/tip/{branch}"
+        _git(
+            "-C", str(repo_dir), "fetch", "--quiet", "--depth=1", "--no-tags",
+            url, f"+refs/heads/{branch}:{tip_ref}", extra_env=env, timeout=60,
+        )  # fmt: skip
+        tip = _git("-C", str(repo_dir), "rev-parse", tip_ref).strip()
+        if tip == base_sha:
+            return tip, "same"
 
-    with tempfile.TemporaryDirectory(prefix="ari-tip-check-") as tmp:
-        worktree = Path(tmp) / "wt"
-        patch_file = Path(tmp) / "fix.diff"
-        patch_file.write_bytes(diff)
-        _git("-C", str(repo_dir), "worktree", "add", "--quiet", "--detach", str(worktree), tip)
-        try:
+        with tempfile.TemporaryDirectory(prefix="ari-tip-check-") as tmp:
+            worktree = Path(tmp) / "wt"
+            patch_file = Path(tmp) / "fix.diff"
+            patch_file.write_bytes(diff)
             try:
-                _git("-C", str(worktree), "apply", "--check", str(patch_file))
-            except CheckoutError:
+                _git(
+                    "-C", str(repo_dir), "worktree", "add", "--quiet", "--detach",
+                    str(worktree), tip, timeout=60,
+                )  # fmt: skip
                 try:
-                    _git("-C", str(worktree), "apply", "--check", "-R", str(patch_file))
+                    _git("-C", str(worktree), "apply", "--check", str(patch_file), timeout=60)
                 except CheckoutError:
-                    return tip, "conflicts"
-                return tip, "already_applied"
-            return tip, "applies"
-        finally:
-            _git("-C", str(repo_dir), "worktree", "remove", "--force", str(worktree))
+                    try:
+                        _git(
+                            "-C", str(worktree), "apply", "--check", "-R",
+                            str(patch_file), timeout=60,
+                        )  # fmt: skip
+                    except CheckoutError:
+                        return tip, "conflicts"
+                    return tip, "already_applied"
+                return tip, "applies"
+            finally:
+                try:
+                    _git(
+                        "-C", str(repo_dir), "worktree", "remove", "--force",
+                        str(worktree), timeout=60,
+                    )  # fmt: skip
+                except (CheckoutError, subprocess.TimeoutExpired) as exc:
+                    log.warning("could not remove default-branch tip worktree: %s", exc)
+    except subprocess.TimeoutExpired as exc:
+        raise CheckoutError(f"default-branch tip check timed out after {exc.timeout:.0f}s") from exc
 
 
 def _record(

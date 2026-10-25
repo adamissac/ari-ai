@@ -33,12 +33,16 @@ export function PatchDeliveryStatus({
       )}
       {delivery.status === 'failed' && (
         <>
-          <Badge view={{ label: `Delivery failed: ${delivery.reason ?? 'unknown reason'}`, tone: 'bad', glyph: '×' }} />
+          <Badge view={{ label: 'Delivery failed', tone: 'bad', glyph: '×' }} />
+          <span className="text-muted">{delivery.reason ?? 'unknown reason'}</span>
           <span className="text-muted">Ari didn&apos;t change your repository.</span>
         </>
       )}
       {delivery.status === 'skipped' && (
-        <Badge view={{ label: `Not delivered: ${delivery.reason ?? 'delivery is manual'}`, tone: 'neutral', glyph: '—' }} />
+        <>
+          <Badge view={{ label: 'Not delivered', tone: 'neutral', glyph: '—' }} />
+          <span className="text-muted">{delivery.reason ?? 'delivery is manual'}</span>
+        </>
       )}
     </div>
   );

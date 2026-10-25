@@ -43,7 +43,8 @@ describe('patch delivery status', () => {
     );
 
     const line = screen.getByTestId('patch-delivery-pat_two');
-    expect(line.textContent).toContain('Delivery failed: repository is not connected through the GitHub App');
+    expect(line.textContent).toContain('Delivery failed');
+    expect(line.textContent).toContain('repository is not connected through the GitHub App');
     expect(line.textContent).toContain("Ari didn't change your repository.");
   });
 
@@ -62,7 +63,8 @@ describe('patch delivery status', () => {
       />,
     );
 
-    expect(screen.getByTestId('patch-delivery-pat_three').textContent)
-      .toContain('Not delivered: main already contains this fix (at abcdef123456)');
+    const line = screen.getByTestId('patch-delivery-pat_three');
+    expect(line.textContent).toContain('Not delivered');
+    expect(line.textContent).toContain('main already contains this fix (at abcdef123456)');
   });
 });

@@ -359,10 +359,20 @@ def test_pull_request_body_warns_when_the_diff_no_longer_applies(wired, monkeypa
     assert "Rebase it or re-run the review on the latest commit." in body
 
 
-def test_tip_check_error_does_not_block_pr_or_add_a_note(wired, monkeypatch, caplog) -> None:
+@pytest.mark.parametrize("timeout", [False, True], ids=["checkout-error", "timeout"])
+def test_tip_check_error_does_not_block_pr_or_add_a_note(
+    wired, monkeypatch, caplog, timeout: bool
+) -> None:
     wired("pull_request")
 
     def fail_tip_check(*args, **kwargs):
+        if timeout:
+            try:
+                raise subprocess.TimeoutExpired("git fetch", timeout=60)
+            except subprocess.TimeoutExpired as exc:
+                raise CheckoutError(
+                    f"default-branch tip check timed out after {exc.timeout:.0f}s"
+                ) from exc
         raise CheckoutError("tip unavailable")
 
     monkeypatch.setattr(delivery, "default_tip_state", fail_tip_check)
@@ -729,6 +739,27 @@ DIFF = b"""--- a/app.py
 -    return True
 +    return a == b
 """
+
+
+def test_default_tip_state_converts_git_timeout_to_checkout_error(
+    tmp_path: Path, monkeypatch
+) -> None:
+    def timeout(*args, **kwargs):
+        assert kwargs["timeout"] == 60
+        raise subprocess.TimeoutExpired("git fetch", timeout=60)
+
+    monkeypatch.setattr(delivery, "_git", timeout)
+    with pytest.raises(CheckoutError, match="default-branch tip check timed out after 60s") as exc:
+        default_tip_state(
+            tmp_path / "local.git",
+            "acme/app",
+            "main",
+            DIFF,
+            "tok",
+            base_sha="a" * 40,
+            github_web_url="file:///unused",
+        )
+    assert isinstance(exc.value.__cause__, subprocess.TimeoutExpired)
 
 
 def test_default_tip_state_classifies_all_default_branch_states(tmp_path: Path) -> None:
