@@ -327,6 +327,31 @@ def main(argv: list[str]) -> int:
                     },
                 ]
 
+            # TEST-ONLY: lets GET /api/v1/github/commit answer 200 for the seeded
+            # access rows instead of reaching a real GitHub App installation.
+            def commit(
+                self, installation_id: int, full_name: str, sha: str
+            ) -> dict[str, Any]:
+                return {
+                    "sha": sha,
+                    "html_url": f"https://github.com/{full_name}/commit/{sha}",
+                    "commit": {
+                        "message": "Selected payment change\n\ndiff body",
+                        "author": {"name": "Alice E2E", "date": "2026-10-20T12:00:00Z"},
+                    },
+                    "author": {"login": "e2e-alice"},
+                    "stats": {"additions": 5, "deletions": 2},
+                    "files": [
+                        {
+                            "filename": "target/payments.py",
+                            "status": "modified",
+                            "additions": 5,
+                            "deletions": 2,
+                            "patch": "@@ -1,2 +1,5 @@\n-old\n+new",
+                        }
+                    ],
+                }
+
         import backend.api.github_repos as gh_api
 
         gh_api.GitHubApp = FakeGitHubApp  # type: ignore[assignment,misc]
