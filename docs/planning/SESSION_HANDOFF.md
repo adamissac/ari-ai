@@ -35,6 +35,8 @@ adds an entry before ending.
 - Next: implement Codex P1 R2 (repository disconnect stops next Scout/Diagnose provider turn) on this branch.
 - Warnings: **leave the PR open**. Merge NO-GO. Do not overwrite Devin Hardening `POST /repositories/{id}/disconnect`.
 
+
+
 ### 2026-10-26 — Devin (agent, Adam) — protect retention references and destructive ops
 - Did: expanded snapshot protection to findings, memory, decisions, active assessments/jobs, and (by default) all assessment references; added per-snapshot locking/rechecks, assessment binding locks, plan digests, and a separate destructive-maintenance token.
 - State of the code: implemented on `fix/adam/retention-protect-references`; production `RETENTION_DRY_RUN=true` is unchanged. No PR was opened.
@@ -113,6 +115,8 @@ adds an entry before ending.
 - Did: PR was DIRTY vs `origin/main` `f8ab19e7`. Merged main. Conflicts: changelog/handoff (kept both), `test_sandbox_target.py` (took main's method/body renderer), `shared/shared/__init__.py` (**renumbered 7C from colliding 0.22.0 to 0.23.0**; main's 0.22.0 stays ops-readiness). Inherited Alembic **0017**. Did **not** take Devin Hardening disconnect files. Open #412 keeps **0.20.0**. Probe/Patch not expanded. **Did not merge #458.**
 - Next: implement Codex P1 R2 (repository disconnect stops next Scout/Diagnose provider turn) on this branch.
 - Warnings: **leave the PR open**. Merge NO-GO. Do not overwrite Devin Hardening `POST /repositories/{id}/disconnect`.
+
+
 
 
 
@@ -2510,3 +2514,13 @@ remains OFF pending manual installation and protected credential/session setup.
 - Upstream-reconciled run (`integration/2026-11-02-release` @ 070f75a9, Alembic head 0019 after tenant_rls/worker_heartbeats/execution_reliability/repository_disconnect renumbering; upstream ops storage surface coexists with ours): **GO — 25/25 PASS**, no suite changes needed — checks assert `at_head`, not a pinned id. Report: `deploy/reports/release-readiness-20261025T012355+0000.md`.
 
 - Final RC run (`integration/2026-11-02-release` @ bc490484 — RC SHA frozen by integrator; upstream 580d2f67 merged: #540 onboarding lifecycle, #530 release-gate + dead-letter list, #531 intel audit + write-time secret redaction, #567 ops-alias fix; Alembic head still 0019): **GO — 25/25 PASS**, zero warnings. Report: `deploy/reports/release-readiness-20261025T021130+0000.md`.
+=======
+
+- Recomposition-2 run (`integration/2026-11-02-release` @ 7cfba90f): found a recomposition regression — the reliability F2–F5 rewrite of `worker.py` dropped the `alerts` import + both `send_alert` sites, leaving `alerts.py` dead (alert.webhook FAIL). Fixed on `fix/devin/alert-webhook-wiring` (single commit, same call sites/payloads as 4f845f4f); verified **GO — 25/25 PASS** on the fix branch; backend worker/alert tests 20/20. Handed to integration session to merge.
+
+- Final gate (`integration/2026-11-02-release` @ dd530ae3, includes alert-wiring cherry-pick 5eee457e): **GO — 25/25 PASS**. All executed checks green on the fully integrated tree: preflight, migrations to 0017, boot/drain, smoke 15/15, job exec, alert webhook + redaction, JSON logs, SIGKILL crash recovery, backup→restore parity, authz/CSRF/estop gates, off-mode default, artifacts, release_check 18/0. Report: `deploy/reports/release-readiness-20261025T003234+0000.md`. Remaining pre-pilot blockers are operational, not code: real secret values, backup scheduling, first real staging deploy.
+
+- Upstream-reconciled run (`integration/2026-11-02-release` @ 070f75a9, Alembic head 0019 after tenant_rls/worker_heartbeats/execution_reliability/repository_disconnect renumbering; upstream ops storage surface coexists with ours): **GO — 25/25 PASS**, no suite changes needed — checks assert `at_head`, not a pinned id. Report: `deploy/reports/release-readiness-20261025T012355+0000.md`.
+
+- Final RC run (`integration/2026-11-02-release` @ bc490484 — RC SHA frozen by integrator; upstream 580d2f67 merged: #540 onboarding lifecycle, #530 release-gate + dead-letter list, #531 intel audit + write-time secret redaction, #567 ops-alias fix; Alembic head still 0019): **GO — 25/25 PASS**, zero warnings. Report: `deploy/reports/release-readiness-20261025T021130+0000.md`.
+>>>>>>> a4b62cc5

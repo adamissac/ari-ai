@@ -95,7 +95,8 @@ class TestRateLimits:
     expensive job enqueues were unbounded."""
 
     def test_global_user_limit_applies_on_all_routers(self, settings_override, client_factory):
-        settings_override(rate_limit_per_minute="3")
+        # #607: reads are limited per-user via require_user on every router.
+        settings_override(rate_limit_read_per_minute="3")
         c = client_factory("limited")
         for _ in range(3):
             assert c.get("/api/v1/projects").status_code == 200
