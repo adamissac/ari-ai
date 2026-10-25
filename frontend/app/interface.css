@@ -78,6 +78,10 @@
 .account-menu-item:hover { background: var(--surface-2); }
 .account-menu-item:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
 .account-menu-item:disabled { cursor: not-allowed; opacity: 0.5; }
+||||||| 1fbc62a3
+  transition: background-color 180ms var(--ease-smooth), color 180ms var(--ease-smooth); }
+.rail-link:hover { background: rgb(28 18 16 / 5%); color: var(--color-ink); }
+.rail-link[aria-current="page"] { color: var(--color-ink); font-weight: 500; background: rgb(28 18 16 / 6%); box-shadow: inset 2px 0 0 var(--color-brand); }
 .rail-foot { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--color-line);
   display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--color-faint); }
 .rail-status { width: 7px; height: 7px; border-radius: 9999px; background: var(--color-faint); flex: none; }

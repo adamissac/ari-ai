@@ -6,6 +6,10 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { BuildRecipeReadiness } from '@/components/onboarding/build-recipe-readiness';
 import { SetupLayout } from '@/components/onboarding/stepper';
+||||||| 1fbc62a3
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, type ReactNode } from 'react';
+import { BackdropShapes } from '@/components/backdrop-shapes';
 import { useProject } from '@/components/project';
 import { RepositoryAutomation } from '@/components/repository-automation';
 import { Button, ErrorState, Loading, Tag } from '@/components/ui';
@@ -298,6 +302,14 @@ function Walkthrough({ repo, scope, authorized, hasRun, reload }: {
           )}
           {currentStep < 7 && <Button variant="primary" onClick={() => navigateStep(currentStep + 1)}>Continue</Button>}
         </div>
+||||||| 1fbc62a3
+    <div className="backdrop-host mx-auto max-w-3xl py-4" data-testid="repo-setup">
+      <BackdropShapes />
+      <p className="workspace-eyebrow">Setup / {repo.full_name}</p>
+      <h1 className="mt-1 text-3xl font-semibold tracking-tight">Let&apos;s set up Ari for {repo.full_name.split('/')[1]}</h1>
+      <p className="mt-2 text-sm text-muted">Five short steps. You can change any of this later in Settings.</p>
+      <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-panel-2" aria-label={`${complete} of 5 steps done`}>
+        <div className="h-full rounded-full bg-brand transition-[width] duration-500" style={{ width: `${complete * 20}%` }} />
       </div>
     </SetupLayout>
   );
@@ -305,6 +317,17 @@ function Walkthrough({ repo, scope, authorized, hasRun, reload }: {
 
 function Checklist({ label, value }: { label: string; value: string }) {
   return <li className="flex items-center justify-between gap-3 py-3 text-sm"><span className="text-muted">{label}</span><span className="text-right text-ink">{value}</span></li>;
+||||||| 1fbc62a3
+function Step({ n, state, title, children }: { n: number; state: StepState; title: string; children: ReactNode }) {
+  return (
+    <li className={`rounded-2xl border p-5 backdrop-blur-sm transition-all ${state === 'current' ? 'border-brand bg-panel shadow-[0_0_0_4px_rgba(194,69,45,0.18)]' : 'border-line bg-panel/80'} ${state === 'upcoming' ? 'opacity-70' : ''}`} data-step-state={state}>
+      <div className="mb-3 flex items-center gap-3">
+        <span className={`grid h-8 w-8 place-items-center rounded-full text-sm font-semibold ${state === 'done' ? 'bg-brand text-white' : state === 'current' ? 'border-2 border-brand text-brand' : 'border border-line text-muted'}`}>{state === 'done' ? '✓' : n}</span>
+        <h2 className="text-lg font-semibold">{title}</h2>
+      </div>
+      {children}
+    </li>
+  );
 }
 
 function Check({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
