@@ -2025,3 +2025,8 @@ selected run is still loading.
 - Optional storage probes now use savepoints and catch SQLAlchemy errors, so a
   denied WAL-directory query does not abort subsequent report checks.
 - Added regression coverage proving a follow-up query succeeds after a failed probe.
+
+## 2026-10-25 — Adam: spend quota reset accuracy
+
+- Spend-cap reset time now uses a Numeric window calculation over one database snapshot,
+  avoiding fractional-cost rounding and concurrent-write inconsistencies.
