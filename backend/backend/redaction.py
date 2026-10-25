@@ -26,7 +26,6 @@ _HIGH_CONFIDENCE_PATTERNS: list[tuple[re.Pattern[str], str]] = [
         r"\1://[REDACTED:dsn_credentials]@",
     ),
 ]
-
 _KV_KEY = r"\w*(?:password|passwd|pwd|api_key|apikey|secret|token)\w*"
 _KV_PATTERN = re.compile(r"(?i)\b" + _KV_KEY + r"\s*[=:]\s*(?:'[^'\n]*'|\"[^\"\n]*\"|[^\s'\"]+)")
 _CODE_KV_PATTERN = re.compile(
@@ -64,6 +63,19 @@ def redact_code(text: str) -> str:
     return "".join(
         _CODE_KV_PATTERN.sub(redact_quoted_value, line) for line in text.splitlines(keepends=True)
     )
+
+
+def find_high_confidence_secret(text: str) -> str | None:
+    for pattern, replacement in _HIGH_CONFIDENCE_PATTERNS:
+        match = re.search(r"\[REDACTED:([a-z0-9_]+)\]", replacement)
+        if match is None:
+            continue
+        label = match.group(1)
+        if label in {"bearer", "jwt"}:
+            continue
+        if pattern.search(text):
+            return label
+    return None
 
 
 def redact(value: Any) -> Any:

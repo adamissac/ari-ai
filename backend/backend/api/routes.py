@@ -1125,7 +1125,16 @@ def rules_of_engagement(assessment_id: str, request: Request) -> dict[str, Any]:
         if event is None:
             raise not_found("rules of engagement")
         details = event.get("details") or {}
-        _, data = ArtifactStore().get(conn, details["artifact_id"])
+        artifact_row = (
+            conn.execute(
+                sa.select(artifacts.c.kind).where(artifacts.c.id == details["artifact_id"])
+            )
+            .mappings()
+            .first()
+        )
+        if artifact_row is None or artifact_row["kind"] == ArtifactKind.sealed_diff.value:
+            raise not_found("rules of engagement")
+        meta, data = ArtifactStore().get(conn, details["artifact_id"])
     doc = json.loads(data)
     body = {k: v for k, v in doc.items() if k != "digest"}
     digest = hashlib.sha256(json.dumps(body, sort_keys=True, default=str).encode()).hexdigest()
@@ -1324,7 +1333,11 @@ def get_artifact(artifact_id: str, request: Request) -> Response:
             .mappings()
             .first()
         )
-        if row is None or row["project_id"] is None:
+        if (
+            row is None
+            or row["project_id"] is None
+            or row["kind"] == ArtifactKind.sealed_diff.value
+        ):
             raise not_found("artifact")
         require_project(conn, user, row["project_id"])
         meta, data = ArtifactStore().get(conn, artifact_id)
