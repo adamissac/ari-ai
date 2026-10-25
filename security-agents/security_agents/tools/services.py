@@ -231,8 +231,6 @@ def _pytest_sensitive_constructs(source: str) -> Counter[tuple[str, str, str]]:
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 if module_scope or node.name in global_names:
                     record_pytest_binding(node.name, node)
-                    if node.name.startswith("pytest_"):
-                        record("hook", node.name, node)
                 for decorator in node.decorator_list:
                     visit(decorator)
                 for default in [*node.args.defaults, *[value for value in node.args.kw_defaults if value]]:
@@ -302,6 +300,8 @@ def _pytest_sensitive_constructs(source: str) -> Counter[tuple[str, str, str]]:
 
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if node.name.startswith("pytest_"):
+                record("hook", node.name, node)
             for decorator in node.decorator_list:
                 expression = decorator.func if isinstance(decorator, ast.Call) else decorator
                 is_pytest_hookimpl = (

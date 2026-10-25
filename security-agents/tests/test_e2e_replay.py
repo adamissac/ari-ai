@@ -2060,6 +2060,16 @@ def test_unmappable_pinned_pytest_config_path_fails_closed(
             id="hook-name-lambda",
         ),
         pytest.param(
+            "class Plug:\n    def pytest_collection_modifyitems(self, items):\n        pass\n",
+            True,
+            id="pytest-hook-method-in-plugin-class",
+        ),
+        pytest.param(
+            "def outer():\n    def pytest_x():\n        pass\n",
+            True,
+            id="nested-pytest-hook-function",
+        ),
+        pytest.param(
             "pytest_collection_modifyitems, ordinary = (_drop, None)\n",
             True,
             id="hook-name-tuple-target",

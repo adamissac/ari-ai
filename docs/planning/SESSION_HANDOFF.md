@@ -16,6 +16,23 @@ adds an entry before ending.
 - Warnings for the next session:
 ```
 
+### 2026-10-25 — Devin (agent, Adam) — all-depth pytest hook definitions (#629)
+- Did: restored recording of every `pytest_*` function and async-function
+  definition, including nested definitions and plugin-class methods, while
+  keeping local variable bindings accepted by the context-aware collector.
+- State of the code: follow-up is on `fix/adam/verify-hook-attribute-writes`,
+  based on `221e5ebb`; `origin/main` remained at `e41c9dc2`.
+- Commands run and results: baseline at `221e5ebb` — 2 failed, 1 passed,
+  210 deselected (`/Users/devin/.devin-files/verify-nested-hook-defs-red-221e5ebb.log`);
+  narrow replay suite — 213 passed; Ruff check and format check passed;
+  `git diff --check` passed.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): none.
+- Next steps: await the owner's CI-loop re-brief; no post-push CI checks are
+  requested for this handoff.
+- Warnings for the next session: no backend or full security-agents rerun was
+  needed for this focused delta.
+
 ### 2026-10-25 — Devin (agent, Adam) — Verify hook binding and symlink follow-ups (#629)
 - Did: replaced the pytest target walker with a context-aware binding scan for
   `pytest_*` names, imports, global stores, and hook-rooted attribute/subscript
