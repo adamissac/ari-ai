@@ -38,7 +38,7 @@ export function PatchDeliveryStatus({
         </>
       )}
       {delivery.status === 'skipped' && (
-        <Badge view={{ label: 'Not delivered: delivery is manual', tone: 'neutral', glyph: '—' }} />
+        <Badge view={{ label: `Not delivered: ${delivery.reason ?? 'delivery is manual'}`, tone: 'neutral', glyph: '—' }} />
       )}
     </div>
   );

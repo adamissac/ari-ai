@@ -1362,7 +1362,9 @@ def get_patches(finding_id: str, request: Request) -> dict[str, Any]:
                     )
                 else:
                     patch_delivery = PatchDelivery(
-                        status="skipped", reason="delivery is manual", at=at
+                        status="skipped",
+                        reason=details.get("reason") or "delivery is manual",
+                        at=at,
                     )
             elif v and v.get("verdict") == "accepted":
                 job = conn.execute(
