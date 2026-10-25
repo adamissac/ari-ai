@@ -7,6 +7,7 @@ import json
 from datetime import datetime, timedelta
 from typing import Any
 
+import httpx
 import sqlalchemy as sa
 from fastapi import APIRouter, Header, Query, Request, Response
 from fastapi.concurrency import run_in_threadpool
@@ -48,7 +49,9 @@ from backend.db import (
     transaction,
     verification_results,
 )
+from backend.github import GitHubApp, GitHubNotConfigured
 from backend.integrations import load_factory
+from backend.quota import check_project_quota, rate_limit_message
 from backend.services import (
     DomainError,
     budget_over_cap,
@@ -890,8 +893,46 @@ def start_assessment(
         replay = idempotent_lookup(conn, user.id, idempotency_key, retry_request)
         if replay:
             return JSONResponse(replay["body"], status_code=replay["status"])
-        limiter.check(f"asm:{user.id}", get_settings().assessment_starts_per_hour, 3600)
         commit_sha = body.commit_sha
+        if commit_sha is None and body.snapshot_id is None:
+            repo = (
+                conn.execute(sa.select(repositories).where(repositories.c.id == body.repo_id))
+                .mappings()
+                .first()
+            )
+            if repo is None or repo["project_id"] != project_id:
+                raise not_found("repository")
+            if repo["installation_id"] is None:
+                raise ApiError(
+                    ErrorCode.VALIDATION_FAILED,
+                    "enter a commit SHA: this repository is not connected through the GitHub App",
+                    422,
+                )
+            try:
+                commits = GitHubApp().recent_commits(
+                    repo["installation_id"], repo["full_name"], repo["default_branch"], limit=1
+                )
+            except (GitHubNotConfigured, httpx.HTTPError) as exc:
+                raise ApiError(
+                    ErrorCode.SUBSYSTEM_UNAVAILABLE,
+                    "could not read the latest commit from GitHub",
+                    503,
+                ) from exc
+            if not commits:
+                raise ApiError(
+                    ErrorCode.SUBSYSTEM_UNAVAILABLE,
+                    "could not read the latest commit from GitHub",
+                    503,
+                )
+            commit_sha = commits[0]["sha"]
+        quota = check_project_quota(conn, project_id, utcnow())
+        if quota is not None:
+            raise ApiError(
+                ErrorCode.RATE_LIMITED,
+                rate_limit_message(quota),
+                429,
+                {"resets_at": quota.resets_at.isoformat()},
+            )
         if body.snapshot_id:
             snap = (
                 conn.execute(sa.select(snapshots).where(snapshots.c.id == body.snapshot_id))
@@ -1125,7 +1166,16 @@ def rules_of_engagement(assessment_id: str, request: Request) -> dict[str, Any]:
         if event is None:
             raise not_found("rules of engagement")
         details = event.get("details") or {}
-        _, data = ArtifactStore().get(conn, details["artifact_id"])
+        artifact_row = (
+            conn.execute(
+                sa.select(artifacts.c.kind).where(artifacts.c.id == details["artifact_id"])
+            )
+            .mappings()
+            .first()
+        )
+        if artifact_row is None or artifact_row["kind"] == ArtifactKind.sealed_diff.value:
+            raise not_found("rules of engagement")
+        meta, data = ArtifactStore().get(conn, details["artifact_id"])
     doc = json.loads(data)
     body = {k: v for k, v in doc.items() if k != "digest"}
     digest = hashlib.sha256(json.dumps(body, sort_keys=True, default=str).encode()).hexdigest()
@@ -1324,7 +1374,11 @@ def get_artifact(artifact_id: str, request: Request) -> Response:
             .mappings()
             .first()
         )
-        if row is None or row["project_id"] is None:
+        if (
+            row is None
+            or row["project_id"] is None
+            or row["kind"] == ArtifactKind.sealed_diff.value
+        ):
             raise not_found("artifact")
         require_project(conn, user, row["project_id"])
         meta, data = ArtifactStore().get(conn, artifact_id)

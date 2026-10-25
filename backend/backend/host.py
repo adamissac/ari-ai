@@ -50,8 +50,10 @@ from backend.db import (
     finding_records,
     findings,
     jobs,
+    monitoring_events,
     patch_candidates,
     projects,
+    reassessment_requests,
     transaction,
     verification_results,
 )
@@ -124,6 +126,33 @@ _STATUS_EDGES: dict[FindingStatus, frozenset[FindingStatus]] = {
     _S.hardened: frozenset({_S.closed}),
 }
 _ANYTIME = frozenset({_S.needs_recheck, _S.accepted_risk, _S.closed})
+
+
+def _enqueue_pr_review(conn: Connection, assessment: Assessment) -> None:
+    from backend import jobs
+
+    request_id = assessment.reassessment_request_id
+    if request_id is None:
+        return
+    request = conn.execute(
+        sa.select(reassessment_requests.c.doc).where(reassessment_requests.c.id == request_id)
+    ).scalar_one_or_none()
+    if not request:
+        return
+    event_docs = conn.execute(
+        sa.select(monitoring_events.c.doc).where(
+            monitoring_events.c.id.in_(request.get("event_ids", []) or [""])
+        )
+    ).scalars()
+    if not any(event.get("pr_number") for event in event_docs):
+        return
+    jobs.enqueue(
+        conn,
+        "post_pr_review",
+        {"assessment_id": assessment.id},
+        dedupe_key=f"prreview:{assessment.id}",
+        priority=80,
+    )
 
 
 def _emit(
@@ -390,6 +419,8 @@ class AssessmentHost:
                 subject_id=self.assessment_id,
                 details={"from": a.state.value, "to": target.value},
             )
+            if target in (AssessmentState.COMPLETED, AssessmentState.AWAITING_APPROVAL):
+                _enqueue_pr_review(conn, new)
             return new
 
     def progress(self, message: str, *, agent: AgentName | None = None, **data: Any) -> None:
@@ -537,6 +568,20 @@ class AssessmentHost:
         with transaction() as conn:
             return self.store.put_text(
                 conn, text, kind=kind, project_id=self.project_id, media_type=media_type
+            )
+
+    def seal_diff(self, diff: str, expected_sha256: str) -> ArtifactRef:
+        actual_sha256 = hashlib.sha256(diff.encode()).hexdigest()
+        if actual_sha256 != expected_sha256:
+            raise HostError(ErrorCode.CONFLICT_STATE, "diff bytes do not match the expected hash")
+        with transaction() as conn:
+            return self.store.put_bytes(
+                conn,
+                diff.encode(),
+                kind=ArtifactKind.sealed_diff,
+                project_id=self.project_id,
+                media_type="text/x-diff",
+                redacted=False,
             )
 
     # -------------------------------------------------------------- agent runs

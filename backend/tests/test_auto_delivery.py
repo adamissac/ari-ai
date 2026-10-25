@@ -6,6 +6,7 @@ faked so the wiring (modes, fallback, audit) is exercised without a network."""
 
 from __future__ import annotations
 
+import json
 import subprocess
 from pathlib import Path
 
@@ -17,7 +18,7 @@ from reference_orchestrator import scripted_transport
 
 from backend import delivery, llm, worker
 from backend.checkouts import CheckoutError, fetch_commit
-from backend.db import audit_events, jobs, memberships, repositories, transaction
+from backend.db import audit_events, jobs, memberships, patch_candidates, repositories, transaction
 from backend.delivery import BranchMoved, authority, push_patch
 
 
@@ -46,11 +47,13 @@ def _run_push(client, pid: str) -> str:
     return client.get(f"/api/v1/projects/{pid}/reassessments").json()["items"][0]["assessment_id"]
 
 
-def test_new_projects_default_to_auto_and_server_stamps_the_authorizer(client_factory) -> None:
+def test_new_projects_default_to_pull_request_and_server_stamps_the_authorizer(
+    client_factory,
+) -> None:
     alice, bob = client_factory("alice"), client_factory("bob")
     ids = setup_project(alice, bob)
     p = alice.post("/api/v1/projects", json={"name": "fresh"}).json()
-    assert p["settings"]["delivery_mode"] == "auto"
+    assert p["settings"]["delivery_mode"] == "pull_request"
     assert p["settings"]["delivery_authorized_by"] == alice.me["user"]["id"]
     pid = ids["project"]
     r = _set_mode(alice, pid, "auto", delivery_authorized_by="usr_forged123")
@@ -134,6 +137,7 @@ class FakeApp:
     """Stands in for GitHubApp; records what delivery asked GitHub to do."""
 
     calls: list[tuple] = []
+    pushed_diffs: list[bytes] = []
     token_error: Exception | None = None
 
     def __init__(self, settings=None) -> None: ...
@@ -155,12 +159,13 @@ class FakeApp:
 def wired(client_factory, reference, settings_override, tmp_path, monkeypatch):
     """A completed auto/pull_request run whose repository 'is connected', GitHub faked."""
     settings_override(security_workdir=str(tmp_path))
-    FakeApp.calls, FakeApp.token_error = [], None
+    FakeApp.calls, FakeApp.pushed_diffs, FakeApp.token_error = [], [], None
     monkeypatch.setattr("backend.github.GitHubApp", FakeApp)
     monkeypatch.setattr(delivery, "fetch_commit", lambda *a, **k: None)
 
     def push(*a, require_tip=False, **k):
         FakeApp.calls.append(("push", a[6], require_tip))
+        FakeApp.pushed_diffs.append(a[3])
         if require_tip and FakeApp.moved:
             raise BranchMoved("main moved since the assessed commit")
         return "c" * 40
@@ -168,13 +173,15 @@ def wired(client_factory, reference, settings_override, tmp_path, monkeypatch):
     FakeApp.moved = False
     monkeypatch.setattr(delivery, "push_patch", push)
 
-    def start(mode: str) -> None:
+    def start(mode: str | None, *, delivery_mode: str | None = "manual"):
         alice, bob = client_factory("alice"), client_factory("bob")
-        ids = setup_project(alice, bob)
-        _set_mode(alice, ids["project"], mode)
-        _run_push(alice, ids["project"])
+        ids = setup_project(alice, bob, delivery_mode=delivery_mode)
+        if mode is not None:
+            _set_mode(alice, ids["project"], mode)
+        asm_id = _run_push(alice, ids["project"])
         with transaction() as conn:
             conn.execute(sa.update(repositories).values(installation_id=7))
+        return alice, ids, asm_id
 
     return start
 
@@ -200,6 +207,34 @@ def test_pull_request_mode_never_touches_the_default_branch(wired) -> None:
     pushes = [c for c in FakeApp.calls if c[0] == "push"]
     assert len(pushes) == 1 and pushes[0][1].startswith("ari/fix-") and not pushes[0][2]
     assert ("pr", pushes[0][1], "main") in FakeApp.calls
+
+
+def test_new_project_default_opens_verified_fix_pr_without_manual_approval(wired) -> None:
+    alice, ids, asm_id = wired(None, delivery_mode=None)
+    owner_id = alice.me["user"]["id"]
+    assert alice.get(f"/api/v1/assessments/{asm_id}").json()["assessment"]["state"] == "COMPLETED"
+    settings = alice.get(f"/api/v1/projects/{ids['project']}").json()["settings"]
+    assert settings["delivery_mode"] == "pull_request"
+    assert settings["delivery_authorized_by"] == owner_id
+
+    approved = alice.get(
+        f"/api/v1/projects/{ids['project']}/approvals", params={"status": "approved"}
+    ).json()["items"]
+    assert any(
+        item["subject_type"] == "remediation" and item["decided_by"] == owner_id
+        for item in approved
+    )
+    pending = alice.get(
+        f"/api/v1/projects/{ids['project']}/approvals", params={"status": "pending"}
+    ).json()["items"]
+    assert not any(item["subject_type"] == "remediation" for item in pending)
+
+    worker.drain(kinds=["deliver_verified_patch"])
+    with transaction() as conn:
+        patch = conn.execute(sa.select(patch_candidates.c.doc)).scalar_one()
+    branch = f"ari/fix-{patch['id']}"
+    assert FakeApp.calls == [("push", branch, False), ("pr", branch, "main")]
+    assert "delivery.pr_opened" in _actions()
 
 
 def test_missing_app_permission_is_recorded(wired) -> None:
@@ -246,6 +281,213 @@ def test_a_diff_that_is_not_the_verified_bytes_is_never_delivered(wired) -> None
             )
     worker.drain(kinds=["deliver_verified_patch"])
     assert FakeApp.calls == [] and "delivery.failed" in _actions()
+
+
+def test_sealed_diff_delivers_exact_bytes_and_is_not_owner_readable(
+    wired, settings_override, client_factory
+) -> None:
+    from backend.artifacts import ArtifactStore
+    from backend.db import patch_candidates, verification_results
+
+    settings_override(orchestrator_factory="reference_orchestrator:build_sealed_diff_orchestrator")
+    wired("auto")
+    worker.drain(kinds=["deliver_verified_patch"])
+    expected = (
+        b"--- a/app/invoices.py\n+++ b/app/invoices.py\n"
+        b"+ tokens: dict[str, str]\n"
+        b"+ assert headers == 'Bearer fixture-token-alice'\n"
+    )
+    assert FakeApp.pushed_diffs == [expected]
+
+    alice = client_factory("alice")
+    with transaction() as conn:
+        patch = conn.execute(sa.select(patch_candidates.c.doc)).scalar_one()
+        verification = conn.execute(sa.select(verification_results.c.doc)).scalar_one()
+        _, member_copy = ArtifactStore().get(conn, patch["diff_artifact_id"])
+        sealed_id = None
+        for check in verification["checks"]:
+            for evidence in check["evidence"]:
+                if not evidence.get("artifact_id"):
+                    continue
+                try:
+                    binding = json.loads(ArtifactStore().get(conn, evidence["artifact_id"])[1])
+                except (KeyError, OSError, ValueError):
+                    continue
+                if binding.get("patch_id") == patch["id"]:
+                    sealed_id = binding.get("sealed_diff_artifact_id")
+        assert sealed_id is not None
+        _, sealed = ArtifactStore().get(conn, sealed_id)
+    assert sealed == expected
+    assert b"+ tokens: dict[str, str]\n" in member_copy
+    assert b"fixture-token-alice" not in member_copy
+    assert b"[REDACTED:bearer]" in member_copy
+    assert alice.get(f"/api/v1/artifacts/{patch['diff_artifact_id']}").status_code == 200
+    assert alice.get(f"/api/v1/artifacts/{sealed_id}").status_code == 404
+
+
+def test_sealed_diff_with_high_confidence_secret_is_refused(wired, settings_override) -> None:
+    from backend.db import audit_events
+
+    settings_override(orchestrator_factory="reference_orchestrator:build_secret_diff_orchestrator")
+    wired("auto")
+    worker.drain(kinds=["deliver_verified_patch"])
+    assert FakeApp.calls == []
+    with transaction() as conn:
+        docs = conn.execute(sa.select(audit_events.c.doc)).scalars().all()
+    failed = [doc for doc in docs if doc.get("action") == "delivery.failed"]
+    assert failed[-1]["details"]["reason"] == (
+        "verified diff contains a credential (github_token); refusing to deliver"
+    )
+
+
+def test_tampered_sealed_diff_is_refused(wired, settings_override) -> None:
+    from backend.artifacts import ArtifactStore
+    from backend.db import artifacts, patch_candidates, verification_results
+
+    settings_override(orchestrator_factory="reference_orchestrator:build_sealed_diff_orchestrator")
+    wired("auto")
+    with transaction() as conn:
+        patch = conn.execute(sa.select(patch_candidates.c.doc)).scalar_one()
+        verification = conn.execute(sa.select(verification_results.c.doc)).scalar_one()
+        sealed_id = None
+        for check in verification["checks"]:
+            for evidence in check["evidence"]:
+                if not evidence.get("artifact_id"):
+                    continue
+                try:
+                    binding = json.loads(ArtifactStore().get(conn, evidence["artifact_id"])[1])
+                except (KeyError, OSError, ValueError):
+                    continue
+                if binding.get("patch_id") == patch["id"]:
+                    sealed_id = binding.get("sealed_diff_artifact_id")
+        assert sealed_id is not None
+        row = conn.execute(sa.select(artifacts).where(artifacts.c.id == sealed_id)).mappings().one()
+        artifact_path = ArtifactStore().root / row["storage_key"]
+        artifact_path.write_bytes(b"tampered")
+
+    worker.drain(kinds=["deliver_verified_patch"])
+    assert FakeApp.calls == []
+    with transaction() as conn:
+        docs = conn.execute(sa.select(audit_events.c.doc)).scalars().all()
+    failed = [doc for doc in docs if doc.get("action") == "delivery.failed"]
+    assert failed[-1]["details"]["reason"] == "sealed diff does not match the bytes Verify accepted"
+
+
+def test_sealed_diff_binding_to_different_stored_artifact_is_refused(
+    wired, settings_override
+) -> None:
+    from backend.artifacts import ArtifactStore
+    from backend.db import patch_candidates, verification_results
+    from shared.evidence import ArtifactKind
+
+    settings_override(orchestrator_factory="reference_orchestrator:build_sealed_diff_orchestrator")
+    wired("auto")
+    with transaction() as conn:
+        patch = conn.execute(sa.select(patch_candidates.c.doc)).scalar_one()
+        verification_row = conn.execute(
+            sa.select(verification_results.c.id, verification_results.c.doc)
+        ).one()
+        verification = verification_row.doc
+        store = ArtifactStore()
+        wrong_artifact = store.put_text(
+            conn,
+            "different diff",
+            kind=ArtifactKind.diff,
+            project_id=None,
+            media_type="text/x-diff",
+        )
+        binding_id = None
+        for check in verification["checks"]:
+            for evidence in check["evidence"]:
+                artifact_id = evidence.get("artifact_id")
+                if not artifact_id:
+                    continue
+                try:
+                    binding = json.loads(store.get(conn, artifact_id)[1])
+                except (KeyError, OSError, ValueError):
+                    continue
+                if binding.get("patch_id") != patch["id"]:
+                    continue
+                binding["stored_diff_artifact_id"] = wrong_artifact.id
+                binding_ref = store.put_json(
+                    conn, binding, kind=ArtifactKind.tool_output, project_id=None
+                )
+                evidence["artifact_id"] = binding_ref.id
+                evidence["sha256"] = binding_ref.sha256
+                binding_id = binding_ref.id
+                break
+            if binding_id:
+                break
+        assert binding_id is not None
+        conn.execute(
+            sa.update(verification_results)
+            .where(verification_results.c.id == verification_row.id)
+            .values(doc=verification)
+        )
+
+    worker.drain(kinds=["deliver_verified_patch"])
+    assert FakeApp.calls == []
+    with transaction() as conn:
+        docs = conn.execute(sa.select(audit_events.c.doc)).scalars().all()
+    failed = [doc for doc in docs if doc.get("action") == "delivery.failed"]
+    assert failed[-1]["details"]["reason"] == "sealed diff does not match the bytes Verify accepted"
+
+
+def test_legacy_redacted_binding_without_sealed_id_keeps_failing_closed(
+    wired, settings_override
+) -> None:
+    from backend.db import audit_events
+
+    settings_override(
+        orchestrator_factory="reference_orchestrator:build_legacy_redacted_diff_orchestrator"
+    )
+    wired("auto")
+    worker.drain(kinds=["deliver_verified_patch"])
+    assert FakeApp.calls == []
+    with transaction() as conn:
+        docs = conn.execute(sa.select(audit_events.c.doc)).scalars().all()
+    failed = [doc for doc in docs if doc.get("action") == "delivery.failed"]
+    assert failed[-1]["details"]["reason"] == (
+        "the stored diff was redacted; Verify tested different bytes"
+    )
+
+
+def test_seal_diff_rejects_an_unexpected_hash() -> None:
+    from backend.host import AssessmentHost, HostError
+    from shared.errors import ErrorCode
+
+    host = object.__new__(AssessmentHost)
+    with pytest.raises(HostError) as raised:
+        host.seal_diff("verified diff", "0" * 64)
+    assert raised.value.code is ErrorCode.CONFLICT_STATE
+
+
+@pytest.mark.parametrize(
+    ("text", "label"),
+    [
+        ("sk-ant-" + "a" * 12, "anthropic_key"),
+        ("ghp_" + "a" * 24, "github_token"),
+        ("github_pat_" + "a" * 24, "github_token"),
+        ("AKIA" + "A" * 16, "aws_key"),
+        ("xoxb-" + "a" * 12, "slack_token"),
+        ("-----BEGIN PRIVATE KEY-----\nfake\n-----END PRIVATE KEY-----", "private_key"),
+        ("sk_live_" + "a" * 12, "stripe_key"),
+        ("postgresql://user:pass@host/db", "dsn_credentials"),
+    ],
+)
+def test_high_confidence_secret_labels(text: str, label: str) -> None:
+    from backend.redaction import find_high_confidence_secret
+
+    assert find_high_confidence_secret(text) == label
+
+
+def test_bearer_jwt_and_generic_key_value_are_not_high_confidence() -> None:
+    from backend.redaction import find_high_confidence_secret
+
+    assert find_high_confidence_secret("Bearer fixture-token-alice") is None
+    jwt = "eyJ" + ("a" * 5) + "." + ("b" * 6) + "." + ("c" * 3)
+    assert find_high_confidence_secret(jwt) is None
+    assert find_high_confidence_secret('password = "hunter2"') is None
 
 
 def test_switching_on_unblocks_runs_of_a_legacy_project(client_factory, reference) -> None:

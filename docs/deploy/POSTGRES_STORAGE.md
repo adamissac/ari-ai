@@ -4,8 +4,8 @@ Why the Railway Postgres volume fills up:
 
 - **`index_payloads`** stores the full code-intelligence payload set for *every*
   `(project_id, repo_id, commit_sha, index_version)` — immutable `LargeBinary` rows.
-  With `GITHUB_AUTO_COMMIT_AUTHORS=*` every pushed commit triggers an assessment that
-  rewrites a complete payload set, so Postgres grows linearly with commits.
+  Automatic assessments write a complete payload set, so Postgres grows with assessed
+  commits.
 - **`jobs`** rows carry JSONB `payload`/`result`/`last_error` and are never deleted,
   including terminal `succeeded`/`failed`/`dead` rows.
 - **`webhook_deliveries`**, **`monitoring_events`**, **`reassessment_requests`**,
@@ -17,6 +17,25 @@ Why the Railway Postgres volume fills up:
 
 None of this shrinks the volume by deleting rows: Postgres reuses freed space inside its
 own files. See "Reclaiming disk" for what actually returns space to Railway.
+
+## Automatic assessments and storage
+
+Each automatic assessment stores about 5.7 MB of physical data in `index_payloads`
+(production measurement on 2026-10-25: 3.46 GB across 609 snapshots). With `*` and
+500 assessments per day, the database grew about 330 MB/day. An empty
+`GITHUB_AUTO_COMMIT_AUTHORS` allowlist disables per-commit full runs, but pushes from
+repositories with `automatic_assessments` ON fall back to the legacy impact-gated,
+coalesced monitoring policy. That policy applies project `monitoring_policy`, requires
+active scope, uses the monitoring budget and allows at most one open monitoring
+assessment per repository. For a strictly manual pilot, switch
+`automatic_assessments` OFF per repository (or disable project monitoring); manual
+Run remains available.
+
+After the owner set an empty allowlist plus `AUTOMATIC_ASSESSMENTS_PER_HOUR=5` and
+`AUTOMATIC_ASSESSMENTS_PER_DAY=20` on 2026-10-25 at about 02:03Z, the deferred queue
+drained from 386 to 0 and only one new assessment completed in the following ~10
+minutes. If per-commit full runs are re-enabled, keep
+`AUTOMATIC_ASSESSMENTS_PER_DAY` at or below 20 and enable retention first.
 
 ## What ships in this change
 
@@ -138,3 +157,23 @@ bump), 90% (urgent). Each crossing logs `postgres storage alert` and posts one J
 payload to `OPS_ALERT_WEBHOOK_URL` per process-level crossing. External monitoring can
 alternatively scrape `GET /api/v1/ops/storage/prometheus` (Grafana Agent, Prometheus,
 or any HTTP poller) or run a scheduled check against `/api/v1/ops/storage`.
+
+The same thresholds independently alert on the app data volume. Set
+`DATA_VOLUME_BYTES` to its provisioned size and `DATA_VOLUME_PATH` to its mount path
+(defaults to `/data`, which holds artifacts and checkouts). A zero
+`DATA_VOLUME_BYTES` skips percentage alerts; usage is still reported when the path
+exists. Railway's `sizeMB` is decimal: a 10,000 MB Postgres volume is
+`POSTGRES_VOLUME_BYTES=10000000000` (not 10 GiB), and a 5,000 MB app data volume is
+`DATA_VOLUME_BYTES=5000000000`.
+
+## External watchdog
+
+The hourly `storage-watch.yml` workflow reads Railway's per-environment volume usage
+and the newest backup for `postgres-volume` (the default `BACKUP_VOLUME`). It alerts
+at 70/80/90% by default and flags backups older than 36 hours. While problems remain,
+it creates or updates the GitHub issue titled
+`[ops-alert] Production storage watchdog`; identical hourly findings do not add
+comments, and recovery posts a report before closing the issue. Any problem exits 1,
+making the scheduled run red so GitHub can email the owner. Configure the repository
+Actions secret `RAILWAY_TOKEN` with a Railway project token. Use
+**Actions → storage-watch → Run workflow** for a manual check.

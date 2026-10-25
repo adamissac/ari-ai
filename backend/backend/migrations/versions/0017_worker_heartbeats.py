@@ -13,6 +13,11 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # Retry-safe: if a container restart half-applied this migration, the table may
+    # already exist while alembic_version still points at 0016 — without the guard
+    # every subsequent boot would fail on "relation already exists" forever.
+    if "worker_heartbeats" in sa.inspect(op.get_bind()).get_table_names():
+        return
     op.create_table(
         "worker_heartbeats",
         sa.Column("worker_id", sa.String(length=120), nullable=False),

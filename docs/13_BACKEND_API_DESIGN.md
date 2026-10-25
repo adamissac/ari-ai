@@ -40,6 +40,9 @@ by FastAPI is the source for frontend client generation.
 | POST | `/repositories/{repo_id}/snapshots` | Request indexing at `commit_sha` |
 | GET | `/repositories/{repo_id}/snapshots?status=&limit=&cursor=` | List, newest first (`status=ready` for usable indexes) |
 | GET | `/snapshots/{snapshot_id}` | Status and stats |
+| GET | `/github/repositories` | Repos the caller can reach through App installations |
+| GET | `/repositories/{repo_id}/commits` | Recent commits, read live via the installation token |
+| GET | `/github/commit?repo=owner/name&sha=` | One commit + per-file diff via the requester's installation (used by live analysis) |
 
 ### Intelligence (read)
 | Method | Path | Purpose |
@@ -115,8 +118,12 @@ Event types: `assessment.state_changed`, `assessment.progress`, `finding.updated
 `approval.requested`, `assessment.completed`, `assessment.failed`.
 
 ## Rate limits (MVP)
-Per user: 60 req/min general; 5 assessment starts/hour. Webhooks: 100/min per
-installation. Implemented in-process (no Redis) for MVP.
+Per user: 60 req/min general. Shared project quotas allow 10 assessments per rolling
+hour and 50 per rolling day across every trigger; the global daily spend cap is $50
+across all projects and triggers. Manual starts blocked by a quota return 429
+`RATE_LIMITED` with a reset time. Automatic starts blocked by a quota are recorded
+as skipped and are not queued or retried. Webhooks are limited to 100/min per
+installation. General API and webhook limiters are in-process (no Redis) for MVP.
 
 ## Not in the API by design
 - No endpoint executes arbitrary commands or accepts code to run.

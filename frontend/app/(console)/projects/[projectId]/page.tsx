@@ -330,13 +330,13 @@ function StartAssessment({ onStarted }: { onStarted: () => void }) {
               {repos.map(r => <option key={r.id} value={r.id}>{r.full_name}</option>)}
             </select>
           </Field>
-          <Field label="Authorized scope" hint={scopes.status === 'ready' && active.length === 0 ? 'No active scope — request and approve one under More → Authorized scopes.' : undefined}>
+          <Field label="Authorized scope" hint={scopes.status === 'ready' && active.length === 0 ? 'No active scope — request and approve one under Defend → Authorized scopes in the project sidebar.' : undefined}>
             <select className={inputClass} value={scopeId} onChange={e => setScopeId(e.target.value)} required name="scope">
               <option value="">Select…</option>
               {active.filter(s => !repoId || s.targets.some(t => t.repo_id === repoId)).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </Field>
-          <Field label="Commit SHA" hint="Blank = backend default for the repository.">
+          <Field label="Commit SHA" hint="Blank = latest commit on the default branch.">
             <input className={`${inputClass} font-mono`} value={sha} onChange={e => setSha(e.target.value.toLowerCase())} pattern="[0-9a-f]{7,40}" name="commit_sha" placeholder="optional" />
           </Field>
           <div className="sm:col-span-3">
@@ -446,4 +446,3 @@ function RepoRow({ repo }: { repo: Repository }) {
     </li>
   );
 }
-

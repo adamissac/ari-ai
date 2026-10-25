@@ -4,9 +4,9 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useProject } from '@/components/project';
 import { Term } from '@/components/term';
-import { Async, Badge, Empty, Mono, PageTitle, Panel, Tag, Time } from '@/components/ui';
+import { Async, Badge, Button, Empty, Mono, PageTitle, Panel, Tag, Time } from '@/components/ui';
 import { api } from '@/lib/api';
-import { FINDING_GROUP_NOTE, findingGroup, type FindingGroup } from '@/lib/findings';
+import { FINDING_GROUP_NOTE, findingGroup, findingGroupCounts, type FindingGroup } from '@/lib/findings';
 import { shortSha } from '@/lib/format';
 import { FINDING_STATUS, SEVERITY } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
@@ -36,7 +36,18 @@ export default function FindingsPage() {
       </div>
       <Async resource={findings} label="findings">
         {page => {
+          const counts = findingGroupCounts(page.items);
           const items = page.items.filter(f => findingGroup(f.status) === tab);
+          if (items.length === 0 && tab === 'open' && counts.open === 0 && counts.hypothesis + counts.fixed + counts.closed > 0) {
+            return (
+              <>
+                <Empty>No open findings. Counts: 0 open, {counts.hypothesis} hypotheses, {counts.fixed} fixed, {counts.closed} refuted or closed.</Empty>
+                <div className="mt-3 flex justify-center">
+                  <Button variant="primary" onClick={() => setTab('fixed')}>View fixed findings</Button>
+                </div>
+              </>
+            );
+          }
           if (items.length === 0) return <Empty>{tab === 'hypothesis' ? 'No open hypotheses.' : tab === 'closed' ? 'Nothing refuted or closed.' : tab === 'fixed' ? 'No fix has been accepted by independent tests yet.' : 'No open findings in this list.'}</Empty>;
           return (
             <div className="overflow-x-auto">

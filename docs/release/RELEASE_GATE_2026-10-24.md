@@ -3,8 +3,9 @@
 Owner: Adam (release reliability / test infrastructure). Branch: `feat/adam/release-gate`.
 
 ## Release SHA under gate
-- `main` HEAD at doc freeze: `d0131167` — **stale**. PRs #535 (tenant RLS, migration `0016`), #537, #544, #549, #551, #553, #557, #560 merged since; re-read `main` for the real release SHA (see the trigger section).
-- Gate PR #530 head `8b6bf3bd` — **all 19 CI checks green** incl. `backend-tests`, `intel-tests`, `review-tests`, `secagents-tests`, `rl-tests`, `e2e`, `docker-reviewer`, `docker-sandbox`, `compose-stack`, `backend-image`, `gitleaks`, `inventory-lite`, `payments-lite`, `audit`, `links`, `runner-semantics`, `rl-integration`, `static-and-unit`.
+- `main` HEAD at doc freeze: `d0131167` — **stale**. Update 2026-10-25T02Z: post-merge-wave head is **`0f311913`, all 20 checks green** (the 19 below + `Vercel` deploy preview). Landed since freeze: #535, #537, #544, #549, #551, #553, #557, #560, #567, #569, **#530 (this gate)**, #571 (gitleaks fixture allowlist), #570 (redaction gaps), #572 (cross-org jobs test), #540, #538, #536, #532, #496, #527. Re-read `main` for the real release SHA (see the trigger section).
+- **Release SHA `8d897f7e` (2026-10-25T04Z): `pilot-verify` run [40160692141](https://github.com/adamissac/ari-ai/actions/runs/40160692141) — 8/8 jobs green.** Executed for real: static-unit, real-db, real-sandbox, browser-e2e (fake model), load-recovery, hosted-smoke against `https://ari-ai-production-76d4.up.railway.app` (/healthz ok, /readyz ready with 12 live workers + live LLM configured, unauthenticated `/api/v1/projects` → 401). Skipped by design: live-model (`live_model=false`, no spend approval). Branch protection on `main` applied same day (18 required contexts, strict, 1 approving review, enforce_admins).
+- Gate PR #530 merged as `22454ef2` — 19/19 checks green at merge.
 - Required checks = the job names listed below.
 
 ## Problem fixed (from PR #516 triage)
@@ -44,6 +45,7 @@ Leases/heartbeats, retry backoff, `SKIP LOCKED` claims, dedupe idempotency, canc
 
 ## Migrations
 At doc freeze: 16 version files, single head `0015`; `test_parallel_migrations.py` asserted `["0015"]`. **Post-#535 merge**: `0016_tenant_rls_intelligence` is now main's head; **#533 must renumber `0016_worker_heartbeats` → `0017`** and update the head assertion (commented on the PR). Any PR adding a version file must update that test; multiple heads fail it.
+**Update 2026-10-25T02Z**: resolved — main carries `0016` + `0017_worker_heartbeats`, single head `0017`, verified via `ScriptDirectory.get_heads()`. No migration added by this wave.
 
 ## Eval harness (45 cases)
 `score.py`/`score_api.py`: every case emits `scored: bool`; non-COMPLETED assessments emit `scored:false` + `unscored_reason`, excluded from all rates (previously counted as misses). `run.py`: `cases.json` validated at load; `summarize()` rates over scored cases only + `scored_cases: N/45` + explicit `unscored` list.
@@ -52,9 +54,11 @@ At doc freeze: 16 version files, single head `0015`; `test_parallel_migrations.p
 delivery→assessment via `assessments.trigger`; assessment→agent run via `agent_runs.assessment_id`; run→finding→patch→verification via `finding_records.agent_run_id` → `patch_candidates` → `verification_results`; cost/latency via `agent_runs.doc.usage.usd` + timestamps. Gap: no unified trace view — correlate by `assessment_id`/`delivery_id`.
 
 ## Launch blockers
-1. **`main` has no branch protection** (403 configuring — needs repo admin): set required checks + review rules above. Until then any push can break the pilot build.
-2. live-model and hosted-smoke are opt-in; their absence reports `skipped`, never `success`.
+1. **`main` has no branch protection** (403 configuring — needs repo admin): set required checks + review rules above. Until then any push can break the pilot build — this has now happened **twice** (ops `F811` import-shadowing broke `/readyz`, fixed by #567; planted test-fixture secrets broke `gitleaks`, fixed by #571).
+2. live-model and hosted-smoke are opt-in; their absence reports `skipped`, never `success`. Needs hosted URL + `ANTHROPIC_API_KEY` to exercise on the final SHA.
 3. CI run logs not accessible from this environment (API 401); gate verified locally.
+4. **#458 (live-defense 7C)** — schema-version collision (`0.22.0` claimed by ops-readiness on main) + 4 merge conflicts; needs owner renumber to `0.23.0` + contract regen. Filed in `coordination/messages/2026-10-25T02Z-adam-to-all-post-wave-state.md`. Not pilot-gating unless live-defense execution is in pilot scope.
+5. **#412 (live-defense 6.5)** — RL BLOCKED; only a CHANGELOG conflict otherwise.
 
 ## Evidence
 - `pytest backend/tests/test_job_status_api.py backend/tests/test_jobs_queue.py backend/tests/test_parallel_migrations.py` → 12 passed.

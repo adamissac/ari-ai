@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     frontend_origin: str = "http://localhost:3000"
 
     database_url: str = "postgresql+psycopg://app:app@localhost:5432/hackatl"
+    migration_database_url: str | None = None
     artifact_store_uri: str = "file://./artifacts"
 
     session_secret: SecretStr = SecretStr("")
@@ -51,11 +52,11 @@ class Settings(BaseSettings):
     github_app_slug: str | None = None  # github.com/apps/<slug>: link for installing the App
     github_api_url: str = "https://api.github.com"
     github_web_url: str = "https://github.com"
-    # Empty preserves legacy monitoring; comma-separated GitHub logins or * enables per-commit runs.
+    # Empty or * preserves impact monitoring; a non-empty comma list enables per-commit runs.
     github_auto_commit_authors: str = ""
-    automatic_assessments_per_hour: int = Field(default=5, ge=1)
-    automatic_assessments_per_day: int = Field(default=20, ge=1)
-    automatic_usd_per_day: float = Field(default=50.0, gt=0)  # all projects together
+    project_assessments_per_hour: int = Field(default=10, ge=1)
+    project_assessments_per_day: int = Field(default=50, ge=1)
+    assessments_usd_per_day: float = Field(default=50.0, gt=0)
     webhook_max_bytes: int = 1_048_576
 
     # Deployment identity (set by the platform, reported by /healthz, /readyz, /diagnostics).
@@ -96,7 +97,6 @@ class Settings(BaseSettings):
 
     # Rate limits (in-process, docs/13)
     rate_limit_per_minute: int = 60
-    assessment_starts_per_hour: int = 5
 
     # Ops surface + storage maintenance (docs/deploy/POSTGRES_STORAGE.md)
     # Bearer token for /api/v1/ops/*; unset disables those endpoints entirely.
@@ -107,6 +107,10 @@ class Settings(BaseSettings):
     # Provisioned size of the PostgreSQL volume in bytes (from the Railway dashboard).
     # 0 = unknown: the report still emits absolute usage but skips percentage alerts.
     postgres_volume_bytes: int = Field(default=0, ge=0)
+    # Provisioned size of the app data volume, Railway sizeMB × 1,000,000.
+    # 0 = skip data-volume alerts.
+    data_volume_bytes: int = Field(default=0, ge=0)
+    data_volume_path: Path = Path("/data")
     maintenance_enabled: bool = True
     maintenance_interval_s: int = Field(default=3600, ge=60)
     # True by default: the loop reports what it WOULD delete without deleting until an

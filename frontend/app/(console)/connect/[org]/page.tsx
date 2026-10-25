@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { Avatar } from '@/components/demo/ui';
 import { ErrorState, Loading, Tag } from '@/components/ui';
 import { api } from '@/lib/api';
-import { connectRepo } from '@/lib/github-connect';
+import { connectRepo, projectForRepository } from '@/lib/github-connect';
 import { groupByOrg, repoName } from '@/lib/github-orgs';
 import { useResource } from '@/lib/use-resource';
 
@@ -24,8 +24,11 @@ export default function ConnectReposPage() {
     setBusy(repo.full_name);
     setError(null);
     try {
-      await connectRepo(login, repo);
-      router.push(`/connect/${encodeURIComponent(login)}/${encodeURIComponent(repoName(repo.full_name))}`);
+      const repoId = await connectRepo(login, repo);
+      const projectId = await projectForRepository(repoId);
+      router.push(projectId
+        ? `/projects/${projectId}/setup?repo=${encodeURIComponent(repoId)}`
+        : `/connect/${encodeURIComponent(login)}/${encodeURIComponent(repoName(repo.full_name))}`);
     } catch (err) { setError(err); setBusy(null); }
   };
 

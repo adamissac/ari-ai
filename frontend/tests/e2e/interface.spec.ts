@@ -31,6 +31,9 @@ test('workspace design stays navigable and fits desktop and phone', async ({ bro
     await expectNoSideScroll(page);
     if (screenshots) await page.screenshot({ animations: 'disabled', path: `${screenshots}/repositories-${width}.png`, fullPage: true });
     await page.getByTestId(`connect-repo-${full}`).getByRole('button').click();
+    await expect(page).toHaveURL(/\/projects\/[^/]+\/setup\?repo=/);
+    await expect(page.getByTestId('repo-setup')).toBeVisible();
+    await page.goto(`/connect/${org}/${repo}`);
     await expect(page).toHaveURL(`/connect/${org}/${repo}`);
     await page.getByRole('link', { name: /Validate payment boundaries/ }).click();
     await expect(page.getByRole('tab')).toHaveCount(2);

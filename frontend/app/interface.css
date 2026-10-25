@@ -94,11 +94,11 @@
 @media (max-width: 1023px) {
   .project-layout { grid-template-columns: minmax(0, 1fr); gap: 20px; }
   .project-rail { position: static; max-height: none; overflow: visible; }
-  .rail-nav { flex-direction: row; flex-wrap: nowrap; gap: 20px; overflow-x: auto; padding-bottom: 8px; scrollbar-width: none; }
-  .rail-nav::-webkit-scrollbar { display: none; }
-  .rail-group { flex: none; }
+  /* Wrap instead of a hidden-scrollbar row: every destination (incl. Settings) stays visible. */
+  .rail-nav { flex-direction: row; flex-wrap: wrap; gap: 10px 20px; padding-bottom: 8px; }
+  .rail-group { flex: 0 1 auto; min-width: 0; }
   .rail-group > * { flex: none; }
-  .rail-group { flex-direction: row; align-items: center; gap: 4px; }
+  .rail-group { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px; }
   .rail-group-label { margin: 0 4px 0 0; }
   .rail-foot { margin-top: 0; }
 }
@@ -122,7 +122,7 @@
 .story-panel { border-radius: 10px; }
 .story-stat { border-radius: 0; border-top: 1px solid rgb(255 247 242 / 18%); }
 .hero-step { border: 1px solid rgb(255 247 242 / 9%); border-radius: 4px; }
-.footer-ruler { height: 5px; background: repeating-linear-gradient(90deg, #d2b9ac55 0 1px, transparent 1px 7px); opacity: .55; }
+.footer-ruler { height: 5px; background: repeating-linear-gradient(90deg, #d2b9ac55 0 1px, transparent 1px 7px); opacity: .8; }
 .footer-brand > span { font-size: 52px; }
 .footer-links a { transition: color 200ms, translate 200ms; }
 .footer-links a:hover { color: #ffb09b; translate: 4px 0; }
@@ -144,3 +144,21 @@
   .workspace-org-card:is(:hover, :focus-visible) .workspace-arrow { transform: none; }
   .footer-links a:hover { translate: none; }
 }
+
+/* Floating background geometry (components/backdrop-shapes.tsx). */
+.backdrop-host { position: relative; isolation: isolate; }
+.backdrop-shapes { position: absolute; inset: -2rem 0 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.backdrop-shapes .shape { position: absolute; display: block; opacity: .8; animation: shape-drift 18s ease-in-out infinite alternate; }
+.shape-ring { border: 2px solid color-mix(in srgb, var(--color-brand) 35%, transparent); border-radius: 9999px; }
+.shape-orb { border-radius: 9999px; background: radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--color-brand) 28%, transparent), transparent 70%); }
+.shape-square { border-radius: 18px; border: 2px solid color-mix(in srgb, var(--color-brand) 22%, transparent); background: color-mix(in srgb, var(--color-brand) 5%, transparent); }
+.shape-tri { width: 0; height: 0; border-left: 34px solid transparent; border-right: 34px solid transparent; border-bottom: 58px solid color-mix(in srgb, var(--color-brand) 14%, transparent); }
+.s1 { width: 220px; height: 220px; top: 2%; right: -60px; }
+.s2 { width: 340px; height: 340px; top: 30%; left: -140px; animation-duration: 24s; }
+.s3 { width: 90px; height: 90px; top: 12%; left: 8%; transform: rotate(18deg); animation-duration: 15s; }
+.s4 { width: 120px; height: 120px; bottom: 12%; right: 10%; animation-duration: 21s; }
+.s5 { top: 58%; right: 4%; animation-duration: 17s; }
+.s6 { width: 260px; height: 260px; bottom: -80px; right: 30%; animation-duration: 27s; }
+.s7 { width: 54px; height: 54px; bottom: 26%; left: 12%; transform: rotate(-12deg); animation-duration: 13s; }
+@keyframes shape-drift { from { translate: 0 0; rotate: 0deg; } to { translate: 18px -26px; rotate: 14deg; } }
+@media (prefers-reduced-motion: reduce) { .backdrop-shapes .shape { animation: none; } }
