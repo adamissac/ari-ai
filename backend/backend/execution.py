@@ -20,13 +20,12 @@ import sqlalchemy as sa
 from sqlalchemy.engine import Connection
 
 from backend import jobs as jobq
-from backend.db import job_events, jobs, transaction, worker_registry
 from backend.db import (
     first_responder_invocations,
     job_events,
     jobs,
     transaction,
-    worker_heartbeats,
+    worker_registry,
 )
 from backend.jobs import ErrorCategory, JobStatus
 from backend.settings import get_settings

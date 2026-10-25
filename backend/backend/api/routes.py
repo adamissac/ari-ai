@@ -580,56 +580,6 @@ def disconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
         return {"id": repo_id, "disconnected": True}
 
 
-@router.post("/repositories/{repo_id}/reconnect", response_model=Repository)
-def reconnect_repository(repo_id: str, request: Request) -> Repository:
-    """Re-enable a disconnected repository — only after renewed authorization.
-    App-connected rows require the owner to still hold access through the recorded
-    installation (re-verified, fresh). Reconnect does NOT restore
-    ``automatic_assessments`` or revoked deploy mappings: the owner opts back in
-    explicitly."""
-    with transaction() as conn:
-        user = _user(conn, request)
-        repo = _owner_repo(conn, user, repo_id)
-        if repo["installation_id"] is not None:
-            from backend.api.github_repos import (
-                _refresh_personal_installation_repositories,
-                can_connect,
-            )
-
-            gh = conn.execute(
-                sa.select(users.c.github_login, users.c.github_id).where(users.c.id == user.id)
-            ).first()
-            if gh is not None:
-                _refresh_personal_installation_repositories(user.id, gh.github_login, gh.github_id)
-            if not can_connect(conn, user.id, repo["full_name"], repo["installation_id"]):
-                raise ApiError(
-                    ErrorCode.FORBIDDEN,
-                    "you no longer have access to this repository through its installation",
-                    403,
-                )
-        if repo["disconnected_at"] is not None:
-            conn.execute(
-                sa.update(repositories)
-                .where(repositories.c.id == repo_id)
-                .values(disconnected_at=None)
-            )
-            _audit(
-                conn,
-                project_org(conn, repo["project_id"]),
-                repo["project_id"],
-                user,
-                "repository.reconnected",
-                "repository",
-                repo_id,
-                full_name=repo["full_name"],
-            )
-        return _repo(
-            conn.execute(sa.select(repositories).where(repositories.c.id == repo_id))
-            .mappings()
-            .one()
-        )
-
-
 @router.post("/repositories/{repo_id}/reconnect")
 def reconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
     """Re-enable a disconnected repository — only after renewed authorization.
