@@ -16,6 +16,16 @@ adds an entry before ending.
 - Warnings for the next session:
 ```
 
+### 2026-10-25 — Devin (agent, Adam) — console refinement (`feat/adam/console-graphite`)
+- Did: replaced the redundant non-home user bar with a keyboard-accessible real-session account menu; added mobile project-rail disclosure, CSS status marks, compact action radii and assessment metadata; linked connected-repository commit rows to matching assessments; kept `UserBar` on the landing page and made reveal content visible for reduced motion.
+- State of the code: implementation is on `feat/adam/console-graphite`; no backend, shared, or transport files changed. Section 6 investigation found a reveal/screenshot-capture artifact: below-fold project Runs & Replay and assessment phases/steps were hidden before scrolling and populated after scrolling, with no persistent layout-height defect. Reduced-motion `Reveal` now skips observation.
+- Commands run and results: `npm run lint --prefix frontend` — 0 errors, 1 pre-existing warning in `components/live-defense/first-responder.tsx:173`; `npm run typecheck --prefix frontend` passed; `npm test --prefix frontend` — 91 files, 391 tests passed; `NEXT_PUBLIC_DEV_LOGIN=1 BACKEND_ORIGIN=http://127.0.0.1:59039 npm run build --prefix frontend` passed. E2E: `E2E_SKIP_BUILD=1 /home/ubuntu/repos/ari-ai/.venv/bin/python tests/e2e/stack.py tests/e2e/journey.spec.ts tests/e2e/interface.spec.ts tests/e2e/commit-workspace.spec.ts tests/e2e/honesty.spec.ts tests/e2e/pages.spec.ts tests/e2e/brand.spec.ts --workers=1` — 20 passed, 1 failed. `brand.spec.ts` timed out clicking the hidden landing nav link “Projects”; current landing contract exposes “Go to projects” and the link was absent from the page snapshot. The console change does not touch the landing or site-navigation implementation.
+- Screenshots: Section 6 before-scroll evidence is in `/home/ubuntu/research/console/shots/section6-{project-runs-area,assessment-phases-area,assessment-steps-area}-{1440x900,390x844}-before.png`. Console after screenshots (10 routes × 2 viewports) are in `/home/ubuntu/research/console/shots/`.
+- Decisions made (ADR links): none.
+- Assumptions / open questions: the single brand E2E failure appears to be a stale landing selector, but was not changed as part of console refinement.
+- Next steps: review the pushed branch; resolve the stale `brand.spec.ts` selector separately if desired.
+- Warnings for the next session: the local `:3102` console dev server uses the seeded scripted-transport stack; assessment records are not live-model results. The onboarding `:3101` and existing stack shells were left untouched.
+
 ### 2026-10-26 — Devin (agent, Adam) — preserve impact-gated reviewer monitoring (#593)
 - Did: restored `origin/main`'s impact/correlation/quota/reassessment path while adding one shared reviewer-eligibility gate before either impact processing or the per-commit scheduler. Quoted-empty and sole `*` global settings route to impact monitoring. Added filter coverage for both routes and an impact-path pull-request comment test using the reassessment request's event IDs.
 - State of the code: both routes use `reviewer_ignore_reason`; ignored events are recorded before impact work. Impact-created PR assessments enqueue a deduplicated review and resolve the PR number from their triggering monitoring event.

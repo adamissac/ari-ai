@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Refined the console account menu, mobile project navigation, status marks, assessment headers, and commit-to-assessment links.
 - Commit pages now warn when reviewing a commit other than the latest default-branch commit and link to the latest commit.
 - Verified-patch delivery skips fixes already present on the default branch and annotates stale-base pull requests.
 - Expired scopes no longer appear active or qualify for assessment selection.

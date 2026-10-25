@@ -1,0 +1,26 @@
+{
+  "agent": "devin-console-refinement",
+  "human_owner": "Adam",
+  "workstream": "frontend console refinement",
+  "state": "READY_FOR_REVIEW",
+  "task": "UI-010: accessible account menu, responsive project navigation, status marks, assessment metadata and commit assessment links",
+  "branch": "feat/adam/console-graphite",
+  "latest_sha": "50440662add24d30f8b7491e2b05f7e090ee5217",
+  "prs": [],
+  "claims": [
+    "frontend/components/account-link.tsx",
+    "frontend/components/project.tsx",
+    "frontend/components/ui/index.tsx",
+    "frontend/components/commit-assessment-chips.tsx",
+    "frontend/app/(console)/layout.tsx",
+    "frontend/app/(console)/connect/[org]/[repo]/page.tsx",
+    "frontend/app/(console)/projects/[projectId]/assessments/[assessmentId]/page.tsx",
+    "frontend/app/interface.css",
+    "frontend/tests/unit/"
+  ],
+  "depends_on": [],
+  "blockers": [],
+  "last_update_utc": "2026-10-25T11:51:21Z",
+  "tests": "Frontend lint/typecheck/build passed; 91 unit files, 391 tests passed; selected E2E 20 passed, 1 stale landing-nav selector failed",
+  "next_action": "Commit and push console refinement; no PR or CI follow-up"
+}
