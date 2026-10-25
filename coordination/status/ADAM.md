@@ -39,6 +39,14 @@ Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablat
 
 ## Session entries
 
+### 2026-10-24 — GitHub onboarding + continuous-assessment hardening
+- Branch `fix/adam/github-onboarding-hardening` → PR against `main`.
+- Fixes: permanent GitHub failures record skipped events (no silent dead-letter); compare failure falls back to payload commits; `installation`/`repository` lifecycle events detach/rename monitored repos; connect verifies the installation still grants access; deploy doc corrected.
+- Tests: focused backend suites green; 11 new regression tests; ruff clean.
+- Live proof: genuine signed prod push delivery replayed through real local stack (embedded pg + API + worker + real App key/webhook secret); commit verified via GitHub API; event processed; assessment persisted.
+- Note for the App: subscribe to `Repository` events so `renamed`/`deleted` arrive (handled in code).
+
+
 ### 2026-10-25 — independent rehearsal reproduction + e2e false-alarm resolution
 
 - **Rehearsal independently reproduced** (this session, separate boot of `make dev`):
@@ -98,6 +106,7 @@ Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablat
 - Offline suite: 582 passed / 24 skipped (covers timeouts, cancel, kill switch, schema repair, provider outage, resume-after-restart, worktree/check refusals, specialist cannot-override).
 - Evidence: `security-agents/tests/artifacts/live/20261024T213713Z-MANIFEST.md` + report/tool-trace artifacts + recording JSONL.
 - Blockers: none. Next: PR review; keep `tests/artifacts/live/` naming convention.
+
 ### 2026-10-17 (cloud) — simulated demo + Lab command center + events-log cursor
 - `feat/adam/event-log-cursor-follow`: phase views follow `next_cursor` (cap 10,000 events).
 - `feat/adam/simulated-demo`: `/demo` labelled simulated walkthrough (ADR-0013), `DefenseMap`, Lab command center from the real bundle.

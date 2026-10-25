@@ -6,8 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
-- Audit the code-intelligence pipeline end to end: land the parse-safe secret redaction from PR #441, redact mid-line bare secret literals in calls/collections, flag non-literal route paths as IndexIssue findings instead of silently dropping them, add a labeled-question retrieval evaluation and a reproducible index benchmark, and record executed coverage/recall/isolation numbers in `code-intelligence/evidence/m2-index-retrieval-audit.json` with the full report in `docs/research/intel-pipeline-audit/`.
-
+- GitHub onboarding + continuous assessment hardening: a missing/renamed repo, deleted installation, or GC'd commit now records a skipped monitoring event with an actionable reason instead of retrying to dead-letter; compare failures fall back to payload commits; `installation deleted` / `repositories removed` / `repository renamed` lifecycle events now detach or rename monitored repositories; connecting a repository verifies the installation still grants access (403 with a reinstall hint when it doesn't); deploy doc corrected for App permissions, subscribed events, and the `automatic_assessments` default (opt-in OFF).
 - Readiness/diagnostics split infra liveness from assessment capability: `/readyz` now reports `status=ready|degraded|not_ready` (503 unless ready) with per-capability booleans for live model, GitHub App (configured; `GET /app`-verified), Vercel Sandbox env, artifact-store writability and worker heartbeats; new `/diagnostics` (org-owner auth required — worker ids, env-var names, queue counts, migration state are internal metadata) adds verified GitHub check, migration drift, queue counts and worker rows; `/healthz` gains `git_sha` + `schema_version`. Contract schema 0.22.0. Frontend adds `/api/frontend-version` + `deploy/verify_pair.sh` to detect Vercel/Railway schema skew before it breaks users. Worker liveness is heartbeat-backed (`worker_heartbeats`, migration 0017; `READYZ_REQUIRE_WORKERS` requires ≥1 in staging/production) and `last_poll_at` ensures a stopped claim loop cannot report as a healthy worker.
 - Rebuild the connect → organization → repository → commit flow: the commit page now loads
   the code review (headline, comments, real per-file diffs, patch, tests) on arrival instead
@@ -15,6 +14,7 @@ All notable changes are documented here. Format follows
   sector map — each saved tool call pinned to the part of the app it touched — or a labelled
   preview of the quick read when no run exists. Failed runs are marked on the agent rail; the
   organization page's repository rows are fully clickable.
+- Audit the code-intelligence pipeline end to end: land the parse-safe secret redaction from PR #441, redact mid-line bare secret literals in calls/collections, flag non-literal route paths as IndexIssue findings instead of silently dropping them, add a labeled-question retrieval evaluation and a reproducible index benchmark, and record executed coverage/recall/isolation numbers in `code-intelligence/evidence/m2-index-retrieval-audit.json` with the full report in `docs/research/intel-pipeline-audit/`.
 ### CI / release gate (2026-10-24)
 - Workflows run on every push/PR with per-job RUN/SKIP path gates (`scripts/ci/path_gate.py`); job ids made unique for required checks.
 - New manual `pilot-verify.yml` pipeline (static/unit, real DB, real sandbox, browser E2E, authorized live-model, hosted smoke, load/recovery).
