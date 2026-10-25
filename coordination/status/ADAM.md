@@ -453,3 +453,11 @@ Owner requested AI automation and Defense Lab OFF until explicitly enabled. Bran
 - #529 merged as `586370b0` (squash): eval report + scorer path-fallback regression tests + coordination notes are on main. CI was 8/8 green at merge.
 - Merge order flipped: `score_api.py`'s `_finding_paths` is now MODULE-level on main. #530 (feat/adam/release-gate) owns the now-inverted conflict — resolution sent directly to the release-gate session (keep module-level fn, drop their nested copy, keep all scored/unscored_reason additions).
 - Lane complete pending #530's rebase + my final verification of combined scoring (security/functional/unscored/missing-paths).
+
+### 2026-10-25 — release-gate lane (session f3c02abe, #530 MERGED + follow-ups)
+- #530 merged as `22454ef2`: always-on path gates, pilot-verify.yml, dead-letter jobs endpoint, scored-only evals, load probe, release doc — all on main. 19/19 checks green at merge.
+- Fixed `main` breakage again: `gitleaks` red at head `dc9a623a` — 11 planted fake-secret literals in two since-deleted test files (commits `5dcddb61` + `78067f94`, redaction test suites). History can't be rewritten → path-scoped `condition=AND` allowlist of the exact planted values in `.gitleaks.toml`. Merged via #571 (`2c8ad50d`).
+- Unblocked #570 (integration-lead redaction PR): fixed its `intel-tests` ruff E501 + merged main in (picks up the gitleaks allowlist). Comment posted on the PR. Its `intel-tests`+`gitleaks` should now pass; still integration-lead's to land.
+- #572 open (test-only): cross-org isolation regression for `GET /projects/{id}/jobs` (org-B member → 404; payload OR-clause arms covered) — the commander's remaining #530-review ask. Driver-DSN/kv scrub test deliberately dropped (redundant with #570's suite).
+- Parked branch `fix/adam/redaction-dsn-kv` superseded — redaction regex fixes now live in #570 (integration-lead owns them per commander stand-down). Commander's pilot-verify label map filed in `coordination/messages/2026-10-25T01Z-adam-to-commander-pilot-verify-labels.md` (riding #572).
+- Open fleet: #570, #572 (mine), #540, #538, #536, #532, #458, #412. Still needs Adam: branch protection on `main` (second unprotected breakage today), hosted URL + Anthropic key for live-model/hosted-smoke gates, merge sign-offs.
