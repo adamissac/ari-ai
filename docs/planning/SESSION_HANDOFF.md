@@ -73,6 +73,15 @@ adds an entry before ending.
 - Open: extend RLS fleet-wide needs per-request tenant GUC resolution — deferred; backups retention is deployment-level (documented).
 - Warnings: `test_repository_has_a_single_migration_head` expects head 0016 — next migration must update it to 0017.
 
+
+### 2026-10-24 — Devin (agent, Adam) — pilot launch package + CONDITIONAL GO
+- Did: audited `main` (`d0131167`) and the hosted deployment (`readyz`: llm live, GitHub App + webhook configured) for pilot readiness; coordinated with the privacy workstream session for verified private-code data-flow facts; wrote the full pilot launch package under `docs/pilot/` (scope+exclusions, feature matrix, onboarding+revocation checklist, DATA_HANDLING draft, operations, metrics/health report, risk register, rehearsal+first-five plan, LAUNCH_DECISION).
+- State of the code (verified): no DELETE endpoints or retention jobs exist — deletion is operator-run only; GitHub App holds Contents+PR write at app level with least-privilege per-call tokens (deploy doc's "read-only" line is stale — flagged R-11); Probe has exactly 3 executable check categories; `readyz` live-configured; quotas 400k tok/$10/1800s manual, 150k/$3/900s monitoring, 5/h-20/d auto, $50/day global.
+- Commands run and results: route/grep audits of backend/frontend/shared/security-agents; `curl readyz` → all true; eval baseline from `security-agents/evals/commits/` + handoff records.
+- Decisions made: CONDITIONAL GO with 8 conditions (C1–C8) and documented exceptions — see `docs/pilot/LAUNCH_DECISION.md`.
+- Next steps: run the staging rehearsal before customer 1; merge #441 (redaction parse fix) recommended pre-indexing; reference privacy session's threat-model/retention docs in DATA_HANDLING.md when they land.
+- Warnings for the next session: do not upgrade feature-matrix labels without new executed evidence; pilot claims track `main` only — open PRs #496/#458/#441/#412/#517 are branch-only.
+
 ### 2026-10-24 — Devin (agent, Adam) — leaked Vercel snapshot cleanup, push→agents verification
 - Did: verified the named-sandbox snapshot-leak fix already on main (`persistent: False` on run boxes + `destroy` in teardown + `_sweep_stale`); opened PR #495 making the sweep also delete stale run boxes' orphan snapshots so leaked quota is actually freed. Confirmed `delete_orphan_snapshots` only removes snapshots created *by* the destroyed sandbox — the shared `ari-base-*` snapshot can never be an orphan of a run box. Verified on main: security-agents suite 581 passed / 24 skipped, frontend typecheck + 330 vitest + lint clean, standards smoke (CWE/OWASP/CVSS/ATT&CK/D3FEND/SARIF/SP 800-115) passes. Confirmed agents are standards-grounded in code: Scout CWE/OWASP, Probe CWE, Trace ATT&CK/CVSS, Diagnose D3FEND, Fortify CWE/D3FEND; Patch/Verify get standards context via the tagged finding + remediation plan, not prompts.
 - State of the code: push→agents path gates are code-verified (`pipeline.process_github_delivery` → `auto_commits.schedule` → `assess_github_commit`): `repositories.automatic_assessments` (per-repo opt-in, UI switch exists), `GITHUB_AUTO_COMMIT_AUTHORS` (Railway entrypoint defaults `*`), `monitoring_policy.enabled` (project setting, UI switch), active `AuthorizedScope`. All four must be on for pushes to spawn runs — they are product gates, not bugs.
@@ -1784,6 +1793,13 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - Review packet regenerated with the role sample; its import allowlist now includes `datetime` (needed by `{expires_in_days}` renders).
 - **Incident:** `chore/agent-commit-cadence` was accidentally cut from `eval/20261024-142809/idor_project_cache_before_auth` and carried the planted `_PROJECT_CACHE` vuln — PR e2e caught it correctly (`toHaveValue('900')` got stale `600`). Rebased it off; the vuln stays only on its eval branch. Lesson: always `git checkout -b <branch> origin/main`, never off the current checkout.
 - Eval run 2 (tag `20261024-142809`, 45 cases) in flight with specialist Scout live: mid-run shows vuln flagged 20/24, benign FP 0/13, median 69s (~2× faster than the 153s baseline).
+
+## 2026-10-24 — Devin (Adam): pilot rehearsal — live leg executed
+
+- `backend/tests/test_pilot_rehearsal_live.py` (opt-in `REHEARSAL_LIVE=1`): real Postgres+API+worker, two orgs, ledgerlite target bound via `register_binding`, `security_sandbox=vercel`. Assessment `asm_01M5QZY2E3Y0D2D44Q0PG6QBWX` COMPLETED: 13 LLM calls / 30 tool calls / $0.0126 / 13.2s real Vercel Sandbox. All agent_runs `provider_mode=live` asserted; eve→404 on finding + transcripts.
+- Two gotchas for live runs inside pytest: conftest blanks `ANTHROPIC_API_KEY` (restore via `HACKATL_LIVE_ANTHROPIC_API_KEY` through `settings_override`), and the vercel driver needs `VERCEL_TOKEN`+`VERCEL_PROJECT_ID`+`VERCEL_TEAM_ID` in env (project/team IDs fetchable via `GET /v9/projects` with the token).
+- PR #441 merged (3d023d55). PR #535: gitleaks false-positive fixed — commit 839737fc's `rehearsal/README.md` (history-only, fake fixture bearers) tripped `curl-auth-header`; targeted `.gitleaks.toml` allowlist pushed (083dd40f). NOTE: that rehearsal commit also carried a `Co-Authored-By: Devin AI` trailer — attribution-rule violation already in merged history; can't fix without rewriting.
+- Rehearsal target staged at `/Users/devin/repos/pilot-rehearsal-target` (ledgerlite, planted CWE-639 IDOR, 6 tests). Still needed from Adam: `adamissac/pilot-rehearsal-target` GitHub repo (App install: Contents RW + PR RW + Metadata read) + browser OAuth sign-in on the session Desktop for the prod leg.
 
 ## 2026-10-24 — Devin (Adam): inventory-lite rehearsal fixture
 
