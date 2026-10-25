@@ -75,31 +75,33 @@ the RL system consumes these as observations in simulation only.
   existing active AuthorizedScope; if none, the request is recorded as
   `blocked_no_scope`.
 
-## Full per-commit rollout (implemented 2026-10-21)
+## Project code reviewer settings
 
-When `GITHUB_AUTO_COMMIT_AUTHORS` is nonempty, GitHub pushes use a separate full
-assessment scheduling policy: one durable job per repository/SHA, GitHub-verified
-author allowlist, no path-based skipping and no coalescing loss. Railway defaults
-to an empty allowlist, which disables per-commit full runs. With repository
-`automatic_assessments` ON, pushes fall back to the legacy impact-gated, coalesced
-monitoring policy above (project `monitoring_policy`, active scope and monitoring
-budget; at most one open monitoring assessment per repository). Set a
-comma-separated list or `*` to opt in to per-commit full runs.
-This mode uses the normal project assessment budget, clamped by operator limits,
-instead of the cheaper monitoring budget above. Monitoring enablement and scope
-authorization still apply; scope approval wakes blocked commits. Repair gates
-remain human decisions. Empty config retains the legacy impact policy described
-above. The new path does not backfill commits received before a repository was
-connected, and full execution still depends on configured workers, model access,
-repository checkout and an executable authorized sandbox target.
+When a repository's `automatic_assessments` switch is ON, GitHub pushes and pull
+requests first pass the project's reviewer eligibility filters. A blank, quoted-empty,
+or standalone `*` `GITHUB_AUTO_COMMIT_AUTHORS` value uses the impact-gated monitoring
+pipeline; a nonempty comma-separated value selects the per-commit reviewer scheduler.
+Both paths apply `review_pushes`,
+`review_pull_requests`, `review_draft_prs`, branch globs, author globs, finding
+strictness, PR comments and an optional hourly cap in Project Settings. Branch
+and author globs are case-insensitive. Empty push include-branches means the
+default branch; empty PR include-branches means every base branch. Empty author
+includes means everyone; `*[bot]` is excluded by default. Strictness filters only
+the PR comment; all findings remain stored.
+
+For the per-commit path, `GITHUB_AUTO_COMMIT_AUTHORS` restricts the signed push
+sender and GitHub-attributed commit author. The repository opt-in, project
+monitoring enablement, active approved scope, project budget, worker/model
+availability and the global daily spend cap still apply. The server allows 10
+assessments per rolling hour and 50 per rolling day across triggers; a project
+may lower, but not raise, its hourly limit.
 
 
 ### Automatic/manual repository mode and Haiku 5.5 (#380)
 
 Each connected repository has a persisted `automatic_assessments` switch, default
-OFF. ON enables push-triggered processing: with a nonempty author allowlist, every
-eligible new commit queues a full run; with an empty allowlist, pushes use the legacy
-monitoring policy above. OFF prevents unstarted automatic work and exposes manual Run on
+OFF. ON enables reviewer scheduling for eligible pushes and pull requests according
+to project reviewer settings. OFF prevents unstarted automatic work and exposes manual Run on
 selected commits; active runs and history remain intact. GET/PATCH
 `/api/v1/repositories/{repo_id}` returns Repository; PATCH requires a project owner
 and is audited. Migration 0009 adds the flag; schema 0.15.0 adds RepositoryUpdate
@@ -107,16 +109,19 @@ and regenerates JSON/TypeScript. Deploy the backend and frontend together.
 For strictly manual operation, keep this switch OFF per repository (or disable
 project monitoring); manual Run remains available when the repository switch is OFF.
 
-Per-commit full runs require a nonempty `GITHUB_AUTO_COMMIT_AUTHORS` allowlist; both
-the signed push sender and GitHub-attributed commit author must match it. With the
-empty Railway default, enabled repositories use the legacy monitoring policy above.
-Attribution alone is email-derived, not authorization. Automatic starts count all
-project triggers toward 10 assessments per rolling hour and 50 per rolling day;
-manual starts count only manual-trigger assessments against those limits. A $50/day
-spend cap still applies globally across all triggers and projects. Over-quota
-automatic requests are recorded as skipped, not deferred. Full runs use the normal
-project budget, clamped to operator caps. Monitoring and approved sandbox scope
-remain prerequisites; repair approvals remain required.
+When configured with a nonempty comma-separated list, `GITHUB_AUTO_COMMIT_AUTHORS`
+restricts the signed push sender and GitHub-attributed commit author for per-commit
+full runs. Blank, quoted-empty, or standalone `*` values use the impact-gated
+monitoring policy above; project reviewer settings filter both paths. Attribution
+alone is email-derived, not authorization.
+
+Automatic starts count all project triggers toward 10 assessments per rolling hour
+and 50 per rolling day; manual starts count only manual-trigger assessments against
+those limits. Owners may lower the hourly limit per project. A $50/day spend cap
+still applies globally across all triggers and projects. Over-quota automatic
+requests are recorded as skipped, not deferred. Full runs use the normal project
+budget, clamped to operator caps. Monitoring and approved sandbox scope remain
+prerequisites; repair approvals remain required.
 
 Production/staging gateway, Railway startup and frontend quick reads enforce
 `claude-haiku-5-5` only, overriding stale production model choices. Errors are

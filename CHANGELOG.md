@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Added a guided repository setup walkthrough (`/projects/<id>/setup?repo=<repoId>`): connecting a repository now lands there, and it walks through authorizing testing, tuning the code reviewer, choosing fix delivery (pull request is preselected), and starting the first review. The setup page also has decorative floating background shapes that stop moving when reduced motion is on.
 - Live commit analysis no longer needs a `GITHUB_TOKEN` PAT on Vercel: `POST /api/analyze`
   reads the commit diff through the new backend route `GET /api/v1/github/commit`, which
   resolves the caller's own GitHub App installation (403 when the repo is not reachable
@@ -16,9 +17,17 @@ All notable changes are documented here. Format follows
   default branch when connected through the GitHub App.
 - Verify now honors repository-declared `protected_tests` from `build_recipe.json` in its no-tampering check.
 - Added independent 70/80/90% storage alerts and Prometheus gauges for the app data volume mounted at `/data`.
+- Restored impact-gated monitoring for a blank, quoted-empty, or standalone `*`
+  `GITHUB_AUTO_COMMIT_AUTHORS` value. Project reviewer filters now gate both the
+  impact path and per-commit rollout scheduling; impact-path PR assessments can
+  also post comments using the pull request number on their triggering event.
+- Added project Code reviewer controls for push/PR eligibility, branch and author filters, finding strictness, PR comments, and an optional hourly cap. Empty or `*` `GITHUB_AUTO_COMMIT_AUTHORS` no longer blocks reviewer scheduling.
+- Railway defaults `GITHUB_AUTO_COMMIT_AUTHORS` to empty, which adds no global author restriction; project reviewer settings determine eligibility. Repository `automatic_assessments` remains an explicit opt-in, and manual Run remains available.
 - Quota reset timestamps now reflect when an over-limit rolling hour or day window actually falls below its limit.
-- Railway now defaults `GITHUB_AUTO_COMMIT_AUTHORS` to empty, disabling per-commit full runs while enabled repositories fall back to the legacy impact-gated, coalesced monitoring policy; `*` or a comma-separated GitHub login list opts into per-commit full runs. Strictly manual operation requires `automatic_assessments` OFF per repository (or project monitoring disabled); manual Run remains available.
+- With a blank, quoted-empty, or standalone `*` `GITHUB_AUTO_COMMIT_AUTHORS` value, enabled repositories use the impact-gated, coalesced monitoring policy; a non-empty comma-separated login list opts into per-commit full runs. Project reviewer filters apply to both paths. Strictly manual operation requires `automatic_assessments` OFF per repository (or project monitoring disabled).
+- Railway defaults `GITHUB_AUTO_COMMIT_AUTHORS` to empty, which imposes no global author restriction; project reviewer settings determine eligibility. Repository `automatic_assessments` remains an explicit opt-in, and manual Run remains available.
 - Authenticated GET/HEAD requests now have a separate 600/minute per-user limit; mutations retain 60/minute. Automatic assessment quotas count all project triggers (10 per rolling hour, 50 per rolling day), while manual starts count only manual-trigger assessments. All starts remain subject to the global $50 rolling-day spend cap; manual quota blocks return 429 with a reset time, and automatic over-quota requests are skipped without requeueing.
+- Automatic assessments count all project triggers toward the 10/hour and 50/day limits; manual starts count only manual-trigger assessments. The optional per-project hourly cap may lower the server limit. All starts remain subject to the global $50 rolling-day spend cap; manual blocks return 429 with a reset time, and automatic over-quota requests are skipped without requeueing.
 - Allow migrations to use an optional database URL separate from the app role.
 
 - Verify-tested diffs are also stored as sealed, delivery-only artifacts. Delivery checks their

@@ -16,6 +16,15 @@ adds an entry before ending.
 - Warnings for the next session:
 ```
 
+### 2026-10-26 — Devin (agent, Adam) — preserve impact-gated reviewer monitoring (#593)
+- Did: restored `origin/main`'s impact/correlation/quota/reassessment path while adding one shared reviewer-eligibility gate before either impact processing or the per-commit scheduler. Quoted-empty and sole `*` global settings route to impact monitoring. Added filter coverage for both routes and an impact-path pull-request comment test using the reassessment request's event IDs.
+- State of the code: both routes use `reviewer_ignore_reason`; ignored events are recorded before impact work. Impact-created PR assessments enqueue a deduplicated review and resolve the PR number from their triggering monitoring event.
+- Commands run and results: `uv run pytest -q backend/tests` — 510 passed, 8 skipped; `uv run pytest -q backend/tests/test_payload_store_intel_integration.py` — 1 passed; `make check` passed (217 files formatted, 156 contract files unchanged); `uv run mypy` passed (40 source files).
+- Decisions made (ADR links): preserve the legacy impact-gated monitoring path per owner decision.
+- Assumptions / open questions (RQ links): none.
+- Next steps: push `feat/adam/reviewer-settings`, merge it into `feat/adam/repo-setup-walkthrough`, then report; CI is not part of this handoff.
+- Warnings for the next session: the full backend suite has 8 expected environment-gated skips and one existing SQLAlchemy deprecation warning.
+
 ### 2026-10-25 — Devin (agent, Adam) — project page limits
 - Did: separated authenticated GET/HEAD requests into a 600/minute per-user bucket; writes retain 60/minute. Manual project quotas now count manual-trigger assessments only, while automatic checks still count all triggers; the global $50/day spend query remains unchanged.
 - State of the code: implemented on `fix/adam/project-page-limits`; no production systems or the manual stack were touched. The branch is one unrelated frontend E2E commit behind `origin/main` (`511add9f`), which was not merged.
@@ -24,7 +33,6 @@ adds an entry before ending.
 - Assumptions / open questions (RQ links): none.
 - Next steps: commit and push; do not watch post-push CI until re-briefed.
 - Warnings for the next session: PR #593 changes the hourly-cap logic in `backend/backend/quota.py`; this branch's manual filtering also edits `check_project_quota`, so preserve both when integrating.
-
 ### 2026-10-25 — Devin (agent, Adam) — app data-volume storage alerts
 - Did: added independent 70/80/90% reporting, webhook alerts, and Prometheus gauges for the app data volume; documented `DATA_VOLUME_BYTES` / `DATA_VOLUME_PATH` and Railway's decimal `sizeMB` conversion.
 - State of the code: data-volume sizing defaults to disabled (`DATA_VOLUME_BYTES=0`) while usage is reported if the configured path exists; the path defaults to `/data`.

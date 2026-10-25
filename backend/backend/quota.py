@@ -10,6 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.engine import Connection
 
 from backend.db import assessments
+from backend.services import project_settings
 from backend.settings import get_settings
 from shared.assessment import AssessmentTrigger
 
@@ -69,7 +70,13 @@ def check_project_quota(
     hour_count, hour_oldest = conn.execute(
         sa.select(sa.func.count(), sa.func.min(assessments.c.created_at)).where(*hour_filters)
     ).one()
-    if hour_count >= settings.project_assessments_per_hour and hour_oldest is not None:
+    project_hour_cap = project_settings(conn, project_id).review.max_reviews_per_hour
+    hour_limit = (
+        min(settings.project_assessments_per_hour, project_hour_cap)
+        if project_hour_cap is not None
+        else settings.project_assessments_per_hour
+    )
+    if hour_count >= hour_limit and hour_oldest is not None:
         return QuotaDecision(
             "hour",
             _quota_resets_at(
@@ -78,10 +85,10 @@ def check_project_quota(
                 now,
                 hour_window,
                 hour_count,
-                settings.project_assessments_per_hour,
+                hour_limit,
                 manual=manual,
             ),
-            settings.project_assessments_per_hour,
+            hour_limit,
         )
 
     day_filters = [
