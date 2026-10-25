@@ -315,7 +315,6 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
         return policy_exit(p, "repository installation changed")
     if repo["disconnected_at"] is not None:
         return policy_exit(p, "repository disconnected")
-    commit = github_client().commit(repo["installation_id"], repo["full_name"], p["sha"])
     try:
         commit = github_client().commit(repo["installation_id"], repo["full_name"], p["sha"])
     except httpx.HTTPStatusError as exc:
