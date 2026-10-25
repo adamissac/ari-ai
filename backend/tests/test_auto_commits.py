@@ -796,7 +796,10 @@ def test_reviewer_filters_allow_matching_events(automatic, settings, author, bra
     assert job
 
 
-@pytest.mark.parametrize("allowlist", ["", "*", "adamissac,teammate"])
+@pytest.mark.parametrize(
+    "allowlist",
+    ["", '""', "''", "  ", "*", "adamissac,teammate", '"adamissac","teammate"'],
+)
 def test_empty_star_and_comma_global_author_allowlist_semantics(
     automatic, settings_override, allowlist
 ):

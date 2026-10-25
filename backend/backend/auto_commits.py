@@ -66,9 +66,16 @@ def github_client() -> GitHubApp:
 
 
 def authors() -> set[str]:
-    return {
-        s.strip().lower() for s in get_settings().github_auto_commit_authors.split(",") if s.strip()
-    }
+    def clean(value: str) -> str:
+        return value.strip().strip("\"'").strip()
+
+    configured = clean(get_settings().github_auto_commit_authors)
+    allowed: set[str] = set()
+    for value in configured.split(","):
+        entry = clean(value)
+        if entry:
+            allowed.add(entry.lower())
+    return allowed
 
 
 def _matches(patterns: list[str], value: str) -> bool:
