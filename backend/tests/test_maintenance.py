@@ -115,9 +115,14 @@ def test_expired_sessions_and_idempotency_pruned(client_factory) -> None:
             ).scalar_one()
             == 0
         )
-        assert conn.execute(
-            sa.select(sa.func.count()).select_from(sessions).where(sessions.c.token_hash == "live" * 16)
-        ).scalar_one() == 1
+        assert (
+            conn.execute(
+                sa.select(sa.func.count())
+                .select_from(sessions)
+                .where(sessions.c.token_hash == "live" * 16)
+            ).scalar_one()
+            == 1
+        )
         assert (
             conn.execute(sa.select(sa.func.count()).select_from(idempotency_keys)).scalar_one() == 1
         )
