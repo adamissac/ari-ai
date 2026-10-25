@@ -21,7 +21,7 @@ import {
 import { projectOverview } from '@/lib/overview';
 import { pillarLoop } from '@/lib/pillars';
 import { START_ASSESSMENT_NOTE } from '@/lib/start-assessment';
-import { ASSESSMENT_STATE, FINDING_STATUS, SNAPSHOT_STATUS, TERMINAL_STATES } from '@/lib/status';
+import { ASSESSMENT_STATE, effectiveScopeStatus, FINDING_STATUS, SNAPSHOT_STATUS, TERMINAL_STATES } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
 
 const SHA = /^[0-9a-f]{7,40}$/;
@@ -36,7 +36,7 @@ export default function ProjectOverview() {
   const findingItems = findings.status === 'ready' ? findings.data.items : [];
   const scopeItems = scopes.status === 'ready' ? scopes.data.items : [];
   // Null (unknown) until scopes have loaded; never zero by default.
-  const activeScopeCount = scopes.status === 'ready' ? scopeItems.filter(s => s.status === 'active').length : null;
+  const activeScopeCount = scopes.status === 'ready' ? scopeItems.filter(s => effectiveScopeStatus(s) === 'active').length : null;
   const summary = projectOverview({
     projectId: project.id,
     repoCount: repos.length,
@@ -303,7 +303,7 @@ function StartAssessment({ onStarted }: { onStarted: () => void }) {
   const [key, setKey] = useState<{ sig: string; value: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
-  const active = scopes.status === 'ready' ? scopes.data.items.filter(s => s.status === 'active') : [];
+  const active = scopes.status === 'ready' ? scopes.data.items.filter(s => effectiveScopeStatus(s) === 'active') : [];
   const selection = assessmentSelection(repoId, scopeId, repos, active);
   const conflict = error instanceof ApiError && error.status === 409 && error.error.code === 'IDEMPOTENCY_CONFLICT';
 
