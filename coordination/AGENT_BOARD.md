@@ -3,7 +3,7 @@
 
 # Agent board — live coordination dashboard
 
-Regenerated <built-in method strftime of datetime.datetime object at 0x109e10f00>. Comms channel: [issue #559](https://github.com/adamissac/ari-ai/issues/559). Protocol: `coordination/PROTOCOL.md`.
+Regenerated <built-in method strftime of datetime.datetime object at 0x1056bfed0>. Comms channel: [issue #559](https://github.com/adamissac/ari-ai/issues/559). Protocol: `coordination/PROTOCOL.md`.
 
 ## Active agents
 
@@ -11,10 +11,12 @@ Regenerated <built-in method strftime of datetime.datetime object at 0x109e10f00
 | --- | --- | --- | --- | --- | --- | --- |
 | alan-live-defense | Alan | security-agents/, live-defense Phase 6.5/7A/7C, interim shared/ contract approver | BLOCKED | Phase 7C authorized Scout/Diagnose execution (#458); Phase 6.5 RL-gated pilot infra (#412) | feat/alan/live-defense-phase7c-agent-execution, feat/live-defense-phase6-5-rl-gated-pilot | 9486a5b0 |
 | code-review-eval | Adam | standalone functional AI code reviewer evaluation + scorer integration | DONE | Reviewer eval report merged (#529); combined scorer verified on merged release-gate head | docs/reviewer-eval-report (merged), docs/adam/status-final-verification | 19a16af0 |
-| devin-frontend-ui | Adam | frontend UI — landing rework + SaaS sidebar console revamp; pilot-readiness support (coordination lane) | READY_FOR_REVIEW | PR #536 landing + console revamp green/mergeable (owner review required); tracked #570 redaction fix — commander ruling adopted over-redaction, in CI; assessing remaining pilot work | feat/adam/home-deep-sea-landing | 9e89652e |
+| devin-defense-lab | Adam | Defense Lab pilot audit + two-org rehearsal + live-deployment rehearsal leg | BLOCKED | Live leg on adamissac/pilot-rehearsal-target: 2 pushes delivered 202 (recipe merge 256c8e8 @00:40, re-trigger 7cf48de @01:06) — no assessment/fix PR after ~25min; outcome only visible in prod UI/DB | feat/adam/defense-lab-pilot-audit | 6ffaccda |
+| devin-frontend-ui | Adam | frontend UI — landing rework + SaaS sidebar console revamp; pilot-readiness support (coordination lane) | DONE | PR #536 landing + console revamp MERGED; #570 redaction fix merged on main (customer-code indexing unblocked); pilot workstream assessed — remaining items owner-blocked or other agents' lanes | feat/adam/home-deep-sea-landing | e44d27d7 |
+| devin-frontend-ux | Adam | first-user usability — pilot UX workstream (PR #538 on #496) | READY_FOR_REVIEW | Named approval cards, two-step approve/confirm on assessment page + approvals inbox, plain-English replay (plainToolName), honest quick-read errors, flow map + blockers doc | feat/adam/first-user-usability | c890e2c9 |
 | devin-intel-audit | Adam | code-intelligence engine + persistent memory pilot-readiness audit; secret redaction hardening | READY_FOR_REVIEW | PR #531: executed audit report + parse-safe redaction (#441 fix carried verbatim) + mid-line secret redaction + honest route-gap IndexIssues + retrieval eval + index benchmark | feat/adam/intel-pipeline-audit | 46a734b3 |
 | devin-pipeline-fixer | Adam | fixing agent pipeline failures; intel-store retry; eval-runner retry; pilot rehearsal v2; ops retention | WORKING | Eval run 3 scoring (eval/20261024-153652); #538 main-merge resolved for integration lead | fix/intel-store-orphan-retry, fix/eval-runner-retry, ari/fix-pat_01M5R13A056A25J7ZXWHHDZ9SN, feat/adam/pilot-rehearsal-v2, docs/adam/live-inventory-rehearsal-evidence, fix/adam/postgres-storage-retention, docs/devin-pilot-handoff | 5a56e44c |
-| integration-lead | Adam | PR release management, merge ordering, pilot readiness verification | WORKING | Integrate pilot-ready PRs in dependency order; run pilot-verify against final main | (merges land on main) | ad282cf4 |
+| integration-lead | Adam | PR release management, merge ordering, pilot readiness verification | BLOCKED | Integrate pilot-ready PRs in dependency order; run pilot-verify against final main | (merges land on main) | f329ce2e |
 
 ## PR ownership and merge order
 
@@ -22,32 +24,39 @@ Regenerated <built-in method strftime of datetime.datetime object at 0x109e10f00
 | --- | --- | --- | --- | --- | --- |
 | #412 | ? | ? | ? | alan-live-defense | 1 |
 | #458 | ? | ? | ? | alan-live-defense | 0 |
-| #496 | ? | ? | ? | integration-lead | 20 |
-| #527 | ? | ? | ? | integration-lead | 14 |
-| #528 | ? | ? | ? | integration-lead | 15 |
 | #529 | ? | ? | ? | code-review-eval | 2 |
-| #530 | ? | ? | ? | integration-lead | 16 |
-| #531 | ? | ? | ? | devin-intel-audit | 5 |
-| #532 | ? | ? | ? | integration-lead | 19 |
-| #533 | ? | ? | ? | integration-lead | 18 |
-| #536 | ? | ? | ? | devin-frontend-ui | 4 |
-| #538 | ? | ? | ? | integration-lead | 21 |
-| #540 | ? | ? | ? | integration-lead | 17 |
-| #542 | ? | ? | ? | devin-pipeline-fixer | 6 |
-| #543 | ? | ? | ? | devin-pipeline-fixer | 7 |
-| #546 | ? | ? | ? | devin-pipeline-fixer | 8 |
-| #554 | ? | ? | ? | devin-pipeline-fixer | 9 |
-| #555 | ? | ? | ? | devin-pipeline-fixer | 10 |
-| #556 | ? | ? | ? | devin-pipeline-fixer | 11 |
-| #557 | ? | ? | ? | integration-lead | 13 |
-| #558 | ? | ? | ? | devin-pipeline-fixer | 12 |
+| #531 | ? | ? | ? | devin-intel-audit | 11 |
+| #532 | ? | ? | ? | devin-defense-lab | 4 |
+| #536 | ? | ? | ? | devin-frontend-ui | 9 |
+| #538 | ? | ? | ? | devin-frontend-ux | 10 |
+| #540 | ? | ? | ? | integration-lead | 26 |
+| #541 | ? | ? | ? | devin-defense-lab | 5 |
+| #542 | ? | ? | ? | devin-pipeline-fixer | 12 |
+| #543 | ? | ? | ? | devin-pipeline-fixer | 13 |
+| #544 | ? | ? | ? | devin-defense-lab | 6 |
+| #546 | ? | ? | ? | devin-pipeline-fixer | 14 |
+| #549 | ? | ? | ? | devin-defense-lab | 7 |
+| #554 | ? | ? | ? | devin-pipeline-fixer | 15 |
+| #555 | ? | ? | ? | devin-pipeline-fixer | 16 |
+| #556 | ? | ? | ? | devin-defense-lab | 8 |
+| #557 | ? | ? | ? | integration-lead | 18 |
+| #558 | ? | ? | ? | devin-pipeline-fixer | 17 |
+| #560 | ? | ? | ? | integration-lead | 19 |
+| #561 | ? | ? | ? | integration-lead | 20 |
 | #563 | ? | ? | ? | code-review-eval | 3 |
+| #567 | ? | ? | ? | integration-lead | 21 |
+| #570 | ? | ? | ? | integration-lead | 22 |
+| #571 | ? | ? | ? | integration-lead | 23 |
+| #572 | ? | ? | ? | integration-lead | 25 |
+| #573 | ? | ? | ? | integration-lead | 24 |
 
 ## File / subsystem claims
 
 - **alan-live-defense**: `security-agents/`, `backend/backend/live_defense/`, `frontend/components/live-defense/`, `shared/ contract bumps (interim approver)`
 - **code-review-eval**: `code-review/eval/REVIEWER_EVAL_2026-10-24.md`, `security-agents/tests/test_eval_score_api.py`
+- **devin-defense-lab**: `scripts/rehearsal/run_rehearsal.py driver (shared w/ pipeline-fixer)`, `docs/DEFENSE_LAB_*`, `backend/backend/live_defense/quarantine.py`, `live-deployment rehearsal verification`
 - **devin-frontend-ui**: `frontend/`, `docs/planning/SESSION_HANDOFF.md (append-only)`, `CHANGELOG.md (append-only)`
+- **devin-frontend-ux**: `frontend/components/assessment-approval-gate.tsx`, `frontend/components/commit-run-workspace.tsx`, `frontend/lib/demo/agent-map.ts`, `frontend/app/(console)/projects/[projectId]/approvals/page.tsx`, `frontend/tests/e2e/journey.spec.ts`, `frontend/tests/e2e/commit-workspace.spec.ts`, `docs/planning/FIRST_USER_FLOW_AND_USABILITY.md`
 - **devin-intel-audit**: `code-intelligence/code_intelligence/privacy.py`, `code-intelligence/code_intelligence/extract.py`, `code-intelligence/tests/`, `code-intelligence/evidence/`, `docs/research/intel-pipeline-audit/`, `coordination/messages/*intel*`
 - **devin-pipeline-fixer**: `backend tests for get_project authz`, `evals/commits scorer`, `rehearsal tooling`, `scripts/rehearsal/`, `storage/retention ops`
 - **integration-lead**: `coordination/AGENT_BOARD.md`, `coordination/messages/2026*-devin-integration-lead-*`, `fix/test-sandbox-target-method`
@@ -55,9 +64,10 @@ Regenerated <built-in method strftime of datetime.datetime object at 0x109e10f00
 ## Dependencies
 
 - **alan-live-defense** depends on Adam's explicit approval required before any live-defense merge
-- **devin-frontend-ui** depends on integration-lead merge order (position 18)
-- **devin-frontend-ui** depends on owner review of #536 before merge
-- **devin-frontend-ui** depends on commander merge hold until prod 502 resolves
+- **devin-defense-lab** depends on integration-lead merge order
+- **devin-defense-lab** depends on owner check of prod Assessments view for pilot-rehearsal-target
+- **devin-defense-lab** depends on #571 gitleaks allowlist merge (unblocks #532)
+- **devin-frontend-ux** depends on PR #496 (base branch) merge — integration-lead wave 4
 - **devin-intel-audit** depends on integration-lead merge order (position 13)
 - **devin-intel-audit** depends on #535 RLS/purge as second layer (merged)
 - **devin-pipeline-fixer** depends on integration-lead merge order
@@ -67,17 +77,21 @@ Regenerated <built-in method strftime of datetime.datetime object at 0x109e10f00
 
 - **alan-live-defense**: #458 and #412 held per owner order
 - **alan-live-defense**: schema: main moving to 0.22.0 — #412 reserved 0.20.0 must rebase to 0.22.0+
-- **devin-frontend-ui**: prod API 502 since ~01:27Z — merges paused per commander; Railway logs owner-only
-- **devin-frontend-ui**: #536 merge requires owner review
+- **devin-defense-lab**: prod assessment not externally observable — no assessment id/state/findings to report
+- **devin-frontend-ui**: rehearsal production leg (C6): owner creates private repo + installs GitHub App + OAuth sign-in
+- **devin-frontend-ui**: held Alan-lane PRs #458/#412 per owner
+- **integration-lead**: prod 502 since ~01:27Z on deploy 2c8ad50d — merges paused per pilot-completion-commander hold; Railway logs Adam-only
 
 ## Next actions
 
 - **alan-live-defense**: hold; rebase onto post-integration main when asked
 - **code-review-eval**: none — workstream complete; #530 carries inverted score_api conflict resolution (verified clean) and is ready for final security review + merge by integration lead. Re-verify only if scorer code changes again.
-- **devin-frontend-ui**: monitor #570 CI + prod recovery; pick up unblocked pilot staging prep that does not need owner credentials
+- **devin-defense-lab**: owner checks prod project Assessments view; merge #571 then #532 goes green
+- **devin-frontend-ui**: none — workstream complete; standing by for owner-direction
+- **devin-frontend-ux**: hold for integration-lead merge after #496; watch CI on current head
 - **devin-intel-audit**: await CI green on 46a734b3 then merge at board position 13
 - **devin-pipeline-fixer**: score eval3 on completion; post baselines to Adam; confirm eval branches self-cleaned
-- **integration-lead**: merge green PRs in order; refresh each branch with main first
+- **integration-lead**: when prod green: merge #570 -> #540 -> #532 -> #538 -> #536(owner decision) -> #572 -> #573; then pilot-verify.yml vs final main SHA
 
 ## How to update
 
