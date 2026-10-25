@@ -49,9 +49,13 @@ from backend.db import (
     transaction,
     verification_results,
 )
+from backend.db import (
+    jobs as jobs_table,
+)
 from backend.github import GitHubApp, GitHubNotConfigured
 from backend.integrations import load_factory
 from backend.quota import check_project_quota, rate_limit_message
+from backend.redaction import redact_text
 from backend.services import (
     DomainError,
     budget_over_cap,
@@ -69,6 +73,7 @@ from shared.api import (
     AssessmentDetail,
     AssessmentReport,
     FindingDetail,
+    PatchDelivery,
     PatchView,
     ProjectCreate,
     ProjectUpdate,
@@ -1301,7 +1306,7 @@ def get_finding(finding_id: str, request: Request) -> dict[str, Any]:
 @router.get("/findings/{finding_id}/patches")
 def get_patches(finding_id: str, request: Request) -> dict[str, Any]:
     with transaction() as conn:
-        _finding_access(conn, _user(conn, request), finding_id)
+        finding = _finding_access(conn, _user(conn, request), finding_id)
         items = []
         for d in conn.execute(
             sa.select(patch_candidates.c.doc)
@@ -1313,10 +1318,77 @@ def get_patches(finding_id: str, request: Request) -> dict[str, Any]:
                 .where(verification_results.c.patch_id == d["id"])
                 .order_by(verification_results.c.created_at.desc())
             ).scalar()
+            delivery_event = conn.execute(
+                sa.select(audit_events.c.doc)
+                .where(
+                    audit_events.c.project_id == finding["project_id"],
+                    audit_events.c.doc["subject_type"].astext == "patch",
+                    audit_events.c.doc["subject_id"].astext == d["id"],
+                    audit_events.c.doc["action"].astext.in_(
+                        (
+                            "delivery.pr_opened",
+                            "delivery.pushed",
+                            "delivery.failed",
+                            "delivery.skipped",
+                        )
+                    ),
+                )
+                .order_by(audit_events.c.seq.desc())
+                .limit(1)
+            ).scalar()
+            patch_delivery = None
+            if delivery_event is not None:
+                action = delivery_event["action"]
+                details = delivery_event.get("details") or {}
+                at = delivery_event.get("at")
+                if action == "delivery.pr_opened":
+                    patch_delivery = PatchDelivery(
+                        status="pr_opened",
+                        url=details.get("url"),
+                        branch=details.get("branch"),
+                        commit_sha=details.get("commit_sha"),
+                        at=at,
+                    )
+                elif action == "delivery.pushed":
+                    patch_delivery = PatchDelivery(
+                        status="pushed",
+                        branch=details.get("branch"),
+                        commit_sha=details.get("commit_sha"),
+                        at=at,
+                    )
+                elif action == "delivery.failed":
+                    patch_delivery = PatchDelivery(
+                        status="failed", reason=details.get("reason"), at=at
+                    )
+                else:
+                    patch_delivery = PatchDelivery(
+                        status="skipped", reason="delivery is manual", at=at
+                    )
+            elif v and v.get("verdict") == "accepted":
+                job = conn.execute(
+                    sa.select(jobs_table.c.status, jobs_table.c.last_error).where(
+                        jobs_table.c.dedupe_key == f"deliver:{v['id']}"
+                    )
+                ).first()
+                if job is not None:
+                    job_status, last_error = job
+                    if job_status in ("queued", "running"):
+                        patch_delivery = PatchDelivery(status="pending")
+                    elif job_status in ("failed", "dead"):
+                        message = (
+                            last_error.get("message")
+                            if isinstance(last_error, dict)
+                            else last_error
+                        )
+                        patch_delivery = PatchDelivery(
+                            status="failed",
+                            reason=redact_text(str(message or ""))[:300],
+                        )
             items.append(
                 PatchView(
                     patch=PatchCandidate.model_validate(d),
                     verification=VerificationResult.model_validate(v) if v else None,
+                    delivery=patch_delivery,
                 ).model_dump(mode="json")
             )
         return {"items": items, "next_cursor": None}
