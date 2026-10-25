@@ -1,13 +1,67 @@
 # Alan — implementation status
 
 Owner: Alan (`security-agents/`, SEC-001 … SEC-013; interim Live Defense UI)
-Branch: `cursor/live-defense-first-responder-0044`
-Current task: Phase 7A deterministic first-responder orchestration (no Phase 7B, no AUTO-EXECUTE)
-Last remote sync: 2026-10-24, `origin/main` @ `c5c2b47d` (PR #453 merged; #412 still OPEN)
-API/contract dependencies: `shared` 0.21.0 first-responder contracts (0.20.0 reserved for open #412); seven AgentSpecs; backend host checkpoints
-Recent PR/commit: https://github.com/adamissac/ari-ai/pull/439 on `cursor/live-defense-first-responder-0044`; rebased onto main; leave open for security review
-Blockers: live seven-agent Claude run (issue #10, no key); human/security approval of #439 (do not merge); GitHub Actions may not queue from this App token
-Next action: leave Phase 7A PR open; do not start Phase 7B; Codex must not train from these records yet
+Branch: `feat/alan/live-defense-phase7c-agent-execution`
+Current task: Phase 7C live authorized first-responder agent execution (not Codex Phase 7B; no RL training; no AUTO-EXECUTE)
+Last remote sync: 2026-10-25, `origin/main` `f8ab19e7` merged; 7C schema **0.23.0**; Codex P1 R2 disconnect checks; #412 still OPEN; do not merge #458
+API/contract dependencies: `shared` 0.23.0 first-responder execution records (main 0.22.0 is ops-readiness; 0.20.0 reserved for open #412); inherits main Alembic 0017; Devin Hardening owns repository disconnect column/endpoint
+Recent PR/commit: https://github.com/adamissac/ari-ai/pull/458 on `feat/alan/live-defense-phase7c-agent-execution` (leave open for security review of execution trust boundary)
+Blockers: live Anthropic Scout/Diagnose (issue #10, key optional); human/security approval of the Phase 7C PR (do not merge from this agent); Probe still needs AuthorizedScope and is not expanded
+Next action: independent re-review of F1/F7/F8 + R2 on #458; leave PR open; do not merge; do not train RL; do not expand Probe/Patch; do not merge Devin Hardening into #458
+
+## Session entries
+
+### 2026-10-25 (Codex P1 R2 repository disconnect; do not merge #458)
+
+- First-responder checks mapping revocation and optional `repositories.disconnected_at` before each provider `complete()` and before persist. `apply_repository_disconnect_to_investigations` is the 7C hook for Devin Hardening. Did **not** add the disconnect HTTP route or Alembic column. Schema **0.23.0**. Probe/Patch not expanded.
+- Executed: `make check` pass (157 files, 0.23.0); focused 7A+7C **80 passed** / 1 skipped; Codex `test_repository_disconnect_stops_next_provider_turn` **passed**; `uv run pytest -q` **952 passed** / 16 skipped. FakeLLM ≠ live Anthropic.
+- Leave #458 **open**. Merge NO-GO.
+
+### 2026-10-24 (merge origin/main so Actions can run; do not merge #458)
+
+- `96ac5cfb` never got GitHub Actions: #458 was DIRTY vs `origin/main` `ad282cf4`. Merged main (tenant RLS 0016, inventory-lite, ledgerlite, #551). Conflicts only changelog + handoff; kept both. Schema **0.22.0**; inherit 0016; #412 keeps **0.20.0**. Probe/Patch not expanded.
+- Executed: `make check` pass (156 files); focused 7A+7C+tenant **96 passed** / 1 skipped; `uv run pytest -q` **833 passed** / 15 skipped. FakeLLM ≠ live Anthropic.
+- Leave #458 **open**. Merge NO-GO.
+
+### 2026-10-24 (backend test after main merge; do not merge #458)
+
+- `backend / test` failed on `9486a5b0`: `AssessmentState.completed` vs `COMPLETED`; recipe POST hit with GET. Fixed sandbox seed + recipe-method test. Cleaned merge markers. Schema **0.22.0**; no 0016. Probe/Patch not expanded.
+- Executed: `uv run pytest -q backend/tests/test_sandbox_target.py` — 1 passed.
+- Leave #458 **open**. Merge NO-GO.
+
+### 2026-10-24 (Codex F1/F7/F8 on existing #458; do not merge)
+
+- Durable provider-attempt ledger; overall `deadline_at` not reset on retry; OFF/job-cancel persist committed before `JobCancelled`. Six original findings preserved. Schema **0.22.0**; #412 keeps **0.20.0**; Alembic **0015**; Devin keeps **0016**. Did not rewrite `jobs.py`.
+- Executed: `make check` pass (156 files); mypy 40 files; focused 7A+7C+review+jobs+llm **76 passed** / 1 skipped. FakeLLM ≠ live Anthropic.
+- Leave #458 **open**. Re-review GO for F1/F7/F8 + six findings. Merge NO-GO.
+
+### 2026-10-24 (MERGEABLE head + Devin compatibility review; do not merge #458)
+
+- Six findings intact. Merged main through `d1864e9a`. Schema **0.22.0**; #412 keeps **0.20.0**. Reviewed (did not merge) m-alan08 PRs 1–3. Do not wrap 7C LLM in `ctx.effect()`. E2E scenarios would exercise latest 7C after rebase. Observability 0.23.0 can read 7C execution JSONB.
+- Executed: `make check` pass; focused 7A+7C **72 passed** / 1 skipped; prior broader pytest **812 / 14 skipped**; security-agents **593 / 23 skipped**; vitest **337**; transport **35**. FakeLLM ≠ live Anthropic.
+- Leave #458 **open**. Re-review GO. Merge NO-GO.
+
+### 2026-10-24 (merge origin/main into #458 so Actions can run; do not merge the PR)
+
+- PR was DIRTY vs main; GitHub Actions never queued on `db0a631d`. Merged `origin/main` `be8fe67a`. Kept both changelog/handoff sides. Schema still **0.22.0**; #412 keeps **0.20.0**. Six review fixes preserved. Probe/Patch not expanded.
+- Executed: `make check` pass; mypy 40 files; focused 7C **51 passed**; pytest **812 passed / 14 skipped**; security-agents **593 passed / 23 skipped**; frontend lint/typecheck; vitest **337**; transport **35**.
+- Leave #458 **open**. Merge NO-GO until independent re-review.
+
+### 2026-10-24 (Phase 7C security-review six findings; do not merge)
+
+- Reviewed head was `c4dcfa40`. Fixed all six NO-GO findings on the existing #458 branch. Schema still **0.22.0**; #412 keeps **0.20.0**. Probe/Patch not expanded. No AUTO-EXECUTE.
+- Executed: `make check` pass; `uv run mypy` 40 files; `uv run pytest -q` **806 passed / 15 skipped**; security-agents **592 passed / 23 skipped**; frontend lint/typecheck; vitest **330**; transport **35**; Playwright 7A+7C **2 passed** (FakeLLM). Live Anthropic not run.
+- Leave #458 **open** for independent security re-review. Merge NO-GO from this agent.
+
+### 2026-10-24 (Phase 7C required e2e CI fix; do not merge)
+
+- `c56480da` GitHub: `backend / test` PASS; `e2e` FAIL (snapshot `doc={}` 500 on list_snapshots / pages.spec; 7C Attest mapping stayed disabled). Harness-only: valid indexing Snapshot JSONB; CSRF deploy-mapping POST. Schema still **0.22.0**; #412 keeps **0.20.0**. Leave #458 open.
+
+### 2026-10-24 (Phase 7C live authorized agent execution)
+
+- Branch `feat/alan/live-defense-phase7c-agent-execution` from live `origin/main` `04c562a9` (PR #439 merged). Scout/Diagnose execute `security_agents.runtime.run_agent` against an owner-attested mapped snapshot. Probe/Patch/Verify not expanded. Trace/Fortify skipped without prerequisites. Schema **0.22.0** / orchestrator `7c.1.0` / Alembic `0015`. #412 keeps 0.20.0. Message: `20261024T064500Z-alan-to-all-live-defense-phase7c-contracts.md`.
+- Leave PR **open** for security review of the execution trust-boundary expansion. No RL training. No AUTO-EXECUTE. No production grants.
+- Executed: `make check` pass (schema 0.22.0, 155 files); `uv run mypy` 40 files; `uv run pytest -q` **781 passed / 15 skipped**; 7A+7C+jobs 38 passed; live-defense+security 79 passed; security-agents **592 passed / 23 skipped**; frontend lint/typecheck; vitest **330**; transport **35**; Playwright 7A+7C **2 passed** (Scout/Diagnose fake loops, integrity checked).
 
 ## What runs today
 

@@ -133,7 +133,9 @@ def main(argv: list[str]) -> int:
             RATE_LIMIT_PER_MINUTE="100000",
             REPOSITORY_BINDINGS_FILE=str(bindings),
             SECURITY_SANDBOX="local-dev",
+            SECURITY_WORKDIR=str(tmp / "work"),
             SECURITY_AGENTS_WORKDIR=str(tmp / "work"),
+            SECURITY_AGENTS_LABELS=str(PAYMENTS / "labels.yaml"),
             ORCHESTRATOR_FACTORY="security_agents.api:build_orchestrator",
             CODE_INTELLIGENCE_FACTORY="code_intelligence.api:build_service",
         )
@@ -272,6 +274,33 @@ def main(argv: list[str]) -> int:
                 ]
             )
         )
+        from backend.db import snapshots
+        from shared.base import utcnow
+        from shared.ids import IdPrefix, new_id
+        from shared.intelligence import Snapshot, SnapshotStatus
+
+        # Valid Snapshot JSONB so GET /repositories/{id}/snapshots can
+        # model_validate. Status stays indexing (not ready) so pages.spec still
+        # sees "No indexed snapshot"; first-responder only needs the row.
+        snap = Snapshot(
+            id=new_id(IdPrefix.snp),
+            repo_id=rid,
+            commit_sha=sha,
+            status=SnapshotStatus.indexing,
+            index_version="e2e-phase7c",
+            created_at=utcnow(),
+        )
+        with transaction() as conn:
+            conn.execute(
+                sa.insert(snapshots).values(
+                    id=snap.id,
+                    repo_id=rid,
+                    commit_sha=sha,
+                    index_version=snap.index_version,
+                    status=snap.status.value,
+                    doc=snap.model_dump(mode="json"),
+                )
+            )
         alice.close()
 
         # Stored simulation-derived recommendation for Live Defense e2e (no live RL

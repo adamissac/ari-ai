@@ -1,4 +1,4 @@
-"""Live Defense contracts (Phase 2–7A).
+"""Live Defense contracts (Phase 2–7C).
 
 Phase 2/3 types describe recorded evidence for a customer shadow deployment:
 connected staging applications, ingest-token metadata, timestamps from the
@@ -29,6 +29,7 @@ from shared.base import CommitSha, Sha256Hex, ShortText, StrictModel, UtcDatetim
 from shared.ids import (
     AnalystHandoffId,
     AnalystReviewId,
+    ArtifactId,
     ConnectedApplicationId,
     ControlChannelId,
     ControlGrantId,
@@ -608,7 +609,7 @@ class PilotReport(StrictModel):
 # Phase 7A — deterministic first-responder orchestration (no AUTO-EXECUTE)
 # ---------------------------------------------------------------------------
 
-ORCHESTRATOR_VERSION = "7a.1.1"
+ORCHESTRATOR_VERSION = "7c.1.0"
 FIRST_RESPONDER_JOB_KINDS: tuple[str, ...] = (
     "live_defense_first_responder",
     "live_defense_agent_step",
@@ -635,7 +636,8 @@ FIRST_RESPONDER_MAX_USD = 3.0
 
 FIRST_RESPONDER_CAVEAT = (
     "Deterministic first-responder decision. LLM prose is never proof of a "
-    "confirmed threat. RL recommendations are not executed defense. "
+    "confirmed threat. An executed investigative agent is not independent "
+    "verification. RL recommendations are not executed defense. "
     "AUTO-EXECUTE does not exist."
 )
 
@@ -722,9 +724,73 @@ class AgentInvocationStatus(StrEnum):
     skipped_no_scope = "skipped_no_scope"
     skipped_no_approval = "skipped_no_approval"
     skipped_no_patch = "skipped_no_patch"
+    skipped_no_prerequisite = "skipped_no_prerequisite"
+    executed = "executed"
     completed_unverified = "completed_unverified"
     failed = "failed"
     cancelled = "cancelled"
+
+
+class ExecutionIntegrity(StrEnum):
+    """Whether typed output cited real snapshot spans. Not threat confirmation."""
+
+    not_run = "not_run"
+    checked = "checked"
+    failed = "failed"
+
+
+class ProviderAttemptState(StrEnum):
+    """Durable billable-request ledger. Unknown outcomes are never auto-replayed."""
+
+    reserved = "reserved"
+    in_flight = "in_flight"
+    settled = "settled"
+    uncertain = "uncertain"
+    cancelled = "cancelled"
+
+
+class ProviderAttempt(StrictModel):
+    """One billable provider request. Read-only intel queries are not recorded here."""
+
+    id: ShortText
+    idempotency_key: ShortText
+    status: ProviderAttemptState
+    reserved_at: UtcDatetime
+    sent_at: UtcDatetime | None = None
+    settled_at: UtcDatetime | None = None
+    model_id: ShortText | None = None
+    cost_usd: float | None = Field(default=None, ge=0)
+    input_tokens: int | None = Field(default=None, ge=0)
+    output_tokens: int | None = Field(default=None, ge=0)
+    cache_creation_input_tokens: int | None = Field(default=None, ge=0)
+    response_id: ShortText | None = None
+    error_code: ShortText | None = None
+    effect_key: ShortText | None = None
+
+
+class AgentExecutionRecord(StrictModel):
+    """Genuine agent-loop outcome for future RL research. Not a confirmed threat."""
+
+    provider_mode: Literal["fake", "live", "none"] = "none"
+    model_id: ShortText | None = None
+    cost_usd: float | None = Field(default=None, ge=0)
+    latency_ms: int | None = Field(default=None, ge=0)
+    llm_turns: int | None = Field(default=None, ge=0)
+    tool_call_count: int | None = Field(default=None, ge=0)
+    started_at: UtcDatetime | None = None
+    ended_at: UtcDatetime | None = None
+    transcript_artifact_id: ArtifactId | None = None
+    output_artifact_id: ArtifactId | None = None
+    error_code: ShortText | None = None
+    typed_output: bool = False
+    hypothesis_count: int | None = Field(default=None, ge=0)
+    execution_integrity: ExecutionIntegrity = ExecutionIntegrity.not_run
+    independent_verification_id: ShortText | None = None
+    evidence_verified: Literal[False] = False
+    confirmation: Literal["unverified"] = "unverified"
+    predicted_probability: None = None
+    provider_attempts: list[ProviderAttempt] = Field(default_factory=list)
+    uncertain_provider_outcome: bool = False
 
 
 class AnalystHandoffState(StrEnum):
@@ -927,6 +993,8 @@ class FirstResponderInvocation(StrictModel):
     authorized_scope_id: ShortText | None = None
     job_id: JobId | None = None
     reason: ShortText | None = None
+    execution: AgentExecutionRecord | None = None
+    deadline_at: UtcDatetime | None = None
     created_at: UtcDatetime
 
 
