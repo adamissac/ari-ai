@@ -118,7 +118,11 @@ class Page(StrictModel):
 
 def _user(conn: Any, request: Request) -> CurrentUser:
     user = require_user(conn, request)
-    limiter.check(f"user:{user.id}", get_settings().rate_limit_per_minute, 60)
+    settings = get_settings()
+    if request.method in ("GET", "HEAD"):
+        limiter.check(f"user-read:{user.id}", settings.rate_limit_read_per_minute, 60)
+    else:
+        limiter.check(f"user:{user.id}", settings.rate_limit_per_minute, 60)
     return user
 
 
@@ -930,7 +934,7 @@ def start_assessment(
                     503,
                 )
             commit_sha = commits[0]["sha"]
-        quota = check_project_quota(conn, project_id, utcnow())
+        quota = check_project_quota(conn, project_id, utcnow(), manual=True)
         if quota is not None:
             raise ApiError(
                 ErrorCode.RATE_LIMITED,
