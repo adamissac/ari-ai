@@ -3,7 +3,7 @@
 import type { DeliveryMode, Repository } from '@hackatl/frontend-transport';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { BackdropShapes } from '@/components/backdrop-shapes';
 import { useProject } from '@/components/project';
 import { RepositoryAutomation } from '@/components/repository-automation';
@@ -72,15 +72,12 @@ function Walkthrough({ repo, scope, authorized, hasRun, reload }: {
   const [monitoring, setMonitoring] = useState(project.settings.monitoring_policy.enabled);
   const [delivery, setDelivery] = useState<DeliveryMode>(project.settings.delivery_mode === 'auto' ? 'pull_request' : project.settings.delivery_mode);
   const progressKey = `ari-setup:${project.id}:${repo.id}`;
-  const [reviewerSaved, setReviewerSaved] = useState(false);
-  const [deliverySaved, setDeliverySaved] = useState(false);
-  useEffect(() => {
-    const saved = window.localStorage.getItem(progressKey) ?? '';
-    setReviewerSaved(saved.includes('reviewer'));
-    setDeliverySaved(saved.includes('delivery'));
-  }, [progressKey]);
+  // Walkthrough mounts only after client-side data loads, so localStorage is available here.
+  const savedSteps = (): string => (typeof window === 'undefined' ? '' : window.localStorage.getItem(progressKey) ?? '');
+  const [reviewerSaved, setReviewerSaved] = useState(() => savedSteps().includes('reviewer'));
+  const [deliverySaved, setDeliverySaved] = useState(() => savedSteps().includes('delivery'));
   const markSaved = (step: 'reviewer' | 'delivery') => {
-    const saved = window.localStorage.getItem(progressKey) ?? '';
+    const saved = savedSteps();
     if (!saved.includes(step)) window.localStorage.setItem(progressKey, `${saved} ${step}`.trim());
   };
   const [busy, setBusy] = useState<string | null>(null);
