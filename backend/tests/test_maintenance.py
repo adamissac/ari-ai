@@ -36,6 +36,7 @@ from backend.db import (
     verification_results,
     webhook_deliveries,
 )
+from backend.host import AssessmentHost
 from backend.intel_store import PostgresPayloadStore, lock_ready_snapshot
 from backend.intelligence import snapshot_ref
 from backend.intelligence_memory import (
@@ -567,9 +568,27 @@ def test_scale_retention_preserves_46_memory_487_findings_and_614_assessments(
         )
         for i in range(279)
     ]
+    assessment_only_refs = [
+        SnapshotRef(
+            project_id=ids["project"],
+            repo_id=ids["repo"],
+            commit_sha=f"{i + 279:040x}",
+            snapshot_id=new_id(IdPrefix.snp),
+            index_version="intel-0.1",
+        )
+        for i in range(10)
+    ]
+    sentinel = SnapshotRef(
+        project_id=ids["project"],
+        repo_id=ids["repo"],
+        commit_sha=f"{289:040x}",
+        snapshot_id=new_id(IdPrefix.snp),
+        index_version="intel-0.1",
+    )
+    all_refs = refs + assessment_only_refs + [sentinel]
     assessments_rows = []
     for i in range(614):
-        ref = refs[i % len(refs)]
+        ref = refs[i % len(refs)] if i < 604 else assessment_only_refs[i - 604]
         assessments_rows.append(
             {
                 "id": new_id(IdPrefix.asm),
@@ -607,22 +626,54 @@ def test_scale_retention_preserves_46_memory_487_findings_and_614_assessments(
         }
         for i in range(46)
     ]
+    regression_records = [
+        VerifiedRegression(
+            snapshot_ref=refs[i],
+            finding_id=finding_rows[i]["id"],
+            patch_id=patches[i]["id"],
+            verification_id=verifications[i]["id"],
+            affected_paths=["app/main.py"],
+            test_paths=["tests/test_main.py"],
+            evidence=[
+                EvidenceRef(
+                    kind="test_run",
+                    artifact_id=new_id(IdPrefix.art),
+                    sha256=f"{i + 1:064x}",
+                    commit_sha=refs[i].commit_sha,
+                    provenance="retention scale fixture",
+                )
+            ],
+            created_at=utcnow(),
+        )
+        for i in range(46)
+    ]
     regressions = [
         {
             "patch_id": patches[i]["id"],
             "snapshot_id": refs[i].snapshot_id,
             "verification_id": verifications[i]["id"],
-            "ref_key": f"{i:064x}",
-            "doc": {},
+            "ref_key": _key(refs[i]),
+            "doc": regression_records[i].model_dump(mode="json"),
         }
         for i in range(46)
     ]
+    decision_ref = refs[46]
+    decision = ExpectationDecision(
+        snapshot_ref=decision_ref,
+        expectation_id="exp_scale_fixture",
+        status="confirmed",
+        reason="Scale fixture decision",
+        expected_revision=0,
+        revision=1,
+        decided_by=ids["alice_uid"],
+        decided_at=utcnow(),
+    )
     payload_rows = []
     snapshot_rows = []
     metadata_rows = []
-    for ref in refs:
+    now = datetime.now(UTC)
+    for ref in all_refs:
         data = b'{"symbols":[]}'
-        # The memory tables retain real FKs to the metadata snapshot identity.
         metadata_rows.append(
             {
                 "id": ref.snapshot_id,
@@ -630,8 +681,17 @@ def test_scale_retention_preserves_46_memory_487_findings_and_614_assessments(
                 "commit_sha": ref.commit_sha,
                 "index_version": ref.index_version,
                 "status": "ready",
-                "doc": {},
-                "created_at": OLD,
+                "doc": {
+                    "id": ref.snapshot_id,
+                    "repo_id": ref.repo_id,
+                    "commit_sha": ref.commit_sha,
+                    "status": "ready",
+                    "index_version": ref.index_version,
+                    "stats": {"files": 1},
+                    "created_at": OLD.isoformat(),
+                    "completed_at": OLD.isoformat(),
+                },
+                "created_at": now if ref == sentinel else OLD,
             }
         )
         snapshot_rows.append(
@@ -642,7 +702,7 @@ def test_scale_retention_preserves_46_memory_487_findings_and_614_assessments(
                 "index_version": ref.index_version,
                 "snapshot_id": ref.snapshot_id,
                 "stats": {},
-                "created_at": OLD,
+                "created_at": now if ref == sentinel else OLD,
             }
         )
         payload_rows.append(
@@ -657,7 +717,7 @@ def test_scale_retention_preserves_46_memory_487_findings_and_614_assessments(
                 "sha256": hashlib.sha256(data).hexdigest(),
                 "size_bytes": len(data),
                 "data": data,
-                "created_at": OLD,
+                "created_at": now if ref == sentinel else OLD,
             }
         )
     with transaction() as conn:
@@ -668,25 +728,68 @@ def test_scale_retention_preserves_46_memory_487_findings_and_614_assessments(
         conn.execute(sa.insert(verification_results), verifications)
         conn.execute(sa.insert(snapshots), metadata_rows)
         conn.execute(sa.insert(verified_regression_memory), regressions)
+        conn.execute(
+            sa.insert(expectation_decisions).values(
+                ref_key=_key(decision_ref),
+                expectation_id=decision.expectation_id,
+                revision=decision.revision,
+                snapshot_id=decision_ref.snapshot_id,
+                decided_by=ids["alice_uid"],
+                doc=decision.model_dump(mode="json"),
+            )
+        )
         conn.execute(sa.insert(index_snapshots), snapshot_rows)
         conn.execute(sa.insert(index_payloads), payload_rows)
     out = maintenance.run_retention(s=_settings(retention_snapshots_per_repo=1))
     report = out["deleted"]["index_payloads"][ids["project"]]
     assert report["protected_snapshots"]["a_findings"] == 279
     assert report["protected_snapshots"]["b_verified_regression_memory"] == 46
-    assert report["protected_snapshots"]["f_all_assessments"] == 279
+    assert report["protected_snapshots"]["c_expectation_decisions"] == 1
+    assert report["protected_snapshots"]["f_all_assessments"] == 289
     with transaction() as conn:
         maintenance._scope_tenant(conn, ids["project"])
         remaining = set(conn.execute(sa.select(index_snapshots.c.snapshot_id)).scalars())
-    assert remaining == {ref.snapshot_id for ref in refs}
+    assert remaining == {ref.snapshot_id for ref in all_refs}
     store = PostgresPayloadStore()
+    memory = PostgresMemoryStore()
+    for i, ref in enumerate(refs[:46]):
+        records = memory.regressions(ref)
+        assert len(records) == 1 and records[0].patch_id == patches[i]["id"]
+    assert memory.decisions(decision_ref)
+    for ref in refs + assessment_only_refs:
+        assert snapshot_ref(ref.snapshot_id) == ref
+    for ref in refs[:10]:
+        assert store.get_payload(ref, "intelligence_index", "index.json") == b'{"symbols":[]}'
+
+    out = maintenance.run_retention(
+        s=_settings(
+            retention_snapshots_per_repo=1,
+            retention_protect_assessment_snapshots=False,
+            retention_assessment_snapshot_days=30,
+        )
+    )
+    report = out["deleted"]["index_payloads"][ids["project"]]
+    assert report["superseded_snapshots"] == len(assessment_only_refs)
+    with transaction() as conn:
+        maintenance._scope_tenant(conn, ids["project"])
+        remaining = set(conn.execute(sa.select(index_snapshots.c.snapshot_id)).scalars())
+    assert remaining == {ref.snapshot_id for ref in refs + [sentinel]}
+    for i, ref in enumerate(refs[:46]):
+        records = memory.regressions(ref)
+        assert len(records) == 1 and records[0].patch_id == patches[i]["id"]
+    assert memory.decisions(decision_ref)
     for ref in refs:
+        assert snapshot_ref(ref.snapshot_id) == ref
+    for ref in refs[:10]:
         assert store.get_payload(ref, "intelligence_index", "index.json") == b'{"symbols":[]}'
 
 
 def test_binding_lock_serializes_with_cleanup(client_factory, monkeypatch) -> None:
     ids = _ids(client_factory)
     refs = [_ready_payloads(ids, f"{i:040x}") for i in range(2)]
+    mismatched_ref = refs[0].model_copy(update={"snapshot_id": new_id(IdPrefix.snp)})
+    with transaction() as conn:
+        assert not lock_ready_snapshot(conn, mismatched_ref)
     for i, ref in enumerate(refs):
         _age_scoped(
             index_snapshots,
@@ -772,9 +875,73 @@ def test_binding_lock_serializes_with_cleanup(client_factory, monkeypatch) -> No
         index_snapshots.c.snapshot_id == second.snapshot_id,
         when=datetime.now(UTC),
     )
-    maintenance.run_retention(s=_settings(retention_snapshots_per_repo=1), dry_run=False)
-    with transaction() as conn:
-        assert not lock_ready_snapshot(conn, first)
+    original_is_protected = maintenance._snapshot_is_protected
+    cleanup_locked = threading.Event()
+    release_cleanup = threading.Event()
+    binding_started = threading.Event()
+    cleanup_first_result: dict[str, object] = {}
+
+    def pause_after_cleanup_lock(conn, project_id, snapshot_id, s):
+        if snapshot_id == first.snapshot_id:
+            cleanup_locked.set()
+            assert release_cleanup.wait(5)
+        return original_is_protected(conn, project_id, snapshot_id, s)
+
+    monkeypatch.setattr(maintenance, "_snapshot_is_protected", pause_after_cleanup_lock)
+
+    def cleanup_first() -> None:
+        cleanup_first_result.update(
+            maintenance.run_retention(s=_settings(retention_snapshots_per_repo=1), dry_run=False)
+        )
+
+    def bind_after_cleanup_lock() -> None:
+        with transaction() as conn:
+            conn.execute(sa.text("SET LOCAL lock_timeout = '3s'"))
+            binding_started.set()
+            cleanup_first_result["ready"] = lock_ready_snapshot(conn, first)
+
+    cleaner = threading.Thread(target=cleanup_first)
+    cleaner.start()
+    assert cleanup_locked.wait(5)
+    binder = threading.Thread(target=bind_after_cleanup_lock)
+    binder.start()
+    assert binding_started.wait(5)
+    deadline = time.monotonic() + 2
+    blocked = False
+    while time.monotonic() < deadline:
+        with transaction() as conn:
+            blocked = bool(
+                conn.execute(
+                    sa.text(
+                        "SELECT EXISTS (SELECT 1 FROM pg_stat_activity "
+                        "WHERE wait_event_type = 'Lock' AND query LIKE '%index_snapshots%')"
+                    )
+                ).scalar_one()
+            )
+        if blocked:
+            break
+        time.sleep(0.02)
+    assert blocked, "binding did not wait on cleanup's FOR UPDATE lock"
+    release_cleanup.set()
+    binder.join(5)
+    cleaner.join(5)
+    assert not binder.is_alive() and not cleaner.is_alive()
+    assert cleanup_first_result["ready"] is False
+
+    client = client_factory("alice")
+    response = client.post(
+        f"/api/v1/projects/{ids['project']}/assessments",
+        json={
+            "scope_id": ids["scope"],
+            "repo_id": ids["repo"],
+            "commit_sha": first.commit_sha,
+            "snapshot_id": first.snapshot_id,
+        },
+    )
+    assert response.status_code == 202, response.text
+    assessment = response.json()["assessment"]
+    assert assessment["snapshot_id"] is None
+    assert AssessmentHost(assessment["id"]).attach_snapshot(first) is False
 
 
 def test_ops_maintenance_requires_token_and_current_plan(client_factory, settings_override) -> None:

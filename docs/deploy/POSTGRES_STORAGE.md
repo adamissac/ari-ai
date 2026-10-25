@@ -111,9 +111,14 @@ Hard protections in code (not just convention):
   assessment without findings keeps its result, but loses its code-intelligence views:
   Expectations/commits pages and `/snapshots/*` return “snapshot not ready”; rerunning
   the assessment re-indexes the repository.
-- Measured 2026-10-25: the default protection leaves about 2 snapshots / 11 MB
-  reclaimable in production. With assessment protection off and after 30 days, about
-  324 snapshots / 1.7 GB become reclaimable.
+- Measured 2026-10-25 by running this branch's dry-run read-only against production
+  with time shifted 40 days ahead: default assessment protection leaves 2 snapshots
+  / about 12 MB physical reclaimable. With
+  `RETENTION_PROTECT_ASSESSMENT_SNAPSHOTS=false`, 324 snapshots / about 1.8 GB
+  physical become reclaimable; 322 are referenced only by terminal assessments with
+  no findings, regression memory, or decisions. Production currently has 49
+  regression-memory snapshots, 285 finding-referenced snapshots, and 1
+  expectation-decision snapshot; none is a retention target.
 - The ops API refuses destructive maintenance unless (1) `RETENTION_DRY_RUN=false`,
   (2) `OPS_DESTRUCTIVE_TOKEN` is configured and matches `X-Ops-Destructive-Token` in
   addition to the Bearer `OPS_API_TOKEN`, and (3) the request includes the current

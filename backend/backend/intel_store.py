@@ -71,7 +71,10 @@ def lock_ready_snapshot(conn: sa.Connection, ref: SnapshotRef) -> bool:
     return (
         conn.execute(
             sa.select(index_snapshots.c.snapshot_id)
-            .where(*_ref_where(index_snapshots, ref))
+            .where(
+                *_ref_where(index_snapshots, ref),
+                index_snapshots.c.snapshot_id == ref.snapshot_id,
+            )
             .with_for_update(read=True)
         ).scalar_one_or_none()
         is not None
