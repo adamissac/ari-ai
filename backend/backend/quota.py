@@ -23,6 +23,28 @@ class QuotaDecision:
     limit: int | None = None
 
 
+def _quota_resets_at(
+    conn: Connection,
+    project_id: str,
+    now: datetime,
+    window: timedelta,
+    count: int,
+    limit: int,
+) -> datetime:
+    next_expiring = conn.execute(
+        sa.select(assessments.c.created_at)
+        .where(
+            assessments.c.project_id == project_id,
+            assessments.c.created_at > now - window,
+            assessments.c.created_at <= now,
+        )
+        .order_by(assessments.c.created_at.asc())
+        .offset(count - limit)
+        .limit(1)
+    ).scalar_one()
+    return next_expiring + window
+
+
 def check_project_quota(conn: Connection, project_id: str, now: datetime) -> QuotaDecision | None:
     """Check every project's assessment start and the global rolling spend ceilings."""
     # This is check-then-insert, so concurrent starts can overshoot the limit.
@@ -46,7 +68,7 @@ def check_project_quota(conn: Connection, project_id: str, now: datetime) -> Quo
     if hour_count >= hour_limit and hour_oldest is not None:
         return QuotaDecision(
             "hour",
-            hour_oldest + hour_window,
+            _quota_resets_at(conn, project_id, now, hour_window, hour_count, hour_limit),
             hour_limit,
         )
 
@@ -60,7 +82,14 @@ def check_project_quota(conn: Connection, project_id: str, now: datetime) -> Quo
     if day_count >= settings.project_assessments_per_day and day_oldest is not None:
         return QuotaDecision(
             "day",
-            day_oldest + day_window,
+            _quota_resets_at(
+                conn,
+                project_id,
+                now,
+                day_window,
+                day_count,
+                settings.project_assessments_per_day,
+            ),
             settings.project_assessments_per_day,
         )
 
