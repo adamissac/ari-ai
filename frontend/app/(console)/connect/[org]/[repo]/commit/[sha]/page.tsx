@@ -93,11 +93,9 @@ function SelectedCommit({ org, name, sha, repo, onConnected }: {
         {htmlUrl && /^https?:\/\//.test(htmlUrl) && <a className="underline" href={htmlUrl} target="_blank" rel="noreferrer">View on GitHub ↗</a>}
       </p>
     </header>
-    {freshness && freshness.kind !== 'latest' && (
+    {freshness?.kind === 'stale' && (
       <p className="mb-4 rounded-md border border-warn/50 bg-warn/10 px-3 py-2 text-sm text-warn" data-testid="commit-behind-default">
-        {freshness.kind === 'behind'
-          ? <>This commit is {freshness.count} commit{freshness.count === 1 ? '' : 's'} behind {repo.default_branch}. Ari reviews and fixes this exact commit, so a fix may already be on {repo.default_branch}.</>
-          : <>This commit is older than the latest commits on {repo.default_branch}. Ari reviews and fixes this exact commit, so a fix may already be on {repo.default_branch}.</>}
+        This isn&apos;t the latest commit on the default branch. Ari reviews and fixes this exact commit, so a fix may already be there.
         {' '}<Link className="underline" href={`${base}/commit/${freshness.latestSha}`}>Review the latest commit →</Link>
       </p>
     )}

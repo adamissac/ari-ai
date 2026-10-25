@@ -30,11 +30,12 @@ it('uses the configured provider commit URL rather than assuming GitHub.com', as
   expect((await screen.findByRole('link', { name: /View on GitHub/ })).getAttribute('href')).toBe('https://git.example/team/app/commit/selected');
 });
 
-it('warns when the selected commit is behind the default branch', async () => {
+it('warns when the selected commit is not the latest default-branch commit', async () => {
   render(<RealCommitPage />);
   const notice = await screen.findByTestId('commit-behind-default');
-  expect(notice.textContent).toContain('This commit is 3 commits behind main.');
-  expect(notice.textContent).toContain('Ari reviews and fixes this exact commit');
+  expect(notice.textContent).toContain("This isn't the latest commit on the default branch.");
+  expect(notice.textContent).toContain('Ari reviews and fixes this exact commit, so a fix may already be there.');
+  expect(notice.textContent).not.toContain('main');
   expect(screen.getByRole('link', { name: 'Review the latest commit →' }).getAttribute('href'))
     .toBe(`/connect/test-team/test-app/commit/${'a'.repeat(40)}`);
 });

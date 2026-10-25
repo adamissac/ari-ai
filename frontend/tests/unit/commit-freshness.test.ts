@@ -15,7 +15,7 @@ describe('commit freshness', () => {
       .toEqual({ kind: 'latest' });
   });
 
-  it('returns the number of commits behind the latest', () => {
+  it('marks a non-latest commit in the recent list as stale', () => {
     const recent = [
       { sha: latestSha },
       { sha: 'c'.repeat(40) },
@@ -23,16 +23,16 @@ describe('commit freshness', () => {
       { sha: selectedSha },
     ];
     expect(commitFreshness(recent, selectedSha))
-      .toEqual({ kind: 'behind', count: 3, latestSha });
+      .toEqual({ kind: 'stale', latestSha });
   });
 
-  it('matches a short SHA prefix', () => {
+  it('matches a short SHA prefix and marks it stale', () => {
     expect(commitFreshness([{ sha: latestSha }, { sha: selectedSha }], selectedSha.slice(0, 8)))
-      .toEqual({ kind: 'behind', count: 1, latestSha });
+      .toEqual({ kind: 'stale', latestSha });
   });
 
-  it('marks a commit outside the recent list as older', () => {
+  it('marks a commit outside the recent list as stale', () => {
     expect(commitFreshness([{ sha: latestSha }, { sha: selectedSha }], 'f'.repeat(40)))
-      .toEqual({ kind: 'older', latestSha });
+      .toEqual({ kind: 'stale', latestSha });
   });
 });

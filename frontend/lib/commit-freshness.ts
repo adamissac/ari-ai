@@ -1,7 +1,6 @@
 export type CommitFreshness =
   | { kind: 'latest' }
-  | { kind: 'behind'; count: number; latestSha: string }
-  | { kind: 'older'; latestSha: string };
+  | { kind: 'stale'; latestSha: string };
 
 export function commitFreshness(
   recent: { sha: string }[] | undefined,
@@ -13,6 +12,5 @@ export function commitFreshness(
 
   const index = recent.findIndex(commit => commit.sha === sha || commit.sha.startsWith(sha));
   if (index === 0) return { kind: 'latest' };
-  if (index > 0) return { kind: 'behind', count: index, latestSha: latest.sha };
-  return { kind: 'older', latestSha: latest.sha };
+  return { kind: 'stale', latestSha: latest.sha };
 }
