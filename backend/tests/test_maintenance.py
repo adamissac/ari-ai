@@ -6,8 +6,11 @@ including RLS-scoped index_payloads/index_snapshots pruning.
 
 from __future__ import annotations
 
+import hashlib
 import os
 import subprocess
+import threading
+import time
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -19,20 +22,34 @@ from backend.db import (
     agent_runs,
     assessment_events,
     assessments,
+    findings,
     idempotency_keys,
     index_payloads,
     index_snapshots,
     monitoring_events,
+    patch_candidates,
     reassessment_requests,
     runtime_windows,
     sessions,
+    snapshots,
     transaction,
+    verification_results,
     webhook_deliveries,
 )
-from backend.intel_store import PostgresPayloadStore
+from backend.intel_store import PostgresPayloadStore, lock_ready_snapshot
+from backend.intelligence import snapshot_ref
+from backend.intelligence_memory import (
+    PostgresMemoryStore,
+    _key,
+    expectation_decisions,
+    verified_regression_memory,
+)
 from backend.settings import get_settings
+from shared.base import utcnow
+from shared.evidence import EvidenceRef
 from shared.ids import IdPrefix, new_id
 from shared.intelligence import SnapshotRef, SnapshotStats
+from shared.intelligence_memory import ExpectationDecision, VerifiedRegression
 
 OLD = datetime.now(UTC) - timedelta(days=400)
 
@@ -304,6 +321,511 @@ def test_active_assessment_protects_snapshot(client_factory) -> None:
         maintenance._scope_tenant(conn, ids["project"])
         left = set(conn.execute(sa.select(index_snapshots.c.snapshot_id)).scalars())
     assert protected in left
+
+
+def test_retention_preserves_customer_references_and_allows_old_assessment_expiry(
+    client_factory,
+) -> None:
+    ids = _ids(client_factory)
+    refs = [_ready_payloads(ids, f"{i:040x}") for i in range(9)]
+    _age_scoped(index_payloads, ids["project"], sa.true())
+    for i, ref in enumerate(refs):
+        _age_scoped(
+            index_snapshots,
+            ids["project"],
+            index_snapshots.c.snapshot_id == ref.snapshot_id,
+            when=OLD + timedelta(minutes=i),
+        )
+    assessment_ids = [new_id(IdPrefix.asm) for _ in refs]
+    finding_id, patch_id, verification_id = (
+        new_id(IdPrefix.fnd),
+        new_id(IdPrefix.pat),
+        new_id(IdPrefix.ver),
+    )
+    with transaction() as conn:
+        for i, ref in enumerate(refs):
+            conn.execute(
+                sa.insert(assessments).values(
+                    id=assessment_ids[i],
+                    project_id=ids["project"],
+                    repo_id=ids["repo"],
+                    scope_id=ids["scope"],
+                    commit_sha=ref.commit_sha,
+                    trigger="api",
+                    state="COMPLETED" if i == 3 else ("CREATED" if i == 4 else "COMPLETED"),
+                    doc={"snapshot_id": ref.snapshot_id} if i in {3, 4} else {},
+                )
+            )
+        conn.execute(
+            sa.insert(findings).values(
+                id=finding_id,
+                project_id=ids["project"],
+                assessment_id=assessment_ids[0],
+                kind="vulnerability",
+                status="resolved",
+                paths=[],
+                doc={"snapshot_id": refs[0].snapshot_id},
+            )
+        )
+        conn.execute(sa.insert(patch_candidates).values(id=patch_id, finding_id=finding_id, doc={}))
+        conn.execute(
+            sa.insert(verification_results).values(
+                id=verification_id, patch_id=patch_id, verdict="accepted", doc={}
+            )
+        )
+        regression = VerifiedRegression(
+            snapshot_ref=refs[1],
+            finding_id=finding_id,
+            patch_id=patch_id,
+            verification_id=verification_id,
+            affected_paths=["app/main.py"],
+            test_paths=["tests/test_main.py"],
+            evidence=[
+                EvidenceRef(
+                    kind="test_run",
+                    artifact_id=new_id(IdPrefix.art),
+                    sha256="a" * 64,
+                    commit_sha=refs[1].commit_sha,
+                    provenance="retention fixture",
+                )
+            ],
+            created_at=utcnow(),
+        )
+        conn.execute(
+            sa.insert(verified_regression_memory).values(
+                patch_id=patch_id,
+                snapshot_id=refs[1].snapshot_id,
+                verification_id=verification_id,
+                ref_key=_key(refs[1]),
+                doc=regression.model_dump(mode="json"),
+            )
+        )
+        decision = ExpectationDecision(
+            snapshot_ref=refs[2],
+            expectation_id="exp_fixture0000",
+            status="confirmed",
+            reason="Owner confirmed this expectation",
+            expected_revision=0,
+            revision=1,
+            decided_by=ids["alice_uid"],
+            decided_at=utcnow(),
+        )
+        conn.execute(
+            sa.insert(expectation_decisions).values(
+                ref_key=_key(refs[2]),
+                expectation_id=decision.expectation_id,
+                revision=1,
+                snapshot_id=refs[2].snapshot_id,
+                decided_by=ids["alice_uid"],
+                doc=decision.model_dump(mode="json"),
+            )
+        )
+    s = _settings(retention_snapshots_per_repo=1)
+    out = maintenance.run_retention(s=s)
+    report = out["deleted"]["index_payloads"][ids["project"]]
+    assert report["superseded_snapshots"] == 3
+    assert report["protected_snapshots"]["a_findings"] == 1
+    assert report["protected_snapshots"]["b_verified_regression_memory"] == 1
+    assert report["protected_snapshots"]["c_expectation_decisions"] == 1
+    assert report["protected_snapshots"]["d_non_terminal_assessments"] == 1
+    assert report["protected_snapshots"]["f_all_assessments"] == 2
+    assert PostgresMemoryStore().regressions(refs[1])
+    assert PostgresMemoryStore().decisions(refs[2])
+    for ref in refs[:5]:
+        assert snapshot_ref(ref.snapshot_id) == ref
+    assert PostgresPayloadStore().get_payload(refs[0], "intelligence_index", "index.json")
+
+
+def test_terminal_assessment_snapshot_expires_only_after_configured_age(client_factory) -> None:
+    ids = _ids(client_factory)
+    refs = [_ready_payloads(ids, f"{i:040x}") for i in range(8)]
+    for i, ref in enumerate(refs):
+        _age_scoped(
+            index_snapshots,
+            ids["project"],
+            index_snapshots.c.snapshot_id == ref.snapshot_id,
+            when=OLD + timedelta(minutes=i),
+        )
+    for ref in refs[6:]:
+        _age_scoped(
+            index_snapshots,
+            ids["project"],
+            index_snapshots.c.snapshot_id == ref.snapshot_id,
+            when=datetime.now(UTC),
+        )
+    terminal_ids = [new_id(IdPrefix.asm) for _ in range(4)]
+    finding_id = new_id(IdPrefix.fnd)
+    patch_id = new_id(IdPrefix.pat)
+    verification_id = new_id(IdPrefix.ver)
+    with transaction() as conn:
+        for i in range(4):
+            conn.execute(
+                sa.insert(assessments).values(
+                    id=terminal_ids[i],
+                    project_id=ids["project"],
+                    repo_id=ids["repo"],
+                    scope_id=ids["scope"],
+                    commit_sha=refs[i].commit_sha,
+                    trigger="api",
+                    state="COMPLETED" if i != 3 else "COMPLETED",
+                    doc={"snapshot_id": refs[i].snapshot_id},
+                )
+            )
+        conn.execute(
+            sa.insert(findings).values(
+                id=finding_id,
+                project_id=ids["project"],
+                assessment_id=terminal_ids[0],
+                kind="vulnerability",
+                status="resolved",
+                paths=[],
+                doc={"snapshot_id": refs[0].snapshot_id},
+            )
+        )
+        conn.execute(sa.insert(patch_candidates).values(id=patch_id, finding_id=finding_id, doc={}))
+        conn.execute(
+            sa.insert(verification_results).values(
+                id=verification_id, patch_id=patch_id, verdict="accepted", doc={}
+            )
+        )
+        conn.execute(
+            sa.insert(verified_regression_memory).values(
+                patch_id=patch_id,
+                snapshot_id=refs[1].snapshot_id,
+                verification_id=verification_id,
+                ref_key="d" * 64,
+                doc={},
+            )
+        )
+        conn.execute(
+            sa.insert(expectation_decisions).values(
+                ref_key="e" * 64,
+                expectation_id="exp_fixture0000",
+                revision=1,
+                snapshot_id=refs[2].snapshot_id,
+                decided_by=ids["alice_uid"],
+                doc={},
+            )
+        )
+        active_id = new_id(IdPrefix.asm)
+        conn.execute(
+            sa.insert(assessments).values(
+                id=active_id,
+                project_id=ids["project"],
+                repo_id=ids["repo"],
+                scope_id=ids["scope"],
+                commit_sha=refs[4].commit_sha,
+                trigger="api",
+                state="CREATED",
+                doc={"snapshot_id": refs[4].snapshot_id},
+            )
+        )
+    settings = _settings(
+        retention_snapshots_per_repo=1,
+        retention_protect_assessment_snapshots=False,
+        retention_assessment_snapshot_days=30,
+    )
+    _age_scoped(
+        index_snapshots,
+        ids["project"],
+        index_snapshots.c.snapshot_id == refs[3].snapshot_id,
+        when=datetime.now(UTC) - timedelta(days=29),
+    )
+    maintenance.run_retention(s=settings)
+    with transaction() as conn:
+        maintenance._scope_tenant(conn, ids["project"])
+        assert conn.execute(
+            sa.select(index_snapshots.c.snapshot_id).where(
+                index_snapshots.c.snapshot_id == refs[3].snapshot_id
+            )
+        ).first()
+    _age_scoped(
+        index_snapshots,
+        ids["project"],
+        index_snapshots.c.snapshot_id == refs[3].snapshot_id,
+        when=datetime.now(UTC) - timedelta(days=31),
+    )
+    maintenance.run_retention(s=settings)
+    with transaction() as conn:
+        maintenance._scope_tenant(conn, ids["project"])
+        left = set(conn.execute(sa.select(index_snapshots.c.snapshot_id)).scalars())
+    assert refs[3].snapshot_id not in left
+    assert {ref.snapshot_id for ref in refs[:3] + refs[4:5]} <= left
+
+
+def test_scale_retention_preserves_46_memory_487_findings_and_614_assessments(
+    client_factory,
+) -> None:
+    ids = _ids(client_factory)
+    refs = [
+        SnapshotRef(
+            project_id=ids["project"],
+            repo_id=ids["repo"],
+            commit_sha=f"{i:040x}",
+            snapshot_id=new_id(IdPrefix.snp),
+            index_version="intel-0.1",
+        )
+        for i in range(279)
+    ]
+    assessments_rows = []
+    for i in range(614):
+        ref = refs[i % len(refs)]
+        assessments_rows.append(
+            {
+                "id": new_id(IdPrefix.asm),
+                "project_id": ids["project"],
+                "repo_id": ids["repo"],
+                "scope_id": ids["scope"],
+                "commit_sha": ref.commit_sha,
+                "trigger": "api",
+                "state": "COMPLETED",
+                "doc": {"snapshot_id": ref.snapshot_id},
+            }
+        )
+    finding_rows = [
+        {
+            "id": new_id(IdPrefix.fnd),
+            "project_id": ids["project"],
+            "assessment_id": assessments_rows[i]["id"],
+            "kind": "vulnerability",
+            "status": "resolved",
+            "paths": [],
+            "doc": {"snapshot_id": refs[i % len(refs)].snapshot_id},
+        }
+        for i in range(487)
+    ]
+    patches = [
+        {"id": new_id(IdPrefix.pat), "finding_id": finding_rows[i]["id"], "doc": {}}
+        for i in range(46)
+    ]
+    verifications = [
+        {
+            "id": new_id(IdPrefix.ver),
+            "patch_id": patches[i]["id"],
+            "verdict": "accepted",
+            "doc": {},
+        }
+        for i in range(46)
+    ]
+    regressions = [
+        {
+            "patch_id": patches[i]["id"],
+            "snapshot_id": refs[i].snapshot_id,
+            "verification_id": verifications[i]["id"],
+            "ref_key": f"{i:064x}",
+            "doc": {},
+        }
+        for i in range(46)
+    ]
+    payload_rows = []
+    snapshot_rows = []
+    metadata_rows = []
+    for ref in refs:
+        data = b'{"symbols":[]}'
+        # The memory tables retain real FKs to the metadata snapshot identity.
+        metadata_rows.append(
+            {
+                "id": ref.snapshot_id,
+                "repo_id": ref.repo_id,
+                "commit_sha": ref.commit_sha,
+                "index_version": ref.index_version,
+                "status": "ready",
+                "doc": {},
+                "created_at": OLD,
+            }
+        )
+        snapshot_rows.append(
+            {
+                "project_id": ref.project_id,
+                "repo_id": ref.repo_id,
+                "commit_sha": ref.commit_sha,
+                "index_version": ref.index_version,
+                "snapshot_id": ref.snapshot_id,
+                "stats": {},
+                "created_at": OLD,
+            }
+        )
+        payload_rows.append(
+            {
+                "project_id": ref.project_id,
+                "repo_id": ref.repo_id,
+                "commit_sha": ref.commit_sha,
+                "index_version": ref.index_version,
+                "kind": "intelligence_index",
+                "key": "index.json",
+                "snapshot_id": ref.snapshot_id,
+                "sha256": hashlib.sha256(data).hexdigest(),
+                "size_bytes": len(data),
+                "data": data,
+                "created_at": OLD,
+            }
+        )
+    with transaction() as conn:
+        maintenance._scope_tenant(conn, ids["project"])
+        conn.execute(sa.insert(assessments), assessments_rows)
+        conn.execute(sa.insert(findings), finding_rows)
+        conn.execute(sa.insert(patch_candidates), patches)
+        conn.execute(sa.insert(verification_results), verifications)
+        conn.execute(sa.insert(snapshots), metadata_rows)
+        conn.execute(sa.insert(verified_regression_memory), regressions)
+        conn.execute(sa.insert(index_snapshots), snapshot_rows)
+        conn.execute(sa.insert(index_payloads), payload_rows)
+    out = maintenance.run_retention(s=_settings(retention_snapshots_per_repo=1))
+    report = out["deleted"]["index_payloads"][ids["project"]]
+    assert report["protected_snapshots"]["a_findings"] == 279
+    assert report["protected_snapshots"]["b_verified_regression_memory"] == 46
+    assert report["protected_snapshots"]["f_all_assessments"] == 279
+    with transaction() as conn:
+        maintenance._scope_tenant(conn, ids["project"])
+        remaining = set(conn.execute(sa.select(index_snapshots.c.snapshot_id)).scalars())
+    assert remaining == {ref.snapshot_id for ref in refs}
+    store = PostgresPayloadStore()
+    for ref in refs:
+        assert store.get_payload(ref, "intelligence_index", "index.json") == b'{"symbols":[]}'
+
+
+def test_binding_lock_serializes_with_cleanup(client_factory, monkeypatch) -> None:
+    ids = _ids(client_factory)
+    refs = [_ready_payloads(ids, f"{i:040x}") for i in range(2)]
+    for i, ref in enumerate(refs):
+        _age_scoped(
+            index_snapshots,
+            ids["project"],
+            index_snapshots.c.snapshot_id == ref.snapshot_id,
+            when=OLD + timedelta(minutes=i),
+        )
+    original_scope = maintenance._scope_tenant
+
+    def scoped_with_timeout(conn, project_id):
+        original_scope(conn, project_id)
+        conn.execute(sa.text("SET LOCAL lock_timeout = '3s'"))
+
+    monkeypatch.setattr(maintenance, "_scope_tenant", scoped_with_timeout)
+    locked = threading.Event()
+    release_binding = threading.Event()
+    cleanup_started = threading.Event()
+    result: dict[str, object] = {}
+
+    def bind() -> None:
+        with transaction() as conn:
+            assert lock_ready_snapshot(conn, refs[0])
+            locked.set()
+            assert release_binding.wait(5)
+            conn.execute(
+                sa.insert(assessments).values(
+                    id=new_id(IdPrefix.asm),
+                    project_id=ids["project"],
+                    repo_id=ids["repo"],
+                    scope_id=ids["scope"],
+                    commit_sha=refs[0].commit_sha,
+                    trigger="api",
+                    state="CREATED",
+                    doc={"snapshot_id": refs[0].snapshot_id},
+                )
+            )
+
+    def cleanup() -> None:
+        cleanup_started.set()
+        result.update(
+            maintenance.run_retention(s=_settings(retention_snapshots_per_repo=1), dry_run=False)
+        )
+
+    binder = threading.Thread(target=bind)
+    binder.start()
+    assert locked.wait(5)
+    cleaner = threading.Thread(target=cleanup)
+    cleaner.start()
+    assert cleanup_started.wait(5)
+    deadline = time.monotonic() + 2
+    blocked = False
+    while time.monotonic() < deadline:
+        with transaction() as conn:
+            blocked = bool(
+                conn.execute(
+                    sa.text(
+                        "SELECT EXISTS (SELECT 1 FROM pg_stat_activity "
+                        "WHERE wait_event_type = 'Lock' AND query LIKE '%index_snapshots%')"
+                    )
+                ).scalar_one()
+            )
+        if blocked:
+            break
+        time.sleep(0.02)
+    assert blocked, "cleanup did not wait on the binding's FOR SHARE lock"
+    release_binding.set()
+    binder.join(5)
+    cleaner.join(5)
+    assert not binder.is_alive() and not cleaner.is_alive()
+    per_project = result["deleted"]["index_payloads"][ids["project"]]
+    assert per_project["skipped_now_protected"] == 1
+
+    first, second = [_ready_payloads(ids, f"{i + 10:040x}") for i in range(2)]
+    _age_scoped(
+        index_snapshots,
+        ids["project"],
+        index_snapshots.c.snapshot_id == first.snapshot_id,
+        when=OLD,
+    )
+    _age_scoped(
+        index_snapshots,
+        ids["project"],
+        index_snapshots.c.snapshot_id == second.snapshot_id,
+        when=datetime.now(UTC),
+    )
+    maintenance.run_retention(s=_settings(retention_snapshots_per_repo=1), dry_run=False)
+    with transaction() as conn:
+        assert not lock_ready_snapshot(conn, first)
+
+
+def test_ops_maintenance_requires_token_and_current_plan(client_factory, settings_override) -> None:
+    client = client_factory()
+    settings_override(OPS_API_TOKEN="test-ops-token", RETENTION_DRY_RUN="true")
+    headers = {"Authorization": "Bearer test-ops-token"}
+    default = client.post("/api/v1/ops/maintenance", headers=headers, json={})
+    assert default.status_code == 200 and default.json()["dry_run"] is True
+    assert default.json()["plan_digest"]
+    dry_report = client.post("/api/v1/ops/maintenance/dry-run-report", headers=headers)
+    assert dry_report.status_code == 200
+    assert dry_report.json()["plan_digest"] and "snapshot_ids" in dry_report.json()
+    refused = client.post("/api/v1/ops/maintenance", headers=headers, json={"dry_run": False})
+    assert refused.status_code == 409
+    assert refused.json()["detail"] == "retention dry-run is enforced"
+
+    settings_override(
+        OPS_API_TOKEN="test-ops-token",
+        OPS_DESTRUCTIVE_TOKEN="",
+        RETENTION_DRY_RUN="false",
+    )
+    no_token = client.post("/api/v1/ops/maintenance", headers=headers, json={"dry_run": False})
+    assert no_token.status_code == 403
+    assert no_token.json()["detail"] == "destructive maintenance disabled"
+    settings_override(
+        OPS_API_TOKEN="test-ops-token",
+        OPS_DESTRUCTIVE_TOKEN="correct-secret",
+        RETENTION_DRY_RUN="false",
+    )
+    wrong_token = client.post(
+        "/api/v1/ops/maintenance",
+        headers={**headers, "X-Ops-Destructive-Token": "wrong-secret"},
+        json={"dry_run": False},
+    )
+    assert wrong_token.status_code == 403
+    plan = client.post("/api/v1/ops/maintenance", headers=headers, json={}).json()
+    authorized = {**headers, "X-Ops-Destructive-Token": "correct-secret"}
+    wrong_digest = client.post(
+        "/api/v1/ops/maintenance",
+        headers=authorized,
+        json={"dry_run": False, "confirm_plan_digest": "wrong"},
+    )
+    assert wrong_digest.status_code == 409
+    assert wrong_digest.json()["detail"]["plan_digest"] == plan["plan_digest"]
+    success = client.post(
+        "/api/v1/ops/maintenance",
+        headers=authorized,
+        json={"dry_run": False, "confirm_plan_digest": plan["plan_digest"]},
+    )
+    assert success.status_code == 200, success.text
+    assert success.json()["dry_run"] is False
 
 
 def test_dry_run_deletes_nothing(client_factory) -> None:
@@ -615,6 +1137,15 @@ def test_maintenance_enabled_loop_gate(settings_override) -> None:
 
 def test_projects_without_rows(client_factory) -> None:
     # A bare project with no payloads/history is a no-op, not an error.
-    _ids(client_factory)
+    ids = _ids(client_factory)
     out = maintenance.run_retention(s=_settings())
-    assert out["deleted"].get("index_payloads") is None
+    project_report = out["deleted"]["index_payloads"][ids["project"]]
+    assert project_report["payload_rows"] == 0
+    assert project_report["protected_snapshots"] == {
+        "a_findings": 0,
+        "b_verified_regression_memory": 0,
+        "c_expectation_decisions": 0,
+        "d_non_terminal_assessments": 0,
+        "e_active_jobs": 0,
+        "f_all_assessments": 0,
+    }

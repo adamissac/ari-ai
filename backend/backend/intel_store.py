@@ -63,6 +63,21 @@ def _ref_where(table: sa.Table, ref: SnapshotRef) -> list[Any]:
     ]
 
 
+def lock_ready_snapshot(conn: sa.Connection, ref: SnapshotRef) -> bool:
+    """Take the binding-side lock for a ready snapshot in the caller's transaction."""
+    conn.execute(
+        sa.text("SELECT set_config('ari.project_id', :pid, true)"), {"pid": ref.project_id}
+    )
+    return (
+        conn.execute(
+            sa.select(index_snapshots.c.snapshot_id)
+            .where(*_ref_where(index_snapshots, ref))
+            .with_for_update(read=True)
+        ).scalar_one_or_none()
+        is not None
+    )
+
+
 def _check_key(kind: str, key: str) -> None:
     if not _KIND.match(kind):
         raise ValueError(f"invalid payload kind {kind!r}")
