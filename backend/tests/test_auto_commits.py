@@ -564,6 +564,32 @@ def test_over_limit_spend_quota_resets_when_spend_falls_below_cap(automatic, set
     assert decision.resets_at == row_times[1] + timedelta(days=1)
 
 
+def test_fractional_spend_resets_only_after_total_falls_below_cap(automatic, settings_override):
+    from datetime import timedelta
+
+    from backend.quota import check_project_quota
+    from shared.base import utcnow
+
+    alice, bob, ids, _ = automatic
+    settings_override(assessments_usd_per_day="50")
+    assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
+    now = utcnow()
+    row_times = [now - timedelta(hours=hours) for hours in (4, 3, 2, 1)]
+    seed_assessments(
+        alice,
+        ids,
+        [AssessmentTrigger.manual] * len(row_times),
+        created_at=row_times,
+        spend=[0.1, 0.2, 25.0, 25.0],
+    )
+
+    with transaction() as conn:
+        decision = check_project_quota(conn, ids["project"], now)
+
+    assert decision is not None and decision.reason == "spend"
+    assert decision.resets_at == row_times[2] + timedelta(days=1)
+
+
 def test_at_limit_spend_quota_resets_when_oldest_usage_expires(automatic, settings_override):
     from datetime import timedelta
 

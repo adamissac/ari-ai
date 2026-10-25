@@ -2002,3 +2002,8 @@ selected run is still loading.
 - Merge waves belong to the integration lead; wave 2 includes my #542/#543.
 - Prod queue depth (~88 items) makes 45-case live eval slow — some cases may return `pending`/NOT_STARTED; rerun stragglers or extend deadlines.
 - Second-org real-provider leg needs owner's private repo + second GitHub org (account actions).
+
+## 2026-10-25 — Adam: spend quota reset accuracy
+
+- Spend-cap reset time now uses a Numeric window calculation over one database snapshot,
+  avoiding fractional-cost rounding and concurrent-write inconsistencies.
