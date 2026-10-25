@@ -23,3 +23,23 @@ Reconnect returns 200 when the fresh installation check 404s — the refresh hel
 ## Also preserve
 - C4 mid-line secret redaction is upstream #570 (`2c825c4e`) inside the pending `91b234d2` delta — comes via the next recomposition, not a workstream fix.
 - Do not touch: `deploy/scripts/*`, `backend/preflight.py`, `backend/ops_logging.py`, `backend/alerts.py`, `backend/api/ops.py`, `deploy/release_check.py` (Devin Bot release-validation owns).
+
+---
+
+## Glue plan — R2 provider-turn wire-up (integration branch, at recomposition)
+
+PR #4's `356cd535` delivers `services.repository_revocation(conn, *, repo_id, application_id=None, mapping_id=None)` → `'repository_disconnected' | 'deploy_mapping_revoked' | None`, plus the disconnect sweep that cancels queued/waiting + flags running steps.
+
+Integration glue (my lane, applied on the composed tree — `first_responder.py` stays #458-owned upstream):
+
+1. `backend/backend/live_defense/first_responder.py` `_cancelled` closure (~line 1090), inside `with transaction() as check:` — add `repository_revocation(check, repo_id=repo_id, application_id=decision.application_id if decision else None, mapping_id=mapping["id"] if mapping else None)` → `return True`. `repo_id`/`mapping`/`decision` are all resolved earlier in the same function scope.
+2. Final-persist block (~line 1150): after the `is_cancel_requested` check, same call on `conn` → `status = cancelled`, reason "repository revoked before final persist; late output is not executed". Preserves already-incurred evidence/cost.
+3. Import: extend `from backend.services import active_scope_for_repo, project_org` with `repository_revocation`.
+
+Expected: Codex `test_repository_disconnect_stops_next_provider_turn` green on composed tree; running jobs cancelled via `cancel_requested` flag → `JobCancelled` → `persist_cancelled` raise.
+
+## Owner delivery status
+
+- R5 (reliability `devin-1dc1161e`): DELIVERED `6063d9b5` on PR #1 — ledger-derived reconcile on expired leases → `recovery_required`; `jobs.begin_effect` contract for atomic reservation. CI 10/10.
+- R2 disconnect-side (hardening `devin-b679eb04`): DELIVERED `356cd535` on PR #4 — row-locked disconnect, sweep cancels via repo↔mapping linkage, `repository_revocation()` helper. 20/20 hardening tests.
+- R3+R4 (onboarding `devin-0a9affb3`): in progress.
