@@ -4,7 +4,7 @@
 > Living document written by the pilot-completion-commander (Adam lane, Devin session
 > `89af211994aa458d96ecf9f412c05bd7`). Each claim is labelled with how it was proven, and
 > results reported by other agents are kept separate from ones re-run here.
-> Last updated: 2026-10-25T01:20Z.
+> Last updated: 2026-10-25T01:35Z.
 
 ## 1. Versions under test
 
@@ -25,7 +25,7 @@ re-run here · **OPEN** = not proven · **FAIL** = defect reproduced.
 |---|---|---|---|---|
 | C1 | `main` boots, migrates, suite green | integration-lead | `make check`, `make test`, boot, curl | **PASS-local** on `5a56e44c`: 828 passed / 16 skipped / 0 failed (4m49s); ruff/format/contract checks pass; `/healthz` 200, `/readyz` 200, `/diagnostics` 401 unauth / 200 owner. **Re-verified PASS-local on `dc9a623a`: 832 passed / 16 skipped / 0 failed (313s)**, fresh DB migrated to single head `0017` |
 | C2 | Prod API healthy on exact deployed SHA | integration-lead | `/healthz`, `/readyz` | **PASS-prod (readiness only)**: SHA matches; db/queue ok; 12 workers heartbeating; llm=live `claude-haiku-5-5`; GitHub App/OAuth/webhook configured; sandbox=vercel; artifact store writable. Readiness alone does not show that an assessment completes (see C4) |
-| C3 | Prod queue drains | Adam (human access) | owner `/diagnostics` or DB read | **OPEN**: `queued_jobs` 242 → 252 with `running_jobs=0`, `busy=0`. In code, only `auto_commits` capacity deferral (5/h, 20/d per project) and live-defense controls enqueue with a future `run_after`, and the claim SQL only takes `run_after <= now()`, so idle workers plus a large deferred backlog is the expected signature. Not confirmed: `queue_counts` does not split queued jobs into due vs deferred |
+| C3 | Prod queue drains | integration-lead | read-only prod DB (Adam-provided URL, `default_transaction_read_only=on`) 01:30Z | **Diagnosed — not stuck, but churning**: of 359 queued jobs, 354 are `assess_github_commit` with `run_after` in the future, all sharing one timestamp (01:30:28Z) and dedupe `github:deferred:<job>`. When that time arrives they all become due together, capacity admits ≤1, and the rest re-enqueue. That makes ~3–4k jobs/h (7,134 of 7,419 assess jobs in 2h were deferral re-enqueues); totals 16,211 succeeded, 56 failed, 0 dead. The backlog cannot drain at 5/h. Accepted pilot limitation; post-pilot fix is to collapse deferrals per repo to the newest SHA |
 | C4 | Hosted customer journey (OAuth → connect → index → scope → manual assessment → 7 roles → validated planted vuln → fix → human approval → PR → independent verify → dashboard persistence) | pilot-completion-commander | Real browser on `ari-ai-lake.vercel.app` + `adamissac/pilot-rehearsal-target` | **OPEN — blocked on Adam's GitHub OAuth sign-in in the session browser**. Target repo: private, App installed, `main`=`256c8e8c` (Ari build-recipe PR #1 merged by `ari-security[bot]` 00:40Z). Webhook 202 at 00:07Z is not counted as evidence |
 | C5 | Two-org isolation | rehearsal owner | `backend/tests/test_pilot_rehearsal.py` | **REPORTED PASS-local** (34 probes, uniform 404) in [REHEARSAL_REPORT](REHEARSAL_REPORT.md); test is in the 828-pass suite above. Prod two-org probe: **OPEN** |
 | C6 | Secret redaction: code-intel index/context (`code_intelligence/privacy.py`) | integration-lead (fixing) | 17-case probe: leak / `ast.parse` / line count | **FAIL on main**: parse and line count preserved in 17/17, but the secret value survives in 10 classes: `*_token` names, bare `token`, Stripe `sk_live_`, `postgresql://u:p@`, JWT, Google `AIza`, paren-concat multiline, 2nd tuple element, `os.environ.get(..., default)`, digit-less mid-line kwarg |
@@ -33,6 +33,10 @@ re-run here · **OPEN** = not proven · **FAIL** = defect reproduced.
 | C8 | Dead-letter jobs endpoint authz | release-gate owner | code review | **PASS (code review)**: `require_project` → 404 for non-members; owners get redacted error, other members coarse code/category. **PASS-local runtime** on `dc9a623a`: owner 200 (dead+failed items), non-member 404 |
 | C9 | `purge_project` deletion | rehearsal owner | `test_purge_project_deletes_every_surface` | **REPORTED PASS-local**; prod/faithful-disposable run: **OPEN** |
 | C10 | #412 / #458 not merged | integration-lead | PR state | **PASS**: both open, held for human security review |
+| C12 | Prod availability | Adam / integration-lead | `/healthz`, pg_stat_activity | **FAIL (in progress)**: 502 since ~01:27Z after main→`2c8ad50d` (#571); Railway check green; DB shows no API/worker connections; last heartbeat 01:26:51Z |
+| C13 | Prod identity integrity | rehearsal owner / Adam | read-only DB | **OPEN — security flag**: synthetic users `rehearsal-alice`/`rehearsal-eve` created in prod 01:28:42Z; `rehearsal-alice` is **owner** of `org_01M55VPKH8T3P1WWEB73YQ8RDS` (adamissac personal, owns the rehearsal repo); no audit event for the grant. How it was created is unconfirmed. If a non-OAuth prod login path exists → NO-GO |
+| C14 | DB tenant enforcement | backend owner | read-only DB | **Finding**: the app role is `postgres` (`rolsuper`, `rolbypassrls` = true); RLS is enabled on 2/47 public tables, so tenant isolation is enforced only by the application layer (C5) |
+| C15 | Storage | Adam / infra | read-only DB | DB 3,398 MB, of which `index_payloads` is 3,320 MB; retention policy for index payloads not yet verified |
 | C11 | Branch protection | Adam | GitHub settings | **Limitation**: not available on this personal private repo; human-reviewed merges by integration-lead ([BRANCH_PROTECTION_LIMITATION](BRANCH_PROTECTION_LIMITATION.md)) |
 
 ## 3. Code intelligence — reproduced on `5a56e44c` (code of #531)
