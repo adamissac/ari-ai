@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from decimal import Decimal
 from typing import Literal
 
 import sqlalchemy as sa
@@ -120,15 +121,36 @@ def check_project_quota(
         sa.func.sum(assessments.c.doc["usage"]["usd"].astext.cast(sa.Numeric)), 0
     )
     positive_usage = sa.func.coalesce(assessments.c.doc["usage"]["usd"].astext.cast(sa.Numeric), 0)
+    spend_filters = (
+        assessments.c.created_at > now - day_window,
+        assessments.c.created_at <= now,
+        positive_usage > 0,
+    )
     spent, spend_oldest = conn.execute(
         sa.select(usage_usd, sa.func.min(assessments.c.created_at)).where(
-            assessments.c.created_at > now - day_window,
-            assessments.c.created_at <= now,
-            positive_usage > 0,
+            *spend_filters,
         )
     ).one()
     if float(spent) >= settings.assessments_usd_per_day and spend_oldest is not None:
-        return QuotaDecision("spend", spend_oldest + day_window)
+        cap = sa.literal(Decimal(str(settings.assessments_usd_per_day)), sa.Numeric)
+        spend_window = (
+            sa.select(
+                assessments.c.created_at,
+                sa.func.sum(positive_usage)
+                .over(order_by=(assessments.c.created_at, assessments.c.id), rows=(None, 0))
+                .label("expired"),
+                sa.func.sum(positive_usage).over().label("total"),
+            )
+            .where(*spend_filters)
+            .subquery()
+        )
+        reset_from = conn.execute(
+            sa.select(spend_window.c.created_at)
+            .where(spend_window.c.total - spend_window.c.expired < cap)
+            .order_by(spend_window.c.created_at)
+            .limit(1)
+        ).scalar_one_or_none()
+        return QuotaDecision("spend", (reset_from or spend_oldest) + day_window)
 
     return None
 

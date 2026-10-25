@@ -2019,7 +2019,6 @@ selected run is still loading.
 - Merge waves belong to the integration lead; wave 2 includes my #542/#543.
 - Prod queue depth (~88 items) makes 45-case live eval slow — some cases may return `pending`/NOT_STARTED; rerun stragglers or extend deadlines.
 - Second-org real-provider leg needs owner's private repo + second GitHub org (account actions).
-
 ## 2026-10-25 — Devin project-section fixes (session 89af211994aa458d96ecf9f412c05bd7)
 
 ### Done
@@ -2032,3 +2031,14 @@ selected run is still loading.
 - A fresh current-commit verified-fix PR is still needed for GO.
 
 No `HACKATL_TASKS` change; no task ID.
+
+## 2026-10-25 — Adam: least-privilege storage reporting
+
+- Optional storage probes now use savepoints and catch SQLAlchemy errors, so a
+  denied WAL-directory query does not abort subsequent report checks.
+- Added regression coverage proving a follow-up query succeeds after a failed probe.
+
+## 2026-10-25 — Adam: spend quota reset accuracy
+
+- Spend-cap reset time now uses a Numeric window calculation over one database snapshot,
+  avoiding fractional-cost rounding and concurrent-write inconsistencies.
