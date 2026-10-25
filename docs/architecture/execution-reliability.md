@@ -54,7 +54,19 @@ Operators resolve with `POST /api/v1/jobs/{id}/recovery`
 (`{"resolution": "applied" | "not_applied" | "retry", "note": ...}`), project
 **owner** only, audited as `job.recovery_resolved`. `retry` re-queues the job; the
 handler re-runs every authorization, mode and cancellation gate it normally runs,
-and `retry` is refused once cancellation was requested.
+and `retry` is refused once cancellation was requested. The resolution closes
+the billable-request ledger atomically (see "Ledger-derived uncertainty").
+
+## Error text sanitization
+
+Failure reasons can carry credentials (connector URLs, `key=value` fragments).
+`jobs.record_event` redacts every `reason` and `details` it persists;
+`jobs.transition` redacts `last_error`, `recovery` and `result` values; and
+`jobs.fail`/`complete` redact the stored error. Read surfaces scrub too —
+`execution.history` and `GET /jobs/{id}` re-redact so rows written before the
+write-side redaction stay safe, and `stuck_jobs` redacts `recovery`. Role
+checks are unchanged: history stays viewer-readable, recovery resolution
+owner-only.
 
 ## Recovery (`backend.execution.reconcile`)
 
@@ -102,6 +114,20 @@ into `recovery` diagnostics for the audited operator resolution. Ledger docs
 without the `execution` section (pre-7C shape) simply carry no uncertainty.
 Pure canonical reads are never reserved in the ledger, so they can never
 produce uncertainty here.
+
+The same check (`jobs.unresolved_billable_attempt`) is the one shared fence
+across the recovery protocol — it runs at three points:
+
+* `execution.reconcile` on every expired lease (above);
+* `jobs.claim` on every picked row: a fast reclaim beating the reconciler can
+  never hand a job with an unresolved billable row to a worker — it is
+  transitioned to `recovery_required` in the claim transaction instead;
+* `execution.resolve_recovery`, which closes the ledger in the same
+  transaction as the operator's job transition: `applied` marks unresolved
+  attempts `settled`, `not_applied`/`retry` mark them `cancelled`, and
+  `uncertain_provider_outcome` is cleared. A `retry` whose stale reservation
+  stayed unresolved would park the next claim right back in
+  `recovery_required` — or replay an unknown billable call.
 
 Ledger writers can alternatively mark job uncertainty atomically with their
 reservation by calling `jobs.begin_effect(conn, job_id, owner, effect_key)`
