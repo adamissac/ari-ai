@@ -39,6 +39,14 @@ Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablat
 
 ## Session entries
 
+### 2026-10-24 — GitHub onboarding + continuous-assessment hardening
+- Branch `fix/adam/github-onboarding-hardening` → PR against `main`.
+- Fixes: permanent GitHub failures record skipped events (no silent dead-letter); compare failure falls back to payload commits; `installation`/`repository` lifecycle events detach/rename monitored repos; connect verifies the installation still grants access; deploy doc corrected.
+- Tests: focused backend suites green; 11 new regression tests; ruff clean.
+- Live proof: genuine signed prod push delivery replayed through real local stack (embedded pg + API + worker + real App key/webhook secret); commit verified via GitHub API; event processed; assessment persisted.
+- Note for the App: subscribe to `Repository` events so `renamed`/`deleted` arrive (handled in code).
+
+
 ### 2026-10-25 — independent rehearsal reproduction + e2e false-alarm resolution
 
 - **Rehearsal independently reproduced** (this session, separate boot of `make dev`):
@@ -98,6 +106,7 @@ Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablat
 - Offline suite: 582 passed / 24 skipped (covers timeouts, cancel, kill switch, schema repair, provider outage, resume-after-restart, worktree/check refusals, specialist cannot-override).
 - Evidence: `security-agents/tests/artifacts/live/20261024T213713Z-MANIFEST.md` + report/tool-trace artifacts + recording JSONL.
 - Blockers: none. Next: PR review; keep `tests/artifacts/live/` naming convention.
+
 ### 2026-10-17 (cloud) — simulated demo + Lab command center + events-log cursor
 - `feat/adam/event-log-cursor-follow`: phase views follow `next_cursor` (cap 10,000 events).
 - `feat/adam/simulated-demo`: `/demo` labelled simulated walkthrough (ADR-0013), `DefenseMap`, Lab command center from the real bundle.
@@ -435,11 +444,18 @@ Owner requested AI automation and Defense Lab OFF until explicitly enabled. Bran
 - Synced origin/main (466df4b7). No new messages addressed to Adam. Since run 19 main gained only eval scoring/serialization and an access_control.role check template (other owners); nothing changed in rl-defense/, examples/ or Adam's CI/docs. `gh` not authenticated; used git/MCP only.
 - Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 598 files, 0 problems. rl-defense suite NOT re-run (no changes there since run 13's 569 passed). No live-LLM tests, no training/eval.
 - No code changes. Open: none.
+### 2026-10-24 — first-user usability workstream (PR #538, feat/adam/first-user-usability)
+- PR #538 open against feat/adam/commit-review-navigation (#496). Changes: named approval cards (rmp_ subjects resolved to finding titles), two-step approve confirm on the on-page gate AND the /approvals inbox, plain-English replay + recorded-tool-call names, friendly quick-read error, repo-relative finding paths. New: docs/planning/FIRST_USER_FLOW_AND_USABILITY.md (flow map + blocker list).
+- Verified: unit 11 passed; typecheck/lint clean; e2e stack.py — 9/9 specs pass incl. journey + commit-workspace + incident closure. Testing agent verified desktop/mobile/keyboard on the live stack (evidence comment on the PR).
+- Coordination notes: gitleaks `git` scans ALL fetched objects — planted tok-* on rehearsal/ledgerlite-v2 failed every PR; fixed repo-wide by #544 on main (my redundant #547 closed). #441 (intel redaction) merged. #535 closed — content already on main.
+- Open: Decline one-click asymmetry (logged in blockers doc); video artifact missing (recording post-processing failed).
+
 
 ### 2026-10-25 — scheduled cloud health run (21)
 - Synced origin/main (3af0fa72). No new messages addressed to Adam (newest: devin-integration-lead coordination-system notice, informational). Since run 20 main gained examples/inventory-lite (rehearsal fixture), a .gitleaks.toml addition, scripts/rehearsal and the coordination board (other agents); nothing changed in rl-defense/. `gh` not authenticated; used git/MCP only.
 - Health: payments-lite target 13 passed, label_checks 11 passed; inventory-lite target 8 passed, label_checks 10 passed (informational, not Adam's); scripts/check_links.py 612 files, 0 problems. rl-defense suite NOT re-run (no changes there since run 13's 569 passed). No live-LLM tests, no training/eval.
 - No code changes. Open: none.
+
 
 ### 2026-10-24 — code-review eval lane (session 0068155b, PR #529)
 - Done: executed functional-reviewer eval report (`code-review/eval/REVIEWER_EVAL_2026-10-24.md`); offline suite 90 passed/4 skipped; corpus labels 10/10 proven; PR #516 serialization defect reproduced + locked with `security-agents/tests/test_eval_score_api.py` (5 tests); coordination notes filed for findings `paths` contract and #531/#535 privacy-chain coherence.
@@ -453,7 +469,6 @@ Owner requested AI automation and Defense Lab OFF until explicitly enabled. Bran
 - #529 merged as `586370b0` (squash): eval report + scorer path-fallback regression tests + coordination notes are on main. CI was 8/8 green at merge.
 - Merge order flipped: `score_api.py`'s `_finding_paths` is now MODULE-level on main. #530 (feat/adam/release-gate) owns the now-inverted conflict — resolution sent directly to the release-gate session (keep module-level fn, drop their nested copy, keep all scored/unscored_reason additions).
 - Lane complete pending #530's rebase + my final verification of combined scoring (security/functional/unscored/missing-paths).
-
 ### 2026-10-25 — release-gate lane (session f3c02abe, #530 MERGED + follow-ups)
 - #530 merged as `22454ef2`: always-on path gates, pilot-verify.yml, dead-letter jobs endpoint, scored-only evals, load probe, release doc — all on main. 19/19 checks green at merge.
 - Fixed `main` breakage again: `gitleaks` red at head `dc9a623a` — 11 planted fake-secret literals in two since-deleted test files (commits `5dcddb61` + `78067f94`, redaction test suites). History can't be rewritten → path-scoped `condition=AND` allowlist of the exact planted values in `.gitleaks.toml`. Merged via #571 (`2c8ad50d`).
