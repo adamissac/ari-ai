@@ -115,7 +115,7 @@ def _job_view(row: sa.RowMapping, *, now: datetime) -> InvocationJobView:
         run_after=row["run_after"],
         heartbeat_at=row["heartbeat_at"],
         cancel_requested=bool(row["cancel_requested"]),
-        error_code=last_error.get("code"),
+        error_code=redact_text(str(last_error["code"])) if last_error.get("code") else None,
         error_message=redact_text(str(message))[:500] if message is not None else None,
         enqueued_at=row["created_at"],
         updated_at=row["updated_at"],
@@ -602,7 +602,7 @@ def diagnostics(project_id: str, request: Request) -> dict[str, Any]:
                     decision_id=payload.get("decision_id"),
                     invocation_id=payload.get("invocation_id"),
                     agent=payload.get("agent"),
-                    code=err.get("code"),
+                    code=redact_text(str(err["code"])) if err.get("code") else None,
                     message=redact_text(str(message))[:500] if message is not None else None,
                     at=r["updated_at"],
                 )
