@@ -1,0 +1,14 @@
+{
+  "agent": "codex-rc5-check",
+  "human_owner": "Alan",
+  "state": "READY_FOR_REVIEW",
+  "workstream": "independent RC5 follow-up",
+  "branch": "codex/rc5-independent-check",
+  "latest_sha": "36893bca",
+  "tests": "Candidate192pass/2upstreamfail; simulatedlanding194pass/0fail/0skip; successful run40243984093",
+  "blockers": [
+    "Actual integration candidate must include #629/current main",
+    "Reconcile handoff doc and obtain full CI on actual resulting SHA"
+  ],
+  "next_action": "Integration owner refreshes candidate; selected landing security suite GO, actual merge HOLD; no deploy"
+}
