@@ -6,6 +6,15 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Audit the code-intelligence pipeline end to end: land the parse-safe secret redaction from PR #441, redact mid-line bare secret literals in calls/collections, flag non-literal route paths as IndexIssue findings instead of silently dropping them, add a labeled-question retrieval evaluation and a reproducible index benchmark, and record executed coverage/recall/isolation numbers in `code-intelligence/evidence/m2-index-retrieval-audit.json` with the full report in `docs/research/intel-pipeline-audit/`.
+
+- Readiness/diagnostics split infra liveness from assessment capability: `/readyz` now reports `status=ready|degraded|not_ready` (503 unless ready) with per-capability booleans for live model, GitHub App (configured; `GET /app`-verified), Vercel Sandbox env, artifact-store writability and worker heartbeats; new `/diagnostics` (org-owner auth required — worker ids, env-var names, queue counts, migration state are internal metadata) adds verified GitHub check, migration drift, queue counts and worker rows; `/healthz` gains `git_sha` + `schema_version`. Contract schema 0.22.0. Frontend adds `/api/frontend-version` + `deploy/verify_pair.sh` to detect Vercel/Railway schema skew before it breaks users. Worker liveness is heartbeat-backed (`worker_heartbeats`, migration 0017; `READYZ_REQUIRE_WORKERS` requires ≥1 in staging/production) and `last_poll_at` ensures a stopped claim loop cannot report as a healthy worker.
+- Rebuild the connect → organization → repository → commit flow: the commit page now loads
+  the code review (headline, comments, real per-file diffs, patch, tests) on arrival instead
+  of hiding it behind an optional button, and the "7 agents" tab replays a recorded run on the
+  sector map — each saved tool call pinned to the part of the app it touched — or a labelled
+  preview of the quick read when no run exists. Failed runs are marked on the agent rail; the
+  organization page's repository rows are fully clickable.
 ### CI / release gate (2026-10-24)
 - Workflows run on every push/PR with per-job RUN/SKIP path gates (`scripts/ci/path_gate.py`); job ids made unique for required checks.
 - New manual `pilot-verify.yml` pipeline (static/unit, real DB, real sandbox, browser E2E, authorized live-model, hosted smoke, load/recovery).
@@ -13,6 +22,9 @@ All notable changes are documented here. Format follows
 - Eval harness: unscored cases no longer counted as misses (`scored:false` + reason).
 - `scripts/ci/load_probe.py` bounded queue concurrency/crash-recovery probe.
 
+- Postgres storage controls for the Railway deployment: `python -m backend.maintenance` (`report`/`apply`/`loop`) plus a bearer-token ops surface (`GET /api/v1/ops/storage`, `/ops/storage/prometheus`, `POST /api/v1/ops/maintenance`) reporting DB/WAL/table/file-store usage with fixed 70/80/90% volume alerts to `OPS_ALERT_WEBHOOK_URL`. Bounded retention (`RETENTION_DRY_RUN=true` by default — report-only until flipped) deletes expired sessions, old idempotency keys, terminal job rows, webhook deliveries, monitoring events, settled reassessment requests, runtime windows, orphaned and superseded index payload sets (keeping the newest 5 ready snapshots per repo), orphaned artifact objects, and stale `refs/ari/*` clone refs; audit events, findings, approvals, scopes, assessments, and any snapshot referenced by a live assessment are never deleted. Hourly maintenance sidecar in `deploy/railway/start.sh`. Runbook: `docs/deploy/POSTGRES_STORAGE.md`.
+
+=======
 - Pilot infra limitation documented: `docs/pilot/BRANCH_PROTECTION_LIMITATION.md` — branch-protection rulesets can't be enforced on a personal-account private repo; the release gate stays advisory/procedural, with a step-by-step org-migration plan to enforced protection.
 
 - fix(pilot): two-org rehearsal runs end-to-end — real API shapes (repo connect + file binding, scope targets/approve, real commit_sha), target app gets factory + seed + build_recipe; 13/13 steps pass against real Anthropic + Vercel sandbox with genuine findings and proven org isolation.
@@ -20,6 +32,7 @@ All notable changes are documented here. Format follows
 - Live seven-agent rehearsal evidence on `examples/inventory-lite`: full orchestrator run with the real Anthropic provider (all 7 roles live, `asm_01M5R4912YTF8XKT9X0GXHY668`, $0.0334) found the planted CWE-639 ownership defect (`validation=confirmed`, verdict `accepted`, hardened with 3 regression tests); second hypothesis honestly inconclusive. Report + evidence doc under `docs/rehearsal/`.
 
 - Seven-agent live evidence: a budgeted real-Claude run of the full security workflow on the payments-lite fixture completed end to end (Probe executed the ownership check, Verify independently re-ran it on a fresh checkout and accepted the patch); manifest + per-agent tool traces, costs, specialist provenance and limitations archived under `security-agents/tests/artifacts/live/20261024T213713Z-*`.
+
 - Readiness/diagnostics split infra liveness from assessment capability: `/readyz` now reports `status=ready|degraded|not_ready` (503 unless ready) with per-capability booleans for live model, GitHub App (configured; `GET /app`-verified), Vercel Sandbox env, artifact-store writability and worker heartbeats; new `/diagnostics` (org-owner auth required — worker ids, env-var names, queue counts, migration state are internal metadata) adds verified GitHub check, migration drift, queue counts and worker rows; `/healthz` gains `git_sha` + `schema_version`. Contract schema 0.22.0. Frontend adds `/api/frontend-version` + `deploy/verify_pair.sh` to detect Vercel/Railway schema skew before it breaks users. Worker liveness is heartbeat-backed (`worker_heartbeats`, migration 0017; `READYZ_REQUIRE_WORKERS` requires ≥1 in staging/production) and `last_poll_at` ensures a stopped claim loop cannot report as a healthy worker.
 - Tenant data protection: two-tenant adversarial suite (17 tests) covering every project-scoped read/write/SSE/artifact/job/audit surface plus forged-ID and storage-accessor claims; FORCE row-level security on `index_payloads`/`index_snapshots` scoped by a per-transaction tenant GUC (migration 0016); `backend/privacy.py::purge_project` — the documented full-tenant deletion workflow (all project rows, RLS-scoped source payloads, refcount-aware artifact objects, bare clones); `docs/security/TENANT_DATA_PROTECTION.md` — threat model, private-code data-flow inventory, verified controls matrix, GitHub-token posture, Anthropic processing posture, retention gaps, and the enterprise isolation future option.
 
