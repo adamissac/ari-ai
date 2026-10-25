@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     github_app_slug: str | None = None  # github.com/apps/<slug>: link for installing the App
     github_api_url: str = "https://api.github.com"
     github_web_url: str = "https://github.com"
-    # Empty preserves legacy monitoring; comma-separated GitHub logins or * enables per-commit runs.
+    # Empty or * preserves impact monitoring; a non-empty comma list enables per-commit runs.
     github_auto_commit_authors: str = ""
     project_assessments_per_hour: int = Field(default=10, ge=1)
     project_assessments_per_day: int = Field(default=50, ge=1)
