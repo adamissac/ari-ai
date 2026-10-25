@@ -24,6 +24,7 @@ jobs:
       contents: read
       pull-requests: read
       issues: write
+      statuses: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -57,3 +58,15 @@ jobs:
           ARI_DEVIN_ENABLED: ${{ vars.ARI_DEVIN_ENABLED }}
           ARI_DEVIN_BUDGET_ATTESTATION: ${{ vars.ARI_DEVIN_BUDGET_ATTESTATION }}
         run: python3 -m scripts.ari_review.devin --ready
+      - name: Surface bounded handoff status
+        if: always()
+        run: |
+          if [ -f review-evidence/devin-handoff.json ]; then
+            cat review-evidence/devin-handoff.json >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ari-handoff-${{ github.run_id }}
+          path: review-evidence/
+          retention-days: 14

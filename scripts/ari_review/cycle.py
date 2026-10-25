@@ -389,6 +389,9 @@ def report(policy: dict, directory: Path, refresh: bool = False) -> dict:
         f"[Evidence run](https://github.com/{policy['integration_repository']}/actions/runs/{pin['run_id']})",
     ]
     lines += [f"- CI `{name}`: {item['conclusion'] or item['status']}" for name, item in ci.items()]
+    lines += [
+        f"- Upstream merge: {'clean' if (merge or {}).get('upstream_merge_clean') else 'unverified/conflicting'}; transfer production tree: {'matches' if (merge or {}).get('manifest_production_equal') else 'not proven equivalent'}"
+    ]
     lines += ["- Unresolved: " + safe_text(b[:250]) for b in blockers[:25]]
     lines += [
         "No automatic merge, deployment or customer enforcement. Native review silence is not approval."
@@ -422,6 +425,16 @@ def report(policy: dict, directory: Path, refresh: bool = False) -> dict:
     else:
         api.call(base + f"/{policy['integration_pr']}/comments", "POST", {"body": body})
     Path(os.environ.get("GITHUB_STEP_SUMMARY", directory / "summary.md")).write_text(body)
+    api.call(
+        f"/repos/{policy['integration_repository']}/statuses/{pin['candidate_sha']}",
+        "POST",
+        {
+            "state": "success" if decision == "GO" else "failure",
+            "context": "ari-independent-review",
+            "description": "Exact-SHA " + decision + "; see signed evidence and CI gates",
+            "target_url": f"https://github.com/{policy['integration_repository']}/actions/runs/{pin['run_id']}",
+        },
+    )
     assign(api, policy, result)
     if not refresh:
         state = {

@@ -161,6 +161,21 @@ def native_findings(api: GitHub, pin: dict, policy: dict) -> list:
         and r.get("user", {}).get("login") == policy["native_reviewer"]
     }
     found = []
+    for item in reviews:
+        if item["id"] not in valid:
+            continue
+        match = re.search(r"\[P([0-3])\]", item.get("body") or "")
+        if match:
+            found.append(
+                {
+                    "id": f"NATIVE-REVIEW-{item['id']}",
+                    "severity": "P" + match[1],
+                    "title": item["body"][:180],
+                    "path": "",
+                    "line": 1,
+                    "evidence": item.get("html_url", "Native review body"),
+                }
+            )
     for item in api.pages(base + "/comments"):
         if item.get("pull_request_review_id") not in valid:
             continue
