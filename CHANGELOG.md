@@ -6,6 +6,11 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Added bounded exact-SHA integration review tooling: strict independent regressions,
+  native Codex findings import, optional Codex Action audit, owner-routed Devin handoff,
+  signed evidence and a protected cost ledger. Paid activation requires explicit setup;
+  no automatic merge, deployment or customer enforcement.
+
 - Live commit analysis no longer needs a `GITHUB_TOKEN` PAT on Vercel: `POST /api/analyze`
   reads the commit diff through the new backend route `GET /api/v1/github/commit`, which
   resolves the caller's own GitHub App installation (403 when the repo is not reachable

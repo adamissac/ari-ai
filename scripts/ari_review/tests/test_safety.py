@@ -14,6 +14,7 @@ from scripts.ari_review.common import (
     native_findings,
     reservation_allowed,
     sha,
+    state_body,
     validate_review,
     verdict,
     workstream,
@@ -122,8 +123,9 @@ def test_injected_owner_and_path_are_not_trusted():
 def reservation(day="2026-10-25", candidate="a" * 40, author="github-actions[bot]"):
     return {
         "user": {"login": author},
-        "body": "<!-- ari-review-reservation-v1 -->\n"
-        + json.dumps({"day": day, "candidate_sha": candidate}),
+        "body": state_body(
+            "<!-- ari-review-reservation-v1\n", {"day": day, "candidate_sha": candidate}, POLICY
+        ),
     }
 
 

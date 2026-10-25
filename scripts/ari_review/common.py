@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import os
 import re
 import urllib.request
 from datetime import UTC, datetime
+from decimal import Decimal
 from pathlib import PurePosixPath
 from typing import Any
 
@@ -65,27 +67,62 @@ def comments(api: GitHub, policy: dict) -> list:
     )
 
 
-def journal(rows: list, prefix: str) -> list[dict]:
+def signed_payload(prefix: str, value: dict, policy: dict) -> dict:
+    key = os.environ.get("ARI_REVIEW_STATE_KEY", "")
+    if len(key) < 32:
+        raise ValueError("protected review-state signing key is missing")
+    payload = {
+        **value,
+        "_scope": policy["integration_repository"] + "#" + str(policy["integration_pr"]),
+    }
+    payload.pop("_signature", None)
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    signature = hmac.new(key.encode(), (prefix + canonical).encode(), hashlib.sha256).hexdigest()
+    return {**payload, "_signature": signature}
+
+
+def state_body(prefix: str, value: dict, policy: dict) -> str:
+    # Keep durable state hidden; angle escaping prevents data ending the comment.
+    encoded = (
+        json.dumps(signed_payload(prefix, value, policy))
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+    )
+    return prefix + encoded + "\n-->"
+
+
+def journal(rows: list, prefix: str, policy: dict) -> list[dict]:
     out = []
     for row in rows:
         if row.get("user", {}).get("login") != BOT:
             continue
         body = row.get("body", "")
-        if body.startswith(prefix):
+        if body.startswith(prefix) and body.endswith("\n-->"):
             try:
-                value = json.loads(body[len(prefix) :])
-                if isinstance(value, dict):
-                    out.append(value)
+                value = json.loads(body[len(prefix) : -4])
+                expected = signed_payload(prefix, value, policy)
+                if value.get("_scope") != expected["_scope"] or not hmac.compare_digest(
+                    str(value.get("_signature", "")), expected["_signature"]
+                ):
+                    continue
+                out.append(value)
             except (ValueError, TypeError):
                 continue
     return out
 
 
 def reservation_allowed(rows: list, pin: dict, policy: dict, today: str) -> tuple[bool, str]:
-    records = journal(rows, "<!-- ari-review-reservation-v1 -->\n")
+    records = journal(rows, "<!-- ari-review-reservation-v1\n", policy)
     if any(r.get("candidate_sha") == pin["candidate_sha"] for r in records):
         return False, "already reserved: never automatically retry a paid SHA"
     used = sum(r.get("day") == today for r in records)
+    cost = sum(
+        Decimal(str(r.get("reserved_usd", policy["max_usd_per_review"])))
+        for r in records
+        if r.get("day") == today
+    )
+    if cost + Decimal(policy["max_usd_per_review"]) > Decimal(policy["max_usd_per_day"]):
+        return False, "daily reserved USD limit reached"
     if used >= policy["max_reviews_per_day"]:
         return False, "daily review/cost limit reached"
     return True, "reserved"
@@ -143,6 +180,8 @@ def native_findings(api: GitHub, pin: dict, policy: dict) -> list:
 
 
 def validate_review(data: dict, pin: dict, policy: dict) -> dict:
+    if len(json.dumps(data).encode()) > 40000:
+        raise ValueError("oversized structured review")
     if set(data) != {
         "version",
         "candidate_sha",
@@ -167,6 +206,8 @@ def validate_review(data: dict, pin: dict, policy: dict) -> dict:
     ):
         raise ValueError("missing/duplicate required security findings")
     for item in checks:
+        if set(item) != {"id", "status", "evidence"} or not item["evidence"]:
+            raise ValueError("invalid or empty check evidence")
         if item["status"] not in {"PASS", "FAIL", "INCONCLUSIVE"} or not isinstance(
             item["evidence"], str
         ):
@@ -178,6 +219,8 @@ def validate_review(data: dict, pin: dict, policy: dict) -> dict:
     if not isinstance(data["findings"], list) or len(data["findings"]) > policy["max_findings"]:
         raise ValueError("too many findings")
     for item in data["findings"]:
+        if set(item) != {"id", "severity", "title", "path", "line", "evidence"}:
+            raise ValueError("unexpected finding fields")
         path = item["path"]
         if (
             not isinstance(path, str)
@@ -260,9 +303,12 @@ def verdict(
 
 
 def fingerprint(finding: dict) -> str:
-    return hashlib.sha256(
-        json.dumps({k: finding[k] for k in ("id", "path", "title")}, sort_keys=True).encode()
-    ).hexdigest()[:20]
+    identity = (
+        {"id": finding["id"]}
+        if finding["id"] in IDS
+        else {k: finding[k] for k in ("id", "path", "title")}
+    )
+    return hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()[:20]
 
 
 def utc_day() -> str:

@@ -1993,3 +1993,14 @@ selected run is still loading.
 - Merge waves belong to the integration lead; wave 2 includes my #542/#543.
 - Prod queue depth (~88 items) makes 45-case live eval slow — some cases may return `pending`/NOT_STARTED; rerun stragglers or extend deadlines.
 - Second-org real-provider leg needs owner's private repo + second GitHub org (account actions).
+
+### Bounded release-review automation — 2026-10-25
+
+Implementation branch `codex/bounded-release-review-automation` adds CI-only tools
+and versioned F1–F10/N1–N7 review policy. Strict candidate execution is isolated
+from credentials; model shell tools disabled; signed protected Git ledger bounds
+cost even if comments are deleted. Source-fix CI can hand off to the existing
+integration owner without human prompt relay. Local adversarial/controller suite:
+55 passed; Ruff clean. Docker is unavailable locally: GitHub CI and credentialed
+activation remain unverified. Account credentials are not assumed; paid execution
+defaults OFF. No production code, release merge, deployment or enforcement change.
