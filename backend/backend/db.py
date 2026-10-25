@@ -772,9 +772,11 @@ def _engine(url: str) -> Engine:
     )
 
 
-def get_engine() -> Engine:
+def get_engine(url: str | None = None) -> Engine:
     from backend.settings import get_settings
 
+    if url is not None:
+        return _engine(url)
     return _engine(get_settings().database_url)
 
 

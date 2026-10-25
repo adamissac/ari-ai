@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Allow migrations to use an optional database URL separate from the app role.
+
 - Verify-tested diffs are also stored as sealed, delivery-only artifacts. Delivery checks their
   bytes against both verification bindings and refuses high-confidence credentials; project
   purge removes sealed copies with other artifacts.
