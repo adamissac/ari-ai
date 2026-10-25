@@ -67,3 +67,16 @@ condition = "AND"
 paths = ['''^rehearsal/.*''']
 regexTarget = "line"
 regexes = ['''Bearer\s+tok-[a-z0-9_-]+''']
+
+# code-intelligence/tests/test_ingest_extract.py contains deliberate fake secret
+# literals used to prove the redaction path scrubs them. Not credentials.
+[[allowlists]]
+description = "Fake secret fixtures in the ingest-redaction test file"
+condition = "AND"
+paths = ['''^code-intelligence/tests/test_ingest_extract\.py$''']
+regexTarget = "line"
+regexes = [
+  '''xoxb-[0-9A-Za-z-]+''',
+  '''sk_live_[0-9A-Za-z]+''',
+  '''eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+''',
+]
