@@ -124,7 +124,10 @@ def test_recipe_protected_tests_drops_outside_roots_and_traversal(tmp_path: Path
             }
         )
     )
-    assert recipe_protected_tests(tmp_path) == ("tests/test_api.py",)
+    assert recipe_protected_tests(tmp_path) == (
+        "../x.py (protected-test discovery failed: SANDBOX_POLICY_VIOLATION)",
+        "tests/test_api.py",
+    )
 
 
 @pytest.mark.parametrize("protected_tests", ["tests/test_a.py", ["tests/test_a.py", 1]])
