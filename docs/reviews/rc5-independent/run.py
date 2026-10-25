@@ -17,7 +17,8 @@ if os.environ['AUDIT_MODE'] == 'landing':
     env = dict(os.environ, GIT_AUTHOR_NAME='Independent review', GIT_COMMITTER_NAME='Independent review', GIT_AUTHOR_EMAIL='review@localhost', GIT_COMMITTER_EMAIL='review@localhost', GIT_AUTHOR_DATE=stamp, GIT_COMMITTER_DATE=stamp)
     commit = subprocess.run(['git','commit-tree',tree,'-p',pin['upstream_sha'],'-p',pin['candidate_sha']],input='Review-only RC5 current-main landing simulation\n',cwd=candidate,text=True,capture_output=True,check=True,env=env).stdout.strip()
     landing = candidate.parent / 'landing'
-    original_git('worktree','add','--detach',str(landing),commit,cwd=candidate)
+    original_git('clone','--no-hardlinks','--no-checkout',str(candidate),str(landing),cwd=candidate)
+    original_git('checkout','--detach',commit,cwd=landing)
     candidate = landing
     pin['candidate_sha'] = commit
     pin['landing_tree'] = tree
