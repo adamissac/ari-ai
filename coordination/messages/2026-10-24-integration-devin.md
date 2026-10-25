@@ -117,3 +117,6 @@ All 10 findings are fixed and run as STRICT assertions (zero xfails):
 - F1–F10 all closed with strict assertions; remaining hard blocker = independent security re-review (per release protocol) + Devin Bot readiness re-run on this tip.
 - Adam 0016/0017 migration-collision decision is required before any upstream merge — NOT a deploy blocker for the fork-side release candidate.
 - Verdict: **GO for review + staging validation; NO-GO for customer deploy until independent security re-review and readiness suite pass on 0f93f12c.**
+
+## Post-verdict fix — alert webhook wiring (tip 5eee457e)
+Readiness re-run on 7cfba90f found `alert.webhook` dead: the F2–F5 worker rewrite dropped the `backend.alerts` import and both `send_alert` call sites (PermanentJobError → `job_failed_permanent`, attempts-exhausted → `job_dead`). Cherry-picked `fix/devin/alert-webhook-wiring` @ 93d5ecdd → `5eee457e`; worker/alert tests 30/30, readiness suite GO 25/25 per release-validation.
