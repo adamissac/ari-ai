@@ -195,6 +195,21 @@ def storage_prometheus() -> Any:
             "# TYPE ari_postgres_volume_pct gauge",
             f"ari_postgres_volume_pct {pct}",
         ]
+    data_volume = report["data_volume"]
+    data_used = data_volume["used_bytes"]
+    if data_used is not None:
+        lines += [
+            "# HELP ari_data_volume_bytes App data volume usage in bytes",
+            "# TYPE ari_data_volume_bytes gauge",
+            f"ari_data_volume_bytes {data_used}",
+        ]
+    data_pct = data_volume["pct_used"]
+    if data_pct is not None:
+        lines += [
+            "# HELP ari_data_volume_pct App data volume utilization percent",
+            "# TYPE ari_data_volume_pct gauge",
+            f"ari_data_volume_pct {data_pct}",
+        ]
     fs = report.get("filesystem", {})
     if "artifact_bytes" in fs:
         lines.append(f"ari_artifact_store_bytes {fs['artifact_bytes']}")

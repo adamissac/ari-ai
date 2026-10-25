@@ -8,6 +8,7 @@ import time
 from datetime import datetime, timedelta
 from typing import Any
 
+import httpx
 import sqlalchemy as sa
 from fastapi import APIRouter, Header, Query, Request, Response
 from fastapi.concurrency import run_in_threadpool
@@ -56,6 +57,7 @@ from backend.db import (
 from backend.db import (
     jobs as jobs_table,
 )
+from backend.github import GitHubApp, GitHubNotConfigured
 from backend.integrations import load_factory
 from backend.quota import check_project_quota, rate_limit_message
 from backend.redaction import redact
@@ -1101,6 +1103,38 @@ def start_assessment(
         replay = idempotent_lookup(conn, user.id, idempotency_key, retry_request)
         if replay:
             return JSONResponse(replay["body"], status_code=replay["status"])
+        commit_sha = body.commit_sha
+        if commit_sha is None and body.snapshot_id is None:
+            repo = (
+                conn.execute(sa.select(repositories).where(repositories.c.id == body.repo_id))
+                .mappings()
+                .first()
+            )
+            if repo is None or repo["project_id"] != project_id:
+                raise not_found("repository")
+            if repo["installation_id"] is None:
+                raise ApiError(
+                    ErrorCode.VALIDATION_FAILED,
+                    "enter a commit SHA: this repository is not connected through the GitHub App",
+                    422,
+                )
+            try:
+                commits = GitHubApp().recent_commits(
+                    repo["installation_id"], repo["full_name"], repo["default_branch"], limit=1
+                )
+            except (GitHubNotConfigured, httpx.HTTPError) as exc:
+                raise ApiError(
+                    ErrorCode.SUBSYSTEM_UNAVAILABLE,
+                    "could not read the latest commit from GitHub",
+                    503,
+                ) from exc
+            if not commits:
+                raise ApiError(
+                    ErrorCode.SUBSYSTEM_UNAVAILABLE,
+                    "could not read the latest commit from GitHub",
+                    503,
+                )
+            commit_sha = commits[0]["sha"]
         quota = check_project_quota(conn, project_id, utcnow())
         if quota is not None:
             raise ApiError(
@@ -1109,7 +1143,6 @@ def start_assessment(
                 429,
                 {"resets_at": quota.resets_at.isoformat()},
             )
-        commit_sha = body.commit_sha
         if body.snapshot_id:
             snap = (
                 conn.execute(sa.select(snapshots).where(snapshots.c.id == body.snapshot_id))
