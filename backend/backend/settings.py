@@ -131,6 +131,10 @@ class Settings(BaseSettings):
     # Provisioned size of the PostgreSQL volume in bytes (from the Railway dashboard).
     # 0 = unknown: the report still emits absolute usage but skips percentage alerts.
     postgres_volume_bytes: int = Field(default=0, ge=0)
+    # Provisioned size of the app data volume, Railway sizeMB × 1,000,000.
+    # 0 = skip data-volume alerts.
+    data_volume_bytes: int = Field(default=0, ge=0)
+    data_volume_path: Path = Path("/data")
     maintenance_enabled: bool = True
     maintenance_interval_s: int = Field(default=3600, ge=60)
     # True by default: the loop reports what it WOULD delete without deleting until an
