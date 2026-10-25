@@ -4,8 +4,8 @@
 # then run both; if either exits, exit too so Railway restarts the container.
 set -eu
 
-# Every pusher and author by default; set a comma-separated list of logins to narrow it.
-export GITHUB_AUTO_COMMIT_AUTHORS="${GITHUB_AUTO_COMMIT_AUTHORS-*}"
+# Opt in with GITHUB_AUTO_COMMIT_AUTHORS=* or a comma-separated list of GitHub logins.
+export GITHUB_AUTO_COMMIT_AUTHORS="${GITHUB_AUTO_COMMIT_AUTHORS-}"
 
 # RL defense policy retrained from results/protocol-v1/candidate.yaml (seed 0); the worker
 # refuses a checkpoint whose sha256 differs from this pin.

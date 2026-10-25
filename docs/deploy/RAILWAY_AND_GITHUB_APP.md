@@ -65,18 +65,21 @@ throwaway Vercel Sandbox microVM (see `security-agents` Vercel Sandbox driver).
 
 ### Per-commit automatic assessments
 
-The Railway entrypoint defaults `GITHUB_AUTO_COMMIT_AUTHORS` to `*`: every pusher and
-every commit author, including commits whose email maps to no GitHub account. Set a
-comma-separated list of GitHub logins to narrow it; explicit empty uses the legacy
-impact/coalescing policy. An installed App, connected repository, enabled monitoring and
-approved repository scope remain prerequisites. Approving a scope wakes blocked commits.
+The Railway entrypoint defaults `GITHUB_AUTO_COMMIT_AUTHORS` to empty (manual-only).
+Set it to `*` to opt in every pusher and commit author, including commits whose email
+maps to no GitHub account, or use a comma-separated list of GitHub logins to limit
+eligibility. With an empty allowlist, pushes are outside the automatic rollout; manual
+Run remains available. An installed App, connected repository, enabled monitoring and
+approved repository scope remain prerequisites for automatic runs. Approving a scope
+wakes blocked commits.
 
-Every pushed commit gets its own full run; none is skipped. Commits over a project's
-limits (`AUTOMATIC_ASSESSMENTS_PER_HOUR`, `AUTOMATIC_ASSESSMENTS_PER_DAY`) or over the
-all-project daily spend ceiling (`AUTOMATIC_USD_PER_DAY`, default $50) are deferred and
-run later. `WORKER_PROCESSES` (default 12, ~80 MB each) runs that many commits at once;
-jobs are claimed with `SKIP LOCKED`. Signed webhooks are never rate limited: GitHub does
-not retry a 429, and the durable queue absorbs bursts.
+When opted in, every eligible pushed commit gets its own full run; none is skipped.
+Commits over a project's limits (`AUTOMATIC_ASSESSMENTS_PER_HOUR`,
+`AUTOMATIC_ASSESSMENTS_PER_DAY`) or over the all-project daily spend ceiling
+(`AUTOMATIC_USD_PER_DAY`, default $50) are deferred and run later.
+`WORKER_PROCESSES` (default 12, ~80 MB each) runs that many commits at once; jobs are
+claimed with `SKIP LOCKED`. Signed webhooks are never rate limited: GitHub does not
+retry a 429, and the durable queue absorbs bursts.
 Opening the commit page is unnecessary; it polls the persisted run when visited.
 Check worker logs for `assess_github_commit` and the commit's monitoring assessment
 before claiming live execution: `/readyz` only checks configuration and storage.
@@ -98,8 +101,9 @@ and is audited. Migration 0009 adds the flag; schema 0.15.0 adds RepositoryUpdat
 and regenerates JSON/TypeScript. Deploy the backend and frontend together.
 
 The rollout requires both the signed push sender and GitHub-attributed commit
-author to match `GITHUB_AUTO_COMMIT_AUTHORS` (`*` in the Railway entrypoint). Attribution
-alone is email-derived, not authorization. Project start limits default to 5/hour
+author to match `GITHUB_AUTO_COMMIT_AUTHORS` (empty by default on Railway; opt in with
+`*` or a comma-separated login list). Attribution alone is email-derived, not
+authorization. Project start limits default to 5/hour
 and 20/day (`AUTOMATIC_ASSESSMENTS_PER_HOUR`, `AUTOMATIC_ASSESSMENTS_PER_DAY`). Excess
 commits are durably deferred, not dropped. Full runs use the normal project budget,
 clamped to operator caps. Monitoring and approved sandbox scope remain prerequisites;

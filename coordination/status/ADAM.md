@@ -1,5 +1,11 @@
 # Adam — implementation status
 
+## 2026-10-25 — Railway automatic-assessment default
+- Branch: `fix/adam/manual-only-auto-assess-default`; commit message: `fix(deploy): default automatic commit assessments to manual-only`.
+- Changed the Railway default to an empty author allowlist, documented opt-in and storage implications, and added the session handoff plus immutable coordination message.
+- Verification: `sh -n deploy/railway/start.sh` passed. No test or Python files changed; no pytest/ruff run was needed.
+- Blockers: none. No PR opened; push this branch, then the owner handles PR creation and CI.
+
 Owner: Adam
 Branch: `feat/adam/release-gate` → PR #530 (open, awaiting human merge approval)
 Last sync: 2026-10-24 ~23:45Z — origin/main at `586370b0` (#528/#529 landed; #535 earlier); branch synced.

@@ -4,8 +4,8 @@ Why the Railway Postgres volume fills up:
 
 - **`index_payloads`** stores the full code-intelligence payload set for *every*
   `(project_id, repo_id, commit_sha, index_version)` — immutable `LargeBinary` rows.
-  With `GITHUB_AUTO_COMMIT_AUTHORS=*` every pushed commit triggers an assessment that
-  rewrites a complete payload set, so Postgres grows linearly with commits.
+  Automatic assessments write a complete payload set, so Postgres grows with assessed
+  commits.
 - **`jobs`** rows carry JSONB `payload`/`result`/`last_error` and are never deleted,
   including terminal `succeeded`/`failed`/`dead` rows.
 - **`webhook_deliveries`**, **`monitoring_events`**, **`reassessment_requests`**,
@@ -17,6 +17,16 @@ Why the Railway Postgres volume fills up:
 
 None of this shrinks the volume by deleting rows: Postgres reuses freed space inside its
 own files. See "Reclaiming disk" for what actually returns space to Railway.
+
+## Automatic assessments and storage
+
+Each automatic assessment stores about 5.7 MB of physical data in `index_payloads`
+(production measurement on 2026-10-25: 3.46 GB across 609 snapshots). With `*` and
+500 assessments per day, the database grew about 330 MB/day. The limited pilot runs
+manual-only with an empty `GITHUB_AUTO_COMMIT_AUTHORS` allowlist. Pushes then return
+“push sender is outside the automatic rollout” without touching the per-repository
+`automatic_assessments` setting. If automatic assessments are re-enabled, keep
+`AUTOMATIC_ASSESSMENTS_PER_DAY` at or below 20 and enable retention first.
 
 ## What ships in this change
 

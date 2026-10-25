@@ -16,6 +16,15 @@ adds an entry before ending.
 - Warnings for the next session:
 ```
 
+### 2026-10-25 — Devin (agent, Adam) — default Railway automatic assessments to manual-only
+- Did: changed the Railway `GITHUB_AUTO_COMMIT_AUTHORS` default to empty while keeping explicit `*` and comma-separated GitHub-login opt-ins; updated deployment/storage guidance with measured database growth and pilot limits.
+- State of the code: Railway pushes are outside the automatic rollout by default; manual runs remain available. An empty allowlist leaves per-repository `automatic_assessments` untouched.
+- Commands run and results: `sh -n deploy/railway/start.sh` passed. No tests or Python files were changed, so pytest and ruff were not run; no test asserts the startup default.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): none.
+- Next steps: commit and push `fix/adam/manual-only-auto-assess-default`; owner handles PR and CI.
+- Warnings for the next session: production automatic assessments should remain disabled until retention is enabled and the daily limit is at most 20.
+
 ### 2026-10-24 — Devin (agent, Adam) — first-user usability pass on commit review (feat/adam/first-user-usability)
 - Did: walked the real first-user flow end-to-end on `tests/e2e/stack_manual.py` (dev login → org → repo → commit → scripted run → recorded replay → approvals). Fixed: approval cards resolve remediation-plan `rmp_` subjects to the owning finding by scanning `api().finding(id)` records once per subject (ref-guarded so polling can't starve it); cards get a two-step confirm that says exactly what approval will/won't do ("never merges or deploys"); `agent-map` normalizes persisted `ns__tool` names (`code__read_span` → `code.read_span`) so recorded runs speak plain English; quick-read failure explains "no model API key configured" instead of a raw error.
 - State of the code: verified live — both pending approvals render "Fix request · <finding title>" with severity/kind/path; `tests/unit/approval-gate.test.tsx` covers fnd_ + rmp_ subjects and the fallback. 340 unit tests pass; typecheck/lint clean; build green.

@@ -80,7 +80,7 @@ the RL system consumes these as observations in simulation only.
 When `GITHUB_AUTO_COMMIT_AUTHORS` is nonempty, GitHub pushes use a separate full
 assessment scheduling policy: one durable job per repository/SHA, GitHub-verified
 author allowlist, no path-based skipping and no coalescing loss. Railway defaults
-to `adamissac`; an explicit comma-separated list or `*` expands the rollout.
+to an empty allowlist (manual-only); set a comma-separated list or `*` to opt in.
 This mode uses the normal project assessment budget, clamped by operator limits,
 instead of the cheaper monitoring budget above. Monitoring enablement and scope
 authorization still apply; scope approval wakes blocked commits. Repair gates
@@ -93,7 +93,7 @@ repository checkout and an executable authorized sandbox target.
 ### Automatic/manual repository mode and Haiku 5.5 (#380)
 
 Each connected repository has a persisted `automatic_assessments` switch, default
-ON. ON queues every eligible new commit in the background without a browser visit
+OFF. ON queues every eligible new commit in the background without a browser visit
 or Run click. OFF prevents unstarted automatic work and exposes manual Run on
 selected commits; active runs and history remain intact. GET/PATCH
 `/api/v1/repositories/{repo_id}` returns Repository; PATCH requires a project owner
@@ -101,8 +101,9 @@ and is audited. Migration 0009 adds the flag; schema 0.15.0 adds RepositoryUpdat
 and regenerates JSON/TypeScript. Deploy the backend and frontend together.
 
 The rollout requires both the signed push sender and GitHub-attributed commit
-author to match `GITHUB_AUTO_COMMIT_AUTHORS` (initially adamissac). Attribution
-alone is email-derived, not authorization. Project start limits default to 5/hour
+author to match `GITHUB_AUTO_COMMIT_AUTHORS` (empty by default on Railway; opt in
+with `*` or a comma-separated login list). Attribution alone is email-derived, not
+authorization. Project start limits default to 5/hour
 and 20/day (`AUTOMATIC_ASSESSMENTS_PER_HOUR`, `AUTOMATIC_ASSESSMENTS_PER_DAY`). Excess
 commits are durably deferred, not dropped. Full runs use the normal project budget,
 clamped to operator caps. Monitoring and approved sandbox scope remain prerequisites;
