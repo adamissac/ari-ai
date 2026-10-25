@@ -1,6 +1,6 @@
 # Production DB: least-privilege app role, credential rotation, rehearsal cleanup
 
-Status: **EXECUTED 2026-10-25 (cutover); credential rotation and public-access removal tracked below.**
+Status: **EXECUTED 2026-10-25 (cutover); admin password rotated; remaining key rotations and public-access removal tracked below.**
 
 ## Backup and restore validation
 
@@ -23,9 +23,9 @@ sequences, and matching default privileges for `postgres` on future tables
 and sequences. It also has `pg_monitor` for storage-report WAL metrics.
 `pgaudit.log=none`.
 
-The password was set as a locally computed SCRAM-SHA-256 verifier; plaintext
-never reached the server or its logs. No password or verifier is recorded
-here.
+The `ari_app` password was set as a locally computed SCRAM-SHA-256 verifier;
+plaintext never reached the server or its logs. No password or verifier is
+recorded here.
 
 Pre-cutover probes as `ari_app` through the public proxy showed:
 
@@ -64,12 +64,24 @@ test- or operator-path cases: DDL in `test_automation_opt_in`;
 as admin; and `SET ROLE` in the RLS probe test. The storage-report fix is
 [PR #610](https://github.com/adamissac/ari-ai/pull/610).
 
-## Still open: credential rotation and public access
+## Completed admin password rotation
 
-Rotate the `postgres` admin password, the Anthropic key, and the GitHub App
-key. Remove public TCP proxy access last, after the credential rotations and
-their verification. Do not put passwords, credential-bearing URLs, or session
-tokens in this document.
+At about 09:32Z on 2026-10-25, the `postgres` admin password was rotated using
+a locally computed SCRAM-SHA-256 verifier. The Postgres service's
+`POSTGRES_PASSWORD`, `PGPASSWORD`, `DATABASE_URL`, and `DATABASE_PUBLIC_URL`
+all resolve to the new value, and login with the old password is rejected.
+`ari-ai`'s `MIGRATION_DATABASE_URL` reference resolves to the new value; the
+service was redeployed as deploy `f5ce137b`. Other agents were told on #559
+(comment `6395942484`) that stored admin URLs are dead. No password or
+credential-bearing URL is recorded here.
+
+## Still open: API key rotation and public access
+
+The Anthropic key and GitHub App private key still need to be rotated by the
+owner from their respective consoles. Disable public TCP proxy access last,
+after rehearsal cleanup is approved and executed; cleanup and ops checks still
+use it. Do not put passwords, credential-bearing URLs, or session tokens in
+this document.
 
 ## Rehearsal cleanup inventory (owner approval required)
 

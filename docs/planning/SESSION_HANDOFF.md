@@ -2032,3 +2032,8 @@ selected run is still loading.
 
 - Done: the DB-role cutover is executed and the hosted cross-org drill passed as `ari_app`; the local restore matched pre-snapshot counts, with a Railway scratch-service restore still a gap. Leg 9 opened PR #5 with the exact Verify-tested tree; it remains open and unmerged. The independent review of #587 was posted after merge.
 - Open: C9 awaits Adam's personal review of PR #5. Launch remains NO-GO pending the hosted browser journey for C6, credential rotation and public DB access removal, approved rehearsal cleanup, and Adam's C9 sign-off. See `docs/pilot/DB_ROLE_MIGRATION.md` and `docs/pilot/LAUNCH_DECISION.md`.
+
+## 2026-10-25 — pilot readiness follow-up: admin password rotation
+
+- Done: the `postgres` admin password was rotated at about 09:32Z using a locally computed SCRAM verifier; login with the old password is rejected. The Postgres service variables and `ari-ai`'s `MIGRATION_DATABASE_URL` reference resolve to the new value; deploy `f5ce137b` completed. Other agents were told on #559 (comment `6395942484`) that stored admin URLs are dead.
+- Open: the owner must rotate the Anthropic key and GitHub App private key from their consoles. Keep public TCP proxy access until rehearsal cleanup is approved and executed, then disable it last; cleanup and ops checks use it. Launch remains NO-GO pending C6's hosted browser journey, cleanup, public-access removal, and Adam's C9 sign-off.
