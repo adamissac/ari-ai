@@ -18,9 +18,10 @@ const TONE: Record<Tone, string> = {
 };
 
 export function Badge({ view, title }: { view: StatusView; title?: string }) {
+  const mark = view.glyph === '⏸' ? 'paused' : view.tone === 'bad' ? 'failed' : view.tone === 'ok' ? 'done' : 'pending';
   return (
     <span title={title} className={`status-badge inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium ${TONE[view.tone]}`}>
-      <span aria-hidden="true">{view.glyph}</span>
+      <span aria-hidden="true" className={`status-mark status-mark-${mark}`}>{mark === 'failed' ? '×' : null}</span>
       {view.label}
     </span>
   );
@@ -33,14 +34,14 @@ export function Tag({ children, tone = 'neutral' }: { children: ReactNode; tone?
 export function Panel({ title, actions, children, className = '', id }: { title?: ReactNode; actions?: ReactNode; children: ReactNode; className?: string; id?: string }) {
   const ref = useRevealOnScroll<HTMLElement>();
   return (
-    <section ref={ref} id={id} className={`panel rounded-lg border border-line bg-panel ${className}`} aria-label={typeof title === 'string' ? title : undefined}>
+    <section ref={ref} id={id} className={`panel min-w-0 rounded-lg border border-line bg-panel ${className}`} aria-label={typeof title === 'string' ? title : undefined}>
       {(title || actions) && (
         <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-panel-2/60 px-4 py-2.5">
           {title && <h2 className="label-mono flex items-center gap-2 text-ink"><span aria-hidden="true" className="h-3 w-0.5 rounded-full bg-brand" />{title}</h2>}
           {actions && <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">{actions}</div>}
         </header>
       )}
-      <div className="p-5">{children}</div>
+      <div className="p-5 sm:p-6">{children}</div>
     </section>
   );
 }

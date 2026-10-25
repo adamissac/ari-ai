@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Restored the pre-redesign look and fixed background, overflow and spacing bugs.
 - Added opt-in bounded exact-SHA release review automation with isolated strict
   regressions, signed evidence, existing-owner routing and a protected cost ledger.
   No automatic merge, deployment or customer enforcement.
