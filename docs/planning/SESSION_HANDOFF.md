@@ -16,6 +16,12 @@ adds an entry before ending.
 - Warnings for the next session:
 ```
 
+### 2026-10-25 — Cursor (agent, Alan) — Codex P1 R2 repository disconnect on #458 (do not merge)
+- Did: Running Scout/Diagnose now recheck deploy-mapping revocation and `repositories.disconnected_at` (when present) **before each provider complete()** and **before persist**. `apply_repository_disconnect_to_investigations` revokes mappings and cancels FR jobs/invocations. Partial cost/transcript kept; cancelled cannot become executed (F8 window). **Did not** implement `POST /repositories/{id}/disconnect` or add Alembic `disconnected_at` (Devin Hardening). Schema **0.23.0**. Probe/Patch not expanded. **Did not merge #458.**
+- Commands run and results (executed): `make check` pass (schema 0.23.0, 157 files); mypy 2 files; focused 7A+7C+review+jobs+llm+sandbox+migrations **80 passed**, 1 skipped; `test_repository_disconnect_stops_next_provider_turn` **passed**; `uv run pytest -q` **952 passed**, 16 skipped. FakeLLM, not live Anthropic.
+- Next: push #458. Leave open.
+- Warnings: **leave the PR open**. Merge NO-GO. Hardening should call the 7C hook and land `disconnected_at` as Alembic **0018**.
+
 ### 2026-10-25 — Cursor (agent, Alan) — merge origin/main into #458; schema 0.23.0 (do not merge the PR)
 - Did: PR was DIRTY vs `origin/main` `f8ab19e7`. Merged main. Conflicts: changelog/handoff (kept both), `test_sandbox_target.py` (took main's method/body renderer), `shared/shared/__init__.py` (**renumbered 7C from colliding 0.22.0 to 0.23.0**; main's 0.22.0 stays ops-readiness). Inherited Alembic **0017**. Did **not** take Devin Hardening disconnect files. Open #412 keeps **0.20.0**. Probe/Patch not expanded. **Did not merge #458.**
 - Next: implement Codex P1 R2 (repository disconnect stops next Scout/Diagnose provider turn) on this branch.

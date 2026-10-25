@@ -123,11 +123,11 @@ def _bind_and_fake(
     llm.TRANSPORT_OVERRIDE = lambda: AlanScriptTransport(repo / "target")
 
 
-def test_schema_keeps_0_22_without_claiming_0_20() -> None:
+def test_schema_keeps_0_23_without_claiming_0_20() -> None:
     from shared import SCHEMA_VERSION
     from shared.live_defense import ORCHESTRATOR_VERSION
 
-    assert SCHEMA_VERSION == "0.22.0"
+    assert SCHEMA_VERSION == "0.23.0"
     assert ORCHESTRATOR_VERSION == "7c.1.0"
 
 
