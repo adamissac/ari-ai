@@ -1,0 +1,30 @@
+{
+  "suite": "live-defense-e2e",
+  "environment": {
+    "git_sha": "26df195ac74b2b1f66c3c88b3d00f33bd5b8678b",
+    "git_branch": "integration/2026-11-02-release",
+    "schema_version": "0.26.0",
+    "orchestrator_version": "7c.1.0",
+    "provider_mode": "fake",
+    "python": "3.12.15",
+    "host": "ip-172-16-4-2.us-west-2.compute.internal",
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "captured_at": "2026-10-25T14:34:39.503583+00:00"
+  },
+  "scenarios": [
+    {
+      "scenario": "?",
+      "nodeid": "backend/tests/live_defense_e2e/test_rc4_n8_artifact_disclosure.py::test_literal_secret_is_not_stored_in_redacted_diff[settings = {\"password\": \"review-only-dict-password\"}\\n]",
+      "outcome": "failed",
+      "duration_s": 0.024,
+      "failure_stage": "/Users/devin/repos/ari-ai-integration-n7/backend/tests/live_defense_e2e/test_rc4_n8_artifact_disclosure.py:27: AssertionError: literal credential retained in artifact labeled redacted",
+      "checks": [],
+      "artifacts": [],
+      "notes": [],
+      "markers": [
+        "parametrize"
+      ]
+    }
+  ],
+  "provider_evidence_note": "All scenarios run through scripted providers (FakeLLM) unless the test is marked live_llm. FakeLLM results do not validate real Anthropic execution."
+}

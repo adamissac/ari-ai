@@ -8,6 +8,11 @@ const project = {
   settings: {
     default_budget: { max_tokens: 400000, max_usd: 10, max_wall_clock_s: 1800 },
     monitoring_policy: { enabled: true, min_interval_s: 600, ignore_paths_only: ['tests/**', 'docs/**'], monitoring_budget: { max_tokens: 150000, max_usd: 3, max_wall_clock_s: 900 } },
+    review: {
+      review_pushes: true, review_pull_requests: true, review_draft_prs: false,
+      include_branches: [], exclude_branches: [], include_authors: [], exclude_authors: ['*[bot]'],
+      strictness: 2, comment_on_pull_requests: true, max_reviews_per_hour: null,
+    },
     languages: ['python'],
     delivery_mode: 'pull_request',
     delivery_authorized_by: null, // server-owned; the form always sends null
@@ -33,6 +38,40 @@ describe('project settings form', () => {
   it('splits globs per line and drops blanks', () => {
     const parsed = parseSettings({ ...draftOf(project), ignore: 'a/**\n\n  b/*.md  \n' });
     expect('settings' in parsed && parsed.settings.monitoring_policy.ignore_paths_only).toEqual(['a/**', 'b/*.md']);
+  });
+
+  it('parses reviewer globs from commas or newlines and preserves every control', () => {
+    const parsed = parseSettings({
+      ...draftOf(project),
+      reviewPushes: false,
+      reviewDraftPrs: true,
+      includeBranches: 'main, release/*\nfeature/**',
+      excludeBranches: 'wip/*',
+      includeAuthors: 'adam\nteammate-*',
+      excludeAuthors: '*[bot], automation-*',
+      strictness: 3,
+      commentOnPullRequests: false,
+      maxReviewsPerHour: '4',
+    });
+    expect('settings' in parsed && parsed.settings.review).toEqual({
+      review_pushes: false,
+      review_pull_requests: true,
+      review_draft_prs: true,
+      include_branches: ['main', 'release/*', 'feature/**'],
+      exclude_branches: ['wip/*'],
+      include_authors: ['adam', 'teammate-*'],
+      exclude_authors: ['*[bot]', 'automation-*'],
+      strictness: 3,
+      comment_on_pull_requests: false,
+      max_reviews_per_hour: 4,
+    });
+  });
+
+  it('rejects invalid reviewer caps and lists over 50 entries', () => {
+    const d = draftOf(project);
+    expect(parseSettings({ ...d, maxReviewsPerHour: '0' })).toHaveProperty('error');
+    expect(parseSettings({ ...d, maxReviewsPerHour: '1.5' })).toHaveProperty('error');
+    expect(parseSettings({ ...d, includeAuthors: Array(51).fill('author').join(',') })).toHaveProperty('error');
   });
 });
 

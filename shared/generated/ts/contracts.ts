@@ -1469,9 +1469,19 @@ export interface PatchCandidate {
   created_at: string;
 }
 
+export interface PatchDelivery {
+  status: "pending" | "pr_opened" | "pushed" | "failed" | "skipped";
+  reason: string | null;
+  url: string | null;
+  branch: string | null;
+  commit_sha: string | null;
+  at: string | null;
+}
+
 export interface PatchView {
   patch: PatchCandidate;
   verification: VerificationResult | null;
+  delivery: PatchDelivery | null;
 }
 
 export interface PathStep {
@@ -1612,6 +1622,7 @@ export interface ProjectCreate {
 export interface ProjectSettings {
   default_budget: Budget;
   monitoring_policy: TriggerPolicy;
+  review: ReviewerSettings;
   languages: Array<string>;
   delivery_mode: DeliveryMode;
   /** Owner on whose standing authorization Ari approves and delivers fixes; set by the server, never the client. Null on projects that predate delivery modes: they stay manual until an owner saves settings. */
@@ -1793,6 +1804,19 @@ export interface ReviewResult {
   findings: Array<Finding>;
   patch_candidates: Array<PatchCandidate>;
   generated_tests: Array<GeneratedTest>;
+}
+
+export interface ReviewerSettings {
+  review_pushes: boolean;
+  review_pull_requests: boolean;
+  review_draft_prs: boolean;
+  include_branches: Array<string>;
+  exclude_branches: Array<string>;
+  include_authors: Array<string>;
+  exclude_authors: Array<string>;
+  strictness: number;
+  comment_on_pull_requests: boolean;
+  max_reviews_per_hour: number | null;
 }
 
 export interface RlCategoryResult {

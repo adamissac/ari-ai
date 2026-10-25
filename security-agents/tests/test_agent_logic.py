@@ -484,6 +484,7 @@ def evidence(**kw):
     base = dict(
         apply_facts={
             "applied": True,
+            "patch_id": "pat_test",
             "files_touched": ["payments_lite/app.py", "tests/test_authz.py"],
             "out_of_scope": [],
             "new_tests": ["tests/test_authz.py"],
@@ -492,11 +493,23 @@ def evidence(**kw):
         recheck_runs=[check_run(True)],
         test_runs=[
             {
+                "selection": "added_tests",
+                "passed": 1,
+                "failed": 0,
+                "errors": 0,
+                "failing_tests": [],
+                "pytest_args": ["-q", "tests/test_authz.py"],
+                "workspace_role": "patched",
+                "patch_id": "pat_test",
+                "sandbox_run_id": "sbx_added",
+            },
+            {
                 "selection": "project_suite",
                 "passed": 9,
                 "failed": 0,
                 "errors": 0,
                 "failing_tests": [],
+                "patch_id": "pat_test",
                 "sandbox_run_id": "sbx_t",
             },
         ],
@@ -505,6 +518,7 @@ def evidence(**kw):
         protected_tests=["tests/test_payments.py"],
         original_check_ref="access_control.ownership@1",
         original_check_params={"route_id": "payment_detail"},
+        candidate_id="pat_test",
     )
     base.update(kw)
     return verify_agent.VerifyEvidence(**base)
@@ -580,13 +594,24 @@ def test_verify_rejects_diff_that_does_not_apply():
 def test_verify_rejects_new_test_failures_but_tolerates_baseline():
     runs = [
         {
+            "selection": "added_tests",
+            "passed": 1,
+            "failed": 0,
+            "errors": 0,
+            "failing_tests": [],
+            "pytest_args": ["-q", "tests/test_authz.py"],
+            "workspace_role": "patched",
+            "patch_id": "pat_test",
+        },
+        {
             "selection": "project_suite",
             "passed": 7,
             "failed": 1,
             "failing_tests": ["tests/test_payments.py::test_x"],
             "errors": 0,
             "sandbox_run_id": "s",
-        }
+            "patch_id": "pat_test",
+        },
     ]
     rejected, _, _ = verify_agent.compute_verdict(evidence(test_runs=runs))
     assert rejected == "rejected"
@@ -612,12 +637,15 @@ def test_verify_rejects_patch_without_a_regression_test():
 def test_verify_rejects_when_added_test_fails():
     runs = [
         {
-            "selection": "project_suite",
-            "passed": 5,
+            "selection": "added_tests",
+            "passed": 0,
             "failed": 1,
             "failing_tests": ["tests/test_authz.py::test_denied"],
             "errors": 0,
+            "pytest_args": ["-q", "tests/test_authz.py"],
+            "workspace_role": "patched",
             "sandbox_run_id": "s",
+            "patch_id": "pat_test",
         }
     ]
     verdict, _, reasons = verify_agent.compute_verdict(evidence(test_runs=runs))
@@ -821,7 +849,10 @@ def test_verify_later_run_does_not_mask_added_test_failure():
             "failed": 1,
             "failing_tests": ["tests/test_authz.py::test_denied"],
             "errors": 0,
+            "pytest_args": ["-q", "tests/test_authz.py"],
+            "workspace_role": "patched",
             "sandbox_run_id": "s1",
+            "patch_id": "pat_test",
         },
         {
             "selection": "project_suite",
@@ -830,6 +861,7 @@ def test_verify_later_run_does_not_mask_added_test_failure():
             "failing_tests": [],
             "errors": 0,
             "sandbox_run_id": "s2",
+            "patch_id": "pat_test",
         },
     ]
     verdict, checks, reasons = verify_agent.compute_verdict(evidence(test_runs=runs))
@@ -871,6 +903,7 @@ def test_verify_later_suite_run_does_not_mask_collection_errors():
             "failing_tests": [],
             "errors": 2,
             "sandbox_run_id": "s1",
+            "patch_id": "pat_test",
         },
         {
             "selection": "project_suite",
@@ -879,6 +912,7 @@ def test_verify_later_suite_run_does_not_mask_collection_errors():
             "failing_tests": [],
             "errors": 0,
             "sandbox_run_id": "s2",
+            "patch_id": "pat_test",
         },
     ]
     verdict, _, reasons = verify_agent.compute_verdict(evidence(test_runs=runs))

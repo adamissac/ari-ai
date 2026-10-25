@@ -43,9 +43,9 @@ facts: which files it touched, whether any are outside the plan, whether any \
 existing test was modified.
 2. checks.run_template — re-run the SAME template and parameters that originally \
 confirmed the finding, now against the patched code.
-3. tests.run (project_suite) — run the project's suite and compare failures with \
+3. tests.run (project_suite, without node_ids) — run the full project's suite and compare failures with \
 the baseline you are given.
-4. tests.run with the added tests, if the diff added any.
+4. tests.run (added_tests) with the added tests, if the diff added any.
 Steps 2-4 are independent: request all of them in ONE response after step 1, and \
 they run side by side.
 
@@ -175,6 +175,7 @@ class VerifyEvidence:
     protected_tests: list[str]
     original_check_ref: str | None
     original_check_params: dict[str, Any]
+    candidate_id: str | None = None
     required_transport: str = "inprocess"
     original_tree_sha256: str | None = None
     patched_tree_sha256: str | None = None
@@ -315,6 +316,12 @@ def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], l
     # diff_scope_ok
     if not applied:
         add(VerificationCheckName.DIFF_SCOPE_OK, False, "candidate diff did not apply to a fresh checkout")
+    elif ev.candidate_id is None or ev.apply_facts.get("patch_id") != ev.candidate_id:
+        add(
+            VerificationCheckName.DIFF_SCOPE_OK,
+            False,
+            "applied patch does not match the candidate under verification",
+        )
     elif out_of_scope:
         add(
             VerificationCheckName.DIFF_SCOPE_OK,
@@ -329,7 +336,7 @@ def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], l
         add(
             VerificationCheckName.NO_TEST_TAMPERING,
             False,
-            f"tests encoding confirmed expectations were modified or deleted: {tampered}",
+            f"protected tests or test-runner configuration were modified or deleted: {tampered}",
         )
     else:
         add(
@@ -402,7 +409,15 @@ def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], l
             )
 
     # functional_suite_passes
-    suite_runs = [r for r in ev.test_runs if r.get("selection") == "project_suite" and not r.get("error")]
+    applied_patch_id = ev.apply_facts.get("patch_id")
+    suite_runs = [
+        r
+        for r in ev.test_runs
+        if r.get("selection") == "project_suite"
+        and not r.get("error")
+        and applied_patch_id is not None
+        and r.get("patch_id") == applied_patch_id
+    ]
     if not suite_runs:
         add(VerificationCheckName.FUNCTIONAL_SUITE_PASSES, False, "the project test suite was not run")
     else:
@@ -450,30 +465,56 @@ def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], l
             "the candidate added no test for this finding, so the fix has no regression test",
         )
     else:
-        added_runs = [
+        required_tests = set(ev.tests_added)
+        matching_added_runs = [
             r
             for r in ev.test_runs
+            if r.get("selection") == "added_tests"
+            and applied_patch_id is not None
+            and r.get("patch_id") == applied_patch_id
+        ]
+        added_runs = [
+            r
+            for r in matching_added_runs
             if not r.get("error")
-            and (
-                r.get("selection") == "added_tests"
-                or any(t in (r.get("pytest_args") or []) for t in ev.tests_added)
-                or r.get("selection") == "project_suite"
-            )
+            and not r.get("timed_out")
+            and r.get("exit_code", 0) == 0
+            and r.get("workspace_role") == "patched"
+            and required_tests.issubset(set(r.get("pytest_args") or []))
         ]
         if not added_runs:
-            add(VerificationCheckName.GENERATED_TESTS_PASS, False, "the added tests were not run")
+            add(
+                VerificationCheckName.GENERATED_TESTS_PASS,
+                False,
+                "the added tests were not successfully run on the patched workspace",
+            )
         else:
             last = added_runs[-1]
-            # Verify never changes code between runs, so an added test failing in ANY run
-            # after the patch was applied is a real failure; a later run cannot mask it.
+            # The platform's patched-workspace run is required; any of its failures count.
             failing = {f for r in added_runs for f in (r.get("failing_tests") or [])}
             offending = sorted(f for f in failing if any(f.startswith(t) for t in ev.tests_added))
             artifact = str(last.get("sandbox_run_id") or "")
-            if offending:
+            executed_failures = [
+                r
+                for r in matching_added_runs
+                if r.get("failed", 0)
+                or r.get("failing_tests")
+                or r.get("errors", 0)
+                or r.get("timed_out")
+                or (r.get("exit_code") is not None and r.get("exit_code") != 0)
+            ]
+            if offending or executed_failures:
                 add(
                     VerificationCheckName.GENERATED_TESTS_PASS,
                     False,
-                    f"added tests failing: {offending}",
+                    f"added tests failing: {offending or 'one or more patched added_tests runs failed'}",
+                    str((executed_failures[-1] if executed_failures else last).get("sandbox_run_id") or ""),
+                )
+            elif any(r.get("errors", 0) for r in added_runs):
+                add(
+                    VerificationCheckName.GENERATED_TESTS_PASS,
+                    False,
+                    "the added-test run reported collection or setup errors",
                     artifact,
                 )
             elif last.get("passed", 0) == 0:

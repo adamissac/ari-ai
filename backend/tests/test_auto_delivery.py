@@ -16,10 +16,19 @@ import sqlalchemy as sa
 from helpers import post_webhook, push_payload, setup_project
 from reference_orchestrator import scripted_transport
 
-from backend import delivery, llm, worker
+from backend import audit, delivery, llm, worker
 from backend.checkouts import CheckoutError, fetch_commit
-from backend.db import audit_events, jobs, memberships, repositories, transaction
-from backend.delivery import BranchMoved, authority, push_patch
+from backend.db import (
+    audit_events,
+    findings,
+    jobs,
+    memberships,
+    patch_candidates,
+    repositories,
+    transaction,
+)
+from backend.delivery import BranchMoved, authority, default_tip_state, push_patch
+from shared.audit import ActorType
 
 
 @pytest.fixture
@@ -47,11 +56,29 @@ def _run_push(client, pid: str) -> str:
     return client.get(f"/api/v1/projects/{pid}/reassessments").json()["items"][0]["assessment_id"]
 
 
-def test_new_projects_default_to_auto_and_server_stamps_the_authorizer(client_factory) -> None:
+def _patch_view_for_assessment(client, assessment_id: str) -> dict:
+    with transaction() as conn:
+        row = conn.execute(
+            sa.select(patch_candidates.c.finding_id, patch_candidates.c.id)
+            .select_from(
+                patch_candidates.join(findings, findings.c.id == patch_candidates.c.finding_id)
+            )
+            .where(findings.c.assessment_id == assessment_id)
+            .order_by(patch_candidates.c.created_at.desc())
+            .limit(1)
+        ).one()
+    response = client.get(f"/api/v1/findings/{row.finding_id}/patches")
+    assert response.status_code == 200, response.text
+    return next(item for item in response.json()["items"] if item["patch"]["id"] == row.id)
+
+
+def test_new_projects_default_to_pull_request_and_server_stamps_the_authorizer(
+    client_factory,
+) -> None:
     alice, bob = client_factory("alice"), client_factory("bob")
     ids = setup_project(alice, bob)
     p = alice.post("/api/v1/projects", json={"name": "fresh"}).json()
-    assert p["settings"]["delivery_mode"] == "auto"
+    assert p["settings"]["delivery_mode"] == "pull_request"
     assert p["settings"]["delivery_authorized_by"] == alice.me["user"]["id"]
     pid = ids["project"]
     r = _set_mode(alice, pid, "auto", delivery_authorized_by="usr_forged123")
@@ -136,6 +163,7 @@ class FakeApp:
 
     calls: list[tuple] = []
     pushed_diffs: list[bytes] = []
+    pr_bodies: list[str] = []
     token_error: Exception | None = None
 
     def __init__(self, settings=None) -> None: ...
@@ -150,6 +178,7 @@ class FakeApp:
 
     def open_pull_request(self, installation_id, full_name, **kw) -> str:
         FakeApp.calls.append(("pr", kw["head"], kw["base"]))
+        FakeApp.pr_bodies.append(kw["body"])
         return "https://github.com/acme/payments-lite/pull/1"
 
 
@@ -157,9 +186,14 @@ class FakeApp:
 def wired(client_factory, reference, settings_override, tmp_path, monkeypatch):
     """A completed auto/pull_request run whose repository 'is connected', GitHub faked."""
     settings_override(security_workdir=str(tmp_path))
-    FakeApp.calls, FakeApp.pushed_diffs, FakeApp.token_error = [], [], None
+    FakeApp.calls, FakeApp.pushed_diffs, FakeApp.pr_bodies, FakeApp.token_error = [], [], [], None
     monkeypatch.setattr("backend.github.GitHubApp", FakeApp)
     monkeypatch.setattr(delivery, "fetch_commit", lambda *a, **k: None)
+    monkeypatch.setattr(
+        delivery,
+        "default_tip_state",
+        lambda *a, **kw: (kw["base_sha"], "same"),
+    )
 
     def push(*a, require_tip=False, **k):
         FakeApp.calls.append(("push", a[6], require_tip))
@@ -171,15 +205,82 @@ def wired(client_factory, reference, settings_override, tmp_path, monkeypatch):
     FakeApp.moved = False
     monkeypatch.setattr(delivery, "push_patch", push)
 
-    def start(mode: str) -> None:
+    def start(
+        mode: str | None,
+        *,
+        connected: bool = True,
+        delivery_mode: str | None = "manual",
+    ):
         alice, bob = client_factory("alice"), client_factory("bob")
-        ids = setup_project(alice, bob)
-        _set_mode(alice, ids["project"], mode)
-        _run_push(alice, ids["project"])
-        with transaction() as conn:
-            conn.execute(sa.update(repositories).values(installation_id=7))
+        ids = setup_project(alice, bob, delivery_mode=delivery_mode)
+        if mode is not None:
+            _set_mode(alice, ids["project"], mode)
+        assessment_id = _run_push(alice, ids["project"])
+        if connected:
+            with transaction() as conn:
+                conn.execute(
+                    sa.update(repositories)
+                    .where(repositories.c.id == ids["repo"])
+                    .values(installation_id=7)
+                )
+        return alice, ids, assessment_id
 
     return start
+
+
+def test_disconnected_delivery_failure_is_visible_on_the_patch(wired) -> None:
+    alice, _, assessment_id = wired("auto", connected=False)
+    worker.drain(kinds=["deliver_verified_patch"])
+
+    delivery_status = _patch_view_for_assessment(alice, assessment_id)["delivery"]
+    assert delivery_status["status"] == "failed"
+    assert delivery_status["reason"] == "repository is not connected through the GitHub App"
+    assert delivery_status["at"]
+
+
+def test_opened_pull_request_details_are_visible_on_the_patch(wired) -> None:
+    alice, _, assessment_id = wired("pull_request")
+    worker.drain(kinds=["deliver_verified_patch"])
+
+    delivery_status = _patch_view_for_assessment(alice, assessment_id)["delivery"]
+    assert delivery_status["status"] == "pr_opened"
+    assert delivery_status["url"] == "https://github.com/acme/payments-lite/pull/1"
+    assert delivery_status["branch"].startswith("ari/fix-")
+    assert delivery_status["commit_sha"] == "c" * 40
+    assert delivery_status["at"]
+
+
+def test_queued_delivery_job_is_reported_as_pending(wired) -> None:
+    alice, _, assessment_id = wired("auto")
+
+    delivery_status = _patch_view_for_assessment(alice, assessment_id)["delivery"]
+    assert delivery_status == {
+        "status": "pending",
+        "reason": None,
+        "url": None,
+        "branch": None,
+        "commit_sha": None,
+        "at": None,
+    }
+
+
+def test_project_delivery_setting_event_is_not_patch_delivery(wired) -> None:
+    alice, ids, assessment_id = wired("auto")
+    project_id = ids["project"]
+    with transaction() as conn:
+        audit.record(
+            conn,
+            org_id=alice.me["memberships"][0]["organization"]["id"],
+            project_id=project_id,
+            actor_type=ActorType.system,
+            actor_id="test",
+            action="delivery.auto",
+            subject_type="project",
+            subject_id=project_id,
+        )
+
+    delivery_status = _patch_view_for_assessment(alice, assessment_id)["delivery"]
+    assert delivery_status["status"] == "pending"
 
 
 def test_auto_pushes_to_the_default_branch(wired) -> None:
@@ -203,6 +304,113 @@ def test_pull_request_mode_never_touches_the_default_branch(wired) -> None:
     pushes = [c for c in FakeApp.calls if c[0] == "push"]
     assert len(pushes) == 1 and pushes[0][1].startswith("ari/fix-") and not pushes[0][2]
     assert ("pr", pushes[0][1], "main") in FakeApp.calls
+
+
+def test_pull_request_mode_skips_a_fix_already_on_the_default_branch(wired, monkeypatch) -> None:
+    alice, _, assessment_id = wired("pull_request")
+    tip = "d" * 40
+    monkeypatch.setattr(delivery, "default_tip_state", lambda *a, **k: (tip, "already_applied"))
+
+    worker.drain(kinds=["deliver_verified_patch"])
+
+    delivery_status = _patch_view_for_assessment(alice, assessment_id)["delivery"]
+    assert delivery_status["status"] == "skipped"
+    assert "already contains this fix" in delivery_status["reason"]
+    assert FakeApp.calls == []
+
+
+def test_auto_mode_skips_a_fix_already_on_the_default_branch(wired, monkeypatch) -> None:
+    wired("auto")
+    tip = "d" * 40
+    monkeypatch.setattr(delivery, "default_tip_state", lambda *a, **k: (tip, "already_applied"))
+
+    worker.drain(kinds=["deliver_verified_patch"])
+
+    assert "delivery.skipped" in _actions()
+    assert FakeApp.calls == []
+
+
+def test_pull_request_body_says_when_the_diff_still_applies_cleanly(wired, monkeypatch) -> None:
+    alice, _, assessment_id = wired("pull_request")
+    base = _patch_view_for_assessment(alice, assessment_id)["patch"]["base_commit_sha"]
+    tip = "d" * 40
+    monkeypatch.setattr(delivery, "default_tip_state", lambda *a, **k: (tip, "applies"))
+
+    worker.drain(kinds=["deliver_verified_patch"])
+
+    body = FakeApp.pr_bodies[-1]
+    assert f"`{base[:12]}`" in body
+    assert f"`{tip[:12]}`" in body
+    assert "this change still applies cleanly" in body
+
+
+def test_pull_request_body_warns_when_the_diff_no_longer_applies(wired, monkeypatch) -> None:
+    alice, _, assessment_id = wired("pull_request")
+    base = _patch_view_for_assessment(alice, assessment_id)["patch"]["base_commit_sha"]
+    tip = "d" * 40
+    monkeypatch.setattr(delivery, "default_tip_state", lambda *a, **k: (tip, "conflicts"))
+
+    worker.drain(kinds=["deliver_verified_patch"])
+
+    body = FakeApp.pr_bodies[-1]
+    assert f"`{base[:12]}`" in body
+    assert f"`{tip[:12]}`" in body
+    assert "this change no longer applies cleanly" in body
+    assert "Rebase it or re-run the review on the latest commit." in body
+
+
+@pytest.mark.parametrize("timeout", [False, True], ids=["checkout-error", "timeout"])
+def test_tip_check_error_does_not_block_pr_or_add_a_note(
+    wired, monkeypatch, caplog, timeout: bool
+) -> None:
+    wired("pull_request")
+
+    def fail_tip_check(*args, **kwargs):
+        if timeout:
+            try:
+                raise subprocess.TimeoutExpired("git fetch", timeout=60)
+            except subprocess.TimeoutExpired as exc:
+                raise CheckoutError(
+                    f"default-branch tip check timed out after {exc.timeout:.0f}s"
+                ) from exc
+        raise CheckoutError("tip unavailable")
+
+    monkeypatch.setattr(delivery, "default_tip_state", fail_tip_check)
+
+    worker.drain(kinds=["deliver_verified_patch"])
+
+    assert [call[0] for call in FakeApp.calls] == ["push", "pr"]
+    assert len(FakeApp.pr_bodies) == 1
+    assert "Based on the assessed commit" not in FakeApp.pr_bodies[0]
+    assert "could not inspect acme/payments-lite default-branch tip" in caplog.text
+
+
+def test_new_project_default_opens_verified_fix_pr_without_manual_approval(wired) -> None:
+    alice, ids, asm_id = wired(None, delivery_mode=None)
+    owner_id = alice.me["user"]["id"]
+    assert alice.get(f"/api/v1/assessments/{asm_id}").json()["assessment"]["state"] == "COMPLETED"
+    settings = alice.get(f"/api/v1/projects/{ids['project']}").json()["settings"]
+    assert settings["delivery_mode"] == "pull_request"
+    assert settings["delivery_authorized_by"] == owner_id
+
+    approved = alice.get(
+        f"/api/v1/projects/{ids['project']}/approvals", params={"status": "approved"}
+    ).json()["items"]
+    assert any(
+        item["subject_type"] == "remediation" and item["decided_by"] == owner_id
+        for item in approved
+    )
+    pending = alice.get(
+        f"/api/v1/projects/{ids['project']}/approvals", params={"status": "pending"}
+    ).json()["items"]
+    assert not any(item["subject_type"] == "remediation" for item in pending)
+
+    worker.drain(kinds=["deliver_verified_patch"])
+    with transaction() as conn:
+        patch = conn.execute(sa.select(patch_candidates.c.doc)).scalar_one()
+    branch = f"ari/fix-{patch['id']}"
+    assert FakeApp.calls == [("push", branch, False), ("pr", branch, "main")]
+    assert "delivery.pr_opened" in _actions()
 
 
 def test_missing_app_permission_is_recorded(wired) -> None:
@@ -531,6 +739,72 @@ DIFF = b"""--- a/app.py
 -    return True
 +    return a == b
 """
+
+
+def test_default_tip_state_converts_git_timeout_to_checkout_error(
+    tmp_path: Path, monkeypatch
+) -> None:
+    def timeout(*args, **kwargs):
+        assert kwargs["timeout"] == 60
+        raise subprocess.TimeoutExpired("git fetch", timeout=60)
+
+    monkeypatch.setattr(delivery, "_git", timeout)
+    with pytest.raises(CheckoutError, match="default-branch tip check timed out after 60s") as exc:
+        default_tip_state(
+            tmp_path / "local.git",
+            "acme/app",
+            "main",
+            DIFF,
+            "tok",
+            base_sha="a" * 40,
+            github_web_url="file:///unused",
+        )
+    assert isinstance(exc.value.__cause__, subprocess.TimeoutExpired)
+
+
+def test_default_tip_state_classifies_all_default_branch_states(tmp_path: Path) -> None:
+    root, remote, base = _remote(tmp_path)
+    repo_dir = tmp_path / "local.git"
+    web = f"file://{root}"
+    tip, state = default_tip_state(
+        repo_dir, "acme/app", "main", DIFF, "tok", base_sha=base, github_web_url=web
+    )
+    assert tip == base
+    assert state == "same"
+
+    seed = tmp_path / "seed"
+    app_file = seed / "app.py"
+    (seed / "README.md").write_text("unrelated default-branch change\n")
+    _git("add", "README.md", cwd=seed)
+    _git("commit", "--quiet", "-m", "unrelated default branch change", cwd=seed)
+    _git("push", "--quiet", str(remote), "main", cwd=seed)
+    tip, state = default_tip_state(
+        repo_dir, "acme/app", "main", DIFF, "tok", base_sha=base, github_web_url=web
+    )
+    assert tip != base
+    assert state == "applies"
+
+    patch_file = tmp_path / "verified.diff"
+    patch_file.write_bytes(DIFF)
+    _git("apply", "--index", str(patch_file), cwd=seed)
+    _git("commit", "--quiet", "-m", "apply verified fix", cwd=seed)
+    _git("push", "--quiet", str(remote), "main", cwd=seed)
+    tip, state = default_tip_state(
+        repo_dir, "acme/app", "main", DIFF, "tok", base_sha=base, github_web_url=web
+    )
+    assert tip != base
+    assert state == "already_applied"
+
+    _git("checkout", "--quiet", "-b", "conflicts", base, cwd=seed)
+    app_file.write_text("def owner(a, b):\n    return False\n")
+    _git("add", "app.py", cwd=seed)
+    _git("commit", "--quiet", "-m", "conflicting default branch change", cwd=seed)
+    _git("push", "--quiet", str(remote), "conflicts", cwd=seed)
+    tip, state = default_tip_state(
+        repo_dir, "acme/app", "conflicts", DIFF, "tok", base_sha=base, github_web_url=web
+    )
+    assert tip != base
+    assert state == "conflicts"
 
 
 def test_push_patch_commits_onto_the_default_branch(tmp_path: Path) -> None:
