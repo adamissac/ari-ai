@@ -116,6 +116,87 @@ def test_a_later_run_cannot_mask_an_added_test_failure() -> None:
 
 
 @pytest.mark.parametrize(
+    "failure",
+    [
+        {"failed": 1},
+        {"errors": 1},
+        {"timed_out": True},
+        {"exit_code": 1},
+    ],
+    ids=["failed-count", "collection-errors", "timeout", "nonzero-exit"],
+)
+def test_model_added_test_failure_cannot_be_masked_by_orchestrator_retry(
+    failure: dict[str, Any],
+) -> None:
+    runs = [
+        {
+            "selection": "added_tests",
+            "passed": 0,
+            "failing_tests": [],
+            "pytest_args": ["-q", ADDED],
+            **failure,
+        },
+        {
+            "selection": "added_tests",
+            "passed": 1,
+            "failed": 0,
+            "failing_tests": [],
+            "pytest_args": ["-q", ADDED],
+            "workspace_role": "patched",
+        },
+        {"selection": "project_suite", "passed": 5, "failing_tests": []},
+    ]
+
+    verdict, checks, _ = verify_agent.compute_verdict(_ev(runs))
+
+    assert verdict == "rejected"
+    assert not next(c for c in checks if c.name.value == "generated_tests_pass").passed
+
+
+def test_nonexecuted_added_test_error_does_not_count_as_failure() -> None:
+    evidence = _ev(
+        [
+            {"selection": "added_tests", "error": "PROJECT_SUITE_NODE_IDS"},
+            {
+                "selection": "added_tests",
+                "passed": 1,
+                "failed": 0,
+                "failing_tests": [],
+                "pytest_args": ["-q", ADDED],
+                "workspace_role": "patched",
+            },
+            {"selection": "project_suite", "passed": 5, "failing_tests": []},
+        ]
+    )
+
+    assert verify_agent.compute_verdict(evidence)[0] == "accepted"
+
+
+def test_protected_test_discovery_failure_rejects_verdict() -> None:
+    evidence = _ev(
+        [
+            {
+                "selection": "added_tests",
+                "passed": 1,
+                "failed": 0,
+                "failing_tests": [],
+                "pytest_args": ["-q", ADDED],
+                "workspace_role": "patched",
+            },
+            {"selection": "project_suite", "passed": 5, "failing_tests": []},
+        ]
+    )
+    evidence.apply_facts["tampered_protected_tests"] = [
+        "<tests> (protected-test discovery failed: SNAPSHOT_NOT_READY)"
+    ]
+
+    verdict, checks, _ = verify_agent.compute_verdict(evidence)
+
+    assert verdict == "rejected"
+    assert not next(c for c in checks if c.name.value == "no_test_tampering").passed
+
+
+@pytest.mark.parametrize(
     "added_run",
     [
         None,

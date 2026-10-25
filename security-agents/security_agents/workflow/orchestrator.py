@@ -1513,7 +1513,10 @@ class Orchestrator:
         test_roots = recipe_test_roots(root)
         protected.update(recipe_protected_tests(root))
         protected.update(path for path in self.intel.snapshot.files() if under_test_roots(path, test_roots))
-        protected.update(test_root_files(root, test_roots))
+        try:
+            protected.update(test_root_files(root, test_roots))
+        except PlatformError as exc:
+            protected.add(f"<{exc.message}> (protected-test discovery failed: {exc.code.value})")
         for expectation in self.intel.expectations():
             if expectation.status != "confirmed":
                 continue

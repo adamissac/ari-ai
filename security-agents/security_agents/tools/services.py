@@ -635,15 +635,18 @@ class PatchApplier:
         tampered = set(self._tampered_tests(diff_text, protected_tests))
         plugin_residuals: list[str] = []
         if ok:
-            tampered.update(self._tampered_test_contents(self.intel.snapshot.root, root, protected_tests))
-            tampered.update(
-                self._tampered_runner_config(
-                    diff_text,
-                    self.intel.snapshot.root,
-                    root,
-                    residuals=plugin_residuals,
+            try:
+                tampered.update(self._tampered_test_contents(self.intel.snapshot.root, root, protected_tests))
+                tampered.update(
+                    self._tampered_runner_config(
+                        diff_text,
+                        self.intel.snapshot.root,
+                        root,
+                        residuals=plugin_residuals,
+                    )
                 )
-            )
+            except PlatformError as exc:
+                tampered.add(f"<{exc.message}> (protected-test discovery failed: {exc.code.value})")
             suite_dest = dest.parent / f"verify-suite-{patch_id}"
             try:
                 ctx.artifacts["verify_suite_workspace"] = self._verify_suite_workspace(
@@ -740,7 +743,8 @@ class PatchApplier:
     @staticmethod
     def _tampered_tests(diff_text: str, protected: list[str]) -> list[str]:
         """Protected tests touched by changed hunks or file metadata in a diff."""
-        protected_set = {safe_rel_path(p) for p in protected}
+        discovery_failures = {path for path in protected if "protected-test discovery failed:" in path}
+        protected_set = {safe_rel_path(p) for p in protected if p not in discovery_failures}
         touched: set[str] = set()
         section_paths: set[str] = set()
         git_section = False
@@ -866,7 +870,10 @@ class PatchApplier:
             return resolved.read_bytes()
 
         def ini_table(raw: bytes | None, section: str) -> tuple[bool, dict[str, str]]:
-            config = configparser.ConfigParser(interpolation=None)
+            config = configparser.ConfigParser(
+                interpolation=None,
+                default_section="__VERIFY_NO_DEFAULT_INHERITANCE__",
+            )
             config.optionxform = str
             if raw is not None:
                 config.read_string(raw.decode("utf-8"))
@@ -916,6 +923,7 @@ class PatchApplier:
         plugin_names: set[str] = set()
         pythonpath_entries: set[str] = {""}
         plugin_discovery_residuals: set[str] = set()
+        pinned_config_paths: set[str] = set()
         ini_config_names = {"pytest.ini", ".pytest.ini", "tox.ini", "setup.cfg"}
         toml_config_names = {"pyproject.toml", "pytest.toml", ".pytest.toml"}
         ignored_config_dirs = {
@@ -1010,12 +1018,75 @@ class PatchApplier:
                     for value in table.values():
                         add_plugin_name(plugin_names, value)
 
+        recipe: dict[str, Any] = {}
         try:
             recipe_raw = read_config(snapshot_root, "build_recipe.json")
             recipe = json.loads((recipe_raw or b"{}").decode("utf-8"))
             add_addopts(plugin_names, recipe.get("test_command"))
         except (OSError, PlatformError, UnicodeDecodeError, json.JSONDecodeError, AttributeError):
-            pass
+            recipe = {}
+
+        command = recipe.get("test_command")
+        if isinstance(command, str):
+            try:
+                command_tokens = shlex.split(command)
+            except ValueError:
+                command_tokens = []
+        elif isinstance(command, list):
+            command_tokens = [item for item in command if isinstance(item, str)]
+        else:
+            command_tokens = []
+        config_names = (
+            "pytest.ini",
+            ".pytest.ini",
+            "pytest.toml",
+            ".pytest.toml",
+            "tox.ini",
+            "setup.cfg",
+            "pyproject.toml",
+        )
+
+        def repo_relative_path(raw: str) -> str | None:
+            candidate = Path(raw)
+            try:
+                if candidate.is_absolute():
+                    raw = candidate.resolve().relative_to(snapshot_root.resolve()).as_posix()
+                return safe_rel_path(raw)
+            except (OSError, ValueError, PlatformError):
+                return None
+
+        rootdirs: set[str] = set()
+        index = 0
+        while index < len(command_tokens):
+            token = command_tokens[index]
+            value: str | None = None
+            if token in {"-c", "--config-file", "--rootdir"} and index + 1 < len(command_tokens):
+                value = command_tokens[index + 1]
+                index += 2
+                if token == "--rootdir":
+                    rootdirs.add(value)
+                else:
+                    rel_value = repo_relative_path(value)
+                    if rel_value:
+                        pinned_config_paths.add(rel_value)
+                continue
+            elif token.startswith("--config-file="):
+                value = token.partition("=")[2]
+            elif token.startswith("-c") and token != "-c":
+                value = token[2:]
+            elif token.startswith("--rootdir="):
+                rootdirs.add(token.partition("=")[2])
+            if value:
+                rel_value = repo_relative_path(value)
+                if rel_value:
+                    pinned_config_paths.add(rel_value)
+            index += 1
+        for rootdir in rootdirs:
+            prefix = "" if rootdir in {"", ".", "./"} else repo_relative_path(rootdir)
+            if prefix is None:
+                continue
+            for name in config_names:
+                pinned_config_paths.add(f"{prefix}/{name}".strip("/"))
 
         roots = recipe_test_roots(snapshot_root)
         plugin_source_paths = {
@@ -1117,6 +1188,13 @@ class PatchApplier:
             ):
                 tampered.add(path)
                 continue
+            if path in pinned_config_paths:
+                try:
+                    if read_config(snapshot_root, path) != read_config(patched_root, path):
+                        tampered.add(path)
+                except (OSError, PlatformError):
+                    tampered.add(path)
+                continue
             name = path.rsplit("/", 1)[-1]
             if name == "conftest.py":
                 tampered.add(path)
@@ -1201,8 +1279,10 @@ class PatchApplier:
     @staticmethod
     def _tampered_test_contents(snapshot_root: Path, patched_root: Path, protected: list[str]) -> list[str]:
         """Protected tests whose pinned and successfully patched bytes differ."""
-        tampered: set[str] = set()
+        tampered: set[str] = {path for path in protected if "protected-test discovery failed:" in path}
         for raw_path in protected:
+            if "protected-test discovery failed:" in raw_path:
+                continue
             path = safe_rel_path(raw_path)
             if not os.path.lexists(snapshot_root / path):
                 try:

@@ -7,12 +7,12 @@ SANDBOX_POLICY_VIOLATION.
 
 from __future__ import annotations
 
-import contextlib
 import difflib
 import hashlib
 import json
 import os
 import shutil
+import stat
 import subprocess
 import tarfile
 import tempfile
@@ -24,6 +24,8 @@ from ..contracts import ErrorCode, PlatformError
 IGNORED_DIRS = frozenset(
     {".git", "__pycache__", ".venv", ".pytest_cache", ".mypy_cache", ".ruff_cache", "node_modules"}
 )
+MAX_TEST_ROOT_ENTRIES = 50_000
+MAX_TEST_ROOT_DEPTH = 64
 
 
 def recipe_test_roots(root: Path) -> tuple[str, ...]:
@@ -111,41 +113,78 @@ def test_root_symlinks(root: Path, roots: tuple[str, ...]) -> tuple[str, ...]:
 def test_root_files(root: Path, roots: tuple[str, ...]) -> tuple[str, ...]:
     """Return logical and resolved files reachable through safe test-root symlinks."""
     found: set[str] = set()
-    visited: set[str] = set()
-    pending: list[Path] = []
-    root_real = root.resolve()
-    for raw_root in roots:
-        rel_root = raw_root.rstrip("/")
-        try:
-            rel_root = safe_rel_path(rel_root)
-        except PlatformError:
-            continue
-        if os.path.lexists(root / rel_root):
-            pending.append(root / rel_root)
+    pending: list[tuple[Path, frozenset[str], int]] = []
+    try:
+        root_real = root.resolve(strict=True)
+        for raw_root in roots:
+            rel_root = safe_rel_path(raw_root.rstrip("/"))
+            logical_root = root / rel_root
+            if os.path.lexists(logical_root):
+                pending.append((logical_root, frozenset({os.path.normcase(str(root_real))}), 0))
+    except (OSError, RuntimeError) as exc:
+        raise PlatformError(
+            ErrorCode.SNAPSHOT_NOT_READY,
+            f"protected-test discovery could not resolve root {root}: {type(exc).__name__}",
+        ) from exc
 
+    entries_seen = 0
     while pending:
-        logical = pending.pop()
+        logical, ancestors, depth = pending.pop()
+        entries_seen += 1
+        if entries_seen > MAX_TEST_ROOT_ENTRIES or depth > MAX_TEST_ROOT_DEPTH:
+            raise PlatformError(
+                ErrorCode.SNAPSHOT_NOT_READY,
+                f"protected-test discovery budget exceeded at {logical}",
+            )
         try:
             logical_rel = logical.relative_to(root).as_posix()
             resolved = resolve_under(root, logical_rel)
-        except (OSError, PlatformError, RuntimeError, ValueError):
-            continue
-        if resolved.is_file():
+        except PlatformError as exc:
+            if (
+                exc.code == ErrorCode.SANDBOX_POLICY_VIOLATION
+                and exc.message == "path escapes root via symlink"
+            ):
+                continue
+            raise PlatformError(
+                ErrorCode.SNAPSHOT_NOT_READY,
+                f"protected-test discovery could not resolve {logical}: {exc}",
+            ) from exc
+        except (OSError, RuntimeError, ValueError) as exc:
+            raise PlatformError(
+                ErrorCode.SNAPSHOT_NOT_READY,
+                f"protected-test discovery could not resolve {logical}: {type(exc).__name__}",
+            ) from exc
+        try:
+            real = os.path.normcase(str(resolved.resolve(strict=True)))
+        except (OSError, RuntimeError) as exc:
+            raise PlatformError(
+                ErrorCode.SNAPSHOT_NOT_READY,
+                f"protected-test discovery could not resolve {logical}: {type(exc).__name__}",
+            ) from exc
+        try:
+            mode = resolved.stat().st_mode
+        except OSError as exc:
+            raise PlatformError(
+                ErrorCode.SNAPSHOT_NOT_READY,
+                f"protected-test discovery could not inspect {logical}: {type(exc).__name__}",
+            ) from exc
+        if stat.S_ISREG(mode):
             found.add(logical_rel)
-            with contextlib.suppress(ValueError):
-                found.add(resolved.relative_to(root_real).as_posix())
+            found.add(resolved.relative_to(root_real).as_posix())
             continue
-        if not resolved.is_dir():
+        if not stat.S_ISDIR(mode):
             continue
-        real = os.path.normcase(str(resolved.resolve()))
-        if real in visited:
+        if real in ancestors:
             continue
-        visited.add(real)
         try:
             entries = sorted(resolved.iterdir(), key=lambda path: path.name, reverse=True)
-        except OSError:
-            continue
-        pending.extend(logical / entry.name for entry in entries)
+        except OSError as exc:
+            raise PlatformError(
+                ErrorCode.SNAPSHOT_NOT_READY,
+                f"protected-test discovery could not read {logical}: {type(exc).__name__}",
+            ) from exc
+        next_ancestors = ancestors | {real}
+        pending.extend((logical / entry.name, next_ancestors, depth + 1) for entry in entries)
     return tuple(sorted(found))
 
 

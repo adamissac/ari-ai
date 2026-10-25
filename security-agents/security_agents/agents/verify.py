@@ -466,16 +466,20 @@ def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], l
         )
     else:
         required_tests = set(ev.tests_added)
-        added_runs = [
+        matching_added_runs = [
             r
             for r in ev.test_runs
             if r.get("selection") == "added_tests"
-            and not r.get("error")
+            and applied_patch_id is not None
+            and r.get("patch_id") == applied_patch_id
+        ]
+        added_runs = [
+            r
+            for r in matching_added_runs
+            if not r.get("error")
             and not r.get("timed_out")
             and r.get("exit_code", 0) == 0
             and r.get("workspace_role") == "patched"
-            and applied_patch_id is not None
-            and r.get("patch_id") == applied_patch_id
             and required_tests.issubset(set(r.get("pytest_args") or []))
         ]
         if not added_runs:
@@ -490,12 +494,21 @@ def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], l
             failing = {f for r in added_runs for f in (r.get("failing_tests") or [])}
             offending = sorted(f for f in failing if any(f.startswith(t) for t in ev.tests_added))
             artifact = str(last.get("sandbox_run_id") or "")
-            if offending or any(r.get("failed", 0) for r in added_runs):
+            executed_failures = [
+                r
+                for r in matching_added_runs
+                if r.get("failed", 0)
+                or r.get("failing_tests")
+                or r.get("errors", 0)
+                or r.get("timed_out")
+                or (r.get("exit_code") is not None and r.get("exit_code") != 0)
+            ]
+            if offending or executed_failures:
                 add(
                     VerificationCheckName.GENERATED_TESTS_PASS,
                     False,
-                    f"added tests failing: {offending or 'one or more selected tests failed'}",
-                    artifact,
+                    f"added tests failing: {offending or 'one or more patched added_tests runs failed'}",
+                    str((executed_failures[-1] if executed_failures else last).get("sandbox_run_id") or ""),
                 )
             elif any(r.get("errors", 0) for r in added_runs):
                 add(

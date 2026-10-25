@@ -1129,6 +1129,94 @@ def test_protected_tests_follow_safe_directory_symlinks(
 
 
 @pytest.mark.boundary
+def test_test_root_discovery_preserves_aliases_and_protects_changed_alias(
+    tmp_path: Path,
+) -> None:
+    from security_agents.sandbox.workspace import test_root_files
+    from security_agents.tools import PatchApplier
+
+    root = tmp_path / "repo"
+    (root / "tests/z").mkdir(parents=True)
+    (root / "spec").mkdir()
+    (root / "spec/test_core.py").write_text("assert True\n", encoding="utf-8")
+    (root / "tests/a").symlink_to("z", target_is_directory=True)
+    (root / "tests/z/cycle").symlink_to("..", target_is_directory=True)
+    (root / "tests/z/test_core.py").symlink_to("../../spec/test_core.py")
+
+    protected = list(test_root_files(root, ("tests/",)))
+
+    assert "tests/a/test_core.py" in protected
+    assert "tests/z/test_core.py" in protected
+    assert "spec/test_core.py" in protected
+    diff = (
+        "diff --git a/tests/z/test_core.py b/tests/z/test_core.py\n"
+        "--- a/tests/z/test_core.py\n"
+        "+++ b/tests/z/test_core.py\n"
+        "@@ -1 +1 @@\n-assert True\n+assert False\n"
+    )
+    assert "tests/z/test_core.py" in PatchApplier._tampered_tests(diff, protected)
+
+
+@pytest.mark.boundary
+def test_test_root_discovery_budget_exhaustion_fails_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import security_agents.sandbox.workspace as workspace
+    from security_agents.contracts import ErrorCode, PlatformError
+
+    root = tmp_path / "repo"
+    (root / "tests").mkdir(parents=True)
+    (root / "tests/test_a.py").write_text("assert True\n", encoding="utf-8")
+    monkeypatch.setattr(workspace, "MAX_TEST_ROOT_ENTRIES", 1)
+
+    with pytest.raises(PlatformError) as exc:
+        workspace.test_root_files(root, ("tests/",))
+
+    assert exc.value.code == ErrorCode.SNAPSHOT_NOT_READY
+
+
+@pytest.mark.boundary
+def test_protected_test_discovery_errors_fail_closed_in_apply_fresh(
+    intel: LocalIntel,
+    driver: LocalProcessDriver,
+    library: CheckLibrary,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from security_agents.contracts import ErrorCode, PlatformError
+    from security_agents.sandbox.workspace import test_root_files
+
+    tests_dir = intel.snapshot.root / "tests"
+    original_iterdir = Path.iterdir
+
+    def fail_test_root(path: Path) -> Any:
+        if path == tests_dir:
+            raise OSError("simulated protected-test discovery failure")
+        return original_iterdir(path)
+
+    monkeypatch.setattr(Path, "iterdir", fail_test_root)
+    with pytest.raises(PlatformError) as discovery_error:
+        test_root_files(intel.snapshot.root, ("tests/",))
+    assert discovery_error.value.code == ErrorCode.SNAPSHOT_NOT_READY
+    orch, _ = build(intel, driver, library, tmp_path, scripts={"unused": []})
+    protected = orch._protected_tests()
+    assert any("protected-test discovery failed: SNAPSHOT_NOT_READY" in path for path in protected)
+
+    diff = (
+        "diff --git a/verify_probe.py b/verify_probe.py\n"
+        "new file mode 100644\n"
+        "--- /dev/null\n+++ b/verify_probe.py\n"
+        "@@ -0,0 +1 @@\n+value = 1\n"
+    )
+    facts, _ = _apply_fresh_diff(intel, tmp_path, diff, ["verify_probe.py"], protected)
+
+    assert any(
+        "protected-test discovery failed: SNAPSHOT_NOT_READY" in item
+        for item in facts["tampered_protected_tests"]
+    )
+
+
+@pytest.mark.boundary
 def test_apply_fresh_rejects_protected_dangling_symlink(
     intel: LocalIntel, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1603,6 +1691,102 @@ def test_pinned_plugin_discovery_covers_additional_sources(
 
 @pytest.mark.boundary
 @pytest.mark.parametrize(
+    "test_command",
+    [
+        ["-c", "config/testing.ini", "tests"],
+        ["-cconfig/testing.ini", "tests"],
+        ["--config-file", "config/testing.ini", "tests"],
+        ["--config-file=config/testing.ini", "tests"],
+    ],
+    ids=["short-separated", "short-attached", "long-separated", "long-equals"],
+)
+def test_pinned_custom_pytest_config_is_byte_protected(test_command: list[str], tmp_path: Path) -> None:
+    path = "config/testing.ini"
+    tampered = _runner_config_tampering_for_test(
+        tmp_path,
+        config_files={},
+        changed_path=path,
+        pinned_text="[pytest]\n",
+        patched_text="[pytest]\naddopts = --deselect=tests/test_api.py::test_value\n",
+        test_command=test_command,
+    )
+
+    assert path in tampered
+
+
+@pytest.mark.boundary
+@pytest.mark.parametrize(
+    "test_command",
+    [
+        ["--rootdir", "config-root", "tests"],
+        ["--rootdir=config-root", "tests"],
+    ],
+    ids=["rootdir-separated", "rootdir-equals"],
+)
+def test_pinned_rootdir_config_is_byte_protected(test_command: list[str], tmp_path: Path) -> None:
+    path = "config-root/pytest.ini"
+    tampered = _runner_config_tampering_for_test(
+        tmp_path,
+        config_files={},
+        changed_path=path,
+        pinned_text="[pytest]\n",
+        patched_text="[pytest]\naddopts = --deselect=tests/test_api.py::test_value\n",
+        test_command=test_command,
+    )
+
+    assert path in tampered
+
+
+@pytest.mark.boundary
+@pytest.mark.parametrize(
+    ("path", "pinned_text", "patched_text"),
+    [
+        (
+            "tox.ini",
+            "[pytest]\npython_files = check_*.py\n",
+            "[DEFAULT]\npython_files = check_*.py\n[pytest]\n",
+        ),
+        (
+            "setup.cfg",
+            "[tool:pytest]\npython_files = check_*.py\n",
+            "[DEFAULT]\npython_files = check_*.py\n[tool:pytest]\n",
+        ),
+    ],
+    ids=["tox-default-move", "setup-cfg-default-move"],
+)
+def test_pytest_ini_defaults_cannot_hide_collection_options(
+    path: str,
+    pinned_text: str,
+    patched_text: str,
+    tmp_path: Path,
+) -> None:
+    tampered = _runner_config_tampering_for_test(
+        tmp_path,
+        config_files={},
+        changed_path=path,
+        pinned_text=pinned_text,
+        patched_text=patched_text,
+    )
+
+    assert path in tampered
+
+
+@pytest.mark.boundary
+def test_unrelated_tox_testenv_edit_is_not_runner_tampering(tmp_path: Path) -> None:
+    path = "tox.ini"
+    tampered = _runner_config_tampering_for_test(
+        tmp_path,
+        config_files={},
+        changed_path=path,
+        pinned_text="[pytest]\npython_files = check_*.py\n[testenv]\ncommands = pytest\n",
+        patched_text="[pytest]\npython_files = check_*.py\n[testenv]\ncommands = pytest -q\n",
+    )
+
+    assert tampered == []
+
+
+@pytest.mark.boundary
+@pytest.mark.parametrize(
     ("construct",),
     [
         ("def pytest_collection_modifyitems(items):\n    items.clear()\n",),
@@ -1901,14 +2085,17 @@ def test_orchestrator_protects_only_in_root_symlinked_tests(
     outside_target.write_text("outside\n")
     outside_link = tests_root / "test_outside_link.py"
     outside_link.symlink_to(outside_target)
-    dangling_link = tests_root / "test_dangling_link.py"
-    dangling_link.symlink_to("missing_test_target.py")
 
     protected = orch._protected_tests()
 
     assert "tests/test_safe_link.py" in protected
     assert "tests/test_outside_link.py" not in protected
+
+    dangling_link = tests_root / "test_dangling_link.py"
+    dangling_link.symlink_to("missing_test_target.py")
+    protected = orch._protected_tests()
     assert "tests/test_dangling_link.py" not in protected
+    assert any("protected-test discovery failed: SNAPSHOT_NOT_READY" in path for path in protected)
 
 
 def test_tampered_tests_flags_addition_only_changes() -> None:
