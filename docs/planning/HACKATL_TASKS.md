@@ -71,7 +71,7 @@ acceptance criteria are the minimum for `DONE` in addition to
 | SEC-007 | Probe agent | security-agents/ | FR-2-02 | SEC-001, SEC-005 | Alan | IN_REVIEW | Confirms planted, refutes non-planted fixture hypothesis |
 | SEC-008 | Trace agent + deterministic severity function | security-agents/ | FR-2-03 | SEC-001 | Alan | IN_REVIEW | All steps labeled; severity factors cited |
 | SEC-009 | Diagnose agent | security-agents/ | FR-2-04 | SEC-001 | Alan | IN_REVIEW | Root cause span matches fixture label |
-| SEC-010 | Verify agent + deterministic verdict rules | security-agents/ | FR-2-06 | SEC-001, SEC-003, SEC-004 | Alan | IN_REVIEW | SB-08, SB-09 pass; detects planted bad patches |
+| SEC-010 | Verify agent + deterministic verdict rules | security-agents/ | FR-2-06 | SEC-001, SEC-003, SEC-004 | Alan | IN_REVIEW | SB-08, SB-09 pass; detects planted bad patches; #626 follow-up covers hook-rooted attribute/subscript writes, inert invalid fixtures, symlink-target config sections, and fail-closed read/walk errors; #629 follow-up adds context-aware binding collection and checks linked config target content through fresh checkouts |
 | SEC-011 | Patch agent (worktree) | security-agents/ | FR-2-05 | SEC-001, SEC-003 | Alan | IN_REVIEW | Produces diff within plan scope; local tests run |
 | SEC-012 | Orchestrator state machine + gates (IC-2 with fake agents) | security-agents/, backend/ | FR-P-05 | CORE-006, CORE-007, SEC-001 | Alan | IN_REVIEW | All transitions tested incl. cancel/fail/budget; SB-07 passes |
 | SEC-013 | Fortify agent + regression test promotion | security-agents/ | FR-2-07 | SEC-001 | Alan | IN_REVIEW | Every verified finding gets ≥ 1 RegressionTest |
