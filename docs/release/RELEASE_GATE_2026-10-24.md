@@ -3,8 +3,9 @@
 Owner: Adam (release reliability / test infrastructure). Branch: `feat/adam/release-gate`.
 
 ## Release SHA under gate
-- `main` HEAD: `d0131167` (PR #516 squash: "fix(evals,api): score from finding evidence paths and serialize paths column")
-- Gate PR: this branch. Required checks = the job names listed below.
+- `main` HEAD at doc freeze: `d0131167` — **stale**. PRs #535 (tenant RLS, migration `0016`), #537, #544, #549, #551, #553, #557, #560 merged since; re-read `main` for the real release SHA (see the trigger section).
+- Gate PR #530 head `8b6bf3bd` — **all 19 CI checks green** incl. `backend-tests`, `intel-tests`, `review-tests`, `secagents-tests`, `rl-tests`, `e2e`, `docker-reviewer`, `docker-sandbox`, `compose-stack`, `backend-image`, `gitleaks`, `inventory-lite`, `payments-lite`, `audit`, `links`, `runner-semantics`, `rl-integration`, `static-and-unit`.
+- Required checks = the job names listed below.
 
 ## Problem fixed (from PR #516 triage)
 - `02cea327` added `paths` to the findings list API response; the generated `Finding` contract has `additionalProperties: false`, so the frontend transport's AJV validation rejected every findings response → e2e stack and dependent checks failed.
@@ -42,7 +43,7 @@ Leases/heartbeats, retry backoff, `SKIP LOCKED` claims, dedupe idempotency, canc
 `scripts/ci/load_probe.py`, workers=4, jobs=100 (run twice): no duplicate completions, attempts==1, drain ~0.06s; lease-expiry re-claim attempts==2; dedupe race → one created; `max_attempts=1` failure → `dead` row visible via filter. Provider limits and sandbox concurrency are the real ceilings; the probe measures queue mechanics only.
 
 ## Migrations
-16 version files, single head `0015`; `test_parallel_migrations.py` asserts `["0015"]`. None of open PRs #496/#458/#441/#412 touch migration files → zero concurrent-migration conflicts. Any PR adding a version file must update that test; multiple heads fail it.
+At doc freeze: 16 version files, single head `0015`; `test_parallel_migrations.py` asserted `["0015"]`. **Post-#535 merge**: `0016_tenant_rls_intelligence` is now main's head; **#533 must renumber `0016_worker_heartbeats` → `0017`** and update the head assertion (commented on the PR). Any PR adding a version file must update that test; multiple heads fail it.
 
 ## Eval harness (45 cases)
 `score.py`/`score_api.py`: every case emits `scored: bool`; non-COMPLETED assessments emit `scored:false` + `unscored_reason`, excluded from all rates (previously counted as misses). `run.py`: `cases.json` validated at load; `summarize()` rates over scored cases only + `scored_cases: N/45` + explicit `unscored` list.
@@ -118,10 +119,10 @@ Or GitHub UI: **Actions → pilot-verify → Run workflow** → set `ref` to the
 
 ## Cross-branch coordination (checked 2026-10-24, before merge)
 
-- **PR #533 (pilot-readiness-ops)** adds migration `0016_worker_heartbeats` but leaves `test_parallel_migrations.py` asserting `["0015"]` → would break `backend-tests` on main; commented on the PR. Merge order note: whichever of #530/#533 lands second, the head assertion must match the real head.
+- **PR #533 (pilot-readiness-ops)** adds migration `0016_worker_heartbeats` — since #535 merged first and claimed `0016`, #533 must renumber to `0017` + update `test_parallel_migrations.py` to `["0017"]`. Notified via PR comment.
 - **PR #529** also edits `security-agents/evals/commits/score_api.py` (moves `_finding_paths` to module scope) — disjoint hunks from #530's results-loop rewrite; both coexist.
 - **PRs #524/#525/#526/#523** (ari-security authz fixes) touch `routes.py` in-place at distant hunks — GitHub reports mergeable; no conflict with the appended jobs endpoint.
-- Migration conflicts today: **zero** — only #533 adds a version file (0015→0016, linear).
+- Migration conflicts: the predicted #533/#535 `0016` collision was resolved by ordering — **#535 merged first**; #533 renumbers to `0017` on rebase.
 
 ## Evidence honesty
 
