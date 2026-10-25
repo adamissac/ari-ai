@@ -1716,6 +1716,39 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - 5 new tests in `backend/tests/test_execution_reliability.py` (in_flight → recovery + audited operator resolution; uncertain flag; settled-only → requeue; missing invocation → requeue; atomic reservation path).
 - Codex's repro file itself (`test_release_rereview.py`) needs the `live_defense_e2e` harness, which lives only on the integration/codex branches — semantics ported into the reliability file; the composed tree must re-run the strict green assertion.
 
+## 2026-10-25 — Devin (Alan): execution reliability — Codex RC2 fixes N3/N4
+
+- Codex RC2 review `codex/rc2-independent-review` (NO-GO on 3f16c99f) assigned
+  N4 (P1, shared with Observability Devin) and N3 (P2, shared with Grok's
+  provider-ledger owner). Probes: `test_rc2_independent.py` —
+  `test_viewer_history_does_not_bypass_job_error_redaction`,
+  `test_job_api_does_not_expose_infrastructure_credentials`,
+  `test_operator_confirmed_retry_resolves_provider_ledger`,
+  `test_fast_reclaim_cannot_hide_unresolved_provider_from_reconciler`.
+- N3 — one durable fenced recovery protocol, all inside the same transactions:
+  * `jobs.unresolved_billable_attempt` moved to `jobs.py` and now runs in
+    `claim` on every picked row — a fast reclaim beating the reconciler can
+    never hand a job with an unresolved billable ledger row to a worker; it
+    transitions `running->recovery_required` (fenced diag + audited event)
+    and the claim loop moves on.
+  * `execution.resolve_recovery` closes the ledger in the same transaction as
+    the job transition: `applied` -> attempts `settled`, `not_applied`/`retry`
+    -> attempts `cancelled`, `uncertain_provider_outcome` cleared (only
+    unresolved states touched; uses existing ProviderAttemptState values so
+    the doc still validates). A `retry` could otherwise requeue while the
+    ledger still blocked the next reservation — or replay a billable call.
+- N4 — `jobs.fail` sanitized `last_error` but wrote the raw exception into
+  `job_events.reason` (viewer-readable via `/jobs/{id}/history`). Fixed:
+  `record_event` redacts reason+details, `transition` redacts
+  last_error/recovery/result, `fail` redacts stored error; read-side scrub in
+  `execution.history`, `stuck_jobs` recovery and `GET /jobs/{id}` covers rows
+  written before the fix. `redaction.py` gained URI-userinfo and
+  credential `key=value` patterns (postgresql://svc:pass@host wasn't caught).
+  Role authorization unchanged (viewer reads, owner resolves).
+- Literal RC2 probes run only on the composed tree (live_defense_e2e harness);
+  semantics asserted strict in `backend/tests/test_execution_reliability.py`
+  (+7 tests, file now 59). Suite: 377 passed, 7 skipped.
+
 ## 2026-10-24 — Devin (Adam): specialist eval-brain + live eval harness
 
 - `specialists/data/evalcommits.py`: eval cases become minimal pairs (planted edit = CWE/vuln_other positive, original = hard negative), splits pinned by case id; `scout()` merges the 60 rows.

@@ -16,6 +16,19 @@ _PATTERNS: list[tuple[re.Pattern[str], str]] = [
         "[REDACTED:private_key]",
     ),
     (re.compile(r"(?i)\b(bearer)\s+[A-Za-z0-9._\-]{16,}"), r"\1 [REDACTED:bearer]"),
+    # Credentials embedded in free text, e.g. driver URLs in connector errors
+    # (``postgresql://svc:secret@db.internal/app``) or ``key=value`` fragments.
+    (
+        re.compile(r"(?i)([a-z][a-z0-9+.\-]*://[^/\s:@]+):[^@\s/]+@"),
+        r"\1:[REDACTED:uri_password]@",
+    ),
+    (
+        re.compile(
+            r"(?i)\b(password|passwd|pwd|secret|api[_-]?key|access[_-]?token|"
+            r"client[_-]?secret)=([^\s&'\"]+)"
+        ),
+        r"\1=[REDACTED]",
+    ),
 ]
 
 _SENSITIVE_KEYS = re.compile(

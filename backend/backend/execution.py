@@ -28,56 +28,12 @@ from backend.db import (
     worker_heartbeats,
 )
 from backend.jobs import ErrorCategory, JobStatus
+from backend.redaction import redact, redact_text
 from backend.settings import get_settings
 from shared.base import utcnow
 from shared.errors import ErrorCode
 
 Resolution = Literal["applied", "not_applied", "retry"]
-
-# ProviderAttempt states that leave the billable outcome unresolved. Mirrors
-# shared.live_defense.ProviderAttemptState, kept as literals so reconciling
-# never imports the domain model: a doc written before the field existed
-# simply has no unresolved rows.
-_UNRESOLVED_LEDGER_STATES = frozenset({"reserved", "in_flight", "sent", "uncertain"})
-
-
-def _unresolved_billable_attempt(conn: Connection, row: Any) -> dict[str, Any] | None:
-    """Return the unresolved billable-request ledger row for ``row``, if any.
-
-    The first-responder ProviderAttempt ledger persists a reservation inside
-    ``first_responder_invocations.doc.execution`` before the provider call is
-    sent. An abrupt worker death after that commit leaves ``effect_state``
-    NULL even though a billable request may have happened; the ledger is then
-    the only record. Pure canonical reads are never reserved, so this check
-    only fires on real external sends. Owner/attempt fencing for the operator
-    lands in the returned diagnostics.
-    """
-    invocation_id = (row["payload"] or {}).get("invocation_id")
-    if not invocation_id:
-        return None
-    doc = conn.execute(
-        sa.select(first_responder_invocations.c.doc).where(
-            first_responder_invocations.c.id == invocation_id
-        )
-    ).scalar_one_or_none()
-    if not isinstance(doc, dict):
-        return None
-    record = doc.get("execution") or {}
-    if record.get("uncertain_provider_outcome"):
-        return {
-            "invocation_id": str(invocation_id),
-            "ledger_state": "uncertain_provider_outcome",
-        }
-    for attempt in record.get("provider_attempts") or []:
-        if attempt.get("status") in _UNRESOLVED_LEDGER_STATES:
-            return {
-                "invocation_id": str(invocation_id),
-                "ledger_attempt_id": attempt.get("id"),
-                "ledger_attempt_status": attempt.get("status"),
-                "idempotency_key": attempt.get("idempotency_key"),
-                "effect_key": attempt.get("effect_key"),
-            }
-    return None
 
 
 # --- worker registry -------------------------------------------------------------
@@ -179,7 +135,7 @@ def reconcile(conn: Connection) -> dict[str, Any]:
                 lease_expires_at=None,
             )
             report["recovery_required"] += 1
-        elif (attempt := _unresolved_billable_attempt(conn, row)) is not None:
+        elif (attempt := jobq.unresolved_billable_attempt(conn, row["payload"])) is not None:
             diag |= {
                 "reason": ErrorCategory.uncertain_side_effect.value,
                 "uncertainty_source": "provider_attempt_ledger",
@@ -335,7 +291,14 @@ def stuck_jobs(
     if project_id is not None:
         stmt = stmt.where(q.c.project_id == project_id)
     rows = conn.execute(stmt.order_by(q.c.since_update_s.desc()).limit(limit)).mappings()
-    return [{**dict(r), "since_update_s": round(float(r["since_update_s"] or 0), 1)} for r in rows]
+    return [
+        {
+            **dict(r),
+            "recovery": redact(r["recovery"]),
+            "since_update_s": round(float(r["since_update_s"] or 0), 1),
+        }
+        for r in rows
+    ]
 
 
 # --- operational metrics -----------------------------------------------------------
@@ -511,7 +474,17 @@ def history(conn: Connection, job_id: str) -> list[dict[str, Any]]:
         .where(job_events.c.job_id == job_id)
         .order_by(job_events.c.seq)
     ).mappings()
-    return [{**dict(r), "created_at": r["created_at"].isoformat()} for r in rows]
+    # Scrub at read as well as at write: events persisted before redaction was
+    # applied to ``record_event`` keep their raw text in the table.
+    return [
+        {
+            **dict(r),
+            "reason": redact_text(r["reason"]) if r["reason"] else r["reason"],
+            "details": redact(r["details"]),
+            "created_at": r["created_at"].isoformat(),
+        }
+        for r in rows
+    ]
 
 
 # --- operator recovery -------------------------------------------------------------
@@ -521,6 +494,87 @@ class RecoveryError(RuntimeError):
     def __init__(self, code: ErrorCode, message: str, status: int = 409) -> None:
         super().__init__(message)
         self.code, self.status = code, status
+
+
+# ProviderAttempt disposition recorded for each operator resolution. Uses only
+# existing ProviderAttemptState values so the ledger doc still validates: an
+# applied effect is ``settled``, one the operator says did not happen (or is
+# being retried) is ``cancelled``.
+_OPERATOR_LEDGER_DISPOSITION: dict[str, tuple[str, str]] = {
+    "applied": ("settled", "OPERATOR_CONFIRMED_APPLIED"),
+    "not_applied": ("cancelled", "OPERATOR_CONFIRMED_NOT_APPLIED"),
+    "retry": ("cancelled", "OPERATOR_AUTHORIZED_RETRY"),
+}
+
+
+def _resolve_provider_ledger(
+    conn: Connection, row: Any, resolution: Resolution, actor_id: str
+) -> None:
+    """Close unresolved ProviderAttempt rows per the operator's disposition.
+
+    Runs inside the same transaction as the job transition, fenced by the
+    locked job row and a lock on the invocation row. ``retry`` asserts the
+    effect was not applied: the stale reservation must be cancelled here or
+    the next claim would find the ledger unresolved and park the job back in
+    ``recovery_required``. Already-settled/cancelled attempts keep their
+    recorded evidence untouched. No-op for jobs without a ledger doc.
+    """
+    invocation_id = (row["payload"] or {}).get("invocation_id")
+    if not invocation_id:
+        # The reconciliation diagnostics keep the invocation id even when the
+        # payload lost it; fall back to the stored recovery record.
+        recovery = conn.execute(
+            sa.select(jobs.c.recovery).where(jobs.c.id == row["id"])
+        ).scalar_one_or_none()
+        if isinstance(recovery, dict):
+            invocation_id = recovery.get("invocation_id")
+    if not invocation_id:
+        return
+    inv = (
+        conn.execute(
+            sa.select(first_responder_invocations.c.doc)
+            .where(first_responder_invocations.c.id == invocation_id)
+            .with_for_update()
+        )
+        .mappings()
+        .first()
+    )
+    doc = inv["doc"] if inv else None
+    if not isinstance(doc, dict):
+        return
+    record = doc.get("execution")
+    if not isinstance(record, dict):
+        return
+    target, code = _OPERATOR_LEDGER_DISPOSITION[resolution]
+    settled_at = utcnow().isoformat()
+    attempts: list[dict[str, Any]] = []
+    changed = False
+    for attempt in record.get("provider_attempts") or []:
+        if attempt.get("status") in jobq.UNRESOLVED_LEDGER_STATES:
+            attempt = {
+                **attempt,
+                "status": target,
+                "settled_at": settled_at,
+                "error_code": f"{code}:{actor_id}",
+            }
+            changed = True
+        attempts.append(attempt)
+    if not changed and not record.get("uncertain_provider_outcome"):
+        return
+    conn.execute(
+        sa.update(first_responder_invocations)
+        .where(first_responder_invocations.c.id == invocation_id)
+        .values(
+            doc={
+                **doc,
+                "execution": {
+                    **record,
+                    "provider_attempts": attempts,
+                    "uncertain_provider_outcome": False,
+                },
+            }
+        )
+    )
 
 
 def resolve_recovery(
@@ -542,6 +596,12 @@ def resolve_recovery(
         )
     details = {"resolution": resolution, "actor_id": actor_id, "note": note[:1000]}
     common: dict[str, Any] = {"lease_owner": None, "lease_expires_at": None}
+    # Close the billable-request ledger in the same transaction as the job
+    # transition: one durable fenced protocol across claim, reconcile and
+    # operator resolution. A ``retry`` whose stale reservation stayed
+    # unresolved would park the next claim right back in ``recovery_required``
+    # — or, worse, replay an unknown billable call.
+    _resolve_provider_ledger(conn, row, resolution, actor_id)
     if resolution == "applied":
         jobq.transition(
             conn,
