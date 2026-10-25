@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     github_web_url: str = "https://github.com"
     # Empty preserves legacy monitoring; comma-separated GitHub logins or * enables per-commit runs.
     github_auto_commit_authors: str = ""
+    automatic_assessments_per_hour: int = Field(default=5, ge=1)
+    automatic_assessments_per_day: int = Field(default=20, ge=1)
+    automatic_usd_per_day: float = Field(default=50.0, gt=0)
     project_assessments_per_hour: int = Field(default=10, ge=1)
     project_assessments_per_day: int = Field(default=50, ge=1)
     assessments_usd_per_day: float = Field(default=50.0, gt=0)
@@ -74,6 +77,15 @@ class Settings(BaseSettings):
     worker_heartbeat_interval_s: float = 5.0
     worker_liveness_s: float = 30.0
     readyz_require_workers: bool | None = None
+    # Execution reliability (docs/architecture/execution-reliability.md). 0 disables a limit.
+    job_max_running_per_project: int = 4
+    job_max_running_global: int = 0
+    job_max_pending_per_project: int = 1000
+    job_max_running_emergency: int = 2
+    worker_reconcile_interval_s: float = 30.0
+    worker_stale_s: int = 120
+    job_stuck_pending_s: int = 900
+    worker_finalize_retries: int = 3
     orchestrator_factory: str = Field(
         default="security_agents.api:build_orchestrator",
         description="module:callable returning an Orchestrator; see backend/host.py",
@@ -97,6 +109,7 @@ class Settings(BaseSettings):
 
     # Rate limits (in-process, docs/13)
     rate_limit_per_minute: int = 60
+    assessment_starts_per_hour: int = 5
 
     # Ops surface + storage maintenance (docs/deploy/POSTGRES_STORAGE.md)
     # Bearer token for /api/v1/ops/*; unset disables those endpoints entirely.
@@ -107,6 +120,10 @@ class Settings(BaseSettings):
     # Provisioned size of the PostgreSQL volume in bytes (from the Railway dashboard).
     # 0 = unknown: the report still emits absolute usage but skips percentage alerts.
     postgres_volume_bytes: int = Field(default=0, ge=0)
+    # Provisioned size of the app data volume, Railway sizeMB × 1,000,000.
+    # 0 = skip data-volume alerts.
+    data_volume_bytes: int = Field(default=0, ge=0)
+    data_volume_path: Path = Path("/data")
     maintenance_enabled: bool = True
     maintenance_interval_s: int = Field(default=3600, ge=60)
     # True by default: the loop reports what it WOULD delete without deleting until an

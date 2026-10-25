@@ -1992,3 +1992,7 @@ selected run is still loading.
 - Merge waves belong to the integration lead; wave 2 includes my #542/#543.
 - Prod queue depth (~88 items) makes 45-case live eval slow — some cases may return `pending`/NOT_STARTED; rerun stragglers or extend deadlines.
 - Second-org real-provider leg needs owner's private repo + second GitHub org (account actions).
+
+### Transfer stack — S5 hardening checkpoint
+- S5 `transfer/pilot-security-hardening` is built through `da145126`; it carries schema 0.25.0 and repository disconnect migration 0019 (down_revision 0018).
+- The disconnect finalizer uses the shared repository-then-mapping lock order and preserves the direct, locked, and investigation-source revocation checks.

@@ -282,6 +282,12 @@ export class ApiClient {
   pilotReport(projectId: string, options?: RequestOptions): Promise<C.PilotReport> {
     return this.request(`/projects/${segment(projectId)}/pilot-report`, 'PilotReport', options) as Promise<C.PilotReport>;
   }
+  rlReadiness(projectId: string, options?: RequestOptions): Promise<C.RlReadinessAssessment> {
+    return this.request(`/projects/${segment(projectId)}/rl-readiness`, 'RlReadinessAssessment', options) as Promise<C.RlReadinessAssessment>;
+  }
+  enableRlGatedPilot(appId: string, options?: RequestOptions): Promise<C.PilotEnablement> {
+    return this.request(`/applications/${segment(appId)}/enable-rl-gated-pilot`, 'PilotEnablement', options, {}) as Promise<C.PilotEnablement>;
+  }
   defenseHealth(projectId: string, options?: RequestOptions): Promise<C.DefenseHealth> {
     return this.request(`/projects/${segment(projectId)}/defense-health`, 'DefenseHealth', options) as Promise<C.DefenseHealth>;
   }
@@ -386,6 +392,22 @@ export class ApiClient {
   }
   firstResponderHandoffs(projectId: string, options?: RequestOptions): Promise<Page<C.AnalystHandoff>> {
     return this.list(`/projects/${segment(projectId)}/first-responder/handoffs`, 'AnalystHandoff', options);
+  }
+  firstResponderInvestigations(projectId: string, options?: RequestOptions & { cursor?: string; limit?: number }): Promise<Page<C.InvestigationSummary>> {
+    const qs = new URLSearchParams();
+    if (options?.cursor) qs.set('cursor', options.cursor);
+    if (options?.limit) qs.set('limit', String(options.limit));
+    const suffix = qs.size ? `?${qs}` : '';
+    return this.list(`/projects/${segment(projectId)}/first-responder/investigations${suffix}`, 'InvestigationSummary', options?.signal ? { signal: options.signal } : undefined);
+  }
+  firstResponderInvestigation(decisionId: string, options?: RequestOptions): Promise<C.InvestigationTimeline> {
+    return this.request(`/first-responder/investigations/${segment(decisionId)}`, 'InvestigationTimeline', options) as Promise<C.InvestigationTimeline>;
+  }
+  firstResponderInvocationDetail(invocationId: string, options?: RequestOptions): Promise<C.FirstResponderInvocationView> {
+    return this.request(`/first-responder/invocations/${segment(invocationId)}`, 'FirstResponderInvocationView', options) as Promise<C.FirstResponderInvocationView>;
+  }
+  firstResponderDiagnostics(projectId: string, options?: RequestOptions): Promise<C.FirstResponderDiagnostics> {
+    return this.request(`/projects/${segment(projectId)}/first-responder/diagnostics`, 'FirstResponderDiagnostics', options) as Promise<C.FirstResponderDiagnostics>;
   }
   createDeployCommitMapping(appId: string, body: C.DeployCommitMappingCreate, options?: RequestOptions): Promise<C.DeployCommitMapping> {
     return this.request(`/applications/${segment(appId)}/deploy-mappings`, 'DeployCommitMapping', options, body) as Promise<C.DeployCommitMapping>;

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+from datetime import timedelta
 from typing import Any
 
 import httpx
@@ -13,6 +14,7 @@ from sqlalchemy.engine import Connection
 
 from backend import audit, jobs
 from backend.db import (
+    assessments,
     monitoring_events,
     projects,
     reassessment_requests,
@@ -69,6 +71,8 @@ def authors() -> set[str]:
 def schedule(
     conn: Connection, repo: Any, delivery: Any, payload: dict[str, Any], change: Any
 ) -> dict[str, Any]:
+    if repo["disconnected_at"] is not None:
+        return {"ignored": "repository disconnected"}
     if not repo["automatic_assessments"]:
         return {"ignored": "repository automatic assessments disabled"}
     allowed = authors()
@@ -310,6 +314,8 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
         )
     if repo["installation_id"] != p["installation_id"]:
         return policy_exit(p, "repository installation changed")
+    if repo["disconnected_at"] is not None:
+        return policy_exit(p, "repository disconnected")
     try:
         commit = github_client().commit(repo["installation_id"], repo["full_name"], p["sha"])
     except httpx.HTTPStatusError as exc:
@@ -414,31 +420,74 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
                 created_at=utcnow(),
             )
         assert rrq is not None
-        quota = None
+        delay_s = 0.0
         if scope:
-            quota = check_project_quota(conn, repo["project_id"], utcnow())
-        if quota is not None:
-            reason = skipped_reason(quota)
-            rrq = rrq.model_copy(update={"status": ReassessmentStatus.skipped, "reason": reason})
-        elif scope:
-            asm, _ = create_assessment(
+            now = utcnow()
+            limits = get_settings()
+            for seconds, limit in (
+                (3600, limits.automatic_assessments_per_hour),
+                (86400, limits.automatic_assessments_per_day),
+            ):
+                count, oldest = conn.execute(
+                    sa.select(sa.func.count(), sa.func.min(assessments.c.created_at)).where(
+                        assessments.c.project_id == repo["project_id"],
+                        assessments.c.trigger == AssessmentTrigger.monitoring.value,
+                        assessments.c.created_at > now - timedelta(seconds=seconds),
+                    )
+                ).one()
+                if count >= limit and oldest:
+                    delay_s = max(
+                        delay_s, (oldest + timedelta(seconds=seconds + 1) - now).total_seconds()
+                    )
+            spent = conn.execute(
+                sa.select(
+                    sa.func.coalesce(
+                        sa.func.sum(assessments.c.doc["usage"]["usd"].astext.cast(sa.Numeric)), 0
+                    )
+                ).where(
+                    assessments.c.trigger == AssessmentTrigger.monitoring.value,
+                    assessments.c.created_at > now - timedelta(days=1),
+                )
+            ).scalar_one()
+            if float(spent) >= limits.automatic_usd_per_day:
+                delay_s = max(delay_s, 3600.0)
+        if scope and delay_s:
+            reason = "queued: waiting for project automatic-run capacity"
+            rrq = rrq.model_copy(update={"status": ReassessmentStatus.queued, "reason": reason})
+            jobs.enqueue(
                 conn,
-                project_id=repo["project_id"],
-                repo_id=repo["id"],
-                scope_id=scope.id,
-                commit_sha=p["sha"],
-                trigger=AssessmentTrigger.monitoring,
-                budget=capped_budget(settings.default_budget),
-                created_by=None,
-                reassessment_request_id=rrq.id,
+                "assess_github_commit",
+                p,
+                delay_s=delay_s,
+                priority=60,
+                dedupe_key=f"github:deferred:{ctx.job.id}",
             )
-            rrq = rrq.model_copy(
-                update={
-                    "assessment_id": asm.id,
-                    "status": ReassessmentStatus.started,
-                    "reason": reason,
-                }
-            )
+        elif scope:
+            quota = check_project_quota(conn, repo["project_id"], utcnow())
+            if quota is not None:
+                reason = skipped_reason(quota)
+                rrq = rrq.model_copy(
+                    update={"status": ReassessmentStatus.skipped, "reason": reason}
+                )
+            else:
+                asm, _ = create_assessment(
+                    conn,
+                    project_id=repo["project_id"],
+                    repo_id=repo["id"],
+                    scope_id=scope.id,
+                    commit_sha=p["sha"],
+                    trigger=AssessmentTrigger.monitoring,
+                    budget=capped_budget(settings.default_budget),
+                    created_by=None,
+                    reassessment_request_id=rrq.id,
+                )
+                rrq = rrq.model_copy(
+                    update={
+                        "assessment_id": asm.id,
+                        "status": ReassessmentStatus.started,
+                        "reason": reason,
+                    }
+                )
         event_id = existing["id"] if existing else event.id
         event_doc = {
             **(existing["doc"] if existing else event.model_dump(mode="json")),

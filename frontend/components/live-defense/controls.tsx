@@ -47,6 +47,9 @@ export function ControlsDashboard({
   return (
     <div className="flex flex-col gap-4" data-testid="live-defense-controls">
       <OwnedTestBanner />
+      <p className="rounded-xl border border-line bg-panel-2 px-4 py-3 text-sm text-ink" data-testid="live-defense-controls-gated-note">
+        RL-gated shadow-only apps do not appear here for authorization. The server refuses grants, channels, and execute for those apps even if this form is used.
+      </p>
       {unresolved.length > 0 && (
         <p className="rounded-xl border border-warn/60 bg-warn/15 px-4 py-3 text-sm text-warn" data-testid="live-defense-unresolved">
           Unresolved failed control(s) block further actions until rollback or emergency stop is verified.
