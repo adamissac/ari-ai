@@ -2,7 +2,7 @@
 
 Owner: Adam
 Branch: all work merged to `main` (last: PR #13 shared contracts, PR #18 recipe check)
-Current task: pilot readiness — merge-order coordination + staging-rehearsal prep (branch `feat/adam/seven-agent-live-evidence`, PR #528)
+Current task: pilot readiness — rehearsal verified end-to-end (2 independent runs); merge wave monitored; hosted staging leg gated on Adam GitHub actions
 Last remote sync: 2026-10-24 — fleet merge order per `coordination/messages/20261024T231500Z-adam-to-all-pilot-merge-order-and-gitleaks-unblock.md`
 API/contract dependencies: `DefenseRecommendation`, `PlatformFacts`, `RLCheckpointRef`, `RLEvaluation` proposed to Srihith in `coordination/messages/20261017T001311Z-adam-to-srihith-rl-recommendation-contract.md`; local adapter in `rl-defense/rl_defense/contracts.py` until `shared/` V0 merges
 Verified tests: `cd rl-defense && .venv/bin/python -m pytest -q` → 52 passed (CPU, macOS arm64, Python 3.12, torch 2.14.1, gymnasium 1.4.0); ruff check + format clean
@@ -11,6 +11,34 @@ Blockers: none for RL; backend endpoint and Defense Lab UI need `shared/` V0 and
 Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablations (vanilla DQN vs DDQN, feature and reward sensitivity)
 
 ## Session entries
+
+### 2026-10-25 — independent rehearsal reproduction + e2e false-alarm resolution
+
+- **Rehearsal independently reproduced** (this session, separate boot of `make dev`):
+  a second end-to-end two-org run on embedded pg + real `SECURITY_SANDBOX=vercel` +
+  real Anthropic. Assessment `asm_01M5R6R5W5WVH46MMNMXHJFSNK` completed with all 4
+  planted flaws found (CWE-639/CWE-862×2/CWE-259); honest outcomes include
+  `refuted` (SQLi hypothesis) + `inconclusive` — validating the pipeline produces
+  non-rubber-stamped results, corroborating #556's 13/13 PASS. Sandbox lifecycle
+  verified in worker logs (sbx create/cmd/stop/delete all 200s; base snapshot reused).
+- **Vercel creds resolved read-only:** `VERCEL_PROJECT_ID`/`VERCEL_TEAM_ID` fetched via
+  `GET /v9/projects` (`accountId` is a `team_*` id even on personal accounts) — no Adam
+  action needed; the missing-ids blocker in the earlier entry is cleared.
+- **Driver-defect fixes applied and superseded:** found + fixed the same API-contract
+  drift #556 fixed (request bodies, `assessment.state` polling, repo full_name global
+  uniqueness 409 -> reuse, project reuse by name, sandbox.pip must not duplicate
+  ari-base pins — pip conflict kills baseline run). Discarded locally once #556 merged;
+  canonical driver on main covers it.
+- **e2e "Deterministic × 1" scare resolved — NOT a main regression:** #536/#540 e2e
+  failures were stale-head runs. Reproduced `journey.spec.ts` locally on current main
+  (`ceb2a709`): 3/3 pass incl. the `Test provider (scripted) x 9, Deterministic (no
+  model call) x 1` assertion. #540 went 10/10 green after its main merge; fleet
+  self-heals via `Merge origin/main`.
+- **Fleet state:** #528/#529/#546/#556 merged; open wave per #549 order: #531 (7/8,
+  test pending) -> #530 -> #527 -> #533 -> #536/#537/#538/#540/#496 -> #532; plus new
+  #558 (postgres retention) + #546 (merged). #458/#412 still held for human review.
+- **Still owner-gated (unchanged):** `gh repo create adamissac/ari-pilot-rehearsal
+  --private` + install GitHub App on it + OAuth-login once for the live hosted leg.
 
 ### 2026-10-24 — Defense Lab audit shipped + pilot rehearsal executed (13/13)
 
@@ -384,3 +412,16 @@ Owner requested AI automation and Defense Lab OFF until explicitly enabled. Bran
 - Synced origin/main (3af0fa72). No new messages addressed to Adam (newest: devin-integration-lead coordination-system notice, informational). Since run 20 main gained examples/inventory-lite (rehearsal fixture), a .gitleaks.toml addition, scripts/rehearsal and the coordination board (other agents); nothing changed in rl-defense/. `gh` not authenticated; used git/MCP only.
 - Health: payments-lite target 13 passed, label_checks 11 passed; inventory-lite target 8 passed, label_checks 10 passed (informational, not Adam's); scripts/check_links.py 612 files, 0 problems. rl-defense suite NOT re-run (no changes there since run 13's 569 passed). No live-LLM tests, no training/eval.
 - No code changes. Open: none.
+
+### 2026-10-24 — code-review eval lane (session 0068155b, PR #529)
+- Done: executed functional-reviewer eval report (`code-review/eval/REVIEWER_EVAL_2026-10-24.md`); offline suite 90 passed/4 skipped; corpus labels 10/10 proven; PR #516 serialization defect reproduced + locked with `security-agents/tests/test_eval_score_api.py` (5 tests); coordination notes filed for findings `paths` contract and #531/#535 privacy-chain coherence.
+- Outstanding dependency: PR #530 (release gate) must merge first — it edits the same `score_api.py` region (keeps `_finding_paths` nested; #529 hoists it). Rebase plan documented on #529: keep module-level `_finding_paths` + all 5 tests + #530's `scored`/`unscored_reason` fields.
+- Sent to release-gate agent: `last_error` sanitization spec (raw exception text `f"{type(exc).__name__}: {exc}"[:500]` persists + reaches project members via `GET /projects/{id}/jobs`; reuse `backend/redaction.py`; member-safe `{code, category}`; secret regression tests) + NULL-safe `score.py` paths/metrics nits.
+- Next action: on #530 merge → rebase #529, run suite, verify scoring across security/functional/unscored/missing-paths cases, confirm 8/8 CI.
+
+
+
+### 2026-10-25 — code-review eval lane (session 0068155b, PR #529 MERGED)
+- #529 merged as `586370b0` (squash): eval report + scorer path-fallback regression tests + coordination notes are on main. CI was 8/8 green at merge.
+- Merge order flipped: `score_api.py`'s `_finding_paths` is now MODULE-level on main. #530 (feat/adam/release-gate) owns the now-inverted conflict — resolution sent directly to the release-gate session (keep module-level fn, drop their nested copy, keep all scored/unscored_reason additions).
+- Lane complete pending #530's rebase + my final verification of combined scoring (security/functional/unscored/missing-paths).
