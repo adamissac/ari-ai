@@ -389,6 +389,12 @@ Owner requested AI automation and Defense Lab OFF until explicitly enabled. Bran
 - Health: rl-defense 546 passed (23m27s; CPU torch index used); payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 582 files, 0 problems. No live-LLM tests, no training/eval.
 - No code changes. Open: none.
 
+### 2026-10-24 — Devin — code-intelligence pipeline audit
+- Branch `feat/adam/intel-pipeline-audit` (carries `7a5b329f` = PR #441 redaction fix verbatim). Findings: non-literal route decorators were silently dropped → now flagged as IndexIssue; labeled retrieval recall 82% payments-lite / 63% ari-ai with honest missing-evidence list; per-commit/profile/tenant isolation verified by executed SQLite + Postgres tests.
+- Executed: `code-intelligence/tests` 57 passed 1 skipped; backend intel suite 9 passed (real Postgres); index benchmarks 0.16s/8f, 4.11s/127f, 92.4s/1798f (617MB heap).
+- Artifacts: `docs/research/intel-pipeline-audit/README.md`, `code-intelligence/evidence/m2-index-retrieval-audit.json`, `code-intelligence/evidence/index_benchmark.py`, `tests/test_retrieval_quality.py`.
+- Blockers: none. Open: PR #531 pending.
+
 ### 2026-10-24 — scheduled cloud health run (11)
 - Synced origin/main (bbf63acf). No new messages addressed to Adam. Since run 10 main gained only backend/sandbox perf and recipe-generator work (other owners) plus a SESSION_HANDOFF.md note; nothing changed in rl-defense/, examples/ or Adam's CI/docs. `gh` not authenticated; used git/MCP only.
 - Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 584 files, 0 problems. rl-defense suite NOT re-run (no changes in rl-defense since run 10's 546 passed). No live-LLM tests, no training/eval.
