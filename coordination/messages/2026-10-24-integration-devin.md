@@ -208,3 +208,6 @@ Release-candidate SHA = tip after Playwright verification; handed to Codex re-re
 
 ### Final freeze (2026-10-24)
 Playwright real-stack: **49/49**. **RC SHA = `bc490484`**, pushed to PR #8. Handed to Codex re-review + release-validation readiness re-run. Remaining blockers: security re-review on bc490484, readiness re-run (expected GO — head still 0019), Adam's buy-in on the upstream merge sequence. Nothing auto-merged.
+
+### Release-validation gate — final
+Devin Bot readiness re-run on `bc490484`: **GO — 25/25 PASS, 0 WARN, 0 FAIL** (`deploy/reports/release-readiness-20261025T021130+0000.{json,md}` on their branch; coordination file `20261025T021140Z-release-validation-rc-go.md`). Every code-side gate green. Remaining blockers are external: Codex independent security re-review on bc490484, and operational pre-pilot items (real secrets, backup scheduling, first real staging deploy → `release_readiness.py --remote`).
