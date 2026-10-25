@@ -692,6 +692,26 @@ def _apply_fresh_diff(
     return applier.apply_fresh(ctx, patch_id), ctx
 
 
+def _assert_apply_fresh_tampering_rejected(facts: dict[str, Any], ctx: Any) -> None:
+    from security_agents.agents import verify as verify_agent
+
+    verdict, checks, _ = verify_agent.compute_verdict(
+        verify_agent.VerifyEvidence(
+            apply_facts=dict(ctx.artifacts["verify_facts"]),
+            recheck_runs=[],
+            test_runs=[],
+            baseline_failing=[],
+            tests_added=[],
+            protected_tests=[],
+            original_check_ref="access_control.ownership@1",
+            original_check_params={},
+            candidate_id="pat_runner_config",
+        )
+    )
+    assert verdict == "rejected"
+    assert not next(check for check in checks if check.name.value == "no_test_tampering").passed
+
+
 @pytest.mark.boundary
 def test_unreadable_pinned_tox_ini_fails_closed_through_apply_fresh(
     intel: LocalIntel,
@@ -727,6 +747,137 @@ def test_unreadable_pinned_tox_ini_fails_closed_through_apply_fresh(
     )
     assert verdict == "rejected"
     assert not next(check for check in checks if check.name.value == "no_test_tampering").passed
+
+
+@pytest.mark.boundary
+@pytest.mark.parametrize("method", ["lstat", "read_bytes"])
+def test_pinned_config_path_read_errors_fail_closed_through_apply_fresh(
+    intel: LocalIntel,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    method: str,
+) -> None:
+    from security_agents.sandbox.workspace import fresh_checkout, unified_diff
+    from security_agents.tools import PatchApplier
+
+    config = intel.snapshot.root / "tox.ini"
+    config.write_text("[pytest]\n", encoding="utf-8")
+    work = tmp_path / f"unreadable-config-{method}"
+    patched = fresh_checkout(intel.snapshot, work / "patch-worktree")
+    app = patched / "payments_lite" / "app.py"
+    app.write_text(app.read_text(encoding="utf-8") + "\n# approved app edit\n", encoding="utf-8")
+    diff = unified_diff(intel.snapshot.root, patched, ["payments_lite/app.py"])
+
+    original_runner_config = PatchApplier._tampered_runner_config
+    original_path_method = getattr(Path, method)
+
+    def scan_with_unreadable_config(
+        diff_text: str,
+        snapshot_root: Path,
+        patched_root: Path,
+        *,
+        residuals: list[str] | None = None,
+    ) -> list[str]:
+        def fail_config_path(path: Path) -> Any:
+            if path == snapshot_root / "tox.ini":
+                raise OSError(f"simulated {method} failure")
+            return original_path_method(path)
+
+        with monkeypatch.context() as patcher:
+            patcher.setattr(Path, method, fail_config_path)
+            return original_runner_config(
+                diff_text,
+                snapshot_root,
+                patched_root,
+                residuals=residuals,
+            )
+
+    monkeypatch.setattr(
+        PatchApplier,
+        "_tampered_runner_config",
+        staticmethod(scan_with_unreadable_config),
+    )
+    facts, ctx = _apply_fresh_diff(intel, work, diff, ["payments_lite/app.py"])
+
+    marker = "tox.ini (pytest config unreadable: SNAPSHOT_NOT_READY)"
+    assert facts["applied"]
+    assert marker in facts["tampered_protected_tests"]
+    _assert_apply_fresh_tampering_rejected(facts, ctx)
+
+
+@pytest.mark.boundary
+def test_pinned_config_os_walk_error_fails_closed_through_apply_fresh(
+    intel: LocalIntel,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import security_agents.tools.services as services
+    from security_agents.sandbox.workspace import fresh_checkout, unified_diff
+
+    work = tmp_path / "unreadable-config-walk"
+    patched = fresh_checkout(intel.snapshot, work / "patch-worktree")
+    app = patched / "payments_lite" / "app.py"
+    app.write_text(app.read_text(encoding="utf-8") + "\n# approved app edit\n", encoding="utf-8")
+    diff = unified_diff(intel.snapshot.root, patched, ["payments_lite/app.py"])
+    original_walk = services.os.walk
+
+    def fail_config_walk(top: str | Path, *args: Any, **kwargs: Any) -> Any:
+        onerror = kwargs.get("onerror")
+        if Path(top) == intel.snapshot.root and getattr(onerror, "__name__", "") == "config_walk_error":
+            onerror(
+                OSError(
+                    None,
+                    "simulated config walk failure",
+                    str(intel.snapshot.root / "tests" / "walk-error"),
+                )
+            )
+        return original_walk(top, *args, **kwargs)
+
+    monkeypatch.setattr(services.os, "walk", fail_config_walk)
+    facts, ctx = _apply_fresh_diff(intel, work, diff, ["payments_lite/app.py"])
+
+    marker = "tests/walk-error (pytest config unreadable: SNAPSHOT_NOT_READY)"
+    assert facts["applied"]
+    assert marker in facts["tampered_protected_tests"]
+    _assert_apply_fresh_tampering_rejected(facts, ctx)
+
+
+@pytest.mark.boundary
+def test_invalid_nonconftest_fixture_does_not_block_apply_fresh(
+    intel: LocalIntel,
+    tmp_path: Path,
+) -> None:
+    from security_agents.sandbox.workspace import fresh_checkout, unified_diff
+
+    invalid_fixture = intel.snapshot.root / "tests" / "fixtures" / "invalid.py"
+    invalid_fixture.parent.mkdir(parents=True)
+    invalid_fixture.write_text("def invalid(:\n", encoding="utf-8")
+    work = tmp_path / "invalid-fixture"
+    patched = fresh_checkout(intel.snapshot, work / "patch-worktree")
+    app = patched / "payments_lite" / "app.py"
+    app.write_text(app.read_text(encoding="utf-8") + "\n# approved app edit\n", encoding="utf-8")
+    diff = unified_diff(intel.snapshot.root, patched, ["payments_lite/app.py"])
+
+    facts, ctx = _apply_fresh_diff(intel, work, diff, ["payments_lite/app.py"])
+
+    assert facts["applied"]
+    assert facts["tampered_protected_tests"] == []
+    from security_agents.agents import verify as verify_agent
+
+    _, checks, _ = verify_agent.compute_verdict(
+        verify_agent.VerifyEvidence(
+            apply_facts=dict(ctx.artifacts["verify_facts"]),
+            recheck_runs=[],
+            test_runs=[],
+            baseline_failing=[],
+            tests_added=[],
+            protected_tests=[],
+            original_check_ref="access_control.ownership@1",
+            original_check_params={},
+            candidate_id="pat_runner_config",
+        )
+    )
+    assert next(check for check in checks if check.name.value == "no_test_tampering").passed
 
 
 _DESELECT_PROTECTED_TEST = (
@@ -1919,6 +2070,31 @@ def test_unmappable_pinned_pytest_config_path_fails_closed(
             id="pytest-hook-name-in-tuple-target",
         ),
         pytest.param(
+            "pytest_collection_modifyitems.__code__ = drop.__code__\n",
+            True,
+            id="hook-code-attribute-write",
+        ),
+        pytest.param(
+            "pytest_collection_modifyitems.a.b = 1\n",
+            True,
+            id="hook-attribute-chain-write",
+        ),
+        pytest.param(
+            "pytest_collection_modifyitems[pytest_key] = 1\n",
+            True,
+            id="hook-subscript-write",
+        ),
+        pytest.param(
+            "setattr(pytest_collection_modifyitems, '__code__', drop.__code__)\n",
+            True,
+            id="setattr-hook",
+        ),
+        pytest.param(
+            "del pytest_collection_modifyitems.__code__\n",
+            True,
+            id="delete-hook-attribute",
+        ),
+        pytest.param(
             "import importlib\nimportlib.import_module('_pytest.main')\n",
             True,
             id="dynamic-pytest-import",
@@ -1943,6 +2119,7 @@ def test_unmappable_pinned_pytest_config_path_fails_closed(
             False,
             id="dynamic-pytest-support-import",
         ),
+        pytest.param("obj.attr = 1\n", False, id="ordinary-attribute-write"),
         pytest.param("runner = __import__('pluggy')\n", True, id="builtin-pluggy-import"),
         pytest.param("ordinary = 2\n", False, id="ordinary-assignment"),
     ],
@@ -1963,6 +2140,42 @@ def test_new_pytest_sensitive_constructs_are_flagged(
         assert "app.py" in tampered
     else:
         assert tampered == []
+
+
+@pytest.mark.boundary
+def test_invalid_conftest_is_still_runner_config_tampering(tmp_path: Path) -> None:
+    tampered = _runner_config_tampering_for_test(
+        tmp_path,
+        config_files={},
+        changed_path="app.py",
+        patched_text="VALUE = 2\n",
+        pinned_files={"tests/conftest.py": "def invalid(:\n"},
+    )
+
+    assert "tests/conftest.py (pytest config unreadable: SNAPSHOT_NOT_READY)" in tampered
+
+
+@pytest.mark.boundary
+def test_imported_pytest_hook_code_replacement_is_flagged(tmp_path: Path) -> None:
+    pinned = "def pytest_collection_modifyitems(items):\n    return None\n"
+    patched = (
+        pinned
+        + "\ndef drop(items):\n"
+        + "    items.clear()\n"
+        + "pytest_collection_modifyitems.__code__ = drop.__code__\n"
+    )
+    tampered = _runner_config_tampering_for_test(
+        tmp_path,
+        config_files={},
+        changed_path="app.py",
+        pinned_text=pinned,
+        patched_text=patched,
+        pinned_files={
+            "tests/conftest.py": "from app import pytest_collection_modifyitems\n",
+        },
+    )
+
+    assert "app.py" in tampered
 
 
 @pytest.mark.boundary
@@ -2037,6 +2250,64 @@ def test_rootdir_subdirectory_uses_tox_pytest_section_checks(tmp_path: Path) -> 
     )
 
     assert path in tampered
+
+
+@pytest.mark.boundary
+@pytest.mark.parametrize(
+    ("patched_text", "expected_tampered"),
+    [
+        pytest.param(
+            '[tool.pytest.ini_options]\naddopts = "--deselect=test_case"\n'
+            '[project]\ndependencies = ["base"]\n',
+            True,
+            id="pytest-section-edit",
+        ),
+        pytest.param(
+            '[tool.pytest.ini_options]\naddopts = "-q"\n[project]\ndependencies = ["base", "extra"]\n',
+            False,
+            id="non-pytest-edit",
+        ),
+    ],
+)
+def test_rootdir_symlinked_pyproject_checks_resolved_target(
+    patched_text: str,
+    expected_tampered: bool,
+    tmp_path: Path,
+) -> None:
+    from security_agents.sandbox.workspace import unified_diff
+    from security_agents.tools import PatchApplier
+
+    snapshot_root = tmp_path / "snapshot"
+    (snapshot_root / "sub").mkdir(parents=True)
+    (snapshot_root / "settings").mkdir()
+    (snapshot_root / "build_recipe.json").write_text(
+        json.dumps(
+            {
+                "test_roots": ["tests"],
+                "test_command": ["-q", "--rootdir", "sub", "tests"],
+            }
+        ),
+        encoding="utf-8",
+    )
+    target = snapshot_root / "settings" / "project-settings.toml"
+    original_text = '[tool.pytest.ini_options]\naddopts = "-q"\n[project]\ndependencies = ["base"]\n'
+    target.write_text(original_text, encoding="utf-8")
+    (snapshot_root / "sub" / "pyproject.toml").symlink_to("../settings/project-settings.toml")
+    patched_root = tmp_path / "patched"
+    shutil.copytree(snapshot_root, patched_root, symlinks=True)
+    (patched_root / "settings" / "project-settings.toml").write_text(
+        patched_text,
+        encoding="utf-8",
+    )
+    changed_path = "settings/project-settings.toml"
+    diff = unified_diff(snapshot_root, patched_root, [changed_path])
+
+    tampered = PatchApplier._tampered_runner_config(diff, snapshot_root, patched_root)
+
+    if expected_tampered:
+        assert changed_path in tampered
+    else:
+        assert tampered == []
 
 
 @pytest.mark.boundary

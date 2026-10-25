@@ -129,7 +129,11 @@ sandbox environment is scrubbed and transcripts pass through the redactor.
   only `pytest.ini`, `.pytest.ini`, `pytest.toml`, and `.pytest.toml` beneath
   that directory, while the same section-level checks apply to `tox.ini`,
   `setup.cfg`, and `pyproject.toml` there. Unreadable or invalid pinned pytest
-  configuration fails closed with `SNAPSHOT_NOT_READY`. Plugin paths are
+  configuration fails closed with `SNAPSHOT_NOT_READY`. During plugin discovery,
+  syntax-invalid non-`conftest.py` Python fixtures under test roots are treated
+  as declaring no plugins; read failures and malformed `conftest.py` files
+  still fail closed. Section checks follow in-repository symlink targets using
+  the logical config filename. Plugin paths are
   protected from additions, edits, and deletions: module files, extension
   variants, package contents, and parent-package shadows are resolved from the
   repository root and pinned `pythonpath` entries. `-p` options in pinned

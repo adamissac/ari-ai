@@ -164,14 +164,21 @@ def _pytest_sensitive_constructs(source: str) -> Counter[tuple[str, str, str]]:
     def assigned_names(targets: list[ast.expr]) -> set[str]:
         names: set[str] = set()
 
-        def add_target(target: ast.expr) -> None:
+        def root_name(target: ast.expr) -> str | None:
             if isinstance(target, ast.Name):
-                names.add(target.id)
-            elif isinstance(target, (ast.Tuple, ast.List)):
+                return target.id
+            if isinstance(target, (ast.Attribute, ast.Subscript, ast.Starred)):
+                return root_name(target.value)
+            return None
+
+        def add_target(target: ast.expr) -> None:
+            if isinstance(target, (ast.Tuple, ast.List)):
                 for element in target.elts:
                     add_target(element)
-            elif isinstance(target, ast.Starred):
-                add_target(target.value)
+                return
+            name = root_name(target)
+            if name is not None:
+                names.add(name)
 
         for target in targets:
             add_target(target)
@@ -229,6 +236,15 @@ def _pytest_sensitive_constructs(source: str) -> Counter[tuple[str, str, str]]:
                 and is_runner_module(first_arg.value)
             ):
                 record("runner-import", first_arg.value, node)
+            if isinstance(function, ast.Name) and function.id == "setattr":
+                for name in assigned_names([node.args[0]]):
+                    if name.startswith("pytest_"):
+                        record("pytest-assignment", name, node)
+
+        if isinstance(node, ast.Delete):
+            for name in assigned_names(node.targets):
+                if name.startswith("pytest_"):
+                    record("pytest-assignment", name, node)
 
         targets: list[ast.expr] = []
         if isinstance(node, ast.Assign):
@@ -1297,6 +1313,32 @@ class PatchApplier:
             for name in ("pytest.ini", ".pytest.ini", "pytest.toml", ".pytest.toml"):
                 normalize_config_path(f"{rootdir}/{name}".strip("/"))
 
+        section_checked_configs: dict[str, set[str]] = {}
+
+        def add_section_checked_config(logical_path: str) -> None:
+            section_checked_configs.setdefault(logical_path, set()).add(logical_path)
+            candidate = snapshot_root / logical_path
+            try:
+                mode = candidate.lstat().st_mode
+            except FileNotFoundError:
+                return
+            except OSError:
+                unreadable_config(logical_path)
+                return
+            if not stat.S_ISLNK(mode):
+                return
+            try:
+                resolved = resolve_under(snapshot_root, logical_path)
+                target_path = resolved.relative_to(snapshot_root.resolve()).as_posix()
+            except (OSError, PlatformError, RuntimeError, ValueError):
+                unreadable_config(logical_path)
+                return
+            section_checked_configs.setdefault(target_path, set()).add(logical_path)
+
+        for base in {"", *rootdirs}:
+            for name in ("tox.ini", "setup.cfg", "pyproject.toml"):
+                add_section_checked_config(f"{base}/{name}".strip("/"))
+
         roots = recipe_test_roots(snapshot_root)
         plugin_source_paths = set(conftest_paths)
         try:
@@ -1310,7 +1352,12 @@ class PatchApplier:
             try:
                 source = resolve_under(snapshot_root, rel).read_text(encoding="utf-8-sig")
                 tree = ast.parse(source)
-            except (OSError, PlatformError, UnicodeDecodeError, SyntaxError):
+            except (SyntaxError, ValueError):
+                if under_test_roots(rel, roots) and rel.rsplit("/", 1)[-1] != "conftest.py":
+                    continue
+                unreadable_config(rel)
+                continue
+            except (OSError, PlatformError, UnicodeDecodeError):
                 unreadable_config(rel)
                 continue
             for node in ast.walk(tree):
@@ -1442,6 +1489,14 @@ class PatchApplier:
                 continue
             if path in pinned_config_paths:
                 if read_config(snapshot_root, path) != read_config(patched_root, path):
+                    tampered.add(path)
+                continue
+            logical_configs = section_checked_configs.get(path)
+            if logical_configs is not None:
+                if any(
+                    config_changed_at(logical.rpartition("/")[0], logical.rsplit("/", 1)[-1])
+                    for logical in logical_configs
+                ):
                     tampered.add(path)
                 continue
             name = path.rsplit("/", 1)[-1]

@@ -2057,3 +2057,20 @@ remains OFF pending manual installation and protected credential/session setup.
 
 - Spend-cap reset time now uses a Numeric window calculation over one database snapshot,
   avoiding fractional-cost rounding and concurrent-write inconsistencies.
+
+## 2026-10-25 — Adam: Verify hook and config follow-ups
+
+### Done
+- Added hook-rooted attribute/subscript, `setattr`, and `del` detection while
+  preserving subscript-index and ordinary-attribute controls.
+- Made invalid non-`conftest.py` test fixtures inert during literal
+  `pytest_plugins` discovery; read and malformed-`conftest.py` errors remain
+  fail-closed.
+- Applied semantic checks to changed in-repository symlink targets of rootdir
+  and repository-root section-checked pytest configs.
+- Added `apply_fresh` coverage for config read errors and `os.walk` errors.
+- Baseline at `ee8b8666`: 6 failed, 17 passed, 169 deselected. Final narrow
+  suite: 194 passed; backend selector: 123 passed, 4 skipped, 672 deselected;
+  full security-agents suite: 775 passed, 24 skipped.
+- Ruff check, Ruff format check, and `git diff --check` passed.
+- No PR was opened and CI was not monitored, as requested.
