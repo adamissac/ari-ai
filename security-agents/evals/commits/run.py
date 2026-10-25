@@ -49,16 +49,20 @@ def push_case(case: dict, run_tag: str) -> str:
 def score(cases: list[dict], shas: dict[str, str]) -> dict:
     payload = json.dumps({"cases": cases, "shas": shas})
     if os.environ.get("ARI_API_BASE"):
-        proc = subprocess.run(
-            [sys.executable, str(HERE / "score_api.py")],
-            input=payload,
-            capture_output=True,
-            text=True,
-        )
-        line = next((ln for ln in proc.stdout.splitlines() if ln.startswith('{"results"')), None)
-        if line:
-            return json.loads(line)
-        raise SystemExit(f"API scorer failed: {proc.stderr[-400:]}")
+        last_err = ""
+        for _ in range(6):
+            proc = subprocess.run(
+                [sys.executable, str(HERE / "score_api.py")],
+                input=payload,
+                capture_output=True,
+                text=True,
+            )
+            line = next((ln for ln in proc.stdout.splitlines() if ln.startswith('{"results"')), None)
+            if line:
+                return json.loads(line)
+            last_err = proc.stderr[-400:]
+            time.sleep(10)  # transient API errors (deploys, 5xx) must not kill the run
+        raise SystemExit(f"API scorer failed: {last_err}")
     ssh = shlex.split(os.environ["ARI_EVAL_SSH"])
     script = (
         "cat > /tmp/ari_eval_score.py <<'PY'\n"
@@ -156,11 +160,17 @@ def main() -> int:
             shas = {c["id"]: push_case(c, run_tag) for c in batch}
             print(f"batch {i // a.batch + 1}: pushed {', '.join(shas)}", flush=True)
             deadline = time.monotonic() + 900
+            report = None
             while True:
-                report = score(batch, shas)
-                if report["pending"] == 0 or time.monotonic() > deadline:
+                try:
+                    report = score(batch, shas)
+                except SystemExit as exc:
+                    print(f"  scorer failure (will retry until deadline): {exc}", flush=True)
+                if (report and report["pending"] == 0) or time.monotonic() > deadline:
                     break
                 time.sleep(20)
+            if report is None:
+                raise SystemExit(f"scorer never recovered for batch {batch}")
             for r in report["results"]:
                 print(
                     f"  {r['case_id']:<38} {r['state']:<10} {r.get('seconds')}s "
