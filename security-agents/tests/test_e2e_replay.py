@@ -387,6 +387,103 @@ def test_patch_retry_receives_rejection_reasons_but_no_verify_transcript(intel, 
 
 
 @pytest.mark.boundary
+def test_verify_rejects_edits_to_preexisting_tests_without_configured_protection(
+    intel, driver, library, tmp_path
+):
+    from security_agents.agents import verify as verify_agent
+    from security_agents.sandbox.workspace import fresh_checkout, unified_diff
+    from security_agents.tools import AuditSink, PatchApplier, ToolContext
+
+    orch, _ = build(intel, driver, library, tmp_path)
+    assert orch.config.protected_tests == []
+    protected_tests = orch._protected_tests()
+
+    work = tmp_path / "preexisting-test"
+    wt = fresh_checkout(intel.snapshot, work / "wt")
+    protected = wt / "tests" / "test_api.py"
+    protected.write_text(protected.read_text().replace("== 404", "in (200, 404)"))
+    diff = unified_diff(intel.snapshot.root, wt, ["tests/test_api.py"])
+
+    applier = PatchApplier(
+        intel=intel,
+        artifacts={
+            "pat_existing_test": {
+                "diff": diff,
+                "plan_files": ["tests/test_api.py"],
+                "protected_tests": protected_tests,
+            }
+        },
+        workdir=work,
+    )
+    ctx = ToolContext(
+        assessment_id="asm_existing_test",
+        agent=AgentName.VERIFY,
+        run_id="run_existing_test",
+        step_key="verify",
+        read_root=intel.snapshot.root,
+        audit=AuditSink(),
+    )
+    facts = applier.apply_fresh(ctx, "pat_existing_test")
+
+    assert facts["tampered_protected_tests"] == ["tests/test_api.py"]
+    assert facts["out_of_scope_files"] == []
+    verdict, checks, _ = verify_agent.compute_verdict(
+        verify_agent.VerifyEvidence(
+            apply_facts=dict(ctx.artifacts["verify_facts"]),
+            recheck_runs=[],
+            test_runs=[],
+            baseline_failing=[],
+            tests_added=[],
+            protected_tests=protected_tests,
+            original_check_ref="access_control.ownership@1",
+            original_check_params={},
+        )
+    )
+    assert verdict == "rejected"
+    assert not next(c for c in checks if c.name.value == "no_test_tampering").passed
+
+
+@pytest.mark.boundary
+def test_verify_does_not_flag_a_new_test_under_recipe_test_roots(intel, driver, library, tmp_path):
+    from security_agents.sandbox.workspace import fresh_checkout, unified_diff
+    from security_agents.tools import AuditSink, PatchApplier, ToolContext
+
+    orch, _ = build(intel, driver, library, tmp_path)
+    assert orch.config.protected_tests == []
+    protected_tests = orch._protected_tests()
+
+    work = tmp_path / "new-test"
+    wt = fresh_checkout(intel.snapshot, work / "wt")
+    new_test = wt / "tests" / "test_new_case.py"
+    new_test.write_text("def test_new_case():\n    assert True\n")
+    diff = unified_diff(intel.snapshot.root, wt, ["tests/test_new_case.py"])
+
+    applier = PatchApplier(
+        intel=intel,
+        artifacts={
+            "pat_new_test": {
+                "diff": diff,
+                "plan_files": ["tests/test_new_case.py"],
+                "protected_tests": protected_tests,
+            }
+        },
+        workdir=work,
+    )
+    ctx = ToolContext(
+        assessment_id="asm_new_test",
+        agent=AgentName.VERIFY,
+        run_id="run_new_test",
+        step_key="verify",
+        read_root=intel.snapshot.root,
+        audit=AuditSink(),
+    )
+    facts = applier.apply_fresh(ctx, "pat_new_test")
+
+    assert facts["new_test_files"] == ["tests/test_new_case.py"]
+    assert facts["tampered_protected_tests"] == []
+
+
+@pytest.mark.boundary
 def test_verify_rejects_a_planted_bad_patch_that_edits_a_protected_test(intel, driver, library, tmp_path):
     """A diff authored outside the worktree guard is still rejected by Verify (SB-09).
 
