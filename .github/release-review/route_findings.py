@@ -96,7 +96,13 @@ def main():
     audit = json.load(open(os.environ["AUDIT_FILE"]))
     verdict = audit.get("verdict", "NO-GO")
     findings = audit.get("findings", [])
-    ci_summary = open(os.environ["CI_SUMMARY_FILE"]).read().strip() or "(none)"
+    summary_path = os.environ.get("CI_SUMMARY_FILE", "")
+    if summary_path and os.path.exists(summary_path):
+        ci_summary = open(summary_path).read().strip() or "(none)"
+    else:
+        # wait-ci cancelled/skipped (e.g. a newer push superseded this run) or
+        # its artifact never uploaded — record it, never crash before reporting.
+        ci_summary = "(ci summary unavailable — wait-ci did not complete)"
 
     routed = []
     for f in findings:
