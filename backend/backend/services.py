@@ -343,6 +343,46 @@ def repository_revocation(
     return None
 
 
+def repository_revocation_locked(
+    conn: Connection,
+    *,
+    repo_id: str | None,
+    application_id: str | None = None,
+    mapping_id: str | None = None,
+) -> str | None:
+    """Serializable revocation check for transactional finalization.
+
+    Canonical lock order — shared with ``POST /repositories/{id}/disconnect``:
+    the ``repositories`` row first, then ``deploy_commit_mappings`` rows, both
+    ``FOR UPDATE``. A finalizer that locks in this order before writing a
+    success outcome serializes against a concurrent disconnect: whichever side
+    commits first wins deterministically — a persister that waited on the lock
+    re-reads revocation and sees the revoked state, so no ``executed`` row can
+    land after disconnect commits. Never hold these locks across a provider
+    call: lock only at the finalization boundary, and use the unlocked
+    ``repository_revocation`` for cheap per-turn pre-checks.
+    """
+    if repo_id:
+        conn.execute(
+            sa.select(repositories.c.id).where(repositories.c.id == repo_id).with_for_update()
+        )
+    clauses = []
+    if mapping_id:
+        clauses.append(deploy_commit_mappings.c.id == mapping_id)
+    elif application_id and repo_id:
+        clauses.extend(
+            [
+                deploy_commit_mappings.c.application_id == application_id,
+                deploy_commit_mappings.c.repo_id == repo_id,
+            ]
+        )
+    if clauses:
+        conn.execute(sa.select(deploy_commit_mappings.c.id).where(*clauses).with_for_update())
+    return repository_revocation(
+        conn, repo_id=repo_id, application_id=application_id, mapping_id=mapping_id
+    )
+
+
 def monitoring_assessment_state(conn: Connection, repo_id: str) -> tuple[bool, float | None]:
     """(open monitoring assessment exists, seconds since the latest one was created)."""
     rows = conn.execute(

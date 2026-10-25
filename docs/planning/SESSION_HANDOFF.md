@@ -93,6 +93,27 @@ adds an entry before ending.
 - Next: human/security review of the PR. Do not train RL from these records yet.
 - Warnings: **leave the PR open**. This is not Probe expansion, not AUTO-EXECUTE, not customer production, not Codex Phase 7B.
 
+### 2026-10-25 — Devin (agent, Alan) — N1 revocation-protocol lock order + locked finalization check
+- Did:
+  - `services.repository_revocation_locked()` — the canonical transactional
+    finalization primitive: locks `repositories` FOR UPDATE, then
+    `deploy_commit_mappings` FOR UPDATE (canonical order), then runs
+    `repository_revocation`. A finalizer that locks before persisting a success
+    outcome serializes against a concurrent disconnect — no `executed` row can
+    land after disconnect commits. Cheap per-turn checks keep using
+    `repository_revocation` (unlocked).
+  - `routes.py` disconnect: explicit mapping-row FOR UPDATE lock right after the
+    repo-row lock — same canonical order, so the two sides cannot deadlock.
+  - New test `test_revocation_locked_serializes_finalize_with_disconnect`.
+  - Shared with Grok (#458): he wires `repository_revocation_locked` into
+    `live_defense/first_responder.py`'s final-persist block in place of the
+    plain `repository_revocation` call; coordinated via issue #559.
+- Commands run and results: 21/21 hardening tests; ruff+format clean.
+- Next steps: Devin Bot recompose; Grok's `first_responder.py` finalization edit
+  lands the two strict RC2 tests.
+- Warnings: never hold the locked check across a provider call — lock only at
+  the finalization boundary (see docstring).
+
 ### 2026-10-25 — Devin (agent, Alan) — R2 disconnect-side cancellation for release-0019
 - Did (fork PR #4): R2 P1 fix-request from Devin Integration. Disconnect now locks the
   repo row FOR UPDATE for the whole transaction (serializes per-operation and

@@ -525,3 +525,59 @@ class TestDisconnectLifecycle:
                 == "deploy_mapping_revoked"
             )
             assert repository_revocation(conn, repo_id="rep_does_not_exist") is None
+
+    def test_revocation_locked_serializes_finalize_with_disconnect(self, client_factory):
+        """N1: the canonical finalization check takes repo-then-mapping FOR UPDATE
+        locks (same order as disconnect) so a success outcome can never persist
+        after disconnect commits — whichever side commits first wins."""
+        from backend.db import connected_applications, deploy_commit_mappings
+        from backend.services import repository_revocation_locked
+
+        alice, bob = client_factory("alice"), client_factory("bob")
+        ids = setup_project(alice, bob)
+        rid, pid = ids["repo"], ids["project"]
+        uid = alice.me["user"]["id"]
+
+        with transaction() as conn:
+            conn.execute(
+                sa.insert(connected_applications).values(
+                    id="app-n1-1",
+                    project_id=pid,
+                    name="staging",
+                    environment="owned_test",
+                    created_by=uid,
+                    doc={},
+                )
+            )
+            conn.execute(
+                sa.insert(deploy_commit_mappings).values(
+                    id="map-n1-1",
+                    project_id=pid,
+                    application_id="app-n1-1",
+                    repo_id=rid,
+                    commit_sha="a" * 40,
+                    created_by=uid,
+                    doc={},
+                )
+            )
+            # Pre-disconnect: the locked check passes and takes both locks.
+            assert (
+                repository_revocation_locked(
+                    conn, repo_id=rid, application_id="app-n1-1", mapping_id="map-n1-1"
+                )
+                is None
+            )
+
+        alice.post(f"/api/v1/repositories/{rid}/disconnect")
+
+        with transaction() as conn:
+            # Post-disconnect commit: the same locked read a finalizer performs
+            # sees revocation — an 'executed' outcome cannot be written.
+            assert (
+                repository_revocation_locked(conn, repo_id=rid, application_id="app-n1-1")
+                == "repository_disconnected"
+            )
+            assert (
+                repository_revocation_locked(conn, repo_id=None, mapping_id="map-n1-1")
+                == "deploy_mapping_revoked"
+            )
