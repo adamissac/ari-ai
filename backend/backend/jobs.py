@@ -182,6 +182,7 @@ _ROW_COLS = (
     jobs.c.kind,
     jobs.c.status,
     jobs.c.project_id,
+    jobs.c.payload,
     jobs.c.attempts,
     jobs.c.max_attempts,
     jobs.c.cancel_requested,
