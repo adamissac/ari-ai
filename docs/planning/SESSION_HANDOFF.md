@@ -18,6 +18,29 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-25 — Adam/Devin: rehearsal independently reproduced + e2e scare cleared
+
+- Did: re-ran the two-org rehearsal end-to-end on a fresh `make dev` boot with real
+  `SECURITY_SANDBOX=vercel` + real Anthropic (second independent reproduction after
+  #556's run). Assessment `asm_01M5R6R5W5WVH46MMNMXHJFSNK` completed; all 4 planted
+  flaws found; outcomes include honest `refuted`/`inconclusive` (not rubber-stamped).
+  Worker logs show real Vercel sandbox lifecycle (sbx create/cmd/stop/delete 200s).
+- Resolved `VERCEL_PROJECT_ID`/`VERCEL_TEAM_ID` read-only via `GET /v9/projects` —
+  `accountId` IS the `team_*` id even for personal accounts; no Adam action needed.
+- Reproduced `frontend/tests/e2e/journey.spec.ts` locally on main `ceb2a709`: 3/3
+  pass — the `Test provider (scripted) × 9, Deterministic (no model call) × 1`
+  provider-summary assertion is GREEN on main. #536/#540 e2e failures were stale
+  heads; re-runs after `Merge origin/main` go green (#540 now 10/10).
+- Warnings for the next session: `REPOSITORY_BINDINGS_FILE` local_path must be a git
+  repo and `commit_sha` must verify in it (driver inits+commits the staged copy);
+  `sandbox.pip` must not re-pin ari-base packages (pip conflict kills the baseline
+  run); repo `full_name` uniqueness is global across projects (409 -> reuse).
+- Still owner-gated for the HOSTED staging leg: `gh repo create
+  adamissac/ari-pilot-rehearsal --private`, install the GitHub App on it, OAuth-login.
+
+
+---
+
 ### 2026-10-24 — Adam/Devin: pilot rehearsal executed end-to-end (13/13 PASS)
 
 - `scripts/rehearsal/run_rehearsal.py` rewritten to the real API shapes:
