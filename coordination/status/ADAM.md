@@ -12,6 +12,24 @@ Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablat
 
 ## Session entries
 
+### 2026-10-24 — Defense Lab audit shipped + pilot rehearsal executed (13/13)
+
+- **Defense Lab audit** (PR #532, open): capability matrix + eval report + 37-test safety
+  suite + quarantine credential-value fix. Verdict: GO recommendation-only + owned-test
+  loop; NO-GO production enforcement. §11 demo verified on real stack by testing agent.
+- **Gitleaks repo-wide unblock** (PR #544, merged): allowlisted font-manifest sha256 +
+  rehearsal demo tokens that failed EVERY open PR (workflow scans all refs).
+- **Rehearsal executed** (PR #556, open): driver rewritten to real API shapes; target app
+  gained factory+seed+build_recipe. 13/13 PASS with real Anthropic + real Vercel sandbox
+  on `make dev`: two real orgs, scope create+self-approve (sandbox-only), assessment
+  completed with genuine findings (planted delete_book + cross-owner read found),
+  org-B isolation 404s. Needs VERCEL_TOKEN/PROJECT_ID/TEAM_ID + ANTHROPIC_API_KEY +
+  REPOSITORY_BINDINGS_FILE. Evidence in scripts/rehearsal/evidence/.
+- **Held:** #458 stays OPEN pending independent re-review of F1/F7/F8 (Alan); #412 waits.
+- **Still needed from Adam (only GitHub-account actions):** create private repo
+  `adamissac/ari-pilot-rehearsal`, install the GitHub App on it, OAuth-login once for the
+  live leg.
+
 ### 2026-10-17 (cloud) — simulated demo + Lab command center + events-log cursor
 - `feat/adam/event-log-cursor-follow`: phase views follow `next_cursor` (cap 10,000 events).
 - `feat/adam/simulated-demo`: `/demo` labelled simulated walkthrough (ADR-0013), `DefenseMap`, Lab command center from the real bundle.
@@ -347,13 +365,12 @@ Owner requested AI automation and Defense Lab OFF until explicitly enabled. Bran
 - Synced origin/main (466df4b7). No new messages addressed to Adam. Since run 19 main gained only eval scoring/serialization and an access_control.role check template (other owners); nothing changed in rl-defense/, examples/ or Adam's CI/docs. `gh` not authenticated; used git/MCP only.
 - Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 598 files, 0 problems. rl-defense suite NOT re-run (no changes there since run 13's 569 passed). No live-LLM tests, no training/eval.
 - No code changes. Open: none.
-||||||| parent of 4bc52487 (docs(status): Adam pilot-readiness coordination state)
 
 
-### 2026-10-24 — Devin (Adam) — Defense Lab pilot audit + pilot-readiness coordination
-- **Landed:** PR #534 (access_control.role template) merged `466df4b7`. PR #532 (Defense Lab pilot safety suite 37 tests + quarantine credential-value fix + capability matrix + eval report) rebased over it, CI re-running.
-- **Merge-order dependencies (pilot):** #530 release-gate, #531 redaction, #528/#529/#527 docs are independent — merge when CI green. **#535 must land BEFORE #533**: both add Alembic 0016 (`0016_tenant_rls` vs `0016_worker_heartbeats`); #533 needs renumber to 0017/down=0016 after #535. #533 also has an unresolved merge conflict. #536 cosmetic last.
-- **Alan's lane:** #458 (Scout/Diagnose execution — reviewed: provider ledger, snapshot pinning, cancel-before-persist all verified; needs conflict resolution) should land before #412 (RL-gated guard; verdict honestly BLOCKED; safe after human review of authz tightening). Contracts schemas: #412=0.20.0, #458=0.22.0.
-- **ari-security[bot] batch #505–526:** all closed; the real fixes (require_project on reads, _PROJECT_CACHE removal) were already on main via #511 — verified no _PROJECT_CACHE exists.
-- **Rehearsal:** no private rehearsal repo exists; two-org local rehearsal (real Anthropic + real Vercel sandbox) being staged; live-deployment rehearsal needs Adam's GitHub OAuth — consolidated ask pending.
-- **Merging:** GitHub App 5360865 installation token works via PUT /pulls/{n}/merge (squash). Adam delegated.
+### 2026-10-25 — scheduled cloud health run (21)
+- Synced origin/main (3af0fa72). No new messages addressed to Adam (newest: devin-integration-lead coordination-system notice, informational). Since run 20 main gained examples/inventory-lite (rehearsal fixture), a .gitleaks.toml addition, scripts/rehearsal and the coordination board (other agents); nothing changed in rl-defense/. `gh` not authenticated; used git/MCP only.
+- Health: payments-lite target 13 passed, label_checks 11 passed; inventory-lite target 8 passed, label_checks 10 passed (informational, not Adam's); scripts/check_links.py 612 files, 0 problems. rl-defense suite NOT re-run (no changes there since run 13's 569 passed). No live-LLM tests, no training/eval.
+- No code changes. Open: none.
+
+
+
