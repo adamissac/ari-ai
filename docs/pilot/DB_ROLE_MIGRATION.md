@@ -1,80 +1,82 @@
 # Production DB: least-privilege app role, credential rotation, rehearsal cleanup
 
-Status: **PLAN, NOT EXECUTED.** It needs owner approval before any step runs.
-Nothing here is to be performed by an agent.
+Status: **EXECUTED 2026-10-25 (cutover); credential rotation and public-access removal tracked below.**
 
-## Current state (read-only checks, 2026-10-25)
+## Backup and restore validation
 
-- `pg_roles` contains only `postgres` (`rolsuper=t`, `rolbypassrls=t`). All
-  16 app connections (`pg_stat_activity`) authenticate as `postgres`.
-- All 47 public tables are owned by `postgres`. `index_payloads` and
-  `index_snapshots` have `ENABLE` + `FORCE ROW LEVEL SECURITY`. Superusers
-  bypass both, so RLS is **inert for the app today**.
-- `deploy/railway/start.sh` runs `hackatl-migrate` with the app's
-  `DATABASE_URL`. A separate `MIGRATION_DATABASE_URL` is being added in a
-  reviewed PR. This plan depends on that PR being merged and deployed first.
+Railway manual backup `pre-ari_app-role-migration` (ID
+`23a37c7c-e429-4282-9d2e-7399335bd91e`) was created at 08:47:42Z. A custom-format
+`pg_dump` was restored to a local PostgreSQL 18 cluster. Both copies were at
+Alembic head `0017`. The restored copy matched every production count from
+before the snapshot: orgs 7, users 7, projects 8, `index_payloads` 621,
+assessments 636, `audit_events` 20,280, and 13,224 artifacts created before
+08:48. The only difference was 34+ artifacts written after the snapshot
+boundary. The dump was not restored into a Railway scratch service; that
+remains a backup-validation gap.
 
-## Order (each step gated on the previous one passing)
+## Role and pre-cutover verification
 
-0. **Backup.** Railway → Postgres → *Backups* → create a manual backup.
-   Verify it by restoring into a scratch service or environment and checking
-   that `alembic` head = 0017 and the row counts of `projects`, `assessments`
-   and `index_payloads` match production. Do not continue without a verified
-   restore.
-1. **Create the role** as `postgres`, using a password generated in a
-   password manager. The password is never pasted into chat or into files.
-   ```sql
-   CREATE ROLE ari_app LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE PASSWORD '<generated>';
-   GRANT CONNECT ON DATABASE railway TO ari_app;
-   GRANT USAGE ON SCHEMA public TO ari_app;
-   GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ari_app;
-   GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ari_app;
-   ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ari_app;
-   ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO ari_app;
-   ```
-   Creating the role changes nothing for the running app.
-2. **Pre-cutover probe as `ari_app`:**
-   - `SELECT count(*) FROM index_payloads` with no tenant GUC → 0 rows.
-   - The same query inside a transaction after `SELECT set_config('ari.project_id', '<real project>', true)` → that project's rows only.
-3. **Cutover.** Railway → Agent service → *Variables*:
-   - `MIGRATION_DATABASE_URL` = reference `${{Postgres.DATABASE_URL}}`
-     (stays `postgres`).
-   - `DATABASE_URL` = `ari_app` on the private host
-     `postgres.railway.internal:5432/railway`.
+`ari_app` was created with `LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB
+NOCREATEROLE NOREPLICATION`. It has CONNECT on the database, USAGE on the
+schema, SELECT/INSERT/UPDATE/DELETE on all tables, USAGE/SELECT on all
+sequences, and matching default privileges for `postgres` on future tables
+and sequences. It also has `pg_monitor` for storage-report WAL metrics.
+`pgaudit.log=none`.
 
-   Then deploy. Effect on running work: the service restarts. Running jobs
-   are re-claimed when their lease expires. Assessments *paused* for approval
-   lose orchestrator state and fail honestly (REHEARSAL_REPORT D2), so cut
-   over when no assessment is paused.
-4. **Verify:**
-   - `/readyz` returns 200.
-   - `pg_stat_activity` shows app connections as `ari_app`.
-   - An index + assessment on the rehearsal repo completes, which proves the
-     GUC path works under RLS.
-   - Re-run the 34-probe cross-org drill: 404s expected.
-   - Repeat step 2's probe.
-5. **Rollback** (if step 4 fails): set `DATABASE_URL` back to the
-   `${{Postgres.DATABASE_URL}}` reference and redeploy. The unused role is
-   harmless; drop it later.
-6. **Credential rotation** (only after step 4 passes):
-   - **Postgres:** rotate the `postgres` password using Railway's Postgres
-     credential procedure, then confirm that the reference variables
-     resolved to the new value (`/readyz` 200, migrations run on deploy).
-     Then Postgres → *Settings* → *Networking* → remove public access. After
-     this, operator access goes through `railway connect Postgres`.
-   - **Anthropic:** console → API keys → create a new key, set
-     `ANTHROPIC_API_KEY` on the Agent service and deploy. Once `/readyz`
-     reports `llm.configured` and a live run succeeds, disable the old key.
-   - **GitHub App:** App settings → *Private keys* → generate a new key and
-     update the Railway variable, then deploy. Once a webhook delivery and an
-     installation-token fetch succeed, delete the old key.
+The password was set as a locally computed SCRAM-SHA-256 verifier; plaintext
+never reached the server or its logs. No password or verifier is recorded
+here.
+
+Pre-cutover probes as `ari_app` through the public proxy showed:
+
+- With no tenant GUC, `index_payloads` and `index_snapshots` returned 0 rows.
+- With a valid project GUC, 619 rows from one project were visible, matching
+  the admin's 619 rows. A fake project GUC returned 0 rows.
+- A cross-tenant insert without a GUC was denied by RLS.
+- `CREATE TABLE`, `ALTER TABLE`, `TRUNCATE`, and
+  `SET session_replication_role` were denied.
+
+## Cutover and hosted verification
+
+On the `ari-ai` service, `DATABASE_URL` now uses the private-host `ari_app`
+connection and `MIGRATION_DATABASE_URL` is the `${{Postgres.DATABASE_URL}}`
+reference. Deploy `f2733519` succeeded at 09:09Z; later deployments also
+succeeded. `/readyz` was ready with 24 workers. `pg_stat_activity` showed
+every app client backend as `ari_app` (14–15 connections) and no `postgres`
+app connections.
+
+Rollback is to set `DATABASE_URL` to `${{Postgres.DATABASE_URL}}`.
+
+Hosted verification after cutover:
+
+- Assessment `asm_01M5S5QGNPAPXKYCW72G1H0W5N` completed in about 90 seconds for
+  $0.0288 while running as `ari_app`.
+- In the cross-org drill, synthetic `rehearsal-eve` received 404 on all 14
+  GETs against the owner org's project, repository, snapshots, scopes,
+  assessments, findings, events, jobs, assessment runs and report, and finding
+  patches. The owner session received 200 on the same 14 GETs. Eve's POST
+  assessment start and POST cancel both returned 404, and her project list
+  was empty.
+
+In the least-privilege test harness, tests that fail only as `ari_app` are
+test- or operator-path cases: DDL in `test_automation_opt_in`;
+`session_replication_role` in the operator deletion procedure, which must run
+as admin; and `SET ROLE` in the RLS probe test. The storage-report fix is
+[PR #610](https://github.com/adamissac/ari-ai/pull/610).
+
+## Still open: credential rotation and public access
+
+Rotate the `postgres` admin password, the Anthropic key, and the GitHub App
+key. Remove public TCP proxy access last, after the credential rotations and
+their verification. Do not put passwords, credential-bearing URLs, or session
+tokens in this document.
 
 ## Rehearsal cleanup inventory (owner approval required)
 
 The rehearsal-alice owner seat in Adam's org and both rehearsal sessions were
-removed by another lane by 05:01Z, not by an approved cleanup. No remaining
-item may be deleted without owner approval. The DB-role migration remains
-**NOT EXECUTED**.
+removed by another lane by 05:01Z, not by an approved cleanup. The DB-role
+cutover is executed, but no remaining item may be deleted without owner
+approval.
 
 | Object | IDs | Proposed handling |
 |---|---|---|

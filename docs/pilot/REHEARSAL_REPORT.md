@@ -1,7 +1,7 @@
 # Staging Rehearsal Report
 
-- **Rehearsal date:** 2026-10-24 (local legs); production Leg 7 2026-10-25 01:26–02:14 UTC and Leg 8 04:16–05:50Z
-- **Code under test:** local legs `main` @ `d0131167`; production Leg 7 Railway `readyz.git_sha` = `0f311913` (`main`, schema 0.22.0, migration head 0017); Leg 8 ran `497372ff` (#587, delivery from a delivery-only sealed artifact)
+- **Rehearsal date:** 2026-10-24 (local legs); production Leg 7 2026-10-25 01:26–02:14 UTC, Leg 8 04:16–05:50Z, and Leg 9 at 09:21Z
+- **Code under test:** local legs `main` @ `d0131167`; production Leg 7 Railway `readyz.git_sha` = `0f311913` (`main`, schema 0.22.0, migration head 0017); Leg 8 ran `497372ff` (#587, delivery from a delivery-only sealed artifact); Leg 9 followed successful deploy `f2733519` at 09:09Z
 - **Environments:** (a) production — Railway API `ari-ai-production-76d4.up.railway.app` + Vercel frontend `ari-ai-lake.vercel.app` + real GitHub App + live Anthropic; (b) local real stack — FastAPI TestClient + real PostgreSQL + in-process worker + scripted `FakeTransport`.
 - **Honesty rule (per Adam):** each stage is labelled `live Claude` / `scripted` / `sandbox` / `real I/O`. Nothing skipped is claimed as passed.
 
@@ -11,14 +11,15 @@
 |---|---|---|---|
 | 1 | Tenant isolation (cross-org ID substitution) | Local real stack | **PASS** — 34 probes, uniform 404, no existence leak |
 | 2 | Real execution / labelling | Local + prod | **PASS** — live leg executed: every agent run `provider_mode=live`; scripted stages labelled |
-| 3 | GitHub safety (PR/manual only, scoped write tokens, no agent merge/close) | Code audit + prod | **PARTIAL** — Leg 8 proved PR delivery (#2 and #4); D10 showed agent sessions merged/closed those PRs using the owner's account, and the free-plan private target has no branch protection |
+| 3 | GitHub safety (PR/manual only, scoped write tokens, no agent merge/close) | Code audit + prod | **PARTIAL** — Leg 9 left exact-bytes PR #5 open and unmerged; C9 awaits Adam's personal review, and the no-touch directive was posted to #559 |
 | 4 | Monitoring: opt-in controls, limits, cancel, budget caps | Local + prod | **PASS** — prod cancel, budget, scope-revoke drills; opt-out toggle persisted (no push event landed in the window — behaviour evidence is the local leg) |
 | 5 | Defense Lab: recommendation-only | Code + tests | **PASS** |
-| 6 | Data privacy: storage, provider processing, artifacts, deletion | Local + code + prod | **FAIL for DB isolation in prod**: policies enforce for a non-superuser probe, but the app connects as superuser `postgres` (BYPASSRLS), so RLS is inert for the app (D8). App-layer membership checks held (P2) |
+| 6 | Data privacy: storage, provider processing, artifacts, deletion | Local + code + prod | **PASS for DB isolation after the `ari_app` cutover** — the hosted cross-org drill passed under the app role (Leg 9); app-layer membership checks also held (P2) |
 | 7 | Reliability: failure recovery, persistence, restarts, UI errors | Local + prod | **PASS with findings** — prod outage recovered; UI showed accurate `SUBSYSTEM_UNAVAILABLE`; see D2–D4 |
-| 8 | Hosted C9 re-run: Verify-tested sealed artifact → PR | Production | Delivery mechanism **PROVEN** (#2 and #4); C9 closure **OPEN** pending the review, owner decision, and owner-witnessed PR described below |
-| P1 | Prod journey: install → connect → index → live assessment → findings → repair → verify → results | Prod | **PASS through independent Verify; PR delivery mechanism PROVEN in Leg 8; C9 remains OPEN** |
-| P2 | Prod tenant isolation (app-layer) (org B substitutes org A's real IDs) | Prod | **PASS** — 34/34 reads+mutations → 404 |
+| 8 | Hosted C9 re-run: Verify-tested sealed artifact → PR | Production | Delivery mechanism **PROVEN** (#2 and #4); C9 closure **OPEN** pending Adam's personal review of #5 |
+| 9 | Hosted C9 repair as `ari_app`: Verify-tested bytes → open PR | Production | **PASS** — PR #5 is open and unmerged; exact-bytes tree match verified; C9 awaits Adam's personal review |
+| P1 | Prod journey: install → connect → index → live assessment → findings → repair → verify → results | Prod | **PASS through independent Verify; exact-byte PR delivery proven in Leg 9; C9 remains OPEN for Adam's personal review** |
+| P2 | Prod tenant isolation and least-privilege DB role | Prod | **PASS** — app runs as non-superuser `ari_app`; hosted cross-org drill returned 404 on all 14 GETs |
 
 ## Leg 1 — Two-org isolation (real stack, scripted LLM)
 
@@ -268,7 +269,8 @@ A byte-for-byte comparison of GitHub's diff with the stored artifact was not
 possible because the formats differ. Exactness rests on delivery's sealed-SHA
 check passing before push.
 
-PR #2 was open and unmerged from 04:18:20Z to 05:03:31Z, then approved and
+At the end of Leg 8, no owner-witnessed open PR remained. PR #2 was open and
+unmerged from 04:18:20Z to 05:03:31Z, then approved and
 squash-merged as `d6acccf` by another agent session (`devin-defense-lab`)
 using Adam's GitHub account under delegation. Its review was not a personal
 review by Adam. Ari's backend has no merge call; the merge was an
@@ -297,8 +299,43 @@ Railway values were `PROJECT_ASSESSMENTS_PER_HOUR=10`,
   #596 fixed the hour/day cases; the spend cap remained affected and needed a
   follow-up fix.
 - **D10:** Agent sessions merged or closed Ari fix PRs on the rehearsal target
-  using the owner's account. No owner-witnessed open PR remains, and branch
-  protection is unavailable on the free-plan private target repository.
+  using the owner's account. At the end of Leg 8 no owner-witnessed open PR
+  remained, and branch protection is unavailable on the free-plan private
+  target repository.
+
+## Leg 9 — final hosted C9 repair (as `ari_app`)
+
+The `ari-ai` service had been cut over to the least-privilege `ari_app` role.
+The rehearsal project's `delivery_mode` had been reset to `auto` by a settings
+save at 08:28:57Z (`project.updated`, fields `name` and `settings`). It was
+restored to `pull_request` through the settings API at 09:20:52Z
+(`delivery.pull_request`), before delivery.
+
+`PROJECT_ASSESSMENTS_PER_DAY` was temporarily 500 for the run and then restored
+to 50 by successful deploy `fa0dad39`. Final verified values were 10/hour,
+50/day, and $50/day.
+
+Finding `fnd_01M5S5R3J354Z1P07A23C251GT` was repaired by patch
+`pat_01M5S5SMZ0XHF5Y82DMYNBR855`; verification
+`ver_01M5S5T4M34N3ZPD6KKZ527WD0` had verdict `accepted`.
+
+Diff artifact `art_01M5S5SMZAQ56GW2X5ZWTT02KH` and sealed artifact
+`art_01M5S5SMZEPXHAJ9VSADCE8F8S` were both 1,864 bytes with SHA-256
+`978898903e0488bf041fc0571668f5f1179f30378a2c609141400e9f94a2061c`.
+The API served the diff artifact (200) and refused the sealed artifact (404).
+
+At 09:21:08Z Ari's `auto-delivery` actor recorded `delivery.pr_opened` and
+opened [pilot-rehearsal-target#5](https://github.com/adamissac/pilot-rehearsal-target/pull/5)
+on branch `ari/fix-pat_01M5S5SMZ0XHF5Y82DMYNBR855`, commit
+`a4c567109ec7f500a803491110d8bebf791a6399`, authored by `ari-security[bot]`.
+Applying the verified 1,864-byte diff to base `010cc2dd` produced tree
+`a63138fa021a59b0ab8f06ea2d969b32fe802490`, identical to PR #5's commit tree.
+PR #5 is open and unmerged. GitHub reports a merge conflict, expected because
+PR #2 already merged the same fix into `main`.
+
+The no-touch directive was posted to #559 (comment `6395894348`). C9's
+production delivery evidence condition is met; C9 remains open for Adam's
+personal review of PR #5.
 
 ## Open findings for the launch decision
 
@@ -316,14 +353,16 @@ Railway values were `PROJECT_ASSESSMENTS_PER_HOUR=10`,
 4. **Assistant-role turns are re-sent unredacted** to the provider (thinking-block
    signature constraint) — disclosed; mitigated by inbound redaction.
 5. **Production fix-PR delivery** — Leg 7's delivery attempt failed closed
-   (D1); Leg 8 proved the PR-delivery mechanism with #2 and #4, but C9 remains
-   open because its owner/review gates are unmet (D10).
+   (D1); Legs 8 and 9 proved the PR-delivery mechanism. PR #5 is open and
+   unmerged with an exact Verify-tested tree; C9 remains open for Adam's
+   personal review.
 6. **PR #535 (RLS + `purge_project`)** — merged and verified on production
    (migration head 0017, non-superuser RLS drill passed).
 7. **`jobs.last_error` redaction** — #530 merged; `jobs.py` stores
    `last_error=redact(...)` on `main` @ `0f311913`, which production runs.
 8. **D9 — quota reset timestamps** — #596 fixed hour/day reset times; spend-cap
    reset times still required a follow-up fix.
-9. **D10 — owner-witnessed PR handling** — no owner-witnessed open PR remains;
-   agents merged/closed PRs using the owner's account, and branch protection is
-   unavailable on the free-plan private target.
+9. **D10 — owner-witnessed PR handling** — agents merged/closed earlier PRs
+   using the owner's account. Leg 9 left PR #5 open and unmerged under the
+   no-touch directive; branch protection is unavailable on the free-plan
+   private target.
