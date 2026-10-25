@@ -23,6 +23,13 @@ All notable changes are documented here. Format follows
 
 
 HEAD
+- Railway now defaults `GITHUB_AUTO_COMMIT_AUTHORS` to empty, disabling per-commit full runs while enabled repositories fall back to the legacy impact-gated, coalesced monitoring policy; `*` or a comma-separated GitHub login list opts into per-commit full runs. Strictly manual operation requires `automatic_assessments` OFF per repository (or project monitoring disabled); manual Run remains available.
+- Shared assessment quotas now apply per project across every trigger (10 per rolling hour, 50 per rolling day), with a global $50 rolling-day spend cap. Manual starts receive a 429 with the quota reset time; automatic requests over quota are recorded as skipped and are not requeued.
+- Allow migrations to use an optional database URL separate from the app role.
+
+- Verify-tested diffs are also stored as sealed, delivery-only artifacts. Delivery checks their
+  bytes against both verification bindings and refuses high-confidence credentials; project
+  purge removes sealed copies with other artifacts.
 - GitHub onboarding + continuous assessment hardening: a missing/renamed repo, deleted installation, or GC'd commit now records a skipped monitoring event with an actionable reason instead of retrying to dead-letter; compare failures fall back to payload commits; `installation deleted` / `repositories removed` / `repository renamed` lifecycle events now detach or rename monitored repositories; connecting a repository verifies the installation still grants access (403 with a reinstall hint when it doesn't); deploy doc corrected for App permissions, subscribed events, and the `automatic_assessments` default (opt-in OFF).
 - First-user usability pass on the commit review page: approval cards now name the finding
   they authorize (including remediation-plan `rmp_` subjects resolved through the finding
@@ -57,6 +64,12 @@ HEAD
 - Tenant data protection: two-tenant adversarial suite (17 tests) covering every project-scoped read/write/SSE/artifact/job/audit surface plus forged-ID and storage-accessor claims; FORCE row-level security on `index_payloads`/`index_snapshots` scoped by a per-transaction tenant GUC (migration 0016); `backend/privacy.py::purge_project` — the documented full-tenant deletion workflow (all project rows, RLS-scoped source payloads, refcount-aware artifact objects, bare clones); `docs/security/TENANT_DATA_PROTECTION.md` — threat model, private-code data-flow inventory, verified controls matrix, GitHub-token posture, Anthropic processing posture, retention gaps, and the enterprise isolation future option.
 
 - Functional-reviewer evaluation report (`code-review/eval/REVIEWER_EVAL_2026-10-24.md`): executed corpus results (10/10 labels proven), functional-vs-security performance table on the live 45-case set, before/after test evidence, supported scope and honest gaps. Scorer's `source_span` path fallback locked by `security-agents/tests/test_eval_score_api.py`.
+
+- Console revamp: project pages move to a SaaS sidebar layout — a sticky left rail (project name, repo chip, Review/Defend/Configure nav groups, monitoring status) replaces the header card and tab bar with the MORE dropdown. Every project page now opens with a consistent `PageTitle` header (eyebrow, title, subtitle). `tests/e2e/stack_manual.py` adds a manual local-stack runner for browsing console pages with seeded dev-login data.
+
+- Landing homepage reworked behind a `.home-deep` scope (console unchanged): per-letter blur-in heading reveals, kicker eyebrows, pixel-font (Sixtyfour, OFL-vendored) accents on stats and a footer wordmark, blurred inactive walkthrough steps, a seven-agent footer marquee and a patrol-ant rail animation. Fixed `Reveal`/`useRevealOnScroll` never firing on the document's last element and the dim hero headline line rendering white.
+
+- Homepage dialed back per owner review: footer trimmed to a hairline + identity/links + copyright (giant ghosted wordmark, agent marquee and patrol ant removed), and the per-letter text-appear animations removed in favor of plain headings with scroll-driven reveals (`components/letters.tsx` deleted; the spotlight-gradient hero headline is restored). Console mobile QA fixes: sidebar rail grid collapses cleanly under 1024px (no horizontal page overflow), findings tab row wraps on narrow screens, the Simulate page's full-bleed `.commit-stage` is contained to the content column so it no longer overlaps the rail or swallows rail clicks, the landing "Never" proof stat clamps its pixel font on narrow screens (no more 320px page overflow), and a duplicate React `key` on the Live Defense "In use" API list (GET and PATCH `/projects/{id}`) is disambiguated by method. E2E specs updated to the new rail nav (11 links, no MORE dropdown).
 
 - Add `access_control.role` check template: Probe can now prove role-bypass on mutating routes — a restricted fixture identity must be denied (401/403/404) while a permitted one keeps access. Recipe surface expanded (assessment/finding/scope routes, role-differentiated sandbox identities carol=viewer/dave=member of alice's org); new recipe body placeholders `{expires_in_days:N}` and `{resource:KIND}`. Aliases `authorization.role`, `access_control.mutation`, `access_control.rbac` map to the new category.
 

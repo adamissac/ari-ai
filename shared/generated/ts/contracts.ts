@@ -228,7 +228,7 @@ export type ApprovalStatus = "pending" | "approved" | "declined";
 
 export type ApprovalSubject = "scope" | "remediation" | "pr";
 
-export type ArtifactKind = "diff" | "log" | "test_report" | "webhook_payload" | "llm_transcript" | "tool_output" | "report" | "rl_eval_summary" | "rl_checkpoint" | "other";
+export type ArtifactKind = "diff" | "sealed_diff" | "log" | "test_report" | "webhook_payload" | "llm_transcript" | "tool_output" | "report" | "rl_eval_summary" | "rl_checkpoint" | "other";
 
 export interface ArtifactRef {
   id: string;

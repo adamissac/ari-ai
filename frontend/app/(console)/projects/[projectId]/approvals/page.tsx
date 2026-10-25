@@ -5,14 +5,15 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useProject } from '@/components/project';
 import { useSession } from '@/components/session';
-import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, Panel, Time } from '@/components/ui';
+import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, PageTitle, Panel, Time } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useActionKeys } from '@/lib/action-key';
+import { SCOPE_SANDBOX_EXPLANATION } from '@/lib/scope';
 import { APPROVAL_STATUS } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
 
 const WHAT: Record<ApprovalSubject, { will: string; wont: string }> = {
-  scope: { will: 'Lets agents build and run reviewed checks against the listed sandbox targets until the scope expires.', wont: 'Touch any system outside the scope, or run unreviewed checks.' },
+  scope: { will: `Lets agents build and run reviewed checks against the listed sandbox targets until the scope expires. ${SCOPE_SANDBOX_EXPLANATION}`, wont: 'Touch any system outside the scope, or run unreviewed checks.' },
   remediation: { will: 'Lets Patch create a candidate fix in an isolated worktree and Verify re-run security and functional tests on it.', wont: 'Merge, push, deploy, or change the repository.' },
   pr: { will: 'Lets the platform open a pull request with the verified patch for human review.', wont: 'Merge the pull request or deploy.' },
 };
@@ -21,7 +22,9 @@ export default function ApprovalsPage() {
   const { project } = useProject();
   const approvals = useResource(`approvals:${project.id}`, s => api().approvals(project.id, { signal: s }), 5000);
   return (
-    <Panel title="Approval inbox" actions={<span className="text-xs text-muted">Owners may approve their own sandbox scopes. Other approvals require a different requester and approver.</span>}>
+    <>
+      <PageTitle eyebrow="Review" title="Approvals" subtitle="Decisions that let agents proceed — scoped to this project." />
+      <Panel title="Approval inbox" actions={<span className="text-xs text-muted">Owners may approve their own sandbox scopes. Other approvals require a different requester and approver.</span>}>
       <Async resource={approvals} label="approvals">
         {page => {
           const items = [...page.items].sort((a, b) => Number(b.status === 'pending') - Number(a.status === 'pending') || b.requested_at.localeCompare(a.requested_at));
@@ -31,6 +34,7 @@ export default function ApprovalsPage() {
         }}
       </Async>
     </Panel>
+    </>
   );
 }
 
