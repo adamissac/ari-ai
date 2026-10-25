@@ -6,9 +6,16 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Added opt-in bounded exact-SHA release review automation with isolated strict
+  regressions, signed evidence, existing-owner routing and a protected cost ledger.
+  No automatic merge, deployment or customer enforcement.
+- Commit pages now warn when reviewing a commit other than the latest default-branch commit and link to the latest commit.
+- Verified-patch delivery skips fixes already present on the default branch and annotates stale-base pull requests.
 - Expired scopes no longer appear active or qualify for assessment selection.
 - Retention now protects findings, regression memory, expectation decisions, and assessment references; per-snapshot locking closes bind/delete races, and destructive ops maintenance requires a separate token plus a current plan digest.
 - Storage report probes use savepoints so a denied optional metric does not abort later checks.
+- Added the Industrial Graphite design-token foundation and reskinned existing UI primitives and console surfaces with graphite neutrals, vermilion signal, Inter, and IBM Plex Mono.
+- Verify permits genuinely new recipe-declared tests while rejecting protected-test and runner-configuration tampering; it binds evidence to the candidate patch, protects pinned plugin modules and runner-shadow paths, scans changed application modules for new pytest hooks, rejects unsupported or quoted diff headers, and runs its project suite with the pinned test roots.
 - Added a guided repository setup walkthrough (`/projects/<id>/setup?repo=<repoId>`): connecting a repository now lands there, and it walks through authorizing testing, tuning the code reviewer, choosing fix delivery (pull request is preselected), and starting the first review. The setup page also has decorative floating background shapes that stop moving when reduced motion is on.
 - Added an hourly GitHub Actions storage watchdog for Railway volume usage and backup freshness, with idempotent issue alerts.
 - Live commit analysis no longer needs a `GITHUB_TOKEN` PAT on Vercel: `POST /api/analyze`

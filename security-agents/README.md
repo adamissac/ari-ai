@@ -115,7 +115,42 @@ sandbox environment is scrubbed and transcripts pass through the redactor.
 - **Repository-declared tests are durable policy.** A root `build_recipe.json`
   may list `"protected_tests": ["tests/test_api.py"]`; only normalized paths
   under its `test_roots` (default `tests/`) are honored, and edits to them fail
-  Verify's `no_test_tampering` check.
+  Verify's `no_test_tampering` check. Runner configuration changes fail that
+  check too: any added, modified, deleted, or renamed `conftest.py`; byte
+  changes to `pytest.ini` / `.pytest.ini` and `pytest.toml` / `.pytest.toml` at
+  any depth; changes to the
+  `[pytest]` section of `tox.ini`; changes to `[tool:pytest]` or
+  `[options.entry_points].pytest11` in `setup.cfg`; and changes to
+  `tool.pytest`, `project.entry-points.pytest11`, or
+  `tool.poetry.plugins.pytest11` in `pyproject.toml`, including nested
+  `pytest.ini`, `.pytest.ini`, `tox.ini`, and `setup.cfg` files. Plugin modules
+  are resolved from the repository root and pinned `pythonpath` entries; `-p`
+  options in the pinned recipe test command are included. Dependency-only
+  `pyproject.toml` edits and unrelated `tox.ini` / `setup.cfg` changes are
+  allowed. Verify reads the test command from the pinned snapshot's
+  `build_recipe.json`, not the patched copy. Top-level pytest, pluggy, py,
+  sitecustomize, and usercustomize shadow paths, root `.pth` files, and modules
+  named by pinned literal `pytest_plugins` declarations in conftests and test
+  modules, `-p` addopts, or pytest11 entry points are also protected. Changed
+  non-test-root Python files are checked for new or modified pytest hook
+  definitions, hookimpl decorators, `_pytest` / pluggy imports, and
+  `pytest_plugins` assignments. `setup.py` changes are not inspected and remain
+  subject to plan scope.
+- **Known limitation:** a pre-existing path under a recipe test root longer
+  than 400 characters is rejected by `safe_rel_path`; Verify fails closed and
+  rejects every patch for that repository. The longest tracked paths currently
+  under this repository's `tests/` and `scripts/rehearsal/target-app/` are 40
+  (`security/test_owasp_llm_agent_runtime.py`) and 17 (`build_recipe.json`)
+  characters, respectively. This is a blocked fix, not a bypass.
+- **Residual risk:** Verify's project suite runs with the test roots restored to
+  the pinned snapshot, so patch-added test files cannot affect protected tests.
+  Dynamic or nonliteral `pytest_plugins` declarations are recorded but are not
+  statically expanded to arbitrary Python files. Dynamic registration through
+  `globals()[...]`, `setattr(sys.modules[...], ...)`, or computed import names
+  is not detected and remains within the broader risk that hostile patched
+  application code executes in the suite; Verify does not protect against
+  arbitrary hostile code in the patch.
+  Unsupported or quoted diff path headers fail closed before patch application.
 - **Model output carries no authority.** No output schema has a field that
   approves, verifies or widens scope (asserted by a test).
 - **Citations are validated.** A hypothesis, cause span or recommendation citing
