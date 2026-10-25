@@ -6,8 +6,17 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Readiness/diagnostics split infra liveness from assessment capability: `/readyz` now reports `status=ready|degraded|not_ready` (503 unless ready) with per-capability booleans for live model, GitHub App (configured; `GET /app`-verified), Vercel Sandbox env, artifact-store writability and worker heartbeats; new `/diagnostics` (org-owner auth required — worker ids, env-var names, queue counts, migration state are internal metadata) adds verified GitHub check, migration drift, queue counts and worker rows; `/healthz` gains `git_sha` + `schema_version`. Contract schema 0.22.0. Frontend adds `/api/frontend-version` + `deploy/verify_pair.sh` to detect Vercel/Railway schema skew before it breaks users. Worker liveness is heartbeat-backed (`worker_heartbeats`, migration 0017; `READYZ_REQUIRE_WORKERS` requires ≥1 in staging/production) and `last_poll_at` ensures a stopped claim loop cannot report as a healthy worker.
+- Rebuild the connect → organization → repository → commit flow: the commit page now loads
+  the code review (headline, comments, real per-file diffs, patch, tests) on arrival instead
+  of hiding it behind an optional button, and the "7 agents" tab replays a recorded run on the
+  sector map — each saved tool call pinned to the part of the app it touched — or a labelled
+  preview of the quick read when no run exists. Failed runs are marked on the agent rail; the
+  organization page's repository rows are fully clickable.
+
 - Postgres storage controls for the Railway deployment: `python -m backend.maintenance` (`report`/`apply`/`loop`) plus a bearer-token ops surface (`GET /api/v1/ops/storage`, `/ops/storage/prometheus`, `POST /api/v1/ops/maintenance`) reporting DB/WAL/table/file-store usage with fixed 70/80/90% volume alerts to `OPS_ALERT_WEBHOOK_URL`. Bounded retention (`RETENTION_DRY_RUN=true` by default — report-only until flipped) deletes expired sessions, old idempotency keys, terminal job rows, webhook deliveries, monitoring events, settled reassessment requests, runtime windows, orphaned and superseded index payload sets (keeping the newest 5 ready snapshots per repo), orphaned artifact objects, and stale `refs/ari/*` clone refs; audit events, findings, approvals, scopes, assessments, and any snapshot referenced by a live assessment are never deleted. Hourly maintenance sidecar in `deploy/railway/start.sh`. Runbook: `docs/deploy/POSTGRES_STORAGE.md`.
 
+=======
 - Pilot infra limitation documented: `docs/pilot/BRANCH_PROTECTION_LIMITATION.md` — branch-protection rulesets can't be enforced on a personal-account private repo; the release gate stays advisory/procedural, with a step-by-step org-migration plan to enforced protection.
 - fix(pilot): two-org rehearsal runs end-to-end — real API shapes (repo connect + file binding, scope targets/approve, real commit_sha), target app gets factory + seed + build_recipe; 13/13 steps pass against real Anthropic + Vercel sandbox with genuine findings and proven org isolation.
 
@@ -20,6 +29,8 @@ All notable changes are documented here. Format follows
 - Functional-reviewer evaluation report (`code-review/eval/REVIEWER_EVAL_2026-10-24.md`): executed corpus results (10/10 labels proven), functional-vs-security performance table on the live 45-case set, before/after test evidence, supported scope and honest gaps. Scorer's `source_span` path fallback locked by `security-agents/tests/test_eval_score_api.py`.
 
 - Add `access_control.role` check template: Probe can now prove role-bypass on mutating routes — a restricted fixture identity must be denied (401/403/404) while a permitted one keeps access. Recipe surface expanded (assessment/finding/scope routes, role-differentiated sandbox identities carol=viewer/dave=member of alice's org); new recipe body placeholders `{expires_in_days:N}` and `{resource:KIND}`. Aliases `authorization.role`, `access_control.mutation`, `access_control.rbac` map to the new category.
+
+- Add the pilot launch package under `docs/pilot/`: pilot scope and exclusions, a truthful feature matrix (implemented / staging-only / simulation-only / partial / unavailable), customer onboarding and revocation checklist, a draft data-handling disclosure, incident/support/escalation operations, pilot metrics and per-customer health reporting, a risk register, the staging-rehearsal + first-five plan, and a signed CONDITIONAL GO launch decision.
 - Eval scorer now reports `validated_any`/`fixed_any` across every finding kind next to the security-only verdicts, and derives finding paths from `source_span` evidence; `benign_artifact_sha512` relabeled — the sha512 swap was a real defect (String(64) sha256 column), not a false positive.
 
 - Add `examples/inventory-lite`, a second owned evaluation/rehearsal fixture with a
@@ -31,6 +42,7 @@ All notable changes are documented here. Format follows
 - Assessment UI: agents the orchestrator skipped now stay visible as 'Not needed' with the recorded reason (e.g. 'no confirmed findings'); on failed/cancelled runs they show 'Not reached'. Replaces the ambiguous 'not run' label on the relay and team list.
 
 - Fix the periodic stale-sandbox sweep to delete the orphaned stop-snapshots of leaked `ari-sbx-*` run boxes, freeing the Vercel Sandbox snapshot quota that caused HTTP 402 assessment failures; the shared base snapshot is unaffected.
+
 - Add Live Defense Phase 7A deterministic first-responder orchestration: server-enforced OFF / MONITOR|SHADOW / ASSISTED RESPONSE (no AUTO-EXECUTE), seven-agent capability registry from real AgentSpecs, runtime↔code correlation only with an owner-attested deploy mapping, analyst handoff that is not delivered without provider confirmation, and versioned decision records for future RL. Patch stays worktree-only; Probe still requires AuthorizedScope; independently authorized controls keep their own expiry/rollback/kill-switch when first-responder is switched OFF. Contract schema 0.21.0 (0.20.0 left for open PR #412). Evidence is never `verified` from Verify eligibility; deploy mappings are resolved against the telemetry window; OFF serializes with dispatch and cancels in-flight first-responder steps. Eval: `docs/LIVE_DEFENSE_PHASE7A_FIRST_RESPONDER.md`.
 
 - Add fixture-only first-responder research observations, proposal masks, source
