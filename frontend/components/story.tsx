@@ -92,7 +92,7 @@ export function ProblemScene() {
 
         <p className="label-mono mt-10 text-faint">Illustration · not measured</p>
         <div className="relative mt-10" aria-hidden="true">
-          <span className="label-mono absolute -top-8 left-0 rounded-md bg-ink px-2 py-1 text-white" data-testid="problem-count">
+          <span className="label-mono absolute -top-8 left-0 rounded-md bg-night px-2 py-1 text-white" data-testid="problem-count">
             {count} of {TICKS} changes checked
           </span>
           <span className="label-mono absolute -top-8 right-0 text-faint">Today</span>
@@ -102,7 +102,7 @@ export function ProblemScene() {
             ))}
             <span className="story-pill" data-on={phase === 1 || undefined} style={{ left: '7%' }}>PR review</span>
             <span className="story-pill" data-on={phase === 1 || undefined} style={{ left: '43%' }}>Scanner</span>
-            <span className="story-lens" style={{ width: `${Math.max(phase === 2 ? 8 : 0, lens * 96)}%`, opacity: phase === 2 ? 1 : 0 }}>
+            <span className="story-lens" data-testid="story-timeline-capsule" style={{ width: `${Math.max(phase === 2 ? 8 : 0, lens * 96)}%`, opacity: phase === 2 ? 1 : 0 }}>
               <span className="label-mono truncate">{BRAND_NAME} · every change, against intent</span>
             </span>
           </div>
@@ -172,7 +172,7 @@ export function HowItWorks() {
                 <div className="story-window" aria-hidden="true">
                   <p className="story-window-bar"><span>{card.file}</span><span>{BRAND_NAME}</span></p>
                   {card.lines.map(([kind, text, note]) => (
-                    <p key={text} className="story-window-line" data-kind={kind}>
+                    <p key={text} className="story-window-line" data-kind={kind} data-testid={card.file === 'events' && kind === 'ok' ? 'story-events-line' : undefined}>
                       <span className="w-4 shrink-0">{MARK[kind]}</span><span className="flex-1 truncate">{text}</span>{note && <span className="text-faint">{note}</span>}
                     </p>
                   ))}

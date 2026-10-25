@@ -36,7 +36,7 @@ export default function HomePage() {
           </h1>
           <p className="hero-in mx-auto mt-7 max-w-md text-sm text-white/75 md:text-base" style={i(2)}>{BRAND_TAGLINE}</p>
           <div className="hero-in mt-9 flex flex-wrap justify-center gap-3" style={i(3)}>
-            <Link href={START.href} className="group label-mono inline-flex h-11 items-center rounded-md bg-white px-4 text-ink transition-colors duration-[250ms] hover:bg-brand hover:text-on-brand">
+            <Link href={START.href} className="group label-mono inline-flex h-11 items-center rounded-md bg-white px-4 text-night transition-colors duration-[250ms] hover:bg-brand hover:text-on-brand">
               <RollText>{START.hero}</RollText>
             </Link>
             <a href="#how" className="group label-mono inline-flex h-11 items-center rounded-md bg-white/10 px-4 text-white backdrop-blur transition-colors duration-[250ms] hover:bg-white/20">

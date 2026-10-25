@@ -1,7 +1,47 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 
 const steps = ['Understand', 'Review', 'Attack Safely', 'Diagnose', 'Repair', 'Verify', 'Monitor'];
+
+async function expectContrastAtLeastAA(locator: Locator, label: string) {
+  const ratio = await locator.evaluate(element => {
+    const parseColor = (value: string) => {
+      const values = value.match(/[\d.]+/g)?.map(Number) ?? [];
+      const scale = value.startsWith('color(') ? 255 : 1;
+      const channels = values.slice(0, 3).map(channel => channel * scale);
+      return {
+        color: [channels[0] ?? 0, channels[1] ?? 0, channels[2] ?? 0] as [number, number, number],
+        alpha: values[3] ?? 1,
+      };
+    };
+    const backgrounds: { color: [number, number, number]; alpha: number }[] = [];
+    for (let current: Element | null = element; current; current = current.parentElement) {
+      const background = parseColor(getComputedStyle(current).backgroundColor);
+      if (background.alpha === 0) continue;
+      backgrounds.push(background);
+      if (background.alpha >= 1) break;
+    }
+    let background = [0, 0, 0];
+    for (const layer of backgrounds.reverse()) {
+      background = layer.color.map((channel, i) => {
+        const behind = background[i] ?? 0;
+        return channel * layer.alpha + behind * (1 - layer.alpha);
+      });
+    }
+    const text = parseColor(getComputedStyle(element).color);
+    const foreground = text.color.map((channel, i) => channel * text.alpha + (background[i] ?? 0) * (1 - text.alpha));
+    const luminance = (color: number[]) => color
+      .map(channel => {
+        const value = channel / 255;
+        return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+      })
+      .reduce((sum, value, i) => sum + value * (i === 0 ? 0.2126 : i === 1 ? 0.7152 : 0.0722), 0);
+    const textLuminance = luminance(foreground);
+    const backgroundLuminance = luminance(background);
+    return (Math.max(textLuminance, backgroundLuminance) + 0.05) / (Math.min(textLuminance, backgroundLuminance) + 0.05);
+  });
+  expect(ratio, `${label} contrast`).toBeGreaterThanOrEqual(4.5);
+}
 
 for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 768 }, { width: 390, height: 844 }, { width: 320, height: 740 }]) {
   test(`night navigation stays legible and contained at ${viewport.width}px`, async ({ page }) => {
@@ -15,6 +55,10 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 76
     const heading = page.getByRole('heading', { level: 1 });
     await expect(heading).toHaveText('FIND THE FLAW.PROVE THE FIX.');
     await expect(page.locator('.hero-content p')).toHaveCount(2);
+    await expectContrastAtLeastAA(page.getByRole('link', { name: 'Go to projects', exact: true }).first(), 'hero CTA');
+    await expectContrastAtLeastAA(page.getByTestId('problem-count'), 'problem count');
+    await expectContrastAtLeastAA(page.getByTestId('story-events-line'), 'events card line');
+    await expectContrastAtLeastAA(page.getByTestId('story-timeline-capsule'), 'timeline capsule');
     // The demo account is not linked publicly; the call to action opens the console.
     await expect(page.getByRole('link', { name: 'Go to projects', exact: true }).first()).toHaveAttribute('href', '/projects');
     await expect(page.getByRole('link', { name: /demo/i })).toHaveCount(0);

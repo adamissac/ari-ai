@@ -265,16 +265,16 @@ function AssessmentList({ projectId, page }: { projectId: string; page: Page<Ass
   };
   if (items.length === 0) return <Empty>No assessments yet. Approve a scope, then start a check above.</Empty>;
   return (
-    <div className="min-w-0 overflow-x-auto">
+    <div className="min-w-0 overflow-x-auto" data-testid="assessment-history-table-scroll">
       <table className="w-full min-w-[520px] text-left text-sm">
         <thead className="text-xs uppercase tracking-wider text-faint">
-          <tr><th className="py-1.5 pr-3">Run</th><th className="pr-3">Status</th><th className="pr-3">Commit</th><th>Started</th></tr>
+          <tr><th className="py-1.5 pr-3">Run</th><th className="pr-4">Status</th><th className="pr-3">Commit</th><th>Started</th></tr>
         </thead>
         <tbody className="divide-y divide-line">
           {items.map(a => (
             <tr key={a.id}>
               <td className="py-2 pr-3"><Link className="text-sm text-accent hover:underline" href={`/projects/${projectId}/assessments/${a.id}`} aria-label={`Open run & replay ${a.id}`} title={a.id}>Open run & replay</Link></td>
-              <td className="pr-3"><Badge view={ASSESSMENT_STATE[a.state]} /></td>
+              <td className="whitespace-nowrap pr-4"><Badge view={ASSESSMENT_STATE[a.state]} /></td>
               <td className="pr-3"><Mono>{shortSha(a.commit_sha)}</Mono></td>
               <td className="text-muted"><Time iso={a.created_at} /></td>
             </tr>

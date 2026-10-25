@@ -53,7 +53,7 @@ function Check({ dark }: { dark?: boolean }) {
 
 function Cta({ href, children, tone }: { href: string; children: string; tone: 'light' | 'dark' }) {
   return (
-    <Link href={href} className={`group label-mono inline-flex h-10 items-center rounded-md px-4 transition-colors duration-[250ms] ${tone === 'light' ? 'bg-white text-ink hover:bg-brand hover:text-on-brand' : 'bg-white/10 text-white shadow-[inset_0_0_0_1px_rgb(255_247_242_/_14%)] hover:bg-brand'}`}>
+    <Link href={href} className={`group label-mono inline-flex h-10 items-center rounded-md px-4 transition-colors duration-[250ms] ${tone === 'light' ? 'bg-white text-night hover:bg-brand hover:text-on-brand' : 'bg-white/10 text-white shadow-[inset_0_0_0_1px_rgb(255_247_242_/_14%)] hover:bg-brand'}`}>
       <RollText>{children}</RollText>
     </Link>
   );

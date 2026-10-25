@@ -223,7 +223,7 @@ function LiveOverviewRecords({
                   <ul className="flex flex-col gap-2">
                     {openItems.slice(0, 6).map(item => (
                       <li key={item.id}>
-                        <Link href={liveDefenseHref(projectId, 'incidents') + `/${item.id}`} className="block rounded-md border border-line bg-panel-2 p-2.5 text-sm text-ink hover:bg-white">
+                        <Link href={liveDefenseHref(projectId, 'incidents') + `/${item.id}`} className="block rounded-md border border-line bg-panel-2 p-2.5 text-sm text-ink hover:bg-panel">
                           <span className="font-medium">{item.title}</span>
                           <span className="mt-1 flex flex-wrap gap-1 text-xs text-muted">
                             {item.simulated && <Tag tone="warn">Synthetic</Tag>}

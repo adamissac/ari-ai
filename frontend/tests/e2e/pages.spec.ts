@@ -149,3 +149,31 @@ test('expectations page shows the version-pinned snapshot view', async ({ browse
   await expect(page.getByText(/No indexed snapshot|awaiting a human decision/)).toBeVisible();
   await evidenceShot(page, 'expectations');
 });
+
+test('status chips stay unbroken inside narrow console table scrollers', async ({ browser }) => {
+  const page = await newUser(browser, 'e2e-alice');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`/projects/${project()}/findings`);
+  await page.getByRole('tab', { name: 'Fixed (independently verified)' }).click();
+  const findingsTable = page.getByTestId('findings-table-scroll');
+  const findingStatus = findingsTable.locator('tbody tr td:nth-child(2)').first();
+  await expect(findingStatus).toBeVisible();
+  await expect(findingStatus).toHaveCSS('white-space', 'nowrap');
+  expect(await findingsTable.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true);
+  const findingBounds = await findingStatus.evaluate(cell => {
+    const chip = cell.firstElementChild!;
+    return {
+      cellRight: cell.getBoundingClientRect().right,
+      chipRight: chip.getBoundingClientRect().right,
+      paddingRight: Number.parseFloat(getComputedStyle(cell).paddingRight),
+    };
+  });
+  expect(findingBounds.chipRight).toBeLessThanOrEqual(findingBounds.cellRight - findingBounds.paddingRight + 1);
+
+  await page.goto(`/projects/${project()}`);
+  const historyTable = page.getByTestId('assessment-history-table-scroll');
+  const assessmentStatus = historyTable.locator('tbody tr td:nth-child(2)').first();
+  await expect(assessmentStatus).toBeVisible();
+  await expect(assessmentStatus).toHaveCSS('white-space', 'nowrap');
+  expect(await historyTable.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true);
+});

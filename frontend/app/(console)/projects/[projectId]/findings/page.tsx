@@ -50,16 +50,16 @@ export default function FindingsPage() {
           }
           if (items.length === 0) return <Empty>{tab === 'hypothesis' ? 'No open hypotheses.' : tab === 'closed' ? 'Nothing refuted or closed.' : tab === 'fixed' ? 'No fix has been accepted by independent tests yet.' : 'No open findings in this list.'}</Empty>;
           return (
-            <div className="min-w-0 overflow-x-auto">
+            <div className="min-w-0 overflow-x-auto" data-testid="findings-table-scroll">
               <table className="w-full min-w-[640px] text-left text-sm">
                 <thead className="text-xs uppercase tracking-wider text-faint">
-                  <tr><th className="py-1.5 pr-3">Finding</th><th className="pr-3">Status</th><th className="pr-3">Kind</th><th className="pr-3">Severity</th><th className="pr-3">Commit</th><th>Updated</th></tr>
+                  <tr><th className="py-1.5 pr-3">Finding</th><th className="pr-4">Status</th><th className="pr-3">Kind</th><th className="pr-3">Severity</th><th className="pr-3">Commit</th><th>Updated</th></tr>
                 </thead>
                 <tbody className="divide-y divide-line">
                   {items.map(f => (
                     <tr key={f.id}>
                       <td className="py-2 pr-3"><Link className="hover:text-accent" href={`/projects/${project.id}/findings/${f.id}`}>{f.title}</Link></td>
-                      <td className="pr-3"><Badge view={FINDING_STATUS[f.status]} /></td>
+                      <td className="whitespace-nowrap pr-4"><Badge view={FINDING_STATUS[f.status]} /></td>
                       <td className="pr-3"><Tag tone={f.kind === 'security' ? 'bad' : 'info'}>{f.kind}</Tag></td>
                       <td className="pr-3">{f.severity ? <Badge view={SEVERITY[f.severity.level]} /> : <span className="text-faint">not assessed</span>}</td>
                       <td className="pr-3"><Mono>{shortSha(f.commit_sha)}</Mono></td>
