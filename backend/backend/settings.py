@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     feature_flags: str = ""
 
     database_url: str = "postgresql+psycopg://app:app@localhost:5432/hackatl"
+    migration_database_url: str | None = None
     artifact_store_uri: str = "file://./artifacts"
 
     session_secret: SecretStr = SecretStr("")
@@ -63,9 +64,9 @@ class Settings(BaseSettings):
     github_web_url: str = "https://github.com"
     # Empty preserves legacy monitoring; comma-separated GitHub logins or * enables per-commit runs.
     github_auto_commit_authors: str = ""
-    automatic_assessments_per_hour: int = Field(default=5, ge=1)
-    automatic_assessments_per_day: int = Field(default=20, ge=1)
-    automatic_usd_per_day: float = Field(default=50.0, gt=0)  # all projects together
+    project_assessments_per_hour: int = Field(default=10, ge=1)
+    project_assessments_per_day: int = Field(default=50, ge=1)
+    assessments_usd_per_day: float = Field(default=50.0, gt=0)
     webhook_max_bytes: int = 1_048_576
 
     # Deployment identity (set by the platform, reported by /healthz, /readyz, /diagnostics).
@@ -117,7 +118,6 @@ class Settings(BaseSettings):
 
     # Rate limits (in-process, docs/13)
     rate_limit_per_minute: int = 60
-    assessment_starts_per_hour: int = 5
     # Dev-login burst allowance per IP per 5-minute window. E2E stacks sign in
     # many distinct synthetic users from one address.
     auth_dev_login_burst: int = 120

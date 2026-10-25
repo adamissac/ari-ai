@@ -153,7 +153,7 @@ test('one real assessment from scope approval to verified patch', async ({ brows
     for (const url of [asmUrl, `/projects/${project()}`, '/projects', '/']) {
       await alice.goto(url);
       if (url === asmUrl) await expect(alice.getByTestId('agent-relay')).toBeVisible();
-      else if (url.startsWith('/projects/')) await expect(alice.getByRole('heading', { name: '7 agents', exact: true })).toBeVisible();
+      else if (url.startsWith('/projects/')) await expect(alice.getByRole('heading', { name: '7 Agents', exact: true })).toBeVisible();
       else await alice.waitForLoadState('networkidle');
       await expectNoSideScroll(alice);
     }
