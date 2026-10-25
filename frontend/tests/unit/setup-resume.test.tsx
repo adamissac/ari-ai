@@ -57,7 +57,7 @@ afterEach(cleanup);
 it('resumes the testing-scope panel from ?step=5', () => {
   render(<SetupPage />);
   expect(screen.getByTestId('setup-step-5')).toBeTruthy();
-  expect(screen.getByRole('button', { name: 'Approve sandbox testing for 7 days' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Approve sandbox testing for 30 days' })).toBeTruthy();
 });
 
 it('disables Start until the testing scope is authorized', () => {
