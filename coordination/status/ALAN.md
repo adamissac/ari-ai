@@ -1,14 +1,6 @@
 # Alan — implementation status
 
 Owner: Alan (`security-agents/`, SEC-001 … SEC-013; interim Live Defense UI)
-Branch: `feat/live-defense-phase6-5-rl-gated-pilot`
-Current task: Phase 6.5 RL-gated pilot infrastructure (verdict stays RL BLOCKED; no Phase 7 work on this branch; Phase 7A already on main)
-Last remote sync: 2026-10-24, `origin/main` merged in (PRs #411/#410/#439-era 7A on main; #412 still OPEN)
-API/contract dependencies: `shared` 0.21.0 carrying the Phase 6.5 additive set; backend `GET /rl-readiness`
-Recent PR/commit: https://github.com/adamissac/ari-ai/pull/412 on `feat/live-defense-phase6-5-rl-gated-pilot` (left open; Codex research untouched)
-Verified this session: pytest 25 (phase6_5+authorize); frontend lint/typecheck; vitest 331/78; transport 35. Playwright e2e stack not run.
-Blockers: RL evidence A–J missing; owner-only pilot authorization; live seven-agent run (issue #10); Docker images (INFRA-005)
-Next action: leave PR open for human review of authz tightening; do not start Phase 7 work here; do not provision customer infra
 Branch: `cursor/live-defense-first-responder-0044`
 Current task: Phase 7A deterministic first-responder orchestration (no Phase 7B, no AUTO-EXECUTE)
 Last remote sync: 2026-10-24, `origin/main` @ `c5c2b47d` (PR #453 merged; #412 still OPEN)
@@ -16,8 +8,18 @@ API/contract dependencies: `shared` 0.21.0 first-responder contracts (0.20.0 res
 Recent PR/commit: https://github.com/adamissac/ari-ai/pull/439 on `cursor/live-defense-first-responder-0044`; rebased onto main; leave open for security review
 Blockers: live seven-agent Claude run (issue #10, no key); human/security approval of #439 (do not merge); GitHub Actions may not queue from this App token
 Next action: leave Phase 7A PR open; do not start Phase 7B; Codex must not train from these records yet
+Branch: `feat/live-defense-phase6-5-rl-gated-pilot`
+Current task: Phase 6.5 RL-gated pilot infrastructure (verdict stays RL BLOCKED; no Phase 7 work on this branch; Phase 7A already on main)
+Last remote sync: 2026-10-24, `origin/main` merged in (PRs #411/#410/#439-era 7A on main; #412 still OPEN)
+API/contract dependencies: `shared` 0.21.0 carrying the Phase 6.5 additive set; backend `GET /rl-readiness`
+Recent PR/commit: https://github.com/adamissac/ari-ai/pull/412 on `feat/live-defense-phase6-5-rl-gated-pilot` (left open; Codex research untouched)
+Verified this session: pytest 25 (phase6_5+authorize); frontend lint/typecheck; vitest 331/78; transport 35. Playwright e2e stack not run.
+Blockers: RL evidence A–J missing; owner-only pilot authorization; live seven-agent run (issue #10); Docker images (INFRA-005)
+Next action: leave PR open for human review of authz tightening; do not start Phase 7; do not provision customer infra
 Branch: `feat/alan/live-defense-phase7c-agent-execution`
 Current task: Phase 7C live authorized first-responder agent execution (not Codex Phase 7B; no RL training; no AUTO-EXECUTE)
+Last remote sync: 2026-10-24, `origin/main` @ `d1864e9a` (merged into this branch; #412 still OPEN; do not merge #458)
+API/contract dependencies: `shared` 0.22.0 first-responder execution records (0.21.0 is merged 7A; 0.20.0 reserved for open #412); Alembic stays 0015; seven AgentSpecs
 Last remote sync: 2026-10-25, `origin/main` `f8ab19e7` merged; 7C schema **0.23.0**; Codex P1 R2 disconnect checks; #412 still OPEN; do not merge #458
 API/contract dependencies: `shared` 0.23.0 first-responder execution records (main 0.22.0 is ops-readiness; 0.20.0 reserved for open #412); inherits main Alembic 0017; Devin Hardening owns repository disconnect column/endpoint
 Recent PR/commit: https://github.com/adamissac/ari-ai/pull/458 on `feat/alan/live-defense-phase7c-agent-execution` (leave open for security review of execution trust boundary)
@@ -25,6 +27,12 @@ Blockers: live Anthropic Scout/Diagnose (issue #10, key optional); human/securit
 Next action: independent re-review of F1/F7/F8 + R2 on #458; leave PR open; do not merge; do not train RL; do not expand Probe/Patch; do not merge Devin Hardening into #458
 
 ## Session entries
+
+### 2026-10-24 (Codex F1/F7/F8 on existing #458; do not merge)
+
+- Durable provider-attempt ledger; overall `deadline_at` not reset on retry; OFF/job-cancel persist committed before `JobCancelled`. Six original findings preserved. Schema **0.22.0**; #412 keeps **0.20.0**; Alembic **0015**; Devin keeps **0016**. Did not rewrite `jobs.py`.
+- Executed: `make check` pass (156 files); mypy 40 files; focused 7A+7C+review+jobs+llm **76 passed** / 1 skipped. FakeLLM ≠ live Anthropic.
+- Leave #458 **open**. Re-review GO for F1/F7/F8 + six findings. Merge NO-GO.
 
 ### 2026-10-25 (Codex P1 R2 repository disconnect; do not merge #458)
 
@@ -77,6 +85,36 @@ Next action: independent re-review of F1/F7/F8 + R2 on #458; leave PR open; do n
 - Branch `feat/alan/live-defense-phase7c-agent-execution` from live `origin/main` `04c562a9` (PR #439 merged). Scout/Diagnose execute `security_agents.runtime.run_agent` against an owner-attested mapped snapshot. Probe/Patch/Verify not expanded. Trace/Fortify skipped without prerequisites. Schema **0.22.0** / orchestrator `7c.1.0` / Alembic `0015`. #412 keeps 0.20.0. Message: `20261024T064500Z-alan-to-all-live-defense-phase7c-contracts.md`.
 - Leave PR **open** for security review of the execution trust-boundary expansion. No RL training. No AUTO-EXECUTE. No production grants.
 - Executed: `make check` pass (schema 0.22.0, 155 files); `uv run mypy` 40 files; `uv run pytest -q` **781 passed / 15 skipped**; 7A+7C+jobs 38 passed; live-defense+security 79 passed; security-agents **592 passed / 23 skipped**; frontend lint/typecheck; vitest **330**; transport **35**; Playwright 7A+7C **2 passed** (Scout/Diagnose fake loops, integrity checked).
+Branch: `feat/live-defense-phase6-pilot-audit`
+Current task: Phase 6 post-merge integration audit and shadow-pilot readiness (no Phase 7)
+Last remote sync: 2026-10-23, `origin/main` @ `02ab34de` (PRs #393 and #395 merged on main)
+API/contract dependencies: `shared` 0.9.0 `CheckCategory`; `backend.host` checkpoints; `code_review.api` functional helpers
+Recent PR/commit: `feat/live-defense-phase6-pilot-audit` (Phase 6 audit; no Phase 7)
+Blockers: live seven-agent run (issue #10, no key); Docker images (INFRA-005); Phase 6 merge needs CI + human review
+Next action: wait for CI on the Codex P1/P2 head of #411; merge only if MERGEABLE + reviews satisfied + no enforcement expansion; do not start Phase 7
+Next action: leave PR open for human review of authz tightening; do not start Phase 7 work here; do not provision customer infra
+HEAD
+Last remote sync: 2026-10-24, `origin/main` @ `074780d8` (PR #457 merged after this branch; #412 still OPEN; do not merge #458)
+Last remote sync: 2026-10-24, `origin/main` @ `be8fe67a` (merged into this branch; #412 still OPEN; do not merge #458)
+89a3deba (docs(live-defense): record MERGEABLE #458 and Devin compatibility review)
+Next action: independent re-review of Codex F1/F7/F8 on #458; leave PR open; do not merge; do not train RL; do not expand Probe/Patch; do not merge Devin fork PRs into #458
+
+
+### 2026-10-24 (Codex F1/F7/F8 on existing #458; do not merge)
+
+- Durable provider-attempt ledger; overall `deadline_at` not reset on retry; OFF/job-cancel persist committed before `JobCancelled`. Six original findings preserved. Schema **0.22.0**; #412 keeps **0.20.0**; Alembic **0015**; Devin keeps **0016**. Did not rewrite `jobs.py`.
+- Executed: `make check` pass (156 files); mypy 40 files; focused 7A+7C+review+jobs+llm **76 passed** / 1 skipped. FakeLLM ≠ live Anthropic.
+- Leave #458 **open**. Re-review GO for F1/F7/F8 + six findings. Merge NO-GO.
+
+
+
+
+
+
+
+
+
+
 
 ## What runs today
 
@@ -103,7 +141,6 @@ cd security-agents && .venv/bin/python -m pytest tests -q
 451 passed, 18 skipped in 82.57s
 uv run pytest -q          # repo root testpaths (shared, monitoring, backend, code-review, standards, tests/security)
 415 passed, 9 skipped in 75.46s
-```
 
 Skips: opt-in live-provider tests, and Docker tests that run only in the CI
 `docker-sandbox` / `docker-reviewer` jobs (6 passed there on `719ce98`).
@@ -142,7 +179,6 @@ Updated 2026-10-17 after #100 to #125.
   only ids and titles. Everything is "mapped to" or "aligned with"; no certification is
   claimed.
 
-## Session entries
 
 ### 2026-10-24 (rebase #439 onto main — docs conflicts)
 
@@ -245,17 +281,14 @@ Updated 2026-10-17 after #100 to #125.
 ## Standards addendum (P0) on `feat/alan/standards-roe-wiring`
 
 | Item | What exists | Evidence (offline) |
-|---|---|---|
 | Pinned indexes | CWE 4.20, ATT&CK Enterprise 20.0, D3FEND 1.6.0, OWASP API 2023, OWASP LLM 2026, CVSS v3.1 and v4.0, NIST SP 800-115; sha256 in `standards/standards/data/MANIFEST.json` | `standards/tests` 189 passed |
 | CVSS v3.1 | `standards/standards/cvss31.py`, 34 NVD vectors plus property tests; level derives from the computed rating (ADR-0012) | `standards/tests/test_cvss31.py` |
 | Rules of engagement | `security_agents/standards/roe.py`; registry gate fails closed with SCOPE_DENIED and `tool.roe_denied` | `tests/standards/test_rules_of_engagement.py`, `tests/standards/test_negative.py` |
 | Agent wiring | Scout CWE plus OWASP API tag from code; Trace v3.1 metrics with evidence or unverified, optional ATT&CK; Diagnose and Fortify optional D3FEND | `tests/test_agent_logic.py`, `tests/test_e2e_replay.py` |
 
-```
 cd security-agents && .venv/bin/python -m pytest tests -q        # 441 passed, 10 skipped
 .venv/bin/python -m security_agents.standards.report            # 217 standards tests, 0 failed, UNVERIFIED: NVD licence terms
 .venv/bin/python -m security_agents.standards.smoke             # writes standards-smoke-output/{finding.tagged.json,rules_of_engagement.json,sp800115_coverage.json}
-```
 
 UNVERIFIED: NVD terms page (Cloudflare challenge). All runs above are replay or offline; no live Claude call.
 
@@ -623,9 +656,55 @@ Phase 7B specification delivered in PR #437. CI at 157be64: 569 RL plus existing
 CodeRabbit documentation clarifications addressed; no adapter semantics changed.
 Final head must pass review/CI before research-only merge; then stop.
 
+## Pilot deployment + release ops — feat/alan/pilot-deployment-ops
+
+Ops track PR open for review (no merge without approval). Startup config preflight,
+Alembic-head check, token-gated ops/status (queue + worker leases + first-responder
+default), JSON logs with secret redaction, ALERT_WEBHOOK_URL critical alerting,
+FEATURE_FLAGS allowlist, compose resource bounds, db backup/restore scripts with
+RESTORE_CONFIRM gate, staging env template, smoke suite, release checklist runner,
+and integration_branch.sh for validating open PRs together. Verified live on local
+staging profile: preflight PASS, smoke 15/15, release check 18/0 fail, backup→restore
+drill parity at head 0015, job_dead alert delivered redacted. Integration branch:
+#441+#458 merge + 348 tests pass; #412/#496 conflict — needs owner resolution.
+No migrations added, no first_responder.py or security-hardening files touched.
+
 Customer onboarding (feat/alan/customer-onboarding, contracts 0.24.0 additive,
 no migration): GET /projects/{id}/onboarding computes the 11-step journey from
 existing tables; POST .../onboarding/test-event sends a synthetic spike through
 the app's real owned_staging ingest (owner, rate-limited, never executes);
 POST /repositories/{id}/disconnect revokes App grant + mappings, idempotent.
 Wizard page + transport methods + 10 backend tests + 2 Playwright specs.
+
+## Release readiness harness — feat/devin/release-validation
+
+Automated pilot release-readiness rehearsal, stacked on `feat/alan/pilot-deployment-ops`.
+`deploy/release_readiness.py` boots the real staging-profile stack on a scratch DB
+and proves 24 checks end-to-end (preflight gates, boot/drain, smoke, job exec,
+alert+redaction, SIGKILL crash recovery, backup→restore parity, authz/CSRF/estop
+gates, off-mode default, artifacts, release_check). First run: GO — 23 PASS /
+1 WARN (harness poll, fixed) / 0 FAIL. Also fixed `.gitignore` hiding
+`.env.staging.example`. Playwright real-stack: build verified, spec run in flight.
+Will re-run everything against the integration branch when it lands.
+
+Integration branch validated: `integration/2026-11-02-release` @ 4f845f4f passes
+the full readiness suite — GO, 25/25 (migrations to 0017, smoke 15/15, crash
+recovery, restore parity, authz/estop, alert redaction). One cross-PR defect
+found+fixed on my branch (openapi dev-gate vs smoke/release_check). My verdict
+matches theirs: infra GO; deploy stays NO-GO until Codex P1s F1/F2 land.
+
+Recomposition-2 (7cfba90f): one regression — worker.py lost the alerts import +
+send_alert calls (alerting dead). Fix on `fix/devin/alert-webhook-wiring`, GO
+25/25 verified. Integration session merging it.
+
+FINAL GATE GREEN: integration tip dd530ae3 passes release_readiness.py 25/25.
+Alert cherry-pick verified live. Readiness suite is now the repeatable pilot gate;
+re-run on any further recomposition.
+
+Upstream-reconciled tip 070f75a9 (head 0019, upstream ops/storage + heartbeat
+surface merged): release_readiness GO 25/25 unchanged. Gate still green.
+
+RC GATE GREEN: release_readiness.py GO 25/25 on RC SHA bc490484 (upstream
+580d2f67 reconciled — onboarding lifecycle, release-gate+dead-letter, intel
+audit + write-time redaction, ops-alias fix; head stays 0019). Gate stable
+across the entire reconciliation.

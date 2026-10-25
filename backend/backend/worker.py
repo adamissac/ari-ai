@@ -27,7 +27,7 @@ from typing import Any
 import httpx
 from sqlalchemy import exc as sa_exc
 
-from backend import execution, jobs
+from backend import alerts, execution, jobs
 from backend.db import transaction
 from backend.jobs import ErrorCategory
 from backend.settings import get_settings
@@ -136,11 +136,11 @@ def _heartbeat_loop(ctx: JobContext, lease_s: int, stop: threading.Event) -> Non
         try:
             with transaction() as conn:
                 state = jobs.heartbeat_state(conn, ctx.job.id, ctx.owner, lease_s)
+                execution.worker_seen(conn, ctx.owner, "busy", ctx.job.id)
                 # Keeps the worker liveness row fresh across a long job: the main loop
                 # only beats while polling, so without this /readyz would see the worker
                 # go stale mid-assessment.
                 jobs.worker_heartbeat(conn, ctx.owner, job_id=ctx.job.id)
-                execution.worker_seen(conn, ctx.owner, "busy", ctx.job.id)
             if state == "lost":
                 ctx._lease_lost.set()
             elif state == "cancelled":
@@ -243,6 +243,7 @@ def run_one(owner: str, kinds: list[str] | None = None) -> str | None:
             raise PermanentJobError(ErrorCode.INTERNAL, f"no handler for job kind {job.kind!r}")
         result = fn(ctx)
         ctx.check_cancelled()
+
         def done() -> bool:
             with transaction() as conn:
                 return jobs.complete(conn, job.id, owner, result)
@@ -267,6 +268,10 @@ def run_one(owner: str, kinds: list[str] | None = None) -> str | None:
     except PermanentJobError as exc:
         _finalize_fail(job, owner, {"code": exc.code.value, "message": str(exc)}, exc)
         log.warning("job %s (%s) failed permanently: %s", job.id, job.kind, exc)
+        alerts.send_alert(
+            "job_failed_permanent",
+            details={"job_id": job.id, "kind": job.kind, "error": str(exc)[:300]},
+        )
     except Exception as exc:
         status = _finalize_fail(
             job,
@@ -279,6 +284,17 @@ def run_one(owner: str, kinds: list[str] | None = None) -> str | None:
             exc,
         )
         log.exception("job %s (%s) errored; now %s", job.id, job.kind, status)
+        if status == "dead":
+            # Attempts exhausted: nobody will retry this job. Page a human.
+            alerts.send_alert(
+                "job_dead",
+                details={
+                    "job_id": job.id,
+                    "kind": job.kind,
+                    "attempts": job.attempts,
+                    "error": f"{type(exc).__name__}: {exc}"[:300],
+                },
+            )
     finally:
         stop.set()
         hb.join(timeout=5)
@@ -359,9 +375,9 @@ def main(argv: list[str] | None = None) -> int:
             stopping.wait(s.worker_poll_interval_s)
     try:
         with transaction() as conn:
-            jobs.worker_stopped(conn, owner)
             execution.worker_gone(conn, owner)
-    except Exception:  # pragma: no cover - the stale rows age out on their own
+            jobs.worker_stopped(conn, owner)
+    except Exception:  # pragma: no cover - the stale row ages out of the active count
         log.warning("could not deregister worker %s", owner, exc_info=True)
     log.info("worker %s stopped after finishing its job", owner)
     return 0
