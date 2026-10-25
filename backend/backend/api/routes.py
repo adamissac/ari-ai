@@ -49,6 +49,7 @@ from backend.db import (
     verification_results,
 )
 from backend.integrations import load_factory
+from backend.quota import check_project_quota, rate_limit_message
 from backend.services import (
     DomainError,
     budget_over_cap,
@@ -890,7 +891,14 @@ def start_assessment(
         replay = idempotent_lookup(conn, user.id, idempotency_key, retry_request)
         if replay:
             return JSONResponse(replay["body"], status_code=replay["status"])
-        limiter.check(f"asm:{user.id}", get_settings().assessment_starts_per_hour, 3600)
+        quota = check_project_quota(conn, project_id, utcnow())
+        if quota is not None:
+            raise ApiError(
+                ErrorCode.RATE_LIMITED,
+                rate_limit_message(quota),
+                429,
+                {"resets_at": quota.resets_at.isoformat()},
+            )
         commit_sha = body.commit_sha
         if body.snapshot_id:
             snap = (

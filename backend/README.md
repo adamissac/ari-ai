@@ -150,11 +150,12 @@ and regenerates JSON/TypeScript. Migration 0014 resets existing repository switc
 Per-commit full runs require a nonempty `GITHUB_AUTO_COMMIT_AUTHORS` allowlist; both
 the signed push sender and GitHub-attributed commit author must match it. With the
 empty Railway default, enabled repositories use the legacy monitoring policy above.
-Attribution alone is email-derived, not authorization. Project start limits default to 5/hour
-and 20/day (`AUTOMATIC_ASSESSMENTS_PER_HOUR`, `AUTOMATIC_ASSESSMENTS_PER_DAY`). Excess
-commits are durably deferred, not dropped. Full runs use the normal project budget,
-clamped to operator caps. Monitoring and approved sandbox scope remain prerequisites;
-repair approvals remain required.
+Attribution alone is email-derived, not authorization. A shared project quota allows 10
+assessments per rolling hour and 50 per rolling day across all triggers; a $50/day
+spend cap applies globally across triggers and projects. Over-quota automatic
+requests are recorded as skipped, not deferred. Full runs use the normal project
+budget, clamped to operator caps. Monitoring and approved sandbox scope remain
+prerequisites; repair approvals remain required.
 
 Production/staging gateway, Railway startup and frontend quick reads enforce
 `claude-haiku-5-5` only, overriding stale production model choices. Errors are
