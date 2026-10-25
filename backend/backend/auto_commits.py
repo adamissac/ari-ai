@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import re
-from datetime import timedelta
 from typing import Any
 
 import httpx
@@ -14,7 +13,6 @@ from sqlalchemy.engine import Connection
 
 from backend import audit, jobs
 from backend.db import (
-    assessments,
     monitoring_events,
     projects,
     reassessment_requests,
@@ -22,6 +20,7 @@ from backend.db import (
     transaction,
 )
 from backend.github import GitHubApp
+from backend.quota import check_project_quota, skipped_reason
 from backend.services import (
     active_scope_for_repo,
     capped_budget,
@@ -362,6 +361,13 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
             rrq = ReassessmentRequest.model_validate(row)
             if rrq.assessment_id:
                 return {"assessment_id": rrq.assessment_id, "idempotent_replay": True}
+            if rrq.status == ReassessmentStatus.skipped:
+                return {
+                    "reassessment_request_id": rrq.id,
+                    "assessment_id": None,
+                    "status": rrq.status.value,
+                    "idempotent_replay": True,
+                }
         scope = active_scope_for_repo(conn, repo["project_id"], repo["id"])
         reason = "automatic commit assessment" if scope else "waiting for repository scope approval"
         if existing is None:
@@ -408,50 +414,12 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
                 created_at=utcnow(),
             )
         assert rrq is not None
-        delay_s = 0.0
+        quota = None
         if scope:
-            now = utcnow()
-            limits = get_settings()
-            for seconds, limit in (
-                (3600, limits.automatic_assessments_per_hour),
-                (86400, limits.automatic_assessments_per_day),
-            ):
-                count, oldest = conn.execute(
-                    sa.select(sa.func.count(), sa.func.min(assessments.c.created_at)).where(
-                        assessments.c.project_id == repo["project_id"],
-                        assessments.c.trigger == AssessmentTrigger.monitoring.value,
-                        assessments.c.created_at > now - timedelta(seconds=seconds),
-                    )
-                ).one()
-                if count >= limit and oldest:
-                    delay_s = max(
-                        delay_s, (oldest + timedelta(seconds=seconds + 1) - now).total_seconds()
-                    )
-            # One ceiling over every project: outside users' repos cannot run up unbounded spend.
-            # shortcut: in-flight runs are not counted, so it can overshoot by a few runs.
-            spent = conn.execute(
-                sa.select(
-                    sa.func.coalesce(
-                        sa.func.sum(assessments.c.doc["usage"]["usd"].astext.cast(sa.Numeric)), 0
-                    )
-                ).where(
-                    assessments.c.trigger == AssessmentTrigger.monitoring.value,
-                    assessments.c.created_at > now - timedelta(days=1),
-                )
-            ).scalar_one()
-            if float(spent) >= limits.automatic_usd_per_day:
-                delay_s = max(delay_s, 3600.0)
-        if scope and delay_s:
-            reason = "queued: waiting for project automatic-run capacity"
-            rrq = rrq.model_copy(update={"status": ReassessmentStatus.queued, "reason": reason})
-            jobs.enqueue(
-                conn,
-                "assess_github_commit",
-                p,
-                delay_s=delay_s,
-                priority=60,
-                dedupe_key=f"github:deferred:{ctx.job.id}",
-            )
+            quota = check_project_quota(conn, repo["project_id"], utcnow())
+        if quota is not None:
+            reason = skipped_reason(quota)
+            rrq = rrq.model_copy(update={"status": ReassessmentStatus.skipped, "reason": reason})
         elif scope:
             asm, _ = create_assessment(
                 conn,
@@ -476,10 +444,12 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
             **(existing["doc"] if existing else event.model_dump(mode="json")),
             "status_reason": reason,
         }
+        if rrq.status == ReassessmentStatus.skipped:
+            event_doc["status"] = EventStatus.ignored.value
         conn.execute(
             sa.update(monitoring_events)
             .where(monitoring_events.c.id == event_id)
-            .values(doc=event_doc)
+            .values(status=event_doc["status"], doc=event_doc)
         )
         values = dict(status=rrq.status.value, doc=rrq.model_dump(mode="json"))
         if existing:

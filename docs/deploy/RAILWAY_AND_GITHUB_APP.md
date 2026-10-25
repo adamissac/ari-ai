@@ -72,12 +72,12 @@ comma-separated list of GitHub logins to narrow it; explicit empty uses the lega
 impact/coalescing policy. An installed App, connected repository, enabled monitoring and
 approved repository scope remain prerequisites. Approving a scope wakes blocked commits.
 
-Every pushed commit gets its own full run; none is skipped. Commits over a project's
-limits (`AUTOMATIC_ASSESSMENTS_PER_HOUR`, `AUTOMATIC_ASSESSMENTS_PER_DAY`) or over the
-all-project daily spend ceiling (`AUTOMATIC_USD_PER_DAY`, default $50) are deferred and
-run later. `WORKER_PROCESSES` (default 12, ~80 MB each) runs that many commits at once;
-jobs are claimed with `SKIP LOCKED`. Signed webhooks are never rate limited: GitHub does
-not retry a 429, and the durable queue absorbs bursts.
+Eligible pushed commits are assessed subject to the shared project quota of 10 starts
+per rolling hour and 50 per rolling day, plus the $50 global rolling-day spend cap.
+Over-quota commits are recorded as skipped and are not deferred or retried.
+`WORKER_PROCESSES` (default 12, ~80 MB each) runs that many commits at once; jobs are
+claimed with `SKIP LOCKED`. Signed webhooks are never rate limited: GitHub does not
+retry a 429, and the durable queue absorbs bursts.
 Opening the commit page is unnecessary; it polls the persisted run when visited.
 Check worker logs for `assess_github_commit` and the commit's monitoring assessment
 before claiming live execution: `/readyz` only checks configuration and storage.
@@ -100,11 +100,12 @@ and regenerates JSON/TypeScript. Deploy the backend and frontend together.
 
 The rollout requires both the signed push sender and GitHub-attributed commit
 author to match `GITHUB_AUTO_COMMIT_AUTHORS` (`*` in the Railway entrypoint). Attribution
-alone is email-derived, not authorization. Project start limits default to 5/hour
-and 20/day (`AUTOMATIC_ASSESSMENTS_PER_HOUR`, `AUTOMATIC_ASSESSMENTS_PER_DAY`). Excess
-commits are durably deferred, not dropped. Full runs use the normal project budget,
-clamped to operator caps. Monitoring and approved sandbox scope remain prerequisites;
-repair approvals remain required.
+alone is email-derived, not authorization. All assessment triggers share a project
+quota of 10 per rolling hour and 50 per rolling day, with a $50/day spend cap across
+all projects and triggers. Over-quota automatic requests are recorded as skipped,
+not deferred. Full runs use the normal project budget, clamped to operator caps.
+Monitoring and approved sandbox scope remain prerequisites; repair approvals remain
+required.
 
 Production/staging gateway, Railway startup and frontend quick reads enforce
 `claude-haiku-5-5` only, overriding stale production model choices. Errors are
