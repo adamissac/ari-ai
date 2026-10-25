@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     frontend_origin: str = "http://localhost:3000"
 
     database_url: str = "postgresql+psycopg://app:app@localhost:5432/hackatl"
+    migration_database_url: str | None = None
     artifact_store_uri: str = "file://./artifacts"
 
     session_secret: SecretStr = SecretStr("")
