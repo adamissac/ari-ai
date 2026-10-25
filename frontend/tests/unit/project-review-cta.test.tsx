@@ -27,8 +27,8 @@ it('links to scope authorization when the repository has no active scope', () =>
 
   render(<ProjectReviewCta repoId="repo-1" />);
 
-  const cta = screen.getByRole('link', { name: 'Authorize & run your first review' });
-  expect(cta.getAttribute('href')).toBe('/projects/project-1/scopes');
+  const cta = screen.getByRole('link', { name: 'Set up & run your first review' });
+  expect(cta.getAttribute('href')).toBe('/projects/project-1/setup?repo=repo-1');
 });
 
 it('links to Start an assessment when the repository has an active scope', () => {

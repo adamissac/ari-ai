@@ -59,11 +59,25 @@ class DeliveryMode(StrEnum):
     manual = "manual"  # a human approves each remediation; nothing is pushed
 
 
+class ReviewerSettings(StrictModel):
+    review_pushes: bool = True
+    review_pull_requests: bool = True
+    review_draft_prs: bool = False
+    include_branches: list[ShortText] = Field(default_factory=list, max_length=50)
+    exclude_branches: list[ShortText] = Field(default_factory=list, max_length=50)
+    include_authors: list[ShortText] = Field(default_factory=list, max_length=50)
+    exclude_authors: list[ShortText] = Field(default_factory=lambda: ["*[bot]"], max_length=50)
+    strictness: int = Field(default=2, ge=1, le=3)
+    comment_on_pull_requests: bool = True
+    max_reviews_per_hour: int | None = Field(default=None, ge=1)
+
+
 class ProjectSettings(StrictModel):
     default_budget: Budget = Field(default_factory=Budget)
     monitoring_policy: TriggerPolicy = Field(default_factory=TriggerPolicy)
+    review: ReviewerSettings = Field(default_factory=ReviewerSettings)
     languages: list[ShortText] = Field(default_factory=lambda: ["python"])
-    delivery_mode: DeliveryMode = DeliveryMode.auto
+    delivery_mode: DeliveryMode = DeliveryMode.pull_request
     delivery_authorized_by: UserId | None = Field(
         default=None,
         description="Owner on whose standing authorization Ari approves and delivers fixes; "

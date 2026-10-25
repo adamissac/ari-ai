@@ -37,6 +37,11 @@ export default function SettingsPage() {
     <>
       <PageTitle eyebrow="Configure" title="Settings" subtitle="Project name, languages, budgets and monitoring policy." />
     <form onSubmit={submit} className="grid grid-cols-1 gap-4 lg:grid-cols-2" aria-label="Project settings">
+      <div className="flex flex-wrap items-center gap-3 lg:col-span-2">
+        <Button type="submit" variant="primary" disabled={busy || !dirty || 'error' in parsed}>Save settings</Button>
+        <Button type="button" disabled={busy || !dirty} onClick={() => setDraft(draftOf(saved))}>Discard changes</Button>
+        {!dirty && !message && <span className="text-sm text-muted">Unsaved changes show here and at the bottom of this form.</span>}
+      </div>
       <Panel title="Project">
         <Field label="Name"><input className={inputClass} value={draft.name} onChange={e => set('name')(e.target.value)} maxLength={200} /></Field>
         <div className="mt-3">
@@ -75,6 +80,65 @@ export default function SettingsPage() {
           <Field label="Max tokens"><input className={inputClass} inputMode="numeric" value={draft.monTokens} onChange={e => set('monTokens')(e.target.value)} /></Field>
           <Field label="Max USD"><input className={inputClass} inputMode="decimal" value={draft.monUsd} onChange={e => set('monUsd')(e.target.value)} /></Field>
           <Field label="Wall clock (s)"><input className={inputClass} inputMode="numeric" value={draft.monWall} onChange={e => set('monWall')(e.target.value)} /></Field>
+        </div>
+      </Panel>
+      <Panel title="Code reviewer" className="lg:col-span-2">
+        <p className="mb-3 text-sm text-muted">
+          Choose which pushes and pull requests Ari reviews. Eligible events still require repository automatic assessments,
+          an active approved scope, and available project quota.
+        </p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={draft.reviewPushes} onChange={e => set('reviewPushes')(e.target.checked)} />
+            Review pushes to the default branch
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={draft.reviewPullRequests} onChange={e => set('reviewPullRequests')(e.target.checked)} />
+            Review pull requests
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={draft.reviewDraftPrs} onChange={e => set('reviewDraftPrs')(e.target.checked)} />
+            Include draft pull requests
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={draft.commentOnPullRequests} onChange={e => set('commentOnPullRequests')(e.target.checked)} />
+            Post review comments on pull requests
+          </label>
+        </div>
+        <fieldset className="mt-4">
+          <legend className="mb-2 text-sm font-medium">Finding strictness</legend>
+          {([
+            [1, 'Report everything', 'Include findings of every severity.'],
+            [2, 'Medium and above', 'Include medium, high, and critical findings.'],
+            [3, 'High and critical only', 'Show only high and critical findings.'],
+          ] as const).map(([value, label, hint]) => (
+            <label key={value} className="mb-2 flex items-start gap-2 text-sm">
+              <input type="radio" name="review-strictness" checked={draft.strictness === value}
+                onChange={() => set('strictness')(value)} />
+              <span><strong>{label}</strong> — {hint}</span>
+            </label>
+          ))}
+          <p className="text-sm text-muted">Strictness filters only the pull-request comment; all findings remain stored in Ari.</p>
+        </fieldset>
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label="Include branches" hint="Comma- or newline-separated globs. Pushes default to the default branch; pull requests default to all base branches.">
+            <textarea className={`${inputClass} min-h-20 font-mono`} value={draft.includeBranches} onChange={e => set('includeBranches')(e.target.value)} />
+          </Field>
+          <Field label="Exclude branches" hint="Comma- or newline-separated globs; matching branches are skipped.">
+            <textarea className={`${inputClass} min-h-20 font-mono`} value={draft.excludeBranches} onChange={e => set('excludeBranches')(e.target.value)} />
+          </Field>
+          <Field label="Include authors" hint="Comma- or newline-separated GitHub login globs. Empty means everyone.">
+            <textarea className={`${inputClass} min-h-20 font-mono`} value={draft.includeAuthors} onChange={e => set('includeAuthors')(e.target.value)} />
+          </Field>
+          <Field label="Exclude authors" hint="Comma- or newline-separated GitHub login globs. Defaults to *[bot].">
+            <textarea className={`${inputClass} min-h-20 font-mono`} value={draft.excludeAuthors} onChange={e => set('excludeAuthors')(e.target.value)} />
+          </Field>
+        </div>
+        <div className="mt-4 max-w-xs">
+          <Field label="Maximum reviews per hour" hint="Optional project limit. The server cap is 10 reviews per hour; this setting can lower, never raise it.">
+            <input className={inputClass} type="number" min={1} step={1} value={draft.maxReviewsPerHour}
+              onChange={e => set('maxReviewsPerHour')(e.target.value)} placeholder="Use server cap" />
+          </Field>
         </div>
       </Panel>
       <Panel title="Fix delivery" className="lg:col-span-2">

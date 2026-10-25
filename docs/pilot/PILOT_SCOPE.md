@@ -20,9 +20,9 @@ explicit exclusion (bottom of document), not a "maybe".
 |---|---|---|
 | Manual assessment budget | 400k tokens / **$10** / 1,800 s wall clock per run | `shared/shared/tenancy.py` `Budget` defaults |
 | Monitoring-run budget | 150k tokens / **$3** / 900 s per push-triggered run | `TriggerPolicy.monitoring_budget` default |
-| Shared project review quota | 10 per rolling hour and 50 per rolling day across all triggers | `project_assessments_per_hour`, `project_assessments_per_day` |
-| API rate limit | 60 requests/min per key (in-process limiter) | `backend/backend/api/deps.py` |
-| Automatic (push-triggered) runs | Share the project quota; over-quota runs are recorded as skipped and not retried | `backend/backend/quota.py`, `auto_commits.py` |
+| Project review quotas | Automatic starts count all triggers toward 10/hour and 50/day; manual starts count only manual-trigger assessments | `project_assessments_per_hour`, `project_assessments_per_day` |
+| API rate limit | 60 mutations/min and 600 GET/HEAD reads/min per user (in-process limiter) | `backend/backend/api/deps.py` |
+| Automatic (push-triggered) runs | Count all project triggers; over-quota runs are recorded as skipped and not retried | `backend/backend/quota.py`, `auto_commits.py` |
 | Global daily assessment spend | **$50/day across all projects and triggers**; over-cap starts are blocked | `settings.assessments_usd_per_day`, `backend/backend/quota.py` |
 | Worker concurrency | 12 commits at once (`WORKER_PROCESSES`), Postgres `SKIP LOCKED` queue | `deploy/railway/start.sh`, `jobs.py` |
 
@@ -52,6 +52,15 @@ explicit exclusion (bottom of document), not a "maybe".
 6. Defense Lab in **recommendation-only / shadow mode**: anomaly evidence and
    defensive recommendations on the customer's own staging telemetry. No
    automated enforcement.
+
+## Fix delivery
+
+- `pull_request` (the new-project default once #592 lands) opens a PR, with no
+  approval click when the owner has pre-authorized delivery.
+- `manual` waits for an owner approval before delivery.
+- `auto` commits straight to the default branch and falls back to a PR only if
+  the push is refused. It is not a pilot setting.
+- Ari never merges a PR.
 
 ## Explicit exclusions (customer-visible)
 

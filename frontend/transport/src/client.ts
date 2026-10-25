@@ -112,6 +112,36 @@ export class ApiClient {
   approvals(projectId: string, options?: RequestOptions): Promise<Page<C.Approval>> {
     return this.list(`/projects/${segment(projectId)}/approvals`, 'Approval', options);
   }
+  async auditEvents(projectId: string, options?: RequestOptions & { cursor?: string; limit?: number }): Promise<{
+    items: Array<Pick<C.AuditEvent, 'action' | 'subject_id' | 'at' | 'details'>>;
+    next_cursor: string | null;
+  }> {
+    const limit = options?.limit ?? 500;
+    if (!Number.isInteger(limit) || limit < 1 || limit > 500 || (options?.cursor !== undefined && !/^\d+$/.test(options.cursor))) {
+      throw new ProtocolError('Invalid audit event pagination');
+    }
+    const params = new URLSearchParams({ project_id: segment(projectId), limit: String(limit) });
+    if (options?.cursor !== undefined) params.set('cursor', options.cursor);
+    const record = object(await this.request(`/audit?${params}`, RAW, options), 'audit event list');
+    if (!Array.isArray(record.items)
+      || !(record.next_cursor === null || (typeof record.next_cursor === 'string' && /^\d+$/.test(record.next_cursor)))) {
+      throw new ProtocolError('Invalid audit event list');
+    }
+    const items = record.items.map(raw => {
+      const event = object(raw, 'audit event');
+      if (typeof event.action !== 'string' || typeof event.subject_id !== 'string' || typeof event.at !== 'string'
+        || !event.details || typeof event.details !== 'object' || Array.isArray(event.details)) {
+        throw new ProtocolError('Invalid audit event list');
+      }
+      return {
+        action: event.action,
+        subject_id: event.subject_id,
+        at: event.at,
+        details: event.details as Record<string, unknown>,
+      };
+    });
+    return { items, next_cursor: record.next_cursor as string | null };
+  }
   project(id: string, options?: RequestOptions): Promise<C.Project> {
     return this.request(`/projects/${segment(id)}`, 'Project', options) as Promise<C.Project>;
   }

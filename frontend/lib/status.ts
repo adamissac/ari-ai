@@ -70,6 +70,19 @@ export const SCOPE_STATUS: Record<ScopeStatus, StatusView> = {
   revoked: v('Revoked', 'bad', '×'),
 };
 
+export function effectiveScopeStatus(
+  scope: { status: ScopeStatus; expires_at: string },
+  now: Date = new Date(),
+): ScopeStatus {
+  if (
+    (scope.status === 'active' || scope.status === 'pending') &&
+    Date.parse(scope.expires_at) <= now.getTime()
+  ) {
+    return 'expired';
+  }
+  return scope.status;
+}
+
 export const APPROVAL_STATUS: Record<ApprovalStatus, StatusView> = {
   pending: v('Pending', 'warn', '⏸'),
   approved: v('Approved', 'ok', '✓'),
