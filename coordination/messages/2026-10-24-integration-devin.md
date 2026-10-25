@@ -57,3 +57,63 @@ deploy_mapping, test_event) honors `disconnected_at`. Also: hardening's
 new `auth_dev_login_burst` setting (default 20) is set to 500 by e2e stack.py.
 release-validation: `!.env.staging.example` negation from PR #7 will be
 preserved when it merges.
+
+---
+
+## Recomposition 2 — owner fixes incorporated (tip 0f93f12c)
+
+### Source heads (exact SHAs)
+- upstream/main: `fef073d6`
+- upstream #412 (Phase 6.5 RL-gated pilot): `4ecd7558`
+- upstream #458 (Phase 7C, Grok F1/F7/F8): `5417990f` merged as `871ad9fd`; later refresh `9486a5b0` also merged
+- fork #1 execution reliability (Devin Reliability F2–F5): `f2d911d7` (rebased head)
+- fork #2 Live Defense E2E: `fcca6ed7`
+- fork #3 investigation observability (F6/F9): `92e00096`
+- fork #4 security hardening: `c7841e93` (canonical disconnect now richer: revokes deploy mappings, cancels queued repo jobs, fails wedged snapshots, cancels in-flight assessments; reconnect requires renewed authorization)
+- fork #5 deployment/ops: `c7c5336f` (unchanged)
+- fork #6 customer onboarding: `7918bbee`
+- fork #7 release-validation: `ac693214`
+
+### Integration defects found and fixed (no failures hidden)
+1. `jobs.defer_count` column added to db.py/code but missing from Alembic 0016 — added to 0016 (upgrade+downgrade).
+2. Legacy `jobs.defer()` definition still present in jobs.py, shadowing the new lifecycle-recording `defer()` — deleted (F4 fix was live but unreachable).
+3. `job_max_running_emergency` setting dropped during settings union — restored (F2).
+4. `repositories.disconnected_at` dropped from db.py during the db.py union — restored.
+5. Union placed `provider_attempts`/`uncertain_provider_outcome` inside `ProviderAttempt` — moved onto `AgentExecutionRecord`; `ProviderAttempt` gained `model_id`/`cost_usd`/`error_code` from refreshed 7C.
+6. Duplicated hard-coded `login:{ip}` 20/300s limiter coexisted with `auth_dev_login_burst` — deduped (burst default 120 per owner, e2e stack 500).
+7. `reconnect` route returned Repository under dict signature — declared `response_model=Repository`.
+8. F9 pin `SCHEMA_VERSION == "0.22.0"` → floor assertion `>= (0,22)`; SCHEMA_VERSION is now **0.25.0** (owner bump for `Repository.disconnected_at`).
+9. `deploy/sandbox_target.py` used `AssessmentState.completed` (lowercase) → `.COMPLETED`; `test_sandbox_target` used GET for POST recipe routes → took upstream #533's method-aware test (identical fix — complementary with Adam).
+10. `test_scenarios.py::test_e_worker_failure` asserted pre-F1 semantics (crash → invocation stays queued, replay doubles provider calls). Updated to the post-F1 contract: crash → invocation `failed`, redelivery does NOT re-run the physical provider loop.
+11. `docs/security/CHECK_TEMPLATE_REVIEW.md` regenerated; `shared` contracts/fixtures regenerated (179 files clean).
+12. Provider-ledger → job bridge added (`provider_ledger.mark_attempt_uncertain` sets `jobs.effect_state="in_flight"` + `effect_key=attempt_id` on the running agent-step job) so reconcile parks crash-uncertain billable work as `recovery_required` (F1's hard guarantee) instead of silent requeue.
+13. `_enqueue_agent_step` + the inline decision-time enqueue now pass `deadline_at=decision.deadline_at` to `jobs.enqueue` — durable queue deadline survives redeliveries (F7).
+
+### Codex F1–F10 status on this tip
+All 10 findings are fixed and run as STRICT assertions (zero xfails):
+`test_independent_integration.py` 10/10, `test_exec_reliability_compat.py` 8/8, plus the updated worker-failure scenario.
+
+### Adam-overlap conflict report (upstream #530/#533/#535/#538/#540 open PRs)
+- **#533** (`0016_worker_heartbeats`): adds its own Alembic 0016 — collides numerically with our `0016_execution_reliability` (three-way 0016/0017 situation: our chain is 0016 reliability → 0017 repo-disconnect; Adam's adds 0016 heartbeats + #535 adds 0016 tenant_rls_intelligence). NEEDS OWNER DECISION on renumbering before merge — documented, not resolved.
+- **#533** also touches worker.py/jobs.py/settings.py/db.py/ops.py/test_parallel_migrations/conftest + the same `sandbox_target` fixes we independently applied (compatible, same direction).
+- **#535** (`0016_tenant_rls_intelligence`): another competing 0016 + intel_store/privacy changes — complementary scope but same migration-collision problem.
+- **#540** routes.py/github_repos/auto_commits/installations/pipeline — same files we touched; review on merge.
+- **#530** routes.py/jobs.py/redaction/CI workflows — likely complementary; CI workflow files not merged by us.
+- **#538** frontend console pages — additive; no overlap detected.
+- None of Adam's PRs were merged into the integration branch; our changes do not revert his work. The three-way `0016` migration numbering needs his decision (he may already have resolved it — #533's diff showed a `0017_worker_heartbeats.py` file, suggesting he may renumber; confirm).
+
+### Verification on tip 0f93f12c (all executed)
+- backend pytest: **510 passed, 8 skipped, 0 xfailed**
+- security-agents + shared: **712 passed, 24 skipped** (review packet regenerated)
+- `make check` clean (ruff + format + export + examples)
+- `uv run mypy`: clean (41 files)
+- frontend: **347 unit tests**, lint, typecheck, `NEXT_PUBLIC_DEV_LOGIN=1 npm run build`
+- transport: **35 tests**
+- migrations: single head `0017` (parallel-migration test green)
+- Playwright real-stack: **49/49**
+- Codex independent regressions: **10/10 strict** + compat **8/8 strict**
+
+### Blockers / GO-NO-GO
+- F1–F10 all closed with strict assertions; remaining hard blocker = independent security re-review (per release protocol) + Devin Bot readiness re-run on this tip.
+- Adam 0016/0017 migration-collision decision is required before any upstream merge — NOT a deploy blocker for the fork-side release candidate.
+- Verdict: **GO for review + staging validation; NO-GO for customer deploy until independent security re-review and readiness suite pass on 0f93f12c.**
