@@ -365,8 +365,8 @@ personal review of PR #5.
    (migration head 0017, non-superuser RLS drill passed).
 7. **`jobs.last_error` redaction** — #530 merged; `jobs.py` stores
    `last_error=redact(...)` on `main` @ `0f311913`, which production runs.
-8. **D9 — quota reset timestamps** — #596 fixed hour/day reset times; spend-cap
-   reset times still required a follow-up fix.
+8. **D9 — quota reset timestamps (resolved)** — #596 fixed hour/day reset
+   times; #605 fixed spend-cap reset times and is deployed in `a85885aa` (C14).
 9. **D10 — owner-witnessed PR handling** — agents merged/closed earlier PRs
    using the owner's account. Leg 9 left PR #5 open and unmerged under the
    no-touch directive; branch protection is unavailable on the free-plan
