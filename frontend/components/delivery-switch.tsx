@@ -4,7 +4,6 @@ import type { Project } from '@hackatl/frontend-transport';
 import { useState } from 'react';
 import { ErrorState } from '@/components/ui';
 import { api } from '@/lib/api';
-import { AUTO_WARNING } from '@/lib/settings';
 
 export function DeliverySwitch({
   project,
@@ -16,7 +15,7 @@ export function DeliverySwitch({
   tone?: 'dark' | 'light';
 }) {
   const dark = tone === 'dark';
-  const projectEnabled = project.settings.delivery_mode === 'auto';
+  const projectEnabled = project.settings.delivery_mode === 'pull_request';
   const manual = project.settings.delivery_mode === 'manual';
   const [toggleState, setToggleState] = useState({
     projectId: project.id,
@@ -39,16 +38,18 @@ export function DeliverySwitch({
   const toggle = async () => {
     const previous = on;
     const enabled = !previous;
-    if (enabled && !window.confirm(AUTO_WARNING)) return;
     setToggleState(current => ({ ...current, enabled }));
     setBusy(true);
     setError(null);
     try {
       const next = await api().updateProject(project.id, {
         name: project.name,
-        settings: { ...project.settings, delivery_mode: enabled ? 'auto' : 'pull_request' },
+        settings: { ...project.settings, delivery_mode: enabled ? 'pull_request' : 'manual' },
       });
-      setToggleState(current => ({ ...current, enabled: next.settings.delivery_mode === 'auto' }));
+      setToggleState(current => ({
+        ...current,
+        enabled: next.settings.delivery_mode === 'pull_request',
+      }));
       onChange?.(next);
     } catch (err) {
       setToggleState(current => ({ ...current, enabled: previous }));
@@ -64,20 +65,20 @@ export function DeliverySwitch({
         type="button"
         role="switch"
         aria-checked={on}
-        aria-label="Auto-commit fixes"
+        aria-label="Auto-open fix PRs"
         data-testid="delivery-switch"
         disabled={busy}
         onClick={() => void toggle()}
         className={`inline-flex items-center gap-3 rounded-full border px-3.5 py-2 text-sm transition disabled:cursor-wait disabled:opacity-70 ${buttonTone}`}
       >
-        <span>Auto-commit fixes</span>
+        <span>Auto-open fix PRs</span>
         <span className={`inline-flex items-center gap-1.5 text-xs ${statusTone}`}>
           <span aria-hidden="true" className={`h-2 w-2 rounded-full ${on ? 'bg-emerald-400' : offDotTone}`} />
-          {on ? 'Auto' : manual ? 'Manual' : 'PR'}
+          {on ? 'PR' : manual ? 'Manual' : 'Settings'}
         </span>
       </button>
       <p className={`text-xs ${hintTone}`}>
-        {on ? 'Verified fixes are committed to your default branch with no human check.' : manual ? 'Nothing is pushed. You approve each fix yourself.' : 'Verified fixes arrive as a pull request for your team to review.'}
+        {on ? 'Verified fixes are automatically opened as pull requests for your team to review.' : manual ? 'Nothing is pushed. You approve each fix yourself.' : 'Change the delivery mode in Project Settings.'}
       </p>
       {error !== null && <ErrorState error={error} context="Could not change fix delivery (only project owners can)" />}
     </div>
