@@ -94,26 +94,29 @@ jobs:
           set -uo pipefail
           deadline=$(( $(date +%s) + 5400 ))
           : > ci-summary.txt
+          SELF="gate wait-ci strict-regressions codex-audit report"
+          check_runs() {
+            curl -sf -H "Authorization: Bearer $GH_TOKEN" \
+              "https://api.github.com/repos/$REPO/commits/$CANDIDATE_SHA/check-runs?per_page=100" \
+              | SELF="$SELF" python3 -c 'import json,sys,os
+          self_names = set(os.environ["SELF"].split())
+          rs = [r for r in json.load(sys.stdin)["check_runs"] if r["name"] not in self_names]
+          pend = sum(1 for r in rs if r["status"] != "completed")
+          fail = sum(1 for r in rs if r["status"] == "completed" and r["conclusion"] not in ("success","skipped","neutral"))
+          print(f"{len(rs)} {pend} {fail}")
+          for r in rs: print(f"{r[\"name\"]}: {r[\"conclusion\"]}")' > /tmp/checks.txt
+            head -1 /tmp/checks.txt
+            tail -n +2 /tmp/checks.txt > ci-summary.txt
+          }
           while true; do
-            runs=$(curl -sf -H "Authorization: Bearer $GH_TOKEN" \
-              "https://api.github.com/repos/$REPO/commits/$CANDIDATE_SHA/check-runs?per_page=100" \
-              | python3 -c 'import json,sys; print(len(json.load(sys.stdin)["check_runs"]))')
-            failed=$(curl -sf -H "Authorization: Bearer $GH_TOKEN" \
-              "https://api.github.com/repos/$REPO/commits/$CANDIDATE_SHA/check-runs?per_page=100" \
-              | python3 -c 'import json,sys; rs=json.load(sys.stdin)["check_runs"]; print(sum(1 for r in rs if r["status"]=="completed" and r["conclusion"] not in ("success","skipped","neutral")))')
-            pending=$(curl -sf -H "Authorization: Bearer $GH_TOKEN" \
-              "https://api.github.com/repos/$REPO/commits/$CANDIDATE_SHA/check-runs?per_page=100" \
-              | python3 -c 'import json,sys; rs=json.load(sys.stdin)["check_runs"]; print(sum(1 for r in rs if r["status"]!="completed"))')
+            check_runs >/dev/null
+            read -r runs pending failed < /tmp/checks.txt
             echo "checks=$runs pending=$pending failed=$failed"
             [ "$runs" -gt 0 ] && [ "$pending" -eq 0 ] && break
             [ "$failed" -gt 0 ] && break
             [ "$(date +%s)" -gt "$deadline" ] && { echo "ci_ok=false" >> "$GITHUB_OUTPUT"; break; }
             sleep 30
           done
-          curl -sf -H "Authorization: Bearer $GH_TOKEN" \
-            "https://api.github.com/repos/$REPO/commits/$CANDIDATE_SHA/check-runs?per_page=100" \
-            | python3 -c 'import json,sys; [print(f"{r[\"name\"]}: {r[\"conclusion\"]}") for r in json.load(sys.stdin)["check_runs"]]' \
-            > ci-summary.txt
           cat ci-summary.txt
           # Absent checks are unverified, never green.
           if [ "$runs" -eq 0 ]; then echo "ci_ok=false" >> "$GITHUB_OUTPUT"; exit 0; fi
