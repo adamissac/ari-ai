@@ -1290,3 +1290,58 @@ def test_history_read_scrubs_legacy_unsanitized_events():
     last = events[-1]
     assert "[REDACTED" in last["reason"]
     assert "[REDACTED" in last["details"]["message"]
+
+
+def test_diff_artifact_preserves_non_secret_code_expressions(tmp_path):
+    """N7: free-text key=value scrubbing must not corrupt persisted diff code."""
+    import ast
+
+    from backend.artifacts import ArtifactStore
+    from shared.evidence import ArtifactKind
+
+    source = 'api_key=os.environ["API_KEY"]\npassword=os.environ.get("DB_PASSWORD")\n'
+    ast.parse(source)
+    store = ArtifactStore(tmp_path.as_uri())
+    with transaction() as conn:
+        ref = store.put_text(conn, source, kind=ArtifactKind.diff, project_id=None)
+    with transaction() as conn:
+        _, body = store.get(conn, ref.id)
+    actual = body.decode()
+    assert actual == source, "code-aware redaction rewrote a non-secret expression"
+    ast.parse(actual)
+
+
+def test_free_text_and_code_redaction_split(tmp_path):
+    """N7: secrets still redact in both modes; expressions only survive in code."""
+    import ast
+
+    from backend.artifacts import ArtifactStore
+    from backend.redaction import (
+        find_high_confidence_secret,
+        redact_code,
+        redact_text,
+    )
+    from shared.evidence import ArtifactKind
+
+    # Free text: credential-looking key=value fragments are scrubbed.
+    assert "hunter2" not in redact_text("connect failed: password=hunter2 api-key=hunter2")
+    # Code: unquoted expressions survive; quoted secret literals still redact.
+    expr = 'password=os.environ.get("DB_PASSWORD")\n'
+    assert redact_code(expr) == expr
+    redacted_literal = redact_code('password="hunter2"\n')
+    assert "hunter2" not in redacted_literal
+    ast.parse(redacted_literal)
+    # A real credential inside a code literal is still caught.
+    code = 'dsn = "postgresql://svc:hunter2@db.internal/app"\n'
+    out = redact_code(code)
+    assert "hunter2" not in out
+    ast.parse(out)
+    # Diff artifacts with an actual embedded secret lose the secret, not syntax.
+    store = ArtifactStore(tmp_path.as_uri())
+    with transaction() as conn:
+        ref = store.put_text(conn, code, kind=ArtifactKind.diff, project_id=None)
+    with transaction() as conn:
+        _, body = store.get(conn, ref.id)
+    assert "hunter2" not in body.decode()
+    # Label preference: the transport-DSN pattern names postgres DSNs.
+    assert find_high_confidence_secret("postgresql://svc:hunter2@db.internal") == "dsn_credentials"
