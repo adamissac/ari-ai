@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     github_app_slug: str | None = None  # github.com/apps/<slug>: link for installing the App
     github_api_url: str = "https://api.github.com"
     github_web_url: str = "https://github.com"
-    # Empty or * leaves reviewer eligibility to project settings; a comma list is a global allowlist.
+    # Empty or * preserves impact monitoring; a non-empty comma list enables per-commit runs.
     github_auto_commit_authors: str = ""
     project_assessments_per_hour: int = Field(default=10, ge=1)
     project_assessments_per_day: int = Field(default=50, ge=1)
@@ -107,6 +107,10 @@ class Settings(BaseSettings):
     # Provisioned size of the PostgreSQL volume in bytes (from the Railway dashboard).
     # 0 = unknown: the report still emits absolute usage but skips percentage alerts.
     postgres_volume_bytes: int = Field(default=0, ge=0)
+    # Provisioned size of the app data volume, Railway sizeMB × 1,000,000.
+    # 0 = skip data-volume alerts.
+    data_volume_bytes: int = Field(default=0, ge=0)
+    data_volume_path: Path = Path("/data")
     maintenance_enabled: bool = True
     maintenance_interval_s: int = Field(default=3600, ge=60)
     # True by default: the loop reports what it WOULD delete without deleting until an

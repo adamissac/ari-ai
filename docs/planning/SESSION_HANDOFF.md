@@ -25,6 +25,15 @@ adds an entry before ending.
 - Next steps: push `feat/adam/reviewer-settings`, merge it into `feat/adam/repo-setup-walkthrough`, then report; CI is not part of this handoff.
 - Warnings for the next session: the full backend suite has 8 expected environment-gated skips and one existing SQLAlchemy deprecation warning.
 
+### 2026-10-25 — Devin (agent, Adam) — app data-volume storage alerts
+- Did: added independent 70/80/90% reporting, webhook alerts, and Prometheus gauges for the app data volume; documented `DATA_VOLUME_BYTES` / `DATA_VOLUME_PATH` and Railway's decimal `sizeMB` conversion.
+- State of the code: data-volume sizing defaults to disabled (`DATA_VOLUME_BYTES=0`) while usage is reported if the configured path exists; the path defaults to `/data`.
+- Commands run and results: focused test, Ruff, and type-check results are included in the implementation handoff report.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): none.
+- Next steps: open a PR and handle CI separately.
+- Warnings for the next session: Railway `sizeMB` is decimal; 10,000 MB = 10,000,000,000 bytes and 5,000 MB = 5,000,000,000 bytes.
+
 ### 2026-10-25 — Devin (agent, Adam) — correction: empty auto-commit allowlist behavior
 - Did: corrected the deployment, storage and coordination guidance to distinguish the empty per-commit allowlist from strictly manual operation.
 - State of the code: empty `GITHUB_AUTO_COMMIT_AUTHORS` disables per-commit full runs, but pushes from repositories with `automatic_assessments` ON fall back to the legacy impact-gated, coalesced monitoring policy. That policy applies project `monitoring_policy`, active scope and the monitoring budget, with at most one open monitoring assessment per repository. Strictly manual operation requires `automatic_assessments` OFF per repository (or project monitoring disabled); manual Run remains available.

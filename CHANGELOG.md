@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Added independent 70/80/90% storage alerts and Prometheus gauges for the app data volume mounted at `/data`.
 - Restored impact-gated monitoring for a blank, quoted-empty, or standalone `*`
   `GITHUB_AUTO_COMMIT_AUTHORS` value. Project reviewer filters now gate both the
   impact path and per-commit rollout scheduling; impact-path PR assessments can
