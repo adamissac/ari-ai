@@ -2,11 +2,12 @@
 
 ``ProjectSettings.delivery_mode``:
 
-* ``auto`` (default): remediation approvals are approved in the name of the owner who
+* ``auto``: remediation approvals are approved in the name of the owner who
   authorized delivery, and each patch whose independent Verify verdict is ``accepted`` is
   committed onto the default branch. If the branch moved since the assessed commit, or the
   push is refused (branch protection), Ari opens a pull request instead.
-* ``pull_request``: same pre-approval, but the fix always arrives as a PR for the team.
+* ``pull_request`` (pilot default for new projects): same pre-approval, but the fix always
+  arrives as a PR for the team.
 * ``manual``: nothing here acts; a human approves each remediation and nothing is pushed.
 
 Nothing is ever force-pushed, and a rejected, inconclusive or unverified patch never leaves
