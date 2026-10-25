@@ -157,3 +157,11 @@ bump), 90% (urgent). Each crossing logs `postgres storage alert` and posts one J
 payload to `OPS_ALERT_WEBHOOK_URL` per process-level crossing. External monitoring can
 alternatively scrape `GET /api/v1/ops/storage/prometheus` (Grafana Agent, Prometheus,
 or any HTTP poller) or run a scheduled check against `/api/v1/ops/storage`.
+
+The same thresholds independently alert on the app data volume. Set
+`DATA_VOLUME_BYTES` to its provisioned size and `DATA_VOLUME_PATH` to its mount path
+(defaults to `/data`, which holds artifacts and checkouts). A zero
+`DATA_VOLUME_BYTES` skips percentage alerts; usage is still reported when the path
+exists. Railway's `sizeMB` is decimal: a 10,000 MB Postgres volume is
+`POSTGRES_VOLUME_BYTES=10000000000` (not 10 GiB), and a 5,000 MB app data volume is
+`DATA_VOLUME_BYTES=5000000000`.

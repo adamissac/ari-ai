@@ -336,7 +336,7 @@ function StartAssessment({ onStarted }: { onStarted: () => void }) {
               {active.filter(s => !repoId || s.targets.some(t => t.repo_id === repoId)).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </Field>
-          <Field label="Commit SHA" hint="Blank = backend default for the repository.">
+          <Field label="Commit SHA" hint="Blank = latest commit on the default branch.">
             <input className={`${inputClass} font-mono`} value={sha} onChange={e => setSha(e.target.value.toLowerCase())} pattern="[0-9a-f]{7,40}" name="commit_sha" placeholder="optional" />
           </Field>
           <div className="sm:col-span-3">
@@ -446,4 +446,3 @@ function RepoRow({ repo }: { repo: Repository }) {
     </li>
   );
 }
-
