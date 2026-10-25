@@ -48,6 +48,19 @@ def _ts(value: str | None) -> float:
     return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(UTC).timestamp()
 
 
+def _finding_paths(f: dict) -> set[str]:
+    paths = f.get("paths")
+    if paths is None:
+        # the findings list endpoint returns the finding doc without the
+        # denormalized `paths` column; fall back to its source_span evidence
+        paths = [
+            e.get("path")
+            for e in (f.get("evidence") or [])
+            if e.get("kind") == "source_span" and e.get("path")
+        ]
+    return {p.split(":")[0] for p in paths}
+
+
 def main() -> int:
     request = json.load(sys.stdin)
     project = os.environ["ARI_EVAL_PROJECT"]
@@ -74,18 +87,6 @@ def main() -> int:
     by_assessment: dict[str, list[dict]] = {}
     for f in findings:
         by_assessment.setdefault(f.get("assessment_id") or "", []).append(f)
-
-    def _finding_paths(f: dict) -> set[str]:
-        paths = f.get("paths")
-        if paths is None:
-            # the findings list endpoint returns the finding doc without the
-            # denormalized `paths` column; fall back to its source_span evidence
-            paths = [
-                e.get("path")
-                for e in (f.get("evidence") or [])
-                if e.get("kind") == "source_span" and e.get("path")
-            ]
-        return {p.split(":")[0] for p in paths}
 
     results, pending = [], 0
     for case in request["cases"]:
