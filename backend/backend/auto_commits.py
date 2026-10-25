@@ -22,6 +22,7 @@ from backend.db import (
     transaction,
 )
 from backend.github import GitHubApp
+from backend.project_quota import project_quota_delay_s
 from backend.services import (
     active_scope_for_repo,
     capped_budget,
@@ -441,6 +442,7 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
             ).scalar_one()
             if float(spent) >= limits.automatic_usd_per_day:
                 delay_s = max(delay_s, 3600.0)
+            delay_s = max(delay_s, project_quota_delay_s(conn, repo["project_id"], now))
         if scope and delay_s:
             reason = "queued: waiting for project automatic-run capacity"
             rrq = rrq.model_copy(update={"status": ReassessmentStatus.queued, "reason": reason})

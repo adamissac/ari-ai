@@ -45,6 +45,8 @@ generate a **private key** (downloads a `.pem`).
 | `GITHUB_OAUTH_CLIENT_SECRET` | the App's client secret |
 | `GITHUB_WEBHOOK_SECRET` | the webhook secret from step 1 |
 | `ANTHROPIC_API_KEY` | your key (set a monthly spend limit in the Anthropic console) |
+| `PROJECT_ASSESSMENTS_PER_HOUR` | Per-project start limit shared by manual and automatic assessments (default `10`) |
+| `PROJECT_ASSESSMENTS_PER_DAY` | Per-project daily start limit shared by manual and automatic assessments (default `50`) |
 
 Already set (non-secret): `DATABASE_URL` (reference to Postgres), `APP_ENV=production`,
 `ARTIFACT_STORE_URI=file:///data/artifacts`, `SECURITY_WORKDIR=/data/work`,

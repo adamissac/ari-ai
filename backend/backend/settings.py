@@ -53,6 +53,8 @@ class Settings(BaseSettings):
     github_web_url: str = "https://github.com"
     # Empty preserves legacy monitoring; comma-separated GitHub logins or * enables per-commit runs.
     github_auto_commit_authors: str = ""
+    project_assessments_per_hour: int = Field(default=10, ge=1)
+    project_assessments_per_day: int = Field(default=50, ge=1)
     automatic_assessments_per_hour: int = Field(default=5, ge=1)
     automatic_assessments_per_day: int = Field(default=20, ge=1)
     automatic_usd_per_day: float = Field(default=50.0, gt=0)  # all projects together

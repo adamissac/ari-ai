@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+import sqlalchemy as sa
 from helpers import HEAD, setup_project
 
 
@@ -112,7 +113,10 @@ def test_scope_rejects_foreign_repo_and_bad_expiry(client_factory) -> None:
     assert r.status_code == 422, "only sandbox_build targets are allowed in MVP"
 
 
-def test_assessment_requires_active_scope_and_is_idempotent(client_factory) -> None:
+def test_assessment_requires_active_scope_and_is_idempotent(
+    client_factory, settings_override
+) -> None:
+    settings_override(assessment_starts_per_hour="100", project_assessments_per_hour="1")
     alice, bob = client_factory("alice"), client_factory("bob")
     ids = setup_project(alice, bob, approve=False)
     body = {"scope_id": ids["scope"], "repo_id": ids["repo"], "commit_sha": HEAD}
@@ -123,6 +127,7 @@ def test_assessment_requires_active_scope_and_is_idempotent(client_factory) -> N
     r1 = alice.post(url, json=body, headers={"Idempotency-Key": "k1"})
     assert r1.status_code == 202, r1.text
     r2 = alice.post(url, json=body, headers={"Idempotency-Key": "k1"})
+    assert r2.status_code == 202, r2.text
     assert r2.json() == r1.json()
     r3 = alice.post(url, json={**body, "commit_sha": "c" * 40}, headers={"Idempotency-Key": "k1"})
     assert r3.status_code == 409 and r3.json()["error"]["code"] == "IDEMPOTENCY_CONFLICT"
@@ -133,6 +138,118 @@ def test_assessment_requires_active_scope_and_is_idempotent(client_factory) -> N
         == asm["id"]
     )
     assert alice.post(url, json={**body, "commit_sha": "abc"}).status_code == 422
+
+
+def test_manual_assessment_quota_blocks_eleventh_start(client_factory, settings_override) -> None:
+    settings_override(assessment_starts_per_hour="100")
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+    url = f"/api/v1/projects/{ids['project']}/assessments"
+    for index in range(10):
+        response = alice.post(
+            url,
+            json={
+                "scope_id": ids["scope"],
+                "repo_id": ids["repo"],
+                "commit_sha": f"{index + 1:040x}",
+            },
+        )
+        assert response.status_code == 202, response.text
+
+    response = alice.post(
+        url,
+        json={
+            "scope_id": ids["scope"],
+            "repo_id": ids["repo"],
+            "commit_sha": f"{11:040x}",
+        },
+    )
+    assert response.status_code == 429
+    assert response.json()["error"]["code"] == "RATE_LIMITED"
+    assert response.json()["error"]["message"] == "project assessment quota exceeded"
+    assert response.json()["error"]["details"]["retry_after_s"] > 0
+
+
+def test_daily_project_quota_blocks_start_below_hourly_limit(
+    client_factory, settings_override
+) -> None:
+    from backend.db import assessments, transaction
+
+    settings_override(
+        assessment_starts_per_hour="100",
+        project_assessments_per_hour="100",
+        project_assessments_per_day="50",
+    )
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+    url = f"/api/v1/projects/{ids['project']}/assessments"
+    for index in range(50):
+        response = alice.post(
+            url,
+            json={
+                "scope_id": ids["scope"],
+                "repo_id": ids["repo"],
+                "commit_sha": f"{index + 1:040x}",
+            },
+        )
+        assert response.status_code == 202, response.text
+
+    with transaction() as conn:
+        old_ids = conn.execute(
+            sa.select(assessments.c.id)
+            .where(assessments.c.project_id == ids["project"])
+            .order_by(assessments.c.created_at.asc())
+            .limit(41)
+        ).scalars()
+        conn.execute(
+            sa.update(assessments)
+            .where(assessments.c.id.in_(list(old_ids)))
+            .values(created_at=datetime.now(UTC) - timedelta(hours=2))
+        )
+    settings_override(project_assessments_per_hour="10")
+
+    response = alice.post(
+        url,
+        json={
+            "scope_id": ids["scope"],
+            "repo_id": ids["repo"],
+            "commit_sha": f"{51:040x}",
+        },
+    )
+    assert response.status_code == 429
+    assert response.json()["error"]["details"]["retry_after_s"] > 0
+
+
+def test_project_quota_does_not_block_other_projects(
+    client_factory, settings_override, monkeypatch
+) -> None:
+    settings_override(assessment_starts_per_hour="100")
+    alice, bob = client_factory("alice"), client_factory("bob")
+    first = setup_project(alice, bob)
+    first_url = f"/api/v1/projects/{first['project']}/assessments"
+    for index in range(10):
+        response = alice.post(
+            first_url,
+            json={
+                "scope_id": first["scope"],
+                "repo_id": first["repo"],
+                "commit_sha": f"{index + 1:040x}",
+            },
+        )
+        assert response.status_code == 202, response.text
+
+    charlie, dave = client_factory("charlie"), client_factory("dave")
+    monkeypatch.setattr("helpers.REPO", "adamissac/another-repo")
+    second = setup_project(charlie, dave)
+    response = charlie.post(
+        f"/api/v1/projects/{second['project']}/assessments",
+        json={
+            "scope_id": second["scope"],
+            "repo_id": second["repo"],
+            "commit_sha": f"{51:040x}",
+        },
+    )
+    assert response.status_code == 202, response.text
 
 
 def test_cancel_before_start_and_revoke_stops_assessments(client_factory) -> None:

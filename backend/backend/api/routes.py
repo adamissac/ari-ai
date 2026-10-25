@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -49,6 +50,7 @@ from backend.db import (
     verification_results,
 )
 from backend.integrations import load_factory
+from backend.project_quota import project_quota_delay_s
 from backend.services import (
     DomainError,
     budget_over_cap,
@@ -891,6 +893,14 @@ def start_assessment(
         if replay:
             return JSONResponse(replay["body"], status_code=replay["status"])
         limiter.check(f"asm:{user.id}", get_settings().assessment_starts_per_hour, 3600)
+        quota_delay_s = project_quota_delay_s(conn, project_id, utcnow())
+        if quota_delay_s > 0:
+            raise ApiError(
+                ErrorCode.RATE_LIMITED,
+                "project assessment quota exceeded",
+                429,
+                {"retry_after_s": math.ceil(quota_delay_s)},
+            )
         commit_sha = body.commit_sha
         if body.snapshot_id:
             snap = (

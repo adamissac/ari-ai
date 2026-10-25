@@ -5,7 +5,7 @@ import sqlalchemy as sa
 from helpers import HEAD, post_webhook, push_payload, setup_project
 
 from backend import worker
-from backend.db import assessments, jobs, repositories, transaction
+from backend.db import assessments, jobs, reassessment_requests, repositories, transaction
 
 
 @pytest.fixture
@@ -14,6 +14,8 @@ def automatic(client_factory, settings_override, monkeypatch):
         github_auto_commit_authors="adamissac",
         automatic_assessments_per_hour="100",
         automatic_assessments_per_day="100",
+        project_assessments_per_hour="100",
+        project_assessments_per_day="100",
     )
     alice, bob = client_factory("alice"), client_factory("bob")
     ids = setup_project(alice, bob, approve=False)
@@ -319,6 +321,48 @@ def test_quota_defers_excess_commits_without_dropping_them(
         )
     worker.drain(kinds=["assess_github_commit"])
     assert sorted(records()) == [HEAD, "c" * 40, "d" * 40]
+
+
+def test_shared_project_quota_defers_monitoring_after_manual_starts(automatic, settings_override):
+    from shared.base import utcnow
+
+    alice, bob, ids, _ = automatic
+    settings_override(
+        assessment_starts_per_hour="100",
+        project_assessments_per_hour="10",
+        project_assessments_per_day="50",
+    )
+    assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
+    url = f"/api/v1/projects/{ids['project']}/assessments"
+    for index in range(9):
+        response = alice.post(
+            url,
+            json={
+                "scope_id": ids["scope"],
+                "repo_id": ids["repo"],
+                "commit_sha": f"{index + 1:040x}",
+            },
+        )
+        assert response.status_code == 202, response.text
+
+    push(alice, "f" * 40)
+    push(alice, "e" * 40)
+    assert len(records()) == 10
+    with transaction() as conn:
+        queued = conn.execute(
+            sa.select(reassessment_requests.c.doc).where(
+                reassessment_requests.c.doc["head_sha"].astext == "e" * 40
+            )
+        ).scalar_one()
+        delayed = (
+            conn.execute(sa.select(jobs).where(jobs.c.dedupe_key.like("github:deferred:%")))
+            .mappings()
+            .one()
+        )
+        assert queued["status"] == "queued"
+        assert queued["assessment_id"] is None
+        assert delayed["status"] == "queued"
+        assert delayed["run_after"] > utcnow()
 
 
 def test_reuses_inflight_manual_assessment(automatic):
