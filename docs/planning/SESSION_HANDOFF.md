@@ -16,6 +16,26 @@ adds an entry before ending.
 - Warnings for the next session:
 ```
 
+### 2026-10-25 — Devin (agent, Adam) — app data-volume storage alerts
+- Did: added independent 70/80/90% reporting, webhook alerts, and Prometheus gauges for the app data volume; documented `DATA_VOLUME_BYTES` / `DATA_VOLUME_PATH` and Railway's decimal `sizeMB` conversion.
+- State of the code: data-volume sizing defaults to disabled (`DATA_VOLUME_BYTES=0`) while usage is reported if the configured path exists; the path defaults to `/data`.
+- Commands run and results: focused test, Ruff, and type-check results are included in the implementation handoff report.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): none.
+- Next steps: open a PR and handle CI separately.
+- Warnings for the next session: Railway `sizeMB` is decimal; 10,000 MB = 10,000,000,000 bytes and 5,000 MB = 5,000,000,000 bytes.
+
+### 2026-10-25 — Cursor (agent, Alan) — Codex P1 R2 repository disconnect on #458 (do not merge)
+- Did: Running Scout/Diagnose now recheck deploy-mapping revocation and `repositories.disconnected_at` (when present) **before each provider complete()** and **before persist**. `apply_repository_disconnect_to_investigations` revokes mappings and cancels FR jobs/invocations. Partial cost/transcript kept; cancelled cannot become executed (F8 window). **Did not** implement `POST /repositories/{id}/disconnect` or add Alembic `disconnected_at` (Devin Hardening). Schema **0.23.0**. Probe/Patch not expanded. **Did not merge #458.**
+- Commands run and results (executed): `make check` pass (schema 0.23.0, 157 files); mypy 2 files; focused 7A+7C+review+jobs+llm+sandbox+migrations **80 passed**, 1 skipped; `test_repository_disconnect_stops_next_provider_turn` **passed**; `uv run pytest -q` **952 passed**, 16 skipped. FakeLLM, not live Anthropic.
+- Next: push #458. Leave open.
+- Warnings: **leave the PR open**. Merge NO-GO. Hardening should call the 7C hook and land `disconnected_at` as Alembic **0018**.
+
+### 2026-10-25 — Cursor (agent, Alan) — merge origin/main into #458; schema 0.23.0 (do not merge the PR)
+- Did: PR was DIRTY vs `origin/main` `f8ab19e7`. Merged main. Conflicts: changelog/handoff (kept both), `test_sandbox_target.py` (took main's method/body renderer), `shared/shared/__init__.py` (**renumbered 7C from colliding 0.22.0 to 0.23.0**; main's 0.22.0 stays ops-readiness). Inherited Alembic **0017**. Did **not** take Devin Hardening disconnect files. Open #412 keeps **0.20.0**. Probe/Patch not expanded. **Did not merge #458.**
+- Next: implement Codex P1 R2 (repository disconnect stops next Scout/Diagnose provider turn) on this branch.
+- Warnings: **leave the PR open**. Merge NO-GO. Do not overwrite Devin Hardening `POST /repositories/{id}/disconnect`.
+
 ### 2026-10-25 — Devin (agent, Adam) — correction: empty auto-commit allowlist behavior
 - Did: corrected the deployment, storage and coordination guidance to distinguish the empty per-commit allowlist from strictly manual operation.
 - State of the code: empty `GITHUB_AUTO_COMMIT_AUTHORS` disables per-commit full runs, but pushes from repositories with `automatic_assessments` ON fall back to the legacy impact-gated, coalesced monitoring policy. That policy applies project `monitoring_policy`, active scope and the monitoring budget, with at most one open monitoring assessment per repository. Strictly manual operation requires `automatic_assessments` OFF per repository (or project monitoring disabled); manual Run remains available.
@@ -43,6 +63,18 @@ adds an entry before ending.
 - Next steps: e2e suite running; PR stacks on #496 (feat/adam/commit-review-navigation).
 
 ---
+
+### 2026-10-24 — Cursor (agent, Alan) — merge origin/main into #458 so Actions can run (do not merge the PR)
+- Did: GitHub Actions never queued on `96ac5cfb` because #458 was **DIRTY** vs `origin/main` (`ad282cf4`). Merged main (tenant RLS 0016, inventory-lite, ledgerlite, #551 COMPLETED seed). Conflicts only in `CHANGELOG.md` and `SESSION_HANDOFF.md`; kept both sides. **Inherited** main's Alembic **0016** (tenant RLS); did not author a competing 0016 or rewrite Devin Reliability. Schema still **0.22.0**; open #412 keeps **0.20.0**. Probe/Patch not expanded. **Did not merge #458.**
+- Commands run and results (executed): `make check` pass (schema 0.22.0, 156 files); focused 7A+7C+review+jobs+llm+sandbox+migrations+tenant **96 passed**, 1 skipped; `uv run pytest -q` **833 passed**, 15 skipped. FakeLLM, not live Anthropic.
+- Next: push so required checks including `backend / test` can run. Leave #458 open.
+- Warnings: **leave the PR open**. Merge NO-GO.
+
+### 2026-10-24 — Cursor (agent, Alan) — fix backend test after main merge into #458 (do not merge)
+- Did: `backend / test` failed on `9486a5b0`. Seed used `AssessmentState.completed` after the enum became `COMPLETED`; recipe POST routes were hit with GET (405). Fixed `deploy/sandbox_target.py` and `backend/tests/test_sandbox_target.py`. Cleaned leftover merge conflict markers in changelog/handoff/ALAN.md. **Did not merge. Did not expand Probe/Patch. Schema still 0.22.0.**
+- Commands run and results (executed): `uv run pytest -q backend/tests/test_sandbox_target.py` — **1 passed**.
+- Next: wait for GitHub Actions on the follow-up SHA. Leave #458 open.
+- Warnings: **leave the PR open**. Merge NO-GO.
 
 ### 2026-10-25 — Devin (agent, Adam) — e2e spec updates + landing 320px overflow fix on `feat/adam/home-deep-sea-landing` (PR #536)
 - Did: PR #536 e2e CI failed on 8 tests — all caused by the intended new UI, plus one real bug. Updated specs to the new DOM: `demo-recovery.spec.ts` (rail nav 'Project' has 11 links, no MORE `summary` dropdown; '7 Agents' casing), `pages.spec.ts` (removed the `summary` click before the Expectations aria-current check), `journey.spec.ts` ('7 agents' → '7 Agents' PageTitle), `landing.spec.ts` (`.hero-content p` 0 → 2: kicker + lede). REAL BUG FIXED: `.stat-num` "Never" in Sixtyfour at `text-6xl` measured ~306px wide inside a 248px card → pushed `documentElement.scrollWidth` to 342 at 320px viewport → clamped to `text-[clamp(2.25rem,15vw,3.75rem)] md:text-7xl` in `components/story.tsx` (verified scrollWidth = viewport at 1440/390/320).
@@ -261,11 +293,78 @@ adds an entry before ending.
 - Decisions: avoided PR #458's file set entirely (no changes to jobs/worker/llm/live_defense agent internals). `control_channels.hmac_secret` plaintext storage is documented as residual risk — fixing it needs a KMS story, not a regex. No contract/schema changes (SCHEMA_VERSION untouched); migration `0016` only adds a column.
 - Warnings for the next session: `require_user` now rate-limits — tests sharing a user >60 authed calls/min will 429 (conftest clears limiter state per test). Reconnect re-verifies `can_connect`, so reconnecting an App repo requires the access row to still exist or be refreshable. Ops note: server-side disconnect does not revoke the GitHub App installation — customers must uninstall App-side to fully revoke.
 
+### 2026-10-25 — Devin (agent, Alan) — N4 read-side secret redaction (Codex RC2)
+- Did: owned the N4 read surfaces per `coordination/messages/2026-10-25-rc2-n-findings-owner-fixes.md`. `GET /api/v1/jobs/{id}` now `redact()`s `last_error` (minus `trace`) and `result`; `GET /api/v1/audit` redacts each returned `AuditEvent` doc (owner gate unchanged); observability `error_code` fields (`InvocationJobView`, diagnostics `recent_errors`) go through `redact_text` (messages already did). `backend/redaction.py` gained DSN-userinfo (`postgres|mysql|mongodb|redis|amqp` `://user:pass@` → `scheme://[REDACTED:dsn_credentials]@`) and `key=value`/`key: value` secret patterns — same regexes as the richer `integration/2026-11-02-release` copy, so the merge resolves to the union. Redaction is at read time, so previously stored unsanitized rows are covered.
+- Coordination: `coordination/messages/20261025T063000Z-devin-to-reliability-n4-read-side-redaction-split.md` — asked Reliability Devin to wrap `execution.history()` in `redact()` inside `api/execution.py` (`/jobs/{id}/history` lives on their branch; editing it here would add/add-conflict) and to sanitize `job_events.reason`/`details`/`recovery_notes` at write. Could not post on upstream #559 (no upstream write).
+- Commands run and results (executed): `pytest backend/tests/test_live_defense_investigations.py` (19/19, incl. ported RC2 probe `test_job_api_does_not_expose_infrastructure_credentials`, viewer-surface, stored-events-shape, and audit redaction tests), `make check` (ruff + contract freshness clean), `uv run mypy` clean.
+- Warnings: `api/routes.py::get_job` now wraps values in `redact()` — when the reliability branch merges, its new fields (`recovery`, `error_category`, …) should also flow through `redact`; verify at merge. Do not merge PR m-alan08/ari-ai#3.
+
 ### 2026-10-24 — Devin (agent, Adam) — leaked Vercel snapshot cleanup, push→agents verification
 - Did: verified the named-sandbox snapshot-leak fix already on main (`persistent: False` on run boxes + `destroy` in teardown + `_sweep_stale`); opened PR #495 making the sweep also delete stale run boxes' orphan snapshots so leaked quota is actually freed. Confirmed `delete_orphan_snapshots` only removes snapshots created *by* the destroyed sandbox — the shared `ari-base-*` snapshot can never be an orphan of a run box. Verified on main: security-agents suite 581 passed / 24 skipped, frontend typecheck + 330 vitest + lint clean, standards smoke (CWE/OWASP/CVSS/ATT&CK/D3FEND/SARIF/SP 800-115) passes. Confirmed agents are standards-grounded in code: Scout CWE/OWASP, Probe CWE, Trace ATT&CK/CVSS, Diagnose D3FEND, Fortify CWE/D3FEND; Patch/Verify get standards context via the tagged finding + remediation plan, not prompts.
 - State of the code: push→agents path gates are code-verified (`pipeline.process_github_delivery` → `auto_commits.schedule` → `assess_github_commit`): `repositories.automatic_assessments` (per-repo opt-in, UI switch exists), `GITHUB_AUTO_COMMIT_AUTHORS` (Railway entrypoint defaults `*`), `monitoring_policy.enabled` (project setting, UI switch), active `AuthorizedScope`. All four must be on for pushes to spawn runs — they are product gates, not bugs.
 - Commands run and results (executed): `pytest security-agents/tests -q` (581 passed), `pytest tests/test_vercel_sandbox.py` (5 passed incl. new sweep test), `npm run typecheck/lint/test --prefix frontend` (clean, 330 passed), `python -m security_agents.standards.smoke` (validated).
 - Warnings for the next session: prod-side flags still need flipping per repo (Automatic runs ON, monitoring enabled, scope approved) — DB/config, not code. Already-orphaned snapshots (sandbox deleted without orphan cleanup) can't be reached by the sweep; they expire on their TTL or need `sandbox snapshots delete` with Vercel creds.
+
+### 2026-10-24 — Cursor (agent, Alan) — Codex F1/F7/F8 on #458 (do not merge)
+- Did: Implemented Codex combined-release findings F1/F7/F8 on existing `feat/alan/live-defense-phase7c-agent-execution`. Six original Phase 7C security fixes preserved. **Did not merge #458. Did not start Phase 7D. Did not expand Probe/Patch/Verify/Trace/Fortify. Did not rewrite `jobs.py`. Did not take Alembic 0016.** Schema still **0.22.0**; open #412 keeps **0.20.0**.
+- F1: `ProviderAttempt` ledger on invocation JSONB; reserve before `complete()`; crash → `uncertain`; no automatic second billable request; in-flight → `JobDeferred`; Anthropic `Idempotency-Key`; intel reads not ledgered.
+- F7: one overall `deadline_at` on decision, invocation, and agent-step payload; not reset on worker retry; expired refuses another provider call; distinct from cancel/provider failure.
+- F8: recheck OFF/`cancel_requested` immediately before persist; commit cancelled **before** raising `JobCancelled` so the transaction is not rolled back; partial transcript/cost kept; cancelled cannot become executed.
+- Commands run and results (executed): `make check` pass (schema 0.22.0, 156 files); `uv run mypy` 40 files; focused 7A+7C+review+jobs+llm **76 passed**, 1 skipped (live smoke). FakeLLM, not live Anthropic. e2e skipped (UI unchanged).
+- Next: independent re-review of F1/F7/F8. Leave #458 open. Coordinate queue lifecycle with Devin Reliability (`ctx.effect` around billable `complete()` only).
+- Warnings: **leave the PR open**. Merge NO-GO. Do not merge Devin branches. Do not wrap all read-only ops in effect guards.
+
+### 2026-10-24 — Cursor (agent, Alan) — Phase 7C MERGEABLE + Devin compatibility review (do not merge #458)
+- Did: Six security-review findings remain intact on conflict-free #458. Merged `origin/main` through `d1864e9a` (#513 eval cases). **Did not cherry-pick or merge** Devin fork work (`m-alan08/ari-ai` PRs 1–3). **Did not start Phase 7D.** Schema still **0.22.0**; open #412 keeps **0.20.0**; Alembic stays **0015**. Probe/Patch not expanded. No AUTO-EXECUTE.
+- Devin review (read-only, not merged):
+  - PR1 execution reliability (`feat/devin-execution-reliability`, 0016): complementary job lifecycle (`waiting`/`timed_out`/`recovery_required`, `ctx.effect()`, `deadline_s`). Does not contain 7C `JobDeferred` / `jobs.defer`. Do not wrap Scout/Diagnose LLM in `ctx.effect()` — that would block crash-in-progress rerun that finding 6 requires. Diagnose `depends_on` could later replace defer polling after 7C lands.
+  - PR2 live-defense E2E: stacked on six-fix head `db0a631d`, test-only. Scenarios A–H would exercise latest 7C (partial transcript, crash CAS, OFF, no AUTO-EXECUTE) after a rebase onto this MERGEABLE head. Does not cover canonical intel, cache-creation USD, or Diagnose defer attempts.
+  - PR3 investigation observability (schema **0.23.0**): read-only Executions tab can consume 7C `AgentExecutionRecord` JSONB via looser `AgentExecutionView`. UI must keep `evidence_verified=false` / `confirmation=unverified` from 7C writes; the view type allows a bool and could display “verified” if a record were tampered.
+- Commands run and results (executed on 7C+main `15aa6cf8`, eval-cases merge is JSON-only): `make check` pass (schema 0.22.0, 155 files); `uv run mypy` 40 files; focused 7A+7C+review+jobs+llm **72 passed**, 1 skipped (live smoke); prior broader on this merge: pytest **812 passed**, 14 skipped; security-agents **593 passed**, 23 skipped; frontend vitest **337 passed** / 79 files; transport **35 passed**. FakeLLM, not live Anthropic.
+- Next: independent security re-review of #458. Leave open. Do not merge.
+- Warnings: **leave the PR open**. Merge NO-GO until Alan’s security approval. Live Anthropic UNVERIFIED (issue #10). Do not merge Devin branches into #458.
+
+### 2026-10-24 — Cursor (agent, Alan) — merge origin/main into #458 (do not merge the PR)
+- Did: PR #458 was **DIRTY** vs `origin/main`, so GitHub Actions never queued on `db0a631d`. Merged `origin/main` (`be8fe67a`) into `feat/alan/live-defense-phase7c-agent-execution`. Kept both Unreleased changelog bullets and both 2026-10-24 handoff entries. Six security-review fixes preserved (canonical intel, partial evidence, deadlines, cache-creation cost, Diagnose defer, idempotent redelivery). Schema still **0.22.0**; open #412 keeps **0.20.0**. Generated contracts auto-merged and `shared.export --check` was clean (155 files). **Did not merge #458. Did not open a replacement PR.** Probe/Patch not expanded. No AUTO-EXECUTE.
+- Commands run and results (executed): `make check` pass (schema 0.22.0); `uv run mypy` 40 files; focused 7C+review+jobs+llm **51 passed**, 1 skipped; `uv run pytest -q` **812 passed**, 14 skipped; security-agents **593 passed**, 23 skipped; frontend lint/typecheck; vitest **337 passed** / 79 files; transport **35 passed**.
+- Next: push existing branch; confirm mergeability and whether Actions auto-start. Independent security re-review. Leave #458 open.
+- Warnings: **leave the PR open**. Merge NO-GO until independent re-review. Live Anthropic still UNVERIFIED (issue #10).
+
+### 2026-10-24 — Cursor (agent, Alan) — Phase 7C security-review NO-GO fixes (do not merge #458)
+- Did: Alan security review of PR #458 was **NO-GO**. Fixed all six findings on the existing branch (`feat/alan/live-defense-phase7c-agent-execution`, reviewed head was `c4dcfa40`). Canonical intel via `CodeIntelligenceAdapter` (LocalIntel only with explicit `SECURITY_AGENTS_LABELS`); `LLMError` → structured `LLMUnavailable` with persisted partial transcripts; remaining deadline + bounded retries; cache-creation in `backend.llm.cost_usd`; Diagnose enqueued only after Scout terminal (`jobs.defer` does not burn attempts); idempotent redelivery with executed-sticky CAS. **Did not merge. Did not open a replacement PR.** Schema still **0.22.0**; #412 keeps **0.20.0**. Probe/Patch not expanded. No AUTO-EXECUTE.
+- Commands run and results (executed):
+  - `make check` — ruff pass; format 198 files; `shared.export --check` 155 files; examples check pass; schema 0.22.0
+  - `uv run mypy` — Success: no issues found in 40 source files
+  - `uv run pytest -q` — **806 passed**, 15 skipped (opt-in live LLM, Docker, RL package, TSC, specialists cache)
+  - focused 7C + review + jobs + llm gateway — **50 passed**, 1 skipped (live smoke)
+  - `cd security-agents && /workspace/.venv/bin/python -m pytest tests -q` — **592 passed**, 23 skipped
+  - `npm run lint/typecheck --prefix frontend` — pass
+  - `npm test --prefix frontend` — **330 passed** / 78 files
+  - `npm test --prefix frontend/transport` — **35 passed**
+  - Playwright 7A+7C via `frontend/tests/e2e/stack.py` — **2 passed** (15.4s); FakeLLM labelled, not live Anthropic
+- Next: independent security re-review. Leave #458 open.
+- Warnings: **leave the PR open**. Live Anthropic still UNVERIFIED (issue #10). Re-review GO, merge NO-GO until independent review accepts.
+
+### 2026-10-24 — Cursor (agent, Alan) — Phase 7C CI e2e harness (do not merge #458)
+- Did: required GitHub `e2e` on `c56480da` (PR #458) failed; `backend / test` **passed**. Harness-only fix: e2e snapshot `doc` is a valid `Snapshot` with status **indexing** (not ready) so `list_snapshots` no longer 500s and pages.spec still shows "No indexed snapshot"; 7C mapping created via signed-in CSRF `POST /applications/{id}/deploy-mappings` because Playwright `selectOption` left Attest disabled in the full suite. **Did not** expand Probe/Patch, bump schema, or collide with #412's 0.20.0 (still 0.22.0 / Alembic 0015). **Did not merge #458.**
+- Commands run and results (executed): ruff on `frontend/tests/e2e/stack.py` pass; Snapshot.model_validate of the new indexing doc pass. GitHub CI on the follow-up SHA is the remaining proof.
+- Next: wait for required checks on the new head; leave #458 open for Alan's security review if they pass.
+- Warnings: **leave the PR open**. Execution trust-boundary expansion. No AUTO-EXECUTE. No Probe/Patch expansion.
+
+### 2026-10-24 — Cursor (agent, Alan) — Live Defense Phase 7C agent execution
+- Did: PR https://github.com/adamissac/ari-ai/pull/458 on `feat/alan/live-defense-phase7c-agent-execution` from live `origin/main` `04c562a9` (PR #439 Phase 7A merged). **Left open.** Wired first-responder `live_defense_agent_step` to `security_agents.runtime.run_agent` for **Scout** (mapping+snapshot) and **Diagnose** (after Scout hypotheses). Probe/Patch/Verify privileges not expanded. Trace `skipped_no_prerequisite` until confirmed Probe. Fortify `skipped_no_prerequisite` without independently executed `verification_results`. Persisted `AgentExecutionRecord` (cost, latency, tools, transcript, integrity). `predicted_probability` stays null. Decision `executed` stays false. Schema **0.22.0** additive; Alembic stays **0015**. Open #412 keeps **0.20.0**. Orchestrator `7c.1.0`. Message: `coordination/messages/20261024T064500Z-alan-to-all-live-defense-phase7c-contracts.md`. Eval: `docs/LIVE_DEFENSE_PHASE7C_AGENT_EXECUTION.md`. **Leave PR open** — execution trust-boundary expansion; do not merge from this agent. Did **not** train RL, enable AUTO-EXECUTE, expand Probe/Patch, or grant production.
+- Commands run and results (executed):
+  - `make check` — ruff pass; format 197 files; `shared.export --check` 155 files; examples check pass; schema 0.22.0
+  - `uv run mypy` — Success: no issues found in 40 source files
+  - `uv run pytest -q` — **781 passed**, 15 skipped (opt-in live LLM, Docker, RL package, TSC, specialists cache)
+  - focused 7A+7C+jobs+no-action — 38 passed
+  - live-defense phase4/5/6 + authorize + tests/security — 79 passed
+  - `security-agents` pytest — **592 passed**, 23 skipped
+  - `npm run lint/typecheck` — pass; `npm test --prefix frontend` — **330 passed** / 78 files; transport **35 passed**
+  - Playwright `stack.py` live-defense-phase7a + phase7c — **2 passed** (16.6s). 7C: Scout/Diagnose executed (fake), integrity checked, Fortify/Trace skipped, AUTO-EXECUTE absent
+- Decisions: do not merge. Security review required because first-responder now runs real agent loops. #412 rebases to 0.23.0+ if this lands first. Live Anthropic remains opt-in (issue #10); this e2e used FakeLLM.
+- Next: human/security review of the PR. Do not train RL from these records yet.
+- Warnings: **leave the PR open**. This is not Probe expansion, not AUTO-EXECUTE, not customer production, not Codex Phase 7B.
 
 ### 2026-10-24 — Cursor (agent, Alan) — rebase #439 onto main (docs conflicts)
 - Did: left PR #439 **open** (no merge, no Phase 7B, no RL training, no customer enforcement). GitHub had blocked required checks with **Checks awaiting conflict resolution** on only `CHANGELOG.md` and `docs/planning/SESSION_HANDOFF.md`. Fetched `origin/main` `c5c2b47d` (PR #453) and rebased `cursor/live-defense-first-responder-0044`. Resolved those two files by keeping **both** sides: main’s Unreleased fixture-only research bullet and Adam 2026-10-23 build-recipe handoff, plus this PR’s Phase 7A 0.21.0 Unreleased bullet and Alan 2026-10-24 Codex/Phase 7A handoff entries. Did **not** drop the four Codex security fixes (verified evidence, genuine provider acks, telemetry-window mapping, OFF-mode race). Schema still **0.21.0**; Alembic still `0015`. Main remains 0.19.0 / `0014`. Open #412 still **0.20.0** with no Alembic — no collision, no bump.
@@ -304,6 +403,19 @@ adds an entry before ending.
 - State: tests in `backend/tests/test_build_recipes.py` (real git over a file:// remote, real Postgres, GitHub App and Claude faked). Dry run `uv run python -m backend.recipes <checkout>` on ari-ai with its recipe removed reproduces the hand-written `app_factory` choice (`backend.main:create_app` behind a harness), `/api/v1` prefixes and the same six pip pins; on payments-lite it reproduces `payments_lite.app:create_app` and `-q tests`.
 - Not verified: a live Claude draft (no key locally) and a real GitHub PR; the first connect in production is the first live run.
 - Warnings: code-intelligence redaction can turn valid Python into a syntax error (e.g. `backend/backend/main.py` line 137, `webhook_secret_configured=bool(` becomes `[REDACTED]`), so the index silently drops those files; the generator parses the raw blob locally for app/prefix discovery, but routes in such files are missing from the index and so never proposed.
+
+### 2026-10-23 — Cursor (agent, Alan) — Phase 6.5 RL-gated pilot infrastructure
+- Did: branch `feat/live-defense-phase6-5-rl-gated-pilot` from live `origin/main` `74a0a3c2` (PR #410 merged after #411 `5d1e7b91`). Additive `shared` 0.20.0: `rl_gated_pilot`, `RlReadinessAssessment` A–J, evaluation plan with null thresholds, `PolicyServingOutput`, hosted-inference config. Server-enforced shadow-only (API + worker + existing 15-check `application_registered` tightening). Backend `GET /rl-readiness` is the dashboard source of truth; `ready` stays false. Codex/`rl-defense/` training, datasets, holdout, v6 weights, historical evals **not edited**. No Phase 7, no customer infra.
+- Live GitHub: #411 MERGED `5d1e7b91`; Codex #388/#394/#396/#407/#410 MERGED. #410 is explicit inconclusive readiness — not model readiness.
+- Commands (executed):
+  - `uv run pytest -q backend/tests/test_live_defense_phase6_5.py backend/tests/test_live_defense_authorize.py` — 25 passed
+  - `npm run lint --prefix frontend` — pass; `npm run typecheck --prefix frontend` — pass
+  - `npm test --prefix frontend` — 331 passed / 78 files
+  - `npm test --prefix frontend/transport` — 35 passed
+  - Playwright e2e stack: **not run** (honest skip). Spec added for the Readiness tab.
+- Decisions: **INFRASTRUCTURE READY — RL BLOCKED**. Distinct from Phase 6 CONDITIONAL GO. Authz tightening left for human review; do not treat infrastructure completeness as customer deployment.
+- PR: https://github.com/adamissac/ari-ai/pull/412 — **left open** (authz tightening; no unapproved serving).
+- Next: human review of #412; RL owner must supply A–J evidence before any later owner-approval verdict. Do not start Phase 7.
 
 ### 2026-10-23 — Cursor (agent, Alan) — Phase 6 Codex P1/P2 before merge
 - Did: on `feat/live-defense-phase6-pilot-audit` (PR #411), locked the application row in `gate_for` and disconnect so leftover execute cannot race a concurrent disconnect; counted `run_assessment` jobs via `assessment_id`; kept recovered `last_error` on the pilot trail as `job.recovered`. Tightening only; `AUTHORIZATION_CHECKS` still 15. No Phase 7.
@@ -1923,13 +2035,128 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - Branch `feat/adam/agent-visibility-not-needed`: relay/team list now label skipped agents 'Not needed' (with the recorded skip note) or 'Not reached' on failed/cancelled runs. `earlyEndNote` in `frontend/lib/relay.ts` reads the reason from persisted `state_changed` events.
 - Next: expand `security-agents/evals/commits/cases.json` toward ~40 cases, add check templates to lift `vuln validated` off 0/7 (only ownership + bounds templates exist).
 
+## 2026-10-24 — Devin (Alan): execution reliability — Codex review fixes (F2–F5, F1/F7 contract)
+
+- Codex review `codex/first-responder-integration-review` (NO-GO) assigned queue defects F2–F5 to this branch; all fixed.
+- F2: `EMERGENCY_JOB_KINDS` (emergency_stop/rollback/expire) claim under a bounded reserve `JOB_MAX_RUNNING_EMERGENCY` (default 2), exempt from project/global caps and not consuming ordinary slots; `live_defense_execute`/`verify` remain limited.
+- F3: `jobs.complete`/`jobs.fail` fence on a live lease (DB clock); expired workers cannot report outcomes; original owner's late `recovery_required` completion stays the audited exception.
+- F4: `jobs.defer(delay_s=|depends_on=)` — validated transition + `job_events`, `defer_count` makes it neutral on the retry budget, cancel/deadline precedence, refused after uncertain effects. For Grok's Diagnose scheduling.
+- F5: `modes.cancel_first_responder_jobs` now covers `waiting` (→ cancelled) and flags `recovery_required` `cancel_requested` without erasing effect evidence.
+- F1/F7 contract sent to Grok: `ctx.effect("provider:<job_id>:<attempt>:<seq>")` for billable requests (no replay of unknown outcomes); `enqueue(deadline_at=)` propagates the absolute FR deadline. See `coordination/messages/20261024T233000Z-devin-to-grok-f1-f7-queue-contract.md`.
+- Migration `0016` gained `jobs.defer_count` (additive, same revision).
+
+## 2026-10-25 — Devin (Alan): execution reliability — Codex re-review fix R5
+
+- R5 (release re-review `codex/release-0019-rereview`, `test_abrupt_process_death_during_provider_send_requires_recovery`): abrupt worker death during a provider send left `effect_state` NULL even though `provider_ledger.reserve_attempt` had committed `in_flight` — reconcile requeued the job instead of `recovery_required`.
+- Fix (queue side, Codex's option B): `execution.reconcile` now consults the billable-request ledger for expired-lease jobs whose payload carries `invocation_id` — a `first_responder_invocations` doc with `execution.uncertain_provider_outcome` or a `provider_attempts` row in `reserved`/`in_flight`/`sent`/`uncertain` → `recovery_required`, with owner/attempt fencing and the attempt's idempotency/effect key audited in `recovery`. Read via tolerant JSONB, so pre-ledger docs carry no uncertainty; no import of Grok's models.
+- Option A stays available to ledger writers: `jobs.begin_effect(conn, job_id, owner, key)` inside the reservation transaction commits job uncertainty atomically with the reservation.
+- `jobs._ROW_COLS` now selects `payload` (needed by the reconcile probe; `.mappings()` consumers unaffected).
+- 5 new tests in `backend/tests/test_execution_reliability.py` (in_flight → recovery + audited operator resolution; uncertain flag; settled-only → requeue; missing invocation → requeue; atomic reservation path).
+- Codex's repro file itself (`test_release_rereview.py`) needs the `live_defense_e2e` harness, which lives only on the integration/codex branches — semantics ported into the reliability file; the composed tree must re-run the strict green assertion.
+
+## 2026-10-24 — Devin (Alan): execution reliability — Codex review fixes (F2–F5, F1/F7 contract)
+
+- Codex review `codex/first-responder-integration-review` (NO-GO) assigned queue defects F2–F5 to this branch; all fixed.
+- F2: `EMERGENCY_JOB_KINDS` (emergency_stop/rollback/expire) claim under a bounded reserve `JOB_MAX_RUNNING_EMERGENCY` (default 2), exempt from project/global caps and not consuming ordinary slots; `live_defense_execute`/`verify` remain limited.
+- F3: `jobs.complete`/`jobs.fail` fence on a live lease (DB clock); expired workers cannot report outcomes; original owner's late `recovery_required` completion stays the audited exception.
+- F4: `jobs.defer(delay_s=|depends_on=)` — validated transition + `job_events`, `defer_count` makes it neutral on the retry budget, cancel/deadline precedence, refused after uncertain effects. For Grok's Diagnose scheduling.
+- F5: `modes.cancel_first_responder_jobs` now covers `waiting` (→ cancelled) and flags `recovery_required` `cancel_requested` without erasing effect evidence.
+- F1/F7 contract sent to Grok: `ctx.effect("provider:<job_id>:<attempt>:<seq>")` for billable requests (no replay of unknown outcomes); `enqueue(deadline_at=)` propagates the absolute FR deadline. See `coordination/messages/20261024T233000Z-devin-to-grok-f1-f7-queue-contract.md`.
+- Migration `0016` gained `jobs.defer_count` (additive, same revision).
+
+## 2026-10-25 — Devin (Alan): execution reliability — Codex re-review fix R5
+
+- R5 (release re-review `codex/release-0019-rereview`, `test_abrupt_process_death_during_provider_send_requires_recovery`): abrupt worker death during a provider send left `effect_state` NULL even though `provider_ledger.reserve_attempt` had committed `in_flight` — reconcile requeued the job instead of `recovery_required`.
+- Fix (queue side, Codex's option B): `execution.reconcile` now consults the billable-request ledger for expired-lease jobs whose payload carries `invocation_id` — a `first_responder_invocations` doc with `execution.uncertain_provider_outcome` or a `provider_attempts` row in `reserved`/`in_flight`/`sent`/`uncertain` → `recovery_required`, with owner/attempt fencing and the attempt's idempotency/effect key audited in `recovery`. Read via tolerant JSONB, so pre-ledger docs carry no uncertainty; no import of Grok's models.
+- Option A stays available to ledger writers: `jobs.begin_effect(conn, job_id, owner, key)` inside the reservation transaction commits job uncertainty atomically with the reservation.
+- `jobs._ROW_COLS` now selects `payload` (needed by the reconcile probe; `.mappings()` consumers unaffected).
+- 5 new tests in `backend/tests/test_execution_reliability.py` (in_flight → recovery + audited operator resolution; uncertain flag; settled-only → requeue; missing invocation → requeue; atomic reservation path).
+- Codex's repro file itself (`test_release_rereview.py`) needs the `live_defense_e2e` harness, which lives only on the integration/codex branches — semantics ported into the reliability file; the composed tree must re-run the strict green assertion.
+
+## 2026-10-25 — Devin (Alan): execution reliability — Codex RC2 fixes N3/N4
+
+- Codex RC2 review `codex/rc2-independent-review` (NO-GO on 3f16c99f) assigned
+  N4 (P1, shared with Observability Devin) and N3 (P2, shared with Grok's
+  provider-ledger owner). Probes: `test_rc2_independent.py` —
+  `test_viewer_history_does_not_bypass_job_error_redaction`,
+  `test_job_api_does_not_expose_infrastructure_credentials`,
+  `test_operator_confirmed_retry_resolves_provider_ledger`,
+  `test_fast_reclaim_cannot_hide_unresolved_provider_from_reconciler`.
+- N3 — one durable fenced recovery protocol, all inside the same transactions:
+  * `jobs.unresolved_billable_attempt` moved to `jobs.py` and now runs in
+    `claim` on every picked row — a fast reclaim beating the reconciler can
+    never hand a job with an unresolved billable ledger row to a worker; it
+    transitions `running->recovery_required` (fenced diag + audited event)
+    and the claim loop moves on.
+  * `execution.resolve_recovery` closes the ledger in the same transaction as
+    the job transition: `applied` -> attempts `settled`, `not_applied`/`retry`
+    -> attempts `cancelled`, `uncertain_provider_outcome` cleared (only
+    unresolved states touched; uses existing ProviderAttemptState values so
+    the doc still validates). A `retry` could otherwise requeue while the
+    ledger still blocked the next reservation — or replay a billable call.
+- N4 — `jobs.fail` sanitized `last_error` but wrote the raw exception into
+  `job_events.reason` (viewer-readable via `/jobs/{id}/history`). Fixed:
+  `record_event` redacts reason+details, `transition` redacts
+  last_error/recovery/result, `fail` redacts stored error; read-side scrub in
+  `execution.history`, `stuck_jobs` recovery and `GET /jobs/{id}` covers rows
+  written before the fix. `redaction.py` gained URI-userinfo and
+  credential `key=value` patterns (postgresql://svc:pass@host wasn't caught).
+  Role authorization unchanged (viewer reads, owner resolves).
+- Literal RC2 probes run only on the composed tree (live_defense_e2e harness);
+  semantics asserted strict in `backend/tests/test_execution_reliability.py`
+  (+7 tests, file now 59). Suite: 377 passed, 7 skipped.
+
+## 2026-10-25 — Devin (Alan): execution reliability — Codex review 3 fix N7
+
+- Codex third review (`docs/reviews/corrected-independent/REPORT.md` @
+  upstream `codex/release-independent-security` `abf6b316`, NO-GO on 77897e76):
+  my generic `key=value` pattern had been merged into
+  `_HIGH_CONFIDENCE_PATTERNS`, which `redact_code` also applies — it rewrote
+  non-secret expressions (`api_key=os.environ["API_KEY"]` →
+  `api_key=[REDACTED]"API_KEY"]`), corrupting persisted diff artifacts.
+- Fix on `feat/devin-execution-reliability`: `backend/backend/redaction.py`
+  synced to the upstream structure; the generic kv matcher is now
+  `_GENERIC_KV_PATTERN`, free-text only (`_PATTERNS`/`redact_text`), and is
+  excluded from `_HIGH_CONFIDENCE_PATTERNS`/`redact_code`. `uri_password`
+  stays in `_HIGH_CONFIDENCE_PATTERNS` before `dsn_credentials`
+  (integration's 77897e76 order), and `find_high_confidence_secret` keeps the
+  dsn-label preference (2dae2207). `ArtifactStore.put_text` now routes
+  `ArtifactKind.diff` through `redact_code`, matching upstream.
+- Verified: Codex's strict N7 file — the two parametrized
+  ArtifactStore.put_text/get roundtrips + ast.parse assertions pass;
+  `test_redact_code.py` + `test_redact_text_gaps.py` (vendored, byte-identical
+  to upstream/main blobs) 14 passed; +2 new regressions in
+  test_execution_reliability.py (file now 61). Suite: 395 passed, 7 skipped —
+  the only failure is Codex's N1 lock-ordering audit test which needs
+  Hardening's `repository_revocation_locked` (not on this branch, not my
+  finding; audit file left unvendored).
+
+## 2026-10-24 — Devin: F6 canonical state precedence + F9 schema coordination
+
+- Codex review (`docs/reviews/first-responder-integration/REPORT.md` @ `6e882045`) findings owned: F6 implemented on `feat/devin-investigation-observability`, F9 coordinated via `coordination/messages/20261024T230000Z-devin-to-all-f6-state-precedence-f9-schema-compat.md`.
+- F6: `FirstResponderInvocationView.effective_state` is the canonical combined state — terminal invocation statuses are authoritative; non-terminal invocations inherit the joined job row (`dead`→`failed`; `waiting`/`timed_out`/`recovery_required`/`cancelled` pass through). `final_state` precedence: cancelled decision → recovery_required → timed_out → failed → cancelled → in_progress → waiting → queued → completed/skipped → evidence_state. Unresolved effects are never shown as success.
+- List API: `InvestigationSummary.job_statuses` rollup from `jobs` (batched GROUP BY). Diagnostics: `jobs_waiting`/`jobs_timed_out`/`jobs_recovery_required`, `WaitingJobView.status`, waiting list covers queued+waiting, latency spans all finished states. Executions UI renders effective_state with job-state notes and new stat cards/badges.
+- Forward-compatible with the execution-reliability branch: new statuses aren't writeable on main (`ck_jobs_status` has the 6-state list); tests widen the constraint exactly like migration 0016 and restore it, exercising the read paths against real persisted rows.
+- F9: #458's `test_live_defense_phase7c.py:130` pins `SCHEMA_VERSION == "0.22.0"` — asked Grok via the message above to change it to a capability/`>=` check; contracts stay 0.23.0, no downgrade. JSON Schema + TS exports verified (`make contracts`, `shared.export --check`, 35/35 transport tests).
+- Evidence: backend 15/15 (precedence matrix, timed_out, recovery_required, waiting, cancelled, partial failure, job_statuses rollup, diagnostics counters), frontend unit 9/9 + full vitest 346/346, transport 35/35, `make check` + `mypy` clean.
+- Next: PR https://github.com/m-alan08/ari-ai/pull/3 stays open; do not merge from the agent.
+
+## 2026-10-24 — Devin: first-responder observability (Executions tab, schema 0.23.0)
+
+- Branch `feat/devin-investigation-observability` (on `m-alan08/ari-ai` fork; upstream push denied): read-only investigation observability over Phase 7A persisted records.
+- New shared DTOs in `shared/live_defense.py` at schema 0.23.0 — 0.20.0 stays reserved for open #412, 0.22.0 for open #458. `AgentExecutionView` mirrors the 7C `AgentExecutionRecord` with all fields optional: works today, populates automatically when #458 lands.
+- New read-only API (`backend/api/live_defense_investigations.py`): bounded investigations list (keyset, limit<=200), decision timeline (events, application, deploy mapping, snapshot resolution, invocations + joined job state, handoff, final state), invocation detail, project diagnostics (stalled leases, status distribution, missing prerequisites, waiting jobs, redacted recent errors, wall-clock latency, cost rollup = unavailable until 7C).
+- New Live Defense "Executions" tab: list + timeline + diagnostics; every missing field renders "unavailable"; no mutation controls.
+- Evidence: `backend/tests/test_live_defense_investigations.py` (9 pass), `frontend/tests/unit/live-defense-executions.test.tsx` (7 pass), `frontend/tests/e2e/live-defense-investigations.spec.ts`, transport methods + node tests.
+- Coordination: `coordination/messages/20261024T182202Z-devin-to-all-live-defense-observability-schema-0-23.md`; status `coordination/status/DEVIN.md`.
+- Next: PR review/merge by a human; do not merge from the agent.
+
 ## 2026-10-24 — Devin (Adam): specialist eval-brain + live eval harness
 
 - `specialists/data/evalcommits.py`: eval cases become minimal pairs (planted edit = CWE/vuln_other positive, original = hard negative), splits pinned by case id; `scout()` merges the 60 rows.
 - Scout retrained and **promoted**: macro_f1 0.349 vs best deterministic baseline 0.084 (static_analyze_patterns). Checkpoint + `results/scout.json`/REPORT.md committed. Other specialists have no field-compatible eval rows — their tuning signal is the live eval scores, not training data.
 - Eval harness: `run.py` cleanup survives missing `gh` auth; `score_api.py` accepts the bare-list assessments response. All 35 cases pushed as `eval/20261024-110115/*` branches; assessments accumulate live pending a fresh `hackatl_session` for scoring + scope widening (`access_control.authentication` category).
 - Test scope fixture (`make_scope` default) now grants all three check categories — required for the f2 listing invariant after the authentication template landed.
-
 ### Connect navigation redesign — commit review + recorded agent replay (feat/adam/commit-review-navigation)
 
 The commit page (`/connect/[org]/[repo]/commit/[sha]`) auto-runs the `/api/analyze`
@@ -2033,3 +2260,23 @@ selected run is still loading.
 - Merge waves belong to the integration lead; wave 2 includes my #542/#543.
 - Prod queue depth (~88 items) makes 45-case live eval slow — some cases may return `pending`/NOT_STARTED; rerun stragglers or extend deadlines.
 - Second-org real-provider leg needs owner's private repo + second GitHub org (account actions).
+## 2026-10-24 — Devin: first-responder observability (Executions tab, schema 0.23.0)
+
+- Branch `feat/devin-investigation-observability` (on `m-alan08/ari-ai` fork; upstream push denied): read-only investigation observability over Phase 7A persisted records.
+- New shared DTOs in `shared/live_defense.py` at schema 0.23.0 — 0.20.0 stays reserved for open #412, 0.22.0 for open #458. `AgentExecutionView` mirrors the 7C `AgentExecutionRecord` with all fields optional: works today, populates automatically when #458 lands.
+- New read-only API (`backend/api/live_defense_investigations.py`): bounded investigations list (keyset, limit<=200), decision timeline (events, application, deploy mapping, snapshot resolution, invocations + joined job state, handoff, final state), invocation detail, project diagnostics (stalled leases, status distribution, missing prerequisites, waiting jobs, redacted recent errors, wall-clock latency, cost rollup = unavailable until 7C).
+- New Live Defense "Executions" tab: list + timeline + diagnostics; every missing field renders "unavailable"; no mutation controls.
+- Evidence: `backend/tests/test_live_defense_investigations.py` (9 pass), `frontend/tests/unit/live-defense-executions.test.tsx` (7 pass), `frontend/tests/e2e/live-defense-investigations.spec.ts`, transport methods + node tests.
+- Coordination: `coordination/messages/20261024T182202Z-devin-to-all-live-defense-observability-schema-0-23.md`; status `coordination/status/DEVIN.md`.
+- Next: PR review/merge by a human; do not merge from the agent.
+
+
+## 2026-10-24 — Devin (Alan): execution reliability workstream
+
+- Branch `feat/devin-execution-reliability` (from upstream/main 58fc015a). Migration `0016` (head pin bumped); no shared contract or `SCHEMA_VERSION` change, so no conflict with #412/#458 schema claims. If another PR lands a `0016` first, renumber this revision's `revision`/`down_revision`.
+- Extends `jobs.py`/`worker.py`: transition table + `job_events`, `ctx.effect` uncertain-effect guard (wired into `live_defense_execute`), reconciliation, fair claims + per-project limits, backpressure, deadlines, retry policies, worker registry; new `backend/backend/execution.py` and `backend/backend/api/execution.py`.
+- Did not touch `live_defense/first_responder.py` (#458). After #458 merges: wrap its provider calls with `ctx.effect` and pass `deadline_s` on `live_defense_agent_step` enqueue.
+- Behaviour change: a cancel-requested job whose lease expired is now `cancelled` (was stuck `running`); `test_jobs_queue.py` updated accordingly.
+- Note: `CHANGELOG.md` on upstream main contains a leftover `|||||||` merge marker under Unreleased (pre-existing, not touched).
+
+- Follow-up review: `end_effect(applied=False)` now keeps a `settled` marker when an earlier effect was already applied (prevents replay of an applied effect); `end_effect` regression test added; control-doc caveat documented.

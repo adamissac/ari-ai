@@ -6,7 +6,7 @@ coordination/CONTRACTS.md.
 """
 
 SCHEMA_VERSION = (
-    "0.26.0"  # 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING;
+    "0.25.0"  # 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING;
     # 0.22 ops readiness (additive): ReadinessStatus gains workers/capabilities/
     #      capabilities_ready/git_sha/schema_version; HealthStatus gains
     #      git_sha/schema_version; new DiagnosticsReport. /readyz consumers only.
@@ -40,8 +40,12 @@ SCHEMA_VERSION = (
     #      default to false (owner must explicitly enable; PR #385).
     # 0.19 ProjectSettings.delivery_mode (auto | pull_request | manual, default auto) and
     #      server-set delivery_authorized_by (additive, ADR-0021).
-    # 0.20 reserved by open PR #412 (Phase 6.5 RL-gated pilot). This branch does
-    #      not claim 0.20.0 so both PRs can land independently.
+    # 0.20 live-defense Phase 6.5 RL-gated pilot infrastructure (additive):
+    #      ConnectedApplication.rl_gated_pilot; RL readiness categories A–J;
+    #      evaluation plan with unset thresholds; policy serving contract;
+    #      hosted-inference readiness config. ready=true only if every mandatory
+    #      category is PASS. Merged research PRs / unit tests / docs are not
+    #      model readiness. No new executable action.
     # 0.21 live-defense Phase 7A first-responder (additive): OFF/MONITOR|SHADOW/
     #      ASSISTED RESPONSE modes, deterministic orchestrator decisions,
     #      seven-agent capability registry, runtime↔code correlation,
@@ -49,8 +53,18 @@ SCHEMA_VERSION = (
     #      No AUTO-EXECUTE. LLM prose is never proof of a confirmed threat.
     #      evidence_state=verified requires independently executed verification
     #      evidence, not Verify eligibility.
-    # 0.23 reserved by upstream PR #458 (Phase 7C); 0.24 reserved by fork PR #3
-    #      (observability); 0.25 reserved by fork PR #6 (customer onboarding).
-    # 0.26 Repository.disconnected_at (additive): canonical disconnect state for
-    #      the repository kill-switch; installation_id is kept as the access record.
+    # 0.23 live-defense Phase 7C live agent execution (additive): genuine
+    #      first-responder agent-loop records (cost, latency, transcript,
+    #      typed output, execution integrity). predicted_probability stays
+    #      null. executed investigative output is not threat confirmation.
+    #      Probe/Patch/Verify privileges are not expanded. Execution lives in
+    #      invocation JSONB plus the durable billable ProviderAttempt ledger,
+    #      invocation deadline_at and idempotent provider redelivery (unknown
+    #      outcomes never replay).
+    # 0.24 first-responder observability (additive, read-only): investigation
+    #      timeline/summary DTOs, invocation view with queue state, execution
+    #      view mirroring the 7C record (all fields optional), diagnostics.
+    # 0.25 pilot security hardening (additive): repositories.disconnected_at
+    #      is the canonical disconnect state; installations remain the access
+    #      record, and disconnect revokes mappings and cancels linked work.
 )
