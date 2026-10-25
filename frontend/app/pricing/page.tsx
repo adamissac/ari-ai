@@ -66,7 +66,7 @@ export default function PricingPage() {
               </div>
               {PLANS.map(plan => (
                 <div key={plan.id} className="mk-plan" role="row" data-testid={`plan-${plan.id}`} data-recommended={plan.recommended || undefined}>
-                  <span role="cell"><b>{plan.name}</b><small>{plan.tagline}</small></span>
+                  <span role="cell"><span className="mk-plan-title"><h2>{plan.name}</h2>{plan.recommended && <span className="mk-plan-tag">Recommended</span>}</span><small>{plan.tagline}</small></span>
                   <span role="cell" className="mk-plan-price">{plan.monthlyUsd === null ? 'Contact us' : usd(plan.monthlyUsd)}</span>
                   <span role="cell"><i>Full assessments </i>{plan.assessments ?? 'Custom'}</span>
                   <span role="cell"><i>Assessed lines </i>{plan.sourceLines}</span>
