@@ -20,9 +20,10 @@ test('organization → repository → commit keeps real agent work and replay in
     { sha: otherSha, message: 'A different commit', author: 'test-author', committed_at: null, html_url: null },
   ], next_cursor: null, available: true, reason: null } }));
   await page.goto(`/connect/${org}`);
-  await page.getByTestId(`connect-repo-${full}`).getByRole('button').click();
+  await page.getByTestId(`connect-repo-${full}`).getByRole('button', { name: 'Continue setup' }).click();
   await expect(page).toHaveURL(/\/projects\/[^/]+\/setup\?repo=/);
   await expect(page.getByTestId('repo-setup')).toBeVisible();
+  await expect(page.locator('[data-testid^="setup-step-"]')).toHaveCount(1);
   await page.goto(base);
   await expect(page).toHaveURL(base);
   await expect(page.locator('main')).not.toContainText('sibling-repository');
