@@ -1744,6 +1744,31 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - Cleanup done: 12 eval fix PRs (#499–511) closed, 45 `eval/20261024-110115/*` branches deleted.
 - Transport lesson: `GET /projects/{id}/findings` items are AJV-validated against `Finding` (`additionalProperties: false`) — extra keys in the response break the console. Keep list items contract-shaped.
 
+## 2026-10-24 — Devin (Adam): functional-reviewer eval report + scorer regression lock
+
+- Audited `code_review` end to end against the standalone-reviewer brief and wrote the
+  consolidated report: `code-review/eval/REVIEWER_EVAL_2026-10-24.md` (journey trace,
+  executed corpus report, functional-vs-security performance table, before/after
+  evidence, supported scope, honest gaps).
+- Executed: `uv run pytest -q code-review/tests` → 90 passed / 4 skipped;
+  `uv run python -m code_review.eval_corpus` → 10/10 labels proven by oracle execution.
+- Reproduced the PR #516 serialization defect offline (list-doc findings lack `paths` →
+  old scorer scored every finding as off-file → false negatives); verified the merged
+  evidence-`source_span` fallback and locked it with a new suite
+  `security-agents/tests/test_eval_score_api.py` (5 tests). `_finding_paths` hoisted to
+  module level for testability — no behavior change.
+- Coordination note filed: `coordination/messages/20261024T214033Z-adam-to-all-findings-serialization-contract.md`
+  — findings list items stay contract-shaped (`additionalProperties:false`); any future
+  `paths` re-addition must go contract-first.
+- Gaps left honest: 45-case per-case scored JSON still not committed (only handoff
+  prose + the earlier 23-case baseline file); live `test_live_corpus.py` not run
+  (opt-in, paid, no key on this box); Probe template count still binds `validated`.
+- Follow-up (same session): PR #530 (`feat/adam/release-gate`) edits the same
+  `score_api.py` region and keeps `_finding_paths` nested inside `main()` —
+  whichever PR merges second must rebase that hunk. Resolution: keep #529's
+  module-level function (the new test imports it) + take #530's
+  `scored`/`unscored_reason`/`TERMINAL` additions. Comment left on PR #529.
+
 ## 2026-10-24 — Devin (Adam): access_control.role check template
 
 - Probe's 4th template: `access_control.role@1` — restricted fixture identity must be denied on a mutating route while a permitted one keeps access. Covers viewer→member and member→owner holes with one renderer.
