@@ -20,10 +20,10 @@ explicit exclusion (bottom of document), not a "maybe".
 |---|---|---|
 | Manual assessment budget | 400k tokens / **$10** / 1,800 s wall clock per run | `shared/shared/tenancy.py` `Budget` defaults |
 | Monitoring-run budget | 150k tokens / **$3** / 900 s per push-triggered run | `TriggerPolicy.monitoring_budget` default |
-| Assessment starts | 5 per hour per project | `settings.assessment_starts_per_hour` |
+| Shared project review quota | 10 per rolling hour and 50 per rolling day across all triggers | `project_assessments_per_hour`, `project_assessments_per_day` |
 | API rate limit | 60 requests/min per key (in-process limiter) | `backend/backend/api/deps.py` |
-| Automatic (push-triggered) runs | 5/hour and 20/day per project; excess is **deferred**, not dropped | `auto_commits.py` rate-window check |
-| Global daily auto spend | **$50/day across all projects**; over-cap runs defer up to 1 h | `settings.automatic_usd_per_day`, `auto_commits.py:315` |
+| Automatic (push-triggered) runs | Share the project quota; over-quota runs are recorded as skipped and not retried | `backend/backend/quota.py`, `auto_commits.py` |
+| Global daily assessment spend | **$50/day across all projects and triggers**; over-cap starts are blocked | `settings.assessments_usd_per_day`, `backend/backend/quota.py` |
 | Worker concurrency | 12 commits at once (`WORKER_PROCESSES`), Postgres `SKIP LOCKED` queue | `deploy/railway/start.sh`, `jobs.py` |
 
 ## Expected response times (measured, not promised SLAs)
