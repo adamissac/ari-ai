@@ -7,7 +7,7 @@ Date: 2026-10-25T06:30Z
 
 ## What I shipped (read surfaces)
 
-Commit `<SHA>` on `feat/devin-investigation-observability` (fork `m-alan08/ari-ai`):
+Commit `a1c5114e` on `feat/devin-investigation-observability` (fork `m-alan08/ari-ai`):
 
 - `backend/redaction.py`: added two patterns to `redact_text` — DSN userinfo
   credentials (`postgres(ql)?|mysql|mongodb(+srv)?|redis|amqp` `://user:pass@` →
