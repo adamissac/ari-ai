@@ -16,6 +16,13 @@ adds an entry before ending.
 - Warnings for the next session:
 ```
 
+### 2026-10-24 — Devin (agent, Adam) — first-user usability pass on commit review (feat/adam/first-user-usability)
+- Did: walked the real first-user flow end-to-end on `tests/e2e/stack_manual.py` (dev login → org → repo → commit → scripted run → recorded replay → approvals). Fixed: approval cards resolve remediation-plan `rmp_` subjects to the owning finding by scanning `api().finding(id)` records once per subject (ref-guarded so polling can't starve it); cards get a two-step confirm that says exactly what approval will/won't do ("never merges or deploys"); `agent-map` normalizes persisted `ns__tool` names (`code__read_span` → `code.read_span`) so recorded runs speak plain English; quick-read failure explains "no model API key configured" instead of a raw error.
+- State of the code: verified live — both pending approvals render "Fix request · <finding title>" with severity/kind/path; `tests/unit/approval-gate.test.tsx` covers fnd_ + rmp_ subjects and the fallback. 340 unit tests pass; typecheck/lint clean; build green.
+- Commands run: `npm run typecheck`, `npm run lint`, `npx vitest run tests/unit/…`, `npm run build`, manual stack on :51614/:51204.
+- Warnings: `next start` serves cached hashed chunks — hard-reload (cmd+shift+R) after rebuilds or the page keeps the old bundle (cost ~1h of false debugging here). `stack_manual.py` still uncommitted helper.
+- Next steps: e2e suite running; PR stacks on #496 (feat/adam/commit-review-navigation).
+
 ---
 
 ### 2026-10-24 — Devin (agent, Adam) — code-intelligence pipeline audit

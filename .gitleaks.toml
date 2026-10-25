@@ -86,3 +86,4 @@ regexes = [
   '''abc123def456''',
   '''eyJhbGciOiJIUzI1NiIs\.eyJzdWIiOiIxMjM0NTY3\.OeFghijKlmNopqrS''',
 ]
+
