@@ -68,6 +68,13 @@ write-side redaction stay safe, and `stuck_jobs` redacts `recovery`. Role
 checks are unchanged: history stays viewer-readable, recovery resolution
 owner-only.
 
+Free-text scrubbing (`redact_text`, generic `key=value` credential fragments
+included) is kept strictly separate from code-aware redaction (`redact_code`,
+which `ArtifactStore.put_text` applies to `diff` artifacts): the generic
+`key=value` matcher is deliberately excluded from the code path so non-secret
+expressions like `api_key=os.environ["API_KEY"]` survive byte-identical and
+parseable, while quoted secret literals and token/DSN shapes still redact.
+
 ## Recovery (`backend.execution.reconcile`)
 
 Runs at worker start, from `drain()`, and every `WORKER_RECONCILE_INTERVAL_S` in

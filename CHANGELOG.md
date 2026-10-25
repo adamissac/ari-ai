@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- N7 separates free-text credential key=value scrubbing from code-aware redaction, preserving non-secret source expressions while redacting secret literals.
+
 - Execution reliability: job lifecycle with validated transitions and `job_events` history; new `waiting`, `timed_out` and `recovery_required` statuses; `ctx.effect` guard so an external effect with an uncertain outcome (incl. live control adapter `apply`) is never replayed automatically; startup/periodic reconciliation (orphaned leases, confirmed cancellations, deadlines, prerequisites); fair claims with per-project running limits, pending-queue backpressure (429), deadlines and per-kind retry policies; database-failure retries when finalizing jobs; worker registry; `GET /projects/{id}/execution`, `GET /jobs/{id}/history`, owner-only `POST /jobs/{id}/recovery`, and `python -m backend.execution`. Migration `0016`. See docs/architecture/execution-reliability.md.
 
 - Review branch only: retain independent Phase 7C/reliability/E2E/observability
