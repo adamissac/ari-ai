@@ -24,6 +24,7 @@ import sqlalchemy as sa
 from sqlalchemy.engine import Connection
 
 from backend.db import assessments, job_events, jobs, worker_heartbeats
+from backend.redaction import redact
 from backend.settings import get_settings
 from shared.base import utcnow
 from shared.errors import ErrorCode
@@ -534,11 +535,13 @@ def claim(conn: Connection, owner: str, lease_s: int, kinds: list[str] | None = 
             reason="attempts exhausted (lease expired or repeated failure)",
             lease_owner=None,
             lease_expires_at=None,
-            last_error={
-                "code": ErrorCode.JOB_LEASE_EXPIRED.value,
-                "message": "attempts exhausted (lease expired or repeated failure)",
-                "category": ErrorCategory.retry_exhausted.value,
-            },
+            last_error=redact(
+                {
+                    "code": ErrorCode.JOB_LEASE_EXPIRED.value,
+                    "message": "attempts exhausted (lease expired or repeated failure)",
+                    "category": ErrorCategory.retry_exhausted.value,
+                }
+            ),
         )
         return None
     return job
@@ -749,7 +752,7 @@ def fail(
             reason=f"external effect outcome uncertain after {category.value} failure",
             details=diag,
             recovery=diag,
-            last_error={**error, "category": category.value},
+            last_error=redact({**error, "category": category.value}),
             lease_owner=owner,
             lease_expires_at=None,
         )
@@ -772,7 +775,7 @@ def fail(
                 reason="retry scheduled",
                 details={"run_after": run_after.isoformat()},
                 run_after=run_after,
-                last_error={**error, "category": category.value},
+                last_error=redact({**error, "category": category.value}),
                 **common,
             )
             return JobStatus.queued.value
@@ -788,7 +791,7 @@ def fail(
         category=category,
         reason=str(error.get("message") or status.value)[:500],
         run_after=now,
-        last_error={**error, "category": category.value},
+        last_error=redact({**error, "category": category.value}),
         **common,
     )
     return status.value
