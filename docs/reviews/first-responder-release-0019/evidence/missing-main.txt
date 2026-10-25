@@ -1,0 +1,112 @@
+2c825c4e fix(security): close redaction gaps in privacy.redact + redact_text (#570)
+e44d27d7 Merge pull request #536
+580d2f67 Merge pull request #532
+4fdcad95 Merge pull request #538
+0272616e fix(backend): harden GitHub onboarding + continuous assessment across installation lifecycle (#540)
+bc518aab coord(devin-frontend-ui): register agent — PR #536 green, tracking #570 + prod hold
+52dde126 merge: origin/main into first-user-usability (keep exact-fixture gitleaks allowlist)
+14f2d54d merge: origin/main (gitleaks #571) into defense-lab-pilot-audit
+9e89652e Merge remote-tracking branch 'origin/main' into m536
+2c8ad50d fix(gitleaks): allowlist planted fake-secret fixtures in deleted test files (#571)
+f370ca18 chore(status): devin-defense-lab live-leg blocked on prod visibility
+33ee8568 ci(gitleaks): allowlist fake-secret fixtures in redaction/privacy tests
+47b9bae4 chore(ci): allowlist fake secrets in redaction test fixtures for gitleaks
+6c2b8719 merge: origin/main into first-user-usability
+6ffaccda Merge main: rebuild stale merge ref after gitleaks allowlist
+505de10d chore: merge origin/main into feat/adam/home-deep-sea-landing
+248fd537 Merge remote-tracking branch 'origin/main' into mwork
+dc9a623a Merge pull request #496
+769184b5 Merge pull request #527
+24f51431 chore(status): devin-defense-lab live-leg progress
+ac87a290 test(intel): pipeline audit — parse-safe redaction, honest route gaps, retrieval eval + benchmarks (#531)
+22454ef2 ci(release-gate): always-on checks, pilot-verify pipeline, dead-letter jobs list, scored-only evals (#530)
+ccc7fafc merge: origin/main into defense-lab-pilot-audit
+d820642d chore(backend): take main's ops_api alias (dedupe ops import, match #567)
+f78637de chore(coordination): devin-pipeline-fixer status refresh (#569)
+7b8cb9a5 chore: merge origin/main into feat/adam/home-deep-sea-landing
+0e7a1731 merge: main into first-user-usability
+5a56e44c fix(backend): alias api ops router import to avoid shadowing ops helpers (#567)
+f321fc21 fix(backend): alias api ops router import — dup 'ops' name broke ruff on main
+a15b861d chore: merge origin/main into feat/adam/home-deep-sea-landing
+27a3a4d1 Merge origin/main into feat/adam/defense-lab-pilot-audit
+9d27bbaa fix(ui): size landing stat-num to its card via container query
+ac6d0741 Merge origin/main into feat/adam/defense-lab-pilot-audit
+4c3b0674 coord: register devin-defense-lab agent state
+29ddfd2d merge: base branch into first-user-usability
+80eefb90 test(e2e): update specs to sidebar rail nav; clamp landing stat-num at small widths
+f9a67cfe chore: merge origin/main into feat/adam/home-deep-sea-landing
+73022ffc Merge remote-tracking branch 'origin/main' into feat/adam/commit-review-navigation
+4edf0a8a Merge origin/main into feat/adam/defense-lab-pilot-audit
+7da03c95 Merge origin/feat/adam/defense-lab-pilot-audit
+7787ee27 Merge origin/main into feat/adam/defense-lab-pilot-audit
+239fa5b6 merge: base branch + chore(coordination): register frontend-ux agent record
+c890e2c9 Merge remote-tracking branch 'origin/main' into mwork
+dd9d2914 Merge remote-tracking branch 'origin/main' into mwork
+4d338396 Merge remote-tracking branch 'origin/main' into mwork
+02f7e4ae Merge remote-tracking branch 'origin/main' into mwork
+efd537be Merge remote-tracking branch 'origin/main' into mwork
+660a342e Merge remote-tracking branch 'origin/main' into mwork
+7c08dda5 Merge remote-tracking branch 'origin/main' into mwork
+bbf77147 Merge remote-tracking branch 'origin/main' into mwork
+6d91fbd9 Merge remote-tracking branch 'origin/main' into mwork
+a7359899 Merge remote-tracking branch 'origin/main' into mwork
+30082db7 docs(pilot): post-deploy RLS drill needs non-superuser role
+60cd4b5d docs(pilot): #535 merged; add jobs.last_error leak as open pilot condition
+dea07649 merge: main into pilot-launch docs branch
+1e61591e Merge remote-tracking branch 'origin/main' into feat/adam/commit-review-navigation
+2daff902 Merge remote-tracking branch 'origin/main' into m532
+b55b2c99 chore: merge origin/main into feat/adam/home-deep-sea-landing
+af55d78c Merge remote-tracking branch 'origin/feat/adam/commit-review-navigation' into feat/adam/first-user-usability
+f346d1ec Merge remote-tracking branch 'origin/main' into feat/adam/commit-review-navigation
+0ca0c352 fix(frontend): satisfy strict typecheck in panel shouldPoll
+80f0a84f docs(status): first-user usability workstream state for shared report
+be5d0c81 docs(pilot): tidy fixture-token scrub wording
+3758ab3a docs(pilot): scrub fixture token literals from rehearsal docs
+69493c59 fix(ui): two-step confirm in the approval inbox + e2e coverage for it
+1bb51983 fix(infra): resolve gitleaks config conflict markers
+0edb197a fix(ui): plain-English recorded tool calls and consistent finding paths
+346931df docs(ui): first-user flow map and usability blockers
+0dc4e8af test(ui): scope journey gate assertions to the approval region
+98ddab75 chore(infra): allowlist fixture-shaped strings blocking gitleaks on all open PRs (#544)
+f0467398 fix(ui): contain simulate commit-stage to content column; stop rail label wrap
+157212b7 chore(infra): allowlist rehearsal ledgerlite fixture tokens in gitleaks
+0f4d1b09 chore(infra): allowlist vendored-font fingerprints in font manifest
+c02e9f10 feat(ui): trim homepage footer and chill text animations; fix mobile rail overflow
+4fff6aec feat(frontend): SaaS sidebar layout + consistent page headers across console
+4a2fcc35 docs(landing): changelog + handoff for homepage rework
+7e76731f fix(landing): restore dim headline line and footer-bottom reveal
+9a290566 feat(landing): keep ARI warm palette, add agent marquee and patrol ant
+b0943ec1 feat(landing): deep-sea homepage rework with mint accent and letter reveals
+11d020da Merge remote-tracking branch 'origin/main' into m-commit-review-navigation
+aa38ad0c ci(gitleaks): drop duplicate rehearsal allowlist now covered by #544
+ebba6227 Merge remote-tracking branch 'origin/main' into m-first-user-usability
+373f2800 Merge remote-tracking branch 'origin/main' into m-defense-lab-pilot-audit
+3f3d8ca0 Merge remote-tracking branch 'origin/main' into m-pilot-launch
+a6b98336 ci(gitleaks): allowlist synthetic rehearsal bearer tokens in fixture README
+67cec0a9 Merge remote-tracking branch 'origin/main' into feat/adam/commit-review-navigation
+ad856d0e chore: retrigger CI after upstream gitleaks finding was removed
+9e8f10d4 docs(handoff): live rehearsal leg results + live-run env gotchas
+71106559 docs(pilot): record executed live-provider rehearsal leg + lint test
+c8b6d582 fix(frontend): stop real-assessment panel polling at terminal state
+96a4e12c test(pilot): drop live-rehearsal debug prints after first green run
+6c455139 docs(status): Adam pilot-readiness coordination state
+e2f506ae test(live-defense): pilot safety suite + quarantine credential-value fix
+4e3c6b5f feat(ui): first-user usability — named approvals, plain-English replay, honest quick-read errors
+07ef1ddb test(pilot): live-provider rehearsal leg (opt-in)
+c77ac584 merge: main into pilot-launch docs branch
+fd41ab9c Merge remote-tracking branch 'origin/main' into feat/adam/commit-review-navigation
+21177e15 docs(pilot): mark rehearsal + purge verification status in launch conditions
+ecc00466 docs(pilot): verify #535 controls firsthand; prod-leg owner setup steps
+2d7af906 docs(pilot): point tenant-protection cross-links at PR 535 until merged
+cfec5972 docs(pilot): cross-link tenant data protection doc; purge_project + RLS updates
+04c10136 docs(pilot): rehearsal report draft — local legs green, prod leg pending
+5d6257b5 style(pilot): format rehearsal test
+08f44d4f test(pilot): two-org rehearsal drills + fix github app permission doc
+c297b033 docs(pilot): pilot launch package with conditional go decision
+6ec407f0 Merge remote-tracking branch 'origin/main' into feat/adam/commit-review-navigation
+c2c2882a merge: resolve docs conflicts with origin/main
+b3e21b8e fix(frontend): stop run polling at terminal state, accept sha prefixes, case-insensitive repo lookup, no preview flash while loading
+3b96e4c4 fix(frontend): label recorded-run provenance "no runs yet" before first agent run persists
+d0f0e2ad merge: resolve docs conflicts with origin/main
+984d40d1 test(e2e): update interface spec for clickable repo rows
+a0a2fa36 feat(frontend): rebuild connect navigation into review + recorded agent replay

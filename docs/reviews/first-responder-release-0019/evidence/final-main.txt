@@ -1,0 +1,15 @@
+2c825c4e (origin/main) fix(security): close redaction gaps in privacy.redact + redact_text (#570)
+e44d27d7 Merge pull request #536
+580d2f67 Merge pull request #532
+4fdcad95 Merge pull request #538
+0272616e fix(backend): harden GitHub onboarding + continuous assessment across installation lifecycle (#540)
+bc518aab (origin/feat/adam/home-deep-sea-landing) coord(devin-frontend-ui): register agent — PR #536 green, tracking #570 + prod hold
+52dde126 (origin/feat/adam/first-user-usability) merge: origin/main into first-user-usability (keep exact-fixture gitleaks allowlist)
+14f2d54d (origin/feat/adam/defense-lab-pilot-audit) merge: origin/main (gitleaks #571) into defense-lab-pilot-audit
+9e89652e Merge remote-tracking branch 'origin/main' into m536
+2c8ad50d fix(gitleaks): allowlist planted fake-secret fixtures in deleted test files (#571)
+f370ca18 chore(status): devin-defense-lab live-leg blocked on prod visibility
+33ee8568 ci(gitleaks): allowlist fake-secret fixtures in redaction/privacy tests
+47b9bae4 chore(ci): allowlist fake secrets in redaction test fixtures for gitleaks
+6c2b8719 merge: origin/main into first-user-usability
+6ffaccda Merge main: rebuild stale merge ref after gitleaks allowlist

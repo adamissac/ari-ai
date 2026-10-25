@@ -1,0 +1,52 @@
+{
+  "release_sha": "070f75a9987658ef8b816cba412859f7b5c1c948",
+  "upstream_sha": "2c825c4e9e6e1dca305c504fde46cdda0b8cbf16",
+  "verdict": "NO-GO",
+  "source_modified": false,
+  "providers": "scripted only; paid keys blank; live switches off",
+  "database": "local embedded PostgreSQL 16; disposable databases",
+  "suites": {
+    "backend": {
+      "passed": 558,
+      "skipped": 9
+    },
+    "focused": {
+      "passed": 97
+    },
+    "security_shared_cross_security": {
+      "passed": 739,
+      "skipped": 24
+    },
+    "independent": {
+      "failed": 5,
+      "passed": 1
+    },
+    "latest_main_compatibility": {
+      "failed": 9,
+      "passed": 47
+    },
+    "privacy": {
+      "failed": 1,
+      "passed": 2,
+      "deselected": 4
+    },
+    "standalone_pr2": {
+      "passed": 8
+    },
+    "contracts": {
+      "passed": 95
+    },
+    "local_readiness": {
+      "passed": 25
+    },
+    "final_main_redaction_privacy_pilot": {
+      "failed": 20,
+      "passed": 38
+    }
+  },
+  "do_not_sum_overlapping_tests": true,
+  "merged": false,
+  "deployed": false,
+  "redaction": "known synthetic token patterns replaced in retained output; no raw JUnit",
+  "initial_upstream_sha": "0272616eb7e1380dfc0da7b98fa0f2dfe9a1bc53"
+}

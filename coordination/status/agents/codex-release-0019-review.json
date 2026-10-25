@@ -1,0 +1,16 @@
+{
+  "agent": "codex-release-0019-review",
+  "state": "DONE",
+  "task": "Independent frozen release 0019 re-review",
+  "branch": "codex/release-0019-rereview",
+  "reviewed_sha": "070f75a9987658ef8b816cba412859f7b5c1c948",
+  "upstream_sha": "2c825c4e9e6e1dca305c504fde46cdda0b8cbf16",
+  "verdict": "NO-GO",
+  "claims": [
+    "docs/reviews/first-responder-release-0019/",
+    "audit-only reproduction files"
+  ],
+  "next_action": "Release owners fix retained recovery/revocation/tenancy defects and preserve latest-main redaction/jobs/GitHub/privacy semantics; request new exact-SHA review",
+  "merged": false,
+  "deployed": false
+}

@@ -2025,3 +2025,7 @@ No merge is authorized for this review branch.
 - Merge waves belong to the integration lead; wave 2 includes my #542/#543.
 - Prod queue depth (~88 items) makes 45-case live eval slow — some cases may return `pending`/NOT_STARTED; rerun stragglers or extend deadlines.
 - Second-org real-provider leg needs owner's private repo + second GitHub org (account actions).
+
+## Frozen 0019 independent release re-review — 2026-10-25
+
+PR #8 `070f75a9987658ef8b816cba412859f7b5c1c948`, upstream `2c825c4e`: **NO-GO**. Latest-main 0017→0019 and populated downgrade/re-upgrade/RLS/heartbeats pass; original strict F1–F10 pass. Retained provider abrupt-death recovery, active-disconnect, cached reconnect and tenant picker issues still fail; added job API synthetic DSN credential exposure. Exact merged upstream regressions expose missing #530/#531/#540 behavior (nine backend failures, one privacy failure; final merged #570/#532 probes add 20 failures/38 passes). Backend558, focused97, security/shared/cross739, contract95, local readiness25 pass. Current standalone #2 compatibility8/8, zero xfails. Report and exact per-PR decisions: `docs/reviews/first-responder-release-0019/REPORT.md`. No merge/deploy; audit-only branch `codex/release-0019-rereview`. Next owner action: fix retained issues and recompose latest-main semantic changes without replacing corrected migrations/registry split.

@@ -1,0 +1,37 @@
+..F                                                                      [100%]
+=================================== FAILURES ===================================
+_______ test_mid_line_secret_values_are_redacted_without_breaking_parse ________
+
+repository = (PosixPath('/private/var/folders/zx/g7x09fys7f39_65741pxh9h00000gn/T/pytest-of-alanmozhoor/pytest-590/test_mid_line_secret_values_ar0/target'), '53b7bf1818d33b2dcf735d53aaa7bd498c75233f')
+
+    def test_mid_line_secret_values_are_redacted_without_breaking_parse(
+        repository: tuple[Path, str],
+    ) -> None:
+        path, _ = repository
+        secret = "hunter2" + "z" * 12
+        (path / "app/midline.py").write_text(
+            f"def build(s):\n    return dict(password={secret}, user=s.user)\n"
+        )
+        (path / "app/closers.py").write_text(f"def make():\n    return f(password={secret})\n")
+        (path / "app/still_code.py").write_text(
+            "def sig(secret: bytes, x: int) -> bool:\n"
+            "    return webhook_secret_configured and bool(secret)\n"
+        )
+        sha = commit(path)
+        files = GitReader(path).read(sha)[1]
+>       assert secret not in "".join(f.content for f in files)
+E       AssertionError: assert 'hunter2zzzzzzzzzzzz' not in '# Payments ... 20) == 20\n'
+E         
+E         'hunter2zzzzzzzzzzzz' is contained here:
+E           (password=hunter2zzzzzzzzzzzz)
+E           def build(s):
+E               return dict(password=hunter2zzzzzzzzzzzz, user=s.user)
+E           from .auth import current_user
+E           from fastapi import FastAPI, Depends...
+E         
+E         ...Full output truncated (22 lines hidden), use '-vv' to show
+
+code-intelligence/tests/test_upstream_privacy_compat.py:211: AssertionError
+=========================== short test summary info ============================
+FAILED code-intelligence/tests/test_upstream_privacy_compat.py::test_mid_line_secret_values_are_redacted_without_breaking_parse
+1 failed, 2 passed, 4 deselected in 0.44s

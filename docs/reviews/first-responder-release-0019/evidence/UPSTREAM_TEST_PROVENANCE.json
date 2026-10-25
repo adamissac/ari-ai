@@ -1,0 +1,44 @@
+{
+  "backend/tests/test_upstream_job_compat.py": {
+    "source": "0272616eb7e1380dfc0da7b98fa0f2dfe9a1bc53:backend/tests/test_job_status_api.py",
+    "sha256": "d151f12f55f3db6cff54ca1ecb64d2d1ceb29d43a431ec7a222228aeebe14ad0",
+    "assertions_modified": false,
+    "unchanged_at_final_upstream": true
+  },
+  "backend/tests/test_upstream_github_compat.py": {
+    "source": "0272616eb7e1380dfc0da7b98fa0f2dfe9a1bc53:backend/tests/test_github_repo_access.py",
+    "sha256": "5a22c2d65210fce474dc54b8e920595b0f50905efef80472f9fdf93c02395936",
+    "assertions_modified": false,
+    "unchanged_at_final_upstream": true
+  },
+  "backend/tests/test_upstream_auto_commits_compat.py": {
+    "source": "0272616eb7e1380dfc0da7b98fa0f2dfe9a1bc53:backend/tests/test_auto_commits.py",
+    "sha256": "72a8a8aa89cf5d8a390aad4d4d127a2f05401785981f5fd6aef22ecbc8db6396",
+    "assertions_modified": false,
+    "unchanged_at_final_upstream": true
+  },
+  "code-intelligence/tests/test_upstream_privacy_compat.py": {
+    "source": "0272616eb7e1380dfc0da7b98fa0f2dfe9a1bc53:code-intelligence/tests/test_ingest_extract.py",
+    "sha256": "210a91f2b072807ed2d45725c5190bc2a12185a0626ab7d29c65aa5745b0ec3b",
+    "assertions_modified": false,
+    "unchanged_at_final_upstream": true
+  },
+  "backend/tests/test_upstream_redaction_gaps_compat.py": {
+    "source": "2c825c4e9e6e1dca305c504fde46cdda0b8cbf16:backend/tests/test_redact_text_gaps.py",
+    "sha256": "b479450f028ec87fceca8d8b8d2c9706da6236f25ab16e70921b72982319c4ce",
+    "assertions_modified": false,
+    "unchanged_at_final_upstream": true
+  },
+  "backend/tests/test_upstream_pilot_safety_compat.py": {
+    "source": "2c825c4e9e6e1dca305c504fde46cdda0b8cbf16:backend/tests/test_live_defense_pilot_safety.py",
+    "sha256": "52e7df2ba85fe458969cf278f1fb6d5db2a091ed164f6f9cd8d427a1fa1aa9ae",
+    "assertions_modified": false,
+    "unchanged_at_final_upstream": true
+  },
+  "code-intelligence/tests/test_upstream_privacy_gaps_compat.py": {
+    "source": "2c825c4e9e6e1dca305c504fde46cdda0b8cbf16:code-intelligence/tests/test_privacy_redact.py",
+    "sha256": "32e58b604b9d65075ab1cfb3b5b154576b09a37c80cf3dcbf3a0be65704f1b77",
+    "assertions_modified": false,
+    "unchanged_at_final_upstream": true
+  }
+}

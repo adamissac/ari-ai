@@ -1,0 +1,16 @@
+diff --git a/backend/tests/live_defense_e2e/test_independent_integration.py b/backend/tests/live_defense_e2e/test_independent_integration.py
+index 4de0ff87..24717e1a 100644
+--- a/backend/tests/live_defense_e2e/test_independent_integration.py
++++ b/backend/tests/live_defense_e2e/test_independent_integration.py
+@@ -1,7 +1,9 @@
+ """Independent cross-workstream regressions; scripted providers, no live calls.
+ 
+-Assertions describe required behavior. Failures are retained as review evidence,
+-not xfailed or silently repaired in the candidate workstreams.
++Assertions describe required behavior. Owner fixes for the Codex review findings
++landed (F1 ledger/effect bridge, F2 emergency slots, F3 lease expiry, F4 defer history,
++F5 waiting-cancel, F6 observability, F7 durable deadline, F8 final-submit race, F9 schema
++pin, F10 DB clock); these now run as strict assertions.
+ """
+ 
+ import pytest

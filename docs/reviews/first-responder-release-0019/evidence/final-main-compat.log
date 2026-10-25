@@ -1,0 +1,281 @@
+FFFFFFFF...................................F.F.FFFFFFFFFF.               [100%]
+=================================== FAILURES ===================================
+_______________________________ test_psycopg_dsn _______________________________
+
+    def test_psycopg_dsn() -> None:
+        out = redact_text("connect postgresql+psycopg://svc:pw9x@db/app")
+>       assert "pw9x" not in out
+E       AssertionError: assert 'pw9x' not in 'connect pos...:pw9x@db/app'
+E         
+E         'pw9x' is contained here:
+E           connect postgresql+psycopg://svc:pw9x@db/app
+E         ?                                  ++++
+
+backend/tests/test_upstream_redaction_gaps_compat.py:8: AssertionError
+_____________________________ test_access_token_kv _____________________________
+
+    def test_access_token_kv() -> None:
+        out = redact_text("access_token=" + "ya29." + "b" * 12)
+>       assert "ya29.bbbb" not in out
+E       AssertionError: assert 'ya29.bbbb' not in 'access_toke...bbbbbbbbbbbb'
+E         
+E         'ya29.bbbb' is contained here:
+E           access_token=ya29.bbbbbbbbbbbb
+E         ?              +++++        ++++
+
+backend/tests/test_upstream_redaction_gaps_compat.py:13: AssertionError
+_____________________________ test_db_password_kv ______________________________
+
+    def test_db_password_kv() -> None:
+        out = redact_text("DB_PASSWORD=hunter2")
+>       assert "hunter2" not in out
+E       AssertionError: assert 'hunter2' not in 'DB_PASSWORD=hunter2'
+E         
+E         'hunter2' is contained here:
+E           DB_PASSWORD=hunter2
+E         ?             +++++++
+
+backend/tests/test_upstream_redaction_gaps_compat.py:18: AssertionError
+____________________________ test_client_secret_kv _____________________________
+
+    def test_client_secret_kv() -> None:
+        out = redact_text("client_secret: " + "GOCSPX-" + "d" * 11)
+>       assert "GOCSPX-dddd" not in out
+E       AssertionError: assert 'GOCSPX-dddd' not in 'client_secr...-ddddddddddd'
+E         
+E         'GOCSPX-dddd' is contained here:
+E           client_secret: GOCSPX-ddddddddddd
+E         ?                +++++++       ++++
+
+backend/tests/test_upstream_redaction_gaps_compat.py:23: AssertionError
+_____________________________ test_stripe_live_key _____________________________
+
+    def test_stripe_live_key() -> None:
+        out = redact_text("key " + "sk_live_" + "x" * 32 + " tail")
+>       assert "sk_live_" not in out
+E       AssertionError: assert 'sk_live_' not in 'key sk_live...xxxxxxx tail'
+E         
+E         'sk_live_' is contained here:
+E           key [REDACTED_SYNTHETIC_TEST_SECRET] tail
+E         ?     ++++++++
+
+backend/tests/test_upstream_redaction_gaps_compat.py:28: AssertionError
+__________________________ test_quoted_kv_with_space ___________________________
+
+    def test_quoted_kv_with_space() -> None:
+        out = redact_text("err: password='quoted Pw1' done")
+>       assert "quoted Pw1" not in out
+E       assert 'quoted Pw1' not in "err: passwo...ed Pw1' done"
+E         
+E         'quoted Pw1' is contained here:
+E           err: password='quoted Pw1' done
+E         ?                ++++++++++
+
+backend/tests/test_upstream_redaction_gaps_compat.py:33: AssertionError
+___________________________ test_bearer_token_short ____________________________
+
+    def test_bearer_token_short() -> None:
+        out = redact_text("Authorization: Bearer eyJabc.def.ghi")
+>       assert "eyJabc" not in out
+E       AssertionError: assert 'eyJabc' not in 'Authorizati...Jabc.def.ghi'
+E         
+E         'eyJabc' is contained here:
+E           Authorization: Bearer eyJabc.def.ghi
+E         ?                       ++++++
+
+backend/tests/test_upstream_redaction_gaps_compat.py:38: AssertionError
+____________________________ test_double_quoted_kv _____________________________
+
+    def test_double_quoted_kv() -> None:
+        out = redact_text('refresh_token: "r3fr3sh"')
+>       assert "r3fr3sh" not in out
+E       assert 'r3fr3sh' not in 'refresh_token: "r3fr3sh"'
+E         
+E         'r3fr3sh' is contained here:
+E           refresh_token: "r3fr3sh"
+E         ?                 +++++++
+
+backend/tests/test_upstream_redaction_gaps_compat.py:43: AssertionError
+__________________ test_secret_like_telemetry_is_quarantined ___________________
+
+    def test_secret_like_telemetry_is_quarantined() -> None:
+        for payload in (
+            {"api_key": "sk-ant-" + "a" * 40},
+            {"note": "password=hunter2"},
+            "Bearer " + "x" * 60,
+        ):
+>           assert secret_like_reason(payload)
+E           AssertionError: assert None
+E            +  where None = secret_like_reason({'note': 'password=hunter2'})
+
+backend/tests/test_upstream_pilot_safety_compat.py:308: AssertionError
+________________________ test_slack_token_in_assignment ________________________
+
+    def test_slack_token_in_assignment() -> None:
+        out = redact('slack_token="xoxb-" + "1" * 12 + "-" + "a" * 12')
+>       assert "xoxb-" not in out
+E       assert 'xoxb-' not in 'slack_token..." + "a" * 12'
+E         
+E         'xoxb-' is contained here:
+E           slack_token="xoxb-" + "1" * 12 + "-" + "a" * 12
+E         ?              +++++
+
+code-intelligence/tests/test_upstream_privacy_gaps_compat.py:8: AssertionError
+_____________________________ test_stripe_live_key _____________________________
+
+    def test_stripe_live_key() -> None:
+        out = redact('STRIPE_KEY = "' + "sk_live_" + "x" * 32 + '"')
+>       assert "sk_live_" not in out
+E       assert 'sk_live_' not in 'STRIPE_KEY ...xxxxxxxxxxx"'
+E         
+E         'sk_live_' is contained here:
+E           STRIPE_KEY = "[REDACTED_SYNTHETIC_TEST_SECRET]"
+E         ?               ++++++++
+
+code-intelligence/tests/test_upstream_privacy_gaps_compat.py:19: AssertionError
+________________________ test_postgres_dsn_credentials _________________________
+
+    def test_postgres_dsn_credentials() -> None:
+        out = redact("DATABASE_URL=postgresql://svc:hunter2pass@db.internal:5432/app")
+>       assert "hunter2pass" not in out
+E       AssertionError: assert 'hunter2pass' not in 'DATABASE_UR...nal:5432/app'
+E         
+E         'hunter2pass' is contained here:
+E           DATABASE_URL=postgresql://svc:hunter2pass@db.internal:5432/app
+E         ?                               +++++++++++
+
+code-intelligence/tests/test_upstream_privacy_gaps_compat.py:24: AssertionError
+_________________________ test_psycopg_dsn_credentials _________________________
+
+    def test_psycopg_dsn_credentials() -> None:
+        out = redact("url = postgresql+psycopg://svc:secretpass@db/app")
+>       assert "secretpass" not in out
+E       AssertionError: assert 'secretpass' not in 'url = postg...tpass@db/app'
+E         
+E         'secretpass' is contained here:
+E           url = postgresql+psycopg://svc:secretpass@db/app
+E         ?                                ++++++++++
+
+code-intelligence/tests/test_upstream_privacy_gaps_compat.py:30: AssertionError
+___________________________________ test_jwt ___________________________________
+
+    def test_jwt() -> None:
+        jwt = (
+            "eyJ"
+            + "hbGciOiJIUzI1NiJ9"
+            + "."
+            + "eyJ"
+            + "zdWIiOiIxMjM0NTY3ODkwIn0"
+            + "."
+            + "SflKxw"
+            + "RJSMeKKF2QT4fwpMeJf36POk6yJV"
+            + "_adQssw5c"
+        )
+        out = redact(f"h = {jwt}")
+>       assert "SflKxw" not in out
+E       AssertionError: assert 'SflKxw' not in 'h = eyJhbGc...yJV_adQssw5c'
+E         
+E         'SflKxw' is contained here:
+E           Y3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+E         ?           ++++++
+
+code-intelligence/tests/test_upstream_privacy_gaps_compat.py:46: AssertionError
+_____________________________ test_google_api_key ______________________________
+
+    def test_google_api_key() -> None:
+        out = redact('key = "' + "AIza" + "q" * 35 + '"')
+>       assert "AIzaqqq" not in out
+E       assert 'AIzaqqq' not in 'key = "AIza...qqqqqqqqqqq"'
+E         
+E         'AIzaqqq' is contained here:
+E           key = "[REDACTED_SYNTHETIC_TEST_SECRET]"
+E         ?        +++++++
+
+code-intelligence/tests/test_upstream_privacy_gaps_compat.py:51: AssertionError
+_________________________ test_paren_concat_multiline __________________________
+
+    def test_paren_concat_multiline() -> None:
+        src = 'password = (\n    "sup"\n    "ersecret"\n)'
+        out = redact(src)
+>       assert "ersecret" not in out
+E       assert 'ersecret' not in 'password = ...ersecret"\n)'
+E         
+E         'ersecret' is contained here:
+E           password = (
+E               "sup"
+E               "ersecret"
+E           )
+
+code-intelligence/tests/test_upstream_privacy_gaps_compat.py:57: AssertionError
+________________________ test_comma_continued_literals _________________________
+
+    def test_comma_continued_literals() -> None:
+        out = redact('api_key = "first","second"')
+        assert "first" not in out
+>       assert "second" not in out
+E       assert 'second' not in 'api_key = "...D]","second"'
+E         
+E         'second' is contained here:
+E           api_key = "[REDACTED]","second"
+E         ?                         ++++++
+
+code-intelligence/tests/test_upstream_privacy_gaps_compat.py:64: AssertionError
+__________________________ test_environ_default_value __________________________
+
+    def test_environ_default_value() -> None:
+        out = redact('pw = os.environ.get("X_PASSWORD","fallback-pw-9")')
+>       assert "fallback-pw-9" not in out
+E       assert 'fallback-pw-9' not in 'pw = os.env...lback-pw-9")'
+E         
+E         'fallback-pw-9' is contained here:
+E           pw = os.environ.get("X_PASSWORD","fallback-pw-9")
+E         ?                                   +++++++++++++
+
+code-intelligence/tests/test_upstream_privacy_gaps_compat.py:69: AssertionError
+____________________ test_midline_bare_token_without_digits ____________________
+
+    def test_midline_bare_token_without_digits() -> None:
+        out = redact("auth = dict(password=hunter, other=1)")
+>       assert "hunter" not in out
+E       AssertionError: assert 'hunter' not in 'auth = dict...er, other=1)'
+E         
+E         'hunter' is contained here:
+E           auth = dict(password=hunter, other=1)
+E         ?                      ++++++
+
+code-intelligence/tests/test_upstream_privacy_gaps_compat.py:75: AssertionError
+____________________ test_midline_reference_still_redacted _____________________
+
+    def test_midline_reference_still_redacted() -> None:
+        # bare mid-line secrets are redacted conservatively (value or identifier)
+        out = redact("opts = (api_key=somekey, retries=2)")
+>       assert "somekey" not in out
+E       AssertionError: assert 'somekey' not in 'opts = (api..., retries=2)'
+E         
+E         'somekey' is contained here:
+E           opts = (api_key=somekey, retries=2)
+E         ?                 +++++++
+
+code-intelligence/tests/test_upstream_privacy_gaps_compat.py:81: AssertionError
+=========================== short test summary info ============================
+FAILED backend/tests/test_upstream_redaction_gaps_compat.py::test_psycopg_dsn
+FAILED backend/tests/test_upstream_redaction_gaps_compat.py::test_access_token_kv
+FAILED backend/tests/test_upstream_redaction_gaps_compat.py::test_db_password_kv
+FAILED backend/tests/test_upstream_redaction_gaps_compat.py::test_client_secret_kv
+FAILED backend/tests/test_upstream_redaction_gaps_compat.py::test_stripe_live_key
+FAILED backend/tests/test_upstream_redaction_gaps_compat.py::test_quoted_kv_with_space
+FAILED backend/tests/test_upstream_redaction_gaps_compat.py::test_bearer_token_short
+FAILED backend/tests/test_upstream_redaction_gaps_compat.py::test_double_quoted_kv
+FAILED backend/tests/test_upstream_pilot_safety_compat.py::test_secret_like_telemetry_is_quarantined
+FAILED code-intelligence/tests/test_upstream_privacy_gaps_compat.py::test_slack_token_in_assignment
+FAILED code-intelligence/tests/test_upstream_privacy_gaps_compat.py::test_stripe_live_key
+FAILED code-intelligence/tests/test_upstream_privacy_gaps_compat.py::test_postgres_dsn_credentials
+FAILED code-intelligence/tests/test_upstream_privacy_gaps_compat.py::test_psycopg_dsn_credentials
+FAILED code-intelligence/tests/test_upstream_privacy_gaps_compat.py::test_jwt
+FAILED code-intelligence/tests/test_upstream_privacy_gaps_compat.py::test_google_api_key
+FAILED code-intelligence/tests/test_upstream_privacy_gaps_compat.py::test_paren_concat_multiline
+FAILED code-intelligence/tests/test_upstream_privacy_gaps_compat.py::test_comma_continued_literals
+FAILED code-intelligence/tests/test_upstream_privacy_gaps_compat.py::test_environ_default_value
+FAILED code-intelligence/tests/test_upstream_privacy_gaps_compat.py::test_midline_bare_token_without_digits
+FAILED code-intelligence/tests/test_upstream_privacy_gaps_compat.py::test_midline_reference_still_redacted
+20 failed, 38 passed in 1.92s
