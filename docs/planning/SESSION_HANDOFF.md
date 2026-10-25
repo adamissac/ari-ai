@@ -1957,6 +1957,15 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - F1/F7 contract sent to Grok: `ctx.effect("provider:<job_id>:<attempt>:<seq>")` for billable requests (no replay of unknown outcomes); `enqueue(deadline_at=)` propagates the absolute FR deadline. See `coordination/messages/20261024T233000Z-devin-to-grok-f1-f7-queue-contract.md`.
 - Migration `0016` gained `jobs.defer_count` (additive, same revision).
 
+## 2026-10-25 — Devin (Alan): execution reliability — Codex re-review fix R5
+
+- R5 (release re-review `codex/release-0019-rereview`, `test_abrupt_process_death_during_provider_send_requires_recovery`): abrupt worker death during a provider send left `effect_state` NULL even though `provider_ledger.reserve_attempt` had committed `in_flight` — reconcile requeued the job instead of `recovery_required`.
+- Fix (queue side, Codex's option B): `execution.reconcile` now consults the billable-request ledger for expired-lease jobs whose payload carries `invocation_id` — a `first_responder_invocations` doc with `execution.uncertain_provider_outcome` or a `provider_attempts` row in `reserved`/`in_flight`/`sent`/`uncertain` → `recovery_required`, with owner/attempt fencing and the attempt's idempotency/effect key audited in `recovery`. Read via tolerant JSONB, so pre-ledger docs carry no uncertainty; no import of Grok's models.
+- Option A stays available to ledger writers: `jobs.begin_effect(conn, job_id, owner, key)` inside the reservation transaction commits job uncertainty atomically with the reservation.
+- `jobs._ROW_COLS` now selects `payload` (needed by the reconcile probe; `.mappings()` consumers unaffected).
+- 5 new tests in `backend/tests/test_execution_reliability.py` (in_flight → recovery + audited operator resolution; uncertain flag; settled-only → requeue; missing invocation → requeue; atomic reservation path).
+- Codex's repro file itself (`test_release_rereview.py`) needs the `live_defense_e2e` harness, which lives only on the integration/codex branches — semantics ported into the reliability file; the composed tree must re-run the strict green assertion.
+
 ## 2026-10-24 — Devin (Adam): specialist eval-brain + live eval harness
 
 - `specialists/data/evalcommits.py`: eval cases become minimal pairs (planted edit = CWE/vuln_other positive, original = hard negative), splits pinned by case id; `scout()` merges the 60 rows.
