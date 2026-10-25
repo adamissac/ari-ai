@@ -8560,9 +8560,107 @@
       "title": "PatchCandidate",
       "type": "object"
     },
+    "PatchDelivery": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "At"
+        },
+        "branch": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Branch"
+        },
+        "commit_sha": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Commit Sha"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "pr_opened",
+            "pushed",
+            "failed",
+            "skipped"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        }
+      },
+      "required": [
+        "status",
+        "reason",
+        "url",
+        "branch",
+        "commit_sha",
+        "at"
+      ],
+      "title": "PatchDelivery",
+      "type": "object"
+    },
     "PatchView": {
       "additionalProperties": false,
       "properties": {
+        "delivery": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PatchDelivery"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "patch": {
           "$ref": "#/$defs/PatchCandidate"
         },
@@ -8580,7 +8678,8 @@
       },
       "required": [
         "patch",
-        "verification"
+        "verification",
+        "delivery"
       ],
       "title": "PatchView",
       "type": "object"

@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Verified patch pages now show delivery progress and outcomes, including actionable failure reasons.
 - Starting an assessment with no commit SHA now reviews the latest commit on the repository's
   default branch when connected through the GitHub App.
 - Verify now honors repository-declared `protected_tests` from `build_recipe.json` in its no-tampering check.
