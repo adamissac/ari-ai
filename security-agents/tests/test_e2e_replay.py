@@ -397,6 +397,16 @@ def test_verify_rejects_a_planted_bad_patch_that_edits_a_protected_test(intel, d
     from security_agents.sandbox.workspace import fresh_checkout, unified_diff
     from security_agents.tools import AuditSink, PatchApplier, ToolContext
 
+    recipe_path = intel.snapshot.root / "build_recipe.json"
+    recipe_path.chmod(0o644)
+    recipe = json.loads(recipe_path.read_text(encoding="utf-8"))
+    recipe["protected_tests"] = ["tests/test_api.py"]
+    recipe_path.write_text(json.dumps(recipe), encoding="utf-8")
+    recipe_path.chmod(0o444)
+    orchestrator, _ = build(intel, driver, library, tmp_path)
+    protected_tests = orchestrator._protected_tests()
+    assert "tests/test_api.py" in protected_tests
+
     work = tmp_path / "bad"
     wt = fresh_checkout(intel.snapshot, work / "wt")
     protected = wt / "tests" / "test_api.py"
@@ -410,7 +420,7 @@ def test_verify_rejects_a_planted_bad_patch_that_edits_a_protected_test(intel, d
             "pat_bad": {
                 "diff": diff,
                 "plan_files": ["payments_lite/app.py"],
-                "protected_tests": ["tests/test_api.py"],
+                "protected_tests": protected_tests,
             }
         },
         workdir=work,
@@ -436,7 +446,7 @@ def test_verify_rejects_a_planted_bad_patch_that_edits_a_protected_test(intel, d
         test_runs=[],
         baseline_failing=[],
         tests_added=[],
-        protected_tests=["tests/test_api.py"],
+        protected_tests=protected_tests,
         original_check_ref="access_control.ownership@1",
         original_check_params={},
     )
