@@ -20,13 +20,64 @@ import sqlalchemy as sa
 from sqlalchemy.engine import Connection
 
 from backend import jobs as jobq
-from backend.db import job_events, jobs, transaction, worker_heartbeats
+from backend.db import (
+    first_responder_invocations,
+    job_events,
+    jobs,
+    transaction,
+    worker_heartbeats,
+)
 from backend.jobs import ErrorCategory, JobStatus
 from backend.settings import get_settings
 from shared.base import utcnow
 from shared.errors import ErrorCode
 
 Resolution = Literal["applied", "not_applied", "retry"]
+
+# ProviderAttempt states that leave the billable outcome unresolved. Mirrors
+# shared.live_defense.ProviderAttemptState, kept as literals so reconciling
+# never imports the domain model: a doc written before the field existed
+# simply has no unresolved rows.
+_UNRESOLVED_LEDGER_STATES = frozenset({"reserved", "in_flight", "sent", "uncertain"})
+
+
+def _unresolved_billable_attempt(conn: Connection, row: Any) -> dict[str, Any] | None:
+    """Return the unresolved billable-request ledger row for ``row``, if any.
+
+    The first-responder ProviderAttempt ledger persists a reservation inside
+    ``first_responder_invocations.doc.execution`` before the provider call is
+    sent. An abrupt worker death after that commit leaves ``effect_state``
+    NULL even though a billable request may have happened; the ledger is then
+    the only record. Pure canonical reads are never reserved, so this check
+    only fires on real external sends. Owner/attempt fencing for the operator
+    lands in the returned diagnostics.
+    """
+    invocation_id = (row["payload"] or {}).get("invocation_id")
+    if not invocation_id:
+        return None
+    doc = conn.execute(
+        sa.select(first_responder_invocations.c.doc).where(
+            first_responder_invocations.c.id == invocation_id
+        )
+    ).scalar_one_or_none()
+    if not isinstance(doc, dict):
+        return None
+    record = doc.get("execution") or {}
+    if record.get("uncertain_provider_outcome"):
+        return {
+            "invocation_id": str(invocation_id),
+            "ledger_state": "uncertain_provider_outcome",
+        }
+    for attempt in record.get("provider_attempts") or []:
+        if attempt.get("status") in _UNRESOLVED_LEDGER_STATES:
+            return {
+                "invocation_id": str(invocation_id),
+                "ledger_attempt_id": attempt.get("id"),
+                "ledger_attempt_status": attempt.get("status"),
+                "idempotency_key": attempt.get("idempotency_key"),
+                "effect_key": attempt.get("effect_key"),
+            }
+    return None
 
 
 # --- worker registry -------------------------------------------------------------
@@ -123,6 +174,25 @@ def reconcile(conn: Connection) -> dict[str, Any]:
                 JobStatus.recovery_required,
                 category=ErrorCategory.uncertain_side_effect,
                 reason="worker lost its lease after starting an external effect",
+                details=diag,
+                recovery=diag,
+                lease_expires_at=None,
+            )
+            report["recovery_required"] += 1
+        elif (attempt := _unresolved_billable_attempt(conn, row)) is not None:
+            diag |= {
+                "reason": ErrorCategory.uncertain_side_effect.value,
+                "uncertainty_source": "provider_attempt_ledger",
+                **attempt,
+                "required_action": "confirm whether the external effect was applied, then "
+                "resolve as applied, not_applied or retry",
+            }
+            jobq.transition(
+                conn,
+                row,
+                JobStatus.recovery_required,
+                category=ErrorCategory.uncertain_side_effect,
+                reason="worker lost its lease with an unresolved billable request outstanding",
                 details=diag,
                 recovery=diag,
                 lease_expires_at=None,

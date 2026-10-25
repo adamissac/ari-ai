@@ -65,11 +65,13 @@ handler. For each expired lease, in order:
 
 1. effect set → `recovery_required` with diagnostics (previous owner, last
    heartbeat, effect key, required action);
-2. cancellation requested → `cancelled` (previously such rows stayed `running`
+2. unresolved billable-request ledger row → `recovery_required` (see
+   "Ledger-derived uncertainty" below);
+3. cancellation requested → `cancelled` (previously such rows stayed `running`
    forever because the claim query skips cancelled rows);
-3. deadline passed → `timed_out`;
-4. final attempt → `dead`;
-5. otherwise → `queued` (next claim increments `attempts`).
+4. deadline passed → `timed_out`;
+5. final attempt → `dead`;
+6. otherwise → `queued` (next claim increments `attempts`).
 
 It also times out pending jobs past their deadline, promotes/fails `waiting` jobs,
 and prunes worker rows not seen for 10 × `WORKER_STALE_S`.
@@ -83,6 +85,27 @@ and prunes worker rows not seen for 10 × `WORKER_STALE_S`.
 | DB failure finalizing a job     | `complete`/`fail` retried `WORKER_FINALIZE_RETRIES` times; then lease expiry recovers |
 | Network failure                 | `network`, retried; inside an effect → `recovery_required` |
 | Heartbeat loss                  | handler sees `JobCancelled` on next `check_cancelled()`; `complete` refuses |
+| Abrupt death mid-provider send  | lease expires → reconcile reads the billable-request ledger → `recovery_required` |
+
+## Ledger-derived uncertainty (R5)
+
+A worker killed mid-send (`SIGKILL`, `os._exit`, host restart) never runs its
+`ctx.effect` handler unwind. When the domain writer already persisted a
+pre-send reservation (Phase 7C `ProviderAttempt` inside
+`first_responder_invocations.doc.execution`), `reconcile` recovers the
+job-level uncertainty from the ledger instead of requeueing: an expired-lease
+job whose payload carries `invocation_id` and whose invocation doc shows
+`uncertain_provider_outcome` or a `provider_attempts` row in
+`reserved`/`in_flight`/`sent`/`uncertain` state becomes `recovery_required`,
+with owner/attempt fencing plus the attempt's idempotency/effect key copied
+into `recovery` diagnostics for the audited operator resolution. Ledger docs
+without the `execution` section (pre-7C shape) simply carry no uncertainty.
+Pure canonical reads are never reserved in the ledger, so they can never
+produce uncertainty here.
+
+Ledger writers can alternatively mark job uncertainty atomically with their
+reservation by calling `jobs.begin_effect(conn, job_id, owner, effect_key)`
+inside the reservation transaction — both rows commit or neither does.
 
 ## Resource and concurrency limits
 
