@@ -212,6 +212,7 @@ def run(candidate: Path, directory: Path, policy: dict) -> int:
     for rel in ("backend/tests", "security-agents/tests"):
         (candidate / rel).mkdir(parents=True, exist_ok=True)
     for root in (candidate, suite):
+        root.chmod(root.stat().st_mode | 0o555)
         for parent, dirs, files in os.walk(root):
             for name in dirs:
                 path = Path(parent) / name

@@ -148,3 +148,33 @@ def test_workflow_separates_execution_from_model_and_write_permissions():
     assert "DEVIN_API_KEY" not in json.dumps(refresh["jobs"]["refresh"])
     assert "DEVIN_API_KEY" not in json.dumps(jobs["publish"])
     assert "github.run_attempt == 1" in model["if"]
+
+
+def test_paid_guard_requires_all_workflow_and_self_ownership():
+    import base64
+
+    from scripts.ari_review.common import trusted_owners_guard
+
+    policy = json.loads(Path(".github/ari-review/policy.json").read_text())
+
+    class GuardAPI:
+        def __init__(self, text):
+            self.text = text
+
+        def call(self, path):
+            return {"content": base64.b64encode(self.text.encode()).decode()}
+
+    text = "\n".join(
+        p + " @m-alan08 @adamissac"
+        for p in [
+            "/.github/ari-review/",
+            "/.github/workflows/",
+            "/.github/CODEOWNERS",
+            "/scripts/ari_review/",
+        ]
+    )
+    assert trusted_owners_guard(GuardAPI(text), policy)
+    assert not trusted_owners_guard(GuardAPI(text + "\n* @untrusted-bot"), policy)
+    assert not trusted_owners_guard(
+        GuardAPI(text.replace("/.github/workflows/", "/.github/workflows/ari-*.yml")), policy
+    )

@@ -32,7 +32,7 @@ class Admin:
         if run.returncode:
             if missing and "(HTTP 404)" in run.stderr:
                 return None
-            raise RuntimeError(run.stderr.strip())
+            raise RuntimeError(run.stderr.strip() + " " + run.stdout[:2500])
         return json.loads(run.stdout) if run.stdout.strip() else None
 
     def secret(self, repo: str, environment: str, name: str, value: str):
@@ -49,6 +49,7 @@ def protect(api: Admin, repo: str, branch: str, ledger=False, apply=False) -> No
 
     path = f"/repos/{repo}/branches/{urllib.parse.quote(branch, safe='')}/protection"
     current = api.call(path, missing=True)
+    personal = api.call(f"/repos/{repo}")["owner"]["type"] == "User"
     if current:
         if current.get("allow_force_pushes", {}).get("enabled") or current.get(
             "allow_deletions", {}
@@ -67,7 +68,7 @@ def protect(api: Admin, repo: str, branch: str, ledger=False, apply=False) -> No
                 "require_code_owner_reviews"
             ):
                 raise ValueError("trusted controller branch needs owner-reviewed PRs")
-        if not ledger:
+        if not ledger and not personal:
             restrictions = current.get("restrictions") or {}
             owner = repo.split("/")[0]
             users = {u["login"] for u in restrictions.get("users", [])}
@@ -128,7 +129,7 @@ def protect(api: Admin, repo: str, branch: str, ledger=False, apply=False) -> No
                 "require_last_push_approval": True,
             },
             "restrictions": None
-            if ledger
+            if ledger or personal
             else {"users": [repo.split("/")[0]], "teams": [], "apps": []},
             "required_linear_history": ledger,
             "allow_force_pushes": False,

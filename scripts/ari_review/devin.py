@@ -22,6 +22,7 @@ from scripts.ari_review.common import (
     comments,
     journal,
     state_body,
+    trusted_owners_guard,
     utc_day,
     workstream,
 )
@@ -88,6 +89,8 @@ def notify(result: dict, policy: dict) -> dict:
         return {"status": "BLOCKED", "reason": "native hard-cap/session confirmation missing"}
     attestation = json.loads(os.environ["ARI_DEVIN_BUDGET_ATTESTATION"])
     api, devin = GitHub(), Devin()
+    if not trusted_owners_guard(api, policy):
+        return {"status": "BLOCKED", "reason": "human CODEOWNER review guards are not installed"}
     ledger = Ledger(api, policy)
     _, state = ledger.load()
     records = state["devin"]

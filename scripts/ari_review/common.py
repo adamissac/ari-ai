@@ -310,3 +310,38 @@ def fingerprint(finding: dict) -> str:
 
 def utc_day() -> str:
     return datetime.now(UTC).date().isoformat()
+
+
+def trusted_owners_guard(api: GitHub, policy: dict) -> bool:
+    """Never release agent credentials before both controller guards are installed.
+
+    Personal repositories lack organization-only actor push restrictions. Their
+    required CODEOWNER reviews, together with environment branch restrictions,
+    keep candidate/App-authored workflows away from protected credentials.
+    """
+    import base64
+    import urllib.parse
+
+    expected = {
+        "/.github/ari-review/",
+        "/.github/workflows/",
+        "/.github/CODEOWNERS",
+        "/scripts/ari_review/",
+    }
+    owner = "@" + policy["integration_repository"].split("/")[0]
+    allowed = {owner, "@" + policy["canonical_repository"].split("/")[0]}
+    for branch in ("main", "ci/upstream-main"):
+        ref = urllib.parse.quote(branch, safe="")
+        value = api.call(
+            f"/repos/{policy['integration_repository']}/contents/.github/CODEOWNERS?ref={ref}"
+        )
+        text = base64.b64decode(value["content"]).decode()
+        rows = [
+            r.split() for r in text.splitlines() if r.strip() and not r.lstrip().startswith("#")
+        ]
+        tail = rows[-4:]
+        if {r[0] for r in tail} != expected or any(
+            owner not in r[1:] or not set(r[1:]) <= allowed for r in tail
+        ):
+            return False
+    return True

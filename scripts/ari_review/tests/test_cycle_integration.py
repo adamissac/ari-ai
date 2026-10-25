@@ -79,6 +79,7 @@ class API:
 
 def test_full_authenticated_publish_and_ci_refresh_route_real_workstream(tmp_path, monkeypatch):
     api = API()
+    monkeypatch.setattr(cycle, "trusted_owners_guard", lambda *_: True)
     monkeypatch.setattr(cycle, "GitHub", lambda: api)
     pin = {
         "candidate_sha": "a" * 40,

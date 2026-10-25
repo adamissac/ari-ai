@@ -26,6 +26,7 @@ jobs:
           docker build -t ari-controller-unit - <<'DOCKERFILE'
           FROM python:3.12.12-slim-bookworm
           RUN pip install --no-cache-dir pytest==8.3.5 PyYAML==6.0.2
+          RUN mkdir -p /app/.venv/bin && ln -s /usr/local/bin/python /app/.venv/bin/python
           WORKDIR /repo
           DOCKERFILE
       - name: Unit and adversarial controller tests (no network/credentials)
@@ -36,6 +37,10 @@ jobs:
           -e PYTHONDONTWRITEBYTECODE=1 -e PYTHONPATH=/repo
           --mount type=bind,src="$PWD",dst=/repo,readonly
           ari-controller-unit python -m pytest -p no:cacheprovider scripts/ari_review/tests -q
+      - name: Verify real container mounts using synthetic fixtures (no release verdict)
+        run: |
+          docker tag ari-controller-unit ari-review-tests
+          python3 -m scripts.ari_review.smoke_layout
       - name: Validate workflow syntax and expressions
         run: >-
           docker run --rm --network none --read-only --cap-drop=ALL

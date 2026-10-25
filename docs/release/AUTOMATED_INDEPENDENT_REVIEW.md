@@ -41,8 +41,8 @@ Native silence, a thumbs-up, missing evidence or pending CI cannot produce GO.
    refresh; fork `ci/upstream-main` for PR #8's pull_request_target controller.
    Do not merge the integration release as part of this setup.
 2. A fork administrator runs `python3 -m scripts.ari_review.bootstrap --apply`.
-   This creates restricted CI credential environments, restricts controller-branch
-   pushes/merges to the fork owner, protects trusted branches,
+   This creates restricted CI credential environments, requires human CODEOWNER
+   review on trusted controller branches, protects the budget branch,
    creates a signed fast-forward-only budget ledger and generates an internal
    state-signing key. It never creates OpenAI/Devin credentials or enables paid
    calls. Existing protection/ledger/key material is not weakened or reset.
@@ -71,6 +71,12 @@ Native silence, a thumbs-up, missing evidence or pending CI cannot produce GO.
    a new candidate). Verify isolated CI receipts, signed artifacts, assignments
    and configured handoff before relying on unattended operation. No prompts or
    review results need to be copied between agents after activation.
+
+Both trusted branches must have the complete human CODEOWNER guard before paid
+execution is admitted. Personal repositories use required CODEOWNER PR reviews;
+actor-specific push restrictions are available only where GitHub supports them.
+Use the existing Devin GitHub App/write identity, not a human owner/admin PAT;
+fixer identities must not bypass protected controller-branch review.
 
 No one should paste credentials in chat, issues, review prompts or PR bodies.
 

@@ -21,6 +21,7 @@ from scripts.ari_review.common import (
     native_findings,
     sha,
     state_body,
+    trusted_owners_guard,
     utc_day,
     validate_review,
     verdict,
@@ -149,7 +150,9 @@ def prepare(policy: dict, directory: Path) -> None:
             },
         )
     output("ci_allowed", str(ci_allowed).lower())
-    enabled = os.environ.get("ARI_REVIEW_API_ENABLED") == "true"
+    enabled = os.environ.get("ARI_REVIEW_API_ENABLED") == "true" and trusted_owners_guard(
+        api, policy
+    )
     allowed = not any(r["candidate_sha"] == pin["candidate_sha"] for r in ledger_state["reviews"])
     reason = "reserved" if allowed else "SHA already reserved; no automatic paid retries"
     if os.environ.get("GITHUB_RUN_ATTEMPT", "1") != "1":
@@ -378,6 +381,8 @@ def report(policy: dict, directory: Path, refresh: bool = False) -> dict:
     current = pull(api, policy)["head"]["sha"]
     native = native_findings(api, pin, policy)
     decision, blockers = verdict(pin, review, ci, receipt, merge, current, upstream(api, policy))
+    if not trusted_owners_guard(api, policy):
+        blockers.append("human CODEOWNER review guards are not fully installed")
     if transfer_drift(api, pin, policy):
         blockers.append("proposed transfer/prerequisite heads changed: merge evidence is stale")
     if pin.get("policy_digest") != policy_digest():
