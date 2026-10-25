@@ -21,16 +21,21 @@ def add_member(org_id: str, user_id: str, role: str = "owner") -> None:
         conn.execute(sa.insert(memberships).values(org_id=org_id, user_id=user_id, role=role))
 
 
-def setup_project(alice: Any, bob: Any, *, approve: bool = True) -> dict[str, str]:
+def setup_project(
+    alice: Any, bob: Any, *, approve: bool = True, delivery_mode: str | None = "manual"
+) -> dict[str, str]:
     """Alice owns a project with a connected repo and requests a scope; Bob (co-owner) approves it."""
     org_id = alice.me["memberships"][0]["organization"]["id"]
     add_member(org_id, bob.me["user"]["id"])
+    settings: dict[str, Any] = {"monitoring_policy": {"enabled": True}}
+    if delivery_mode is not None:
+        settings["delivery_mode"] = delivery_mode
     p = alice.post(
         "/api/v1/projects",
         json={
             "name": "payments-lite",
             # manual: tests drive the human approval gate; delivery modes have their own tests
-            "settings": {"monitoring_policy": {"enabled": True}, "delivery_mode": "manual"},
+            "settings": settings,
         },
     )
     assert p.status_code == 201, p.text

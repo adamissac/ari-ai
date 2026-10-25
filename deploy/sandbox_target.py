@@ -130,7 +130,7 @@ def _seed() -> dict[str, str]:
         ScopeStatus,
         ScopeTarget,
     )
-    from shared.tenancy import Budget, MemberRole, ProjectSettings
+    from shared.tenancy import Budget, DeliveryMode, MemberRole, ProjectSettings
 
     tokens = {}
     with transaction() as conn:
@@ -154,7 +154,10 @@ def _seed() -> dict[str, str]:
                     id=ids["project"],
                     org_id=ids["org"],
                     name=f"{name}-app",
-                    settings=ProjectSettings().model_dump(mode="json"),
+                    settings=ProjectSettings(
+                        delivery_mode=DeliveryMode.pull_request,
+                        delivery_authorized_by=ids["user"],
+                    ).model_dump(mode="json"),
                 )
             )
             conn.execute(

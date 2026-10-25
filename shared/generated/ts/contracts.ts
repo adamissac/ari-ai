@@ -512,8 +512,6 @@ export interface ConnectedApplication {
   shadow_mode: true;
   /** True when a control channel exists; the HMAC secret is never returned */
   control_channel_configured: boolean;
-  /** When true, the server enforces recommendation-only shadow mode: no grant, channel, authorize, or execute. */
-  rl_gated_pilot: boolean;
   disconnected_at: string | null;
   created_by: string;
   created_at: string;
@@ -522,8 +520,6 @@ export interface ConnectedApplication {
 export interface ConnectedApplicationCreate {
   name: string;
   environment: StagingEnvironment;
-  /** Register already in server-enforced shadow-only mode. */
-  rl_gated_pilot: boolean;
 }
 
 export interface ContextChunk {
@@ -795,9 +791,6 @@ export type EventStatus = "received" | "processing" | "processed" | "ignored" | 
 
 export type EventType = "push" | "pull_request" | "log_anomaly" | "assessment_completed" | "advisory";
 
-/** Dashboard values. Computed by the backend, never a frontend flag. */
-export type EvidenceCheckStatus = "PASS" | "FAIL" | "BLOCKED" | "NOT VERIFIED";
-
 export type EvidenceKind = "source_span" | "test_run" | "sandbox_run" | "tool_output" | "artifact" | "human_input" | "doc" | "change_intent" | "monitoring_event";
 
 /** UI case states. Recommended is not executed. RL rec is never Executed. */
@@ -1037,32 +1030,6 @@ export interface HealthStatus {
   version: string;
   git_sha: string | null;
   schema_version: string;
-}
-
-/** Declarative requirements for a future approved checkpoint. Does not serve one. */
-export interface HostedInferenceReadinessConfig {
-  refuse_on_hash_mismatch: true;
-  refuse_on_tamper: true;
-  /** Unset until the RL owner approves a timeout. */
-  inference_timeout_ms: number | null;
-  restart_on_timeout: boolean | null;
-  isolation: string;
-  abstention_on_assumption_failure: true;
-  fallback_producer: "rules" | "abstention";
-  auto_serve_unapproved: false;
-  auto_serve_newer_research_checkpoints: false;
-  approved_checkpoint_sha256: string | null;
-  /** Frozen v6 hash used only in compatibility tests, not as an approved policy. */
-  compatibility_fixture_sha256: string | null;
-  v6_claimed_to_pass_new_criteria: false;
-}
-
-export interface HostedInferenceReadinessReport {
-  config: HostedInferenceReadinessConfig;
-  approved_checkpoint_present: boolean;
-  v6_used_only_as_compatibility_fixture: boolean;
-  v6_passed_new_criteria: false;
-  notes: Array<string>;
 }
 
 export interface Hypothesis {
@@ -1440,9 +1407,19 @@ export interface PatchCandidate {
   created_at: string;
 }
 
+export interface PatchDelivery {
+  status: "pending" | "pr_opened" | "pushed" | "failed" | "skipped";
+  reason: string | null;
+  url: string | null;
+  branch: string | null;
+  commit_sha: string | null;
+  at: string | null;
+}
+
 export interface PatchView {
   patch: PatchCandidate;
   verification: VerificationResult | null;
+  delivery: PatchDelivery | null;
 }
 
 export interface PathStep {
@@ -1452,23 +1429,6 @@ export interface PathStep {
   symbol_ref: string | null;
   verified: boolean;
   evidence: Array<EvidenceRef>;
-}
-
-export interface PilotEnablement {
-  application: ConnectedApplication;
-  enabled: boolean;
-  leftover: PilotLeftoverInventory;
-  fail_closed: boolean;
-  jobs_reconciled: number;
-  reason: string | null;
-}
-
-export interface PilotLeftoverInventory {
-  active_grants: number;
-  active_channels: number;
-  leftover_controls: number;
-  pending_execute_jobs: number;
-  details: Array<string>;
 }
 
 /** Exportable shadow-pilot snapshot. Not an effectiveness claim. */
@@ -1496,8 +1456,6 @@ export interface PilotTrailEntry {
   detail: string | null;
 }
 
-export type PilotVerdict = "INFRASTRUCTURE READY \u2014 RL BLOCKED" | "RL VALIDATED \u2014 PILOT READY FOR OWNER APPROVAL" | "PILOT APPROVED";
-
 export interface PlatformFacts {
   project_id: string | null;
   nodes: Array<NodeSignals>;
@@ -1524,31 +1482,6 @@ export interface PlatformFacts {
   flagged_repeat: number;
   /** heaviest flagged principal's share of flagged cross-tenant attempts */
   flagged_top_share: number;
-}
-
-/** Stable serving contract for a future approved policy. Missing fields stay missing. */
-export interface PolicyServingOutput {
-  policy_version: string | null;
-  checkpoint_sha256: string | null;
-  action: "noop" | "raise_monitoring" | "rate_limit" | "isolate" | "request_reassessment" | "escalate_to_human" | "block_principal" | "block_principal_long" | "block_top_principal_long" | null;
-  node: "gateway" | "api" | "auth" | "payments" | "db" | null;
-  top_actions: Array<ActionScore> | null;
-  q_margin: number | null;
-  observation: Array<number> | null;
-  observation_dim: number | null;
-  inference_status: InferenceStatus | null;
-  abstention_reason: string | null;
-  feature_schema_ok: boolean | null;
-  action_mask_valid: boolean | null;
-  freshness_ok: boolean | null;
-  observation_complete: boolean | null;
-  principal_targets: Array<string> | null;
-  feature_mapping_note: string | null;
-  trained_commit_sha: string | null;
-  eval_bundle_sha256: string | null;
-  uncertainty: number | null;
-  q_values_are_not_probabilities: true;
-  auto_served_unapproved_checkpoint: false;
 }
 
 /** One principal's requests on one route in one window, as classified by the
@@ -1583,6 +1516,7 @@ export interface ProjectCreate {
 export interface ProjectSettings {
   default_budget: Budget;
   monitoring_policy: TriggerPolicy;
+  review: ReviewerSettings;
   languages: Array<string>;
   delivery_mode: DeliveryMode;
   /** Owner on whose standing authorization Ari approves and delivers fixes; set by the server, never the client. Null on projects that predate delivery modes: they stay manual until an owner saves settings. */
@@ -1745,65 +1679,17 @@ export interface ReviewResult {
   generated_tests: Array<GeneratedTest>;
 }
 
-export interface RlCategoryResult {
-  category: RlEvidenceCategory;
-  letter: "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J";
-  title: string;
-  status: EvidenceCheckStatus;
-  mandatory: boolean;
-  summary: string;
-  evidence_notes: Array<string>;
-  open_pr_is_not_readiness: true;
-  unit_tests_are_not_readiness: true;
-  research_docs_are_not_readiness: true;
-}
-
-/** One required metric. Numeric thresholds stay unset until RL-owner approval. */
-export interface RlEvaluationMetricSpec {
-  name: string;
-  description: string;
-  /** Null until the RL owner approves a threshold. Never invented. */
-  threshold: number | null;
-  threshold_status: "pending_rl_owner_approval";
-}
-
-/** Required evaluation dimensions. Pass-by-total-reward is forbidden. */
-export interface RlEvaluationPlan {
-  frozen_scenarios_required: true;
-  holdout_required: true;
-  independent_seeds_required: true;
-  baselines: Array<"rules" | "fixed_block" | "v6">;
-  metrics: Array<RlEvaluationMetricSpec>;
-  per_scenario_required: true;
-  pass_by_total_reward: false;
-  abstention_required: true;
-  uncertainty_required: true;
-  provenance_required: true;
-  thresholds_invented: false;
-  threshold_owner: "rl_owner";
-}
-
-/** Mandatory evidence categories for the RL-gated pilot. Letters A–J. */
-export type RlEvidenceCategory = "A_frozen_scenarios" | "B_holdout" | "C_independent_seeds" | "D_baselines" | "E_safety_metrics" | "F_per_scenario" | "G_abstention" | "H_uncertainty" | "I_provenance" | "J_hosted_serving";
-
-/** Machine-readable RL-gated pilot assessment. ready is backend-computed. */
-export interface RlReadinessAssessment {
-  generated_at: string;
-  schema_version: string;
-  origin_main_sha: string | null;
-  phase6_verdict: string;
-  categories: Array<RlCategoryResult>;
-  evaluation_plan: RlEvaluationPlan;
-  serving_contract: PolicyServingOutput;
-  hosted_inference: HostedInferenceReadinessReport;
-  ready: boolean;
-  verdict: PilotVerdict;
-  infrastructure_complete: boolean;
-  customer_infra_provisioned: false;
-  owner_pilot_authorization: false;
-  phase7_started: false;
-  gated_application_count: number;
-  caveat: string;
+export interface ReviewerSettings {
+  review_pushes: boolean;
+  review_pull_requests: boolean;
+  review_draft_prs: boolean;
+  include_branches: Array<string>;
+  exclude_branches: Array<string>;
+  include_authors: Array<string>;
+  exclude_authors: Array<string>;
+  strictness: number;
+  comment_on_pull_requests: boolean;
+  max_reviews_per_hour: number | null;
 }
 
 export interface RootCause {
