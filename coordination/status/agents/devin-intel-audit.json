@@ -5,7 +5,7 @@
   "state": "READY_FOR_REVIEW",
   "task": "PR #531: executed audit report + parse-safe redaction (#441 fix carried verbatim) + mid-line secret redaction + honest route-gap IndexIssues + retrieval eval + index benchmark",
   "branch": "feat/adam/intel-pipeline-audit",
-  "latest_sha": "48c19f39",
+  "latest_sha": "46a734b3",
   "prs": [
     531
   ],
@@ -22,7 +22,7 @@
     "#535 RLS/purge as second layer (merged)"
   ],
   "blockers": [],
-  "last_update_utc": "2026-10-24T17:20:00Z",
-  "tests": "CI 8/8 green on 48c19f39; code-intelligence 60 passed / 1 skipped; backend intel PG 9 passed; ruff clean; gitleaks clean",
-  "next_action": "await merge (board position 13); report + security assessment + merge rec delivered to Adam"
+  "last_update_utc": "2026-10-25T01:05:00Z",
+  "tests": "local: 61 passed/1 skipped code-intel; ops readiness 11/11; app builds; CI re-running after ops-import-shadow merge",
+  "next_action": "await CI green on 46a734b3 then merge at board position 13"
 }
