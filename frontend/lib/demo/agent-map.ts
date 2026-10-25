@@ -46,6 +46,23 @@ const PLAIN: [RegExp, string][] = [
   [/^record\.attack_path/, 'Wrote down how far an attacker could get'],
   [/^record\.(patch_candidate|remediation_plan)/, 'Saved the proposed fix'],
   [/^record\.(check|verification)/, 'Saved the result'],
+  // Real pipeline tool names (security-agents tools/catalog).
+  [/^code\.read_span/, 'Read the code'],
+  [/^code\.search/, 'Searched the code'],
+  [/^graph\.neighbors/, 'Followed the call graph'],
+  [/^expectations\.for_subject/, 'Checked what the code should do'],
+  [/^findings\.history/, 'Checked past findings'],
+  [/^static\.analyze/, 'Ran static analysis'],
+  [/^checks\.list_templates/, 'Listed the checks it can run'],
+  [/^checks\.run_template/, 'Ran a check in the sandbox'],
+  [/^sandbox\.check_run/, 'Ran a check in the sandbox'],
+  [/^sandbox\.tests_run/, 'Ran the tests in the sandbox'],
+  [/^tests\.run/, 'Ran the tests'],
+  [/^worktree\.(write_file|edit_file)/, 'Edited a scratch copy'],
+  [/^worktree\.diff/, 'Prepared the fix diff'],
+  [/^patch\.apply_fresh/, 'Re-applied the fix on a clean copy'],
+  [/^build_recipe\./, 'Read the build recipe'],
+  [/^specialist\.inference/, 'Consulted a specialist model'],
 ];
 export function plainStep(step: ToolStep): string {
   return PLAIN.find(([re]) => re.test(step.tool))?.[1] ?? step.tool;
@@ -84,12 +101,24 @@ export function stepComponent(step: ToolStep, repo: DemoRepo, previous?: string)
   if (/^(policy\.suggest_rule|rl\.recommend)/.test(step.tool)) return byKind(repo, ['edge']) ?? core;
   if (/^(record|review)\./.test(step.tool)) return previous ?? core;
   if (/^(sandbox|worktree|fs|tests|git)\./.test(step.tool)) return core;
+  // Real pipeline tools: edits and sandboxed checks happen inside the changed service; pure
+  // reads keep the sector the agent was last on.
+  if (/^(patch\.apply_fresh|worktree\.|checks\.|specialist\.inference)/.test(step.tool)) return core;
+  if (/^(code|graph|expectations|findings|static|build_recipe)\./.test(step.tool)) return previous ?? core;
   const text = `${step.input} ${step.result}`;
   for (const [re, kinds] of KIND_HINTS) {
     const hit = byKind(repo, kinds);
     if (hit && re.test(text)) return hit;
   }
   return core;
+}
+
+/** Best-effort component kind for a repository-relative file path. */
+export function kindForPath(path: string): string | undefined {
+  for (const [re, kinds] of KIND_HINTS) {
+    if (re.test(path)) return kinds[0];
+  }
+  return undefined;
 }
 
 /** The red team looks for problems and may touch any part of the change. */
