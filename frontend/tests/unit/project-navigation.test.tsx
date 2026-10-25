@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { ProjectNavigation } from '@/components/project';
 const route = vi.hoisted(() => ({ path: '/projects/p1' }));
@@ -35,4 +35,20 @@ it('marks the current tool page and only that page', () => {
   render(<ProjectNavigation base="/projects/p1" />);
   expect(screen.getByRole('link', { name: 'Authorized scopes' }).getAttribute('aria-current')).toBe('page');
   expect(screen.getByRole('link', { name: '7 Agents' }).getAttribute('aria-current')).toBeNull();
+});
+
+it('discloses the grouped rail on mobile and closes it after navigation', () => {
+  route.path = '/projects/p1/findings/f1';
+  render(<ProjectNavigation base="/projects/p1" />);
+  const toggle = screen.getByRole('button', { name: 'Review · Findings' });
+  const nav = screen.getByRole('navigation', { name: 'Project' });
+  expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  expect(nav.getAttribute('data-open')).toBe('false');
+  expect(screen.getByRole('link', { name: 'Findings' }).getAttribute('aria-current')).toBe('page');
+  fireEvent.click(toggle);
+  expect(toggle.getAttribute('aria-expanded')).toBe('true');
+  expect(nav.getAttribute('data-open')).toBe('true');
+  fireEvent.click(screen.getByRole('link', { name: 'Settings' }));
+  expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  expect(nav.getAttribute('data-open')).toBe('false');
 });
