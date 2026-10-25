@@ -414,3 +414,9 @@ Owner requested AI automation and Defense Lab OFF until explicitly enabled. Bran
 - Sent to release-gate agent: `last_error` sanitization spec (raw exception text `f"{type(exc).__name__}: {exc}"[:500]` persists + reaches project members via `GET /projects/{id}/jobs`; reuse `backend/redaction.py`; member-safe `{code, category}`; secret regression tests) + NULL-safe `score.py` paths/metrics nits.
 - Next action: on #530 merge → rebase #529, run suite, verify scoring across security/functional/unscored/missing-paths cases, confirm 8/8 CI.
 
+
+
+### 2026-10-25 — code-review eval lane (session 0068155b, PR #529 MERGED)
+- #529 merged as `586370b0` (squash): eval report + scorer path-fallback regression tests + coordination notes are on main. CI was 8/8 green at merge.
+- Merge order flipped: `score_api.py`'s `_finding_paths` is now MODULE-level on main. #530 (feat/adam/release-gate) owns the now-inverted conflict — resolution sent directly to the release-gate session (keep module-level fn, drop their nested copy, keep all scored/unscored_reason additions).
+- Lane complete pending #530's rebase + my final verification of combined scoring (security/functional/unscored/missing-paths).
