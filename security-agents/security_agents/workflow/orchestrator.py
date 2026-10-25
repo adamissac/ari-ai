@@ -1460,13 +1460,15 @@ class Orchestrator:
         return None
 
     def _protected_tests(self) -> list[str]:
-        """Tests encoding confirmed expectations (configured + expectation sources)."""
+        """Tests protected by configuration, recipes, existing files, and confirmed expectations."""
         protected = set(self.config.protected_tests)
         protected.update(recipe_protected_tests(self.intel.snapshot.root))
+        test_roots = recipe_test_roots(self.intel.snapshot.root)
+        protected.update(path for path in self.intel.snapshot.files() if under_test_roots(path, test_roots))
         for expectation in self.intel.expectations():
             if expectation.status != "confirmed":
                 continue
             for source in expectation.sources:
-                if source.path and under_test_roots(source.path, recipe_test_roots(self.intel.snapshot.root)):
+                if source.path and under_test_roots(source.path, test_roots):
                     protected.add(source.path)
         return sorted(protected)

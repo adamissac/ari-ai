@@ -112,9 +112,10 @@ sandbox environment is scrubbed and transcripts pass through the redactor.
   `compute_verdict()` from executed records; the model only writes the summary.
 - **Verify is structurally independent.** Its own `AgentRun`, a fresh checkout,
   fresh sandboxes, the diff artifact only, and no Patch transcript.
-- **Repository-declared tests are durable policy.** A root `build_recipe.json`
-  may list `"protected_tests": ["tests/test_api.py"]`; only normalized paths
-  under its `test_roots` (default `tests/`) are honored, and edits to them fail
+- **Repository tests are protected.** Every pre-existing file under `test_roots`
+  in the root `build_recipe.json` (default `tests/`) is protected, and
+  `"protected_tests"` can declare additional normalized paths under those roots
+  (including paths not yet in the snapshot); edits to protected files fail
   Verify's `no_test_tampering` check.
 - **Model output carries no authority.** No output schema has a field that
   approves, verifies or widens scope (asserted by a test).
