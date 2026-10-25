@@ -1407,9 +1407,19 @@ export interface PatchCandidate {
   created_at: string;
 }
 
+export interface PatchDelivery {
+  status: "pending" | "pr_opened" | "pushed" | "failed" | "skipped";
+  reason: string | null;
+  url: string | null;
+  branch: string | null;
+  commit_sha: string | null;
+  at: string | null;
+}
+
 export interface PatchView {
   patch: PatchCandidate;
   verification: VerificationResult | null;
+  delivery: PatchDelivery | null;
 }
 
 export interface PathStep {
