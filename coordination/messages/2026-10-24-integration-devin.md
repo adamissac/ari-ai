@@ -205,3 +205,6 @@ No new upstream migrations in this delta. Chain unchanged: `0015 → 0016 tenant
 
 ### Freeze
 Release-candidate SHA = tip after Playwright verification; handed to Codex re-review + Devin Bot readiness re-run.
+
+### Final freeze (2026-10-24)
+Playwright real-stack: **49/49**. **RC SHA = `bc490484`**, pushed to PR #8. Handed to Codex re-review + release-validation readiness re-run. Remaining blockers: security re-review on bc490484, readiness re-run (expected GO — head still 0019), Adam's buy-in on the upstream merge sequence. Nothing auto-merged.
