@@ -51,7 +51,12 @@ from backend.live_defense.modes import (
     telemetry_untrusted,
 )
 from backend.live_defense.orchestrator import OrchestratorFacts, decide
-from backend.services import active_scope_for_repo, project_org
+from backend.services import (
+    active_scope_for_repo,
+    project_org,
+    repository_revocation,
+    repository_revocation_locked,
+)
 from backend.worker import JobCancelled, JobContext, JobDeferred, handler
 from shared.assessment import AgentName
 from shared.audit import ActorType
@@ -1206,7 +1211,17 @@ def live_defense_agent_step(ctx: JobContext) -> dict[str, Any]:
                 return True
             if jobq.is_cancel_requested(check, ctx.job.id):
                 return True
-            if investigation_source_revoked(check, mapping_id=mapping_id, repo_id=repo_id):
+            if (
+                repository_revocation(
+                    check,
+                    repo_id=repo_id,
+                    application_id=decision.application_id if decision else None,
+                    mapping_id=decision.correlation.mapping_id if decision else None,
+                )
+                is not None
+                or investigation_source_revoked(check, mapping_id=mapping_id, repo_id=repo_id)
+                is not None
+            ):
                 return True
         return False
 
@@ -1279,10 +1294,26 @@ def live_defense_agent_step(ctx: JobContext) -> dict[str, Any]:
         if load_intent(conn, payload["project_id"]).intent is FirstResponderIntent.off:
             status = AgentInvocationStatus.cancelled
             reason = "first-responder OFF is effective; late output is not executed"
-        revoked = investigation_source_revoked(conn, mapping_id=mapping_id, repo_id=repo_id)
-        if revoked:
+        if (
+            repository_revocation(
+                conn,
+                repo_id=repo_id,
+                application_id=decision.application_id if decision else None,
+                mapping_id=decision.correlation.mapping_id if decision else None,
+            )
+            is not None
+            or repository_revocation_locked(
+                conn,
+                repo_id=repo_id,
+                application_id=decision.application_id if decision else None,
+                mapping_id=decision.correlation.mapping_id if decision else None,
+            )
+            is not None
+            or investigation_source_revoked(conn, mapping_id=mapping_id, repo_id=repo_id)
+            is not None
+        ):
             status = AgentInvocationStatus.cancelled
-            reason = f"{revoked}; late output is not executed"
+            reason = "repository revoked before final persist; late output is not executed"
         updated = inv.model_copy(
             update={
                 "status": status,
