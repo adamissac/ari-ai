@@ -1,6 +1,33 @@
 # Adam — implementation status
 
 Owner: Adam
+Branch: `feat/adam/release-gate` → PR #530 (open, awaiting human merge approval)
+Last sync: 2026-10-24 ~23:45Z — origin/main at `586370b0` (#528/#529 landed; #535 earlier); branch synced.
+
+## In flight — release gate (PR #530)
+- Always-on jobs + `scripts/ci/path_gate.py` (RUN/SKIP visible verdicts); unique job ids for required checks.
+- `pilot-verify.yml` manual 7-category release pipeline.
+- `GET /projects/{id}/jobs?status=` dead-letter visibility; `last_error` secret-scrubbed at **write time**; read side role-split.
+- Eval harness: `scored:false` + `unscored_reason`; `summarize()` over scored cases only; case validation.
+- `scripts/ci/load_probe.py` queue probe — all invariants green (~1.5k jobs/s embedded PG).
+- Report + required-check list + admin runbook + trigger commands: `docs/release/RELEASE_GATE_2026-10-24.md`.
+- Local evidence: 15 backend tests pass; ruff clean. CI re-running on latest head.
+
+## Coordination in progress
+- **Migration collision**: #533 (`0016_worker_heartbeats`) vs #535 (`0016_tenant_rls_intelligence`) — both claim revision `0016`. Order: **#535 first**; #533 renumbers to `0017` + updates head test. Comments on both.
+- #529 **merged** — merge order flipped; on sync I kept module-level `_finding_paths` + my scored fields per the agreed resolution. #531 conflict resolved earlier.
+- #544/#547 gitleaks allowlists: scoped correctly; second-to-merge keeps both blocks.
+- #524/#525/#526/#523 (authz fixes): merge cleanly alongside #530.
+
+## Blockers (require Adam/repo admin)
+- `main` branch protection unset — exact settings + `gh api` command in the release doc.
+- GitHub App installation token / hosted pilot URL / Anthropic key needed only for live-model + hosted-smoke gates (opt-in).
+
+## Next actions
+1. #530 CI green on `8b6bf3bd` → awaiting human merge approval (no merge by agents).
+2. #533 must renumber `0016_worker_heartbeats` → `0017` on rebase (notified).
+3. Re-run `pilot-verify.yml` on the true final `main` SHA once merges settle.
+
 Branch: all work merged to `main` (last: PR #13 shared contracts, PR #18 recipe check)
 Current task: pilot readiness — rehearsal verified end-to-end (2 independent runs); merge wave monitored; hosted staging leg gated on Adam GitHub actions
 Last remote sync: 2026-10-24 — fleet merge order per `coordination/messages/20261024T231500Z-adam-to-all-pilot-merge-order-and-gitleaks-unblock.md`
