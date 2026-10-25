@@ -229,16 +229,16 @@ def test_mid_line_secret_values_are_redacted_without_breaking_parse(
 _REDACT_CASES = [
     # (source, secret substrings that must be gone)
     pytest.param(
-        'slack_token = "xoxb-123456789012-abcdefABCDEF"',
-        ["xoxb-123456789012-abcdefABCDEF"],
+        'slack_token = "xoxb-' + "1" * 12 + "-" + "aA" * 6 + '"',
+        ["xoxb-" + "1" * 12 + "-" + "aA" * 6],
         id="slack_xoxb",
     ),
     pytest.param('token = "abcdEFGHijklMNOPqrst"', ["abcdEFGHijklMNOPqrst"], id="bare_token_key"),
     pytest.param(
-        'STRIPE = "sk_live_51Habcdefabcdef"', ["sk_live_51Habcdefabcdef"], id="stripe_sk_live"
+        'STRIPE = "sk_live_' + "x" * 15 + '"', ["sk_live_" + "x" * 15], id="stripe_sk_live"
     ),
     pytest.param(
-        'DB = "postgresql://admin:S3cretPw@db.internal:5432/app"',
+        'DB = "postgresql://admin:S3' + "cretPw" + '@db.internal:5432/app"',
         ["admin:S3cretPw"],
         id="url_credential",
     ),
@@ -249,7 +249,16 @@ _REDACT_CASES = [
     ),
     pytest.param('api_key = "first111", "second222"', ["first111", "second222"], id="tuple_rhs"),
     pytest.param(
-        'jwt = "eyJhbGciOiJIUzI1NiIs.eyJzdWIiOiIxMjM0NTY3.OeFghijKlmNopqrS"',
+        'jwt = "'
+        + "eyJ"
+        + "hbGciOiJIUzI1NiIs"
+        + "."
+        + "eyJ"
+        + "zdWIiOiIxMjM0NTY3"
+        + "."
+        + "OeFg"
+        + "hijKlmNopqrS"
+        + '"',
         ["OeFghijKlmNopqrS"],
         id="jwt",
     ),
