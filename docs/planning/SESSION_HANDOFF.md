@@ -18,7 +18,26 @@ adds an entry before ending.
 
 ---
 
-### 2026-10-24 — security/privacy lead (Devin session 94914ecc)
+### 2026-10-24 — Adam/Devin: pilot rehearsal executed end-to-end (13/13 PASS)
+
+- `scripts/rehearsal/run_rehearsal.py` rewritten to the real API shapes:
+  repo connect `{full_name, default_branch, installation_id}` (repo_id is
+  server-generated; the driver then registers `{repo_id, local_path}` in the
+  bindings file), scope create with `targets`/`expires_at`/`allowed_check_categories`
+  + self-approve (sandbox-only), assessment `{scope_id, repo_id, commit_sha}`
+  where commit_sha must be a REAL commit in the bound checkout (worker runs
+  `git rev-parse --verify`). Assessment detail field is `state` (uppercase).
+- `scripts/rehearsal/target-app` gained `create_app()` factory, seeded books,
+  `build_recipe.json` (alice/bob/carol identities + book resources).
+- `bindings.json` is now run-local (gitignored); `bindings.example.json` kept.
+- Executed: 13/13 steps PASS on `make dev` with real Anthropic + Vercel sandbox
+  (VERCEL_TOKEN/PROJECT_ID/TEAM_ID required; project `ari-ai`, team resolved via
+  API). Assessment completed with genuine findings (delete_book ownership flaw),
+  org B isolation 404s proven. Evidence: `scripts/rehearsal/evidence/rehearsal-run.json`.
+- Next: merge; live leg needs Adam to create `adamissac/ari-pilot-rehearsal`
+  (private), install the GitHub App, and OAuth-login once.
+
+## 2026-10-24 — security/privacy lead (Devin session 94914ecc)
 - Did: Audited private-code data flows end-to-end and wrote `docs/security/TENANT_DATA_PROTECTION.md`; added `backend/tests/test_tenant_isolation_adversarial.py` (17 tests: 28-path read denial, write denial, SSE, artifacts incl. NULL-project, jobs trace-strip, forged scope/repo/context-pack claims, ingest-token binding, viewer floor, forged-ref payload/memory stores, RLS probe-role verify, store GUC smoke, full purge); implemented FORCE RLS on index_payloads/index_snapshots (migration 0016 + `set_config('ari.project_id')` in `_validate_ref`, `find_snapshot`, `PostgresMemoryStore._validate`, purge); implemented `backend/privacy.py::purge_project` (FK-safe full tenant delete + refcount-aware artifact objects + bare-clone removal; audit_events retained by design).
 - State of the code: all 334 backend tests pass incl. 17 new adversarial tests; ruff clean on touched files; no isolation hole found at app layer (require_project uniform).
 - Decisions: RLS scoped to the two source-content tables only (documented in doc §6); purge is operator-invoked, no TTL scheduler (documented gap).
