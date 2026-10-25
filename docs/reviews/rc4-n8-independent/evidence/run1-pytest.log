@@ -1,0 +1,51 @@
+........................................................................ [ 38%]
+......................................F................................. [ 75%]
+........................................F...                             [ 98%]fatal: not a git repository: /home/runner/work/ari-ai/ari-ai/candidate/.git/worktrees/independent-suite
+
+=================================== FAILURES ===================================
+_________ TestRateLimits.test_global_user_limit_applies_on_all_routers _________
+
+self = <test_customer_security_hardening.TestRateLimits object at 0x7f12999a3b30>
+settings_override = <function settings_override.<locals>.apply at 0x7f129676f100>
+client_factory = <function client_factory.<locals>.make at 0x7f129676dda0>
+
+    def test_global_user_limit_applies_on_all_routers(self, settings_override, client_factory):
+        settings_override(rate_limit_per_minute="3")
+        c = client_factory("limited")
+        for _ in range(3):
+            assert c.get("/api/v1/projects").status_code == 200
+        r = c.get("/api/v1/projects")
+>       assert r.status_code == 429
+E       assert 200 == 429
+E        +  where 200 = <Response [200 OK]>.status_code
+
+/suite/backend/tests/test_customer_security_hardening.py:103: AssertionError
+____________ test_annotation_does_not_redact_a_different_statement _____________
+
+    def test_annotation_does_not_redact_a_different_statement():
+        import ast
+        from backend.redaction import redact_code
+        source = 'password: str; notice = "public notice"\n'
+        ast.parse(source)
+        actual = redact_code(source)
+        ast.parse(actual)
+>       assert actual == source, 'annotation matcher redacted a different statement: ' + actual
+E       AssertionError: annotation matcher redacted a different statement: password: str; notice = "[REDACTED:kv]"
+E         
+E       assert 'password: st...DACTED:kv]"\n' == 'password: st...lic notice"\n'
+E         
+E         - password: str; notice = "public notice"
+E         + password: str; notice = "[REDACTED:kv]"
+
+/suite/backend/tests/test_rc4_additional.py:49: AssertionError
+=============================== warnings summary ===============================
+::test_compat_per_project_concurrency_is_fair
+  /suite/backend/tests/conftest.py:182: PytestWarning: Value of environment variable JOB_MAX_RUNNING_PER_PROJECT type should be str, but got 1 (type: int); converted to str implicitly
+    monkeypatch.setenv(k.upper(), v)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+------------------- generated xml file: /evidence/pytest.xml -------------------
+=========================== short test summary info ============================
+FAILED ../config::TestRateLimits::test_global_user_limit_applies_on_all_routers
+FAILED ../config::test_annotation_does_not_redact_a_different_statement - Ass...
+2 failed, 186 passed, 1 warning in 32.87s
