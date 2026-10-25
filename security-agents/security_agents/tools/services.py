@@ -20,6 +20,7 @@ import posixpath
 import re
 import shlex
 import shutil
+import stat
 import tempfile
 import tomllib
 from collections import Counter
@@ -160,20 +161,30 @@ def _pytest_sensitive_constructs(source: str) -> Counter[tuple[str, str, str]]:
         segment = ast.get_source_segment(source, node) or ast.dump(node, include_attributes=False)
         constructs[(kind, name, segment)] += 1
 
+    def assigned_names(targets: list[ast.expr]) -> set[str]:
+        names: set[str] = set()
+
+        def add_target(target: ast.expr) -> None:
+            if isinstance(target, ast.Name):
+                names.add(target.id)
+            elif isinstance(target, (ast.Tuple, ast.List)):
+                for element in target.elts:
+                    add_target(element)
+            elif isinstance(target, ast.Starred):
+                add_target(target.value)
+
+        for target in targets:
+            add_target(target)
+        return names
+
     def assigns_pytest_plugins(targets: list[ast.expr]) -> bool:
-        return any(
-            isinstance(child, ast.Name) and child.id == "pytest_plugins"
-            for target in targets
-            for child in ast.walk(target)
-        )
+        return "pytest_plugins" in assigned_names(targets)
 
     def pytest_assignment_names(targets: list[ast.expr]) -> set[str]:
-        return {
-            child.id
-            for target in targets
-            for child in ast.walk(target)
-            if isinstance(child, ast.Name) and child.id.startswith("pytest_")
-        }
+        return {name for name in assigned_names(targets) if name.startswith("pytest_")}
+
+    def is_runner_module(name: str) -> bool:
+        return any(name == prefix or name.startswith(f"{prefix}.") for prefix in ("_pytest", "pluggy"))
 
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("pytest_"):
@@ -195,21 +206,11 @@ def _pytest_sensitive_constructs(source: str) -> Counter[tuple[str, str, str]]:
 
         if isinstance(node, ast.Import):
             for alias in node.names:
-                if (
-                    alias.name == "_pytest"
-                    or alias.name.startswith("_pytest.")
-                    or alias.name == "pluggy"
-                    or alias.name.startswith("pluggy.")
-                ):
+                if is_runner_module(alias.name):
                     record("runner-import", alias.name, node)
         elif isinstance(node, ast.ImportFrom):
             module = node.module or ""
-            if (
-                module == "_pytest"
-                or module.startswith("_pytest.")
-                or module == "pluggy"
-                or module.startswith("pluggy.")
-            ):
+            if is_runner_module(module):
                 record("runner-import", module, node)
         elif isinstance(node, ast.Call) and node.args:
             function = node.func
@@ -225,7 +226,7 @@ def _pytest_sensitive_constructs(source: str) -> Counter[tuple[str, str, str]]:
                 (is_importlib or is_builtin_import)
                 and isinstance(first_arg, ast.Constant)
                 and isinstance(first_arg.value, str)
-                and first_arg.value.startswith(("_pytest", "pluggy"))
+                and is_runner_module(first_arg.value)
             ):
                 record("runner-import", first_arg.value, node)
 
@@ -781,6 +782,7 @@ class PatchApplier:
         """Protected tests touched by changed hunks or file metadata in a diff."""
         discovery_failures = {path for path in protected if "protected-test discovery failed:" in path}
         protected_set = {safe_rel_path(p) for p in protected if p not in discovery_failures}
+        tampered: set[str] = set()
         touched: set[str] = set()
         section_paths: set[str] = set()
         git_section = False
@@ -789,10 +791,15 @@ class PatchApplier:
         old_remaining = 0
         new_remaining = 0
 
+        def mark_unmapped_diff_path(raw: str | None = None) -> None:
+            label = raw or "<diff header>"
+            tampered.add(f"{label} (protected-test discovery failed: {ErrorCode.SNAPSHOT_NOT_READY.value})")
+
         def path_from_header(raw: str, *, strip_diff_prefix: bool = True) -> str | None:
             try:
                 token = shlex.split(raw)[0]
             except (IndexError, PlatformError, ValueError):
+                mark_unmapped_diff_path(raw)
                 return None
             if token == "/dev/null":
                 return None
@@ -801,6 +808,7 @@ class PatchApplier:
             try:
                 return safe_rel_path(token)
             except PlatformError:
+                mark_unmapped_diff_path(token)
                 return None
 
         def mark_section() -> None:
@@ -819,12 +827,16 @@ class PatchApplier:
                     header_paths = shlex.split(line)[2:4]
                 except ValueError:
                     header_paths = []
+                    mark_unmapped_diff_path(line)
                 for token in header_paths:
                     if token.startswith(("a/", "b/")):
                         try:
                             section_paths.add(safe_rel_path(token[2:]))
                         except PlatformError:
+                            mark_unmapped_diff_path(token)
                             continue
+                    else:
+                        mark_unmapped_diff_path(token)
                 continue
 
             if in_hunk:
@@ -883,7 +895,7 @@ class PatchApplier:
                     in_hunk = old_remaining > 0 or new_remaining > 0
                 continue
         mark_section()
-        return sorted(touched)
+        return sorted(touched | tampered)
 
     @staticmethod
     def _tampered_runner_config(
@@ -896,14 +908,26 @@ class PatchApplier:
         """Test-runner configuration paths whose effective settings changed."""
         tampered: set[str] = set()
 
+        def unreadable_config(path: str) -> None:
+            tampered.add(f"{path} (pytest config unreadable: {ErrorCode.SNAPSHOT_NOT_READY.value})")
+
         def read_config(root: Path, path: str) -> bytes | None:
             candidate = root / path
-            resolved = resolve_under(root, path)
-            if not os.path.lexists(candidate):
+            try:
+                candidate.lstat()
+            except FileNotFoundError:
                 return None
-            if not resolved.is_file():
-                raise OSError(f"configuration path is not a file: {path}")
-            return resolved.read_bytes()
+            except OSError:
+                unreadable_config(path)
+                return None
+            try:
+                resolved = resolve_under(root, path)
+                if not stat.S_ISREG(resolved.stat().st_mode):
+                    raise OSError(f"configuration path is not a file: {path}")
+                return resolved.read_bytes()
+            except (OSError, PlatformError, RuntimeError, ValueError):
+                unreadable_config(path)
+                return None
 
         def ini_table(raw: bytes | None, section: str) -> tuple[bool, dict[str, str]]:
             config = configparser.ConfigParser(
@@ -929,14 +953,18 @@ class PatchApplier:
                 current = current.get(key)
             return current
 
-        def add_plugin_name(names: set[str], raw: Any) -> None:
+        plugin_name_sources: dict[str, set[str]] = {}
+
+        def add_plugin_name(names: set[str], raw: Any, source_path: str) -> None:
             if not isinstance(raw, str):
                 return
             name = raw.strip()
             if not name.startswith("no:"):
-                names.add(name.split(":", 1)[0])
+                plugin = name.split(":", 1)[0]
+                names.add(plugin)
+                plugin_name_sources.setdefault(plugin, set()).add(source_path)
 
-        def add_addopts(names: set[str], value: Any) -> None:
+        def add_addopts(names: set[str], value: Any, source_path: str) -> None:
             values = value if isinstance(value, list) else [value]
             tokens: list[str] = []
             for item in values:
@@ -944,20 +972,24 @@ class PatchApplier:
                     try:
                         tokens.extend(shlex.split(item))
                     except ValueError:
-                        continue
+                        unreadable_config(source_path)
+                elif item is not None:
+                    unreadable_config(source_path)
             index = 0
             while index < len(tokens):
                 token = tokens[index]
-                if token == "-p" and index + 1 < len(tokens):
-                    add_plugin_name(names, tokens[index + 1])
-                    index += 2
-                    continue
+                if token == "-p":
+                    if index + 1 < len(tokens):
+                        add_plugin_name(names, tokens[index + 1], source_path)
+                        index += 2
+                        continue
+                    unreadable_config(source_path)
                 if token.startswith("-p") and token != "-p":
-                    add_plugin_name(names, token[2:])
+                    add_plugin_name(names, token[2:], source_path)
                 index += 1
 
         plugin_names: set[str] = set()
-        pythonpath_entries: set[str] = {""}
+        pythonpath_entries: dict[str, set[str]] = {"": set()}
         plugin_discovery_residuals: set[str] = set()
         pinned_config_paths: set[str] = set()
         ini_config_names = {"pytest.ini", ".pytest.ini", "tox.ini", "setup.cfg"}
@@ -973,7 +1005,24 @@ class PatchApplier:
         }
         ini_config_paths: list[str] = []
         toml_config_paths: list[str] = []
-        for current, directories, files in os.walk(snapshot_root, followlinks=False):
+        conftest_paths: list[str] = []
+
+        def config_walk_error(error: OSError) -> None:
+            raw_path = error.filename
+            if raw_path:
+                try:
+                    failed_path = Path(raw_path).relative_to(snapshot_root).as_posix()
+                except (OSError, ValueError):
+                    failed_path = "build_recipe.json"
+            else:
+                failed_path = "build_recipe.json"
+            unreadable_config(failed_path)
+
+        for current, directories, files in os.walk(
+            snapshot_root,
+            followlinks=False,
+            onerror=config_walk_error,
+        ):
             current_path = Path(current)
             directories[:] = [
                 name
@@ -981,6 +1030,8 @@ class PatchApplier:
                 if name not in ignored_config_dirs and not (current_path / name).is_symlink()
             ]
             for name in files:
+                if name == "conftest.py":
+                    conftest_paths.append((current_path / name).relative_to(snapshot_root).as_posix())
                 if name not in ini_config_names | toml_config_names:
                     continue
                 rel = (current_path / name).relative_to(snapshot_root).as_posix()
@@ -989,36 +1040,41 @@ class PatchApplier:
                 else:
                     toml_config_paths.append(rel)
 
-        def add_pythonpath(value: Any) -> None:
+        def add_pythonpath(value: Any, source_path: str) -> None:
             values = value if isinstance(value, list) else [value]
             for item in values:
                 if not isinstance(item, str):
+                    if item is not None:
+                        unreadable_config(source_path)
                     continue
                 try:
-                    pythonpath_entries.update(shlex.split(item))
+                    for entry in shlex.split(item):
+                        pythonpath_entries.setdefault(entry, set()).add(source_path)
                 except ValueError:
-                    continue
+                    unreadable_config(source_path)
 
         for path in ini_config_paths:
             name = path.rsplit("/", 1)[-1]
             section = "tool:pytest" if name == "setup.cfg" else "pytest"
+            raw = read_config(snapshot_root, path)
+            if raw is None:
+                continue
             try:
-                raw = read_config(snapshot_root, path)
                 present, items = ini_table(raw, section)
-            except (OSError, PlatformError, UnicodeDecodeError, configparser.Error):
+            except (UnicodeDecodeError, configparser.Error):
+                unreadable_config(path)
                 continue
             if present:
                 addopts = next((value for key, value in items.items() if key.casefold() == "addopts"), None)
-                add_addopts(plugin_names, addopts)
+                add_addopts(plugin_names, addopts, path)
                 pythonpath = next(
                     (value for key, value in items.items() if key.casefold() == "pythonpath"),
                     None,
                 )
-                add_pythonpath(pythonpath)
+                add_pythonpath(pythonpath, path)
             if name == "setup.cfg":
                 try:
-                    setup_raw = read_config(snapshot_root, path)
-                    _, entry_points = ini_table(setup_raw, "options.entry_points")
+                    _, entry_points = ini_table(raw, "options.entry_points")
                     pytest11 = next(
                         (value for key, value in entry_points.items() if key.casefold() == "pytest11"),
                         None,
@@ -1027,32 +1083,39 @@ class PatchApplier:
                         if "=" in line:
                             value = line.split("=", 1)[1].strip().split("#", 1)[0].strip()
                             if value:
-                                add_plugin_name(plugin_names, value.split()[0])
-                except (OSError, PlatformError, UnicodeDecodeError, configparser.Error):
+                                add_plugin_name(plugin_names, value.split()[0], path)
+                except (UnicodeDecodeError, configparser.Error):
+                    unreadable_config(path)
                     continue
 
         for path in toml_config_paths:
+            raw = read_config(snapshot_root, path)
+            if raw is None:
+                continue
             try:
-                raw = read_config(snapshot_root, path)
-                parsed = tomllib.loads((raw or b"").decode("utf-8"))
-            except (OSError, PlatformError, UnicodeDecodeError, tomllib.TOMLDecodeError):
+                parsed = tomllib.loads(raw.decode("utf-8"))
+            except (UnicodeDecodeError, tomllib.TOMLDecodeError):
+                unreadable_config(path)
                 continue
             ini_options = nested_table(parsed, "tool", "pytest", "ini_options")
             if isinstance(ini_options, dict):
-                add_addopts(plugin_names, ini_options.get("addopts"))
-                add_pythonpath(ini_options.get("pythonpath"))
+                add_addopts(plugin_names, ini_options.get("addopts"), path)
+                add_pythonpath(ini_options.get("pythonpath"), path)
             if path.rsplit("/", 1)[-1] in {"pytest.toml", ".pytest.toml"}:
                 pytest_table = nested_table(parsed, "pytest")
                 if isinstance(pytest_table, dict):
-                    add_addopts(plugin_names, pytest_table.get("addopts"))
-                    add_pythonpath(pytest_table.get("pythonpath"))
+                    add_addopts(plugin_names, pytest_table.get("addopts"), path)
+                    add_pythonpath(pytest_table.get("pythonpath"), path)
             for table in (
                 nested_table(parsed, "project", "entry-points", "pytest11"),
                 nested_table(parsed, "tool", "poetry", "plugins", "pytest11"),
             ):
                 if isinstance(table, dict):
                     for value in table.values():
-                        add_plugin_name(plugin_names, value)
+                        if not isinstance(value, str):
+                            unreadable_config(path)
+                            continue
+                        add_plugin_name(plugin_names, value, path)
 
         unmappable_config_path = (
             f"build_recipe.json (unmappable pytest config path: {ErrorCode.SNAPSHOT_NOT_READY.value})"
@@ -1069,8 +1132,40 @@ class PatchApplier:
                 raise ValueError("build_recipe.json must contain an object")
             recipe = parsed_recipe
         except (OSError, PlatformError, UnicodeDecodeError, ValueError, AttributeError):
+            unreadable_config("build_recipe.json")
             fail_closed_config_path()
             recipe = {}
+
+        if "test_roots" in recipe:
+            raw_roots = recipe["test_roots"]
+            if not isinstance(raw_roots, list) or not raw_roots:
+                unreadable_config("build_recipe.json")
+            else:
+                try:
+                    for raw_root in raw_roots:
+                        if not isinstance(raw_root, str):
+                            raise PlatformError(
+                                ErrorCode.SNAPSHOT_NOT_READY,
+                                "test_roots must contain relative paths",
+                            )
+                        safe_rel_path(raw_root)
+                except PlatformError:
+                    unreadable_config("build_recipe.json")
+        if "protected_tests" in recipe:
+            raw_protected_tests = recipe["protected_tests"]
+            if not isinstance(raw_protected_tests, list):
+                unreadable_config("build_recipe.json")
+            else:
+                try:
+                    for raw_path in raw_protected_tests:
+                        if not isinstance(raw_path, str):
+                            raise PlatformError(
+                                ErrorCode.SNAPSHOT_NOT_READY,
+                                "protected_tests must contain relative paths",
+                            )
+                        safe_rel_path(raw_path)
+                except PlatformError:
+                    unreadable_config("build_recipe.json")
 
         command = recipe.get("test_command")
         if isinstance(command, str):
@@ -1090,7 +1185,7 @@ class PatchApplier:
         else:
             command_tokens = []
             fail_closed_config_path()
-        add_addopts(plugin_names, command)
+        add_addopts(plugin_names, command, "build_recipe.json")
         config_names = (
             "pytest.ini",
             ".pytest.ini",
@@ -1101,13 +1196,42 @@ class PatchApplier:
             "pyproject.toml",
         )
 
+        def config_changed_at(base_path: str, name: str) -> bool:
+            path = f"{base_path}/{name}".strip("/")
+            original_bytes = read_config(snapshot_root, path)
+            patched_bytes = read_config(patched_root, path)
+            if name in {"pytest.ini", ".pytest.ini", "pytest.toml", ".pytest.toml"}:
+                return original_bytes != patched_bytes
+            try:
+                if name == "tox.ini":
+                    return ini_table(original_bytes, "pytest") != ini_table(patched_bytes, "pytest")
+                if name == "setup.cfg":
+                    return ini_table(original_bytes, "tool:pytest") != ini_table(
+                        patched_bytes, "tool:pytest"
+                    ) or ini_option(original_bytes, "options.entry_points", "pytest11") != ini_option(
+                        patched_bytes, "options.entry_points", "pytest11"
+                    )
+                original = tomllib.loads((original_bytes or b"").decode("utf-8"))
+                patched = tomllib.loads((patched_bytes or b"").decode("utf-8"))
+                fields = (
+                    ("tool", "pytest"),
+                    ("project", "entry-points", "pytest11"),
+                    ("tool", "poetry", "plugins", "pytest11"),
+                )
+                return any(nested_table(original, *keys) != nested_table(patched, *keys) for keys in fields)
+            except (UnicodeDecodeError, configparser.Error, tomllib.TOMLDecodeError):
+                unreadable_config(path)
+                return False
+
         def repo_relative_path(raw: str) -> str | None:
             candidate = Path(raw)
             try:
                 if candidate.is_absolute():
                     raw = candidate.resolve().relative_to(snapshot_root.resolve()).as_posix()
-                return safe_rel_path(raw)
-            except (OSError, ValueError, PlatformError):
+                relative = safe_rel_path(posixpath.normpath(raw))
+                resolve_under(snapshot_root, relative)
+                return relative
+            except (OSError, RuntimeError, ValueError, PlatformError):
                 return None
 
         def normalize_config_path(
@@ -1170,24 +1294,24 @@ class PatchApplier:
                     rootdirs.add(prefix)
             index += 1
         for rootdir in rootdirs:
-            for name in config_names:
+            for name in ("pytest.ini", ".pytest.ini", "pytest.toml", ".pytest.toml"):
                 normalize_config_path(f"{rootdir}/{name}".strip("/"))
 
         roots = recipe_test_roots(snapshot_root)
-        plugin_source_paths = {
-            path.relative_to(snapshot_root).as_posix()
-            for path in snapshot_root.rglob("conftest.py")
-            if path.is_file()
-        }
-        plugin_source_paths.update(
-            path for path in test_root_files(snapshot_root, roots) if path.endswith(".py")
-        )
+        plugin_source_paths = set(conftest_paths)
+        try:
+            plugin_source_paths.update(
+                path for path in test_root_files(snapshot_root, roots) if path.endswith(".py")
+            )
+        except (OSError, PlatformError):
+            for root in roots:
+                unreadable_config(root.rstrip("/") or ".")
         for rel in sorted(plugin_source_paths):
             try:
-                source = resolve_under(snapshot_root, rel).read_text(encoding="utf-8")
+                source = resolve_under(snapshot_root, rel).read_text(encoding="utf-8-sig")
                 tree = ast.parse(source)
             except (OSError, PlatformError, UnicodeDecodeError, SyntaxError):
-                plugin_discovery_residuals.add(rel)
+                unreadable_config(rel)
                 continue
             for node in ast.walk(tree):
                 if isinstance(node, ast.Assign):
@@ -1212,57 +1336,73 @@ class PatchApplier:
                 except (ValueError, TypeError, SyntaxError):
                     literal = None
                 if isinstance(literal, str):
-                    add_plugin_name(plugin_names, literal)
+                    add_plugin_name(plugin_names, literal, rel)
                 elif isinstance(literal, (list, tuple)) and all(isinstance(item, str) for item in literal):
                     for item in literal:
-                        add_plugin_name(plugin_names, item)
+                        add_plugin_name(plugin_names, item, rel)
                 else:
                     plugin_discovery_residuals.add(rel)
 
         pinned_plugin_paths: set[str] = set()
         pinned_plugin_directories: set[str] = set()
-        snapshot_real = snapshot_root.resolve()
+        try:
+            snapshot_real = snapshot_root.resolve()
+        except OSError:
+            unreadable_config("build_recipe.json")
+            snapshot_real = snapshot_root
 
-        def protect_plugin_file(path: str) -> None:
+        def protect_plugin_file(path: str, source_paths: set[str]) -> None:
             pinned_plugin_paths.add(path)
             try:
                 resolved = resolve_under(snapshot_root, path)
                 pinned_plugin_paths.add(resolved.relative_to(snapshot_real).as_posix())
-            except (OSError, PlatformError, RuntimeError, ValueError) as exc:
-                plugin_discovery_residuals.add(f"{path} ({type(exc).__name__})")
+            except (OSError, PlatformError, RuntimeError, ValueError):
+                for source_path in source_paths:
+                    unreadable_config(source_path)
 
-        def protect_plugin_directory(path: str) -> None:
+        def protect_plugin_directory(path: str, source_paths: set[str]) -> None:
             pinned_plugin_directories.add(path)
             try:
                 resolved = resolve_under(snapshot_root, path)
                 pinned_plugin_directories.add(resolved.relative_to(snapshot_real).as_posix())
-            except (OSError, PlatformError, RuntimeError, ValueError) as exc:
-                plugin_discovery_residuals.add(f"{path} ({type(exc).__name__})")
+            except (OSError, PlatformError, RuntimeError, ValueError):
+                for source_path in source_paths:
+                    unreadable_config(source_path)
 
         for name in plugin_names:
             parts = name.split(".")
             if not parts or not all(part.isidentifier() for part in parts):
+                for source_path in plugin_name_sources.get(name, set()):
+                    unreadable_config(source_path)
                 continue
             module_path = "/".join(parts)
-            for entry in pythonpath_entries:
+            source_paths = plugin_name_sources.get(name, set())
+            for entry, entry_sources in pythonpath_entries.items():
                 try:
                     prefix = "" if entry in {"", ".", "./"} else repo_relative_path(entry)
                     if prefix is None:
+                        for source_path in entry_sources:
+                            unreadable_config(source_path)
                         continue
                     module_rel = f"{prefix}/{module_path}".strip("/")
-                    protect_plugin_directory(module_rel)
+                    protect_plugin_directory(module_rel, source_paths | entry_sources)
                     for suffix in (".py", ".pyi", ".so", ".pyd"):
-                        protect_plugin_file(f"{module_rel}{suffix}")
+                        protect_plugin_file(f"{module_rel}{suffix}", source_paths | entry_sources)
                     for parent_length in range(1, len(parts)):
                         parent = f"{prefix}/{'/'.join(parts[:parent_length])}".strip("/")
-                        protect_plugin_file(f"{parent}/__init__.py")
-                        protect_plugin_file(f"{parent}.py")
+                        protect_plugin_file(f"{parent}/__init__.py", source_paths | entry_sources)
+                        protect_plugin_file(f"{parent}.py", source_paths | entry_sources)
 
                     package_dir = resolve_under(snapshot_root, module_rel)
-                    if package_dir.is_dir():
+                    try:
+                        package_stat = package_dir.stat()
+                    except FileNotFoundError:
+                        continue
+                    if stat.S_ISDIR(package_stat.st_mode):
                         pinned_plugin_paths.update(test_root_files(snapshot_root, (f"{module_rel}/",)))
-                except (OSError, PlatformError, RuntimeError, ValueError) as exc:
-                    plugin_discovery_residuals.add(f"{entry}:{name} ({type(exc).__name__})")
+                except (OSError, PlatformError, RuntimeError, ValueError):
+                    for source_path in source_paths | entry_sources:
+                        unreadable_config(source_path)
                     continue
         if residuals is not None:
             residuals.extend(sorted(plugin_discovery_residuals))
@@ -1301,25 +1441,26 @@ class PatchApplier:
                 tampered.add(path)
                 continue
             if path in pinned_config_paths:
-                try:
-                    if read_config(snapshot_root, path) != read_config(patched_root, path):
-                        tampered.add(path)
-                except (OSError, PlatformError):
+                if read_config(snapshot_root, path) != read_config(patched_root, path):
                     tampered.add(path)
                 continue
             name = path.rsplit("/", 1)[-1]
             if name == "conftest.py":
                 tampered.add(path)
                 continue
+            if name in config_names:
+                if config_changed_at(path.rpartition("/")[0], name):
+                    tampered.add(path)
+                continue
             if path.endswith(".py") and not under_test_roots(path, roots):
                 try:
                     original_source = (
-                        resolve_under(snapshot_root, path).read_text(encoding="utf-8")
+                        resolve_under(snapshot_root, path).read_text(encoding="utf-8-sig")
                         if os.path.lexists(snapshot_root / path)
                         else None
                     )
                     patched_source = (
-                        resolve_under(patched_root, path).read_text(encoding="utf-8")
+                        resolve_under(patched_root, path).read_text(encoding="utf-8-sig")
                         if os.path.lexists(patched_root / path)
                         else None
                     )
@@ -1341,51 +1482,7 @@ class PatchApplier:
                     continue
                 if original_constructs != patched_constructs:
                     tampered.add(path)
-            if name not in {
-                "pytest.ini",
-                ".pytest.ini",
-                "pytest.toml",
-                ".pytest.toml",
-                "tox.ini",
-                "setup.cfg",
-                "pyproject.toml",
-            }:
                 continue
-            try:
-                original_bytes = read_config(snapshot_root, path)
-                patched_bytes = read_config(patched_root, path)
-            except (OSError, PlatformError):
-                tampered.add(path)
-                continue
-            if name in {"pytest.ini", ".pytest.ini", "pytest.toml", ".pytest.toml"}:
-                if original_bytes != patched_bytes:
-                    tampered.add(path)
-                continue
-            try:
-                if name == "tox.ini":
-                    changed = ini_table(original_bytes, "pytest") != ini_table(patched_bytes, "pytest")
-                elif name == "setup.cfg":
-                    changed = ini_table(original_bytes, "tool:pytest") != ini_table(
-                        patched_bytes, "tool:pytest"
-                    ) or ini_option(original_bytes, "options.entry_points", "pytest11") != ini_option(
-                        patched_bytes, "options.entry_points", "pytest11"
-                    )
-                else:
-                    original = tomllib.loads((original_bytes or b"").decode("utf-8"))
-                    patched = tomllib.loads((patched_bytes or b"").decode("utf-8"))
-                    fields = (
-                        ("tool", "pytest"),
-                        ("project", "entry-points", "pytest11"),
-                        ("tool", "poetry", "plugins", "pytest11"),
-                    )
-                    changed = any(
-                        nested_table(original, *keys) != nested_table(patched, *keys) for keys in fields
-                    )
-            except (UnicodeDecodeError, configparser.Error, tomllib.TOMLDecodeError):
-                tampered.add(path)
-                continue
-            if changed:
-                tampered.add(path)
         return sorted(tampered)
 
     @staticmethod

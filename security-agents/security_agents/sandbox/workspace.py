@@ -53,7 +53,8 @@ def recipe_protected_tests(root: Path) -> tuple[str, ...]:
         for path in protected:
             try:
                 rel = safe_rel_path(path)
-            except PlatformError:
+            except PlatformError as exc:
+                valid.add(f"{path} (protected-test discovery failed: {exc.code.value})")
                 continue
             if under_test_roots(rel, roots):
                 valid.add(rel)
