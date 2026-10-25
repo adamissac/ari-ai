@@ -7,7 +7,7 @@ afterEach(cleanup);
 
 it('shows the four plans, the FAQ and the preview-pricing note', () => {
   render(<PricingPage />);
-  expect(screen.getByRole('heading', { level: 1, name: /Pilot first/ })).toBeTruthy();
+  expect(screen.getByRole('heading', { level: 1, name: 'ARI pricing' })).toBeTruthy();
   for (const name of ['Founder', 'Growth', 'Scale', 'Enterprise']) expect(screen.getByRole('heading', { name })).toBeTruthy();
   for (const price of ['$49.99', '$129.99', '$359.99', 'Contact us']) expect(screen.getByText(price)).toBeTruthy();
   expect(screen.getByTestId('plan-growth').textContent).toContain('5 million');
