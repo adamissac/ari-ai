@@ -91,7 +91,7 @@ GitHub → `adamissac/ari-ai` → **Settings → Branches → Add branch ruleset
 CLI equivalent (needs admin token):
 ```sh
 gh api -X PUT repos/adamissac/ari-ai/branches/main/protection --input - <<'JSON'
-{"required_status_checks":{"strict":true,"contexts":["gitleaks","links","backend-tests","rl-integration","intel-tests","review-tests","docker-reviewer","secagents-tests","docker-sandbox","rl-tests","backend-image","compose-stack","static-and-unit","e2e","payments-lite","runner-semantics","audit"]},
+{"required_status_checks":{"strict":true,"contexts":["gitleaks","links","backend-tests","rl-integration","intel-tests","review-tests","docker-reviewer","secagents-tests","docker-sandbox","rl-tests","backend-image","compose-stack","static-and-unit","e2e","payments-lite","runner-semantics","audit","inventory-lite"]},
  "enforce_admins":true,
  "required_pull_request_reviews":{"dismiss_stale_reviews":true,"require_code_owner_reviews":false,"required_approving_review_count":1},
  "restrictions":null,
