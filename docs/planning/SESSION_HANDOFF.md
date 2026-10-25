@@ -25,6 +25,15 @@ adds an entry before ending.
 - Next steps: push `feat/adam/reviewer-settings`, merge it into `feat/adam/repo-setup-walkthrough`, then report; CI is not part of this handoff.
 - Warnings for the next session: the full backend suite has 8 expected environment-gated skips and one existing SQLAlchemy deprecation warning.
 
+### 2026-10-25 — Devin (agent, Adam) — project page limits
+- Did: separated authenticated GET/HEAD requests into a 600/minute per-user bucket; writes retain 60/minute. Manual project quotas now count manual-trigger assessments only, while automatic checks still count all triggers; the global $50/day spend query remains unchanged.
+- State of the code: implemented on `fix/adam/project-page-limits`; no production systems or the manual stack were touched. The branch is one unrelated frontend E2E commit behind `origin/main` (`511add9f`), which was not merged.
+- Commands run and results: `uv run pytest -q backend/tests/test_rate_limits.py backend/tests/test_auto_delivery.py backend/tests/test_auto_commits*.py` — 77 passed; Ruff check passed and format check reported 5 files already formatted; `make check` passed with 217 files formatted and 155 contract files unchanged.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): none.
+- Next steps: commit and push; do not watch post-push CI until re-briefed.
+- Warnings for the next session: PR #593 changes the hourly-cap logic in `backend/backend/quota.py`; this branch's manual filtering also edits `check_project_quota`, so preserve both when integrating.
+
 ### 2026-10-25 — Devin (agent, Adam) — Railway storage watchdog (`feat/adam/storage-watchdog`)
 - Did: added the hourly Railway volume/backup watchdog, GitHub issue lifecycle, PR-only unit-test workflow, and operations docs; configured the repository `RAILWAY_TOKEN` Actions secret without exposing its value.
 - State of the code: implementation commit `d53ed4df` is pushed; merge commit `cea91bb3` integrates current `origin/main`, preserving both Unreleased changelog entries. No PR was opened and CI was not watched.
@@ -33,7 +42,6 @@ adds an entry before ending.
 - Assumptions / open questions (RQ links): system `python3` is 3.9.6, so the Python 3.12 project venv was used. The newest backup was newer than the expected 05:11Z schedule backup, though its name differed.
 - Next steps: Adam opens the PR and handles CI separately.
 - Warnings for the next session: the commit hook initially skipped secret scanning because `gitleaks` was missing; installed Homebrew `gitleaks` 8.30.1 from the repo environment blueprint afterward. The initial implementation and merge commits were made before that install.
-
 ### 2026-10-25 — Devin (agent, Adam) — app data-volume storage alerts
 - Did: added independent 70/80/90% reporting, webhook alerts, and Prometheus gauges for the app data volume; documented `DATA_VOLUME_BYTES` / `DATA_VOLUME_PATH` and Railway's decimal `sizeMB` conversion.
 - State of the code: data-volume sizing defaults to disabled (`DATA_VOLUME_BYTES=0`) while usage is reported if the configured path exists; the path defaults to `/data`.
@@ -2026,3 +2034,14 @@ See `docs/release/AUTOMATED_INDEPENDENT_REVIEW.md`.
 Installation PRs: canonical #614; fork #9 (main), #10 (ci/upstream-main). Fork #9
 controller Docker unit/layout/actionlint checks passed at abd61416; paid activation
 remains OFF pending manual installation and protected credential/session setup.
+
+## 2026-10-25 — Adam: least-privilege storage reporting
+
+- Optional storage probes now use savepoints and catch SQLAlchemy errors, so a
+  denied WAL-directory query does not abort subsequent report checks.
+- Added regression coverage proving a follow-up query succeeds after a failed probe.
+
+## 2026-10-25 — Adam: spend quota reset accuracy
+
+- Spend-cap reset time now uses a Numeric window calculation over one database snapshot,
+  avoiding fractional-cost rounding and concurrent-write inconsistencies.

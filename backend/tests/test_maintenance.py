@@ -350,6 +350,12 @@ def test_artifact_orphan_gc(client_factory) -> None:
     assert not p.exists()
 
 
+def test_try_scalar_recovers_after_query_error() -> None:
+    with transaction() as conn:
+        assert maintenance._try_scalar(conn, "SELECT no_such_function()") is None
+        assert conn.execute(sa.text("SELECT 1")).scalar_one() == 1
+
+
 def test_storage_report_smoke(client_factory) -> None:
     ids = _ids(client_factory)
     _ready_payloads(ids, "f" * 40)

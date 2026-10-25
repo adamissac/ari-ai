@@ -109,7 +109,9 @@ a future experiment (~6h CPU); no model promotion.
 
 ### Automatic/manual mode and Haiku-only follow-up (#377 / #380)
 
-Implemented per-repository persisted ON/OFF, owner-only API, migration 0009 and proposed additive schema 0.15.0; manual Run shown when OFF. Added signed-sender gate and per-project start quotas that defer every excess commit durably. Production/staging gateway, Railway startup and quick-read enforce Haiku 5.5. Historical evidence labels preserved. Contract review requested from Alan; full test/CI and deployment verification remain pending.
+Implemented per-repository persisted ON/OFF, owner-only API, migration 0009 and proposed additive schema 0.15.0; manual Run shown when OFF. Added signed-sender gate and per-project start quotas; excess automatic commits are recorded as skipped and not requeued. Production/staging gateway, Railway startup and quick-read enforce Haiku 5.5. Historical evidence labels preserved. Contract review requested from Alan; full test/CI and deployment verification remain pending.
+
+Follow-up completed on `fix/adam/project-page-limits`: authenticated GET/HEAD requests use a separate 600/minute limit, mutations retain 60/minute, manual quotas count only manual-trigger assessments, and automatic quotas still count every trigger. The shared $50/day spend cap is unchanged.
 ### 2026-10-21 — V10 execution authorized
 
 IN_PROGRESS on `feat/alan/live-retrain-v10`: owner requested continuation after
