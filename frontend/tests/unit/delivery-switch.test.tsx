@@ -31,42 +31,78 @@ const session: MeResponse = {
 afterEach(() => {
   cleanup();
   setApiClient(undefined);
+  vi.restoreAllMocks();
 });
 
-it('shows PR when fixes arrive as pull requests', () => {
-  render(<DeliverySwitch project={project} />);
-  const toggle = screen.getByRole('switch', { name: 'Auto-commit fixes' });
-  expect(toggle.getAttribute('aria-checked')).toBe('false');
-  expect(toggle.textContent).toContain('PR');
-});
-
-it('PATCHes delivery_mode auto and keeps the rest of the settings', async () => {
+async function installClient(current: Project) {
   const requests: { url: string; init?: RequestInit }[] = [];
   const fetcher: typeof fetch = async (input, init) => {
     const url = String(input);
     requests.push({ url, init });
     if (url.endsWith('/me')) return Response.json(session);
     const body = JSON.parse(init?.body as string) as { settings: ProjectSettings };
-    return Response.json({ ...project, settings: { ...body.settings, delivery_authorized_by: 'usr_12345678' } });
+    return Response.json({
+      ...current,
+      settings: { ...body.settings, delivery_authorized_by: 'usr_12345678' },
+    });
   };
   const client = new ApiClient({ baseUrl: 'http://localhost/api/v1', fetch: fetcher });
   setApiClient(client);
   await client.session();
+  return requests;
+}
 
-  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+it('shows PR when fixes arrive as pull requests', () => {
   render(<DeliverySwitch project={project} />);
-  fireEvent.click(screen.getByRole('switch', { name: 'Auto-commit fixes' }));
-  expect(confirm).toHaveBeenCalledOnce();
-
-  await waitFor(() => expect(screen.getByRole('switch', { name: 'Auto-commit fixes' }).getAttribute('aria-checked')).toBe('true'));
-  const patch = requests.find(request => request.init?.method === 'PATCH');
-  const body = JSON.parse(patch?.init?.body as string) as { settings: ProjectSettings };
-  expect(body.settings).toEqual({ ...settings, delivery_mode: 'auto' });
+  const toggle = screen.getByRole('switch', { name: 'Auto-open fix PRs' });
+  expect(toggle.getAttribute('aria-checked')).toBe('true');
+  expect(toggle.textContent).toContain('PR');
 });
 
-it('does nothing when the owner declines the auto-commit warning', () => {
-  vi.spyOn(window, 'confirm').mockReturnValue(false);
+it('switches manual delivery to pull requests without an auto-commit confirmation', async () => {
+  const manualProject: Project = {
+    ...project,
+    settings: { ...settings, delivery_mode: 'manual' },
+  };
+  const requests = await installClient(manualProject);
+  const confirm = vi.spyOn(window, 'confirm');
+  render(<DeliverySwitch project={manualProject} />);
+  fireEvent.click(screen.getByRole('switch', { name: 'Auto-open fix PRs' }));
+  expect(confirm).not.toHaveBeenCalled();
+
+  await waitFor(() => expect(screen.getByRole('switch', { name: 'Auto-open fix PRs' }).getAttribute('aria-checked')).toBe('true'));
+  const patch = requests.find(request => request.init?.method === 'PATCH');
+  const body = JSON.parse(patch?.init?.body as string) as { settings: ProjectSettings };
+  expect(body.settings).toEqual({ ...manualProject.settings, delivery_mode: 'pull_request' });
+});
+
+it('switches pull-request delivery off to manual', async () => {
+  const requests = await installClient(project);
+  const confirm = vi.spyOn(window, 'confirm');
   render(<DeliverySwitch project={project} />);
-  fireEvent.click(screen.getByRole('switch', { name: 'Auto-commit fixes' }));
-  expect(screen.getByRole('switch', { name: 'Auto-commit fixes' }).getAttribute('aria-checked')).toBe('false');
+  fireEvent.click(screen.getByRole('switch', { name: 'Auto-open fix PRs' }));
+  expect(confirm).not.toHaveBeenCalled();
+
+  await waitFor(() => expect(screen.getByRole('switch', { name: 'Auto-open fix PRs' }).getAttribute('aria-checked')).toBe('false'));
+  const patch = requests.find(request => request.init?.method === 'PATCH');
+  const body = JSON.parse(patch?.init?.body as string) as { settings: ProjectSettings };
+  expect(body.settings).toEqual({ ...settings, delivery_mode: 'manual' });
+});
+
+it('never selects auto-commit from the 7 Agents switch', async () => {
+  const autoProject: Project = {
+    ...project,
+    settings: { ...settings, delivery_mode: 'auto' },
+  };
+  const requests = await installClient(autoProject);
+  render(<DeliverySwitch project={autoProject} />);
+  const toggle = screen.getByRole('switch', { name: 'Auto-open fix PRs' });
+  expect(toggle.getAttribute('aria-checked')).toBe('false');
+  expect(toggle.textContent).toContain('Settings');
+  fireEvent.click(toggle);
+
+  await waitFor(() => expect(toggle.getAttribute('aria-checked')).toBe('true'));
+  const patch = requests.find(request => request.init?.method === 'PATCH');
+  const body = JSON.parse(patch?.init?.body as string) as { settings: ProjectSettings };
+  expect(body.settings.delivery_mode).toBe('pull_request');
 });

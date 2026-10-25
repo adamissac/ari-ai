@@ -77,7 +77,7 @@ class ProjectSettings(StrictModel):
     monitoring_policy: TriggerPolicy = Field(default_factory=TriggerPolicy)
     review: ReviewerSettings = Field(default_factory=ReviewerSettings)
     languages: list[ShortText] = Field(default_factory=lambda: ["python"])
-    delivery_mode: DeliveryMode = DeliveryMode.auto
+    delivery_mode: DeliveryMode = DeliveryMode.pull_request
     delivery_authorized_by: UserId | None = Field(
         default=None,
         description="Owner on whose standing authorization Ari approves and delivers fixes; "
