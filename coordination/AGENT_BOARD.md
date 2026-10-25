@@ -3,15 +3,16 @@
 
 # Agent board — live coordination dashboard
 
-Regenerated <built-in method strftime of datetime.datetime object at 0x10792fb10>. Comms channel: [issue #559](https://github.com/adamissac/ari-ai/issues/559). Protocol: `coordination/PROTOCOL.md`.
+Regenerated <built-in method strftime of datetime.datetime object at 0x105f17000>. Comms channel: [issue #559](https://github.com/adamissac/ari-ai/issues/559). Protocol: `coordination/PROTOCOL.md`.
 
 ## Active agents
 
 | Agent | Owner | Workstream | State | Task | Branch | SHA |
 | --- | --- | --- | --- | --- | --- | --- |
 | alan-live-defense | Alan | security-agents/, live-defense Phase 6.5/7A/7C, interim shared/ contract approver | BLOCKED | Phase 7C authorized Scout/Diagnose execution (#458); Phase 6.5 RL-gated pilot infra (#412) | feat/alan/live-defense-phase7c-agent-execution, feat/live-defense-phase6-5-rl-gated-pilot | 9486a5b0 |
-| devin-intel-audit | Adam | code-intelligence engine + persistent memory pilot-readiness audit; secret redaction hardening | READY_FOR_REVIEW | PR #531: executed audit report + parse-safe redaction (#441 fix carried verbatim) + mid-line secret redaction + honest route-gap IndexIssues + retrieval eval + index benchmark | feat/adam/intel-pipeline-audit | 46a734b3 |
-| devin-pipeline-fixer | Adam | fixing agent pipeline failures; intel-store retry; eval-runner retry; pilot rehearsal v2; ops retention | WORKING | Eval run 3 scoring (eval/20261024-153652) + #542/#543 in wave 2 | fix/intel-store-orphan-retry, fix/eval-runner-retry, ari/fix-pat_01M5R13A056A25J7ZXWHHDZ9SN, feat/adam/pilot-rehearsal-v2, docs/adam/live-inventory-rehearsal-evidence, fix/adam/postgres-storage-retention, docs/devin-pilot-handoff | 12d048fe |
+| code-review-eval | Adam | standalone functional AI code reviewer evaluation + scorer integration | DONE | Reviewer eval report merged (#529); combined scorer verified on merged release-gate head | docs/reviewer-eval-report (merged), docs/adam/status-final-verification | 19a16af0 |
+| devin-intel-audit | Adam | code-intelligence engine + persistent memory pilot-readiness audit; secret redaction hardening | HANDED_OFF | PR #531 merged: executed audit + parse-safe redaction + route-gap issues + retrieval eval + benchmarks. Follow-up: commander's 10-case redaction probe implemented on fix/adam/intel-redaction-gaps @ 78067f94 and handed to integration-lead (aedd769f) for single-branch landing — no parallel PR per commander STAND DOWN | fix/adam/intel-redaction-gaps | 78067f94 |
+| devin-pipeline-fixer | Adam | fixing agent pipeline failures; intel-store retry; eval-runner retry; pilot rehearsal v2; ops retention | WORKING | Eval run 3 scoring (eval/20261024-153652); #538 main-merge resolved for integration lead | fix/intel-store-orphan-retry, fix/eval-runner-retry, ari/fix-pat_01M5R13A056A25J7ZXWHHDZ9SN, feat/adam/pilot-rehearsal-v2, docs/adam/live-inventory-rehearsal-evidence, fix/adam/postgres-storage-retention, docs/devin-pilot-handoff | 5a56e44c |
 | integration-lead | Adam | PR release management, merge ordering, pilot readiness verification | WORKING | Integrate pilot-ready PRs in dependency order; run pilot-verify against final main | (merges land on main) | ad282cf4 |
 
 ## PR ownership and merge order
@@ -20,37 +21,40 @@ Regenerated <built-in method strftime of datetime.datetime object at 0x10792fb10
 | --- | --- | --- | --- | --- | --- |
 | #412 | ? | ? | ? | alan-live-defense | 1 |
 | #458 | ? | ? | ? | alan-live-defense | 0 |
-| #496 | ? | ? | ? | integration-lead | 19 |
-| #527 | ? | ? | ? | integration-lead | 11 |
-| #528 | ? | ? | ? | integration-lead | 12 |
-| #529 | ? | ? | ? | integration-lead | 13 |
-| #530 | ? | ? | ? | integration-lead | 14 |
-| #531 | ? | ? | ? | devin-intel-audit | 2 |
-| #532 | ? | ? | ? | integration-lead | 17 |
-| #533 | ? | ? | ? | integration-lead | 16 |
-| #536 | ? | ? | ? | integration-lead | 18 |
-| #538 | ? | ? | ? | integration-lead | 20 |
-| #540 | ? | ? | ? | integration-lead | 15 |
-| #542 | ? | ? | ? | devin-pipeline-fixer | 3 |
-| #543 | ? | ? | ? | devin-pipeline-fixer | 4 |
-| #546 | ? | ? | ? | devin-pipeline-fixer | 5 |
-| #554 | ? | ? | ? | devin-pipeline-fixer | 6 |
-| #555 | ? | ? | ? | devin-pipeline-fixer | 7 |
-| #556 | ? | ? | ? | devin-pipeline-fixer | 8 |
-| #557 | ? | ? | ? | integration-lead | 10 |
-| #558 | ? | ? | ? | devin-pipeline-fixer | 9 |
+| #496 | ? | ? | ? | integration-lead | 20 |
+| #527 | ? | ? | ? | integration-lead | 13 |
+| #528 | ? | ? | ? | integration-lead | 14 |
+| #529 | ? | ? | ? | code-review-eval | 2 |
+| #530 | ? | ? | ? | integration-lead | 15 |
+| #531 | ? | ? | ? | devin-intel-audit | 4 |
+| #532 | ? | ? | ? | integration-lead | 18 |
+| #533 | ? | ? | ? | integration-lead | 17 |
+| #536 | ? | ? | ? | integration-lead | 19 |
+| #538 | ? | ? | ? | integration-lead | 21 |
+| #540 | ? | ? | ? | integration-lead | 16 |
+| #542 | ? | ? | ? | devin-pipeline-fixer | 5 |
+| #543 | ? | ? | ? | devin-pipeline-fixer | 6 |
+| #546 | ? | ? | ? | devin-pipeline-fixer | 7 |
+| #554 | ? | ? | ? | devin-pipeline-fixer | 8 |
+| #555 | ? | ? | ? | devin-pipeline-fixer | 9 |
+| #556 | ? | ? | ? | devin-pipeline-fixer | 10 |
+| #557 | ? | ? | ? | integration-lead | 12 |
+| #558 | ? | ? | ? | devin-pipeline-fixer | 11 |
+| #563 | ? | ? | ? | code-review-eval | 3 |
 
 ## File / subsystem claims
 
 - **alan-live-defense**: `security-agents/`, `backend/backend/live_defense/`, `frontend/components/live-defense/`, `shared/ contract bumps (interim approver)`
-- **devin-intel-audit**: `code-intelligence/code_intelligence/privacy.py`, `code-intelligence/code_intelligence/extract.py`, `code-intelligence/tests/`, `code-intelligence/evidence/`, `docs/research/intel-pipeline-audit/`, `coordination/messages/*intel*`
+- **code-review-eval**: `code-review/eval/REVIEWER_EVAL_2026-10-24.md`, `security-agents/tests/test_eval_score_api.py`
+- **devin-intel-audit**: `code-intelligence/code_intelligence/privacy.py`, `code-intelligence/tests/`, `docs/research/intel-pipeline-audit/`, `docs/pilot/DATA_HANDLING.md`, `coordination/messages/*redaction*`
 - **devin-pipeline-fixer**: `backend tests for get_project authz`, `evals/commits scorer`, `rehearsal tooling`, `scripts/rehearsal/`, `storage/retention ops`
 - **integration-lead**: `coordination/AGENT_BOARD.md`, `coordination/messages/2026*-devin-integration-lead-*`, `fix/test-sandbox-target-method`
 
 ## Dependencies
 
 - **alan-live-defense** depends on Adam's explicit approval required before any live-defense merge
-- **devin-intel-audit** depends on integration-lead merge order (position 13)
+- **devin-intel-audit** depends on integration-lead (aedd769f) single-branch privacy.redact + backend redaction patch — cherry-pick or supersede 78067f94
+- **devin-intel-audit** depends on commander (89af2119) re-probe on their head — acceptance gate
 - **devin-intel-audit** depends on #535 RLS/purge as second layer (merged)
 - **devin-pipeline-fixer** depends on integration-lead merge order
 - **integration-lead** depends on alan-live-defense (held PRs #412/#458 must not be merged)
@@ -63,8 +67,9 @@ Regenerated <built-in method strftime of datetime.datetime object at 0x10792fb10
 ## Next actions
 
 - **alan-live-defense**: hold; rebase onto post-integration main when asked
-- **devin-intel-audit**: await CI green on 46a734b3 then merge at board position 13
-- **devin-pipeline-fixer**: score eval run 3 results; post baselines to Adam; clean eval artifacts
+- **code-review-eval**: none — workstream complete; #530 carries inverted score_api conflict resolution (verified clean) and is ready for final security review + merge by integration lead. Re-verify only if scorer code changes again.
+- **devin-intel-audit**: await integration-lead landing + commander re-probe; keep branch live as reference implementation
+- **devin-pipeline-fixer**: score eval3 on completion; post baselines to Adam; confirm eval branches self-cleaned
 - **integration-lead**: merge green PRs in order; refresh each branch with main first
 
 ## How to update
