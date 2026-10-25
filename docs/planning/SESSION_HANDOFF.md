@@ -56,7 +56,6 @@ adds an entry before ending.
 - Open: extend RLS fleet-wide needs per-request tenant GUC resolution — deferred; backups retention is deployment-level (documented).
 - Warnings: `test_repository_has_a_single_migration_head` expects head 0016 — next migration must update it to 0017.
 
-<<<<<<< HEAD
 
 ### 2026-10-24 — Devin (agent, Adam) — pilot launch package + CONDITIONAL GO
 - Did: audited `main` (`d0131167`) and the hosted deployment (`readyz`: llm live, GitHub App + webhook configured) for pilot readiness; coordinated with the privacy workstream session for verified private-code data-flow facts; wrote the full pilot launch package under `docs/pilot/` (scope+exclusions, feature matrix, onboarding+revocation checklist, DATA_HANDLING draft, operations, metrics/health report, risk register, rehearsal+first-five plan, LAUNCH_DECISION).
@@ -66,10 +65,6 @@ adds an entry before ending.
 - Next steps: run the staging rehearsal before customer 1; merge #441 (redaction parse fix) recommended pre-indexing; reference privacy session's threat-model/retention docs in DATA_HANDLING.md when they land.
 - Warnings for the next session: do not upgrade feature-matrix labels without new executed evidence; pilot claims track `main` only — open PRs #496/#458/#441/#412/#517 are branch-only.
 
-||||||| 3af0fa72
-
-=======
->>>>>>> origin/main
 ### 2026-10-24 — Devin (agent, Adam) — leaked Vercel snapshot cleanup, push→agents verification
 - Did: verified the named-sandbox snapshot-leak fix already on main (`persistent: False` on run boxes + `destroy` in teardown + `_sweep_stale`); opened PR #495 making the sweep also delete stale run boxes' orphan snapshots so leaked quota is actually freed. Confirmed `delete_orphan_snapshots` only removes snapshots created *by* the destroyed sandbox — the shared `ari-base-*` snapshot can never be an orphan of a run box. Verified on main: security-agents suite 581 passed / 24 skipped, frontend typecheck + 330 vitest + lint clean, standards smoke (CWE/OWASP/CVSS/ATT&CK/D3FEND/SARIF/SP 800-115) passes. Confirmed agents are standards-grounded in code: Scout CWE/OWASP, Probe CWE, Trace ATT&CK/CVSS, Diagnose D3FEND, Fortify CWE/D3FEND; Patch/Verify get standards context via the tagged finding + remediation plan, not prompts.
 - State of the code: push→agents path gates are code-verified (`pipeline.process_github_delivery` → `auto_commits.schedule` → `assess_github_commit`): `repositories.automatic_assessments` (per-repo opt-in, UI switch exists), `GITHUB_AUTO_COMMIT_AUTHORS` (Railway entrypoint defaults `*`), `monitoring_policy.enabled` (project setting, UI switch), active `AuthorizedScope`. All four must be on for pushes to spawn runs — they are product gates, not bugs.
