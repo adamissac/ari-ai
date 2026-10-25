@@ -11,13 +11,13 @@
 |---|---|---|---|
 | 1 | Tenant isolation (cross-org ID substitution) | Local real stack | **PASS** — 34 probes, uniform 404, no existence leak |
 | 2 | Real execution / labelling | Local + prod | **PASS** — live leg executed: every agent run `provider_mode=live`; scripted stages labelled |
-| 3 | GitHub safety (PR/manual only, scoped write tokens, no auto-merge) | Code audit + prod | **PASS for no-merge/no-deploy** (prod `main` unchanged after the repair leg). **FAIL for fix-PR delivery** — delivery refused, see Leg 7 D1 |
+| 3 | GitHub safety (PR/manual only, scoped write tokens, no auto-merge) | Code audit + prod | **FAIL / not proven**: fix-PR delivery refused (D1). The project ran `delivery_mode=auto`, which would have committed straight to `main` if D1 had not blocked it (D7). Nothing was merged or deployed |
 | 4 | Monitoring: opt-in controls, limits, cancel, budget caps | Local + prod | **PASS** — prod cancel, budget, scope-revoke drills; opt-out toggle persisted (no push event landed in the window — behaviour evidence is the local leg) |
 | 5 | Defense Lab: recommendation-only | Code + tests | **PASS** |
-| 6 | Data privacy: storage, provider processing, artifacts, deletion | Local + code + prod RLS | **PASS (documented)** — prod RLS verified with a non-superuser role |
+| 6 | Data privacy: storage, provider processing, artifacts, deletion | Local + code + prod | **FAIL for DB isolation in prod**: policies enforce for a non-superuser probe, but the app connects as superuser `postgres` (BYPASSRLS), so RLS is inert for the app (D8). App-layer membership checks held (P2) |
 | 7 | Reliability: failure recovery, persistence, restarts, UI errors | Local + prod | **PASS with findings** — prod outage recovered; UI showed accurate `SUBSYSTEM_UNAVAILABLE`; see D2–D4 |
 | P1 | Prod journey: install → connect → index → live assessment → findings → repair → verify → results | Prod | **PASS through independent Verify; FAIL at fix-PR delivery (D1, pilot-blocking)** |
-| P2 | Prod tenant isolation (org B substitutes org A's real IDs) | Prod | **PASS** — 34/34 reads+mutations → 404 |
+| P2 | Prod tenant isolation (app-layer) (org B substitutes org A's real IDs) | Prod | **PASS** — 34/34 reads+mutations → 404 |
 
 ## Leg 1 — Two-org isolation (real stack, scripted LLM)
 
@@ -168,7 +168,7 @@ patches, artifacts, jobs, approvals) plus fabricated IDs, including
 `NOT_FOUND`** (no existence leak). `GET /audit?project_id=<A>` as Eve → 404.
 Org A's scope remained `active` after Eve's revoke attempt.
 
-### RLS on production (non-superuser)
+### RLS on production (non-superuser probe; app role is superuser, see D8)
 
 Migration head `0017`. `index_payloads` and `index_snapshots` have `FORCE ROW
 LEVEL SECURITY` + policy `tenant_isolation` on `ari.project_id`. A throwaway
@@ -212,18 +212,26 @@ Probe role revoked and dropped afterwards.
   configuration, but `deploy/railway/start.sh` and
   `docs/deploy/RAILWAY_AND_GITHUB_APP.md` do not set or list these variables.
   Not reproduced; recorded so the next redeploy is checked.
-- **D4 — Production automatic-assessment limits above pilot values (inferred).**
-  Set `AUTOMATIC_ASSESSMENTS_PER_HOUR`/`_PER_DAY`/`AUTOMATIC_USD_PER_DAY` to
-  pilot values before customer 1.
+- **D4 — Production automatic-assessment limits above pilot values.** Another
+  agent reported `AUTOMATIC_ASSESSMENTS_PER_HOUR=60` and `_PER_DAY=500`, which
+  matches the observed plateau at 60/h. Manual starts are limited per user
+  in-process only (5/h, reset on restart). No per-project quota is shared by
+  manual and automatic runs.
 - **D5 — Sandbox plan quota.** 19 earlier assessments failed
   `SandboxApiError: HTTP 402: Hobby plan usage limit exceeded` (snapshot
   storage / usage). Pilot capacity needs a paid sandbox plan or a hard cap.
+- **D7 — `delivery_mode=auto` on the rehearsal project.** In `auto` mode,
+  Verify-accepted fixes are committed to the default branch, which is outside
+  pilot scope. The C9 re-run must use `pull_request`.
+- **D8 — App DB role is a superuser.** `pg_roles` contains only `postgres`
+  (`rolsuper`, `rolbypassrls`), and all 16 app connections use it. RLS on
+  `index_payloads`/`index_snapshots` is therefore not a production control
+  until the app moves to a least-privilege role (DB_ROLE_MIGRATION.md).
 - **D6 — Credential hygiene.** The production Postgres public URL was pasted
   into chat during setup; rotate the password and disable public networking
-  after the rehearsal. The rehearsal users/orgs/sessions (and Alice's
+  after the rehearsal (sequenced after D8's migration; not done yet). The rehearsal users/orgs/sessions (and Alice's
   membership in the owner org) were written directly to the production DB —
-  delete them (sessions → memberships → users) once C9's re-run is done, and
-  confirm `APP_ENV=production` with dev-login disabled.
+  cleanup follows the approved plan in DB_ROLE_MIGRATION.md §Rehearsal cleanup.
 
 Evidence files (operator machine, not committed — contain tenant IDs):
 `prod_report.json`, `prod_asm2_report.json`, `prod_findings.json`,
