@@ -7,6 +7,7 @@ import json
 from datetime import datetime, timedelta
 from typing import Any
 
+import httpx
 import sqlalchemy as sa
 from fastapi import APIRouter, Header, Query, Request, Response
 from fastapi.concurrency import run_in_threadpool
@@ -48,7 +49,14 @@ from backend.db import (
     transaction,
     verification_results,
 )
+from backend.db import (
+    jobs as jobs_table,
+)
+from backend.github import GitHubApp, GitHubNotConfigured
 from backend.integrations import load_factory
+from backend.intel_store import lock_ready_snapshot
+from backend.quota import check_project_quota, rate_limit_message
+from backend.redaction import redact_text
 from backend.services import (
     DomainError,
     budget_over_cap,
@@ -66,6 +74,7 @@ from shared.api import (
     AssessmentDetail,
     AssessmentReport,
     FindingDetail,
+    PatchDelivery,
     PatchView,
     ProjectCreate,
     ProjectUpdate,
@@ -88,7 +97,7 @@ from shared.events import StreamEvent
 from shared.evidence import ArtifactKind
 from shared.findings import Finding, FindingStatus, PatchCandidate, StatusChange, VerificationResult
 from shared.ids import IdPrefix, new_id
-from shared.intelligence import Snapshot, SnapshotStatus
+from shared.intelligence import Snapshot, SnapshotRef, SnapshotStatus
 from shared.monitoring import MonitoringEvent, ReassessmentRequest
 from shared.rl import DefenseRecommendation, PlatformFacts, RLEvaluation, RLExplanation
 from shared.scope import (
@@ -110,7 +119,11 @@ class Page(StrictModel):
 
 def _user(conn: Any, request: Request) -> CurrentUser:
     user = require_user(conn, request)
-    limiter.check(f"user:{user.id}", get_settings().rate_limit_per_minute, 60)
+    settings = get_settings()
+    if request.method in ("GET", "HEAD"):
+        limiter.check(f"user-read:{user.id}", settings.rate_limit_read_per_minute, 60)
+    else:
+        limiter.check(f"user:{user.id}", settings.rate_limit_per_minute, 60)
     return user
 
 
@@ -348,7 +361,7 @@ def connect_repository(project_id: str, body: RepositoryConnect, request: Reques
         # The worker fetches App-connected repositories with an installation token, so the
         # caller must have reached this exact repository through that installation at sign-in.
         if body.installation_id is not None:
-            from backend.api.github_repos import can_connect
+            from backend.api.github_repos import can_connect, verify_installation_access
 
             if not can_connect(conn, user.id, body.full_name, body.installation_id):
                 raise ApiError(
@@ -356,6 +369,10 @@ def connect_repository(project_id: str, body: RepositoryConnect, request: Reques
                     "this GitHub App installation does not give you access to that repository",
                     403,
                 )
+            # The sign-in snapshot can be stale (installation deleted/re-scoped since
+            # sign-in); confirm live before recording a repository every GitHub read
+            # would fail for.
+            verify_installation_access(body.full_name, body.installation_id)
         if conn.execute(
             sa.select(repositories.c.id).where(repositories.c.full_name == body.full_name)
         ).scalar():
@@ -886,17 +903,65 @@ def start_assessment(
         replay = idempotent_lookup(conn, user.id, idempotency_key, retry_request)
         if replay:
             return JSONResponse(replay["body"], status_code=replay["status"])
-        limiter.check(f"asm:{user.id}", get_settings().assessment_starts_per_hour, 3600)
         commit_sha = body.commit_sha
-        if body.snapshot_id:
+        if commit_sha is None and body.snapshot_id is None:
+            repo = (
+                conn.execute(sa.select(repositories).where(repositories.c.id == body.repo_id))
+                .mappings()
+                .first()
+            )
+            if repo is None or repo["project_id"] != project_id:
+                raise not_found("repository")
+            if repo["installation_id"] is None:
+                raise ApiError(
+                    ErrorCode.VALIDATION_FAILED,
+                    "enter a commit SHA: this repository is not connected through the GitHub App",
+                    422,
+                )
+            try:
+                commits = GitHubApp().recent_commits(
+                    repo["installation_id"], repo["full_name"], repo["default_branch"], limit=1
+                )
+            except (GitHubNotConfigured, httpx.HTTPError) as exc:
+                raise ApiError(
+                    ErrorCode.SUBSYSTEM_UNAVAILABLE,
+                    "could not read the latest commit from GitHub",
+                    503,
+                ) from exc
+            if not commits:
+                raise ApiError(
+                    ErrorCode.SUBSYSTEM_UNAVAILABLE,
+                    "could not read the latest commit from GitHub",
+                    503,
+                )
+            commit_sha = commits[0]["sha"]
+        quota = check_project_quota(conn, project_id, utcnow(), manual=True)
+        if quota is not None:
+            raise ApiError(
+                ErrorCode.RATE_LIMITED,
+                rate_limit_message(quota),
+                429,
+                {"resets_at": quota.resets_at.isoformat()},
+            )
+        snapshot_id = body.snapshot_id
+        if snapshot_id:
             snap = (
-                conn.execute(sa.select(snapshots).where(snapshots.c.id == body.snapshot_id))
+                conn.execute(sa.select(snapshots).where(snapshots.c.id == snapshot_id))
                 .mappings()
                 .first()
             )
             if snap is None or snap["repo_id"] != body.repo_id:
                 raise not_found("snapshot")
             commit_sha = snap["commit_sha"]
+            snapshot_ref = SnapshotRef(
+                project_id=project_id,
+                repo_id=body.repo_id,
+                commit_sha=snap["commit_sha"],
+                snapshot_id=snapshot_id,
+                index_version=snap["index_version"],
+            )
+            if not lock_ready_snapshot(conn, snapshot_ref):
+                snapshot_id = None
         try:
             a, job_id = create_assessment(
                 conn,
@@ -907,7 +972,7 @@ def start_assessment(
                 trigger=AssessmentTrigger.manual,
                 budget=body.budget,
                 created_by=user.id,
-                snapshot_id=body.snapshot_id,
+                snapshot_id=snapshot_id,
             )
         except DomainError as e:
             raise ApiError(e.code, str(e), e.status) from e
@@ -1121,7 +1186,16 @@ def rules_of_engagement(assessment_id: str, request: Request) -> dict[str, Any]:
         if event is None:
             raise not_found("rules of engagement")
         details = event.get("details") or {}
-        _, data = ArtifactStore().get(conn, details["artifact_id"])
+        artifact_row = (
+            conn.execute(
+                sa.select(artifacts.c.kind).where(artifacts.c.id == details["artifact_id"])
+            )
+            .mappings()
+            .first()
+        )
+        if artifact_row is None or artifact_row["kind"] == ArtifactKind.sealed_diff.value:
+            raise not_found("rules of engagement")
+        meta, data = ArtifactStore().get(conn, details["artifact_id"])
     doc = json.loads(data)
     body = {k: v for k, v in doc.items() if k != "digest"}
     digest = hashlib.sha256(json.dumps(body, sort_keys=True, default=str).encode()).hexdigest()
@@ -1247,7 +1321,7 @@ def get_finding(finding_id: str, request: Request) -> dict[str, Any]:
 @router.get("/findings/{finding_id}/patches")
 def get_patches(finding_id: str, request: Request) -> dict[str, Any]:
     with transaction() as conn:
-        _finding_access(conn, _user(conn, request), finding_id)
+        finding = _finding_access(conn, _user(conn, request), finding_id)
         items = []
         for d in conn.execute(
             sa.select(patch_candidates.c.doc)
@@ -1259,10 +1333,79 @@ def get_patches(finding_id: str, request: Request) -> dict[str, Any]:
                 .where(verification_results.c.patch_id == d["id"])
                 .order_by(verification_results.c.created_at.desc())
             ).scalar()
+            delivery_event = conn.execute(
+                sa.select(audit_events.c.doc)
+                .where(
+                    audit_events.c.project_id == finding["project_id"],
+                    audit_events.c.doc["subject_type"].astext == "patch",
+                    audit_events.c.doc["subject_id"].astext == d["id"],
+                    audit_events.c.doc["action"].astext.in_(
+                        (
+                            "delivery.pr_opened",
+                            "delivery.pushed",
+                            "delivery.failed",
+                            "delivery.skipped",
+                        )
+                    ),
+                )
+                .order_by(audit_events.c.seq.desc())
+                .limit(1)
+            ).scalar()
+            patch_delivery = None
+            if delivery_event is not None:
+                action = delivery_event["action"]
+                details = delivery_event.get("details") or {}
+                at = delivery_event.get("at")
+                if action == "delivery.pr_opened":
+                    patch_delivery = PatchDelivery(
+                        status="pr_opened",
+                        url=details.get("url"),
+                        branch=details.get("branch"),
+                        commit_sha=details.get("commit_sha"),
+                        at=at,
+                    )
+                elif action == "delivery.pushed":
+                    patch_delivery = PatchDelivery(
+                        status="pushed",
+                        branch=details.get("branch"),
+                        commit_sha=details.get("commit_sha"),
+                        at=at,
+                    )
+                elif action == "delivery.failed":
+                    patch_delivery = PatchDelivery(
+                        status="failed", reason=details.get("reason"), at=at
+                    )
+                else:
+                    patch_delivery = PatchDelivery(
+                        status="skipped",
+                        reason=details.get("reason") or "delivery is manual",
+                        at=at,
+                    )
+            elif v and v.get("verdict") == "accepted":
+                job = conn.execute(
+                    sa.select(jobs_table.c.status, jobs_table.c.last_error).where(
+                        jobs_table.c.dedupe_key == f"deliver:{v['id']}"
+                    )
+                ).first()
+                if job is not None:
+                    job_status, last_error = job
+                    if job_status in ("queued", "running"):
+                        patch_delivery = PatchDelivery(status="pending")
+                    elif job_status in ("failed", "dead"):
+                        message = (
+                            last_error.get("message")
+                            if isinstance(last_error, dict)
+                            else last_error
+                        )
+                        patch_delivery = PatchDelivery(
+                            status="failed",
+                            reason=redact_text(str(message or ""))[:300],
+                        )
             items.append(
                 PatchView(
                     patch=PatchCandidate.model_validate(d),
                     verification=VerificationResult.model_validate(v) if v else None,
+                    delivery=patch_delivery,
                 ).model_dump(mode="json")
             )
         return {"items": items, "next_cursor": None}
@@ -1320,7 +1463,11 @@ def get_artifact(artifact_id: str, request: Request) -> Response:
             .mappings()
             .first()
         )
-        if row is None or row["project_id"] is None:
+        if (
+            row is None
+            or row["project_id"] is None
+            or row["kind"] == ArtifactKind.sealed_diff.value
+        ):
             raise not_found("artifact")
         require_project(conn, user, row["project_id"])
         meta, data = ArtifactStore().get(conn, artifact_id)
@@ -1508,6 +1655,77 @@ def list_rl_evaluations(project_id: str, request: Request) -> dict[str, Any]:
             ],
             "next_cursor": None,
         }
+
+
+@router.get("/projects/{project_id}/jobs")
+def list_project_jobs(
+    project_id: str,
+    request: Request,
+    status: str | None = Query(None, description="comma-separated statuses, e.g. 'dead,failed'"),
+    limit: int = Query(200, ge=1, le=200),
+) -> dict[str, Any]:
+    """Failed-job / dead-letter visibility for operators. Members read jobs whose
+    payload names the project (or whose assessment belongs to it); ``status``
+    filters, e.g. ``?status=dead,failed``. Newest first. ``last_error`` is
+    secret-scrubbed at read time — worker failure messages are raw exception
+    text and may embed credentials or connection strings."""
+    from backend.db import jobs as jobs_t
+    from backend.redaction import redact
+
+    with transaction() as conn:
+        _, role = require_project(conn, _user(conn, request), project_id)
+        q = (
+            sa.select(
+                jobs_t.c.id,
+                jobs_t.c.kind,
+                jobs_t.c.status,
+                jobs_t.c.attempts,
+                jobs_t.c.max_attempts,
+                jobs_t.c.last_error,
+                jobs_t.c.created_at,
+                jobs_t.c.updated_at,
+            )
+            .where(
+                sa.or_(
+                    jobs_t.c.payload["project_id"].astext == project_id,
+                    jobs_t.c.payload["assessment_id"].astext.in_(
+                        sa.select(assessments.c.id).where(assessments.c.project_id == project_id)
+                    ),
+                )
+            )
+            .order_by(jobs_t.c.created_at.desc())
+            .limit(limit)
+        )
+        if status:
+            q = q.where(jobs_t.c.status.in_([s.strip() for s in status.split(",") if s.strip()]))
+        items = [
+            {
+                "id": r["id"],
+                "kind": r["kind"],
+                "status": r["status"],
+                "attempts": r["attempts"],
+                "max_attempts": r["max_attempts"],
+                # owners get the secret-scrubbed error; other members get a
+                # coarse {code, category} so infra internals stay out of reach
+                "last_error": (
+                    redact({k: v for k, v in (r["last_error"] or {}).items() if k != "trace"})
+                    if role is MemberRole.owner
+                    else {
+                        "code": (r["last_error"] or {}).get("code"),
+                        "category": str((r["last_error"] or {}).get("code") or "")
+                        .split("_")[0]
+                        .lower()
+                        or "unknown",
+                    }
+                )
+                if r["last_error"]
+                else None,
+                "created_at": r["created_at"],
+                "updated_at": r["updated_at"],
+            }
+            for r in conn.execute(q).mappings()
+        ]
+        return {"items": items, "next_cursor": None}
 
 
 @router.get("/jobs/{job_id}")

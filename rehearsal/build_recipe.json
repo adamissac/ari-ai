@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "app_factory": "ledgerlite.app:create_app",
+  "python": {
+    "package_roots": ["ledgerlite"],
+    "test_command": "python -m pytest tests -q",
+    "lint_files": ["ledgerlite/app.py"]
+  },
+  "identities": {
+    "alice": {
+      "auth_header": "Bearer tok-alice"
+    },
+    "bob": {
+      "auth_header": "Bearer tok-bob"
+    }
+  },
+  "resources": {
+    "entry": {
+      "alice": {
+        "id": "ent_a1",
+        "amount": "2500"
+      },
+      "bob": {
+        "id": "ent_b1",
+        "amount": "2500"
+      }
+    },
+    "account": {
+      "alice": {
+        "id": "acct_a"
+      },
+      "bob": {
+        "id": "acct_b"
+      }
+    }
+  },
+  "routes": [
+    {
+      "id": "entry_detail",
+      "method": "GET",
+      "path_template": "/entries/{entry_id}",
+      "resource": "entry"
+    },
+    {
+      "id": "account_entries",
+      "method": "GET",
+      "path_template": "/accounts/{account_id}/entries",
+      "resource": "account"
+    },
+    {
+      "id": "entry_create",
+      "method": "POST",
+      "path_template": "/entries",
+      "resource": "entry",
+      "body_template": {
+        "memo": "check template probe",
+        "amount_cents": "{amount}"
+      }
+    }
+  ]
+}

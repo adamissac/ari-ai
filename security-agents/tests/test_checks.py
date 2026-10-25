@@ -13,6 +13,7 @@ from security_agents.checks.library import (
     AUTHENTICATION,
     BOUNDS,
     OWNERSHIP,
+    ROLE,
     default_library,
     empty_library,
 )
@@ -45,11 +46,12 @@ def probe_ctx(intel, scope=None):
 
 def test_library_lists_runnable_templates(library):
     refs = {t["ref"] for t in library.list_public()}
-    assert refs == {OWNERSHIP.ref, BOUNDS.ref, AUTHENTICATION.ref}
+    assert refs == {OWNERSHIP.ref, BOUNDS.ref, AUTHENTICATION.ref, ROLE.ref}
     assert all(t["runnable"] for t in library.list_public())
     assert library.categories() == {
         "access_control.ownership",
         "access_control.authentication",
+        "access_control.role",
         "input_validation.bounds",
     }
 
@@ -83,6 +85,48 @@ def test_render_rejects_same_identity_twice(library, recipe):
             OWNERSHIP.ref,
             recipe,
             {"route_id": "payment_detail", "owner_identity": "alice", "other_identity": "alice"},
+        )
+
+
+def test_role_render_rejects_a_non_mutating_route(library, recipe):
+    """Role checks only apply to mutating routes; a GET route cannot carry the check."""
+    with pytest.raises(PlatformError) as exc:
+        library.render(
+            ROLE.ref,
+            recipe,
+            {
+                "route_id": "payment_detail",
+                "restricted_identity": "bob",
+                "permitted_identity": "alice",
+            },
+        )
+    assert exc.value.code is ErrorCode.SCHEMA_INVALID
+
+
+def test_role_render_rejects_the_same_identity(library, recipe):
+    with pytest.raises(PlatformError) as exc:
+        library.render(
+            ROLE.ref,
+            recipe,
+            {
+                "route_id": "create_refund",
+                "restricted_identity": "alice",
+                "permitted_identity": "alice",
+            },
+        )
+    assert exc.value.code is ErrorCode.SCHEMA_INVALID
+
+
+def test_role_render_rejects_an_unknown_identity(library, recipe):
+    with pytest.raises(PlatformError):
+        library.render(
+            ROLE.ref,
+            recipe,
+            {
+                "route_id": "create_refund",
+                "restricted_identity": "mallory",
+                "permitted_identity": "alice",
+            },
         )
 
 
@@ -169,6 +213,24 @@ def test_ownership_check_clears_the_sibling_lookalike_route(driver, intel):
         {"route_id": "customer_detail", "owner_identity": "alice", "other_identity": "bob"},
     )
     assert result["matches_expectation"] is True, result.get("stdout_tail")
+    assert result["failed"] == 0
+
+
+def test_role_check_proves_the_owner_guard_on_create_refund(driver, intel):
+    """labels.yaml marks POST /refunds as correctly owner-guarded: bob acting on alice's
+    payment must be denied while alice keeps access — expectation holds (precision)."""
+    result = runner_for(driver, intel).run(
+        probe_ctx(intel),
+        ROLE.ref,
+        TARGET_ID,
+        {
+            "route_id": "create_refund",
+            "restricted_identity": "bob",
+            "permitted_identity": "alice",
+        },
+    )
+    assert result["matches_expectation"] is True, result.get("stdout_tail")
+    assert result["category"] == "access_control.role"
     assert result["failed"] == 0
 
 

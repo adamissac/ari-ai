@@ -45,6 +45,14 @@
     },
     "bob": {
       "auth_header": "Bearer sbx-bob-session"
+    },
+    "carol": {
+      "auth_header": "Bearer sbx-carol-session",
+      "note": "viewer member of alice's org"
+    },
+    "dave": {
+      "auth_header": "Bearer sbx-dave-session",
+      "note": "member of alice's org"
     }
   },
   "resources": {
@@ -62,6 +70,22 @@
       },
       "bob": {
         "id": "rep_sbxbob000000000000000000b"
+      }
+    },
+    "assessment": {
+      "alice": {
+        "id": "asm_sbxalice000000000000000a"
+      },
+      "bob": {
+        "id": "asm_sbxbob000000000000000b"
+      }
+    },
+    "finding": {
+      "alice": {
+        "id": "fnd_sbxalice0000000000000000a"
+      },
+      "bob": {
+        "id": "fnd_sbxbob00000000000000000b"
       }
     }
   },
@@ -91,10 +115,78 @@
       "resource": "project"
     },
     {
+      "id": "project_findings",
+      "method": "GET",
+      "path_template": "/api/v1/projects/{project_id}/findings",
+      "resource": "project"
+    },
+    {
+      "id": "project_events",
+      "method": "GET",
+      "path_template": "/api/v1/projects/{project_id}/events",
+      "resource": "project"
+    },
+    {
       "id": "repository_detail",
       "method": "GET",
       "path_template": "/api/v1/repositories/{repo_id}",
       "resource": "repository"
+    },
+    {
+      "id": "repository_snapshots",
+      "method": "GET",
+      "path_template": "/api/v1/repositories/{repo_id}/snapshots",
+      "resource": "repository"
+    },
+    {
+      "id": "assessment_detail",
+      "method": "GET",
+      "path_template": "/api/v1/assessments/{assessment_id}",
+      "resource": "assessment"
+    },
+    {
+      "id": "assessment_runs",
+      "method": "GET",
+      "path_template": "/api/v1/assessments/{assessment_id}/runs",
+      "resource": "assessment"
+    },
+    {
+      "id": "assessment_events",
+      "method": "GET",
+      "path_template": "/api/v1/assessments/{assessment_id}/events",
+      "resource": "assessment"
+    },
+    {
+      "id": "finding_detail",
+      "method": "GET",
+      "path_template": "/api/v1/findings/{finding_id}",
+      "resource": "finding"
+    },
+    {
+      "id": "scope_create",
+      "method": "POST",
+      "path_template": "/api/v1/projects/{project_id}/scopes",
+      "resource": "project",
+      "body_template": {
+        "name": "check-scope",
+        "targets": [
+          {
+            "repo_id": "{resource:repository}",
+            "build_recipe_ref": "build_recipe.json"
+          }
+        ],
+        "allowed_check_categories": ["access_control.ownership"],
+        "expires_at": "{expires_in_days:30}"
+      }
+    },
+    {
+      "id": "finding_accept_risk",
+      "method": "POST",
+      "path_template": "/api/v1/findings/{finding_id}/accept-risk",
+      "resource": "finding",
+      "body_template": {
+        "reason": "check template probe"
+      }
     }
   ]
 }

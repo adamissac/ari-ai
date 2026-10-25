@@ -1,0 +1,22 @@
+---
+description: Commit and push frequently — mandatory for every agent working in this repo
+alwaysApply: true
+---
+
+# Git cadence — commit very often (mandatory for ALL agents)
+
+1. **Commit very frequently.** Commit after every passing test, every finished
+   sub-step, and at least every 30 minutes of work. Small commits, Conventional
+   Commit messages. Never hold more than ~30 minutes of uncommitted work.
+2. **Push after every commit** to your own `feat/<owner>/<scope>` branch, so
+   teammates and their agents can see your work. An unpushed commit is
+   invisible to everyone else.
+3. **Always read what changed before you act.** At session start, before every
+   commit and push, before changing any shared interface, and before opening or
+   updating a PR, run `git fetch origin --prune` and review
+   `git log --oneline HEAD..origin/main` plus `git diff --stat HEAD...origin/main`.
+4. **Integrate often.** Merge or rebase `origin/main` into your branch at least
+   daily and whenever main changes something you depend on (commit or stash
+   first; never force-push shared branches).
+5. Human-only git attribution applies (see `human-only-git-attribution.mdc`):
+   never an agent identity, never attribution trailers.

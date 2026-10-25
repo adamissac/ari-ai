@@ -1093,6 +1093,7 @@
     "ArtifactKind": {
       "enum": [
         "diff",
+        "sealed_diff",
         "log",
         "test_report",
         "webhook_payload",
@@ -1149,6 +1150,27 @@
         "redacted"
       ],
       "title": "ArtifactRef",
+      "type": "object"
+    },
+    "ArtifactStoreCapability": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "default": "",
+          "maxLength": 500,
+          "title": "Detail",
+          "type": "string"
+        },
+        "writable": {
+          "title": "Writable",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "writable",
+        "detail"
+      ],
+      "title": "ArtifactStoreCapability",
       "type": "object"
     },
     "Assessment": {
@@ -2498,8 +2520,12 @@
       "enum": [
         "access_control.ownership",
         "access_control.authentication",
+        "access_control.role",
         "input_validation.bounds",
         "authorization.ownership",
+        "authorization.role",
+        "access_control.mutation",
+        "access_control.rbac",
         "input.bounds"
       ],
       "title": "CheckCategory",
@@ -4101,6 +4127,112 @@
         "display_name"
       ],
       "title": "DevLoginRequest",
+      "type": "object"
+    },
+    "DiagnosticsReport": {
+      "additionalProperties": false,
+      "description": "GET /diagnostics: readiness plus live verification (GitHub /app, sandbox SDK,\nmigration head, queue counts, worker rows). Ops tooling; values are metadata only.",
+      "properties": {
+        "capabilities": {
+          "$ref": "#/$defs/ReadinessCapabilities"
+        },
+        "capabilities_ready": {
+          "title": "Capabilities Ready",
+          "type": "boolean"
+        },
+        "database": {
+          "title": "Database",
+          "type": "boolean"
+        },
+        "generated_at": {
+          "maxLength": 500,
+          "title": "Generated At",
+          "type": "string"
+        },
+        "git_sha": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Git Sha"
+        },
+        "github_app_configured": {
+          "title": "Github App Configured",
+          "type": "boolean"
+        },
+        "jobs": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Jobs",
+          "type": "object"
+        },
+        "llm_mode": {
+          "description": "live | fake | unavailable",
+          "maxLength": 500,
+          "title": "Llm Mode",
+          "type": "string"
+        },
+        "migrations": {
+          "additionalProperties": true,
+          "title": "Migrations",
+          "type": "object"
+        },
+        "queue": {
+          "title": "Queue",
+          "type": "boolean"
+        },
+        "schema_version": {
+          "maxLength": 500,
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "status": {
+          "description": "ready | degraded | not_ready",
+          "maxLength": 500,
+          "title": "Status",
+          "type": "string"
+        },
+        "webhook_secret_configured": {
+          "title": "Webhook Secret Configured",
+          "type": "boolean"
+        },
+        "worker_rows": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Worker Rows",
+          "type": "array"
+        },
+        "workers": {
+          "$ref": "#/$defs/WorkerLiveness"
+        }
+      },
+      "required": [
+        "status",
+        "database",
+        "queue",
+        "workers",
+        "capabilities",
+        "capabilities_ready",
+        "llm_mode",
+        "github_app_configured",
+        "webhook_secret_configured",
+        "git_sha",
+        "schema_version",
+        "migrations",
+        "jobs",
+        "worker_rows",
+        "generated_at"
+      ],
+      "title": "DiagnosticsReport",
       "type": "object"
     },
     "EmergencyStop": {
@@ -5779,6 +5911,44 @@
       "title": "GeneratedTest",
       "type": "object"
     },
+    "GithubCapability": {
+      "additionalProperties": false,
+      "properties": {
+        "app_configured": {
+          "title": "App Configured",
+          "type": "boolean"
+        },
+        "oauth_configured": {
+          "title": "Oauth Configured",
+          "type": "boolean"
+        },
+        "verified": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Verified"
+        },
+        "webhook_secret_configured": {
+          "title": "Webhook Secret Configured",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "app_configured",
+        "oauth_configured",
+        "webhook_secret_configured",
+        "verified"
+      ],
+      "title": "GithubCapability",
+      "type": "object"
+    },
     "HardeningEntry": {
       "additionalProperties": false,
       "properties": {
@@ -5862,6 +6032,24 @@
     "HealthStatus": {
       "additionalProperties": false,
       "properties": {
+        "git_sha": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Git Sha"
+        },
+        "schema_version": {
+          "maxLength": 500,
+          "title": "Schema Version",
+          "type": "string"
+        },
         "status": {
           "maxLength": 500,
           "title": "Status",
@@ -5875,7 +6063,9 @@
       },
       "required": [
         "status",
-        "version"
+        "version",
+        "git_sha",
+        "schema_version"
       ],
       "title": "HealthStatus",
       "type": "object"
@@ -8046,6 +8236,33 @@
       "title": "LivePolicyDecision",
       "type": "object"
     },
+    "LlmCapability": {
+      "additionalProperties": false,
+      "properties": {
+        "configured": {
+          "title": "Configured",
+          "type": "boolean"
+        },
+        "mode": {
+          "description": "live | fake | unavailable | host",
+          "maxLength": 500,
+          "title": "Mode",
+          "type": "string"
+        },
+        "model": {
+          "maxLength": 500,
+          "title": "Model",
+          "type": "string"
+        }
+      },
+      "required": [
+        "mode",
+        "model",
+        "configured"
+      ],
+      "title": "LlmCapability",
+      "type": "object"
+    },
     "MappedVia": {
       "description": "How a mapping was derived. Never ``model``: model proposals go through ``rule``/``human``.",
       "enum": [
@@ -8532,9 +8749,107 @@
       "title": "PatchCandidate",
       "type": "object"
     },
+    "PatchDelivery": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "At"
+        },
+        "branch": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Branch"
+        },
+        "commit_sha": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Commit Sha"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "pr_opened",
+            "pushed",
+            "failed",
+            "skipped"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        }
+      },
+      "required": [
+        "status",
+        "reason",
+        "url",
+        "branch",
+        "commit_sha",
+        "at"
+      ],
+      "title": "PatchDelivery",
+      "type": "object"
+    },
     "PatchView": {
       "additionalProperties": false,
       "properties": {
+        "delivery": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PatchDelivery"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "patch": {
           "$ref": "#/$defs/PatchCandidate"
         },
@@ -8552,7 +8867,8 @@
       },
       "required": [
         "patch",
-        "verification"
+        "verification",
+        "delivery"
       ],
       "title": "PatchView",
       "type": "object"
@@ -9435,7 +9751,7 @@
         },
         "delivery_mode": {
           "$ref": "#/$defs/DeliveryMode",
-          "default": "auto"
+          "default": "pull_request"
         },
         "languages": {
           "items": {
@@ -9447,11 +9763,15 @@
         },
         "monitoring_policy": {
           "$ref": "#/$defs/TriggerPolicy"
+        },
+        "review": {
+          "$ref": "#/$defs/ReviewerSettings"
         }
       },
       "required": [
         "default_budget",
         "monitoring_policy",
+        "review",
         "languages",
         "delivery_mode",
         "delivery_authorized_by"
@@ -9675,12 +9995,63 @@
       "title": "RLExplanation",
       "type": "object"
     },
+    "ReadinessCapabilities": {
+      "additionalProperties": false,
+      "description": "Can this deployment actually run an assessment, each dependency named separately.",
+      "properties": {
+        "anthropic_key_configured": {
+          "title": "Anthropic Key Configured",
+          "type": "boolean"
+        },
+        "artifact_store": {
+          "$ref": "#/$defs/ArtifactStoreCapability"
+        },
+        "github": {
+          "$ref": "#/$defs/GithubCapability"
+        },
+        "llm": {
+          "$ref": "#/$defs/LlmCapability"
+        },
+        "sandbox": {
+          "$ref": "#/$defs/SandboxCapability"
+        }
+      },
+      "required": [
+        "llm",
+        "github",
+        "sandbox",
+        "artifact_store",
+        "anthropic_key_configured"
+      ],
+      "title": "ReadinessCapabilities",
+      "type": "object"
+    },
     "ReadinessStatus": {
       "additionalProperties": false,
       "properties": {
+        "capabilities": {
+          "$ref": "#/$defs/ReadinessCapabilities"
+        },
+        "capabilities_ready": {
+          "title": "Capabilities Ready",
+          "type": "boolean"
+        },
         "database": {
           "title": "Database",
           "type": "boolean"
+        },
+        "git_sha": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Git Sha"
         },
         "github_app_configured": {
           "title": "Github App Configured",
@@ -9696,7 +10067,13 @@
           "title": "Queue",
           "type": "boolean"
         },
+        "schema_version": {
+          "maxLength": 500,
+          "title": "Schema Version",
+          "type": "string"
+        },
         "status": {
+          "description": "ready | degraded | not_ready",
           "maxLength": 500,
           "title": "Status",
           "type": "string"
@@ -9704,15 +10081,23 @@
         "webhook_secret_configured": {
           "title": "Webhook Secret Configured",
           "type": "boolean"
+        },
+        "workers": {
+          "$ref": "#/$defs/WorkerLiveness"
         }
       },
       "required": [
         "status",
         "database",
         "queue",
+        "workers",
+        "capabilities",
+        "capabilities_ready",
         "llm_mode",
         "github_app_configured",
-        "webhook_secret_configured"
+        "webhook_secret_configured",
+        "git_sha",
+        "schema_version"
       ],
       "title": "ReadinessStatus",
       "type": "object"
@@ -10194,6 +10579,101 @@
         "generated_tests"
       ],
       "title": "ReviewResult",
+      "type": "object"
+    },
+    "ReviewerSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "comment_on_pull_requests": {
+          "default": true,
+          "title": "Comment On Pull Requests",
+          "type": "boolean"
+        },
+        "exclude_authors": {
+          "items": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Exclude Authors",
+          "type": "array"
+        },
+        "exclude_branches": {
+          "items": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Exclude Branches",
+          "type": "array"
+        },
+        "include_authors": {
+          "items": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Include Authors",
+          "type": "array"
+        },
+        "include_branches": {
+          "items": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Include Branches",
+          "type": "array"
+        },
+        "max_reviews_per_hour": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Reviews Per Hour"
+        },
+        "review_draft_prs": {
+          "default": false,
+          "title": "Review Draft Prs",
+          "type": "boolean"
+        },
+        "review_pull_requests": {
+          "default": true,
+          "title": "Review Pull Requests",
+          "type": "boolean"
+        },
+        "review_pushes": {
+          "default": true,
+          "title": "Review Pushes",
+          "type": "boolean"
+        },
+        "strictness": {
+          "default": 2,
+          "maximum": 3,
+          "minimum": 1,
+          "title": "Strictness",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "review_pushes",
+        "review_pull_requests",
+        "review_draft_prs",
+        "include_branches",
+        "exclude_branches",
+        "include_authors",
+        "exclude_authors",
+        "strictness",
+        "comment_on_pull_requests",
+        "max_reviews_per_hour"
+      ],
+      "title": "ReviewerSettings",
       "type": "object"
     },
     "RlCategoryResult": {
@@ -10935,6 +11415,59 @@
         "routes"
       ],
       "title": "RuntimeSignalBatch",
+      "type": "object"
+    },
+    "SandboxCapability": {
+      "additionalProperties": false,
+      "properties": {
+        "configured": {
+          "title": "Configured",
+          "type": "boolean"
+        },
+        "daemon_reachable": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Daemon Reachable"
+        },
+        "detail": {
+          "default": "",
+          "maxLength": 500,
+          "title": "Detail",
+          "type": "string"
+        },
+        "mode": {
+          "maxLength": 500,
+          "title": "Mode",
+          "type": "string"
+        },
+        "sdk_importable": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sdk Importable"
+        }
+      },
+      "required": [
+        "mode",
+        "configured",
+        "detail",
+        "sdk_importable",
+        "daemon_reachable"
+      ],
+      "title": "SandboxCapability",
       "type": "object"
     },
     "ScopeCreate": {
@@ -12390,6 +12923,65 @@
       "title": "WebhookAck",
       "type": "object"
     },
+    "WorkerLiveness": {
+      "additionalProperties": false,
+      "description": "Live worker processes for /readyz (worker_heartbeats table).",
+      "properties": {
+        "alive": {
+          "title": "Alive",
+          "type": "integer"
+        },
+        "busy": {
+          "title": "Busy",
+          "type": "integer"
+        },
+        "expected": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Expected"
+        },
+        "freshest_heartbeat_age_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Freshest Heartbeat Age S"
+        },
+        "queued_jobs": {
+          "title": "Queued Jobs",
+          "type": "integer"
+        },
+        "required": {
+          "title": "Required",
+          "type": "boolean"
+        },
+        "running_jobs": {
+          "title": "Running Jobs",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "alive",
+        "expected",
+        "busy",
+        "queued_jobs",
+        "running_jobs",
+        "freshest_heartbeat_age_s",
+        "required"
+      ],
+      "title": "WorkerLiveness",
+      "type": "object"
+    },
     "shared__review__ReviewStatus": {
       "enum": [
         "completed",
@@ -12411,5 +13003,5 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "HackATL platform contracts",
-  "x-schema-version": "0.21.0"
+  "x-schema-version": "0.22.0"
 }

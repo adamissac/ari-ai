@@ -40,6 +40,9 @@ by FastAPI is the source for frontend client generation.
 | POST | `/repositories/{repo_id}/snapshots` | Request indexing at `commit_sha` |
 | GET | `/repositories/{repo_id}/snapshots?status=&limit=&cursor=` | List, newest first (`status=ready` for usable indexes) |
 | GET | `/snapshots/{snapshot_id}` | Status and stats |
+| GET | `/github/repositories` | Repos the caller can reach through App installations |
+| GET | `/repositories/{repo_id}/commits` | Recent commits, read live via the installation token |
+| GET | `/github/commit?repo=owner/name&sha=` | One commit + per-file diff via the requester's installation (used by live analysis) |
 
 ### Intelligence (read)
 | Method | Path | Purpose |
@@ -102,8 +105,9 @@ by FastAPI is the source for frontend client generation.
 ### Ops
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/healthz` | Liveness |
-| GET | `/readyz` | DB + queue reachable |
+| GET | `/healthz` | Liveness (`git_sha`, `schema_version`) |
+| GET | `/readyz` | Readiness: db/queue/worker-heartbeats + per-capability assessment readiness (`capabilities_ready`, 503 on `not_ready`/`degraded`) |
+| GET | `/diagnostics` | `/readyz` + verified GitHub App call, sandbox SDK/daemon detail, migration head vs `alembic_version`, queue counts, worker rows |
 | GET | `/audit?project_id=&limit=&cursor=` | Audit log (owners), newest first; `next_cursor` = last `seq` when older exist; chain verification covers the whole org |
 
 ## SSE event shape
@@ -116,8 +120,14 @@ Event types: `assessment.state_changed`, `assessment.progress`, `finding.updated
 `approval.requested`, `assessment.completed`, `assessment.failed`.
 
 ## Rate limits (MVP)
-Per user: 60 req/min general; 5 assessment starts/hour. Webhooks: 100/min per
-installation. Implemented in-process (no Redis) for MVP.
+Per user: authenticated mutations are limited to 60 req/min; GET and HEAD reads use
+a separate limit of 600 req/min. Automatic starts count all project triggers toward
+10 assessments per rolling hour and 50 per rolling day. Manual starts count only
+manual-trigger assessments against the same limits. The global daily spend cap is
+$50 across all projects and triggers. Manual starts blocked by a quota return 429
+`RATE_LIMITED` with a reset time. Automatic starts blocked by a quota are recorded
+as skipped and are not queued or retried. Webhooks are limited to 100/min per
+installation. API and webhook limiters are in-process (no Redis) for MVP.
 
 ## Not in the API by design
 - No endpoint executes arbitrary commands or accepts code to run.

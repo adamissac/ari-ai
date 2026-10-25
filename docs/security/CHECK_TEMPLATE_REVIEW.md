@@ -6,7 +6,7 @@ A human security owner signs off by replacing `reviewed_by` in
 
 Checklist for each template:
 
-- [ ] The rendered module imports only json, decimal, fastapi and the package named by the recipe's app_factory (validated as package.module:callable).
+- [ ] The rendered module imports only json, decimal, datetime, fastapi and the package named by the recipe's app_factory (validated as package.module:callable).
 - [ ] It uses only fixture identities and resource ids declared in the build recipe.
 - [ ] It opens no sockets, spawns no processes and reads no environment or files outside the workspace.
 - [ ] Its assertions state the expectation, so a failure means the expectation did not hold.
@@ -137,7 +137,7 @@ def test_bound_is_enforced_across_requests():
 - category: `access_control.authentication`; side effects: `read_only`
 - current reviewed_by: `security-owner:pending-human-signoff`
 - parameters: route_id, identity
-- renderer_sha256: `9260427543bad9e7f895c8b47c88d159db882d4244332bff0d8d75d2840e7f33`
+- renderer_sha256: `c1280d58f85ae79934974924c387ea8150845c3dbc7d0f663d67251ae33754e1`
 - sample parameters: `{"identity": "alice", "route_id": "payment_detail"}`
 - rendered_sha256 (sample): `bed134ce73c11942471130cb2ccecdd8a469de24632016b3cce53b070ac87132`
 - imports: decimal, fastapi, json, payments_lite (within allowlist: True)
@@ -182,5 +182,62 @@ def test_authenticated_identity_retains_access():
     RESULT["identity_status"] = resp.status_code
     assert resp.status_code < 400, (
         f"authenticated identity lost legitimate access: {resp.status_code}"
+    )
+```
+
+## access_control.role@1
+
+- category: `access_control.role`; side effects: `ephemeral_target_only`
+- current reviewed_by: `security-owner:pending-human-signoff`
+- parameters: route_id, restricted_identity, permitted_identity
+- renderer_sha256: `12a9bcd0d3f875b7bd0f7305e9b53ef8a0558f9fae0b2b4c237dc5047ebcea3c`
+- sample parameters: `{"permitted_identity": "alice", "restricted_identity": "bob", "route_id": "create_refund"}`
+- rendered_sha256 (sample): `3e839d7cb5c714c9f082ccaf84d4ec9c09d88559043038c6a734d0b61bbbb196`
+- imports: decimal, fastapi, json, payments_lite (within allowlist: True)
+- forbidden tokens in code: none
+
+```python
+"""Generated check: access_control.role@1
+Rendered by security_agents.checks.library from reviewed template parameters.
+Target is driven in-process through its own app factory; no sockets are opened.
+"""
+
+import json
+from decimal import Decimal
+
+from fastapi.testclient import TestClient
+
+from payments_lite.app import create_app
+
+RESULT = {}
+
+
+def _client():
+    return TestClient(create_app())
+
+
+PATH = '/refunds'
+METHOD = 'post'
+BODY = {'payment_id': 'pay_a1', 'amount': '120.00'}
+RESTRICTED_HEADERS = {"Authorization": 'Bearer fixture-token-bob'}
+PERMITTED_HEADERS = {"Authorization": 'Bearer fixture-token-alice'}
+DENIED = [401, 403, 404]
+
+
+def test_restricted_identity_is_denied():
+    resp = _client().request(METHOD, PATH, json=BODY, headers=RESTRICTED_HEADERS)
+    RESULT["restricted_status"] = resp.status_code
+    RESULT["restricted_leaked_or_mutated"] = resp.status_code < 400
+    assert resp.status_code in DENIED, (
+        f"expected one of {DENIED} for a lower-privileged identity, "
+        f"observed {resp.status_code}"
+    )
+
+
+def test_permitted_identity_retains_access():
+    resp = _client().request(METHOD, PATH, json=BODY, headers=PERMITTED_HEADERS)
+    RESULT["permitted_status"] = resp.status_code
+    assert resp.status_code < 400, (
+        f"permitted identity lost legitimate access: {resp.status_code}"
     )
 ```

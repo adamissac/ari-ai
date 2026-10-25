@@ -457,6 +457,8 @@ def patch_script(
     out_of_scope: bool = False,
     ineffective: bool = False,
     skip_tests: bool = False,
+    test_path: str = REGRESSION_TEST_PATH,
+    extra_patch_files: dict[str, str] | None = None,
 ) -> list:
     """Patch trajectory.
 
@@ -501,13 +503,17 @@ def patch_script(
             existing = (snapshot_root / "tests/test_api.py").read_text(encoding="utf-8")
             weakened = existing.replace("== 404", "in (200, 404)")
             calls.append(("worktree__write_file", {"path": "tests/test_api.py", "content": weakened}))
+        calls.extend(
+            ("worktree__write_file", {"path": path, "content": content})
+            for path, content in (extra_patch_files or {}).items()
+        )
         return FakeTurn(text="Applying the scoped lookup.", tool_calls=calls)
 
     def turn2(_request) -> FakeTurn:
         if skip_tests:
             return FakeTurn(tool_calls=[("worktree__diff", {})])
         return FakeTurn(
-            tool_calls=[("worktree__write_file", {"path": REGRESSION_TEST_PATH, "content": REGRESSION_TEST})]
+            tool_calls=[("worktree__write_file", {"path": test_path, "content": REGRESSION_TEST})]
         )
 
     def turn3(_request) -> FakeTurn:
@@ -537,7 +543,7 @@ def patch_script(
                             "continued access."
                         ),
                         "files_changed": files,
-                        "tests_added": [] if skip_tests else [REGRESSION_TEST_PATH],
+                        "tests_added": [] if skip_tests else [test_path],
                         "local_tests_passed": bool(passed),
                         "local_test_run_id": run_id,
                         "deviations_from_plan": (

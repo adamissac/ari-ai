@@ -9,11 +9,14 @@ test('owner edits project settings and they persist on reload', async ({ browser
   const form = page.getByRole('form', { name: 'Project settings' });
   const interval = form.getByLabel('Minimum interval between reassessments (s)');
   await expect(interval).toHaveValue(/\d+/);
-  await expect(form.getByRole('button', { name: 'Save settings' })).toBeDisabled();
+  // The form renders the action row at the top and the bottom; scope to the bottom
+  // row, which also carries the "Saved." status text.
+  const save = form.getByRole('button', { name: 'Save settings' }).last();
+  await expect(save).toBeDisabled();
   await interval.fill('abc');
   await expect(form.getByRole('alert')).toContainText('Minimum interval');
   await interval.fill('900');
-  await form.getByRole('button', { name: 'Save settings' }).click();
+  await save.click();
   await expect(form.getByRole('status')).toContainText('Saved.');
   await page.reload();
   await expect(page.getByLabel('Minimum interval between reassessments (s)')).toHaveValue('900');
@@ -142,7 +145,6 @@ test('incident closure: link verified finding, criteria with evidence, communica
 test('expectations page shows the version-pinned snapshot view', async ({ browser }) => {
   const page = await newUser(browser, 'e2e-alice');
   await page.goto(`/projects/${project()}/expectations`);
-  await page.getByRole('navigation', { name: 'Project', exact: true }).locator('summary').click();
   await expect(page.getByRole('link', { name: 'Expectations' })).toHaveAttribute('aria-current', 'page');
   await expect(page.getByText(/No indexed snapshot|awaiting a human decision/)).toBeVisible();
   await evidenceShot(page, 'expectations');

@@ -50,8 +50,10 @@ from backend.db import (
     finding_records,
     findings,
     jobs,
+    monitoring_events,
     patch_candidates,
     projects,
+    reassessment_requests,
     transaction,
     verification_results,
 )
@@ -126,6 +128,33 @@ _STATUS_EDGES: dict[FindingStatus, frozenset[FindingStatus]] = {
 _ANYTIME = frozenset({_S.needs_recheck, _S.accepted_risk, _S.closed})
 
 
+def _enqueue_pr_review(conn: Connection, assessment: Assessment) -> None:
+    from backend import jobs
+
+    request_id = assessment.reassessment_request_id
+    if request_id is None:
+        return
+    request = conn.execute(
+        sa.select(reassessment_requests.c.doc).where(reassessment_requests.c.id == request_id)
+    ).scalar_one_or_none()
+    if not request:
+        return
+    event_docs = conn.execute(
+        sa.select(monitoring_events.c.doc).where(
+            monitoring_events.c.id.in_(request.get("event_ids", []) or [""])
+        )
+    ).scalars()
+    if not any(event.get("pr_number") for event in event_docs):
+        return
+    jobs.enqueue(
+        conn,
+        "post_pr_review",
+        {"assessment_id": assessment.id},
+        dedupe_key=f"prreview:{assessment.id}",
+        priority=80,
+    )
+
+
 def _emit(
     conn: Connection, assessment_id: str, etype: StreamEventType, message: str, **fields: Any
 ) -> StreamEvent:
@@ -190,18 +219,19 @@ class AssessmentHost:
 
         return repository_service(self.project_id, self.repo_id, include_prefix=include_prefix)
 
-    def attach_snapshot(self, ref: SnapshotRef) -> None:
-        from backend.intelligence import snapshot_ref
+    def attach_snapshot(self, ref: SnapshotRef) -> bool:
+        from backend.intel_store import lock_ready_snapshot
 
         ref = SnapshotRef.model_validate(ref.model_dump())
         if (
             ref.project_id != self.project_id
             or ref.repo_id != self.repo_id
             or ref.commit_sha != self.assessment.commit_sha
-            or snapshot_ref(ref.snapshot_id) != ref
         ):
             raise HostError(ErrorCode.SCHEMA_INVALID, "Snapshot does not match assessment")
         with transaction() as conn:
+            if not lock_ready_snapshot(conn, ref):
+                return False
             current = Assessment.model_validate(self._row(conn, lock=True)["doc"])
             if current.snapshot_id and current.snapshot_id != ref.snapshot_id:
                 raise HostError(ErrorCode.CONFLICT_STATE, "Assessment already has another snapshot")
@@ -212,6 +242,7 @@ class AssessmentHost:
                 .where(assessments.c.id == self.assessment_id)
                 .values(doc=current.model_dump(mode="json"))
             )
+        return True
 
     def _row(self, conn: Connection, *, lock: bool = False) -> dict[str, Any]:
         q = sa.select(assessments).where(assessments.c.id == self.assessment_id)
@@ -390,6 +421,8 @@ class AssessmentHost:
                 subject_id=self.assessment_id,
                 details={"from": a.state.value, "to": target.value},
             )
+            if target in (AssessmentState.COMPLETED, AssessmentState.AWAITING_APPROVAL):
+                _enqueue_pr_review(conn, new)
             return new
 
     def progress(self, message: str, *, agent: AgentName | None = None, **data: Any) -> None:
@@ -537,6 +570,20 @@ class AssessmentHost:
         with transaction() as conn:
             return self.store.put_text(
                 conn, text, kind=kind, project_id=self.project_id, media_type=media_type
+            )
+
+    def seal_diff(self, diff: str, expected_sha256: str) -> ArtifactRef:
+        actual_sha256 = hashlib.sha256(diff.encode()).hexdigest()
+        if actual_sha256 != expected_sha256:
+            raise HostError(ErrorCode.CONFLICT_STATE, "diff bytes do not match the expected hash")
+        with transaction() as conn:
+            return self.store.put_bytes(
+                conn,
+                diff.encode(),
+                kind=ArtifactKind.sealed_diff,
+                project_id=self.project_id,
+                media_type="text/x-diff",
+                redacted=False,
             )
 
     # -------------------------------------------------------------- agent runs

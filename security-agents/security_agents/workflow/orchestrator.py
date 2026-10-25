@@ -62,8 +62,11 @@ from ..runtime import AgentSpec, StepOutcome, StepRecord, run_agent
 from ..sandbox.driver import SandboxDriver
 from ..sandbox.workspace import (
     fresh_checkout,
+    recipe_protected_tests,
     recipe_test_roots,
     resolve_under,
+    safe_rel_path,
+    test_root_files,
     tree_digest,
     under_test_roots,
 )
@@ -756,7 +759,44 @@ class Orchestrator:
         )
         return [result]
 
-    def _test_runner(self, workspace_provider: Any) -> TestRunner:
+    def _added_tests_on_patched(self, candidate: Any, ctx: ToolContext) -> list[dict[str, Any]]:
+        """Run added tests deterministically against Verify's successfully patched workspace."""
+        facts = ctx.artifacts.get("verify_facts") or {}
+        patched = ctx.artifacts.get("verify_workspace")
+        roots = recipe_test_roots(self.intel.snapshot.root)
+        tests = [
+            path for path in candidate.tests_added if isinstance(path, str) and under_test_roots(path, roots)
+        ]
+        if (
+            not facts.get("applied")
+            or facts.get("patch_id") != candidate.id
+            or ctx.artifacts.get("verify_patch_id") != candidate.id
+            or not patched
+            or not tests
+        ):
+            return []
+        try:
+            for rel in tests:
+                if not resolve_under(Path(patched), safe_rel_path(rel)).is_file():
+                    return []
+        except (OSError, PlatformError, ValueError):
+            return []
+        ctx.artifacts["tests_added"] = tests
+        runner = self._test_runner(lambda _ctx: Path(patched))
+        result = runner.run(ctx, "added_tests", [])
+        result["workspace_role"] = "patched"
+        result["patch_id"] = ctx.artifacts.get("verify_patch_id")
+        self._audit(
+            "tests.added_on_patched",
+            "patch",
+            candidate.id,
+            failing=result.get("failing_tests"),
+            passed=result.get("passed"),
+            sandbox_run_id=result.get("sandbox_run_id"),
+        )
+        return [result]
+
+    def _test_runner(self, workspace_provider: Any, *, suite_workspace_provider: Any = None) -> TestRunner:
         """Tests run with the target recipe's `test_command` and `sandbox` setup when it has them."""
         recipe: dict[str, Any] = {}
         path = self.intel.snapshot.root / "build_recipe.json"
@@ -771,6 +811,7 @@ class Orchestrator:
         return TestRunner(
             driver=self.driver,
             workspace_provider=workspace_provider,
+            suite_workspace_provider=suite_workspace_provider,
             test_command_args=tuple(command) if valid else self.config.test_command_args,
             setup=setup,
         )
@@ -1264,10 +1305,15 @@ class Orchestrator:
             # has applied the diff; before that, against the pristine snapshot.
             return ctx.artifacts.get("verify_workspace") or self.intel.snapshot.root
 
+        def verify_suite_workspace(ctx: ToolContext) -> Any:
+            return ctx.artifacts.get("verify_suite_workspace")
+
         services = {
             **self._read_services(),
             "patch_applier": applier,
-            "test_runner": self._test_runner(verify_workspace),
+            "test_runner": self._test_runner(
+                verify_workspace, suite_workspace_provider=verify_suite_workspace
+            ),
             "check_runner": CheckRunner(
                 driver=self.driver,
                 library=self.library,
@@ -1294,6 +1340,7 @@ class Orchestrator:
             unpatched_added_runs = unpatched.result()
         check_runs = list(ctx.artifacts.get("check_runs") or [])
         test_runs = list(ctx.artifacts.get("test_runs") or [])
+        test_runs.extend(self._added_tests_on_patched(candidate, ctx))
         for run in check_runs + test_runs:
             self.result.usage.sandbox_seconds += float(run.get("duration_s") or 0)
         for run in unpatched_added_runs:
@@ -1307,6 +1354,7 @@ class Orchestrator:
             protected_tests=self._protected_tests(),
             original_check_ref=data.original_check_template_ref,
             original_check_params=dict(data.original_check_parameters),
+            candidate_id=candidate.id,
             required_transport=self.config.verify_check_transport,
             original_tree_sha256=tree_digest(self.intel.snapshot.root),
             patched_tree_sha256=tree_digest(ctx.artifacts["verify_workspace"])
@@ -1459,12 +1507,20 @@ class Orchestrator:
         return None
 
     def _protected_tests(self) -> list[str]:
-        """Tests encoding confirmed expectations (configured + expectation sources)."""
+        """Configured, recipe-declared, pre-existing and in-root symlinked tests, plus confirmed sources."""
         protected = set(self.config.protected_tests)
+        root = self.intel.snapshot.root
+        test_roots = recipe_test_roots(root)
+        protected.update(recipe_protected_tests(root))
+        protected.update(path for path in self.intel.snapshot.files() if under_test_roots(path, test_roots))
+        try:
+            protected.update(test_root_files(root, test_roots))
+        except PlatformError as exc:
+            protected.add(f"<{exc.message}> (protected-test discovery failed: {exc.code.value})")
         for expectation in self.intel.expectations():
             if expectation.status != "confirmed":
                 continue
             for source in expectation.sources:
-                if source.path and under_test_roots(source.path, recipe_test_roots(self.intel.snapshot.root)):
+                if source.path and under_test_roots(source.path, test_roots):
                     protected.add(source.path)
         return sorted(protected)

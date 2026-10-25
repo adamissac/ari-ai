@@ -1,0 +1,60 @@
+565efcb0dd6270369532b7fa6d0a8f2333bdbd6d
+100644 25c525afbc1159140f622ac47c28db0acaa93186 1	CHANGELOG.md
+100644 f90b91d429596ae5f34f1af0a5a0da5795cdec90 2	CHANGELOG.md
+100644 992f8d8569f4a52f3b4fcdf35cfe64736b5f31ac 3	CHANGELOG.md
+100644 30baa3ae39d6779c11ac85c3c105b8dfdb48875e 1	backend/backend/api/ops.py
+100644 387b4539c90006d26813489b13dc69f1c28d82b0 2	backend/backend/api/ops.py
+100644 17d2cea68c63137e44a193301bc6e7404c034ae3 3	backend/backend/api/ops.py
+100644 9eaffdaeac46ca38c9c3f4d1861b1913d2b06ea0 1	backend/backend/api/routes.py
+100644 7282f17c10d8b0310758062e173e0f74f67a6dff 2	backend/backend/api/routes.py
+100644 de99ba81977cc30298fa3ec00eae4c06717ba1b9 3	backend/backend/api/routes.py
+100644 3853625c13cba38f9be5c61cb08a29ce6e12d3d0 1	backend/backend/auto_commits.py
+100644 47ab50531e81fe538b48af1fd8256b1ba5b28022 2	backend/backend/auto_commits.py
+100644 b3e245b378cea88a8cd96454769350d8487272c0 3	backend/backend/auto_commits.py
+100644 52af60c49bef4b1b77f66f2402d4c1144aab7be5 1	backend/backend/settings.py
+100644 44ff6669bef8c933a1be3223c7869ff8346c92c5 2	backend/backend/settings.py
+100644 651b97925902495f4ac3cc875627d5c2f20ed385 3	backend/backend/settings.py
+100644 cbb16179b4d8f4bbb5dd2637d74dd723c5c85364 1	docs/planning/HACKATL_TASKS.md
+100644 5af0dd3a6d137fa0b881d9a950d5cef1737232ca 2	docs/planning/HACKATL_TASKS.md
+100644 f5ef18def14959b1e213ac574230d6e5eb4d75f2 3	docs/planning/HACKATL_TASKS.md
+100644 1f3430750215f6737ebb2861a484828864c52255 1	docs/planning/SESSION_HANDOFF.md
+100644 61f686c82ac8942f507e95523d4e099d79a90710 2	docs/planning/SESSION_HANDOFF.md
+100644 98bb62ae3f60c98671afe96f0dfeae5a802cbeaa 3	docs/planning/SESSION_HANDOFF.md
+100644 b16266fedd38e67eb5c99663ed1f2ed26b35fbb3 1	shared/generated/contracts.schema.json
+100644 3d3bcadf714c549df1ada719f3a82765d1e09f0e 2	shared/generated/contracts.schema.json
+100644 973f4a9e15eeec0e233d0824f3f8c3ac8bccecf7 3	shared/generated/contracts.schema.json
+100644 75e732a3455399894bb150a2da11afa2a1a1bf17 1	shared/generated/ts/contracts.ts
+100644 d7733c207584489acb055a47f5ea7ee112c33c90 2	shared/generated/ts/contracts.ts
+100644 78ea833e31052f5607f3d7290dccb164e1efc4dc 3	shared/generated/ts/contracts.ts
+
+Auto-merging .env.example
+Auto-merging CHANGELOG.md
+CONFLICT (content): Merge conflict in CHANGELOG.md
+Auto-merging backend/README.md
+Auto-merging backend/backend/api/github_repos.py
+Auto-merging backend/backend/api/ops.py
+CONFLICT (content): Merge conflict in backend/backend/api/ops.py
+Auto-merging backend/backend/api/routes.py
+CONFLICT (content): Merge conflict in backend/backend/api/routes.py
+Auto-merging backend/backend/auto_commits.py
+CONFLICT (content): Merge conflict in backend/backend/auto_commits.py
+Auto-merging backend/backend/settings.py
+CONFLICT (content): Merge conflict in backend/backend/settings.py
+Auto-merging docs/13_BACKEND_API_DESIGN.md
+Auto-merging docs/deploy/PILOT_OPERATIONS.md
+Auto-merging docs/planning/HACKATL_TASKS.md
+CONFLICT (content): Merge conflict in docs/planning/HACKATL_TASKS.md
+Auto-merging docs/planning/SESSION_HANDOFF.md
+CONFLICT (content): Merge conflict in docs/planning/SESSION_HANDOFF.md
+Auto-merging frontend/components/project.tsx
+Auto-merging frontend/tests/e2e/demo-recovery.spec.ts
+Auto-merging frontend/tests/e2e/stack_manual.py
+Auto-merging frontend/tests/unit/project-navigation.test.tsx
+Auto-merging frontend/transport/src/client.ts
+Auto-merging shared/generated/contracts.schema.json
+CONFLICT (content): Merge conflict in shared/generated/contracts.schema.json
+Auto-merging shared/generated/ts/contracts.ts
+CONFLICT (content): Merge conflict in shared/generated/ts/contracts.ts
+Auto-merging shared/shared/__init__.py
+Auto-merging shared/shared/registry.py
+Auto-merging shared/shared/tenancy.py

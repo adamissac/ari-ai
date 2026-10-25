@@ -3,10 +3,13 @@
 Env: ARI_API_BASE (e.g. https://ari-ai-lake.vercel.app/api/v1), ARI_SESSION
      (the hackatl_session cookie value), ARI_EVAL_PROJECT (project id).
 stdin: {"cases": [...cases.json entries...], "shas": {case_id: commit_sha}}
-stdout: {"results": [{case_id, state, seconds, usd, flagged, validated, fixed, findings}], "pending": n}
+stdout: {"results": [{case_id, state, seconds, usd, flagged, validated, fixed,
+validated_any, fixed_any, findings}], "pending": n}
 
 Same verdict rules as score.py: flagged = any security finding on a changed file;
-validated = Probe proved it; fixed = Verify accepted the fix.
+validated = Probe proved it; fixed = Verify accepted the fix. validated_any /
+fixed_any are the same verdicts counted across every finding kind (security +
+functional), so the functional reviewer's proofs still show up in the report.
 """
 
 from __future__ import annotations
@@ -15,9 +18,9 @@ import json
 import os
 import sys
 import urllib.request
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-TERMINAL = {"COMPLETED", "FAILED", "CANCELLED", "BUDGET_EXHAUSTED"}
+TERMINAL = {"COMPLETED", "FAILED", "CANCELLED", "BUDGET_EXHAUSTED", "UNSCORED"}
 VALIDATED = {
     "validated",
     "diagnosed",
@@ -42,7 +45,20 @@ def _get(path: str) -> dict:
 def _ts(value: str | None) -> float:
     if not value:
         return 0.0
-    return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc).timestamp()
+    return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(UTC).timestamp()
+
+
+def _finding_paths(f: dict) -> set[str]:
+    paths = f.get("paths")
+    if paths is None:
+        # the findings list endpoint returns the finding doc without the
+        # denormalized `paths` column; fall back to its source_span evidence
+        paths = [
+            e.get("path")
+            for e in (f.get("evidence") or [])
+            if e.get("kind") == "source_span" and e.get("path")
+        ]
+    return {p.split(":")[0] for p in paths}
 
 
 def main() -> int:
@@ -74,29 +90,60 @@ def main() -> int:
 
     results, pending = [], 0
     for case in request["cases"]:
-        out = {"case_id": case["id"], "kind": case["kind"], "cwe": case.get("cwe")}
+        # A case is only *scored* when its assessment COMPLETED and the case is
+        # well formed; anything else is scored: False + unscored_reason so a
+        # failed or pending run can never read as a clean miss.
+        out = {"case_id": case.get("id"), "kind": case.get("kind"), "cwe": case.get("cwe")}
+        missing = [k for k in ("id", "kind", "files") if not case.get(k)]
+        if missing:
+            results.append(
+                {
+                    **out,
+                    "state": "UNSCORED",
+                    "scored": False,
+                    "unscored_reason": f"case missing fields: {', '.join(missing)}",
+                }
+            )
+            continue
         a = by_sha.get(shas.get(case["id"], ""))
         if a is None:
-            results.append({**out, "state": "NOT_STARTED"})
+            results.append(
+                {
+                    **out,
+                    "state": "NOT_STARTED",
+                    "scored": False,
+                    "unscored_reason": "no assessment found for the pushed sha",
+                }
+            )
             pending += 1
             continue
         files = set(case["files"])
-        on_files = [
-            f
-            for f in by_assessment.get(a["id"], [])
-            if f["kind"] == "security" and files & {p.split(":")[0] for p in (f.get("paths") or [])}
+        sec_on_files = [
+            f for f in by_assessment.get(a["id"], []) if f["kind"] == "security" and files & _finding_paths(f)
         ]
+        any_on_files = [f for f in by_assessment.get(a["id"], []) if files & _finding_paths(f)]
         seconds = round(_ts(a.get("completed_at") or a.get("updated_at")) - _ts(a["created_at"]))
+        base = {
+            **out,
+            "assessment_id": a["id"],
+            "state": a["state"],
+            "seconds": seconds,
+            "usd": float((a.get("usage") or {}).get("usd") or 0),
+        }
+        if a["state"] != "COMPLETED":
+            results.append({**base, "scored": False, "unscored_reason": f"assessment ended {a['state']}"})
+            if a["state"] not in TERMINAL:
+                pending += 1
+            continue
         results.append(
             {
-                **out,
-                "assessment_id": a["id"],
-                "state": a["state"],
-                "seconds": seconds,
-                "usd": float((a.get("usage") or {}).get("usd") or 0),
-                "flagged": bool(on_files),
-                "validated": any(f["status"] in VALIDATED for f in on_files),
-                "fixed": any(f["status"] in FIXED for f in on_files),
+                **base,
+                "scored": True,
+                "flagged": bool(sec_on_files),
+                "validated": any(f["status"] in VALIDATED for f in sec_on_files),
+                "fixed": any(f["status"] in FIXED for f in sec_on_files),
+                "validated_any": any(f["status"] in VALIDATED for f in any_on_files),
+                "fixed_any": any(f["status"] in FIXED for f in any_on_files),
                 "findings": [
                     {
                         "kind": f["kind"],

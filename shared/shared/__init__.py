@@ -6,7 +6,10 @@ coordination/CONTRACTS.md.
 """
 
 SCHEMA_VERSION = (
-    "0.21.0"  # 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING;
+    "0.22.0"  # 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING;
+    # 0.22 ops readiness (additive): ReadinessStatus gains workers/capabilities/
+    #      capabilities_ready/git_sha/schema_version; HealthStatus gains
+    #      git_sha/schema_version; new DiagnosticsReport. /readyz consumers only.
     # 0.6 intelligence memory (PR #39); 0.7 security standards + incidents (PR #49);
     # 0.8 FindingDetail / AssessmentReport response DTOs (additive);
     # 0.9 CheckCategory enum (Probe ids + V0 fixture aliases);
@@ -35,7 +38,7 @@ SCHEMA_VERSION = (
     #      Phase 5 (#395) both merged; later delivery-mode work is 0.19.0.
     # 0.18.1 automation opt-in: Repository.automatic_assessments and TriggerPolicy.enabled
     #      default to false (owner must explicitly enable; PR #385).
-    # 0.19 ProjectSettings.delivery_mode (auto | pull_request | manual, default auto) and
+    # 0.19 ProjectSettings.delivery_mode (auto | pull_request | manual, pilot default pull_request) and
     #      server-set delivery_authorized_by (additive, ADR-0021).
     # 0.20 live-defense Phase 6.5 RL-gated pilot infrastructure (additive):
     #      ConnectedApplication.rl_gated_pilot; RL readiness categories A–J;

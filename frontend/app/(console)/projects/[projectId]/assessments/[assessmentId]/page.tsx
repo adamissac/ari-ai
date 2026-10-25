@@ -122,8 +122,8 @@ export default function AssessmentPage() {
   return (
     <>
       <PageTitle
-        title={<span className="flex flex-wrap items-center gap-2">Assessment <Mono className="text-base">{a.id}</Mono> <Badge view={ASSESSMENT_STATE[a.state]} /></span>}
-        subtitle={<>Commit <Mono>{shortSha(a.commit_sha)}</Mono> · {a.trigger} trigger · scope <Mono>{a.scope_id}</Mono> · started <Time iso={a.created_at} />{a.completed_at && <> · ended <Time iso={a.completed_at} /></>}</>}
+        title={<span className="flex flex-wrap items-center gap-2">Assessment <Badge view={ASSESSMENT_STATE[a.state]} /></span>}
+        subtitle={<span className="grid gap-1"><span className="font-mono text-xs text-muted">ID <Mono className="text-xs">{a.id}</Mono></span><span>Commit <Mono>{shortSha(a.commit_sha)}</Mono> · {a.trigger} trigger · scope <Mono>{a.scope_id}</Mono> · started <Time iso={a.created_at} />{a.completed_at && <> · ended <Time iso={a.completed_at} /></>}</span></span>}
         actions={!terminal && <CancelButton id={a.id} onDone={() => loadDetail()} />}
       />
       {detailError !== null && <p role="status" className="mb-2 text-xs text-warn" data-testid="detail-stale">Could not refresh this assessment. Showing the last successfully loaded records, which may be out of date.</p>}
@@ -135,7 +135,7 @@ export default function AssessmentPage() {
         </div>
       )}
       <ProviderSummary runs={detail.agent_runs} />
-      {a.state === 'AWAITING_APPROVAL' && <ApprovalGate projectId={project.id} events={events} onDecided={() => loadDetail()} />}
+      {a.state === 'AWAITING_APPROVAL' && <ApprovalGate projectId={project.id} events={events} findings={detail?.findings ?? []} onDecided={() => loadDetail()} />}
       <div className="mt-4 rounded-xl border border-line bg-panel p-5">
         <AgentRelay
           items={agentRelay({ runs: detail.agent_runs, findings: detail.findings, state: a.state, approvals: relayApprovals, skipNote })}

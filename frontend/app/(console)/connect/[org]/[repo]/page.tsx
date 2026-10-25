@@ -5,7 +5,9 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { RepositoryAutomation } from '@/components/repository-automation';
+import { CommitAssessmentChip, CommitAssessmentProvider } from '@/components/commit-assessment-chips';
 import { Avatar } from '@/components/demo/ui';
+import { ProjectReviewCta } from '@/components/project-review-cta';
 import { Button, Empty, ErrorState, Loading } from '@/components/ui';
 import { api } from '@/lib/api';
 import { relativeTime } from '@/lib/demo/data';
@@ -52,6 +54,7 @@ function Commits({ org, name, repo, onConnected }: { org: string; name: string; 
         <h1 className="text-3xl font-semibold tracking-tight">{name}</h1>
         <p className="mt-1 text-sm text-muted">Commits on {repo.default_branch}</p>
       </header>
+      {id && <div className="mb-4"><ProjectReviewCta repoId={id} /></div>}
       {!id && (
         <div className="rounded-2xl border border-line bg-panel p-6">
           <p className="text-sm text-muted">Connect this repository to read its commits.</p>
@@ -65,28 +68,35 @@ function Commits({ org, name, repo, onConnected }: { org: string; name: string; 
       {id && commits.status === 'ready' && (commits.data.items.length === 0
         ? <Empty>{commits.data.available ? `No commits on ${repo.default_branch} yet.` : commits.data.reason}</Empty>
         : (
-          <ol className="workspace-rows overflow-hidden rounded-2xl border border-line bg-white" data-testid="real-commit-list">
-            {commits.data.items.map((c, i) => (
-              <li key={c.sha} className="demo-rise border-b border-line last:border-b-0" style={{ ['--i' as string]: i }}>
-                <Link href={`/connect/${encodeURIComponent(org)}/${encodeURIComponent(name)}/commit/${c.sha}`} className="group grid gap-3 px-5 py-4 transition-colors hover:bg-panel-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-center" data-testid="real-commit-row">
-                  <span className="flex min-w-0 gap-3">
-                    <Avatar login={c.author} size={30} />
-                    <span className="min-w-0">
-                      <span className="block truncate font-medium group-hover:text-brand">{c.message}</span>
-                      <span className="mt-1 flex flex-wrap items-center gap-x-3 text-xs text-muted">
-                        <span className="font-semibold text-ink">{c.author}</span>
-                        {c.committed_at && <span suppressHydrationWarning>committed {relativeTime(minutesSince(c.committed_at))}</span>}
+          <CommitAssessmentProvider repoId={id}>
+            <ol className="workspace-rows overflow-hidden rounded-2xl border border-line bg-white" data-testid="real-commit-list">
+              {commits.data.items.map((c, i) => (
+                <li key={c.sha} className="demo-rise border-b border-line last:border-b-0" style={{ ['--i' as string]: i }}>
+                  <div className="group grid gap-3 px-5 py-4 transition-colors hover:bg-panel-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+                    <Link href={`/connect/${encodeURIComponent(org)}/${encodeURIComponent(name)}/commit/${c.sha}`} className="flex min-w-0 gap-3" data-testid="real-commit-row">
+                      <Avatar login={c.author} size={30} />
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium group-hover:text-brand">{c.message}</span>
+                        <span className="mt-1 flex flex-wrap items-center gap-x-3 text-xs text-muted">
+                          <span className="font-semibold text-ink">{c.author}</span>
+                          {c.committed_at && <span suppressHydrationWarning>committed {relativeTime(minutesSince(c.committed_at))}</span>}
+                        </span>
                       </span>
+                    </Link>
+                    <span className="flex flex-wrap items-center gap-3 pl-[42px] md:pl-0">
+                      <CommitAssessmentChip repoId={id} sha={c.sha} />
+                      <Link
+                        href={`/connect/${encodeURIComponent(org)}/${encodeURIComponent(name)}/commit/${c.sha}`}
+                        className="rounded-md border border-line px-2 py-1 font-mono text-xs text-muted group-hover:border-brand/40"
+                      >
+                        {c.sha.slice(0, 7)} <span aria-hidden="true">→</span>
+                      </Link>
                     </span>
-                  </span>
-                  <span className="flex items-center gap-3 pl-[42px] md:pl-0">
-                    <span className="rounded-md border border-line px-2 py-1 font-mono text-xs text-muted group-hover:border-brand/40">{c.sha.slice(0, 7)}</span>
-                    <span aria-hidden="true" className="text-muted">→</span>
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ol>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </CommitAssessmentProvider>
         ))}
     </>
   );

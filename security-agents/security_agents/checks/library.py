@@ -345,6 +345,7 @@ BOUNDS = CheckTemplateMeta(
     reviewed_by="security-owner:pending-human-signoff",
 )
 
+
 def _render_authentication(recipe: dict[str, Any], params: dict[str, Any]) -> str:
     """A protected route denies an unauthenticated request while a valid fixture
     identity retains access. Covers missing-authn/missing-authz changes."""
@@ -357,14 +358,10 @@ def _render_authentication(recipe: dict[str, Any], params: dict[str, Any]) -> st
     path_params = _PATH_PARAM.findall(path_template)
     if path_params:
         if len(path_params) != 1:
-            raise PlatformError(
-                ErrorCode.SCHEMA_INVALID, "route must have at most one path parameter"
-            )
+            raise PlatformError(ErrorCode.SCHEMA_INVALID, "route must have at most one path parameter")
         kind = str(route.get("resource") or "")
         if not kind:
-            raise PlatformError(
-                ErrorCode.SCHEMA_INVALID, "path-parametrized route has no resource kind"
-            )
+            raise PlatformError(ErrorCode.SCHEMA_INVALID, "path-parametrized route has no resource kind")
         path = _fill_path(path_template, _resource_id(recipe, kind, identity))
     else:
         path = path_template
@@ -411,10 +408,124 @@ AUTHENTICATION = CheckTemplateMeta(
     reviewed_by="security-owner:pending-human-signoff",
 )
 
+_MUTATING = {"POST", "PATCH", "PUT", "DELETE"}
+_EXPIRY_PLACEHOLDER = re.compile(r"^\{expires_in_days:(\d{1,3})\}$")
+_RESOURCE_KIND = re.compile(r"^\{resource:([A-Za-z_][A-Za-z0-9_]*)\}$")
+
+
+def _render_role(recipe: dict[str, Any], params: dict[str, Any]) -> str:
+    """A role-restricted mutating route denies a lower-privileged fixture identity while a
+    permitted one keeps access. Covers missing/relaxed role checks (viewer→member, member→owner)."""
+    route = _route(recipe, str(params["route_id"]))
+    method = str(route.get("method", "GET")).upper()
+    if method not in _MUTATING:
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "role template needs a mutating route")
+    permitted, restricted = str(params["permitted_identity"]), str(params["restricted_identity"])
+    if permitted == restricted:
+        raise PlatformError(
+            ErrorCode.SCHEMA_INVALID, "permitted_identity and restricted_identity must differ"
+        )
+    kind = str(route.get("resource") or "")
+    path_template = str(route["path_template"])
+    path_params = _PATH_PARAM.findall(path_template)
+    if len(path_params) > 1:
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "route must have at most one path parameter")
+    # The path resource belongs to the permitted identity (e.g. alice's project/finding); the
+    # restricted identity must be turned away *before* any state change on it.
+    path = _fill_path(path_template, _resource_id(recipe, kind, permitted)) if path_params else path_template
+    body_template = route.get("body_template") or {}
+    if not isinstance(body_template, dict):
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "route body_template must be an object")
+
+    def src_for(tpl: Any) -> str:
+        if isinstance(tpl, dict):
+            return "{" + ", ".join(f"{k!r}: {src_for(v)}" for k, v in tpl.items()) + "}"
+        if isinstance(tpl, list):
+            return "[" + ", ".join(src_for(v) for v in tpl) + "]"
+        if (m := _EXPIRY_PLACEHOLDER.match(str(tpl))) is not None:
+            return f"_expires({m.group(1)})"
+        if (m := _RESOURCE_KIND.match(str(tpl))) is not None:
+            return repr(_resource_id(recipe, m.group(1), permitted))
+        if tpl == "{resource_id}":
+            return repr(_resource_id(recipe, kind, permitted))
+        if tpl == "{amount}":
+            return repr(_resource_amount(recipe, kind, permitted))
+        return repr(tpl)
+
+    def uses_expiry(tpl: Any) -> bool:
+        if isinstance(tpl, dict):
+            return any(uses_expiry(v) for v in tpl.values())
+        if isinstance(tpl, list):
+            return any(uses_expiry(v) for v in tpl)
+        return _EXPIRY_PLACEHOLDER.match(str(tpl)) is not None
+
+    needs_expiry_helper = uses_expiry(body_template)
+    body_src = src_for(body_template)
+    denied = [int(c) for c in params.get("expected_denied_status", [401, 403, 404])]
+    helper = (
+        """
+def _expires(days):
+    from datetime import datetime, timedelta, timezone
+
+    return (datetime.now(timezone.utc) + timedelta(days=days)).isoformat()
+"""
+        if needs_expiry_helper
+        else ""
+    )
+    return (
+        _inprocess_preamble(str(params["_ref"]), recipe)
+        + f"""
+
+PATH = {path!r}
+METHOD = {method.lower()!r}
+BODY = {body_src}
+RESTRICTED_HEADERS = {{"Authorization": {_identity(recipe, restricted)!r}}}
+PERMITTED_HEADERS = {{"Authorization": {_identity(recipe, permitted)!r}}}
+DENIED = {denied!r}
+"""
+        + helper
+        + """
+
+def test_restricted_identity_is_denied():
+    resp = _client().request(METHOD, PATH, json=BODY, headers=RESTRICTED_HEADERS)
+    RESULT["restricted_status"] = resp.status_code
+    RESULT["restricted_leaked_or_mutated"] = resp.status_code < 400
+    assert resp.status_code in DENIED, (
+        f"expected one of {DENIED} for a lower-privileged identity, "
+        f"observed {resp.status_code}"
+    )
+
+
+def test_permitted_identity_retains_access():
+    resp = _client().request(METHOD, PATH, json=BODY, headers=PERMITTED_HEADERS)
+    RESULT["permitted_status"] = resp.status_code
+    assert resp.status_code < 400, (
+        f"permitted identity lost legitimate access: {resp.status_code}"
+    )
+"""
+    )
+
+
+ROLE = CheckTemplateMeta(
+    template_id="access_control.role",
+    version="1",
+    category="access_control.role",
+    description=(
+        "Confirm a role-restricted mutating route (POST/PATCH/PUT/DELETE) denies a "
+        "lower-privileged fixture identity (401/403/404) while a permitted one keeps access. "
+        "Parameters: route_id, restricted_identity, permitted_identity."
+    ),
+    side_effect_class="ephemeral_target_only",
+    expectation_kinds=("access_control", "authorization", "role"),
+    parameters=("route_id", "restricted_identity", "permitted_identity"),
+    reviewed_by="security-owner:pending-human-signoff",
+)
+
 _RENDERERS = {
     OWNERSHIP.ref: _render_ownership,
     BOUNDS.ref: _render_bounds,
     AUTHENTICATION.ref: _render_authentication,
+    ROLE.ref: _render_role,
 }
 
 
@@ -495,8 +606,18 @@ class CheckLibrary:
         identities = sorted(recipe.get("identities", {}))
         values: dict[str, Any] = {}
         for name in meta.parameters:
-            if name in ("owner_identity", "other_identity", "identity"):
+            if name in ("owner_identity", "other_identity", "identity") or name in (
+                "restricted_identity",
+                "permitted_identity",
+            ):
                 values[name] = identities
+            elif name == "route_id" and meta.template_id == ROLE.template_id:
+                values[name] = [
+                    describe(r)
+                    for r in routes
+                    if str(r.get("method", "GET")).upper() in _MUTATING
+                    and len(_PATH_PARAM.findall(str(r.get("path_template", "")))) <= 1
+                ]
             elif name == "route_id" and meta.template_id == AUTHENTICATION.template_id:
                 values[name] = [
                     describe(r)
@@ -530,6 +651,7 @@ def default_library() -> CheckLibrary:
     lib.register(OWNERSHIP)
     lib.register(BOUNDS)
     lib.register(AUTHENTICATION)
+    lib.register(ROLE)
     return lib
 
 

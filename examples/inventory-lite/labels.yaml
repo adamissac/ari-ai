@@ -1,0 +1,42 @@
+# Ground-truth labels for evaluating the platform on inventory-lite (answer key).
+# Kept OUTSIDE target/ on purpose: the platform must index and build only target/,
+# so it finds these from intent, tests and conventions, not from labels.
+# Class-level descriptions only (docs/15): what invariant is broken, not attack steps.
+target_dir: target
+schema_version: 1
+expectations:
+  - id: exp_workspace_items_owner_only
+    subject: "GET /items/{item_id}"
+    statement: "A workspace can only read items it owns."
+    kind: authorization
+    data_sensitivity: business
+    sources:
+      - {path: target/inventory_lite/app.py, symbol: create_app, note: "module docstring: own items and transfers"}
+      - {path: target/inventory_lite/app.py, symbol: require_owner, note: "used by every sibling resource route"}
+      - {path: target/README.md, note: "Behavior section"}
+  - id: exp_transfer_stock_bound
+    subject: "POST /transfers"
+    statement: "The total transferred quantity for an item must never exceed its stock."
+    kind: invariant
+    data_sensitivity: business
+    sources:
+      - {path: target/inventory_lite/app.py, symbol: create_transfer, note: "accumulates prior transfers before checking"}
+      - {path: target/README.md, note: "Behavior section"}
+planted_findings:
+  - id: fnd_planted_item_owner
+    kind: security
+    weakness_class: CWE-639  # authorization bypass through user-controlled key
+    subject: "GET /items/{item_id}"
+    violated_expectation: exp_workspace_items_owner_only
+    root_cause_span: {path: target/inventory_lite/app.py, symbol: get_item, note: "no require_owner call"}
+    expected_check_category: access_control.ownership
+    severity_expected: high
+negatives:
+  # Lookalikes that must be REFUTED (precision check).
+  - {subject: "GET /warehouses/{workspace_id}", hypothesis_class: CWE-639}
+  - {subject: "GET /transfers/{transfer_id}", hypothesis_class: CWE-639}
+  - {subject: "POST /transfers", hypothesis_class: CWE-639, note: "ownership is checked; only the stock bound could be wrong"}
+  - {subject: "POST /transfers", hypothesis_class: CWE-840, note: "the stock bound is enforced; nothing is broken here"}
+fixture_identities:
+  - {workspace: wsp_alice, token: fixture-token-alice, owns: [item_a1, item_a2]}
+  - {workspace: wsp_bob, token: fixture-token-bob, owns: [item_b1]}

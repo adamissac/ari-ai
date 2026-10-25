@@ -7,12 +7,116 @@ All notable changes are documented here. Format follows
 ## [Unreleased]
 
 - Add Live Defense Phase 6.5 **RL-gated pilot infrastructure**: machine-readable categories A–J, evaluation plan with unset thresholds, server-enforced shadow-only for `rl_gated_pilot` apps (no grant/channel/authorize; leftover execute fail-closed), stable serving contract (Q is not probability; missing fields stay missing), hosted-inference readiness config that does not auto-serve unapproved checkpoints, and a backend readiness dashboard whose `ready` flag stays false while RL evidence is blocked. Verdict: **INFRASTRUCTURE READY — RL BLOCKED**. Distinct from Phase 6 CONDITIONAL GO (rules-based shadow). No Codex training, no v6 edits, no customer credentials, no Phase 7. Contract schema 0.21.0 (merged with Phase 7A; originally 0.20.0). Eval: `docs/LIVE_DEFENSE_PHASE6_5_RL_GATED_PILOT.md`.
+- Setup now shows the actual expiry of the sandbox scope being approved; landing copy states the default and maximum authorization durations.
+- Refined the console account menu, mobile project navigation, status marks, assessment headers, and commit-to-assessment links.
+- Added opt-in bounded exact-SHA release review automation with isolated strict
+  regressions, signed evidence, existing-owner routing and a protected cost ledger.
+  No automatic merge, deployment or customer enforcement.
+- Commit pages now warn when reviewing a commit other than the latest default-branch commit and link to the latest commit.
+- Verified-patch delivery skips fixes already present on the default branch and annotates stale-base pull requests.
+- Expired scopes no longer appear active or qualify for assessment selection.
+- Retention now protects findings, regression memory, expectation decisions, and assessment references; per-snapshot locking closes bind/delete races, and destructive ops maintenance requires a separate token plus a current plan digest.
+- Storage report probes use savepoints so a denied optional metric does not abort later checks.
+- Added the Industrial Graphite design-token foundation and reskinned existing UI primitives and console surfaces with graphite neutrals, vermilion signal, Inter, and IBM Plex Mono.
+- Rebuilt the public landing page around a commit-to-verify signal field, six visible stages, and explicit scope and control disclosures.
+- Verify's Python hook scan accepts UTF-8 BOMs, `--rootdir` preserves semantic checks for `tox.ini`, `setup.cfg`, and `pyproject.toml`, and unreadable or invalid pinned pytest configuration fails closed.
+- Verify uses a context-aware pytest binding scan for unpacking, imports, global stores, and hook-rooted attribute/subscript writes, `setattr`, and `del`, without treating local names or subscript indexes as bindings. It keeps changed `conftest.py` files byte-protected when they are config symlink targets, checks linked config target content through fresh checkouts, and ignores syntax-invalid inert test-root Python fixtures during plugin discovery. Added `apply_fresh` regressions for linked config changes and config read and walk failures.
+- Added a guided repository setup walkthrough (`/projects/<id>/setup?repo=<repoId>`): connecting a repository now lands there, and it walks through authorizing testing, tuning the code reviewer, choosing fix delivery (pull request is preselected), and starting the first review. The setup page also has decorative floating background shapes that stop moving when reduced motion is on.
+- Setup now distinguishes repository automatic reviews from push/PR review preferences and searches up to 2,000 audit events before reporting no build-recipe result.
+- Verify permits genuinely new recipe-declared tests while rejecting protected-test and runner-configuration tampering; it binds evidence to the candidate patch, protects pinned plugin modules and runner-shadow paths, scans changed application modules for new pytest hooks, rejects unsupported or quoted diff headers, and runs its project suite with the pinned test roots.
+- Added an hourly GitHub Actions storage watchdog for Railway volume usage and backup freshness, with idempotent issue alerts.
+- Live commit analysis no longer needs a `GITHUB_TOKEN` PAT on Vercel: `POST /api/analyze`
+  reads the commit diff through the new backend route `GET /api/v1/github/commit`, which
+  resolves the caller's own GitHub App installation (403 when the repo is not reachable
+  through it). Project Settings now shows the Save/Discard action row at the top of the
+  form as well as the bottom, so budget edits are savable without scrolling.
+- New projects default to owner-authorized pull-request delivery; the 7 Agents switch now toggles between automatically opened fix PRs and manual approval.
+- Verified patch pages now show delivery progress and outcomes, including actionable failure reasons.
+- Starting an assessment with no commit SHA now reviews the latest commit on the repository's
+  default branch when connected through the GitHub App.
+- Verify now honors repository-declared `protected_tests` from `build_recipe.json` in its no-tampering check.
+- Added independent 70/80/90% storage alerts and Prometheus gauges for the app data volume mounted at `/data`.
+- Restored impact-gated monitoring for a blank, quoted-empty, or standalone `*`
+  `GITHUB_AUTO_COMMIT_AUTHORS` value. Project reviewer filters now gate both the
+  impact path and per-commit rollout scheduling; impact-path PR assessments can
+  also post comments using the pull request number on their triggering event.
+- Added project Code reviewer controls for push/PR eligibility, branch and author filters, finding strictness, PR comments, and an optional hourly cap. Empty or `*` `GITHUB_AUTO_COMMIT_AUTHORS` no longer blocks reviewer scheduling.
+- Railway defaults `GITHUB_AUTO_COMMIT_AUTHORS` to empty, which adds no global author restriction; project reviewer settings determine eligibility. Repository `automatic_assessments` remains an explicit opt-in, and manual Run remains available.
+- Quota reset timestamps now reflect when an over-limit rolling hour or day window actually falls below its limit.
+- Spend-cap reset times now wait until expiring usage takes rolling spend below the configured limit.
+- Spend-cap reset calculations use exact Numeric usage and a single database snapshot.
+- With a blank, quoted-empty, or standalone `*` `GITHUB_AUTO_COMMIT_AUTHORS` value, enabled repositories use the impact-gated, coalesced monitoring policy; a non-empty comma-separated login list opts into per-commit full runs. Project reviewer filters apply to both paths. Strictly manual operation requires `automatic_assessments` OFF per repository (or project monitoring disabled).
+- Railway defaults `GITHUB_AUTO_COMMIT_AUTHORS` to empty, which imposes no global author restriction; project reviewer settings determine eligibility. Repository `automatic_assessments` remains an explicit opt-in, and manual Run remains available.
+- Authenticated GET/HEAD requests now have a separate 600/minute per-user limit; mutations retain 60/minute. Automatic assessment quotas count all project triggers (10 per rolling hour, 50 per rolling day), while manual starts count only manual-trigger assessments. All starts remain subject to the global $50 rolling-day spend cap; manual quota blocks return 429 with a reset time, and automatic over-quota requests are skipped without requeueing.
+- Automatic assessments count all project triggers toward the 10/hour and 50/day limits; manual starts count only manual-trigger assessments. The optional per-project hourly cap may lower the server limit. All starts remain subject to the global $50 rolling-day spend cap; manual blocks return 429 with a reset time, and automatic over-quota requests are skipped without requeueing.
+- Allow migrations to use an optional database URL separate from the app role.
+
+- Verify-tested diffs are also stored as sealed, delivery-only artifacts. Delivery checks their
+  bytes against both verification bindings and refuses high-confidence credentials; project
+  purge removes sealed copies with other artifacts.
+- GitHub onboarding + continuous assessment hardening: a missing/renamed repo, deleted installation, or GC'd commit now records a skipped monitoring event with an actionable reason instead of retrying to dead-letter; compare failures fall back to payload commits; `installation deleted` / `repositories removed` / `repository renamed` lifecycle events now detach or rename monitored repositories; connecting a repository verifies the installation still grants access (403 with a reinstall hint when it doesn't); deploy doc corrected for App permissions, subscribed events, and the `automatic_assessments` default (opt-in OFF).
+- First-user usability pass on the commit review page: approval cards now name the finding
+  they authorize (including remediation-plan `rmp_` subjects resolved through the finding
+  detail records), spell out what approval will and will not do, and require a second
+  confirmation click before approving; persisted tool calls recorded as `ns__tool` replay
+  in plain English on the agent map; the quick-read failure explains in plain words that no
+  model API key is configured instead of surfacing a raw backend error.
+
+- Audit the code-intelligence pipeline end to end: land the parse-safe secret redaction from PR #441, redact mid-line bare secret literals in calls/collections, flag non-literal route paths as IndexIssue findings instead of silently dropping them, add a labeled-question retrieval evaluation and a reproducible index benchmark, and record executed coverage/recall/isolation numbers in `code-intelligence/evidence/m2-index-retrieval-audit.json` with the full report in `docs/research/intel-pipeline-audit/`.
+
+- Readiness/diagnostics split infra liveness from assessment capability: `/readyz` now reports `status=ready|degraded|not_ready` (503 unless ready) with per-capability booleans for live model, GitHub App (configured; `GET /app`-verified), Vercel Sandbox env, artifact-store writability and worker heartbeats; new `/diagnostics` (org-owner auth required — worker ids, env-var names, queue counts, migration state are internal metadata) adds verified GitHub check, migration drift, queue counts and worker rows; `/healthz` gains `git_sha` + `schema_version`. Contract schema 0.22.0. Frontend adds `/api/frontend-version` + `deploy/verify_pair.sh` to detect Vercel/Railway schema skew before it breaks users. Worker liveness is heartbeat-backed (`worker_heartbeats`, migration 0017; `READYZ_REQUIRE_WORKERS` requires ≥1 in staging/production) and `last_poll_at` ensures a stopped claim loop cannot report as a healthy worker.
+- Rebuild the connect → organization → repository → commit flow: the commit page now loads
+  the code review (headline, comments, real per-file diffs, patch, tests) on arrival instead
+  of hiding it behind an optional button, and the "7 agents" tab replays a recorded run on the
+  sector map — each saved tool call pinned to the part of the app it touched — or a labelled
+  preview of the quick read when no run exists. Failed runs are marked on the agent rail; the
+  organization page's repository rows are fully clickable.
+- Audit the code-intelligence pipeline end to end: land the parse-safe secret redaction from PR #441, redact mid-line bare secret literals in calls/collections, flag non-literal route paths as IndexIssue findings instead of silently dropping them, add a labeled-question retrieval evaluation and a reproducible index benchmark, and record executed coverage/recall/isolation numbers in `code-intelligence/evidence/m2-index-retrieval-audit.json` with the full report in `docs/research/intel-pipeline-audit/`.
+### CI / release gate (2026-10-24)
+- Workflows run on every push/PR with per-job RUN/SKIP path gates (`scripts/ci/path_gate.py`); job ids made unique for required checks.
+- New manual `pilot-verify.yml` pipeline (static/unit, real DB, real sandbox, browser E2E, authorized live-model, hosted smoke, load/recovery).
+- New `GET /projects/{id}/jobs?status=` endpoint for dead-letter/failed-job visibility; `last_error` secret-scrubbed at write time, owners get sanitized detail, other members get `{code, category}`.
+- Eval harness: unscored cases no longer counted as misses (`scored:false` + reason).
+- `scripts/ci/load_probe.py` bounded queue concurrency/crash-recovery probe.
+
+- Postgres storage controls for the Railway deployment: `python -m backend.maintenance` (`report`/`apply`/`loop`) plus a bearer-token ops surface (`GET /api/v1/ops/storage`, `/ops/storage/prometheus`, `POST /api/v1/ops/maintenance`) reporting DB/WAL/table/file-store usage with fixed 70/80/90% volume alerts to `OPS_ALERT_WEBHOOK_URL`. Bounded retention (`RETENTION_DRY_RUN=true` by default — report-only until flipped) deletes expired sessions, old idempotency keys, terminal job rows, webhook deliveries, monitoring events, settled reassessment requests, runtime windows, orphaned and superseded index payload sets (keeping the newest 5 ready snapshots per repo), orphaned artifact objects, and stale `refs/ari/*` clone refs; audit events, findings, approvals, scopes, assessments, and any snapshot referenced by a live assessment are never deleted. Hourly maintenance sidecar in `deploy/railway/start.sh`. Runbook: `docs/deploy/POSTGRES_STORAGE.md`.
+
+- Pilot infra limitation documented: `docs/pilot/BRANCH_PROTECTION_LIMITATION.md` — branch-protection rulesets can't be enforced on a personal-account private repo; the release gate stays advisory/procedural, with a step-by-step org-migration plan to enforced protection.
+- fix(pilot): two-org rehearsal runs end-to-end — real API shapes (repo connect + file binding, scope targets/approve, real commit_sha), target app gets factory + seed + build_recipe; 13/13 steps pass against real Anthropic + Vercel sandbox with genuine findings and proven org isolation.
+- Live seven-agent rehearsal evidence on `examples/inventory-lite`: full orchestrator run with the real Anthropic provider (all 7 roles live, `asm_01M5R4912YTF8XKT9X0GXHY668`, $0.0334) found the planted CWE-639 ownership defect (`validation=confirmed`, verdict `accepted`, hardened with 3 regression tests); second hypothesis honestly inconclusive. Report + evidence doc under `docs/rehearsal/`.
+- Seven-agent live evidence: a budgeted real-Claude run of the full security workflow on the payments-lite fixture completed end to end (Probe executed the ownership check, Verify independently re-ran it on a fresh checkout and accepted the patch); manifest + per-agent tool traces, costs, specialist provenance and limitations archived under `security-agents/tests/artifacts/live/20261024T213713Z-*`.
+- Tenant data protection: two-tenant adversarial suite (17 tests) covering every project-scoped read/write/SSE/artifact/job/audit surface plus forged-ID and storage-accessor claims; FORCE row-level security on `index_payloads`/`index_snapshots` scoped by a per-transaction tenant GUC (migration 0016); `backend/privacy.py::purge_project` — the documented full-tenant deletion workflow (all project rows, RLS-scoped source payloads, refcount-aware artifact objects, bare clones); `docs/security/TENANT_DATA_PROTECTION.md` — threat model, private-code data-flow inventory, verified controls matrix, GitHub-token posture, Anthropic processing posture, retention gaps, and the enterprise isolation future option.
+
+- Functional-reviewer evaluation report (`code-review/eval/REVIEWER_EVAL_2026-10-24.md`): executed corpus results (10/10 labels proven), functional-vs-security performance table on the live 45-case set, before/after test evidence, supported scope and honest gaps. Scorer's `source_span` path fallback locked by `security-agents/tests/test_eval_score_api.py`.
+
+- Console revamp: project pages move to a SaaS sidebar layout — a sticky left rail (project name, repo chip, Review/Defend/Configure nav groups, monitoring status) replaces the header card and tab bar with the MORE dropdown. Every project page now opens with a consistent `PageTitle` header (eyebrow, title, subtitle). `tests/e2e/stack_manual.py` adds a manual local-stack runner for browsing console pages with seeded dev-login data.
+
+- Landing homepage reworked behind a `.home-deep` scope (console unchanged): per-letter blur-in heading reveals, kicker eyebrows, pixel-font (Sixtyfour, OFL-vendored) accents on stats and a footer wordmark, blurred inactive walkthrough steps, a seven-agent footer marquee and a patrol-ant rail animation. Fixed `Reveal`/`useRevealOnScroll` never firing on the document's last element and the dim hero headline line rendering white.
+
+- Homepage dialed back per owner review: footer trimmed to a hairline + identity/links + copyright (giant ghosted wordmark, agent marquee and patrol ant removed), and the per-letter text-appear animations removed in favor of plain headings with scroll-driven reveals (`components/letters.tsx` deleted; the spotlight-gradient hero headline is restored). Console mobile QA fixes: sidebar rail grid collapses cleanly under 1024px (no horizontal page overflow), findings tab row wraps on narrow screens, the Simulate page's full-bleed `.commit-stage` is contained to the content column so it no longer overlaps the rail or swallows rail clicks, the landing "Never" proof stat clamps its pixel font on narrow screens (no more 320px page overflow), and a duplicate React `key` on the Live Defense "In use" API list (GET and PATCH `/projects/{id}`) is disambiguated by method. E2E specs updated to the new rail nav (11 links, no MORE dropdown).
+
+- Add `access_control.role` check template: Probe can now prove role-bypass on mutating routes — a restricted fixture identity must be denied (401/403/404) while a permitted one keeps access. Recipe surface expanded (assessment/finding/scope routes, role-differentiated sandbox identities carol=viewer/dave=member of alice's org); new recipe body placeholders `{expires_in_days:N}` and `{resource:KIND}`. Aliases `authorization.role`, `access_control.mutation`, `access_control.rbac` map to the new category.
+
+
+- Add the pilot launch package under `docs/pilot/`: pilot scope and exclusions, a truthful feature matrix (implemented / staging-only / simulation-only / partial / unavailable), customer onboarding and revocation checklist, a draft data-handling disclosure, incident/support/escalation operations, pilot metrics and per-customer health reporting, a risk register, the staging-rehearsal + first-five plan, and a signed CONDITIONAL GO launch decision.
+
+
+
+- Defense Lab pilot audit: new `test_live_defense_pilot_safety.py` (37 tests) codifies the pilot safety invariants — the 15-check gate fails closed on every broken assumption, unsafe containment kinds stay denied+abstain even with a perfect grant, a typed `claimed_actor_id` can never satisfy `authenticated_session`, `block_source` accepts only the isolated fixture IP, and the adapter re-checks SSRF limits at send time. Fixed a quarantine gap so credential-looking *values* under benign keys (`password=hunter2`, `api_key: …`) are dropped instead of persisted. Adds `docs/DEFENSE_LAB_CAPABILITY_MATRIX.md` (customer-facing real-vs-synthetic signal map + install steps) and `docs/DEFENSE_LAB_EVALUATION_REPORT.md` (reproduction evidence, PR #412/#458 review, explicit go/no-go).
+
+- Eval scorer now reports `validated_any`/`fixed_any` across every finding kind next to the security-only verdicts, and derives finding paths from `source_span` evidence; `benign_artifact_sha512` relabeled — the sha512 swap was a real defect (String(64) sha256 column), not a false positive.
+
+- Add `examples/inventory-lite`, a second owned evaluation/rehearsal fixture with a
+  planted CWE-639-class ownership defect, plus a committed check-level rehearsal
+  (`security-agents/tests/test_inventory_lite_rehearsal.py`) that confirms the defect
+  by execution and refutes the guarded sibling route; new `inventory-lite` CI job.
 
 - Scout specialist now trains on the labelled commit-eval set (each case's planted edit vs. its original code as a minimal positive/negative pair) and was promoted after beating the static-pattern baseline (macro F1 0.349 vs 0.084); new checkpoint committed under `specialists/checkpoints/scout/`.
 
 - Assessment UI: agents the orchestrator skipped now stay visible as 'Not needed' with the recorded reason (e.g. 'no confirmed findings'); on failed/cancelled runs they show 'Not reached'. Replaces the ambiguous 'not run' label on the relay and team list.
 
 - Fix the periodic stale-sandbox sweep to delete the orphaned stop-snapshots of leaked `ari-sbx-*` run boxes, freeing the Vercel Sandbox snapshot quota that caused HTTP 402 assessment failures; the shared base snapshot is unaffected.
+
 - Add Live Defense Phase 7A deterministic first-responder orchestration: server-enforced OFF / MONITOR|SHADOW / ASSISTED RESPONSE (no AUTO-EXECUTE), seven-agent capability registry from real AgentSpecs, runtime↔code correlation only with an owner-attested deploy mapping, analyst handoff that is not delivered without provider confirmation, and versioned decision records for future RL. Patch stays worktree-only; Probe still requires AuthorizedScope; independently authorized controls keep their own expiry/rollback/kill-switch when first-responder is switched OFF. Contract schema 0.21.0 (0.20.0 left for open PR #412). Evidence is never `verified` from Verify eligibility; deploy mappings are resolved against the telemetry window; OFF serializes with dispatch and cancels in-flight first-responder steps. Eval: `docs/LIVE_DEFENSE_PHASE7A_FIRST_RESPONDER.md`.
 
 - Add fixture-only first-responder research observations, proposal masks, source
