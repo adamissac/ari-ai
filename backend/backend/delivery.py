@@ -11,13 +11,16 @@
 * ``manual``: nothing here acts; a human approves each remediation and nothing is pushed.
 
 Nothing is ever force-pushed, and a rejected, inconclusive or unverified patch never leaves
-the sandbox. A project that predates delivery modes has no recorded authorizer, so it stays
-manual until an owner saves its settings.
+the sandbox. Before delivery, the default-branch tip is checked so an already-applied fix is
+not delivered twice. A project that predates delivery modes has no recorded authorizer, so it
+stays manual until an owner saves its settings.
 """
 
 from __future__ import annotations
 
+import logging
 import re
+import subprocess
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -51,6 +54,7 @@ from shared.tenancy import DeliveryMode, MemberRole
 
 BRANCH_RE = re.compile(r"^[A-Za-z0-9._/\-]+$")
 COMMIT_AUTHOR = ("Ari", "ari@users.noreply.github.com")
+log = logging.getLogger(__name__)
 
 
 class BranchMoved(CheckoutError):
@@ -204,6 +208,67 @@ def push_patch(
         finally:
             _git("-C", str(repo_dir), "worktree", "remove", "--force", str(wt))
     return sha
+
+
+def default_tip_state(
+    repo_dir: Path,
+    full_name: str,
+    branch: str,
+    diff: bytes,
+    token: str,
+    *,
+    base_sha: str,
+    github_web_url: str,
+) -> tuple[str, str]:
+    """Classify whether the verified diff applies to the latest default-branch tip."""
+    try:
+        if not FULL_NAME_RE.match(full_name):
+            raise CheckoutError(f"invalid repository name {full_name!r}")
+        if not BRANCH_RE.match(branch) or ".." in branch:
+            raise CheckoutError(f"invalid branch name {branch!r}")
+
+        url = f"{github_web_url.rstrip('/')}/{full_name}.git"
+        env = auth_env(token)
+        tip_ref = f"refs/ari/tip/{branch}"
+        _git(
+            "-C", str(repo_dir), "fetch", "--quiet", "--depth=1", "--no-tags",
+            url, f"+refs/heads/{branch}:{tip_ref}", extra_env=env, timeout=60,
+        )  # fmt: skip
+        tip = _git("-C", str(repo_dir), "rev-parse", tip_ref).strip()
+        if tip == base_sha:
+            return tip, "same"
+
+        with tempfile.TemporaryDirectory(prefix="ari-tip-check-") as tmp:
+            worktree = Path(tmp) / "wt"
+            patch_file = Path(tmp) / "fix.diff"
+            patch_file.write_bytes(diff)
+            try:
+                _git(
+                    "-C", str(repo_dir), "worktree", "add", "--quiet", "--detach",
+                    str(worktree), tip, timeout=60,
+                )  # fmt: skip
+                try:
+                    _git("-C", str(worktree), "apply", "--check", str(patch_file), timeout=60)
+                except CheckoutError:
+                    try:
+                        _git(
+                            "-C", str(worktree), "apply", "--check", "-R",
+                            str(patch_file), timeout=60,
+                        )  # fmt: skip
+                    except CheckoutError:
+                        return tip, "conflicts"
+                    return tip, "already_applied"
+                return tip, "applies"
+            finally:
+                try:
+                    _git(
+                        "-C", str(repo_dir), "worktree", "remove", "--force",
+                        str(worktree), timeout=60,
+                    )  # fmt: skip
+                except (CheckoutError, subprocess.TimeoutExpired) as exc:
+                    log.warning("could not remove default-branch tip worktree: %s", exc)
+    except subprocess.TimeoutExpired as exc:
+        raise CheckoutError(f"default-branch tip check timed out after {exc.timeout:.0f}s") from exc
 
 
 def _record(
@@ -400,11 +465,30 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
         f"independently verified by {verification.id}."
     )
     fallback: str | None = None
+    tip: str | None = None
+    tip_state = "unknown"
     try:
         app = GitHubApp(settings=s)
         token = app.installation_token(iid, write=True, repository=full_name.split("/", 1)[1])
         with _locked(repo_dir):
             fetch_commit(repo_dir, full_name, base, token, github_web_url=web)
+            try:
+                tip, tip_state = default_tip_state(
+                    repo_dir,
+                    full_name,
+                    default_branch,
+                    diff,
+                    token,
+                    base_sha=base,
+                    github_web_url=web,
+                )
+            except CheckoutError as exc:
+                log.warning("could not inspect %s default-branch tip: %s", full_name, exc)
+                tip_state = "unknown"
+            if tip is not None and tip_state == "already_applied":
+                reason = f"{default_branch} already contains this fix (at {tip[:12]})"
+                finish("delivery.skipped", reason=reason, tip_sha=tip)
+                return {"status": "skipped", "reason": reason}
             if mode is DeliveryMode.auto:
                 try:
                     sha = push_patch(
@@ -419,14 +503,28 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
             sha = push_patch(
                 repo_dir, full_name, base, diff, token, message, branch, github_web_url=web
             )
+        pr_body = (
+            f"Verified fix from Ari for finding `{patch.finding_id}` (patch `{patch.id}`, "
+            f"verification `{verification.id}`). Review and merge to apply."
+        )
+        if tip is not None and tip_state == "applies":
+            pr_body += (
+                f"\n\nBased on the assessed commit `{base[:12]}`; `{default_branch}` has since "
+                f"moved to `{tip[:12]}` and this change still applies cleanly."
+            )
+        elif tip is not None and tip_state == "conflicts":
+            pr_body += (
+                f"\n\nBased on the assessed commit `{base[:12]}`; `{default_branch}` has since "
+                f"moved to `{tip[:12]}` and this change no longer applies cleanly. Rebase it or "
+                "re-run the review on the latest commit."
+            )
         url = app.open_pull_request(
             iid,
             full_name,
             head=branch,
             base=default_branch,
             title=f"fix: {patch.rationale}"[:120],
-            body=f"Verified fix from Ari for finding `{patch.finding_id}` (patch `{patch.id}`, "
-            f"verification `{verification.id}`). Review and merge to apply.",
+            body=pr_body,
         )
     except (CheckoutError, httpx.HTTPError) as exc:
         if isinstance(exc, httpx.HTTPError) and _transient(exc):

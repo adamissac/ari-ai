@@ -9,6 +9,7 @@ All notable changes are documented here. Format follows
 - Added opt-in bounded exact-SHA release review automation with isolated strict
   regressions, signed evidence, existing-owner routing and a protected cost ledger.
   No automatic merge, deployment or customer enforcement.
+- Verified-patch delivery skips fixes already present on the default branch and annotates stale-base pull requests.
 - Expired scopes no longer appear active or qualify for assessment selection.
 - Storage report probes use savepoints so a denied optional metric does not abort later checks.
 - Added a guided repository setup walkthrough (`/projects/<id>/setup?repo=<repoId>`): connecting a repository now lands there, and it walks through authorizing testing, tuning the code reviewer, choosing fix delivery (pull request is preselected), and starting the first review. The setup page also has decorative floating background shapes that stop moving when reduced motion is on.
