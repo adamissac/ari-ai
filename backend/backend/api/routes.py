@@ -495,6 +495,11 @@ def disconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
         conn.execute(
             sa.select(repositories.c.id).where(repositories.c.id == repo_id).with_for_update()
         )
+        conn.execute(
+            sa.select(deploy_commit_mappings.c.id)
+            .where(deploy_commit_mappings.c.repo_id == repo_id)
+            .with_for_update()
+        )
         if repo["disconnected_at"] is None:
             now = utcnow()
             conn.execute(
