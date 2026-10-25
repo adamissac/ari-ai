@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Pilot infra limitation documented: `docs/pilot/BRANCH_PROTECTION_LIMITATION.md` — branch-protection rulesets can't be enforced on a personal-account private repo; the release gate stays advisory/procedural, with a step-by-step org-migration plan to enforced protection.
+
 - fix(pilot): two-org rehearsal runs end-to-end — real API shapes (repo connect + file binding, scope targets/approve, real commit_sha), target app gets factory + seed + build_recipe; 13/13 steps pass against real Anthropic + Vercel sandbox with genuine findings and proven org isolation.
 
 - Live seven-agent rehearsal evidence on `examples/inventory-lite`: full orchestrator run with the real Anthropic provider (all 7 roles live, `asm_01M5R4912YTF8XKT9X0GXHY668`, $0.0334) found the planted CWE-639 ownership defect (`validation=confirmed`, verdict `accepted`, hardened with 3 regression tests); second hypothesis honestly inconclusive. Report + evidence doc under `docs/rehearsal/`.
