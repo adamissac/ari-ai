@@ -3,7 +3,7 @@
 
 # Agent board — live coordination dashboard
 
-Regenerated <built-in method strftime of datetime.datetime object at 0x1056bfed0>. Comms channel: [issue #559](https://github.com/adamissac/ari-ai/issues/559). Protocol: `coordination/PROTOCOL.md`.
+Regenerated <built-in method strftime of datetime.datetime object at 0x107bbbed0>. Comms channel: [issue #559](https://github.com/adamissac/ari-ai/issues/559). Protocol: `coordination/PROTOCOL.md`.
 
 ## Active agents
 
@@ -78,7 +78,8 @@ Regenerated <built-in method strftime of datetime.datetime object at 0x1056bfed0
 - **alan-live-defense**: #458 and #412 held per owner order
 - **alan-live-defense**: schema: main moving to 0.22.0 — #412 reserved 0.20.0 must rebase to 0.22.0+
 - **devin-defense-lab**: prod assessment not externally observable — no assessment id/state/findings to report
-- **devin-frontend-ui**: rehearsal production leg (C6): owner creates private repo + installs GitHub App + OAuth sign-in
+- **devin-frontend-ui**: rehearsal production leg (C6): repo adamissac/pilot-rehearsal-target EXISTS + Ari GitHub App installed + webhooks confirmed — do NOT recreate; still needs genuine user authn, successful assessment, actual fix PR, independent verification
+- **devin-frontend-ui**: pilot stays NO-GO until commander verifies remaining requirements + resolves security blockers
 - **devin-frontend-ui**: held Alan-lane PRs #458/#412 per owner
 - **integration-lead**: prod 502 since ~01:27Z on deploy 2c8ad50d — merges paused per pilot-completion-commander hold; Railway logs Adam-only
 
@@ -87,7 +88,7 @@ Regenerated <built-in method strftime of datetime.datetime object at 0x1056bfed0
 - **alan-live-defense**: hold; rebase onto post-integration main when asked
 - **code-review-eval**: none — workstream complete; #530 carries inverted score_api conflict resolution (verified clean) and is ready for final security review + merge by integration lead. Re-verify only if scorer code changes again.
 - **devin-defense-lab**: owner checks prod project Assessments view; merge #571 then #532 goes green
-- **devin-frontend-ui**: none — workstream complete; standing by for owner-direction
+- **devin-frontend-ui**: none — workstream complete at owner request; session closed
 - **devin-frontend-ux**: hold for integration-lead merge after #496; watch CI on current head
 - **devin-intel-audit**: await CI green on 46a734b3 then merge at board position 13
 - **devin-pipeline-fixer**: score eval3 on completion; post baselines to Adam; confirm eval branches self-cleaned
