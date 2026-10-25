@@ -165,3 +165,15 @@ The same thresholds independently alert on the app data volume. Set
 exists. Railway's `sizeMB` is decimal: a 10,000 MB Postgres volume is
 `POSTGRES_VOLUME_BYTES=10000000000` (not 10 GiB), and a 5,000 MB app data volume is
 `DATA_VOLUME_BYTES=5000000000`.
+
+## External watchdog
+
+The hourly `storage-watch.yml` workflow reads Railway's per-environment volume usage
+and the newest backup for `postgres-volume` (the default `BACKUP_VOLUME`). It alerts
+at 70/80/90% by default and flags backups older than 36 hours. While problems remain,
+it creates or updates the GitHub issue titled
+`[ops-alert] Production storage watchdog`; identical hourly findings do not add
+comments, and recovery posts a report before closing the issue. Any problem exits 1,
+making the scheduled run red so GitHub can email the owner. Configure the repository
+Actions secret `RAILWAY_TOKEN` with a Railway project token. Use
+**Actions → storage-watch → Run workflow** for a manual check.
