@@ -4,6 +4,7 @@ import type { DeliveryMode, Repository } from '@hackatl/frontend-transport';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
+import { BackdropShapes } from '@/components/backdrop-shapes';
 import { useProject } from '@/components/project';
 import { RepositoryAutomation } from '@/components/repository-automation';
 import { Button, ErrorState, Loading } from '@/components/ui';
@@ -129,7 +130,8 @@ function Walkthrough({ repo, scope, authorized, hasRun, reload }: {
   const complete = states.filter(s => s === 'done').length;
 
   return (
-    <div className="mx-auto max-w-3xl py-4" data-testid="repo-setup">
+    <div className="backdrop-host mx-auto max-w-3xl py-4" data-testid="repo-setup">
+      <BackdropShapes />
       <p className="workspace-eyebrow">Setup / {repo.full_name}</p>
       <h1 className="mt-1 text-3xl font-semibold tracking-tight">Let&apos;s set up Ari for {repo.full_name.split('/')[1]}</h1>
       <p className="mt-2 text-sm text-muted">Five short steps. You can change any of this later in Settings.</p>
@@ -190,9 +192,9 @@ function Walkthrough({ repo, scope, authorized, hasRun, reload }: {
 
 function Step({ n, state, title, children }: { n: number; state: StepState; title: string; children: ReactNode }) {
   return (
-    <li className={`rounded-[var(--radius-3)] border p-5 transition-colors duration-[120ms] ${state === 'current' ? 'border-brand bg-panel' : 'border-line bg-panel'} ${state === 'upcoming' ? 'opacity-70' : ''}`} data-step-state={state}>
+    <li className={`rounded-2xl border p-5 backdrop-blur-sm transition-all ${state === 'current' ? 'border-brand bg-panel shadow-[0_0_0_4px_rgba(194,69,45,0.18)]' : 'border-line bg-panel/80'} ${state === 'upcoming' ? 'opacity-70' : ''}`} data-step-state={state}>
       <div className="mb-3 flex items-center gap-3">
-        <span className={`grid h-8 w-8 place-items-center rounded-full text-sm font-semibold ${state === 'done' ? 'bg-brand text-on-brand' : state === 'current' ? 'border-2 border-brand text-brand' : 'border border-line text-muted'}`}>{state === 'done' ? '✓' : n}</span>
+        <span className={`grid h-8 w-8 place-items-center rounded-full text-sm font-semibold ${state === 'done' ? 'bg-brand text-white' : state === 'current' ? 'border-2 border-brand text-brand' : 'border border-line text-muted'}`}>{state === 'done' ? '✓' : n}</span>
         <h2 className="text-lg font-semibold">{title}</h2>
       </div>
       {children}

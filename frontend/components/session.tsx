@@ -132,7 +132,7 @@ function SignIn({ onSignedIn }: { onSignedIn: (me: MeResponse) => void }) {
       <Link href="/access" className="auth-btn auth-btn-ghost" data-testid="access-link">Use an access code</Link>
       {devLoginVisible && (
         <form onSubmit={submit} className="mt-6 border-t border-white/10 pt-5" aria-label="Development login">
-          <p className="label-mono mb-3 text-[11px] text-brand">Development login · local backend only</p>
+          <p className="label-mono mb-3 text-[11px] text-[#ffb8a6]">Development login · local backend only</p>
           <label htmlFor="dev-login" className="auth-label">GitHub login</label>
           <input id="dev-login" className="auth-input" value={login} onChange={e => setLogin(e.target.value)} required pattern="(?:[A-Za-z0-9]|-){1,39}" autoComplete="username" name="github_login" />
           <button type="submit" className="auth-btn auth-btn-ghost mt-3" disabled={busy || !login.trim()}>Development sign-in</button>
