@@ -17,16 +17,19 @@ _PATTERNS: list[tuple[re.Pattern[str], str]] = [
     ),
     (re.compile(r"(?i)\b(bearer)\s+[A-Za-z0-9._\-]{16,}"), r"\1 [REDACTED:bearer]"),
     # credentials inside connection strings: scheme://user:pass@host -> scheme://[REDACTED]@host
+    (re.compile(r"\bsk_live_[A-Za-z0-9]{8,}\b"), "[REDACTED:stripe_key]"),
     (
         re.compile(
-            r"(?i)\b(postgres(?:ql)?|mysql(?:\+\w+)?|mongodb(?:\+srv)?|redis|amqp)://[^\s:/@]+:[^\s@]+@"
+            r"(?i)\b(postgres(?:ql)?(?:\+\w+)?|mysql(?:\+\w+)?|mongodb(?:\+srv)?|redis|amqp)://[^\s:/@]+:[^\s@]+@"
         ),
         r"\1://[REDACTED:dsn_credentials]@",
     ),
     # generic secret key=value / key: value pairs (password=hunter2, token: xyz, ...)
     (
-        re.compile(r"(?i)\b(password|passwd|pwd|api_key|apikey|secret|token)\s*[=:]\s*[^\s'\"]+"),
-        r"\1=[REDACTED:kv]",
+        re.compile(
+            r"(?i)\b\w*(?:password|passwd|pwd|api_key|apikey|secret|token)\w*\s*[=:]\s*[^\s'\"]+"
+        ),
+        "[REDACTED:kv]",
     ),
 ]
 
