@@ -23,7 +23,9 @@ from backend.api import (
     runtime,
     webhooks,
 )
-from backend.api import ops as ops_routes
+from backend.api import (
+    ops as ops_api,
+)
 from backend.api.deps import ApiError, require_user
 from backend.settings import get_settings
 from shared import SCHEMA_VERSION
@@ -168,7 +170,7 @@ def create_app() -> FastAPI:
         live_defense.router,
         live_defense_controls.router,
         live_defense_first_responder.router,
-        ops_routes.router,
+        ops_api.router,
     ):
         app.include_router(r, prefix="/api/v1")
     return app
