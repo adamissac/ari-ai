@@ -37,6 +37,11 @@ export default function SettingsPage() {
     <>
       <PageTitle eyebrow="Configure" title="Settings" subtitle="Project name, languages, budgets and monitoring policy." />
     <form onSubmit={submit} className="grid grid-cols-1 gap-4 lg:grid-cols-2" aria-label="Project settings">
+      <div className="flex flex-wrap items-center gap-3 lg:col-span-2">
+        <Button type="submit" variant="primary" disabled={busy || !dirty || 'error' in parsed}>Save settings</Button>
+        <Button type="button" disabled={busy || !dirty} onClick={() => setDraft(draftOf(saved))}>Discard changes</Button>
+        {!dirty && !message && <span className="text-sm text-muted">Unsaved changes show here and at the bottom of this form.</span>}
+      </div>
       <Panel title="Project">
         <Field label="Name"><input className={inputClass} value={draft.name} onChange={e => set('name')(e.target.value)} maxLength={200} /></Field>
         <div className="mt-3">
