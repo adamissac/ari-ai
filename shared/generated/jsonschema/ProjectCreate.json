@@ -69,9 +69,95 @@
         },
         "monitoring_policy": {
           "$ref": "#/$defs/TriggerPolicy"
+        },
+        "review": {
+          "$ref": "#/$defs/ReviewerSettings"
         }
       },
       "title": "ProjectSettings",
+      "type": "object"
+    },
+    "ReviewerSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "comment_on_pull_requests": {
+          "default": true,
+          "title": "Comment On Pull Requests",
+          "type": "boolean"
+        },
+        "exclude_authors": {
+          "items": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Exclude Authors",
+          "type": "array"
+        },
+        "exclude_branches": {
+          "items": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Exclude Branches",
+          "type": "array"
+        },
+        "include_authors": {
+          "items": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Include Authors",
+          "type": "array"
+        },
+        "include_branches": {
+          "items": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Include Branches",
+          "type": "array"
+        },
+        "max_reviews_per_hour": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Reviews Per Hour"
+        },
+        "review_draft_prs": {
+          "default": false,
+          "title": "Review Draft Prs",
+          "type": "boolean"
+        },
+        "review_pull_requests": {
+          "default": true,
+          "title": "Review Pull Requests",
+          "type": "boolean"
+        },
+        "review_pushes": {
+          "default": true,
+          "title": "Review Pushes",
+          "type": "boolean"
+        },
+        "strictness": {
+          "default": 2,
+          "maximum": 3,
+          "minimum": 1,
+          "title": "Strictness",
+          "type": "integer"
+        }
+      },
+      "title": "ReviewerSettings",
       "type": "object"
     },
     "TriggerPolicy": {
