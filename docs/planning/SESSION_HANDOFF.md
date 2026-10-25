@@ -2184,6 +2184,31 @@ ancestry retained and v6 registry hash unchanged (see verification report).
   semantics asserted strict in `backend/tests/test_execution_reliability.py`
   (+7 tests, file now 59). Suite: 377 passed, 7 skipped.
 
+## 2026-10-25 — Devin (Alan): execution reliability — Codex review 3 fix N7
+
+- Codex third review (`docs/reviews/corrected-independent/REPORT.md` @
+  upstream `codex/release-independent-security` `abf6b316`, NO-GO on 77897e76):
+  my generic `key=value` pattern had been merged into
+  `_HIGH_CONFIDENCE_PATTERNS`, which `redact_code` also applies — it rewrote
+  non-secret expressions (`api_key=os.environ["API_KEY"]` →
+  `api_key=[REDACTED]"API_KEY"]`), corrupting persisted diff artifacts.
+- Fix on `feat/devin-execution-reliability`: `backend/backend/redaction.py`
+  synced to the upstream structure; the generic kv matcher is now
+  `_GENERIC_KV_PATTERN`, free-text only (`_PATTERNS`/`redact_text`), and is
+  excluded from `_HIGH_CONFIDENCE_PATTERNS`/`redact_code`. `uri_password`
+  stays in `_HIGH_CONFIDENCE_PATTERNS` before `dsn_credentials`
+  (integration's 77897e76 order), and `find_high_confidence_secret` keeps the
+  dsn-label preference (2dae2207). `ArtifactStore.put_text` now routes
+  `ArtifactKind.diff` through `redact_code`, matching upstream.
+- Verified: Codex's strict N7 file — the two parametrized
+  ArtifactStore.put_text/get roundtrips + ast.parse assertions pass;
+  `test_redact_code.py` + `test_redact_text_gaps.py` (vendored, byte-identical
+  to upstream/main blobs) 14 passed; +2 new regressions in
+  test_execution_reliability.py (file now 61). Suite: 395 passed, 7 skipped —
+  the only failure is Codex's N1 lock-ordering audit test which needs
+  Hardening's `repository_revocation_locked` (not on this branch, not my
+  finding; audit file left unvendored).
+
 ## 2026-10-24 — Devin (Adam): specialist eval-brain + live eval harness
 
 - `specialists/data/evalcommits.py`: eval cases become minimal pairs (planted edit = CWE/vuln_other positive, original = hard negative), splits pinned by case id; `scout()` merges the 60 rows.
