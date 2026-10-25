@@ -1,0 +1,35 @@
+name: RC4 independent isolated regressions
+on:
+  push:
+    branches: [codex/rc4-n8-independent-review]
+    paths: [.github/workflows/rc4-n8-independent-audit.yml, docs/reviews/rc4-n8-independent/**]
+permissions:
+  contents: read
+jobs:
+  strict-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: controller
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: m-alan08/ari-ai
+          ref: 4fdcf10cc2320b0eb499a177e3b8bea847de8e73
+          path: candidate
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Run original independent tests inside restricted containers
+        working-directory: controller
+        run: |
+          mkdir -p "$RUNNER_TEMP/rc4-evidence"
+          cp docs/reviews/rc4-n8-independent/pin.json "$RUNNER_TEMP/rc4-evidence/pin.json"
+          PYTHONPATH=. python3 docs/reviews/rc4-n8-independent/run.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: rc4-n8-independent-strict
+          path: ${{ runner.temp }}/rc4-evidence/
+          retention-days: 14
