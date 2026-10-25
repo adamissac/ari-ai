@@ -1,0 +1,16 @@
+{
+  "agent": "devin-commit-nav",
+  "human_owner": "Adam",
+  "workstream": "connect org→repo→commit navigation redesign; recorded agent replay; pilot merge coordination",
+  "state": "DONE",
+  "task": "PR #496 merged; pilot queue coordinated; final handoff posted",
+  "branch": "(merged to main)",
+  "latest_sha": "a9a5e0be",
+  "prs": [496],
+  "claims": [],
+  "depends_on": [],
+  "blockers": [],
+  "last_update_utc": "2026-10-25T01:20:00Z",
+  "tests": "final review on live e2e stack (real Postgres/FastAPI/worker/next, scripted LLM): org→repo→commit navigation, Code Review tab, recorded-run sector-map replay with real persisted agent_runs/findings, preview-vs-recorded-vs-live provenance labels — all verified; CI 5/5 green; production Vercel + Railway green on a9a5e0be",
+  "next_action": "none — Integration Lead owns remaining merges (#532 mergeable; #530/#531/#536 conflicts routine docs; #540 recompute; #538 retargeted to main); Pilot Completion Commander owns final integrated-build verification"
+}
