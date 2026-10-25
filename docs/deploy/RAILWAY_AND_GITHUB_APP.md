@@ -29,6 +29,7 @@ Nothing else can push code. `installation` and `installation_repositories` event
 delivered to the App automatically (no subscription); `Repository` events let Ari follow
 renames/transfers and repo deletion. Tell customers the write scope plainly during onboarding — see
 `docs/pilot/CUSTOMER_ONBOARDING.md`.
+
 | Where can it be installed | Any account (so other people can use it) |
 
 After creating it: note the **App ID** and **Client ID**, generate a **client secret**, and

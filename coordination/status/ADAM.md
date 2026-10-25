@@ -1,6 +1,33 @@
 # Adam — implementation status
 
 Owner: Adam
+Branch: `feat/adam/release-gate` → PR #530 (open, awaiting human merge approval)
+Last sync: 2026-10-24 ~23:45Z — origin/main at `586370b0` (#528/#529 landed; #535 earlier); branch synced.
+
+## In flight — release gate (PR #530)
+- Always-on jobs + `scripts/ci/path_gate.py` (RUN/SKIP visible verdicts); unique job ids for required checks.
+- `pilot-verify.yml` manual 7-category release pipeline.
+- `GET /projects/{id}/jobs?status=` dead-letter visibility; `last_error` secret-scrubbed at **write time**; read side role-split.
+- Eval harness: `scored:false` + `unscored_reason`; `summarize()` over scored cases only; case validation.
+- `scripts/ci/load_probe.py` queue probe — all invariants green (~1.5k jobs/s embedded PG).
+- Report + required-check list + admin runbook + trigger commands: `docs/release/RELEASE_GATE_2026-10-24.md`.
+- Local evidence: 15 backend tests pass; ruff clean. CI re-running on latest head.
+
+## Coordination in progress
+- **Migration collision**: #533 (`0016_worker_heartbeats`) vs #535 (`0016_tenant_rls_intelligence`) — both claim revision `0016`. Order: **#535 first**; #533 renumbers to `0017` + updates head test. Comments on both.
+- #529 **merged** — merge order flipped; on sync I kept module-level `_finding_paths` + my scored fields per the agreed resolution. #531 conflict resolved earlier.
+- #544/#547 gitleaks allowlists: scoped correctly; second-to-merge keeps both blocks.
+- #524/#525/#526/#523 (authz fixes): merge cleanly alongside #530.
+
+## Blockers (require Adam/repo admin)
+- `main` branch protection unset — exact settings + `gh api` command in the release doc.
+- GitHub App installation token / hosted pilot URL / Anthropic key needed only for live-model + hosted-smoke gates (opt-in).
+
+## Next actions
+1. #530 CI green on `8b6bf3bd` → awaiting human merge approval (no merge by agents).
+2. #533 must renumber `0016_worker_heartbeats` → `0017` on rebase (notified).
+3. Re-run `pilot-verify.yml` on the true final `main` SHA once merges settle.
+
 Branch: all work merged to `main` (last: PR #13 shared contracts, PR #18 recipe check)
 Current task: pilot readiness — rehearsal verified end-to-end (2 independent runs); merge wave monitored; hosted staging leg gated on Adam GitHub actions
 Last remote sync: 2026-10-24 — fleet merge order per `coordination/messages/20261024T231500Z-adam-to-all-pilot-merge-order-and-gitleaks-unblock.md`
@@ -11,6 +38,14 @@ Blockers: none for RL; backend endpoint and Defense Lab UI need `shared/` V0 and
 Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablations (vanilla DQN vs DDQN, feature and reward sensitivity)
 
 ## Session entries
+
+### 2026-10-24 — GitHub onboarding + continuous-assessment hardening
+- Branch `fix/adam/github-onboarding-hardening` → PR against `main`.
+- Fixes: permanent GitHub failures record skipped events (no silent dead-letter); compare failure falls back to payload commits; `installation`/`repository` lifecycle events detach/rename monitored repos; connect verifies the installation still grants access; deploy doc corrected.
+- Tests: focused backend suites green; 11 new regression tests; ruff clean.
+- Live proof: genuine signed prod push delivery replayed through real local stack (embedded pg + API + worker + real App key/webhook secret); commit verified via GitHub API; event processed; assessment persisted.
+- Note for the App: subscribe to `Repository` events so `renamed`/`deleted` arrive (handled in code).
+
 
 ### 2026-10-25 — independent rehearsal reproduction + e2e false-alarm resolution
 
@@ -71,6 +106,7 @@ Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablat
 - Offline suite: 582 passed / 24 skipped (covers timeouts, cancel, kill switch, schema repair, provider outage, resume-after-restart, worktree/check refusals, specialist cannot-override).
 - Evidence: `security-agents/tests/artifacts/live/20261024T213713Z-MANIFEST.md` + report/tool-trace artifacts + recording JSONL.
 - Blockers: none. Next: PR review; keep `tests/artifacts/live/` naming convention.
+
 ### 2026-10-17 (cloud) — simulated demo + Lab command center + events-log cursor
 - `feat/adam/event-log-cursor-follow`: phase views follow `next_cursor` (cap 10,000 events).
 - `feat/adam/simulated-demo`: `/demo` labelled simulated walkthrough (ADR-0013), `DefenseMap`, Lab command center from the real bundle.
@@ -353,6 +389,12 @@ Owner requested AI automation and Defense Lab OFF until explicitly enabled. Bran
 - Health: rl-defense 546 passed (23m27s; CPU torch index used); payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 582 files, 0 problems. No live-LLM tests, no training/eval.
 - No code changes. Open: none.
 
+### 2026-10-24 — Devin — code-intelligence pipeline audit
+- Branch `feat/adam/intel-pipeline-audit` (carries `7a5b329f` = PR #441 redaction fix verbatim). Findings: non-literal route decorators were silently dropped → now flagged as IndexIssue; labeled retrieval recall 82% payments-lite / 63% ari-ai with honest missing-evidence list; per-commit/profile/tenant isolation verified by executed SQLite + Postgres tests.
+- Executed: `code-intelligence/tests` 57 passed 1 skipped; backend intel suite 9 passed (real Postgres); index benchmarks 0.16s/8f, 4.11s/127f, 92.4s/1798f (617MB heap).
+- Artifacts: `docs/research/intel-pipeline-audit/README.md`, `code-intelligence/evidence/m2-index-retrieval-audit.json`, `code-intelligence/evidence/index_benchmark.py`, `tests/test_retrieval_quality.py`.
+- Blockers: none. Open: PR #531 pending.
+
 ### 2026-10-24 — scheduled cloud health run (11)
 - Synced origin/main (bbf63acf). No new messages addressed to Adam. Since run 10 main gained only backend/sandbox perf and recipe-generator work (other owners) plus a SESSION_HANDOFF.md note; nothing changed in rl-defense/, examples/ or Adam's CI/docs. `gh` not authenticated; used git/MCP only.
 - Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 584 files, 0 problems. rl-defense suite NOT re-run (no changes in rl-defense since run 10's 546 passed). No live-LLM tests, no training/eval.
@@ -402,11 +444,18 @@ Owner requested AI automation and Defense Lab OFF until explicitly enabled. Bran
 - Synced origin/main (466df4b7). No new messages addressed to Adam. Since run 19 main gained only eval scoring/serialization and an access_control.role check template (other owners); nothing changed in rl-defense/, examples/ or Adam's CI/docs. `gh` not authenticated; used git/MCP only.
 - Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 598 files, 0 problems. rl-defense suite NOT re-run (no changes there since run 13's 569 passed). No live-LLM tests, no training/eval.
 - No code changes. Open: none.
+### 2026-10-24 — first-user usability workstream (PR #538, feat/adam/first-user-usability)
+- PR #538 open against feat/adam/commit-review-navigation (#496). Changes: named approval cards (rmp_ subjects resolved to finding titles), two-step approve confirm on the on-page gate AND the /approvals inbox, plain-English replay + recorded-tool-call names, friendly quick-read error, repo-relative finding paths. New: docs/planning/FIRST_USER_FLOW_AND_USABILITY.md (flow map + blocker list).
+- Verified: unit 11 passed; typecheck/lint clean; e2e stack.py — 9/9 specs pass incl. journey + commit-workspace + incident closure. Testing agent verified desktop/mobile/keyboard on the live stack (evidence comment on the PR).
+- Coordination notes: gitleaks `git` scans ALL fetched objects — planted tok-* on rehearsal/ledgerlite-v2 failed every PR; fixed repo-wide by #544 on main (my redundant #547 closed). #441 (intel redaction) merged. #535 closed — content already on main.
+- Open: Decline one-click asymmetry (logged in blockers doc); video artifact missing (recording post-processing failed).
+
 
 ### 2026-10-25 — scheduled cloud health run (21)
 - Synced origin/main (3af0fa72). No new messages addressed to Adam (newest: devin-integration-lead coordination-system notice, informational). Since run 20 main gained examples/inventory-lite (rehearsal fixture), a .gitleaks.toml addition, scripts/rehearsal and the coordination board (other agents); nothing changed in rl-defense/. `gh` not authenticated; used git/MCP only.
 - Health: payments-lite target 13 passed, label_checks 11 passed; inventory-lite target 8 passed, label_checks 10 passed (informational, not Adam's); scripts/check_links.py 612 files, 0 problems. rl-defense suite NOT re-run (no changes there since run 13's 569 passed). No live-LLM tests, no training/eval.
 - No code changes. Open: none.
+
 
 ### 2026-10-24 — code-review eval lane (session 0068155b, PR #529)
 - Done: executed functional-reviewer eval report (`code-review/eval/REVIEWER_EVAL_2026-10-24.md`); offline suite 90 passed/4 skipped; corpus labels 10/10 proven; PR #516 serialization defect reproduced + locked with `security-agents/tests/test_eval_score_api.py` (5 tests); coordination notes filed for findings `paths` contract and #531/#535 privacy-chain coherence.
@@ -420,3 +469,4 @@ Owner requested AI automation and Defense Lab OFF until explicitly enabled. Bran
 - #529 merged as `586370b0` (squash): eval report + scorer path-fallback regression tests + coordination notes are on main. CI was 8/8 green at merge.
 - Merge order flipped: `score_api.py`'s `_finding_paths` is now MODULE-level on main. #530 (feat/adam/release-gate) owns the now-inverted conflict — resolution sent directly to the release-gate session (keep module-level fn, drop their nested copy, keep all scored/unscored_reason additions).
 - Lane complete pending #530's rebase + my final verification of combined scoring (security/functional/unscored/missing-paths).
+
