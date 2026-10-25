@@ -586,3 +586,6 @@ send_alert calls (alerting dead). Fix on `fix/devin/alert-webhook-wiring`, GO
 FINAL GATE GREEN: integration tip dd530ae3 passes release_readiness.py 25/25.
 Alert cherry-pick verified live. Readiness suite is now the repeatable pilot gate;
 re-run on any further recomposition.
+
+Upstream-reconciled tip 070f75a9 (head 0019, upstream ops/storage + heartbeat
+surface merged): release_readiness GO 25/25 unchanged. Gate still green.
