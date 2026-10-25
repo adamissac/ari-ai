@@ -217,8 +217,12 @@ Probe role revoked and dropped afterwards.
 - **D4 — Production automatic-assessment limits above pilot values.** Another
   agent reported `AUTOMATIC_ASSESSMENTS_PER_HOUR=60` and `_PER_DAY=500`, which
   matches the observed plateau at 60/h. Manual starts are limited per user
-  in-process only (5/h, reset on restart). No per-project quota is shared by
-  manual and automatic runs.
+  in-process only (5/h, reset on restart). Under #607, automatic starts count
+  all project triggers toward 10/hour and 50/day, while manual starts count
+  only manual-trigger assessments toward those same limits. Manual starts
+  therefore count against both limits, and combined starts can reach up to
+  20/hour and 100/day. The $50 rolling-day spend cap applies to all starts;
+  see C10 in `LAUNCH_DECISION.md` for the owner's deviation decision.
 - **D5 — Sandbox plan quota.** 19 earlier assessments failed
   `SandboxApiError: HTTP 402: Hobby plan usage limit exceeded` (snapshot
   storage / usage). Pilot capacity needs a paid sandbox plan or a hard cap.
