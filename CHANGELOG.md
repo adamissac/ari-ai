@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Allow migrations to use an optional database URL separate from the app role.
+
 - GitHub onboarding + continuous assessment hardening: a missing/renamed repo, deleted installation, or GC'd commit now records a skipped monitoring event with an actionable reason instead of retrying to dead-letter; compare failures fall back to payload commits; `installation deleted` / `repositories removed` / `repository renamed` lifecycle events now detach or rename monitored repositories; connecting a repository verifies the installation still grants access (403 with a reinstall hint when it doesn't); deploy doc corrected for App permissions, subscribed events, and the `automatic_assessments` default (opt-in OFF).
 - First-user usability pass on the commit review page: approval cards now name the finding
   they authorize (including remediation-plan `rmp_` subjects resolved through the finding
