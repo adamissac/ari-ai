@@ -20,7 +20,8 @@ remains a backup-validation gap.
 NOCREATEROLE NOREPLICATION`. It has CONNECT on the database, USAGE on the
 schema, SELECT/INSERT/UPDATE/DELETE on all tables, USAGE/SELECT on all
 sequences, and matching default privileges for `postgres` on future tables
-and sequences. It also has `pg_monitor` for storage-report WAL metrics.
+and sequences. It also has `pg_monitor` for storage-report WAL metrics; revoke
+this membership after PR #610 is deployed.
 `pgaudit.log=none`.
 
 The `ari_app` password was set as a locally computed SCRAM-SHA-256 verifier;
@@ -78,27 +79,36 @@ credential-bearing URL is recorded here.
 ## Still open: API key rotation and public access
 
 The Anthropic key and GitHub App private key still need to be rotated by the
-owner from their respective consoles. Disable public TCP proxy access last,
-after rehearsal cleanup is approved and executed; cleanup and ops checks still
-use it. Do not put passwords, credential-bearing URLs, or session tokens in
-this document.
+owner from their respective consoles. Disable public TCP proxy access last.
+Do not put passwords, credential-bearing URLs, or session tokens in this
+document.
 
-## Rehearsal cleanup inventory (owner approval required)
+## Rehearsal cleanup (approved and executed 2026-10-25)
 
-The rehearsal-alice owner seat in Adam's org and both rehearsal sessions were
-removed by another lane by 05:01Z, not by an approved cleanup. The DB-role
-cutover is executed, but no remaining item may be deleted without owner
-approval.
+Adam approved the cleanup plan on 2026-10-25 by replying “approve cleanup”.
+At about 10:10Z, `backend.privacy.purge_project` was run with the admin
+connection on project `prj_01M5RASMAA4GT4EDKWJMCQGAWF` (“Pilot Rehearsal (prod
+leg)”) in org `org_4893E29D9B9FDCD265ACD26992`. Before the purge there were 0
+repositories, 0 assessments, 0 index payloads, 0 artifacts, and 0 scopes. The
+result was `{"projects": 1}`; the project's one `audit_events` row is retained
+because the audit chain is append-only.
 
-| Object | IDs | Proposed handling |
+The earlier removal by another lane of rehearsal-alice's owner seat in Adam's
+org and both rehearsal sessions by 05:01Z was not owner-approved. The two
+rehearsal users now have 0 sessions. Each holds only the owner seat of their
+own personal org, and neither can access any other org. Under the approved
+plan, both users, both personal orgs, the four owner-project assessments, and
+the revoked scope are retained as audit evidence. Cleanup is complete.
+
+| Object | IDs | Disposition |
 |---|---|---|
-| Users | `usr_A40D640D9695D19372BACD36EB` (rehearsal-alice), `usr_7C13AB87FA6E020B936382C9C7` (rehearsal-eve) | Retain rows referenced by audit; no deletion without owner approval |
-| Sessions | Both rehearsal sessions were removed by another lane by 05:01Z | No session cleanup remains; removal was not an approved cleanup |
-| Membership in owner org | rehearsal-alice's owner seat in Adam's org was removed by another lane by 05:01Z | No further cleanup; removal was not owner-approved |
-| Personal orgs | `org_4893E29D9B9FDCD265ACD26992`, `org_C992A0C6A94705736F4C7E61AC` | Retain; no deletion without owner approval |
-| Project | “Pilot Rehearsal (prod leg)” | Retain; no deletion or purge without owner approval |
+| Users | `usr_A40D640D9695D19372BACD36EB` (rehearsal-alice), `usr_7C13AB87FA6E020B936382C9C7` (rehearsal-eve) | Retained as audit evidence; each has 0 sessions and access only to their own personal org |
+| Sessions | Both rehearsal sessions were removed by another lane by 05:01Z | No sessions remain; that earlier removal was not owner-approved |
+| Membership in owner org | rehearsal-alice's owner seat in Adam's org was removed by another lane by 05:01Z | No such seat remains; that earlier removal was not owner-approved |
+| Personal orgs | `org_4893E29D9B9FDCD265ACD26992`, `org_C992A0C6A94705736F4C7E61AC` | Retained as audit evidence; each user holds only the owner seat in their own personal org |
+| Project | `prj_01M5RASMAA4GT4EDKWJMCQGAWF` (“Pilot Rehearsal (prod leg)”), org `org_4893E29D9B9FDCD265ACD26992` | Purged at about 10:10Z through `backend.privacy.purge_project` using the admin connection; result `{"projects": 1}`; one append-only audit row retained |
 | Assessments | `asm_01M5RCNXY6CTM8S8S3MDQ6ZFBD`, `asm_01M5RCVC20ZMYH8EKTZQP40W73`, `asm_01M5RD308T0RER91FNMQ0JGP0Q`, `asm_01M5RD406NQC4GRRT48N64ANNY` (owner project) | Retain as audit-referenced rehearsal evidence |
-| Scope | `scp_01M5RD3YN9JH9V652ATKS93GKV` (revoked) | Retain (audit) |
+| Scope | `scp_01M5RD3YN9JH9V652ATKS93GKV` (revoked) | Retained as audit evidence |
 
-Evidence is kept on the operator machine (report JSON, patch and
-verification artifacts, probe logs) before any cleanup.
+Evidence was kept on the operator machine (report JSON, patch and verification
+artifacts, probe logs) before the cleanup.

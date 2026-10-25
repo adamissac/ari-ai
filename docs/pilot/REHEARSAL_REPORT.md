@@ -230,10 +230,11 @@ Probe role revoked and dropped afterwards.
   `index_payloads`/`index_snapshots` is therefore not a production control
   until the app moves to a least-privilege role (DB_ROLE_MIGRATION.md).
 - **D6 — Credential hygiene.** The production Postgres public URL was pasted
-  into chat during setup; rotate the password and disable public networking
-  after the rehearsal (sequenced after D8's migration; not done yet). The rehearsal users/orgs/sessions (and Alice's
-  membership in the owner org) were written directly to the production DB —
-  cleanup follows the approved plan in DB_ROLE_MIGRATION.md §Rehearsal cleanup.
+  into chat during setup; the admin password has since been rotated, and
+  public networking remains open for removal last. The rehearsal
+  users/orgs/sessions (and Alice's membership in the owner org) were written
+  directly to the production DB; cleanup was approved and executed. See
+  `DB_ROLE_MIGRATION.md` §Rehearsal cleanup.
 
 Evidence files (operator machine, not committed — contain tenant IDs):
 `prod_report.json`, `prod_asm2_report.json`, `prod_findings.json`,

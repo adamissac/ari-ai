@@ -20,7 +20,7 @@ observed `/readyz`: ready, 24 workers, 0 queued.
 **Customer 1 is not cleared.** Leg 9 proved the production delivery evidence
 condition, but C9 remains open for Adam's personal review of PR #5. C6 still
 requires the hosted browser journey with real GitHub sign-in and unaided
-onboarding. Launch remains NO-GO until:
+onboarding. Launch remains **NO-GO** until:
 
 - C6's hosted browser journey with real GitHub sign-in and unaided onboarding
   passes.
@@ -28,8 +28,10 @@ onboarding. Launch remains NO-GO until:
   their consoles. The `postgres` admin password was rotated at about 09:32Z;
   the old password is rejected, and deploy `f5ce137b` uses the updated
   `MIGRATION_DATABASE_URL` reference.
-- Rehearsal cleanup is approved and executed; then public TCP proxy access is
-  disabled last. Cleanup and ops checks still use the proxy.
+- Public TCP proxy access is removed last. Rehearsal cleanup is **DONE**
+  (approved and executed); see `DB_ROLE_MIGRATION.md` § Rehearsal cleanup.
+- `pg_monitor` is revoked after PR #610 is deployed, and PRs #605 and #610 are
+  merged.
 - Adam signs off on C9 after personally reviewing PR #5.
 
 ## Rehearsal evidence retained under this NO-GO decision
@@ -63,8 +65,9 @@ start until every row marked Yes is done; C7–C8 are standing rules for the who
 | C10 | **DONE:** shared per-project limits are 10/hour and 50/day across manual + automatic assessments, with automatic runs opt-in; final verified Railway values are `PROJECT_ASSESSMENTS_PER_HOUR=10`, `PROJECT_ASSESSMENTS_PER_DAY=50`, and `ASSESSMENTS_USD_PER_DAY=50` | Yes |
 | C10b | Pilot projects must use `delivery_mode=pull_request`; the rehearsal project was restored from `auto` to `pull_request` through the settings API before Leg 9 delivery. This does not close C9's personal-review gate | Yes |
 | C11 | Sandbox capacity confirmed for the pilot. 19 assessments failed `HTTP 402 Hobby plan usage limit` between 10-20 and 10-23; none since, with about 9,800 sandbox-seconds on 10-24. Confirm which plan the sandbox team is on (D5) | Yes |
-| C12 | **OPEN:** the `postgres` admin password was rotated at about 09:32Z; the old password is rejected and deploy `f5ce137b` uses the updated migration reference. Still open: owner rotation of the Anthropic key and GitHub App private key from their consoles; disable public TCP proxy access last, after rehearsal cleanup is approved and executed because cleanup and ops checks use it. See `DB_ROLE_MIGRATION.md` | Yes |
+| C12 | **OPEN:** the `postgres` admin password rotation is complete. Still open: owner rotation of the Anthropic key and GitHub App private key from their consoles; remove public TCP proxy access last; revoke `pg_monitor` after PR #610 is deployed. Rehearsal cleanup is **DONE**; see `DB_ROLE_MIGRATION.md` § Rehearsal cleanup | Yes |
 | C13 | Railway runtime documents and checks the code-intelligence variables (`INTELLIGENCE_REPOSITORIES_FILE` + one persistence option) so a redeploy cannot reproduce the D3 snapshot failure | Before customer 2 |
+| C14 | Merge PRs #605 and #610 | Yes |
 
 ## Documented exceptions (accepted for the pilot)
 

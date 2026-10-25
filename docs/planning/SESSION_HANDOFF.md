@@ -2037,3 +2037,8 @@ selected run is still loading.
 
 - Done: the `postgres` admin password was rotated at about 09:32Z using a locally computed SCRAM verifier; login with the old password is rejected. The Postgres service variables and `ari-ai`'s `MIGRATION_DATABASE_URL` reference resolve to the new value; deploy `f5ce137b` completed. Other agents were told on #559 (comment `6395942484`) that stored admin URLs are dead.
 - Open: the owner must rotate the Anthropic key and GitHub App private key from their consoles. Keep public TCP proxy access until rehearsal cleanup is approved and executed, then disable it last; cleanup and ops checks use it. Launch remains NO-GO pending C6's hosted browser journey, cleanup, public-access removal, and Adam's C9 sign-off.
+
+## 2026-10-25 — pilot readiness follow-up: approved rehearsal cleanup
+
+- Done: Adam approved the cleanup plan; the admin-run purge at about 10:10Z deleted the empty rehearsal project, retaining its append-only audit event. The users, personal orgs, four owner-project assessments, and revoked scope remain as audit evidence; both users have 0 sessions and access only to their own org. See `docs/pilot/DB_ROLE_MIGRATION.md` § Rehearsal cleanup.
+- Open: launch remains NO-GO pending C6 and C9, Anthropic and GitHub App key rotation, public DB access removal, `pg_monitor` revocation after #610 deploys, and merging #605/#610.
