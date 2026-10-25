@@ -37,13 +37,29 @@ adds an entry before ending.
 - Next: merge; live leg needs Adam to create `adamissac/ari-pilot-rehearsal`
   (private), install the GitHub App, and OAuth-login once.
 
+
 ### 2026-10-24 — Devin (agent, Adam) — Defense Lab pilot audit, safety suite, go/no-go
 - Did: full Defense Lab audit per owner task — inventoried lanes (simulation / shadow / owned-test / assisted / production); verified ingestion security (token auth, project bind, dedup/replay, quarantine, rate/size limits, provenance); verified safe abstention + rules fallback; reviewed PR #458 (Scout/Diagnose execution — ledger, cancellation, snapshot pinning verified; merge conflict noted) and PR #412 (RL-gated shadow-only guard — deny enforced server+worker side; readiness verdict honestly BLOCKED). Deliverables: `docs/DEFENSE_LAB_CAPABILITY_MATRIX.md`, `docs/DEFENSE_LAB_EVALUATION_REPORT.md` (explicit GO for recommendation-only + owned-test; NO-GO for production enforcement), `backend/tests/test_live_defense_pilot_safety.py` (37 tests).
 - Fixed: quarantine gap — credential-looking *values* under benign keys (e.g. `{"note":"password=hunter2"}`) were persisted; `secret_like_reason` now also matches `password|secret|api_key|access_token|private_key = value` patterns in string values.
 - State of the code (verified how): shadow path writes LivePolicyDecision NOT_EXECUTED only; 15-check gate + loopback HMAC adapter re-check at send; UNSAFE kinds hard-denied; checkpoint sha256-pinned. Reproduced on main: rl-defense 569 passed, v6 EVIDENCE verify OK (3 hashes), live.run 5 episodes 0 compromised, backend live-defense 96 passed; new suite 37 passed; phase3+phase6+runtime_ingest re-run green (35 passed).
 - Warnings for the next session: #458 merge conflict (contracts 0.22.0 vs #412 0.20.0) — land #458 first or rebase; #412 merge needs human review of authz tightening per its own flag; `owned_test` environment value is the safety boundary — never register customer apps as it.
 
+
+
+### 2026-10-24 — Devin (Adam lane) — pilot rehearsal live leg
+- Did: ran `security_agents.cli --target examples/inventory-lite --mode live --i-have-authorization --auto-approve --validate 2 --max-usd 8` with `secret:org:ANTHROPIC_API_KEY`; committed the report JSON + updated `docs/rehearsal/2026-10-24-inventory-lite.md` (branch `docs/adam/live-inventory-rehearsal-evidence`).
+- State: all 7 roles `provider_mode=live` succeeded; planted IDOR confirmed+accepted+hardened; CWE-362 transfer-race hypothesis inconclusive. Live leg of the two-org real-provider rehearsal is now closed.
+- Also: merged #441 (C7), #535 (tenant protection + 0016), #517; #537 landed. Merge order tracked in coordination/messages/20261024T224500Z.
+
+### 2026-10-24 — Devin (agent, Adam) — seven-agent workflow live evidence + inspection
+- Did: audited all seven AgentSpecs, tool allowlists, contracts and the orchestrator state machine (`workflow/states.py`, `tools/registry.py` enforcement chain: kill switch → agent allowlist → step allowlist → arg schema → scope guard → per-tool budget → handler). Ran a budgeted **live-Claude** end-to-end assessment on `examples/payments-lite` (explicit provider/budget approval, $8 cap) on branch `feat/adam/seven-agent-live-evidence`; wrote run manifest `security-agents/tests/artifacts/live/20261024T213713Z-MANIFEST.md` + report/summary/scout/probe/role-separation artifacts + RecordingProvider JSONL.
+- State of the code (verified by execution): assessment `asm_01M5QXE06VSZYP7297NN5SN1EH` → `completed`. Probe executed `access_control.ownership@1` (matches_expectation=false → CWE-639 confirmed, not asserted). Patch worked only in its worktree: new `tests/test_payment_ownership.py` failed on unpatched code then passed after the ownership-check edit (suite 16/1→17/0). Verify re-applied the diff on a fresh checkout and re-ran the same check (matches_expectation=true), suite 17/0, added tests 4/0 → deterministic verdict `accepted`. CWE-841 finding honestly stayed `hypothesis` under `--validate 1`. Genuine failures recorded, not painted green: 3 `SCHEMA_INVALID` repairs, 1 `NO_UNIQUE_MATCH` edit retry, 1 `UNPATCHED_UNAVAILABLE` denial.
+- Commands run and results (executed): `pytest tests -q` → 582 passed / 24 skipped; `RUN_LIVE_LLM_EVAL=1 LIVE_SEVEN_MAX_USD=8 pytest -q -m live tests/test_live_provider.py -s` → 4 passed in 166.6 s; live usage 267,347 tokens / $0.0354 / 6.3 s sandbox; model `claude-haiku-5-5` all roles; specialists: scout/probe/diagnose/verify used trained models, trace/fortify/patch recorded honest `baseline:*` fallbacks.
+- Assumptions / open questions: check transport `inprocess` only (no docker on this box → HTTP transport + container-kill test skipped, recorded as limitation).
+- Next steps: PR open for review; coordinate eval/backend finding-contract items with Agent 9 (eval score_api changes already landed on main via #516).
+- Warnings for the next session: live runs cost money — always gate behind `RUN_LIVE_LLM_EVAL` + explicit approval; `tests/artifacts/live/*` now contains real run artifacts, keep naming convention `<UTC ts>-<label>.json`.
 ### 2026-10-24 — security/privacy lead (Devin session 94914ecc)
+
 - Did: Audited private-code data flows end-to-end and wrote `docs/security/TENANT_DATA_PROTECTION.md`; added `backend/tests/test_tenant_isolation_adversarial.py` (17 tests: 28-path read denial, write denial, SSE, artifacts incl. NULL-project, jobs trace-strip, forged scope/repo/context-pack claims, ingest-token binding, viewer floor, forged-ref payload/memory stores, RLS probe-role verify, store GUC smoke, full purge); implemented FORCE RLS on index_payloads/index_snapshots (migration 0016 + `set_config('ari.project_id')` in `_validate_ref`, `find_snapshot`, `PostgresMemoryStore._validate`, purge); implemented `backend/privacy.py::purge_project` (FK-safe full tenant delete + refcount-aware artifact objects + bare-clone removal; audit_events retained by design).
 - State of the code: all 334 backend tests pass incl. 17 new adversarial tests; ruff clean on touched files; no isolation hole found at app layer (require_project uniform).
 - Decisions: RLS scoped to the two source-content tables only (documented in doc §6); purge is operator-invoked, no TTL scheduler (documented gap).
@@ -583,7 +599,6 @@ adds an entry before ending.
 - **Warnings:** Do not start Phase 1 work without explicit authorization. CI
   link/secret checks are not automated yet (INFRA-003).
 
-
 ### 2026-10-17 — Sarosh implementation agent — INTEL-001..008, PR #6
 
 - Implemented persistent SHA-pinned Python intelligence on `feat/sarosh/code-intelligence`.
@@ -945,7 +960,6 @@ production build. E2E result recorded in the PR.
 
 Published the complete feature inventory, evidence boundaries and prioritized checklist as [issue #244](https://github.com/adamissac/ari-ai/issues/244), with dated report in [PRODUCT_READINESS_AUDIT_2026-10-17.md](PRODUCT_READINESS_AUDIT_2026-10-17.md) and immutable all-team message `20261017T203234Z-srihith-to-all-product-readiness-audit`. No application changes. Primary snapshot `882daa2`, publication base `b44d372`; accounts for resolved frontend #241, onboarding #239 (merged after the audit draft) and Fortify/M3 #243. Fresh sweep 1035 passed / 35 skipped / one audit Git-metadata failure; affected owned-target tests 2 passed after restoring metadata. Full audit discloses local opt-in skips, CI evidence, public readiness gaps and raw RL recomputation. Next: owners add acceptance evidence on issue #244; no feature is completed by this documentation change.
 
-
 ## 2026-10-17T23:35Z — Sarosh: UI provenance follow-ups
 
 PR [#282](https://github.com/adamissac/ari-ai/pull/282), `feat/sarosh/demo-provenance-labels`: dedicated real-commit/illustrative-analysis marker (#278), truthful synthetic drill/optional-Claude copy (#273 UI only), saved-live-evidence exception to sample-account copy plus historical missing red-to-green limitation and current runbook (#262). Preserve access-code gate, account framing and Sai's Defense Lab changes. Initial checks passed lint/typecheck/normal production build, 246 unit tests and four demo e2e tests; mobile visual inspection caught assessment-ID overflow, now wraps with a phone assertion. Final integrated checks pending. No live provider/backend run or raw historical artifact audit. Backend drill baseline/spend/rate-limit concerns stay on #273.
@@ -1064,15 +1078,11 @@ Pushed to `main` at the user's request. Frontend only, no contract or backend ch
   - E2e, `tests/e2e/stack.py` (real API, Postgres, worker, `next start`, Playwright): 31 passed in 4.3 min.
   - Warning: `E2E_SKIP_BUILD=1` needs a `.next` built with `NEXT_PUBLIC_DEV_LOGIN=1`. A plain `npm run build` drops the dev sign-in form, and every signed-in test then times out at 240 s.
 
-
 Homepage invitation and evaluation picker polish: responsive action cards, explicit simulation description, aligned native select. ESLint and TypeScript pass after rebuilding transport.
-
 
 Sign-in refinement: removed promotional side content and centered the shared AuthStage card. Verified centers at 720px/195px in 1440px/390px viewports, no horizontal overflow, and reduced-motion animation disabled. ESLint and TypeScript pass.
 
-
 Replaced game-like UI copy with evaluation terminology and synthetic/illustrative labels. Kept explicit isolated-test-network caveats and unchanged simulation contract fields. Lint, TypeScript and 13 focused lab tests pass.
-
 
 ### 2026-10-19 — live provider suite with real Claude (Adam's key)
 - `RUN_LIVE_LLM_EVAL=1 pytest -m live security-agents/tests/test_live_provider.py`: Scout, role separation and **seven roles end to end** passed live (`asm_01M594BBKZGTTVTY770XYT4HF7`, all seven agents `provider_mode=live`, Probe and Verify executed `checks.run_template`, about $1.27 total).
@@ -1113,8 +1123,6 @@ Removed the homepage Your next move section at owner request, including both act
   - `uv run mypy` was not run: root configuration checks `shared/shared`, `monitoring/monitoring`, and `standards/standards`, not backend.
 - **Not exercised:** live GitHub App requests or a visual browser check. CI was intentionally not watched after push per the task scope.
 
-
-
 ### 2026-10-19 — Defense Lab page simplified for demo visitors (Adam, `feat/adam/simplify-defense-lab`)
 - `frontend/app/lab/page.tsx` rebuilt around "just the numbers": intro is one lede line plus the controlled-test-environment caveat; the three headline metrics lead; scoreboard shows one compact card per headline metric (the fourth metric, false-disruption rate, was dropped from the page); the "How these scores work" block, per-scenario metric explorer and checkpoint hash list are gone. Provenance (source path, env, run, seeds) remains under a collapsed "Where these numbers come from" footer.
 - `frontend/components/lab-replay.tsx`: story panel no longer shows the "Cost" row or the "Technical details for this step" disclosure (raw action, step reward, cumulative score, reward-component bars). Map, service inspector, key moments, scrubber and the labelled ground-truth overlay are unchanged.
@@ -1153,8 +1161,6 @@ Removed the homepage Your next move section at owner request, including both act
 - Made `DefenseSwitch` light by default for theme-token panels and retained its existing white styling behind `tone="dark"` for the Monitoring header.
 - Added light/default and dark-tone class assertions.
 
-
-
 ## 2026-10-19 — Defense Lab redesign v2 (`feat/adam/lab-redesign-v2`)
 - Adam feedback: the all-dark-orange console still looked "vibe coded"; wants contrast/white sections and a fresher node map (kairo.security reference).
 - `frontend/app/lab/page.tsx`: scoreboard back on `.paper` (white section, which the night theme already styles light); eyebrows numbered "01 — The numbers" / "02 — Watch it in action".
@@ -1162,7 +1168,6 @@ Removed the homepage Your next move section at owner request, including both act
 - Executed: lint, typecheck, `npm run build`; Playwright screenshots at 1440px + 390px.
 
 2026-10-19 Adam: finishing #352 against the merged Defense Lab redesign. Preserved both handoffs during the main merge; added a real-stack browser assertion for turning monitoring off/on and verifying persistence after reload. Production build passes; final lint, typecheck, unit and browser results are recorded in the PR.
-
 
 2026-10-20T01:10:10.487930+00:00 Adam: landing redesign on feat/adam/landing-redesign. Replaced scroll-swapped reading sections with manual process tabs and walkthrough buttons, bounded home wheel momentum, and added the requested cinematic footer. Captured and inspected Ari desktop/mobile previews. Kairo public source and owner-supplied screenshots informed the design; connected-browser tools were unavailable, so no live Kairo capture is claimed. Validation results in PR.
 
@@ -1179,7 +1184,6 @@ Simplify project navigation to Code review and 7 agents. Move settings, scopes, 
 Keep organization/repository/commit navigation scoped to the selected repository and SHA. Real commit runs stay inline in a two-tab reviewer/seven-agent workspace with demo-style agent rail and recorded replay; no redirect to shared project history. Resolve the repository’s actual project, search older run pages, reject mismatched results and retain scoped remediation approvals. Optional narrated quick reads are explicitly requested and separate from executed records. Branch `fix/adam/commit-workspace`; validation in PR.
 
 Review follow-up: retain accepted starts while history refreshes to prevent duplicate paid runs; lift newly connected repository IDs into the commit workspace; correct replay indexing; bound project lookup concurrency and tolerate unrelated project errors. Added regression coverage for these cases.
-
 
 ## Automatic commit assessments — 2026-10-21
 
@@ -1201,7 +1205,6 @@ Next experiment: preregister validation coverage of quiet traffic with a fresh h
 using the actual incumbent as comparator. Do not promote v8 from its historical packet.
 
 Validation results are recorded in the continuation PR and coordination message.
-
 
 Final verification for PR #375 (`f9962eb`): from `rl-defense/`, run the existing
 v8 worktree's `.venv/bin/python -m pytest -q` with
@@ -1318,7 +1321,6 @@ and its documented workspace PYTHONPATH. Source-byte/reference/registry guards,
 complete primary/secondary reporting and failure evidence are implemented; no
 automatic model choice, approval or promotion. This requested task ends at preparation.
 
-
 ### Automatic/manual mode and Haiku-only follow-up (#377 / #380)
 
 Implemented per-repository persisted ON/OFF, owner-only API, migration 0009 and proposed additive schema 0.15.0; manual Run shown when OFF. Added signed-sender gate and per-project start quotas that defer every excess commit durably. Production/staging gateway, Railway startup and quick-read enforce Haiku 5.5. Historical evidence labels preserved. Contract review requested from Alan; full test/CI and deployment verification remain pending.
@@ -1346,7 +1348,6 @@ uniform seed2 persistent43203,84/84 compromised vs v6 0/84. No holdout reruns,
 retries or promotion. Real registry digest remains c3455933…; v6 stays deployed.
 Results/provenance: `rl-defense/results/live-retrain-v10/PROVENANCE.md`.
 Future experiments need fresh preregistration/holdout; no follow-up run launched.
-
 
 ### 2026-10-21 — automatic commit review fixes (#377)
 
@@ -1700,7 +1701,6 @@ allow only local abstain/monitor; hypothetical fixture agreement cannot authoriz
 execution.15 tests pass; source inventory and full research docs pending. See
 first-responder INTEGRATION_PROPOSAL and immutable message to Grok/shared owner.
 
-
 ### Phase 7B specification and invariant verification
 
 Research report: docs/research/first-responder/README.md. CONDITIONAL GO for
@@ -1709,7 +1709,6 @@ Seven-agent source inventory pins 71118928866d6974ba0ec9532420a9fc71187318.
 23 fixture/provenance tests pass; scoped Ruff and strict adapter mypy pass.
 No collection, agent calls, training, checkpoint promotion or enforcement.
 Remaining: broader regressions, PR review/CI and authorized research-only merge.
-
 
 ### Phase 7B research PR #437 — specification delivered
 
@@ -1735,7 +1734,6 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - Scout retrained and **promoted**: macro_f1 0.349 vs best deterministic baseline 0.084 (static_analyze_patterns). Checkpoint + `results/scout.json`/REPORT.md committed. Other specialists have no field-compatible eval rows — their tuning signal is the live eval scores, not training data.
 - Eval harness: `run.py` cleanup survives missing `gh` auth; `score_api.py` accepts the bare-list assessments response. All 35 cases pushed as `eval/20261024-110115/*` branches; assessments accumulate live pending a fresh `hackatl_session` for scoring + scope widening (`access_control.authentication` category).
 - Test scope fixture (`make_scope` default) now grants all three check categories — required for the f2 listing invariant after the authentication template landed.
-
 
 ## 2026-10-24 — Devin (Adam): first live 45-case eval + baseline
 
@@ -1770,7 +1768,6 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - Outstanding: the full seven-agent *live-provider* assessment on this fixture needs
   `ANTHROPIC_API_KEY` (`RUN_LIVE_LLM_EVAL=1`); scripted transports cannot honestly
   produce novel findings on it by design.
-
 
 ## 2026-10-24 late — Devin pilot-readiness lane (session 174c2824231b457a8954115bff931884)
 
