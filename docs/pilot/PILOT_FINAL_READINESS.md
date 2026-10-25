@@ -136,3 +136,17 @@ SELECT count(*) FROM index_payloads; COMMIT;                                 -- 
 - #570 redaction fix merged as `2c825c4e`: re-probe on main 18/18 intel + 7/7 `redact_text` PASS. Prod deploy of that SHA still to be checked.
 - Governance: merge commits `4fdcad95` (#538) and `e44d27d7` (#536), plus squash `0272616e` (#540, authored by `devin-ai-integration[bot]`), carry
   `Co-Authored-By: Devin AI` trailers on main, which violates `human-only-git-attribution`. Rewriting history needs a force-push to main (owner decision; not done).
+
+## Hosted run 2 on prod (asm_01M5RCVC20ZMYH8EKTZQP40W73, commit 7cf48dee) — 2026-10-25
+
+Source: read-only prod DB queries (default_transaction_read_only=on).
+
+- Created 02:04:50Z, trigger `manual`, **created_by `rehearsal-alice` (synthetic, github_id NULL)**, not Adam. Ownership of this run is unresolved (C13).
+- COMPLETED 02:06:17Z, usage $0.029. All seven roles ran and succeeded: scout, reviewer, probe x2, trace, diagnose, patch, fortify, verify.
+- Planted IDOR (`GET /accounts/{account_id}` missing ownership filter) progressed diagnosed → verified → **hardened**. Regression registered (`register_verified_regression` succeeded).
+- Approval `apv_01M5RCX247KZGRRK43F6G8TZQY`: `auto delivery: pre-approved by the project owner`, decided_by Adam's real user (project `delivery_mode=auto`, `delivery_authorized_by` = Adam). This is a standing owner pre-approval; a **per-fix human approval click was not exercised**.
+- **Fix PR NOT delivered.** Job `deliver_verified_patch` failed `CONFLICT_STATE: the stored diff was redacted; Verify tested different bytes`. Repo shows no new branch/PR (only `ari/build-recipe`, PR #1). `main` unchanged at 7cf48dee.
+- Root cause (reproduced locally): `ArtifactStore.put_text` applies log-mode `redact_text` to patch diffs; after #570 the generic kv rule rewrites ordinary code in ledgerlite/store.py (`tokens: dict[str, str] = ...` → `[REDACTED:kv] str] = ...`, `store.tokens = {` → `store.[REDACTED:kv]`). Delivery's byte-binding check then correctly refuses. My #570 re-probe covered error strings and code-intel, not backend diff artifacts — a gap in my verification.
+- Fix in progress: `fix/adam/redaction-code-safe` (code-mode redaction for diff/source artifacts: high-confidence patterns + quoted-literal-only kv).
+
+Product decision (Adam, 2026-10-25): one shared per-project review quota, all triggers, 10/hour and 50/day; over quota = skipped (not queued); $50/day spend cap retained. Branch `feat/adam/shared-review-quota`. Replaces the deferral loop behind the prod queue churn.
