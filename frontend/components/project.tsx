@@ -48,6 +48,7 @@ const GROUPS: { label: string; items: RailItem[] }[] = [
   {
     label: 'Configure',
     items: [
+      { href: '/onboarding', label: 'Onboarding' },
       { href: '/simulate', label: 'Simulate' },
       { href: '/settings', label: 'Settings' },
     ],

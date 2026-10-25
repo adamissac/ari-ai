@@ -19,6 +19,7 @@ it('groups every project route under labelled rail groups', () => {
     ['Monitoring', '/projects/p1/monitoring'],
     ['Authorized scopes', '/projects/p1/scopes'],
     ['Expectations', '/projects/p1/expectations'],
+    ['Onboarding', '/projects/p1/onboarding'],
     ['Simulate', '/projects/p1/simulate'],
     ['Settings', '/projects/p1/settings'],
   ]);

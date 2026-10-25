@@ -6,10 +6,7 @@ coordination/CONTRACTS.md.
 """
 
 SCHEMA_VERSION = (
-    "0.22.0"  # 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING;
-    # 0.22 ops readiness (additive): ReadinessStatus gains workers/capabilities/
-    #      capabilities_ready/git_sha/schema_version; HealthStatus gains
-    #      git_sha/schema_version; new DiagnosticsReport. /readyz consumers only.
+    "0.26.0"
     # 0.6 intelligence memory (PR #39); 0.7 security standards + incidents (PR #49);
     # 0.8 FindingDetail / AssessmentReport response DTOs (additive);
     # 0.9 CheckCategory enum (Probe ids + V0 fixture aliases);
@@ -40,8 +37,11 @@ SCHEMA_VERSION = (
     #      default to false (owner must explicitly enable; PR #385).
     # 0.19 ProjectSettings.delivery_mode (auto | pull_request | manual, default auto) and
     #      server-set delivery_authorized_by (additive, ADR-0021).
-    # 0.20 reserved by open PR #412 (Phase 6.5 RL-gated pilot). This branch does
-    #      not claim 0.20.0 so both PRs can land independently.
+    # 0.20 live-defense Phase 6.5 RL-gated pilot infrastructure (additive):
+    #      ConnectedApplication.rl_gated_pilot; RL readiness categories A–J;
+    #      evaluation plan with unset thresholds; policy serving contract;
+    #      hosted-inference readiness config. ready=true only if every mandatory
+    #      category is PASS. No new executable action.
     # 0.21 live-defense Phase 7A first-responder (additive): OFF/MONITOR|SHADOW/
     #      ASSISTED RESPONSE modes, deterministic orchestrator decisions,
     #      seven-agent capability registry, runtime↔code correlation,
@@ -49,4 +49,11 @@ SCHEMA_VERSION = (
     #      No AUTO-EXECUTE. LLM prose is never proof of a confirmed threat.
     #      evidence_state=verified requires independently executed verification
     #      evidence, not Verify eligibility.
+    # 0.22 ops readiness (additive): readiness and diagnostics DTOs.
+    # 0.23 live-defense Phase 7C (additive): first-responder execution records.
+    # 0.24 live-defense observability (additive): investigation and diagnostics DTOs.
+    # 0.25 pilot security hardening (additive): Repository.disconnected_at and
+    #      the canonical repository disconnect lifecycle.
+    # 0.26 customer onboarding (additive): computed OnboardingStatus steps and
+    #      owner-triggered OnboardingTestEvent (real owned_staging ingest).
 )
