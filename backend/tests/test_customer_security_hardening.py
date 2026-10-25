@@ -423,3 +423,105 @@ class TestDisconnectLifecycle:
         assert r.status_code == 403
         repo = alice.get(f"/api/v1/repositories/{rid}").json()
         assert repo["disconnected_at"] is not None
+
+    def test_disconnect_cancels_linked_agent_steps_and_running_jobs(self, client_factory):
+        """R2: the sweep must reach live-defense agent steps through the trusted
+        repo<->mapping linkage (app -> mapping -> repo), not just repo_id payloads,
+        and running steps get cooperative cancel, not silent continuation."""
+        from backend.db import (
+            connected_applications,
+            deploy_commit_mappings,
+            first_responder_decisions,
+        )
+        from backend.services import repository_revocation
+
+        alice, bob = client_factory("alice"), client_factory("bob")
+        ids = setup_project(alice, bob)
+        rid, pid = ids["repo"], ids["project"]
+        uid = alice.me["user"]["id"]
+
+        with transaction() as conn:
+            conn.execute(
+                sa.insert(connected_applications).values(
+                    id="app-r2-1",
+                    project_id=pid,
+                    name="staging",
+                    environment="owned_test",
+                    created_by=uid,
+                    doc={},
+                )
+            )
+            conn.execute(
+                sa.insert(deploy_commit_mappings).values(
+                    id="map-r2-1",
+                    project_id=pid,
+                    application_id="app-r2-1",
+                    repo_id=rid,
+                    commit_sha="a" * 40,
+                    created_by=uid,
+                    doc={},
+                )
+            )
+            conn.execute(
+                sa.insert(first_responder_decisions).values(
+                    id="dec-r2-1",
+                    project_id=pid,
+                    application_id="app-r2-1",
+                    dedupe_key="t:dec-r2-1",
+                    action="investigate",
+                    doc={},
+                )
+            )
+            jobmod.enqueue(
+                conn,
+                "live_defense_first_responder",
+                {"project_id": pid, "application_id": "app-r2-1"},
+                dedupe_key="t:fr-parent",
+            )
+            jobmod.enqueue(
+                conn,
+                "live_defense_agent_step",
+                {"project_id": pid, "decision_id": "dec-r2-1", "agent": "scout"},
+                dedupe_key="t:fr-step",
+            )
+            running_id, _ = jobmod.enqueue(
+                conn,
+                "live_defense_agent_step",
+                {"project_id": pid, "decision_id": "dec-r2-1", "agent": "trace"},
+                dedupe_key="t:fr-step-running",
+            )
+            conn.execute(sa.update(jobs).where(jobs.c.id == running_id).values(status="running"))
+            # An unrelated app's work in the same project must survive.
+            jobmod.enqueue(
+                conn,
+                "live_defense_agent_step",
+                {"project_id": pid, "decision_id": "dec-other", "agent": "scout"},
+                dedupe_key="t:fr-step-other",
+            )
+
+        alice.post(f"/api/v1/repositories/{rid}/disconnect")
+
+        with transaction() as conn:
+            by_dedupe = {
+                r.dedupe_key: r
+                for r in conn.execute(
+                    sa.select(jobs.c.dedupe_key, jobs.c.status, jobs.c.cancel_requested)
+                ).mappings()
+            }
+            assert by_dedupe["t:fr-parent"]["status"] == "cancelled"
+            assert by_dedupe["t:fr-step"]["status"] == "cancelled"
+            running = by_dedupe["t:fr-step-running"]
+            assert running["status"] == "running" and running["cancel_requested"] is True
+            assert by_dedupe["t:fr-step-other"]["status"] == "queued"
+
+            # The canonical callback check reports both revocation layers.
+            assert repository_revocation(conn, repo_id=rid) == "repository_disconnected"
+            assert (
+                repository_revocation(conn, repo_id=rid, application_id="app-r2-1")
+                == "repository_disconnected"
+            )
+            assert (
+                repository_revocation(conn, repo_id=None, mapping_id="map-r2-1")
+                == "deploy_mapping_revoked"
+            )
+            assert repository_revocation(conn, repo_id="rep_does_not_exist") is None
