@@ -128,3 +128,11 @@ SELECT count(*) FROM index_payloads; COMMIT;                                 -- 
   The role no longer exists, and no `prj_X` rows remain. `rehearsal-alice`/`rehearsal-eve` (github_id NULL) were inserted at 01:28:42, probably by the same actor
   writing directly to the DB rather than through an auth bypass. Not confirmed. No cleanup without Adam's approval.
 - Railway SSH sessions to the Postgres container at 01:40:50 and 01:41:13 (actor unknown).
+- 01:52:48Z: prod recovered on `580d2f67` (#532 merge deploy). `/readyz` ready, 12 workers, live LLM (`claude-haiku-5-5`).
+- C13 update: the only `github_id IS NULL` users in prod (7 users total) are `rehearsal-alice`/`rehearsal-eve`, created 01:28:42 while the prod API was returning 502.
+  They therefore came from a non-prod API process connected to the prod DB (consistent with `scripts/rehearsal/run_rehearsal.py`, which uses
+  `/auth/dev/login`, plus `test_tenant_isolation_adversarial.py`'s `ari_rls_probe` role), not from the prod dev-login endpoint. No Devin session in the org matches; the source is
+  being confirmed with Adam. Remaining action: Adam-approved cleanup of the 2 users, their sessions, memberships and project; then rotate the DB password.
+- #570 redaction fix merged as `2c825c4e`: re-probe on main 18/18 intel + 7/7 `redact_text` PASS. Prod deploy of that SHA still to be checked.
+- Governance: merge commits `4fdcad95` (#538) and `e44d27d7` (#536), plus squash `0272616e` (#540, authored by `devin-ai-integration[bot]`), carry
+  `Co-Authored-By: Devin AI` trailers on main, which violates `human-only-git-attribution`. Rewriting history needs a force-push to main (owner decision; not done).
