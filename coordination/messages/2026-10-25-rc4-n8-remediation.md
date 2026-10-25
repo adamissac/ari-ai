@@ -117,3 +117,63 @@ the real candidate head. See the PR checks section for same-SHA results.
 
 **GO FOR INDEPENDENT REVIEW** — not customer GO. Nothing merged, deployed, or
 enforcement-enabled.
+
+---
+
+# RC5 addendum — N9 statement-boundary fix (2026-10-25, later)
+
+Codex's repeat independent review of `4fdcf10c` (upstream PR #633,
+`docs/reviews/rc4-n8-independent/REPORT.md`) returned NO-GO on a single new
+P2: **N9** — the annotated-assignment alternative added by the N8 fix used
+`[^=\n]+?` for the type annotation, letting it cross `;` and redact an
+unrelated statement (`password: str; notice = "public notice"` →
+`notice = "[REDACTED:kv]"`). F1–F10, N1–N8, R2–R5, upstream composition and
+the split read/write limit control all passed.
+
+## N9 fix
+
+- Owner: reliability/redaction session (`devin-1dc1161e34044bc882cba44931c122b3`),
+  commit `231b1364f6d72847711fc4cfa7fa3f78f376bf1f` on
+  `feat/devin-execution-reliability` (fork PR #1). One character class:
+  `[^=\n]+?` → `[^=\n;#]+?` — the annotation span can no longer consume `;`
+  or `#` into another statement; `password: str == "x"` comparisons untouched.
+- Merged into the candidate: `bae66e01684e83f565a80bb21de75b0c3b168e81`.
+- Cascade: S3→S8 re-merged in order (forward-only). Stack tips after N9:
+  S1 `8a945e04` · S2 `93b4fe82` · S3 `b8ccb7a8` · S4 `19b97702` ·
+  S5 `87fd7149` · S6 `e6b7a326` · S7 `25904496` · S8 `1db36aed`.
+- `test_rc2_transfer_manifest.py` repinned to the N9-cascaded tips
+  (`0f97a901`); S8 re-aligned to the candidate after lint cleanup
+  (`1db36aed`) — zero diffs in `backend/ shared/ frontend/ security-agents/
+  .github/`.
+- Lint/style pass on the final tip: `86a5f846` (ruff format + E741/F541 in
+  `.github/release-review/route_findings.py`).
+
+## Verification on the final tree
+
+- Codex N9 probes (verbatim from PR #633 `test_additional.py`, committed as
+  `backend/tests/live_defense_e2e/test_rc4_n9_statement_boundaries.py`):
+  3/3 — byte-identical `redact_code` on the offending line, byte-identical
+  ArtifactStore diff roundtrip, split-limit positive control.
+- N8 probes 4/4, N7 probes 4/4 re-run; manifest + independent-review tests pass.
+- Full `backend/tests` on `86a5f846`: **843 passed, 9 skipped, 0 failed**
+  (includes all N1–N9, F1–F10, R2–R5).
+- GitHub CI on `86a5f846`: strict-regressions + all suite jobs green except
+  the opt-in paid `live` job (skipped by design); the pipeline's posted audit
+  remains NO-GO solely because `OPENAI_API_KEY` is not configured on the fork.
+- Codex's third CI "failure" (retained legacy
+  `test_global_user_limit_applies_on_all_routers`) is a stale test asserting
+  the pre-#607 single-limit contract; the adapted
+  `rate_limit_read_per_minute` variant is the correct expectation per upstream
+  #607, and Codex's own split-limit control passes.
+
+## Outstanding blockers (unchanged except the SHA)
+
+1. Codex exact-SHA review of **`86a5f8464b2855f0f3e014e9616e254bc7bdf8f3`**
+   (integration tip `1ef6d325` adds the pipeline report commit, docs only).
+2–4. Same as above (Adam's S1→S8 sign-off; fork secrets + automation
+   approvals; ops items).
+
+## Verdict (RC5)
+
+**GO FOR INDEPENDENT REVIEW** on `86a5f846` — not customer GO. Nothing merged,
+deployed, or enforcement-enabled.
