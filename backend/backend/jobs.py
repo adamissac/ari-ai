@@ -23,8 +23,8 @@ from typing import Any
 import sqlalchemy as sa
 from sqlalchemy.engine import Connection
 
-from backend.db import assessments, job_events, jobs, worker_heartbeats
-from backend.redaction import redact
+from backend.db import assessments, first_responder_invocations, job_events, jobs, worker_heartbeats
+from backend.redaction import redact, redact_text
 from backend.settings import get_settings
 from shared.base import utcnow
 from shared.errors import ErrorCode
@@ -219,8 +219,8 @@ def record_event(
             attempt=row["attempts"],
             worker=worker,
             category=category,
-            reason=(reason or "")[:2000] or None,
-            details=details,
+            reason=(redact_text(reason or "")[:2000] or None),
+            details=redact(details),
         )
     )
 
@@ -242,6 +242,11 @@ def transition(
         values.setdefault("finished_at", sa.func.now())
     if category is not None:
         values.setdefault("error_category", category)
+    # Errors, diagnostics and operator notes may carry credentials leaked into
+    # exception text; nothing sensitive is ever persisted to the job row.
+    for key in ("last_error", "recovery", "result"):
+        if values.get(key) is not None:
+            values[key] = redact(values[key])
     res = conn.execute(
         sa.update(jobs)
         .where(jobs.c.id == row["id"], jobs.c.status == row["status"])
@@ -266,6 +271,56 @@ def _locked(conn: Connection, job_id: str, *where: Any, skip_locked: bool = Fals
         .mappings()
         .first()
     )
+
+
+# ProviderAttempt states that leave the billable outcome unresolved. Mirrors
+# shared.live_defense.ProviderAttemptState, kept as literals so the queue never
+# imports the domain model: a doc written before the field existed simply has
+# no unresolved rows.
+UNRESOLVED_LEDGER_STATES = frozenset({"reserved", "in_flight", "sent", "uncertain"})
+
+
+def unresolved_billable_attempt(
+    conn: Connection, payload: dict[str, Any] | None
+) -> dict[str, Any] | None:
+    """Return the unresolved billable-request ledger row for a job payload, if any.
+
+    The first-responder ProviderAttempt ledger persists a reservation inside
+    ``first_responder_invocations.doc.execution`` before the provider call is
+    sent. An abrupt worker death after that commit leaves ``effect_state``
+    NULL even though a billable request may have happened; the ledger is then
+    the only record. Pure canonical reads are never reserved, so this check
+    only fires on real external sends. Used by both ``claim`` (a picked job is
+    never handed out with an unresolved ledger row) and
+    ``execution.reconcile`` (expired leases become ``recovery_required``).
+    Owner/attempt fencing for the operator lands in the returned diagnostics.
+    """
+    invocation_id = (payload or {}).get("invocation_id")
+    if not invocation_id:
+        return None
+    doc = conn.execute(
+        sa.select(first_responder_invocations.c.doc).where(
+            first_responder_invocations.c.id == invocation_id
+        )
+    ).scalar_one_or_none()
+    if not isinstance(doc, dict):
+        return None
+    record = doc.get("execution") or {}
+    if record.get("uncertain_provider_outcome"):
+        return {
+            "invocation_id": str(invocation_id),
+            "ledger_state": "uncertain_provider_outcome",
+        }
+    for attempt in record.get("provider_attempts") or []:
+        if attempt.get("status") in UNRESOLVED_LEDGER_STATES:
+            return {
+                "invocation_id": str(invocation_id),
+                "ledger_attempt_id": attempt.get("id"),
+                "ledger_attempt_status": attempt.get("status"),
+                "idempotency_key": attempt.get("idempotency_key"),
+                "effect_key": attempt.get("effect_key"),
+            }
+    return None
 
 
 def _project_for(conn: Connection, payload: dict[str, Any]) -> str | None:
@@ -483,69 +538,98 @@ def claim(conn: Connection, owner: str, lease_s: int, kinds: list[str] | None = 
             sa.text("SELECT pg_advisory_xact_lock(:a, :b)"),
             {"a": CLAIM_LOCK[0], "b": CLAIM_LOCK[1]},
         )
-    row = (
-        conn.execute(
-            _CLAIM_SQL,
-            {
-                "owner": owner,
-                "lease_s": lease_s,
-                "kinds": kinds or [],
-                "kinds_empty": not kinds,
-                "project_limit": project_limit,
-                "global_limit": global_limit,
-                "emergency_limit": emergency_limit,
-                "emergency_kinds": sorted(EMERGENCY_JOB_KINDS),
-            },
-        )
-        .mappings()
-        .first()
-    )
-    if row is None:
-        return None
-    data = dict(row)
-    prev_status, prev_owner = data.pop("prev_status"), data.pop("prev_owner")
-    prev_lease = data.pop("prev_lease_expires_at")
-    job = Job(**data)
-    ev = {"id": job.id, "project_id": job.project_id, "kind": job.kind, "attempts": job.attempts}
-    reclaimed = prev_status == JobStatus.running
-    record_event(
-        conn,
-        ev,
-        JobStatus.running.value,
-        from_status=prev_status,
-        worker=owner,
-        category=ErrorCategory.lease_expired.value if reclaimed else None,
-        reason="lease re-claimed after previous owner lost it" if reclaimed else "claimed",
-        details=(
-            {
+    params = {
+        "owner": owner,
+        "lease_s": lease_s,
+        "kinds": kinds or [],
+        "kinds_empty": not kinds,
+        "project_limit": project_limit,
+        "global_limit": global_limit,
+        "emergency_limit": emergency_limit,
+        "emergency_kinds": sorted(EMERGENCY_JOB_KINDS),
+    }
+    while True:
+        row = conn.execute(_CLAIM_SQL, params).mappings().first()
+        if row is None:
+            return None
+        data = dict(row)
+        prev_status, prev_owner = data.pop("prev_status"), data.pop("prev_owner")
+        prev_lease = data.pop("prev_lease_expires_at")
+        job = Job(**data)
+        ev = {
+            "id": job.id,
+            "project_id": job.project_id,
+            "kind": job.kind,
+            "attempts": job.attempts,
+        }
+        reclaimed = prev_status == JobStatus.running
+        # One fenced recovery protocol: a picked job whose billable-request
+        # ledger shows an unresolved attempt is never handed to a worker. A
+        # fast reclaim beating the reconciler would otherwise reissue the
+        # lease and let the handler hit its reservation guard (or replay an
+        # unknown billable call); route it to ``recovery_required`` instead,
+        # with owner/attempt fencing, exactly like expired-lease reconcile.
+        ledger = unresolved_billable_attempt(conn, job.payload)
+        if ledger is not None:
+            diag = {
+                "reason": ErrorCategory.uncertain_side_effect.value,
+                "uncertainty_source": "provider_attempt_ledger",
                 "previous_owner": prev_owner,
-                "previous_lease_expires_at": prev_lease.isoformat() if prev_lease else None,
+                "previous_lease_expires_at": (prev_lease.isoformat() if prev_lease else None),
+                "attempt": job.attempts,
+                **ledger,
+                "required_action": "confirm whether the external effect was applied, then "
+                "resolve as applied, not_applied or retry",
             }
-            if reclaimed
-            else None
-        ),
-    )
-    if job.attempts - job.defer_count > job.max_attempts:
-        locked = _locked(conn, job.id)
-        transition(
+            transition(
+                conn,
+                _locked(conn, job.id),
+                JobStatus.recovery_required,
+                worker=owner,
+                category=ErrorCategory.uncertain_side_effect,
+                reason="claim found an unresolved billable request outstanding",
+                details=diag,
+                recovery=diag,
+                lease_owner=None,
+                lease_expires_at=None,
+            )
+            continue
+        record_event(
             conn,
-            locked,
-            JobStatus.dead,
+            ev,
+            JobStatus.running.value,
+            from_status=prev_status,
             worker=owner,
-            category=ErrorCategory.retry_exhausted,
-            reason="attempts exhausted (lease expired or repeated failure)",
-            lease_owner=None,
-            lease_expires_at=None,
-            last_error=redact(
+            category=ErrorCategory.lease_expired.value if reclaimed else None,
+            reason="lease re-claimed after previous owner lost it" if reclaimed else "claimed",
+            details=(
                 {
+                    "previous_owner": prev_owner,
+                    "previous_lease_expires_at": prev_lease.isoformat() if prev_lease else None,
+                }
+                if reclaimed
+                else None
+            ),
+        )
+        if job.attempts - job.defer_count > job.max_attempts:
+            locked = _locked(conn, job.id)
+            transition(
+                conn,
+                locked,
+                JobStatus.dead,
+                worker=owner,
+                category=ErrorCategory.retry_exhausted,
+                reason="attempts exhausted (lease expired or repeated failure)",
+                lease_owner=None,
+                lease_expires_at=None,
+                last_error={
                     "code": ErrorCode.JOB_LEASE_EXPIRED.value,
                     "message": "attempts exhausted (lease expired or repeated failure)",
                     "category": ErrorCategory.retry_exhausted.value,
-                }
-            ),
-        )
-        return None
-    return job
+                },
+            )
+            return None
+        return job
 
 
 def heartbeat_state(conn: Connection, job_id: str, owner: str, lease_s: int) -> str:
