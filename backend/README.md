@@ -19,7 +19,7 @@ agents use. Owner: **Srihith**. Spec: [docs/13](../docs/13_BACKEND_API_DESIGN.md
 | SSE with `Last-Event-ID` resume from the durable log | `api/routes.py` | implemented |
 | GitHub webhook: size bound, HMAC on raw body, delivery dedupe, redacted payload, enqueue | `api/webhooks.py` | implemented |
 | GitHub repository picker | `api/github_repos.py`, `github.py` | sign-in snapshot plus live refresh for trusted personal installations; organization repositories still refresh at sign-in |
-| Monitoring pipeline (normalize → correlate → policy → reassessment) | `pipeline.py` + `monitoring/` | implemented; symbol-level impact waits on code-intelligence |
+| Monitoring pipeline (normalize → reviewer filters → impact/correlation → policy → reassessment) | `pipeline.py` + `monitoring/` | implemented; nonempty `GITHUB_AUTO_COMMIT_AUTHORS` selects the per-commit rollout path |
 | AssessmentHost gates (transitions, scope, approval, budget, cancel, Verify independence) | `host.py` | implemented |
 | Claude gateway (Anthropic SDK, retries, typed errors, usage/USD, redaction, tool loop) | `llm.py` | implemented; live provider exercised once via `make smoke-live` (claude-opus-5-5, 2 turns, $0.009) |
 | RL recommendations + explanations via `rl_defense` | `pipeline.py` | integrated and tested against `rl-defense` on main |
