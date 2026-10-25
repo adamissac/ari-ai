@@ -38,6 +38,37 @@ describe('commit assessment chips', () => {
     expect(link.getAttribute('href')).toBe('/projects/project-1/assessments/new');
     expect(link.textContent).toContain('Completed');
     expect(screen.getByTestId('other-assessments').textContent).toBe('+1');
+    expect(screen.getByTestId('other-assessments').getAttribute('title')).toBe('1 more assessment of this commit');
+    expect(screen.getByTestId('other-assessments').getAttribute('aria-label')).toBe('1 more assessment of this commit');
+  });
+
+  it('pluralizes the accessible label for multiple additional assessments', async () => {
+    mocks.projectForRepository.mockResolvedValue('project-1');
+    mocks.assessments.mockResolvedValue({
+      items: [
+        assessment('newest', 'repo-1', 'sha-1', '2026-03-01T00:00:00Z', 'COMPLETED'),
+        assessment('middle', 'repo-1', 'sha-1', '2026-02-01T00:00:00Z', 'FAILED'),
+        assessment('old', 'repo-1', 'sha-1', '2026-01-01T00:00:00Z', 'AWAITING_APPROVAL'),
+      ],
+      next_cursor: null,
+    });
+    renderChip();
+    const count = await screen.findByTestId('other-assessments');
+    expect(count.textContent).toBe('+2');
+    expect(count.getAttribute('title')).toBe('2 more assessments of this commit');
+    expect(count.getAttribute('aria-label')).toBe('2 more assessments of this commit');
+  });
+
+  it('omits a matching assessment chip when its state is unknown', async () => {
+    mocks.projectForRepository.mockResolvedValue('project-1');
+    mocks.assessments.mockResolvedValue({
+      items: [assessment('unknown', 'repo-1', 'sha-1', '2026-02-01T00:00:00Z', 'UNKNOWN' as Assessment['state'])],
+      next_cursor: null,
+    });
+    renderChip();
+    await waitFor(() => expect(mocks.assessments).toHaveBeenCalled());
+    expect(screen.queryByTestId('commit-assessment-status')).toBeNull();
+    expect(screen.queryByTestId('not-reviewed')).toBeNull();
   });
 
   it('shows NOT REVIEWED only after the complete assessment list is read', async () => {

@@ -3,7 +3,7 @@
 
 # Agent board — live coordination dashboard
 
-Regenerated <built-in method strftime of datetime.datetime object at 0x7e685985cb10>. Comms channel: [issue #559](https://github.com/adamissac/ari-ai/issues/559). Protocol: `coordination/PROTOCOL.md`.
+Regenerated <built-in method strftime of datetime.datetime object at 0x703d78dbcb10>. Comms channel: [issue #559](https://github.com/adamissac/ari-ai/issues/559). Protocol: `coordination/PROTOCOL.md`.
 
 ## Active agents
 
@@ -11,7 +11,7 @@ Regenerated <built-in method strftime of datetime.datetime object at 0x7e685985c
 | --- | --- | --- | --- | --- | --- | --- |
 | alan-live-defense | Alan | security-agents/, live-defense Phase 6.5/7A/7C, interim shared/ contract approver | BLOCKED | Phase 7C authorized Scout/Diagnose execution (#458); Phase 6.5 RL-gated pilot infra (#412) | feat/alan/live-defense-phase7c-agent-execution, feat/live-defense-phase6-5-rl-gated-pilot | 9486a5b0 |
 | code-review-eval | Adam | standalone functional AI code reviewer evaluation + scorer integration | DONE | Reviewer eval report merged (#529); combined scorer verified on merged release-gate head | docs/reviewer-eval-report (merged), docs/adam/status-final-verification | 19a16af0 |
-| devin-console-refinement | Adam | frontend console refinement | READY_FOR_REVIEW | UI-010: accessible account menu, responsive project navigation, status marks, assessment metadata and commit assessment links | feat/adam/console-graphite | 50440662add24d30f8b7491e2b05f7e090ee5217 |
+| devin-console-refinement | Adam | frontend console refinement | READY_FOR_REVIEW | UI-010: accessible account menu, responsive project navigation, status marks, assessment metadata and commit assessment links | feat/adam/console-graphite | 44c1a3270156e4e6bc02fbbc38a71016c87cfc96 |
 | devin-defense-lab | Adam | Defense Lab pilot audit + two-org rehearsal + live-deployment rehearsal leg | BLOCKED | Live leg on adamissac/pilot-rehearsal-target: 2 pushes delivered 202 (recipe merge 256c8e8 @00:40, re-trigger 7cf48de @01:06) — no assessment/fix PR after ~25min; outcome only visible in prod UI/DB | feat/adam/defense-lab-pilot-audit | 6ffaccda |
 | devin-frontend-ui | Adam | frontend UI — landing rework + SaaS sidebar console revamp; pilot-readiness support (coordination lane) | READY_FOR_REVIEW | PR #536 landing + console revamp green/mergeable (owner review required); tracked #570 redaction fix — commander ruling adopted over-redaction, in CI; assessing remaining pilot work | feat/adam/home-deep-sea-landing | 9e89652e |
 | devin-frontend-ux | Adam | first-user usability — pilot UX workstream (PR #538 on #496) | READY_FOR_REVIEW | Named approval cards, two-step approve/confirm on assessment page + approvals inbox, plain-English replay (plainToolName), honest quick-read errors, flow map + blockers doc | feat/adam/first-user-usability | c890e2c9 |
@@ -100,7 +100,7 @@ Regenerated <built-in method strftime of datetime.datetime object at 0x7e685985c
 
 - **alan-live-defense**: hold; rebase onto post-integration main when asked
 - **code-review-eval**: none — workstream complete; #530 carries inverted score_api conflict resolution (verified clean) and is ready for final security review + merge by integration lead. Re-verify only if scorer code changes again.
-- **devin-console-refinement**: Commit and push console refinement; no PR or CI follow-up
+- **devin-console-refinement**: Commit and push console follow-up; no PR or CI follow-up
 - **devin-defense-lab**: owner checks prod project Assessments view; merge #571 then #532 goes green
 - **devin-frontend-ui**: monitor #570 CI + prod recovery; pick up unblocked pilot staging prep that does not need owner credentials
 - **devin-frontend-ux**: hold for integration-lead merge after #496; watch CI on current head

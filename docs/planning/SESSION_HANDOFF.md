@@ -16,6 +16,16 @@ adds an entry before ending.
 - Warnings for the next session:
 ```
 
+### 2026-10-25 — Devin (agent, Adam) — console commit-history overlay and assessment-count accessibility
+- Did: diagnosed the “2 Issues” Next dev badge on commit history as nested anchors: the whole commit row was a `Link`, and `CommitAssessmentChip` rendered another `Link` inside it. Restructured the row so commit details, SHA navigation, and assessment navigation are sibling links. The additional-assessment count now has singular/plural title and accessible name; unknown assessment states omit the chip.
+- State of the code: the console page now has no hydration warnings or Next overlay issues on `:3102`; comparing `:3101` confirmed the warnings were caused by this branch's nested link.
+- Commands run and results: the two affected unit files passed — 2 files, 10 tests; `npm run typecheck --prefix frontend` passed; `npm run lint --prefix frontend` passed with the existing `first-responder.tsx:173` warning. Playwright on `:3102` verified zero commit-history console errors and `data-error=false` at both viewports. Commit-detail on both `:3101` and `:3102` produced the same pre-existing `POST /api/analyze` 503 and no overlay issue.
+- Screenshots: refreshed `/home/ubuntu/research/console/shots/commit-history-1440x900.png` and `/home/ubuntu/research/console/shots/commit-history-390x844.png`; both show no issues badge.
+- Decisions made (ADR links): none.
+- Assumptions / open questions: the identical `POST /api/analyze` 503 on both worktrees is outside this change; left it untouched as requested.
+- Next steps: commit, run synchronization checks, confirm the outgoing commit has zero co-author trailers, then push.
+- Warnings for the next session: do not confuse the Next dev toolbar “N” icon with an issues badge.
+
 ### 2026-10-25 — Devin (agent, Adam) — console refinement (`feat/adam/console-graphite`)
 - Did: replaced the redundant non-home user bar with a keyboard-accessible real-session account menu; added mobile project-rail disclosure, CSS status marks, compact action radii and assessment metadata; linked connected-repository commit rows to matching assessments; kept `UserBar` on the landing page and made reveal content visible for reduced motion.
 - State of the code: implementation is on `feat/adam/console-graphite`; no backend, shared, or transport files changed. Section 6 investigation found a reveal/screenshot-capture artifact: below-fold project Runs & Replay and assessment phases/steps were hidden before scrolling and populated after scrolling, with no persistent layout-height defect. Reduced-motion `Reveal` now skips observation.

@@ -52,17 +52,30 @@ export function CommitAssessmentChip({ repoId, sha }: { repoId: string; sha: str
     .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
   const newest = matches[0];
   if (!newest) return <span data-testid="not-reviewed" className="font-mono text-[10px] uppercase tracking-[0.06em] text-faint">NOT REVIEWED</span>;
+  const status = ASSESSMENT_STATE[newest.state];
+  if (!status) return null;
+  const additionalCount = matches.length - 1;
+  const additionalDescription = `${additionalCount} more assessment${additionalCount === 1 ? '' : 's'} of this commit`;
   return (
     <>
       <Link
         href={`/projects/${lookup.projectId}/assessments/${newest.id}`}
-        aria-label={`${ASSESSMENT_STATE[newest.state].label} assessment`}
+        aria-label={`${status.label} assessment`}
         data-testid="commit-assessment-status"
         className="inline-flex"
       >
-        <Badge view={ASSESSMENT_STATE[newest.state]} />
+        <Badge view={status} />
       </Link>
-      {matches.length > 1 && <span className="font-mono text-[10px] text-muted" data-testid="other-assessments">+{matches.length - 1}</span>}
+      {additionalCount > 0 && (
+        <span
+          className="font-mono text-[10px] text-muted"
+          data-testid="other-assessments"
+          title={additionalDescription}
+          aria-label={additionalDescription}
+        >
+          +{additionalCount}
+        </span>
+      )}
     </>
   );
 }

@@ -5,7 +5,7 @@
   "state": "READY_FOR_REVIEW",
   "task": "UI-010: accessible account menu, responsive project navigation, status marks, assessment metadata and commit assessment links",
   "branch": "feat/adam/console-graphite",
-  "latest_sha": "50440662add24d30f8b7491e2b05f7e090ee5217",
+  "latest_sha": "44c1a3270156e4e6bc02fbbc38a71016c87cfc96",
   "prs": [],
   "claims": [
     "frontend/components/account-link.tsx",
@@ -20,7 +20,7 @@
   ],
   "depends_on": [],
   "blockers": [],
-  "last_update_utc": "2026-10-25T11:51:21Z",
-  "tests": "Frontend lint/typecheck/build passed; 91 unit files, 391 tests passed; selected E2E 20 passed, 1 stale landing-nav selector failed",
-  "next_action": "Commit and push console refinement; no PR or CI follow-up"
+  "last_update_utc": "2026-10-25T12:07:00Z",
+  "tests": "Console refinement: 91 unit files, 391 tests; typecheck/build passed; lint has 1 pre-existing warning. Follow-up: 2 focused unit files, 10 tests; typecheck/lint passed. Nested commit-row anchors caused 2 hydration issues on :3102; fixed. Commit history now has 0 console errors at both viewports. Commit-detail POST /api/analyze returns the same pre-existing 503 on :3101 and :3102.",
+  "next_action": "Commit and push console follow-up; no PR or CI follow-up"
 }
