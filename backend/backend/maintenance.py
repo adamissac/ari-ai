@@ -187,7 +187,14 @@ def _assessment_snapshot_ids(conn: Connection, project_id: str) -> set[str]:
 
 
 def _snapshot_is_protected(
-    conn: Connection, project_id: str, snapshot_id: str, s: Settings
+    conn: Connection,
+    project_id: str,
+    snapshot_id: str,
+    s: Settings,
+    *,
+    created_at: datetime,
+    grace_cutoff: datetime,
+    assessment_grace_cutoff: datetime,
 ) -> bool:
     from backend.intelligence_memory import expectation_decisions, verified_regression_memory
 
@@ -254,17 +261,18 @@ def _snapshot_is_protected(
             )
         ),
     ]
-    if s.retention_protect_assessment_snapshots:
-        checks.append(
-            sa.exists(
-                sa.select(1)
-                .select_from(assessments)
-                .where(
-                    assessments.c.project_id == project_id,
-                    assessments.c.doc["snapshot_id"].as_string() == snapshot_id,
-                )
-            )
+    assessment_reference = sa.exists(
+        sa.select(1)
+        .select_from(assessments)
+        .where(
+            assessments.c.project_id == project_id,
+            assessments.c.doc["snapshot_id"].as_string() == snapshot_id,
         )
+    )
+    if s.retention_protect_assessment_snapshots or created_at >= min(
+        grace_cutoff, assessment_grace_cutoff
+    ):
+        checks.append(assessment_reference)
     return any(conn.execute(sa.select(*checks)).one())
 
 
@@ -327,7 +335,7 @@ def _payload_prune_targets(
             .order_by(index_snapshots.c.created_at.desc())
         ).all()
         for sid, created in ranked[keep:]:
-            age_cutoff = assessment_grace if sid in assessment_ids else grace
+            age_cutoff = min(grace, assessment_grace) if sid in assessment_ids else grace
             if sid not in protected and created < age_cutoff:
                 prunable_ready.add(sid)
     return orphan_snapshots, prunable_ready
@@ -412,17 +420,25 @@ def _prune_index_payloads(
         for snapshot_id in sorted(superseded):
             with transaction(engine) as conn:
                 _scope_tenant(conn, project_id)
-                ready = conn.execute(
+                created_at = conn.execute(
                     sa.text(
-                        "SELECT 1 FROM index_snapshots "
+                        "SELECT created_at FROM index_snapshots "
                         "WHERE project_id = :project_id AND snapshot_id = :snapshot_id "
                         "FOR UPDATE"
                     ),
                     {"project_id": project_id, "snapshot_id": snapshot_id},
-                ).first()
-                if ready is None:
+                ).scalar_one_or_none()
+                if created_at is None:
                     continue
-                if _snapshot_is_protected(conn, project_id, snapshot_id, s):
+                if _snapshot_is_protected(
+                    conn,
+                    project_id,
+                    snapshot_id,
+                    s,
+                    created_at=created_at,
+                    grace_cutoff=_days(s.retention_snapshot_grace_days),
+                    assessment_grace_cutoff=_days(s.retention_assessment_snapshot_days),
+                ):
                     skipped_now_protected += 1
                     continue
                 payload = conn.execute(

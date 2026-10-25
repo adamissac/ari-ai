@@ -12,10 +12,12 @@ import subprocess
 import threading
 import time
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import pytest
 import sqlalchemy as sa
 from helpers import setup_project
+from sqlalchemy.engine import Connection
 
 from backend import jobs, maintenance
 from backend.db import (
@@ -45,7 +47,7 @@ from backend.intelligence_memory import (
     expectation_decisions,
     verified_regression_memory,
 )
-from backend.settings import get_settings
+from backend.settings import Settings, get_settings
 from shared.base import utcnow
 from shared.evidence import EvidenceRef
 from shared.ids import IdPrefix, new_id
@@ -55,7 +57,7 @@ from shared.intelligence_memory import ExpectationDecision, VerifiedRegression
 OLD = datetime.now(UTC) - timedelta(days=400)
 
 
-def _settings(**overrides):
+def _settings(**overrides: Any) -> Settings:
     # Tests exercise real deletes; production defaults to dry-run until an operator flips it.
     overrides.setdefault("retention_dry_run", False)
     return get_settings().model_copy(update=overrides)
@@ -84,10 +86,64 @@ def _ready_payloads(ids: dict[str, str], sha: str) -> SnapshotRef:
     return ref
 
 
-def _age_scoped(table: sa.Table, project_id: str, where, when: datetime = OLD) -> None:
+def _age_scoped(table: sa.Table, project_id: str, where: Any, when: datetime = OLD) -> None:
     with transaction() as conn:
         maintenance._scope_tenant(conn, project_id)
         conn.execute(sa.update(table).where(where).values(created_at=when))
+
+
+def _insert_assessment_reference(
+    ids: dict[str, str], ref: SnapshotRef, *, state: str = "COMPLETED"
+) -> str:
+    assessment_id = new_id(IdPrefix.asm)
+    with transaction() as conn:
+        maintenance._scope_tenant(conn, ids["project"])
+        conn.execute(
+            sa.insert(assessments).values(
+                id=assessment_id,
+                project_id=ids["project"],
+                repo_id=ids["repo"],
+                scope_id=ids["scope"],
+                commit_sha=ref.commit_sha,
+                trigger="api",
+                state=state,
+                doc={"snapshot_id": ref.snapshot_id},
+            )
+        )
+    return assessment_id
+
+
+def _decision_for_ref(
+    ids: dict[str, str], ref: SnapshotRef, expectation_id: str
+) -> ExpectationDecision:
+    return ExpectationDecision(
+        snapshot_ref=ref,
+        expectation_id=expectation_id,
+        status="confirmed",
+        reason="Retention race fixture decision",
+        expected_revision=0,
+        revision=1,
+        decided_by=ids["alice_uid"],
+        decided_at=utcnow(),
+    )
+
+
+def _index_snapshot_lock_waiting(timeout: float = 2.0) -> bool:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        with transaction() as conn:
+            blocked = bool(
+                conn.execute(
+                    sa.text(
+                        "SELECT EXISTS (SELECT 1 FROM pg_stat_activity "
+                        "WHERE wait_event_type = 'Lock' AND query LIKE '%index_snapshots%')"
+                    )
+                ).scalar_one()
+            )
+        if blocked:
+            return True
+        time.sleep(0.02)
+    return False
 
 
 def test_expired_sessions_and_idempotency_pruned(client_factory) -> None:
@@ -799,7 +855,7 @@ def test_binding_lock_serializes_with_cleanup(client_factory, monkeypatch) -> No
         )
     original_scope = maintenance._scope_tenant
 
-    def scoped_with_timeout(conn, project_id):
+    def scoped_with_timeout(conn: Connection, project_id: str) -> None:
         original_scope(conn, project_id)
         conn.execute(sa.text("SET LOCAL lock_timeout = '3s'"))
 
@@ -839,21 +895,7 @@ def test_binding_lock_serializes_with_cleanup(client_factory, monkeypatch) -> No
     cleaner = threading.Thread(target=cleanup)
     cleaner.start()
     assert cleanup_started.wait(5)
-    deadline = time.monotonic() + 2
-    blocked = False
-    while time.monotonic() < deadline:
-        with transaction() as conn:
-            blocked = bool(
-                conn.execute(
-                    sa.text(
-                        "SELECT EXISTS (SELECT 1 FROM pg_stat_activity "
-                        "WHERE wait_event_type = 'Lock' AND query LIKE '%index_snapshots%')"
-                    )
-                ).scalar_one()
-            )
-        if blocked:
-            break
-        time.sleep(0.02)
+    blocked = _index_snapshot_lock_waiting()
     assert blocked, "cleanup did not wait on the binding's FOR SHARE lock"
     release_binding.set()
     binder.join(5)
@@ -881,11 +923,28 @@ def test_binding_lock_serializes_with_cleanup(client_factory, monkeypatch) -> No
     binding_started = threading.Event()
     cleanup_first_result: dict[str, object] = {}
 
-    def pause_after_cleanup_lock(conn, project_id, snapshot_id, s):
+    def pause_after_cleanup_lock(
+        conn: Connection,
+        project_id: str,
+        snapshot_id: str,
+        s: Settings,
+        *,
+        created_at: datetime,
+        grace_cutoff: datetime,
+        assessment_grace_cutoff: datetime,
+    ) -> bool:
         if snapshot_id == first.snapshot_id:
             cleanup_locked.set()
             assert release_cleanup.wait(5)
-        return original_is_protected(conn, project_id, snapshot_id, s)
+        return original_is_protected(
+            conn,
+            project_id,
+            snapshot_id,
+            s,
+            created_at=created_at,
+            grace_cutoff=grace_cutoff,
+            assessment_grace_cutoff=assessment_grace_cutoff,
+        )
 
     monkeypatch.setattr(maintenance, "_snapshot_is_protected", pause_after_cleanup_lock)
 
@@ -906,21 +965,7 @@ def test_binding_lock_serializes_with_cleanup(client_factory, monkeypatch) -> No
     binder = threading.Thread(target=bind_after_cleanup_lock)
     binder.start()
     assert binding_started.wait(5)
-    deadline = time.monotonic() + 2
-    blocked = False
-    while time.monotonic() < deadline:
-        with transaction() as conn:
-            blocked = bool(
-                conn.execute(
-                    sa.text(
-                        "SELECT EXISTS (SELECT 1 FROM pg_stat_activity "
-                        "WHERE wait_event_type = 'Lock' AND query LIKE '%index_snapshots%')"
-                    )
-                ).scalar_one()
-            )
-        if blocked:
-            break
-        time.sleep(0.02)
+    blocked = _index_snapshot_lock_waiting()
     assert blocked, "binding did not wait on cleanup's FOR UPDATE lock"
     release_cleanup.set()
     binder.join(5)
@@ -942,6 +987,258 @@ def test_binding_lock_serializes_with_cleanup(client_factory, monkeypatch) -> No
     assessment = response.json()["assessment"]
     assert assessment["snapshot_id"] is None
     assert AssessmentHost(assessment["id"]).attach_snapshot(first) is False
+
+
+def test_terminal_assessment_uses_stricter_snapshot_and_assessment_grace(
+    client_factory: Any,
+) -> None:
+    ids = _ids(client_factory)
+    within_assessment_grace, beyond_both_graces, newest = [
+        _ready_payloads(ids, f"{i + 80:040x}") for i in range(3)
+    ]
+    _age_scoped(
+        index_snapshots,
+        ids["project"],
+        index_snapshots.c.snapshot_id == within_assessment_grace.snapshot_id,
+        when=datetime.now(UTC) - timedelta(days=31),
+    )
+    _age_scoped(
+        index_snapshots,
+        ids["project"],
+        index_snapshots.c.snapshot_id == beyond_both_graces.snapshot_id,
+        when=datetime.now(UTC) - timedelta(days=46),
+    )
+    _insert_assessment_reference(ids, within_assessment_grace)
+    _insert_assessment_reference(ids, beyond_both_graces)
+
+    out = maintenance.run_retention(
+        s=_settings(
+            retention_snapshots_per_repo=1,
+            retention_snapshot_grace_days=45,
+            retention_assessment_snapshot_days=30,
+            retention_protect_assessment_snapshots=False,
+        ),
+        dry_run=False,
+    )
+
+    report = out["deleted"]["index_payloads"][ids["project"]]
+    assert report["superseded_snapshots"] == 1
+    with transaction() as conn:
+        maintenance._scope_tenant(conn, ids["project"])
+        remaining = set(conn.execute(sa.select(index_snapshots.c.snapshot_id)).scalars())
+    assert within_assessment_grace.snapshot_id in remaining
+    assert beyond_both_graces.snapshot_id not in remaining
+    assert newest.snapshot_id in remaining
+
+
+def test_delete_recheck_applies_assessment_age_after_new_reference(
+    client_factory: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ids = _ids(client_factory)
+    target, newest = [_ready_payloads(ids, f"{i + 90:040x}") for i in range(2)]
+    _age_scoped(
+        index_snapshots,
+        ids["project"],
+        index_snapshots.c.snapshot_id == target.snapshot_id,
+        when=datetime.now(UTC) - timedelta(days=10),
+    )
+    original = maintenance._snapshot_is_protected
+    inserted = False
+
+    def add_assessment_before_recheck(
+        conn: Connection,
+        project_id: str,
+        snapshot_id: str,
+        s: Settings,
+        *,
+        created_at: datetime,
+        grace_cutoff: datetime,
+        assessment_grace_cutoff: datetime,
+    ) -> bool:
+        nonlocal inserted
+        if snapshot_id == target.snapshot_id and not inserted:
+            inserted = True
+            _insert_assessment_reference(ids, target)
+        return original(
+            conn,
+            project_id,
+            snapshot_id,
+            s,
+            created_at=created_at,
+            grace_cutoff=grace_cutoff,
+            assessment_grace_cutoff=assessment_grace_cutoff,
+        )
+
+    monkeypatch.setattr(maintenance, "_snapshot_is_protected", add_assessment_before_recheck)
+    out = maintenance.run_retention(
+        s=_settings(
+            retention_snapshots_per_repo=1,
+            retention_snapshot_grace_days=7,
+            retention_assessment_snapshot_days=30,
+            retention_protect_assessment_snapshots=False,
+        ),
+        dry_run=False,
+    )
+
+    report = out["deleted"]["index_payloads"][ids["project"]]
+    assert inserted
+    assert report["skipped_now_protected"] == 1
+    with transaction() as conn:
+        maintenance._scope_tenant(conn, ids["project"])
+        remaining = set(conn.execute(sa.select(index_snapshots.c.snapshot_id)).scalars())
+    assert target.snapshot_id in remaining
+    assert newest.snapshot_id in remaining
+
+
+def test_decision_write_waits_for_cleanup_delete(
+    client_factory: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ids = _ids(client_factory)
+    target, newest = [_ready_payloads(ids, f"{i + 100:040x}") for i in range(2)]
+    _age_scoped(
+        index_snapshots,
+        ids["project"],
+        index_snapshots.c.snapshot_id == target.snapshot_id,
+        when=OLD,
+    )
+    decision = _decision_for_ref(ids, target, "exp_cleanupfirst01")
+    store = PostgresMemoryStore()
+    original = maintenance._snapshot_is_protected
+    cleanup_locked = threading.Event()
+    release_cleanup = threading.Event()
+    writer_started = threading.Event()
+    outcome: dict[str, object] = {}
+
+    def pause_cleanup_with_lock(
+        conn: Connection,
+        project_id: str,
+        snapshot_id: str,
+        s: Settings,
+        *,
+        created_at: datetime,
+        grace_cutoff: datetime,
+        assessment_grace_cutoff: datetime,
+    ) -> bool:
+        if snapshot_id == target.snapshot_id:
+            cleanup_locked.set()
+            assert release_cleanup.wait(5)
+        return original(
+            conn,
+            project_id,
+            snapshot_id,
+            s,
+            created_at=created_at,
+            grace_cutoff=grace_cutoff,
+            assessment_grace_cutoff=assessment_grace_cutoff,
+        )
+
+    monkeypatch.setattr(maintenance, "_snapshot_is_protected", pause_cleanup_with_lock)
+
+    def cleanup() -> None:
+        outcome.update(
+            maintenance.run_retention(s=_settings(retention_snapshots_per_repo=1), dry_run=False)
+        )
+
+    def write_decision() -> None:
+        writer_started.set()
+        try:
+            store.put_decision(decision)
+        except Exception as exc:
+            outcome["write_error"] = exc
+
+    cleaner = threading.Thread(target=cleanup)
+    cleaner.start()
+    assert cleanup_locked.wait(5)
+    writer = threading.Thread(target=write_decision)
+    writer.start()
+    assert writer_started.wait(5)
+    blocked = _index_snapshot_lock_waiting()
+    release_cleanup.set()
+    writer.join(5)
+    cleaner.join(5)
+
+    assert blocked, "put_decision did not wait for cleanup's FOR UPDATE lock"
+    assert not writer.is_alive() and not cleaner.is_alive()
+    assert isinstance(outcome.get("write_error"), PermissionError)
+    with transaction() as conn:
+        maintenance._scope_tenant(conn, ids["project"])
+        remaining = set(conn.execute(sa.select(index_snapshots.c.snapshot_id)).scalars())
+        decision_count = conn.execute(
+            sa.select(sa.func.count()).where(
+                expectation_decisions.c.snapshot_id == target.snapshot_id
+            )
+        ).scalar_one()
+    assert decision_count == 0
+    assert target.snapshot_id not in remaining
+    assert newest.snapshot_id in remaining
+
+
+def test_decision_write_before_cleanup_delete_is_rechecked(
+    client_factory: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ids = _ids(client_factory)
+    target, newest = [_ready_payloads(ids, f"{i + 110:040x}") for i in range(2)]
+    _age_scoped(
+        index_snapshots,
+        ids["project"],
+        index_snapshots.c.snapshot_id == target.snapshot_id,
+        when=OLD,
+    )
+    decision = _decision_for_ref(ids, target, "exp_writerfirst01")
+    store = PostgresMemoryStore()
+    original_targets = maintenance._payload_prune_targets
+    plan_ready = threading.Event()
+    decision_committed = threading.Event()
+    outcome: dict[str, object] = {}
+
+    def pause_after_plan(
+        conn: Connection, project_id: str, s: Settings
+    ) -> tuple[set[str], set[str]]:
+        targets = original_targets(conn, project_id, s)
+        if project_id == ids["project"] and target.snapshot_id in targets[1]:
+            plan_ready.set()
+            assert decision_committed.wait(5)
+        return targets
+
+    monkeypatch.setattr(maintenance, "_payload_prune_targets", pause_after_plan)
+
+    def cleanup() -> None:
+        outcome.update(
+            maintenance.run_retention(s=_settings(retention_snapshots_per_repo=1), dry_run=False)
+        )
+
+    def write_decision() -> None:
+        try:
+            store.put_decision(decision)
+        except Exception as exc:
+            outcome["write_error"] = exc
+        finally:
+            decision_committed.set()
+
+    cleaner = threading.Thread(target=cleanup)
+    cleaner.start()
+    assert plan_ready.wait(5)
+    writer = threading.Thread(target=write_decision)
+    writer.start()
+    writer.join(5)
+    assert not writer.is_alive()
+    cleaner.join(5)
+
+    assert not cleaner.is_alive()
+    assert "write_error" not in outcome
+    report = outcome["deleted"]["index_payloads"][ids["project"]]
+    assert report["skipped_now_protected"] == 1
+    with transaction() as conn:
+        maintenance._scope_tenant(conn, ids["project"])
+        remaining = set(conn.execute(sa.select(index_snapshots.c.snapshot_id)).scalars())
+        decision_count = conn.execute(
+            sa.select(sa.func.count()).where(
+                expectation_decisions.c.snapshot_id == target.snapshot_id
+            )
+        ).scalar_one()
+    assert target.snapshot_id in remaining
+    assert newest.snapshot_id in remaining
+    assert decision_count == 1
 
 
 def test_ops_maintenance_requires_token_and_current_plan(client_factory, settings_override) -> None:
