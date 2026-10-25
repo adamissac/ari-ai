@@ -65,6 +65,7 @@ from ..sandbox.workspace import (
     recipe_protected_tests,
     recipe_test_roots,
     resolve_under,
+    test_root_symlinks,
     tree_digest,
     under_test_roots,
 )
@@ -1460,12 +1461,13 @@ class Orchestrator:
         return None
 
     def _protected_tests(self) -> list[str]:
-        """Configured, recipe-declared and pre-existing test-root files, plus confirmed-expectation sources."""
+        """Configured, recipe-declared, pre-existing and in-root symlinked tests, plus confirmed sources."""
         protected = set(self.config.protected_tests)
         root = self.intel.snapshot.root
         test_roots = recipe_test_roots(root)
         protected.update(recipe_protected_tests(root))
         protected.update(path for path in self.intel.snapshot.files() if under_test_roots(path, test_roots))
+        protected.update(test_root_symlinks(root, test_roots))
         for expectation in self.intel.expectations():
             if expectation.status != "confirmed":
                 continue
