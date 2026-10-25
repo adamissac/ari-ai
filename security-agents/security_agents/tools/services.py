@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import ast
 import configparser
-import contextlib
 import json
 import os
 import re
@@ -1135,6 +1134,25 @@ class PatchApplier:
                     plugin_discovery_residuals.add(rel)
 
         pinned_plugin_paths: set[str] = set()
+        pinned_plugin_directories: set[str] = set()
+        snapshot_real = snapshot_root.resolve()
+
+        def protect_plugin_file(path: str) -> None:
+            pinned_plugin_paths.add(path)
+            try:
+                resolved = resolve_under(snapshot_root, path)
+                pinned_plugin_paths.add(resolved.relative_to(snapshot_real).as_posix())
+            except (OSError, PlatformError, RuntimeError, ValueError) as exc:
+                plugin_discovery_residuals.add(f"{path} ({type(exc).__name__})")
+
+        def protect_plugin_directory(path: str) -> None:
+            pinned_plugin_directories.add(path)
+            try:
+                resolved = resolve_under(snapshot_root, path)
+                pinned_plugin_directories.add(resolved.relative_to(snapshot_real).as_posix())
+            except (OSError, PlatformError, RuntimeError, ValueError) as exc:
+                plugin_discovery_residuals.add(f"{path} ({type(exc).__name__})")
+
         for name in plugin_names:
             parts = name.split(".")
             if not parts or not all(part.isidentifier() for part in parts):
@@ -1142,19 +1160,23 @@ class PatchApplier:
             module_path = "/".join(parts)
             for entry in pythonpath_entries:
                 try:
-                    prefix = "" if entry in {"", ".", "./"} else safe_rel_path(entry)
+                    prefix = "" if entry in {"", ".", "./"} else repo_relative_path(entry)
+                    if prefix is None:
+                        continue
                     module_rel = f"{prefix}/{module_path}".strip("/")
-                    module_file = resolve_under(snapshot_root, f"{module_rel}.py")
-                    if module_file.is_file():
-                        pinned_plugin_paths.add(f"{module_rel}.py")
-                        with contextlib.suppress(ValueError):
-                            pinned_plugin_paths.add(
-                                module_file.relative_to(snapshot_root.resolve()).as_posix()
-                            )
+                    protect_plugin_directory(module_rel)
+                    for suffix in (".py", ".pyi", ".so", ".pyd"):
+                        protect_plugin_file(f"{module_rel}{suffix}")
+                    for parent_length in range(1, len(parts)):
+                        parent = f"{prefix}/{'/'.join(parts[:parent_length])}".strip("/")
+                        protect_plugin_file(f"{parent}/__init__.py")
+                        protect_plugin_file(f"{parent}.py")
+
                     package_dir = resolve_under(snapshot_root, module_rel)
                     if package_dir.is_dir():
                         pinned_plugin_paths.update(test_root_files(snapshot_root, (f"{module_rel}/",)))
-                except (OSError, PlatformError, RuntimeError):
+                except (OSError, PlatformError, RuntimeError, ValueError) as exc:
+                    plugin_discovery_residuals.add(f"{entry}:{name} ({type(exc).__name__})")
                     continue
         if residuals is not None:
             residuals.extend(sorted(plugin_discovery_residuals))
@@ -1185,6 +1207,10 @@ class PatchApplier:
                 first_component in runner_shadowing_roots
                 or ("/" not in path and path.endswith(".pth"))
                 or path in pinned_plugin_paths
+                or any(
+                    path == directory or path.startswith(f"{directory}/")
+                    for directory in pinned_plugin_directories
+                )
             ):
                 tampered.add(path)
                 continue

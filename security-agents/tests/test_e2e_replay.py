@@ -1604,6 +1604,8 @@ def _runner_config_tampering_for_test(
     patched_text: str,
     test_command: list[str] | None = None,
     pinned_text: str = "VALUE = 1\n",
+    pinned_files: dict[str, str] | None = None,
+    new_file: bool = False,
 ) -> list[str]:
     from security_agents.sandbox.workspace import unified_diff
     from security_agents.tools import PatchApplier
@@ -1623,13 +1625,20 @@ def _runner_config_tampering_for_test(
         config = snapshot_root / path
         config.parent.mkdir(parents=True, exist_ok=True)
         config.write_text(content, encoding="utf-8")
-    plugin_file = snapshot_root / changed_path
-    plugin_file.parent.mkdir(parents=True, exist_ok=True)
-    plugin_file.write_text(pinned_text, encoding="utf-8")
+    for path, content in (pinned_files or {}).items():
+        pinned_file = snapshot_root / path
+        pinned_file.parent.mkdir(parents=True, exist_ok=True)
+        pinned_file.write_text(content, encoding="utf-8")
+    if not new_file:
+        plugin_file = snapshot_root / changed_path
+        plugin_file.parent.mkdir(parents=True, exist_ok=True)
+        plugin_file.write_text(pinned_text, encoding="utf-8")
 
     patched_root = tmp_path / "patched"
     shutil.copytree(snapshot_root, patched_root)
-    (patched_root / changed_path).write_text(patched_text, encoding="utf-8")
+    patched_file = patched_root / changed_path
+    patched_file.parent.mkdir(parents=True, exist_ok=True)
+    patched_file.write_text(patched_text, encoding="utf-8")
     diff = unified_diff(snapshot_root, patched_root, [changed_path])
     return PatchApplier._tampered_runner_config(diff, snapshot_root, patched_root)
 
@@ -1687,6 +1696,70 @@ def test_pinned_plugin_discovery_covers_additional_sources(
     )
 
     assert changed_path in tampered
+
+
+@pytest.mark.boundary
+@pytest.mark.parametrize(
+    ("config_files", "pinned_files", "changed_path", "patched_text", "expected_tampered"),
+    [
+        pytest.param(
+            {"conftest.py": 'pytest_plugins = ["guard_plugin"]\n'},
+            {"guard_plugin.py": "VALUE = 1\n"},
+            "guard_plugin/__init__.py",
+            "import pytest\n\ndef no_op(*args, **kwargs):\n    return 0\n\npytest.main = no_op\n",
+            True,
+            id="root-plugin-package-shadow",
+        ),
+        pytest.param(
+            {
+                "pytest.ini": "[pytest]\npythonpath = src\n",
+                "conftest.py": 'pytest_plugins = ["guard_plugin"]\n',
+            },
+            {"src/guard_plugin.py": "VALUE = 1\n"},
+            "src/guard_plugin/__init__.py",
+            "VALUE = 2\n",
+            True,
+            id="pythonpath-plugin-package-shadow",
+        ),
+        pytest.param(
+            {"conftest.py": 'pytest_plugins = ["pkg.plug"]\n'},
+            {"pkg/plug.py": "VALUE = 1\n"},
+            "pkg.py",
+            "VALUE = 2\n",
+            True,
+            id="dotted-plugin-parent-module-shadow",
+        ),
+        pytest.param(
+            {"conftest.py": 'pytest_plugins = ["guard_plugin"]\n'},
+            {"guard_plugin.py": "VALUE = 1\n"},
+            "unrelated_package/__init__.py",
+            "VALUE = 2\n",
+            False,
+            id="unrelated-new-package-allowed",
+        ),
+    ],
+)
+def test_pinned_plugins_protect_absent_package_and_parent_shadow_paths(
+    config_files: dict[str, str],
+    pinned_files: dict[str, str],
+    changed_path: str,
+    patched_text: str,
+    expected_tampered: bool,
+    tmp_path: Path,
+) -> None:
+    tampered = _runner_config_tampering_for_test(
+        tmp_path,
+        config_files=config_files,
+        changed_path=changed_path,
+        patched_text=patched_text,
+        pinned_files=pinned_files,
+        new_file=True,
+    )
+
+    if expected_tampered:
+        assert changed_path in tampered
+    else:
+        assert tampered == []
 
 
 @pytest.mark.boundary
