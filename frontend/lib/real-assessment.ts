@@ -1,7 +1,10 @@
 import type { Assessment, AuthorizedScope, ScopeCreate } from '@hackatl/frontend-transport';
 import { SCOPE_CHECK_CATEGORIES } from '@/lib/scope';
 
-const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+export const SCOPE_DURATION_DAYS = 30;
+// Mirrors the backend's maximum authorized-scope duration.
+export const MAX_SCOPE_DURATION_DAYS = 90;
+const THIRTY_DAYS_MS = SCOPE_DURATION_DAYS * 24 * 60 * 60 * 1000;
 
 export function scopeBody(repoId: string, now: Date): ScopeCreate {
   return {
