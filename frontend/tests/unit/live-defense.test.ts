@@ -161,8 +161,10 @@ describe('source isolation', () => {
     expect(MISSING_LIVE_APIS.map(item => item.id)).not.toContain('live_inference');
     expect(MISSING_LIVE_APIS.map(item => item.id)).not.toContain('component_health');
     expect(SHADOW_VS_CONTROLS_COPY).toMatch(/never execute a control/);
-    expect(MISSING_LIVE_APIS.find(item => item.id === 'autonomous')?.reason).toMatch(/Phase 7B is not started/);
+    expect(MISSING_LIVE_APIS.find(item => item.id === 'autonomous')?.reason).toMatch(/AUTO-EXECUTE does not exist/);
+    expect(USED_LIVE_APIS.some(item => item.path.includes('/first-responder/invocations'))).toBe(true);
     expect(FIRST_RESPONDER_COPY).toMatch(/AUTO-EXECUTE does not exist/);
+    expect(FIRST_RESPONDER_COPY).toMatch(/Scout and Diagnose may execute/);
     expect(FIRST_RESPONDER_COPY).toMatch(/RL recommendation is not executed defense/);
     const frUi = readFileSync(path.join(process.cwd(), 'components/live-defense/first-responder.tsx'), 'utf8');
     expect(frUi).not.toMatch(/AckButton/);
