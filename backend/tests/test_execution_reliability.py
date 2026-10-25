@@ -1378,3 +1378,39 @@ def test_code_redaction_still_preserves_annotated_nonliteral():
         '{"password": os.environ["P"]}\n',
     ):
         assert redact_code(expr) == expr
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        'password: str; notice = "public notice"\n',
+        'password: str # note = "x"\n',
+        'password: str == "comparison-not-assignment"\n',
+    ],
+)
+def test_annotation_matcher_stays_inside_one_statement(source):
+    """N9: the annotated-assignment span may not cross ; or # into another
+    statement, nor treat a comparison as an assignment."""
+    import ast
+
+    from backend.redaction import redact_code
+
+    ast.parse(source)
+    actual = redact_code(source)
+    ast.parse(actual)
+    assert actual == source, f"annotation matcher rewrote an unrelated statement: {actual!r}"
+
+
+def test_annotation_boundary_still_redacts_real_typed_secret(tmp_path):
+    """N9 control: a real annotated literal still redacts in stored diffs."""
+    from backend.artifacts import ArtifactStore
+    from shared.evidence import ArtifactKind
+
+    diff = '--- a/config.py\n+++ b/config.py\n@@ -0,0 +1 @@\n+password: str = "n9-typed-secret"\n'
+    store = ArtifactStore(tmp_path.as_uri())
+    with transaction() as conn:
+        ref = store.put_text(conn, diff, kind=ArtifactKind.diff, project_id=None)
+    with transaction() as conn:
+        row, body = store.get(conn, ref.id)
+    assert row["redacted"] is True
+    assert "n9-typed-secret" not in body.decode()
