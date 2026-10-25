@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { CommitRunWorkspace, type LiveCommitView } from '@/components/commit-run-workspace';
+import { ProjectReviewCta } from '@/components/project-review-cta';
 import { RealAssessmentPanel } from '@/components/real-assessment-panel';
 import { Avatar, VerdictChip } from '@/components/demo/ui';
 import { Empty, ErrorState, Loading } from '@/components/ui';
@@ -90,6 +91,7 @@ function SelectedCommit({ org, name, sha, repo, onConnected }: {
         {htmlUrl && /^https?:\/\//.test(htmlUrl) && <a className="underline" href={htmlUrl} target="_blank" rel="noreferrer">View on GitHub ↗</a>}
       </p>
     </header>
+    <div className="mb-4"><ProjectReviewCta repoId={connectedRepoId} /></div>
     <RealAssessmentPanel org={org} repo={{ ...repo, connected_repo_id: connectedRepoId }} sha={fullSha} onConnected={id => { setConnectedRepoId(id); onConnected(); }} onRunSelected={setAssessmentId} />
     <CommitRunWorkspace assessmentId={assessmentId} repoId={connectedRepoId} sha={fullSha} fullName={repo.full_name} liveView={view} liveState={liveState} />
   </div>;
