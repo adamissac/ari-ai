@@ -2019,6 +2019,33 @@ selected run is still loading.
 - Merge waves belong to the integration lead; wave 2 includes my #542/#543.
 - Prod queue depth (~88 items) makes 45-case live eval slow — some cases may return `pending`/NOT_STARTED; rerun stragglers or extend deadlines.
 - Second-org real-provider leg needs owner's private repo + second GitHub org (account actions).
+## 2026-10-25 — Devin project-section fixes (session 89af211994aa458d96ecf9f412c05bd7)
+
+### Done
+- Completed #598 private-commit route, #607 read limiter + manual quota, #608 delivery status, #613 expired scopes, #616 stale-base delivery, and #617 commit-behind warning.
+- The first real-user run opened `pilot-rehearsal-target#5` from stale commit `010cc2dd`. Independent checking confirmed the fix is correct on its base but redundant with `main`; do not merge that PR.
+
+### Outstanding
+- Rotate the Railway/GitHub tokens pasted in chat.
+- The app DB role is still the superuser, so RLS is inert; production two-org isolation and purge remain outstanding.
+- A fresh current-commit verified-fix PR is still needed for GO.
+
+No `HACKATL_TASKS` change; no task ID.
+
+### Automated independent release review setup — 2026-10-25
+
+Automation-only installation prepared: immutable candidate/upstream pins, F1–F10/
+N1–N7 strict evidence, protected signed budget ledger, workstream assignments and
+bounded existing-session Devin handoff. Local controller/adversarial suite: 56
+passed; Ruff clean. Fork trusted environments and ledger provisioned, API activation
+OFF. Installation PRs require manual review/merge; Codex repository access and API
+credentials/session budget confirmation are one-time prerequisites. Docker unavailable
+locally; live loop not claimed. No production code, release merge or deployment.
+See `docs/release/AUTOMATED_INDEPENDENT_REVIEW.md`.
+
+Installation PRs: canonical #614; fork #9 (main), #10 (ci/upstream-main). Fork #9
+controller Docker unit/layout/actionlint checks passed at abd61416; paid activation
+remains OFF pending manual installation and protected credential/session setup.
 
 ## 2026-10-25 — Adam: least-privilege storage reporting
 
