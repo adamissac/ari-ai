@@ -28,6 +28,46 @@ adds an entry before ending.
   no longer reported for the app role after #610's savepoint-protected probe.
 - Open: rotate the Anthropic and GitHub App keys; remove public database access last.
 
+### 2026-10-25 — Devin (agent, Adam) — all-depth pytest hook definitions (#629)
+- Did: restored recording of every `pytest_*` function and async-function
+  definition, including nested definitions and plugin-class methods, while
+  keeping local variable bindings accepted by the context-aware collector.
+- State of the code: follow-up is on `fix/adam/verify-hook-attribute-writes`,
+  based on `221e5ebb`; `origin/main` remained at `e41c9dc2`.
+- Commands run and results: baseline at `221e5ebb` — 2 failed, 1 passed,
+  210 deselected (`/Users/devin/.devin-files/verify-nested-hook-defs-red-221e5ebb.log`);
+  narrow replay suite — 213 passed; Ruff check and format check passed;
+  `git diff --check` passed.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): none.
+- Next steps: await the owner's CI-loop re-brief; no post-push CI checks are
+  requested for this handoff.
+- Warnings for the next session: no backend or full security-agents rerun was
+  needed for this focused delta.
+
+### 2026-10-25 — Devin (agent, Adam) — Verify hook binding and symlink follow-ups (#629)
+- Did: replaced the pytest target walker with a context-aware binding scan for
+  `pytest_*` names, imports, global stores, and hook-rooted attribute/subscript
+  writes, `setattr`, and `del`. Kept local names and index-only reads accepted.
+  Continued Python/conftest checks for section-config targets and compared
+  linked config target contents using the logical config parser through
+  `apply_fresh`.
+- State of the code: `origin/main` through `e41c9dc2` is integrated. Its
+  `security_agents/intel/host_service.py` snapshot retry change is unrelated to
+  the Verify changes; the later main update to `coordination/status/ADAM.md` is
+  also retained. The only merge conflict was `SESSION_HANDOFF.md`; retained
+  main's handoff entries and the branch's Verify entry.
+- Commands run and results: baseline at `99f9ebf9` — 11 failed, 22 passed,
+  175 deselected (`/Users/devin/.devin-files/verify-hook-binding-symlink-red-99f9ebf9.log`);
+  narrow replay suite — 211 passed; backend selector — 123 passed, 4 skipped,
+  689 deselected; full security-agents suite — 792 passed, 24 skipped;
+  Ruff check and format check passed.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): none.
+- Next steps: create one canonical no-trailer merge commit, audit identity, and
+  push `fix/adam/verify-hook-attribute-writes`; do not monitor CI until re-briefed.
+- Warnings for the next session: no PR was opened and no post-push CI checks were run.
+
 ### 2026-10-26 — Devin (agent, Adam) — protect retention references and destructive ops
 - Did: expanded snapshot protection to findings, memory, decisions, active assessments/jobs, and (by default) all assessment references; added per-snapshot locking/rechecks, assessment binding locks, plan digests, and a separate destructive-maintenance token.
 - State of the code: implemented on `fix/adam/retention-protect-references`; production `RETENTION_DRY_RUN=true` is unchanged. No PR was opened.
@@ -70,46 +110,6 @@ adds an entry before ending.
 - Assumptions / open questions (RQ links): none.
 - Next steps: push `feat/adam/reviewer-settings`, merge it into `feat/adam/repo-setup-walkthrough`, then report; CI is not part of this handoff.
 - Warnings for the next session: the full backend suite has 8 expected environment-gated skips and one existing SQLAlchemy deprecation warning.
-
-### 2026-10-25 — Devin (agent, Adam) — all-depth pytest hook definitions (#629)
-- Did: restored recording of every `pytest_*` function and async-function
-  definition, including nested definitions and plugin-class methods, while
-  keeping local variable bindings accepted by the context-aware collector.
-- State of the code: follow-up is on `fix/adam/verify-hook-attribute-writes`,
-  based on `221e5ebb`; `origin/main` remained at `e41c9dc2`.
-- Commands run and results: baseline at `221e5ebb` — 2 failed, 1 passed,
-  210 deselected (`/Users/devin/.devin-files/verify-nested-hook-defs-red-221e5ebb.log`);
-  narrow replay suite — 213 passed; Ruff check and format check passed;
-  `git diff --check` passed.
-- Decisions made (ADR links): none.
-- Assumptions / open questions (RQ links): none.
-- Next steps: await the owner's CI-loop re-brief; no post-push CI checks are
-  requested for this handoff.
-- Warnings for the next session: no backend or full security-agents rerun was
-  needed for this focused delta.
-
-### 2026-10-25 — Devin (agent, Adam) — Verify hook binding and symlink follow-ups (#629)
-- Did: replaced the pytest target walker with a context-aware binding scan for
-  `pytest_*` names, imports, global stores, and hook-rooted attribute/subscript
-  writes, `setattr`, and `del`. Kept local names and index-only reads accepted.
-  Continued Python/conftest checks for section-config targets and compared
-  linked config target contents using the logical config parser through
-  `apply_fresh`.
-- State of the code: `origin/main` through `e41c9dc2` is integrated. Its
-  `security_agents/intel/host_service.py` snapshot retry change is unrelated to
-  the Verify changes; the later main update to `coordination/status/ADAM.md` is
-  also retained. The only merge conflict was `SESSION_HANDOFF.md`; retained
-  main's handoff entries and the branch's Verify entry.
-- Commands run and results: baseline at `99f9ebf9` — 11 failed, 22 passed,
-  175 deselected (`/Users/devin/.devin-files/verify-hook-binding-symlink-red-99f9ebf9.log`);
-  narrow replay suite — 211 passed; backend selector — 123 passed, 4 skipped,
-  689 deselected; full security-agents suite — 792 passed, 24 skipped;
-  Ruff check and format check passed.
-- Decisions made (ADR links): none.
-- Assumptions / open questions (RQ links): none.
-- Next steps: create one canonical no-trailer merge commit, audit identity, and
-  push `fix/adam/verify-hook-attribute-writes`; do not monitor CI until re-briefed.
-- Warnings for the next session: no PR was opened and no post-push CI checks were run.
 
 ### 2026-10-25 — Devin (agent, Adam) — project page limits
 - Did: separated authenticated GET/HEAD requests into a 600/minute per-user bucket; writes retain 60/minute. Manual project quotas now count manual-trigger assessments only, while automatic checks still count all triggers; the global $50/day spend query remains unchanged.
@@ -2132,37 +2132,6 @@ See `docs/release/AUTOMATED_INDEPENDENT_REVIEW.md`.
 Installation PRs: canonical #614; fork #9 (main), #10 (ci/upstream-main). Fork #9
 controller Docker unit/layout/actionlint checks passed at abd61416; paid activation
 remains OFF pending manual installation and protected credential/session setup.
-
-## 2026-10-25 — Devin pilot-readiness lane: production rehearsal leg
-
-### Done
-- Production journey on `adamissac/pilot-rehearsal-target` (prod `git_sha` `0f311913`): live 9-agent assessment `asm_01M5RCVC20ZMYH8EKTZQP40W73` ($0.0294, 29.2 s sandbox) validated → patched → independently verified the planted IDOR; prod tenant isolation 34/34 → 404; non-superuser RLS drill; cancel, budget, scope-revoke drills pass; monitoring opt-out toggle persisted. Recorded in `docs/pilot/REHEARSAL_REPORT.md` Leg 7 + `LAUNCH_DECISION.md` (**NO-GO**).
-
-### Outstanding
-- C9 at the Leg 8 handoff: production PR delivery (#2 and #4) was proven, but C9 was open pending independent security review and owner approval of #587, the owner's approval-semantics decision, and one Ari-delivered PR left open for the owner to review and personally merge or close. No agent may merge or close an Ari fix PR on a customer repo.
-- C6: remains open until the hosted browser journey with real GitHub sign-in and unaided onboarding (FIRST_FIVE_PLAN part 1) passes; the API-only rehearsal with server-created accounts does not close it.
-- Cleanup: follow `docs/pilot/DB_ROLE_MIGRATION.md`; retain audit-referenced rows and delete nothing without owner approval. The owner-org seat and both sessions were removed by another lane, not an approved cleanup. At this Leg 8 handoff, the DB-role cutover had not yet been executed; see the later status below.
-
-## 2026-10-25 — Devin pilot-readiness lane: hosted C9 re-run (Leg 8)
-
-- Done: production opened PR #2 from the sealed Verify-tested artifact and opened proof-only PR #4; delivery mechanism is proven. The rehearsal project was switched to `pull_request`. Final verified Railway limits were 10/hour, 50/day, and $50/day; `/readyz` was ready with 24 workers and 0 queued.
-- Open: C9 remains open; PR #2 was merged by another agent under delegation and PR #4 was closed unmerged, so no owner-witnessed open PR remains. D9 spend reset time still needed a follow-up fix.
-- Next: record independent review and owner approval of #587, decide approval semantics, and leave an Ari-delivered PR open for the owner's personal review and merge or closure. Keep C6 open pending the hosted browser journey.
-
-## 2026-10-25 — pilot readiness: `ari_app` cutover and Leg 9
-
-- Done: the DB-role cutover is executed and the hosted cross-org drill passed as `ari_app`; the local restore matched pre-snapshot counts, with a Railway scratch-service restore still a gap. Leg 9 opened PR #5 with the exact Verify-tested tree; it remains open and unmerged. The independent review of #587 was posted after merge.
-- Open: C9 awaits Adam's personal review of PR #5. Launch remains NO-GO pending the hosted browser journey for C6, credential rotation and public DB access removal, approved rehearsal cleanup, and Adam's C9 sign-off. See `docs/pilot/DB_ROLE_MIGRATION.md` and `docs/pilot/LAUNCH_DECISION.md`.
-
-## 2026-10-25 — pilot readiness follow-up: admin password rotation
-
-- Done: the `postgres` admin password was rotated at about 09:32Z using a locally computed SCRAM verifier; login with the old password is rejected. The Postgres service variables and `ari-ai`'s `MIGRATION_DATABASE_URL` reference resolve to the new value; deploy `f5ce137b` completed. Other agents were told on #559 (comment `6395942484`) that stored admin URLs are dead.
-- Open: the owner must rotate the Anthropic key and GitHub App private key from their consoles. Keep public TCP proxy access until rehearsal cleanup is approved and executed, then disable it last; cleanup and ops checks use it. Launch remains NO-GO pending C6's hosted browser journey, cleanup, public-access removal, and Adam's C9 sign-off.
-
-## 2026-10-25 — pilot readiness follow-up: approved rehearsal cleanup
-
-- Done: Adam approved the cleanup plan; the admin-run purge at about 10:10Z deleted the empty rehearsal project, retaining its append-only audit event. The users, personal orgs, four owner-project assessments, and revoked scope remain as audit evidence; both users have 0 sessions and access only to their own org. See `docs/pilot/DB_ROLE_MIGRATION.md` § Rehearsal cleanup.
-- Open: launch remains NO-GO pending C6 and C9, Anthropic and GitHub App key rotation, public DB access removal, `pg_monitor` revocation after #610 deploys, and merging #605/#610.
 
 ## 2026-10-25 — Adam: least-privilege storage reporting
 
