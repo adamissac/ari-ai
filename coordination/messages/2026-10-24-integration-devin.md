@@ -211,3 +211,22 @@ Playwright real-stack: **49/49**. **RC SHA = `bc490484`**, pushed to PR #8. Hand
 
 ### Release-validation gate — final
 Devin Bot readiness re-run on `bc490484`: **GO — 25/25 PASS, 0 WARN, 0 FAIL** (`deploy/reports/release-readiness-20261025T021130+0000.{json,md}` on their branch; coordination file `20261025T021140Z-release-validation-rc-go.md`). Every code-side gate green. Remaining blockers are external: Codex independent security re-review on bc490484, and operational pre-pilot items (real secrets, backup scheduling, first real staging deploy → `release_readiness.py --remote`).
+
+---
+
+## Status check — upstream 91b234d2 + Codex verdict + #458 conflicts (2026-10-25)
+
+### Codex exact-SHA verdict — FOUND
+`upstream/codex/release-0019-rereview` @ `005ea42d`: **NO-GO on `070f75a9`** (pre-580d2f67 tip — no verdict exists yet on frozen RC `bc490484`). Report: `docs/reviews/first-responder-release-0019/REPORT.md`. Ran Codex's transplanted probes on `bc490484` in scratch (not committed): **4 FAIL — R2, R3, R4, R5 all still reproduce**; migration probes pass. C-status on bc490484: C1 fixed (last_error redaction, test green), C2 fixed (`GET /projects/{id}/jobs` present via #530 merge), C3 fixed (dup commit call removed → `_permanent_failure`, test green), **C4 OPEN** (mid-line redaction = upstream #570 `2c825c4e`, inside the new 91b234d2 delta, not on the RC), C5 fixed (`_SECRET_VALUE` quarantine present via #532 merge).
+
+Open findings on the RC: **R2 (P1) disconnect doesn't stop active provider work; R3 (P2) stale cached authz on reconnect; R4 (P2) cross-tenant connection-ID leak in picker; R5 (P2) abrupt worker death → queued not recovery_required; C4 (P2) mid-line secret redaction.** Owner-assigned work, not integration glue.
+
+### Upstream 91b234d2 materiality (for frozen RC)
+Material: #570 `2c825c4e` redaction gaps (fixes C4), #582 `MIGRATION_DATABASE_URL` + env.py (upstream-owned files, compatible), #574 idempotent 0016/0017 (upstream files, additive), #584 per-project review quota, #587 sealed-diff delivery, #588 first-review CTA, #572 cross-org jobs test, SaaS sidebar layout + e2e spec updates (frontend conflicts expected next recomposition). Not merged into the RC — `bc490484` stays frozen.
+
+### #458 conflicts resolved
+Branch `merge-proposal/pr458-onto-main-91b234d2` pushed to fork. 4 conflicts: shared/__init__.py (Phase 7C renumbered 0.22→**0.23.0** — upstream owns 0.22 ops readiness; #412 keeps 0.20), test_sandbox_target.py (dup `_fill_body`→upstream's `_render_body`, functionally identical), CHANGELOG + SESSION_HANDOFF union. 45 targeted tests green (`test_live_defense_phase7c*`, `test_sandbox_target`, `test_parallel_migrations`, `test_ops_readiness`). Ready to push to #458's upstream head branch with Alan's approval — updates the PR head, no merge.
+
+### Merge sequence + authorization
+Adam's coordination record `20261024T231500Z`: #535✓ → #533✓ (both landed) → **#458 next — but NO-GO until R5+R2 fixes land and independent re-review passes** → #412 last (needs rebase + contract review). Fork: unchanged — #1→#2→#3→#4→#6→#5→#7; Codex scoped GOs: #2 (test-only), #7 (tooling). Nothing is upstream-mergeable right now.
+Authorization needed: (a) owner fixes for R2–R5 (+C4 via next recomposition), (b) Codex re-review on new exact SHA, (c) Alan's go-ahead to push `merge-proposal/pr458-onto-main-91b234d2` to #458's upstream branch, (d) Adam's sign-off on the upstream landing order.
