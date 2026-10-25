@@ -1,0 +1,184 @@
+{
+  "eea084bc87ac6ca94f578073251c478655b09366": {
+    "steps": [
+      {
+        "step": "01-pr412",
+        "sha": "8a945e04b9cecb3d9f10912f78d160f2673594e0",
+        "exit": 0,
+        "output": "c6408bb054b8bfc82c8cd2812395924a327c4c35\n",
+        "stderr": "",
+        "result_commit": "190eed45092cb522bc1435dc627a7879d8f86406",
+        "result_tree": "c6408bb054b8bfc82c8cd2812395924a327c4c35",
+        "schema": "0.22.0"
+      },
+      {
+        "step": "02-pr458",
+        "sha": "93b4fe82b8f12df50486b2f452d9d0d339e93bee",
+        "exit": 0,
+        "output": "7303b3bebae3ca4543dcbd95361756dcecf7a710\n",
+        "stderr": "",
+        "result_commit": "85ca83d84843115aee9f9f80ce61693b0092bae6",
+        "result_tree": "7303b3bebae3ca4543dcbd95361756dcecf7a710",
+        "schema": "0.23.0"
+      },
+      {
+        "step": "execution-reliability",
+        "sha": "5e130915d30aad375adc9750f2232e2d29c085cb",
+        "exit": 0,
+        "output": "8fdcc2de6ba770e59e09bce7a3c9bf7ca26628ca\n",
+        "stderr": "",
+        "result_commit": "e70107db709c876bedf3e2172dcee48925862895",
+        "result_tree": "8fdcc2de6ba770e59e09bce7a3c9bf7ca26628ca",
+        "schema": "0.23.0"
+      },
+      {
+        "step": "investigation-observability",
+        "sha": "660a3575d9eaf0a2df67a50002b2ec924f182f23",
+        "exit": 0,
+        "output": "c830225235e579087bfe5edd89dd506de719bd22\n",
+        "stderr": "",
+        "result_commit": "01e4a2e904a091014fe1bda40e0415bd98373580",
+        "result_tree": "c830225235e579087bfe5edd89dd506de719bd22",
+        "schema": "0.24.0"
+      },
+      {
+        "step": "pilot-security-hardening",
+        "sha": "89a29d170d4cf1f589975713ee7c8ada778f1ab6",
+        "exit": 0,
+        "output": "c7821e40b955d70423ac7932c4569c1b511680f8\n",
+        "stderr": "",
+        "result_commit": "41c897f65df507708e209a597fdc646caf025d63",
+        "result_tree": "c7821e40b955d70423ac7932c4569c1b511680f8",
+        "schema": "0.25.0"
+      },
+      {
+        "step": "customer-onboarding",
+        "sha": "10e923d1ffda75b19b848a7154f8ba867a0a8589",
+        "exit": 0,
+        "output": "c7538f3c0df8219818d475e72f861e0cd8905197\n",
+        "stderr": "",
+        "result_commit": "ce53e3efc14fb7c7685295f42496481e69316c0f",
+        "result_tree": "c7538f3c0df8219818d475e72f861e0cd8905197",
+        "schema": "0.26.0"
+      },
+      {
+        "step": "pilot-deployment-ops",
+        "sha": "c1959b4be4dbaa2b25d26e858a5219802f320d0c",
+        "exit": 0,
+        "output": "9675964b59c49a13777a57aa88e911c234bb7c48\n",
+        "stderr": "",
+        "result_commit": "4f9f804004f7f77d80607137cdccbd77211fb1c6",
+        "result_tree": "9675964b59c49a13777a57aa88e911c234bb7c48",
+        "schema": "0.26.0"
+      },
+      {
+        "step": "release-validation",
+        "sha": "b2a10667b6757e67fb32323919ef2d3cf843160a",
+        "exit": 0,
+        "output": "412478bea7d2c3060806de0a714c56f802b1d3f6\n",
+        "stderr": "",
+        "result_commit": "b55513f780f0002318ef0be755c558818f546910",
+        "result_tree": "412478bea7d2c3060806de0a714c56f802b1d3f6",
+        "schema": "0.26.0"
+      }
+    ],
+    "final": "b55513f780f0002318ef0be755c558818f546910",
+    "production_differences": [
+      "deploy/reports/release-readiness-20261025T065919+0000.json",
+      "deploy/reports/release-readiness-20261025T065919+0000.md",
+      "deploy/reports/release-readiness-20261025T082755+0000.json",
+      "deploy/reports/release-readiness-20261025T082755+0000.md"
+    ]
+  },
+  "e41c9dc22e6536463cdab9be6a2a4cd76302c866": {
+    "steps": [
+      {
+        "step": "01-pr412",
+        "sha": "8a945e04b9cecb3d9f10912f78d160f2673594e0",
+        "exit": 0,
+        "output": "c6408bb054b8bfc82c8cd2812395924a327c4c35\n",
+        "stderr": "",
+        "result_commit": "7108086043f22921e447135874c589bb17d5af5e",
+        "result_tree": "c6408bb054b8bfc82c8cd2812395924a327c4c35",
+        "schema": "0.22.0"
+      },
+      {
+        "step": "02-pr458",
+        "sha": "93b4fe82b8f12df50486b2f452d9d0d339e93bee",
+        "exit": 0,
+        "output": "7303b3bebae3ca4543dcbd95361756dcecf7a710\n",
+        "stderr": "",
+        "result_commit": "ff54e913c673d2e2fe098586bf4540cefd0627cc",
+        "result_tree": "7303b3bebae3ca4543dcbd95361756dcecf7a710",
+        "schema": "0.23.0"
+      },
+      {
+        "step": "execution-reliability",
+        "sha": "5e130915d30aad375adc9750f2232e2d29c085cb",
+        "exit": 0,
+        "output": "8fdcc2de6ba770e59e09bce7a3c9bf7ca26628ca\n",
+        "stderr": "",
+        "result_commit": "4d3b91869ae4e53e611886b23e9a0d3144ab616e",
+        "result_tree": "8fdcc2de6ba770e59e09bce7a3c9bf7ca26628ca",
+        "schema": "0.23.0"
+      },
+      {
+        "step": "investigation-observability",
+        "sha": "660a3575d9eaf0a2df67a50002b2ec924f182f23",
+        "exit": 0,
+        "output": "c830225235e579087bfe5edd89dd506de719bd22\n",
+        "stderr": "",
+        "result_commit": "a814e049859ff7a8ebb6e6fe4dbb53ab0d1c9cfc",
+        "result_tree": "c830225235e579087bfe5edd89dd506de719bd22",
+        "schema": "0.24.0"
+      },
+      {
+        "step": "pilot-security-hardening",
+        "sha": "89a29d170d4cf1f589975713ee7c8ada778f1ab6",
+        "exit": 0,
+        "output": "c7821e40b955d70423ac7932c4569c1b511680f8\n",
+        "stderr": "",
+        "result_commit": "468c7833737b58a1ed344c246a99952b1cb188ed",
+        "result_tree": "c7821e40b955d70423ac7932c4569c1b511680f8",
+        "schema": "0.25.0"
+      },
+      {
+        "step": "customer-onboarding",
+        "sha": "10e923d1ffda75b19b848a7154f8ba867a0a8589",
+        "exit": 0,
+        "output": "c7538f3c0df8219818d475e72f861e0cd8905197\n",
+        "stderr": "",
+        "result_commit": "8b899ae6fadbd5ab0fe60b1dc3c58f9dc6479370",
+        "result_tree": "c7538f3c0df8219818d475e72f861e0cd8905197",
+        "schema": "0.26.0"
+      },
+      {
+        "step": "pilot-deployment-ops",
+        "sha": "c1959b4be4dbaa2b25d26e858a5219802f320d0c",
+        "exit": 0,
+        "output": "9675964b59c49a13777a57aa88e911c234bb7c48\n",
+        "stderr": "",
+        "result_commit": "a4e5235204372bf07f104f48f5a03e49e3777219",
+        "result_tree": "9675964b59c49a13777a57aa88e911c234bb7c48",
+        "schema": "0.26.0"
+      },
+      {
+        "step": "release-validation",
+        "sha": "b2a10667b6757e67fb32323919ef2d3cf843160a",
+        "exit": 0,
+        "output": "412478bea7d2c3060806de0a714c56f802b1d3f6\n",
+        "stderr": "",
+        "result_commit": "f5d845b2f9208dc3d5d45df7fff057e0d9bf58d9",
+        "result_tree": "412478bea7d2c3060806de0a714c56f802b1d3f6",
+        "schema": "0.26.0"
+      }
+    ],
+    "final": "f5d845b2f9208dc3d5d45df7fff057e0d9bf58d9",
+    "production_differences": [
+      "deploy/reports/release-readiness-20261025T065919+0000.json",
+      "deploy/reports/release-readiness-20261025T065919+0000.md",
+      "deploy/reports/release-readiness-20261025T082755+0000.json",
+      "deploy/reports/release-readiness-20261025T082755+0000.md"
+    ]
+  }
+}
