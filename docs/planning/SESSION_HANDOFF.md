@@ -18,7 +18,6 @@ adds an entry before ending.
 
 ---
 
-
 ### 2026-10-24 — Adam/Devin: pilot rehearsal executed end-to-end (13/13 PASS)
 
 - `scripts/rehearsal/run_rehearsal.py` rewritten to the real API shapes:
@@ -38,19 +37,18 @@ adds an entry before ending.
 - Next: merge; live leg needs Adam to create `adamissac/ari-pilot-rehearsal`
   (private), install the GitHub App, and OAuth-login once.
 
-## 2026-10-24 — security/privacy lead (Devin session 94914ecc)
-- Did: Audited private-code data flows end-to-end and wrote `docs/security/TENANT_DATA_PROTECTION.md`; added `backend/tests/test_tenant_isolation_adversarial.py` (17 tests: 28-path read denial, write denial, SSE, artifacts incl. NULL-project, jobs trace-strip, forged scope/repo/context-pack claims, ingest-token binding, viewer floor, forged-ref payload/memory stores, RLS probe-role verify, store GUC smoke, full purge); implemented FORCE RLS on index_payloads/index_snapshots (migration 0016 + `set_config('ari.project_id')` in `_validate_ref`, `find_snapshot`, `PostgresMemoryStore._validate`, purge); implemented `backend/privacy.py::purge_project` (FK-safe full tenant delete + refcount-aware artifact objects + bare-clone removal; audit_events retained by design).
-- State of the code: all 334 backend tests pass incl. 17 new adversarial tests; ruff clean on touched files; no isolation hole found at app layer (require_project uniform).
-- Decisions: RLS scoped to the two source-content tables only (documented in doc §6); purge is operator-invoked, no TTL scheduler (documented gap).
-- Open: extend RLS fleet-wide needs per-request tenant GUC resolution — deferred; backups retention is deployment-level (documented).
-- Warnings: `test_repository_has_a_single_migration_head` expects head 0016 — next migration must update it to 0017.
-
-
 ### 2026-10-24 — Devin (agent, Adam) — Defense Lab pilot audit, safety suite, go/no-go
 - Did: full Defense Lab audit per owner task — inventoried lanes (simulation / shadow / owned-test / assisted / production); verified ingestion security (token auth, project bind, dedup/replay, quarantine, rate/size limits, provenance); verified safe abstention + rules fallback; reviewed PR #458 (Scout/Diagnose execution — ledger, cancellation, snapshot pinning verified; merge conflict noted) and PR #412 (RL-gated shadow-only guard — deny enforced server+worker side; readiness verdict honestly BLOCKED). Deliverables: `docs/DEFENSE_LAB_CAPABILITY_MATRIX.md`, `docs/DEFENSE_LAB_EVALUATION_REPORT.md` (explicit GO for recommendation-only + owned-test; NO-GO for production enforcement), `backend/tests/test_live_defense_pilot_safety.py` (37 tests).
 - Fixed: quarantine gap — credential-looking *values* under benign keys (e.g. `{"note":"password=hunter2"}`) were persisted; `secret_like_reason` now also matches `password|secret|api_key|access_token|private_key = value` patterns in string values.
 - State of the code (verified how): shadow path writes LivePolicyDecision NOT_EXECUTED only; 15-check gate + loopback HMAC adapter re-check at send; UNSAFE kinds hard-denied; checkpoint sha256-pinned. Reproduced on main: rl-defense 569 passed, v6 EVIDENCE verify OK (3 hashes), live.run 5 episodes 0 compromised, backend live-defense 96 passed; new suite 37 passed; phase3+phase6+runtime_ingest re-run green (35 passed).
 - Warnings for the next session: #458 merge conflict (contracts 0.22.0 vs #412 0.20.0) — land #458 first or rebase; #412 merge needs human review of authz tightening per its own flag; `owned_test` environment value is the safety boundary — never register customer apps as it.
+
+### 2026-10-24 — security/privacy lead (Devin session 94914ecc)
+- Did: Audited private-code data flows end-to-end and wrote `docs/security/TENANT_DATA_PROTECTION.md`; added `backend/tests/test_tenant_isolation_adversarial.py` (17 tests: 28-path read denial, write denial, SSE, artifacts incl. NULL-project, jobs trace-strip, forged scope/repo/context-pack claims, ingest-token binding, viewer floor, forged-ref payload/memory stores, RLS probe-role verify, store GUC smoke, full purge); implemented FORCE RLS on index_payloads/index_snapshots (migration 0016 + `set_config('ari.project_id')` in `_validate_ref`, `find_snapshot`, `PostgresMemoryStore._validate`, purge); implemented `backend/privacy.py::purge_project` (FK-safe full tenant delete + refcount-aware artifact objects + bare-clone removal; audit_events retained by design).
+- State of the code: all 334 backend tests pass incl. 17 new adversarial tests; ruff clean on touched files; no isolation hole found at app layer (require_project uniform).
+- Decisions: RLS scoped to the two source-content tables only (documented in doc §6); purge is operator-invoked, no TTL scheduler (documented gap).
+- Open: extend RLS fleet-wide needs per-request tenant GUC resolution — deferred; backups retention is deployment-level (documented).
+- Warnings: `test_repository_has_a_single_migration_head` expects head 0016 — next migration must update it to 0017.
 
 ### 2026-10-24 — Devin (agent, Adam) — leaked Vercel snapshot cleanup, push→agents verification
 - Did: verified the named-sandbox snapshot-leak fix already on main (`persistent: False` on run boxes + `destroy` in teardown + `_sweep_stale`); opened PR #495 making the sweep also delete stale run boxes' orphan snapshots so leaked quota is actually freed. Confirmed `delete_orphan_snapshots` only removes snapshots created *by* the destroyed sandbox — the shared `ari-base-*` snapshot can never be an orphan of a run box. Verified on main: security-agents suite 581 passed / 24 skipped, frontend typecheck + 330 vitest + lint clean, standards smoke (CWE/OWASP/CVSS/ATT&CK/D3FEND/SARIF/SP 800-115) passes. Confirmed agents are standards-grounded in code: Scout CWE/OWASP, Probe CWE, Trace ATT&CK/CVSS, Diagnose D3FEND, Fortify CWE/D3FEND; Patch/Verify get standards context via the tagged finding + remediation plan, not prompts.
