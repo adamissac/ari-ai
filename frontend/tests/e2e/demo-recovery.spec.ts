@@ -35,11 +35,9 @@ test('project navigation leads with the workflows and keeps tools reachable', as
   const base = `/projects/${env('E2E_PROJECT_ID')}`;
   await page.goto(base);
   const nav = page.getByRole('navigation', { name: 'Project', exact: true });
-  await expect(nav.getByRole('link')).toHaveCount(11);
+  await expect(nav.getByRole('link')).toHaveCount(12);
   await expect(nav.getByRole('link', { name: '7 Agents', exact: true })).toHaveAttribute('aria-current', 'page');
-  await expect(nav.getByRole('link')).toHaveCount(3);
   await expect(nav.getByRole('link', { name: 'Onboarding', exact: true })).toHaveAttribute('href', `${base}/onboarding`);
-  await expect(nav.getByRole('link', { name: '7 agents', exact: true })).toHaveAttribute('aria-current', 'page');
   await expect(page.getByTestId('pillar-loop')).toBeHidden();
   await expect(page.getByRole('region', { name: 'Runs & replay' })).toBeVisible();
   for (const width of [1440, 390]) {

@@ -601,13 +601,17 @@ def reconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
             from backend.api.github_repos import (
                 _refresh_personal_installation_repositories,
                 can_connect,
+                verify_installation_access,
             )
 
             gh = conn.execute(
                 sa.select(users.c.github_login, users.c.github_id).where(users.c.id == user.id)
             ).first()
             if gh is not None:
-                _refresh_personal_installation_repositories(user.id, gh.github_login, gh.github_id)
+                _refresh_personal_installation_repositories(
+                    user.id, gh.github_login, gh.github_id, strict=True
+                )
+            verify_installation_access(repo["full_name"], repo["installation_id"])
             if not can_connect(conn, user.id, repo["full_name"], repo["installation_id"]):
                 raise ApiError(
                     ErrorCode.FORBIDDEN,
