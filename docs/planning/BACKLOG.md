@@ -250,3 +250,7 @@ installation PRs, verify GitHub container CI, then configure native Codex, optio
 OpenAI project key and existing Devin sessions with confirmed native hard caps.
 No prompt relay is needed after activation. See
 `docs/release/AUTOMATED_INDEPENDENT_REVIEW.md`; paid calls remain OFF.
+
+Installation PRs: canonical #614; fork #9 (main), #10 (ci/upstream-main). Fork #9
+controller Docker unit/layout/actionlint checks passed at abd61416; paid activation
+remains OFF pending manual installation and protected credential/session setup.

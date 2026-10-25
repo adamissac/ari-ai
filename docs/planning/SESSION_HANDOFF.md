@@ -2022,3 +2022,7 @@ OFF. Installation PRs require manual review/merge; Codex repository access and A
 credentials/session budget confirmation are one-time prerequisites. Docker unavailable
 locally; live loop not claimed. No production code, release merge or deployment.
 See `docs/release/AUTOMATED_INDEPENDENT_REVIEW.md`.
+
+Installation PRs: canonical #614; fork #9 (main), #10 (ci/upstream-main). Fork #9
+controller Docker unit/layout/actionlint checks passed at abd61416; paid activation
+remains OFF pending manual installation and protected credential/session setup.
