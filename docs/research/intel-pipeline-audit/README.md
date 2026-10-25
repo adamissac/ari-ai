@@ -138,16 +138,30 @@ recall degrades with corpus size and shared vocabulary.
   secondary evidence loses to BM25 competition (82%→63%). Packs do not mark
   expected-but-absent evidence — treat "not in the pack" as "not retrieved",
   not "not in the repo".
-- **Mid-line secret redaction residual** (fixed for digit-bearing literals):
-  `f(password=hunter2, ...)` / `dict(password=hunter2)` / `{"password":
-  hunter2}` are now redacted. Still unreachable: mid-line bare tokens with no
-  digit (`f(password=hunter)`) and non-first elements of a compound value
-  (`password="x" if c else "y"`, `password="a" + "b"` — a regex sees only the
-  first element safely). Honest consequence: a secret matching a residual
-  pattern could still reach `index_payloads` and LLM context packs; tenant
-  RLS + `purge_project` (#535) is the second layer, not a substitute —
-  disclose this to pilot customers before onboarding code that may carry
-  such secrets.
+- **Mid-line secret redaction residual** (post-#531 hardening round): the
+  following are now redacted — `f(password=hunter2, ...)` / `dict(password=
+  hunter2)` / `{"password": hunter2}`; Slack `xox[baprs]-`, Stripe
+  `sk_live_/sk_test_/rk_live_`, Google `AIza`, and JWT `eyJ…eyJ…` literals;
+  credentials in any `scheme://user:pass@` URL (postgres, mongodb, redis,
+  amqp, …); `token` as a whole-component key (`token`, `slack_token`,
+  `csrf_token` — never `max_tokens`, `token_budget`, `token_hash`); and
+  compound RHS literals — tuple (`api_key = "a", "b"`), parenthesised
+  implicit concat (`password = (\n"a"\n"b"\n)`), and `+`-concat
+  (`token = "Bearer " + "zz9"` — every literal part redacted).
+  Still unreachable, documented residual classes: mid-line bare tokens with
+  no digit (`connect(password=hunterpass, user="u")` — a digit-less
+  identifier in mid-expression position is indistinguishable from a variable
+  reference); `os.environ.get("DB_PASSWORD", "fallback")` default-argument
+  values (the default is syntactically just a second call argument — any
+  pattern here risks redacting legitimate defaults); and conditional/else-
+  branch values (`password="x" if c else "y"` — only the first element).
+  Honest consequence: a secret matching a residual pattern could still reach
+  `index_payloads` and LLM context packs; tenant RLS + `purge_project` (#535)
+  is the second layer, not a substitute — disclose this to pilot customers
+  before onboarding code that may carry such secrets. Accepted collateral:
+  reference names under secret-shaped keys (`token=token`, `csrf_token=csrf`,
+  EOL annotations `token: str`) are redacted as if values — parse-safe, ~31
+  lines across 614 tracked .py files.
 - Indexing is **whole-tree, not incremental**: ari-ai costs ~92s and ~617MB
   heap; fine for pilot repos, a limit for monorepo-scale trees.
 

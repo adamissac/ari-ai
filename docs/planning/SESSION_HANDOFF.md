@@ -18,6 +18,16 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-24 — Devin (agent, Adam) — redaction hardening handoff
+- Did: implemented the pilot-commander's 10-case redaction probe on `fix/adam/intel-redaction-gaps` (post-#531, off main). `_KNOWN` gained Slack `xox[baprs]-`, Stripe `sk_live_|sk_test_|rk_live_`, Google `AIza`, JWT `eyJ…`; `_URL_CREDENTIAL` covers any `scheme://user:pass@`; secret-key list gained `token` as a whole trailing component (not `*_tokens`/`token_*`); new `_TAIL` pass redacts every string literal in a secret-keyed compound RHS (tuple, parenthesised implicit concat across newlines, `+` concat) preserving separators/line count. 17-case parametrised regression test + 3 preserve-reference cases + explicit residual test in `code-intelligence/tests/test_ingest_extract.py`. Residuals documented in `docs/research/intel-pipeline-audit/README.md` §8 and `docs/pilot/DATA_HANDLING.md`.
+- State of the code (verified how): `code-intelligence/tests` 82 passed, 1 skipped; `ruff check`/`format` clean; corpus re-check on 614 tracked .py — 0 newly-unparseable, 0 line shifts, 31 changed lines vs main's redact (intended new redactions + `password=p`-class collateral: `token=token`, `csrf_token=csrf`, EOL `token: str` annotations).
+- Commands run and results: `PYTHONPATH=code-intelligence:shared:code-intelligence/tests .venv/bin/python -m pytest code-intelligence/tests` (82 passed, 1 skipped); corpus check script `/Users/devin/scratch/corpus_check.py` (0 broken / 0 shifts / 31 diffs).
+- Decisions: `token` restricted to whole-component to avoid `max_tokens`/`input_tokens`/`token_budget`/`token_hash` field collateral (87→31 diffs); `os.environ.get` defaults and digit-less mid-line tokens left as documented residuals (indistinguishable from references).
+- Next steps: commander directed integration-lead (aedd769f) to land privacy.redact + backend redaction on ONE branch — this branch is the ready implementation (cherry-pick or diff); do NOT open a parallel PR. Re-probe by commander expected after their head lands.
+- Warnings: coordination file `20261024T2215Z`/`…T2230Z` already on record about the residual/RLS boundary.
+
+---
+
 ### 2026-10-24 — Devin (agent, Adam) — code-intelligence pipeline audit
 - Did: on `feat/adam/intel-pipeline-audit`, audited ingest→extract→store→retrieve→memory for pilot readiness. Reproduced the PR #441 redaction/parser regression on main (38/582 tracked .py unparseable post-redact + 2 line-count shifts); verified the fix (0 broken, 0 line shifts, 0 leaked literal secrets across the same corpus). Indexed payments-lite, `backend/` prefix, and the whole repo; ran a labeled-question retrieval eval; benchmarked latency/memory. Found a silent coverage gap — `@app.get(FIXTURE_ROUTE)`-style non-literal route paths were dropped with no IndexIssue — and fixed it so they are flagged. Carries `7a5b329f` verbatim, so merging this branch lands PR #441's fix.
 - State of the code (verified how): `code-intelligence/tests` 57 passed 1 skipped; `backend/tests/test_intel_store.py test_intelligence_memory_api.py test_intelligence_ingestion_profile.py test_payload_store_intel_integration.py` 9 passed on real Postgres; new retrieval eval + route-diagnostic tests pass; benchmark harness executed on payments-lite.

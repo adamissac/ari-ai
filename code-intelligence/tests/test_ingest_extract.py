@@ -224,3 +224,109 @@ def test_mid_line_secret_values_are_redacted_without_breaking_parse(
         for i in parser.issues
         if i.path in {"app/midline.py", "app/closers.py", "app/still_code.py"}
     ]
+
+
+_REDACT_CASES = [
+    # (source, secret substrings that must be gone)
+    pytest.param(
+        'slack_token = "xoxb-123456789012-abcdefABCDEF"',
+        ["xoxb-123456789012-abcdefABCDEF"],
+        id="slack_xoxb",
+    ),
+    pytest.param('token = "abcdEFGHijklMNOPqrst"', ["abcdEFGHijklMNOPqrst"], id="bare_token_key"),
+    pytest.param(
+        'STRIPE = "sk_live_51Habcdefabcdef"', ["sk_live_51Habcdefabcdef"], id="stripe_sk_live"
+    ),
+    pytest.param(
+        'DB = "postgresql://admin:S3cretPw@db.internal:5432/app"',
+        ["admin:S3cretPw"],
+        id="url_credential",
+    ),
+    pytest.param(
+        'password = (\n    "part1abc"\n    "part2def"\n)',
+        ["part1abc", "part2def"],
+        id="implicit_concat",
+    ),
+    pytest.param('api_key = "first111", "second222"', ["first111", "second222"], id="tuple_rhs"),
+    pytest.param(
+        'jwt = "eyJhbGciOiJIUzI1NiIs.eyJzdWIiOiIxMjM0NTY3.OeFghijKlmNopqrS"',
+        ["OeFghijKlmNopqrS"],
+        id="jwt",
+    ),
+    pytest.param(
+        'MAPS = "AIzaSyD-abcdefghijklmnopqrstuvwxyz12345"',
+        ["AIzaSyD-abcdefghijklmnopqrstuvwxyz12345"],
+        id="google_aiza",
+    ),
+    pytest.param(
+        'S3_SECRET = """line1\nsecret-lit-9\nline3"""', ["secret-lit-9"], id="triple_quoted"
+    ),
+    pytest.param('d = {"password": "hunter2zzz"}', ["hunter2zzz"], id="dict_literal"),
+    pytest.param("f(password=hunter2z)", ["hunter2z"], id="kwarg"),
+    pytest.param('AWS = "AKIAIOSFODNN7EXAMPLE"', ["AKIAIOSFODNN7EXAMPLE"], id="aws_akia"),
+    pytest.param(
+        'K = """-----BEGIN PRIVATE KEY-----\nabc123xyz\n-----END PRIVATE KEY-----"""',
+        ["abc123xyz"],
+        id="pem_block",
+    ),
+    pytest.param('b = "Bearer tok_abc123def456"', ["tok_abc123def456"], id="bearer"),
+    pytest.param('token = "Bearer " + "zz9" * 8', ["Bearer ", "zz9"], id="plus_concat"),
+    pytest.param(
+        'x_token = "one123", "two456", "three789"',
+        ["one123", "two456", "three789"],
+        id="tuple_three",
+    ),
+]
+
+
+@pytest.mark.parametrize(("source", "secrets"), _REDACT_CASES)
+def test_redact_removes_secret_literals_parseably(source: str, secrets: list[str]) -> None:
+    import ast
+
+    from code_intelligence.privacy import redact
+
+    out = redact(source)
+    for secret in secrets:
+        assert secret not in out, f"{secret!r} leaked: {out!r}"
+    ast.parse(out)  # still valid Python
+    assert out.count("\n") == source.count("\n")  # line count preserved
+
+
+@pytest.mark.parametrize(
+    ("source", "preserved"),
+    [
+        pytest.param(
+            "def f(secret: bytes, api_key=key):\n    return bool(secret)",
+            ["secret: bytes", "api_key=key", "bool(secret)"],
+            id="typed_annotations",
+        ),
+        pytest.param(
+            'x = "literal" + variable + "other"', ['"literal"', '"other"'], id="nonsecret_concat"
+        ),
+        pytest.param('s = f"api_key={key}"', ["{key}"], id="fstring_expr"),
+        pytest.param(
+            "TOKEN_NAMES = (input_tokens, max_tokens)",
+            ["input_tokens", "max_tokens"],
+            id="token_fields_untouched",
+        ),
+    ],
+)
+def test_redact_preserves_non_secret_references(source: str, preserved: list[str]) -> None:
+    import ast
+
+    from code_intelligence.privacy import redact
+
+    out = redact(source)
+    for bit in preserved:
+        assert bit in out, f"{bit!r} destroyed: {out!r}"
+    ast.parse(out)
+    assert out.count("\n") == source.count("\n")
+
+
+def test_redact_documented_residuals() -> None:
+    """Known-narrow leaks documented in docs/research/intel-pipeline-audit/README.md §8:
+    digit-less mid-line bare tokens and os.environ.get() default values."""
+    from code_intelligence.privacy import redact
+
+    assert "hunterpass" in redact('connect(password=hunterpass, user="u")')
+    assert "fallbackPw9" in redact('pw = os.environ.get("DB_PASSWORD", "fallbackPw9")')

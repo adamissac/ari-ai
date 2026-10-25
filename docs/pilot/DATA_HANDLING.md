@@ -46,11 +46,22 @@ Ari stores your source code, not just metadata:
 - Every model call goes through our LLM gateway; **your repository code
   context is sent to Anthropic's API** — that is how the analysis works.
 - Before any provider call, `redact()` strips recognized credential patterns
-  (Anthropic/GitHub/AWS/Slack tokens, private keys, bearer tokens) and
-  credential-keyed values from prompts and tool results. One known residual:
-  assistant-role turns are re-sent unredacted because provider signatures
-  bind to exact bytes — inbound redaction mitigates but does not eliminate
-  this.
+  (Anthropic/GitHub/AWS/Slack/Stripe/Google tokens, JWTs, private keys,
+  bearer tokens, `scheme://user:pass@` URL credentials) and credential-keyed
+  values — including tuple, implicit-concatenated and `+`-concatenated
+  literals — from prompts, tool results, and stored index payloads. Known
+  residuals: assistant-role turns are re-sent unredacted because provider
+  signatures bind to exact bytes — inbound redaction mitigates but does not
+  eliminate this; and the line-preserving indexer redaction cannot reach
+  mid-expression digit-less bare tokens (e.g. `password=hunterpass` inside a
+  call), `os.environ.get("NAME", "default")` default values, or non-first
+  elements of conditional values. If your code may contain secrets in those
+  exact shapes, tell us before onboarding — or rotate them first.
+- **Pilot customer code**: indexed source is stored redacted at rest
+  (`index_payloads`, RLS-guarded); the residual classes above are the only
+  known paths by which a secret in your code could still reach Anthropic's
+  API or our stored intelligence. Row-level security and `purge_project`
+  bound the blast radius but do not substitute for redaction.
 - **Provider retention**: Anthropic's standard API terms apply (including
   their abuse-monitoring retention). We do **not** claim zero retention on
   the provider side and have no evidence of a custom agreement — ask us if
