@@ -14,6 +14,7 @@ All notable changes are documented here. Format follows
 - Commit pages now warn when reviewing a commit other than the latest default-branch commit and link to the latest commit.
 - Verified-patch delivery skips fixes already present on the default branch and annotates stale-base pull requests.
 - Expired scopes no longer appear active or qualify for assessment selection.
+- Retention now protects findings, regression memory, expectation decisions, and assessment references; per-snapshot locking closes bind/delete races, and destructive ops maintenance requires a separate token plus a current plan digest.
 - Storage report probes use savepoints so a denied optional metric does not abort later checks.
 - Added the Industrial Graphite design-token foundation and reskinned existing UI primitives and console surfaces with graphite neutrals, vermilion signal, Inter, and IBM Plex Mono.
 - Rebuilt the public landing page around a commit-to-verify signal field, six visible stages, and explicit scope and control disclosures.
