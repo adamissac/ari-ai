@@ -86,6 +86,7 @@ acceptance criteria are the minimum for `DONE` in addition to
 | MON-002 | Normalization + correlation → ImpactSet | monitoring/ | FR-3-02 | MON-001, INTEL-008 | UNASSIGNED | BLOCKED | Push fixture maps to correct symbols/findings |
 | MON-003 | Trigger policy + ReassessmentRequest + coalescing | monitoring/ | FR-3-03 | MON-002, SEC-012 | UNASSIGNED | BLOCKED | IC-7 passes |
 | MON-004 | Runtime log signals from sandboxed demo target | monitoring/ | FR-3-04 | SEC-004 | UNASSIGNED | BLOCKED | Per-route signals computed from target logs |
+| MON-005 | Shared reviewer eligibility across impact and per-commit routes | backend/, monitoring/ | FR-3-01, FR-3-02 | MON-001, MON-002 | Adam | DONE | Empty, quoted-empty, or `*` global author settings retain impact-gated monitoring; both routes apply project reviewer filters; impact-path PR comments resolve through request event IDs |
 | RL-001 | `DefenseSimEnv-v0` Gymnasium environment + configs | rl-defense/ | FR-3-05 | — | Adam | DONE | `check_env` + determinism tests; train/eval configs separated; `rl.yml` CI |
 | RL-002 | Baselines: random, noop, threshold_rules | rl-defense/ | FR-3-05 | RL-001 | Adam | DONE | Thresholds tuned on train configs only |
 | RL-003 | Double DQN training | rl-defense/ | FR-3-05 | RL-001 | Adam | DONE | 5-seed runs with manifests; CPU smoke train < 5 min |

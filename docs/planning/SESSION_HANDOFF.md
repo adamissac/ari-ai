@@ -16,6 +16,24 @@ adds an entry before ending.
 - Warnings for the next session:
 ```
 
+### 2026-10-26 — Devin (agent, Adam) — preserve impact-gated reviewer monitoring (#593)
+- Did: restored `origin/main`'s impact/correlation/quota/reassessment path while adding one shared reviewer-eligibility gate before either impact processing or the per-commit scheduler. Quoted-empty and sole `*` global settings route to impact monitoring. Added filter coverage for both routes and an impact-path pull-request comment test using the reassessment request's event IDs.
+- State of the code: both routes use `reviewer_ignore_reason`; ignored events are recorded before impact work. Impact-created PR assessments enqueue a deduplicated review and resolve the PR number from their triggering monitoring event.
+- Commands run and results: `uv run pytest -q backend/tests` — 510 passed, 8 skipped; `uv run pytest -q backend/tests/test_payload_store_intel_integration.py` — 1 passed; `make check` passed (217 files formatted, 156 contract files unchanged); `uv run mypy` passed (40 source files).
+- Decisions made (ADR links): preserve the legacy impact-gated monitoring path per owner decision.
+- Assumptions / open questions (RQ links): none.
+- Next steps: push `feat/adam/reviewer-settings`, merge it into `feat/adam/repo-setup-walkthrough`, then report; CI is not part of this handoff.
+- Warnings for the next session: the full backend suite has 8 expected environment-gated skips and one existing SQLAlchemy deprecation warning.
+
+### 2026-10-25 — Devin (agent, Adam) — Railway storage watchdog (`feat/adam/storage-watchdog`)
+- Did: added the hourly Railway volume/backup watchdog, GitHub issue lifecycle, PR-only unit-test workflow, and operations docs; configured the repository `RAILWAY_TOKEN` Actions secret without exposing its value.
+- State of the code: implementation commit `d53ed4df` is pushed; merge commit `cea91bb3` integrates current `origin/main`, preserving both Unreleased changelog entries. No PR was opened and CI was not watched.
+- Commands run and results: `.venv/bin/python -m unittest discover -s tests/ops -v` → 14 passed on Python 3.12.15; Ruff check passed and format check reported 2 files already formatted; `python3 -I scripts/check_links.py` → 648 Markdown files, 0 problems. Live positive run: ari-data 972.153/5,000 MB (19.4%), postgres-volume 3,966.62/10,000 MB (39.7%), newest backup `pre-ari_app-role-migration` at 2026-10-25 08:47:42Z (0.1 hours), no problems, exit 0. With `WATCH_THRESHOLDS=10,20,30`, both volumes crossed thresholds and the run exited 1.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): system `python3` is 3.9.6, so the Python 3.12 project venv was used. The newest backup was newer than the expected 05:11Z schedule backup, though its name differed.
+- Next steps: Adam opens the PR and handles CI separately.
+- Warnings for the next session: the commit hook initially skipped secret scanning because `gitleaks` was missing; installed Homebrew `gitleaks` 8.30.1 from the repo environment blueprint afterward. The initial implementation and merge commits were made before that install.
+
 ### 2026-10-25 — Devin (agent, Adam) — app data-volume storage alerts
 - Did: added independent 70/80/90% reporting, webhook alerts, and Prometheus gauges for the app data volume; documented `DATA_VOLUME_BYTES` / `DATA_VOLUME_PATH` and Railway's decimal `sizeMB` conversion.
 - State of the code: data-volume sizing defaults to disabled (`DATA_VOLUME_BYTES=0`) while usage is reported if the configured path exists; the path defaults to `/data`.
@@ -24,6 +42,15 @@ adds an entry before ending.
 - Assumptions / open questions (RQ links): none.
 - Next steps: open a PR and handle CI separately.
 - Warnings for the next session: Railway `sizeMB` is decimal; 10,000 MB = 10,000,000,000 bytes and 5,000 MB = 5,000,000,000 bytes.
+
+### 2026-10-25 — Devin (agent, Adam) — live-analysis via App token, settings save UX, deploy overlap
+- Did: (1) `POST /api/analyze` no longer calls `api.github.com` from Vercel — it now reads the commit diff through the new backend route `GET /api/v1/github/commit?repo=owner/name&sha=`, which resolves the caller's own `github_repo_access` installation token (401 unauthenticated, 403 when the repo is not reachable through the caller's installations, 404 when GitHub has no such commit). The `GITHUB_TOKEN` requirement on Vercel is gone; `frontend/.env.example` updated. (2) Project Settings renders the Save/Discard action row at the top of the form too — the "Default assessment budget" save button no longer sits only below the fold. (3) Prod deploy hardening: `serviceInstanceUpdate` set `overlapSeconds=30` on the ari-ai service (was null); `healthcheckPath=/readyz`, `healthcheckTimeout=300`, `drainingSeconds=600`, `ON_FAILURE`×10 were already configured and verified via the Railway GraphQL API.
+- State of the code: new route in `backend/backend/api/github_repos.py`; `frontend/lib/live-analysis.ts` `fetchCommit` maps the trimmed backend payload into the existing `GitHubCommit` shape (consumer code unchanged); `liveAnalysis(fullName, sha, cookie)` takes the caller's session cookie.
+- Commands run and results: `pytest backend/tests/test_github_repo_access.py -k live_commit` → 3 new tests pass (7 incl. neighbours); `npm run typecheck`, `npm run lint`, `npm test` → clean / 355 pass; `make check` → all checks passed.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): none.
+- Next steps: PR + CI; verify live commit analysis on the deployed site after merge.
+- Warnings for the next session: the earlier `BUDGET_EXHAUSTED` staging run (cap 0.002) was a stale unsaved default, not an enforcement bug — cap enforcement itself is verified live on prod.
 
 ### 2026-10-25 — Devin (agent, Adam) — correction: empty auto-commit allowlist behavior
 - Did: corrected the deployment, storage and coordination guidance to distinguish the empty per-commit allowlist from strictly manual operation.
