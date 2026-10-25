@@ -43,7 +43,28 @@ describe('patch delivery status', () => {
     );
 
     const line = screen.getByTestId('patch-delivery-pat_two');
-    expect(line.textContent).toContain('Delivery failed: repository is not connected through the GitHub App');
+    expect(line.textContent).toContain('Delivery failed');
+    expect(line.textContent).toContain('repository is not connected through the GitHub App');
     expect(line.textContent).toContain("Ari didn't change your repository.");
+  });
+
+  it('shows the reason a verified fix was skipped', () => {
+    render(
+      <PatchDeliveryStatus
+        patchId="pat_three"
+        delivery={{
+          status: 'skipped',
+          reason: 'main already contains this fix (at abcdef123456)',
+          url: null,
+          branch: null,
+          commit_sha: null,
+          at: null,
+        }}
+      />,
+    );
+
+    const line = screen.getByTestId('patch-delivery-pat_three');
+    expect(line.textContent).toContain('Not delivered');
+    expect(line.textContent).toContain('main already contains this fix (at abcdef123456)');
   });
 });
