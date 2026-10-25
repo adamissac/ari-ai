@@ -5,8 +5,9 @@ from __future__ import annotations
 
 import pytest
 import sqlalchemy as sa
-from helpers import setup_project
+from helpers import add_member, setup_project
 
+from backend import audit
 from backend import jobs as jobq
 from backend.db import (
     first_responder_decisions,
@@ -14,7 +15,9 @@ from backend.db import (
     jobs,
     transaction,
 )
+from backend.redaction import redact
 from shared.assessment import AgentName
+from shared.audit import ActorType
 from shared.base import utcnow
 from shared.ids import IdPrefix, new_id
 from shared.live_defense import (
@@ -427,3 +430,113 @@ def test_diagnostics_new_job_states(client_factory) -> None:
     assert d["jobs_queued"] == 0
     waiting = [w for w in d["waiting_jobs"] if w["job_id"] == wait_job]
     assert waiting and waiting[0]["status"] == "waiting"
+
+
+# --- N4 (Codex RC2): stored job errors must not leak infrastructure secrets ---
+# Read surfaces redact at read time, so previously stored unsanitized rows are
+# covered too. The persistence-side sanitize belongs to Reliability Devin.
+
+_DSN_SECRET = "postgresql://svc:READ-SIDE-only-password@db.internal/app"
+
+
+def test_job_api_does_not_expose_infrastructure_credentials(client_factory) -> None:
+    """Codex RC2 N4 probe, read side: /jobs/{id} redacts stored last_error/result."""
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+    marker = "review" + "-only-password"
+    with transaction() as conn:
+        jid, _ = jobq.enqueue(conn, "review_credentials", {"project_id": ids["project"]})
+        assert jobq.claim(conn, "review-worker", 60, ["review_credentials"])
+        jobq.fail(
+            conn,
+            jid,
+            "review-worker",
+            {
+                "code": "TOOL_ERROR",
+                "message": "connect postgresql://svc:" + marker + "@db.internal/app failed",
+            },
+            retryable=False,
+        )
+    response = alice.get(f"/api/v1/jobs/{jid}")
+    assert response.status_code == 200
+    assert marker not in response.text
+    assert "dsn_credentials" in response.text
+
+
+def test_stored_sensitive_job_events_redact_at_read() -> None:
+    """Previously stored unsanitized event reasons/details are covered by the
+    same read-side redaction the history surface applies (Reliability wires it
+    into /jobs/{id}/history; see coordination message)."""
+    stored_events = [
+        {
+            "seq": 1,
+            "from_status": "running",
+            "to_status": "failed",
+            "category": "tool_error",
+            "reason": "connect " + _DSN_SECRET + " failed",
+            "details": {"host": "db.internal", "note": "password=READ-SIDE-only-password"},
+            "created_at": "2026-10-25T00:00:00Z",
+        },
+        {
+            "seq": 2,
+            "from_status": "recovery_required",
+            "to_status": "queued",
+            "category": "operator_resolution",
+            "reason": None,
+            "details": {"resolution": "retry", "note": "operator password=READ-SIDE-only-password"},
+            "created_at": "2026-10-25T00:01:00Z",
+        },
+    ]
+    out = redact(stored_events)
+    raw = str(out)
+    assert "READ-SIDE-only-password" not in raw
+    assert "dsn_credentials" in raw
+    assert stored_events[0]["reason"].endswith("@db.internal/app failed")  # storage untouched
+
+
+def test_viewer_surfaces_do_not_bypass_job_error_redaction(client_factory) -> None:
+    """A viewer reading job-derived surfaces sees only redacted error text."""
+    alice, bob, viewer = client_factory("alice"), client_factory("bob"), client_factory("viewer")
+    ids = setup_project(alice, bob)
+    org_id = alice.me["memberships"][0]["organization"]["id"]
+    add_member(org_id, viewer.me["user"]["id"], role="viewer")
+    marker = "history" + "-only-password"
+    with transaction() as conn:
+        jid, _ = jobq.enqueue(conn, "live_defense_agent_step", {"project_id": ids["project"]})
+        assert jobq.claim(conn, "history-worker", 60, ["live_defense_agent_step"])
+        jobq.fail(
+            conn,
+            jid,
+            "history-worker",
+            {
+                "code": "TOOL_ERROR",
+                "message": "connect postgresql://svc:" + marker + "@db.internal/app failed",
+            },
+            retryable=False,
+        )
+    assert marker not in alice.get(f"/api/v1/jobs/{jid}").text
+    diag = viewer.get(f"/api/v1/projects/{ids['project']}/first-responder/diagnostics")
+    assert diag.status_code == 200
+    assert marker not in diag.text
+
+
+def test_audit_read_redacts_stored_sensitive_details(client_factory) -> None:
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+    org_id = alice.me["memberships"][0]["organization"]["id"]
+    marker = "audit" + "-only-password"
+    with transaction() as conn:
+        audit.record(
+            conn,
+            org_id=org_id,
+            actor_type=ActorType.system,
+            actor_id="test",
+            action="test.n4",
+            subject_type="project",
+            subject_id=ids["project"],
+            project_id=ids["project"],
+            details={"note": "connect postgresql://svc:" + marker + "@db.internal/app failed"},
+        )
+    out = alice.get("/api/v1/audit", params={"project_id": ids["project"]})
+    assert out.status_code == 200
+    assert marker not in out.text
