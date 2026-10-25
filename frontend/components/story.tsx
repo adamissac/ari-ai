@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Reveal } from '@/components/reveal';
 import { BRAND_NAME } from '@/components/brand';
+import { MAX_SCOPE_DURATION_DAYS, SCOPE_DURATION_DAYS } from '@/lib/real-assessment';
 
 /*
  * Scroll-told landing chapters (pattern study of kairo.security, own implementation).
@@ -125,7 +126,7 @@ const HOW = [
   },
   {
     label: 'Review and attack', title: 'Test it like an attacker',
-    body: 'The Reviewer writes tests that reproduce defects, and seven security agents probe inside an approved sandbox scope.',
+    body: `The Reviewer writes tests that reproduce defects, and seven security agents probe inside an approved sandbox scope. Every authorization expires: setup requests ${SCOPE_DURATION_DAYS} days, and none can exceed ${MAX_SCOPE_DURATION_DAYS} days.`,
     file: 'sandbox · pytest',
     lines: [['run', 'generated/test_refund_bound.py', ''], ['bad', 'test_refund_exceeds_capture', 'AssertionError'], ['bad', 'reproduced on head', '2 / 2']],
   },

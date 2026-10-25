@@ -11,7 +11,7 @@ import { RepositoryAutomation } from '@/components/repository-automation';
 import { Button, ErrorState, Loading, Tag } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useActionKeys } from '@/lib/action-key';
-import { scopeBody, scopeStateFor } from '@/lib/real-assessment';
+import { SCOPE_DURATION_DAYS, scopeBody, scopeStateFor } from '@/lib/real-assessment';
 import { useResource } from '@/lib/use-resource';
 
 const STRICTNESS: Array<[number, string, string]> = [
@@ -90,6 +90,8 @@ function Walkthrough({ repo, scope, authorized, hasRun, reload }: {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const scopeKeys = useActionKeys('setup-scope');
+  const scopeExpiresAt = scope.kind === 'none' ? null : scope.scope.expires_at;
+  const scopeExpiryDate = scopeExpiresAt ? new Date(scopeExpiresAt).toLocaleDateString() : null;
   const runKeys = useActionKeys('setup-run');
   const review = project.settings.review;
   const progressKey = `ari-setup:${project.id}:${repo.id}`;
@@ -242,7 +244,7 @@ function Walkthrough({ repo, scope, authorized, hasRun, reload }: {
             <dl className="mt-4 grid gap-3 border-y border-line py-4 text-sm sm:grid-cols-2">
               <div><dt className="label-mono text-muted">Target</dt><dd className="mt-1 break-words font-mono text-ink">{repo.full_name}</dd></div>
               <div><dt className="label-mono text-muted">Sandbox build</dt><dd className="mt-1 text-muted">Built from <code className="font-mono text-ink">build_recipe.json</code></dd></div>
-              <div><dt className="label-mono text-muted">Duration</dt><dd className="mt-1 text-muted">7 days</dd></div>
+              <div><dt className="label-mono text-muted">Duration</dt><dd className="mt-1 text-muted">{scopeExpiresAt && scopeExpiryDate ? <>Until <time dateTime={scopeExpiresAt}>{scopeExpiryDate}</time></> : scope.kind === 'none' ? `${SCOPE_DURATION_DAYS} days` : 'Expiry not recorded'}</dd></div>
               <div><dt className="label-mono text-muted">Revocation</dt><dd className="mt-1 text-muted">Revoke anytime in <Link className="text-brand underline-offset-2 hover:underline" href={`/projects/${project.id}/scopes`}>Scopes</Link>.</dd></div>
             </dl>
             {scope.kind === 'active' && (
@@ -250,8 +252,8 @@ function Walkthrough({ repo, scope, authorized, hasRun, reload }: {
                 Testing authorized{scope.scope.expires_at ? <> until <time dateTime={scope.scope.expires_at}>{new Date(scope.scope.expires_at).toLocaleString()}</time></> : ''}.
               </p>
             )}
-            {scope.kind === 'pending' && <Button variant="primary" className="mt-4" disabled={busy !== null} onClick={() => void approveScope(scope.scope.id)}>{busy === 'scope' ? 'Approving…' : 'Approve sandbox testing for 7 days'}</Button>}
-            {scope.kind !== 'active' && scope.kind !== 'pending' && <Button variant="primary" className="mt-4" disabled={busy !== null} onClick={() => void requestScope()}>{busy === 'scope' ? 'Approving…' : 'Approve sandbox testing for 7 days'}</Button>}
+            {scope.kind === 'pending' && <Button variant="primary" className="mt-4" disabled={busy !== null} onClick={() => void approveScope(scope.scope.id)}>{busy === 'scope' ? 'Approving…' : scopeExpiryDate ? `Approve sandbox testing until ${scopeExpiryDate}` : 'Approve pending sandbox testing'}</Button>}
+            {scope.kind !== 'active' && scope.kind !== 'pending' && <Button variant="primary" className="mt-4" disabled={busy !== null} onClick={() => void requestScope()}>{busy === 'scope' ? 'Approving…' : `Approve sandbox testing for ${SCOPE_DURATION_DAYS} days`}</Button>}
           </StepPanel>
         )}
 

@@ -1,0 +1,13 @@
+{
+  "candidate_sha": "6a72949efa7c0a2d3233eb6884bb7a23dfe71ced",
+  "upstream_sha": "e41c9dc22e6536463cdab9be6a2a4cd76302c866",
+  "regression_sha": "abf6b316b1de2fea9a8ac8c89a79a7368900145a",
+  "exit_code": 1,
+  "tests": 183,
+  "skipped": 0,
+  "failed": 1,
+  "errors": 0,
+  "failures": [
+    "::test_verify_rejects_a_planted_bad_patch_that_edits_a_protected_test"
+  ]
+}
