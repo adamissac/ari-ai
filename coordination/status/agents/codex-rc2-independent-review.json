@@ -1,0 +1,13 @@
+{
+  "agent": "codex-rc2-independent-review",
+  "state": "DONE",
+  "task": "Independent exact-SHA RC2 security and transfer review",
+  "branch": "codex/rc2-independent-review",
+  "reviewed_sha": "3f16c99fb728323ae464890862f84e16981e5f71",
+  "verdict": "NO-GO for code merge and customer deployment",
+  "claims": ["docs/reviews/rc2-independent", "audit-only RC2 regression files"],
+  "next_action": "Owners fix final revocation race, target-install reconnect, provider recovery settlement and history redaction; correct transfer migrations/schema and publish retested final tree",
+  "production_changes": false,
+  "merged": false,
+  "deployed": false
+}

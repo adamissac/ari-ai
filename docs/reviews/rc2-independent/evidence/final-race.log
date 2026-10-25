@@ -1,0 +1,37 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_________ test_disconnect_after_final_revocation_read_prevents_success _________
+
+staging = <live_defense_e2e.harness.OwnedStaging object at 0x10a224200>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10a8b7290>
+
+    def test_disconnect_after_final_revocation_read_prevents_success(staging, monkeypatch):
+        import inspect
+        from backend.live_defense import first_responder
+        from .transports import fake_provider
+        alice, app, repo = prepare(staging)
+        provider = fake_provider(repo / "target")
+        staging.use_gateway(gateway_factory(provider))
+        real_check = first_responder.repository_revocation
+        disconnected = []
+        def disconnect_after_read(conn, **kwargs):
+            result = real_check(conn, **kwargs)
+            caller = inspect.currentframe().f_back.f_code.co_name
+            if caller == "live_defense_agent_step" and result is None and not disconnected:
+                response = alice.post(f"/api/v1/repositories/{app.repo_id}/disconnect")
+                assert response.status_code == 200, response.text
+                disconnected.append(True)
+            return result
+        monkeypatch.setattr(first_responder, "repository_revocation", disconnect_after_read)
+        assert staging.ingest(alice, app).status_code == 202
+        staging.drain()
+        assert disconnected
+        invocations = staging.invocations(alice, app.project_id)
+>       assert all(inv["status"] != "executed" for inv in invocations)
+E       assert False
+E        +  where False = all(<generator object test_disconnect_after_final_revocation_read_prevents_success.<locals>.<genexpr> at 0x107026dc0>)
+
+backend/tests/live_defense_e2e/test_rc2_independent.py:189: AssertionError
+=========================== short test summary info ============================
+FAILED backend/tests/live_defense_e2e/test_rc2_independent.py::test_disconnect_after_final_revocation_read_prevents_success
+1 failed in 2.51s

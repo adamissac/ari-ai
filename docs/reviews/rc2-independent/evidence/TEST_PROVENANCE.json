@@ -1,0 +1,20 @@
+{
+  "unchanged_original_runtime_test_asts": {
+    "test_abrupt_process_death_during_provider_send_requires_recovery": true,
+    "test_repo_picker_does_not_disclose_other_tenant_connection": true,
+    "test_reconnect_refuses_stale_access_when_fresh_check_fails": true,
+    "test_repository_disconnect_stops_next_provider_turn": true,
+    "test_job_api_does_not_expose_infrastructure_credentials": true
+  },
+  "original_source": "005ea42d:backend/tests/live_defense_e2e/test_release_rereview.py",
+  "latest_quota_source": "4d4be9e395bfe6ab59b62962b688570e2d2d5261:backend/tests/test_auto_commits.py",
+  "latest_protected_source": "95e90861613afa362b1433020310174b074291c2:security-agents/tests/test_e2e_replay.py",
+  "backend/tests/test_rc2_latest_quota.py": {
+    "sha256": "7affa96307d2744e3430cc94f2c135368c8d30c5eb4dce926b42f6cdb90cd170",
+    "byte_identical_to_pinned_upstream": true
+  },
+  "security-agents/tests/test_rc2_latest_protected.py": {
+    "sha256": "2605c0610fbf1ff65c844f50957f67850d752b622b9aa4e5c0fa4251fc195bad",
+    "byte_identical_to_pinned_upstream": true
+  }
+}

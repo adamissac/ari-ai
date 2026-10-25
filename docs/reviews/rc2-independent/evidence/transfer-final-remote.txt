@@ -1,0 +1,5 @@
+a217d3c984138cdaf6ef4ee238234e4fba7fbe17	refs/heads/transfer/customer-onboarding
+ae414985d09796cc950b7e833157861d239abc29	refs/heads/transfer/execution-reliability
+9fc0429a71781a53815982b1c9426c9330989506	refs/heads/transfer/investigation-observability
+a68817fbda7e37e8cd0fd597458d8c606015e0d9	refs/heads/transfer/pilot-security-hardening
+7ba1ab7707d52716dcae118de0f78b805ac15fde	refs/heads/transfer/release-validation

@@ -1,0 +1,15 @@
+eea084bc (origin/main) docs(adam): scheduled cloud health run 23 handoff (#603)
+a5dc73f1 fix(api): resolve blank assessment SHA to default HEAD (#591)
+95e90861 feat(security-agents): honor repo-declared protected_tests from build_recipe.json (#599)
+4d4be9e3 feat(storage): alert on app data volume usage (#597)
+7f4124a7 fix(backend): report the true quota reset time when a window is over its limit (#596)
+f8ab19e7 docs(release): post-wave state — main green at 0f311913, #458 schema collision flagged (#577)
+8d897f7e fix(ci): wrap verify-summary run block in steps (workflow unparseable) (#590)
+91b234d2 fix(frontend): point the no-scope hint at the real Defend → Authorized scopes link
+3104c8d9 fix(frontend): wrap project rail on narrow screens so Settings is never hidden
+7f18f902 fix(deploy): default GITHUB_AUTO_COMMIT_AUTHORS to empty on Railway (#578)
+497372ff fix(delivery): deliver exact Verify-tested bytes from a delivery-only sealed artifact (#587)
+a83a07f4 fix(migrations): make 0016/0017 retry-safe after partial application (#574)
+d36b8a3d feat(backend): shared per-project review quota (10/hour, 50/day), skip instead of re-queue (#584)
+136314b4 fix(frontend): make the first review reachable from the repo page (#588)
+94cf6b88 feat(security-agents): Patch reuses repo credential fixtures instead of inlining tokens (#585)

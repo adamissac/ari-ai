@@ -1,0 +1,27 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+_________ test_proposed_transfer_migrations_do_not_reuse_revision_ids __________
+
+    def test_proposed_transfer_migrations_do_not_reuse_revision_ids():
+        reliability = _literal('ae414985d09796cc950b7e833157861d239abc29', 'backend/backend/migrations/versions/0018_execution_reliability.py', 'revision')
+        disconnect = _literal('a68817fbda7e37e8cd0fd597458d8c606015e0d9', 'backend/backend/migrations/versions/0018_repository_disconnect.py', 'revision')
+>       assert reliability != disconnect, 'both transfer branches still declare revision ' + reliability
+E       AssertionError: both transfer branches still declare revision 0018
+E       assert '0018' != '0018'
+
+backend/tests/test_rc2_transfer_manifest.py:17: AssertionError
+____________ test_declared_transfer_order_does_not_downgrade_schema ____________
+
+    def test_declared_transfer_order_does_not_downgrade_schema():
+        heads = ['8396e836866e33ebc34a402a7c8bd0eb6bc769d8', '9fc0429a71781a53815982b1c9426c9330989506', 'a68817fbda7e37e8cd0fd597458d8c606015e0d9', 'a217d3c984138cdaf6ef4ee238234e4fba7fbe17']
+        versions = [_literal(sha, 'shared/shared/__init__.py', 'SCHEMA_VERSION') for sha in heads]
+>       assert all(isinstance(v, str) for v in versions), versions
+E       AssertionError: ['0.23.0', (), '0.26.0', ()]
+E       assert False
+E        +  where False = all(<generator object test_declared_transfer_order_does_not_downgrade_schema.<locals>.<genexpr> at 0x10bde0580>)
+
+backend/tests/test_rc2_transfer_manifest.py:23: AssertionError
+=========================== short test summary info ============================
+FAILED backend/tests/test_rc2_transfer_manifest.py::test_proposed_transfer_migrations_do_not_reuse_revision_ids
+FAILED backend/tests/test_rc2_transfer_manifest.py::test_declared_transfer_order_does_not_downgrade_schema
+2 failed in 3.00s

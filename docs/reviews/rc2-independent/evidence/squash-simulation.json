@@ -1,0 +1,40 @@
+[
+  {
+    "base": "4d4be9e395bfe6ab59b62962b688570e2d2d5261",
+    "incoming": "rc2-upstream/412",
+    "exit": 1,
+    "tree": "d54f639af048084af67dfe490643522491ce6f78",
+    "conflicts": [
+      "CHANGELOG.md"
+    ],
+    "output": "d54f639af048084af67dfe490643522491ce6f78\n100644 d21f9da00473813ce4246a8fbe1837574437a39e 1\tCHANGELOG.md\n100644 f88bbd9906c4e7fb4e55def5bafbc53a2f5828a6 2\tCHANGELOG.md\n100644 c1ddfd7ae10b251e5794eb28dab9576860cc4238 3\tCHANGELOG.md\n\nAuto-merging CHANGELOG.md\nCONFLICT (content): Merge conflict in CHANGELOG.md\nAuto-merging backend/README.md\nAuto-merging docs/13_BACKEND_API_DESIGN.md\nAuto-merging docs/planning/SESSION_HANDOFF.md\nAuto-merging shared/generated/contracts.schema.json\nAuto-merging shared/generated/ts/contracts.ts\nAuto-merging shared/shared/__init__.py\nAuto-merging shared/shared/registry.py\n",
+    "stderr": ""
+  },
+  {
+    "base": "120f34b9e0b4609fcc143262844d49ad7165e333",
+    "incoming": "rc2-upstream/458",
+    "exit": 1,
+    "tree": "7859611f0798ab3574d301a9f2d0b16f2618e77d",
+    "conflicts": [
+      "CHANGELOG.md",
+      "coordination/status/ALAN.md",
+      "docs/planning/LIVE_DEFENSE_FRONTEND_API.md",
+      "docs/planning/SESSION_HANDOFF.md",
+      "frontend/README.md"
+    ],
+    "output": "7859611f0798ab3574d301a9f2d0b16f2618e77d\n100644 50182c2d511e5b3b0117d2d39d3435142b660735 1\tCHANGELOG.md\n100644 37e2c711bbdeae493b8f53ad0dd2ca01cf826873 2\tCHANGELOG.md\n100644 1474378710422b1f02217383a6846771f09d7ddd 3\tCHANGELOG.md\n100644 de3ca7757f0ba5310df227281fd55b15321b809f 1\tcoordination/status/ALAN.md\n100644 dc9028c4e375a0395f2853659830c43be796718d 2\tcoordination/status/ALAN.md\n100644 df601afa56efd7f4240f6d10aa6a51210d057823 3\tcoordination/status/ALAN.md\n100644 5b77f85257daa54ef24b9ca44641fac4ae6c229a 1\tdocs/planning/LIVE_DEFENSE_FRONTEND_API.md\n100644 235876e546190d8d80aafa9eed83defd6d840230 2\tdocs/planning/LIVE_DEFENSE_FRONTEND_API.md\n100644 5f2471f31272181eebb13042e7af4d547269dbf2 3\tdocs/planning/LIVE_DEFENSE_FRONTEND_API.md\n100644 8fb8926b4dde8ee60898b1a3005b24fbed68deb3 1\tdocs/planning/SESSION_HANDOFF.md\n100644 eff2e1945b44775ae08ea1488575dab66b870ce4 2\tdocs/planning/SESSION_HANDOFF.md\n100644 4094965fd5b0a0e75d2a83922bdf4dc38e0371a5 3\tdocs/planning/SESSION_HANDOFF.md\n100644 3d4141f5c6609cfedd6f5516df91e278d1552c7c 1\tfrontend/README.md\n100644 efd19e190ee4ff74eb142c3c7ccf6dd0580c94fb 2\tfrontend/README.md\n100644 34d29667fd3b9fabd9cc34e99e693f80ef2ef36c 3\tfrontend/README.md\n\nAuto-merging CHANGELOG.md\nCONFLICT (content): Merge conflict in CHANGELOG.md\nAuto-merging backend/README.md\nAuto-merging coordination/status/ALAN.md\nCONFLICT (content): Merge conflict in coordination/status/ALAN.md\nAuto-merging docs/planning/LIVE_DEFENSE_FRONTEND_API.md\nCONFLICT (content): Merge conflict in docs/planning/LIVE_DEFENSE_FRONTEND_API.md\nAuto-merging docs/planning/SESSION_HANDOFF.md\nCONFLICT (content): Merge conflict in docs/planning/SESSION_HANDOFF.md\nAuto-merging frontend/README.md\nCONFLICT (content): Merge conflict in frontend/README.md\nAuto-merging frontend/lib/live-defense.ts\nAuto-merging frontend/tests/unit/live-defense.test.ts\nAuto-merging shared/generated/contracts.schema.json\nAuto-merging shared/generated/ts/contracts.ts\nAuto-merging shared/shared/__init__.py\nAuto-merging shared/shared/examples.py\nAuto-merging shared/shared/live_defense.py\nAuto-merging shared/shared/registry.py\n",
+    "stderr": ""
+  },
+  {
+    "base": "33a51ed457a1b67901834d1ce396deb058b223f4",
+    "incoming": "rc2-transfer/execution-reliability",
+    "exit": 1,
+    "tree": "199016dcbc4f9cfb87ffa31f25c2ec41b46c9323",
+    "conflicts": [
+      "backend/backend/live_defense/controls.py",
+      "backend/backend/worker.py"
+    ],
+    "output": "199016dcbc4f9cfb87ffa31f25c2ec41b46c9323\n100644 bd5f267e04aa4e7060dc104fab32497519a6baec 1\tbackend/backend/live_defense/controls.py\n100644 dc213415a2120b6037ba38ff4717e6694951cc8c 2\tbackend/backend/live_defense/controls.py\n100644 8b8caca4dd2f51ef8c446e977470f0bde9b7397c 3\tbackend/backend/live_defense/controls.py\n100644 7505c5971d3e4f823190ff4791543dd726f68886 1\tbackend/backend/worker.py\n100644 26a0a3effac8d111517f7d0b80ab9fae488df382 2\tbackend/backend/worker.py\n100644 d27a3a0ac833b301e0066d4aac018ca6728ba1f9 3\tbackend/backend/worker.py\n\nAuto-merging .env.example\nAuto-merging CHANGELOG.md\nAuto-merging backend/README.md\nAuto-merging backend/backend/jobs.py\nAuto-merging backend/backend/live_defense/controls.py\nCONFLICT (content): Merge conflict in backend/backend/live_defense/controls.py\nAuto-merging backend/backend/settings.py\nAuto-merging backend/backend/worker.py\nCONFLICT (content): Merge conflict in backend/backend/worker.py\nAuto-merging backend/tests/conftest.py\nAuto-merging backend/tests/test_jobs_queue.py\nAuto-merging docs/planning/SESSION_HANDOFF.md\n",
+    "stderr": ""
+  }
+]

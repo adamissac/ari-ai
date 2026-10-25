@@ -1,0 +1,250 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 4668b3bb..25c525af 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
+ 
+ ## [Unreleased]
+ 
++- Starting an assessment with no commit SHA now reviews the latest commit on the repository's
++  default branch when connected through the GitHub App.
+ - Verify now honors repository-declared `protected_tests` from `build_recipe.json` in its no-tampering check.
+ - Added independent 70/80/90% storage alerts and Prometheus gauges for the app data volume mounted at `/data`.
+ - Quota reset timestamps now reflect when an over-limit rolling hour or day window actually falls below its limit.
+diff --git a/backend/backend/api/routes.py b/backend/backend/api/routes.py
+index b6dd714f..9eaffdae 100644
+--- a/backend/backend/api/routes.py
++++ b/backend/backend/api/routes.py
+@@ -7,6 +7,7 @@ import json
+ from datetime import datetime, timedelta
+ from typing import Any
+ 
++import httpx
+ import sqlalchemy as sa
+ from fastapi import APIRouter, Header, Query, Request, Response
+ from fastapi.concurrency import run_in_threadpool
+@@ -48,6 +49,7 @@ from backend.db import (
+     transaction,
+     verification_results,
+ )
++from backend.github import GitHubApp, GitHubNotConfigured
+ from backend.integrations import load_factory
+ from backend.quota import check_project_quota, rate_limit_message
+ from backend.services import (
+@@ -891,6 +893,38 @@ def start_assessment(
+         replay = idempotent_lookup(conn, user.id, idempotency_key, retry_request)
+         if replay:
+             return JSONResponse(replay["body"], status_code=replay["status"])
++        commit_sha = body.commit_sha
++        if commit_sha is None and body.snapshot_id is None:
++            repo = (
++                conn.execute(sa.select(repositories).where(repositories.c.id == body.repo_id))
++                .mappings()
++                .first()
++            )
++            if repo is None or repo["project_id"] != project_id:
++                raise not_found("repository")
++            if repo["installation_id"] is None:
++                raise ApiError(
++                    ErrorCode.VALIDATION_FAILED,
++                    "enter a commit SHA: this repository is not connected through the GitHub App",
++                    422,
++                )
++            try:
++                commits = GitHubApp().recent_commits(
++                    repo["installation_id"], repo["full_name"], repo["default_branch"], limit=1
++                )
++            except (GitHubNotConfigured, httpx.HTTPError) as exc:
++                raise ApiError(
++                    ErrorCode.SUBSYSTEM_UNAVAILABLE,
++                    "could not read the latest commit from GitHub",
++                    503,
++                ) from exc
++            if not commits:
++                raise ApiError(
++                    ErrorCode.SUBSYSTEM_UNAVAILABLE,
++                    "could not read the latest commit from GitHub",
++                    503,
++                )
++            commit_sha = commits[0]["sha"]
+         quota = check_project_quota(conn, project_id, utcnow())
+         if quota is not None:
+             raise ApiError(
+@@ -899,7 +933,6 @@ def start_assessment(
+                 429,
+                 {"resets_at": quota.resets_at.isoformat()},
+             )
+-        commit_sha = body.commit_sha
+         if body.snapshot_id:
+             snap = (
+                 conn.execute(sa.select(snapshots).where(snapshots.c.id == body.snapshot_id))
+diff --git a/backend/tests/test_api_core.py b/backend/tests/test_api_core.py
+index a2d625e1..1429d307 100644
+--- a/backend/tests/test_api_core.py
++++ b/backend/tests/test_api_core.py
+@@ -4,6 +4,7 @@ from __future__ import annotations
+ 
+ from datetime import UTC, datetime, timedelta
+ 
++import pytest
+ from helpers import HEAD, setup_project
+ 
+ 
+@@ -135,6 +136,109 @@ def test_assessment_requires_active_scope_and_is_idempotent(client_factory) -> N
+     assert alice.post(url, json={**body, "commit_sha": "abc"}).status_code == 422
+ 
+ 
++def test_blank_commit_resolves_default_branch_head(client_factory, monkeypatch) -> None:
++    import sqlalchemy as sa
++
++    from backend.db import repositories, transaction
++
++    alice, bob = client_factory("alice"), client_factory("bob")
++    ids = setup_project(alice, bob)
++    with transaction() as conn:
++        conn.execute(
++            sa.update(repositories)
++            .where(repositories.c.id == ids["repo"])
++            .values(installation_id=42)
++        )
++
++    class GitHub:
++        def recent_commits(self, installation_id, full_name, branch, limit):
++            assert (installation_id, full_name, branch, limit) == (
++                42,
++                "acme/payments-lite",
++                "main",
++                1,
++            )
++            return [{"sha": HEAD}]
++
++    monkeypatch.setattr("backend.api.routes.GitHubApp", GitHub)
++    response = alice.post(
++        f"/api/v1/projects/{ids['project']}/assessments",
++        json={"scope_id": ids["scope"], "repo_id": ids["repo"]},
++    )
++    assert response.status_code == 202, response.text
++    assert response.json()["assessment"]["commit_sha"] == HEAD
++
++
++def test_blank_commit_without_installation_requires_explicit_sha(client_factory) -> None:
++    alice, bob = client_factory("alice"), client_factory("bob")
++    ids = setup_project(alice, bob)
++    response = alice.post(
++        f"/api/v1/projects/{ids['project']}/assessments",
++        json={"scope_id": ids["scope"], "repo_id": ids["repo"]},
++    )
++    assert response.status_code == 422
++    assert response.json()["error"]["code"] == "VALIDATION_FAILED"
++    assert response.json()["error"]["message"] == (
++        "enter a commit SHA: this repository is not connected through the GitHub App"
++    )
++
++
++@pytest.mark.parametrize("failure", ["not_configured", "http_error", "empty"])
++def test_blank_commit_github_failure_returns_unavailable(
++    client_factory, monkeypatch, failure: str
++) -> None:
++    import httpx
++    import sqlalchemy as sa
++
++    from backend.db import repositories, transaction
++    from backend.github import GitHubNotConfigured
++
++    alice, bob = client_factory("alice"), client_factory("bob")
++    ids = setup_project(alice, bob)
++
++    with transaction() as conn:
++        conn.execute(
++            sa.update(repositories)
++            .where(repositories.c.id == ids["repo"])
++            .values(installation_id=42)
++        )
++
++    class GitHub:
++        def recent_commits(self, installation_id, full_name, branch, limit):
++            if failure == "not_configured":
++                raise GitHubNotConfigured("not configured")
++            if failure == "http_error":
++                raise httpx.ConnectError("offline")
++            return []
++
++    monkeypatch.setattr("backend.api.routes.GitHubApp", GitHub)
++    response = alice.post(
++        f"/api/v1/projects/{ids['project']}/assessments",
++        json={"scope_id": ids["scope"], "repo_id": ids["repo"]},
++    )
++    assert response.status_code == 503
++    assert response.json()["error"]["code"] == "SUBSYSTEM_UNAVAILABLE"
++    assert response.json()["error"]["message"] == "could not read the latest commit from GitHub"
++
++
++def test_explicit_commit_sha_is_used_without_github_lookup(client_factory, monkeypatch) -> None:
++    alice, bob = client_factory("alice"), client_factory("bob")
++    ids = setup_project(alice, bob)
++
++    class NoGitHub:
++        def __init__(self):
++            raise AssertionError("explicit commit SHA must not query GitHub")
++
++    monkeypatch.setattr("backend.api.routes.GitHubApp", NoGitHub)
++    expected_sha = "c" * 40
++    response = alice.post(
++        f"/api/v1/projects/{ids['project']}/assessments",
++        json={"scope_id": ids["scope"], "repo_id": ids["repo"], "commit_sha": expected_sha},
++    )
++    assert response.status_code == 202, response.text
++    assert response.json()["assessment"]["commit_sha"] == expected_sha
++
++
+ def test_cancel_before_start_and_revoke_stops_assessments(client_factory) -> None:
+     alice, bob = client_factory("alice"), client_factory("bob")
+     ids = setup_project(alice, bob)
+diff --git a/coordination/status/ADAM.md b/coordination/status/ADAM.md
+index 1ce35e37..cbe17e85 100644
+--- a/coordination/status/ADAM.md
++++ b/coordination/status/ADAM.md
+@@ -489,3 +489,8 @@ Owner requested AI automation and Defense Lab OFF until explicitly enabled. Bran
+ - Synced origin/main (c65a8ed0). No new messages addressed to Adam. Since run 21 nothing changed in rl-defense/ or examples/payments-lite; `.github/workflows/rl.yml` gained the path-gate (release-gate lane, #530). `gh` not authenticated; used git only.
+ - Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 645 files, 0 problems. rl-defense suite started (installed with default CUDA torch, not CI's CPU wheel) but exceeded the time-box after ~21 CPU-min and was killed, so NOT confirmed this run; last full pass remains run 13's 569 passed. Next run: install torch from the CPU index as rl.yml does.
+ - No code changes. No live-LLM tests, no training/eval. Open: none.
++
++### 2026-10-25 — scheduled cloud health run (23)
++- Synced origin/main (8d897f7e). No new messages addressed to Adam. Nothing changed in rl-defense/, examples/payments-lite or Adam's CI/docs since run 22. `gh` not authenticated; used git/MCP only.
++- Health: rl-defense 569 passed (20 min; the CPU torch index was unreachable through the proxy, so torch came from PyPI instead of rl.yml's CPU wheel); payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 648 files, 0 problems. No live-LLM tests, no training/eval.
++- No code changes. Open: none.
+diff --git a/frontend/app/(console)/projects/[projectId]/page.tsx b/frontend/app/(console)/projects/[projectId]/page.tsx
+index 8fa81393..d291bf7a 100644
+--- a/frontend/app/(console)/projects/[projectId]/page.tsx
++++ b/frontend/app/(console)/projects/[projectId]/page.tsx
+@@ -336,7 +336,7 @@ function StartAssessment({ onStarted }: { onStarted: () => void }) {
+               {active.filter(s => !repoId || s.targets.some(t => t.repo_id === repoId)).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+             </select>
+           </Field>
+-          <Field label="Commit SHA" hint="Blank = backend default for the repository.">
++          <Field label="Commit SHA" hint="Blank = latest commit on the default branch.">
+             <input className={`${inputClass} font-mono`} value={sha} onChange={e => setSha(e.target.value.toLowerCase())} pattern="[0-9a-f]{7,40}" name="commit_sha" placeholder="optional" />
+           </Field>
+           <div className="sm:col-span-3">
+@@ -446,4 +446,3 @@ function RepoRow({ repo }: { repo: Repository }) {
+     </li>
+   );
+ }
+-
+diff --git a/shared/shared/api.py b/shared/shared/api.py
+index 02dbb845..d810dc15 100644
+--- a/shared/shared/api.py
++++ b/shared/shared/api.py
+@@ -171,12 +171,6 @@ class AssessmentCreate(StrictModel):
+     snapshot_id: SnapshotId | None = None
+     budget: Budget | None = None
+ 
+-    @model_validator(mode="after")
+-    def _target(self) -> AssessmentCreate:
+-        if not (self.commit_sha or self.snapshot_id):
+-            raise ValueError("commit_sha or snapshot_id is required")
+-        return self
+-
+ 
+ class AcceptRisk(StrictModel):
+     reason: ShortText = Field(min_length=3)

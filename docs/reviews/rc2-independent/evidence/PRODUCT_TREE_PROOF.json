@@ -1,0 +1,7 @@
+{
+  "product_sha": "3f16c99fb728323ae464890862f84e16981e5f71",
+  "declared_base_is_ancestor": true,
+  "changed_production_paths": [],
+  "audit_checkpoint": "de64a90d5082bbfe52289a37bbd3ec8848c67423",
+  "migration_scripts_unchanged_between_tested_upstream_and_final_upstream": true
+}

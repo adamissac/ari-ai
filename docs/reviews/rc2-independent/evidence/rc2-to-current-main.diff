@@ -1,0 +1,376 @@
+diff --git a/backend/backend/api/ops.py b/backend/backend/api/ops.py
+index 30baa3ae..80680a30 100644
+--- a/backend/backend/api/ops.py
++++ b/backend/backend/api/ops.py
+@@ -1,24 +1,149 @@
+-"""Operator endpoints: storage reporting and on-demand maintenance.
+-
+-Entirely disabled unless OPS_API_TOKEN is set — a Bearer token checked in constant
+-time, independent of user sessions/CSRF (this surface is for automation and on-call,
+-not the UI). See docs/deploy/POSTGRES_STORAGE.md.
++"""Operator surface.
++
++GET /api/v1/ops/status — deploy, migration and queue visibility; token-gated by
++the X-Ops-Token header (OPS_TOKEN). When OPS_TOKEN is unset the endpoint answers
++404 outside development/test — an unconfigured token must not open an ops view
++on the internet. It returns a plain JSON object: operator tooling, not a
++versioned client contract.
++
++Storage reporting and on-demand maintenance (upstream) — disabled entirely
++unless OPS_API_TOKEN is set; a Bearer token checked in constant time, independent
++of user sessions/CSRF (this surface is for automation and on-call, not the UI).
++See docs/deploy/POSTGRES_STORAGE.md.
+ """
+ 
+ from __future__ import annotations
+ 
+ import hmac
++import secrets
+ from typing import Any
+ 
+-from fastapi import APIRouter, Depends, Header, HTTPException
++import sqlalchemy as sa
++from fastapi import APIRouter, Depends, Header, HTTPException, Request
++from fastapi.responses import JSONResponse
+ from pydantic import BaseModel
+ 
+ from backend import maintenance
+-from backend.db import get_engine
++from backend.api.deps import ApiError
++from backend.db import first_responder_modes, get_engine, jobs
++from backend.llm import llm_mode
++from backend.preflight import migration_status
+ from backend.settings import get_settings
++from shared import SCHEMA_VERSION
++from shared.errors import ErrorCode
+ 
+ router = APIRouter()
+ 
++_HEADER = "X-Ops-Token"
++
++
++def _require_ops_header(request: Request) -> None:
++    s = get_settings()
++    token = s.ops_token.get_secret_value() if s.ops_token else ""
++    if not token:
++        if s.is_dev:
++            return
++        raise ApiError(ErrorCode.NOT_FOUND, "not found", 404)
++    given = request.headers.get(_HEADER, "")
++    if not (given and secrets.compare_digest(given, token)):
++        raise ApiError(ErrorCode.FORBIDDEN, "invalid or missing ops token", 403)
++
++
++def _queue_snapshot(conn: sa.Connection) -> dict:
++    counts: dict[str, int] = dict(
++        conn.execute(sa.select(jobs.c.status, sa.func.count()).group_by(jobs.c.status)).all()
++    )
++    running = []
++    for row in conn.execute(
++        sa.select(
++            jobs.c.id,
++            jobs.c.kind,
++            jobs.c.lease_owner,
++            jobs.c.attempts,
++            jobs.c.heartbeat_at,
++            sa.func.now().label("now"),
++        ).where(jobs.c.status == "running")
++    ).mappings():
++        hb = row["heartbeat_at"]
++        age = (row["now"] - hb).total_seconds() if hb else None
++        running.append(
++            {
++                "id": row["id"],
++                "kind": row["kind"],
++                "owner": row["lease_owner"],
++                "attempts": row["attempts"],
++                "heartbeat_age_s": round(age, 1) if age is not None else None,
++            }
++        )
++    oldest_queued = conn.execute(
++        sa.select(sa.func.min(jobs.c.run_after)).where(
++            jobs.c.status == "queued", jobs.c.run_after <= sa.func.now()
++        )
++    ).scalar()
++    next_due = conn.execute(
++        sa.select(sa.func.min(jobs.c.run_after)).where(jobs.c.status == "queued")
++    ).scalar()
++    now = conn.execute(sa.select(sa.func.now())).scalar()
++    workers = [
++        {"owner": row["lease_owner"], "last_heartbeat": row["last_heartbeat"].isoformat()}
++        for row in conn.execute(
++            sa.select(jobs.c.lease_owner, sa.func.max(jobs.c.heartbeat_at).label("last_heartbeat"))
++            .where(jobs.c.status == "running", jobs.c.lease_owner.is_not(None))
++            .group_by(jobs.c.lease_owner)
++        ).mappings()
++    ]
++    return {
++        "counts": counts,
++        # Age of the oldest claimable job (run_after in the past); deferred jobs
++        # report separately as next_due_in_s so backlog never reads negative.
++        "oldest_queued_age_s": (
++            round((now - oldest_queued).total_seconds(), 1) if oldest_queued and now else None
++        ),
++        "next_due_in_s": (round((next_due - now).total_seconds(), 1) if next_due and now else None),
++        "running": running,
++        # A worker heartbeats only while it owns a job; an idle worker leaves no trace.
++        # This is the honest bound on "worker visibility" without a registry table.
++        "workers_with_leases": workers,
++    }
++
++
++@router.get("/ops/status")
++def ops_status(request: Request) -> JSONResponse:
++    _require_ops_header(request)
++    from backend.main import VERSION  # deferred: main imports this router
++
++    s = get_settings()
++    with get_engine().begin() as conn:
++        mig = migration_status(conn)
++        queue = _queue_snapshot(conn)
++        non_off = conn.execute(
++            sa.select(sa.func.count())
++            .select_from(first_responder_modes)
++            .where(first_responder_modes.c.intent != "off")
++        ).scalar_one()
++    body = {
++        "version": VERSION,
++        "schema_version": SCHEMA_VERSION,
++        "app_env": s.app_env,
++        "llm_mode": llm_mode(),
++        "migrations": {
++            "current": mig.current,
++            "expected": mig.expected,
++            "at_head": mig.at_head,
++        },
++        "queue": queue,
++        "first_responder": {
++            "default_mode": "off",
++            "projects_with_non_default_mode": non_off,
++        },
++        "alerting_configured": bool(s.alert_webhook_url),
++        "feature_flags": sorted(s.flags()),
++    }
++    return JSONResponse(body)
++
++
++# --- Storage reporting + on-demand maintenance (upstream; OPS_API_TOKEN Bearer) ---
++
+ 
+ def _require_ops(authorization: str | None = Header(default=None)) -> None:
+     token = get_settings().ops_api_token
+@@ -70,21 +195,6 @@ def storage_prometheus() -> Any:
+             "# TYPE ari_postgres_volume_pct gauge",
+             f"ari_postgres_volume_pct {pct}",
+         ]
+-    data_volume = report["data_volume"]
+-    data_used = data_volume["used_bytes"]
+-    if data_used is not None:
+-        lines += [
+-            "# HELP ari_data_volume_bytes App data volume usage in bytes",
+-            "# TYPE ari_data_volume_bytes gauge",
+-            f"ari_data_volume_bytes {data_used}",
+-        ]
+-    data_pct = data_volume["pct_used"]
+-    if data_pct is not None:
+-        lines += [
+-            "# HELP ari_data_volume_pct App data volume utilization percent",
+-            "# TYPE ari_data_volume_pct gauge",
+-            f"ari_data_volume_pct {data_pct}",
+-        ]
+     fs = report.get("filesystem", {})
+     if "artifact_bytes" in fs:
+         lines.append(f"ari_artifact_store_bytes {fs['artifact_bytes']}")
+diff --git a/backend/backend/maintenance.py b/backend/backend/maintenance.py
+index 619adbec..ea36c40f 100644
+--- a/backend/backend/maintenance.py
++++ b/backend/backend/maintenance.py
+@@ -517,19 +517,6 @@ def storage_report(engine: Engine | None = None, s: Settings | None = None) -> d
+         for t in ALERT_THRESHOLDS_PCT
+         if pct is not None and pct >= t
+     ]
+-    data_volume_limit = s.data_volume_bytes
+-    data_volume_used = _du(s.data_volume_path) if s.data_volume_path.is_dir() else None
+-    data_volume_pct = (
+-        round(100.0 * data_volume_used / data_volume_limit, 2)
+-        if data_volume_limit > 0 and data_volume_used is not None
+-        else None
+-    )
+-    alerts.extend(
+-        f"data volume usage at {data_volume_pct:.1f}% of configured volume "
+-        f"({data_volume_used}/{data_volume_limit} bytes)"
+-        for t in ALERT_THRESHOLDS_PCT
+-        if data_volume_pct is not None and data_volume_pct >= t
+-    )
+     reclaim = run_retention(engine=engine, s=s, dry_run=True)
+     return {
+         "generated_at": datetime.now(UTC).isoformat(),
+@@ -540,12 +527,6 @@ def storage_report(engine: Engine | None = None, s: Settings | None = None) -> d
+         "replication_slots": slots,
+         "long_running_transactions": long_running,
+         "volume": {"limit_bytes": limit or None, "used_bytes": used, "pct_used": pct},
+-        "data_volume": {
+-            "path": str(s.data_volume_path),
+-            "limit_bytes": data_volume_limit or None,
+-            "used_bytes": data_volume_used,
+-            "pct_used": data_volume_pct,
+-        },
+         "alerts": alerts,
+         "tables": tables,
+         "jobs": job_stats,
+@@ -697,37 +678,6 @@ def run_once(engine: Engine | None = None, s: Settings | None = None) -> dict[st
+                 "at": report["generated_at"],
+             },
+         )
+-    data_volume = report["data_volume"]
+-    data_pct = data_volume["pct_used"]
+-    data_level = 0
+-    if data_pct is not None:
+-        for t in ALERT_THRESHOLDS_PCT:
+-            if data_pct >= t:
+-                data_level = t
+-    if data_level:
+-        log.warning(
+-            "data volume storage alert: %.1f%% of %d-byte volume used (level %d%%)",
+-            data_pct,
+-            s.data_volume_bytes,
+-            data_level,
+-        )
+-    if s.ops_alert_webhook_url and data_level:
+-        _post_alert(
+-            s.ops_alert_webhook_url,
+-            {
+-                "service": "ari-ai-backend",
+-                "kind": "data_volume_storage",
+-                "path": data_volume["path"],
+-                "pct_used": data_pct,
+-                "used_bytes": data_volume["used_bytes"],
+-                "limit_bytes": data_volume["limit_bytes"],
+-                "level": data_level,
+-                "filesystem": {
+-                    key: value for key, value in report["filesystem"].items() if key != "checkouts"
+-                },
+-                "at": report["generated_at"],
+-            },
+-        )
+     retention = run_retention(engine=engine, s=s)
+     if retention["deleted"]:
+         log.info("retention %s", json.dumps(retention["deleted"], default=str)[:4000])
+diff --git a/backend/backend/quota.py b/backend/backend/quota.py
+index c5f6949e..3080b17b 100644
+--- a/backend/backend/quota.py
++++ b/backend/backend/quota.py
+@@ -22,28 +22,6 @@ class QuotaDecision:
+     limit: int | None = None
+ 
+ 
+-def _quota_resets_at(
+-    conn: Connection,
+-    project_id: str,
+-    now: datetime,
+-    window: timedelta,
+-    count: int,
+-    limit: int,
+-) -> datetime:
+-    next_expiring = conn.execute(
+-        sa.select(assessments.c.created_at)
+-        .where(
+-            assessments.c.project_id == project_id,
+-            assessments.c.created_at > now - window,
+-            assessments.c.created_at <= now,
+-        )
+-        .order_by(assessments.c.created_at.asc())
+-        .offset(count - limit)
+-        .limit(1)
+-    ).scalar_one()
+-    return next_expiring + window
+-
+-
+ def check_project_quota(conn: Connection, project_id: str, now: datetime) -> QuotaDecision | None:
+     """Check every project's assessment start and the global rolling spend ceilings."""
+     # This is check-then-insert, so concurrent starts can overshoot the limit.
+@@ -61,14 +39,7 @@ def check_project_quota(conn: Connection, project_id: str, now: datetime) -> Quo
+     if hour_count >= settings.project_assessments_per_hour and hour_oldest is not None:
+         return QuotaDecision(
+             "hour",
+-            _quota_resets_at(
+-                conn,
+-                project_id,
+-                now,
+-                hour_window,
+-                hour_count,
+-                settings.project_assessments_per_hour,
+-            ),
++            hour_oldest + hour_window,
+             settings.project_assessments_per_hour,
+         )
+ 
+@@ -82,14 +53,7 @@ def check_project_quota(conn: Connection, project_id: str, now: datetime) -> Quo
+     if day_count >= settings.project_assessments_per_day and day_oldest is not None:
+         return QuotaDecision(
+             "day",
+-            _quota_resets_at(
+-                conn,
+-                project_id,
+-                now,
+-                day_window,
+-                day_count,
+-                settings.project_assessments_per_day,
+-            ),
++            day_oldest + day_window,
+             settings.project_assessments_per_day,
+         )
+ 
+diff --git a/security-agents/security_agents/sandbox/workspace.py b/security-agents/security_agents/sandbox/workspace.py
+index 454ae551..81534068 100644
+--- a/security-agents/security_agents/sandbox/workspace.py
++++ b/security-agents/security_agents/sandbox/workspace.py
+@@ -36,28 +36,6 @@ def recipe_test_roots(root: Path) -> tuple[str, ...]:
+     return ("tests/",)
+ 
+ 
+-def recipe_protected_tests(root: Path) -> tuple[str, ...]:
+-    """repo-declared tests Verify must find unmodified by a patch."""
+-    try:
+-        protected = json.loads((root / "build_recipe.json").read_text(encoding="utf-8")).get(
+-            "protected_tests"
+-        )
+-        if not isinstance(protected, list) or not all(isinstance(path, str) for path in protected):
+-            return ()
+-        roots = recipe_test_roots(root)
+-        valid: set[str] = set()
+-        for path in protected:
+-            try:
+-                rel = safe_rel_path(path)
+-            except PlatformError:
+-                continue
+-            if under_test_roots(rel, roots):
+-                valid.add(rel)
+-        return tuple(sorted(valid))
+-    except (OSError, ValueError, AttributeError, TypeError, PlatformError):
+-        return ()
+-
+-
+ def under_test_roots(rel: str, roots: tuple[str, ...]) -> bool:
+     return any(rel.startswith(r) for r in roots)
+ 
+diff --git a/security-agents/security_agents/workflow/orchestrator.py b/security-agents/security_agents/workflow/orchestrator.py
+index 7c0fbee5..b12b02c9 100644
+--- a/security-agents/security_agents/workflow/orchestrator.py
++++ b/security-agents/security_agents/workflow/orchestrator.py
+@@ -62,7 +62,6 @@ from ..runtime import AgentSpec, StepOutcome, StepRecord, run_agent
+ from ..sandbox.driver import SandboxDriver
+ from ..sandbox.workspace import (
+     fresh_checkout,
+-    recipe_protected_tests,
+     recipe_test_roots,
+     resolve_under,
+     tree_digest,
+@@ -1462,7 +1461,6 @@ class Orchestrator:
+     def _protected_tests(self) -> list[str]:
+         """Tests encoding confirmed expectations (configured + expectation sources)."""
+         protected = set(self.config.protected_tests)
+-        protected.update(recipe_protected_tests(self.intel.snapshot.root))
+         for expectation in self.intel.expectations():
+             if expectation.status != "confirmed":
+                 continue

@@ -1,0 +1,44 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+____________ test_operator_confirmed_retry_resolves_provider_ledger ____________
+
+staging = <live_defense_e2e.harness.OwnedStaging object at 0x10c2377a0>
+
+    def test_operator_confirmed_retry_resolves_provider_ledger(staging):
+        from .transports import fake_provider
+        alice, app, repo = prepare(staging)
+        class ExitAtSend:
+            mode = "fake"
+            def complete(self, request):
+                os._exit(71)
+        staging.use_gateway(gateway_factory(ExitAtSend()))
+        assert staging.ingest(alice, app).status_code == 202
+        staging.drain(kinds=["live_defense_shadow", "live_defense_first_responder"])
+        pid = os.fork()
+        if pid == 0:
+            get_engine().dispose(close=False)
+            try:
+                staging.drain(kinds=["live_defense_agent_step"])
+            finally:
+                os._exit(72)
+        _, status = os.waitpid(pid, 0)
+        assert os.waitstatus_to_exitcode(status) == 71
+        step = next(j for j in staging.job_rows("live_defense_agent_step") if j["status"] == "running")
+        with transaction() as conn:
+            conn.execute(sa.update(jobs_t).where(jobs_t.c.id == step["id"]).values(lease_expires_at=sa.func.now() - sa.text("interval '1 second'")))
+            execution.reconcile(conn)
+        assert jobrow(step["id"])["status"] == "recovery_required"
+        response = alice.post(f"/api/v1/jobs/{step['id']}/recovery", json={"resolution": "retry", "note": "Scripted provider confirms request was not applied"})
+        assert response.status_code == 200, response.text
+        provider = fake_provider(repo / "target")
+        staging.use_gateway(gateway_factory(provider))
+        staging.drain(kinds=["live_defense_agent_step"])
+>       assert provider.calls, "authorized retry must reconcile the old reservation rather than defer forever"
+E       AssertionError: authorized retry must reconcile the old reservation rather than defer forever
+E       assert []
+E        +  where [] = <security_agents.llm.providers.FakeLLM object at 0x10cb71c70>.calls
+
+backend/tests/live_defense_e2e/test_rc2_independent.py:247: AssertionError
+=========================== short test summary info ============================
+FAILED backend/tests/live_defense_e2e/test_rc2_independent.py::test_operator_confirmed_retry_resolves_provider_ledger
+1 failed in 3.00s

@@ -1,0 +1,72 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+____________ test_over_limit_hourly_assessments_report_actual_reset ____________
+
+automatic = (<starlette.testclient.TestClient object at 0x10f13da00>, <starlette.testclient.TestClient object at 0x10f155370>, {'o...8JNVR4W', 'repo': 'rep_01M5RSKJ0XMMGKG1QBGXPAT7EG', 'scope': 'scp_01M5RSKJ49EVJ1KG7C80C0MRV2'}, {'login': 'adamissac'})
+
+    def test_over_limit_hourly_assessments_report_actual_reset(automatic):
+        from datetime import datetime, timedelta
+    
+        from shared.base import utcnow
+    
+        alice, bob, ids, _ = automatic
+        assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
+        seeded_at = utcnow() - timedelta(seconds=20)
+        created_at = [seeded_at + timedelta(seconds=index) for index in range(12)]
+        seed_assessments(
+            alice,
+            ids,
+            [AssessmentTrigger.manual] * 12,
+            created_at=created_at,
+        )
+    
+        response = manual_start(alice, ids, "f" * 40)
+        assert response.status_code == 429
+        error = response.json()["error"]
+        assert "project review limit reached (10 per hour); resets at " in error["message"]
+>       assert datetime.fromisoformat(error["details"]["resets_at"]) == created_at[2] + timedelta(
+            hours=1
+        )
+E       AssertionError: assert datetime.datetime(2026, 10, 25, 6, 47, 26, 383675, tzinfo=datetime.timezone.utc) == (datetime.datetime(2026, 10, 25, 5, 47, 28, 383675, tzinfo=datetime.timezone.utc) + datetime.timedelta(seconds=3600))
+E        +  where datetime.datetime(2026, 10, 25, 6, 47, 26, 383675, tzinfo=datetime.timezone.utc) = <built-in method fromisoformat of type object at 0x105dc8c58>('2026-10-25T06:47:26.383675+00:00')
+E        +    where <built-in method fromisoformat of type object at 0x105dc8c58> = <class 'datetime.datetime'>.fromisoformat
+E        +  and   datetime.timedelta(seconds=3600) = <class 'datetime.timedelta'>(hours=1)
+
+backend/tests/test_rc2_latest_quota.py:394: AssertionError
+____________ test_over_limit_daily_assessments_report_actual_reset _____________
+
+automatic = (<starlette.testclient.TestClient object at 0x10f394d70>, <starlette.testclient.TestClient object at 0x10f3a94f0>, {'o...9AADZCR', 'repo': 'rep_01M5RSKKEEBXSMC5781D87JXR2', 'scope': 'scp_01M5RSKKH1A16TYXAJG23Y077J'}, {'login': 'adamissac'})
+
+    def test_over_limit_daily_assessments_report_actual_reset(automatic):
+        from datetime import datetime, timedelta
+    
+        from shared.base import utcnow
+    
+        alice, bob, ids, _ = automatic
+        assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
+        seeded_at = utcnow() - timedelta(hours=2, seconds=51)
+        created_at = [seeded_at + timedelta(seconds=index) for index in range(52)]
+        seed_assessments(
+            alice,
+            ids,
+            [AssessmentTrigger.manual] * 52,
+            created_at=created_at,
+        )
+    
+        response = manual_start(alice, ids, "f" * 40)
+        assert response.status_code == 429
+        error = response.json()["error"]
+        assert "project review limit reached (50 per day); resets at " in error["message"]
+>       assert datetime.fromisoformat(error["details"]["resets_at"]) == created_at[2] + timedelta(
+            days=1
+        )
+E       AssertionError: assert datetime.datetime(2026, 10, 26, 3, 46, 56, 778914, tzinfo=datetime.timezone.utc) == (datetime.datetime(2026, 10, 25, 3, 46, 58, 778914, tzinfo=datetime.timezone.utc) + datetime.timedelta(days=1))
+E        +  where datetime.datetime(2026, 10, 26, 3, 46, 56, 778914, tzinfo=datetime.timezone.utc) = <built-in method fromisoformat of type object at 0x105dc8c58>('2026-10-26T03:46:56.778914+00:00')
+E        +    where <built-in method fromisoformat of type object at 0x105dc8c58> = <class 'datetime.datetime'>.fromisoformat
+E        +  and   datetime.timedelta(days=1) = <class 'datetime.timedelta'>(days=1)
+
+backend/tests/test_rc2_latest_quota.py:484: AssertionError
+=========================== short test summary info ============================
+FAILED backend/tests/test_rc2_latest_quota.py::test_over_limit_hourly_assessments_report_actual_reset
+FAILED backend/tests/test_rc2_latest_quota.py::test_over_limit_daily_assessments_report_actual_reset
+2 failed, 33 deselected in 6.22s

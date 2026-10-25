@@ -1,0 +1,47 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+________ test_sigterm_lets_the_running_job_finish_and_takes_no_new_one _________
+
+    def test_sigterm_lets_the_running_job_finish_and_takes_no_new_one():
+        env = {
+            **os.environ,
+            "PYTHONPATH": os.pathsep.join(
+                str(Path(__file__).resolve().parents[2] / d)
+                for d in ("backend", "shared", "monitoring", "standards")
+            ),
+        }
+        proc = subprocess.Popen(
+            [sys.executable, "-c", SCRIPT], stdout=subprocess.PIPE, text=True, env=env
+        )
+        time.sleep(1.0)  # inside the first job
+        proc.send_signal(signal.SIGTERM)
+        out, _ = proc.communicate(timeout=20)
+>       assert proc.returncode == 0
+E       AssertionError: assert -15 == 0
+E        +  where -15 = <Popen: returncode: -15 args: ['/Users/alanmozhoor/Documents/hackatl-agentic...>.returncode
+
+backend/tests/test_worker_drain.py:40: AssertionError
+_______ test_sigterm_stops_an_idle_worker_at_once_even_if_its_poll_hangs _______
+
+    def test_sigterm_stops_an_idle_worker_at_once_even_if_its_poll_hangs():
+        env = {
+            **os.environ,
+            "PYTHONPATH": os.pathsep.join(
+                str(Path(__file__).resolve().parents[2] / d)
+                for d in ("backend", "shared", "monitoring", "standards")
+            ),
+        }
+        proc = subprocess.Popen([sys.executable, "-c", IDLE_HUNG], env=env)
+        time.sleep(1.0)
+        started = time.monotonic()
+        proc.send_signal(signal.SIGTERM)
+>       assert proc.wait(timeout=10) == 0
+E       AssertionError: assert -15 == 0
+E        +  where -15 = wait(timeout=10)
+E        +    where wait = <Popen: returncode: -15 args: ['/Users/alanmozhoor/Documents/hackatl-agentic...>.wait
+
+backend/tests/test_worker_drain.py:66: AssertionError
+=========================== short test summary info ============================
+FAILED backend/tests/test_worker_drain.py::test_sigterm_lets_the_running_job_finish_and_takes_no_new_one
+FAILED backend/tests/test_worker_drain.py::test_sigterm_stops_an_idle_worker_at_once_even_if_its_poll_hangs
+2 failed in 5.37s

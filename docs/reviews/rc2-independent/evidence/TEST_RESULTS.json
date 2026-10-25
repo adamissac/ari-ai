@@ -1,0 +1,76 @@
+{
+  "product_sha": "3f16c99fb728323ae464890862f84e16981e5f71",
+  "composition_base": "f8ab19e7587614b9741e2cd3433807c348b799d2",
+  "upstream_inspected": "95e90861613afa362b1433020310174b074291c2",
+  "code_merge_verdict": "NO-GO",
+  "customer_deployment_verdict": "NO-GO",
+  "production_source_changes": false,
+  "PR_approvals_submitted": false,
+  "merged": false,
+  "deployed": false,
+  "provider_scope": "scripted only; live opt-in fixture errored before provider execution on initial command",
+  "suites": {
+    "backend_initial": {
+      "passed": 652,
+      "failed": 1,
+      "skipped": 8,
+      "errors": 1
+    },
+    "backend_corrected": {
+      "passed": 651,
+      "failed": 2,
+      "skipped": 9
+    },
+    "focused": {
+      "passed": 122
+    },
+    "original_independent_and_migrations": {
+      "passed": 7
+    },
+    "final_adversarial": {
+      "passed": 6,
+      "failed": 7
+    },
+    "security_shared_cross_security": {
+      "passed": 740,
+      "skipped": 24
+    },
+    "intelligence": {
+      "passed": 74,
+      "skipped": 1
+    },
+    "contracts": {
+      "passed": 95
+    },
+    "frontend": {
+      "passed": 365
+    },
+    "transport": {
+      "passed": 35
+    },
+    "readiness": {
+      "passed": 25
+    },
+    "isolated_original_drain": {
+      "failed": 2
+    },
+    "synchronized_drain_control": {
+      "passed": 1
+    },
+    "postbase_quota": {
+      "failed": 2,
+      "deselected": 33
+    },
+    "postbase_protected_test": {
+      "failed": 1
+    },
+    "browser": {
+      "passed": 49,
+      "retries": 0,
+      "duration_minutes": 23.8
+    }
+  },
+  "counts_overlap": true,
+  "final_upstream_observed": "eea084bc87ac6ca94f578073251c478655b09366",
+  "postbase_blank_sha": "source inspected; new path not executed against frozen RC2"
+}
