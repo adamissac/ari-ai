@@ -14,6 +14,7 @@ All notable changes are documented here. Format follows
   through it). Project Settings now shows the Save/Discard action row at the top of the
   form as well as the bottom, so budget edits are savable without scrolling.
 - New projects default to owner-authorized pull-request delivery; the 7 Agents switch now toggles between automatically opened fix PRs and manual approval.
+- Verified patch pages now show delivery progress and outcomes, including actionable failure reasons.
 - Starting an assessment with no commit SHA now reviews the latest commit on the repository's
   default branch when connected through the GitHub App.
 - Verify now honors repository-declared `protected_tests` from `build_recipe.json` in its no-tampering check.
