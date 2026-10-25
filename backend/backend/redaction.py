@@ -49,7 +49,7 @@ _CODE_KV_PATTERN = re.compile(
     r"(?i)(?P<prefix>(?:"
     + r"\b"
     + _KV_KEY
-    + r"\s*:\s*[^=\n]+?=\s*"  # annotated: name: Type = "..."
+    + r"\s*:\s*[^=\n;#]+?=\s*"  # annotated: name: Type = "..." (annot span can't cross ; or #)
     + r"|\b"
     + _KV_KEY
     + r"\s*[=:]\s*"  # simple: name = "..." or name: "..."
