@@ -19,17 +19,18 @@ _HIGH_CONFIDENCE_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\beyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{2,}"), "[REDACTED:jwt]"),
     # credentials inside connection strings: scheme://user:pass@host -> scheme://[REDACTED]@host
     (re.compile(r"\bsk_live_[A-Za-z0-9]{8,}\b"), "[REDACTED:stripe_key]"),
+    # Credentials embedded in free text, e.g. driver URLs in connector errors
+    # (``postgresql://svc:secret@db.internal/app``) or ``key=value`` fragments.
+    # Runs before the DSN-specific pattern below so that marker wins the name.
+    (
+        re.compile(r"(?i)([a-z][a-z0-9+.\-]*://[^/\s:@]+):[^@\s/]+@"),
+        r"\1:[REDACTED:uri_password]@",
+    ),
     (
         re.compile(
             r"(?i)\b(postgres(?:ql)?(?:\+\w+)?|mysql(?:\+\w+)?|mongodb(?:\+srv)?|redis|amqp)://[^\s:/@]+:[^\s@]+@"
         ),
         r"\1://[REDACTED:dsn_credentials]@",
-    ),
-    # Credentials embedded in free text, e.g. driver URLs in connector errors
-    # (``postgresql://svc:secret@db.internal/app``) or ``key=value`` fragments.
-    (
-        re.compile(r"(?i)([a-z][a-z0-9+.\-]*://[^/\s:@]+):[^@\s/]+@"),
-        r"\1:[REDACTED:uri_password]@",
     ),
     (
         re.compile(
