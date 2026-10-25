@@ -12,7 +12,23 @@ pin = json.loads((directory / 'pin.json').read_text())
 pin['production_candidate_sha'] = pin['candidate_sha']
 if os.environ['AUDIT_MODE'] == 'landing':
     original_git('fetch', '--no-tags', 'https://github.com/adamissac/ari-ai.git', pin['upstream_sha'], cwd=candidate)
-    tree = original_git('merge-tree', '--write-tree', pin['upstream_sha'], pin['candidate_sha'], cwd=candidate).stdout.strip()
+    merged = original_git('merge-tree','--write-tree',pin['upstream_sha'],pin['candidate_sha'],cwd=candidate,check=False)
+    tree = merged.stdout.splitlines()[0]
+    if merged.returncode:
+        conflicts = [line for line in merged.stdout.splitlines() if line.startswith('CONFLICT')]
+        assert conflicts == ['CONFLICT (content): Merge conflict in docs/planning/SESSION_HANDOFF.md'], conflicts
+        # Explicit review-only documentary resolution; never resolve product code.
+        import tempfile
+        with tempfile.TemporaryDirectory(prefix='rc5-index-') as scratch:
+            index_env = dict(os.environ,GIT_INDEX_FILE=str(Path(scratch)/'index'))
+            def index(*args):
+                return subprocess.run(['git',*args],cwd=candidate,env=index_env,text=True,capture_output=True,check=True).stdout.strip()
+            index('read-tree',tree)
+            blob = original_git('rev-parse',pin['upstream_sha']+':docs/planning/SESSION_HANDOFF.md',cwd=candidate).stdout.strip()
+            index('update-index','--cacheinfo','100644,'+blob+',docs/planning/SESSION_HANDOFF.md')
+            tree = index('write-tree')
+        pin['review_only_doc_resolution'] = 'SESSION_HANDOFF.md selected from current main; no product conflict resolved'
+
     stamp = original_git('show', '-s', '--format=%cI', pin['upstream_sha'], cwd=candidate).stdout.strip()
     env = dict(os.environ, GIT_AUTHOR_NAME='Independent review', GIT_COMMITTER_NAME='Independent review', GIT_AUTHOR_EMAIL='review@localhost', GIT_COMMITTER_EMAIL='review@localhost', GIT_AUTHOR_DATE=stamp, GIT_COMMITTER_DATE=stamp)
     commit = subprocess.run(['git','commit-tree',tree,'-p',pin['upstream_sha'],'-p',pin['candidate_sha']],input='Review-only RC5 current-main landing simulation\n',cwd=candidate,text=True,capture_output=True,check=True,env=env).stdout.strip()
