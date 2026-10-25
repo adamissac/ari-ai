@@ -9,6 +9,7 @@ All notable changes are documented here. Format follows
 - Added opt-in bounded exact-SHA release review automation with isolated strict
   regressions, signed evidence, existing-owner routing and a protected cost ledger.
   No automatic merge, deployment or customer enforcement.
+- Commit pages now warn when reviewing a commit other than the latest default-branch commit and link to the latest commit.
 - Verified-patch delivery skips fixes already present on the default branch and annotates stale-base pull requests.
 - Expired scopes no longer appear active or qualify for assessment selection.
 - Storage report probes use savepoints so a denied optional metric does not abort later checks.
