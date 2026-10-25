@@ -1,6 +1,7 @@
 import 'server-only';
 
 import Anthropic from '@anthropic-ai/sdk';
+import { backendOrigin } from '@/lib/backend-proxy';
 import type { DemoComponent } from '@/lib/demo/data';
 import { AGENT_ORDER, type AgentId, type Analysis, type DiffFile, type DiffLine } from '@/lib/demo/scenarios';
 import { countLines, parsePatch, type GitHubFile } from '@/lib/live-diff';
@@ -74,14 +75,39 @@ interface GitHubCommit {
   files?: GitHubFile[];
 }
 
-async function fetchCommit(fullName: string, sha: string, signal: AbortSignal): Promise<GitHubCommit> {
-  const headers: Record<string, string> = { accept: 'application/vnd.github+json', 'x-github-api-version': '2022-11-28', 'user-agent': 'ari-ai' };
-  if (process.env.GITHUB_TOKEN) headers.authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
-  const res = await fetch(`https://api.github.com/repos/${fullName}/commits/${sha}`, { headers, signal, cache: 'no-store' });
-  if (res.status === 404) throw new LiveError(404, 'NOT_FOUND', process.env.GITHUB_TOKEN ? 'GitHub could not find this commit.' : 'GitHub could not find this commit. Private repositories need GITHUB_TOKEN on the server.');
-  if (res.status === 403 || res.status === 429) throw new LiveError(503, 'GITHUB_RATE_LIMITED', 'GitHub rate limit reached. Set GITHUB_TOKEN on the server or try again later.');
-  if (!res.ok) throw new LiveError(502, 'GITHUB_ERROR', `GitHub returned ${res.status} for this commit.`);
-  return (await res.json()) as GitHubCommit;
+/** Trimmed commit payload from the backend's GitHub App read (GET /api/v1/github/commit). */
+interface BackendCommit {
+  sha: string;
+  html_url: string;
+  message: string;
+  author_name: string | null;
+  author_login: string | null;
+  committed_at: string | null;
+  additions: number;
+  deletions: number;
+  files?: ({ filename: string; status: string; additions: number; deletions: number; patch?: string | null })[];
+}
+
+// Reads go through the backend's GitHub App installation token, so private repos work
+// without a GITHUB_TOKEN PAT on this server; the caller's session cookie grants access.
+async function fetchCommit(fullName: string, sha: string, cookie: string, signal: AbortSignal): Promise<GitHubCommit> {
+  const res = await fetch(
+    `${backendOrigin()}/api/v1/github/commit?repo=${encodeURIComponent(fullName)}&sha=${encodeURIComponent(sha)}`,
+    { headers: { accept: 'application/json', cookie }, signal, cache: 'no-store' },
+  );
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { error?: { code?: string; message?: string } } | null;
+    throw new LiveError(res.status, body?.error?.code ?? 'GITHUB_ERROR', body?.error?.message ?? `The commit could not be read (${res.status}).`);
+  }
+  const data = (await res.json()) as BackendCommit;
+  return {
+    sha: data.sha,
+    html_url: data.html_url,
+    commit: { message: data.message, author: { name: data.author_name ?? '', date: data.committed_at ?? '' } },
+    author: data.author_login ? { login: data.author_login } : null,
+    stats: { additions: data.additions, deletions: data.deletions },
+    files: data.files as GitHubCommit['files'],
+  };
 }
 
 function promptDiff(files: GitHubFile[]): { text: string; truncated: boolean } {
@@ -173,23 +199,23 @@ Write plainly. Be specific to this diff.`;
 const cache = new Map<string, Promise<LiveResult>>();
 
 /** Analyse a commit once per server instance; concurrent callers share the same run. */
-export function liveAnalysis(fullName: string, sha: string): Promise<LiveResult> {
+export function liveAnalysis(fullName: string, sha: string, cookie: string): Promise<LiveResult> {
   const key = `${fullName}@${sha}`;
   let run = cache.get(key);
   if (!run) {
-    run = analyse(fullName, sha);
+    run = analyse(fullName, sha, cookie);
     cache.set(key, run);
     run.catch(() => cache.delete(key));
   }
   return run;
 }
 
-async function analyse(fullName: string, sha: string): Promise<LiveResult> {
+async function analyse(fullName: string, sha: string, cookie: string): Promise<LiveResult> {
   if (!process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_AUTH_TOKEN) {
     throw new LiveError(503, 'NOT_CONFIGURED', 'Live analysis is not configured: set ANTHROPIC_API_KEY on the server.');
   }
   const started = Date.now();
-  const gh = await fetchCommit(fullName, sha, AbortSignal.timeout(20_000));
+  const gh = await fetchCommit(fullName, sha, cookie, AbortSignal.timeout(20_000));
   const files = gh.files ?? [];
   const [subject = '', ...rest] = gh.commit.message.split('\n');
   const { text, truncated } = promptDiff(files);
