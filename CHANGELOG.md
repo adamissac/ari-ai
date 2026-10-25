@@ -7,6 +7,9 @@ All notable changes are documented here. Format follows
 ## [Unreleased]
 
 - Added a guided repository setup walkthrough (`/projects/<id>/setup?repo=<repoId>`): connecting a repository now lands there, and it walks through authorizing testing, tuning the code reviewer, choosing fix delivery (pull request is preselected), and starting the first review. The setup page also has decorative floating background shapes that stop moving when reduced motion is on.
+||||||| 3b98d6ae
+- Starting an assessment with no commit SHA now reviews the latest commit on the repository's
+  default branch when connected through the GitHub App.
 - Verify now honors repository-declared `protected_tests` from `build_recipe.json` in its no-tampering check.
 - Added independent 70/80/90% storage alerts and Prometheus gauges for the app data volume mounted at `/data`.
 - Restored impact-gated monitoring for a blank, quoted-empty, or standalone `*`
