@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   project: null as unknown,
   replace: vi.fn(),
   push: vi.fn(),
+  automaticAssessments: false,
 }));
 vi.mock('@/components/project', () => ({ useProject: () => mocks.project }));
 vi.mock('@/lib/use-resource', () => ({ useResource: mocks.useResource }));
@@ -32,14 +33,20 @@ const repo = {
   full_name: 'acme/payments-lite',
   default_branch: 'main',
   installation_id: null,
+  automatic_assessments: false,
 } as unknown as Repository;
 
 beforeEach(() => {
   localStorage.clear();
   mocks.query = 'repo=rep_12345678&step=5';
+  mocks.automaticAssessments = false;
   mocks.project = { project, reloadProject: vi.fn() };
   mocks.useResource.mockImplementation((key: string | null) => {
-    if (key?.includes('setup-repos')) return { status: 'ready', data: { items: [repo] }, reload: vi.fn() };
+    if (key?.includes('setup-repos')) return {
+      status: 'ready',
+      data: { items: [{ ...repo, automatic_assessments: mocks.automaticAssessments }] },
+      reload: vi.fn(),
+    };
     if (key?.includes('setup-scopes')) return { status: 'ready', data: { items: [] }, reload: vi.fn() };
     if (key?.includes('setup-runs')) return { status: 'ready', data: { items: [] }, reload: vi.fn() };
     return { status: 'ready', data: { items: [] }, reload: vi.fn() };
@@ -59,4 +66,16 @@ it('disables Start until the testing scope is authorized', () => {
   expect(screen.getByTestId('setup-step-7')).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Start first assessment' }).hasAttribute('disabled')).toBe(true);
   expect(screen.getByRole('button', { name: 'Review step 5: testing scope' })).toBeTruthy();
+  expect(screen.getByText('Automatic reviews')).toBeTruthy();
+  expect(screen.getByText('Off — you start each review')).toBeTruthy();
+  expect(screen.getByText('Review on push (when automatic)')).toBeTruthy();
+  expect(screen.getByText('Review on PR (when automatic)')).toBeTruthy();
+});
+
+it('shows automatic reviews as On when repository automatic assessments are enabled', () => {
+  mocks.query = 'repo=rep_12345678&step=7';
+  mocks.automaticAssessments = true;
+  render(<SetupPage />);
+  expect(screen.getByText('On')).toBeTruthy();
+  expect(screen.queryByText('Off — you start each review')).toBeNull();
 });

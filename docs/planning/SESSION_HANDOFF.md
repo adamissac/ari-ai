@@ -2030,3 +2030,16 @@ selected run is still loading.
 
 - Spend-cap reset time now uses a Numeric window calculation over one database snapshot,
   avoiding fractional-cost rounding and concurrent-write inconsistencies.
+
+## 2026-10-25 — Adam: onboarding readiness and setup clarity
+
+- On `feat/adam/onboarding-graphite`, recipe readiness now validates and scans up to four
+  500-event audit pages, distinguishing a complete no-result from a truncated 2,000-event
+  search. Step 7 now separates repository automatic assessments from push/PR event filters,
+  and completed stepper entries show a DONE marker.
+- Verification: transport tests 36/36; frontend tests 89 files / 375 tests; lint (0 errors,
+  one existing warning); typecheck; production build; and stack.py interface,
+  commit-workspace, and journey specs (5/5). The stepper test and typecheck also passed
+  after a final strict-TypeScript assertion refinement.
+- Recaptured setup steps 3 and 7 at 1440×900 and 390×844 in
+  `~/research/onboarding/shots/`. The existing `:3101` development server remained available.

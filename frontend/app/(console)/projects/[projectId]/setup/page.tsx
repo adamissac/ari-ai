@@ -274,9 +274,10 @@ function Walkthrough({ repo, scope, authorized, hasRun, reload }: {
         {currentStep === 7 && (
           <StepPanel step={7} title="Review & start">
             <ul className="divide-y divide-line border-y border-line">
+              <Checklist label="Automatic reviews" value={repo.automatic_assessments ? 'On' : 'Off — you start each review'} />
               <Checklist label="Comment strictness" value={strictnessLabel} />
-              <Checklist label="Push reviews" value={project.settings.review.review_pushes ? 'On' : 'Off'} />
-              <Checklist label="Pull-request reviews" value={project.settings.review.review_pull_requests ? 'On' : 'Off'} />
+              <Checklist label="Review on push (when automatic)" value={project.settings.review.review_pushes ? 'On' : 'Off'} />
+              <Checklist label="Review on PR (when automatic)" value={project.settings.review.review_pull_requests ? 'On' : 'Off'} />
               <Checklist label="Review comments" value={project.settings.review.comment_on_pull_requests ? 'On' : 'Off'} />
               <Checklist label="Monitoring" value={project.settings.monitoring_policy.enabled ? 'On' : 'Off'} />
               <Checklist label="Fix delivery" value={deliveryLabel} />

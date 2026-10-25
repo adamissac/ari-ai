@@ -13,6 +13,23 @@ type RecipeEvent = {
   details: Record<string, unknown>;
 };
 
+type RecipeAuditResult = { items: RecipeEvent[]; truncated: boolean };
+
+export async function loadRecipeAudit(projectId: string, repoId: string, signal: AbortSignal): Promise<RecipeAuditResult> {
+  const items: RecipeEvent[] = [];
+  let cursor: string | undefined;
+  for (let pageNumber = 0; pageNumber < 4; pageNumber += 1) {
+    const page = await api().auditEvents(projectId, { signal, limit: 500, ...(cursor === undefined ? {} : { cursor }) });
+    items.push(...page.items);
+    if (page.items.some(event => event.action.startsWith('recipe.') && event.subject_id === repoId)) {
+      return { items, truncated: false };
+    }
+    if (page.next_cursor === null) return { items, truncated: false };
+    cursor = page.next_cursor;
+  }
+  return { items, truncated: cursor !== undefined };
+}
+
 function reasonText(event: RecipeEvent): string {
   return typeof event.details.reason === 'string' ? event.details.reason : 'No reason provided.';
 }
@@ -63,7 +80,7 @@ function Result({ event, compact }: { event: RecipeEvent; compact: boolean }) {
 export function BuildRecipeReadiness({ projectId, repo, compact = false }: { projectId: string; repo: Repository; compact?: boolean }) {
   const events = useResource(
     repo.installation_id == null ? null : `recipe-audit:${projectId}:${repo.id}`,
-    signal => api().auditEvents(projectId, { signal }),
+    signal => loadRecipeAudit(projectId, repo.id, signal),
   );
 
   if (repo.installation_id == null) {
@@ -85,7 +102,9 @@ export function BuildRecipeReadiness({ projectId, repo, compact = false }: { pro
     return (
       <div className="space-y-2">
         <Tag>NO RESULT YET</Tag>
-        <p className="text-sm text-muted">Ari proposes a build recipe in the background after connecting. Nothing has been recorded for this repository yet.</p>
+        <p className="text-sm text-muted">{events.data.truncated
+          ? 'No build-recipe result in the 2,000 most recent audit events for this project.'
+          : 'Ari proposes a build recipe in the background after connecting. Nothing has been recorded for this repository yet.'}</p>
         <Button onClick={events.reload}>Refresh</Button>
       </div>
     );

@@ -97,7 +97,7 @@ acceptance criteria are the minimum for `DONE` in addition to
 
 | ID | Title | Dir | Reqs | Depends on | Owner | Status | Acceptance criteria |
 |---|---|---|---|---|---|---|---|
-| UI-002 | Project/repo connect + scope request/approve screens | frontend/ | FR-P-02, FR-P-03 | UI-001, CORE-005, CORE-007 | UNASSIGNED | BLOCKED | Flows work against local API |
+| UI-002 | Project/repo connect + scope request/approve screens | frontend/ | FR-P-02, FR-P-03 | UI-001, CORE-005, CORE-007 | Adam | IN_REVIEW | Seven-step onboarding works against the local API; recipe readiness pages through audit events; automatic-review settings are distinguished from push/PR filters |
 | UI-003 | Live assessment timeline (SSE) | frontend/ | — | UI-001, CORE-006 | UNASSIGNED | BLOCKED | Reflects real states; reconnects |
 | UI-004 | Finding detail with evidence chain | frontend/ | NFR-03 | UI-003 | UNASSIGNED | BLOCKED | Every claim links to evidence; status badges |
 | UI-005 | Approval inbox | frontend/ | FR-2-05 | UI-002 | UNASSIGNED | BLOCKED | Approve/decline remediation with summary |

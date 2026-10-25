@@ -2,10 +2,11 @@ import { cleanup, render, screen } from '@testing-library/react';
 import type { Repository } from '@hackatl/frontend-transport';
 import { ApiError } from '@hackatl/frontend-transport';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { BuildRecipeReadiness } from '@/components/onboarding/build-recipe-readiness';
+import { BuildRecipeReadiness, loadRecipeAudit } from '@/components/onboarding/build-recipe-readiness';
 
-const mocks = vi.hoisted(() => ({ useResource: vi.fn() }));
+const mocks = vi.hoisted(() => ({ useResource: vi.fn(), auditEvents: vi.fn() }));
 vi.mock('@/lib/use-resource', () => ({ useResource: mocks.useResource }));
+vi.mock('@/lib/api', () => ({ api: () => ({ auditEvents: mocks.auditEvents }) }));
 
 const repo = (installationId: number | null = 42) => ({
   id: 'rep_12345678',
@@ -19,7 +20,8 @@ const event = (action: string, details: Record<string, unknown> = {}) => ({
 });
 
 beforeEach(() => {
-  mocks.useResource.mockReturnValue({ status: 'ready', data: { items: [] }, reload: vi.fn() });
+  mocks.auditEvents.mockReset();
+  mocks.useResource.mockReturnValue({ status: 'ready', data: { items: [], truncated: false }, reload: vi.fn() });
 });
 afterEach(cleanup);
 
@@ -45,7 +47,7 @@ it.each([
 it('shows no-result refresh and filters events to this repository', () => {
   mocks.useResource.mockReturnValue({
     status: 'ready',
-    data: { items: [{ ...event('recipe.failed', { reason: 'other repo' }), subject_id: 'rep_otherid' }, { ...event('recipe.skipped'), subject_id: 'rep_otherid' }] },
+    data: { items: [{ ...event('recipe.failed', { reason: 'other repo' }), subject_id: 'rep_otherid' }, { ...event('recipe.skipped'), subject_id: 'rep_otherid' }], truncated: false },
     reload: vi.fn(),
   });
   render(<BuildRecipeReadiness projectId="prj_12345678" repo={repo()} />);
@@ -64,4 +66,37 @@ it('explains owner-only audit access and does not fetch without an App installat
   rerender(<BuildRecipeReadiness projectId="prj_12345678" repo={repo(null)} />);
   expect(screen.getByText('No build recipe is proposed for repositories not connected through the GitHub App.')).toBeTruthy();
   expect(mocks.useResource.mock.calls.at(-1)?.[0]).toBeNull();
+});
+
+it('finds a matching recipe event on page two', async () => {
+  const found = event('recipe.skipped', { reason: 'No supported build command' });
+  mocks.auditEvents
+    .mockResolvedValueOnce({ items: [{ ...found, subject_id: 'rep_otherid' }], next_cursor: '500' })
+    .mockResolvedValueOnce({ items: [found], next_cursor: '1000' });
+  const signal = new AbortController().signal;
+  const data = await loadRecipeAudit('prj_12345678', repo().id, signal);
+
+  expect(mocks.auditEvents).toHaveBeenNthCalledWith(1, 'prj_12345678', { signal, limit: 500 });
+  expect(mocks.auditEvents).toHaveBeenNthCalledWith(2, 'prj_12345678', { signal, limit: 500, cursor: '500' });
+  expect(data).toEqual({ items: [{ ...found, subject_id: 'rep_otherid' }, found], truncated: false });
+  mocks.useResource.mockReturnValue({ status: 'ready', data, reload: vi.fn() });
+  render(<BuildRecipeReadiness projectId="prj_12345678" repo={repo()} />);
+  expect(screen.getByText('SKIPPED')).toBeTruthy();
+  expect(screen.getByText('No supported build command')).toBeTruthy();
+});
+
+it('marks a no-result search as truncated after four pages and explains the limit', async () => {
+  mocks.auditEvents
+    .mockResolvedValueOnce({ items: [], next_cursor: '500' })
+    .mockResolvedValueOnce({ items: [], next_cursor: '1000' })
+    .mockResolvedValueOnce({ items: [], next_cursor: '1500' })
+    .mockResolvedValueOnce({ items: [], next_cursor: '2000' });
+  const data = await loadRecipeAudit('prj_12345678', repo().id, new AbortController().signal);
+
+  expect(mocks.auditEvents).toHaveBeenCalledTimes(4);
+  expect(data).toEqual({ items: [], truncated: true });
+  mocks.useResource.mockReturnValue({ status: 'ready', data, reload: vi.fn() });
+  render(<BuildRecipeReadiness projectId="prj_12345678" repo={repo()} />);
+  expect(screen.getByText('NO RESULT YET')).toBeTruthy();
+  expect(screen.getByText('No build-recipe result in the 2,000 most recent audit events for this project.')).toBeTruthy();
 });

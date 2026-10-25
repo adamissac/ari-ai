@@ -32,9 +32,15 @@ export function SetupSteps({
     const state: StepState = step === current ? 'current' : done.has(step) ? 'done' : 'upcoming';
     const href = step === 1 ? '/connect' : step === 2 && org ? `/connect/${encodeURIComponent(org)}` : undefined;
     const className = `flex w-full items-center gap-3 border-l-2 px-3 py-2 text-left text-sm transition-colors duration-[120ms] ${
-      state === 'current' ? 'border-brand bg-panel text-ink' : state === 'done' ? 'border-line-2 text-muted hover:text-ink' : 'border-transparent text-faint hover:text-muted'
+      state === 'current' ? 'border-brand bg-panel text-ink' : state === 'done' ? 'border-line-3 text-muted hover:text-ink' : 'border-transparent text-faint hover:text-muted'
     }`;
-    const content = <><span aria-hidden="true" className="w-6 shrink-0 font-mono text-[10px] tabular-nums">{String(step).padStart(2, '0')}</span><span>{STEPS[step - 1]}</span></>;
+    const content = (
+      <>
+        <span aria-hidden="true" className="w-6 shrink-0 font-mono text-[10px] tabular-nums">{String(step).padStart(2, '0')}</span>
+        <span>{STEPS[step - 1]}</span>
+        {state === 'done' && <span className="ml-auto font-mono text-[10px] text-muted">DONE</span>}
+      </>
+    );
     return (
       <li key={step} data-step-state={state}>
         {href ? (
