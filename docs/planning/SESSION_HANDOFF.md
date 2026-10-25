@@ -2104,3 +2104,7 @@ remains OFF pending manual installation and protected credential/session setup.
   after a final strict-TypeScript assertion refinement.
 - Recaptured setup steps 3 and 7 at 1440×900 and 390×844 in
   `~/research/onboarding/shots/`. The existing `:3101` development server remained available.
+
+### Independent RC4 review — 2026-10-25
+
+Pinned product 6a72949efa7c0a2d3233eb6884bb7a23dfe71ced; upstream e41c9dc22e6536463cdab9be6a2a4cd76302c866. Original F1–F10/N1–N7 probes pass. New P2 N8: quoted dictionary/typed password literals survive redacted diff storage and actual project-viewer download; unrelated user remains denied. Independent Docker run 40202085130: 182 passed, 5 failed, 0 skipped (four N8 checks plus newer VerifyEvidence constructor incompatibility); fail-closed runner cleanup error retained. Eight-step stack matches RC4 exactly in production on eea084bc; conflicts at S1 on latest main. Original candidate CI 21 success/1 optional live skip verified. No production edits/merge/deploy/approval. Report: docs/reviews/rc4-independent/REPORT.md. Overall/customer/merge NO-GO; known-finding-only GO on pinned product.
