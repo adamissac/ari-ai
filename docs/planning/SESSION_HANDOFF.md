@@ -18,6 +18,15 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-24 — Devin (agent, Adam) — Postgres volume 80% investigation + retention
+- Did: mapped every storage consumer (index_payloads immutable per-commit payloads are the dominant growth driver alongside terminal jobs; /data volume accumulates artifact CAS + refs/ari/* clone refs); added `backend/maintenance.py` (report/apply/loop + storage_report + run_retention), `backend/api/ops.py` (OPS_API_TOKEN-gated storage + prometheus + maintenance endpoints), hourly sidecar in `deploy/railway/start.sh`, runbook `docs/deploy/POSTGRES_STORAGE.md`, 14 tests in `test_maintenance.py`.
+- State of the code: `RETENTION_DRY_RUN=true` ships report-only; all deletes batch inside short txs with `ctid` LIMIT pattern; RLS honored via per-project `set_config('ari.project_id')`; audit row per prune; no schema migration (0017 is already taken by PR #533 heartbeats; `test_parallel_migrations` still expects head 0016).
+- Commands run and results: `pytest backend/tests/test_maintenance.py` 14/14 pass; regression subset (intel_store, jobs_queue, api_core, tenant_isolation_adversarial, parallel_migrations, env_example, worker_drain, idempotent_mutations) 50/50 pass; ruff + ruff format clean; `sh -n start.sh` clean.
+- Decisions: zero-migration retention; dry-run default; ops surface returns 404 unless OPS_API_TOKEN set; maintenance loop deliberately outside start.sh `pids` so it can never restart the service.
+- Open: actual production table sizes unknown — needs `railway run` + `DATABASE_URL` (not held by this session); whether Railway's alert covers the Postgres service volume or the app /data volume.
+- Next steps: Adam sets OPS_API_TOKEN/POSTGRES_VOLUME_BYTES, reviews first dry-run report, flips RETENTION_DRY_RUN=false; re-measure after a cycle; size volume bump decision from real growth data.
+- Warnings: deleting rows does NOT shrink the Railway-reported volume (frees internal pages); `VACUUM FULL`/repack only after verified backup. Coordination note: `coordination/messages/20261024T235500Z-devin-to-all-postgres-storage-retention.md`.
+
 ### 2026-10-24 — Adam/Devin: pilot rehearsal executed end-to-end (13/13 PASS)
 
 - `scripts/rehearsal/run_rehearsal.py` rewritten to the real API shapes:
@@ -49,6 +58,14 @@ adds an entry before ending.
 - Assumptions / open questions: check transport `inprocess` only (no docker on this box → HTTP transport + container-kill test skipped, recorded as limitation).
 - Next steps: PR open for review; coordinate eval/backend finding-contract items with Agent 9 (eval score_api changes already landed on main via #516).
 - Warnings for the next session: live runs cost money — always gate behind `RUN_LIVE_LLM_EVAL` + explicit approval; `tests/artifacts/live/*` now contains real run artifacts, keep naming convention `<UTC ts>-<label>.json`.
+### 2026-10-24 — Devin (agent, Adam) — pilot-readiness ops: readiness split, worker heartbeats, restart/rollback evidence
+- Did: infrastructure audit for external-pilot readiness (branch `feat/adam/pilot-readiness-ops`). Added worker-heartbeat liveness (`worker_heartbeats` table, migration 0017, `WORKER_HEARTBEAT_INTERVAL_S`/`WORKER_LIVENESS_S`), split `/readyz` into infra readiness (db/queue/workers → `status` ready|degraded|not_ready, 503 unless ready) vs assessment capability (`capabilities` + `capabilities_ready`: llm.live, github.app_configured, sandbox.configured, artifact_store.writable, workers.alive), added `/diagnostics` (verified GitHub `GET /app`, sandbox sdk/daemon detail, alembic head vs `alembic_version`, queue counts, worker rows), `git_sha`+`schema_version` on `/healthz` (`DEPLOYED_GIT_SHA`/`RAILWAY_GIT_COMMIT_SHA`/`GIT_SHA`), schema 0.22.0, `READYZ_REQUIRE_WORKERS` (default on in staging/production). Frontend: `/api/frontend-version` + `deploy/verify_pair.sh` detect Vercel/Railway schema skew. Evidence harness `deploy/evidence/restart_recovery.py` (+`scripted_worker.py`) runs the real API/workers/migrations on a disposable pgserver stack with scripted transports: 6/6 PASS — SIGTERM drains the in-hand job to AWAITING_APPROVAL w/ checkpoint artifact on disk; SIGKILL → reclaim → honest FAILED (CONFLICT_STATE, never fabricated); human approval + fresh worker → checkpoint resume → COMPLETED; 2 racing workers → exactly-once + dedupe; downgrade→upgrade round-trip; pg_dump→psql restore → identical row counts (`deploy/evidence/last-run-evidence.json`). New `docs/deploy/PILOT_OPERATIONS.md` (topology, safe config checklist, recovery runbook); refreshed `docs/deploy/RAILWAY_AND_GITHUB_APP.md`, `docs/13_BACKEND_API_DESIGN.md`.
+- State of the code: `test_ops_readiness.py` 11/11 + `deploy-version.test.ts` 3/3 pass; evidence harness 7/7 (S1 drain, S2 honest-kill, S3 checkpoint resume, S4 exactly-once, S5 migration rollback, S6 backup/restore, S7 post-crash new assessment). Owner-requested hardening landed: `/diagnostics` is owner-authenticated only (401/403); public `/readyz` scrubs capability `detail` strings (env-var names); `worker_heartbeats.last_poll_at` (claim-loop-only) means a stopped claim loop cannot report as a live worker unless it holds a claimed job.
+- Decisions made: `READYZ_REQUIRE_WORKERS` defaults True in staging/production, off in dev; worker liveness = heartbeat fresh AND (last_poll_at fresh OR current_job_id). GitHub `verified` is a live `GET /app` with 60s cache, slug only. Sandbox check reports env-presence for `vercel` mode. `/diagnostics` gated on any org-owner membership (every dev-login user owns their personal org — the gate blocks unauthenticated probes).
+- Migration coordination RESOLVED: #535 merged first and kept `0016_tenant_rls_intelligence`; this branch renumbered to `0017_worker_heartbeats` (down_revision 0016) per the agreed rule in `coordination/messages/20261024T224500Z-adam-to-agent9-...md`. Codex's `0016_execution_reliability` still needs a renumber when it merges; its 0.23.0 embeds a different "0.22.0" — flagged there.
+- Assumptions / open questions: the only untested acceptance criterion is the ONE authorized real-model staging assessment — needs an authorized signed-in session + `LLM_MAX_USD_PER_ASSESSMENT=1` (Adam approved $1 cap) + active repo scope; scripted evidence uses `provider_mode="fake"` by design.
+- Next steps: land PR #533 (unmerged until security review + migration order + full CI + staging run per owner), run the real staging assessment, wire `deploy/verify_pair.sh` into a deploy hook.
+- Warnings for the next session: prod `/readyz` still serves the OLD response until this lands; `capabilities_ready=false` is a config signal, not an outage. Honest residual: a handler deadlocked mid-job still renews its lease — visible via `worker_rows[].last_poll_age_s` in `/diagnostics`, not via liveness.
 ### 2026-10-24 — security/privacy lead (Devin session 94914ecc)
 - Did: Audited private-code data flows end-to-end and wrote `docs/security/TENANT_DATA_PROTECTION.md`; added `backend/tests/test_tenant_isolation_adversarial.py` (17 tests: 28-path read denial, write denial, SSE, artifacts incl. NULL-project, jobs trace-strip, forged scope/repo/context-pack claims, ingest-token binding, viewer floor, forged-ref payload/memory stores, RLS probe-role verify, store GUC smoke, full purge); implemented FORCE RLS on index_payloads/index_snapshots (migration 0016 + `set_config('ari.project_id')` in `_validate_ref`, `find_snapshot`, `PostgresMemoryStore._validate`, purge); implemented `backend/privacy.py::purge_project` (FK-safe full tenant delete + refcount-aware artifact objects + bare-clone removal; audit_events retained by design).
 - State of the code: all 334 backend tests pass incl. 17 new adversarial tests; ruff clean on touched files; no isolation hole found at app layer (require_project uniform).
@@ -1742,6 +1759,31 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - Known gap the eval exposes: Probe only has 3 executable check templates (ownership, bounds, authentication) so most non-authz CWEs end `inconclusive`. `access_control.authentication` scope now approved (`scp_01M5QVPJWE266EJGDHYW73VA59`, all 3 categories, expires 2026-12-23).
 - Cleanup done: 12 eval fix PRs (#499–511) closed, 45 `eval/20261024-110115/*` branches deleted.
 - Transport lesson: `GET /projects/{id}/findings` items are AJV-validated against `Finding` (`additionalProperties: false`) — extra keys in the response break the console. Keep list items contract-shaped.
+
+## 2026-10-24 — Devin (Adam): functional-reviewer eval report + scorer regression lock
+
+- Audited `code_review` end to end against the standalone-reviewer brief and wrote the
+  consolidated report: `code-review/eval/REVIEWER_EVAL_2026-10-24.md` (journey trace,
+  executed corpus report, functional-vs-security performance table, before/after
+  evidence, supported scope, honest gaps).
+- Executed: `uv run pytest -q code-review/tests` → 90 passed / 4 skipped;
+  `uv run python -m code_review.eval_corpus` → 10/10 labels proven by oracle execution.
+- Reproduced the PR #516 serialization defect offline (list-doc findings lack `paths` →
+  old scorer scored every finding as off-file → false negatives); verified the merged
+  evidence-`source_span` fallback and locked it with a new suite
+  `security-agents/tests/test_eval_score_api.py` (5 tests). `_finding_paths` hoisted to
+  module level for testability — no behavior change.
+- Coordination note filed: `coordination/messages/20261024T214033Z-adam-to-all-findings-serialization-contract.md`
+  — findings list items stay contract-shaped (`additionalProperties:false`); any future
+  `paths` re-addition must go contract-first.
+- Gaps left honest: 45-case per-case scored JSON still not committed (only handoff
+  prose + the earlier 23-case baseline file); live `test_live_corpus.py` not run
+  (opt-in, paid, no key on this box); Probe template count still binds `validated`.
+- Follow-up (same session): PR #530 (`feat/adam/release-gate`) edits the same
+  `score_api.py` region and keeps `_finding_paths` nested inside `main()` —
+  whichever PR merges second must rebase that hunk. Resolution: keep #529's
+  module-level function (the new test imports it) + take #530's
+  `scored`/`unscored_reason`/`TERMINAL` additions. Comment left on PR #529.
 
 ## 2026-10-24 — Devin (Adam): access_control.role check template
 
