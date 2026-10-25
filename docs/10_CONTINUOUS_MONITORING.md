@@ -80,7 +80,11 @@ the RL system consumes these as observations in simulation only.
 When `GITHUB_AUTO_COMMIT_AUTHORS` is nonempty, GitHub pushes use a separate full
 assessment scheduling policy: one durable job per repository/SHA, GitHub-verified
 author allowlist, no path-based skipping and no coalescing loss. Railway defaults
-to an empty allowlist (manual-only); set a comma-separated list or `*` to opt in.
+to an empty allowlist, which disables per-commit full runs. With repository
+`automatic_assessments` ON, pushes fall back to the legacy impact-gated, coalesced
+monitoring policy above (project `monitoring_policy`, active scope and monitoring
+budget; at most one open monitoring assessment per repository). Set a
+comma-separated list or `*` to opt in to per-commit full runs.
 This mode uses the normal project assessment budget, clamped by operator limits,
 instead of the cheaper monitoring budget above. Monitoring enablement and scope
 authorization still apply; scope approval wakes blocked commits. Repair gates
@@ -93,17 +97,20 @@ repository checkout and an executable authorized sandbox target.
 ### Automatic/manual repository mode and Haiku 5.5 (#380)
 
 Each connected repository has a persisted `automatic_assessments` switch, default
-OFF. ON queues every eligible new commit in the background without a browser visit
-or Run click. OFF prevents unstarted automatic work and exposes manual Run on
+OFF. ON enables push-triggered processing: with a nonempty author allowlist, every
+eligible new commit queues a full run; with an empty allowlist, pushes use the legacy
+monitoring policy above. OFF prevents unstarted automatic work and exposes manual Run on
 selected commits; active runs and history remain intact. GET/PATCH
 `/api/v1/repositories/{repo_id}` returns Repository; PATCH requires a project owner
 and is audited. Migration 0009 adds the flag; schema 0.15.0 adds RepositoryUpdate
 and regenerates JSON/TypeScript. Deploy the backend and frontend together.
+For strictly manual operation, keep this switch OFF per repository (or disable
+project monitoring); manual Run remains available when the repository switch is OFF.
 
-The rollout requires both the signed push sender and GitHub-attributed commit
-author to match `GITHUB_AUTO_COMMIT_AUTHORS` (empty by default on Railway; opt in
-with `*` or a comma-separated login list). Attribution alone is email-derived, not
-authorization. Project start limits default to 5/hour
+Per-commit full runs require a nonempty `GITHUB_AUTO_COMMIT_AUTHORS` allowlist; both
+the signed push sender and GitHub-attributed commit author must match it. With the
+empty Railway default, enabled repositories use the legacy monitoring policy above.
+Attribution alone is email-derived, not authorization. Project start limits default to 5/hour
 and 20/day (`AUTOMATIC_ASSESSMENTS_PER_HOUR`, `AUTOMATIC_ASSESSMENTS_PER_DAY`). Excess
 commits are durably deferred, not dropped. Full runs use the normal project budget,
 clamped to operator caps. Monitoring and approved sandbox scope remain prerequisites;

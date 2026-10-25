@@ -4,7 +4,7 @@
 # then run both; if either exits, exit too so Railway restarts the container.
 set -eu
 
-# Opt in with GITHUB_AUTO_COMMIT_AUTHORS=* or a comma-separated list of GitHub logins.
+# Empty = legacy impact-gated monitoring policy; set * or a comma-separated list of GitHub logins for per-commit full runs.
 export GITHUB_AUTO_COMMIT_AUTHORS="${GITHUB_AUTO_COMMIT_AUTHORS-}"
 
 # RL defense policy retrained from results/protocol-v1/candidate.yaml (seed 0); the worker

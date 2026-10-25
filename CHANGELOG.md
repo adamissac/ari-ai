@@ -6,7 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
-- Railway now defaults `GITHUB_AUTO_COMMIT_AUTHORS` to empty (manual-only); `*` or a comma-separated GitHub login list explicitly opts into automatic commit assessments.
+- Railway now defaults `GITHUB_AUTO_COMMIT_AUTHORS` to empty, disabling per-commit full runs while enabled repositories fall back to the legacy impact-gated, coalesced monitoring policy; `*` or a comma-separated GitHub login list opts into per-commit full runs. Strictly manual operation requires `automatic_assessments` OFF per repository (or project monitoring disabled); manual Run remains available.
 - GitHub onboarding + continuous assessment hardening: a missing/renamed repo, deleted installation, or GC'd commit now records a skipped monitoring event with an actionable reason instead of retrying to dead-letter; compare failures fall back to payload commits; `installation deleted` / `repositories removed` / `repository renamed` lifecycle events now detach or rename monitored repositories; connecting a repository verifies the installation still grants access (403 with a reinstall hint when it doesn't); deploy doc corrected for App permissions, subscribed events, and the `automatic_assessments` default (opt-in OFF).
 - First-user usability pass on the commit review page: approval cards now name the finding
   they authorize (including remediation-plan `rmp_` subjects resolved through the finding

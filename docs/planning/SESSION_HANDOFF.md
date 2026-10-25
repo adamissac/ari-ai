@@ -16,6 +16,16 @@ adds an entry before ending.
 - Warnings for the next session:
 ```
 
+### 2026-10-25 — Devin (agent, Adam) — correction: empty auto-commit allowlist behavior
+- Did: corrected the deployment, storage and coordination guidance to distinguish the empty per-commit allowlist from strictly manual operation.
+- State of the code: empty `GITHUB_AUTO_COMMIT_AUTHORS` disables per-commit full runs, but pushes from repositories with `automatic_assessments` ON fall back to the legacy impact-gated, coalesced monitoring policy. That policy applies project `monitoring_policy`, active scope and the monitoring budget, with at most one open monitoring assessment per repository. Strictly manual operation requires `automatic_assessments` OFF per repository (or project monitoring disabled); manual Run remains available.
+- Operational observation: after the owner set an empty allowlist, `AUTOMATIC_ASSESSMENTS_PER_HOUR=5` and `AUTOMATIC_ASSESSMENTS_PER_DAY=20` on 2026-10-25 at about 02:03Z, the deferred queue drained 386 → 0 and only one new assessment completed in the following ~10 minutes.
+- Commands run and results: `sh -n deploy/railway/start.sh` and `git diff --check` passed; no tests or Python files changed, so pytest/ruff were not run.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): none.
+- Next steps: Adam opens the PR; CI follow-up will be handled separately.
+- Warnings for the next session: the empty allowlist is not a manual-only mode; disable per-repository automatic assessments (or project monitoring) for a strictly manual pilot.
+
 ### 2026-10-25 — Devin (agent, Adam) — default Railway automatic assessments to manual-only
 - Did: changed the Railway `GITHUB_AUTO_COMMIT_AUTHORS` default to empty while keeping explicit `*` and comma-separated GitHub-login opt-ins; updated deployment/storage guidance with measured database growth and pilot limits.
 - State of the code: Railway pushes are outside the automatic rollout by default; manual runs remain available. An empty allowlist leaves per-repository `automatic_assessments` untouched.

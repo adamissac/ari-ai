@@ -22,10 +22,19 @@ own files. See "Reclaiming disk" for what actually returns space to Railway.
 
 Each automatic assessment stores about 5.7 MB of physical data in `index_payloads`
 (production measurement on 2026-10-25: 3.46 GB across 609 snapshots). With `*` and
-500 assessments per day, the database grew about 330 MB/day. The limited pilot runs
-manual-only with an empty `GITHUB_AUTO_COMMIT_AUTHORS` allowlist. Pushes then return
-“push sender is outside the automatic rollout” without touching the per-repository
-`automatic_assessments` setting. If automatic assessments are re-enabled, keep
+500 assessments per day, the database grew about 330 MB/day. An empty
+`GITHUB_AUTO_COMMIT_AUTHORS` allowlist disables per-commit full runs, but pushes from
+repositories with `automatic_assessments` ON fall back to the legacy impact-gated,
+coalesced monitoring policy. That policy applies project `monitoring_policy`, requires
+active scope, uses the monitoring budget and allows at most one open monitoring
+assessment per repository. For a strictly manual pilot, switch
+`automatic_assessments` OFF per repository (or disable project monitoring); manual
+Run remains available.
+
+After the owner set an empty allowlist plus `AUTOMATIC_ASSESSMENTS_PER_HOUR=5` and
+`AUTOMATIC_ASSESSMENTS_PER_DAY=20` on 2026-10-25 at about 02:03Z, the deferred queue
+drained from 386 to 0 and only one new assessment completed in the following ~10
+minutes. If per-commit full runs are re-enabled, keep
 `AUTOMATIC_ASSESSMENTS_PER_DAY` at or below 20 and enable retention first.
 
 ## What ships in this change
