@@ -1,8 +1,11 @@
 import importlib.util
+import io
+import os
 import sys
 import unittest
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from unittest.mock import patch
 
 SCRIPT_PATH = Path(__file__).resolve().parents[2] / "scripts" / "ops" / "storage_watch.py"
 SPEC = importlib.util.spec_from_file_location("storage_watch", SCRIPT_PATH)
@@ -32,17 +35,29 @@ def make_backup(age_hours: float, name: str = "Daily Schedule") -> dict[str, str
 
 
 class FakeClient:
-    def __init__(self, issues: list[dict[str, object]] | None = None) -> None:
+    def __init__(
+        self,
+        issues: list[dict[str, object]] | None = None,
+        pages: dict[int, list[dict[str, object]]] | None = None,
+        fail_comment: bool = False,
+    ) -> None:
         self.issues = list(issues or [])
+        self.pages = pages
+        self.fail_comment = fail_comment
         self.calls: list[tuple[str, str, object | None]] = []
         self.next_number = 42
 
     def get(self, path: str) -> list[dict[str, object]]:
         self.calls.append(("GET", path, None))
+        if self.pages is not None:
+            page = int(path.rsplit("page=", 1)[1])
+            return list(self.pages.get(page, []))
         return list(self.issues)
 
     def post(self, path: str, payload: dict[str, object]) -> dict[str, object]:
         self.calls.append(("POST", path, payload))
+        if self.fail_comment and path.endswith("/comments"):
+            raise RuntimeError("comment unavailable")
         if path.endswith("/issues"):
             issue = {
                 "number": self.next_number,
@@ -204,6 +219,22 @@ class EvaluateTests(unittest.TestCase):
         )
 
 
+class FailureReportTests(unittest.TestCase):
+    def test_failure_report_has_a_stable_railway_alert_key(self) -> None:
+        report = storage_watch.failure_report("Railway GraphQL returned errors")
+
+        self.assertEqual(report.volumes, [])
+        self.assertEqual(
+            report.backup_line,
+            "Railway API check failed; storage state unknown.",
+        )
+        self.assertEqual(
+            report.problems,
+            ["Railway API check failed: Railway GraphQL returned errors"],
+        )
+        self.assertEqual(report.alert_keys, ["railway:error"])
+
+
 class IssueSyncTests(unittest.TestCase):
     def setUp(self) -> None:
         self.repo = "adamissac/ari-ai"
@@ -216,6 +247,10 @@ class IssueSyncTests(unittest.TestCase):
 
         self.assertEqual(result, "created")
         self.assertEqual([call[0] for call in client.calls], ["GET", "POST"])
+        self.assertEqual(
+            client.calls[0][1],
+            f"/repos/{self.repo}/issues?state=open&per_page=100&page=1",
+        )
         self.assertEqual(client.calls[1][1], f"/repos/{self.repo}/issues")
         payload = client.calls[1][2]
         self.assertEqual(payload["title"], storage_watch.ALERT_TITLE)
@@ -233,13 +268,94 @@ class IssueSyncTests(unittest.TestCase):
         result = storage_watch.sync_issue(client, self.repo, self.report)
 
         self.assertEqual(result, "updated")
-        self.assertEqual([call[0] for call in client.calls], ["GET", "PATCH", "POST"])
-        self.assertIn(storage_watch.marker(self.report.alert_keys), client.calls[1][2]["body"])
+        self.assertEqual([call[0] for call in client.calls], ["GET", "POST", "PATCH"])
         self.assertEqual(
-            client.calls[2][1],
+            client.calls[1][1],
             f"/repos/{self.repo}/issues/7/comments",
         )
-        self.assertIn("# Production storage watchdog", client.calls[2][2]["body"])
+        self.assertIn("# Production storage watchdog", client.calls[1][2]["body"])
+        self.assertIn(storage_watch.marker(self.report.alert_keys), client.calls[2][2]["body"])
+
+    def test_failed_comment_does_not_patch_the_issue_marker(self) -> None:
+        issue = {
+            "number": 7,
+            "title": storage_watch.ALERT_TITLE,
+            "body": f"old report\n\n{storage_watch.marker(['volume:postgres-volume:70'])}",
+        }
+        client = FakeClient([issue], fail_comment=True)
+
+        with self.assertRaisesRegex(RuntimeError, "comment unavailable"):
+            storage_watch.sync_issue(client, self.repo, self.report)
+
+        self.assertEqual([call[0] for call in client.calls], ["GET", "POST"])
+        self.assertEqual(client.issues[0]["body"], issue["body"])
+
+    def test_open_watchdog_issue_is_found_on_second_page(self) -> None:
+        issue = {
+            "number": 7,
+            "title": storage_watch.ALERT_TITLE,
+            "body": storage_watch.marker(self.report.alert_keys),
+        }
+        client = FakeClient(
+            pages={
+                1: [{"number": number, "title": f"Other issue {number}"} for number in range(100)],
+                2: [issue],
+            }
+        )
+
+        result = storage_watch.sync_issue(client, self.repo, self.report)
+
+        self.assertEqual(result, "unchanged")
+        self.assertEqual(
+            [call[1] for call in client.calls],
+            [
+                f"/repos/{self.repo}/issues?state=open&per_page=100&page=1",
+                f"/repos/{self.repo}/issues?state=open&per_page=100&page=2",
+            ],
+        )
+
+    def test_railway_failure_creates_issue_then_is_unchanged(self) -> None:
+        report = storage_watch.failure_report("Railway GraphQL returned errors")
+        client = FakeClient()
+
+        result = storage_watch.sync_issue(client, self.repo, report)
+
+        self.assertEqual(result, "created")
+        self.assertIn("Railway API check failed", client.issues[0]["body"])
+        self.assertEqual(
+            storage_watch.sync_issue(
+                client,
+                self.repo,
+                storage_watch.failure_report("Railway GraphQL returned errors"),
+            ),
+            "unchanged",
+        )
+
+    def test_main_redacts_railway_token_from_failure_report(self) -> None:
+        token = "railway-token-secret"
+        client = FakeClient()
+        env = {
+            "RAILWAY_TOKEN": token,
+            "GITHUB_TOKEN": "github-token",
+            "GITHUB_REPOSITORY": self.repo,
+        }
+
+        with (
+            patch.dict(os.environ, env, clear=True),
+            patch.object(
+                storage_watch,
+                "fetch_railway_data",
+                side_effect=RuntimeError(f"request failed with {token}"),
+            ),
+            patch.object(storage_watch, "GitHubClient", return_value=client),
+            patch("sys.stdout", io.StringIO()),
+            patch("sys.stderr", io.StringIO()),
+        ):
+            result = storage_watch.main()
+
+        self.assertEqual(result, 1)
+        self.assertIn("[REDACTED]", client.issues[0]["body"])
+        self.assertNotIn(token, client.issues[0]["body"])
 
     def test_same_marker_makes_no_mutating_calls(self) -> None:
         issue = {

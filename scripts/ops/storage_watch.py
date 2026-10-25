@@ -37,6 +37,15 @@ class Report:
     alert_keys: list[str]
 
 
+def failure_report(message: str) -> Report:
+    return Report(
+        volumes=[],
+        backup_line="Railway API check failed; storage state unknown.",
+        problems=[f"Railway API check failed: {message}"],
+        alert_keys=["railway:error"],
+    )
+
+
 def evaluate(
     volumes: Sequence[Mapping[str, Any]],
     backups: Sequence[Mapping[str, Any]],
@@ -129,17 +138,22 @@ def marker(alert_keys: Sequence[str]) -> str:
 
 
 def sync_issue(client: Any, repo: str, report: Report) -> str:
-    issues = client.get(f"/repos/{repo}/issues?state=open&per_page=100")
-    if not isinstance(issues, list):
-        raise RuntimeError("GitHub returned an unexpected issue list")
-    issue = next(
-        (
-            item
-            for item in issues
-            if item.get("title") == ALERT_TITLE and "pull_request" not in item
-        ),
-        None,
-    )
+    issue = None
+    for page in range(1, 11):
+        issues = client.get(f"/repos/{repo}/issues?state=open&per_page=100&page={page}")
+        if not isinstance(issues, list):
+            raise RuntimeError("GitHub returned an unexpected issue list")
+        issue = next(
+            (
+                item
+                for item in issues
+                if item.get("title") == ALERT_TITLE and "pull_request" not in item
+            ),
+            None,
+        )
+        if issue is not None or len(issues) < 100:
+            break
+
     markdown = render_markdown(report)
 
     if report.problems:
@@ -157,13 +171,13 @@ def sync_issue(client: Any, repo: str, report: Report) -> str:
         number = issue.get("number")
         if number is None:
             raise RuntimeError("Open watchdog issue has no issue number")
-        client.patch(
-            f"/repos/{repo}/issues/{number}",
-            {"body": body},
-        )
         client.post(
             f"/repos/{repo}/issues/{number}/comments",
             {"body": markdown},
+        )
+        client.patch(
+            f"/repos/{repo}/issues/{number}",
+            {"body": body},
         )
         return "updated"
 
@@ -297,14 +311,19 @@ def main() -> int:
             raise ValueError("BACKUP_MAX_AGE_HOURS must be a finite nonnegative number")
         backup_volume = os.getenv("BACKUP_VOLUME", "postgres-volume")
 
-        volumes, backups = fetch_railway_data(token, backup_volume)
-        report = evaluate(
-            volumes,
-            backups,
-            datetime.now(UTC),
-            thresholds,
-            backup_max_age_h,
-        )
+        try:
+            volumes, backups = fetch_railway_data(token, backup_volume)
+        except Exception as error:
+            message = str(error).replace(token, "[REDACTED]")
+            report = failure_report(message)
+        else:
+            report = evaluate(
+                volumes,
+                backups,
+                datetime.now(UTC),
+                thresholds,
+                backup_max_age_h,
+            )
         markdown = render_markdown(report)
         print(markdown)
 
