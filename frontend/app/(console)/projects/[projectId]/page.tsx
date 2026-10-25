@@ -11,6 +11,7 @@ import { useProject } from '@/components/project';
 import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, PageTitle, Panel, Stat, Time } from '@/components/ui';
 import { api, idempotencyKey } from '@/lib/api';
 import { CONNECT_REPOSITORY_NOTE } from '@/lib/connect';
+import { assessmentSelection } from '@/lib/assessment-selection';
 import { INDEX_COMMIT_NOTE } from '@/lib/index-commit';
 import { shortSha } from '@/lib/format';
 import {
@@ -20,7 +21,7 @@ import {
 import { projectOverview } from '@/lib/overview';
 import { pillarLoop } from '@/lib/pillars';
 import { START_ASSESSMENT_NOTE } from '@/lib/start-assessment';
-import { ASSESSMENT_STATE, FINDING_STATUS, SNAPSHOT_STATUS, TERMINAL_STATES } from '@/lib/status';
+import { ASSESSMENT_STATE, effectiveScopeStatus, FINDING_STATUS, SNAPSHOT_STATUS, TERMINAL_STATES } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
 
 const SHA = /^[0-9a-f]{7,40}$/;
@@ -35,7 +36,7 @@ export default function ProjectOverview() {
   const findingItems = findings.status === 'ready' ? findings.data.items : [];
   const scopeItems = scopes.status === 'ready' ? scopes.data.items : [];
   // Null (unknown) until scopes have loaded; never zero by default.
-  const activeScopeCount = scopes.status === 'ready' ? scopeItems.filter(s => s.status === 'active').length : null;
+  const activeScopeCount = scopes.status === 'ready' ? scopeItems.filter(s => effectiveScopeStatus(s) === 'active').length : null;
   const summary = projectOverview({
     projectId: project.id,
     repoCount: repos.length,
@@ -62,7 +63,7 @@ export default function ProjectOverview() {
             <p className="mt-2 max-w-3xl text-sm text-muted">{summary.detail}</p>
             {refreshFailed && <p role="status" className="mt-3 text-xs text-warn" data-testid="summary-stale">Could not refresh the latest records. The numbers above are from the last successful load and may be out of date.</p>}
             <div className="mt-4">
-              <a href={summary.action.href} className="inline-flex items-center rounded-full bg-brand px-4 py-2 text-sm font-medium text-on-brand hover:bg-brand-deep">{summary.action.label}</a>
+              <a href={summary.action.href} className="inline-flex items-center rounded-[var(--radius-2)] bg-brand px-4 py-2 text-sm font-medium text-on-brand hover:bg-brand-deep">{summary.action.label}</a>
             </div>
           </>
         ) : <p className="text-sm text-muted">Loading the current project records…</p>}
@@ -302,18 +303,19 @@ function StartAssessment({ onStarted }: { onStarted: () => void }) {
   const [key, setKey] = useState<{ sig: string; value: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
-  const active = scopes.status === 'ready' ? scopes.data.items.filter(s => s.status === 'active') : [];
+  const active = scopes.status === 'ready' ? scopes.data.items.filter(s => effectiveScopeStatus(s) === 'active') : [];
+  const selection = assessmentSelection(repoId, scopeId, repos, active);
   const conflict = error instanceof ApiError && error.status === 409 && error.error.code === 'IDEMPOTENCY_CONFLICT';
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    const sig = `${project.id}|${repoId}|${scopeId}|${sha.trim()}`;
+    const sig = `${project.id}|${selection.repoId}|${selection.scopeId}|${sha.trim()}`;
     const actionKey = key?.sig === sig ? key.value : idempotencyKey('assessment');
     setKey({ sig, value: actionKey });
     setBusy(true);
     setError(null);
     try {
-      const asm = await api().startAssessment(project.id, { scope_id: scopeId, repo_id: repoId, commit_sha: sha.trim() || null, snapshot_id: null, budget: null }, actionKey);
+      const asm = await api().startAssessment(project.id, { scope_id: selection.scopeId, repo_id: selection.repoId, commit_sha: sha.trim() || null, snapshot_id: null, budget: null }, actionKey);
       onStarted();
       router.push(`/projects/${project.id}/assessments/${asm.id}`);
     } catch (err) { setError(err); } finally { setBusy(false); }
@@ -325,22 +327,22 @@ function StartAssessment({ onStarted }: { onStarted: () => void }) {
       {repos.length === 0 ? <Empty>Connect a repository first.</Empty> : (
         <form onSubmit={submit} className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Field label="Repository">
-            <select className={inputClass} value={repoId} onChange={e => setRepoId(e.target.value)} required name="repo">
+            <select className={inputClass} value={selection.repoId} onChange={e => setRepoId(e.target.value)} required name="repo">
               <option value="">Select…</option>
               {repos.map(r => <option key={r.id} value={r.id}>{r.full_name}</option>)}
             </select>
           </Field>
-          <Field label="Authorized scope" hint={scopes.status === 'ready' && active.length === 0 ? 'No active scope — request and approve one under Defend → Authorized scopes in the project sidebar.' : undefined}>
-            <select className={inputClass} value={scopeId} onChange={e => setScopeId(e.target.value)} required name="scope">
+          <Field label="Authorized scope" hint={scopes.status === 'ready' && selection.scopes.length === 0 ? 'No active scope covers this repository — request and approve one under Defend → Authorized scopes in the project sidebar.' : undefined}>
+            <select className={inputClass} value={selection.scopeId} onChange={e => setScopeId(e.target.value)} required name="scope">
               <option value="">Select…</option>
-              {active.filter(s => !repoId || s.targets.some(t => t.repo_id === repoId)).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              {selection.scopes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </Field>
           <Field label="Commit SHA" hint="Blank = latest commit on the default branch.">
             <input className={`${inputClass} font-mono`} value={sha} onChange={e => setSha(e.target.value.toLowerCase())} pattern="[0-9a-f]{7,40}" name="commit_sha" placeholder="optional" />
           </Field>
           <div className="sm:col-span-3">
-            <Button type="submit" variant="primary" disabled={busy || !repoId || !scopeId || (sha !== '' && !SHA.test(sha))}>Start assessment</Button>
+            <Button type="submit" variant="primary" disabled={busy || !selection.repoId || !selection.scopeId || (sha !== '' && !SHA.test(sha))}>Start assessment</Button>
           </div>
           {error !== null && <div className="sm:col-span-3">
             <ErrorState error={error} context="Assessment not started" />

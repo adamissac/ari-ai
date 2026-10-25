@@ -15,6 +15,7 @@ import { minutesSince } from '@/lib/simulated-attack';
 import { useAccessibleRepo } from '@/lib/real-repo';
 import { useResource } from '@/lib/use-resource';
 import { api } from '@/lib/api';
+import { commitFreshness } from '@/lib/commit-freshness';
 
 type QuickRead = { key: string; data?: LiveResult; error?: string };
 
@@ -72,6 +73,7 @@ function SelectedCommit({ org, name, sha, repo, onConnected }: {
   const author = data?.commit.author ?? selectedCommit?.author;
   const when = data?.commit.committedAt ?? selectedCommit?.committed_at;
   const base = `/connect/${encodeURIComponent(org)}/${encodeURIComponent(name)}`;
+  const freshness = commitFreshness(metadata.data?.available ? metadata.data.items : undefined, fullSha);
   return <div className="commit-stage" data-testid="real-commit">
     <nav aria-label="Breadcrumb" className="mb-6 flex flex-wrap items-center gap-2 text-sm text-white/65">
       <Link href="/connect">Organizations</Link><span aria-hidden="true">/</span><Link href={`/connect/${encodeURIComponent(org)}`}>{org}</Link><span aria-hidden="true">/</span><Link href={base}>{name}</Link><span aria-hidden="true">/</span><span>{fullSha.slice(0, 7)}</span>
@@ -91,6 +93,12 @@ function SelectedCommit({ org, name, sha, repo, onConnected }: {
         {htmlUrl && /^https?:\/\//.test(htmlUrl) && <a className="underline" href={htmlUrl} target="_blank" rel="noreferrer">View on GitHub ↗</a>}
       </p>
     </header>
+    {freshness?.kind === 'stale' && (
+      <p className="mb-4 rounded-md border border-warn/50 bg-warn/10 px-3 py-2 text-sm text-warn" data-testid="commit-behind-default">
+        This isn&apos;t the latest commit on the default branch. Ari reviews and fixes this exact commit, so a fix may already be there.
+        {' '}<Link className="underline" href={`${base}/commit/${freshness.latestSha}`}>Review the latest commit →</Link>
+      </p>
+    )}
     <div className="mb-4"><ProjectReviewCta repoId={connectedRepoId} /></div>
     <RealAssessmentPanel org={org} repo={{ ...repo, connected_repo_id: connectedRepoId }} sha={fullSha} onConnected={id => { setConnectedRepoId(id); onConnected(); }} onRunSelected={setAssessmentId} />
     <CommitRunWorkspace assessmentId={assessmentId} repoId={connectedRepoId} sha={fullSha} fullName={repo.full_name} liveView={view} liveState={liveState} />

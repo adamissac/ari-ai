@@ -54,11 +54,11 @@ class PostgresMemoryStore:
     def __init__(self, engine: Engine | None = None) -> None:
         self.engine = engine or get_engine()
 
-    def _validate(self, conn: sa.Connection, ref: SnapshotRef) -> None:
+    def _validate(self, conn: sa.Connection, ref: SnapshotRef, *, lock: bool = False) -> None:
         conn.execute(
             sa.text("SELECT set_config('ari.project_id', :pid, true)"), {"pid": ref.project_id}
         )
-        ready = conn.execute(
+        query = (
             sa.select(index_snapshots.c.snapshot_id)
             .join(
                 repositories,
@@ -72,7 +72,10 @@ class PostgresMemoryStore:
                 index_snapshots.c.index_version == ref.index_version,
                 index_snapshots.c.snapshot_id == ref.snapshot_id,
             )
-        ).scalar()
+        )
+        if lock:
+            query = query.with_for_update(read=True)
+        ready = conn.execute(query).scalar()
         if ready is None:
             raise PermissionError("Exact project/repository snapshot is not ready")
 
@@ -87,7 +90,7 @@ class PostgresMemoryStore:
             signed=True,
         )
         with self.engine.begin() as conn:
-            self._validate(conn, decision.snapshot_ref)
+            self._validate(conn, decision.snapshot_ref, lock=True)
             org_id = conn.execute(
                 sa.select(projects.c.org_id).where(
                     projects.c.id == decision.snapshot_ref.project_id
@@ -196,7 +199,7 @@ class PostgresMemoryStore:
     def put_regression(self, record: VerifiedRegression) -> None:
         record = VerifiedRegression.model_validate(record.model_dump())
         with self.engine.begin() as conn:
-            self._validate(conn, record.snapshot_ref)
+            self._validate(conn, record.snapshot_ref, lock=True)
             conn.execute(
                 pg_insert(verified_regression_memory)
                 .values(

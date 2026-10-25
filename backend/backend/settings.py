@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     github_app_slug: str | None = None  # github.com/apps/<slug>: link for installing the App
     github_api_url: str = "https://api.github.com"
     github_web_url: str = "https://github.com"
-    # Empty preserves legacy monitoring; comma-separated GitHub logins or * enables per-commit runs.
+    # Empty or * preserves impact monitoring; a non-empty comma list enables per-commit runs.
     github_auto_commit_authors: str = ""
     project_assessments_per_hour: int = Field(default=10, ge=1)
     project_assessments_per_day: int = Field(default=50, ge=1)
@@ -106,10 +106,13 @@ class Settings(BaseSettings):
 
     # Rate limits (in-process, docs/13)
     rate_limit_per_minute: int = 60
+    rate_limit_read_per_minute: int = 600
 
     # Ops surface + storage maintenance (docs/deploy/POSTGRES_STORAGE.md)
     # Bearer token for /api/v1/ops/*; unset disables those endpoints entirely.
     ops_api_token: SecretStr | None = None
+    # Additional token required for destructive maintenance requests.
+    ops_destructive_token: SecretStr | None = None
     # Generic HTTPS webhook posted when storage crosses a threshold (e.g. a Slack
     # incoming webhook or any alert receiver that accepts a JSON POST).
     ops_alert_webhook_url: str | None = None
@@ -139,6 +142,8 @@ class Settings(BaseSettings):
     # Payloads for a ready snapshot are never pruned younger than this, and never while
     # a non-terminal assessment still references the snapshot.
     retention_snapshot_grace_days: int = Field(default=7, ge=1)
+    retention_protect_assessment_snapshots: bool = True
+    retention_assessment_snapshot_days: int = Field(default=30, ge=7)
     # Payloads written but never marked ready (failed/abandoned indexing) are pruned
     # after this many hours.
     retention_orphan_grace_hours: int = Field(default=24, ge=1)
@@ -168,6 +173,7 @@ class Settings(BaseSettings):
         "repository_bindings_file",
         "security_workdir",
         "ops_api_token",
+        "ops_destructive_token",
         "ops_alert_webhook_url",
         mode="before",
     )
