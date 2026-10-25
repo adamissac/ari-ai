@@ -8,7 +8,6 @@ import { notifySessionChanged } from '@/lib/session-events';
 import { AuthStage, LockIcon } from '@/components/auth-stage';
 import { BRAND_NAME } from '@/components/brand';
 import { GitHubMark } from '@/components/demo/ui';
-import { INTRO_KEY } from '@/components/intro-loader';
 import { ErrorState, Loading } from '@/components/ui';
 
 type SessionState =
@@ -47,7 +46,6 @@ export function OptionalSession({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     await api().logout();
     notifySessionChanged(null);
-    try { window.sessionStorage.removeItem(INTRO_KEY); } catch { /* storage unavailable */ }
     setMe(null);
   }, []);
   if (!me) return <>{children}</>;
@@ -85,7 +83,6 @@ export function SessionGate({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     await api().logout();
     notifySessionChanged(null);
-    try { window.sessionStorage.removeItem(INTRO_KEY); } catch { /* storage unavailable */ }
     setState({ status: 'signed-out' });
   }, []);
 

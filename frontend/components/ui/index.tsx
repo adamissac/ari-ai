@@ -18,9 +18,10 @@ const TONE: Record<Tone, string> = {
 };
 
 export function Badge({ view, title }: { view: StatusView; title?: string }) {
+  const mark = view.glyph === '⏸' ? 'paused' : view.tone === 'bad' ? 'failed' : view.tone === 'ok' ? 'done' : 'pending';
   return (
     <span title={title} className={`status-badge inline-flex items-center gap-1 whitespace-nowrap rounded-[var(--radius-1)] border bg-transparent px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.06em] ${TONE[view.tone]}`}>
-      <span aria-hidden="true">{view.glyph}</span>
+      <span aria-hidden="true" className={`status-mark status-mark-${mark}`}>{mark === 'failed' ? '×' : null}</span>
       {view.label}
     </span>
   );

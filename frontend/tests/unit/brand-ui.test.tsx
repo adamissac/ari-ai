@@ -1,10 +1,14 @@
 import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BRAND_NAME, LOGO_ASPECT, LOGO_SRC, LogoMark, Wordmark } from '@/components/brand';
 import { Reveal } from '@/components/reveal';
 import { Button } from '@/components/ui';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 describe('ARI brand and interactive UI', () => {
   it('keeps one accessible name when the button label is duplicated for the hover roll', () => {
@@ -44,5 +48,20 @@ describe('ARI brand and interactive UI', () => {
     const { container } = render(<Reveal><p>visible</p></Reveal>);
     expect(container.firstElementChild?.getAttribute('data-shown')).toBe('true');
     expect(screen.getByText('visible')).toBeTruthy();
+  });
+
+  it('keeps below-fold reveal content visible when reduced motion is requested', () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: true }));
+    vi.stubGlobal('IntersectionObserver', class {
+      observe() {}
+      disconnect() {}
+    });
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 1000, 100, 40));
+    const scrollingElement = document.scrollingElement;
+    if (scrollingElement) vi.spyOn(scrollingElement, 'scrollHeight', 'get').mockReturnValue(2000);
+
+    const { container } = render(<Reveal><p>visible with reduced motion</p></Reveal>);
+    expect(container.firstElementChild?.getAttribute('data-shown')).toBe('true');
+    expect(screen.getByText('visible with reduced motion')).toBeTruthy();
   });
 });
