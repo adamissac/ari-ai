@@ -1,0 +1,41 @@
+name: RC5 independent candidate and landing checks
+on:
+  push:
+    branches: [codex/rc5-independent-check]
+    paths: [.github/workflows/rc5-independent.yml, docs/reviews/rc5-independent/run.py, docs/reviews/rc5-independent/test_additional.py, docs/reviews/rc5-independent/pin.json]
+permissions:
+  contents: read
+jobs:
+  independent:
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [candidate, landing]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: controller
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: m-alan08/ari-ai
+          ref: 45c7cd6d1ce166b0d2e1fd0b34bb6dd8987b9008
+          path: candidate
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Run strict isolated candidate or current-main landing checks
+        working-directory: controller
+        env:
+          AUDIT_MODE: ${{ matrix.mode }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/rc5-evidence"
+          cp docs/reviews/rc5-independent/pin.json "$RUNNER_TEMP/rc5-evidence/pin.json"
+          PYTHONPATH=. python3 docs/reviews/rc5-independent/run.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: rc5-${{ matrix.mode }}
+          path: ${{ runner.temp }}/rc5-evidence/
+          retention-days: 14
