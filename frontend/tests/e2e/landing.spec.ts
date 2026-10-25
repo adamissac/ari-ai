@@ -4,7 +4,7 @@ import { mkdir } from 'node:fs/promises';
 const steps = ['Understand', 'Review', 'Attack Safely', 'Diagnose', 'Repair', 'Verify', 'Monitor'];
 
 for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 768 }, { width: 390, height: 844 }, { width: 320, height: 740 }]) {
-  test(`floating navigation and minimal hero at ${viewport.width}px`, async ({ page }) => {
+  test(`night navigation stays legible and contained at ${viewport.width}px`, async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.setViewportSize(viewport);
@@ -27,6 +27,9 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 76
     const account = nav.locator('[data-testid="header-signin"], [data-testid="header-account"]');
     await expect(account).toBeVisible();
     const initialAccount = (await account.boundingBox())!;
+    const headerBounds = (await page.locator('header').boundingBox())!;
+    const heroBounds = (await page.locator('.hero-content').boundingBox())!;
+    expect(headerBounds.y + headerBounds.height).toBeLessThanOrEqual(heroBounds.y);
     await secondary.locator('a').first().evaluate(el => (el as HTMLAnchorElement).focus());
     expect(await page.evaluate(() => document.activeElement?.closest('.nav-secondary') !== null)).toBe(false);
     if (viewport.width < 640) {
@@ -57,13 +60,15 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 76
       await page.evaluate(y => window.scrollTo(0, y), scrollY);
       await expect.poll(() => page.locator('header').evaluate(el => Math.round(el.getBoundingClientRect().top))).toBe(0);
       const styles = await page.locator('header').evaluate(el => ({ bg: getComputedStyle(el).backgroundColor, border: getComputedStyle(el).borderBottomWidth }));
-      expect(styles).toEqual({ bg: 'rgba(0, 0, 0, 0)', border: '0px' });
+      expect(styles).toEqual(viewport.width < 640
+        ? { bg: 'rgba(28, 18, 16, 0.94)', border: '1px' }
+        : { bg: 'rgba(0, 0, 0, 0)', border: '0px' });
       for (const item of await page.locator('header a:not(.hdr-cta)').all()) {
         await expect(item).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
         await expect(item).toHaveCSS('box-shadow', 'none');
         await expect(item).toHaveCSS('border-top-width', '0px');
       }
-      if (scrollY === viewport.height + 200) await expect(page.locator('header .hdr-logo')).toHaveCSS('color', 'rgb(28, 18, 16)');
+      await expect(page.locator('header .hdr-logo')).toHaveCSS('color', 'rgb(255, 255, 255)');
       await expect(secondary).toHaveCSS('opacity', scrollY >= 100 ? '1' : '0');
       await expect(secondary).toHaveAttribute('aria-hidden', String(scrollY < 100));
       for (const item of await secondary.locator('a').all()) {

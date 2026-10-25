@@ -2165,7 +2165,10 @@ remains OFF pending manual installation and protected credential/session setup.
 ### Classic UI restoration
 
 - Restored the seven-step setup and console flows in the pre-redesign style, with a continuous night surface, responsive navigation, and overflow/spacing fixes.
-- The expectations page now uses composite keys for rendered snapshot, expectation, and decision rows; confirm the seeded-page console audit after launching the local stack.
+- Expectations rows use composite keys; the seeded route audit emitted no duplicate-key warnings. The earlier warning's precise emitting record/component was not isolated beyond this runtime check.
+- `/home/ubuntu/classic-audit/after/metrics.json` records 62 route/viewport captures. Every route fit within its viewport and no duplicate-key warning occurred. The only two resource errors were `POST /api/analyze` 503 responses on commit detail at both widths, confirmed from browser response URLs; this is the known unavailable-analysis path. Full screenshots and stitched sheets are under `/home/ubuntu/classic-audit/after/`, including expectations at both widths.
+- Lint, typecheck, frontend unit tests (93 files / 403 tests), transport tests (36), and build passed. The selected E2E set had 19/23 pass before correcting four stale landing-header assertions; afterward `landing.spec.ts` passed all 8 tests, and the other 15 selected tests had already passed.
+- The review UI is served at `http://localhost:3202`; the local API at `localhost:59039` is the manual test stack. Its assessments use TEST-ONLY scripted model transports and do not establish live-model provenance.
 
 ### Independent RC4 review — 2026-10-25
 

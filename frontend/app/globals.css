@@ -337,7 +337,7 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 /* Landing story chapters (components/story.tsx). Tracks are tall only on lg screens with motion
    allowed; their stage is sticky and scenes read scroll progress. Otherwise: normal flow. */
 .bleed { position: relative; isolation: isolate; background: var(--bleed-bg); }
-.bleed-night, .bleed-ink { --bleed-bg: var(--color-bg); }
+.bleed-night, .bleed-ink { --bleed-bg: var(--color-night); }
 @media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
   .story-track-2 { height: 220vh; }
   .story-track-3 { height: 300vh; }
@@ -1687,8 +1687,8 @@ body:has(.commit-stage) main { color: #fff; }
 :root:not(:has(.hero-full)) .lab-replay-card .net-node[data-isolated] .net-icon { color: rgb(28 18 16 / 45%); }
 
 /* Landing footer: shared baselines, two navigation columns, simple legal row. */
-.landing-footer { position: relative; isolation: isolate; overflow: hidden; margin-inline: calc(50% - 50vw); padding: 48px max(24px, calc((100vw - 1216px) / 2)) 20px; background: var(--color-ink); color: #fff7f2; }
-.footer-ruler { position: absolute; inset: 0 0 auto; height: 1px; background: #e2b79e33; }
+.landing-footer { position: relative; isolation: isolate; overflow: hidden; margin-inline: calc(50% - 50vw); border-top: 1px solid rgb(255 247 242 / 12%); padding: 48px max(24px, calc((100vw - 1216px) / 2)) 20px; background: transparent; color: #fff7f2; }
+.footer-ruler { display: none; }
 .footer-top { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr auto; gap: 64px; align-items: start; }
 .footer-brand { display: inline-flex; align-items: center; gap: 12px; height: 42px; }
 .footer-brand > span { font-size: 42px; line-height: 1; letter-spacing: -.04em; }
