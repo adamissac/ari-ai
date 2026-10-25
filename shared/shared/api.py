@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Annotated, Any, Literal
 
 from pydantic import Field, model_validator
@@ -182,9 +183,19 @@ class AssessmentDetail(StrictModel):
     findings: list[Finding]
 
 
+class PatchDelivery(StrictModel):
+    status: Literal["pending", "pr_opened", "pushed", "failed", "skipped"]
+    reason: str | None = None
+    url: str | None = None
+    branch: str | None = None
+    commit_sha: str | None = None
+    at: datetime | None = None
+
+
 class PatchView(StrictModel):
     patch: PatchCandidate
     verification: VerificationResult | None = None
+    delivery: PatchDelivery | None = None
 
 
 class WebhookAck(StrictModel):
