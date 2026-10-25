@@ -10,6 +10,7 @@ from __future__ import annotations
 import difflib
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 import tarfile
@@ -84,6 +85,26 @@ def resolve_under(root: Path, rel: str) -> Path:
     if candidate != root_r and root_r not in candidate.parents:
         raise PlatformError(ErrorCode.SANDBOX_POLICY_VIOLATION, "path escapes root via symlink")
     return candidate
+
+
+def test_root_symlinks(root: Path, roots: tuple[str, ...]) -> tuple[str, ...]:
+    """In-root symlinked files below test roots, excluding dangling and escaping links."""
+    found: set[str] = set()
+    for current, directories, files in os.walk(root, followlinks=False):
+        for name in (*directories, *files):
+            link = Path(current) / name
+            if not link.is_symlink():
+                continue
+            rel = link.relative_to(root).as_posix()
+            if not under_test_roots(rel, roots):
+                continue
+            try:
+                resolved = resolve_under(root, rel)
+            except PlatformError:
+                continue
+            if resolved.is_file():
+                found.add(rel)
+    return tuple(sorted(found))
 
 
 def _iter_files(root: Path) -> list[str]:
