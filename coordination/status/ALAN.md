@@ -660,3 +660,19 @@ the full readiness suite — GO, 25/25 (migrations to 0017, smoke 15/15, crash
 recovery, restore parity, authz/estop, alert redaction). One cross-PR defect
 found+fixed on my branch (openapi dev-gate vs smoke/release_check). My verdict
 matches theirs: infra GO; deploy stays NO-GO until Codex P1s F1/F2 land.
+
+Recomposition-2 (7cfba90f): one regression — worker.py lost the alerts import +
+send_alert calls (alerting dead). Fix on `fix/devin/alert-webhook-wiring`, GO
+25/25 verified. Integration session merging it.
+
+FINAL GATE GREEN: integration tip dd530ae3 passes release_readiness.py 25/25.
+Alert cherry-pick verified live. Readiness suite is now the repeatable pilot gate;
+re-run on any further recomposition.
+
+Upstream-reconciled tip 070f75a9 (head 0019, upstream ops/storage + heartbeat
+surface merged): release_readiness GO 25/25 unchanged. Gate still green.
+
+RC GATE GREEN: release_readiness.py GO 25/25 on RC SHA bc490484 (upstream
+580d2f67 reconciled — onboarding lifecycle, release-gate+dead-letter, intel
+audit + write-time redaction, ops-alias fix; head stays 0019). Gate stable
+across the entire reconciliation.
