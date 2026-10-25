@@ -1,0 +1,16 @@
+{
+  "candidate_sha": "4fdcf10cc2320b0eb499a177e3b8bea847de8e73",
+  "upstream_sha": "e41c9dc22e6536463cdab9be6a2a4cd76302c866",
+  "regression_sha": "abf6b316b1de2fea9a8ac8c89a79a7368900145a",
+  "pr_heads": {
+    "412": "4ecd7558c20d676985294073d5a818a538bdf78c",
+    "458": "8396e836866e33ebc34a402a7c8bd0eb6bc769d8"
+  },
+  "transfers": {
+    "reliability": "5e130915d30aad375adc9750f2232e2d29c085cb",
+    "observability": "660a3575d9eaf0a2df67a50002b2ec924f182f23",
+    "hardening": "89a29d170d4cf1f589975713ee7c8ada778f1ab6",
+    "onboarding": "10e923d1ffda75b19b848a7154f8ba867a0a8589",
+    "manifest": "b2a10667b6757e67fb32323919ef2d3cf843160a"
+  }
+}

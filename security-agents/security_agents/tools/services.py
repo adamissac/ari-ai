@@ -156,41 +156,152 @@ def _added_lines_by_diff_path(diff_text: str) -> dict[str, list[str]]:
 def _pytest_sensitive_constructs(source: str) -> Counter[tuple[str, str, str]]:
     tree = ast.parse(source)
     constructs: Counter[tuple[str, str, str]] = Counter()
+    parents = {child: node for node in ast.walk(tree) for child in ast.iter_child_nodes(node)}
 
     def record(kind: str, name: str, node: ast.AST) -> None:
         segment = ast.get_source_segment(source, node) or ast.dump(node, include_attributes=False)
         constructs[(kind, name, segment)] += 1
 
-    def assigned_names(targets: list[ast.expr]) -> set[str]:
+    def binding_statement(node: ast.AST) -> ast.AST:
+        current = node
+        while not isinstance(current, ast.stmt):
+            parent = parents.get(current)
+            if parent is None:
+                return node
+            current = parent
+        return current
+
+    def root_name(target: ast.AST) -> str | None:
+        while isinstance(target, (ast.Attribute, ast.Subscript)):
+            target = target.value
+        return target.id if isinstance(target, ast.Name) else None
+
+    def target_names(targets: list[ast.expr]) -> set[str]:
         names: set[str] = set()
 
         def add_target(target: ast.expr) -> None:
-            if isinstance(target, ast.Name):
-                names.add(target.id)
-            elif isinstance(target, (ast.Tuple, ast.List)):
+            if isinstance(target, (ast.Tuple, ast.List, ast.Starred)):
+                if isinstance(target, ast.Starred):
+                    add_target(target.value)
+                    return
                 for element in target.elts:
                     add_target(element)
-            elif isinstance(target, ast.Starred):
-                add_target(target.value)
+                return
+            name = root_name(target)
+            if name is not None:
+                names.add(name)
 
         for target in targets:
             add_target(target)
         return names
 
     def assigns_pytest_plugins(targets: list[ast.expr]) -> bool:
-        return "pytest_plugins" in assigned_names(targets)
-
-    def pytest_assignment_names(targets: list[ast.expr]) -> set[str]:
-        return {name for name in assigned_names(targets) if name.startswith("pytest_")}
+        return "pytest_plugins" in target_names(targets)
 
     def is_runner_module(name: str) -> bool:
         return any(name == prefix or name.startswith(f"{prefix}.") for prefix in ("_pytest", "pluggy"))
 
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("pytest_"):
-            record("hook", node.name, node)
+    def record_pytest_binding(name: str, node: ast.AST) -> None:
+        if name.startswith("pytest_"):
+            record("pytest-assignment", name, binding_statement(node))
 
+    def declared_globals(statements: list[ast.stmt]) -> set[str]:
+        names: set[str] = set()
+
+        def visit(node: ast.AST) -> None:
+            if isinstance(node, ast.Global):
+                names.update(node.names)
+                return
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef)):
+                return
+            for child in ast.iter_child_nodes(node):
+                visit(child)
+
+        for statement in statements:
+            visit(statement)
+        return names
+
+    def collect_bindings(
+        statements: list[ast.stmt],
+        global_names: set[str],
+        *,
+        module_scope: bool,
+    ) -> None:
+        def visit(node: ast.AST) -> None:
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                if module_scope or node.name in global_names:
+                    record_pytest_binding(node.name, node)
+                for decorator in node.decorator_list:
+                    visit(decorator)
+                for default in [*node.args.defaults, *[value for value in node.args.kw_defaults if value]]:
+                    visit(default)
+                if node.returns is not None:
+                    visit(node.returns)
+                collect_bindings(
+                    node.body,
+                    declared_globals(node.body),
+                    module_scope=False,
+                )
+                return
+            if isinstance(node, ast.ClassDef):
+                if module_scope or node.name in global_names:
+                    record_pytest_binding(node.name, node)
+                for expression in [*node.decorator_list, *node.bases]:
+                    visit(expression)
+                for keyword in node.keywords:
+                    visit(keyword.value)
+                collect_bindings(
+                    node.body,
+                    declared_globals(node.body),
+                    module_scope=False,
+                )
+                return
+            if isinstance(node, ast.Lambda):
+                for default in [*node.args.defaults, *[value for value in node.args.kw_defaults if value]]:
+                    visit(default)
+                return
+            if isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del)):
+                if module_scope or node.id in global_names:
+                    record_pytest_binding(node.id, node)
+            elif isinstance(node, ast.Import):
+                for alias in node.names:
+                    name = alias.asname or alias.name.split(".", 1)[0]
+                    if module_scope or name in global_names:
+                        record_pytest_binding(name, node)
+            elif isinstance(node, ast.ImportFrom):
+                for alias in node.names:
+                    if alias.name == "*":
+                        continue
+                    name = alias.asname or alias.name
+                    if module_scope or name in global_names:
+                        record_pytest_binding(name, node)
+            elif isinstance(node, ast.ExceptHandler):
+                if node.name is not None and (module_scope or node.name in global_names):
+                    record_pytest_binding(node.name, node)
+            elif (
+                isinstance(node, (ast.MatchAs, ast.MatchStar))
+                and node.name is not None
+                and (module_scope or node.name in global_names)
+            ):
+                record_pytest_binding(node.name, node)
+            elif (
+                isinstance(node, ast.MatchMapping)
+                and node.rest is not None
+                and (module_scope or node.rest in global_names)
+            ):
+                record_pytest_binding(node.rest, node)
+            for child in ast.iter_child_nodes(node):
+                visit(child)
+
+        for statement in statements:
+            visit(statement)
+
+    collect_bindings(tree.body, set(), module_scope=True)
+
+    for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if node.name.startswith("pytest_"):
+                record("hook", node.name, node)
             for decorator in node.decorator_list:
                 expression = decorator.func if isinstance(decorator, ast.Call) else decorator
                 is_pytest_hookimpl = (
@@ -229,6 +340,22 @@ def _pytest_sensitive_constructs(source: str) -> Counter[tuple[str, str, str]]:
                 and is_runner_module(first_arg.value)
             ):
                 record("runner-import", first_arg.value, node)
+            is_setattr = isinstance(function, ast.Name) and function.id == "setattr"
+            is_object_setattr = (
+                isinstance(function, ast.Attribute)
+                and function.attr == "__setattr__"
+                and isinstance(function.value, ast.Name)
+                and function.value.id == "object"
+            )
+            if (is_setattr or is_object_setattr) and node.args:
+                name = root_name(node.args[0])
+                if name is not None:
+                    record_pytest_binding(name, node)
+
+        if isinstance(node, (ast.Attribute, ast.Subscript)) and isinstance(node.ctx, (ast.Store, ast.Del)):
+            name = root_name(node.value)
+            if name is not None:
+                record_pytest_binding(name, node)
 
         targets: list[ast.expr] = []
         if isinstance(node, ast.Assign):
@@ -237,17 +364,6 @@ def _pytest_sensitive_constructs(source: str) -> Counter[tuple[str, str, str]]:
             targets = [node.target]
         if targets and assigns_pytest_plugins(targets):
             record("pytest-plugins", "pytest_plugins", node)
-
-    for node in tree.body:
-        targets = (
-            node.targets
-            if isinstance(node, ast.Assign)
-            else [node.target]
-            if isinstance(node, ast.AnnAssign)
-            else []
-        )
-        for name in sorted(pytest_assignment_names(targets)):
-            record("pytest-assignment", name, node)
 
     return constructs
 
@@ -1196,10 +1312,11 @@ class PatchApplier:
             "pyproject.toml",
         )
 
-        def config_changed_at(base_path: str, name: str) -> bool:
+        def config_changed_at(base_path: str, name: str, content_path: str | None = None) -> bool:
             path = f"{base_path}/{name}".strip("/")
-            original_bytes = read_config(snapshot_root, path)
-            patched_bytes = read_config(patched_root, path)
+            source_path = content_path or path
+            original_bytes = read_config(snapshot_root, source_path)
+            patched_bytes = read_config(patched_root, source_path)
             if name in {"pytest.ini", ".pytest.ini", "pytest.toml", ".pytest.toml"}:
                 return original_bytes != patched_bytes
             try:
@@ -1297,6 +1414,32 @@ class PatchApplier:
             for name in ("pytest.ini", ".pytest.ini", "pytest.toml", ".pytest.toml"):
                 normalize_config_path(f"{rootdir}/{name}".strip("/"))
 
+        section_checked_configs: dict[str, set[str]] = {}
+
+        def add_section_checked_config(logical_path: str) -> None:
+            section_checked_configs.setdefault(logical_path, set()).add(logical_path)
+            candidate = snapshot_root / logical_path
+            try:
+                mode = candidate.lstat().st_mode
+            except FileNotFoundError:
+                return
+            except OSError:
+                unreadable_config(logical_path)
+                return
+            if not stat.S_ISLNK(mode):
+                return
+            try:
+                resolved = resolve_under(snapshot_root, logical_path)
+                target_path = resolved.relative_to(snapshot_root.resolve()).as_posix()
+            except (OSError, PlatformError, RuntimeError, ValueError):
+                unreadable_config(logical_path)
+                return
+            section_checked_configs.setdefault(target_path, set()).add(logical_path)
+
+        for base in {"", *rootdirs}:
+            for name in ("tox.ini", "setup.cfg", "pyproject.toml"):
+                add_section_checked_config(f"{base}/{name}".strip("/"))
+
         roots = recipe_test_roots(snapshot_root)
         plugin_source_paths = set(conftest_paths)
         try:
@@ -1310,7 +1453,12 @@ class PatchApplier:
             try:
                 source = resolve_under(snapshot_root, rel).read_text(encoding="utf-8-sig")
                 tree = ast.parse(source)
-            except (OSError, PlatformError, UnicodeDecodeError, SyntaxError):
+            except (SyntaxError, ValueError):
+                if under_test_roots(rel, roots) and rel.rsplit("/", 1)[-1] != "conftest.py":
+                    continue
+                unreadable_config(rel)
+                continue
+            except (OSError, PlatformError, UnicodeDecodeError):
                 unreadable_config(rel)
                 continue
             for node in ast.walk(tree):
@@ -1444,6 +1592,16 @@ class PatchApplier:
                 if read_config(snapshot_root, path) != read_config(patched_root, path):
                     tampered.add(path)
                 continue
+            logical_configs = section_checked_configs.get(path)
+            if logical_configs is not None and any(
+                config_changed_at(
+                    logical.rpartition("/")[0],
+                    logical.rsplit("/", 1)[-1],
+                    content_path=path,
+                )
+                for logical in logical_configs
+            ):
+                tampered.add(path)
             name = path.rsplit("/", 1)[-1]
             if name == "conftest.py":
                 tampered.add(path)
