@@ -66,11 +66,19 @@ throwaway Vercel Sandbox microVM (see `security-agents` Vercel Sandbox driver).
 
 ### Per-commit automatic assessments
 
-The Railway entrypoint defaults `GITHUB_AUTO_COMMIT_AUTHORS` to `*`: every pusher and
-every commit author, including commits whose email maps to no GitHub account. Set a
-comma-separated list of GitHub logins to narrow it; explicit empty uses the legacy
-impact/coalescing policy. An installed App, connected repository, enabled monitoring and
-approved repository scope remain prerequisites. Approving a scope wakes blocked commits.
+The Railway entrypoint defaults `GITHUB_AUTO_COMMIT_AUTHORS` to empty, which disables
+per-commit full runs. If a repository's `automatic_assessments` switch is ON, pushes
+fall back to the legacy impact-gated, coalesced monitoring policy: project
+`monitoring_policy`, active repository scope and the monitoring budget apply, with at
+most one open monitoring assessment per repository. Set it to `*` to opt in every
+pusher and commit author, including commits whose email maps to no GitHub account, or
+use a comma-separated list of GitHub logins to limit eligibility. An installed App,
+connected repository, enabled monitoring and approved repository scope remain
+prerequisites for automatic runs. Approving a scope wakes blocked commits.
+
+For strictly manual operation, switch `automatic_assessments` OFF per repository
+(or disable project monitoring). Manual Run remains available when the repository
+switch is OFF.
 
 Eligible pushed commits are assessed subject to the shared project quota of 10 starts
 per rolling hour and 50 per rolling day, plus the $50 global rolling-day spend cap.
@@ -91,16 +99,18 @@ monitoring budget remains for the impact-policy path when this rollout is disabl
 ### Automatic/manual repository mode and Haiku 5.5 (#380)
 
 Each connected repository has a persisted `automatic_assessments` switch, default
-OFF (opt-in since #385). ON queues every eligible new commit in the background
-without a browser visit or Run click. OFF prevents unstarted automatic work and
+OFF (opt-in since #385). ON enables push-triggered processing: with a nonempty
+author allowlist, every eligible new commit queues a full run; with an empty
+allowlist, pushes use the legacy monitoring policy above. OFF prevents unstarted automatic work and
 exposes manual Run on selected commits; active runs and history remain intact. GET/PATCH
 `/api/v1/repositories/{repo_id}` returns Repository; PATCH requires a project owner
 and is audited. Migration 0009 adds the flag; schema 0.15.0 adds RepositoryUpdate
 and regenerates JSON/TypeScript. Deploy the backend and frontend together.
 
-The rollout requires both the signed push sender and GitHub-attributed commit
-author to match `GITHUB_AUTO_COMMIT_AUTHORS` (`*` in the Railway entrypoint). Attribution
-alone is email-derived, not authorization. All assessment triggers share a project
+Per-commit full runs require a nonempty `GITHUB_AUTO_COMMIT_AUTHORS` allowlist; both
+the signed push sender and GitHub-attributed commit author must match it. With the
+empty Railway default, enabled repositories use the legacy monitoring policy above.
+Attribution alone is email-derived, not authorization. All assessment triggers share a project
 quota of 10 per rolling hour and 50 per rolling day, with a $50/day spend cap across
 all projects and triggers. Over-quota automatic requests are recorded as skipped,
 not deferred. Full runs use the normal project budget, clamped to operator caps.
