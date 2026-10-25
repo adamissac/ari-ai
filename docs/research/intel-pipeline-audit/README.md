@@ -141,11 +141,11 @@ recall degrades with corpus size and shared vocabulary.
 - **Mid-line secret redaction residual** (fixed for digit-bearing literals):
   `f(password=hunter2, ...)` / `dict(password=hunter2)` / `{"password":
   hunter2}` are now redacted. Still unreachable: mid-line bare tokens with no
-  digit (`f(password=hunter)`) and non-first branches of inline
-  conditionals (`password="x" if c else "y"`) — a regex cannot see call or
-  conditional boundaries safely. Honest consequence: a secret matching a
-  residual pattern could still reach `index_payloads` and LLM context packs;
-  tenant RLS + `purge_project` (#535) is the second layer, not a substitute —
+  digit (`f(password=hunter)`) and non-first elements of a compound value
+  (`password="x" if c else "y"`, `password="a" + "b"` — a regex sees only the
+  first element safely). Honest consequence: a secret matching a residual
+  pattern could still reach `index_payloads` and LLM context packs; tenant
+  RLS + `purge_project` (#535) is the second layer, not a substitute —
   disclose this to pilot customers before onboarding code that may carry
   such secrets.
 - Indexing is **whole-tree, not incremental**: ari-ai costs ~92s and ~617MB
