@@ -109,11 +109,16 @@ and regenerates JSON/TypeScript. Deploy the backend and frontend together.
 For strictly manual operation, keep this switch OFF per repository (or disable
 project monitoring); manual Run remains available when the repository switch is OFF.
 
-When configured, `GITHUB_AUTO_COMMIT_AUTHORS` restricts the signed push sender and
-GitHub-attributed commit author; empty or `*` imposes no global author restriction.
-A shared project quota allows up to 10 assessments per rolling hour and 50 per
-rolling day across all triggers; owners may lower the hourly limit per project.
-A $50/day spend cap applies globally across triggers and projects. Over-quota automatic
+When configured with a nonempty comma-separated list, `GITHUB_AUTO_COMMIT_AUTHORS`
+restricts the signed push sender and GitHub-attributed commit author for per-commit
+full runs. Blank, quoted-empty, or standalone `*` values use the impact-gated
+monitoring policy above; project reviewer settings filter both paths. Attribution
+alone is email-derived, not authorization.
+
+Automatic starts count all project triggers toward 10 assessments per rolling hour
+and 50 per rolling day; manual starts count only manual-trigger assessments against
+those limits. Owners may lower the hourly limit per project. A $50/day spend cap
+still applies globally across all triggers and projects. Over-quota automatic
 requests are recorded as skipped, not deferred. Full runs use the normal project
 budget, clamped to operator caps. Monitoring and approved sandbox scope remain
 prerequisites; repair approvals remain required.
