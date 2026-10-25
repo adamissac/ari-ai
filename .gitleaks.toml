@@ -68,13 +68,22 @@ paths = ['''^rehearsal/.*''']
 regexTarget = "line"
 regexes = ['''Bearer\s+tok-[a-z0-9_-]+''']
 
-# Redaction/privacy tests intentionally contain fake secret literals (sk_live_*,
-# xoxb-*, AIzaSy*, ya29.*, GOCSPX-*, JWT bodies) — they are fixtures the redaction
-# code must detect, not real credentials. Scope the skip to those test files only.
+# Fake fixture literals in redaction test suites (doc-placeholder values like
+# sk_live_4eC39HqLyjWDarjtT1zdp7dc and AIzaSyD4iE...KeXW5b0 are the canonical
+# Stripe/Google fake keys). The files only carried these literals at commits
+# 5dcddb61 + 78067f94, still in history — match the exact planted values, inside
+# those test files only; never skip the files.
 [[allowlists]]
-description = "Intentional fake-secret fixtures in redaction/privacy tests"
-paths = [
-  '''^backend/tests/test_redact_text_gaps\.py$''',
-  '''^code-intelligence/tests/test_privacy_redact\.py$''',
-  '''^code-intelligence/tests/test_ingest_extract\.py$''',
+description = "Planted fake secrets in redaction test fixtures"
+condition = "AND"
+paths = ['''^code-intelligence/tests/test_privacy_redact\.py$''', '''^backend/tests/test_redact_text_gaps\.py$''', '''^code-intelligence/tests/test_ingest_extract\.py$''']
+regexes = [
+  '''xoxb-1234567890(12)?-[a-zA-Z]+''',
+  '''sk_live_(4eC39HqLyjWDarjtT1zdp7dc|51Habcdefabcdef)''',
+  '''AIzaSyD4iE2xVSpkLLOXoyq2jxn33rt-KeXW5b0''',
+  '''ya29\.a0AfH6SMBxyz''',
+  '''GOCSPX-abc123def''',
+  '''abc123def456''',
+  '''eyJhbGciOiJIUzI1NiIs\.eyJzdWIiOiIxMjM0NTY3\.OeFghijKlmNopqrS''',
 ]
+
