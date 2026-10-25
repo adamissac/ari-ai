@@ -18,6 +18,7 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-24 — Devin (agent, Adam) — pilot-readiness ops: readiness split, worker heartbeats, restart/rollback evidence
 ### 2026-10-24 — Devin (agent, Adam) — Postgres volume 80% investigation + retention
 - Did: mapped every storage consumer (index_payloads immutable per-commit payloads are the dominant growth driver alongside terminal jobs; /data volume accumulates artifact CAS + refs/ari/* clone refs); added `backend/maintenance.py` (report/apply/loop + storage_report + run_retention), `backend/api/ops.py` (OPS_API_TOKEN-gated storage + prometheus + maintenance endpoints), hourly sidecar in `deploy/railway/start.sh`, runbook `docs/deploy/POSTGRES_STORAGE.md`, 14 tests in `test_maintenance.py`.
 - State of the code: `RETENTION_DRY_RUN=true` ships report-only; all deletes batch inside short txs with `ctid` LIMIT pattern; RLS honored via per-project `set_config('ari.project_id')`; audit row per prune; no schema migration (0017 is already taken by PR #533 heartbeats; `test_parallel_migrations` still expects head 0016).
@@ -26,6 +27,14 @@ adds an entry before ending.
 - Open: actual production table sizes unknown — needs `railway run` + `DATABASE_URL` (not held by this session); whether Railway's alert covers the Postgres service volume or the app /data volume.
 - Next steps: Adam sets OPS_API_TOKEN/POSTGRES_VOLUME_BYTES, reviews first dry-run report, flips RETENTION_DRY_RUN=false; re-measure after a cycle; size volume bump decision from real growth data.
 - Warnings: deleting rows does NOT shrink the Railway-reported volume (frees internal pages); `VACUUM FULL`/repack only after verified backup. Coordination note: `coordination/messages/20261024T235500Z-devin-to-all-postgres-storage-retention.md`.
+
+- Did: infrastructure audit for external-pilot readiness (branch `feat/adam/pilot-readiness-ops`). Added worker-heartbeat liveness (`worker_heartbeats` table, migration 0017, `WORKER_HEARTBEAT_INTERVAL_S`/`WORKER_LIVENESS_S`), split `/readyz` into infra readiness (db/queue/workers → `status` ready|degraded|not_ready, 503 unless ready) vs assessment capability (`capabilities` + `capabilities_ready`: llm.live, github.app_configured, sandbox.configured, artifact_store.writable, workers.alive), added `/diagnostics` (verified GitHub `GET /app`, sandbox sdk/daemon detail, alembic head vs `alembic_version`, queue counts, worker rows), `git_sha`+`schema_version` on `/healthz` (`DEPLOYED_GIT_SHA`/`RAILWAY_GIT_COMMIT_SHA`/`GIT_SHA`), schema 0.22.0, `READYZ_REQUIRE_WORKERS` (default on in staging/production). Frontend: `/api/frontend-version` + `deploy/verify_pair.sh` detect Vercel/Railway schema skew. Evidence harness `deploy/evidence/restart_recovery.py` (+`scripted_worker.py`) runs the real API/workers/migrations on a disposable pgserver stack with scripted transports: 6/6 PASS — SIGTERM drains the in-hand job to AWAITING_APPROVAL w/ checkpoint artifact on disk; SIGKILL → reclaim → honest FAILED (CONFLICT_STATE, never fabricated); human approval + fresh worker → checkpoint resume → COMPLETED; 2 racing workers → exactly-once + dedupe; downgrade→upgrade round-trip; pg_dump→psql restore → identical row counts (`deploy/evidence/last-run-evidence.json`). New `docs/deploy/PILOT_OPERATIONS.md` (topology, safe config checklist, recovery runbook); refreshed `docs/deploy/RAILWAY_AND_GITHUB_APP.md`, `docs/13_BACKEND_API_DESIGN.md`.
+- State of the code: `test_ops_readiness.py` 11/11 + `deploy-version.test.ts` 3/3 pass; evidence harness 7/7 (S1 drain, S2 honest-kill, S3 checkpoint resume, S4 exactly-once, S5 migration rollback, S6 backup/restore, S7 post-crash new assessment). Owner-requested hardening landed: `/diagnostics` is owner-authenticated only (401/403); public `/readyz` scrubs capability `detail` strings (env-var names); `worker_heartbeats.last_poll_at` (claim-loop-only) means a stopped claim loop cannot report as a live worker unless it holds a claimed job.
+- Decisions made: `READYZ_REQUIRE_WORKERS` defaults True in staging/production, off in dev; worker liveness = heartbeat fresh AND (last_poll_at fresh OR current_job_id). GitHub `verified` is a live `GET /app` with 60s cache, slug only. Sandbox check reports env-presence for `vercel` mode. `/diagnostics` gated on any org-owner membership (every dev-login user owns their personal org — the gate blocks unauthenticated probes).
+- Migration coordination RESOLVED: #535 merged first and kept `0016_tenant_rls_intelligence`; this branch renumbered to `0017_worker_heartbeats` (down_revision 0016) per the agreed rule in `coordination/messages/20261024T224500Z-adam-to-agent9-...md`. Codex's `0016_execution_reliability` still needs a renumber when it merges; its 0.23.0 embeds a different "0.22.0" — flagged there.
+- Assumptions / open questions: the only untested acceptance criterion is the ONE authorized real-model staging assessment — needs an authorized signed-in session + `LLM_MAX_USD_PER_ASSESSMENT=1` (Adam approved $1 cap) + active repo scope; scripted evidence uses `provider_mode="fake"` by design.
+- Next steps: land PR #533 (unmerged until security review + migration order + full CI + staging run per owner), run the real staging assessment, wire `deploy/verify_pair.sh` into a deploy hook.
+- Warnings for the next session: prod `/readyz` still serves the OLD response until this lands; `capabilities_ready=false` is a config signal, not an outage. Honest residual: a handler deadlocked mid-job still renews its lease — visible via `worker_rows[].last_poll_age_s` in `/diagnostics`, not via liveness.
 
 ### 2026-10-24 — Adam/Devin: pilot rehearsal executed end-to-end (13/13 PASS)
 
@@ -81,6 +90,14 @@ adds an entry before ending.
 - Assumptions / open questions: `run_assessment` needs `REPOSITORY_BINDINGS_FILE` + `SECURITY_WORKDIR` in the worker env to fetch connected repos (Railway sets them; local dev must too). GitHub's deliveries API doesn't return exact wire bytes — replay signatures are recomputed over the re-serialized payload.
 - Next steps: PR open; audit the auto build-recipe proposal path on a fresh Python repo.
 - Warnings: dev-login users skip the GitHub picker refresh (`github_id is None` + dev login → early return) — access rows must come from real OAuth or a `store_repo_access` call.
+
+### 2026-10-24 — Devin (agent, Adam) — pilot launch package + CONDITIONAL GO
+- Did: audited `main` (`d0131167`) and the hosted deployment (`readyz`: llm live, GitHub App + webhook configured) for pilot readiness; coordinated with the privacy workstream session for verified private-code data-flow facts; wrote the full pilot launch package under `docs/pilot/` (scope+exclusions, feature matrix, onboarding+revocation checklist, DATA_HANDLING draft, operations, metrics/health report, risk register, rehearsal+first-five plan, LAUNCH_DECISION).
+- State of the code (verified): no DELETE endpoints or retention jobs exist — deletion is operator-run only; GitHub App holds Contents+PR write at app level with least-privilege per-call tokens (deploy doc's "read-only" line is stale — flagged R-11); Probe has exactly 3 executable check categories; `readyz` live-configured; quotas 400k tok/$10/1800s manual, 150k/$3/900s monitoring, 5/h-20/d auto, $50/day global.
+- Commands run and results: route/grep audits of backend/frontend/shared/security-agents; `curl readyz` → all true; eval baseline from `security-agents/evals/commits/` + handoff records.
+- Decisions made: CONDITIONAL GO with 8 conditions (C1–C8) and documented exceptions — see `docs/pilot/LAUNCH_DECISION.md`.
+- Next steps: run the staging rehearsal before customer 1; merge #441 (redaction parse fix) recommended pre-indexing; reference privacy session's threat-model/retention docs in DATA_HANDLING.md when they land.
+- Warnings for the next session: do not upgrade feature-matrix labels without new executed evidence; pilot claims track `main` only — open PRs #496/#458/#441/#412/#517 are branch-only.
 
 ### 2026-10-24 — Devin (agent, Adam) — leaked Vercel snapshot cleanup, push→agents verification
 - Did: verified the named-sandbox snapshot-leak fix already on main (`persistent: False` on run boxes + `destroy` in teardown + `_sweep_stale`); opened PR #495 making the sweep also delete stale run boxes' orphan snapshots so leaked quota is actually freed. Confirmed `delete_orphan_snapshots` only removes snapshots created *by* the destroyed sandbox — the shared `ari-base-*` snapshot can never be an orphan of a run box. Verified on main: security-agents suite 581 passed / 24 skipped, frontend typecheck + 330 vitest + lint clean, standards smoke (CWE/OWASP/CVSS/ATT&CK/D3FEND/SARIF/SP 800-115) passes. Confirmed agents are standards-grounded in code: Scout CWE/OWASP, Probe CWE, Trace ATT&CK/CVSS, Diagnose D3FEND, Fortify CWE/D3FEND; Patch/Verify get standards context via the tagged finding + remediation plan, not prompts.
@@ -1738,6 +1755,7 @@ Remaining merge gate: final documentation head review/CI. Future numerical proto
 and any collection require separate explicit owner approval. Historical source
 ancestry retained and v6 registry hash unchanged (see verification report).
 
+
 ## 2026-10-24 — Devin (Adam): agent-visibility UI + prod automation enabled
 
 - Prod: enabled `automatic_assessments` on adamissac/mypypath (ari-ai already on), enabled `monitoring_policy` on the `derv` project, approved mypypath's sandbox scope (active to 2026-11-18), stamped delivery authorization on both projects. Push→agents chain verified live: monitoring assessments COMPLETED within ~1-2 min of each push.
@@ -1750,6 +1768,29 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - Scout retrained and **promoted**: macro_f1 0.349 vs best deterministic baseline 0.084 (static_analyze_patterns). Checkpoint + `results/scout.json`/REPORT.md committed. Other specialists have no field-compatible eval rows — their tuning signal is the live eval scores, not training data.
 - Eval harness: `run.py` cleanup survives missing `gh` auth; `score_api.py` accepts the bare-list assessments response. All 35 cases pushed as `eval/20261024-110115/*` branches; assessments accumulate live pending a fresh `hackatl_session` for scoring + scope widening (`access_control.authentication` category).
 - Test scope fixture (`make_scope` default) now grants all three check categories — required for the f2 listing invariant after the authentication template landed.
+
+### Connect navigation redesign — commit review + recorded agent replay (feat/adam/commit-review-navigation)
+
+The commit page (`/connect/[org]/[repo]/commit/[sha]`) auto-runs the `/api/analyze`
+quick read on arrival (one Claude call over the real GitHub diff, server-cached per
+commit) and renders it under a "Code review" tab via the shared `CommitAnalysis`
+review body. The "7 agents" tab renders the shared `AgentMap` sector map: when a
+recorded assessment exists for this exact repo+commit, `lib/recorded-analysis.ts`
+synthesizes an `Analysis` from persisted `agent_runs`/`findings` (real tool names,
+outcomes, durations; `step_key`→finding→evidence path pins each step to the sector
+it touched; `kindForPath` maps file paths to component kinds) and plays it back with
+real per-agent statuses including a new `failed` rail state. With no run, the quick
+read's reasoning replays as a labelled preview; with neither, an honest empty state.
+Approval gate, cancel button, mismatch isolation and `RealAssessmentPanel` unchanged.
+Org page repo rows are fully clickable; commit list rows already linked. Checks:
+`npm run lint`, `typecheck`, `test`, `build` all pass on this branch. Follow-ups:
+the auto quick read spends one cached Claude call per commit page view.
+Second-pass fixes on the same branch: `useResource` gained an optional
+`shouldPoll(data)` so `commit-run` polling stops at a terminal assessment state;
+the quick read accepts a URL sha prefix (`startsWith` guard) so short shas no
+longer fail the response-match check; repo/org lookups match case-insensitively
+(GitHub names are); and the tabs no longer flash a Preview/empty state while a
+selected run is still loading.
 
 ## 2026-10-24 — Devin (Adam): first live 45-case eval + baseline
 
@@ -1793,6 +1834,13 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - Review packet regenerated with the role sample; its import allowlist now includes `datetime` (needed by `{expires_in_days}` renders).
 - **Incident:** `chore/agent-commit-cadence` was accidentally cut from `eval/20261024-142809/idor_project_cache_before_auth` and carried the planted `_PROJECT_CACHE` vuln — PR e2e caught it correctly (`toHaveValue('900')` got stale `600`). Rebased it off; the vuln stays only on its eval branch. Lesson: always `git checkout -b <branch> origin/main`, never off the current checkout.
 - Eval run 2 (tag `20261024-142809`, 45 cases) in flight with specialist Scout live: mid-run shows vuln flagged 20/24, benign FP 0/13, median 69s (~2× faster than the 153s baseline).
+
+## 2026-10-24 — Devin (Adam): pilot rehearsal — live leg executed
+
+- `backend/tests/test_pilot_rehearsal_live.py` (opt-in `REHEARSAL_LIVE=1`): real Postgres+API+worker, two orgs, ledgerlite target bound via `register_binding`, `security_sandbox=vercel`. Assessment `asm_01M5QZY2E3Y0D2D44Q0PG6QBWX` COMPLETED: 13 LLM calls / 30 tool calls / $0.0126 / 13.2s real Vercel Sandbox. All agent_runs `provider_mode=live` asserted; eve→404 on finding + transcripts.
+- Two gotchas for live runs inside pytest: conftest blanks `ANTHROPIC_API_KEY` (restore via `HACKATL_LIVE_ANTHROPIC_API_KEY` through `settings_override`), and the vercel driver needs `VERCEL_TOKEN`+`VERCEL_PROJECT_ID`+`VERCEL_TEAM_ID` in env (project/team IDs fetchable via `GET /v9/projects` with the token).
+- PR #441 merged (3d023d55). PR #535: gitleaks false-positive fixed — commit 839737fc's `rehearsal/README.md` (history-only, fake fixture bearers) tripped `curl-auth-header`; targeted `.gitleaks.toml` allowlist pushed (083dd40f). NOTE: that rehearsal commit also carried a `Co-Authored-By: Devin AI` trailer — attribution-rule violation already in merged history; can't fix without rewriting.
+- Rehearsal target staged at `/Users/devin/repos/pilot-rehearsal-target` (ledgerlite, planted CWE-639 IDOR, 6 tests). Still needed from Adam: `adamissac/pilot-rehearsal-target` GitHub repo (App install: Contents RW + PR RW + Metadata read) + browser OAuth sign-in on the session Desktop for the prod leg.
 
 ## 2026-10-24 — Devin (Adam): inventory-lite rehearsal fixture
 
