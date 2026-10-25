@@ -6,6 +6,7 @@ coordination/CONTRACTS.md.
 """
 
 SCHEMA_VERSION = (
+    "0.25.0"  # 0.23 reserved by upstream PR #458 (Phase 7C); 0.24 reserved by fork PR #3 (observability). 0.25 customer onboarding (additive): journey status, test events, repo disconnect lifecycle, tenant-scoped repo picker.
     # 0.6 intelligence memory (PR #39); 0.7 security standards + incidents (PR #49);
     # 0.8 FindingDetail / AssessmentReport response DTOs (additive);
     # 0.9 CheckCategory enum (Probe ids + V0 fixture aliases);
