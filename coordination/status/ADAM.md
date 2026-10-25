@@ -12,6 +12,24 @@ Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablat
 
 ## Session entries
 
+### 2026-10-24 — Defense Lab audit shipped + pilot rehearsal executed (13/13)
+
+- **Defense Lab audit** (PR #532, open): capability matrix + eval report + 37-test safety
+  suite + quarantine credential-value fix. Verdict: GO recommendation-only + owned-test
+  loop; NO-GO production enforcement. §11 demo verified on real stack by testing agent.
+- **Gitleaks repo-wide unblock** (PR #544, merged): allowlisted font-manifest sha256 +
+  rehearsal demo tokens that failed EVERY open PR (workflow scans all refs).
+- **Rehearsal executed** (PR #556, open): driver rewritten to real API shapes; target app
+  gained factory+seed+build_recipe. 13/13 PASS with real Anthropic + real Vercel sandbox
+  on `make dev`: two real orgs, scope create+self-approve (sandbox-only), assessment
+  completed with genuine findings (planted delete_book + cross-owner read found),
+  org-B isolation 404s. Needs VERCEL_TOKEN/PROJECT_ID/TEAM_ID + ANTHROPIC_API_KEY +
+  REPOSITORY_BINDINGS_FILE. Evidence in scripts/rehearsal/evidence/.
+- **Held:** #458 stays OPEN pending independent re-review of F1/F7/F8 (Alan); #412 waits.
+- **Still needed from Adam (only GitHub-account actions):** create private repo
+  `adamissac/ari-pilot-rehearsal`, install the GitHub App on it, OAuth-login once for the
+  live leg.
+
 ### 2026-10-17 (cloud) — simulated demo + Lab command center + events-log cursor
 - `feat/adam/event-log-cursor-follow`: phase views follow `next_cursor` (cap 10,000 events).
 - `feat/adam/simulated-demo`: `/demo` labelled simulated walkthrough (ADR-0013), `DefenseMap`, Lab command center from the real bundle.
