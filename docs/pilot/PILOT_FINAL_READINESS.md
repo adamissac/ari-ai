@@ -81,3 +81,38 @@ Every result in this section uses **scripted model turns (`provider_mode=fake`) 
 **NO-GO (pending)**. C4 (hosted journey) and C6/C7 (redaction FAIL on main) block a GO.
 C3 must be settled. When those pass, the expected outcome is a CONDITIONAL GO, with C11 and the
 code-intelligence limitations in §3 as accepted limitations.
+
+## Appendix R — Owner runbook: non-superuser app role (C14)
+
+Status: **proposed, not executed.** Prod change, so it needs Adam's approval, a fresh Railway backup and a maintenance window.
+Facts it relies on (verified on `origin/main` 2c8ad50d): `deploy/railway/start.sh` runs `hackatl-migrate` (`backend.cli:migrate`) at boot with the
+same `DATABASE_URL` as the API and workers. No separate migration URL setting exists. No migration uses `CREATE EXTENSION`, `CREATE ROLE` or other
+superuser-only DDL. Tenant scoping uses `set_config('ari.project_id', …, true)` (transaction-local). FORCE RLS (migration 0016) also binds the table
+**owner**, but never a superuser or a BYPASSRLS role.
+
+Plan: make the app role the owner of the public schema objects, with `NOSUPERUSER NOBYPASSRLS`. Migrations keep working (an owner can run DDL),
+and FORCE RLS then applies to it.
+
+```sql
+-- 0. Railway: take a manual backup first; record alembic version (expect 0017).
+-- 1. As postgres:
+CREATE ROLE ari_app LOGIN PASSWORD '<generate in Railway, never paste in chat>'
+  NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB;
+GRANT CONNECT ON DATABASE railway TO ari_app;
+ALTER SCHEMA public OWNER TO ari_app;
+DO $$ DECLARE r record; BEGIN
+  FOR r IN SELECT tablename FROM pg_tables WHERE schemaname='public' LOOP
+    EXECUTE format('ALTER TABLE public.%I OWNER TO ari_app', r.tablename); END LOOP;
+  FOR r IN SELECT sequencename FROM pg_sequences WHERE schemaname='public' LOOP
+    EXECUTE format('ALTER SEQUENCE public.%I OWNER TO ari_app', r.sequencename); END LOOP;
+END $$;
+-- 2. Railway service env: point DATABASE_URL at ari_app (same host/db); redeploy.
+-- 3. Verify (read-only, as ari_app):
+SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user;   -- f, f
+SELECT count(*) FROM index_payloads;                                         -- 0 without GUC
+BEGIN; SELECT set_config('ari.project_id','<rehearsal project id>',true);
+SELECT count(*) FROM index_payloads; COMMIT;                                 -- that project's rows only
+-- then /readyz workers alive, and one hosted assessment end-to-end.
+-- Rollback: set DATABASE_URL back to the postgres URL and redeploy (ownership change is harmless to postgres).
+-- 4. Rotate the postgres password (it was exposed in chat 2026-10-25).
+```
