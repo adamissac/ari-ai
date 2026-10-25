@@ -55,6 +55,16 @@ cannot resolve to repository symbols by design. The two non-literal routes (`FIX
 `CONTROL_PATH`) are now reported as index issues instead of being dropped silently. Retrieval recall
 (82% payments-lite / 63% Ari, from #531's PR) has **not yet been re-run here**.
 
+## 3b. Seven-agent pipeline and functional reviewer — scripted/replay evidence on `dc9a623a`
+
+Every result in this section uses **scripted model turns (`provider_mode=fake`) with real tools**. None of it is live-provider or prod evidence.
+
+- `security-agents` suite: **594 passed / 24 skipped / 0 failed** (skips: 11 Docker sandbox, 11 live opt-in, 2 import/compat). The first attempt in a fresh venv failed with `No module named 'yaml'`; it passed after `pyyaml` was installed, so check whether that dependency is declared.
+- Replay `security_agents.cli --target ../examples/payments-lite --auto-approve`: Scout, Probe, Trace, Diagnose, Fortify, Patch and Verify all `succeeded`; final finding `hardened`.
+- `code-review` suite: **90 passed / 4 skipped**; `code_review.eval_corpus`: 10/10 labels `ok`. The corpus is the tuned fixture set. It is **not** an independent held-out evaluation, so it says nothing about real-world reviewer accuracy (still **OPEN**).
+- Tests that cover each failure mode: invalid structured output (retried once, then the step fails), provider outage → `LLM_UNAVAILABLE`, retries, inconclusive Probe, false positive refuted by executed evidence, ineffective/out-of-plan/test-weakening patches rejected, Verify rejecting bad patches, cancellation, token/USD/turn budgets, and honest `unresolved` final states. **Gap: no test for a provider timeout specifically.** None of these failure modes has been exercised against the live provider.
+- Live seven-role evidence (REPORTED, not re-run here): all roles live on `examples/inventory-lite`, planted IDOR confirmed and hardened, $0.0334 (#555).
+
 ## 4. Open human-only actions
 
 1. **Adam**: complete GitHub OAuth in the session browser on `ari-ai-lake.vercel.app` (needed for C4, and for owner `/diagnostics` to settle C3).
