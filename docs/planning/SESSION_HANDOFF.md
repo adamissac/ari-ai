@@ -2019,6 +2019,18 @@ selected run is still loading.
 - Merge waves belong to the integration lead; wave 2 includes my #542/#543.
 - Prod queue depth (~88 items) makes 45-case live eval slow — some cases may return `pending`/NOT_STARTED; rerun stragglers or extend deadlines.
 - Second-org real-provider leg needs owner's private repo + second GitHub org (account actions).
+## 2026-10-25 — Devin project-section fixes (session 89af211994aa458d96ecf9f412c05bd7)
+
+### Done
+- Completed #598 private-commit route, #607 read limiter + manual quota, #608 delivery status, #613 expired scopes, #616 stale-base delivery, and #617 commit-behind warning.
+- The first real-user run opened `pilot-rehearsal-target#5` from stale commit `010cc2dd`. Independent checking confirmed the fix is correct on its base but redundant with `main`; do not merge that PR.
+
+### Outstanding
+- Rotate the Railway/GitHub tokens pasted in chat.
+- The app DB role is still the superuser, so RLS is inert; production two-org isolation and purge remain outstanding.
+- A fresh current-commit verified-fix PR is still needed for GO.
+
+No `HACKATL_TASKS` change; no task ID.
 
 ## 2026-10-25 — Adam: least-privilege storage reporting
 
