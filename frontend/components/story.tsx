@@ -305,7 +305,7 @@ export function ProofStats(): ReactNode {
         {STATS.map((s, n) => (
           <Reveal key={s.body} className="story-stat" delay={n * 90}>
             <p className="label-mono flex justify-between text-white/50"><span>{String(n + 1).padStart(2, '0')}</span><span>{s.tag}</span></p>
-            <p className="stat-num mt-8 font-mono text-[clamp(2.25rem,15vw,3.75rem)] font-semibold tracking-tight md:text-7xl">{s.n === 0 ? 'Never' : <CountUp to={s.n} suffix={s.suffix} />}</p>
+            <p className="stat-num mt-8 font-mono font-semibold tracking-tight">{s.n === 0 ? 'Never' : <CountUp to={s.n} suffix={s.suffix} />}</p>
             <p className="mt-3 text-sm text-white/70">{s.body}</p>
           </Reveal>
         ))}

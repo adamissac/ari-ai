@@ -1822,7 +1822,11 @@ body:has(.commit-stage) main { color: #fff; }
 
 /* Pixel-face figures (Sixtyfour, OFL) — card numbers and stats. */
 .home-deep .story-card-num { font-family: var(--font-sixtyfour), var(--font-mono), monospace; font-weight: 400; letter-spacing: 0.04em; color: rgba(255, 150, 120, 0.30); }
-.home-deep .stat-num { font-family: var(--font-sixtyfour), var(--font-mono), monospace; font-weight: 400; letter-spacing: 0.02em; color: #fff0e6; }
+.home-deep .stat-num { font-family: var(--font-sixtyfour), var(--font-mono), monospace; font-weight: 400; letter-spacing: 0.02em; color: #fff0e6;
+  font-size: clamp(2.25rem, 15vw, 3.75rem); font-size: clamp(2.25rem, 15.5cqw, 4.5rem); }
+/* Sixtyfour is very wide ("Never" ≈ 6.1px per font-px): size the stat to its card, not the
+   viewport, so it can never push the page wider. */
+.home-deep .story-stat { container-type: inline-size; }
 
 /* Inactive steps soften to a blur while the walkthrough stage is pinned. */
 @media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
