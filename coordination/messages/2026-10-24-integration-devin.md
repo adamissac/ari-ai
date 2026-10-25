@@ -120,3 +120,55 @@ All 10 findings are fixed and run as STRICT assertions (zero xfails):
 
 ## Post-verdict fix — alert webhook wiring (tip 5eee457e)
 Readiness re-run on 7cfba90f found `alert.webhook` dead: the F2–F5 worker rewrite dropped the `backend.alerts` import and both `send_alert` call sites (PermanentJobError → `job_failed_permanent`, attempts-exhausted → `job_dead`). Cherry-picked `fix/devin/alert-webhook-wiring` @ 93d5ecdd → `5eee457e`; worker/alert tests 30/30, readiness suite GO 25/25 per release-validation.
+
+---
+
+## Recomposition 3 — upstream reconciliation @ ee8b91e2 (tip 7bcf1b56)
+
+Upstream main moved to `ee8b91e2` (Adam's #533 infra, #496 frontend, #558 ops storage, #529/#543 eval, #546 authz, #537/#550 rehearsal, #565/#566 docs). Merged in full; nothing of Adam's reverted.
+
+### Migration reconciliation (the 0016 three-way — RESOLVED)
+Upstream landed `0016_tenant_rls_intelligence` (#535) + `0017_worker_heartbeats` (#533). The release workstreams' competing migrations were renumbered onto that chain:
+`0015 → 0016 tenant_rls → 0017 worker_heartbeats (upstream) → 0018 execution_reliability → 0019 repository_disconnect` — single head **0019**, `test_parallel_migrations` pin updated.
+
+### Semantic conflicts resolved
+1. **`worker_heartbeats` table name collision**: our exec-reliability worker registry (state/jobs_finished/last_seen_at) vs Adam's liveness table (heartbeat_at/last_poll_at) — different schemas, same name. Ours renamed to `worker_registry` (db.py + migration 0018 + execution.py + tests). Adam's schema/migration untouched.
+2. **`ops` name shadowing in main.py**: `from backend.api import ops` shadows `from backend import ops` — on upstream `ops.readiness`/`ops.diagnostics` would AttributeError (latent upstream bug). Fixed via `ops as ops_api` alias; readiness/diagnostics still resolve to backend.ops. Also added missing `jobs` import for the QueueBackpressure handler.
+3. **Two ops surfaces preserved**: our `GET /ops/status` (X-Ops-Token, OPS_TOKEN) + upstream's `/ops/storage`, `/ops/maintenance`, `/ops/storage/prometheus`, `/ops/maintenance/dry-run-report` (Bearer OPS_API_TOKEN). Both auth mechanisms kept verbatim.
+4. **SCHEMA_VERSION → 0.26.0**: upstream took 0.22 = ops readiness; our chain renumbered (7C=0.23, observability=0.24, onboarding=0.25, disconnect=0.26). Version comment documents the mapping.
+5. worker.py heartbeat loop unions our `heartbeat_state` lease-state semantics + upstream's `jobs.worker_heartbeat` liveness row; startup does `prune_worker_heartbeats` then `reconcile_safely`; shutdown does `execution.worker_gone` + `jobs.worker_stopped`.
+6. settings union: exec-reliability knobs + upstream `worker_heartbeat_interval_s`/`worker_liveness_s`/`readyz_require_workers` + both ops-token validators.
+7. `score_api.py`: took upstream's superset (adds `_finding_paths` fallback).
+
+### Verification on tip 7bcf1b56
+- backend pytest: **558 passed, 9 skipped**
+- security-agents: **605 passed, 23 skipped** (packet regenerated)
+- shared: **115 passed, 1 skipped**
+- `make check` clean · `uv run mypy` clean (41 files)
+- frontend: **351 unit**, lint, typecheck, build
+- transport: **35**
+- migrations: single head 0019, ops-readiness suite 13/13
+- Playwright real-stack: **49/49**
+- Codex F1–F10 strict assertions: inside backend suite (10/10 + 8/8, zero xfails anywhere)
+
+### E2E PR #2 F7 xfail (item 8)
+Already resolved in recomposition 2 — the compat file runs all 8 assertions strict (deadline_at propagation landed). No remaining F7 xfail to coordinate.
+
+### Sequential upstream merge proposal
+Adam's merged work is already composed here. For landing OUR workstreams upstream, dependency-safe order:
+1. **upstream #412 (Phase 6.5 RL-gated)** — base contract layer; already on upstream main? NO — check: upstream still says "0.20 reserved by open PR #412", so #412 remains open. Land first (our integration includes it).
+2. **upstream #458 (Phase 7C @9486a5b0)** — execution substrate + provider ledger; depends on #412's contract fields. Renumber contract to post-0.22 ops readiness if Adam re-bases.
+3. **fork #1 execution reliability** — needs migration rename to stay linear (now 0018) + `worker_registry` table (not `worker_heartbeats`).
+4. **fork #2 Live Defense E2E** — test-only, safe anytime after #458.
+5. **fork #3 observability** — contract 0.24 read-only DTOs.
+6. **fork #4 security hardening** — disconnect canon → migration 0019; must land after #1.
+7. **fork #6 onboarding** — depends on #4's disconnect + #5's ops env vars.
+8. **fork #5 deployment/ops** — independent of the app-code chain but PILOT_OPERATIONS/preflight expects the final migration graph; land after 0018/0019 are decided upstream-side.
+9. **fork #7 release-validation** — gates on everything above; land last.
+
+Every upstream-bound PR must rebase past `ee8b91e2`: our migration numbers (0018/0019) already sit on Adam's 0016/0017 so no renumber needed if order above holds.
+
+### Blockers / GO-NO-GO
+- Independent security re-review on 7bcf1b56 (pending).
+- Devin Bot readiness re-run on 7bcf1b56 (requested).
+- Verdict: **GO for review + staging validation; NO-GO for customer deploy** until re-review + readiness pass.
