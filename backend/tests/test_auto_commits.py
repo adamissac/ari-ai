@@ -1,5 +1,8 @@
 """Signed pushes exercise real queue/DB scheduling with GitHub identity reads stubbed."""
 
+from collections.abc import Sequence
+from datetime import datetime
+
 import pytest
 import sqlalchemy as sa
 from helpers import HEAD, post_webhook, push_payload, setup_project
@@ -13,6 +16,7 @@ from backend.db import (
     repositories,
     transaction,
 )
+from backend.quota import check_project_quota
 from shared.assessment import AssessmentTrigger
 
 
@@ -55,7 +59,14 @@ def records():
         return list(conn.execute(sa.select(assessments.c.commit_sha)).scalars())
 
 
-def seed_assessments(alice, ids, triggers, *, created_at=None, spend=None):
+def seed_assessments(
+    alice,
+    ids,
+    triggers,
+    *,
+    created_at: datetime | Sequence[datetime] | None = None,
+    spend: float | Sequence[float] | None = None,
+) -> list[str]:
     from backend.services import create_assessment
 
     seeded = []
@@ -75,11 +86,15 @@ def seed_assessments(alice, ids, triggers, *, created_at=None, spend=None):
                 sa.select(assessments.c.doc).where(assessments.c.id == assessment.id)
             ).scalar_one()
             doc["state"] = "FAILED"
-            if spend is not None and index == 0:
-                doc.setdefault("usage", {})["usd"] = spend
+            row_spend = (
+                spend[index] if isinstance(spend, Sequence) else spend if index == 0 else None
+            )
+            if row_spend is not None:
+                doc.setdefault("usage", {})["usd"] = row_spend
             values = {"state": "FAILED", "doc": doc}
-            if created_at is not None:
-                values["created_at"] = created_at
+            row_created_at = created_at[index] if isinstance(created_at, Sequence) else created_at
+            if row_created_at is not None:
+                values["created_at"] = row_created_at
             conn.execute(
                 sa.update(assessments).where(assessments.c.id == assessment.id).values(**values)
             )
@@ -432,6 +447,103 @@ def test_fifty_daily_assessments_block_by_day_quota(automatic):
     error = response.json()["error"]
     assert "project review limit reached (50 per day); resets at " in error["message"]
     assert datetime.fromisoformat(error["details"]["resets_at"]) == seeded_at + timedelta(days=1)
+
+
+def test_over_limit_daily_quota_resets_when_first_slot_frees(automatic, settings_override):
+    from datetime import timedelta
+
+    from shared.base import utcnow
+
+    alice, bob, ids, _ = automatic
+    settings_override(project_assessments_per_hour="50", project_assessments_per_day="3")
+    assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
+    now = utcnow()
+    row_times = [now - timedelta(hours=hours) for hours in (23, 22, 21, 20, 19)]
+    seed_assessments(
+        alice,
+        ids,
+        [AssessmentTrigger.manual] * len(row_times),
+        created_at=row_times,
+    )
+
+    with transaction() as conn:
+        decision = check_project_quota(conn, ids["project"], now)
+
+    assert decision is not None and decision.reason == "day"
+    assert decision.resets_at == row_times[2] + timedelta(days=1)
+
+
+def test_at_limit_daily_quota_resets_at_oldest_slot(automatic, settings_override):
+    from datetime import timedelta
+
+    from shared.base import utcnow
+
+    alice, bob, ids, _ = automatic
+    settings_override(project_assessments_per_hour="50", project_assessments_per_day="3")
+    assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
+    now = utcnow()
+    row_times = [now - timedelta(hours=hours) for hours in (23, 22, 21)]
+    seed_assessments(
+        alice,
+        ids,
+        [AssessmentTrigger.manual] * len(row_times),
+        created_at=row_times,
+    )
+
+    with transaction() as conn:
+        decision = check_project_quota(conn, ids["project"], now)
+
+    assert decision is not None and decision.reason == "day"
+    assert decision.resets_at == row_times[0] + timedelta(days=1)
+
+
+def test_over_limit_hourly_quota_resets_when_first_slot_frees(automatic, settings_override):
+    from datetime import timedelta
+
+    from shared.base import utcnow
+
+    alice, bob, ids, _ = automatic
+    settings_override(project_assessments_per_hour="3", project_assessments_per_day="50")
+    assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
+    now = utcnow()
+    row_times = [now - timedelta(minutes=minutes) for minutes in (50, 40, 30, 20, 10)]
+    seed_assessments(
+        alice,
+        ids,
+        [AssessmentTrigger.manual] * len(row_times),
+        created_at=row_times,
+    )
+
+    with transaction() as conn:
+        decision = check_project_quota(conn, ids["project"], now)
+
+    assert decision is not None and decision.reason == "hour"
+    assert decision.resets_at == row_times[2] + timedelta(hours=1)
+
+
+def test_over_limit_spend_quota_resets_when_spend_falls_below_cap(automatic, settings_override):
+    from datetime import timedelta
+
+    from shared.base import utcnow
+
+    alice, bob, ids, _ = automatic
+    settings_override(assessments_usd_per_day="10")
+    assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
+    now = utcnow()
+    row_times = [now - timedelta(hours=hours) for hours in (3, 2, 1)]
+    seed_assessments(
+        alice,
+        ids,
+        [AssessmentTrigger.manual] * len(row_times),
+        created_at=row_times,
+        spend=[6.0, 6.0, 6.0],
+    )
+
+    with transaction() as conn:
+        decision = check_project_quota(conn, ids["project"], now)
+
+    assert decision is not None and decision.reason == "spend"
+    assert decision.resets_at == row_times[1] + timedelta(days=1)
 
 
 def test_global_spend_from_any_trigger_blocks_automatic_and_manual(automatic):

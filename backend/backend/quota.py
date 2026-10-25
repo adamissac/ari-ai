@@ -28,32 +28,48 @@ def check_project_quota(conn: Connection, project_id: str, now: datetime) -> Quo
     settings = get_settings()
     hour_window = timedelta(hours=1)
     day_window = timedelta(days=1)
+    hour_filters = (
+        assessments.c.project_id == project_id,
+        assessments.c.created_at > now - hour_window,
+        assessments.c.created_at <= now,
+    )
 
     hour_count, hour_oldest = conn.execute(
-        sa.select(sa.func.count(), sa.func.min(assessments.c.created_at)).where(
-            assessments.c.project_id == project_id,
-            assessments.c.created_at > now - hour_window,
-            assessments.c.created_at <= now,
-        )
+        sa.select(sa.func.count(), sa.func.min(assessments.c.created_at)).where(*hour_filters)
     ).one()
     if hour_count >= settings.project_assessments_per_hour and hour_oldest is not None:
+        hour_reset_at = conn.execute(
+            sa.select(assessments.c.created_at)
+            .where(*hour_filters)
+            .order_by(assessments.c.created_at.asc())
+            .offset(hour_count - settings.project_assessments_per_hour)
+            .limit(1)
+        ).scalar_one_or_none()
         return QuotaDecision(
             "hour",
-            hour_oldest + hour_window,
+            (hour_reset_at or hour_oldest) + hour_window,
             settings.project_assessments_per_hour,
         )
 
+    day_filters = (
+        assessments.c.project_id == project_id,
+        assessments.c.created_at > now - day_window,
+        assessments.c.created_at <= now,
+    )
     day_count, day_oldest = conn.execute(
-        sa.select(sa.func.count(), sa.func.min(assessments.c.created_at)).where(
-            assessments.c.project_id == project_id,
-            assessments.c.created_at > now - day_window,
-            assessments.c.created_at <= now,
-        )
+        sa.select(sa.func.count(), sa.func.min(assessments.c.created_at)).where(*day_filters)
     ).one()
     if day_count >= settings.project_assessments_per_day and day_oldest is not None:
+        day_reset_at = conn.execute(
+            sa.select(assessments.c.created_at)
+            .where(*day_filters)
+            .order_by(assessments.c.created_at.asc())
+            .offset(day_count - settings.project_assessments_per_day)
+            .limit(1)
+        ).scalar_one_or_none()
         return QuotaDecision(
             "day",
-            day_oldest + day_window,
+            (day_reset_at or day_oldest) + day_window,
             settings.project_assessments_per_day,
         )
 
@@ -69,6 +85,20 @@ def check_project_quota(conn: Connection, project_id: str, now: datetime) -> Quo
         )
     ).one()
     if float(spent) >= settings.assessments_usd_per_day and spend_oldest is not None:
+        remaining = float(spent)
+        spend_rows = conn.execute(
+            sa.select(assessments.c.created_at, positive_usage.label("usage_usd"))
+            .where(
+                assessments.c.created_at > now - day_window,
+                assessments.c.created_at <= now,
+                positive_usage > 0,
+            )
+            .order_by(assessments.c.created_at.asc())
+        )
+        for created_at, usage_usd_value in spend_rows:
+            remaining -= float(usage_usd_value)
+            if remaining < settings.assessments_usd_per_day:
+                return QuotaDecision("spend", created_at + day_window)
         return QuotaDecision("spend", spend_oldest + day_window)
 
     return None
