@@ -67,3 +67,14 @@ condition = "AND"
 paths = ['''^rehearsal/.*''']
 regexTarget = "line"
 regexes = ['''Bearer\s+tok-[a-z0-9_-]+''']
+
+# Redaction/privacy tests intentionally contain fake secret literals (sk_live_*,
+# xoxb-*, AIzaSy*, ya29.*, GOCSPX-*, JWT bodies) — they are fixtures the redaction
+# code must detect, not real credentials. Scope the skip to those test files only.
+[[allowlists]]
+description = "Intentional fake-secret fixtures in redaction/privacy tests"
+paths = [
+  '''^backend/tests/test_redact_text_gaps\.py$''',
+  '''^code-intelligence/tests/test_privacy_redact\.py$''',
+  '''^code-intelligence/tests/test_ingest_extract\.py$''',
+]
