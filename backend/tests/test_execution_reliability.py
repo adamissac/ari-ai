@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from sqlalchemy import exc as sa_exc
 
 from backend import execution, jobs, worker
-from backend.db import job_events, transaction, worker_heartbeats
+from backend.db import job_events, transaction, worker_registry
 from backend.db import jobs as jobs_t
 from backend.jobs import InvalidTransition, JobStatus, RetryPolicy
 from backend.live_defense import modes
@@ -200,7 +200,7 @@ def test_restart_recovers_orphans_and_prunes_dead_workers(settings_override) -> 
         jobs.claim(conn, "host-1:111", lease_s=30)
         execution.worker_seen(conn, "host-1:111", "busy", a)
         conn.execute(
-            sa.update(worker_heartbeats).values(
+            sa.update(worker_registry).values(
                 last_seen_at=sa.func.now() - sa.text("interval '1 hour'")
             )
         )
@@ -210,7 +210,7 @@ def test_restart_recovers_orphans_and_prunes_dead_workers(settings_override) -> 
     assert sorted(worker.drain(kinds=["rel_ok"])) == sorted([a, b])
     assert {_job(a)["status"], _job(b)["status"]} == {"succeeded"}
     with transaction() as conn:
-        ids = conn.execute(sa.select(worker_heartbeats.c.worker_id)).scalars().all()
+        ids = conn.execute(sa.select(worker_registry.c.worker_id)).scalars().all()
         snap = execution.stats(conn)
     assert "host-1:111" not in ids
     assert snap["workers"]["active"] == len(ids)
