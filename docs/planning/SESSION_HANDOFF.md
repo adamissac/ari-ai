@@ -15,6 +15,13 @@ adds an entry before ending.
 - Next steps:
 - Warnings for the next session:
 
+### 2026-10-24 — Devin (agent, Adam) — first-user usability pass on commit review (feat/adam/first-user-usability)
+- Did: walked the real first-user flow end-to-end on `tests/e2e/stack_manual.py` (dev login → org → repo → commit → scripted run → recorded replay → approvals). Fixed: approval cards resolve remediation-plan `rmp_` subjects to the owning finding by scanning `api().finding(id)` records once per subject (ref-guarded so polling can't starve it); cards get a two-step confirm that says exactly what approval will/won't do ("never merges or deploys"); `agent-map` normalizes persisted `ns__tool` names (`code__read_span` → `code.read_span`) so recorded runs speak plain English; quick-read failure explains "no model API key configured" instead of a raw error.
+- State of the code: verified live — both pending approvals render "Fix request · <finding title>" with severity/kind/path; `tests/unit/approval-gate.test.tsx` covers fnd_ + rmp_ subjects and the fallback. 340 unit tests pass; typecheck/lint clean; build green.
+- Commands run: `npm run typecheck`, `npm run lint`, `npx vitest run tests/unit/…`, `npm run build`, manual stack on :51614/:51204.
+- Warnings: `next start` serves cached hashed chunks — hard-reload (cmd+shift+R) after rebuilds or the page keeps the old bundle (cost ~1h of false debugging here). `stack_manual.py` still uncommitted helper.
+- Next steps: e2e suite running; PR stacks on #496 (feat/adam/commit-review-navigation).
+
 ---
 
 ### 2026-10-24 — Cursor (agent, Alan) — Phase 7C MERGEABLE + Devin compatibility review (do not merge #458)
@@ -130,6 +137,22 @@ adds an entry before ending.
 - Next: human review of #412; RL owner must supply A–J evidence before any later owner-approval verdict. Do not start Phase 7.
 
 HEAD
+### 2026-10-24 — Devin (agent, Adam) — code-intelligence pipeline audit
+- Did: on `feat/adam/intel-pipeline-audit`, audited ingest→extract→store→retrieve→memory for pilot readiness. Reproduced the PR #441 redaction/parser regression on main (38/582 tracked .py unparseable post-redact + 2 line-count shifts); verified the fix (0 broken, 0 line shifts, 0 leaked literal secrets across the same corpus). Indexed payments-lite, `backend/` prefix, and the whole repo; ran a labeled-question retrieval eval; benchmarked latency/memory. Found a silent coverage gap — `@app.get(FIXTURE_ROUTE)`-style non-literal route paths were dropped with no IndexIssue — and fixed it so they are flagged. Carries `7a5b329f` verbatim, so merging this branch lands PR #441's fix.
+- State of the code (verified how): `code-intelligence/tests` 57 passed 1 skipped; `backend/tests/test_intel_store.py test_intelligence_memory_api.py test_intelligence_ingestion_profile.py test_payload_store_intel_integration.py` 9 passed on real Postgres; new retrieval eval + route-diagnostic tests pass; benchmark harness executed on payments-lite.
+- Commands run and results: `PYTHONPATH=code-intelligence:shared .venv/bin/python -m pytest code-intelligence/tests` (57 passed, 1 skipped); backend intel subset (9 passed); index runs 0.16s/8 files, 4.11s/127 files, 92.4s/1,798 files.
+- Report: `docs/research/intel-pipeline-audit/README.md`; measured numbers: `code-intelligence/evidence/m2-index-retrieval-audit.json`; benchmark: `code-intelligence/evidence/index_benchmark.py`.
+- Assumptions/open questions: secondary-evidence Recall@K degrades at scale (82% on payments-lite, 63% on ari-ai) — packs do not mark absent expected evidence; mid-line bare-secret expressions (`f(password=x, user=y)`) were a residual and are now redacted when the token contains a digit (digit-less mid-line tokens and `else`-branch conditionals remain documented); JS/TS extraction is unimplemented and unclaimed.
+- Next steps: merge after review; consider BM25 tie-breaking toward implementation symbols if reviewers need secondary evidence.
+- Warnings: none.
+
+### 2026-10-24 — Adam (Devin) — release gate / test infrastructure
+- Did: rebuilt all CI workflows around always-on jobs + `scripts/ci/path_gate.py` (visible RUN/SKIP); renamed colliding `test` job ids; added `pilot-verify.yml` (7 labelled env categories); added `GET /projects/{id}/jobs?status=` for dead-letter visibility; hardened the 45-case eval scorer (`scored:false` + `unscored_reason`, rates over scored only, case validation); added `scripts/ci/load_probe.py`.
+- State of the code: `feat/adam/release-gate` pushed; pytest `test_job_status_api`+`test_jobs_queue`+`test_parallel_migrations` → 12 passed; ruff clean; load probe all invariants green (~1.5k jobs/s enqueue+drain, embedded PG).
+- Decisions: path gating inside jobs (not triggers) so required checks never hang at Expected; skip = visible verdict.
+- Warnings: `main` still has NO branch protection — admin must set required checks (list in `docs/release/RELEASE_GATE_2026-10-24.md`). New jobs endpoint is shared backend surface — needs owner review.
+- Next: branch-protection config by repo admin; run `pilot-verify.yml` on the merge SHA.
+
 ### 2026-10-25 — Adam/Devin: rehearsal independently reproduced + e2e scare cleared
 
 - Did: re-ran the two-org rehearsal end-to-end on a fresh `make dev` boot with real
@@ -150,7 +173,6 @@ HEAD
 - Still owner-gated for the HOSTED staging leg: `gh repo create
   adamissac/ari-pilot-rehearsal --private`, install the GitHub App on it, OAuth-login.
 
-
 ---
 
 ### 2026-10-24 — Devin (agent, Adam) — pilot-readiness ops: readiness split, worker heartbeats, restart/rollback evidence
@@ -163,15 +185,6 @@ HEAD
 - Next steps: Adam sets OPS_API_TOKEN/POSTGRES_VOLUME_BYTES, reviews first dry-run report, flips RETENTION_DRY_RUN=false; re-measure after a cycle; size volume bump decision from real growth data.
 - Warnings: deleting rows does NOT shrink the Railway-reported volume (frees internal pages); `VACUUM FULL`/repack only after verified backup. Coordination note: `coordination/messages/20261024T235500Z-devin-to-all-postgres-storage-retention.md`.
 
-- Did: infrastructure audit for external-pilot readiness (branch `feat/adam/pilot-readiness-ops`). Added worker-heartbeat liveness (`worker_heartbeats` table, migration 0017, `WORKER_HEARTBEAT_INTERVAL_S`/`WORKER_LIVENESS_S`), split `/readyz` into infra readiness (db/queue/workers → `status` ready|degraded|not_ready, 503 unless ready) vs assessment capability (`capabilities` + `capabilities_ready`: llm.live, github.app_configured, sandbox.configured, artifact_store.writable, workers.alive), added `/diagnostics` (verified GitHub `GET /app`, sandbox sdk/daemon detail, alembic head vs `alembic_version`, queue counts, worker rows), `git_sha`+`schema_version` on `/healthz` (`DEPLOYED_GIT_SHA`/`RAILWAY_GIT_COMMIT_SHA`/`GIT_SHA`), schema 0.22.0, `READYZ_REQUIRE_WORKERS` (default on in staging/production). Frontend: `/api/frontend-version` + `deploy/verify_pair.sh` detect Vercel/Railway schema skew. Evidence harness `deploy/evidence/restart_recovery.py` (+`scripted_worker.py`) runs the real API/workers/migrations on a disposable pgserver stack with scripted transports: 6/6 PASS — SIGTERM drains the in-hand job to AWAITING_APPROVAL w/ checkpoint artifact on disk; SIGKILL → reclaim → honest FAILED (CONFLICT_STATE, never fabricated); human approval + fresh worker → checkpoint resume → COMPLETED; 2 racing workers → exactly-once + dedupe; downgrade→upgrade round-trip; pg_dump→psql restore → identical row counts (`deploy/evidence/last-run-evidence.json`). New `docs/deploy/PILOT_OPERATIONS.md` (topology, safe config checklist, recovery runbook); refreshed `docs/deploy/RAILWAY_AND_GITHUB_APP.md`, `docs/13_BACKEND_API_DESIGN.md`.
-- State of the code: `test_ops_readiness.py` 11/11 + `deploy-version.test.ts` 3/3 pass; evidence harness 7/7 (S1 drain, S2 honest-kill, S3 checkpoint resume, S4 exactly-once, S5 migration rollback, S6 backup/restore, S7 post-crash new assessment). Owner-requested hardening landed: `/diagnostics` is owner-authenticated only (401/403); public `/readyz` scrubs capability `detail` strings (env-var names); `worker_heartbeats.last_poll_at` (claim-loop-only) means a stopped claim loop cannot report as a live worker unless it holds a claimed job.
-- Decisions made: `READYZ_REQUIRE_WORKERS` defaults True in staging/production, off in dev; worker liveness = heartbeat fresh AND (last_poll_at fresh OR current_job_id). GitHub `verified` is a live `GET /app` with 60s cache, slug only. Sandbox check reports env-presence for `vercel` mode. `/diagnostics` gated on any org-owner membership (every dev-login user owns their personal org — the gate blocks unauthenticated probes).
-- Migration coordination RESOLVED: #535 merged first and kept `0016_tenant_rls_intelligence`; this branch renumbered to `0017_worker_heartbeats` (down_revision 0016) per the agreed rule in `coordination/messages/20261024T224500Z-adam-to-agent9-...md`. Codex's `0016_execution_reliability` still needs a renumber when it merges; its 0.23.0 embeds a different "0.22.0" — flagged there.
-- Assumptions / open questions: the only untested acceptance criterion is the ONE authorized real-model staging assessment — needs an authorized signed-in session + `LLM_MAX_USD_PER_ASSESSMENT=1` (Adam approved $1 cap) + active repo scope; scripted evidence uses `provider_mode="fake"` by design.
-- Next steps: land PR #533 (unmerged until security review + migration order + full CI + staging run per owner), run the real staging assessment, wire `deploy/verify_pair.sh` into a deploy hook.
-- Warnings for the next session: prod `/readyz` still serves the OLD response until this lands; `capabilities_ready=false` is a config signal, not an outage. Honest residual: a handler deadlocked mid-job still renews its lease — visible via `worker_rows[].last_poll_age_s` in `/diagnostics`, not via liveness.
-
-=======
 ### 2026-10-24 — Adam/Devin: pilot rehearsal executed end-to-end (13/13 PASS)
 
 - `scripts/rehearsal/run_rehearsal.py` rewritten to the real API shapes:
@@ -191,6 +204,15 @@ HEAD
 - Next: merge; live leg needs Adam to create `adamissac/ari-pilot-rehearsal`
   (private), install the GitHub App, and OAuth-login once.
 
+
+### 2026-10-24 — Devin (agent, Adam) — Defense Lab pilot audit, safety suite, go/no-go
+- Did: full Defense Lab audit per owner task — inventoried lanes (simulation / shadow / owned-test / assisted / production); verified ingestion security (token auth, project bind, dedup/replay, quarantine, rate/size limits, provenance); verified safe abstention + rules fallback; reviewed PR #458 (Scout/Diagnose execution — ledger, cancellation, snapshot pinning verified; merge conflict noted) and PR #412 (RL-gated shadow-only guard — deny enforced server+worker side; readiness verdict honestly BLOCKED). Deliverables: `docs/DEFENSE_LAB_CAPABILITY_MATRIX.md`, `docs/DEFENSE_LAB_EVALUATION_REPORT.md` (explicit GO for recommendation-only + owned-test; NO-GO for production enforcement), `backend/tests/test_live_defense_pilot_safety.py` (37 tests).
+- Fixed: quarantine gap — credential-looking *values* under benign keys (e.g. `{"note":"password=hunter2"}`) were persisted; `secret_like_reason` now also matches `password|secret|api_key|access_token|private_key = value` patterns in string values.
+- State of the code (verified how): shadow path writes LivePolicyDecision NOT_EXECUTED only; 15-check gate + loopback HMAC adapter re-check at send; UNSAFE kinds hard-denied; checkpoint sha256-pinned. Reproduced on main: rl-defense 569 passed, v6 EVIDENCE verify OK (3 hashes), live.run 5 episodes 0 compromised, backend live-defense 96 passed; new suite 37 passed; phase3+phase6+runtime_ingest re-run green (35 passed).
+- Warnings for the next session: #458 merge conflict (contracts 0.22.0 vs #412 0.20.0) — land #458 first or rebase; #412 merge needs human review of authz tightening per its own flag; `owned_test` environment value is the safety boundary — never register customer apps as it.
+
+
+
 ### 2026-10-24 — Devin (Adam lane) — pilot rehearsal live leg
 - Did: ran `security_agents.cli --target examples/inventory-lite --mode live --i-have-authorization --auto-approve --validate 2 --max-usd 8` with `secret:org:ANTHROPIC_API_KEY`; committed the report JSON + updated `docs/rehearsal/2026-10-24-inventory-lite.md` (branch `docs/adam/live-inventory-rehearsal-evidence`).
 - State: all 7 roles `provider_mode=live` succeeded; planted IDOR confirmed+accepted+hardened; CWE-362 transfer-race hypothesis inconclusive. Live leg of the two-org real-provider rehearsal is now closed.
@@ -203,6 +225,7 @@ HEAD
 - Assumptions / open questions: check transport `inprocess` only (no docker on this box → HTTP transport + container-kill test skipped, recorded as limitation).
 - Next steps: PR open for review; coordinate eval/backend finding-contract items with Agent 9 (eval score_api changes already landed on main via #516).
 - Warnings for the next session: live runs cost money — always gate behind `RUN_LIVE_LLM_EVAL` + explicit approval; `tests/artifacts/live/*` now contains real run artifacts, keep naming convention `<UTC ts>-<label>.json`.
+
 ### 2026-10-24 — Devin (agent, Adam) — pilot-readiness ops: readiness split, worker heartbeats, restart/rollback evidence
 - Did: infrastructure audit for external-pilot readiness (branch `feat/adam/pilot-readiness-ops`). Added worker-heartbeat liveness (`worker_heartbeats` table, migration 0017, `WORKER_HEARTBEAT_INTERVAL_S`/`WORKER_LIVENESS_S`), split `/readyz` into infra readiness (db/queue/workers → `status` ready|degraded|not_ready, 503 unless ready) vs assessment capability (`capabilities` + `capabilities_ready`: llm.live, github.app_configured, sandbox.configured, artifact_store.writable, workers.alive), added `/diagnostics` (verified GitHub `GET /app`, sandbox sdk/daemon detail, alembic head vs `alembic_version`, queue counts, worker rows), `git_sha`+`schema_version` on `/healthz` (`DEPLOYED_GIT_SHA`/`RAILWAY_GIT_COMMIT_SHA`/`GIT_SHA`), schema 0.22.0, `READYZ_REQUIRE_WORKERS` (default on in staging/production). Frontend: `/api/frontend-version` + `deploy/verify_pair.sh` detect Vercel/Railway schema skew. Evidence harness `deploy/evidence/restart_recovery.py` (+`scripted_worker.py`) runs the real API/workers/migrations on a disposable pgserver stack with scripted transports: 6/6 PASS — SIGTERM drains the in-hand job to AWAITING_APPROVAL w/ checkpoint artifact on disk; SIGKILL → reclaim → honest FAILED (CONFLICT_STATE, never fabricated); human approval + fresh worker → checkpoint resume → COMPLETED; 2 racing workers → exactly-once + dedupe; downgrade→upgrade round-trip; pg_dump→psql restore → identical row counts (`deploy/evidence/last-run-evidence.json`). New `docs/deploy/PILOT_OPERATIONS.md` (topology, safe config checklist, recovery runbook); refreshed `docs/deploy/RAILWAY_AND_GITHUB_APP.md`, `docs/13_BACKEND_API_DESIGN.md`.
 - State of the code: `test_ops_readiness.py` 11/11 + `deploy-version.test.ts` 3/3 pass; evidence harness 7/7 (S1 drain, S2 honest-kill, S3 checkpoint resume, S4 exactly-once, S5 migration rollback, S6 backup/restore, S7 post-crash new assessment). Owner-requested hardening landed: `/diagnostics` is owner-authenticated only (401/403); public `/readyz` scrubs capability `detail` strings (env-var names); `worker_heartbeats.last_poll_at` (claim-loop-only) means a stopped claim loop cannot report as a live worker unless it holds a claimed job.
@@ -212,11 +235,21 @@ HEAD
 - Next steps: land PR #533 (unmerged until security review + migration order + full CI + staging run per owner), run the real staging assessment, wire `deploy/verify_pair.sh` into a deploy hook.
 - Warnings for the next session: prod `/readyz` still serves the OLD response until this lands; `capabilities_ready=false` is a config signal, not an outage. Honest residual: a handler deadlocked mid-job still renews its lease — visible via `worker_rows[].last_poll_age_s` in `/diagnostics`, not via liveness.
 ### 2026-10-24 — security/privacy lead (Devin session 94914ecc)
+
 - Did: Audited private-code data flows end-to-end and wrote `docs/security/TENANT_DATA_PROTECTION.md`; added `backend/tests/test_tenant_isolation_adversarial.py` (17 tests: 28-path read denial, write denial, SSE, artifacts incl. NULL-project, jobs trace-strip, forged scope/repo/context-pack claims, ingest-token binding, viewer floor, forged-ref payload/memory stores, RLS probe-role verify, store GUC smoke, full purge); implemented FORCE RLS on index_payloads/index_snapshots (migration 0016 + `set_config('ari.project_id')` in `_validate_ref`, `find_snapshot`, `PostgresMemoryStore._validate`, purge); implemented `backend/privacy.py::purge_project` (FK-safe full tenant delete + refcount-aware artifact objects + bare-clone removal; audit_events retained by design).
 - State of the code: all 334 backend tests pass incl. 17 new adversarial tests; ruff clean on touched files; no isolation hole found at app layer (require_project uniform).
 - Decisions: RLS scoped to the two source-content tables only (documented in doc §6); purge is operator-invoked, no TTL scheduler (documented gap).
 - Open: extend RLS fleet-wide needs per-request tenant GUC resolution — deferred; backups retention is deployment-level (documented).
 - Warnings: `test_repository_has_a_single_migration_head` expects head 0016 — next migration must update it to 0017.
+
+
+### 2026-10-24 — Devin (agent, Adam) — GitHub onboarding + continuous-assessment hardening
+- Did: audited the whole GitHub connect→push→assessment path; fixed six real defects on branch `fix/adam/github-onboarding-hardening`: (1) permanent GitHub lookup failures (deleted installation/renamed repo/GC'd commit — 401/404/410/422, 403 non-rate-limit) now record a skipped monitoring event + rrq with an actionable reason instead of dead-lettering silently; (2) `compare_commits` failure on ≥20-commit/empty pushes falls back to payload commits instead of failing the delivery job; (3) `installation deleted`, `installation_repositories removed`, `repository deleted` lifecycle webhooks now detach `installation_id` so pushes stop being scheduled against dead grants; (4) `repository renamed`/`transferred` updates `repositories.full_name` + `github_repo_access` so monitoring follows the rename; (5) `POST /projects/{id}/repositories` verifies the installation still grants the repo via a live installation token before connecting (403 with reinstall guidance); (6) deploy doc corrected (declared App permissions, subscribed events, `automatic_assessments` default OFF).
+- State of the code (verified how): 11 new regression tests (`test_installation_lifecycle.py`, `test_auto_commits.py`, `test_github_repo_access.py`); 56+51 focused tests pass, ruff clean. Live proof: a genuine signed GitHub push delivery from prod (`d6fc30bc-cff4-11f1-802d-2f6360afe9a9`) replayed through a real local stack (embedded Postgres + API + worker + real App key/webhook secret) — connect verified the real installation token, the push verified commit `b6e931d…` via the GitHub API (200), monitoring event `processed`, assessment row persisted.
+- Commands run: `pytest backend/tests/test_auto_commits.py backend/tests/test_installation_lifecycle.py backend/tests/test_github_repo_access.py backend/tests/test_pipeline*.py -q`; `make dev` variant with real `GITHUB_*`/`ANTHROPIC_*` env.
+- Assumptions / open questions: `run_assessment` needs `REPOSITORY_BINDINGS_FILE` + `SECURITY_WORKDIR` in the worker env to fetch connected repos (Railway sets them; local dev must too). GitHub's deliveries API doesn't return exact wire bytes — replay signatures are recomputed over the re-serialized payload.
+- Next steps: PR open; audit the auto build-recipe proposal path on a fresh Python repo.
+- Warnings: dev-login users skip the GitHub picker refresh (`github_id is None` + dev login → early return) — access rows must come from real OAuth or a `store_repo_access` call.
 
 
 ### 2026-10-24 — Devin (agent, Adam) — pilot launch package + CONDITIONAL GO
@@ -1828,7 +1861,6 @@ No collection, first-responder training, promotion or enforcement follows merge.
 Remaining merge gate: final documentation head review/CI. Future numerical protocol
 and any collection require separate explicit owner approval. Historical source
 ancestry retained and v6 registry hash unchanged (see verification report).
-
 
 ## 2026-10-24 — Devin (Adam): agent-visibility UI + prod automation enabled
 

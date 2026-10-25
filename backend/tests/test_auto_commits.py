@@ -456,6 +456,77 @@ def test_global_daily_spend_ceiling_defers_new_runs(automatic, settings_override
     assert delayed["sha"] == "c" * 40
 
 
+def test_missing_commit_records_skipped_instead_of_dead_lettering(automatic, monkeypatch):
+    import httpx
+
+    from backend.db import monitoring_events, reassessment_requests
+
+    alice, bob, ids, _ = automatic
+
+    def gone(self, installation, repo, sha):
+        request = httpx.Request("GET", f"https://api.github.com/repos/{repo}/commits/{sha}")
+        raise httpx.HTTPStatusError(
+            "404", request=request, response=httpx.Response(404, request=request)
+        )
+
+    monkeypatch.setattr("backend.auto_commits.GitHubApp.commit", gone)
+    bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
+    push(alice, HEAD)
+    assert records() == []
+    with transaction() as conn:
+        job = (
+            conn.execute(sa.select(jobs).where(jobs.c.kind == "assess_github_commit"))
+            .mappings()
+            .one()
+        )
+        assert job["status"] == "succeeded"  # permanent failure: recorded, not retried to dead
+        event = conn.execute(sa.select(monitoring_events.c.status)).scalar_one()
+        rrq = conn.execute(sa.select(reassessment_requests.c.doc)).scalar_one()
+    assert event == "ignored"
+    assert rrq["status"] == "skipped" and "404" in rrq["reason"]
+
+
+def test_transient_commit_lookup_still_retries(automatic, monkeypatch):
+    import httpx
+
+    alice, bob, ids, _ = automatic
+
+    def flaky(self, installation, repo, sha):
+        request = httpx.Request("GET", f"https://api.github.com/repos/{repo}/commits/{sha}")
+        raise httpx.HTTPStatusError(
+            "502", request=request, response=httpx.Response(502, request=request)
+        )
+
+    monkeypatch.setattr("backend.auto_commits.GitHubApp.commit", flaky)
+    bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
+    push(alice, HEAD)
+    with transaction() as conn:
+        row = (
+            conn.execute(sa.select(jobs).where(jobs.c.kind == "assess_github_commit"))
+            .mappings()
+            .one()
+        )
+        assert row["status"] == "queued" and row["attempts"] == 1
+
+
+def test_compare_failure_falls_back_to_payload_commits(automatic, monkeypatch):
+    import httpx
+
+    alice, bob, ids, _ = automatic
+
+    def boom(*args):
+        raise httpx.ConnectError("compare unavailable")
+
+    monkeypatch.setattr("backend.auto_commits.GitHubApp.compare_commits", boom, raising=False)
+    bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
+    p = push_payload(["app.py"])
+    p["sender"] = {"login": "adamissac"}
+    p["commits"] = []  # force-push style payload: compare is the only enumerator
+    assert post_webhook(alice, p).status_code == 202
+    worker.drain(kinds=["process_github_delivery", "assess_github_commit"])
+    assert records() == [HEAD]
+
+
 def test_commit_event_records_its_parent_so_the_reviewer_sees_the_diff(automatic, monkeypatch):
     from backend.db import monitoring_events
 
