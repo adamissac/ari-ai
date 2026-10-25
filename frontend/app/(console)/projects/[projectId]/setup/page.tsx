@@ -2,12 +2,13 @@
 
 import type { DeliveryMode, Repository } from '@hackatl/frontend-transport';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useState, type ReactNode } from 'react';
-import { BackdropShapes } from '@/components/backdrop-shapes';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { BuildRecipeReadiness } from '@/components/onboarding/build-recipe-readiness';
+import { SetupLayout } from '@/components/onboarding/stepper';
 import { useProject } from '@/components/project';
 import { RepositoryAutomation } from '@/components/repository-automation';
-import { Button, ErrorState, Loading } from '@/components/ui';
+import { Button, ErrorState, Loading, Tag } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useActionKeys } from '@/lib/action-key';
 import { scopeBody, scopeStateFor } from '@/lib/real-assessment';
@@ -24,12 +25,36 @@ const DELIVERY: Array<[DeliveryMode, string, string]> = [
   ['auto', 'Commit to the default branch', 'Ari pushes verified fixes straight to your default branch with no human check.'],
 ];
 
-type StepState = 'done' | 'current' | 'upcoming';
+function stepFromParam(value: string | null): number | null {
+  const step = Number(value);
+  return Number.isInteger(step) && step >= 3 && step <= 7 ? step : null;
+}
+
+function savedSetupSteps(progressKey: string): string[] {
+  return typeof window === 'undefined' ? [] : (window.localStorage.getItem(progressKey) ?? '').split(/\s+/).filter(Boolean);
+}
+
+function saveSetupStep(progressKey: string, step: string) {
+  const saved = new Set(savedSetupSteps(progressKey));
+  saved.add(step);
+  window.localStorage.setItem(progressKey, [...saved].join(' '));
+}
+
+function StepPanel({ step, title, children }: { step: number; title: string; children: ReactNode }) {
+  return (
+    <section data-testid={`setup-step-${step}`} className="rounded-[var(--radius-3)] border border-line bg-panel p-4 sm:p-6">
+      <p className="workspace-eyebrow">Step {step} / 7</p>
+      <h2 className="mt-1 text-xl font-semibold tracking-tight">{title}</h2>
+      <div className="mt-5">{children}</div>
+    </section>
+  );
+}
 
 /** Guided setup after connecting a repository: authorize, tune the reviewer, choose delivery, run. */
 export default function SetupPage() {
   const { project, reloadProject } = useProject();
-  const repoParam = useSearchParams().get('repo');
+  const searchParams = useSearchParams();
+  const repoParam = searchParams.get('repo');
   const repos = useResource(`setup-repos:${project.id}`, signal => api().repositories(project.id, { signal }));
   const scopes = useResource(`setup-scopes:${project.id}`, signal => api().scopes(project.id, { signal }));
   const runs = useResource(`setup-runs:${project.id}`, signal => api().assessments(project.id, { signal }));
@@ -40,7 +65,7 @@ export default function SetupPage() {
   if (runs.status === 'error') return <ErrorState error={runs.error} onRetry={runs.reload} />;
   const repo = repos.data.items.find(r => r.id === repoParam) ?? repos.data.items[0];
   if (!repo) {
-    return <div className="rounded-2xl border border-line bg-panel p-6 text-sm">No repository is connected yet. <Link className="font-semibold text-brand" href="/connect">Connect one</Link> to start setup.</div>;
+    return <div className="rounded-[var(--radius-3)] border border-line bg-panel p-6 text-sm">No repository is connected yet. <Link className="font-semibold text-brand" href="/connect">Connect one</Link> to start setup.</div>;
   }
   const scope = scopeStateFor(scopes.data.items, repo.id, new Date());
   const authorized = scope.kind === 'active';
@@ -62,26 +87,50 @@ function Walkthrough({ repo, scope, authorized, hasRun, reload }: {
 }) {
   const { project, reloadProject } = useProject();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const scopeKeys = useActionKeys('setup-scope');
   const runKeys = useActionKeys('setup-run');
   const review = project.settings.review;
+  const progressKey = `ari-setup:${project.id}:${repo.id}`;
+  const [readinessViewed, setReadinessViewed] = useState(() => savedSetupSteps(progressKey).includes('readiness'));
+  const [reviewerSaved, setReviewerSaved] = useState(() => savedSetupSteps(progressKey).includes('reviewer'));
+  const [deliverySaved, setDeliverySaved] = useState(() => savedSetupSteps(progressKey).includes('delivery'));
   const [strictness, setStrictness] = useState(review.strictness);
   const [pushes, setPushes] = useState(review.review_pushes);
   const [prs, setPrs] = useState(review.review_pull_requests);
   const [comments, setComments] = useState(review.comment_on_pull_requests);
   const [monitoring, setMonitoring] = useState(project.settings.monitoring_policy.enabled);
   const [delivery, setDelivery] = useState<DeliveryMode>(project.settings.delivery_mode === 'auto' ? 'pull_request' : project.settings.delivery_mode);
-  const progressKey = `ari-setup:${project.id}:${repo.id}`;
-  // Walkthrough mounts only after client-side data loads, so localStorage is available here.
-  const savedSteps = (): string => (typeof window === 'undefined' ? '' : window.localStorage.getItem(progressKey) ?? '');
-  const [reviewerSaved, setReviewerSaved] = useState(() => savedSteps().includes('reviewer'));
-  const [deliverySaved, setDeliverySaved] = useState(() => savedSteps().includes('delivery'));
-  const markSaved = (step: 'reviewer' | 'delivery') => {
-    const saved = savedSteps();
-    if (!saved.includes(step)) window.localStorage.setItem(progressKey, `${saved} ${step}`.trim());
-  };
+  const firstIncomplete = !readinessViewed ? 3 : !reviewerSaved ? 4 : !authorized ? 5 : !deliverySaved ? 6 : !hasRun ? 7 : 7;
+  const [currentStep, setCurrentStep] = useState(() => stepFromParam(searchParams.get('step')) ?? firstIncomplete);
+  const initialUrlHandled = useRef(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
+
+  const writeStep = useCallback((step: number) => {
+    router.replace(`${pathname}?repo=${encodeURIComponent(repo.id)}&step=${step}`, { scroll: false });
+  }, [router, pathname, repo.id]);
+  const navigateStep = (step: number) => {
+    if (step < 3 || step > 7) return;
+    if (step === 3 || currentStep === 3) {
+      saveSetupStep(progressKey, 'readiness');
+      setReadinessViewed(true);
+    }
+    setCurrentStep(step);
+    writeStep(step);
+  };
+
+  useEffect(() => {
+    if (!initialUrlHandled.current) {
+      initialUrlHandled.current = true;
+      if (stepFromParam(searchParams.get('step')) === null) writeStep(currentStep);
+    }
+  }, [searchParams, currentStep, writeStep]);
+
+  useEffect(() => {
+    if (currentStep === 3) saveSetupStep(progressKey, 'readiness');
+  }, [currentStep, progressKey]);
 
   const act = async (label: string, fn: () => Promise<void>) => {
     setBusy(label); setError(null);
@@ -105,13 +154,13 @@ function Walkthrough({ repo, scope, authorized, hasRun, reload }: {
       review: { ...review, strictness, review_pushes: pushes, review_pull_requests: prs, comment_on_pull_requests: comments },
     });
     setReviewerSaved(true);
-    markSaved('reviewer');
+    saveSetupStep(progressKey, 'reviewer');
   });
   const saveDelivery = () => act('delivery', async () => {
     if (delivery === 'auto' && !window.confirm('Ari will commit verified fixes straight to your default branch with no human check. Continue?')) return;
     await save({ ...project.settings, delivery_mode: delivery });
     setDeliverySaved(true);
-    markSaved('delivery');
+    saveSetupStep(progressKey, 'delivery');
   });
   const run = () => act('run', async () => {
     if (scope.kind !== 'active') return;
@@ -121,85 +170,141 @@ function Walkthrough({ repo, scope, authorized, hasRun, reload }: {
     router.push(`/projects/${project.id}/assessments/${asm.id}`);
   });
 
-  const states: StepState[] = (() => {
-    const done = [true, authorized, reviewerSaved, deliverySaved, hasRun];
-    const firstOpen = done.indexOf(false);
-    return done.map((d, i) => (d ? 'done' : i === firstOpen ? 'current' : 'upcoming'));
-  })();
-  const st = (i: number): StepState => states[i] ?? 'upcoming';
-  const complete = states.filter(s => s === 'done').length;
+  const doneSteps = [
+    1,
+    2,
+    ...(readinessViewed ? [3] : []),
+    ...(reviewerSaved ? [4] : []),
+    ...(authorized ? [5] : []),
+    ...(deliverySaved ? [6] : []),
+    ...(hasRun ? [7] : []),
+  ];
+  const org = repo.full_name.split('/')[0] ?? '';
+  const deliveryLabel = DELIVERY.find(([mode]) => mode === project.settings.delivery_mode)?.[1] ?? project.settings.delivery_mode;
+  const strictnessLabel = STRICTNESS.find(([value]) => value === project.settings.review.strictness)?.[1] ?? 'Unknown';
+  const scopeLabel = scope.kind === 'active' ? 'Active' : scope.kind === 'pending' ? 'Pending approval' : 'Not authorized';
 
   return (
-    <div className="backdrop-host mx-auto max-w-3xl py-4" data-testid="repo-setup">
-      <BackdropShapes />
-      <p className="workspace-eyebrow">Setup / {repo.full_name}</p>
-      <h1 className="mt-1 text-3xl font-semibold tracking-tight">Let&apos;s set up Ari for {repo.full_name.split('/')[1]}</h1>
-      <p className="mt-2 text-sm text-muted">Five short steps. You can change any of this later in Settings.</p>
-      <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-panel-2" aria-label={`${complete} of 5 steps done`}>
-        <div className="h-full rounded-full bg-brand transition-[width] duration-500" style={{ width: `${complete * 20}%` }} />
+    <SetupLayout current={currentStep} org={org} doneSteps={doneSteps} onStepChange={navigateStep}>
+      <div className="workspace-index" data-testid="repo-setup">
+        <p className="workspace-eyebrow">Setup / {repo.full_name}</p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Let&apos;s set up Ari for {repo.full_name.split('/')[1]}</h1>
+        <p className="mt-2 mb-6 text-sm text-muted">Seven steps. You can change any of this later in Settings.</p>
+        {error !== null && <div className="mb-4"><ErrorState error={error} /></div>}
+
+        {currentStep === 3 && (
+          <StepPanel step={3} title="Readiness">
+            <dl className="grid gap-4 sm:grid-cols-2">
+              <div><dt className="workspace-eyebrow">Repository</dt><dd className="mt-1 break-all font-mono text-sm text-ink">{repo.full_name}</dd></div>
+              <div><dt className="workspace-eyebrow">Default branch</dt><dd className="mt-1 font-mono text-sm text-ink">{repo.default_branch}</dd></div>
+              <div className="sm:col-span-2"><dt className="workspace-eyebrow">GitHub App</dt><dd className="mt-1 text-sm text-muted">{repo.installation_id != null ? `GitHub App installation #${repo.installation_id}` : 'Not connected through the GitHub App'}</dd></div>
+            </dl>
+            <div className="mt-5 border-t border-line pt-4">
+              <p className="workspace-eyebrow mb-2">Build recipe</p>
+              <BuildRecipeReadiness projectId={project.id} repo={repo} />
+            </div>
+          </StepPanel>
+        )}
+
+        {currentStep === 4 && (
+          <StepPanel step={4} title="Review behavior">
+            <ul className="space-y-3 border-b border-line pb-4 text-sm">
+              <li><strong>Manual reviews.</strong> You start each one — pilot default.</li>
+              <li><strong>Automatic reviews.</strong> Opt-in per repository, off by default; manage this in Repository automation below.</li>
+              <li><strong>Functional issues.</strong> Review findings describe behavior that does not match the code&apos;s intended outcomes.</li>
+              <li><strong>Security hypotheses.</strong> <Tag tone="warn">FLAGGED</Tag> until a check runs.</li>
+              <li><strong>Executed validation.</strong> <Tag tone="ok">VALIDATED</Tag> only after Probe reproduces it in the sandbox.</li>
+            </ul>
+            <fieldset className="mt-4 grid gap-2 sm:grid-cols-3">
+              <legend className="mb-2 text-sm font-medium">How strict should PR comments be?</legend>
+              {STRICTNESS.map(([value, label, hint]) => (
+                <label key={value} className={`cursor-pointer rounded-[var(--radius-2)] border p-3 text-sm transition-colors ${strictness === value ? 'border-brand bg-brand/10' : 'border-line bg-panel-2 hover:border-brand'}`}>
+                  <input type="radio" name="strictness" className="sr-only" checked={strictness === value} onChange={() => setStrictness(value)} />
+                  <span className="block font-semibold">{label}</span><span className="mt-1 block text-xs text-muted">{hint}</span>
+                </label>
+              ))}
+            </fieldset>
+            <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+              <Check checked={monitoring} onChange={setMonitoring} label="Watch this project for new commits" />
+              <Check checked={pushes} onChange={setPushes} label="Review pushes to the default branch" />
+              <Check checked={prs} onChange={setPrs} label="Review pull requests" />
+              <Check checked={comments} onChange={setComments} label="Leave a review comment on pull requests" />
+            </div>
+            <div className="mt-4"><RepositoryAutomation repoId={repo.id} /></div>
+            <p className="mt-3 text-xs text-muted">Every review, automatic or manual, counts toward this project&apos;s limit of 10 per hour and 50 per day. Branch and author filters are in Settings.</p>
+            <Button variant="primary" className="mt-4" disabled={busy !== null} onClick={() => void saveReviewer()}>{busy === 'reviewer' ? 'Saving…' : reviewerSaved ? 'Saved' : 'Save reviewer settings'}</Button>
+          </StepPanel>
+        )}
+
+        {currentStep === 5 && (
+          <StepPanel step={5} title="Testing scope">
+            <p className="text-sm text-muted">Authorize Ari to test this repository in an isolated sandbox.</p>
+            <dl className="mt-4 grid gap-3 border-y border-line py-4 text-sm sm:grid-cols-2">
+              <div><dt className="workspace-eyebrow">Target</dt><dd className="mt-1 font-mono text-ink">{repo.full_name}</dd></div>
+              <div><dt className="workspace-eyebrow">Sandbox build</dt><dd className="mt-1 text-muted">Built from <code className="font-mono text-ink">build_recipe.json</code></dd></div>
+              <div><dt className="workspace-eyebrow">Duration</dt><dd className="mt-1 text-muted">7 days</dd></div>
+              <div><dt className="workspace-eyebrow">Revocation</dt><dd className="mt-1 text-muted">Revoke anytime in <Link className="text-brand underline-offset-2 hover:underline" href={`/projects/${project.id}/scopes`}>Scopes</Link>.</dd></div>
+            </dl>
+            {scope.kind === 'active' && (
+              <p className="mt-4 text-sm text-info">
+                Testing authorized{scope.scope.expires_at ? <> until <time dateTime={scope.scope.expires_at}>{new Date(scope.scope.expires_at).toLocaleString()}</time></> : ''}.
+              </p>
+            )}
+            {scope.kind === 'pending' && <Button variant="primary" className="mt-4" disabled={busy !== null} onClick={() => void approveScope(scope.scope.id)}>{busy === 'scope' ? 'Approving…' : 'Approve sandbox testing for 7 days'}</Button>}
+            {scope.kind !== 'active' && scope.kind !== 'pending' && <Button variant="primary" className="mt-4" disabled={busy !== null} onClick={() => void requestScope()}>{busy === 'scope' ? 'Approving…' : 'Approve sandbox testing for 7 days'}</Button>}
+          </StepPanel>
+        )}
+
+        {currentStep === 6 && (
+          <StepPanel step={6} title="Fix delivery">
+            <p className="mb-4 text-sm text-muted">Choose where a verified fix should go. Pull requests are the default.</p>
+            <div className="grid gap-2">
+              {DELIVERY.map(([mode, label, hint]) => (
+                <label key={mode} className={`cursor-pointer rounded-[var(--radius-2)] border p-3 text-sm transition-colors ${delivery === mode ? 'border-brand bg-brand/10' : 'border-line bg-panel-2 hover:border-brand'}`}>
+                  <input type="radio" name="delivery" className="sr-only" checked={delivery === mode} onChange={() => setDelivery(mode)} />
+                  <span className="block font-semibold">{label}</span><span className="mt-1 block text-xs text-muted">{hint}</span>
+                </label>
+              ))}
+            </div>
+            <p className="mt-4 border-t border-line pt-4 text-sm text-muted"><strong className="text-ink">Independent verification.</strong> Verify replays the exploit and tests on a fresh checkout before any fix is offered.</p>
+            <Button variant="primary" className="mt-4" disabled={busy !== null} onClick={() => void saveDelivery()}>{busy === 'delivery' ? 'Saving…' : deliverySaved ? 'Saved' : 'Save delivery choice'}</Button>
+          </StepPanel>
+        )}
+
+        {currentStep === 7 && (
+          <StepPanel step={7} title="Review & start">
+            <ul className="divide-y divide-line border-y border-line">
+              <Checklist label="Automatic reviews" value={repo.automatic_assessments ? 'On' : 'Off — you start each review'} />
+              <Checklist label="Comment strictness" value={strictnessLabel} />
+              <Checklist label="Review on push (when automatic)" value={project.settings.review.review_pushes ? 'On' : 'Off'} />
+              <Checklist label="Review on PR (when automatic)" value={project.settings.review.review_pull_requests ? 'On' : 'Off'} />
+              <Checklist label="Review comments" value={project.settings.review.comment_on_pull_requests ? 'On' : 'Off'} />
+              <Checklist label="Monitoring" value={project.settings.monitoring_policy.enabled ? 'On' : 'Off'} />
+              <Checklist label="Fix delivery" value={deliveryLabel} />
+              <Checklist label="Testing scope" value={scopeLabel} />
+              <li className="flex items-center justify-between gap-3 py-3 text-sm"><span className="text-muted">Build recipe</span><BuildRecipeReadiness projectId={project.id} repo={repo} compact /></li>
+            </ul>
+            {!authorized && <button type="button" className="mt-4 text-sm text-brand underline-offset-2 hover:underline" onClick={() => navigateStep(5)}>Review step 5: testing scope</button>}
+            {hasRun && <p className="mt-4 text-sm"><Link className="font-semibold text-brand" href={`/projects/${project.id}/assessments`}>See your reviews</Link></p>}
+            <div><Button variant="primary" className="mt-4" disabled={busy !== null || !authorized} title={authorized ? undefined : 'Approve sandbox testing first'} onClick={() => void run()}>{busy === 'run' ? 'Starting…' : hasRun ? 'Run another review' : 'Start first assessment'}</Button></div>
+          </StepPanel>
+        )}
+
+        <div className="mt-5 flex items-center justify-between gap-3">
+          {currentStep === 3 ? (
+            <Link href={`/connect/${encodeURIComponent(org)}`} className="inline-flex h-8 items-center rounded-[var(--radius-2)] border border-line-2 px-3 text-xs font-medium text-ink hover:bg-panel-2">Back</Link>
+          ) : (
+            <Button onClick={() => navigateStep(currentStep - 1)}>Back</Button>
+          )}
+          {currentStep < 7 && <Button variant="primary" onClick={() => navigateStep(currentStep + 1)}>Continue</Button>}
+        </div>
       </div>
-      {error !== null && <div className="mt-4"><ErrorState error={error} /></div>}
-      <ol className="mt-6 space-y-4">
-        <Step n={1} state={st(0)} title="Repository connected">
-          <p className="text-sm text-muted">Ari can read <span className="font-mono text-ink">{repo.full_name}</span> on <span className="font-mono text-ink">{repo.default_branch}</span> through the GitHub App.</p>
-        </Step>
-        <Step n={2} state={st(1)} title="Authorize testing">
-          <p className="text-sm text-muted">Ari tests a private copy of your code that it builds itself. It never sends traffic to your live site. This authorization lasts 7 days and you can revoke it anytime.</p>
-          {scope.kind === 'active' && <p className="mt-2 text-sm font-medium">Authorized. Ari may test this repository in its sandbox.</p>}
-          {scope.kind === 'pending' && <Button variant="primary" className="mt-3" disabled={busy !== null} onClick={() => void approveScope(scope.scope.id)}>{busy === 'scope' ? 'Approving…' : 'Approve authorization'}</Button>}
-          {scope.kind !== 'active' && scope.kind !== 'pending' && <Button variant="primary" className="mt-3" disabled={busy !== null} onClick={() => void requestScope()}>{busy === 'scope' ? 'Authorizing…' : 'Authorize sandbox testing'}</Button>}
-        </Step>
-        <Step n={3} state={st(2)} title="Tune the code reviewer">
-          <fieldset className="grid gap-2 sm:grid-cols-3">
-            <legend className="mb-2 text-sm font-medium">How strict should PR comments be?</legend>
-            {STRICTNESS.map(([v, label, hint]) => (
-              <label key={v} className={`cursor-pointer rounded-xl border p-3 text-sm transition-colors ${strictness === v ? 'border-brand bg-brand/10' : 'border-line bg-panel hover:border-brand/50'}`}>
-                <input type="radio" name="strictness" className="sr-only" checked={strictness === v} onChange={() => setStrictness(v)} />
-                <span className="block font-semibold">{label}</span><span className="mt-1 block text-xs text-muted">{hint}</span>
-              </label>
-            ))}
-          </fieldset>
-          <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-            <Check checked={monitoring} onChange={setMonitoring} label="Watch this project for new commits" />
-            <Check checked={pushes} onChange={setPushes} label="Review pushes to the default branch" />
-            <Check checked={prs} onChange={setPrs} label="Review pull requests" />
-            <Check checked={comments} onChange={setComments} label="Leave a review comment on pull requests" />
-          </div>
-          <div className="mt-3"><RepositoryAutomation repoId={repo.id} /></div>
-          <p className="text-xs text-muted">Every review, automatic or manual, counts toward this project&apos;s limit of 10 per hour and 50 per day. Branch and author filters are in Settings.</p>
-          <Button variant="primary" className="mt-3" disabled={busy !== null} onClick={() => void saveReviewer()}>{busy === 'reviewer' ? 'Saving…' : reviewerSaved ? 'Saved' : 'Save reviewer settings'}</Button>
-        </Step>
-        <Step n={4} state={st(3)} title="Choose how fixes reach you">
-          <div className="grid gap-2">
-            {DELIVERY.map(([mode, label, hint]) => (
-              <label key={mode} className={`cursor-pointer rounded-xl border p-3 text-sm transition-colors ${delivery === mode ? 'border-brand bg-brand/10' : 'border-line bg-panel hover:border-brand/50'}`}>
-                <input type="radio" name="delivery" className="sr-only" checked={delivery === mode} onChange={() => setDelivery(mode)} />
-                <span className="block font-semibold">{label}</span><span className="mt-1 block text-xs text-muted">{hint}</span>
-              </label>
-            ))}
-          </div>
-          <Button variant="primary" className="mt-3" disabled={busy !== null} onClick={() => void saveDelivery()}>{busy === 'delivery' ? 'Saving…' : deliverySaved ? 'Saved' : 'Save delivery choice'}</Button>
-        </Step>
-        <Step n={5} state={st(4)} title="Run your first review">
-          <p className="text-sm text-muted">Ari&apos;s seven agents review the latest commit on {repo.default_branch}: Scout, Probe, Trace, Diagnose, Patch, Fortify and Verify.</p>
-          {hasRun && <p className="mt-2 text-sm"><Link className="font-semibold text-brand" href={`/projects/${project.id}/assessments`}>See your reviews</Link></p>}
-          <Button variant="primary" className="mt-3" disabled={busy !== null || !authorized} title={authorized ? undefined : 'Authorize testing first'} onClick={() => void run()}>{busy === 'run' ? 'Starting…' : hasRun ? 'Run another review' : 'Run first review'}</Button>
-        </Step>
-      </ol>
-    </div>
+    </SetupLayout>
   );
 }
 
-function Step({ n, state, title, children }: { n: number; state: StepState; title: string; children: ReactNode }) {
-  return (
-    <li className={`rounded-2xl border p-5 backdrop-blur-sm transition-all ${state === 'current' ? 'border-brand bg-panel shadow-[0_0_0_4px_rgba(194,69,45,0.18)]' : 'border-line bg-panel/80'} ${state === 'upcoming' ? 'opacity-70' : ''}`} data-step-state={state}>
-      <div className="mb-3 flex items-center gap-3">
-        <span className={`grid h-8 w-8 place-items-center rounded-full text-sm font-semibold ${state === 'done' ? 'bg-brand text-white' : state === 'current' ? 'border-2 border-brand text-brand' : 'border border-line text-muted'}`}>{state === 'done' ? '✓' : n}</span>
-        <h2 className="text-lg font-semibold">{title}</h2>
-      </div>
-      {children}
-    </li>
-  );
+function Checklist({ label, value }: { label: string; value: string }) {
+  return <li className="flex items-center justify-between gap-3 py-3 text-sm"><span className="text-muted">{label}</span><span className="text-right text-ink">{value}</span></li>;
 }
 
 function Check({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {

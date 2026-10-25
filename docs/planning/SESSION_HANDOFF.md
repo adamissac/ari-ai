@@ -28,6 +28,26 @@ adds an entry before ending.
   no longer reported for the app role after #610's savepoint-protected probe.
 - Open: rotate the Anthropic and GitHub App keys; remove public database access last.
 
+### 2026-10-25 — Devin (agent, Adam) — console commit-history overlay and assessment-count accessibility
+- Did: diagnosed the “2 Issues” Next dev badge on commit history as nested anchors: the whole commit row was a `Link`, and `CommitAssessmentChip` rendered another `Link` inside it. Restructured the row so commit details, SHA navigation, and assessment navigation are sibling links. The additional-assessment count now has singular/plural title and accessible name; unknown assessment states omit the chip.
+- State of the code: the console page now has no hydration warnings or Next overlay issues on `:3102`; comparing `:3101` confirmed the warnings were caused by this branch's nested link.
+- Commands run and results: the two affected unit files passed — 2 files, 10 tests; `npm run typecheck --prefix frontend` passed; `npm run lint --prefix frontend` passed with the existing `first-responder.tsx:173` warning. Playwright on `:3102` verified zero commit-history console errors and `data-error=false` at both viewports. Commit-detail on both `:3101` and `:3102` produced the same pre-existing `POST /api/analyze` 503 and no overlay issue.
+- Screenshots: refreshed `/home/ubuntu/research/console/shots/commit-history-1440x900.png` and `/home/ubuntu/research/console/shots/commit-history-390x844.png`; both show no issues badge.
+- Decisions made (ADR links): none.
+- Assumptions / open questions: the identical `POST /api/analyze` 503 on both worktrees is outside this change; left it untouched as requested.
+- Next steps: commit, run synchronization checks, confirm the outgoing commit has zero co-author trailers, then push.
+- Warnings for the next session: do not confuse the Next dev toolbar “N” icon with an issues badge.
+
+### 2026-10-25 — Devin (agent, Adam) — console refinement (`feat/adam/console-graphite`)
+- Did: replaced the redundant non-home user bar with a keyboard-accessible real-session account menu; added mobile project-rail disclosure, CSS status marks, compact action radii and assessment metadata; linked connected-repository commit rows to matching assessments; kept `UserBar` on the landing page and made reveal content visible for reduced motion.
+- State of the code: implementation is on `feat/adam/console-graphite`; no backend, shared, or transport files changed. Section 6 investigation found a reveal/screenshot-capture artifact: below-fold project Runs & Replay and assessment phases/steps were hidden before scrolling and populated after scrolling, with no persistent layout-height defect. Reduced-motion `Reveal` now skips observation.
+- Commands run and results: `npm run lint --prefix frontend` — 0 errors, 1 pre-existing warning in `components/live-defense/first-responder.tsx:173`; `npm run typecheck --prefix frontend` passed; `npm test --prefix frontend` — 91 files, 391 tests passed; `NEXT_PUBLIC_DEV_LOGIN=1 BACKEND_ORIGIN=http://127.0.0.1:59039 npm run build --prefix frontend` passed. E2E: `E2E_SKIP_BUILD=1 /home/ubuntu/repos/ari-ai/.venv/bin/python tests/e2e/stack.py tests/e2e/journey.spec.ts tests/e2e/interface.spec.ts tests/e2e/commit-workspace.spec.ts tests/e2e/honesty.spec.ts tests/e2e/pages.spec.ts tests/e2e/brand.spec.ts --workers=1` — 20 passed, 1 failed. `brand.spec.ts` timed out clicking the hidden landing nav link “Projects”; current landing contract exposes “Go to projects” and the link was absent from the page snapshot. The console change does not touch the landing or site-navigation implementation.
+- Screenshots: Section 6 before-scroll evidence is in `/home/ubuntu/research/console/shots/section6-{project-runs-area,assessment-phases-area,assessment-steps-area}-{1440x900,390x844}-before.png`. Console after screenshots (10 routes × 2 viewports) are in `/home/ubuntu/research/console/shots/`.
+- Decisions made (ADR links): none.
+- Assumptions / open questions: the single brand E2E failure appears to be a stale landing selector, but was not changed as part of console refinement.
+- Next steps: review the pushed branch; resolve the stale `brand.spec.ts` selector separately if desired.
+- Warnings for the next session: the local `:3102` console dev server uses the seeded scripted-transport stack; assessment records are not live-model results. The onboarding `:3101` and existing stack shells were left untouched.
+
 ### 2026-10-26 — Devin (agent, Adam) — preserve impact-gated reviewer monitoring (#593)
 - Did: restored `origin/main`'s impact/correlation/quota/reassessment path while adding one shared reviewer-eligibility gate before either impact processing or the per-commit scheduler. Quoted-empty and sole `*` global settings route to impact monitoring. Added filter coverage for both routes and an impact-path pull-request comment test using the reassessment request's event IDs.
 - State of the code: both routes use `reviewer_ignore_reason`; ignored events are recorded before impact work. Impact-created PR assessments enqueue a deduplicated review and resolve the PR number from their triggering monitoring event.
@@ -2031,6 +2051,33 @@ selected run is still loading.
 - Merge waves belong to the integration lead; wave 2 includes my #542/#543.
 - Prod queue depth (~88 items) makes 45-case live eval slow — some cases may return `pending`/NOT_STARTED; rerun stragglers or extend deadlines.
 - Second-org real-provider leg needs owner's private repo + second GitHub org (account actions).
+## 2026-10-25 — Devin project-section fixes (session 89af211994aa458d96ecf9f412c05bd7)
+
+### Done
+- Completed #598 private-commit route, #607 read limiter + manual quota, #608 delivery status, #613 expired scopes, #616 stale-base delivery, and #617 commit-behind warning.
+- The first real-user run opened `pilot-rehearsal-target#5` from stale commit `010cc2dd`. Independent checking confirmed the fix is correct on its base but redundant with `main`; do not merge that PR.
+
+### Outstanding
+- Rotate the Railway/GitHub tokens pasted in chat.
+- The app DB role is still the superuser, so RLS is inert; production two-org isolation and purge remain outstanding.
+- A fresh current-commit verified-fix PR is still needed for GO.
+
+No `HACKATL_TASKS` change; no task ID.
+
+### Automated independent release review setup — 2026-10-25
+
+Automation-only installation prepared: immutable candidate/upstream pins, F1–F10/
+N1–N7 strict evidence, protected signed budget ledger, workstream assignments and
+bounded existing-session Devin handoff. Local controller/adversarial suite: 56
+passed; Ruff clean. Fork trusted environments and ledger provisioned, API activation
+OFF. Installation PRs require manual review/merge; Codex repository access and API
+credentials/session budget confirmation are one-time prerequisites. Docker unavailable
+locally; live loop not claimed. No production code, release merge or deployment.
+See `docs/release/AUTOMATED_INDEPENDENT_REVIEW.md`.
+
+Installation PRs: canonical #614; fork #9 (main), #10 (ci/upstream-main). Fork #9
+controller Docker unit/layout/actionlint checks passed at abd61416; paid activation
+remains OFF pending manual installation and protected credential/session setup.
 
 ## 2026-10-25 — Devin pilot-readiness lane: production rehearsal leg
 
@@ -2073,3 +2120,16 @@ selected run is still loading.
 
 - Spend-cap reset time now uses a Numeric window calculation over one database snapshot,
   avoiding fractional-cost rounding and concurrent-write inconsistencies.
+
+## 2026-10-25 — Adam: onboarding readiness and setup clarity
+
+- On `feat/adam/onboarding-graphite`, recipe readiness now validates and scans up to four
+  500-event audit pages, distinguishing a complete no-result from a truncated 2,000-event
+  search. Step 7 now separates repository automatic assessments from push/PR event filters,
+  and completed stepper entries show a DONE marker.
+- Verification: transport tests 36/36; frontend tests 89 files / 375 tests; lint (0 errors,
+  one existing warning); typecheck; production build; and stack.py interface,
+  commit-workspace, and journey specs (5/5). The stepper test and typecheck also passed
+  after a final strict-TypeScript assertion refinement.
+- Recaptured setup steps 3 and 7 at 1440×900 and 390×844 in
+  `~/research/onboarding/shots/`. The existing `:3101` development server remained available.
