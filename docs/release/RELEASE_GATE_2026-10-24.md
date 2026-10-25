@@ -4,6 +4,7 @@ Owner: Adam (release reliability / test infrastructure). Branch: `feat/adam/rele
 
 ## Release SHA under gate
 - `main` HEAD at doc freeze: `d0131167` — **stale**. Update 2026-10-25T02Z: post-merge-wave head is **`0f311913`, all 20 checks green** (the 19 below + `Vercel` deploy preview). Landed since freeze: #535, #537, #544, #549, #551, #553, #557, #560, #567, #569, **#530 (this gate)**, #571 (gitleaks fixture allowlist), #570 (redaction gaps), #572 (cross-org jobs test), #540, #538, #536, #532, #496, #527. Re-read `main` for the real release SHA (see the trigger section).
+- **Release SHA `8d897f7e` (2026-10-25T04Z): `pilot-verify` run [40160692141](https://github.com/adamissac/ari-ai/actions/runs/40160692141) — 8/8 jobs green.** Executed for real: static-unit, real-db, real-sandbox, browser-e2e (fake model), load-recovery, hosted-smoke against `https://ari-ai-production-76d4.up.railway.app` (/healthz ok, /readyz ready with 12 live workers + live LLM configured, unauthenticated `/api/v1/projects` → 401). Skipped by design: live-model (`live_model=false`, no spend approval). Branch protection on `main` applied same day (18 required contexts, strict, 1 approving review, enforce_admins).
 - Gate PR #530 merged as `22454ef2` — 19/19 checks green at merge.
 - Required checks = the job names listed below.
 
