@@ -74,6 +74,8 @@ All notable changes are documented here. Format follows
   planted CWE-639-class ownership defect, plus a committed check-level rehearsal
   (`security-agents/tests/test_inventory_lite_rehearsal.py`) that confirms the defect
   by execution and refutes the guarded sibling route; new `inventory-lite` CI job.
+- Add Live Defense Phase 6.5 **RL-gated pilot infrastructure**: machine-readable categories A–J, evaluation plan with unset thresholds, server-enforced shadow-only for `rl_gated_pilot` apps (no grant/channel/authorize; leftover execute fail-closed), stable serving contract (Q is not probability; missing fields stay missing), hosted-inference readiness config that does not auto-serve unapproved checkpoints, and a backend readiness dashboard whose `ready` flag stays false while RL evidence is blocked. Verdict: **INFRASTRUCTURE READY — RL BLOCKED**. Distinct from Phase 6 CONDITIONAL GO (rules-based shadow). No Codex training, no v6 edits, no customer credentials, no Phase 7. Contract schema 0.21.0 (merged with Phase 7A; originally 0.20.0). Eval: `docs/LIVE_DEFENSE_PHASE6_5_RL_GATED_PILOT.md`.
+
 - Scout specialist now trains on the labelled commit-eval set (each case's planted edit vs. its original code as a minimal positive/negative pair) and was promoted after beating the static-pattern baseline (macro F1 0.349 vs 0.084); new checkpoint committed under `specialists/checkpoints/scout/`.
 
 - Assessment UI: agents the orchestrator skipped now stay visible as 'Not needed' with the recorded reason (e.g. 'no confirmed findings'); on failed/cancelled runs they show 'Not reached'. Replaces the ambiguous 'not run' label on the relay and team list.

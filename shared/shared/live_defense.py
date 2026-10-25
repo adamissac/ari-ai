@@ -83,6 +83,13 @@ class ConnectedApplication(StrictModel):
         default=False,
         description="True when a control channel exists; the HMAC secret is never returned",
     )
+    rl_gated_pilot: bool = Field(
+        default=False,
+        description=(
+            "When true, the server enforces recommendation-only shadow mode: "
+            "no grant, channel, authorize, or execute."
+        ),
+    )
     disconnected_at: UtcDatetime | None = None
     created_by: UserId
     created_at: UtcDatetime
@@ -91,6 +98,10 @@ class ConnectedApplication(StrictModel):
 class ConnectedApplicationCreate(StrictModel):
     name: ShortText
     environment: StagingEnvironment = StagingEnvironment.sandbox
+    rl_gated_pilot: bool = Field(
+        default=False,
+        description="Register already in server-enforced shadow-only mode.",
+    )
 
 
 class IngestTokenView(StrictModel):
@@ -561,6 +572,9 @@ PILOT_UNSUPPORTED_CLAIMS: tuple[str, ...] = (
     "shadow prevented breaches",
     "HTTP 200 means the attack succeeded",
     "health is healthy because this endpoint returned 200",
+    "infrastructure completeness authorizes a customer pilot",
+    "merged research PRs, unit tests, or docs are model readiness",
+    "Q-value is a probability of attack",
 )
 
 
@@ -602,6 +616,194 @@ class PilotReport(StrictModel):
     unsupported_claims: list[ShortText] = Field(
         default_factory=lambda: list(PILOT_UNSUPPORTED_CLAIMS)
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase 6.5 — RL-gated pilot infrastructure (no customer execution)
+# ---------------------------------------------------------------------------
+
+RL_GATED_PILOT_CAVEAT = (
+    "Phase 6 CONDITIONAL GO is rules-based shadow only. The RL-gated pilot "
+    "stays blocked until RL-owner evidence exists. Open PRs, unit tests, and "
+    "research docs are not model readiness. Q-values are not probabilities."
+)
+
+
+class RlEvidenceCategory(StrEnum):
+    """Mandatory evidence categories for the RL-gated pilot. Letters A–J."""
+
+    A_frozen_scenarios = "A_frozen_scenarios"
+    B_holdout = "B_holdout"
+    C_independent_seeds = "C_independent_seeds"
+    D_baselines = "D_baselines"
+    E_safety_metrics = "E_safety_metrics"
+    F_per_scenario = "F_per_scenario"
+    G_abstention = "G_abstention"
+    H_uncertainty = "H_uncertainty"
+    I_provenance = "I_provenance"
+    J_hosted_serving = "J_hosted_serving"
+
+
+class EvidenceCheckStatus(StrEnum):
+    """Dashboard values. Computed by the backend, never a frontend flag."""
+
+    passed = "PASS"
+    failed = "FAIL"
+    blocked = "BLOCKED"
+    not_verified = "NOT VERIFIED"
+
+
+class PilotVerdict(StrEnum):
+    infrastructure_ready_rl_blocked = "INFRASTRUCTURE READY — RL BLOCKED"
+    rl_validated_pilot_ready_for_owner_approval = "RL VALIDATED — PILOT READY FOR OWNER APPROVAL"
+    pilot_approved = "PILOT APPROVED"
+
+
+class RlCategoryResult(StrictModel):
+    category: RlEvidenceCategory
+    letter: Literal["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
+    title: ShortText
+    status: EvidenceCheckStatus
+    mandatory: bool = True
+    summary: ShortText
+    evidence_notes: list[ShortText] = Field(default_factory=list)
+    open_pr_is_not_readiness: Literal[True] = True
+    unit_tests_are_not_readiness: Literal[True] = True
+    research_docs_are_not_readiness: Literal[True] = True
+
+
+class RlEvaluationMetricSpec(StrictModel):
+    """One required metric. Numeric thresholds stay unset until RL-owner approval."""
+
+    name: ShortText
+    description: ShortText
+    threshold: float | None = Field(
+        default=None,
+        description="Null until the RL owner approves a threshold. Never invented.",
+    )
+    threshold_status: Literal["pending_rl_owner_approval"] = "pending_rl_owner_approval"
+
+
+def _default_eval_baselines() -> list[Literal["rules", "fixed_block", "v6"]]:
+    return ["rules", "fixed_block", "v6"]
+
+
+class RlEvaluationPlan(StrictModel):
+    """Required evaluation dimensions. Pass-by-total-reward is forbidden."""
+
+    frozen_scenarios_required: Literal[True] = True
+    holdout_required: Literal[True] = True
+    independent_seeds_required: Literal[True] = True
+    baselines: list[Literal["rules", "fixed_block", "v6"]] = Field(
+        default_factory=_default_eval_baselines
+    )
+    metrics: list[RlEvaluationMetricSpec]
+    per_scenario_required: Literal[True] = True
+    pass_by_total_reward: Literal[False] = False
+    abstention_required: Literal[True] = True
+    uncertainty_required: Literal[True] = True
+    provenance_required: Literal[True] = True
+    thresholds_invented: Literal[False] = False
+    threshold_owner: Literal["rl_owner"] = "rl_owner"
+
+
+class PolicyServingOutput(StrictModel):
+    """Stable serving contract for a future approved policy. Missing fields stay missing."""
+
+    policy_version: ShortText | None = None
+    checkpoint_sha256: Sha256Hex | None = None
+    action: DefenseActionName | None = None
+    node: NodeName | None = None
+    top_actions: list[ActionScore] | None = None
+    q_margin: float | None = None
+    observation: list[float] | None = None
+    observation_dim: int | None = None
+    inference_status: InferenceStatus | None = None
+    abstention_reason: ShortText | None = None
+    feature_schema_ok: bool | None = None
+    action_mask_valid: bool | None = None
+    freshness_ok: bool | None = None
+    observation_complete: bool | None = None
+    principal_targets: list[PrincipalRef] | None = None
+    feature_mapping_note: ShortText | None = None
+    trained_commit_sha: ShortText | None = None
+    eval_bundle_sha256: Sha256Hex | None = None
+    uncertainty: float | None = None
+    q_values_are_not_probabilities: Literal[True] = True
+    auto_served_unapproved_checkpoint: Literal[False] = False
+
+
+class HostedInferenceReadinessConfig(StrictModel):
+    """Declarative requirements for a future approved checkpoint. Does not serve one."""
+
+    refuse_on_hash_mismatch: Literal[True] = True
+    refuse_on_tamper: Literal[True] = True
+    inference_timeout_ms: int | None = Field(
+        default=None, description="Unset until the RL owner approves a timeout."
+    )
+    restart_on_timeout: bool | None = None
+    isolation: ShortText = (
+        "Worker process only; untrusted target code stays in the sandbox; "
+        "no outbound network by default."
+    )
+    abstention_on_assumption_failure: Literal[True] = True
+    fallback_producer: Literal["rules", "abstention"] = "abstention"
+    auto_serve_unapproved: Literal[False] = False
+    auto_serve_newer_research_checkpoints: Literal[False] = False
+    approved_checkpoint_sha256: Sha256Hex | None = None
+    compatibility_fixture_sha256: Sha256Hex | None = Field(
+        default=None,
+        description="Frozen v6 hash used only in compatibility tests, not as an approved policy.",
+    )
+    v6_claimed_to_pass_new_criteria: Literal[False] = False
+
+
+class HostedInferenceReadinessReport(StrictModel):
+    config: HostedInferenceReadinessConfig
+    approved_checkpoint_present: bool
+    v6_used_only_as_compatibility_fixture: bool
+    v6_passed_new_criteria: Literal[False] = False
+    notes: list[ShortText] = Field(default_factory=list)
+
+
+class PilotLeftoverInventory(StrictModel):
+    active_grants: int = Field(ge=0)
+    active_channels: int = Field(ge=0)
+    leftover_controls: int = Field(ge=0)
+    pending_execute_jobs: int = Field(ge=0)
+    details: list[ShortText] = Field(default_factory=list)
+
+
+class PilotEnablement(StrictModel):
+    application: ConnectedApplication
+    enabled: bool
+    leftover: PilotLeftoverInventory
+    fail_closed: bool
+    jobs_reconciled: int = Field(ge=0, default=0)
+    reason: ShortText | None = None
+
+
+class RlReadinessAssessment(StrictModel):
+    """Machine-readable RL-gated pilot assessment. ready is backend-computed."""
+
+    generated_at: UtcDatetime
+    schema_version: ShortText
+    origin_main_sha: ShortText | None = None
+    phase6_verdict: ShortText = (
+        "CONDITIONAL GO (rules-based shadow). Distinct from the RL-gated pilot."
+    )
+    categories: list[RlCategoryResult]
+    evaluation_plan: RlEvaluationPlan
+    serving_contract: PolicyServingOutput
+    hosted_inference: HostedInferenceReadinessReport
+    ready: bool
+    verdict: PilotVerdict
+    infrastructure_complete: bool
+    customer_infra_provisioned: Literal[False] = False
+    owner_pilot_authorization: Literal[False] = False
+    phase7_started: Literal[False] = False
+    gated_application_count: int = Field(ge=0, default=0)
+    caveat: ShortText = RL_GATED_PILOT_CAVEAT
 
 
 # ---------------------------------------------------------------------------
