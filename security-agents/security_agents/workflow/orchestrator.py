@@ -767,7 +767,13 @@ class Orchestrator:
         tests = [
             path for path in candidate.tests_added if isinstance(path, str) and under_test_roots(path, roots)
         ]
-        if not facts.get("applied") or not patched or not tests:
+        if (
+            not facts.get("applied")
+            or facts.get("patch_id") != candidate.id
+            or ctx.artifacts.get("verify_patch_id") != candidate.id
+            or not patched
+            or not tests
+        ):
             return []
         try:
             for rel in tests:
@@ -1348,6 +1354,7 @@ class Orchestrator:
             protected_tests=self._protected_tests(),
             original_check_ref=data.original_check_template_ref,
             original_check_params=dict(data.original_check_parameters),
+            candidate_id=candidate.id,
             required_transport=self.config.verify_check_transport,
             original_tree_sha256=tree_digest(self.intel.snapshot.root),
             patched_tree_sha256=tree_digest(ctx.artifacts["verify_workspace"])

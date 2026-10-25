@@ -12,6 +12,7 @@ coordination message to Sai.
 
 from __future__ import annotations
 
+import ast
 import configparser
 import json
 import os
@@ -37,6 +38,7 @@ from ..sandbox.workspace import (
     resolve_under,
     safe_rel_path,
     sha256_text,
+    test_root_files,
     tree_digest,
     under_test_roots,
     unified_diff,
@@ -74,6 +76,34 @@ def parse_pytest(stdout: str) -> dict[str, Any]:
         "failing_tests": listed,
         "failing_truncated": failed > len(listed) or len(failing) > 20,
     }
+
+
+def _supported_diff_path_prefixes(diff_text: str) -> bool:
+    def supported(path: str) -> bool:
+        return path == "/dev/null" or (path.startswith(("a/", "b/")) and len(path) > 2)
+
+    in_hunk = False
+    for line in diff_text.splitlines():
+        if line.startswith("diff --git "):
+            in_hunk = False
+            try:
+                paths = shlex.split(line)[2:4]
+            except ValueError:
+                return False
+            if len(paths) != 2 or not all(supported(path) for path in paths):
+                return False
+        elif line.startswith("@@ "):
+            in_hunk = True
+        elif line.startswith(("--- ", "+++ ")):
+            if in_hunk:
+                continue
+            try:
+                paths = shlex.split(line[4:].split("\t", 1)[0].strip())
+            except ValueError:
+                return False
+            if len(paths) != 1 or not supported(paths[0]):
+                return False
+    return True
 
 
 def _result_summary(res: SandboxResult) -> dict[str, Any]:
@@ -482,17 +512,29 @@ class PatchApplier:
         ctx.artifacts.pop("verify_suite_workspace", None)
         from ..sandbox.workspace import apply_diff
 
-        ok, err = apply_diff(root, diff_text)
-        touched = diff_paths(diff_text)
+        if _supported_diff_path_prefixes(diff_text):
+            ok, err = apply_diff(root, diff_text)
+            touched = diff_paths(diff_text)
+        else:
+            ok, err = False, "unsupported diff path prefix"
+            touched = []
         plan_files = [safe_rel_path(p) for p in record.get("plan_files", [])]
         roots = recipe_test_roots(self.intel.snapshot.root)
         new_tests = [p for p in touched if under_test_roots(p, roots) and not self.intel.snapshot.exists(p)]
         out_of_scope = [p for p in touched if p not in plan_files and p not in new_tests]
         protected_tests = record.get("protected_tests", [])
         tampered = set(self._tampered_tests(diff_text, protected_tests))
+        plugin_residuals: list[str] = []
         if ok:
             tampered.update(self._tampered_test_contents(self.intel.snapshot.root, root, protected_tests))
-            tampered.update(self._tampered_runner_config(diff_text, self.intel.snapshot.root, root))
+            tampered.update(
+                self._tampered_runner_config(
+                    diff_text,
+                    self.intel.snapshot.root,
+                    root,
+                    residuals=plugin_residuals,
+                )
+            )
             suite_dest = dest.parent / f"verify-suite-{patch_id}"
             try:
                 ctx.artifacts["verify_suite_workspace"] = self._verify_suite_workspace(
@@ -520,6 +562,7 @@ class PatchApplier:
             "tampered_protected_tests": tampered_tests,
             "diff_sha256": sha256_text(diff_text),
             "patch_id": patch_id,
+            "plugin_discovery_residuals": plugin_residuals,
         }
         ctx.audit.emit(
             "patch.apply_fresh",
@@ -694,7 +737,13 @@ class PatchApplier:
         return sorted(touched)
 
     @staticmethod
-    def _tampered_runner_config(diff_text: str, snapshot_root: Path, patched_root: Path) -> list[str]:
+    def _tampered_runner_config(
+        diff_text: str,
+        snapshot_root: Path,
+        patched_root: Path,
+        *,
+        residuals: list[str] | None = None,
+    ) -> list[str]:
         """Test-runner configuration paths whose effective settings changed."""
         tampered: set[str] = set()
 
@@ -728,7 +777,154 @@ class PatchApplier:
                 current = current.get(key)
             return current
 
+        def add_plugin_name(names: set[str], raw: Any) -> None:
+            if not isinstance(raw, str):
+                return
+            name = raw.strip()
+            if not name.startswith("no:"):
+                names.add(name.split(":", 1)[0])
+
+        def add_addopts(names: set[str], value: Any) -> None:
+            values = value if isinstance(value, list) else [value]
+            tokens: list[str] = []
+            for item in values:
+                if isinstance(item, str):
+                    try:
+                        tokens.extend(shlex.split(item))
+                    except ValueError:
+                        continue
+            index = 0
+            while index < len(tokens):
+                token = tokens[index]
+                if token == "-p" and index + 1 < len(tokens):
+                    add_plugin_name(names, tokens[index + 1])
+                    index += 2
+                    continue
+                if token.startswith("-p") and token != "-p":
+                    add_plugin_name(names, token[2:])
+                index += 1
+
+        plugin_names: set[str] = set()
+        nonliteral_plugin_conftests: set[str] = set()
+        for path, section in (
+            ("pytest.ini", "pytest"),
+            (".pytest.ini", "pytest"),
+            ("tox.ini", "pytest"),
+            ("setup.cfg", "tool:pytest"),
+        ):
+            try:
+                raw = read_config(snapshot_root, path)
+                present, items = ini_table(raw, section)
+            except (OSError, PlatformError, UnicodeDecodeError, configparser.Error):
+                continue
+            if present:
+                addopts = next((value for key, value in items.items() if key.casefold() == "addopts"), None)
+                add_addopts(plugin_names, addopts)
+
+        try:
+            setup_raw = read_config(snapshot_root, "setup.cfg")
+            _, entry_points = ini_table(setup_raw, "options.entry_points")
+            pytest11 = next(
+                (value for key, value in entry_points.items() if key.casefold() == "pytest11"),
+                None,
+            )
+            for line in (pytest11 or "").splitlines():
+                if "=" in line:
+                    value = line.split("=", 1)[1].strip().split("#", 1)[0].strip()
+                    if value:
+                        add_plugin_name(plugin_names, value.split()[0])
+        except (OSError, PlatformError, UnicodeDecodeError, configparser.Error):
+            pass
+
+        for path in ("pyproject.toml", "pytest.toml", ".pytest.toml"):
+            try:
+                raw = read_config(snapshot_root, path)
+                parsed = tomllib.loads((raw or b"").decode("utf-8"))
+            except (OSError, PlatformError, UnicodeDecodeError, tomllib.TOMLDecodeError):
+                continue
+            ini_options = nested_table(parsed, "tool", "pytest", "ini_options")
+            if isinstance(ini_options, dict):
+                add_addopts(plugin_names, ini_options.get("addopts"))
+            if path != "pyproject.toml":
+                pytest_table = nested_table(parsed, "pytest")
+                if isinstance(pytest_table, dict):
+                    add_addopts(plugin_names, pytest_table.get("addopts"))
+            for table in (
+                nested_table(parsed, "project", "entry-points", "pytest11"),
+                nested_table(parsed, "tool", "poetry", "plugins", "pytest11"),
+            ):
+                if isinstance(table, dict):
+                    for value in table.values():
+                        add_plugin_name(plugin_names, value)
+
+        for conftest in snapshot_root.rglob("conftest.py"):
+            rel = conftest.relative_to(snapshot_root).as_posix()
+            try:
+                source = resolve_under(snapshot_root, rel).read_text(encoding="utf-8")
+                tree = ast.parse(source)
+            except (OSError, PlatformError, UnicodeDecodeError, SyntaxError):
+                nonliteral_plugin_conftests.add(rel)
+                continue
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Assign):
+                    targets = node.targets
+                    value = node.value
+                elif isinstance(node, ast.AnnAssign):
+                    targets = [node.target]
+                    value = node.value
+                elif isinstance(node, ast.AugAssign):
+                    targets = [node.target]
+                    value = None
+                else:
+                    continue
+                if not any(
+                    isinstance(target, ast.Name) and target.id == "pytest_plugins" for target in targets
+                ):
+                    continue
+                try:
+                    literal = ast.literal_eval(value) if value is not None else None
+                except (ValueError, TypeError, SyntaxError):
+                    literal = None
+                if isinstance(literal, str):
+                    add_plugin_name(plugin_names, literal)
+                elif isinstance(literal, (list, tuple)) and all(isinstance(item, str) for item in literal):
+                    for item in literal:
+                        add_plugin_name(plugin_names, item)
+                else:
+                    nonliteral_plugin_conftests.add(rel)
+
+        pinned_plugin_paths: set[str] = set()
+        for name in plugin_names:
+            parts = name.split(".")
+            if not parts or not all(part.isidentifier() for part in parts):
+                continue
+            module_path = "/".join(parts)
+            pinned_plugin_paths.add(f"{module_path}.py")
+            if (snapshot_root / module_path).is_dir():
+                pinned_plugin_paths.update(test_root_files(snapshot_root, (f"{module_path}/",)))
+        if residuals is not None:
+            residuals.extend(sorted(nonliteral_plugin_conftests))
+
+        runner_shadowing_roots = {
+            "pytest.py",
+            "pytest",
+            "_pytest",
+            "pluggy",
+            "pluggy.py",
+            "py.py",
+            "py",
+            "sitecustomize.py",
+            "usercustomize.py",
+        }
         for path in diff_paths(diff_text):
+            first_component = path.split("/", 1)[0]
+            if (
+                first_component in runner_shadowing_roots
+                or ("/" not in path and path.endswith(".pth"))
+                or path in pinned_plugin_paths
+            ):
+                tampered.add(path)
+                continue
             name = path.rsplit("/", 1)[-1]
             if name == "conftest.py":
                 tampered.add(path)

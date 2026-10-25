@@ -518,6 +518,7 @@ def evidence(**kw):
         protected_tests=["tests/test_payments.py"],
         original_check_ref="access_control.ownership@1",
         original_check_params={"route_id": "payment_detail"},
+        candidate_id="pat_test",
     )
     base.update(kw)
     return verify_agent.VerifyEvidence(**base)

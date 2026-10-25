@@ -8,12 +8,14 @@ in a fresh checkout. Labelled `fake` provider mode throughout.
 
 from __future__ import annotations
 
+import ast
 import json
 import os
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import Mock
 
@@ -489,6 +491,7 @@ def test_verify_rejects_edits_to_preexisting_tests_without_configured_protection
             protected_tests=protected_tests,
             original_check_ref="access_control.ownership@1",
             original_check_params={},
+            candidate_id="pat_existing_test",
         )
     )
     assert verdict == "rejected"
@@ -547,6 +550,7 @@ def test_verify_rejects_an_appended_duplicate_test_without_configured_protection
             protected_tests=protected_tests,
             original_check_ref="access_control.ownership@1",
             original_check_params={},
+            candidate_id="pat_appended_test",
         )
     )
     assert verdict == "rejected"
@@ -988,6 +992,7 @@ def test_verify_rejects_suite_evidence_collected_before_patch_apply(
         protected_tests=["tests/test_api.py"],
         original_check_ref="synthetic@1",
         original_check_params={},
+        candidate_id=patch_id,
     )
 
     verdict, checks, _ = verify_agent.compute_verdict(evidence)
@@ -1248,6 +1253,16 @@ def test_orchestrator_rejects_a_new_nested_conftest_that_deselects_a_protected_t
         ("new-hidden-pytest-ini", "tests/.pytest.ini", "[pytest]\naddopts = -q\n", True),
         ("new-pytest-toml", "pytest.toml", '[pytest]\naddopts = ["-q"]\n', True),
         ("new-hidden-pytest-toml", ".pytest.toml", '[pytest]\naddopts = ["-q"]\n', True),
+        ("shadow-pytest-module", "pytest.py", "# shadow\n", True),
+        ("shadow-pytest-package", "pytest/__init__.py", "# shadow\n", True),
+        ("shadow-pytest-internal-package", "_pytest/__init__.py", "# shadow\n", True),
+        ("shadow-pluggy-module", "pluggy.py", "# shadow\n", True),
+        ("shadow-pluggy-package", "pluggy/__init__.py", "# shadow\n", True),
+        ("shadow-py-module", "py.py", "# shadow\n", True),
+        ("shadow-py-package", "py/__init__.py", "# shadow\n", True),
+        ("shadow-sitecustomize", "sitecustomize.py", "# shadow\n", True),
+        ("shadow-usercustomize", "usercustomize.py", "# shadow\n", True),
+        ("root-pth-file", "runner.pth", "import pytest\n", True),
         ("tox-pytest-section", "tox.ini", "[pytest]\naddopts = -q\n", True),
         ("setup-pytest-section", "setup.cfg", "[tool:pytest]\naddopts = -q\n", True),
         (
@@ -1318,6 +1333,275 @@ def test_apply_fresh_flags_effective_runner_configuration_changes(
 
     assert facts["applied"], facts["apply_error"]
     assert (path in facts["tampered_protected_tests"]) is expected_tampered, scenario
+
+
+def test_sandbox_entry_imports_pytest_and_pluggy_before_workspace_path() -> None:
+    entry_path = Path(__file__).parents[1] / "security_agents" / "sandbox" / "entry.py"
+    main = next(
+        node
+        for node in ast.walk(ast.parse(entry_path.read_text(encoding="utf-8")))
+        if isinstance(node, ast.FunctionDef) and node.name == "main"
+    )
+    workspace_path_assignment = next(
+        node
+        for node in ast.walk(main)
+        if isinstance(node, ast.Assign)
+        and any(ast.unparse(target) == "sys.path[:0]" for target in node.targets)
+    )
+    imports = {
+        alias.name: node.lineno
+        for node in ast.walk(main)
+        if isinstance(node, ast.Import)
+        for alias in node.names
+    }
+
+    assert imports.get("pytest", 0) < workspace_path_assignment.lineno
+    assert imports.get("pluggy", 0) < workspace_path_assignment.lineno
+
+
+@pytest.mark.boundary
+@pytest.mark.parametrize(
+    ("config_path", "config_text", "changed_path"),
+    [
+        ("conftest.py", "pytest_plugins = ['pkg.plug']\n", "pkg/plug.py"),
+        ("pytest.ini", "[pytest]\naddopts = -p pkg.plug\n", "pkg/plug.py"),
+        ("tox.ini", "[pytest]\naddopts = -ppkg.plug\n", "pkg/plug/helper.py"),
+        ("setup.cfg", "[tool:pytest]\naddopts = -p pkg.plug\n", "pkg/plug.py"),
+        ("pyproject.toml", "[tool.pytest.ini_options]\naddopts = '-ppkg.plug'\n", "pkg/plug.py"),
+        (
+            "setup.cfg",
+            "[options.entry_points]\npytest11 =\n    example = pkg.plug\n",
+            "pkg/plug.py",
+        ),
+        (
+            "pyproject.toml",
+            "[project.entry-points.pytest11]\nexample = 'pkg.plug:Plugin'\n",
+            "pkg/plug.py",
+        ),
+        (
+            "pyproject.toml",
+            "[tool.poetry.plugins.pytest11]\nexample = 'pkg.plug:Plugin'\n",
+            "pkg/plug.py",
+        ),
+    ],
+    ids=[
+        "literal-conftest-plugin",
+        "pytest-ini-addopts",
+        "tox-addopts-package-plugin",
+        "setup-cfg-addopts",
+        "pyproject-addopts",
+        "setup-cfg-pytest11",
+        "pyproject-pytest11",
+        "poetry-pytest11",
+    ],
+)
+def test_pinned_plugin_module_edits_are_flagged_but_unrelated_modules_are_not(
+    config_path: str,
+    config_text: str,
+    changed_path: str,
+    tmp_path: Path,
+) -> None:
+    from security_agents.sandbox.workspace import unified_diff
+    from security_agents.tools import PatchApplier
+
+    snapshot_root = tmp_path / "snapshot"
+    patched_root = tmp_path / "patched"
+    snapshot_root.mkdir()
+    config = snapshot_root / config_path
+    config.parent.mkdir(parents=True, exist_ok=True)
+    config.write_text(config_text, encoding="utf-8")
+    plugin_file = snapshot_root / changed_path
+    plugin_file.parent.mkdir(parents=True, exist_ok=True)
+    if changed_path.endswith("/helper.py"):
+        (snapshot_root / "pkg/plug/__init__.py").write_text("", encoding="utf-8")
+    plugin_file.write_text(
+        "def pytest_collection_modifyitems(items):\n"
+        "    items[:] = [item for item in items if 'test_value' not in item.nodeid]\n",
+        encoding="utf-8",
+    )
+    unrelated_file = snapshot_root / "pkg/unrelated.py"
+    unrelated_file.write_text("VALUE = 1\n", encoding="utf-8")
+    shutil.copytree(snapshot_root, patched_root)
+    changed_plugin = patched_root / changed_path
+    changed_plugin.write_text(
+        changed_plugin.read_text(encoding="utf-8") + "\n# changed\n",
+        encoding="utf-8",
+    )
+
+    plugin_diff = unified_diff(snapshot_root, patched_root, [changed_path])
+    plugin_tampering = PatchApplier._tampered_runner_config(plugin_diff, snapshot_root, patched_root)
+
+    assert changed_path in plugin_tampering
+
+    unrelated_root = tmp_path / "unrelated"
+    shutil.copytree(snapshot_root, unrelated_root)
+    unrelated = unrelated_root / "pkg/unrelated.py"
+    unrelated.write_text("VALUE = 2\n", encoding="utf-8")
+    unrelated_diff = unified_diff(snapshot_root, unrelated_root, ["pkg/unrelated.py"])
+
+    assert PatchApplier._tampered_runner_config(unrelated_diff, snapshot_root, unrelated_root) == []
+
+
+@pytest.mark.boundary
+def test_dynamic_pinned_plugin_declarations_are_recorded_without_broad_python_flags(
+    tmp_path: Path,
+) -> None:
+    from security_agents.sandbox.workspace import unified_diff
+    from security_agents.tools import PatchApplier
+
+    snapshot_root = tmp_path / "dynamic-plugin-snapshot"
+    patched_root = tmp_path / "dynamic-plugin-patched"
+    snapshot_root.mkdir()
+    (snapshot_root / "conftest.py").write_text(
+        "pytest_plugins = discover_plugins()\n",
+        encoding="utf-8",
+    )
+    (snapshot_root / "pkg").mkdir()
+    (snapshot_root / "pkg/unrelated.py").write_text("VALUE = 1\n", encoding="utf-8")
+    shutil.copytree(snapshot_root, patched_root)
+    (patched_root / "pkg/unrelated.py").write_text("VALUE = 2\n", encoding="utf-8")
+    diff = unified_diff(snapshot_root, patched_root, ["pkg/unrelated.py"])
+    residuals: list[str] = []
+
+    assert (
+        PatchApplier._tampered_runner_config(
+            diff,
+            snapshot_root,
+            patched_root,
+            residuals=residuals,
+        )
+        == []
+    )
+    assert residuals == ["conftest.py"]
+
+
+@pytest.mark.boundary
+def test_apply_fresh_rejects_diff_headers_with_unsupported_prefix(
+    intel: LocalIntel,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from security_agents.sandbox import workspace
+
+    called = False
+
+    def apply_unsupported_diff(root: Path, _diff: str) -> tuple[bool, str]:
+        nonlocal called
+        called = True
+        (root / "conftest.py").write_text("pytest_plugins = []\n", encoding="utf-8")
+        return True, ""
+
+    monkeypatch.setattr(workspace, "apply_diff", apply_unsupported_diff)
+    diff = (
+        "diff --git x/conftest.py x/conftest.py\n"
+        "new file mode 100644\n"
+        "--- /dev/null\n"
+        "+++ x/conftest.py\n"
+        "@@ -0,0 +1 @@\n"
+        "+pytest_plugins = []\n"
+    )
+
+    facts, _ = _apply_fresh_diff(intel, tmp_path, diff, plan_files=["conftest.py"])
+
+    assert not facts["applied"]
+    assert facts["apply_error"] == "unsupported diff path prefix"
+    assert not called
+
+
+@pytest.mark.boundary
+def test_candidate_switch_cannot_reuse_a_later_patched_workspace(
+    driver: LocalProcessDriver,
+    library: CheckLibrary,
+    tmp_path: Path,
+) -> None:
+    from security_agents.agents import verify as verify_agent
+    from security_agents.sandbox.workspace import fresh_checkout, unified_diff
+    from security_agents.tools import AuditSink, PatchApplier, ToolContext
+
+    intel = _synthetic_test_target(tmp_path, tests_package=True)
+    test_path = "tests/test_aaa.py"
+    app_path = "pkg/app.py"
+    bad_tree = fresh_checkout(intel.snapshot, tmp_path / "bad-source")
+    (bad_tree / app_path).write_text("def value():\n    return 2\n", encoding="utf-8")
+    (bad_tree / test_path).write_text(
+        "from pkg.app import value\n\n\ndef test_regression() -> None:\n    assert value() == 1\n",
+        encoding="utf-8",
+    )
+    good_tree = fresh_checkout(intel.snapshot, tmp_path / "good-source")
+    (good_tree / test_path).write_text(
+        "from pkg.app import value\n\n\ndef test_regression() -> None:\n    assert value() == 1\n",
+        encoding="utf-8",
+    )
+    patcher = PatchApplier(
+        intel=intel,
+        artifacts={
+            "bad": {
+                "diff": unified_diff(intel.snapshot.root, bad_tree, [app_path, test_path]),
+                "plan_files": [app_path],
+                "tests_added": [test_path],
+            },
+            "good": {
+                "diff": unified_diff(intel.snapshot.root, good_tree, [test_path]),
+                "plan_files": [],
+                "tests_added": [test_path],
+            },
+        },
+        workdir=tmp_path / "apply",
+    )
+    ctx = ToolContext(
+        assessment_id="asm_candidate_switch",
+        agent=AgentName.VERIFY,
+        run_id="run_candidate_switch",
+        step_key="verify",
+        read_root=intel.snapshot.root,
+        audit=AuditSink(),
+    )
+    orch, _ = build(intel, driver, library, tmp_path, scripts={AgentName.PATCH: []})
+    bad_facts = patcher.apply_fresh(ctx, "bad")
+    assert bad_facts["applied"], bad_facts["apply_error"]
+    bad_candidate = SimpleNamespace(id="bad", tests_added=[test_path])
+    bad_added_runs_before_switch = orch._added_tests_on_patched(bad_candidate, ctx)
+    assert bad_added_runs_before_switch and bad_added_runs_before_switch[0]["failed"] == 1
+
+    good_facts = patcher.apply_fresh(ctx, "good")
+    assert good_facts["applied"], good_facts["apply_error"]
+    applied_patch_id = str(ctx.artifacts["verify_facts"]["patch_id"])
+    assert applied_patch_id == "good"
+    good_candidate = SimpleNamespace(id="good", tests_added=[test_path])
+    bad_added_runs = orch._added_tests_on_patched(bad_candidate, ctx)
+    assert bad_added_runs == []
+
+    suite_runner = _synthetic_test_runner(intel, driver, library, tmp_path, isolated_suite=True)
+    suite_run = suite_runner.run(ctx, "project_suite", [])
+    assert suite_run["failed"] == 0, suite_run["stdout_tail"]
+    assert suite_run["patch_id"] == applied_patch_id
+    ctx.artifacts["tests_added"] = [test_path]
+    good_added_runs = orch._added_tests_on_patched(good_candidate, ctx)
+    assert good_added_runs and good_added_runs[0]["passed"] == 1
+
+    def candidate_verdict(candidate_id: str, added_runs: list[dict[str, Any]]) -> str:
+        evidence = verify_agent.VerifyEvidence(
+            apply_facts=dict(ctx.artifacts["verify_facts"]),
+            recheck_runs=[
+                {
+                    "template_ref": "check@1",
+                    "matches_expectation": True,
+                    "parameters": {},
+                    "sandbox_run_id": "sbx_candidate_switch_check",
+                }
+            ],
+            test_runs=[suite_run, *added_runs],
+            baseline_failing=[],
+            tests_added=[test_path],
+            protected_tests=[],
+            original_check_ref="check@1",
+            original_check_params={},
+            candidate_id=candidate_id,
+        )
+        return verify_agent.compute_verdict(evidence)[0]
+
+    assert candidate_verdict("bad", bad_added_runs) == "rejected"
+    assert candidate_verdict("good", good_added_runs) == "accepted"
 
 
 @pytest.mark.boundary
@@ -1666,6 +1950,7 @@ def test_verify_rejects_a_planted_bad_patch_that_edits_a_protected_test(intel, d
         protected_tests=protected_tests,
         original_check_ref="access_control.ownership@1",
         original_check_params={},
+        candidate_id="pat_bad",
     )
     verdict, checks, reasons = verify_agent.compute_verdict(evidence)
     assert verdict == "rejected"
@@ -1717,6 +2002,7 @@ def test_verify_rejects_a_planted_bad_patch_outside_the_plan(intel, driver, libr
             protected_tests=["tests/test_api.py"],
             original_check_ref="access_control.ownership@1",
             original_check_params={},
+            candidate_id="pat_scope",
         )
     )
     assert verdict == "rejected"

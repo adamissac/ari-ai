@@ -175,6 +175,7 @@ class VerifyEvidence:
     protected_tests: list[str]
     original_check_ref: str | None
     original_check_params: dict[str, Any]
+    candidate_id: str | None = None
     required_transport: str = "inprocess"
     original_tree_sha256: str | None = None
     patched_tree_sha256: str | None = None
@@ -315,6 +316,12 @@ def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], l
     # diff_scope_ok
     if not applied:
         add(VerificationCheckName.DIFF_SCOPE_OK, False, "candidate diff did not apply to a fresh checkout")
+    elif ev.candidate_id is None or ev.apply_facts.get("patch_id") != ev.candidate_id:
+        add(
+            VerificationCheckName.DIFF_SCOPE_OK,
+            False,
+            "applied patch does not match the candidate under verification",
+        )
     elif out_of_scope:
         add(
             VerificationCheckName.DIFF_SCOPE_OK,

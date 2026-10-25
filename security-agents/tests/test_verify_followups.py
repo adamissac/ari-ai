@@ -31,7 +31,58 @@ def _ev(test_runs: list[dict[str, Any]]) -> verify_agent.VerifyEvidence:
         protected_tests=[],
         original_check_ref="t@1",
         original_check_params={},
+        candidate_id=patch_id,
     )
+
+
+def test_applied_patch_must_match_the_candidate_under_verification() -> None:
+    runs = [
+        {
+            "selection": "project_suite",
+            "passed": 5,
+            "failing_tests": [],
+        },
+        {
+            "selection": "added_tests",
+            "passed": 1,
+            "failing_tests": [],
+            "pytest_args": ["-q", ADDED],
+            "workspace_role": "patched",
+        },
+    ]
+    mismatched = _ev(runs)
+    mismatched.candidate_id = "pat_bad"
+
+    verdict, checks, reasons = verify_agent.compute_verdict(mismatched)
+
+    assert verdict == "rejected"
+    diff_scope = next(c for c in checks if c.name.value == "diff_scope_ok")
+    assert not diff_scope.passed
+    assert "applied patch does not match the candidate under verification" in diff_scope.detail
+    assert any(
+        "applied patch does not match the candidate under verification" in reason for reason in reasons
+    )
+
+
+def test_verifier_accepts_evidence_for_the_candidate_under_verification() -> None:
+    runs = [
+        {
+            "selection": "project_suite",
+            "passed": 5,
+            "failing_tests": [],
+        },
+        {
+            "selection": "added_tests",
+            "passed": 1,
+            "failing_tests": [],
+            "pytest_args": ["-q", ADDED],
+            "workspace_role": "patched",
+        },
+    ]
+    matching = _ev(runs)
+    matching.candidate_id = "pat_test"
+
+    assert verify_agent.compute_verdict(matching)[0] == "accepted"
 
 
 def test_a_later_run_cannot_mask_an_added_test_failure() -> None:
