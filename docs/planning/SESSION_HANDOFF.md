@@ -2278,6 +2278,26 @@ ancestry retained and v6 registry hash unchanged (see verification report).
   Hardening's `repository_revocation_locked` (not on this branch, not my
   finding; audit file left unvendored).
 
+## 2026-10-25 — Devin (Alan): execution reliability — Codex RC4 fix N8
+
+- RC4 independent review (adamissac#632, `codex/rc4-independent-audit`): N8
+  (P2) — `_CODE_KV_PATTERN` missed quoted mapping keys (`{"password": "lit"}`)
+  and annotated assignments (`password: str = "lit"`); literals survived in
+  diff artifacts labeled `redacted=true` and were served to project viewers.
+- Fix: `_CODE_KV_PATTERN` now has three literal-terminating prefix shapes —
+  simple `name =|"…"`/`name: "…"`, annotated `name: Type = "…"`, quoted
+  mapping key/subscript `{"name": "…"}`/`d["name"] = "…"` (single+double
+  quotes). Only the quoted literal is rewritten; unquoted non-secret
+  expressions (`api_key=os.environ["API_KEY"]`, `password: str = os.getenv()`)
+  stay byte-identical — N7 not reopened. Sealed verified-diff delivery
+  untouched; `redacted=true` labeling unchanged.
+- Verified: Codex's 4 strict N8 probes (`test_rc4_n8_artifact_disclosure.py` @
+  `4cd32dfb`, run in place) pass — put_text/get roundtrip keeps `redacted`
+  while dropping the literal, and the real viewer API returns 200 without the
+  secret while the outsider still gets 404. N7 probes re-run green; vendored
+  test_redact_code/test_redact_text_gaps 14 passed; +5 new regressions in
+  test_execution_reliability.py (file now 65). Suite: 397 passed, 7 skipped.
+
 ## 2026-10-24 — Devin (Adam): specialist eval-brain + live eval harness
 
 - `specialists/data/evalcommits.py`: eval cases become minimal pairs (planted edit = CWE/vuln_other positive, original = hard negative), splits pinned by case id; `scout()` merges the 60 rows.

@@ -41,9 +41,23 @@ _HIGH_CONFIDENCE_PATTERNS: list[tuple[re.Pattern[str], str]] = [
 ]
 _KV_KEY = r"\w*(?:password|passwd|pwd|api_key|apikey|secret|token)\w*"
 _KV_PATTERN = re.compile(r"(?i)\b" + _KV_KEY + r"\s*[=:]\s*(?:'[^'\n]*'|\"[^\"\n]*\"|[^\s'\"]+)")
+# Code-aware key=value matcher. Three prefix shapes, all ending in a quoted
+# literal — only the literal is rewritten, so unquoted non-secret expressions
+# (``api_key=os.environ["API_KEY"]``, ``password: str = os.getenv("P")``) are
+# left byte-identical.
 _CODE_KV_PATTERN = re.compile(
-    r"(?i)(?P<prefix>\b" + _KV_KEY + r"\s*[=:]\s*)"
-    r"(?P<literal>'(?:\\.|[^'\\\n])+'|\"(?:\\.|[^\"\\\n])+\")"
+    r"(?i)(?P<prefix>(?:"
+    + r"\b"
+    + _KV_KEY
+    + r"\s*:\s*[^=\n]+?=\s*"  # annotated: name: Type = "..."
+    + r"|\b"
+    + _KV_KEY
+    + r"\s*[=:]\s*"  # simple: name = "..." or name: "..."
+    + r"|['\"]"
+    + _KV_KEY
+    + r"['\"](?:\s*\])?\s*[:=]\s*"  # quoted mapping key/subscript: {"name": "..."}
+    + r"))"
+    + r"(?P<literal>'(?:\\.|[^'\\\n])+'|\"(?:\\.|[^\"\\\n])+\")"
 )
 # Free-text-only matcher: catches credential-looking ``key=value`` fragments
 # ``_KV_PATTERN`` misses (hyphenated spellings like ``api-key``/``access-token``).
