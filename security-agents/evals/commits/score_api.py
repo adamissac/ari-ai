@@ -18,7 +18,7 @@ import json
 import os
 import sys
 import urllib.request
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 TERMINAL = {"COMPLETED", "FAILED", "CANCELLED", "BUDGET_EXHAUSTED"}
 VALIDATED = {
@@ -45,7 +45,20 @@ def _get(path: str) -> dict:
 def _ts(value: str | None) -> float:
     if not value:
         return 0.0
-    return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc).timestamp()
+    return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(UTC).timestamp()
+
+
+def _finding_paths(f: dict) -> set[str]:
+    paths = f.get("paths")
+    if paths is None:
+        # the findings list endpoint returns the finding doc without the
+        # denormalized `paths` column; fall back to its source_span evidence
+        paths = [
+            e.get("path")
+            for e in (f.get("evidence") or [])
+            if e.get("kind") == "source_span" and e.get("path")
+        ]
+    return {p.split(":")[0] for p in paths}
 
 
 def main() -> int:
@@ -75,18 +88,6 @@ def main() -> int:
     for f in findings:
         by_assessment.setdefault(f.get("assessment_id") or "", []).append(f)
 
-    def _finding_paths(f: dict) -> set[str]:
-        paths = f.get("paths")
-        if paths is None:
-            # the findings list endpoint returns the finding doc without the
-            # denormalized `paths` column; fall back to its source_span evidence
-            paths = [
-                e.get("path")
-                for e in (f.get("evidence") or [])
-                if e.get("kind") == "source_span" and e.get("path")
-            ]
-        return {p.split(":")[0] for p in paths}
-
     results, pending = [], 0
     for case in request["cases"]:
         out = {"case_id": case["id"], "kind": case["kind"], "cwe": case.get("cwe")}
@@ -97,15 +98,9 @@ def main() -> int:
             continue
         files = set(case["files"])
         sec_on_files = [
-            f
-            for f in by_assessment.get(a["id"], [])
-            if f["kind"] == "security" and files & _finding_paths(f)
+            f for f in by_assessment.get(a["id"], []) if f["kind"] == "security" and files & _finding_paths(f)
         ]
-        any_on_files = [
-            f
-            for f in by_assessment.get(a["id"], [])
-            if files & _finding_paths(f)
-        ]
+        any_on_files = [f for f in by_assessment.get(a["id"], []) if files & _finding_paths(f)]
         seconds = round(_ts(a.get("completed_at") or a.get("updated_at")) - _ts(a["created_at"]))
         results.append(
             {
