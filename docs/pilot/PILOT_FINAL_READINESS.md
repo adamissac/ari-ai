@@ -117,3 +117,14 @@ SELECT count(*) FROM index_payloads; COMMIT;                                 -- 
 -- Rollback: set DATABASE_URL back to the postgres URL and redeploy (ownership change is harmless to postgres).
 -- 4. Rotate the postgres password (it was exposed in chat 2026-10-25).
 ```
+
+## Appendix O — Prod outage 2026-10-25 (in progress)
+
+- Postgres service log (pasted by Adam): the container restarted, "shut down at 01:26:51 UTC", "ready to accept connections" 01:26:54. `pg_postmaster_start_time()` = 01:26:54.
+  The last worker heartbeat was 01:26:51.369Z. Since then: no API or worker connections in `pg_stat_activity`, and `/healthz` + `/readyz` return 502.
+  Working hypothesis (not yet confirmed; API service logs needed): the API and workers did not survive the DB restart and are not being restarted by Railway.
+- The same log shows **non-read-only activity against prod by an unidentified actor** (not this lane, whose connections are `default_transaction_read_only`):
+  01:28:33 `insert into index_payloads (... 'prj_X' ...)` → permission denied; `drop role ari_rls_probe` → failed (dependent schema privileges).
+  The role no longer exists, and no `prj_X` rows remain. `rehearsal-alice`/`rehearsal-eve` (github_id NULL) were inserted at 01:28:42, probably by the same actor
+  writing directly to the DB rather than through an auth bypass. Not confirmed. No cleanup without Adam's approval.
+- Railway SSH sessions to the Postgres container at 01:40:50 and 01:41:13 (actor unknown).
