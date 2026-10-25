@@ -27,15 +27,12 @@ adds an entry before ending.
 - Next steps: merge after review; consider BM25 tie-breaking toward implementation symbols if reviewers need secondary evidence.
 - Warnings: none.
 
-
-
 ### 2026-10-24 — Adam (Devin) — release gate / test infrastructure
 - Did: rebuilt all CI workflows around always-on jobs + `scripts/ci/path_gate.py` (visible RUN/SKIP); renamed colliding `test` job ids; added `pilot-verify.yml` (7 labelled env categories); added `GET /projects/{id}/jobs?status=` for dead-letter visibility; hardened the 45-case eval scorer (`scored:false` + `unscored_reason`, rates over scored only, case validation); added `scripts/ci/load_probe.py`.
 - State of the code: `feat/adam/release-gate` pushed; pytest `test_job_status_api`+`test_jobs_queue`+`test_parallel_migrations` → 12 passed; ruff clean; load probe all invariants green (~1.5k jobs/s enqueue+drain, embedded PG).
 - Decisions: path gating inside jobs (not triggers) so required checks never hang at Expected; skip = visible verdict.
 - Warnings: `main` still has NO branch protection — admin must set required checks (list in `docs/release/RELEASE_GATE_2026-10-24.md`). New jobs endpoint is shared backend surface — needs owner review.
 - Next: branch-protection config by repo admin; run `pilot-verify.yml` on the merge SHA.
-
 
 ### 2026-10-25 — Adam/Devin: rehearsal independently reproduced + e2e scare cleared
 
@@ -57,7 +54,6 @@ adds an entry before ending.
 - Still owner-gated for the HOSTED staging leg: `gh repo create
   adamissac/ari-pilot-rehearsal --private`, install the GitHub App on it, OAuth-login.
 
-
 ---
 
 ### 2026-10-24 — Devin (agent, Adam) — pilot-readiness ops: readiness split, worker heartbeats, restart/rollback evidence
@@ -69,7 +65,6 @@ adds an entry before ending.
 - Open: actual production table sizes unknown — needs `railway run` + `DATABASE_URL` (not held by this session); whether Railway's alert covers the Postgres service volume or the app /data volume.
 - Next steps: Adam sets OPS_API_TOKEN/POSTGRES_VOLUME_BYTES, reviews first dry-run report, flips RETENTION_DRY_RUN=false; re-measure after a cycle; size volume bump decision from real growth data.
 - Warnings: deleting rows does NOT shrink the Railway-reported volume (frees internal pages); `VACUUM FULL`/repack only after verified backup. Coordination note: `coordination/messages/20261024T235500Z-devin-to-all-postgres-storage-retention.md`.
-
 
 ### 2026-10-24 — Adam/Devin: pilot rehearsal executed end-to-end (13/13 PASS)
 
@@ -117,7 +112,6 @@ adds an entry before ending.
 - Decisions: RLS scoped to the two source-content tables only (documented in doc §6); purge is operator-invoked, no TTL scheduler (documented gap).
 - Open: extend RLS fleet-wide needs per-request tenant GUC resolution — deferred; backups retention is deployment-level (documented).
 - Warnings: `test_repository_has_a_single_migration_head` expects head 0016 — next migration must update it to 0017.
-
 
 ### 2026-10-24 — Devin (agent, Adam) — pilot launch package + CONDITIONAL GO
 - Did: audited `main` (`d0131167`) and the hosted deployment (`readyz`: llm live, GitHub App + webhook configured) for pilot readiness; coordinated with the privacy workstream session for verified private-code data-flow facts; wrote the full pilot launch package under `docs/pilot/` (scope+exclusions, feature matrix, onboarding+revocation checklist, DATA_HANDLING draft, operations, metrics/health report, risk register, rehearsal+first-five plan, LAUNCH_DECISION).
@@ -1782,7 +1776,6 @@ No collection, first-responder training, promotion or enforcement follows merge.
 Remaining merge gate: final documentation head review/CI. Future numerical protocol
 and any collection require separate explicit owner approval. Historical source
 ancestry retained and v6 registry hash unchanged (see verification report).
-
 
 ## 2026-10-24 — Devin (Adam): agent-visibility UI + prod automation enabled
 
