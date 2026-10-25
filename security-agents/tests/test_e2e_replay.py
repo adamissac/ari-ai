@@ -1060,8 +1060,10 @@ def test_protected_tests_follow_safe_directory_symlinks(
     driver: LocalProcessDriver,
     library: CheckLibrary,
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from security_agents.sandbox.workspace import fresh_checkout
+    import security_agents.sandbox.workspace as workspace
+    from security_agents.tools import AuditSink, PatchApplier, ToolContext
 
     intel = _symlink_test_target(tmp_path, layout)
     orch, _ = build(intel, driver, library, tmp_path, scripts={"unused": []})
@@ -1070,31 +1072,55 @@ def test_protected_tests_follow_safe_directory_symlinks(
     assert logical in protected
     assert "spec/test_core.py" in protected
 
-    patch_root = fresh_checkout(intel.snapshot, tmp_path / f"symlink-patch-{layout}-{edit}")
     if edit == "logical":
         changed = logical
     elif edit == "target":
         changed = "spec/test_core.py"
     else:
         changed = "pkg/app.py"
-    path = patch_root / changed
-    original_text = path.read_text(encoding="utf-8")
-    if changed.endswith("test_core.py"):
-        updated_text = original_text.replace("== 1", "== 2")
-    else:
-        updated_text = original_text.replace("return 1", "return 2")
-    path.write_text(updated_text, encoding="utf-8")
-    from security_agents.tools.services import PatchApplier
 
-    tampered = PatchApplier._tampered_test_contents(
-        intel.snapshot.root,
-        patch_root,
-        protected,
+    diff = f"diff --git a/{changed} b/{changed}\n--- a/{changed}\n+++ b/{changed}\n"
+
+    def apply_edit(root: Path, _diff: str) -> tuple[bool, str]:
+        path = root / changed
+        original_text = path.read_text(encoding="utf-8")
+        if changed.endswith("test_core.py"):
+            updated_text = original_text.replace("== 1", "== 2")
+        else:
+            updated_text = original_text.replace("return 1", "return 2")
+        path.write_text(updated_text, encoding="utf-8")
+        return True, ""
+
+    monkeypatch.setattr(workspace, "apply_diff", apply_edit)
+    patch_id = f"pat_symlink_{layout}_{edit}"
+    applier = PatchApplier(
+        intel=intel,
+        artifacts={
+            patch_id: {
+                "diff": diff,
+                "plan_files": [changed],
+                "protected_tests": protected,
+            }
+        },
+        workdir=tmp_path / f"symlink-verify-{layout}-{edit}",
     )
+    ctx = ToolContext(
+        assessment_id=f"asm_symlink_{layout}_{edit}",
+        agent=AgentName.VERIFY,
+        run_id=f"run_symlink_{layout}_{edit}",
+        step_key="verify",
+        read_root=intel.snapshot.root,
+        audit=AuditSink(),
+    )
+
+    facts = applier.apply_fresh(ctx, patch_id)
+
+    assert facts["applied"], facts["apply_error"]
+    assert facts["out_of_scope_files"] == []
     if edit == "app":
-        assert tampered == []
+        assert facts["tampered_protected_tests"] == []
     else:
-        assert changed in tampered
+        assert changed in facts["tampered_protected_tests"]
 
 
 @pytest.mark.boundary
