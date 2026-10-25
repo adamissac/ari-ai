@@ -2032,6 +2032,21 @@ selected run is still loading.
 
 No `HACKATL_TASKS` change; no task ID.
 
+### Automated independent release review setup — 2026-10-25
+
+Automation-only installation prepared: immutable candidate/upstream pins, F1–F10/
+N1–N7 strict evidence, protected signed budget ledger, workstream assignments and
+bounded existing-session Devin handoff. Local controller/adversarial suite: 56
+passed; Ruff clean. Fork trusted environments and ledger provisioned, API activation
+OFF. Installation PRs require manual review/merge; Codex repository access and API
+credentials/session budget confirmation are one-time prerequisites. Docker unavailable
+locally; live loop not claimed. No production code, release merge or deployment.
+See `docs/release/AUTOMATED_INDEPENDENT_REVIEW.md`.
+
+Installation PRs: canonical #614; fork #9 (main), #10 (ci/upstream-main). Fork #9
+controller Docker unit/layout/actionlint checks passed at abd61416; paid activation
+remains OFF pending manual installation and protected credential/session setup.
+
 ## 2026-10-25 — Adam: least-privilege storage reporting
 
 - Optional storage probes now use savepoints and catch SQLAlchemy errors, so a
