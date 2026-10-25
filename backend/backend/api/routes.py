@@ -479,11 +479,17 @@ def disconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
     with transaction() as conn:
         user = _user(conn, request)
         repo = _owner_repo(conn, user, repo_id)
-        # Lock the repo row for the whole disconnect so concurrent per-operation
-        # and final-persist revocation checks (which read/lock the same row)
-        # serialize against this transaction instead of racing it.
+        # Canonical revocation-protocol lock order: repositories first, then
+        # deploy_commit_mappings — finalizing callers lock in the same order via
+        # services.repository_revocation_locked, so disconnect and a mid-flight
+        # persist serialize deterministically and cannot deadlock (same order).
         conn.execute(
             sa.select(repositories.c.id).where(repositories.c.id == repo_id).with_for_update()
+        )
+        conn.execute(
+            sa.select(deploy_commit_mappings.c.id)
+            .where(deploy_commit_mappings.c.repo_id == repo_id)
+            .with_for_update()
         )
         if repo["disconnected_at"] is None:
             now = utcnow()
