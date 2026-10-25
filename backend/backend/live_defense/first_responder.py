@@ -51,7 +51,12 @@ from backend.live_defense.modes import (
     telemetry_untrusted,
 )
 from backend.live_defense.orchestrator import OrchestratorFacts, decide
-from backend.services import active_scope_for_repo, project_org, repository_revocation
+from backend.services import (
+    active_scope_for_repo,
+    project_org,
+    repository_revocation,
+    repository_revocation_locked,
+)
 from backend.worker import JobCancelled, JobContext, JobDeferred, handler
 from shared.assessment import AgentName
 from shared.audit import ActorType
@@ -1178,7 +1183,7 @@ def live_defense_agent_step(ctx: JobContext) -> dict[str, Any]:
             status = AgentInvocationStatus.cancelled
             reason = "first-responder OFF is effective; late output is not executed"
         if (
-            repository_revocation(
+            repository_revocation_locked(
                 conn,
                 repo_id=repo_id,
                 application_id=decision.application_id if decision else None,
