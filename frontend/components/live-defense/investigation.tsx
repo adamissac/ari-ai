@@ -112,7 +112,7 @@ export function InvestigationDetail({
     const sample = previewIncident(incidentId);
     if (!sample) return <Empty>That sample incident is not in the layout-preview fixtures.</Empty>;
     return (
-      <div className="flex flex-col gap-4" data-testid="live-defense-preview-investigation">
+      <div className="flex min-w-0 flex-col gap-6" data-testid="live-defense-preview-investigation">
         <Panel title={sample.title} actions={<SourceTag mode="layout-preview" />}>
           <p className="text-sm text-muted">{sample.summary}</p>
           <p className="mt-2 text-xs text-muted">Linked in this sample: {sample.linked.events} events · {sample.linked.findings} findings · {sample.linked.recommendations} recommendations</p>
@@ -132,7 +132,7 @@ export function InvestigationDetail({
     );
   }
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex min-w-0 flex-col gap-6">
       {detail ? (
         <Async resource={detail} label="incident">
           {({ incident }) => (

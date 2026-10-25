@@ -120,7 +120,7 @@ export function ProjectShell({ children }: { children: ReactNode }) {
             <div className="rail-meta">
               {repos.data.items.length === 0
                 ? <span>No repository connected</span>
-                : repos.data.items.map(r => <span key={r.id} className="rail-repo">{r.full_name}<span className="rail-branch"> · {r.default_branch}</span></span>)}
+                : repos.data.items.map((r, index) => <span key={`${r.id}:${r.full_name}:${index}`} className="rail-repo">{r.full_name}<span className="rail-branch"> · {r.default_branch}</span></span>)}
             </div>
           </div>
           <ProjectNavigation base={base} />

@@ -23,7 +23,7 @@ export default function FindingsPage() {
   const findings = useResource(`findings:${project.id}`, s => api().findings(project.id, { signal: s }));
   const [tab, setTab] = useState<FindingGroup>('open');
   return (
-    <>
+    <div className="flex min-w-0 flex-col gap-6">
       <PageTitle eyebrow="Review" title="Findings" subtitle="Security and correctness findings from assessments, deduplicated by state." />
     <Panel title="Findings">
       <p className="mb-1 text-sm text-muted">What these words mean: <Term t="finding">finding</Term>, <Term t="hypothesis">hypothesis</Term>, <Term t="validated">validated</Term>, <Term t="verification">verified</Term>.</p>
@@ -50,8 +50,8 @@ export default function FindingsPage() {
           }
           if (items.length === 0) return <Empty>{tab === 'hypothesis' ? 'No open hypotheses.' : tab === 'closed' ? 'Nothing refuted or closed.' : tab === 'fixed' ? 'No fix has been accepted by independent tests yet.' : 'No open findings in this list.'}</Empty>;
           return (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
+            <div className="min-w-0 overflow-x-auto">
+              <table className="w-full min-w-[640px] text-left text-sm">
                 <thead className="text-xs uppercase tracking-wider text-faint">
                   <tr><th className="py-1.5 pr-3">Finding</th><th className="pr-3">Status</th><th className="pr-3">Kind</th><th className="pr-3">Severity</th><th className="pr-3">Commit</th><th>Updated</th></tr>
                 </thead>
@@ -73,6 +73,6 @@ export default function FindingsPage() {
         }}
       </Async>
     </Panel>
-    </>
+    </div>
   );
 }

@@ -115,8 +115,8 @@ function LiveOverviewRecords({
     shadowCount: decisionItems.length,
   });
   return (
-    <div className="flex flex-col gap-4">
-      <p className="rounded-xl border border-line bg-panel p-5 text-sm text-ink" data-testid="live-defense-summary">{copy}</p>
+    <div className="flex min-w-0 flex-col gap-6">
+      <p className="min-w-0 rounded-xl border border-line bg-panel p-5 sm:p-6 text-sm text-ink" data-testid="live-defense-summary">{copy}</p>
       {project && reloadProject && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-panel px-5 py-4">
           <DefenseSwitch project={project} onChange={() => reloadProject()} />
@@ -325,8 +325,8 @@ function LiveOverviewRecords({
 
 function PreviewOverview({ projectId }: { projectId: string | null }) {
   return (
-    <div className="flex flex-col gap-4" data-testid="live-defense-preview-overview">
-      <p className="rounded-xl border border-line bg-panel p-5 text-sm text-ink">
+    <div className="flex min-w-0 flex-col gap-6" data-testid="live-defense-preview-overview">
+      <p className="min-w-0 rounded-xl border border-line bg-panel p-5 sm:p-6 text-sm text-ink">
         Sample layout only. Counts, map states and Q-values below are fixtures. They are not telemetry and not a loaded policy.
       </p>
       <DefenseMap

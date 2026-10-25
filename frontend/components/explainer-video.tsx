@@ -51,7 +51,7 @@ export function ExplainerVideo() {
   };
 
   return (
-    <div ref={ref} className="story-track story-track-2 bleed bleed-paper" id="explainer">
+    <div ref={ref} className="story-track story-track-2 bleed bleed-night" id="explainer">
       <section aria-labelledby="explainer-title" className="story-stage flex flex-col justify-center gap-8 py-16">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_1fr] lg:items-end">
           <div>

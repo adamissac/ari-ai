@@ -119,7 +119,7 @@ export default function PricingPage() {
       <p className="mt-4 text-center text-xs text-faint" data-testid="pricing-preview">Hackathon preview: these plans are proposals and nothing can be purchased yet. Prices in USD.</p>
 
       <Reveal>
-        <section aria-labelledby="faq-title" className="pricing-faq paper mt-24 grid items-start gap-10 py-16 md:grid-cols-12 md:gap-6 md:py-24">
+        <section aria-labelledby="faq-title" className="pricing-faq mt-24 grid items-start gap-10 py-16 md:grid-cols-12 md:gap-6 md:py-24">
           <div className="faq-aside md:col-span-4">
             <p className="faq-pill label-mono">FAQ</p>
             <h2 id="faq-title" className="display mt-5 text-4xl font-semibold md:text-5xl">Questions, answered</h2>

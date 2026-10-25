@@ -49,8 +49,8 @@ export default function ProjectOverview() {
   const failed = [assessments, findings, scopes].filter(r => r.status === 'error');
   const refreshFailed = [assessments, findings, scopes].some(r => r.refreshError !== undefined);
   return (
-    <div className="flex flex-col gap-4">
-      <section aria-label="Project summary" className="rounded-xl border border-line bg-panel p-5" data-testid="project-summary">
+    <div className="flex min-w-0 flex-col gap-6">
+      <section aria-label="Project summary" className="min-w-0 rounded-xl border border-line bg-panel p-5 sm:p-6" data-testid="project-summary">
         {failed.length > 0 ? (
           <ErrorState
             error={failed[0]?.error}
@@ -63,14 +63,14 @@ export default function ProjectOverview() {
             <p className="mt-2 max-w-3xl text-sm text-muted">{summary.detail}</p>
             {refreshFailed && <p role="status" className="mt-3 text-xs text-warn" data-testid="summary-stale">Could not refresh the latest records. The numbers above are from the last successful load and may be out of date.</p>}
             <div className="mt-4">
-              <a href={summary.action.href} className="inline-flex items-center rounded-[var(--radius-2)] bg-brand px-4 py-2 text-sm font-medium text-on-brand hover:bg-brand-deep">{summary.action.label}</a>
+              <a href={summary.action.href} className="inline-flex items-center rounded-lg bg-brand px-4 py-2 text-sm font-medium text-on-brand hover:bg-brand-deep">{summary.action.label}</a>
             </div>
           </>
         ) : <p className="text-sm text-muted">Loading the current project records…</p>}
       </section>
       <PageTitle eyebrow="Review" title="7 Agents" subtitle="Start a security check, then open a run to replay the work and review its findings." />
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-4">
+    <div className="flex min-w-0 flex-col gap-6">
+      <div className="flex min-w-0 flex-col gap-6">
         <StartAssessment onStarted={assessments.reload} />
         <Panel title="Runs & replay">
           <Async resource={assessments} label="assessments">
@@ -78,7 +78,7 @@ export default function ProjectOverview() {
           </Async>
         </Panel>
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid min-w-0 gap-6 md:grid-cols-2">
         <details className="project-detail"><summary>Findings</summary><Panel title="Findings">
           <Async resource={findings} label="findings">
             {page => {
@@ -203,7 +203,7 @@ function ProjectJourney({
   const assessmentHref = latest ? `/projects/${projectId}/assessments/${latest.id}` : null;
 
   return (
-    <section aria-label="Check progress" className="rounded-xl border border-line bg-panel p-5" data-testid="project-journey">
+    <section aria-label="Check progress" className="min-w-0 rounded-xl border border-line bg-panel p-5 sm:p-6" data-testid="project-journey">
       <h2 className="text-sm font-semibold tracking-tight">Where this check is</h2>
       {!logReady ? <p className="mt-2 text-sm text-muted">Loading the recorded phases…</p> : (
         <>
@@ -265,8 +265,8 @@ function AssessmentList({ projectId, page }: { projectId: string; page: Page<Ass
   };
   if (items.length === 0) return <Empty>No assessments yet. Approve a scope, then start a check above.</Empty>;
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-left text-sm">
+    <div className="min-w-0 overflow-x-auto">
+      <table className="w-full min-w-[520px] text-left text-sm">
         <thead className="text-xs uppercase tracking-wider text-faint">
           <tr><th className="py-1.5 pr-3">Run</th><th className="pr-3">Status</th><th className="pr-3">Commit</th><th>Started</th></tr>
         </thead>

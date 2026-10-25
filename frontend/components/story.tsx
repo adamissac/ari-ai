@@ -76,7 +76,7 @@ export function ProblemScene() {
   const count = TICK_X.filter((_, n) => caught(n)).length;
 
   return (
-    <div ref={ref} className="story-track story-track-3 bleed bleed-paper">
+    <div ref={ref} className="story-track story-track-3 bleed bleed-night">
       <section aria-labelledby="problem-title" className="story-stage flex flex-col justify-center py-16">
         <p className="kicker">The problem</p>
         <h2 id="problem-title" className="sr-only">Why every change needs checking</h2>
