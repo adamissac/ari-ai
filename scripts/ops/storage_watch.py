@@ -34,6 +34,7 @@ class Report:
     volumes: list[VolumeReport]
     backup_line: str
     problems: list[str]
+    alert_keys: list[str]
 
 
 def evaluate(
@@ -52,6 +53,7 @@ def evaluate(
     current_time = _as_utc(now)
     results: list[VolumeReport] = []
     problems: list[str] = []
+    alert_keys: list[str] = []
 
     for volume in volumes:
         name = str(volume["name"])
@@ -69,13 +71,16 @@ def evaluate(
         results.append(VolumeReport(name, used_mb, size_mb, pct, level))
         if level is not None:
             problems.append(f"{name} at {pct:.1f}% ({used_mb:g}/{size_mb:g} MB) — level {level}")
+            alert_keys.append(f"volume:{name}:{level}")
 
     if not results:
         problems.append("No Railway volumes found for the token's environment.")
+        alert_keys.append("volumes:none")
 
     if not backups:
         backup_line = f"No backups found (maximum age {backup_max_age_h:g} hours)."
         problems.append(f"No backups found within the maximum age of {backup_max_age_h:g} hours.")
+        alert_keys.append("backup:none")
     else:
         newest = max(backups, key=lambda backup: _backup_created_at(backup))
         created_at = _backup_created_at(newest)
@@ -91,8 +96,9 @@ def evaluate(
                 f"Latest backup {backup_name!r} is {age_hours:.1f} hours old "
                 f"(maximum {backup_max_age_h:g} hours)."
             )
+            alert_keys.append("backup:stale")
 
-    return Report(results, backup_line, problems)
+    return Report(results, backup_line, problems, alert_keys)
 
 
 def render_markdown(report: Report) -> str:
@@ -117,8 +123,8 @@ def render_markdown(report: Report) -> str:
     return "\n".join(lines)
 
 
-def marker(problems: Sequence[str]) -> str:
-    digest = hashlib.sha256("\n".join(sorted(problems)).encode("utf-8")).hexdigest()
+def marker(alert_keys: Sequence[str]) -> str:
+    digest = hashlib.sha256("\n".join(sorted(alert_keys)).encode("utf-8")).hexdigest()
     return f"<!-- storage-watch:{digest[:16]} -->"
 
 
@@ -137,7 +143,7 @@ def sync_issue(client: Any, repo: str, report: Report) -> str:
     markdown = render_markdown(report)
 
     if report.problems:
-        expected_marker = marker(report.problems)
+        expected_marker = marker(report.alert_keys)
         body = f"{markdown.rstrip()}\n\n{expected_marker}\n"
         if issue is None:
             client.post(
