@@ -362,6 +362,15 @@ def test_ten_mixed_assessments_skip_automatic_and_block_manual_start(automatic):
     assert rrq["reason"] == "skipped: project review limit reached (10/hour)"
     assert deferred_jobs == 0
 
+    # #607: manual starts count manual-trigger assessments only — 6 manual
+    # seeds are below the 10/hour manual limit even though the automatic quota
+    # (which counts every trigger) is already exhausted.
+    response = manual_start(alice, ids, "f" * 40)
+    assert response.status_code == 202
+
+    seed_assessments(
+        alice, ids, [AssessmentTrigger.manual] * 4, created_at=seeded_at
+    )
     response = manual_start(alice, ids, "f" * 40)
     assert response.status_code == 429
     error = response.json()["error"]
@@ -560,6 +569,8 @@ def test_pull_request_commit_still_uses_authenticated_automatic_path(automatic):
             "head": {"sha": HEAD, "ref": "feature"},
             "base": {"sha": "a" * 40},
             "updated_at": "2026-10-17T01:02:03Z",
+            # reviewer settings (#593) read the PR author from pull_request.user.login.
+            "user": {"login": "adamissac"},
         },
     }
     post_webhook(alice, payload, event="pull_request")
