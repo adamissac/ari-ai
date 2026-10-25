@@ -2,15 +2,27 @@
   "agent": "devin-intel-audit",
   "human_owner": "Adam",
   "workstream": "code-intelligence engine + persistent memory pilot-readiness audit; secret redaction hardening",
-  "state": "WORKING",
+  "state": "READY_FOR_REVIEW",
   "task": "PR #531: executed audit report + parse-safe redaction (#441 fix carried verbatim) + mid-line secret redaction + honest route-gap IndexIssues + retrieval eval + index benchmark",
   "branch": "feat/adam/intel-pipeline-audit",
-  "latest_sha": "7cfb485c",
-  "prs": [531],
-  "claims": ["code-intelligence/code_intelligence/privacy.py", "code-intelligence/code_intelligence/extract.py", "code-intelligence/tests/", "code-intelligence/evidence/", "docs/research/intel-pipeline-audit/", "coordination/messages/*intel*"],
-  "depends_on": ["integration-lead merge order (position 13)", "#535 RLS/purge as second layer (merged)"],
+  "latest_sha": "48c19f39",
+  "prs": [
+    531
+  ],
+  "claims": [
+    "code-intelligence/code_intelligence/privacy.py",
+    "code-intelligence/code_intelligence/extract.py",
+    "code-intelligence/tests/",
+    "code-intelligence/evidence/",
+    "docs/research/intel-pipeline-audit/",
+    "coordination/messages/*intel*"
+  ],
+  "depends_on": [
+    "integration-lead merge order (position 13)",
+    "#535 RLS/purge as second layer (merged)"
+  ],
   "blockers": [],
-  "last_update_utc": "2026-10-24T17:05:00Z",
-  "tests": "code-intelligence 60 passed / 1 skipped; backend intel PG tests 9 passed; ruff clean; gitleaks clean locally; branch CI re-running on 7cfb485c",
-  "next_action": "keep #531 mergeable + green until integration-lead merges it; then re-index guidance applies to stored payloads"
+  "last_update_utc": "2026-10-24T17:20:00Z",
+  "tests": "CI 8/8 green on 48c19f39; code-intelligence 60 passed / 1 skipped; backend intel PG 9 passed; ruff clean; gitleaks clean",
+  "next_action": "await merge (board position 13); report + security assessment + merge rec delivered to Adam"
 }

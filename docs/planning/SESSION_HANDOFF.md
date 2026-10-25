@@ -23,7 +23,7 @@ adds an entry before ending.
 - State of the code (verified how): `code-intelligence/tests` 57 passed 1 skipped; `backend/tests/test_intel_store.py test_intelligence_memory_api.py test_intelligence_ingestion_profile.py test_payload_store_intel_integration.py` 9 passed on real Postgres; new retrieval eval + route-diagnostic tests pass; benchmark harness executed on payments-lite.
 - Commands run and results: `PYTHONPATH=code-intelligence:shared .venv/bin/python -m pytest code-intelligence/tests` (57 passed, 1 skipped); backend intel subset (9 passed); index runs 0.16s/8 files, 4.11s/127 files, 92.4s/1,798 files.
 - Report: `docs/research/intel-pipeline-audit/README.md`; measured numbers: `code-intelligence/evidence/m2-index-retrieval-audit.json`; benchmark: `code-intelligence/evidence/index_benchmark.py`.
-- Assumptions/open questions: secondary-evidence Recall@K degrades at scale (82% on payments-lite, 63% on ari-ai) — packs do not mark absent expected evidence; mid-line bare-secret expressions (`f(password=x, user=y)`) are a documented redaction residual; JS/TS extraction is unimplemented and unclaimed.
+- Assumptions/open questions: secondary-evidence Recall@K degrades at scale (82% on payments-lite, 63% on ari-ai) — packs do not mark absent expected evidence; mid-line bare-secret expressions (`f(password=x, user=y)`) were a residual and are now redacted when the token contains a digit (digit-less mid-line tokens and `else`-branch conditionals remain documented); JS/TS extraction is unimplemented and unclaimed.
 - Next steps: merge after review; consider BM25 tie-breaking toward implementation symbols if reviewers need secondary evidence.
 - Warnings: none.
 

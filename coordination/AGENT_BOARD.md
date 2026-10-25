@@ -3,15 +3,15 @@
 
 # Agent board — live coordination dashboard
 
-Regenerated <built-in method strftime of datetime.datetime object at 0x102328450>. Comms channel: [issue #559](https://github.com/adamissac/ari-ai/issues/559). Protocol: `coordination/PROTOCOL.md`.
+Regenerated <built-in method strftime of datetime.datetime object at 0x107c31dd0>. Comms channel: [issue #559](https://github.com/adamissac/ari-ai/issues/559). Protocol: `coordination/PROTOCOL.md`.
 
 ## Active agents
 
 | Agent | Owner | Workstream | State | Task | Branch | SHA |
 | --- | --- | --- | --- | --- | --- | --- |
 | alan-live-defense | Alan | security-agents/, live-defense Phase 6.5/7A/7C, interim shared/ contract approver | BLOCKED | Phase 7C authorized Scout/Diagnose execution (#458); Phase 6.5 RL-gated pilot infra (#412) | feat/alan/live-defense-phase7c-agent-execution, feat/live-defense-phase6-5-rl-gated-pilot | 9486a5b0 |
-| devin-intel-audit | Adam | code-intelligence engine + persistent memory pilot-readiness audit; secret redaction hardening | WORKING | PR #531: executed audit report + parse-safe redaction (#441 fix carried verbatim) + mid-line secret redaction + honest route-gap IndexIssues + retrieval eval + index benchmark | feat/adam/intel-pipeline-audit | 7cfb485c |
-| devin-pipeline-fixer | Adam | fixing agent pipeline failures; intel-store retry; eval-runner retry; pilot rehearsal v2; ops retention | WORKING | Pipeline failure fixes (#542/#543/#546), rehearsal evidence (#555/#556), storage retention (#558), handoff doc (#554) | fix/intel-store-orphan-retry, fix/eval-runner-retry, ari/fix-pat_01M5R13A056A25J7ZXWHHDZ9SN, feat/adam/pilot-rehearsal-v2, docs/adam/live-inventory-rehearsal-evidence, fix/adam/postgres-storage-retention, docs/devin-pilot-handoff | 759fe638 |
+| devin-intel-audit | Adam | code-intelligence engine + persistent memory pilot-readiness audit; secret redaction hardening | READY_FOR_REVIEW | PR #531: executed audit report + parse-safe redaction (#441 fix carried verbatim) + mid-line secret redaction + honest route-gap IndexIssues + retrieval eval + index benchmark | feat/adam/intel-pipeline-audit | 48c19f39 |
+| devin-pipeline-fixer | Adam | fixing agent pipeline failures; intel-store retry; eval-runner retry; pilot rehearsal v2; ops retention | WORKING | Eval run 3 scoring (eval/20261024-153652) + #542/#543 in wave 2 | fix/intel-store-orphan-retry, fix/eval-runner-retry, ari/fix-pat_01M5R13A056A25J7ZXWHHDZ9SN, feat/adam/pilot-rehearsal-v2, docs/adam/live-inventory-rehearsal-evidence, fix/adam/postgres-storage-retention, docs/devin-pilot-handoff | 12d048fe |
 | integration-lead | Adam | PR release management, merge ordering, pilot readiness verification | WORKING | Integrate pilot-ready PRs in dependency order; run pilot-verify against final main | (merges land on main) | ad282cf4 |
 
 ## PR ownership and merge order
@@ -63,8 +63,8 @@ Regenerated <built-in method strftime of datetime.datetime object at 0x102328450
 ## Next actions
 
 - **alan-live-defense**: hold; rebase onto post-integration main when asked
-- **devin-intel-audit**: keep #531 mergeable + green until integration-lead merges it; then re-index guidance applies to stored payloads
-- **devin-pipeline-fixer**: wait for merges; keep rehearsal branches current
+- **devin-intel-audit**: await merge (board position 13); report + security assessment + merge rec delivered to Adam
+- **devin-pipeline-fixer**: score eval run 3 results; post baselines to Adam; clean eval artifacts
 - **integration-lead**: merge green PRs in order; refresh each branch with main first
 
 ## How to update
