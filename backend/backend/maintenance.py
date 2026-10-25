@@ -517,6 +517,19 @@ def storage_report(engine: Engine | None = None, s: Settings | None = None) -> d
         for t in ALERT_THRESHOLDS_PCT
         if pct is not None and pct >= t
     ]
+    data_volume_limit = s.data_volume_bytes
+    data_volume_used = _du(s.data_volume_path) if s.data_volume_path.is_dir() else None
+    data_volume_pct = (
+        round(100.0 * data_volume_used / data_volume_limit, 2)
+        if data_volume_limit > 0 and data_volume_used is not None
+        else None
+    )
+    alerts.extend(
+        f"data volume usage at {data_volume_pct:.1f}% of configured volume "
+        f"({data_volume_used}/{data_volume_limit} bytes)"
+        for t in ALERT_THRESHOLDS_PCT
+        if data_volume_pct is not None and data_volume_pct >= t
+    )
     reclaim = run_retention(engine=engine, s=s, dry_run=True)
     return {
         "generated_at": datetime.now(UTC).isoformat(),
@@ -527,6 +540,12 @@ def storage_report(engine: Engine | None = None, s: Settings | None = None) -> d
         "replication_slots": slots,
         "long_running_transactions": long_running,
         "volume": {"limit_bytes": limit or None, "used_bytes": used, "pct_used": pct},
+        "data_volume": {
+            "path": str(s.data_volume_path),
+            "limit_bytes": data_volume_limit or None,
+            "used_bytes": data_volume_used,
+            "pct_used": data_volume_pct,
+        },
         "alerts": alerts,
         "tables": tables,
         "jobs": job_stats,
@@ -675,6 +694,37 @@ def run_once(engine: Engine | None = None, s: Settings | None = None) -> dict[st
                     for t in report["tables"][:5]
                 ],
                 "reclaimable": report["reclaimable"],
+                "at": report["generated_at"],
+            },
+        )
+    data_volume = report["data_volume"]
+    data_pct = data_volume["pct_used"]
+    data_level = 0
+    if data_pct is not None:
+        for t in ALERT_THRESHOLDS_PCT:
+            if data_pct >= t:
+                data_level = t
+    if data_level:
+        log.warning(
+            "data volume storage alert: %.1f%% of %d-byte volume used (level %d%%)",
+            data_pct,
+            s.data_volume_bytes,
+            data_level,
+        )
+    if s.ops_alert_webhook_url and data_level:
+        _post_alert(
+            s.ops_alert_webhook_url,
+            {
+                "service": "ari-ai-backend",
+                "kind": "data_volume_storage",
+                "path": data_volume["path"],
+                "pct_used": data_pct,
+                "used_bytes": data_volume["used_bytes"],
+                "limit_bytes": data_volume["limit_bytes"],
+                "level": data_level,
+                "filesystem": {
+                    key: value for key, value in report["filesystem"].items() if key != "checkouts"
+                },
                 "at": report["generated_at"],
             },
         )
