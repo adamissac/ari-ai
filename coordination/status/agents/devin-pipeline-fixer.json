@@ -1,0 +1,16 @@
+{
+  "agent": "devin-pipeline-fixer",
+  "human_owner": "Adam",
+  "workstream": "fixing agent pipeline failures; intel-store retry; eval-runner retry; pilot rehearsal v2; ops retention",
+  "state": "WORKING",
+  "task": "Pipeline failure fixes (#542/#543/#546), rehearsal evidence (#555/#556), storage retention (#558), handoff doc (#554)",
+  "branch": "fix/intel-store-orphan-retry, fix/eval-runner-retry, ari/fix-pat_01M5R13A056A25J7ZXWHHDZ9SN, feat/adam/pilot-rehearsal-v2, docs/adam/live-inventory-rehearsal-evidence, fix/adam/postgres-storage-retention, docs/devin-pilot-handoff",
+  "latest_sha": "759fe638",
+  "prs": [542, 543, 546, 554, 555, 556, 558],
+  "claims": ["backend tests for get_project authz", "evals/commits scorer", "rehearsal tooling", "scripts/rehearsal/", "storage/retention ops"],
+  "depends_on": ["integration-lead merge order"],
+  "blockers": [],
+  "last_update_utc": "2026-10-24T23:56:00Z",
+  "tests": "branch CI re-running after main refresh; rehearsal evidence executed 13/13 per #556",
+  "next_action": "wait for merges; keep rehearsal branches current"
+}
