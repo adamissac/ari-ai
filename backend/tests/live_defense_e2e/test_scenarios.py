@@ -374,12 +374,19 @@ def test_e_worker_failure(staging, monkeypatch, report):
 
     inv = staging.by_agent(staging.invocations(alice, app.project_id))
     assert inv["scout"]["status"] == INV.failed.value
+    # The loop's transcript was retained — nothing was lost or deduplicated away.
+    transcripts = staging.artifact_rows(app.project_id, kind="llm_transcript")
+    assert len(transcripts) >= 1
     # Exactly one decision, one scout invocation — crash + redelivery did not
     # double-record.
     assert len(staging.decisions(alice, app.project_id)) == 1
     assert sum(1 for i in inv.values() if i["agent"] == "scout") == 1
     # Post-F1 contract: redelivery did NOT re-run the physical provider loop —
     # uncertain billable outcomes are never replayed automatically.
+    # Scout failed, so Diagnose is committed skipped_no_prerequisite — never
+    # enqueued, never billable.
+    if "diagnose" in inv:
+        assert inv["diagnose"]["status"] == INV.skipped_no_prerequisite.value
     scout_physical_after = sum(1 for c in fake.calls if c.agent.value == "scout")
     assert scout_physical_after == scout_physical_before
     report.check(
