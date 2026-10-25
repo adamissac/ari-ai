@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Setup now shows the actual expiry of the sandbox scope being approved; landing copy states the default and maximum authorization durations.
 - Refined the console account menu, mobile project navigation, status marks, assessment headers, and commit-to-assessment links.
 - Added opt-in bounded exact-SHA release review automation with isolated strict
   regressions, signed evidence, existing-owner routing and a protected cost ledger.
@@ -18,6 +19,7 @@ All notable changes are documented here. Format follows
 - Added the Industrial Graphite design-token foundation and reskinned existing UI primitives and console surfaces with graphite neutrals, vermilion signal, Inter, and IBM Plex Mono.
 - Rebuilt the public landing page around a commit-to-verify signal field, six visible stages, and explicit scope and control disclosures.
 - Verify's Python hook scan accepts UTF-8 BOMs, `--rootdir` preserves semantic checks for `tox.ini`, `setup.cfg`, and `pyproject.toml`, and unreadable or invalid pinned pytest configuration fails closed.
+- Verify uses a context-aware pytest binding scan for unpacking, imports, global stores, and hook-rooted attribute/subscript writes, `setattr`, and `del`, without treating local names or subscript indexes as bindings. It keeps changed `conftest.py` files byte-protected when they are config symlink targets, checks linked config target content through fresh checkouts, and ignores syntax-invalid inert test-root Python fixtures during plugin discovery. Added `apply_fresh` regressions for linked config changes and config read and walk failures.
 - Added a guided repository setup walkthrough (`/projects/<id>/setup?repo=<repoId>`): connecting a repository now lands there, and it walks through authorizing testing, tuning the code reviewer, choosing fix delivery (pull request is preselected), and starting the first review. The setup page also has decorative floating background shapes that stop moving when reduced motion is on.
 - Setup now distinguishes repository automatic reviews from push/PR review preferences and searches up to 2,000 audit events before reporting no build-recipe result.
 - Verify permits genuinely new recipe-declared tests while rejecting protected-test and runner-configuration tampering; it binds evidence to the candidate patch, protects pinned plugin modules and runner-shadow paths, scans changed application modules for new pytest hooks, rejects unsupported or quoted diff headers, and runs its project suite with the pinned test roots.

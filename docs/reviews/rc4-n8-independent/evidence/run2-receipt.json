@@ -1,0 +1,16 @@
+{
+  "candidate_sha": "4fdcf10cc2320b0eb499a177e3b8bea847de8e73",
+  "upstream_sha": "e41c9dc22e6536463cdab9be6a2a4cd76302c866",
+  "regression_sha": "abf6b316b1de2fea9a8ac8c89a79a7368900145a",
+  "exit_code": 1,
+  "tests": 190,
+  "skipped": 0,
+  "failed": 3,
+  "errors": 0,
+  "failures": [
+    ".TestRateLimits::test_global_user_limit_applies_on_all_routers",
+    "::test_annotation_does_not_redact_a_different_statement",
+    "::test_annotation_preserves_unrelated_statement_in_stored_diff"
+  ],
+  "cleanup_error": "untrusted result cleanup failed on disposable runner"
+}

@@ -1,5 +1,5 @@
 import { cleanup, render, screen } from '@testing-library/react';
-import type { Project, Repository } from '@hackatl/frontend-transport';
+import type { AuthorizedScope, Project, Repository } from '@hackatl/frontend-transport';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import SetupPage from '@/app/(console)/projects/[projectId]/setup/page';
 
@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   replace: vi.fn(),
   push: vi.fn(),
   automaticAssessments: false,
+  scopeItems: [] as unknown[],
 }));
 vi.mock('@/components/project', () => ({ useProject: () => mocks.project }));
 vi.mock('@/lib/use-resource', () => ({ useResource: mocks.useResource }));
@@ -40,6 +41,7 @@ beforeEach(() => {
   localStorage.clear();
   mocks.query = 'repo=rep_12345678&step=5';
   mocks.automaticAssessments = false;
+  mocks.scopeItems = [];
   mocks.project = { project, reloadProject: vi.fn() };
   mocks.useResource.mockImplementation((key: string | null) => {
     if (key?.includes('setup-repos')) return {
@@ -47,7 +49,7 @@ beforeEach(() => {
       data: { items: [{ ...repo, automatic_assessments: mocks.automaticAssessments }] },
       reload: vi.fn(),
     };
-    if (key?.includes('setup-scopes')) return { status: 'ready', data: { items: [] }, reload: vi.fn() };
+    if (key?.includes('setup-scopes')) return { status: 'ready', data: { items: mocks.scopeItems }, reload: vi.fn() };
     if (key?.includes('setup-runs')) return { status: 'ready', data: { items: [] }, reload: vi.fn() };
     return { status: 'ready', data: { items: [] }, reload: vi.fn() };
   });
@@ -57,7 +59,30 @@ afterEach(cleanup);
 it('resumes the testing-scope panel from ?step=5', () => {
   render(<SetupPage />);
   expect(screen.getByTestId('setup-step-5')).toBeTruthy();
-  expect(screen.getByRole('button', { name: 'Approve sandbox testing for 7 days' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Approve sandbox testing for 30 days' })).toBeTruthy();
+});
+
+it('shows the stored expiry when approving a pending scope', () => {
+  const expiresAt = new Date(Date.now() + 7 * 86_400_000);
+  const expiresAtIso = expiresAt.toISOString();
+  mocks.scopeItems = [{
+    id: 'scp_12345678',
+    project_id: project.id,
+    name: 'Authorize acme/payments-lite',
+    targets: [{ kind: 'sandbox_build', repo_id: repo.id, build_recipe_ref: 'build_recipe.json', exposed_ports: [] }],
+    allowed_check_categories: [],
+    status: 'pending',
+    requested_by: 'usr_requester',
+    approved_by: null,
+    approved_at: null,
+    expires_at: expiresAtIso,
+    notes: null,
+  } as AuthorizedScope];
+  render(<SetupPage />);
+  const expiry = screen.getByText(expiresAt.toLocaleDateString());
+  expect(expiry.getAttribute('datetime')).toBe(expiresAtIso);
+  expect(expiry.closest('dd')?.textContent).toBe(`Until ${expiresAt.toLocaleDateString()}`);
+  expect(screen.getByRole('button', { name: /Approve sandbox testing until/ })).toBeTruthy();
 });
 
 it('disables Start until the testing scope is authorized', () => {
